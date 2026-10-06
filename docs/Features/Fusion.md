@@ -175,7 +175,7 @@ Fusion is a compatibility layer, but not all ActiveX controls are supported.
 
 ## Event Differences
 
-Mouse events are not currently OLE-translated, therefore mouse event signatures (MouseDown, MouseUp, MouseMove) will differ from traditional ActiveX expectations.  This is a current limitation, and will fixed in a later update.
+Mouse events are not OLE-translated, so the mouse event signatures (MouseDown, MouseUp, MouseMove) differ from what an ActiveX container expects.
 
 ## Summary
 

@@ -127,6 +127,15 @@ function refuseDest(dest, repo) {
       );
     }
   }
+  // A `dest` inside the tree being mirrored is walked too, so the mirror reads
+  // back what it is writing, unless the walk passes over that folder.
+  if (isInside(repo, dest) && !isExcluded(path.relative(repo, dest).split(path.sep).join("/"))) {
+    throw new CliError(
+      "bad-dest",
+      `refusing --dest ${dest}: it is inside ${repo}, which the corpus mirrors, so the mirror would copy itself`,
+      { option: "--dest", value: dest },
+    );
+  }
 }
 
 function parseArgs(argv) {
@@ -261,7 +270,7 @@ if (opts.help || !opts.dest) {
       "Exit codes:\n" +
       "  0  the corpus was built\n" +
       "  2  a refused command line (a --dest that is or contains the repository, the\n" +
-      "     working folder or --repo included), or a crash",
+      "     working folder or --repo, or lies inside the tree it mirrors), or a crash",
     opts.help ? {} : { stream: "stderr", exitCode: 2 },
   );
 }

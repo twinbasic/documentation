@@ -18,7 +18,6 @@ redirect_from:
 | **Z-Order Behavior** | Always rendered beneath windowed controls[^4] | Can float above other controls |
 | **Input Handling** | Requires manual routing of input (keyboard, mouse) via container | OS handles input natively |
 | **Accessibility** | Needs explicit support via interfaces like `IAccessibleWindowlessSite`[^1] | Built-in accessibility support |
-| **Known Issues** | May require custom handling to work around known issues in twinBASIC (e.g., events not firing)[^2] | More complete and stable |
 | **Use Case Fit** | Ideal for lightweight, static UI elements (e.g., labels, images) | Best for interactive or focusable controls (e.g., textboxes, buttons) |
 
 ---
@@ -35,13 +34,11 @@ redirect_from:
 
 - **Complex Input Handling**: You must manually forward focus, mouse, and keyboard events from the container.  
 - **Z-Order Limitations**: Cannot appear above windowed controls---problematic for overlays or tooltips.<sup>4</sup>  
-- **Quirks**: twinBASIC has some known issues with windowless control events and other features.<sup>2</sup> 
 - **Accessibility Overhead**: Requires extra work to expose accessibility interfaces.<sup>1</sup>
 
 ---
 
 [^1]:  [IAccessibleWindowlessSite Interface on Microsoft Learn](https://learn.microsoft.com/en-us/windows/win32/api/oleacc/nn-oleacc-iaccessiblewindowlesssite)
-[^2]: Originally reported in [twinBASIC GitHub Issue #1310 -- Windowless Anchor Resizing Bug](https://github.com/twinbasic/twinbasic/issues/1310). Fixed in BETA 162.
 [^3]: Overview of [GDI object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/gdi-objects) and [hWnd user object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/user-objects)  in Windows UI architecture: [MSDN -- Window Resources](https://learn.microsoft.com/en-us/windows/win32/winmsg/about-windows)
 [^4]: Background on Z-order rendering and Windows control layering: [Windows Controls - Z-order](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#z-order)
 

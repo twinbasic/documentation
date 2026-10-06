@@ -35,7 +35,7 @@ Loop
 
 ## Copying and deleting
 
-[**FileCopy**](FileCopy) copies one file to another, and [**Kill**](Kill) deletes files matching a wildcard pattern. Both operate by pathname and raise a run-time error when asked to act on a file the current process has open.
+[**FileCopy**](FileCopy) copies one file to another, and [**Kill**](Kill) deletes files matching a wildcard pattern. Both operate by pathname. **Kill** raises a run-time error when asked to delete a file that is open, and **FileCopy** raises one for a file that is open for **Append**.
 
 ```tb check_build
 FileCopy "C:\Data\report.xlsx", "C:\Backup\report.xlsx"

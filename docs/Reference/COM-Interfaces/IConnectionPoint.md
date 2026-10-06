@@ -83,7 +83,7 @@ Private Interface IEnumConnections Extends stdole.IUnknown
 End Interface
 ```
 
-*ppCP* and *rgcd* name the first element of the caller's array and nothing after it, which is enough to ask for one item at a time. The enumerators of this page return one item per call whatever the count asked for (see [The enumerators](#the-enumerators)).
+*ppCP* and *rgcd* name the first element of the caller's array and nothing after it, which is enough to ask for one item at a time (see [The enumerators](#the-enumerators)).
 
 The identifier of the outgoing interface of a class written in twinBASIC is not a fixed value, so a program never declares it. It reads the identifier from the connection point (see [Events in twinBASIC](#events-in-twinbasic)).
 
@@ -127,10 +127,10 @@ In twinBASIC:
 - Cookies start at 1 for each source object and increase by one for every connection made. A cookie is not used again after its connection ends.
 - A sink that does not answer for the outgoing interface fails with `E_NOINTERFACE` (`&H80004002`), where the COM contract names `CONNECT_E_CANNOTCONNECT`. VB6 returns `E_NOINTERFACE` too. An object of an ordinary twinBASIC class is such a sink, even when the class implements **IDispatch**, and so is a class declared **NotDispatchable** that implements it. A twinBASIC class cannot answer for the identifier, because the identifier of a class's event interface changes with every build and so cannot be declared. A sink that works is the object twinBASIC creates for a **WithEvents** variable, which **EnumConnections** returns (see the example).
 - A sink that is already connected to the point is not connected a second time. **Advise** raises no error, returns 0, and adds nothing.
-- Passing **Nothing** is a defect in BETA 995, described in the warning below.
+- Passing **Nothing** is a defect in BETA 997, described in the warning below.
 
 > [!WARNING]
-> BETA 995 has a defect: **Advise** with **Nothing** as the sink ends the program with an access violation, and any unsaved data is lost. The COM contract returns `E_POINTER`. VB6 ends with an access violation as well. Test the sink for **Nothing** before calling **Advise**.
+> BETA 997 has a defect: **Advise** with **Nothing** as the sink ends the program with an access violation, and any unsaved data is lost. The COM contract returns `E_POINTER`. VB6 ends with an access violation as well. Test the sink for **Nothing** before calling **Advise**.
 
 ### Unadvise
 {: .no_toc }
@@ -145,7 +145,7 @@ Syntax: *object*.**Unadvise** *dwCookie*
 The connection point releases the reference it held to the sink, and the source stops calling it. An event that the source raises afterwards does not reach that sink.
 
 > [!WARNING]
-> BETA 995 has a defect: **Unadvise** with a cookie that names no connection, 0 included, succeeds and does nothing, where the COM contract returns an error (`E_POINTER`). VB6 returns `CONNECT_E_NOCONNECTION` (`&H80040200`) for a cookie it never issued. A caller that releases a connection twice, or with a wrong cookie, is told that it worked.
+> BETA 997 has a defect: **Unadvise** with a cookie that names no connection, 0 included, succeeds and does nothing, where the COM contract returns an error (`E_POINTER`). VB6 returns `CONNECT_E_NOCONNECTION` (`&H80040200`) for a cookie it never issued. A caller that releases a connection twice, or with a wrong cookie, is told that it worked.
 
 A **WithEvents** variable whose connection was ended with **Unadvise** can still be set to **Nothing** without an error.
 
@@ -185,20 +185,15 @@ Raises `CONNECT_E_NOCONNECTION` (`&H80040200`) when the object has no outgoing i
 
 ## The enumerators
 
-**IEnumConnectionPoints** and **IEnumConnections** follow the pattern of [**IEnumVARIANT**](IEnumVARIANT): **Next**, **Skip**, **Reset** and **Clone**. In BETA 995 the two enumerators that twinBASIC supplies do not follow it in the same way, so a caller reads each one as described here. Both are read one item at a time, with *cConnections* of 1.
+**IEnumConnectionPoints** and **IEnumConnections** follow the pattern of [**IEnumVARIANT**](IEnumVARIANT): **Next**, **Skip**, **Reset** and **Clone**. The two enumerators that twinBASIC supplies follow it.
 
-| Method | **IEnumConnectionPoints** | **IEnumConnections** |
-|--------|---------------------------|----------------------|
-| **Next** | Returns one item and `S_OK`. When no item is left, raises `E_FAIL` (`&H80004005`) and sets *pcFetched* to 0, where the contract returns `S_FALSE`. Asking for more items than are left also raises `E_FAIL`. | Returns one item and `S_OK`, even when more were asked for and more are left. When no item is left, writes nothing, sets *pcFetched* to 0 and returns `S_FALSE`, so a loop ends when *pcFetched* is 0. A null *pcFetched* is accepted. |
-| **Skip** | Raises `E_NOTIMPL` (`&H80004001`). | Moves past the items. |
-| **Reset** | Moves back to the start. | Moves back to the start. |
-| **Clone** | Raises `E_NOTIMPL`. | Returns a new enumerator, which reads on its own. |
+**Next** returns the items asked for, or the items that are left when there are fewer, and sets *pcFetched* to the number it returned. When no item is left, it writes nothing, sets *pcFetched* to 0 and raises no error, so a loop ends when *pcFetched* is 0. For **IEnumConnections**, asking for two items when two connections exist returns both. **IEnumConnections** also accepts a null *pcFetched*.
 
-A caller that asks for several items at once from **IEnumConnections** therefore gets only the first, and must call again. A caller that reads **IEnumConnectionPoints** handles the error of the call that finds the end.
+**Skip** raises no error, and **Reset** moves back to the start. **Clone** of **IEnumConnectionPoints** returns an enumerator and raises no error; **Clone** of **IEnumConnections** returns a new enumerator, which reads on its own.
 
 ## Events in twinBASIC
 
-A class that declares [**Event**](../../tB/Core/Event) members is a connectable object, and the compiler writes all of its connection point support. What it does, in BETA 995:
+A class that declares [**Event**](../../tB/Core/Event) members is a connectable object, and the compiler writes all of its connection point support. What it does:
 
 - **Every class answers for IConnectionPointContainer.** **QueryInterface**, and a [**Set**](../../tB/Core/Set) to a variable of the container type, succeed for a class with no events as they do for a class with events.
 - **A class with events has one connection point**, however many events it declares. **EnumConnectionPoints** returns it and **FindConnectionPoint** finds it by its interface identifier.
@@ -309,7 +304,7 @@ Debug.Print ConnectionCount(point)
 ' 0
 ```
 
-A class with events has one connection point, and the container finds it again by the identifier it reports. The enumerator has no second item: its **Next** raises `E_FAIL`. A class with no events fails in **EnumConnectionPoints** with run-time error 445. An identifier that the object does not have, here that of **IUnknown**, raises `CONNECT_E_NOCONNECTION`:
+A class with events has one connection point, and the container finds it again by the identifier it reports. The enumerator has no second item: its **Next** raises no error and sets *fetched* to 0. A class with no events fails in **EnumConnectionPoints** with run-time error 445. An identifier that the object does not have, here that of **IUnknown**, raises `CONNECT_E_NOCONNECTION`:
 
 ```tb check_run projname=com-iconnpoint
 Dim c As New Counter
@@ -328,8 +323,7 @@ Debug.Print back Is container                              ' True
 
 On Error Resume Next
 points.Next 1, point, fetched
-Debug.Print Hex$(Err.Number)                               ' 80004005
-Err.Clear
+Debug.Print fetched                                        ' 0
 
 Dim other As GUID           ' the identifier of IUnknown
 other.Data4(0) = &HC0

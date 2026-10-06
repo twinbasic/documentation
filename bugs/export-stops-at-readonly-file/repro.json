@@ -1,4 +1,8 @@
 {
-  "mode": "manual",
+  "mode": "lane",
+  "lane": "ide:export",
+  "tests": [
+    "a read-only file stops the export part-way, and the IDE reports nothing"
+  ],
   "steps": "Do it in a scratch folder made for this, <S> below (for example C:\\Scratch\\readonly-test). File > Export Project empties <S>\\export.\n1. Unzip export-stops-at-readonly-file.zip into <S>, so that <S>\\export-stops-at-readonly-file.twinproj exists.\n2. In a Command Prompt: mkdir <S>\\export, then make three files in it, a-first.txt, m-readonly.txt and z-last.txt (echo x> <S>\\export\\a-first.txt, and so on), and attrib +R <S>\\export\\m-readonly.txt.\n3. Open the project in the twinBASIC IDE. Its Export Path is ${SourcePath}\\export and Export Verbose is on (Project Settings, Export).\n4. Choose File > Export Project.\n5. See, as the last three lines of the DEBUG CONSOLE: [EXPORT]  DELETE FAILED: \\\\?\\<S>\\export\\m-readonly.txt, [EXPORT]  ERROR: unable to clean the output folder and [EXPORT] export failed. No dialog opens. <S>\\export holds m-readonly.txt and z-last.txt: a-first.txt, which sorts before the read-only file, is deleted, and nothing was exported.\n6. Afterwards: attrib -R <S>\\export\\m-readonly.txt.\nRe-measured on BETA 995 by `ide-test.bat --only export`."
 }

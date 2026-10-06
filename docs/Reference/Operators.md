@@ -127,12 +127,12 @@ The other operators:
 | Operator | Result type |
 |:---------|:------------|
 | `/` | **Decimal** if either operand is **Decimal**; otherwise **Single** if one operand is **Single** and the other is **Byte**, **Integer**, **Boolean** or **Single**; otherwise **Double** |
-| `\`, `Mod` | **Decimal** if either operand is **Decimal**; otherwise **LongLong** if either is **LongLong**; otherwise **Byte** if both are **Byte**, **Integer** if both are **Byte**, **Integer** or **Boolean**, and **Long** in every other case. The operands are rounded to whole numbers first, and a value exactly halfway goes to the even neighbour: `6.5 \ 2` is 3 and `7.5 \ 2` is 4 |
+| `\`, `Mod` | **Decimal** if either operand is **Decimal**; otherwise **LongLong** if either is **LongLong**; otherwise **Byte** if both are **Byte**, **Integer** if both are **Byte**, **Integer** or **Boolean**, and **Long** in every other case, except that a **Boolean** on the left of a **String** gives a **Boolean**: the **String** is converted to **Boolean** first, so `True \ "2"` is **True** (`-1 \ -1` is 1) and `True Mod "2"` is **False**. The operands are rounded to whole numbers first, and a value exactly halfway goes to the even neighbour: `6.5 \ 2` is 3 and `7.5 \ 2` is 4 |
 | `^` | **Double**, whatever the operand types |
 | `&` | **String** |
 | unary `-` | the operand's own type, except **Integer** for a **Byte** or **Boolean** and **Double** for a **String** |
 
-A result that does not fit its type raises error 6, *Overflow*, with one exception described under [the **\\** operator](../tB/Core/IntegerDivide). Some combinations that matter when porting code:
+A result that does not fit its type raises error 6, *Overflow*. Some combinations that matter when porting code:
 
 | Expression | Result |
 |:-----------|:-------|
@@ -146,6 +146,9 @@ A result that does not fit its type raises error 6, *Overflow*, with one excepti
 | **Single** `+` **Long** | **Double** |
 | **Date** `+` **Integer** | **Date** |
 | **String** `+` **Integer** | **Double**: `"34" + 6` is 40 |
+
+> [!WARNING]
+> In twinBASIC BETA 997, an addition, subtraction, multiplication or division whose result is a declared **Single** raises no error when the result overflows: the **Single** holds infinity (`1.#INF`) instead. VB6 raises error 6, *Overflow*. Declare the variable **Double** where an overflow must be caught. Code compiled with LLVM has a similar defect for **Double**; see [Language support](../LLVM/Getting-Started#language-support).
 
 ### Variant operands
 

@@ -11,8 +11,7 @@
 // erases the IDE's build log and could erase a failure with it -- so each clear's
 // erasure is kept (keepClears) and read back.
 
-import { click } from "./tb-click.mjs";
-import { BUILD_FAILED } from "./tb-ide.mjs";
+import { BUILD_FAILED, pressBuild } from "./tb-ide.mjs";
 import { keepClears, keptClears, readConsole } from "./tb-ide-console.mjs";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -66,7 +65,7 @@ export async function captureRun(c, { done = () => false, quietMs, timeoutMs }) 
     );
   }
   // A real press/release pair; element.click() is ignored.
-  await click(c, "buildIcon");
+  await pressBuild(c);
 
   const started = Date.now();
   let last = "",

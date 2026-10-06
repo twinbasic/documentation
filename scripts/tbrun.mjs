@@ -25,11 +25,16 @@
 //                         is refused on a Community or Personal licence
 //       --exe             run the built exe as well, on a private desktop, and
 //                         capture what it writes with TbRun.Out and its exit code
+//       --allow-name-clash  run a probe whose module holds a procedure named
+//                         like the module; twinBASIC does not run its
+//                         [RunAfterBuild] Sub, so tbrun refuses it otherwise
 //
 // Exit: 0 captured output, 1 the project has compile errors, 2 the harness
 // could not run (a refused command line included), a compile never settled, or
 // it crashed -- a build that fails after a clean compile included, and a
 // [RunAfterBuild] Sub that fails code generation, since the probe never runs,
+// and a probe whose module holds a procedure named like the module, which
+// does not run either (unless --allow-name-clash),
 // and a procedure the probe calls that fails it, since the probe stops at the
 // call -- 3 no output: the build produced none in the console before the
 // timeout, or the probe ran and printed none after its last Debug.Cls -- 4 the
@@ -156,7 +161,7 @@ import { captureRun, checkCapture, strip } from "./lib/tb-run.mjs";
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe] [-h, --help]
+const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe] [--allow-name-clash] [-h, --help]
 
 Builds an exported twinBASIC source tree in the IDE, runs it, and prints what it
 writes to the DEBUG CONSOLE.
@@ -182,6 +187,9 @@ writes to the DEBUG CONSOLE.
                       +llvm is refused on a Community or Personal licence
   --exe               also run the built exe on a private desktop, and print
                       what it writes with TbRun.Out and its exit code
+  --allow-name-clash  run a probe whose module holds a procedure named like the
+                      module, which twinBASIC does not run (it is refused
+                      without this option)
   -h, --help          print this text and exit
 
 Exit codes:
@@ -190,7 +198,8 @@ Exit codes:
   2  a refused command line (a source folder that is missing or has no Settings file
      included), no IDE, an IDE that did not start, a compile that never
      settled, a build that failed after a clean compile, a probe that never ran or
-     stopped at a procedure that failed code generation, an --llvm run on a
+     stopped at a procedure that failed code generation, a probe whose module holds
+     a procedure named like the module (unless --allow-name-clash), an --llvm run on a
      Community or Personal licence, an --exe run with no exe built, or a crash
   3  no output: the console held none before the timeout, or the probe printed none
      after its last Debug.Cls
@@ -213,6 +222,7 @@ const { values, positionals } = withUsageError(
         "compiler-options": { type: "string" },
         llvm: { type: "boolean", default: false },
         exe: { type: "boolean", default: false },
+        "allow-name-clash": { type: "boolean", default: false },
         json: { type: "boolean", default: false },
         raw: { type: "boolean", default: false },
         keep: { type: "boolean", default: false },
@@ -328,7 +338,7 @@ if (!hasHook) {
 // [RunAfterBuild] run is compiled with, and compiler.buildOptions what the exe
 // is -- measured on BETA 995, where +llvm in the build options alone left the
 // run's Debug.Assert evaluated and its loop at the speed of the default.
-const compilerOptions = values.llvm ? "+llvm" : values["compiler-options"];
+const compilerOptions = values.llvm ? "+llvm" : values.compilerOptions;
 let wasTemplate = false,
   projectName = "",
   usesLlvm = false,
@@ -369,6 +379,17 @@ try {
 if (hasHook && !wrap.wrapped) {
   console.error(
     `warning: ${wrap.why} -- so a probe that ends before it returns cannot be told from one that finished.`,
+  );
+}
+// Refused before an IDE starts, which is the first thing after this that costs anything.
+if (wrap.wrapped?.clash && !values.allowNameClash) {
+  die(
+    2,
+    `tbrun: module ${wrap.wrapped.module} holds the [RunAfterBuild] Sub ${wrap.wrapped.sub} and also a procedure named ` +
+      `${wrap.wrapped.clash}, like the module. In twinBASIC (BETA 997) a [RunAfterBuild] Sub does not run, and ` +
+      `nothing says so, when its module holds a procedure named like the module (BUGS-TO-REPORT.md, "A [RunAfterBuild] ` +
+      `Sub does not run, and nothing says so, when its module holds a procedure named like the module"). ` +
+      `Rename one of them, or pass --allow-name-clash to run it anyway.`,
   );
 }
 

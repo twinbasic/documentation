@@ -18,8 +18,9 @@
 // site, and the offline tree has no reader for it yet.
 const ONLINE_AUX = ["sitemap.xml", "robots.txt", "assets/js/search-data.json", "tB/symbols.json"];
 // The offline tree carries neither sitemap nor search index, but does
-// get the JS wrapper writeOffline generates around the search data.
-const OFFLINE_AUX = ["assets/js/search-data.js"];
+// get the JS wrapper writeOffline generates around the search data, and
+// the nav.js that puts the whole nav tree in place of a page's part of it.
+const OFFLINE_AUX = ["assets/js/search-data.js", "assets/js/nav.js"];
 
 // Every relative path a tree receives. `which` is "online" or "offline";
 // the PDF tree's contents come from writePdf, which knows them exactly.

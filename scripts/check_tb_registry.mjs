@@ -43,6 +43,10 @@
 //   * an association that named the temp folder when the run began, which is
 //     another run's IDE copy's and is left alone, against one that did not,
 //     which is put back;
+//   * two runs at once: the one that ends first puts nothing back, the last
+//     one removes both runs' entries, which an IDE wrote back after the first
+//     ended, and gives the user's list back; a run that died is swept by the
+//     next one to start;
 //   * the guards: a key near the root and a sweep outside the temp folder
 //     refused, and an error raised inside PowerShell arriving as a sentence;
 //   * the ownership rule: a dead owner does not block tidying, a live one makes
@@ -50,6 +54,7 @@
 
 import { execFileSync } from "node:child_process";
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -331,6 +336,54 @@ try {
   assert.ok(R.finishTidy(clean).association >= 1);
   assert.equal(readValue(COMMAND, ""), REAL, "one that did not is put back");
 
+  // ------------------------------------------------ two runs at once
+  // Run A starts on the user's list; run B starts while A runs and ends first,
+  // so it puts nothing back. A's IDE, still open, writes B's entry back after
+  // that -- the IDE writes its whole list from memory. A ends last and puts
+  // back for both.
+  const RUNS = path.join(tmpdir(), "tbharness-selftest-Łukasz", "tbide");
+  const DIR_A = path.join(RUNS, "9661");
+  const DIR_B = path.join(RUNS, "9662");
+  const IN_A = path.join(DIR_A, "project.twinproj");
+  const IN_B = path.join(DIR_B, "project.twinproj");
+  const RECENT = ROOT + "\\RecentlyOpened";
+  const runsLeft = () => {
+    const lists = R.ideLists({ root: ROOT });
+    return [...lists.projectState, ...lists.recentlyOpened].filter((p) => p?.startsWith(RUNS));
+  };
+  setValues(RECENT, slots([USER, OTHER]));
+  const runA = R.startTidy({ root: ROOT, keys: [ASSOC], prefixes: [DIR_A] });
+  const runB = R.startTidy({ root: ROOT, keys: [ASSOC], prefixes: [DIR_B] });
+  setValues(RECENT, slots([IN_B, IN_A, USER, OTHER]));
+  setValues(ROOT + "\\ProjectState", { [IN_A]: "{}", [IN_B]: "{}" });
+  const deferred = R.finishTidy(runB);
+  assert.deepEqual(deferred, { deferred: [process.pid] }, "a run that ends while another runs puts nothing back");
+  assert.equal(R.finishTidy(runB), deferred, "a second finishTidy returns what the first did");
+  assert.deepEqual(runsLeft().sort(), [IN_A, IN_A, IN_B, IN_B].sort(), "so both runs' entries are still there");
+  const last = R.finishTidy(runA);
+  assert.ok(last && !last.deferred, "the last run to end puts back");
+  assert.deepEqual(runsLeft(), [], "for both runs");
+  assert.deepEqual(
+    R.ideLists({ root: ROOT }).recentlyOpened.filter(Boolean),
+    [USER, OTHER],
+    "the user's list as found",
+  );
+  assert.deepEqual(readdirSync(runA.dir), [], "and the shared record goes");
+  // A run that died: its record is left, and the next run to start alone
+  // deletes what is under its folder.
+  const lib = pathToFileURL(path.join(path.dirname(fileURLToPath(import.meta.url)), "lib", "tb-registry.mjs")).href;
+  const { TB_REGISTRY_OWNER: _, ...noOwner } = process.env;
+  execFileSync(
+    process.execPath,
+    ["-e", `import(${JSON.stringify(lib)}).then(m => m.startTidy(JSON.parse(process.env.TIDY)))`],
+    { env: { ...noOwner, TIDY: JSON.stringify({ root: ROOT, keys: [ASSOC], prefixes: [DIR_B] }) } },
+  );
+  setValues(RECENT, slots([IN_B, USER, OTHER]));
+  setValues(ROOT + "\\ProjectState", { [IN_B]: "{}" });
+  const nextRun = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  assert.deepEqual(runsLeft(), [], "a dead run's entries are deleted by the next run");
+  assert.ok(!R.finishTidy(nextRun).deferred);
+
   // ------------------------------------------------ the guards
   assert.throws(() => R.restoreKeys([{ path: "Software", snap: null }]), /close to the root/);
   assert.throws(() => R.snapshotKeys(["Software\\Classes"]), /close to the root/);
@@ -350,17 +403,18 @@ try {
 
   // ------------------------------------------------ the ownership rule
   // Pid 1 is never a live process on Windows, so it stands for a dead owner.
-  // startTidy with no paths and no prefixes only reads the real IDE keys.
+  // The child defers before it reads anything, so it is given the real keys.
   process.env.TB_REGISTRY_OWNER = "1";
-  assert.ok(R.startTidy(), "a dead owner does not block tidying");
+  const owned = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  assert.ok(owned, "a dead owner does not block tidying");
   assert.equal(process.env.TB_REGISTRY_OWNER, String(process.pid));
-  const lib = pathToFileURL(path.join(path.dirname(fileURLToPath(import.meta.url)), "lib", "tb-registry.mjs")).href;
   const child = execFileSync(
     process.execPath,
     ["-e", `import(${JSON.stringify(lib)}).then(m => console.log(m.startTidy() === null ? "deferred" : "took over"))`],
     { encoding: "utf8", env: process.env },
   ).trim();
   assert.equal(child, "deferred", "a child of a live owner leaves the registry alone");
+  R.finishTidy(owned);
 
   console.log("check_tb_registry: every assertion holds");
 } catch (e) {

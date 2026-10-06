@@ -1,5 +1,9 @@
 {
-  "mode": "manual",
+  "mode": "lane",
+  "lane": "addin:panes",
+  "tests": [
+    "ToolWindows.Add: two windows given no id are one window, emptied by the second Add"
+  ],
   "steps": "This is an add-in project: building it makes a DLL that the IDE's compiler loads on every start until the DLL is removed. Install it knowingly, in an IDE you can restart, and remove it afterwards.\n1. Open toolwindow-no-id.twinproj and build it for Win32. The DLL is written to Build\\ToolwindowNoId_win32.dll beside the project file. Close the IDE, copy the DLL into the IDE's addins\\win32 folder (beside twinBASIC.exe), and start the IDE again. Open any project: the toolbar has a button, No id windows.\n2. Click the button. The add-in adds two tool windows, \"Window one\" and \"Window two\", with no id, and then adds a third element to the first.\n3. See one tool window, titled NO ID 2, holding the elements noid2 (\"second\") and noid1again (\"first again\"). The first window is gone, and what was added through its ToolWindow object went into the second window.\n4. Remove the add-in: close the IDE and delete addins\\win32\\ToolwindowNoId_win32.dll.\nRe-measured on BETA 995 by `addin-test.bat --only panes` (the last test; its add-in is test/addin/probes/panes, whose third button runs the same code).",
   "issue": 2449
 }

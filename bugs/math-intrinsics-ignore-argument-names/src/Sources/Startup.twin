@@ -1,0 +1,21 @@
+' The shift, rotate and byte-swap intrinsics take their arguments by position and ignore the names given.
+Module Startup
+
+    Private Function Rotl(ByVal Number As Long, ByVal ShiftAmount As Long) As Long
+        Rotl = (Number << (ShiftAmount And 31)) Or ((Number >> (32 - (ShiftAmount And 31))) And ((1 << (ShiftAmount And 31)) - 1))
+    End Function
+
+    Public Sub Main()
+        Dim n As Long = &H12345678
+        Dim k As Long = 4
+        Debug.Print "positional                  " & Hex$(ShiftRotateLeft(n, k))
+        Debug.Print "named, in order             " & Hex$(ShiftRotateLeft(Number:=n, ShiftAmount:=k))
+        Debug.Print "named, swapped              " & Hex$(ShiftRotateLeft(ShiftAmount:=k, Number:=n))
+        Debug.Print "right, named, swapped       " & Hex$(ShiftRotateRight(ShiftAmount:=k, Number:=n))
+        Debug.Print "unsigned, named, swapped    " & Hex$(ShiftUnsignedRight(ShiftAmount:=k, Number:=n))
+        Debug.Print "unknown names               " & Hex$(ShiftRotateLeft(Foo:=n, Bar:=k))
+        Debug.Print "ByteSwap, unknown name      " & Hex$(ByteSwap(Foo:=n))
+        Debug.Print "own function, swapped       " & Hex$(Rotl(ShiftAmount:=k, Number:=n))
+    End Sub
+
+End Module

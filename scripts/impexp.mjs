@@ -26,7 +26,10 @@
 // the two verbs do, with the same arguments and { overwrite }. Each returns
 // what the command line prints -- the counts, the skipped and added entries,
 // the warnings -- and throws where it reports an error: a Refusal, whose
-// reason names its exit code, has written nothing.
+// reason names its exit code, has written nothing. readProject(file) reads a
+// project file into its tree and writes nothing; it throws the Refusal the
+// verbs report for a file that is missing, is a folder, or is damaged or is
+// not a project at all.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -98,9 +101,8 @@ const GIT_NAME = ".git";
 
 // The folders the IDE writes into every project and package it exports, even
 // when they are empty. Git keeps no empty folder, so a tree cloned from a
-// repository lacks them, and the IDE's compiler crashes in a loop on a package
-// with no Packages folder once it is embedded. Import adds any that are
-// missing, to the project and to each package under its Packages folder.
+// repository lacks them. Import adds any that are missing, to the project and
+// to each package under its Packages folder.
 const STANDARD_FOLDERS = ["ImportedTypeLibraries", "Miscellaneous", "Packages", "Resources", "Sources"];
 
 const PROJECT_FILE = /\.(twinproj|twinpack)$/i;
@@ -308,7 +310,7 @@ function listed(paths) {
   return shown;
 }
 
-function readProject(file) {
+export function readProject(file) {
   let data;
   try {
     data = fs.readFileSync(file);

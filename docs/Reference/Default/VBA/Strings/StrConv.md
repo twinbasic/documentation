@@ -39,10 +39,7 @@ The *conversion* argument settings are:
 > [!NOTE]
 > These constants are specified by twinBASIC. As a result, they may be used anywhere in code in place of the actual values. Most can be combined, for example, **vbUpperCase + vbWide**, except when they are mutually exclusive, for example, **vbUnicode + vbFromUnicode**. The constants **vbWide**, **vbNarrow**, **vbKatakana**, and **vbHiragana** cause run-time errors when used in locales where they don't apply.
 
-The following are valid word separators for proper casing: **Null** (`Chr$(0)`), horizontal tab (`Chr$(9)`), linefeed (`Chr$(10)`), vertical tab (`Chr$(11)`), form feed (`Chr$(12)`), carriage return (`Chr$(13)`), space (SBCS) (`Chr$(32)`). The actual value for a space varies by country/region for DBCS. No other character, such as a hyphen or an apostrophe, starts a word: `"mc-donald"` becomes `"Mc-donald"`.
-
-> [!WARNING]
-> BETA 995 has a defect in **vbProperCase**: it leaves a word in lowercase when the word follows an even number of consecutive separators, such as two spaces or the carriage return and linefeed of **vbCrLf**. `StrConv("a  b", vbProperCase)` returns `"A  b"`, where it should return `"A  B"`. A word after one separator, or after three, is capitalised. BETA 983 capitalised every word, as Visual Basic 6 does.
+The following are valid word separators for proper casing: **Null** (`Chr$(0)`), horizontal tab (`Chr$(9)`), linefeed (`Chr$(10)`), vertical tab (`Chr$(11)`), form feed (`Chr$(12)`), carriage return (`Chr$(13)`), space (SBCS) (`Chr$(32)`). The actual value for a space varies by country/region for DBCS. No other character, such as a hyphen or an apostrophe, starts a word: `"mc-donald"` becomes `"Mc-donald"`. Every word is capitalised, whatever the number of separators before it: `"a  b"` (two spaces) becomes `"A  B"`, and `"a" & vbCrLf & "b"` becomes `"A" & vbCrLf & "B"`.
 
 If *string* is **Null**, **StrConv** returns **Null**.
 

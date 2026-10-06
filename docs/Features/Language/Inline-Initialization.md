@@ -24,7 +24,7 @@ Dim cMC As cMyClass = New cMyClass(customConstructorArgs)
 
 ## Inline Variable Declaration for For
 
-You now no longer need a separate `Dim` statement for counter variables:
+A counter variable needs no separate `Dim` statement:
 
 ```tb check_build
 For i As Long = 0 To 10

@@ -37,6 +37,10 @@ const PKG = path.join(HERE, "probes", "packages", "DocProbePkg");
 
 // The open Settings editor's working copy of the project's settings.
 const CONFIG_JS = `[...document.querySelectorAll("*")].find((e) => e.globalVars?.configData)?.globalVars`;
+// The working copy's references, by symbol. A tick or an untick changes it at once.
+const REFERENCES_JS = `${CONFIG_JS}.configData["project.references"].map((r) => r.symbolId ?? r.name)`;
+// Every row of the References page, as text, to tell when the lists stop changing.
+const ALL_ROWS_JS = `[...document.querySelectorAll(".referencesListRow")].map((r) => r.parentElement.className + " " + r.textContent).join("\\n")`;
 // The compiler's requests still waiting for an answer.
 const WAITING_JS = `Object.keys(debugSocket.requestsAwaitingResponse).length`;
 
@@ -102,9 +106,7 @@ scenario("Import from file... in the Packages dialog", (lane) => {
       ),
     );
     assert.ok(listed, "DocProbePkg is not in the Available Packages list");
-    const referenced = await c.evaluate(
-      `${CONFIG_JS}.configData["project.references"].map((r) => r.symbolId ?? r.name)`,
-    );
+    const referenced = await c.evaluate(REFERENCES_JS);
     assert.ok(!referenced.includes("DocProbePkg"), "the imported package is now ticked");
   });
 });
@@ -120,10 +122,11 @@ scenario("Import from file... in the Packages dialog", (lane) => {
 // Both versions are generated into the lane's work folder from the v1 tree at
 // probes/packages/DocProbePkg, which the first test above uses as it is. v2
 // has its version fields in Settings at 2.0.0.0 and its function returns 2.
-// impexp.mjs adds the empty folders every exported package has; without its
-// Packages folder, BETA 995's compiler crashes on each restart after the
-// embedding Apply, and the IDE drops into Safe Mode, where nothing runs
-// (twinbasic/twinbasic#2442). Each test works on a copy of the host project in its own folder,
+// impexp.mjs adds the empty folders every exported package has, so the tests
+// above pack the package with its Packages folder. One test embeds a package
+// with no Packages folder, made by cutting that folder out of the packed file,
+// and the compiler must not crash on it (twinbasic/twinbasic#2442). Each test
+// works on a copy of the host project in its own folder,
 // because applying writes the project's settings. The copy's Main is empty
 // until v1 is embedded, since the host cannot compile before the package is
 // referenced; the test then writes Main in the editor.
@@ -153,10 +156,38 @@ const INSTALLED = "referencesListNew";
 const AVAILABLE = "referencesListNewAvailable";
 const DESCRIPTION = "DocProbePkg.twinpack";
 
+// A packed project or package without its empty Packages folder. impexp adds
+// the folder to every tree it packs, and a folder that is not in the tree
+// cannot be left out, so the folder's entry is cut out of the packed file: a
+// directory entry is an Int16 kind (2), the name as a length-prefixed string, an
+// Int64 revision, an Int32 flags, a category byte (7 for Packages) and an Int32
+// child count (0), and the root's own child count is the Int32 after the root's
+// header.
+function withoutPackagesFolder(packed) {
+  const name = Buffer.from("Packages");
+  const entry = Buffer.concat([
+    Buffer.from([2, 0, name.length, 0, 0, 0]),
+    name,
+    Buffer.alloc(8 + 4), // revision, flags
+    Buffer.from([7]),
+    Buffer.alloc(4), // no children
+  ]);
+  const at = packed.indexOf(entry);
+  assert.ok(at > 0 && packed.indexOf(entry, at + 1) < 0, "the packed file has no single empty Packages folder");
+  // magic (4), format version (2), name (4 + n), revision (8), flags (4), category (1), child count (4).
+  const rootNameLength = packed.readUInt32LE(6);
+  const countAt = 6 + 4 + rootNameLength + 8 + 4 + 1;
+  const count = packed.readUInt32LE(countAt);
+  const out = Buffer.concat([packed.subarray(0, at), packed.subarray(at + entry.length)]);
+  out.writeUInt32LE(count - 1, countAt);
+  return out;
+}
+
 scenario("Replacing an embedded package", (lane) => {
   let c;
   let v1;
   let v2;
+  let bare;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // A copy of the v1 tree in the work folder for `version`, packed to a
@@ -179,6 +210,9 @@ scenario("Replacing an embedded package", (lane) => {
   before(() => {
     v1 = packVersion(1);
     v2 = packVersion(2);
+    // v1 with the Packages folder cut out.
+    bare = path.join(lane.work, "DocProbePkg-nopackages.twinpack");
+    writeFileSync(bare, withoutPackagesFolder(readFileSync(v1)));
   });
 
   // Open the Settings editor on the References page, and wait for it to load.
@@ -192,8 +226,25 @@ scenario("Replacing an embedded package", (lane) => {
   }
 
   // Click the tick box of the row in `list` that names a package and is in
-  // the state `ticked`, with a real click, as a person does.
+  // the state `ticked`, with a real click, as a person does. Available
+  // Packages also lists TWINSERV's packages, which arrive by a request the
+  // page does not count as pending; a click while they are being added lands
+  // on another row and ticks another package. So the click waits until the
+  // rows have stopped changing, and must change the references by DocProbePkg
+  // and nothing else.
   async function tick(name, { ticked, list }) {
+    let rows = null;
+    let since = 0;
+    const stable = await waitFor(
+      c,
+      async () => {
+        const now = await c.evaluate(ALL_ROWS_JS);
+        if (now !== rows) [rows, since] = [now, Date.now()];
+        return Date.now() - since >= 2000;
+      },
+      { timeout: 30 * 1000 },
+    );
+    assert.ok(stable, "the References page's rows never stopped changing");
     const find = `(() => {
       const r = [...document.querySelectorAll(".referencesListRow")].find((r) =>
         r.querySelector(".referencesListColName2, .referencesListColSymbol")?.textContent.includes(${JSON.stringify(name)})
@@ -210,8 +261,16 @@ scenario("Replacing an embedded package", (lane) => {
       where,
       `no ${ticked ? "ticked" : "unticked"} row for ${name} in ${list}: ${JSON.stringify(await c.evaluate(ROWS_JS))}`,
     );
+    const before = await c.evaluate(REFERENCES_JS);
     await clickAt(c, where.x, where.y);
     await sleep(1500);
+    const after = await c.evaluate(REFERENCES_JS);
+    const expected = ticked ? before.filter((r) => r !== "DocProbePkg") : [...before, "DocProbePkg"];
+    assert.deepEqual(
+      after.toSorted(),
+      expected.toSorted(),
+      `after the click on ${name} the references are ${JSON.stringify(after)}, where they were ${JSON.stringify(before)}`,
+    );
   }
 
   // Import a package through Available Packages, as the first test does.
@@ -236,7 +295,9 @@ scenario("Replacing an embedded package", (lane) => {
       "the Settings editor stayed open",
     );
     await sleep(2000);
-    await settle({ errors });
+    await settle({ errors }).catch(async (e) => {
+      throw new Error(`${e.message}\nthe console since the Apply: ${JSON.stringify(await linesSince(c, mark))}`);
+    });
     return linesSince(c, mark);
   }
 
@@ -266,24 +327,34 @@ scenario("Replacing an embedded package", (lane) => {
     return Number(lines.find((x) => x.startsWith(VERSION_PREFIX)).slice(VERSION_PREFIX.length));
   }
 
-  // The entry's three steps on a project of its own, and what each Apply
-  // wrote to the console. `applyAfterUntick` is the control.
-  async function replace(name, applyAfterUntick) {
+  // Open a copy of the host project in a folder of its own, embed `file` in it:
+  // import it, tick it, one Apply; then run Main. Returns what the Apply wrote
+  // to the console and what the run printed.
+  async function embed(name, file) {
     const host = path.join(lane.work, name);
     cpSync(HOST, host, { recursive: true });
     c = await lane.open(host, { folder: path.join(lane.work, `${name}-staged`) });
-    const applies = {};
-
-    // Step 1: embed v1: import it, tick it, one Apply.
     await openReferences();
-    await importFile(v1);
+    await importFile(file);
     await tick(DESCRIPTION, { ticked: false, list: AVAILABLE });
-    applies.embed = await apply();
+    const applied = await apply();
     await openFile(c, "/PackagesProbe/Sources/Startup.twin");
     await c.evaluate(`editor.getModel().setValue(${JSON.stringify(RUN_MAIN)})`);
     await sleep(3000);
-    await settle();
-    const first = await runVersion();
+    await settle().catch((e) => {
+      throw new Error(`${e.message}\nthe Apply wrote: ${JSON.stringify(applied)}`);
+    });
+    return { applied, version: await runVersion() };
+  }
+
+  // The entry's three steps on a project of its own, and what each Apply
+  // wrote to the console. `applyAfterUntick` is the control.
+  async function replace(name, applyAfterUntick) {
+    const applies = {};
+
+    // Step 1: embed v1.
+    const { applied, version: first } = await embed(name, v1);
+    applies.embed = applied;
 
     // Step 2: untick v1, import v2, tick v2.
     await openReferences();
@@ -323,5 +394,22 @@ scenario("Replacing an embedded package", (lane) => {
     assert.ok(restarted(r.applies.embed) && saved(r.applies.embed), "the embed Apply did not restart and save");
     assert.deepEqual(r.applies.replace, ["[COMPILER] Project settings updated"]);
     assert.equal(r.second, 1, "v2 runs after one Apply: the bug looks fixed, so update BUGS-TO-REPORT.md");
+  });
+
+  // twinbasic/twinbasic#2442: a package with no Packages folder, embedded by
+  // the IDE, must not put the compiler in a crash loop. The Apply restarts the
+  // compiler once, as the control's does, the IDE does not fall into Safe Mode,
+  // and the package runs.
+  test("a package with no Packages folder embeds: one restart, no crash loop, and the package runs", async () => {
+    const r = await embed("nopackages", bare).finally(() => lane.closeProject());
+    const crashed = r.applied.filter((l) => /crash loop|SAFE mode/i.test(l));
+    assert.deepEqual(crashed, [], "the compiler crashed after the Apply");
+    assert.ok(restarted(r.applied) && saved(r.applied), "the Apply did not restart and save");
+    assert.equal(
+      r.applied.filter((l) => /restarting from FILE/.test(l)).length,
+      1,
+      "the compiler restarted more than once",
+    );
+    assert.equal(r.version, 1, "the package does not run");
   });
 });

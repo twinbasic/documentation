@@ -1,5 +1,0 @@
-' Nothing to run. The bug is in File > Export Project, which the steps in the report set up.
-Module Startup
-    Public Sub Main()
-    End Sub
-End Module

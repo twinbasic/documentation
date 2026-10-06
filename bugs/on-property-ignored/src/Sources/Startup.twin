@@ -1,0 +1,47 @@
+' An add-in. Once a project is open, its toolbar button "on property repro"
+' opens a tool window with two divs. Clicking either one is meant to change its
+' text to "clicked": "property" has its onclick set through Properties, and
+' "inline" has the same handler written in its HTML.
+Module Startup
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New ReproAddin(Host)
+    End Function
+End Module
+
+Private Class ReproAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents ShowButton As Button
+    Private Pane As ToolWindow
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "on property repro"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        Set ShowButton = Host.Toolbars(0).AddButton("OnPropertyReproShow", "on property repro")
+    End Sub
+
+    Private Sub ShowButton_OnClick()
+        Set Pane = Host.ToolWindows.Add("on property repro", "OnPropertyReproPane")
+        Pane.Title = "ON PROPERTY REPRO"
+        With Pane.RootDomElement.ChildDomElements
+            With .Add("property", "div")
+                .Properties.innerText = "[property]"
+                On Error Resume Next
+                .Properties.onclick = "this.innerText = 'clicked'"
+                Host.DebugConsole.PrintText "onclick set, error " & Err.Number
+                On Error GoTo 0
+            End With
+            With .Add("inline", "div")
+                .Properties.innerHTML = "<span onclick=""this.innerText = 'clicked'"">[inline]</span>"
+            End With
+        End With
+        Pane.Visible = True
+    End Sub
+End Class

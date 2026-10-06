@@ -1,0 +1,13 @@
+{
+  "mode": "run",
+  "exe": true,
+  "expect": {
+    "exit": 5,
+    "output": [
+      "^\\[BUILD\\] Executing 'SubNamedLikeModule\\.Probe\\.\\w+'\\.\\.\\.$"
+    ],
+    "absent": [
+      "^RunAfterBuild ran$"
+    ]
+  }
+}

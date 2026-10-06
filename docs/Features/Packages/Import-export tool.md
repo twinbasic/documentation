@@ -137,9 +137,7 @@ IDE exports has `ImportedTypeLibraries`, `Miscellaneous`, `Packages`, `Resources
 folders, even when they are empty. Git does not store an empty folder, so a tree checked out
 from a repository usually lacks some of them. `import` adds each missing one as an empty folder,
 in the project and in each package under its `Packages` folder, and lists what it added. The
-folder on disk is not changed. A package without its `Packages` folder is not only incomplete:
-once the IDE embeds it in a project, the IDE's compiler crashes each time it restarts, and
-after four tries the IDE starts in Safe Mode.
+folder on disk is not changed.
 
 ## Checking the result
 

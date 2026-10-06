@@ -359,7 +359,8 @@ with files put in a lane's copy of the install:
   own pages, then, and `sandbox` on the frame if that matters.
 
 So the offline site would work copied into `ide\`, with one cost the live site does not
-have: writing into the install, which every new build replaces. Still deferred.
+have: writing into the install, which every new build replaces. The add-in serves the
+offline site itself instead (Stage 4, increment 5), so this route is not taken.
 
 ### What is under the cursor
 
@@ -624,8 +625,7 @@ run, and the failure says what to update. The lanes and what rests on each:
 - [panes.test.mjs](test/addin/panes.test.mjs) (P3, P4, P12, and the shared id `""` found
   with P9): the NOTEs on the HtmlElement, HtmlElementProperties, HtmlElements and ToolWindow
   pages.
-- [symbols.test.mjs](test/addin/symbols.test.mjs) (P5): Stage 4's context and an entry in
-  BUGS-TO-REPORT.md. It needs no add-in, only the project in `probes/symbols`.
+- [symbols.test.mjs](test/addin/symbols.test.mjs) (P5, P15): Stage 4's context. It needs no add-in, only the project in `probes/symbols`.
 - [ideserver.test.mjs](test/addin/ideserver.test.mjs) (P13): the offline route.
 - [appdata.test.mjs](test/addin/appdata.test.mjs) (P6): the lanes' own `APPDATA` and the
   FAQ's answer on where add-ins go.
@@ -647,7 +647,7 @@ The table gives each answer in brief; the sections above have the detail.
 | # | Question | What it decides |
 |---|---|---|
 | P1 | Do `{ctrl}` and `{alt}` add-in shortcuts ever fire? **Answered, BETA 983 and 995: no.** `d`, `{shift}d`, `f1` and `{shift}f1` fire; `{ctrl}{shift}d`, `{ctrl}d` and `{alt}f` fire only when the same key was pressed on its own less than 500 ms before. Queued in BUGS-TO-REPORT.md; the KeyboardShortcuts page has a NOTE. | the bug report; which key the add-in uses; the NOTE on the KeyboardShortcuts page |
-| P2 | Does the add-in's `f1` fire with focus in the code editor, and what happens with signature help showing? **Answered, BETA 983 and 995: yes.** It fires with the focus in the code editor, in the DEBUG CONSOLE and on nothing, and types nothing. With signature help showing, the IDE expands or collapses it as well, and logs `command failed: "tbHelp_ToggleExpandSignatureHelp"`. | F1 or another key --- F1 |
+| P2 | Does the add-in's `f1` fire with focus in the code editor, and what happens with signature help showing? **Answered, BETA 983 and 995: yes.** It fires with the focus in the code editor, in the DEBUG CONSOLE and on nothing, and types nothing. With signature help showing, the IDE expands or collapses it as well. | F1 or another key --- F1 |
 | P3 | Does an `iframe` of a documentation page load and navigate inside a tool window? **Answered, BETA 983 and 995: yes.** It loads, follows its own links, moves when the add-in sets `src`, scrolls, and fills the window under a wrapper's flex layout; the live site works too. Keys in the frame never reach the add-in, and the page's colour scheme is Windows', not the IDE's. | how pages are shown --- in the pane |
 | P4 | Does `innerHTML` render, and do inline handlers in it run page script? **Answered, BETA 983 and 995: yes, and yes.** Inline handlers run as the IDE page's own script, with its globals in reach. A property whose name starts with `on` is dropped, and the add-in hears no error. | how summaries are drawn; whether the page-internals route exists --- it does |
 | P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? **Answered, BETA 983 and 995:** hover gives the declaration, then a heading naming where it is declared: `in VBA.Interaction`, `in VBA._Collection`, `in tbIDE.IToolWindowsV1`, `in SymbolsProbe.Symbols` --- a class's members by its default interface, not by the class's name. Definition gives the declaration in the package's own source, which the IDE opens. Nothing for `Debug.Print` or a statement. Only page script can ask. | compiler-assisted context is possible; which route is [Stage 4](#stage-4-the-add-in-in-increments), increment 3 |
@@ -660,7 +660,7 @@ The table gives each answer in brief; the sections above have the detail.
 | P12 | Does `raiseEvent` from plain tool-window HTML throw? **Answered, BETA 983 and 995: yes** --- `TypeError: Cannot read properties of null (reading 'rootEventHandler')`, and the listener is not called. An inline handler that calls the listener `AddEventListener` stored on its parent, `this.parentNode.<name>(event)`, reaches the add-in. | how the pane's events are written |
 | P13 | Does the compiler's HTTP server serve any file placed under `ide\`? **Answered, BETA 983 and 995: yes**, and it is the page server, `twinBASIC_win32.exe --ide=<pid>`, not the compiler. A frame with a relative `src` shows the file on the IDE page's own origin. A query string makes a 404, and `.html` has no `Content-Type`. | an offline route --- it exists ([Offline](#ways-to-show-a-page)) |
 | P14 | What do `tbCreateCompilerAddin_v2` and `_v3` expect? **Answered, BETA 983 and 995: what `tbCreateCompilerAddin` does.** The names are version stamps: the linker exports a function named `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3` alone, and an IDE that knows none of a DLL's names refuses it as `compiled for a newer version of the twinBASIC IDE`, as a patched `_v4` was. | nothing in the design --- the add-in declares `tbCreateCompilerAddin` as the package says; the tbIDE page has a NOTE |
-| P15 | Does the compiler say anything about a name's `[Description]`, or a COM type library's help string? **Answered, BETA 995: hover gives it**, after the line naming where the name is declared, for a procedure, a member, a constant, a module variable, an enumeration, a `Type`, a class and a module, and a type library's member (`Scripting.IDictionary.Add`: "Add a new key and item to the dictionary."). Classes and modules, the project's and a type library's, are `in library <name>`. A procedure with none gets the IDE's tip, `*no further info available. Tip: use [Description("")] ...*`. On a procedure's name where it is declared, hover gives a block of code-generation details (`TB-DEBUG CODEGEN SIZE: [NOT-READY]`) instead. Signature help gives the same text. A member of an enumeration is the exception: its `[Description]` is listed as a member of the enumeration and not shown on the member (filed as twinbasic/twinbasic#2465, `bugs/filed/enum-member-description-hover/`). | Stage 4, increment 4: a name with no page shows its declaration and description from the hover; no parser of the project's source is needed |
+| P15 | Does the compiler say anything about a name's `[Description]`, or a COM type library's help string? **Answered, BETA 995: hover gives it**, after the line naming where the name is declared, for a procedure, a member, a constant, a module variable, an enumeration, a `Type`, a class and a module, and a type library's member (`Scripting.IDictionary.Add`: "Add a new key and item to the dictionary."). Classes and modules, the project's and a type library's, are `in library <name>`. A procedure with none gets the IDE's tip, `*no further info available. Tip: use [Description("")] ...*`. On a procedure's name where it is declared, hover gives a block of code-generation details (`TB-DEBUG CODEGEN SIZE: [NOT-READY]`) instead. Signature help gives the same text. A member of an enumeration has none: a `[Description(...)]` line inside an `Enum` is not an attribute but a member of its own, named by a bracketed identifier, as VB6 allows (`Debug.Print Shade.[Description("The light one.")]` prints its value), so hover lists it as a member of the enumeration (twinbasic/twinbasic#2465, closed as not a bug). | Stage 4, increment 4: a name with no page shows its declaration and description from the hover; no parser of the project's source is needed |
 
 ### Stage 3: the symbol index, generated by the docs build
 
@@ -784,9 +784,9 @@ has the complete list):
 - **The rest of an embedded mode for pages.** The theme is done: the site reads a
   `theme=dark|light` query parameter (Stage 4, increment 2), since the add-in cannot reach
   into a cross-site frame. Hiding the header and navigation is a separate, optional
-  question, untested. The parameter serves the live site only: the IDE's own server answers
-  any URL with a query string with a 404 (P13), so the offline route would need the theme
-  some other way.
+  question, untested. The IDE's own server answers any URL with a query string with a 404
+  (P13); the add-in's server (increment 5) ignores the query, so the parameter works
+  offline too.
 - **Keywords with no page of their own** --- `ElseIf`, `Until`, `Step`, `To`, `In`,
   `ByVal`, `ByRef`, `Optional`, `As` --- are in the index only where a page's title gives
   them. Adding one is a `symbols:` line on the page that explains it, which is a content
@@ -795,7 +795,8 @@ has the complete list):
   `/Reference/Data-Types`, outside `/tB/`, so the index cannot carry them without breaking
   its own rule. Giving that page a `/tB/` permalink, with the old one in `redirect_from:`,
   would. Deferred.
-- **The offline tree has no copy of the index**, since the offline route is deferred.
+- **The offline tree has no copy of the index.** The add-in embeds its own, and the help
+  archive (increment 5) is the offline tree as built.
 
 ### Stage 4: the add-in, in increments
 
@@ -950,9 +951,42 @@ harness about a second against opening a new IDE.
      right.
    - **The fault run** (`ShowPage` not putting the frame back) failed the four cases that
      show a page after a summary.
-5. **Later:** hover help through `CodeEditor.AddMonacoWidget` after a pause (the cost of
+5. **Offline help. Built**, tested by the lane `help-offline` on BETA 995, at the owner's
+   choice (2026-10-05): the add-in's own server, written in twinBASIC, serving one archive
+   embedded in the DLL. The owner's other choices: the archive is a resource; a separate
+   script makes it; the pane uses it when the DLL has it, and the live site otherwise; the
+   symbol index stays a resource of its own.
+   - **The archive** is `add-in/Resources/HELP/site.zip`, gitignored, written from
+     `docs/_site-offline` by `scripts/build_help_archive.mjs` (about 21 MB, 1,466 files;
+     the DLL builds with it for win32 and win64). An add-in built without it serves nothing
+     and uses the live site, as before. The offline tree is the one served: its links are
+     relative, so they work on any origin, and its pages hold only their part of the nav
+     tree.
+   - **No inflating in twinBASIC.** A deflated entry is sent as it is, between a 10-byte
+     gzip header and the CRC32 and size from the central directory, with
+     `Content-Encoding: gzip`; an image or font is stored and sent plain. So the format is
+     fixed by the script: no zip64, no data descriptors.
+   - **`HelpServer`** listens on 127.0.0.1 at a port Windows picks, on the add-in's own
+     thread: Winsock posts each socket's events to a message-only window
+     (`WSAAsyncSelect`), so there is no second thread. It reads the archive with
+     `LoadResDataInternal` once, at project load. A path is found as GitHub Pages finds it
+     (`/a/b` is `a/b.html`, or a 301 to `/a/b/` for a folder, keeping the query), the query
+     is ignored, and every reply closes its connection. It prints `serving site.zip, <n>
+     files, at <origin>`, which the lane reads, since the port changes with every compiler
+     restart.
+   - **The origin is `http://localhost:<port>`, not 127.0.0.1.** The IDE's page is on
+     localhost, so a frame on another localhost port is same-site and in its frame tree; a
+     frame on 127.0.0.1 is not there at all, and every case that reads the page failed.
+   - *Open in browser* still opens the live site.
+   - **The lane.** `help.test.mjs` runs twice: `help` builds a copy of `add-in/` without
+     `Resources/HELP`, whatever the working tree holds, and `help-offline` builds it with an
+     archive made by the script. A page's status is read from the page itself
+     (`PerformanceNavigationTiming.responseStatus`), so a 404 fails a case either way. An
+     offline-only case asks the server from Node: a page's gzip body and a stored image
+     byte for byte, a folder's 301, a 404 and `HEAD`.
+6. **Later:** hover help through `CodeEditor.AddMonacoWidget` after a pause (the cost of
    adding and removing widgets is not measured); offering only the packages the project
-   references; offline use.
+   references; how a user gets an add-in with the archive.
 
 **Lookup:**
 

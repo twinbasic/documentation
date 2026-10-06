@@ -19,7 +19,7 @@ Beyond the control itself, the package exposes a small set of wrapper objects th
 - [WebView2](WebView2/) -- the control: navigation, scripting, settings, deferral-aware events, and PDF / suspend / download / task-manager features controlled by the underlying Edge runtime
 - [WebView2EnvironmentOptions](WebView2/EnvironmentOptions) -- pre-creation configuration for the WebView2 environment (user-data folder, executable folder, locale, tracking-prevention, …); reached via the control's **EnvironmentOptions** property
 - [WebView2Header](WebView2Header) -- one HTTP header (Name / Value); the element type yielded by header iteration
-- [WebView2HeadersCollection](WebView2HeadersCollection) -- enumerable wrapper used by `For Each` over request / response headers
+- [WebView2HeadersCollection](WebView2HeadersCollection) -- enumerator returned by **GetHeaders** and used by `For Each` over request / response headers; also describes its four derived classes
 - [WebView2Request](WebView2Request) -- the request side of a **WebResourceRequested** event -- **Method**, **Uri**, **Headers**, and the request body as bytes or UTF-8 text
 - [WebView2RequestHeaders](WebView2RequestHeaders) -- mutable request-header collection passed to **NavigationStarting** and reached via **WebView2Request.Headers**
 - [WebView2Response](WebView2Response) -- the response side of a **WebResourceRequested** event -- **StatusCode**, **ReasonPhrase**, **Headers**, and the body as bytes or UTF-8 text

@@ -36,6 +36,9 @@ A **Single** divided by a **Long**, **LongLong**, **Double**, **Currency** or **
 
 Dividing by zero raises error 11, *Division by zero*, and zero divided by zero raises error 6, *Overflow*. Use [**\\**](IntegerDivide) for truncating-integer division and [**Mod**](Mod) for remainder.
 
+> [!WARNING]
+> In twinBASIC BETA 997, a division whose result is a declared **Single** raises no error when the result overflows: the **Single** holds infinity (`1.#INF`) instead. VB6 raises error 6, *Overflow*. Compiled with LLVM, the division raises error 6 as it should. Declare the variable **Double** where an overflow must be caught.
+
 > [!NOTE]
 > **Decimal** can be a declared type in twinBASIC, so dividing by or into a declared **Decimal** gives a declared **Decimal**. In VBA, **Decimal** exists only inside a **Variant**.
 

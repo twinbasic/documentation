@@ -38,10 +38,7 @@ The four follow the Microsoft C/C++ conventions of the same names: `__stdcall`, 
 
 A 64-bit build has only one calling convention. There, all four keywords are accepted and have no effect.
 
-Name at most one convention. BETA 995 accepts two together without a diagnostic.
-
-> [!NOTE]
-> BETA 990 added **ThisCall** and **FastCall** in interface definitions, and BETA 992 everywhere else; earlier builds refuse them (TB5182).
+Name at most one convention. BETA 997 accepts two together without a diagnostic, and on an API declaration it drops **CDecl** and uses the other one.
 
 ### Examples
 
@@ -103,7 +100,7 @@ End Class
 A callback passed to an API must use the convention the API calls it with. Declare a [**Delegate**](../../tB/Core/Delegate) with that convention, use it as the parameter type, and give the target procedure the same keyword. [**AddressOf**](../../tB/Core/AddressOf) of a procedure with a different convention is accepted with a warning only (TB0026).
 
 > [!NOTE]
-> In BETA 995, on a 32-bit build, a call made from twinBASIC code *through* a **ThisCall** or **FastCall** delegate passes its arguments as stdcall does, and fails with *Bad DLL definition*. Calling the procedure directly works. **CDecl** delegates are not affected, and neither is a 64-bit build.
+> In BETA 997, on a 32-bit build, a call made from twinBASIC code *through* a **ThisCall** or **FastCall** delegate passes its arguments as stdcall does, and fails with *Bad DLL definition*. Calling the procedure directly works. **CDecl** delegates are not affected, and neither is a 64-bit build.
 
 The following example performs a quicksort using the C runtime's [`qsort` function](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/qsort), which calls its comparator with the cdecl convention:
 
@@ -147,7 +144,7 @@ End Function
 
 ## Support for Passing User-Defined Types ByVal
 
-Simple UDTs can now be passed ByVal in APIs, interfaces, and any other method. In VBx this previously required workarounds like passing each argument separately.
+Simple UDTs can be passed ByVal in APIs, interfaces, and any other method. In VB6 this requires workarounds such as passing each member separately.
 
 ```tb hidden
 ' Context for the two samples below: the Windows types they pass. A reader has

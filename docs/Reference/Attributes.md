@@ -63,7 +63,7 @@ Syntax: **[ArrayBoundsChecks** [ **( True** \| **False )** ] **]**
 
 Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
-Disables or enables array element access bounds checking within the scope of a class, module, or a single procedure/method. Used on performance-critical routines.
+Disables or enables array element access bounds checking within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **ArrayBoundsChecks(False)** turns the check off. **ArrayBoundsChecks(True)** turns it back on where the project setting [**Disable Array Bounds Checks**](../IDE/Project/Settings#disable-array-bounds-checks) has turned it off for the whole project.
 
 ## BindOnlyIfNoArguments  (optional Bool)
 {: #bindonlyifnoarguments }
@@ -160,7 +160,7 @@ Syntax: **[COMCreatable** [ **( True** \| **False )** ] **]**
 
 Applicable to:  [**Class**](Class), [**CoClass**](CoClass)
 
-Indicates whether the class can be created through COM. It does not govern [**New**](New) inside the project: a `[COMCreatable(False)]` class is created with **New** as usual. A COM-creatable class needs a constructor that takes no arguments, so a class whose only `Sub New` takes arguments fails with TB5135 --- *error generating implicit default constructor ... (for COM exposure)* --- unless it is marked `[COMCreatable(False)]`, is **Private**, or has a constructor without arguments as well. The first two fixes leave the class with no constructor that takes no arguments, so it still cannot be declared [**As New**](New): that fails with TB5121. See [Parameterized Class Constructors](../../Features/Advanced/Classes-and-Modules#parameterized-class-constructors).
+Indicates whether the class can be created through COM. It does not govern [**New**](New) inside the project: a `[COMCreatable(False)]` class is created with **New** as usual. A COM-creatable class needs a constructor that takes no arguments, so a class whose only `Sub New` has required arguments fails with TB5135 --- *error generating implicit default constructor ... (for COM exposure)* --- unless it is marked `[COMCreatable(False)]`, is **Private**, or has a constructor without arguments as well. The first two fixes leave the class with no constructor that takes no arguments, so it still cannot be declared [**As New**](New): that fails with TB5121. See [Parameterized Class Constructors](../../Features/Advanced/Classes-and-Modules#parameterized-class-constructors).
 
 ## ComExport  (optional Bool)
 {: #comexport }
@@ -580,7 +580,7 @@ Syntax: **[FloatingPointErrorChecks** [ **( True** \| **False)** ] **]**
 
 Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
-Disables floating point error checks. Used on performance-critical routines. The default value is **True**.
+Disables or enables floating point error checks within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **FloatingPointErrorChecks(False)** turns the checks off. **FloatingPointErrorChecks(True)** turns them back on where the project setting [**Disable FPU Error Checks**](../IDE/Project/Settings#disable-fpu-error-checks) has turned them off for the whole project.
 
 ## FormDesignerId  (String)
 {: #formdesignerid }
@@ -697,7 +697,9 @@ Syntax: **[IntegerOverflowChecks** [ **( True** \| **False )** ] **]**
 
 Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
-Disables integer overflow checks. Used on performance-critical routines. The default value is **True**.
+Disables or enables integer overflow checks within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **IntegerOverflowChecks(False)** turns the checks off. **IntegerOverflowChecks(True)** turns them back on where the project setting [**Disable Overflow Checks**](../IDE/Project/Settings#disable-overflow-checks) has turned them off for the whole project.
+
+Dividing the most negative **Integer**, **Long** or **LongLong** by -1 with [**\\**](IntegerDivide) or [**Mod**](Mod) raises error 6 whatever this attribute or the project setting says.
 
 ## InterfaceId  (String)
 {: #interfaceid }
@@ -765,7 +767,29 @@ The **Library** keyword is not available in project source: `Library`, `End Libr
 
 Syntax:  **[MustBeQualified** [ **(True** \| **False )** ] **]**
 
-Applicable to: [procedure](../Gloss#procedure)
+Applicable to: [**Module**](Module), and to [procedures](../Gloss#procedure), [**Declare**](Declare) statements and [**Enum**](Enum)s in a [**Module**](Module)
+
+Requires a name to be written with its qualifier, so that names that would otherwise clash stay apart. **MustBeQualified** and **MustBeQualified(True)** are the same; **MustBeQualified(False)** has no effect.
+
+- On a procedure, code outside its module must call it as *module*.*procedure*. A call without the module name is error **TB5079**, *Unrecognized symbol*. Inside its own module the procedure can still be called by its name alone.
+- On an **Enum**, code outside its module must write each member as *enum*.*member*; inside its own module the member can still be written alone. The type name itself can still be used alone, as in `As` *enum*.
+- On a **Module**, the module name must itself be qualified by the project or package name: *project*.*module*.*member*. The module's members can still be used by their names alone.
+
+The **Assert** package marks all three of its modules this way, which is why its members are called as `Assert.Strict.IsTrue` and never as `Strict.IsTrue`; see [Assert](../Packages/Assert/). The **VBRUN** package marks some of its enumerations.
+
+```tb check_build
+[MustBeQualified]
+Public Enum PenStyle
+    Solid
+    Dashed
+End Enum
+
+Public Sub Draw()
+    Dim Style As PenStyle = PenStyle.Dashed   ' outside this module, a bare Dashed is TB5079
+End Sub
+```
+
+On a class, a member of a class, or an **Enum** in a class, the attribute is error **TB5155**, *This attribute is not supported in this context*.
 
 ## NonBrowsable  (optional Bool)
 {: #nonbrowsable }
@@ -952,6 +976,11 @@ Applicable to: [**Function**](Function), [**Sub**](Sub)
 Specifies a function that runs after your exe is built. There's `App.LastBuildPath` to know where it is if you're e.g. signing the executable.
 
 Only one **[RunAfterBuild]** is allowed per project. A second one is a compile error.
+
+> [!WARNING]
+> BETA 997 has a defect: when a module has the project's name, in any letter case, the **[RunAfterBuild]** procedure does not run, and nothing says so. The build succeeds, and the DEBUG CONSOLE ends at its `[BUILD] Executing '...'` line. An empty module of that name stops it as well, when the procedure is in another module. VB6 refuses a module of the project's name. Do not give a module the project's name.
+>
+> BETA 997 has a second defect of the same kind: when the module that holds the **[RunAfterBuild]** procedure also holds a procedure with the module's own name, in any letter case, such as a `Sub Probe` in a module `Probe`, the procedure does not run, and nothing says so. The other procedure does not have to be called. VB6 allows a procedure named like its module. Do not give a procedure the name of the module that holds it.
 
 ## RunBeforeStartupObject
 {: #runbeforestartupobject }

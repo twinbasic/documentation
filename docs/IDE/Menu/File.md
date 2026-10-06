@@ -34,7 +34,7 @@ permalink: /tB/IDE/Project/Menu/File
 
 Writes the open project out to a folder as separate files, instead of the single `.twinproj` file. The folder gets the project's `Settings` file, its `Sources`, `Resources` and other folders, and a `Packages` folder with the full source of every package the project references. For a small project that uses the **VB** package, the export held 477 files: two of the project's own, and 475 under `Packages`. <kbd>CTRL</kbd> + <kbd>E</kbd> runs the same command.
 
-**Before it writes anything, the command deletes everything already in the target folder.** It does not ask first, and the deleted files do not go to the Recycle Bin. Files that have nothing to do with the project are deleted too: hidden files, a `.git` folder, anything else there. A directory junction inside the folder is followed, and the files in the folder it points to are deleted as well.
+**Before it writes anything, the command deletes everything already in the target folder.** It does not ask first, and the deleted files do not go to the Recycle Bin. Files that have nothing to do with the project are deleted too: hidden files, a `.git` folder, anything else there.
 
 > [!WARNING]
 > Point **Export Project** only at a folder that holds nothing but an earlier export of the same project. Never point it at a folder that holds anything else, at the top folder of a Git repository, or at the folder that holds the `.twinproj` file.

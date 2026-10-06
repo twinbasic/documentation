@@ -21,6 +21,15 @@ What does work, each verified on its own: the same call with `Source:=`, `Descri
 **Expected behavior**
 The call compiles. `HelpContext` is what VBA itself names that parameter. Read out of the VBA type library on the machine this was found on (`VBE7.DLL` 7.01.1158, VBA7.1, via `LoadTypeLibEx` and `ITypeInfo::GetNames` on `_ErrObject`), the method is `Raise(Number, Source, Description, HelpFile, HelpContext)`. All five names are exactly the ones the failing call uses, and the call is Microsoft's own `Err.Source` example, named arguments and all, so the code twinBASIC rejects is the code a VBA developer is most likely to have copied. Four of the five names are accepted here; only the fifth is not.
 
+VB6 compiles the same call, named arguments and all, and its handler reads back every value passed (the project is attached as `err-raise-helpcontext-vb6.zip`; `myHelpFile` is `"my.hlp"` and `myHelpContext` is 42 there):
+```
+Number:       894 + vbObjectError
+Source:      MyApp.MyClass
+Description: Was not able to complete your task
+HelpFile:    my.hlp
+HelpContext:  42
+```
+
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995

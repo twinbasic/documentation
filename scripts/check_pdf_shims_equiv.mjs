@@ -28,7 +28,11 @@
 // no longer test it, or that the book never needed it. So is each member of
 // pdf-lib the shims put a function into, against PATCHES below: a member
 // listed there and not patched, one patched and not listed, one whose function
-// ran in neither document, and one marked there as not reached that ran.
+// ran in neither document, and one marked there as not reached that ran. Each
+// patched member must also be in the target table its shim gives checkTargets
+// (book/lib/shim-targets.mjs), which is what stops the import when pdf-lib's
+// own version of the member changes; shim-targets.mjs records each shim's
+// table, and the side asks it.
 //
 // On a difference, that document's shimmed side is run again with each shim
 // alone and with each left out (parallelSave counts as one), to name the shims
@@ -36,9 +40,9 @@
 //
 //     node scripts/check_pdf_shims_equiv.mjs
 //
-// Exit codes: 0 the same, 1 a difference, a shim or patched member not reached
-// or a patched member not as PATCHES lists it, 2 a refused command line, a failure of
-// the check itself, or a crash.
+// Exit codes: 0 the same, 1 a difference, a shim or patched member not reached,
+// a patched member not as PATCHES lists it or missing from its shim's target
+// table, 2 a refused command line, a failure of the check itself, or a crash.
 
 import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -59,13 +63,13 @@ if (cli.stopped === "help") {
 Loads, changes and saves one PDF with stock pdf-lib and with the book's pdf-lib
 shims, and creates and saves another, compares each pair of files object by
 object, streams inflated, and checks the members of pdf-lib the shims patch
-against the list in this file.
+against the list in this file and against each shim's table of what it replaces.
 
 Exit codes:
   0  the shims write what stock pdf-lib writes, and every shim and patched member
-     is reached and as listed
+     is reached, as listed and in its shim's table
   1  a pair of files differs, a shim or patched member is no longer reached, or a
-     patched member is not as listed
+     patched member is not as listed or not in its shim's table
   2  the check could not run: a refused command line, a failure of the check
      itself, or a crash`);
 }
@@ -205,6 +209,7 @@ function againstPatches(patched, unreached) {
       .map((p) => `${shimName(p.shim)}: ${p.member}`)
       .filter((key) => !seen.get(key).ran && listed.get(key) === null && !quiet(key)),
     nowRun: [...seen.keys()].filter((key) => seen.get(key).ran && listed.get(key)),
+    untabled: [...seen.entries()].filter(([, p]) => !p.tabled).map(([key]) => key),
   };
 }
 
@@ -604,7 +609,11 @@ try {
   const patched = ok ? mergePatched(shimmedSides) : null;
   const members = ok ? againstPatches(patched, unreached) : null;
   const faults = members
-    ? members.missing.length + members.unlisted.length + members.notRun.length + members.nowRun.length
+    ? members.missing.length +
+      members.unlisted.length +
+      members.notRun.length +
+      members.nowRun.length +
+      members.untabled.length
     : 0;
   const [loaded, created] = documents;
 
@@ -612,7 +621,7 @@ try {
     console.log(
       `${TOOL}: stock pdf-lib and ${shims.length} shims with parallelSave write the same ${loaded.stock.objects.size} objects ` +
         `for a loaded document and the same ${created.stock.objects.size} for a created one; ` +
-        `the ${patched.length} members the shims patch are as listed, and all ran but the ${members.marked} marked`,
+        `the ${patched.length} members the shims patch are as listed and every one is in its shim's target table, and all ran but the ${members.marked} marked`,
     );
   } else {
     for (const document of documents.filter((d) => d.found.length)) {
@@ -657,6 +666,11 @@ try {
         "The documents no longer reach the function, or the book does not need it; PATCHES can mark it, with the reason.",
       );
       report(members.nowRun, "member(s) PATCHES marks as not reached ran", "Remove the mark from PATCHES.");
+      report(
+        members.untabled,
+        "patched member(s) are not in their shim's target table",
+        "Add each to the table the shim passes to checkTargets, with its arity and fingerprint, or ABSENT for a member pdf-lib does not have.",
+      );
     }
     process.exitCode = 1;
   }

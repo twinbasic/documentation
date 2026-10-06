@@ -44,7 +44,7 @@ Private Interface IEnumVARIANT Extends stdole.IUnknown
 End Interface
 ```
 
-A class that implements a member marked [**[PreserveSig]**](../../tB/Core/Attributes#preservesig) does not compile (BETA 995), so an implementation cannot return its **HRESULT** as a function result. It sets [**Err.ReturnHResult**](../../tB/Modules/ErrObject/ReturnHResult) instead: `S_FALSE` is 1, `E_NOTIMPL` is `&H80004001`.
+A class that implements a member marked [**[PreserveSig]**](../../tB/Core/Attributes#preservesig) does not compile (BETA 997), so an implementation cannot return its **HRESULT** as a function result. It sets [**Err.ReturnHResult**](../../tB/Modules/ErrObject/ReturnHResult) instead: `S_FALSE` is 1, `E_NOTIMPL` is `&H80004001`.
 
 ## Methods
 
@@ -100,7 +100,7 @@ The copy and the original then move independently: a **Next** or **Skip** on one
 
 ## How For Each uses it
 
-**For Each** over an object calls the object's enumerator member once, then uses the enumerator it returns in a fixed way, the same in BETA 983 and BETA 995:
+**For Each** over an object calls the object's enumerator member once, then uses the enumerator it returns in a fixed way:
 
 - It calls **Reset** first. A **Reset** that returns `E_NOTIMPL` is ignored, and the loop goes on.
 - It calls **Next** once per item, always with *celt* = 1 and a null *pCeltFetched*.

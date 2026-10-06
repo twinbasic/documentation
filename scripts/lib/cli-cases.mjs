@@ -1,7 +1,8 @@
 // The recorded cases scripts/check_cli.mjs runs: invocations that stop while
 // a tool reads its command line, each with the exit code and the text printed
 // on each stream. check_cli.mjs's opening comment says what a case asserts and
-// which invocations belong here; this module only builds the list.
+// which invocations belong here; this module only builds the list. A case that
+// needs a file in its folder lists it in `files`, as `{ name: content }`.
 //
 // CASES is the hand-written table, then the cases generated from HELP_TOOLS
 // (--help and -h for every tool), REFUSALS (an unknown flag and an empty value
@@ -70,6 +71,7 @@ const CASES = [
   { tool: "scripts/check_tree_fresh.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
   { tool: "scripts/check_tree_fresh.mjs", args: ["--source"], exit: 2, stderr: "--source needs a value\n" },
   { tool: "scripts/check_tree_fresh.mjs", args: ["--tree"], exit: 2, stderr: "--tree needs a value\n" },
+  { tool: "scripts/build_help_archive.mjs", args: ["--out="], exit: 2, stderr: "--out needs a non-empty value\n" },
   { tool: "scripts/pick_a11y_sample.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/pick_a11y_sample\.mjs / },
   { tool: "scripts/pick_a11y_sample.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
   { tool: "scripts/pick_a11y_sample.mjs", args: ["--budget"], exit: 2, stderr: "--budget needs a value\n" },
@@ -95,6 +97,11 @@ const CASES = [
   { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--port", "0", "--help"], exit: 0, stdout: /^usage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["--bogus", "--keep", "x.twinproj"], exit: 2, stderr: /^unknown option: --bogus\nusage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["--keep", "x.twinproj"], exit: 2, stderr: "no such project: x.twinproj\n" },
+  // A project file that exists and cannot be read is refused from its container, before any IDE is
+  // looked for: the IDE would open a message box nobody can answer on its private desktop, and the run
+  // would end at the timeout reading as clean. `files` is written into the case's folder first.
+  { tool: "scripts/tbbuild.mjs", args: ["empty.twinproj"], files: { "empty.twinproj": "" }, exit: 2, stderr: "empty.twinproj is damaged or is not a project file: the file ends too soon\n" },
+  { tool: "scripts/tbbuild.mjs", args: ["garbage.twinproj"], files: { "garbage.twinproj": "garbage" }, exit: 2, stderr: "garbage.twinproj is damaged or is not a project file: Bad magic: 0x62726167, expected 0xEA0BA51C\n" },
   { tool: "scripts/tbrun.mjs", args: [], exit: 2, stderr: /^usage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--help"], exit: 0, stdout: /^usage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", "win99"], exit: 2, stderr: /^--arch expects win32 or win64, got: win99\nusage: node scripts\/tbrun\.mjs / },
@@ -252,6 +259,7 @@ const CASES = [
   { tool: "eval/search_quality.mjs", args: ["--help=1"], exit: 2, stderr: "--help takes no value\n" },
   { tool: "eval/search_quality.mjs", args: ["-x"], exit: 2, stderr: "unknown option: -x\n" },
   { tool: "eval/search_quality.mjs", args: ["--site", "nowhere"], exit: 2, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--compare", "absent.json"], exit: 2, stderr: /^cannot read --compare .*absent\.json: ENOENT/ },
   { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--sample", "abc"], exit: 2, stderr: "--sample expects a whole number of at least 1, got: abc\n" },
   { tool: "eval/search_quality.mjs", args: ["--site", "--help"], exit: 2, stderr: "--site needs a value\n" },
   { tool: "eval/search_quality.mjs", args: ["--site"], exit: 2, stderr: "--site needs a value\n" },
@@ -339,6 +347,7 @@ const HELP_TOOLS = {
   "scripts/try_help_addin.mjs": null,
   "scripts/bug_repro.mjs": null,
   "scripts/build_dot_metrics.mjs": null,
+  "scripts/build_help_archive.mjs": null,
   "scripts/build_package_api.mjs": null,
   "scripts/census_attributes.mjs": null,
   "scripts/check_a11y.mjs": null,
@@ -370,6 +379,7 @@ const HELP_TOOLS = {
   "scripts/gen_attribute_probes.mjs": "Generate a twinBASIC probe project for Reference/Attributes.md applicability.\n",
   "scripts/impexp.mjs": "Usage:\n",
   "scripts/pick_a11y_sample.mjs": null,
+  "scripts/probe_shared_temp.mjs": null,
   "scripts/survey_tooling.mjs": null,
   "scripts/sweep_a11y.mjs": null,
   "scripts/sweep_attributes.mjs": null,
@@ -413,6 +423,7 @@ const REFUSALS = {
   "scripts/try_help_addin.mjs": ["ide"],
   "scripts/bug_repro.mjs": ["ide"],
   "scripts/build_dot_metrics.mjs": [null],
+  "scripts/build_help_archive.mjs": ["src"],
   "scripts/build_package_api.mjs": ["out"],
   "scripts/census_attributes.mjs": ["out"],
   "scripts/check_a11y.mjs": ["root-dir"],
@@ -444,6 +455,7 @@ const REFUSALS = {
   "scripts/gen_attribute_probes.mjs": [null],
   "scripts/impexp.mjs": [null, { prefix: "ERROR: " }],
   "scripts/pick_a11y_sample.mjs": ["sweep"],
+  "scripts/probe_shared_temp.mjs": ["ide"],
   "scripts/survey_tooling.mjs": ["root"],
   "scripts/sweep_a11y.mjs": ["out"],
   "scripts/sweep_attributes.mjs": ["out"],
@@ -725,6 +737,7 @@ bad("scripts/try_help_addin.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
   bad(tool, ["--batch", "0"], say(NOT_COUNT("--batch", 0)));
   bad(tool, ["--port", "0"], say(NOT_PORT(0)));
   bad(tool, ["--port=65536"], say(NOT_PORT(65536)));
+  bad(tool, ["--port", "65534", "--jobs", "3"], say("--port 65534 with --jobs 3 needs ports up to 65536, past 65535"));
   bad(
     tool,
     ["--only", "("],
@@ -845,6 +858,15 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
     refuse(literal(docs), literal(`--repo ${path.join(docs, "Reference")}`)),
   );
   bad(tool, ["--repo", docs, "--dest", docs], refuse(literal(docs), literal(`--repo ${docs}`)));
+  // A --dest inside the mirrored tree is refused too, or the walk reads it back.
+  const inside = path.join(docs, "Reference", "corpus");
+  bad(
+    tool,
+    ["--repo", docs, "--dest", inside],
+    new RegExp(
+      `^refusing --dest ${literal(inside)}: it is inside ${literal(docs)}, which the corpus mirrors, so the mirror would copy itself\\n$`,
+    ),
+  );
 }
 
 // wisdom's command in these is never a real one, so that none can start an

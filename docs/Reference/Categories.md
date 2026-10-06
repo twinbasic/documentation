@@ -238,6 +238,9 @@ Procedures:
 * [Abs](../tB/Modules/Math/Abs) - returns the absolute value of a number
 * [Round](../tB/Modules/Math/Round) - round the number to a given number of decimal places
 * [Rnd](../tB/Modules/Math/Rnd) - generate a random number in the range [0.0, 1.0)
+* [ShiftRotateLeft](../tB/Modules/Math/ShiftRotateLeft), [ShiftRotateRight](../tB/Modules/Math/ShiftRotateRight) - rotate the bits of an integral value
+* [ShiftUnsignedRight](../tB/Modules/Math/ShiftUnsignedRight) - shift the bits of an integral value right, filling with zeros
+* [ByteSwap](../tB/Modules/Math/ByteSwap) - reverse the order of the bytes in an integral value
 * [Randomize](../tB/Modules/Math/Randomize) - seed the random number generator
 * [Partition](../tB/Modules/Interaction/Partition) - return a string label identifying which of a series of equal-width numeric ranges a value falls into (histogram-style bucketing)
 
@@ -376,6 +379,7 @@ Procedures:
 * [CurrentSourceFile](../tB/Modules/Compilation/CurrentSourceFile) - returns the full path of the current source file
 * [ProcessorArchitecture](../tB/Modules/Compilation/ProcessorArchitecture) - returns the processor architecture of the running application
 * [CompilerVersion](../tB/Modules/Compilation/CompilerVersion) - returns the twinBASIC compiler version number
+* [UnrollLoop](../tB/Modules/Compilation/UnrollLoop) - asks the LLVM compiler to unroll the loop that contains it
 * [GetDeclaredTypeProgId](../tB/Modules/HiddenModule/GetDeclaredTypeProgId), [GetDeclaredTypeClsid](../tB/Modules/HiddenModule/GetDeclaredTypeClsid), [GetDeclaredTypeIid](../tB/Modules/HiddenModule/GetDeclaredTypeIid), [GetDeclaredTypeEventIid](../tB/Modules/HiddenModule/GetDeclaredTypeEventIid) - return the COM ProgID/CLSID/IID/event IID of a declared type, resolved at compile time
 * [GetDeclaredMinEnumValue](../tB/Modules/HiddenModule/GetDeclaredMinEnumValue), [GetDeclaredMaxEnumValue](../tB/Modules/HiddenModule/GetDeclaredMaxEnumValue) - return the smallest/largest value of a declared enumeration, resolved at compile time
 

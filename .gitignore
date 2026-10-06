@@ -28,6 +28,10 @@ indexer/.packages/
 # docs/assets/fonts/ -- only the archives are throwaway.
 /.font-cache/
 
+# The help add-in's documentation archive is built by scripts/build_help_archive.mjs
+# from docs/_site-offline, and is too large to commit.
+/add-in/Resources/HELP/
+
 # A bug reproducer's zip is only for attaching to its GitHub issue (see
 # BUGS-TO-REPORT.md); the .twinproj beside it is committed.
 /bugs/**/*.zip

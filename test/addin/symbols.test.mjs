@@ -192,10 +192,11 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
     assert.match(await hover(c, "ByVal n As Long", "Long"), /^\*\*Long\*\*/);
   });
 
-  test("hover says a ByVal parameter of String, Variant, Object or a class was made because Option Explicit is off, which it is not", async () => {
-    // twinbasic/twinbasic#2448. The project has project.optionExplicit true.
-    const NOTE = "***note:*** *this variable was auto-generated due to* ***Option Explicit*** *being Off*";
-    const noted = {
+  test("hover on a declared parameter or variable says nothing about Option Explicit", async () => {
+    // The project has project.optionExplicit true. BETA 995 and earlier said a
+    // ByVal parameter of String, Variant, Object or a class was auto-generated
+    // because Option Explicit is off (twinbasic/twinbasic#2448, fixed in 997).
+    const byVal = {
       "Debug.Print h Is": "h",
       "count, col Is": "col",
       "Nothing, o Is": "o",
@@ -203,10 +204,10 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
       "Nothing, s,": "s",
       "Host.ToolWindows": "Host",
     };
-    for (const [text, word] of Object.entries(noted)) {
+    for (const [text, word] of Object.entries(byVal)) {
       const h = await hover(c, text, word);
       assert.match(h, /^\*parameter\* ByVal /, `${word}: ${JSON.stringify(h)}`);
-      assert.ok(h.includes(NOTE), `${word} no longer has the note: ${JSON.stringify(h)}`);
+      assert.ok(!h.includes("Option Explicit"), `${word}: ${JSON.stringify(h)}`);
     }
     const plain = {
       "Nothing, count": "count",
@@ -322,9 +323,9 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
     assert.equal(whereIn(h), null, JSON.stringify(h));
   });
 
-  // The defect filed as twinbasic/twinbasic#2465 (bugs/filed/enum-member-description-hover/).
-  // When it is fixed this fails: make this test say what is right, and delete the folder.
-  test("a [Description] on an enumeration's member is listed as a member of the enumeration, and not shown on the member", async () => {
+  // Not a defect (twinbasic/twinbasic#2465): inside an Enum, a [Description(...)]
+  // line is a member named by a bracketed identifier, as VB6 allows, not an attribute.
+  test("a [Description(...)] line in an enumeration is a member of its own, and the next member has no description", async () => {
     const shade = await hoverDescribed(c, "Debug.Print Shade.Light", "Shade");
     assert.match(shade, /\n - Description\("The light one\."\)/, JSON.stringify(shade));
     const light = await hoverDescribed(c, "Shade.Light, p.X", "Light");

@@ -15,7 +15,7 @@ An **ErrorContext** object captures everything the runtime knows about a run-tim
 The error-identity properties (**Number**, **Description**, **Source**, **HelpFile**, **HelpContext**, **LastDLLError**) have the same meaning here as on the **Err** object --- see the [**ErrObject**](../../../Modules/ErrObject) module for a discussion of each. **State** and **Callstack** are unique to **ErrorContext** and reflect the structured error-handling machinery that has no equivalent on the legacy **Err** object.
 
 > [!NOTE]
-> As of BETA 995, twinBASIC code cannot obtain an **ErrorContext** object. The **ErrEx** object that returns one is not available, and neither are the **Try**, **Catch** and **Finally** blocks that several [**State**](#state) values refer to. The **Err** object does not implement this interface. The VBRUN package declares the interface and its members, so code that uses them compiles, but nothing returns an object that implements them.
+> As of BETA 997, twinBASIC code cannot obtain an **ErrorContext** object. The **ErrEx** object that returns one is not available, and neither are the **Try**, **Catch** and **Finally** blocks that several [**State**](#state) values refer to. The **Err** object does not implement this interface. The VBRUN package declares the interface and its members, so code that uses them compiles, but nothing returns an object that implements them.
 
 ## Members
 
@@ -84,9 +84,6 @@ Syntax: *object*.**Number**
 : *required* An object expression that evaluates to an **ErrorContext** object.
 
 Many built-in errors use VBA's error numbers --- for example, `11` for *Division by zero*, `13` for *Type mismatch* and `91` for *Object variable or With block variable not set*. User-defined errors raised with **Err.Raise** typically add the **vbObjectError** offset to a small per-application code.
-
-> [!NOTE]
-> An array index or a **Collection** lookup that is out of range does not raise VBA's error `9`, *Subscript out of range*. An array index outside the array's bounds raises -2147352565 (`&H8002000B`), and a **Collection** member that does not exist raises -2147467259 (`&H80004005`). See [Error numbers that differ from VBA](../../../Modules/ErrObject/Number#error-numbers-that-differ-from-vba).
 
 ### Source
 

@@ -127,11 +127,15 @@ node scripts/impexp.mjs import bugs/<slug>/<slug>.twinproj bugs/<slug>/src --ove
 
 `bugs/<slug>/repro.json` says how to ask the compiler about the entry, and is committed with
 the reproducer: a `mode` of `compile`, `build`, `run`, `cli` (the compiler executable's own
-command line) or `manual`, and what a reproduction looks like in `expect`, such as the exit
-code of `tbbuild`, the diagnostic codes, or a regular expression the output must match.
-`verify` reads it for every entry and reports `reproduces`, `NO LONGER REPRODUCES` (the bug
-may be fixed on this build) or `manual`, which prints the `steps` it holds. It needs a
-twinBASIC install, and is run by a person, never by a gate or by CI.
+command line), `lane` (a lane of `ide-test.bat` or `addin-test.bat` and the tests in it that
+assert the bug), `probe` (a script under `scripts/`) or `manual`, and what a reproduction
+looks like in `expect`, such as the exit code of `tbbuild`, the diagnostic codes, or a
+regular expression the output must match. A bug that needs the IDE operated gets a lane
+test rather than `manual` steps, so that no entry needs a person at the IDE; `steps` still
+holds the recipe for the issue. `verify` reads it for every entry and reports `reproduces`,
+`NO LONGER REPRODUCES` (the bug may be fixed on this build) or `manual`, which prints the
+`steps` it holds. It needs a twinBASIC install, and is run by a person, never by a gate or
+by CI.
 
 **A VB6 comparison is a project of its own in `vb6/`**, made by `new <slug> "<entry title>" --with-vb6`
 from the template in `test/repro-templates/vb6/`. By convention `Probe.vbp` builds `Probe.exe`,
@@ -209,7 +213,7 @@ What does not reproduce it:
 
 So it takes at least one existing entry and at least one slot with nothing in it, which looks like each slot being read with the previous slot's value as its default. Once a duplicate is there, the next opened project keeps it: 18 copies of one project became 20 after one more open, with the new project on top. Both variants of step 2 (deleted slots, empty strings) were measured on BETA 995, ending with 21 values and 3 distinct projects.
 
-<!-- Manual in bugs/recent-projects-copies/repro.json because it changes the user's own registry. Stated in WIP.Harness.md (the recent-list tidy, which exists because of it) and scripts/lib/tb-registry.mjs; when fixed, the note there that a short list trips it can go. Measured 2026-09-23 on BETA 983 by reading the registry after tbbuild --keep opened a fixture project on a private desktop and the IDE was ended by its pid, and again on BETA 995 on 2026-10-01 (cli995/rec-995-*.txt). The harness trips it because every IDE a run starts opens a project: a run that began on a list of one entry once ended with seventeen copies of it. -->
+<!-- Lane mode in bugs/recent-projects-copies/repro.json: asserted by `ide-test.bat --only recent-projects-copies` (test/ide/recent-projects-copies.test.mjs), which passes on BETA 997; the test records the user's own list value by value and puts it back afterwards. Stated in WIP.Harness.md (the recent-list tidy, which exists because of it) and scripts/lib/tb-registry.mjs; when fixed, the note there that a short list trips it can go. Measured 2026-09-23 on BETA 983 by reading the registry after tbbuild --keep opened a fixture project on a private desktop and the IDE was ended by its pid, and again on BETA 995 on 2026-10-01 (cli995/rec-995-*.txt). The harness trips it because every IDE a run starts opens a project: a run that began on a list of one entry once ended with seventeen copies of it. -->
 
 ---
 
@@ -257,7 +261,7 @@ So exit 0 on a project with errors happens only for an error in code nothing cal
 
 Silence on stdout and stderr: measured on BETA 983 first, and on BETA 995 by redirecting the standard handles of the process to a file. The same redirection captures the compiler executable's own output (`twinBASIC_win32.exe settings <project>` wrote the whole `Settings` file), so the capture works.
 
-<!-- Manual in bugs/build-and-exit-silent/repro.json: the switch belongs to the IDE executable, which opens a window, so nothing here may run on the user's desktop. Measured with a scratch copy of scripts/lib/tb-launch.ps1 (private desktop, kill-on-close job, TBBUILD_CMD replacing the command line, standard handles redirected to a file), with scripts/lib/tb-registry.mjs startTidy and finishTidy around the run. Stated in scripts/tbbuild.mjs (header comment) and WIP.Harness.md, "Do not reach for --buildAndExit32 instead": when fixed, those two say the switch is unusable. So do docs/Documentation/Tools.md (the tbbuild section) and docs/Features/Packages/Import-export tool.md ("Compiling from the command line"). All four say exit 0 only for an error in code nothing calls, and a hang for an error the build reaches. -->
+<!-- Lane mode in bugs/build-and-exit-silent/repro.json: asserted by `ide-test.bat --only build-and-exit-silent` (test/ide/build-and-exit-silent.test.mjs, both cases, the IDE executable on a private desktop through launchOnDesktop), which passes on BETA 997. First measured with a scratch copy of scripts/lib/tb-launch.ps1 (private desktop, kill-on-close job, TBBUILD_CMD replacing the command line, standard handles redirected to a file), with scripts/lib/tb-registry.mjs startTidy and finishTidy around the run. Stated in scripts/tbbuild.mjs (header comment) and WIP.Harness.md, "Do not reach for --buildAndExit32 instead": when fixed, those two say the switch is unusable. So do docs/Documentation/Tools.md (the tbbuild section) and docs/Features/Packages/Import-export tool.md ("Compiling from the command line"). All four say exit 0 only for an error in code nothing calls, and a hang for an error the build reaches. -->
 
 ---
 
@@ -814,7 +818,7 @@ Each build writes its type library and succeeds, however many IDEs share the `TE
 **Additional context**
 Severity: low; the build passes when repeated, and an IDE run by a person rarely builds at the same moment as another. It affects tools that build several projects at once. The compiler imports `GetTempFileNameW`, and its messages show that it writes the type library to a file and reads it back (`[TYPELIB] failed to read in generated type library file` is the message beside this one). A temporary file name that two processes both use would explain the counts; that is an inference, not observed. The temp folder is empty after the builds, so whatever is written there is deleted.
 
-<!-- Reproducer: bugs/concurrent-builds-shared-temp/ (mode manual: it needs several IDEs at once, which bug_repro cannot run). The measurement used the same console template with check_examples' two staging modules, not this reproducer itself: a Sonnet agent's 904 builds through tbbuild-style lanes, data in %TEMP%/claude/typelib-probe/results.jsonl (not kept), 2026-10-02, BETA 995 only; no 983 control. scripts/lib/tb-ide.mjs's launchIde gives every IDE %TEMP%/tbbuild-tmp-<port> since 7a716388, so no harness of this repository reproduces it today: to measure it again, pass TEMP and TMP to launchIde's env. When fixed, the comment in launchIde and WIP.ExamplesBuild.md's per-IDE temp folder note may say so; the folders can stay. -->
+<!-- Reproducer: bugs/concurrent-builds-shared-temp/ (mode probe: scripts/probe_shared_temp.mjs builds it in eight IDEs at once with one TEMP, and with --control a TEMP each; on BETA 997, 3 of 8 failed in the first round shared, 0 of 48 with a TEMP each). The first measurement used the same console template with check_examples' two staging modules, not this reproducer itself: a Sonnet agent's 904 builds through tbbuild-style lanes, data in %TEMP%/claude/typelib-probe/results.jsonl (not kept), 2026-10-02, BETA 995 only; no 983 control. scripts/lib/tb-ide.mjs's launchIde gives every IDE %TEMP%/tbbuild-tmp-<port> since 7a716388, so no harness of this repository reproduces it today: to measure it again, pass TEMP and TMP to launchIde's env. When fixed, the comment in launchIde and WIP.ExamplesBuild.md's per-IDE temp folder note may say so; the folders can stay. -->
 
 ---
 
@@ -867,7 +871,7 @@ What was tried:
 - An interface with three `[PreserveSig]` members declared in `IUnknown`'s order, `QueryInterface`, `AddRef` and `Release`, behaves the same way: `Set` succeeds, and the calls go to the wrong slots (one `AddRef` returned 0, and the next call crashed).
 - `Interface IUnk Extends stdole.IUnknown` with that identifier compiles, and `u.AddRef` is then reported as `TB5027 Unrecognized member 'AddRef' on type 'IUnk'`, as it is for `stdole.IUnknown` itself, which has no members that twinBASIC code can call.
 
-<!-- Reproducer: bugs/iunknown-iid-interface/ (mode run, expects tbrun exit 5, the output `ok` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IUnknown.md, section "Implementing it" (the WARNING, which names BETA 995, after the paragraph that begins "A project's own Interface that carries the identifier of IUnknown also compiles"): when fixed, replace it with a NOTE saying since which build and what the compiler now does (a diagnostic, or a working call). -->
+<!-- Reproducer: bugs/iunknown-iid-interface/ (mode run, expects tbrun exit 5, the output `ok` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IUnknown.md, section "Implementing it" (the WARNING, which names BETA 995, after the paragraph that begins "A project's own Interface that carries the identifier of IUnknown also compiles"): when fixed, remove it and state what the compiler does (a diagnostic, or a working call). -->
 
 ---
 
@@ -1085,7 +1089,7 @@ Severity: low for a program that passes all the arguments; for one that does not
 
 Related and also different from VB6: `Err.Raise 65536` is accepted, and `Err.Number` is 65536, where VB6 raises error 5. `Err.Raise 0` raises error 5 in both. An explicit empty string for the source or the description gives an empty `Source` or `Description`, in VB6 as well. `Err.HelpContext` is 0 in twinBASIC, and VB6 sets it to 1000000 plus the number for a `Raise` without one (`1000005` for 5).
 
-<!-- Reproducer: bugs/err-raise-defaults/ (mode run, expects the five lines above in twinBASIC); verified on 995. VB6 side from the same program, in bugs/err-raise-defaults/vb6/; the full sweep and the per-number lists are in s71/raise/ (out-tb-995.txt, out-vb6.txt, analyze.mjs), local scratch files that are not in the repository. Stated in docs/Reference/Default/VBA/ErrObject/Raise.md (the table under *description* and the WARNING after it, which names BETA 995, plus the check_run sample), in Source.md (the WARNING) and in Description.md (the WARNING); docs/Reference/COM-Interfaces/IErrorInfo.md says GetSource returns an empty string and GetDescription the standard text when Raise gets neither. When fixed, replace those WARNINGs with NOTEs saying since which build, delete the table, restore the sentences about the project's programmatic ID, the generic message and the carried-over values, and rewrite the sample's expected output. docs/Reference/Default/VBRUN/ErrorContext/index.md says Source is the project name for errors raised inside a project; that is not what Err.Source holds and should be checked when this is fixed. -->
+<!-- Reproducer: bugs/err-raise-defaults/ (mode run, expects the five lines above in twinBASIC); verified on 995. VB6 side from the same program, in bugs/err-raise-defaults/vb6/; the full sweep and the per-number lists are in s71/raise/ (out-tb-995.txt, out-vb6.txt, analyze.mjs), local scratch files that are not in the repository. Stated in docs/Reference/Default/VBA/ErrObject/Raise.md (the table under *description* and the WARNING after it, which names BETA 995, plus the check_run sample), in Source.md (the WARNING) and in Description.md (the WARNING); docs/Reference/COM-Interfaces/IErrorInfo.md says GetSource returns an empty string and GetDescription the standard text when Raise gets neither. When fixed, remove those WARNINGs, delete the table, restore the sentences about the project's programmatic ID, the generic message and the carried-over values, and rewrite the sample's expected output. docs/Reference/Default/VBRUN/ErrorContext/index.md says Source is the project name for errors raised inside a project; that is not what Err.Source holds and should be checked when this is fixed. -->
 
 ---
 
@@ -1122,7 +1126,7 @@ The two symptoms are one bug because the object is the same: `ObjPtr` of what `G
 What does not reproduce it: a fresh thread (`GetErrorInfo` returns `S_FALSE`); a caller that makes the call through an interface whose methods are declared `[PreserveSig]` and reads the slot itself, where the first `GetErrorInfo` returns the values and the second returns `S_FALSE`; the second `GetErrorInfo` after the object has been read from the slot (it returns `S_FALSE`, so `GetErrorInfo` does empty the slot).
 Severity: low. The slot is not a documented twinBASIC interface, but a program that reads error information with the COM functions, or a library that does, sees values that change under it, and a program cannot rely on the description of a failure that came with no error information.
 
-<!-- Reproducer: bugs/err-info-live-view/ (mode run, expects the lines above); verified on 995. The VB6 slot results (empty after Err.Raise 5 in the procedure, after a raise in a class method handled by the caller, and after a class method that handled its own error) are from bugs/err-info-live-view/vb6/; the full set of probes (T1 to T10, with ObjPtr) is in s71/liveview/, a local scratch folder that is not in the repository. Stated in docs/Reference/COM-Interfaces/IErrorInfo.md, in two WARNINGs that name BETA 995: the one after "**GetErrorInfo** empties the slot" in *A method that raises an error*, and the one that begins "the slot is not always empty" under *A failure with no error information*. When fixed, replace each with a NOTE saying since which build, or delete it; the table of Automation error and the `emptySlot` samples need no change except the sentence about a stale object. -->
+<!-- Reproducer: bugs/err-info-live-view/ (mode run, expects the lines above); verified on 995. The VB6 slot results (empty after Err.Raise 5 in the procedure, after a raise in a class method handled by the caller, and after a class method that handled its own error) are from bugs/err-info-live-view/vb6/; the full set of probes (T1 to T10, with ObjPtr) is in s71/liveview/, a local scratch folder that is not in the repository. Stated in docs/Reference/COM-Interfaces/IErrorInfo.md, in two WARNINGs that name BETA 995: the one after "**GetErrorInfo** empties the slot" in *A method that raises an error*, and the one that begins "the slot is not always empty" under *A failure with no error information*. When fixed, remove each; the table of Automation error and the `emptySlot` samples need no change except the sentence about a stale object. -->
 
 ---
 
@@ -1167,7 +1171,7 @@ What was tried: an object that is not a sink gives an ordinary error (`E_NOINTER
 
 VB6 crashes too. The same call on the connection point of a VB6 class with an event, made through `DispCallFunc` (the VB6 project is attached as `advise-nothing-crashes-vb6.zip`), ends the exe with an access violation (`0xC0000005` in `MSVBVM60.DLL`, in the Application event log) after it writes `before`. A fix therefore costs no compatibility: no program depends on the crash.
 
-<!-- Reproducer: bugs/advise-nothing-crashes/ (mode run, expects tbrun exit 5, the output `before` and the native exception); verified on 995. VB6 side in bugs/advise-nothing-crashes/vb6/ (VB6 6.0): out.txt ends at `before`, and `vb6` reports the crash. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section Advise, the last bullet of "In twinBASIC" and the WARNING after it, which names BETA 995 ("Advise with Nothing as the sink ends the program with an access violation"): when fixed, replace the WARNING with a NOTE saying since which build and what error it raises, and add Nothing to the example if it fits. -->
+<!-- Reproducer: bugs/advise-nothing-crashes/ (mode run, expects tbrun exit 5, the output `before` and the native exception); verified on 995. VB6 side in bugs/advise-nothing-crashes/vb6/ (VB6 6.0): out.txt ends at `before`, and `vb6` reports the crash. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section Advise, the last bullet of "In twinBASIC" and the WARNING after it, which names BETA 995 ("Advise with Nothing as the sink ends the program with an access violation"): when fixed, remove the WARNING, state what error it raises, and add Nothing to the example if it fits. -->
 
 ---
 
@@ -1212,7 +1216,7 @@ before Unadvise 0
 Severity: low. A client that releases a connection twice, or with a wrong cookie, is told it worked.
 
 `Advise` with a sink that does not answer `QueryInterface` for the outgoing interface fails with `E_NOINTERFACE` (`&H80004002`), where the Windows SDK page for [IConnectionPoint::Advise](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nf-ocidl-iconnectionpoint-advise) says the method "must return CONNECT_E_CANNOTCONNECT" (`&H80040201`). VB6 returns `E_NOINTERFACE` too, so that is not reported here; the reproducer prints it as a control. A sink that is an ordinary twinBASIC class gives the same `E_NOINTERFACE` whether it has no members or implements `IDispatch` (the outgoing interface's identifier is generated for each build, so a twinBASIC class cannot answer for it). Nothing is connected afterwards, and no event reaches the sink. Calling `Unadvise` a second time with the cookie of the failed `Advise`, which is 0, also returns without an error.
-<!-- Reproducer: bugs/advise-unadvise-hresults/ (mode run, expects tbrun exit 0 and the three lines above); verified on 995. VB6 side in bugs/advise-unadvise-hresults/vb6/ (VB6 6.0), the output above; it ends at `before Unadvise 0` because that call crashes the exe. Narrowed to Unadvise at the owner's word (2026-10-04), since VB6 also returns E_NOINTERFACE from Advise. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, sections Advise (the second bullet of "In twinBASIC", which says VB6 returns E_NOINTERFACE too: no change when this is fixed) and Unadvise (the WARNING, which names BETA 995, about a cookie that names no connection) and the last example, whose comments show 80004002 and 0: when fixed, replace the WARNING with a NOTE saying since which build, and change the rest. When the page is updated, state the code twinBASIC returns for a bad cookie. -->
+<!-- Reproducer: bugs/advise-unadvise-hresults/ (mode run, expects tbrun exit 0 and the three lines above); verified on 995. VB6 side in bugs/advise-unadvise-hresults/vb6/ (VB6 6.0), the output above; it ends at `before Unadvise 0` because that call crashes the exe. Narrowed to Unadvise at the owner's word (2026-10-04), since VB6 also returns E_NOINTERFACE from Advise. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, sections Advise (the second bullet of "In twinBASIC", which says VB6 returns E_NOINTERFACE too: no change when this is fixed) and Unadvise (the WARNING, which names BETA 995, about a cookie that names no connection) and the last example, whose comments show 80004002 and 0: when fixed, remove the WARNING, and change the rest. When the page is updated, state the code twinBASIC returns for a bad cookie. -->
 
 ---
 
@@ -1417,7 +1421,7 @@ The same difference exists for the high end of the index range: VB6 draws `&H800
 
 The change is `TranslateColor2` in the VB package's `Graphics.twin`, which `Line`, `Circle` and `PSet` call on `Color`: for a top byte of `&H80` it returns the system colour when the value minus `&H80000000` is 0 to 30 and 0 otherwise, and for any other value it returns the low 24 bits.
 
-<!-- Reproducer: bugs/system-colour-extra-bytes-black/ (mode run, expects the three lines above in twinBASIC); verified on 995, with 983 as the control (F0F0F0, F0F0F0, DBCDBF). The VB6 project is in bugs/system-colour-extra-bytes-black/vb6/ (`bug_repro.mjs vb6 system-colour-extra-bytes-black` prints the three lines above). The fuller sweep (about 45 colour values on 995, 983 and VB6) is in .claude/tooling-review-scratch/beta995-probes/s73/forms/ (c1.out995.txt, c1.out983.txt, c1.outvb6.txt), local scratch files that are not in the repository. Stated in docs/Reference/Core/Graphics-Methods.md, section "Colour values" (the first bullet and the WARNING after it, which names BETA 995; the NOTE below the WARNING is the deliberate difference for indexes 25 to 30): when fixed, replace the WARNING with a NOTE saying since which build twinBASIC takes the index from the low 16 bits, and change the bullet. -->
+<!-- Reproducer: bugs/system-colour-extra-bytes-black/ (mode run, expects the three lines above in twinBASIC); verified on 995, with 983 as the control (F0F0F0, F0F0F0, DBCDBF). The VB6 project is in bugs/system-colour-extra-bytes-black/vb6/ (`bug_repro.mjs vb6 system-colour-extra-bytes-black` prints the three lines above). The fuller sweep (about 45 colour values on 995, 983 and VB6) is in .claude/tooling-review-scratch/beta995-probes/s73/forms/ (c1.out995.txt, c1.out983.txt, c1.outvb6.txt), local scratch files that are not in the repository. Stated in docs/Reference/Core/Graphics-Methods.md, section "Colour values" (the first bullet and the WARNING after it, which names BETA 995; the NOTE below the WARNING is the deliberate difference for indexes 25 to 30): when fixed, remove the WARNING, and change the bullet to say twinBASIC takes the index from the low 16 bits. -->
 
 ---
 
@@ -1428,7 +1432,7 @@ Assigning a value that is not a colour to a colour property does not leave the p
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `forecolor-invalid-value-stored.twinproj` (attached as `forecolor-invalid-value-stored.zip`). Its `Sub Main` loads `Form1`, which holds a PictureBox, a Label, a TextBox, a CommandButton and a user control, UC1, whose `RunCases` assigns its own colour properties. For each property tried it sets `vbGreen`, then assigns `-1` (and `&H8000001F` to the form's `ForeColor`) under `On Error Resume Next` and prints the error number and the value read back. The Printer lines need a default printer; nothing is printed.
+1. Open `forecolor-invalid-value-stored.twinproj` (attached as `forecolor-invalid-value-stored.zip`). Its `Sub Main` loads `Form1`, which holds a PictureBox, a Label, a TextBox, a CommandButton and a user control, UC1, whose `RunCases` assigns its own colour properties; it then loads `MyMDIForm`, an MDIForm, assigns the same values to its `BackColor`, shows it and assigns them again. For each property tried it sets `vbGreen`, then assigns `-1` (and `&H8000001F` to the form's `ForeColor`) under `On Error Resume Next` and prints the error number and the value read back. The Printer lines need a default printer; nothing is printed.
 2. Run it (F5) and read the DEBUG CONSOLE:
    ```
    Form.ForeColor = -1: Err 5, reads FFFFFFFF
@@ -1448,6 +1452,10 @@ Steps to reproduce the behavior:
    UserControl.ForeColor = -1: Err 5, reads FFFFFFFF
    UserControl.BackColor = -1: Err 0, reads FFFFFFFF
    UserControl.FillColor = -1: Err 0, reads FFFFFFFF
+   MDIForm.BackColor = -1: Err 0, reads FFFFFFFF
+   MDIForm.BackColor = &H8000001F: Err 0, reads 8000001F
+   MDIForm (shown).BackColor = -1: Err 5, reads FFFFFFFF
+   MDIForm (shown).BackColor = &H8000001F: Err 5, reads 8000001F
    ```
 
 **Expected behavior**
@@ -1470,6 +1478,10 @@ Printer.FillColor = -1: Err 380, reads FF00
 UserControl.ForeColor = -1: Err 380, reads FF00
 UserControl.BackColor = -1: Err 380, reads FF00
 UserControl.FillColor = -1: Err 380, reads FF00
+MDIForm.BackColor = -1: Err 380, reads FF00
+MDIForm.BackColor = &H8000001F: Err 380, reads FF00
+MDIForm (shown).BackColor = -1: Err 380, reads FF00
+MDIForm (shown).BackColor = &H8000001F: Err 380, reads FF00
 ```
 `FF00` is `vbGreen`, which each property held before the assignment. A program that sets a colour from user input and handles the error then keeps the colour it had.
 
@@ -1482,7 +1494,7 @@ Severity: low. `ForeColor` raises the error on the surfaces and the other proper
 
 What was tried: the same lines on BETA 983 print the same, so this is not a change of BETA 984. A value that is a valid colour, such as `&H100FF00` or `&H20000FF`, is accepted by `ForeColor` with no error, as in VB6. Besides the attached project, each of `-1`, `&H8000001F` and `&HFF0000FF` was assigned to every colour property of a UserControl (placed on the form), CheckBox, Frame, ListBox, Shape, ComboBox, DirListBox, DriveListBox, FileListBox, OptionButton and OLE in a project of its own, on BETA 995 and 983 and in VB6: the results are the same as above, error 5 for the UserControl's `ForeColor` and none for the rest in twinBASIC, error 380 and the old value kept in VB6. The twinBASIC-only controls behave the same (`QRCode.ForeColor` raises error 5, `CheckMark.BackColor` and `MultiFrame.BackColor` raise nothing), and so do `CommandButton.ForeColor` and the Data control's colours, which VB6 has no counterpart or no loadable project for. The package source explains the pattern: the colour properties are plain stored fields (`Public ForeColor As OLE_COLOR` and so on, in `GraphicsBase` for Form, PictureBox, UserControl, PropertyPage and Report, and declared again in each control), with nothing that validates the value; the error 5 comes from the `ForeColor` change handler of `GraphicsBase`, which runs after the value is stored.
 
-<!-- Reproducer: bugs/forecolor-invalid-value-stored/ (mode run, expects the seventeen lines above in twinBASIC); verified on 995 and 983. The VB6 project is in bugs/forecolor-invalid-value-stored/vb6/ (`bug_repro.mjs vb6 forecolor-invalid-value-stored` prints the seventeen lines above). The wider sweep (every colour property of the classes named under "What was tried", three values each, on 995, 983 and VB6) is in .claude/tooling-review-scratch/beta995-probes/s73/colours/ (c4.out995.txt, c4.out983.txt, c5.outvb6.txt, c6.Data.outvb6.txt, c3.out*.txt for the UserControl), local scratch files that are not in the repository. Stated in a WARNING naming BETA 995 under each of the colour properties on the pages under docs/Reference/Default/VB/ for: Form, PictureBox, UserControl, PropertyPage, Report, Printer, Label, TextBox, CommandButton, CheckBox, OptionButton, Frame, ListBox, ComboBox, DirListBox, DriveListBox, FileListBox, Shape, OLE (the VB6 comparison is in the WARNING) and Data, CheckMark, MultiFrame, QRCode (twinBASIC behaviour only; CommandButton.ForeColor likewise). PropertyPage and Report were not run: they inherit GraphicsBase, as Form does. MDIForm carries none: its BackColor assigns a separate field and its ForeColor and FillColor raise an unsupported-property error, and none was run. When fixed, replace each WARNING with a NOTE saying since which build. -->
+<!-- Reproducer: bugs/forecolor-invalid-value-stored/ (mode run, expects the twenty-one lines above in twinBASIC); verified on 995 and 983 for the first seventeen lines, and the four MDIForm lines were run on 997 (MyMDIForm needs a FormDesignerId of its own: given Form1's, its lines test Form1). The VB6 project is in bugs/forecolor-invalid-value-stored/vb6/ (`bug_repro.mjs vb6 forecolor-invalid-value-stored` prints the twenty-one lines above). The wider sweep (every colour property of the classes named under "What was tried", three values each, on 995, 983 and VB6) is in .claude/tooling-review-scratch/beta995-probes/s73/colours/ (c4.out995.txt, c4.out983.txt, c5.outvb6.txt, c6.Data.outvb6.txt, c3.out*.txt for the UserControl), local scratch files that are not in the repository. Stated in a WARNING naming BETA 995 under each of the colour properties on the pages under docs/Reference/Default/VB/ for: Form, PictureBox, UserControl, PropertyPage, Report, Printer, Label, TextBox, CommandButton, CheckBox, OptionButton, Frame, ListBox, ComboBox, DirListBox, DriveListBox, FileListBox, Shape, OLE (the VB6 comparison is in the WARNING), MDIForm (BackColor only; its WARNING names BETA 997) and Data, CheckMark, MultiFrame, QRCode (twinBASIC behaviour only; CommandButton.ForeColor likewise). PropertyPage and Report were not run: they inherit GraphicsBase, as Form does. MDIForm's BackColor was run on 997 with a real MDIForm and stores the value, raising no error while the form is only loaded and error 5 once it is shown; its ForeColor and FillColor are not on its interface (a compile error early-bound; 380 through As Form). When fixed, remove each WARNING. -->
 
 ---
 
@@ -1517,72 +1529,7 @@ Severity: low to medium. Typing into the box was not tried; the gap is the assig
 
 What was tried: BETA 983 prints the same two lines. Assigning the same long text a second time raises no `Change` event, in twinBASIC and in VB6.
 
-<!-- Reproducer: bugs/textbox-text-ignores-maxlength/ (mode run, expects the two lines above in twinBASIC); verified on 995 and 983. The VB6 project is in bugs/textbox-text-ignores-maxlength/vb6/ (`bug_repro.mjs vb6 textbox-text-ignores-maxlength` prints the two lines above). Stated in docs/Reference/Default/VB/TextBox/index.md, the MaxLength section, in a WARNING that names BETA 995 ("assigning Text in code is not limited by MaxLength"): when fixed, replace it with a NOTE saying since which build Text is truncated. -->
-
----
-
-## `LSet` on a `Long` variable compiles, and the build fails with a codegen error
-
-**Describe the bug**
-`LSet` is defined for a string or a user-defined type. A statement `LSet n = "ab"` with `n` declared `As Long` is accepted by the compiler without a diagnostic, and building the project then fails: the linker reports a code-generation error at the statement, and no exe is produced. Run from the IDE (F5), the project stops the same way. Observed in a build of the reproducer project.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `lset-long-codegen-error.twinproj` (attached as `lset-long-codegen-error.zip`). Its one source file, `Startup.twin`, is a `Sub Main` with `Dim n As Long` and `LSet n = "ab"`.
-2. Compile it: no errors, warnings or hints.
-3. Build it (Build, or F5) and read the DEBUG CONSOLE:
-   ```
-   [BUILD] Starting...
-   [LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #5
-   [LINKER] FAILED due to compilation errors 'LsetLongCodegenError_win32.exe'
-   [BUILD] failed
-   ```
-
-**Expected behavior**
-A compile error on the `LSet` line, as for the neighbouring wrong operands: `LSet s = a` with `a` a user-defined type and `RSet a = b` with user-defined types are refused with TB5001 (*unable to convert type ... to String*), and `LSet a = s` with a string source and a user-defined type destination is refused with TB5249. VB6 refuses this statement at compile time with *LSet allowed only on strings and user-defined types* (attached as `lset-long-codegen-error-vb6.zip`, which does not build).
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
-
-**Additional context**
-Severity: low. The error is reported, so nothing runs wrongly, but it points at no cause, and the compile step that the IDE shows while typing says the project is fine.
-
-Tried with a `Long` destination only. The same on BETA 983.
-
-<!-- Reproducer: bugs/lset-long-codegen-error/ (mode build, expects tbbuild exit 5 and "codegen" in the message); verified on 995 and 983. The BUGS tool's `vb6` command prints VB6's compile error and exits 1 for it, which is the comparison. No page states it: docs/Reference/Core/LSet.md says nothing about other destinations. -->
-
----
-
-## `LSet` and `RSet` on an element of a `Variant` that holds an array change nothing
-
-**Describe the bug**
-`LSet v(0) = "zz"` and `RSet v(1) = "zz"` do nothing when `v` is a `Variant` that holds an array, whether the array came from `Array(...)` or from `ReDim v(0 To 1)` on the `Variant`. The statements raise no error, and the element keeps its value. The same statements on an element of an array declared `Dim w(0 To 1) As Variant` work. Observed in a run of the reproducer project.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `lset-variant-array-element-noop.twinproj` (attached as `lset-variant-array-element-noop.zip`). Its one source file, `Startup.twin`, has a `Sub Main` that assigns `v = Array("0123456789", "abcde")`, runs `LSet v(0) = "zz"` and `RSet v(1) = "zz"`, and does the same to the elements of `Dim w(0 To 1) As Variant`.
-2. Run it (F5) and read the DEBUG CONSOLE:
-   ```
-   LSet v(0), v = Array(...):   [0123456789]
-   RSet v(1), v = Array(...):   [abcde]
-   LSet w(0), w(0 To 1) As Variant: [zz        ]
-   RSet w(1), w(0 To 1) As Variant: [   zz]
-   ```
-
-**Expected behavior**
-The elements of `v` change as those of `w` do: `[zz        ]` and `[   zz]`. VB6 does so (attached as `lset-variant-array-element-noop-vb6.zip`).
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
-
-**Additional context**
-Severity: low to medium. A statement that has no effect and no error is easy to miss.
-
-Tried: `ReDim v2(0 To 1)` on a `Variant`, then `LSet v2(0) = "zz"`, does the same. The `w` elements and `Dim a(0 To 2) As String` elements work. On BETA 983 the `v` lines read the same, and the `w` line for `LSet` reads `[zz23456789]`, because `LSet` did not yet fill with spaces there (fixed in BETA 984, which is a separate matter).
-
-<!-- Reproducer: bugs/lset-variant-array-element-noop/ (mode run, expects the four lines above); verified on 995, 983 gives the same `v` lines. docs/Reference/Core/LSet.md and RSet.md each carry a WARNING naming BETA 995 for this, after the paragraph that says the destination can be a Variant that holds a string; when fixed, replace each with a NOTE saying since which build. -->
+<!-- Reproducer: bugs/textbox-text-ignores-maxlength/ (mode run, expects the two lines above in twinBASIC); verified on 995 and 983. The VB6 project is in bugs/textbox-text-ignores-maxlength/vb6/ (`bug_repro.mjs vb6 textbox-text-ignores-maxlength` prints the two lines above). Stated in docs/Reference/Default/VB/TextBox/index.md, the MaxLength section, in a WARNING that names BETA 995 ("assigning Text in code is not limited by MaxLength"): when fixed, remove it and state that Text is truncated. -->
 
 ---
 
@@ -1704,3 +1651,652 @@ In the default mode, MODERN, the console asks for the list after every key and a
 Severity: moderate. `Print`, `Call` and `Set` begin lines that are often typed in the console, and each becomes a line the console refuses. The only ways round it are Escape before the space and another IntelliSense mode.
 
 <!-- Asserted by `ide-test.bat --only console-space` (test/ide/console-space.test.mjs: with the run stopped at BREAK and each line typed key by key, Print total becomes Printertotal, Call Touch(total) becomes CallByDispId(Touch(total)) and Set obj = items becomes SetAttr(obj = items), and the console refuses each; Print, Escape and then the rest give Print total, which prints 5; total = 6, ? total and Debug.Print total type as they are; with no program running, Print 1 + 1 becomes Printer1 + 1); passes on BETA 995 and 987. The lane waits after each key for the console's answer to it, as a person typing at an ordinary speed sees the list. Checked on BETA 995 and 987 and not asserted: the other keywords named above. Checked on BETA 995 and not asserted: the LEGACY and MANUAL modes, and the code editor. The reproducer's Startup.twin is test/ide/probes/console-space/Sources/Startup.twin with a different header comment. Related: "The Debug Console offers no completion for a name typed after `?` and a space", whose Additional context mentions this one. When fixed: update that test and this entry. -->
+
+---
+
+## A `[RunAfterBuild]` Sub does not run, and nothing says so, when a module is named like the project
+
+**Describe the bug**
+When a module has the same name as the project, a `[RunAfterBuild]` Sub does not run, and nothing says so. The build succeeds and the exe is written. The DEBUG CONSOLE's last line is `[BUILD] Executing '<project>.<module>.<Sub>'...`, and nothing follows it: no message box, no entry in the error panel, no diagnostic, and the status bar is as it is after a run that works. The names are compared without regard to letter case, so `ProbeWS` and `probews` clash as well. Even an empty module with the project's name, beside the module that holds the Sub, stops it. Observed in the DEBUG CONSOLE after pressing Build.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `module-named-like-project.twinproj` (attached as `module-named-like-project.zip`). The project is named `ModuleNamedLikeProject` and has one module of that name:
+   ```
+   Module ModuleNamedLikeProject
+       Public Sub Main()
+       End Sub
+       [RunAfterBuild]
+       Public Sub Hello()
+           Debug.Cls
+           Debug.Print "RunAfterBuild ran"
+       End Sub
+   End Module
+   ```
+2. Build the project.
+3. Read the DEBUG CONSOLE. It ends at `[BUILD] Executing 'ModuleNamedLikeProject.ModuleNamedLikeProject.Hello'...`. `RunAfterBuild ran` is never printed.
+4. Rename the module, to `Runner` for example, and build again. The console is cleared and holds `RunAfterBuild ran`.
+
+**Expected behavior**
+The Sub runs whatever the modules are called, as it does once the module is renamed. If a module may not have the project's name, the compiler should refuse it with an error, as VB6 does, and not build the project and skip the Sub in silence.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995, identically.
+
+VB6 refuses a project whose module has the project's name. Its build stops with `Name conflicts with existing module, project, or object library`, for a module that holds `Sub Main` (the project is attached as `module-named-like-project-vb6.zip`) and for an empty module of that name beside the module that holds `Sub Main` (checked, not attached). So VB6 reports the clash, where twinBASIC accepts it and skips the Sub.
+
+What does not reproduce it: with any other module name, such as `Runner`, the Sub runs. A project with no module of the project's name runs it, whichever module holds it.
+
+What reproduces it besides the plain case: the clash in another letter case, such as a project `ProbeWS` with a module `probews`; and an empty module with the project's name in a project whose `[RunAfterBuild]` Sub is in a different module, `Runner`, where the console ends at `[BUILD] Executing 'ProbeWS.Runner.<Sub>'...`, which names an unambiguous Sub. So the cause is the module's name, not a call that cannot be told apart.
+
+Severity: moderate. A `[RunAfterBuild]` Sub runs after the exe is built, for example to sign it, and here it is skipped while the build reports success. Nothing points at the module's name as the cause, so the project's owner has to find it by renaming modules.
+
+<!-- Reproducer: bugs/module-named-like-project/ (mode run, exe true; expects exit 5, the console's `[BUILD] Executing 'ModuleNamedLikeProject.ModuleNamedLikeProject.<Sub>'...` line, and no `RunAfterBuild ran`); verified on BETA 995 and 997 by `bug_repro.mjs verify`, with a copy whose module is named Runner as the control (exit 0, `RunAfterBuild ran`, verify says NO LONGER REPRODUCES). `bug_repro.mjs run` needs --exe by hand, because a project may hold one [RunAfterBuild] (TB5114) and this one's own is the subject; verify takes exe from repro.json. The harness wraps the Sub, so run's console names `tbrun_RunProbe`; a build in the IDE names the Sub itself. Steps 3 and 4 were checked on BETA 995 and 997 by building the reproducer, and a copy with the module named Runner, with `tbbuild --build --keep` and reading the DEBUG CONSOLE. The other-case and empty-module variants were checked on BETA 995 and 997 in scratch trees that are not in the reproducer. VB6: `bug_repro.mjs vb6 module-named-like-project` prints the refusal; the empty-module form was built in a scratch copy. docs/Reference/Attributes.md (#runafterbuild) carries a WARNING callout for this; once a fixed build is released, its sentences about the module's name go. WIP.ExamplesBuild.md (the bullet "No generated module may be named like the project") and scripts/check_examples.mjs (the comment on its three collision rules) state the rule for generated modules; they called the clash an ambiguous call that the IDE refuses at execution time, and were corrected with this entry. When fixed: say in both since which build the rule is no longer needed, or remove it. -->
+
+---
+
+## A `[RunAfterBuild]` Sub does not run, and nothing says so, when its module holds a procedure named like the module
+
+**Describe the bug**
+When a module holds a procedure with the same name as the module, a `[RunAfterBuild]` Sub in that module does not run, and nothing says so. The build succeeds and the exe is written. The DEBUG CONSOLE's last line is `[BUILD] Executing '<project>.<module>.<Sub>'...`, and nothing follows it: no message box, no entry in the error panel, no diagnostic. Not even the first statement of the Sub runs. The names are compared without regard to letter case, so `Runner` and `runner` clash. A Sub, a Function and a `Private` Sub all cause it, and the procedure does not have to be called. Observed in the DEBUG CONSOLE after pressing Build.
+
+This is a sibling of "A `[RunAfterBuild]` Sub does not run, and nothing says so, when a module is named like the project". There the module and the project share a name; here the project's name plays no part, and the clash is inside one module.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `sub-named-like-module.twinproj` (attached as `sub-named-like-module.zip`). The project is named `SubNamedLikeModule`. It has a `Startup` module with an empty `Sub Main`, and this module:
+   ```
+   Module Probe
+       [RunAfterBuild]
+       Public Sub Hello()
+           Debug.Cls
+           Debug.Print "RunAfterBuild ran"
+       End Sub
+
+       Public Sub Probe()
+       End Sub
+   End Module
+   ```
+2. Build the project.
+3. Read the DEBUG CONSOLE. It ends at `[BUILD] Executing 'SubNamedLikeModule.Probe.Hello'...`. `RunAfterBuild ran` is never printed.
+4. Rename `Sub Probe` to `NotProbe`, or move it to another module, and build again. The console is cleared and holds `RunAfterBuild ran`.
+
+**Expected behavior**
+The Sub runs whatever the other procedures in its module are called, as it does once `Probe` is renamed. If a procedure may not have its module's name, the compiler should refuse it with an error, and not build the project and skip the Sub in silence. Writing `Probe.Probe` in code is already refused, with TB5027.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 983, identically, so this is not a recent regression.
+
+VB6 accepts the name. A project named `SubNamedLikeModule` with a standard module `Probe` (`Attribute VB_Name = "Probe"`) that holds `Public Sub Probe()` builds, and `Sub Main` calls `Probe` and it runs (the project is attached as `sub-named-like-module-vb6.zip`; it printed `Sub Probe ran, in a module named Probe`). VB6 has no `[RunAfterBuild]`, so what is checked is that the module and the Sub can coexist.
+
+What does not reproduce it: a procedure with another name, such as `NotProbe`. A procedure named like a module, when the module that holds it is a different one from the module that holds the `[RunAfterBuild]` Sub (a `Runner` module holding the Sub, and an `Other` module holding `Sub Other`).
+
+What reproduces it besides the plain case: a `Function Probe`, a `Private Sub Probe`, and the clash in another letter case (`Module Runner` with `Sub runner`). The failure needs no help from any tool: the Sub is the one marked `[RunAfterBuild]`, and its body never starts.
+
+Severity: moderate. A `[RunAfterBuild]` Sub runs after the exe is built, for example to sign it, and here it is skipped while the build reports success. Nothing points at the clash as the cause, so the project's owner has to find it by renaming procedures.
+
+<!-- Reproducer: bugs/sub-named-like-module/ (mode run, exe true; expects exit 5, the console's `[BUILD] Executing 'SubNamedLikeModule.Probe.<Sub>'...` line, and no `RunAfterBuild ran`); verified on BETA 997 by `bug_repro.mjs verify` (reproduces, run exit 5), with a scratch copy whose Sub is named NotProbe as the control (exit 0, `RunAfterBuild ran`, verify says NO LONGER REPRODUCES); the copy was removed from bugs/ afterwards. `bug_repro.mjs run` needs --exe by hand, because a project may hold one [RunAfterBuild] (TB5114) and this one's own is the subject; verify takes exe from repro.json. The harness wraps the Sub in a Sub of its own appended to the same module, so run's console names `tbrun_RunProbe`; a build in the IDE names the Sub itself. The wrapper is not needed: a tree whose attribute the wrapper does not match (`[Description("x")] [RunAfterBuild]` on one line) fails the same way, and a marker file written by the Sub's first statement is not written. The scratch trees for the Function, Private Sub, other-case, other-module and BETA 983 variants are not in the reproducer; the variants were checked on BETA 997, the plain case and its no-wrapper form on BETA 983 as well. VB6: `bug_repro.mjs vb6 sub-named-like-module` prints `Sub Probe ran, in a module named Probe` and `Sub Main ran`. Related entry: "A `[RunAfterBuild]` Sub does not run, and nothing says so, when a module is named like the project" (bugs/module-named-like-project/); the two may share one cause, a name lookup that finds the module where it wants the procedure. docs/Reference/Attributes.md (#runafterbuild) carries this in the same WARNING callout as that entry; once a fixed build is released, its sentences about a procedure named like its module go. -->
+
+---
+
+## A declaration that names two calling conventions compiles without a diagnostic
+
+**Describe the bug**
+An API declaration, a procedure, a delegate or an interface member can name its calling convention after its name, and the compiler accepts two conventions on one declaration, in either order, with no error or warning. The call then uses one of them. In every pair tried on a `Declare`, `CDecl` is dropped and the other keyword is used, whichever comes first.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `two-calling-conventions-accepted.twinproj` (attached as `two-calling-conventions-accepted.zip`). Its `Startup.twin` declares `RtlUlongByteSwap`, which `ntdll` exports as fastcall on a 32-bit build (its one argument in ECX), under several conventions:
+   ```
+   Private Declare PtrSafe Function SwapFast FastCall Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+   Private Declare PtrSafe Function SwapCdecl CDecl Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+   Private Declare PtrSafe Function SwapFastCdecl FastCall CDecl Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+   Private Declare PtrSafe Function SwapCdeclFast CDecl FastCall Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+   Private Declare PtrSafe Function SwapThisCdecl ThisCall CDecl Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+   Private Declare PtrSafe Function SwapCdeclThis CDecl ThisCall Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+   ```
+   It also holds a delegate (`CDecl FastCall`), a procedure in a module (`CDecl ThisCall`) and an interface member (`ThisCall CDecl`), each naming two conventions. `Sub Main` prints the result of each `Declare` for `&H11223344`.
+2. Compile it. The Problems panel reports 0 errors and 0 warnings.
+3. Run it (win32). The DEBUG CONSOLE prints:
+   ```
+   FastCall:        44332211
+   FastCall CDecl:  44332211
+   CDecl FastCall:  44332211
+   ThisCall CDecl:  44332211
+   CDecl ThisCall:  44332211
+   CDecl:           1EEC6F00
+   ```
+   The last value changes from run to run: called as cdecl, the function swaps whatever ECX held. Every pair is called as fastcall or thiscall, which pass this one argument the same way.
+
+**Expected behavior**
+A declaration has one calling convention, so the second keyword is refused with an error that names it. As it is, nothing says which of the two the call uses, and when one of them is `CDecl`, it is dropped without a word.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995, identically apart from the cdecl value.
+
+Only the `Declare` pairs are observed at run time. The delegate, the procedure and the interface member are only compiled, so which convention they use is not known. Not tried: `FastCall` with `ThisCall`, which this function cannot tell apart, and a 64-bit build, where the conventions have no effect.
+
+Severity: low. It takes a mistake to trigger it, but the mistake goes unreported, and a declaration meant as cdecl that names a second convention by accident calls the function the wrong way.
+
+<!-- Reproducer: bugs/two-calling-conventions-accepted/ (mode run, expects exit 0 and the four pair lines with 44332211); verified on BETA 995 and 997 by `bug_repro.mjs verify` and `run`, and `compile` reports no diagnostic on 997. Stated in docs/Features/Advanced/API-Declarations.md, section "Calling Conventions", the sentences after the table that begin "Name at most one convention" (they name BETA 997): when fixed, say that a second convention is an error, with no mention of the defect. -->
+
+---
+
+## `raiseEvent` in a tool window's own HTML throws a TypeError, and the add-in's listener is not called
+
+**Describe the bug**
+An add-in sets a tool window's HTML with an inline handler that calls `raiseEvent`, as the list-view items of Sample 15 do, and registers a listener for the event with `AddEventListener` on the parent element. Clicking the element does not call the listener, and the add-in is told nothing. The IDE's page throws `TypeError: Cannot read properties of null (reading 'rootEventHandler')`: `raiseEvent` goes up through `parentNode` looking for an element that has `rootEventHandler`, and in plain tool-window HTML no element has one, so it goes past the document.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `raiseevent-plain-html-typeerror.twinproj` (attached as `raiseevent-plain-html-typeerror.zip`). It is an add-in, and its tool window is built like this:
+   ```
+   With Pane.RootDomElement.ChildDomElements.Add("box", "div")
+       .AddEventListener("myEvent", AddressOf MyEvent)
+       .Properties.innerHTML = _
+           "<span id='raise' onclick='raiseEvent(""myEvent"", event, true, ""a"")'>[raise]</span> " & _
+           "<span id='direct' onclick='this.parentNode.myEvent(event)'>[direct]</span>"
+   End With
+   ```
+   `MyEvent` prints `myEvent from <id of the element clicked>` to the DEBUG CONSOLE.
+2. Build it (win32). Copy `Build\RaiseeventPlainHtmlTypeerror_win32.dll` into `%APPDATA%\twinBASIC\addins\win32\`, restart the IDE and open any project.
+3. Click the toolbar button **raiseEvent repro**. A tool window opens with **[raise]** and **[direct]**.
+4. Click **[raise]**. Nothing is printed, and the IDE's page has the uncaught `TypeError` above.
+5. Click **[direct]**. The DEBUG CONSOLE prints `myEvent from direct`.
+
+**Expected behavior**
+Step 4 prints `myEvent from raise`: `raiseEvent` calls the listener the div registered, as calling it directly does in step 5. If `raiseEvent` is meant only for list views and Monaco widgets, it stops at the document without throwing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995.
+
+The workaround is step 5's: an inline handler that calls the function `AddEventListener` stores on the element under the event's name.
+
+Severity: low. A workaround exists, but nothing tells the add-in's author why the listener is not called: the exception shows only in the IDE's own page.
+
+<!-- Reproducer: bugs/raiseevent-plain-html-typeerror/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only panes` (test/addin/panes.test.mjs, "P12: raiseEvent from plain tool-window HTML throws, and the add-in hears nothing", and the direct call after it), which passes on BETA 995 and 997. The reproducer is a cut-down copy of that lane's PanesProbe add-in (test/addin/probes/panes), compiled clean on 997 by `bug_repro.mjs compile`, and not itself run in a lane. The raiseEvent source quoted is from BETA 997's ide/main.js. Stated in docs/Reference/Built-In/tbIDE/HtmlElement.md, the NOTE under "raiseEvent" (names BETA 997), and in WIP.HelpAddin.md (P12): when fixed, update that test and P12, and state in the NOTE what raiseEvent does in plain HTML, with no mention of the defect. -->
+
+---
+
+## Setting a property whose name starts with `on` through `HtmlElementProperties` does nothing, and raises no error
+
+**Describe the bug**
+An add-in that sets an event-handler property of a tool-window element through `HtmlElementProperties`, such as `.Properties.onclick = "..."`, gets no error, and the element has no handler: a click does nothing, and the element has neither an `onclick` property nor an `onclick` attribute. The same handler written inline in `innerHTML` runs. The IDE page's property setter skips any property whose last name starts with `on`, with an empty branch (`if(a.indexOf("on")==0){}`), and reports success.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `on-property-ignored.twinproj` (attached as `on-property-ignored.zip`). It is an add-in, and its tool window is built like this:
+   ```
+   With .Add("property", "div")
+       .Properties.innerText = "[property]"
+       On Error Resume Next
+       .Properties.onclick = "this.innerText = 'clicked'"
+       Host.DebugConsole.PrintText "onclick set, error " & Err.Number
+       On Error GoTo 0
+   End With
+   With .Add("inline", "div")
+       .Properties.innerHTML = "<span onclick=""this.innerText = 'clicked'"">[inline]</span>"
+   End With
+   ```
+2. Build it (win32). Copy `Build\OnPropertyIgnored_win32.dll` into `%APPDATA%\twinBASIC\addins\win32\`, restart the IDE and open any project.
+3. Click the toolbar button **on property repro**. A tool window opens with **[property]** and **[inline]**, and the DEBUG CONSOLE prints `onclick set, error 0`.
+4. Click **[property]**. Nothing happens.
+5. Click **[inline]**. Its text changes to `clicked`.
+
+**Expected behavior**
+Either the property is set, as every other property is, and step 4 changes the text; or, if handler properties are refused on purpose, the assignment raises an error that says so, and step 3 prints a nonzero error.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995.
+
+Only `onclick` was tried. The setter's test is on the name, so it applies to every name that starts with `on`.
+
+Severity: low. `AddEventListener` and inline handlers work, but an add-in that sets a handler property gets neither the handler nor an error.
+
+<!-- Reproducer: bugs/on-property-ignored/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only panes` (test/addin/panes.test.mjs, 'P4: a property whose name starts with "on" is dropped, and the add-in is told nothing'), which passes on BETA 995 and 997. The reproducer is a cut-down copy of that lane's PanesProbe add-in (test/addin/probes/panes), compiled clean on 997 by `bug_repro.mjs compile`, and not itself run in a lane. The setter source quoted is from BETA 997's ide/main.js. Stated in docs/Reference/Built-In/tbIDE/HtmlElementProperties.md, the NOTE that begins "A property whose name starts with `on` is ignored" (names BETA 997), and in WIP.HelpAddin.md (P4): when fixed, update that test and P4, and remove the NOTE or replace it with what the setter now does. -->
+
+---
+
+## LLVM-compiled code raises no error when a `Double` overflows, where it raises error 6 otherwise
+
+**Describe the bug**
+In a procedure compiled with LLVM, a `Double` addition, subtraction, multiplication or exponentiation whose result is too large for a `Double` raises no error: `Err.Number` stays 0 and the target holds infinity. The same statement in a procedure compiled without LLVM raises error 6 (*Overflow*), as VB6 does. A program that relies on error 6 to detect an overflow gets a silent `Inf` instead. No project setting and no other attribute is involved: the one difference is `[CompilerOptions("+llvm")]` on the procedure, or `tbrun --llvm` on the whole project. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm-double-overflow-no-error.twinproj` (attached as `llvm-double-overflow-no-error.zip`). It needs an LLVM licence (Ultimate): `LlvmCases` is compiled with LLVM by its attribute. `PlainCases` holds the same statements without it. Each runs under `On Error Resume Next`, for example:
+   ```
+   [CompilerOptions("+llvm")]
+   Private Sub LlvmCases()
+       Dim big As Double = 1E+308
+       Dim r As Double
+       On Error Resume Next
+       r = 5#: Err.Clear: r = big * 10#
+       Debug.Print "LLVM   Double *   Err=" & Err.Number & " r=" & r
+   End Sub
+   ```
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   plain  Double *   Err=6 r=1.#INF
+   plain  Double +   Err=6 r=1.#INF
+   plain  Double ^   Err=6
+   plain  Double /   Err=6 r=1.#INF
+   plain  1# / 0#    Err=11 r=1.#INF
+   plain  Long +     Err=6 l=5
+   LLVM   Double *   Err=0 r=1.#INF
+   LLVM   Double +   Err=0 r=1.#INF
+   LLVM   Double ^   Err=0
+   LLVM   Double /   Err=6 r=5
+   LLVM   1# / 0#    Err=11 r=5
+   LLVM   Long +     Err=6 l=5
+   ```
+
+**Expected behavior**
+Error 6 in LLVM-compiled code for every `Double` overflow, as in the same code without LLVM and in VB6 (attached as `llvm-double-overflow-no-error-vb6.zip`, which prints `Err=6` for the multiplication, the addition, the exponentiation and the division, and `Err=11` for `1# / 0#`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995, identically, and on win32 and win64. Running the reproducer with `--llvm` compiles every procedure with LLVM and gives the `LLVM` results for both halves. With `[FloatingPointErrorChecks(True)]` on the LLVM procedure the multiplication still raises nothing.
+
+What does not reproduce it: a `Double` division that overflows (`1E+308 / 0.1`) raises 6, and so does `Exp(1000#)`, a `Long` overflow (`2147483647 + 1`) raises 6, and `1# / 0#` raises 11, all in LLVM-compiled code. So the overflow check is missing from the addition, subtraction, multiplication and `^` operators, not from the error path.
+
+A second difference shows in the same output. After a division that raises an error, LLVM-compiled code leaves the target unassigned: `r` is still 5 after `1# / 0#` (error 11) and after `1E+308 / 0.1` (error 6). Without LLVM the target is assigned infinity, `1.#INF`, and so it is in VB6 (`r=1.#INF` after each of its errors). Under `On Error Resume Next` the two builds then continue with different values.
+
+A `Single` addition, subtraction, multiplication or division that overflows raises no error without LLVM, where VB6 raises 6 (with LLVM the first three raise none either, and the division raises 6). That is a separate defect, with its own reproducer, in the entry "A `Single` that overflows raises no error, where VB6 raises error 6" (`bugs/single-overflow-no-error/`).
+
+Severity: a silent wrong result. An overflow that raises 6 in a debug run and no error in the LLVM-compiled build changes what a program computes, and nothing marks the difference.
+
+<!-- Reproducer: bugs/llvm-double-overflow-no-error/ (mode run: the LLVM procedure is compiled by its attribute, so `bug_repro.mjs run` needs no flag; expects the plain and LLVM lines above); verified on BETA 997 and 995 with `bug_repro.mjs run`, and on 997 with --llvm and --arch win64. VB6: `bug_repro.mjs vb6 llvm-double-overflow-no-error`. Not run in a built exe (Debug.Print writes nothing there). Originated in the p2 probes of 2026-10-06 (b_fpu_off). The docs/LLVM/Getting-Started.md section "Language support" carries a `> [!WARNING]` for it, naming BETA 997 (a silent wrong result, owner's rule); remove it once a fixed build is released. Related: the filed bugs/filed/llvm-err-after-raise (same page, a NOTE). The `Single` overflow without LLVM is its own entry, single-overflow-no-error. -->
+
+---
+
+## A `Single` that overflows raises no error, where VB6 raises error 6
+
+**Describe the bug**
+When a `Single` addition, subtraction, multiplication or division produces a result too large for a `Single`, twinBASIC raises no error and the target holds infinity: `s = sbig + sbig` with `sbig` at 3E+38 leaves `Err.Number` at 0 and `s` at `1.#INF`. VB6 raises error 6 (*Overflow*) for the same statement. The same holds for `+=` and `*=`, for `Single * Long` and for some `Single` constant expressions. A `Double` overflow raises 6, so a `Single` and a `Double` are treated differently. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `single-overflow-no-error.twinproj` (attached as `single-overflow-no-error.zip`). Its `Sub Main` runs each case under `On Error Resume Next`, for example:
+   ```
+   Dim sbig As Single = 3E+38!
+   Dim s As Single
+   On Error Resume Next
+   s = 5!: Err.Clear: s = sbig + sbig
+   Debug.Print "Single +        Err=" & Err.Number & " s=" & s
+   ```
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   Single +        Err=0 s=1.#INF
+   Single -        Err=0 s=-1.#INF
+   Single *        Err=0 s=1.#INF
+   Single /        Err=0 s=1.#INF
+   Single * Long   Err=0 s=1.#INF
+   s = s + x       Err=0 s=1.#INF
+   s += x          Err=0 s=1.#INF
+   s = s * x       Err=0 s=1.#INF
+   s *= x          Err=0 s=1.#INF
+   CSng(Double)    Err=6 s=5
+   Single ^        Err=6 s=5
+   Variant *       Err=0 Double
+   Variant +       Err=0 Double
+   ```
+
+**Expected behavior**
+Error 6 for every `Single` arithmetic result that does not fit a `Single`, as in VB6 (attached as `single-overflow-no-error-vb6.zip`, which prints `Err=6 s=1.#INF` for `+`, `-`, `*`, `/`, `Single * Long`, `s = s + x` and `s = s * x`). The target is `1.#INF` after the error in both, so only the error is missing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995, identically, and on win64 (which prints `inf` where win32 prints `1.#INF`). Compiled with LLVM, `+`, `-`, `*` and the compound forms are the same, and `/` raises 6, as in VB6.
+
+What matches VB6: a `Variant` holding a `Single` that overflows becomes a `Double` variant, with no error, in both (`Variant *`, `Variant +` above). `CSng` of a `Double` that is too large raises 6 in both. The result of `Single * Long` is a `Double` in both (`TypeName`), though twinBASIC stores it into a `Single` without an error.
+
+Where twinBASIC differs from VB6 in the other direction: `s = sbig ^ 2!` raises 6 in twinBASIC and gives `1.#INF` with no error in VB6, and so does assigning a `Double` that is too large to a `Single` (`s = 1E+300`: error 6 in twinBASIC, `1.#INF` with no error in VB6).
+
+A `Single` constant expression that overflows is refused by VB6 at compile time with *Overflow*. twinBASIC compiles some forms (`Const A As Single = 3E+38! * 10!`, and the `+`, `-` and `/` forms, in a project of their own) and refuses others with TB5002 (`^`, `CSng(1E+300)`, and `1E+300` assigned to a `Single`); which constants it refuses also changed with the other constants in the project, so that part is not in the reproducer.
+
+Severity: a silent wrong result. A `Single` overflow that ends the program or reaches a handler in VB6 gives `Inf` and carries on in twinBASIC.
+
+<!-- Reproducer: bugs/single-overflow-no-error/ (mode run; expects the `+`, `-`, `*`, `/`, `+=` and `CSng` lines above); verified on BETA 997 and 995 with `bug_repro.mjs run`, and on 997 with --llvm and --arch win64. VB6: `bug_repro.mjs vb6 single-overflow-no-error` (VB6 has no `+=`, so the file has `s = s + x`). The constant cases come from tbbuild on one-constant projects, and VB6's from `vb6run.mjs` on `Const` statements; neither is in the reproducer. Pages with wrong sentences: docs/Reference/Core/Divide.md line 31 ("A declared **Single** that overflows raises error 6"), and the sentence "A declared (non-**Variant**) result that overflows raises error 6" in Plus.md, Minus.md and Multiply.md, and docs/Reference/Operators.md line 135 ("A result that does not fit its type raises error 6"); each of Divide.md, Plus.md, Minus.md, Multiply.md and Operators.md (after its porting table) carries a `> [!WARNING]` naming BETA 997 (a silent wrong result, owner's rule); remove them once a fixed build is released. The variant rows (Plus.md line 54, Minus.md line 34, Multiply.md line 32, Divide.md line 31's second clause) and the result-type rows for Single and Long are right. Exponent.md says nothing about overflow. Related: llvm-double-overflow-no-error (the `Double` overflow under LLVM). -->
+
+---
+
+## A module-level array `Const` with an element that does not fit its type crashes the compiler
+
+**Describe the bug**
+An array `Const` at module level whose element is too large for the element type takes the compiler down: `Const Big() As Long = Array(2147483648)`. The IDE's compile restarts the compiler, which crashes again, and the project can neither be compiled nor run. The crash happens whether or not the constant is used. Observed with `tbbuild`, which reports "the compiler crashed 3x".
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `array-const-element-overflow-crash.twinproj` (attached as `array-const-element-overflow-crash.zip`). Its one module is:
+   ```
+   Module Startup
+       Const Big() As Long = Array(2147483648)
+       Public Sub Main()
+       End Sub
+   End Module
+   ```
+2. Compile it. The compiler crashes.
+
+**Expected behavior**
+A compile error, as for a scalar constant: `Const K As Long = 2147483648` is refused with TB5002, and `Const Small() As Integer = Array(32768)` with TB5001.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+BETA 995 has no array constants: every array `Const` is refused there with TB5245, *array cannot be initialized here*. VB6 has no array constants either (`Const A() As Long = Array(1)` is a syntax error), so there is no VB6 project.
+
+What crashes, each in a module of its own, unused or used: `Array(2147483648)`, `Array(2147483648#)`, `Array(3000000000.5)` and `Array(1, 2147483648)` for `Long`; `Array(40000.5)` for `Integer`; `Array(300.5)` and `Array(-1.5)` for `Byte`; `Array(9223372036854775808#)` for `LongLong`. What does not: the same constant declared inside a procedure compiles clean; a `Single` or `Double` array with a huge element (`Array(1E+300)`) compiles; an `Integer` or `Byte` element that is an integer literal too large (`Array(32768)`) is the ordinary TB5001.
+
+A second crash seems to belong with this one, and it is not in the reproducer. A `Single` array `Const` whose element overflows, `Const A() As Single = Array(1E+39)`, compiles alone, but crashes the compiler when a later array `Const` of `Double` calls `Sqr`, `Timer` or `Rnd`, for example `Const B() As Double = Array(Sqr(4))` on the next line. The reverse order, `Abs` or `Len` in place of those, `Now` or `Date`, and a `Single` array of `Timer` do not crash. The cause is not established; it could be an overflow flag left by the first constant, which the second one's call then trips over.
+
+Severity: a compiler crash, and the project cannot be opened for compiling until the constant is removed.
+
+<!-- Reproducer: bugs/array-const-element-overflow-crash/ (mode compile, expects tbbuild exit 4); verified on BETA 997 by `bug_repro.mjs verify`; on 995 the same project gives TB5245, as every array Const does there. The Sqr/Timer/Rnd variant was checked with `tbbuild` on BETA 997 in scratch projects (beta997-probes c24_KJ_KTm and the t_* cases) and is not in the reproducer. docs/Reference/Core/Const.md (the "Array constants" section) carries a `> [!WARNING]` for it, naming BETA 997 (a crash, owner's rule), removed once a fixed build is released. -->
+
+---
+
+## A module-level array `Const` initialised from an element of another array `Const` crashes the compiler
+
+**Describe the bug**
+At module level, an array `Const` whose `Array(...)` list names an element of another array `Const` crashes the compiler: `Const A() As Long = Array(1, 2, 3)` followed by `Const B() As Long = Array(A(0))`. The compiler crashes again each time the IDE restarts it, so the project cannot be compiled or run. Observed with `tbbuild`, which reports "the compiler crashed 3x".
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `array-const-in-array-const-crash.twinproj` (attached as `array-const-in-array-const-crash.zip`). Its one module is:
+   ```
+   Module Startup
+       Const A() As Long = Array(1, 2, 3)
+       Const B() As Long = Array(A(0))
+       Public Sub Main()
+       End Sub
+   End Module
+   ```
+2. Compile it. The compiler crashes.
+
+**Expected behavior**
+Either `B` is `Array(1)`, as it is when the two constants are declared in a procedure, or the compiler refuses the element with an error, as it does for a scalar constant (`Const S As Long = A(0)` is TB5002).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+BETA 995 has no array constants: every array `Const` is refused there with TB5245. VB6 has none either, so there is no VB6 project.
+
+It crashes with `B` used or unused, with `Private` constants, with `Double` arrays, with the two in the opposite order, and when an array refers to its own element (`Const B() As Long = Array(1, B(0))`).
+
+What does not crash: the same two constants inside a procedure compile clean; an array whose element is a scalar `Const` compiles; `Array(A(0) + 1)` is an ordinary TB5001, *Type mismatch*.
+
+Severity: a compiler crash, and the project cannot be compiled until the constant is removed.
+
+<!-- Reproducer: bugs/array-const-in-array-const-crash/ (mode compile, expects tbbuild exit 4); verified on BETA 997 by `bug_repro.mjs verify`; on 995 the project gives TB5245. The variants above were checked with `tbbuild` on 997 in scratch projects. docs/Reference/Core/Const.md (the "Array constants" section) carries a `> [!WARNING]` for it, naming BETA 997 (a crash, owner's rule), removed once a fixed build is released. Related: array-const-element-overflow-crash. -->
+
+---
+
+## `ShiftRotateLeft`, `ShiftRotateRight`, `ShiftUnsignedRight` and `ByteSwap` ignore argument names and take their arguments by position
+
+**Describe the bug**
+The four new intrinsics of the VBA package (BETA 997) take their arguments by position and discard the names a call gives. `ShiftRotateLeft(ShiftAmount:=4, Number:=n)` uses 4 as the number and `n` as the shift amount, with no error, so the result is wrong. A name that matches no parameter, as in `ShiftRotateLeft(Foo:=n, Bar:=k)`, is accepted too. An ordinary procedure honours the names. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `math-intrinsics-ignore-argument-names.twinproj` (attached as `math-intrinsics-ignore-argument-names.zip`). Its `Sub Main` calls each intrinsic with a `Long` `n` of `&H12345678` and `k` of 4, in several forms.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   positional                  23456781
+   named, in order             23456781
+   named, swapped              4000000
+   right, named, swapped       400
+   unsigned, named, swapped    0
+   unknown names               23456781
+   ByteSwap, unknown name      78563412
+   own function, swapped       23456781
+   ```
+
+**Expected behavior**
+The names select the parameters, as they do for any procedure (the last line, a function of the project with the same parameter names): `ShiftRotateLeft(ShiftAmount:=4, Number:=n)` is `23456781`, `ShiftRotateRight` of the same is `81234567` and `ShiftUnsignedRight` is `01234567`. A name that matches no parameter is a compile error, as it is in VB6 (*Named argument not found*).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+The four intrinsics are new in BETA 997; BETA 995 does not know them (TB5079). VB6 has no equivalent functions, so there is no VB6 project; the VB6 behaviour quoted is for a named argument that matches no parameter.
+
+The declared parameters are `Number` and `ShiftAmount` (`ByteSwap` has `Number`). `Compilation.UnrollLoop Bogus:=4` is accepted in the same way. Calls that give the arguments in declaration order, with or without the names, work.
+
+Severity: a silent wrong result, but only for a call that names its arguments out of declaration order or misspells a name.
+
+<!-- Reproducer: bugs/math-intrinsics-ignore-argument-names/ (mode run, expects the eight lines above); verified on BETA 997 by `bug_repro.mjs verify`; not on 995 (the functions do not exist there). VB6 has no such function: `vb6run` gives *Sub or Function not defined* (beta997-probes/vb6, v1 to v3). docs/Reference/Default/VBA/Math/ShiftRotateLeft.md, ShiftRotateRight.md and ShiftUnsignedRight.md each carry a `> [!WARNING]` for it (ByteSwap.md none: with one argument, any name gives the right result), naming BETA 997 (a silent wrong result, owner's rule), removed once a fixed build is released. -->
+
+---
+
+## A module-level array `Const` declared after a procedure is not found by the procedures that follow it
+
+**Describe the bug**
+In a module, an array `Const` that is declared after a procedure cannot be used by the procedures declared after it: the use is TB5079, *Unrecognized symbol*. A scalar `Const` in the same place works. A procedure declared before the constant does see the name, and reads the array as empty: `Arr(1)` raises error 9 at run time. Observed in the compiler's diagnostics.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `array-const-after-procedure-not-found.twinproj` (attached as `array-const-after-procedure-not-found.zip`). Its module is:
+   ```
+   Module Startup
+       Public Sub Main()
+       End Sub
+       Const Scalar As Long = 5
+       Const Arr() As Long = Array(1, 2, 3)
+       Public Sub UseIt()
+           Debug.Print Scalar
+           Debug.Print Arr(1)
+       End Sub
+   End Module
+   ```
+2. Compile it. The only error is `TB5079 Unrecognized symbol 'Arr'` on the use in `UseIt`; `Scalar` is found.
+
+**Expected behavior**
+No error: the constant is visible to every procedure of the module wherever it is declared, as a scalar `Const` is.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+BETA 995 has no array constants (TB5245). VB6 has none either, so there is no VB6 project.
+
+Any procedure kind before the constant has the effect: a `Sub`, a `Function` and a `Property Get` were each checked. A declaration before the first procedure is fine, as are one after a `Dim`, an `Enum` or a `Type`. A `Public` array `Const` after a procedure is also unreachable from another module: `Startup.Arr(1)` is TB5027. Qualifying the name inside the module does not help. Classes are not affected: the order does not matter there.
+
+A procedure declared before the constant does find it, and then fails at run time. With `[RunAfterBuild] Public Sub Run()` first and `Const Arr() As Long = Array(1, 2, 3)` after it, `v = Arr(1)` under `On Error Resume Next` leaves `Err=9 Subscript out of range` and `v` unchanged.
+
+Severity: low, since the use is refused with an error; the run-time error 9 in an earlier procedure is a less obvious form of the same fault.
+
+<!-- Reproducer: bugs/array-const-after-procedure-not-found/ (mode compile, expects exit 1 and TB5079); verified on BETA 997 by `bug_repro.mjs verify`; on 995 TB5245. The earlier-procedure case (error 9), the Function, Property and cross-module cases were checked with tbbuild and tbrun on 997 in scratch projects, not in the reproducer. docs/Reference/Core/Const.md (the "Array constants" section) carries a `> [!NOTE]` for it, naming BETA 997: declare an array Const before the first procedure of its module; removed once a fixed build is released. -->
+
+---
+
+## A `Public` array `Const` in a class is accepted but cannot be reached from outside, where a `Public` scalar `Const` is refused
+
+**Describe the bug**
+A class may not have a `Public` constant: `Public Const Num As Long = 5` in a class is refused with TB5250, *Constants in a class cannot be Public*. For an array constant the declaration `Public Const Arr() As Long = Array(1, 2, 3)` is accepted without a diagnostic, and then `Arr` cannot be reached from outside the class: `obj.Arr(1)` is TB5027, *Unrecognized member*. The declaration is accepted and the constant is private in practice. Observed in the compiler's diagnostics.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `class-public-array-const-unreachable.twinproj` (attached as `class-public-array-const-unreachable.zip`). Class `WithArray` declares `Public Const Arr() As Long = Array(1, 2, 3)` and class `WithScalar` declares `Public Const Num As Long = 5`. `Sub Main` reads `a.Arr(1)` and `s.Num` from instances.
+2. Compile it. The diagnostics are:
+   ```
+   Startup.twin [7,21]: TB5027 Unrecognized member 'Arr' on type '_WithArray' [non-extensible object]
+   Startup.twin [8,21]: TB5027 Unrecognized member 'Num' on type '_WithScalar' [non-extensible object]
+   WithScalar.twin [3,18]: TB5250 Constants in a class cannot be Public
+   ```
+   The declaration in `WithArray` has no diagnostic of its own.
+
+**Expected behavior**
+The same refusal for both: TB5250 on the declaration of `Arr`, so that the cause is named at the declaration and not as an unrecognized member at each use.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+BETA 995 has no array constants (TB5245). VB6 has none either, so there is no VB6 project; a `Public Const` in a VB6 class is refused.
+
+Inside the class, the array constant reads correctly (`Arr(1)` in `WithArray.Show`). A `Private` array `Const` in a class works, and `Friend`, `Protected` and `Static` are accepted as well.
+
+Severity: low. The error appears at the use, with a message that does not mention the declaration.
+
+<!-- Reproducer: bugs/class-public-array-const-unreachable/ (mode compile, expects TB5027 and TB5250); verified on BETA 997 by `bug_repro.mjs verify`; on 995 TB5245. The VB6 remark is from knowledge of VB6, not run. docs/Reference/Core/Const.md (the "Array constants" section) carries a `> [!NOTE]` for it, naming BETA 997; removed once a fixed build is released. -->
+
+---
+
+## Passing a module-level array `Const` to a `ParamArray` compiles clean and then fails with a codegen error
+
+**Describe the bug**
+A module-level array `Const` passed as the argument of a `ParamArray` parameter compiles without a diagnostic, and the build then fails: the linker reports *compilation (codegen) error detected* at the call. The same constant passed to a parameter declared `a() As Long` is refused at compile time with TB5001, and to a `Variant` parameter with TB5077, so the `ParamArray` case slips through the check. Observed with `tbbuild --build`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `array-const-paramarray-codegen-error.twinproj` (attached as `array-const-paramarray-codegen-error.zip`). Its module:
+   ```
+   Module Startup
+       Const Values() As Long = Array(10, 20, 30)
+       Public Sub Main()
+           Count Values
+       End Sub
+       Private Sub Count(ParamArray Items() As Variant)
+           Debug.Print UBound(Items)
+       End Sub
+   End Module
+   ```
+2. Compile it: no errors. Build it (or press F5).
+3. The build log reads `[LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #7` and `[BUILD] failed`.
+
+**Expected behavior**
+A compile error at the call, as for the other whole-array uses of a constant array (TB5001 or TB5077). Documentation says the array "cannot be assigned to an array variable or a Variant, or passed as an array argument".
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+BETA 995 has no array constants (TB5245). VB6 has none either, so there is no VB6 project.
+
+With LLVM the same call gives *a feature used in your code is not yet supported with the LLVM compiler*.
+
+What does not reproduce it: the constant passed after another argument (`Count 1, Values`) fails the same way, but `Count Values(0)`, an element, builds clean, an ordinary array variable passed to a `ParamArray` builds clean, and a constant array declared inside the procedure builds clean.
+
+Severity: low. The build fails with a message that gives the line, but not the cause.
+
+<!-- Reproducer: bugs/array-const-paramarray-codegen-error/ (mode build, expects tbbuild exit 5 and "codegen" in the message); verified on BETA 997 by `bug_repro.mjs verify`; on 995 TB5245. The LLVM message is from the probe c15_paramarray run with `tbrun --llvm` on 997. The quoted documentation sentence is docs/Reference/Core/Const.md, "Array constants". That page carries a `> [!NOTE]` for it, naming BETA 997; removed once a fixed build is released. -->
+
+---
+
+## LLVM-compiled code rounds a `Single` or `Double` to an integer half away from zero, where VB6 and plain code round half to even
+
+**Describe the bug**
+In a procedure compiled with LLVM, `CLng`, `CInt` and `CLngLng` of a `Single` or `Double` variable, an assignment of one to a `Long` or `Integer`, and the operand conversion of `\` round a value exactly halfway between two integers away from zero: `CLng(2.5)` of a `Double` variable is 3 and `CLng(-0.5)` is -1. The same code without LLVM rounds to the even integer, 2 and 0, as VB6 does. A value that is not a tie rounds the same everywhere. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm-conversion-rounds-half-away.twinproj` (attached as `llvm-conversion-rounds-half-away.zip`). It needs an LLVM licence (Ultimate): `LlvmCases` is compiled with LLVM by its `[CompilerOptions("+llvm")]`, and `PlainCases` holds the same statements without it. Each procedure converts 0.5, 2.5, 3.5, -0.5 and -2.5.
+2. Run it (F5). The DEBUG CONSOLE has one line per value and mode; for 2.5 and -0.5 they read:
+   ```
+   plain 2.5:  CLng(d)=2  CLng(s)=2  CInt(d)=2  CLngLng(d)=2  l=d:2  d\1=2  CLng(v)=2  Round=2
+   plain -0.5:  CLng(d)=0  CLng(s)=0  CInt(d)=0  CLngLng(d)=0  l=d:0  d\1=0  CLng(v)=0  Round=0
+   LLVM  2.5:  CLng(d)=3  CLng(s)=3  CInt(d)=3  CLngLng(d)=3  l=d:3  d\1=3  CLng(v)=2  Round=2
+   LLVM  -0.5:  CLng(d)=-1  CLng(s)=-1  CInt(d)=-1  CLngLng(d)=-1  l=d:-1  d\1=-1  CLng(v)=0  Round=0
+   ```
+
+**Expected behavior**
+The same result in both: round half to even, as in VB6 (attached as `llvm-conversion-rounds-half-away-vb6.zip`), which prints for the same values `CLng(d)=2` for 2.5 and `CLng(d)=0` for -0.5, `l=d:2`, `d\1=2`, `CLng(v)=2` and `Round=2`, `0` and `0`. VB6 has no `LongLong`, so that column is missing from its output.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995, identically, and on win64.
+
+What does not differ in LLVM-compiled code: `CLng` of a `Variant` holding the `Double`, `Round`, `Int` and `Fix`, and conversions of a literal such as `CLng(2.5)` (folded to 2 by the compiler).
+
+A consequence: a value that rounds to zero in plain code can raise an error under LLVM. In a `Byte` conversion, `CByte(-0.5)` and `b = -0.5` (a `Double` variable) give 0 without LLVM and error 6, *Overflow*, with it, because the value becomes -1.
+
+Severity: a silent wrong result, at ties only, unless the rounding makes a conversion overflow.
+
+<!-- Reproducer: bugs/llvm-conversion-rounds-half-away/ (mode run: the LLVM procedure is compiled by its attribute, so `bug_repro.mjs run` needs no flag; expects the plain and LLVM lines above); verified on BETA 997 and 995 with `bug_repro.mjs run`, and on 997 with --arch win64. VB6: `bug_repro.mjs vb6 llvm-conversion-rounds-half-away`. The CByte case was run in a scratch project on 997. docs/LLVM/Getting-Started.md ("Language support") carries a `> [!WARNING]` for it, naming BETA 997 (a silent wrong result, owner's rule), removed once a fixed build is released. Related: llvm-double-overflow-no-error. -->
+
+---
+
+## In LLVM-compiled code a shift count is cut to the width of the shifted `Byte` or `Integer`
+
+**Describe the bug**
+In a procedure compiled with LLVM, the count of `<<` or `>>` is reduced to the width of the shifted type before the shift, for a `Byte` and an `Integer`: `b << 256` with `b` a `Byte` of `&H81` leaves `&H81`, and `b >> 257` gives `&H40`, because the count becomes 0 and 1. Without LLVM both give 0, as the documentation says: a shift by as many bits as the type holds, or more, yields 0. An `Integer` shifted by 65536 or more behaves the same way. A `Long` is not affected, as the count is itself a `Long`. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm-shift-count-truncated.twinproj` (attached as `llvm-shift-count-truncated.zip`). It needs an LLVM licence (Ultimate): `LlvmCases` is compiled with LLVM by its `[CompilerOptions("+llvm")]`, and `PlainCases` holds the same statements without it.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   plain  Byte    << 256    0
+   plain  Byte    >> 257    0
+   plain  Integer << 65536  0
+   plain  Integer >> 65537  0
+   plain  Long    << 65536  0
+   plain  Long    << -1     80000000
+   plain  Long    >> -1     FFFFFFFF
+   LLVM   Byte    << 256    81
+   LLVM   Byte    >> 257    40
+   LLVM   Integer << 65536  8001
+   LLVM   Integer >> 65537  C000
+   LLVM   Long    << 65536  0
+   LLVM   Long    << -1     0
+   LLVM   Long    >> -1     0
+   ```
+
+**Expected behavior**
+0 for a `Byte` shifted by 8 or more, and for an `Integer` shifted by 16 or more, whatever the count, in LLVM-compiled code as without LLVM (docs/Reference/Core/LeftShift.md and RightShift.md: "A shift by as many bits as the type holds, or more, yields 0"). VB6 has no shift operators, so there is no VB6 project.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995, identically, and on win64.
+
+Counts from 8 to 255 for a `Byte`, and 16 to 65535 for an `Integer`, give 0 in both modes. The difference starts where the count, taken modulo 256 or 65536, is below the width.
+
+A negative count also differs between the two modes, and the documentation calls the result of a negative count "no useful result". Without LLVM the count is reduced modulo 32 for every type (`1& << -1` is `&H80000000`, `&H80000001 >> -1` is `&HFFFFFFFF`); with LLVM a negative count gives 0 (a `Long`, `LongLong` or `Integer`; a `Byte` gives 0 too). Neither is documented, so that part is a difference, not a departure.
+
+Severity: a silent wrong result for a `Byte` shifted by 256 or more, or an `Integer` by 65536 or more. Counts that large are rare.
+
+<!-- Reproducer: bugs/llvm-shift-count-truncated/ (mode run: the LLVM procedure is compiled by its attribute; expects the Byte and Integer lines above); verified on BETA 997 and 995 with `bug_repro.mjs run`, and on 997 with --arch win64; the count table over Byte, Integer and Long is from a scratch run in both modes (beta997-probes cases7), and the Long and LongLong negative-count rows from probes/m03_values/diff_plain_vs_llvm.txt. docs/Reference/Core/LeftShift.md and RightShift.md each carry a `> [!WARNING]` for the Byte and Integer count (the documented rule is the one LLVM breaks), and docs/LLVM/Getting-Started.md ("Language support") may carry a `> [!NOTE]` for the negative count; naming BETA 997; removed once a fixed build is released. -->
+
+
+

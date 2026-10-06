@@ -33,8 +33,9 @@
 //                         export that for a session you are watching.
 //
 // Exit codes: 0 clean, 1 the project has errors, 2 the harness could not run (a
-// refused command line included) or crashed, 3 the compile never settled,
-// 4 the project crashes the compiler, 5 the build failed after a clean compile.
+// refused command line, or a project file that cannot be read, included) or
+// crashed, 3 the compile never settled, 4 the project crashes the compiler,
+// 5 the build failed after a clean compile.
 //
 // ---------------------------------------------------------------- why this
 //
@@ -79,7 +80,7 @@ import {
 import { findIde } from "./lib/tb-install.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { COMPILE_TIMEOUT, keptIdeLines, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
-import { laneProjectId, stageProject, unpackProject } from "./lib/tb-project.mjs";
+import { checkProject, laneProjectId, stageProject, unpackProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
 exitOnCrash();
@@ -111,7 +112,8 @@ With --build or --llvm it then builds the project.
 Exit codes:
   0  the project compiled without errors
   1  the project has errors
-  2  a refused command line (a path that is not a .twinproj included), no IDE, an IDE
+  2  a refused command line (a path that is not a .twinproj included), a project file
+     that cannot be read (empty, cut short or not a project at all), no IDE, an IDE
      that did not start or expose a debug port, a project that could not be exported
      or packed, an --llvm run on a Community or Personal licence, or a crash
   3  the compile never settled: the IDE did not report the project open, or its
@@ -199,6 +201,17 @@ if (proj && !/\.twinproj$/i.test(proj)) {
 if (proj && !existsSync(proj)) {
   console.error(`no such project: ${proj}`);
   process.exit(2);
+}
+// A file that exists and is not a project is refused here too, from its
+// container. The IDE does not fail on one: it opens a message box that nobody can
+// see or answer on a private desktop, and the run goes on to the timeout, where
+// it comes out clean -- or never settled, when the IDE never reports the project
+// open. Reading the container first makes it an exit 2 in a moment, naming the
+// file and what is wrong with it.
+try {
+  checkProject(proj);
+} catch (e) {
+  die(2, e.message);
 }
 // A named IDE that is not there is refused here, naming the path, as tbrun and
 // addin_test refuse it, rather than left for the launch to fail on.

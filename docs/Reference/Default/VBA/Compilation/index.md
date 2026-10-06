@@ -36,6 +36,10 @@ Public Sub Log(Message As String)
 End Sub
 ```
 
+## Compiler hints
+
+[**UnrollLoop**](UnrollLoop) is a statement rather than a value: placed as the first statement in a loop's body, it asks the [LLVM compiler](../../../LLVM/Getting-Started) to unroll that loop for speed. It does not change what the loop does, and code that is not compiled with LLVM ignores it.
+
 ## Members
 
 - [CompilerVersion](CompilerVersion) -- returns the twinBASIC compiler version number
@@ -45,3 +49,4 @@ End Sub
 - [CurrentProjectName](CurrentProjectName) -- returns the name of the current project
 - [CurrentSourceFile](CurrentSourceFile) -- returns the full path of the current source file
 - [ProcessorArchitecture](ProcessorArchitecture) -- returns the processor architecture of the running application
+- [UnrollLoop](UnrollLoop) -- asks the LLVM compiler to unroll the loop that contains it

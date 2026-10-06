@@ -54,11 +54,11 @@ End Sub
 
 The editor opens the module, highlights the whole failing line, `a(idx) = i * 10`, and puts a yellow arrow in the margin beside it. Under the line, an error panel shows:
 
-- **Run-time error -2147352565 (8002000B)**: the error number, then the same number in hexadecimal;
-- **DESCRIPTION:** and the error's description, here *Invalid index.*;
+- **Run-time error 9 (00000009)**: the error number, then the same number in hexadecimal;
+- **DESCRIPTION:** and the error's description, here *Subscript out of range*;
 - four buttons: **Try Again (Resume)**, **Ignore (Resume Next)**, **Stop** and **Search Online**.
 
-The number is the one `Err.Number` holds, and for some errors it is not the number VBA uses: see [Error numbers that differ from VBA](../../../Modules/ErrObject/Number#error-numbers-that-differ-from-vba). Nothing about the error is written to the [Debug Console](../DebugConsole). The panel's **×** only hides the panel.
+The number is the one `Err.Number` holds. Nothing about the error is written to the [Debug Console](../DebugConsole). The panel's **×** only hides the panel.
 
 The other panes show the state of the program at the failing line:
 
@@ -98,7 +98,7 @@ To run on to the end instead, correct the value and press <kbd>F5</kbd>, or pres
 - **A step key leaves a step waiting.** After <kbd>F8</kbd> on the failing line, **Ignore (Resume Next)** stops again on the next line instead of going on. Press <kbd>F5</kbd> to go on.
 - **At an error, Stop ends only the procedure that failed.** The procedure that called it goes on from its next line: if `Sub Main` called `FillTable`, the rest of `Sub Main` still runs. The panel's **Stop**, the toolbar's **Stop** and **Run → End** all do this. At a failed **Assert** check, **Stop** ends only the check, and the test goes on past it as if the check had passed. To end the whole run, first move the arrow to a later line with <kbd>CTRL</kbd> + <kbd>F9</kbd>, then press **Stop**. Away from an error --- at a breakpoint, after a step, or after Set Next Statement --- **Stop** ends the run.
 
-The last two are defects, as of BETA 995.
+The last two are defects, as of BETA 997.
 
 ## Debugger Options
 

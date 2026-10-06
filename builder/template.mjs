@@ -371,7 +371,7 @@ function renderSidebar(site) {
     `        <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><use xlink:href="#svg-menu"></use></svg>\n` +
     `      </button>\n` +
     `    </div>\n` +
-    `    <nav aria-label="Main" id="site-nav" class="site-nav">` +
+    `    ${NAV_OPEN}` +
     renderNavTree(site.navTree, [], baseurl) +
     renderNavExternalLinks(config) +
     `</nav>\n` +
@@ -383,6 +383,61 @@ function renderSidebar(site) {
     `      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme originally for Jekyll.\n` +
     `    </footer>\n` +
     `  </div>`
+  );
+}
+
+// The offline tree's nav. An online page holds the whole tree, so the nav
+// works without JavaScript. An offline page holds only the part of it that
+// shows when the page opens: the top level, and the children of the page and
+// of each of its ancestors. The whole tree is in the offline tree's
+// /assets/js/nav.js (`navScript`), loaded right after the nav, which puts it
+// in place before the page's scripts run. The part keeps every sibling of the
+// expanded path, so the nth-child selectors of `navActivationCss` find the
+// same items in both.
+
+export const NAV_SCRIPT_REL = "assets/js/nav.js";
+const NAV_OPEN = `<nav aria-label="Main" id="site-nav" class="site-nav">`;
+
+/** The whole nav tree's first list, compressed as a page is. */
+export function renderFullNav(site) {
+  return compressHtml(renderNavTree(site.navTree, [], String(site.config.baseurl ?? "")).replace(/\n$/, ""));
+}
+
+/**
+ * A templated page's HTML with its whole nav tree (`fullNav`, from
+ * `renderFullNav`) swapped for the page's part of it, and nav.js loaded
+ * after the nav: what the offline tree is derived from. A page without the
+ * whole tree is returned as it is.
+ */
+export function withPartialNav(html, page, site, fullNav) {
+  const navAt = html.indexOf(NAV_OPEN + fullNav);
+  if (navAt === -1) return html;
+  const treeAt = navAt + NAV_OPEN.length;
+  const closeAt = html.indexOf("</nav> ", treeAt + fullNav.length);
+  if (closeAt === -1) return html;
+  const baseurl = String(site.config.baseurl ?? "");
+  const open = page.navLevels ? page.navLevels.slice(1) : [];
+  const part = compressHtml(renderNavTree(site.navTree, [], baseurl, open).replace(/\n$/, ""));
+  const script = `<script src="${escapeMarkupAndQuotes(relativeUrl(`/${NAV_SCRIPT_REL}`, baseurl))}"></script> `;
+  const afterNav = closeAt + "</nav> ".length;
+  return html.slice(0, treeAt) + part + html.slice(treeAt + fullNav.length, afterNav) + script + html.slice(afterNav);
+}
+
+/**
+ * The offline tree's /assets/js/nav.js: puts the whole tree in place of a
+ * page's part of it. `navHtml` is `renderFullNav`'s list with its links
+ * relative to the site's root, and the page's `OFFLINE_SITE_ROOT` goes in
+ * front of each. The help add-in's pane hides the nav, so it is left alone
+ * there.
+ */
+export function navScript(navHtml) {
+  return (
+    `(function () {\n` +
+    `  var nav = document.getElementById("site-nav"), root = window.OFFLINE_SITE_ROOT || "";\n` +
+    `  if (!nav || !nav.firstElementChild || document.documentElement.hasAttribute("data-pane")) return;\n` +
+    `  var html = ${JSON.stringify(navHtml)};\n` +
+    `  nav.firstElementChild.outerHTML = root ? html.replace(/<a href="/g, '<a href="' + root) : html;\n` +
+    `})();\n`
   );
 }
 
@@ -417,10 +472,15 @@ function renderSiteTitle(config) {
 // included file's trailing newline (survives Liquid trim semantics --
 // see test in PLAN-4 §5.4 notes). Compress collapses to one space,
 // producing `</ul> </li>` rather than `</ul></li>`.
-function renderNavTree(nodes, ancestorTitles, baseurl) {
+//
+// `open`, when given, renders only part of the tree: the 1-based positions
+// of the path to expand, one per level (a page's `navLevels` after its
+// first entry). A node off the path keeps its expander but not its list.
+function renderNavTree(nodes, ancestorTitles, baseurl, open) {
   if (!nodes || nodes.length === 0) return `<ul class="nav-list"></ul>\n`;
   let out = `<ul class="nav-list">`;
-  for (const node of nodes) {
+  for (const [i, node] of nodes.entries()) {
+    const rest = !open ? undefined : open[0] === i + 1 ? open.slice(1) : null;
     out += `<li class="nav-list-item">`;
     if (ancestorTitles.includes(node.title)) {
       out += `<a href="${escapeMarkupAndQuotes(relativeUrl(node.url, baseurl))}" class="nav-list-link"> &#8734; </a>`;
@@ -435,8 +495,8 @@ function renderNavTree(nodes, ancestorTitles, baseurl) {
           ` </button>`;
       }
       out += `<a href="${escapeMarkupAndQuotes(relativeUrl(node.url, baseurl))}" class="nav-list-link">${String(node.title)}</a>`;
-      if (hasChildren) {
-        out += renderNavTree(node.children, [...ancestorTitles, node.title], baseurl);
+      if (hasChildren && rest !== null) {
+        out += renderNavTree(node.children, [...ancestorTitles, node.title], baseurl, rest);
       }
     }
     out += `</li>`;

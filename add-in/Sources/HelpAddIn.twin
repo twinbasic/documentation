@@ -4,6 +4,8 @@
 ' search. For the name under the cursor the compiler is asked where it is
 ' declared, through its hover (CompilerHover), so that c.Add finds
 ' Collection.Add when c is a Collection; a selection is looked up as it is.
+' The pages come from the add-in's own server when it was built with the help
+' archive (HelpServer), and from the live site otherwise.
 ' Every line it prints to the DEBUG CONSOLE starts "[tbDocsHelp] ", except
 ' "open <url>" (see OpenUrl).
 Private Class HelpAddIn
@@ -25,6 +27,7 @@ Private Class HelpAddIn
     Private HoverSink As HtmlElement        ' where the compiler's answers come
     Private AskSeq As Long                  ' the number of the last question
     Private Asked As String                 ' its word, "" once answered
+    Private Server As HelpServer            ' Nothing unless the add-in has the archive
 
     Private Const BASE_URL As String = "https://docs.twinbasic.com"
     Private Const TAG As String = "[tbDocsHelp] "
@@ -48,6 +51,7 @@ Private Class HelpAddIn
         Set HelpButton = Host.Toolbars(0).AddButton("tbDocsHelp", "Help")
         Host.KeyboardShortcuts.Add "f1", AddressOf OnF1
         Dim indexState As String = LoadIndex()
+        StartServer
         PageUrl = GetSetting(SETTINGS_APP, "Pane", "Page", "")
         BuildPane
         ' The scenarios wait for this line, and check the switch in it before
@@ -67,8 +71,30 @@ Private Class HelpAddIn
         Return "no index (" & Err.Description & ")"
     End Function
 
-    ' The site the pages come from. Under the test harness TB_DOCS_HELP_SITE
-    ' can name another, a copy of the site the lane serves itself.
+    ' Serves the pages from the archive, when the add-in was built with one
+    ' (HelpServer). The line it prints names the origin, which the scenarios
+    ' read.
+    Private Sub StartServer()
+        Set Server = New HelpServer
+        Dim serving As String = Server.Start()
+        If Len(serving) > 0 Then Host.DebugConsole.PrintText TAG & serving
+        If Len(Server.Origin) = 0 Then Set Server = Nothing
+    End Sub
+
+    Private Sub Class_Terminate()
+        If Not Server Is Nothing Then Server.CloseAll
+    End Sub
+
+    ' Where the pane's pages come from: the add-in's own server when it has the
+    ' archive, otherwise the site.
+    Private Function PagesUrl() As String
+        If Not Server Is Nothing Then Return Server.Origin
+        Return SiteUrl()
+    End Function
+
+    ' The site, which Open in browser always opens. Under the test harness
+    ' TB_DOCS_HELP_SITE can name another, a copy of the site the lane serves
+    ' itself.
     Private Function SiteUrl() As String
         If TestSwitchOn() Then
             Dim site As String = Environ$("TB_DOCS_HELP_SITE")
@@ -90,7 +116,7 @@ Private Class HelpAddIn
         If group = "light" Or group = "dark" Then query = "?theme=" & group & "&pane=1"
         Dim hash As Long = InStr(url, "#")
         If hash = 0 Then hash = Len(url) + 1
-        Return SiteUrl() & Left$(url, hash - 1) & query & Mid$(url, hash)
+        Return PagesUrl() & Left$(url, hash - 1) & query & Mid$(url, hash)
     End Function
 
     ' A theme change loads the page again with the new theme. The pane itself

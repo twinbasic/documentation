@@ -30,9 +30,6 @@ Syntax:
 
 The data type of *result* matches the type of *number*, whatever the type of *count*; shifts do not follow the [promotion rules](../../Reference/Operators#result-types-and-promotion) of the arithmetic operators. The right shift of an **Integer**, **Long**, **LongLong** or **LongPtr** is *arithmetic*: vacated high-order bits are copies of the sign bit, so a negative *number* stays negative --- a **Long** holding -8, shifted right by 1, is -4, and one holding -7 also gives -4, rounding toward negative infinity where [**\\**](IntegerDivide) rounds toward zero. A **Byte** has no sign, and its vacated bits are filled with zero. Constants and variables give the same result. A shift by as many bits as the type holds, or more, yields `0`. A negative *count* raises no error, but gives no useful result.
 
-> [!NOTE]
-> Up to BETA 983, a variable was shifted *logically*, filling the vacated bits with zero, while constants were shifted arithmetically: a **Long** variable holding -8, shifted right by 1, gave 2147483644. BETA 984 made both arithmetic.
-
 > [!IMPORTANT]
 > Only the integral types are shifted bit by bit. With other types of *number*:
 >
@@ -41,6 +38,9 @@ The data type of *result* matches the type of *number*, whatever the type of *co
 > - A **Single**, **Double**, **Date**, **Boolean** or **String** compiles without a diagnostic, but the procedure containing the shift does not run: the IDE reports *compilation (codegen) error detected* at that line.
 >
 > Convert such a value with [**CLng**](../Modules/Conversion/CLng) or [**CLngLng**](../Modules/Conversion/CLngLng) before shifting it.
+
+> [!WARNING]
+> In twinBASIC BETA 997, code compiled with LLVM cuts the shift count to the size of the shifted **Byte** or **Integer** before shifting: for a **Byte**, a count of 256 becomes 0 and 257 becomes 1. So a **Byte** shifted by 256 is unchanged, where the result should be 0, as it is without LLVM. An **Integer** shifted by 65,536 or more behaves the same way. A **Long** or **LongLong** is not affected.
 
 ### Compound assignment
 
@@ -67,6 +67,8 @@ Value = Negative >> 1           ' Returns -1: the vacated bit is a copy of the s
 ### See Also
 
 - [**\<<** operator](LeftShift)
+- [ShiftUnsignedRight](../Modules/Math/ShiftUnsignedRight) -- shifts right filling with zeros, not with the sign bit
+- [ShiftRotateRight](../Modules/Math/ShiftRotateRight) -- rotates instead of discarding the bits shifted out
 - [**\\** operator](IntegerDivide)
 - [**And** operator](And)
 - [Operators](../../Reference/Operators)

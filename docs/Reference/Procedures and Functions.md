@@ -24,6 +24,7 @@ permalink: /Reference/Procedures-and-Functions
 
 - [Calendar](../tB/Modules/DateTime/Calendar) -- returns or sets the calendar type (Gregorian or Hijri)
 - [CallByDispId](../tB/Modules/Interaction/CallByDispId) -- invokes a method or property on an object dynamically by IDispatch dispatch ID
+- [ByteSwap](../tB/Modules/Math/ByteSwap) -- reverses the order of the bytes in an integral value
 - [CallByName](../tB/Modules/Interaction/CallByName) -- invokes a method or property on an object dynamically by name
 - [CBool](../tB/Modules/Conversion/CBool) -- coerces an expression to a **Boolean**
 - [CByte](../tB/Modules/Conversion/CByte) -- coerces an expression to a **Byte**
@@ -233,6 +234,9 @@ permalink: /Reference/Procedures-and-Functions
 - [SendKeys](../tB/Modules/Interaction/SendKeys) -- sends keystrokes to the active window
 - [SetAttr](../tB/Modules/FileSystem/SetAttr) -- sets attribute information for a file
 - [Sgn](../tB/Modules/Math/Sgn) -- returns a value indicating the sign of a number
+- [ShiftRotateLeft](../tB/Modules/Math/ShiftRotateLeft) -- rotates the bits of an integral value left
+- [ShiftRotateRight](../tB/Modules/Math/ShiftRotateRight) -- rotates the bits of an integral value right
+- [ShiftUnsignedRight](../tB/Modules/Math/ShiftUnsignedRight) -- shifts the bits of an integral value right, filling with zeros
 - [Shell](../tB/Modules/Interaction/Shell) -- runs another program asynchronously and returns its task ID
 - [Sin](../tB/Modules/Math/Sin) -- returns the sine of an angle
 - [SLN](../tB/Modules/Financial/SLN) -- returns the straight-line depreciation of an asset for a single period
@@ -263,6 +267,7 @@ permalink: /Reference/Procedures-and-Functions
 
 - [UBound](../tB/Modules/Information/UBound) -- returns the largest valid subscript for a dimension of an array
 - [UCase$, UCase](../tB/Modules/Strings/UCase) -- returns a string converted to uppercase
+- [UnrollLoop](../tB/Modules/Compilation/UnrollLoop) -- asks the LLVM compiler to unroll the loop that contains it
 - [Unload](../tB/Core/Unload) -- removes an object (typically a form) from memory
 
 ## V

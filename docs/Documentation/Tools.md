@@ -91,7 +91,7 @@ The tests the toolchain has to pass. Twenty-one steps, each stopping the run if 
 16. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
 17. [`scripts/check_attribute_sweep.mjs`](#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
 18. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-19. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
+19. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, have each of them in their shim's table of targets, and run.
 20. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
 21. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
@@ -695,7 +695,7 @@ Verifies `lib/cli.mjs`, the module the tools read their command lines through, a
 
 The module's probes cover what `parseCli` returns and refuses, with a comparison against a strict `node:util` `parseArgs` over the same argument lists, and what `numberOption`, `choiceOption`, `regexOption`, `urlOption`, `dateOption`, `refuseTogether`, `withUsageError` and `printHelpAndExit` do. The first five are how a tool reads a value after the parse, and `refuseTogether` refuses options that exclude each other. The parse is strict for every tool: `parseCli` refuses an unknown option, a boolean flag given a value, a value flag with no value, a positional beyond the count the tool declares, and an empty value unless the option allows one --- only `tbdocs`'s `--baseurl` does. The probes cover each refusal and the `--` that ends the options. They also cover the options `builder/command-line.mjs` returns for `tbdocs`, where `--no-check` makes the order of the flags matter; no case can, since each of those command lines starts a build.
 
-The recorded cases are invocations that stop while the tool reads its command line, or at its first check of the project, folder, file or install the command line names, each with its exit code and what it prints on each stream: the tool's own words for the error exactly, a crash's only by the line that names the problem, and the opening of a usage text printed after it. Each case runs the tool as a child process, in an empty folder of its own and with `TB_IDE` and `PUPPETEER_EXECUTABLE_PATH` naming files that do not exist, so a case that gets past the command line fails on a different message rather than starting a twinBASIC IDE or a browser. A case belongs here only if the tool stops before doing any work.
+The recorded cases are invocations that stop while the tool reads its command line, or at its first check of the project, folder, file or install the command line names, each with its exit code and what it prints on each stream: the tool's own words for the error exactly, a crash's only by the line that names the problem, and the opening of a usage text printed after it. Each case runs the tool as a child process, in an empty folder of its own (or one holding just the file the case writes there) and with `TB_IDE` and `PUPPETEER_EXECUTABLE_PATH` naming files that do not exist, so a case that gets past the command line fails on a different message rather than starting a twinBASIC IDE or a browser. A case belongs here only if the tool stops before doing any work.
 
 Exit codes: **0** every probe and recorded case passed, **1** a probe or a recorded case failed, **2** the gate could not run: a refused command line, or a crash.
 
@@ -706,9 +706,9 @@ Exit codes: **0** every probe and recorded case passed, **1** a probe or a recor
 
 Verifies that the book's [pdf-lib patches](Fixes/PDFLib) write what pdf-lib itself writes. `book/render-book.mjs` loads Chromium's PDF, adds the metadata and the outline, and saves it, with a dozen shims replacing pdf-lib's parser, object classes and writer, and `parallelSave` in place of `save()`. This loads, changes and saves one document twice, with stock pdf-lib and with every shim `render-book.mjs` imports, each side in a process of its own, does the same for a document built with `PDFDocument.create`, and compares each pair of files object by object with every stream inflated, since `node:zlib` and pdf-lib's own deflate can compress the same bytes differently. It also checks each file's cross-reference entries against the objects they locate, since pdf-lib's own parser finds objects without them. No built tree, no browser; under a second.
 
-The document is written by the gate, without pdf-lib, so the forms the shims' parsers branch on are known to be in it: names with `#` escapes, numbers in every lexical form, a classic cross-reference table, and an incremental update with an object stream and a cross-reference stream. The change mirrors `render-book.mjs`'s and adds what reaches the rest of the shims: text drawn on a page that has just been given a new key, which moves the page's entries in `fast-dict-onebuf`'s buffer and must keep the page's two flags with them, a page inserted and one removed, objects parsed early and edited late, and a call of each patched method the book does not make, its result written into the document so that the comparison checks it. The created document reaches the factories that build a page tree and a catalog. Each member of pdf-lib that a shim puts a function into is checked against `PATCHES`, a list in the gate. A listed member that is not patched fails it, and so does a patched member that is not listed: a patch applied to a copy of a class leaves pdf-lib's own member as it was. Each listed member's function must run, unless the list marks the member as one neither document reaches and says why, and a marked member that runs fails the gate as well, so the marks stay true. A shim none of whose functions runs is reported whole, since the documents then no longer test it, or the book does not need it. On a difference, that document's shimmed side runs again with each shim alone and with each left out, and the report names the shims that make it.
+The document is written by the gate, without pdf-lib, so the forms the shims' parsers branch on are known to be in it: names with `#` escapes, numbers in every lexical form, a classic cross-reference table, and an incremental update with an object stream and a cross-reference stream. The change mirrors `render-book.mjs`'s and adds what reaches the rest of the shims: text drawn on a page that has just been given a new key, which moves the page's entries in `fast-dict-onebuf`'s buffer and must keep the page's two flags with them, a page inserted and one removed, objects parsed early and edited late, and a call of each patched method the book does not make, its result written into the document so that the comparison checks it. The created document reaches the factories that build a page tree and a catalog. Each member of pdf-lib that a shim puts a function into is checked against `PATCHES`, a list in the gate. A listed member that is not patched fails it, and so does a patched member that is not listed: a patch applied to a copy of a class leaves pdf-lib's own member as it was. Each listed member's function must run, unless the list marks the member as one neither document reaches and says why, and a marked member that runs fails the gate as well, so the marks stay true. A shim none of whose functions runs is reported whole, since the documents then no longer test it, or the book does not need it. Each patched member must also be in the table of targets its shim passes to `checkTargets` (`book/lib/shim-targets.mjs`), the check that stops the import when pdf-lib's own version of a member changes: a patch whose member is missing from the table would let a pdf-lib update change it unnoticed, so the gate fails and names the shim and the member. On a difference, that document's shimmed side runs again with each shim alone and with each left out, and the report names the shims that make it.
 
-Exit codes: **0** the shims write what stock pdf-lib writes, and every shim and patched member is reached and as listed; **1** a pair of files differs, a shim or patched member is no longer reached, or a patched member is not as listed; **2** the check could not run: a refused command line, a failure of the check itself, or a crash.
+Exit codes: **0** the shims write what stock pdf-lib writes, and every shim and patched member is reached, as listed and in its shim's table; **1** a pair of files differs, a shim or patched member is no longer reached, or a patched member is not as listed or not in its shim's table; **2** the check could not run: a refused command line, a failure of the check itself, or a crash.
 
 ### check_impexp_parity.mjs
 {: #check-impexp-parity }
@@ -802,6 +802,19 @@ It shares [`census_attributes.mjs`](#census-attributes)'s export and cache, and 
 
 Exit codes: **0** the file was written (with `--check`, it is up to date); **1** with `--check`, the file is stale; **2** a refused command line, no install, an export that failed, packages that declare different APIs under one name, or a crash.
 
+### build_help_archive.mjs
+{: #build-help-archive }
+
+    node scripts/build_help_archive.mjs [--src <dir>] [--out <file>]
+
+Writes the zip the IDE help add-in serves the documentation from. The add-in embeds `add-in/Resources/HELP/site.zip` in its DLL as a resource, and this tool builds that file from the built offline tree, `docs/_site-offline/` by default. Run [`build.bat`](#buildbat) first: the tool runs [`check_tree_fresh.mjs`](#check-tree-fresh) on the tree, as [`book.bat`](#bookbat) does, and refuses a tree older than its sources. The zip is not committed, because it is too large; `add-in/Resources/HELP/` is listed in `.gitignore`.
+
+The reader on the twinBASIC side does no inflating of its own, so the format is fixed. There is one entry per file and no directory entries. A name is relative to the tree root, uses forward slashes and is UTF-8, with general-purpose flag bit 11 set. Entries are sorted by name in code-unit order, so the same tree gives the same bytes. The DOS date and time are always 1980-01-01 00:00, the version made by and needed is 20, and there are no extra fields, no comments and no data descriptors: the CRC-32 and both sizes are in the local header and in the central directory. There is no zip64, so a tree of more than 65,535 files, or an archive of 4 GB, is refused. Files that are compressed already (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.ico`, `.woff2`, `.woff`, `.mp4`, `.zip`, `.pdf`) are stored. Every other file is deflated at level 9, and stored instead when the deflated data is not smaller than the file.
+
+After the file is written, the tool reads it back. It parses the end record and every central-directory entry, checks that each local header agrees with its entry (name, method, sizes, CRC-32), and inflates each deflated entry. It compares each entry's content and CRC-32 with the source file's bytes, and names any entry that differs. This check always runs. The file is written under a temporary name beside the target and renamed, so a failed run never leaves a half-written archive. The summary line gives the number of entries, the raw and zipped sizes in MB (with the part stored as it was), and the time.
+
+Exit codes: **0** the archive was written and verified; **1** the verification found a difference; **2** the tool could not do its job: a refused command line, a stale or missing tree, a tree too large for a zip without zip64, or a crash.
+
 ### convert_em_dash_separators.mjs
 {: #convert-em-dash-separators }
 
@@ -876,7 +889,7 @@ twinBASIC has no command-line build. The compiler executable's whole surface is 
 
 Seven files under `scripts/lib/` belong to it and are never run directly. `tb-build.mjs` is `tbbuild` without its command line: `compileProject` opens a project in the IDE and returns its diagnostics as an array, which is how `check_examples.mjs` and `sweep_attributes.mjs` build many projects without starting a process for each. It never exits the process and never tidies the registry, so its caller owns both. `tb-ide.mjs` holds the mechanics `tb-build.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics. `tb-ide-console.mjs` reads the IDE's DEBUG CONSOLE, which is where `tbrun` finds what a probe printed. `tb-run.mjs` presses Build and reads that console until a `[RunAfterBuild]` Sub has finished, and checks what was erased for a failed build; `tbrun` and `check_examples.mjs`'s `check_run` capture a run with it, so they capture it the same way. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. Every call it makes has a time limit, so a blocked page ends a run with a message rather than holding it forever. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
 
-Exit codes: **0** the project compiled without errors; **1** the project has errors; **2** a refused command line (a path that is not a `.twinproj` included), no IDE, an IDE that did not start or expose a debug port, a project that could not be exported or packed, an `--llvm` run on a Community or Personal licence, or a crash; **3** the compile never settled: the IDE did not report the project open, or its diagnostics did not match its status bar; **4** the project crashes the compiler; **5** the build failed after a clean compile.
+Exit codes: **0** the project compiled without errors; **1** the project has errors; **2** a refused command line (a path that is not a `.twinproj` included), a project file that cannot be read (empty, cut short or not a project at all: it is read before an IDE starts, and the message names the file and what is wrong), no IDE, an IDE that did not start or expose a debug port, a project that could not be exported or packed, an `--llvm` run on a Community or Personal licence, or a crash; **3** the compile never settled: the IDE did not report the project open, or its diagnostics did not match its status bar; **4** the project crashes the compiler; **5** the build failed after a clean compile.
 
 ### tbrun.mjs
 {: #tbrun }
@@ -884,7 +897,7 @@ Exit codes: **0** the project compiled without errors; **1** the project has err
     node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64] [--timeout S]
                            [--quiet MS] [--json] [--raw] [--keep] [--no-reap]
                            [--reap-images a,b] [--show|--hide]
-                           [--llvm | --compiler-options S] [--exe]
+                           [--llvm | --compiler-options S] [--exe] [--allow-name-clash]
 
 Builds a probe project and captures what it writes to the IDE's
 [Debug Console](../../tB/IDE/Project/DebugConsole). Where [`tbbuild.mjs`](#tbbuild) answers
@@ -940,6 +953,12 @@ is one of several marked --- and the check is then off. A probe that stays silen
 than `--quiet` while it works also ends the wait without that line, so raise `--quiet` for a
 slow one.
 
+**A probe whose module holds a procedure named like the module is refused, exit 2**, before
+an IDE starts. In twinBASIC (BETA 997) the `[RunAfterBuild]` Sub of such a module does not run,
+whatever the letter case or modifiers of the procedure, and nothing says so, so the run would end
+as a probe that stopped early. Rename the module or the procedure. `--allow-name-clash` runs the
+probe anyway, which is what a reproducer of that defect needs.
+
 **The capture is complete however much a probe prints**, so there is no reason to keep one
 short. `tbrun` reads the console's backing array rather than the pane, which is a virtualised
 list view holding only the rows that fit --- reading that instead returns the last ten or so
@@ -986,6 +1005,7 @@ adds to the staged copy. `TbRun.Out` writes to the Debug Console in the IDE, and
 | `--llvm` | Compile the whole probe, and the exe, with LLVM. The same as `--compiler-options +llvm`. |
 | `--compiler-options <s>` | The project's compiler options, for the run and the exe. |
 | `--exe` | Also run the built exe, and print what it writes with `TbRun.Out` and its exit code. |
+| `--allow-name-clash` | Run a probe whose module holds a procedure named like the module, which is refused otherwise. twinBASIC does not run its `[RunAfterBuild]` Sub, so the run exits 5. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
 | `--json` | One object with the path of the built file, the target, the captured lines, whether the probe returned, the licence an LLVM run checked, the exe's run, the IDE pid and anything reaped. |
 | `--keep` | Leave the IDE running, and print its pid as `ide-pid: <n>` (with `--json`, `idePid`), followed by the `taskkill` command that ends it and every process it started, as cmd and PowerShell spell it and as Git Bash does (`//PID`). Implies `--no-reap`, and leaves the IDE's registry entries for the probe as they are. |
@@ -1098,18 +1118,21 @@ wrong type, is refused with exit 2, naming the file and the key, before anything
 
 | Key | Meaning |
 |---|---|
-| `mode` | `compile`, `build`, `run`, `cli` or `manual`. `manual` is a reproducer that cannot be automated, such as one that needs a click in the IDE. A `cli` or `manual` reproducer may have no `src/`, when the bug is in files the installation ships; `verify` then runs it without packing, and `{project}` and `{src}` are refused. |
+| `mode` | `compile`, `build`, `run`, `cli`, `lane`, `probe` or `manual`. `lane` is a bug that a lane of [`ide_test.mjs`](#ide-test) or [`addin_test.mjs`](#addin-test) asserts, such as one that needs a click in the IDE; `probe` is one that a script of its own measures, such as one that needs several IDEs at once; `manual` is a reproducer that only a person can run. A `cli`, `lane`, `probe` or `manual` reproducer may have no `src/`, when the bug is in files the installation ships or the lane brings its own project; `verify` then runs it without packing, and `{project}` and `{src}` are refused. |
+| `lane` | `lane` mode. `ide:<lane>` or `addin:<lane>`: the suite, and the lane's name as `--only` matches it. A lane the suite's `lanes.mjs` does not list is refused. |
+| `tests` | `lane` mode. The names of the lane's tests that pass while the bug is there, as the lane's report prints them. The reproducer reproduces when every one of them passes. |
+| `probe` | `probe` mode. A script under `scripts/`, then its arguments: `verify` runs `node <script> <arguments>` from the repository's root, adding `--ide` when it was given one, and judges the exit code and the output by `expect`. The script starts and ends what it needs itself, and must end on its own. |
 | `arch` | Optional. `win32` (default) or `win64`. |
 | `llvm` | Optional, `build` and `run`. `true` builds with LLVM. |
 | `exe` | Optional, `run` only. `true` also runs the built exe, as `run --exe` does: no probe module is added, `Sub Main` runs in the exe, and an exe that exits with a code other than 0 is `tbrun`'s exit 6. `Debug.Print` writes nothing in an exe, so what `expect.output` can match is only what `TbRun.Out` wrote; a bug that crashes the exe is expected as `"exit": 6`. |
-| `expect.exit` | The exit code of `tbbuild` or `tbrun` as they print it, not this tool's mapped code; for `cli`, the compiler executable's. |
+| `expect.exit` | The exit code of `tbbuild` or `tbrun` as they print it, not this tool's mapped code; for `cli`, the compiler executable's; for `probe`, the script's. |
 | `expect.diagnostics` | `compile`. Diagnostic codes, such as `TB5182`, that must all be reported. |
 | `expect.noDiagnostics` | `compile`. `true` expects no error, warning, hint or information. |
 | `expect.message` | `build`. A regular expression the message `tbbuild` prints on standard error must match. |
-| `expect.output` | `run` and `cli`. Regular expressions, each of which must match the output. They are matched line by line, so `^` and `$` hold at each line. |
-| `expect.absent` | `run` and `cli`. Regular expressions, none of which may match the output, such as an `ERROR` line the bug's fix would print. |
+| `expect.output` | `run`, `cli` and `probe`. Regular expressions, each of which must match the output. They are matched line by line, so `^` and `$` hold at each line. |
+| `expect.absent` | `run`, `cli` and `probe`. Regular expressions, none of which may match the output, such as an `ERROR` line the bug's fix would print. |
 | `cli` | `cli` mode. The arguments for the compiler executable, `bin\twinBASIC_win32.exe`, or a list of such lists, run in turn; their output is joined, and their exit code is the one they all gave, or the codes joined by commas, such as `0,999`. `{tmp}` stands for a new temp folder, deleted afterwards; `{project}` for a copy of the packed `.twinproj` in it, and `{src}` for a copy of `src/`, so a command that writes either never touches the committed reproducer; `{ide}` for the folder of the IDE that `--ide` names or that is found, so a file the installation ships can be named without a user name. Give an output folder with backslashes and a trailing one, as `export` requires. Each command runs on a private desktop, inside a job that ends everything it starts, with its standard output and error written to files; `--timeout` (default 120 seconds) is the limit on each. The compiler opens a modal message box for some inputs, such as a damaged project, and waits for it to be closed, and on a private desktop nobody could close it. So the tool reads every dialog box a command opens, and presses its OK button, which lets the command go on. A command's output begins with one line for each box, in the order they opened, `dialog: <title>: <text>` with the box's text on one line, then its standard output, then its standard error, and `expect.output` and `expect.absent` are matched against that. |
-| `steps` | `manual`. What a person does to see the bug. `verify` prints it. |
+| `steps` | What a person does to see the bug, for the issue. `verify` prints it for a `manual` reproducer. |
 | `images` | Optional, `run` and `manual`. A non-empty list of picture names, each of letters, digits, `-` and `_`, without repeats. The project needs a `PngDump.twin` under `src/Sources/` and, when there is a `vb6/`, a `vb6/PngDump.bas` and a `Module=PngDump; PngDump.bas` line in its `Probe.vbp`; without them the file is refused. |
 | `expect.imagesDiffer` | `run`, with `images`. `true` reproduces only when at least one picture of the fresh run differs from the committed `images/<name>-vb6.png`, a difference in size counting; `false` only when all of them match. `images/<name>-vb6.png` must exist for every name, and the file is refused when one does not. |
 | `attach` | Optional. Files besides the project that the issue needs, such as a `.twinpack`: paths relative to the reproducer's folder, with forward slashes. `pack` adds each to `<slug>.zip`. A `cli` command finds a copy of each in its temp folder, at the same relative path: `{tmp}\garbage.twinproj` for `garbage.twinproj`, so a command may damage or write to it. |
@@ -1122,11 +1145,42 @@ be fixed in this build, and the entry may be ready to retire; for a filed bug it
 that a fix has been released. **manual**: not automatable,
 and `steps` is printed. **harness failed**: the tool could not do its job, as for a
 `tbbuild` or `tbrun` exit of 2, or a compile that never settled; that says nothing about
-the bug unless `expect.exit` names it. Reproducers run one at a time. `--jobs N` runs N at
+the bug unless `expect.exit` names it; for a `lane` reproducer, the suite's runner exiting
+2 or 3, or a named test missing from the lane's report. A `lane` reproducer whose test
+failed is **NO LONGER REPRODUCES**, so read the lane's report before retiring the entry:
+a test can fail for another reason. Reproducers run one at a time. `--jobs N` runs N at
 once, each in the IDE on its own port, from `--port` up. `verify` tidies the IDE's registry
-entries once for all of them, as [`check_examples.mjs`](#check-examples) does.
+entries once for all of them, as [`check_examples.mjs`](#check-examples) does. The `lane`
+reproducers run last: each suite's runner once, with `--only` naming every lane they need,
+and the runner tidies the registry for its lanes.
 
 Exit codes: **0** done --- a project that compiled, built or ran as it should, or, for `verify`, every reproducer that can be run on its own still reproduces; **1** a finding: the project has errors, or its build failed after a clean compile, or, for `vb6`, VB6 refused the project, or, for `verify`, at least one reproducer no longer reproduces; **2** a refused command line, a `repro.json` that is not valid, no IDE, a project that could not be packed, a harness that failed, or a crash; for `vb6`, no VB6, a reproducer with no `vb6/` folder, a project that has no `Probe.vbp` or calls `MsgBox` or `InputBox`, or VB6 failing to build it; for `verify`, a lane's harness failed; for `file`, an entry that is missing, ambiguous or marked unreadably, or a `bugs/filed/<slug>` already there, with nothing changed; **3** `new` found `bugs/<slug>` or `bugs/filed/<slug>` already there; **4** the compile never settled; **5** the project crashes the compiler; **6** `run`: the probe printed nothing; for `vb6`, the exe wrote no `out.txt`, or an empty one; **7** `run`: the probe ended before it returned; **8** `run --exe`, and `vb6`: the exe exited with a code other than 0, or was still running after `--timeout`, or, with `vb6`, the Application event log records that it faulted (a VB6 exe that dies of an access violation exits with code 0); **9** `run` and `vb6`: a picture that `images` names was not written, or could not be read.
+
+### probe_shared_temp.mjs
+{: #probe-shared-temp }
+
+    node scripts/probe_shared_temp.mjs [--ides N] [--rounds R] [--control] [--all]
+                                       [--ide <twinBASIC.exe>] [--port N] [--timeout S]
+
+Counts the builds that fail to write the type library when several IDEs build at once in one `TEMP` folder. It is the measurement behind the entry of `BUGS-TO-REPORT.md` whose reproducer is `bugs/concurrent-builds-shared-temp/`: such a build ends with `[TYPELIB] failed to finalize typelibrary.  Disk error?`, then `[LINKER] FAILED to create type library` and `[BUILD] failed`. Like [`tbbuild.mjs`](#tbbuild), it needs a twinBASIC install and Windows, and it is outside every gate and outside CI.
+
+Each round starts `--ides` IDEs at once, each on its own port and each opening a copy of the reproducer's project, packed into a folder under `%TEMP%\tbprobe-shared-temp\` with an explicit build path. An IDE builds one project and is ended, because an IDE reused for a second project wedges. Every IDE compiles its project, then waits until all the others have compiled, so that Build is pressed in all of them at about the same moment. A build whose log holds a `[TYPELIB] failed` line or `FAILED to create type library` failed to write the type library. Any other failed build is not what the probe measures; it ends the probe with exit 2.
+
+[`tbbuild.mjs`](#tbbuild) gives every IDE a `TEMP` folder of its own, so no build of the harness shares one. The probe gives all its IDEs one folder, made for the run under `%TEMP%\tbprobe-shared-temp\` and deleted afterwards, through the `env` option of `launchIde`. With `--control` it leaves the harness's own folders in place, one for each IDE, which is the reproducer's control.
+
+| Flag | Effect |
+|---|---|
+| `--ides <n>` | IDEs at once. Default 8. |
+| `--rounds <r>` | Rounds, one build in each IDE. Default 24. |
+| `--control` | Give each IDE a `TEMP` folder of its own. No build is expected to fail. |
+| `--all` | Run every round. By default the probe stops after the round in which it first sees a type library fail, because one is enough to show the defect. |
+| `--ide <path>` | Path to `twinBASIC.exe`, found as for `tbbuild`. |
+| `--port <n>` | The first DevTools port to try. Default 9760. The IDEs take the first free ports from it. |
+| `--timeout <secs>` | The wait for a compile to settle, and again for a build. Default 180. |
+
+The output is one `round <k>: <n> failed` line for each round, the last console lines of every build that failed, and a last line of the form `<f> of <n> builds failed to write the type library (TEMP shared)`, or `(TEMP per IDE)` under `--control`. Other work on the machine, such as lanes of [`addin_test.mjs`](#addin-test) or [`ide_test.mjs`](#ide-test), loads the same processor, and a disturbed run is not comparable with a quiet one.
+
+Exit codes: **0** no build failed to write the type library; **1** at least one did, so the defect is there; **2** a refused command line, no IDE, no free ports, an IDE that did not start, a project that did not compile, a build that failed in some other way, or a crash.
 
 ### vb6run.mjs
 {: #vb6run }
@@ -1179,9 +1233,12 @@ build target loads, what a compiler restart does to a loaded add-in, and which e
 names the IDE accepts. They build add-ins for win64 as well as win32, restart the compiler,
 and patch a built DLL's export name. One more checks that the environment variable the
 runner sets, which keeps an add-in under test from opening a browser, reaches the add-in,
-also after a compiler restart. The last lane tests the help add-in in `add-in/`, which opens
-the page for the name under the cursor, with the copy of the symbol index committed in
-`add-in/Resources/SYMBOLS/`. The twelve lanes take about two minutes together.
+also after a compiler restart. The last two lanes test the help add-in in `add-in/`, which
+opens the page for the name under the cursor, with the copy of the symbol index committed in
+`add-in/Resources/SYMBOLS/`: `help` with the pages from the built site, and `help-offline`
+with the pages from the add-in's own server, built with an archive that
+[`build_help_archive.mjs`](#build-help-archive) makes. The thirteen lanes take about two
+minutes together.
 
 | Flag | Effect |
 |---|---|

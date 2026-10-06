@@ -17,7 +17,11 @@
 //     do it in the middle of the other lanes' builds.
 //   * It does not check that the project or the IDE exists. The command line
 //     refuses those with a usage error; a caller with a bad path gets code 3
-//     after the timeout, exactly as tbbuild does.
+//     after the timeout, exactly as tbbuild does. Nor does it read the project
+//     file: the command line does, with checkProject (lib/tb-project.mjs), and a
+//     caller that passes a file the IDE cannot read gets the deadline's answer,
+//     which can be a clean compile with no rows. Every caller here packs its own
+//     projects, which are always readable.
 //
 // It always ends its IDE before it returns, unless `keep` is set. Node holds the
 // IDE's launcher in a job of its own (launchIde), so an IDE also goes when the

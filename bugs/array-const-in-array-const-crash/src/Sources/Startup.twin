@@ -1,0 +1,10 @@
+' Crashes the compiler: an array Const initialised from an element of another array Const.
+Module Startup
+
+    Const A() As Long = Array(1, 2, 3)
+    Const B() As Long = Array(A(0))
+
+    Public Sub Main()
+    End Sub
+
+End Module

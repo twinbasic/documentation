@@ -973,6 +973,24 @@ permalink: /tB/IDE/Project/Menu/Window
 
 ![The Window menu with Language highlighted and its submenu open to the right, listing nineteen languages in one tall column from Catalan and German through to Chinese Simplified and Chinese Traditional. Each is named in English with its own native spelling beside it, and English, British English, carries the tick.](Images/Menu_Window_Language.png)
 
-- ...
+Each language is listed by its English name, followed by its native name. British English is the base language; a string that another language pack does not translate is shown in British English.
+
+- Catalan
+- German
+- Greek
 - English (British English)
-- ...
+- Spanish
+- French
+- Hindi
+- Hungarian
+- Indonesian
+- Italian
+- Japanese
+- Malayalam
+- Polish
+- Portuguese (Brazil)
+- Russian
+- Swedish
+- Turkish
+- Chinese Simplified
+- Chinese Traditional

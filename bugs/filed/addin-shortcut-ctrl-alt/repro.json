@@ -1,5 +1,10 @@
 {
-  "mode": "manual",
+  "mode": "lane",
+  "lane": "addin:keys",
+  "tests": [
+    "P1: Ctrl and Alt keys do not fire",
+    "P1: a Ctrl or Alt key fires when the same key was pressed alone just before"
+  ],
   "steps": "This is an add-in project: building it makes a DLL that the IDE's compiler loads on every start until the DLL is removed. Install it knowingly, in an IDE you can restart, and remove it afterwards.\n1. Open addin-shortcut-ctrl-alt.twinproj and build it for Win32. The DLL is written to Build\\AddinShortcutCtrlAlt_win32.dll beside the project file. Close the IDE, copy the DLL into the IDE's addins\\win32 folder (beside twinBASIC.exe), and start the IDE again. Open any project: the DEBUG CONSOLE shows [KeysProbe] registered.\n2. With no text box focused (click an empty part of the toolbar), press, one at a time and a second apart: D, Shift+D, F1, Shift+F1. Each prints [KeysProbe] fired <key string>, as d, {shift}d, f1 and {shift}f1.\n3. Press Ctrl+Shift+D, Ctrl+D and Alt+F, a second apart. Nothing is printed for any of them, although the add-in registered {CTRL}{SHIFT}d, {ctrl}d and {ALT}f.\n4. Press D, then within half a second Ctrl+D, Ctrl+Shift+D, then F and Alt+F: now all of them print.\n5. Remove the add-in: close the IDE and delete addins\\win32\\AddinShortcutCtrlAlt_win32.dll.\nRe-measured on BETA 995 by `addin-test.bat --only keys` (the project is test/addin/probes/keys; the lane builds it into a private copy of the install and presses the keys as CDP key events).",
   "issue": 2445
 }

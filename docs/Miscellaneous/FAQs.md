@@ -134,7 +134,9 @@ You can also create a post in the #bugs channel of the [twinBASIC Discord server
 <details>
 <summary markdown=span id="localization"><b>Is the twinBASIC IDE available in other languages?</b></summary>
 
-The IDE currently has basic support for localizing all of the front end UI, with translations supplied by members of the community. These can be obtained from [#langpacks on the tB Discord server](https://discord.com/channels/927638153546829845/1329533568376115282), there's currently around 10 including French, German, Italian, Portuguese, Russian, Chinese (Simplified), Chinese (Traditional), Japanese, Swedish, Hungarian, Greek, Catalan, Indonesian (Bahasa), and Malayalam. Others may have been posted since this was written; check the channel.
+Yes. The whole front-end UI can be localized, with translations supplied by members of the community. The IDE ships with language packs for Catalan, Chinese (Simplified), Chinese (Traditional), French, German, Greek, Hindi, Hungarian, Indonesian (Bahasa), Italian, Japanese, Malayalam, Polish, Portuguese (Brazil), Russian, Spanish, Swedish and Turkish, besides the base British English. Choose one under [**Window** > **Language**](tB/IDE/Project/Menu/Window#language).
+
+Each pack is a UTF-8 text file in the `locale` folder of the IDE, named by its IETF language tag (`pl-pl.lang`, `fr-fr.lang`); the folder's `README.txt` says how to write a new one. A string a pack does not translate is taken from the base pack, `en-gb.lang`. Translators share new and updated packs in [#langpacks on the tB Discord server](https://discord.com/channels/927638153546829845/1329533568376115282).
 
 Internal text such as the hover information does not yet support localization, but this is planned for the future.
 
@@ -246,6 +248,8 @@ You can import individual files, from VB projects or any type, through the Impor
 > You can select .bas/.cls files individually, but to import Forms, UserControls, Property Pages, and Resource Files you must currently select the .vbp file they're associated with. You'll then be shown a list of files you can import (with their new twinBASIC extensions .tbform/.twin etc-- make sure to import both, e.g. for Form1.frm you'll see Form1.frm.tbform and Form1.frm.twin:
 
 ![The Import from twinproj dialog: a tick-box tree of everything found in RunAsTI.vbp, with the Resources branch expanded over its ICON and MANIFEST folders and a Sources branch below. Form1.frm.tbform and Form1.frm.twin are both ticked.](Images/16833fae-4bd7-418f-bb16-691a611a5b01.png){:style="width:50%; height:auto;"}
+
+Importing a .vbp also carries over its [startup object](tB/IDE/Project/Settings#startup-object) and its [icon form](tB/IDE/Project/Settings#icon-form). A VB6 project that was linked as a console program --- its `LinkSwitches` line contains `/SUBSYSTEM:CONSOLE`, written in capitals --- becomes a [console application](tB/IDE/Project/Settings#is-console-application). No other linker switch is carried over.
 </details>
 
 <details>

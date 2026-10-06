@@ -75,7 +75,7 @@ function snapshot(holders) {
 }
 
 // The functions the holders hold now and did not hold in `before`, each with
-// the members that hold it.
+// the members that hold it, as { label, holder, key }.
 function installedSince(holders, before) {
   const installed = new Map();
   for (const [obj, label] of holders) {
@@ -89,7 +89,8 @@ function installedSince(holders, before) {
       ]) {
         const fn = now[part];
         if (typeof fn !== "function" || was.get(key)?.[part] === fn) continue;
-        installed.set(fn, [...(installed.get(fn) ?? []), `${label(String(key))}${suffix}`]);
+        const member = { label: `${label(String(key))}${suffix}`, holder: obj, key: String(key) };
+        installed.set(fn, [...(installed.get(fn) ?? []), member]);
       }
     }
   }
@@ -97,9 +98,10 @@ function installedSince(holders, before) {
 }
 
 // Each member that holds an installed function a shim defines, as
-// { shim, member, ran }. The inspector gives each function's position; its
-// coverage entry is the one at that position whose source is the function's
-// own.
+// { shim, member, ran, tabled }, where `tabled` is whether the shim's own
+// target table (book/lib/shim-targets.mjs) has an entry for that member. The
+// inspector gives each function's position; its coverage entry is the one at
+// that position whose source is the function's own.
 async function patchedMembers(coverage, installed, shimUrls) {
   const scripts = new Map(coverage.map((s) => [s.scriptId, s]));
   const fns = [...installed.keys()];
@@ -118,7 +120,7 @@ async function patchedMembers(coverage, installed, shimUrls) {
     const members = installed.get(fn);
     const { internalProperties = [] } = await session.post("Runtime.getProperties", { objectId: item.value.objectId });
     const at = internalProperties.find((p) => p.name === "[[FunctionLocation]]")?.value.value;
-    if (!at) throw new Error(`the inspector gives no position for ${members[0]}`);
+    if (!at) throw new Error(`the inspector gives no position for ${members[0].label}`);
     const script = scripts.get(at.scriptId);
     if (!script || !shimUrls.has(script.url)) continue;
     if (!sources.has(at.scriptId)) {
@@ -137,7 +139,10 @@ async function patchedMembers(coverage, installed, shimUrls) {
     // A function never called may never have been compiled, and then the
     // coverage has no entry for it at all.
     const ran = entry !== undefined && entry.ranges[0].count > 0;
-    for (const member of members) patched.push({ shim: fileURLToPath(script.url), member, ran });
+    for (const { label, holder, key } of members) {
+      const tabled = tableCovers(script.url, holder, key);
+      patched.push({ shim: fileURLToPath(script.url), member: label, ran, tabled });
+    }
   }
   return patched;
 }
@@ -158,6 +163,7 @@ if (job.coverage) {
   await session.post("Profiler.startPreciseCoverage", { callCount: true, detailed: false });
 }
 
+const { tableCovers } = await import(bookLib("shim-targets.mjs"));
 const pdfLib = await import("pdf-lib");
 const holders = session ? pdfLibHolders() : null;
 const before = holders && snapshot(holders);

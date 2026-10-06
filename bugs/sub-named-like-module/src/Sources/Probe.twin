@@ -1,0 +1,13 @@
+Module Probe
+
+    [RunAfterBuild]
+    Public Sub Hello()
+        Debug.Cls
+        Debug.Print "RunAfterBuild ran"
+    End Sub
+
+    ' Never called. Its name is the module's name.
+    Public Sub Probe()
+    End Sub
+
+End Module

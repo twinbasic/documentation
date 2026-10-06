@@ -1,0 +1,7 @@
+Type=Exe
+Module=Probe; Module1.bas
+Startup="Sub Main"
+ExeName32="Probe.exe"
+Name="SubNamedLikeModule"
+CompilationType=0
+OptimizationType=0

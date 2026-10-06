@@ -62,7 +62,7 @@ import { resolveBookChapters } from "./book.mjs";
 import { loadData } from "./data.mjs";
 import { createMarkdownIt, buildLinkTables, serializeLinkTables } from "./render.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
-import { buildInitConfig, renderSidebar } from "./template.mjs";
+import { NAV_SCRIPT_REL, buildInitConfig, renderSidebar } from "./template.mjs";
 import {
   writePhase,
   prepareDestinations,
@@ -627,7 +627,11 @@ const TASKS = {
         "assets/css/tb-highlight.css",
         "assets/css/just-the-docs-combined.css",
       ];
-      const sitePaths = buildSitePathsSync(state.pages, state.staticFiles, excludePatterns, stubs, themeAssetRels);
+      // sitePaths is what the offline tree holds, and only it has nav.js.
+      const sitePaths = buildSitePathsSync(state.pages, state.staticFiles, excludePatterns, stubs, [
+        ...themeAssetRels,
+        NAV_SCRIPT_REL,
+      ]);
       state.sitePaths = sitePaths;
       const skipOffline = ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
 
@@ -697,6 +701,8 @@ const TASKS = {
           config: state.site.config,
           seoSiteTitle: state.site.seoSiteTitle,
           seoLogoUrl: state.site.seoLogoUrl,
+          // The offline pages' part of the nav tree is cut from it.
+          ...(skipOffline ? {} : { navTree: state.site.navTree }),
         },
         initData: { ...initData, sidebar },
         buildInfo,

@@ -1,0 +1,15 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^plain\\s+Double \\*\\s+Err=6 r=1\\.#INF$",
+      "^plain\\s+Double \\+\\s+Err=6 r=1\\.#INF$",
+      "^LLVM\\s+Double \\*\\s+Err=0 r=1\\.#INF$",
+      "^LLVM\\s+Double \\+\\s+Err=0 r=1\\.#INF$",
+      "^LLVM\\s+Double \\^\\s+Err=0$",
+      "^LLVM\\s+Double /\\s+Err=6 r=5$",
+      "^LLVM\\s+1# / 0#\\s+Err=11 r=5$"
+    ]
+  }
+}

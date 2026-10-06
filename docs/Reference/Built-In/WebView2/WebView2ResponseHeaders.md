@@ -12,9 +12,6 @@ The HTTP-response-header collection for a web-resource response. Reached through
 
 The collection is enumerable --- `For Each` yields one [**WebView2Header**](WebView2Header) per entry. Unlike the request side, **AppendHeader** appends additional values rather than overwriting the existing one, matching HTTP's allowance of repeated response headers (e.g. multiple `Set-Cookie`).
 
-> [!WARNING]
-> In BETA 995, `For Each` over the collection ends the program with an access violation. See [**WebView2HeadersCollection**](WebView2HeadersCollection) for the cause and what to use instead.
-
 ```tb check_build
 Private Sub WebView21_WebResourceRequested( _
         ByVal Request As WebView2Request, _
@@ -65,7 +62,7 @@ Syntax: *object*.**GetHeader** ( *name* ) **As String**
 ### GetHeaders
 {: .no_toc }
 
-Returns a [**WebView2HeadersCollection**](WebView2HeadersCollection) iterator restricted to the headers that match *name*.
+Returns a [**WebView2HeadersCollection**](WebView2HeadersCollection) enumerator restricted to the headers that match *name*. Each call returns a new enumerator that starts at the first matching header.
 
 Syntax: *object*.**GetHeaders** ( *name* ) **As WebView2HeadersCollection**
 
@@ -88,4 +85,4 @@ Private Sub WebView21_WebResourceRequested( _
 End Sub
 ```
 
-See [**WebView2HeadersCollection**](WebView2HeadersCollection) for the iteration object.
+Each `For Each` loop starts at the first header. See [**WebView2HeadersCollection**](WebView2HeadersCollection) for the iteration object.

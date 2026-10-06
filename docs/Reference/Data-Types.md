@@ -64,6 +64,11 @@ Integer overflow raises a run-time error (error 6) by default. Overflow does not
 
 **Single** is accurate to approximately 6--7 significant decimal digits. It is smaller and may be faster in tight loops, but the reduced precision makes it unsuitable for financial or scientific calculations where rounding error matters.
 
+Assigning a value too large for a **Single** to a **Single** variable raises error 6, *Overflow*: `s = 1E+300` does, and so does `s = x ^ 2` when the **Double** result is too large.
+
+> [!NOTE]
+> VB6 raises no error for these assignments: the **Single** holds infinity (`1.#INF`).
+
 **Currency** is a fixed-point type, stored internally as a 64-bit signed integer scaled by 10,000. It avoids the binary rounding errors of IEEE 754 types and has exactly four decimal places; a value with more places is rounded to four, and a value exactly halfway is rounded to the even digit, so `CCur("0.12345")` is 0.1234. It suits monetary values whose amounts and intermediate results never need more than four decimal places --- [Decimal or Currency for money](#decimal-or-currency-for-money) compares the two types.
 
 ---

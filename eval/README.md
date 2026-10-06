@@ -49,12 +49,14 @@ node eval/run_case.mjs --corpus <corpus> --site <snapshot> --protocol repo \
 ```
 
 `build_corpus.mjs` empties `--dest` before it writes, so it refuses a `--dest` that is or
-contains the repository root, the current folder or `--repo`, on stderr.
+contains the repository root, the current folder or `--repo`, on stderr. It also refuses a
+`--dest` inside the tree it mirrors, unless that folder is one the mirror skips (`.claude/`,
+a build output tree under `docs/`).
 `run_case.mjs` likewise refuses a `--timeout` (minutes) that is not a number greater than 0
 and at most 35791, and a
 `--protocol` other than `repo` or `site`.
 
-`build_corpus.mjs` exit codes: **0** the corpus was built; **2** a refused command line (a `--dest` that is or contains the repository, the working folder or `--repo` included), or a crash.
+`build_corpus.mjs` exit codes: **0** the corpus was built; **2** a refused command line (a `--dest` that is or contains the repository, the working folder or `--repo`, or lies inside the tree it mirrors), or a crash.
 
 Each case is **one goal** from [usecases.md](usecases.md), in a file of its own, and
 nothing else. Never tell the evaluator what the case is testing or that a hazard exists.

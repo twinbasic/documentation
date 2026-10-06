@@ -451,9 +451,14 @@ All are forced by putting unrelated samples in one compilation unit:
 - **`Sub Main` comes from the template, and a fence may bring its own as well.** Two
   `Public Sub Main`s in different modules compile, so the WinServicesLib `Module Startup`
   samples build as written. (A *build* adds a rule; see [`--build` and `--llvm`](#--build-and---llvm-what-a-compile-does-not-ask).)
-- **A generated module must not share a name with the project.** `project.name = "ProbeWS"`
-  beside `Module ProbeWS` makes `[RunAfterBuild]`'s `ProbeWS.ProbeWS.Probe` ambiguous, and
-  the IDE refuses it at *execution* time, so the build is green and nothing runs.
+- **No generated module may be named like the project, in any letter case.** With
+  `project.name = "ProbeWS"`, a `Module ProbeWS` or a `Module probews` stops the
+  `[RunAfterBuild]` Sub from running, even when it is empty and the Sub is in another module.
+  Nothing reports it: the build is green, and the DEBUG CONSOLE ends at `[BUILD] Executing
+  '<project>.<module>.<Sub>'...` (BETA 995 and 997; the BUGS-TO-REPORT.md entry with the
+  reproducer `bugs/module-named-like-project/`). The tool names each project `DocSamples<n>`
+  and every module it generates `tbx...`, so the two cannot meet; a sample that declared
+  `Module DocSamples3` would.
 
 **What collides is narrower than it looks, and guessing it wide is expensive.** Two
 generated modules may each declare `Public Function Foo`, `Public Type Rec` and `Public Const
@@ -746,12 +751,10 @@ that fails only the second is one LLVM cannot generate code for.
   reads the DEBUG CONSOLE, which nothing removes an entry from, and exits 4 naming the file
   the compiler died parsing. **Treat any tooling that infers "finished" from "stopped
   changing" as suspect on this compiler.**
-- **A two-line syntax skeleton crashes the compiler**, and it is in the corpus:
-  `Interface <name> Extends <base-interface>` / `End Interface`, in
-  `Reference/Attributes.md`. The placeholder name does it, given any `Extends` clause:
-  `Extends IBase` crashes it too. Recorded in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md). The
-  classifier refuses a `<placeholder>` as a declaration name, so it takes an explicit
-  `slot=` to reach the compiler with one.
+- **The classifier refuses a `<placeholder>` as a declaration name**, so a syntax skeleton
+  such as `Interface <name> Extends <base-interface>` / `End Interface` (in
+  `Reference/Attributes.md`) takes an explicit `slot=` to reach the compiler. Through BETA
+  995 that skeleton crashed the compiler (twinbasic/twinbasic#2453, fixed in 997).
 - **`project.buildPath` must be an explicit file.** The default `${SourcePath}\Build\...`
   template opens a native Save dialog, which on the private desktop is invisible and
   unreachable, so the build silently never happens --- and the WebView2 renderer stays

@@ -64,7 +64,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | [`worker-pool.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/worker-pool.mjs) | Worker lifecycle wrapper: spawn, send the SAB, forward messages to the scheduler, terminate. No dispatch logic. |
 | [`cpu-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/cpu-worker.mjs) | Worker harness. Runs the pull loop, holds the eight named handlers, handles speculative idle execution. |
 | [`sab-scheduler.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/sab-scheduler.mjs) | SAB layout, allocation, task-metadata API. Constants and atomics primitives consumed by both the scheduler and the workers. |
-| [`sab-broadcast.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/sab-broadcast.mjs) | JSON-over-SAB pack/unpack for the shared payload (config, link tables, sidebar HTML, etc.) broadcast to every render worker. |
+| [`sab-broadcast.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/sab-broadcast.mjs) | JSON-over-SAB pack/unpack for the shared payload (config, link tables, sidebar HTML, the nav tree when the offline tree is built, etc.) broadcast to every render worker. |
 
 **Discovery and compute**
 
@@ -96,7 +96,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | [`render.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs) | markdown-it configuration + plugin stack + `renderPhase`. Built once on main and once per worker. The plugins worth knowing by name: `svgInlinePlugin` (build-time SVG embedding), `videoLinkPlugin` (a `{: .video }` link becomes a locally vendored poster frame), `remoteImagePlugin` (a user-attachment URL becomes the vendored copy, in both markdown and raw `<img>` syntax), and `headingLevelNormalizePlugin` (renumbers a page that uses h1 and h3 but no h2, so the built page has no heading skip). |
 | [`highlight.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight.mjs) | Shiki bootstrap + the bundled twinBASIC grammar. Emits the just-the-docs wrapper structure. |
 | [`highlight-theme.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight-theme.mjs) | Loads `Light.theme` + `Dark.theme`, emits `tb-highlight.css` + scope-to-class lookup. Clamps any token colour that falls below 4.5:1 against the code-block background --- moving lightness away from the background while preserving hue and saturation --- so highlighted code meets WCAG AA; the emitted rule includes a `raised to 4.5:1` comment naming the original colour. |
-| [`template.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/template.mjs) | `templatePhase` (per-page layout wrap) + `buildInitConfig` + `renderSidebar`. JS template literals; no template engine. Also `injectAnchorHeadings(html, headingsOut)`, which adds the permalink icon to each heading and collects the heading list as it goes, and `renderSectionLinks`, which spends that list on the per-page disclosure at the top of the footer. |
+| [`template.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/template.mjs) | `templatePhase` (per-page layout wrap) + `buildInitConfig` + `renderSidebar` + `withPartialNav`, which cuts an offline page's nav down to the part of the tree the page opens with, + `navScript`, the text of the offline tree's `assets/js/nav.js`, which holds the whole tree. JS template literals; no template engine. Also `injectAnchorHeadings(html, headingsOut)`, which adds the permalink icon to each heading and collects the heading list as it goes, and `renderSectionLinks`, which spends that list on the per-page disclosure at the top of the footer. |
 | [`strftime.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/strftime.mjs) | `formatDate`, the strftime formatter for the footer's "Page last modified" line, written only for a page that sets `last_modified_date`. |
 | [`compress.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/compress.mjs) | Whitespace compression outside `<pre>` blocks. |
 
@@ -116,7 +116,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | File | Role |
 |---|---|
 | [`offline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline.mjs) | Offline-tree writer + just-the-docs.js AST patcher + `search-data.js` wrapper. |
-| [`offline-rewrite.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline-rewrite.mjs) | Pure rewrite helpers (`deriveOfflinePageCached`, CSS url() rewrite, site-path set construction). Worker-safe; no node:fs dependency. |
+| [`offline-rewrite.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline-rewrite.mjs) | Pure rewrite helpers (`deriveOfflinePage`, CSS url() rewrite, site-path set construction). Worker-safe; no node:fs dependency. |
 | [`pdf.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/pdf.mjs) | `_site-pdf/` writer: `book.html` + `tb-highlight.css` + `print.css` + referenced images. |
 
 **Verification**
@@ -279,7 +279,7 @@ dispatch ┬→ render:0 ┬→ flush:0 ┐
 - `prepPageDirs` (main) --- pre-creates every page output directory. Lets `flush:i` skip `mkdir` entirely.
 - `warmInit` (worker, `on_demand` + `unique_per_worker` + `run_when_idle` + `survives_reset`) --- per-lane Shiki bootstrap. The flag combination means workers run it during the main-thread spine if they have no other claimable work, every render-worker needs it on its own lane, and in serve mode the per-lane done flag survives across rebuilds so the second build skips warmup entirely.
 - `renderEnvInit` (worker, `on_demand` + `unique_per_worker`) --- per-lane render environment setup: unpack the shared SAB, reconstruct the link-table Maps, instantiate the worker's own markdown-it. Declared as a `perWorkerDeps` on every `render:i` so the first render claim per lane pulls it in.
-- `render:i` (worker, dynamic) --- the per-chunk compute. Each one runs five sub-stages over its slice of `state.pages`: `renderPhase` (markdown-it body render) → `computeChunkSeo` (per-page SEO fields) → `templatePhase` (just-the-docs layout wrap) → `deriveOfflinePageCached` (offline HTML rewrite) → `deriveSearchEntries` (per-section search entries). Returns a delta containing `renderedContent` per page, plus the per-chunk search entries.
+- `render:i` (worker, dynamic) --- the per-chunk compute. Each one runs five sub-stages over its slice of `state.pages`: `renderPhase` (markdown-it body render) → `computeChunkSeo` (per-page SEO fields) → `templatePhase` (just-the-docs layout wrap) → `withPartialNav` + `deriveOfflinePage` (offline nav cut and HTML rewrite) → `deriveSearchEntries` (per-section search entries). Returns a delta containing `renderedContent` per page, plus the per-chunk search entries.
 - `renderJoin` (main, `on_demand`) --- barrier that unblocks `searchData`, `symbolIndex` and `writePdf`. `dispatch.submit()` sets its dep count to N *and* rewrites its `expected` list with every chunk name; the dep count alone is not a barrier over the submits. See [Pipeline Stages](Pipeline-Stages#renderjoin-main-on_demand).
 
 ### Write
@@ -293,7 +293,7 @@ dispatch ┬→ render:0 ┬→ flush:0 ┐
 - `searchData` (main) --- concatenates `state.searchChunks` (already populated by each `render:i`'s `submit()`), joins `symbolIndex`'s symbols onto the matching entries by URL (adding the `names` / `qualified` / `primary` fields; see [Site search](Pipeline-Stages#searchdata-main) and `WIP.Search.md`'s "Design" §2), renumbers the global `i` index, and writes `search-data.json`. The heavy work (heading split, content sanitisation, URL encoding) ran on the workers; this task only joins and consolidates. Depends on `renderJoin`, `prepDest` and `symbolIndex` (for the join).
 - `symbolIndex` (main) --- writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index) the IDE help add-in reads, and hands its `symbols` array to `searchData`'s join. Reads the heading ids out of every `/tB/` page's `renderedContent`, joins them with the committed `builder/package-api.json`, and returns the index's URLs for the drift guard that `runBuild` runs once the build is done. Depends on `renderJoin` and `prepDest`; `checkReport` waits for it, because the file is in the online tree's index; `searchData` now waits for it too.
 - `writeAux` (main) --- writes redirect stubs + sitemap + robots.txt. Depends on `writeAssets`, `searchData`, `flushJoin`, `deriveRedirects`, `deriveSitemap`.
-- `writeOffline` (main) --- produces `_site-offline/`. The per-page offline HTML was already computed inside `render:i` and written by `flush:i`, so this task only handles the cross-cutting work: CSS url() rewriting, the just-the-docs.js AST patch, the `search-data.js` wrapper, theme assets, redirect stubs.
+- `writeOffline` (main) --- produces `_site-offline/`. The per-page offline HTML was already computed inside `render:i` and written by `flush:i`, so this task only handles the cross-cutting work: CSS url() rewriting, the just-the-docs.js AST patch, the `search-data.js` wrapper, the offline `nav.js`, theme assets, redirect stubs.
 - `writePdf` (main) --- assembles `_site-pdf/book.html` and copies the images it references. Depends on `flushJoin` (so `renderedContent` is filled), `resolveBookChapters` (so `bookData._chapters` is wired), and `dot` (so diagram SVGs are in `staticFiles`).
 
 ## What runs where
@@ -323,7 +323,7 @@ For a one-page reference, every task and its execution locus:
 Three pieces of work newly distributed to render workers under the current design:
 
 1. **Per-page SEO** (`computeChunkSeo`) --- was a single Phase 2 main-thread task; now runs per chunk inside `render:i`, between `renderPhase` and `templatePhase`. The values are written into the page objects on the worker and travel back as part of the render delta.
-2. **Per-page offline HTML** (`deriveOfflinePageCached`) --- was a Phase 7 main-thread pass that re-read the online tree; now runs per chunk inside `render:i` after `templatePhase`. The resulting `offlineHtml` is stored on the page and written by the matching `flush:i` directly to `_site-offline/`.
+2. **Per-page offline HTML** (`deriveOfflinePage`) --- was a Phase 7 main-thread pass that re-read the online tree; now runs per chunk inside `render:i` after `templatePhase`. The resulting `offlineHtml` is stored on the page and written by the matching `flush:i` directly to `_site-offline/`.
 3. **Per-chunk search entries** (`deriveSearchEntries`) --- was a Phase 6 main-thread task; now runs per chunk inside `render:i`. Each chunk's entries are stored at `state.searchChunks[i]` by the render `submit()`; the `searchData` task flattens them, joins `symbolIndex`'s symbols onto the matching entries by URL, renumbers, and writes the JSON.
 
 Per-chunk page HTML writes were similarly pulled off the main thread: each `flush:i` writes its chunk's pages to disk on the same worker that rendered them, with the pinning enforced by `pin_to_predecessor`.
@@ -354,7 +354,7 @@ Worker output flow: a worker posts `{ done: taskIdx, output, timing, lane }` to 
 `dispatch.execute()` runs on the main thread and assembles two SAB payloads:
 
 - **Per-task payload SAB** --- one JSON blob per `render:i`, each containing the chunk's `Page` objects. `chunkOffset[i]` / `chunkLength[i]` index into the buffer.
-- **Shared payload SAB** --- one JSON blob broadcast to every worker, containing the site config, site-level SEO constants, pre-rendered sidebar + chrome (`initData`), serialized link tables (`[key, permalink]` pair arrays), the static-file relative-path set, the baseurl, the site-paths set for offline rewriting, the `offline_exclude` patterns, and the `skipOffline` flag.
+- **Shared payload SAB** --- one JSON blob broadcast to every worker, containing the site config, site-level SEO constants, the pre-rendered sidebar + chrome (`initData`), the nav tree when the offline tree is built, serialized link tables (`[key, permalink]` pair arrays), the static-file relative-path set, the baseurl, the site-paths set for offline rewriting, the `offline_exclude` patterns, and the `skipOffline` flag.
 
 `dispatch.submit()` allocates 2N dynamic slots from the generic pool in `sab-scheduler.mjs`, writes their handler IDs and per-worker dep lists, wires the successor edges, pins each `flush:i` to its `render:i`, calls `broadcastDynamicData(payloadSAB, sharedSAB)` (one `postMessage` per worker carrying the two SAB references --- shared memory, not cloned), and finally flips the `render:i` slots to `READY`. Workers see the new tasks on their next scan.
 
@@ -365,8 +365,10 @@ Each `render:i` runs five sub-stages over its chunk:
 1. `renderPhase(chunk, env.site)` --- the markdown-it body render.
 2. `computeChunkSeo(chunk, env.site.seoSiteTitle, env.site.config, env.site.markdown)` --- per-page SEO fields.
 3. `templatePhase(chunk, env.site, env.initData)` --- just-the-docs layout wrap. `env.initData` is the pre-rendered chrome from `dispatch`.
-4. Offline rewrite (when `!skipOffline`) --- per destination directory, render the first page through `deriveOfflinePage` and slice out the nav block. Subsequent pages in the same directory substitute the sliced nav with a cached output, run the rewriter over the smaller string, and splice the output back in. Saves ~200 ms across the build.
+4. Offline rewrite (when `!skipOffline`) --- each page's nav cut to its part of the tree (`withPartialNav`), then the page through `deriveOfflinePage`.
 5. `deriveSearchEntries(chunk, env.site)` --- per-section search-index entries.
+
+In the offline tree the sidebar's whole nav tree is in `assets/js/nav.js`, which `writeOffline` writes. An offline page holds only the part of the tree that shows when it opens: the top level, and the children of the page and of each of its ancestors. Without that, the tree would be most of every page's bytes. `nav.js` is loaded right after the nav and puts the whole tree in place before the theme's script marks the current page; without scripting, the page still shows its part. The tree's links are relative to the site's root, and the script puts the page's path to the root in front of each. In the help add-in's pane, which hides the sidebar, it does nothing. Online pages hold the whole nav tree and have no `nav.js`, so the site's navigation works without scripting.
 
 The worker stores the writable pages on its own `_pendingFlush` FIFO and returns the deltas. The matching `flush:i` --- pinned to this lane --- claims later, pops the batch, and writes the page HTML to disk. The pinning is what guarantees the batch lands on the right worker; the FIFO is what handles the case where a worker has already started a second `render:i` before its first `flush:i` claims.
 

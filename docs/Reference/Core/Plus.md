@@ -58,6 +58,9 @@ For simple arithmetic addition involving only numeric expressions, the data type
 
 A declared (non-**Variant**) result that overflows raises error 6, *Overflow*. If one or both expressions are **Null** expressions, *result* is **Null**. If both expressions are **Empty**, *result* is an **Integer**. However, if only one expression is **Empty**, the other expression is returned unchanged as *result*.
 
+> [!WARNING]
+> In twinBASIC BETA 997, an addition whose result is a declared **Single** raises no error when the result overflows: the **Single** holds infinity (`1.#INF`) instead. VB6 raises error 6, *Overflow*. The compound form **+=** does the same. Declare the variable **Double** where an overflow must be caught.
+
 > [!NOTE]
 > The order of precision used by addition and subtraction is not the same as the order of precision used by multiplication.
 

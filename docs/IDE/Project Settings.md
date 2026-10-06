@@ -240,15 +240,15 @@ In the `Settings` file it is `compiler.traceOutput`.
 
 ## Disable Overflow Checks
 
-When set to **Yes**, the compiler leaves out every run-time check for integer overflow in arithmetic, which produces more efficient code. It is **No** by default. It is the same as [**IntegerOverflowChecks(False)**](../../Core/Attributes#integeroverflowchecks) on every procedure in the project, and the compiler then ignores any **IntegerOverflowChecks** attribute in the project. It affects the project only, not the packages it references. In the `Settings` file it is `compiler.disableOverflowChecks`.
+When set to **Yes**, the compiler leaves out every run-time check for integer overflow in arithmetic, which produces more efficient code. It is **No** by default. It is the same as [**IntegerOverflowChecks(False)**](../../Core/Attributes#integeroverflowchecks) on every procedure in the project. [**IntegerOverflowChecks(True)**](../../Core/Attributes#integeroverflowchecks) on a procedure, module or class turns the integer overflow checks back on there. Dividing the most negative **Integer**, **Long** or **LongLong** by -1 with [**\\**](../../Core/IntegerDivide) or [**Mod**](../../Core/Mod) raises error 6 whatever the setting. It affects the project only, not the packages it references. In the `Settings` file it is `compiler.disableOverflowChecks`.
 
 ## Disable Array Bounds Checks
 
-When set to **Yes**, the compiler leaves out every run-time check of array bounds when array elements are read and written, which produces more efficient code. It is **No** by default. It is the same as [**ArrayBoundsChecks(False)**](../../Core/Attributes#arrayboundschecks) on every procedure in the project, and the compiler then ignores any **ArrayBoundsChecks** attribute in the project. It affects the project only, not the packages it references. In the `Settings` file it is `compiler.disableArrayBoundsChecks`.
+When set to **Yes**, the compiler leaves out every run-time check of array bounds when array elements are read and written, which produces more efficient code. It is **No** by default. It is the same as [**ArrayBoundsChecks(False)**](../../Core/Attributes#arrayboundschecks) on every procedure in the project. [**ArrayBoundsChecks(True)**](../../Core/Attributes#arrayboundschecks) on a procedure, module or class turns the array bounds checks back on there. It affects the project only, not the packages it references. In the `Settings` file it is `compiler.disableArrayBoundsChecks`.
 
 ## Disable FPU Error Checks
 
-When set to **Yes**, the compiler leaves out every run-time check for floating-point (FPU) errors in arithmetic, which produces more efficient code. It is **No** by default. It is the same as [**FloatingPointErrorChecks(False)**](../../Core/Attributes#floatingpointerrorchecks) on every procedure in the project, and the compiler then ignores any **FloatingPointErrorChecks** attribute in the project. It affects the project only, not the packages it references. In the `Settings` file it is `compiler.disableFPUErrorChecks`.
+When set to **Yes**, the compiler leaves out every run-time check for floating-point (FPU) errors in arithmetic, which produces more efficient code. It is **No** by default. It is the same as [**FloatingPointErrorChecks(False)**](../../Core/Attributes#floatingpointerrorchecks) on every procedure in the project. [**FloatingPointErrorChecks(True)**](../../Core/Attributes#floatingpointerrorchecks) on a procedure, module or class turns the floating-point error checks back on there. It affects the project only, not the packages it references. In the `Settings` file it is `compiler.disableFPUErrorChecks`.
 
 ## Sanitize Booleans
 

@@ -58,7 +58,13 @@ Building with LLVM does not currently work on Windows 7; Windows 10 or 11 is rec
 The main feature not yet supported is passing an error up to the calling procedure. If an error occurs in a procedure that has no error handler, its caller does not receive the error when either of the two procedures is compiled with LLVM: the caller's own `On Error` statement does not catch it. Instead, a built program stops as it does for an unhandled error, and a run in the IDE ends without a message. A fix is planned.
 
 > [!NOTE]
-> In twinBASIC BETA 995, an error handler in a procedure compiled with LLVM cannot read an error raised with [**Err.Raise**](../tB/Modules/ErrObject/Raise) in that procedure: **Err.Number** returns -353703423 (`&HEAEAEA01`), **Err.Source** is empty, and **Err.Description** is the generic "Application-defined or object-defined error". An error that a statement causes, such as a division by zero, is read correctly.
+> In twinBASIC BETA 997, an error handler in a procedure compiled with LLVM cannot read an error raised with [**Err.Raise**](../tB/Modules/ErrObject/Raise) in that procedure: **Err.Number** returns -353703423 (`&HEAEAEA01`), **Err.Source** is empty, and **Err.Description** is the generic "Application-defined or object-defined error". An error that a statement causes, such as a division by zero, is read correctly.
+
+> [!WARNING]
+> In twinBASIC BETA 997, a **Double** addition, subtraction, multiplication or exponentiation (`^`) that overflows raises no error in code compiled with LLVM: the result is infinity (`1.#INF`), where the same code compiled without LLVM raises error 6, *Overflow*, as VB6 does. [**FloatingPointErrorChecks(True)**](../tB/Core/Attributes#floatingpointerrorchecks) does not change this. A **Double** division that overflows, and a division by zero, still raise their errors. After either, under `On Error Resume Next`, the variable that was to receive the result keeps its old value; without LLVM it holds infinity.
+
+> [!WARNING]
+> In twinBASIC BETA 997, code compiled with LLVM rounds a **Single** or **Double** that is exactly halfway between two integers away from zero when it converts the value to an integer type: in [**CLng**](../tB/Modules/Conversion/CLng), **CInt** and **CLngLng** of a variable, in an assignment to an **Integer** or **Long**, and in the operands of [**\\**](../tB/Core/IntegerDivide). With a **Double** variable holding 2.5, `CLng(x)` is 3, and with -0.5 it is -1. Without LLVM the value is rounded to the even integer, 2 and 0, as VB6 does. A constant expression such as `CLng(2.5)`, a **Variant** argument, and [**Round**](../tB/Modules/Math/Round), **Int** and **Fix** are not affected.
 
 Code compiled with LLVM ignores [**Debug.Assert**](../tB/Modules/Debug#assert): the statement does not stop, and its condition is not evaluated.
 
@@ -115,6 +121,20 @@ End Function
 Sub FullyOptimizeMe()
     ' ...
 End Sub
+```
+
+## Unrolling a loop
+
+Inside a procedure compiled with LLVM, [**UnrollLoop**](../tB/Modules/Compilation/UnrollLoop) asks LLVM to unroll one loop: to repeat its body several times in each iteration, so the loop tests its condition and jumps back less often. It must be the first statement in the loop's body, and may give the greatest number of repeats as a literal or a constant. It does not change what the loop does.
+
+```tb check_build
+Function Total(Values() As Long) As Long
+    Dim i As Long
+    For i = LBound(Values) To UBound(Values)
+        UnrollLoop 8
+        Total += Values(i)
+    Next
+End Function
 ```
 
 ## CPU feature availability

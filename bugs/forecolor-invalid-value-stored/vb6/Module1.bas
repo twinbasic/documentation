@@ -50,6 +50,21 @@ Private Sub Cases()
     Print #9, "Printer.FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Printer.FillColor): Err.Clear
     Form1.UC1.RunCases
     Unload Form1
+    Load MDIForm1
+    MDIForm1.BackColor = vbGreen
+    MDIForm1.BackColor = -1
+    Print #9, "MDIForm.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(MDIForm1.BackColor): Err.Clear
+    MDIForm1.BackColor = vbGreen
+    MDIForm1.BackColor = &H8000001F
+    Print #9, "MDIForm.BackColor = &H8000001F: Err " & Err.Number & ", reads " & Hex$(MDIForm1.BackColor): Err.Clear
+    MDIForm1.Show
+    MDIForm1.BackColor = vbGreen
+    MDIForm1.BackColor = -1
+    Print #9, "MDIForm (shown).BackColor = -1: Err " & Err.Number & ", reads " & Hex$(MDIForm1.BackColor): Err.Clear
+    MDIForm1.BackColor = vbGreen
+    MDIForm1.BackColor = &H8000001F
+    Print #9, "MDIForm (shown).BackColor = &H8000001F: Err " & Err.Number & ", reads " & Hex$(MDIForm1.BackColor): Err.Clear
+    Unload MDIForm1
 End Sub
 
 Sub Main()

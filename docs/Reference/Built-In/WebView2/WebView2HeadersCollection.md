@@ -10,10 +10,9 @@ has_toc: false
 
 An enumerator that yields [**WebView2Header**](WebView2Header) values one by one. Returned by **WebView2RequestHeaders.GetHeaders**, **WebView2ResponseHeaders.GetHeaders**, and by `For Each` over a [**WebView2RequestHeaders**](WebView2RequestHeaders) or [**WebView2ResponseHeaders**](WebView2ResponseHeaders) instance.
 
-The collection is forward-only: once iterated it is exhausted. It does not implement **Reset**, **Skip**, or **Clone**, and calling those raises run-time error 80004001 (*Not implemented*).
+The collection implements the COM enumerator operations **Next**, **Skip**, **Reset** and **Clone**, which `For Each` and other COM enumerator clients call. They are not members that BASIC code can call. A loop reads the headers once, front to back; **Reset** starts the enumeration again from the first header. Every call to **GetHeaders** and every `For Each` loop produces a new enumerator, so a new loop always starts at the first header.
 
-> [!WARNING]
-> In BETA 995, a `For Each` loop over the collection, such as the one below, ends the program with an access violation in the collection's **Next**. `For Each` passes **Next** a null pointer for the count of items it returned, as [**IEnumVARIANT**](../../../Reference/COM-Interfaces/IEnumVARIANT) allows, and **Next** writes to it without checking. Until this is fixed, read the headers needed by name with **GetHeader** or **Contains** on [**WebView2RequestHeaders**](WebView2RequestHeaders) or [**WebView2ResponseHeaders**](WebView2ResponseHeaders).
+A **WebView2HeadersCollection** is never created by application code. The package returns one of the four derived classes listed under [Derived classes](#derived-classes), typed as **WebView2HeadersCollection**.
 
 ```tb check_build
 Private Sub WebView21_NavigationStarting( _
@@ -30,14 +29,20 @@ Private Sub WebView21_NavigationStarting( _
 End Sub
 ```
 
+## Derived classes
+
+Four public classes inherit from **WebView2HeadersCollection**. Each is `[COMCreatable(False)]`, and application code does not create them: the package creates them and returns them as **WebView2HeadersCollection**. Each overrides **Reset** and **Clone** to work on its own source of headers.
+
+| Class | Returned by | Yields |
+|-------|-------------|--------|
+| **WebView2HeadersCollection_RequestGetHeaders** | [**WebView2RequestHeaders.GetHeaders**](WebView2RequestHeaders#getheaders) | the request headers whose name matches the *name* argument |
+| **WebView2HeadersCollection_RequestEnumerator** | `For Each` over a [**WebView2RequestHeaders**](WebView2RequestHeaders) | every request header |
+| **WebView2HeadersCollection_ResponseGetHeaders** | [**WebView2ResponseHeaders.GetHeaders**](WebView2ResponseHeaders#getheaders) | the response headers whose name matches the *name* argument |
+| **WebView2HeadersCollection_ResponseEnumerator** | `For Each` over a [**WebView2ResponseHeaders**](WebView2ResponseHeaders) | every response header |
+
 ## Methods
 
 ### New
 {: .no_toc }
 
-Constructs the collection. Created internally by the package; application code does not normally invoke this.
-
-Syntax: **New WebView2HeadersCollection** ( *Iterator* )
-
-*Iterator*
-: *required* An internal iterator handed in by the runtime.
+Constructs the collection from the runtime's header iterator. The constructor is **Protected**: only the four derived classes call it, and application code cannot create a **WebView2HeadersCollection**.

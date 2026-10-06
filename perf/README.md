@@ -89,31 +89,22 @@ node analyze-profile.mjs results/<label>/process.cpuprofile --top 15
 
 Flag rationale:
 
-- `--fast-refs` -- inject the
-  [book/lib/fast-refs.mjs](../book/lib/fast-refs.mjs) shim:
-  dense-array cache for `PDFRef.of`'s gen=0 path; on miss,
-  constructs the `PDFRef` directly via
-  `Object.create(PDFRef.prototype)` + manual field init, bypassing
-  the upstream `pool.set(tag, instance)` and dropping the
-  per-instance `tag` string (`toString` / `sizeInBytes` /
-  `copyBytesInto` compute from `objectNumber` /
-  `generationNumber` directly). After `--fast-indirect-objects`
-  shipped, the upstream pool was the last hot `Map.set` in the
-  heap profile; this drops the `PDFRef.of` row off the CPU top-15
-  and the `set` builtin row from ~7.5 MB to ~0.5 MB. The
-  tag-drop layer then collapses
-  `parseIndirectObjectHeader` 13.7 MB → 9.3 MB and total process
-  heap 51.9 MB → 45.2 MB (-13 %). **A/B baseline only** since
-  `--fast-refs-class` shipped: the `Object.create + writes`
-  construction style routes V8 through the slow-property path,
-  ending up at ~60 B/instance vs the constructor version's ~44 B.
-  Mutex with `--fast-refs-class` in the harness.
 - `--fast-refs-class` -- inject the
   [book/lib/fast-refs-class.mjs](../book/lib/fast-refs-class.mjs)
-  shipping fix. Same dense-array cache + tag-drop as
-  `--fast-refs`, but PDFRef instances are built via plain-function
-  constructors rather than `Object.create + property writes`. Two
-  shapes: `_FastRef(objectNumber)` for the gen=0 path (one inline
+  shim: a dense-array cache for `PDFRef.of`'s gen=0 path that
+  bypasses the upstream `pool.set(tag, instance)` and drops the
+  per-instance `tag` string (`toString` / `sizeInBytes` /
+  `copyBytesInto` compute from `objectNumber` /
+  `generationNumber` directly). The upstream pool was the last hot
+  `Map.set` in the heap profile once `--fast-indirect-objects`
+  was in place; the shim drops the `PDFRef.of` row off the CPU
+  top-15 and the `set` builtin row from ~7.5 MB to ~0.5 MB. The
+  tag-drop layer collapses `parseIndirectObjectHeader` 13.7 MB →
+  9.3 MB and total process heap 51.9 MB → 45.2 MB (-13 %).
+  PDFRef instances are built via plain-function constructors
+  rather than `Object.create + property writes`, which routes V8
+  through the slow-property path (~60 B/instance against the
+  constructor version's ~44 B). Two shapes: `_FastRef(objectNumber)` for the gen=0 path (one inline
   slot) and `_FastRefGen(objectNumber, generationNumber)` for the
   rare gen!=0 path (two slots, only the xref free entry at
   object 0 on fresh-Chrome workloads). `generationNumber = 0` is a
@@ -175,14 +166,6 @@ Flag rationale:
   trip. Every numeric token parsed during `PDFDocument.load`
   flows through these -- hundreds of thousands of calls per load
   on the book. Production runs through it.
-- `--fast-dict-array` -- inject
-  [book/lib/fast-dict-array.mjs](../book/lib/fast-dict-array.mjs),
-  replacing `PDFDict`'s backing `Map` with a flat alternating
-  `[k0, v0, k1, v1, ...]` array allocated per-dict (pre-sized to 10
-  slots, the median). Was production before `--fast-dict-onebuf`
-  superseded it; kept as an A/B baseline. See "Replace PDFDict's
-  backing Map with a flat array" in
-  [notes/08-pdf-lib.md](notes/08-pdf-lib.md).
 - `--fast-dict-onebuf` -- inject
   [book/lib/fast-dict-onebuf.mjs](../book/lib/fast-dict-onebuf.mjs).
   One long-lived buffer for every committed PDFDict entry across
@@ -207,9 +190,8 @@ Flag rationale:
   `autoNormalizeCTM` as prototype getters/setters that mask in/out
   of bits 23-24. Saves ~20 B/PDFDict × 260 k = ~5.2 MB heap on
   top of the storage refactor, plus ~26 KB on the 1 651 page
-  leaves from the flag-packing. Mutually exclusive with the other
-  dict-shape shims. ~77 % cumulative heap reduction since the
-  original Map-backed PDFDict (152 -> 35 MB). Production runs
+  leaves from the flag-packing. ~77 % cumulative heap reduction
+  against the original Map-backed PDFDict (152 -> 35 MB). Production runs
   through it. See
   [notes/08-pdf-lib.md "One-buffer PDFDict"](notes/08-pdf-lib.md).
 - `--fast-array-onebuf` -- inject
@@ -219,10 +201,10 @@ Flag rationale:
   `arrayMain` JS Array, each PDFArray is a view via packed
   `(start, length)` in `d`. Backing is a plain heterogeneous JS
   Array -- slots hold the original PDFObject references, reads are
-  `arrayMain[start + i]` with no decode. This is the explored-but-
-  didn't-ship Phase 3 encoded approach minus the Float64Array
-  encoding (which cost ~300 ms on save's `copyBytesInto` from
-  per-slot `decodeValue` dispatch). Per-parser `_arrayTemp` for
+  `arrayMain[start + i]` with no decode. The slots are not encoded
+  (for example into a Float64Array): the per-slot decode on save's
+  `copyBytesInto` costs ~300 ms, more than the encoding saves.
+  Per-parser `_arrayTemp` for
   the recursion stack, independent of fast-dict-onebuf's
   `_dictTemp`. Mutations: in-place replace for `set`, in-place
   extend at HWM for `push`, COW for everything else. Singleton
@@ -253,7 +235,7 @@ Flag rationale:
   bound on mainBuf isn't material on its own (~60 K slots out of
   2.4 M) but commits the two-pass shape; Phases 2/3/3β (Float64Array
   mainBuf + encoded slots) were explored and didn't ship. Requires
-  `--fast-dict-onebuf` (mutex-checked). See "Phase 1: pre-size mainBuf
+  `--fast-dict-onebuf` (checked at start-up). See "Phase 1: pre-size mainBuf
   via measure-pass" in
   [notes/08-pdf-lib.md](notes/08-pdf-lib.md).
 - `--fast-parse-object` -- inject
@@ -315,9 +297,9 @@ Flag rationale:
   [book/lib/fast-indirect-objects.mjs](../book/lib/fast-indirect-objects.mjs),
   replacing `PDFContext.indirectObjects` (`Map<PDFRef, PDFObject>`)
   with a dense array indexed by `objectNumber` for the gen=0 path.
-  Mirror of `--fast-refs` on the value side. After `--fast-dict-array`
-  landed, `PDFContext.assign`'s
-  `this.indirectObjects.set(ref, object)` was the only hot
+  Mirror of `fast-refs-class`'s dense gen=0 array on the value side.
+  Once `PDFDict` is not Map-backed, `PDFContext.assign`'s
+  `this.indirectObjects.set(ref, object)` is the only hot
   `Map.set` left in the heap profile (~7 MB of `set` traffic,
   fired once per indirect object during load). Patches `assign` /
   `lookup` / `lookupMaybe` / `delete` / `getObjectRef` /
@@ -645,23 +627,18 @@ run.bat --time-hooks                      # per-task timing of every chunker/pol
 run.bat --incremental                     # process via incremental update instead of pdf-lib roundtrip
 run.bat --chrome-outline                  # let Chrome emit /Outlines (skip parseOutline + setOutline)
 run.bat --tracing                         # capture a hybrid Chrome trace (Blink events + embedded V8 cpu samples)
-run.bat --fast-refs                       # dense-array cache for PDFRef.of's gen=0 path + tag-drop (A/B baseline; production now runs --fast-refs-class)
-run.bat --fast-refs-class                 # --fast-refs + class-constructor PDFRef shape for stable V8 hidden class (also ships; opt-in here for A/B)
+run.bat --fast-refs-class                 # dense-array cache for PDFRef.of's gen=0 path + tag-drop, with class-constructor PDFRef shape for a stable V8 hidden class (also ships; opt-in here for A/B)
 run.bat --parallel-deflate                # parallelSave with objectsPerStream=500 (also ships; opt-in here for A/B)
 run.bat --fast-decode-name                # skip decodeName regex when name has no # (also ships; opt-in here for A/B)
 run.bat --fast-number-to-string           # skip numberToString redundant toString/split when no exponential (also ships; opt-in here for A/B)
 run.bat --fast-size-in-bytes              # non-allocating ladder for xref byte-width (also ships; opt-in here for A/B)
 run.bat --fast-parse-number               # direct-integer accumulator for parseRawNumber/parseRawInt (also ships; opt-in here for A/B)
-run.bat --fast-dict-iter                  # in-place Map.forEach for PDFDict.sizeInBytes/copyBytesInto (Map-shape baseline; production now runs --fast-dict-onebuf)
-run.bat --fast-parse-dict                 # hoist Type/Catalog/Pages/Page sentinel PDFNames out of parseDict (Map-shape baseline; production now runs --fast-dict-onebuf)
-run.bat --fast-dict-array                 # replace PDFDict's backing Map with a per-dict flat [k,v,k,v,...] array; subsumes --fast-dict-iter + --fast-parse-dict (A/B baseline; production now runs --fast-dict-onebuf)
 run.bat --fast-dict-onebuf                # ONE long-lived buffer for all PDFDict entries + small per-parser temp (also ships; opt-in here for A/B)
 run.bat --fast-array-onebuf               # ONE long-lived buffer for all PDFArray elements + small per-parser temp; composes with --fast-dict-onebuf (also ships; opt-in here for A/B)
 run.bat --measure-pass --fast-dict-onebuf # walk rawPdf with the no-allocate measure pass and pre-size --fast-dict-onebuf's mainBuf to the exact dict-slot count (Phase 1 of the two-pass architecture; mutex with --incremental and --render-only)
-run.bat --fast-indirect-objects           # dense-array cache for PDFContext.indirectObjects (gen=0 path); mirror of --fast-refs on the value side (also ships; opt-in here for A/B)
+run.bat --fast-indirect-objects           # dense-array cache for PDFContext.indirectObjects (gen=0 path); mirror of fast-refs-class's dense gen=0 array on the value side (also ships; opt-in here for A/B)
 run.bat --fast-pdfnumber-pool             # value-keyed cache in front of PDFNumber.of; dense array for small ints, Map for the rest (also ships; opt-in here for A/B)
 run.bat --fast-parse-object               # first-byte dispatch in parseObject; gate true/false/null matchKeyword behind byte check (also ships; opt-in here for A/B)
-run.bat --fast-parse-name                 # byte-keyed cache in front of parseName; skip the string build + Map<string, PDFName> hash on the 99.7 % cache-hit path (also ships; opt-in here for A/B)
 run.bat --fast-parse-name                 # byte-keyed cache in front of parseName: skip the string build + Map<string, PDFName> hash on the 99.7 % cache-hit path (also ships; opt-in here for A/B)
 run.bat --fast-sync-load                  # synchronify PDFDocument.load + parser; strip waitForTick machinery (also ships; opt-in here for A/B)
 ```

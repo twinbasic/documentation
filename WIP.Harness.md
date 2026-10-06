@@ -216,9 +216,10 @@ other 193 are refused at every site.
   one form able to pass never compiled is inconclusive, not refused, and the same holds for a
   run cut short.
 
-**It found a compiler crash the documentation never would:** a bare `[PopulateFrom]` on an
-Enum kills the compiler, at all three Enum sites; the tool isolated it by halving to one
-probe beside the canaries. It is in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md).
+**It finds compiler crashes the documentation never would:** a crash in a batch is
+isolated by halving down to one probe beside the canaries, which is how a bare
+`[PopulateFrom]` on an Enum was found to kill the compiler (twinbasic/twinbasic#2450, fixed
+in BETA 997).
 
 **Read the report's "accepted at most sites" section before believing an acceptance.**
 `[Description]` is taken at 53 of 61 sites and `[Hidden]` and `[Restricted]` at 42: either
@@ -245,8 +246,23 @@ override that, and one of the two is needed for an install kept anywhere else. *
 path is hardcoded**, here or anywhere in the tooling: an install path contains a username.
 
 `--json` gives the same thing as one object and `--keep` leaves the IDE running. Exit codes
-are 0 clean, 1 the project has errors, 2 the harness failed, 3 the compile never settled, 4
-the project crashes the compiler.
+are 0 clean, 1 the project has errors, 2 the harness failed or the project file cannot be read,
+3 the compile never settled, 4 the project crashes the compiler.
+
+**A project file the IDE cannot read is refused before an IDE starts.** `tbbuild` reads the
+container with impexp's reader (`checkProject`, in
+[scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs)) and exits 2 within a moment,
+naming the file and the fault. Without that, BETA 995 gave exit 0, a clean compile with no
+rows, after the whole `--timeout` (66 s at `--timeout 60`) for an empty file, a file cut off
+halfway and a file with its first byte changed, and exit 3 for a text file. The IDE answers
+such a file with a message box, which nobody can see or answer on the private desktop. The
+status bar never settles, and a wait that ends at its deadline is read as a compile with no
+diagnostics, because `waitForCompile` does not report that it ran out of time. Only the
+container is checked: a file that reads as a project and that the IDE still cannot load is
+not covered. `launchOnDesktop`'s `dialogs: "close"` can record a box, but only by pressing OK
+on it, `launchIde` does not ask for it, and the job it matches boxes against is absent under
+`--keep`. Making `waitForCompile` say that it ran out of time would cover every such wedge,
+and is not done.
 
 **`--show` / `--hide`, and `TBBUILD_SHOW` for a whole session.** Hidden is the default. Its
 cost shows only when something goes wrong: a wedged IDE on a private desktop is invisible to
@@ -434,8 +450,8 @@ other thirty their run.
 
 ### Why it drives the WebView rather than the compiler directly
 
-The obvious improvement is to cut the browser out --- the compiler has websockets, so why go
-through a UI at all? **It cannot be done, and the reason is structural.**
+The obvious improvement is to cut the browser out: the compiler has websockets, so why go
+through a UI at all? **It can be done, and the harness does not do it yet.**
 
 The IDE is three processes, and their command lines say how they relate:
 
@@ -443,18 +459,20 @@ The IDE is three processes, and their command lines say how they relate:
 |---|---|---|
 | `twinBASIC.exe` | `<project.twinproj>` | shell; hosts the WebView2, and the only one given the project |
 | `twinBASIC_win32.exe` | `--ide=<shell pid>` | serves `ide/` over HTTP on an ephemeral port |
-| `twinBASIC_win32_noDEP.exe` | `--compiler=<opaque token>` | the compiler; the page talks to it over websockets |
+| `twinBASIC_win32_noDEP.exe` | `--compiler=<window handle>` | the compiler; the page talks to it over websockets |
 
 The page's websockets carry everything the window shows about a compile, the diagnostics and
 their counts included.
 
-**But what a connection needs, its address and its key, is minted inside the WebView**, by
-host objects the shell gives its page --- reachable only from a page the shell has loaded.
-Starting the compiler directly is no way round it either: `--compiler=` is not a port but
-an opaque handle the shell hands it. So a proxy between the WebView and the HTTP server is
-possible --- the page and its scripts come over plain HTTP, and a patched `main2.js` could
-be served --- but it would not remove the WebView, it would only change what runs inside it.
-The thing you would want to delete is the thing that mints the connection.
+**The compiler chooses its own address and key, and tells the process that started it.** So
+a program that starts a compiler itself can connect to it, and `--compiler=` need not name a
+real window for a compile or a build (BETA 995).
+
+What stands in the way is the work the page does over those connections. It loads the
+project, gives the compiler every package the project needs, answers what the compiler asks,
+and works out when a compile has finished. A client without the WebView has to do all of
+that itself, in a protocol that is the IDE's own and may change with any beta, while the IDE
+always speaks its own build's. So the harness drives the IDE.
 
 Watching the page's traffic is another matter: CDP shows it to the harness with no key, and
 the wait for a compile ends on it (*How the wait for the compile ends*, above). The
@@ -517,6 +535,19 @@ Rules it follows:
 
 - **`element.click()` on `#buildIcon` does nothing.** It is a plain DIV behind the IDE's own
   pointer handling and needs real `Input.dispatchMouseEvent` presses at its centre.
+- **Build is pressed through `pressBuild` (`tb-ide.mjs`), which waits up to 60 s for the
+  page globals `licenceIsSet` to be true and `lockUICount` to be 0.** `tbBuild_Start` waits
+  only about five seconds for the compiler to answer the licence key's validation, which
+  `afterSocketsAreConnected` resets on every compiler connection, and then writes "[BUILD]
+  failed due to licence error" and builds nothing. `#appOverlay` is a transparent element
+  over the whole page, shown while `lockUICount` is above zero: by every modal dialog, the
+  "Compiling..." and project-loading progress dialogs among them, and by an open menu. A press
+  then fails with "its centre is covered by #appOverlay" (both were seen once each in a full
+  `bug_repro verify`). A licence still unset after the wait throws; an overlay still up is
+  left to `click`, which names it.
+- **A click that fails saves a picture of the page** (`pagePicture` in `tb-click.mjs`, CDP
+  `Page.captureScreenshot`, which works on the private desktop) under `%TEMP%\tb-click\`, and
+  its error names the file.
 - **Read the console's backing array, not the pane.** The DEBUG CONSOLE is a
   `createListView()`, which keeps only the rows that fit in the DOM, so scraping its
   `innerText` returns the *tail* of a long probe and looks exactly like a complete capture
@@ -762,6 +793,22 @@ registry alone --- and sweeps once after the last lane. An owner pid that is no 
 variable left set in a shell would switch tidying off for good. Under `--keep` nothing is
 tidied, because the kept IDE is still writing. `shutdownIde` waits for the IDE's process to
 be gone before anything is tidied, because `taskkill` only asks.
+
+**The last of several runs puts back for all of them.** Two runs at once --- two `ide_test`,
+a `tbrun` beside a lane run, another session's --- cannot each put back on their own. An IDE
+holds the recent list in memory and writes all of it back when it opens a project, so a run
+whose IDE is still open writes the other run's entries back after that run removed them (two
+`ide_test` runs failed with exit 3 this way, each naming the other's lane folder). So the runs
+share one record in `%TEMP%\tb-registry\<key>`, read and written one run at a time under its
+`busy` folder: the first run to start records the recent list, the association and the theme
+(`base.json`); every run adds its folders and named projects (`<pid>-<n>.json`); a run that
+ends while another is running marks its record finished, puts nothing back and gets `{
+deferred: [pids] }` from `finishTidy`, which the lane runner reports instead of checking the
+lists; and the last run to end puts back for all, a named project from its oldest record. A
+record whose process died unfinished is swept by folder when the next run starts alone, and
+its record of the theme and recent list is dropped, since it may be days old.
+`check_tb_registry.mjs` plays out both. `tbbuild --keep` takes no part, so its IDE can still
+write the lists after the last run has put them back.
 
 **Why .NET through PowerShell and not `reg.exe`.** Node has no registry API. `reg.exe`
 prints value names in the console code page when its output is piped, so a path containing a
@@ -1197,6 +1244,8 @@ leave the registry alone, and `finishTidy` once the last has ended. Then it chec
 than trusts: no project-state or recent-list entry may name a lane's folder, a second sweep
 of the remembered build targets must find none, and the add-ins' settings must be as
 recorded. Any failure is exit code 3, which wins over a lane's failure (1): the registry is what to repair.
+While another harness run is still running, the lists and targets are that run's to put back
+and are not checked; the report line says which pid.
 
 **An add-in's own settings are the runner's too.** `SaveSetting` writes under
 `HKCU\Software\VB and VBA Program Settings\<app>`, the same key as any installed copy of the

@@ -1,4 +1,9 @@
 {
-  "mode": "manual",
+  "mode": "lane",
+  "lane": "ide:break-into",
+  "tests": [
+    "? 1 in the DEBUG CONSOLE at the first stop ends the program with an access violation",
+    "so does a watch, which the IDE evaluates at the stop"
+  ],
   "steps": "1. Open break-in-doevents-evaluate-crash.twinproj in the twinBASIC IDE and press F5. Main loops on DoEvents.\n2. Press Ctrl+Break (Run > Break). The IDE stops inside the VB package: it opens IdleMessageLoopBreak.twin under Packages/VB/Sources/SUPPORT at the procedure IdleMessageLoopBreakpoint, and CALL STACK shows IdleMessageLoopBreakpoint above Main.\n3. Type ? 1 in the DEBUG CONSOLE and press Enter.\n4. Expected: 1. Actual: the program ends, and the DEBUG CONSOLE prints (runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION) and NATIVE EXCEPTION: ACCESS_VIOLATION {unknown} [$1EBD9288:twinBASIC_win32.dll+001D9288]. The IDE stays in break mode: the yellow arrow stays on the package's line, and Stop and the step commands stay enabled. Restarting the compiler puts it right.\nThe same happens with no console line at all when any watch exists, because the IDE evaluates the watches at the stop.\nControl: F5 at that first stop stops again at once, in Main, on the line after DoEvents; ? 1 there prints 1.\nAsserted on BETA 995 by `ide-test.bat --only break-into` (the project is test/ide/probes/break-into)."
 }

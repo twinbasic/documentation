@@ -752,9 +752,21 @@ function main() {
         "[--compare file] [--worst N] [--sample N] [--failures N] [-h, --help]\n\nSee the header comment in this file.\n\n" +
         "Exit codes:\n" +
         "  0  the measurement ran, whatever it found\n" +
-        "  2  a refused command line, a site with no search index (run build.bat first),\n" +
-        "     or a crash",
+        "  2  a refused command line, an unreadable --compare file, a site with no\n" +
+        "     search index (run build.bat first), or a crash",
     );
+  }
+
+  // Read before the evaluation, which takes the time, so a bad file is refused at once.
+  let saved = null;
+  if (opts.compare) {
+    try {
+      saved = JSON.parse(fs.readFileSync(opts.compare, "utf8"));
+    } catch (e) {
+      console.error(`cannot read --compare ${path.relative(REPO_ROOT, opts.compare)}: ${e.message}`);
+      process.exit(2);
+    }
+    saved.file = opts.compare;
   }
 
   const ctx = load(opts.site);
@@ -811,11 +823,7 @@ function main() {
   printTable(result);
   if (opts.failures) printFailures(result.perQuery, opts.failures);
 
-  if (opts.compare) {
-    const saved = JSON.parse(fs.readFileSync(opts.compare, "utf8"));
-    saved.file = opts.compare;
-    printCompare(result, saved, opts.worstN);
-  }
+  if (saved) printCompare(result, saved, opts.worstN);
 
   if (opts.save) {
     const compact = {
