@@ -310,7 +310,7 @@ The implementation is accepted, as it is without the attribute. If `[PreserveSig
 **Additional context**
 BETA 983 gives the second message as TB5000 instead of TB65535 (the reproducer, checked there, does not report TB65535). Severity: an interface the language lets you declare cannot be implemented at all, and the diagnostic asks for the signature that is already written.
 
-<!-- Reproducer: bugs/preservesig-implements/ (mode compile, expects TB5004 and TB65535); verified on 995, and on 983 it differs only in the second code. Found by scripts/check_examples.mjs over Reference/Core/Interface.md, whose example declared IFoo with a [PreserveSig] member and then showed a class implementing it; the example no longer puts [PreserveSig] on a member it implements, and its description of the attribute says why. -->
+<!-- Reproducer: bugs/preservesig-implements/ (mode compile, expects TB5004 and TB65535); verified on 995, and on 983 it differs only in the second code. Found by scripts/check_examples.mjs over Reference/Core/Interface.md, whose example declared IFoo with a [PreserveSig] member and then showed a class implementing it; the example no longer puts [PreserveSig] on a member it implements, and its description of the attribute says why. Also stated in docs/Reference/COM-Interfaces/IEnumVARIANT.md (the Err.ReturnHResult paragraph) and in a NOTE in docs/Features/Advanced/API-Declarations.md, "ThisCall in interfaces", whose Sub + Err.ReturnHResult workaround goes with it when fixed. -->
 
 ---
 
