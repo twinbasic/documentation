@@ -1,7 +1,7 @@
 [
 	{
 		"Appearance": "vbAppear3d",
-		"BorderStyle": "vbSizable",
+		"BorderStyle": "vbSizableNoTitleBar",
 		"Caption": "twinBASIC Help",
 		"ControlBox": true,
 		"Enabled": true,

@@ -1049,9 +1049,61 @@ harness about a second against opening a new IDE.
    names `NewWindowRequested` and imports `ShellExecuteA`; not tried, since it might open
    a real browser); and the window holds the whole pane, not the page alone.
    - **Detach**, a button in the pane's bar, hides the tool window and shows `HelpWindow`;
-     **Attach** in the window, or its X (`QueryUnload` with `vbFormControlMenu` is
-     cancelled), hides the window and shows the pane. The window is made once and then
-     hidden and shown, so its page is kept. It has no owner window and shows in the taskbar.
+     **Attach** in the window's title bar hides the window and shows the pane. The window is
+     made once and then hidden and shown, so its page is kept. It has no owner window and
+     shows in the taskbar.
+   - **The title bar** (owner, 2026-10-07) is one row drawn by the page, in place of the
+     Windows caption, which is light even in the dark theme. It is the IDE's tool-window
+     header: `.sectionHeader`, with `--themePanelHeaderBackColor` and `...TextColor`, the
+     theme's `...Border*`, `...Padding` and `...FontSize`, weight 600, the 6-dot grip at the
+     left, 13px, and the pane's title, `TWINBASIC HELP`. The IDE's row is 20px high (its
+     close button, 16px with 2px margins), so the bar is 28px with the dark theme's padding
+     and 26px with the light theme's; the lane compares the bar's colours, font, padding and
+     height with the pane's own header. The grip and the glyphs are drawn with inline SVG in
+     the text colour, since the IDE's grip is an image, which is not copied. On the right are
+     Attach (a dock icon, "Attach to the IDE"), Minimize, Maximize or Restore and Close,
+     24px by 20px, in `--themePanelCloseButtonForeColor`; the light theme's boxed close
+     button is not copied.
+   - **Dragging** the bar, grip included, moves the window: the page posts `drag` once the
+     left button is down and the mouse has moved 4px, or after the button has been held for
+     250 ms (the IDE's own title bar holds for 250 ms before `DragFormStart`), and the
+     add-in calls `ReleaseCapture` and posts `WM_NCLBUTTONDOWN` with `HTCAPTION`, so that
+     Windows' own move loop runs, edge snapping included. A double click on the bar posts
+     `maxrestore`, which a drag that waits for movement does not pre-empt. The form's border
+     style is `vbSizableNoTitleBar`, a sizing frame with no caption, so the edges still
+     resize. Minimize, Maximize and Restore are `ShowWindow`; the add-in tells the page
+     `state:max`, `state:normal` or `state:min` from `Form_Resize` and when the page is
+     ready, and the page swaps the Maximize glyph. Windows maximizes a window with a sizing
+     frame and no title bar over the whole monitor, taskbar included (a page of 1707x1067
+     against a work area of 1707x1027), so a window procedure put in front of the
+     form's (`SetWindowLongPtrW`, as `HelpServer` does for its message window) answers
+     `WM_GETMINMAXINFO` with the work area, kept outside the monitor by the frame's thickness
+     as Windows does for a window with a title bar, and the lane checks the page fills the
+     work area. The procedure is taken off in `Class_Terminate`. With the Windows title bar
+     it is not used.
+   - **The X** hides the window, as the pane's X hides the pane, and the help stays
+     detached; Attach is the way back to the pane. F1, the Help button and a hover link show
+     the window again. F1 and a hover link do not activate it, so the editor keeps the
+     focus: a hidden window is shown with `SW_SHOWNOACTIVATE`, and so is a minimized one; the
+     Help button activates it, as it focuses the search box. A window that has to be made
+     is activated, since it is shown with `Form.Show`. Alt+F4 and the system menu's Close
+     (`QueryUnload` with `vbFormControlMenu`, cancelled) hide it too. Whether it was shown is
+     kept (`Window`: `Shown`), so a hidden window stays hidden after a compiler restart and
+     is not made until the help is asked for.
+   - **Show real OS titlebar** (the IDE's option, `showRealTitlebar` in the JSON object of
+     the `GENERAL` value of `HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE\IDESettings`,
+     default `false`; `main.js` passes it to `ChangeWindowSetting("RealTitlebar", ...)` and
+     hides its own title bar's elements) gives the window the Windows caption instead: the
+     border style is `vbSizable`, the caption text `twinBASIC Help`, the page draws no bar and
+     Attach is in the search bar again. The caption is dark with
+     `DwmSetWindowAttribute(DWMWA_USE_IMMERSIVE_DARK_MODE)`, 20, falling back to 19, when
+     `Themes.ActiveThemeNameGroup` is `dark`, and light otherwise, and `SWP_FRAMECHANGED`
+     draws it again; a theme change applies it again. The add-in reads the option with
+     `RegGetValueW` each time the window is shown, and applies the frame then; the page is
+     told `chrome:custom` or `chrome:native`. Under the test switch only,
+     `TB_DOCS_HELP_REAL_TITLEBAR`, 1 or 0, decides in place of the registry, so a lane never
+     writes the IDE's settings. A form takes a new border style only when something else in
+     its frame is set, which setting the caption does (`BaseForm.twin`, `SyncTitlebarFlag`).
    - **Its page** is a shell (`Resources/SHELL/`) loaded with `NavigateToString`, with the
      pane's element ids, so `pane.css` applies unchanged; `shell.css` adds what the IDE's
      document gave the pane, and the results are plain `.hit` rows rather than the IDE's
@@ -1068,17 +1120,28 @@ harness about a second against opening a new IDE.
      one `:root` rule; the lane checks four properties are the same in the IDE and the
      window, before and after a change of theme. Which folder the IDE prefers when both
      hold a file of one name was not found.
-   - **Kept** with `SaveSetting` (`Window`: `Detached`, `Left`, `Top`, `Width`, `Height`,
-     in pixels): a compiler restart ends the window with the compiler, and the new instance
-     opens it again. A saved place is used only if `MonitorFromRect` finds a monitor for it.
-     A show while the window is minimized restores it without activating it, so F1 does not
-     take the focus from the editor; otherwise the window is left where it is.
+   - **Kept** with `SaveSetting` (`Window`: `Detached`, `Shown`, `Left`, `Top`, `Width`,
+     `Height`, in pixels): a compiler restart ends the window with the compiler, and the new
+     instance opens it again unless it was hidden. A saved place is used only if
+     `MonitorFromRect` finds a monitor for it, and only a window that is neither minimized nor
+     maximized has a place to save.
    - **Its user data folder** is `%LOCALAPPDATA%\tbDocsHelp\WebView2`, and under the test
      switch `%TEMP%\tbDocsHelp`, which the lanes make private. Under the test switch only,
      the add-in also removes `WEBVIEW2_USER_DATA_FOLDER` and
      `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` from the compiler's environment (P19), and
      starts the control with the DevTools port in `TB_DOCS_HELP_WINDOW_PORT`, through which
      the lane operates the window's page. The `%LOCALAPPDATA%` path is not run by any lane.
+   - **The lanes** read the add-in's test-switch lines: `window shown`, `window hidden`,
+     `window state max|normal|min`, `window drag` and `window chrome custom|native style
+     <hex of GWL_STYLE>`. They check the bar's one row and the four buttons, no `WS_CAPTION`
+     in the style, Maximize and Restore through the button and a double click, Minimize and
+     F1, a mouse press and move, and a press held, on the bar reaching the add-in, the X,
+     F1 after it, a hidden window staying hidden over a compiler restart, and the Windows
+     caption's style bits with `TB_DOCS_HELP_REAL_TITLEBAR=1`, for which the lane closes the
+     IDE and starts another, the variable being the IDE's environment. Not tested: the dark
+     caption (no read-back of the DWM attribute), Alt+F4, the registry read, maximizing on
+     a monitor other than the primary one (the lab machine has one), and the move
+     itself, whose loop needs the real mouse, which the harness's desktop has none of.
 8. **Later:** offering only the packages the project references; how a user gets an add-in
    with the archive.
 

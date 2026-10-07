@@ -1,16 +1,25 @@
 ' The detached help window: a top-level window of the add-in's own, with one
 ' WebView2 on it, which shows the whole help pane (Resources/SHELL). It knows
 ' nothing of the help itself. What the page posts comes out as Message, what the
-' add-in posts goes in with Post, and closing it with the X raises Closing and
-' leaves the window to the add-in, which hides it. It has no owner window, so
-' the user can move it to another monitor and the IDE does not cover it.
+' add-in posts goes in with Post, and closing it with Alt+F4 or the system menu
+' raises Closing and leaves the window to the add-in, which hides it. It has no
+' owner window, so the user can move it to another monitor and the IDE does not
+' cover it.
+'
+' The window has a frame with no title bar (vbSizableNoTitleBar), since the page
+' draws a title bar in the IDE's style, one row with the window's buttons in it;
+' UseNativeFrame gives it the Windows title bar instead, for an IDE whose option
+' "Show real OS titlebar" is on. StateChanged says when the window is minimized,
+' maximized or restored, which the page shows on its Maximize button.
 [FormDesignerId("4581D804-116B-436E-B7AB-1E4417F9703D")]
 Class HelpWindow
     Public Event Message(ByVal text As String)
     Public Event Closing()
+    Public Event StateChanged(ByVal state As String)
     Public Event Failed(ByVal text As String)
 
     Private PageReady As Boolean
+    Private LastState As String
 
     Public Sub New()
     End Sub
@@ -75,7 +84,24 @@ Class HelpWindow
         RaiseEvent Message(text)
     End Sub
 
-    ' The X, and the window menu's Close, only ask to close: the window is
+    ' Gives the window the Windows title bar, which the page then does not
+    ' draw, or the frame with none. A form takes a new border style only when
+    ' something else about its frame is set, and setting the caption does that.
+    Public Sub UseNativeFrame(ByVal native As Boolean)
+        BorderStyle = IIf(native, FormBorderStyleConstants.vbSizable, FormBorderStyleConstants.vbSizableNoTitleBar)
+        Caption = "twinBASIC Help"
+    End Sub
+
+    ' A resize also comes from a minimize, a maximize and a restore, and is
+    ' told as the window's state when that is what changed.
+    Private Sub Form_Resize()
+        Dim state As String = StateOfWindow(hWnd)
+        If state = LastState Then Exit Sub
+        LastState = state
+        RaiseEvent StateChanged(state)
+    End Sub
+
+    ' The window menu's Close and Alt+F4 only ask to close: the window is
     ' hidden and shown again, so that its page is kept. Anything else, as the
     ' add-in unloading it, goes through.
     Private Sub Form_QueryUnload(Cancel As Integer, UnloadMode As Integer)

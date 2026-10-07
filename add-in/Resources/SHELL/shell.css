@@ -1,15 +1,21 @@
 /* What the IDE's document gives the help pane and a page of its own does not:
-   the page's margin, height and font, and the results list, which here is a
-   plain element holding the same .hit rows the IDE's list view draws. The
-   colours are the IDE theme's custom properties, which the add-in sends as a
-   :root rule (ThemeCss). The plain palettes are for a theme it cannot find,
-   and :where gives them no weight, so the theme's rule wins whichever comes
+   the page's margin, height and font, the results list, which here is a
+   plain element holding the same .hit rows the IDE's list view draws, and the
+   title bar, drawn in the style of the IDE's tool-window header. The colours
+   are the IDE theme's custom properties, which the add-in sends as a :root
+   rule (ThemeCss). The plain palettes are for a theme it cannot find, and
+   :where gives them no weight, so the theme's rule wins whichever comes
    first. */
 :where(:root[data-group="light"]) {
   --themeToolWindowBodyForeColor: rgb(44, 44, 44);
   --themeGeneralPanelBackColor: rgb(255, 255, 255);
   --themePropertySheetValueBorderColor: 1px solid rgb(213, 210, 210);
   --themeTreeItemHoverBackColor: rgb(219, 219, 219);
+  --themePanelHeaderBackColor: #bfcddb;
+  --themePanelHeaderTextColor: rgb(56, 56, 56);
+  --themePanelHeaderFontSize: 85%;
+  --themePanelHeaderBorderTop: 1px solid #f4f4f4;
+  --themePanelHeaderBorderLeft: 1px solid #a8a8a8;
 }
 
 :where(:root[data-group="dark"]) {
@@ -17,6 +23,10 @@
   --themeGeneralPanelBackColor: rgb(43, 43, 43);
   --themePropertySheetValueBorderColor: 1px solid rgb(96, 95, 95);
   --themeTreeItemHoverBackColor: rgb(113, 113, 113);
+  --themePanelHeaderBackColor: rgb(75, 67, 67);
+  --themePanelHeaderTextColor: rgb(236, 233, 233);
+  --themePanelHeaderFontSize: 100%;
+  --themePanelHeaderBorderTop: 1px solid rgb(100, 98, 98);
 }
 
 html,
@@ -32,4 +42,98 @@ body {
 
 #helpResults {
   overflow-y: auto;
+}
+
+/* The title bar: one row, the IDE's tool-window header (.sectionHeader) with
+   its colours, borders, padding, font and grip, and the window's buttons where
+   the IDE has its close button. The IDE's row is 20px high, the height of its
+   close button with its margins. The whole bar, grip included, drags the
+   window (shell.js). With the Windows title bar (data-chrome="native") the bar
+   is not drawn, and Attach is in the search bar. */
+#helpTitleBar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  box-sizing: border-box;
+  padding: var(--themePanelHeaderPadding, 2px 0 5px 0);
+  background-color: var(--themePanelHeaderBackColor);
+  color: var(--themePanelHeaderTextColor);
+  font-size: var(--themePanelHeaderFontSize, 100%);
+  font-weight: 600;
+  border-top: var(--themePanelHeaderBorderTop);
+  border-left: var(--themePanelHeaderBorderLeft);
+  border-right: var(--themePanelHeaderBorderRight);
+  border-bottom: var(--themePanelHeaderBorderBottom);
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html[data-chrome="native"] #helpTitleBar {
+  display: none;
+}
+
+/* The grip is 13px, drawn in the title's colour at about the weight the IDE
+   gives its own, and 5px in from the edge; the title starts 7px after it. */
+#helpGrip {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  margin: 0 2px 0 5px;
+  fill: currentColor;
+  opacity: 0.7;
+}
+
+#helpTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#helpTitleBar .titleButton {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--themePanelCloseButtonForeColor, currentColor);
+}
+
+#helpTitleBar .titleButton:hover {
+  background: color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.titleButton svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+}
+
+.titleButton svg .fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* Attach is an icon in the title bar and a word in the search bar. */
+#helpTitleBar #helpAttach .label,
+#helpBar #helpAttach .dock {
+  display: none;
+}
+
+/* The Maximize button shows Restore while the window is maximized. */
+html[data-state="max"] #helpMaximize .maximize,
+html:not([data-state="max"]) #helpMaximize .restore {
+  display: none;
 }

@@ -158,6 +158,15 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   let server;
   let windowPort; // the detached window's DevTools port
   const offline = lane.name === "help-offline";
+  // What the IDE is started with: the site this file serves, the window's
+  // debugging port, and the window's frame, which the IDE's own option
+  // "Show real OS titlebar" would otherwise decide: 0 the frame the page draws
+  // a title bar for, 1 the Windows one. The option is never changed.
+  const ideEnv = (realTitlebar) => ({
+    TB_DOCS_HELP_SITE: origin,
+    TB_DOCS_HELP_WINDOW_PORT: String(windowPort),
+    TB_DOCS_HELP_REAL_TITLEBAR: String(realTitlebar),
+  });
 
   // The frame shows `url` from the built site in the IDE's theme: the add-in
   // gave it that src with ?theme= and ?pane=1, the page it loaded is the
@@ -287,7 +296,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     }
     await lane.addAddin(src);
     [windowPort] = await claimPorts(1, { from: 9760 });
-    c = await lane.open(HOST, { env: { TB_DOCS_HELP_SITE: origin, TB_DOCS_HELP_WINDOW_PORT: String(windowPort) } });
+    c = await lane.open(HOST, { env: ideEnv(0) });
     pages = await pagesOrigin(null);
     await openFile(c, FILE, { line: 5, column: 9 });
   });
@@ -474,8 +483,9 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       await waitFor(c, async (c) => (await results(c)).join() === "No matches"),
       JSON.stringify(await results(c)),
     );
-    const box = await resultsBox(c);
-    assert.ok(box?.row > 0 && Math.abs(box.height - box.row) < 1 && !box.scrollbar, JSON.stringify(box));
+    // The list draws its rows a moment after it has them: no row has a height yet.
+    const box = await waitFor(c, async (c) => (await resultsBox(c))?.row > 0 && (await resultsBox(c)));
+    assert.ok(box && Math.abs(box.height - box.row) < 1 && !box.scrollbar, JSON.stringify(await resultsBox(c)));
   });
 
   test("the results list is as tall as its rows, up to 35% of the pane", async () => {
@@ -484,7 +494,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     // The add-in fills the list before it shows it, so wait for both.
     const few = await waitFor(c, async (c) => {
       const r = await results(c);
-      return r.length > 0 && r[0] === "Interaction.MsgBoxfunction" && (await resultsBox(c)) && r.length;
+      return r.length > 0 && r[0] === "Interaction.MsgBoxfunction" && (await resultsBox(c))?.row > 0 && r.length;
     });
     let box = await resultsBox(c);
     assert.ok(
@@ -516,6 +526,24 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     await at(c, 7, 21);
     await click(c, "addinButton-tbDocsHelp");
     assert.equal(await waitFor(c, async (c) => (await focusedId(c)) === "helpSearch" && "helpSearch"), "helpSearch");
+  });
+
+  // The IDE draws the pane's header, the tool-window header the detached
+  // window's title bar copies; what a copy has to match is read here, while the
+  // pane shows.
+  let paneHeader;
+  test("the pane's header is the IDE's tool-window header", async () => {
+    paneHeader = await c.evaluate(`(() => {
+      const h = [...document.querySelectorAll("#ADDIN_${PANE} .sectionHeader")]
+        .find((e) => e.textContent.trim() === "TWINBASIC HELP");
+      if (!h) return null;
+      const s = getComputedStyle(h);
+      return {
+        height: h.getBoundingClientRect().height,
+        look: { backgroundColor: s.backgroundColor, color: s.color, fontSize: s.fontSize, fontWeight: s.fontWeight, paddingTop: s.paddingTop, paddingBottom: s.paddingBottom },
+      };
+    })()`);
+    assert.ok(paneHeader, "no header for the pane");
   });
 
   test("Open in browser opens the page the pane shows", async () => {
@@ -721,6 +749,28 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   // ------------------------------------------------------------ the detached window
 
   let win; // the DevTools connection to the window's page
+  let firstDetach; // the console mark before the first Detach
+  // The window's style bits that tell a Windows title bar from none.
+  const WS_CAPTION = 0xc00000;
+  const WS_THICKFRAME = 0x40000;
+  const WS_VISIBLE = 0x10000000;
+  // The style the add-in printed for the window's frame after `mark`, as
+  // "window chrome <custom|native> style <hex>".
+  async function windowFrame(mark) {
+    const m = (await addinLines(c, mark)).map((l) => l.match(/^window chrome (custom|native) style ([0-9A-F]+)$/));
+    const last = m.filter(Boolean).pop();
+    return last ? { chrome: last[1], style: Number.parseInt(last[2], 16) } : null;
+  }
+  // Wait for the add-in's line after `mark`, and return the lines.
+  async function waitForLine(mark, line, timeout = 10 * 1000) {
+    const found = await waitFor(c, async (c) => (await addinLines(c, mark)).includes(line), { timeout });
+    assert.ok(found, `no "${line}" in ${JSON.stringify(await addinLines(c, mark))}`);
+    return addinLines(c, mark);
+  }
+  // The centre of an element of the window's page.
+  const centreInWindow = (css) =>
+    win.evaluate(`(() => { const r = document.querySelector(${JSON.stringify(css)})
+      .getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
   // The src of the frame in the window, from the add-in's "window page" line
   // after a mark.
   const windowPage = async (mark) =>
@@ -728,10 +778,9 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   const windowRows = () =>
     win.evaluate(`[...document.querySelectorAll("#helpResults .hit .label")].map((e) => e.textContent)`);
   const windowBox = () => win.evaluate(`document.getElementById("helpHover").checked`);
-  // The centre of an element of the window's page, and a click there.
+  // A click on an element of the window's page.
   async function clickInWindow(css) {
-    const p = await win.evaluate(`(() => { const r = document.querySelector(${JSON.stringify(css)})
-      .getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+    const p = await centreInWindow(css);
     await clickAt(win, p.x, p.y);
   }
   // The same theme properties in the IDE and in the window's page; the IDE
@@ -779,6 +828,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     const was = await frameSrc(c);
     assert.ok(was, "the pane had no page to carry over");
     const mark = await detach();
+    firstDetach = mark;
     assert.equal(await waitFor(c, () => windowPage(mark), { timeout: 30 * 1000 }), was);
     assert.equal((await toolWindow(c, PANE))?.visible, false, "the pane is still showing");
     assert.equal(await frameSrc(c), was);
@@ -799,6 +849,119 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       await themeGroup(c),
       "the window's group",
     );
+  });
+
+  test("the window's title bar is one row, with the title and four buttons, and Windows draws no caption", async () => {
+    const bar = await win.evaluate(`(() => {
+      const el = (id) => document.getElementById(id);
+      const bar = el("helpTitleBar").getBoundingClientRect();
+      const rects = {};
+      const inRow = (id) => {
+        const r = el(id).getBoundingClientRect();
+        rects[id] = [r.left, r.top, r.width, r.height].map(Math.round);
+        return r.width > 0 && r.top >= bar.top && r.bottom <= bar.bottom;
+      };
+      const s = getComputedStyle(el("helpTitleBar"));
+      return {
+        chrome: document.documentElement.getAttribute("data-chrome"),
+        top: bar.top,
+        height: bar.height,
+        below: el("helpBar").getBoundingClientRect().top,
+        title: el("helpTitle").textContent,
+        inRow: ["helpGrip", "helpTitle", "helpAttach", "helpMinimize", "helpMaximize", "helpClose"].map(inRow),
+        rects,
+        attachIn: el("helpAttach").parentElement.id,
+        attachWord: getComputedStyle(el("helpAttach").querySelector(".label")).display,
+        look: { backgroundColor: s.backgroundColor, color: s.color, fontSize: s.fontSize, fontWeight: s.fontWeight, paddingTop: s.paddingTop, paddingBottom: s.paddingBottom },
+      };
+    })()`);
+    const { rects, look, height, ...rest } = bar;
+    assert.ok(paneHeader, "the pane's header was not read");
+    assert.deepEqual(
+      rest,
+      {
+        chrome: "custom",
+        top: 0,
+        below: height,
+        title: "TWINBASIC HELP",
+        inRow: [true, true, true, true, true, true],
+        attachIn: "helpTitleBar",
+        attachWord: "none",
+      },
+      JSON.stringify(rects),
+    );
+    // The IDE's own tool-window header, read from the pane while it showed.
+    assert.deepEqual(look, paneHeader.look);
+    assert.ok(
+      Math.abs(height - paneHeader.height) <= 1,
+      `the bar is ${height} high, the IDE's header ${paneHeader.height}`,
+    );
+    const frame = await windowFrame(firstDetach);
+    assert.equal(frame?.chrome, "custom");
+    assert.notEqual(frame.style & WS_CAPTION, WS_CAPTION, `the window's style ${frame.style.toString(16)}`);
+    assert.ok(frame.style & WS_THICKFRAME, "the window cannot be resized");
+    assert.ok(frame.style & WS_VISIBLE, "the window is not visible");
+  });
+
+  // The Maximize button and the title bar's double click maximize the window
+  // and restore it, and the button shows which it will do.
+  const maximizeButton = () =>
+    win.evaluate(`({
+      state: document.documentElement.getAttribute("data-state"),
+      title: document.getElementById("helpMaximize").title,
+      glyphs: [".maximize", ".restore"].map((s) => getComputedStyle(document.querySelector("#helpMaximize " + s)).display === "none"),
+    })`);
+
+  // The size of the window's page and of the monitor's work area, in the same
+  // units: a maximized window with no title bar of its own has to fill the
+  // work area, not the whole monitor over the taskbar (WindowApi,
+  // LimitMaximizeToWorkArea).
+  const placeAndWorkArea = () =>
+    win.evaluate(`({
+      window: [innerWidth, innerHeight],
+      work: [screen.availWidth, screen.availHeight],
+    })`);
+
+  test("Maximize and Restore change the window's state, and the button shows which it will do", async () => {
+    let mark = await consoleMark(c);
+    await clickInWindow("#helpMaximize");
+    await waitForLine(mark, "window state max");
+    const maximized = await waitFor(c, async () => {
+      const p = await placeAndWorkArea();
+      return p.window.every((v, i) => Math.abs(v - p.work[i]) <= 1) && p;
+    });
+    assert.ok(maximized, `not the work area: ${JSON.stringify(await placeAndWorkArea())}`);
+    assert.ok(
+      await waitFor(c, async () => (await maximizeButton()).state === "max"),
+      JSON.stringify(await maximizeButton()),
+    );
+    assert.deepEqual(await maximizeButton(), { state: "max", title: "Restore", glyphs: [true, false] });
+    mark = await consoleMark(c);
+    await clickInWindow("#helpMaximize");
+    await waitForLine(mark, "window state normal");
+    assert.ok(await waitFor(c, async () => (await maximizeButton()).state === "normal"));
+    assert.deepEqual(await maximizeButton(), { state: "normal", title: "Maximize", glyphs: [false, true] });
+  });
+
+  test("a double click on the bar maximizes the window, and another restores it", async () => {
+    const p = await centreInWindow("#helpTitle");
+    for (const want of ["max", "normal"]) {
+      const mark = await consoleMark(c);
+      await clickAt(win, p.x, p.y, { clickCount: 2 });
+      await waitForLine(mark, `window state ${want}`);
+    }
+  });
+
+  test("Minimize, and F1 brings the window back", async () => {
+    let mark = await consoleMark(c);
+    await clickInWindow("#helpMinimize");
+    await waitForLine(mark, "window state min");
+    await at(c, 7, 21);
+    mark = await consoleMark(c);
+    await pressKey(c, "F1");
+    const want = `${pages}/tB/Modules/Strings/Len?theme=${await themeGroup(c)}&pane=1`;
+    await waitForLine(mark, "window state normal");
+    assert.equal(await waitFor(c, () => windowPage(mark)), want);
   });
 
   test("F1 shows the page in the window, and the pane is left alone", async () => {
@@ -899,6 +1062,58 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     );
   });
 
+  // A press on the bar with the mouse moved a few pixels, or held for 250 ms,
+  // starts the system's move loop through the add-in, and a click does not.
+  // The page posts "drag" and the add-in prints "window drag" before it runs
+  // the loop, which follows the real mouse; the harness's desktop has none,
+  // and the window does not move under the page's synthetic mouse (its
+  // screenX and screenY were read before and after), so that is not asserted.
+  const mouse = (type, p, extra = {}) =>
+    win.send("Input.dispatchMouseEvent", { type, x: p.x, y: p.y, button: "left", buttons: 1, ...extra });
+
+  test("a click or a small move on the bar starts no drag, and a larger move does", async () => {
+    const p = await centreInWindow("#helpTitle");
+    const mark = await consoleMark(c);
+    await clickAt(win, p.x, p.y);
+    await win.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: p.x, y: p.y });
+    await mouse("mousePressed", p, { clickCount: 1 });
+    await mouse("mouseMoved", { x: p.x + 2, y: p.y + 1 });
+    await sleep(100);
+    await mouse("mouseReleased", { x: p.x + 2, y: p.y + 1 }, { buttons: 0 });
+    await sleep(500);
+    assert.deepEqual(await addinLines(c, mark), [], "a click started a drag");
+    await mouse("mousePressed", p, { clickCount: 1 });
+    await mouse("mouseMoved", { x: p.x + 30, y: p.y + 10 });
+    await waitForLine(mark, "window drag");
+    await mouse("mouseReleased", { x: p.x + 30, y: p.y + 10 }, { buttons: 0 });
+  });
+
+  test("a press held on the bar for 250 ms starts a drag", async () => {
+    const p = await centreInWindow("#helpTitle");
+    const mark = await consoleMark(c);
+    await mouse("mousePressed", p, { clickCount: 1 });
+    await waitForLine(mark, "window drag");
+    await mouse("mouseReleased", p, { buttons: 0 });
+  });
+
+  test("the X hides the window and the help stays detached, and F1 shows it again", async () => {
+    let mark = await consoleMark(c);
+    await clickInWindow("#helpClose");
+    await waitForLine(mark, "window hidden");
+    assert.equal((await toolWindow(c, PANE))?.visible, false, "the pane is showing");
+    await at(c, 5, 9);
+    mark = await consoleMark(c);
+    await pressKey(c, "F1");
+    const lines = await waitForLine(mark, "window shown");
+    assert.equal(
+      await waitFor(c, () => windowPage(mark)),
+      `${pages}/tB/Modules/Interaction/MsgBox?theme=${await themeGroup(c)}&pane=1`,
+    );
+    assert.ok(!lines.includes("detached") && !lines.includes("attached"), JSON.stringify(lines));
+    assert.equal((await toolWindow(c, PANE))?.visible, false, "the pane is showing");
+    assert.equal((await windowFrame(mark))?.chrome, "custom");
+  });
+
   test("Attach brings the pane back with the search and the last page", async () => {
     await at(c, 7, 21);
     const mark = await consoleMark(c);
@@ -933,6 +1148,86 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.ok(await waitFor(c, async (c) => (await addinLines(c, attached)).includes("attached")));
     assert.ok(await waitFor(c, async (c) => (await toolWindow(c, PANE))?.visible), "the pane is not showing");
     await showsPage("/tB/Modules/Strings/Len");
+  });
+
+  test("a window hidden with the X stays hidden after a compiler restart, until the Help button shows it", async () => {
+    await detach();
+    await connectWindow();
+    let mark = await consoleMark(c);
+    await clickInWindow("#helpClose");
+    await waitForLine(mark, "window hidden");
+    mark = await consoleMark(c);
+    await lane.restartCompiler();
+    pages = await pagesOrigin(mark);
+    await sleep(2000);
+    const lines = await addinLines(c, mark);
+    assert.deepEqual(
+      lines.filter((l) => l.startsWith("window") || l === "detached"),
+      [],
+      "the window was shown again",
+    );
+    assert.equal((await toolWindow(c, PANE))?.visible, false, "the pane is showing");
+    mark = await consoleMark(c);
+    await click(c, "addinButton-tbDocsHelp");
+    await waitForLine(mark, "window shown", 30 * 1000);
+    await connectWindow();
+    // The search box gets the focus once the new window's page is ready.
+    assert.ok(
+      await waitFor(c, async () => (await win.evaluate(`document.activeElement?.id`)) === "helpSearch"),
+      "the search box has no focus in the window",
+    );
+    mark = await consoleMark(c);
+    await clickInWindow("#helpAttach");
+    await waitForLine(mark, "attached");
+    assert.ok(await waitFor(c, async (c) => (await toolWindow(c, PANE))?.visible), "the pane is not showing");
+  });
+
+  // The IDE's option "Show real OS titlebar" gives the window the Windows title
+  // bar, and the page then draws none. The harness cannot change the option
+  // without changing the user's own, so the add-in reads
+  // TB_DOCS_HELP_REAL_TITLEBAR under the test switch instead, which is the
+  // IDE's environment: a second IDE is started with it.
+  test("with the IDE's option Show real OS titlebar on, the window has the Windows title bar and Attach is in the search bar", async () => {
+    win?.close();
+    win = null;
+    await lane.closeProject();
+    c = await lane.open(HOST, { env: ideEnv(1) });
+    pages = await pagesOrigin(null);
+    await click(c, "addinButton-tbDocsHelp");
+    assert.ok(await waitFor(c, async (c) => (await toolWindow(c, PANE))?.visible), "the pane is not showing");
+    const mark = await detach();
+    const frame = await windowFrame(mark);
+    assert.equal(frame?.chrome, "native");
+    assert.equal(frame.style & WS_CAPTION, WS_CAPTION, `the window's style ${frame.style.toString(16)}`);
+    assert.ok(frame.style & WS_THICKFRAME, "the window cannot be resized");
+    await connectWindow();
+    // The add-in tells the page which frame it has once the page is ready.
+    await waitFor(
+      c,
+      async () => (await win.evaluate(`document.documentElement.getAttribute("data-chrome")`)) === "native",
+    );
+    const page = await win.evaluate(`(() => {
+      const el = (id) => document.getElementById(id);
+      return {
+        chrome: document.documentElement.getAttribute("data-chrome"),
+        bar: getComputedStyle(el("helpTitleBar")).display,
+        attachIn: el("helpAttach").parentElement.id,
+        attachWord: getComputedStyle(el("helpAttach").querySelector(".label")).display !== "none",
+        searchTop: el("helpBar").getBoundingClientRect().top,
+        order: [...el("helpBar").children].map((e) => e.id),
+      };
+    })()`);
+    assert.deepEqual(page, {
+      chrome: "native",
+      bar: "none",
+      attachIn: "helpBar",
+      attachWord: true,
+      searchTop: 0,
+      order: ["helpSearch", "helpBrowser", "helpAttach", "helpHoverLabel"],
+    });
+    const attached = await consoleMark(c);
+    await clickInWindow("#helpAttach");
+    await waitForLine(attached, "attached");
   });
 
   return () => {

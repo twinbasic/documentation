@@ -8,12 +8,20 @@
 ' archive (HelpServer), and from the live site otherwise. The pane's Hover
 ' help box turns on links to the pages in the IDE's hover under the mouse
 ' (HoverHelp). The pane's Detach button moves the whole pane into a window of
-' the add-in's own (HelpWindow), which can go to another monitor; Attach, or
-' closing the window, brings it back. While it is detached everything that
-' would show in the pane shows in the window, and the pane's frame is not
-' loaded. The pane keeps the state either way: the window is another view of it.
-' Every line it prints to the DEBUG CONSOLE starts "[tbDocsHelp] ", except
-' "open <url>" (see OpenUrl).
+' the add-in's own (HelpWindow), which can go to another monitor; the window's
+' Attach button brings it back. While it is detached everything that would show
+' in the pane shows in the window, and the pane's frame is not loaded. The pane
+' keeps the state either way: the window is another view of it. The window's
+' title bar is one row drawn in its page, in the style of a tool window's
+' header, with Attach, Minimize, Maximize and Close in it; its X hides the
+' window, as the pane's X hides the pane, and the help stays detached until F1,
+' the Help button or a hover link shows the window again (without activating
+' it, except for the Help button). Whether the window was shown is kept, so a
+' hidden window stays hidden after a compiler restart. When the IDE's option
+' "Show real OS titlebar" is on, the window has the Windows title bar instead,
+' dark or light with the theme, and the page draws none; the option is read
+' each time the window is shown. Every line it prints to the DEBUG CONSOLE
+' starts "[tbDocsHelp] ", except "open <url>" (see OpenUrl).
 Private Class HelpAddIn
     Implements AddIn
     Private WithEvents Host As Host
@@ -39,6 +47,9 @@ Private Class HelpAddIn
     Private DetachButton As HtmlElement
     Private WithEvents HelpWin As HelpWindow ' Nothing until the first Detach, then kept
     Private Detached As Boolean             ' the window shows the help, the pane is hidden
+    Private WindowShown As Boolean          ' Detached, and the window is not hidden
+    Private NativeFrame As Boolean          ' the window has the Windows title bar
+    Private FocusOnReady As Boolean         ' the search box gets the focus when the page is ready
     Private LoadedFrame As String           ' the src the pane's frame was given
     Private SearchText As String            ' what the search box holds, in either view
     Private HoverOn As Boolean              ' what the Hover help box holds, in either view
@@ -52,7 +63,8 @@ Private Class HelpAddIn
     ' SaveSetting's application name; test/addin/lanes.mjs names it too.
     Private Const SETTINGS_APP As String = "tbDocsHelp"
     Private Const SEARCH_LIMIT As Long = 100
-    ' The window's settings: whether it is detached, and where it is, in pixels.
+    ' The window's settings: whether it is detached, whether it is shown, and
+    ' where it is, in pixels.
     Private Const WINDOW_SECTION As String = "Window"
 
     Public Sub New(ByVal Host As Host)
@@ -72,14 +84,18 @@ Private Class HelpAddIn
         If Not Index Is Nothing Then Set Hovering = New HoverHelp(Host, Index, BASE_URL)
         StartServer
         PageUrl = GetSetting(SETTINGS_APP, "Pane", "Page", "")
+        ' Known before the pane is built, so that its frame is not loaded for
+        ' a help that is in the window.
+        Detached = GetSetting(SETTINGS_APP, WINDOW_SECTION, "Detached", "0") = "1"
         BuildPane
         ' The scenarios wait for this line, and check the switch in it before
         ' pressing anything.
         Host.DebugConsole.PrintText TAG & "loaded, " & indexState & ", test switch " & _
             IIf(TestSwitchOn(), "on", "off")
         ' A compiler restart ends the window with the compiler: this instance
-        ' opens it again.
-        If GetSetting(SETTINGS_APP, WINDOW_SECTION, "Detached", "0") = "1" Then Detach
+        ' opens it again, unless it was hidden, which it stays until the help is
+        ' asked for (ShowView).
+        If Detached And GetSetting(SETTINGS_APP, WINDOW_SECTION, "Shown", "1") = "1" Then Detach
     End Sub
 
     Private Function LoadIndex() As String
@@ -104,9 +120,10 @@ Private Class HelpAddIn
     End Sub
 
     ' The window goes with the compiler, so its place is saved here as well as
-    ' when it is attached or closed.
+    ' when it is attached or closed, and the window's own procedure put back.
     Private Sub Class_Terminate()
         If Not HelpWin Is Nothing Then SaveWindowPlace
+        EndMaximizeLimit
         If Not Server Is Nothing Then Server.CloseAll
     End Sub
 
@@ -145,13 +162,15 @@ Private Class HelpAddIn
     End Function
 
     ' A theme change loads the page again with the new theme: in the pane's
-    ' frame, or in the window, which is also sent the theme's properties. The
-    ' pane itself follows the theme through the IDE's CSS variables (pane.css).
+    ' frame, or in the window, which is also sent the theme's properties and,
+    ' with the Windows title bar, has it made dark or light. The pane itself
+    ' follows the theme through the IDE's CSS variables (pane.css).
     Private Sub Host_OnChangedTheme(ByVal ThemeName As String)
         On Error GoTo Failed
         If Detached Then
-            HelpWin.Post "theme:" & ThemeMessage()
-            If Len(PageUrl) > 0 And Not ShowingSummary Then HelpWin.Post "page:" & FrameUrl(PageUrl)
+            PostToWindow "theme:" & ThemeMessage()
+            If Len(PageUrl) > 0 And Not ShowingSummary Then PostToWindow "page:" & FrameUrl(PageUrl)
+            If Not HelpWin Is Nothing Then ApplyTitleBarTheme
         ElseIf Len(PageUrl) > 0 And Not Frame Is Nothing Then
             LoadedFrame = FrameUrl(PageUrl)
             Frame.Properties.src = LoadedFrame
@@ -251,7 +270,7 @@ Private Class HelpAddIn
         SaveSetting SETTINGS_APP, "Hover", "On", IIf(isOn, "1", "0")
         Hovering.Enabled = isOn
         HoverBox.Properties.checked = isOn
-        If Detached Then HelpWin.Post "hover:" & IIf(isOn, "1", "0")
+        If Detached Then PostToWindow "hover:" & IIf(isOn, "1", "0")
     End Sub
 
     Private Sub Hovering_Pick(ByVal url As String)
@@ -270,23 +289,29 @@ Private Class HelpAddIn
         ShowPaneForSearch
     End Sub
 
+    ' Shows the view that has the help, and puts the focus in its search box.
     Private Sub ShowPaneForSearch()
-        ShowView
-        If Detached Then
+        ShowView True
+        If Not Detached Then
+            SearchBox.Properties.focus()
+        ElseIf HelpWin.IsReady Then
             HelpWin.Post "focus:"
         Else
-            SearchBox.Properties.focus()
+            FocusOnReady = True
         End If
     End Sub
 
     ' Shows the view that has the help: the pane, or the detached window, which
-    ' is left where it is unless it is minimized. Then it is restored without
-    ' taking the focus from the editor the user is typing in.
-    Private Sub ShowView()
+    ' is left where it is unless it is hidden or minimized. Then it is shown
+    ' without taking the focus from the editor the user is typing in, unless
+    ' activate says the user asked for the window itself.
+    Private Sub ShowView(Optional ByVal activate As Boolean = False)
         If Not Detached Then
             Pane.Visible = True
+        ElseIf Not WindowShown Then
+            OpenWindow activate
         ElseIf IsMinimized(HelpWin.hWnd) Then
-            ShowWithoutActivating HelpWin.hWnd
+            If activate Then RestoreWindow HelpWin.hWnd Else ShowWithoutActivating HelpWin.hWnd
         End If
     End Sub
 
@@ -362,7 +387,7 @@ Private Class HelpAddIn
     Private Sub SetSearchText(ByVal text As String)
         SearchText = text
         SearchBox.Properties.value = text
-        If Detached Then HelpWin.Post "search:" & text
+        If Detached Then PostToWindow "search:" & text
     End Sub
 
     ' Shows a page in the pane's frame, or in the window's, in place of a
@@ -375,8 +400,8 @@ Private Class HelpAddIn
         Frame.Properties.style.display = ""
         BrowserButton.Properties.disabled = False
         If Detached Then
-            HelpWin.Post "page:" & FrameUrl(url)
-            HelpWin.Post "browser:1"
+            PostToWindow "page:" & FrameUrl(url)
+            PostToWindow "browser:1"
         Else
             LoadedFrame = FrameUrl(url)
             Frame.Properties.src = LoadedFrame
@@ -402,8 +427,8 @@ Private Class HelpAddIn
         Summary.Properties.style.display = ""
         BrowserButton.Properties.disabled = True
         If Detached Then
-            HelpWin.Post "summary:" & SummaryHtml
-            HelpWin.Post "browser:0"
+            PostToWindow "summary:" & SummaryHtml
+            PostToWindow "browser:0"
             If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "window summary"
         End If
         ShowView
@@ -441,13 +466,14 @@ Private Class HelpAddIn
     ' carry the entry's number for it to post back; nothing else of the text
     ' is trusted.
     Private Sub PostResults()
+        If HelpWin Is Nothing Then Exit Sub
         Dim html As String
         Dim i As Variant
         For Each i In ResultIds
             html = html & "<div class='hit' data-pick='" & CLng(i) & "'>" & ResultText(i) & "</div>"
         Next
         If ResultIds.Count = 0 And Len(LastSearch) > 0 Then html = "<div class='none'>No matches</div>"
-        HelpWin.Post "results:" & html
+        PostToWindow "results:" & html
         If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "window results " & ResultIds.Count
     End Sub
 
@@ -528,12 +554,9 @@ Private Class HelpAddIn
     ' now.
     Private Sub Detach()
         On Error GoTo Failed
-        Dim first As Boolean = HelpWin Is Nothing
-        If first Then Set HelpWin = New HelpWindow
         Detached = True
         Pane.Visible = False
-        HelpWin.Show vbModeless
-        If first Then RestoreWindowPlace
+        OpenWindow True
         SaveSetting SETTINGS_APP, WINDOW_SECTION, "Detached", "1"
         If HelpWin.IsReady Then SendWindowState
         If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "detached"
@@ -545,12 +568,83 @@ Private Class HelpAddIn
         Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
     End Sub
 
+    ' Shows the window, made the first time, in the frame the IDE's option asks
+    ' for. A window that is made, or that the user asked for, is activated;
+    ' another is shown without it, so that F1 does not take the focus from the
+    ' editor. The place it was left at is used the first time only.
+    Private Sub OpenWindow(ByVal activate As Boolean)
+        Dim first As Boolean = HelpWin Is Nothing
+        If first Then Set HelpWin = New HelpWindow
+        ApplyFrame
+        If first Or activate Then
+            HelpWin.Show vbModeless
+            If IsMinimized(HelpWin.hWnd) Then RestoreWindow HelpWin.hWnd
+        Else
+            ShowWithoutActivating HelpWin.hWnd
+        End If
+        If first Then RestoreWindowPlace
+        WindowShown = True
+        SaveSetting SETTINGS_APP, WINDOW_SECTION, "Shown", "1"
+        If TestSwitchOn() Then
+            Host.DebugConsole.PrintText TAG & "window shown"
+            Host.DebugConsole.PrintText TAG & "window chrome " & IIf(NativeFrame, "native", "custom") & _
+                " style " & Hex$(WindowStyle(HelpWin.hWnd))
+        End If
+    End Sub
+
+    ' Hides the window and leaves the help detached: F1, the Help button or a
+    ' hover link shows it again. The page is kept.
+    Private Sub HideWindow()
+        On Error GoTo Failed
+        SaveWindowPlace
+        HelpWin.Hide
+        WindowShown = False
+        SaveSetting SETTINGS_APP, WINDOW_SECTION, "Shown", "0"
+        If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "window hidden"
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Whether the window has the Windows title bar: the IDE's option "Show real
+    ' OS titlebar". Under the test switch TB_DOCS_HELP_REAL_TITLEBAR, 1 or 0,
+    ' decides instead, so that a test never changes the IDE's own options.
+    Private Function WantsNativeFrame() As Boolean
+        If TestSwitchOn() Then
+            Dim forced As String = Environ$("TB_DOCS_HELP_REAL_TITLEBAR")
+            If Len(forced) > 0 Then Return forced = "1"
+        End If
+        Return ShowsRealTitlebar()
+    End Function
+
+    ' Gives the window the frame the option asks for, and tells the page, which
+    ' draws its own title bar for the frame that has none.
+    Private Sub ApplyFrame()
+        NativeFrame = WantsNativeFrame()
+        HelpWin.UseNativeFrame NativeFrame
+        LimitMaximizeToWorkArea HelpWin.hWnd, Not NativeFrame
+        ApplyTitleBarTheme
+        PostToWindow "chrome:" & IIf(NativeFrame, "native", "custom")
+    End Sub
+
+    ' Makes the Windows title bar dark with a dark IDE theme, light otherwise.
+    ' The page draws its own in the theme's colours.
+    Private Sub ApplyTitleBarTheme()
+        If NativeFrame Then SetDarkTitleBar HelpWin.hWnd, Host.Themes.ActiveThemeNameGroup = "dark"
+    End Sub
+
+    ' Sends the page a message, if the window has been made.
+    Private Sub PostToWindow(ByVal text As String)
+        If Not HelpWin Is Nothing Then HelpWin.Post text
+    End Sub
+
     ' Hides the window and shows the pane again, with the search box as it was
     ' left in the window and the page the pane's frame has not been given yet.
     Private Sub Attach()
         On Error GoTo Failed
         SaveWindowPlace
         HelpWin.Hide
+        WindowShown = False
         Detached = False
         SaveSetting SETTINGS_APP, WINDOW_SECTION, "Detached", "0"
         SearchBox.Properties.value = SearchText
@@ -567,9 +661,15 @@ Private Class HelpAddIn
         Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
     End Sub
 
-    ' The X asks to close the window, which is Attach.
+    ' Alt+F4 and the system menu's Close hide the window, as the X does.
     Private Sub HelpWin_Closing()
-        Attach
+        HideWindow
+    End Sub
+
+    ' The window was minimized, maximized or restored.
+    Private Sub HelpWin_StateChanged(ByVal state As String)
+        PostToWindow "state:" & state
+        If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "window state " & state
     End Sub
 
     Private Sub HelpWin_Failed(ByVal text As String)
@@ -599,6 +699,15 @@ Private Class HelpAddIn
                 SetHover payload = "1"
             Case "attach"
                 Attach
+            Case "close"
+                HideWindow
+            Case "minimize"
+                MinimizeWindow HelpWin.hWnd
+            Case "maxrestore"
+                MaximizeOrRestore HelpWin.hWnd
+            Case "drag"
+                If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "window drag"
+                StartWindowDrag HelpWin.hWnd
             Case "browser"
                 OpenInBrowser
             Case "frame"
@@ -609,9 +718,12 @@ Private Class HelpAddIn
         Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
     End Sub
 
-    ' Gives the window all that the pane shows: the theme, the search box, the
-    ' Hover help box, the results, and the page or the summary.
+    ' Gives the window all that the pane shows: the frame it has, its state,
+    ' the theme, the search box, the Hover help box, the results, and the page
+    ' or the summary.
     Private Sub SendWindowState()
+        HelpWin.Post "chrome:" & IIf(NativeFrame, "native", "custom")
+        HelpWin.Post "state:" & StateOfWindow(HelpWin.hWnd)
         HelpWin.Post "theme:" & ThemeMessage()
         HelpWin.Post "hoverdisabled:" & IIf(Hovering Is Nothing, "1", "0")
         HelpWin.Post "hover:" & IIf(HoverOn, "1", "0")
@@ -623,6 +735,10 @@ Private Class HelpAddIn
         Else
             If Len(PageUrl) > 0 Then HelpWin.Post "page:" & FrameUrl(PageUrl)
             HelpWin.Post "browser:1"
+        End If
+        If FocusOnReady Then
+            FocusOnReady = False
+            HelpWin.Post "focus:"
         End If
     End Sub
 
