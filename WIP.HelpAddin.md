@@ -1247,8 +1247,11 @@ The add-in's code skeletons are written in Stage 4 against the compiler, with te
 
 ### Stage 5: shipping
 
-- Build both bitnesses, which `buildAddin` does (P7). Add a documentation page under
-  [docs/IDE/AddIns/](docs/IDE/AddIns/).
+- Build both bitnesses, which `buildAddin` does (P7). The documentation page is
+  [docs/IDE/AddIns/Help.md](docs/IDE/AddIns/Help.md); its pictures are taken by
+  `scripts/shoot_help_addin.mjs` from `test/addin/helpdemo`, so retake them after a change the
+  pictures show, and update the page's *Getting the add-in* once increment 10 settles how users
+  get it.
 - Distribution is upstream's decision: the community add-ins list, or bundled with the IDE.
 - Take to upstream, with the probe results as evidence: the shortcut bug; a call to open a
   URL; a way to ask the compiler about the symbol at a position, whose answer hover already
