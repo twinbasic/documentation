@@ -300,6 +300,11 @@ parts:
         no_outline_entry: true
         no_heading_shift: true
         outline_closed: true
+      - title: Documentation Help
+        page: /tB/IDE/AddIns/Help
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
 
   - title: The Core Language
     subtitle: Statements, operators, and built-in keywords
