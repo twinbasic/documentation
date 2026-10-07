@@ -1,11 +1,11 @@
 ---
-title: Documentation Help
+title: Help Add-In
 parent: Add Ins
 nav_order: 2
 permalink: /tB/IDE/AddIns/Help
 ---
 
-# Documentation Help
+# Help Add-In
 
 Shows this documentation inside the IDE: press F1 on a name in the code editor, and its reference page opens in a tool window beside the code.
 
@@ -59,7 +59,7 @@ The search finds symbols, not words in the pages: to search the text of the docu
 
 Sometimes the name alone cannot say which page is meant. A member called through a variable declared **As Object** is the common case: the object's type is known only when the program runs. F1 then puts the name in the search box and lists every page that documents it, and the page in the pane stays as it was. Click the one that applies.
 
-![The help pane after F1 on prices.Add, where prices is declared As Object. The search box holds prices.Add, and the list shows six methods: Collection.Add, DataMembers.Add, DataObjectFiles.Add, HtmlElements.Add, KeyboardShortcuts.Add and ToolWindows.Add.](Images/Help_Choices.png){:width="480" height="196"}
+![The help pane after F1 on prices.Add, where prices is declared As Object. The search box holds prices.Add, and the list shows three methods: Collection.Add, DataMembers.Add and DataObjectFiles.Add.](Images/Help_Choices.png){:width="480" height="130"}
 
 ## Your own procedures
 
@@ -80,7 +80,7 @@ Without a **Description** attribute, the summary says *No description*. **Open i
 
 The gear opens the settings. A click anywhere else, or Esc, closes them.
 
-![The top of the help pane with the settings open under the gear: a ticked Hover help box and an unticked All packages box.](Images/Help_Settings.png){:width="480" height="149"}
+![The top of the help pane with the settings open under the gear: the Hover help and All packages boxes, both unticked.](Images/Help_Settings.png){:width="480" height="149"}
 
 **Hover help**
 : Adds the links described under [Hover help](#hover-help). Off by default.

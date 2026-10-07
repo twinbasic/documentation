@@ -20,20 +20,6 @@
 			"versionMinor": 0
 		},
 		{
-			"id": "{99DEC38C-75F6-4488-8EE7-2D52D83881D2}",
-			"isCompilerPackage": true,
-			"licence": "MIT",
-			"name": "[COMPILER PACKAGE] twinBASIC IDE Extensibility Package",
-			"path32": "",
-			"path64": "",
-			"publisher": "TWINBASIC-COMPILER",
-			"symbolId": "tbIDE",
-			"versionBuild": 0,
-			"versionMajor": 0,
-			"versionMinor": 0,
-			"versionRevision": 1
-		},
-		{
 			"id": "{F50B82D0-DCAB-43FE-9631-11959D4A4728}",
 			"isCompilerPackage": true,
 			"licence": "MIT",

@@ -519,6 +519,11 @@ async function main(ctx) {
     await showPage(AT.msgBox, HELP_PAGE);
     await click(c, { toolWindow: PANE, css: "#helpSettings" });
     if (!(await waitFor(c, settingsOpen))) throw new Error("the gear did not open the settings panel");
+    // the picture shows the defaults, both unticked: the Hover picture ticks Hover help
+    if (await inPane(`return root.querySelector("#helpHover").checked;`)) {
+      await click(c, { toolWindow: PANE, css: "#helpHover" });
+      await sleep(300);
+    }
     await sleep(500);
     await paneAside();
     const pane = await paneRect();
