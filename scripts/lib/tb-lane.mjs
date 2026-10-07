@@ -124,16 +124,20 @@ export class Lane {
    * @param {string} [o.arch]  the build target, "win32" (the default) or "win64"
    * @param {boolean} [o.show]  build on the user's desktop; by default where the
    *   lane opens its IDEs
+   * @param {number} [o.port]  the building IDE's DevTools port, by default the
+   *   lane's. An IDE's WebView2 can keep listening on its port for a while after
+   *   the IDE ends, so a caller that opens the lane's IDE straight after the build
+   *   can build on a port of its own instead.
    * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
    *   buildAddin's result; it throws, with an exitCode, when the add-in does not build
    */
-  async buildAddin(src, { arch = "win32", show = this.show } = {}) {
+  async buildAddin(src, { arch = "win32", show = this.show, port = this.port } = {}) {
     if (this.run) throw new Error(`lane ${this.name}: close the open project before building an add-in`);
     return buildAddin({
       ide: this.copy(),
       src,
       work: path.join(this.work, `addin${++this.builds}`),
-      port: this.port,
+      port,
       arch,
       show,
       appdata: this.appdataDir(),
@@ -149,11 +153,12 @@ export class Lane {
    * @param {object} [o]
    * @param {string} [o.arch]  as for buildAddin
    * @param {boolean} [o.show]  as for buildAddin
+   * @param {number} [o.port]  as for buildAddin
    * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
    *   as buildAddin
    */
-  async addAddin(src, { arch = "win32", show = this.show } = {}) {
-    const built = await this.buildAddin(src, { arch, show });
+  async addAddin(src, { arch = "win32", show = this.show, port = this.port } = {}) {
+    const built = await this.buildAddin(src, { arch, show, port });
     this.placeAddin(built.dll, { arch });
     return built;
   }
