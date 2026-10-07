@@ -1,0 +1,154 @@
+' P20 in WIP.HelpAddin.md: which packages the IDE's virtual file system lists
+' for a project, so which packages the help add-in can offer. The add-in goes
+' through the tree with For Each, from the file system's root folder and from
+' the project's, and descends only into folders named "Packages" and their
+' direct children, which are the packages. It does this when the project is
+' loaded and again two seconds later, and prints a line for each folder it
+' meets. Every line starts "[P20] <phase> <kind>", where the phase is "load" or
+' "timer", and the kind is "root" (a root folder), "child" (a folder in a root
+' folder), "reference" (an item in the folder named References), "packages" (a
+' folder named Packages) or "package" (a folder in one), and goes on
+' " | <Path> | <Name> | <IsPackagesFolder, or Type for a reference> | <Parent's Path>".
+' A "packages" line goes on " | <the names of the folders in it, comma-separated>".
+' A package is one folder shared by every Packages folder that lists it, so a
+' Packages folder already printed, which has the same path wherever it is
+' found, is not printed again. Loading prints "[P20] load start | <project name> | <process id>" first, and
+' each pass ends with "[P20] <phase> done". A compiler restart makes a new
+' process, so the process id tells one load from the next.
+'
+' A For Each over a folder is finished before the next one starts: the folders
+' it meets are collected first, and the walk goes on through the collection.
+Module MainModule
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+
+    ' How deep nested Packages folders are followed.
+    Private Const MAX_DEPTH As Long = 8
+
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New ReferencesProbeAddin(Host)
+    End Function
+
+    Public Function ProcessId() As Long
+        Return GetCurrentProcessId()
+    End Function
+
+    ' The path of a folder's parent, or "(none)".
+    Private Function ParentPath(ByVal item As FileSystemItem) As String
+        If item.Path = "twinbasic:/" Then Return "(none)"
+        Return item.Parent.Path
+    End Function
+
+    ' The line for one folder.
+    Public Function FolderLine(ByVal phase As String, ByVal kind As String, ByVal f As Folder) As String
+        Return "[P20] " & phase & " " & kind & " | " & f.Path & " | " & f.Name & " | " & f.IsPackagesFolder & _
+            " | " & ParentPath(f)
+    End Function
+
+    ' The line for an item that is not necessarily a folder.
+    Public Function ItemLine(ByVal phase As String, ByVal kind As String, ByVal item As FileSystemItem) As String
+        Return "[P20] " & phase & " " & kind & " | " & item.Path & " | " & item.Name & " | " & item.Type & _
+            " | " & ParentPath(item)
+    End Function
+
+    ' The folders in a folder, collected before anything else is enumerated.
+    Public Function FoldersIn(ByVal f As Folder) As Collection
+        Dim list As New Collection
+        Dim item As FileSystemItem
+        For Each item In f
+            If TypeOf item Is Folder Then list.Add item
+        Next
+        Return list
+    End Function
+
+    ' The items in a folder, collected in the same way.
+    Public Function ItemsIn(ByVal f As Folder) As Collection
+        Dim list As New Collection
+        Dim item As FileSystemItem
+        For Each item In f
+            list.Add item
+        Next
+        Return list
+    End Function
+
+    ' Print the packages under a Packages folder: a line for the folder with
+    ' the names of its folders, then a line for each package, and the same for
+    ' the Packages folder inside it. A package can be in many Packages folders
+    ' and shows the same path in each, so a Packages folder already printed
+    ' (its path is in `seen`) is not printed again.
+    Public Sub PrintPackages(ByVal Host As Host, ByVal phase As String, ByVal packages As Folder, _
+            ByRef seen As String, ByVal depth As Long)
+        If InStr(seen, "|" & packages.Path & "|") > 0 Then Exit Sub
+        seen = seen & "|" & packages.Path & "|"
+        Dim names As String
+        Dim v As Variant
+        For Each v In FoldersIn(packages)
+            Dim listed As Folder = v
+            names = names & IIf(Len(names) > 0, ",", "") & listed.Name
+        Next
+        Host.DebugConsole.PrintText FolderLine(phase, "packages", packages) & " | " & names
+        If depth > MAX_DEPTH Then Exit Sub
+        For Each v In FoldersIn(packages)
+            Dim package As Folder = v
+            Host.DebugConsole.PrintText FolderLine(phase, "package", package)
+            Dim w As Variant
+            For Each w In FoldersIn(package)
+                Dim inner As Folder = w
+                If inner.Name = "Packages" Then PrintPackages Host, phase, inner, seen, depth + 1
+            Next
+        Next
+    End Sub
+
+    ' Print a root folder, its folders, the items in its References folder, and
+    ' the packages of its Packages folder.
+    Public Sub PrintRoot(ByVal Host As Host, ByVal phase As String, ByVal root As Folder)
+        Dim seen As String
+        Host.DebugConsole.PrintText FolderLine(phase, "root", root)
+        Dim v As Variant
+        For Each v In FoldersIn(root)
+            Dim child As Folder = v
+            Host.DebugConsole.PrintText FolderLine(phase, "child", child)
+            If child.Name = "References" Then
+                Dim w As Variant
+                For Each w In ItemsIn(child)
+                    Dim ref As FileSystemItem = w
+                    Host.DebugConsole.PrintText ItemLine(phase, "reference", ref)
+                Next
+            End If
+            If child.Name = "Packages" Then PrintPackages Host, phase, child, seen, 1
+        Next
+    End Sub
+
+    Public Sub PrintAll(ByVal Host As Host, ByVal phase As String)
+        PrintRoot Host, phase, Host.FileSystem.RootFolder
+        PrintRoot Host, phase, Host.CurrentProject.RootFolder
+        Host.DebugConsole.PrintText "[P20] " & phase & " done"
+    End Sub
+End Module
+
+Private Class ReferencesProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents Later As AddinTimer
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "ReferencesProbe AddIn"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        Host.DebugConsole.PrintText "[P20] load start | " & Host.CurrentProject.Name & " | " & ProcessId()
+        PrintAll Host, "load"
+        Set Later = New AddinTimer
+        Later.Interval = 2000
+        Later.Enabled = True
+    End Sub
+
+    Private Sub Later_Timer()
+        Later.Enabled = False
+        PrintAll Host, "timer"
+    End Sub
+End Class

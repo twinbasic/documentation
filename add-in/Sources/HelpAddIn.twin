@@ -5,11 +5,14 @@
 ' declared, through its hover (CompilerHover), so that c.Add finds
 ' Collection.Add when c is a Collection; a selection is looked up as it is.
 ' The pages come from the add-in's own server when it was built with the help
-' archive (HelpServer), and from the live site otherwise. The pane's Hover
-' help box turns on links to the pages in the IDE's hover under the mouse
-' (HoverHelp). The pane's Detach button moves the whole pane into a window of
-' the add-in's own (HelpWindow), which can go to another monitor; the window's
-' Attach button brings it back. While it is detached everything that would show
+' archive (HelpServer), and from the live site otherwise. The gear at the
+' right end of the pane's bar opens a panel of settings, each view with its
+' own; its Hover help box turns on links to the pages in the IDE's hover under
+' the mouse (HoverHelp), and its All packages box offers every package of the
+' index in place of the packages the project references, which F1, the hover
+' links and the search offer otherwise (LoadPackages). The pane's Detach
+' button moves the whole pane into a window of the add-in's own (HelpWindow),
+' which can go to another monitor; the window's Attach button brings it back. While it is detached everything that would show
 ' in the pane shows in the window, and the pane's frame is not loaded. The pane
 ' keeps the state either way: the window is another view of it. The window's
 ' title bar is one row drawn in its page, in the style of a tool window's
@@ -44,7 +47,13 @@ Private Class HelpAddIn
     Private Server As HelpServer            ' Nothing unless the add-in has the archive
     Private WithEvents Hovering As HoverHelp ' Nothing without an index
     Private HoverBox As HtmlElement         ' the pane's Hover help checkbox
+    Private AllBox As HtmlElement           ' the pane's All packages checkbox
+    Private Referenced As Collection        ' the project's packages, keyed by name; Nothing if unknown
     Private DetachButton As HtmlElement
+    Private SettingsButton As HtmlElement   ' the gear at the bar's right end
+    Private SettingsPanel As HtmlElement    ' the rows the gear opens
+    Private SettingsShade As HtmlElement    ' over the pane while the panel is open
+    Private SettingsOpen As Boolean         ' the pane's panel shows; each view has its own
     Private WithEvents HelpWin As HelpWindow ' Nothing until the first Detach, then kept
     Private Detached As Boolean             ' the window shows the help, the pane is hidden
     Private WindowShown As Boolean          ' Detached, and the window is not hidden
@@ -53,6 +62,7 @@ Private Class HelpAddIn
     Private LoadedFrame As String           ' the src the pane's frame was given
     Private SearchText As String            ' what the search box holds, in either view
     Private HoverOn As Boolean              ' what the Hover help box holds, in either view
+    Private AllPackages As Boolean          ' what the All packages box holds, in either view
     Private SummaryHtml As String           ' what ShowSummary shows
     Private ShowingSummary As Boolean       ' the summary shows in place of the page
 
@@ -63,6 +73,12 @@ Private Class HelpAddIn
     ' SaveSetting's application name; test/addin/lanes.mjs names it too.
     Private Const SETTINGS_APP As String = "tbDocsHelp"
     Private Const SEARCH_LIMIT As Long = 100
+    ' The settings button's gear, in the button's text colour; shell.html has
+    ' the same drawing.
+    Private Const GEAR_SVG As String = "<svg viewBox='0 0 16 16' aria-hidden='true'>" & _
+        "<circle cx='8' cy='8' r='4.6' stroke-width='1.4'/><circle cx='8' cy='8' r='1.8' stroke-width='1.4'/>" & _
+        "<path stroke-width='2' d='M12.6 8H15M3.4 8H1M8 12.6V15M8 3.4V1M11.25 11.25L12.95 12.95" & _
+        "M4.75 11.25L3.05 12.95M4.75 4.75L3.05 3.05M11.25 4.75L12.95 3.05'/></svg>"
     ' The window's settings: whether it is detached, whether it is shown, and
     ' where it is, in pixels.
     Private Const WINDOW_SECTION As String = "Window"
@@ -81,6 +97,9 @@ Private Class HelpAddIn
         Set HelpButton = Host.Toolbars(0).AddButton("tbDocsHelp", "Help")
         Host.KeyboardShortcuts.Add "f1", AddressOf OnF1
         Dim indexState As String = LoadIndex()
+        AllPackages = GetSetting(SETTINGS_APP, "Packages", "All", "0") = "1"
+        Dim packagesState As String = LoadPackages()
+        RestrictIndex
         If Not Index Is Nothing Then Set Hovering = New HoverHelp(Host, Index, BASE_URL)
         StartServer
         PageUrl = GetSetting(SETTINGS_APP, "Pane", "Page", "")
@@ -90,8 +109,8 @@ Private Class HelpAddIn
         BuildPane
         ' The scenarios wait for this line, and check the switch in it before
         ' pressing anything.
-        Host.DebugConsole.PrintText TAG & "loaded, " & indexState & ", test switch " & _
-            IIf(TestSwitchOn(), "on", "off")
+        Host.DebugConsole.PrintText TAG & "loaded, " & indexState & ", " & packagesState & _
+            ", test switch " & IIf(TestSwitchOn(), "on", "off")
         ' A compiler restart ends the window with the compiler: this instance
         ' opens it again, unless it was hidden, which it stays until the help is
         ' asked for (ShowView).
@@ -108,6 +127,69 @@ Private Class HelpAddIn
         Set Index = Nothing
         Return "no index (" & Err.Description & ")"
     End Function
+
+    ' Reads the packages the project references, for the index to offer: the
+    ' folders of its Packages folder in the IDE's virtual file system, and of
+    ' the Packages folder inside each of them, since a package's own references
+    ' are reached through it. They are named for the packages' projects, as the
+    ' index names them. Only For Each is safe on the IDE's folders, and an
+    ' enumeration is finished before the next starts (FoldersIn). Returns what
+    ' the loaded line says; if the list cannot be read, every package is
+    ' offered.
+    Private Function LoadPackages() As String
+        On Error GoTo Failed
+        Dim found As New Collection
+        Dim lists As New Collection
+        Dim v As Variant, w As Variant
+        For Each v In FoldersIn(Host.FileSystem.RootFolder)
+            Dim projectFolder As Folder = v
+            For Each w In FoldersIn(projectFolder)
+                Dim child As Folder = w
+                If child.IsPackagesFolder Then lists.Add child
+            Next
+        Next
+        Dim n As Long
+        Do While n < lists.Count
+            n = n + 1
+            Dim listed As Folder = lists(n)
+            For Each v In FoldersIn(listed)
+                Dim package As Folder = v
+                If Not found.Exists(package.Name) Then
+                    found.Add package.Name, package.Name
+                    For Each w In FoldersIn(package)
+                        Dim inner As Folder = w
+                        If inner.IsPackagesFolder Then lists.Add inner
+                    Next
+                End If
+            Next
+        Loop
+        Dim names As String
+        For Each v In found
+            names = names & " " & v
+        Next
+        Set Referenced = found
+        Return "packages" & names
+    Failed:
+        Set Referenced = Nothing
+        Return "packages unknown (" & Err.Description & "), all offered"
+    End Function
+
+    ' The folders in a folder, collected before anything else is enumerated.
+    Private Function FoldersIn(ByVal parent As Folder) As Collection
+        Dim list As New Collection
+        Dim item As FileSystemItem
+        For Each item In parent
+            If TypeOf item Is Folder Then list.Add item
+        Next
+        Return list
+    End Function
+
+    ' Limits the index to the project's packages, or to every package when the
+    ' All packages box is ticked or the project's could not be read.
+    Private Sub RestrictIndex()
+        If Index Is Nothing Then Exit Sub
+        If AllPackages Then Index.Restrict Nothing Else Index.Restrict Referenced
+    End Sub
 
     ' Serves the pages from the archive, when the add-in was built with one
     ' (HelpServer). The line it prints names the origin, which the scenarios
@@ -215,15 +297,38 @@ Private Class HelpAddIn
                     Set DetachButton = .ChildDomElements.Add("helpDetach", "button")
                     DetachButton.Properties.innerText = "Detach"
                     DetachButton.AddEventListener("click", AddressOf DetachClicked)
-                    With .ChildDomElements.Add("helpHoverLabel", "label")
-                        Set HoverBox = .ChildDomElements.Add("helpHover", "input")
-                        HoverBox.Properties.type = "checkbox"
-                        HoverBox.Properties.checked = HoverOn
-                        HoverBox.Properties.disabled = Hovering Is Nothing
-                        HoverBox.AddEventListener("change", AddressOf HoverToggled)
-                        .ChildDomElements.Add("helpHoverText", "span").Properties.innerText = "Hover help"
+                    With .ChildDomElements.Add("helpSettingsWrap", "div")
+                        Set SettingsButton = .ChildDomElements.Add("helpSettings", "button")
+                        SettingsButton.Properties.title = "Settings"
+                        SettingsButton.Properties.ariaLabel = "Settings"
+                        SettingsButton.Properties.ariaExpanded = "false"
+                        SettingsButton.Properties.innerHTML = GEAR_SVG
+                        SettingsButton.AddEventListener("click", AddressOf SettingsClicked)
+                        ' One row for each setting: a label holding its control
+                        ' and its text.
+                        Set SettingsPanel = .ChildDomElements.Add("helpSettingsPanel", "div")
+                        SettingsPanel.Properties.style.display = "none"
+                        With SettingsPanel.ChildDomElements.Add("helpHoverLabel", "label")
+                            Set HoverBox = .ChildDomElements.Add("helpHover", "input")
+                            HoverBox.Properties.type = "checkbox"
+                            HoverBox.Properties.checked = HoverOn
+                            HoverBox.Properties.disabled = Hovering Is Nothing
+                            HoverBox.AddEventListener("change", AddressOf HoverToggled)
+                            .ChildDomElements.Add("helpHoverText", "span").Properties.innerText = "Hover help"
+                        End With
+                        With SettingsPanel.ChildDomElements.Add("helpAllPackagesLabel", "label")
+                            Set AllBox = .ChildDomElements.Add("helpAllPackages", "input")
+                            AllBox.Properties.type = "checkbox"
+                            AllBox.Properties.checked = AllPackages
+                            AllBox.AddEventListener("change", AddressOf AllPackagesToggled)
+                            .ChildDomElements.Add("helpAllPackagesText", "span").Properties.innerText = "All packages"
+                        End With
                     End With
                 End With
+                Set SettingsShade = .ChildDomElements.Add("helpSettingsShade", "div")
+                SettingsShade.Properties.style.display = "none"
+                SettingsShade.AddEventListener("click", AddressOf SettingsShadeClicked)
+                .AddEventListener("keyup", AddressOf PaneKeyUp)
                 Set ResultsElement = .ChildDomElements.Add("helpResults", "listview")
                 Set Results = ResultsElement.Properties.listview
                 Results.setShowScrollbarH(False)
@@ -246,6 +351,7 @@ Private Class HelpAddIn
         Set ResultIds = New Collection
         LastSearch = ""
         SearchText = ""
+        SettingsOpen = False
         ShowingSummary = False
         LoadedFrame = ""
         If Len(PageUrl) > 0 And Not Detached Then
@@ -271,6 +377,70 @@ Private Class HelpAddIn
         Hovering.Enabled = isOn
         HoverBox.Properties.checked = isOn
         If Detached Then PostToWindow "hover:" & IIf(isOn, "1", "0")
+    End Sub
+
+    ' Only the packages the project references are offered until the box is
+    ' ticked, and it stays as it was left.
+    Private Sub AllPackagesToggled(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        SetAllPackages AllBox.Properties.checked
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Offers every package or the project's, from the pane's box or the
+    ' window's, and shows it in both. The search runs again, so that its
+    ' results change at once.
+    Private Sub SetAllPackages(ByVal isOn As Boolean)
+        AllPackages = isOn
+        SaveSetting SETTINGS_APP, "Packages", "All", IIf(isOn, "1", "0")
+        RestrictIndex
+        AllBox.Properties.checked = isOn
+        If Detached Then PostToWindow "allpackages:" & IIf(isOn, "1", "0")
+        If Index Is Nothing Then Exit Sub
+        If Len(Trim$(SearchText)) > 0 Then RunSearch Trim$(SearchText)
+    End Sub
+
+    ' The gear opens the settings panel, or closes it.
+    Private Sub SettingsClicked(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        ShowSettings Not SettingsOpen
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' A click on the shade is a click outside the panel. The page's frame takes
+    ' every click that reaches it, so the pane cannot listen for one itself.
+    Private Sub SettingsShadeClicked(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        ShowSettings False
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Esc closes the panel and gives the gear the focus, from wherever in the
+    ' pane the focus was; a key in the page's frame does not reach the pane.
+    Private Sub PaneKeyUp(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        If eventInfo.key = "Escape" And SettingsOpen Then
+            ShowSettings False
+            SettingsButton.Properties.focus()
+        End If
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Shows or hides the settings panel and the shade under it, and tells the
+    ' gear which it is. A setting changed in the panel leaves it open.
+    Private Sub ShowSettings(ByVal isOpen As Boolean)
+        SettingsOpen = isOpen
+        SettingsPanel.Properties.style.display = IIf(isOpen, "", "none")
+        SettingsShade.Properties.style.display = IIf(isOpen, "", "none")
+        SettingsButton.Properties.ariaExpanded = IIf(isOpen, "true", "false")
     End Sub
 
     Private Sub Hovering_Pick(ByVal url As String)
@@ -372,7 +542,12 @@ Private Class HelpAddIn
 
         Select Case pages.Count
             Case 0
-                Host.ShowNotification "No help for '" & word & "'"
+                ' A page of a package the project does not reference is said so.
+                If Index.HasPagesInAnyPackage(word, hover) Then
+                    Host.ShowNotification "No help for '" & word & "' in the packages this project references"
+                Else
+                    Host.ShowNotification "No help for '" & word & "'"
+                End If
             Case 1
                 ShowPage Index.Url(pages(1))
             Case Else
@@ -482,10 +657,13 @@ Private Class HelpAddIn
         If Index Is Nothing Then Exit Sub
         SearchText = text
         text = Trim$(text)
-        If text <> LastSearch Then
-            LastSearch = text
-            ShowResults Index.Search(text, SEARCH_LIMIT)
-        End If
+        If text <> LastSearch Then RunSearch text
+    End Sub
+
+    ' Shows the results for text, whether or not they are the ones shown.
+    Private Sub RunSearch(ByVal text As String)
+        LastSearch = text
+        ShowResults Index.Search(text, SEARCH_LIMIT)
     End Sub
 
     Private Sub SearchChanged(ByVal eventInfo As HtmlEventProperties)
@@ -698,6 +876,8 @@ Private Class HelpAddIn
                 PickResult CLng(payload)
             Case "hover"
                 SetHover payload = "1"
+            Case "allpackages"
+                SetAllPackages payload = "1"
             Case "attach"
                 Attach
             Case "close"
@@ -724,14 +904,15 @@ Private Class HelpAddIn
     End Sub
 
     ' Gives the window all that the pane shows: the frame it has, its state,
-    ' the theme, the search box, the Hover help box, the results, and the page
-    ' or the summary.
+    ' the theme, the search box, the Hover help and All packages boxes, the
+    ' results, and the page or the summary.
     Private Sub SendWindowState()
         HelpWin.Post "chrome:" & IIf(NativeFrame, "native", "custom")
         HelpWin.Post "state:" & StateOfWindow(HelpWin.hWnd)
         HelpWin.Post "theme:" & ThemeMessage()
         HelpWin.Post "hoverdisabled:" & IIf(Hovering Is Nothing, "1", "0")
         HelpWin.Post "hover:" & IIf(HoverOn, "1", "0")
+        HelpWin.Post "allpackages:" & IIf(AllPackages, "1", "0")
         HelpWin.Post "search:" & SearchText
         PostResults
         If ShowingSummary Then

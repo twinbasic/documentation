@@ -1,0 +1,31 @@
+Module Inventory
+    Public Sub Main()
+        Dim names As New Collection
+        names.Add "Widget"
+        names.Add "Sprocket"
+        names.Add "Gasket"
+
+        Dim prices As Object
+        Set prices = CreateObject("Scripting.Dictionary")
+        prices.Add "Widget", 4.5
+        prices.Add "Sprocket", 12
+        prices.Add "Gasket", 0.75
+
+        Dim item As Variant
+        For Each item In names
+            Debug.Print item, prices(item)
+        Next
+
+        MsgBox "Total: " & TotalPrice(prices), vbInformation
+    End Sub
+
+    [Description("Adds up the prices held in a Dictionary.")]
+    Public Function TotalPrice(ByVal prices As Object) As Double
+        Dim key As Variant
+        Dim total As Double
+        For Each key In prices.Keys
+            total += prices(key)
+        Next
+        Return total
+    End Function
+End Module

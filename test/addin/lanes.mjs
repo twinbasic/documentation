@@ -21,9 +21,11 @@ export default [
   // Sample 15 saves all four of its option boxes whenever one is clicked.
   { file: "sample15.test.mjs", settings: ["GlobalSearchAddIn"] },
   // Stage 2 probes. Each finds what it needs in probes/<name>: an add-in it
-  // builds (keys, panes, appdata, arch, reload, entry, env) or a project it opens
-  // (symbols); ideserver needs neither. env's add-in prints the harness's
-  // environment variable and saves nothing.
+  // builds (keys, panes, appdata, arch, reload, entry, env, references) or a
+  // project it opens (symbols); ideserver needs neither. env's add-in prints the
+  // harness's environment variable and references' lists the packages a project
+  // references (the hosts it opens are in probes/references-*); neither saves
+  // anything.
   { file: "keys.test.mjs" },
   { file: "panes.test.mjs" },
   { file: "symbols.test.mjs" },
@@ -33,6 +35,10 @@ export default [
   { file: "reload.test.mjs" },
   { file: "entry.test.mjs" },
   { file: "env.test.mjs" },
+  { file: "references.test.mjs" },
+  // P21: one IDE per case reading the Parent of the file system's root, the
+  // add-in told the case by an environment variable; some cases crash the compiler.
+  { file: "parent.test.mjs" },
   // Hover help's two routes: widgets builds its add-in and saves nothing.
   { file: "widgets.test.mjs" },
   // Detaching the help pane: a Form with a WebView2, shown by an add-in. Saves nothing.

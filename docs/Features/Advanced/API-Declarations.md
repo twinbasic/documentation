@@ -95,6 +95,29 @@ Class Counter
 End Class
 ```
 
+On a 32-bit build, a **ThisCall** implementation takes `this` in the ECX register and removes its own arguments from the stack, so native code calls it through the interface's vtable as it calls a C++ virtual method. An error raised in the implementation reaches the native caller as a failure **HRESULT**, as from any member without **[PreserveSig]**. Code compiled with LLVM does not pass the error on yet; see [Language support](../../LLVM/Getting-Started#language-support).
+
+> [!NOTE]
+> In BETA 997, a class cannot implement a member marked [**[PreserveSig]**](../../tB/Core/Attributes#preservesig): the compiler reports the implementation as unmatched. Interfaces of this kind often return a value directly rather than an **HRESULT**, and are declared with **[PreserveSig]** for that reason. For a member that returns a 4-byte value, such as a **Long** or a C `BOOL`, declare it in the interface the class implements as a **Sub** without **[PreserveSig]**, and return the value with [**Err.ReturnHResult**](../../tB/Modules/ErrObject/ReturnHResult). Native code that calls this member as `long __thiscall Count()` gets 3 as its return value:
+>
+> ```tb check_build projname=calling-conventions-thiscall-return
+> [InterfaceId("2C4E8A61-5B3F-4D7E-9C1A-6E0B2F4D8A13")]
+> [OleAutomation(False)]
+> Interface IItems Extends IUnknown
+>     Sub Count ThisCall()
+> End Interface
+>
+> Class Items
+>     Implements IItems
+>
+>     Private Sub IItems_Count ThisCall() Implements IItems.Count
+>         Err.ReturnHResult = 3
+>     End Sub
+> End Class
+> ```
+
+An ActiveX DLL's type library records a **ThisCall** or **FastCall** member as stdcall, and a **CDecl** member as cdecl. `[OleAutomation(False)]` does not leave the interface out of the type library; it clears the flag that marks the interface as compatible with OLE Automation.
+
 ### Callbacks
 
 A callback passed to an API must use the convention the API calls it with. Declare a [**Delegate**](../../tB/Core/Delegate) with that convention, use it as the parameter type, and give the target procedure the same keyword. [**AddressOf**](../../tB/Core/AddressOf) of a procedure with a different convention is accepted with a warning only (TB0026).

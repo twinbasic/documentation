@@ -5,12 +5,13 @@ add-in that shows the documentation for the symbol under the cursor, and the har
 tests IDE add-ins by machine, which the add-in is developed against.
 
 **Status.** Stages 1 to 3 stand. Stage 4, the add-in itself in [add-in/](add-in/), has
-increments 1 to 7 built and tested: F1 to a page, the help pane, the compiler's hover to tell
+increments 1 to 9 built and tested: F1 to a page, the help pane, the compiler's hover to tell
 which `Add`, a name with no page shown by its declaration and `[Description]`, offline
-help served from an archive in the DLL, hover help, and a detached window.
+help served from an archive in the DLL, hover help, a detached window, a settings panel,
+and only the packages the project references.
 
 - `addin-test.bat` operates Samples 10 and 15 end to end and leaves the registry as it found it.
-- All of Stage 2's questions, P1 to P19, are answered. Most are held by probe lanes that
+- All of Stage 2's questions, P1 to P21, are answered. Most are held by probe lanes that
   fail when a later IDE build behaves differently.
 - Every build publishes `tB/symbols.json`, 5,536 names at 4,086 URLs, under a drift guard that
   fails the build when one of its URLs goes.
@@ -25,7 +26,7 @@ one of three kinds:
 
 - stated plainly: read in the IDE's code or registry;
 - marked *(reported)*: from a static reading or a harvested finding, not re-checked;
-- marked with a probe number (**P1** to **P19**): only running the IDE can settle it.
+- marked with a probe number (**P1** to **P21**): only running the IDE can settle it.
   [Stage 2](#stage-2-probes-that-decide-the-design) lists them.
 
 ## Goals
@@ -613,7 +614,7 @@ registry, `IDESettings` included through hashes, is identical around the run.
 Most probes are a small add-in plus a scenario. P5, P11 and P13 need only CDP and the file
 system. Record every answer in this file with the build number it was measured on.
 
-All nineteen questions are answered.
+All twenty-one questions are answered.
 
 **A probe whose answer something else rests on becomes a lane**: its add-in in
 `test/addin/probes/<name>/`, its scenario beside the others, listed in `lanes.mjs`, with each
@@ -639,6 +640,10 @@ run, and the failure says what to update. The lanes and what rests on each:
   nothing, which reads `TB_ADDIN_TEST`.
 - [widgets.test.mjs](test/addin/widgets.test.mjs) (P16, P17): the two routes to hover help
   increment 6 weighed; the mouse route is the one built. It prints the P16 timings with the tests.
+- [references.test.mjs](test/addin/references.test.mjs) (P20): increment 9's route to the
+  packages a project references.
+- [parent.test.mjs](test/addin/parent.test.mjs) (P21): the WARNING on the FileSystemItem
+  page's **Parent**, and the reproducer of its entry in BUGS-TO-REPORT.md.
 
 A probe that settles a question once stays in scratch. So do the two P3 checks that need the
 network or a changed WebView2: the live site in the frame, and the colour scheme with
@@ -667,6 +672,8 @@ The table gives each answer in brief; the sections above have the detail.
 | P17 | Can the page's Monaco take a second hover provider for `twinbasic`, as the add-in would register it through the page? **Answered, BETA 997: yes.** Its text is shown in the IDE's own hover, above the compiler's, from a synchronous answer and from a promise answered 500 ms later, and goes once the provider is disposed. Registered for `"*"`, which matches less closely than the IDE's `"twinbasic"`, its text is shown below the compiler's. A link in it is drawn as `<a data-href="<url>" href="">`, and a click listener on the window in the capture phase receives the click, and with `preventDefault` and `stopPropagation` nothing is opened. The IDE's hover shows after 1,000 ms (`hover:{delay:1e3}`) and is off when the user turns off *showExtraInformationWhenHovering* | Stage 4, increment 6: the mouse route, the owner's second exception to page internals |
 | P18 | What hides a hover once the mouse slides down it past the code editor's bottom? **Answered, BETA 997: the IDE's dock.** Its resizer along the editor's edge (`z-index: 1000`) and its drop targets lie over the hover, transparent, and take the mouse; Monaco's `_onEditorMouseLeave` then hides the hover. Monaco alone keeps a hover the mouse is over: its DOM stays inside the editor's, and the hover is sticky. CDP's mouse reproduces it only in steps small enough to land on the 6 px resizer; the owner's own mouse found it, under a watcher on the IDE's DevTools port that recorded `_hideWidgets`'s stack | Stage 4, increment 6: the add-in draws every hover above the dock, hover help on or off |
 | P19 | Can an add-in show a window of its own, a Form holding the WebView2 package's control? **Answered, BETA 997: yes** ([detach.test.mjs](test/addin/detach.test.mjs), `probes/detach`). A minimal hand-written `.tbform` builds, given `_className` and `_clsid` on the form and the control. `Show vbModeless` gives a visible top-level window, owned by the compiler's process (`twinBASIC_win32_noDEP.exe`, a child of `twinBASIC.exe`), with no message loop of the add-in's own; the control is ready about 250 ms after the first Show, 60--80 ms for a later form. A page loaded with `NavigateToString` posts to the add-in and receives what it posts, and an iframe in it loads an `http://localhost` page. Hide and Show keep the page; Unload and a new form work; the IDE ending leaves no `msedgewebview2.exe` of the window's behind. **The harness gives the IDE `WEBVIEW2_USER_DATA_FOLDER` and `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`, the compiler inherits them, and they override the control's own options: with them left in place the control fails, error `8007139F`** (which of the two, not isolated). With no user data folder set, the control uses `bin\twinBASIC_win32_noDEP.exe.WebView2`, which the IDE has made already | Stage 4, increment 7: the detached window, and the variables it removes under the test switch |
+| P20 | Can an add-in learn, through the public API, which packages its project references? **Answered, BETA 995 and 997: yes** ([references.test.mjs](test/addin/references.test.mjs), `probes/references` and its three hosts `probes/references-*`). `<Project>/Packages`, reached with `For Each` from `Host.FileSystem.RootFolder` (`twinbasic:/`), holds a folder for each package the project references, newest first, then VBRUN and VBA, which are always there; a package's own references are folders inside its own `Packages`. A folder is named for the package's project, which is the key the symbol index's `packages` map uses (`VB`, not the reference's symbol `WindowsControlsPackage`; `Assert`, not `TwinBasicAssertions`); `VBComDlg`, which only WinNativeCommonCtls references, is the one name the map lacks. `IsPackagesFolder` is true for every `Packages` folder and false for a package's. A package is one folder shared by every list it is in, and its `Path` and `Parent` name the first one it was found in, so only `Name` identifies it. The list is complete when `Host_OnProjectLoaded` runs. Applying a reference added or removed on the References page restarts the compiler with no question asked, and the new add-in instance's list shows the change. A type library is a file in `References`, not a package. | Stage 4, increment 9: the packages the add-in offers |
+| P21 | What does reading `Parent` of the file system's root do? **Answered, BETA 983, 995 and 997: it crashes the compiler** ([parent.test.mjs](test/addin/parent.test.mjs), `probes/parent`, one IDE per case, the case passed in `TB_P21_CASE`). The read itself crashes, before the value is used: into an `Object` or a `Folder`, in `Is Nothing`, in `TypeName`. Each compiler the IDE restarts loads the add-in and crashes again. The project folder's `Parent` reads, and is the root (`twinbasic:/`). | no add-in here reads the root's `Parent` (P20's tells the root by its path); the WARNING on FileSystemItem's **Parent**; a BUGS entry |
 
 ### Stage 3: the symbol index, generated by the docs build
 
@@ -1002,7 +1009,7 @@ harness about a second against opening a new IDE.
      byte for byte, a folder's 301, a 404 and `HEAD`.
 6. **Hover help. Built**, tested by the `help` and `help-offline` lanes on BETA 997, with
    the owner's choices (2026-10-06): links in the IDE's hover under the mouse, behind one
-   *Hover help* checkbox in the pane's bar, off by default and kept with `SaveSetting`
+   *Hover help* checkbox in the settings panel (increment 8), off by default and kept with `SaveSetting`
    (`Hover`, `On`). It shows a link per page the name has, at most five, labelled with the
    name, its kind and where it is, as in *Help: MsgBox function (VBA.Interaction)* (the
    owner's wording, 2026-10-07; `SymbolIndex.Place`); a click shows that page in the pane,
@@ -1157,8 +1164,30 @@ harness about a second against opening a new IDE.
      caption (no read-back of the DWM attribute), Alt+F4, the registry read, maximizing on
      a monitor other than the primary one (the lab machine has one), and the move
      itself, whose loop needs the real mouse, which the harness's desktop has none of.
-8. **Later:** offering only the packages the project references; how a user gets an add-in
-   with the archive.
+8. **Settings. Built**, tested by the `help` and `help-offline` lanes on BETA 997, at the
+   owner's choice (2026-10-07): a gear at the right end of the pane's bar, and on the detached
+   window's title bar (in its bar under the Windows caption), opens a drop-down panel of
+   settings, one label row each. A click outside it, Esc, or the gear closes it; changing a
+   setting leaves it open. Each view has its own panel; the settings themselves go through
+   the window's messages as before. In the pane a transparent shade under the panel takes a
+   click outside it. In the window a press over the page's frame never reaches the page,
+   because the frame is cross-site there and runs in a process of its own, so the window's
+   `blur` closes the panel as well. The lanes' pane frame is on the IDE page's site, so one
+   case points it at `127.0.0.1` to check the shade with a cross-site frame.
+9. **Only the packages the project references. Built**, tested by the `help` and
+   `help-offline` lanes on BETA 997, at the owner's choice (2026-10-07): F1, the hover links
+   and the search offer the language's own entries and the packages the project references;
+   an *All packages* row in the settings panel, off by default and kept with `SaveSetting`
+   (`Packages`, `All`), offers every package. `LoadPackages` reads the references at
+   `Host_OnProjectLoaded` from the virtual file system (P20): the folders of the project's
+   `Packages` folder and, through each, of its own, keyed on `Name`; a reference change
+   restarts the compiler, so that is enough. If the list cannot be read, every package is
+   offered, and the loaded line says so. `SymbolIndex.Restrict` limits `Find` and `Search`;
+   `FindDeclared` is not limited, since the compiler's hover names the declaring package.
+   F1 on a name only an unreferenced package documents says *No help for 'X' in the packages
+   this project references*.
+10. **Later:** how a user gets an add-in with the archive: the owner's plan (2026-10-07) is to
+    build it in CI with everything else, once the compiler runs on Linux there.
 
 **Lookup:**
 
@@ -1218,8 +1247,11 @@ The add-in's code skeletons are written in Stage 4 against the compiler, with te
 
 ### Stage 5: shipping
 
-- Build both bitnesses, which `buildAddin` does (P7). Add a documentation page under
-  [docs/IDE/AddIns/](docs/IDE/AddIns/).
+- Build both bitnesses, which `buildAddin` does (P7). The documentation page is
+  [docs/IDE/AddIns/Help.md](docs/IDE/AddIns/Help.md); its pictures are taken by
+  `scripts/shoot_help_addin.mjs` from `test/addin/helpdemo`, so retake them after a change the
+  pictures show, and update the page's *Getting the add-in* once increment 10 settles how users
+  get it.
 - Distribution is upstream's decision: the community add-ins list, or bundled with the IDE.
 - Take to upstream, with the probe results as evidence: the shortcut bug; a call to open a
   URL; a way to ask the compiler about the symbol at a position, whose answer hover already
