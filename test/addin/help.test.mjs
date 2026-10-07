@@ -626,6 +626,30 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.deepEqual(await addinLines(c, mark), []);
   });
 
+  // The IDE's dock resizer along the code editor's bottom edge, and the dock's
+  // drop targets, lie over a hover that reaches past it and take the mouse;
+  // Monaco then hides the hover. The add-in draws the hover above them, with
+  // hover help on or off (twinbasic/twinbasic#2506).
+  test("with the box unticked, the hover stays while the mouse slides down it past the editor's bottom", async () => {
+    // The hover over Collection, without the link while the box is unticked.
+    const COLLECTION_HOVER = "in package VBA";
+    await mouseHover(3, 22, COLLECTION_HOVER);
+    const box = await c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".monaco-hover")].find((e) => !e.classList.contains("hidden") && e.getBoundingClientRect().height > 0);
+  const r = h.getBoundingClientRect(), e = editor.getDomNode().getBoundingClientRect();
+  return { left: r.left, bottom: r.bottom, editor: e.bottom };
+})()`);
+    assert.ok(box.bottom > box.editor + 12, `the hover does not reach past the editor: ${JSON.stringify(box)}`);
+    const x = Math.round(box.left + 40);
+    for (let y = Math.round(box.editor) - 12; y <= Math.round(box.editor) + 12; y++) {
+      await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+      await sleep(20);
+      const shown = await hoverText(c);
+      assert.ok(shown?.includes(COLLECTION_HOVER), `the hover went at ${x},${y}, the editor's bottom at ${box.editor}`);
+    }
+    await mouseAway(c);
+  });
+
   // The link is the hover's first line, where a long hover shows it without
   // being scrolled.
   test("with the box ticked, the mouse hover has the link first, and a click shows the page", async () => {
@@ -644,27 +668,6 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     await mouseAway(c);
     assert.deepEqual(await openedUrls(c, { since: mark }), [], "the click opened a browser");
     assert.deepEqual(await addinLines(c, mark), []);
-  });
-
-  // The IDE's dock resizer along the code editor's bottom edge, and the dock's
-  // drop targets, lie over a hover that reaches past it and take the mouse;
-  // Monaco then hides the hover. The add-in draws the hover above them.
-  test("with the box ticked, the hover stays while the mouse slides down it past the editor's bottom", async () => {
-    await mouseHover(3, 22, COLLECTION_LINK);
-    const box = await c.evaluate(`(() => {
-  const h = [...document.querySelectorAll(".monaco-hover")].find((e) => !e.classList.contains("hidden") && e.getBoundingClientRect().height > 0);
-  const r = h.getBoundingClientRect(), e = editor.getDomNode().getBoundingClientRect();
-  return { left: r.left, bottom: r.bottom, editor: e.bottom };
-})()`);
-    assert.ok(box.bottom > box.editor + 12, `the hover does not reach past the editor: ${JSON.stringify(box)}`);
-    const x = Math.round(box.left + 40);
-    for (let y = Math.round(box.editor) - 12; y <= Math.round(box.editor) + 12; y++) {
-      await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
-      await sleep(20);
-      const shown = await hoverText(c);
-      assert.ok(shown?.includes(COLLECTION_LINK), `the hover went at ${x},${y}, the editor's bottom at ${box.editor}`);
-    }
-    await mouseAway(c);
   });
 
   test("hover help shows nothing for a name with no page", async () => {
@@ -687,12 +690,12 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     await mouseAway(c);
   });
 
-  test("unticking the box turns hover help off", async () => {
+  test("unticking the box turns hover help off, and the hover is still drawn above the dock", async () => {
     await click(c, { toolWindow: PANE, css: "#helpHover" });
     assert.equal(await hoverBox(), false);
     assert.ok(
-      await waitFor(c, async (c) => !(await c.evaluate("!!document.getElementById('tbDocsHoverStay')"))),
-      "the hover is still drawn above the dock",
+      await c.evaluate("!!document.getElementById('tbDocsHoverStay')"),
+      "the hover is no longer drawn above the dock",
     );
     const t = await mouseHover(7, 21);
     assert.ok(t && !t.includes("Help:"), `the mouse hover: ${JSON.stringify(t)}`);
