@@ -5,10 +5,11 @@
 ' declared, through its hover (CompilerHover), so that c.Add finds
 ' Collection.Add when c is a Collection; a selection is looked up as it is.
 ' The pages come from the add-in's own server when it was built with the help
-' archive (HelpServer), and from the live site otherwise. The pane's Hover
-' help box turns on links to the pages in the IDE's hover under the mouse
-' (HoverHelp). The pane's Detach button moves the whole pane into a window of
-' the add-in's own (HelpWindow), which can go to another monitor; the window's
+' archive (HelpServer), and from the live site otherwise. The gear at the
+' right end of the pane's bar opens a panel of settings, each view with its
+' own; its Hover help box turns on links to the pages in the IDE's hover under
+' the mouse (HoverHelp). The pane's Detach button moves the whole pane into a
+' window of the add-in's own (HelpWindow), which can go to another monitor; the window's
 ' Attach button brings it back. While it is detached everything that would show
 ' in the pane shows in the window, and the pane's frame is not loaded. The pane
 ' keeps the state either way: the window is another view of it. The window's
@@ -45,6 +46,10 @@ Private Class HelpAddIn
     Private WithEvents Hovering As HoverHelp ' Nothing without an index
     Private HoverBox As HtmlElement         ' the pane's Hover help checkbox
     Private DetachButton As HtmlElement
+    Private SettingsButton As HtmlElement   ' the gear at the bar's right end
+    Private SettingsPanel As HtmlElement    ' the rows the gear opens
+    Private SettingsShade As HtmlElement    ' over the pane while the panel is open
+    Private SettingsOpen As Boolean         ' the pane's panel shows; each view has its own
     Private WithEvents HelpWin As HelpWindow ' Nothing until the first Detach, then kept
     Private Detached As Boolean             ' the window shows the help, the pane is hidden
     Private WindowShown As Boolean          ' Detached, and the window is not hidden
@@ -63,6 +68,12 @@ Private Class HelpAddIn
     ' SaveSetting's application name; test/addin/lanes.mjs names it too.
     Private Const SETTINGS_APP As String = "tbDocsHelp"
     Private Const SEARCH_LIMIT As Long = 100
+    ' The settings button's gear, in the button's text colour; shell.html has
+    ' the same drawing.
+    Private Const GEAR_SVG As String = "<svg viewBox='0 0 16 16' aria-hidden='true'>" & _
+        "<circle cx='8' cy='8' r='4.6' stroke-width='1.4'/><circle cx='8' cy='8' r='1.8' stroke-width='1.4'/>" & _
+        "<path stroke-width='2' d='M12.6 8H15M3.4 8H1M8 12.6V15M8 3.4V1M11.25 11.25L12.95 12.95" & _
+        "M4.75 11.25L3.05 12.95M4.75 4.75L3.05 3.05M11.25 4.75L12.95 3.05'/></svg>"
     ' The window's settings: whether it is detached, whether it is shown, and
     ' where it is, in pixels.
     Private Const WINDOW_SECTION As String = "Window"
@@ -215,15 +226,31 @@ Private Class HelpAddIn
                     Set DetachButton = .ChildDomElements.Add("helpDetach", "button")
                     DetachButton.Properties.innerText = "Detach"
                     DetachButton.AddEventListener("click", AddressOf DetachClicked)
-                    With .ChildDomElements.Add("helpHoverLabel", "label")
-                        Set HoverBox = .ChildDomElements.Add("helpHover", "input")
-                        HoverBox.Properties.type = "checkbox"
-                        HoverBox.Properties.checked = HoverOn
-                        HoverBox.Properties.disabled = Hovering Is Nothing
-                        HoverBox.AddEventListener("change", AddressOf HoverToggled)
-                        .ChildDomElements.Add("helpHoverText", "span").Properties.innerText = "Hover help"
+                    With .ChildDomElements.Add("helpSettingsWrap", "div")
+                        Set SettingsButton = .ChildDomElements.Add("helpSettings", "button")
+                        SettingsButton.Properties.title = "Settings"
+                        SettingsButton.Properties.ariaLabel = "Settings"
+                        SettingsButton.Properties.ariaExpanded = "false"
+                        SettingsButton.Properties.innerHTML = GEAR_SVG
+                        SettingsButton.AddEventListener("click", AddressOf SettingsClicked)
+                        ' One row for each setting: a label holding its control
+                        ' and its text.
+                        Set SettingsPanel = .ChildDomElements.Add("helpSettingsPanel", "div")
+                        SettingsPanel.Properties.style.display = "none"
+                        With SettingsPanel.ChildDomElements.Add("helpHoverLabel", "label")
+                            Set HoverBox = .ChildDomElements.Add("helpHover", "input")
+                            HoverBox.Properties.type = "checkbox"
+                            HoverBox.Properties.checked = HoverOn
+                            HoverBox.Properties.disabled = Hovering Is Nothing
+                            HoverBox.AddEventListener("change", AddressOf HoverToggled)
+                            .ChildDomElements.Add("helpHoverText", "span").Properties.innerText = "Hover help"
+                        End With
                     End With
                 End With
+                Set SettingsShade = .ChildDomElements.Add("helpSettingsShade", "div")
+                SettingsShade.Properties.style.display = "none"
+                SettingsShade.AddEventListener("click", AddressOf SettingsShadeClicked)
+                .AddEventListener("keyup", AddressOf PaneKeyUp)
                 Set ResultsElement = .ChildDomElements.Add("helpResults", "listview")
                 Set Results = ResultsElement.Properties.listview
                 Results.setShowScrollbarH(False)
@@ -246,6 +273,7 @@ Private Class HelpAddIn
         Set ResultIds = New Collection
         LastSearch = ""
         SearchText = ""
+        SettingsOpen = False
         ShowingSummary = False
         LoadedFrame = ""
         If Len(PageUrl) > 0 And Not Detached Then
@@ -271,6 +299,47 @@ Private Class HelpAddIn
         Hovering.Enabled = isOn
         HoverBox.Properties.checked = isOn
         If Detached Then PostToWindow "hover:" & IIf(isOn, "1", "0")
+    End Sub
+
+    ' The gear opens the settings panel, or closes it.
+    Private Sub SettingsClicked(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        ShowSettings Not SettingsOpen
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' A click on the shade is a click outside the panel. The page's frame takes
+    ' every click that reaches it, so the pane cannot listen for one itself.
+    Private Sub SettingsShadeClicked(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        ShowSettings False
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Esc closes the panel and gives the gear the focus, from wherever in the
+    ' pane the focus was; a key in the page's frame does not reach the pane.
+    Private Sub PaneKeyUp(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        If eventInfo.key = "Escape" And SettingsOpen Then
+            ShowSettings False
+            SettingsButton.Properties.focus()
+        End If
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Shows or hides the settings panel and the shade under it, and tells the
+    ' gear which it is. A setting changed in the panel leaves it open.
+    Private Sub ShowSettings(ByVal isOpen As Boolean)
+        SettingsOpen = isOpen
+        SettingsPanel.Properties.style.display = IIf(isOpen, "", "none")
+        SettingsShade.Properties.style.display = IIf(isOpen, "", "none")
+        SettingsButton.Properties.ariaExpanded = IIf(isOpen, "true", "false")
     End Sub
 
     Private Sub Hovering_Pick(ByVal url As String)

@@ -639,7 +639,7 @@ run, and the failure says what to update. The lanes and what rests on each:
   nothing, which reads `TB_ADDIN_TEST`.
 - [widgets.test.mjs](test/addin/widgets.test.mjs) (P16, P17): the two routes to hover help
   increment 6 weighed; the mouse route is the one built. It prints the P16 timings with the tests.
-- [references.test.mjs](test/addin/references.test.mjs) (P20): increment 8's route to the
+- [references.test.mjs](test/addin/references.test.mjs) (P20): increment 9's route to the
   packages a project references.
 
 A probe that settles a question once stays in scratch. So do the two P3 checks that need the
@@ -669,7 +669,7 @@ The table gives each answer in brief; the sections above have the detail.
 | P17 | Can the page's Monaco take a second hover provider for `twinbasic`, as the add-in would register it through the page? **Answered, BETA 997: yes.** Its text is shown in the IDE's own hover, above the compiler's, from a synchronous answer and from a promise answered 500 ms later, and goes once the provider is disposed. Registered for `"*"`, which matches less closely than the IDE's `"twinbasic"`, its text is shown below the compiler's. A link in it is drawn as `<a data-href="<url>" href="">`, and a click listener on the window in the capture phase receives the click, and with `preventDefault` and `stopPropagation` nothing is opened. The IDE's hover shows after 1,000 ms (`hover:{delay:1e3}`) and is off when the user turns off *showExtraInformationWhenHovering* | Stage 4, increment 6: the mouse route, the owner's second exception to page internals |
 | P18 | What hides a hover once the mouse slides down it past the code editor's bottom? **Answered, BETA 997: the IDE's dock.** Its resizer along the editor's edge (`z-index: 1000`) and its drop targets lie over the hover, transparent, and take the mouse; Monaco's `_onEditorMouseLeave` then hides the hover. Monaco alone keeps a hover the mouse is over: its DOM stays inside the editor's, and the hover is sticky. CDP's mouse reproduces it only in steps small enough to land on the 6 px resizer; the owner's own mouse found it, under a watcher on the IDE's DevTools port that recorded `_hideWidgets`'s stack | Stage 4, increment 6: the add-in draws every hover above the dock, hover help on or off |
 | P19 | Can an add-in show a window of its own, a Form holding the WebView2 package's control? **Answered, BETA 997: yes** ([detach.test.mjs](test/addin/detach.test.mjs), `probes/detach`). A minimal hand-written `.tbform` builds, given `_className` and `_clsid` on the form and the control. `Show vbModeless` gives a visible top-level window, owned by the compiler's process (`twinBASIC_win32_noDEP.exe`, a child of `twinBASIC.exe`), with no message loop of the add-in's own; the control is ready about 250 ms after the first Show, 60--80 ms for a later form. A page loaded with `NavigateToString` posts to the add-in and receives what it posts, and an iframe in it loads an `http://localhost` page. Hide and Show keep the page; Unload and a new form work; the IDE ending leaves no `msedgewebview2.exe` of the window's behind. **The harness gives the IDE `WEBVIEW2_USER_DATA_FOLDER` and `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`, the compiler inherits them, and they override the control's own options: with them left in place the control fails, error `8007139F`** (which of the two, not isolated). With no user data folder set, the control uses `bin\twinBASIC_win32_noDEP.exe.WebView2`, which the IDE has made already | Stage 4, increment 7: the detached window, and the variables it removes under the test switch |
-| P20 | Can an add-in learn, through the public API, which packages its project references? **Answered, BETA 995 and 997: yes** ([references.test.mjs](test/addin/references.test.mjs), `probes/references` and its three hosts `probes/references-*`). `<Project>/Packages`, reached with `For Each` from `Host.FileSystem.RootFolder` (`twinbasic:/`), holds a folder for each package the project references, newest first, then VBRUN and VBA, which are always there; a package's own references are folders inside its own `Packages`. A folder is named for the package's project, which is the key the symbol index's `packages` map uses (`VB`, not the reference's symbol `WindowsControlsPackage`; `Assert`, not `TwinBasicAssertions`); `VBComDlg`, which only WinNativeCommonCtls references, is the one name the map lacks. `IsPackagesFolder` is true for every `Packages` folder and false for a package's. A package is one folder shared by every list it is in, and its `Path` and `Parent` name the first one it was found in, so only `Name` identifies it. The list is complete when `Host_OnProjectLoaded` runs. Applying a reference added or removed on the References page restarts the compiler with no question asked, and the new add-in instance's list shows the change. A type library is a file in `References`, not a package. | Stage 4, increment 8: the packages the add-in offers |
+| P20 | Can an add-in learn, through the public API, which packages its project references? **Answered, BETA 995 and 997: yes** ([references.test.mjs](test/addin/references.test.mjs), `probes/references` and its three hosts `probes/references-*`). `<Project>/Packages`, reached with `For Each` from `Host.FileSystem.RootFolder` (`twinbasic:/`), holds a folder for each package the project references, newest first, then VBRUN and VBA, which are always there; a package's own references are folders inside its own `Packages`. A folder is named for the package's project, which is the key the symbol index's `packages` map uses (`VB`, not the reference's symbol `WindowsControlsPackage`; `Assert`, not `TwinBasicAssertions`); `VBComDlg`, which only WinNativeCommonCtls references, is the one name the map lacks. `IsPackagesFolder` is true for every `Packages` folder and false for a package's. A package is one folder shared by every list it is in, and its `Path` and `Parent` name the first one it was found in, so only `Name` identifies it. The list is complete when `Host_OnProjectLoaded` runs. Applying a reference added or removed on the References page restarts the compiler with no question asked, and the new add-in instance's list shows the change. A type library is a file in `References`, not a package. | Stage 4, increment 9: the packages the add-in offers |
 
 ### Stage 3: the symbol index, generated by the docs build
 
@@ -1005,7 +1005,7 @@ harness about a second against opening a new IDE.
      byte for byte, a folder's 301, a 404 and `HEAD`.
 6. **Hover help. Built**, tested by the `help` and `help-offline` lanes on BETA 997, with
    the owner's choices (2026-10-06): links in the IDE's hover under the mouse, behind one
-   *Hover help* checkbox in the pane's bar, off by default and kept with `SaveSetting`
+   *Hover help* checkbox in the settings panel (increment 8), off by default and kept with `SaveSetting`
    (`Hover`, `On`). It shows a link per page the name has, at most five, labelled with the
    name, its kind and where it is, as in *Help: MsgBox function (VBA.Interaction)* (the
    owner's wording, 2026-10-07; `SymbolIndex.Place`); a click shows that page in the pane,
@@ -1160,7 +1160,17 @@ harness about a second against opening a new IDE.
      caption (no read-back of the DWM attribute), Alt+F4, the registry read, maximizing on
      a monitor other than the primary one (the lab machine has one), and the move
      itself, whose loop needs the real mouse, which the harness's desktop has none of.
-8. **Later:** offering only the packages the project references; how a user gets an add-in
+8. **Settings. Built**, tested by the `help` and `help-offline` lanes on BETA 997, at the
+   owner's choice (2026-10-07): a gear at the right end of the pane's bar, and on the detached
+   window's title bar (in its bar under the Windows caption), opens a drop-down panel of
+   settings, one label row each. A click outside it, Esc, or the gear closes it; changing a
+   setting leaves it open. Each view has its own panel; the settings themselves go through
+   the window's messages as before. In the pane a transparent shade under the panel takes a
+   click outside it. In the window a press over the page's frame never reaches the page,
+   because the frame is cross-site there and runs in a process of its own, so the window's
+   `blur` closes the panel as well. The lanes' pane frame is on the IDE page's site, so one
+   case points it at `127.0.0.1` to check the shade with a cross-site frame.
+9. **Later:** offering only the packages the project references; how a user gets an add-in
    with the archive.
 
 **Lookup:**

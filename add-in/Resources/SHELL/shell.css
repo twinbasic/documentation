@@ -132,6 +132,19 @@ html[data-chrome="native"] #helpTitleBar {
   display: none;
 }
 
+/* The settings gear is an icon in the title bar, 12px as the other buttons'
+   icons are, and in the search bar, where it is pane.css's. The panel under
+   it is the body's, not the title bar's, in colour and type. */
+#helpTitleBar #helpSettings svg {
+  width: 12px;
+  height: 12px;
+}
+
+#helpTitleBar #helpSettingsPanel {
+  color: var(--themeToolWindowBodyForeColor);
+  font: 13px "Segoe UI", system-ui, sans-serif;
+}
+
 /* The Maximize button shows Restore while the window is maximized. */
 html[data-state="max"] #helpMaximize .maximize,
 html:not([data-state="max"]) #helpMaximize .restore {

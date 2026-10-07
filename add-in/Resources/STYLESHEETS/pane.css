@@ -11,6 +11,7 @@
    are 23 to it, and seven of them overflowed a list 159.25px tall. */
 #helpWrap {
   --helpRow: 22px;
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -26,6 +27,41 @@
   padding: 6px;
 }
 
+/* The gear at the bar's right end opens the settings panel, a column of rows
+   under it, right-aligned with it. While the panel is open the shade lies
+   over the whole pane, the page's frame included, so that a click anywhere
+   else reaches the shade and closes the panel; the gear's holder and the panel
+   are above the shade. A row is a label holding a control and its text. */
+#helpSettingsWrap {
+  position: relative;
+  z-index: 101;
+  display: flex;
+  flex: 0 0 auto;
+}
+
+#helpSettingsShade {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+}
+
+#helpSettingsPanel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  min-width: 160px;
+  padding: 8px 10px;
+  color: var(--themeToolWindowBodyForeColor);
+  background: var(--themeGeneralPanelBackColor);
+  border: var(--themePropertySheetValueBorderColor);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
 #helpHoverLabel {
   display: flex;
   align-items: center;
@@ -36,7 +72,8 @@
 #helpSearch,
 #helpBrowser,
 #helpDetach,
-#helpAttach {
+#helpAttach,
+#helpSettings {
   font: inherit;
   color: inherit;
   background: transparent;
@@ -51,9 +88,18 @@
 
 #helpBrowser,
 #helpDetach,
-#helpAttach {
+#helpAttach,
+#helpSettings {
   flex: 0 0 auto;
   cursor: pointer;
+}
+
+#helpSettings svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
 }
 
 #helpBrowser:disabled {
@@ -64,6 +110,8 @@
 #helpBrowser:enabled:hover,
 #helpDetach:hover,
 #helpAttach:hover,
+#helpSettings:hover,
+#helpSettings[aria-expanded="true"],
 #helpResults .hit:hover {
   background: var(--themeTreeItemHoverBackColor);
 }

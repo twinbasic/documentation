@@ -632,6 +632,90 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   // Hover help: links in the IDE's own hover under the mouse, while the pane's
   // box is ticked.
   const hoverBox = () => inPane(c, `return root.querySelector("#helpHover")?.checked ?? null;`);
+
+  // The settings panel, in the pane (inPane) and in the window's page (its
+  // `root` is the document): what the gear says, and whether the panel and the
+  // shade under it show.
+  const SETTINGS_STATE = `const g = root.querySelector("#helpSettings");
+    const p = root.querySelector("#helpSettingsPanel");
+    const s = root.querySelector("#helpSettingsShade");
+    if (!g || !p || !s) return null;
+    return {
+      expanded: g.getAttribute("aria-expanded"),
+      panel: getComputedStyle(p).display !== "none",
+      shade: getComputedStyle(s).display !== "none",
+    };`;
+  const SETTINGS_OPEN = { expanded: "true", panel: true, shade: true };
+  const SETTINGS_CLOSED = { expanded: "false", panel: false, shade: false };
+  const paneSettings = () => inPane(c, SETTINGS_STATE);
+  const windowSettings = () => win.evaluate(`(() => { const root = document; ${SETTINGS_STATE} })()`);
+  // Waits for a view's panel to be in `want`, which the add-in sets a moment
+  // after the click, and fails with what it was.
+  async function settingsBecome(read, want, what) {
+    await waitFor(c, async () => JSON.stringify(await read()) === JSON.stringify(want));
+    assert.deepEqual(await read(), want, what);
+  }
+  // The look the panel has to have, in the pane (`root`) or in the window's
+  // page: the theme's panel colours and border, read from elements the theme's
+  // own properties are applied to.
+  const PANEL_LOOK = `(() => {
+    const look = (e) => { const s = getComputedStyle(e); return { background: s.backgroundColor, color: s.color, border: s.borderTopColor, borderStyle: s.borderTopStyle, borderWidth: s.borderTopWidth }; };
+    const probe = document.createElement("div");
+    probe.style.cssText = "background: var(--themeGeneralPanelBackColor); color: var(--themeToolWindowBodyForeColor); border: var(--themePropertySheetValueBorderColor)";
+    (root.querySelector("#helpWrap") ?? root.body).appendChild(probe);
+    const want = look(probe);
+    probe.remove();
+    return { want, got: look(root.querySelector("#helpSettingsPanel")) };
+  })()`;
+  const paneLook = () => inPane(c, `return ${PANEL_LOOK};`);
+  const windowLook = () => win.evaluate(`(() => { const root = document; return ${PANEL_LOOK}; })()`);
+  // Where the panel, the gear and the shade are, and what a click at the
+  // panel's centre and at the page's would reach: the panel's own element, or
+  // the shade.
+  const SETTINGS_PLACE = `const box = (e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom].map(Math.round); };
+    const g = root.querySelector("#helpSettings");
+    const p = root.querySelector("#helpSettingsPanel");
+    const page = root.querySelector("#helpPage").getBoundingClientRect();
+    const hitAt = (x, y) => { const e = root.elementFromPoint(x, y); return e?.closest("#helpSettingsPanel") ? "panel" : e?.id ?? null; };
+    const r = p.getBoundingClientRect();
+    return {
+      gear: box(g),
+      panel: box(p),
+      wrap: box(root.querySelector("#helpWrap")),
+      row: p.contains(root.querySelector("#helpHoverLabel")),
+      panelHit: hitAt(r.left + r.width / 2, r.top + r.height / 2),
+      pageHit: hitAt(page.left + page.width / 2, page.top + page.height / 2),
+    };`;
+  const panePlace = () => inPane(c, SETTINGS_PLACE);
+  const windowPlace = () => win.evaluate(`(() => { const root = document; ${SETTINGS_PLACE} })()`);
+  // What a view's panel has to look like open: right-aligned with the gear
+  // and under it, inside the view, on top of everything else; and the shade
+  // over the page.
+  function assertPlace(place, what) {
+    const [gl, gt, gr, gb] = place.gear;
+    const [pl, pt, pr, pb] = place.panel;
+    const [wl, wt, wr, wb] = place.wrap;
+    assert.equal(pr, gr, `${what}: the panel is not right-aligned with the gear`);
+    assert.ok(pt >= gb, `${what}: the panel is not under the gear: ${JSON.stringify(place)}`);
+    assert.ok(
+      pl >= wl && pr <= wr && pb <= wb && gt >= wt && gl >= wl,
+      `${what}: the panel is cut off: ${JSON.stringify(place)}`,
+    );
+    assert.ok(place.row, `${what}: the Hover help row is not in the panel`);
+    assert.equal(place.panelHit, "panel", `${what}: something is over the panel`);
+    assert.equal(place.pageHit, "helpSettingsShade", `${what}: the shade is not over the page`);
+  }
+  // Ticks or unticks the pane's Hover help box, which is in the settings
+  // panel: opens the panel, clicks the box, checks the panel is still open,
+  // and closes it with the gear.
+  async function clickHoverBox() {
+    await click(c, { toolWindow: PANE, css: "#helpSettings" });
+    await settingsBecome(paneSettings, SETTINGS_OPEN, "the gear did not open the panel");
+    await click(c, { toolWindow: PANE, css: "#helpHover" });
+    assert.deepEqual(await paneSettings(), SETTINGS_OPEN, "the panel closed when the box was clicked");
+    await click(c, { toolWindow: PANE, css: "#helpSettings" });
+    await settingsBecome(paneSettings, SETTINGS_CLOSED, "the gear did not close the panel");
+  }
   // A class's hover lists its members, and is taller than the room below it.
   const COLLECTION_LINK = "Help: Collection class (VBA)";
   const LEN_LINK = "Help: Len function (VBA.Strings)";
@@ -661,6 +745,95 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       if (t || attempt === 1) return t;
     }
   }
+
+  // The settings gear at the bar's right end opens a panel of rows under it.
+  test("the bar ends in a gear, drawn in the text colour, as tall and bordered as the other buttons", async () => {
+    const bar = await inPane(
+      c,
+      `const el = (id) => root.querySelector("#" + id);
+      const g = el("helpSettings"), d = el("helpDetach");
+      const gs = getComputedStyle(g), ds = getComputedStyle(d);
+      return {
+        order: [...el("helpBar").children].map((e) => e.id),
+        title: g.title,
+        label: g.getAttribute("aria-label"),
+        expanded: g.getAttribute("aria-expanded"),
+        shapes: g.querySelectorAll("svg circle, svg path").length > 0,
+        stroke: getComputedStyle(g.querySelector("svg path")).stroke === gs.color,
+        sameHeight: g.getBoundingClientRect().height === d.getBoundingClientRect().height,
+        sameBorder: gs.borderTopColor === ds.borderTopColor && gs.borderTopWidth === ds.borderTopWidth,
+        sameFont: gs.fontSize === ds.fontSize && gs.color === ds.color,
+      };`,
+    );
+    assert.deepEqual(bar, {
+      order: ["helpSearch", "helpBrowser", "helpDetach", "helpSettingsWrap"],
+      title: "Settings",
+      label: "Settings",
+      expanded: "false",
+      shapes: true,
+      stroke: true,
+      sameHeight: true,
+      sameBorder: true,
+      sameFont: true,
+    });
+    assert.deepEqual(await paneSettings(), SETTINGS_CLOSED);
+  });
+
+  test("the gear opens the settings panel under it, over the pane, and sets aria-expanded", async () => {
+    await click(c, { toolWindow: PANE, css: "#helpSettings" });
+    await settingsBecome(paneSettings, SETTINGS_OPEN, "the gear did not open the panel");
+    assertPlace(await panePlace(), "the pane");
+    const { want, got } = await paneLook();
+    assert.deepEqual(got, want, "the panel is not in the theme's colours");
+    assert.notEqual(got.borderStyle, "none");
+    await click(c, { toolWindow: PANE, css: "#helpSettings" });
+    await settingsBecome(paneSettings, SETTINGS_CLOSED, "the gear did not close the panel");
+  });
+
+  // A click outside the panel closes it and does nothing else: not on another
+  // control, which is under the shade, and not over the page's frame.
+  async function clickOutsidePane(css) {
+    await click(c, { toolWindow: PANE, css: "#helpSettings" });
+    await settingsBecome(paneSettings, SETTINGS_OPEN, "the gear did not open the panel");
+    const mark = await consoleMark(c);
+    const r = await elementRect(c, { toolWindow: PANE, css });
+    await clickAt(c, r.x + r.width / 2, r.y + r.height / 2);
+    await settingsBecome(paneSettings, SETTINGS_CLOSED, `a click on ${css} did not close the panel`);
+    assert.deepEqual(await openedUrls(c, { since: mark }), [], `the click on ${css} reached it`);
+  }
+
+  test("a click on the shade closes the panel, over another control or over the page", async () => {
+    await clickOutsidePane("#helpBrowser");
+    await clickOutsidePane("#helpPage");
+  });
+
+  // The live site is on another site than the IDE's page, and a press over a
+  // frame there goes to the frame's own process.
+  test("a click over a page on another site closes the panel", async () => {
+    const was = await frameSrc(c);
+    const other = `http://127.0.0.1:${server.port}/index.html`;
+    await inPane(c, `root.querySelector("#helpPage").src = ${JSON.stringify(other)}; return null;`);
+    assert.ok(await waitFor(c, async (c) => !(await frameOf(c, pages))), "the frame is still in the page's tree");
+    try {
+      await clickOutsidePane("#helpPage");
+    } finally {
+      await inPane(c, `root.querySelector("#helpPage").src = ${JSON.stringify(was)}; return null;`);
+      await waitFor(c, async (c) => !!(await frameOf(c, pages)));
+    }
+  });
+
+  test("Esc closes the panel from inside it, and the gear has the focus", async () => {
+    await click(c, { toolWindow: PANE, css: "#helpSettings" });
+    await settingsBecome(paneSettings, SETTINGS_OPEN, "the gear did not open the panel");
+    await inPane(c, `root.querySelector("#helpHover").focus(); return null;`);
+    assert.equal(await focusedId(c), "helpHover");
+    await pressKey(c, "Escape");
+    await settingsBecome(paneSettings, SETTINGS_CLOSED, "Esc did not close the panel");
+    assert.ok(
+      await waitFor(c, async (c) => (await focusedId(c)) === "helpSettings"),
+      `the focus: ${await focusedId(c)}`,
+    );
+  });
 
   test("hover help is off until its box is ticked", async () => {
     assert.equal(await hoverBox(), false);
@@ -697,7 +870,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   // The link is the hover's first line, where a long hover shows it without
   // being scrolled.
   test("with the box ticked, the mouse hover has the link first, and a click shows the page", async () => {
-    await click(c, { toolWindow: PANE, css: "#helpHover" });
+    await clickHoverBox();
     assert.equal(await hoverBox(), true);
     const mark = await consoleMark(c);
     const t = await mouseHover(3, 22, COLLECTION_LINK);
@@ -735,7 +908,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   });
 
   test("unticking the box turns hover help off, and the hover is still drawn above the dock", async () => {
-    await click(c, { toolWindow: PANE, css: "#helpHover" });
+    await clickHoverBox();
     assert.equal(await hoverBox(), false);
     assert.ok(
       await c.evaluate("!!document.getElementById('tbDocsHoverStay')"),
@@ -851,7 +1024,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     );
   });
 
-  test("the window's title bar is one row, with the title and four buttons, and Windows draws no caption", async () => {
+  test("the window's title bar is one row, with the title and five buttons, and Windows draws no caption", async () => {
     const bar = await win.evaluate(`(() => {
       const el = (id) => document.getElementById(id);
       const bar = el("helpTitleBar").getBoundingClientRect();
@@ -868,7 +1041,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
         height: bar.height,
         below: el("helpBar").getBoundingClientRect().top,
         title: el("helpTitle").textContent,
-        inRow: ["helpGrip", "helpTitle", "helpAttach", "helpMinimize", "helpMaximize", "helpClose"].map(inRow),
+        inRow: ["helpGrip", "helpTitle", "helpAttach", "helpSettings", "helpMinimize", "helpMaximize", "helpClose"].map(inRow),
         rects,
         attachIn: el("helpAttach").parentElement.id,
         attachWord: getComputedStyle(el("helpAttach").querySelector(".label")).display,
@@ -884,7 +1057,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
         top: 0,
         below: height,
         title: "TWINBASIC HELP",
-        inRow: [true, true, true, true, true, true],
+        inRow: [true, true, true, true, true, true, true],
         attachIn: "helpTitleBar",
         attachWord: "none",
       },
@@ -1046,14 +1219,71 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.equal((await toolWindow(c, PANE))?.visible, false);
   });
 
-  test("Hover help can be ticked in the window, and the pane's box follows", async () => {
+  // The window's gear is in its title bar, and its panel is the window's own:
+  // opening it there does not open the pane's.
+  test("the gear in the window's title bar opens the settings panel under it, and sets aria-expanded", async () => {
+    assert.deepEqual(await windowSettings(), SETTINGS_CLOSED);
+    const gear = await win.evaluate(`(() => {
+      const g = document.getElementById("helpSettings");
+      return {
+        in: g.parentElement.parentElement.id,
+        title: g.title,
+        label: g.getAttribute("aria-label"),
+        shapes: g.querySelectorAll("svg circle, svg path").length > 0,
+      };
+    })()`);
+    assert.deepEqual(gear, { in: "helpTitleBar", title: "Settings", label: "Settings", shapes: true });
+    await clickInWindow("#helpSettings");
+    await settingsBecome(windowSettings, SETTINGS_OPEN, "the gear did not open the panel");
+    assertPlace(await windowPlace(), "the window");
+    const { want, got } = await windowLook();
+    assert.deepEqual(got, want, "the panel is not in the theme's colours");
+    assert.notEqual(got.borderStyle, "none");
+    assert.deepEqual(await paneSettings(), SETTINGS_CLOSED, "the pane's panel opened");
+    await clickInWindow("#helpSettings");
+    await settingsBecome(windowSettings, SETTINGS_CLOSED, "the gear did not close the panel");
+  });
+
+  // The window's page is on no site of its own, so its frame is always in a
+  // process of its own, and a press over the frame never reaches the shade:
+  // the page's blur closes the panel then.
+  async function clickOutsideWindow(css) {
+    await clickInWindow("#helpSettings");
+    await settingsBecome(windowSettings, SETTINGS_OPEN, "the gear did not open the panel");
+    const mark = await consoleMark(c);
+    await clickInWindow(css);
+    await settingsBecome(windowSettings, SETTINGS_CLOSED, `a click on ${css} did not close the panel`);
+    assert.deepEqual(await openedUrls(c, { since: mark }), [], `the click on ${css} reached it`);
+  }
+
+  test("a click on the shade closes the window's panel, over another control or over the page", async () => {
+    await clickOutsideWindow("#helpBrowser");
+    await clickOutsideWindow("#helpPage");
+  });
+
+  test("Esc closes the window's panel from inside it, and the gear has the focus", async () => {
+    await clickInWindow("#helpSettings");
+    await settingsBecome(windowSettings, SETTINGS_OPEN, "the gear did not open the panel");
+    await win.evaluate(`document.getElementById("helpHover").focus()`);
+    await pressKey(win, "Escape");
+    await settingsBecome(windowSettings, SETTINGS_CLOSED, "Esc did not close the panel");
+    assert.equal(await win.evaluate(`document.activeElement?.id`), "helpSettings");
+  });
+
+  test("Hover help can be ticked in the window, which leaves the panel open, and the pane's box follows", async () => {
     assert.equal(await hoverBox(), false);
+    await clickInWindow("#helpSettings");
+    await settingsBecome(windowSettings, SETTINGS_OPEN, "the gear did not open the panel");
     await clickInWindow("#helpHover");
     assert.ok(await waitFor(c, async () => (await hoverBox()) === true), "the pane's box is not ticked");
     assert.equal(await windowBox(), true);
+    assert.deepEqual(await windowSettings(), SETTINGS_OPEN, "ticking the box closed the panel");
     await clickInWindow("#helpHover");
     assert.ok(await waitFor(c, async () => (await hoverBox()) === false), "the pane's box is still ticked");
     assert.equal(await windowBox(), false);
+    assert.deepEqual(await windowSettings(), SETTINGS_OPEN, "unticking the box closed the panel");
+    await clickInWindow("#helpSettings");
+    await settingsBecome(windowSettings, SETTINGS_CLOSED, "the gear did not close the panel");
   });
 
   test("a name with no page shows its summary in the window, and Open in browser is disabled there", async () => {
@@ -1080,6 +1310,8 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       c.evaluate(
         `executeIdeCommand(${JSON.stringify(group === "dark" ? "tbTheme_SwitchToDarkMode" : "tbTheme_SwitchToLightMode")})`,
       );
+    const panelBefore = await windowLook();
+    assert.deepEqual(panelBefore.got, panelBefore.want, "the panel is not in the theme's colours");
     try {
       await switchTo(other);
       assert.equal(await themeGroup(c), other, "the IDE's theme did not change");
@@ -1089,6 +1321,10 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       );
       assert.ok(sameAsIde, "the window's properties are not the new theme's");
       assert.equal(await win.evaluate(`document.documentElement.getAttribute("data-group")`), other);
+      // The panel follows the theme: the other theme's colours, not the old.
+      const panelAfter = await windowLook();
+      assert.deepEqual(panelAfter.got, panelAfter.want, "the panel is not in the new theme's colours");
+      assert.notEqual(panelAfter.got.background, panelBefore.got.background, "the panel kept the old background");
     } finally {
       await switchTo(was);
     }
@@ -1262,8 +1498,14 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       attachIn: "helpBar",
       attachWord: true,
       searchTop: 0,
-      order: ["helpSearch", "helpBrowser", "helpAttach", "helpHoverLabel"],
+      order: ["helpSearch", "helpBrowser", "helpAttach", "helpSettingsWrap"],
     });
+    // The gear is the bar's, and opens the panel under it, as it does in the title bar.
+    await clickInWindow("#helpSettings");
+    await settingsBecome(windowSettings, SETTINGS_OPEN, "the gear did not open the panel");
+    assertPlace(await windowPlace(), "the native window");
+    await clickInWindow("#helpSettings");
+    await settingsBecome(windowSettings, SETTINGS_CLOSED, "the gear did not close the panel");
     // The control fills the client area with the Windows title bar too, in the
     // window's own size and maximized (the page has no button to press).
     await assertGeometry("native, normal");
