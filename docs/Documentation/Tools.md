@@ -1271,7 +1271,7 @@ its own, with the copy of the symbol index committed in
 `add-in/Resources/SYMBOLS/`: `help` with the pages from the built site, and `help-offline`
 with the pages from the add-in's own server, built with an archive of the built offline
 tree that the lane writes with the same [help archive](#the-help-archive) writer the build
-uses. The fifteen lanes take about two minutes together.
+uses. The sixteen lanes take about two minutes together.
 
 | Flag | Effect |
 |---|---|

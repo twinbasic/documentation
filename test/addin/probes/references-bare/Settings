@@ -1,0 +1,30 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "ReferencesBare",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard EXE",
+	"project.description": "P20 in WIP.HelpAddin.md: a project that references nothing but OLE Automation. test/addin/references.test.mjs opens it; it is not an add-in.",
+	"project.exportPathIsV2": true,
+	"project.id": "{7B247200-0000-4000-9000-7B2472000003}",
+	"project.name": "ReferencesBare",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"symbolId": "stdole",
+			"versionMajor": 2,
+			"versionMinor": 0
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.startupObject": "Sub Main",
+	"project.warnings": {
+		"errors": [],
+		"ignored": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

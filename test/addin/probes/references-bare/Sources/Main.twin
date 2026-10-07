@@ -1,0 +1,5 @@
+Module Main
+    Public Sub Main()
+        Debug.Print "ReferencesBare"
+    End Sub
+End Module

@@ -1,0 +1,5 @@
+Module Main
+    Public Sub Main()
+        Debug.Print "ReferencesMany"
+    End Sub
+End Module
