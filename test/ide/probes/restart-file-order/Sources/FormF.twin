@@ -1,0 +1,13 @@
+[Description("")]
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA02")]
+[PredeclaredId]
+Class FormF
+
+    Sub New()
+    End Sub
+
+    Public Function F1() As Long
+        F1 = &H5A0F0001
+    End Function
+
+End Class

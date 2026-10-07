@@ -1,0 +1,18 @@
+' In an IDE run, the first conversion of a Single to a Long raises error 6, because the
+' procedure also holds a conversion of a constant out of the Long range, which never runs.
+Module Startup
+
+    Public Sub Main()
+        Dim s As Single = 4.5
+        Dim t As Long
+        On Error Resume Next
+        t = CLng(s)
+        Debug.Print "first  CLng(s): t=" & t & " Err=" & Err.Number
+        Err.Clear
+        t = CLng(s)
+        Debug.Print "second CLng(s): t=" & t & " Err=" & Err.Number
+        Err.Clear
+        If False Then t = CLng(1E+20)   ' never runs; without this line both lines print t=4 Err=0
+    End Sub
+
+End Module

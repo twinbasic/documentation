@@ -98,6 +98,15 @@ for (const [decl, container, want] of [
   ["Red = 1", "Enum", "EnumMember"],
   ["Width As Long", "Type", "TypeMember"],
   ["Width As Long", "Union", "TypeMember"],
+  // A field named for a keyword is a field, not a nested declaration: the
+  // keyword rule would file `Type As Long` as a Type.
+  ["Type As Long", "Type", "TypeMember"],
+  ["Type(3) As Byte", "Type", "TypeMember"],
+  ["Union As Long", "Type", "TypeMember"],
+  ["Enum As Long", "Union", "TypeMember"],
+  ["Private Type Inner", "Type", "Type"],
+  ["End Type", "Type", null],
+  ["Type Foo", "Module", "Type"],
   // A Const is not a variable: Attributes.md states the two as different
   // targets, and [DllExport] is documented on one and refused on the other.
   ["Private Const Answer As Long = 42", "Module", "Const"],

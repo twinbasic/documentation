@@ -71,7 +71,6 @@ const CASES = [
   { tool: "scripts/check_tree_fresh.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
   { tool: "scripts/check_tree_fresh.mjs", args: ["--source"], exit: 2, stderr: "--source needs a value\n" },
   { tool: "scripts/check_tree_fresh.mjs", args: ["--tree"], exit: 2, stderr: "--tree needs a value\n" },
-  { tool: "scripts/build_help_archive.mjs", args: ["--out="], exit: 2, stderr: "--out needs a non-empty value\n" },
   { tool: "scripts/pick_a11y_sample.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/pick_a11y_sample\.mjs / },
   { tool: "scripts/pick_a11y_sample.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
   { tool: "scripts/pick_a11y_sample.mjs", args: ["--budget"], exit: 2, stderr: "--budget needs a value\n" },
@@ -347,7 +346,6 @@ const HELP_TOOLS = {
   "scripts/try_help_addin.mjs": null,
   "scripts/bug_repro.mjs": null,
   "scripts/build_dot_metrics.mjs": null,
-  "scripts/build_help_archive.mjs": null,
   "scripts/build_package_api.mjs": null,
   "scripts/census_attributes.mjs": null,
   "scripts/check_a11y.mjs": null,
@@ -379,6 +377,7 @@ const HELP_TOOLS = {
   "scripts/gen_attribute_probes.mjs": "Generate a twinBASIC probe project for Reference/Attributes.md applicability.\n",
   "scripts/impexp.mjs": "Usage:\n",
   "scripts/pick_a11y_sample.mjs": null,
+  "scripts/probe_build_twice.mjs": null,
   "scripts/probe_shared_temp.mjs": null,
   "scripts/survey_tooling.mjs": null,
   "scripts/sweep_a11y.mjs": null,
@@ -423,7 +422,6 @@ const REFUSALS = {
   "scripts/try_help_addin.mjs": ["ide"],
   "scripts/bug_repro.mjs": ["ide"],
   "scripts/build_dot_metrics.mjs": [null],
-  "scripts/build_help_archive.mjs": ["src"],
   "scripts/build_package_api.mjs": ["out"],
   "scripts/census_attributes.mjs": ["out"],
   "scripts/check_a11y.mjs": ["root-dir"],
@@ -455,6 +453,7 @@ const REFUSALS = {
   "scripts/gen_attribute_probes.mjs": [null],
   "scripts/impexp.mjs": [null, { prefix: "ERROR: " }],
   "scripts/pick_a11y_sample.mjs": ["sweep"],
+  "scripts/probe_build_twice.mjs": ["ide"],
   "scripts/probe_shared_temp.mjs": ["ide"],
   "scripts/survey_tooling.mjs": ["root"],
   "scripts/sweep_a11y.mjs": ["out"],
@@ -812,6 +811,21 @@ bad("scripts/check_a11y_fingerprint.mjs", ["--baseline", "nope"], /^--baseline e
 bad("scripts/check_a11y_fingerprint.mjs", ["--candidate", "nope"], /^--candidate expects production, .+, got: nope\n$/);
 bad("scripts/check_a11y_fingerprint.mjs", ["--patches", "nope"], /^--patches expects .+, got: nope\n$/);
 bad("scripts/check_a11y_fingerprint.mjs", ["--patches=plain-color-fields,nope"], /^--patches expects .+, got: nope\n$/);
+bad(
+  "scripts/check_a11y_fingerprint.mjs",
+  ["--root-dir", ".", "--pages", "404.html"],
+  '--pages expects each page to start with "/", got: 404.html\n',
+);
+bad(
+  "scripts/check_a11y_fingerprint.mjs",
+  ["--root-dir", ".", "--pages", " , "],
+  "--pages expects a comma-separated list of pages, got:  , \n",
+);
+bad(
+  "scripts/check_a11y_fingerprint.mjs",
+  ["--root-dir", ".", "--pages", "/nope.html"],
+  /^--pages expects pages that exist under .+, got: \/nope\.html\n$/,
+);
 bad("scripts/check_axe_patch_equiv.mjs", ["--patch", "nope"], /^--patch expects .+, got: nope\n$/);
 bad("scripts/check_links_diff.mjs", ["--max-lines", "abc"], NOT_WHOLE("--max-lines", "abc") + "\n");
 bad("scripts/check_links_diff.mjs", ["--max-lines=-1"], NOT_WHOLE("--max-lines", -1) + "\n");

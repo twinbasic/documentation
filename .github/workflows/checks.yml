@@ -97,7 +97,11 @@ jobs:
         # broken link still produces a site worth inspecting -- so the
         # step fails on the exit code: 1 when the check found a problem,
         # 2 when the build could not run.
-        run: node builder/tbdocs.mjs --src docs --no-fetch-assets --check-audit-index
+        #
+        # --no-help-archive: a local build ends by zipping the offline tree
+        # for the IDE help add-in. CI has no use for that archive and must
+        # not spend time on it.
+        run: node builder/tbdocs.mjs --src docs --no-fetch-assets --no-help-archive --check-audit-index
       # The gates both workflows run, in one list: see
       # .github/actions/run-gates/action.yml, which check_ci_workflows.mjs
       # checks against test.bat and check.bat. Each gate is its own group in

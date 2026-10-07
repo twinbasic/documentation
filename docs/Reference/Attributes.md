@@ -771,11 +771,12 @@ Applicable to: [**Module**](Module), and to [procedures](../Gloss#procedure), [*
 
 Requires a name to be written with its qualifier, so that names that would otherwise clash stay apart. **MustBeQualified** and **MustBeQualified(True)** are the same; **MustBeQualified(False)** has no effect.
 
-- On a procedure, code outside its module must call it as *module*.*procedure*. A call without the module name is error **TB5079**, *Unrecognized symbol*. Inside its own module the procedure can still be called by its name alone.
+- On a procedure or a **Declare** statement, code outside its module must call it as *module*.*procedure*. A call without the module name is error **TB5079**, *Unrecognized symbol*. Inside its own module the procedure can still be called by its name alone.
+- On one of a property's procedures, it applies to the property's name, so outside the module every use of the property needs the module name: with the attribute on the **Property Let** alone, a bare read through the **Property Get** is also **TB5079**.
 - On an **Enum**, code outside its module must write each member as *enum*.*member*; inside its own module the member can still be written alone. The type name itself can still be used alone, as in `As` *enum*.
 - On a **Module**, the module name must itself be qualified by the project or package name: *project*.*module*.*member*. The module's members can still be used by their names alone.
 
-The **Assert** package marks all three of its modules this way, which is why its members are called as `Assert.Strict.IsTrue` and never as `Strict.IsTrue`; see [Assert](../Packages/Assert/). The **VBRUN** package marks some of its enumerations.
+The **Assert** package marks all three of its modules this way, and every member in them, which is why its members are called as `Assert.Strict.IsTrue`: `Strict.IsTrue` and a bare `IsTrue` are both **TB5079**; see [Assert](../Packages/Assert/). The **VBRUN** package marks some of its enumerations.
 
 ```tb check_build
 [MustBeQualified]

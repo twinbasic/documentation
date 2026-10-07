@@ -1267,8 +1267,8 @@ function headerIdPlugin(md) {
   });
 }
 
-// Hand-marked search index entries (WIP.Search.md, "What shipped, third
-// round: the index pilot"). A heading's `{: index="..." }` names the terms
+// Hand-marked search index entries (WIP.Search.md, "Hand-marked index
+// entries"). A heading's `{: index="..." }` names the terms
 // a reader looks up to find that section, as a book's index would, and
 // `{: index_also="..." }` the terms it is a strong second answer for. Both
 // are lifted off the heading here, once header-id has given it its id, into

@@ -44,7 +44,16 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { resolve, join, relative, sep } from "node:path";
-import { DEFAULT_ROOT_DIR, REPO_ROOT, SAMPLE_PAGES, discoverPages, median, pad, splitStubs } from "./lib/axe-scan.mjs";
+import {
+  DEFAULT_ROOT_DIR,
+  REPO_ROOT,
+  SAMPLE_PAGES,
+  assertStateAudits,
+  discoverPages,
+  median,
+  pad,
+  splitStubs,
+} from "./lib/axe-scan.mjs";
 import { exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 
 // A crash exits 2, where 1 is a coverage gap.
@@ -155,6 +164,9 @@ const budget = withUsageError(() => {
   return cli.values.budget !== undefined ? numberOption(cli.values.budget, { option: "--budget", above: 0 }) : Infinity;
 });
 const mode = ["check", "propose", "census"].find((m) => cli.values[m]) ?? "check";
+// The check is what check.bat runs to guard the sample, and STATE_AUDITS is
+// part of it: a state audit on a page outside SAMPLE_PAGES is a coverage fault.
+if (mode === "check") assertStateAudits();
 let rootDir = cli.values.rootDir;
 let sweepPath = cli.values.sweep;
 let fresh = cli.values.fresh;

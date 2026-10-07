@@ -157,7 +157,7 @@ function initSearch() {
             // WIP.Search.md's "Design" §2. `qualified` weighs most of the two
             // since only a qualified name reaches it (see doSearch()), and
             // naming one is the most specific thing a reader can type
-            // (WIP.Search.md, "What shipped, fourth round").
+            // (WIP.Search.md, "Qualified names and stem twins").
             this.field('names', { boost: 100 });
             this.field('qualified', { boost: 500 });
             // Patched: `exact` holds each bare name whole (see exactName()
@@ -172,8 +172,7 @@ function initSearch() {
             this.field('page', { boost: 5 });
             // Patched: `index` holds the entry's hand-marked index terms
             // (builder/search.mjs's attachIndexMarks), as indexField() below
-            // writes them. See WIP.Search.md, "What shipped, third round:
-            // the index pilot".
+            // writes them. See WIP.Search.md, "Hand-marked index entries".
             this.field('index', { boost: 1000 });
             this.field('relUrl');
             this.metadataWhitelist = ['position']
@@ -247,7 +246,7 @@ function exactName(name) {
 // each token here, after the split: the token keeps its position in the
 // escaped text, so highlighting still lines up. A decoded character that
 // would separate words (`&#45;`, a hyphen) doesn't split its token. See
-// WIP.Search.md, "Fixed: entities in the index".
+// WIP.Search.md, "lunr patches".
 var NAMED_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 
 function decodeTokenEntities(token) {
@@ -270,8 +269,7 @@ function decodeTokenEntities(token) {
 // trailing-wildcard query that reaches an invented word throws inside lunr:
 // any query with the word `a` did. A `,` after each id keeps the keys apart.
 // Installed once, since lunr is a global singleton; called from initSearch()
-// above and from offline.mjs's copy of it. See WIP.Search.md, "Fixed: lunr
-// invented words".
+// above and from offline.mjs's copy of it. See WIP.Search.md, "lunr patches".
 function separateTokenSetKeys() {
   if (lunr.TokenSet.prototype.toString.separated) return;
   var separated = function() {
@@ -298,8 +296,7 @@ function separateTokenSetKeys() {
 // The length is lunr's own (the first set's elements plus the second's, an
 // element in both counting twice), since intersect() walks the shorter set.
 // Installed once, since lunr is a global singleton; called from initSearch()
-// above and from offline.mjs's copy of it. See WIP.Search.md, "Fixed: slow
-// multi-word queries".
+// above and from offline.mjs's copy of it. See WIP.Search.md, "lunr patches".
 function accumulateSetUnions() {
   var union = lunr.Set.prototype.union;
   if (union.accumulates) return;
@@ -556,7 +553,7 @@ function buildIndexInSlices(config, docs, entry, onSuccess, onError) {
 // computed on its first appearance in a result. At five times, `_App
 // Comments` lifted the App page's Comments section, since the trimmer drops
 // the `_`; three leaves a margin. Called at the end of doSearch(). See
-// WIP.Search.md, "Fixed: whole titles".
+// WIP.Search.md, "Whole titles".
 var WHOLE_TITLE_BOOST = 3;
 
 function boostWholeTitles(results, docs, baseTokens, keys) {
@@ -768,7 +765,7 @@ function searchLoaded(loadIndex) {
     // adjacent words, joined with a dot, name a member as a qualified name
     // does (`FileListBox Name`). Both also match a whole name, for the names
     // `qualified` holds whole (see qualifiedField()). See WIP.Search.md,
-    // "What shipped, fourth round" and "Fixed: stem twins".
+    // "Qualified names and stem twins".
     var plainTokens = queryTokens.filter(function(token) {
       return qualifiedTokens.indexOf(token) === -1;
     });
@@ -788,7 +785,7 @@ function searchLoaded(loadIndex) {
     // handling", `error` on its own isn't what the reader named, but in
     // "With statement", `With` is. Only in the singular: "Delegate Types"
     // and "New Functions" name a topic, not the one thing `Delegate` or
-    // `New` (WIP.Search.md, "Fixed: whole titles").
+    // `New` (WIP.Search.md, "Query construction").
     var textFields = ['title', 'content', 'names', 'qualified', 'page', 'relUrl'];
     var plainFields = ['title', 'content', 'names', 'page', 'relUrl'];
     var words = input.split(/\s+/).filter(Boolean);
@@ -873,7 +870,7 @@ function searchLoaded(loadIndex) {
     // section rarely says "property" or "event", so requiring the word
     // dropped the very entry the reader named; then the pass runs again with
     // the kind words optional, and they still score. See WIP.Search.md,
-    // "Fixed: kind words".
+    // "Kind words".
     var results = [];
     if (baseTokens.length >= 2) {
       results = allWords(false);

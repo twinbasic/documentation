@@ -1,0 +1,51 @@
+[
+	{
+		"Appearance": "vbAppear3d",
+		"BorderStyle": "vbSizable",
+		"Caption": "Detach probe",
+		"ControlBox": true,
+		"Enabled": true,
+		"FormDesignerId": "{7B247100-0000-4000-9000-7B24710000F1}",
+		"Height": 400,
+		"Left": 0,
+		"MaxButton": true,
+		"MinButton": true,
+		"Name": "DetachForm",
+		"ScaleHeight": 6000,
+		"ScaleMode": "vbTwips",
+		"ScaleWidth": 8000,
+		"ShowInTaskbar": true,
+		"StartUpPosition": "vbStartUpScreen",
+		"Top": 0,
+		"Visible": true,
+		"Width": 600,
+		"_children": [
+			{
+				"Anchors": {
+					"Bottom": true,
+					"Left": true,
+					"Right": true,
+					"Top": true,
+					"_clsid": "{8524D4B5-72A9-40A9-A189-29E7905C40CA}"
+				},
+				"DocumentURL": "",
+				"EnvironmentOptions": {
+					"UserDataFolder": "",
+					"_className": "WebView2EnvironmentOptions",
+					"_clsid": "{185E63C0-E641-47ED-B6A9-8565168A7FCF}"
+				},
+				"Height": 360,
+				"Index": -1,
+				"Left": 10,
+				"Name": "WebView",
+				"Top": 10,
+				"Visible": true,
+				"Width": 570,
+				"_className": "WebView2",
+				"_clsid": "{93B7E07E-6C7F-4758-8E51-4B1B17EC0A62}"
+			}
+		],
+		"_className": "Form",
+		"_clsid": "{33AD4F38-6699-11CF-B70C-00AA0060D393}"
+	}
+]

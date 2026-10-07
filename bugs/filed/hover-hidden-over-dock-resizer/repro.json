@@ -1,0 +1,10 @@
+{
+  "mode": "lane",
+  "lane": "ide:hover-past-editor",
+  "tests": [
+    "the hover over Collection reaches past the code editor's bottom edge",
+    "the hover disappears when the mouse slides down it onto the dock's resizer, though the mouse is still over the hover"
+  ],
+  "steps": "1. Open hover-hidden-over-dock-resizer.twinproj in the twinBASIC IDE, with a window large enough to show Startup.twin and the panels beneath the code editor. Line 3 of Startup.twin reads Dim c As Collection.\n2. Rest the mouse on Collection in line 3 and wait a second. A tall hover opens below the line, listing the class's members, and reaches past the code editor's bottom edge.\n3. Slide the mouse slowly down inside the hover, past the code editor's bottom edge.\n4. Expected: the hover stays while the mouse is over it, and scrolls or shows its end. Actual: it disappears as soon as the pointer crosses the editor's bottom edge, with the mouse still over the part of the hover that is drawn there.\nA step of more than a few pixels skips the 6 px strip where it happens, so a script moves the mouse 1 px at a time. With the mouse over that strip, document.elementFromPoint returns DIV.dockElementResizer, the IDE's dock resizer, which is transparent and takes the mouse; beneath it lies the dock's drop target, DIV.dockGroupVerticalDockPointBottom.\nControl: the mouse sliding down the same hover above the editor's bottom edge keeps it; and with a style .monaco-editor .monaco-hover { z-index: 100000 !important; } added to the page, the hover stays at every pixel across the edge.\nAsserted on BETA 997 by `ide-test.bat --only hover-past-editor` (the project is test/ide/probes/hover-past-editor).",
+  "issue": 2506
+}

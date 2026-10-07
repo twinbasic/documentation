@@ -1,0 +1,372 @@
+' The Win32 calls the detached help window needs: where the compiler is, the
+' window's place, state and frame, the move loop its title bar starts, the IDE's
+' "Show real OS titlebar" setting, and the compiler's environment, so that no
+' other file declares a Win32 function.
+Module WindowApi
+    Private Type RECT
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+
+    Private Type POINTAPI
+        X As Long
+        Y As Long
+    End Type
+
+    Private Type MINMAXINFO
+        ptReserved As POINTAPI
+        ptMaxSize As POINTAPI
+        ptMaxPosition As POINTAPI
+        ptMinTrackSize As POINTAPI
+        ptMaxTrackSize As POINTAPI
+    End Type
+
+    Private Type MONITORINFO
+        cbSize As Long
+        rcMonitor As RECT
+        rcWork As RECT
+        dwFlags As Long
+    End Type
+
+    Private Declare PtrSafe Function GetModuleFileNameW Lib "kernel32" (ByVal hModule As LongPtr, _
+        ByVal lpFilename As LongPtr, ByVal nSize As Long) As Long
+    Private Declare PtrSafe Function SetEnvironmentVariableW Lib "kernel32" (ByVal lpName As LongPtr, _
+        ByVal lpValue As LongPtr) As Long
+    Private Declare PtrSafe Function IsIconic Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function IsZoomed Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function ShowWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal nCmdShow As Long) As Long
+    Private Declare PtrSafe Function GetWindowRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT) As Long
+    Private Declare PtrSafe Function MoveWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal X As Long, _
+        ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal bRepaint As Long) As Long
+    Private Declare PtrSafe Function MonitorFromRect Lib "user32" (ByRef lprc As RECT, ByVal dwFlags As Long) As LongPtr
+    Private Declare PtrSafe Function GetWindowLongW Lib "user32" (ByVal hWnd As LongPtr, ByVal nIndex As Long) As Long
+    Private Declare PtrSafe Function SetWindowPos Lib "user32" (ByVal hWnd As LongPtr, ByVal hWndInsertAfter As LongPtr, _
+        ByVal X As Long, ByVal Y As Long, ByVal cx As Long, ByVal cy As Long, ByVal uFlags As Long) As Long
+    Private Declare PtrSafe Function ReleaseCapture Lib "user32" () As Long
+    Private Declare PtrSafe Function PostMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, _
+        ByVal wParam As LongPtr, ByVal lParam As LongPtr) As Long
+    Private Declare PtrSafe Function MonitorFromWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal dwFlags As Long) As LongPtr
+    Private Declare PtrSafe Function GetMonitorInfoW Lib "user32" (ByVal hMonitor As LongPtr, ByRef lpmi As MONITORINFO) As Long
+    Private Declare PtrSafe Function CallWindowProcW Lib "user32" (ByVal lpPrevWndFunc As LongPtr, ByVal hWnd As LongPtr, _
+        ByVal uMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    #If Win64 Then
+        Private Declare PtrSafe Function SetWindowProc Lib "user32" Alias "SetWindowLongPtrW" (ByVal hWnd As LongPtr, _
+            ByVal nIndex As Long, ByVal dwNewLong As LongPtr) As LongPtr
+    #Else
+        Private Declare PtrSafe Function SetWindowProc Lib "user32" Alias "SetWindowLongW" (ByVal hWnd As LongPtr, _
+            ByVal nIndex As Long, ByVal dwNewLong As LongPtr) As LongPtr
+    #End If
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, _
+        ByRef Source As Any, ByVal Length As LongPtr)
+    Private Declare PtrSafe Function DwmSetWindowAttribute Lib "dwmapi" (ByVal hWnd As LongPtr, _
+        ByVal dwAttribute As Long, ByRef pvAttribute As Long, ByVal cbAttribute As Long) As Long
+    Private Declare PtrSafe Function RegGetValueW Lib "advapi32" (ByVal hKey As LongPtr, ByVal lpSubKey As LongPtr, _
+        ByVal lpValue As LongPtr, ByVal dwFlags As Long, ByVal pdwType As LongPtr, ByVal pvData As LongPtr, _
+        ByRef pcbData As Long) As Long
+
+    Private Declare PtrSafe Function GetClientRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT) As Long
+    Private Declare PtrSafe Function ClientToScreen Lib "user32" (ByVal hWnd As LongPtr, ByRef lpPoint As POINTAPI) As Long
+
+    Private PreviousProc As LongPtr         ' the window's own procedure, while ours is in front of it
+    Private OverriddenWindow As LongPtr
+    Private ControlWindow As LongPtr        ' the control that fills the window's client area
+    Private LimitMaximize As Boolean
+
+    Private Const MAX_PATH As Long = 520
+    Private Const SW_MINIMIZE As Long = 6
+    Private Const SW_MAXIMIZE As Long = 3
+    Private Const SW_RESTORE As Long = 9
+    Private Const SW_SHOWNOACTIVATE As Long = 4
+    Private Const MONITOR_DEFAULTTONULL As Long = 0
+    Private Const GWL_STYLE As Long = -16
+    Private Const SWP_NOSIZE As Long = &H1
+    Private Const SWP_NOMOVE As Long = &H2
+    Private Const SWP_NOZORDER As Long = &H4
+    Private Const SWP_NOACTIVATE As Long = &H10
+    Private Const SWP_FRAMECHANGED As Long = &H20
+    Private Const MONITOR_DEFAULTTONEAREST As Long = 2
+    Private Const GWLP_WNDPROC As Long = -4
+    Private Const WM_GETMINMAXINFO As Long = &H24
+    Private Const WM_SIZE As Long = &H5
+    Private Const WM_WINDOWPOSCHANGED As Long = &H47
+    Private Const WM_NCCALCSIZE As Long = &H83
+    Private Const WM_NCLBUTTONDOWN As Long = &HA1
+    Private Const HTCAPTION As Long = 2
+    ' DWMWA_USE_IMMERSIVE_DARK_MODE: 20 on Windows 10 2004 and later, 19 before.
+    Private Const DWMWA_USE_IMMERSIVE_DARK_MODE As Long = 20
+    Private Const DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 As Long = 19
+    Private Const HKEY_CURRENT_USER As Long = &H80000001
+    Private Const RRF_RT_REG_SZ As Long = &H2
+    ' Where the IDE keeps its options: one value, GENERAL, a JSON object.
+    Private Const IDE_SETTINGS_KEY As String = "Software\VB and VBA Program Settings\twinBASIC_IDE\IDESettings"
+
+    ' The folder of the twinBASIC install, the parent of the bin folder the
+    ' compiler's executable is in. The add-in runs in the compiler's process.
+    Public Function InstallFolder() As String
+        Dim buffer As String = String$(MAX_PATH, vbNullChar)
+        Dim n As Long = GetModuleFileNameW(0, StrPtr(buffer), MAX_PATH)
+        Dim path As String = Left$(buffer, n)
+        Dim bin As Long = InStrRev(path, "\")
+        If bin = 0 Then Return ""
+        path = Left$(path, bin - 1)
+        bin = InStrRev(path, "\")
+        If bin = 0 Then Return ""
+        Return Left$(path, bin - 1)
+    End Function
+
+    ' Removes a variable from the compiler's own environment, which every
+    ' WebView2 control it makes reads.
+    Public Sub ClearEnvironmentVariable(ByVal name As String)
+        SetEnvironmentVariableW StrPtr(name), 0
+    End Sub
+
+    Public Function IsMinimized(ByVal hWnd As LongPtr) As Boolean
+        Return IsIconic(hWnd) <> 0
+    End Function
+
+    ' "min", "max" or "normal".
+    Public Function StateOfWindow(ByVal hWnd As LongPtr) As String
+        If IsIconic(hWnd) <> 0 Then Return "min"
+        If IsZoomed(hWnd) <> 0 Then Return "max"
+        Return "normal"
+    End Function
+
+    Public Sub MinimizeWindow(ByVal hWnd As LongPtr)
+        ShowWindow hWnd, SW_MINIMIZE
+    End Sub
+
+    ' The maximize button: a maximized window goes back to its size, any other
+    ' is maximized.
+    Public Sub MaximizeOrRestore(ByVal hWnd As LongPtr)
+        ShowWindow hWnd, IIf(IsZoomed(hWnd) <> 0, SW_RESTORE, SW_MAXIMIZE)
+    End Sub
+
+    ' Brings a minimized window back, which activates it.
+    Public Sub RestoreWindow(ByVal hWnd As LongPtr)
+        ShowWindow hWnd, SW_RESTORE
+    End Sub
+
+    ' Shows a window in its last size and place, as it was before it was hidden
+    ' or minimized, without activating it.
+    Public Sub ShowWithoutActivating(ByVal hWnd As LongPtr)
+        ShowWindow hWnd, SW_SHOWNOACTIVATE
+    End Sub
+
+    ' The window's rectangle on the screen, in pixels. False when the window
+    ' has none, or is minimized or maximized, whose rectangle is not the place
+    ' it goes back to.
+    Public Function WindowPlace(ByVal hWnd As LongPtr, ByRef Left As Long, ByRef Top As Long, _
+            ByRef Width As Long, ByRef Height As Long) As Boolean
+        If IsIconic(hWnd) <> 0 Or IsZoomed(hWnd) <> 0 Then Return False
+        Dim r As RECT
+        If GetWindowRect(hWnd, r) = 0 Then Return False
+        Left = r.Left
+        Top = r.Top
+        Width = r.Right - r.Left
+        Height = r.Bottom - r.Top
+        Return True
+    End Function
+
+    Public Sub PlaceWindow(ByVal hWnd As LongPtr, ByVal Left As Long, ByVal Top As Long, _
+            ByVal Width As Long, ByVal Height As Long)
+        MoveWindow hWnd, Left, Top, Width, Height, 1
+    End Sub
+
+    ' Whether a rectangle touches a monitor, so that a window saved on a monitor
+    ' that has since been unplugged is not put out of reach.
+    Public Function IsOnScreen(ByVal Left As Long, ByVal Top As Long, ByVal Width As Long, _
+            ByVal Height As Long) As Boolean
+        Dim r As RECT
+        r.Left = Left
+        r.Top = Top
+        r.Right = Left + Width
+        r.Bottom = Top + Height
+        Return MonitorFromRect(r, MONITOR_DEFAULTTONULL) <> 0
+    End Function
+
+    ' The window's style bits (GWL_STYLE).
+    Public Function WindowStyle(ByVal hWnd As LongPtr) As Long
+        Return GetWindowLongW(hWnd, GWL_STYLE)
+    End Function
+
+    ' Starts the move loop Windows runs for a drag on a title bar, so that a
+    ' window with no title bar of its own is moved by one drawn in its page,
+    ' and snaps at the screen's edges. The page's control may hold the mouse,
+    ' which the loop needs for itself. The message is posted, so that the loop
+    ' runs from the window's own message loop and not inside the page's message.
+    Public Sub StartWindowDrag(ByVal hWnd As LongPtr)
+        ReleaseCapture
+        PostMessageW hWnd, WM_NCLBUTTONDOWN, HTCAPTION, 0
+    End Sub
+
+    ' Makes the Windows title bar dark or light, and draws the frame again so
+    ' that it shows. The attribute is 20 from Windows 10 2004 on, and 19 before.
+    Public Sub SetDarkTitleBar(ByVal hWnd As LongPtr, ByVal dark As Boolean)
+        Dim value As Long = IIf(dark, 1, 0)
+        If DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, value, 4) <> 0 Then
+            DwmSetWindowAttribute hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, value, 4
+        End If
+        SetWindowPos hWnd, 0, 0, 0, 0, 0, SWP_NOMOVE Or SWP_NOSIZE Or SWP_NOZORDER Or SWP_NOACTIVATE Or SWP_FRAMECHANGED
+    End Sub
+
+    ' Sizes a child window to its parent's whole client area, in pixels. A
+    ' minimized parent has no client area to fill, and is left alone.
+    Private Sub FillClientArea(ByVal hParent As LongPtr, ByVal hChild As LongPtr)
+        If IsIconic(hParent) <> 0 Then Exit Sub
+        Dim r As RECT
+        If GetClientRect(hParent, r) = 0 Then Exit Sub
+        MoveWindow hChild, 0, 0, r.Right, r.Bottom, 1
+    End Sub
+
+    ' Keeps a control the size of the window's client area. The form's own
+    ' layout places a control by the margins it had at design time, and leaves
+    ' it overhanging or short of the client area by what the frame takes once
+    ' the window has been maximized and restored; the window procedure put in
+    ' front of the window's own sizes the control again after the form has laid
+    ' it out. The procedure is put in front once, and stays until EndWindowHook.
+    Public Sub KeepControlInClientArea(ByVal hWnd As LongPtr, ByVal hControl As LongPtr)
+        ControlWindow = hControl
+        HookWindow hWnd
+        FillClientArea hWnd, hControl
+    End Sub
+
+    ' Windows maximizes a window that has a sizing frame and no title bar over
+    ' the whole monitor, taskbar included, and a little further out. With limit
+    ' set, the window procedure put in front of the window's own answers
+    ' WM_GETMINMAXINFO with the work area of the monitor the window is on, and
+    ' WM_NCCALCSIZE with that work area as the client area of a maximized
+    ' window, so that the window and its client area are the work area and
+    ' nothing else, whatever the frame's thickness is.
+    Public Sub LimitMaximizeToWorkArea(ByVal hWnd As LongPtr, ByVal limit As Boolean)
+        LimitMaximize = limit
+        If limit Then HookWindow hWnd
+    End Sub
+
+    ' Puts the window procedure in front of the window's own, once.
+    Private Sub HookWindow(ByVal hWnd As LongPtr)
+        If OverriddenWindow <> 0 Then Exit Sub
+        PreviousProc = SetWindowProc(hWnd, GWLP_WNDPROC, AddressOf WindowProc)
+        OverriddenWindow = hWnd
+    End Sub
+
+    ' Puts the window's own procedure back, for the add-in to unload with.
+    Public Sub EndWindowHook()
+        If OverriddenWindow <> 0 Then SetWindowProc OverriddenWindow, GWLP_WNDPROC, PreviousProc
+        OverriddenWindow = 0
+        ControlWindow = 0
+    End Sub
+
+    ' The procedure HookWindow puts in front. After the window's own handling of
+    ' a change of its size or place, the control is sized to the client area
+    ' again (KeepControlInClientArea). With LimitMaximize, the window's own
+    ' answer to WM_GETMINMAXINFO has the maximized position and size changed to
+    ' the work area of the monitor the window is on (the position is relative
+    ' to the monitor), the rest as it is. A maximized window's client area is
+    ' all of it: WM_NCCALCSIZE for the work area is answered here, with the
+    ' rectangle as it came, so that no frame is taken off a window that has
+    ' none to show. Everything else is the window's own.
+    Public Function WindowProc(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal wParam As LongPtr, _
+            ByVal lParam As LongPtr) As LongPtr
+        If LimitMaximize And uMsg = WM_NCCALCSIZE Then
+            If IsZoomed(hWnd) <> 0 And IsWorkArea(lParam) Then Exit Function
+        End If
+        WindowProc = CallWindowProcW(PreviousProc, hWnd, uMsg, wParam, lParam)
+        If uMsg = WM_SIZE Or uMsg = WM_WINDOWPOSCHANGED Then
+            If ControlWindow <> 0 Then FillClientArea hWnd, ControlWindow
+            Exit Function
+        End If
+        If uMsg <> WM_GETMINMAXINFO Or Not LimitMaximize Then Exit Function
+        Dim monitor As MONITORINFO
+        monitor.cbSize = Len(monitor)
+        If GetMonitorInfoW(MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST), monitor) = 0 Then Exit Function
+        Dim info As MINMAXINFO
+        CopyMemory info, ByVal lParam, Len(info)
+        info.ptMaxPosition.X = monitor.rcWork.Left - monitor.rcMonitor.Left
+        info.ptMaxPosition.Y = monitor.rcWork.Top - monitor.rcMonitor.Top
+        info.ptMaxSize.X = monitor.rcWork.Right - monitor.rcWork.Left
+        info.ptMaxSize.Y = monitor.rcWork.Bottom - monitor.rcWork.Top
+        CopyMemory ByVal lParam, info, Len(info)
+    End Function
+
+    ' Whether the rectangle a WM_NCCALCSIZE message's lParam starts with, the
+    ' window's proposed rectangle (whether wParam is set or not), is the work
+    ' area of the monitor it is nearest to. A window being restored is still
+    ' maximized when the message comes, with its own, smaller rectangle.
+    Private Function IsWorkArea(ByVal lParam As LongPtr) As Boolean
+        Dim proposed As RECT
+        CopyMemory proposed, ByVal lParam, Len(proposed)
+        Dim monitor As MONITORINFO
+        monitor.cbSize = Len(monitor)
+        If GetMonitorInfoW(MonitorFromRect(proposed, MONITOR_DEFAULTTONEAREST), monitor) = 0 Then Return False
+        Return proposed.Left = monitor.rcWork.Left And proposed.Top = monitor.rcWork.Top And _
+            proposed.Right = monitor.rcWork.Right And proposed.Bottom = monitor.rcWork.Bottom
+    End Function
+
+    ' A rectangle as "left,top,right,bottom".
+    Private Function RectText(ByRef r As RECT) As String
+        Return r.Left & "," & r.Top & "," & r.Right & "," & r.Bottom
+    End Function
+
+    ' Where a window's client area is on the screen, as RectText gives it.
+    Private Function ClientText(ByVal hWnd As LongPtr) As String
+        Dim r As RECT
+        GetClientRect hWnd, r
+        Dim p As POINTAPI
+        ClientToScreen hWnd, p
+        Return (p.X) & "," & (p.Y) & "," & (p.X + r.Right) & "," & (p.Y + r.Bottom)
+    End Function
+
+    ' For the tests: the window's client area, its control's rectangle and the
+    ' work area of the monitor the window is on, all in screen pixels, as
+    ' "client L,T,R,B control L,T,R,B work L,T,R,B".
+    Public Function WindowGeometry(ByVal hWnd As LongPtr, ByVal hControl As LongPtr) As String
+        Dim control As RECT
+        GetWindowRect hControl, control
+        Dim monitor As MONITORINFO
+        monitor.cbSize = Len(monitor)
+        GetMonitorInfoW MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST), monitor
+        Return "client " & ClientText(hWnd) & " control " & RectText(control) & " work " & RectText(monitor.rcWork)
+    End Function
+
+    ' The IDE's option "IDE: Show real OS titlebar", showRealTitlebar in the
+    ' JSON object its GENERAL value holds. False when the value or the property
+    ' is not there, which is the option's default.
+    Public Function ShowsRealTitlebar() As Boolean
+        Dim json As String = ReadIdeOptions()
+        Dim at As Long = InStr(json, """showRealTitlebar""")
+        If at = 0 Then Return False
+        Dim i As Long = at + Len("""showRealTitlebar""")
+        i = SkipWhite(json, i)
+        If Mid$(json, i, 1) <> ":" Then Return False
+        i = SkipWhite(json, i + 1)
+        Return Mid$(json, i, 4) = "true"
+    End Function
+
+    ' The position of the first character at or after i that is not white space.
+    Private Function SkipWhite(ByVal text As String, ByVal i As Long) As Long
+        Do While i <= Len(text)
+            Select Case Mid$(text, i, 1)
+                Case " ", vbTab, vbCr, vbLf
+                    i = i + 1
+                Case Else
+                    Exit Do
+            End Select
+        Loop
+        Return i
+    End Function
+
+    ' The text of the IDE's GENERAL option value, or "" if the IDE has not
+    ' saved it.
+    Private Function ReadIdeOptions() As String
+        Dim size As Long
+        If RegGetValueW(HKEY_CURRENT_USER, StrPtr(IDE_SETTINGS_KEY), StrPtr("GENERAL"), RRF_RT_REG_SZ, 0, 0, size) <> 0 Then
+            Return ""
+        End If
+        Dim buffer As String = String$(size \ 2 + 1, vbNullChar)
+        If RegGetValueW(HKEY_CURRENT_USER, StrPtr(IDE_SETTINGS_KEY), StrPtr("GENERAL"), RRF_RT_REG_SZ, 0, _
+                StrPtr(buffer), size) <> 0 Then Return ""
+        Return Left$(buffer, InStr(buffer, vbNullChar) - 1)
+    End Function
+End Module

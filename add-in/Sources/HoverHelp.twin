@@ -1,0 +1,120 @@
+' Hover help, while it is on: links to the pages of a name under the mouse. A
+' hover provider the page runs (hoverhelp.js) adds the links above the
+' compiler's text in the IDE's own hover, next to the name. A name with no
+' page shows nothing, since the IDE's hover already shows its declaration and
+' description. A click on a link raises Pick. On or off, the script also draws
+' every hover above the IDE's dock, which would otherwise take the mouse from
+' a hover reaching past the editor (twinbasic/twinbasic#2506).
+Private Class HoverHelp
+    Public Event Pick(ByVal url As String)
+
+    Private Host As Host
+    Private Index As SymbolIndex
+    Private Site As String                  ' the links' origin, which a click is known by
+    Private MouseSink As HtmlElement        ' where the page's hover provider asks
+    Private LastError As String
+
+    Private Const TAG As String = "[tbDocsHelp] "
+    Private Const MOST_LINKS As Long = 5
+    Private Const MOUSE_EVENT As String = "tbDocsHoverHelp"
+
+    Public Sub New(ByVal Host As Host, ByVal Index As SymbolIndex, ByVal Site As String)
+        Set Me.Host = Host
+        Set Me.Index = Index
+        Me.Site = Site
+    End Sub
+
+    ' The pane's hidden element the page's provider asks through. The pane
+    ' builds it again whenever it is closed, so this is called each time,
+    ' before Enabled.
+    Public Sub Attach(ByVal MouseSink As HtmlElement)
+        Set Me.MouseSink = MouseSink
+        MouseSink.AddEventListener(MOUSE_EVENT, AddressOf MouseAsked)
+    End Sub
+
+    ' Turning it off removes the page's provider. Either way the page's script
+    ' runs, which also removes a provider an earlier instance of the add-in
+    ' left, from before a compiler restart.
+    Public Property Let Enabled(ByVal Value As Boolean)
+        Dim js As String = StrConv(LoadResDataInternal("hoverhelp.js", "SCRIPTS"), VbStrConv.vbFromUTF8)
+        js = Replace(js, "$ON$", IIf(Value, "true", "false"))
+        js = Replace(js, "$SITE$", Site)
+        MouseSink.Properties.innerHTML = PageScript(js)
+    End Property
+
+    ' The page's provider asks with the line under the mouse, the column, and
+    ' the compiler's hover there, and is answered with the links as markdown,
+    ' "" for none. A click on one of the links comes here too.
+    Private Sub MouseAsked(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        If eventInfo.kind = "open" Then
+            RaiseEvent Pick(CStr(eventInfo.path))
+            Exit Sub
+        End If
+        Dim seq As Long = CLng(eventInfo.seq)
+        Dim markdown As String
+        Dim word As String = NameAt(CStr(eventInfo.line), CLng(eventInfo.column))
+        If Len(word) > 0 Then
+            Dim pages As Collection = Index.Pages(word, CStr(eventInfo.hover))
+            If Not pages Is Nothing Then
+                Dim n As Long, i As Variant
+                For Each i In pages
+                    n = n + 1
+                    If n > MOST_LINKS Then Exit For
+                    If n > 1 Then markdown = markdown & vbLf & vbLf
+                    markdown = markdown & "[" & MarkdownText(LinkText(i)) & "](" & Site & UrlPath(Index.Url(i)) & ")"
+                Next
+            End If
+        End If
+        MouseSink.Properties.innerHTML = PageScript("window.tbDocsHoverHelp && window.tbDocsHoverHelp.answer(" & _
+            seq & ", " & JsString(markdown) & ")")
+        Exit Sub
+    Failed:
+        Report
+    End Sub
+
+    ' ------------------------------------------------------------ text
+
+    ' "Help: MsgBox function (VBA.Interaction)": the name and its kind, then
+    ' where it is, nothing for the language itself.
+    Private Function LinkText(ByVal i As Long) As String
+        Dim where As String = Index.Place(i)
+        LinkText = "Help: " & Index.Symbol(i) & " " & Index.Kind(i)
+        If Len(where) > 0 Then LinkText = LinkText & " (" & where & ")"
+    End Function
+
+    Private Function MarkdownText(ByVal text As String) As String
+        Dim c As Variant
+        text = Replace(text, "\", "\\")
+        For Each c In Array("`", "*", "_", "[", "]", "(", ")", "#", "<", ">", "!")
+            text = Replace(text, c, "\" & c)
+        Next
+        Return text
+    End Function
+
+    ' A site path as a link may hold it; the page decodes it again.
+    Private Function UrlPath(ByVal url As String) As String
+        url = Replace(url, "%", "%25")
+        url = Replace(url, " ", "%20")
+        url = Replace(url, "(", "%28")
+        Return Replace(url, ")", "%29")
+    End Function
+
+    Private Function JsString(ByVal text As String) As String
+        text = Replace(text, "\", "\\")
+        text = Replace(text, """", "\""")
+        text = Replace(text, vbCr, "\r")
+        text = Replace(text, vbLf, "\n")
+        text = Replace(text, ChrW$(&H2028), "\u2028")
+        text = Replace(text, ChrW$(&H2029), "\u2029")
+        Return """" & text & """"
+    End Function
+
+    ' Prints an error once, not once a hover.
+    Private Sub Report()
+        Dim message As String = "hover help error " & Err.Number & ": " & Err.Description
+        If message = LastError Then Exit Sub
+        LastError = message
+        Host.DebugConsole.PrintText TAG & message
+    End Sub
+End Class

@@ -74,9 +74,9 @@ the only prose anywhere explaining `[WithDispatchForwarding]` is a comment in Sa
 > `(`. Argument text needs stripping too, or `[Description("Sets or returns, given …")]`
 > contributes an attribute named `given`.
 
-**A worked instance: export settles what the pages cannot.** Two reference pages disagreed
-with two others about whether a form's code uses bare event handlers. One `export` settles
-it --- every form code-behind in the shipped samples is:
+**A worked instance: export settles what the pages cannot.** Whether a form's code uses
+bare event handlers is a question one `export` settles --- every form code-behind in the
+shipped samples is:
 
 ```
 [Description("")]
@@ -88,8 +88,8 @@ Class ChildBlue
 End Class
 ```
 
-So a form's `.twin` file **is** a `Class` with designer attributes, the pages that wrapped
-their samples were right, and the bare-handler pages show excerpts. `Form_Load` is what the
+So a form's `.twin` file **is** a `Class` with designer attributes, a page that wraps
+its samples in one is right, and a bare-handler page shows an excerpt. `Form_Load` is what the
 samples use; `UserForm_Initialize` appears in none of them. The pages are the thing in
 doubt, so only the export can decide.
 
@@ -126,7 +126,7 @@ from the other tool. `gen_attribute_probes.mjs` records the converse trap under
 Property Get, a Function and a Sub", and the probe returned TB5155 because all 82 uses are
 inside an Interface. Group by enclosing construct.
 
-**Seven ways a sweep of this corpus gets a wrong answer**, each measured, and each now a
+**Seven ways a sweep of this corpus gets a wrong answer**, each measured, and each a
 comment in the file:
 
 - A **line matcher misses 292 of 7,604 attribute lines (3.8%)**, because
@@ -165,8 +165,8 @@ corpus oddity.
 
 A census says where the packages *use* an attribute, and `gen_attribute_probes.mjs` probes
 only the targets `Attributes.md` already claims, so an entry that is too short stays too
-short: `[ComExport]` was documented as "constants in a Module" because a Sub and a Const were
-the two targets tried, and an API `Declare` never was.
+short: an entry written from the two targets someone tried, a Sub and a Const, says
+"constants in a Module" and never meets the API `Declare` the attribute also takes.
 [scripts/sweep_attributes.mjs](scripts/sweep_attributes.mjs) asks every question --- every
 name (the page's, the compiler's token table's, `--names`) at each of about 60 sites in
 [scripts/lib/attribute-sites.mjs](scripts/lib/attribute-sites.mjs), in each argument shape ---
@@ -188,7 +188,7 @@ candidate. Swept, exactly one name the page does not document is accepted anywhe
 `[PropertyPage]`, at eighteen sites, all of them members of a Class or an Interface. The
 other 193 are refused at every site.
 
-**Six things the sweep has to get right, each of which gave a wrong report first:**
+**Six things the sweep has to get right, each of which gives a wrong report when missed:**
 
 - **`parseCli` camel-cases its keys.** `values["dry-run"]` is `undefined`, so `--dry-run` is
   ignored and a "dry run" becomes a full four-lane sweep. Read `values.dryRun`; run a new
@@ -218,8 +218,8 @@ other 193 are refused at every site.
 
 **It finds compiler crashes the documentation never would:** a crash in a batch is
 isolated by halving down to one probe beside the canaries, which is how a bare
-`[PopulateFrom]` on an Enum was found to kill the compiler (twinbasic/twinbasic#2450, fixed
-in BETA 997).
+`[PopulateFrom]` on an Enum is found to kill the compiler (twinbasic/twinbasic#2450; BETA 997
+does not crash).
 
 **Read the report's "accepted at most sites" section before believing an acceptance.**
 `[Description]` is taken at 53 of 61 sites and `[Hidden]` and `[Restricted]` at 42: either
@@ -252,7 +252,7 @@ are 0 clean, 1 the project has errors, 2 the harness failed or the project file 
 **A project file the IDE cannot read is refused before an IDE starts.** `tbbuild` reads the
 container with impexp's reader (`checkProject`, in
 [scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs)) and exits 2 within a moment,
-naming the file and the fault. Without that, BETA 995 gave exit 0, a clean compile with no
+naming the file and the fault. Without that, BETA 995 gives exit 0, a clean compile with no
 rows, after the whole `--timeout` (66 s at `--timeout 60`) for an empty file, a file cut off
 halfway and a file with its first byte changed, and exit 3 for a text file. The IDE answers
 such a file with a message box, which nobody can see or answer on the private desktop. The
@@ -305,16 +305,16 @@ does not.
 **The mechanics are one library, [scripts/lib/tb-ide.mjs](scripts/lib/tb-ide.mjs)**:
 starting the IDE, attaching, waiting for the compile, reading the diagnostics and the DEBUG
 CONSOLE, clicking, building, and ending the process tree. `tbbuild` and `tbrun` are command lines
-around it, and the add-in harness planned in [WIP.HelpAddin.md](WIP.HelpAddin.md) is built
+around it, and the add-in test runner ([WIP.HelpAddin.md](WIP.HelpAddin.md)) is built
 on it.
 
 **A build is also a function, [scripts/lib/tb-build.mjs](scripts/lib/tb-build.mjs)'s
 `compileProject`**, which is `tbbuild` without its command line and returns
 `{code, message, rows, counts, dialogs, crashFiles, ...}`. `check_examples` and
-`sweep_attributes` call it rather than starting `tbbuild` as a subprocess. The subprocess
-cost no speed (about 100 ms against an IDE start of about 10 s), but each caller had to parse
-its JSON and stderr back, and a harness failure and a compile error both arrived as an exit
-code.
+`sweep_attributes` call it rather than starting `tbbuild` as a subprocess. A subprocess
+costs no speed (about 100 ms against an IDE start of about 10 s), but each caller would parse
+its JSON and stderr back, and a harness failure and a compile error would both arrive as an
+exit code.
 
 Running in one process gives four rules:
 
@@ -331,7 +331,7 @@ Running in one process gives four rules:
 - **The name.** tb-ide already exports a `buildProject(c)` that builds an exe through an open
   connection, and the notes below mean that one; the new function is `compileProject`.
 
-Two rules that came out of the move to a library:
+Two further rules:
 
 - **Resolve a relative project path before comparing it.** The IDE is given the resolved path
   and echoes it back, and the wait loop compares that echo with the argument; with the
@@ -418,8 +418,8 @@ Seven rules about the harness, each a comment in the file:
   The status does flap to UNAVAILABLE on the way, but the whole crash-restart cycle takes
   about 1.3 s against a 1 Hz sample, and after the third restart the IDE leaves the status at
   OPERATIONAL with the counters at zero --- byte-identical to a clean build. A 275-file
-  project read `0 errors, 0 warnings` and exit 0, reproducibly, while its quarters
-  reported 129, 0, 294 and 448 errors. The console is the record that sampling cannot miss,
+  project reads `0 errors, 0 warnings` and exit 0, reproducibly, while its quarters
+  report 129, 0, 294 and 448 errors. The console is the record that sampling cannot miss,
   because nothing removes an entry from it: `NATIVE EXCEPTION` and `restarting from
   MEMORY`, three times over, with a thread dump naming the file being parsed from the second
   crash on, and that file is what the exit-4 message reports.
@@ -427,9 +427,9 @@ Seven rules about the harness, each a comment in the file:
   TRACE-MODE writes the thread dump that names the file, and the IDE switches that on in
   answer to the first `NATIVE EXCEPTION` and passes it to a compiler as it starts, so the
   restarted compiler's crash is the first to name one. A single re-read of the console after
-  the crash missed the name 31% of the time (BETA 983: the second crash comes 1.6 to 1.9 s
-  after the first on an idle machine, 1.8 to 3.0 s with four IDEs compiling at once). The poll
-  that replaced it, `awaitCrashName`, reads every 250 ms for up to 5 s, missed none and needed
+  the crash misses the name 31% of the time (BETA 983: the second crash comes 1.6 to 1.9 s
+  after the first on an idle machine, 1.8 to 3.0 s with four IDEs compiling at once).
+  `awaitCrashName` polls instead, every 250 ms for up to 5 s: it misses none and needs
   at most 3.25 s; the add-in lanes' `closeProject` uses it too. If a run ever has a second
   crash without a name, the third crash names the file as well, but under four lanes it came
   as late as 6.4 s, after the poll has given up.
@@ -571,7 +571,7 @@ Rules it follows:
   (codegen) error`. The codegen case builds with `[LINKER] SUCCESS`: a `[RunAfterBuild]` Sub
   that shifts a `Single` (BUGS-TO-REPORT.md) adds `[BUILD] Executing 'DocSamples.Probe.Run'...`
   and the codegen line to the console, and nothing in the Sub runs. The type-library failure
-  came from IDEs sharing one temp folder; `launchIde` gives each its own (see
+  comes from IDEs sharing one temp folder; `launchIde` gives each its own (see
   WIP.ExamplesBuild.md).
 - **A callee's code-generation failure is erased by the probe's own `Debug.Cls`.** When the
   failing shift is in a procedure the probe calls, the codegen line naming that procedure
@@ -603,8 +603,9 @@ Rules it follows:
   form loaded returns too: the IDE then prints `[DEBUGGER] Waiting for remaining forms to
   close...` after the sentinel, which `sentinelIndex` allows and `tbrun` prints (BETA 983
   and 995). `check_twin_parsers` has fixtures for both.
-- **`tbrun --exe` exits 6 when the exe exited with a code other than 0**, or was still
-  running at `--timeout` and was ended. A run that would exit 5 exits 5 first, since the
+- **`tbrun --exe` exits 6 when the exe exited with a code other than 0**, when the event
+  log records that it faulted, when it opened a box, or when it was still running at
+  `--timeout` and was ended. A run that would exit 5 exits 5 first, since the
   IDE's run is the one `--exe` follows.
 
 A reader of the console that is not `tbrun` should **compare the whole console before and
@@ -666,6 +667,16 @@ launcher creates it with no inherited handles. So `TbRun.Out` writes UTF-8 to th
 the exit code from `ExitProcess 7` comes back as 7, a hung exe is ended at `--timeout`
 with nothing left running, and **the exe never evaluates `Debug.Assert`, with or without
 LLVM**, as VB6 drops `Debug` statements from a compiled program.
+
+**An unhandled error in the exe opens a box and waits for it**, so `--exe` passes
+`dialogs: "close"`: the launcher records each box and presses OK. Without that the exe
+sat until `--timeout`. The box is the only sign of the error. In BETA 997 a plain exe
+shows *shutdown*, `Run-time error '5' <description>`, and exits with code 0 once the box
+is closed; an LLVM-compiled one shows *_TB_ERROR_HANDLER*, `unhandled error in
+Probe.Main`, with no number or description, and then dies of an access violation at
+address 0 (`0xC0000005`). `tbrun` also reads the Application log for a fault the exe
+ended on (`lib/win-fault.mjs`), since an exit code need not say it; the record is written
+because the launcher, not Node, starts the exe.
 
 **`TbRun.Out` knows it is in the IDE because the wrapper says so.** The wrapper sets
 `TbRun.tbrun_InIDE` before it calls the probe; the exe runs `Sub Main`, never the wrapper.
@@ -798,7 +809,7 @@ be gone before anything is tidied, because `taskkill` only asks.
 a `tbrun` beside a lane run, another session's --- cannot each put back on their own. An IDE
 holds the recent list in memory and writes all of it back when it opens a project, so a run
 whose IDE is still open writes the other run's entries back after that run removed them (two
-`ide_test` runs failed with exit 3 this way, each naming the other's lane folder). So the runs
+`ide_test` runs fail with exit 3 this way, each naming the other's lane folder). So the runs
 share one record in `%TEMP%\tb-registry\<key>`, read and written one run at a time under its
 `busy` folder: the first run to start records the recent list, the association and the theme
 (`base.json`); every run adds its folders and named projects (`<pid>-<n>.json`); a run that
@@ -852,9 +863,8 @@ end, it would point `.twinproj` files at a folder that has been deleted, and oth
 run `examples.bat` while add-in tests run copies, so the overlap is ordinary. `startTidy`
 notes whether the association it recorded names the temp folder, and if it did, `finishTidy`
 leaves the association as the IDEs set it and says so; the next IDE started from a real
-install points it at that install. **A checkout without this rule still puts back what it
-found**, so until every checkout has it, an association can be left naming a deleted copy,
-and `.twinproj` files then open nothing until an IDE is started from a real install. Fix it
+install points it at that install. An association found naming a deleted copy makes
+`.twinproj` files open nothing until an IDE is started from a real install. Fix it
 by hand if you find it so.
 
 **The recent list is put back as it was found, not only swept.** On a real list the IDE
@@ -928,9 +938,9 @@ process (next section) shows up.
 **`removeTree` retries the delete itself, because `rmSync` does not.** An IDE ended a
 moment ago still holds some of its files for a while. On Node 24.13 `rmSync`'s `maxRetries`
 and `retryDelay` do nothing here: it fails with `EPERM` within a millisecond on a folder
-holding a file another process has open (measured). The registry tidy, a second or more of
-PowerShell, used to sit between ending the IDE and deleting the copy and hid this; the lane
-code deletes the copy the moment the IDE has gone. `removeTree` in `tb-ide-copy.mjs` retries
+holding a file another process has open (measured). Nothing slow sits between ending the
+IDE and deleting the copy to hide this: the lane code deletes the copy the moment the IDE
+has gone. `removeTree` in `tb-ide-copy.mjs` retries
 for up to five seconds, and `removeIdeCopy` and the add-in runner both use it.
 
 **`loadedAddins(c)`** in `tb-ide-addins.mjs` is the check that the copy is what it claims to be.
@@ -1018,7 +1028,7 @@ clicks Build, as `tbrun` does, and waits for the DEBUG CONSOLE. The wording is i
 compiler's strings: `[BUILD] Starting...`, then for a binary either `[LINKER] SUCCESS created
 output file '<path>'` or one of about twenty failure lines --- `[LINKER] FAILED ...`,
 `[BUILD] FAILED ...`, `[BUILD] ERROR ...`, `[BUILD] failed`, `[LINKER] compilation (codegen)
-error ...`. An output file another process held open gave `[LINKER] FAILED to create output
+error ...`. An output file another process holds open gives `[LINKER] FAILED to create output
 file '...' (error code 32)`, then `LOCKED BY:` and a line naming the process, then `[BUILD]
 failed`. A package writes `[BUILD] Creating TWINPACK file '<path>'` and then `[BUILD]
 successful.` (BETA 995), and its failures are `[BUILD] FAILED ...` and `[BUILD] failed` lines
@@ -1067,9 +1077,7 @@ target, through `Lane.restartCompiler` and `Lane.setBuildTarget`, which also ref
 compile afterwards that crashed or has errors. `readCrash` in
 `tb-ide.mjs` says whether the compiler crashed, from the same console record `tbbuild`
 reads, and `awaitCrashName` waits for that record to name the file being parsed, which no
-first crash does. Every call takes a connection from `attachIde`. Both of Stage 1's acceptance
-scenarios were carried out with these calls alone, on a lab IDE with Samples 10 and 15
-built in; [WIP.HelpAddin.md](WIP.HelpAddin.md), Stage 1 item 5, has what they did.
+first crash does. Every call takes a connection from `attachIde`.
 
 **Input is real input; reading is from the page's data.** A click is the pointer moving to
 the element's centre, pressing and releasing, and a key press is the key-down and key-up a
@@ -1079,7 +1087,7 @@ view draws only the rows that fit, and a tool window is a shadow root that
 `document.querySelector` cannot see into, so the calls read `toolWindowsById`, a list
 view's `dataNodes` and `window.editor` rather than what is drawn.
 
-Eight rules, the first six learned on the samples:
+Eight rules:
 
 - **A click scrolls its target into view, and checks what is at the point before it
   clicks.** Sample 10's tool window is taller than it is shown: its eleventh button has a
@@ -1133,8 +1141,8 @@ Eight rules, the first six learned on the samples:
   anything else. When the IDE is still revealing lines 10 s later, `openFile`, `setCursor` and
   `select` throw, naming the file and the place, rather than go on while the cursor can still
   move; `afterReveal` itself returns `false`. The IDE's side of it is in BUGS-TO-REPORT.md.
-- **A click checks where its press lands** (learned on the `assert` lane of
-  `ide-test.bat`). The page can change between the call that aims and the press, a few
+- **A click checks where its press lands** (the `assert` lane of
+  `ide-test.bat` shows it). The page can change between the call that aims and the press, a few
   milliseconds to a hundred later on a busy page. In an editor the debugger has just
   opened, the error panel goes on moving after it is drawn: the file's decorations bring
   code lenses above the failing line and push it down 48 px. A click on Stop made as soon as
@@ -1373,7 +1381,7 @@ probe lanes:
   lane need no change to the runner, and the second takes the same port once the first has
   been ended.
 
-**Timing, BETA 995:** the twelve lanes take about two minutes at the default two at a time
+**Timing, BETA 995:** the thirteen lanes other than widgets (24 s alone on BETA 997) take about two minutes at the default two at a time
 (the env lane is 16 s alone, the help lane 15 to 18 s, of which its sixteen cases are about 6 s). Typical lane costs (BETA 983): an add-in build about 10 s, a host IDE
 about 9 s, scenario 2 s; the keys lane 28 s (about 9 s of it pressing keys), panes 23 s,
 symbols and ideserver about 9 s each (they build nothing), appdata 18 s, arch 56 s (two builds

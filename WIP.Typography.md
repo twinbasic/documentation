@@ -27,11 +27,12 @@ prefer that shape where the layout allows it.
 **A footnote back-link shows the hazard.** It is a bare inline `<a>` holding a
 single U+21A9 with no padding, so its target is whatever box the font gives that
 glyph: 12.09 x 19 on Segoe UI, 12.09 x 15 on Liberation Sans, 15.97 x 17 on
-Inter. **None of those meets 24 x 24.** It passed on axe's *spacing* exception
---- a 24px circle centred on the target clears its neighbours --- until Inter's
-arrow, 3.9px wider, moved the centre far enough to intersect one. The fix sizes
-the link outright (`display: inline-block; min-width/min-height: 24px`) rather
-than restoring the clearance.
+Inter. **None of those meets 24 x 24.** It can pass on axe's *spacing* exception
+--- a 24px circle centred on the target clears its neighbours --- and a wider
+glyph fails it: Inter's arrow is 3.9px wider than Segoe UI's, enough to move the
+centre far enough to intersect a neighbour. The link is sized outright
+(`display: inline-block; min-width/min-height: 24px`) rather than relying on the
+clearance.
 
 Two rules follow. **Run the full sweep after any change that moves type
 metrics**: the thirteen-page sample stays clean through such a change and would

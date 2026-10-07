@@ -1,0 +1,13 @@
+{
+  "mode": "run",
+  "exe": true,
+  "expect": {
+    "exit": 6,
+    "output": [
+      "^built$",
+      "^--- exe: exit -1073741819 \\(0xC0000005\\)$",
+      "^--- exe: a box, closed: _TB_ERROR_HANDLER: unhandled error in Startup\\.Main$"
+    ]
+  },
+  "issue": 2499
+}

@@ -136,7 +136,7 @@ filter, so the replica returns what the site does.
 
 **Two extra fields joined in from the symbol index.** `initSearch()` adds
 `this.field('names', { boost: 100 })` and `this.field('qualified', { boost:
-500 })` (50 until the fourth round, below), and passes `docs[i].names || ''` / `docs[i].qualified || ''` in the
+500 })` (see the qualified-name change, below), and passes `docs[i].names || ''` / `docs[i].qualified || ''` in the
 matching `this.add({...})`. The values come from `builder/search.mjs`'s
 `joinSymbolsToEntries`, which attaches bare symbol names (`names`) and their
 `Container.Name` forms (`qualified`) to each `search-data.json` entry at
@@ -238,7 +238,7 @@ section that only mentioned it.** Four changes, measured in
   property` found only pages mentioning both words, and never the
   `MaxHeight` section. Kept required otherwise, since `Mid function` needs
   the word to keep the `Mid =` statement out. See
-  [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Fixed: kind words".
+  [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Kind words".
 
 `exact` and `page` are derived in the browser; `primary` is the one field
 `search-data.json` gained (23 KB raw, 4 KB gzipped).
@@ -251,8 +251,8 @@ section that only mentioned it.** Four changes, measured in
 terms as index entries, in a page's frontmatter or on a heading (see
 `docs/Documentation/Authoring.md`, "Index entries for the site search"), and
 `search-data.json` carries them as `index` and `index_also` lists on the
-entry. [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "What shipped,
-third round: the index pilot":
+entry. [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Hand-marked
+index entries":
 
 - *One field, both levels.* `initSearch()` adds a field `index`, boost 1000,
   that `indexField()` fills: each main term as `indexTermKey()` writes it
@@ -283,8 +283,8 @@ member of that name, first.** `FileListBox.Name` ranked the FileListBox
 page first, and `Slider.KeyDown`, documented under the heading `KeyDown,
 KeyPress, KeyUp`, ranked 20th. `qualified` held the right token, but at
 boost 50 it counted for less than a title naming the container. See
-[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "What shipped, fourth
-round":
+[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Qualified names and
+stem twins":
 
 - *Boost 500.* `qualified` now weighs more than any text field, since
   naming a member with its container is the most specific thing a reader
@@ -311,7 +311,7 @@ query sits outside `initSearch()`.
 `Printer.Fonts` both stem to `printer.font`, so every clause scored them
 alike and `Printer.Fonts` came second; so did `Collection.Item`,
 `Global.Printers`, `OLE.Update`, `Report.Page` and both `GetHeaders`. See
-[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Fixed: stem twins":
+[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Qualified names and stem twins":
 
 - *The twins are held whole.* `stemTwins(docs)` finds the qualified names
   whose stem another name shares (104, mostly a function and its `$`
@@ -342,8 +342,7 @@ start or stop it; this branch's terms started it. `separateTokenSetKeys()`
 replaces `TokenSet#toString()` with one that ends each id with `,`,
 installed once from `initSearch()` beside the tokenizer wrapper. It is a
 fix to lunr, not to this theme: drop it if a lunr upgrade fixes the key.
-See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Fixed: lunr
-invented words".
+See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "lunr patches".
 
 `offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` calls it too.
 
@@ -360,8 +359,8 @@ lunr's own `length`, which `intersect()` uses to pick the set it walks.
 Every page and section title as a query ranks exactly as before, score for
 score. Installed once from `initSearch()`, and from `offline.mjs`'s copy.
 It is a fix to lunr, not to this theme: drop it if a lunr upgrade fixes
-`union`. See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Fixed:
-slow multi-word queries".
+`union`. See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "lunr
+patches".
 
 **Entities were indexed as written.** The search data keeps the page's
 HTML entities, and must: the results panel inserts titles and content
@@ -374,8 +373,7 @@ the tokenizer splits it (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`,
 position in the escaped text. The dot-run-split wrapper calls it, in
 `initSearch()` and in `offline.mjs`'s copy. A decoded separator (`&#45;`,
 a hyphen) doesn't split its token. See
-[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Fixed: entities in
-the index".
+[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "lunr patches".
 
 **A page's own title, typed whole, came second.** `Return Syntax` found
 the `Return` statement first, and `DTPicker Properties` the DTPicker
@@ -388,8 +386,7 @@ query (as `indexTermKey()` writes both) scores three times as much, and
 the results are sorted again. It adds no field and no index term; each
 entry's two keys are computed on its first appearance in a result and
 kept in `searchLoaded()`'s `titleKeys`. See
-[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Fixed: whole
-titles". It sits outside `initSearch()`, so `offline.mjs` needs no change.
+[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Whole titles". It sits outside `initSearch()`, so `offline.mjs` needs no change.
 
 **The index was fetched and built synchronously on every page load, even
 for readers who never opened search.** About 1.3s and 240MB of heap on a

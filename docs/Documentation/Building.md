@@ -116,6 +116,8 @@ or directly, from the repository root:
 
 A single `tbdocs` run produces all three trees. The `also_build_offline` and `also_build_pdf` keys in `_config.yml` toggle the sibling outputs; the `--no-offline` and `--no-pdf` flags do the same from the command line if you only want `_site/`.
 
+A local build also ends by writing `add-in/Resources/HELP/site.zip`, an archive of the offline tree that the IDE help add-in embeds, and prints one line for it. The file is not committed. `--no-help-archive` turns the step off, and both CI workflows pass it. [Tools and Scripts](Tools#the-help-archive) describes the archive.
+
 The full set of `tbdocs` CLI flags --- every flag, what each one does, when to use it --- lives on the [Tools and Scripts](Tools#tbdocs) page.
 
 **A build that stops with `Nav-parent orphan detected` or `Nav-parent ambiguity detected`** has pages whose `parent:` names no page, or a title two pages share --- most often after a page's `title:` was changed. [Authoring Pages](Authoring#nav-parent-orphan) has the fix for each message.
@@ -583,6 +585,8 @@ Both run every local gate but one --- all of `test.bat`'s, and all of `check.bat
 Both workflows add `--no-fetch-assets` to the build, and this is the difference most likely to catch a contributor out. Locally, a build that meets a video marker or a `github.com/user-attachments/...` URL with no vendored copy downloads the file into `docs/assets/` and carries on: the page renders, and the only trace is a new untracked file you may not have looked for. CI refuses to download anything and fails, naming the file to commit.
 
 The asymmetry is the whole point. An author who wrote the markdown but forgot to commit the image would otherwise get a green build while the published site went on hotlinking a third party --- which is the failure the vendoring mechanism exists to prevent, so CI cannot be the place that quietly repairs it. Setting `$CI` already selects offline mode; the flag only states it. Build locally once after adding a video or pasting a screenshot, and `git status` names exactly what to add --- see [Authoring Pages](Authoring#committing-downloaded-assets).
+
+Both workflows also add `--no-help-archive`, because CI has no use for the help add-in's archive of the offline tree that a local build writes.
 
 ### The deployment tells the build where it is
 

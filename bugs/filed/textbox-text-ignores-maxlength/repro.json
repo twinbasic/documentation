@@ -1,0 +1,11 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Text = \"abcdef\": \\[abcdef\\] Len 6$",
+      "^SelText = \"cdef\" after \"ab\": \\[abcdef\\] Len 6$"
+    ]
+  },
+  "issue": 2483
+}

@@ -1,0 +1,134 @@
+' P16 in WIP.HelpAddin.md: what hover help through the public API costs.
+' F6 times GetSelectionInfo, reading the editor's Text, adding a widget and
+' removing it, and how often a 100 ms AddinTimer ticks; F7 adds one widget at
+' the cursor and F8 removes it. Every answer is a "[WidgetsProbe] ..." line in
+' the DEBUG CONSOLE, which widgets.test.mjs reads.
+Module MainModule
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New WidgetsProbeAddin(Host)
+    End Function
+End Module
+
+Private Class WidgetsProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents Ticker As AddinTimer
+    Private Widget As HtmlElement
+    Private Ticks As Long
+    Private TickStart As LongLong
+
+    Private Declare PtrSafe Function QueryPerformanceCounter Lib "kernel32" (ByRef Count As LongLong) As Long
+    Private Declare PtrSafe Function QueryPerformanceFrequency Lib "kernel32" (ByRef Frequency As LongLong) As Long
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "WidgetsProbe AddIn"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        With Host.KeyboardShortcuts
+            .Add "f6", AddressOf Measure
+            .Add "f7", AddressOf AddWidget
+            .Add "f8", AddressOf RemoveWidget
+        End With
+        Say "registered"
+    End Sub
+
+    Private Sub Say(ByVal text As String)
+        Host.DebugConsole.PrintText "[WidgetsProbe] " & text
+    End Sub
+
+    Private Function Now_() As LongLong
+        Dim c As LongLong
+        QueryPerformanceCounter c
+        Return c
+    End Function
+
+    ' Milliseconds from `since` to now, divided by `count`.
+    Private Function Each_(ByVal since As LongLong, ByVal count As Long) As String
+        Dim f As LongLong
+        QueryPerformanceFrequency f
+        Return Format$(CDbl(Now_() - since) * 1000# / CDbl(f) / count, "0.000")
+    End Function
+
+    Private Function Code() As CodeEditor
+        Dim ed As Editor = Host.ActiveEditors(0)
+        If TypeOf ed Is CodeEditor Then Set Code = ed
+    End Function
+
+    Private Sub Measure()
+        Const SELECTIONS As Long = 200, TEXTS As Long = 20, WIDGETS As Long = 50
+        Dim ed As CodeEditor = Code()
+        If ed Is Nothing Then Say "no code editor": Exit Sub
+        Dim sl As Long, sc As Long, el As Long, ec As Long, i As Long, t As LongLong
+        Dim s As String, n As Long
+
+        t = Now_()
+        For i = 1 To SELECTIONS
+            ed.GetSelectionInfo sl, sc, el, ec
+        Next
+        Dim selection As String = Each_(t, SELECTIONS)
+
+        t = Now_()
+        For i = 1 To TEXTS
+            s = ed.Text
+        Next
+        Dim text As String = Each_(t, TEXTS)
+        n = Len(s)
+
+        Dim w(1 To WIDGETS) As HtmlElement
+        t = Now_()
+        For i = 1 To WIDGETS
+            Set w(i) = ed.AddMonacoWidget(sl, sc, "<span>probe " & i & "</span>")
+        Next
+        Dim adding As String = Each_(t, WIDGETS)
+        t = Now_()
+        For i = 1 To WIDGETS
+            w(i).Remove
+        Next
+        Dim removing As String = Each_(t, WIDGETS)
+
+        Say "cost selection=" & selection & " text=" & text & " length=" & n & _
+            " add=" & adding & " remove=" & removing
+
+        Ticks = 0
+        TickStart = Now_()
+        Set Ticker = New AddinTimer
+        Ticker.Interval = 100
+        Ticker.Enabled = True
+    End Sub
+
+    Private Sub Ticker_Timer()
+        Ticks = Ticks + 1
+        If Ticks = 20 Then
+            Ticker.Enabled = False
+            Say "ticks 20 every=" & Each_(TickStart, 20)
+        End If
+    End Sub
+
+    Private Sub AddWidget()
+        Dim ed As CodeEditor = Code()
+        If ed Is Nothing Then Say "no code editor": Exit Sub
+        Dim sl As Long, sc As Long, el As Long, ec As Long
+        ed.GetSelectionInfo sl, sc, el, ec
+        Set Widget = ed.AddMonacoWidget(sl, sc, "<div id='probeWidget'>Help: probe</div>", _
+            "#probeWidget { background: yellow; padding: 2px 4px; }")
+        Say "added at " & sl & ":" & sc
+    End Sub
+
+    Private Sub RemoveWidget()
+        If Widget Is Nothing Then Say "nothing to remove": Exit Sub
+        On Error Resume Next
+        Widget.Remove
+        If Err.Number <> 0 Then
+            Say "remove failed " & Err.Number & " " & Err.Description
+        Else
+            Say "removed"
+        End If
+        Set Widget = Nothing
+    End Sub
+End Class

@@ -1,0 +1,13 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^FastCall CDecl: +44332211$",
+      "^CDecl FastCall: +44332211$",
+      "^ThisCall CDecl: +44332211$",
+      "^CDecl ThisCall: +44332211$"
+    ]
+  },
+  "issue": 2480
+}

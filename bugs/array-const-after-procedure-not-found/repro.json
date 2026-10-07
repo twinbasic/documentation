@@ -1,7 +1,0 @@
-{
-  "mode": "compile",
-  "expect": {
-    "exit": 1,
-    "diagnostics": ["TB5079"]
-  }
-}

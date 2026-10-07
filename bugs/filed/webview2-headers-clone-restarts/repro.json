@@ -1,0 +1,14 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^enumerator Next: Accept$",
+      "^clone Next:\\s+Accept$",
+      "^enumerator Next: Upgrade-Insecure-Requests$",
+      "^after Skip 2, enumerator Next: User-Agent$",
+      "^after Skip 2, clone Next:\\s+Accept$"
+    ]
+  },
+  "issue": 2496
+}

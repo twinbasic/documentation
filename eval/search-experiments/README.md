@@ -68,8 +68,8 @@ whatever `EXP` knobs `eval/site_search.mjs` carries at the time:
   (`Printer Fonts`), and the top three for a list of probes.
 - `kinds.mjs <out.json>`: every symbol written as its name and its kind
   (`MaxHeight property`, `Continue statement`), for the kinds the client
-  counts as kind words, with hit@1 by kind. See `WIP.Search.md`'s "Fixed:
-  kind words".
+  counts as kind words, with hit@1 by kind. See `WIP.Search.md`'s "Kind
+  words".
 - `sets.mjs <out.json>`: every page's own multi-word title, typed as is
   (any entry of that page counts), and `<page title> <section title>` for
   the one-word section titles 20 or more pages share (`Form Events`;
@@ -79,4 +79,4 @@ whatever `EXP` knobs `eval/site_search.mjs` carries at the time:
   `$OUT`.
 - `knobs.patch`: the knobs the probe round measured (`plural`, `page=N`,
   `title=F`), as a diff against `eval/site_search.mjs`; apply it to
-  reproduce the table in `WIP.Search.md`'s "Probes: whole titles".
+  reproduce the measurements in `WIP.Search.md`'s "Whole titles".

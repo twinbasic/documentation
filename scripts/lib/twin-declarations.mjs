@@ -34,6 +34,7 @@ const DECL_RE = new RegExp(
     `Function|Property|Event|DeclareWide|Declare|Implements)\\b`,
   "i",
 );
+const TYPE_FIELD_RE = /^\s*\w+(?:\s*\([^)]*\))?\s+As\s+/i;
 const VAR_RE = new RegExp(`^\\s*(?:${MODIFIERS}|Const|Dim)\\s+[\\w\\[]`, "i");
 
 /**
@@ -48,6 +49,9 @@ const VAR_RE = new RegExp(`^\\s*(?:${MODIFIERS}|Const|Dim)\\s+[\\w\\[]`, "i");
  */
 export function declarationKind(decl, container) {
   const d = decomment(decl);
+  // A field may be named for a keyword: `Type As Long`, `Union(3) As Byte`. In a
+  // Type or Union block the field rule is tried before the keywords.
+  if ((container === "Type" || container === "Union") && TYPE_FIELD_RE.test(d)) return "TypeMember";
   const m = DECL_RE.exec(d);
   if (m) {
     const k = m[1];
@@ -55,9 +59,6 @@ export function declarationKind(decl, container) {
   }
   if (/^\s*End\s+\w/i.test(d)) return null; // unresolved
   if (container === "Enum" && /^\s*\[?\w/.test(d)) return "EnumMember";
-  if (container === "Type" || container === "Union") {
-    if (/^\s*\w+\s+As\s+/i.test(d)) return "TypeMember";
-  }
   // The distinction matters: `Attributes.md` states "constants in a
   // module" and "variables in a Class" as different targets, and [DllExport]
   // is documented on a Const and refused on a variable.

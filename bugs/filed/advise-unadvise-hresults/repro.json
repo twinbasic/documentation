@@ -1,0 +1,12 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Advise, a sink without the outgoing interface: error=80004002$",
+      "^Unadvise 0: error=0$",
+      "^Unadvise 99: error=0$"
+    ]
+  },
+  "issue": 2487
+}

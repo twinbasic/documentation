@@ -1,0 +1,132 @@
+' Can an add-in show a Form that holds the WebView2 control as a top-level
+' window, and what does it cost? Four toolbar buttons drive it, so that
+' detach.test.mjs controls the timing: detachProbe makes a fresh form and shows
+' it modeless, detachProbeHide hides it, detachProbeShow shows it again,
+' detachProbeUnload unloads it. Every line it prints to the DEBUG CONSOLE
+' starts "[DetachProbe]". The page the form loads and the URL of its iframe are
+' DetachForm's: the lane passes the URL in TB_DETACH_URL, and TB_DETACH_NOUDF
+' (set to anything) leaves the WebView2's user data folder empty.
+Module MainModule
+    Private Type RECT
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetTickCount Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hWnd As LongPtr, ByRef lpdwProcessId As Long) As Long
+    Private Declare PtrSafe Function IsWindowVisible Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetWindowRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT) As Long
+
+    Private Declare PtrSafe Function SetEnvironmentVariableW Lib "kernel32" (ByVal lpName As LongPtr, ByVal lpValue As LongPtr) As Long
+
+    Private HostRef As Host
+
+    ' The tick count when Show was called, for DetachForm's "ready".
+    Public ShowTick As Long
+
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Set HostRef = Host
+        Return New DetachProbeAddin(Host)
+    End Function
+
+    Public Sub Log(ByVal text As String)
+        HostRef.DebugConsole.PrintText "[DetachProbe] " & text
+    End Sub
+
+    ' The harness starts the IDE with WEBVIEW2_USER_DATA_FOLDER and
+    ' WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS (its own page's WebView2 needs them),
+    ' and the compiler inherits them. The WebView2 loader lets both override
+    ' what a control asks for, so a form's control would share the IDE page's
+    ' folder and remote debugging port. A user's IDE has neither variable.
+    ' TB_DETACH_KEEPENV leaves them as they are.
+    Public Sub ClearWebView2Environment()
+        Dim names As Variant = Array("WEBVIEW2_USER_DATA_FOLDER", "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")
+        Dim i As Long
+        For i = 0 To 1
+            Log "env " & names(i) & " = " & Environ$(names(i))
+            If Len(Environ$("TB_DETACH_KEEPENV")) = 0 Then SetEnvironmentVariableW StrPtr(names(i)), 0
+        Next
+    End Sub
+
+    Public Function Ticks() As Long
+        Return GetTickCount()
+    End Function
+
+    ' The form's window, as the probe sees it.
+    Public Sub DescribeWindow(ByVal hWnd As LongPtr)
+        Dim pid As Long
+        Dim r As RECT
+        GetWindowThreadProcessId hWnd, pid
+        GetWindowRect hWnd, r
+        Log "hwnd " & CLngPtr(hWnd)
+        Log "window pid " & pid & " current pid " & GetCurrentProcessId()
+        Log "visible " & IsWindowVisible(hWnd)
+        Log "rect " & r.Left & "," & r.Top & "," & r.Right & "," & r.Bottom
+    End Sub
+
+    Public Function WindowVisible(ByVal hWnd As LongPtr) As Long
+        Return IsWindowVisible(hWnd)
+    End Function
+End Module
+
+Private Class DetachProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents ShowButton As Button
+    Private WithEvents HideButton As Button
+    Private WithEvents ShowAgainButton As Button
+    Private WithEvents UnloadButton As Button
+    Private F As DetachForm
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "DetachProbe AddIn"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        With Host.Toolbars(0)
+            Set ShowButton = .AddButton("detachProbe", "Detach probe")
+            Set HideButton = .AddButton("detachProbeHide", "Detach probe: hide")
+            Set ShowAgainButton = .AddButton("detachProbeShow", "Detach probe: show")
+            Set UnloadButton = .AddButton("detachProbeUnload", "Detach probe: unload")
+        End With
+        Log "loaded"
+    End Sub
+
+    Private Sub ShowButton_OnClick()
+        ClearWebView2Environment
+        Set F = New DetachForm
+        ShowTick = Ticks()
+        F.Show vbModeless
+        Log "shown by Show"
+        DescribeWindow F.hWnd
+    End Sub
+
+    Private Sub HideButton_OnClick()
+        If F Is Nothing Then Return
+        F.Hide
+        Log "hidden"
+        Log "visible " & WindowVisible(F.hWnd)
+    End Sub
+
+    Private Sub ShowAgainButton_OnClick()
+        If F Is Nothing Then Return
+        F.Show vbModeless
+        Log "shown"
+        Log "visible " & WindowVisible(F.hWnd)
+    End Sub
+
+    Private Sub UnloadButton_OnClick()
+        If F Is Nothing Then Return
+        Unload F
+        Set F = Nothing
+        Log "unloaded"
+    End Sub
+End Class

@@ -6,6 +6,10 @@ Module CompilerHover
         js = Replace(js, "$SEQ$", CStr(seq))
         js = Replace(js, "$LINE$", CStr(line))
         js = Replace(js, "$CHAR$", CStr(character))
+        Return PageScript(js)
+    End Function
+
+    Public Function PageScript(ByVal js As String) As String
         Return "<img src='data:,' onerror='" & HtmlText(js) & "'>"
     End Function
 End Module

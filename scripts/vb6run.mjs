@@ -64,6 +64,9 @@ contains an End statement is refused without being built.
 
 A sample's Debug.Print statements are rewritten to Print # against a file the
 generated Sub Main opens, because Debug.Print writes nothing in a compiled exe.
+The exe runs on a private desktop, and a box it opens all the same is closed with
+OK and reported, as are a fault the Windows event log records for it and what the
+VB runtime logs for it there.
 
 <file>        a .bas module, or a text file of bare statements; "-" reads the
               statements from standard input. A file that defines Sub Main is a
@@ -79,7 +82,7 @@ generated Sub Main opens, because Debug.Print writes nothing in a compiled exe.
               VB6 classes (.cls) and modules (.bas); a construct VB6 has no form
               for is left as it is, and VB6 refuses it. A fence that says
               project=form is built with a blank Form1.frm (no Unattended
-              Execution, the exe run on a private desktop), and a Declare loses
+              Execution), and a Declare loses
               PtrSafe and reads LongPtr as Long. Each fence ends as one of:
               same, differs (the lines that differ, page against VB6), not VB6
               (VB6 refuses to compile it, or the files of its group; most
@@ -269,19 +272,18 @@ async function docs() {
 
   // The samples of a unit are built as modules of one project and run, and each is judged.
   // `project=form` is the twinBASIC `form` template: a real Form1, which VB6 gets as a blank
-  // Form1.frm. A project with a form is not built with Unattended Execution, and its exe is run
-  // on a private desktop (see vb6.mjs).
+  // Form1.frm. A project with a form is not built with Unattended Execution (see vb6.mjs).
   const wantsForm = (fence) => fence.keys.get("project") === "form";
   const formSupport = { name: FORM1_NAME, kind: "frm", text: FORM1 };
 
-  const judge = async (unit, dir, built, { form = false } = {}) => {
+  const judge = async (unit, dir, built) => {
     for (const r of unit) {
       const e = built.refused.get(r.module.name);
       if (e) notVb6(r, r.fence, e, r.module.lineDelta);
     }
     const ran = unit.filter((r) => !r.state);
     if (!ran.length) return;
-    const run = await runBatch(dir, ran.length, { timeoutMs, desktop: form });
+    const run = await runBatch(dir, ran.length, { timeoutMs });
     ran.forEach((r, i) => {
       const item = run.items[i];
       const f = r.fence;
@@ -333,7 +335,7 @@ async function docs() {
       unit.map((r) => r.module),
       { timeoutMs: 120000, support: form ? [formSupport] : [] },
     );
-    await judge(unit, dir, built, { form });
+    await judge(unit, dir, built);
   }
 
   // A projname group is one program: the fences of that name, on any page, that are not run fences
@@ -381,7 +383,7 @@ async function docs() {
       for (const r of unit) notVb6(r, component.fence, { line, message }, component.lineDelta);
       continue;
     }
-    await judge(unit, dir, built, { form });
+    await judge(unit, dir, built);
   }
 
   const STATES = ["same", "differs", "not VB6", "error", "refused", "ran"];

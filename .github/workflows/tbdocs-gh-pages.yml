@@ -92,7 +92,11 @@ jobs:
         # baseurl off the config it just built with. Only the
         # online tree gets a base path -- the offline tree's links are all
         # relative after the rewrite.
-        run: node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}' --no-fetch-assets --check-audit-index
+        #
+        # --no-help-archive: a local build ends by zipping the offline tree
+        # for the IDE help add-in. CI has no use for that archive and must
+        # not spend time on it.
+        run: node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}' --no-fetch-assets --no-help-archive --check-audit-index
       # The gates both workflows run, in one list: see
       # .github/actions/run-gates/action.yml, which check_ci_workflows.mjs
       # checks against test.bat and check.bat. checks.yml runs only on pull

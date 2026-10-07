@@ -1,0 +1,13 @@
+' An unhandled error in a form event of a built exe shows the error's box, and the program then
+' goes on running. Build the exe and run it: FormE is the startup object, its Form_Load raises
+' an error, and once that box is closed Form_Activate shows a second box.
+Module Startup
+
+    ' For scripts/bug_repro.mjs only: tbrun runs the exe after the IDE has run a [RunAfterBuild] Sub.
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Debug.Print "built"
+    End Sub
+
+End Module

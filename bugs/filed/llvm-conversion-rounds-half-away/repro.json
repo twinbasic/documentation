@@ -1,0 +1,13 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^plain 2\\.5:\\s+CLng\\(d\\)=2\\s",
+      "^plain -0\\.5:\\s+CLng\\(d\\)=0\\s",
+      "^LLVM\\s+2\\.5:\\s+CLng\\(d\\)=3\\s+CLng\\(s\\)=3\\s+CInt\\(d\\)=3\\s+CLngLng\\(d\\)=3\\s+l=d:3\\s+d\\\\1=3\\s+CLng\\(v\\)=2\\s+Round=2$",
+      "^LLVM\\s+-0\\.5:\\s+CLng\\(d\\)=-1\\s"
+    ]
+  },
+  "issue": 2469
+}

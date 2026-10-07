@@ -1,0 +1,19 @@
+' An unhandled error in an LLVM-compiled procedure of a built exe: the exe shows a box with no
+' error number or description, and once the box is closed it ends with an access violation.
+' Needs an LLVM licence (Ultimate): Main is compiled with LLVM by its [CompilerOptions("+llvm")].
+' Build the exe and run it. Without the attribute, the box says "Run-time error '5'" and "my text".
+Module Startup
+
+    [CompilerOptions("+llvm")]
+    Public Sub Main()
+        Err.Raise 5, "MySrc", "my text"
+    End Sub
+
+    ' For scripts/bug_repro.mjs only: tbrun runs the exe after the IDE has run a [RunAfterBuild] Sub.
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Debug.Print "built"
+    End Sub
+
+End Module

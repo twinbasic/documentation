@@ -274,6 +274,14 @@ const fmtMs = (ms) => (ms / 1000).toFixed(1) + "s";
 
 // --- launch + render ---------------------------------------------------
 
+// puppeteer.launch creates its temporary profile folder before it looks for
+// the browser, so a launch refused for a missing browser would leave the folder
+// behind. scripts/lib/browser.mjs's requireBrowser makes the same check.
+const browserPath = await puppeteer.executablePath();
+if (!existsSync(browserPath)) {
+  throw new Error(`Tried to find the browser at the configured path (${browserPath}), but no executable was found.`);
+}
+
 const browser = await puppeteer.launch({
   headless: true,
   // --allow-file-access-from-files is critical: without it paged.js's

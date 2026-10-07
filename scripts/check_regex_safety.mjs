@@ -59,10 +59,11 @@
 //   node scripts/check_regex_safety.mjs --census    # full classification
 //   node scripts/check_regex_safety.mjs --self-test # prove it still detects
 //
-// Exits 0 clean, 1 on an exponential regex, 2 when the gate itself failed
-// -- a refused command line, a file it could not parse, a regex recheck could
-// not analyse, a probe that came back wrong, or a throw. Each of those leaves
-// something unchecked, so it must not read as either a clean tree or a finding.
+// Exits 0 clean, 1 on an exponential regex or a self-test probe that came back
+// wrong, 2 when the gate could not do its job -- a refused command line, a file
+// it could not parse, a regex recheck could not analyse, or a throw. Each of
+// those leaves something unchecked, so it must not read as either a clean tree
+// or a finding, and 2 wins over 1.
 
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
@@ -77,7 +78,7 @@ import * as walk from "acorn-walk";
 import fg from "fast-glob";
 
 import { foldConstructedRegexes, moduleExports } from "./lib/regex-fold.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 // ── Backend selection ────────────────────────────────────────────────────────
@@ -526,23 +527,24 @@ async function gate({ census }) {
     for (const u of unresolved) console.log(`  ${u.file}:${u.line}  ${u.reason}`);
   }
 
-  // `failed` is a finding in the tree (exit 1); `broken` is the gate
-  // itself failing (exit 2), and wins, because a verdict from a gate that
-  // did not check everything is not a verdict.
+  // `failed` is a finding (exit 1): an exponential regex in the tree, or a
+  // self-test probe that came back wrong. `broken` is the gate unable to
+  // read or analyse the tree (exit 2), and wins, because a verdict from a
+  // gate that did not check everything is not a verdict.
   let failed = false;
   let broken = false;
   const misclassified = probeResults.filter(
     (r) => r.verdict === "error" || (r.verdict === "exponential") !== (r.probe === "exponential"),
   );
   if (misclassified.length) {
-    broken = true;
+    failed = true;
     console.error(`\nFAIL: ${misclassified.length} of ${probeResults.length} self-test probes misclassified.`);
     for (const r of misclassified) console.error(`  ${r.name}: expected ${r.probe}, got ${r.verdict}`);
     console.error("  The gate is not measuring what it claims; its verdict above means nothing.");
   }
   const badFolds = foldProbes.filter(([ok]) => !ok);
   if (badFolds.length) {
-    broken = true;
+    failed = true;
     console.error(`\nFAIL: ${badFolds.length} of ${foldProbes.length} fold probes failed.`);
     for (const [, name, detail] of badFolds) console.error(`  ${name}${detail ? `: ${detail}` : ""}`);
     console.error(
@@ -606,7 +608,7 @@ async function selfTest() {
   }
   if (bad) {
     console.error(`\nFAIL: ${bad} probe(s) wrong -- the gate is not measuring what it claims.`);
-    return 2;
+    return 1;
   }
   console.log(
     `ok    ${results.length} classification + ${FOLD_PROBES.length + FOLD_NEGATIVES.length} ` +
@@ -626,10 +628,10 @@ Refuses a regex literal in the tree that can backtrack exponentially.
 Exit codes:
   0  no regex can backtrack exponentially (--self-test: every probe was classified
      correctly)
-  1  a regex can backtrack exponentially
+  1  a regex can backtrack exponentially, or a self-test probe came back wrong
+     (also --self-test)
   2  the gate could not run, and 2 wins over 1: a refused command line, a file it
-     could not parse, a regex it could not analyse, a probe that came back wrong
-     (also --self-test), or a crash`;
+     could not parse, a regex it could not analyse, or a crash`;
 
 const { values } = withUsageError(() =>
   parseCli(process.argv.slice(2), {
@@ -643,6 +645,9 @@ const { values } = withUsageError(() =>
   }),
 );
 if (values.help) printHelpAndExit(USAGE);
+// The shard branch has no try/catch of its own, and Node's exit code for an
+// unhandled throw is 1.
+exitOnCrash();
 if (values.shard) {
   // Worker half of checkAll(): a slice in on stdin, its verdicts out on
   // stdout. Not meant to be run by hand.

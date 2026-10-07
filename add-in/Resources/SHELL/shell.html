@@ -1,0 +1,31 @@
+<!doctype html>
+<html data-group="light" data-chrome="custom" data-state="normal">
+<head>
+<meta charset="utf-8">
+<title>twinBASIC Help</title>
+<style>$PANE_CSS$</style>
+<style>$SHELL_CSS$</style>
+<style id="theme"></style>
+</head>
+<body>
+<div id="helpWrap">
+  <div id="helpTitleBar">
+    <svg id="helpGrip" viewBox="0 0 13 13" aria-hidden="true"><rect x="2.4" y="1.8" width="3.2" height="3.2" rx="0.7"/><rect x="7.2" y="1.8" width="3.2" height="3.2" rx="0.7"/><rect x="2.4" y="5.8" width="3.2" height="3.2" rx="0.7"/><rect x="7.2" y="5.8" width="3.2" height="3.2" rx="0.7"/><rect x="2.4" y="9.8" width="3.2" height="3.2" rx="0.7"/><rect x="7.2" y="9.8" width="3.2" height="3.2" rx="0.7"/></svg>
+    <div id="helpTitle">TWINBASIC HELP</div>
+    <button id="helpAttach" class="titleButton" title="Attach to the IDE" aria-label="Attach to the IDE"><svg class="dock" viewBox="0 0 12 12" aria-hidden="true"><path d="M1.5 2.5h9v7h-9z"/><path class="fill" d="M1.5 2.5h3.5v7h-3.5z"/></svg><span class="label">Attach</span></button>
+    <button id="helpMinimize" class="titleButton" title="Minimize" aria-label="Minimize"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5h8"/></svg></button>
+    <button id="helpMaximize" class="titleButton" title="Maximize" aria-label="Maximize"><svg class="maximize" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5h7v7h-7z"/></svg><svg class="restore" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5h5v5h-5zM4.5 4.5v-2h5v5h-2"/></svg></button>
+    <button id="helpClose" class="titleButton" title="Close" aria-label="Close"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button>
+  </div>
+  <div id="helpBar">
+    <input id="helpSearch" type="search" placeholder="Search the documentation">
+    <button id="helpBrowser">Open in browser</button>
+    <label id="helpHoverLabel"><input id="helpHover" type="checkbox"><span id="helpHoverText">Hover help</span></label>
+  </div>
+  <div id="helpResults" style="display: none"></div>
+  <div id="helpSummary" style="display: none"></div>
+  <iframe id="helpPage"></iframe>
+</div>
+<script>$SCRIPT$</script>
+</body>
+</html>

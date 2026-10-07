@@ -1,7 +1,7 @@
 ' Serves the documentation from the archive the add-in embeds as
 ' Resources/HELP/site.zip, on 127.0.0.1 at a port Windows picks, so the help
 ' pane needs no network. The archive is the site's offline tree, written by
-' scripts/build_help_archive.mjs. A path is found as GitHub Pages finds it:
+' a local build of the documentation. A path is found as GitHub Pages finds it:
 ' /a/b is a/b.html, or a redirect to /a/b/ when a/b/index.html exists, and the
 ' query string is ignored. An entry the zip deflated is sent as it is, in a
 ' gzip wrapper (Content-Encoding: gzip), so nothing is inflated here.
@@ -151,7 +151,7 @@ Private Class HelpServer
     ' ---- the archive ----
 
     ' Reads the central directory: no zip64, no data descriptors, the entries
-    ' as build_help_archive.mjs writes them.
+    ' as lib/help-archive.mjs writes them.
     Private Function ReadDirectory() As Boolean
         Dim eocd As Long = UBound(Zip) + 1 - 22
         Do While eocd >= 0

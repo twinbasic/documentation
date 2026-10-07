@@ -36,6 +36,7 @@ deliberately excluded: a colour emoji font is several megabytes, and every
 platform already ships one.
 """
 
+import argparse
 import hashlib
 import io
 import shutil
@@ -185,6 +186,12 @@ def build_face(archive, member, axes, unicodes, out_name):
 
 
 def main():
+    argparse.ArgumentParser(
+        description=__doc__.split("\n\n", 1)[0],
+        epilog="Exit codes: 0 the faces were written; 1 a missing dependency,"
+               " a SHA-256 mismatch or a failed build; 2 a refused command line.",
+    ).parse_args()
+
     try:
         import fontTools  # noqa: F401
         import brotli     # noqa: F401

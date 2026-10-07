@@ -1,0 +1,9 @@
+{
+  "mode": "probe",
+  "probe": ["scripts/probe_build_twice.mjs"],
+  "expect": {
+    "exit": 1,
+    "output": ["^the decompressed startup blocks of two builds differ in [1-9]\\d* bytes, in [1-9]\\d* ranges? \\(win32\\)$"]
+  },
+  "steps": "1. Unzip build-writes-compiler-addresses.zip and open the project in the IDE, with the build target win32.\n2. Press Build and copy the exe it writes to another folder.\n3. Close the IDE, open the project again, press Build without changing anything, and copy that exe too.\n4. Compare the two files byte for byte. Besides the PE time stamp and checksum they differ in a deflate-compressed block at the start of .data: a u32 compressed size, a u32 inflated size of 4,096 and a raw deflate stream. Inflate both streams and compare them: two values differ, and they have the form of heap addresses (4 bytes each in a win32 exe, the low 6 bytes of a 64-bit value in a win64 exe).\n5. Control: build the vb6/ project twice with VB6 (scripts/probe_build_twice.mjs --vb6). Its exes differ in the time stamp, the checksum, two random 16-byte identifiers and one 4-byte value; they have no such block.\nscripts/probe_build_twice.mjs does steps 1 to 4 in two IDEs, for win32 or with --arch win64, and prints each differing value. On BETA 997, 6 and 7 of the 4,096 decompressed bytes differed in two ranges for win32, and 12 and 10 for win64."
+}

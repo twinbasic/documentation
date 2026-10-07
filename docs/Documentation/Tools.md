@@ -25,11 +25,11 @@ POSIX:
 
     node builder/tbdocs.mjs --src docs --check-audit-index [extra tbdocs flags]
 
-Renders the documentation. Wraps `node builder/tbdocs.mjs --src docs --check-audit-index` and forwards extra arguments through `%*`. Produces `_site/`, `_site-offline/`, and `_site-pdf/`, modulo the `--no-offline` / `--no-pdf` flags and the `also_build_offline` / `also_build_pdf` keys in `_config.yml`. It returns [`tbdocs`](#tbdocs)'s exit code as it is.
+Renders the documentation. Wraps `node builder/tbdocs.mjs --src docs --check-audit-index` and forwards extra arguments through `%*`. Produces `_site/`, `_site-offline/`, and `_site-pdf/`, modulo the `--no-offline` / `--no-pdf` flags and the `also_build_offline` / `also_build_pdf` keys in `_config.yml`. A local build also ends by writing the [help archive](#the-help-archive), unless `--no-help-archive` is given. It returns [`tbdocs`](#tbdocs)'s exit code as it is.
 
 `--check-audit-index` is the part of that invocation most easily lost in transcription, and losing it is silent: it implies `--check`, so a bare `node builder/tbdocs.mjs --src docs` writes the same three trees, runs no link check at all, and reports success --- a check that never ran has nothing to report.
 
-There is no fixed build time worth quoting here, because every run prints its own (`Done in …`, with the page and static-file counts). What that number tracks is page count, core count, and which passes ran: the check, the offline mirror and the PDF tree are each part of the total, and `--no-check`, `--no-offline` and `--no-pdf` each remove one.
+There is no fixed build time worth quoting here, because every run prints its own (`Done in …`, with the page and static-file counts). What that number tracks is page count, core count, and which passes ran: the check, the offline mirror, the PDF tree and the help archive are each part of the total, and `--no-check`, `--no-offline`, `--no-pdf` and `--no-help-archive` each remove one.
 
 Exit codes: **0** nothing to report; **1** the build or its check found a problem: a link or integrity failure, a failed build step, a fall in the page count, or a symbol-index URL lost; **2** a refused command line, a build stopped by the stall watchdog, or a crash.
 
@@ -245,7 +245,7 @@ Entry point for the static site generator. Every caller adds flags to the bare `
 | Caller | Invocation |
 |---|---|
 | `build.bat` | `--src docs --check-audit-index` (plus anything passed through) |
-| `checks.yml` (PR checks) | `--src docs --no-fetch-assets --check-audit-index` |
+| `checks.yml` (PR checks) | `--src docs --no-fetch-assets --no-help-archive --check-audit-index` |
 | `tbdocs-gh-pages.yml` (deploy) | the same, plus `--url` and `--baseurl` from the Pages environment |
 
 Full invocation:
@@ -253,7 +253,8 @@ Full invocation:
     node builder/tbdocs.mjs [--src <path>] [--dest <path>]
                             [--baseurl <prefix>] [--url <origin>]
                             [--dry-run]
-                            [--no-offline] [--no-pdf] [--tolerate-missing-images]
+                            [--no-offline] [--no-pdf] [--no-help-archive]
+                            [--tolerate-missing-images]
                             [--fetch-assets] [--no-fetch-assets]
                             [--profile-offline]
                             [--check] [--no-check] [--check-audit-index]
@@ -274,6 +275,7 @@ Full invocation:
 | `--dry-run` | Skip every filesystem write. Useful for benchmarking or validating discovery / compute / render. |
 | `--no-offline` | Skip the offline tree pass. |
 | `--no-pdf` | Skip the PDF tree pass. |
+| `--no-help-archive` | Do not write the [help archive](#the-help-archive). CI passes it. |
 | `--tolerate-missing-images` | Downgrade Phase 8's missing-image error to a warning. Use when the source tree is mid-edit and may temporarily reference an image that does not yet exist. |
 | `--fetch-assets` / `--no-fetch-assets` | Force remote-asset vendoring on or off. Without either flag, the build downloads missing YouTube thumbnails and GitHub user-attachment images on a dev machine, and refuses to download anything when `$CI` is set --- a referenced but uncommitted asset is a hard build error there. See [Authoring Pages](Authoring#committing-downloaded-assets). |
 | `--profile-offline` | Print per-substep timing for the offline tree pass. |
@@ -291,6 +293,19 @@ Full invocation:
 A command-line error --- an unknown flag, an unexpected argument, a flag without its value or with an empty one (`--baseurl` alone accepts one, meaning the site root), a value a flag cannot use (a `--port` that is not a port number, a negative or non-numeric `--stall-timeout`, a `--url` that is not an absolute `http` or `https` URL), or a `--dest` the build refuses --- is reported on standard error before any work starts, so it is never read as a broken link.
 
 Exit codes: **0** nothing to report (with `--serve`, the server was stopped with Ctrl+C); **1** the build or its check found a problem: a link or integrity failure, a failed build step, a fall in the page count, or a symbol-index URL lost; **2** a refused command line (a `--dest` the build refuses included), a build stopped by the stall watchdog, with `--serve` a failed first build or a port in use, or a crash.
+
+#### The help archive
+{: #the-help-archive }
+
+A local build ends by writing the zip the IDE help add-in serves the documentation from. The add-in embeds `add-in/Resources/HELP/site.zip` in its DLL as a resource, and the build writes that file from the offline tree it has just written. It writes the archive last, after the build-time chart has been added to `BuildInfo.html` in both trees, so the archive holds the pages as they are on disk. The step prints one line:
+
+    help archive: add-in/Resources/HELP/site.zip, 1471 entries, 21.2 MB (1.2 s)
+
+The zip is not committed, because it is too large; `add-in/Resources/HELP/` is listed in `.gitignore`. Only a build of the documentation tree into `docs/_site-offline` writes it. A build of another source tree (the test fixtures, for one) or into another `--dest`, `--serve`, `--dry-run` and a build without an offline tree leave it alone, and so does `--no-help-archive`, which both CI workflows pass. A file the build cannot write, or an archive that does not match the tree, fails the build with exit code 1.
+
+The reader on the twinBASIC side does no inflating of its own, so the format is fixed. There is one entry per file and no directory entries. A name is relative to the tree root, uses forward slashes and is UTF-8, with general-purpose flag bit 11 set. Entries are sorted by name in code-unit order, so the same tree gives the same bytes. The DOS date and time are always 1980-01-01 00:00, the version made by and needed is 20, and there are no extra fields, no comments and no data descriptors: the CRC-32 and both sizes are in the local header and in the central directory. There is no zip64, so a tree of more than 65,535 files, or an archive of 4 GB, is refused. Files that are compressed already (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.ico`, `.woff2`, `.woff`, `.mp4`, `.zip`, `.pdf`) are stored. Every other file is deflated at level 9, and stored instead when the deflated data is not smaller than the file.
+
+After the file is written, the build reads it back. It parses the end record and every central-directory entry, checks that each local header agrees with its entry (name, method, sizes, CRC-32), and inflates each deflated entry. It compares each entry's content and CRC-32 with the source file's bytes, and names any entry that differs. This check always runs. The file is written under a temporary name beside the target and renamed, so a failed run never leaves a half-written archive. The writer is `lib/help-archive.mjs`.
 
 ### check_links.mjs
 {: #check-links }
@@ -488,9 +503,9 @@ It gates on **exponential only**. recheck also reports polynomial blowup, and ab
 
 Two sets of probes run inside the normal pass rather than behind `--self-test`, because a green line saying *no exponential regex* is otherwise indistinguishable from a gate that has stopped detecting them. Eight are regexes with known answers in both directions, including the three this repository actually shipped. Fourteen more cover the folding: eight constructions that must resolve to an exact pattern, and six that must be refused with a reason --- a folder that quietly resolves nothing moves every construction into the unresolved list and the run still passes.
 
-A failure of the gate itself is a 2 rather than a 1, because each of those leaves something unchecked; a 2 wins over a 1 when both happen in one run. That is the [convention for a gate's exit codes](Extending#conventions).
+A probe that comes back wrong is a 1, like a finding: the gate ran and its verdict cannot be trusted. A failure to do the job at all is a 2 rather than a 1, because each of those leaves something unchecked --- a file that would not parse, a regex that could not be analysed, a crash --- and a 2 wins over a 1 when both happen in one run. That is the [convention for a gate's exit codes](Extending#conventions).
 
-Exit codes: **0** no regex can backtrack exponentially (with `--self-test`, every probe was classified correctly); **1** a regex can backtrack exponentially; **2** the gate could not run, and 2 wins over 1: a refused command line, a file it could not parse, a regex it could not analyse, a probe that came back wrong (also `--self-test`), or a crash.
+Exit codes: **0** no regex can backtrack exponentially (with `--self-test`, every probe was classified correctly); **1** a regex can backtrack exponentially, or a probe came back wrong (also `--self-test`); **2** the gate could not run, and 2 wins over 1: a refused command line, a file it could not parse, a regex it could not analyse, or a crash.
 
 ### check_code_regions.mjs
 {: #check-code-regions }
@@ -549,7 +564,7 @@ The differences that are meant are listed in the script, each with where it is r
 
 Its probes ride along in every run: each plants one defect in a small synthetic set of wrappers, workflows and actions --- a missing gate, a step no wrapper runs, two gates swapped, changed arguments, a build flag lost or added, a gate missing from the shared action, a workflow that stops calling it --- and requires exactly the findings it should produce. Pure text: no browser, no built tree.
 
-Exit codes: **0** both workflows run every gate the wrappers run, and its own probes pass; **1** a workflow differs from the wrappers (a finding is listed); **2** the gate could not run: a refused command line, a failed probe, or a crash.
+Exit codes: **0** both workflows run every gate the wrappers run, and its own probes pass; **1** a workflow differs from the wrappers (a finding is listed), or one of its probes failed; **2** the gate could not run: a refused command line, or a crash.
 
 ### check_lint.mjs
 {: #check-lint }
@@ -778,7 +793,9 @@ Exit codes: **0** no accessibility violation was found, **1** the sweep found at
     python -m pip install "fonttools[woff]"
     python scripts/build_fonts.py
 
-Regenerates the subset webfonts under `docs/assets/fonts/` from pinned upstream releases (SHA-256 verified), pinning the optical-size axis and keeping `wght` variable. Development tooling only: the `.woff2` files are committed like the generated DOT SVGs, and `build.bat` needs neither Python nor a network connection --- though the PDF pass aborts if one of the faces it needs is missing from the source tree, naming this script. **Regenerating Inter means regenerating the diagram metrics too** --- see below. Changing a face rather than refreshing one reaches well beyond this script; [Changing a typeface](Builder#changing-a-typeface) lists every place the build names one.
+Regenerates the subset webfonts under `docs/assets/fonts/` from pinned upstream releases (SHA-256 verified), pinning the optical-size axis and keeping `wght` variable. Development tooling only: the `.woff2` files are committed like the generated DOT SVGs, and `build.bat` needs neither Python nor a network connection --- though the PDF pass aborts if one of the faces it needs is missing from the source tree, naming this script. **Regenerating Inter means regenerating the diagram metrics too** --- see below. Changing a face rather than refreshing one reaches well beyond this script; [Changing a typeface](Builder#changing-a-typeface) lists every place the build names one. The script takes no options except `-h` and `--help`, which print the usage and start nothing.
+
+Exit codes: **0** the faces were written; **1** a dependency is missing, an archive's SHA-256 differs from the pinned one, or a build step failed; **2** a refused command line.
 
 ### build_dot_metrics.mjs
 {: #build-dot-metrics }
@@ -801,19 +818,6 @@ Writes `builder/package-api.json`: every type the packages of a twinBASIC instal
 It shares [`census_attributes.mjs`](#census-attributes)'s export and cache, and takes the same `--ide`, `--exported`, `--cache` and `--refresh` flags; `--out` writes elsewhere. Packages are keyed by the name code uses for them --- the project name, which is not always the folder's: TwinBasicAssertions is `Assert`, and the three CEF builds are one `cefPackage`, whose APIs the tool checks are identical.
 
 Exit codes: **0** the file was written (with `--check`, it is up to date); **1** with `--check`, the file is stale; **2** a refused command line, no install, an export that failed, packages that declare different APIs under one name, or a crash.
-
-### build_help_archive.mjs
-{: #build-help-archive }
-
-    node scripts/build_help_archive.mjs [--src <dir>] [--out <file>]
-
-Writes the zip the IDE help add-in serves the documentation from. The add-in embeds `add-in/Resources/HELP/site.zip` in its DLL as a resource, and this tool builds that file from the built offline tree, `docs/_site-offline/` by default. Run [`build.bat`](#buildbat) first: the tool runs [`check_tree_fresh.mjs`](#check-tree-fresh) on the tree, as [`book.bat`](#bookbat) does, and refuses a tree older than its sources. The zip is not committed, because it is too large; `add-in/Resources/HELP/` is listed in `.gitignore`.
-
-The reader on the twinBASIC side does no inflating of its own, so the format is fixed. There is one entry per file and no directory entries. A name is relative to the tree root, uses forward slashes and is UTF-8, with general-purpose flag bit 11 set. Entries are sorted by name in code-unit order, so the same tree gives the same bytes. The DOS date and time are always 1980-01-01 00:00, the version made by and needed is 20, and there are no extra fields, no comments and no data descriptors: the CRC-32 and both sizes are in the local header and in the central directory. There is no zip64, so a tree of more than 65,535 files, or an archive of 4 GB, is refused. Files that are compressed already (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.ico`, `.woff2`, `.woff`, `.mp4`, `.zip`, `.pdf`) are stored. Every other file is deflated at level 9, and stored instead when the deflated data is not smaller than the file.
-
-After the file is written, the tool reads it back. It parses the end record and every central-directory entry, checks that each local header agrees with its entry (name, method, sizes, CRC-32), and inflates each deflated entry. It compares each entry's content and CRC-32 with the source file's bytes, and names any entry that differs. This check always runs. The file is written under a temporary name beside the target and renamed, so a failed run never leaves a half-written archive. The summary line gives the number of entries, the raw and zipped sizes in MB (with the part stored as it was), and the time.
-
-Exit codes: **0** the archive was written and verified; **1** the verification found a difference; **2** the tool could not do its job: a refused command line, a stale or missing tree, a tree too large for a zip without zip64, or a crash.
 
 ### convert_em_dash_separators.mjs
 {: #convert-em-dash-separators }
@@ -989,12 +993,12 @@ test the default compiler.
 
 **`--exe` also runs the exe the build wrote**, after the probe has run in the IDE. It
 starts the exe on a private desktop, as it starts the IDE, so a message box the exe opens
-appears on no desktop you use. It also ends the exe at `--timeout`. The exe runs its
+appears on no desktop you use, and it closes every box the exe opens by pressing OK, printing the box's title and text: an unhandled error in an exe opens a box and waits. It also ends the exe at `--timeout`. The exe runs its
 `Sub Main`, not the `[RunAfterBuild]` Sub, so a probe for both gives the tree a `Main` that
 calls the probe, and leaves out the template's own module with an empty `Main`. A built exe
 writes nothing with `Debug.Print`, so the probe prints with `TbRun.Out`, from a module `tbrun`
 adds to the staged copy. `TbRun.Out` writes to the Debug Console in the IDE, and to a file
-`tbrun` reads in the exe. The exe's lines and its exit code follow the probe's output.
+`tbrun` reads in the exe. The exe's exit code, the fault the Windows Application log records for it, if any, the boxes it opened, and its lines follow the probe's output.
 
 | Flag | Effect |
 |---|---|
@@ -1004,7 +1008,7 @@ adds to the staged copy. `TbRun.Out` writes to the Debug Console in the IDE, and
 | `--quiet <ms>` | How long the console must stop changing before the output counts as complete, when the probe has not returned. Default 2500. Raise it well above the default for a probe that drives an out-of-process server, which can take longer than that to start. |
 | `--llvm` | Compile the whole probe, and the exe, with LLVM. The same as `--compiler-options +llvm`. |
 | `--compiler-options <s>` | The project's compiler options, for the run and the exe. |
-| `--exe` | Also run the built exe, and print what it writes with `TbRun.Out` and its exit code. |
+| `--exe` | Also run the built exe, and print what it writes with `TbRun.Out`, its exit code, the fault the event log records for it, and the boxes it opened, each closed with OK. |
 | `--allow-name-clash` | Run a probe whose module holds a procedure named like the module, which is refused otherwise. twinBASIC does not run its `[RunAfterBuild]` Sub, so the run exits 5. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
 | `--json` | One object with the path of the built file, the target, the captured lines, whether the probe returned, the licence an LLVM run checked, the exe's run, the IDE pid and anything reaped. |
@@ -1042,7 +1046,7 @@ behind. That includes the target the IDE remembers for each project, which a `wi
 writes. **A probe builds for the target `--arch` names**, whatever the IDE remembers, so a
 kept IDE switched to `win64` does not make later runs on the same port build 64-bit.
 
-Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, an LLVM run on a Community or Personal licence, an `--exe` run with no exe built, or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project; **5** the probe ended before it returned, its output printed all the same; **6** under `--exe`, the exe exited with a code other than 0, or was still running after `--timeout` and was ended, its output and exit code printed all the same. A run that would exit 5 exits 5 whatever the exe did.
+Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, an LLVM run on a Community or Personal licence, an `--exe` run with no exe built, or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project; **5** the probe ended before it returned, its output printed all the same; **6** under `--exe`, the exe exited with a code other than 0, the Application event log records that it faulted, it opened a box (which `tbrun` closed), or it was still running after `--timeout` and was ended, its output, exit code, fault and boxes printed all the same. A run that would exit 5 exits 5 whatever the exe did.
 
 ### bug_repro.mjs
 {: #bug-repro }
@@ -1072,7 +1076,7 @@ outside every gate and outside CI, and `verify` is run by a person only.
 | `compile <slug>` | Packs, then compiles the project with `tbbuild --json` and prints its diagnostics. |
 | `build <slug>` | Packs, then compiles and builds it with `tbbuild --build`, or `--llvm` when that is given. A build that fails prints the build log and the failing line. |
 | `run <slug>` | Copies `src/` to `%TEMP%\bugrepro\<port>\<slug>`, adds a `TbRunProbe` module whose `[RunAfterBuild]` Sub calls `Debug.Cls` and then `Main`, runs `tbrun` on the copy and prints what it captured. The Sub clears `WEBVIEW2_USER_DATA_FOLDER` and `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` while `Main` runs: the harness starts the IDE with both, and WebView2 lets them override what a WebView2 control in the project asks for, so the control would fail to start inside the IDE's process. Apart from the pictures below, the tree under `bugs/` is not changed. With `--exe` no probe module is added: `tbrun` runs `Sub Main` in the built exe. With `images` in `repro.json`, `run` also gives `tbrun` an empty folder in `BUGREPRO_IMAGES`, which the IDE and, with `--exe`, the exe inherit, and when the run finishes keeps each picture as `images/<name>-tb.png`. A picture the probe did not write is a failure that names it, exit 9. |
-| `vb6 <slug>` | Builds the reproducer's VB6 project, in `vb6/`, and prints what its exe wrote. By convention `Probe.vbp` builds `Probe.exe`, which writes its findings to `out.txt` beside the exe and handles every error itself. The sources are copied to a new folder under the OS temp folder, so no exe or output lands in the repository, and the copy's project is given VB6's Unattended Execution option, which sends a message box or an unhandled error to the Windows event log instead of the desktop. VB6 refuses that option for a project with a form, a user control, a property page, a user document or a designer, so such a project is built without it. The exe always runs on a private desktop, inside a job that ends everything it starts, as `tbrun --exe` runs one: a box it shows is on no desktop anyone uses, and the time limit ends it. The project is refused, exit 2, when its sources call `MsgBox` or `InputBox`, which would open a modal box. VB6 is found from `--vb6 <path>`, else the `VB6_EXE` environment variable, else `VB98\VB6.EXE` under `C:\Program Files (x86)\Microsoft Visual Studio` and then `C:\Program Files\Microsoft Visual Studio`; it is started from Node with an argument array and no shell, as [`vb6run.mjs`](#vb6run) does it. `--timeout` is the time limit on the exe (default 30 s), and `--keep` keeps the work folder and prints where it is. It needs no IDE. With `images` in `repro.json`, the exe is given an empty folder in `BUGREPRO_IMAGES`, and each picture it wrote is kept as `images/<name>-vb6.png`. |
+| `vb6 <slug>` | Builds the reproducer's VB6 project, in `vb6/`, and prints what its exe wrote. By convention `Probe.vbp` builds `Probe.exe`, which writes its findings to `out.txt` beside the exe and handles every error itself. The sources are copied to a new folder under the OS temp folder, so no exe or output lands in the repository, and the copy's project is given VB6's Unattended Execution option, which sends a message box or an unhandled error to the Windows event log instead of the desktop. VB6 refuses that option for a project with a form, a user control, a property page, a user document or a designer, so such a project is built without it. The exe always runs on a private desktop, inside a job that ends everything it starts, as `tbrun --exe` runs one: a box it shows is on no desktop anyone uses, and is closed by pressing OK and reported, and the time limit ends the exe. An unhandled error in an exe built with Unattended Execution exits with code 0 and leaves no fault; the VB runtime writes it to the Application event log instead, and that record is reported. The project is refused, exit 2, when its sources call `MsgBox` or `InputBox`, which would open a modal box. VB6 is found from `--vb6 <path>`, else the `VB6_EXE` environment variable, else `VB98\VB6.EXE` under `C:\Program Files (x86)\Microsoft Visual Studio` and then `C:\Program Files\Microsoft Visual Studio`; it is started from Node with an argument array and no shell, as [`vb6run.mjs`](#vb6run) does it. `--timeout` is the time limit on the exe (default 30 s), and `--keep` keeps the work folder and prints where it is. It needs no IDE. With `images` in `repro.json`, the exe is given an empty folder in `BUGREPRO_IMAGES`, and each picture it wrote is kept as `images/<name>-vb6.png`. |
 | `verify [slug ...]` | Reads `repro.json` for each named reproducer, or every one under `bugs/` and `bugs/filed/`, runs what it says and reports one line each. A filed reproducer's line is labelled with its issue, such as `(filed #2453)`, and the summary counts the filed ones on a line of their own. |
 | `file <slug> <issue>` | Moves the entry that names `` `<slug>.twinproj` `` out of `BUGS-TO-REPORT.md`, together with one `---` beside it, into `bugs/filed/<slug>/REPORT.md`, whose first line links the issue (`--existing`: "Covered by the existing issue ..." when an existing issue already covered the bug) and which holds no mark line. Then moves `bugs/<slug>/` to `bugs/filed/<slug>/` and records `issue` (and `existing`) in its `repro.json`. An entry whose reproducer is not an attachment names `bugs/<slug>/` in its closing comment instead. Refused, with exit 2 and nothing changed, when no entry or more than one names the slug, `bugs/<slug>` is missing, or `bugs/filed/<slug>` exists. |
 | `file --marked` | Does that for every entry with a mark line directly under its title: `*FILED #<n>*`, `*CAPTURED IN EXISTING #<n>*` or `*CAPTURED IN \#<n>*`, the issue and the slug taken from the entry. A line such as `*DEFERRED until after v1*` is not a mark, and the entry is skipped. If a mark cannot be read, or a slug cannot be settled, the entries concerned are printed and nothing at all is filed, exit 2. One line is printed for each entry filed. Takes neither a slug nor an issue. |
@@ -1124,7 +1128,7 @@ wrong type, is refused with exit 2, naming the file and the key, before anything
 | `probe` | `probe` mode. A script under `scripts/`, then its arguments: `verify` runs `node <script> <arguments>` from the repository's root, adding `--ide` when it was given one, and judges the exit code and the output by `expect`. The script starts and ends what it needs itself, and must end on its own. |
 | `arch` | Optional. `win32` (default) or `win64`. |
 | `llvm` | Optional, `build` and `run`. `true` builds with LLVM. |
-| `exe` | Optional, `run` only. `true` also runs the built exe, as `run --exe` does: no probe module is added, `Sub Main` runs in the exe, and an exe that exits with a code other than 0 is `tbrun`'s exit 6. `Debug.Print` writes nothing in an exe, so what `expect.output` can match is only what `TbRun.Out` wrote; a bug that crashes the exe is expected as `"exit": 6`. |
+| `exe` | Optional, `run` only. `true` also runs the built exe, as `run --exe` does: no probe module is added, `Sub Main` runs in the exe, and an exe that exits with a code other than 0, faults or opens a box is `tbrun`'s exit 6. `Debug.Print` writes nothing in an exe, so what `expect.output` can match is only what `TbRun.Out` wrote; a bug that crashes the exe is expected as `"exit": 6`. |
 | `expect.exit` | The exit code of `tbbuild` or `tbrun` as they print it, not this tool's mapped code; for `cli`, the compiler executable's; for `probe`, the script's. |
 | `expect.diagnostics` | `compile`. Diagnostic codes, such as `TB5182`, that must all be reported. |
 | `expect.noDiagnostics` | `compile`. `true` expects no error, warning, hint or information. |
@@ -1154,7 +1158,7 @@ entries once for all of them, as [`check_examples.mjs`](#check-examples) does. T
 reproducers run last: each suite's runner once, with `--only` naming every lane they need,
 and the runner tidies the registry for its lanes.
 
-Exit codes: **0** done --- a project that compiled, built or ran as it should, or, for `verify`, every reproducer that can be run on its own still reproduces; **1** a finding: the project has errors, or its build failed after a clean compile, or, for `vb6`, VB6 refused the project, or, for `verify`, at least one reproducer no longer reproduces; **2** a refused command line, a `repro.json` that is not valid, no IDE, a project that could not be packed, a harness that failed, or a crash; for `vb6`, no VB6, a reproducer with no `vb6/` folder, a project that has no `Probe.vbp` or calls `MsgBox` or `InputBox`, or VB6 failing to build it; for `verify`, a lane's harness failed; for `file`, an entry that is missing, ambiguous or marked unreadably, or a `bugs/filed/<slug>` already there, with nothing changed; **3** `new` found `bugs/<slug>` or `bugs/filed/<slug>` already there; **4** the compile never settled; **5** the project crashes the compiler; **6** `run`: the probe printed nothing; for `vb6`, the exe wrote no `out.txt`, or an empty one; **7** `run`: the probe ended before it returned; **8** `run --exe`, and `vb6`: the exe exited with a code other than 0, or was still running after `--timeout`, or, with `vb6`, the Application event log records that it faulted (a VB6 exe that dies of an access violation exits with code 0); **9** `run` and `vb6`: a picture that `images` names was not written, or could not be read.
+Exit codes: **0** done --- a project that compiled, built or ran as it should, or, for `verify`, every reproducer that can be run on its own still reproduces; **1** a finding: the project has errors, or its build failed after a clean compile, or, for `vb6`, VB6 refused the project, or, for `verify`, at least one reproducer no longer reproduces; **2** a refused command line, a `repro.json` that is not valid, no IDE, a project that could not be packed, a harness that failed, or a crash; for `vb6`, no VB6, a reproducer with no `vb6/` folder, a project that has no `Probe.vbp` or calls `MsgBox` or `InputBox`, or VB6 failing to build it; for `verify`, a lane's harness failed; for `file`, an entry that is missing, ambiguous or marked unreadably, or a `bugs/filed/<slug>` already there, with nothing changed; **3** `new` found `bugs/<slug>` or `bugs/filed/<slug>` already there; **4** the compile never settled; **5** the project crashes the compiler; **6** `run`: the probe printed nothing; for `vb6`, the exe wrote no `out.txt`, or an empty one; **7** `run`: the probe ended before it returned; **8** `run --exe`, and `vb6`: the exe exited with a code other than 0, or was still running after `--timeout`, or the Application event log records that it faulted (a VB6 exe that dies of an access violation exits with code 0), or it opened a box, or, with `vb6`, the VB runtime logged an unhandled error for it in the Application log; **9** `run` and `vb6`: a picture that `images` names was not written, or could not be read.
 
 ### probe_shared_temp.mjs
 {: #probe-shared-temp }
@@ -1182,6 +1186,30 @@ The output is one `round <k>: <n> failed` line for each round, the last console 
 
 Exit codes: **0** no build failed to write the type library; **1** at least one did, so the defect is there; **2** a refused command line, no IDE, no free ports, an IDE that did not start, a project that did not compile, a build that failed in some other way, or a crash.
 
+### probe_build_twice.mjs
+{: #probe-build-twice }
+
+    node scripts/probe_build_twice.mjs [--arch win32|win64] [--ide <twinBASIC.exe>] [--port N]
+                                       [--timeout S] [--keep-files <dir>]
+    node scripts/probe_build_twice.mjs --vb6 [--timeout S] [--keep-files <dir>]
+
+Builds the project of `bugs/build-writes-compiler-addresses/` twice and compares the two exes. It is the measurement behind the entry of `BUGS-TO-REPORT.md` whose reproducer that is: two builds of one unchanged project are not byte for byte equal, and what differs is more than the PE time stamp and checksum. Each exe holds, at the start of its `.data` section, a block of deflate-compressed data: a u32 compressed size, a u32 inflated size of 4,096 and a raw deflate stream. Inflated, the blocks of two builds differ in two values that have the form of heap addresses: 4 bytes each in a win32 exe, and the low 6 bytes of a 64-bit value in a win64 exe. Like [`tbbuild.mjs`](#tbbuild), it needs a twinBASIC install and Windows, and it is outside every gate and outside CI.
+
+Each build is made in an IDE of its own, one after the other on one port, because an IDE reused for a second project wedges. Before each build the project is staged again, packed into a folder under `%TEMP%\tbprobe-build-twice\<port>\` with an explicit build path, in the same folders both times, so that no path can be what differs. The exe is copied out as soon as the build is done.
+
+The output has these parts, in order: the two sizes, and whether the section tables are the same; the PE time stamp and checksum of each file, which the linker sets and the comparison leaves out; the startup block, found by its header (a u32 compressed size, then a u32 inflated size that is a multiple of 1,024, at a 4-byte step of `.data`, then a stream that inflates), with the sizes of the two streams and their padding to the pointer size of the target; the bytes that differ outside the time stamp, the checksum and the block, by section, one line for each range with its bytes in both files; and the decompressed bytes of the block that differ, each range read as the little-endian value of the target's pointer size that holds it. The two blocks are lined up on the end of their padding, so that data which moved by one step because a stream is a few bytes longer is not counted as a difference, and the padding is compared on its own, aligned at its end. The last line is the summary, `the decompressed startup blocks of two builds differ in <n> bytes, in <k> ranges (<arch>)`, or `the decompressed startup blocks of two builds are equal (<arch>)`. A stream that does not inflate to exactly the size its header states, and an exe with no such block, end the probe with exit 2.
+
+| Flag | Effect |
+|---|---|
+| `--arch <a>` | `win32` or `win64`, the target to build for. Default `win32`. |
+| `--ide <path>` | Path to `twinBASIC.exe`, found as for `tbbuild`. |
+| `--port <n>` | The first DevTools port to try. Default 9800. The IDE takes the first free port from it. |
+| `--timeout <secs>` | The wait for a compile to settle, and again for a build. Default 180. |
+| `--keep-files <dir>` | Copy the two exes into `<dir>`, which is made if it is missing, as `<arch>-1.exe` and `<arch>-2.exe`. Nothing already in the folder is removed. |
+| `--vb6` | Build the `vb6/` project of the reproducer twice with VB6 in place of the twinBASIC project, and print every range that differs outside the time stamp and the checksum, by section. A VB6 exe has no deflate-compressed block. VB6 is found as for [`vb6run.mjs`](#vb6run) (`VB6_EXE`, else the standard install folders) and is started only through `scripts/lib/vb6.mjs`, never from a shell. The project is built with Unattended Execution, as `bug_repro.mjs vb6` builds it. Both builds are made in one folder, because VB6 stores the folder's name in the exe and two folders would show as a difference of their own. `--arch`, `--ide` and `--port` do not apply, and are refused with it. |
+
+Exit codes: **0** the compared bytes are equal, the two decompressed blocks or, with `--vb6`, the two files outside the time stamp and the checksum; **1** they differ, so the defect is there; **2** a refused command line, no IDE or no VB6, no free port, an IDE that did not start, a project that did not compile or build, a block that does not inflate to its stated size or is not there, or a crash.
+
 ### vb6run.mjs
 {: #vb6run }
 
@@ -1190,18 +1218,18 @@ Exit codes: **0** no build failed to write the type library; **1** at least one 
 
 Builds and runs Visual Basic 6 code, so that what a documented sample prints in twinBASIC can be compared with what it prints in VB6. It needs VB6, which it finds from `--vb6 <path>`, else the `VB6_EXE` environment variable, else `VB98\VB6.EXE` under `C:\Program Files (x86)\Microsoft Visual Studio` and then under `C:\Program Files\Microsoft Visual Studio`; with none of them it exits 2 and says how to point at one. It needs Windows, is outside every gate and outside CI, and is run by a person, as [`check_examples.mjs`](#check-examples) is.
 
-**Nothing may open a dialog, and VB6 is never started through a shell.** The tool starts `VB6.EXE` from Node with an argument array. Started from Git Bash by hand, `/make` and `/out` are rewritten as paths, and VB6 answers every switch it does not know with a modal message box on the desktop. A compiled exe also shows a modal box for an unhandled run-time error, for `MsgBox` and for `InputBox`. So each sample runs under an error handler the tool generates, the project is built with VB6's Unattended Execution option, which writes such a box to the Windows event log, and a sample that calls `MsgBox` or `InputBox` or contains an `End` statement is refused without being built, as `check_run` refuses it. Every process the tool starts has a time limit and is ended by its pid when it runs over. Work folders are created under the OS temp folder, one for each run, and removed at the end; `--keep` leaves the folder and prints where it is.
+**Nothing may open a dialog, and VB6 is never started through a shell.** The tool starts `VB6.EXE` from Node with an argument array. Started from Git Bash by hand, `/make` and `/out` are rewritten as paths, and VB6 answers every switch it does not know with a modal message box on the desktop. A compiled exe also shows a modal box for an unhandled run-time error, for `MsgBox` and for `InputBox`. So each sample runs under an error handler the tool generates, the project is built with VB6's Unattended Execution option, which writes such a box to the Windows event log, and a sample that calls `MsgBox` or `InputBox` or contains an `End` statement is refused without being built, as `check_run` refuses it. The exe runs on a private desktop, inside a job that ends everything it starts, as `tbrun --exe` runs one: a box it opens all the same is closed by pressing OK and reported, and Windows records a fault in the Application event log only for an exe started that way. Every process the tool starts has a time limit and is ended by its pid when it runs over. Work folders are created under the OS temp folder, one for each run, and removed at the end; `--keep` leaves the folder and prints where it is.
 
 **`Debug.Print` is rewritten.** It writes nothing in a compiled exe. The tool rewrites each `Debug.Print` statement to `Print #511,` against a file the generated `Sub Main` opens, and `Print #` takes the same arguments (`;`, `,`, `Spc`, `Tab`), so the text is the same. A `Debug.Print` inside a string or a comment is left alone, and one after a `:` or after `Then` or `Else` is rewritten. VB6 writes the file in the ANSI code page, and the tool reads it as Windows-1252. A sample that calls `Close` with no file number also closes that file, and its next `Debug.Print` raises error 52.
 
 | Mode | Effect |
 |---|---|
 | `<file>` | A `.bas` module, or a text file of bare statements; `-` reads statements from standard input. A file that defines `Sub Main` is a whole module: it is built as written, its `Sub Main` is renamed so that the generated `Main` can start it, and it keeps its `Attribute VB_Name` line or is given one. Any other file is the body of a generated procedure. What the sample printed goes to standard output. A compile error is reported to standard error as VB6 reports it, with the line given as a line of the file, and a run-time error as `[vb6] error <n>: <description>`. |
-| `--docs` | Reads the documentation's `check_run` fences with the reader `check_examples.mjs` uses and builds each as a module of its own in a VB6 project; the fences that need no other fence share one project. The run fences of a `projname=` group are built in a project of their own, since class and module names collide between groups, together with the other fences of the group, each of which is a file. A `slot=file` fence is translated into VB6 components: every `Class <Name>` block becomes a class module and every `Module <Name>` block a standard module, `Public`, `Private` or `Friend` before the keyword being accepted, and anything outside those blocks (`Declare`, `Type`, `Enum`, `Const`, procedures) becomes one more standard module. Nothing else is translated. A construct VB6 has no form for, such as an `Interface`, a `CoClass`, a generic or an attribute line, stays where it is and VB6 refuses it, so each run fence of a group whose files do not build is `not VB6`, with the first error at its line in the page. Each of the run fences ends as `same` (VB6 prints what the page says twinBASIC prints), `differs` (the lines that differ, the page against VB6, with the page path and line), `not VB6` (VB6 refuses to compile it, with its first error; most twinBASIC syntax ends here, and it is informational), `error` (a run-time error, the exe ended during it, or it did not return), or `refused` (the sample cannot be run, for the reasons `check_run` gives). A fence that says `project=form` is built with a blank `Form1.frm`, which VB6 refuses to build with Unattended Execution, so such a project is built without it and its exe runs on a private desktop; each sample's forms are unloaded when it ends. On a `Declare` statement, `PtrSafe` is dropped and `LongPtr` is read as `Long`, because VB6 knows neither. A compile error stops VB6 at the first module that fails, so that module is dropped and the project is built again until it builds. A summary line gives the count of each. `--only <regex>` keeps the pages whose path under `docs/` matches. |
+| `--docs` | Reads the documentation's `check_run` fences with the reader `check_examples.mjs` uses and builds each as a module of its own in a VB6 project; the fences that need no other fence share one project. The run fences of a `projname=` group are built in a project of their own, since class and module names collide between groups, together with the other fences of the group, each of which is a file. A `slot=file` fence is translated into VB6 components: every `Class <Name>` block becomes a class module and every `Module <Name>` block a standard module, `Public`, `Private` or `Friend` before the keyword being accepted, and anything outside those blocks (`Declare`, `Type`, `Enum`, `Const`, procedures) becomes one more standard module. Nothing else is translated. A construct VB6 has no form for, such as an `Interface`, a `CoClass`, a generic or an attribute line, stays where it is and VB6 refuses it, so each run fence of a group whose files do not build is `not VB6`, with the first error at its line in the page. Each of the run fences ends as `same` (VB6 prints what the page says twinBASIC prints), `differs` (the lines that differ, the page against VB6, with the page path and line), `not VB6` (VB6 refuses to compile it, with its first error; most twinBASIC syntax ends here, and it is informational), `error` (a run-time error, the exe ended during it, or it did not return), or `refused` (the sample cannot be run, for the reasons `check_run` gives). A fence that says `project=form` is built with a blank `Form1.frm`, which VB6 refuses to build with Unattended Execution, so such a project is built without it; each sample's forms are unloaded when it ends. On a `Declare` statement, `PtrSafe` is dropped and `LongPtr` is read as `Long`, because VB6 knows neither. A compile error stops VB6 at the first module that fails, so that module is dropped and the project is built again until it builds. A summary line gives the count of each. `--only <regex>` keeps the pages whose path under `docs/` matches. |
 
 Other options: `--timeout S` is the time limit, in seconds, for each run of the built exe (default 30), and `--json` prints one JSON object in place of the text.
 
-Exit codes: **0** the sample ran, or, with `--docs`, no fence differs and none raised an error; **1** a VB6 compile error, a run-time error, a sample during which the exe ended (a VB6 exe that dies of an access violation can exit with code 0, so the exe ending before the time limit in the middle of a sample is what shows it; the fault the Application event log records is named when there is one) or a sample that did not return, or, with `--docs`, at least one fence that differs or raised an error; **2** the harness could not run --- a refused command line, a file that is missing, a sample that is refused, no VB6, VB6 failing to build, or a crash.
+Exit codes: **0** the sample ran, or, with `--docs`, no fence differs and none raised an error; **1** a VB6 compile error, a run-time error, a sample during which the exe ended (a VB6 exe that dies of an access violation can exit with code 0, so the exe ending before the time limit in the middle of a sample is what shows it; the fault the Application event log records is named when there is one, and so are a box the exe opened and what the VB runtime logged) or a sample that did not return, or, with `--docs`, at least one fence that differs or raised an error; **2** the harness could not run --- a refused command line, a file that is missing, a sample that is refused, no VB6, VB6 failing to build, or a crash.
 
 ### addin_test.mjs
 {: #addin-test }
@@ -1233,12 +1261,17 @@ build target loads, what a compiler restart does to a loaded add-in, and which e
 names the IDE accepts. They build add-ins for win64 as well as win32, restart the compiler,
 and patch a built DLL's export name. One more checks that the environment variable the
 runner sets, which keeps an add-in under test from opening a browser, reaches the add-in,
-also after a compiler restart. The last two lanes test the help add-in in `add-in/`, which
-opens the page for the name under the cursor, with the copy of the symbol index committed in
+also after a compiler restart. Another times what the help add-in's hover help costs, a
+widget in the code editor and polling the cursor, and checks that a hover provider added
+through the page shows in the IDE's own hover. Another checks that an add-in can show a
+window of its own, a form holding a WebView2 control. The last two lanes test the help add-in in `add-in/`, which
+opens the page for the name under the cursor and, with its *Hover help* box ticked, shows
+links to a name's pages in the mouse hover, and whose pane can be detached into a window of
+its own, with the copy of the symbol index committed in
 `add-in/Resources/SYMBOLS/`: `help` with the pages from the built site, and `help-offline`
-with the pages from the add-in's own server, built with an archive that
-[`build_help_archive.mjs`](#build-help-archive) makes. The thirteen lanes take about two
-minutes together.
+with the pages from the add-in's own server, built with an archive of the built offline
+tree that the lane writes with the same [help archive](#the-help-archive) writer the build
+uses. The fifteen lanes take about two minutes together.
 
 | Flag | Effect |
 |---|---|

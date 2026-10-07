@@ -12,7 +12,8 @@
 //      among check.bat's -- and that is allowed;
 //   2. the two workflows run the same gate steps, in the same order;
 //   3. each workflow's build passes every argument build.bat passes, and
-//      --no-fetch-assets, and nothing else unless ALLOWED records it.
+//      --no-fetch-assets and --no-help-archive, and nothing else unless
+//      ALLOWED records it.
 //
 // ALLOWED lists the recorded differences, each with where it is recorded. A
 // difference not on it is a finding, and so is an allowance that matches
@@ -24,7 +25,7 @@
 //
 //   node scripts/check_ci_workflows.mjs
 //
-// Exit codes: 0 clean, 1 a finding, 2 a refused command line, a failed probe or a crash.
+// Exit codes: 0 clean, 1 a finding or a failed probe, 2 a refused command line or a crash.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -44,8 +45,9 @@ arguments and in the same order.
 
 Exit codes:
   0  both workflows run every gate the wrappers run, and its own probes pass
-  1  a workflow differs from the wrappers: a finding is listed
-  2  the gate could not run: a refused command line, a failed probe, or a crash`;
+  1  a workflow differs from the wrappers: a finding is listed, or one of the
+     gate's own probes failed
+  2  the gate could not run: a refused command line, or a crash`;
 
 if (
   withUsageError(() =>
@@ -86,6 +88,8 @@ const ALLOWED = {
   },
   requiredBuildFlags: {
     "--no-fetch-assets": "CI must never download an asset (vendor-assets.mjs)",
+    "--no-help-archive":
+      "CI has no use for the IDE help add-in's archive and must not spend time on it (help-archive-step.mjs)",
   },
 };
 
@@ -346,7 +350,7 @@ const probeFailures = runProbes();
 if (probeFailures.length) {
   console.error(`check_ci_workflows: ${probeFailures.length} of ${PROBES.length} probes failed:`);
   for (const f of probeFailures) console.error(`  ${f}`);
-  process.exit(2);
+  process.exit(1);
 }
 console.log(`check_ci_workflows: ${PROBES.length} probes, all pass`);
 

@@ -20,6 +20,7 @@ export const OPTIONS = {
   "dry-run": { type: "boolean" },
   "no-offline": { type: "boolean" },
   "no-pdf": { type: "boolean" },
+  "no-help-archive": { type: "boolean" },
   "tolerate-missing-images": { type: "boolean" },
   "fetch-assets": { type: "boolean" },
   "no-fetch-assets": { type: "boolean" },
@@ -56,6 +57,9 @@ given, and a flag that takes a value takes it as the next argument or as
                                run, and a baseline update still writes its file
   --no-offline                 skip the offline tree
   --no-pdf                     skip the PDF tree
+  --no-help-archive            do not write the IDE help add-in's archive of the
+                               offline tree, add-in/Resources/HELP/site.zip, which
+                               a build of the documentation writes as its last step
   --tolerate-missing-images    downgrade a missing book image from an error to a warning
   --fetch-assets               download missing remote assets, even when $CI is set
   --no-fetch-assets            never download; a missing remote asset is an error
@@ -91,6 +95,7 @@ export const DEFAULTS = Object.freeze({
   dryRun: false,
   skipOffline: null,
   skipPdf: null,
+  skipHelpArchive: false,
   tolerateMissingImages: false,
   profileOffline: false,
   check: false,
@@ -140,6 +145,9 @@ export function parseCommandLine(argv) {
         break;
       case "noPdf":
         args.skipPdf = true;
+        break;
+      case "noHelpArchive":
+        args.skipHelpArchive = true;
         break;
       case "tolerateMissingImages":
         args.tolerateMissingImages = true;

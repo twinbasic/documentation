@@ -1,0 +1,140 @@
+' The IDE theme as CSS, for the detached help window, whose page is not the
+' IDE's and so does not have the IDE's custom properties. The IDE reads a
+' theme file into the properties of its document: "Name: value;" becomes
+' --themeName, a value ending in !important is set as important, and the file's
+' "inherits: other;" line pulls in another theme first, so that the file's own
+' lines override it. A theme that inherits from nothing and is not Light or
+' Dark inherits from Dark. This does the same, for the pane's own colours and
+' the rest, as one :root rule.
+Module ThemeCss
+    Private Const MOST_PARENTS As Long = 8
+
+    ' The rule for the theme named themeName: its own properties, then each
+    ' parent's that it did not set. "" when the theme's file cannot be found,
+    ' which leaves the page to its plain colours.
+    Public Function ThemeRule(ByVal themeName As String) As String
+        Dim seen As New Collection
+        Dim properties As String
+        Dim name As String = themeName
+        Dim depth As Long
+        Do While Len(name) > 0 And depth < MOST_PARENTS
+            Dim text As String = ReadTheme(name)
+            If Len(text) = 0 Then Exit Do
+            text = WithoutComments(text)
+            properties = properties & Declarations(text, seen)
+            name = ParentOf(text, name)
+            depth = depth + 1
+        Loop
+        If Len(properties) = 0 Then Return ""
+        Return ":root{" & properties & "}"
+    End Function
+
+    ' The theme the file inherits from, or Dark for a theme that names none,
+    ' and "" for Light and Dark themselves.
+    Private Function ParentOf(ByVal text As String, ByVal name As String) As String
+        Dim at As Long = InStr(1, vbLf & text, vbLf & "inherits:", vbTextCompare)
+        If at > 0 Then
+            Dim start As Long = at + Len("inherits:")
+            Dim finish As Long = InStr(start, text, ";")
+            If finish > 0 Then
+                Dim parent As String = Mid$(text, start, finish - start)
+                Dim white As Variant
+                For Each white In Array(" ", vbTab, vbCr, vbLf)
+                    parent = Replace(parent, white, "")
+                Next
+                Return parent
+            End If
+        End If
+        Select Case LCase$(name)
+            Case "light", "dark"
+                Return ""
+        End Select
+        Return "dark"
+    End Function
+
+    ' Each "Name: value;" of text as a custom property, in the order of the
+    ' file, leaving out the names seen already and adding the new ones to seen.
+    ' A statement ends at a semicolon followed by white space or the end of the
+    ' text, as the IDE reads it, so that a semicolon inside a value stays in it.
+    Private Function Declarations(ByVal text As String, ByVal seen As Collection) As String
+        Dim start As Long = 1
+        Dim i As Long
+        Dim n As Long = Len(text)
+        For i = 1 To n
+            If Mid$(text, i, 1) = ";" Then
+                If i = n Or InStr(" " & vbTab & vbCr & vbLf, Mid$(text, i + 1, 1)) > 0 Then
+                    Declarations = Declarations & Declaration(Mid$(text, start, i - start), seen)
+                    start = i + 1
+                End If
+            End If
+        Next
+    End Function
+
+    ' One statement as "--themeName:value;", or "" when it is not a property,
+    ' is the inherits line, or sets a name an earlier statement set.
+    Private Function Declaration(ByVal statement As String, ByVal seen As Collection) As String
+        statement = Replace(Replace(statement, vbCr, ""), vbLf, "")
+        Dim colon As Long = InStr(statement, ": ")
+        Dim tab As Long = InStr(statement, ":" & vbTab)
+        If colon = 0 Or (tab > 0 And tab < colon) Then colon = tab
+        If colon = 0 Then Return ""
+        Dim name As String = Trim$(Left$(statement, colon - 1))
+        Dim value As String = Trim$(Mid$(statement, colon + 1))
+        If Len(name) = 0 Or Len(value) = 0 Or LCase$(name) = "inherits" Then Return ""
+        If Not IsName(name) Then Return ""
+        On Error Resume Next
+        seen.Add True, name
+        If Err.Number <> 0 Then Return ""
+        On Error GoTo 0
+        Return "--theme" & name & ":" & value & ";"
+    End Function
+
+    Private Function IsName(ByVal text As String) As Boolean
+        Dim i As Long
+        For i = 1 To Len(text)
+            Select Case AscW(Mid$(text, i, 1))
+                Case 48 To 57, 65 To 90, 95, 97 To 122
+                Case Else
+                    Return False
+            End Select
+        Next
+        Return True
+    End Function
+
+    Private Function WithoutComments(ByVal text As String) As String
+        Dim start As Long = InStr(text, "/*")
+        Do While start > 0
+            Dim finish As Long = InStr(start + 2, text, "*/")
+            If finish = 0 Then Return Left$(text, start - 1)
+            text = Left$(text, start - 1) & Mid$(text, finish + 2)
+            start = InStr(start, text, "/*")
+        Loop
+        Return text
+    End Function
+
+    ' The text of the theme's file: the install's themes folder first, then the
+    ' user's. A name that is not a plain file name is refused, since a theme's
+    ' inherits line names the next file.
+    Private Function ReadTheme(ByVal name As String) As String
+        If InStr(name, "\") > 0 Or InStr(name, "/") > 0 Or InStr(name, ":") > 0 Then Return ""
+        Dim folder As Variant
+        For Each folder In Array(InstallFolder() & "\themes", Environ$("APPDATA") & "\twinBASIC\themes")
+            Dim path As String = folder & "\" & name & ".theme"
+            If Len(Dir$(path)) > 0 Then Return ReadFile(path)
+        Next
+        Return ""
+    End Function
+
+    Private Function ReadFile(ByVal path As String) As String
+        Dim file As Long = FreeFile
+        Open path For Binary Access Read As #file
+        Dim size As Long = LOF(file)
+        If size > 0 Then
+            Dim data() As Byte
+            ReDim data(0 To size - 1)
+            Get #file, , data
+            ReadFile = StrConv(data, VbStrConv.vbFromUTF8)
+        End If
+        Close #file
+    End Function
+End Module

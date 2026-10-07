@@ -55,8 +55,8 @@
 // Requires `build.bat` to have produced an up-to-date _site-offline/.
 // Exit codes: 0 identical, 1 fingerprints differ, 2 a refused command line or a crash.
 
-import { writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { statSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import {
   DEFAULT_ROOT_DIR,
   SAMPLE_PAGES,
@@ -74,7 +74,10 @@ import {
   SOURCE_PATCHES,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
-import { choiceOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { CliError, choiceOption, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+
+// A crash exits 2, where 1 is a fingerprint that differs.
+exitOnCrash();
 
 // ---- CLI ------------------------------------------------------------------
 const cli = withUsageError(() =>
@@ -130,14 +133,45 @@ let candidateLabel = cli.values.candidate;
 let rootDir = cli.values.rootDir;
 let themeArg = cli.values.theme;
 let viewportArg = cli.values.viewport;
-let pagesArg = cli.values.pages !== undefined ? cli.values.pages.split(",") : null;
 let outFile = cli.values.out ?? null;
 let unminified = cli.values.unminified;
 let patchesArg = cli.values.patches;
+rootDir = resolve(rootDir);
+
+// A --pages value: a comma-separated list of root-relative page paths, each a
+// file in the tree being scanned. A name the tree lacks would otherwise reach
+// the browser as a failed navigation, or be dropped from the matrix unseen.
+function pagesOption(value) {
+  const pages = value
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+  if (pages.length === 0) {
+    throw new CliError("bad-pages", `--pages expects a comma-separated list of pages, got: ${value}`, {
+      option: "--pages",
+      value,
+    });
+  }
+  for (const page of pages) {
+    if (!page.startsWith("/")) {
+      throw new CliError("bad-pages", `--pages expects each page to start with "/", got: ${page}`, {
+        option: "--pages",
+        value: page,
+      });
+    }
+    if (!statSync(join(rootDir, page), { throwIfNoEntry: false })?.isFile()) {
+      throw new CliError("bad-pages", `--pages expects pages that exist under ${rootDir}, got: ${page}`, {
+        option: "--pages",
+        value: page,
+      });
+    }
+  }
+  return pages;
+}
 
 const schemeNames = Object.keys(SCHEMES);
 const patchNames = Object.keys(SOURCE_PATCHES);
-const { baseline, candidate } = withUsageError(() => {
+const { baseline, candidate, pagesArg } = withUsageError(() => {
   for (const name of patchesArg
     .split(",")
     .map((x) => x.trim())
@@ -147,9 +181,9 @@ const { baseline, candidate } = withUsageError(() => {
   return {
     baseline: getScheme(choiceOption(baselineLabel, { option: "--baseline", choices: schemeNames })),
     candidate: getScheme(choiceOption(candidateLabel, { option: "--candidate", choices: schemeNames })),
+    pagesArg: cli.values.pages !== undefined ? pagesOption(cli.values.pages) : null,
   };
 });
-rootDir = resolve(rootDir);
 
 const matrix = buildMatrix({
   pages: pagesArg ?? SAMPLE_PAGES,

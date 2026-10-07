@@ -23,9 +23,9 @@ that are left are not programs (see [What cannot be marked](#what-cannot-be-mark
 ## The problem
 
 A `tb` fence is something `check_code_regions.mjs` protects the *contents* of and never
-evaluates, so every gate was green over samples that do not compile: an icon key in a slot
-the same package's prose says is validated, a `Sub` with no name, and the five
-`Dim X As New Worksheet` samples in `Core/` (`Worksheet` is an Excel type, and in a bare
+evaluates, so every gate can be green over samples that do not compile: an icon key in a slot
+the same package's prose says is validated, a `Sub` with no name, and
+`Dim X As New Worksheet` (`Worksheet` is an Excel type, and in a bare
 twinBASIC project that line does not compile at all).
 
 ## Why this is not part of a build
@@ -63,8 +63,8 @@ marking work is planned from, and it needs no compiler. It does not claim any of
 compile; only `--propose` knows that.
 
 A fence that reads as unbalanced is usually a classifier that does not know the language,
-not a sample that is incomplete. Three classifier gaps once produced most of the fragments.
-Each is a probe in `scripts/lib/example-batches.mjs`, which `check_examples.mjs` and
+not a sample that is incomplete. Three things a classifier must know account for most
+spurious fragments. Each is handled, with a probe in `scripts/lib/example-batches.mjs`, which `check_examples.mjs` and
 `test.bat` both run:
 
 - **an `Interface` body holds prototypes.** `Sub Bar()` inside one has no `End Sub`, so
@@ -74,7 +74,7 @@ Each is a probe in `scripts/lib/example-batches.mjs`, which `check_examples.mjs`
   (`Features/Language/UDTs.md`). A UDT *field* may also be called `Type As Long`, which reads
   as an opener that never closes. So every opener demands a name after the keyword
   (`scripts/census_attributes.mjs` records the same trap).
-- **`Overridable` is a modifier.** Without it in the list, a sample came back as *"End
+- **`Overridable` is a modifier.** Without it in the list, a sample comes back as *"End
   Function closing Class"*. A missed opener always surfaces as a mismatch somewhere later,
   never where it happened.
 
@@ -83,9 +83,8 @@ without a body, a syntax skeleton with `<placeholders>`.
 
 **Opt-in is right because many samples are correct as documentation and incomplete as
 programs**: a `With MyLabel` block with no `MyLabel`, a handler for a class the page does
-not define. When opt-in was decided, 54% of the classifiable fences compiled and 46% did not.
-Marking the 46% would be wrong, and opting them out one by one would be a list of five
-hundred exceptions. Page edits and harness work have since brought nearly all of them in.
+not define. Marking every fence would be wrong, and opting the incomplete ones out one by
+one would be a list of hundreds of exceptions.
 
 ## The markup
 
@@ -151,8 +150,8 @@ including `--census`.
 
 ### `inert` is a decision, not a suppression
 
-An unmarked fence used to mean two things --- nobody has looked, and somebody looked and
-concluded there is nothing to compile --- and the census could not tell them apart.
+Without `inert`, an unmarked fence means two things --- nobody has looked, and somebody looked and
+concluded there is nothing to compile --- and the census cannot tell them apart.
 `inert=<reason>` records the second. It **takes a reason rather than being a bare flag**:
 the reason makes the count readable and lets a later reader disagree with a specific
 judgement rather than with a silence. An unknown reason is refused the way a bad `slot=` is,
@@ -166,9 +165,9 @@ today**. It marks correct code that a *product* defect stops compiling. It exist
 the alternative, rewriting the sample until the compiler accepts it, is not taken by
 accident.
 
-Do not reach for it too early. Six enum members a default project cannot name (each enum
-sits inside a `Private Module` or a private base class) were once marked `blocked`, until the
-question *what would a reader actually do?* found the answer: the asterisk. `*WinNativeCommonCtls`
+Do not reach for it too early. An enum member a default project cannot name (the enum
+sits inside a `Private Module` or a private base class) is not `blocked`: the question
+*what would a reader actually do?* has an answer, the asterisk. `*WinNativeCommonCtls`
 exposes the package's private half, and `WinNativeCommonCtls.ImlDrawTransparent` compiles.
 The templates `wnc-private` and `cef-private` join `vb-private` and `cc-private` for this,
 and each such page carries an IMPORTANT saying which library symbol to set and why.
@@ -270,10 +269,9 @@ Rules:
 - **A page cannot hide what it also shows --- so rename the placeholder.** Hidden context
   joins every project holding a sample from its page, so a *visible* sample on that page
   declaring the same name meets it (`TB5137 'IFoo' is ambiguous`).
-  `Reference/Core/CoClass.md` is the case: its first example named `IFoo` and `IBar` without
-  declaring them, and its next example declares both in full. `IFoo` and `IBar` are arbitrary
-  placeholders, so the first example is now a `CoClass Shape` over `IShape` and `IDrawable`,
-  with those two interfaces in a hidden fence. The general rule: **when hidden context
+  `Reference/Core/CoClass.md` is the case: a later example declares `IFoo` and `IBar` in
+  full, and they are arbitrary placeholders, so the first example is a `CoClass Shape` over
+  `IShape` and `IDrawable`, with those two interfaces in a hidden fence. The general rule: **when hidden context
   collides with a visible sample, check whether the name is load-bearing before working
   around it.**
 - **Write hidden declarations at the top of their fence**, not inside a `Module` wrapper,
@@ -433,7 +431,7 @@ names.
 **The residual is stated rather than closed:** two *ungrouped* samples still share a
 project and can still see each other. Nothing in twinBASIC hides a module's public members
 from the rest of a project, so the only complete fix is a project per sample, at 6--8 s
-each. A real dependency is now written down.
+each. A real dependency is written down with `projname=`.
 
 **The gate is the detector.** A `--propose` survey compiles every classifiable fence
 together and the gate compiles only marked ones, so they disagree by construction.
@@ -478,9 +476,9 @@ are in the set for that reason.
 **`COLLIDES` reads a fence's *outermost container* names, so it is still too narrow for
 nested enums.** `Module MESSAGETABLE` is what it records, not the `Enum EVENTS` inside it
 nor that enum's members. twinBASIC puts enum members in project scope whatever container
-declares them, so two pages whose hidden context each declared an `EVENTS` enum landed in
+declares them, so two pages whose hidden context each declare an `EVENTS` enum land in
 one batch: `TB5000 duplicate definition [EVENTS]` and `TB5073 'status_changed' is
-ambiguous`. The fix taken is `projname=` on each page, which buys an isolated project.
+ambiguous`. The fix is `projname=` on each page, which gives it an isolated project.
 Tracking nested enum names in `COLLIDES` would be the general version, at the cost of
 splitting batches for names that usually do not collide.
 
@@ -523,7 +521,7 @@ two as a module's is (checked against a real error in a class, a module and the 
 The dispatcher opens the output file before each sample and closes it after, so
 `Class_Terminate` of an object released when the sample's `Sub` ends prints into it. Most
 twinBASIC syntax is not VB6, and a compile error there is the state `not VB6`, which is
-information; a `differs` is what the tool is for. What building in VB6 taught
+information; a `differs` is what the tool is for. The facts about building in VB6
 (`scripts/lib/vb6.mjs`, which has the list):
 
 - `Debug.Print` writes nothing in a compiled exe, so each one is rewritten to `Print #511,`,
@@ -570,9 +568,9 @@ the Form page's `True`).
   shows the compile has ended and the window agrees with it, or five one-second samples
   match. It waits for no build. An IDE under load can sit OPERATIONAL with an empty panel
   before it has published anything, and every sample of that batch then reads as compiling,
-  with nothing to tell it from a batch that has no errors. (`sweep_attributes` met it
-  first: one build in 136 of a full run drew `ACCEPT` for all three of its canaries,
-  including the invented name that can only draw an error. The cause is not established.)
+  with nothing to tell it from a batch that has no errors. (One build in 136 of a full
+  `sweep_attributes` run drew `ACCEPT` for all three of its canaries, including the invented
+  name that can only draw an error. The cause is not established.)
   Each batch carries `tbxCanary`, a module with `[EnforceWarnings(TB0005)]` and a `#Warning`
   directive, which must draw the warning TB0005. Its rows are taken out, at any severity,
   before anything else reads them.
@@ -667,10 +665,10 @@ Three parts to the handling, each forced:
 
 Cost on this corpus: one blame in 1,103 samples, three extra builds.
 
-**`--only` cuts a `projname` group.** Narrowing to `WinServicesLib/ServiceCreator` left the
+**`--only` cuts a `projname` group.** Narrowing to `WinServicesLib/ServiceCreator` leaves the
 page that declares `MyService` out of the run while keeping three pages that instantiate
-`ServiceCreator(Of MyService)`, so the isolation blamed a sample the full gate passes.
-`checkGroups` now says so as an advisory finding. **A narrowed run's results are not a full
+`ServiceCreator(Of MyService)`, so the isolation blames a sample the full gate passes.
+`checkGroups` says so as an advisory finding. **A narrowed run's results are not a full
 run's, and the tool has to be the thing that says which.**
 
 ### `--build` and `--llvm`: what a compile does not ask
@@ -741,20 +739,20 @@ that fails only the second is one LLVM cannot generate code for.
 
 ## Traps
 
-- **`tbbuild` once reported a clean build on a project that crashed the compiler**, and
-  every number in this file depends on it not doing so. A 275-fence project reported `0
-  errors, 0 warnings` and exit 0 while its quarters reported 129, 0, 294 and 448 errors. The
+- **A project that crashes the compiler can look like a clean build**, and every number in
+  this file depends on `tbbuild` catching it. A 275-fence project shows `0
+  errors, 0 warnings` and exit 0 while its quarters report 129, 0, 294 and 448 errors. The
   quarter that reported zero held three `NATIVE EXCEPTION: ACCESS_VIOLATION` lines and three
   `restarting from MEMORY`. A crash-restart cycle takes about 1.3 s, shorter than a 1 Hz
   status sample can see; after the third restart the IDE gives up and leaves the status at
-  OPERATIONAL with the counters at zero, byte-identical to a clean build. `tbbuild` now
+  OPERATIONAL with the counters at zero, byte-identical to a clean build. `tbbuild`
   reads the DEBUG CONSOLE, which nothing removes an entry from, and exits 4 naming the file
   the compiler died parsing. **Treat any tooling that infers "finished" from "stopped
   changing" as suspect on this compiler.**
 - **The classifier refuses a `<placeholder>` as a declaration name**, so a syntax skeleton
   such as `Interface <name> Extends <base-interface>` / `End Interface` (in
   `Reference/Attributes.md`) takes an explicit `slot=` to reach the compiler. Through BETA
-  995 that skeleton crashed the compiler (twinbasic/twinbasic#2453, fixed in 997).
+  995 that skeleton crashes the compiler (twinbasic/twinbasic#2453); BETA 997 does not.
 - **`project.buildPath` must be an explicit file.** The default `${SourcePath}\Build\...`
   template opens a native Save dialog, which on the private desktop is invisible and
   unreachable, so the build silently never happens --- and the WebView2 renderer stays
@@ -789,20 +787,19 @@ that fails only the second is one LLVM cannot generate code for.
   was still running 563 s later. A job object is no answer either --- the server is not a
   descendant.
 - **`@($null).Count` is 1 in PowerShell.** A count of `Select-String … | Measure-Object`
-  results reported a hidden fence reaching all three built trees; it did not. **Count with
-  the tool whose empty result is empty** (`grep -c` said 0).
+  results reports a hidden fence reaching all three built trees when it reaches none.
+  **Count with the tool whose empty result is empty** (`grep -c` says 0).
 - **The shell eats backslashes** in a regex passed through `node -e` from bash, turning
-  `'...symbol .(.+?).'` into a pattern that matched one character and producing a
+  `'...symbol .(.+?).'` into a pattern that matches one character and produces a
   plausible-looking table of single-letter "undeclared symbols". This is the heredoc trap in
   WIP.md's Don'ts arriving through `-e`. Write the script to a file.
 
 ## Rules from the survey passes
 
-The compiling share went from 54% to nearly all of the classifiable corpus through harness
-work and page edits. What a maintainer still needs from that work follows.
+What a maintainer needs from the survey work follows.
 
 **Count diagnostics, then try the fix.** A guess from counting diagnostics is not a result.
-"`[Me]` wants a fourth slot" (27 samples, TB5025) was built and measured: a bare `Class`
+"`[Me]` wants a fourth slot" (27 samples, TB5025): a bare `Class`
 wrapper fixes **5**, because `Me` becoming legal does not make `Me.Caption` resolve: the
 wrapper has no `Caption` (`TB5027 [tbx_…] does not contain 'Caption'`). The largest win was
 the stage set.
@@ -881,8 +878,8 @@ Language rules this work found:
   section shows a class the reader defines, carries `[COMCreatable(False)]` (a class whose
   only constructor takes arguments cannot supply the parameterless one COM creation wants),
   and says in a NOTE that `As New` with arguments is a syntax error.
-- **The elision the VBA-derived pages use is `. . .`, spaced.** The classifier knew only
-  `...`, and proposed three such pages as markable; they failed on *"Expected a symbol
+- **The elision the VBA-derived pages use is `. . .`, spaced.** A classifier that knows only
+  `...` proposes such pages as markable, and they fail on *"Expected a symbol
   following the dot operator"*.
 - **A class cannot implement an interface member marked `[PreserveSig]`**, and the
   diagnostic "expects" the signature already written (BUGS-TO-REPORT.md has the
@@ -903,8 +900,8 @@ Language rules this work found:
   | `Assert.IsTrue x > 0` | `TB5027 Unrecognized member 'IsTrue' on type 'Assert'` |
   | `IsTrue x > 0` | `TB5079 Unrecognized symbol 'IsTrue'` |
 
-  Five pages wrote the bare form at 66 sites, because one sentence on the package index
-  presented `Assert.` as disambiguation needed only on a clash. **When a sample is wrong
+  The bare form is what a reader writes when the package index presents `Assert.` as
+  disambiguation needed only on a clash. **When a sample is wrong
   across a whole package, check whether a sentence taught it**; prefixing the calls without
   rewriting that sentence leaves the prefixes reading as optional noise. All `Syntax:`
   lines carry the namespace too: a `Syntax:` line is the first thing a reader copies, and a
@@ -913,7 +910,7 @@ Language rules this work found:
 
 ### What cannot be marked
 
-The 52 `inert` fences are not programs and were never going to be: syntax skeletons with
+The 52 `inert` fences are not programs: syntax skeletons with
 `<placeholder>` names (`Interfaces-CoClasses.md` writes `Inherits base_interface`),
 property-assignment lines shown outside their `With` (`WinServicesLib/ServiceManager.md`
 documents each property as `.Name = "..."`), continuation fences that deliberately reuse the
@@ -922,9 +919,9 @@ content. Their reasons are the `inert=` values. `--propose --json` writes a surv
 `--report <file>` groups it by diagnostic, section and unresolved name.
 
 A genuine fragment (`TB5182`) is an elision, a signature with no body, or pseudo-code in a
-`tb` fence. It needs the same judgement page by page; `VB/MDIForm/index.md`'s pseudo-code
-menu table (`=>`) became four real handlers, which both compile and are what a reader
-writes.
+`tb` fence. It needs the same judgement page by page; `VB/MDIForm/index.md` shows its menu
+table as four real handlers rather than pseudo-code (`=>`), which both compile and are what
+a reader writes.
 
 ## Open questions
 
@@ -936,8 +933,8 @@ writes.
 - **Should the remaining single-page stage entries move into `hidden` fences?** About a
   dozen control instances are used by exactly one page --- `picCanvas`, `hsbVolume`,
   `mfPanels`, `lblCoords`. They are one line each in a list whose stated purpose is
-  "the control instances the samples assume", so they stay. The invented *classes* moved,
-  because a class is not a control instance and a page is where it belongs. The line between
+  "the control instances the samples assume", so they stay. The invented *classes* go in
+  `hidden` fences, because a class is not a control instance and a page is where it belongs. The line between
   the two is a judgement, not a rule.
 - Which pages should carry `check_run` (33 samples do)? A sample states its output in its own
   text, as a trailing comment on a `Debug.Print` line or as the comment lines under
