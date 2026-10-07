@@ -21,13 +21,6 @@
 		"Width": 480,
 		"_children": [
 			{
-				"Anchors": {
-					"Bottom": true,
-					"Left": true,
-					"Right": true,
-					"Top": true,
-					"_clsid": "{8524D4B5-72A9-40A9-A189-29E7905C40CA}"
-				},
 				"DocumentURL": "",
 				"EnvironmentOptions": {
 					"UserDataFolder": "",

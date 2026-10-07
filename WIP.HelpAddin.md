@@ -1077,10 +1077,25 @@ harness about a second against opening a new IDE.
      frame and no title bar over the whole monitor, taskbar included (a page of 1707x1067
      against a work area of 1707x1027), so a window procedure put in front of the
      form's (`SetWindowLongPtrW`, as `HelpServer` does for its message window) answers
-     `WM_GETMINMAXINFO` with the work area, kept outside the monitor by the frame's thickness
-     as Windows does for a window with a title bar, and the lane checks the page fills the
-     work area. The procedure is taken off in `Class_Terminate`. With the Windows title bar
-     it is not used.
+     `WM_GETMINMAXINFO` with the work area exactly. A maximized window with no title bar has
+     no frame taken off its client area (measured at 150%: the client area is the whole window
+     rectangle), so the window outside the work area by the frame's thickness, which an
+     earlier version assumed, was shifted up and left by it and left a strip at the right and
+     bottom; the procedure also answers `WM_NCCALCSIZE` for a maximized window whose proposed
+     rectangle is the work area with the rectangle as it came, so that no Windows version
+     takes a frame off it. (A window being restored is still zoomed when its
+     `WM_NCCALCSIZE` comes, with its own smaller rectangle: only the work-area rectangle is
+     answered, or the client area is left the work area's size.) The form's layout does not
+     keep the control at the client area either: with anchors, and without them, it
+     leaves the control overhanging or offset by the frame once the window has been
+     maximized and restored (by 10 and 5 pixels at 150%). So the tbform has no anchors, and
+     the same procedure, which is also put in front with the Windows title bar, sizes the
+     control to `GetClientRect` after the window's own handling of `WM_SIZE` and
+     `WM_WINDOWPOSCHANGED`. The lane asks the add-in (the page posts `geometry`, under the
+     test switch) for the client area, the control and the work area in screen pixels, and
+     checks that the control is the client area, the page is its size, and, maximized, that
+     the client area is the work area, to the right and bottom edges as well; and the same
+     control check with the Windows title bar. The procedure is taken off in `Class_Terminate`.
    - **The X** hides the window, as the pane's X hides the pane, and the help stays
      detached; Attach is the way back to the pane. F1, the Help button and a hover link show
      the window again. F1 and a hover link do not activate it, so the editor keeps the

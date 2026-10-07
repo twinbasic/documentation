@@ -30,6 +30,11 @@ Class HelpWindow
         Return PageReady
     End Property
 
+    ' The control's window, which the tests ask the add-in to measure.
+    Public Property Get ControlHandle() As LongPtr
+        Return WebView.hWnd
+    End Property
+
     ' Sends the page a message. One sent before the page is ready has nowhere
     ' to go, and is dropped: the add-in sends the whole state when the page
     ' says "ready".

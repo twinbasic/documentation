@@ -912,25 +912,63 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       glyphs: [".maximize", ".restore"].map((s) => getComputedStyle(document.querySelector("#helpMaximize " + s)).display === "none"),
     })`);
 
-  // The size of the window's page and of the monitor's work area, in the same
-  // units: a maximized window with no title bar of its own has to fill the
-  // work area, not the whole monitor over the taskbar (WindowApi,
-  // LimitMaximizeToWorkArea).
-  const placeAndWorkArea = () =>
-    win.evaluate(`({
-      window: [innerWidth, innerHeight],
-      work: [screen.availWidth, screen.availHeight],
-    })`);
+  // Where the window's client area, its WebView2 control and the work area of
+  // its monitor are, in screen pixels, which only the add-in can read (it asks
+  // the window, the test switch being on), and the size of the page the
+  // control shows, in device pixels. Each rectangle is [left, top, right,
+  // bottom].
+  async function windowGeometry() {
+    const mark = await consoleMark(c);
+    await win.evaluate(`chrome.webview.postMessage("geometry")`);
+    const found = await waitFor(c, async (c) =>
+      (await addinLines(c, mark)).find((l) => l.startsWith("window geometry ")),
+    );
+    assert.ok(found, `the add-in did not report the window's geometry: ${JSON.stringify(await addinLines(c, mark))}`);
+    const g = {};
+    for (const m of found.matchAll(/(client|control|work) (-?\d+),(-?\d+),(-?\d+),(-?\d+)/g)) {
+      g[m[1]] = m.slice(2).map(Number);
+    }
+    g.page = await win.evaluate(`[innerWidth * devicePixelRatio, innerHeight * devicePixelRatio]`);
+    return g;
+  }
 
+  // Whether the control fills the client area exactly, and the page it shows
+  // fills the control, to a pixel (the page's size is rounded to CSS pixels).
+  // With `rect`, the client area is also that rectangle. Returns what is wrong,
+  // or "" when nothing is.
+  function geometryFault(g, rect) {
+    const faults = [];
+    if (g.control.some((v, i) => v !== g.client[i])) faults.push("the control is not the client area");
+    const size = [g.client[2] - g.client[0], g.client[3] - g.client[1]];
+    if (g.page.some((v, i) => Math.abs(v - size[i]) > 1)) faults.push("the page is not the client area's size");
+    if (rect && g.client.some((v, i) => v !== rect[i])) faults.push("the client area is not the work area");
+    return faults.length ? `${faults.join("; ")}: ${JSON.stringify(g)}` : "";
+  }
+
+  // Waits for the window's geometry to be right, which follows a change of
+  // its state a moment after the add-in reports the state; fails with what was
+  // wrong at the end.
+  async function assertGeometry(what, { workArea = false } = {}) {
+    let last;
+    const fits = await waitFor(c, async () => {
+      last = await windowGeometry();
+      return geometryFault(last, workArea ? last.work : null) === "";
+    });
+    assert.ok(fits, `${what}: ${geometryFault(last, workArea ? last.work : null)}`);
+  }
+
+  test("the window's control fills its client area", async () => {
+    await assertGeometry("normal");
+  });
+
+  // A maximized window with no title bar of its own has to fill the work area,
+  // not the whole monitor over the taskbar, with nothing cut off at its edges
+  // and no strip of the form showing (WindowApi, LimitMaximizeToWorkArea).
   test("Maximize and Restore change the window's state, and the button shows which it will do", async () => {
     let mark = await consoleMark(c);
     await clickInWindow("#helpMaximize");
     await waitForLine(mark, "window state max");
-    const maximized = await waitFor(c, async () => {
-      const p = await placeAndWorkArea();
-      return p.window.every((v, i) => Math.abs(v - p.work[i]) <= 1) && p;
-    });
-    assert.ok(maximized, `not the work area: ${JSON.stringify(await placeAndWorkArea())}`);
+    await assertGeometry("maximized", { workArea: true });
     assert.ok(
       await waitFor(c, async () => (await maximizeButton()).state === "max"),
       JSON.stringify(await maximizeButton()),
@@ -941,6 +979,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     await waitForLine(mark, "window state normal");
     assert.ok(await waitFor(c, async () => (await maximizeButton()).state === "normal"));
     assert.deepEqual(await maximizeButton(), { state: "normal", title: "Maximize", glyphs: [false, true] });
+    await assertGeometry("restored");
   });
 
   test("a double click on the bar maximizes the window, and another restores it", async () => {
@@ -1225,6 +1264,17 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       searchTop: 0,
       order: ["helpSearch", "helpBrowser", "helpAttach", "helpHoverLabel"],
     });
+    // The control fills the client area with the Windows title bar too, in the
+    // window's own size and maximized (the page has no button to press).
+    await assertGeometry("native, normal");
+    let state = await consoleMark(c);
+    await win.evaluate(`chrome.webview.postMessage("maxrestore")`);
+    await waitForLine(state, "window state max");
+    await assertGeometry("native, maximized");
+    state = await consoleMark(c);
+    await win.evaluate(`chrome.webview.postMessage("maxrestore")`);
+    await waitForLine(state, "window state normal");
+    await assertGeometry("native, restored");
     const attached = await consoleMark(c);
     await clickInWindow("#helpAttach");
     await waitForLine(attached, "attached");

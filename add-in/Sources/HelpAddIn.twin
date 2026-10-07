@@ -123,7 +123,7 @@ Private Class HelpAddIn
     ' when it is attached or closed, and the window's own procedure put back.
     Private Sub Class_Terminate()
         If Not HelpWin Is Nothing Then SaveWindowPlace
-        EndMaximizeLimit
+        EndWindowHook
         If Not Server Is Nothing Then Server.CloseAll
     End Sub
 
@@ -622,6 +622,7 @@ Private Class HelpAddIn
     Private Sub ApplyFrame()
         NativeFrame = WantsNativeFrame()
         HelpWin.UseNativeFrame NativeFrame
+        KeepControlInClientArea HelpWin.hWnd, HelpWin.ControlHandle
         LimitMaximizeToWorkArea HelpWin.hWnd, Not NativeFrame
         ApplyTitleBarTheme
         PostToWindow "chrome:" & IIf(NativeFrame, "native", "custom")
@@ -710,6 +711,10 @@ Private Class HelpAddIn
                 StartWindowDrag HelpWin.hWnd
             Case "browser"
                 OpenInBrowser
+            Case "geometry"
+                If TestSwitchOn() Then
+                    Host.DebugConsole.PrintText TAG & "window geometry " & WindowGeometry(HelpWin.hWnd, HelpWin.ControlHandle)
+                End If
             Case "frame"
                 If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "window page " & payload
         End Select
