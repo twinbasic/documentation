@@ -1,0 +1,51 @@
+[
+	{
+		"Appearance": "vbAppear3d",
+		"BorderStyle": "vbSizable",
+		"Caption": "twinBASIC Help",
+		"ControlBox": true,
+		"Enabled": true,
+		"FormDesignerId": "{4581D804-116B-436E-B7AB-1E4417F9703D}",
+		"Height": 640,
+		"Left": 0,
+		"MaxButton": true,
+		"MinButton": true,
+		"Name": "HelpWindow",
+		"ScaleHeight": 9600,
+		"ScaleMode": "vbTwips",
+		"ScaleWidth": 7200,
+		"ShowInTaskbar": true,
+		"StartUpPosition": "vbStartUpScreen",
+		"Top": 0,
+		"Visible": true,
+		"Width": 480,
+		"_children": [
+			{
+				"Anchors": {
+					"Bottom": true,
+					"Left": true,
+					"Right": true,
+					"Top": true,
+					"_clsid": "{8524D4B5-72A9-40A9-A189-29E7905C40CA}"
+				},
+				"DocumentURL": "",
+				"EnvironmentOptions": {
+					"UserDataFolder": "",
+					"_className": "WebView2EnvironmentOptions",
+					"_clsid": "{185E63C0-E641-47ED-B6A9-8565168A7FCF}"
+				},
+				"Height": 640,
+				"Index": -1,
+				"Left": 0,
+				"Name": "WebView",
+				"Top": 0,
+				"Visible": true,
+				"Width": 480,
+				"_className": "WebView2",
+				"_clsid": "{93B7E07E-6C7F-4758-8E51-4B1B17EC0A62}"
+			}
+		],
+		"_className": "Form",
+		"_clsid": "{33AD4F38-6699-11CF-B70C-00AA0060D393}"
+	}
+]

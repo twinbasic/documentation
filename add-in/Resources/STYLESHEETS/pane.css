@@ -1,6 +1,8 @@
 /* The help pane, inside its tool window's shadow root. The colours are the
    IDE theme's own custom properties, which the IDE sets on its document and
-   which a shadow root inherits, so a change of theme needs no code. */
+   which a shadow root inherits, so a change of theme needs no code. The
+   detached window's page (SHELL/shell.html) has the same elements, with the
+   same ids, and this file inlined; the add-in gives it the same properties. */
 
 /* --helpRow is the height of one result row. The list view draws its rows
    out of flow, so the add-in sets the list's height to its row count times
@@ -32,7 +34,9 @@
 }
 
 #helpSearch,
-#helpBrowser {
+#helpBrowser,
+#helpDetach,
+#helpAttach {
   font: inherit;
   color: inherit;
   background: transparent;
@@ -45,7 +49,9 @@
   min-width: 0;
 }
 
-#helpBrowser {
+#helpBrowser,
+#helpDetach,
+#helpAttach {
   flex: 0 0 auto;
   cursor: pointer;
 }
@@ -56,6 +62,8 @@
 }
 
 #helpBrowser:enabled:hover,
+#helpDetach:hover,
+#helpAttach:hover,
 #helpResults .hit:hover {
   background: var(--themeTreeItemHoverBackColor);
 }

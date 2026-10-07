@@ -5,12 +5,12 @@ add-in that shows the documentation for the symbol under the cursor, and the har
 tests IDE add-ins by machine, which the add-in is developed against.
 
 **Status.** Stages 1 to 3 stand. Stage 4, the add-in itself in [add-in/](add-in/), has
-increments 1 to 5 built and tested: F1 to a page, the help pane, the compiler's hover to tell
-which `Add`, a name with no page shown by its declaration and `[Description]`, and offline
-help served from an archive in the DLL.
+increments 1 to 7 built and tested: F1 to a page, the help pane, the compiler's hover to tell
+which `Add`, a name with no page shown by its declaration and `[Description]`, offline
+help served from an archive in the DLL, hover help, and a detached window.
 
 - `addin-test.bat` operates Samples 10 and 15 end to end and leaves the registry as it found it.
-- All seventeen of Stage 2's questions are answered. Sixteen are held by ten probe lanes that
+- All of Stage 2's questions, P1 to P19, are answered. Most are held by probe lanes that
   fail when a later IDE build behaves differently.
 - Every build publishes `tB/symbols.json`, 5,536 names at 4,086 URLs, under a drift guard that
   fails the build when one of its URLs goes.
@@ -25,7 +25,7 @@ one of three kinds:
 
 - stated plainly: read in the IDE's code or registry;
 - marked *(reported)*: from a static reading or a harvested finding, not re-checked;
-- marked with a probe number (**P1** to **P17**): only running the IDE can settle it.
+- marked with a probe number (**P1** to **P19**): only running the IDE can settle it.
   [Stage 2](#stage-2-probes-that-decide-the-design) lists them.
 
 ## Goals
@@ -613,7 +613,7 @@ registry, `IDESettings` included through hashes, is identical around the run.
 Most probes are a small add-in plus a scenario. P5, P11 and P13 need only CDP and the file
 system. Record every answer in this file with the build number it was measured on.
 
-All seventeen questions are answered.
+All nineteen questions are answered.
 
 **A probe whose answer something else rests on becomes a lane**: its add-in in
 `test/addin/probes/<name>/`, its scenario beside the others, listed in `lanes.mjs`, with each
@@ -666,6 +666,7 @@ The table gives each answer in brief; the sections above have the detail.
 | P16 | What does hover help through the public API cost, and how long does a widget live? **Answered, BETA 997:** `GetSelectionInfo` takes 0.5 ms a call, reading `Text` of a 152-character file 0.3 ms, `AddMonacoWidget` 2.8 ms and `Remove` 0.6 ms; a 100 ms `AddinTimer` ticks every 110 ms. A widget with a column is drawn above its line (below when there is no room), stays when the cursor moves, and is removed by the IDE when another file is shown; `Remove` on it after that raises no error. An add-in has no cursor or mouse event (only `OnProjectLoaded`, `OnChangedActiveEditor`, `OnChangedTheme`, a tool window's `OnClose` and a button's `OnClick`), so it can only poll the cursor, and cannot see the mouse | Stage 4, increment 6: polling every 250 ms costs nothing worth counting |
 | P17 | Can the page's Monaco take a second hover provider for `twinbasic`, as the add-in would register it through the page? **Answered, BETA 997: yes.** Its text is shown in the IDE's own hover, above the compiler's, from a synchronous answer and from a promise answered 500 ms later, and goes once the provider is disposed. Registered for `"*"`, which matches less closely than the IDE's `"twinbasic"`, its text is shown below the compiler's. A link in it is drawn as `<a data-href="<url>" href="">`, and a click listener on the window in the capture phase receives the click, and with `preventDefault` and `stopPropagation` nothing is opened. The IDE's hover shows after 1,000 ms (`hover:{delay:1e3}`) and is off when the user turns off *showExtraInformationWhenHovering* | Stage 4, increment 6: the mouse route, the owner's second exception to page internals |
 | P18 | What hides a hover once the mouse slides down it past the code editor's bottom? **Answered, BETA 997: the IDE's dock.** Its resizer along the editor's edge (`z-index: 1000`) and its drop targets lie over the hover, transparent, and take the mouse; Monaco's `_onEditorMouseLeave` then hides the hover. Monaco alone keeps a hover the mouse is over: its DOM stays inside the editor's, and the hover is sticky. CDP's mouse reproduces it only in steps small enough to land on the 6 px resizer; the owner's own mouse found it, under a watcher on the IDE's DevTools port that recorded `_hideWidgets`'s stack | Stage 4, increment 6: the add-in draws every hover above the dock, hover help on or off |
+| P19 | Can an add-in show a window of its own, a Form holding the WebView2 package's control? **Answered, BETA 997: yes** ([detach.test.mjs](test/addin/detach.test.mjs), `probes/detach`). A minimal hand-written `.tbform` builds, given `_className` and `_clsid` on the form and the control. `Show vbModeless` gives a visible top-level window, owned by the compiler's process (`twinBASIC_win32_noDEP.exe`, a child of `twinBASIC.exe`), with no message loop of the add-in's own; the control is ready about 250 ms after the first Show, 60--80 ms for a later form. A page loaded with `NavigateToString` posts to the add-in and receives what it posts, and an iframe in it loads an `http://localhost` page. Hide and Show keep the page; Unload and a new form work; the IDE ending leaves no `msedgewebview2.exe` of the window's behind. **The harness gives the IDE `WEBVIEW2_USER_DATA_FOLDER` and `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`, the compiler inherits them, and they override the control's own options: with them left in place the control fails, error `8007139F`** (which of the two, not isolated). With no user data folder set, the control uses `bin\twinBASIC_win32_noDEP.exe.WebView2`, which the IDE has made already | Stage 4, increment 7: the detached window, and the variables it removes under the test switch |
 
 ### Stage 3: the symbol index, generated by the docs build
 
@@ -1040,7 +1041,45 @@ harness about a second against opening a new IDE.
      move it against the window's right edge before the mouse rests anywhere; and a hover
      left open covers the toolbar, so each mouse case moves the mouse away at its end.
      `test/addin/hover.mjs` holds the helpers both lanes use.
-7. **Later:** offering only the packages the project references; how a user gets an add-in
+7. **A detached window. Built**, tested by the `help` and `help-offline` lanes on BETA 997,
+   at the owner's request (2026-10-07): the pane can be moved to another monitor. The
+   owner's choices: the add-in shows a window of its own, a twinBASIC Form holding the
+   WebView2 package's control (P19), rather than a `window.open` from the page, which would
+   be page internals and which the host most likely sends to the browser (the host DLL
+   names `NewWindowRequested` and imports `ShellExecuteA`; not tried, since it might open
+   a real browser); and the window holds the whole pane, not the page alone.
+   - **Detach**, a button in the pane's bar, hides the tool window and shows `HelpWindow`;
+     **Attach** in the window, or its X (`QueryUnload` with `vbFormControlMenu` is
+     cancelled), hides the window and shows the pane. The window is made once and then
+     hidden and shown, so its page is kept. It has no owner window and shows in the taskbar.
+   - **Its page** is a shell (`Resources/SHELL/`) loaded with `NavigateToString`, with the
+     pane's element ids, so `pane.css` applies unchanged; `shell.css` adds what the IDE's
+     document gave the pane, and the results are plain `.hit` rows rather than the IDE's
+     list view. The page and the add-in exchange `verb:payload` strings (`shell.js` lists
+     them); a result the page picks is shown only if it is one of the current results.
+   - **One state, two views.** The add-in keeps the pane's state either way, and while
+     detached sends every change to the window as well. The pane's frame is not given a page
+     while detached, so no page loads twice; Attach gives it the page it missed.
+   - **The theme**: the window's page is not the IDE's, so it has none of the IDE's
+     `--theme*` properties. `ThemeCss` reads the active theme's file as the IDE's
+     `buildThemeData` does (`Name: value;` to `--themeName`, `/* */` comments, `inherits:`
+     parent first, a theme that inherits nothing and is not Light or Dark inheriting Dark),
+     from the install's `themes` folder, then `%APPDATA%\twinBASIC\themes`, and sends it as
+     one `:root` rule; the lane checks four properties are the same in the IDE and the
+     window, before and after a change of theme. Which folder the IDE prefers when both
+     hold a file of one name was not found.
+   - **Kept** with `SaveSetting` (`Window`: `Detached`, `Left`, `Top`, `Width`, `Height`,
+     in pixels): a compiler restart ends the window with the compiler, and the new instance
+     opens it again. A saved place is used only if `MonitorFromRect` finds a monitor for it.
+     A show while the window is minimized restores it without activating it, so F1 does not
+     take the focus from the editor; otherwise the window is left where it is.
+   - **Its user data folder** is `%LOCALAPPDATA%\tbDocsHelp\WebView2`, and under the test
+     switch `%TEMP%\tbDocsHelp`, which the lanes make private. Under the test switch only,
+     the add-in also removes `WEBVIEW2_USER_DATA_FOLDER` and
+     `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` from the compiler's environment (P19), and
+     starts the control with the DevTools port in `TB_DOCS_HELP_WINDOW_PORT`, through which
+     the lane operates the window's page. The `%LOCALAPPDATA%` path is not run by any lane.
+8. **Later:** offering only the packages the project references; how a user gets an add-in
    with the archive.
 
 **Lookup:**

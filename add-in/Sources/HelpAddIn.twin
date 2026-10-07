@@ -7,7 +7,11 @@
 ' The pages come from the add-in's own server when it was built with the help
 ' archive (HelpServer), and from the live site otherwise. The pane's Hover
 ' help box turns on links to the pages in the IDE's hover under the mouse
-' (HoverHelp).
+' (HoverHelp). The pane's Detach button moves the whole pane into a window of
+' the add-in's own (HelpWindow), which can go to another monitor; Attach, or
+' closing the window, brings it back. While it is detached everything that
+' would show in the pane shows in the window, and the pane's frame is not
+' loaded. The pane keeps the state either way: the window is another view of it.
 ' Every line it prints to the DEBUG CONSOLE starts "[tbDocsHelp] ", except
 ' "open <url>" (see OpenUrl).
 Private Class HelpAddIn
@@ -32,6 +36,14 @@ Private Class HelpAddIn
     Private Server As HelpServer            ' Nothing unless the add-in has the archive
     Private WithEvents Hovering As HoverHelp ' Nothing without an index
     Private HoverBox As HtmlElement         ' the pane's Hover help checkbox
+    Private DetachButton As HtmlElement
+    Private WithEvents HelpWin As HelpWindow ' Nothing until the first Detach, then kept
+    Private Detached As Boolean             ' the window shows the help, the pane is hidden
+    Private LoadedFrame As String           ' the src the pane's frame was given
+    Private SearchText As String            ' what the search box holds, in either view
+    Private HoverOn As Boolean              ' what the Hover help box holds, in either view
+    Private SummaryHtml As String           ' what ShowSummary shows
+    Private ShowingSummary As Boolean       ' the summary shows in place of the page
 
     Private Const BASE_URL As String = "https://docs.twinbasic.com"
     Private Const TAG As String = "[tbDocsHelp] "
@@ -40,6 +52,8 @@ Private Class HelpAddIn
     ' SaveSetting's application name; test/addin/lanes.mjs names it too.
     Private Const SETTINGS_APP As String = "tbDocsHelp"
     Private Const SEARCH_LIMIT As Long = 100
+    ' The window's settings: whether it is detached, and where it is, in pixels.
+    Private Const WINDOW_SECTION As String = "Window"
 
     Public Sub New(ByVal Host As Host)
         Set Me.Host = Host
@@ -63,6 +77,9 @@ Private Class HelpAddIn
         ' pressing anything.
         Host.DebugConsole.PrintText TAG & "loaded, " & indexState & ", test switch " & _
             IIf(TestSwitchOn(), "on", "off")
+        ' A compiler restart ends the window with the compiler: this instance
+        ' opens it again.
+        If GetSetting(SETTINGS_APP, WINDOW_SECTION, "Detached", "0") = "1" Then Detach
     End Sub
 
     Private Function LoadIndex() As String
@@ -86,7 +103,10 @@ Private Class HelpAddIn
         If Len(Server.Origin) = 0 Then Set Server = Nothing
     End Sub
 
+    ' The window goes with the compiler, so its place is saved here as well as
+    ' when it is attached or closed.
     Private Sub Class_Terminate()
+        If Not HelpWin Is Nothing Then SaveWindowPlace
         If Not Server Is Nothing Then Server.CloseAll
     End Sub
 
@@ -124,18 +144,35 @@ Private Class HelpAddIn
         Return PagesUrl() & Left$(url, hash - 1) & query & Mid$(url, hash)
     End Function
 
-    ' A theme change loads the page again with the new theme. The pane itself
-    ' follows the theme through the IDE's CSS variables (pane.css).
+    ' A theme change loads the page again with the new theme: in the pane's
+    ' frame, or in the window, which is also sent the theme's properties. The
+    ' pane itself follows the theme through the IDE's CSS variables (pane.css).
     Private Sub Host_OnChangedTheme(ByVal ThemeName As String)
-        If Len(PageUrl) > 0 And Not Frame Is Nothing Then Frame.Properties.src = FrameUrl(PageUrl)
+        On Error GoTo Failed
+        If Detached Then
+            HelpWin.Post "theme:" & ThemeMessage()
+            If Len(PageUrl) > 0 And Not ShowingSummary Then HelpWin.Post "page:" & FrameUrl(PageUrl)
+        ElseIf Len(PageUrl) > 0 And Not Frame Is Nothing Then
+            LoadedFrame = FrameUrl(PageUrl)
+            Frame.Properties.src = LoadedFrame
+        End If
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
     End Sub
+
+    ' What the window is told of the theme: the group, for the plain palette it
+    ' falls back on, a line break, and the rule with the theme's properties.
+    Private Function ThemeMessage() As String
+        Return Host.Themes.ActiveThemeNameGroup & vbLf & ThemeRule(Host.Themes.ActiveThemeName)
+    End Function
 
     ' The pane's elements. Showing a tool window sets its root's display to
     ' block, so the flex layout is on a wrapper inside it.
     Private Sub BuildPane()
         ' Kept apart from the box: a property read straight after it is set
         ' can still give the old value.
-        Dim hoverOn As Boolean = GetSetting(SETTINGS_APP, "Hover", "On", "0") = "1"
+        HoverOn = GetSetting(SETTINGS_APP, "Hover", "On", "0") = "1"
         Set Pane = Host.ToolWindows.Add("tbDocsHelp", PANE_ID)
         Pane.Title = "TWINBASIC HELP"
         Pane.ApplyCss StrConv(LoadResDataInternal("pane.css", "STYLESHEETS"), VbStrConv.vbFromUTF8)
@@ -156,10 +193,13 @@ Private Class HelpAddIn
                     Set BrowserButton = .ChildDomElements.Add("helpBrowser", "button")
                     BrowserButton.Properties.innerText = "Open in browser"
                     BrowserButton.AddEventListener("click", AddressOf BrowserClicked)
+                    Set DetachButton = .ChildDomElements.Add("helpDetach", "button")
+                    DetachButton.Properties.innerText = "Detach"
+                    DetachButton.AddEventListener("click", AddressOf DetachClicked)
                     With .ChildDomElements.Add("helpHoverLabel", "label")
                         Set HoverBox = .ChildDomElements.Add("helpHover", "input")
                         HoverBox.Properties.type = "checkbox"
-                        HoverBox.Properties.checked = hoverOn
+                        HoverBox.Properties.checked = HoverOn
                         HoverBox.Properties.disabled = Hovering Is Nothing
                         HoverBox.AddEventListener("change", AddressOf HoverToggled)
                         .ChildDomElements.Add("helpHoverText", "span").Properties.innerText = "Hover help"
@@ -180,24 +220,38 @@ Private Class HelpAddIn
                     Dim mouseSink As HtmlElement = .ChildDomElements.Add("helpAskMouse", "div")
                     mouseSink.Properties.style.display = "none"
                     Hovering.Attach mouseSink
-                    Hovering.Enabled = hoverOn
+                    Hovering.Enabled = HoverOn
                 End If
             End With
         End With
         Set ResultIds = New Collection
         LastSearch = ""
-        If Len(PageUrl) > 0 Then Frame.Properties.src = FrameUrl(PageUrl)
+        SearchText = ""
+        ShowingSummary = False
+        LoadedFrame = ""
+        If Len(PageUrl) > 0 And Not Detached Then
+            LoadedFrame = FrameUrl(PageUrl)
+            Frame.Properties.src = LoadedFrame
+        End If
     End Sub
 
     ' Hover help is off until the box is ticked, and stays as it was left.
     Private Sub HoverToggled(ByVal eventInfo As HtmlEventProperties)
         On Error GoTo Failed
-        Dim isOn As Boolean = HoverBox.Properties.checked
-        SaveSetting SETTINGS_APP, "Hover", "On", IIf(isOn, "1", "0")
-        Hovering.Enabled = isOn
+        SetHover HoverBox.Properties.checked
         Exit Sub
     Failed:
         Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Turns hover help on or off, from the pane's box or the window's, and
+    ' shows it in both.
+    Private Sub SetHover(ByVal isOn As Boolean)
+        HoverOn = isOn
+        SaveSetting SETTINGS_APP, "Hover", "On", IIf(isOn, "1", "0")
+        Hovering.Enabled = isOn
+        HoverBox.Properties.checked = isOn
+        If Detached Then HelpWin.Post "hover:" & IIf(isOn, "1", "0")
     End Sub
 
     Private Sub Hovering_Pick(ByVal url As String)
@@ -217,8 +271,23 @@ Private Class HelpAddIn
     End Sub
 
     Private Sub ShowPaneForSearch()
-        Pane.Visible = True
-        SearchBox.Properties.focus()
+        ShowView
+        If Detached Then
+            HelpWin.Post "focus:"
+        Else
+            SearchBox.Properties.focus()
+        End If
+    End Sub
+
+    ' Shows the view that has the help: the pane, or the detached window, which
+    ' is left where it is unless it is minimized. Then it is restored without
+    ' taking the focus from the editor the user is typing in.
+    Private Sub ShowView()
+        If Not Detached Then
+            Pane.Visible = True
+        ElseIf IsMinimized(HelpWin.hWnd) Then
+            ShowWithoutActivating HelpWin.hWnd
+        End If
     End Sub
 
     Private Sub ShowHelp()
@@ -282,20 +351,37 @@ Private Class HelpAddIn
             Case 1
                 ShowPage Index.Url(pages(1))
             Case Else
-                SearchBox.Properties.value = word
+                SetSearchText word
                 LastSearch = word
                 ShowResults pages
-                Pane.Visible = True
+                ShowView
         End Select
     End Sub
 
+    ' Puts text in the search box, in whichever view shows it.
+    Private Sub SetSearchText(ByVal text As String)
+        SearchText = text
+        SearchBox.Properties.value = text
+        If Detached Then HelpWin.Post "search:" & text
+    End Sub
+
+    ' Shows a page in the pane's frame, or in the window's, in place of a
+    ' summary. The frame that is hidden is not given the page, so that no page
+    ' is loaded twice; Attach gives it the page it missed.
     Private Sub ShowPage(ByVal url As String)
         PageUrl = url
-        Frame.Properties.src = FrameUrl(url)
+        ShowingSummary = False
         Summary.Properties.style.display = "none"
         Frame.Properties.style.display = ""
         BrowserButton.Properties.disabled = False
-        Pane.Visible = True
+        If Detached Then
+            HelpWin.Post "page:" & FrameUrl(url)
+            HelpWin.Post "browser:1"
+        Else
+            LoadedFrame = FrameUrl(url)
+            Frame.Properties.src = LoadedFrame
+        End If
+        ShowView
         SaveSetting SETTINGS_APP, "Pane", "Page", url
     End Sub
 
@@ -306,14 +392,21 @@ Private Class HelpAddIn
     Private Sub ShowSummary(ByVal hover As String)
         Dim declaration As String, description As String, where As String
         ReadSummary hover, declaration, description, where
-        Summary.Properties.innerHTML = "<pre class='declaration'>" & HtmlText(declaration) & "</pre>" & _
+        SummaryHtml = "<pre class='declaration'>" & HtmlText(declaration) & "</pre>" & _
             IIf(Len(description) > 0, "<p class='description'>" & HtmlText(description) & "</p>", _
                 "<p class='description none'>No description.</p>") & _
             IIf(Len(where) > 0, "<p class='where'>Declared in " & HtmlText(where) & "</p>", "")
+        ShowingSummary = True
+        Summary.Properties.innerHTML = SummaryHtml
         Frame.Properties.style.display = "none"
         Summary.Properties.style.display = ""
         BrowserButton.Properties.disabled = True
-        Pane.Visible = True
+        If Detached Then
+            HelpWin.Post "summary:" & SummaryHtml
+            HelpWin.Post "browser:0"
+            If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "window summary"
+        End If
+        ShowView
     End Sub
 
     ' Fills the list with the entries ids, or hides it when there is no search.
@@ -326,8 +419,7 @@ Private Class HelpAddIn
         For Each i In ids
             ' Only the entry's number goes into the handler; the text is escaped.
             Results.addItem("<div class='hit' onclick='raiseEvent(""onPick"", event, true, " & _
-                CLng(i) & ")'><span class='label'>" & HtmlText(Index.Label(i)) & _
-                "</span><span class='kind'>" & HtmlText(Index.Kind(i)) & "</span></div>")
+                CLng(i) & ")'>" & ResultText(i) & "</div>")
         Next
         Dim rows As Long = ids.Count
         If rows = 0 And Len(LastSearch) > 0 Then
@@ -336,12 +428,34 @@ Private Class HelpAddIn
         End If
         ResultsElement.Properties.style.height = "calc(" & rows & " * var(--helpRow))"
         ResultsElement.Properties.style.display = IIf(rows > 0, "", "none")
+        If Detached Then PostResults
     End Sub
 
-    ' Searches again when the text has changed.
-    Private Sub SearchAgain()
+    ' A row's label and kind, escaped.
+    Private Function ResultText(ByVal i As Long) As String
+        Return "<span class='label'>" & HtmlText(Index.Label(i)) & "</span><span class='kind'>" & _
+            HtmlText(Index.Kind(i)) & "</span>"
+    End Function
+
+    ' Sends the window the rows ShowResults gave the list. The window's rows
+    ' carry the entry's number for it to post back; nothing else of the text
+    ' is trusted.
+    Private Sub PostResults()
+        Dim html As String
+        Dim i As Variant
+        For Each i In ResultIds
+            html = html & "<div class='hit' data-pick='" & CLng(i) & "'>" & ResultText(i) & "</div>"
+        Next
+        If ResultIds.Count = 0 And Len(LastSearch) > 0 Then html = "<div class='none'>No matches</div>"
+        HelpWin.Post "results:" & html
+        If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "window results " & ResultIds.Count
+    End Sub
+
+    ' Searches again when the text, from either view's search box, has changed.
+    Private Sub SearchAgain(ByVal text As String)
         If Index Is Nothing Then Exit Sub
-        Dim text As String = Trim$(SearchBox.Properties.value)
+        SearchText = text
+        text = Trim$(text)
         If text <> LastSearch Then
             LastSearch = text
             ShowResults Index.Search(text, SEARCH_LIMIT)
@@ -350,7 +464,7 @@ Private Class HelpAddIn
 
     Private Sub SearchChanged(ByVal eventInfo As HtmlEventProperties)
         On Error GoTo Failed
-        SearchAgain
+        SearchAgain SearchBox.Properties.value
         Exit Sub
     Failed:
         Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
@@ -359,22 +473,179 @@ Private Class HelpAddIn
     Private Sub SearchKeyUp(ByVal eventInfo As HtmlEventProperties)
         On Error GoTo Failed
         If Index Is Nothing Then Exit Sub
-        SearchAgain
-        If eventInfo.key = "Enter" And ResultIds.Count > 0 Then ShowPage Index.Url(ResultIds(1))
+        SearchAgain SearchBox.Properties.value
+        If eventInfo.key = "Enter" Then ShowFirstResult
         Exit Sub
     Failed:
         Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
     End Sub
 
+    ' Enter in a search box shows the first of the results.
+    Private Sub ShowFirstResult()
+        If ResultIds.Count > 0 Then ShowPage Index.Url(ResultIds(1))
+    End Sub
+
     Private Sub ResultPicked(ByVal eventInfo As HtmlEventProperties)
-        ShowPage Index.Url(CLng(eventInfo.customData0))
+        On Error GoTo Failed
+        PickResult CLng(eventInfo.customData0)
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Shows the page of entry i, which has to be one of the results: the window
+    ' names it in a message, which is only as good as the page that posted it.
+    Private Sub PickResult(ByVal i As Long)
+        Dim id As Variant
+        For Each id In ResultIds
+            If CLng(id) = i Then
+                ShowPage Index.Url(i)
+                Exit Sub
+            End If
+        Next
+    End Sub
+
+    Private Sub BrowserClicked(ByVal eventInfo As HtmlEventProperties)
+        OpenInBrowser
     End Sub
 
     ' Opens the page the add-in last gave the frame, or the site's home page.
     ' A link followed inside the frame is not seen: the live site is on
     ' another origin, whose location the IDE's page cannot read.
-    Private Sub BrowserClicked(ByVal eventInfo As HtmlEventProperties)
+    Private Sub OpenInBrowser()
         OpenUrl Host, SiteUrl() & IIf(Len(PageUrl) > 0, PageUrl, "/")
+    End Sub
+
+    ' ------------------------------------------------------------ the window
+
+    Private Sub DetachClicked(ByVal eventInfo As HtmlEventProperties)
+        Detach
+    End Sub
+
+    ' Hides the pane and shows the window, which is made the first time and
+    ' kept after, with the page it has. The page says "ready" once it has
+    ' loaded, and is sent the state then; a window already loaded is sent it
+    ' now.
+    Private Sub Detach()
+        On Error GoTo Failed
+        Dim first As Boolean = HelpWin Is Nothing
+        If first Then Set HelpWin = New HelpWindow
+        Detached = True
+        Pane.Visible = False
+        HelpWin.Show vbModeless
+        If first Then RestoreWindowPlace
+        SaveSetting SETTINGS_APP, WINDOW_SECTION, "Detached", "1"
+        If HelpWin.IsReady Then SendWindowState
+        If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "detached"
+        Exit Sub
+    Failed:
+        ' The help stays in the pane.
+        Detached = False
+        Pane.Visible = True
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Hides the window and shows the pane again, with the search box as it was
+    ' left in the window and the page the pane's frame has not been given yet.
+    Private Sub Attach()
+        On Error GoTo Failed
+        SaveWindowPlace
+        HelpWin.Hide
+        Detached = False
+        SaveSetting SETTINGS_APP, WINDOW_SECTION, "Detached", "0"
+        SearchBox.Properties.value = SearchText
+        If Len(PageUrl) > 0 And Not ShowingSummary Then
+            If LoadedFrame <> FrameUrl(PageUrl) Then
+                LoadedFrame = FrameUrl(PageUrl)
+                Frame.Properties.src = LoadedFrame
+            End If
+        End If
+        Pane.Visible = True
+        If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "attached"
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' The X asks to close the window, which is Attach.
+    Private Sub HelpWin_Closing()
+        Attach
+    End Sub
+
+    Private Sub HelpWin_Failed(ByVal text As String)
+        Host.DebugConsole.PrintText TAG & text
+    End Sub
+
+    ' What the window's page posts: "verb:payload" (shell.js).
+    Private Sub HelpWin_Message(ByVal text As String)
+        On Error GoTo Failed
+        Dim verb As String = text
+        Dim payload As String
+        Dim colon As Long = InStr(text, ":")
+        If colon > 0 Then
+            verb = Left$(text, colon - 1)
+            payload = Mid$(text, colon + 1)
+        End If
+        Select Case verb
+            Case "ready"
+                If Detached Then SendWindowState
+            Case "search"
+                SearchAgain payload
+            Case "enter"
+                ShowFirstResult
+            Case "pick"
+                PickResult CLng(payload)
+            Case "hover"
+                SetHover payload = "1"
+            Case "attach"
+                Attach
+            Case "browser"
+                OpenInBrowser
+            Case "frame"
+                If TestSwitchOn() Then Host.DebugConsole.PrintText TAG & "window page " & payload
+        End Select
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Gives the window all that the pane shows: the theme, the search box, the
+    ' Hover help box, the results, and the page or the summary.
+    Private Sub SendWindowState()
+        HelpWin.Post "theme:" & ThemeMessage()
+        HelpWin.Post "hoverdisabled:" & IIf(Hovering Is Nothing, "1", "0")
+        HelpWin.Post "hover:" & IIf(HoverOn, "1", "0")
+        HelpWin.Post "search:" & SearchText
+        PostResults
+        If ShowingSummary Then
+            HelpWin.Post "summary:" & SummaryHtml
+            HelpWin.Post "browser:0"
+        Else
+            If Len(PageUrl) > 0 Then HelpWin.Post "page:" & FrameUrl(PageUrl)
+            HelpWin.Post "browser:1"
+        End If
+    End Sub
+
+    ' The window's place is kept from one session to the next: its position
+    ' and size in pixels.
+    Private Sub SaveWindowPlace()
+        On Error Resume Next
+        Dim x As Long, y As Long, w As Long, h As Long
+        If Not WindowPlace(HelpWin.hWnd, x, y, w, h) Then Exit Sub
+        SaveSetting SETTINGS_APP, WINDOW_SECTION, "Left", CStr(x)
+        SaveSetting SETTINGS_APP, WINDOW_SECTION, "Top", CStr(y)
+        SaveSetting SETTINGS_APP, WINDOW_SECTION, "Width", CStr(w)
+        SaveSetting SETTINGS_APP, WINDOW_SECTION, "Height", CStr(h)
+    End Sub
+
+    ' Puts the window where it was, if that is on a monitor that is still
+    ' there; otherwise it stays where Windows put it.
+    Private Sub RestoreWindowPlace()
+        Dim x As Long = Val(GetSetting(SETTINGS_APP, WINDOW_SECTION, "Left", "0"))
+        Dim y As Long = Val(GetSetting(SETTINGS_APP, WINDOW_SECTION, "Top", "0"))
+        Dim w As Long = Val(GetSetting(SETTINGS_APP, WINDOW_SECTION, "Width", "0"))
+        Dim h As Long = Val(GetSetting(SETTINGS_APP, WINDOW_SECTION, "Height", "0"))
+        If w > 0 And h > 0 And IsOnScreen(x, y, w, h) Then PlaceWindow HelpWin.hWnd, x, y, w, h
     End Sub
 
     ' The selection when it is on one line, line then -1; else the name under

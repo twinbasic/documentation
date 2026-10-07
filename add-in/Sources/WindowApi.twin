@@ -1,0 +1,87 @@
+' The Win32 calls the detached help window needs: where the compiler is, the
+' window's place on the screen, showing it without taking the focus, and the
+' compiler's environment, so that no other file declares a Win32 function.
+Module WindowApi
+    Private Type RECT
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+
+    Private Declare PtrSafe Function GetModuleFileNameW Lib "kernel32" (ByVal hModule As LongPtr, _
+        ByVal lpFilename As LongPtr, ByVal nSize As Long) As Long
+    Private Declare PtrSafe Function SetEnvironmentVariableW Lib "kernel32" (ByVal lpName As LongPtr, _
+        ByVal lpValue As LongPtr) As Long
+    Private Declare PtrSafe Function IsIconic Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function ShowWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal nCmdShow As Long) As Long
+    Private Declare PtrSafe Function GetWindowRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT) As Long
+    Private Declare PtrSafe Function MoveWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal X As Long, _
+        ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal bRepaint As Long) As Long
+    Private Declare PtrSafe Function MonitorFromRect Lib "user32" (ByRef lprc As RECT, ByVal dwFlags As Long) As LongPtr
+
+    Private Const MAX_PATH As Long = 520
+    Private Const SW_SHOWNOACTIVATE As Long = 4
+    Private Const MONITOR_DEFAULTTONULL As Long = 0
+
+    ' The folder of the twinBASIC install, the parent of the bin folder the
+    ' compiler's executable is in. The add-in runs in the compiler's process.
+    Public Function InstallFolder() As String
+        Dim buffer As String = String$(MAX_PATH, vbNullChar)
+        Dim n As Long = GetModuleFileNameW(0, StrPtr(buffer), MAX_PATH)
+        Dim path As String = Left$(buffer, n)
+        Dim bin As Long = InStrRev(path, "\")
+        If bin = 0 Then Return ""
+        path = Left$(path, bin - 1)
+        bin = InStrRev(path, "\")
+        If bin = 0 Then Return ""
+        Return Left$(path, bin - 1)
+    End Function
+
+    ' Removes a variable from the compiler's own environment, which every
+    ' WebView2 control it makes reads.
+    Public Sub ClearEnvironmentVariable(ByVal name As String)
+        SetEnvironmentVariableW StrPtr(name), 0
+    End Sub
+
+    Public Function IsMinimized(ByVal hWnd As LongPtr) As Boolean
+        Return IsIconic(hWnd) <> 0
+    End Function
+
+    ' Shows a window in its last size and place, as it was before it was
+    ' minimized, without activating it.
+    Public Sub ShowWithoutActivating(ByVal hWnd As LongPtr)
+        ShowWindow hWnd, SW_SHOWNOACTIVATE
+    End Sub
+
+    ' The window's rectangle on the screen, in pixels. False when the window
+    ' has none, or is minimized, whose rectangle is not a place.
+    Public Function WindowPlace(ByVal hWnd As LongPtr, ByRef Left As Long, ByRef Top As Long, _
+            ByRef Width As Long, ByRef Height As Long) As Boolean
+        If IsIconic(hWnd) <> 0 Then Return False
+        Dim r As RECT
+        If GetWindowRect(hWnd, r) = 0 Then Return False
+        Left = r.Left
+        Top = r.Top
+        Width = r.Right - r.Left
+        Height = r.Bottom - r.Top
+        Return True
+    End Function
+
+    Public Sub PlaceWindow(ByVal hWnd As LongPtr, ByVal Left As Long, ByVal Top As Long, _
+            ByVal Width As Long, ByVal Height As Long)
+        MoveWindow hWnd, Left, Top, Width, Height, 1
+    End Sub
+
+    ' Whether a rectangle touches a monitor, so that a window saved on a monitor
+    ' that has since been unplugged is not put out of reach.
+    Public Function IsOnScreen(ByVal Left As Long, ByVal Top As Long, ByVal Width As Long, _
+            ByVal Height As Long) As Boolean
+        Dim r As RECT
+        r.Left = Left
+        r.Top = Top
+        r.Right = Left + Width
+        r.Bottom = Top + Height
+        Return MonitorFromRect(r, MONITOR_DEFAULTTONULL) <> 0
+    End Function
+End Module

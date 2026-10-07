@@ -1,0 +1,54 @@
+[FormDesignerId("7B247100-0000-4000-9000-7B24710000F1")]
+Class DetachForm
+
+    Public Sub New()
+    End Sub
+
+    ' The user data folder is set here, before the environment is built, unless
+    ' the lane asks for the variant that leaves it empty (TB_DETACH_NOUDF).
+    Private Sub WebView_Create() Handles WebView.Create
+        Log "create"
+        If Len(Environ$("TB_DETACH_NOUDF")) = 0 Then
+            WebView.EnvironmentOptions.UserDataFolder = Environ$("TEMP") & "\tbDetachProbe"
+        End If
+    End Sub
+
+    Private Sub WebView_Error(ByVal code As Long, ByVal msg As String) Handles WebView.Error
+        Log "error " & Hex$(code) & " " & msg
+    End Sub
+
+    Private Sub WebView_Ready() Handles WebView.Ready
+        Log "ready " & (Ticks() - ShowTick)
+        Log "browser pid " & WebView.BrowserProcessId
+        WebView.NavigateToString ShellHtml(Environ$("TB_DETACH_URL"))
+    End Sub
+
+    Private Sub WebView_NavigationComplete(ByVal IsSuccess As Boolean, ByVal WebErrorStatus As Long) Handles WebView.NavigationComplete
+        Log "navigated " & IsSuccess & " " & WebErrorStatus
+    End Sub
+
+    Private Sub WebView_JsMessage(ByVal Message As Variant) Handles WebView.JsMessage
+        Log "msg " & Message
+        If Message = "shell-loaded" Then WebView.PostWebMessage "ping"
+    End Sub
+
+    Private Sub Form_Unload(Cancel As Integer)
+        Log "form unload event"
+    End Sub
+
+    ' The page: posts shell-loaded, echoes what the host posts, and loads the
+    ' iframe whose URL the lane passed in.
+    Private Function ShellHtml(ByVal frameUrl As String) As String
+        Dim h As String
+        h = "<!doctype html><html><body><p id='t'>shell</p><iframe id='f' width='400' height='100'></iframe>" & vbLf
+        h &= "<script>" & vbLf
+        h &= "var w = window.chrome.webview;" & vbLf
+        h &= "w.postMessage('shell-loaded');" & vbLf
+        h &= "w.addEventListener('message', function (e) { w.postMessage('echo:' + e.data); });" & vbLf
+        h &= "var f = document.getElementById('f');" & vbLf
+        h &= "f.addEventListener('load', function () { w.postMessage('frame-loaded:' + f.src); });" & vbLf
+        h &= "f.src = '" & frameUrl & "';" & vbLf
+        h &= "</script></body></html>"
+        Return h
+    End Function
+End Class

@@ -1,0 +1,100 @@
+' The detached help window: a top-level window of the add-in's own, with one
+' WebView2 on it, which shows the whole help pane (Resources/SHELL). It knows
+' nothing of the help itself. What the page posts comes out as Message, what the
+' add-in posts goes in with Post, and closing it with the X raises Closing and
+' leaves the window to the add-in, which hides it. It has no owner window, so
+' the user can move it to another monitor and the IDE does not cover it.
+[FormDesignerId("4581D804-116B-436E-B7AB-1E4417F9703D")]
+Class HelpWindow
+    Public Event Message(ByVal text As String)
+    Public Event Closing()
+    Public Event Failed(ByVal text As String)
+
+    Private PageReady As Boolean
+
+    Public Sub New()
+    End Sub
+
+    ' Whether the page has loaded and posted "ready", which is when Post starts
+    ' to reach it.
+    Public Property Get IsReady() As Boolean
+        Return PageReady
+    End Property
+
+    ' Sends the page a message. One sent before the page is ready has nowhere
+    ' to go, and is dropped: the add-in sends the whole state when the page
+    ' says "ready".
+    Public Sub Post(ByVal text As String)
+        If PageReady Then WebView.PostWebMessage text
+    End Sub
+
+    ' The control's environment, which has to be set before it is built. A
+    ' folder of its own keeps the control from sharing the IDE's, which the
+    ' runtime refuses with different options. The harness gives the IDE
+    ' WEBVIEW2_USER_DATA_FOLDER and WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS, the
+    ' compiler inherits them, and the runtime lets them override the control's
+    ' own settings: the control then fails with error 8007139F, "Error occurred
+    ' creating the WebView2 controller". So under the test switch they are
+    ' removed, and the lane may ask for a debugging port of the window's own,
+    ' to read its page with.
+    Private Sub WebView_Create() Handles WebView.Create
+        If TestSwitchOn() Then
+            ClearEnvironmentVariable "WEBVIEW2_USER_DATA_FOLDER"
+            ClearEnvironmentVariable "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"
+            WebView.EnvironmentOptions.UserDataFolder = Environ$("TEMP") & "\tbDocsHelp"
+            Dim port As String = Environ$("TB_DOCS_HELP_WINDOW_PORT")
+            If Len(port) > 0 Then
+                WebView.EnvironmentOptions.AdditionalBrowserArguments = _
+                    "--remote-debugging-port=" & port & " --remote-allow-origins=*"
+            End If
+        Else
+            Dim folder As String = Environ$("LOCALAPPDATA") & "\tbDocsHelp"
+            On Error Resume Next
+            MkDir folder
+            MkDir folder & "\WebView2"
+            On Error GoTo 0
+            WebView.EnvironmentOptions.UserDataFolder = folder & "\WebView2"
+        End If
+    End Sub
+
+    Private Sub WebView_Error(ByVal code As Long, ByVal msg As String) Handles WebView.Error
+        RaiseEvent Failed("window error " & Hex$(code) & ": " & msg)
+    End Sub
+
+    Private Sub WebView_Ready() Handles WebView.Ready
+        On Error GoTo Failed
+        WebView.NavigateToString ShellHtml()
+        Exit Sub
+    Failed:
+        RaiseEvent Failed("window error " & Err.Number & ": " & Err.Description)
+    End Sub
+
+    Private Sub WebView_JsMessage(ByVal Message As Variant) Handles WebView.JsMessage
+        Dim text As String = CStr(Message)
+        If text = "ready" Then PageReady = True
+        RaiseEvent Message(text)
+    End Sub
+
+    ' The X, and the window menu's Close, only ask to close: the window is
+    ' hidden and shown again, so that its page is kept. Anything else, as the
+    ' add-in unloading it, goes through.
+    Private Sub Form_QueryUnload(Cancel As Integer, UnloadMode As Integer)
+        If UnloadMode = vbFormControlMenu Then
+            Cancel = True
+            RaiseEvent Closing
+        End If
+    End Sub
+
+    ' The page: the pane's stylesheet and the window's, and the script, in the
+    ' one document NavigateToString loads.
+    Private Function ShellHtml() As String
+        Dim html As String = ResourceText("shell.html", "SHELL")
+        html = Replace(html, "$PANE_CSS$", ResourceText("pane.css", "STYLESHEETS"))
+        html = Replace(html, "$SHELL_CSS$", ResourceText("shell.css", "SHELL"))
+        Return Replace(html, "$SCRIPT$", ResourceText("shell.js", "SHELL"))
+    End Function
+
+    Private Function ResourceText(ByVal name As String, ByVal folder As String) As String
+        Return StrConv(LoadResDataInternal(name, folder), VbStrConv.vbFromUTF8)
+    End Function
+End Class

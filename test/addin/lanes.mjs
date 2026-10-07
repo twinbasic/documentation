@@ -35,6 +35,8 @@ export default [
   { file: "env.test.mjs" },
   // Hover help's two routes: widgets builds its add-in and saves nothing.
   { file: "widgets.test.mjs" },
+  // Detaching the help pane: a Form with a WebView2, shown by an add-in. Saves nothing.
+  { file: "detach.test.mjs" },
   // The help add-in, add-in/ at the repository's root. It saves the page its
   // pane shows. The second lane builds it with the help archive, so its pane's
   // pages come from the add-in's own server.

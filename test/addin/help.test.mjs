@@ -16,6 +16,12 @@
 // Each case is a line and column in helphost/Sources/Cases.twin, so a change to
 // that file is a change to this table.
 //
+// The last cases are the Detach button, which moves the pane into a window of
+// the add-in's own, a Form holding a WebView2 control. The window's page is
+// read and operated over DevTools: the add-in starts the control with the
+// debugging port in TB_DOCS_HELP_WINDOW_PORT, which only the test switch
+// allows, and prints "window page <src>" when the frame in it has loaded.
+//
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 
 import assert from "node:assert/strict";
@@ -26,6 +32,7 @@ import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { createStaticHandler } from "../../builder/static-files.mjs";
 import { writeHelpArchive } from "../../lib/help-archive.mjs";
+import { attach } from "../../scripts/lib/tb-cdp.mjs";
 import { sleep } from "../../scripts/lib/tb-ide.mjs";
 import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
@@ -44,6 +51,7 @@ import {
   typeText,
   waitFor,
 } from "../../scripts/lib/tb-operate.mjs";
+import { claimPorts } from "../../scripts/lib/tb-ports.mjs";
 import { hoverLink, hoverText, mouseAway, restMouse } from "./hover.mjs";
 import { frameEval, frameOf, serveLoopback } from "./pages.mjs";
 import { scenario } from "./scenario.mjs";
@@ -148,6 +156,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   let origin; // the site this file serves
   let pages; // where the frame's pages come from: origin, or the add-in's server
   let server;
+  let windowPort; // the detached window's DevTools port
   const offline = lane.name === "help-offline";
 
   // The frame shows `url` from the built site in the IDE's theme: the add-in
@@ -277,7 +286,8 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       }
     }
     await lane.addAddin(src);
-    c = await lane.open(HOST, { env: { TB_DOCS_HELP_SITE: origin } });
+    [windowPort] = await claimPorts(1, { from: 9760 });
+    c = await lane.open(HOST, { env: { TB_DOCS_HELP_SITE: origin, TB_DOCS_HELP_WINDOW_PORT: String(windowPort) } });
     pages = await pagesOrigin(null);
     await openFile(c, FILE, { line: 5, column: 9 });
   });
@@ -609,13 +619,19 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
 })()`);
 
   // The hover under the mouse at a place, once the IDE's own text is in it.
+  // The first hover after a compiler restart can come back empty, while the
+  // compiler is still starting, and stays empty however long the mouse rests;
+  // the mouse then rests again, once.
   async function mouseHover(line, column, want = "in VBA.") {
     await paneAside();
-    await restMouse(c, line, column);
-    return waitFor(c, async (c) => {
-      const t = await hoverText(c);
-      return t?.includes(want) && t;
-    });
+    for (let attempt = 0; ; attempt++) {
+      await restMouse(c, line, column);
+      const t = await waitFor(c, async (c) => {
+        const t = await hoverText(c);
+        return t?.includes(want) && t;
+      });
+      if (t || attempt === 1) return t;
+    }
   }
 
   test("hover help is off until its box is ticked", async () => {
@@ -702,5 +718,225 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     await mouseAway(c);
   });
 
-  return () => server?.close();
+  // ------------------------------------------------------------ the detached window
+
+  let win; // the DevTools connection to the window's page
+  // The src of the frame in the window, from the add-in's "window page" line
+  // after a mark.
+  const windowPage = async (mark) =>
+    (await addinLines(c, mark)).find((l) => l.startsWith("window page "))?.slice("window page ".length) ?? null;
+  const windowRows = () =>
+    win.evaluate(`[...document.querySelectorAll("#helpResults .hit .label")].map((e) => e.textContent)`);
+  const windowBox = () => win.evaluate(`document.getElementById("helpHover").checked`);
+  // The centre of an element of the window's page, and a click there.
+  async function clickInWindow(css) {
+    const p = await win.evaluate(`(() => { const r = document.querySelector(${JSON.stringify(css)})
+      .getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+    await clickAt(win, p.x, p.y);
+  }
+  // The same theme properties in the IDE and in the window's page; the IDE
+  // sets them on its document, the add-in on the window's from the theme's
+  // files. None is in the window's plain palette.
+  const THEME_PROPERTIES = ["CodePanelBackColor", "MenuBackColor", "TreeItemHoverBackColor", "ErrorTabTextColor"];
+  const themeProperties = (conn) =>
+    conn.evaluate(
+      `${JSON.stringify(THEME_PROPERTIES)}.map((n) => getComputedStyle(document.documentElement).getPropertyValue("--theme" + n).trim())`,
+    );
+
+  // Click Detach in the pane, and wait for the window to say "detached".
+  async function detach() {
+    const mark = await consoleMark(c);
+    await click(c, { toolWindow: PANE, css: "#helpDetach" });
+    assert.ok(
+      await waitFor(c, async (c) => (await addinLines(c, mark)).includes("detached"), { timeout: 30 * 1000 }),
+      `the add-in did not detach: ${JSON.stringify(await addinLines(c, mark))}`,
+    );
+    return mark;
+  }
+
+  // Connect to the window's page, which the control starts with the debugging
+  // port: the page is there once the window has made its control.
+  async function connectWindow() {
+    win?.close();
+    win = null;
+    const connected = await waitFor(
+      c,
+      async () => {
+        try {
+          win = await attach(windowPort, "", { timeout: 30 * 1000 });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { timeout: 30 * 1000 },
+    );
+    assert.ok(connected, `no page on the window's debugging port ${windowPort}`);
+    await win.send("Emulation.setFocusEmulationEnabled", { enabled: true });
+  }
+
+  test("Detach hides the pane and shows the window with the page the pane had, and the pane's frame stays", async () => {
+    const was = await frameSrc(c);
+    assert.ok(was, "the pane had no page to carry over");
+    const mark = await detach();
+    assert.equal(await waitFor(c, () => windowPage(mark), { timeout: 30 * 1000 }), was);
+    assert.equal((await toolWindow(c, PANE))?.visible, false, "the pane is still showing");
+    assert.equal(await frameSrc(c), was);
+    await connectWindow();
+    assert.equal(await win.evaluate(`document.getElementById("helpPage").src`), was);
+    assert.equal(await win.evaluate(`document.title`), "twinBASIC Help");
+  });
+
+  test("the window has the IDE theme's properties", async () => {
+    const ide = await themeProperties(c);
+    assert.ok(
+      ide.every((v) => v),
+      JSON.stringify(ide),
+    );
+    assert.deepEqual(await themeProperties(win), ide);
+    assert.equal(
+      await win.evaluate(`document.documentElement.getAttribute("data-group")`),
+      await themeGroup(c),
+      "the window's group",
+    );
+  });
+
+  test("F1 shows the page in the window, and the pane is left alone", async () => {
+    const pane = await frameSrc(c);
+    await at(c, 7, 21);
+    const mark = await consoleMark(c);
+    await pressKey(c, "F1");
+    const want = `${pages}/tB/Modules/Strings/Len?theme=${await themeGroup(c)}&pane=1`;
+    assert.equal(await waitFor(c, () => windowPage(mark)), want);
+    assert.equal(await win.evaluate(`document.getElementById("helpPage").src`), want);
+    assert.equal(await frameSrc(c), pane, "the pane's frame changed");
+    assert.equal((await toolWindow(c, PANE))?.visible, false, "the pane is showing");
+    assert.deepEqual(await addinLines(c, mark), [`window page ${want}`]);
+  });
+
+  test("typing in the window's search box lists the results there, and Enter shows the first", async () => {
+    const mark = await consoleMark(c);
+    await win.evaluate(`document.getElementById("helpSearch").focus()`);
+    await typeText(win, "msgbo");
+    const rows = await waitFor(c, async () => {
+      const r = await windowRows();
+      return r[0] === "Interaction.MsgBox" && r;
+    });
+    assert.ok(rows, JSON.stringify(await windowRows()));
+    assert.ok((await addinLines(c, mark)).some((l) => /^window results \d+$/.test(l)));
+    const enter = await consoleMark(c);
+    await pressKey(win, "Enter");
+    assert.equal(
+      await waitFor(c, () => windowPage(enter)),
+      `${pages}/tB/Modules/Interaction/MsgBox?theme=${await themeGroup(c)}&pane=1`,
+    );
+  });
+
+  test("a click on a result in the window shows its page there", async () => {
+    const rows = await windowRows();
+    const n = rows.indexOf("Interaction.MsgBox");
+    assert.ok(n >= 0, JSON.stringify(rows));
+    const mark = await consoleMark(c);
+    // The first row is the page shown already; the next is another entry.
+    await clickInWindow(`#helpResults .hit:nth-child(${n === 0 ? 2 : 1})`);
+    const got = await waitFor(c, () => windowPage(mark));
+    assert.ok(got?.startsWith(`${pages}/tB/`) && !got.includes("/Interaction/MsgBox?"), String(got));
+    assert.equal((await toolWindow(c, PANE))?.visible, false);
+  });
+
+  test("Hover help can be ticked in the window, and the pane's box follows", async () => {
+    assert.equal(await hoverBox(), false);
+    await clickInWindow("#helpHover");
+    assert.ok(await waitFor(c, async () => (await hoverBox()) === true), "the pane's box is not ticked");
+    assert.equal(await windowBox(), true);
+    await clickInWindow("#helpHover");
+    assert.ok(await waitFor(c, async () => (await hoverBox()) === false), "the pane's box is still ticked");
+    assert.equal(await windowBox(), false);
+  });
+
+  test("a name with no page shows its summary in the window, and Open in browser is disabled there", async () => {
+    await at(c, 18, 10);
+    const mark = await consoleMark(c);
+    await pressKey(c, "F1");
+    assert.ok(
+      await waitFor(c, async (c) => (await addinLines(c, mark)).includes("window summary")),
+      JSON.stringify(await addinLines(c, mark)),
+    );
+    const shown = await win.evaluate(`({
+      declaration: document.querySelector("#helpSummary .declaration")?.textContent,
+      summary: document.getElementById("helpSummary").style.display,
+      frame: document.getElementById("helpPage").style.display,
+      browserDisabled: document.getElementById("helpBrowser").disabled,
+    })`);
+    assert.deepEqual(shown, { declaration: "Sub Beep ( )", summary: "", frame: "none", browserDisabled: true });
+  });
+
+  test("a theme change reaches the window", async () => {
+    const was = await themeGroup(c);
+    const other = was === "dark" ? "light" : "dark";
+    const switchTo = (group) =>
+      c.evaluate(
+        `executeIdeCommand(${JSON.stringify(group === "dark" ? "tbTheme_SwitchToDarkMode" : "tbTheme_SwitchToLightMode")})`,
+      );
+    try {
+      await switchTo(other);
+      assert.equal(await themeGroup(c), other, "the IDE's theme did not change");
+      const sameAsIde = await waitFor(
+        c,
+        async () => JSON.stringify(await themeProperties(win)) === JSON.stringify(await themeProperties(c)),
+      );
+      assert.ok(sameAsIde, "the window's properties are not the new theme's");
+      assert.equal(await win.evaluate(`document.documentElement.getAttribute("data-group")`), other);
+    } finally {
+      await switchTo(was);
+    }
+    assert.ok(
+      await waitFor(
+        c,
+        async () => JSON.stringify(await themeProperties(win)) === JSON.stringify(await themeProperties(c)),
+      ),
+      "the window's properties are not the old theme's again",
+    );
+  });
+
+  test("Attach brings the pane back with the search and the last page", async () => {
+    await at(c, 7, 21);
+    const mark = await consoleMark(c);
+    await pressKey(c, "F1");
+    const want = `${pages}/tB/Modules/Strings/Len?theme=${await themeGroup(c)}&pane=1`;
+    assert.equal(await waitFor(c, () => windowPage(mark)), want);
+    await clickInWindow("#helpAttach");
+    assert.ok(
+      await waitFor(c, async (c) => (await addinLines(c, mark)).includes("attached")),
+      JSON.stringify(await addinLines(c, mark)),
+    );
+    assert.ok(await waitFor(c, async (c) => (await toolWindow(c, PANE))?.visible), "the pane is not showing");
+    await showsPage("/tB/Modules/Strings/Len");
+    assert.equal(await searchValue(c), "msgbo");
+  });
+
+  test("a detached window comes back after a compiler restart", async () => {
+    await detach();
+    const mark = await consoleMark(c);
+    await lane.restartCompiler();
+    pages = await pagesOrigin(mark);
+    assert.ok(
+      await waitFor(c, async (c) => (await addinLines(c, mark)).includes("detached"), { timeout: 30 * 1000 }),
+      JSON.stringify(await addinLines(c, mark)),
+    );
+    const want = `${pages}/tB/Modules/Strings/Len?theme=${await themeGroup(c)}&pane=1`;
+    assert.equal(await waitFor(c, () => windowPage(mark), { timeout: 30 * 1000 }), want);
+    assert.equal((await toolWindow(c, PANE))?.visible, false);
+    await connectWindow();
+    const attached = await consoleMark(c);
+    await clickInWindow("#helpAttach");
+    assert.ok(await waitFor(c, async (c) => (await addinLines(c, attached)).includes("attached")));
+    assert.ok(await waitFor(c, async (c) => (await toolWindow(c, PANE))?.visible), "the pane is not showing");
+    await showsPage("/tB/Modules/Strings/Len");
+  });
+
+  return () => {
+    win?.close();
+    server?.close();
+  };
 });
