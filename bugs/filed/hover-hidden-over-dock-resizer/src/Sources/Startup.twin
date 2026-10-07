@@ -1,0 +1,10 @@
+Module Startup
+    Public Sub Main()
+        Dim c As Collection ' HOVER: the hover lists the members and reaches past the editor
+        Set c = New Collection
+        c.Add 1
+    End Sub
+End Module
+' Hover over Collection on line 3, wait a second for the hover, and slide the mouse
+' down inside it. The hover disappears when the pointer crosses the code editor's
+' bottom edge, though the mouse is still over the hover.

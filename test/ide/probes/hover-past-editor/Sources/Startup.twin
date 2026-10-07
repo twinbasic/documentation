@@ -1,0 +1,9 @@
+Module Startup
+    Public Sub Main()
+        Dim c As Collection ' HOVER: the hover lists the members and reaches past the editor
+        Set c = New Collection
+        c.Add 1
+    End Sub
+End Module
+' The project test/ide/hover-past-editor.test.mjs runs: hover over Collection on
+' line 3 and slide the mouse down inside the hover, past the code editor's bottom.
