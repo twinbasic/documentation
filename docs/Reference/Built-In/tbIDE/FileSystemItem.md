@@ -35,7 +35,10 @@ The item's name (the last segment of its [**Path**](#path)). **String**, read-on
 ### Parent
 {: .no_toc }
 
-The folder that contains this item. **As** [**Folder**](Folder). Read-only. The root folder's **Parent** is **Nothing**.
+The folder that contains this item. **As** [**Folder**](Folder). Read-only. The **Parent** of the project's folder, [**Project.RootFolder**](Project#rootfolder), is the file system's root, [**FileSystem.RootFolder**](FileSystem#rootfolder), whose **Path** is `twinbasic:/`.
+
+> [!WARNING]
+> In BETA 997, reading **Parent** of the file system's root crashes the compiler, and the add-in with it. The read itself crashes, before anything is done with the value, so neither `Is Nothing` nor **TypeName** can test it, and each compiler the IDE restarts crashes again when the add-in reaches the read. Tell the root by its **Path**, `twinbasic:/`, rather than by its **Parent**.
 
 ### Path
 {: .no_toc }

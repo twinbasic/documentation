@@ -1,0 +1,12 @@
+{
+  "mode": "lane",
+  "lane": "addin:parent",
+  "tests": [
+    "case a: Dim o As Object = RootFolder.Parent crashes at the read",
+    "case b: the same, then o Is Nothing: crashes at the read, so before the test",
+    "case c: RootFolder.Parent Is Nothing in one expression crashes",
+    "case d: TypeName(RootFolder.Parent) crashes",
+    "case e: Dim f As Folder = RootFolder.Parent crashes at the read"
+  ],
+  "steps": "WARNING: this add-in crashes the compiler every time it loads, until its DLL is removed. The IDE restarts the compiler, which loads the add-in and crashes again, and so on. Try it in an IDE whose add-ins you can restore.\n1. Open rootfolder-parent-crash.twinproj in the twinBASIC IDE and build it (win32). Copy Build\\RootfolderParentCrash_win32.dll into %APPDATA%\\twinBASIC\\addins\\win32\\ and restart the IDE.\n2. Open any project. Expected: the DEBUG CONSOLE prints before Parent and then after Parent. Actual: it prints before Parent only, and the compiler crashes in the read of Host.FileSystem.RootFolder.Parent. The IDE restarts the compiler, which loads the add-in and crashes again (3 or 4 times in a run).\n3. To get the IDE working again, close it and delete RootfolderParentCrash_win32.dll from %APPDATA%\\twinBASIC\\addins\\win32\\ (or move it out of that folder).\n4. Control: in the add-in's Host_OnProjectLoaded, read Host.CurrentProject.RootFolder.Parent instead. It reads fine, and its Path is twinbasic:/. An add-in that reads neither does not crash.\nAsserted on BETA 983, 995 and 997 by `addin-test.bat --only parent` (P21, the ParentProbe add-in in test/addin/probes/parent, of which this project is a cut-down copy)."
+}

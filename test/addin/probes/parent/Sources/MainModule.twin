@@ -1,0 +1,97 @@
+' P21 in WIP.HelpAddin.md: what reading the Parent of the virtual file system's
+' root folder does. The documentation says it is Nothing; an add-in that tested
+' `item.Parent Is Nothing` on the root crashed the compiler. parent.test.mjs
+' builds this add-in into the copy of the install its lane makes, and opens a
+' project once per case, naming the case in the environment variable
+' TB_P21_CASE, which an add-in reads with Environ$ (P10). Each case is run in a
+' compiler of its own, since a crash ends the process the add-in runs in.
+'
+' Every line starts "[P21] <case> ", so the last one printed shows which step
+' the compiler died in. A case prints "start" first and "done" last.
+'
+'   none  the control: reads nothing
+'   a     Dim o As Object = RootFolder.Parent, then "read"
+'   b     the same, then o Is Nothing
+'   c     RootFolder.Parent Is Nothing in one expression
+'   d     TypeName(RootFolder.Parent)
+'   e     Dim f As Folder = RootFolder.Parent, then "read"
+'   f     the control with a parent: the project folder's Parent, by its Path
+Module MainModule
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New ParentProbeAddin(Host)
+    End Function
+
+    Public Sub Say(ByVal Host As Host, ByVal which As String, ByVal text As String)
+        Host.DebugConsole.PrintText "[P21] " & which & " " & text
+    End Sub
+
+    Public Sub CaseA(ByVal Host As Host)
+        Say Host, "a", "before Parent"
+        Dim o As Object = Host.FileSystem.RootFolder.Parent
+        Say Host, "a", "read"
+    End Sub
+
+    Public Sub CaseB(ByVal Host As Host)
+        Say Host, "b", "before Parent"
+        Dim o As Object = Host.FileSystem.RootFolder.Parent
+        Say Host, "b", "read"
+        Dim isNone As Boolean = o Is Nothing
+        Say Host, "b", "tested Is Nothing = " & isNone
+    End Sub
+
+    Public Sub CaseC(ByVal Host As Host)
+        Say Host, "c", "before Is Nothing"
+        Dim isNone As Boolean = Host.FileSystem.RootFolder.Parent Is Nothing
+        Say Host, "c", "tested Is Nothing = " & isNone
+    End Sub
+
+    Public Sub CaseD(ByVal Host As Host)
+        Say Host, "d", "before TypeName"
+        Dim t As String = TypeName(Host.FileSystem.RootFolder.Parent)
+        Say Host, "d", "TypeName = " & t
+    End Sub
+
+    Public Sub CaseE(ByVal Host As Host)
+        Say Host, "e", "before Parent"
+        Dim f As Folder = Host.FileSystem.RootFolder.Parent
+        Say Host, "e", "read"
+    End Sub
+
+    Public Sub CaseF(ByVal Host As Host)
+        Say Host, "f", "before Parent"
+        Dim f As Folder = Host.CurrentProject.RootFolder.Parent
+        Say Host, "f", "read"
+        Say Host, "f", "Path = " & f.Path
+    End Sub
+
+    Public Sub Run(ByVal Host As Host, ByVal which As String)
+        Say Host, which, "start"
+        Select Case which
+            Case "a": CaseA Host
+            Case "b": CaseB Host
+            Case "c": CaseC Host
+            Case "d": CaseD Host
+            Case "e": CaseE Host
+            Case "f": CaseF Host
+        End Select
+        Say Host, which, "done"
+    End Sub
+End Module
+
+Private Class ParentProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "ParentProbe AddIn"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        Run Host, Environ$("TB_P21_CASE")
+    End Sub
+End Class
