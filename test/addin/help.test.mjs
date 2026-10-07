@@ -626,10 +626,9 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.deepEqual(await addinLines(c, mark), []);
   });
 
-  // Monaco hides a hover once the mouse leaves the editor, even onto the part
-  // of the hover that reaches past the editor's edge, so the link has to be
-  // inside the editor: it is the hover's first line.
-  test("with the box ticked, the mouse hover has the link first, inside the editor, and a click shows the page", async () => {
+  // The link is the hover's first line, where a long hover shows it without
+  // being scrolled.
+  test("with the box ticked, the mouse hover has the link first, and a click shows the page", async () => {
     await click(c, { toolWindow: PANE, css: "#helpHover" });
     assert.equal(await hoverBox(), true);
     const mark = await consoleMark(c);
@@ -639,14 +638,33 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.equal(t.split(COLLECTION_LINK).length, 2, `the link is there more than once: ${JSON.stringify(t)}`);
     const link = await hoverLink(c, COLLECTION_LINK);
     assert.ok(link?.top, `the link cannot be clicked: ${JSON.stringify(link)}`);
-    const bottom = await c.evaluate("editor.getDomNode().getBoundingClientRect().bottom");
-    assert.ok(link.y < bottom, `the link is below the editor's edge (${bottom}): ${JSON.stringify(link)}`);
     await markFrame();
     await clickAt(c, link.x, link.y);
     await showsPage("/tB/Modules/Collection/", { fresh: true });
     await mouseAway(c);
     assert.deepEqual(await openedUrls(c, { since: mark }), [], "the click opened a browser");
     assert.deepEqual(await addinLines(c, mark), []);
+  });
+
+  // The IDE's dock resizer along the code editor's bottom edge, and the dock's
+  // drop targets, lie over a hover that reaches past it and take the mouse;
+  // Monaco then hides the hover. The add-in draws the hover above them.
+  test("with the box ticked, the hover stays while the mouse slides down it past the editor's bottom", async () => {
+    await mouseHover(3, 22, COLLECTION_LINK);
+    const box = await c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".monaco-hover")].find((e) => !e.classList.contains("hidden") && e.getBoundingClientRect().height > 0);
+  const r = h.getBoundingClientRect(), e = editor.getDomNode().getBoundingClientRect();
+  return { left: r.left, bottom: r.bottom, editor: e.bottom };
+})()`);
+    assert.ok(box.bottom > box.editor + 12, `the hover does not reach past the editor: ${JSON.stringify(box)}`);
+    const x = Math.round(box.left + 40);
+    for (let y = Math.round(box.editor) - 12; y <= Math.round(box.editor) + 12; y++) {
+      await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+      await sleep(20);
+      const shown = await hoverText(c);
+      assert.ok(shown?.includes(COLLECTION_LINK), `the hover went at ${x},${y}, the editor's bottom at ${box.editor}`);
+    }
+    await mouseAway(c);
   });
 
   test("hover help shows nothing for a name with no page", async () => {
@@ -672,6 +690,10 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   test("unticking the box turns hover help off", async () => {
     await click(c, { toolWindow: PANE, css: "#helpHover" });
     assert.equal(await hoverBox(), false);
+    assert.ok(
+      await waitFor(c, async (c) => !(await c.evaluate("!!document.getElementById('tbDocsHoverStay')"))),
+      "the hover is still drawn above the dock",
+    );
     const t = await mouseHover(7, 21);
     assert.ok(t && !t.includes("Help:"), `the mouse hover: ${JSON.stringify(t)}`);
     await mouseAway(c);

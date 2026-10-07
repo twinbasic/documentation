@@ -6,6 +6,17 @@ if (old) {
   for (var k in old.pending) old.pending[k]("");
   window.tbDocsHoverHelp = null;
 }
+// The IDE's dock resizers and drop targets lie over the part of a hover that
+// reaches past the code editor, transparent but taking the mouse, so that
+// Monaco takes the mouse reaching them as leaving the editor and hides the
+// hover. Drawn above them, the hover keeps the mouse.
+var stay = document.getElementById("tbDocsHoverStay");
+if (stay) stay.remove();
+if (on) {
+  stay = document.head.appendChild(document.createElement("style"));
+  stay.id = "tbDocsHoverStay";
+  stay.textContent = ".monaco-editor .monaco-hover { z-index: 100000 !important; }";
+}
 if (on) {
   var pending = {}, seq = 0;
   var provider = monaco.languages.registerHoverProvider("twinbasic", {

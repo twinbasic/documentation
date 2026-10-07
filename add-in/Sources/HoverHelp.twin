@@ -1,9 +1,10 @@
 ' Hover help, while it is on: links to the pages of a name under the mouse. A
 ' hover provider the page runs (hoverhelp.js) adds the links above the
-' compiler's text in the IDE's own hover, next to the name: Monaco hides a
-' hover once the mouse is outside the editor, and a long hover reaches past
-' it. A name with no page shows nothing, since the IDE's hover already shows
-' its declaration and description. A click on a link raises Pick.
+' compiler's text in the IDE's own hover, next to the name, and draws the
+' hover above the IDE's dock, which would otherwise take the mouse from a
+' hover reaching past the editor. A name with no page shows nothing, since
+' the IDE's hover already shows its declaration and description. A click on
+' a link raises Pick.
 Private Class HoverHelp
     Public Event Pick(ByVal url As String)
 
