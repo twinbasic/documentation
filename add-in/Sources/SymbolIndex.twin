@@ -16,6 +16,7 @@ Private Class SymbolIndex
     Private Size As Long
     Private PackageNames As Collection ' the keys of "packages"
     Private Interfaces As Collection   ' "Package.Interface" -> "Package.Class"
+    Private Offered As Collection      ' the packages to offer, keyed by name; Nothing for all
 
     ' The parser's state: the whole file, the position in it (from 1), and
     ' where the next backslash is, so that a string with no escape in it is cut
@@ -95,7 +96,35 @@ Private Class SymbolIndex
         Src = ""
     End Sub
 
-    ' The entries for word, a name or a dotted chain, best first:
+    ' Limits Find and Search to the entries of the packages in packages, the
+    ' project names the project references, keyed by name; Nothing offers every
+    ' package. The language's own entries are always offered. FindDeclared and
+    ' OnlyIn are not limited: the compiler's hover names the package a name is
+    ' declared in, and that is the authority.
+    Public Sub Restrict(ByVal packages As Collection)
+        Set Offered = packages
+    End Sub
+
+    ' Whether entry i is offered: the language's own, or in an offered package.
+    Private Function IsOffered(ByVal i As Long) As Boolean
+        If Offered Is Nothing Then Return True
+        If Len(Packages(i)) = 0 Then Return True
+        Return Offered.Exists(Packages(i))
+    End Function
+
+    ' Whether Pages would give word any page if every package were offered, for
+    ' telling a name no package documents from one only a package the project
+    ' does not reference documents.
+    Public Function HasPagesInAnyPackage(ByVal word As String, ByVal hover As String) As Boolean
+        Dim was As Collection = Offered
+        Set Offered = Nothing
+        Dim found As Collection = Pages(word, hover)
+        Set Offered = was
+        If found Is Nothing Then Return False
+        Return found.Count > 0
+    End Function
+
+    ' The offered entries for word, a name or a dotted chain, best first:
     ' - "Container.Name" or "Package.Name", when the last two segments are one;
     ' - otherwise every entry named Name. A bare name that the language itself
     '   documents (a statement, a keyword) gives only those; a qualified name
@@ -115,7 +144,7 @@ Private Class SymbolIndex
             Dim bare As String = qual
             If Left$(bare, 1) = "_" Then bare = Mid$(bare, 2)
             For i = 0 To Size - 1
-                If Names(i) = name Then
+                If Names(i) = name And IsOffered(i) Then
                     Dim c As String = LCase$(Containers(i))
                     Dim p As String = LCase$(Packages(i))
                     If c = qual Or c = bare Or p = qual Then found.Add i
@@ -126,7 +155,7 @@ Private Class SymbolIndex
 
         Dim language As New Collection
         For i = 0 To Size - 1
-            If Names(i) = name Then
+            If Names(i) = name And IsOffered(i) Then
                 If Len(Packages(i)) = 0 Then language.Add i Else found.Add i
             End If
         Next
@@ -193,9 +222,11 @@ Private Class SymbolIndex
     ' declaring type share its page. hover is the compiler's hover for word,
     ' or "": when it names a package the index documents, only that package's
     ' entries count, and when it also names word itself, only those declared
-    ' where it says. Nothing when hover says word is declared right there, or
-    ' declared outside the documented packages --- the project, another
-    ' package, a type library --- which have no pages.
+    ' where it says, whether or not the project is thought to reference that
+    ' package. Without a hover only the offered packages (Restrict) count.
+    ' Nothing when hover says word is declared right there, or declared outside
+    ' the documented packages --- the project, another package, a type library
+    ' --- which have no pages.
     Public Function Pages(ByVal word As String, ByVal hover As String) As Collection
         If AtDeclaration(hover) Then Return Nothing
         Dim ids As Collection
@@ -224,10 +255,10 @@ Private Class SymbolIndex
         Return found
     End Function
 
-    ' The entries text names, for the help pane's search box: those that start
-    ' with it, then those that contain it, in the index's order, at most limit.
-    ' Text with a dot in it is matched against labels ("Collection.Add"),
-    ' otherwise against names. Case is ignored.
+    ' The offered entries text names, for the help pane's search box: those
+    ' that start with it, then those that contain it, in the index's order, at
+    ' most limit. Text with a dot in it is matched against labels
+    ' ("Collection.Add"), otherwise against names. Case is ignored.
     Public Function Search(ByVal text As String, ByVal limit As Long) As Collection
         Dim found As New Collection
         Dim needle As String = LCase$(Trim$(text))
@@ -239,11 +270,15 @@ Private Class SymbolIndex
             Dim hay As String
             If dotted Then hay = LCase$(Label(i)) Else hay = Names(i)
             Dim at As Long = InStr(hay, needle)
-            If at = 1 Then
-                found.Add i
-                If found.Count >= limit Then Return found
-            ElseIf at > 1 And later.Count < limit Then
-                later.Add i
+            If at > 0 Then
+                If IsOffered(i) Then
+                    If at = 1 Then
+                        found.Add i
+                        If found.Count >= limit Then Return found
+                    ElseIf later.Count < limit Then
+                        later.Add i
+                    End If
+                End If
             End If
         Next
         Dim j As Variant

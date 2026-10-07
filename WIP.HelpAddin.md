@@ -5,9 +5,10 @@ add-in that shows the documentation for the symbol under the cursor, and the har
 tests IDE add-ins by machine, which the add-in is developed against.
 
 **Status.** Stages 1 to 3 stand. Stage 4, the add-in itself in [add-in/](add-in/), has
-increments 1 to 7 built and tested: F1 to a page, the help pane, the compiler's hover to tell
+increments 1 to 9 built and tested: F1 to a page, the help pane, the compiler's hover to tell
 which `Add`, a name with no page shown by its declaration and `[Description]`, offline
-help served from an archive in the DLL, hover help, and a detached window.
+help served from an archive in the DLL, hover help, a detached window, a settings panel,
+and only the packages the project references.
 
 - `addin-test.bat` operates Samples 10 and 15 end to end and leaves the registry as it found it.
 - All of Stage 2's questions, P1 to P20, are answered. Most are held by probe lanes that
@@ -1170,8 +1171,20 @@ harness about a second against opening a new IDE.
    because the frame is cross-site there and runs in a process of its own, so the window's
    `blur` closes the panel as well. The lanes' pane frame is on the IDE page's site, so one
    case points it at `127.0.0.1` to check the shade with a cross-site frame.
-9. **Later:** offering only the packages the project references; how a user gets an add-in
-   with the archive.
+9. **Only the packages the project references. Built**, tested by the `help` and
+   `help-offline` lanes on BETA 997, at the owner's choice (2026-10-07): F1, the hover links
+   and the search offer the language's own entries and the packages the project references;
+   an *All packages* row in the settings panel, off by default and kept with `SaveSetting`
+   (`Packages`, `All`), offers every package. `LoadPackages` reads the references at
+   `Host_OnProjectLoaded` from the virtual file system (P20): the folders of the project's
+   `Packages` folder and, through each, of its own, keyed on `Name`; a reference change
+   restarts the compiler, so that is enough. If the list cannot be read, every package is
+   offered, and the loaded line says so. `SymbolIndex.Restrict` limits `Find` and `Search`;
+   `FindDeclared` is not limited, since the compiler's hover names the declaring package.
+   F1 on a name only an unreferenced package documents says *No help for 'X' in the packages
+   this project references*.
+10. **Later:** how a user gets an add-in with the archive: the owner's plan (2026-10-07) is to
+    build it in CI with everything else, once the compiler runs on Linux there.
 
 **Lookup:**
 

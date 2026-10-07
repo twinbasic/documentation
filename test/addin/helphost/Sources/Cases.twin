@@ -35,4 +35,6 @@ Module Cases
         Dim g As New Gadget
         Debug.Print Plain(), g Is Nothing
     End Sub
+
+    ' CefBrowser is in a package this project does not reference.
 End Module

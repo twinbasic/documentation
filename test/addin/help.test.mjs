@@ -306,7 +306,12 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     const loaded = await waitFor(c, async (c) => (await addinLines(c, null)).find((l) => l.startsWith("loaded")));
     // Checked before any key is pressed: with the switch off, the add-in would
     // ignore TB_DOCS_HELP_SITE, and "Open in browser" would start a browser.
-    assert.equal(loaded, `loaded, index ${entries} entries, test switch on`);
+    const m = /^loaded, index (\d+) entries, packages ([^,]*), test switch on$/.exec(loaded);
+    assert.ok(m, `the loaded line: ${loaded}`);
+    assert.equal(Number(m[1]), entries);
+    // The packages the host project references, and the ones those reference,
+    // in the order the IDE lists them.
+    assert.deepEqual(m[2].split(" ").sort(), ["VB", "VBA", "VBRUN", "tbIDE"], loaded);
     const pane = await toolWindow(c, PANE);
     assert.equal(pane?.title, "TWINBASIC HELP");
     assert.equal(pane.visible, false);
@@ -456,7 +461,9 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       if (JSON.stringify(r) !== list) [list, since] = [JSON.stringify(r), Date.now()];
       return r.length > 0 && Date.now() - since >= 1000 && r;
     });
-    assert.equal(items?.length, 12, JSON.stringify(items));
+    // The index has 12 Add pages; those of the packages the project does not
+    // reference are not offered.
+    assert.equal(items?.length, 6, JSON.stringify(items));
     assert.ok(items.includes("Collection.Addmethod") && items.includes("ToolWindows.Addmethod"), JSON.stringify(items));
     assert.equal(await searchValue(c), "o.Add");
     assert.equal(await frameSrc(c), was, "a list must not change the page");
@@ -705,17 +712,35 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.equal(place.panelHit, "panel", `${what}: something is over the panel`);
     assert.equal(place.pageHit, "helpSettingsShade", `${what}: the shade is not over the page`);
   }
-  // Ticks or unticks the pane's Hover help box, which is in the settings
+  // Ticks or unticks one of the pane's boxes, which are in the settings
   // panel: opens the panel, clicks the box, checks the panel is still open,
   // and closes it with the gear.
-  async function clickHoverBox() {
+  async function clickSettingBox(css) {
     await click(c, { toolWindow: PANE, css: "#helpSettings" });
     await settingsBecome(paneSettings, SETTINGS_OPEN, "the gear did not open the panel");
-    await click(c, { toolWindow: PANE, css: "#helpHover" });
+    await click(c, { toolWindow: PANE, css });
     assert.deepEqual(await paneSettings(), SETTINGS_OPEN, "the panel closed when the box was clicked");
     await click(c, { toolWindow: PANE, css: "#helpSettings" });
     await settingsBecome(paneSettings, SETTINGS_CLOSED, "the gear did not close the panel");
   }
+  const clickHoverBox = () => clickSettingBox("#helpHover");
+  const clickAllBox = () => clickSettingBox("#helpAllPackages");
+  // The All packages box in the pane, and in the window's page.
+  const allBox = () => inPane(c, `return root.querySelector("#helpAllPackages")?.checked ?? null;`);
+  const windowAllBox = () => win.evaluate(`document.getElementById("helpAllPackages").checked`);
+  // Waits for the results to be `want`, a function of the rows, and fails with the rows.
+  async function resultsBecome(want, what) {
+    const rows = await waitFor(c, async (c) => {
+      const r = await results(c);
+      return want(r) && r;
+    });
+    assert.ok(rows, `${what}: ${JSON.stringify(await results(c))}`);
+    return rows;
+  }
+  const NO_MATCHES = (r) => r.join() === "No matches";
+  // The eight Waynes... controls are in CustomControls, and no other name has
+  // "Waynes" in it.
+  const HAS_WAYNES = (r) => r.some((t) => t.startsWith("CustomControlsPackage.Waynes"));
   // A class's hover lists its members, and is taller than the room below it.
   const COLLECTION_LINK = "Help: Collection class (VBA)";
   const LEN_LINK = "Help: Len function (VBA.Strings)";
@@ -895,11 +920,25 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.deepEqual(await addinLines(c, mark), []);
   });
 
-  test("after a compiler restart the box is still ticked and the mouse hover has the link once", async () => {
+  // The All packages box is ticked before the restart and unticked after it.
+  test("after a compiler restart the boxes are still ticked and the mouse hover has the link once", async () => {
+    await clickAllBox();
+    assert.equal(await allBox(), true);
     const mark = await consoleMark(c);
     await lane.restartCompiler();
     pages = await pagesOrigin(mark);
     assert.ok(await waitFor(c, async () => (await hoverBox()) === true), "the box is not ticked after the restart");
+    assert.ok(await waitFor(c, async () => (await allBox()) === true), "All packages is not ticked after the restart");
+    // The new instance offered every package from the start.
+    await click(c, "addinButton-tbDocsHelp");
+    assert.ok(await waitFor(c, async (c) => (await toolWindow(c, PANE))?.visible), "the pane is not showing");
+    await emptySearch(c);
+    await typeText(c, "Waynes");
+    await resultsBecome(HAS_WAYNES, "the search after the restart with All packages");
+    await clickAllBox();
+    assert.equal(await allBox(), false);
+    await resultsBecome(NO_MATCHES, "unticking All packages with a search showing");
+    await emptySearch(c);
     await openFile(c, "/HelpHost/Sources/Cases.twin", { line: 9, column: 9 });
     const t = await mouseHover(7, 21, LEN_LINK);
     assert.ok(t, `the mouse hover: ${JSON.stringify(await hoverText(c))}`);
@@ -917,6 +956,78 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     const t = await mouseHover(7, 21);
     assert.ok(t && !t.includes("Help:"), `the mouse hover: ${JSON.stringify(t)}`);
     await mouseAway(c);
+  });
+
+  // ------------------------------------------------------------ the packages offered
+
+  // The host references tbIDE, VB, VBRUN and VBA. The Waynes controls are in
+  // CustomControls, CefBrowser in CEF and WebView2 in WebView2, which it does
+  // not; VBRUN has a constant named for each of the last two.
+  async function searchFor(text) {
+    await emptySearch(c);
+    await typeText(c, text);
+  }
+
+  test("a search offers the names of the referenced packages and the language's, not another package's", async () => {
+    assert.equal(await allBox(), false);
+    for (const [text, row] of [
+      ["Collection", "VBA.Collection"], // VBA
+      ["CheckBox", "VB.CheckBox"], // VB
+      ["ToolWindows", "tbIDE.ToolWindows"], // tbIDE
+      ["Dim", "Dim"], // the language itself
+    ]) {
+      await searchFor(text);
+      const rows = await resultsBecome((r) => r.some((t) => t.startsWith(row)), `a search for ${text}`);
+      assert.ok(!NO_MATCHES(rows));
+    }
+    await searchFor("Waynes");
+    await resultsBecome(NO_MATCHES, "a search for Waynes");
+    // Only the VBRUN constant that names the control matches.
+    await searchFor("CefBrowser");
+    let rows = await resultsBecome((r) => r.some((t) => t.includes("vbCefBrowser")), "a search for CefBrowser");
+    assert.ok(!rows.some((t) => t.startsWith("cefPackage.")), JSON.stringify(rows));
+    await searchFor("WebView2");
+    rows = await resultsBecome((r) => r.some((t) => t.includes("vbWebView2")), "a search for WebView2");
+    assert.ok(!rows.some((t) => t.startsWith("WebView2Package.")), JSON.stringify(rows));
+  });
+
+  test("the All packages box offers every package at once, and unticking it takes them away again", async () => {
+    await searchFor("Waynes");
+    await resultsBecome(NO_MATCHES, "a search for Waynes");
+    await clickAllBox();
+    assert.equal(await allBox(), true);
+    // The search runs again with no key pressed.
+    await resultsBecome(HAS_WAYNES, "ticking All packages");
+    assert.equal(await searchValue(c), "Waynes");
+    await searchFor("WebView2");
+    await resultsBecome((r) => r.some((t) => t.startsWith("WebView2Package.WebView2")), "a search for WebView2");
+    await searchFor("CefBrowser");
+    await resultsBecome((r) => r.some((t) => t.startsWith("cefPackage.CefBrowser")), "a search for CefBrowser");
+    await clickAllBox();
+    assert.equal(await allBox(), false);
+    await resultsBecome((r) => !r.some((t) => t.startsWith("cefPackage.")), "unticking All packages");
+    await searchFor("Waynes");
+    await resultsBecome(NO_MATCHES, "a search for Waynes again");
+  });
+
+  test("F1 on a name only an unreferenced package documents says so, and with All packages shows its page", async () => {
+    const was = await frameSrc(c);
+    await at(c, 39, 10);
+    await pressKey(c, "F1");
+    const text = "No help for 'CefBrowser' in the packages this project references";
+    const shown = await waitFor(c, async (c) => (await notifications(c)).find((t) => t.trim() === text));
+    assert.ok(shown, `notifications: ${JSON.stringify(await notifications(c))}`);
+    await sleep(300);
+    assert.equal(await frameSrc(c), was, "the page changed");
+    await clickAllBox();
+    try {
+      await f1Shows("/tB/Packages/CEF/CefBrowser/");
+    } finally {
+      if (await allBox()) await clickAllBox();
+    }
+    assert.equal(await allBox(), false);
+    // The window starts with the search box as the pane leaves it: empty.
+    await emptySearch(c);
   });
 
   // ------------------------------------------------------------ the detached window
@@ -950,6 +1061,11 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     (await addinLines(c, mark)).find((l) => l.startsWith("window page "))?.slice("window page ".length) ?? null;
   const windowRows = () =>
     win.evaluate(`[...document.querySelectorAll("#helpResults .hit .label")].map((e) => e.textContent)`);
+  // The rows of the window's results, or its "No matches".
+  const windowResultText = () =>
+    win.evaluate(
+      `[...document.querySelectorAll("#helpResults .hit .label, #helpResults .none")].map((e) => e.textContent)`,
+    );
   const windowBox = () => win.evaluate(`document.getElementById("helpHover").checked`);
   // A click on an element of the window's page.
   async function clickInWindow(css) {
@@ -1284,6 +1400,58 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.deepEqual(await windowSettings(), SETTINGS_OPEN, "unticking the box closed the panel");
     await clickInWindow("#helpSettings");
     await settingsBecome(windowSettings, SETTINGS_CLOSED, "the gear did not close the panel");
+  });
+
+  // Both ways: a tick in the window reaches the pane's box, and the pane's box,
+  // clicked as the page does though the pane is hidden, reaches the window's.
+  test("All packages can be ticked in the window or the pane, and the other follows", async () => {
+    assert.equal(await allBox(), false);
+    assert.equal(await windowAllBox(), false);
+    await clickInWindow("#helpSettings");
+    await settingsBecome(windowSettings, SETTINGS_OPEN, "the gear did not open the panel");
+    await clickInWindow("#helpAllPackages");
+    assert.ok(await waitFor(c, async () => (await allBox()) === true), "the pane's box is not ticked");
+    assert.equal(await windowAllBox(), true);
+    assert.deepEqual(await windowSettings(), SETTINGS_OPEN, "ticking the box closed the panel");
+    await clickInWindow("#helpAllPackages");
+    assert.ok(await waitFor(c, async () => (await allBox()) === false), "the pane's box is still ticked");
+    assert.equal(await windowAllBox(), false);
+    await clickInWindow("#helpSettings");
+    await settingsBecome(windowSettings, SETTINGS_CLOSED, "the gear did not close the panel");
+
+    await inPane(c, `root.querySelector("#helpAllPackages").click(); return null;`);
+    assert.ok(await waitFor(c, () => windowAllBox()), "the window's box is not ticked");
+    await inPane(c, `root.querySelector("#helpAllPackages").click(); return null;`);
+    assert.ok(await waitFor(c, async () => (await windowAllBox()) === false), "the window's box is still ticked");
+    assert.equal(await allBox(), false);
+  });
+
+  test("the window's results follow the All packages box", async () => {
+    await win.evaluate(`document.getElementById("helpSearch").focus()`);
+    await win.evaluate(`document.getElementById("helpSearch").value = ""`);
+    await typeText(win, "Waynes");
+    assert.ok(
+      await waitFor(c, async () => (await windowResultText()).join() === "No matches"),
+      JSON.stringify(await windowResultText()),
+    );
+    await clickInWindow("#helpSettings");
+    await clickInWindow("#helpAllPackages");
+    assert.ok(
+      await waitFor(c, async () => HAS_WAYNES(await windowResultText())),
+      JSON.stringify(await windowResultText()),
+    );
+    await clickInWindow("#helpAllPackages");
+    assert.ok(
+      await waitFor(c, async () => (await windowResultText()).join() === "No matches"),
+      JSON.stringify(await windowResultText()),
+    );
+    await clickInWindow("#helpSettings");
+    await settingsBecome(windowSettings, SETTINGS_CLOSED, "the gear did not close the panel");
+    // Back to what the later cases expect in the box.
+    await win.evaluate(`document.getElementById("helpSearch").focus()`);
+    await win.evaluate(`document.getElementById("helpSearch").value = ""`);
+    await typeText(win, "msgbo");
+    assert.ok(await waitFor(c, async () => (await windowResultText())[0] === "Interaction.MsgBox"));
   });
 
   test("a name with no page shows its summary in the window, and Open in browser is disabled there", async () => {

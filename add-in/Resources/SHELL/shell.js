@@ -3,12 +3,13 @@
 // way is "verb:payload", split at the first colon.
 //
 // Page to add-in: ready, search:<text>, enter, pick:<entry>, hover:<1|0>,
-// attach, browser, frame:<src> (the frame has loaded src), and from the title
-// bar drag (start moving the window), minimize, maxrestore, close.
+// allpackages:<1|0>, attach, browser, frame:<src> (the frame has loaded src),
+// and from the title bar drag (start moving the window), minimize, maxrestore,
+// close.
 // Add-in to page: theme:<group> a line break and <css>, search:<text>,
 // results:<html>, page:<url>, summary:<html>, hover:<1|0>, hoverdisabled:<1|0>,
-// browser:<1|0 enabled>, focus:, chrome:<custom|native> (whether the page
-// draws the title bar), state:<min|max|normal> (the window's).
+// allpackages:<1|0>, browser:<1|0 enabled>, focus:, chrome:<custom|native>
+// (whether the page draws the title bar), state:<min|max|normal> (the window's).
 (function () {
   var host = window.chrome.webview;
   var byId = function (id) { return document.getElementById(id); };
@@ -19,6 +20,7 @@
   var frame = byId("helpPage");
   var browser = byId("helpBrowser");
   var hover = byId("helpHover");
+  var allPackages = byId("helpAllPackages");
   var settings = byId("helpSettings");
   var settingsWrap = byId("helpSettingsWrap");
   var settingsPanel = byId("helpSettingsPanel");
@@ -77,6 +79,9 @@
     if (row) post("pick:" + row.getAttribute("data-pick"));
   });
   hover.addEventListener("change", function () { post("hover:" + (hover.checked ? "1" : "0")); });
+  allPackages.addEventListener("change", function () {
+    post("allpackages:" + (allPackages.checked ? "1" : "0"));
+  });
 
   // The settings panel opens under the gear, with the shade over the rest of
   // the window so that a click anywhere else closes it. A press over the
@@ -166,6 +171,7 @@
       case "summary": showSummary(payload); break;
       case "hover": hover.checked = payload === "1"; break;
       case "hoverdisabled": hover.disabled = payload === "1"; break;
+      case "allpackages": allPackages.checked = payload === "1"; break;
       case "browser": browser.disabled = payload !== "1"; break;
       case "focus": search.focus(); break;
       case "chrome": setChrome(payload); break;

@@ -62,7 +62,8 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
-#helpHoverLabel {
+#helpHoverLabel,
+#helpAllPackagesLabel {
   display: flex;
   align-items: center;
   gap: 4px;
