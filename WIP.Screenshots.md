@@ -1,0 +1,164 @@
+# Screenshots — the plan for `shoot_docs.mjs`
+
+The documentation's IDE screenshots go stale with every beta. `scripts/shoot_help_addin.mjs`
+already retakes the help add-in's eight pictures from a live IDE; this plan grows it into
+`scripts/shoot_docs.mjs`, which retakes every picture of the IDE the documentation holds,
+annotations included. The owner's decisions behind it are dated 2026-10-08.
+
+## What there is to retake
+
+About 212 raster images under `docs/` besides the help add-in's eight. By what producing them
+needs:
+
+| class | count | what |
+|---|---|---|
+| IDE UI, plain | ~150 | every menu, dialog, panel and editor view is HTML in the IDE's page, so all are reachable over CDP |
+| IDE UI, annotated | ~43 | arrows, boxes, rings, numbers and labels drawn on top; 8 of them composites of several crops |
+| not IDE UI | ~18 | running exe windows, GitHub pages, the splash window, one GIF: out of scope |
+
+Stale already: About (BETA 953), New Project (BETA 950), `CallStack.png` (compiler v0.15.957),
+`fafaloneIDEscreenshot1.png` (BETA 407), several package pictures (BETA 730).
+
+## Decisions (owner, 2026-10-08)
+
+- **One tool.** `shoot_help_addin.mjs` is renamed `shoot_docs.mjs`; the help add-in's pictures
+  become one setup among the others.
+- **2x pictures, shown at half size**: every retaken picture gets `{:width="W" height="H"}` (half
+  its pixel size) on its page, as `docs/IDE/AddIns/Help.md` has. A JPG retaken becomes a PNG.
+- **Menus are transparent cut-outs**, as today: the bar item and its drop-downs opaque, the rest
+  alpha 0.
+- **Annotations are redrawn by the tool in one house style**, anchored to what they point at,
+  including the ones that only repeat the prose.
+- **Composites are assembled by the tool** from element clips.
+- **`fafaloneIDEscreenshot1.png`** (a community author's own annotated picture) and its downscaled
+  copy are replaced by a project-made full-IDE feature map with the same labels.
+
+## The IDE the tool drives
+
+Measured by the s103 probe (8 IDE runs, BETA 997):
+
+- **Fixed device scale.** The IDE page otherwise takes the host's scaling (1.5 here:
+  `body.scale150`, 22.67 px menu rows). `--force-device-scale-factor=1` added to the WebView2
+  browser arguments gives `scale100` and integer sizes; `Emulation.setDeviceMetricsOverride` at
+  `deviceScaleFactor: 2` then gives a clean 2x. Menus and dialogs come out at the old pictures'
+  CSS sizes to the pixel (File 189x336, Manage Keyboard Shortcuts 1016x736). **The help add-in's
+  pictures change once when this goes in**: until now they followed the host's scaling.
+- **No-project start.** `Lane.open` always opens a project. Started with no argument, the IDE
+  shows its splash and then New / Open Project, with every menu in its no-project state. Needs a
+  `Lane.openNoProject()` (`launchOnDesktop` with no argument, then `attachIde`). The lane's copy
+  of the install leaves out `projects\` (29 MB): New Project then shows 2 templates and no
+  samples, so a setup that shows them copies `projects\` into the lane's copy.
+- **Theme.** The pictures are of the dark theme (`tbTheme_SwitchToDarkMode`, as now). The menu
+  bar and dialog title bars follow the theme; drop-downs and dialog bodies are light in every
+  theme.
+- **Opening things.** Menus open on a real mouse press on `#rootMenu<Title>`; submenus on a real
+  mouse move onto the item (~500 ms; wait for `#contextMenuSUB > .contextMenuItem`). Dialogs by
+  `executeIdeCommand` (`tbHelp_ShowAboutWindow`, `tbIde_ShowIDEOptions`,
+  `tbKeyboardShortcuts_ShowManageKeyboardShortcuts`, `tbPanels_ShowManagePanelLayouts`,
+  `tbProject_New`, `tbToolbox_ShowMoreComponents`), closed by a real click on their Close /
+  Cancel / OK button.
+- **What the user's machine leaks into a picture**, and the answer for each:
+  - the recent-projects lists (twinBASIC and VB6) read the user's registry: overridden in the
+    page (`HostGetRecentsList`, `HostGetVB6RecentProjects`), nothing read or written;
+  - the IDE's settings (View's ticks, IDE Options' values, the debugger options, the language
+    tick, user panel layouts) live in `HKCU\...\twinBASIC_IDE\IDESettings`, not in the lane's
+    private APPDATA — see Machine state in the pictures;
+  - the licence line on About (`LICENCE: tB Licence: NOT READY` when the licence check has not
+    finished) — the same section;
+  - the Windows user name: the existing visible-text check stays and covers every picture.
+
+## Capture
+
+- **Opaque clip**: `Page.captureScreenshot` with a clip, snapped outward to whole device pixels
+  (`floor(v*2)/2`, `ceil((v+w)*2)/2`). Dialogs clip `.modalDialogContainer` (its 40 px shadow
+  falls outside).
+- **Cut-out**: a style sheet sets `html, body, #bodyInner` transparent and `body *` hidden
+  except the kept elements (`#rootMenu<Title>`, `#contextMenu`, `#contextMenuSUB`, or an
+  annotation layer), plus `Emulation.setDefaultBackgroundColorOverride` to alpha 0; both undone
+  after. Verified: corners alpha 0, interior 255, the rounded bottom corners partial.
+- **Quiet page**: the existing style sheet against carets and animations goes into every shot,
+  opaque ones included (the probe's IDE Options sample showed a caret without it).
+- **Write only on change**: kept from the current tool. The tool prints, for each picture, the
+  `{:width height}` its page should have and warns where the page disagrees; it does not edit
+  markdown.
+
+## Annotations
+
+An SVG layer the tool adds to the IDE page above everything (`z-index` max,
+`pointer-events: none`), drawn in CSS pixels, so it scales with the 2x capture and survives a
+cut-out as a kept element.
+
+**Anchors**, resolved in the page at shot time:
+- an element: a CSS selector, optionally narrowed by its text (`{css: ".buttonGroupItem", text: "Samples"}`);
+- a span of code in the editor: a text search in the model (`{code: "NormalState", nth: 2}`), placed
+  with `editor.getScrolledVisiblePosition`, never a line number;
+- a point of a rect: `center`, an edge or corner, with an offset (`{of: anchor, at: "top-left", dx, dy}`).
+
+**Primitives**: `arrow` (from, to; `bend` for a curve; several `to` for a fork), `box` (a row),
+`ring` (an icon or a short word; a box with `rx` half its height), `underline`, `label` (text
+beside an anchor: `left`/`right`/`above`/`below`), `badge` (a number).
+
+**House style** (CSS px at 1x): one red, `#E5252A`; 3 px strokes, round caps and joins, with a
+1 px white halo so a stroke reads on light and dark UI; one solid triangular head, 5x the stroke
+long; boxes and rings 3 px with 4 px padding; labels in Inter 600 at 15 px on a pill (dark red
+with white text over dark UI, white with red text over light); badges a filled red circle of
+22 px with a white bold numeral. No hollow block arrows, no hand-drawn strokes.
+
+**Composites** (the five CustomControls code-to-property pictures, `Editor.png`, `DebugConsole.png`):
+each part is captured as its own clip; the tool then lays the parts out in a full-window layer
+in the same page (`<img>` of each part on a plain background, with a gap), maps each part's
+anchors through its placement, draws the overlay across, and captures the layer.
+**Native `<select>` lists** (Editor.png's four, a FAQ picture, one tutorial) open in an OS
+window no CDP capture holds: the tool draws a replica list from the select's options, styled
+as the IDE's own pop-up list, beside the select.
+
+## The tool
+
+`scripts/shoot_docs.mjs [--only <regex>] [--port N] [--ide <path>]`, with the current tool's
+exit codes (0, 1 a picture failed, 2 the tool could not run, 3 not put back).
+
+- **Setups**: one IDE each, run one after another — `no-project` (menus, dialogs), `help`
+  (the add-in's eight, `test/addin/helpdemo`), and later `project` setups for panels, Project
+  Settings, designers and code. A setup is `{name, start, prepare}`.
+- **Shots**: a table of `{out, setup, take, annotate?}`, `out` the picture's path under
+  `docs/`; `--only` matches it. `take(ctx)` brings the IDE to the state and returns the clip
+  (or the parts of a composite); `annotate` is a list of primitives.
+- Shared helpers move from the probe kit (`.claude/tooling-review-scratch/s103-shots/ui.mjs`):
+  `openMenu`, `hoverItem`, `closeMenus`, `waitModal`, `closeModal`, the cut-out, the snap.
+
+## Increments
+
+1. **Rename and the no-project setup**: `shoot_docs.mjs`; the device-scale fix and
+   `Lane.openNoProject`; cut-out capture; the 19 menu pictures, `Menu.png` and the 13 dialogs
+   (About, IDE Options, the two Manage dialogs x2, New Project's tabs, Recent x2, Components
+   message, the FAQ's New Project Options and Samples, `llvmdoc2`); pages get their
+   `{:width height}`; alt text and prose checked against each new picture (the Tools menu has
+   two new entries; About's text changed). Retake the help add-in's eight with the scale fix.
+2. **The overlay**, first on the annotated pictures of the same setup (`7e1cb69c` New tab,
+   `6ad7a172` and `ccSampleProject` Samples tab, `tbWebView2Sample0`).
+3. **Project setups**: Project Settings with a filter, the panels, Project Explorer, the
+   Global Search add-in (Sample 15), and their annotated pictures.
+4. **Designers and code**: a form with controls, the CustomControls sample project, Compiler
+   Constants; the composites and the replica select lists.
+5. **The feature map**, replacing `fafaloneIDEscreenshot1.png` and `014a1d28`.
+
+Left out for now: the compiler-service badges that need the service down, the Community licence
+badge, package-server flows (network, TWINSERV), pictures after a run (console lines carry the
+time; History's timestamps), Import from twinproj (needs a `.vbp`; its header shows the path).
+
+## Machine state in the pictures (owner, 2026-10-08)
+
+- **The IDE's settings** (View's ticks, IDE Options' values, the debugger options, user panel
+  layouts and keyboard groups) are set to their defaults **in the page only** — `liveIDEOptions`
+  and the like, in memory, never saved — so no picture shows the user's choices and nothing is
+  written to the registry.
+- **About's licence line**: the tool waits for `licenceIsSet` before opening About, so it shows
+  the edition, never NOT READY.
+- **The language tick** stays on whatever language the IDE runs in.
+- **`llvmdoc2`** shows the default thread count, 1 (the old picture's 10 was its author's
+  setting); the LLVM page's prose is checked for any reliance on 10.
+
+## Open questions
+
+1. **The byte-identical pair** `d9f1e4d9` / `e749e10f` (Features/Packages/Images): merge into one
+   file when it is retaken (recommendation).

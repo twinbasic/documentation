@@ -19,6 +19,7 @@ one covering what you are about to change.
 | change the accessibility scan | [WIP.A11y.md](WIP.A11y.md) --- the axe scan, the sample, the fingerprint gate |
 | work on the sample-compiling harness | [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md) |
 | run or change Wisdom, the Discord harvester | [WIP.Wisdom.md](WIP.Wisdom.md) --- the three-phase pipeline and the Phase 3 extract flow |
+| retake the documentation's IDE screenshots, or change the tool that takes them | [WIP.Screenshots.md](WIP.Screenshots.md) --- `shoot_docs.mjs`: the setups, cut-outs, the annotation overlay and the owner's decisions |
 | work on the IDE help add-in, or on testing IDE add-ins by machine | [WIP.HelpAddin.md](WIP.HelpAddin.md) --- the plan, the IDE facts it rests on, and the probes still open |
 | run a use-case evaluation round | [eval/README.md](eval/README.md) --- start every evaluator with `eval/run_case.mjs`, **never as a subagent**: a subagent inherits this session's `CLAUDE.md`, and with it this file, which is the answer key the corpus withholds |
 
