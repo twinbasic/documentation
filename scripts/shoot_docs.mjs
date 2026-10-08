@@ -75,6 +75,7 @@ import {
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { hoverText, mouseAway, pointOf, restMouse } from "../test/addin/hover.mjs";
 import { frameEval, frameOf, serveLoopback } from "../test/addin/pages.mjs";
+import { annotate as annotateOver, unannotate } from "./lib/shot-annotate.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
@@ -678,12 +679,24 @@ const menuBarShot = {
 };
 
 // The top dialog's box, opaque (its shadow falls outside), or `clipOf(box)` of it.
-async function dialogShot(c, name, clipOf = (m) => m) {
+// `annotate`, a shot's list of primitives (lib/shot-annotate.mjs), is drawn over
+// the page for the capture and taken off again however that goes; the clip grows to
+// hold what it drew.
+async function dialogShot(c, name, clipOf = (m) => m, annotate = null) {
   await c.evaluate("document.activeElement?.blur?.()");
   await sleep(300);
   const box = (await modals(c)).pop();
   if (!box) throw new Error(`no dialog is open for ${name}`);
-  return capture(c, name, snapOut(clipOf(box)), { away: () => parkMouse(c) });
+  let area = clipOf(box);
+  try {
+    if (annotate) {
+      const { box: drawn } = await annotateOver(c, annotate);
+      if (drawn) area = union(area, drawn);
+    }
+    return await capture(c, name, snapOut(area), { away: () => parkMouse(c) });
+  } finally {
+    if (annotate) await unannotate(c);
+  }
 }
 
 // Opens a dialog by its command and returns once its title is in; `run` takes the
@@ -709,22 +722,45 @@ const inNewProject = (c, run) =>
 
 const dialogOut = (dir, name) => `${dir}/Images/${name}.png`;
 
-const newProjectShot = (name, prepare = async () => {}) => ({
-  out: dialogOut("IDE", name),
+// `annotate`: the primitives drawn over the picture (lib/shot-annotate.mjs).
+const newProjectShot = (name, prepare = async () => {}, { out = dialogOut("IDE", name), annotate = null } = {}) => ({
+  out,
   setup: "no-project",
+  annotate,
   take: ({ c }) =>
     inNewProject(c, async () => {
       await prepare(c);
-      return dialogShot(c, name);
+      return dialogShot(c, name, undefined, annotate);
     }),
 });
 
+const samplesTab = async (c) => {
+  await clickInModal(c, "Samples", ".buttonGroupItem");
+  await sleep(800);
+};
+
+// Scrolls the Samples list until the sample whose title starts with `title` is
+// `above` pixels under the list's top edge.
+async function scrollSamples(c, title, above = 12) {
+  const found = await c.evaluate(`(() => {
+  const l = document.querySelector(".frontPageListView");
+  const it = [...l.querySelectorAll(".frontPageListViewItem")].find((e) => e.innerText.startsWith(${JSON.stringify(title)}));
+  if (!it) return false;
+  l.scrollTop += it.getBoundingClientRect().top - l.getBoundingClientRect().top - ${above};
+  return true;
+})()`);
+  if (!found) throw new Error(`the Samples tab lists no ${title}`);
+  await sleep(500);
+}
+
+// Anchors in the New / Open Project dialog, for the annotations of its pictures.
+const NEW_TILE = (title) => ({ css: ".frontPageListViewItem", text: title });
+const SAMPLE_TITLE = (title) => ({ css: ".frontPageListViewItem", text: title, own: true });
+const DIALOG_TAB = (title) => ({ css: ".buttonGroupItem", text: title });
+
 const dialogShots = [
   newProjectShot("New_Project"),
-  newProjectShot("New_Project_Samples", async (c) => {
-    await clickInModal(c, "Samples", ".buttonGroupItem");
-    await sleep(800);
-  }),
+  newProjectShot("New_Project_Samples", samplesTab),
   newProjectShot("New_Project_Recent_1", async (c) => {
     await setRecents(c, []);
     await clickInModal(c, "New", ".buttonGroupItem");
@@ -831,20 +867,60 @@ const dialogShots = [
     setup: "no-project",
     take: ({ c }) =>
       inNewProject(c, async () => {
-        await clickInModal(c, "Samples", ".buttonGroupItem");
-        await sleep(800);
-        const found = await c.evaluate(`(() => {
-  const l = document.querySelector(".frontPageListView");
-  const it = [...l.querySelectorAll(".frontPageListViewItem")].find((e) => e.innerText.startsWith("Sample 10."));
-  if (!it) return false;
-  l.scrollTop += it.getBoundingClientRect().top - l.getBoundingClientRect().top - 12;
-  return true;
-})()`);
-        if (!found) throw new Error("the Samples tab lists no Sample 10");
-        await sleep(500);
+        await samplesTab(c);
+        await scrollSamples(c, "Sample 10.");
         return dialogShot(c, "Samples_Scrolled");
       }),
   },
+  // ---- annotated
+  newProjectShot("FAQ_ImportVBP", async () => {}, {
+    out: "Miscellaneous/Images/7e1cb69c-6db3-4f3f-aea1-c1fae25938a2.png",
+    annotate: [
+      // from below the tile, up at its icon
+      {
+        type: "arrow",
+        from: { of: NEW_TILE("Import from VBP"), at: "bottom", dy: 22 },
+        to: { of: NEW_TILE("Import from VBP"), at: "bottom", dy: -44 },
+      },
+    ],
+  }),
+  newProjectShot(
+    "Package_Sample",
+    async (c) => {
+      await samplesTab(c);
+      await scrollSamples(c, "Sample 7.", 118);
+    },
+    {
+      out: "Features/Packages/Images/6ad7a172-0e1b-4276-ac89-042681552507.png",
+      annotate: [{ type: "ring", on: SAMPLE_TITLE("Sample 7. Package") }],
+    },
+  ),
+  newProjectShot(
+    "ccSampleProject",
+    async (c) => {
+      await samplesTab(c);
+      await scrollSamples(c, "Sample 6.", 118);
+    },
+    {
+      out: "Tutorials/CustomControls/Images/ccSampleProject.png",
+      annotate: [
+        { type: "ring", on: DIALOG_TAB("Samples") },
+        { type: "badge", n: 1, on: DIALOG_TAB("Samples"), side: "below", dx: -14 },
+        { type: "ring", on: SAMPLE_TITLE("Sample 6. CustomControls") },
+        { type: "badge", n: 2, on: SAMPLE_TITLE("Sample 6. CustomControls"), side: "left" },
+      ],
+    },
+  ),
+  newProjectShot("WebView2_Sample", samplesTab, {
+    out: "Tutorials/WebView2/Images/tbWebView2Sample0.png",
+    annotate: [
+      {
+        type: "arrow",
+        from: { of: NEW_TILE("Sample 1a. WebView2 Examples"), at: "right", dx: -24 },
+        to: SAMPLE_TITLE("Sample 1a. WebView2 Examples"),
+      },
+    ],
+  }),
   {
     // The route a person takes: Standard EXE is selected on the New tab, and Open
     // asks for its options. Cancel closes the dialog and creates nothing. Last
@@ -1343,8 +1419,11 @@ function keep(out, png) {
   let state = "new";
   if (existsSync(file)) state = readFileSync(file).equals(png) ? "unchanged" : "updated";
   if (state !== "unchanged") writeFileSync(file, png);
-  const size = `${png.readUInt32BE(16)}x${png.readUInt32BE(20)} px, ${png.length} bytes`;
-  console.log(`${out}: ${state} (${size})`);
+  const w = png.readUInt32BE(16);
+  const h = png.readUInt32BE(20);
+  console.log(
+    `${out}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${w / SCALE}" height="${h / SCALE}"})`,
+  );
 }
 
 // Ends a setup's IDE and what it served; returns the problems, as lines.

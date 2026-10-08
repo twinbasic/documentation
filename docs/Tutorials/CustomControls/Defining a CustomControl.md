@@ -12,7 +12,7 @@ A CustomControl is simply an ordinary twinBASIC class, with a few extra attribut
 > [!TIP]
 > It is highly advisable to look at and experiment with the sample project provided with twinBASIC before trying to implement your own CustomControl.
 
-![Custom Control Sample Project](Images/ccSampleProject.png)
+![The New / Open Project dialog on the Samples tab. A red ring and the number 1 mark the Samples tab; a red ring and the number 2 mark the title of Sample 6. CustomControls.](Images/ccSampleProject.png){:width="522" height="405"}
 
 ***
 ## CustomControl() attribute

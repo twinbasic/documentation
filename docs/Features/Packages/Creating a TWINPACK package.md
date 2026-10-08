@@ -13,7 +13,7 @@ redirect_from:
 
 To create a new TWINPACK package, navigate to the twinBASIC New Project dialog, and under the 'Samples' tab, choose the option labelled 'Package':
 
-![The New / Open Project dialog on the Samples tab with Sample 7. Package circled](Images/6ad7a172-0e1b-4276-ac89-042681552507.png)
+![The New / Open Project dialog on the Samples tab, with a red ring round the title of Sample 7. Package](Images/6ad7a172-0e1b-4276-ac89-042681552507.png){:width="522" height="405"}
 <br>
 <br>
 

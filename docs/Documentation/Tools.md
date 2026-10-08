@@ -1383,7 +1383,10 @@ are switched off, and the theme is dark. The IDE's settings --- its options, pan
 keyboard shortcut groups --- are set to their defaults in the page only, and the recent-project
 lists are replaced there, so no picture shows your own choices or projects; nothing is saved.
 No picture shows the Debug Console, whose lines carry the time they were written. Menus are
-cut out, transparent around the menu; dialogs are taken whole. A picture is written only when
+cut out, transparent around the menu; dialogs are taken whole. A picture that needs arrows, rings
+or numbered badges has them drawn by the tool in one style, anchored to the element they point at
+(`scripts/lib/shot-annotate.mjs`), so that a retake after a new BETA puts them where the element
+now is. A picture is written only when
 its bytes differ from the file already there, and each is reported as `new`, `updated` or
 `unchanged`; a second run with nothing changed reports every picture `unchanged`. The Windows
 user name must never be in a published picture, so before each one is kept the visible text of

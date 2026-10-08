@@ -100,7 +100,7 @@ beside an anchor: `left`/`right`/`above`/`below`), `badge` (a number).
 
 **House style** (CSS px at 1x): one red, `#E5252A`; 3 px strokes, round caps and joins, with a
 1 px white halo so a stroke reads on light and dark UI; one solid triangular head, 5x the stroke
-long; boxes and rings 3 px with 4 px padding; labels in Inter 600 at 15 px on a pill (dark red
+long; boxes and rings 3 px with 4 px padding; labels in the page's font (Segoe UI) 600 at 15 px on a pill (dark red
 with white text over dark UI, white with red text over light); badges a filled red circle of
 22 px with a white bold numeral. No hollow block arrows, no hand-drawn strokes.
 
@@ -134,8 +134,12 @@ exit codes (0, 1 a picture failed, 2 the tool could not run, 3 not put back).
    message, the FAQ's New Project Options and Samples, `llvmdoc2`); pages get their
    `{:width height}`; alt text and prose checked against each new picture (the Tools menu has
    two new entries; About's text changed). Retake the help add-in's eight with the scale fix.
-2. **The overlay**, first on the annotated pictures of the same setup (`7e1cb69c` New tab,
-   `6ad7a172` and `ccSampleProject` Samples tab, `tbWebView2Sample0`).
+2. **Done: the overlay** (`scripts/lib/shot-annotate.mjs`), on the annotated pictures of the
+   same setup (`7e1cb69c` New tab, `6ad7a172` and `ccSampleProject` Samples tab,
+   `tbWebView2Sample0`). Labels and badges take the IDE page's own font, Segoe UI, since the page
+   has no Inter and none is injected; the dark pill is `#8E161A`. The anchors search the main
+   document only, so increment 3's tool windows need shadow roots added. `label`, `box`,
+   `underline`, `bend`, forks and `{code}` anchors work in a probe but are in no picture yet.
 3. **Project setups**: Project Settings with a filter, the panels, Project Explorer, the
    Global Search add-in (Sample 15), and their annotated pictures.
 4. **Designers and code**: a form with controls, the CustomControls sample project, Compiler

@@ -45,6 +45,6 @@ Note that toggling any property will show extra information at the bottom of the
 
 ## Samples
 
-If you prefer to start with a sample, have a look at `Sample 0.  WebView2 Examples`, available in the new-project dialog:
+If you prefer to start with a sample, have a look at `Sample 1a. WebView2 Examples`, available in the new-project dialog:
 
-![The new-project dialog on the Samples tab with an arrow pointing to Sample 0. WebView2 Examples](Images/tbWebView2Sample0.png){:style="width:45%; height:auto;"}
+![The New / Open Project dialog on the Samples tab, with a red arrow pointing at the title of Sample 1a. WebView2 Examples](Images/tbWebView2Sample0.png){:width="522" height="405"}

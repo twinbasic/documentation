@@ -238,7 +238,7 @@ Anyone who has ever tested their own programs against a wide variety of AV engin
 
 The easiest way is through the import wizard. When you first start the twinBASIC IDE, you're presented with the New Project dialog- this contains an 'Import from VBP' option:
 
-![The New / Open Project dialog on its New tab, showing a grid of project templates from Standard EXE to Import from folder, with a red arrow pointing up at the Import from VBP tile.](Images/7e1cb69c-6db3-4f3f-aea1-c1fae25938a2.png)
+![The New / Open Project dialog on its New tab, showing a grid of project templates from Standard EXE to Import from folder, with a red arrow pointing up at the Import from VBP tile.](Images/7e1cb69c-6db3-4f3f-aea1-c1fae25938a2.png){:width="522" height="405"}
 
 You can import individual files, from VB projects or any type, through the Import option on the Add menu, under Project or by right clicking the desired folder in the Project Explorer pane:
 
