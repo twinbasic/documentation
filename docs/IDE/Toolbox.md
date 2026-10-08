@@ -15,7 +15,7 @@ See [Controls](../../Controls)
 
 ![The Toolbox button labelled More components, a grey plus sign beside the text inside a dashed outline.](Images/Toolbox_MoreComponents.png)
 
-![A twinBASIC information box reading Components list coming soon, explaining that for now ordinary COM references to the appropriate ActiveX type library must be added and the components will then appear in the form designer automatically, above a GoTo COM References button and an OK button.](Images/Components_Message.png)
+![A twinBASIC information box reading Components list coming soon, explaining that for now ordinary COM references to the appropriate ActiveX type library must be added and the components will then appear in the form designer automatically, above a GoTo COM References button and an OK button.](Images/Components_Message.png){:width="654" height="169"}
 
 The "GoTo COM References" button takes you to **Project Settings** and filters by "project.references".
 

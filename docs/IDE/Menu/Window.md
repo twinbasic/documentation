@@ -8,7 +8,7 @@ permalink: /tB/IDE/Project/Menu/Window
 
 # Window Menu
 
-![The Window menu open with five available entries, each carrying a submenu arrow: Panel Layouts, Panel Features and Keyboard Shortcuts, then Theme beside a palette icon and Language beside a globe icon.](Images/Menu_Window.png)
+![The Window menu open with five available entries, each carrying a submenu arrow: Panel Layouts, Panel Features and Keyboard Shortcuts, then Theme beside a palette icon and Language beside a globe icon.](Images/Menu_Window.png){:width="172" height="159"}
 
 - Panel Layouts
 - Panel Features
@@ -20,13 +20,14 @@ permalink: /tB/IDE/Project/Menu/Window
 
 ## Panel Layouts
 
-![The Window menu with Panel Layouts highlighted and its submenu open to the right: Default Built-in Layout with CTRL+#, Full Screen Editor Layout, a ticked Custom Layout (Unsaved), then Save Current Panel Layout As and Manage Panel Layouts.](Images/Menu_Window_PanelLayouts.png)
+![The Window menu with Panel Layouts highlighted and its submenu open to the right: a ticked Default Built-in Layout with CTRL+#, Full Screen Editor Layout, then Save Current Panel Layout As and Manage Panel Layouts.](Images/Menu_Window_PanelLayouts.png){:width="389" height="159"}
 
 - Default Built-in Layout <kbd>CTRL</kbd> + <kbd>#</kbd>
 - Full Screen Editor Layout
 
 ---
-- ✓ Custom Layout (Unsaved)
+- ✓ Custom Layout (Unsaved) --- shown, and ticked, while none of the named layouts is the active one
+- Custom Layout *n*. *name* --- one for each saved layout
 
 ---
 - Save Current Panel Layout As...
@@ -35,7 +36,7 @@ permalink: /tB/IDE/Project/Menu/Window
 
 ### Manage Panel Layouts...
 
-![The Manage Panel Layouts dialog. Its left pane lists two built-in layouts, DEFAULT and FULLSCREEN, with DEFAULT selected; the right pane shows that layout JSON --- a docked tree of TOOLBAR, TOOLBOX and EDITOR entries with percentage sizes. Add New sits at the bottom left, with a greyed-out Save Changes and a Cancel button at the right.](Images/Menu_Window_PanelLayouts_ManagePanelLayouts_Default.png)
+![The Manage Panel Layouts dialog. Its left pane lists two built-in layouts, DEFAULT and FULLSCREEN, with DEFAULT selected; the right pane shows that layout JSON --- a docked tree of TOOLBAR, TOOLBOX and EDITOR entries with percentage sizes. Add New sits at the bottom left, with a greyed-out Save Changes and a Cancel button at the right.](Images/Menu_Window_PanelLayouts_ManagePanelLayouts_Default.png){:width="1016" height="638"}
 
 <details>
 <summary markdown=span>&lt;DEFAULT&gt; (built-in)</summary>
@@ -149,7 +150,7 @@ permalink: /tB/IDE/Project/Menu/Window
 
 </details>
 
-![The same dialog with FULLSCREEN selected instead, its JSON showing a TOOLBAR sized to fit its content, a TOOLBOX at about 8.5 per cent, and an EDITOR and PROPERTIES pair filling the rest.](Images/Menu_Window_PanelLayouts_ManagePanelLayouts_Fullscreen.png)
+![The same dialog with FULLSCREEN selected instead, its JSON showing a TOOLBAR sized to fit its content, a TOOLBOX at about 8.5 per cent, and an EDITOR and PROPERTIES pair filling the rest.](Images/Menu_Window_PanelLayouts_ManagePanelLayouts_Fullscreen.png){:width="1016" height="638"}
 
 <details>
 <summary markdown=span>&lt;FULLSCREEN&gt; (built-in)</summary>
@@ -205,7 +206,7 @@ permalink: /tB/IDE/Project/Menu/Window
 
 ## Panel Features
 
-![The Window menu with Panel Features highlighted and its submenu open to the right, holding five options that are all ticked: resizing, rearrangement and tear-out of docked panels, then resizing and movement of floating panels.](Images/Menu_Window_PanelFeatures.png)
+![The Window menu with Panel Features highlighted and its submenu open to the right, holding five options that are all ticked: resizing, rearrangement and tear-out of docked panels, then resizing and movement of floating panels.](Images/Menu_Window_PanelFeatures.png){:width="421" height="186"}
 
 - ✓ Allow resizing of docked panels
 - ✓ Allow rearrangement of docked panels
@@ -217,7 +218,7 @@ permalink: /tB/IDE/Project/Menu/Window
 
 ## Keyboard Shortcuts
 
-![The Window menu with Keyboard Shortcuts highlighted and its submenu open to the right: a ticked Default Built-in Keyboard Shortcuts above Manage Keyboard Shortcuts.](Images/Menu_Window_KeyboardShortcuts.png)
+![The Window menu with Keyboard Shortcuts highlighted and its submenu open to the right: a ticked Default Built-in Keyboard Shortcuts above Manage Keyboard Shortcuts.](Images/Menu_Window_KeyboardShortcuts.png){:width="404" height="159"}
 
 - ✓ Default Built-in Keyboard Shortcuts
 
@@ -226,9 +227,9 @@ permalink: /tB/IDE/Project/Menu/Window
 
 ### Manage Keyboard Shortcuts
 
-![The Manage Keyboard Shortcuts dialog. A paragraph across the top explains that groups are merged in the order listed, and how to override an existing shortcut or add one alongside it. The left pane holds the single built-in group, DEFAULT; the right pane shows its JSON with the Edit as JSON box ticked, mapping names such as tbEditor_SelectAll and tbEditor_ClipboardCopy to KEYDOWN sequences. Save Changes is greyed out.](Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts.png)
+![The Manage Keyboard Shortcuts dialog. A paragraph across the top explains that groups are merged in the order listed, and how to override an existing shortcut or add one alongside it. The left pane holds the single built-in group, DEFAULT; the right pane shows its JSON with the Edit as JSON box ticked, mapping names such as tbEditor_SelectAll and tbEditor_ClipboardCopy to KEYDOWN sequences. Save Changes is greyed out.](Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts.png){:width="1016" height="736"}
 
-![The same dialog with the Edit as JSON box cleared: the editing pane is empty apart from the line Keyboard editor coming soon, and the Add New button carries the focus outline.](Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts_1.png)
+![The same dialog with the Edit as JSON box cleared: the editing pane is empty apart from the line Keyboard editor coming soon.](Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts_1.png){:width="1016" height="736"}
 
 <details>
 <summary markdown=span>Options</summary>
@@ -960,7 +961,7 @@ permalink: /tB/IDE/Project/Menu/Window
 ## Theme
 {: index_also="dark mode" }
 
-![The Window menu with Theme highlighted and its submenu open to the right, listing Classic (Light), a ticked Dark, and Light, with Reload from disk below a separator.](Images/Menu_Window_Theme.png)
+![The Window menu with Theme highlighted and its submenu open to the right, listing Classic (Light), a ticked Dark, and Light, with Reload from disk below a separator.](Images/Menu_Window_Theme.png){:width="312" height="219"}
 
 - Classic (Light)
 - ✓ Dark
@@ -971,7 +972,7 @@ permalink: /tB/IDE/Project/Menu/Window
 
 ## Language
 
-![The Window menu with Language highlighted and its submenu open to the right, listing nineteen languages in one tall column from Catalan and German through to Chinese Simplified and Chinese Traditional. Each is named in English with its own native spelling beside it, and English, British English, carries the tick.](Images/Menu_Window_Language.png)
+![The Window menu with Language highlighted and its submenu open to the right, listing nineteen languages in one tall column from Catalan and German through to Chinese Simplified and Chinese Traditional. Each is named in English with its own native spelling beside it, and English, British English, carries the tick.](Images/Menu_Window_Language.png){:width="390" height="577"}
 
 Each language is listed by its English name, followed by its native name. British English is the base language; a string that another language pack does not translate is shown in British English.
 

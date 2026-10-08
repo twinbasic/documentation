@@ -259,7 +259,7 @@ Importing a .vbp also carries over its [startup object](tB/IDE/Project/Settings#
 
 While use is strongly recommended and considered a best practice, twinBASIC **does not** require `Option Explicit`. If you're seeing these errors, you may have overlooked a new feature of twinBASIC: automatically enabling `Option Explicit` project-wide. When you import a VB6 project, or create a new one, a small dialog pops up:
 
-![The twinBASIC New Project Options dialog: a Project Name box above ticked boxes for Option Explicit ON at project scope, Visual Styles and Include Common Controls, and a DPI Awareness dropdown set to NONE.](Images/05306a72-4ff6-427d-8970-969ef0c582e6.png)
+![The twinBASIC New Project Options dialog: a Project Name box above ticked boxes for Option Explicit ON at project scope, Visual Styles and Include Common Controls, and a DPI Awareness dropdown set to SYSTEM_DPI_AWARE.](Images/05306a72-4ff6-427d-8970-969ef0c582e6.png){:width="514" height="275"}
 
 If you leave "Option Explicit ON" checked, that means it will be enforced project-wide, regardless of whether `Option Explicit` is used in the form/module/etc itself. If you uncheck it, you won't get any errors for it, just a warning: "This variable has been auto-declared by the compiler due to Option Explicit being OFF". If you want, you can disable that warning in Project Settings:
 
@@ -276,7 +276,7 @@ For an existing project, the Project Scope Option Explicit can be turned on or o
 
 Addins for VB6 and VBA are not supported by the twinBASIC IDE. However, tB has its own addin infrastructure based on modern web technologies. See Samples 10 through 16 in the 'Samples' tab of the New Project dialog:
 
-![The New / Open Project dialog on its Samples tab, scrolled to the addin samples: Sample 10 twinBASIC IDE Addin followed by its Chart, Monaco, ListView and VirtualListView variants, with the list continuing below.](Images/0e24eb5c-c9af-49a9-a908-03968b211554.png) 
+![The New / Open Project dialog on its Samples tab, scrolled to the addin samples: Sample 10 twinBASIC IDE Addin followed by its Chart, Monaco, ListView and VirtualListView variants, with the list continuing below.](Images/0e24eb5c-c9af-49a9-a908-03968b211554.png){:width="522" height="405"} 
 
 twinBASIC supports **creating** addins for VBA. It's currently the only tool that supports creating these addins for 64bit Office using a language with 100% compatible syntax. See Sample 4 and Sample 5.
 

@@ -1,8 +1,8 @@
 # Screenshots — the plan for `shoot_docs.mjs`
 
-The documentation's IDE screenshots go stale with every beta. `scripts/shoot_help_addin.mjs`
-already retakes the help add-in's eight pictures from a live IDE; this plan grows it into
-`scripts/shoot_docs.mjs`, which retakes every picture of the IDE the documentation holds,
+The documentation's IDE screenshots go stale with every beta. `scripts/shoot_docs.mjs` (until
+increment 1, `shoot_help_addin.mjs`, which took only the help add-in's eight pictures) retakes
+them from a live IDE; this plan grows it to every picture of the IDE the documentation holds,
 annotations included. The owner's decisions behind it are dated 2026-10-08.
 
 ## What there is to retake

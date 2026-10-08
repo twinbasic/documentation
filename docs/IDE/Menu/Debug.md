@@ -8,7 +8,7 @@ permalink: /tB/IDE/Project/Menu/Debug
 
 # Debug Menu
 
-![The Debug menu open with every stepping, watch and breakpoint command greyed out --- Step Into, Step Over, Add Watch, Clear Watches, Toggle Breakpoint, Clear All Breakpoints and Set Next Statement --- leaving Debugger Options at the foot of the menu as the only available entry, marked with a submenu arrow.](Images/Menu_Debug.png)
+![The Debug menu open with every stepping, watch and breakpoint command greyed out --- Step Into, Step Over, Add Watch, Clear Watches, Toggle Breakpoint, Clear All Breakpoints and Set Next Statement --- leaving Debugger Options at the foot of the menu as the only available entry, marked with a submenu arrow.](Images/Menu_Debug.png){:width="291" height="258"}
 
 - Step Into <kbd>F8</kbd> / <kbd>F11</kbd>
 - Step Over <kbd>SHIFT</kbd> + <kbd>F8</kbd> / <kbd>F10</kbd>
@@ -102,11 +102,11 @@ The last two are defects, as of BETA 997.
 
 ## Debugger Options
 
-![The same Debug menu with Debugger Options highlighted and its submenu open to the right, holding two entries: Break On All Errors, unticked, and Allow Breakpoints (Debuggable), ticked.](Images/Menu_Debug_DebuggerOptions.png)
+![The same Debug menu with Debugger Options highlighted and its submenu open to the right, holding two entries: Break On All Errors, unticked, and Allow Breakpoints (Debuggable), ticked.](Images/Menu_Debug_DebuggerOptions.png){:width="534" height="285"}
 
 - Break On All Errors
 - ✓ Allow Breakpoints (Debuggable)
 
-![A close-up of that submenu on its own: a tick against Allow Breakpoints (Debuggable) and none against Break On All Errors.](Images/Menu_Debug_DebuggerOptions_2.png)
+![A close-up of that submenu on its own: a tick against Allow Breakpoints (Debuggable) and none against Break On All Errors.](Images/Menu_Debug_DebuggerOptions_2.png){:width="252" height="56"}
 
 **Break On All Errors** turns the project setting of the [same name](../Settings#break-on-all-errors) on and off. It is off by default, and then an error raised while `On Error Resume Next` or `On Error GoTo` is in effect goes to that handler, as usual. When it is on, the program stops at the failing line even there, with the same error panel as [an error that nothing handles](#when-a-run-time-error-stops-the-program). **Ignore (Resume Next)** then skips the line. Under `On Error Resume Next`, `Err.Number` still holds the error afterwards, so code that checks it sees the error. Under `On Error GoTo`, the handler never runs.

@@ -1249,7 +1249,7 @@ The add-in's code skeletons are written in Stage 4 against the compiler, with te
 
 - Build both bitnesses, which `buildAddin` does (P7). The documentation page is
   [docs/IDE/AddIns/Help.md](docs/IDE/AddIns/Help.md); its pictures are taken by
-  `scripts/shoot_help_addin.mjs` from `test/addin/helpdemo`, so retake them after a change the
+  `scripts/shoot_docs.mjs` from `test/addin/helpdemo`, so retake them after a change the
   pictures show, and update the page's *Getting the add-in* once increment 10 settles how users
   get it.
 - Distribution is upstream's decision: the community add-ins list, or bundled with the IDE.

@@ -8,7 +8,7 @@ permalink: /tB/IDE/Project/Menu/File
 
 # File Menu
 
-![The File menu open below the menu bar. New Project with CTRL+N, Open Project with CTRL+O, Open Recent, and Exit with ALT+F4 are available; Close Project, Save Project, Save Project As, Export Project with CTRL+E, Save Current Document, Build and Clean are all greyed out.](Images/Menu_File.png)
+![The File menu open below the menu bar. New Project with CTRL+N, Open Project with CTRL+O, Open Recent, and Exit with ALT+F4 are available; Close Project, Save Project, Save Project As, Export Project with CTRL+E, Save Current Document, Build and Clean are all greyed out.](Images/Menu_File.png){:width="190" height="337"}
 
 - New Project... <kbd>CTRL</kbd> + <kbd>N</kbd>
 - Open Project... <kbd>CTRL</kbd> + <kbd>O</kbd>

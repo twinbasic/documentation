@@ -8,9 +8,9 @@ index: new project dialog
 
 # New Project
 
-![The New / Open Project dialog on its New tab, headed twinBASIC IDE BETA 950. Eight project templates sit in two rows: Standard EXE, which is selected, ActiveX Control, ActiveX DLL, Standard DLL marked non-ActiveX, Standard EXE (Console App), Standard EXE plus VBCCR v1.8 marked experimental, Import from VBP and Import from folder. Browse, Open and Cancel run along the bottom.](Images/New_Project.png)
+![The New / Open Project dialog on its New tab, headed with the version of the IDE. Eight project templates sit in two rows: Standard EXE, which is selected, ActiveX Control, ActiveX DLL, Standard DLL marked non-ActiveX, Standard EXE (Console App), Standard EXE plus VBCCR v1.8 marked experimental, Import from VBP and Import from folder. Browse, Open and Cancel run along the bottom.](Images/New_Project.png){:width="522" height="405"}
 
-![The IDE File menu open with no project loaded. New Project, Open Project, Open Recent and Exit are available; Close Project, Save Project, Save Project As, Export Project, Save Current Document, Build and Clean are all greyed out.](Menu/Images/Menu_File.png)
+![The IDE File menu open with no project loaded. New Project, Open Project, Open Recent and Exit are available; Close Project, Save Project, Save Project As, Export Project, Save Current Document, Build and Clean are all greyed out.](Menu/Images/Menu_File.png){:width="190" height="337"}
 
 Shortcut: <kbd>CTRL</kbd> + <kbd>N</kbd>
 
@@ -38,13 +38,14 @@ If the folder holds the compiler packages under `Packages`, as an export by the 
 
 ## Samples
 
-![The same dialog on its Samples tab, a scrolling column of sample projects headed by Sample 0. Reports (Experimental), which is selected, then Sample 1. HelloWorld, Sample 1a. WebView2 Examples, Sample 2. GetIPAddresses and Sample 3. MyCodeLibrary, with the list running on past the bottom of the panel.](Images/New_Project_Samples.png)
+![The same dialog on its Samples tab, a scrolling column of sample projects headed by Sample 0. Reports (Experimental), which is selected, then Sample 1. HelloWorld, Sample 1a. WebView2 Examples, Sample 1b. Chromium Embedded Framework Examples and Sample 2. GetIPAddresses, with the list running on past the bottom of the panel.](Images/New_Project_Samples.png){:width="522" height="405"}
 
-Each row is labelled **Sample** followed by its number. The numbering is the dialog's own: **1a** sits between **1** and **2**.
+Each row is labelled **Sample** followed by its number. The numbering is the dialog's own: **1a** and **1b** sit between **1** and **2**.
 
 - **0.** Reports (Experimental)
 - **1.** HelloWorld
 - **1a.** WebView2 Examples
+- **1b.** Chromium Embedded Framework Examples
 - **2.** GetIPAddresses
 - **3.** MyCodeLibrary
 - **4.** MyVBEAddin (NEW with ToolWindow)
@@ -72,11 +73,11 @@ Each row is labelled **Sample** followed by its number. The numbering is the dia
 
 If you haven't opened any projects, or removed all then this tab will be blank.
 
-![The same dialog on its Recent tab with nothing listed, an empty grey panel between the tab strip and the Browse, Open and Cancel buttons.](Images/New_Project_Recent_1.png)
+![The same dialog on its Recent tab with nothing listed, an empty grey panel between the tab strip and the Browse, Open and Cancel buttons.](Images/New_Project_Recent_1.png){:width="522" height="405"}
 
 A list of recent projects will be displayed, resizing depending on how many are in the list.
 
-![The Recent tab holding two entries, the first highlighted white and the second grey, each with a small X button at its right edge. Both rows read blank because the project paths have been erased from the screenshot.](Images/New_Project_Recent_2.png)
+![The Recent tab holding two entries, the first highlighted white and the second grey, each with a small X button at its right edge. Both rows read blank because the project paths have been erased from the screenshot.](Images/New_Project_Recent_2.png){:width="522" height="405"}
 
 _Removed paths_
 

@@ -1354,34 +1354,53 @@ the copy.
 
 Exit codes: **0** the IDE was closed, and the registry is as it was found; **1** the add-in did not build, or the project does not compile; **2** the tool could not run: a refused command line, no IDE, no built site, a registry it could not record, or a crash; **3** the registry or the work folder was not put back (see the lines above).
 
-### shoot_help_addin.mjs
-{: #shoot-help-addin }
+### shoot_docs.mjs
+{: #shoot-docs }
 
-    node scripts/shoot_help_addin.mjs [--only <regex>] [--out <dir>] [--port N] [--ide <path>]
+    node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--port N] [--ide <path>]
 
-Writes the screenshots of the help add-in's documentation page, `Help_<Name>.png`, into
-`docs/IDE/AddIns/Images/`: `Pane`, `Hover`, `Search`, `Choices`, `Description`, `Settings`, `Window`
-and `Toolbar`. It builds the add-in in `add-in/` into a private copy of the twinBASIC install,
-opens the small demo project `test/addin/helpdemo` in an IDE on a private desktop, operates it
-and captures each picture, so that one run regenerates every image after a new BETA. The IDE is
-set up as a lane of [`addin_test.mjs`](#addin-test) is, with a private `APPDATA` and
-`TB_ADDIN_TEST` set to `1`, and it never appears on your desktop. The pane's pages come from the
-built site, `docs/_site`, served on `localhost`, so run `build.bat` first.
+Takes the documentation's screenshots of the IDE, so that one run regenerates them after a new
+BETA. Each picture belongs to a *setup*, one IDE brought to a known state, and a setup's IDE is
+started only when one of its pictures is selected:
 
-The pictures are repeatable: the IDE's page is given a fixed size of 1280 by 880 CSS pixels at
-2x, animations and the text caret are switched off, the theme is dark, and no picture shows the
-Debug Console, whose lines carry the time they were written. A picture is written only when its
-bytes differ from the file already there, and each is reported as `new`, `updated` or
-`unchanged`; a second run with nothing changed reports every picture `unchanged`. The Windows user
-name must never be in a published picture, so before each one is kept the visible text of the page
-it was taken from is searched for the name, and a picture whose page holds it is refused.
+- **help** builds the help add-in in `add-in/` into a private copy of the twinBASIC install and
+  opens the small demo project `test/addin/helpdemo`: the eight pictures of the [Help
+  Add-In](../../tB/IDE/AddIns/Help) page, `docs/IDE/AddIns/Images/Help_<Name>.png`. The pane's pages
+  come from the built site, `docs/_site`, served on `localhost`, so run `build.bat` first.
+- **no-project** starts the IDE with no project open: the menus under `docs/IDE/Menu/Images/`,
+  and the dialogs that need no project --- New / Open Project and its tabs, the Manage Keyboard
+  Shortcuts and Manage Panel Layouts dialogs, and the ones the FAQ shows.
+- **project** opens the demo project without the add-in, for the dialogs that show something
+  only with a project open: About, whose licence line needs the compiler, and IDE Options,
+  whose font lists do.
 
-`--only` takes the pictures whose name matches a regular expression. `--out` is the folder the
-pictures go to. `--port` is where the search for the IDE's DevTools port starts, 9620 by default;
-the tool claims three, as `addin_test.mjs` does: the IDE's, the detached window's, and one for the
+Every IDE is set up as a lane of [`addin_test.mjs`](#addin-test) is, with a private `APPDATA`
+and `TB_ADDIN_TEST` set to `1`, and it never appears on your desktop.
+
+The pictures are repeatable. The IDE lays its page out at 100% whatever the display's scaling,
+the page is given a fixed size of 1280 by 880 CSS pixels at 2x, animations and the text caret
+are switched off, and the theme is dark. The IDE's settings --- its options, panel layouts and
+keyboard shortcut groups --- are set to their defaults in the page only, and the recent-project
+lists are replaced there, so no picture shows your own choices or projects; nothing is saved.
+No picture shows the Debug Console, whose lines carry the time they were written. Menus are
+cut out, transparent around the menu; dialogs are taken whole. A picture is written only when
+its bytes differ from the file already there, and each is reported as `new`, `updated` or
+`unchanged`; a second run with nothing changed reports every picture `unchanged`. The Windows
+user name must never be in a published picture, so before each one is kept the visible text of
+the page it was taken from is searched for the name, and a picture whose page holds it is
+refused.
+
+Every picture is twice the size it is shown at. A page that shows one gives it a `{:width
+height}` of half its pixel size, so that it is sharp on a high-resolution display and in the
+book.
+
+`--only` takes the pictures whose path under the output folder matches a regular expression,
+such as `Menu_File` or `IDE/Menu/`. `--out` is the folder those paths are under, `docs` by
+default. `--port` is where the search for DevTools ports starts, 9700 by default; the help
+setup claims three, as `addin_test.mjs` does: the IDE's, the detached window's, and one for the
 IDE that builds the add-in, whose browser process can hold its port for a while after that IDE
-ends. The add-in's saved settings (`tbDocsHelp`) are emptied for the run
-and, with the IDE's registry entries, put back at the end.
+ends. The add-in's saved settings (`tbDocsHelp`) are emptied for the run and, with the IDE's
+registry entries, put back at the end.
 
 Exit codes: **0** every picture was written or was unchanged; **1** a picture failed (an element was not found, or the page showed the user name), the add-in did not build, or the demo project does not compile; **2** the tool could not run: a refused command line, no IDE, no built site, a registry it could not record, or a crash; **3** the registry or the work folder was not put back (see the lines above).
 

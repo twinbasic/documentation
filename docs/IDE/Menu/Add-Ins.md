@@ -8,7 +8,7 @@ permalink: /tB/IDE/Project/Menu/AddIns
 
 # Add-Ins Menu
 
-![The Add-Ins menu open on a greyed-out placeholder line reading no addins loaded, and nothing else.](Images/Menu_Add-Ins.png)
+![The Add-Ins menu open on a greyed-out placeholder line reading no addins loaded, and nothing else.](Images/Menu_Add-Ins.png){:width="157" height="57"}
 
 {no addins loaded}
 

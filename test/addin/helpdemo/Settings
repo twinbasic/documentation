@@ -3,7 +3,7 @@
 	"project.appTitle": "Inventory",
 	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
 	"project.buildType": "Standard EXE",
-	"project.description": "The project scripts/shoot_help_addin.mjs opens to take the help add-in's screenshots in. Its code is what the screenshots show, so it reads like a small program of a reader's own, and the tool finds each name it presses F1 on in the source rather than by line. scripts/lib/tb-lane.mjs stages a copy, with project.id and project.buildPath rewritten for the lane.",
+	"project.description": "The project scripts/shoot_docs.mjs opens to take the help add-in's screenshots in. Its code is what the screenshots show, so it reads like a small program of a reader's own, and the tool finds each name it presses F1 on in the source rather than by line. scripts/lib/tb-lane.mjs stages a copy, with project.id and project.buildPath rewritten for the lane.",
 	"project.exportPathIsV2": true,
 	"project.id": "{B7A1C3E2-5D4F-4A86-9C21-3E8F0A6D7B15}",
 	"project.name": "Inventory",

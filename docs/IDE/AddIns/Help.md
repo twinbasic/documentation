@@ -15,7 +15,7 @@ The add-in is named *twinBASIC Documentation Help* in the IDE. It works from an 
 
 Put the cursor on a name and press F1. The page that documents the name opens in the **TWINBASIC HELP** tool window. The cursor can be anywhere in the name, or just after it, as it is after typing the name.
 
-![The code editor showing a module named Inventory, with the cursor on MsgBox in line 19. Beside it, the TWINBASIC HELP tool window shows the MsgBox page: breadcrumbs, the heading, its summary, the syntax and the first parameter.](Images/Help_Pane.png){:width="1143" height="550"}
+![The code editor showing a module named Inventory, with the cursor on MsgBox in line 19. Beside it, the TWINBASIC HELP tool window shows the MsgBox page: breadcrumbs, the heading, its summary, the syntax and the first parameter.](Images/Help_Pane.png){:width="1143" height="546"}
 
 The help pane is an ordinary IDE tool window: it can float, or be docked like the other tool windows. The page in it follows the IDE's theme, dark or light, and its links work as they do on the website. Above the page are a search box and three buttons:
 
@@ -51,7 +51,7 @@ A link names the symbol, its kind and where it is declared: *Help: MsgBox functi
 
 Type in the search box to find a page by its symbol's name. The list shows the names that start with the text first, then those that contain it, with each one's kind. Text with a dot in it is matched against qualified names such as `Collection.Add`. Click a name to show its page, or press Enter for the first one. The clear button at the right of the box empties it and hides the list.
 
-![The help pane with format typed in its search box. The list below shows Strings.Format, Strings.Format$, Strings.FormatCurrency, Strings.FormatDateTime, Strings.FormatNumber and Strings.FormatPercent, all functions, then OLE.Format and DataObjectFormat.FormatType, properties, and Constants.VbDateTimeFormat, an enum.](Images/Help_Search.png){:width="480" height="262"}
+![The help pane with format typed in its search box. The list below shows Strings.Format, Strings.Format$, Strings.FormatCurrency, Strings.FormatDateTime, Strings.FormatNumber and Strings.FormatPercent, all functions, then OLE.Format and DataObjectFormat.FormatType, properties, and Constants.VbDateTimeFormat, an enum.](Images/Help_Search.png){:width="480" height="264"}
 
 The search finds symbols, not words in the pages: to search the text of the documentation, use the search on the website.
 
@@ -59,13 +59,13 @@ The search finds symbols, not words in the pages: to search the text of the docu
 
 Sometimes the name alone cannot say which page is meant. A member called through a variable declared **As Object** is the common case: the object's type is known only when the program runs. F1 then puts the name in the search box and lists every page that documents it, and the page in the pane stays as it was. Click the one that applies.
 
-![The help pane after F1 on prices.Add, where prices is declared As Object. The search box holds prices.Add, and the list shows three methods: Collection.Add, DataMembers.Add and DataObjectFiles.Add.](Images/Help_Choices.png){:width="480" height="130"}
+![The help pane after F1 on prices.Add, where prices is declared As Object. The search box holds prices.Add, and the list shows three methods: Collection.Add, DataMembers.Add and DataObjectFiles.Add.](Images/Help_Choices.png){:width="480" height="132"}
 
 ## Your own procedures
 
 F1 on a name declared in the project itself, or in a package or type library this documentation does not cover, shows a summary in place of a page. The summary gives the declaration, the text of the procedure's [**Description**](../../Core/Attributes#description) attribute, and where the name is declared.
 
-![The help pane after F1 on TotalPrice. In place of a page it shows the declaration Function TotalPrice ( ByVal prices As Object ) As Double, the description Adds up the prices held in a Dictionary., and the line Declared in Inventory.Inventory.](Images/Help_Description.png){:width="480" height="169"}
+![The help pane after F1 on TotalPrice. In place of a page it shows the declaration Function TotalPrice ( ByVal prices As Object ) As Double, the description Adds up the prices held in a Dictionary., and the line Declared in Inventory.Inventory.](Images/Help_Description.png){:width="480" height="170"}
 
 The summary for the procedure above comes from this code:
 
@@ -80,7 +80,7 @@ Without a **Description** attribute, the summary says *No description*. **Open i
 
 The gear opens the settings. A click anywhere else, or Esc, closes them.
 
-![The top of the help pane with the settings open under the gear: the Hover help and All packages boxes, both unticked.](Images/Help_Settings.png){:width="480" height="149"}
+![The top of the help pane with the settings open under the gear: the Hover help and All packages boxes, both unticked.](Images/Help_Settings.png){:width="480" height="150"}
 
 **Hover help**
 : Adds the links described under [Hover help](#hover-help). Off by default.
