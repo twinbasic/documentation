@@ -25,6 +25,12 @@
 //               on localhost, so build.bat has to have run
 //   project     test/addin/helpdemo open, with no add-in: what needs a compiler
 //               that has answered, as About's licence line does
+//   sample      test/shots/sample, SampleProject: the Project Explorer and the other
+//               panels with a project, and the editor
+//   settings    the sample with a Settings file of test/shots/settings, for the pictures
+//               of Project Settings (-symbols, -webview2 and -fusion have the
+//               references those pictures list); glyphs is the sample itself, for
+//               the icons the pages show inline
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
@@ -60,7 +66,7 @@
 // picture whose page holds it is refused. A tooltip is not drawn and is not
 // read; the IDE's title tooltip holds the project's path.
 
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import path from "node:path";
 import { createStaticHandler } from "../builder/static-files.mjs";
@@ -103,6 +109,7 @@ const PANE = "tbDocsHelpPane";
 const ADDIN = path.join(REPO_ROOT, "add-in");
 const DEMO = path.join(REPO_ROOT, "test", "addin", "helpdemo");
 const SAMPLE = path.join(REPO_ROOT, "test", "shots", "sample");
+const SETTINGS_FIXTURES = path.join(REPO_ROOT, "test", "shots", "settings");
 const DEMO_FILE = "/Inventory/Sources/Inventory.twin";
 const DEMO_SOURCE = path.join(DEMO, "Sources", "Inventory.twin");
 const SITE = path.join(REPO_ROOT, "docs", "_site");
@@ -176,6 +183,7 @@ if (!ide || !existsSync(ide)) {
 }
 
 const USER = userInfo().username;
+const USER_PATTERN = USER.replace(/[.*+?^$|()[\]{}\\]/g, "\\$&");
 
 // ---------------------------------------------------------------- geometry
 
@@ -236,19 +244,25 @@ const quiet = (conn) =>
 })()`);
 
 // The visible text of a page: the document's and each shadow root's, where an
-// element's innerText leaves out what is not drawn.
+// element's innerText leaves out what is not drawn, and the values of its text boxes,
+// which innerText leaves out too.
 const VISIBLE_TEXT = `(() => {
   const out = [];
   const take = (e) => { if (e.innerText) out.push(e.innerText); };
+  const values = (root) => {
+    for (const e of root.querySelectorAll("input, textarea")) if (e.value && e.getBoundingClientRect().width) out.push(e.value);
+  };
   const walk = (root) => {
     for (const e of root.querySelectorAll("*")) {
       if (e.shadowRoot) {
         for (const k of e.shadowRoot.children) take(k);
+        values(e.shadowRoot);
         walk(e.shadowRoot);
       }
     }
   };
   take(document.body);
+  values(document);
   walk(document);
   return out.join("\\n");
 })()`;
@@ -296,8 +310,11 @@ async function cutoutOff(conn) {
 // of the colour `solid` when that is given.
 async function capture(conn, name, clip, { frame, away = null, keep = null, solid = null } = {}) {
   const text = await textOf(conn, frame);
-  if (text.toLowerCase().includes(USER.toLowerCase()))
-    throw new Error(`the page for ${name} shows the Windows user name`);
+  const at = text.toLowerCase().indexOf(USER.toLowerCase());
+  if (at >= 0) {
+    const around = `${text.slice(Math.max(0, at - 40), at)}<user>${text.slice(at + USER.length, at + USER.length + 40)}`;
+    throw new Error(`the page for ${name} shows the Windows user name: ${JSON.stringify(around)}`);
+  }
   if (away) await away();
   await quiet(conn);
   try {
@@ -636,9 +653,8 @@ async function prepareNoProject(run) {
 // shot that needs errors edits a module in the page and puts it back. The one file the
 // tree does not hold is the template's icon, a binary: it is taken from the install's
 // own Standard EXE project, as the New Project dialog would give it.
-async function startSample(run) {
-  run.step = "open";
-  console.log(`opening ${path.relative(REPO_ROOT, SAMPLE)}`);
+// The fixture in the work folder, with the template's icon.
+function stageSample(run) {
   const src = path.join(run.work, "sample-src");
   cpSync(SAMPLE, src, { recursive: true });
   const template = path.join(run.work, "template");
@@ -648,8 +664,34 @@ async function startSample(run) {
     path.join(template, "Resources", "ICON", "twinBASIC.ico"),
     path.join(src, "Resources", "ICON", "twinBASIC.ico"),
   );
-  return run.lane.open(src);
+  return src;
 }
+
+async function startSample(run) {
+  run.step = "open";
+  console.log(`opening ${path.relative(REPO_ROOT, SAMPLE)}`);
+  return run.lane.open(stageSample(run));
+}
+
+// The sample with another Settings file, test/shots/settings/<variant>.json: the
+// references, the warnings and the aliases a Project Settings picture shows. Without the
+// VB package the form cannot compile, so the form and the line that shows it go
+// (`keepForm` leaves them, for a variant that has the package).
+const startSettings =
+  (variant, { keepForm = false } = {}) =>
+  async (run) => {
+    run.step = "open";
+    console.log(`opening ${path.relative(REPO_ROOT, SAMPLE)} with the ${variant} settings`);
+    const src = stageSample(run);
+    cpSync(path.join(SETTINGS_FIXTURES, `${variant}.json`), path.join(src, "Settings"));
+    if (!keepForm) {
+      rmSync(path.join(src, "Sources", "frmMain.twin"));
+      rmSync(path.join(src, "Sources", "frmMain.tbform"));
+      const main = path.join(src, "Sources", "MainModule.twin");
+      writeFileSync(main, readFileSync(main, "utf8").replace("frmMain.Show", 'Debug.Print "Hello"'));
+    }
+    return run.lane.open(src);
+  };
 
 async function prepareSample(run) {
   const { c } = run;
@@ -664,10 +706,29 @@ async function prepareSample(run) {
   return { c };
 }
 
+// The Fusion references make the compiler write a line to the DEBUG CONSOLE that names
+// the temporary folder, so the console is emptied with a click on its Clear button.
+async function prepareFusion(run) {
+  const ctx = await prepareSample(run);
+  const { c } = run;
+  await sleep(4000);
+  const b = await rectOf(c, '[title="Clear Debug Console"]');
+  if (!b) throw new Error("the DEBUG CONSOLE has no Clear button");
+  await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+  await sleep(500);
+  await parkMouse(c);
+  return ctx;
+}
+
 const SETUPS = {
   help: { ports: 3, start: startHelp, prepare: prepareHelp },
   project: { ports: 1, start: startProject, prepare: prepareProject },
   sample: { ports: 1, start: startSample, prepare: prepareSample },
+  settings: { ports: 1, start: startSettings("base"), prepare: prepareSample },
+  "settings-symbols": { ports: 1, start: startSettings("symbols"), prepare: prepareSample },
+  "settings-webview2": { ports: 1, start: startSettings("webview2", { keepForm: true }), prepare: prepareSample },
+  "settings-fusion": { ports: 1, start: startSettings("fusion"), prepare: prepareFusion },
+  glyphs: { ports: 1, start: startSample, prepare: prepareSample },
   "no-project": { ports: 1, start: startNoProject, prepare: prepareNoProject },
 };
 
@@ -741,7 +802,7 @@ async function dialogShot(c, name, clipOf = (m) => m, annotate = null) {
   await sleep(300);
   const box = (await modals(c)).pop();
   if (!box) throw new Error(`no dialog is open for ${name}`);
-  let area = clipOf(box);
+  let area = await clipOf(box);
   try {
     if (annotate) {
       const { box: drawn } = await annotateOver(c, annotate);
@@ -2125,6 +2186,302 @@ const sampleShots = [
   },
 ];
 
+// ---- Project Settings: a dialog of rows, each `<key>_HEADER`, `_CONTENT` and `_DESCRIPTION`
+// in a list that scrolls under a filter box
+
+const SETTINGS_LIST = ".configEditorContainerInner";
+const settingPart = (key, part) => `[class~="${key}_${part}"]`;
+const SETTING = (key, part) => ({ css: settingPart(key, part) });
+
+// The first element matching `css` that is drawn, as a rectangle.
+const shownRect = (c, css) =>
+  c.evaluate(`(() => {
+  const e = [...document.querySelectorAll(${JSON.stringify(css)})].find((x) => x.getBoundingClientRect().width > 0);
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+
+// Scrolls the list until the row of `key` is `below` pixels under the filter box.
+async function scrollToSetting(c, key, below = 6) {
+  const done = await c.evaluate(`(() => {
+  const list = document.querySelector(${JSON.stringify(SETTINGS_LIST)});
+  const h = document.querySelector(${JSON.stringify(settingPart(key, "HEADER"))});
+  const banner = document.querySelector(".filterBanner");
+  if (!list || !h || !banner) return false;
+  const row = h.closest(".optionEnabled") || h.parentElement;
+  list.scrollTop += row.getBoundingClientRect().top - banner.getBoundingClientRect().bottom - ${below};
+  return true;
+})()`);
+  if (!done) throw new Error(`Project Settings has no row ${key}`);
+  await sleep(500);
+}
+
+// The row of `key` as a rectangle, its dotted lines included.
+const settingRow = (c, key) =>
+  c.evaluate(`(() => {
+  const h = document.querySelector(${JSON.stringify(settingPart(key, "HEADER"))});
+  const r = (h.closest(".optionEnabled") || h.parentElement).getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+
+// A path in the dialog that holds the Windows user name (the build path the lane stages the
+// project with, a library registered under the profile folder) names the user "User"
+// instead, in the page only, in its text and in its text boxes.
+const nameUserAsUser = (c) =>
+  c.evaluate(`(() => {
+  const re = new RegExp(${JSON.stringify(USER_PATTERN)}, "gi");
+  const m = [...document.querySelectorAll(".modalDialogContainer")].pop();
+  const walk = document.createTreeWalker(m, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) n.nodeValue = n.nodeValue.replace(re, "User");
+  for (const i of m.querySelectorAll("input, textarea")) i.value = i.value.replace(re, "User");
+})()`);
+
+// The dialog of Project > Project Settings (or Project > References, which filters its
+// list to the library references), picture `out` of it, Cancel to close it. `prepare(c)`
+// scrolls or switches it; `clipOf(box, c)` takes a part of the dialog.
+const settingsShot = (
+  out,
+  { setup = "settings", command: id = "tbProject_ShowSettings", prepare = null, clipOf = (m) => m, annotate = null },
+) => ({
+  out,
+  setup,
+  take: ({ c }) =>
+    inDialog(c, { command: id, title: "Project Settings", close: "Cancel", settle: 2500 }, async () => {
+      await nameUserAsUser(c);
+      if (prepare) await prepare(c);
+      return dialogShot(c, out, (m) => clipOf(m, c), annotate);
+    }),
+});
+
+const LIBRARY_REFERENCES = "tbProject_ShowReferences";
+
+// The last row of the library list that is showing: where a picture of the list can end.
+const lastReferenceBottom = (c) =>
+  c.evaluate(`(() => {
+  const list = [...document.querySelectorAll(".referencesListNewOuter")].find((e) => e.getBoundingClientRect().width > 0);
+  return Math.max(...[...list.querySelectorAll(".referencesListColVersion")].map((e) => e.getBoundingClientRect().bottom));
+})()`);
+
+const settingsShots = [
+  // the two compiler option sections at the end of the list
+  settingsShot("LLVM/Images/llvmdoc1.png", {
+    prepare: (c) =>
+      c.evaluate(
+        `(() => { const l = document.querySelector(${JSON.stringify(SETTINGS_LIST)}); l.scrollTop = l.scrollHeight; })()`,
+      ),
+  }),
+  settingsShot("Features/Images/4fc2bf99-2bec-4943-837d-21038d791574.png", {
+    prepare: (c) => scrollToSetting(c, "compiler.traceFlags"),
+    clipOf: (m) => ({ x: m.x, y: m.y, width: 760, height: 531 }),
+  }),
+  settingsShot("Features/Images/569150839-9ffc87ac-250d-40a4-bb47-669b607ad76f.png", {
+    async prepare(c) {
+      // The lane stages the project with a build path in its temporary folder, and the
+      // dialog shows it: the template's own path, in the page only (Cancel keeps nothing).
+      await c.evaluate(`(() => {
+  const i = document.querySelector(${JSON.stringify(`${settingPart("project.buildPath", "CONTENT")} input`)});
+  i.value = "\${SourcePath}\\\\Build\\\\\${ProjectName}_\${Architecture}.\${FileExtension}";
+})()`);
+      await scrollToSetting(c, "project.buildPath");
+    },
+    clipOf: (m) => ({ x: m.x, y: m.y, width: m.width, height: 460 }),
+    // the label's text and the input of the row, as the old picture boxed them
+    annotate: [
+      {
+        type: "box",
+        on: {
+          span: [
+            { css: settingPart("project.fusionBuildPath", "HEADER"), own: true },
+            SETTING("project.fusionBuildPath", "CONTENT"),
+          ],
+        },
+        pad: 6,
+      },
+    ],
+  }),
+  settingsShot("Miscellaneous/Images/01009879-fdbc-4a8e-8683-353aab6193df.png", {
+    prepare: (c) => scrollToSetting(c, "project.optionExplicit"),
+    clipOf: (m) => ({ x: m.x, y: m.y, width: 740, height: 140 }),
+  }),
+  settingsShot("IDE/Images/project settings description text.png", {
+    prepare: (c) => scrollToSetting(c, "project.optionExplicit"),
+    clipOf: async (_m, c) => {
+      const r = await settingRow(c, "project.optionExplicit");
+      return { x: r.x, y: r.y - 1, width: 900, height: r.height + 2 };
+    },
+    // from the empty space under the row's label, level with the description, along to its first word
+    annotate: [
+      {
+        type: "arrow",
+        from: { of: SETTING("project.optionExplicit", "DESCRIPTION"), at: "left", dx: -130 },
+        to: { css: settingPart("project.optionExplicit", "DESCRIPTION"), own: true },
+      },
+    ],
+  }),
+  settingsShot("Features/Images/017bd6f8-4b35-43a9-b6be-84cba69daf64.png", {
+    // the first sixteen warnings, shown whole: the list scrolls in a box of its own
+    async prepare(c) {
+      await c.evaluate(`(() => {
+  const w = document.querySelector(".warningOptions");
+  w.style.height = "360px";
+  w.style.maxHeight = "none";
+})()`);
+      await scrollToSetting(c, "project.warnings", -40);
+    },
+    clipOf: async (_m, c) =>
+      c.evaluate(`(() => {
+  const rows = [...document.querySelectorAll(".warningOptions .warningDiv")].map((e) => e.getBoundingClientRect());
+  const w = document.querySelector(".warningOptions").getBoundingClientRect();
+  const first = rows[0];
+  const last = rows[15];
+  return { x: w.x - 6, y: first.y - 6, width: w.width + 12, height: last.bottom - first.y + 8 };
+})()`),
+  }),
+  settingsShot("IDE/Images/ProjectSettings_LibraryReferences.png", { command: LIBRARY_REFERENCES }),
+  settingsShot("IDE/Images/ProjectSettings_AvailableCOMReferences.png", {
+    command: LIBRARY_REFERENCES,
+    async prepare(c) {
+      await clickInModal(c, "Available COM References");
+      const listed = await waitFor(
+        c,
+        async () =>
+          (await c.evaluate(
+            `[...document.querySelectorAll(".referencesListNewOuter")].some((e) => e.getBoundingClientRect().width > 0 && e.querySelectorAll(".referencesListColVersion").length > 3)`,
+          )) === true,
+        { timeout: 20000, interval: 250 },
+      );
+      if (!listed) throw new Error("the Available COM References list stayed empty");
+      // Some libraries are registered under the user's profile folder
+      await nameUserAsUser(c);
+      await sleep(1000);
+      const names = await c.evaluate(
+        `[...document.querySelectorAll(".referencesListNewOuter")].find((e) => e.getBoundingClientRect().width > 0).innerText.split("\\n").filter(Boolean).slice(0, 12).join(" | ")`,
+      );
+      console.log(`  Available COM References starts: ${names}`);
+    },
+  }),
+  settingsShot("Features/Packages/Images/LibrarySymbols.png", {
+    setup: "settings-symbols",
+    command: LIBRARY_REFERENCES,
+    clipOf: async (m, c) => {
+      const alias = await shownRect(c, ".referencesListColSymbolOverride");
+      return { x: m.x, y: m.y, width: m.width, height: alias.y + alias.height + 10 - m.y };
+    },
+  }),
+  settingsShot("Features/Images/569100769-f1f2790a-0094-4843-809f-a8a9e928fd41.png", {
+    setup: "settings-fusion",
+    command: LIBRARY_REFERENCES,
+    // the table scrolled right to the Locale to Fusion columns, from the label to the list's foot
+    async prepare(c) {
+      await c.evaluate(`(() => {
+  const l = [...document.querySelectorAll(".referencesListNewOuter")].find((e) => e.getBoundingClientRect().width > 0);
+  l.scrollLeft = l.scrollWidth;
+})()`);
+      await sleep(500);
+    },
+    clipOf: async (m, c) => {
+      const label = await shownRect(c, settingPart("project.references", "HEADER"));
+      const list = await shownRect(c, ".referencesListNewOuter");
+      return { x: m.x, y: label.y - 12, width: m.width, height: list.y + list.height + 8 - (label.y - 12) };
+    },
+  }),
+  settingsShot("Tutorials/WebView2/Images/tbWebView2References.png", {
+    setup: "settings-webview2",
+    command: LIBRARY_REFERENCES,
+    // the label, the tabs and the rows of the list
+    clipOf: async (m, c) => {
+      const label = await shownRect(c, settingPart("project.references", "HEADER"));
+      const bottom = await lastReferenceBottom(c);
+      return { x: m.x, y: label.y - 12, width: m.width, height: bottom + 12 - (label.y - 12) };
+    },
+  }),
+];
+
+// ---- the IDE's own icons, as the pages show them inline
+
+// An icon clipped to its element's box: `find(c)` returns the rectangle.
+const glyphShot = (name, find, { prepare = null, restore = null, away = true } = {}) => ({
+  out: `IDE/Images/${name}.png`,
+  setup: "glyphs",
+  async take({ c }) {
+    await resetUi(c);
+    try {
+      if (prepare) await prepare(c);
+      const r = await find(c);
+      if (!r) throw new Error(`no element for the ${name} icon`);
+      return await capture(c, name, snapOut(r), { away: away ? () => parkMouse(c) : null });
+    } finally {
+      if (restore) await restore(c);
+    }
+  },
+});
+
+// The element matching `css` in the docked panel headed `title`.
+const inDocked = (title, css) => (c) =>
+  c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === ${JSON.stringify(title)});
+  const e = h?.closest(".toolWindowContainer")?.querySelector(${JSON.stringify(css)});
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+
+// The icon in front of a Project Explorer row.
+const treeIcon = (text) => (c) =>
+  c.evaluate(`(() => {
+  const n = [...document.querySelectorAll(".itemNode")].find((e) => e.textContent.trim() === ${JSON.stringify(text)});
+  const e = n?.previousElementSibling;
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+
+// The icon of an entry of the Add submenu (Sources > right click > Add), the mouse left on Add.
+const addMenuIcon = (text) => ({
+  find: (c) =>
+    c.evaluate(`(() => {
+  const row = [...document.querySelectorAll("#contextMenuSUB > .contextMenuItem")].find((e) => e.innerText.trim().startsWith(${JSON.stringify(text)}));
+  const e = row?.querySelector(".contextMenuItemIcon");
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`),
+  options: {
+    away: false,
+    async prepare(c) {
+      await peOpen(c, "Sources", true);
+      await peRightClick(c, "Sources");
+      await hoverItem(c, "Add");
+    },
+    restore: closeMenus,
+  },
+});
+
+const sourcesOpen = (c) => peOpen(c, "Sources", true);
+
+const glyphShots = [
+  glyphShot("Settings", inDocked("PROJECT EXPLORER", '[title="Project Settings"]')),
+  glyphShot("Toggle", inDocked("PROJECT EXPLORER", '[title^="Toggle file view"]')),
+  glyphShot("Add", inDocked("PROJECT EXPLORER", '[title="Add..."]')),
+  glyphShot("Folder", treeIcon("Sources"), { prepare: sourcesOpen }),
+  glyphShot("File-Green", treeIcon("CHANGELOG.md"), { prepare: sourcesOpen }),
+  glyphShot("tB-Green", treeIcon("frmMain.tbform"), { prepare: sourcesOpen }),
+  glyphShot("tB-Red", treeIcon("MainModule.twin"), { prepare: sourcesOpen }),
+  glyphShot("tB-Blue", addMenuIcon("Add Module (.BAS)").find, addMenuIcon("Add Module (.BAS)").options),
+  glyphShot("tB-Orange", addMenuIcon("Add Class (.CLS)").find, addMenuIcon("Add Class (.CLS)").options),
+  glyphShot("DebugConsole_AutoScroll", inDocked("DEBUG CONSOLE", '[title="Auto Scroll"]')),
+  glyphShot("DebugConsole_Clear", inDocked("DEBUG CONSOLE", '[title="Clear Debug Console"]')),
+  glyphShot("DebugConsole_Options", inDocked("DEBUG CONSOLE", ".ellipsesIcon2")),
+  glyphShot("DebugConsole_Input", inDocked("DEBUG CONSOLE", ".debugConsoleEntryMarker")),
+  glyphShot("Clear", (c) => shownRect(c, `${panelSel("WATCHES")} [title="Clear Watches"]`), {
+    async prepare(c) {
+      await floatPanel(c, "WATCHES", { width: 300, height: 76 });
+    },
+    restore: (c) => unfloatPanel(c, "WATCHES"),
+  }),
+];
+
 // The route a person takes: Standard EXE is selected on the New tab, and Open
 // asks for its options. Cancel closes the dialog and creates nothing. Last
 // of the setup, since the IDE has begun to start a project.
@@ -2571,6 +2928,8 @@ const SHOTS = [
   // after the dialogs: the panels' pictures change the layout
   ...panelShots,
   ...sampleShots,
+  ...settingsShots,
+  ...glyphShots,
   newProjectOptionsShot,
 ];
 

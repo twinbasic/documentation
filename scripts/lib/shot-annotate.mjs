@@ -26,6 +26,8 @@
 //   { code, nth? }        a text search in the editor's model, the `nth` match (1 by
 //                         default), placed with the editor's scrolled position, never a
 //                         line number. The first use is in increment 4: untested
+//   { span: [anchor, ...] } the box that holds the boxes of all the anchors (a row's label
+//                         and its input, boxed as one)
 //   { of, at, dx?, dy? }  a point of another anchor's box: `at` is center, top, bottom,
 //                         left, right, top-left, top-right, bottom-left or bottom-right,
 //                         moved by dx, dy
@@ -183,6 +185,17 @@ function draw(prims, S) {
         width: 0,
         height: 0,
         point: true,
+      };
+    }
+    if (a.span) {
+      const rs = a.span.map(box);
+      const x0 = Math.min(...rs.map((r) => r.x));
+      const y0 = Math.min(...rs.map((r) => r.y));
+      return {
+        x: x0,
+        y: y0,
+        width: Math.max(...rs.map((r) => r.x + r.width)) - x0,
+        height: Math.max(...rs.map((r) => r.y + r.height)) - y0,
       };
     }
     if (a.code !== undefined) return codeBox(a);

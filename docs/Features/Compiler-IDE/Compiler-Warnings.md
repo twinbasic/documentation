@@ -27,7 +27,7 @@ This feature is discouraged for it making code difficult to read and prone to di
 
 The full list can be found in your project's Settings page:
 
-![The project Settings page listing warnings TB0001 to TB0016, each with a dropdown set to WARNING](../Images/017bd6f8-4b35-43a9-b6be-84cba69daf64.png)
+![The Compiler Warnings list of the Project Settings dialog, showing warnings TB0001 to TB0016, each with a dropdown set to WARNING except TB0015, which is set to HINT](../Images/017bd6f8-4b35-43a9-b6be-84cba69daf64.png){:width="846" height="344"}
 
 ## Adjusting Warnings
 

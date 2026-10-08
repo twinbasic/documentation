@@ -31,7 +31,7 @@ permalink: /tB/IDE/Project/Menu/Project
 
 See [Project Settings](../Settings) filtered by "project.references".
 
-![The Project Settings dialog with project.references in its filter box, showing the Library References section on its Enabled Libraries tab. Four ticked rows are listed in priority order against Library Symbol and Version columns: the twinBASIC VBA and VBRUN compatibility packages, OLE Automation as stdole, and the IDE Extensibility package as tbIDE.](../Images/ProjectSettings_LibraryReferences.png)
+![The Project Settings dialog with project.references in its filter box, showing the Library References section on its Enabled Libraries tab. Four ticked rows are listed in priority order against Library Symbol and Version columns: the twinBASIC VBA and VBRUN compatibility packages, OLE Automation as stdole, and the IDE Extensibility package as tbIDE.](../Images/ProjectSettings_LibraryReferences.png){:width="1102" height="774"}
 
 ## Project Settings
 

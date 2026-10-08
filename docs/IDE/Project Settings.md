@@ -9,7 +9,7 @@ permalink: /tB/IDE/Project/Settings
 
 The Project Settings dialog, **Project → Project Settings...**, holds the settings of the open project. They are listed below in the order the dialog shows them. The dialog shows a description under each setting, and each entry below restates it:
 
-![The Option Explicit On setting in the Project Settings dialog, set to Yes, with an arrow pointing at the description under it](Images/project settings description text.png)
+![The Option Explicit On setting in the Project Settings dialog, set to Yes, with an arrow pointing at the description under it](Images/project settings description text.png){:width="900" height="67"}
 
 The drop-down list of a setting ends with a **COMPILER DEFAULT** entry, which names the value used when the project does not set one. Choosing it removes the setting from the project's `Settings` file, and so does emptying a box. [**File → Export Project**](Menu/File#export-project) writes that file beside the project's `Sources` folder, and the entries below give the settings' keys in it.
 
@@ -46,9 +46,9 @@ The type libraries and packages that the compiler uses for this project. In the 
 
 To add a reference, tick it on the **Available COM References** tab, which lists the type libraries registered on the machine, or on the **Available Packages** tab. The **Enabled Libraries** tab lists the references the project uses, in priority order.
 
-![The Project Settings dialog on its Enabled Libraries tab, listing four ticked references in priority order with Library Symbol and Version columns: the twinBASIC VBA and VBRUN compatibility packages, OLE Automation as stdole, and the IDE Extensibility package as tbIDE.](Images/ProjectSettings_LibraryReferences.png)
+![The Project Settings dialog on its Enabled Libraries tab, listing four ticked references in priority order with Library Symbol and Version columns: the twinBASIC VBA and VBRUN compatibility packages, OLE Automation as stdole, and the IDE Extensibility package as tbIDE.](Images/ProjectSettings_LibraryReferences.png){:width="1102" height="774"}
 
-![The same dialog on its Available COM References tab. A search box sits above an alphabetical list of unticked type libraries registered on the machine --- AccessibilityCplAdmin, Active DS, ActiveMovie, AgentWmiLib and so on --- against Library Symbol, Version and Publisher columns.](Images/ProjectSettings_AvailableCOMReferences.png)
+![The same dialog on its Available COM References tab. A search box sits above an alphabetical list of unticked type libraries registered on the machine --- on this machine ABBYY FineReader 16 SharePoint Integration Component, AccessibilityCplAdmin, Acrobat, Acrobat Access and so on --- against Library Symbol, Version and Publisher columns.](Images/ProjectSettings_AvailableCOMReferences.png){:width="1102" height="774"}
 
 See [Packages](../../../Features/Packages/)
 

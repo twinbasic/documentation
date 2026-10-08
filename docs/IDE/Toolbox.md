@@ -19,10 +19,10 @@ See [Controls](../../Controls)
 
 The "GoTo COM References" button takes you to **Project Settings** and filters by "project.references".
 
-![The Project Settings dialog filtered to project.references, on its Enabled Libraries tab. Four ticked entries are listed in priority order against Library Symbol and Version columns: the twinBASIC VBA and VBRUN compatibility packages, OLE Automation as stdole, and the IDE Extensibility package as tbIDE.](Images/ProjectSettings_LibraryReferences.png)
+![The Project Settings dialog filtered to project.references, on its Enabled Libraries tab. Four ticked entries are listed in priority order against Library Symbol and Version columns: the twinBASIC VBA and VBRUN compatibility packages, OLE Automation as stdole, and the IDE Extensibility package as tbIDE.](Images/ProjectSettings_LibraryReferences.png){:width="1102" height="774"}
 
 Click on the _Available COM References_ tab.
 
-![The same dialog on its Available COM References tab, where a search box sits above an alphabetical list of unticked type libraries registered on the machine, AccessibilityCplAdmin, Active DS, ActiveMovie and AgentWmiLib among them, against Library Symbol, Version and Publisher columns.](Images/ProjectSettings_AvailableCOMReferences.png)
+![The same dialog on its Available COM References tab, where a search box sits above an alphabetical list of unticked type libraries registered on the machine, ABBYY FineReader 16 SharePoint Integration Component, AccessibilityCplAdmin, Acrobat and Acrobat Access among them on this machine, against Library Symbol, Version and Publisher columns.](Images/ProjectSettings_AvailableCOMReferences.png){:width="1102" height="774"}
 
 See [Project Settings](Settings) for more info.

@@ -1,0 +1,89 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "SampleProject",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Package TWINPACK",
+	"project.description": "SampleProject description",
+	"project.exportPathIsV2": true,
+	"project.id": "{5C0F8A71-3B2E-4D69-8A14-7E91C2D4B6F3}",
+	"project.licence": "MIT",
+	"project.name": "SampleProject",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"versionMajor": 2,
+			"versionMinor": 0
+		},
+		{
+			"id": "{420B2830-E718-11CF-893D-00A0C9054228}",
+			"lcid": 0,
+			"name": "Microsoft Scripting Runtime",
+			"path32": "C:\\Windows\\SysWOW64\\scrrun.dll",
+			"path64": "C:\\Windows\\System32\\scrrun.dll",
+			"versionMajor": 1,
+			"versionMinor": 0
+		},
+		{
+			"id": "{F935DC20-1CF0-11D0-ADB9-00C04FD58A0B}",
+			"lcid": 0,
+			"name": "Windows Script Host Object Model",
+			"path32": "C:\\Windows\\SysWOW64\\wshom.ocx",
+			"path64": "C:\\Windows\\System32\\wshom.ocx",
+			"fusionMode": "fusionAllTo32",
+			"versionMajor": 1,
+			"versionMinor": 0
+		},
+		{
+			"id": "{F5078F18-C551-11D3-89B9-0000F81FE221}",
+			"lcid": 0,
+			"name": "Microsoft XML, v6.0",
+			"path32": "C:\\Windows\\SysWOW64\\msxml6.dll",
+			"path64": "C:\\Windows\\System32\\msxml6.dll",
+			"versionMajor": 6,
+			"versionMinor": 0
+		},
+		{
+			"id": "{50A7E9B0-70EF-11D1-B75A-00A0C90564FE}",
+			"lcid": 0,
+			"name": "Microsoft Shell Controls and Automation",
+			"path32": "C:\\Windows\\SysWOW64\\shell32.dll",
+			"path64": "C:\\Windows\\System32\\shell32.dll",
+			"fusionFlags": 1,
+			"fusionMode": "fusionAllTo32",
+			"versionMajor": 1,
+			"versionMinor": 0
+		},
+		{
+			"id": "{662901FC-6951-4854-9EB2-D9A2570F2B2E}",
+			"lcid": 0,
+			"name": "Microsoft WinHTTP Services, version 5.1",
+			"path32": "C:\\Windows\\SysWOW64\\winhttpcom.dll",
+			"path64": "C:\\Windows\\System32\\winhttpcom.dll",
+			"versionMajor": 5,
+			"versionMinor": 1
+		},
+		{
+			"id": "{B691E011-1797-432E-907A-4D8C69339129}",
+			"lcid": 0,
+			"name": "Microsoft ActiveX Data Objects 6.1 Library",
+			"path32": "C:\\Program Files (x86)\\Common Files\\System\\ado\\msado15.dll",
+			"path64": "C:\\Program Files\\Common Files\\System\\ado\\msado15.dll",
+			"fusionMode": "fusionAllTo32",
+			"versionMajor": 6,
+			"versionMinor": 1
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.versionMajor": 1,
+	"project.versionMinor": 0,
+	"project.warnings": {
+		"errors": [],
+		"ignored": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

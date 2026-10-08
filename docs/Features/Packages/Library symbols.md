@@ -16,9 +16,9 @@ The symbol is a property of the *reference*, not of the library, so a project ca
 
 Open *Project Settings*, find **Library References**, and select the **Enabled Libraries** tab. The **Library Symbol** column shows the symbol each library currently contributes under, and a pencil icon beside each one opens it for editing.
 
-![The Project Settings dialog, Library References, Enabled Libraries tab. A Name column lists the VBA, VBRUN, OLE Automation and VB libraries, each with a tick box; a Library Symbol column shows VBA, VBRUN, stdole and VB, each followed by a small pencil icon; a Version column follows. The VB row's symbol reads VB struck through with *MyVB on the line beneath it.](Images/LibrarySymbols.png)
+![The Project Settings dialog, Library References, Enabled Libraries tab. A Name column lists the VBA, VBRUN, OLE Automation and VB libraries, each with a tick box; a Library Symbol column shows VBA, VBRUN, stdole and VB, each followed by a small pencil icon; a Version column follows. The VB row's symbol reads VB struck through with MyVB on the line beneath it.](Images/LibrarySymbols.png){:width="1102" height="274"}
 
-A symbol that has been changed is shown as the original struck through, with the replacement beneath it --- the `VB` / `*MyVB` pair in the picture above. That is display only: in code the library is `MyVB`, and `VB` no longer names anything.
+A symbol that has been changed is shown as the original struck through, with the replacement beneath it --- the `VB` / `MyVB` pair in the picture above. That is display only: in code the library is `MyVB`, and `VB` no longer names anything.
 
 ## Exposing a library's private symbols
 

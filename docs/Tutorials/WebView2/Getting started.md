@@ -14,9 +14,9 @@ redirect_from:
 
 To create projects that use WebView2, your projects must include both the `WinNativeForms` package and the `WebView2` package in your projects.  
 
-Both of these packages can be added through the `Project` > `References` menu option, and selecting the `TWINPACK PACKAGES` button.  Ensure both packages are ticked, and then close and save the Settings file and restart the compiler.
+Both of these packages can be added through the `Project` > `References` menu option, which opens Project Settings at its Library References, and the **Available Packages** tab.  Ensure both packages are ticked, and then apply the changes and restart the compiler.
 
-![The COM Type Library / ActiveX References list with the WebView2 and WinNativeForms packages ticked](Images/tbWebView2References.png){:style="width:45%; height:auto;"}
+![The Library References list of Project Settings on its Enabled Libraries tab, with the WebView2 and WinNativeForms packages (the latter listed as the VB Compatibility Package) ticked among the VBA, VBRUN and OLE Automation libraries](Images/tbWebView2References.png){:width="1102" height="226"}
 <br>
 <br>
 

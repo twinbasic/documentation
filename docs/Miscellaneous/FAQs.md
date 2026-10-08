@@ -265,9 +265,9 @@ If you leave "Option Explicit ON" checked, that means it will be enforced projec
 
 ![The Compiler Warnings section of Project Settings, listing warnings TB0001 upwards with a severity dropdown against each. TB0002 and TB0003 are ringed in green, and one dropdown is open on its WARNING, HINT, INFO, IGNORE and ERROR choices.](Images/2a1c71fd-f81c-4bd3-b61a-0f2979e8961f.png)
 
-For an existing project, the Project Scope Option Explicit can be turned on or off from Project Settings, under "Project: Option Explicit On":
+For an existing project, the Project Scope Option Explicit can be turned on or off from Project Settings, under "Option Explicit On":
 
-![The Project Settings pane below its filter box, showing the Project: Option Explicit On entry with a ticked box and a dropdown set to No, above the note that this takes effect only when the source file does not specify Option Explicit itself.](Images/01009879-fdbc-4a8e-8683-353aab6193df.png)
+![The Project Settings dialog below its filter box, showing the Option Explicit On row with a dropdown set to Yes, above the note that this takes effect only when the source file does not specify Option Explicit itself.](Images/01009879-fdbc-4a8e-8683-353aab6193df.png){:width="740" height="140"}
 
 </details>
 
