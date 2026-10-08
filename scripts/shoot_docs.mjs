@@ -26,7 +26,8 @@
 //   project     test/addin/helpdemo open, with no add-in: what needs a compiler
 //               that has answered, as About's licence line does
 //   no-project  no project, as from the IDE's icon: every menu in its
-//               no-project state, and the dialogs that need no project
+//               no-project state, the dialogs that need no project, and the window,
+//               its bars and its panels (each shown as a floating window on its own)
 //
 // What makes the pictures repeatable, so that a second run changes no byte:
 //
@@ -75,7 +76,7 @@ import {
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { hoverText, mouseAway, pointOf, restMouse } from "../test/addin/hover.mjs";
 import { frameEval, frameOf, serveLoopback } from "../test/addin/pages.mjs";
-import { annotate as annotateOver, unannotate } from "./lib/shot-annotate.mjs";
+import { annotate as annotateOver, LAYER_ID, unannotate } from "./lib/shot-annotate.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
@@ -106,7 +107,7 @@ const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>]
 
 Takes the pictures of the IDE that the documentation shows, from IDEs on a
 private desktop, at 2x in the dark theme: the help add-in's eight (setup help),
-and the menus and dialogs that need no project (setups no-project and project).
+and the menus, dialogs, bars and panels that need no project (setups no-project and project).
 Each setup is one IDE, started when a picture in it is selected. A picture is
 written only when its bytes differ from the file already there; each is
 reported as new, updated or unchanged. The IDE's registry entries and the
@@ -248,21 +249,25 @@ async function textOf(conn, withFrame) {
 
 // A cut-out: the page's own background and everything but the `keep` selectors
 // (and what is inside them) transparent. The page's default background is cleared
-// too, which is what shows through at the corners.
-const CUT_CSS = (keep) =>
-  "html,body,#bodyInner{background:transparent !important;background-image:none !important}" +
+// too, which is what shows through at the corners. With `solid`, a CSS colour, the
+// page is that colour instead and nothing is transparent: a floating panel is then
+// on a plain ground of the IDE's own colour, without the shadow it casts, and the
+// clip can reach beyond it to hold annotations.
+const CUT_CSS = (keep, solid) =>
+  `html,body,#bodyInner{background:${solid ?? "transparent"} !important;background-image:none !important}` +
   "body *{visibility:hidden !important}" +
-  `${keep.map((k) => `${k},${k} *`).join(",")}{visibility:visible !important}`;
+  `${keep.map((k) => `${k},${k} *`).join(",")}{visibility:visible !important}` +
+  (solid ? ".floatingPanel{box-shadow:none !important}" : "");
 
-async function cutoutOn(conn, keep) {
+async function cutoutOn(conn, keep, solid = null) {
   await conn.evaluate(`(() => {
     document.getElementById("tbCut")?.remove();
     const s = document.createElement("style");
     s.id = "tbCut";
-    s.textContent = ${JSON.stringify(CUT_CSS(keep))};
+    s.textContent = ${JSON.stringify(CUT_CSS(keep, solid))};
     document.head.appendChild(s);
   })()`);
-  await conn.send("Emulation.setDefaultBackgroundColorOverride", { color: { r: 0, g: 0, b: 0, a: 0 } });
+  if (!solid) await conn.send("Emulation.setDefaultBackgroundColorOverride", { color: { r: 0, g: 0, b: 0, a: 0 } });
   await sleep(250);
 }
 
@@ -275,15 +280,16 @@ async function cutoutOff(conn) {
 // A capture of `clip` (CSS pixels, on whole device pixels) from `conn`, refused
 // when the page's visible text holds the user name. `away` first takes the mouse
 // where it touches nothing, since a control under it draws its hover look, unless
-// the picture is of what the mouse rests on. `keep` makes it a cut-out.
-async function capture(conn, name, clip, { frame, away = null, keep = null } = {}) {
+// the picture is of what the mouse rests on. `keep` makes it a cut-out, on a ground
+// of the colour `solid` when that is given.
+async function capture(conn, name, clip, { frame, away = null, keep = null, solid = null } = {}) {
   const text = await textOf(conn, frame);
   if (text.toLowerCase().includes(USER.toLowerCase()))
     throw new Error(`the page for ${name} shows the Windows user name`);
   if (away) await away();
   await quiet(conn);
   try {
-    if (keep) await cutoutOn(conn, keep);
+    if (keep) await cutoutOn(conn, keep, solid);
     await sleep(300);
     const params = { format: "png" };
     if (clip) params.clip = { ...clip, scale: 1 };
@@ -921,33 +927,348 @@ const dialogShots = [
       },
     ],
   }),
-  {
-    // The route a person takes: Standard EXE is selected on the New tab, and Open
-    // asks for its options. Cancel closes the dialog and creates nothing. Last
-    // of the setup, since the IDE has begun to start a project.
-    out: "Miscellaneous/Images/05306a72-4ff6-427d-8970-969ef0c582e6.png",
+];
+
+// ---- the window, its bars and its panels (no project)
+
+// Runs `fn` with the page at another size, and puts it back.
+async function atSize(c, width, height, fn) {
+  await resetUi(c);
+  try {
+    await c.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: SCALE, mobile: false });
+    await sleep(1000);
+    return await fn();
+  } finally {
+    await c.send("Emulation.setDeviceMetricsOverride", { ...IDE_SIZE, deviceScaleFactor: SCALE, mobile: false });
+    await sleep(500);
+  }
+}
+
+// The status bar's last region names the command under the mouse and keeps it after
+// the mouse has left. Hovering File > Close Project (greyed out with no project, and
+// named all the same) puts tbProject_Close there, as the pictures have always shown;
+// the mouse then rests on the editor, which has no command of its own.
+async function nameCloseProject(c) {
+  await openMenu(c, "File");
+  const item = (await menuItems(c)).find((i) => i.text.startsWith("Close Project"));
+  if (!item) throw new Error("the File menu has no Close Project");
+  await mouseMove(c, item.x + 8, item.y + item.height / 2);
+  await sleep(300);
+  await pressKey(c, "Escape");
+  // a closed menu leaves its box in the page, 2 by 8 pixels and empty
+  if (!(await waitFor(c, async () => (await menuItems(c)).length === 0, { timeout: 2000, interval: 100 }))) {
+    throw new Error("the File menu did not close");
+  }
+  const { w, h } = await c.evaluate("({ w: innerWidth, h: innerHeight })");
+  await mouseMove(c, w / 2, h / 2);
+  await sleep(300);
+  const named = await c.evaluate(`document.getElementById("statusHoveringCommand").innerText`);
+  if (named !== "tbProject_Close") throw new Error(`the status bar names "${named}", not tbProject_Close`);
+}
+
+// The IDE's whole window at the size of a full-HD screen, as it opens with no project.
+const ideWindowShot = {
+  out: "IDE/Images/IDE.png",
+  setup: "no-project",
+  take: ({ c }) =>
+    atSize(c, 1920, 1032, async () => {
+      await nameCloseProject(c);
+      return capture(c, "IDE", snapOut({ x: 0, y: 0, width: 1920, height: 1032 }, 1920, 1032));
+    }),
+};
+
+// The status bar at the width of its own contents, with the command named at its right.
+const statusBarShot = {
+  out: "IDE/Images/StatusBar.png",
+  setup: "no-project",
+  take: ({ c }) =>
+    atSize(c, 661, IDE_SIZE.height, async () => {
+      await nameCloseProject(c);
+      const bar = await rectOf(c, "#rootStatusBar");
+      return capture(c, "StatusBar", snapOut(bar, 661, IDE_SIZE.height));
+    }),
+};
+
+// The four community icons at the right of the services and licence badges.
+const linksShot = {
+  out: "IDE/Images/Links.png",
+  setup: "no-project",
+  async take({ c }) {
+    await resetUi(c);
+    const bar = await rectOf(c, "#rootStatusBar");
+    const icons = await rectOf(c, "#findUsOnline");
+    if (!bar || !icons) throw new Error("the status bar has no community icons");
+    return capture(c, "Links", snapOut({ x: icons.x, y: bar.y, width: icons.width, height: bar.height }), {
+      away: () => parkMouse(c),
+    });
+  },
+};
+
+// The toolbar at the width of its buttons, the close button of the bar at its right.
+const toolbarShot = {
+  out: "IDE/Images/Toolbar_1.png",
+  setup: "no-project",
+  take: ({ c }) =>
+    atSize(c, 1128, IDE_SIZE.height, async () => {
+      // the first ancestor of the Preview button that spans the window is the bar
+      const bar = await c.evaluate(`(() => {
+  let e = document.getElementById("toolbarPreviewBtn");
+  while (e && e.getBoundingClientRect().width < innerWidth - 2) e = e.parentElement;
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+      if (!bar || bar.height > 60) throw new Error(`no toolbar found: ${JSON.stringify(bar)}`);
+      return capture(c, "Toolbar_1", snapOut(bar, 1128, IDE_SIZE.height), { away: () => parkMouse(c) });
+    }),
+};
+
+// A panel shows as a floating window when it is not in the layout, as View > <panel> does
+// it. A docked one is hidden first so that it floats too: the picture is then the panel
+// on its own, with its border, whatever the layout. Floating panels are 300 by 500 until
+// sized, and the one just shown flashes for a second.
+const panelSel = (id) => `.floatingPanel[id="${id}"]`;
+const PANEL_COMMANDS = {
+  "PROJECT EXPLORER": "ProjectExplorer",
+  "OPEN EDITORS": "OpenEditors",
+  HISTORY: "History",
+  OUTLINE: "Outline",
+  VARIABLES: "Variables",
+  WATCHES: "Watches",
+  "DEBUG CONSOLE": "DebugConsole",
+  PROBLEMS: "Problems",
+  "PACKAGE PUBLISHING": "PackagePublishing",
+  PROPERTIES: "Properties",
+};
+
+// "Show" or "Hide". The Memory pane has no command of its own: its View entry runs showToolWindow.
+function panelCommand(c, id, what) {
+  if (id === "MEMORY 1") {
+    return c.evaluate(
+      what === "Show"
+        ? "showToolWindow(hexEditorPanel)"
+        : "closePanelBySectionHeader(hexEditorPanel._this.sectionHeader)",
+    );
+  }
+  return command(c, `tb${PANEL_COMMANDS[id]}_${what}Panel`);
+}
+
+async function floatPanel(c, id, { width, height, left = 140, top = 120 }) {
+  if (await c.evaluate(`isPanelIdDocked(${JSON.stringify(id)})`)) {
+    await panelCommand(c, id, "Hide");
+    await sleep(300);
+  }
+  await panelCommand(c, id, "Show");
+  const sel = panelSel(id);
+  if (!(await waitFor(c, () => rectOf(c, sel), { timeout: 5000, interval: 100 }))) {
+    throw new Error(`the ${id} panel did not appear`);
+  }
+  await c.evaluate(`(() => {
+  const p = document.querySelector(${JSON.stringify(sel)});
+  Object.assign(p.style, { left: "${left}px", top: "${top}px", width: "${width}px", height: "${height}px" });
+})()`);
+  await sleep(1400);
+  return rectOf(c, sel);
+}
+
+async function unfloatPanel(c, id) {
+  if (await rectOf(c, panelSel(id))) await panelCommand(c, id, "Hide");
+  await sleep(300);
+}
+
+// A panel on its own, sized to hold its title bar and the start of its body.
+const panelShot = (name, id, [width, height]) => ({
+  out: `IDE/Images/${name}.png`,
+  setup: "no-project",
+  async take({ c }) {
+    await resetUi(c);
+    try {
+      const box = await floatPanel(c, id, { width, height });
+      return await capture(c, name, snapOut(box), { away: () => parkMouse(c) });
+    } finally {
+      await unfloatPanel(c, id);
+    }
+  },
+});
+
+// A panel with annotations: the panel (and the menu `open` shows, if any) on a plain ground
+// of the colour of its own body, the annotations drawn over, and the clip as large as they
+// need. Labels sit on the ground at the panel's left; the primitives are those of
+// lib/shot-annotate.mjs.
+function annotatedPanelShot(name, id, size, { open = null, annotate }) {
+  return {
+    out: `IDE/Images/${name}.png`,
     setup: "no-project",
-    take: ({ c }) =>
-      inNewProject(c, async () => {
-        await clickInModal(c, "Open", ".msgBoxButton");
-        if (!(await waitModal(c, "New Project Options", { timeout: 60000 }))) {
-          throw new Error("Open on Standard EXE did not show the New Project Options dialog");
+    async take({ c }) {
+      await resetUi(c);
+      const sel = panelSel(id);
+      try {
+        const box = await floatPanel(c, id, { ...size, left: 280 });
+        // the body's colour, as the first of it and its ancestors that is not transparent
+        const ground = await c.evaluate(`(() => {
+  for (let e = document.querySelector(${JSON.stringify(`${sel} .sectionBody`)}); e; e = e.parentElement) {
+    const k = getComputedStyle(e).backgroundColor;
+    if (!/^rgba\\(.*, 0\\)$/.test(k) && k !== "transparent") return k;
+  }
+  return null;
+})()`);
+        if (!ground) throw new Error(`the ${id} panel has no background colour`);
+        if (open) await open(c);
+        const menu = open ? await rectOf(c, "#contextMenu") : null;
+        let area = menu ? union(box, menu) : box;
+        try {
+          const { box: drawn } = await annotateOver(c, annotate);
+          area = grow(union(area, drawn), 8);
+          return await capture(c, name, snapOut(area), {
+            away: () => parkMouse(c),
+            keep: [sel, "#contextMenu", `#${LAYER_ID}`],
+            solid: ground,
+          });
+        } finally {
+          await unannotate(c);
+          await closeMenus(c);
         }
-        await sleep(1000);
-        // the Project Name is selected: leave its caret at the end of the name
-        await c.evaluate(`(() => {
+      } finally {
+        await unfloatPanel(c, id);
+      }
+    },
+  };
+}
+
+// The Debug Console's header buttons and its input row, with its Options menu open: the menu
+// opens where the mouse is pressed, so the press is at the button's lower left.
+const DC = panelSel("DEBUG CONSOLE");
+const DC_PANEL = { css: DC };
+const DC_BUTTON = (title) => ({ css: `${DC} [title="${title}"]` });
+const DC_OPTIONS = { css: `${DC} .ellipsesIcon2` };
+const DC_INPUT = { css: `${DC} .debugConsoleEntryContainer` };
+// a point `dy` below the panel's top edge, `dx` from its left edge, where a label ends
+const LEFT_OF = (panel, dy, dx = -30) => ({ of: panel, at: "top-left", dx, dy });
+
+const debugConsoleShot = annotatedPanelShot(
+  "DebugConsole",
+  "DEBUG CONSOLE",
+  { width: 430, height: 215 },
+  {
+    async open(c) {
+      const b = await rectOf(c, `${DC} .ellipsesIcon2`);
+      await clickAt(c, b.x + 2, b.y + 15);
+      if (!(await waitFor(c, () => rectOf(c, "#contextMenu"), { timeout: 3000, interval: 100 }))) {
+        throw new Error("the Options menu did not open");
+      }
+      await sleep(300);
+    },
+    annotate: [
+      // the buttons are 21 pixels apart, so their boxes are tight and need no halo
+      { type: "box", on: DC_BUTTON("Auto Scroll"), pad: 1, halo: false },
+      { type: "box", on: DC_BUTTON("Clear Debug Console"), pad: 1, halo: false },
+      { type: "box", on: DC_OPTIONS, pad: 1, halo: false },
+      { type: "box", on: DC_INPUT },
+      // the two buttons are named from above, since the menu covers the panel below them:
+      // Auto Scroll's label to the left, Clear's higher and to the right, so the arrows never cross
+      {
+        type: "label",
+        text: "Auto Scroll",
+        on: { of: DC_BUTTON("Auto Scroll"), at: "top", dx: -70, dy: -34 },
+        side: "above",
+        tone: "dark",
+      },
+      {
+        type: "arrow",
+        from: { of: DC_BUTTON("Auto Scroll"), at: "top", dx: -60, dy: -38 },
+        to: { of: DC_BUTTON("Auto Scroll"), at: "top", dy: -3 },
+      },
+      {
+        type: "label",
+        text: "Clear Debug Console",
+        on: { of: DC_BUTTON("Clear Debug Console"), at: "top", dx: 60, dy: -60 },
+        side: "above",
+        tone: "dark",
+      },
+      {
+        type: "arrow",
+        from: { of: DC_BUTTON("Clear Debug Console"), at: "top", dx: 50, dy: -64 },
+        to: { of: DC_BUTTON("Clear Debug Console"), at: "top", dy: -3 },
+      },
+      // the menu is the Options button's: named from the right, since the arrows from the left
+      // already converge on the buttons
+      { type: "label", text: "Options", on: { css: "#contextMenu" }, side: "right", gap: 70, tone: "dark" },
+      { type: "arrow", from: { of: { css: "#contextMenu" }, at: "right", dx: 66 }, to: { css: "#contextMenu" } },
+      { type: "label", text: "Input", on: LEFT_OF(DC_PANEL, 203, -90), side: "left", tone: "dark" },
+      { type: "arrow", from: LEFT_OF(DC_PANEL, 203, -86), to: DC_INPUT, tipGap: 11 },
+    ],
+  },
+);
+
+// The four counts in the Diagnostics header, each named from the left.
+const DIAG = panelSel("PROBLEMS");
+const DIAG_PANEL = { css: DIAG };
+// a point under the badge, so that the arrow comes up at it from the body and not along the header
+const DIAG_BADGE = (id) => ({ of: { css: `${DIAG} #${id}` }, at: "bottom", dy: 8 });
+const diagnosticsShot = annotatedPanelShot(
+  "Diagnostics",
+  "PROBLEMS",
+  { width: 430, height: 250 },
+  {
+    // the first label is low enough that the shortest arrow still has room to turn upright
+    annotate: [
+      ["Errors", "statusErrors", 95],
+      ["Warnings", "statusWarnings", 135],
+      ["Hints", "statusHints", 175],
+      ["Information", "statusInfos", 215],
+    ].flatMap(([text, id, dy]) => [
+      { type: "label", text, on: LEFT_OF(DIAG_PANEL, dy), side: "left", tone: "dark" },
+      { type: "arrow", from: LEFT_OF(DIAG_PANEL, dy, -26), to: DIAG_BADGE(id), elbow: true },
+    ]),
+  },
+);
+
+const panelShots = [
+  ideWindowShot,
+  statusBarShot,
+  linksShot,
+  toolbarShot,
+  panelShot("ProjectExplorer", "PROJECT EXPLORER", [400, 116]),
+  panelShot("Outline", "OUTLINE", [300, 96]),
+  panelShot("History", "HISTORY", [300, 96]),
+  panelShot("Watches", "WATCHES", [300, 76]),
+  panelShot("OpenEditors", "OPEN EDITORS", [360, 92]),
+  panelShot("Variables", "VARIABLES", [240, 248]),
+  panelShot("Properties", "PROPERTIES", [400, 376]),
+  panelShot("PackagePublishing", "PACKAGE PUBLISHING", [300, 268]),
+  panelShot("Memory", "MEMORY 1", [696, 82]),
+  diagnosticsShot,
+  // after Diagnostics: the mouse press that opens the console's menu leaves a ghost of the
+  // pointer in the next picture at the same place
+  debugConsoleShot,
+];
+
+// The route a person takes: Standard EXE is selected on the New tab, and Open
+// asks for its options. Cancel closes the dialog and creates nothing. Last
+// of the setup, since the IDE has begun to start a project.
+const newProjectOptionsShot = {
+  out: "Miscellaneous/Images/05306a72-4ff6-427d-8970-969ef0c582e6.png",
+  setup: "no-project",
+  take: ({ c }) =>
+    inNewProject(c, async () => {
+      await clickInModal(c, "Open", ".msgBoxButton");
+      if (!(await waitModal(c, "New Project Options", { timeout: 60000 }))) {
+        throw new Error("Open on Standard EXE did not show the New Project Options dialog");
+      }
+      await sleep(1000);
+      // the Project Name is selected: leave its caret at the end of the name
+      await c.evaluate(`(() => {
   const i = [...document.querySelectorAll(".modalDialogContainer")].pop().querySelector("input[type=text], input:not([type])");
   if (i) i.setSelectionRange(i.value.length, i.value.length);
 })()`);
-        try {
-          return await dialogShot(c, "New_Project_Options");
-        } finally {
-          await closeModal(c, "Cancel");
-          await sleep(1000);
-        }
-      }),
-  },
-];
+      try {
+        return await dialogShot(c, "New_Project_Options");
+      } finally {
+        await closeModal(c, "Cancel");
+        await sleep(1000);
+      }
+    }),
+};
 
 // About's last line reads the compiler's licence, which the IDE has only once a
 // project has been loaded and its compiler has answered: so it is taken in the
@@ -1365,6 +1686,9 @@ const SHOTS = [
   menuShot("Menu_Window_PanelFeatures", "Window", "Panel Features"),
   menuShot("Menu_Window_KeyboardShortcuts", "Window", "Keyboard Shortcuts"),
   ...dialogShots,
+  // after the dialogs: the panels' pictures change the layout
+  ...panelShots,
+  newProjectOptionsShot,
 ];
 
 // ---------------------------------------------------------------- run

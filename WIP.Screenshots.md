@@ -162,6 +162,20 @@ time; History's timestamps), Import from twinproj (needs a `.vbp`; its header sh
 - **`llvmdoc2`** shows the default thread count, 1 (the old picture's 10 was its author's
   setting); the LLVM page's prose is checked for any reliance on 10.
 
+## Increment 3 (owner, 2026-10-08)
+
+Survey of its 61 pictures and 17 glyph crops: `.claude/tooling-review-scratch/s103-shots/INC3-SURVEY.md`.
+Built in three batches, one after another: no-project panels; a Standard EXE fixture with Project
+Settings; Sample 6, Sample 15 and Global Search.
+
+- **History's times are fixed in the page**, as the recent lists are, and its project is a
+  project-made fixture; left out only if the times cannot be overridden.
+- **The glyph crops are retaken** (element clips, 2x, shown at half size).
+- **A machine or account value becomes a neutral one** (Publisher blank or a project-made name;
+  the COM list shows this machine's, under the username check), and prose that names the old
+  value is changed to match.
+- **Old-design pictures are retaken in today's look**, with alt text and prose rechecked.
+
 ## Open questions
 
 1. **The byte-identical pair** `d9f1e4d9` / `e749e10f` (Features/Packages/Images): merge into one

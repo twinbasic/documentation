@@ -11,7 +11,7 @@ The Package Publishing pane manages the metadata for the current project when it
 
 When a project isn't open this will be empty.
 
-![The Package Publishing pane with every value blank. Six labelled rows read Publisher, Namespace, Description, Licence, Visibility and Version, each with an Edit link on the right except Publisher, which offers Sign In. A note says changes are not effective until published, above a greyed out Publish This Package button.](Images/PackagePublishing.png)
+![The Package Publishing pane with every value blank. Six labelled rows read Publisher, Namespace, Description, Licence, Visibility and Version, each with an Edit link on the right except Publisher, which offers Sign In. A note says changes are not effective until published, above a greyed out Publish This Package button.](Images/PackagePublishing.png){:width="300" height="268"}
 
 Once you open a project you will be able to edit the properties.
 

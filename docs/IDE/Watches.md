@@ -10,7 +10,7 @@ index: watch window
 
 When a project isn't open this will be empty.
 
-![The WATCHES panel with no project open: a title bar holding only the drag grip and a close button, above an empty body.](Images/Watches.png)
+![The WATCHES panel with no project open: a title bar holding only the drag grip and a close button, above an empty body.](Images/Watches.png){:width="300" height="76"}
 
 Once you open a project it will other buttons available.
 

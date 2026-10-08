@@ -15,7 +15,7 @@ The Outline pane shows a structural overview of the declarations in the active s
 
 When a project isn't open this will be empty.
 
-![The Outline pane with nothing listed beneath its title bar.](Images/Outline.png)
+![The Outline pane with nothing listed beneath its title bar.](Images/Outline.png){:width="300" height="96"}
 
 Once you open a project it will list the `Modules`/`Classes` etc.
 

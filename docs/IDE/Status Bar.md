@@ -7,7 +7,9 @@ permalink: /tB/IDE/Project/StatusBar
 
 # Status Bar
 
-![The full width of the status bar: a red tB Services: UNAVAILABLE badge and an olive COMMUNITY EDITION badge at the left, each with a warning triangle, then the Ko-fi, Discord, Twitter and GitHub icons, and dimmed text reading tbProject_Close at the far right.](Images/StatusBar.png)
+![The status bar with no project open: a red tB Services: UNAVAILABLE badge and a red tB Licence: NOT READY badge at the left, each with a warning triangle, then the Ko-fi, Discord, Twitter and GitHub icons, and dimmed text reading tbProject_Close at the far right.](Images/StatusBar.png){:width="661" height="27"}
+
+With no project open, no compiler is connected: the services badge reads **UNAVAILABLE** and the licence badge reads **tB Licence: NOT READY**. Both change once a project has loaded and the compiler has answered.
 
 The Status Bar runs along the bottom of the IDE window. It has four regions, left to right: the health of the backend services, the active licence tier, links to community resources, and the name of the command currently under the mouse cursor.
 
@@ -45,7 +47,7 @@ DEBUGGER: Disconnected / OPERATIONAL
 
 ## Links
 
-![Four white icons at the right of the status bar: a Ko-fi coffee cup holding a heart, the Discord face, the Twitter bird and the GitHub cat.](Images/Links.png)
+![Four white icons in the status bar, after its badges: a Ko-fi coffee cup holding a heart, the Discord face, the Twitter bird and the GitHub cat.](Images/Links.png){:width="127" height="27"}
 
 - https://ko-fi.com/twinbasic
 - https://discord.com/invite/UaW9GgKKuE

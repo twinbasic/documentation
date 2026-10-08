@@ -12,7 +12,7 @@ index:
 
 When a project isn't open this will be empty.
 
-![The HISTORY panel with no project open: a title bar with the drag grip and close button, above an empty body.](Images/History.png)
+![The HISTORY panel with no project open: a title bar with the drag grip and close button, above an empty body.](Images/History.png){:width="300" height="96"}
 
 Once you open a project
 

@@ -9,7 +9,7 @@ permalink: /tB/IDE/Project/OpenEditors
 
 When a project isn't open this will be empty.
 
-![The Open Editors pane with nothing listed beneath its title bar.](Images/OpenEditors.png)
+![The Open Editors pane with nothing listed beneath its title bar.](Images/OpenEditors.png){:width="360" height="92"}
 
 When a project is open it will list the files that are currently open in your [Editor](Editor)
 

@@ -16,7 +16,8 @@
 // is LAYER_ID, which a cut-out's `keep` list can name.
 //
 // An anchor is one of
-//   { css, text?, own? }  the first visible element matching `css` whose text, with its
+//   { css, text?, own? }  the first visible element matching `css`, in the document or in any
+//                         open shadow root in it (in document order), whose text, with its
 //                         white space collapsed, equals `text`, else starts with it
 //                         (an exact match beats a prefix match; ties go to the first in
 //                         document order, so the outermost). `own` takes the box of the
@@ -33,7 +34,10 @@
 //   arrow      from, to (an anchor, or a list of them: a fork, one arrow to each), bend?
 //              An end that is a box (not a point) is the box's edge on the line to the
 //              other end; the head stops 6 px short of it. `bend` curves the line by that
-//              many pixels, a positive one to the right of the direction of travel.
+//              many pixels, a positive one to the right of the direction of travel;
+//              `elbow: true` curves it to leave the start level and meet the tip vertically.
+//              `tipGap` and `fromGap` replace the 6 and 4 px of clearance at the two ends,
+//              for a target that has a box drawn round it (4 px of padding and a halo).
 //   box        on, pad? (4)
 //   ring       on, pad? (4): a box whose corners are round to half its height
 //   underline  on, gap? (3): a line under the anchor's box
@@ -141,6 +145,20 @@ function draw(prims, S) {
       height: s.height,
     };
   };
+  // The elements matching `css` in the document and in every open shadow root in it
+  // (a tool window is one), in document order: a host's own match, then what is in its
+  // shadow root, then its other descendants.
+  const queryAll = (css) => {
+    const out = [];
+    const walk = (root) => {
+      for (const e of root.querySelectorAll("*")) {
+        if (e.matches(css)) out.push(e);
+        if (e.shadowRoot) walk(e.shadowRoot);
+      }
+    };
+    walk(document);
+    return out;
+  };
   const AT = {
     center: [0.5, 0.5],
     top: [0.5, 0],
@@ -169,7 +187,7 @@ function draw(prims, S) {
     }
     if (a.code !== undefined) return codeBox(a);
     if (a.css) {
-      const all = [...document.querySelectorAll(a.css)].filter(shown);
+      const all = queryAll(a.css).filter(shown);
       let e = all[0];
       if (a.text !== undefined) {
         const want = norm(a.text);
@@ -239,14 +257,18 @@ function draw(prims, S) {
     for (const toAnchor of tos) {
       const a = box(p.from);
       const b = box(toAnchor);
-      const from = edge(a, centre(b), S.fromGap);
-      const tip = edge(b, centre(a), S.tipGap);
+      const from = edge(a, centre(b), p.fromGap ?? S.fromGap);
+      const tip = edge(b, centre(a), p.tipGap ?? S.tipGap);
       const dx = tip.x - from.x;
       const dy = tip.y - from.y;
       const len = Math.hypot(dx, dy);
       if (len < S.head + 4) fail("has an arrow too short for its head", { from: p.from, to: toAnchor });
-      const bend = p.bend ?? 0;
-      const ctl = { x: (from.x + tip.x) / 2 - (dy / len) * bend, y: (from.y + tip.y) / 2 + (dx / len) * bend };
+      // `elbow` leaves the start level and arrives at the tip upright or downright: its
+      // control point is level with the start and plumb with the tip
+      const bend = p.elbow ? 1 : (p.bend ?? 0);
+      const ctl = p.elbow
+        ? { x: tip.x, y: from.y }
+        : { x: (from.x + tip.x) / 2 - (dy / len) * bend, y: (from.y + tip.y) / 2 + (dx / len) * bend };
       // The head points along the curve's end (from the control point to the tip); the
       // line stops at the head's base, which is on that same line, so the curve meets
       // the head along its axis.

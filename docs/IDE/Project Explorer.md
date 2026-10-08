@@ -7,7 +7,7 @@ permalink: /tB/IDE/Project/Explorer
 
 # Project Explorer
 
-![The PROJECT EXPLORER panel with no project open: its title bar carries only a drag grip and a close button, and the body below it is empty.](Images/ProjectExplorer.png)
+![The PROJECT EXPLORER panel with no project open: its title bar carries only a drag grip and a close button, and the body below it is empty.](Images/ProjectExplorer.png){:width="400" height="116"}
 ![The same panel with SampleProject loaded, its root node expanded over six yellow folders, each with a plus box for expanding it: ImportedTypeLibraries, Miscellaneous, Packages, References, Resources and Sources, the last of them selected.](Images/ProjectExplorer_Sample.png)
 
 ![A small yellow folder icon](Images/Folder.png) ImportedTypeLibraries  
