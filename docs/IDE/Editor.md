@@ -47,12 +47,12 @@ permalink: /tB/IDE/Project/Editor
 
 When a file is open in the _Editor_ it will be listed in the _Tabs List_ and you can jump between them here. 
 
-![The open Tabs List menu, holding a Recently Closed submenu entry above a separator and one open file beneath it, Sources/MyForm.tbform.](Images/Editor_TabsList_Example.png)
+![The open Tabs List menu, holding a Recently Closed submenu entry above a separator and one open file beneath it, Sources/frmMain.tbform.](Images/Editor_TabsList_Example.png){:width="187" height="66"}
 
 _Recently Closed_.
 
-![The Tabs List button with its menu open directly beneath it, holding a single entry, Recently Closed, with a submenu arrow and no files listed under it.](Images/Editor_TabsList_RecentlyClosed.png)
+![The Tabs List button with its menu open directly beneath it, holding a single entry, Recently Closed, with a submenu arrow and no files listed under it.](Images/Editor_TabsList_RecentlyClosed.png){:width="152" height="54"}
 
 _Recently Closed - List_
 
-![The Recently Closed entry highlighted with its submenu expanded to the right, listing three closed files: Resources/MANIFEST/#1.xml, Resources/STRING/Strings.json and Resources/MESSAGETABLE/Strings.json.](Images/Editor_TabsList_RecentlyClosed_Example.png)
+![The Recently Closed entry highlighted with its submenu expanded to the right, listing three closed files: Resources/MANIFEST/#1.xml, Resources/STRING/Strings.json and Resources/MESSAGETABLE/Strings.json.](Images/Editor_TabsList_RecentlyClosed_Example.png){:width="404" height="104"}

@@ -1,0 +1,33 @@
+{
+    "events":
+    [
+        {
+            "id": -1073610751,
+            "name": "service_started",
+            "LCID_0000": "%1 service started"
+        },
+        {
+            "id": -1073610750,
+            "name": "service_startup_failed",
+            "LCID_0000": "%1 service startup failed"
+        },
+        {
+            "id": -1073610749,
+            "name": "service_ended",
+            "LCID_0000": "%1 service ended"
+        },
+        {
+            "id": -1073610748,
+            "name": "service_stopping",
+            "LCID_0000": "%1 service stopping"
+        }
+    ],
+    "categories":
+    [
+        {
+            "id": 1,
+            "name": "status_changed",
+            "LCID_0000": "Status Changed"
+        }
+    ]
+}

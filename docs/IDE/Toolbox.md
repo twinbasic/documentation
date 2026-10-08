@@ -13,7 +13,7 @@ See [Controls](../../Controls)
 
 <!-- ![Toolbox](../Controls/Images/toolbox.png "Toolbox") -->
 
-![The Toolbox button labelled More components, a grey plus sign beside the text inside a dashed outline.](Images/Toolbox_MoreComponents.png)
+![The Toolbox button labelled More components, a grey plus sign beside the text inside a dashed outline.](Images/Toolbox_MoreComponents.png){:width="208" height="44"}
 
 ![A twinBASIC information box reading Components list coming soon, explaining that for now ordinary COM references to the appropriate ActiveX type library must be added and the components will then appear in the form designer automatically, above a GoTo COM References button and an OK button.](Images/Components_Message.png){:width="654" height="169"}
 

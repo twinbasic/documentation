@@ -242,7 +242,7 @@ The easiest way is through the import wizard. When you first start the twinBASIC
 
 You can import individual files, from VB projects or any type, through the Import option on the Add menu, under Project or by right clicking the desired folder in the Project Explorer pane:
 
-![The Project Explorer context menu opened on a project's Sources folder, with the Add submenu expanded beside it. Orange arrows trace the route from Add into the submenu, where Import is ringed among the Add Folder, Add Windows Form and Add Resource entries.](Images/2b32ab8c-fabc-4f42-9e6b-06e85574eaf4.png){:style="width:80%; height:auto;"}
+![The Project Explorer context menu opened on a project's Sources folder, with the Add submenu expanded beside it. A red arrow points at Add, and a second arrow points at Import, which is ringed among the Add Folder, Add Windows Form and Add Resource entries.](Images/2b32ab8c-fabc-4f42-9e6b-06e85574eaf4.png){:width="753" height="626"}
 
 > [!NOTE]
 > You can select .bas/.cls files individually, but to import Forms, UserControls, Property Pages, and Resource Files you must currently select the .vbp file they're associated with. You'll then be shown a list of files you can import (with their new twinBASIC extensions .tbform/.twin etc-- make sure to import both, e.g. for Form1.frm you'll see Form1.frm.tbform and Form1.frm.twin:
@@ -255,7 +255,7 @@ Importing a .vbp also carries over its [startup object](tB/IDE/Project/Settings#
 <details>
 <summary markdown=span id="unrecognized-variables"><b>Why do I see a lot of errors saying my variables are unrecognized?</b></summary>
 
-![The DIAGNOSTICS panel reporting five errors under Form1.frm.twin, each reading TB5079 Unrecognized symbol for hr or hMenu with its line and column. The first is expanded to show its Jump to issue and Help links.](Images/e409ea37-96ad-44c5-8017-3699ef04b53d.png)
+![The DIAGNOSTICS panel reporting five errors under frmMain.twin, each reading TB5079 Unrecognized symbol for hr or hMenu with its line and column. The first is expanded to show its Jump to issue and Help links.](Images/e409ea37-96ad-44c5-8017-3699ef04b53d.png){:width="347" height="193"}
 
 While use is strongly recommended and considered a best practice, twinBASIC **does not** require `Option Explicit`. If you're seeing these errors, you may have overlooked a new feature of twinBASIC: automatically enabling `Option Explicit` project-wide. When you import a VB6 project, or create a new one, a small dialog pops up:
 
@@ -292,9 +292,9 @@ The IDE loads the addins in the folder that matches the project's build target: 
 <details>
 <summary markdown=span id="resources"><b>How do I use resources in twinBASIC?</b></summary>
 
-Currently tB does not have a dedicated resource editor; instead, resources are managed through the Project Explorer. In the tree, you'll see a Resources folder; by default, it will include ICON in a Standard EXE, and MANIFEST, if you've chosen to enable Visual Styles:
+Currently tB does not have a dedicated resource editor; instead, resources are managed through the Project Explorer. In the tree, you'll see a Resources folder; by default, it will include ICON in a Standard EXE, and MANIFEST, if you've chosen to enable Visual Styles. The project in the picture below also has a STRING and a MESSAGETABLE folder:
 
-![The Project Explorer tree of a new project with the Resources branch expanded over an ICON folder holding twinBASIC.ico and a MANIFEST folder holding #1.xml, above the Sources branch and the project Settings file.](Images/71ddde83-a091-47e3-b5b8-681954b0639d.png)
+![The right of the IDE window: its title bar, the toolbar, the editor and the Project Explorer. In the tree the Resources branch is expanded over an ICON folder holding twinBASIC.ico, a MANIFEST folder holding #1.xml and the folders MESSAGETABLE and STRING, above the Sources branch.](Images/71ddde83-a091-47e3-b5b8-681954b0639d.png){:width="940" height="426"}
 
 You can create additional folders here, using their standard names. For example a BITMAP group could be added, then used with `LoadResImage`. Unlike its predecessor, tB does not restrict the type of resources: you can create any type of folder you want, and import binary data into it. For example, some community projects have inserted `UIFILE` resources for Ribbon controls and `DIALOG` resources for property sheets. Resources can be imported by right-clicking the folder you want them in, and selecting Add->Import file... from the menu.
 
@@ -304,7 +304,7 @@ If you're importing a project, the resources in a linked .res file will be impor
 
 String table resources are currently treated specially; they're edited in the IDE as JSON. If you import from VBP with a .res, string resources will be automatically converted. If you right click the 'Resources' folder, and go to the 'Add' submenu, at the bottom, you'll find "Add resource: String table" that adds one populated with example strings:
 
-![An editor tab holding Strings.json, a JSON array of two entries, each carrying an id, a name and one line per locale, keyed LCID_0000 for the neutral text through LCID_0809. The Project Explorer beside it shows the file inside a STRING folder under Resources.](Images/97cc8655-7a8b-47f3-b52c-eb1ddfce662f.png)
+![An editor tab holding Strings.json, a JSON array of two entries, each carrying an id, a name and one line per locale, keyed LCID_0000 for the neutral text through LCID_0809. The Project Explorer beside it shows the file inside a STRING folder under Resources.](Images/97cc8655-7a8b-47f3-b52c-eb1ddfce662f.png){:width="1040" height="417"}
 
 ### Group names
 

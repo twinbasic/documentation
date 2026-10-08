@@ -24,7 +24,7 @@ permalink: /tB/IDE/Project/Menu/Project
 
 **Add** is the same as Right Click Add on the [Project Explorer](../Explorer)
 
-![The Project Explorer context menu with Add highlighted and its submenu opened out to the left. The submenu lists Add Folder; five Windows item types from Form through MDI Form, UserControl and PropertyPage to Report; Add CustomControls Form; the Unicode-capable .TWIN module and class; the .BAS module and .CLS class; Add Other File; Import; and three Add Resource entries for a Visual Styles Manifest, a String Table and a MESSAGETABLE. On the parent menu, Cut, Copy, Paste, View As JSON and View As Markdown Preview are greyed out.](../Images/RightClick-Add.png)
+![The Project Explorer context menu with Add highlighted and its submenu opened out to the left. The submenu lists Add Folder; five Windows item types from Form through MDI Form, UserControl and PropertyPage to Report; Add CustomControls Form; the Unicode-capable .TWIN module and class; the .BAS module and .CLS class; Add Other File; Import; and three Add Resource entries for a Visual Styles Manifest, a String Table and a MESSAGETABLE. On the parent menu, Cut, Copy, Paste, View As JSON and View As Markdown Preview are greyed out.](../Images/RightClick-Add.png){:width="510" height="492"}
 
 ## References
 {: index_also="add reference" }

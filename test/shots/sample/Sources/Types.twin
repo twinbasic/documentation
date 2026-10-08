@@ -1,0 +1,13 @@
+Module Types
+
+    Public Type TPoint
+        X As Long
+        Y As Long
+    End Type
+
+    Public Enum ShapeKind
+        skCircle = 1
+        skSquare = 2
+    End Enum
+
+End Module

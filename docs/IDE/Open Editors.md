@@ -13,6 +13,6 @@ When a project isn't open this will be empty.
 
 When a project is open it will list the files that are currently open in your [Editor](Editor)
 
-![The Open Editors pane listing two open files from the twinBASICMonthlyChallenge1 project, each with its own file type icon: Sources/frmMain.tbform and Sources/frmMain.twin.](Images/OpenEditors_1.png)
+![The Open Editors pane listing two open files of SampleProject, each with its own file type icon and its full path: /SampleProject/Sources/frmMain.tbform and /SampleProject/Sources/frmMain.twin.](Images/OpenEditors_1.png){:width="360" height="92"}
 
 Clicking a file in the list brings it into focus in the editor.

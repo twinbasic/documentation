@@ -81,9 +81,20 @@ import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { shutdownIde, sleep } from "./lib/tb-ide.mjs";
+import { unpackProject } from "./lib/tb-project.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
-import { click, clickAt, listViewItems, openFile, pressKey, setCursor, typeText, waitFor } from "./lib/tb-operate.mjs";
+import {
+  click,
+  clickAt,
+  editorText,
+  listViewItems,
+  openFile,
+  pressKey,
+  setCursor,
+  typeText,
+  waitFor,
+} from "./lib/tb-operate.mjs";
 import { claimPorts } from "./lib/tb-ports.mjs";
 import { deleteSettings, finishTidy, restoreKeys, settingsKey, snapshotKeys, startTidy } from "./lib/tb-registry.mjs";
 
@@ -91,6 +102,7 @@ const SETTINGS = "tbDocsHelp";
 const PANE = "tbDocsHelpPane";
 const ADDIN = path.join(REPO_ROOT, "add-in");
 const DEMO = path.join(REPO_ROOT, "test", "addin", "helpdemo");
+const SAMPLE = path.join(REPO_ROOT, "test", "shots", "sample");
 const DEMO_FILE = "/Inventory/Sources/Inventory.twin";
 const DEMO_SOURCE = path.join(DEMO, "Sources", "Inventory.twin");
 const SITE = path.join(REPO_ROOT, "docs", "_site");
@@ -617,9 +629,45 @@ async function prepareNoProject(run) {
   return { c };
 }
 
+// ---- sample: the project made for the pictures
+
+// test/shots/sample is SampleProject, a Standard EXE of a form, a few modules, three
+// resources, a string table, a changelog and a licence file, which compiles clean. A
+// shot that needs errors edits a module in the page and puts it back. The one file the
+// tree does not hold is the template's icon, a binary: it is taken from the install's
+// own Standard EXE project, as the New Project dialog would give it.
+async function startSample(run) {
+  run.step = "open";
+  console.log(`opening ${path.relative(REPO_ROOT, SAMPLE)}`);
+  const src = path.join(run.work, "sample-src");
+  cpSync(SAMPLE, src, { recursive: true });
+  const template = path.join(run.work, "template");
+  unpackProject(path.join(path.dirname(ide), "projects", "_Standard EXE", "projectName.twinproj"), template);
+  mkdirSync(path.join(src, "Resources", "ICON"), { recursive: true });
+  cpSync(
+    path.join(template, "Resources", "ICON", "twinBASIC.ico"),
+    path.join(src, "Resources", "ICON", "twinBASIC.ico"),
+  );
+  return run.lane.open(src);
+}
+
+async function prepareSample(run) {
+  const { c } = run;
+  run.step = "shoot";
+  run.defaults = JSON.parse(await c.evaluate(PAGE_DEFAULTS));
+  // the Project Explorer starts in the file view whatever the IDE saved (in the page only)
+  await c.evaluate("switchToProjectExplorerFileMode()");
+  await ensureDark(c);
+  await c.send("Emulation.setDeviceMetricsOverride", { ...IDE_SIZE, deviceScaleFactor: SCALE, mobile: false });
+  await sleep(1500);
+  await parkMouse(c);
+  return { c };
+}
+
 const SETUPS = {
   help: { ports: 3, start: startHelp, prepare: prepareHelp },
   project: { ports: 1, start: startProject, prepare: prepareProject },
+  sample: { ports: 1, start: startSample, prepare: prepareSample },
   "no-project": { ports: 1, start: startNoProject, prepare: prepareNoProject },
 };
 
@@ -1036,6 +1084,8 @@ const PANEL_COMMANDS = {
   VARIABLES: "Variables",
   WATCHES: "Watches",
   "DEBUG CONSOLE": "DebugConsole",
+  "CALL STACK": "CallStack",
+  TOOLBOX: "Toolbox",
   PROBLEMS: "Problems",
   "PACKAGE PUBLISHING": "PackagePublishing",
   PROPERTIES: "Properties",
@@ -1076,16 +1126,35 @@ async function unfloatPanel(c, id) {
   await sleep(300);
 }
 
-// A panel on its own, sized to hold its title bar and the start of its body.
-const panelShot = (name, id, [width, height]) => ({
-  out: `IDE/Images/${name}.png`,
-  setup: "no-project",
+// A panel on its own, sized to hold its title bar and the start of its body. With a
+// project open (`setup: "sample"`), `prepare(c)` brings the panel to the state shown
+// once it floats, and `clipOf(box)` takes a part of the panel in place of the whole.
+const panelShot = (
+  name,
+  id,
+  [width, height],
+  {
+    setup = "no-project",
+    out = `IDE/Images/${name}.png`,
+    prepare = null,
+    restore = null,
+    clipOf = (box) => box,
+    away = true,
+  } = {},
+) => ({
+  out,
+  setup,
   async take({ c }) {
     await resetUi(c);
     try {
-      const box = await floatPanel(c, id, { width, height });
-      return await capture(c, name, snapOut(box), { away: () => parkMouse(c) });
+      let box = await floatPanel(c, id, { width, height });
+      if (prepare) {
+        await prepare(c);
+        box = await rectOf(c, panelSel(id));
+      }
+      return await capture(c, name, snapOut(await clipOf(box, c)), { away: away ? () => parkMouse(c) : null });
     } finally {
+      if (restore) await restore(c);
       await unfloatPanel(c, id);
     }
   },
@@ -1095,15 +1164,21 @@ const panelShot = (name, id, [width, height]) => ({
 // of the colour of its own body, the annotations drawn over, and the clip as large as they
 // need. Labels sit on the ground at the panel's left; the primitives are those of
 // lib/shot-annotate.mjs.
-function annotatedPanelShot(name, id, size, { open = null, annotate }) {
+function annotatedPanelShot(
+  name,
+  id,
+  size,
+  { open = null, annotate, setup = "no-project", out = `IDE/Images/${name}.png`, before = null, after = null },
+) {
   return {
-    out: `IDE/Images/${name}.png`,
-    setup: "no-project",
+    out,
+    setup,
     async take({ c }) {
       await resetUi(c);
       const sel = panelSel(id);
       try {
         const box = await floatPanel(c, id, { ...size, left: 280 });
+        if (before) await before(c);
         // the body's colour, as the first of it and its ancestors that is not transparent
         const ground = await c.evaluate(`(() => {
   for (let e = document.querySelector(${JSON.stringify(`${sel} .sectionBody`)}); e; e = e.parentElement) {
@@ -1115,13 +1190,16 @@ function annotatedPanelShot(name, id, size, { open = null, annotate }) {
         if (!ground) throw new Error(`the ${id} panel has no background colour`);
         if (open) await open(c);
         const menu = open ? await rectOf(c, "#contextMenu") : null;
+        // an empty submenu leaves a box of a few pixels in the page
+        const submenu = open && (await menuItems(c, true)).length ? await rectOf(c, "#contextMenuSUB") : null;
         let area = menu ? union(box, menu) : box;
+        if (submenu) area = union(area, submenu);
         try {
           const { box: drawn } = await annotateOver(c, annotate);
           area = grow(union(area, drawn), 8);
           return await capture(c, name, snapOut(area), {
             away: () => parkMouse(c),
-            keep: [sel, "#contextMenu", `#${LAYER_ID}`],
+            keep: [sel, "#contextMenu", "#contextMenuSUB", `#${LAYER_ID}`],
             solid: ground,
           });
         } finally {
@@ -1129,6 +1207,7 @@ function annotatedPanelShot(name, id, size, { open = null, annotate }) {
           await closeMenus(c);
         }
       } finally {
+        if (after) await after(c);
         await unfloatPanel(c, id);
       }
     },
@@ -1241,6 +1320,809 @@ const panelShots = [
   // after Diagnostics: the mouse press that opens the console's menu leaves a ghost of the
   // pointer in the next picture at the same place
   debugConsoleShot,
+];
+
+// ---- the panels and the editor of the sample project
+
+const PE = panelSel("PROJECT EXPLORER");
+
+// A row of the Project Explorer's tree, floating or docked: its box, its name's box, its
+// expander's box and whether it is open.
+const PE_SCOPE = `(document.querySelector(${JSON.stringify(PE)}) ||
+  [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "PROJECT EXPLORER")?.closest(".toolWindowContainer"))`;
+const peNode = (c, text) =>
+  c.evaluate(`(() => {
+  const n = [...${PE_SCOPE}.querySelectorAll(".itemNode")].find((e) => e.textContent.trim() === ${JSON.stringify(text)});
+  if (!n) return null;
+  const box = (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
+  const icon = n.parentElement.querySelector(".treeNodeIcon");
+  return { row: box(n.parentElement), name: box(n), icon: icon && box(icon), open: !!icon && icon.className.includes("iconCollapse") };
+})()`);
+
+async function peFind(c, text) {
+  const n = await peNode(c, text);
+  if (!n) throw new Error(`the Project Explorer has no row "${text}"`);
+  return n;
+}
+
+// Opens or closes a folder of the tree with a real click on its expander.
+async function peOpen(c, text, want) {
+  // a click on a name acts a moment after it, so the state is read again before each click
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await sleep(600);
+    const n = await peFind(c, text);
+    if (n.open === want) return;
+    await clickAt(c, n.icon.x + n.icon.width / 2, n.icon.y + n.icon.height / 2);
+  }
+  await sleep(600);
+  if ((await peFind(c, text)).open !== want)
+    throw new Error(`the click on the expander of "${text}" did not ${want ? "open" : "close"} it`);
+}
+
+// Selects a row with a real click on its name.
+async function peSelect(c, text) {
+  const n = await peFind(c, text);
+  await clickAt(c, n.name.x + n.name.width / 2, n.name.y + n.name.height / 2);
+  await sleep(400);
+}
+
+const peHeader = (box, c) =>
+  rectOf(c, `${PE} .sectionHeader`).then((h) => ({
+    x: box.x,
+    y: box.y,
+    width: box.width,
+    height: h.y + h.height - box.y + 1,
+  }));
+
+const headerButton = (id, title) => `${panelSel(id)} .sectionHeader [title^="${title}"]`;
+
+// ---- the editor's tabs
+
+const TABS_BUTTON = ".codicon-triangle-down[title='Tabs List']";
+const SAMPLE_FILE = (rest) => `/SampleProject/${rest}`;
+const RESOURCES = ["Resources/MANIFEST/#1.xml", "Resources/STRING/Strings.json", "Resources/MESSAGETABLE/Strings.json"];
+
+// The tabs of the editor, left to right: name and the boxes of the tab and its close icon.
+const editorTabs = (c) =>
+  c.evaluate(`(() => [...document.querySelectorAll(".tabItem")].map((t) => {
+    const box = (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
+    return { name: t.querySelector(".tabItemText").textContent.trim(), tab: box(t), close: box(t.querySelector(".tabItemIconRight")) };
+  }).filter((t) => t.tab.width))()`);
+
+// Closes the tabs whose names are not in `keep`, each with a real click on its close icon
+// (a tab that is closed any other way is not in the Tabs List's Recently Closed).
+async function closeTabs(c, keep = []) {
+  for (let n = 0; n < 20; n++) {
+    const t = (await editorTabs(c)).find((x) => !keep.includes(x.name));
+    if (!t) return;
+    await clickAt(c, t.close.x + t.close.width / 2, t.close.y + t.close.height / 2);
+    await sleep(500);
+  }
+  throw new Error("the editor's tabs would not close");
+}
+
+async function openTabsList(c) {
+  await resetUi(c);
+  const b = await rectOf(c, TABS_BUTTON);
+  if (!b) throw new Error("the editor has no Tabs List button");
+  await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+  if (!(await waitFor(c, () => rectOf(c, "#contextMenu"), { timeout: 3000, interval: 100 }))) {
+    throw new Error("the Tabs List did not open");
+  }
+  await sleep(300);
+}
+
+// Three resource files opened and closed, in the order the pictures list them.
+async function closedResources(ctx) {
+  if (ctx.resourcesClosed) return;
+  const { c } = ctx;
+  await closeTabs(c);
+  // the list shows the last one closed first
+  for (const f of [...RESOURCES].reverse()) {
+    await openFile(c, SAMPLE_FILE(f));
+    await sleep(400);
+    await closeTabs(c);
+  }
+  ctx.resourcesClosed = true;
+}
+
+// The Tabs List menu as a cut-out: the menu, and the button and the submenu when asked.
+function tabsListShot(name, { button = false, submenu = false, open = async () => {} }) {
+  return {
+    out: `IDE/Images/${name}.png`,
+    setup: "sample",
+    async take(ctx) {
+      const { c } = ctx;
+      await closedResources(ctx);
+      await open(c);
+      try {
+        await openTabsList(c);
+        const menu = await rectOf(c, "#contextMenu");
+        const sub = submenu ? await hoverItem(c, "Recently Closed") : null;
+        let area = grow(menu, OUTLINE);
+        if (button) area = union(area, grow(await rectOf(c, TABS_BUTTON), 1));
+        if (sub) area = union(area, grow(sub, OUTLINE));
+        return await capture(c, name, snapOut(area), {
+          keep: ["#contextMenu", ...(sub ? ["#contextMenuSUB"] : []), ...(button ? [TABS_BUTTON] : [])],
+        });
+      } finally {
+        await closeMenus(c);
+      }
+    },
+  };
+}
+
+// ---- the mouse pointer, which a capture does not hold
+
+const drawPointer = (c, tip) =>
+  c.evaluate(`(() => {
+  const d = document.createElement("div");
+  d.id = "tbShotPointer";
+  d.style.cssText = "position:fixed;left:${tip.x}px;top:${tip.y}px;width:12px;height:19px;pointer-events:none;z-index:2147483647";
+  d.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="19" viewBox="0 0 12 19"><path d="M0.5 0.5 V15.5 L4 12.3 L6.6 18.3 L9 17.3 L6.4 11.4 H11.4 Z" fill="#fff" stroke="#000" stroke-width="1" stroke-linejoin="round"/></svg>';
+  document.body.appendChild(d);
+})()`);
+const removePointer = (c) => c.evaluate(`document.getElementById("tbShotPointer")?.remove()`);
+
+// ---- the sample's own pictures
+
+// A capture of a part of the page, with the annotations over it if any, the clip grown to
+// hold them.
+async function annotatedClip(c, name, area, annotate = null, options = {}) {
+  try {
+    if (annotate) {
+      const { box } = await annotateOver(c, annotate);
+      if (box) area = union(area, box);
+    }
+    return await capture(c, name, snapOut(area), { away: () => parkMouse(c), ...options });
+  } finally {
+    if (annotate) await unannotate(c);
+  }
+}
+
+// ---- History: its times are the page's own clock, so the page's clock is set for the
+// edits that make its entries and the time zone is London's, as the old pictures'
+
+const FAKE_CLOCK = (iso) => `(() => {
+  const Real = window.tbRealDate || Date;
+  window.tbRealDate = Real;
+  const T = new Real(${JSON.stringify(iso)}).getTime();
+  window.Date = class extends Real {
+    constructor(...a) { if (a.length === 0) super(T); else super(...a); }
+    static now() { return T; }
+  };
+})()`;
+const REAL_CLOCK = "(() => { if (window.tbRealDate) window.Date = window.tbRealDate; })()";
+
+// A property of the form, typed into its cell in the Properties panel: `keys` pressed at the
+// end of the Caption.
+async function editCaption(c, key) {
+  const cell = await c.evaluate(`(() => {
+  const n = [...document.querySelectorAll(".propertyName")].find((e) => e.textContent.trim() === "Caption");
+  if (!n) return null;
+  const r = n.nextElementSibling.getBoundingClientRect();
+  return { x: r.x + 20, y: r.y + r.height / 2 };
+})()`);
+  if (!cell) throw new Error("the Properties panel has no Caption");
+  await clickAt(c, cell.x, cell.y);
+  await sleep(400);
+  await pressKey(c, "End");
+  await pressKey(c, key);
+  await pressKey(c, "Enter");
+  await sleep(1200);
+}
+
+// Two entries: the code edited at 16:41 and then the form at 18:02, as the old pictures had
+// them (the list shows the newest first).
+async function makeHistory(ctx) {
+  if (ctx.history) return;
+  const { c } = ctx;
+  await c.send("Emulation.setTimezoneOverride", { timezoneId: "Europe/London" });
+  try {
+    await c.evaluate(FAKE_CLOCK("2026-01-09T16:41:58Z"));
+    await openFile(c, SAMPLE_FILE("Sources/frmMain.twin"), { line: 4, column: 1 });
+    await setCursor(c, 4, 1);
+    await pressKey(c, " ");
+    await sleep(300);
+    await pressKey(c, "Backspace");
+    await sleep(1500);
+    await c.evaluate(FAKE_CLOCK("2026-01-09T18:02:51Z"));
+    await openFile(c, SAMPLE_FILE("Sources/frmMain.tbform"));
+    await sleep(1200);
+    await editCaption(c, " ");
+    await editCaption(c, "Backspace");
+  } finally {
+    await c.evaluate(REAL_CLOCK);
+    await c.send("Emulation.setTimezoneOverride", { timezoneId: "" });
+  }
+  ctx.history = true;
+}
+
+// The HISTORY panel on its own; with `row`, the pointer on that row (0 the newest) and the
+// IDE's own tooltip, in the picture.
+function historyShot(name, row = null) {
+  return {
+    out: `IDE/Images/${name}.png`,
+    setup: "sample",
+    async take(ctx) {
+      const { c } = ctx;
+      await makeHistory(ctx);
+      await resetUi(c);
+      try {
+        // wider than the tooltip when there is one, so that no editor shows beside the panel
+        const box = await floatPanel(c, "HISTORY", {
+          width: row === null ? 300 : 360,
+          height: row === null ? 96 : 120,
+        });
+        let area = box;
+        if (row === null) return await capture(c, name, snapOut(area), { away: () => parkMouse(c) });
+        const r = await c.evaluate(`(() => {
+  const rows = [...document.querySelectorAll('${panelSel("HISTORY")} .treeItemInner')].map((e) => e.getBoundingClientRect()).sort((a, b) => a.y - b.y);
+  const e = rows[${row}];
+  return { x: e.x, y: e.y, width: e.width, height: e.height };
+})()`);
+        const tip = { x: r.x + 80, y: r.y + r.height / 2 };
+        // the tooltip of an earlier hover may still be showing: it goes when the pointer is away
+        await parkMouse(c);
+        await waitFor(c, async () => !(await rectOf(c, "#hoverTooltip.visibleTooltip")), {
+          timeout: 4000,
+          interval: 200,
+        });
+        await mouseMove(c, tip.x - 2, tip.y);
+        await mouseMove(c, tip.x, tip.y);
+        // the IDE's own tooltip, which it shows about a second after the pointer rests
+        // (the entries are listed newest first: the form's, then the code's)
+        const named = ["frmMain.tbform", "frmMain.twin"][row];
+        const tooltip = await waitFor(
+          c,
+          async () =>
+            (await c.evaluate(
+              `document.querySelector("#hoverTooltip.visibleTooltip")?.innerText.includes(${JSON.stringify(named)})`,
+            )) && rectOf(c, "#hoverTooltip.visibleTooltip"),
+          { timeout: 6000, interval: 200 },
+        );
+        if (!tooltip) throw new Error(`the History entry showed no tooltip for ${named}`);
+        await sleep(400);
+        await drawPointer(c, { x: tip.x + 1, y: tip.y });
+        area = union(union(box, tooltip), { x: tip.x, y: tip.y, width: 12, height: 19 });
+        return await capture(c, name, snapOut(area));
+      } finally {
+        await removePointer(c);
+        // the tooltip logic wants the pointer to have rested elsewhere before it shows another
+        await mouseMove(c, IDE_SIZE.width / 2, IDE_SIZE.height / 2);
+        await sleep(1500);
+        await unfloatPanel(c, "HISTORY");
+        await parkMouse(c);
+      }
+    },
+  };
+}
+
+const PE_ROW = (text) => ({ css: `${PE} .itemNode`, text, own: true });
+const CS_THREAD = { css: `${panelSel("CALL STACK")} .itemNode`, text: "MAIN_THREAD [IDLE]", own: true };
+const DIAG_ITEM = (id) => ({ css: `${DIAG} #${id}` });
+
+// The Project Explorer's file view toggle, a real click on its button.
+async function toggleFileView(c) {
+  const b = await rectOf(c, headerButton("PROJECT EXPLORER", "Toggle file view"));
+  await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+  await sleep(900);
+}
+
+// ---- text of a module of the page, replaced and put back
+
+const DIAG_TWO_ERRORS = `Module MainModule
+
+    DefInt A-C
+
+    Public Sub Main()
+        ReDim items(3)
+        frmMain.Show
+        hMenu = 1
+        hr = 2
+    End Sub
+
+End Module
+`;
+const FIVE_ERRORS = `[Description("The sample's main window")]
+[FormDesignerId("5C0F8A71-3B2E-4D69-8A14-7E91C2D4B601")]
+[PredeclaredId]
+Class frmMain
+
+    Sub New()
+        hr = 0
+        hMenu = 1
+        hMenu = 2
+        hMenu = 3
+        hMenu = 4
+    End Sub
+
+End Class
+`;
+
+let editedOriginal = null;
+const diagCounts = (c) =>
+  c.evaluate(
+    `["errorCount", "warningCount", "hintCount", "infoCount"].map((i) => Number(document.getElementById(i).innerText))`,
+  );
+
+// Waits for the Diagnostics counts to be `want` and to stay so for a second and a half.
+async function waitCounts(c, want) {
+  let since = 0;
+  const ok = await waitFor(
+    c,
+    async () => {
+      const now = (await diagCounts(c)).join();
+      if (now !== want.join()) {
+        since = 0;
+        return false;
+      }
+      since ||= Date.now();
+      return Date.now() - since > 1500;
+    },
+    { timeout: 30000, interval: 300 },
+  );
+  if (!ok) throw new Error(`the diagnostics never settled at ${want.join(",")}: ${(await diagCounts(c)).join(",")}`);
+}
+
+async function editText(c, text, counts, file = "Sources/MainModule.twin") {
+  await openFile(c, SAMPLE_FILE(file));
+  editedOriginal = { file, text: await editorText(c) };
+  await c.evaluate(`editor.getModel().setValue(${JSON.stringify(text)})`);
+  await waitCounts(c, counts);
+}
+
+async function restoreText(c) {
+  if (!editedOriginal) return;
+  const { file, text } = editedOriginal;
+  editedOriginal = null;
+  await openFile(c, SAMPLE_FILE(file));
+  await c.evaluate(`editor.getModel().setValue(${JSON.stringify(text)})`);
+  await waitCounts(c, [0, 0, 0, 0]);
+}
+
+const PUBLISH_BUTTON = { css: `${panelSel("PACKAGE PUBLISHING")} .packageManagerPublish` };
+
+// Right click on a row of the Project Explorer: its menu opens at the pointer.
+async function peRightClick(c, text) {
+  const n = await peFind(c, text);
+  const x = n.name.x + n.name.width / 2;
+  const y = n.name.y + n.name.height / 2;
+  await mouseMove(c, x, y);
+  await c.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "right", buttons: 2, clickCount: 1 });
+  await c.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "right", buttons: 0, clickCount: 1 });
+  if (!(await waitFor(c, () => rectOf(c, "#contextMenu"), { timeout: 3000, interval: 100 }))) {
+    throw new Error(`the context menu of "${text}" did not open`);
+  }
+  await sleep(400);
+}
+
+// Closes a floating panel that is showing, whatever the command that opened it.
+async function closePanelIfShown(c, id) {
+  const close = await rectOf(c, `${panelSel(id)} .sectionHeader .codicon-close`);
+  if (close) await clickAt(c, close.x + close.width / 2, close.y + close.height / 2);
+  await sleep(300);
+}
+
+const sampleShots = [
+  tabsListShot("Editor_TabsList_RecentlyClosed", { button: true }),
+  tabsListShot("Editor_TabsList_RecentlyClosed_Example", { button: true, submenu: true }),
+  tabsListShot("Editor_TabsList_Example", {
+    async open(c) {
+      await openFile(c, SAMPLE_FILE("Sources/frmMain.tbform"));
+      await sleep(600);
+    },
+  }),
+  // ---- with the Project Explorer docked, as the layout has it: before a picture floats it
+  {
+    // the editor and the Project Explorer, the string table open and its folder shown
+    out: "Miscellaneous/Images/97cc8655-7a8b-47f3-b52c-eb1ddfce662f.png",
+    setup: "sample",
+    take: ({ c }) =>
+      atSize(c, 1160, IDE_SIZE.height, async () => {
+        await closeTabs(c);
+        for (const f of ["Sources/frmMain.twin", "Sources/frmMain.tbform", "Sources/MainModule.twin", RESOURCES[1]]) {
+          await openFile(c, SAMPLE_FILE(f));
+          await sleep(500);
+        }
+        for (const folder of ["Resources", "ICON", "MANIFEST", "STRING"]) await peOpen(c, folder, true);
+        await peSelect(c, "Strings.json");
+        await sleep(500);
+        const ed = await c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "EDITOR 1");
+  const r = h.closest(".toolWindowContainer").getBoundingClientRect();
+  return { x: r.x, y: r.y };
+})()`);
+        return capture(
+          c,
+          "97cc8655",
+          snapOut({ x: ed.x, y: ed.y, width: 1160 - ed.x, height: 417 }, 1160, IDE_SIZE.height),
+          {
+            away: () => parkMouse(c),
+          },
+        );
+      }),
+  },
+  {
+    // a window crop: the right of the title bar, the toolbar, the editor's tab and the Project Explorer
+    out: "Miscellaneous/Images/71ddde83-a091-47e3-b5b8-681954b0639d.png",
+    setup: "sample",
+    async take({ c }) {
+      await resetUi(c);
+      await closeTabs(c);
+      await openFile(c, SAMPLE_FILE("Sources/MainModule.twin"));
+      await sleep(500);
+      for (const folder of ["Resources", "ICON", "MANIFEST"]) await peOpen(c, folder, true);
+      await peOpen(c, "STRING", false);
+      await peOpen(c, "MESSAGETABLE", false);
+      return capture(c, "71ddde83", snapOut({ x: 340, y: 0, width: 940, height: 426 }), { away: () => parkMouse(c) });
+    },
+  },
+  {
+    // a right click on the Sources folder: the menu and the Add submenu, as a cut-out
+    out: "IDE/Images/RightClick-Add.png",
+    setup: "sample",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        await peOpen(c, "Sources", true);
+        await peRightClick(c, "Sources");
+        const sub = await hoverItem(c, "Add");
+        const menu = await rectOf(c, "#contextMenu");
+        return await capture(c, "RightClick-Add", snapOut(grow(union(menu, sub), OUTLINE)), {
+          keep: ["#contextMenu", "#contextMenuSUB"],
+        });
+      } finally {
+        await closeMenus(c);
+      }
+    },
+  },
+  {
+    // Add CustomControls Form asks for the package first
+    out: "IDE/Images/RightClick-Add-CustomControlsForm-Popup.png",
+    setup: "sample",
+    async take({ c }) {
+      await resetUi(c);
+      await peRightClick(c, "Sources");
+      await hoverItem(c, "Add");
+      const items = await menuItems(c, true);
+      const it = items.find((i) => i.text.startsWith("Add CustomControls Form"));
+      if (!it) throw new Error("the Add submenu has no Add CustomControls Form");
+      await mouseMove(c, it.x + 20, it.y + it.height / 2);
+      await sleep(300);
+      await clickAt(c, it.x + 20, it.y + it.height / 2);
+      if (!(await waitModal(c, "twinBASIC", { timeout: 5000 }))) throw new Error("no Package needed message appeared");
+      await sleep(800);
+      try {
+        return await dialogShot(c, "RightClick-Add-CustomControlsForm-Popup");
+      } finally {
+        await closeModal(c, "Cancel").catch(() => pressKey(c, "Escape"));
+      }
+    },
+  },
+  panelShot("OpenEditors_1", "OPEN EDITORS", [360, 92], {
+    setup: "sample",
+    async prepare(c) {
+      await closeTabs(c);
+      await openFile(c, SAMPLE_FILE("Sources/frmMain.tbform"));
+      await openFile(c, SAMPLE_FILE("Sources/frmMain.twin"));
+      await sleep(600);
+    },
+  }),
+  historyShot("History_1"),
+  historyShot("History_2", 0),
+  historyShot("History_3", 1),
+  {
+    // the Toolbox with a form open, as tall as its list: More components is at the end
+    out: "IDE/Images/Toolbox_MoreComponents.png",
+    setup: "sample",
+    async take({ c }) {
+      await resetUi(c);
+      await openFile(c, SAMPLE_FILE("Sources/frmMain.tbform"));
+      await sleep(1000);
+      try {
+        await floatPanel(c, "TOOLBOX", { width: 210, height: 800, top: 40 });
+        const b = await rectOf(c, ".toolboxMoreComponents");
+        if (!b) throw new Error("the Toolbox has no More components item");
+        return await capture(c, "Toolbox_MoreComponents", snapOut(b), { away: () => parkMouse(c) });
+      } finally {
+        await unfloatPanel(c, "TOOLBOX");
+      }
+    },
+  },
+  {
+    // Find / Replace with its Current File scope, on a line that holds no word to search for
+    out: "IDE/Images/FindReplace.png",
+    setup: "sample",
+    async take({ c }) {
+      await resetUi(c);
+      await openFile(c, SAMPLE_FILE("Sources/frmMain.twin"));
+      await setCursor(c, 5, 1);
+      await pressKey(c, "h", { ctrl: true });
+      const sel = panelSel("FIND REPLACE");
+      if (!(await waitFor(c, () => rectOf(c, sel), { timeout: 5000, interval: 100 }))) {
+        throw new Error("Ctrl+H did not show the Find / Replace panel");
+      }
+      await sleep(800);
+      try {
+        const label = await c.evaluate(`(() => {
+  const e = [...document.querySelectorAll(${JSON.stringify(`${sel} *`)})].find((x) => x.children.length === 0 && x.textContent.trim() === "Current File");
+  const r = e.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+        await clickAt(c, label.x, label.y);
+        await sleep(400);
+        return await capture(c, "FindReplace", snapOut(await rectOf(c, sel)), { away: () => parkMouse(c) });
+      } finally {
+        await pressKey(c, "Escape");
+        await sleep(400);
+        await closePanelIfShown(c, "FIND REPLACE");
+      }
+    },
+  },
+  {
+    // the toolbar crop, a ring on the Build button
+    out: "Features/Packages/Images/4d90f313-35d5-426d-8fc3-852ca03382fa.png",
+    setup: "sample",
+    async take({ c }) {
+      await resetUi(c);
+      const b = await rectOf(c, "#buildIcon");
+      if (!b) throw new Error("the toolbar has no Build button");
+      const area = { x: b.x + b.width / 2 - 190, y: 0, width: 323, height: b.y + b.height + 34 };
+      return annotatedClip(c, "4d90f313", area, [{ type: "ring", on: { css: "#buildIcon" } }]);
+    },
+  },
+  panelShot("ProjectExplorer_Sample", "PROJECT EXPLORER", [400, 200], {
+    setup: "sample",
+    async prepare(c) {
+      // a click on a folder's name may toggle it as well as select it: selected, then closed
+      await peOpen(c, "Resources", false);
+      await peOpen(c, "Sources", true);
+      await peSelect(c, "Sources");
+      await sleep(400);
+      await peOpen(c, "Sources", false);
+    },
+  }),
+  panelShot("ProjectExplorer_Header", "PROJECT EXPLORER", [400, 200], {
+    setup: "sample",
+    clipOf: peHeader,
+  }),
+  // the file view's toggle under the mouse, as it looks on a hover
+  panelShot("b000d3aa", "PROJECT EXPLORER", [296, 200], {
+    setup: "sample",
+    out: "Features/Images/b000d3aa-3689-4d94-88e3-bca44f8b7de6.png",
+    away: false,
+    async prepare(c) {
+      const b = await rectOf(c, headerButton("PROJECT EXPLORER", "Toggle file view"));
+      await mouseMove(c, b.x + b.width / 2, b.y + b.height / 2);
+      await sleep(400);
+    },
+    clipOf: peHeader,
+  }),
+  panelShot("Watches_1", "WATCHES", [300, 76], { setup: "sample" }),
+  panelShot("Watches_2", "WATCHES", [300, 76], {
+    setup: "sample",
+    async prepare(c) {
+      const b = await rectOf(c, headerButton("WATCHES", "Add Watch"));
+      await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+      await sleep(600);
+    },
+  }),
+  panelShot("PackagePublishing_1", "PACKAGE PUBLISHING", [300, 330], { setup: "sample" }),
+  {
+    // the panel as it shows over the editor, with the code of the project behind it
+    out: "Features/Packages/Images/9eeffbcf-d73e-4a92-bce5-811ed60aba98.png",
+    setup: "sample",
+    async take({ c }) {
+      await resetUi(c);
+      await openFile(c, SAMPLE_FILE("Sources/MainModule.twin"));
+      await sleep(600);
+      try {
+        const box = await floatPanel(c, "PACKAGE PUBLISHING", { width: 300, height: 330, left: 300 });
+        return await capture(c, "9eeffbcf", snapOut(grow(box, 24)), { away: () => parkMouse(c) });
+      } finally {
+        await unfloatPanel(c, "PACKAGE PUBLISHING");
+      }
+    },
+  },
+  annotatedPanelShot(
+    "packPublishButton",
+    "PACKAGE PUBLISHING",
+    { width: 300, height: 345 },
+    {
+      setup: "sample",
+      out: "Features/Packages/Images/packPublishButton.png",
+      // from the empty body under the button, straight up at its lower corners
+      annotate: [
+        { at: "bottom-left", dx: 28 },
+        { at: "bottom-right", dx: -28 },
+      ].map(({ at, dx }) => ({
+        type: "arrow",
+        from: { of: PUBLISH_BUTTON, at, dx, dy: 56 },
+        to: { of: PUBLISH_BUTTON, at, dx, dy: 0 },
+      })),
+    },
+  ),
+  // the Project Explorer of a package: the changelog and the licence file, from the right
+  annotatedPanelShot(
+    "packLicenceFiles",
+    "PROJECT EXPLORER",
+    { width: 400, height: 236 },
+    {
+      setup: "sample",
+      out: "Features/Packages/Images/packLicenceFiles.png",
+      async before(c) {
+        for (const folder of ["Resources", "Sources"]) await peOpen(c, folder, false);
+      },
+      annotate: ["CHANGELOG.md", "LICENCE.md"].map((file) => ({
+        type: "arrow",
+        from: { of: PE_ROW(file), at: "right", dx: 110 },
+        to: PE_ROW(file),
+      })),
+    },
+  ),
+  // the thread list with no program running: the compiler's and the main thread
+  annotatedPanelShot(
+    "CallStack",
+    "CALL STACK",
+    { width: 360, height: 190 },
+    {
+      setup: "sample",
+      annotate: [
+        // the label under the main thread, an arrow straight up at it, and one that leaves its
+        // right side level and then rises at the compiler's row, clear of the text below it
+        {
+          type: "label",
+          text: "Active Threads",
+          on: { of: CS_THREAD, at: "bottom", dy: 52 },
+          side: "below",
+          gap: 0,
+          tone: "dark",
+        },
+        { type: "arrow", from: { of: CS_THREAD, at: "bottom", dy: 49 }, to: { of: CS_THREAD, at: "bottom", dy: 4 } },
+        {
+          type: "arrow",
+          from: { of: CS_THREAD, at: "bottom", dx: 82, dy: 65 },
+          to: { of: CS_THREAD, at: "top", dx: 108, dy: -3 },
+          elbow: true,
+        },
+      ],
+    },
+  ),
+  panelShot("9a5c50d5", "PROJECT EXPLORER", [423, 526], {
+    setup: "sample",
+    out: "Features/Images/9a5c50d5-a9f8-44a7-96f7-ae84548bd7ef.png",
+    prepare: toggleFileView,
+    restore: toggleFileView,
+  }),
+  // the context menu of the Sources folder with the Add submenu, the way to Import marked
+  annotatedPanelShot(
+    "2b32ab8c",
+    "PROJECT EXPLORER",
+    { width: 300, height: 215 },
+    {
+      setup: "sample",
+      out: "Miscellaneous/Images/2b32ab8c-fabc-4f42-9e6b-06e85574eaf4.png",
+      async before(c) {
+        // folded, so that the arrow to Add crosses no file name
+        await peOpen(c, "Resources", false);
+        await peOpen(c, "Sources", false);
+      },
+      async open(c) {
+        await peRightClick(c, "Sources");
+        await hoverItem(c, "Add");
+      },
+      annotate: [
+        { type: "ring", on: { css: "#contextMenuSUB > *", text: "Import...", own: true } },
+        {
+          type: "arrow",
+          from: { of: { css: "#contextMenuSUB > *", text: "Import..." }, at: "right", dx: 60 },
+          to: { css: "#contextMenuSUB > *", text: "Import...", own: true },
+          tipGap: 9,
+        },
+        // from the Sources row, past its name (the offsets count from the menu row's left
+        // edge): level with Add, the line would cross CHANGELOG.md
+        {
+          type: "arrow",
+          from: { of: { css: "#contextMenu > *", text: "Add" }, at: "left", dx: -30, dy: -14 },
+          to: { css: "#contextMenu > *", text: "Add", own: true },
+          tipGap: 9,
+        },
+      ],
+    },
+  ),
+  // ---- with errors: a module of the page is edited, and put back
+  annotatedPanelShot(
+    "Diagnostics_Toggles",
+    "PROBLEMS",
+    { width: 430, height: 30 },
+    {
+      setup: "sample",
+      before: (c) => editText(c, DIAG_TWO_ERRORS, [2, 0, 0, 3]),
+      after: restoreText,
+      annotate: [
+        ...["statusErrors", "statusWarnings", "statusHints", "statusInfos"].map((id) => ({
+          type: "box",
+          on: DIAG_ITEM(id),
+          pad: 1,
+          halo: false,
+        })),
+        {
+          type: "label",
+          text: "Click to toggle ON/OFF",
+          on: { of: DIAG_PANEL, at: "bottom-left", dx: 20, dy: 58 },
+          side: "right",
+          gap: 0,
+          tone: "dark",
+        },
+        ...["statusErrors", "statusWarnings", "statusHints", "statusInfos"].map((id) => ({
+          type: "arrow",
+          from: { of: DIAG_PANEL, at: "bottom-left", dx: 232, dy: 58 },
+          to: { of: DIAG_ITEM(id), at: "bottom", dy: 7 },
+          elbow: true,
+        })),
+      ],
+    },
+  ),
+  annotatedPanelShot(
+    "Diagnostics_Totals",
+    "PROBLEMS",
+    { width: 430, height: 30 },
+    {
+      setup: "sample",
+      before: (c) => editText(c, DIAG_TWO_ERRORS, [2, 0, 0, 3]),
+      after: restoreText,
+      annotate: [
+        ...["errorCount", "warningCount", "hintCount", "infoCount"].map((id) => ({
+          type: "box",
+          on: DIAG_ITEM(id),
+          pad: 2,
+          halo: false,
+        })),
+        {
+          type: "label",
+          text: "Total counts for each category",
+          on: { of: DIAG_PANEL, at: "bottom-left", dx: 20, dy: 58 },
+          side: "right",
+          gap: 0,
+          tone: "dark",
+        },
+        ...["errorCount", "warningCount", "hintCount", "infoCount"].map((id) => ({
+          type: "arrow",
+          from: { of: DIAG_PANEL, at: "bottom-left", dx: 280, dy: 58 },
+          to: { of: DIAG_ITEM(id), at: "bottom", dy: 8 },
+          elbow: true,
+        })),
+      ],
+    },
+  ),
+  {
+    // five unrecognised symbols in one file, the first entry open
+    out: "Miscellaneous/Images/e409ea37-96ad-44c5-8017-3699ef04b53d.png",
+    setup: "sample",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        await floatPanel(c, "PROBLEMS", { width: 347, height: 193 });
+        await editText(c, FIVE_ERRORS, [5, 0, 0, 0], "Sources/frmMain.twin");
+        const row = await c.evaluate(`(() => {
+  const area = (e) => e.getBoundingClientRect().width * e.getBoundingClientRect().height;
+  const hits = [...document.querySelectorAll('${panelSel("PROBLEMS")} *')].filter((x) => /TB5079/.test(x.textContent) && area(x) > 0);
+  const e = hits.sort((a, b) => area(a) - area(b))[0];
+  const r = e.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+        await clickAt(c, row.x, row.y);
+        await sleep(800);
+        return await capture(c, "e409ea37", snapOut(await rectOf(c, panelSel("PROBLEMS"))), {
+          away: () => parkMouse(c),
+        });
+      } finally {
+        await restoreText(c);
+        await unfloatPanel(c, "PROBLEMS");
+      }
+    },
+  },
 ];
 
 // The route a person takes: Standard EXE is selected on the New tab, and Open
@@ -1688,6 +2570,7 @@ const SHOTS = [
   ...dialogShots,
   // after the dialogs: the panels' pictures change the layout
   ...panelShots,
+  ...sampleShots,
   newProjectOptionsShot,
 ];
 

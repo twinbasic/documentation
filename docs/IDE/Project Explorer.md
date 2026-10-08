@@ -8,7 +8,7 @@ permalink: /tB/IDE/Project/Explorer
 # Project Explorer
 
 ![The PROJECT EXPLORER panel with no project open: its title bar carries only a drag grip and a close button, and the body below it is empty.](Images/ProjectExplorer.png){:width="400" height="116"}
-![The same panel with SampleProject loaded, its root node expanded over six yellow folders, each with a plus box for expanding it: ImportedTypeLibraries, Miscellaneous, Packages, References, Resources and Sources, the last of them selected.](Images/ProjectExplorer_Sample.png)
+![The same panel with SampleProject loaded, its root node expanded over six yellow folders, each with a plus box for expanding it: ImportedTypeLibraries, Miscellaneous, Packages, References, Resources and Sources, the last of them selected.](Images/ProjectExplorer_Sample.png){:width="400" height="200"}
 
 ![A small yellow folder icon](Images/Folder.png) ImportedTypeLibraries  
 ![A small yellow folder icon](Images/Folder.png) Miscellaneous  
@@ -19,7 +19,7 @@ permalink: /tB/IDE/Project/Explorer
 
 When a Project is open contextual icons will appear.
 
-![The PROJECT EXPLORER title bar once a project is open, with four buttons at its right: a settings gear, a toggle file view icon of two overlapping documents, a plus for adding items, and the panel close button.](Images/ProjectExplorer_Header.png)
+![The PROJECT EXPLORER title bar once a project is open, with four buttons at its right: a settings gear, a toggle file view icon of two overlapping documents, a plus for adding items, and the panel close button.](Images/ProjectExplorer_Header.png){:width="400" height="30"}
 
 ## ![](Images/Settings.png) Project Settings
 
@@ -34,7 +34,7 @@ Same as Right-Click
 
 ## Right-Click - Add
 
-![The Project Explorer context menu with its Add submenu open alongside it. The submenu runs from Add Folder through the Windows Form, MDI Form, UserControl, PropertyPage and Report entries, the CustomControls form, the .TWIN module and class, the .BAS module and .CLS class, Add Other File, Import, and three Add Resource lines. The menu behind it lists Cut, Copy, Paste, Copy Path, View As JSON, View As Markdown Preview, Rename, Export and Delete Permanently, with Cut, Copy, Paste and the two View As entries greyed out.](Images/RightClick-Add.png)
+![The Project Explorer context menu with its Add submenu open alongside it. The submenu runs from Add Folder through the Windows Form, MDI Form, UserControl, PropertyPage and Report entries, the CustomControls form, the .TWIN module and class, the .BAS module and .CLS class, Add Other File, Import, and three Add Resource lines. The menu beside it lists Add, Cut, Copy, Paste, Copy Name, Copy Path, View As JSON, View As Markdown Preview, Rename, Export and Delete Permanently, with Cut, Copy, Paste and the two View As entries greyed out.](Images/RightClick-Add.png){:width="510" height="492"}
 
 - ![](Images/Folder.png) Add Folder
 - ![](Images/tB-Green.png) Add Windows Form
@@ -96,7 +96,7 @@ Same as Right-Click
 ## ![](Images/tB-Green.png) CustomControls Forms
 {: #customcontrols-forms }
 
-![A twinBASIC message box headed Package needed: CustomControls, saying that a reference to the CustomControls package must be added to the project first and that the compiler will be restarted once it is, above an Add CustomControls package button and a Cancel button.](Images/RightClick-Add-CustomControlsForm-Popup.png)
+![A twinBASIC message box headed Package needed: CustomControls, saying that a reference to the CustomControls package must be added to the project first and that the compiler will be restarted once it is, above an Add CustomControls package button and a Cancel button.](Images/RightClick-Add-CustomControlsForm-Popup.png){:width="539" height="194"}
 
 ## ![](Images/tB-Red.png) Module
 {: #module }

@@ -52,11 +52,11 @@ On the Form Designer, control with `Visible = False` are faded to visually indic
 
 A new code structure based Project Explorer:
 
-![The Project Explorer in code-based view, grouping the project into Modules, Forms, Interfaces, UserDefinedTypes and Enumerations](../Images/9a5c50d5-a9f8-44a7-96f7-ae84548bd7ef.png)
+![The Project Explorer in code-based view, grouping the project into Modules, Forms, Interfaces and User Defined Types, each item beside the file it comes from, above the collapsed VBA, VBRUN and VB packages](../Images/9a5c50d5-a9f8-44a7-96f7-ae84548bd7ef.png){:width="423" height="526"}
 
 The classic file-based view is still used by default, you can activate the new view with a toggle button:
 
-![The Project Explorer title bar with the file view toggle button highlighted](../Images/b000d3aa-3689-4d94-88e3-bca44f8b7de6.png)
+![The Project Explorer title bar with the file view toggle button highlighted](../Images/b000d3aa-3689-4d94-88e3-bca44f8b7de6.png){:width="296" height="30"}
 
 ## View Forms and Packages as JSON
 
