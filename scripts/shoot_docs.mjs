@@ -303,6 +303,10 @@ async function cutoutOff(conn) {
   await sleep(150);
 }
 
+// The bytes of the file the running shot writes, when there is one: `capture` prefers
+// the version of a picture that equals it.
+let reference = null;
+
 // A capture of `clip` (CSS pixels, on whole device pixels) from `conn`, refused
 // when the page's visible text holds the user name. `away` first takes the mouse
 // where it touches nothing, since a control under it draws its hover look, unless
@@ -322,8 +326,28 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     await sleep(300);
     const params = { format: "png" };
     if (clip) params.clip = { ...clip, scale: 1 };
-    const { data } = await conn.send("Page.captureScreenshot", params);
-    return Buffer.from(data, "base64");
+    // Captures of one unchanged state come out as two or more versions that differ in a
+    // few pixels by a few grey levels (the edge of a shadow's blur, of the status bar's
+    // scaled Ko-fi icon): the compositor draws them a little differently from frame to
+    // frame, which pixels and how often varies from run to run, and no way of taking the
+    // capture removes it (captureBeyondViewport and fromSurface:false do, but they also
+    // drop the scrollbars and the alpha channel). So the picture is the one that equals
+    // the file already there when any capture does, else the first to equal the capture
+    // before it: a picture is rewritten only when the IDE draws something else.
+    const want = reference;
+    let last = null;
+    let agreed = null;
+    for (let i = 0; i < 8; i++) {
+      const { data } = await conn.send("Page.captureScreenshot", params);
+      const png = Buffer.from(data, "base64");
+      if (want?.equals(png)) return png;
+      if (last?.equals(png)) agreed ??= png;
+      if (agreed && !want) return agreed;
+      last = png;
+      await sleep(150);
+    }
+    if (agreed) return agreed;
+    throw new Error(`the page for ${name} kept changing: no two captures in a row were equal`);
   } finally {
     if (keep) await cutoutOff(conn);
   }
@@ -3045,11 +3069,15 @@ for (const name of wanted) {
       );
     }
     for (const shot of selected.filter((s) => s.setup === name)) {
+      const file = path.join(outRoot, shot.out);
+      reference = existsSync(file) ? readFileSync(file) : null;
       try {
         keep(shot.out, await shot.take(ctx));
       } catch (e) {
         console.error(`${shot.out}: FAILED: ${e.message}`);
         failed = 1;
+      } finally {
+        reference = null;
       }
     }
   } catch (e) {
