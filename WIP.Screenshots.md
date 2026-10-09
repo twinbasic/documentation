@@ -145,7 +145,10 @@ back).
 - **Setups**: one IDE each --- `no-project` (menus, dialogs, panels), `help` (the add-in's eight,
   `test/addin/helpdemo`), `project`, `sample`, the `settings` setups, `glyphs`, `global-search`
   (Sample 15 exported from the install, built into the lane's copy as an add-in, its own project
-  opened) and `sample6` (Sample 6 exported and opened). A setup is `{name, start, prepare}`.
+  opened), `sample6` (Sample 6 exported and opened) and `designer` (the sample fixture with
+  `test/shots/designer/` staged onto it, plus the Global Search add-in for Toolbar_3; it sets the
+  page's `currentDPI` to the 2x ratio, or the IDE's 5 s DPI check covers every designer with
+  RESYNC). A setup is `{name, start, prepare}`.
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
 - **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE on its own claimed ports and
@@ -213,6 +216,28 @@ says so.
   the COM list shows this machine's, under the username check), and prose that names the old
   value is changed to match.
 - **Old-design pictures are retaken in today's look**, with alt text and prose rechecked.
+
+## Increment 4 (owner, 2026-10-09)
+
+Survey: `.claude/tooling-review-scratch/s103-shots/INC4-SURVEY.md`, four batches (designers and
+Format menu; Properties and Toolbox; replicas and composites; code views).
+
+- **Composites** lay their parts out on the IDE's dark background (not white), with a gap, code
+  on the left and the panel on the right, one red arrow across.
+- **Replica select lists** take one style: a white list, 1 px grey border, the IDE's font, the
+  current option on mid-grey `#6E6E6E` with white text.
+- **The CustomControls tutorial's pictures** come from a project-made fixture,
+  `test/shots/customcontrols/`, referencing the CustomControls package, with a class using the
+  tutorial's names (`MyField`, `MyEnum`); the Toolbox may list two grids.
+- **No mouse pointer** is drawn in any picture.
+- (Main session) The designer pictures come from a `designer` setup that stages files onto the
+  sample fixture at run time; controls are put on forms by hand-written `.tbform` files.
+- **Batch 1 is done** (designers, the Format menu, Toolbar_3). The report is made in the page by
+  Sources > Add > Add Windows Report. Toolbox_Report is the *docked* Toolbox: a floating one
+  lists every tool even with a report active (`reportDesignerMode` is set on `#bodyInner`, which
+  a floating panel is outside) -- a possible IDE defect, not yet reproduced or queued. After the
+  Format shots the designer marks frmControls changed with no control moved (cause unknown), so
+  those shots close it with Discard Changes.
 
 ## Open questions
 

@@ -38,6 +38,9 @@
 //               that has its button
 //   sample6     Sample 6, the CustomControls sample, open: its package in the Project
 //               Explorer, and the package as JSON
+//   designer    the sample with the forms of test/shots/designer staged onto it and the
+//               Global Search add-in built into the copy: the form and report designers,
+//               the Format menu over two selected controls, and the toolbar with a form open
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
@@ -122,6 +125,7 @@ const GS_BUTTON = "addinButton-GlobalSearchAddInButton";
 const ADDIN = path.join(REPO_ROOT, "add-in");
 const DEMO = path.join(REPO_ROOT, "test", "addin", "helpdemo");
 const SAMPLE = path.join(REPO_ROOT, "test", "shots", "sample");
+const DESIGNER = path.join(REPO_ROOT, "test", "shots", "designer");
 const SETTINGS_FIXTURES = path.join(REPO_ROOT, "test", "shots", "settings");
 const DEMO_FILE = "/Inventory/Sources/Inventory.twin";
 const DEMO_SOURCE = path.join(DEMO, "Sources", "Inventory.twin");
@@ -141,8 +145,9 @@ Takes the pictures of the IDE that the documentation shows, from IDEs on a
 private desktop, at 2x in the dark theme: the help add-in's eight (setup help),
 the menus, dialogs, bars and panels that need no project (setups no-project and project),
 the panels, editor, Project Settings and icons of a sample project (setups sample,
-settings and glyphs), and those of the IDE's Samples 15 and 6 (setups
-global-search and sample6).
+settings and glyphs), those of the IDE's Samples 15 and 6 (setups
+global-search and sample6), and the form and report designers and the Format menu
+(setup designer).
 Each setup is one IDE, started when a picture in it is selected. A picture is
 written only when its bytes differ from the file already there; each is
 reported as new, updated or unchanged. The IDE's registry entries and the
@@ -170,7 +175,8 @@ was taken from holds the Windows user name.
   --port <n>       the first IDE's DevTools port: the first free ones from n
                    (default 9700); every IDE takes one, the help setup three, the
                    detached window's and the building IDE's after its own, and the
-                   global-search setup two, the building IDE's after its own
+                   global-search and designer setups two, the building IDE's after
+                   its own
   --ide <path>     the twinBASIC.exe to copy (default: $TB_IDE, else the
                    newest twinBASIC_IDE_BETA_* on the Desktop)
   -h, --help       print this text and exit
@@ -503,9 +509,11 @@ async function menuOpened(c) {
   return true;
 }
 
-// Opens a top-level menu with a real press on its title (the IDE opens on mousedown).
-async function openMenu(c, name) {
-  await closeMenus(c);
+// Opens a top-level menu with a real press on its title (the IDE opens on mousedown). With
+// `close: false` the Escape that closeMenus may press is left out, for a state Escape would
+// undo (a selection in the designer); the caller has closed every menu.
+async function openMenu(c, name, { close = true } = {}) {
+  if (close) await closeMenus(c);
   const r = await rectOf(c, `#${TOP[name]}`);
   if (!r) throw new Error(`there is no ${name} menu`);
   await clickAt(c, r.x + r.width / 2, r.y + r.height / 2);
@@ -864,24 +872,34 @@ async function prepareFusion(run) {
 // pictures have always had it. Its options are saved with SaveSetting, under GS_SETTINGS,
 // which the run records first and puts back.
 
-async function startGlobalSearch(run) {
+// Builds Sample 15 into the lane's copy of the install, on the setup's second port (the
+// building IDE's, as the help setup builds); returns the sample's exported tree.
+async function buildGlobalSearch(run) {
   const { lane, ports } = run;
   run.step = "build";
   say(run.name, `building Sample 15, the Global Search add-in, into a copy of ${ide}`);
   // the install is only read: the sample is exported into the work folder
   const src = lane.exportSample("Sample 15");
-  // on a port of its own, as the help setup builds
   await lane.addAddin(src, { show: false, port: ports[1] });
-  run.step = "open";
-  say(run.name, "opening Sample 15");
-  return lane.open(src);
+  return src;
 }
 
-async function prepareGlobalSearch(run) {
-  const { c } = run;
+// Waits for the add-in's button on the toolbar, which says it has loaded.
+async function globalSearchLoaded(c) {
   if (!(await waitFor(c, () => rectOf(c, `#${GS_BUTTON}`), { timeout: 30000, interval: 100 }))) {
     throw new Error("the Global Search add-in put no button on the toolbar");
   }
+}
+
+async function startGlobalSearch(run) {
+  const src = await buildGlobalSearch(run);
+  run.step = "open";
+  say(run.name, "opening Sample 15");
+  return run.lane.open(src);
+}
+
+async function prepareGlobalSearch(run) {
+  await globalSearchLoaded(run.c);
   return prepareSample(run);
 }
 
@@ -893,10 +911,37 @@ async function startSample6(run) {
   return run.lane.open(run.lane.exportSample("Sample 6"));
 }
 
+// ---- designer: the sample with test/shots/designer's forms staged onto it (in the work
+// folder only: test/shots/sample is not changed, so the sample's pictures do not move), and
+// the Global Search add-in built into the copy, as global-search builds it, for the toolbar
+// with a form open. MyForm is empty; frmControls holds two command buttons, for the Format
+// menu. The report is added by the IDE itself, as a person adds one (designerShots).
+
+async function startDesigner(run) {
+  await buildGlobalSearch(run);
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)} with ${path.relative(REPO_ROOT, DESIGNER)}`);
+  const src = stageSample(run);
+  cpSync(DESIGNER, src, { recursive: true });
+  return run.lane.open(src);
+}
+
+async function prepareDesigner(run) {
+  await globalSearchLoaded(run.c);
+  const ctx = await prepareSample(run);
+  // Every five seconds the page compares the device pixel ratio with the one it loaded at,
+  // and on a change covers each open designer with RESYNC until it is pressed. The ratio is
+  // the tool's own (fixPageSize), so the page is told it is the one it has. No designer is
+  // open yet.
+  await run.c.evaluate("currentDPI = window.devicePixelRatio");
+  return ctx;
+}
+
 const SETUPS = {
   help: { ports: 3, start: startHelp, prepare: prepareHelp },
   "global-search": { ports: 2, start: startGlobalSearch, prepare: prepareGlobalSearch },
   sample6: { ports: 1, start: startSample6, prepare: prepareSample },
+  designer: { ports: 2, start: startDesigner, prepare: prepareDesigner },
   project: { ports: 1, start: startProject, prepare: prepareProject },
   sample: { ports: 1, start: startSample, prepare: prepareSample },
   settings: { ports: 1, start: startSettings("base"), prepare: prepareSample },
@@ -914,14 +959,16 @@ const SETUPS = {
 // border box, so the clip is grown by it, which is also what rounds their
 // corners: the outline's corner is what fills the pixel the border's curve leaves.
 const OUTLINE = 1;
-function menuShot(name, top, item = null, { subOnly = false, setup = "no-project" } = {}) {
+// `before(c)` brings the IDE to the state the menu is shown in, after every menu is closed.
+function menuShot(name, top, item = null, { subOnly = false, setup = "no-project", before = null } = {}) {
   return {
     out: `IDE/Menu/Images/${name}.png`,
     setup,
     async take({ c }) {
       await resetUi(c);
+      if (before) await before(c);
       try {
-        const drop = await openMenu(c, top);
+        const drop = await openMenu(c, top, { close: !before });
         const title = await rectOf(c, `#${TOP[top]}`);
         const sub = item ? await hoverItem(c, item) : null;
         let area;
@@ -973,11 +1020,12 @@ const TOP_MODAL = `[...document.querySelectorAll(".modalDialogContainer")].filte
 // Waits until nothing in the top dialog has changed for `ms` milliseconds, its images are
 // decoded and the page's fonts loaded, and two frames are drawn: a dialog that fills itself
 // in (Project Settings asks the compiler for its lists) is then done. Says so when the
-// dialog was still changing after `timeout`, and goes on.
-async function dialogStill(c, { ms = 250, timeout = 5000 } = {}) {
+// dialog was still changing after `timeout`, and goes on. `root`, an expression for another
+// element, waits for that one instead.
+async function dialogStill(c, { ms = 250, timeout = 5000, root = TOP_MODAL } = {}) {
   const r = await c.evaluate(
     `(async () => {
-  const root = ${TOP_MODAL};
+  const root = ${root};
   if (!root) return "gone";
   const r = await new Promise((done) => {
     let quiet;
@@ -994,7 +1042,12 @@ async function dialogStill(c, { ms = 250, timeout = 5000 } = {}) {
 })()`,
     { awaitPromise: true, timeout: timeout + 10000 },
   );
-  if (r === "moving") say(c.shot.name, `  the dialog was still changing after ${timeout / 1000} s`);
+  if (r === "moving") {
+    say(
+      c.shot.name,
+      `  the ${root === TOP_MODAL ? "dialog" : "designer"} was still changing after ${timeout / 1000} s`,
+    );
+  }
 }
 
 // The top dialog's box, opaque (its shadow falls outside), or `clipOf(box)` of it.
@@ -1696,16 +1749,27 @@ const editorTabs = (c) =>
   }).filter((t) => t.tab.width))()`);
 
 // Closes the tabs whose names are not in `keep`, each with a real click on its close icon
-// (a tab that is closed any other way is not in the Tabs List's Recently Closed).
-async function closeTabs(c, keep = []) {
+// (a tab that is closed any other way is not in the Tabs List's Recently Closed). With
+// `discard`, a tab that asks whether to save its changes is closed with Discard Changes: the
+// changes are the page's own (after the Format menu's pictures the designer has marked
+// frmControls changed, though no control has moved), and nothing is saved either way.
+async function closeTabs(c, keep = [], { discard = false } = {}) {
   for (let n = 0; n < 20; n++) {
     const tabs = await editorTabs(c);
     const t = tabs.find((x) => !keep.includes(x.name));
     if (!t) return;
     await clickAt(c, t.close.x + t.close.width / 2, t.close.y + t.close.height / 2);
-    await waitFor(c, async () => (await editorTabs(c)).length < tabs.length, { timeout: 3000, interval: 50 });
+    const closed = async () => (await editorTabs(c)).length < tabs.length;
+    const asked = async () => (await modals(c)).some((m) => m.title === "twinBASIC");
+    await waitFor(c, async () => (await closed()) || (discard && (await asked())), { timeout: 3000, interval: 50 });
+    if (discard && !(await closed()) && (await asked())) {
+      await closeModal(c, "Discard Changes");
+      await waitFor(c, closed, { timeout: 3000, interval: 50 });
+    }
   }
-  throw new Error("the editor's tabs would not close");
+  const left = (await editorTabs(c)).map((t) => t.name);
+  const asked = await c.evaluate(`${TOP_MODAL}?.innerText.replace(/\\s+/g, " ") ?? ""`);
+  throw new Error(`the editor's tabs would not close: ${left.join(", ")}${asked ? `; a dialog: ${asked}` : ""}`);
 }
 
 async function openTabsList(c) {
@@ -2867,6 +2931,28 @@ const gsShot = (name, query, { packages = false, head = false } = {}) => ({
   },
 });
 
+// The toolbar with a project open, the Global Search add-in's button at the right: as wide
+// as Toolbar_1 and the button, which comes after the theme's, so that the close button of
+// the bar is as far from it as it is from the theme's there. `before(c)` brings the editor
+// to the state the toolbar shows.
+const searchToolbarShot = (name, setup, before) => ({
+  out: `IDE/Images/${name}.png`,
+  setup,
+  async take({ c }) {
+    await resetUi(c);
+    await before(c);
+    const theme = await rectOf(c, "#menuBarColorMode");
+    const b = await rectOf(c, `#${GS_BUTTON}`);
+    if (!theme || !b) throw new Error("the toolbar has no theme button or no Global Search button");
+    const width = Math.ceil(TOOLBAR_WIDTH + b.x + b.width - (theme.x + theme.width));
+    return atSize(c, width, IDE_SIZE.height, async () =>
+      capture(c, name, snapOut(await toolbarRect(c), width, IDE_SIZE.height), {
+        away: () => parkMouse(c),
+      }),
+    );
+  },
+});
+
 const globalSearchShots = [
   {
     // the add-in's button, with a little of the toolbar each side of it
@@ -2884,26 +2970,8 @@ const globalSearchShots = [
       );
     },
   },
-  {
-    // The toolbar with a project open and no editor, the add-in's button at the right: as
-    // wide as Toolbar_1 and the button, which comes after the theme's, so that the close
-    // button of the bar is as far from it as it is from the theme's there.
-    out: "IDE/Images/Toolbar_2.png",
-    setup: "global-search",
-    async take({ c }) {
-      await resetUi(c);
-      await closeTabs(c);
-      const theme = await rectOf(c, "#menuBarColorMode");
-      const b = await rectOf(c, `#${GS_BUTTON}`);
-      if (!theme || !b) throw new Error("the toolbar has no theme button or no Global Search button");
-      const width = Math.ceil(TOOLBAR_WIDTH + b.x + b.width - (theme.x + theme.width));
-      return atSize(c, width, IDE_SIZE.height, async () =>
-        capture(c, "Toolbar_2", snapOut(await toolbarRect(c), width, IDE_SIZE.height), {
-          away: () => parkMouse(c),
-        }),
-      );
-    },
-  },
+  // the toolbar with a project open and no editor
+  searchToolbarShot("Toolbar_2", "global-search", (c) => closeTabs(c)),
   gsShot("GlobalSearch", "", { head: true }),
   gsShot("GlobalSearch_2", "Button1", { packages: true }),
   // the sample's module open: the Outline lists what it declares
@@ -3057,6 +3125,275 @@ const sample6Shots = [
       } finally {
         await closeTabs(c);
       }
+    },
+  },
+];
+
+// ---- the designers: a form, the Format menu over a selection, and a report (setup designer)
+
+const DESIGNER_GLOBALS = "getCurrentFormEditorGlobals()";
+// the open designer's own area, which dialogStill watches
+const DESIGNER_AREA = `${DESIGNER_GLOBALS}?.designerContainer?.parentElement`;
+
+// Waits until the open designer has its form from the compiler and is not covered by RESYNC,
+// and then until nothing in it has changed for half a second and its pictures are decoded.
+async function designerShown(c) {
+  const ready = await waitFor(
+    c,
+    () =>
+      c.evaluate(`(() => {
+  const g = ${DESIGNER_GLOBALS};
+  return !!g && g.gotInitialFormData === true && g.resyncOverlay.style.visibility !== "visible";
+})()`),
+    { timeout: 20000, interval: 100 },
+  );
+  if (!ready) throw new Error("the designer never showed its form");
+  await dialogStill(c, { ms: 500, root: DESIGNER_AREA });
+}
+
+// Opens a form or report of the sample's Sources in its designer, and waits for it.
+async function openDesigner(c, file) {
+  await openFile(c, SAMPLE_FILE(`Sources/${file}`));
+  await designerShown(c);
+}
+
+// The names of the controls selected in the open designer, sorted (the form's own name when
+// no control is).
+const selectedControls = (c) =>
+  c.evaluate(`(${DESIGNER_GLOBALS}.selectedControls || []).map((x) => x.properties.Name).sort()`);
+
+// The centres of the named controls of the open designer: the form's client area, offset by
+// each control's Left and Top (in pixels in the .tbform), as long as what is drawn there is a
+// control.
+const controlCentres = (c, names) =>
+  c.evaluate(`(() => {
+  const g = ${DESIGNER_GLOBALS};
+  const d = g.designer.getBoundingClientRect();
+  return ${JSON.stringify(names)}.map((n) => {
+    const p = g.allControls.find((x) => x.properties.Name === n)?.properties;
+    if (!p) return null;
+    const at = { x: d.x + p.Left + p.Width / 2, y: d.y + p.Top + p.Height / 2 };
+    return document.elementFromPoint(at.x, at.y)?.closest(".baseControl") ? at : null;
+  });
+})()`);
+
+// A real click with the left button at x, y; with `ctrl`, Ctrl held.
+async function pressAt(c, x, y, { ctrl = false } = {}) {
+  const modifiers = ctrl ? 2 : 0;
+  await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, modifiers });
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await c.send("Input.dispatchMouseEvent", { type, x, y, button: "left", clickCount: 1, modifiers });
+  }
+}
+
+// frmControls open with both its buttons selected, as a person selects them: a click on the
+// first and a Ctrl+click on the second. With two controls selected the Format menu has every
+// command but the two Make Equal, which it greys.
+const FORMAT_SELECTION = ["Command1", "Command2"];
+async function selectTwoControls(c) {
+  await openDesigner(c, "frmControls.tbform");
+  const want = FORMAT_SELECTION.join();
+  if ((await selectedControls(c)).join() !== want) {
+    const at = await controlCentres(c, FORMAT_SELECTION);
+    if (at.includes(null)) throw new Error(`the designer does not draw ${FORMAT_SELECTION.join(" and ")}`);
+    await pressAt(c, at[0].x, at[0].y);
+    await pressAt(c, at[1].x, at[1].y, { ctrl: true });
+    const selected = await waitFor(c, async () => (await selectedControls(c)).join() === want, {
+      timeout: 3000,
+      interval: 50,
+    });
+    if (!selected) throw new Error(`the clicks selected ${JSON.stringify(await selectedControls(c))}`);
+  }
+  await parkMouse(c);
+  await frames(c);
+}
+
+// MyReport, added as a person adds a report: Sources > Add > Add Windows Report, and the name
+// the IDE offers, MyReport, taken with Enter. It is added to the project in the page and saved
+// nowhere; once per IDE.
+async function addReport(ctx) {
+  if (ctx.report) return;
+  const { c } = ctx;
+  await resetUi(c);
+  // the Project Explorer floats for it, since an earlier picture may have taken it out of the
+  // layout, and goes again once the name is taken
+  try {
+    await floatPanel(c, "PROJECT EXPLORER", { width: 300, height: 400 });
+    try {
+      await peOpen(c, "Sources", true);
+      await peRightClick(c, "Sources");
+      await hoverItem(c, "Add");
+      const it = (await menuItems(c, true)).find((i) => i.text.startsWith("Add Windows Report"));
+      if (!it) throw new Error("the Add submenu has no Add Windows Report");
+      await mouseMove(c, it.x + 20, it.y + it.height / 2);
+      await frames(c);
+      await clickAt(c, it.x + 20, it.y + it.height / 2);
+    } catch (e) {
+      // not after the click: the Escape closeMenus may press would end the renaming
+      await closeMenus(c);
+      throw e;
+    }
+    // the new file's row, its name in a text box to rename it
+    const offered = await waitFor(
+      c,
+      () => c.evaluate(`document.activeElement?.tagName === "INPUT" ? document.activeElement.value : null`),
+      { timeout: 5000, interval: 50 },
+    );
+    if (offered !== "MyReport.tbreport") {
+      throw new Error(`Add Windows Report offered the name ${JSON.stringify(offered)}`);
+    }
+    await pressKey(c, "Enter");
+  } finally {
+    await unfloatPanel(c, "PROJECT EXPLORER");
+  }
+  const opened = await waitFor(c, async () => (await editorTabs(c)).some((t) => t.name === "MyReport.tbreport"), {
+    timeout: 10000,
+    interval: 100,
+  });
+  if (!opened) throw new Error("the new report did not open in the designer");
+  await designerShown(c);
+  ctx.report = true;
+}
+
+// EDITOR 1's box, its header included.
+const editorPanelRect = (c) =>
+  c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "EDITOR 1");
+  const r = h.closest(".toolWindowContainer").getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+
+// The box `measure(c)` returns once two reads 100 ms apart agree: the panels are laid out
+// again a moment after the page changes size.
+async function settledBox(c, measure) {
+  let last = null;
+  const box = await waitFor(
+    c,
+    async () => {
+      const now = await measure(c);
+      const same = last && JSON.stringify(now) === JSON.stringify(last);
+      last = now;
+      return same && now;
+    },
+    { timeout: 5000, interval: 100 },
+  );
+  if (!box) throw new Error("a panel kept changing size");
+  return box;
+}
+
+// The page size at which the panel `measure(c)` returns has the width and height `want`
+// gives (one of them, or both). A panel can grow with the page by less than the page does:
+// the page size is a first guess, measured, and corrected once along the slope that gives. A
+// size `want` does not give stays IDE_SIZE's.
+async function fitPage(c, measure, want) {
+  const at = await settledBox(c, measure);
+  const guess = { ...IDE_SIZE };
+  for (const k in want) guess[k] = Math.round(IDE_SIZE[k] + want[k] - at[k]);
+  const then = await atSize(c, guess.width, guess.height, () => settledBox(c, measure));
+  const fit = { ...guess };
+  for (const k in want) {
+    if (then[k] !== at[k]) {
+      fit[k] = Math.round(guess[k] + ((want[k] - then[k]) * (guess[k] - IDE_SIZE[k])) / (then[k] - at[k]));
+    }
+  }
+  return fit;
+}
+
+// EDITOR 1 with one designer open and no other tab, at the size of the old pictures. The
+// panels the default layout docks around it are taken out of the layout first, so that the
+// page is no larger than the editor: in a page of about 1920 by 1030, the captures of the
+// striped ground behind a designer alternate between two versions a few pixels apart, and
+// no two in a row agree.
+const EDITOR_SIZE = { width: 1319, height: 698 };
+const DOCKED_BESIDE_EDITOR = [
+  "TOOLBOX",
+  "PROJECT EXPLORER",
+  "PROPERTIES",
+  "DEBUG CONSOLE",
+  "PROBLEMS",
+  "CALL STACK",
+  "VARIABLES",
+];
+function designerShot(name, file, { report = false } = {}) {
+  return {
+    out: `IDE/Images/${name}.png`,
+    setup: "designer",
+    async take(ctx) {
+      const { c } = ctx;
+      await resetUi(c);
+      if (report) await addReport(ctx);
+      await openDesigner(c, file);
+      await closeTabs(c, [file], { discard: true });
+      for (const id of DOCKED_BESIDE_EDITOR) await undock(c, id);
+      const { width, height } = await fitPage(c, editorPanelRect, EDITOR_SIZE);
+      return atSize(c, width, height, async () => {
+        const box = await settledBox(c, editorPanelRect);
+        await designerShown(c);
+        return capture(c, name, snapOut(box, width, height), { away: () => parkMouse(c) });
+      });
+    },
+  };
+}
+
+const formatShot = (name, item = null) =>
+  menuShot(name, "Format", item, { setup: "designer", before: selectTwoControls });
+
+const designerShots = [
+  designerShot("tbForm", "MyForm.tbform"),
+  formatShot("Menu_Format_1"),
+  formatShot("Menu_Format_Align", "Align"),
+  formatShot("Menu_Format_MakeSameSize", "Make Same Size"),
+  formatShot("Menu_Format_HorizontalSpacing", "Horizontal Spacing"),
+  formatShot("Menu_Format_VerticalSpacing", "Vertical Spacing"),
+  // the toolbar with a form open in the designer
+  searchToolbarShot("Toolbar_3", "designer", (c) => openDesigner(c, "MyForm.tbform")),
+  // the report's pictures last: the first of them adds the report to the project
+  designerShot("tbReport", "MyReport.tbreport", { report: true }),
+  {
+    // The Toolbox with the report open, from its title bar to a little below the report's
+    // last tool. Docked, as the default layout has it: the report's tools hide the others
+    // only inside the window's own layout, and a floating Toolbox shows every tool whatever
+    // the designer. An earlier picture has taken it out of the layout: Window > Panel Layouts
+    // > Default puts it back.
+    out: "IDE/Images/Toolbox_Report.png",
+    setup: "designer",
+    async take(ctx) {
+      const { c } = ctx;
+      await resetUi(c);
+      await addReport(ctx);
+      const docked = () => c.evaluate(`isPanelIdDocked("TOOLBOX")`);
+      if (!(await docked())) {
+        await command(c, "tbPanels_SetActiveLayoutDefault");
+        if (!(await waitFor(c, docked, { timeout: 5000, interval: 50 }))) {
+          throw new Error("the default layout did not dock the Toolbox");
+        }
+      }
+      await openDesigner(c, "MyReport.tbreport");
+      // The docked panel's box, to the bottom of its last tool, once only the report's show;
+      // in a page as wide as makes the panel as wide as the old picture, so that its title
+      // bar has room for its buttons.
+      const reportTools = () =>
+        c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "TOOLBOX");
+  const p = h?.closest(".toolWindowContainer");
+  if (!p) return null;
+  const t = [...p.querySelectorAll(".toolboxItemOuter")].filter((e) => e.getBoundingClientRect().width);
+  if (!t.length || !t.every((e) => e.classList.contains("toolboxReportCtrl"))) return null;
+  const r = p.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: Math.max(...t.map((e) => e.getBoundingClientRect().bottom)) - r.y };
+})()`);
+      if (!(await waitFor(c, reportTools, { timeout: 5000, interval: 100 }))) {
+        throw new Error("the docked Toolbox did not show the report's tools alone");
+      }
+      const { width, height } = await fitPage(c, reportTools, { width: 198 });
+      return atSize(c, width, height, async () => {
+        const box = await settledBox(c, reportTools);
+        // the layout puts the focus on the Pointer, which draws a box round it
+        await c.evaluate("document.activeElement?.blur?.()");
+        return capture(c, "Toolbox_Report", snapOut({ ...box, height: box.height + 12 }, width, height), {
+          away: () => parkMouse(c),
+        });
+      });
     },
   },
 ];
@@ -3547,6 +3884,7 @@ const SHOTS = [
   ...glyphShots,
   ...globalSearchShots,
   ...sample6Shots,
+  ...designerShots,
   newProjectOptionsShot,
 ];
 
@@ -3584,6 +3922,7 @@ const JOB_SECONDS = {
   glyphs: 24,
   "global-search": 58,
   sample6: 26,
+  designer: 62,
   "no-project": 33,
   "no-project-2": 38,
   "no-project-3": 41,
@@ -3658,8 +3997,8 @@ if (!tidy) die(2, "could not record the registry, so it could not be put back af
 // The SaveSetting application names of the add-ins a setup loads. What they have saved is
 // the user's (an installed copy of the add-in reads the same key): a run starts from none,
 // and puts it back at the end.
-const ADDIN_SETTINGS = { help: SETTINGS, "global-search": GS_SETTINGS };
-const savedApps = wanted.filter((name) => ADDIN_SETTINGS[name]).map((name) => ADDIN_SETTINGS[name]);
+const ADDIN_SETTINGS = { help: SETTINGS, "global-search": GS_SETTINGS, designer: GS_SETTINGS };
+const savedApps = [...new Set(wanted.filter((name) => ADDIN_SETTINGS[name]).map((name) => ADDIN_SETTINGS[name]))];
 const settingsBefore = savedApps.length ? snapshotKeys(savedApps.map(settingsKey)) : null;
 if (settingsBefore) deleteSettings(savedApps);
 
