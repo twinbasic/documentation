@@ -33,7 +33,7 @@ import {
   launchIde,
   readCrash,
   setBuildTarget,
-  shutdownIde,
+  shutdownIdeAsync,
   summaryLine,
   waitForCompile,
 } from "./tb-ide.mjs";
@@ -342,7 +342,9 @@ export class Lane {
         c.close();
       }
     } finally {
-      shutdownIde(run);
+      // not shutdownIde: its taskkill and its wait stop the process for a lane that
+      // is not the only thing the process runs (shoot_docs runs several)
+      await shutdownIdeAsync(run);
     }
     const problems = [];
     if (crash)

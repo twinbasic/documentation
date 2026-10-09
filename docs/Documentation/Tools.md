@@ -1357,7 +1357,7 @@ Exit codes: **0** the IDE was closed, and the registry is as it was found; **1**
 ### shoot_docs.mjs
 {: #shoot-docs }
 
-    node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--port N] [--ide <path>]
+    node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--port N] [--ide <path>]
 
 Takes the documentation's screenshots of the IDE, so that one run regenerates them after a new
 BETA. Each picture belongs to a *setup*, one IDE brought to a known state, and a setup's IDE is
@@ -1373,6 +1373,9 @@ started only when one of its pictures is selected:
 - **project** opens the demo project without the add-in, for the dialogs that show something
   only with a project open: About, whose licence line needs the compiler, and IDE Options,
   whose font lists do.
+- **sample**, **settings** and **glyphs** open `test/shots/sample`, a small Standard EXE made
+  for the pictures: the panels and the editor with a project, Project Settings (with the
+  settings files of `test/shots/settings`), and the icons the pages show inline.
 
 Every IDE is set up as a lane of [`addin_test.mjs`](#addin-test) is, with a private `APPDATA`
 and `TB_ADDIN_TEST` set to `1`, and it never appears on your desktop.
@@ -1399,9 +1402,24 @@ book.
 
 `--only` takes the pictures whose path under the output folder matches a regular expression,
 such as `Menu_File` or `IDE/Menu/`. `--out` is the folder those paths are under, `docs` by
-default. `--port` is where the search for DevTools ports starts, 9700 by default; the help
-setup claims three, as `addin_test.mjs` does: the IDE's, the detached window's, and one for the
-IDE that builds the add-in, whose browser process can hold its port for a while after that IDE
+default. `--diffs` names a folder, outside `docs`, for a difference picture of each picture
+that is updated: the file on disk, the new picture and their difference side by side, with
+the region that differs magnified underneath. In the difference, a pixel that matches is a
+dark grey copy, and one that differs is yellow for a difference of one grey level, shading
+to red for large ones, so that a change too small to see stands out. The tool also writes
+one, named `.capture-<n>`, for each two captures of one state that disagree, which shows
+where the IDE's drawing varies from one frame to the next.
+
+`--jobs` is how many IDEs run at once, 6 by default and at most 16. Each runs on a
+private desktop with a port, a work folder and a copy of the install of its own, and the
+setups wait in a queue, the longest first. The two long setups, no-project and sample, are
+cut into three parts each, every part in an IDE of its own; each picture brings its IDE to
+the state it shows, so it comes out the same in a part as in the whole setup. Every line of
+output starts with the setup or part it is from. `--jobs 1` runs each setup whole in one IDE,
+one after another, in the order of the tool's table. `--port` is where the search for
+DevTools ports starts, 9700 by default; each IDE claims the first free one, and the help setup
+claims three, as `addin_test.mjs` does: the IDE's, the detached window's, and one for the IDE
+that builds the add-in, whose browser process can hold its port for a while after that IDE
 ends. The add-in's saved settings (`tbDocsHelp`) are emptied for the run and, with the IDE's
 registry entries, put back at the end.
 

@@ -81,6 +81,30 @@ Measured by the s103 probe (8 IDE runs, BETA 997):
 - **Write only on change**: kept from the current tool. The tool prints, for each picture, the
   `{:width height}` its page should have and warns where the page disagrees; it does not edit
   markdown.
+- **A capture is not byte-stable.** `Page.captureScreenshot` of an unchanged screen alternates
+  between versions a few pixels apart by 1-14 grey levels: dialog shadow edges, the status bar's
+  scaled Ko-fi bitmap, panel dividers, rounded corners. `captureBeyondViewport` and
+  `fromSurface: false` are stable but drop the scrollbars and the cut-outs' alpha, so neither is
+  usable. `capture` waits 1 s before the first capture (without it rounded-corner pixels come out a
+  grey level off and stay so), then takes up to 8, 150 ms apart: it keeps one equal to the file on
+  disk, else the first two in a row that agree, and fails if none agree. So a picture is rewritten
+  when the IDE draws something different, not when the noise flips.
+  **Left over, under the full parallel load:** a run now and then settles on the other version of
+  one or two pictures and keeps it through every capture, so a longer wait in `capture` does not
+  help: Diagnostics (34 pixels along an arrow's edge), 6ad7a172 (4 title-bar corner pixels),
+  Menu_Window_PanelLayouts (one submenu corner pixel), 1-3 grey levels each; each is unchanged
+  when its setup runs alone, and which one varies from run to run (`JOB_SECONDS` moves it, but is
+  not the whole cause). Put such a picture back rather than commit it; diffs in
+  `.claude/tooling-review-scratch/s103-shots/perf/diffs-final/`.
+- **Settle by condition, not by sleep.** Fixed sleeps were most of a run (a closed menu leaves a
+  2x8 px empty `#contextMenu`, so a wait for it to vanish always ran out its 2 s; ~3,000 calls).
+  A menu is closed when it holds no items; a dialog is still when a MutationObserver has seen no
+  change and its images and fonts are loaded; a floated panel when the IDE's `.flashElement` class
+  is gone; a help page when its fonts, images and body are settled. The page size is set only once
+  `body` has its `scale100` class: the IDE picks 48 or 32 px New Project tiles from it.
+- **A picture that shows state sets that state itself** rather than relying on the shots before it
+  (9eeffbcf, PackagePublishing_1, packLicenceFiles), so a picture is the same whichever IDE or
+  order takes it.
 
 ## Annotations
 
@@ -114,12 +138,20 @@ as the IDE's own pop-up list, beside the select.
 
 ## The tool
 
-`scripts/shoot_docs.mjs [--only <regex>] [--port N] [--ide <path>]`, with the current tool's
-exit codes (0, 1 a picture failed, 2 the tool could not run, 3 not put back).
+`scripts/shoot_docs.mjs [--only <regex>] [--port N] [--ide <path>] [--jobs N] [--diffs <dir>]`,
+with the current tool's exit codes (0, 1 a picture failed, 2 the tool could not run, 3 not put
+back).
 
-- **Setups**: one IDE each, run one after another — `no-project` (menus, dialogs), `help`
-  (the add-in's eight, `test/addin/helpdemo`), and later `project` setups for panels, Project
-  Settings, designers and code. A setup is `{name, start, prepare}`.
+- **Setups**: one IDE each --- `no-project` (menus, dialogs, panels), `help` (the add-in's eight,
+  `test/addin/helpdemo`), `project`, `sample`, the `settings` setups and `glyphs`. A setup is
+  `{name, start, prepare}`.
+- **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE on its own claimed ports and
+  private desktop, and splits the big setups into parts, longest first; a full run is about a
+  minute (it was ~765 s sequential). `--jobs 1` runs one IDE per setup in table order. Per-run
+  state lives on the connection (`c.shot`), never in module variables.
+- **Diffs**: `--diffs <dir>` (never under `docs/`) writes, for each picture that differs from the
+  file on disk, the committed picture, the new one and an amplified difference map side by side
+  (`scripts/lib/shot-diff.mjs`, `composeComparison` with `amplify` in `scripts/lib/png.mjs`).
 - **Shots**: a table of `{out, setup, take, annotate?}`, `out` the picture's path under
   `docs/`; `--only` matches it. `take(ctx)` brings the IDE to the state and returns the clip
   (or the parts of a composite); `annotate` is a list of primitives.
@@ -166,7 +198,9 @@ time; History's timestamps), Import from twinproj (needs a `.vbp`; its header sh
 
 Survey of its 61 pictures and 17 glyph crops: `.claude/tooling-review-scratch/s103-shots/INC3-SURVEY.md`.
 Built in three batches, one after another: no-project panels; a Standard EXE fixture with Project
-Settings; Sample 6, Sample 15 and Global Search.
+Settings; Sample 6, Sample 15 and Global Search. **Batches 1 and 2 are done** (`b958f18a`,
+`079185d0`, `74c6ed4d`); batch 3 is next: Sample 6 (ccGridButtonImage), Sample 15 / Global Search
+and Outline_1, Toolbar_2, the package-folder pair 22660f54 / a6525b1d (INC3-SURVEY.md, batch D).
 
 - **History's times are fixed in the page**, as the recent lists are, and its project is a
   project-made fixture; left out only if the times cannot be overridden.

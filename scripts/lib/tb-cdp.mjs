@@ -23,13 +23,15 @@
  * @param {object} [o]
  * @param {number} [o.timeout]  milliseconds a call may take (default 30000); one
  *                              call can pass its own
+ * @param {string} [o.type]     the target's type (default "page"); "iframe" is a
+ *                              frame of another site, which has a target of its own
  */
-export async function attach(port, match = "main.htm", { timeout = 30 * 1000 } = {}) {
+export async function attach(port, match = "main.htm", { timeout = 30 * 1000, type = "page" } = {}) {
   const list = await (
     await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(10 * 1000) })
   ).json();
-  const t = list.find((x) => x.type === "page" && x.url.includes(match));
-  if (!t) throw new Error(`no page target matching ${JSON.stringify(match)} on port ${port}`);
+  const t = list.find((x) => x.type === type && x.url.includes(match));
+  if (!t) throw new Error(`no ${type} target matching ${JSON.stringify(match)} on port ${port}`);
 
   const ws = new WebSocket(t.webSocketDebuggerUrl);
   await new Promise((res, rej) => {

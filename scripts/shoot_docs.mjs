@@ -18,7 +18,9 @@
 //
 // The tool is a table of shots, and each shot names the setup (one IDE, started
 // one way) it is taken in. A setup is started only when a shot in it is
-// selected, and the setups run one after another:
+// selected. Up to --jobs of them run at once, each IDE on a port, a work folder
+// and a private desktop of its own, and no state is shared between them but the
+// registry, which is put back once for the whole run:
 //
 //   help        the help add-in built into the copy, and test/addin/helpdemo
 //               open; the pane's pages come from the built site, docs/_site, served
@@ -83,6 +85,7 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { hoverText, mouseAway, pointOf, restMouse } from "../test/addin/hover.mjs";
 import { frameEval, frameOf, serveLoopback } from "../test/addin/pages.mjs";
 import { annotate as annotateOver, LAYER_ID, unannotate } from "./lib/shot-annotate.mjs";
+import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
@@ -122,11 +125,13 @@ const SCALE = 2;
 // Every IDE lays its page out at 100% whatever the display's scaling.
 const BROWSER_ARGS = "--force-device-scale-factor=1";
 
-const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--port N] [--ide <twinBASIC.exe>] [-h, --help]
+const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--port N] [--ide <twinBASIC.exe>] [-h, --help]
 
 Takes the pictures of the IDE that the documentation shows, from IDEs on a
 private desktop, at 2x in the dark theme: the help add-in's eight (setup help),
-and the menus, dialogs, bars and panels that need no project (setups no-project and project).
+the menus, dialogs, bars and panels that need no project (setups no-project and project),
+and the panels, editor, Project Settings and icons of a sample project (setups sample,
+settings and glyphs).
 Each setup is one IDE, started when a picture in it is selected. A picture is
 written only when its bytes differ from the file already there; each is
 reported as new, updated or unchanged. The IDE's registry entries and the
@@ -139,9 +144,21 @@ was taken from holds the Windows user name.
   --only <regex>   only the pictures whose path under the output folder
                    (IDE/Menu/Images/Menu_File.png) matches
   --out <dir>      the folder the pictures' paths are under (default docs)
+  --diffs <dir>    write a difference picture into <dir> (not under docs) for
+                   each picture that is updated: the file on disk, the new
+                   picture and their difference side by side, the difference
+                   amplified (yellow for one grey level, shading to red), with
+                   the differing region magnified under them. Also one for each
+                   two captures of one state that disagree, named .capture-<n>.
+                   Files of the same name are overwritten
+  --jobs <n>       how many IDEs run at once (default 6). The setups are queued,
+                   the longest first, and the two long ones (no-project and sample)
+                   are split into parts that each get an IDE of their own; every
+                   line is prefixed with its setup or part. With --jobs 1 each
+                   setup runs in one IDE, one after another, in the table's order
   --port <n>       the first IDE's DevTools port: the first free ones from n
-                   (default 9700); the help setup takes three, the detached
-                   window's and the building IDE's after its own
+                   (default 9700); every IDE takes one, the help setup three, the
+                   detached window's and the building IDE's after its own
   --ide <path>     the twinBASIC.exe to copy (default: $TB_IDE, else the
                    newest twinBASIC_IDE_BETA_* on the Desktop)
   -h, --help       print this text and exit
@@ -159,6 +176,8 @@ const { values } = withUsageError(() =>
     options: {
       only: { type: "string" },
       out: { type: "string" },
+      diffs: { type: "string" },
+      jobs: { type: "string" },
       port: { type: "string" },
       ide: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
@@ -168,10 +187,17 @@ const { values } = withUsageError(() =>
 );
 if (values.help) printHelpAndExit(USAGE);
 const only = values.only === undefined ? null : withUsageError(() => regexOption(values.only, { option: "--only" }));
+const jobCount = withUsageError(() =>
+  numberOption(values.jobs ?? "6", { option: "--jobs", integer: true, min: 1, max: 16 }),
+);
 const firstPort = withUsageError(() =>
   numberOption(values.port ?? "9700", { option: "--port", integer: true, min: 1, max: 65535 }),
 );
 const outRoot = path.resolve(values.out ?? DEFAULT_OUT);
+const diffsRoot = values.diffs === undefined ? null : path.resolve(values.diffs);
+if (diffsRoot && !path.relative(path.join(REPO_ROOT, "docs"), diffsRoot).startsWith("..")) {
+  die(2, `--diffs must not be under docs: ${values.diffs}`);
+}
 
 const ide = findIde(values.ide || undefined);
 if (!ide || !existsSync(ide)) {
@@ -267,9 +293,15 @@ const VISIBLE_TEXT = `(() => {
   return out.join("\\n");
 })()`;
 
+// `expression` evaluated in the document of a frame: `frame` is the origin of a child frame
+// of `conn`'s page, or the connection to a frame of another site, which is a target of its
+// own (the detached help window's page is a string, and its frame is on another site).
+const inFrame = (conn, frame, expression) =>
+  typeof frame === "string" ? frameEval(conn, frame, expression) : frame.evaluate(expression);
+
 async function textOf(conn, withFrame) {
   let text = await conn.evaluate(VISIBLE_TEXT);
-  if (withFrame) text += `\n${await frameEval(conn, withFrame, "document.body.innerText").catch(() => "")}`;
+  if (withFrame) text += `\n${await inFrame(conn, withFrame, "document.body.innerText")}`;
   return text;
 }
 
@@ -285,6 +317,13 @@ const CUT_CSS = (keep, solid) =>
   `${keep.map((k) => `${k},${k} *`).join(",")}{visibility:visible !important}` +
   (solid ? ".floatingPanel{box-shadow:none !important}" : "");
 
+// Resolves once the page has drawn two more frames: a change made before it (a style
+// sheet, a class, a mouse move and the hover look it ends) is then on the screen.
+const frames = (conn) =>
+  conn.evaluate("new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))", {
+    awaitPromise: true,
+  });
+
 async function cutoutOn(conn, keep, solid = null) {
   await conn.evaluate(`(() => {
     document.getElementById("tbCut")?.remove();
@@ -294,18 +333,45 @@ async function cutoutOn(conn, keep, solid = null) {
     document.head.appendChild(s);
   })()`);
   if (!solid) await conn.send("Emulation.setDefaultBackgroundColorOverride", { color: { r: 0, g: 0, b: 0, a: 0 } });
-  await sleep(250);
+  await frames(conn);
 }
 
 async function cutoutOff(conn) {
   await conn.evaluate(`document.getElementById("tbCut")?.remove()`);
   await conn.send("Emulation.setDefaultBackgroundColorOverride", {});
-  await sleep(150);
+  await frames(conn);
 }
 
-// The bytes of the file the running shot writes, when there is one: `capture` prefers
-// the version of a picture that equals it.
-let reference = null;
+// What one running setup keeps, on its connection as `c.shot` (the detached window's
+// connection shares it): `name` the setup's, for its lines; `reference` the bytes of the
+// file the running shot writes, when there is one, which `capture` prefers the version of a
+// picture that equals; `editedOriginal` the module of the sample that a shot has replaced in
+// the page, to put back.
+const newShotState = (name) => ({ name, out: null, reference: null, editedOriginal: null });
+
+// A line of output, prefixed with the setup it is from (they run at once).
+const say = (name, text) => console.log(`[${name}] ${text}`);
+const complain = (name, text) => console.error(`[${name}] ${text}`);
+
+// With --diffs, the difference picture of `before` and `after` (PNG files) for the picture
+// `out`, as <out with its folders joined by __><suffix>.png. A failure to write it is said,
+// and fails nothing.
+function writeDiff(name, out, before, after, { suffix = "", labels } = {}) {
+  if (!diffsRoot) return;
+  const file = path.join(diffsRoot, `${out.replace(/[\\/]/g, "__").replace(/\.png$/i, "")}${suffix}.png`);
+  try {
+    mkdirSync(diffsRoot, { recursive: true });
+    writeFileSync(file, diffPicture(before, after, labels));
+  } catch (e) {
+    complain(name, `the difference picture ${file} was not written: ${e.message}`);
+  }
+}
+
+// The pauses between the captures `capture` takes of one state, in milliseconds: the
+// last two let the page rest long enough to settle.
+const CAPTURE_GAPS = [150, 150, 300, 600, 1500, 1500];
+// How long the page is left alone before the first capture.
+const REST_MS = 1000;
 
 // A capture of `clip` (CSS pixels, on whole device pixels) from `conn`, refused
 // when the page's visible text holds the user name. `away` first takes the mouse
@@ -323,7 +389,12 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
   await quiet(conn);
   try {
     if (keep) await cutoutOn(conn, keep, solid);
-    await sleep(300);
+    else await frames(conn);
+    // The corner pixels of a rounded box that has just appeared (a menu, a submenu, a
+    // dialog) are drawn a grey level differently when the page is captured within about a
+    // second of it, and stay so whatever follows. The page changes nothing in that second
+    // (no element, class or style changes), so there is no condition to wait for.
+    await sleep(REST_MS);
     const params = { format: "png" };
     if (clip) params.clip = { ...clip, scale: 1 };
     // Captures of one unchanged state come out as two or more versions that differ in a
@@ -331,20 +402,33 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     // scaled Ko-fi icon): the compositor draws them a little differently from frame to
     // frame, which pixels and how often varies from run to run, and no way of taking the
     // capture removes it (captureBeyondViewport and fromSurface:false do, but they also
-    // drop the scrollbars and the alpha channel). So the picture is the one that equals
-    // the file already there when any capture does, else the first to equal the capture
-    // before it: a picture is rewritten only when the IDE draws something else.
-    const want = reference;
+    // drop the scrollbars and the alpha channel). Some of it also settles only once the
+    // page has been left alone for a second or so after the last change, and captures in
+    // quick succession do not leave it alone: a submenu's corner pixel, the shadows of a
+    // dialog's buttons just after another dialog with large pictures has closed. Nothing in
+    // the page says when. So the captures are taken further and further apart
+    // (CAPTURE_GAPS), and the picture is the one that equals the file already there when a
+    // capture does, else the last capture that equals the one before it; with no file
+    // there, the first that does. A picture is rewritten only when the IDE draws something
+    // else.
+    const want = conn.shot.reference;
     let last = null;
     let agreed = null;
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; ; i++) {
       const { data } = await conn.send("Page.captureScreenshot", params);
       const png = Buffer.from(data, "base64");
       if (want?.equals(png)) return png;
-      if (last?.equals(png)) agreed ??= png;
+      if (last && !last.equals(png) && conn.shot.out) {
+        writeDiff(conn.shot.name, conn.shot.out, last, png, {
+          suffix: `.capture-${i}`,
+          labels: { before: `CAPTURE ${i - 1}`, after: `CAPTURE ${i}` },
+        });
+      }
+      if (last?.equals(png)) agreed = png;
       if (agreed && !want) return agreed;
+      if (i === CAPTURE_GAPS.length) break;
       last = png;
-      await sleep(150);
+      await sleep(CAPTURE_GAPS[i]);
     }
     if (agreed) return agreed;
     throw new Error(`the page for ${name} kept changing: no two captures in a row were equal`);
@@ -391,10 +475,20 @@ const menuItems = (c, sub = false) =>
 async function closeMenus(c) {
   if (await rectOf(c, "#contextMenu")) {
     await pressKey(c, "Escape");
-    await waitFor(c, async () => !(await rectOf(c, "#contextMenu")), { timeout: 2000, interval: 100 });
+    // a closed menu leaves its box in the page, 2 by 8 pixels and empty: the menu is
+    // closed once it holds no item
+    await waitFor(c, async () => (await menuItems(c)).length === 0, { timeout: 2000, interval: 50 });
   }
   await parkMouse(c);
-  await sleep(150);
+  await frames(c);
+}
+
+// Waits for a menu to open (the box a closed one leaves holds no item), and for it to be
+// drawn; false when none opened.
+async function menuOpened(c) {
+  if (!(await waitFor(c, async () => (await menuItems(c)).length > 0, { timeout: 5000, interval: 50 }))) return false;
+  await frames(c);
+  return true;
 }
 
 // Opens a top-level menu with a real press on its title (the IDE opens on mousedown).
@@ -403,12 +497,7 @@ async function openMenu(c, name) {
   const r = await rectOf(c, `#${TOP[name]}`);
   if (!r) throw new Error(`there is no ${name} menu`);
   await clickAt(c, r.x + r.width / 2, r.y + r.height / 2);
-  const ok = await waitFor(c, async () => (await rectOf(c, "#contextMenu"))?.height > 0, {
-    timeout: 5000,
-    interval: 100,
-  });
-  if (!ok) throw new Error(`the ${name} menu did not open`);
-  await sleep(250);
+  if (!(await menuOpened(c))) throw new Error(`the ${name} menu did not open`);
   return rectOf(c, "#contextMenu");
 }
 
@@ -430,7 +519,7 @@ async function hoverItem(c, text) {
     { timeout: 4000, interval: 100 },
   );
   if (!sub) throw new Error(`the submenu of "${text}" did not open`);
-  await sleep(300);
+  await frames(c);
   return sub;
 }
 
@@ -479,7 +568,7 @@ async function closeModal(c, caption) {
   if (!(await waitFor(c, async () => (await modals(c)).length < before, { timeout: 5000, interval: 100 }))) {
     throw new Error(`the dialog did not close on "${caption}"`);
   }
-  await sleep(300);
+  await frames(c);
 }
 
 // Nothing open: no menu, no dialog, the mouse out of the way.
@@ -487,7 +576,7 @@ async function resetUi(c) {
   await closeMenus(c);
   for (let n = (await modals(c)).length; n > 0; n--) {
     await pressKey(c, "Escape");
-    await sleep(400);
+    await waitFor(c, async () => (await modals(c)).length < n, { timeout: 2000, interval: 50 });
   }
   await parkMouse(c);
 }
@@ -509,6 +598,22 @@ async function ensureDark(c) {
     await c.evaluate('executeIdeCommand("tbTheme_SwitchToDarkMode")');
     if (!(await waitFor(c, isDark, { timeout: 10000 }))) throw new Error("the IDE did not switch to the dark theme");
   }
+}
+
+// The page at its fixed size and density, IDE_SIZE at SCALE. The page names its scale in a
+// class of the body, scale100 at 100%, once, when it has loaded, and draws some icons
+// from it (New Project's tiles take 32 px ones at scale100, 48 px ones else): so the
+// density changes only once the class is there, and the class must be scale100. An IDE
+// opened with no project is attached to before the page has loaded.
+async function fixPageSize(c) {
+  const scale = await waitFor(c, () => c.evaluate(`document.body?.className.match(/\\bscale\\d+\\b/)?.[0] ?? null`), {
+    timeout: 60000,
+    interval: 100,
+  });
+  if (scale !== "scale100") throw new Error(`the IDE's page is at ${scale ?? "no scale"}, not scale100`);
+  await c.send("Emulation.setDeviceMetricsOverride", { ...IDE_SIZE, deviceScaleFactor: SCALE, mobile: false });
+  await quiet(c);
+  await frames(c);
 }
 
 // Keeps the user's machine out of the pictures, in the IDE's page only. First the
@@ -580,7 +685,7 @@ async function startHelp(run) {
   run.server = await serveLoopback((req, res) => files(req, res));
   run.origin = `http://localhost:${run.server.port}`;
   run.step = "build";
-  console.log(`building ${path.relative(REPO_ROOT, ADDIN)} into a copy of ${ide}`);
+  say(run.name, `building ${path.relative(REPO_ROOT, ADDIN)} into a copy of ${ide}`);
   // The add-in as committed, without the help archive, so that the pane's frame
   // loads the site served here (as the help lane does).
   const src = path.join(work, "help-src");
@@ -592,7 +697,7 @@ async function startHelp(run) {
   // port for longer than launchIde waits (ten seconds) after the IDE ends.
   await lane.addAddin(src, { show: false, port: ports[2] });
   run.step = "open";
-  console.log(`opening ${path.relative(REPO_ROOT, DEMO)}`);
+  say(run.name, `opening ${path.relative(REPO_ROOT, DEMO)}`);
   return lane.open(DEMO, {
     env: {
       TB_DOCS_HELP_SITE: run.origin,
@@ -614,8 +719,7 @@ async function prepareHelp(run) {
   await openFile(c, DEMO_FILE, { line: 1, column: 1 });
   run.defaults = JSON.parse(await c.evaluate(PAGE_DEFAULTS));
   await ensureDark(c);
-  await c.send("Emulation.setDeviceMetricsOverride", { ...IDE_SIZE, deviceScaleFactor: SCALE, mobile: false });
-  await sleep(1500);
+  await fixPageSize(c);
   const ctx = {
     c,
     origin,
@@ -631,7 +735,7 @@ async function prepareHelp(run) {
 
 async function startProject(run) {
   run.step = "open";
-  console.log(`opening ${path.relative(REPO_ROOT, DEMO)}`);
+  say(run.name, `opening ${path.relative(REPO_ROOT, DEMO)}`);
   return run.lane.open(DEMO);
 }
 
@@ -641,8 +745,7 @@ async function prepareProject(run) {
   await openFile(c, DEMO_FILE, { line: 1, column: 1 });
   run.defaults = JSON.parse(await c.evaluate(PAGE_DEFAULTS));
   await ensureDark(c);
-  await c.send("Emulation.setDeviceMetricsOverride", { ...IDE_SIZE, deviceScaleFactor: SCALE, mobile: false });
-  await sleep(1500);
+  await fixPageSize(c);
   return { c };
 }
 
@@ -650,7 +753,7 @@ async function prepareProject(run) {
 
 async function startNoProject(run) {
   run.step = "open";
-  console.log("opening the IDE with no project");
+  say(run.name, "opening the IDE with no project");
   run.lane.includeProjects();
   return run.lane.openNoProject();
 }
@@ -658,15 +761,16 @@ async function startNoProject(run) {
 async function prepareNoProject(run) {
   const { c } = run;
   run.step = "shoot";
-  await c.send("Emulation.setDeviceMetricsOverride", { ...IDE_SIZE, deviceScaleFactor: SCALE, mobile: false });
-  // The splash, then the New / Open Project dialog the IDE starts with.
+  await fixPageSize(c);
+  // The splash, then the New / Open Project dialog the IDE starts with. The IDE goes on
+  // starting after it shows, with nothing in the page to say when it is done.
   if (!(await waitModal(c, "New / Open", { timeout: 60000 }))) throw new Error("the IDE showed no New / Open dialog");
   await sleep(1000);
   run.defaults = JSON.parse(await c.evaluate(PAGE_DEFAULTS));
   await closeModal(c, "Cancel");
   await ensureDark(c);
-  await sleep(1500);
   await parkMouse(c);
+  await frames(c);
   return { c };
 }
 
@@ -693,7 +797,7 @@ function stageSample(run) {
 
 async function startSample(run) {
   run.step = "open";
-  console.log(`opening ${path.relative(REPO_ROOT, SAMPLE)}`);
+  say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)}`);
   return run.lane.open(stageSample(run));
 }
 
@@ -705,7 +809,7 @@ const startSettings =
   (variant, { keepForm = false } = {}) =>
   async (run) => {
     run.step = "open";
-    console.log(`opening ${path.relative(REPO_ROOT, SAMPLE)} with the ${variant} settings`);
+    say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)} with the ${variant} settings`);
     const src = stageSample(run);
     cpSync(path.join(SETTINGS_FIXTURES, `${variant}.json`), path.join(src, "Settings"));
     if (!keepForm) {
@@ -724,8 +828,7 @@ async function prepareSample(run) {
   // the Project Explorer starts in the file view whatever the IDE saved (in the page only)
   await c.evaluate("switchToProjectExplorerFileMode()");
   await ensureDark(c);
-  await c.send("Emulation.setDeviceMetricsOverride", { ...IDE_SIZE, deviceScaleFactor: SCALE, mobile: false });
-  await sleep(1500);
+  await fixPageSize(c);
   await parkMouse(c);
   return { c };
 }
@@ -805,17 +908,46 @@ const menuBarShot = {
         deviceScaleFactor: SCALE,
         mobile: false,
       });
-      await sleep(1000);
+      await frames(c);
       await closeMenus(c);
       const bar = await rectOf(c, "#rootMenu1");
       if (!bar) throw new Error("the page has no menu bar");
       return await capture(c, "Menu", snapOut(bar, 611, IDE_SIZE.height), { away: () => parkMouse(c) });
     } finally {
       await c.send("Emulation.setDeviceMetricsOverride", { ...IDE_SIZE, deviceScaleFactor: SCALE, mobile: false });
-      await sleep(500);
+      await frames(c);
     }
   },
 };
+
+const TOP_MODAL = `[...document.querySelectorAll(".modalDialogContainer")].filter((m) => m.getBoundingClientRect().width).pop()`;
+
+// Waits until nothing in the top dialog has changed for `ms` milliseconds, its images are
+// decoded and the page's fonts loaded, and two frames are drawn: a dialog that fills itself
+// in (Project Settings asks the compiler for its lists) is then done. Says so when the
+// dialog was still changing after `timeout`, and goes on.
+async function dialogStill(c, { ms = 250, timeout = 5000 } = {}) {
+  const r = await c.evaluate(
+    `(async () => {
+  const root = ${TOP_MODAL};
+  if (!root) return "gone";
+  const r = await new Promise((done) => {
+    let quiet;
+    const finish = (v) => { obs.disconnect(); clearTimeout(quiet); clearTimeout(cap); done(v); };
+    const obs = new MutationObserver(() => { clearTimeout(quiet); quiet = setTimeout(() => finish("still"), ${ms}); });
+    obs.observe(root, { subtree: true, childList: true, attributes: true, characterData: true });
+    quiet = setTimeout(() => finish("still"), ${ms});
+    const cap = setTimeout(() => finish("moving"), ${timeout});
+  });
+  await document.fonts.ready;
+  await Promise.all([...root.querySelectorAll("img")].map((i) => i.decode().catch(() => {})));
+  await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+  return r;
+})()`,
+    { awaitPromise: true, timeout: timeout + 10000 },
+  );
+  if (r === "moving") say(c.shot.name, `  the dialog was still changing after ${timeout / 1000} s`);
+}
 
 // The top dialog's box, opaque (its shadow falls outside), or `clipOf(box)` of it.
 // `annotate`, a shot's list of primitives (lib/shot-annotate.mjs), is drawn over
@@ -823,7 +955,7 @@ const menuBarShot = {
 // hold what it drew.
 async function dialogShot(c, name, clipOf = (m) => m, annotate = null) {
   await c.evaluate("document.activeElement?.blur?.()");
-  await sleep(300);
+  await frames(c);
   const box = (await modals(c)).pop();
   if (!box) throw new Error(`no dialog is open for ${name}`);
   let area = await clipOf(box);
@@ -838,26 +970,27 @@ async function dialogShot(c, name, clipOf = (m) => m, annotate = null) {
   }
 }
 
-// Opens a dialog by its command and returns once its title is in; `run` takes the
-// picture and the dialog is closed with `close` however that goes.
-async function inDialog(c, { command: id, title, close, settle = 800, timeout = 10000 }, run) {
+// Opens a dialog by its command and returns once its title is in and it has stopped
+// changing for `still` milliseconds; `run` takes the picture and the dialog is closed
+// with `close` however that goes.
+async function inDialog(c, { command: id, title, close, still = 250, timeout = 10000 }, run) {
   await resetUi(c);
   await command(c, id);
   if (!(await waitModal(c, title, { timeout }))) throw new Error(`the dialog "${title}" did not open`);
-  await sleep(settle);
+  await dialogStill(c, { ms: still });
   try {
     return await run();
   } finally {
     await closeModal(c, close).catch(async () => {
+      const n = (await modals(c)).length;
       await pressKey(c, "Escape");
-      await sleep(500);
+      await waitFor(c, async () => (await modals(c)).length < n, { timeout: 2000, interval: 50 });
     });
   }
 }
 
 // The New / Open Project dialog, with no VB6 tab (the tool's own recent lists).
-const inNewProject = (c, run) =>
-  inDialog(c, { command: "tbProject_New", title: "New / Open", close: "Cancel", settle: 1200 }, run);
+const inNewProject = (c, run) => inDialog(c, { command: "tbProject_New", title: "New / Open", close: "Cancel" }, run);
 
 const dialogOut = (dir, name) => `${dir}/Images/${name}.png`;
 
@@ -875,7 +1008,7 @@ const newProjectShot = (name, prepare = async () => {}, { out = dialogOut("IDE",
 
 const samplesTab = async (c) => {
   await clickInModal(c, "Samples", ".buttonGroupItem");
-  await sleep(800);
+  await dialogStill(c);
 };
 
 // Scrolls the Samples list until the sample whose title starts with `title` is
@@ -889,7 +1022,7 @@ async function scrollSamples(c, title, above = 12) {
   return true;
 })()`);
   if (!found) throw new Error(`the Samples tab lists no ${title}`);
-  await sleep(500);
+  await frames(c);
 }
 
 // Anchors in the New / Open Project dialog, for the annotations of its pictures.
@@ -903,9 +1036,9 @@ const dialogShots = [
   newProjectShot("New_Project_Recent_1", async (c) => {
     await setRecents(c, []);
     await clickInModal(c, "New", ".buttonGroupItem");
-    await sleep(400);
+    await dialogStill(c);
     await clickInModal(c, "Recent", ".buttonGroupItem");
-    await sleep(1200);
+    await dialogStill(c);
   }),
   newProjectShot("New_Project_Recent_2", async (c) => {
     // blank names, as the picture has always had
@@ -914,15 +1047,15 @@ const dialogShots = [
       { name: " ", projectPath: "x2" },
     ]);
     await clickInModal(c, "New", ".buttonGroupItem");
-    await sleep(400);
+    await dialogStill(c);
     await clickInModal(c, "Recent", ".buttonGroupItem");
-    await sleep(1200);
+    await dialogStill(c);
   }),
   {
     out: dialogOut("IDE", "Components_Message"),
     setup: "no-project",
     take: ({ c }) =>
-      inDialog(c, { command: "tbToolbox_ShowMoreComponents", title: "twinBASIC", close: "OK", settle: 500 }, () =>
+      inDialog(c, { command: "tbToolbox_ShowMoreComponents", title: "twinBASIC", close: "OK" }, () =>
         dialogShot(c, "Components_Message"),
       ),
   },
@@ -954,7 +1087,7 @@ const dialogShots = [
   return true;
 })()`);
         if (!scrolled) throw new Error("IDE Options has no LLVM rows to scroll to");
-        await sleep(500);
+        await frames(c);
         return dialogShot(c, "llvmdoc2", (m) => ({ x: m.x, y: m.y, width: m.width, height: 187 }));
       }),
   },
@@ -977,7 +1110,7 @@ const dialogShots = [
         { command: "tbKeyboardShortcuts_ShowManageKeyboardShortcuts", title: "Manage Keyboard", close: "Cancel" },
         async () => {
           await clickInModal(c, "Edit as JSON");
-          await sleep(500);
+          await dialogStill(c);
           return dialogShot(c, "ManageKeyboardShortcuts_1");
         },
       ),
@@ -996,7 +1129,7 @@ const dialogShots = [
     take: ({ c }) =>
       inDialog(c, { command: "tbPanels_ShowManagePanelLayouts", title: "Manage Panel", close: "Cancel" }, async () => {
         await clickInModal(c, "<FULLSCREEN> (built-in)");
-        await sleep(500);
+        await dialogStill(c);
         return dialogShot(c, "ManagePanelLayouts_Fullscreen");
       }),
   },
@@ -1069,11 +1202,11 @@ async function atSize(c, width, height, fn) {
   await resetUi(c);
   try {
     await c.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: SCALE, mobile: false });
-    await sleep(1000);
+    await frames(c);
     return await fn();
   } finally {
     await c.send("Emulation.setDeviceMetricsOverride", { ...IDE_SIZE, deviceScaleFactor: SCALE, mobile: false });
-    await sleep(500);
+    await frames(c);
   }
 }
 
@@ -1086,16 +1219,17 @@ async function nameCloseProject(c) {
   const item = (await menuItems(c)).find((i) => i.text.startsWith("Close Project"));
   if (!item) throw new Error("the File menu has no Close Project");
   await mouseMove(c, item.x + 8, item.y + item.height / 2);
-  await sleep(300);
+  const hovered = () => c.evaluate(`document.getElementById("statusHoveringCommand").innerText`);
+  await waitFor(c, async () => (await hovered()) === "tbProject_Close", { timeout: 2000, interval: 50 });
   await pressKey(c, "Escape");
   // a closed menu leaves its box in the page, 2 by 8 pixels and empty
-  if (!(await waitFor(c, async () => (await menuItems(c)).length === 0, { timeout: 2000, interval: 100 }))) {
+  if (!(await waitFor(c, async () => (await menuItems(c)).length === 0, { timeout: 2000, interval: 50 }))) {
     throw new Error("the File menu did not close");
   }
   const { w, h } = await c.evaluate("({ w: innerWidth, h: innerHeight })");
   await mouseMove(c, w / 2, h / 2);
-  await sleep(300);
-  const named = await c.evaluate(`document.getElementById("statusHoveringCommand").innerText`);
+  await frames(c);
+  const named = await hovered();
   if (named !== "tbProject_Close") throw new Error(`the status bar names "${named}", not tbProject_Close`);
 }
 
@@ -1188,32 +1322,52 @@ function panelCommand(c, id, what) {
   return command(c, `tb${PANEL_COMMANDS[id]}_${what}Panel`);
 }
 
-async function floatPanel(c, id, { width, height, left = 140, top = 120 }) {
-  if (await c.evaluate(`isPanelIdDocked(${JSON.stringify(id)})`)) {
-    await panelCommand(c, id, "Hide");
-    await sleep(300);
+// The IDE flashes a panel it shows (its flashDiv): a class for a second, whose animation
+// the quiet style sheet turns off. The panel is laid out at its size once the class has
+// gone and two frames are drawn.
+// Takes a panel out of the layout if it is docked there.
+async function undock(c, id) {
+  const docked = () => c.evaluate(`isPanelIdDocked(${JSON.stringify(id)})`);
+  if (!(await docked())) return;
+  await panelCommand(c, id, "Hide");
+  if (!(await waitFor(c, async () => !(await docked()), { timeout: 5000, interval: 50 }))) {
+    throw new Error(`the ${id} panel would not leave the layout`);
   }
+}
+
+async function floatPanel(c, id, { width, height, left = 140, top = 120 }) {
+  await undock(c, id);
   await panelCommand(c, id, "Show");
   const sel = panelSel(id);
-  if (!(await waitFor(c, () => rectOf(c, sel), { timeout: 5000, interval: 100 }))) {
+  if (!(await waitFor(c, () => rectOf(c, sel), { timeout: 5000, interval: 50 }))) {
     throw new Error(`the ${id} panel did not appear`);
   }
   await c.evaluate(`(() => {
   const p = document.querySelector(${JSON.stringify(sel)});
   Object.assign(p.style, { left: "${left}px", top: "${top}px", width: "${width}px", height: "${height}px" });
 })()`);
-  await sleep(1400);
+  const flashing = () =>
+    c.evaluate(`!!document.querySelector(${JSON.stringify(`${sel}.flashElement, ${sel} .flashElement`)})`);
+  if (!(await waitFor(c, async () => !(await flashing()), { timeout: 5000, interval: 50 }))) {
+    throw new Error(`the ${id} panel never stopped flashing`);
+  }
+  await frames(c);
   return rectOf(c, sel);
 }
 
 async function unfloatPanel(c, id) {
-  if (await rectOf(c, panelSel(id))) await panelCommand(c, id, "Hide");
-  await sleep(300);
+  const sel = panelSel(id);
+  if (await rectOf(c, sel)) {
+    await panelCommand(c, id, "Hide");
+    await waitFor(c, async () => !(await rectOf(c, sel)), { timeout: 5000, interval: 50 });
+  }
+  await frames(c);
 }
 
 // A panel on its own, sized to hold its title bar and the start of its body. With a
-// project open (`setup: "sample"`), `prepare(c)` brings the panel to the state shown
-// once it floats, and `clipOf(box)` takes a part of the panel in place of the whole.
+// project open (`setup: "sample"`), `before(c)` brings the IDE to a state before the panel
+// floats, `prepare(c)` brings the panel to the state shown once it floats, and
+// `clipOf(box)` takes a part of the panel in place of the whole.
 const panelShot = (
   name,
   id,
@@ -1221,6 +1375,7 @@ const panelShot = (
   {
     setup = "no-project",
     out = `IDE/Images/${name}.png`,
+    before = null,
     prepare = null,
     restore = null,
     clipOf = (box) => box,
@@ -1232,6 +1387,7 @@ const panelShot = (
   async take({ c }) {
     await resetUi(c);
     try {
+      if (before) await before(c);
       let box = await floatPanel(c, id, { width, height });
       if (prepare) {
         await prepare(c);
@@ -1317,10 +1473,7 @@ const debugConsoleShot = annotatedPanelShot(
     async open(c) {
       const b = await rectOf(c, `${DC} .ellipsesIcon2`);
       await clickAt(c, b.x + 2, b.y + 15);
-      if (!(await waitFor(c, () => rectOf(c, "#contextMenu"), { timeout: 3000, interval: 100 }))) {
-        throw new Error("the Options menu did not open");
-      }
-      await sleep(300);
+      if (!(await menuOpened(c))) throw new Error("the Options menu did not open");
     },
     annotate: [
       // the buttons are 21 pixels apart, so their boxes are tight and need no halo
@@ -1430,25 +1583,26 @@ async function peFind(c, text) {
   return n;
 }
 
-// Opens or closes a folder of the tree with a real click on its expander.
+// Opens or closes a folder of the tree with a real click on its expander, and waits for
+// the tree to show it. The row has to be in the panel's view: the click lands on what is
+// drawn there.
 async function peOpen(c, text, want) {
-  // a click on a name acts a moment after it, so the state is read again before each click
-  for (let attempt = 0; attempt < 3; attempt++) {
-    await sleep(600);
-    const n = await peFind(c, text);
-    if (n.open === want) return;
-    await clickAt(c, n.icon.x + n.icon.width / 2, n.icon.y + n.icon.height / 2);
-  }
-  await sleep(600);
-  if ((await peFind(c, text)).open !== want)
+  // the row is there once the tree has drawn
+  const n = await waitFor(c, () => peNode(c, text).catch(() => null), { timeout: 5000, interval: 50 });
+  if (!n) throw new Error(`the Project Explorer has no row "${text}"`);
+  if (n.open === want) return;
+  await clickAt(c, n.icon.x + n.icon.width / 2, n.icon.y + n.icon.height / 2);
+  if (!(await waitFor(c, async () => (await peFind(c, text)).open === want, { timeout: 3000, interval: 50 }))) {
     throw new Error(`the click on the expander of "${text}" did not ${want ? "open" : "close"} it`);
+  }
+  await frames(c);
 }
 
-// Selects a row with a real click on its name.
+// Selects a row with a real click on its name (which toggles a folder as well).
 async function peSelect(c, text) {
   const n = await peFind(c, text);
   await clickAt(c, n.name.x + n.name.width / 2, n.name.y + n.name.height / 2);
-  await sleep(400);
+  await frames(c);
 }
 
 const peHeader = (box, c) =>
@@ -1478,10 +1632,11 @@ const editorTabs = (c) =>
 // (a tab that is closed any other way is not in the Tabs List's Recently Closed).
 async function closeTabs(c, keep = []) {
   for (let n = 0; n < 20; n++) {
-    const t = (await editorTabs(c)).find((x) => !keep.includes(x.name));
+    const tabs = await editorTabs(c);
+    const t = tabs.find((x) => !keep.includes(x.name));
     if (!t) return;
     await clickAt(c, t.close.x + t.close.width / 2, t.close.y + t.close.height / 2);
-    await sleep(500);
+    await waitFor(c, async () => (await editorTabs(c)).length < tabs.length, { timeout: 3000, interval: 50 });
   }
   throw new Error("the editor's tabs would not close");
 }
@@ -1491,10 +1646,7 @@ async function openTabsList(c) {
   const b = await rectOf(c, TABS_BUTTON);
   if (!b) throw new Error("the editor has no Tabs List button");
   await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
-  if (!(await waitFor(c, () => rectOf(c, "#contextMenu"), { timeout: 3000, interval: 100 }))) {
-    throw new Error("the Tabs List did not open");
-  }
-  await sleep(300);
+  if (!(await menuOpened(c))) throw new Error("the Tabs List did not open");
 }
 
 // Three resource files opened and closed, in the order the pictures list them.
@@ -1725,7 +1877,6 @@ Class frmMain
 End Class
 `;
 
-let editedOriginal = null;
 const diagCounts = (c) =>
   c.evaluate(
     `["errorCount", "warningCount", "hintCount", "infoCount"].map((i) => Number(document.getElementById(i).innerText))`,
@@ -1752,15 +1903,15 @@ async function waitCounts(c, want) {
 
 async function editText(c, text, counts, file = "Sources/MainModule.twin") {
   await openFile(c, SAMPLE_FILE(file));
-  editedOriginal = { file, text: await editorText(c) };
+  c.shot.editedOriginal = { file, text: await editorText(c) };
   await c.evaluate(`editor.getModel().setValue(${JSON.stringify(text)})`);
   await waitCounts(c, counts);
 }
 
 async function restoreText(c) {
-  if (!editedOriginal) return;
-  const { file, text } = editedOriginal;
-  editedOriginal = null;
+  if (!c.shot.editedOriginal) return;
+  const { file, text } = c.shot.editedOriginal;
+  c.shot.editedOriginal = null;
   await openFile(c, SAMPLE_FILE(file));
   await c.evaluate(`editor.getModel().setValue(${JSON.stringify(text)})`);
   await waitCounts(c, [0, 0, 0, 0]);
@@ -1776,11 +1927,20 @@ async function peRightClick(c, text) {
   await mouseMove(c, x, y);
   await c.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "right", buttons: 2, clickCount: 1 });
   await c.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "right", buttons: 0, clickCount: 1 });
-  if (!(await waitFor(c, () => rectOf(c, "#contextMenu"), { timeout: 3000, interval: 100 }))) {
-    throw new Error(`the context menu of "${text}" did not open`);
-  }
-  await sleep(400);
+  if (!(await menuOpened(c))) throw new Error(`the context menu of "${text}" did not open`);
 }
+
+// Once the form designer has been shown, the page draws a border at a fractional position a
+// grey level or two differently, for good (the page's own drawing changes; the layout does
+// not). A picture of the sample taken after the first that opens the form, in the table's
+// order, opens the form first, so that it comes out the same in a part of the setup.
+const formShown = (c) => openFile(c, SAMPLE_FILE("Sources/frmMain.tbform"));
+
+// The layout the sample's later pictures are of: without the side panels its earlier
+// pictures float (a docked panel leaves the layout when it floats).
+const sampleLayout = async (c) => {
+  for (const id of ["OPEN EDITORS", "HISTORY", "TOOLBOX", "PROJECT EXPLORER", "WATCHES"]) await undock(c, id);
+};
 
 // Closes a floating panel that is showing, whatever the command that opened it.
 async function closePanelIfShown(c, id) {
@@ -1874,10 +2034,10 @@ const sampleShots = [
       const it = items.find((i) => i.text.startsWith("Add CustomControls Form"));
       if (!it) throw new Error("the Add submenu has no Add CustomControls Form");
       await mouseMove(c, it.x + 20, it.y + it.height / 2);
-      await sleep(300);
+      await frames(c);
       await clickAt(c, it.x + 20, it.y + it.height / 2);
       if (!(await waitModal(c, "twinBASIC", { timeout: 5000 }))) throw new Error("no Package needed message appeared");
-      await sleep(800);
+      await dialogStill(c);
       try {
         return await dialogShot(c, "RightClick-Add-CustomControlsForm-Popup");
       } finally {
@@ -1993,15 +2153,23 @@ const sampleShots = [
       await sleep(600);
     },
   }),
-  panelShot("PackagePublishing_1", "PACKAGE PUBLISHING", [300, 330], { setup: "sample" }),
+  panelShot("PackagePublishing_1", "PACKAGE PUBLISHING", [300, 330], { setup: "sample", before: formShown }),
   {
     // the panel as it shows over the editor, with the code of the project behind it
     out: "Features/Packages/Images/9eeffbcf-d73e-4a92-bce5-811ed60aba98.png",
     setup: "sample",
     async take({ c }) {
       await resetUi(c);
-      await openFile(c, SAMPLE_FILE("Sources/MainModule.twin"));
-      await sleep(600);
+      // The window behind the panel as the picture shows it: the later layout, and the form,
+      // its code and the module open, in that order.
+      // Only the tabs that should not be there are closed: the History pictures have edited
+      // the form and its code (and put them back), and closing either asks to save it.
+      await sampleLayout(c);
+      await closeTabs(c, ["frmMain.tbform", "frmMain.twin", "MainModule.twin"]);
+      for (const f of ["Sources/frmMain.tbform", "Sources/frmMain.twin", "Sources/MainModule.twin"]) {
+        await openFile(c, SAMPLE_FILE(f));
+      }
+      await frames(c);
       try {
         const box = await floatPanel(c, "PACKAGE PUBLISHING", { width: 300, height: 330, left: 300 });
         return await capture(c, "9eeffbcf", snapOut(grow(box, 24)), { away: () => parkMouse(c) });
@@ -2037,7 +2205,10 @@ const sampleShots = [
       setup: "sample",
       out: "Features/Packages/Images/packLicenceFiles.png",
       async before(c) {
+        // Both folders closed, and no row that shows selected: a click on a row selects it,
+        // and so does the editor that becomes active, its file's, which is in Sources
         for (const folder of ["Resources", "Sources"]) await peOpen(c, folder, false);
+        for (const f of ["Sources/frmMain.twin", "Sources/MainModule.twin"]) await openFile(c, SAMPLE_FILE(f));
       },
       annotate: ["CHANGELOG.md", "LICENCE.md"].map((file) => ({
         type: "arrow",
@@ -2238,7 +2409,7 @@ async function scrollToSetting(c, key, below = 6) {
   return true;
 })()`);
   if (!done) throw new Error(`Project Settings has no row ${key}`);
-  await sleep(500);
+  await frames(c);
 }
 
 // The row of `key` as a rectangle, its dotted lines included.
@@ -2271,7 +2442,7 @@ const settingsShot = (
   out,
   setup,
   take: ({ c }) =>
-    inDialog(c, { command: id, title: "Project Settings", close: "Cancel", settle: 2500 }, async () => {
+    inDialog(c, { command: id, title: "Project Settings", close: "Cancel", still: 500 }, async () => {
       await nameUserAsUser(c);
       if (prepare) await prepare(c);
       return dialogShot(c, out, (m) => clipOf(m, c), annotate);
@@ -2376,13 +2547,14 @@ const settingsShots = [
         { timeout: 20000, interval: 250 },
       );
       if (!listed) throw new Error("the Available COM References list stayed empty");
+      await dialogStill(c, { ms: 500 });
       // Some libraries are registered under the user's profile folder
       await nameUserAsUser(c);
-      await sleep(1000);
+      await frames(c);
       const names = await c.evaluate(
         `[...document.querySelectorAll(".referencesListNewOuter")].find((e) => e.getBoundingClientRect().width > 0).innerText.split("\\n").filter(Boolean).slice(0, 12).join(" | ")`,
       );
-      console.log(`  Available COM References starts: ${names}`);
+      say(c.shot.name, `  Available COM References starts: ${names}`);
     },
   }),
   settingsShot("Features/Packages/Images/LibrarySymbols.png", {
@@ -2402,7 +2574,7 @@ const settingsShots = [
   const l = [...document.querySelectorAll(".referencesListNewOuter")].find((e) => e.getBoundingClientRect().width > 0);
   l.scrollLeft = l.scrollWidth;
 })()`);
-      await sleep(500);
+      await frames(c);
     },
     clipOf: async (m, c) => {
       const label = await shownRect(c, settingPart("project.references", "HEADER"));
@@ -2518,7 +2690,7 @@ const newProjectOptionsShot = {
       if (!(await waitModal(c, "New Project Options", { timeout: 60000 }))) {
         throw new Error("Open on Standard EXE did not show the New Project Options dialog");
       }
-      await sleep(1000);
+      await dialogStill(c);
       // the Project Name is selected: leave its caret at the end of the name
       await c.evaluate(`(() => {
   const i = [...document.querySelectorAll(".modalDialogContainer")].pop().querySelector("input[type=text], input:not([type])");
@@ -2546,7 +2718,7 @@ const aboutShot = {
       { timeout: 60000, interval: 250 },
     );
     if (!ready) throw new Error("the compiler never answered the licence check, so About would say NOT READY");
-    return inDialog(c, { command: "tbHelp_ShowAboutWindow", title: "About", close: "Close", settle: 1500 }, () =>
+    return inDialog(c, { command: "tbHelp_ShowAboutWindow", title: "About", close: "Close" }, () =>
       dialogShot(c, "Menu_Help_About"),
     );
   },
@@ -2675,8 +2847,33 @@ function helpTakes(ctx) {
       { timeout: 20000 },
     );
     if (!loaded) throw new Error(`the pane did not show ${pagePath}`);
-    await sleep(2500); // fonts and images in the frame
+    await pageDrawn(c);
     await paneAside();
+  }
+  // The docs page in the frame on `conn`'s page (`frame`, as inFrame takes it) drawn whole:
+  // its fonts loaded, the images in its view loaded, its body unchanged for a quarter of a
+  // second, and two frames on.
+  async function pageDrawn(conn, frame = origin) {
+    let last = null;
+    let since = 0;
+    const DRAWN = `document.fonts.status === "loaded" &&
+  [...document.images].filter((i) => { const r = i.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; }).every((i) => i.complete)
+  ? document.body.innerHTML.length + ":" + document.body.scrollHeight : null`;
+    let error = null;
+    const drawn = await waitFor(
+      conn,
+      async () => {
+        const now = await inFrame(conn, frame, DRAWN).catch((e) => {
+          error = e;
+          return null;
+        });
+        if (now !== last) [last, since] = [now, Date.now()];
+        return now !== null && Date.now() - since >= 250;
+      },
+      { timeout: 20000, interval: 100 },
+    );
+    if (!drawn) throw new Error(`the docs page in the frame was never drawn whole${error ? `: ${error.message}` : ""}`);
+    await frames(conn);
   }
   // The results list, once it has stopped changing for a second.
   async function settledResults() {
@@ -2865,6 +3062,7 @@ function helpTakes(ctx) {
         async () => {
           try {
             win = await attach(windowPort, "", { timeout: 30000 });
+            win.shot = c.shot;
             return true;
           } catch {
             return false;
@@ -2882,8 +3080,18 @@ function helpTakes(ctx) {
       ) {
         throw new Error("the window's page did not load");
       }
-      await sleep(3000); // fonts and images in the frame
-      return await snap(win, "Window", null, { frame: origin });
+      // The window's page is a string the add-in loads, so its frame of the docs is on
+      // another site, a target of its own.
+      const frame = await waitFor(c, () => attach(windowPort, origin, { type: "iframe" }).catch(() => null), {
+        timeout: 30000,
+      });
+      if (!frame) throw new Error(`no frame of ${origin} on the window's DevTools port ${windowPort}`);
+      try {
+        await pageDrawn(win, frame);
+        return await snap(win, "Window", null, { frame });
+      } finally {
+        frame.close();
+      }
     } finally {
       win?.close();
     }
@@ -2957,6 +3165,43 @@ const SHOTS = [
   newProjectOptionsShot,
 ];
 
+// ---------------------------------------------------------------- the jobs
+
+// The long setups, cut where a part can start from the IDE's first state: `from` the path
+// of the part's first picture, `suffix` its job's name. A shot that shows state an earlier
+// shot of its setup leaves (the layout behind 9eeffbcf, the Project Explorer's selection in
+// packLicenceFiles) brings the IDE to it itself, so that it comes out the same in a part.
+const PARTS = {
+  "no-project": [
+    { suffix: "-2", from: "IDE/Images/New_Project.png" },
+    { suffix: "-3", from: "IDE/Images/IDE.png" },
+  ],
+  sample: [
+    { suffix: "-2", from: "IDE/Images/OpenEditors_1.png" },
+    { suffix: "-3", from: "IDE/Images/PackagePublishing_1.png" },
+  ],
+};
+
+// About how long each job takes, in seconds, for queuing the longest first. They also decide
+// which IDEs run side by side, and that can move a few anti-aliased pixels: with sample
+// started after no-project, Diagnostics came out with 34 pixels of one arrow's edge a grey
+// level or two off, twice. Rerun twice after changing them.
+const JOB_SECONDS = {
+  help: 45,
+  project: 11,
+  sample: 34,
+  "sample-2": 55,
+  "sample-3": 54,
+  settings: 22,
+  "settings-symbols": 8,
+  "settings-webview2": 7,
+  "settings-fusion": 12,
+  glyphs: 24,
+  "no-project": 33,
+  "no-project-2": 38,
+  "no-project-3": 41,
+};
+
 // ---------------------------------------------------------------- run
 
 const selected = SHOTS.filter((s) => !only || only.test(s.out));
@@ -2966,14 +3211,52 @@ if (wanted.includes("help") && !existsSync(path.join(SITE, "tB", "symbols.json")
   die(2, `no built site in ${SITE}: run build.bat first`);
 }
 
+// A job is one IDE: a setup started for some of its shots, in the table's order. With
+// --jobs 1 every setup is one job. With more, a setup that has PARTS is cut into one job
+// per part, so that the long ones do not decide how long the run takes.
+function planJobs() {
+  const jobs = [];
+  for (const name of wanted) {
+    const parts = jobCount > 1 ? (PARTS[name] ?? []) : [];
+    let part = { suffix: "" };
+    const byPart = new Map([[part, []]]);
+    for (const shot of SHOTS.filter((s) => s.setup === name)) {
+      const next = parts.find((p) => p.from === shot.out);
+      if (next) byPart.set((part = next), []);
+      if (selected.includes(shot)) byPart.get(part).push(shot);
+    }
+    for (const [p, shots] of byPart) {
+      if (!shots.length) continue;
+      jobs.push({
+        name: name + p.suffix,
+        setup: name,
+        shots,
+        weight: JOB_SECONDS[name + p.suffix] ?? shots.length * 10,
+        ports: [],
+      });
+    }
+  }
+  // the longest first, so that the last to start is a short one; one at a time, in the
+  // table's order
+  return jobCount > 1 ? jobs.sort((a, b) => b.weight - a.weight) : jobs;
+}
+const jobs = planJobs();
+
 let ports;
 try {
   ports = await claimPorts(
-    wanted.reduce((n, name) => n + SETUPS[name].ports, 0),
+    jobs.reduce((n, job) => n + SETUPS[job.setup].ports, 0),
     { from: firstPort },
   );
 } catch (e) {
   die(2, e.message);
+}
+{
+  let at = 0;
+  for (const job of jobs) {
+    job.ports = ports.slice(at, at + SETUPS[job.setup].ports);
+    at += job.ports.length;
+  }
 }
 
 const root = path.join(tmpdir(), "tbshoot-docs", String(ports[0]));
@@ -2989,7 +3272,7 @@ const settingsBefore = wanted.includes("help") ? snapshotKeys([settingsKey(SETTI
 // The add-in's saved settings are the user's; a run starts from none.
 if (settingsBefore) deleteSettings([SETTINGS]);
 
-let current = null; // the setup running now: { lane, server }
+const running = new Set(); // the jobs with an IDE open: { lane, server }
 
 function restoreSettings() {
   if (settingsBefore) restoreKeys(settingsBefore);
@@ -2997,91 +3280,96 @@ function restoreSettings() {
 
 exitOnCrash(() => {
   console.error("putting the registry back after the crash");
-  if (current?.lane.run) shutdownIde(current.lane.run);
+  for (const run of running) if (run.lane.run) shutdownIde(run.lane.run);
   finishTidy(tidy);
   restoreSettings();
 });
 
 // Writes a picture when its bytes differ from the file's; says which.
-function keep(out, png) {
+function keep(name, out, png) {
   const file = path.join(outRoot, out);
   mkdirSync(path.dirname(file), { recursive: true });
   let state = "new";
-  if (existsSync(file)) state = readFileSync(file).equals(png) ? "unchanged" : "updated";
+  if (existsSync(file)) {
+    const was = readFileSync(file);
+    state = was.equals(png) ? "unchanged" : "updated";
+    if (state === "updated") writeDiff(name, out, was, png);
+  }
   if (state !== "unchanged") writeFileSync(file, png);
   const w = png.readUInt32BE(16);
   const h = png.readUInt32BE(20);
-  console.log(
+  say(
+    name,
     `${out}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${w / SCALE}" height="${h / SCALE}"})`,
   );
 }
 
-// Ends a setup's IDE and what it served; returns the problems, as lines.
-async function endSetup() {
-  const problems = [];
-  if (!current) return problems;
-  const { lane, server } = current;
-  current = null;
+// Ends a job's IDE and what it served.
+async function endRun(run) {
+  running.delete(run);
   try {
-    await lane.close();
+    await run.lane.close();
   } catch (e) {
-    console.error(e.message);
+    complain(run.name, e.message);
   }
-  server?.close();
-  return problems;
+  run.server?.close();
 }
 
 // The exit code for an error from one step: 1 when it is the add-in's or the
 // project's own fault, 2 when the tool failed.
 let failed = 0;
 const t0 = Date.now();
-let at = 0;
-for (const name of wanted) {
-  const setup = SETUPS[name];
-  const mine = ports.slice(at, at + setup.ports);
-  at += setup.ports;
-  console.log(`setup ${name}`);
+
+async function runJob(job) {
+  const setup = SETUPS[job.setup];
+  const started = Date.now();
+  say(job.name, `starting (${job.shots.length} pictures)`);
   const run = {
-    name,
+    name: job.name,
     step: "start",
-    ports: mine,
-    work: path.join(root, name),
+    ports: job.ports,
+    work: path.join(root, job.name),
     lane: null,
     server: null,
     c: null,
   };
   mkdirSync(run.work, { recursive: true });
   run.lane = new Lane({
-    name: `shoot-${name}`,
-    port: mine[0],
+    name: `shoot-${job.name}`,
+    port: job.ports[0],
     work: run.work,
     ide,
     show: false,
     browserArgs: BROWSER_ARGS,
   });
-  current = run;
+  const state = newShotState(job.name);
+  running.add(run);
   try {
     run.c = await setup.start(run);
+    run.c.shot = state;
     const ctx = await setup.prepare(run);
     if (run.defaults) {
-      console.log(
+      say(
+        job.name,
         `page settings put to their defaults (in the page only, saved nowhere): ${run.defaults.join("; ") || "none differed"}`,
       );
     }
-    for (const shot of selected.filter((s) => s.setup === name)) {
+    for (const shot of job.shots) {
       const file = path.join(outRoot, shot.out);
-      reference = existsSync(file) ? readFileSync(file) : null;
+      state.reference = existsSync(file) ? readFileSync(file) : null;
+      state.out = shot.out;
       try {
-        keep(shot.out, await shot.take(ctx));
+        keep(job.name, shot.out, await shot.take(ctx));
       } catch (e) {
-        console.error(`${shot.out}: FAILED: ${e.message}`);
+        complain(job.name, `${shot.out}: FAILED: ${e.message}`);
         failed = 1;
       } finally {
-        reference = null;
+        state.reference = null;
+        state.out = null;
       }
     }
   } catch (e) {
-    console.error(e.message);
+    complain(job.name, e.message);
     // buildAddin's exitCode is tbbuild's: 1 compile errors, 4 the compiler
     // crashed. Lane.open says "does not compile" for a project with errors.
     const own =
@@ -3090,7 +3378,17 @@ for (const name of wanted) {
       run.step === "shoot";
     failed = Math.max(failed, own ? 1 : 2);
   }
-  await endSetup();
+  await endRun(run);
+  say(job.name, `done in ${((Date.now() - started) / 1000).toFixed(1)} s`);
+}
+
+// --jobs IDEs at a time, each taking the next of the queue when its job ends.
+{
+  const queue = [...jobs];
+  const worker = async () => {
+    for (let job = queue.shift(); job; job = queue.shift()) await runJob(job);
+  };
+  await Promise.all(Array.from({ length: Math.min(jobCount, jobs.length) }, worker));
 }
 console.log(`${((Date.now() - t0) / 1000).toFixed(1)} s`);
 
