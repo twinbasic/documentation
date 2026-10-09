@@ -148,7 +148,7 @@ back).
   opened), `sample6` (Sample 6 exported and opened) and `designer` (the sample fixture with
   `test/shots/designer/` staged onto it, plus the Global Search add-in for Toolbar_3; it sets the
   page's `currentDPI` to the 2x ratio, or the IDE's 5 s DPI check covers every designer with
-  RESYNC). A setup is `{name, start, prepare}`.
+  RESYNC), and `forms` (the same without the add-in). A setup is `{name, start, prepare}`.
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
 - **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE on its own claimed ports and
@@ -238,6 +238,18 @@ Format menu; Properties and Toolbox; replicas and composites; code views).
   a floating panel is outside) -- a possible IDE defect, not yet reproduced or queued. After the
   Format shots the designer marks frmControls changed with no control moved (cause unknown), so
   those shots close it with Discard Changes.
+- **Batch 2 is done** (the Anchors pair, the QR code beside the Toolbox, the FAQ's ICON crop, the
+  WebView2 tutorial's Toolbox and PROPERTIES). Setup `forms` is `designer` without the add-in;
+  `settings-webview2` also stages `test/shots/designer/webview2/` (frmWeb, a WebView2 `Web1`
+  with no DocumentURL, so the designer loads nothing), since only that setup references the
+  package. `MyOwnIcon.ico` is the template's icon copied at run time. 8611d12a's panels are put
+  in place by `restorePanelLayout` in the page and the default layout put back after; the crop
+  stops at History's title bar (its entries carry the real time) and left of the IDE's title.
+  In 997 PROPERTIES is grouped by category only (Anchors in LAYOUT, WebView2's own properties in
+  GENERAL), and **a property's description is never shown at the panel's foot**: it goes to the
+  designer's own `.proprtiesBoxFooter` inside the code panel, not the tool window -- a possible
+  IDE defect, not reproduced or queued. The WebView2 tutorial now points to the class reference
+  instead. A floating Toolbox for a form lists what the docked one does.
 
 ## Open questions
 

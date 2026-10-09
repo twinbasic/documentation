@@ -11,9 +11,9 @@ twinBASIC introduces several new controls to enhance your applications.
 
 ## QR Code Control
 
-![A QR code displayed on a form in the designer, with the toolbox alongside](../Images/54ed49d8-b434-45e3-9e63-a1fe75cdf814.png)
+![A QR code control on a form in the designer, with the Toolbox alongside](../Images/54ed49d8-b434-45e3-9e63-a1fe75cdf814.png){:width="302" height="355"}
 
-Easily display custom QR codes with a native control.
+Display custom QR codes with a native control.
 
 ## Multiframe Control
 

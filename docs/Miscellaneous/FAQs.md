@@ -335,7 +335,7 @@ Imported projects use the icon of the Form chosen in Settings. This can be modif
 If you don't set that option, or your project contains no Forms, the icon can be managed manually through the Resources folder.  
 If you're not already familiar with using resources in twinBASIC, see the FAQ entry right above this one. In this scenario, the icon used for your application in Explorer is the one in the Resources\ICON folder that comes first alphabetically. If you do not have an ICON folder in your project, you can create one by right-clicking the Resources folder and selecting Add->Add folder.
 
-![The Project Explorer with the ICON folder under Resources expanded to two entries, MyOwnIcon.ico above twinBASIC.ico, beside the Toolbox and a form open in the designer.](Images/8611d12a-d7a6-48cc-9544-cb27c5299aa5.png)
+![The Project Explorer with the ICON folder under Resources expanded to two entries, MyOwnIcon.ico above twinBASIC.ico, beside the Toolbox and a form open in the designer.](Images/8611d12a-d7a6-48cc-9544-cb27c5299aa5.png){:width="642" height="461"}
 
 In the above picture, MyOwnIcon.ico would be used by Explorer and other apps to represent your .exe, as it comes before twinBASIC.ico alphabetically. 
 

@@ -41,6 +41,10 @@
 //   designer    the sample with the forms of test/shots/designer staged onto it and the
 //               Global Search add-in built into the copy: the form and report designers,
 //               the Format menu over two selected controls, and the toolbar with a form open
+//   forms       the same project without the add-in: PROPERTIES for a TextBox, the
+//               Toolbox beside a QR code, and the window in a layout of its own;
+//               settings-webview2 stages a form with a WebView2 control as well, for
+//               the WebView2 tutorial's Toolbox and PROPERTIES
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
@@ -126,6 +130,7 @@ const ADDIN = path.join(REPO_ROOT, "add-in");
 const DEMO = path.join(REPO_ROOT, "test", "addin", "helpdemo");
 const SAMPLE = path.join(REPO_ROOT, "test", "shots", "sample");
 const DESIGNER = path.join(REPO_ROOT, "test", "shots", "designer");
+const DESIGNER_WEBVIEW2 = path.join(DESIGNER, "webview2");
 const SETTINGS_FIXTURES = path.join(REPO_ROOT, "test", "shots", "settings");
 const DEMO_FILE = "/Inventory/Sources/Inventory.twin";
 const DEMO_SOURCE = path.join(DEMO, "Sources", "Inventory.twin");
@@ -146,8 +151,9 @@ private desktop, at 2x in the dark theme: the help add-in's eight (setup help),
 the menus, dialogs, bars and panels that need no project (setups no-project and project),
 the panels, editor, Project Settings and icons of a sample project (setups sample,
 settings and glyphs), those of the IDE's Samples 15 and 6 (setups
-global-search and sample6), and the form and report designers and the Format menu
-(setup designer).
+global-search and sample6), the form and report designers and the Format menu
+(setup designer), and the Toolbox and PROPERTIES with a control on a form (setups
+forms and settings-webview2).
 Each setup is one IDE, started when a picture in it is selected. A picture is
 written only when its bytes differ from the file already there; each is
 reported as new, updated or unchanged. The IDE's registry entries and the
@@ -828,14 +834,16 @@ async function startSample(run) {
 // The sample with another Settings file, test/shots/settings/<variant>.json: the
 // references, the warnings and the aliases a Project Settings picture shows. Without the
 // VB package the form cannot compile, so the form and the line that shows it go
-// (`keepForm` leaves them, for a variant that has the package).
+// (`keepForm` leaves them, for a variant that has the package). `stage`, a folder, is copied
+// onto the project as well.
 const startSettings =
-  (variant, { keepForm = false } = {}) =>
+  (variant, { keepForm = false, stage = null } = {}) =>
   async (run) => {
     run.step = "open";
     say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)} with the ${variant} settings`);
     const src = stageSample(run);
     cpSync(path.join(SETTINGS_FIXTURES, `${variant}.json`), path.join(src, "Settings"));
+    if (stage) cpSync(stage, src, { recursive: true });
     if (!keepForm) {
       rmSync(path.join(src, "Sources", "frmMain.twin"));
       rmSync(path.join(src, "Sources", "frmMain.tbform"));
@@ -919,26 +927,36 @@ async function startSample6(run) {
 // folder only: test/shots/sample is not changed, so the sample's pictures do not move), and
 // the Global Search add-in built into the copy, as global-search builds it, for the toolbar
 // with a form open. MyForm is empty; frmControls holds two command buttons, for the Format
-// menu. The report is added by the IDE itself, as a person adds one (designerShots).
+// menu; frmAnchors a TextBox and frmQRCode a QR code. The report is added by the IDE itself,
+// as a person adds one (designerShots). A second icon, MyOwnIcon.ico, is the template's icon
+// under another name. `forms` is the same project without the add-in, for the pictures of
+// the panels with a control (formShots). test/shots/designer/webview2 holds a form with a
+// WebView2 control, which only the settings-webview2 setup stages: the others have no
+// WebView2 package.
 
-async function startDesigner(run) {
-  await buildGlobalSearch(run);
+async function startDesigner(run, { addin = true } = {}) {
+  if (addin) await buildGlobalSearch(run);
   run.step = "open";
   say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)} with ${path.relative(REPO_ROOT, DESIGNER)}`);
   const src = stageSample(run);
-  cpSync(DESIGNER, src, { recursive: true });
+  cpSync(DESIGNER, src, { recursive: true, filter: (f) => f !== DESIGNER_WEBVIEW2 });
+  const icons = path.join(src, "Resources", "ICON");
+  cpSync(path.join(icons, "twinBASIC.ico"), path.join(icons, "MyOwnIcon.ico"));
   return run.lane.open(src);
+}
+
+// Every five seconds the page compares the device pixel ratio with the one it loaded at, and
+// on a change covers each open designer with RESYNC until it is pressed. The ratio is the
+// tool's own (fixPageSize), so the page is told it is the one it has. No designer is open yet.
+async function prepareWithDesigners(run) {
+  const ctx = await prepareSample(run);
+  await run.c.evaluate("currentDPI = window.devicePixelRatio");
+  return ctx;
 }
 
 async function prepareDesigner(run) {
   await globalSearchLoaded(run.c);
-  const ctx = await prepareSample(run);
-  // Every five seconds the page compares the device pixel ratio with the one it loaded at,
-  // and on a change covers each open designer with RESYNC until it is pressed. The ratio is
-  // the tool's own (fixPageSize), so the page is told it is the one it has. No designer is
-  // open yet.
-  await run.c.evaluate("currentDPI = window.devicePixelRatio");
-  return ctx;
+  return prepareWithDesigners(run);
 }
 
 const SETUPS = {
@@ -946,11 +964,16 @@ const SETUPS = {
   "global-search": { ports: 2, start: startGlobalSearch, prepare: prepareGlobalSearch },
   sample6: { ports: 1, start: startSample6, prepare: prepareSample },
   designer: { ports: 2, start: startDesigner, prepare: prepareDesigner },
+  forms: { ports: 1, start: (run) => startDesigner(run, { addin: false }), prepare: prepareWithDesigners },
   project: { ports: 1, start: startProject, prepare: prepareProject },
   sample: { ports: 1, start: startSample, prepare: prepareSample },
   settings: { ports: 1, start: startSettings("base"), prepare: prepareSample },
   "settings-symbols": { ports: 1, start: startSettings("symbols"), prepare: prepareSample },
-  "settings-webview2": { ports: 1, start: startSettings("webview2", { keepForm: true }), prepare: prepareSample },
+  "settings-webview2": {
+    ports: 1,
+    start: startSettings("webview2", { keepForm: true, stage: DESIGNER_WEBVIEW2 }),
+    prepare: prepareWithDesigners,
+  },
   "settings-fusion": { ports: 1, start: startSettings("fusion"), prepare: prepareFusion },
   glyphs: { ports: 1, start: startSample, prepare: prepareSample },
   "no-project": { ports: 1, start: startNoProject, prepare: prepareNoProject },
@@ -1543,7 +1566,9 @@ function annotatedPanelShot(
         if (before) await before(c);
         // the body's colour, as the first of it and its ancestors that is not transparent
         const ground = await c.evaluate(`(() => {
-  for (let e = document.querySelector(${JSON.stringify(`${sel} .sectionBody`)}); e; e = e.parentElement) {
+  // the Toolbox has no sectionBody: the panel's own then
+  const body = document.querySelector(${JSON.stringify(`${sel} .sectionBody`)}) ?? document.querySelector(${JSON.stringify(sel)});
+  for (let e = body; e; e = e.parentElement) {
     const k = getComputedStyle(e).backgroundColor;
     if (!/^rgba\\(.*, 0\\)$/.test(k) && k !== "transparent") return k;
   }
@@ -3402,6 +3427,285 @@ const designerShots = [
   },
 ];
 
+// ---- the panels with a control on a form (setups forms and settings-webview2)
+
+// Selects the control `name` of the open designer with a real click on it.
+async function selectControl(c, name) {
+  if ((await selectedControls(c)).join() !== name) {
+    const [at] = await controlCentres(c, [name]);
+    if (!at) throw new Error(`the designer does not draw ${name}`);
+    await pressAt(c, at.x, at.y);
+    if (!(await waitFor(c, async () => (await selectedControls(c)).join() === name, { timeout: 3000, interval: 50 }))) {
+      throw new Error(`the click selected ${JSON.stringify(await selectedControls(c))}, not ${name}`);
+    }
+  }
+  await parkMouse(c);
+  await frames(c);
+}
+
+// The window's own layout, the default one, as Window > Panel Layouts > Default sets it (in
+// the page: the layout's name is saved through a call that does nothing).
+async function defaultLayout(c) {
+  await command(c, "tbPanels_SetActiveLayoutDefault");
+  if (!(await waitFor(c, () => c.evaluate(`isPanelIdDocked("TOOLBOX")`), { timeout: 5000, interval: 50 }))) {
+    throw new Error("the default layout did not dock the Toolbox");
+  }
+  await frames(c);
+}
+
+// The box of the element `css` matches in the docked panel headed `title`, or the panel's.
+const dockedRect = (c, title, css = null) =>
+  c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === ${JSON.stringify(title)});
+  const p = h?.closest(".toolWindowContainer");
+  const e = p && ${css === null ? "p" : `p.querySelector(${JSON.stringify(css)})`};
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+
+const PROPS = panelSel("PROPERTIES");
+// A row of the floating PROPERTIES panel, by its property's name (its title starts with it,
+// and goes on with the property's description when it has one), and the cell of its value.
+const PROP_NAME = (name) => `${PROPS} .propertyName[title^="${name}"]`;
+const PROP_VALUE = (name) => `${PROP_NAME(name)} + .propertyValue`;
+
+// Scrolls the floating PROPERTIES panel until the group headed `category` is just under the
+// control's name, which stays at the top of the panel as the list scrolls, or as near as the
+// list's end lets it. With `upTo`, a row's property name, the panel is first made as tall as
+// shows the list from the group's heading to the bottom of that row and no further, and the
+// group must then reach the top.
+async function scrollProperties(c, category, { upTo = null } = {}) {
+  const done = await c.evaluate(`(() => {
+  const p = document.querySelector(${JSON.stringify(PROPS)});
+  const list = p?.querySelector(".propertiesBoxInner");
+  const name = p?.querySelector(".controlSelecter");
+  const cat = p && [...p.querySelectorAll(".propertyCategory")].find((e) => e.textContent.trim() === ${JSON.stringify(category)});
+  const last = ${upTo === null ? "null" : `p?.querySelector(${JSON.stringify(PROP_NAME(upTo))})`};
+  if (!list || !name || !cat || (${upTo !== null} && !last)) return "none";
+  const top = (e) => e.getBoundingClientRect().top;
+  const bottom = (e) => e.getBoundingClientRect().bottom;
+  if (last) {
+    // the list's box shows the name and the group: its height set through the panel's
+    const want = name.getBoundingClientRect().height + bottom(last) - top(cat);
+    p.style.height = p.getBoundingClientRect().height + want - list.clientHeight + "px";
+  }
+  // twice: the name sticks to the top only once the list has scrolled
+  for (let i = 0; i < 2; i++) list.scrollTop += top(cat) - bottom(name);
+  return Math.abs(top(cat) - bottom(name)) < 1 ? "done" : "short";
+})()`);
+  if (done === "none") throw new Error(`the PROPERTIES panel has no group ${category}${upTo ? ` or row ${upTo}` : ""}`);
+  if (done === "short" && upTo) throw new Error(`the PROPERTIES panel's list ends before ${category} reaches its top`);
+  await frames(c);
+}
+
+// Opens or closes a property that holds others (Anchors) with a real click on its arrow.
+async function expandProperty(c, name, want) {
+  const state = () =>
+    c.evaluate(`(() => {
+  const e = document.querySelector(${JSON.stringify(`${PROP_NAME(name)} > .treeNodeExpanded, ${PROP_NAME(name)} > .treeNodeCollapsed`)});
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { open: e.className === "treeNodeExpanded", x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+  const s = await state();
+  if (!s) throw new Error(`the PROPERTIES panel has no ${name} to expand`);
+  if (s.open === want) return;
+  await clickAt(c, s.x, s.y);
+  if (!(await waitFor(c, async () => (await state())?.open === want, { timeout: 3000, interval: 50 }))) {
+    throw new Error(`the click on ${name}'s arrow did not ${want ? "open" : "close"} it`);
+  }
+  await frames(c);
+}
+
+// frmAnchors open with Text1 selected, and PROPERTIES floating on its own with the LAYOUT
+// group at its top, the Anchors row closed or open, and the panel as tall as shows the group
+// down to the Dock row under Anchors.
+function anchorsShot(out, name, { expanded, annotate = null }) {
+  return {
+    out,
+    setup: "forms",
+    annotate,
+    async take({ c }) {
+      await resetUi(c);
+      await openDesigner(c, "frmAnchors.tbform");
+      await selectControl(c, "Text1");
+      try {
+        await floatPanel(c, "PROPERTIES", { width: 400, height: 360 });
+        // scrolled to before the click, which lands on what is drawn, and again after it
+        await scrollProperties(c, "LAYOUT");
+        await expandProperty(c, "Anchors", expanded);
+        await scrollProperties(c, "LAYOUT", { upTo: "Dock" });
+        return await annotatedClip(c, name, await rectOf(c, PROPS), annotate);
+      } finally {
+        await unfloatPanel(c, "PROPERTIES");
+      }
+    },
+  };
+}
+
+// The 8611d12a picture's layout, set in the page: the Project Explorer above History at the
+// left, the Toolbox, then the editor (the default layout has the Project Explorer at the
+// right and no History). Nothing is saved: the layout is the window's until the default one
+// is put back.
+const EXPLORER_LAYOUT = {
+  type: "horizontal",
+  variableSize: true,
+  size: "0%",
+  content: [
+    { id: "TOOLBAR", variableSize: false, size: "fit-content" },
+    {
+      type: "vertical",
+      variableSize: true,
+      size: "0%",
+      content: [
+        {
+          type: "horizontal",
+          variableSize: false,
+          size: "26%",
+          content: [
+            { id: "PROJECT EXPLORER", variableSize: false, size: "47%" },
+            { id: "HISTORY", variableSize: true, size: "0%" },
+          ],
+        },
+        {
+          type: "vertical",
+          variableSize: true,
+          size: "0%",
+          content: [
+            { id: "TOOLBOX", variableSize: false, size: "15%" },
+            { id: "EDITOR", variableSize: true, size: "0%" },
+          ],
+        },
+      ],
+    },
+  ],
+};
+// How much of the window 8611d12a shows, from its left edge: the IDE's title is further right.
+const EXPLORER_CROP_WIDTH = 642;
+
+const WEB_TILE = { css: `${panelSel("TOOLBOX")} .toolboxItemOuter[title="WebView2"]` };
+
+const formShots = [
+  anchorsShot("Features/Images/b26da59b-4e98-40b7-b97b-bb3cef4ca1d0.png", "b26da59b", {
+    expanded: false,
+    // the whole Anchors row, its name and its value
+    annotate: [{ type: "underline", on: { span: [{ css: PROP_NAME("Anchors") }, { css: PROP_VALUE("Anchors") }] } }],
+  }),
+  anchorsShot("Features/Images/d5dff8f5-c5fa-4620-ba11-430d06276b27.png", "d5dff8f5", { expanded: true }),
+  {
+    // The Toolbox and the form beside it, with a QR code on the form: from the panels' title
+    // bars to below the Toolbox's tools, as far right as a little past the QR code.
+    out: "Features/Images/54ed49d8-b434-45e3-9e63-a1fe75cdf814.png",
+    setup: "forms",
+    async take({ c }) {
+      await resetUi(c);
+      await defaultLayout(c);
+      await openDesigner(c, "frmQRCode.tbform");
+      await closeTabs(c, ["frmQRCode.tbform"], { discard: true });
+      await designerShown(c);
+      const panel = await dockedRect(c, "TOOLBOX");
+      const tools = await c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "TOOLBOX");
+  const t = [...h.closest(".toolWindowContainer").querySelectorAll(".toolboxItemOuter[title]")].filter((e) => e.getBoundingClientRect().width);
+  return Math.max(...t.map((e) => e.getBoundingClientRect().bottom));
+})()`);
+      const qr = await c.evaluate(`(() => {
+  const g = ${DESIGNER_GLOBALS};
+  const d = g.designer.getBoundingClientRect();
+  const p = g.allControls.find((x) => x.properties.Name === "QRCode1")?.properties;
+  return p ? { right: d.x + p.Left + p.Width, bottom: d.y + p.Top + p.Height } : null;
+})()`);
+      if (!panel || !qr) throw new Error("the Toolbox or the QR code is not drawn");
+      const bottom = Math.max(tools, qr.bottom) + 10;
+      return capture(
+        c,
+        "54ed49d8",
+        snapOut({ x: panel.x, y: panel.y, width: qr.right + 40 - panel.x, height: bottom - panel.y }),
+        { away: () => parkMouse(c) },
+      );
+    },
+  },
+  {
+    // A crop of the window from its left edge, the menu bar down to History's title bar: the
+    // Project Explorer with Resources > ICON open on its two icons, the Toolbox, and MyForm's
+    // code and form open, the form in front. The layout is set in the page for it.
+    out: "Miscellaneous/Images/8611d12a-d7a6-48cc-9544-cb27c5299aa5.png",
+    setup: "forms",
+    async take({ c }) {
+      await resetUi(c);
+      await closeTabs(c, [], { discard: true });
+      await openFile(c, SAMPLE_FILE("Sources/MyForm.twin"));
+      await openDesigner(c, "MyForm.tbform");
+      try {
+        if (!(await c.evaluate(`restorePanelLayout(${JSON.stringify(JSON.stringify(EXPLORER_LAYOUT))})`))) {
+          throw new Error("the page refused the layout");
+        }
+        await frames(c);
+        await designerShown(c);
+        for (const [folder, open] of [
+          ["Resources", true],
+          ["ICON", true],
+          ["MANIFEST", false],
+          ["MESSAGETABLE", false],
+          ["STRING", false],
+          ["Sources", false],
+        ]) {
+          await peOpen(c, folder, open);
+        }
+        const history = await dockedRect(c, "HISTORY", ".sectionHeader");
+        if (!history) throw new Error("the layout has no History panel");
+        return await capture(
+          c,
+          "8611d12a",
+          snapOut({ x: 0, y: 0, width: EXPLORER_CROP_WIDTH, height: history.y + history.height }),
+          { away: () => parkMouse(c) },
+        );
+      } finally {
+        await defaultLayout(c);
+      }
+    },
+  },
+  // frmWeb's Toolbox, floating, its WebView2 tile pointed at. A floating Toolbox lists every
+  // tool whatever the designer (Toolbox_Report): for a form it lists what the docked one does.
+  annotatedPanelShot(
+    "tbWebView2Toolbox",
+    "TOOLBOX",
+    { width: 180, height: 350 },
+    {
+      setup: "settings-webview2",
+      out: "Tutorials/WebView2/Images/tbWebView2Toolbox.png",
+      before: (c) => openDesigner(c, "frmWeb.tbform"),
+      // level with the tile, from the empty end of its row
+      annotate: [{ type: "arrow", from: { of: WEB_TILE, at: "right", dx: 90 }, to: WEB_TILE }],
+    },
+  ),
+  {
+    // Web1 in PROPERTIES, floating, with its GENERAL group, where the WebView2 control's own
+    // properties are, from the top of the list to its end. The control draws nothing in the
+    // designer: it has no DocumentURL, so no page is loaded. (The old picture had a property's
+    // description at the foot of the panel: in BETA 997 the panel shows none, and the
+    // description is only the native tooltip of the property's name, which no capture holds.)
+    out: "Tutorials/WebView2/Images/tbWebView2Properties.png",
+    setup: "settings-webview2",
+    async take({ c }) {
+      await resetUi(c);
+      await openDesigner(c, "frmWeb.tbform");
+      await selectControl(c, "Web1");
+      try {
+        // wide enough for the longest name, AdditionalAllowedFrameAncestors
+        await floatPanel(c, "PROPERTIES", { width: 500, height: 640, top: 40 });
+        await scrollProperties(c, "GENERAL", { upTo: "ZoomFactor" });
+        return await capture(c, "tbWebView2Properties", snapOut(await rectOf(c, PROPS)), {
+          away: () => parkMouse(c),
+        });
+      } finally {
+        await unfloatPanel(c, "PROPERTIES");
+      }
+    },
+  },
+];
+
 // The route a person takes: Standard EXE is selected on the New tab, and Open
 // asks for its options. Cancel closes the dialog and creates nothing. Last
 // of the setup, since the IDE has begun to start a project.
@@ -3889,6 +4193,7 @@ const SHOTS = [
   ...globalSearchShots,
   ...sample6Shots,
   ...designerShots,
+  ...formShots,
   newProjectOptionsShot,
 ];
 
@@ -3921,12 +4226,13 @@ const JOB_SECONDS = {
   "sample-3": 54,
   settings: 22,
   "settings-symbols": 8,
-  "settings-webview2": 7,
+  "settings-webview2": 20,
   "settings-fusion": 12,
   glyphs: 24,
   "global-search": 58,
   sample6: 26,
   designer: 62,
+  forms: 30,
   "no-project": 33,
   "no-project-2": 38,
   "no-project-3": 41,
