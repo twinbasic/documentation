@@ -1412,10 +1412,9 @@ where the IDE's drawing varies from one frame to the next.
 
 `--jobs` is how many IDEs run at once, 6 by default and at most 16. Each runs on a
 private desktop with a port, a work folder and a copy of the install of its own, and the
-setups wait in a queue, the longest first. The long setups are cut into parts, no-project
-and sample into three each and customcontrols into two, every part in an IDE of its own;
-each picture brings its IDE to
-the state it shows, so it comes out the same in a part as in the whole setup. Every line of
+setups wait in a queue, the longest first. The three long setups, no-project, sample
+and customcontrols, are cut into three parts each, every part in an IDE of its own; each
+picture brings its IDE to the state it shows, so it comes out the same in a part as in the whole setup. Every line of
 output starts with the setup or part it is from. `--jobs 1` runs each setup whole in one IDE,
 one after another, in the order of the tool's table. `--port` is where the search for
 DevTools ports starts, 9700 by default; each IDE claims the first free one, and the help setup

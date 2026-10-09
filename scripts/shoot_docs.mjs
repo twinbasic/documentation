@@ -48,6 +48,11 @@
 //   customcontrols  test/shots/customcontrols, two custom controls of its own on a
 //               CustomControls form: the CustomControls tutorial's composites of their code
 //               and PROPERTIES (lib/shot-composite.mjs)
+//   code        the sample with test/shots/code staged onto it: the editor's greying of a
+//               conditional-compilation block under each build, and the inline hints of a
+//               [Flags] enumeration; customcontrols also has the tutorial's code pictures
+//               (attributes, the GUID hint, the hover, a form's JSON)
+//   sample9     Sample 9 open: its WebView_Create handler, for the WebView2 tutorial
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
@@ -138,6 +143,7 @@ const SAMPLE = path.join(REPO_ROOT, "test", "shots", "sample");
 const DESIGNER = path.join(REPO_ROOT, "test", "shots", "designer");
 const DESIGNER_WEBVIEW2 = path.join(DESIGNER, "webview2");
 const CUSTOMCONTROLS = path.join(REPO_ROOT, "test", "shots", "customcontrols");
+const CODE = path.join(REPO_ROOT, "test", "shots", "code");
 const SETTINGS_FIXTURES = path.join(REPO_ROOT, "test", "shots", "settings");
 const DEMO_FILE = "/Inventory/Sources/Inventory.twin";
 const DEMO_SOURCE = path.join(DEMO, "Sources", "Inventory.twin");
@@ -161,7 +167,9 @@ settings and glyphs), those of the IDE's Samples 15 and 6 (setups
 global-search and sample6), the form and report designers and the Format menu
 (setup designer), the Toolbox and PROPERTIES with a control on a form (setups
 forms and settings-webview2), and the CustomControls tutorial's pictures of a
-custom control's code and PROPERTIES (setup customcontrols).
+custom control's code and PROPERTIES (setup customcontrols), and the editor alone:
+the build select's greying, inline hints, a hover, a form's JSON (setups code,
+customcontrols and sample9).
 Each setup is one IDE, started when a picture in it is selected. A picture is
 written only when its bytes differ from the file already there; each is
 reported as new, updated or unchanged. The IDE's registry entries and the
@@ -995,6 +1003,27 @@ async function startCustomControls(run) {
   return run.lane.open(src);
 }
 
+// ---- code: the sample with test/shots/code staged onto it (in the work folder only): a module
+// with a conditional-compilation block (the Compiler Constants page) and a module with a
+// [Flags] enumeration (the Attributes page), for the pictures of the editor alone.
+
+async function startCode(run) {
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)} with ${path.relative(REPO_ROOT, CODE)}`);
+  const src = stageSample(run);
+  cpSync(CODE, src, { recursive: true });
+  return run.lane.open(src);
+}
+
+// ---- sample9: Sample 9, the ActiveX WebView2 + Monaco sample, exported from the install and
+// open: the code of its WebView_Create handler, for the WebView2 tutorial.
+
+async function startSample9(run) {
+  run.step = "open";
+  say(run.name, "opening Sample 9");
+  return run.lane.open(run.lane.exportSample("Sample 9"));
+}
+
 const SETUPS = {
   help: { ports: 3, start: startHelp, prepare: prepareHelp },
   "global-search": { ports: 2, start: startGlobalSearch, prepare: prepareGlobalSearch },
@@ -1002,6 +1031,8 @@ const SETUPS = {
   designer: { ports: 2, start: startDesigner, prepare: prepareDesigner },
   forms: { ports: 1, start: (run) => startDesigner(run, { addin: false }), prepare: prepareWithDesigners },
   customcontrols: { ports: 1, start: startCustomControls, prepare: prepareWithDesigners },
+  code: { ports: 1, start: startCode, prepare: prepareSample },
+  sample9: { ports: 1, start: startSample9, prepare: prepareSample },
   project: { ports: 1, start: startProject, prepare: prepareProject },
   sample: { ports: 1, start: startSample, prepare: prepareSample },
   settings: { ports: 1, start: startSettings("base"), prepare: prepareSample },
@@ -4007,15 +4038,42 @@ const designerValue = (c, control, property) =>
   );
 
 // A part of a composite: the lines of one of the fixture's files from the one holding `first`
-// to the first after it holding `last`, as the editor shows them, cut to the code's own
+// to the first after it holding `last`, as the editor shows them (see codeLines).
+async function codePart(c, name, file, first, last = first, anchors = {}) {
+  await openFile(c, CC_FILE(file));
+  return codeLines(c, name, first, last, { anchors });
+}
+
+// The lines of the file the editor shows, from the one holding `first` to the first after it
+// holding `last` and `after` lines more, as a capture of the real editor, cut to the code's own
 // width: from 16 pixels left of the least indented line's first letter to 16 right of the
 // longest line's end, and 8 above and below. A line is the one that is `first` (white space
 // aside), else the first that holds it. In the page, for the capture: the editor hides every
 // other line (as folding does), has 8 pixels of padding at its top, and marks neither the
 // caret's line nor the words like the one at the caret. `anchors`, an object of them, are
-// resolved in the part.
-async function codePart(c, name, file, first, last = first, anchors = {}) {
-  await openFile(c, CC_FILE(file));
+// resolved in the part. `include`, selectors of elements inside the editor (a code lens above
+// a line, a hover), grow the clip to hold them (`{ css, rows: true }` only in height: a code
+// lens is as wide as the editor), and `extraRight` more pixels to the right of the code
+// (the hints a line ends in); `annotate` is drawn over the code, and the clip grows to hold
+// it. `hover`, `{ line, word, offset?, text }`, rests the mouse on that word of that line until
+// the IDE's hover that holds `text` shows. `view` is the page size the clip is cut from. With
+// `bare`, the part is the picture itself: it returns the PNG.
+async function codeLines(
+  c,
+  name,
+  first,
+  last = first,
+  {
+    anchors = {},
+    after = 0,
+    include = [],
+    extraRight = 0,
+    annotate = null,
+    bare = false,
+    hover = null,
+    view = IDE_SIZE,
+  } = {},
+) {
   const PAD = 8;
   const was = await c.evaluate(`(() => {
   const o = monaco.editor.EditorOption;
@@ -4058,8 +4116,9 @@ async function codePart(c, name, file, first, last = first, anchors = {}) {
     return j < 0 ? 0 : from + j;
   };
   const a = find(1, ${JSON.stringify(first)});
-  const b = a && find(a, ${JSON.stringify(last)});
-  if (!a || !b) return null;
+  const found = a && find(a, ${JSON.stringify(last)});
+  if (!a || !found) return null;
+  const b = Math.min(found + ${after}, m.getLineCount());
   const hide = [];
   if (a > 1) hide.push(new monaco.Range(1, 1, a - 1, 1));
   if (b < m.getLineCount()) hide.push(new monaco.Range(b + 1, 1, m.getLineCount(), 1));
@@ -4070,8 +4129,25 @@ async function codePart(c, name, file, first, last = first, anchors = {}) {
 })()`),
       { timeout: 10000, interval: 100 },
     );
-    if (!lines) throw new Error(`${file} has no lines from "${first}" to "${last}"`);
+    if (!lines) throw new Error(`the open file has no lines from "${first}" to "${last}"`);
     await frames(c);
+    if (hover) {
+      // the IDE's own hover, from a real mouse resting on `word` of the line `line`
+      const at = await c.evaluate(`(() => {
+  const m = editor.getModel();
+  const n = m.getLinesContent().findIndex((l) => l.includes(${JSON.stringify(hover.line)})) + 1;
+  return n ? { n, col: m.getLineContent(n).indexOf(${JSON.stringify(hover.word)}) + 1 + ${hover.offset ?? 0} } : null;
+})()`);
+      if (!at) throw new Error(`no line "${hover.line}" to hover on`);
+      let shown = false;
+      for (let attempt = 0; attempt < 3 && !shown; attempt++) {
+        await restMouse(c, at.n, at.col);
+        shown = await waitFor(c, async () => (await hoverText(c))?.includes(hover.text) && true, { timeout: 6000 });
+      }
+      if (!shown) throw new Error(`the hover on "${hover.word}" did not show`);
+      // the hover is drawn in full once it has been still for a moment
+      await sleep(600);
+    }
     const clip = await c.evaluate(`(() => {
   const m = editor.getModel();
   const d = editor.getDomNode().getBoundingClientRect();
@@ -4088,13 +4164,42 @@ async function codePart(c, name, file, first, last = first, anchors = {}) {
   const top = at(${lines.a}, 1).top;
   const bottom = at(${lines.b}, 1).top + lh;
   const lay = editor.getLayoutInfo();
-  if (right + 16 > (lay.minimap?.minimapLeft ?? lay.width)) return null;
-  return { x: d.x + left - 16, y: d.y + top - ${PAD}, width: right - left + 32, height: bottom - top + 2 * ${PAD} };
+  let x0 = d.x + left - 16;
+  let y0 = d.y + top - ${PAD};
+  let x1 = d.x + right + 16 + ${extraRight};
+  let y1 = d.y + bottom + ${PAD};
+  if (x1 > d.x + (lay.minimap?.minimapLeft ?? lay.width)) return null;
+  for (const item of ${JSON.stringify(include)}) {
+    const css = typeof item === "string" ? item : item.css;
+    for (const e of document.querySelectorAll(css)) {
+      const r = e.getBoundingClientRect();
+      if (!r.width || !r.height || e.classList.contains("hidden")) continue;
+      // with { css, rows: true } only the rows it takes count: it is as wide as the editor
+      if (typeof item === "string") {
+        x0 = Math.min(x0, r.left - 16);
+        x1 = Math.max(x1, r.right + 16);
+      }
+      y0 = Math.min(y0, r.top - ${PAD});
+      y1 = Math.max(y1, r.bottom + ${PAD});
+    }
+  }
+  return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
 })()`);
-    if (!clip) throw new Error(`the lines of ${file} from "${first}" are wider than the editor shows`);
-    const found = await resolveAnchors(c, anchors);
-    const area = snapOut(clip);
-    return { png: await capture(c, name, area, { away: () => parkMouse(c) }), clip: area, anchors: found, column: 0 };
+    if (!clip) throw new Error(`the lines "${first}" to "${last}" are wider than the editor shows`);
+    const resolved = await resolveAnchors(c, anchors);
+    let area = snapOut(clip, view.width, view.height);
+    try {
+      if (annotate) {
+        const { box } = await annotateOver(c, annotate);
+        if (box) area = snapOut(union(clip, box), view.width, view.height);
+      }
+      // a hover goes when the mouse is taken away, and the picture is of it
+      const png = await capture(c, name, area, { away: hover ? null : () => parkMouse(c) });
+      return bare ? png : { png, clip: area, anchors: resolved, column: 0 };
+    } finally {
+      if (annotate) await unannotate(c);
+      if (hover) await mouseAway(c);
+    }
   } finally {
     await c.evaluate(`(() => {
   editor.setHiddenAreas([]);
@@ -4315,6 +4420,240 @@ const customControlsShots = [
       anchors: { row: { css: `${PROPS} .propertyName`, text: "Click" } },
     }),
   ]),
+];
+
+// ---- the CustomControls tutorial's code: attributes, the ClassId hint, the hover, a property
+// pair and a form's JSON (setup customcontrols, a part of its own)
+
+// MyGrid.twin with the editor showing only the lines `first` to `last` (see codeLines).
+const grid = (name, first, last, options = {}) => ({
+  out: `Tutorials/CustomControls/Images/${name}.png`,
+  setup: "customcontrols",
+  async take({ c }) {
+    await resetUi(c);
+    await openFile(c, CC_FILE("MyGrid.twin"));
+    return codeLines(c, name, first, last, { bare: true, ...options });
+  },
+});
+
+const GRID_CUSTOMCONTROL = '[CustomControl("/Miscellaneous/MyGrid.png")]';
+const GRID_COMCREATABLE = "[COMCreatable(False)]";
+
+// The ClassId attribute of GridColumn (the first line of MyGrid.twin) made `[ ClassId () ]`, as
+// a person types it above a class: the compiler then offers to insert a GUID, as a line above it.
+// The text is replaced in the page and put back.
+const CLASSID_EMPTY = "[ ClassId () ]";
+const classIdInsertShot = {
+  out: "Tutorials/CustomControls/Images/ccClassIdInsert.png",
+  setup: "customcontrols",
+  async take({ c }) {
+    await resetUi(c);
+    await openFile(c, CC_FILE("MyGrid.twin"));
+    const original = await editorText(c);
+    try {
+      await c.evaluate(`(() => {
+  const m = editor.getModel();
+  editor.executeEdits("shoot_docs", [{ range: new monaco.Range(1, 1, 1, m.getLineMaxColumn(1)), text: ${JSON.stringify(CLASSID_EMPTY)} }]);
+  editor.focus();
+  editor.setPosition({ lineNumber: 1, column: 12 });
+  editor.setScrollTop(0);
+})()`);
+      // the hint and the squiggle under ClassId come from the compiler
+      const hint = await waitFor(
+        c,
+        () =>
+          c.evaluate(
+            `document.querySelector(".codeLensWidgetText")?.textContent.includes("randomly generated GUID") && !!document.querySelector(".monaco-editor .squiggly-error")`,
+          ),
+        { timeout: 20000, interval: 200 },
+      );
+      if (!hint) throw new Error("the compiler offered no GUID for an empty ClassId");
+      return await codeLines(c, "ccClassIdInsert", CLASSID_EMPTY, CLASSID_EMPTY, {
+        bare: true,
+        include: [{ css: ".codeLensWidget", rows: true }, ".codeLensWidgetText"],
+      });
+    } finally {
+      await c.evaluate(`editor.getModel().setValue(${JSON.stringify(original)})`);
+      await closeTabs(c, [], { discard: true });
+    }
+  },
+};
+
+const customControlsCodeShots = [
+  grid("ccCustomControlAttribute", GRID_CUSTOMCONTROL, GRID_CUSTOMCONTROL),
+  grid("ccClassIdAttribute", GRID_CUSTOMCONTROL, '[ClassId("8C2E5A47'),
+  grid("ccCOMCreatable", GRID_CUSTOMCONTROL, "Class MyGrid", {
+    annotate: [
+      {
+        type: "arrow",
+        from: { of: { code: GRID_COMCREATABLE }, at: "right", dx: 130 },
+        to: { code: GRID_COMCREATABLE },
+      },
+    ],
+  }),
+  grid("ccICustomControl", "Class MyGrid", "Implements CustomControls.ICustomControl", {
+    hover: {
+      line: "Implements CustomControls.ICustomControl",
+      word: "ICustomControl",
+      offset: 3,
+      text: "interface ICustomControl",
+    },
+    include: [".monaco-hover"],
+  }),
+  classIdInsertShot,
+  {
+    // a property pair that repaints the control, in a class of its own
+    out: "Tutorials/CustomControls/Images/ccMyFieldCustomProperty.png",
+    setup: "customcontrols",
+    async take({ c }) {
+      await resetUi(c);
+      await openFile(c, CC_FILE("MyGridProperty.twin"));
+      return codeLines(c, "ccMyFieldCustomProperty", "Private _MyField", "ControlContext.Repaint", {
+        bare: true,
+        after: 1,
+      });
+    },
+  },
+  {
+    // the JSON of a saved form, from View As JSON on its row in the Project Explorer: the lines
+    // of MyGrid1's MyField and Name
+    out: "Tutorials/CustomControls/Images/ccMyFieldJson1a.png",
+    setup: "customcontrols",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        await peOpen(c, "Sources", true);
+        await peRightClick(c, "frmCustomJson.tbform");
+        const it = (await menuItems(c)).find((i) => i.text === "View As JSON");
+        if (!it) throw new Error("the form's context menu has no View As JSON");
+        await clickAt(c, it.x + it.width / 2, it.y + it.height / 2);
+      } finally {
+        await closeMenus(c);
+      }
+      const shown = await waitFor(
+        c,
+        async () =>
+          (await editorTabs(c)).some((t) => t.name.startsWith("JSON:")) &&
+          (await c.evaluate(`editor.getModel()?.getValue().includes('"MyField"') ?? false`)),
+        { timeout: 10000, interval: 100 },
+      );
+      if (!shown) throw new Error("View As JSON opened no JSON of the form");
+      try {
+        return await codeLines(c, "ccMyFieldJson1a", '"MyField"', '"Name": "MyGrid1"', { bare: true });
+      } finally {
+        await closeTabs(c);
+      }
+    },
+  },
+];
+
+// ---- the editor alone: the code a page shows (setups code and sample9)
+
+// The build select of the toolbar changed as a person does, and the compiler's answer awaited:
+// the lines of the branch that is not compiled are greyed (the editor's excluded-code style).
+async function buildConfiguration(c, value) {
+  const greyed = (n) =>
+    c.evaluate(`editor.getLineDecorations(${n}).some((d) => /ExcludedCode/.test(d.options.inlineClassName || ""))`);
+  await c.evaluate(`(() => {
+  const e = document.getElementById("buildConfigSelector");
+  e.value = ${JSON.stringify(value)};
+  e.dispatchEvent(new Event("change", { bubbles: true }));
+})()`);
+  // the Win64 branch (line 4) is greyed in win32 and the Else branch (line 7) in win64
+  const moved = await waitFor(
+    c,
+    async () => (await greyed(4)) === (value === "win32") && (await greyed(7)) === (value === "win64"),
+    { timeout: 20000, interval: 100 },
+  );
+  if (!moved) throw new Error(`the editor did not grey the branch that ${value} does not compile`);
+  // the compiler restarts, and the DEBUG CONSOLE says so with the path of the project, which is
+  // under the Windows user's folder: its Clear button empties it, once the line is in
+  await waitFor(c, async () => /restarting from/.test(await textOf(c)), { timeout: 10000, interval: 100 });
+  for (let i = 0; i < 5 && /restarting from/.test(await textOf(c)); i++) {
+    const b = await rectOf(c, '[title="Clear Debug Console"]');
+    if (!b) throw new Error("the DEBUG CONSOLE has no Clear button");
+    await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+    await sleep(500);
+  }
+  await parkMouse(c);
+  await frames(c);
+}
+
+// The toolbar's build select, the editor's tab and the first eleven lines of ConstantsDemo, in
+// one clip, whichever build is chosen; win32 is put back after.
+function constantsShot(out, name, build) {
+  return {
+    out,
+    setup: "code",
+    async take({ c }) {
+      await resetUi(c);
+      await closeTabs(c, ["ConstantsDemo.twin"]);
+      await openFile(c, SAMPLE_FILE("Sources/ConstantsDemo.twin"), { line: 10, column: 1 });
+      try {
+        await buildConfiguration(c, build);
+        const bar = await toolbarRect(c);
+        const panel = await editorPanelRect(c);
+        const bottom = await c.evaluate(`(() => {
+  const p = editor.getScrolledVisiblePosition({ lineNumber: 11, column: 1 });
+  return editor.getDomNode().getBoundingClientRect().y + p.top + p.height + 2;
+})()`);
+        const clip = { x: panel.x, y: bar.y, width: 700, height: bottom - bar.y };
+        return await capture(c, name, snapOut(clip), { away: () => parkMouse(c) });
+      } finally {
+        await buildConfiguration(c, "win32");
+      }
+    },
+  };
+}
+
+// The inline hints that show an enumeration's values are the IDE's, drawn on every line when
+// IDE Options has Always show IDE Inline Code Hints ticked: ticked in the page, and put back.
+const HINTS_OPTION = "codeHintsVisibility2";
+const codeShots = [
+  constantsShot("Reference/Images/oHpCiV1.png", "oHpCiV1", "win32"),
+  constantsShot("Reference/Images/TYizrRW.png", "TYizrRW", "win64"),
+  {
+    out: "Reference/Images/flags-attribute.png",
+    setup: "code",
+    async take({ c }) {
+      await resetUi(c);
+      await openFile(c, SAMPLE_FILE("Sources/FlagsDemo.twin"));
+      const hints = (on) => c.evaluate(`liveIDEOptions.${HINTS_OPTION} = ${on}; changedIdeOptions();`);
+      try {
+        await hints(true);
+        const drawn = await waitFor(
+          c,
+          () =>
+            c.evaluate(
+              `[...document.querySelectorAll(".inlineDecoration")].some((e) => getComputedStyle(e, "::after").content.includes("1 << 3"))`,
+            ),
+          { timeout: 10000, interval: 100 },
+        );
+        if (!drawn) throw new Error("the editor drew no inline hints for the enumeration's values");
+        return await codeLines(c, "flags-attribute", "[Flags]", "End Enum", { bare: true, extraRight: 190 });
+      } finally {
+        await hints(false);
+      }
+    },
+  },
+];
+
+// Sample 9's WebView_Create handler, in a page wide enough for its longest comment line.
+const sample9Shots = [
+  {
+    out: "Tutorials/WebView2/Images/tbWebView2CreateEvent.png",
+    setup: "sample9",
+    async take({ c }) {
+      await resetUi(c);
+      return atSize(c, 1500, IDE_SIZE.height, async () => {
+        await openFile(c, "/NewProject/Sources/myMonacoControl.twin");
+        return codeLines(c, "tbWebView2CreateEvent", "Private Sub WebView_Create()", "End Sub", {
+          bare: true,
+          view: { width: 1500, height: IDE_SIZE.height },
+        });
+      });
+    },
+  },
 ];
 
 // The route a person takes: Standard EXE is selected on the New tab, and Open
@@ -4806,6 +5145,9 @@ const SHOTS = [
   ...designerShots,
   ...formShots,
   ...customControlsShots,
+  ...customControlsCodeShots,
+  ...codeShots,
+  ...sample9Shots,
   newProjectOptionsShot,
 ];
 
@@ -4824,7 +5166,10 @@ const PARTS = {
     { suffix: "-2", from: "IDE/Images/OpenEditors_1.png" },
     { suffix: "-3", from: "IDE/Images/PackagePublishing_1.png" },
   ],
-  customcontrols: [{ suffix: "-2", from: "Tutorials/CustomControls/Images/ccMyFieldClass.png" }],
+  customcontrols: [
+    { suffix: "-2", from: "Tutorials/CustomControls/Images/ccMyFieldClass.png" },
+    { suffix: "-3", from: "Tutorials/CustomControls/Images/ccCustomControlAttribute.png" },
+  ],
 };
 
 // About how long each job takes, in seconds, for queuing the longest first. They also decide
@@ -4848,6 +5193,9 @@ const JOB_SECONDS = {
   forms: 30,
   customcontrols: 50,
   "customcontrols-2": 45,
+  "customcontrols-3": 40,
+  code: 35,
+  sample9: 18,
   "no-project": 33,
   "no-project-2": 38,
   "no-project-3": 41,

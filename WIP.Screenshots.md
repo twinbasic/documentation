@@ -153,7 +153,7 @@ back).
   (`tbDocsHelp`, `GlobalSearchAddIn`).
 - **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE on its own claimed ports and
   private desktop, and splits the big setups into parts, longest first; a full run is about
-  105 s (it was ~765 s sequential; the jobs add up to ~590 s, so six IDEs cannot do much
+  110 s (it was ~765 s sequential; the jobs add up to over 600 s, so six IDEs cannot do much
   better). `--jobs 1` runs one IDE per setup in table order. Per-run
   state lives on the connection (`c.shot`), never in module variables.
 - **Diffs**: `--diffs <dir>` (never under `docs/`) writes, for each picture that differs from the
@@ -264,6 +264,17 @@ Format menu; Properties and Toolbox; replicas and composites; code views).
   ` = 42` in the page and reopens the form: an open designer never takes a new default and
   shows no RESYNC (the page's TIP says it does; only a default value was tested). A custom
   control's Left/Top/Width/Height read in twips, its `PixelCount` fields in pixels.
+- **Batch 4 is done** (the Compiler Constants pair, flags-attribute, the CustomControls code
+  crops, ClassId insert, the ICustomControl hover, the custom property, the form JSON,
+  tbWebView2CreateEvent). `codePart` wraps `codeLines` (any open file; `include`, `extraRight`,
+  `annotate`, `hover`, `view`, `bare`). Setup `code` stages `test/shots/code/` (ConstantsDemo,
+  FlagsDemo); `buildConfiguration` changes `buildConfigSelector`, waits for the greying to move,
+  and clears the DEBUG CONSOLE, whose compiler-restart line names the user's folder. Inline
+  hints need *Always show IDE Inline Code Hints* (`codeHintsVisibility2`, off by default), set
+  in the page only. The ClassId hint shows only for `[ ClassId () ]` above a class, put in by
+  `executeEdits`: typed, the IDE reformats it to `[ClassId()]` with no hint. The JSON view shows
+  the file's text, so `frmCustomJson.tbform` holds `"MyField": 0` (in `frmCustom` it would
+  override `= 42` in 1b). Setup `sample9` opens Sample 9, whose `WebView_Create` is unchanged.
 
 ## Open questions
 

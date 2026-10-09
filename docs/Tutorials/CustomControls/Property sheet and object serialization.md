@@ -13,7 +13,7 @@ The form designer property sheet will pickup any **_public_** custom properties 
 
 This is then persisted to your project as properties inside your form JSON structure:
 
-![CustomControl MyField JSON](Images/ccMyFieldJson1a.png)
+![Two lines of a form's JSON: the MyField property of the control MyGrid1 with the value 0, and the Name property with the value MyGrid1.](Images/ccMyFieldJson1a.png){:width="161" height="52"}
 
 The key to making this work is your control's [**Initialize**](../../tB/Packages/CustomControls/Framework/ICustomControl#initialize) method, which loads the saved values through the serializer that its Context object provides.  It might look something like this:
 
@@ -82,7 +82,7 @@ Arrays are supported.   The form designer allows for adding new elements, removi
 ## Property Get / Let
 Custom property procedures are supported.  You will find that using Property Get / Let procedures is required if you want property changes to trigger repainting of your control.
 
-![CustomControl custom property example](Images/ccMyFieldCustomProperty.png)
+![A private field _MyField, and a Property Get and a Property Let for MyField. The Property Get returns _MyField. The Property Let stores the value in _MyField and calls ControlContext.Repaint.](Images/ccMyFieldCustomProperty.png){:width="389" height="196"}
 
 Note that _**private**_ fields and properties do not form part of the serialization, and so will not appear on the property sheet.
 
