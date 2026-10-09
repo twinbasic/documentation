@@ -17,6 +17,10 @@
 //     IDE's theme so). It wins over localStorage and is never written there;
 //     a click on the button replaces it with the reader's own choice.
 //
+//   - Where storage throws, the snippet keeps the parameter in window.name
+//     instead (see renderHead in builder/template.mjs), so the button mirrors
+//     the attribute the snippet set, never storage alone.
+//
 // A matching inline no-flash snippet in <head> applies the override before
 // first paint; both MUST agree on the 'theme' storage key.
 (function () {
@@ -40,18 +44,27 @@
   // -- discoverable on focus at any time, not only via the live-region announce.
   var baseLabel = button.getAttribute("aria-label") || "Theme";
 
+  // What the no-flash snippet applied: the ?theme= parameter or the stored
+  // choice, or, where storage throws, what the frame's window.name kept.
+  function shownChoice() {
+    var shown = root.getAttribute("data-theme");
+    return shown === "light" || shown === "dark" ? shown : "system";
+  }
+
   function currentChoice() {
     try {
       var stored = sessionStorage.getItem(KEY) || localStorage.getItem(KEY);
       if (stored === "light" || stored === "dark") return stored;
     } catch (_e) {
-      // localStorage unavailable (private mode) -- fall through to system.
+      // Storage unavailable (private mode, or a frame of another site whose
+      // storage is blocked): the page's own theme is the choice.
+      return shownChoice();
     }
     return "system";
   }
 
   // `persist` stores the choice as the reader's own, in place of any ?theme=
-  // override; the first sync after load only mirrors what is stored.
+  // override; the first sync after load only mirrors what the page shows.
   function apply(choice, announce, persist) {
     if (choice === "system") {
       root.removeAttribute("data-theme");
@@ -73,8 +86,10 @@
     if (status && announce) status.textContent = name;
   }
 
-  // Sync the button to whatever the no-flash snippet already applied, then reveal.
-  apply(currentChoice(), false, false);
+  // Sync the button to whatever the no-flash snippet already applied, then
+  // reveal. Read from the page rather than from storage, which may throw where
+  // the snippet applied a ?theme= parameter all the same.
+  apply(shownChoice(), false, false);
   button.hidden = false;
 
   button.addEventListener("click", function () {

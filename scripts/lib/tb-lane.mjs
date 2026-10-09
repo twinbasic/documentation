@@ -20,7 +20,7 @@
 // which shows the outline of one. Outside the runner addinLane() returns null
 // and the scenario is skipped, so a bare `node --test` never starts an IDE.
 
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { buildAddin } from "./tb-addin.mjs";
 import { addAddin, makeIdeCopy, removeIdeCopy } from "./tb-ide-copy.mjs";
@@ -33,7 +33,7 @@ import {
   launchIde,
   readCrash,
   setBuildTarget,
-  shutdownIde,
+  shutdownIdeAsync,
   summaryLine,
   waitForCompile,
 } from "./tb-ide.mjs";
@@ -58,9 +58,11 @@ export class Lane {
    * @param {string} o.work     its work folder, inside the temp folder
    * @param {string} o.ide      the install's twinBASIC.exe, which the lane copies
    * @param {boolean} [o.show]  IDEs on the user's desktop instead of a private one
+   * @param {string} [o.browserArgs]  more WebView2 browser arguments for every IDE
+   *   the lane opens, as launchIde takes them
    */
-  constructor({ name, port, work, ide, show = false }) {
-    Object.assign(this, { name, port, work, ide, show });
+  constructor({ name, port, work, ide, show = false, browserArgs = "" }) {
+    Object.assign(this, { name, port, work, ide, show, browserArgs });
     this.exe = null; // the lane's copy of the install, made on first use
     this.run = null; // the open IDE, from launchIde
     this.c = null; // the connection to it
@@ -78,6 +80,15 @@ export class Lane {
   copy() {
     if (!this.exe) this.exe = makeIdeCopy({ ide: this.ide, dest: path.join(this.work, "ide") });
     return this.exe;
+  }
+
+  // The install's projects folder -- New Project's templates and the samples,
+  // which makeIdeCopy leaves out (29 MB) -- copied into the lane's copy, for an
+  // IDE that is to show them.
+  includeProjects() {
+    const dest = path.join(path.dirname(this.copy()), "projects");
+    if (!existsSync(dest))
+      cpSync(path.join(path.dirname(path.resolve(this.ide)), "projects"), dest, { recursive: true });
   }
 
   // The lane's APPDATA, made the first time an IDE needs it.
@@ -219,7 +230,14 @@ export class Lane {
       }),
     });
     const appdata = this.appdataDir();
-    this.run = await launchIde({ exe, project, port: this.port, show: this.show, env: { APPDATA: appdata, ...env } });
+    this.run = await launchIde({
+      exe,
+      project,
+      port: this.port,
+      show: this.show,
+      env: { APPDATA: appdata, ...env },
+      browserArgs: this.browserArgs,
+    });
     Object.assign(this, { src, project });
     this.c = await attachIde(this.port);
     if (!this.c) throw new Error(`lane ${this.name}: the IDE never exposed a debug port`);
@@ -231,6 +249,31 @@ export class Lane {
         throw new Error(`lane ${this.name}: ${e.message}`);
       });
     }
+    return this.c;
+  }
+
+  /**
+   * Start the lane's copy with no project, as from its icon: the splash, then
+   * the New / Open Project dialog, every menu in its no-project state. There is
+   * no compile to wait for; the caller waits for what it needs.
+   *
+   * @param {object} [o]
+   * @param {object} [o.env]  extra environment for the IDE, as for open
+   * @returns {Promise<object>} the connection (attachIde's)
+   */
+  async openNoProject({ env = {} } = {}) {
+    if (this.run) throw new Error(`lane ${this.name} has an IDE open already: one IDE at a time`);
+    const exe = this.copy();
+    this.run = await launchIde({
+      exe,
+      port: this.port,
+      show: this.show,
+      env: { APPDATA: this.appdataDir(), ...env },
+      browserArgs: this.browserArgs,
+    });
+    Object.assign(this, { src: null, project: null });
+    this.c = await attachIde(this.port);
+    if (!this.c) throw new Error(`lane ${this.name}: the IDE never exposed a debug port`);
     return this.c;
   }
 
@@ -299,7 +342,9 @@ export class Lane {
         c.close();
       }
     } finally {
-      shutdownIde(run);
+      // not shutdownIde: its taskkill and its wait stop the process for a lane that
+      // is not the only thing the process runs (shoot_docs runs several)
+      await shutdownIdeAsync(run);
     }
     const problems = [];
     if (crash)

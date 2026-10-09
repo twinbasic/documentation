@@ -94,7 +94,10 @@ export function killTree(pid) {
  *
  * @param {object} o
  * @param {string} o.exe      twinBASIC.exe
- * @param {string} o.project  the .twinproj to open; resolved here
+ * @param {string} [o.project]  the .twinproj to open; resolved here. Without one
+ *                            the IDE starts as from its icon: the splash, then
+ *                            the New / Open Project dialog, every menu in its
+ *                            no-project state
  * @param {number} o.port     DevTools port; also keys the WebView2 profile
  *                            folder and the private desktop's name
  * @param {boolean} [o.show]  on the user's desktop instead of a private one
@@ -113,11 +116,15 @@ export function killTree(pid) {
  * @param {object} [o.env]    extra environment for the IDE. ADDIN_TEST_ENV is
  *                            set to "1" unless this names it; a value of
  *                            undefined leaves a variable out altogether
+ * @param {string} [o.browserArgs]  more WebView2 browser arguments, after the
+ *                            DevTools ones, e.g. "--force-device-scale-factor=1"
+ *                            to lay the page out at 100% whatever the display's
+ *                            scaling
  * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null}>}
  *   `pid` is the IDE's own. Throws when the port is taken, or when the launch
  *   fails.
  */
-export async function launchIde({ exe, project, port, show = false, keep = false, env = {} }) {
+export async function launchIde({ exe, project, port, show = false, keep = false, env = {}, browserArgs = "" }) {
   const waitFrom = Date.now();
   for (;;) {
     const code = await portTaken(port);
@@ -136,7 +143,7 @@ export async function launchIde({ exe, project, port, show = false, keep = false
     await sleep(100);
   }
   const exeWin = exe.split("/").join("\\");
-  const target = path.resolve(project).split("/").join("\\");
+  const target = project ? path.resolve(project).split("/").join("\\") : "";
   // Each IDE has a temp folder of its own, emptied at each launch on its port.
   // Builds sharing one fail now and then with `[TYPELIB] failed to finalize
   // typelibrary.  Disk error?`: 0 in 192 with a folder per IDE, 8 in 192 with
@@ -154,14 +161,16 @@ export async function launchIde({ exe, project, port, show = false, keep = false
     ...process.env,
     TEMP: ideTemp,
     TMP: ideTemp,
-    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port} --remote-allow-origins=*`,
+    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [`--remote-debugging-port=${port}`, "--remote-allow-origins=*", browserArgs]
+      .filter(Boolean)
+      .join(" "),
     WEBVIEW2_USER_DATA_FOLDER: `${process.env.TEMP}/tbbuild-wv2-${port}`,
     [ADDIN_TEST_ENV]: "1",
     ...env,
   };
 
   if (show) {
-    const child = spawn(exeWin, [target], { detached: true, stdio: "ignore", env: fullEnv });
+    const child = spawn(exeWin, target ? [target] : [], { detached: true, stdio: "ignore", env: fullEnv });
     // A spawn that fails is reported by an 'error' event, not a throw, and an
     // 'error' nothing listens for ends this process with exit 1, which tbbuild
     // and tbrun define as compile errors. 'spawn' says the IDE started.

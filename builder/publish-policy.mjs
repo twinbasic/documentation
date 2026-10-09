@@ -73,12 +73,21 @@ export const EXTENSIONLESS_FILENAMES = new Set(["CNAME"]);
 // exempt from the extension rule -- that is what declaring one means.
 // It is how `Features/Packages/downloads/impexp.py` and `impexp.mjs` ship
 // while a stray `.py` or `.mjs` anywhere else still fails.
+//
+// `addin_project` declares one file the build itself writes, the help
+// add-in's project file (addin-project.mjs), and is exempt the same way on
+// the tree surface only: a .twinproj is not a publishable type, and one found
+// in docs/ is refused even at that path, because the build writes the file
+// there and a copy in the source tree could only be a stale one.
 export function publishPolicyFor(config) {
   const declared = new Set();
   for (const entry of config?.bundle_extra ?? []) {
     if (entry?.dest) declared.add(posix(String(entry.dest)));
   }
-  return { declared };
+  const generated = new Set();
+  const addin = config?.addin_project;
+  if (addin?.dest) generated.add(posix(String(addin.dest)).replace(/^\/+/, ""));
+  return { declared, generated };
 }
 
 // Returns null when `rel` may be published, or a short reason when it may
@@ -131,9 +140,10 @@ export function unpublishableSourceFiles(staticFiles, policy) {
 // vendored theme assets and generated auxiliaries.
 export function unpublishableTreePaths(rels, policy) {
   const extensions = new Set([...SOURCE_EXTENSIONS, ...BUILD_EXTENSIONS]);
+  const declared = new Set([...policy.declared, ...(policy.generated ?? [])]);
   const out = [];
   for (const rel of rels) {
-    const why = refuse(rel, extensions, policy.declared);
+    const why = refuse(rel, extensions, declared);
     if (why) out.push({ rel: posix(rel), why });
   }
   return out.sort(byRel);

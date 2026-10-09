@@ -71,7 +71,7 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Twenty-one steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Twenty-two steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
@@ -83,17 +83,18 @@ The tests the toolchain has to pass. Twenty-one steps, each stopping the run if 
 8. [`test/png.test.mjs`](#png-test) --- unit tests for the pictures of a bug reproducer: PNG decoding, comparing and the side-by-side image, the files behind `images` and `expect.imagesDiffer`, and the refusals of `bug_repro.mjs` over fixtures.
 9. [`test/example-batches.test.mjs`](#example-batches-test) --- runs `check_examples.mjs`'s probes, which test how samples are batched and how a crashed batch is cut down, without an IDE.
 10. [`test/ports.test.mjs`](#ports-test) --- unit tests for how the harness claims the DevTools ports its IDEs use, without an IDE.
-11. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
-12. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
-13. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
-14. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
-15. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-16. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
-17. [`scripts/check_attribute_sweep.mjs`](#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
-18. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-19. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, have each of them in their shim's table of targets, and run.
-20. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
-21. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+11. [`test/addin-project.test.mjs`](#addin-project-test) --- unit tests for how the build packs the help add-in's project file: exactly the files git tracks in `add-in/`, never `Resources/HELP/`, the same bytes from any checkout.
+12. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
+13. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
+14. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
+15. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
+16. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
+17. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
+18. [`scripts/check_attribute_sweep.mjs`](#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
+19. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+20. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, have each of them in their shim's table of targets, and run.
+21. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
+22. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -107,6 +108,7 @@ POSIX:
       && node --test test/png.test.mjs \
       && node --test test/example-batches.test.mjs \
       && node --test test/ports.test.mjs \
+      && node --test test/addin-project.test.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
@@ -121,7 +123,7 @@ POSIX:
 
 Exit codes: **0** every step passed; otherwise the code of the step that stopped the run, as that step's entry gives it.
 
-**Eighteen of the twenty-one cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all twenty-one unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
+**Nineteen of the twenty-two cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, the help add-in's source in `add-in/`, a wrapper, or a workflow. Both CI workflows run all twenty-two unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The three exceptions are [`check_code_regions.mjs`](#check-code-regions), [`check_gate_lists.mjs`](#check-gate-lists), which reads this page, and [`check_lint.mjs`](#check-lint), which lints the site's scripts in `docs/assets/js/`. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -245,7 +247,7 @@ Entry point for the static site generator. Every caller adds flags to the bare `
 | Caller | Invocation |
 |---|---|
 | `build.bat` | `--src docs --check-audit-index` (plus anything passed through) |
-| `checks.yml` (PR checks) | `--src docs --no-fetch-assets --no-help-archive --check-audit-index` |
+| `checks.yml` (PR checks) | `--src docs --no-fetch-assets --check-audit-index` |
 | `tbdocs-gh-pages.yml` (deploy) | the same, plus `--url` and `--baseurl` from the Pages environment |
 
 Full invocation:
@@ -275,7 +277,7 @@ Full invocation:
 | `--dry-run` | Skip every filesystem write. Useful for benchmarking or validating discovery / compute / render. |
 | `--no-offline` | Skip the offline tree pass. |
 | `--no-pdf` | Skip the PDF tree pass. |
-| `--no-help-archive` | Do not write the [help archive](#the-help-archive). CI passes it. |
+| `--no-help-archive` | Do not write the [help archive](#the-help-archive). The project file the build publishes then holds no archive, so CI never passes it. |
 | `--tolerate-missing-images` | Downgrade Phase 8's missing-image error to a warning. Use when the source tree is mid-edit and may temporarily reference an image that does not yet exist. |
 | `--fetch-assets` / `--no-fetch-assets` | Force remote-asset vendoring on or off. Without either flag, the build downloads missing YouTube thumbnails and GitHub user-attachment images on a dev machine, and refuses to download anything when `$CI` is set --- a referenced but uncommitted asset is a hard build error there. See [Authoring Pages](Authoring#committing-downloaded-assets). |
 | `--profile-offline` | Print per-substep timing for the offline tree pass. |
@@ -294,14 +296,35 @@ A command-line error --- an unknown flag, an unexpected argument, a flag without
 
 Exit codes: **0** nothing to report (with `--serve`, the server was stopped with Ctrl+C); **1** the build or its check found a problem: a link or integrity failure, a failed build step, a fall in the page count, or a symbol-index URL lost; **2** a refused command line (a `--dest` the build refuses included), a build stopped by the stall watchdog, with `--serve` a failed first build or a port in use, or a crash.
 
+#### The help add-in's project file
+{: #the-help-add-ins-project-file }
+
+Every build of the documentation, CI's included, packs the IDE help add-in's source folder, `add-in/`, into a project file and publishes it, so that [Help Add-In](../../tB/IDE/AddIns/Help) can offer it as a download. `_config.yml` declares it:
+
+```yaml
+addin_project:
+  src: ../add-in
+  dest: tB/IDE/AddIns/downloads/tbDocsHelp.twinproj
+```
+
+`src` is resolved against `docs/`, as a `bundle_extra` source is, and `dest` is the file's path in the online tree, a `downloads` folder beside the page, as the [Import/Export Tool](../../Features/Packages/Import-Export-Tool)'s downloads are beside its page. The offline tree holds no copy: the project carries the offline tree's archive, which the offline tree could not hold as well. A link in an offline page to a file only the online tree holds, this one included, is written as the website's absolute URL, and is not counted as an unresolved link. The `addinProject` task (`builder/addin-project.mjs`) writes the file once the symbol index and the help archive are written, and prints one line:
+
+    add-in project: tB/IDE/AddIns/downloads/tbDocsHelp.twinproj, 21 files, 26.9 MB, with the offline archive, in 1 tree (143 ms)
+
+What goes in is the files git tracks in `add-in/`, as they are in the working folder, so an edit not yet committed is in a local build's file and a file nobody has added never is. A second line names any file git does not track there that was left out. A `site.zip` in `Resources/HELP/` on the disk is never packed. The file holds the [help archive](#the-help-archive) this build wrote as `Resources/HELP/site.zip`, byte for byte, so the add-in built from it serves the pages itself, without the internet. A build that wrote no archive (`--no-help-archive`, `--serve`, a `--dest` other than `docs/_site`, a fixture) packs none, and its line says `without the offline archive`; the add-in built from that file shows the pages from the website. `Resources/SYMBOLS/symbols.json` is replaced by the `tB/symbols.json` the same build wrote, so the download always holds the index of the pages it is published with. Line endings are packed as git stores them: CRLF becomes LF in every file outside `Resources/`, which `.gitattributes` checks out byte for byte, and the code files then get CRLF, as the IDE stores them. A Windows build and a Linux build therefore write the same bytes, and two builds of one tree write the same file. The pack is `importProject` from `scripts/impexp.mjs`, run in the build's own process; it needs Node and git, and neither twinBASIC nor Python.
+
+A `.twinproj` is not a publishable type: the [publish allowlist](#check-publish-policy) exempts this one path in the output trees, and still refuses a `.twinproj` anywhere else, and one found in `docs/`. `--dry-run` writes nothing, `--serve` writes the file into its one tree so that the preview's link works, and a build of a source tree whose `_config.yml` declares no `addin_project` (the test fixtures) packs nothing. A pack that fails --- `git` missing, say --- is reported and fails the build with exit code 1; the trees are still written, and the index audit then reports the missing file too. [`test/addin-project.test.mjs`](#addin-project-test) tests what the file holds.
+
 #### The help archive
 {: #the-help-archive }
 
-A local build ends by writing the zip the IDE help add-in serves the documentation from. The add-in embeds `add-in/Resources/HELP/site.zip` in its DLL as a resource, and the build writes that file from the offline tree it has just written. It writes the archive last, after the build-time chart has been added to `BuildInfo.html` in both trees, so the archive holds the pages as they are on disk. The step prints one line:
+Every build writes the zip the IDE help add-in serves the documentation from. The add-in embeds `add-in/Resources/HELP/site.zip` in its DLL as a resource, and the build writes that file from the offline tree. The `helpArchive` task runs once every task that writes into the offline tree has finished, and before the build-time chart is added to `BuildInfo.html` in both trees. So the archive holds `BuildInfo.html` without the chart and `assets/images/gantt.svg` as the placeholder the sources hold, and two builds of one tree write the same archive. The step prints one line:
 
-    help archive: add-in/Resources/HELP/site.zip, 1471 entries, 21.2 MB (1.2 s)
+    help archive: add-in/Resources/HELP/site.zip, 1475 entries, 26.0 MB (0.3 s)
 
-The zip is not committed, because it is too large; `add-in/Resources/HELP/` is listed in `.gitignore`. Only a build of the documentation tree into `docs/_site-offline` writes it. A build of another source tree (the test fixtures, for one) or into another `--dest`, `--serve`, `--dry-run` and a build without an offline tree leave it alone, and so does `--no-help-archive`, which both CI workflows pass. A file the build cannot write, or an archive that does not match the tree, fails the build with exit code 1.
+The zip is not committed, because it is too large; `add-in/Resources/HELP/` is listed in `.gitignore`. The [help add-in's project file](#the-help-add-ins-project-file) carries the zip this build wrote. Only a build of the documentation tree into `docs/_site-offline` writes it. A build of another source tree (the test fixtures, for one) or into another `--dest`, `--serve`, `--dry-run` and a build without an offline tree leave it alone, and so does `--no-help-archive`. Neither CI workflow passes that flag, because the project file CI publishes would then hold no archive; `check_ci_workflows.mjs` fails when one does. A file the build cannot write, or an archive that does not match the tree, fails the build with exit code 1.
+
+The build ends by checking the offline tree on disk against the archive again, now that the chart is in. It must list the same files, and only `BuildInfo.html` and `assets/images/gantt.svg` may differ in content. A file written into the offline tree after the archive was made fails the build, and so does a missing one.
 
 The reader on the twinBASIC side does no inflating of its own, so the format is fixed. There is one entry per file and no directory entries. A name is relative to the tree root, uses forward slashes and is UTF-8, with general-purpose flag bit 11 set. Entries are sorted by name in code-unit order, so the same tree gives the same bytes. The DOS date and time are always 1980-01-01 00:00, the version made by and needed is 20, and there are no extra fields, no comments and no data descriptors: the CRC-32 and both sizes are in the local header and in the central directory. There is no zip64, so a tree of more than 65,535 files, or an archive of 4 GB, is refused. Files that are compressed already (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.ico`, `.woff2`, `.woff`, `.mp4`, `.zip`, `.pdf`) are stored. Every other file is deflated at level 9, and stored instead when the deflated data is not smaller than the file.
 
@@ -322,7 +345,8 @@ Offline (filesystem-only) link checker plus optional integrity checks. Multiple 
 | `--index-files <list>` | Comma-separated list of filenames to try when a URL resolves to a directory. Use `'index.html,.'` to also accept the directory itself as a valid target. |
 | `--base-path <prefix>` | Strip this prefix from root-absolute URLs before resolving. Used in CI when `--baseurl` is set. |
 | `--include-fragments` | Resolve `#fragment` anchors against the target page's IDs. |
-| `--forbid <prefix>` | Repeatable. Fail the run if any extracted link starts with `prefix`. Used by the offline pass to catch live-site links the offlinify rewrite missed (the bare prefix and `prefix/` are exempt). |
+| `--forbid <prefix>` | Repeatable. Fail the run if any extracted link starts with `prefix`. Used by the offline pass to catch live-site links the offlinify rewrite missed (the bare prefix and `prefix/` are exempt). On a built offline tree, pass `--online-root` as well, or the links the rewrite writes on purpose to files only the website holds are reported. |
+| `--online-root <dir>` | The online tree the `--forbid` prefixes serve. A forbidden link to a file that tree holds and the checked tree does not is the offline rewrite's link to the website, and is not reported, as the build's own offline check does not report it. A link to a page both trees hold is still a rewrite that was missed. |
 | `--check-html` | Assert HTML well-formedness. |
 | `--check-a11y` | Report accessibility hints (missing `alt`, etc.). |
 | `--check-ids` | Flag duplicate `id` attributes within a page. |
@@ -456,7 +480,7 @@ Not a command --- `scripts/lib/axe-scan.mjs` is the shared module that **defines
 
 The gate on the publish allowlist. Everything under `docs/` that is not a page is copied into the published site verbatim, so the source tree's shape is the site's shape --- [`builder/publish-policy.mjs`](Builder#module-map) is the list of types that may be published, enforced inside the build at the source inventory and again at each output tree's inventory. A finding there aborts the build rather than setting an exit code: a broken link still leaves a tree worth inspecting, a tree with a private key in it does not.
 
-A clean build only says **nothing in `docs/` is currently refused**, which is also what an allowlist widened until it refuses nothing would say, and no build over a clean tree can distinguish the two. So this asserts the other half: thirteen named probes that must stay refused (a `.bak`, a `.pem`, a `.docx`, a `.twin`, a `secrets.json`, a `Thumbs.db`, a frontmatter-less `.md`, an extensionless `LICENSE`, a dotfile), six that must keep publishing (`.png`, `.PNG`, `.woff2`, `.txt`, `.html`, `CNAME`), that `bundle_extra` exemptions stay scoped to the exact declared path rather than blessing the extension everywhere, and that `SOURCE_EXTENSIONS` and `BUILD_EXTENSIONS` stay disjoint --- folding the two together would pass every other assertion here while quietly making a stray `docs/secrets.json` publishable.
+A clean build only says **nothing in `docs/` is currently refused**, which is also what an allowlist widened until it refuses nothing would say, and no build over a clean tree can distinguish the two. So this asserts the other half: thirteen named probes that must stay refused (a `.bak`, a `.pem`, a `.docx`, a `.twin`, a `secrets.json`, a `Thumbs.db`, a frontmatter-less `.md`, an extensionless `LICENSE`, a dotfile), six that must keep publishing (`.png`, `.PNG`, `.woff2`, `.txt`, `.html`, `CNAME`), that `bundle_extra` exemptions stay scoped to the exact declared path rather than blessing the extension everywhere, that the [help add-in's project file](#the-help-add-ins-project-file) publishes from the output trees at its declared path and a `.twinproj` nowhere else, and that `SOURCE_EXTENSIONS` and `BUILD_EXTENSIONS` stay disjoint --- folding the two together would pass every other assertion here while quietly making a stray `docs/secrets.json` publishable.
 
 It also checks that the refusal *message* for a `.md` still names a fault that can happen, which is a narrower thing than it sounds. The message tells the reader the opening `---` must be the first line, and that is the right advice only because the two causes that come to mind first are handled elsewhere: a UTF-8 BOM is stripped before parsing, and malformed YAML aborts with its own error. An earlier draft named the BOM and would have sent every reader hunting for something that cannot occur, so all three behaviours are now asserted against real files --- nothing else in the repository covers them.
 
@@ -469,7 +493,7 @@ Exit codes: **0** every assertion held, and the source tree holds no file the al
 
     node scripts/check_tree_fresh.mjs [--tree DIR] [--source DIR ...]
 
-`check.bat`'s first gate. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. The build's own output trees under `docs/` are not sources, and which folders those are comes from `lib/markdown-files.mjs`, the list [`check_code_regions.mjs`](#check-code-regions) walks by. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. The message for a stale tree names `build.bat`.
+`check.bat`'s first gate. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the sources against the built tree's `index.html`. The sources are `docs/`, `builder/` and `lib/`, and the two inputs of the [help add-in's project file](#the-help-add-ins-project-file): `add-in/`, less the help archive and the add-in's copy of the symbol index, which the build writes, and `scripts/impexp.mjs`. The build's own output trees under `docs/` are not sources, and which folders those are comes from `lib/markdown-files.mjs`, the list [`check_code_regions.mjs`](#check-code-regions) walks by. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. The message for a stale tree names `build.bat`.
 
 Exit codes: **0** the tree is at least as new as its inputs; **1** the tree is stale (run `build.bat`); **2** the check could not run: a refused command line, no built tree or marker file, or a crash.
 
@@ -556,7 +580,7 @@ Exit codes: **0** the wrappers match the gate lists, every stated count agrees, 
 
     node scripts/check_ci_workflows.mjs
 
-The same question as [`check_gate_lists.mjs`](#check-gate-lists), asked of the two CI workflows, which nothing else reads. It requires that `checks.yml` and `tbdocs-gh-pages.yml` each run every gate [`test.bat`](#testbat) and [`check.bat`](#checkbat) run, with the same arguments and in each wrapper's own order; that the two workflows run the same gate steps in the same order; and that each workflow's build passes every argument [`build.bat`](#buildbat) passes, plus `--no-fetch-assets`. A step dropped from a workflow, a gate added to a wrapper and never to CI, or a lost `--check-audit-index` would otherwise leave CI green over a check it had stopped making.
+The same question as [`check_gate_lists.mjs`](#check-gate-lists), asked of the two CI workflows, which nothing else reads. It requires that `checks.yml` and `tbdocs-gh-pages.yml` each run every gate [`test.bat`](#testbat) and [`check.bat`](#checkbat) run, with the same arguments and in each wrapper's own order; that the two workflows run the same gate steps in the same order; and that each workflow's build passes every argument [`build.bat`](#buildbat) passes, plus `--no-fetch-assets`, and never `--no-help-archive`, because the help add-in's project file that CI publishes would then hold no [help archive](#the-help-archive). A step dropped from a workflow, a gate added to a wrapper and never to CI, or a lost `--check-audit-index` would otherwise leave CI green over a check it had stopped making.
 
 The gates both workflows share are one composite action, `.github/actions/run-gates/action.yml`, and the gate reads a workflow step that uses a local action as that action's own steps. A local action it cannot read is a finding, so a renamed action cannot take its gates out of CI unnoticed.
 
@@ -602,7 +626,7 @@ Exit codes: **0** every test passed, **1** a test failed.
 
     node --test test/render.test.mjs
 
-Unit tests for the markdown-it plugins in `builder/render.mjs`, run by Node's own test runner through the site's own `createMarkdownIt`. The build compares whole pages, so a plugin that is wrong only on input no page holds passes it; these tests give each plugin such input. They cover the ellipsis plugin, which keeps the dots past the third in a run such as `....`, next to code spans, dashes, guillemets, quotes and autolinks. No browser, no built tree, well under a second.
+Unit tests for the markdown-it plugins in `builder/render.mjs`, run by Node's own test runner through the site's own `createMarkdownIt`. The build compares whole pages, so a plugin that is wrong only on input no page holds passes it; these tests give each plugin such input. They cover the ellipsis plugin, which keeps the dots past the third in a run such as `....`, next to code spans, dashes, guillemets, quotes and autolinks. They also cover the offline tree's URL rewrite in `builder/offline-rewrite.mjs` for a link to a file only the website holds: a link the offline tree holds becomes page-relative, one that only the online tree holds becomes the website's absolute URL (with the base path, and encoded) and is not counted as unresolved, and one in neither tree stays as written and is. No browser, no built tree, well under a second.
 
 Exit codes: **0** every test passed, **1** a test failed.
 
@@ -639,6 +663,15 @@ Exit codes: **0** every test passed, **1** a test failed.
     node --test test/ports.test.mjs
 
 Unit tests for `scripts/lib/tb-ports.mjs`, which claims the DevTools ports that [`addin_test.mjs`](#addin-test), [`ide_test.mjs`](#ide-test) and [`try_help_addin.mjs`](#try-help-addin) start their IDEs on. A port is claimed with a lock file in `tb-ports` under the system temp directory before it is checked, and runs claim one at a time, so two runs started together never get the same one. Four child processes claim three ports each at the same time, from a range where one port is in use, one has the lock of a process that has ended and one the lock of a live process, and each holds its ports until all have claimed. The test checks that the claims are disjoint, that they are exactly the free ports with the stale lock taken over, and that each lock is gone once its process exits. Two more tests ask for more free ports than the range holds, which is refused with the port found unlocked again, and claim past the unfinished claim of a run that ended. Starts no IDE. No browser, no built tree, about 2 s.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
+### addin-project.test.mjs
+{: #addin-project-test }
+
+    node --test test/addin-project.test.mjs
+
+Unit tests for `builder/addin-project.mjs`, which packs the help add-in's folder, `add-in/`, into the project file the build publishes beside [Help Add-In](../../tB/IDE/AddIns/Help) (see [The help add-in's project file](#the-help-add-ins-project-file)). The build's index audit says only that the file is in each tree; nothing in the build reads what it holds. The first test packs the real `add-in/` and compares the project, file by file, with the files git tracks there: a file lost or gained, a changed file or a `Resources/HELP/` file in the project fails it. The others pack fixture folders, each a git repository of its own, for what the real folder cannot show on every machine: a file git does not track and a `Resources/HELP/site.zip` on the disk, tracked or not, are both left out, the archive the build hands over is packed as `Resources/HELP/site.zip` byte for byte, the index the build passes replaces the folder's copy, a CRLF checkout packs to the same bytes as an LF one, two packs are identical, and the file is written into exactly the trees it is given. A second group writes small archives with `lib/help-archive.mjs` and checks them against their tree, as the build does at its end: a tree as it was archived has no differences, only the files named may differ in content, and any other changed, added or removed file is named. Needs git; no browser, no built tree, no twinBASIC, about 1 s.
 
 Exit codes: **0** every test passed, **1** a test failed.
 
@@ -1354,34 +1387,74 @@ the copy.
 
 Exit codes: **0** the IDE was closed, and the registry is as it was found; **1** the add-in did not build, or the project does not compile; **2** the tool could not run: a refused command line, no IDE, no built site, a registry it could not record, or a crash; **3** the registry or the work folder was not put back (see the lines above).
 
-### shoot_help_addin.mjs
-{: #shoot-help-addin }
+### shoot_docs.mjs
+{: #shoot-docs }
 
-    node scripts/shoot_help_addin.mjs [--only <regex>] [--out <dir>] [--port N] [--ide <path>]
+    node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--port N] [--ide <path>]
 
-Writes the screenshots of the help add-in's documentation page, `Help_<Name>.png`, into
-`docs/IDE/AddIns/Images/`: `Pane`, `Hover`, `Search`, `Choices`, `Description`, `Settings`, `Window`
-and `Toolbar`. It builds the add-in in `add-in/` into a private copy of the twinBASIC install,
-opens the small demo project `test/addin/helpdemo` in an IDE on a private desktop, operates it
-and captures each picture, so that one run regenerates every image after a new BETA. The IDE is
-set up as a lane of [`addin_test.mjs`](#addin-test) is, with a private `APPDATA` and
-`TB_ADDIN_TEST` set to `1`, and it never appears on your desktop. The pane's pages come from the
-built site, `docs/_site`, served on `localhost`, so run `build.bat` first.
+Takes the documentation's screenshots of the IDE, so that one run regenerates them after a new
+BETA. Each picture belongs to a *setup*, one IDE brought to a known state, and a setup's IDE is
+started only when one of its pictures is selected:
 
-The pictures are repeatable: the IDE's page is given a fixed size of 1280 by 880 CSS pixels at
-2x, animations and the text caret are switched off, the theme is dark, and no picture shows the
-Debug Console, whose lines carry the time they were written. A picture is written only when its
-bytes differ from the file already there, and each is reported as `new`, `updated` or
-`unchanged`; a second run with nothing changed reports every picture `unchanged`. The Windows user
-name must never be in a published picture, so before each one is kept the visible text of the page
-it was taken from is searched for the name, and a picture whose page holds it is refused.
+- **help** builds the help add-in in `add-in/` into a private copy of the twinBASIC install and
+  opens the small demo project `test/addin/helpdemo`: the eight pictures of the [Help
+  Add-In](../../tB/IDE/AddIns/Help) page, `docs/IDE/AddIns/Images/Help_<Name>.png`. The pane's pages
+  come from the built site, `docs/_site`, served on `localhost`, so run `build.bat` first.
+- **no-project** starts the IDE with no project open: the menus under `docs/IDE/Menu/Images/`,
+  and the dialogs that need no project --- New / Open Project and its tabs, the Manage Keyboard
+  Shortcuts and Manage Panel Layouts dialogs, and the ones the FAQ shows.
+- **project** opens the demo project without the add-in, for the dialogs that show something
+  only with a project open: About, whose licence line needs the compiler, and IDE Options,
+  whose font lists do.
+- **sample**, **settings** and **glyphs** open `test/shots/sample`, a small Standard EXE made
+  for the pictures: the panels and the editor with a project, Project Settings (with the
+  settings files of `test/shots/settings`), and the icons the pages show inline.
 
-`--only` takes the pictures whose name matches a regular expression. `--out` is the folder the
-pictures go to. `--port` is where the search for the IDE's DevTools port starts, 9620 by default;
-the tool claims three, as `addin_test.mjs` does: the IDE's, the detached window's, and one for the
-IDE that builds the add-in, whose browser process can hold its port for a while after that IDE
-ends. The add-in's saved settings (`tbDocsHelp`) are emptied for the run
-and, with the IDE's registry entries, put back at the end.
+Every IDE is set up as a lane of [`addin_test.mjs`](#addin-test) is, with a private `APPDATA`
+and `TB_ADDIN_TEST` set to `1`, and it never appears on your desktop.
+
+The pictures are repeatable. The IDE lays its page out at 100% whatever the display's scaling,
+the page is given a fixed size of 1280 by 880 CSS pixels at 2x, animations and the text caret
+are switched off, and the theme is dark. The IDE's settings --- its options, panel layouts and
+keyboard shortcut groups --- are set to their defaults in the page only, and the recent-project
+lists are replaced there, so no picture shows your own choices or projects; nothing is saved.
+No picture shows the Debug Console, whose lines carry the time they were written. Menus are
+cut out, transparent around the menu; dialogs are taken whole. A picture that needs arrows, rings
+or numbered badges has them drawn by the tool in one style, anchored to the element they point at
+(`scripts/lib/shot-annotate.mjs`), so that a retake after a new BETA puts them where the element
+now is. A picture is written only when
+its bytes differ from the file already there, and each is reported as `new`, `updated` or
+`unchanged`; a second run with nothing changed reports every picture `unchanged`. The Windows
+user name must never be in a published picture, so before each one is kept the visible text of
+the page it was taken from is searched for the name, and a picture whose page holds it is
+refused.
+
+Every picture is twice the size it is shown at. A page that shows one gives it a `{:width
+height}` of half its pixel size, so that it is sharp on a high-resolution display and in the
+book.
+
+`--only` takes the pictures whose path under the output folder matches a regular expression,
+such as `Menu_File` or `IDE/Menu/`. `--out` is the folder those paths are under, `docs` by
+default. `--diffs` names a folder, outside `docs`, for a difference picture of each picture
+that is updated: the file on disk, the new picture and their difference side by side, with
+the region that differs magnified underneath. In the difference, a pixel that matches is a
+dark grey copy, and one that differs is yellow for a difference of one grey level, shading
+to red for large ones, so that a change too small to see stands out. The tool also writes
+one, named `.capture-<n>`, for each two captures of one state that disagree, which shows
+where the IDE's drawing varies from one frame to the next.
+
+`--jobs` is how many IDEs run at once, 6 by default and at most 16. Each runs on a
+private desktop with a port, a work folder and a copy of the install of its own, and the
+setups wait in a queue, the longest first. The three long setups, no-project, sample
+and customcontrols, are cut into three parts each, every part in an IDE of its own; each
+picture brings its IDE to the state it shows, so it comes out the same in a part as in the whole setup. Every line of
+output starts with the setup or part it is from. `--jobs 1` runs each setup whole in one IDE,
+one after another, in the order of the tool's table. `--port` is where the search for
+DevTools ports starts, 9700 by default; each IDE claims the first free one, and the help setup
+claims three, as `addin_test.mjs` does: the IDE's, the detached window's, and one for the IDE
+that builds the add-in, whose browser process can hold its port for a while after that IDE
+ends. The add-in's saved settings (`tbDocsHelp`) are emptied for the run and, with the IDE's
+registry entries, put back at the end.
 
 Exit codes: **0** every picture was written or was unchanged; **1** a picture failed (an element was not found, or the page showed the user name), the add-in did not build, or the demo project does not compile; **2** the tool could not run: a refused command line, no IDE, no built site, a registry it could not record, or a crash; **3** the registry or the work folder was not put back (see the lines above).
 
@@ -1653,7 +1726,7 @@ Exit codes: **0** the report was produced and its self-checks held; **1** a self
 
 Standalone `.twinproj` / `.twinpack` unpacker and packer, with the compiler executable's own command line: the same six commands, the project file first, and `--overwrite` required to replace anything. `scripts/impexp.py` is the same tool, run as `python scripts/impexp.py ...`; the two editions print the same output and write byte-identical project files, which [`check_impexp_parity.mjs`](#check-impexp-parity) checks. Neither has dependencies; the Node edition needs Node 18+, the Python edition Python 3.6+. The exit code says what happened, so a caller need not read the output. `--self-test` needs nothing but the script, and adds a round trip of `indexer/sample.twinpack` when run from this repository.
 
-**Neither is run by the site build.** They are published downloads: `_config.yml`'s `bundle_extra` copies both into `Features/Packages/downloads/`, and [Import/Export Tool](../../Features/Packages/Import-Export-Tool) offers them to readers as the two editions of one tool. That is why `impexp.py` is one of only two `.py` files in a repository whose tooling is otherwise all Node --- porting it would delete a deliberate offering rather than tidy anything up. The `bundle_extra` exemption is by exact path, so moving either file breaks the download; see [`check_publish_policy.mjs`](#check-publish-policy). The Node edition is also a library: `scripts/lib/tb-project.mjs` imports its `exportProject` and `importProject`, and the tools that unpack or pack a twinBASIC project call them directly, among them [`tbbuild.mjs`](#tbbuild), [`tbrun.mjs`](#tbrun), [`check_examples.mjs`](#check-examples), [`census_attributes.mjs`](#census-attributes) and [`bug_repro.mjs`](#bug-repro). The Python edition is only a download.
+**Neither is run as a command by the site build.** They are published downloads: `_config.yml`'s `bundle_extra` copies both into `Features/Packages/downloads/`, and [Import/Export Tool](../../Features/Packages/Import-Export-Tool) offers them to readers as the two editions of one tool. That is why `impexp.py` is one of only two `.py` files in a repository whose tooling is otherwise all Node --- porting it would delete a deliberate offering rather than tidy anything up. The `bundle_extra` exemption is by exact path, so moving either file breaks the download; see [`check_publish_policy.mjs`](#check-publish-policy). The Node edition is also a library: `scripts/lib/tb-project.mjs` imports its `exportProject` and `importProject`, and the tools that unpack or pack a twinBASIC project call them directly, among them [`tbbuild.mjs`](#tbbuild), [`tbrun.mjs`](#tbrun), [`check_examples.mjs`](#check-examples), [`census_attributes.mjs`](#census-attributes) and [`bug_repro.mjs`](#bug-repro). The site build imports `importProject` too, to pack the [help add-in's project file](#the-help-add-ins-project-file): `impexp.mjs` is the one module under `scripts/` that `builder/` may import (`biome.jsonc` refuses any other), which is why [`check_tree_fresh.mjs`](#check-tree-fresh) watches it. The Python edition is only a download.
 
 Exit codes: the table in [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) gives every code. This tool keeps its own codes, which the two editions share and which are not those of the other tools here.
 

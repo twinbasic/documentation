@@ -9,13 +9,13 @@ redirect_from:
 
 # Anchoring
 
-One of the new form designer features you see in twinBASIC is the 'Anchors' property:
+One of the new form designer features you see in twinBASIC is the 'Anchors' property, in the **LAYOUT** group of the PROPERTIES panel:
 
-![The PROPERTIES pane for a TextBox with the Anchors property highlighted](../Images/b26da59b-4e98-40b7-b97b-bb3cef4ca1d0.png)
+![The PROPERTIES panel for the TextBox Text1, showing its LAYOUT group, with the Anchors row underlined](../Images/b26da59b-4e98-40b7-b97b-bb3cef4ca1d0.png){:width="401" height="191"}
 
 Clicking the arrow on the left expands it to provide 4 options:
 
-![The Anchors property expanded into Left, Top, Right and Bottom rows, with Left and Top set to True](../Images/d5dff8f5-c5fa-4620-ba11-430d06276b27.png)
+![The Anchors property expanded into Left, Top, Right and Bottom rows, with Left and Top set to True](../Images/d5dff8f5-c5fa-4620-ba11-430d06276b27.png){:width="400" height="275"}
 
 These control whether the position of each point relative to the borders of their parent form or control container are maintained when the form is resized. By default it behaves in the expected manner; the top and left stay the same, and the control is not resized or moved with the form unless you do this manually with code, typically in the `Form_Resize` event. These provide an alternative to handle sizing and moving automatically.
 
@@ -57,7 +57,7 @@ Using these 4 points you can automatically maintain a relative size, position, o
 
 Similar to anchoring but slightly different, tB also offers a 'Dock' property:
 
-![The Dock property dropdown open, listing vbDockNone, vbDockLeft, vbDockTop, vbDockRight, vbDockBottom and vbDockFill](../Images/4c8b881e-1216-4819-a558-d2ce20f47fcd.png)
+![The PROPERTIES panel for the TextBox Text1, on its LAYOUT group, with the list of the Dock dropdown open below it: 0 - vbDockNone, marked as the current value, then 1 - vbDockLeft, 2 - vbDockTop, 3 - vbDockRight, 4 - vbDockBottom and 5 - vbDockFill.](../Images/4c8b881e-1216-4819-a558-d2ce20f47fcd.png){:width="360" height="320"}
 
 You might already be familiar with how a StatusBar control locks itself to the bottom of a form; that's the kind of positioning this property controls. A control can be docked on any side, and it will stay sized to the full width or height, and move with, that side of the Form or parent container. For example, a CommandButton with `vbDockBottom`:
 

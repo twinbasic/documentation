@@ -204,6 +204,9 @@ const CASES = {
       "--check-remote-assets",
       "--forbid",
       "https://docs.twinbasic.com",
+      // The offline tree's links to files only the website holds.
+      "--online-root",
+      root.replace(/-offline$/, ""),
       "--fallback-extensions",
       "html",
       "--index-files",

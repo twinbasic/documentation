@@ -355,11 +355,14 @@ const INK = [32, 32, 32];
  * @param {{width: number, height: number, rgba: Uint8Array} | Buffer} vb6  the VB6 picture, or its PNG file
  * @param {{tb?: string, vb6?: string, diff?: string}} [labels]  default TWINBASIC, VB6, and the count of
  *   differing pixels (IDENTICAL, or SIZES DIFFER with both sizes when they do)
- * @param {{scale?: number}} [options]  a whole number: each pixel is drawn that many pixels square. The
- *   default is 2 when both pictures are under 200 pixels in both dimensions, else 1.
+ * @param {{scale?: number, amplify?: boolean}} [options]  `scale`, a whole number: each pixel is drawn
+ *   that many pixels square. The default is 2 when both pictures are under 200 pixels in both
+ *   dimensions, else 1. `amplify` draws the difference panel for differences too small to see: matching
+ *   pixels a dark grey copy of the second picture, and a differing pixel yellow when its largest
+ *   channel difference is 1 grey level, shading to red at 128 and more.
  * @returns {{width: number, height: number, rgba: Uint8Array, sameSize: boolean, differing: number, scale: number}}
  */
-export function composeComparison(tb, vb6, labels = {}, { scale } = {}) {
+export function composeComparison(tb, vb6, labels = {}, { scale, amplify = false } = {}) {
   const A = asImage(tb);
   const B = asImage(vb6);
   const { sameSize, differing } = comparePngs(A, B);
@@ -400,8 +403,17 @@ export function composeComparison(tb, vb6, labels = {}, { scale } = {}) {
   };
   const faint = ([r, g, b]) => {
     const luma = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-    const v = 255 - Math.round((255 - luma) * 0.3);
+    const v = amplify ? 24 + Math.round(luma * 0.25) : 255 - Math.round((255 - luma) * 0.3);
     return [v, v, v];
+  };
+  // The colour of a differing pixel: pure red, or with `amplify` yellow for a difference of
+  // one grey level in its most different channel, shading to red at 128.
+  const marked = (ia, ib) => {
+    if (!amplify) return RED;
+    let d = 0;
+    for (let k = 0; k < 4; k++) d = Math.max(d, Math.abs(A.rgba[ia + k] - B.rgba[ib + k]));
+    const t = Math.min(1, Math.log2(d) / 7);
+    return [255, Math.round(255 * (1 - t)), 0];
   };
 
   const top = GUTTER + strip;
@@ -425,7 +437,7 @@ export function composeComparison(tb, vb6, labels = {}, { scale } = {}) {
             A.rgba[ia + 1] === B.rgba[ib + 1] &&
             A.rgba[ia + 2] === B.rgba[ib + 2] &&
             A.rgba[ia + 3] === B.rgba[ib + 3];
-          colour = equal ? faint(q) : RED;
+          colour = equal ? faint(q) : marked(ia, ib);
         }
         for (let dy = 0; dy < S; dy++) for (let dx = 0; dx < S; dx++) put(left + x * S + dx, top + y * S + dy, colour);
       }

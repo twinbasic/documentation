@@ -859,6 +859,18 @@ harness about a second against opening a new IDE.
      rounds, and rows of 22.75 px overflowed a list of seven by a pixel each, which showed
      its scrollbar. The vertical scrollbar is left on the list view's default, shown only
      when there is something to scroll.
+   - **The line between the list and the page** (Wayne, 2026-10-09: nothing ended the list
+     and began the page) is the top border of `#helpPage` and `#helpSummary` while
+     `#helpResults` shows (a sibling rule on the list's inline `display`):
+     `2px solid color-mix(in srgb, var(--themeToolWindowBodyForeColor) 40%, transparent)`,
+     the theme's text colour at 40%, so it follows every theme with no rule of its own. The
+     theme's own border for a value box (`--themePropertySheetValueBorderColor`, the search
+     box's) is about 1.4:1 on Light's white, and `PropertySheetEntryBorder` no better, so
+     the owner chose the text colour. It is on the page and not the list because the list's
+     height is its rows (`--helpRow`) and a border of its own would add its width to it,
+     which the height tests count; the owner chose 2px. The IDE has no such border for its own panels, which are
+     divided by a header band (`.sectionHeader`); the properties that look like candidates
+     (`SectionHeaderBorder*`, `PanelBorder*`) are empty or `0` in the Dark theme.
    - **Open in browser** opens the page the add-in last gave the frame, through
      `OpenUrl`, so it honours the test switch. A link followed inside the frame is not
      seen: the live site is on another origin, whose location the IDE's page cannot read.
@@ -884,6 +896,20 @@ harness about a second against opening a new IDE.
      own IDE reads it; the registry tidy puts that one entry back (`restoreTheme`). Fault
      runs: without the handler only the theme-change case fails; with the site ignoring the
      parameter every case that shows a page fails.
+     **In the detached window the frame's storage throws** (`SecurityError`, both storages,
+     BETA 997): the window's page is a `data:` URL (`NavigateToString`), so the docs frame is a
+     frame of another site under an opaque top-level origin, with a DevTools target of its own
+     (type `iframe`). Until 2026-10-09 the head script applied `?theme=` there, and
+     `theme-toggle.js`, which read the choice back from storage alone, reset it to *system*, so
+     the page followed the window's WebView2, which is Windows' app mode; a link inside the
+     frame also lost `data-pane`. So the head script keeps both in the frame's `window.name`
+     too (`tbdocs:<theme>:<1>`, written only by a page given either parameter, read only when
+     storage throws; a navigation inside the frame keeps it), and `theme-toggle.js` mirrors
+     the attribute the head script set. A pane frame is on the IDE page's own site and its
+     storage works. The lanes check both places in Light and Dark, the page given and a page
+     after a link, with the frame's `prefers-color-scheme` emulated to the other scheme
+     (`Emulation.setEmulatedMedia`, on the frame's own target in the window): before the fix,
+     all four window cases failed and the pane's passed.
    - **The page shows without the site's chrome**: `FrameUrl` adds `pane=1` too, which the
      head script keeps in `sessionStorage` as it keeps the theme and turns into `data-pane`
      on the root. `custom.scss` then hides the sidebar and the header (search box,
@@ -978,9 +1004,11 @@ harness about a second against opening a new IDE.
    it when the DLL has it, and the live site otherwise; the symbol index stays a resource of
    its own.
    - **The archive** is `add-in/Resources/HELP/site.zip`, gitignored, written from
-     `docs/_site-offline` by the last step of a local build of the documentation
+     `docs/_site-offline` by the `helpArchive` task of a build of the documentation, once
+     the offline tree is complete and before the Gantt chart goes into `BuildInfo.html`
      (`builder/help-archive-step.mjs` over `lib/help-archive.mjs`; `--no-help-archive`
-     skips it, and CI passes that) (about 21 MB, 1,471 files; the DLL builds with it for
+     skips it, and CI never passes that, since the download carries the archive) (about
+     26 MB, 1,475 files; the DLL builds with it for
      win32 and win64). An add-in built without it serves nothing
      and uses the live site, as before. The offline tree is the one served: its links are
      relative, so they work on any origin, and its pages hold only their part of the nav
@@ -1188,6 +1216,18 @@ harness about a second against opening a new IDE.
    this project references*.
 10. **Later:** how a user gets an add-in with the archive: the owner's plan (2026-10-07) is to
     build it in CI with everything else, once the compiler runs on Linux there.
+    **Done meanwhile (2026-10-09): the project file is a download, and it is the offline
+    add-in.** Every docs build, CI's included, packs `add-in/` into
+    `tB/IDE/AddIns/downloads/tbDocsHelp.twinproj` in the online tree
+    (`builder/addin-project.mjs`, the `addinProject` task), and *Getting the add-in* links
+    to it first, the source route second. It holds the files git tracks, the symbol index
+    of the build that publishes it, and the archive that build wrote as
+    `Resources/HELP/site.zip` (the project is then about 28 MB), so the add-in built from it serves the pages
+    itself with no internet; CI passes no `--no-help-archive` for that reason. A build
+    that wrote no archive packs none. The offline tree holds no copy, and its links to the
+    file go to the website. The reader still builds the two DLLs in the IDE. What this
+    increment still adds is the DLLs themselves, built in CI.
+    Why the pack is made the way it is: [WIP.Build.md](WIP.Build.md#the-help-add-ins-project-file).
 
 **Lookup:**
 
@@ -1249,9 +1289,10 @@ The add-in's code skeletons are written in Stage 4 against the compiler, with te
 
 - Build both bitnesses, which `buildAddin` does (P7). The documentation page is
   [docs/IDE/AddIns/Help.md](docs/IDE/AddIns/Help.md); its pictures are taken by
-  `scripts/shoot_help_addin.mjs` from `test/addin/helpdemo`, so retake them after a change the
+  `scripts/shoot_docs.mjs` from `test/addin/helpdemo`, so retake them after a change the
   pictures show, and update the page's *Getting the add-in* once increment 10 settles how users
-  get it.
+  get it. Until then the page offers the project file the docs build publishes, then the
+  source route.
 - Distribution is upstream's decision: the community add-ins list, or bundled with the IDE.
 - Take to upstream, with the probe results as evidence: the shortcut bug; a call to open a
   URL; a way to ask the compiler about the symbol at a position, whose answer hover already

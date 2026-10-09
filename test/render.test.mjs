@@ -1,5 +1,7 @@
 // Unit tests for builder/render.mjs's markdown-it plugins, one plugin's
-// behaviour at a time, through the site's own createMarkdownIt.
+// behaviour at a time, through the site's own createMarkdownIt; and for the
+// offline tree's URL rewrite when a link names a file only the website holds
+// (builder/offline-rewrite.mjs).
 //
 // The build compares whole pages, so a plugin that goes wrong only on input
 // the corpus does not hold passes it: kramdownEllipsisPlugin shortened every
@@ -10,6 +12,7 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { isWebsiteOnlyLink, rewriteHtml, websiteOf } from "../builder/offline-rewrite.mjs";
 import { createMarkdownIt } from "../builder/render.mjs";
 
 const md = createMarkdownIt({
@@ -47,5 +50,76 @@ describe("kramdownEllipsisPlugin", () => {
 
   test("a private-use U+E000 in the text stays as written", () => {
     assert.ok(inline("\u{E000} a....").includes("\u{E000}"));
+  });
+});
+
+// The offline tree's URL rewrite (builder/offline-rewrite.mjs): a link to a
+// file the offline tree holds becomes page-relative; one to a file only the
+// website holds becomes the website's absolute URL; one to neither is a miss.
+describe("rewriteHtml with a website behind the offline tree", () => {
+  const offline = new Set(["/a/Page.html", "/a/b/Other.html", "/a/b/inner.txt"]);
+  const online = new Set([...offline, "/a/downloads/File.zip", "/a/Space Name.zip"]);
+  const website = websiteOf({ url: "https://site.example/" }, online);
+  const rewrite = (html, baseurl = "", site = website) =>
+    rewriteHtml(
+      html,
+      "a",
+      ["a"],
+      offline,
+      { rawResolution: new Map(), seg: new Map(), result: new Map() },
+      baseurl,
+      site,
+    );
+
+  test("a link the offline tree holds is page-relative, as without a website", () => {
+    const r = rewrite('<a href="/a/b/Other">x</a><a href="b/inner.txt">y</a>');
+    assert.equal(r.rewritten, '<a href="b/Other.html">x</a><a href="b/inner.txt">y</a>');
+    assert.equal(r.misses, 0);
+  });
+
+  test("a link only the online tree holds is the website's URL, and is no miss", () => {
+    const r = rewrite('<a href="downloads/File.zip" download>x</a><a href="/a/downloads/File.zip?v=1#top">y</a>');
+    assert.equal(
+      r.rewritten,
+      '<a href="https://site.example/a/downloads/File.zip" download>x</a>' +
+        '<a href="https://site.example/a/downloads/File.zip?v=1#top">y</a>',
+    );
+    assert.equal(r.misses, 0);
+  });
+
+  test("the website's URL carries the base path, and encodes what a path must", () => {
+    const r = rewrite('<a href="/base/a/downloads/File.zip">x</a><a href="Space Name.zip">y</a>', "/base");
+    assert.equal(
+      r.rewritten,
+      '<a href="https://site.example/base/a/downloads/File.zip">x</a>' +
+        '<a href="https://site.example/base/a/Space%20Name.zip">y</a>',
+    );
+    assert.equal(r.misses, 0);
+  });
+
+  test("a link in neither tree is a miss and is left as written", () => {
+    const r = rewrite('<a href="/a/none/File.zip">x</a><a href="missing.zip">y</a>');
+    assert.equal(r.rewritten, '<a href="/a/none/File.zip">x</a><a href="missing.zip">y</a>');
+    assert.equal(r.misses, 2);
+    assert.deepEqual(r.missed, ["/a/none/File.zip", "missing.zip"]);
+  });
+
+  test("with no website to point at, a link only the online tree holds is a miss", () => {
+    const r = rewrite('<a href="downloads/File.zip">x</a>', "", websiteOf({}, online));
+    assert.equal(r.misses, 1);
+    assert.equal(r.rewritten, '<a href="downloads/File.zip">x</a>');
+  });
+
+  test("a link inside a code sample is left alone", () => {
+    const html = '<code>href="downloads/File.zip"</code>';
+    assert.equal(rewrite(html).rewritten, html);
+  });
+
+  test("only a website link to a file the offline tree lacks is expected there", () => {
+    const state = { sitePaths: offline, website, baseurl: "" };
+    assert.equal(isWebsiteOnlyLink("https://site.example/a/downloads/File.zip", state), true);
+    assert.equal(isWebsiteOnlyLink("https://site.example/a/Page", state), false, "the offline tree holds the page");
+    assert.equal(isWebsiteOnlyLink("https://site.example/a/none/File.zip", state), false, "neither tree holds it");
+    assert.equal(isWebsiteOnlyLink("https://other.example/a/downloads/File.zip", state), false);
   });
 });

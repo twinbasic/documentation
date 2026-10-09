@@ -22,9 +22,15 @@
 // --check-audit-index additionally diffs the derived tree index against
 // what actually landed on disk; see builder/check.mjs.
 //
-// A build of the documentation tree ends by writing the IDE help add-in's
-// archive of the offline tree, add-in/Resources/HELP/site.zip
-// (builder/help-archive-step.mjs). --no-help-archive skips it; CI passes that.
+// A build of the documentation tree writes the IDE help add-in's archive of the
+// offline tree, add-in/Resources/HELP/site.zip, once the offline tree is
+// complete and before the Gantt chart is injected (the helpArchive task,
+// builder/help-archive-step.mjs). --no-help-archive skips it.
+//
+// Every build of a tree whose _config.yml declares addin_project also packs the
+// IDE help add-in's project file into the online tree, as a download, with that
+// archive in it when this build wrote one (builder/addin-project.mjs, the
+// addinProject task, which waits for helpArchive).
 //
 // Default --src is "docs" relative to the current working directory.
 // Default --dest is "<src>/_site". --dry-run skips all filesystem writes.
@@ -88,7 +94,8 @@ import { writePdf } from "./pdf.mjs";
 // build without --check pays nothing.
 import { deriveTreeRels } from "./check-tree.mjs";
 import { syncAddinIndex } from "./addin-index.mjs";
-import { helpArchiveStep } from "./help-archive-step.mjs";
+import { addinProjectOf, formatAddinProject, writeAddinProject } from "./addin-project.mjs";
+import { helpArchiveStep, recheckHelpArchive } from "./help-archive-step.mjs";
 import { checkPageBaseline } from "./page-baseline.mjs";
 import { checkSymbolBaseline } from "./symbol-baseline.mjs";
 import { deriveSymbolIndex, reportableGaps, serializeSymbolIndex, symbolPages, SYMBOL_INDEX_REL } from "./symbols.mjs";
@@ -631,6 +638,12 @@ const TASKS = {
       const excludePatterns = Array.isArray(state.site.config?.offline_exclude)
         ? state.site.config.offline_exclude.map(String)
         : [];
+      // The help add-in's project file, which the addinProject task writes
+      // late, is in the online tree from here on, and only there: its index
+      // and the publish allowlist's sweep need the path now. The offline
+      // tree holds no copy -- the project carries the offline tree's archive --
+      // so a link to the file there goes to the website (computeWebsiteUrl).
+      const addin = addinProjectOf(state.site.config);
       const themeAssetRels = [
         ...enumerateVendoredThemeAssets(),
         "assets/css/tb-highlight.css",
@@ -654,9 +667,14 @@ const TASKS = {
         stubs,
         themeAssetRels,
         excludePatterns,
+        onlineOnlyRels: addin ? [addin.dest] : [],
       };
       const treeNames = skipOffline ? ["online"] : ["online", "offline"];
       const treeRels = new Map(treeNames.map((w) => [w, deriveTreeRels(w, common)]));
+      // What the offline tree's links to a file only the website holds are
+      // resolved against.
+      const onlineSitePaths = new Set(treeRels.get("online").map((rel) => `/${rel}`));
+      state.onlineSitePaths = onlineSitePaths;
 
       // Second enforcement point for the publish allowlist, over the
       // inventory each tree will actually receive. The source sweep in
@@ -719,6 +737,7 @@ const TASKS = {
         staticFilesArr: state.staticFiles.map((f) => f.srcRel),
         baseurl: String(state.site.config.baseurl || ""),
         sitePathsArr: [...sitePaths],
+        onlineSitePathsArr: skipOffline ? [] : [...onlineSitePaths],
         offlineExcludePatterns: excludePatterns,
         skipOffline,
         svgContentsMap,
@@ -942,9 +961,64 @@ const TASKS = {
         // search.mjs), not written anywhere itself -- symbolIndex's own
         // file output is tB/symbols.json, above.
         symbols: result.symbols,
-        // The file's text, for the add-in's copy (addin-index.mjs).
+        // The file's text, for the add-in's copy (addin-index.mjs) and its
+        // project file (addinProject).
         json,
       };
+    },
+    submit() {},
+  },
+
+  // Write the IDE help add-in's archive of the offline tree -- see
+  // builder/help-archive-step.mjs. The offline tree must be complete, so it
+  // waits for every task that writes into it: flushJoin (the pages, written by
+  // the render lanes' flushes), scss (the offline stylesheet) and writeOffline
+  // (the rest: statics, theme assets, redirect stubs, nav.js, search-data.js).
+  // Nothing else writes there before the Gantt injection, which runBuild does
+  // after the graph; recheckHelpArchive checks that at the end. The Gantt chart
+  // is injected after this task, so the archive holds BuildInfo.html without it.
+  helpArchive: {
+    expected: ["flushJoin", "scss", "writeOffline"],
+    runOnMain: true,
+    async execute(_, ctx, state) {
+      const skipOffline = ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
+      return helpArchiveStep({
+        src: path.relative(REPO_ROOT, ctx.srcRoot).replaceAll(path.sep, "/"),
+        offlineRoot: skipOffline ? null : `${ctx.destRoot}-offline`,
+        serve: !!ctx.opts.serve,
+        dryRun: !!ctx.opts.dryRun,
+        disabled: !!ctx.opts.skipHelpArchive,
+      });
+    },
+    submit() {},
+  },
+
+  // Write the help add-in's project file, packed from add-in/, into the online
+  // tree at the path _config.yml's addin_project names -- see
+  // builder/addin-project.mjs. After symbolIndex because the project carries the
+  // index this build wrote, and after helpArchive because it carries the archive
+  // that task wrote (none when it wrote none). dispatch put the path in the
+  // online tree's index, so checkReport waits for this task. --dry-run writes
+  // nothing, and a build of a tree whose config declares no download (the test
+  // fixtures) packs nothing. A failure is reported and fails the build; the
+  // trees are still written.
+  addinProject: {
+    expected: ["symbolIndex", "prepDest", "helpArchive"],
+    runOnMain: true,
+    async execute({ symbolIndex, helpArchive }, ctx, state) {
+      const addin = addinProjectOf(state.site.config);
+      if (!addin || ctx.opts.dryRun) return null;
+      try {
+        return await writeAddinProject({
+          dir: path.resolve(ctx.srcRoot, addin.src),
+          symbols: symbolIndex.json,
+          archive: helpArchive?.zip ?? null,
+          roots: [ctx.destRoot],
+          rel: addin.dest,
+        });
+      } catch (err) {
+        return { failed: true, rel: addin.dest, error: err.message };
+      }
     },
     submit() {},
   },
@@ -979,6 +1053,7 @@ const TASKS = {
       return writeOffline(state.staticFiles, state.site, ctx.destRoot, {
         auxStats,
         sitePaths: state.sitePaths,
+        onlineSitePaths: state.onlineSitePaths,
         profileOffline: ctx.opts.profileOffline,
         check: !!state.checkTrees,
       });
@@ -1165,8 +1240,9 @@ const TASKS = {
     // long before the check; on a three-page fixture it does not, and
     // the audit failed the build over nothing.
     // symbolIndex for the same reason: tB/symbols.json is in the online tree's
-    // index, and the audit must not look for it before it is written.
-    expected: ["linkJoin", "checkBook", "scss", "symbolIndex"],
+    // index, and the audit must not look for it before it is written. And
+    // addinProject: the add-in's project file is in both trees' indexes.
+    expected: ["linkJoin", "checkBook", "scss", "symbolIndex", "addinProject"],
     runOnMain: true,
     async execute({ linkJoin: trees, checkBook: book }, ctx, state) {
       if (!state.checkTrees) return null;
@@ -1231,6 +1307,10 @@ function chunkPages(pages, workers) {
 
 // ── Gantt chart ───────────────────────────────────────────────────────────────
 
+// The chart's file in each tree. The sources hold a placeholder at this path,
+// which the trees copy; the injection overwrites it with the chart.
+const GANTT_SVG_REL = "assets/images/gantt.svg";
+
 // The Gantt is rendered from the scheduler's own timings, so it cannot
 // exist until every task -- including the check -- has finished. That
 // makes it the one page whose shipped bytes the check never saw. It
@@ -1252,7 +1332,7 @@ async function injectGanttChart(pages, destRoot, svgContent) {
       if (e.code !== "ENOENT") throw e;
       continue;
     }
-    const marker = 'data-svg-src="assets/images/gantt.svg"';
+    const marker = `data-svg-src="${GANTT_SVG_REL}"`;
     const idx = html.indexOf(marker);
     if (idx < 0) continue;
     const svgStart = html.indexOf("<svg", idx);
@@ -1260,7 +1340,7 @@ async function injectGanttChart(pages, destRoot, svgContent) {
     if (svgStart < 0 || svgEnd < 0) continue;
     const patched = html.slice(0, svgStart) + svgContent + html.slice(svgEnd + 6);
     await fs.writeFile(htmlPath, patched, "utf8");
-    await fs.writeFile(path.join(root, "assets", "images", "gantt.svg"), svgContent, "utf8");
+    await fs.writeFile(path.join(root, ...GANTT_SVG_REL.split("/")), svgContent, "utf8");
     injected.push({
       which: root === destRoot ? "online" : "offline",
       destPath: page.destPath.replaceAll("\\", "/"),
@@ -1452,6 +1532,16 @@ export async function runBuild(opts) {
       );
     }
   }
+  const archive = results.get("helpArchive");
+  if (archive?.text) process.stdout.write(archive.text);
+  if (archive?.failed) failBuild();
+  const addinResult = results.get("addinProject");
+  if (addinResult) {
+    const addinDir = path.resolve(srcRoot, addinProjectOf(site.config).src);
+    const label = `${path.relative(REPO_ROOT, addinDir).replaceAll(path.sep, "/")}/`;
+    process.stdout.write(formatAddinProject(addinResult, label, "  "));
+    if (addinResult.failed) failBuild();
+  }
   if (offlineResult) {
     console.log(`  ${pc.bold("offline:")} -> ${pc.cyan(`${destRoot}-offline`)}`);
     console.log(
@@ -1559,18 +1649,17 @@ export async function runBuild(opts) {
     process.stdout.write(await syncAddinIndex({ src: guardedSrc, json: symbolStats.json, write: mayWrite }));
   }
 
-  // The help add-in's archive of the offline tree, last of all: the Gantt
-  // injection above has rewritten BuildInfo.html in it -- see help-archive-step.mjs.
-  const skipOfflineTree = opts.skipOffline ?? site.config.also_build_offline === false;
-  const archive = await helpArchiveStep({
-    src: guardedSrc,
-    offlineRoot: skipOfflineTree ? null : `${destRoot}-offline`,
-    serve: !!opts.serve,
-    dryRun: !!opts.dryRun,
-    disabled: !!opts.skipHelpArchive,
+  // The help add-in's archive was written before the Gantt injection above, so
+  // the offline tree on disk has to differ from it in the two files the
+  // injection writes and in nothing else -- see help-archive-step.mjs.
+  const injectedOffline = injected.filter((i) => i.which === "offline").map((i) => i.destPath);
+  const stale = await recheckHelpArchive({
+    archive,
+    offlineRoot: `${destRoot}-offline`,
+    mayDiffer: injectedOffline.length ? [...injectedOffline, GANTT_SVG_REL] : [],
   });
-  if (archive.text) process.stdout.write(archive.text);
-  if (archive.failed) failBuild();
+  if (stale.text) process.stdout.write(stale.text);
+  if (stale.failed) failBuild();
 
   return { pages, staticFiles, site, destRoot };
 }

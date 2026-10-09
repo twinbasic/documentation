@@ -8,7 +8,7 @@ permalink: /tB/IDE/Project/Menu/Help
 
 # Help Menu
 
-![The Help menu open with every entry available, each beside its own icon: About twinBASIC, Licence Agreement and Automatic IDE Error Reporting; the Discord, GitHub and Twitter support links; Purchase A Licence, Enter Licence Key and Buy us a Coffee; and a closing status line reading Compiler services TRACE mode: Disabled.](Images/Menu_Help.png)
+![The Help menu open with every entry available, each beside its own icon: About twinBASIC, Licence Agreement and Automatic IDE Error Reporting; the Discord, GitHub and Twitter support links; Purchase A Licence, Enter Licence Key and Buy us a Coffee; and a closing status line reading Compiler services TRACE mode: Disabled.](Images/Menu_Help.png){:width="268" height="294"}
 
 - About twinBASIC...
 - Licence Agreement...
@@ -29,7 +29,7 @@ permalink: /tB/IDE/Project/Menu/Help
 
 ## About twinBASIC...
 
-![The About twinBASIC dialog. Beneath the twinBASIC logo it gives the version as twinBASIC IDE BETA 953 and the copyright as 2026 twinBASIC Ltd, followed by an italic paragraph thanking the community and a SPECIAL THANKS line marked coming soon. A VIP Gold Supporters band heads a grid of four sponsor logos and two empty See your logo here placeholders. Below that, nine third-party open-source libraries are listed against the licence file each one ships --- Monaco, Codicon, LLVM, LodePNG, Spectrum, Grapick, ChartJS, jQuery and VbQRCodegen --- above a green band reading LICENCE: tB Licence: NOT READY and a Close button.](Images/Menu_Help_About.png)
+![The About twinBASIC dialog. Beneath the twinBASIC logo it gives the version of the IDE and the copyright as 2026 twinBASIC Ltd, followed by an italic paragraph thanking the community and a SPECIAL THANKS line marked coming soon. A VIP Gold Supporters band heads a grid of four sponsor logos and two empty See your logo here placeholders. Below that, ten third-party open-source libraries are listed against the licence file each one ships --- Monaco, Codicon, LLVM, LodePNG, Spectrum, Grapick, ChartJS, jQuery, VbQRCodegen and LZ4 --- above a green band naming the licence edition, and a Close button.](Images/Menu_Help_About.png){:width="506" height="880"}
 
 ## Licence Agreement...
 

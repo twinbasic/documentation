@@ -1,11 +1,11 @@
 ---
-title: Documentation Help
+title: Help Add-In
 parent: Add Ins
 nav_order: 2
 permalink: /tB/IDE/AddIns/Help
 ---
 
-# Documentation Help
+# Help Add-In
 
 Shows this documentation inside the IDE: press F1 on a name in the code editor, and its reference page opens in a tool window beside the code.
 
@@ -15,7 +15,7 @@ The add-in is named *twinBASIC Documentation Help* in the IDE. It works from an 
 
 Put the cursor on a name and press F1. The page that documents the name opens in the **TWINBASIC HELP** tool window. The cursor can be anywhere in the name, or just after it, as it is after typing the name.
 
-![The code editor showing a module named Inventory, with the cursor on MsgBox in line 19. Beside it, the TWINBASIC HELP tool window shows the MsgBox page: breadcrumbs, the heading, its summary, the syntax and the first parameter.](Images/Help_Pane.png){:width="1143" height="550"}
+![The code editor showing a module named Inventory, with the cursor on MsgBox in line 19. Beside it, the TWINBASIC HELP tool window shows the MsgBox page: breadcrumbs, the heading, its summary, the syntax and the first parameter.](Images/Help_Pane.png){:width="1143" height="546"}
 
 The help pane is an ordinary IDE tool window: it can float, or be docked like the other tool windows. The page in it follows the IDE's theme, dark or light, and its links work as they do on the website. Above the page are a search box and three buttons:
 
@@ -51,7 +51,7 @@ A link names the symbol, its kind and where it is declared: *Help: MsgBox functi
 
 Type in the search box to find a page by its symbol's name. The list shows the names that start with the text first, then those that contain it, with each one's kind. Text with a dot in it is matched against qualified names such as `Collection.Add`. Click a name to show its page, or press Enter for the first one. The clear button at the right of the box empties it and hides the list.
 
-![The help pane with format typed in its search box. The list below shows Strings.Format, Strings.Format$, Strings.FormatCurrency, Strings.FormatDateTime, Strings.FormatNumber and Strings.FormatPercent, all functions, then OLE.Format and DataObjectFormat.FormatType, properties, and Constants.VbDateTimeFormat, an enum.](Images/Help_Search.png){:width="480" height="262"}
+![The help pane with format typed in its search box. The list below shows Strings.Format, Strings.Format$, Strings.FormatCurrency, Strings.FormatDateTime, Strings.FormatNumber and Strings.FormatPercent, all functions, then OLE.Format and DataObjectFormat.FormatType, properties, and Constants.VbDateTimeFormat, an enum.](Images/Help_Search.png){:width="480" height="264"}
 
 The search finds symbols, not words in the pages: to search the text of the documentation, use the search on the website.
 
@@ -59,13 +59,13 @@ The search finds symbols, not words in the pages: to search the text of the docu
 
 Sometimes the name alone cannot say which page is meant. A member called through a variable declared **As Object** is the common case: the object's type is known only when the program runs. F1 then puts the name in the search box and lists every page that documents it, and the page in the pane stays as it was. Click the one that applies.
 
-![The help pane after F1 on prices.Add, where prices is declared As Object. The search box holds prices.Add, and the list shows six methods: Collection.Add, DataMembers.Add, DataObjectFiles.Add, HtmlElements.Add, KeyboardShortcuts.Add and ToolWindows.Add.](Images/Help_Choices.png){:width="480" height="196"}
+![The help pane after F1 on prices.Add, where prices is declared As Object. The search box holds prices.Add, and the list shows three methods: Collection.Add, DataMembers.Add and DataObjectFiles.Add.](Images/Help_Choices.png){:width="480" height="132"}
 
 ## Your own procedures
 
 F1 on a name declared in the project itself, or in a package or type library this documentation does not cover, shows a summary in place of a page. The summary gives the declaration, the text of the procedure's [**Description**](../../Core/Attributes#description) attribute, and where the name is declared.
 
-![The help pane after F1 on TotalPrice. In place of a page it shows the declaration Function TotalPrice ( ByVal prices As Object ) As Double, the description Adds up the prices held in a Dictionary., and the line Declared in Inventory.Inventory.](Images/Help_Description.png){:width="480" height="169"}
+![The help pane after F1 on TotalPrice. In place of a page it shows the declaration Function TotalPrice ( ByVal prices As Object ) As Double, the description Adds up the prices held in a Dictionary., and the line Declared in Inventory.Inventory.](Images/Help_Description.png){:width="480" height="170"}
 
 The summary for the procedure above comes from this code:
 
@@ -80,7 +80,7 @@ Without a **Description** attribute, the summary says *No description*. **Open i
 
 The gear opens the settings. A click anywhere else, or Esc, closes them.
 
-![The top of the help pane with the settings open under the gear: a ticked Hover help box and an unticked All packages box.](Images/Help_Settings.png){:width="480" height="149"}
+![The top of the help pane with the settings open under the gear: the Hover help and All packages boxes, both unticked.](Images/Help_Settings.png){:width="480" height="150"}
 
 **Hover help**
 : Adds the links described under [Hover help](#hover-help). Off by default.
@@ -111,20 +111,25 @@ The window is open again the next time the IDE starts, if it was open when the I
 
 ## Getting the add-in
 
-The add-in is built from its source code, which is in the `add-in` folder of the [documentation's repository](https://github.com/twinbasic/documentation). The folder holds the project's files, not a project file, so the first step makes one.
+The add-in is a twinBASIC project, which the IDE builds into two DLLs, one for each bitness.
 
-1. Pack the folder into a project file with the [Import/Export Tool](../../../Features/Packages/Import-Export-Tool), from the repository's root folder:
-
-   ```batch
-   python scripts/impexp.py import tbDocsHelp.twinproj add-in
-   ```
-
+1. Download the project file, <a href="downloads/tbDocsHelp.twinproj" download>tbDocsHelp.twinproj</a>, about 28 MB. It is made from the add-in's source code each time this documentation is published. It holds the index of the symbols these pages document and a copy of the whole documentation.
 2. Open `tbDocsHelp.twinproj` in the twinBASIC IDE and build it. Then set the build target to **win64** and build it again. The two DLLs, `tbDocsHelp_win32.dll` and `tbDocsHelp_win64.dll`, are written to a `Build` folder next to the project file.
 3. Copy each DLL to the matching `win32` or `win64` add-ins folder, as [Add Ins](../AddIns/) describes, and restart the IDE.
 
-An add-in built this way shows the pages from [docs.twinbasic.com](https://docs.twinbasic.com), so the pane needs an internet connection.
+An add-in built this way serves the pages itself, from the copy of the documentation in its DLL, so the pane needs no internet connection. **Open in browser** still opens the page on the website, [docs.twinbasic.com](https://docs.twinbasic.com).
 
-**For help that works offline**, build the documentation before step 1, as [Building and Deployment](../../../Documentation/Development/Building) describes. The build writes a copy of the whole site into the add-in's source folder, `add-in\Resources\HELP\site.zip`, about 24 MB. A DLL built with that file in place serves the pages itself, without the internet. **Open in browser** still opens the website.
+### From the source code
+
+The add-in's source code is in the `add-in` folder of the [documentation's repository](https://github.com/twinbasic/documentation). Build from it to change the add-in. The folder holds the project's files, not a project file, so pack it into one first with the [Import/Export Tool](../../../Features/Packages/Import-Export-Tool), from the repository's root folder:
+
+```batch
+python scripts/impexp.py import tbDocsHelp.twinproj add-in
+```
+
+Then build `tbDocsHelp.twinproj` and copy the DLLs as in steps 2 and 3 above.
+
+**For help that works offline**, build the documentation before packing the folder, as [Building and Deployment](../../../Documentation/Development/Building) describes. The build writes a copy of the whole site into the add-in's source folder, `add-in\Resources\HELP\site.zip`, about 27 MB. A DLL built with that file in place serves the pages itself, without the internet. Without the file, the add-in shows the pages from the website.
 
 ## See Also
 

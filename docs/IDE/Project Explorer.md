@@ -7,63 +7,63 @@ permalink: /tB/IDE/Project/Explorer
 
 # Project Explorer
 
-![The PROJECT EXPLORER panel with no project open: its title bar carries only a drag grip and a close button, and the body below it is empty.](Images/ProjectExplorer.png)
-![The same panel with SampleProject loaded, its root node expanded over six yellow folders, each with a plus box for expanding it: ImportedTypeLibraries, Miscellaneous, Packages, References, Resources and Sources, the last of them selected.](Images/ProjectExplorer_Sample.png)
+![The PROJECT EXPLORER panel with no project open: its title bar carries only a drag grip and a close button, and the body below it is empty.](Images/ProjectExplorer.png){:width="400" height="116"}
+![The same panel with SampleProject loaded, its root node expanded over six yellow folders, each with a plus box for expanding it: ImportedTypeLibraries, Miscellaneous, Packages, References, Resources and Sources, the last of them selected.](Images/ProjectExplorer_Sample.png){:width="400" height="200"}
 
-![A small yellow folder icon](Images/Folder.png) ImportedTypeLibraries  
-![A small yellow folder icon](Images/Folder.png) Miscellaneous  
-![A small yellow folder icon](Images/Folder.png) Packages  
-![A small yellow folder icon](Images/Folder.png) References  
-![A small yellow folder icon](Images/Folder.png) Resources  
-![A small yellow folder icon](Images/Folder.png) Sources  
+![A small yellow folder icon](Images/Folder.png){:width="16" height="11"} ImportedTypeLibraries  
+![A small yellow folder icon](Images/Folder.png){:width="16" height="11"} Miscellaneous  
+![A small yellow folder icon](Images/Folder.png){:width="16" height="11"} Packages  
+![A small yellow folder icon](Images/Folder.png){:width="16" height="11"} References  
+![A small yellow folder icon](Images/Folder.png){:width="16" height="11"} Resources  
+![A small yellow folder icon](Images/Folder.png){:width="16" height="11"} Sources  
 
 When a Project is open contextual icons will appear.
 
-![The PROJECT EXPLORER title bar once a project is open, with four buttons at its right: a settings gear, a toggle file view icon of two overlapping documents, a plus for adding items, and the panel close button.](Images/ProjectExplorer_Header.png)
+![The PROJECT EXPLORER title bar once a project is open, with four buttons at its right: a settings gear, a toggle file view icon of two overlapping documents, a plus for adding items, and the panel close button.](Images/ProjectExplorer_Header.png){:width="400" height="30"}
 
-## ![](Images/Settings.png) Project Settings
+## ![](Images/Settings.png){:width="16" height="16"} Project Settings
 
 - [Info](Settings)
 
-## ![](Images/Toggle.png) Toggle file view (<kbd>CTRL</kbd> + <kbd>R</kbd>)
+## ![](Images/Toggle.png){:width="16" height="16"} Toggle file view (<kbd>CTRL</kbd> + <kbd>R</kbd>)
 
 
-## ![](Images/Add.png) Add...
+## ![](Images/Add.png){:width="16" height="16"} Add...
 
 Same as Right-Click
 
 ## Right-Click - Add
 
-![The Project Explorer context menu with its Add submenu open alongside it. The submenu runs from Add Folder through the Windows Form, MDI Form, UserControl, PropertyPage and Report entries, the CustomControls form, the .TWIN module and class, the .BAS module and .CLS class, Add Other File, Import, and three Add Resource lines. The menu behind it lists Cut, Copy, Paste, Copy Path, View As JSON, View As Markdown Preview, Rename, Export and Delete Permanently, with Cut, Copy, Paste and the two View As entries greyed out.](Images/RightClick-Add.png)
+![The Project Explorer context menu with its Add submenu open alongside it. The submenu runs from Add Folder through the Windows Form, MDI Form, UserControl, PropertyPage and Report entries, the CustomControls form, the .TWIN module and class, the .BAS module and .CLS class, Add Other File, Import, and three Add Resource lines. The menu beside it lists Add, Cut, Copy, Paste, Copy Name, Copy Path, View As JSON, View As Markdown Preview, Rename, Export and Delete Permanently, with Cut, Copy, Paste and the two View As entries greyed out.](Images/RightClick-Add.png){:width="510" height="492"}
 
-- ![](Images/Folder.png) Add Folder
-- ![](Images/tB-Green.png) Add Windows Form
-- ![](Images/tB-Green.png) Add Windows MDI Form
-- ![](Images/tB-Green.png) Add Windows UserControl
-- ![](Images/tB-Green.png) Add Windows PropertyPage
-- ![](Images/tB-Green.png) Add Windows Report
-
----
-
-- ![](Images/tB-Green.png) Add CustomControls Form
+- ![](Images/Folder.png){:width="16" height="11"} Add Folder
+- ![](Images/tB-Green.png){:width="16" height="16"} Add Windows Form
+- ![](Images/tB-Green.png){:width="16" height="16"} Add Windows MDI Form
+- ![](Images/tB-Green.png){:width="16" height="16"} Add Windows UserControl
+- ![](Images/tB-Green.png){:width="16" height="16"} Add Windows PropertyPage
+- ![](Images/tB-Green.png){:width="16" height="16"} Add Windows Report
 
 ---
 
-- ![](Images/tB-Red.png) Add Module (.TWIN supporting Unicode)
-- ![](Images/tB-Red.png) Add Class (.TWIN supporting Unicode)
+- ![](Images/tB-Green.png){:width="16" height="16"} Add CustomControls Form
 
 ---
 
-- ![](Images/tB-Blue.png) Add Module (.BAS)
-- ![](Images/tB-Orange.png) Add Class (.CLS)
+- ![](Images/tB-Red.png){:width="16" height="16"} Add Module (.TWIN supporting Unicode)
+- ![](Images/tB-Red.png){:width="16" height="16"} Add Class (.TWIN supporting Unicode)
 
 ---
 
-- ![](Images/File-Green.png) Add Other File
+- ![](Images/tB-Blue.png){:width="16" height="16"} Add Module (.BAS)
+- ![](Images/tB-Orange.png){:width="16" height="16"} Add Class (.CLS)
 
 ---
 
-- ![](Images/File-Green.png) Import
+- ![](Images/File-Green.png){:width="16" height="16"} Add Other File
+
+---
+
+- ![](Images/File-Green.png){:width="16" height="16"} Import
 
 ---
 
@@ -71,43 +71,43 @@ Same as Right-Click
 - Add Resource: String Table
 - Add Resource: MESSAGETABLE
 
-## ![](Images/Folder.png) Folder
+## ![](Images/Folder.png){:width="16" height="11"} Folder
 {: #folder }
 
-## ![](Images/tB-Green.png) Windows Form
+## ![](Images/tB-Green.png){:width="16" height="16"} Windows Form
 {: #windows-form }
 
 [tbForm](Editor/Form)
 
-## ![](Images/tB-Green.png) Windows MDI Form
+## ![](Images/tB-Green.png){:width="16" height="16"} Windows MDI Form
 {: #windows-mdi-form }
 
-## ![](Images/UserControl.png) Windows UserControl
+## ![](Images/tB-Green.png){:width="16" height="16"} Windows UserControl
 {: #windows-usercontrol }
 
-## ![](Images/tB-Green.png) Windows PropertyPage
+## ![](Images/tB-Green.png){:width="16" height="16"} Windows PropertyPage
 {: #windows-propertypage }
 
-## ![](Images/tB-Green.png) Windows Report
+## ![](Images/tB-Green.png){:width="16" height="16"} Windows Report
 {: #windows-report }
 
 [tbReport](Editor/Report)
 
-## ![](Images/tB-Green.png) CustomControls Forms
+## ![](Images/tB-Green.png){:width="16" height="16"} CustomControls Forms
 {: #customcontrols-forms }
 
-![A twinBASIC message box headed Package needed: CustomControls, saying that a reference to the CustomControls package must be added to the project first and that the compiler will be restarted once it is, above an Add CustomControls package button and a Cancel button.](Images/RightClick-Add-CustomControlsForm-Popup.png)
+![A twinBASIC message box headed Package needed: CustomControls, saying that a reference to the CustomControls package must be added to the project first and that the compiler will be restarted once it is, above an Add CustomControls package button and a Cancel button.](Images/RightClick-Add-CustomControlsForm-Popup.png){:width="539" height="194"}
 
-## ![](Images/tB-Red.png) Module
+## ![](Images/tB-Red.png){:width="16" height="16"} Module
 {: #module }
 
-## ![](Images/tB-Red.png) Class
+## ![](Images/tB-Red.png){:width="16" height="16"} Class
 {: #class }
 
-## ![](Images/File-Green.png) Other File
+## ![](Images/File-Green.png){:width="16" height="16"} Other File
 {: #other-file }
 
-## ![](Images/File-Green.png) Import
+## ![](Images/File-Green.png){:width="16" height="16"} Import
 {: #import }
 
 ## Resource: Visual Styles Manifest
@@ -117,7 +117,7 @@ An application manifest is an XML file that Windows reads when it starts the pro
 
 A manifest can also declare the program's DPI awareness. A program whose manifest does should set [Force DPI Awareness At Startup](Settings#dpi-awareness) to **NONE**.
 
-See ![A small yellow folder icon](Images/Folder.png) `/.../Resources/MANIFEST/#1.xml`
+See ![A small yellow folder icon](Images/Folder.png){:width="16" height="11"} `/.../Resources/MANIFEST/#1.xml`
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -146,7 +146,7 @@ See ![A small yellow folder icon](Images/Folder.png) `/.../Resources/MANIFEST/#1
 
 ## Resource: String Table
 
-See ![A small yellow folder icon](Images/Folder.png) `/.../Resources/STRING/Strings.json`
+See ![A small yellow folder icon](Images/Folder.png){:width="16" height="11"} `/.../Resources/STRING/Strings.json`
 
 ```json
 [
@@ -171,7 +171,7 @@ See ![A small yellow folder icon](Images/Folder.png) `/.../Resources/STRING/Stri
 
 ## Resource: MESSAGETABLE
 
-See ![A small yellow folder icon](Images/Folder.png) `/.../Resources/MESSAGETABLE/Strings.json`
+See ![A small yellow folder icon](Images/Folder.png){:width="16" height="11"} `/.../Resources/MESSAGETABLE/Strings.json`
 
 ```json
 {

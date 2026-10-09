@@ -169,7 +169,12 @@ export function checkChunk(docs, env) {
       ids.push([abs, [...r.ids]]);
     }
     if (r.forbidden && r.forbidden.length) {
-      for (const f of r.forbidden) forbidden.push(doc.destPath, f.url, f.prefix);
+      for (const f of r.forbidden) {
+        // The offline tree's links to a file only the website holds are the
+        // rewrite's own (offline-rewrite.mjs, isWebsiteOnlyLink).
+        if (env.forbidExempt?.(f.url)) continue;
+        forbidden.push(doc.destPath, f.url, f.prefix);
+      }
     }
     if (r.htmlErrors?.length || r.a11yErrors?.length || r.dupIds?.length || r.remoteAssets?.length) {
       integrity.push([

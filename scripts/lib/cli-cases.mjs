@@ -27,6 +27,7 @@ const CASES = [
   { tool: "builder/tbdocs.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
   { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--root-dir"], exit: 2, stderr: "error: --root-dir needs a value\n" },
   { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--forbid"], exit: 2, stderr: "error: --forbid needs a value\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline", "--online-root", "no-such-tree", "no-such-tree"], exit: 2, stderr: "error: --online-root is not a directory: no-such-tree\n" },
 
   // In the four harness tools that check, a value flag with no value, at the end or before another flag,
   // exits 2. tbbuild follows the message with its usage line.
@@ -130,10 +131,10 @@ const CASES = [
   { tool: "scripts/try_help_addin.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
   { tool: "scripts/try_help_addin.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
   { tool: "scripts/try_help_addin.mjs", args: ["--ide", "no-such.exe"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
-  { tool: "scripts/shoot_help_addin.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/shoot_help_addin\.mjs / },
-  { tool: "scripts/shoot_help_addin.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
-  { tool: "scripts/shoot_help_addin.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
-  { tool: "scripts/shoot_help_addin.mjs", args: ["--ide", "no-such.exe"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
+  { tool: "scripts/shoot_docs.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/shoot_docs\.mjs / },
+  { tool: "scripts/shoot_docs.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
+  { tool: "scripts/shoot_docs.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
+  { tool: "scripts/shoot_docs.mjs", args: ["--ide", "no-such.exe"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
   { tool: "scripts/check_examples.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_examples\.mjs \[options\]\n/ },
   { tool: "scripts/check_examples.mjs", args: ["--jobs", "0"], exit: 2, stderr: "check_examples: --jobs expects a whole number of at least 1, got: 0\n" },
   { tool: "scripts/check_examples.mjs", args: ["--batch", "1.5"], exit: 2, stderr: "check_examples: --batch expects a whole number of at least 1, got: 1.5\n" },
@@ -348,7 +349,7 @@ const HELP_TOOLS = {
   "scripts/addin_test.mjs": null,
   "scripts/ide_test.mjs": null,
   "scripts/try_help_addin.mjs": null,
-  "scripts/shoot_help_addin.mjs": null,
+  "scripts/shoot_docs.mjs": null,
   "scripts/bug_repro.mjs": null,
   "scripts/build_dot_metrics.mjs": null,
   "scripts/build_package_api.mjs": null,
@@ -425,7 +426,7 @@ const REFUSALS = {
   "scripts/addin_test.mjs": ["ide"],
   "scripts/ide_test.mjs": ["ide"],
   "scripts/try_help_addin.mjs": ["ide"],
-  "scripts/shoot_help_addin.mjs": ["ide"],
+  "scripts/shoot_docs.mjs": ["ide"],
   "scripts/bug_repro.mjs": ["ide"],
   "scripts/build_dot_metrics.mjs": [null],
   "scripts/build_package_api.mjs": ["out"],
@@ -733,9 +734,17 @@ bad("scripts/ide_test.mjs", ["--show", "--hide"], "--show and --hide cannot be g
 
 bad("scripts/try_help_addin.mjs", ["--port", "0"], NOT_PORT(0) + "\n");
 bad("scripts/try_help_addin.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
-bad("scripts/shoot_help_addin.mjs", ["--port", "0"], NOT_PORT(0) + "\n");
-bad("scripts/shoot_help_addin.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
-bad("scripts/shoot_help_addin.mjs", ["--only", "("], REGEX_REASON("--only", "("));
+bad("scripts/shoot_docs.mjs", ["--port", "0"], NOT_PORT(0) + "\n");
+bad("scripts/shoot_docs.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
+bad("scripts/shoot_docs.mjs", ["--only", "("], REGEX_REASON("--only", "("));
+bad("scripts/shoot_docs.mjs", ["--jobs", "0"], "--jobs expects a whole number from 1 to 16, got: 0\n");
+bad("scripts/shoot_docs.mjs", ["--jobs=17"], "--jobs expects a whole number from 1 to 16, got: 17\n");
+// --diffs is resolved against the working folder, which is an empty scratch folder here, so the case
+// names a folder under the repository's docs by its absolute path.
+{
+  const underDocs = path.join(REPO_ROOT, "docs", "x");
+  bad("scripts/shoot_docs.mjs", ["--diffs", underDocs], `--diffs must not be under docs: ${underDocs}\n`);
+}
 
 // check_examples prints "check_examples: " before the message.
 {

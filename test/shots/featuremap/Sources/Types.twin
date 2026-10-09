@@ -1,0 +1,9 @@
+Module Types
+
+    Public Type StockItem
+        Name As String
+        Quantity As Long
+        Price As Double
+    End Type
+
+End Module

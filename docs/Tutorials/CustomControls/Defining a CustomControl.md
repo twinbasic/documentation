@@ -12,36 +12,38 @@ A CustomControl is simply an ordinary twinBASIC class, with a few extra attribut
 > [!TIP]
 > It is highly advisable to look at and experiment with the sample project provided with twinBASIC before trying to implement your own CustomControl.
 
-![Custom Control Sample Project](Images/ccSampleProject.png)
+![The New / Open Project dialog on the Samples tab. A red ring and the number 1 mark the Samples tab; a red ring and the number 2 mark the title of Sample 6. CustomControls.](Images/ccSampleProject.png){:width="522" height="405"}
 
 ***
 ## CustomControl() attribute
-![CustomControl attribute](Images/ccCustomControlAttribute.png)
+![The CustomControl attribute of the class MyGrid in the editor, naming the image /Miscellaneous/MyGrid.png.](Images/ccCustomControlAttribute.png){:width="347" height="34"}
 
 This is a required attribute for all CustomControls.  You must provide the relative path to an image file within your project that can be used to identify your control in the form designer toolbox.  We recommend that you put the image file in the Miscellaneous folder in your project.
 
-![CustomControl GridImage Folder](Images/ccGridButtonImage.png)
+In the CustomControls sample, the controls are in the CustomControls package, so their images are in the package's own Miscellaneous folder. **WaynesGrid**, for example, names `/miscellaneous/frmGrid.png`:
+
+![The Project Explorer of the CustomControls sample, with its Packages folder open on CustomControlsPackage and that package's Miscellaneous folder open. A red arrow points at frmGrid.png, among the control images frmButton.png to frmTextbox.png.](Images/ccGridButtonImage.png){:width="416" height="346"}
 
 ***
 ##  ClassId() attribute
-![CustomControl ClassId Attribute](Images/ccClassIdAttribute.png)
+![The ClassId attribute of the class MyGrid in the editor, with a GUID, under its CustomControl attribute.](Images/ccClassIdAttribute.png){:width="382" height="52"}
 
 This is a required attribute for all CustomControls.  You must provide a unique CLSID (GUID) in order for the form engine to work with your control. 
 
 > [!TIP]
 > If you enter `[ ClassId () ]` twinBASIC helps you out - just press the 'insert a randomly generated GUID' text:
 
-![CustomControl ClassId auto-generate](Images/ccClassIdInsert.png)
+![A ClassId attribute with empty parentheses in the editor, with a red wavy underline under ClassId and, above the line, the editor's text: insert a randomly generated GUID.](Images/ccClassIdInsert.png){:width="215" height="58"}
 
 ***
 ##  COMCreatable() attribute
-![CustomControl COMCreatable attribute](Images/ccCOMCreatable.png)
+![The three attributes of the class MyGrid in the editor, CustomControl, ClassId and COMCreatable(False), above the line Class MyGrid. A red arrow points at the COMCreatable attribute.](Images/ccCOMCreatable.png){:width="382" height="88"}
 
 This is an optional attribute, but it is usually advisable to set this attribute to False, as you don't need to instantiate CustomControls from external COM environments.
 
 ***
 ## Must implement ICustomControl
-![CustomControl ICustomControl interface](Images/ccICustomControl.png)
+![The editor's hover over ICustomControl in the line Implements CustomControls.ICustomControl of the class MyGrid. It names the interface, in package CustomControls, and lists its members Initialize, Destroy and Paint.](Images/ccICustomControl.png){:width="637" height="277"}
 
 All CustomControls *must* implement [`CustomControls.ICustomControl`](../../tB/Packages/CustomControls/Framework/ICustomControl).  This interface currently has 3 methods that you must implement:
 

@@ -7,6 +7,9 @@ modules in `lib/` -- and `biome.jsonc` refuses an import that breaks the rule.
 
 The folder exists because `builder/` may not import `scripts/`, which
 `biome.jsonc` enforces too, and some code is needed on both sides of that line.
+The one exception is `scripts/impexp.mjs`, named in `biome.jsonc`: it is a
+published standalone tool that has to stay a single file, and the build packs
+the help add-in's project file with it.
 [markdown-files.mjs](markdown-files.mjs) is the first: it walks `docs/` for its
 pages and decides which folders there are the build's output trees.
 

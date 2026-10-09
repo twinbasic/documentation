@@ -571,7 +571,9 @@ Calculate implicit enum values as a flag set (powers of 2).
 > [!NOTE]
 > To prevent confusion, once an explicit value is used, all remaining values after it must also be explicit)
 
-![An Enum marked with the Flags attribute, with inline hints showing each member value as a shifted power of two](Images/flags-attribute.png)
+With the IDE option **Always show IDE Inline Code Hints** on, the editor shows the value of each member:
+
+![An Enum named MyFlags marked with the Flags attribute, with four members flag1 to flag4. The editor's inline hints after the members read 1 << 0 to 1 << 3, each with the value in hexadecimal, from &H00000001& to &H00000008&.](Images/flags-attribute.png){:width="357" height="142"}
 
 ## FloatingPointErrorChecks  (optional Bool)
 {: #floatingpointerrorchecks }

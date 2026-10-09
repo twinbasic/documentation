@@ -61,7 +61,8 @@ digraph scheduler {
     WA   [label=<writeAssets<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
     SDt  [label=<searchData<BR/><FONT POINT-SIZE="10">[M]</FONT>>,        fillcolor="#fef7e0", color="#f9ab00"]
     SYM  [label=<symbolIndex<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
-    WX   [label=<writeAux<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
+    AP   [label=<addinProject<BR/><FONT POINT-SIZE="10">[M]</FONT>>,      fillcolor="#fef7e0", color="#f9ab00"]
+    WX  [label=<writeAux<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
     WO   [label=<writeOffline<BR/><FONT POINT-SIZE="10">[M]</FONT>>,      fillcolor="#fef7e0", color="#f9ab00"]
     WP   [label=<writePdf<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
 
@@ -121,6 +122,9 @@ digraph scheduler {
     PD -> SYM
     SYM -> SDt
 
+    SYM -> AP
+    PD  -> AP
+
     WA  -> WX
     SDt -> WX
     FJ  -> WX
@@ -146,4 +150,5 @@ digraph scheduler {
     CB   -> CR
     SCSS -> CR
     SYM  -> CR
+    AP   -> CR
 }

@@ -103,6 +103,16 @@ bundle_extra:
   - src: ../scripts/impexp.py
     dest: Features/Packages/downloads/impexp.py
 
+# The IDE help add-in's project file, which the build packs from the add-in's
+# source folder (src, relative to docs/) and writes into the online and offline
+# trees at dest, beside the Help Add-In page that offers it. Only the files git
+# tracks there are packed, with the symbol index this build wrote. The publish
+# allowlist exempts dest by path, as it does a bundle_extra entry; a .twinproj
+# anywhere else is still refused. See builder/addin-project.mjs.
+addin_project:
+  src: ../add-in
+  dest: tB/IDE/AddIns/downloads/tbDocsHelp.twinproj
+
 # Search index granularity and generic-section folding. See WIP.Search.md's
 # "Design" §1 for why: splitting at h3 instead of h2 finds API members
 # (`### PaintPicture`) as their own entries, and folding boilerplate

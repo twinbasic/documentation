@@ -1,0 +1,11 @@
+Module FlagsDemo
+
+    [Flags]
+    Public Enum MyFlags
+        flag1
+        flag2
+        flag3
+        flag4
+    End Enum
+
+End Module

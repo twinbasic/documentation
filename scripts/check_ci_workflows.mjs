@@ -12,8 +12,9 @@
 //      among check.bat's -- and that is allowed;
 //   2. the two workflows run the same gate steps, in the same order;
 //   3. each workflow's build passes every argument build.bat passes, and
-//      --no-fetch-assets and --no-help-archive, and nothing else unless
-//      ALLOWED records it.
+//      --no-fetch-assets, and nothing else unless ALLOWED records it; and it
+//      never passes --no-help-archive, because the project file CI publishes as
+//      a download carries the help archive the flag would leave out.
 //
 // ALLOWED lists the recorded differences, each with where it is recorded. A
 // difference not on it is a finding, and so is an allowance that matches
@@ -88,8 +89,12 @@ const ALLOWED = {
   },
   requiredBuildFlags: {
     "--no-fetch-assets": "CI must never download an asset (vendor-assets.mjs)",
+  },
+  forbiddenBuildFlags: {
     "--no-help-archive":
-      "CI has no use for the IDE help add-in's archive and must not spend time on it (help-archive-step.mjs)",
+      "the help add-in's project file, which the site publishes as a download, carries the archive of the offline " +
+      "tree, and without it the add-in built from the download shows the pages from the website only " +
+      "(help-archive-step.mjs, addin-project.mjs)",
   },
 };
 
@@ -177,8 +182,17 @@ function findings({ testBat, checkBat, buildBat, workflows, actions = {}, allowe
       if (!build.includes(flag))
         add("build", wf, `the build does not pass \`${flag}\` (${allowed.requiredBuildFlags[flag]})`);
     }
+    // A forbidden flag is reported once, here, and not again as an unknown one.
+    const forbidden = Object.keys(allowed.forbiddenBuildFlags ?? {});
+    for (const flag of forbidden) {
+      if (build.includes(flag)) {
+        add("build", wf, `the build passes \`${flag}\`, which CI must not: ${allowed.forbiddenBuildFlags[flag]}`);
+      }
+    }
     const flagsHere = allowed.buildFlags[wf] ?? {};
-    const expected = removeEach(build, [...wantBuild, ...Object.keys(allowed.requiredBuildFlags)]).rest;
+    const expected = removeEach(build, [...wantBuild, ...Object.keys(allowed.requiredBuildFlags)]).rest.filter(
+      (t) => !forbidden.includes(t),
+    );
     const used = new Set();
     for (let i = 0; i < expected.length; i++) {
       const t = expected[i];
@@ -225,6 +239,7 @@ const P_ALLOWED = {
   ciOnly: [{ script: "ci.mjs", args: "", workflows: ["one.yml"], why: "probe" }],
   buildFlags: { "two.yml": { "--url": "probe" } },
   requiredBuildFlags: { "--no-fetch-assets": "probe" },
+  forbiddenBuildFlags: { "--no-help-archive": "probe" },
 };
 const BUILD_ONE = "node builder/tbdocs.mjs --src docs --no-fetch-assets --check-audit-index";
 const BUILD_TWO =
@@ -300,6 +315,9 @@ const PROBES = [
     ["build"]],
   ["a build without --no-fetch-assets",
     { workflows: pair(wf([...GOOD, "ci.mjs"], BUILD_ONE.replace(" --no-fetch-assets", "")), wf(GOOD, BUILD_TWO)) },
+    ["build"]],
+  ["a build that skips the help archive",
+    { workflows: pair(wf([...GOOD, "ci.mjs"], `${BUILD_ONE} --no-help-archive`), wf(GOOD, BUILD_TWO)) },
     ["build"]],
   ["a build argument nothing allows",
     { workflows: pair(wf([...GOOD, "ci.mjs"], `${BUILD_ONE} --no-offline`), wf(GOOD, BUILD_TWO)) },

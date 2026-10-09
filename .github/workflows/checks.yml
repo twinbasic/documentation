@@ -98,10 +98,11 @@ jobs:
         # step fails on the exit code: 1 when the check found a problem,
         # 2 when the build could not run.
         #
-        # --no-help-archive: a local build ends by zipping the offline tree
-        # for the IDE help add-in. CI has no use for that archive and must
-        # not spend time on it.
-        run: node builder/tbdocs.mjs --src docs --no-fetch-assets --no-help-archive --check-audit-index
+        # The build also zips the offline tree for the IDE help add-in and
+        # packs the zip into the add-in's project file, the download the site
+        # offers. Never pass --no-help-archive here: the download would lose
+        # the archive (check_ci_workflows.mjs refuses the flag).
+        run: node builder/tbdocs.mjs --src docs --no-fetch-assets --check-audit-index
       # The gates both workflows run, in one list: see
       # .github/actions/run-gates/action.yml, which check_ci_workflows.mjs
       # checks against test.bat and check.bat. Each gate is its own group in

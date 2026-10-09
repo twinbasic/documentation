@@ -8,11 +8,11 @@ index: immediate window
 
 # Debug Console
 
-![The Debug Console pane with its three header buttons outlined at the top right and annotation arrows naming them Auto Scroll, Clear Debug Console and Options. The Options menu is open, offering Invert Output Direction and a ticked Show Timestamps, and a fourth arrow points at the input row outlined along the bottom edge.](Images/DebugConsole.png)
+![The Debug Console pane with its three header buttons outlined at the top right. Labels above the pane, with arrows, name the first two buttons Auto Scroll and Clear Debug Console. The Options menu of the third button is open below it, offering Invert Output Direction and a ticked Show Timestamps, and a label at its right, also with an arrow, names it Options. The input row is outlined along the bottom edge, and a label with an arrow names it Input.](Images/DebugConsole.png){:width="914" height="326"}
 
-The Debug Console captures output from [**Debug.Print**](../../Modules/Debug#print) statements and other debug-layer messages written at runtime, displaying them in a scrollable log. [**Debug.TracePrint**](../../Modules/Debug#traceprint) writes here too when *Compilation: Trace Output* is set to the debug console rather than a file.
+The Debug Console captures output from [**Debug.Print**](../../Modules/Debug#print) statements and other debug-layer messages written at runtime, displaying them in a scrollable log. [**Debug.TracePrint**](../../Modules/Debug#traceprint) writes here too when the *Trace Output* project setting is `${DEBUG}` rather than the path of a log file.
 
-## ![](Images/DebugConsole_AutoScroll.png) Auto Scroll
+## ![](Images/DebugConsole_AutoScroll.png){:width="16" height="16"} Auto Scroll
 
 Keeps the newest output in view. While Auto Scroll is on, the console scrolls to each new line as it arrives: to the bottom, or to the top when **Invert Output Direction** is ticked. It is on each time the IDE starts, and the button is highlighted while it is on.
 
@@ -20,16 +20,16 @@ Scrolling away from the newest line turns Auto Scroll off, so earlier output sta
 
 Clicking the button turns Auto Scroll off until it is clicked again. Scrolling back to the newest line then leaves it off.
 
-## ![](Images/DebugConsole_Clear.png) Clear Debug Console
+## ![](Images/DebugConsole_Clear.png){:width="16" height="16"} Clear Debug Console
 
 Empties the console. [**Debug.Cls**](../../Modules/Debug#cls) does the same thing from code.
 
-## ![](Images/DebugConsole_Options.png) Options
+## ![](Images/DebugConsole_Options.png){:width="16" height="16"} Options
 
 - Invert Output Direction
 - Show Timestamps
 
-## ![](Images/DebugConsole_Input.png) Input
+## ![](Images/DebugConsole_Input.png){:width="20" height="15"} Input
 
 The row along the bottom of the console runs one line of code when <kbd>ENTER</kbd> is pressed. <kbd>CTRL</kbd> + <kbd>G</kbd> moves the keyboard focus to it, and the up arrow key (<kbd>ARROWUP</kbd>) brings back earlier lines, the most recent first.
 

@@ -24,7 +24,12 @@ const OFFLINE_AUX = ["assets/js/search-data.js", "assets/js/nav.js"];
 
 // Every relative path a tree receives. `which` is "online" or "offline";
 // the PDF tree's contents come from writePdf, which knows them exactly.
-export function deriveTreeRels(which, { pages, staticFiles, stubs, themeAssetRels, excludePatterns }) {
+// `onlineOnlyRels` are files the online tree receives and the offline one
+// does not: the help add-in's project file.
+export function deriveTreeRels(
+  which,
+  { pages, staticFiles, stubs, themeAssetRels, excludePatterns, onlineOnlyRels = [] },
+) {
   const rels = new Set();
   const add =
     which === "offline"
@@ -42,6 +47,7 @@ export function deriveTreeRels(which, { pages, staticFiles, stubs, themeAssetRel
   for (const s of staticFiles) add(s.destRel);
   for (const rel of themeAssetRels) add(rel);
   for (const rel of which === "offline" ? OFFLINE_AUX : ONLINE_AUX) add(rel);
+  if (which !== "offline") for (const rel of onlineOnlyRels) add(rel);
 
   return [...rels];
 }

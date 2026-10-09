@@ -113,6 +113,43 @@ const resultsBox = (c) =>
     scrollbar: getComputedStyle(l.querySelector(".scrollBackV")).display !== "none",
   };`,
   );
+// The line between the results list and what is under it, in the pane (`root`
+// is its shadow root) or in the window's page (`root` is the document): the
+// top border of the frame and of the summary, the theme's text colour at 40%
+// as a probe element has it, the list's own bottom border, which has to
+// stay none (its height is its rows), and whether the list shows.
+const SEPARATOR_LOOK = `(() => {
+  const look = (e) => { const s = getComputedStyle(e); return { width: s.borderTopWidth, style: s.borderTopStyle, color: s.borderTopColor }; };
+  const probe = document.createElement("div");
+  probe.style.cssText = "border: 2px solid color-mix(in srgb, var(--themeToolWindowBodyForeColor) 40%, transparent)";
+  (root.querySelector("#helpWrap") ?? root.body).appendChild(probe);
+  const want = look(probe);
+  probe.remove();
+  const list = root.querySelector("#helpResults");
+  return {
+    want,
+    page: look(root.querySelector("#helpPage")),
+    summary: look(root.querySelector("#helpSummary")),
+    listBottom: getComputedStyle(list).borderBottomWidth,
+    listShown: list.style.display !== "none",
+  };
+})()`;
+const paneSeparator = (c) => inPane(c, `return ${SEPARATOR_LOOK};`);
+const windowSeparator = (conn) => conn.evaluate(`(() => { const root = document; return ${SEPARATOR_LOOK}; })()`);
+const NO_LINE = { width: "0px", style: "none" };
+// Whether `got`, from SEPARATOR_LOOK, has the line under a shown list and
+// none under a hidden one; "" when it has, else what was wrong.
+function separatorFault(got) {
+  const line = got.listShown ? got.want : NO_LINE;
+  if (got.want.style === "none" || got.want.width === "0px")
+    return "the probe has no border: color-mix is not supported, or the theme has no text colour";
+  for (const name of ["page", "summary"]) {
+    for (const key of Object.keys(line)) {
+      if (got[name][key] !== line[key]) return `${name} ${key} is ${got[name][key]}, not ${line[key]}`;
+    }
+  }
+  return got.listBottom === "0px" ? "" : "the list has a border of its own";
+}
 // What shows in place of the page for a name with none: null while the page shows.
 const summary = (c) =>
   inPane(
@@ -138,6 +175,45 @@ const pageState = (c) =>
     browserDisabled: root.querySelector("#helpBrowser")?.disabled ?? null,
   };`,
   );
+// What a frame's page shows of the theme, read in that page: its path and
+// query, whether it has loaded and is the document marked earlier
+// (tbDocsTestMark), its data-theme and data-pane, whether its background is
+// dark or light, the choice theme-toggle.js shows on the site's theme button,
+// the colour scheme the frame prefers, and, to say why when the
+// theme is wrong, what its two storages hold for the theme and its window.name.
+const DOCS_STATE = `(() => {
+  const stored = (name) => { try { const v = window[name].getItem("theme"); return v === null ? "empty" : v; } catch (e) { return "throws " + e.name; } };
+  const [r, g, b] = getComputedStyle(document.body).backgroundColor.match(/\\d+/g).map(Number);
+  return {
+    url: location.pathname + location.search,
+    ready: document.readyState === "complete",
+    marked: !!window.tbDocsTestMark,
+    theme: document.documentElement.getAttribute("data-theme"),
+    pane: document.documentElement.hasAttribute("data-pane"),
+    toggle: document.getElementById("theme-toggle")?.getAttribute("data-theme-choice") ?? null,
+    background: 0.299 * r + 0.587 * g + 0.114 * b < 128 ? "dark" : "light",
+    prefers: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+    sessionStorage: stored("sessionStorage"),
+    localStorage: stored("localStorage"),
+    name: window.name,
+  };
+})()`;
+const otherScheme = (group) => (group === "dark" ? "light" : "dark");
+// The frame is told to prefer the other colour scheme than the IDE's group,
+// so that a page left to follow its colour scheme shows the wrong theme.
+const preferOther = (conn, group) =>
+  conn.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: otherScheme(group) }] });
+// Whether a DOCS_STATE read under preferOther has the IDE's theme: the
+// attribute, the background it gives, and the pane's layout. "" when it has,
+// else what is wrong, so that a case can go on to the next page and report
+// every one.
+function docsThemeFault(state, group, where) {
+  if (!state) return `${where}: no page`;
+  if (state.prefers !== otherScheme(group)) return `${where}: the frame does not prefer the other scheme`;
+  const got = { theme: state.theme, background: state.background, pane: state.pane };
+  const want = { theme: group, background: group, pane: true };
+  return JSON.stringify(got) === JSON.stringify(want) ? "" : `${where}: ${JSON.stringify(state)}`;
+}
 
 async function at(c, line, column) {
   await setCursor(c, line, column);
@@ -231,6 +307,12 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   // loaded from it: F1 on the name whose page shows already loads it again,
   // and the page before the reload looks loaded until the reload begins.
   const markFrame = () => frameEval(c, pages, "window.tbDocsTestMark = true").catch(() => {});
+
+  // The IDE's theme, switched with the IDE's own commands for its theme menu.
+  const switchTheme = (group) =>
+    c.evaluate(
+      `executeIdeCommand(${JSON.stringify(group === "dark" ? "tbTheme_SwitchToDarkMode" : "tbTheme_SwitchToLightMode")})`,
+    );
 
   // The frame's origin once the add-in has loaded after `mark`: the add-in's
   // server, whose port changes with every start, or the site this file serves.
@@ -518,6 +600,22 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.ok(box && Math.abs(box.height - 0.35 * box.pane) < 1, JSON.stringify(box));
   });
 
+  // The list's own height is its rows (the two tests before), so the line
+  // between it and the page is the page's top border, and only while it shows.
+  test("the page is under a line in the theme's text colour at 40% while the list shows, and the line goes with the list", async () => {
+    await emptySearch(c);
+    await typeText(c, "msgbo");
+    assert.ok(await waitFor(c, async (c) => (await resultsBox(c))?.row > 0), "the list did not show");
+    let got = await paneSeparator(c);
+    assert.ok(got.listShown, JSON.stringify(got));
+    assert.equal(separatorFault(got), "", JSON.stringify(got));
+    await emptySearch(c);
+    assert.ok(await waitFor(c, async (c) => (await resultsBox(c)) === null), "the list did not hide");
+    got = await paneSeparator(c);
+    assert.ok(!got.listShown, JSON.stringify(got));
+    assert.equal(separatorFault(got), "", JSON.stringify(got));
+  });
+
   test("the search box's clear button hides the results", async () => {
     await emptySearch(c);
     await typeText(c, "zzqq");
@@ -634,6 +732,46 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       "the page's theme",
     );
     assert.deepEqual(await paneChrome(), PANE_CHROME, "the site's chrome in the pane");
+  });
+
+  // In both of the IDE's groups, with the frame preferring the other colour
+  // scheme: the page F1 shows, the same page given again by a theme change,
+  // and a page reached by a link from either. The pane's frame is on the IDE
+  // page's own site, so it is in the IDE page's frame tree, and the scheme is
+  // emulated on the IDE's page.
+  test("the pane's page has the IDE's theme in Light and Dark, after a link too, whatever the frame's colour scheme", async () => {
+    const was = await themeGroup(c);
+    const page = "/tB/Modules/Interaction/MsgBox";
+    const next = "/tB/Modules/Strings/Len";
+    const paneDocs = async (group) => {
+      await preferOther(c, group);
+      return frameEval(c, pages, DOCS_STATE).catch(() => null);
+    };
+    const faults = [];
+    try {
+      for (const group of [was, otherScheme(was)]) {
+        if (group === was) {
+          await f1Shows(page, () => at(c, 5, 9).then(() => pressKey(c, "F1")));
+        } else {
+          await markFrame();
+          await switchTheme(group);
+          assert.equal(await themeGroup(c), group, "the IDE's theme did not change");
+          await showsPage(page, { fresh: true });
+        }
+        faults.push(docsThemeFault(await paneDocs(group), group, `${group}, the page given`));
+        await frameEval(c, pages, `location.href = ${JSON.stringify(next)}`);
+        const linked = await waitFor(c, async () => {
+          const s = await paneDocs(group);
+          return s?.url === next && s.ready && s;
+        });
+        faults.push(docsThemeFault(linked || (await paneDocs(group)), group, `${group}, after a link`));
+      }
+      assert.deepEqual(faults.filter(Boolean), []);
+    } finally {
+      await c.send("Emulation.setEmulatedMedia", { features: [] });
+      await switchTheme(was);
+    }
+    await showsPage(page);
   });
 
   // Hover help: links in the IDE's own hover under the mouse, while the pane's
@@ -1323,6 +1461,12 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     );
   });
 
+  test("the window's page is under the same line while its list shows", async () => {
+    const got = await windowSeparator(win);
+    assert.ok(got.listShown, JSON.stringify(got));
+    assert.equal(separatorFault(got), "", JSON.stringify(got));
+  });
+
   test("a click on a result in the window shows its page there", async () => {
     const rows = await windowRows();
     const n = rows.indexOf("Interaction.MsgBox");
@@ -1480,6 +1624,8 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       );
     const panelBefore = await windowLook();
     assert.deepEqual(panelBefore.got, panelBefore.want, "the panel is not in the theme's colours");
+    const lineBefore = await windowSeparator(win);
+    assert.equal(separatorFault(lineBefore), "", JSON.stringify(lineBefore));
     try {
       await switchTo(other);
       assert.equal(await themeGroup(c), other, "the IDE's theme did not change");
@@ -1493,6 +1639,10 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       const panelAfter = await windowLook();
       assert.deepEqual(panelAfter.got, panelAfter.want, "the panel is not in the new theme's colours");
       assert.notEqual(panelAfter.got.background, panelBefore.got.background, "the panel kept the old background");
+      // So does the line under the list, which the earlier tests left showing.
+      const lineAfter = await windowSeparator(win);
+      assert.equal(separatorFault(lineAfter), "", JSON.stringify(lineAfter));
+      assert.notEqual(lineAfter.want.color, lineBefore.want.color, "the line kept the old colour");
     } finally {
       await switchTo(was);
     }
@@ -1503,6 +1653,76 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       ),
       "the window's properties are not the old theme's again",
     );
+  });
+
+  // The window's frame, in its own target on the window's port when it is a
+  // frame of another site than the window's page, else in the window page's
+  // frame tree: `expression` evaluated in its page, after the frame has been
+  // told to prefer the other colour scheme than `group`, if one is given.
+  async function inWindowDocs(expression, group) {
+    let docs = null;
+    try {
+      docs = await attach(windowPort, pages, { type: "iframe", timeout: 10 * 1000 });
+    } catch {}
+    try {
+      if (group) await preferOther(docs ?? win, group);
+      return docs ? await docs.evaluate(expression) : await frameEval(win, pages, expression);
+    } finally {
+      docs?.close();
+    }
+  }
+  // Waits for the window's frame to have loaded `url` (path and query), a
+  // document other than the one marked, and returns its DOCS_STATE.
+  async function windowDocsShows(url, group) {
+    const read = () => inWindowDocs(DOCS_STATE, group).catch(() => null);
+    const got = await waitFor(c, async () => {
+      const s = await read();
+      return s?.url === url && s.ready && !s.marked && s;
+    });
+    return got || (await read());
+  }
+
+  // As in the pane. In the window the frame is on another site than its page,
+  // which NavigateToString loads as a data: URL, and the frame's storage
+  // throws. The first page is shown with F1, and each theme change after it
+  // gives the window the page again, the last back to the IDE's first theme.
+  // The frame's every load is a "window page" line, which is waited for, so
+  // that none is left to arrive after a later case's mark.
+  test("the window's page has the IDE's theme in Light and Dark, after a link too, whatever the frame's colour scheme", async () => {
+    const was = await themeGroup(c);
+    const page = "/tB/Modules/Interaction/MsgBox";
+    const next = "/tB/Modules/Strings/Len";
+    const mark = () => inWindowDocs("window.tbDocsTestMark = true").catch(() => {});
+    const faults = [];
+    try {
+      for (const [i, group] of [was, otherScheme(was), was].entries()) {
+        await mark();
+        let lines = await consoleMark(c);
+        if (i === 0) {
+          await at(c, 5, 9);
+          await pressKey(c, "F1");
+        } else {
+          await switchTheme(group);
+          assert.equal(await themeGroup(c), group, "the IDE's theme did not change");
+        }
+        const given = `${page}?theme=${group}&pane=1`;
+        assert.equal(await waitFor(c, () => windowPage(lines)), `${pages}${given}`);
+        const how = i === 0 ? "the page F1 gave" : "the page a theme change gave";
+        faults.push(docsThemeFault(await windowDocsShows(given, group), group, `${group}, ${how}`));
+        await mark();
+        lines = await consoleMark(c);
+        await inWindowDocs(`location.href = ${JSON.stringify(next)}`);
+        faults.push(docsThemeFault(await windowDocsShows(next, group), group, `${group}, after a link`));
+        assert.ok(await waitFor(c, () => windowPage(lines)), "the frame's load after the link was not reported");
+      }
+    } finally {
+      if ((await themeGroup(c)) !== was) {
+        const lines = await consoleMark(c);
+        await switchTheme(was);
+        await waitFor(c, () => windowPage(lines));
+      }
+    }
+    assert.deepEqual(faults.filter(Boolean), []);
   });
 
   // A press on the bar with the mouse moved a few pixels, or held for 250 ms,

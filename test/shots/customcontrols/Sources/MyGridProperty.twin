@@ -1,0 +1,16 @@
+Class MyGridProperty
+
+    Private ControlContext As CustomControls.CustomControlContext
+
+    Private _MyField As Long   ' private backing field
+
+    Public Property Get MyField() As Long
+        Return _MyField
+    End Property
+
+    Public Property Let MyField(Value As Long)
+        _MyField = Value
+        ControlContext.Repaint
+    End Property
+
+End Class

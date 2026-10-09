@@ -1,0 +1,7 @@
+Module MainModule
+
+    Public Sub Main()
+        frmMain.Show
+    End Sub
+
+End Module

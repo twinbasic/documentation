@@ -10,7 +10,7 @@ index:
 
 # Find / Replace
 
-![The Find / Replace pane. Find What and Replace With are both empty. The scope radio group has Current File selected, with Current Module and Selected Text greyed out. Direction is set to All, and the checkboxes Whole Word Only, Match Case, Pattern Matching, Match Regular Expressions and Inside Packages are all clear. Find Next, Cancel, Replace and Replace All run down the right edge.](Images/FindReplace.png)
+![The Find / Replace pane. Find What and Replace With are both empty. The scope radio group has Current File selected, with Current Procedure, Current Module and Selected Text greyed out. Direction is set to All, and the checkboxes Whole Word Only, Match Case, Pattern Matching and Match Regular Expressions are all clear, while Inside Packages is greyed out. Find Next, Cancel, Replace and Replace All run down the right edge.](Images/FindReplace.png){:width="600" height="209"}
 
 Find What
 
@@ -24,7 +24,7 @@ Replace With
 
 Direction: All / Down / Up
 
-![The Direction dropdown opened, offering All, highlighted as the current choice, then Down and Up.](Images/FindReplace_Direction.png)
+![The Direction dropdown with its list open below it, offering All, marked as the current choice, then Down and Up.](Images/FindReplace_Direction.png){:width="232" height="99"}
 
 - Whole Word Only
 - Match Case

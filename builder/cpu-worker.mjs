@@ -15,7 +15,7 @@ import { renderFullNav, templatePhase, withPartialNav } from "./template.mjs";
 import { unpackShared } from "./sab-broadcast.mjs";
 import { deriveSearchEntries } from "./search.mjs";
 import { computeChunkSeo } from "./seo.mjs";
-import { deriveOfflinePage } from "./offline-rewrite.mjs";
+import { deriveOfflinePage, isWebsiteOnlyLink, websiteOf } from "./offline-rewrite.mjs";
 import { normalizeBaseurl } from "./url.mjs";
 
 import {
@@ -69,6 +69,7 @@ const handlers = {
       baseurl,
       buildInfo,
       sitePathsArr,
+      onlineSitePathsArr,
       skipOffline,
       svgContentsMap,
       checkTrees,
@@ -100,6 +101,7 @@ const handlers = {
     if (!skipOffline) {
       offlineBase = {
         sitePaths: new Set(sitePathsArr),
+        website: websiteOf(siteData.config, new Set(onlineSitePathsArr)),
         baseurl: normalizeBaseurl(baseurl),
       };
     }
@@ -118,6 +120,7 @@ const handlers = {
           tree: TREES[which],
           basePath: normBase(bu),
           index: treeIndexFor(root, rels),
+          ...(which === "offline" && offlineBase ? { forbidExempt: (url) => isWebsiteOnlyLink(url, offlineBase) } : {}),
         };
       }
     }

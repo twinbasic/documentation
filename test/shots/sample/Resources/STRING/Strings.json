@@ -1,0 +1,18 @@
+[
+    {
+        "id": 101,
+        "name": "MyLocalizedString1",
+        "LCID_0000": "This is my NEUTRAL text for MyLocalizedString1",
+        "LCID_0409": "This is my USA text for MyLocalizedString1",
+        "LCID_0407": "This is my GERMAN text for MyLocalizedString1",
+        "LCID_0809": "This is my UK text for MyLocalizedString1"
+    },
+    {
+        "id": 102,
+        "name": "MyLocalizedString2",
+        "LCID_0000": "This is my NEUTRAL text for MyLocalizedString2",
+        "LCID_0409": "This is my USA text for MyLocalizedString2",
+        "LCID_0407": "This is my GERMAN text for MyLocalizedString2",
+        "LCID_0809": "This is my UK text for MyLocalizedString2"
+    }
+]

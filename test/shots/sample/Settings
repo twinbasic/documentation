@@ -1,0 +1,49 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "SampleProject",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Package TWINPACK",
+	"project.description": "SampleProject description",
+	"project.exportPathIsV2": true,
+	"project.id": "{5C0F8A71-3B2E-4D69-8A14-7E91C2D4B6F3}",
+	"project.licence": "MIT",
+	"project.name": "SampleProject",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"hasBeenSplit": true,
+			"id": "{F50B82D0-DCAB-43FE-9631-11959D4A4728}",
+			"isCompilerPackage": true,
+			"licence": "MIT",
+			"name": "[COMPILER PACKAGE] WinNativeForms Package",
+			"path32": "/Packages/WindowsControlsPackage",
+			"path64": "/Packages/WindowsControlsPackage",
+			"publishedDate": "09-FEB-2022",
+			"publishedTime": "15:48:54",
+			"publisher": "TWINBASIC-COMPILER",
+			"symbolId": "WindowsControlsPackage",
+			"versionBuild": 0,
+			"versionMajor": 0,
+			"versionMinor": 0,
+			"versionRevision": 31
+		},
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWow64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"versionMajor": 2,
+			"versionMinor": 0
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.versionMajor": 1,
+	"project.versionMinor": 0,
+	"project.warnings": {
+		"errors": [],
+		"ignored": [],
+		"info": ["TB0001", "TB0003", "TB0016"]
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}
