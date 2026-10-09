@@ -175,3 +175,17 @@
   width: 100%;
   border: 0;
 }
+
+/* The line between the results list and what is under it, the page or the
+   summary: the theme's text colour at 40%, so that it shows on every theme's
+   panel (the theme's own border for a value box is too faint in Light). It is
+   drawn on the top edge of what follows the list rather than on the list,
+   because the list's height is its row count times --helpRow and a border of
+   its own would add its width to it. It is there only while the list is shown:
+   with no search the bar is above the page, as before. The list is shown or
+   hidden by its inline display (ShowResults, shell.js), which a rule here
+   cannot test but by the attribute. */
+#helpResults:not([style*="display: none"]) ~ #helpSummary,
+#helpResults:not([style*="display: none"]) ~ #helpPage {
+  border-top: 2px solid color-mix(in srgb, var(--themeToolWindowBodyForeColor) 40%, transparent);
+}

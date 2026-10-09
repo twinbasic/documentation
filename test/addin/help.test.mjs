@@ -113,6 +113,43 @@ const resultsBox = (c) =>
     scrollbar: getComputedStyle(l.querySelector(".scrollBackV")).display !== "none",
   };`,
   );
+// The line between the results list and what is under it, in the pane (`root`
+// is its shadow root) or in the window's page (`root` is the document): the
+// top border of the frame and of the summary, the theme's text colour at 40%
+// as a probe element has it, the list's own bottom border, which has to
+// stay none (its height is its rows), and whether the list shows.
+const SEPARATOR_LOOK = `(() => {
+  const look = (e) => { const s = getComputedStyle(e); return { width: s.borderTopWidth, style: s.borderTopStyle, color: s.borderTopColor }; };
+  const probe = document.createElement("div");
+  probe.style.cssText = "border: 2px solid color-mix(in srgb, var(--themeToolWindowBodyForeColor) 40%, transparent)";
+  (root.querySelector("#helpWrap") ?? root.body).appendChild(probe);
+  const want = look(probe);
+  probe.remove();
+  const list = root.querySelector("#helpResults");
+  return {
+    want,
+    page: look(root.querySelector("#helpPage")),
+    summary: look(root.querySelector("#helpSummary")),
+    listBottom: getComputedStyle(list).borderBottomWidth,
+    listShown: list.style.display !== "none",
+  };
+})()`;
+const paneSeparator = (c) => inPane(c, `return ${SEPARATOR_LOOK};`);
+const windowSeparator = (conn) => conn.evaluate(`(() => { const root = document; return ${SEPARATOR_LOOK}; })()`);
+const NO_LINE = { width: "0px", style: "none" };
+// Whether `got`, from SEPARATOR_LOOK, has the line under a shown list and
+// none under a hidden one; "" when it has, else what was wrong.
+function separatorFault(got) {
+  const line = got.listShown ? got.want : NO_LINE;
+  if (got.want.style === "none" || got.want.width === "0px")
+    return "the probe has no border: color-mix is not supported, or the theme has no text colour";
+  for (const name of ["page", "summary"]) {
+    for (const key of Object.keys(line)) {
+      if (got[name][key] !== line[key]) return `${name} ${key} is ${got[name][key]}, not ${line[key]}`;
+    }
+  }
+  return got.listBottom === "0px" ? "" : "the list has a border of its own";
+}
 // What shows in place of the page for a name with none: null while the page shows.
 const summary = (c) =>
   inPane(
@@ -516,6 +553,22 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       return b && (await results(c)).length > 0 && b.scrollbar && b;
     });
     assert.ok(box && Math.abs(box.height - 0.35 * box.pane) < 1, JSON.stringify(box));
+  });
+
+  // The list's own height is its rows (the two tests before), so the line
+  // between it and the page is the page's top border, and only while it shows.
+  test("the page is under a line in the theme's text colour at 40% while the list shows, and the line goes with the list", async () => {
+    await emptySearch(c);
+    await typeText(c, "msgbo");
+    assert.ok(await waitFor(c, async (c) => (await resultsBox(c))?.row > 0), "the list did not show");
+    let got = await paneSeparator(c);
+    assert.ok(got.listShown, JSON.stringify(got));
+    assert.equal(separatorFault(got), "", JSON.stringify(got));
+    await emptySearch(c);
+    assert.ok(await waitFor(c, async (c) => (await resultsBox(c)) === null), "the list did not hide");
+    got = await paneSeparator(c);
+    assert.ok(!got.listShown, JSON.stringify(got));
+    assert.equal(separatorFault(got), "", JSON.stringify(got));
   });
 
   test("the search box's clear button hides the results", async () => {
@@ -1323,6 +1376,12 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     );
   });
 
+  test("the window's page is under the same line while its list shows", async () => {
+    const got = await windowSeparator(win);
+    assert.ok(got.listShown, JSON.stringify(got));
+    assert.equal(separatorFault(got), "", JSON.stringify(got));
+  });
+
   test("a click on a result in the window shows its page there", async () => {
     const rows = await windowRows();
     const n = rows.indexOf("Interaction.MsgBox");
@@ -1480,6 +1539,8 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       );
     const panelBefore = await windowLook();
     assert.deepEqual(panelBefore.got, panelBefore.want, "the panel is not in the theme's colours");
+    const lineBefore = await windowSeparator(win);
+    assert.equal(separatorFault(lineBefore), "", JSON.stringify(lineBefore));
     try {
       await switchTo(other);
       assert.equal(await themeGroup(c), other, "the IDE's theme did not change");
@@ -1493,6 +1554,10 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       const panelAfter = await windowLook();
       assert.deepEqual(panelAfter.got, panelAfter.want, "the panel is not in the new theme's colours");
       assert.notEqual(panelAfter.got.background, panelBefore.got.background, "the panel kept the old background");
+      // So does the line under the list, which the earlier tests left showing.
+      const lineAfter = await windowSeparator(win);
+      assert.equal(separatorFault(lineAfter), "", JSON.stringify(lineAfter));
+      assert.notEqual(lineAfter.want.color, lineBefore.want.color, "the line kept the old colour");
     } finally {
       await switchTo(was);
     }

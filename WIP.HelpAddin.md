@@ -859,6 +859,18 @@ harness about a second against opening a new IDE.
      rounds, and rows of 22.75 px overflowed a list of seven by a pixel each, which showed
      its scrollbar. The vertical scrollbar is left on the list view's default, shown only
      when there is something to scroll.
+   - **The line between the list and the page** (Wayne, 2026-10-09: nothing ended the list
+     and began the page) is the top border of `#helpPage` and `#helpSummary` while
+     `#helpResults` shows (a sibling rule on the list's inline `display`):
+     `2px solid color-mix(in srgb, var(--themeToolWindowBodyForeColor) 40%, transparent)`,
+     the theme's text colour at 40%, so it follows every theme with no rule of its own. The
+     theme's own border for a value box (`--themePropertySheetValueBorderColor`, the search
+     box's) is about 1.4:1 on Light's white, and `PropertySheetEntryBorder` no better, so
+     the owner chose the text colour. It is on the page and not the list because the list's
+     height is its rows (`--helpRow`) and a border of its own would add its width to it,
+     which the height tests count; the owner chose 2px. The IDE has no such border for its own panels, which are
+     divided by a header band (`.sectionHeader`); the properties that look like candidates
+     (`SectionHeaderBorder*`, `PanelBorder*`) are empty or `0` in the Dark theme.
    - **Open in browser** opens the page the add-in last gave the frame, through
      `OpenUrl`, so it honours the test switch. A link followed inside the frame is not
      seen: the live site is on another origin, whose location the IDE's page cannot read.
