@@ -8,6 +8,7 @@
 //   §B  Site-paths set  (buildSitePathsSync, offlineExcluded,
 //                        fnmatchPathname)
 //   §C  URL resolution   (computeRelative, resolveRaw, computeRelUrl,
+//                         computeWebsiteUrl, isWebsiteOnlyLink, websiteOf,
 //                         buildSegs, decode, fileDirSegsFromRel,
 //                         posixDirname, getPageCache)
 //   §D  HTML rewrite     (stripSeo, stripFontPreloads, rewriteHtml,
@@ -158,6 +159,61 @@ export function resolveRaw(raw, sitePaths, baseurl) {
 // §6.4  computeRelUrl -- page-relative URL → page-relative URL with the
 // .html / /index.html / "" suffix that makes it resolve under file://.
 export function computeRelUrl(raw, fileSegs, sitePaths) {
+  const probe = probeRelUrl(raw, fileSegs);
+  if (probe === null) return null;
+  const { pathPart, sep, tail, candidates } = probe;
+  for (const [suffix, full] of candidates) {
+    if (sitePaths.has(full)) return pathPart + suffix + sep + tail;
+  }
+  return null;
+}
+
+// §6.4a  computeWebsiteUrl -- a URL the offline tree does not resolve, but the
+// online tree does: the absolute URL of the file on the website, which holds
+// it. Both forms of URL: a root-absolute one is the website's origin put in
+// front of it (it carries the base path already, as every online URL does); a
+// page-relative one is resolved against the page's folder first. `website`
+// is { sitePaths, url } -- the online tree's path set and the site's origin --
+// and null makes every URL a miss, as an offline tree with no website behind
+// it must.
+export function computeWebsiteUrl(raw, fileSegs, website, baseurl) {
+  if (!website) return null;
+  if (raw.startsWith("/")) {
+    if (resolveRaw(raw, website.sitePaths, baseurl)[2] === null) return null;
+    const lead = !baseurl || raw === baseurl || raw.startsWith(baseurl + "/") ? "" : baseurl;
+    return website.url + lead + raw;
+  }
+  const probe = probeRelUrl(raw, fileSegs);
+  if (probe === null) return null;
+  const { sep, tail, probePath, candidates } = probe;
+  if (!candidates.some(([, full]) => website.sitePaths.has(full))) return null;
+  const [, encoded] = buildSegs(probePath);
+  return website.url + (baseurl || "") + "/" + encoded.join("/") + sep + tail;
+}
+
+// Whether `url`, found in an offline page, is a link computeWebsiteUrl wrote on
+// purpose: it points at the website, at a file the website holds and the
+// offline tree does not. `offline` is the rewrite's state ({ sitePaths, website,
+// baseurl }). A live-site link to a file the offline tree does hold is a link
+// the rewrite missed, and is not one.
+export function isWebsiteOnlyLink(url, { sitePaths, website, baseurl }) {
+  if (!website || !url.startsWith(website.url)) return false;
+  const rest = url.slice(website.url.length);
+  if (!rest.startsWith("/")) return false;
+  return resolveRaw(rest, website.sitePaths, baseurl)[2] !== null && resolveRaw(rest, sitePaths, baseurl)[2] === null;
+}
+
+// The online tree's side of the offline rewrite: its path set and the site's
+// origin, or null when the config names no origin to point at.
+export function websiteOf(config, onlineSitePaths) {
+  const url = String(config?.url ?? "").replace(/\/+$/, "");
+  return url && onlineSitePaths ? { sitePaths: onlineSitePaths, url } : null;
+}
+
+// Where a page-relative URL points in the site, and the paths that could hold
+// it: the shared half of computeRelUrl and computeWebsiteUrl. null for a URL
+// with no path (a bare query or fragment).
+function probeRelUrl(raw, fileSegs) {
   const splitIdx = raw.search(/[?#]/);
   const pathPart = splitIdx === -1 ? raw : raw.slice(0, splitIdx);
   const sep = splitIdx === -1 ? "" : raw[splitIdx];
@@ -195,10 +251,7 @@ export function computeRelUrl(raw, fileSegs, sitePaths) {
     ];
   }
 
-  for (const [suffix, full] of candidates) {
-    if (sitePaths.has(full)) return pathPart + suffix + sep + tail;
-  }
-  return null;
+  return { pathPart, sep, tail, probePath, candidates };
 }
 
 // Cached decoded/encoded segments for a site-rooted path.
@@ -312,8 +365,11 @@ export const HTML_COMBINED_RE = new RegExp(
 // pathological page cannot turn the build log into the page.
 const MISS_SAMPLE = 10;
 
-// §6.6  rewriteHtml -- single regex pass over the HTML.
-export function rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl) {
+// §6.6  rewriteHtml -- single regex pass over the HTML. A URL the offline
+// tree does not hold but the online tree does (`website`, see websiteOf) is
+// rewritten to its absolute URL on the website and is not a miss; a URL in
+// neither tree is.
+export function rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl, website = null) {
   let misses = 0;
   // The URLs behind the count, not only the count. "6 unresolved"
   // printed on every green build for as long as anyone can remember,
@@ -331,6 +387,7 @@ export function rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl)
       rel = rawUrl.startsWith("/")
         ? computeRelative(rawUrl, fileSegs, sitePaths, caches, baseurl)
         : computeRelUrl(rawUrl, fileSegs, sitePaths);
+      if (rel === null) rel = computeWebsiteUrl(rawUrl, fileSegs, website, baseurl);
       pageCache.set(rawUrl, rel);
     }
     if (rel === null) {
@@ -369,13 +426,13 @@ export function injectSearchSetup(html, fileSegs) {
 // per-build reuse; pass a fresh state if cache pollution across pages
 // is a concern.
 export function deriveOfflinePage(page, state) {
-  const { sitePaths, caches, baseurl } = state;
+  const { sitePaths, caches, baseurl, website } = state;
   const fileDir = posixDirname(page.destPath);
   const fileSegs = fileDirSegsFromRel(page.destPath);
   let html = page.html;
   html = stripSeo(html);
   html = stripFontPreloads(html);
-  const { rewritten, misses, missed } = rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl);
+  const { rewritten, misses, missed } = rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl, website);
   html = rewritten;
   html = injectSearchSetup(html, fileSegs);
   if (misses) warnMisses(page.destPath, misses, missed);

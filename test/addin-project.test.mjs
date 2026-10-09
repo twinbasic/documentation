@@ -1,14 +1,16 @@
 // Unit tests for builder/addin-project.mjs, which packs the help add-in's
 // folder, add-in/, into the project file the build publishes beside the Help
-// Add-In page.
+// Add-In page; and for lib/help-archive.mjs's check of an archive against the
+// offline tree it was made from, which the build runs at its end.
 //
 // A build says only that the file it wrote is in each tree (its index audit
 // fails when the file is missing); nothing in it says what the file holds. So
 // these pack the real add-in/ and compare the project, file by file, with the
 // files git tracks there; and they pack fixture folders, each a git repository
 // of its own, for what the real folder cannot show on every machine: a file git
-// does not track, a Resources/HELP/ archive even when git tracks one, and a CRLF
-// checkout beside an LF one.
+// does not track, the archive the build hands over (packed byte for byte) and
+// the site.zip that sits in Resources/HELP/ (never packed, tracked or not), and
+// a CRLF checkout beside an LF one.
 //
 // That docs/_config.yml declares the download, at a path the publish allowlist
 // exempts, is scripts/check_publish_policy.mjs's to assert; nothing here reads
@@ -19,11 +21,12 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
-import { addinProjectOf, packAddinProject, writeAddinProject } from "../builder/addin-project.mjs";
+import { addinProjectOf, formatAddinProject, packAddinProject, writeAddinProject } from "../builder/addin-project.mjs";
+import { checkHelpArchive, writeHelpArchive } from "../lib/help-archive.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { readProject } from "../scripts/impexp.mjs";
 
@@ -134,6 +137,49 @@ describe("the help add-in's project file", () => {
     assert.equal(got.get("Resources/SHELL/shell.js").toString(), "a\r\nb\n", "a resource was changed");
   });
 
+  test("packs the archive it is given as Resources/HELP/site.zip, byte for byte", async () => {
+    const dir = fixture("archive", { ...TRACKED, "Resources/HELP/site.zip": "stale, tracked by mistake" });
+    // Every byte value, and the line endings a text pass would change.
+    const archive = Buffer.concat([Buffer.from("PK\r\n\n\r"), Buffer.from(Array.from({ length: 256 }, (_, i) => i))]);
+    const r = await packAddinProject({ dir, archive });
+    const got = filesIn(r.bytes);
+    assert.ok(got.get("Resources/HELP/site.zip").equals(archive), "the archive was changed in the project");
+    assert.deepEqual([...got.keys()].sort(), [...Object.keys(TRACKED), "Resources/HELP/site.zip"].sort());
+    assert.ok(r.files.includes("Resources/HELP/site.zip"));
+    const again = await packAddinProject({ dir, archive });
+    assert.ok(r.bytes.equals(again.bytes), "two packs of one archive differ");
+  });
+
+  test("packs no archive when it is given none, even when a site.zip sits in the folder", async () => {
+    const dir = fixture("noarchive", TRACKED, { "Resources/HELP/site.zip": "PK on disk, untracked" });
+    const { bytes, untracked } = await packAddinProject({ dir });
+    assert.deepEqual([...filesIn(bytes).keys()].sort(), Object.keys(TRACKED).sort());
+    assert.deepEqual(untracked, [], "Resources/HELP/ is reported as left out");
+    const tracked = fixture("noarchive-tracked", { ...TRACKED, "Resources/HELP/site.zip": "PK tracked" });
+    assert.ok(!filesIn((await packAddinProject({ dir: tracked, archive: null })).bytes).has("Resources/HELP/site.zip"));
+  });
+
+  test("is written only into the trees it is given, and says whether it holds the archive", async () => {
+    const dir = fixture("online-only", TRACKED);
+    const online = path.join(tmp, "only", "_site");
+    const offline = path.join(tmp, "only", "_site-offline");
+    const rel = "tB/IDE/AddIns/downloads/Probe.twinproj";
+    const without = await writeAddinProject({ dir, roots: [online], rel });
+    assert.equal(without.archived, false);
+    assert.equal(without.roots, 1);
+    assert.match(formatAddinProject(without, "add-in/"), /without the offline archive, in 1 tree /);
+    const archive = Buffer.from("PK probe archive");
+    const withIt = await writeAddinProject({ dir, archive, roots: [online], rel });
+    assert.equal(withIt.archived, true);
+    assert.match(formatAddinProject(withIt, "add-in/"), /, with the offline archive, in 1 tree /);
+    assert.ok(
+      filesIn(readFileSync(path.join(online, ...rel.split("/"))))
+        .get("Resources/HELP/site.zip")
+        .equals(archive),
+    );
+    assert.equal(existsSync(offline), false, "the offline root was created");
+  });
+
   test("is written into every tree it is given, at the declared path", async () => {
     const dir = fixture("write", TRACKED);
     const roots = [path.join(tmp, "out", "_site"), path.join(tmp, "out", "_site-offline")];
@@ -150,5 +196,68 @@ describe("the help add-in's project file", () => {
     assert.deepEqual(addinProjectOf(declared), { src: "../add-in", dest: "tB/IDE/AddIns/downloads/P.twinproj" });
     assert.equal(addinProjectOf({}), null);
     assert.equal(addinProjectOf({ addin_project: { src: "../add-in" } }), null);
+  });
+});
+
+// The build writes the archive before the Gantt chart goes into the offline
+// tree, and checks at its end that the tree still matches it.
+describe("the help archive checked against the offline tree", () => {
+  const tree = (name, files) => {
+    const dir = path.join(tmp, name);
+    for (const [rel, text] of Object.entries(files)) {
+      mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+      writeFileSync(path.join(dir, rel), text);
+    }
+    return dir;
+  };
+  const FILES = {
+    "index.html": "<html>home</html>",
+    "Documentation/Development/BuildInfo.html": "<svg>placeholder</svg>",
+    "assets/images/gantt.svg": "<svg/>",
+    "assets/css/site.css": "body{}",
+  };
+  const CHART = ["Documentation/Development/BuildInfo.html", "assets/images/gantt.svg"];
+
+  async function written(name, files = FILES) {
+    const src = tree(name, files);
+    const zip = path.join(tmp, `${name}.zip`);
+    await writeHelpArchive({ src, out: zip });
+    return { src, zip };
+  }
+
+  test("finds nothing in a tree that is as it was archived", async () => {
+    const { src, zip } = await written("h-same");
+    assert.deepEqual(await checkHelpArchive({ src, zip }), []);
+  });
+
+  test("lets only the named files differ in content", async () => {
+    const { src, zip } = await written("h-chart");
+    writeFileSync(path.join(src, ...CHART[0].split("/")), "<svg>the chart</svg>");
+    writeFileSync(path.join(src, ...CHART[1].split("/")), "<svg>the chart, longer</svg>");
+    assert.deepEqual(await checkHelpArchive({ src, zip, mayDiffer: CHART }), []);
+    const problems = (await checkHelpArchive({ src, zip })).filter((p) => p.includes("content differs"));
+    assert.deepEqual(problems.map((p) => p.split(":")[0]).sort(), [...CHART].sort());
+  });
+
+  test("names any other file that changed", async () => {
+    const { src, zip } = await written("h-edit");
+    writeFileSync(path.join(src, "assets", "css", "site.css"), "body{color:red}");
+    const problems = await checkHelpArchive({ src, zip, mayDiffer: CHART });
+    assert.ok(problems.length > 0);
+    assert.ok(
+      problems.every((p) => p.startsWith("assets/css/site.css: ")),
+      problems.join("; "),
+    );
+  });
+
+  test("names a file the tree gained or lost since the archive", async () => {
+    const { src, zip } = await written("h-list");
+    writeFileSync(path.join(src, "late.html"), "written after the archive");
+    rmSync(path.join(src, "index.html"));
+    const problems = await checkHelpArchive({ src, zip, mayDiffer: CHART });
+    assert.deepEqual(problems.sort(), [
+      "index.html: in the archive, not in the tree",
+      "late.html: in the tree, not in the archive",
+    ]);
   });
 });

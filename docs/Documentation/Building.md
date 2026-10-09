@@ -117,9 +117,9 @@ or directly, from the repository root:
 
 A single `tbdocs` run produces all three trees. The `also_build_offline` and `also_build_pdf` keys in `_config.yml` toggle the sibling outputs; the `--no-offline` and `--no-pdf` flags do the same from the command line if you only want `_site/`.
 
-Every build, CI's included, also packs the IDE help add-in's source folder, `add-in/`, into its project file, `tB/IDE/AddIns/downloads/tbDocsHelp.twinproj` in the online and offline trees, which [Help Add-In](../../tB/IDE/AddIns/Help) offers as a download, and prints one line for it. Only the files git tracks there are packed, with the symbol index the same build wrote. [Tools and Scripts](Tools#the-help-add-ins-project-file) describes the file.
+Every build writes `add-in/Resources/HELP/site.zip`, an archive of the offline tree that the IDE help add-in embeds, and prints one line for it. The archive is made once the offline tree is complete and before the Gantt chart goes into the build-information page. The file is not committed. `--no-help-archive` turns the step off. [Tools and Scripts](Tools#the-help-archive) describes the archive.
 
-A local build also ends by writing `add-in/Resources/HELP/site.zip`, an archive of the offline tree that the IDE help add-in embeds, and prints one line for it. The file is not committed. `--no-help-archive` turns the step off, and both CI workflows pass it. [Tools and Scripts](Tools#the-help-archive) describes the archive.
+Every build, CI's included, also packs the IDE help add-in's source folder, `add-in/`, into its project file, `tB/IDE/AddIns/downloads/tbDocsHelp.twinproj` in the online tree, which [Help Add-In](../../tB/IDE/AddIns/Help) offers as a download, and prints one line for it. Only the files git tracks there are packed, with the symbol index the same build wrote and the archive that build wrote; a build that wrote no archive packs none and says so. The offline tree holds no copy of the file, and its links to it open the website's copy. [Tools and Scripts](Tools#the-help-add-ins-project-file) describes the file.
 
 The full set of `tbdocs` CLI flags --- every flag, what each one does, when to use it --- lives on the [Tools and Scripts](Tools#tbdocs) page.
 
@@ -257,7 +257,7 @@ The link check is part of the build. `build.bat` passes `--check-audit-index`, a
 
     build.bat
 
-It covers all three trees --- `_site/` (the online tree), `_site-offline/` (the `file://`-browsable mirror, which also carries `--forbid 'https://docs.twinbasic.com'` so a surviving live-site link is flagged: the offline mirror should never navigate back to the live docs site), and `_site-pdf/book.html` (informational, and listing as `OUT OF BOOK` every link that leaves the book for the website). Every tree is also checked for HTML well-formedness, duplicate `id`s, anchor resolution, accessibility hints and remote `<img src>`; the online tree adds sitemap, search-index and canonical-URL integrity. The same check runs in CI on every pull request and on every push to `staging`.
+It covers all three trees --- `_site/` (the online tree), `_site-offline/` (the `file://`-browsable mirror, which also carries `--forbid 'https://docs.twinbasic.com'` so a surviving live-site link is flagged: the offline mirror should never navigate back to the live docs site, except through the links the rewrite writes to the few files only the website holds, such as the help add-in's download), and `_site-pdf/book.html` (informational, and listing as `OUT OF BOOK` every link that leaves the book for the website). Every tree is also checked for HTML well-formedness, duplicate `id`s, anchor resolution, accessibility hints and remote `<img src>`; the online tree adds sitemap, search-index and canonical-URL integrity. The same check runs in CI on every pull request and on every push to `staging`.
 
 A failing check does not abort the build --- a broken link still produces a site worth looking at --- so it sets the exit code to 1 instead, whether the check found link failures, integrity failures or both. The summary lines say which.
 
@@ -591,7 +591,7 @@ Both workflows add `--no-fetch-assets` to the build, and this is the difference 
 
 The asymmetry is the whole point. An author who wrote the markdown but forgot to commit the image would otherwise get a green build while the published site went on hotlinking a third party --- which is the failure the vendoring mechanism exists to prevent, so CI cannot be the place that quietly repairs it. Setting `$CI` already selects offline mode; the flag only states it. Build locally once after adding a video or pasting a screenshot, and `git status` names exactly what to add --- see [Authoring Pages](Authoring#committing-downloaded-assets).
 
-Both workflows also add `--no-help-archive`, because CI has no use for the help add-in's archive of the offline tree that a local build writes.
+Neither workflow adds `--no-help-archive`, and `check_ci_workflows.mjs` fails when one does: the help add-in's project file, which the site publishes as a download, carries the archive of the offline tree, and without it the add-in built from the download shows the pages from the website only.
 
 ### The deployment tells the build where it is
 

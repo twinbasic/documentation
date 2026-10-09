@@ -1004,9 +1004,11 @@ harness about a second against opening a new IDE.
    it when the DLL has it, and the live site otherwise; the symbol index stays a resource of
    its own.
    - **The archive** is `add-in/Resources/HELP/site.zip`, gitignored, written from
-     `docs/_site-offline` by the last step of a local build of the documentation
+     `docs/_site-offline` by the `helpArchive` task of a build of the documentation, once
+     the offline tree is complete and before the Gantt chart goes into `BuildInfo.html`
      (`builder/help-archive-step.mjs` over `lib/help-archive.mjs`; `--no-help-archive`
-     skips it, and CI passes that) (about 21 MB, 1,471 files; the DLL builds with it for
+     skips it, and CI never passes that, since the download carries the archive) (about
+     26 MB, 1,475 files; the DLL builds with it for
      win32 and win64). An add-in built without it serves nothing
      and uses the live site, as before. The offline tree is the one served: its links are
      relative, so they work on any origin, and its pages hold only their part of the nav
@@ -1214,13 +1216,17 @@ harness about a second against opening a new IDE.
    this project references*.
 10. **Later:** how a user gets an add-in with the archive: the owner's plan (2026-10-07) is to
     build it in CI with everything else, once the compiler runs on Linux there.
-    **Done meanwhile (2026-10-09): the project file is a download.** Every docs build, CI's
-    included, packs `add-in/` into `tB/IDE/AddIns/downloads/tbDocsHelp.twinproj` in the
-    online and offline trees (`builder/addin-project.mjs`, the `addinProject` task), and
-    *Getting the add-in* links to it first, the source route second. It is the *online*
-    add-in: the files git tracks, never `Resources/HELP/`, with the symbol index of the
-    build that publishes it. The reader still builds the two DLLs in the IDE. What this
-    increment still adds is the DLLs themselves, and the offline add-in, built in CI.
+    **Done meanwhile (2026-10-09): the project file is a download, and it is the offline
+    add-in.** Every docs build, CI's included, packs `add-in/` into
+    `tB/IDE/AddIns/downloads/tbDocsHelp.twinproj` in the online tree
+    (`builder/addin-project.mjs`, the `addinProject` task), and *Getting the add-in* links
+    to it first, the source route second. It holds the files git tracks, the symbol index
+    of the build that publishes it, and the archive that build wrote as
+    `Resources/HELP/site.zip` (the project is then about 28 MB), so the add-in built from it serves the pages
+    itself with no internet; CI passes no `--no-help-archive` for that reason. A build
+    that wrote no archive packs none. The offline tree holds no copy, and its links to the
+    file go to the website. The reader still builds the two DLLs in the IDE. What this
+    increment still adds is the DLLs themselves, built in CI.
     Why the pack is made the way it is: [WIP.Build.md](WIP.Build.md#the-help-add-ins-project-file).
 
 **Lookup:**

@@ -437,7 +437,7 @@ after the tree, so counting them would mark every tree that added a page or a
 heading stale on the next `check.bat`. `package-api.json` is an input: the build
 reads it and it decides the bytes of `tB/symbols.json`. Under `add-in/` two paths are
 skipped by their place in the repository (`IGNORED_PATHS`): `Resources/HELP/`, where
-the build writes the help archive as its last step, and `Resources/SYMBOLS/symbols.json`,
+the build writes the help archive, and `Resources/SYMBOLS/symbols.json`,
 the copy of the index the build rewrites. Neither is an input, since the project file is
 packed with the index the build wrote rather than with that copy.
 
@@ -663,17 +663,48 @@ Properties and not a prose section of the same name above it (`Screen.Fonts` is
 ### The help add-in's project file
 
 Every build of `docs`, CI's included, writes `tB/IDE/AddIns/downloads/tbDocsHelp.twinproj`
-into the online and offline trees: the `addinProject` task
+into the online tree: the `addinProject` task
 ([builder/addin-project.mjs](builder/addin-project.mjs)), declared by `addin_project` in
 `_config.yml`, so the test fixtures' configs get none. The Help Add-In page offers it.
 The decisions, each with what it rules out:
 
 - **What goes in is `git ls-files` of `add-in/`, read from the working folder.** A plain
-  walk of the folder packs whatever lies there: `Resources/HELP/site.zip` (gitignored,
-  ~24 MB, written at the end of the same build), a `Build/` folder an IDE wrote, a
+  walk of the folder packs whatever lies there: a stale `Resources/HELP/site.zip`
+  (gitignored, ~26 MB, from some earlier build), a `Build/` folder an IDE wrote, a
   scratch module. Reading git's blobs instead would leave a local build's download one
   commit behind the add-in being edited. `Resources/HELP/` is also refused by name, in
   case it is ever added. A file git does not track is named in the build's output.
+- **The archive in the project is the one this build wrote, handed over in memory.**
+  The `helpArchive` task returns the zip it wrote, and `addinProject` waits for it and
+  packs those bytes as `Resources/HELP/site.zip`. Reading the file back from
+  `add-in/Resources/HELP/` could pick up the archive of an earlier build whenever this
+  one wrote none (`--no-help-archive`, `--serve`, another `--dest`, a fixture): that
+  case packs no archive, and the summary line says `without the offline archive`.
+  The archive is made **before** the Gantt injection, so it holds `BuildInfo.html`
+  without the chart: the chart holds the build's timings, and a download that held it
+  would differ from one build of a tree to the next. `recheckHelpArchive` checks at
+  the end of `runBuild` that the offline tree still lists the archive's files and
+  differs from it in `BuildInfo.html` and `assets/images/gantt.svg` alone.
+  `gantt.svg` is a tracked 105-byte placeholder in `docs/assets/images/`, copied into
+  both trees as a static file, so it is in the archive's file list; the injection
+  overwrites it in the trees and the archive keeps the placeholder.
+- **The task waits for every writer of the offline tree.** `flushJoin` (the render
+  lanes write each page's offline HTML in their flush), `scss` (the offline
+  stylesheet) and `writeOffline` (statics, theme assets, redirect stubs, `nav.js`,
+  `search-data.js`). Nothing else writes there before the injection; a writer added
+  later and missed here fails the build in `recheckHelpArchive`, which is why that
+  check compares every file's content.
+- **The offline tree has no copy, and its link goes to the website.** The project
+  carries the offline tree's archive, so a copy in that tree would be inside its own
+  archive. `deriveTreeRels` takes the path as an online-only file. The page links to
+  it relatively, and the offline rewrite (`computeWebsiteUrl` in `offline-rewrite.mjs`)
+  writes any URL the offline tree lacks and the online tree holds as `site.url` + base
+  path + path, without counting a miss. The offline link check would flag that URL
+  (the `forbid` prefix is the site's origin), so its worker env carries `forbidExempt`
+  (`isWebsiteOnlyLink`), which excuses a website URL only when the online tree holds
+  the path and the offline tree does not: a live-site link to a page the offline tree
+  holds is still a missed rewrite. `scripts/check_links.mjs`, which reads trees from
+  disk, has no such exemption.
 - **Line endings are git's, not the checkout's.** `.gitattributes` checks
   `add-in/Resources/` out `-text`, but not `Settings`, `Sources/*.twin` or the `.tbform`:
   under `core.autocrlf` a Windows checkout holds them with CRLF and CI's Linux one with
@@ -686,10 +717,10 @@ The decisions, each with what it rules out:
   one build behind whenever a page changed. The task packs `symbolIndex`'s `json`, so
   the download holds the index of the pages it is published with; that is also why it
   runs after `symbolIndex` and why `checkReport` waits for it.
-- **The path is in the trees from `dispatch` on.** It goes into the list `deriveTreeRels`
-  and `buildSitePathsSync` take, so the link check resolves the page's link to it, the
-  offline rewrite keeps that link relative, and the publish sweep sees it. If the task
-  stops writing, `--check-audit-index` reports the file as indexed but not on disk.
+- **The path is in the online tree from `dispatch` on.** It goes into the list
+  `deriveTreeRels` takes (`onlineOnlyRels`), so the link check resolves the page's link to
+  it and the publish sweep sees it. If the task stops writing,
+  `--check-audit-index` reports the file as indexed but not on disk.
 - **The pack is `impexp.mjs`'s `importProject`, in process.** `builder/` may not import
   `scripts/` (`biome.jsonc`), because `check_tree_fresh.mjs` would not see a change to
   what the build imports. `impexp.mjs` is the one exception, by name in the rule: it
@@ -698,15 +729,15 @@ The decisions, each with what it rules out:
   which CI does not have, and not `impexp.py`, which CI's Node job need not have.
 - **`--serve` writes it, `--dry-run` does not.** The preview has the page that links to
   it, and packing takes about 100 ms; the help archive is skipped under `--serve` because
-  it takes seconds and writes into `add-in/`, which this writes nowhere near.
+  it takes seconds and writes into `add-in/`, which this writes nowhere near. The `--serve`
+  download holds no archive.
 - **Deterministic by construction.** `impexp` writes no time, numbers every revision with
   a constant and sorts every folder by code point; `git ls-files` is sorted too.
   `test/addin-project.test.mjs` packs the real `add-in/` and fixture repositories:
-  exactly the tracked files, no `Resources/HELP/`, a CRLF and an LF checkout giving the
-  same bytes, and the file in every tree it is given.
-
-The offline tree's copy goes into the help archive with the rest of the tree, about
-1 MB of a ~26 MB zip; the add-in serving its own project file is harmless.
+  exactly the tracked files, no `Resources/HELP/` file from the disk, the given archive
+  byte for byte (and none when none is given), a CRLF and an LF checkout giving the
+  same bytes, and the file in exactly the trees it is given; and `checkHelpArchive`
+  against small trees.
 
 ### Build-time counts as named values
 

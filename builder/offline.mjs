@@ -4,12 +4,13 @@
 // and docs/_plugins/offlinify.rb for the canonical Jekyll reference.
 //
 // One entry point: writeOffline(staticFiles, site, destRoot,
-// { auxStats, sitePaths }). The render workers derive each page's
-// offline HTML and write it during their flush, so writeOffline writes
+// { auxStats, sitePaths, onlineSitePaths }). The render workers derive each
+// page's offline HTML and write it during their flush, so writeOffline writes
 // the rest: the patched just-the-docs.js, search-data.js, the redirect
 // stubs, the static files and the theme assets. sitePaths is the set
 // the caller built with buildSitePathsSync (offline-rewrite.mjs), which
-// holds the pure-compute rewrite helpers.
+// holds the pure-compute rewrite helpers; onlineSitePaths is the online
+// tree's, which a link to a file only the website holds is resolved against.
 //
 // Internal sections:
 //
@@ -36,6 +37,7 @@ import {
   posixDirname,
   rewriteHtml,
   warnMisses,
+  websiteOf,
 } from "./offline-rewrite.mjs";
 import { NAV_SCRIPT_REL, navScript, renderFullNav } from "./template.mjs";
 import { normalizeBaseurl } from "./url.mjs";
@@ -72,13 +74,13 @@ export async function writeOffline(
   staticFiles,
   site,
   destRoot,
-  { auxStats, profileOffline = false, sitePaths, check = false } = {},
+  { auxStats, profileOffline = false, sitePaths, onlineSitePaths = null, check = false } = {},
 ) {
   if (!destRoot) {
     throw new Error("writeOffline requires a destRoot");
   }
 
-  const state = buildOfflineState(site, destRoot, sitePaths);
+  const state = buildOfflineState(site, destRoot, sitePaths, onlineSitePaths);
   // Project-owned theme assets (head-nav.css, print.css, theme-toggle.js)
   // live under docs/assets/ and ride the static-file copy path -- but the
   // online pass also copies them into <destRoot>/assets/, so they show up
@@ -159,13 +161,15 @@ export async function writeOffline(
   return { ...deps.counters, jtdPatches, subT, checkStubs: deps.checkStubs };
 }
 
-// The state the URL rewrite reads: the site-paths Set, the resolution
-// caches, and the base URL and exclusions from the site config.
-function buildOfflineState(site, destRoot, sitePaths) {
+// The state the URL rewrite reads: the site-paths Set, the online tree's
+// (`website`, for the files only the website holds), the resolution caches,
+// and the base URL and exclusions from the site config.
+function buildOfflineState(site, destRoot, sitePaths, onlineSitePaths) {
   const excludePatterns = Array.isArray(site.config?.offline_exclude) ? site.config.offline_exclude.map(String) : [];
   return {
     destRoot,
     sitePaths,
+    website: websiteOf(site.config, onlineSitePaths),
     caches: {
       rawResolution: new Map(),
       seg: new Map(),
@@ -533,6 +537,7 @@ async function writeOfflineNavJs(site, deps) {
     deps.sitePaths,
     deps.caches,
     deps.baseurl,
+    deps.website,
   );
   if (misses) warnMisses(NAV_SCRIPT_REL, misses, missed);
   deps.counters.unresolved += misses;
