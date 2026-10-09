@@ -7,7 +7,7 @@ permalink: /tB/IDE/Project/Editor
 
 # Editor
 
-![The Editor pane with its two header buttons outlined and annotated Options and Tabs List. The Options menu is open with all four of its dropdowns expanded at once: Show Code Folding set to when hovering, Render Whitespace to none, Font Size to 13px and Show Navigation Bar to above. Below them sit the toggles, of which Show Indent Guides, Show Line Numbers, Show MiniMap, Auto Prettify Code and Show CodeLens Run Procedure are ticked.](Images/Editor.png)
+![The EDITOR 1 pane with its two header buttons boxed and labelled Options and Tabs List. The Options menu is open, and the lists of its four dropdowns are drawn open beside it, each with an arrow from its dropdown: Show Code Folding set to when hovering, Render Whitespace to none, Font Size to 13px and Show Navigation Bar to above. Below the dropdowns sit the toggles, of which Show Indent Guides, Show Line Numbers, Show MiniMap, Auto Prettify Code and Show CodeLens Run Procedure are ticked.](Images/Editor.png){:width="760" height="440"}
 
 ## Options
 

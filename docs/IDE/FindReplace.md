@@ -24,7 +24,7 @@ Replace With
 
 Direction: All / Down / Up
 
-![The Direction dropdown opened, offering All, highlighted as the current choice, then Down and Up.](Images/FindReplace_Direction.png)
+![The Direction dropdown with its list open below it, offering All, marked as the current choice, then Down and Up.](Images/FindReplace_Direction.png){:width="232" height="99"}
 
 - Whole Word Only
 - Match Case

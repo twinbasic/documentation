@@ -25,12 +25,14 @@
 //                         (a list row's title, without its icon)
 //   { code, nth? }        a text search in the editor's model, the `nth` match (1 by
 //                         default), placed with the editor's scrolled position, never a
-//                         line number. The first use is in increment 4: untested
+//                         line number
 //   { span: [anchor, ...] } the box that holds the boxes of all the anchors (a row's label
 //                         and its input, boxed as one)
 //   { of, at, dx?, dy? }  a point of another anchor's box: `at` is center, top, bottom,
 //                         left, right, top-left, top-right, bottom-left or bottom-right,
 //                         moved by dx, dy
+//   { rect }              a box given in CSS pixels: an anchor resolved earlier
+//                         (resolveAnchors) and moved, as a composite moves its parts'
 //
 // A primitive is `{ type, ... }`, with `on` the anchor it marks:
 //   arrow      from, to (an anchor, or a list of them: a fork, one arrow to each), bend?
@@ -40,15 +42,27 @@
 //              `elbow: true` curves it to leave the start level and meet the tip vertically.
 //              `tipGap` and `fromGap` replace the 6 and 4 px of clearance at the two ends,
 //              for a target that has a box drawn round it (4 px of padding and a halo).
-//   box        on, pad? (4)
-//   ring       on, pad? (4): a box whose corners are round to half its height
+//   box        on, pad? (4), padX? (pad: the padding left and right)
+//   ring       on, pad? (4), padX? (pad): a box whose corners are round to half its height;
+//              round a span of two lines, a wider padX keeps the round ends off the text
 //   underline  on, gap? (3): a line under the anchor's box
 //   label      text, on, side? (right; left, above, below), gap? (8), dx?, dy?, tone?
 //              (light, a white pill with red text; dark, a dark red pill with white text,
 //              for a dark UI)
 //   badge      n, on, side? (left), gap? (8), dx?, dy?: a numbered red circle
-// All take `halo: false` to leave out the white outline. An anchor that is not found
-// rejects the call, naming it, and leaves no layer behind.
+//   list       select, at?, rows?, name?: the open list of a native <select>, which an OS
+//              window draws and no capture of the page holds, drawn as a replica: its
+//              options from the element, the selected one marked, in the owner's one style
+//              (a white list, a 1 px grey border, the select's own font, the selected option
+//              white on #6E6E6E). `select` is a `css` anchor of the select or of an element
+//              inside or around it; `at` the list's top-left corner, by default the select's
+//              bottom-left, where the OS list opens; `rows` how many options show, the rest
+//              behind a scroll bar, the selected one in the middle. Drawn in the order of the
+//              list, so arrows after it go over it. Its rows are anchors:
+//              `.tbShotList[data-name="<name>"] .tbShotListRow[data-text="<option>"]`, and
+//              the selected one `.tbShotListCurrent`; `name` is the list's index by default
+// All but list take `halo: false` to leave out the white outline. An anchor that is not
+// found rejects the call, naming it, and leaves no layer behind.
 
 export const LAYER_ID = "tbShotAnnotation";
 
@@ -68,19 +82,29 @@ const STYLE = {
   labelPadX: 11,
   labelHeight: 27,
   badge: 22,
+  // the replica of a select's open list
+  listBorder: "#A0A0A0",
+  listCurrent: "#6E6E6E",
+  listPadX: 4,
+  listRowFactor: 1.5, // a row's height, as a multiple of the font's size
+  listScrollbar: 14,
 };
 
 // Runs in the IDE's page: resolves the anchors, draws the layer and returns its
-// bounding box. Self-contained (it is sent as source), so no name from outside it.
-function draw(prims, S) {
+// bounding box; with `resolve`, an object of anchors, draws nothing and returns their
+// boxes under the same names. Self-contained (it is sent as source), so no name from
+// outside it.
+function draw(prims, S, resolve = null) {
   const NS = "http://www.w3.org/2000/svg";
-  document.getElementById("tbShotAnnotation")?.remove();
-  const svg = document.createElementNS(NS, "svg");
-  svg.id = "tbShotAnnotation";
-  svg.setAttribute("xmlns", NS);
-  svg.style.cssText =
-    "position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:2147483647;pointer-events:none;overflow:visible";
-  document.body.appendChild(svg);
+  const svg = resolve ? null : document.createElementNS(NS, "svg");
+  if (svg) {
+    document.getElementById("tbShotAnnotation")?.remove();
+    svg.id = "tbShotAnnotation";
+    svg.setAttribute("xmlns", NS);
+    svg.style.cssText =
+      "position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:2147483647;pointer-events:none;overflow:visible";
+    document.body.appendChild(svg);
+  }
   const font = getComputedStyle(document.body).fontFamily;
 
   let bounds = null;
@@ -172,9 +196,22 @@ function draw(prims, S) {
     "bottom-left": [0, 1],
     "bottom-right": [1, 1],
   };
+  // The element a `css` anchor names.
+  const elementOf = (a) => {
+    const all = queryAll(a.css).filter(shown);
+    let e = all[0];
+    if (a.text !== undefined) {
+      const want = norm(a.text);
+      const text = (x) => norm(x.innerText ?? x.textContent);
+      e = all.find((x) => text(x) === want) ?? all.find((x) => text(x).startsWith(want));
+    }
+    if (!e) fail("finds no element", a);
+    return e;
+  };
   // An anchor's box; a point is a box of no size, marked `point`.
   const box = (a) => {
     if (!a) fail("has no anchor", a);
+    if (a.rect) return { x: a.rect.x, y: a.rect.y, width: a.rect.width, height: a.rect.height };
     if (a.of) {
       const r = box(a.of);
       const f = AT[a.at ?? "center"];
@@ -200,14 +237,7 @@ function draw(prims, S) {
     }
     if (a.code !== undefined) return codeBox(a);
     if (a.css) {
-      const all = queryAll(a.css).filter(shown);
-      let e = all[0];
-      if (a.text !== undefined) {
-        const want = norm(a.text);
-        const text = (x) => norm(x.innerText ?? x.textContent);
-        e = all.find((x) => text(x) === want) ?? all.find((x) => text(x).startsWith(want));
-      }
-      if (!e) fail("finds no element", a);
+      const e = elementOf(a);
       const r = a.own ? ownTextBox(e) : boxOf(e.getBoundingClientRect());
       if (!r) fail("finds no text of its own", a);
       return r;
@@ -319,9 +349,10 @@ function draw(prims, S) {
   const outline = (p, round) => {
     const r = box(p.on);
     const pad = p.pad ?? S.pad;
-    const x = r.x - pad;
+    const padX = p.padX ?? pad;
+    const x = r.x - padX;
     const y = r.y - pad;
-    const w = r.width + 2 * pad;
+    const w = r.width + 2 * padX;
     const h = r.height + 2 * pad;
     shape("rect", { x, y, width: w, height: h, rx: round ? h / 2 : 3 }, p);
     note(x, y, w, h, S.haloStroke / 2);
@@ -369,6 +400,79 @@ function draw(prims, S) {
     text(g, String(p.n), at.x + d / 2, at.y + d / 2, "#fff", 14, 700);
     note(at.x, at.y, d, d, 1);
   };
+  // A replica of a select's open list (see `list` above). Whole CSS pixels, so that its 1 px
+  // lines fall on device pixels.
+  let lists = 0;
+  const list = (p) => {
+    const found = elementOf(p.select ?? fail("has no select", p));
+    const sel = found.matches("select") ? found : (found.querySelector("select") ?? found.closest("select"));
+    if (!sel) fail("finds no select", p.select);
+    const options = [...sel.options].filter((o) => !o.hidden);
+    if (!options.length) fail("has a select with no options", p.select);
+    const current = options.indexOf(sel.options[sel.selectedIndex]);
+    const style = getComputedStyle(sel);
+    const size = Number.parseFloat(style.fontSize);
+    const rowH = Math.round(size * S.listRowFactor);
+    const shownRows = Math.min(options.length, p.rows ?? options.length);
+    const scrolls = shownRows < options.length;
+    const first = scrolls ? Math.max(0, Math.min(options.length - shownRows, current - Math.floor(shownRows / 2))) : 0;
+    const g = el("g", { class: "tbShotList", "data-name": p.name ?? String(lists) });
+    lists++;
+    const write = (s, x, y, fill) => {
+      const t = el(
+        "text",
+        { x, y, fill, "font-family": style.fontFamily, "font-size": size, "dominant-baseline": "central" },
+        g,
+      );
+      t.textContent = s;
+      return t;
+    };
+    // the width: the select's, or the longest option's
+    let longest = 0;
+    for (const o of options) {
+      const t = write(o.text, 0, 0, "none");
+      longest = Math.max(longest, t.getComputedTextLength());
+      t.remove();
+    }
+    const sb = box(p.select);
+    const at = p.at ? box(p.at) : { x: sb.x, y: sb.y + sb.height };
+    const x = Math.round(at.x);
+    const y = Math.round(at.y);
+    const w = Math.max(
+      Math.round(sb.width),
+      Math.ceil(longest) + 2 * S.listPadX + 2 + (scrolls ? S.listScrollbar : 0) + 8,
+    );
+    const h = shownRows * rowH + 2;
+    el("rect", { x: x + 0.5, y: y + 0.5, width: w - 1, height: h - 1, fill: "#fff", stroke: S.listBorder }, g);
+    for (let i = 0; i < shownRows; i++) {
+      const n = first + i;
+      const ry = y + 1 + i * rowH;
+      const rw = w - 2 - (scrolls ? S.listScrollbar : 0);
+      const row = el("rect", { x: x + 1, y: ry, width: rw, height: rowH, fill: "none" }, g);
+      row.setAttribute("class", n === current ? "tbShotListRow tbShotListCurrent" : "tbShotListRow");
+      row.setAttribute("data-text", options[n].text);
+      if (n === current) row.setAttribute("fill", S.listCurrent);
+      write(options[n].text, x + 1 + S.listPadX, ry + rowH / 2, n === current ? "#fff" : "#000");
+    }
+    if (scrolls) {
+      const tx = x + w - 1 - S.listScrollbar;
+      const th = h - 2;
+      el("rect", { x: tx, y: y + 1, width: S.listScrollbar, height: th, fill: "#F0F0F0" }, g);
+      el(
+        "rect",
+        {
+          x: tx + 3,
+          y: y + 1 + (th * first) / options.length,
+          width: S.listScrollbar - 6,
+          height: (th * shownRows) / options.length,
+          rx: 2,
+          fill: "#C1C1C1",
+        },
+        g,
+      );
+    }
+    note(x, y, w, h);
+  };
   const DRAW = {
     arrow,
     box: (p) => outline(p, false),
@@ -376,7 +480,16 @@ function draw(prims, S) {
     underline,
     label,
     badge,
+    list,
   };
+  if (resolve) {
+    const out = {};
+    for (const k of Object.keys(resolve)) {
+      const r = box(resolve[k]);
+      out[k] = { x: r.x, y: r.y, width: r.width, height: r.height };
+    }
+    return out;
+  }
   try {
     for (const p of prims) (DRAW[p.type] ?? (() => fail("has an unknown type", p)))(p);
   } catch (e) {
@@ -391,6 +504,12 @@ function draw(prims, S) {
 export async function annotate(conn, primitives) {
   return { box: await conn.evaluate(`(${draw})(${JSON.stringify(primitives)}, ${JSON.stringify(STYLE)})`) };
 }
+
+// The boxes of `anchors` (an object of them) in the page as it is now, in CSS pixels, under
+// the same names: for a picture whose parts are captured one at a time, each part's anchors
+// while that part is showing.
+export const resolveAnchors = (conn, anchors) =>
+  conn.evaluate(`(${draw})([], ${JSON.stringify(STYLE)}, ${JSON.stringify(anchors)})`);
 
 // Removes the layer, whether or not there is one.
 export const unannotate = (conn) => conn.evaluate(`document.getElementById(${JSON.stringify(LAYER_ID)})?.remove()`);

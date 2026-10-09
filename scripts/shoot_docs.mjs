@@ -45,6 +45,9 @@
 //               Toolbox beside a QR code, and the window in a layout of its own;
 //               settings-webview2 stages a form with a WebView2 control as well, for
 //               the WebView2 tutorial's Toolbox and PROPERTIES
+//   customcontrols  test/shots/customcontrols, two custom controls of its own on a
+//               CustomControls form: the CustomControls tutorial's composites of their code
+//               and PROPERTIES (lib/shot-composite.mjs)
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
@@ -72,7 +75,9 @@
 //
 // A menu is captured as a cut-out: the bar item and its drop-downs are kept, as
 // the IDE draws them, and the rest of the page, background included, is
-// transparent. A dialog is captured opaque, as a clip of the dialog's box.
+// transparent. A dialog is captured opaque, as a clip of the dialog's box. The open
+// list of a native select is an OS window, which no capture holds: it is drawn
+// in the page as a replica (lib/shot-annotate.mjs's `list`).
 //
 // The Windows user name must never be in a published picture. Before a picture
 // is kept, the visible text of the page it was taken from (the document, every
@@ -80,7 +85,7 @@
 // picture whose page holds it is refused. A tooltip is not drawn and is not
 // read; the IDE's title tooltip holds the project's path.
 
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import path from "node:path";
 import { createStaticHandler } from "../builder/static-files.mjs";
@@ -96,7 +101,8 @@ import {
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { hoverText, mouseAway, pointOf, restMouse } from "../test/addin/hover.mjs";
 import { frameEval, frameOf, serveLoopback } from "../test/addin/pages.mjs";
-import { annotate as annotateOver, LAYER_ID, unannotate } from "./lib/shot-annotate.mjs";
+import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "./lib/shot-annotate.mjs";
+import { composite, uncomposite } from "./lib/shot-composite.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
@@ -131,6 +137,7 @@ const DEMO = path.join(REPO_ROOT, "test", "addin", "helpdemo");
 const SAMPLE = path.join(REPO_ROOT, "test", "shots", "sample");
 const DESIGNER = path.join(REPO_ROOT, "test", "shots", "designer");
 const DESIGNER_WEBVIEW2 = path.join(DESIGNER, "webview2");
+const CUSTOMCONTROLS = path.join(REPO_ROOT, "test", "shots", "customcontrols");
 const SETTINGS_FIXTURES = path.join(REPO_ROOT, "test", "shots", "settings");
 const DEMO_FILE = "/Inventory/Sources/Inventory.twin";
 const DEMO_SOURCE = path.join(DEMO, "Sources", "Inventory.twin");
@@ -152,8 +159,9 @@ the menus, dialogs, bars and panels that need no project (setups no-project and 
 the panels, editor, Project Settings and icons of a sample project (setups sample,
 settings and glyphs), those of the IDE's Samples 15 and 6 (setups
 global-search and sample6), the form and report designers and the Format menu
-(setup designer), and the Toolbox and PROPERTIES with a control on a form (setups
-forms and settings-webview2).
+(setup designer), the Toolbox and PROPERTIES with a control on a form (setups
+forms and settings-webview2), and the CustomControls tutorial's pictures of a
+custom control's code and PROPERTIES (setup customcontrols).
 Each setup is one IDE, started when a picture in it is selected. A picture is
 written only when its bytes differ from the file already there; each is
 reported as new, updated or unchanged. The IDE's registry entries and the
@@ -174,8 +182,8 @@ was taken from holds the Windows user name.
                    two captures of one state that disagree, named .capture-<n>.
                    Files of the same name are overwritten
   --jobs <n>       how many IDEs run at once (default 6). The setups are queued,
-                   the longest first, and the two long ones (no-project and sample)
-                   are split into parts that each get an IDE of their own; every
+                   the longest first, and the long ones (no-project, sample and
+                   customcontrols) are split into parts that each get an IDE of their own; every
                    line is prefixed with its setup or part. With --jobs 1 each
                    setup runs in one IDE, one after another, in the table's order
   --port <n>       the first IDE's DevTools port: the first free ones from n
@@ -959,12 +967,41 @@ async function prepareDesigner(run) {
   return prepareWithDesigners(run);
 }
 
+// ---- customcontrols: test/shots/customcontrols, CustomControlsDemo, a project referencing
+// the CustomControls package with two custom controls of its own, MyGrid and MyButton (named
+// so that they are not taken for the package's WaynesGrid and WaynesButton, which the Toolbox
+// lists beside them), on a CustomControls form, frmCustom: the CustomControls tutorial's
+// property sheet pictures. Their members have the tutorial's names. The controls' Toolbox
+// images are the package's own, taken from the install's copy of the package under the names
+// the classes' [CustomControl] attributes give.
+
+async function startCustomControls(run) {
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, CUSTOMCONTROLS)}`);
+  const src = path.join(run.work, "customcontrols-src");
+  cpSync(CUSTOMCONTROLS, src, { recursive: true });
+  const packages = path.join(path.dirname(ide), "packages");
+  const pkg = readdirSync(packages).find((d) => d.endsWith("_CustomControlsPackage"));
+  if (!pkg) throw new Error(`the install has no CustomControls package in ${packages}`);
+  const unpacked = path.join(run.work, "customcontrols-package");
+  unpackProject(path.join(packages, pkg, "Package.twinproj"), unpacked);
+  mkdirSync(path.join(src, "Miscellaneous"), { recursive: true });
+  for (const [from, to] of [
+    ["frmGrid.png", "MyGrid.png"],
+    ["frmButton.png", "MyButton.png"],
+  ]) {
+    cpSync(path.join(unpacked, "Miscellaneous", from), path.join(src, "Miscellaneous", to));
+  }
+  return run.lane.open(src);
+}
+
 const SETUPS = {
   help: { ports: 3, start: startHelp, prepare: prepareHelp },
   "global-search": { ports: 2, start: startGlobalSearch, prepare: prepareGlobalSearch },
   sample6: { ports: 1, start: startSample6, prepare: prepareSample },
   designer: { ports: 2, start: startDesigner, prepare: prepareDesigner },
   forms: { ports: 1, start: (run) => startDesigner(run, { addin: false }), prepare: prepareWithDesigners },
+  customcontrols: { ports: 1, start: startCustomControls, prepare: prepareWithDesigners },
   project: { ports: 1, start: startProject, prepare: prepareProject },
   sample: { ports: 1, start: startSample, prepare: prepareSample },
   settings: { ports: 1, start: startSettings("base"), prepare: prepareSample },
@@ -2110,6 +2147,42 @@ async function closePanelIfShown(c, id) {
   await sleep(300);
 }
 
+// Find / Replace shown by Ctrl+H on a line of frmMain's code that holds no word to search for;
+// `fn(sel)` takes the picture, `sel` the panel's selector, and the panel goes again however
+// that goes.
+async function inFindReplace(c, fn) {
+  await resetUi(c);
+  await openFile(c, SAMPLE_FILE("Sources/frmMain.twin"));
+  await setCursor(c, 5, 1);
+  await pressKey(c, "h", { ctrl: true });
+  const sel = panelSel("FIND REPLACE");
+  if (!(await waitFor(c, () => rectOf(c, sel), { timeout: 5000, interval: 100 }))) {
+    throw new Error("Ctrl+H did not show the Find / Replace panel");
+  }
+  await sleep(800);
+  try {
+    return await fn(sel);
+  } finally {
+    await pressKey(c, "Escape");
+    await sleep(400);
+    await closePanelIfShown(c, "FIND REPLACE");
+  }
+}
+
+// A capture of `area` with `prims` drawn over it (a select's list among them: lib/shot-annotate.mjs's
+// `list`), the clip as large as what they drew and `margin` more round it all, and `below`
+// more at its foot.
+async function listClip(c, name, area, prims, { margin = 6, below = 0 } = {}) {
+  try {
+    const { box } = await annotateOver(c, prims);
+    const clip = grow(box ? union(area, box) : area, margin);
+    clip.height += below;
+    return await capture(c, name, snapOut(clip), { away: () => parkMouse(c) });
+  } finally {
+    await unannotate(c);
+  }
+}
+
 const sampleShots = [
   tabsListShot("Editor_TabsList_RecentlyClosed", { button: true }),
   tabsListShot("Editor_TabsList_RecentlyClosed_Example", { button: true, submenu: true }),
@@ -2240,17 +2313,8 @@ const sampleShots = [
     // Find / Replace with its Current File scope, on a line that holds no word to search for
     out: "IDE/Images/FindReplace.png",
     setup: "sample",
-    async take({ c }) {
-      await resetUi(c);
-      await openFile(c, SAMPLE_FILE("Sources/frmMain.twin"));
-      await setCursor(c, 5, 1);
-      await pressKey(c, "h", { ctrl: true });
-      const sel = panelSel("FIND REPLACE");
-      if (!(await waitFor(c, () => rectOf(c, sel), { timeout: 5000, interval: 100 }))) {
-        throw new Error("Ctrl+H did not show the Find / Replace panel");
-      }
-      await sleep(800);
-      try {
+    take: ({ c }) =>
+      inFindReplace(c, async (sel) => {
         const label = await c.evaluate(`(() => {
   const e = [...document.querySelectorAll(${JSON.stringify(`${sel} *`)})].find((x) => x.children.length === 0 && x.textContent.trim() === "Current File");
   const r = e.getBoundingClientRect();
@@ -2258,13 +2322,21 @@ const sampleShots = [
 })()`);
         await clickAt(c, label.x, label.y);
         await sleep(400);
-        return await capture(c, "FindReplace", snapOut(await rectOf(c, sel)), { away: () => parkMouse(c) });
-      } finally {
-        await pressKey(c, "Escape");
-        await sleep(400);
-        await closePanelIfShown(c, "FIND REPLACE");
-      }
-    },
+        return capture(c, "FindReplace", snapOut(await rectOf(c, sel)), { away: () => parkMouse(c) });
+      }),
+  },
+  {
+    // the Direction row, its select's list drawn open below it
+    out: "IDE/Images/FindReplace_Direction.png",
+    setup: "sample",
+    take: ({ c }) =>
+      inFindReplace(c, async (sel) => {
+        const row = await rectOf(c, `${sel} .findReplacePanelHorzGroup:has(.findReplacePanelDropDown2)`);
+        if (!row) throw new Error("the Find / Replace panel has no Direction row");
+        return listClip(c, "FindReplace_Direction", row, [
+          { type: "list", select: { css: `${sel} .findReplacePanelDropDown2` } },
+        ]);
+      }),
   },
   {
     // the toolbar crop, a ring on the Build button
@@ -2540,7 +2612,127 @@ const sampleShots = [
       }
     },
   },
+  editorOptionsShot(),
 ];
+
+// ---- the editor's Options pop-up, its four selects drawn open at once
+
+// EDITOR 1's own element `css` (its header's buttons).
+const editorPanelPart = (css) =>
+  `[...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "EDITOR 1")?.closest(".toolWindowContainer")?.querySelector(${JSON.stringify(css)})`;
+const EDITOR_OPTIONS = ".ellipsesIcon2";
+// The page the picture is of: EDITOR 1 alone, with no file open.
+const EDITOR_OPTIONS_PAGE = { width: 760, height: 560 };
+// The pop-up's selects, in its order, and their lists' names.
+const EDITOR_SELECTS = ["folding", "whitespace", "fontSize", "navigationBar"];
+const editorSelect = (i) => `#contextMenu > .contextMenuItem:nth-child(${i + 1}) select`;
+
+// EDITOR 1 with no file open and every other panel out of the layout, in a page of
+// EDITOR_OPTIONS_PAGE, its Options pop-up open (a real click on its button) and moved down
+// and left, under the header, so that the four lists fit beside it: a native select's list is
+// an OS window, so the four are drawn, open at once, to the right of the pop-up (the lists of
+// lower rows nearer), each with an arrow from its select. The header's two buttons boxed and
+// named. The default layout is put back after it. (A function declaration: sampleShots is
+// made before this part of the file is run.)
+function editorOptionsShot() {
+  return { out: "IDE/Images/Editor.png", setup: "sample", take: takeEditorOptions };
+}
+async function takeEditorOptions({ c }) {
+  await resetUi(c);
+  // the earlier pictures of the setup have edited frmMain's code and put it back
+  await closeTabs(c, [], { discard: true });
+  for (const id of DOCKED_BESIDE_EDITOR) await undock(c, id);
+  try {
+    return await atSize(c, EDITOR_OPTIONS_PAGE.width, EDITOR_OPTIONS_PAGE.height, async () => {
+      const ed = await settledBox(c, editorPanelRect);
+      const button = await c.evaluate(`(() => {
+  const e = ${editorPanelPart(EDITOR_OPTIONS)};
+  const r = e?.getBoundingClientRect();
+  return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+      const tabs = await rectOf(c, TABS_BUTTON);
+      if (!button || !tabs) throw new Error("EDITOR 1 has no Options or no Tabs List button");
+      try {
+        await clickAt(c, button.x + button.width / 2, button.y + button.height / 2);
+        if (!(await menuOpened(c))) throw new Error("the Options button opened no pop-up");
+        await c.evaluate(
+          `Object.assign(document.getElementById("contextMenu").style, { left: "${ed.x + 24}px", top: "${tabs.y + tabs.height + 56}px" })`,
+        );
+        await frames(c);
+        const at = await resolveAnchors(c, {
+          popup: { css: "#contextMenu" },
+          ...Object.fromEntries(EDITOR_SELECTS.map((n, i) => [n, { css: editorSelect(i) }])),
+        });
+        // each list's top 34 pixels under its select's middle, the lists of lower rows nearer the
+        // pop-up, so that each arrow can leave its select level and turn down into its list
+        // without crossing another
+        const top = (n) => at[n].y + at[n].height / 2 + 34;
+        const point = (x, y) => ({ rect: { x, y, width: 0, height: 0 } });
+        const LIST = (n) => ({ css: `.tbShotList[data-name="${n}"]` });
+        const lists = [];
+        let prev = null;
+        for (const n of [...EDITOR_SELECTS].reverse()) {
+          lists.push({
+            type: "list",
+            name: n,
+            select: { css: editorSelect(EDITOR_SELECTS.indexOf(n)) },
+            at: prev
+              ? { of: LIST(prev), at: "top-right", dx: 24, dy: top(n) - top(prev) }
+              : point(at.popup.x + at.popup.width + 20, top(n)),
+            rows: n === "fontSize" ? 7 : undefined,
+          });
+          prev = n;
+        }
+        const BUTTON = { rect: button };
+        const POPUP = { css: "#contextMenu" };
+        const annotate = [
+          ...lists,
+          ...EDITOR_SELECTS.map((n, i) => ({
+            type: "arrow",
+            from: { of: { css: editorSelect(i) }, at: "right", dx: 4 },
+            to: { of: LIST(n), at: "top", dy: -3 },
+            elbow: true,
+          })),
+          { type: "box", on: BUTTON, pad: 2, halo: false },
+          { type: "box", on: { css: TABS_BUTTON }, pad: 2, halo: false },
+          // the pop-up's arrow leaves the button level, to the left, and comes down onto it
+          {
+            type: "arrow",
+            from: { of: BUTTON, at: "left", dx: -6 },
+            to: { of: POPUP, at: "top-right", dx: -40, dy: -4 },
+            elbow: true,
+          },
+          {
+            type: "label",
+            text: "Options",
+            on: { of: POPUP, at: "top-right", dx: -54, dy: -32 },
+            side: "left",
+            gap: 0,
+            tone: "dark",
+          },
+          { type: "label", text: "Tabs List", on: { css: TABS_BUTTON }, side: "left", gap: 64, tone: "dark" },
+          {
+            type: "arrow",
+            from: { of: { css: TABS_BUTTON }, at: "left", dx: -60 },
+            to: { css: TABS_BUTTON },
+            tipGap: 8,
+          },
+        ];
+        const { box } = await annotateOver(c, annotate);
+        const popup = await rectOf(c, "#contextMenu");
+        const area = union({ x: ed.x, y: ed.y, width: ed.width, height: popup.y + popup.height + 16 - ed.y }, box);
+        return await capture(c, "Editor", snapOut(area, EDITOR_OPTIONS_PAGE.width, EDITOR_OPTIONS_PAGE.height), {
+          away: () => parkMouse(c),
+        });
+      } finally {
+        await unannotate(c);
+        await closeMenus(c);
+      }
+    });
+  } finally {
+    await defaultLayout(c);
+  }
+}
 
 // ---- Project Settings: a dialog of rows, each `<key>_HEADER`, `_CONTENT` and `_DESCRIPTION`
 // in a list that scrolls under a filter box
@@ -2693,6 +2885,45 @@ const settingsShots = [
   const last = rows[15];
   return { x: w.x - 6, y: first.y - 6, width: w.width + 12, height: last.bottom - first.y + 8 };
 })()`),
+  }),
+  settingsShot("Miscellaneous/Images/2a1c71fd-f81c-4bd3-b61a-0f2979e8961f.png", {
+    // the Compiler Warnings section, its heading to the fifteenth warning, TB0002's list drawn
+    // open below its select and the two warnings Option Explicit is about ringed
+    async prepare(c) {
+      await c.evaluate(`(() => {
+  const w = document.querySelector(".warningOptions");
+  w.style.height = "360px";
+  w.style.maxHeight = "none";
+})()`);
+      await scrollToSetting(c, "project.warnings", 12);
+    },
+    clipOf: async (_m, c) =>
+      c.evaluate(`(() => {
+  // the heading's own text, not its box, which reaches the dialog's left edge
+  const range = document.createRange();
+  range.selectNodeContents(document.querySelector(${JSON.stringify(settingPart("project.warnings", "HEADER"))}));
+  const h = range.getBoundingClientRect();
+  const w = document.querySelector(".warningOptions").getBoundingClientRect();
+  const rows = [...document.querySelectorAll(".warningOptions .warningDiv")].map((e) => e.getBoundingClientRect());
+  // as far right as the old picture: the longest description (TB0004's) goes on past it
+  const x = Math.min(h.x, w.x) - 12;
+  return { x, y: h.y - 8, width: w.x + 760 - x, height: rows[14].bottom + 1 - (h.y - 8) };
+})()`),
+    annotate: [
+      { type: "list", select: { css: ".warningDiv:has(.warning_TB0002_warning) .warningState" } },
+      {
+        // one ring round both codes, its round ends clear of their first and last letters
+        type: "ring",
+        on: {
+          span: [
+            { css: ".warningDescription b", text: "TB0002" },
+            { css: ".warningDescription b", text: "TB0003" },
+          ],
+        },
+        pad: 2,
+        padX: 11,
+      },
+    ],
   }),
   settingsShot("IDE/Images/ProjectSettings_LibraryReferences.png", { command: LIBRARY_REFERENCES }),
   settingsShot("IDE/Images/ProjectSettings_AvailableCOMReferences.png", {
@@ -3474,14 +3705,21 @@ const PROP_VALUE = (name) => `${PROP_NAME(name)} + .propertyValue`;
 // control's name, which stays at the top of the panel as the list scrolls, or as near as the
 // list's end lets it. With `upTo`, a row's property name, the panel is first made as tall as
 // shows the list from the group's heading to the bottom of that row and no further, and the
-// group must then reach the top.
+// group must then reach the top; `upTo: { text }` names the row by its text instead (a row
+// with no title: an event, an array's + (add)).
 async function scrollProperties(c, category, { upTo = null } = {}) {
   const done = await c.evaluate(`(() => {
   const p = document.querySelector(${JSON.stringify(PROPS)});
   const list = p?.querySelector(".propertiesBoxInner");
   const name = p?.querySelector(".controlSelecter");
   const cat = p && [...p.querySelectorAll(".propertyCategory")].find((e) => e.textContent.trim() === ${JSON.stringify(category)});
-  const last = ${upTo === null ? "null" : `p?.querySelector(${JSON.stringify(PROP_NAME(upTo))})`};
+  const last = ${
+    upTo === null
+      ? "null"
+      : typeof upTo === "string"
+        ? `p?.querySelector(${JSON.stringify(PROP_NAME(upTo))})`
+        : `p && [...p.querySelectorAll(".propertyName")].find((e) => e.getBoundingClientRect().height && e.textContent.trim() === ${JSON.stringify(upTo.text)})`
+  };
   if (!list || !name || !cat || (${upTo !== null} && !last)) return "none";
   const top = (e) => e.getBoundingClientRect().top;
   const bottom = (e) => e.getBoundingClientRect().bottom;
@@ -3492,9 +3730,19 @@ async function scrollProperties(c, category, { upTo = null } = {}) {
   }
   // twice: the name sticks to the top only once the list has scrolled
   for (let i = 0; i < 2; i++) list.scrollTop += top(cat) - bottom(name);
+  // and the panel corrected by what the list still shows past the row, or lacks of it (the
+  // tabs a custom control's panel has above the name are in the list's box)
+  for (let i = 0; last && i < 3; i++) {
+    const over = top(list) + list.clientHeight - bottom(last);
+    if (Math.abs(over) < 0.5) break;
+    p.style.height = p.getBoundingClientRect().height - over + "px";
+    for (let j = 0; j < 2; j++) list.scrollTop += top(cat) - bottom(name);
+  }
   return Math.abs(top(cat) - bottom(name)) < 1 ? "done" : "short";
 })()`);
-  if (done === "none") throw new Error(`the PROPERTIES panel has no group ${category}${upTo ? ` or row ${upTo}` : ""}`);
+  if (done === "none") {
+    throw new Error(`the PROPERTIES panel has no group ${category}${upTo ? ` or row ${upTo.text ?? upTo}` : ""}`);
+  }
   if (done === "short" && upTo) throw new Error(`the PROPERTIES panel's list ends before ${category} reaches its top`);
   await frames(c);
 }
@@ -3593,6 +3841,36 @@ const formShots = [
     annotate: [{ type: "underline", on: { span: [{ css: PROP_NAME("Anchors") }, { css: PROP_VALUE("Anchors") }] } }],
   }),
   anchorsShot("Features/Images/d5dff8f5-c5fa-4620-ba11-430d06276b27.png", "d5dff8f5", { expanded: true }),
+  {
+    // Text1's Dock select with its list drawn open, from the panel's title bar to the list's
+    // foot: the LAYOUT group at the top, Anchors closed
+    out: "Features/Images/4c8b881e-1216-4819-a558-d2ce20f47fcd.png",
+    setup: "forms",
+    async take({ c }) {
+      await resetUi(c);
+      await openDesigner(c, "frmAnchors.tbform");
+      await selectControl(c, "Text1");
+      try {
+        // short enough that the list can scroll LAYOUT to its top
+        await floatPanel(c, "PROPERTIES", { width: 360, height: 320 });
+        await scrollProperties(c, "LAYOUT");
+        await expandProperty(c, "Anchors", false);
+        await scrollProperties(c, "LAYOUT");
+        const panel = await rectOf(c, PROPS);
+        const dock = await rectOf(c, PROP_VALUE("Dock"));
+        if (!dock) throw new Error("the PROPERTIES panel has no Dock row");
+        return await listClip(
+          c,
+          "4c8b881e",
+          { ...panel, height: dock.y + dock.height - panel.y },
+          [{ type: "list", select: { css: PROP_VALUE("Dock") } }],
+          { margin: 0, below: 8 },
+        );
+      } finally {
+        await unfloatPanel(c, "PROPERTIES");
+      }
+    },
+  },
   {
     // The Toolbox and the form beside it, with a QR code on the form: from the panels' title
     // bars to below the Toolbox's tools, as far right as a little past the QR code.
@@ -3704,6 +3982,339 @@ const formShots = [
       }
     },
   },
+];
+
+// ---- the CustomControls tutorial's property sheet: composites of the fixture's code and the
+// PROPERTIES panel (setup customcontrols)
+
+const CC_FILE = (file) => `/CustomControlsDemo/Sources/${file}`;
+const CC_FORM = "frmCustom.tbform";
+const CC_GRID = "MyGrid1";
+const CC_BUTTON = "MyButton1";
+// how far the arrow's start is above its end, so that it slopes down to the row
+const CC_SLOPE = -48;
+
+// frmCustom open in its designer.
+async function ccDesigner(c) {
+  await openFile(c, CC_FILE(CC_FORM));
+  await designerShown(c);
+}
+
+// The value the designer has for a property of one of its controls.
+const designerValue = (c, control, property) =>
+  c.evaluate(
+    `${DESIGNER_GLOBALS}?.allControls.find((x) => x.properties.Name === ${JSON.stringify(control)})?.properties[${JSON.stringify(property)}]`,
+  );
+
+// A part of a composite: the lines of one of the fixture's files from the one holding `first`
+// to the first after it holding `last`, as the editor shows them, cut to the code's own
+// width: from 16 pixels left of the least indented line's first letter to 16 right of the
+// longest line's end, and 8 above and below. A line is the one that is `first` (white space
+// aside), else the first that holds it. In the page, for the capture: the editor hides every
+// other line (as folding does), has 8 pixels of padding at its top, and marks neither the
+// caret's line nor the words like the one at the caret. `anchors`, an object of them, are
+// resolved in the part.
+async function codePart(c, name, file, first, last = first, anchors = {}) {
+  await openFile(c, CC_FILE(file));
+  const PAD = 8;
+  const was = await c.evaluate(`(() => {
+  const o = monaco.editor.EditorOption;
+  const was = {
+    padding: editor.getOption(o.padding),
+    renderLineHighlight: editor.getOption(o.renderLineHighlight),
+    occurrencesHighlight: editor.getOption(o.occurrencesHighlight),
+    selectionHighlight: editor.getOption(o.selectionHighlight),
+    matchBrackets: editor.getOption(o.matchBrackets),
+  };
+  editor.updateOptions({
+    padding: { ...was.padding, top: ${PAD} },
+    renderLineHighlight: "none",
+    occurrencesHighlight: typeof was.occurrencesHighlight === "string" ? "off" : false,
+    selectionHighlight: false,
+    matchBrackets: "never",
+  });
+  // the margin left of the code (where a line that starts in the first column has its 16
+  // pixels) in the colour of the code's own background
+  const node = editor.getDomNode();
+  const bg = getComputedStyle(node.querySelector(".monaco-editor-background") ?? node).backgroundColor;
+  const s = document.createElement("style");
+  s.id = "tbShotCodeMargin";
+  s.textContent = ".monaco-editor .margin{background-color:" + bg + " !important}";
+  document.head.appendChild(s);
+  return was;
+})()`);
+  try {
+    const lines = await waitFor(
+      c,
+      () =>
+        c.evaluate(`(() => {
+  const m = editor.getModel();
+  if (!m) return null;
+  const all = m.getLinesContent();
+  const find = (from, text) => {
+    const rest = all.slice(from - 1);
+    const i = rest.findIndex((l) => l.trim() === text);
+    const j = i >= 0 ? i : rest.findIndex((l) => l.includes(text));
+    return j < 0 ? 0 : from + j;
+  };
+  const a = find(1, ${JSON.stringify(first)});
+  const b = a && find(a, ${JSON.stringify(last)});
+  if (!a || !b) return null;
+  const hide = [];
+  if (a > 1) hide.push(new monaco.Range(1, 1, a - 1, 1));
+  if (b < m.getLineCount()) hide.push(new monaco.Range(b + 1, 1, m.getLineCount(), 1));
+  editor.setHiddenAreas(hide);
+  editor.setPosition({ lineNumber: a, column: 1 });
+  editor.setScrollTop(0);
+  return { a, b };
+})()`),
+      { timeout: 10000, interval: 100 },
+    );
+    if (!lines) throw new Error(`${file} has no lines from "${first}" to "${last}"`);
+    await frames(c);
+    const clip = await c.evaluate(`(() => {
+  const m = editor.getModel();
+  const d = editor.getDomNode().getBoundingClientRect();
+  const lh = editor.getOption(monaco.editor.EditorOption.lineHeight);
+  const at = (lineNumber, column) => editor.getScrolledVisiblePosition({ lineNumber, column });
+  let left = Infinity;
+  let right = 0;
+  for (let n = ${lines.a}; n <= ${lines.b}; n++) {
+    const text = m.getLineContent(n);
+    if (!text.trim()) continue;
+    left = Math.min(left, at(n, text.search(/\\S/) + 1).left);
+    right = Math.max(right, at(n, m.getLineMaxColumn(n)).left);
+  }
+  const top = at(${lines.a}, 1).top;
+  const bottom = at(${lines.b}, 1).top + lh;
+  const lay = editor.getLayoutInfo();
+  if (right + 16 > (lay.minimap?.minimapLeft ?? lay.width)) return null;
+  return { x: d.x + left - 16, y: d.y + top - ${PAD}, width: right - left + 32, height: bottom - top + 2 * ${PAD} };
+})()`);
+    if (!clip) throw new Error(`the lines of ${file} from "${first}" are wider than the editor shows`);
+    const found = await resolveAnchors(c, anchors);
+    const area = snapOut(clip);
+    return { png: await capture(c, name, area, { away: () => parkMouse(c) }), clip: area, anchors: found, column: 0 };
+  } finally {
+    await c.evaluate(`(() => {
+  editor.setHiddenAreas([]);
+  editor.updateOptions(${JSON.stringify(was)});
+  document.getElementById("tbShotCodeMargin")?.remove();
+})()`);
+  }
+}
+
+// A part of a composite: PROPERTIES, floating, for the control `control` of frmCustom, on the
+// IDE's background: its EVENTS tab when `events`, the properties `expand` open (in that order)
+// and Anchors and Columns otherwise closed, scrolled and sized as scrollProperties does with
+// `category` and `upTo`. With `list`, the list of that property's select drawn open below it,
+// the part as large as it needs. `anchors` are resolved in the part.
+async function propertiesPart(c, name, control, { category, upTo, expand = [], events = false, list = null, anchors }) {
+  await ccDesigner(c);
+  await selectControl(c, control);
+  const tab = (which) => `${PROPS} .toolbar${which}`;
+  try {
+    await floatPanel(c, "PROPERTIES", { width: 360, height: 700, top: 40 });
+    if (events) {
+      const t = await rectOf(c, tab("Events"));
+      if (!t) throw new Error("PROPERTIES has no EVENTS tab");
+      await clickAt(c, t.x + t.width / 2, t.y + t.height / 2);
+      const shown = await waitFor(
+        c,
+        () => c.evaluate(`!!document.querySelector(${JSON.stringify(`${tab("Events")}.selected`)})`),
+        {
+          timeout: 3000,
+          interval: 50,
+        },
+      );
+      if (!shown) throw new Error("a click on EVENTS did not show the events");
+      await parkMouse(c);
+    } else {
+      for (const p of ["Anchors", "Columns"]) {
+        if (!expand.includes(p) && (await c.evaluate(`!!document.querySelector(${JSON.stringify(PROP_NAME(p))})`))) {
+          await expandProperty(c, p, false);
+        }
+      }
+      for (const p of expand) await expandProperty(c, p, true);
+    }
+    await scrollProperties(c, category, { upTo });
+    const panel = await rectOf(c, PROPS);
+    const ground = await c.evaluate("getComputedStyle(document.body).backgroundColor");
+    try {
+      const { box } = list
+        ? await annotateOver(c, [{ type: "list", select: { css: PROP_VALUE(list) } }])
+        : { box: null };
+      const area = snapOut(box ? union(panel, box) : panel);
+      const found = await resolveAnchors(c, anchors);
+      const png = await capture(c, name, area, {
+        away: () => parkMouse(c),
+        keep: [PROPS, `#${LAYER_ID}`],
+        solid: ground,
+      });
+      return { png, clip: area, anchors: found, column: 1 };
+    } finally {
+      await unannotate(c);
+    }
+  } finally {
+    if (events) {
+      const t = await rectOf(c, tab("Properties"));
+      if (t) await clickAt(c, t.x + t.width / 2, t.y + t.height / 2);
+      await parkMouse(c);
+    }
+    await unfloatPanel(c, "PROPERTIES");
+  }
+}
+
+// A composite of the parts `parts(c)` makes, the code left and PROPERTIES right, with one
+// arrow from the end of the code anchor `decl` to the row anchor `row`; the column of the
+// code is placed so that the arrow slopes down to the row. `before` and `after` change the
+// fixture in the page and put it back.
+function ccShot(name, parts, { before = null, after = null } = {}) {
+  return {
+    out: `Tutorials/CustomControls/Images/${name}.png`,
+    setup: "customcontrols",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        if (before) await before(c);
+        // the parts are not the picture: capture keeps the first two captures that agree
+        const reference = c.shot.reference;
+        c.shot.reference = null;
+        let made;
+        try {
+          made = await parts(c);
+        } finally {
+          c.shot.reference = reference;
+        }
+        try {
+          const { box } = await composite(
+            c,
+            made,
+            // to the left end of the row: a flat row's edge nearest the code is its top
+            [
+              {
+                type: "arrow",
+                from: { of: { ref: "decl" }, at: "right", dx: 10 },
+                to: { of: { ref: "row" }, at: "left", dx: -4 },
+              },
+            ],
+            { align: { from: "decl", to: "row", dy: CC_SLOPE } },
+          );
+          return await capture(c, name, snapOut(box), { away: () => parkMouse(c) });
+        } finally {
+          await uncomposite(c);
+        }
+      } finally {
+        if (after) await after(c);
+      }
+    },
+  };
+}
+
+// MyField's declaration in MyGrid.twin, with the initializer ` = 42` added at its end (in the
+// page, as a person types it), or taken off again, and the designer's MyGrid1 then showing the
+// value the class gives it, 42 or 0. An open designer takes a class's new defaults only when
+// it opens the form again (it shows no RESYNC for them), so the form's tab is closed first.
+const MYFIELD = "Public MyField As Long";
+async function myFieldInitializer(c, on) {
+  const closeForm = async () =>
+    closeTabs(
+      c,
+      (await editorTabs(c)).map((t) => t.name).filter((n) => n !== CC_FORM),
+      { discard: true },
+    );
+  await closeForm();
+  await openFile(c, CC_FILE("MyGrid.twin"));
+  const edited = await c.evaluate(`(() => {
+  const m = editor.getModel();
+  const n = m.getLinesContent().findIndex((l) => l.trim().startsWith(${JSON.stringify(MYFIELD)})) + 1;
+  if (n < 1) return false;
+  const text = m.getLineContent(n);
+  const want = text.replace(/ = 42$/, "") + (${on} ? " = 42" : "");
+  if (text !== want) editor.executeEdits("shoot_docs", [{ range: new monaco.Range(n, 1, n, text.length + 1), text: want }]);
+  return true;
+})()`);
+  if (!edited) throw new Error(`MyGrid.twin has no line "${MYFIELD}"`);
+  // the form opened again until the compiler has the class's new default: it is read as the
+  // designer opens
+  const want = on ? 42 : 0;
+  for (let attempt = 1; ; attempt++) {
+    await ccDesigner(c);
+    const has = async () => (await designerValue(c, CC_GRID, "MyField")) === want;
+    if (await waitFor(c, has, { timeout: 3000, interval: 100 })) break;
+    if (attempt === 6) throw new Error(`the designer's ${CC_GRID} never had MyField ${want}`);
+    await closeForm();
+  }
+}
+
+// MyField's line and MyGrid1's whole property sheet to MyField.
+const myFieldParts = (name, decl) => async (c) => [
+  await codePart(c, `${name}-code`, "MyGrid.twin", MYFIELD, MYFIELD, { decl: { code: decl } }),
+  await propertiesPart(c, `${name}-panel`, CC_GRID, {
+    category: "DESIGN",
+    upTo: "MyField",
+    anchors: { row: { css: PROP_NAME("MyField") } },
+  }),
+];
+
+const customControlsShots = [
+  ccShot("ccMyFieldPropertySheet1a", myFieldParts("ccMyFieldPropertySheet1a", MYFIELD)),
+  // the same with MyField's default 42, given in the page and taken off again
+  ccShot("ccMyFieldPropertySheet1b", myFieldParts("ccMyFieldPropertySheet1b", `${MYFIELD} = 42`), {
+    before: (c) => myFieldInitializer(c, true),
+    after: (c) => myFieldInitializer(c, false),
+  }),
+  // the enumeration and the field of its type; the field's select with its list open
+  ccShot("ccMyEnumFieldPropertySheet", async (c) => [
+    await codePart(c, "ccMyEnumFieldPropertySheet-code", "MyGrid.twin", "Enum MyEnum", "Public MyEnumField As MyEnum", {
+      decl: { code: "Public MyEnumField As MyEnum" },
+    }),
+    await propertiesPart(c, "ccMyEnumFieldPropertySheet-panel", CC_GRID, {
+      category: "LAYOUT",
+      upTo: "MyField",
+      list: "MyEnumField",
+      anchors: { row: { css: PROP_NAME("MyEnumField") } },
+    }),
+  ]),
+  // the class with its ClassId, the field of its type, and the field open in PROPERTIES
+  ccShot("ccMyFieldClass", async (c) => [
+    await codePart(c, "ccMyFieldClass-class", "MyButton.twin", '[ClassId("B4E1D7A2', "End Class"),
+    await codePart(c, "ccMyFieldClass-code", "MyButton.twin", "Public NormalState As", "Public NormalState As", {
+      decl: { code: "Public NormalState As MyButtonState = New MyButtonState" },
+    }),
+    await propertiesPart(c, "ccMyFieldClass-panel", CC_BUTTON, {
+      category: "LAYOUT",
+      // a nested property's title is its path
+      upTo: "NormalState.TextRendering",
+      expand: ["NormalState", "NormalState.Corners", "NormalState.Corners.TopLeft"],
+      anchors: { row: { css: PROP_NAME("NormalState") } },
+    }),
+  ]),
+  // the class of the array's elements, the array, and the array open in PROPERTIES
+  ccShot("ccMyFieldArray", async (c) => [
+    await codePart(c, "ccMyFieldArray-class", "MyGrid.twin", '[ClassId("3F6B2C1A', "End Class"),
+    await codePart(c, "ccMyFieldArray-code", "MyGrid.twin", "Public Columns() As", "Public Columns() As", {
+      decl: { code: "Public Columns() As GridColumn" },
+    }),
+    await propertiesPart(c, "ccMyFieldArray-panel", CC_GRID, {
+      category: "APPEARANCE",
+      upTo: { text: "+ (add)" },
+      expand: ["Columns", "Columns(0)"],
+      anchors: { row: { css: PROP_NAME("Columns") } },
+    }),
+  ]),
+  // the events, and the EVENTS tab that lists them
+  ccShot("ccEvents", async (c) => [
+    await codePart(c, "ccEvents-code", "MyButton.twin", "Class MyButton", "Event LostFocus()", {
+      decl: { code: "Event Click()" },
+    }),
+    await propertiesPart(c, "ccEvents-panel", CC_BUTTON, {
+      events: true,
+      category: "GENERAL",
+      upTo: { text: "LostFocus" },
+      anchors: { row: { css: `${PROPS} .propertyName`, text: "Click" } },
+    }),
+  ]),
 ];
 
 // The route a person takes: Standard EXE is selected on the New tab, and Open
@@ -4194,6 +4805,7 @@ const SHOTS = [
   ...sample6Shots,
   ...designerShots,
   ...formShots,
+  ...customControlsShots,
   newProjectOptionsShot,
 ];
 
@@ -4212,6 +4824,7 @@ const PARTS = {
     { suffix: "-2", from: "IDE/Images/OpenEditors_1.png" },
     { suffix: "-3", from: "IDE/Images/PackagePublishing_1.png" },
   ],
+  customcontrols: [{ suffix: "-2", from: "Tutorials/CustomControls/Images/ccMyFieldClass.png" }],
 };
 
 // About how long each job takes, in seconds, for queuing the longest first. They also decide
@@ -4223,7 +4836,7 @@ const JOB_SECONDS = {
   project: 11,
   sample: 34,
   "sample-2": 55,
-  "sample-3": 54,
+  "sample-3": 62,
   settings: 22,
   "settings-symbols": 8,
   "settings-webview2": 20,
@@ -4233,6 +4846,8 @@ const JOB_SECONDS = {
   sample6: 26,
   designer: 62,
   forms: 30,
+  customcontrols: 50,
+  "customcontrols-2": 45,
   "no-project": 33,
   "no-project-2": 38,
   "no-project-3": 41,

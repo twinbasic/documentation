@@ -153,7 +153,8 @@ back).
   (`tbDocsHelp`, `GlobalSearchAddIn`).
 - **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE on its own claimed ports and
   private desktop, and splits the big setups into parts, longest first; a full run is about
-  80 s (it was ~765 s sequential). `--jobs 1` runs one IDE per setup in table order. Per-run
+  105 s (it was ~765 s sequential; the jobs add up to ~590 s, so six IDEs cannot do much
+  better). `--jobs 1` runs one IDE per setup in table order. Per-run
   state lives on the connection (`c.shot`), never in module variables.
 - **Diffs**: `--diffs <dir>` (never under `docs/`) writes, for each picture that differs from the
   file on disk, the committed picture, the new one and an amplified difference map side by side
@@ -250,6 +251,19 @@ Format menu; Properties and Toolbox; replicas and composites; code views).
   designer's own `.proprtiesBoxFooter` inside the code panel, not the tool window -- a possible
   IDE defect, not reproduced or queued. The WebView2 tutorial now points to the class reference
   instead. A floating Toolbox for a form lists what the docked one does.
+- **Batch 3 is done** (Editor.png, FindReplace_Direction, 2a1c71fd, 4c8b881e and the six
+  CustomControls property-sheet pictures). **Replicas** are the overlay's `list` primitive: the
+  select's options, current index and font, drawn as SVG at its bottom-left in the owner's
+  style, a scroll bar when only a window of rows shows; its rows are anchors. **Composites** are
+  `scripts/lib/shot-composite.mjs`: each part captured alone (a code part is the real editor
+  with the other lines hidden and the line, bracket and occurrence highlights off in the page;
+  a panel part a cut-out of PROPERTIES), anchors resolved while it shows, then laid out in
+  columns 40 px apart on the IDE background, drawn one to one, one arrow, captured. The fixture
+  `test/shots/customcontrols/` (setup `customcontrols`, two parts) has controls `MyGrid` and
+  `MyButton` and classes `GridColumn` and `MyButtonState` (the package has `Column`). 1b adds
+  ` = 42` in the page and reopens the form: an open designer never takes a new default and
+  shows no RESYNC (the page's TIP says it does; only a default value was tested). A custom
+  control's Left/Top/Width/Height read in twips, its `PixelCount` fields in pixels.
 
 ## Open questions
 

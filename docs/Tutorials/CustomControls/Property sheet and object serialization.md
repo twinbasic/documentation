@@ -9,7 +9,7 @@ redirect_from:
 # Property Sheet and Object Serialization
 The form designer property sheet will pickup any **_public_** custom properties (fields) that you expose via your CustomControl class.  For example, adding a field `Public MyField As Long` will then automatically show up in the control property sheet in the form designer:
 
-![CustomControl MyField propertySheet](Images/ccMyFieldPropertySheet1a.png)
+![The declaration Public MyField As Long in the code of a custom control, MyGrid, with an arrow to the MyField row of the PROPERTIES panel for MyGrid1, a MyGrid on a form. The panel lists the control's properties by group, from Name down to MyEnumField and MyField, and MyField is 0.](Images/ccMyFieldPropertySheet1a.png){:width="622" height="436"}
 
 This is then persisted to your project as properties inside your form JSON structure:
 
@@ -54,7 +54,7 @@ If `RuntimeUISrzDeserialize(Me, False)` returns `True`, then your class properti
 ## Default Values
 An alternative method for setting up default values is to inline them into the class field definition:
 
-![CustomControl MyField = 42](Images/ccMyFieldPropertySheet1b.png)
+![The declaration Public MyField As Long = 42, with an arrow to the MyField row of the PROPERTIES panel for MyGrid1, which now shows 42.](Images/ccMyFieldPropertySheet1b.png){:width="658" height="436"}
 
 The `RuntimeUISrzDeserialize(Me, False)` call inside your **Initialize** method will overwrite the property value if  the control is being synchronized from the persisted property sheet data.
 
@@ -62,7 +62,7 @@ The `RuntimeUISrzDeserialize(Me, False)` call inside your **Initialize** method 
 ## Enumerations
 Enumerations that you define in your twinBASIC project are supported.  Simply expose a class field with the enumeration:
 
-![CustomControl enumeration property sheet example](Images/ccMyEnumFieldPropertySheet.png)
+![An enumeration, MyEnum, of Value1, Value2 and Value3, and below it the declaration Public MyEnumField As MyEnum, with an arrow to the MyEnumField row of the PROPERTIES panel for MyGrid1. The row's dropdown is open on 0 - Value1, 1 - Value2 and 2 - Value3, the first marked as the current value.](Images/ccMyEnumFieldPropertySheet.png){:width="665" height="326"}
 
 Note:  Enumerations are persisted to the form JSON structure as strings, so bare this in mind when making changes/updates to a CustomControl so that you don't introduce breaking changes by renaming an enumeration value.
 
@@ -70,13 +70,13 @@ Note:  Enumerations are persisted to the form JSON structure as strings, so bare
 ## Objects
 Class objects that you define in your twinBASIC project are supported.  You ***must*** supply a ClassId attribute for any exposed object, so that the serialization can identify it.
 
-![CustomControl class property sheet example](Images/ccMyFieldClass.png)
+![A class, MyButtonState, with its ClassId attribute and four public fields of the CustomControls package's Corners, Fill, Borders and TextRendering classes, which its Sub New creates. Below it the declaration Public NormalState As MyButtonState = New MyButtonState, with an arrow to the NormalState row of the PROPERTIES panel for MyButton1. NormalState is open on Corners, BackgroundFill, Borders and TextRendering, Corners on TopLeft, TopRight, BottomLeft and BottomRight, and TopLeft on its Radius and Shape.](Images/ccMyFieldClass.png){:width="944" height="599"}
 
 ***
 ## Arrays
 Arrays are supported.   The form designer allows for adding new elements, removing elements, and re-ordering of elements (via drag/drop).
 
-![CustomControl array property sheet example](Images/ccMyFieldArray.png)
+![A class, GridColumn, with its ClassId attribute and a Caption and a Width field, and the declaration Public Columns() As GridColumn, with an arrow to the Columns row of the PROPERTIES panel for MyGrid1. Columns is open on its three elements, Columns(0) to Columns(2), each with a button that removes it, and an (add) row below them; Columns(0) is open on its Caption and Width.](Images/ccMyFieldArray.png){:width="830" height="362"}
 
 ***
 ## Property Get / Let
@@ -92,9 +92,9 @@ The serialization does not support Variants or generic Objects.  Always use stro
 
 ***
 ## Events
-Events that you define in your class will be exposed in the Events property sheet:
+Events that you define in your class are listed on the **EVENTS** tab of the PROPERTIES panel:
 
-![CustomControl attribute](Images/ccEvents.png)
+![The class MyButton with its events Click, GotFocus and LostFocus, and an arrow to the EVENTS tab of the PROPERTIES panel for MyButton1, which lists the same three events.](Images/ccEvents.png){:width="780" height="197"}
 
 At the moment, the form-designer doesn't yet support code-behind-forms, so this feature is not yet complete.
 

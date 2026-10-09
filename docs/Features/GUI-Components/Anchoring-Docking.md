@@ -57,7 +57,7 @@ Using these 4 points you can automatically maintain a relative size, position, o
 
 Similar to anchoring but slightly different, tB also offers a 'Dock' property:
 
-![The Dock property dropdown open, listing vbDockNone, vbDockLeft, vbDockTop, vbDockRight, vbDockBottom and vbDockFill](../Images/4c8b881e-1216-4819-a558-d2ce20f47fcd.png)
+![The PROPERTIES panel for the TextBox Text1, on its LAYOUT group, with the list of the Dock dropdown open below it: 0 - vbDockNone, marked as the current value, then 1 - vbDockLeft, 2 - vbDockTop, 3 - vbDockRight, 4 - vbDockBottom and 5 - vbDockFill.](../Images/4c8b881e-1216-4819-a558-d2ce20f47fcd.png){:width="360" height="320"}
 
 You might already be familiar with how a StatusBar control locks itself to the bottom of a form; that's the kind of positioning this property controls. A control can be docked on any side, and it will stay sized to the full width or height, and move with, that side of the Form or parent container. For example, a CommandButton with `vbDockBottom`:
 

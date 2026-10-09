@@ -263,7 +263,7 @@ While use is strongly recommended and considered a best practice, twinBASIC **do
 
 If you leave "Option Explicit ON" checked, that means it will be enforced project-wide, regardless of whether `Option Explicit` is used in the form/module/etc itself. If you uncheck it, you won't get any errors for it, just a warning: "This variable has been auto-declared by the compiler due to Option Explicit being OFF". If you want, you can disable that warning in Project Settings:
 
-![The Compiler Warnings section of Project Settings, listing warnings TB0001 upwards with a severity dropdown against each. TB0002 and TB0003 are ringed in green, and one dropdown is open on its WARNING, HINT, INFO, IGNORE and ERROR choices.](Images/2a1c71fd-f81c-4bd3-b61a-0f2979e8961f.png)
+![The Compiler Warnings section of Project Settings, listing warnings TB0001 to TB0015 with a severity dropdown against each. TB0002 and TB0003 are ringed in red, and the dropdown of TB0002 is open below it on its WARNING, HINT, INFO, IGNORE and ERROR choices, WARNING marked as the current one.](Images/2a1c71fd-f81c-4bd3-b61a-0f2979e8961f.png){:width="899" height="374"}
 
 For an existing project, the Project Scope Option Explicit can be turned on or off from Project Settings, under "Option Explicit On":
 
