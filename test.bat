@@ -89,6 +89,13 @@ node --test test/example-batches.test.mjs
 @rem Starts no IDE. No tree, no browser, about 2 s.
 node --test test/ports.test.mjs
 @if errorlevel 1 goto :fail
+@rem Unit tests for builder/addin-project.mjs, which packs add-in/ into the
+@rem help add-in's project file the build publishes: the project holds
+@rem exactly the files git tracks there, never Resources/HELP/, and the same
+@rem bytes from a CRLF checkout as from an LF one. A build checks only that
+@rem the file is in each tree. Needs git; no tree, no install, about 1 s.
+node --test test/addin-project.test.mjs
+@if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus
 @rem passes until some page happens to contain the trigger, and then the

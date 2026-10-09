@@ -22,6 +22,10 @@
 // --check-audit-index additionally diffs the derived tree index against
 // what actually landed on disk; see builder/check.mjs.
 //
+// Every build of a tree whose _config.yml declares addin_project also packs the
+// IDE help add-in's project file into the online and offline trees, as a
+// download (builder/addin-project.mjs, the addinProject task).
+//
 // A build of the documentation tree ends by writing the IDE help add-in's
 // archive of the offline tree, add-in/Resources/HELP/site.zip
 // (builder/help-archive-step.mjs). --no-help-archive skips it; CI passes that.
@@ -88,6 +92,7 @@ import { writePdf } from "./pdf.mjs";
 // build without --check pays nothing.
 import { deriveTreeRels } from "./check-tree.mjs";
 import { syncAddinIndex } from "./addin-index.mjs";
+import { addinProjectOf, formatAddinProject, writeAddinProject } from "./addin-project.mjs";
 import { helpArchiveStep } from "./help-archive-step.mjs";
 import { checkPageBaseline } from "./page-baseline.mjs";
 import { checkSymbolBaseline } from "./symbol-baseline.mjs";
@@ -631,10 +636,15 @@ const TASKS = {
       const excludePatterns = Array.isArray(state.site.config?.offline_exclude)
         ? state.site.config.offline_exclude.map(String)
         : [];
+      // The help add-in's project file, which the addinProject task writes
+      // late, is in each tree from here on: its index, the offline links to it
+      // and the publish allowlist's sweep all need the path now.
+      const addin = addinProjectOf(state.site.config);
       const themeAssetRels = [
         ...enumerateVendoredThemeAssets(),
         "assets/css/tb-highlight.css",
         "assets/css/just-the-docs-combined.css",
+        ...(addin ? [addin.dest] : []),
       ];
       // sitePaths is what the offline tree holds, and only it has nav.js.
       const sitePaths = buildSitePathsSync(state.pages, state.staticFiles, excludePatterns, stubs, [
@@ -942,9 +952,41 @@ const TASKS = {
         // search.mjs), not written anywhere itself -- symbolIndex's own
         // file output is tB/symbols.json, above.
         symbols: result.symbols,
-        // The file's text, for the add-in's copy (addin-index.mjs).
+        // The file's text, for the add-in's copy (addin-index.mjs) and its
+        // project file (addinProject).
         json,
       };
+    },
+    submit() {},
+  },
+
+  // Write the help add-in's project file, packed from add-in/, into the online
+  // and offline trees at the path _config.yml's addin_project names -- see
+  // builder/addin-project.mjs. After symbolIndex because the project carries the
+  // index this build wrote. dispatch put the path in each tree's index, so
+  // checkReport waits for this task. --dry-run writes nothing, and a build of a
+  // tree whose config declares no download (the test fixtures) packs nothing.
+  // A failure is reported and fails the build; the trees are still written.
+  addinProject: {
+    expected: ["symbolIndex", "prepDest"],
+    runOnMain: true,
+    async execute({ symbolIndex }, ctx, state) {
+      const addin = addinProjectOf(state.site.config);
+      if (!addin || ctx.opts.dryRun) return null;
+      const skipOffline = ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
+      const roots = [ctx.destRoot];
+      // offline_exclude could leave the file out of the offline tree's index.
+      if (!skipOffline && state.sitePaths.has(`/${addin.dest}`)) roots.push(`${ctx.destRoot}-offline`);
+      try {
+        return await writeAddinProject({
+          dir: path.resolve(ctx.srcRoot, addin.src),
+          symbols: symbolIndex.json,
+          roots,
+          rel: addin.dest,
+        });
+      } catch (err) {
+        return { failed: true, rel: addin.dest, error: err.message };
+      }
     },
     submit() {},
   },
@@ -1165,8 +1207,9 @@ const TASKS = {
     // long before the check; on a three-page fixture it does not, and
     // the audit failed the build over nothing.
     // symbolIndex for the same reason: tB/symbols.json is in the online tree's
-    // index, and the audit must not look for it before it is written.
-    expected: ["linkJoin", "checkBook", "scss", "symbolIndex"],
+    // index, and the audit must not look for it before it is written. And
+    // addinProject: the add-in's project file is in both trees' indexes.
+    expected: ["linkJoin", "checkBook", "scss", "symbolIndex", "addinProject"],
     runOnMain: true,
     async execute({ linkJoin: trees, checkBook: book }, ctx, state) {
       if (!state.checkTrees) return null;
@@ -1451,6 +1494,13 @@ export async function runBuild(opts) {
           "its title names nothing the package declares; see symbols: in Authoring",
       );
     }
+  }
+  const addinResult = results.get("addinProject");
+  if (addinResult) {
+    const addinDir = path.resolve(srcRoot, addinProjectOf(site.config).src);
+    const label = `${path.relative(REPO_ROOT, addinDir).replaceAll(path.sep, "/")}/`;
+    process.stdout.write(formatAddinProject(addinResult, label, "  "));
+    if (addinResult.failed) failBuild();
   }
   if (offlineResult) {
     console.log(`  ${pc.bold("offline:")} -> ${pc.cyan(`${destRoot}-offline`)}`);

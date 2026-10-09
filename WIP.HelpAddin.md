@@ -1188,6 +1188,14 @@ harness about a second against opening a new IDE.
    this project references*.
 10. **Later:** how a user gets an add-in with the archive: the owner's plan (2026-10-07) is to
     build it in CI with everything else, once the compiler runs on Linux there.
+    **Done meanwhile (2026-10-09): the project file is a download.** Every docs build, CI's
+    included, packs `add-in/` into `tB/IDE/AddIns/downloads/tbDocsHelp.twinproj` in the
+    online and offline trees (`builder/addin-project.mjs`, the `addinProject` task), and
+    *Getting the add-in* links to it first, the source route second. It is the *online*
+    add-in: the files git tracks, never `Resources/HELP/`, with the symbol index of the
+    build that publishes it. The reader still builds the two DLLs in the IDE. What this
+    increment still adds is the DLLs themselves, and the offline add-in, built in CI.
+    Why the pack is made the way it is: [WIP.Build.md](WIP.Build.md#the-help-add-ins-project-file).
 
 **Lookup:**
 
@@ -1251,7 +1259,8 @@ The add-in's code skeletons are written in Stage 4 against the compiler, with te
   [docs/IDE/AddIns/Help.md](docs/IDE/AddIns/Help.md); its pictures are taken by
   `scripts/shoot_docs.mjs` from `test/addin/helpdemo`, so retake them after a change the
   pictures show, and update the page's *Getting the add-in* once increment 10 settles how users
-  get it.
+  get it. Until then the page offers the project file the docs build publishes, then the
+  source route.
 - Distribution is upstream's decision: the community add-ins list, or bundled with the IDE.
 - Take to upstream, with the probe results as evidence: the shortcut bug; a call to open a
   URL; a way to ask the compiler about the symbol at a position, whose answer hover already

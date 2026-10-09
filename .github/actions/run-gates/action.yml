@@ -103,6 +103,14 @@ runs:
     - name: Unit-test the harness's port claims (test/ports.test.mjs)
       shell: bash
       run: node --test test/ports.test.mjs
+    # Unit tests for builder/addin-project.mjs, which packs add-in/ into the
+    # help add-in's project file the build publishes: the project holds exactly
+    # the files git tracks there, never Resources/HELP/, and the same bytes from
+    # a CRLF checkout as from an LF one. Needs git. No browser, no built tree,
+    # about 1 s.
+    - name: Unit-test the help add-in's project file (test/addin-project.test.mjs)
+      shell: bash
+      run: node --test test/addin-project.test.mjs
     # A regex that backtracks exponentially does not fail a build, it stops
     # one: the corpus passes until a page happens to contain the trigger, and
     # then a render worker sits inside String.replace forever. Nothing else

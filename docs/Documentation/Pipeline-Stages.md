@@ -274,7 +274,7 @@ dispatch.execute() → { chunks, sharedSAB }
 The fan-out point. `execute`:
 
 1. Slices `state.pages` into `workerCount × SLICES_PER_WORKER` chunks (capped at one chunk per worker for small page counts).
-2. Computes the `sitePaths` set via `buildSitePathsSync` from `offline-rewrite.mjs`, using the vendored theme asset list from `enumerateVendoredThemeAssets()` rather than traversing `_site/assets/`.
+2. Computes the `sitePaths` set via `buildSitePathsSync` from `offline-rewrite.mjs`, using the vendored theme asset list from `enumerateVendoredThemeAssets()` rather than traversing `_site/assets/`. The same list carries the path of the help add-in's project file when `_config.yml` declares one (`addinProjectOf`), since [`addinProject`](#addinproject-main) writes it only after the render.
 3. Derives each output tree's inventory with `deriveTreeRels` and runs `unpublishableTreePaths` from `publish-policy.mjs` over it, **throwing** on anything that is not a publishable type. This is the sweep that sees what `discover`'s cannot: redirect stubs, vendored theme assets, and the generated `sitemap.xml` and `search-data.json`. The inventory is derived unconditionally now and shared with `checkTrees` below, which previously computed it only under `--check`.
 4. Builds the shared payload and packs it into one SAB via `packShared` from `sab-broadcast.mjs`: config, site-level SEO, pre-rendered chrome + sidebar, serialized link tables, static-file relative-path set, baseurl, site-paths array, offline-exclude patterns, skip-offline flag, build info, the inlined `svgContents`, the `vendoredVideos` / `vendoredImages` maps from `vendorAssets`, and `checkTrees` (per-tree `rels` + `baseurl`, or absent when `--check` is off).
 
@@ -424,7 +424,16 @@ symbolIndex.execute() → { entries, urls, gaps, unplaced, symbols }
 
 Writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index). Reads `builder/package-api.json` --- the build fails, naming `scripts/build_package_api.mjs`, if it is missing --- then calls `symbolPages(state.pages)`, `deriveSymbolIndex({ pages, api })` and `serializeSymbolIndex(...)` from `symbols.mjs`. `renderJoin` is the dependency that matters: an entry's anchor is the id the render gave its heading, read out of `renderedContent`, never computed a second time. ~50 ms over the reference's pages. With `--symbol-gaps <path>` it also writes `reportableGaps(...)` there as JSON.
 
-`urls` is every distinct URL in the index. `runBuild` hands it to `checkSymbolBaseline` from `symbol-baseline.mjs` after the check report, beside the page-count guard; `unplaced` names the package pages that gave no entry, which the summary prints. `checkReport` waits for this task, since `tB/symbols.json` is in the online tree's index and `--check-audit-index` must not look for it early. `symbols` -- the same array `deriveSymbolIndex` returned, each `{ name, container, url, ... }` -- passes through to `searchData`, which is the only other consumer; it is not written anywhere itself (that is `tB/symbols.json`, above). `json` is that file's text, which `runBuild` hands to `syncAddinIndex` from `addin-index.mjs` for the help add-in's copy.
+`urls` is every distinct URL in the index. `runBuild` hands it to `checkSymbolBaseline` from `symbol-baseline.mjs` after the check report, beside the page-count guard; `unplaced` names the package pages that gave no entry, which the summary prints. `checkReport` waits for this task, since `tB/symbols.json` is in the online tree's index and `--check-audit-index` must not look for it early. `symbols` -- the same array `deriveSymbolIndex` returned, each `{ name, container, url, ... }` -- passes through to `searchData`, which is the only other consumer; it is not written anywhere itself (that is `tB/symbols.json`, above). `json` is that file's text, which `runBuild` hands to `syncAddinIndex` from `addin-index.mjs` for the help add-in's copy, and which `addinProject` packs into the add-in's project file.
+
+### `addinProject` (main)
+
+```js
+addinProject.expected = ["symbolIndex", "prepDest"]
+addinProject.execute({ symbolIndex }) → { rel, bytes, files, untracked, roots, ms } | { failed, rel, error } | null
+```
+
+Writes the help add-in's project file, the download [Help Add-In](../../tB/IDE/AddIns/Help) offers (see [Tools and Scripts](Tools#the-help-add-ins-project-file)). Reads `addin_project` from the config with `addinProjectOf`, and returns `null` when the config declares none or under `--dry-run`. Otherwise calls `writeAddinProject` from `addin-project.mjs` with the add-in's folder (`src`, resolved against the source root), `symbolIndex.json` and the trees to write: the online tree, and the offline tree unless the build has none or `offline_exclude` leaves the file out of it. `dispatch` has already put `dest` in both trees' indexes and in `sitePaths`, so the links to the file resolve in both trees, and `checkReport` waits for this task. A failure --- `git` missing, an unreadable file --- is caught and returned rather than thrown, so the trees are still written; `runBuild` prints the result and fails the build on `failed`. ~100 ms.
 
 ### `writeAux` (main)
 
@@ -493,7 +502,7 @@ Checks `_site-pdf/book.html` as a single one-document chunk, against a tree inde
 ### `checkReport` (main, terminal)
 
 ```js
-checkReport.expected = ["linkJoin", "checkBook", "scss", "symbolIndex"]
+checkReport.expected = ["linkJoin", "checkBook", "scss", "symbolIndex", "addinProject"]
 checkReport.execute({ linkJoin, checkBook }) → void
 ```
 
@@ -503,7 +512,7 @@ Formats every tree's result, decides the exit code, and optionally writes the ma
 - **`--check-findings <path>`** writes the findings as JSON for [`check_links_diff.mjs`](Tools#check-links-diff) to diff against the standalone script's. Written *before* the exit code is decided, so a failing check still produces the file that says what it found.
 - **`--check-audit-index`** additionally diffs the tree index the build derived from its own records against what actually landed on disk. This is the one failure mode the two-checker findings comparison structurally cannot see: a *missing* index entry turns a working link into a reported break, which is loud, but a *spurious* one makes the oracle answer "exists" for a path that 404s in production, and on a clean site nothing links to a path that does not exist, so nothing would ever notice. Cost is one `readdir` per tree.
 
-`scss` is in `expected` for a reason worth keeping: `--check-audit-index` reads the tree off disk, and the combined stylesheet is in the index from the moment `dispatch` builds it. Without that edge the audit can run first and report the file as "indexed but not on disk" --- which it was, for another few milliseconds. On the real site `scss` finishes long before the check; on a three-page fixture it does not, and the audit failed the build over nothing. `symbolIndex` is there for the same reason: `tB/symbols.json` is in the online tree's index too.
+`scss` is in `expected` for a reason worth keeping: `--check-audit-index` reads the tree off disk, and the combined stylesheet is in the index from the moment `dispatch` builds it. Without that edge the audit can run first and report the file as "indexed but not on disk" --- which it was, for another few milliseconds. On the real site `scss` finishes long before the check; on a three-page fixture it does not, and the audit failed the build over nothing. `symbolIndex` is there for the same reason: `tB/symbols.json` is in the online tree's index too. So is `addinProject`, whose project file is in both trees' indexes.
 
 ---
 
@@ -585,7 +594,7 @@ The allowlist of file types that may reach a published tree. Every non-page unde
 | `SOURCE_EXTENSIONS` | `Set<string>` | Extensions a file discovered under `docs/` may carry. |
 | `BUILD_EXTENSIONS` | `Set<string>` | Extensions the build itself emits, additionally allowed in a tree inventory. |
 | `EXTENSIONLESS_FILENAMES` | `Set<string>` | Exact basenames allowed with no extension (`CNAME`). |
-| `publishPolicyFor` | `(config) → { declared }` | Reads `bundle_extra` into the set of individually declared published paths, which are exempt by path rather than by extension. |
+| `publishPolicyFor` | `(config) → { declared, generated }` | Reads `bundle_extra` into `declared`, the set of individually declared published paths, which are exempt by path rather than by extension on both surfaces; and `addin_project`'s `dest` into `generated`, a path the build writes itself, exempt on the tree surface only. |
 | `unpublishableSourceFiles` | `(staticFiles, policy) → findings[]` | Source sweep. Each finding has `rel`, `from` (the path on disk) and `why`. |
 | `unpublishableTreePaths` | `(rels, policy) → findings[]` | Tree sweep over a `deriveTreeRels` inventory. |
 | `formatPublishRefusal` | `(findings, { surface, label }) → string` | The abort message: every finding named, plus the fix appropriate to the surface. |
@@ -864,6 +873,15 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 |---|---|---|
 | `syncAddinIndex` | `({ src, json, write, file }) → Promise<string>` | Compares `json`, the `tB/symbols.json` this build wrote, with the help add-in's committed copy byte for byte, and rewrites the copy when they differ and `write` is set. Does nothing for a source root other than `GUARDED_SRC`, or when `json` is empty (`--dry-run`). Returns the line to print, `""` when the copy is current; a difference never fails the build. Called by `runBuild` after the symbol index's drift guard. |
 | `ADDIN_INDEX_REL` | `string` | `"add-in/Resources/SYMBOLS/symbols.json"`, the default `file` under the repository root. |
+
+### `addin-project.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `addinProjectOf` | `(config) → { src, dest } \| null` | The download `_config.yml`'s `addin_project` declares, `dest` without a leading slash; `null` unless both ends are given. |
+| `packAddinProject` | `({ dir, symbols }) → Promise<{ bytes, files, untracked }>` | Packs the files `git ls-files` lists in `dir`, as the working folder holds them, less `Resources/HELP/`, with CRLF made LF outside `Resources/`, and `symbols` in place of `Resources/SYMBOLS/symbols.json` when given. Stages them in a temporary folder and packs it with `importProject` from `scripts/impexp.mjs`. `untracked` lists the files git does not track that were left out. Throws when git fails or tracks no `Settings`. |
+| `writeAddinProject` | `({ dir, symbols, roots, rel }) → Promise<{ rel, bytes, files, untracked, roots, ms }>` | Packs once and writes the file at `rel` in each of `roots`. |
+| `formatAddinProject` | `(result, dirLabel, indent) → string` | The line `runBuild` prints, and a second naming any untracked file left out. |
 
 ### `page-baseline.mjs`
 

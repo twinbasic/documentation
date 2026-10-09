@@ -56,12 +56,22 @@ const IGNORED_DIRS = new Set([".git", "node_modules"]);
 // build reads it, and it decides the bytes of tB/symbols.json.
 const IGNORED_FILES = new Set(["page-baseline.json", "symbol-baseline.json"]);
 
+// The same for two paths under add-in/, by their place in the repository: the
+// build writes the add-in's archive of the offline tree into Resources/HELP/ at
+// its very end, and rewrites the add-in's copy of the symbol index whenever it
+// differs. Neither is an input: the add-in's project file is packed with the
+// index the build wrote, never with that copy.
+const IGNORED_PATHS = new Set(["add-in/Resources/HELP", "add-in/Resources/SYMBOLS/symbols.json"]);
+
 // The inputs that decide the built bytes. The source tree is the obvious
 // one; the builder and the theme sources matter just as much, and are
 // what a maintainer is most likely to be editing when they run these two
 // commands in the wrong order. lib/ holds modules the builder shares with
-// the other tools, so an edit there can change the build too.
-const DEFAULT_SOURCES = ["docs", "builder", "lib"];
+// the other tools, so an edit there can change the build too. add-in/ is
+// packed into the help add-in's project file, which the build publishes, and
+// scripts/impexp.mjs is both the module that packs it and a download the
+// build copies.
+const DEFAULT_SOURCES = ["docs", "builder", "lib", "add-in", "scripts/impexp.mjs"];
 const DEFAULT_TREE = "docs/_site-offline";
 const DEFAULT_MARKER = "index.html";
 
@@ -103,10 +113,17 @@ if (!existsSync(marker)) {
 }
 const builtAt = statSync(marker).mtimeMs;
 
-// Newest mtime under `dir`, with the build's own outputs skipped.
+// Newest mtime under `dir`, with the build's own outputs skipped. A source
+// that is a file stands for itself.
 // Returns { path, mtimeMs } or null for an absent directory.
 function newestUnder(dir) {
   let best = null;
+  try {
+    const st = statSync(dir);
+    if (st.isFile()) return { path: dir, mtimeMs: st.mtimeMs };
+  } catch {
+    return null;
+  }
   const walk = (d, top) => {
     let entries;
     try {
@@ -117,6 +134,7 @@ function newestUnder(dir) {
     for (const e of entries) {
       if (IGNORED_DIRS.has(e.name) || (top && isOutputTree(e.name))) continue;
       const p = join(d, e.name);
+      if (IGNORED_PATHS.has(relative(REPO_ROOT, p).replaceAll(sep, "/"))) continue;
       if (e.isDirectory()) {
         walk(p, false);
         continue;

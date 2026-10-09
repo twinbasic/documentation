@@ -111,20 +111,25 @@ The window is open again the next time the IDE starts, if it was open when the I
 
 ## Getting the add-in
 
-The add-in is built from its source code, which is in the `add-in` folder of the [documentation's repository](https://github.com/twinbasic/documentation). The folder holds the project's files, not a project file, so the first step makes one.
+The add-in is a twinBASIC project, which the IDE builds into two DLLs, one for each bitness.
 
-1. Pack the folder into a project file with the [Import/Export Tool](../../../Features/Packages/Import-Export-Tool), from the repository's root folder:
-
-   ```batch
-   python scripts/impexp.py import tbDocsHelp.twinproj add-in
-   ```
-
+1. Download the project file, <a href="downloads/tbDocsHelp.twinproj" download>tbDocsHelp.twinproj</a>. It is made from the add-in's source code each time this documentation is published, and holds the index of the symbols these pages document.
 2. Open `tbDocsHelp.twinproj` in the twinBASIC IDE and build it. Then set the build target to **win64** and build it again. The two DLLs, `tbDocsHelp_win32.dll` and `tbDocsHelp_win64.dll`, are written to a `Build` folder next to the project file.
 3. Copy each DLL to the matching `win32` or `win64` add-ins folder, as [Add Ins](../AddIns/) describes, and restart the IDE.
 
 An add-in built this way shows the pages from [docs.twinbasic.com](https://docs.twinbasic.com), so the pane needs an internet connection.
 
-**For help that works offline**, build the documentation before step 1, as [Building and Deployment](../../../Documentation/Development/Building) describes. The build writes a copy of the whole site into the add-in's source folder, `add-in\Resources\HELP\site.zip`, about 24 MB. A DLL built with that file in place serves the pages itself, without the internet. **Open in browser** still opens the website.
+### From the source code
+
+The add-in's source code is in the `add-in` folder of the [documentation's repository](https://github.com/twinbasic/documentation). Build from it to change the add-in, or to make help that works offline. The folder holds the project's files, not a project file, so pack it into one first with the [Import/Export Tool](../../../Features/Packages/Import-Export-Tool), from the repository's root folder:
+
+```batch
+python scripts/impexp.py import tbDocsHelp.twinproj add-in
+```
+
+Then build `tbDocsHelp.twinproj` and copy the DLLs as in steps 2 and 3 above.
+
+**For help that works offline**, build the documentation before packing the folder, as [Building and Deployment](../../../Documentation/Development/Building) describes. The build writes a copy of the whole site into the add-in's source folder, `add-in\Resources\HELP\site.zip`, about 24 MB. A DLL built with that file in place serves the pages itself, without the internet. **Open in browser** still opens the website. The project file offered for download never holds this copy, so the add-in built from it always shows the pages from the website.
 
 ## See Also
 

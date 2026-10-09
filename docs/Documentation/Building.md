@@ -78,6 +78,7 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
       && node --test test/png.test.mjs \
       && node --test test/example-batches.test.mjs \
       && node --test test/ports.test.mjs \
+      && node --test test/addin-project.test.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
@@ -115,6 +116,8 @@ or directly, from the repository root:
 `--check-audit-index` is what `build.bat` passes, and it is not decoration: it implies `--check`, and without it the build produces the same three trees while running no [link check](#checking-link-integrity) whatsoever.
 
 A single `tbdocs` run produces all three trees. The `also_build_offline` and `also_build_pdf` keys in `_config.yml` toggle the sibling outputs; the `--no-offline` and `--no-pdf` flags do the same from the command line if you only want `_site/`.
+
+Every build, CI's included, also packs the IDE help add-in's source folder, `add-in/`, into its project file, `tB/IDE/AddIns/downloads/tbDocsHelp.twinproj` in the online and offline trees, which [Help Add-In](../../tB/IDE/AddIns/Help) offers as a download, and prints one line for it. Only the files git tracks there are packed, with the symbol index the same build wrote. [Tools and Scripts](Tools#the-help-add-ins-project-file) describes the file.
 
 A local build also ends by writing `add-in/Resources/HELP/site.zip`, an archive of the offline tree that the IDE help add-in embeds, and prints one line for it. The file is not committed. `--no-help-archive` turns the step off, and both CI workflows pass it. [Tools and Scripts](Tools#the-help-archive) describes the archive.
 
@@ -411,6 +414,8 @@ build rewrites that copy whenever its own index differs and says so:
 
 Commit it with the pages that changed it. CI and `--serve` only say that it differs. A copy
 one build behind is never a failure: the add-in then has an older index, not a broken one.
+The add-in's project file that the build publishes never holds that copy: it is packed with
+the index the same build wrote, so the download is current even when the copy is not.
 
 A page in a package folder that gives no entry at all is reported by name after
 the summary. Its title names nothing the package declares --- most often

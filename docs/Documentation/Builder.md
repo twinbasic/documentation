@@ -130,6 +130,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | [`page-baseline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/page-baseline.mjs) | The page-count drift guard, and the committed `page-baseline.json` it compares against. A rise rewrites the file, a fall fails the build, and neither CI nor `--serve` may write. See [Building and Deployment](Building#the-page-count-drift-guard). |
 | [`symbol-baseline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/symbol-baseline.mjs) | The symbol index's drift guard, and the committed `symbol-baseline.json`, every URL `tB/symbols.json` has published. A new URL rewrites the file, a lost one fails the build. |
 | [`addin-index.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/addin-index.mjs) | The help add-in's committed copy of the index, `add-in/Resources/SYMBOLS/symbols.json`: a local build rewrites it when it differs from `tB/symbols.json`, and CI and `--serve` only say so. |
+| [`addin-project.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/addin-project.mjs) | The help add-in's project file, a published download: packs the files git tracks in `add-in/`, with this build's symbol index, through `importProject` from `scripts/impexp.mjs`, the one module under `scripts/` the builder may import. See [Tools and Scripts](Tools#the-help-add-ins-project-file). |
 | [`baseline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/baseline.mjs) | The read, the write and the comparison the two drift guards share, and `GUARDED_SRC`, the one source tree they have figures for. |
 | [`publish-policy.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/publish-policy.mjs) | The allowlist of file types that may reach a published tree. Enforced twice, unconditionally: over the static-file inventory in `discover`, and over each tree's `deriveTreeRels` inventory in `dispatch`. A finding aborts the build. See [Drift guards](#drift-guards-and-failure-modes). |
 
@@ -208,12 +209,12 @@ The complete layout, allocation helper, and the `readTaskMeta` / `writeTaskMeta`
 
 ## Task DAG by section
 
-The pipeline has 32 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into five sections, and the discussion below follows the same grouping:
+The pipeline has 33 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into five sections, and the discussion below follows the same grouping:
 
 - **Seeds**: `config`, `buildInfo`, `scssLight`, `scssDark`, `highlighterInit`, `loadData`
 - **Spine**: `discover`, `vendorAssets`, `nav`, `dot`, `buildInit`, `markdownInit`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters`
 - **Render**: `dispatch`, `prepDest`, `prepPageDirs`, `render:i`, `renderJoin`
-- **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `symbolIndex`, `writeAux`, `writeOffline`, `writePdf`
+- **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `symbolIndex`, `addinProject`, `writeAux`, `writeOffline`, `writePdf`
 - **Check**: `linkJoin`, `checkBook`, `checkReport` --- present on every ordinary build, because `build.bat` always passes `--check-audit-index`
 
 `warmInit` and `renderEnvInit` are in none of the five. The chart draws them in the worker rows as start-up bars, beside each worker's cold start, and they are described under Render. The chart does not draw the three `Join` barriers.
@@ -270,7 +271,7 @@ dispatch ┬→ render:0 ┬→ flush:0 ┐
                      ↓          ↓
                 renderJoin  flushJoin
                      ↓
-               symbolIndex
+               symbolIndex ─→ addinProject
                      ↓
                 searchData
 ```
@@ -291,7 +292,8 @@ dispatch ┬→ render:0 ┬→ flush:0 ┐
 - `flushJoin` (main, `on_demand`) --- barrier that aggregates per-chunk write stats and gates `writeAux` + `writePdf`.
 - `writeAssets` (main) --- writes generated CSS, copies vendored theme JS, copies the project's static files. Page HTML is *not* written here --- the per-chunk `flush:i` tasks already did that. Depends on `prepPageDirs` so the directory tree exists.
 - `searchData` (main) --- concatenates `state.searchChunks` (already populated by each `render:i`'s `submit()`), joins `symbolIndex`'s symbols onto the matching entries by URL (adding the `names` / `qualified` / `primary` fields; see [Site search](Pipeline-Stages#searchdata-main) and `WIP.Search.md`'s "Design" §2), renumbers the global `i` index, and writes `search-data.json`. The heavy work (heading split, content sanitisation, URL encoding) ran on the workers; this task only joins and consolidates. Depends on `renderJoin`, `prepDest` and `symbolIndex` (for the join).
-- `symbolIndex` (main) --- writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index) the IDE help add-in reads, and hands its `symbols` array to `searchData`'s join. Reads the heading ids out of every `/tB/` page's `renderedContent`, joins them with the committed `builder/package-api.json`, and returns the index's URLs for the drift guard that `runBuild` runs once the build is done. Depends on `renderJoin` and `prepDest`; `checkReport` waits for it, because the file is in the online tree's index; `searchData` now waits for it too.
+- `symbolIndex` (main) --- writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index) the IDE help add-in reads, and hands its `symbols` array to `searchData`'s join. Reads the heading ids out of every `/tB/` page's `renderedContent`, joins them with the committed `builder/package-api.json`, and returns the index's URLs for the drift guard that `runBuild` runs once the build is done. Depends on `renderJoin` and `prepDest`; `checkReport` waits for it, because the file is in the online tree's index; `searchData` and `addinProject` wait for it too.
+- `addinProject` (main) --- packs the help add-in's source folder, `add-in/`, into `tbDocsHelp.twinproj` and writes it into the online and offline trees at the path `_config.yml`'s `addin_project` names (see [Tools and Scripts](Tools#the-help-add-ins-project-file)). The files are those git tracks there, and the symbol index in it is the one `symbolIndex` wrote. Depends on `symbolIndex` and `prepDest`; `dispatch` has already put the file in both trees' indexes, so `checkReport` waits for it. Does nothing under `--dry-run`, or for a config that declares no download.
 - `writeAux` (main) --- writes redirect stubs + sitemap + robots.txt. Depends on `writeAssets`, `searchData`, `flushJoin`, `deriveRedirects`, `deriveSitemap`.
 - `writeOffline` (main) --- produces `_site-offline/`. The per-page offline HTML was already computed inside `render:i` and written by `flush:i`, so this task only handles the cross-cutting work: CSS url() rewriting, the just-the-docs.js AST patch, the `search-data.js` wrapper, the offline `nav.js`, theme assets, redirect stubs.
 - `writePdf` (main) --- assembles `_site-pdf/book.html` and copies the images it references. Depends on `flushJoin` (so `renderedContent` is filled), `resolveBookChapters` (so `bookData._chapters` is wired), and `dot` (so diagram SVGs are in `staticFiles`).
@@ -317,7 +319,7 @@ For a one-page reference, every task and its execution locus:
 | Write | `scss` | main | Joins light + dark; writes online + offline CSS. |
 | Write | `flush:i` | worker (pinned) | Page HTML write, online + offline. |
 | Write | `flushJoin` | main | Barrier. |
-| Write | `writeAssets`, `searchData`, `symbolIndex`, `writeAux`, `writeOffline`, `writePdf` | main | I/O bound; cooperative async concurrency. |
+| Write | `writeAssets`, `searchData`, `symbolIndex`, `addinProject`, `writeAux`, `writeOffline`, `writePdf` | main | I/O bound; cooperative async concurrency. |
 | Check | `linkJoin`, `checkBook`, `checkReport` | main | No-ops without `--check`. |
 
 Three pieces of work newly distributed to render workers under the current design:

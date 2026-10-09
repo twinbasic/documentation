@@ -88,7 +88,10 @@
       // builder/ must not depend on scripts/. check_tree_fresh.mjs watches
       // docs/ and builder/ as the inputs that decide the built bytes, and would
       // not see a change to a module the build imported from scripts/. Biome
-      // files the rule under style; here it guards a dependency.
+      // files the rule under style; here it guards a dependency. The one
+      // exception is scripts/impexp.mjs, which builder/addin-project.mjs packs
+      // the help add-in's project file with: it imports nothing, the build
+      // already publishes it, and check_tree_fresh.mjs watches it by name.
       "includes": ["builder/**/*.mjs"],
       "linter": {
         "rules": {
@@ -96,7 +99,12 @@
             "noRestrictedImports": {
               "level": "error",
               "options": {
-                "patterns": [{ "group": ["**/scripts/**"], "message": "builder/ must not depend on scripts/." }]
+                "patterns": [
+                  {
+                    "group": ["**/scripts/**", "!**/scripts/impexp.mjs"],
+                    "message": "builder/ must not depend on scripts/."
+                  }
+                ]
               }
             }
           }

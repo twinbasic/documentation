@@ -138,6 +138,27 @@ for (const entry of config.bundle_extra ?? []) {
 }
 if (!failures) console.log(`  ok    bundle_extra exemptions are path-scoped`);
 
+// ── 3b. The help add-in's project file, the same way ─────────────────
+// docs/_config.yml's addin_project names the one .twinproj the build writes
+// itself (builder/addin-project.mjs). It must publish from the tree at that
+// path; a .twinproj anywhere else in a tree must not, and neither may one
+// found in docs/, even at that path, since the build writes the file there.
+{
+  const before = failures;
+  const dest = policy.generated.size === 1 ? [...policy.generated][0] : null;
+  if (!dest) fail(`docs/_config.yml should declare one addin_project, and declares ${policy.generated.size}`);
+  else {
+    if (unpublishableTreePaths([dest], policy).length) fail(`the declared add-in project ${dest} is refused in a tree`);
+    if (!unpublishableTreePaths(["Reference/stray.twinproj"], policy).length) {
+      fail(".twinproj publishes from a tree anywhere, not just at the declared add-in project's path");
+    }
+    if (!unpublishableSourceFiles(asSource([dest]), policy).length) {
+      fail(`a .twinproj in docs/ at ${dest} publishes, though the build writes that file`);
+    }
+  }
+  if (failures === before) console.log(`  ok    the add-in project's exemption is path-scoped and tree-only`);
+}
+
 // ── 4. The two surfaces stay distinct ───────────────────────────────
 // BUILD_EXTENSIONS exists so the build can emit sitemap.xml and
 // search-data.json without blessing a stray docs/secrets.json. Folding
