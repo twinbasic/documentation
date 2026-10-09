@@ -213,8 +213,12 @@ const firstPort = withUsageError(() =>
 );
 const outRoot = path.resolve(values.out ?? DEFAULT_OUT);
 const diffsRoot = values.diffs === undefined ? null : path.resolve(values.diffs);
-if (diffsRoot && !path.relative(path.join(REPO_ROOT, "docs"), diffsRoot).startsWith("..")) {
-  die(2, `--diffs must not be under docs: ${values.diffs}`);
+// path.relative gives an absolute path across drives, which is outside docs and does not start with "..".
+if (diffsRoot) {
+  const rel = path.relative(path.join(REPO_ROOT, "docs"), diffsRoot);
+  if (!rel.startsWith("..") && !path.isAbsolute(rel)) {
+    die(2, `--diffs must not be under docs: ${values.diffs}`);
+  }
 }
 
 const ide = findIde(values.ide || undefined);

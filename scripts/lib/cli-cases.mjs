@@ -738,7 +738,12 @@ bad("scripts/shoot_docs.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
 bad("scripts/shoot_docs.mjs", ["--only", "("], REGEX_REASON("--only", "("));
 bad("scripts/shoot_docs.mjs", ["--jobs", "0"], "--jobs expects a whole number from 1 to 16, got: 0\n");
 bad("scripts/shoot_docs.mjs", ["--jobs=17"], "--jobs expects a whole number from 1 to 16, got: 17\n");
-bad("scripts/shoot_docs.mjs", ["--diffs", "docs/x"], "--diffs must not be under docs: docs/x\n");
+// --diffs is resolved against the working folder, which is an empty scratch folder here, so the case
+// names a folder under the repository's docs by its absolute path.
+{
+  const underDocs = path.join(REPO_ROOT, "docs", "x");
+  bad("scripts/shoot_docs.mjs", ["--diffs", underDocs], `--diffs must not be under docs: ${underDocs}\n`);
+}
 
 // check_examples prints "check_examples: " before the message.
 {
