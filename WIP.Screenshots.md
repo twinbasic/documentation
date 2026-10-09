@@ -143,11 +143,14 @@ with the current tool's exit codes (0, 1 a picture failed, 2 the tool could not 
 back).
 
 - **Setups**: one IDE each --- `no-project` (menus, dialogs, panels), `help` (the add-in's eight,
-  `test/addin/helpdemo`), `project`, `sample`, the `settings` setups and `glyphs`. A setup is
-  `{name, start, prepare}`.
+  `test/addin/helpdemo`), `project`, `sample`, the `settings` setups, `glyphs`, `global-search`
+  (Sample 15 exported from the install, built into the lane's copy as an add-in, its own project
+  opened) and `sample6` (Sample 6 exported and opened). A setup is `{name, start, prepare}`.
+  Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
+  (`tbDocsHelp`, `GlobalSearchAddIn`).
 - **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE on its own claimed ports and
-  private desktop, and splits the big setups into parts, longest first; a full run is about a
-  minute (it was ~765 s sequential). `--jobs 1` runs one IDE per setup in table order. Per-run
+  private desktop, and splits the big setups into parts, longest first; a full run is about
+  80 s (it was ~765 s sequential). `--jobs 1` runs one IDE per setup in table order. Per-run
   state lives on the connection (`c.shot`), never in module variables.
 - **Diffs**: `--diffs <dir>` (never under `docs/`) writes, for each picture that differs from the
   file on disk, the committed picture, the new one and an amplified difference map side by side
@@ -198,9 +201,10 @@ time; History's timestamps), Import from twinproj (needs a `.vbp`; its header sh
 
 Survey of its 61 pictures and 17 glyph crops: `.claude/tooling-review-scratch/s103-shots/INC3-SURVEY.md`.
 Built in three batches, one after another: no-project panels; a Standard EXE fixture with Project
-Settings; Sample 6, Sample 15 and Global Search. **Batches 1 and 2 are done** (`b958f18a`,
-`079185d0`, `74c6ed4d`); batch 3 is next: Sample 6 (ccGridButtonImage), Sample 15 / Global Search
-and Outline_1, Toolbar_2, the package-folder pair 22660f54 / a6525b1d (INC3-SURVEY.md, batch D).
+Settings; Sample 6, Sample 15 and Global Search. **All three batches are done** (`b958f18a`,
+`079185d0`, `74c6ed4d`, and batch 3 after `f916a99c`). In BETA 997 Sample 6's control images
+are in the CustomControls package's Miscellaneous folder, not the project's, and the tutorial
+says so.
 
 - **History's times are fixed in the page**, as the recent lists are, and its project is a
   project-made fixture; left out only if the times cannot be overridden.

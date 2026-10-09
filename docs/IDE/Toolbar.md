@@ -7,8 +7,8 @@ permalink: /tB/IDE/Project/Toolbar
 
 # Toolbar
 
-![The IDE toolbar with no project open. Every button is greyed out, from save and find through the start, break, stop and stepping controls to the build, alignment, resize and z-order groups; the zoom box beside the PREVIEW button reads 100% in grey, and there is no Global Search box at the right. Only the build configuration box, reading win32, is active.](Images/Toolbar_1.png){:width="1128" height="35"}
-![The same toolbar with a project open but not running. Start is a green triangle, Restart the compiler a blue circular arrow, and Clean and Build are white, while Break and Stop stay grey. A Global Search box now sits at the right, and the zoom box is still empty.](Images/Toolbar_2.png)
+![The IDE toolbar with no project open. Every button is greyed out, from save and find through the start, break, stop and stepping controls to the build, alignment, resize and z-order groups; the zoom box beside the PREVIEW button reads 100% in grey, and there is no Global Search button at the right. Only the build configuration box, reading win32, is active.](Images/Toolbar_1.png){:width="1128" height="35"}
+![The same toolbar with a project open but not running, and no file open. Save and find are white, Start is a green triangle, Restart the compiler a blue circular arrow, and Clean and Build are white, while Break, Stop and the stepping controls stay grey. A Global Search button now sits at the right, and the zoom box still reads 100% in grey.](Images/Toolbar_2.png){:width="1228" height="35"}
 ![The same toolbar with a form open in the designer. Switch Between Form And Code has become a red circle holding a white lightning bolt and the zoom box reads 100%; Start is still green and the debugging buttons are still grey.](Images/Toolbar_3.png)
 ![The same toolbar while the project runs. Start has gone grey, Break is blue and Stop is a red square; the red form and code button and the 100% zoom box are unchanged.](Images/Toolbar_4.png)
 

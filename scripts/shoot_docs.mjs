@@ -13,8 +13,8 @@
 //   * Every IDE runs from a copy of the install made in the work folder, with an
 //     APPDATA of its own there, so none of the user's add-ins loads.
 //     TB_ADDIN_TEST is on, so Open in browser starts nothing.
-//   * The IDE's registry entries and the help add-in's SaveSetting key
-//     (tbDocsHelp) are recorded first and put back at the end.
+//   * The IDE's registry entries and the SaveSetting keys of the add-ins the run
+//     loads (tbDocsHelp, GlobalSearchAddIn) are recorded first and put back at the end.
 //
 // The tool is a table of shots, and each shot names the setup (one IDE, started
 // one way) it is taken in. A setup is started only when a shot in it is
@@ -33,6 +33,11 @@
 //               of Project Settings (-symbols, -webview2 and -fusion have the
 //               references those pictures list); glyphs is the sample itself, for
 //               the icons the pages show inline
+//   global-search  Sample 15, the Global Search add-in, built into the copy, and
+//               the sample's own project open: the add-in's pictures and the toolbar
+//               that has its button
+//   sample6     Sample 6, the CustomControls sample, open: its package in the Project
+//               Explorer, and the package as JSON
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
@@ -109,6 +114,11 @@ import { deleteSettings, finishTidy, restoreKeys, settingsKey, snapshotKeys, sta
 
 const SETTINGS = "tbDocsHelp";
 const PANE = "tbDocsHelpPane";
+// Sample 15's SaveSetting application name, the id it gives its tool window, and its
+// toolbar button's element.
+const GS_SETTINGS = "GlobalSearchAddIn";
+const GS_WINDOW = "GlobalSearchAddInData";
+const GS_BUTTON = "addinButton-GlobalSearchAddInButton";
 const ADDIN = path.join(REPO_ROOT, "add-in");
 const DEMO = path.join(REPO_ROOT, "test", "addin", "helpdemo");
 const SAMPLE = path.join(REPO_ROOT, "test", "shots", "sample");
@@ -130,12 +140,13 @@ const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>]
 Takes the pictures of the IDE that the documentation shows, from IDEs on a
 private desktop, at 2x in the dark theme: the help add-in's eight (setup help),
 the menus, dialogs, bars and panels that need no project (setups no-project and project),
-and the panels, editor, Project Settings and icons of a sample project (setups sample,
-settings and glyphs).
+the panels, editor, Project Settings and icons of a sample project (setups sample,
+settings and glyphs), and those of the IDE's Samples 15 and 6 (setups
+global-search and sample6).
 Each setup is one IDE, started when a picture in it is selected. A picture is
 written only when its bytes differ from the file already there; each is
 reported as new, updated or unchanged. The IDE's registry entries and the
-help add-in's saved settings are put back afterwards. The help add-in's pane
+saved settings of the add-ins it loads are put back afterwards. The help add-in's pane
 shows pages from docs/_site, so run build.bat first for those.
 
 A picture is refused, and the run fails, when the visible text of the page it
@@ -158,7 +169,8 @@ was taken from holds the Windows user name.
                    setup runs in one IDE, one after another, in the table's order
   --port <n>       the first IDE's DevTools port: the first free ones from n
                    (default 9700); every IDE takes one, the help setup three, the
-                   detached window's and the building IDE's after its own
+                   detached window's and the building IDE's after its own, and the
+                   global-search setup two, the building IDE's after its own
   --ide <path>     the twinBASIC.exe to copy (default: $TB_IDE, else the
                    newest twinBASIC_IDE_BETA_* on the Desktop)
   -h, --help       print this text and exit
@@ -847,8 +859,44 @@ async function prepareFusion(run) {
   return ctx;
 }
 
+// ---- global-search: Sample 15, the Global Search add-in, built into the copy (never into
+// the install, nor into %APPDATA%) and loaded, with the sample's own project open, as the
+// pictures have always had it. Its options are saved with SaveSetting, under GS_SETTINGS,
+// which the run records first and puts back.
+
+async function startGlobalSearch(run) {
+  const { lane, ports } = run;
+  run.step = "build";
+  say(run.name, `building Sample 15, the Global Search add-in, into a copy of ${ide}`);
+  // the install is only read: the sample is exported into the work folder
+  const src = lane.exportSample("Sample 15");
+  // on a port of its own, as the help setup builds
+  await lane.addAddin(src, { show: false, port: ports[1] });
+  run.step = "open";
+  say(run.name, "opening Sample 15");
+  return lane.open(src);
+}
+
+async function prepareGlobalSearch(run) {
+  const { c } = run;
+  if (!(await waitFor(c, () => rectOf(c, `#${GS_BUTTON}`), { timeout: 30000, interval: 100 }))) {
+    throw new Error("the Global Search add-in put no button on the toolbar");
+  }
+  return prepareSample(run);
+}
+
+// ---- sample6: Sample 6, the CustomControls sample, exported from the install and open
+
+async function startSample6(run) {
+  run.step = "open";
+  say(run.name, "opening Sample 6");
+  return run.lane.open(run.lane.exportSample("Sample 6"));
+}
+
 const SETUPS = {
   help: { ports: 3, start: startHelp, prepare: prepareHelp },
+  "global-search": { ports: 2, start: startGlobalSearch, prepare: prepareGlobalSearch },
+  sample6: { ports: 1, start: startSample6, prepare: prepareSample },
   project: { ports: 1, start: startProject, prepare: prepareProject },
   sample: { ports: 1, start: startSample, prepare: prepareSample },
   settings: { ports: 1, start: startSettings("base"), prepare: prepareSample },
@@ -866,10 +914,10 @@ const SETUPS = {
 // border box, so the clip is grown by it, which is also what rounds their
 // corners: the outline's corner is what fills the pixel the border's curve leaves.
 const OUTLINE = 1;
-function menuShot(name, top, item = null, { subOnly = false } = {}) {
+function menuShot(name, top, item = null, { subOnly = false, setup = "no-project" } = {}) {
   return {
     out: `IDE/Menu/Images/${name}.png`,
-    setup: "no-project",
+    setup,
     async take({ c }) {
       await resetUi(c);
       try {
@@ -1271,23 +1319,30 @@ const linksShot = {
   },
 };
 
-// The toolbar at the width of its buttons, the close button of the bar at its right.
-const toolbarShot = {
-  out: "IDE/Images/Toolbar_1.png",
-  setup: "no-project",
-  take: ({ c }) =>
-    atSize(c, 1128, IDE_SIZE.height, async () => {
-      // the first ancestor of the Preview button that spans the window is the bar
-      const bar = await c.evaluate(`(() => {
+// The toolbar: the first ancestor of the Preview button that spans the window.
+async function toolbarRect(c) {
+  const bar = await c.evaluate(`(() => {
   let e = document.getElementById("toolbarPreviewBtn");
   while (e && e.getBoundingClientRect().width < innerWidth - 2) e = e.parentElement;
   if (!e) return null;
   const r = e.getBoundingClientRect();
   return { x: r.x, y: r.y, width: r.width, height: r.height };
 })()`);
-      if (!bar || bar.height > 60) throw new Error(`no toolbar found: ${JSON.stringify(bar)}`);
-      return capture(c, "Toolbar_1", snapOut(bar, 1128, IDE_SIZE.height), { away: () => parkMouse(c) });
-    }),
+  if (!bar || bar.height > 60) throw new Error(`no toolbar found: ${JSON.stringify(bar)}`);
+  return bar;
+}
+
+// The toolbar at the width of its buttons, the close button of the bar at its right.
+const TOOLBAR_WIDTH = 1128;
+const toolbarShot = {
+  out: "IDE/Images/Toolbar_1.png",
+  setup: "no-project",
+  take: ({ c }) =>
+    atSize(c, TOOLBAR_WIDTH, IDE_SIZE.height, async () =>
+      capture(c, "Toolbar_1", snapOut(await toolbarRect(c), TOOLBAR_WIDTH, IDE_SIZE.height), {
+        away: () => parkMouse(c),
+      }),
+    ),
 };
 
 // A panel shows as a floating window when it is not in the layout, as View > <panel> does
@@ -1404,12 +1459,21 @@ const panelShot = (
 // A panel with annotations: the panel (and the menu `open` shows, if any) on a plain ground
 // of the colour of its own body, the annotations drawn over, and the clip as large as they
 // need. Labels sit on the ground at the panel's left; the primitives are those of
-// lib/shot-annotate.mjs.
+// lib/shot-annotate.mjs. With none, it is the panel and its menu on that ground; `away:
+// false` leaves the mouse where `open` put it, for a menu item's hover look.
 function annotatedPanelShot(
   name,
   id,
   size,
-  { open = null, annotate, setup = "no-project", out = `IDE/Images/${name}.png`, before = null, after = null },
+  {
+    open = null,
+    annotate = [],
+    setup = "no-project",
+    out = `IDE/Images/${name}.png`,
+    before = null,
+    after = null,
+    away = true,
+  },
 ) {
   return {
     out,
@@ -1436,10 +1500,10 @@ function annotatedPanelShot(
         let area = menu ? union(box, menu) : box;
         if (submenu) area = union(area, submenu);
         try {
-          const { box: drawn } = await annotateOver(c, annotate);
-          area = grow(union(area, drawn), 8);
+          const { box: drawn } = annotate.length ? await annotateOver(c, annotate) : { box: null };
+          area = grow(drawn ? union(area, drawn) : area, 8);
           return await capture(c, name, snapOut(area), {
-            away: () => parkMouse(c),
+            away: away ? () => parkMouse(c) : null,
             keep: [sel, "#contextMenu", "#contextMenuSUB", `#${LAYER_ID}`],
             solid: ground,
           });
@@ -1565,34 +1629,37 @@ const panelShots = [
 const PE = panelSel("PROJECT EXPLORER");
 
 // A row of the Project Explorer's tree, floating or docked: its box, its name's box, its
-// expander's box and whether it is open.
+// expander's box and whether it is open. With `after`, the first row named `text` below the
+// row named `after` (a package's Miscellaneous, not the project's).
 const PE_SCOPE = `(document.querySelector(${JSON.stringify(PE)}) ||
   [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "PROJECT EXPLORER")?.closest(".toolWindowContainer"))`;
-const peNode = (c, text) =>
+const peNode = (c, text, after = null) =>
   c.evaluate(`(() => {
-  const n = [...${PE_SCOPE}.querySelectorAll(".itemNode")].find((e) => e.textContent.trim() === ${JSON.stringify(text)});
+  const rows = [...${PE_SCOPE}.querySelectorAll(".itemNode")];
+  const from = ${JSON.stringify(after)} === null ? 0 : rows.findIndex((e) => e.textContent.trim() === ${JSON.stringify(after)}) + 1;
+  const n = from > 0 || ${JSON.stringify(after)} === null ? rows.slice(from).find((e) => e.textContent.trim() === ${JSON.stringify(text)}) : null;
   if (!n) return null;
   const box = (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
   const icon = n.parentElement.querySelector(".treeNodeIcon");
   return { row: box(n.parentElement), name: box(n), icon: icon && box(icon), open: !!icon && icon.className.includes("iconCollapse") };
 })()`);
 
-async function peFind(c, text) {
-  const n = await peNode(c, text);
-  if (!n) throw new Error(`the Project Explorer has no row "${text}"`);
+async function peFind(c, text, after = null) {
+  const n = await peNode(c, text, after);
+  if (!n) throw new Error(`the Project Explorer has no row "${text}"${after ? ` below "${after}"` : ""}`);
   return n;
 }
 
 // Opens or closes a folder of the tree with a real click on its expander, and waits for
 // the tree to show it. The row has to be in the panel's view: the click lands on what is
-// drawn there.
-async function peOpen(c, text, want) {
+// drawn there. `after` as peNode takes it.
+async function peOpen(c, text, want, after = null) {
   // the row is there once the tree has drawn
-  const n = await waitFor(c, () => peNode(c, text).catch(() => null), { timeout: 5000, interval: 50 });
+  const n = await waitFor(c, () => peNode(c, text, after).catch(() => null), { timeout: 5000, interval: 50 });
   if (!n) throw new Error(`the Project Explorer has no row "${text}"`);
   if (n.open === want) return;
   await clickAt(c, n.icon.x + n.icon.width / 2, n.icon.y + n.icon.height / 2);
-  if (!(await waitFor(c, async () => (await peFind(c, text)).open === want, { timeout: 3000, interval: 50 }))) {
+  if (!(await waitFor(c, async () => (await peFind(c, text, after)).open === want, { timeout: 3000, interval: 50 }))) {
     throw new Error(`the click on the expander of "${text}" did not ${want ? "open" : "close"} it`);
   }
   await frames(c);
@@ -1919,10 +1986,11 @@ async function restoreText(c) {
 
 const PUBLISH_BUTTON = { css: `${panelSel("PACKAGE PUBLISHING")} .packageManagerPublish` };
 
-// Right click on a row of the Project Explorer: its menu opens at the pointer.
-async function peRightClick(c, text) {
+// Right click on a row of the Project Explorer, on the middle of its name or, `atEnd`, on
+// its last letters: its menu opens at the pointer.
+async function peRightClick(c, text, { atEnd = false } = {}) {
   const n = await peFind(c, text);
-  const x = n.name.x + n.name.width / 2;
+  const x = atEnd ? n.name.x + n.name.width - 6 : n.name.x + n.name.width / 2;
   const y = n.name.y + n.name.height / 2;
   await mouseMove(c, x, y);
   await c.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "right", buttons: 2, clickCount: 1 });
@@ -2678,6 +2746,321 @@ const glyphShots = [
   }),
 ];
 
+// ---- the Global Search add-in (Sample 15), with the sample's own project open
+
+const GS_FILE = "/tbGlobalSearchAddIn1/Sources/MainModule.twin";
+// the floating panel that holds the add-in's tool window, and the window's body
+const GS_PANEL = `toolWindowsById[${JSON.stringify(GS_WINDOW)}]?.shadowDom.host.closest(".floatingPanel")`;
+const GS_BODY = `toolWindowsById[${JSON.stringify(GS_WINDOW)}].bodyElement`;
+const GS_OPTIONS = [
+  "searchBarInsidePackages",
+  "searchBarMatchCase",
+  "searchBarMatchWholeWordOnly",
+  "searchBarExcludeComments",
+];
+
+const gsPanelRect = (c) =>
+  c.evaluate(`(() => {
+  const p = ${GS_PANEL};
+  if (!p) return null;
+  const r = p.getBoundingClientRect();
+  return r.width && r.height ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+
+// The add-in's tool window, shown with a real click on its toolbar button when it is not
+// showing, as a floating panel of `width` by `height`.
+async function gsShow(c, { width, height }) {
+  if (!(await gsPanelRect(c))) {
+    await click(c, GS_BUTTON);
+    if (!(await waitFor(c, () => gsPanelRect(c), { timeout: 5000, interval: 50 }))) {
+      throw new Error("the Global Search button showed no tool window");
+    }
+  }
+  await c.evaluate(
+    `Object.assign(${GS_PANEL}.style, { left: "140px", top: "120px", width: "${width}px", height: "${height}px" })`,
+  );
+  const flashing = () =>
+    c.evaluate(`(() => { const p = ${GS_PANEL}; return !!p && !!p.matches(".flashElement, :has(.flashElement)"); })()`);
+  if (!(await waitFor(c, async () => !(await flashing()), { timeout: 5000, interval: 50 }))) {
+    throw new Error("the Global Search window never stopped flashing");
+  }
+  await frames(c);
+  return gsPanelRect(c);
+}
+
+// Closes the tool window with a real click on its close button.
+async function gsHide(c) {
+  const x = await c.evaluate(`(() => {
+  const e = ${GS_PANEL}?.querySelector(".sectionHeader .codicon-close");
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+  if (x) {
+    await clickAt(c, x.x, x.y);
+    await waitFor(c, async () => !(await gsPanelRect(c)), { timeout: 3000, interval: 50 });
+  }
+  await parkMouse(c);
+}
+
+// The number of files the search lists, from the list view's data (it draws only the rows
+// that fit).
+const gsResults = (c) =>
+  c.evaluate(
+    `(() => { const l = ${GS_BODY}.querySelector("#resultsList")?.listview; return l ? l.itemCount : null; })()`,
+  );
+
+// A search for `query` with only In packages ticked, or none, each option set with a real
+// click (which the add-in saves with SaveSetting). The add-in searches a second after the
+// last key, and adds the files it finds one at a time: done when the list has not changed
+// for two seconds.
+async function gsSearch(c, query, { packages = false } = {}) {
+  for (const id of GS_OPTIONS) {
+    const want = packages && id === "searchBarInsidePackages";
+    if ((await c.evaluate(`${GS_BODY}.querySelector("#${id}").checked`)) !== want) {
+      await click(c, { toolWindow: GS_WINDOW, css: `#${id}` });
+    }
+  }
+  if ((await c.evaluate(`${GS_BODY}.querySelector("#searchBarInput").value`)) !== query) {
+    await click(c, { toolWindow: GS_WINDOW, css: "#searchBarInput" });
+    await pressKey(c, "a", { ctrl: true });
+    if (query) await typeText(c, query);
+    else await pressKey(c, "Backspace");
+  }
+  let last = null;
+  let since = 0;
+  const settled = await waitFor(
+    c,
+    async () => {
+      const n = await gsResults(c);
+      if (n !== last) [last, since] = [n, Date.now()];
+      return Date.now() - since >= 2000;
+    },
+    { timeout: 30000, interval: 200 },
+  );
+  if (!settled) throw new Error(`the search for "${query}" never settled`);
+  await c.evaluate(`${GS_BODY}.getRootNode().activeElement?.blur()`);
+  await frames(c);
+  return last;
+}
+
+// The tool window 389 pixels tall after a search for `query`; with `head`, its part above
+// the results list (the window scrolls its whole body when it is any shorter).
+const gsShot = (name, query, { packages = false, head = false } = {}) => ({
+  out: `IDE/AddIns/Images/${name}.png`,
+  setup: "global-search",
+  async take({ c }) {
+    await resetUi(c);
+    try {
+      const panel = await gsShow(c, { width: 352, height: 389 });
+      const files = await gsSearch(c, query, { packages });
+      if (query) say(c.shot.name, `  the search for "${query}" lists ${files} files`);
+      let clip = panel;
+      if (head) {
+        const list = await c.evaluate(`${GS_BODY}.querySelector("#resultsList").getBoundingClientRect().top`);
+        clip = { ...panel, height: list - panel.y };
+      }
+      return await capture(c, name, snapOut(clip), { away: () => parkMouse(c) });
+    } finally {
+      await gsHide(c);
+    }
+  },
+});
+
+const globalSearchShots = [
+  {
+    // the add-in's button, with a little of the toolbar each side of it
+    out: "IDE/AddIns/Images/Toolbar_GlobalSearch.png",
+    setup: "global-search",
+    async take({ c }) {
+      await resetUi(c);
+      const bar = await toolbarRect(c);
+      const b = await rectOf(c, `#${GS_BUTTON}`);
+      return capture(
+        c,
+        "Toolbar_GlobalSearch",
+        snapOut({ x: b.x - 10, y: bar.y, width: b.width + 20, height: bar.height }),
+        { away: () => parkMouse(c) },
+      );
+    },
+  },
+  {
+    // The toolbar with a project open and no editor, the add-in's button at the right: as
+    // wide as Toolbar_1 and the button, which comes after the theme's, so that the close
+    // button of the bar is as far from it as it is from the theme's there.
+    out: "IDE/Images/Toolbar_2.png",
+    setup: "global-search",
+    async take({ c }) {
+      await resetUi(c);
+      await closeTabs(c);
+      const theme = await rectOf(c, "#menuBarColorMode");
+      const b = await rectOf(c, `#${GS_BUTTON}`);
+      if (!theme || !b) throw new Error("the toolbar has no theme button or no Global Search button");
+      const width = Math.ceil(TOOLBAR_WIDTH + b.x + b.width - (theme.x + theme.width));
+      return atSize(c, width, IDE_SIZE.height, async () =>
+        capture(c, "Toolbar_2", snapOut(await toolbarRect(c), width, IDE_SIZE.height), {
+          away: () => parkMouse(c),
+        }),
+      );
+    },
+  },
+  gsShot("GlobalSearch", "", { head: true }),
+  gsShot("GlobalSearch_2", "Button1", { packages: true }),
+  // the sample's module open: the Outline lists what it declares
+  panelShot("Outline_1", "OUTLINE", [300, 96], {
+    setup: "global-search",
+    async before(c) {
+      await openFile(c, GS_FILE);
+    },
+    async prepare(c) {
+      const listed = await waitFor(
+        c,
+        () =>
+          c.evaluate(
+            `!!document.querySelector(${JSON.stringify(panelSel("OUTLINE"))})?.innerText.includes("MainModule")`,
+          ),
+        { timeout: 10000, interval: 100 },
+      );
+      if (!listed) throw new Error("the Outline never listed MainModule");
+      await frames(c);
+    },
+  }),
+  menuShot("Menu_Add-Ins_GlobalSearch", "Add-Ins", null, { setup: "global-search" }),
+  {
+    // the message the add-in's entry in the Add-Ins menu shows, closed with its own button
+    out: "IDE/Menu/Images/GlobalSearch-Popup.png",
+    setup: "global-search",
+    async take({ c }) {
+      await resetUi(c);
+      await openMenu(c, "Add-Ins");
+      const it = (await menuItems(c)).find((i) => i.text.startsWith("GlobalSearchAddIn"));
+      if (!it) throw new Error("the Add-Ins menu has no GlobalSearchAddIn entry");
+      await clickAt(c, it.x + it.width / 2, it.y + it.height / 2);
+      const box = await waitFor(
+        c,
+        () =>
+          c.evaluate(`(() => {
+  const t = document.getElementById("msgBox1text");
+  if (!t || !/not been implemented/.test(t.textContent)) return null;
+  const e = document.getElementById("msgBoxInner1");
+  const r = e.getBoundingClientRect();
+  return r.width && r.height ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`),
+        { timeout: 5000, interval: 50 },
+      );
+      if (!box) throw new Error("the Add-Ins entry showed no message");
+      try {
+        // with its 1 px outline, which is outside its box
+        return await capture(c, "GlobalSearch-Popup", snapOut(grow(box, OUTLINE)), { away: () => parkMouse(c) });
+      } finally {
+        const x = await rectOf(c, "#closeMsgBox1");
+        if (x) await clickAt(c, x.x + x.width / 2, x.y + x.height / 2);
+        await waitFor(c, async () => !(await rectOf(c, "#msgBox1text")), { timeout: 3000, interval: 50 });
+        await parkMouse(c);
+      }
+    },
+  },
+];
+
+// ---- Sample 6, the CustomControls sample: its controls are in the CustomControls package,
+// and their toolbox images in the package's Miscellaneous folder
+
+const CC_PACKAGE = "CustomControlsPackage";
+
+const sample6Shots = [
+  annotatedPanelShot(
+    "ccGridButtonImage",
+    "PROJECT EXPLORER",
+    { width: 400, height: 330 },
+    {
+      setup: "sample6",
+      out: "Tutorials/CustomControls/Images/ccGridButtonImage.png",
+      async before(c) {
+        await peOpen(c, "Sources", false);
+        await peOpen(c, "Packages", true);
+        await peOpen(c, CC_PACKAGE, true);
+        await peOpen(c, "Miscellaneous", true, CC_PACKAGE);
+      },
+      annotate: [
+        {
+          type: "arrow",
+          from: { of: PE_ROW("frmGrid.png"), at: "right", dx: 110 },
+          to: PE_ROW("frmGrid.png"),
+        },
+      ],
+    },
+  ),
+  // the package's context menu, the mouse on View As JSON
+  annotatedPanelShot(
+    "22660f54",
+    "PROJECT EXPLORER",
+    { width: 260, height: 250 },
+    {
+      setup: "sample6",
+      out: "Features/Images/22660f54-ff5d-4b21-93d3-39715f1f35ed.png",
+      away: false,
+      async before(c) {
+        await peOpen(c, "Sources", false);
+        await peOpen(c, "Packages", true);
+        await peOpen(c, CC_PACKAGE, false);
+      },
+      async open(c) {
+        // at the end of the name: the menu opens at the pointer, and covers what is right of it
+        await peRightClick(c, CC_PACKAGE, { atEnd: true });
+        const it = (await menuItems(c)).find((i) => i.text === "View As JSON");
+        if (!it) throw new Error("the package's context menu has no View As JSON");
+        await mouseMove(c, it.x + 8, it.y + it.height / 2);
+        await mouseMove(c, it.x + it.width / 2, it.y + it.height / 2);
+        await frames(c);
+      },
+    },
+  ),
+  {
+    // the package as JSON in the editor: from its first line of data (above it, a comment
+    // gives the time it was made), with the line numbers and without the minimap
+    out: "Features/Images/a6525b1d-ac22-4303-ae27-7984c20eba0c.png",
+    setup: "sample6",
+    async take({ c }) {
+      await resetUi(c);
+      await closeTabs(c);
+      // the Project Explorer floats for the click, and goes again before the picture
+      try {
+        await floatPanel(c, "PROJECT EXPLORER", { width: 300, height: 400 });
+        await peOpen(c, "Packages", true);
+        await peRightClick(c, CC_PACKAGE);
+        const it = (await menuItems(c)).find((i) => i.text === "View As JSON");
+        if (!it) throw new Error("the package's context menu has no View As JSON");
+        await clickAt(c, it.x + it.width / 2, it.y + it.height / 2);
+      } finally {
+        await closeMenus(c);
+        await unfloatPanel(c, "PROJECT EXPLORER");
+      }
+      const shown = await waitFor(
+        c,
+        async () =>
+          (await editorTabs(c)).some((t) => t.name.startsWith("JSON:")) &&
+          (await c.evaluate("editor.getModel()?.getLineCount() ?? 0")) > 20,
+        { timeout: 10000, interval: 100 },
+      );
+      if (!shown) throw new Error("View As JSON opened no JSON tab");
+      try {
+        await c.evaluate("editor.setScrollTop(0)");
+        await frames(c);
+        const clip = await c.evaluate(`(() => {
+  const d = editor.getDomNode().getBoundingClientRect();
+  const top = (n) => editor.getTopForLineNumber(n) - editor.getScrollTop();
+  const lay = editor.getLayoutInfo();
+  const right = lay.minimap?.minimapLeft ?? lay.minimapLeft ?? lay.width - lay.verticalScrollbarWidth;
+  return { x: d.x, y: d.y + top(7), width: right, height: top(18) - top(7) };
+})()`);
+        return await capture(c, "a6525b1d", snapOut(clip), { away: () => parkMouse(c) });
+      } finally {
+        await closeTabs(c);
+      }
+    },
+  },
+];
+
 // The route a person takes: Standard EXE is selected on the New tab, and Open
 // asks for its options. Cancel closes the dialog and creates nothing. Last
 // of the setup, since the IDE has begun to start a project.
@@ -3162,6 +3545,8 @@ const SHOTS = [
   ...sampleShots,
   ...settingsShots,
   ...glyphShots,
+  ...globalSearchShots,
+  ...sample6Shots,
   newProjectOptionsShot,
 ];
 
@@ -3197,6 +3582,8 @@ const JOB_SECONDS = {
   "settings-webview2": 7,
   "settings-fusion": 12,
   glyphs: 24,
+  "global-search": 58,
+  sample6: 26,
   "no-project": 33,
   "no-project-2": 38,
   "no-project-3": 41,
@@ -3268,9 +3655,13 @@ try {
 mkdirSync(root, { recursive: true });
 const tidy = startTidy({ prefixes: [root] });
 if (!tidy) die(2, "could not record the registry, so it could not be put back afterwards");
-const settingsBefore = wanted.includes("help") ? snapshotKeys([settingsKey(SETTINGS)]) : null;
-// The add-in's saved settings are the user's; a run starts from none.
-if (settingsBefore) deleteSettings([SETTINGS]);
+// The SaveSetting application names of the add-ins a setup loads. What they have saved is
+// the user's (an installed copy of the add-in reads the same key): a run starts from none,
+// and puts it back at the end.
+const ADDIN_SETTINGS = { help: SETTINGS, "global-search": GS_SETTINGS };
+const savedApps = wanted.filter((name) => ADDIN_SETTINGS[name]).map((name) => ADDIN_SETTINGS[name]);
+const settingsBefore = savedApps.length ? snapshotKeys(savedApps.map(settingsKey)) : null;
+if (settingsBefore) deleteSettings(savedApps);
 
 const running = new Set(); // the jobs with an IDE open: { lane, server }
 
@@ -3397,7 +3788,7 @@ if (!finishTidy(tidy)) problems.push("the IDE's registry entries could not be pu
 try {
   restoreSettings();
 } catch (e) {
-  problems.push(`the ${SETTINGS} settings could not be put back: ${e.message}`);
+  problems.push(`the ${savedApps.join(" and ")} settings could not be put back: ${e.message}`);
 }
 try {
   removeTree(root);
@@ -3409,6 +3800,6 @@ if (problems.length) {
   process.exit(3);
 }
 console.log(
-  `the registry${settingsBefore ? " and the add-in's settings are" : " is"} as ${settingsBefore ? "they were" : "it was"} found`,
+  `the registry${settingsBefore ? ` and the ${savedApps.join(" and ")} settings are` : " is"} as ${settingsBefore ? "they were" : "it was"} found`,
 );
 process.exit(failed);

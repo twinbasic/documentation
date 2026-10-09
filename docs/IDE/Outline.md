@@ -17,8 +17,8 @@ When a project isn't open this will be empty.
 
 ![The Outline pane with nothing listed beneath its title bar.](Images/Outline.png){:width="300" height="96"}
 
-Once you open a project it will list the `Modules`/`Classes` etc.
+Once you open a source file, it lists the `Modules`/`Classes` etc. that the file declares.
 
-![The Outline pane listing the two top level items of the open project, MainModule and WaynesWorldAddin.](Images/Outline_1.png)
+![The Outline pane listing the two top level items of the open file, the module MainModule and the class GlobalSearchAddIn.](Images/Outline_1.png){:width="300" height="96"}
 
 You can click on an item to navigate to that point in the code file.

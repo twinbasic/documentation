@@ -20,7 +20,9 @@ A CustomControl is simply an ordinary twinBASIC class, with a few extra attribut
 
 This is a required attribute for all CustomControls.  You must provide the relative path to an image file within your project that can be used to identify your control in the form designer toolbox.  We recommend that you put the image file in the Miscellaneous folder in your project.
 
-![CustomControl GridImage Folder](Images/ccGridButtonImage.png)
+In the CustomControls sample, the controls are in the CustomControls package, so their images are in the package's own Miscellaneous folder. **WaynesGrid**, for example, names `/miscellaneous/frmGrid.png`:
+
+![The Project Explorer of the CustomControls sample, with its Packages folder open on CustomControlsPackage and that package's Miscellaneous folder open. A red arrow points at frmGrid.png, among the control images frmButton.png to frmTextbox.png.](Images/ccGridButtonImage.png){:width="416" height="346"}
 
 ***
 ##  ClassId() attribute
