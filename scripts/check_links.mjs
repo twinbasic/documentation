@@ -45,7 +45,11 @@
 //   * The --forbid PREFIX flag (repeatable) fails the run if any
 //     extracted link starts with one of the given URL prefixes
 //     (bare prefix and 'prefix/' exempt), used by the offline pass
-//     to catch live-site links the offlinify rewrite missed.
+//     to catch live-site links the offlinify rewrite missed. With
+//     --online-root, a link the rewrite sent to the website on purpose --
+//     to a file the online tree holds and this tree does not -- is not
+//     reported (offline-rewrite.mjs's isWebsiteOnlyLink, as the build's
+//     own offline check excuses it).
 //
 // Output limitation: no per-link line numbers in error messages --
 // htmlparser2 SAX doesn't expose source positions.
@@ -78,6 +82,7 @@ import {
   resolve,
   OUTSIDE_BASEPATH_MARKER,
 } from "../builder/link-check.mjs";
+import { isWebsiteOnlyLink } from "../builder/offline-rewrite.mjs";
 import { CliError, choiceOption, exitOnCrash, parseCli } from "../lib/cli.mjs";
 
 // Tree-relative POSIX path, the space check.mjs works and reports in, so
@@ -133,6 +138,11 @@ Options:
                              URL prefix. The bare prefix and 'prefix/'
                              are exempt (intentional "go to live site"
                              links). Repeatable.
+  --online-root DIR          The online tree the --forbid prefixes serve.
+                             A forbidden link to a file it holds and the
+                             checked tree does not is the offline
+                             rewrite's link to the website, and is not
+                             reported.
   --no-fail                  Exit 0 when the check finds errors. Errors
                              are still printed. A command-line error or
                              a crash still exits 2. Useful for
@@ -213,6 +223,7 @@ const LINK_OPTIONS = {
   "root-dir": { type: "string", default: null },
   "base-path": { type: "string", default: "" },
   forbid: { type: "string", multiple: true },
+  "online-root": { type: "string", default: null },
   "no-fail": { type: "boolean", default: false },
   verbose: { type: "boolean", short: "v", default: false },
   help: { type: "boolean", short: "h", default: false },
@@ -245,6 +256,7 @@ function parseArgs(argv) {
     rootDir: values.rootDir,
     basePath: values.basePath,
     forbid: values.forbid,
+    onlineRoot: values.onlineRoot,
     noFail: values.noFail,
     verbose: values.verbose,
     checkHtml: values.checkHtml,
@@ -348,6 +360,9 @@ export function runCheck(argv, { structured = false } = {}) {
   if (!inputs.length) {
     return commandLineError("error: at least one input file or directory is required");
   }
+  if (opts.onlineRoot !== null && !fs.statSync(opts.onlineRoot, { throwIfNoEntry: false })?.isDirectory()) {
+    return commandLineError(`error: --online-root is not a directory: ${opts.onlineRoot}`);
+  }
 
   // --root-dir is used in the shape it was given. checkChunk joins it to
   // each page's tree-relative path, so the paths it resolves links
@@ -416,8 +431,17 @@ export function runCheck(argv, { structured = false } = {}) {
   });
 
   const env = { root: rootStr, basePath, tree };
-  if (opts.oracle === "index") env.index = treeIndexFor(rootStr, collectAllRelFiles(rootStr));
+  const treeRels = collectAllRelFiles(rootStr);
+  if (opts.oracle === "index") env.index = treeIndexFor(rootStr, treeRels);
   else env.oracle = FsOracle();
+  if (opts.onlineRoot !== null && tree.forbid) {
+    const pathSet = (rels) => new Set(rels.map((rel) => `/${rel.split(path.sep).join("/")}`));
+    const sitePaths = pathSet(treeRels);
+    const onlinePaths = pathSet(collectAllRelFiles(opts.onlineRoot));
+    const websites = tree.forbid.map((prefix) => ({ sitePaths: onlinePaths, url: prefix.replace(/\/+$/, "") }));
+    env.forbidExempt = (url) =>
+      websites.some((website) => isWebsiteOnlyLink(url, { sitePaths, website, baseurl: basePath }));
+  }
 
   const chunk = checkChunk(docs, env);
   const tDone = performance.now();

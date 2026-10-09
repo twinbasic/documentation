@@ -345,7 +345,8 @@ Offline (filesystem-only) link checker plus optional integrity checks. Multiple 
 | `--index-files <list>` | Comma-separated list of filenames to try when a URL resolves to a directory. Use `'index.html,.'` to also accept the directory itself as a valid target. |
 | `--base-path <prefix>` | Strip this prefix from root-absolute URLs before resolving. Used in CI when `--baseurl` is set. |
 | `--include-fragments` | Resolve `#fragment` anchors against the target page's IDs. |
-| `--forbid <prefix>` | Repeatable. Fail the run if any extracted link starts with `prefix`. Used by the offline pass to catch live-site links the offlinify rewrite missed (the bare prefix and `prefix/` are exempt). The standalone checker knows nothing of the links the rewrite writes on purpose to files only the website holds, so on a built offline tree it reports them. The build's own check exempts them. |
+| `--forbid <prefix>` | Repeatable. Fail the run if any extracted link starts with `prefix`. Used by the offline pass to catch live-site links the offlinify rewrite missed (the bare prefix and `prefix/` are exempt). On a built offline tree, pass `--online-root` as well, or the links the rewrite writes on purpose to files only the website holds are reported. |
+| `--online-root <dir>` | The online tree the `--forbid` prefixes serve. A forbidden link to a file that tree holds and the checked tree does not is the offline rewrite's link to the website, and is not reported, as the build's own offline check does not report it. A link to a page both trees hold is still a rewrite that was missed. |
 | `--check-html` | Assert HTML well-formedness. |
 | `--check-a11y` | Report accessibility hints (missing `alt`, etc.). |
 | `--check-ids` | Flag duplicate `id` attributes within a page. |

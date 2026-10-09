@@ -704,7 +704,8 @@ The decisions, each with what it rules out:
   (`isWebsiteOnlyLink`), which excuses a website URL only when the online tree holds
   the path and the offline tree does not: a live-site link to a page the offline tree
   holds is still a missed rewrite. `scripts/check_links.mjs`, which reads trees from
-  disk, has no such exemption.
+  disk, makes the same exemption when `--online-root` names the online tree, and
+  `check_links_diff.mjs`'s two offline cases pass it.
 - **Line endings are git's, not the checkout's.** `.gitattributes` checks
   `add-in/Resources/` out `-text`, but not `Settings`, `Sources/*.twin` or the `.tbform`:
   under `core.autocrlf` a Windows checkout holds them with CRLF and CI's Linux one with

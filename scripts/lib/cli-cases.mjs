@@ -27,6 +27,7 @@ const CASES = [
   { tool: "builder/tbdocs.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
   { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--root-dir"], exit: 2, stderr: "error: --root-dir needs a value\n" },
   { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--forbid"], exit: 2, stderr: "error: --forbid needs a value\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline", "--online-root", "no-such-tree", "no-such-tree"], exit: 2, stderr: "error: --online-root is not a directory: no-such-tree\n" },
 
   // In the four harness tools that check, a value flag with no value, at the end or before another flag,
   // exits 2. tbbuild follows the message with its usage line.
