@@ -185,9 +185,51 @@ back).
    Constants; the composites and the replica select lists.
 5. **The feature map**, replacing `fafaloneIDEscreenshot1.png` and `014a1d28`.
 
-Left out for now: the compiler-service badges that need the service down, the Community licence
-badge, package-server flows (network, TWINSERV), pictures after a run (console lines carry the
-time; History's timestamps), Import from twinproj (needs a `.vbp`; its header shows the path).
+6. **The rest**: the pictures left out of increments 1-5, by the owner's disposition below.
+
+## Increment 6 (owner, 2026-10-09)
+
+**Increment 5 is done**: `Features/Images/IDE-FeatureMap.png` (2880x1800, setup `featuremap`,
+fixture `test/shots/featuremap/` FeatureTour) replaces `fafaloneIDEscreenshot1.png` and
+`014a1d28`, both deleted. Twelve labels, each anchored to an element or code span; Problems is
+labelled Diagnostics, its 997 title. Sticky scroll, advanced hover info, inline hints, folding
+always shown and the debugger's memory figures are switched on in the page only; the memory
+figures, which change from run to run, are fixed in the page once real ones are shown, as
+History's times are. `Services_Operational` was retaken (setup `project`). Two of the three
+pictures added to increment 5 were left: **`Services_Operational_Tooltip` is the badge's native
+`title`**, which no capture holds; **Fusion's 569099635**: the `settings-fusion` project only ever
+writes `[BUILD] failed to build Fusion server file '...'` (on load and after a compiler restart),
+never the "successfully built" line -- a possible IDE defect, or the lane's staged layout; not
+reproduced elsewhere.
+
+After increment 5, 53 images under `docs/` are outside the tool; the unreferenced
+`Documentation/Images/environment-variables.png` was deleted (`7d5b5633`). The two left from
+increment 5 join the groups below: the tooltip the special IDE states, Fusion the running
+programs (it needs a project whose Fusion host really builds). The owner's
+disposition, group by group:
+
+- **Special IDE states** (`IDE/Status Bar.md`'s `Services_Limited`, `Services_Unavailable` and
+  the three badges' tooltips -- native `title` tooltips, which no CDP capture holds, so these need
+  another route --, `Licence_CommunityEdition`; `IDE/Splash Screen.md`'s `Splash_Screen`): **inspect
+  the IDE page first to see how each state can be reproduced**, then generate them. A state is
+  reproduced as the IDE reaches it, never by editing what it draws.
+- **Pictures of a running program** (`Anchoring-Docking.md`'s 3fa1cf2b, 0aeb25f6, fddbffa9,
+  4829696d, bc9f3756, 599a66ad, 80185a8d; `GUI-Components/New.md`'s 4ad9c774, 5fc60b7b;
+  `Forms.md`'s 85f25aa2; `Inheritance.md`'s b0724fe2; `CodeLens.md`'s 351d0147; `Debugging.md`'s
+  021f6cbf; `Toolbar_4`; `Creating a TWINPACK package.md`'s 8d74d820 and packPublishComplete1;
+  `Fusion.md`'s 569099635, a successful Fusion host build):
+  **write the program or programs that illustrate what each picture depicts, and run them while
+  the pictures are taken.**
+- **Package server** (the other Features/Packages pictures: Importing from TWINSERV, Importing from
+  a TWINPACK file, Linked Packages, Updating a package, packPublishPackage1): **network access is
+  fine. Never actually publish a package**; everything short of that is allowed. The
+  byte-identical pair d9f1e4d9 / e749e10f is still the open question below.
+- **Not of the IDE**: retake what can be reproduced. A `.vbp` import uses a **synthetic `.vbp`
+  project**, and the path is **scrubbed** from the picture (16833fae). The others in the group
+  (`Documentation/Building.md`'s GitHub and Affinity screenshots, `IDE/Webpage.md`'s `Webpage`,
+  `FAQs.md`'s 94490c87 and ac019c1a, `Package-Server.md`'s 5951dab6) get the same treatment where
+  they can be reproduced. **`Tutorials/WebView2/Images/tbWebView2InAForm.gif` is skipped**, and
+  **`favicon.png` is never changed** by this work.
 
 ## Machine state in the pictures (owner, 2026-10-08)
 

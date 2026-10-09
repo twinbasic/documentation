@@ -21,7 +21,7 @@ The Status Bar runs along the bottom of the IDE window. It has four regions, lef
 
 ![An olive status bar badge with a warning triangle, reading tB Services: LIMITED.](Images/Services_Limited.png)
 
-![A green status bar badge with a tick, reading tB Services: OPERATIONAL.](Images/Services_Operational.png)
+![A green status bar badge with a tick, reading tB Services: OPERATIONAL.](Images/Services_Operational.png){:width="175" height="24"}
 
 ![The tooltip that badge shows on hover, four lines giving COMPILER, FS, LSP and DEBUGGER each as OPERATIONAL.](Images/Services_Operational_Tooltip.png)
 

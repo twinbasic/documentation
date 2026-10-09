@@ -1,0 +1,55 @@
+Class Inventory
+
+    Private items() As StockItem
+    Private count As Long
+
+    Public Sub Add(ByVal name As String, ByVal quantity As Long, ByVal price As Double)
+        ReDim Preserve items(count)
+        With items(count)
+            .Name = name
+            .Quantity = quantity
+            .Price = price
+        End With
+        count = count + 1
+    End Sub
+
+    Public Function Total(ByVal taxRate As Double) As Double
+        Dim i As Long
+        Dim subtotal
+        Dim note
+        Dim price As Double
+        For i = 0 To count - 1
+            If items(i).Quantity > 0 Then
+                price = Round(items(i).Price * (1 + taxRate), 2)
+                subtotal = subtotal + items(i).Quantity * price
+                If items(i).Quantity > 100 Then
+                    note = "Grüße 👋 こんにちは"
+                    Debug.Print note & ": " & items(i).Name
+                End If
+
+            End If
+        Next
+        Total = subtotal
+    End Function
+
+    Public Function Find(ByVal name As String) As Long
+        Find = -1
+        Dim i As Long
+        For i = 0 To count - 1
+            If items(i).Name = name Then
+                Find = i
+                Exit For
+            End If
+        Next
+    End Function
+
+    Public Sub Clear()
+        Erase items
+        count = 0
+    End Sub
+
+    Public Function ItemByIndex(ByVal position As Long) As StockItem
+        ItemByIndex = items(position)
+    End Function
+
+End Class

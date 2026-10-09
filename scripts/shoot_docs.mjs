@@ -53,6 +53,8 @@
 //               [Flags] enumeration; customcontrols also has the tutorial's code pictures
 //               (attributes, the GUID hint, the hover, a form's JSON)
 //   sample9     Sample 9 open: its WebView_Create handler, for the WebView2 tutorial
+//   featuremap  test/shots/featuremap, FeatureTour: the whole window with twelve of the IDE's
+//               features named, in a layout and with editor options set in the page only
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
@@ -144,6 +146,7 @@ const DESIGNER = path.join(REPO_ROOT, "test", "shots", "designer");
 const DESIGNER_WEBVIEW2 = path.join(DESIGNER, "webview2");
 const CUSTOMCONTROLS = path.join(REPO_ROOT, "test", "shots", "customcontrols");
 const CODE = path.join(REPO_ROOT, "test", "shots", "code");
+const FEATUREMAP = path.join(REPO_ROOT, "test", "shots", "featuremap");
 const SETTINGS_FIXTURES = path.join(REPO_ROOT, "test", "shots", "settings");
 const DEMO_FILE = "/Inventory/Sources/Inventory.twin";
 const DEMO_SOURCE = path.join(DEMO, "Sources", "Inventory.twin");
@@ -169,7 +172,8 @@ global-search and sample6), the form and report designers and the Format menu
 forms and settings-webview2), and the CustomControls tutorial's pictures of a
 custom control's code and PROPERTIES (setup customcontrols), and the editor alone:
 the build select's greying, inline hints, a hover, a form's JSON (setups code,
-customcontrols and sample9).
+customcontrols and sample9), and the whole window with its features named (setup
+featuremap).
 Each setup is one IDE, started when a picture in it is selected. A picture is
 written only when its bytes differ from the file already there; each is
 reported as new, updated or unchanged. The IDE's registry entries and the
@@ -1024,6 +1028,18 @@ async function startSample9(run) {
   return run.lane.open(run.lane.exportSample("Sample 9"));
 }
 
+// ---- featuremap: test/shots/featuremap, FeatureTour, a Standard EXE of a class with a long
+// function, a module and a user-defined type, with three variables declared without a type
+// (warnings): the whole window with twelve of the IDE's features named.
+
+async function startFeatureMap(run) {
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, FEATUREMAP)}`);
+  const src = path.join(run.work, "featuremap-src");
+  cpSync(FEATUREMAP, src, { recursive: true });
+  return run.lane.open(src);
+}
+
 const SETUPS = {
   help: { ports: 3, start: startHelp, prepare: prepareHelp },
   "global-search": { ports: 2, start: startGlobalSearch, prepare: prepareGlobalSearch },
@@ -1033,6 +1049,7 @@ const SETUPS = {
   customcontrols: { ports: 1, start: startCustomControls, prepare: prepareWithDesigners },
   code: { ports: 1, start: startCode, prepare: prepareSample },
   sample9: { ports: 1, start: startSample9, prepare: prepareSample },
+  featuremap: { ports: 1, start: startFeatureMap, prepare: prepareSample },
   project: { ports: 1, start: startProject, prepare: prepareProject },
   sample: { ports: 1, start: startSample, prepare: prepareSample },
   settings: { ports: 1, start: startSettings("base"), prepare: prepareSample },
@@ -4656,6 +4673,307 @@ const sample9Shots = [
   },
 ];
 
+// ---- the feature map: the whole window, twelve of the IDE's features each named by a label
+// with an arrow to it (setup featuremap)
+
+// The page's size, and its layout, set in the page and saved nowhere: the Project Explorer,
+// OUTLINE, HISTORY and DIAGNOSTICS down the left, the editor with its mini-map filling the rest,
+// and no DEBUG CONSOLE, whose compiler lines name the user's folder.
+const FEATURE_PAGE = { width: 1440, height: 900 };
+const FEATURE_LAYOUT = {
+  type: "horizontal",
+  variableSize: true,
+  size: "0%",
+  content: [
+    { id: "TOOLBAR", variableSize: false, size: "fit-content" },
+    {
+      type: "vertical",
+      variableSize: true,
+      size: "0%",
+      content: [
+        {
+          type: "horizontal",
+          variableSize: false,
+          size: "21%",
+          content: [
+            { id: "PROJECT EXPLORER", variableSize: false, size: "30%" },
+            { id: "OUTLINE", variableSize: false, size: "15%" },
+            { id: "HISTORY", variableSize: false, size: "22%" },
+            { id: "PROBLEMS", variableSize: true, size: "0%" },
+          ],
+        },
+        { id: "EDITOR", variableSize: true, size: "0%" },
+      ],
+    },
+  ],
+};
+const FEATURE_FILE = "/FeatureTour/Sources/Inventory.twin";
+// The options the picture shows that are not the defaults, set in the page only (PAGE_DEFAULTS
+// has made saving them do nothing) and put back after it: sticky scroll, the advanced hover, the
+// inline hints on every line, the folding controls shown always, and the memory and object
+// counts in the status bar.
+const FEATURE_OPTIONS = {
+  stickyScrolling: true,
+  showAdvancedHoverInfo: true,
+  codeHintsVisibility2: true,
+  hideCodeEditorFolding: false,
+  codeFoldingAlwaysVisible: true,
+  showDebuggerMemUsage: true,
+};
+// History's entries: a change in each of three procedures, at these times (London's); the panel
+// lists the newest first.
+const FEATURE_EDITS = [
+  ["2026-01-09T09:12:40Z", "ReDim Preserve items(count)", "Inventory.Add"],
+  ["2026-01-09T10:05:17Z", "Find = -1", "Inventory.Find"],
+  ["2026-01-09T11:48:03Z", "Total = subtotal", "Inventory.Total"],
+];
+// The status bar's memory and object counts are the IDE process's own, which change from run to
+// run: they are set in the page, as History's times are, and the page stops writing them (the
+// IDE writes them only while memUsageDiv is set).
+const FEATURE_MEMORY = { memUsage: "175.6", userObjects: "100", gdiObjects: "16" };
+
+// A change in each procedure of FEATURE_EDITS, made and undone at its time: the cursor put on the
+// line holding its text, and a space put in at its start and taken out again.
+async function featureHistory(c) {
+  await c.send("Emulation.setTimezoneOverride", { timezoneId: "Europe/London" });
+  try {
+    for (const [iso, text] of FEATURE_EDITS) {
+      await c.evaluate(FAKE_CLOCK(iso));
+      for (const edit of ["insert", "remove"]) {
+        const done = await c.evaluate(`(() => {
+  const m = editor.getModel();
+  const n = m.getLinesContent().findIndex((l) => l.includes(${JSON.stringify(text)})) + 1;
+  if (!n) return false;
+  // History names the procedure the cursor is in
+  editor.setPosition({ lineNumber: n, column: 1 });
+  const range = ${edit === "insert"} ? new monaco.Range(n, 1, n, 1) : new monaco.Range(n, 1, n, 2);
+  return editor.executeEdits("shoot_docs", [{ range, text: ${edit === "insert"} ? " " : "" }]);
+})()`);
+        if (!done) throw new Error(`the editor has no line "${text}" to change`);
+        await sleep(300);
+      }
+      await sleep(1200);
+    }
+  } finally {
+    await c.evaluate(REAL_CLOCK);
+    await c.send("Emulation.setTimezoneOverride", { timezoneId: "" });
+  }
+  const names = FEATURE_EDITS.map(([, , name]) => name).reverse();
+  const listed = await waitFor(
+    c,
+    async () => {
+      const text = await dockedText(c, "HISTORY");
+      return names.every((n) => text.includes(n)) && text;
+    },
+    { timeout: 5000, interval: 100 },
+  );
+  if (!listed) throw new Error(`HISTORY does not list ${names.join(", ")}: ${await dockedText(c, "HISTORY")}`);
+}
+
+// The text of the docked panel headed `title`.
+const dockedText = (c, title) =>
+  c.evaluate(
+    `[...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === ${JSON.stringify(title)})?.closest(".toolWindowContainer").innerText ?? ""`,
+  );
+
+// The box of the lowest element `css` matches in the docked panel headed `title`.
+const lowestIn = (c, title, css) =>
+  c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === ${JSON.stringify(title)});
+  const rs = [...(h?.closest(".toolWindowContainer").querySelectorAll(${JSON.stringify(css)}) ?? [])].map((e) => e.getBoundingClientRect()).filter((r) => r.height);
+  const r = rs.sort((a, b) => b.bottom - a.bottom)[0];
+  return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+
+// The box of the topmost inline hint (the editor draws it as its decoration's ::after) that holds
+// `text`.
+const hintBox = (c, text) =>
+  c.evaluate(`(() => {
+  const r = [...document.querySelectorAll(".inlineDecoration")]
+    .filter((e) => getComputedStyle(e, "::after").content.includes(${JSON.stringify(text)}))
+    .map((e) => e.getBoundingClientRect())
+    .filter((r) => r.width)
+    .sort((a, b) => a.y - b.y)[0];
+  return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+
+const POINT = (x, y) => ({ rect: { x, y, width: 0, height: 0 } });
+
+// The window as IDE-Features.md shows it. Inventory.twin is scrolled into Total, so that sticky
+// scroll holds the class's and the function's first lines at the top; the mouse rests on
+// StockItem in ItemByIndex's line near the foot, whose hover with the advanced information then
+// opens above it, right of the code it covers. The labels are on the editor's empty right and
+// foot and in the panels' empty space, each with an arrow to what it names.
+const featureMapShot = {
+  out: "Features/Images/IDE-FeatureMap.png",
+  setup: "featuremap",
+  take: takeFeatureMap,
+};
+async function takeFeatureMap({ c }) {
+  await resetUi(c);
+  await openFile(c, FEATURE_FILE);
+  const keys = Object.keys(FEATURE_OPTIONS);
+  const was = JSON.parse(
+    await c.evaluate(
+      `JSON.stringify(Object.fromEntries(${JSON.stringify(keys)}.map((k) => [k, liveIDEOptions[k] === undefined ? null : liveIDEOptions[k]])))`,
+    ),
+  );
+  const { width: W, height: H } = FEATURE_PAGE;
+  try {
+    return await atSize(c, W, H, async () => {
+      if (!(await c.evaluate(`restorePanelLayout(${JSON.stringify(JSON.stringify(FEATURE_LAYOUT))})`))) {
+        throw new Error("the page refused the layout");
+      }
+      await c.evaluate(`Object.assign(liveIDEOptions, ${JSON.stringify(FEATURE_OPTIONS)}); changedIdeOptions();`);
+      // the compiler has read the project: History keeps no change made before that
+      await waitCounts(c, [0, 3, 0, 0]);
+      await featureHistory(c);
+      // the cursor on ItemByIndex's line, and the view from Total's third line: sticky scroll holds two
+      await c.evaluate(`(() => {
+  const m = editor.getModel();
+  const n = (t) => m.getLinesContent().findIndex((l) => l.includes(t)) + 1;
+  editor.setPosition({ lineNumber: n("Public Function ItemByIndex"), column: 5 });
+  editor.setScrollTop(editor.getTopForLineNumber(n("Dim note")));
+})()`);
+      const settled = await waitFor(
+        c,
+        async () =>
+          (await c.evaluate(`document.querySelectorAll(".sticky-widget .sticky-line-root").length`)) === 2 &&
+          (await hintBox(c, "i = 0 To count - 1")) &&
+          (await c.evaluate(`/^[\\d.]+$/.test(document.getElementById("memUsage").innerText)`)),
+        { timeout: 20000, interval: 100 },
+      );
+      if (!settled) throw new Error("the editor showed no sticky lines or no hints, or the memory counts never came");
+      await c.evaluate(`(() => {
+  memUsageDiv = null;
+  for (const [id, v] of Object.entries(${JSON.stringify(FEATURE_MEMORY)})) document.getElementById(id).innerText = v;
+})()`);
+      const hint = await hintBox(c, "i = 0 To count - 1");
+      const history = await lowestIn(c, "HISTORY", ".treeItemInner");
+      const problem = await lowestIn(c, "DIAGNOSTICS", ".problemNodeItem");
+      if (!history || !problem) throw new Error("HISTORY or DIAGNOSTICS lists nothing");
+      // What the labels point at, before the hover (a hover redraws none of it).
+      const at = await resolveAnchors(c, {
+        editor: { css: ".monaco-editor" },
+        sticky: { css: ".sticky-widget" },
+        brackets: { code: "(1 + taxRate), 2)" },
+        unicode: { code: '"Grüße 👋 こんにちは"' },
+        guided: { code: "If items(i).Quantity > 0 Then" },
+        belowBlank: { code: "End If", nth: 2 },
+        folding: { css: ".cldr" },
+        itemByIndex: { code: "Public Function ItemByIndex" },
+        minimap: { css: ".minimap" },
+        memory: { css: "#statusMemUsage" },
+        outline: { css: ".outlineNodeItem", text: "Inventory", own: true },
+      });
+      const { outline } = at;
+      // the IDE's own hover, from a real mouse resting on StockItem in ItemByIndex's line
+      const line = await c.evaluate(`(() => {
+  const m = editor.getModel();
+  const n = m.getLinesContent().findIndex((l) => l.includes("Public Function ItemByIndex")) + 1;
+  return { n, col: m.getLineContent(n).indexOf("StockItem") + 4 };
+})()`);
+      let shown = false;
+      for (let attempt = 0; attempt < 3 && !shown; attempt++) {
+        await restMouse(c, line.n, line.col);
+        shown = await waitFor(c, async () => (await hoverText(c))?.includes("UDT Alignment") && true, {
+          timeout: 6000,
+        });
+      }
+      if (!shown) throw new Error("the hover on StockItem showed no advanced information");
+      await sleep(600);
+      const popup = await c.evaluate(`(() => {
+  const r = [...document.querySelectorAll(".monaco-hover")].find((e) => !e.classList.contains("hidden") && e.getBoundingClientRect().height > 0).getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+      // A label is a pill whose left (or, `side: "left"`, right) end is at a point, centred on
+      // it, and its arrow leaves 4 pixels beyond that end.
+      const pill = (text, x, y, side = "right") => ({
+        type: "label",
+        text,
+        on: POINT(x, y),
+        side,
+        gap: 0,
+        tone: "dark",
+      });
+      const arrow = (from, to, extra = {}) => ({ type: "arrow", from, to, ...extra });
+      const box = (r) => ({ rect: r });
+      const mid = (r) => r.y + r.height / 2;
+      const lh = at.itemByIndex.height;
+      // the labels right of the code: their left ends line up
+      const right = at.editor.x + 560;
+      const sticky =
+        await c.evaluate(`[...document.querySelectorAll(".sticky-widget .sticky-line-root")].map((root) => {
+  const r = root.querySelector(".sticky-line:last-child > span").getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})`);
+      // the blank line inside the If block, where its indent guide crosses nothing
+      const guide = { x: at.guided.x, y: at.belowBlank.y - lh / 2 };
+      const chevron = { x: at.folding.x + at.folding.width / 2, y: at.itemByIndex.y + lh };
+      const minimap = { x: at.minimap.x, y: at.minimap.y + 50 };
+      // the top of a label at the foot of the editor, under the last line
+      const foot = at.editor.y + at.editor.height - 30;
+      const annotate = [
+        pill("Sticky scroll", right, at.sticky.y + lh),
+        arrow(POINT(right - 4, at.sticky.y + lh), sticky.map(box)),
+        pill("Colour matching", at.brackets.x + at.brackets.width + 64, at.brackets.y - 12),
+        arrow(POINT(at.brackets.x + at.brackets.width + 60, at.brackets.y - 12), box(at.brackets)),
+        pill("Unicode in the editor", right, mid(at.unicode)),
+        arrow(POINT(right - 4, mid(at.unicode)), box(at.unicode)),
+        pill("Indent guides", right, guide.y),
+        arrow(POINT(right - 4, guide.y), POINT(guide.x, guide.y)),
+        pill("Inline code hints", right, mid(hint)),
+        arrow(POINT(right - 4, mid(hint)), box(hint)),
+        // below the hover's right part, right of ItemByIndex's line
+        pill("Advanced info popup", popup.x + popup.width - 200, popup.y + popup.height + 50),
+        arrow(
+          POINT(popup.x + popup.width - 150, popup.y + popup.height + 33),
+          POINT(popup.x + popup.width - 150, popup.y + popup.height + 3),
+        ),
+        pill("Mini-map", minimap.x - 70, minimap.y + 110, "left"),
+        arrow(POINT(minimap.x - 66, minimap.y + 100), POINT(minimap.x, minimap.y)),
+        // from the foot of the editor, straight up the gutter to ItemByIndex's, clear of the first
+        // letter of End Class
+        pill("Folding controls", chevron.x + 30, foot, "below"),
+        arrow(POINT(chevron.x, foot - 4), POINT(chevron.x, chevron.y + 2)),
+        pill("Memory usage and object counts", at.memory.x + at.memory.width / 2 - 200, at.memory.y - 50),
+        arrow(
+          POINT(at.memory.x + at.memory.width / 2 - 20, at.memory.y - 36),
+          POINT(at.memory.x + at.memory.width / 2 - 20, at.memory.y - 3),
+        ),
+        // the panels: Outline's class from its right, History's and Diagnostics' last rows from below
+        pill("Outline", outline.x + outline.width + 60, mid(outline)),
+        arrow(POINT(outline.x + outline.width + 56, mid(outline)), box(outline)),
+        pill("History", history.x + 110, history.y + history.height + 34),
+        arrow(
+          POINT(history.x + 106, history.y + history.height + 34),
+          POINT(history.x + 70, history.y + history.height + 3),
+        ),
+        pill("Diagnostics", problem.x + 110, problem.y + problem.height + 40),
+        arrow(
+          POINT(problem.x + 106, problem.y + problem.height + 40),
+          POINT(problem.x + 70, problem.y + problem.height + 3),
+        ),
+      ];
+      await annotateOver(c, annotate);
+      return await capture(c, "IDE-FeatureMap", snapOut({ x: 0, y: 0, width: W, height: H }, W, H));
+    });
+  } finally {
+    await unannotate(c);
+    await mouseAway(c);
+    await c.evaluate(`(() => {
+  memUsageDiv = document.getElementById("memUsage");
+  const was = ${JSON.stringify(was)};
+  for (const k of Object.keys(was)) {
+    if (was[k] === null) delete liveIDEOptions[k];
+    else liveIDEOptions[k] = was[k];
+  }
+  changedIdeOptions();
+})()`);
+    await defaultLayout(c);
+  }
+}
+
 // The route a person takes: Standard EXE is selected on the New tab, and Open
 // asks for its options. Cancel closes the dialog and creates nothing. Last
 // of the setup, since the IDE has begun to start a project.
@@ -4699,6 +5017,28 @@ const aboutShot = {
     return inDialog(c, { command: "tbHelp_ShowAboutWindow", title: "About", close: "Close" }, () =>
       dialogShot(c, "Menu_Help_About"),
     );
+  },
+};
+
+// The status bar's services badge once the compiler's services have all answered. (Its tooltip,
+// the four services each OPERATIONAL, is the badge's native title, which no capture holds.)
+const servicesShot = {
+  out: "IDE/Images/Services_Operational.png",
+  setup: "project",
+  async take({ c }) {
+    await resetUi(c);
+    const ready = await waitFor(
+      c,
+      () =>
+        c.evaluate(
+          `(() => { const e = document.getElementById("compilerStatusOuter"); return !!e && e.classList.contains("servicesOK") && e.innerText.includes("OPERATIONAL"); })()`,
+        ),
+      { timeout: 60000, interval: 250 },
+    );
+    if (!ready) throw new Error("the services badge never said OPERATIONAL");
+    return capture(c, "Services_Operational", snapOut(await rectOf(c, "#compilerStatusOuter")), {
+      away: () => parkMouse(c),
+    });
   },
 };
 
@@ -5115,6 +5455,7 @@ const helpShot = (name) => ({
 const SHOTS = [
   ...["Pane", "Hover", "Search", "Choices", "Description", "Settings", "Toolbar", "Window"].map(helpShot),
   aboutShot,
+  servicesShot,
   menuBarShot,
   menuShot("Menu_File", "File"),
   menuShot("Menu_Edit", "Edit"),
@@ -5148,6 +5489,7 @@ const SHOTS = [
   ...customControlsCodeShots,
   ...codeShots,
   ...sample9Shots,
+  featureMapShot,
   newProjectOptionsShot,
 ];
 
@@ -5196,6 +5538,7 @@ const JOB_SECONDS = {
   "customcontrols-3": 40,
   code: 35,
   sample9: 18,
+  featuremap: 30,
   "no-project": 33,
   "no-project-2": 38,
   "no-project-3": 41,

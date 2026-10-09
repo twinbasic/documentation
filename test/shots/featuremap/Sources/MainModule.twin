@@ -1,0 +1,14 @@
+Module MainModule
+
+    Public Sub Main()
+        Dim stock As New Inventory
+        Dim first As StockItem
+        Dim cost
+        stock.Add "Widget", 120, 2.5
+        stock.Add "Gadget", 8, 14.75
+        cost = stock.Total(0.2)
+        first = stock.ItemByIndex(stock.Find("Widget"))
+        Debug.Print first.Quantity, cost
+    End Sub
+
+End Module
