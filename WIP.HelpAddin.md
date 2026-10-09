@@ -896,6 +896,20 @@ harness about a second against opening a new IDE.
      own IDE reads it; the registry tidy puts that one entry back (`restoreTheme`). Fault
      runs: without the handler only the theme-change case fails; with the site ignoring the
      parameter every case that shows a page fails.
+     **In the detached window the frame's storage throws** (`SecurityError`, both storages,
+     BETA 997): the window's page is a `data:` URL (`NavigateToString`), so the docs frame is a
+     frame of another site under an opaque top-level origin, with a DevTools target of its own
+     (type `iframe`). Until 2026-10-09 the head script applied `?theme=` there, and
+     `theme-toggle.js`, which read the choice back from storage alone, reset it to *system*, so
+     the page followed the window's WebView2, which is Windows' app mode; a link inside the
+     frame also lost `data-pane`. So the head script keeps both in the frame's `window.name`
+     too (`tbdocs:<theme>:<1>`, written only by a page given either parameter, read only when
+     storage throws; a navigation inside the frame keeps it), and `theme-toggle.js` mirrors
+     the attribute the head script set. A pane frame is on the IDE page's own site and its
+     storage works. The lanes check both places in Light and Dark, the page given and a page
+     after a link, with the frame's `prefers-color-scheme` emulated to the other scheme
+     (`Emulation.setEmulatedMedia`, on the frame's own target in the window): before the fix,
+     all four window cases failed and the pane's passed.
    - **The page shows without the site's chrome**: `FrameUrl` adds `pane=1` too, which the
      head script keeps in `sessionStorage` as it keeps the theme and turns into `data-pane`
      on the root. `custom.scss` then hides the sidebar and the header (search box,

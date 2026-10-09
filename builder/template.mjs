@@ -161,16 +161,22 @@ function renderHead(page, site, init) {
   // It also marks the page for the help add-in's pane: `?pane=1`, kept in
   // sessionStorage the same way, sets `data-pane`, and custom.scss then hides
   // the site's navigation and header.
+  // Where storage throws, as it does in the frame of the add-in's detached
+  // window (a frame of another site than its `data:` page), both are kept in
+  // the frame's window.name instead, as `tbdocs:<theme>:<1 for pane>`, which
+  // a navigation inside the frame keeps; it is written only by a page given
+  // either parameter, and read only when storage throws.
   const bu = String(site.config.baseurl ?? "");
   return (
     `<head>\n` +
     `  <meta charset="UTF-8">\n` +
     `  <meta http-equiv="X-UA-Compatible" content="IE=Edge"><script>\n` +
-    `    (function () { var q = /[?&]theme=(light|dark)(?:&|$)/.exec(location.search), p = /[?&]pane=1(?:&|$)/.test(location.search), t = null;\n` +
+    `    (function () { var q = /[?&]theme=(light|dark)(?:&|$)/.exec(location.search), a = /[?&]pane=1(?:&|$)/.test(location.search), p = a, t = null, n = /^tbdocs:(light|dark)?:(1)?$/.exec(window.name);\n` +
     `    try { if (q) sessionStorage.setItem('theme', q[1]); t = sessionStorage.getItem('theme') || localStorage.getItem('theme');\n` +
-    `    if (p) sessionStorage.setItem('pane', '1'); else p = sessionStorage.getItem('pane') === '1'; } catch (e) {}\n` +
+    `    if (p) sessionStorage.setItem('pane', '1'); else p = sessionStorage.getItem('pane') === '1'; } catch (e) { if (n) { t = n[1]; p = p || !!n[2]; } }\n` +
     `    if (q) t = q[1];\n` +
     `    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);\n` +
+    `    if (q || a) window.name = 'tbdocs:' + (t === 'light' || t === 'dark' ? t : '') + ':' + (p ? '1' : '');\n` +
     `    if (p) document.documentElement.setAttribute('data-pane', ''); })();\n` +
     `  </script>\n` +
     `  <script type="text/javascript" src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/theme-toggle.js", bu))}" defer></script>\n` +
