@@ -62,8 +62,19 @@
 // of a zoomed frame, and the rounded corners of a frame's clip.
 //
 // An inline <svg> in the page is not converted from its layout objects, which
-// hold no path data; the caller passes the markup of the ones the picture
-// needs (the annotation layer) as `overlays`, painted last.
+// hold no path data. It is a replaced element: the caller reads the markup of each
+// one in the view, with the page's styles resolved on its elements (`svgs`, by the
+// <svg>'s layout object; capture.mjs's inlineSvg), and paintInlineSvg draws it
+// at the element's place in paint order, as a nested <svg> in the content box,
+// which scales its viewBox as the page does; its CSS transform, opacity and
+// filter are the element's, as for any box. Its ids are given a prefix of its
+// own (scopeIds), since two icons both have an `id="a"`; an <image> in it passes
+// through compactImage; its text is set in the picture's faces. Not drawn: a
+// <foreignObject>, an <image> that cannot be read, a <use> of another file, an
+// animation (its state when the snapshot was taken is drawn), and a CSS mask or
+// clip-path on the <svg> element itself. The annotation layer and the mouse
+// pointer are the exceptions: the caller passes their markup as `overlays`,
+// painted last.
 
 import { compactImage } from "../lib/compact-image.mjs";
 import { bakeable, bakeMarkup, colourSteps, filterSteps, stepPrimitive, stepsOpacity } from "./colour-filter.mjs";
@@ -246,6 +257,43 @@ function decodeDocument(snapshot, di, styleNames, grid, seen) {
     nodes[i].frame.owner = nodes[i];
   }
   return decoded;
+}
+
+/** Whether `n`, or an element above it, is an <svg>. */
+function insideSvg(n) {
+  for (; n; n = n.parent) if (n.name === "svg") return true;
+  return false;
+}
+
+/**
+ * The layout objects of the inline <svg>s that show in `clip`: the outermost
+ * <svg> of each, visible and with a size, which are the ones to read in the page
+ * (capture.mjs's inlineSvg) and to draw (renderSvg's `svgs`).
+ */
+export function inlineSvgsIn(decoded, clip) {
+  const out = [];
+  for (const l of decoded.layouts) {
+    const n = l.node;
+    if (n.name !== "svg" || n.box !== l || !l.style || insideSvg(n.parent)) continue;
+    if (l.style.visibility !== "visible" || l.bounds.w <= 0 || l.bounds.h <= 0 || !overlaps(l.bounds, clip)) continue;
+    out.push(l);
+  }
+  return out;
+}
+
+/**
+ * `markup` (what capture.mjs's inlineSvg gives) with every id given `prefix`,
+ * and each reference to one: `href="#id"` and `url(#id)`, in a tag and nowhere
+ * else, so that a text that says `id="a"` is left as it is. Two icons in a page
+ * that both define `id="a"` are two ids once they share one picture.
+ */
+export function scopeIds(markup, prefix) {
+  return markup.replace(/<[^>]*>/g, (tag) =>
+    tag
+      .replace(/(\sid=")([^"]*)"/g, (_, head, id) => `${head}${prefix}${id}"`)
+      .replace(/(\shref="#)([^"]*)"/g, (_, head, id) => `${head}${prefix}${id}"`)
+      .replace(/url\(#([^)]*)\)/g, (_, id) => `url(#${prefix}${id})`),
+  );
 }
 
 /** The nearest node at or above `n` that has a computed style. */
@@ -1019,13 +1067,18 @@ function filterPrimitives(steps) {
  * @param fonts     a PictureFonts (fonts.mjs): text is set in subsets of its fonts, embedded
  * @param fontsFor  (fontKey, text) => [{ps} | {family, data}]: the fonts Chromium drew that run with
  * @param background  draw the root background under everything (false for a cut-out)
- * @param overlays  markup of inline <svg>s drawn over everything
+ * @param overlays  markup of inline <svg>s drawn over everything, in the picture's coordinates
  * @param scrollbars  Map(layout object's key => {custom, parts}): the styles of a scrolling box's
  *                  scrollbar parts (capture.mjs scrollbarParts), by scrollbarPartList's keys; a
  *                  frame's viewport is keyed by viewportScroller's
+ * @param svgs      Map(layout object's key => {attrs, style, inner, texts, foreign, dropped}): the
+ *                  inline <svg>s of the document that show in the view (inlineSvgsIn), as
+ *                  capture.mjs's inlineSvg reads them, or {failed} where it could not; an <svg>
+ *                  with no entry is drawn by other means (the annotation layer). null: none was
+ *                  read, and each is reported as not drawn
  * @param frames    (document) => what was measured in that frame's own document, {metrics, textWidth,
- *                  inkGaps, placeholderColor, canvases, fontsFor, scrollbars}, as the parameters of
- *                  the same names (the page's own are the defaults) and {inner}, the frame's viewport
+ *                  inkGaps, placeholderColor, canvases, fontsFor, scrollbars, svgs}, as the parameters
+ *                  of the same names (the page's own are the defaults) and {inner}, the frame's viewport
  *                  {w, h}; null or no function: the frame is drawn with the page's own. The frame
  *                  is measured in its own document because a font name and a style rule mean what
  *                  that document says
@@ -1044,11 +1097,12 @@ export function renderSvg(
     background = true,
     overlays = [],
     scrollbars = null,
+    svgs = null,
     frames = null,
   },
 ) {
   // What was measured in the document being painted: the page's, and in a frame its own.
-  const pageEnv = { metrics, textWidth, inkGaps, placeholderColor, canvases, fontsFor, scrollbars, inner: null };
+  const pageEnv = { metrics, textWidth, inkGaps, placeholderColor, canvases, fontsFor, scrollbars, svgs, inner: null };
   let env = pageEnv;
   const defs = [];
   const ids = new Map();
@@ -1060,7 +1114,7 @@ export function renderSvg(
     }
     return ids.get(key);
   };
-  const stats = { boxes: 0, texts: 0, images: 0, canvases: 0, frames: 0, unsupported: {} };
+  const stats = { boxes: 0, texts: 0, images: 0, canvases: 0, svgs: 0, frames: 0, unsupported: {} };
   const note = (what) => {
     stats.unsupported[what] = (stats.unsupported[what] ?? 0) + 1;
   };
@@ -1376,6 +1430,7 @@ export function renderSvg(
       out.push(`<use href="#${id}" transform="translate(${num(b.x)} ${num(b.y)}) scale(${num(b.w)} ${num(b.h)})"/>`);
       stats.images++;
     }
+    if (l.node.name === "svg") out.push(...paintInlineSvg(l, bw));
     if (l.node.name === "SELECT") out.push(...paintSelect(l, bw));
     else if (l.node.name === "INPUT" && CHECKABLE_INPUTS.has(l.node.attrs.type?.toLowerCase())) {
       if (st.appearance !== "none") out.push(...paintCheckable(l));
@@ -1390,6 +1445,65 @@ export function renderSvg(
     }
     stats.boxes++;
     return out;
+  }
+
+  // An inline <svg> as a replaced element: its content, which the page was asked to
+  // read (`svgs`), is a nested <svg> in the element's content box (the border box
+  // less border and padding, as the snapshot snaps it, which is where Chromium
+  // puts the content too), and scales its viewBox into it. Each svg's ids have a
+  // prefix of its own, its images are compacted, and each run of its text is set in
+  // the picture's faces.
+  let svgCount = 0;
+  const unescaped = (s) => s.replace(/&(amp|lt|gt|quot);/g, (_, e) => ({ amp: "&", lt: "<", gt: ">", quot: '"' })[e]);
+  function paintInlineSvg(l, bw) {
+    if (!env.svgs) {
+      note("an inline svg");
+      return [];
+    }
+    const got = env.svgs.get(l.key);
+    // No entry: the annotation layer, drawn over everything.
+    if (!got) return [];
+    if (got.failed) {
+      note("an inline svg that could not be read");
+      return [];
+    }
+    if (got.foreign) for (let i = 0; i < got.foreign; i++) note("foreignObject in an inline svg");
+    if (got.dropped)
+      for (let i = 0; i < got.dropped; i++) note("an image or file in an inline svg that cannot be embedded");
+    const st = l.style;
+    const pad = SIDES.map((s) => px(st[`padding-${s}`]));
+    const box = deflate(
+      l.bounds,
+      bw[0].width + pad[0],
+      bw[1].width + pad[1],
+      bw[2].width + pad[2],
+      bw[3].width + pad[3],
+    );
+    if (box.w <= 0 || box.h <= 0) return [];
+    const inner = got.inner.replace(/--tbk:\s*(\d+);?/g, (_, k) => {
+      const { key, text } = got.texts[Number(k)];
+      const [style, weight] = JSON.parse(key);
+      stats.texts++;
+      const sources = fonts && env.fontsFor ? env.fontsFor(key, text) : null;
+      const face = sources?.length ? fonts.css(text, sources, weight, style) : null;
+      if (!face) note("text in an unembedded font");
+      // Into a style="..." attribute: the face names' quotes must not end it.
+      return face ? `${face.replace(/"/g, "'")};` : "";
+    });
+    const attr = (name, value) => (value ? ` ${name}="${esc(value)}"` : "");
+    // The element's own style names ids too (fill: url(#grad)), so the prefix goes on the whole.
+    const drawn =
+      `<svg ${rectAttrs(box)}${attr("viewBox", got.attrs.viewBox)}${attr("preserveAspectRatio", got.attrs.preserveAspectRatio)}` +
+      `${attr("overflow", got.attrs.overflow)}${attr("style", got.style)}>${inner}</svg>`;
+    stats.svgs++;
+    return [
+      scopeIds(drawn, `v${svgCount++}-`).replace(/<[^>]*>/g, (tag) =>
+        tag.replace(/(\shref=")(data:[^"]*)"/, (_, head, url) => {
+          stats.images++;
+          return `${head}${esc(compactImage(unescaped(url)))}"`;
+        }),
+      ),
+    ];
   }
 
   // The focus ring of outline-style: auto, as Chromium draws it whatever the
@@ -2080,7 +2194,8 @@ export function renderSvg(
     for (const l of doc.layouts) {
       const n = l.node;
       if (n.type === 1 && hidden(n)) continue;
-      if (inSvg(n)) continue;
+      // An <svg> is one box (paintInlineSvg); what is in it is not drawn from its layout objects.
+      if (inSvg(n.parent)) continue;
       if (n.type === 3 && hidden(n.parent)) continue;
       if (l.text !== undefined) {
         if (l.boxes.length) items.push({ l, kind: "text" });

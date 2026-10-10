@@ -685,9 +685,14 @@ snapshot: it is reported as "a frame of another process" (Help_Window's, the Web
 
 **Web fonts** are found by CSS font matching on the run's `font-family` list, style and weight
 (`webFontFiles`, in the page), not by the face's own name: the site's Inter calls itself "Inter
-Variable", and the last rule of a family was its italic file. A variable WOFF2 is read in
-`fonts.mjs` and cut at each weight the picture uses (`subset_font.py`'s `weight`); its other
-axes stay variable. A font fontTools cannot cut gets no face and its text falls back, reported
+Variable", and the last rule of a family was its italic file. A family split by
+`unicode-range` (Microsoft's Segoe UI Variable: five files per weight, Latin, Latin Extended,
+Cyrillic, Greek, symbols) gives a run every rule whose range holds one of its characters
+(`webRulesFor`, the last such rule per character, as CSS does), only those files are read, and
+`PictureFonts.css` gives each file only the characters in its own range even where its cmap
+has more. A variable WOFF2 is read in `fonts.mjs` and cut at each weight the picture uses,
+held to the weights its rule declares (`subset_font.py`'s `weight`); its other axes stay
+variable. A font fontTools cannot cut gets no face and its text falls back, reported
 as "text in a font that could not be cut" (`subset_font.py` answers that job with an error
 instead of failing the run).
 
@@ -706,9 +711,25 @@ turns its own `::-webkit-scrollbar` rules off. **A focus ring** (`outline-style:
 `paintFocusRing`) is a 2 px band in the outline colour and a 1 px white one outside it. Both were
 fitted in Edge on bench pages of their own.
 
+**An inline `<svg>`** in the page is drawn as a nested `<svg>` in its box's content box, in its
+place in paint order (`paintInlineSvg`, from `paintBox`), so a CSS transform, opacity, border and
+padding apply as to any box. `inlineSvg` (`capture.mjs`) reads it in the page, in a frame's
+document too: its subtree with each element's styles resolved (paint, stroke, opacity,
+visibility, transform with its origin and box, clip, mask, filter, markers, text and font; a
+paint written `currentColor` stays so, and an inherited property is written only where it
+changes, so a `<use>`'s target inherits from the `<use>`), what it refers to outside itself
+(sprite symbols, gradients, clip paths, masks, markers) copied into a `<defs>`, its ids
+scoped per svg (`scopeIds`), its `<image>`s through `compactImage`, its `<text>` in the picture's
+faces. As in Chromium, a gradient, clip path, mask or marker inside a `display: none` tree is
+not found by `url()`, and a `<use>` still finds its target there. **The annotation layer** is
+`position: fixed`, so on a scrolled page its box is moved by the scroll into the document's
+coordinates, which the picture's `viewBox` is in.
+
 **The bench** (`node scripts/svgshot/bench.mjs`, outside every gate, needs Edge and fontTools)
 draws the pages under `scripts/svgshot/bench/` (scrollbars, native scrollbars, drop-down lists,
-underlines, focus rings, frames) with the converter
+underlines, focus rings, frames, a web font split by range, inline SVG, a scrolled page with an
+annotation layer, SVG in frames), served from `127.0.0.1` with the site's fonts under `/fonts/`
+(a `file:` page cannot `fetch` its font bytes), with the converter
 and compares them with the browser's own picture: in Edge, whose Chromium is the IDE's WebView2's
 (Puppeteer's trails it, and draws the select's arrow otherwise), laid out at 1x and drawn at 2x
 as the IDE is, text without ClearType. Each page is held to the figures recorded in
@@ -721,11 +742,13 @@ A new replica gets a page there.
 **Not drawn yet:** a thin platform scrollbar (`scrollbar-width: thin`), a zoomed frame's
 scrollbars, a textarea's resize grip, a number input's spin buttons, an indeterminate checkbox,
 conic gradients, the 2011 `-webkit-radial-gradient`, `filter: hue-rotate`, an inset shadow's
-blur, an inline `<svg>` in the page other than the annotation layer (the help pane's gear, a few
-hundred pixels), and a frame of another process: Help_Window's and the Webpage pane's (which
-`webpage` pastes into the PNG from its own capture), so those pictures stay PNG. Of the `web`
-setup's two pages, the WebView2 download page (`94490c87`) is kept as PNG: its icons, drop-down
-lists and annotation do not come out (not looked into: it is Microsoft's page, taken once); its
-Architecture arrow is an `unsteady` region. Drawn wrongly: a collapsed table
+blur, a search input's cancel button (the help pane's `#helpSearch`), and a frame of another
+process: Help_Window's and the Webpage pane's (which `webpage` pastes into the PNG from its own
+capture), so those pictures stay PNG. In an inline `<svg>`: a `<foreignObject>`, an `<image>`
+the page cannot read, a `<use>` of another file, a CSS `mask` or `clip-path` on the root, text
+decoration, geometry set by CSS (`d`, `width`, `x`), and animation (the state at the snapshot
+is drawn). A duplicate id in one document resolves inside the svg first, where the browser
+takes the document's first. The WebView2 download page's Architecture arrow is an `unsteady`
+region. Drawn wrongly: a collapsed table
 border, doubled (the IDE has none). A canvas is a raster (the editor's minimap is drawn with
 `putImageData`). The run reports each under "not drawn".

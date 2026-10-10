@@ -7,6 +7,12 @@
 // has it -- which is the choice a viewer's own fallback then makes too. At the
 // end each face is cut down to exactly the characters given to it, by
 // scripts/subset_font.py (fontTools), so the picture carries nothing more.
+//
+// A web font may be split into files by unicode-range, one @font-face rule for
+// each: a run is then drawn with every file whose range holds one of its
+// characters (webRulesFor), and each of those files has only the characters of
+// its own range, so that a character both files have glyphs for goes to the file
+// the browser drew it with.
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -212,6 +218,53 @@ export function cmapCoverage(buf, index = 0) {
   return out;
 }
 
+// --- web fonts split by unicode-range ---------------------------------------------------
+
+/**
+ * The code point ranges of a `unicode-range` descriptor, as [from, to] pairs:
+ * "U+0-FF, U+131, U+4??". A descriptor that is empty, or has a token that is no
+ * range, is every code point: an invalid descriptor is ignored, and its initial
+ * value is U+0-10FFFF.
+ */
+export function parseUnicodeRange(text) {
+  const all = [[0, 0x10ffff]];
+  if (!text?.trim()) return all;
+  const out = [];
+  for (const token of text.split(",")) {
+    const m = /^\s*u\+([0-9a-f?]{1,6})(?:-([0-9a-f]{1,6}))?\s*$/i.exec(token);
+    if (!m || (m[2] !== undefined && m[1].includes("?"))) return all;
+    if (m[1].includes("?"))
+      out.push([Number.parseInt(m[1].replace(/\?/g, "0"), 16), Number.parseInt(m[1].replace(/\?/g, "f"), 16)]);
+    else out.push([Number.parseInt(m[1], 16), Number.parseInt(m[2] ?? m[1], 16)]);
+  }
+  return out;
+}
+
+/**
+ * Of the @font-face rules of one family and one style and weight, `rules` in
+ * the order the page declares them ({range, ...}, `range` the rule's
+ * unicode-range text), the ones a browser draws `text` with: for each character,
+ * the last rule whose range holds it (a later rule wins where ranges overlap),
+ * as Chromium looks it up in a font split into files by range. A character no
+ * rule holds is drawn in the next family of the list, which is not a web font.
+ * Later rules come first, so that a character both files have goes to the later,
+ * as PictureFonts.css gives it to the first face that has it.
+ */
+export function webRulesFor(rules, text) {
+  const ranges = rules.map((r) => parseUnicodeRange(r.range));
+  const chosen = new Set();
+  for (const ch of text) {
+    const cp = ch.codePointAt(0);
+    for (let i = rules.length - 1; i >= 0; i--) {
+      if (ranges[i].some(([from, to]) => cp >= from && cp <= to)) {
+        chosen.add(i);
+        break;
+      }
+    }
+  }
+  return [...chosen].sort((a, b) => b - a).map((i) => rules[i]);
+}
+
 /** Map from PostScript name to {file, index} for every font installed for this user. */
 export function systemFonts() {
   const dirs = [path.join(process.env.WINDIR ?? "C:/Windows", "Fonts")];
@@ -304,18 +357,32 @@ export class PictureFonts {
   /**
    * The CSS a run needs to be drawn in its faces, with each character of
    * `text` recorded against the first face that has it; null when none of the
-   * run's fonts can be loaded. `weight` and `style` are the computed ones:
-   * like Blink (FontPlatformData), a weight of 600 or more on a face lighter
-   * than that is emboldened, and italic on an upright face is slanted, so
-   * only then does the run ask for bold or italic -- a face declared without
-   * descriptors is normal, and the viewer synthesises the same way.
+   * run's fonts can be loaded. A source that names a `range` (the unicode-range
+   * text of the @font-face rule it is, for a web font split into files) is the
+   * face of only the characters in that range, however many more its font has:
+   * a browser draws a character with the file whose rule holds it, and the
+   * other file may have a glyph for it too. `weight` and `style` are the
+   * computed ones: like Blink (FontPlatformData), a weight of 600 or more on a
+   * face lighter than that is emboldened, and italic on an upright face is
+   * slanted, so only then does the run ask for bold or italic -- a face
+   * declared without descriptors is normal, and the viewer synthesises the same
+   * way.
    */
   css(text, sources, weight, style) {
-    const faces = sources.map((s) => this.load(s)).filter(Boolean);
-    if (!faces.length) return null;
+    const owned = sources
+      .map((s) => ({ face: this.load(s), ranges: s.range === undefined ? null : parseUnicodeRange(s.range) }))
+      .filter((o) => o.face);
+    if (!owned.length) return null;
+    const takes = (cp) =>
+      owned.find((o) => o.face.covers.has(cp) && (!o.ranges || o.ranges.some(([from, to]) => cp >= from && cp <= to)));
+    // A font that two rules name is one face, listed once. Every face keeps a space, and a
+    // viewer draws a space with the first face of the list that has one, so with ranges the
+    // face whose range holds the space comes first.
+    const first = owned.some((o) => o.ranges) ? takes(0x20)?.face : undefined;
+    const faces = [...new Set([first, ...owned.map((o) => o.face)].filter(Boolean))];
     for (const ch of text) {
       const cp = ch.codePointAt(0);
-      (faces.find((f) => f.covers.has(cp)) ?? faces[0]).used.add(cp);
+      (takes(cp)?.face ?? faces[0]).used.add(cp);
     }
     const [primary] = faces;
     const bold = Number(weight) >= 600 && primary.weight < 600;

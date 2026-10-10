@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Inline SVG</title>
+<!--
+  An inline <svg> is a replaced element, which the snapshot holds as one layout
+  box and no path data: capture.mjs's inlineSvg reads each one in the page, with
+  the styles the page gives its elements resolved, and snapshot-svg.mjs's
+  paintInlineSvg draws it as a nested <svg> in the element's content box, in
+  paint order. The icons here cover what a page does with one:
+    row 1  fill: currentColor (and a second colour, faded); a stroke styled by CSS
+           (a colour, a width, round caps, a dashed circle); a viewBox scaled
+           into four boxes (meet, none, slice at an edge, and no viewBox, which
+           does not scale); an icon inside a button; a CSS transform on the
+           element and on a shape inside it (with transform-origin and -box)
+    row 2  a <use> of a <symbol> defined elsewhere in the page (a sprite), which
+           inherits fill and colour from the <use> and not from the sprite; a
+           gradient from the sprite named by the inherited fill; two icons in
+           shadow roots that both have a gradient `id="a"`, which are two
+           ids once they share a picture; text in the page's font; an <image>
+           of a data: URL; a clip path, a mask and a marker, named from inside
+  Nothing here may differ much from the browser's own picture.
+-->
+<style>
+body { margin: 0; background: #f4f1ea; color: #243b53; font: 13px "Segoe UI", sans-serif; }
+.at { position: absolute; line-height: 0; }
+svg { display: block; }
+.cc { fill: currentColor; color: #d1741a; }
+.green { color: #2f7d4f; opacity: 0.5; }
+.purple { color: #7b3fa0; }
+.st path, .st circle { fill: none; stroke: #2563a8; stroke-width: 2px; stroke-linecap: round; stroke-linejoin: round; }
+.st circle { stroke: #b03a2e; stroke-dasharray: 4 3; }
+.box { background: #e0dbcb; }
+.rot { transform: rotate(30deg); }
+.spin { transform: rotate(45deg); transform-origin: center; transform-box: fill-box; }
+.btn { position: absolute; left: 600px; top: 20px; height: 32px; padding: 0 12px; border: 0; border-radius: 4px;
+       background: #243b53; color: #fff; font: 13px "Segoe UI", sans-serif; display: flex; align-items: center; gap: 6px; }
+.btn svg { fill: none; stroke: currentColor; stroke-width: 1.6px; }
+.lbl { position: absolute; font-size: 11px; color: #6b7c8f; line-height: 1; }
+</style>
+<body>
+<svg width="0" height="0" style="position: absolute" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c0392b"/><stop offset="1" stop-color="#f1c40f"/></linearGradient>
+  </defs>
+</svg>
+<svg style="display: none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradHidden"><stop offset="0" stop-color="#2563a8"/><stop offset="1" stop-color="#7fdbca"/></linearGradient>
+  </defs>
+  <symbol id="heart" viewBox="0 0 24 24"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z"/></symbol>
+  <symbol id="ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
+  <symbol id="dot" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></symbol>
+</svg>
+
+<div class="at" style="left: 20px; top: 20px"><svg class="cc" viewBox="0 0 16 16" width="32" height="32"><path d="M8 1l2.2 4.6 5 .7-3.6 3.5.9 5L8 12.4 3.5 14.8l.9-5L.8 6.3l5-.7z"/></svg></div>
+<div class="at" style="left: 70px; top: 20px"><svg class="cc green" viewBox="0 0 16 16" width="32" height="32"><path d="M8 1l2.2 4.6 5 .7-3.6 3.5.9 5L8 12.4 3.5 14.8l.9-5L.8 6.3l5-.7z"/></svg></div>
+<div class="at" style="left: 120px; top: 20px"><svg class="st" viewBox="0 0 24 24" width="48" height="48"><path d="M3 12h18M12 3v18"/><circle cx="12" cy="12" r="8"/></svg></div>
+
+<div class="at" style="left: 190px; top: 20px"><svg class="box" width="60" height="30" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4.5" fill="#2563a8"/></svg></div>
+<div class="at" style="left: 260px; top: 20px"><svg class="box" width="60" height="30" viewBox="0 0 10 10" preserveAspectRatio="none"><circle cx="5" cy="5" r="4.5" fill="#2563a8"/></svg></div>
+<div class="at" style="left: 330px; top: 20px"><svg class="box" width="60" height="30" viewBox="0 0 10 10" preserveAspectRatio="xMinYMax slice"><circle cx="5" cy="5" r="4.5" fill="#2563a8"/></svg></div>
+<div class="at" style="left: 400px; top: 20px"><svg class="box" width="60" height="30"><circle cx="10" cy="10" r="8" fill="#2563a8"/></svg></div>
+
+<div class="at" style="left: 490px; top: 20px"><svg class="cc rot" viewBox="0 0 16 16" width="32" height="32"><path d="M8 1l2.2 4.6 5 .7-3.6 3.5.9 5L8 12.4 3.5 14.8l.9-5L.8 6.3l5-.7z"/></svg></div>
+<div class="at" style="left: 540px; top: 20px"><svg viewBox="0 0 24 24" width="40" height="40"><rect class="spin" x="6" y="6" width="12" height="12" fill="#2563a8"/></svg></div>
+<button class="btn"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 1v9M4 7l4 4 4-4M2 14h12"/></svg>Download</button>
+
+<div class="at" style="left: 20px; top: 110px"><svg class="cc" width="32" height="32"><use href="#heart"/></svg></div>
+<div class="at" style="left: 70px; top: 110px"><svg class="cc purple" width="32" height="32"><use href="#heart"/></svg></div>
+<div class="at" style="left: 120px; top: 110px"><svg width="32" height="32" style="fill: url(#grad)"><use href="#heart"/></svg></div>
+<div class="at" style="left: 170px; top: 110px"><svg class="purple" width="32" height="32"><use href="#ring"/></svg></div>
+
+<div class="at" id="h1" style="left: 230px; top: 110px"></div>
+<div class="at" id="h2" style="left: 290px; top: 110px"></div>
+<script>
+  const gradient = (a, b) =>
+    `<svg width="48" height="32" viewBox="0 0 48 32" style="display:block"><defs><linearGradient id="a" x1="0" x2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="48" height="32" rx="6" fill="url(#a)"/></svg>`;
+  for (const [id, a, b] of [["h1", "#c0392b", "#f1c40f"], ["h2", "#2563a8", "#7fdbca"]])
+    document.getElementById(id).attachShadow({ mode: "open" }).innerHTML = gradient(a, b);
+</script>
+
+<div class="at" style="left: 350px; top: 110px"><svg width="130" height="34" viewBox="0 0 130 34"><text x="4" y="14" style="font: 600 14px 'Segoe UI'; fill: #243b53">SVG text</text><text x="126" y="30" text-anchor="end" font-size="11" fill="#b03a2e">anchored <tspan font-style="italic">end</tspan></text></svg></div>
+<div class="at" style="left: 500px; top: 110px"><svg width="32" height="32"><image href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23c0392b'/%3E%3Ccircle cx='4' cy='4' r='3' fill='%23f1c40f'/%3E%3C/svg%3E" width="32" height="32"/></svg></div>
+<div class="at" style="left: 560px; top: 110px"><svg width="110" height="44" viewBox="0 0 110 44">
+  <defs>
+    <clipPath id="cp"><circle cx="20" cy="22" r="14"/></clipPath>
+    <mask id="mk"><rect width="110" height="44" fill="#fff"/><circle cx="62" cy="22" r="10" fill="#000"/></mask>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#b03a2e"/></marker>
+  </defs>
+  <rect x="0" y="0" width="40" height="44" fill="#2563a8" clip-path="url(#cp)"/>
+  <rect x="44" y="4" width="36" height="36" fill="#2f7d4f" mask="url(#mk)"/>
+  <rect x="0" y="0" width="110" height="44" fill="#000" style="display: none"/>
+  <path d="M84 36L106 8" stroke="#243b53" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+</svg></div>
+
+<!-- A gradient in a display: none tree is not found by the fill (Chromium: nothing is painted); a <use> sized by its own attributes. -->
+<div class="at" style="left: 20px; top: 170px"><svg width="32" height="32" style="fill: url(#gradHidden)"><use href="#heart"/></svg></div>
+<div class="at" style="left: 70px; top: 170px"><svg class="cc purple" width="64" height="32"><use href="#dot" x="4" y="2" width="28" height="28"/><use href="#dot" x="36" y="6" width="20" height="20" style="fill: #2563a8"/></svg></div>
+
+<!-- overflow: visible lets a shape past the box show; a border and padding make the content box smaller than the border box. -->
+<div class="at" style="left: 300px; top: 170px"><svg width="40" height="30" viewBox="0 0 40 30" style="overflow: visible; background: #e0dbcb"><circle cx="40" cy="15" r="14" fill="#2563a8"/></svg></div>
+<div class="at" style="left: 390px; top: 170px"><svg width="40" height="30" viewBox="0 0 10 10" style="padding: 4px 6px; border: 2px solid #b03a2e; background: #e0dbcb"><rect width="10" height="10" rx="3" fill="#2f7d4f"/></svg></div>
+
+<div class="lbl" style="left: 20px; top: 230px">currentColor, stroke, viewBox, transform, button / sprite use, gradient, shadow ids, text, image, clip + mask + marker / hidden gradient, use sizes, overflow, border + padding</div>
+</body>
+</html>

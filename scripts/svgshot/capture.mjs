@@ -12,10 +12,14 @@
 //      annotation layer's text; and, on a canvas, where an underlined run's ink
 //      is in the band its underline skips;
 //   3. the pixels of each <canvas> in the clip, and the bytes of each web
-//      font a run was drawn with (the @font-face rule the page's own CSS picks
-//      for the run's font, which need not be named as the font names itself);
+//      font a run was drawn with (the @font-face rules the page's own CSS picks
+//      for the run's font, which need not be named as the font names itself:
+//      a family split into files by unicode-range is every file whose range
+//      holds a character of the run);
 //   4. the annotation layer (svg#tbShotAnnotation) as XML, its text moved onto
-//      the picture's own faces.
+//      the picture's own faces, and each other inline <svg> in the clip as XML
+//      with the styles the page gives its elements resolved (inlineSvg), read
+//      before step 2 so that its text is measured too.
 // The measuring layer is removed again before this returns.
 //
 // Steps 2 and 3, and the scrollbar styles, are done in each document that shows
@@ -27,11 +31,13 @@
 
 import { createHash } from "node:crypto";
 import { BUNDLE_VERSION, renderBundle, trimSnapshot } from "./bundle.mjs";
+import { webRulesFor } from "./fonts.mjs";
 import {
   decodeSnapshot,
   frameGeometry,
   framesIn,
   frameView,
+  inlineSvgsIn,
   scrollbarPartList,
   scrollersIn,
   textNeeds,
@@ -145,8 +151,10 @@ function measure({ keys, runs, skips, view, measureId, overlays }) {
       cloneTexts[i].style.setProperty("--tbk", String(k));
     }
     for (const a of ["style", "class", "id"]) clone.removeAttribute(a);
-    clone.setAttribute("x", String(r.x));
-    clone.setAttribute("y", String(r.y));
+    // The layer is fixed to the window and drawn in the window's coordinates, as is the box
+    // read here, while the picture is in the document's: a scrolled page moves it by the scroll.
+    clone.setAttribute("x", String(r.x + scrollX));
+    clone.setAttribute("y", String(r.y + scrollY));
     clone.setAttribute("width", String(r.width));
     clone.setAttribute("height", String(r.height));
     clone.setAttribute("overflow", "visible");
@@ -467,15 +475,300 @@ function scrollbarParts({ styleNames, parts, viewport = false }) {
   }
 }
 
+// Runs in the page, on an inline <svg> (`this`): what a picture needs to draw it,
+// as {attrs, style, inner, texts, foreign, dropped}, or null for an <svg> that
+// matches `skip` (the annotation layer, which is drawn on its own).
+//   - `inner` is the markup of its children, a copy with no class, no <style> and
+//     no namespaced attribute, since the page's CSS does not reach the picture: each
+//     element carries the styles the page gives it, resolved, in a style attribute;
+//   - what a <use>, a gradient, a clip path, a mask or a marker refers to that is
+//     elsewhere in the document (a sprite's <symbol>) is copied in, in a <defs> at the
+//     end, and each reference is the plain `#id` (renderSvg gives each svg's ids a
+//     prefix of its own, since two icons both have an `id="a"`);
+//   - `attrs` and `style` are for the <svg> that holds `inner` in the picture: its
+//     viewBox, preserveAspectRatio, overflow and the inherited properties that
+//     differ from the initial ones, since nothing is inherited there;
+//   - `texts` are the runs of text it draws, [{key, text}], with `key` as fontKey's: an
+//     element with text of its own has `--tbk: <index>` in its style, where renderSvg
+//     puts the picture's own faces for the run;
+//   - `foreign` counts the <foreignObject>s left out, `dropped` the things that cannot be
+//     embedded: an <image> the page cannot read, a <use> of a file.
+// An inherited property is written on an element only when it differs from the
+// parent's or the element sets it itself (an attribute or its own style): a <use>
+// then still gives its target what it inherits, as it does in the page, where the
+// target has what the sprite around it gives. For the same reason a paint the
+// element sets as currentColor stays so, and `color` is written like the rest: it
+// is the use that says what the target's currentColor is. An <image> that is not a
+// data: URL is read by the page and embedded as one. As in Chromium, a gradient,
+// a clip path, a mask or a marker in a tree that is display: none is not found
+// by a url() (a <use> finds its target there), and the paint is none.
+async function inlineSvg({ skip }) {
+  const root = this;
+  if (skip && root.matches(skip)) return null;
+  // Each inherited property, with the value of an element that sets nothing.
+  const INHERITED = {
+    color: "rgb(0, 0, 0)",
+    fill: "rgb(0, 0, 0)",
+    "fill-opacity": "1",
+    "fill-rule": "nonzero",
+    stroke: "none",
+    "stroke-width": "1px",
+    "stroke-linecap": "butt",
+    "stroke-linejoin": "miter",
+    "stroke-miterlimit": "4",
+    "stroke-dasharray": "none",
+    "stroke-dashoffset": "0px",
+    "stroke-opacity": "1",
+    "clip-rule": "nonzero",
+    visibility: "visible",
+    "shape-rendering": "auto",
+    "paint-order": "normal",
+    "marker-start": "none",
+    "marker-mid": "none",
+    "marker-end": "none",
+    "color-interpolation": "srgb",
+    "text-anchor": "start",
+    "letter-spacing": "normal",
+    "word-spacing": "0px",
+    direction: "ltr",
+    "writing-mode": "horizontal-tb",
+  };
+  // Those that are not, written when they differ from their initial value.
+  const OWN = {
+    opacity: "1",
+    "mix-blend-mode": "normal",
+    isolation: "auto",
+    "clip-path": "none",
+    mask: "none",
+    filter: "none",
+    "stop-color": "rgb(0, 0, 0)",
+    "stop-opacity": "1",
+    "flood-color": "rgb(0, 0, 0)",
+    "flood-opacity": "1",
+    "lighting-color": "rgb(255, 255, 255)",
+    "vector-effect": "none",
+    "dominant-baseline": "auto",
+    "alignment-baseline": "auto",
+    "baseline-shift": "0px",
+  };
+  // What a picture has no use for, or cannot hold: elements dropped, and attributes
+  // that the written styles replace.
+  const DROP = new Set([
+    "style",
+    "script",
+    "title",
+    "desc",
+    "metadata",
+    "animate",
+    "animatetransform",
+    "animatemotion",
+    "set",
+  ]);
+  const TEXTY = new Set(["text", "tspan", "textpath", "altglyph"]);
+  const CLIPS = new Set(["svg", "symbol", "marker", "pattern", "image"]);
+  const REPLACED = new Set([
+    ...Object.keys(INHERITED),
+    ...Object.keys(OWN),
+    ...[
+      "class",
+      "style",
+      "transform",
+      "display",
+      "font-family",
+      "font-size",
+      "font-weight",
+      "font-style",
+      "white-space",
+    ],
+    ...["overflow", "tabindex", "focusable", "role"],
+  ]);
+  const scope = root.getRootNode();
+  const local = new Set([...root.querySelectorAll("[id]")].map((e) => e.id));
+  const wanted = [];
+  // The ids queued to be copied in, each with whether it is in a tree that is display: none.
+  const queued = new Map();
+  const inHidden = (e) => {
+    for (let a = e.parentElement; a; a = a.parentElement) if (getComputedStyle(a).display === "none") return true;
+    return false;
+  };
+  // Whether the element `#id` names is there to be used: in the subtree or in the document. If it
+  // is outside the subtree it is queued once, with the ids it holds, to be copied in. A `paint`
+  // (a url() of a style, not a <use>) does not find one in a display: none tree.
+  const reference = (id, paint = false) => {
+    if (local.has(id)) return true;
+    if (queued.has(id)) return !(paint && queued.get(id));
+    const target = scope.getElementById?.(id) ?? document.getElementById(id);
+    if (!target) return false;
+    wanted.push(target);
+    queued.set(id, inHidden(target));
+    for (const e of target.querySelectorAll("[id]")) queued.set(e.id, inHidden(e));
+    return !(paint && queued.get(id));
+  };
+  const unescaped = (s) => {
+    try {
+      return decodeURIComponent(s);
+    } catch {
+      return s;
+    }
+  };
+  // A computed value with each url() made the plain `url(#id)` of an element that is here, or none.
+  const plain = (value) =>
+    value.replace(/url\(\s*(["']?)([^"')]*)\1\s*\)/g, (_, _quote, url) => {
+      const id = url.includes("#") ? unescaped(url.slice(url.indexOf("#") + 1)) : "";
+      return id && reference(id, true) ? `url(#${id})` : "none";
+    });
+  const texts = [];
+  let foreign = 0;
+  let dropped = 0;
+  const dataUrl = (href, base) =>
+    fetch(new URL(href, base))
+      .then((r) => r.blob())
+      .then(
+        (blob) =>
+          new Promise((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result);
+            fr.onerror = reject;
+            fr.readAsDataURL(blob);
+          }),
+      );
+
+  // The copy of `el`, whose parent's computed style is `parent` (null: nothing is inherited).
+  async function build(el, parent) {
+    const lower = el.localName.toLowerCase();
+    if (el.namespaceURI !== "http://www.w3.org/2000/svg" || lower.includes(":") || DROP.has(lower)) return null;
+    if (lower === "foreignobject") {
+      foreign++;
+      return null;
+    }
+    const cs = getComputedStyle(el);
+    if (cs.display === "none") return null;
+    const copy = el.cloneNode(false);
+    const href = el.getAttribute("href") ?? el.getAttribute("xlink:href");
+    for (const { name } of [...copy.attributes]) {
+      const kept =
+        name === "xml:space" || !(/^(?:on|data-|aria-)/.test(name) || name.includes(":") || REPLACED.has(name));
+      if (!kept) copy.removeAttribute(name);
+    }
+    if (href !== null) {
+      // An image is embedded; a reference is a plain #id of an element that is here; a file
+      // (a sprite's icons.svg#a) cannot be, and a link is not followed.
+      let link = null;
+      if (lower === "image" && !href.startsWith("data:")) {
+        try {
+          link = await dataUrl(href, el.baseURI);
+        } catch {
+          dropped++;
+          return null;
+        }
+      } else if (href.startsWith("#")) link = reference(unescaped(href.slice(1))) ? href : null;
+      else if (lower === "image") link = href;
+      else if (lower !== "a") {
+        dropped++;
+        return null;
+      }
+      if (link) copy.setAttribute("href", link);
+    }
+    const set = (name) => el.hasAttribute(name) || el.style.getPropertyValue(name) !== "";
+    // A paint the element itself sets as currentColor, and that is the colour as it stands.
+    const current = (name, value) =>
+      /^currentcolor$/i.test((el.style.getPropertyValue(name) || el.getAttribute(name) || "").trim()) &&
+      value === cs.color;
+    const declare = (name, value) => `${name}:${current(name, value) ? "currentColor" : plain(value)}`;
+    const css = [];
+    for (const [name, initial] of Object.entries(INHERITED)) {
+      const value = cs.getPropertyValue(name);
+      if (value !== (parent ? parent.getPropertyValue(name) : initial) || set(name)) css.push(declare(name, value));
+    }
+    for (const [name, initial] of Object.entries(OWN)) {
+      const value = cs.getPropertyValue(name);
+      if (value !== initial) css.push(declare(name, value));
+    }
+    if (cs.transform !== "none") {
+      css.push(
+        `transform:${cs.transform}`,
+        `transform-origin:${cs.transformOrigin}`,
+        `transform-box:${cs.transformBox}`,
+      );
+    }
+    if (CLIPS.has(lower) && cs.overflowX === "visible") css.push("overflow:visible");
+    const texty = TEXTY.has(lower);
+    if (texty) {
+      css.push(`white-space:${cs.whiteSpace}`, `font-size:${cs.fontSize}`);
+      if ([...el.childNodes].some((n) => n.nodeType === 3 && n.data.trim())) {
+        const key = JSON.stringify([cs.fontStyle, cs.fontWeight, cs.fontSize, cs.fontFamily]);
+        const own = [...el.childNodes]
+          .filter((n) => n.nodeType === 3)
+          .map((n) => n.data)
+          .join("");
+        css.push(
+          `font-family:${cs.fontFamily}`,
+          `font-weight:${cs.fontWeight}`,
+          `font-style:${cs.fontStyle}`,
+          `--tbk:${texts.length}`,
+        );
+        texts.push({ key, text: own });
+      }
+    }
+    if (css.length) copy.setAttribute("style", css.join(";"));
+    for (const child of el.childNodes) {
+      if (child.nodeType === 1) {
+        const built = await build(child, cs);
+        if (built) copy.append(built);
+      } else if (child.nodeType === 3 && texty) copy.append(child.cloneNode());
+    }
+    return copy;
+  }
+
+  // The markup of an element, without the namespace the serializer adds to the first.
+  const markup = (node) => new XMLSerializer().serializeToString(node).replace(/^(<[^\s>/]+) xmlns="[^"]*"/, "$1");
+  // The <svg> of the picture holds what the page's one inherits: what differs from the initial values.
+  const rootStyle = getComputedStyle(root);
+  const css = [];
+  for (const [name, initial] of Object.entries(INHERITED)) {
+    const value = rootStyle.getPropertyValue(name);
+    if (value !== initial) css.push(`${name}:${plain(value)}`);
+  }
+  const inner = [];
+  for (const child of root.childNodes) {
+    if (child.nodeType !== 1) continue;
+    const built = await build(child, rootStyle);
+    if (built) inner.push(markup(built));
+  }
+  const defs = [];
+  for (let i = 0; i < wanted.length; i++) {
+    const target = wanted[i];
+    const built = await build(target, target.parentElement ? getComputedStyle(target.parentElement) : null);
+    if (built) defs.push(markup(built));
+  }
+  if (defs.length) inner.push(`<defs>${defs.join("")}</defs>`);
+  return {
+    attrs: {
+      viewBox: root.getAttribute("viewBox"),
+      preserveAspectRatio: root.getAttribute("preserveAspectRatio"),
+      overflow: rootStyle.overflowX === "visible" && rootStyle.overflowY === "visible" ? "visible" : null,
+    },
+    style: css.join(";"),
+    inner: inner.join(""),
+    texts,
+    foreign,
+    dropped,
+  };
+}
+
 // Runs in the page (exported for test/svgshot.test.mjs, which gives it a
-// document of its own): the file of the web font each [style, weight, size,
-// family] key was drawn with, as {key: {url, italic} | null}. The font is the @font-face
-// rule that CSS font matching picks for the first family of the key's list that
-// has any: the style asked for, else the other; then the weight, as the rules'
-// ranges hold it, else the nearest, which is the one above for a weight over 500
-// and the one below for under; of rules that match alike, the last. The name a
-// font reports for itself ("Inter Variable") need not be the name the page
-// gives it ("Inter"), so the rules are found by the page's names.
+// document of its own): the files of the web font each [style, weight, size,
+// family] key was drawn with, as {key: [{url, italic, range, lo, hi}] | null}. The
+// font is the @font-face rules that CSS font matching picks for the first family
+// of the key's list that has any: the style asked for, else the other; then the
+// weight, as the rules' ranges hold it, else the nearest, which is the one above
+// for a weight over 500 and the one below for under. Every rule that matches so
+// is listed, in the page's order: a family split into files by unicode-range is
+// one rule for each, and which of them draws a character is decided by `range`,
+// the rule's unicode-range text (webRulesFor), with `lo` and `hi`, the weights it
+// holds, which bound the weight a variable file is drawn at. The name a font
+// reports for itself ("Inter Variable") need not be the name the page gives it
+// ("Inter"), so the rules are found by the page's names.
 export function webFontFiles(keys) {
   const unq = (s) => s.trim().replace(/^["']|["']$/g, "");
   const faces = [];
@@ -491,6 +784,7 @@ export function webFontFiles(keys) {
           family: unq(r.style.getPropertyValue("font-family")).toLowerCase(),
           url: new URL(m[1], base).href,
           italic: style !== "normal",
+          range: r.style.getPropertyValue("unicode-range").trim(),
           lo: lo || 400,
           hi: hi || 400,
         });
@@ -513,19 +807,19 @@ export function webFontFiles(keys) {
     const names = (list.match(/"[^"]*"|'[^']*'|[^,]+/g) ?? []).map((n) => unq(n).toLowerCase());
     const family = names.find((n) => faces.some((f) => f.family === n));
     // Ranked by [style missed, weight missed, the wrong side of the weight]; the lowest wins.
-    let best = null;
+    let best = [];
     let rank = null;
     for (const f of faces.filter((f) => f.family === family)) {
       const miss = weight < f.lo ? f.lo - weight : weight > f.hi ? weight - f.hi : 0;
       const wrongSide = weight > 500 ? (f.lo > weight ? 0 : 1) : f.hi < weight ? 0 : 1;
       const candidate = [f.italic === italic ? 0 : 1, miss, wrongSide];
-      const before = candidate.findIndex((v, i) => v !== rank?.[i]);
-      if (!rank || before < 0 || candidate[before] < rank[before]) {
-        best = f;
+      const before = rank ? candidate.findIndex((v, i) => v !== rank[i]) : 0;
+      if (!rank || (before >= 0 && candidate[before] < rank[before])) {
+        best = [f];
         rank = candidate;
-      }
+      } else if (before < 0) best.push(f);
     }
-    out[key] = best && { url: best.url, italic: best.italic };
+    out[key] = best.length ? best.map(({ url, italic, range, lo, hi }) => ({ url, italic, range, lo, hi })) : null;
   }
   return out;
 }
@@ -632,6 +926,41 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
   async function measureDocument({ doc, view, context, geometry, inner }) {
     const { keys, runs, skips } = textNeeds(doc, view);
     const overlays = context === undefined ? OVERLAYS : [];
+
+    // Each inline <svg> in the view (the annotation layer apart), as its own element in the
+    // document reads it, and the runs of its text, to be measured with the rest.
+    const svgs = new Map();
+    for (const l of inlineSvgsIn(doc, view)) {
+      let object;
+      try {
+        ({ object } = await conn.send("DOM.resolveNode", { backendNodeId: l.node.backendNodeId }));
+        const { result, exceptionDetails } = await conn.send("Runtime.callFunctionOn", {
+          objectId: object.objectId,
+          functionDeclaration: String(inlineSvg),
+          arguments: [{ value: { skip: OVERLAYS.join(",") } }],
+          awaitPromise: true,
+          returnByValue: true,
+        });
+        if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? exceptionDetails.text);
+        if (result.value) svgs.set(l.key, result.value);
+      } catch (error) {
+        // An element that has gone since the snapshot, or that the page's script cannot read: the picture says so.
+        svgs.set(l.key, { failed: String(error.message ?? error) });
+      } finally {
+        if (object) await conn.send("Runtime.releaseObject", { objectId: object.objectId }).catch(() => {});
+      }
+    }
+    const known = new Set(runs.map(([key, text]) => `${key}\u0000${text}`));
+    for (const { texts = [] } of svgs.values()) {
+      for (const { key, text } of texts) {
+        if (!keys.includes(key)) keys.push(key);
+        if (!known.has(`${key}\u0000${text}`)) {
+          known.add(`${key}\u0000${text}`);
+          runs.push([key, text]);
+        }
+      }
+    }
+
     const args = JSON.stringify({ keys, runs, skips, view, measureId: MEASURE_ID, overlays });
     const page = await run(context, `(${measure})(${args})`, true);
     // The measuring layer's runs, as DevTools nodes, for the fonts Chromium drew them with.
@@ -652,25 +981,43 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
       await conn.send("Runtime.releaseObject", { objectId: layer.objectId }).catch(() => {});
     }
 
-    // The file of each web font a run was drawn with, which the document's rules pick
-    // for the run's font (by the names the document gives, and not the font's own), and
-    // its bytes, read once per connection and origin.
+    // The files of each web font a run was drawn with, which the document's rules pick
+    // for the run's font (by the names the document gives, and not the font's own): of a
+    // family split into files by unicode-range, those whose range holds a character of
+    // the run. Their bytes are read once per connection and origin.
     const origin = new URL(doc.url).origin;
-    const custom = new Set();
-    for (const [id, used] of platform) if (used.some((f) => f.isCustomFont)) custom.add(id.split("\u0000")[0]);
-    const files = custom.size ? await run(context, `(${webFontFiles})(${JSON.stringify([...custom])})`) : {};
-    for (const file of Object.values(files)) {
-      const cached = file && `${origin}|${file.url}`;
-      if (!file || conn.svgWebFonts.has(cached)) continue;
-      const data = await run(context, `(${webFontData})(${JSON.stringify(file.url)})`, true);
-      // Named by its bytes, so that one font the page and a frame both use is one face of the picture.
-      conn.svgWebFonts.set(cached, data && { family: createHash("sha1").update(data).digest("hex"), data });
+    const custom = new Map();
+    for (const [id, used] of platform) {
+      if (!used.some((f) => f.isCustomFont)) continue;
+      const [key, text] = id.split("\u0000");
+      custom.set(key, [...(custom.get(key) ?? []), text]);
     }
-    // The web font each run's font key was drawn with, by key.
+    const rules = custom.size ? await run(context, `(${webFontFiles})(${JSON.stringify([...custom.keys()])})`) : {};
+    for (const [key, texts] of custom) {
+      for (const file of texts.flatMap((text) => webRulesFor(rules[key] ?? [], text))) {
+        const cached = `${origin}|${file.url}`;
+        if (conn.svgWebFonts.has(cached)) continue;
+        const data = await run(context, `(${webFontData})(${JSON.stringify(file.url)})`, true);
+        // Named by its bytes, so that one font the page and a frame both use is one face of the picture.
+        conn.svgWebFonts.set(cached, data && { family: createHash("sha1").update(data).digest("hex"), data });
+      }
+    }
+    // What the bundle keeps of them: for each font key, the rules some run of it was drawn
+    // with, in the page's order (webRulesFor decides from that order which rule draws a
+    // character), each naming its file by `family` (null: the file could not be read);
+    // and the files' bytes once, by that name.
     const webFonts = {};
-    for (const [key, file] of Object.entries(files)) {
-      const web = file && conn.svgWebFonts.get(`${origin}|${file.url}`);
-      if (web) webFonts[key] = web;
+    const fontFiles = {};
+    for (const [key, texts] of custom) {
+      if (!rules[key]) continue;
+      const drawn = new Set(texts.flatMap((text) => webRulesFor(rules[key], text)));
+      webFonts[key] = rules[key]
+        .filter((rule) => drawn.has(rule))
+        .map(({ url, range, lo, hi }) => {
+          const font = conn.svgWebFonts.get(`${origin}|${url}`);
+          if (font) fontFiles[font.family] = font.data;
+          return { family: font ? font.family : null, range, lo, hi };
+        });
     }
 
     // Each scrolling box's scrollbar styles, and the frame's viewport's.
@@ -697,7 +1044,16 @@ export async function collectBundle(conn, clip, { background = true } = {}) {
     const bars = geometry && viewportScroller(doc, geometry, inner);
     if (bars) await partsOf(bars, viewportStyleSources(doc), true);
 
-    return { page, skips, platform: [...platform], webFonts, scrollbars: [...scrollbars], inner };
+    return {
+      page,
+      skips,
+      platform: [...platform],
+      webFonts,
+      fontFiles,
+      svgs: [...svgs],
+      scrollbars: [...scrollbars],
+      inner,
+    };
   }
 
   return {

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Inline SVG in frames</title>
+<!--
+  The same converter code reads an inline <svg> in a frame's document as in the
+  page's (inline-svg.html): a frame of the same process is a document of its own in
+  the snapshot, and capture.mjs reads it in the frame, where its sprite and its
+  styles are. One frame at the page's scale, one zoomed (a CSS zoom on the iframe, which
+  scales the frame's boxes and not its computed styles), and an icon in the page
+  beside them.
+-->
+<style>
+body { margin: 0; background: #2d2d30; color: #ddd; font: 13px "Segoe UI", sans-serif; }
+iframe { position: absolute; background: none; top: 20px; border: 1px solid #888; width: 220px; height: 140px; }
+.a { left: 20px; }
+.b { left: 280px; zoom: 0.75; }
+.cc { position: absolute; left: 520px; top: 20px; fill: currentColor; color: #e0a030; }
+</style>
+<body>
+<iframe class="a" src="frames/svg.html"></iframe>
+<iframe class="b" src="frames/svg.html"></iframe>
+<svg class="cc" width="48" height="48" viewBox="0 0 16 16"><path d="M8 1l2.2 4.6 5 .7-3.6 3.5.9 5L8 12.4 3.5 14.8l.9-5L.8 6.3l5-.7z"/></svg>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>A web font split by unicode-range</title>
+<!--
+  One family, Split, declared by several @font-face rules that differ in
+  unicode-range and in the file they name, as Microsoft's pages serve Segoe UI
+  Variable (a rule per script, and per weight): capture.mjs's webFontFiles lists
+  every rule of the family that matches the run's style and weight, and
+  fonts.mjs's webRulesFor gives the run the files whose range holds one of its
+  characters. Here the capitals, digits and punctuation are Inter and the
+  lowercase letters Cascadia Mono, so a line that has both shows which file drew
+  each character (a picture that kept one file would draw the other half in the
+  fallback font). The weights are declared one rule each, at 400 and 700, over
+  files that are variable: a run is drawn at the weight of the rule it takes.
+  A Greek range names a third file that no text here uses, which must not be
+  read; é and { are in no range, and are drawn in the next family of the list.
+-->
+<style>
+@font-face { font-family: Split; font-weight: 400; unicode-range: U+20-5A; src: url(/fonts/inter-variable.woff2) format("woff2"); }
+@font-face { font-family: Split; font-weight: 400; unicode-range: U+61-7A; src: url(/fonts/cascadia-mono-variable.woff2) format("woff2"); }
+@font-face { font-family: Split; font-weight: 700; unicode-range: U+20-5A; src: url(/fonts/inter-variable.woff2) format("woff2"); }
+@font-face { font-family: Split; font-weight: 700; unicode-range: U+61-7A; src: url(/fonts/cascadia-mono-variable.woff2) format("woff2"); }
+@font-face { font-family: Split; font-weight: 400; unicode-range: U+370-3FF; src: url(/fonts/source-serif-4-variable.woff2) format("woff2"); }
+body { margin: 0; padding: 14px 20px; background: #fafaf7; color: #1d2733; font: 400 26px/1.35 Split, "Segoe UI", sans-serif; }
+p { margin: 0 0 6px; }
+.b { font-weight: 700; }
+.s { font-size: 15px; }
+.i { font-style: italic; }
+.c { color: #b03a2e; }
+.u { text-decoration: underline; }
+</style>
+<body>
+<p>SPLIT Font: lowercase, 0123 {é}</p>
+<p class="b">SPLIT Font: lowercase, 0123 {é}</p>
+<p class="s">Capitals from one file, lowercase from the other (15px)</p>
+<p class="c">RED TEXT with lower case and 5 digits 12345</p>
+<p class="i">An italic run: Cascadia and Inter, slanted</p>
+<p class="u">Underlined: Typography</p>
+</body>
+</html>

@@ -11,26 +11,43 @@
 // each document measured (the page's, and each frame of the same process in the
 // clip, by frame id) the answers its measuring layer gave -- font metrics, run
 // widths, the ink an underline skips, the placeholder colour, the canvases'
-// pixels, the annotation layer -- the platform fonts of each run, the web fonts a
-// run was drawn with (their bytes), each scrolling box's scrollbar styles, and a
-// frame's viewport and zoom.
+// pixels, the annotation layer (its box already in the document's coordinates,
+// so that a scrolled page needs nothing more) -- the platform fonts of each run,
+// the web fonts a run was drawn with, each scrolling box's scrollbar styles, each
+// inline <svg>'s markup, and a frame's viewport and zoom.
+//
+// A web font is kept as the @font-face rules of its family that some run was
+// drawn with: per font key, `webFonts[key]` lists them in the page's order, each
+// {family, range, lo, hi} -- its unicode-range text, and the weights it holds --
+// with `family` naming its file in `fontFiles`, which holds each file's bytes
+// once (a data: URL), or null where the file could not be read. Which rule draws
+// a character is decided when the SVG is drawn (webRulesFor), as it is in the page.
+// An inline <svg> is kept as `svgs`, [layout object's key, markup] pairs: what
+// capture.mjs's inlineSvg read, its text runs among the runs measured.
 //
 // A bundle answers only the questions the converter asked when it was taken:
 // textNeeds lists the runs to measure. A converter that asks another (a run it
 // did not draw before) gets no answer; renderBundle counts each such miss, and
-// replay.mjs names the pictures that need taking again. A bundle holds URLs into
-// the IDE's work folder, and so the Windows user name: bundles stay in a cache
-// that is never committed or published.
+// replay.mjs names the pictures that need taking again. A change to what is
+// read from the page, the kind that no miss shows (the rules of a split font, an
+// <svg>'s markup), raises BUNDLE_VERSION, and an older bundle is not read: replay.mjs
+// lists it as needing a retake, since it cannot tell which pictures the change
+// reaches. A bundle holds URLs into the IDE's work folder, and so the Windows user
+// name: bundles stay in a cache that is never committed or published.
 
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { brotliCompressSync, brotliDecompressSync, constants } from "node:zlib";
-import { PictureFonts, withFaces } from "./fonts.mjs";
+import { PictureFonts, webRulesFor, withFaces } from "./fonts.mjs";
 import { decodeSnapshot, oneLine, parseShadows, renderSvg, unzoom } from "./snapshot-svg.mjs";
 
-/** The format of a bundle; one of another version is not read. */
-export const BUNDLE_VERSION = 1;
+/**
+ * The format of a bundle; one of another version is not read. Version 2 keeps a
+ * web font as its rules and files (webFonts, fontFiles) where version 1 kept the
+ * one file picked, and adds the inline <svg>s.
+ */
+export const BUNDLE_VERSION = 2;
 
 // Every document of a decoded snapshot, the page's first, with its frames' after it.
 function documentsOf(page) {
@@ -95,21 +112,38 @@ export function drawBundle(bundle) {
       fontsFor: (key, text) => {
         const id = `${key}\u0000${text}`;
         if (!platform.has(id)) return miss(`fonts ${key} ${JSON.stringify(text)}`) ?? [];
-        const web = m.webFonts[key];
-        let drawn = false;
+        // A variable file is drawn at the weight asked for, held to the weights its rule declares.
+        const weight = Number(JSON.parse(key)[1]) || 400;
+        const web = webRulesFor(m.webFonts[key] ?? [], text).flatMap((rule) => {
+          const data = rule.family && m.fontFiles[rule.family];
+          // `range` makes each file the face of the characters of its own rule only.
+          return data
+            ? [
+                {
+                  family: rule.family,
+                  data,
+                  weight: String(Math.min(Math.max(weight, rule.lo), rule.hi)),
+                  range: rule.range,
+                },
+              ]
+            : [];
+        });
+        let placed = false;
         return platform
           .get(id)
           .toSorted((a, b) => b.glyphCount - a.glyphCount)
-          .map((f) => {
-            if (!f.isCustomFont) return { ps: f.postScriptName };
-            // One face for the web font, whichever names it reported.
-            if (drawn || !web) return null;
-            drawn = true;
-            return { ...web, weight: JSON.parse(key)[1] };
+          .flatMap((f) => {
+            if (!f.isCustomFont) return [{ ps: f.postScriptName }];
+            // The web font's files, all at the place of the first font Chromium reported
+            // for it, whichever names it gave.
+            if (placed) return [];
+            placed = true;
+            return web;
           })
           .filter((s) => s?.ps || s?.data);
       },
       scrollbars: new Map(m.scrollbars),
+      svgs: new Map(m.svgs),
       inner: m.inner,
     };
   };

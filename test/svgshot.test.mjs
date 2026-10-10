@@ -7,10 +7,14 @@
 // frameView, unzoom, viewportScroller, canvasColor). What a picture's SVG keeps of an
 // image it embeds is compactImage's, in scripts/lib/compact-image.mjs, and
 // test/compact-image.test.mjs tests it. The web fonts a frame's text is drawn in:
-// webFontFiles, which finds the @font-face rule a run's font means by the names its document
-// gives (given a document of its own here), and fonts.mjs's reading of a WOFF2 font and its
-// faces for a variable one, tested on the site's own fonts. And colour-filter.mjs, which bakes
-// a filter of colour functions into the colours its group paints.
+// webFontFiles, which finds the @font-face rules a run's font means by the names its document
+// gives (given a document of its own here), webRulesFor, which picks of a family split into
+// files by unicode-range the ones that hold a run's characters, and fonts.mjs's reading of a
+// WOFF2 font and its faces for a variable one, tested on the site's own fonts. Inline <svg>s:
+// inlineSvgsIn, which lists the ones to read in the page, and scopeIds, which keeps the ids of
+// two icons apart in one picture; the reading of an <svg> itself is in the page and is
+// measured by the bench pages. And colour-filter.mjs, which bakes a filter of colour functions
+// into the colours its group paints.
 //
 // Runs with a bare `node --test test/svgshot.test.mjs`: no tree, no build.
 
@@ -46,10 +50,12 @@ import {
   cmapCoverage,
   faceStyle,
   isVariable,
+  parseUnicodeRange,
   PictureFonts,
   readable,
   subsetKey,
   useSubsetCache,
+  webRulesFor,
 } from "../scripts/svgshot/fonts.mjs";
 import {
   canvasColor,
@@ -59,8 +65,10 @@ import {
   frameGeometry,
   framesIn,
   frameView,
+  inlineSvgsIn,
   naturalSize,
   oneLine,
+  scopeIds,
   selectLabel,
   underlineBand,
   untransformBox,
@@ -653,7 +661,7 @@ describe("webFontFiles", () => {
   // A document of its own, with the @font-face rules of one style sheet.
   function inDocument(faces, run) {
     class FontFace {}
-    const rule = ({ family, src, weight, style }) =>
+    const rule = ({ family, src, weight, style, range }) =>
       Object.assign(new FontFace(), {
         style: {
           getPropertyValue: (name) =>
@@ -662,6 +670,7 @@ describe("webFontFiles", () => {
               src: `url("${src}") format("woff2")`,
               "font-weight": weight ?? "",
               "font-style": style ?? "",
+              "unicode-range": range ?? "",
             })[name],
         },
       });
@@ -684,9 +693,13 @@ describe("webFontFiles", () => {
   ];
   const pick = (faces, ...keys) => inDocument(faces, () => webFontFiles(keys));
 
+  const names = (got, k) => got[k]?.map((f) => f.url.split("/").pop());
+
   test("a font is found by the name the page gives it, from the first family of its list that has a rule", () => {
     const k = key("normal", 600, 'system-ui, Inter, "Segoe UI"');
-    assert.deepEqual(pick(SITE, k)[k], { url: "http://localhost/assets/fonts/inter.woff2", italic: false });
+    assert.deepEqual(pick(SITE, k)[k], [
+      { url: "http://localhost/assets/fonts/inter.woff2", italic: false, range: "", lo: 100, hi: 900 },
+    ]);
     const none = key("normal", 400, "Arial, sans-serif");
     assert.equal(pick(SITE, none)[none], null);
   });
@@ -694,8 +707,8 @@ describe("webFontFiles", () => {
   test("an italic run takes the italic rule, and an upright one the upright, whichever is written last", () => {
     const [up, it] = [key("normal", 400, "Inter"), key("italic", 400, "Inter")];
     const got = pick(SITE, up, it);
-    assert.equal(got[up].url.endsWith("inter.woff2"), true);
-    assert.equal(got[it].url.endsWith("inter-italic.woff2"), true);
+    assert.deepEqual(names(got, up), ["inter.woff2"]);
+    assert.deepEqual(names(got, it), ["inter-italic.woff2"]);
   });
 
   test("of rules for single weights, the one that holds the weight, else the nearest from the side CSS prefers", () => {
@@ -703,10 +716,7 @@ describe("webFontFiles", () => {
       { family: "Foo", src: "regular.woff2", weight: "400" },
       { family: "Foo", src: "bold.woff2", weight: "bold" },
     ];
-    const at = (w) =>
-      pick(faces, key("normal", w, "Foo"))
-        [key("normal", w, "Foo")].url.split("/")
-        .pop();
+    const at = (w) => names(pick(faces, key("normal", w, "Foo")), key("normal", w, "Foo"))[0];
     assert.deepEqual([300, 400, 500, 600, 700, 900].map(at), [
       "regular.woff2",
       "regular.woff2",
@@ -717,13 +727,136 @@ describe("webFontFiles", () => {
     ]);
   });
 
-  test("of rules that match alike, the last one", () => {
+  test("every rule that matches alike is listed, in the page's order, with its range and weights", () => {
+    // A family split into files by unicode-range: one rule each, for each weight.
+    const split = ["400", "600"].flatMap((weight) => [
+      { family: "Seg", src: `latin.woff2`, weight, range: "U+0-FF, U+131" },
+      { family: "Seg", src: `ext.woff2`, weight, range: "U+100-24F" },
+      { family: "Seg", src: `greek.woff2`, weight, range: "U+370-3FF" },
+    ]);
+    const k = key("normal", 600, "Seg, sans-serif");
+    const got = pick(split, k)[k];
+    assert.deepEqual(
+      got.map((f) => [f.url.split("/").pop(), f.range, f.lo, f.hi]),
+      [
+        ["latin.woff2", "U+0-FF, U+131", 600, 600],
+        ["ext.woff2", "U+100-24F", 600, 600],
+        ["greek.woff2", "U+370-3FF", 600, 600],
+      ],
+    );
+    // A weight between two declared ones takes the nearest, with all its files.
+    const k500 = key("normal", 500, "Seg");
+    assert.equal(pick(split, k500)[k500].length, 3);
+    assert.equal(pick(split, k500)[k500][0].lo, 400);
+  });
+
+  test("rules that match alike with no range are all listed too: which one draws is webRulesFor's", () => {
     const faces = [
       { family: "Foo", src: "one.woff2", weight: "400" },
       { family: "Foo", src: "two.woff2", weight: "400" },
     ];
     const k = key("normal", 400, "Foo");
-    assert.equal(pick(faces, k)[k].url.endsWith("two.woff2"), true);
+    assert.deepEqual(names(pick(faces, k), k), ["one.woff2", "two.woff2"]);
+  });
+});
+
+describe("unicode-range", () => {
+  test("a descriptor is a list of ranges, single code points and wildcards", () => {
+    assert.deepEqual(parseUnicodeRange("U+0-FF, U+131, u+4??, U+1F600-1F64F"), [
+      [0, 0xff],
+      [0x131, 0x131],
+      [0x400, 0x4ff],
+      [0x1f600, 0x1f64f],
+    ]);
+  });
+
+  test("an empty descriptor, and one with a token that is no range, is every code point", () => {
+    const all = [[0, 0x10ffff]];
+    assert.deepEqual(parseUnicodeRange(""), all);
+    assert.deepEqual(parseUnicodeRange(undefined), all);
+    assert.deepEqual(parseUnicodeRange("U+0-FF, nonsense"), all);
+    assert.deepEqual(parseUnicodeRange("U+4??-4FF"), all);
+  });
+
+  // The files of one family, as Microsoft's page splits Segoe UI Variable.
+  const files = [
+    { name: "latin", range: "U+0-FF, U+131, U+2000-206F" },
+    { name: "ext", range: "U+100-24F, U+300-36F" },
+    { name: "greek", range: "U+370-3FF" },
+    { name: "symbols", range: "U+530-5FF, U+2070-209F" },
+  ];
+  const chosen = (text, rules = files) => webRulesFor(rules, text).map((r) => r.name);
+
+  test("a run is drawn with the files whose range holds one of its characters", () => {
+    assert.deepEqual(chosen("Hello, world"), ["latin"]);
+    assert.deepEqual(chosen("Hello Ω"), ["greek", "latin"]);
+    // A superscript is in the symbols file, though none of the run's letters are.
+    assert.deepEqual(chosen("x²⁴"), ["symbols", "latin"]);
+  });
+
+  test("a character no rule holds is drawn in another family, and no file", () => {
+    assert.deepEqual(chosen("一"), []);
+    assert.deepEqual(chosen(""), []);
+  });
+
+  test("where ranges overlap the later rule has the character, and comes first", () => {
+    const overlap = [
+      { name: "all", range: "" },
+      { name: "latin", range: "U+0-7F" },
+    ];
+    assert.deepEqual(chosen("ab", overlap), ["latin"]);
+    assert.deepEqual(chosen("a一", overlap), ["latin", "all"]);
+  });
+});
+
+describe("inline svgs", () => {
+  // A layout object for an element: `name`, in a chain of parents.
+  const layout = (name, parent, extra = {}) => {
+    const node = { name, parent };
+    const l = {
+      node,
+      key: `0:${name}`,
+      style: { visibility: "visible" },
+      bounds: { x: 10, y: 10, w: 8, h: 9 },
+      ...extra,
+    };
+    node.box = l;
+    return l;
+  };
+  const view = { x: 0, y: 0, w: 100, h: 100 };
+
+  test("the outermost svg of each, visible, with a size, in the view", () => {
+    const body = layout("BODY", null);
+    const icon = layout("svg", body.node);
+    const path = layout("path", icon.node);
+    const nested = layout("svg", icon.node);
+    const hidden = layout("svg", body.node, { style: { visibility: "hidden" } });
+    const empty = layout("svg", body.node, { bounds: { x: 10, y: 10, w: 0, h: 9 } });
+    const away = layout("svg", body.node, { bounds: { x: 500, y: 10, w: 8, h: 9 } });
+    const found = inlineSvgsIn({ layouts: [body, icon, path, nested, hidden, empty, away] }, view);
+    assert.deepEqual(found, [icon]);
+  });
+
+  test("an svg inside an HTML element deep in the page is found, and an svg's own box is the one", () => {
+    const body = layout("BODY", null);
+    const button = layout("BUTTON", body.node);
+    const icon = layout("svg", button.node);
+    // A second layout object of the same node (its text or a pseudo-element) is no box of its own.
+    const other = { ...icon, key: "0:svg2", node: icon.node };
+    assert.deepEqual(inlineSvgsIn({ layouts: [body, button, icon, other] }, view), [icon]);
+  });
+
+  test("ids and the references to them get a prefix, in tags only", () => {
+    const markup =
+      '<defs><linearGradient id="g"><stop style="stop-color:red"/></linearGradient><symbol id="s"><path d="M0 0"/></symbol></defs>' +
+      '<use href="#s" style="fill:url(#g)"/><path style="clip-path:url(#c);stroke:url(#g)"/><text id="t">id="g" url(#g) href="#s"</text>' +
+      '<image href="data:image/png;base64,AAAA#x"/><a data-id="n" href="https://x/#s"/>';
+    assert.equal(
+      scopeIds(markup, "v3-"),
+      '<defs><linearGradient id="v3-g"><stop style="stop-color:red"/></linearGradient><symbol id="v3-s"><path d="M0 0"/></symbol></defs>' +
+        '<use href="#v3-s" style="fill:url(#v3-g)"/><path style="clip-path:url(#v3-c);stroke:url(#v3-g)"/><text id="v3-t">id="g" url(#g) href="#s"</text>' +
+        '<image href="data:image/png;base64,AAAA#x"/><a data-id="n" href="https://x/#s"/>',
+    );
   });
 });
 
@@ -782,6 +915,44 @@ describe("web fonts as WOFF2", () => {
     assert.equal(again, css700);
     // The characters go to the face that has them: both are Latin, and Inter has them.
     assert.equal(fonts.faces[1].used.has("B".codePointAt(0)), true);
+  });
+
+  test("a web font split by unicode-range: each file is the face of the characters in its rule's range, whichever has glyphs for more", () => {
+    const fonts = new PictureFonts();
+    // Inter and Cascadia Mono both have the whole of Basic Latin; the rules share it out.
+    const inter = { family: "inter", data: dataUrl("inter-variable.woff2"), weight: "400", range: "U+21-5A" };
+    const cascadia = {
+      family: "cascadia",
+      data: dataUrl("cascadia-mono-variable.woff2"),
+      weight: "400",
+      range: "U+20, U+61-7A",
+    };
+    const css = fonts.css("Ab c, D", [inter, cascadia], "400", "normal");
+    const [first, second] = fonts.faces;
+    const used = (face) =>
+      [...face.used]
+        .map((cp) => String.fromCodePoint(cp))
+        .sort()
+        .join("");
+    assert.equal(used(first), " ,AD");
+    assert.equal(used(second), " bc");
+    // A space is drawn by the first face of the list that has one, and every face keeps one: the
+    // face whose range holds it is listed first, whatever order the rules came in.
+    assert.equal(css, 'font-family:"f1","f0";font-weight:normal;font-style:normal');
+    // The same files in the other order share the characters out the same way.
+    const again = new PictureFonts();
+    again.css("Ab c, D", [cascadia, inter], "400", "normal");
+    assert.deepEqual(again.faces.map(used), [" bc", " ,AD"]);
+  });
+
+  test("a source with no range is the face of every character its font has, the first font first", () => {
+    const fonts = new PictureFonts();
+    const inter = { family: "inter", data: dataUrl("inter-variable.woff2"), weight: "400" };
+    const cascadia = { family: "cascadia", data: dataUrl("cascadia-mono-variable.woff2"), weight: "400" };
+    const css = fonts.css("Ab", [cascadia, inter], "400", "normal");
+    assert.equal(css, 'font-family:"f0","f1";font-weight:normal;font-style:normal');
+    assert.equal(fonts.faces[1].used.has("A".codePointAt(0)), false);
+    assert.equal(fonts.faces[0].used.has("A".codePointAt(0)), true);
   });
 
   test("an italic file is not slanted again", () => {

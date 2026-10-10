@@ -2,9 +2,16 @@
 // in a browser, taken as a PNG at device scale 2 as shoot_docs takes the IDE,
 // and drawn as an SVG by capture.mjs's svgOfPage; diff.mjs compares the two.
 // So a change that draws a replicated part or a text decoration wrongly -- a
-// scrollbar, a drop-down list, an underline, a focus ring, a frame -- shows here
-// without an IDE, in seconds. The documents of the frames page are under
-// bench/frames/, which is no page of its own.
+// scrollbar, a drop-down list, an underline, a focus ring, a frame, a web font
+// split by unicode-range, an inline <svg>, the annotation layer on a scrolled
+// page -- shows here without an IDE, in seconds. The documents of the frames page
+// are under bench/frames/, which is no page of its own.
+//
+// The pages are served from 127.0.0.1 (the folder, and /fonts/ is the site's
+// docs/assets/fonts/, the fonts a page may use), not opened as files: a page's
+// script cannot read the bytes of a font a file: page names, and capture.mjs does.
+// A page that scrolls is taken as the window shows it: the picture's clip starts
+// at the scroll offset, as a shot's does.
 //
 // No page comes out exact: text is shaped by two renderers, and a replica is
 // close rather than equal. A fixed limit cannot tell that residue from a new
@@ -24,9 +31,10 @@
 // every gate, as the other svgshot tools are.
 
 import fs from "node:fs";
+import http from "node:http";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { exitOnCrash, parseCli, printHelpAndExit, regexOption, withUsageError } from "../../lib/cli.mjs";
+import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { LAUNCH_ARGS, withBrowser } from "../lib/browser.mjs";
 import { decodePng } from "../lib/png.mjs";
 import { svgOfPage } from "./capture.mjs";
@@ -76,6 +84,7 @@ const only =
 const out = cli.values.out ?? null;
 
 const PAGES = path.join(import.meta.dirname, "bench");
+const FONTS = path.join(REPO_ROOT, "docs", "assets", "fonts");
 const BASELINE = path.join(PAGES, "baseline.json");
 // Each page is laid out in this viewport.
 const VIEW = { width: 800, height: 400 };
@@ -125,6 +134,23 @@ function connection(cdp) {
   };
 }
 
+// The pages and the fonts, over HTTP on a free port of this machine.
+function serve() {
+  const types = { ".html": "text/html; charset=utf-8", ".woff2": "font/woff2" };
+  const server = http.createServer((req, res) => {
+    const url = decodeURIComponent(new URL(req.url, "http://127.0.0.1").pathname);
+    const [root, rest] = url.startsWith("/fonts/") ? [FONTS, url.slice("/fonts/".length)] : [PAGES, url.slice(1)];
+    const file = path.resolve(root, rest);
+    if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+      res.writeHead(404).end();
+      return;
+    }
+    res.writeHead(200, { "content-type": types[path.extname(file)] ?? "application/octet-stream" });
+    fs.createReadStream(file).pipe(res);
+  });
+  return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(server)));
+}
+
 const pages = fs
   .readdirSync(PAGES)
   .filter((f) => f.endsWith(".html") && (!only || only.test(f)))
@@ -141,6 +167,8 @@ if (!executablePath) {
 const baseline = fs.existsSync(BASELINE) ? JSON.parse(fs.readFileSync(BASELINE, "utf8")) : { pages: {} };
 if (out) fs.mkdirSync(out, { recursive: true });
 
+const server = await serve();
+const origin = `http://127.0.0.1:${server.address().port}`;
 let failed = false;
 const figures = {};
 let browserVersion;
@@ -170,11 +198,13 @@ await withBrowser(
     for (const file of pages) {
       const name = file.replace(/\.html$/, "");
       await page.setViewport({ ...VIEW, deviceScaleFactor: 2 });
-      await page.goto(pathToFileURL(path.join(PAGES, file)).href);
+      await page.goto(`${origin}/${file}`);
       await page.evaluate(() => document.fonts.ready);
       const png = Buffer.from(await page.screenshot());
-      const { svg, stats } = await svgOfPage(connection(await page.createCDPSession()), null);
-      const diff = await diffSvg(compare, svg, png);
+      // The window's part of the page: the picture's clip, and the page point the PNG starts at.
+      const win = await page.evaluate(() => ({ x: scrollX, y: scrollY, width: innerWidth, height: innerHeight }));
+      const { svg, stats } = await svgOfPage(connection(await page.createCDPSession()), win);
+      const diff = await diffSvg(compare, svg, png, { refOrigin: { x: win.x, y: win.y } });
       const worst = diff.stats.worst[0] ?? { share: 0, x: 0, y: 0 };
       const got = { pct32: diff.stats.pct32, pct96: diff.stats.pct96, tile: worst.share };
       figures[name] = got;
@@ -213,6 +243,7 @@ await withBrowser(
     ignoreDefaultArgs: ["--hide-scrollbars"],
   },
 );
+server.close();
 if (cli.values.update) {
   // The pages not run keep what they had.
   const next = { browser: browserVersion, pages: { ...baseline.pages, ...figures } };
