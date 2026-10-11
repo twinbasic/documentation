@@ -1,6 +1,6 @@
 ---
 title: Documentation Development
-nav_order: 9
+nav_order: 14
 has_children: true
 has_toc: false
 permalink: /Documentation/Development/
@@ -23,7 +23,7 @@ A fourth wrapper, `test.bat`, tests the toolchain rather than the site; run it w
 
 `examples.bat` sits outside this workflow and outside CI. It compiles the twinBASIC code samples in the pages, which needs a twinBASIC install and Windows --- see [Checking that a sample compiles](Authoring#checking-that-a-sample-compiles).
 
-![A flow chart running top to bottom from the docs/ source tree. One branch goes through serve.bat to the _serve/ tree and a local browser; the other goes through build.bat to three output trees: _site/ for the online HTML, _site-offline/ for the file:// mirror, and _site-pdf/ for the book source. check.bat reads the built trees, and book.bat turns the book source into the finished PDF.](/assets/images/dot/toolchain-overview.svg)
+![A flow chart running top to bottom from the docs/ source tree. One branch goes through serve.bat to the _serve/ tree and a local browser; the other goes through build.bat to three output trees: _site/ for the online HTML, _site-offline/ for the file:// mirror, and _site-pdf/ for the book source. check.bat reads the built trees, and book.bat turns the book source into the finished PDF. Each box but the browser links to the entry for its tool or to the section that explains it.](/assets/images/dot/toolchain-overview.svg)
 
 Run `build.bat` before `check.bat` or `book.bat`: `check.bat` audits `_site-offline/` and refuses a tree older than its sources, and `book.bat` reads `_site-pdf/`. A clean `build.bat && check.bat` is the bar for "ready to commit".
 

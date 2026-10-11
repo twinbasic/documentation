@@ -738,7 +738,7 @@ Copy the `node`, `edge` and `graph` blocks from an existing diagram of the same 
 
 Leave node text alone: it is dark against each node's light fill in both themes. Only the cluster and edge labels follow the page's text colour, because they sit on the page background. A diagram needs alt text like any other image. The whole diagram gets one accessible name, so describe what it shows, not what shapes it contains, and never `![Diagram]`. What [Images](#images) says about alt text applies here.
 
-A box can link somewhere: give its node, or its cluster, a `URL`, relative to the page that shows the diagram (`URL="Tools-Build#tbdocs"`). The diagram is then a group of links rather than one image, and the build moves each cluster's label just before the first box inside it, so the Tab key takes each label and then its boxes. Declare the nodes in reading order and set `outputorder=nodesfirst` on the graph, so the boxes come in that order too. `docs/Documentation/Images/Tools-Groups.dot` does both. The link check reports a link that leads nowhere.
+A box can link somewhere: give its node, or its cluster, a `URL`, relative to the page that shows the diagram (`URL="Tools-Build#tbdocs"`). Give the box a `tooltip` as well: a pointer shows it on hover, and without one Graphviz shows the label, `<BR/>` and all. The diagram is then a group of links rather than one image, and the build moves each cluster's label just before the first box inside it, so the Tab key takes each label and then its boxes. Declare the nodes in reading order and set `outputorder=nodesfirst` on the graph, so the boxes come in that order too. `docs/Documentation/Images/Tools-Groups.dot` does both. The link check reports a link that leads nowhere.
 
 ## Images
 

@@ -1,5 +1,13 @@
 // High-level view of the documentation toolchain: source tree → build/serve
 // → output trees → check/book pipelines.
+//
+// Every node but the browser is a link, set in the block at the end so the
+// layout above stays readable: a wrapper to its entry on the Tools page, a
+// tree to the section that explains it. The URLs are relative to the
+// Documentation Development landing page, /Documentation/Development/,
+// which inlines this diagram; the build's link check reports one
+// whose target has gone. The nodes are declared in reading order, the order
+// a reader and the Tab key take the links in.
 
 digraph toolchain {
     rankdir=TB
@@ -7,6 +15,7 @@ digraph toolchain {
     nodesep=0.3
     ranksep=0.5
     splines=true
+    outputorder=nodesfirst
 
     node [
         shape=box
@@ -27,7 +36,7 @@ digraph toolchain {
     SITE    [label=<_site/<BR/>online HTML>]
     OFFLINE [label=<_site-offline/<BR/>file:// mirror>]
     PDFSRC  [label=<_site-pdf/<BR/>book.html + CSS + images>]
-    CHECK   [label=<check.bat<BR/>6 verification gates>]
+    CHECK   [label=<check.bat<BR/>site checks>]
     BOOK    [label=<book.bat<BR/>render-book.mjs>]
     PDF     [label=<_pdf/twinBASIC Book.pdf>]
 
@@ -38,4 +47,17 @@ digraph toolchain {
     BUILD -> PDFSRC
     OFFLINE -> CHECK
     PDFSRC  -> BOOK -> PDF
+
+    // A tooltip on every node whose label breaks a line: Graphviz would
+    // otherwise copy the label, <BR/> and all, into the link's tooltip.
+    SRC     [URL="Authoring#where-content-lives" tooltip="docs/ source tree: *.md, _config.yml, _book.yml"]
+    SERVE   [URL="Tools#servebat"]
+    SERVED  [URL="Building#building-and-local-serving"]
+    BUILD   [URL="Tools#buildbat" tooltip="build.bat, tbdocs.mjs"]
+    SITE    [URL="Building#deploying-to-docstwinbasiccom" tooltip="_site/: online HTML"]
+    OFFLINE [URL="Building#why-not-file-urls" tooltip="_site-offline/: file:// mirror"]
+    PDFSRC  [URL="Book-Configuration" tooltip="_site-pdf/: book.html, CSS, images"]
+    CHECK   [URL="Tools#checkbat" tooltip="check.bat: site checks"]
+    BOOK    [URL="Tools#bookbat" tooltip="book.bat, render-book.mjs"]
+    PDF     [URL="PDF-Generation"]
 }

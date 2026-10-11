@@ -189,55 +189,186 @@ digraph tools_groups {
     t21 -> e1   t22 -> i1   t24 -> d1
 
     // ---- links ----
+    // Each link has a tooltip describing the tool or group, which a pointer shows on hover.
     // A subgraph named again is the same subgraph, so these set the clusters'.
-    subgraph cluster_wrappers { URL="#batch-wrappers" }
-    subgraph cluster_build    { URL="Tools-Build" }
-    subgraph cluster_site     { URL="Tools-Site-Checks" }
-    subgraph cluster_compiler { URL="Tools-Compiler" }
-    subgraph cluster_tests    { URL="Tools-Toolchain-Tests" }
-    subgraph cluster_samples  { URL="Tools-Samples" }
-    subgraph cluster_ide      { URL="Tools-IDE" }
-    subgraph cluster_defects  { URL="Tools-Defects" }
+    subgraph cluster_wrappers {
+        URL="#batch-wrappers"
+        tooltip="Lists the nine Windows batch files at the repository root that build, serve, check and test the site and run the compiler and IDE tools."
+    }
+    subgraph cluster_build {
+        URL="Tools-Build"
+        tooltip="Covers the site generator, the PDF book renderer, the build comparison and the generators of committed files."
+    }
+    subgraph cluster_site {
+        URL="Tools-Site-Checks"
+        tooltip="Covers the checks on a built site: its links, its freshness against the sources, its diagrams and its accessibility."
+    }
+    subgraph cluster_compiler {
+        URL="Tools-Compiler"
+        tooltip="Covers the tools that compile, build and run twinBASIC projects by operating the IDE on a private desktop, and that pack and unpack project files."
+    }
+    subgraph cluster_tests {
+        URL="Tools-Toolchain-Tests"
+        tooltip="Covers the tests of the toolchain itself, which test.bat runs and which would still mean something with no page in the tree."
+    }
+    subgraph cluster_samples {
+        URL="Tools-Samples"
+        tooltip="Covers the tools that compile the code samples of the documentation and that survey and probe where the compiler accepts each attribute."
+    }
+    subgraph cluster_ide {
+        URL="Tools-IDE"
+        tooltip="Covers the tools that operate the twinBASIC IDE to test add-ins and the IDE itself, to try the help add-in by hand and to take IDE screenshots."
+    }
+    subgraph cluster_defects {
+        URL="Tools-Defects"
+        tooltip="Covers the tools that build and verify reproducer projects for twinBASIC defects and that run VB6 code to compare it with twinBASIC."
+    }
 
-    w1 [URL="#buildbat"]        w2 [URL="#servebat"]          w3 [URL="#checkbat"]
-    w4 [URL="#testbat"]         w5 [URL="#bookbat"]           w6 [URL="#examplesbat"]
-    w7 [URL="#addin-testbat"]   w8 [URL="#ide-testbat"]       w9 [URL="#try-help-addinbat"]
+    w1 [URL="#buildbat"
+        tooltip="Builds the online, offline and PDF source trees, and writes the help archive. Extra arguments pass through to tbdocs."]
+    w2 [URL="#servebat"
+        tooltip="Starts a live preview on port 4000 that rebuilds on each change under docs/ and reloads a connected browser."]
+    w3 [URL="#checkbat"
+        tooltip="Runs the gates that read the built site: freshness, accessibility, diagram fit and sample coverage. Run build.bat first."]
+    w4 [URL="#testbat"
+        tooltip="Runs the tests of the toolchain one after another and stops at the first that fails."]
+    w5 [URL="#bookbat"
+        tooltip="Renders the PDF book from the built _site-pdf/book.html, after checking that the tree is not older than the sources."]
+    w6 [URL="#examplesbat"
+        tooltip="Compiles the twinBASIC code samples marked check_build and reports the ones the compiler refuses. Samples marked check_run are also run."]
+    w7 [URL="#addin-testbat"
+        tooltip="Tests IDE add-ins by machine: builds each add-in, loads it into an IDE, operates the IDE and checks what the add-in did."]
+    w8 [URL="#ide-testbat"
+        tooltip="Tests the twinBASIC IDE itself by machine: opens a project, operates the IDE and checks what the IDE did."]
+    w9 [URL="#try-help-addinbat"
+        tooltip="Opens an IDE with the help add-in built and loaded, to try by hand, and restores the registry when the IDE is closed. It is not a gate."]
 
-    b1 [URL="Tools-Build#tbdocs"]               b2 [URL="Tools-Build#bookrender-bookmjs"]
-    b3 [URL="Tools-Build#compare-trees"]        b4 [URL="Tools-Build#survey-tooling"]
-    b5 [URL="Tools-Build#convert-em-dash-separators"] b6 [URL="Tools-Build#build-fonts"]
-    b7 [URL="Tools-Build#build-dot-metrics"]    b8 [URL="Tools-Build#build-package-api"]
+    b1 [URL="Tools-Build#tbdocs"
+        tooltip="The static site generator. Builds the online, offline and PDF trees from docs/ and runs the link and integrity checks."]
+    b2 [URL="Tools-Build#bookrender-bookmjs"
+        tooltip="Renders the PDF book from the pre-built _site-pdf/book.html with puppeteer, paged.js and pdf-lib."]
+    b3 [URL="Tools-Build#compare-trees"
+        tooltip="Builds the site from a commit and from the working tree, and compares the online, offline and PDF trees byte for byte."]
+    b4 [URL="Tools-Build#survey-tooling"
+        tooltip="Surveys the tooling for duplicated code, repeated functions, argument reading, undeclared packages and the import graph. It is not a gate."]
+    b5 [URL="Tools-Build#convert-em-dash-separators"
+        tooltip="Converts literal en-dash and em-dash characters in markdown source under docs/ to the ASCII forms that the build turns into typographic dashes."]
+    b6 [URL="Tools-Build#build-fonts"
+        tooltip="Regenerates the subset webfonts under docs/assets/fonts/ from pinned upstream releases, verified by SHA-256. Needs Python and a network."]
+    b7 [URL="Tools-Build#build-dot-metrics"
+        tooltip="Measures the advance widths of Inter in a browser and writes builder/inter-metrics.json, which the build installs into Graphviz before it lays out a diagram."]
+    b8 [URL="Tools-Build#build-package-api"
+        tooltip="Writes builder/package-api.json, the types and public members that the packages of a twinBASIC install declare. Needs a twinBASIC install."]
 
-    s1 [URL="Tools-Site-Checks#check-links"]      s2  [URL="Tools-Site-Checks#crawl-check"]
-    s3 [URL="Tools-Site-Checks#check-links-diff"] s4  [URL="Tools-Site-Checks#check-tree-fresh"]
-    s5 [URL="Tools-Site-Checks#check-dot-fit"]    s6  [URL="Tools-Site-Checks#check-a11y"]
-    s7 [URL="Tools-Site-Checks#pick-a11y-sample"] s8  [URL="Tools-Site-Checks#axe-scan"]
-    s9 [URL="Tools-Site-Checks#check-a11y-fingerprint"] s10 [URL="Tools-Site-Checks#sweep-a11y"]
+    s1  [URL="Tools-Site-Checks#check-links"
+         tooltip="Checks the links of a built tree on the filesystem, plus optional integrity checks. Several passes run in parallel."]
+    s2  [URL="Tools-Site-Checks#crawl-check"
+         tooltip="Crawls the deployed site from a start URL and verifies that every link the build follows responds with a 2xx status."]
+    s3  [URL="Tools-Site-Checks#check-links-diff"
+         tooltip="Runs the standalone link checker and the link check of the build over the same bytes and compares their findings."]
+    s4  [URL="Tools-Site-Checks#check-tree-fresh"
+         tooltip="Refuses a built tree that is older than the sources that produced it, so a check never audits a previous build."]
+    s5  [URL="Tools-Site-Checks#check-dot-fit"
+         tooltip="Renders every committed diagram with the real webfont and fails if a label sits outside the box Graphviz drew for it."]
+    s6  [URL="Tools-Site-Checks#check-a11y"
+         tooltip="Scans a sample of pages with axe-core in headless Chromium, in both themes at two viewports, and reports accessibility violations."]
+    s7  [URL="Tools-Site-Checks#pick-a11y-sample"
+         tooltip="Derives the page list of the accessibility scan and checks that it still covers every markup construct the site uses."]
+    s8  [URL="Tools-Site-Checks#axe-scan"
+         tooltip="A shared module, not a command. Defines the accessibility scan: its pages, themes, viewports, axe options and source patches."]
+    s9  [URL="Tools-Site-Checks#check-a11y-fingerprint"
+         tooltip="Gates any change to what the accessibility scan runs, by comparing the findings of two schemes over the full page, theme and viewport matrix."]
+    s10 [URL="Tools-Site-Checks#sweep-a11y"
+         tooltip="Runs the accessibility scan over every page in both themes and both viewports. It takes about twenty minutes, so no commit gate runs it."]
 
-    c1 [URL="Tools-Compiler#tbbuild"]           c2 [URL="Tools-Compiler#tbrun"]
-    c3 [URL="Tools-Compiler#impexp"]            c4 [URL="Tools-Compiler#check-tb-registry"]
-    c5 [URL="Tools-Compiler#probe-shared-temp"] c6 [URL="Tools-Compiler#probe-build-twice"]
+    c1 [URL="Tools-Compiler#tbbuild"
+        tooltip="Compiles a .twinproj in the IDE on a private desktop and prints its diagnostics. Windows only."]
+    c2 [URL="Tools-Compiler#tbrun"
+        tooltip="Builds a probe project and captures what it writes to the Debug Console of the IDE, to show what code prints rather than whether it compiles."]
+    c3 [URL="Tools-Compiler#impexp"
+        tooltip="Unpacks a .twinproj or .twinpack into source files and packs them back, with the same commands as the compiler's own command line. A Node edition and a Python edition behave the same."]
+    c4 [URL="Tools-Compiler#check-tb-registry"
+        tooltip="Tests the code that restores the registry entries of the IDE after a harness run, on a scratch copy of the keys."]
+    c5 [URL="Tools-Compiler#probe-shared-temp"
+        tooltip="Counts the builds that fail to write the type library when several IDEs build at once in one TEMP folder."]
+    c6 [URL="Tools-Compiler#probe-build-twice"
+        tooltip="Builds one project twice in fresh IDEs and compares the two exes, to show what differs between builds of an unchanged project."]
 
-    t1  [URL="Tools-Toolchain-Tests#check-publish-policy"]  t2  [URL="Tools-Toolchain-Tests#check-regex-safety"]
-    t3  [URL="Tools-Toolchain-Tests#check-code-regions"]    t4  [URL="Tools-Toolchain-Tests#check-gate-lists"]
-    t5  [URL="Tools-Toolchain-Tests#check-ci-workflows"]    t6  [URL="Tools-Toolchain-Tests#check-lint"]
-    t7  [URL="Tools-Toolchain-Tests#search-test"]           t8  [URL="Tools-Toolchain-Tests#render-test"]
-    t9  [URL="Tools-Toolchain-Tests#strftime-test"]         t10 [URL="Tools-Toolchain-Tests#png-test"]
-    t11 [URL="Tools-Toolchain-Tests#compact-image-test"]    t12 [URL="Tools-Toolchain-Tests#svgshot-test"]
-    t13 [URL="Tools-Toolchain-Tests#example-batches-test"]  t14 [URL="Tools-Toolchain-Tests#ports-test"]
-    t15 [URL="Tools-Toolchain-Tests#addin-project-test"]    t16 [URL="Tools-Toolchain-Tests#check-page-baseline"]
-    t17 [URL="Tools-Toolchain-Tests#check-book-coverage"]   t18 [URL="Tools-Toolchain-Tests#check-symbol-index"]
-    t19 [URL="Tools-Toolchain-Tests#check-twin-parsers"]    t20 [URL="Tools-Toolchain-Tests#check-attribute-sweep"]
-    t21 [URL="Tools-Toolchain-Tests#check-cli"]             t22 [URL="Tools-Toolchain-Tests#check-pdf-shims-equiv"]
-    t23 [URL="Tools-Toolchain-Tests#check-impexp-parity"]   t24 [URL="Tools-Toolchain-Tests#check-axe-patch-equiv"]
+    t1  [URL="Tools-Toolchain-Tests#check-publish-policy"
+         tooltip="Verifies that the publish allowlist still refuses the file types it should. Needs neither a browser nor a built tree."]
+    t2  [URL="Tools-Toolchain-Tests#check-regex-safety"
+         tooltip="Refuses any regex in the tooling that can backtrack exponentially, by parsing every .mjs file and classifying each pattern."]
+    t3  [URL="Tools-Toolchain-Tests#check-code-regions"
+         tooltip="Verifies that no pre-render rewrite alters the contents of a code fence, an indented code block or an inline code span."]
+    t4  [URL="Tools-Toolchain-Tests#check-gate-lists"
+         tooltip="Verifies that the gate lists in the documentation match the wrappers that run them, and that no page states a gate count in prose."]
+    t5  [URL="Tools-Toolchain-Tests#check-ci-workflows"
+         tooltip="Verifies that both CI workflows run every gate that test.bat and check.bat run, with the same arguments and in the same order."]
+    t6  [URL="Tools-Toolchain-Tests#check-lint"
+         tooltip="Runs Biome over the tooling and fails on any lint finding, warning or formatting difference."]
+    t7  [URL="Tools-Toolchain-Tests#search-test"
+         tooltip="Runs unit tests for the site search: what each search entry holds, built from small synthetic pages."]
+    t8  [URL="Tools-Toolchain-Tests#render-test"
+         tooltip="Runs unit tests for the markdown-it plugins in builder/render.mjs, with input that no page holds."]
+    t9  [URL="Tools-Toolchain-Tests#strftime-test"
+         tooltip="Runs unit tests for the formatter of the Page last modified date, which no build calls."]
+    t10 [URL="Tools-Toolchain-Tests#png-test"
+         tooltip="Runs unit tests for the PNG reading, writing and comparing that the pictures of a bug reproducer use."]
+    t11 [URL="Tools-Toolchain-Tests#compact-image-test"
+         tooltip="Runs unit tests for what an embedded image keeps: its pixels and any ownership notice, without the metadata of an editor."]
+    t12 [URL="Tools-Toolchain-Tests#svgshot-test"
+         tooltip="Runs unit tests for the converter that draws a screenshot of the IDE as SVG."]
+    t13 [URL="Tools-Toolchain-Tests#example-batches-test"
+         tooltip="Runs the probes of check_examples.mjs under the test runner of Node, with no IDE. They cover how samples are packed and judged."]
+    t14 [URL="Tools-Toolchain-Tests#ports-test"
+         tooltip="Runs unit tests for the claiming of DevTools ports, so that runs started together never take the same port."]
+    t15 [URL="Tools-Toolchain-Tests#addin-project-test"
+         tooltip="Runs unit tests for the packing of the add-in folder of the help add-in into the project file that the build publishes."]
+    t16 [URL="Tools-Toolchain-Tests#check-page-baseline"
+         tooltip="Verifies that the page-count drift guard still refuses what it exists to refuse, with probes on a scratch baseline file."]
+    t17 [URL="Tools-Toolchain-Tests#check-book-coverage"
+         tooltip="Verifies that the build still warns about a page that docs/_book.yml does not mention."]
+    t18 [URL="Tools-Toolchain-Tests#check-symbol-index"
+         tooltip="Verifies that the symbol index still places each kind of symbol and that its drift guard still refuses a URL the index has stopped publishing."]
+    t19 [URL="Tools-Toolchain-Tests#check-twin-parsers"
+         tooltip="Verifies that the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread."]
+    t20 [URL="Tools-Toolchain-Tests#check-attribute-sweep"
+         tooltip="Verifies the logic of sweep_attributes.mjs, the tool that asks the compiler where each attribute is legal."]
+    t21 [URL="Tools-Toolchain-Tests#check-cli"
+         tooltip="Verifies lib/cli.mjs, through which the tools read their command lines, and the recorded command-line errors of each tool."]
+    t22 [URL="Tools-Toolchain-Tests#check-pdf-shims-equiv"
+         tooltip="Verifies that the pdf-lib patches of the book write the same PDF objects as stock pdf-lib does."]
+    t23 [URL="Tools-Toolchain-Tests#check-impexp-parity"
+         tooltip="Verifies that the Node and Python editions of impexp behave the same: same tests, exit codes, output and files."]
+    t24 [URL="Tools-Toolchain-Tests#check-axe-patch-equiv"
+         tooltip="Checks that the patched axe source computes the same colour values as the stock source, for the color-contrast rule."]
 
-    e1 [URL="Tools-Samples#check-examples"]     e2 [URL="Tools-Samples#gen-attribute-probes"]
-    e3 [URL="Tools-Samples#census-attributes"]  e4 [URL="Tools-Samples#sweep-attributes"]
+    e1 [URL="Tools-Samples#check-examples"
+        tooltip="Compiles the code samples marked check_build and reports each diagnostic against the page line it came from. Samples marked check_run are also run."]
+    e2 [URL="Tools-Samples#gen-attribute-probes"
+        tooltip="Generates twinBASIC probe projects from the Applicable to lines in Reference/Attributes.md, for tbbuild to compile."]
+    e3 [URL="Tools-Samples#census-attributes"
+        tooltip="Reports which enclosing construct and which kind of declaration each attribute decorates in the .twin sources of the shipped packages."]
+    e4 [URL="Tools-Samples#sweep-attributes"
+        tooltip="Writes each attribute at each declaration site, asks the compiler where it is legal, and compares the answers with the Applicable to lines."]
 
-    i1 [URL="Tools-IDE#addin-test"]     i2 [URL="Tools-IDE#ide-test"]
-    i3 [URL="Tools-IDE#try-help-addin"] i4 [URL="Tools-IDE#shoot-docs"]
-    i5 [URL="Tools-IDE#imagestrip"]     i6 [URL="Tools-IDE#probe-ide-image-labels"]
-    i7 [URL="Tools-IDE#replay"]
+    i1 [URL="Tools-IDE#addin-test"
+        tooltip="Runs the add-in scenarios under test/addin/, each lane in its own process with a private copy of the twinBASIC install."]
+    i2 [URL="Tools-IDE#ide-test"
+        tooltip="Runs the scenarios under test/ide/ that operate the IDE itself, with the same runner as addin_test.mjs."]
+    i3 [URL="Tools-IDE#try-help-addin"
+        tooltip="Opens an IDE with the help add-in built and loaded, to try it by hand, and waits until the IDE is closed."]
+    i4 [URL="Tools-IDE#shoot-docs"
+        tooltip="Takes the screenshots of the IDE for the documentation, so that one run regenerates them after a new BETA."]
+    i5 [URL="Tools-IDE#imagestrip"
+        tooltip="A twinBASIC console program that copies a CSS or SVG file, keeping the pixels and ownership notices of embedded images and dropping editor metadata."]
+    i6 [URL="Tools-IDE#probe-ide-image-labels"
+        tooltip="Lists the images in the style sheets of the IDE that are labelled with a media type their bytes do not have."]
+    i7 [URL="Tools-IDE#replay"
+        tooltip="Draws the SVG of each picture again from its saved bundle, with the converter as it is now. Starts no IDE and takes no picture."]
 
-    d1 [URL="Tools-Defects#bug-repro"]  d2 [URL="Tools-Defects#vb6run"]
+    d1 [URL="Tools-Defects#bug-repro"
+        tooltip="Builds, runs and verifies the reproducer projects for the entries of BUGS-TO-REPORT.md, one folder for each entry."]
+    d2 [URL="Tools-Defects#vb6run"
+        tooltip="Builds and runs VB6 code, to compare what a documented sample prints in twinBASIC with what it prints in VB6."]
 }
