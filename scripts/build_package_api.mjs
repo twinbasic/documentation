@@ -133,17 +133,8 @@ function sources() {
 // is not always its folder's: TwinBasicAssertions is `Assert`, all three CEF
 // builds are `cefPackage`, and AppGlobalClassObject is `AppGlobalClassProject`.
 // Hover says `in Assert.Exact`, so the snapshot is keyed by the project name,
-// and the exports each name covers are listed under it.
-function projectName(dir, fallback) {
-  try {
-    const m = /"project\.name"\s*:\s*"([^"]+)"/.exec(readFileSync(path.join(dir, "Settings"), "utf8"));
-    if (m) return m[1];
-  } catch {
-    /* no Settings: an export that is not a project */
-  }
-  return fallback;
-}
-
+// and the exports each name covers are listed under it. parsePackage reads the
+// name from the Settings file; an export without one is known by its folder's.
 function readAll(packages) {
   const parsed = new Map(); // project name -> types
   const exportsOf = new Map(); // project name -> export names
@@ -151,8 +142,8 @@ function readAll(packages) {
   // By code unit, not localeCompare: the file is committed, and a regeneration
   // on a machine with another locale must not reorder it.
   for (const p of [...packages].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
-    const project = projectName(p.dir, p.name);
     const r = parsePackage(p.dir);
+    const project = r.project ?? p.name;
     if (parsed.has(project)) {
       // Several exports under one name must declare one API, or the name
       // would stand for two things.
@@ -168,10 +159,15 @@ function readAll(packages) {
   return { parsed, exportsOf, problems };
 }
 
-// A type as declared, without where: two builds of one package differ in
-// their line numbers.
+// A type as this file records it, without where it is or how it is written: two
+// builds of one package differ in their line numbers, and the signatures,
+// attributes' arguments and descriptions parseTwin reads are not part of the
+// API this file keeps.
 const strip = (types) =>
-  types.map(({ line, members, ...t }) => ({ ...t, members: members.map(({ line: _, ...m }) => m) }));
+  types.map(({ line, members, signature, attrs, description, ...t }) => ({
+    ...t,
+    members: members.map(({ name, kind, vis, hidden }) => ({ name, kind, vis, hidden })),
+  }));
 
 // One type to a line, so that a regeneration against a newer build diffs as the
 // types that changed rather than as a rewritten file.

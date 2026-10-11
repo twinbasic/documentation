@@ -351,7 +351,7 @@ Verifies the [symbol index](Building#the-symbol-index) still places each kind of
 
 A build that indexes the reference cleanly says nothing about the rules that did not fire on it, so each rule is asserted against the case that made it necessary:
 
-- **The `.twin` scanner:** a `Type` whose `Sub`s have bodies, an `Interface` line inside a `CoClass`, `[Hidden]` on a module whose members are global, a `$` name escaped in brackets.
+- **The `.twin` scanner:** a `Type` whose `Sub`s have bodies, an `Interface` line inside a `CoClass`, `[Hidden]` on a module whose members are global, a `$` name escaped in brackets, an `Alias`, a field named for a keyword, a procedure whose body shares its line, an enumeration value named for a modifier, and what the record of a declaration says: its signature, the arguments of its attributes, its description, its return type and its accessor.
 - **The derivation:** a member on a page of its own and under a heading, an inherited member found on its declaring type's page, a page filed under one module and declared in another, a `$` form, a `## Properties` heading on a type that has a `Properties` property, and the ellipsis the typographer puts in a Core page's heading.
 - **The guard:** a lost anchor fails and is named, and CI never writes the list.
 

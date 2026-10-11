@@ -32,7 +32,7 @@ import { checkSymbolBaseline } from "../builder/symbol-baseline.mjs";
 import { deriveSymbolIndex, headingsOf, serializeSymbolIndex } from "../builder/symbols.mjs";
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { baselineFixture, createProbes } from "./lib/gate-probes.mjs";
-import { apiSnapshot, isPublicType, parseTwin } from "./lib/twin-api.mjs";
+import { apiSnapshot, isPublicType, logicalLinesRaw, parseSources, parseTwin, projectNameOf } from "./lib/twin-api.mjs";
 
 exitOnCrash();
 
@@ -245,6 +245,465 @@ const show = (x) => JSON.stringify(x);
     ].join("\n"),
   );
   check("a file-level Alias and a #If inside a body are not problems", problems.length === 0, show(problems));
+}
+
+{
+  const { types, aliases, problems } = parseTwin(
+    [
+      "Alias HINSTANCE As LongPtr",
+      "Alias cef_window_handle_t As LongPtr                ' HWND",
+      "[Hidden] Alias HDC As HWND",
+      "Module M",
+      "    Alias Local As Long",
+      "End Module",
+      "Type T",
+      "    Alias As Long",
+      "End Type",
+    ].join("\n"),
+    "Aliases.twin",
+  );
+  check(
+    "an Alias is recorded with its target, apart from the types",
+    show(aliases.map((a) => `${a.name}=${a.target}`)) ===
+      show(["HINSTANCE=LongPtr", "cef_window_handle_t=LongPtr", "HDC=HWND", "Local=Long"]) &&
+      aliases.every((a) => a.kind === "alias" && a.vis === "public" && a.file === "Aliases.twin") &&
+      types.map((t) => t.name).join() === "M,T" &&
+      problems.length === 0,
+    show({ aliases, types: types.map((t) => t.name), problems }),
+  );
+  check(
+    "an Alias keeps its signature, its attribute, and where it is declared",
+    aliases[1].signature === "Alias cef_window_handle_t As LongPtr" &&
+      aliases[2].hidden === true &&
+      show(aliases[2].attrs) === show([{ name: "Hidden", args: null }]) &&
+      aliases[0].container === null &&
+      aliases[3].container === "M",
+    show(aliases),
+  );
+  check(
+    "a field named Alias is a field, not an alias",
+    show(types.find((t) => t.name === "T")?.members.map((m) => `${m.name}:${m.kind}`)) === show(["Alias:field"]),
+    show(types.find((t) => t.name === "T")),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    ["Public CoClass App", "    [Default] Interface _App", "    [Source] Interface _AppEvents", "End CoClass"].join(
+      "\n",
+    ),
+  );
+  const co = types[0];
+  check(
+    "a Public CoClass is a public coclass with its interfaces",
+    problems.length === 0 &&
+      co?.kind === "coclass" &&
+      co.vis === "public" &&
+      co.signature === "Public CoClass App" &&
+      co.interfaces.map((i) => `${i.name}:${i.isDefault}:${i.isSource}`).join() ===
+        "_App:true:false,_AppEvents:false:true",
+    show({ problems, co }),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "Public Type Keywords",
+      "    Type As Long",
+      "    Union(3) As Byte",
+      "    Function As Long",
+      "    Event As Long",
+      "    Sub As Long",
+      "    Property As Long",
+      "    Const As Long",
+      "    Inherits As Long",
+      "    Last As Long",
+      "End Type",
+      "Class C",
+      "    Public Class As String",
+      "    Public Module As Long",
+      "    Public Event As Long",
+      "    Public Function As Long",
+      "    Public Caption As String",
+      "End Class",
+    ].join("\n"),
+  );
+  const names = (n) =>
+    types
+      .find((t) => t.name === n)
+      ?.members.map((m) => `${m.name}:${m.kind}`)
+      .join();
+  check(
+    "a field named for a keyword is a field, in a Type and in a Class",
+    problems.length === 0 &&
+      names("Keywords") ===
+        "Type:field,Union:field,Function:field,Event:field,Sub:field,Property:field,Const:field,Inherits:field,Last:field" &&
+      names("C") === "Class:field,Module:field,Event:field,Function:field,Caption:field",
+    show({ problems, keywords: names("Keywords"), c: names("C") }),
+  );
+}
+
+{
+  // community/slD3D.twin: `Function As Long` in a Type, 3,300 lines in. Read as a
+  // procedure, it opens a body nothing closes and swallows the rest of the file.
+  const { types, problems } = parseTwin(
+    [
+      "Module slD3D",
+      "    Public Const First As Long = 1",
+      "End Module",
+      "Public Type D3D11_VIDEO_DECODER_EXTENSION",
+      "    Function As Long",
+      "    pPrivateInputData As LongPtr",
+      "End Type",
+      "",
+      "Public Enum D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT",
+      "    D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_INPUT = 1",
+      "End Enum",
+      "Public Type After",
+      "    Value As Long",
+      "End Type",
+    ].join("\n"),
+  );
+  check(
+    "a Type with a field named Function does not swallow what follows",
+    problems.length === 0 &&
+      types.map((t) => t.name).join() ===
+        "slD3D,D3D11_VIDEO_DECODER_EXTENSION,D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT,After" &&
+      types[1].members.map((m) => `${m.name}:${m.kind}`).join() === "Function:field,pPrivateInputData:field",
+    show({ problems, types: types.map((t) => `${t.name}:${t.members.length}`) }),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "Public Class Counter",
+      "    Public Property Get Count() As Long Implements ICounter.Count: Return 1: End Property",
+      "    Public Function Twice(ByVal n As Long) As Long: Return n * 2: End Function",
+      '    Public Sub Reset(): Debug.Print "x": End Sub',
+      "    Public Sub Multi()",
+      "        Debug.Print 1",
+      "    End Sub",
+      "    Public Caption As String",
+      "End Class",
+    ].join("\n"),
+  );
+  const c = types[0];
+  check(
+    "a procedure whose body and End share its line opens nothing",
+    problems.length === 0 && c?.members.map((m) => m.name).join() === "Count,Twice,Reset,Multi,Caption",
+    show({ problems, members: c?.members.map((m) => m.name) }),
+  );
+  check(
+    "a one-line procedure's signature stops at its colon",
+    c?.members[0].signature === "Public Property Get Count() As Long Implements ICounter.Count" &&
+      c.members[0].returnType === "Long" &&
+      c.members[1].signature === "Public Function Twice(ByVal n As Long) As Long" &&
+      c.members[2].signature === "Public Sub Reset()",
+    show(c?.members.map((m) => m.signature)),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    ["Enum Modes", "    Static = 0", "    ReadOnly = 1", "    Shared", "    Default = 3", "End Enum"].join("\n"),
+  );
+  check(
+    "an enumeration value named for a modifier is a value",
+    problems.length === 0 && types[0]?.members.map((m) => m.name).join() === "Static,ReadOnly,Shared,Default",
+    show({ problems, members: types[0]?.members }),
+  );
+}
+
+{
+  const { problems } = parseTwin(
+    [
+      "Option Explicit",
+      'Import Library "/Miscellaneous/libtfm_64.a" As libtfm Link "stdlib"',
+      'Import Library "/Miscellaneous/libtfm_32.a" As libtfm Link "stdlib"',
+      "Module M",
+      "End Module",
+    ].join("\n"),
+  );
+  check("a file-level Import Library is not a problem", problems.length === 0, show(problems));
+}
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "Module Api",
+      "    Public Delegate Function Execute CDecl (ByRef args As Long, ByVal app As LongPtr) As Long",
+      "    Private Delegate Sub Callback (ByVal arg As Any)",
+      "End Module",
+    ].join("\n"),
+  );
+  const [execute, callback] = types[0]?.members ?? [];
+  check(
+    "a Delegate is a member with its return type, CDecl before its list",
+    problems.length === 0 &&
+      execute?.kind === "delegate" &&
+      execute.vis === "public" &&
+      execute.returnType === "Long" &&
+      execute.signature ===
+        "Public Delegate Function Execute CDecl (ByRef args As Long, ByVal app As LongPtr) As Long" &&
+      callback?.kind === "delegate" &&
+      callback.vis === "private" &&
+      callback.returnType === null,
+    show({ problems, members: types[0]?.members }),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "/*Private*/ Module HiddenModule2",
+      '    Public DeclareWide PtrSafe Property Get ScreenGetHeight Lib "<hiddenmodule>" Alias "#87" () As Single',
+      '    Public DeclareWide PtrSafe Property Get ScreenGetFonts Lib "<hiddenmodule>" Alias "#89" (ByVal Index As Integer) As String',
+      '    Public DeclareWide PtrSafe Property Let ScreenSetFont Lib "<hiddenmodule>" Alias "#90" (ByVal Index As Integer, ByVal Value As String)',
+      "End Module",
+    ].join("\n"),
+  );
+  const mod = types[0];
+  check(
+    "a commented-out Private leaves the module public",
+    problems.length === 0 && mod?.name === "HiddenModule2" && mod.vis === "public" && isPublicType(mod, types),
+    show({ problems, mod: mod && { ...mod, members: undefined } }),
+  );
+  check(
+    "a DeclareWide Property is a property with its accessor, return type, Lib and Alias",
+    mod?.members.map((m) => `${m.name}:${m.kind}:${m.accessor}:${m.returnType}`).join() ===
+      "ScreenGetHeight:property:Get:Single,ScreenGetFonts:property:Get:String,ScreenSetFont:property:Let:null" &&
+      mod.members[0].signature ===
+        'Public DeclareWide PtrSafe Property Get ScreenGetHeight Lib "<hiddenmodule>" Alias "#87" () As Single',
+    show(mod?.members),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "Class Base",
+      "    Overridable Sub Foo()",
+      "    End Sub",
+      "    Public Shared Function Bar() As Long",
+      "    End Function",
+      "    Overridable Function Baz(ByVal x As Long) As Long",
+      "    End Function",
+      "    Public Caption As String",
+      "End Class",
+    ].join("\n"),
+  );
+  check(
+    "Overridable and Shared before a Sub or Function are modifiers, and the body closes",
+    problems.length === 0 &&
+      types[0]?.members.map((m) => `${m.name}:${m.kind}:${m.vis}`).join() ===
+        "Foo:sub:public,Bar:function:public,Baz:function:public,Caption:field:public" &&
+      types[0].members[0].signature === "Overridable Sub Foo()",
+    show({ problems, members: types[0]?.members }),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "Module [_HiddenModule]",
+      '    Public DeclareWide PtrSafe Function [Chr$] Lib "<strings>" Alias "#4" (ByVal C As Long) As String',
+      "    Function [Date$]() As String",
+      "    End Function",
+      "    Public Enum [Odd Enum]",
+      "        [A4 Portrait] = 1",
+      "    End Enum",
+      "End Module",
+    ].join("\n"),
+  );
+  const mod = types.find((t) => t.kind === "module");
+  check(
+    "a bracketed name is read without its brackets, and its signature keeps them",
+    problems.length === 0 &&
+      mod?.name === "_HiddenModule" &&
+      mod.members.map((m) => m.name).join() === "Chr$,Date$" &&
+      mod.members[1].signature === "Function [Date$]() As String" &&
+      types.find((t) => t.kind === "enum")?.name === "Odd Enum",
+    show({ problems, mod }),
+  );
+}
+
+// ------------------------------------------------------------ what a declaration says
+
+{
+  const { types, problems } = parseTwin(
+    [
+      '[Description("A ""quoted"" thing" & vbCrLf & _',
+      '             "second line, with [brackets]"), ClassId("0A102E9C-9E68-411A-A4B8-E6128FC07721")]',
+      "[Hidden]",
+      "Public Class Widget",
+      '    [DispId(1), Description("The text"), Foo(1, 2)]',
+      "    Public Property Get Caption() As String Implements IWidget.Caption",
+      "    End Property",
+      "    Public Property Let Caption(ByVal Value As String)",
+      "    End Property",
+      "    Public Property Set Icon(ByVal Value As Picture)",
+      "    End Property",
+      '    [ Description ( ShownIn & "tip" ) ]',
+      "    Public Function Items() As Collection(Of Long)",
+      "    End Function",
+      "    Public Function Same(Of T)(ByVal x As T) As T",
+      "    End Function",
+      "    Public Property Get Count As Long",
+      "    End Property",
+      "    Private Const A As Long = 1, B = 2",
+      "    Public X(0 To 3) As Long, Y As String",
+      '    Declare PtrSafe Function GetDC Lib "user32" Alias "GetDC" (ByVal h As LongPtr) As LongPtr',
+      "    Event Changed(ByVal v As Long)",
+      "End Class",
+    ].join("\n"),
+  );
+  const w = types[0];
+  const m = (n, accessor) =>
+    w?.members.find((x) => x.name === n && (accessor === undefined || x.accessor === accessor));
+  check("the fixture reads cleanly", problems.length === 0, show(problems));
+  check(
+    "a type's attributes keep their names in attributes and their arguments in attrs",
+    show(w?.attributes) === show(["Description", "ClassId", "Hidden"]) &&
+      show(w.attrs.map((a) => a.name)) === show(w.attributes) &&
+      w.attrs[1].args === '"0A102E9C-9E68-411A-A4B8-E6128FC07721"' &&
+      w.attrs[2].args === null,
+    show(w?.attrs),
+  );
+  check(
+    "an attribute's arguments are as written, a comma inside them does not split it",
+    show(m("Caption", "Get")?.attrs) ===
+      show([
+        { name: "DispId", args: "1" },
+        { name: "Description", args: '"The text"' },
+        { name: "Foo", args: "1, 2" },
+      ]),
+    show(m("Caption", "Get")?.attrs),
+  );
+  check(
+    "a description is a literal, or literals joined by & with the line-break constants",
+    w?.description === 'A "quoted" thing\nsecond line, with [brackets]' &&
+      m("Caption", "Get")?.description === "The text",
+    show({ type: w?.description, member: m("Caption", "Get")?.description }),
+  );
+  check(
+    "a description that is not made of literals is null, and its attribute keeps the arguments",
+    m("Items")?.description === null && m("Items")?.attrs[0].args === 'ShownIn & "tip"',
+    show(m("Items")),
+  );
+  check(
+    "a property procedure has its accessor, and a result only for Get",
+    m("Caption", "Get")?.returnType === "String" &&
+      m("Caption", "Let")?.accessor === "Let" &&
+      m("Caption", "Let")?.returnType === null &&
+      m("Icon")?.accessor === "Set" &&
+      m("Icon")?.returnType === null &&
+      m("Count")?.returnType === "Long" &&
+      m("Items")?.accessor === null,
+    show(w?.members.filter((x) => x.kind === "property")),
+  );
+  check(
+    "a return type is the type after the parameter list, generic or not, not the Implements clause",
+    m("Caption", "Get")?.signature === "Public Property Get Caption() As String Implements IWidget.Caption" &&
+      m("Items")?.returnType === "Collection(Of Long)" &&
+      m("Same")?.returnType === "T" &&
+      m("GetDC")?.returnType === "LongPtr",
+    show(w?.members.map((x) => [x.name, x.returnType])),
+  );
+  check(
+    "a signature is the declaration as written, Lib and Alias included, without its attributes",
+    m("GetDC")?.signature ===
+      'Declare PtrSafe Function GetDC Lib "user32" Alias "GetDC" (ByVal h As LongPtr) As LongPtr' &&
+      m("Items")?.signature === "Public Function Items() As Collection(Of Long)" &&
+      w.signature === "Public Class Widget",
+    show(w?.members.map((x) => x.signature)),
+  );
+  check(
+    "each of several names a statement declares has the statement's modifiers and its own piece",
+    m("A")?.signature === "Private Const A As Long = 1" &&
+      m("B")?.signature === "Private Const B = 2" &&
+      m("X")?.signature === "Public X(0 To 3) As Long" &&
+      m("Y")?.signature === "Public Y As String",
+    show(w?.members.filter((x) => ["A", "B", "X", "Y"].includes(x.name)).map((x) => x.signature)),
+  );
+  check(
+    "a member with nothing to report has empty attrs, no description, no result and no accessor",
+    show(m("Changed")) ===
+      show({
+        name: "Changed",
+        kind: "event",
+        vis: "public",
+        hidden: false,
+        line: m("Changed")?.line,
+        signature: "Event Changed(ByVal v As Long)",
+        attrs: [],
+        description: null,
+        returnType: null,
+        accessor: null,
+      }),
+    show(m("Changed")),
+  );
+}
+
+{
+  const { types } = parseTwin(
+    ["Enum Colour", '    [Hidden, Description("Last")]', "    [_MAX] = 7", "    Red = 1", "End Enum"].join("\n"),
+  );
+  const [max, red] = types[0]?.members ?? [];
+  check(
+    "an enumeration value has its signature as written and the attributes before it",
+    max?.name === "_MAX" &&
+      max.signature === "[_MAX] = 7" &&
+      max.hidden === true &&
+      max.description === "Last" &&
+      red?.signature === "Red = 1" &&
+      red.attrs.length === 0,
+    show(types[0]?.members),
+  );
+}
+
+{
+  const lines = logicalLinesRaw('Foo "a, ""b"" [c]" \' note\nBar _\n  "x"  Baz');
+  check(
+    "logicalLinesRaw gives the line as written beside the blanked one, character for character",
+    lines.length === 2 &&
+      lines[0].raw === 'Foo "a, ""b"" [c]" ' &&
+      lines[0].text === `Foo "${" ".repeat(12)}" ` &&
+      lines[0].raw.length === lines[0].text.length &&
+      lines[1].raw === 'Bar    "x"  Baz' &&
+      lines[1].text === 'Bar    " "  Baz' &&
+      lines[1].line === 2,
+    show(lines),
+  );
+}
+
+{
+  const settings = '{\n\t"project.id": "{31FD080F}",\n\t"project.name": "Assert",\n\t"project.versionMajor": 0\n}';
+  const r = parseSources(
+    [
+      { path: "Sources/A.twin", text: "Module A\nEnd Module\n" },
+      { path: "Sources/Sub/C.TWIN", text: "Class C\nEnd Class\n" },
+      { path: "Packages/D.twin", text: "Module D\nEnd Module\n" },
+      { path: "Sources/readme.txt", text: "Module E\nEnd Module\n" },
+    ],
+    settings,
+  );
+  check(
+    "a package in memory gives its project name and the types of its Sources/ .twin files only",
+    r.project === "Assert" &&
+      r.types.map((t) => `${t.file}:${t.name}`).join() === "Sources/A.twin:A,Sources/Sub/C.TWIN:C" &&
+      r.problems.length === 0,
+    show({ project: r.project, types: r.types.map((t) => t.file) }),
+  );
+  check(
+    "a project name is read from broken settings as text, and is null when there is none",
+    projectNameOf('\u{FEFF}{\n\t"project.name": "X",\n') === "X" &&
+      projectNameOf('{"project.id": "{1}"}') === null &&
+      projectNameOf(null) === null &&
+      parseSources([], null).project === null,
+    show(projectNameOf('{"project.id": "{1}"}')),
+  );
 }
 
 // ------------------------------------------------------------ the pages

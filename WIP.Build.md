@@ -709,8 +709,10 @@ out `-text`: a CRLF checkout of the copy would differ from the LF the build writ
 build.
 
 `scripts/check_symbol_index.mjs` is the gate on all three pieces, in `test.bat` and both
-CI workflows: forty-six probes on fixtures, no tree, no install. The scanner's probes are
-the traps the packages' `.twin` sources contain; the derivation's are each a rule the real
+CI workflows: seventy-five probes on fixtures, no tree, no install. The scanner's probes are
+the traps the packages' `.twin` sources contain, the community packages' included, and what
+a declaration's record says (signature, attributes with their arguments, description, return
+type, accessor, the project name); the derivation's are each a rule the real
 site exercises only once or twice (`symbols:`, a section heading named like a member, the
 ellipsis the typographer puts in a Core H1).
 
