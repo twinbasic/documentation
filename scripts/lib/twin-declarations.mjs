@@ -17,9 +17,23 @@
  * One literal rather than a concatenation: scripts/check_regex_safety.mjs
  * reads an imported `const` only when its initialiser is a literal, and three
  * files build their patterns from this one.
+ *
+ * `Abstract` and `Virtual` are not on it. BETA 1005 reads `Public Abstract Sub
+ * Y()` as a Variant variable named Abstract followed by a Sub the parser
+ * refuses (TB5182 at `Sub`), whether or not an `End Sub` follows, and refuses
+ * `Abstract Class` and `Virtual Class` the same way. A scanner that took them
+ * for modifiers would open a body that no source closes.
+ *
+ * Thirteen more words here are refused the same way (TB5182) in BETA 1005 before
+ * a Sub, a Function, a Class and a module-level variable alike: Shared, Partial,
+ * Overrides, Overloads, MustOverride, MustInherit, NotInheritable, Iterator,
+ * Async, Naked, Unsafe, Extern and Inline. They stay on the list until a
+ * source is found that needs them gone: `Overrides` is a clause after a
+ * procedure's result type (`Function F() As T Overrides Base.F`), never a
+ * modifier before it.
  */
 export const MODIFIERS =
-  "Public|Private|Friend|Global|Protected|Static|Shared|Partial|Default|ReadOnly|WriteOnly|WithEvents|NotDispatchable|Overridable|Overrides|Overloads|Virtual|Abstract|MustOverride|MustInherit|NotInheritable|Iterator|Async|PtrSafe|Naked|CDecl|StdCall|Unsafe|Extern|Inline";
+  "Public|Private|Friend|Global|Protected|Static|Shared|Partial|Default|ReadOnly|WriteOnly|WithEvents|NotDispatchable|Overridable|Overrides|Overloads|MustOverride|MustInherit|NotInheritable|Iterator|Async|PtrSafe|Naked|CDecl|StdCall|Unsafe|Extern|Inline";
 
 const BLOCK_COMMENT_RE = /\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\//g;
 
