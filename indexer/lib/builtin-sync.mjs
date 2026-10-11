@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getLatestRelease } from "./github-release.mjs";
 import { readZipDirectory, extractFile } from "./zip-reader.mjs";
-import { parseTwinpack, collectFiles } from "./twinpack-parser.mjs";
+import { readPackageFiles } from "./package-files.mjs";
 
 // The folder of a package, in the release zip and in an install alike:
 // `{GUID}_<Name>`, with a leading dot on the two the IDE hides.
@@ -95,11 +95,7 @@ function extractBuiltinPackages(zipBuffer) {
     const guid = m[1];
     const symbol = m[2];
 
-    const twinprojBuf = extractFile(zipBuffer, entry);
-    const root = parseTwinpack(twinprojBuf);
-    const files = collectFiles(root);
-
-    results.push({ guid, symbol, files });
+    results.push({ guid, symbol, files: readPackageFiles(extractFile(zipBuffer, entry)) });
   }
 
   results.sort((a, b) => a.symbol.localeCompare(b.symbol));
@@ -130,7 +126,7 @@ function readInstalledPackages(root) {
   return listInstalledPackages(root).map(({ guid, symbol, file }) => ({
     guid,
     symbol,
-    files: collectFiles(parseTwinpack(readFileSync(file))),
+    files: readPackageFiles(readFileSync(file)),
   }));
 }
 

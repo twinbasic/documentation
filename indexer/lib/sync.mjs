@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { queryPackages, downloadPackage } from "./twinserv-client.mjs";
-import { parseTwinpack, collectFiles } from "./twinpack-parser.mjs";
+import { readPackageFiles } from "./package-files.mjs";
 
 function latestVersion(pkg) {
   return pkg.versions[pkg.versions.length - 1];
@@ -56,9 +56,7 @@ async function compareWithManifest(manifestPath) {
 }
 
 async function fetchPackage(projectId, version) {
-  const buf = await downloadPackage(projectId, version);
-  const root = parseTwinpack(buf);
-  return collectFiles(root);
+  return readPackageFiles(await downloadPackage(projectId, version));
 }
 
 export { compareWithManifest, fetchPackage, versionString };

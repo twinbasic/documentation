@@ -29,7 +29,10 @@
 // reason names its exit code, has written nothing. readProject(file) reads a
 // project file into its tree and writes nothing; it throws the Refusal the
 // verbs report for a file that is missing, is a folder, or is damaged or is
-// not a project at all.
+// not a project at all. parseProject(bytes) is the same reading for a project
+// held in memory, a package out of a zip for one, and throws a plain Error for
+// bytes that are not a project; CATEGORY names the categories an entry of the
+// tree carries.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -46,7 +49,7 @@ const FLAGS = {
   Virtual: 0x00000004,
 };
 
-const CATEGORY = {
+export const CATEGORY = {
   Default: 0x00,
   References: 0x01, // always virtual; never present in serialized files
   Resources: 0x02,
@@ -194,6 +197,8 @@ function parse(buffer) {
 
   return readEntry();
 }
+
+export { parse as parseProject };
 
 // -------------------------- Serializer (tree -> binary) ----------------------
 
