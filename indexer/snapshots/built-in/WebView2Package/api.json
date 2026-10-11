@@ -1798,7 +1798,7 @@
       "inherits": ["WebView2HeadersCollection"],
       "attrs": [{"name":"COMCreatable","args":"False"}],
       "members": [
-        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Overrides WebView2HeadersCollection.Clone","returnType":"IEnumVARIANT Overrides WebView2HeadersCollection.Clone"},
+        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Overrides WebView2HeadersCollection.Clone","returnType":"IEnumVARIANT"},
         {"name":"Headers","kind":"field","vis":"protected","signature":"Protected Headers As ICoreWebView2HttpRequestHeaders"},
         {"name":"Name","kind":"field","vis":"protected","signature":"Protected Name As String"},
         {"name":"New","kind":"sub","vis":"public","signature":"Sub New(ByVal Headers As ICoreWebView2HttpRequestHeaders, ByVal IterationIdxStart As Long)"},
@@ -1814,7 +1814,7 @@
       "inherits": ["WebView2HeadersCollection"],
       "attrs": [{"name":"COMCreatable","args":"False"}],
       "members": [
-        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Overrides WebView2HeadersCollection.Clone","returnType":"IEnumVARIANT Overrides WebView2HeadersCollection.Clone"},
+        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Overrides WebView2HeadersCollection.Clone","returnType":"IEnumVARIANT"},
         {"name":"Headers","kind":"field","vis":"protected","signature":"Protected Headers As ICoreWebView2HttpRequestHeaders"},
         {"name":"Name","kind":"field","vis":"protected","signature":"Protected Name As String"},
         {"name":"New","kind":"sub","vis":"public","signature":"Sub New(ByVal Headers As ICoreWebView2HttpRequestHeaders, ByVal Name As String, ByVal IterationIdxStart As Long)"},
@@ -1830,7 +1830,7 @@
       "inherits": ["WebView2HeadersCollection"],
       "attrs": [{"name":"COMCreatable","args":"False"}],
       "members": [
-        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Overrides WebView2HeadersCollection.Clone","returnType":"IEnumVARIANT Overrides WebView2HeadersCollection.Clone"},
+        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Overrides WebView2HeadersCollection.Clone","returnType":"IEnumVARIANT"},
         {"name":"Headers","kind":"field","vis":"protected","signature":"Protected Headers As ICoreWebView2HttpResponseHeaders"},
         {"name":"Name","kind":"field","vis":"protected","signature":"Protected Name As String"},
         {"name":"New","kind":"sub","vis":"public","signature":"Sub New(ByVal Headers As ICoreWebView2HttpResponseHeaders, ByVal IterationIdxStart As Long)"},
@@ -1846,7 +1846,7 @@
       "inherits": ["WebView2HeadersCollection"],
       "attrs": [{"name":"COMCreatable","args":"False"}],
       "members": [
-        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Overrides WebView2HeadersCollection.Clone","returnType":"IEnumVARIANT Overrides WebView2HeadersCollection.Clone"},
+        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Overrides WebView2HeadersCollection.Clone","returnType":"IEnumVARIANT"},
         {"name":"Headers","kind":"field","vis":"protected","signature":"Protected Headers As ICoreWebView2HttpResponseHeaders"},
         {"name":"Name","kind":"field","vis":"protected","signature":"Protected Name As String"},
         {"name":"New","kind":"sub","vis":"public","signature":"Sub New(ByVal Headers As ICoreWebView2HttpResponseHeaders, ByVal Name As String, ByVal IterationIdxStart As Long)"},

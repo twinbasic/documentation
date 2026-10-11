@@ -33,6 +33,7 @@ import { deriveSymbolIndex, headingsOf, serializeSymbolIndex } from "../builder/
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { baselineFixture, createProbes } from "./lib/gate-probes.mjs";
 import { apiSnapshot, isPublicType, logicalLinesRaw, parseSources, parseTwin, projectNameOf } from "./lib/twin-api.mjs";
+import { MODIFIERS } from "./lib/twin-declarations.mjs";
 
 exitOnCrash();
 
@@ -783,6 +784,582 @@ const show = (x) => JSON.stringify(x);
       m?.members.find((x) => x.name === "S")?.hidden === true &&
       m.members.find((x) => x.name === "T")?.hidden === false,
     show({ problems, paper, members: m?.members }),
+  );
+}
+
+// ------------------------------------------------------------ the forms an audit found lost
+//
+// An audit of parseTwin over seventy declaration forms found eight that it lost without a word, and
+// four questions that only the compiler could answer. Each probe below is a form, or an answer, from
+// that audit; the compiler's answers are from BETA 1005 (tbrun --tests, compile cases).
+
+{
+  // BETA 1005 compiles `Inherits A, B` and `Implements A, B` with no diagnostic; it refuses `Interface
+  // I Extends A, B` (TB5182 at the comma), so Extends takes one name.
+  const { types, problems } = parseTwin(
+    [
+      "Class Derived",
+      "    Inherits BaseA, [Base B], Pkg.BaseC",
+      "    Implements IA, IB",
+      "    Implements IC",
+      "    Implements stdole.IUnknown ' comment",
+      "    Implements BaseControl Via _BaseControl = New BaseControl(1, 2)",
+      "    Implements WithEvents T Via ClientObject",
+      "End Class",
+    ].join("\n"),
+  );
+  check(
+    "Inherits and Implements record every name they list, qualified, bracketed, past a Via clause",
+    problems.length === 0 &&
+      show(types[0]?.inherits) === show(["BaseA", "[Base B]", "Pkg.BaseC"]) &&
+      show(types[0]?.implements) === show(["IA", "IB", "IC", "stdole.IUnknown", "BaseControl", "T"]),
+    show({ problems, inherits: types[0]?.inherits, implements: types[0]?.implements }),
+  );
+}
+
+{
+  // `Overrides Base.F` and `Implements IFoo.F` compile after a result type (BETA 1005); a leading
+  // `Overrides` does not (TB5182 at `Function`).
+  const { types, problems } = parseTwin(
+    [
+      "Class DerivedF",
+      "    Private Function Clone() As IEnumVARIANT Overrides Base.Clone",
+      "    End Function",
+      "    Private Function Same() As Long Implements IFoo.Same",
+      "    End Function",
+      "    Private Function Clicked() As Long Handles Form.Click",
+      "    End Function",
+      "    Private Function Bare() Overrides Base.Bare",
+      "    End Function",
+      "    Public Property Get P() As String Overrides Base.P",
+      "    End Property",
+      "    Private Function Cont() As Collection(Of Long) _",
+      "        Overrides Base.Cont",
+      "    End Function",
+      "End Class",
+    ].join("\n"),
+  );
+  check(
+    "a result type stops before an Overrides, Implements or Handles clause",
+    problems.length === 0 &&
+      show(types[0]?.members.map((m) => m.returnType)) ===
+        show(["IEnumVARIANT", "Long", "Long", null, "String", "Collection(Of Long)"]) &&
+      types[0].members[0].signature === "Private Function Clone() As IEnumVARIANT Overrides Base.Clone",
+    show({ problems, ret: types[0]?.members.map((m) => [m.name, m.returnType]) }),
+  );
+}
+
+{
+  const parsed = new Map([
+    ["VB", parseTwin("Private Interface IFoo\n    Sub DoIt()\nEnd Interface\n").types],
+    [
+      "Other",
+      parseTwin(
+        [
+          "[COMCreatable]",
+          "CoClass Pub",
+          "    [Default] Interface VB.IFoo",
+          "    [ Source ] Interface [My Events]",
+          "    Interface stdole.IUnknown",
+          "End CoClass",
+          "CoClass Unknown",
+          "    [Default] Interface stdole.IUnknown",
+          "End CoClass",
+        ].join("\n"),
+      ).types,
+    ],
+  ]);
+  const pub = parsed.get("Other").find((t) => t.name === "Pub");
+  const { packages } = apiSnapshot(parsed);
+  const rec = (pkg, n) => packages[pkg]?.find((t) => t.name === n);
+  check(
+    "a CoClass's interface keeps its qualifier, brackets off",
+    show(pub?.interfaces) ===
+      show([
+        { name: "VB.IFoo", isDefault: true, isSource: false },
+        { name: "My Events", isDefault: false, isSource: true },
+        { name: "stdole.IUnknown", isDefault: false, isSource: false },
+      ]),
+    show(pub?.interfaces),
+  );
+  check(
+    "a qualified interface resolves in the package it names, and exposes that interface's members",
+    rec("Other", "Pub")?.default === "VB.IFoo" &&
+      rec("VB", "IFoo")?.public === false &&
+      rec("VB", "IFoo")?.members?.DoIt === "sub" &&
+      rec("Other", "Unknown")?.default === "stdole.IUnknown",
+    show({ pub: rec("Other", "Pub"), foo: rec("VB", "IFoo") }),
+  );
+}
+
+{
+  // `Hidden` and `Restricted` are optional-Bool attributes (Reference/Attributes): off with False.
+  const { types } = parseTwin(
+    [
+      "[Hidden(False)]",
+      "Class A",
+      "    [Hidden(True)]",
+      "    Sub S(): End Sub",
+      "    [Hidden(False)]",
+      "    Sub V(): End Sub",
+      "    [Hidden]",
+      "    Sub W(): End Sub",
+      "    [Hidden(False), Restricted]",
+      "    Sub X(): End Sub",
+      "    [Restricted(false)]",
+      "    Sub Y(): End Sub",
+      "    [Hidden( 0 )]",
+      "    Sub Z(): End Sub",
+      "End Class",
+      "[Hidden(True)]",
+      "Class B",
+      "End Class",
+    ].join("\n"),
+  );
+  const a = types[0];
+  const hid = (n) => a?.members.find((m) => m.name === n)?.hidden;
+  check(
+    "[Hidden(False)] and [Restricted(False)] do not hide; [Hidden], [Hidden(True)] and a bare Restricted do",
+    a?.hidden === false &&
+      types[1]?.hidden === true &&
+      show(["S", "V", "W", "X", "Y", "Z"].map(hid)) === show([true, false, true, true, false, false]),
+    show(a?.members.map((m) => [m.name, m.hidden])),
+  );
+  check(
+    "an attribute switched off is still recorded, with its argument",
+    show(a?.attrs) === show([{ name: "Hidden", args: "False" }]) &&
+      show(a?.members.find((m) => m.name === "V")?.attrs) === show([{ name: "Hidden", args: "False" }]),
+    show(a?.attrs),
+  );
+}
+
+{
+  // A field in a Type is bare, so a modifier's name is a field's (BETA 1005: all compile, and
+  // `t.Default` and the rest are there). `Public a As Long` in a Type is TB5182, so the word is
+  // never a modifier in front of a field; before a Sub, a Declare or a Function it still is.
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      "    Public Type Kw",
+      "        Default As Long",
+      "        Static As Long",
+      "        Shared As Long",
+      "        Global As Long",
+      "        Private As Long",
+      "        WithEvents As Long",
+      "        Dim As Long",
+      "        Partial(3) As Byte",
+      "        Bare",
+      "        Static",
+      "        Private Sub Type_Assignment(ByVal RHS As LongPtr)",
+      "            Me.Last = 0",
+      "        End Sub",
+      "        Last As Long",
+      "    End Type",
+      "    Public Type After",
+      "        Value As Long",
+      "    End Type",
+      "End Module",
+    ].join("\n"),
+  );
+  const kw = types.find((t) => t.name === "Kw");
+  check(
+    "a field named for a modifier is a field in a Type with no modifier before it",
+    problems.length === 0 &&
+      show(kw?.members.map((m) => `${m.name}:${m.kind}:${m.vis}`)) ===
+        show([
+          "Default:field:public",
+          "Static:field:public",
+          "Shared:field:public",
+          "Global:field:public",
+          "Private:field:public",
+          "WithEvents:field:public",
+          "Dim:field:public",
+          "Partial:field:public",
+          "Bare:field:public",
+          "Static:field:public",
+          "Type_Assignment:sub:private",
+          "Last:field:public",
+        ]) &&
+      types.find((t) => t.name === "After")?.members.length === 1,
+    show({ problems, members: kw?.members.map((m) => `${m.name}:${m.kind}`) }),
+  );
+}
+
+{
+  // BETA 1005 compiles `Dim d = 5`, `Public p = 5` and `Public n& = 0` at module and class level (a
+  // Variant, TB0003, unless a suffix gives the type); a Type takes no initialiser (TB5182) but a bare
+  // name (TB0003). GdiPlus's GdipImplementation has `Public gdiPlusRefCount& = 0`.
+  const { types, problems } = parseTwin(
+    [
+      "Module GdipImplementation",
+      "    Public gdiPlusRefCount& = 0",
+      "    Dim p = 5",
+      '    Private q = New Collection, r As Long = Foo(1, ")"), s',
+      "    Public t",
+      "End Module",
+      "Class C",
+      "    Public c1 = 5",
+      "    Private c2 = Array(1, 2)",
+      "End Class",
+    ].join("\n"),
+  );
+  const [mod, cls] = types;
+  check(
+    "a variable with an initialiser and no As is a field, with its visibility",
+    problems.length === 0 &&
+      show(mod?.members.map((m) => `${m.name}:${m.vis}`)) ===
+        show(["gdiPlusRefCount&:public", "p:private", "q:private", "r:private", "s:private", "t:public"]) &&
+      mod.members[0].signature === "Public gdiPlusRefCount& = 0" &&
+      mod.members[3].signature === 'Private r As Long = Foo(1, ")")' &&
+      show(cls?.members.map((m) => `${m.name}:${m.vis}`)) === show(["c1:public", "c2:private"]),
+    show({ problems, mod: mod?.members.map((m) => m.signature), cls: cls?.members }),
+  );
+}
+
+{
+  // A line that starts with `[` in a Type is an attribute list (BETA 1005): `[Class] As Long` is the
+  // attribute Class (TB5182) and a Variant field named `As`, `[Plain](3) As Long` the same, `[Hidden]`
+  // alone is refused for the next field (TB5182) and `t.Hidden` is not there (TB5027), and
+  // `[Description("x")]` alone is accepted for it, also at the end of the Type. So none of them is a field
+  // named for what is in the brackets; the two that begin one are reported, not dropped.
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      "    Public Type T",
+      "        [Class] As Long",
+      "        [Plain](3) As Long",
+      '        [Description("alone")]',
+      "        Third As Long",
+      "        [Hidden] Same As Long",
+      "        After As Long",
+      '        [Description("last")]',
+      "    End Type",
+      "    Public Type U",
+      "        Value As Long",
+      "    End Type",
+      "    Public [Class] As Long",
+      "End Module",
+    ].join("\n"),
+  );
+  const t = types.find((x) => x.name === "T");
+  const u = types.find((x) => x.name === "U");
+  check(
+    "a bracket group at the start of a Type member's line is an attribute list, never the field's name",
+    show(t?.members.map((m) => m.name)) === show(["Third", "Same", "After"]) &&
+      t.members[0].description === "alone" &&
+      t.members[1].hidden === true &&
+      t.members[2].attrs.length === 0 &&
+      u?.members[0].description === null,
+    show(t?.members),
+  );
+  check(
+    "a Type member that is only an attribute list and an As clause is reported, not dropped",
+    problems.length === 2 &&
+      problems[0].line === 3 &&
+      problems[1].line === 4 &&
+      problems.every((p) => /^no field in type T: /.test(p.why)),
+    show(problems),
+  );
+  check(
+    "a bracketed name after a modifier in a Module is still a field",
+    types.find((x) => x.name === "M")?.members.at(-1)?.name === "Class",
+  );
+}
+
+{
+  // BETA 1005 gives a Declare with no modifier the visibility Public in a Module and in a Type: another
+  // module calls it, unqualified or not. A Class takes only a Private Declare (TB5227), so a Declare
+  // there with no modifier, or Public, is an error rather than a Private member.
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      '    Declare PtrSafe Function A Lib "k" () As Long',
+      '    Private Declare PtrSafe Function B Lib "k" () As Long',
+      '    Public DeclareWide PtrSafe Function C Lib "k" () As Long',
+      "    Dim v As Long",
+      "    Const K = 1",
+      "End Module",
+      "Class C2",
+      '    Private Declare PtrSafe Function D Lib "k" () As Long',
+      '    Declare PtrSafe Function E Lib "k" () As Long',
+      "End Class",
+    ].join("\n"),
+  );
+  const vis = (t) => show(t?.members.map((m) => `${m.name}:${m.vis}`));
+  check(
+    "a Declare with no modifier is Public, a variable or a constant with none is Private",
+    problems.length === 0 &&
+      vis(types[0]) === show(["A:public", "B:private", "C:public", "v:private", "K:private"]) &&
+      vis(types[1]) === show(["D:private", "E:public"]),
+    show({ problems, a: vis(types[0]), b: vis(types[1]) }),
+  );
+}
+
+{
+  // BETA 1005 reads `Public Abstract Sub Y()` as a Variant variable named Abstract (TB0003) and a Sub the
+  // parser refuses (TB5182), with or without an `End Sub` after it; `Abstract Class` and `Virtual
+  // Class` are TB5182 at the word. Neither is a modifier, so neither opens a body that swallows the
+  // rest of the class.
+  const { types, problems } = parseTwin(
+    [
+      "Public Class A",
+      "    Public Abstract Sub Y()",
+      "    Public Virtual Sub W()",
+      "    Public Sub Z(): End Sub",
+      "    Public Abstract",
+      "    Public Last As Long",
+      "End Class",
+      "Public Class After",
+      "End Class",
+    ].join("\n"),
+  );
+  check(
+    "Abstract and Virtual are not modifiers: the rest of the class is read, and the lines are reported",
+    show(types.map((t) => t.name)) === show(["A", "After"]) &&
+      show(types[0].members.map((m) => `${m.name}:${m.kind}`)) === show(["Z:sub", "Abstract:field", "Last:field"]) &&
+      show(problems.map((p) => `${p.line}:${p.why.replace(/:.*/, "")}`)) ===
+        show(["2:no field in class A", "3:no field in class A"]),
+    show({ problems, members: types[0]?.members.map((m) => m.name) }),
+  );
+  check("the shared modifier list holds neither", !/(^|\|)(Abstract|Virtual)(\||$)/.test(MODIFIERS), MODIFIERS);
+}
+
+{
+  // BETA 1005 refuses a generic constraint of any form -- `(Of T As IShape)`, `As Class`, `As New`,
+  // `Implements`, `Extends` -- with TB5069 at the word after T, on a Class and a procedure alike.
+  // The scanner reads past one all the same: the name is before the parenthesis, and the result type
+  // is not the constraint's.
+  const { types, problems } = parseTwin(
+    [
+      "Public Class Box(Of T As IShape)",
+      "    Public Function Make(Of U As IShape)(ByVal x As U) As U",
+      "    End Function",
+      "End Class",
+    ].join("\n"),
+  );
+  check(
+    "a header with a generic constraint is read by its name and its result type",
+    problems.length === 0 && types[0]?.name === "Box" && types[0].members[0]?.returnType === "U",
+    show({ problems, types }),
+  );
+}
+
+// ---- #If / #ElseIf / #Else / #End If: the branches are alternatives, not a sequence
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      "#If A Then",
+      "    Sub S()",
+      "#Else",
+      "    Sub S(ByVal x As Long)",
+      "#End If",
+      "        Debug.Print 1",
+      "    End Sub",
+      "    Sub After()",
+      "    End Sub",
+      "End Module",
+    ].join("\n"),
+  );
+  check(
+    "two headers sharing one body are two procedures, and the body closes both",
+    problems.length === 0 &&
+      show(types[0]?.members.map((m) => m.signature)) === show(["Sub S()", "Sub S(ByVal x As Long)", "Sub After()"]),
+    show({ problems, members: types[0]?.members.map((m) => m.signature) }),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      "    Sub S()",
+      "#If A Then",
+      "    End Sub",
+      "#Else",
+      "    End Sub",
+      "#EndIf",
+      "    Sub After()",
+      "    End Sub",
+      "End Module",
+    ].join("\n"),
+  );
+  check(
+    "an End Sub in each branch closes the one body",
+    problems.length === 0 && show(types[0]?.members.map((m) => m.name)) === show(["S", "After"]),
+    show({ problems, members: types[0]?.members.map((m) => m.name) }),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "#If Win64 Then",
+      "Class Foo",
+      "#ElseIf Win32 Then",
+      "Class Bar",
+      "#Else",
+      "Class Baz",
+      "#End If",
+      "    Inherits Base",
+      "    Public x As Long",
+      "    Sub S(): End Sub",
+      "    Sub T()",
+      "    End Sub",
+      "End Class",
+      "Class Next1",
+      "    Public y As Long",
+      "End Class",
+    ].join("\n"),
+  );
+  const members = (n) => show(types.find((t) => t.name === n)?.members.map((m) => m.name));
+  check(
+    "alternative headers of one body are each a type, and the body's members are each one's",
+    problems.length === 0 &&
+      show(types.map((t) => t.name)) === show(["Foo", "Bar", "Baz", "Next1"]) &&
+      types.every((t) => t.container === null) &&
+      ["Foo", "Bar", "Baz"].every((n) => members(n) === show(["x", "S", "T"])) &&
+      ["Foo", "Bar", "Baz"].every((n) => show(types.find((t) => t.name === n)?.inherits) === show(["Base"])) &&
+      members("Next1") === show(["y"]),
+    show({ problems, types: types.map((t) => [t.name, t.members.map((m) => m.name), t.inherits]) }),
+  );
+  check(
+    "a member of an alternative type is a copy, not the same record",
+    types[0].members[0] !== types[1].members[0] && show(types[0].members[0]) === show(types[1].members[0]),
+  );
+}
+
+{
+  // The attributes waiting before an #If belong to the declaration in each branch (WinRT's
+  // `[PreserveSig]` before `#If Win64 Then Function ... #Else Function ...`); those inside the
+  // branches all wait for what follows (tbShellLib's `[InterfaceId]` in each, then `[OleAutomation]`).
+  const { types, problems } = parseTwin(
+    [
+      '[InterfaceId("1")]',
+      "Interface IAcrylicBrush Extends IInspectable",
+      "    Function Before() As Long",
+      "    [PreserveSig]",
+      "#If Win64 Then",
+      "    Function TintColorLet(ByVal Value As Long) As HRESULT",
+      "#Else",
+      "    Function TintColorLet(ByVal A As Byte, ByVal R As Byte) As HRESULT",
+      "#End If",
+      "    Function Next1() As Long",
+      "End Interface",
+      "#If Win64 Then",
+      '[ InterfaceId ("C7EF7658") ]',
+      "#Else",
+      '[ InterfaceId ("BB1A2AE2") ]',
+      "#End If",
+      "[ OleAutomation (False) ]",
+      "Interface IActiveScriptParse Extends IUnknown",
+      "    Sub InitNew()",
+      "End Interface",
+    ].join("\n"),
+  );
+  const attrNames = (m) => show(m.attrs.map((a) => a.name));
+  const iface = types[0];
+  check(
+    "an attribute before an #If applies in every branch, and not past them",
+    problems.length === 0 &&
+      iface.members.map(attrNames).join("|") ===
+        [show([]), show(["PreserveSig"]), show(["PreserveSig"]), show([])].join("|"),
+    show({ problems, attrs: iface.members.map(attrNames) }),
+  );
+  check(
+    "attributes inside the branches of an #If all wait for the declaration after it",
+    show(types[1].attrs.map((a) => `${a.name}(${a.args})`)) ===
+      show(['InterfaceId("C7EF7658")', 'InterfaceId("BB1A2AE2")', "OleAutomation(False)"]),
+    show(types[1].attrs),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      "#If VBA7 Then",
+      '    Declare PtrSafe Function F Lib "k" () As Long',
+      "#ElseIf Other Then",
+      '    Declare Function F Lib "k" () As Long',
+      "#End If",
+      "    Public Enum E",
+      "#If A Then",
+      "        X = 1",
+      "#Else",
+      "        X = 2",
+      "#End If",
+      "        Y",
+      "    End Enum",
+      "    Sub S()",
+      "    #If A Then",
+      "        Debug.Print 1",
+      "    #If B Then",
+      "        Debug.Print 2",
+      "    #End If",
+      "    #Else",
+      "        Debug.Print 3",
+      "    #End If",
+      "    End Sub",
+      "    Sub After(): End Sub",
+      "End Module",
+    ].join("\n"),
+  );
+  check(
+    "every branch's declarations are read; nested #Ifs in a body change nothing",
+    problems.length === 0 &&
+      show(types[0]?.members.map((m) => m.name)) === show(["F", "F", "S", "After"]) &&
+      show(types[1]?.members.map((m) => m.name)) === show(["X", "X", "Y"]),
+    show({ problems, members: types.map((t) => t.members.map((m) => m.name)) }),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      "#If A Then",
+      "    Sub S()",
+      "#Else",
+      "    Sub T(): End Sub",
+      "#End If",
+      "    End Sub",
+      "    Sub After(): End Sub",
+      "End Module",
+    ].join("\n"),
+  );
+  check(
+    "branches that leave different blocks open are reported at the #End If, and the first branch's end is taken",
+    problems.length === 1 &&
+      problems[0].line === 6 &&
+      /branches of the #If on line 2 leave different blocks open/.test(problems[0].why) &&
+      show(types[0]?.members.map((m) => m.name)) === show(["S", "T", "After"]),
+    show({ problems, members: types[0]?.members.map((m) => m.name) }),
+  );
+}
+
+{
+  const { problems } = parseTwin(["Module M", "#Else", "#End If", "#If A Then", "End Module"].join("\n"));
+  check(
+    "an #Else or #End If with no #If, and an #If never closed, are reported",
+    show(problems.map((p) => `${p.line}:${p.why}`)) ===
+      show(["2:#Else with no #If open", "3:#End If with no #If open", "4:this #If is never closed"]),
+    show(problems),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    ["Module M", "#If A Then", "    Sub S()", "#End If", "    End Sub", "    Sub After(): End Sub", "End Module"].join(
+      "\n",
+    ),
+  );
+  check(
+    "an #If with no #Else compares its branches with each other, not with the case where none is taken",
+    problems.length === 0 && show(types[0]?.members.map((m) => m.name)) === show(["S", "After"]),
+    show({ problems, members: types[0]?.members.map((m) => m.name) }),
   );
 }
 

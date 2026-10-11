@@ -238,10 +238,14 @@ accessor?, hidden?, attrs?, description? }`: `kind` is `sub`, `function`,
 `property`, `event`, `delegate`, `const` or `field`; `declare` is true for a
 `Declare` statement, which is a `sub`, `function` or `property` as well;
 `returnType` is the type after the parameter list of a Function, a Property Get
-or a Delegate Function; `accessor` is `Get`, `Let` or `Set`. A member with no
-modifier is Public if it is a procedure, event or delegate in a Module or Class,
-Private if it is a variable, constant or Declare, and everything in an
-Interface, CoClass, Enum, Type or Union is Public. A name declared in brackets
+or a Delegate Function, without the `Implements`, `Overrides` or `Handles`
+clause that may follow it; `accessor` is `Get`, `Let` or `Set`. A member with no
+modifier is Public if it is a procedure, event, delegate or Declare in a Module
+or Class, Private if it is a variable or constant, and everything in an
+Interface, CoClass, Enum, Type or Union is Public (a Declare with no modifier is
+Public in BETA 1005: another module calls it; a Class accepts only a Private
+Declare, TB5227). `hidden` is false for `[Hidden(False)]`, which hides nothing.
+A name declared in brackets
 keeps every character, as VBA's `Function [Chr$]` does; a type-declaration
 character on a name written without brackets is not part of it, so
 `Public Function Command$()` is `Command`.
@@ -278,6 +282,21 @@ VB6-derived packages, xCalendar's `[Flat]`, and the `[A4 Portrait]` of VB's
 `ReportSizeConstants`. The compiler reads every such line this way, whatever the
 brackets hold, so `[Hidden]` or `[Description("x")]` alone on a line is a value
 too, and an Enum value cannot carry an attribute.
+
+*Conditional compilation.* The branches of an `#If` are read as alternatives:
+each starts from the block structure the `#If` found, so that
+`#If VBA7 Then Public Sub S(…) As LongPtr #Else Public Sub S(…) As Long #End If`
+followed by one body is two procedures of that name, an `End Sub` in each
+branch closes the one body, and two alternative `Class` headers are two
+classes that each get the members after them. An attribute before the `#If`
+applies in every branch. Branches that leave different blocks open are
+listed in `problems`, as are an `#Else` or `#End If` with no `#If` and an `#If`
+that is never closed. Nothing is evaluated: every branch is indexed.
+
+*Type bodies.* A field in a Type is a bare name, so `Default As Long` and
+`Static As Long` are fields, and a line that starts with `[` is an attribute list
+(BETA 1005 reads `[Class] As Long` as an attribute and a field called `As`, and
+refuses it): it is listed in `problems` as a line with no field.
 
 ## Documented packages
 

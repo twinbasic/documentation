@@ -10,10 +10,10 @@
 // -- and, as a side effect, which public symbols have no page at all.
 //
 // **This is a declaration scanner, not a compiler.** It reads each logical line
-// once, keeps no expression, and follows no #If: every branch of a conditional
-// is read, which is right for this corpus -- the branches it has guard features,
-// not alternatives -- and what it cannot place goes to `problems` rather than
-// being guessed at. Eleven ways to misread this corpus, the first seven met in the
+// once, keeps no expression, and evaluates no #If: every branch of a conditional
+// is read, each as an alternative that starts from the block structure the #If
+// found (`branch`, below), and what it cannot place goes to `problems` rather than
+// being guessed at. Fifteen ways to misread this corpus, the first seven met in the
 // BETA 983 packages (scripts/census_attributes.mjs lists six more, about
 // attributes):
 //
@@ -57,6 +57,23 @@
 //      an attribute in front of a value on the same line (`[Hidden] Red = 5`)
 //      is refused, TB5182. So an Enum value cannot carry an attribute. The
 //      scanner reads the same-line form as an attribute list all the same.
+//  12. The branches of an #If are alternatives. Two procedure headers that
+//      share one body (`#If VBA7 Then Public Property Get hWnd() As LongPtr
+//      #Else Public Property Get hWnd() As Long #End If`, then one body) are two
+//      procedures, not a procedure and part of its body: read in sequence the
+//      second was lost, 425 members of the 54 indexed packages, and an `End Sub` in
+//      each branch was "End Sub with no procedure open". An attribute before the
+//      #If belongs to the declaration in every branch.
+//  13. A Type's fields are bare, so a modifier's name is a field's: `Default As
+//      Long`, `Static As Long`. A line that starts with `[` in a Type is an
+//      attribute list, whatever follows it; `[Class] As Long` is not a field.
+//      BETA 1005 also compiles a variable with an initialiser and no `As`
+//      (`Public n& = 0`, `Dim p = 5`) in a Module and a Class.
+//  14. `Inherits A, B` and `Implements A, B` list several types, `Implements`
+//      may name `WithEvents T`, a CoClass's `Interface` line may be qualified
+//      (`stdole.IUnknown`), and `[Hidden(False)]` hides nothing.
+//  15. `Function F() As T Overrides Base.F` has a result type of T; the clause
+//      after it (`Implements`, `Overrides` or `Handles`) is not part of it.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -202,7 +219,14 @@ function statementEnd(text) {
 // but an `= value`, is a member's name, whatever it holds: `[_]`, `[Flat]`,
 // `[Hidden]`, `[A4 Portrait] = 1`, even `[Description("x")]`. A group with a
 // declaration after it is an attribute list as anywhere else.
-function splitAttributes(text, raw, inEnum = false) {
+//
+// In a Type or Union body (`inType`) a group is always an attribute list: BETA
+// 1005 reads `[Class] As Long` as the attribute `Class` and a field called `As`,
+// `[Plain](3) As Long` the same, and a group on a line of its own as the
+// attributes of the next field (or of nothing, when `End Type` follows). It is
+// never a field's name: a field named for a keyword is written bare, as
+// `Default As Long` and `Static As Long` are.
+function splitAttributes(text, raw, inEnum = false, inType = false) {
   const attrs = [];
   let i = 0;
   for (;;) {
@@ -217,7 +241,9 @@ function splitAttributes(text, raw, inEnum = false) {
     if (j >= text.length) return { attrs, rest: text.slice(i), restRaw: raw.slice(i), open: true };
     const inner = text.slice(i + 1, j);
     const after = text.slice(j + 1).trimStart();
-    if (inEnum ? after === "" || after[0] === "=" : !attrs.length && /^[.=(]/.test(after) && !/[(,]/.test(inner)) break;
+    if (inEnum) {
+      if (after === "" || after[0] === "=") break;
+    } else if (!inType && !attrs.length && /^[.=(]/.test(after) && !/[(,]/.test(inner)) break;
     attrs.push(...attributeItems(inner, raw.slice(i + 1, j)));
     i = j + 1;
   }
@@ -262,6 +288,10 @@ function attributeItem(text, raw) {
   const end = depth === 0 ? to - 1 : to;
   return { name, args: collapse(text.slice(from, end), raw.slice(from, end)) };
 }
+
+// Whether an optional-Bool attribute (`[Hidden]`, `[Restricted(False)]`, ...) is
+// switched on: bare, or with an argument that is not the literal False (or 0).
+const attributeOn = (a) => a.args == null || !/^(?:False|0)$/i.test(a.args.trim());
 
 // The text a [Description(...)] attribute gives, or null when there is none or
 // it is not made of string literals: the literal, the ones joined by `&`, and
@@ -330,11 +360,24 @@ const DELEGATE = new RegExp(String.raw`^Delegate\s+(Sub|Function)\s+(${NAME})`, 
 const CONST = /^Const\s+(?!As\b)(.*)$/i;
 const ALIAS = new RegExp(String.raw`^Alias\s+(${NAME})\s+As\s+(\S.*)$`, "i");
 const LEADING_NAME = new RegExp(String.raw`^\s*(${NAME})`);
-const FIELD = new RegExp(String.raw`^\s*(${NAME})\s*(\(|As\b|$)`, "i");
+// A name that may be qualified by a package or a type, `stdole.IUnknown`, with
+// no type-declaration character: what `Inherits`, `Implements` and a CoClass's
+// `Interface` lines name.
+const QNAME = String.raw`(?:\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_]*)(?:\.(?:\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_]*))*`;
+const LISTED_NAME = new RegExp(String.raw`^\s*(?:WithEvents\s+)?(${QNAME})`, "i");
+const COCLASS_INTERFACE = new RegExp(String.raw`^Interface\s+(${QNAME})`, "i");
+// A field is a name, then a dimension list, `As`, an initialiser (`Public n& = 0`,
+// `Dim p = 5`: legal in a Module and a Class, a Variant with the warning TB0003
+// unless a suffix gives the type; a Type takes no initialiser), or nothing
+// (`Public r`, a Variant).
+const FIELD = new RegExp(String.raw`^\s*(${NAME})\s*(\(|As\b|=|$)`, "i");
 const ENUM_VALUE = new RegExp(String.raw`^(${NAME})\s*(=|$)`);
 // A procedure whose body and `End` are on its own line: `Function F() As Long:
 // Return 1: End Function`. It opens nothing.
 const ONE_LINE_PROC = /:\s*End\s+(?:Sub|Function|Property)\s*$/i;
+// A line of conditional compilation that bears on block structure; #Const,
+// #Region and the rest are skipped.
+const CONDITIONAL = /^\s*#\s*(ElseIf|Else|End\s*If|If)\b/i;
 
 // Types whose procedures have bodies, and so an `End Sub` to wait for.
 const WITH_BODIES = new Set(["module", "class", "type", "union"]);
@@ -356,7 +399,12 @@ function kindOf(keyword) {
  *   members, inherits, implements, interfaces, extends, signature, attrs,
  *   description}`; `kind` is module, class, interface, coclass, enum, type or
  *   union, `container` the name of the type it is declared in or null,
- *   `interfaces` a CoClass's `{name, isDefault, isSource}`. Each member is
+ *   `interfaces` a CoClass's `{name, isDefault, isSource}`, the name qualified
+ *   as written (`stdole.IUnknown`), `inherits` and `implements` the names an
+ *   `Inherits` or `Implements` statement lists, one statement perhaps several,
+ *   and `hidden` true for a `[Hidden]` or `[Restricted]` not switched off with
+ *   `(False)`. Each alternative header of an #If is a type of its own, and gets
+ *   a copy of every member that follows. Each member is
  *   `{name, kind, vis, hidden, line, signature, attrs, description, returnType,
  *   accessor}` with `kind` sub, function, property, event, delegate, const,
  *   field or enumvalue. An alias is `{kind: "alias", name, target, vis, hidden,
@@ -385,26 +433,90 @@ export function parseTwin(src, file = "") {
   const types = [];
   const aliases = [];
   const problems = [];
-  const stack = []; // open types, and {proc: true} for a body
+  // Open types, and {proc: true} for a body. A type that is one of several
+  // alternatives of an #If (see `branch`) is {type, alts}: what follows is
+  // declared in each.
+  const stack = [];
   let pending = []; // attributes, as {name, args}, waiting for their declaration
+  const frames = []; // open #If blocks: where each began, and where each branch ended
 
-  const openType = () => {
-    for (let k = stack.length - 1; k >= 0; k--) if (stack[k].type) return stack[k].type;
+  const openEntry = () => {
+    for (let k = stack.length - 1; k >= 0; k--) if (stack[k].type) return stack[k];
     return null;
   };
   const inBody = () => stack.some((s) => s.proc);
 
+  // The same block structure: as deep, a procedure body where the other has one,
+  // a type of the same kind where the other has one.
+  const sameShape = (a, b) =>
+    a.length === b.length && a.every((e, i) => (e.proc ? !!b[i].proc : !b[i].proc && e.type.kind === b[i].type.kind));
+
+  // An #If, #ElseIf, #Else or #End If. Every branch is read, each from where the
+  // #If found the block structure, so that two headers sharing a body, or an `End
+  // Sub` in each branch, are what they are in the branch that is compiled. When
+  // the branches end alike, what follows belongs to every alternative they left
+  // open; when they end differently, the first branch's end is taken and the
+  // difference reported.
+  const branch = (word, line) => {
+    const w = word.toLowerCase().replace(/\s+/g, "");
+    if (w === "if") {
+      frames.push({ base: stack.slice(), pending: pending.slice(), ends: [], attrs: [], line });
+      return;
+    }
+    const f = frames[frames.length - 1];
+    if (!f) {
+      problems.push({ file, line, why: `#${word} with no #If open` });
+      return;
+    }
+    f.ends.push(stack.slice());
+    f.attrs.push(pending);
+    if (w !== "endif") {
+      stack.splice(0, stack.length, ...f.base);
+      pending = f.pending.slice();
+      return;
+    }
+    frames.pop();
+    // The attributes still waiting are those that any branch left waiting: an
+    // `[InterfaceId(A)]` in one branch and an `[InterfaceId(B)]` in the other both
+    // go to the declaration that follows.
+    pending = [...new Set(f.attrs.flat())];
+    const [first, ...others] = f.ends;
+    if (!others.every((e) => sameShape(e, first))) {
+      problems.push({ file, line, why: `the branches of the #If on line ${f.line} leave different blocks open` });
+      stack.splice(0, stack.length, ...first);
+      return;
+    }
+    stack.splice(
+      0,
+      stack.length,
+      ...first.map((entry, k) => {
+        if (entry.proc) return entry;
+        const alts = [];
+        for (const e of f.ends)
+          for (const t of [e[k].type, ...(e[k].alts ?? [])]) if (t !== entry.type && !alts.includes(t)) alts.push(t);
+        return alts.length ? { type: entry.type, alts } : entry;
+      }),
+    );
+  };
+
   for (let li = 0; li < lines.length; li++) {
     let { text, raw } = lines[li];
     const { line } = lines[li];
-    if (!text.trim() || /^\s*#/.test(text)) continue; // #If, #Region, #Const
+    const conditional = CONDITIONAL.exec(text);
+    if (conditional) {
+      branch(conditional[1], line);
+      continue;
+    }
+    if (!text.trim() || /^\s*#/.test(text)) continue; // #Region, #Const
 
-    const inEnum = stack[stack.length - 1]?.type?.kind === "enum";
-    let split = splitAttributes(text, raw, inEnum);
+    const openKind = stack[stack.length - 1]?.type?.kind;
+    const inEnum = openKind === "enum";
+    const inType = openKind === "type" || openKind === "union";
+    let split = splitAttributes(text, raw, inEnum, inType);
     while (split.open && li + 1 < lines.length) {
       text += " " + lines[++li].text;
       raw += " " + lines[li].raw;
-      split = splitAttributes(text, raw, inEnum);
+      split = splitAttributes(text, raw, inEnum, inType);
     }
     pending.push(...split.attrs);
     const rest = split.rest.trim();
@@ -433,14 +545,19 @@ export function parseTwin(src, file = "") {
     // A modifier word followed by `As` or `(` is the declaration's name, not a
     // modifier: `Public Default As Boolean` on CommandButton, and `Public
     // Public As Boolean` on UserControl. In an Enum, where a value has no
-    // modifiers, so is the first word of `Static = 0`, `ReadOnly = 1` or `Shared`.
-    const parent = openType();
+    // modifiers, so is the first word of `Static = 0`, `ReadOnly = 1` or `Shared`;
+    // and so it is in a Type or Union, where a field is bare: `Default As Long`,
+    // `Static As Long`, `Shared As Long` and `Global As Long` are fields (tbShellLib's
+    // slD3D has one of them).
+    const entry = openEntry();
+    const parent = entry?.type ?? null;
+    const bareNames = parent?.kind === "enum" || parent?.kind === "type" || parent?.kind === "union";
     let decl = rest;
     let at = 0; // where decl starts in rest
     const modifiers = [];
     for (let m; (m = MODIFIER_RE.exec(decl)); ) {
       const after = decl.slice(m[0].length);
-      if ((modifiers.length || parent?.kind === "enum") && /^(As\b|\(|=|$)/i.test(after)) break;
+      if ((modifiers.length || bareNames) && /^(As\b|\(|=|$)/i.test(after)) break;
       modifiers.push(m[1].toLowerCase());
       at += m[0].length;
       decl = after;
@@ -455,7 +572,7 @@ export function parseTwin(src, file = "") {
           : modifiers.includes("public") || modifiers.includes("global")
             ? "public"
             : null;
-    const hidden = attributes.some((a) => /^(Hidden|Restricted)$/i.test(a));
+    const hidden = attrs.some((a) => /^(Hidden|Restricted)$/i.test(a.name) && attributeOn(a));
 
     // The declaration up to a colon, on one line, its strings as written.
     const sig = () => {
@@ -488,11 +605,14 @@ export function parseTwin(src, file = "") {
       const kind = open[1].toLowerCase();
       const name = unbracket(open[2]);
       if (kind === "interface" && parent?.kind === "coclass") {
-        parent.interfaces.push({
-          name,
+        // The name keeps its qualifier: `[Default] Interface stdole.IUnknown`.
+        const named = COCLASS_INTERFACE.exec(decl)?.[1] ?? open[2];
+        const item = {
+          name: named.replace(/\[([^\]]*)\]/g, "$1"),
           isDefault: attributes.some((a) => /^Default$/i.test(a)),
           isSource: attributes.some((a) => /^Source$/i.test(a)),
-        });
+        };
+        for (const t of [parent, ...(entry.alts ?? [])]) t.interfaces.push({ ...item });
         continue;
       }
       const type = {
@@ -549,12 +669,16 @@ export function parseTwin(src, file = "") {
     }
 
     let m;
-    if ((m = /^Inherits\s+(?!As\b)([\w.[\]]+)/i.exec(decl))) {
-      parent.inherits.push(m[1]);
-      continue;
-    }
-    if ((m = /^Implements\s+(?!As\b)([\w.[\]]+)/i.exec(decl))) {
-      parent.implements.push(m[1]);
+    // `Inherits A, B` and `Implements A, B` name every type they list. An
+    // `Implements` item may be `WithEvents T` or end in `Via member = New T(...)`,
+    // and neither is part of the name.
+    if ((m = /^(Inherits|Implements)\s+(?!As\b)/i.exec(decl))) {
+      const list = decl.slice(m[0].length);
+      const names = topLevelPieces(list.slice(0, statementEnd(list)))
+        .map(([a, b]) => LISTED_NAME.exec(list.slice(a, b))?.[1])
+        .filter(Boolean);
+      const key = m[1].toLowerCase() === "inherits" ? "inherits" : "implements";
+      for (const t of [parent, ...(entry.alts ?? [])]) t[key].push(...names);
       continue;
     }
 
@@ -566,6 +690,9 @@ export function parseTwin(src, file = "") {
       continue;
     }
     if ((m = DECLARE.exec(decl))) {
+      // Public with no modifier, in a Module and in a Type: another module calls
+      // it. A Class takes only a Private Declare (TB5227), so what it has with no
+      // modifier is an error, never a Private member.
       add(
         parent,
         m[2],
@@ -573,7 +700,7 @@ export function parseTwin(src, file = "") {
         vis,
         hidden,
         line,
-        "private",
+        "public",
         info(sig(), shapeOf(m[1], decl, declRaw, m[0].length)),
       );
       continue;
@@ -619,16 +746,25 @@ export function parseTwin(src, file = "") {
       continue;
     }
     if (modifiers.length || parent.kind === "type" || parent.kind === "union") {
+      let found = 0;
       for (const range of topLevelPieces(decl)) {
         const n = FIELD.exec(decl.slice(range[0], range[1]));
-        if (n) add(parent, n[1], "field", vis, hidden, line, "private", info(pieceSig(at, range)));
+        if (n) {
+          add(parent, n[1], "field", vis, hidden, line, "private", info(pieceSig(at, range)));
+          found++;
+        }
       }
+      // `[Class] As Long` in a Type: the compiler reads the bracket as an attribute
+      // and `As` as a field name, and refuses it (TB5182). Not a field, and not
+      // something to lose without a word.
+      if (!found) problems.push({ file, line, why: `no field in ${parent.kind} ${parent.name}: ${rest.slice(0, 80)}` });
       continue;
     }
     if (/^(Option|Attribute|Events|Def[A-Za-z]+\s)/i.test(decl)) continue;
     problems.push({ file, line, why: `not understood in ${parent.kind} ${parent.name}: ${rest.slice(0, 80)}` });
   }
 
+  for (const f of frames) problems.push({ file, line: f.line, why: "this #If is never closed" });
   for (const s of stack) {
     problems.push({
       file,
@@ -639,11 +775,14 @@ export function parseTwin(src, file = "") {
   return { types, aliases, problems };
 
   // `fallback` is the visibility a member has with no modifier in a Module or
-  // Class: Public for a procedure, Private for a variable, constant or Declare.
-  // Everything in an Interface, CoClass, Enum, Type or Union is public.
+  // Class: Public for a procedure or a Declare, Private for a variable or a
+  // constant. Everything in an Interface, CoClass, Enum, Type or Union is
+  // public. A member of an alternative type (see `branch`) is added to each.
   function add(type, rawName, kind, vis, hidden, line, fallback, extra) {
     const implicit = ["interface", "coclass", "enum", "type", "union"].includes(type.kind) ? "public" : fallback;
-    type.members.push({ name: unbracket(rawName), kind, vis: vis ?? implicit, hidden, line, ...extra });
+    const member = { name: unbracket(rawName), kind, vis: vis ?? implicit, hidden, line, ...extra };
+    type.members.push(member);
+    for (const alt of stack.findLast((s) => s.type === type)?.alts ?? []) alt.members.push({ ...member });
   }
 }
 
@@ -708,8 +847,10 @@ function returnTypeOf(text, raw) {
   const start = from + as.index + as[0].length;
   const type = text.slice(start);
   let end = statementEnd(type);
-  const implementsAt = /\sImplements\b/i.exec(type.slice(0, end));
-  if (implementsAt) end = implementsAt.index;
+  // The binding clauses that may follow the type are not part of it: `Implements
+  // IFoo.F`, `Overrides Base.F` and `Handles Form.Load`.
+  const clauseAt = /\s(?:Implements|Overrides|Handles)\b/i.exec(type.slice(0, end));
+  if (clauseAt) end = clauseAt.index;
   return collapse(type.slice(0, end), raw.slice(start, start + end)) || null;
 }
 
