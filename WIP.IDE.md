@@ -77,8 +77,9 @@ These apply across `docs/IDE/` and also go into `WIP.Authoring.md` and
 - **UI names** in bold, as the IDE spells them: **Project Explorer**, **Break On All Errors**.
 - **Menu paths** in bold with an arrow: **File → Export Project**.
 - **Keys**: `<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>`, with key names in mixed case and no
-  spaces around the `+`. Arrow keys are written `<kbd>↑</kbd>`, the others by name
-  (`<kbd>Enter</kbd>`, `<kbd>F5</kbd>`, `<kbd>Break</kbd>`). The 59 existing `<kbd>CTRL</kbd>`
+  spaces around the `+`. Every key is written by name: `<kbd>Enter</kbd>`, `<kbd>F5</kbd>`,
+  `<kbd>Break</kbd>`, and arrows as `<kbd>Up</kbd>`, `<kbd>Down</kbd>`, `<kbd>Left</kbd>` and
+  `<kbd>Right</kbd>`. Glyphs are avoided, because the font subsets need not hold them. The 59 existing `<kbd>CTRL</kbd>`
   are converted in one mechanical pass.
 - **Headings** in sentence case, with no icon and no shortcut inside them.
 - **The section names no build**, except in a defect callout (owner's standing rule). Lines such
@@ -138,8 +139,16 @@ These apply across `docs/IDE/` and also go into `WIP.Authoring.md` and
 9. Reference
 10. The tour
 
-The restructure, meaning the moves, redirects, links, nav and book parts, comes first, as its own
-commit, before any chapter is written.
+The restructure comes first, in its own commit, before any chapter is written. It moves only
+the pages whose place in the new structure is settled:
+
+- Project Settings;
+- the menus, the Toolbar and the Status Bar, into Part B.
+
+It also sets up the nav and the book parts.
+
+A page that a chapter will absorb keeps its old URL until that chapter is written. The chapter
+then takes the old URL into its `redirect_from:`. That way nothing moves twice.
 
 ## What the IDE has that no page covers yet
 
