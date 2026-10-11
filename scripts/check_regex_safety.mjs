@@ -304,7 +304,8 @@ async function extractRegexes() {
   for (const rel of files) {
     const src = await readFile(path.join(REPO_ROOT, rel), "utf8");
     try {
-      // allowReturnOutsideFunction: wisdom/extract/workflow.mjs has a
+      // allowReturnOutsideFunction: the Workflow scripts,
+      // wisdom/extract/workflow.mjs and indexer/draft/workflow.mjs, have a
       // top-level return. A file skipped because it would not parse is
       // a file whose regexes are never checked, which is the exact
       // failure mode this gate exists to prevent -- so collect it and

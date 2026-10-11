@@ -25,11 +25,12 @@
       "!book/lib/paged.browser.js",
       "!book/lib/outline.mjs",
       "!book/lib/postprocesser.mjs",
-      // A Workflow script, not a module: the agent Workflow engine runs it as
+      // Workflow scripts, not modules: the agent Workflow engine runs each as
       // a function body, so it ends in a top-level `return`, which no module
-      // parser accepts. check_regex_safety.mjs still reads its regexes, through
-      // acorn's allowReturnOutsideFunction.
+      // parser accepts. check_regex_safety.mjs still reads their regexes,
+      // through acorn's allowReturnOutsideFunction.
       "!wisdom/extract/workflow.mjs",
+      "!indexer/draft/workflow.mjs",
       // Trees the gates read as data.
       "!test/fixtures"
     ]

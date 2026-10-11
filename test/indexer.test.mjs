@@ -33,7 +33,16 @@ import {
   frontmatterValue,
   packageNames,
   readSection,
+  sectionPages,
 } from "../indexer/lib/doc-pages.mjs";
+import {
+  batchTasks,
+  followsFolders,
+  newLandingFor,
+  PAGES_PER_BATCH,
+  permalinkByFolder,
+  planPackage,
+} from "../indexer/lib/draft-plan.mjs";
 import { FINGERPRINTED, fingerprintOf, indexerFingerprint } from "../indexer/lib/fingerprint.mjs";
 import { derivePackageApi } from "../indexer/lib/package-api.mjs";
 import { readPackageFiles } from "../indexer/lib/package-files.mjs";
@@ -1581,5 +1590,261 @@ describe("documentedPackages", () => {
 
   test("a reference with none of the group folders documents nothing", async () => {
     assert.equal((await documentedPackages(path.join(tmp, "no-such-reference"))).size, 0);
+  });
+});
+
+describe("sectionPages", () => {
+  test("reads each page's title, parent and permalink, quoted or not, in path order", async () => {
+    const dir = mkdtempSync(path.join(tmp, "section-"));
+    mkdirSync(path.join(dir, "Widget"));
+    writeFileSync(path.join(dir, "index.md"), page('title: "Toy Package"\npermalink: /tB/Toy/'));
+    writeFileSync(path.join(dir, "Widget", "index.md"), page("title: Widget\nparent: 'Toy Package'"));
+    writeFileSync(path.join(dir, "notes.txt"), "not a page");
+    writeFileSync(path.join(dir, "Draft.md"), "no frontmatter");
+    assert.deepEqual(await sectionPages(dir), [
+      { rel: "Widget/index.md", title: "Widget", parent: "Toy Package", permalink: null },
+      { rel: "index.md", title: "Toy Package", parent: null, permalink: "/tB/Toy/" },
+    ]);
+    assert.deepEqual(await sectionPages(path.join(dir, "missing")), []);
+  });
+});
+
+describe("planning the pages of a report", () => {
+  const member = (name, kind) => ({ name, kind, vis: "public", signature: `Public ${kind} ${name}()` });
+  const api = {
+    types: [
+      {
+        name: "Widget",
+        kind: "class",
+        file: "Widget.twin",
+        members: [member("Size", "property"), member("Grow", "sub")],
+      },
+      { name: "Helpers", kind: "module", file: "Helpers.twin", members: [member("Twice", "function")] },
+      { name: "Gadget", kind: "class", file: "Gadget.twin", members: [member("Spin", "sub")] },
+      { name: "Shade", kind: "enum", file: "Enums.twin" },
+      { name: "Hue", kind: "enum", file: "Enums.twin" },
+    ],
+  };
+  const toy = (rel, title, parent, link) => ({ rel, title, parent, permalink: `/tB/Packages/Toy/${link}` });
+  const pages = [
+    toy("Enumerations/Shade.md", "Shade", "Enumerations", "Enumerations/Shade"),
+    toy("Enumerations/index.md", "Enumerations", "Toy Package", "Enumerations/"),
+    toy("Helpers.md", "Helpers", "Toy Package", "Helpers"),
+    toy("Widget/Size.md", "Size", "Widget", "Widget/Size"),
+    toy("Widget/index.md", "Widget", "Toy Package", "Widget/"),
+    toy("index.md", "Toy Package", "Built-In Packages", ""),
+  ];
+  const task = (action, symbol, kind, module, extra = {}) => ({
+    action,
+    symbol,
+    kind,
+    module,
+    file: "X.twin",
+    ...extra,
+  });
+  const report = {
+    package: "Toy",
+    group: "built-in",
+    mode: "update",
+    to: "beta-x-1005",
+    tasks: [
+      task("create", "Grow", "Sub", "Widget"),
+      task("create", "Twice", "Function", "Helpers"),
+      task("create", "Hue", "Enum", "Hue"),
+      task("create", "Spin", "Sub", "Gadget"),
+      task("create", "Gadget", "Class", "Gadget"),
+      task("create", "Lost", "Sub", "Missing"),
+      task("update", "Size", "Property", "Widget", { reason: "signature_changed", changes: ["signature"] }),
+      task("flag_removal", "Shrink", "Sub", "Widget"),
+    ],
+  };
+  const plan = planPackage({ report, api, pages, sectionDir: "docs/Toy", sourceDir: "store/Toy/sources" });
+  const of = (symbol) => plan.tasks.find((t) => t.symbol === symbol);
+
+  test("a member of a type with a folder gets a page in it, beside a model page, and a permalink by folder", () => {
+    assert.equal(plan.permalinks, true);
+    assert.deepEqual(of("Grow"), {
+      action: "create",
+      symbol: "Grow",
+      kind: "Sub",
+      container: "Widget",
+      signature: null,
+      source: "store/Toy/sources/X.twin",
+      file: "docs/Toy/Widget/Grow.md",
+      new: true,
+      inline: false,
+      parent: "Widget",
+      permalink: "/tB/Packages/Toy/Widget/Grow",
+      containerPage: "docs/Toy/Widget/index.md",
+      model: "docs/Toy/Widget/Size.md",
+    });
+  });
+
+  test("a member of a type on one page goes on that page, with no permalink", () => {
+    const t = of("Twice");
+    assert.equal(t.file, "docs/Toy/Helpers.md");
+    assert.equal(t.inline, true);
+    assert.equal(t.new, false);
+    assert.equal(t.permalink, null);
+  });
+
+  test("a new type goes in the folder its kind is kept in, under that folder's page", () => {
+    const t = of("Hue");
+    assert.equal(t.file, "docs/Toy/Enumerations/Hue.md");
+    assert.equal(t.parent, "Enumerations");
+    assert.equal(t.permalink, "/tB/Packages/Toy/Enumerations/Hue");
+    assert.equal(t.model, "docs/Toy/Enumerations/Shade.md");
+  });
+
+  test("a new type with new members gets a folder, and its members pages in it", () => {
+    assert.equal(of("Gadget").file, "docs/Toy/Gadget/index.md");
+    assert.equal(of("Gadget").parent, "Toy Package");
+    assert.equal(of("Gadget").permalink, "/tB/Packages/Toy/Gadget/");
+    assert.equal(of("Spin").file, "docs/Toy/Gadget/Spin.md");
+    assert.equal(of("Spin").parent, "Gadget");
+    assert.deepEqual(
+      plan.tasks.map((t) => t.symbol),
+      ["Hue", "Gadget", "Grow", "Twice", "Spin", "Size"],
+    );
+  });
+
+  test("a change is to the page that documents the symbol; a member of a type with no page is unplaced", () => {
+    assert.equal(of("Size").file, "docs/Toy/Widget/Size.md");
+    assert.equal(of("Size").reason, "signature_changed");
+    assert.deepEqual(
+      plan.unplaced.map((t) => [t.symbol, t.reason]),
+      [["Lost", "Missing has no page"]],
+    );
+    assert.deepEqual(
+      plan.flagged.map((t) => [t.symbol, t.file]),
+      [["Shrink", null]],
+    );
+  });
+
+  test("a batch is a type with its new members, or one type's members", () => {
+    assert.deepEqual(
+      batchTasks(plan).map((b) => [b.container, b.tasks.map((t) => t.symbol)]),
+      [
+        ["Hue", ["Hue"]],
+        ["Gadget", ["Gadget", "Spin"]],
+        ["Widget", ["Grow", "Size"]],
+        ["Helpers", ["Twice"]],
+      ],
+    );
+  });
+
+  test("a batch holds PAGES_PER_BATCH pages at most, unless they go on one page", () => {
+    const many = (container, inline) =>
+      Array.from({ length: PAGES_PER_BATCH + 1 }, (_, i) => ({ container, symbol: `M${i}`, inline }));
+    const sizes = (tasks) => batchTasks({ tasks }).map((b) => b.tasks.length);
+    assert.deepEqual(sizes(many("A", false)), [PAGES_PER_BATCH, 1]);
+    assert.deepEqual(sizes(many("B", true)), [PAGES_PER_BATCH + 1]);
+  });
+
+  test("permalinks are computed only when every page's follows its folder, X/X.md as a folder's page", () => {
+    const at = (rel, permalink) => ({ rel, title: rel, parent: null, permalink });
+    const landing = at("index.md", "/tB/X/");
+    const app = [landing, at("_App/_App.md", "/tB/X/_App/"), at("_App/Build.md", "/tB/X/_App/Build")];
+    assert.equal(followsFolders(app, landing), true);
+    // A member named like its folder, beside the folder's index.md, is a page of its own.
+    const timer = [landing, at("Timer/index.md", "/tB/X/Timer/"), at("Timer/Timer.md", "/tB/X/Timer/Timer")];
+    assert.equal(followsFolders(timer, landing), true);
+    assert.equal(followsFolders([landing, at("A.md", "/tB/Modules/A")], landing), false);
+    assert.equal(permalinkByFolder("/tB/X", "A/index.md"), "/tB/X/A/");
+  });
+
+  test("a section's own habits decide: members on the folder's index.md, by kind, and sub-objects in their owner's folder", () => {
+    const sig = (name, kind, as) => ({ name, kind, vis: "public", signature: `Public ${kind} ${name}() As ${as}` });
+    const vbApi = {
+      types: [
+        {
+          name: "Grid",
+          kind: "class",
+          file: "G.twin",
+          members: [
+            sig("Rows", "property", "Long"),
+            sig("Count", "function", "Long"),
+            sig("Width", "property", "Long"),
+          ],
+        },
+        { name: "Pane", kind: "class", file: "P.twin", members: [sig("Height", "property", "Long")] },
+        { name: "Cells", kind: "class", file: "C.twin", members: [sig("Item", "function", "Cell")] },
+        { name: "Cell", kind: "class", file: "C.twin", members: [] },
+        { name: "Picker", kind: "class", file: "K.twin", attrs: [{ name: "WindowsControl", args: '"x.png"' }] },
+        { name: "Dial", kind: "class", file: "D.twin", attrs: [{ name: "WindowsControl", args: '"y.png"' }] },
+      ],
+    };
+    const at = (rel, title, parent) => ({ rel, title, parent, permalink: null });
+    const vbPages = [
+      at("index.md", "Kit Package", null),
+      // Grid keeps its properties on pages of their own and its functions on its index.md.
+      at("Grid/index.md", "Grid", "Kit Package"),
+      at("Grid/Rows.md", "Rows", "Grid"),
+      at("Grid/Width.md", "Width", "Grid"),
+      at("Grid/Cells.md", "Cells", "Grid"),
+      // Pane keeps its members on its index.md, as VB's classes do.
+      at("Pane/index.md", "Pane", "Kit Package"),
+      at("Picker/index.md", "Picker", "Kit Package"),
+    ];
+    const tasks = [
+      task("create", "Height2", "Property", "Pane"),
+      task("create", "Total", "Function", "Grid"),
+      task("create", "Depth", "Property", "Grid"),
+      task("create", "Cell", "Class", "Cell"),
+      task("create", "Dial", "Class", "Dial"),
+    ];
+    vbApi.types[1].members.push(sig("Height2", "property", "Long"));
+    vbApi.types[0].members.push(sig("Total", "function", "Long"), sig("Depth", "property", "Long"));
+    const vb = planPackage({
+      report: { ...report, tasks },
+      api: vbApi,
+      pages: vbPages,
+      sectionDir: "K",
+      sourceDir: "s",
+    });
+    const file = (symbol) => vb.tasks.find((t) => t.symbol === symbol);
+    assert.deepEqual([file("Height2").file, file("Height2").inline], ["K/Pane/index.md", true]);
+    assert.deepEqual([file("Total").file, file("Total").inline], ["K/Grid/index.md", true]);
+    assert.deepEqual([file("Depth").file, file("Depth").model], ["K/Grid/Depth.md", "K/Grid/Rows.md"]);
+    // Cells, in Grid's folder, returns Cell: Cell goes beside it.
+    assert.deepEqual([file("Cell").file, file("Cell").parent], ["K/Grid/Cell.md", "Grid"]);
+    // A control goes as the section's other control does, not as its classes.
+    assert.equal(file("Dial").file, "K/Dial/index.md");
+  });
+
+  test("a section with no landing page gets one like its group's others", () => {
+    const sibling = (folder) => ({
+      folder,
+      title: `${folder} Package`,
+      parent: "Contributed Packages",
+      permalink: `/tB/Packages/Contributed/${folder}/`,
+    });
+    assert.deepEqual(newLandingFor("New", [sibling("A"), sibling("B")]), {
+      title: "New Package",
+      parent: "Contributed Packages",
+      permalink: "/tB/Packages/Contributed/New/",
+    });
+    const odd = { ...sibling("C"), permalink: "/elsewhere/" };
+    assert.equal(newLandingFor("New", [sibling("A"), odd]).permalink, null);
+    assert.deepEqual(newLandingFor("New", []), { title: "New Package", parent: null, permalink: null });
+
+    const fresh = planPackage({
+      report: { ...report, tasks: [task("create", "Gadget", "Class", "Gadget")] },
+      api,
+      pages: [],
+      sectionDir: "docs/New",
+      sourceDir: "s",
+      newLanding: newLandingFor("New", [sibling("A")]),
+    });
+    assert.deepEqual(fresh.landing, {
+      file: "docs/New/index.md",
+      title: "New Package",
+      parent: "Contributed Packages",
+      permalink: "/tB/Packages/Contributed/New/",
+      new: true,
+    });
+    assert.equal(fresh.tasks[0].file, "docs/New/Gadget.md");
+    assert.equal(fresh.tasks[0].parent, "New Package");
+    assert.equal(fresh.tasks[0].permalink, "/tB/Packages/Contributed/New/Gadget");
   });
 });

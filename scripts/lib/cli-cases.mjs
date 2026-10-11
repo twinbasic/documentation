@@ -996,6 +996,12 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
   bad(tool, ["derive", "--check", "--all"], "--all does not apply to derive\n");
   bad(tool, ["derive", "--check", "--out"], "--out needs a value\n");
   bad(tool, ["derive", "--check=1"], "--check takes no value\n");
+  // draft places the pages of the report analyze wrote, for the packages in it;
+  // if one of these refusals stopped firing, it would rewrite only the store's
+  // own indexer/.packages/draft/.
+  bad(tool, ["draft", "--all"], "--all does not apply to draft\n");
+  bad(tool, ["draft", "--release"], "--release does not apply to draft\n");
+  bad(tool, ["draft", "--check"], "--check does not apply to draft\n");
   bad(tool, ["analyze", "--check"], "--check does not apply to analyze\n");
   bad(tool, ["analyze", "--out", "x.json"], "--out does not apply to analyze\n");
 }

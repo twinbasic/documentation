@@ -32,8 +32,9 @@ import {
 } from "./lib/store.mjs";
 import { indexerFingerprint } from "./lib/fingerprint.mjs";
 import { diffApi, auditCoverage } from "./lib/differ.mjs";
-import { documentedPackages } from "./lib/doc-pages.mjs";
+import { documentedPackages, groupFolder, sectionPages } from "./lib/doc-pages.mjs";
 import { derivePackageApi } from "./lib/package-api.mjs";
+import { batchTasks, newLandingFor, planPackage } from "./lib/draft-plan.mjs";
 
 exitOnCrash();
 
@@ -142,7 +143,7 @@ async function walkDir(dir) {
 
 // --- CLI ---
 
-const COMMANDS = ["sync", "analyze", "derive"];
+const COMMANDS = ["sync", "analyze", "draft", "derive"];
 
 const USAGE = `Usage: node indexer/twin-index.mjs <command> [options]
 
@@ -152,6 +153,8 @@ documentation still has to say about them.
 Commands:
   sync      Read packages, extract sources, generate api.json snapshots
   analyze   Diff API snapshots against documented baseline
+  draft     Place the pages analyze's report asks for: the file of each, its
+            parent and its permalink, in indexer/.packages/draft/
   derive    Write builder/package-api.json, the package half of the symbol
             index, from the built-in and default packages
 
@@ -162,7 +165,8 @@ needs no sync first.
 analyze covers the packages the reference documents, those with a section in
 docs/Reference (a landing page, index.md), and no others: --package or
 --packages names the ones to analyze, documented or not, and --all takes every
-package in the store.
+package in the store. draft reads the report analyze wrote last, and places
+the pages of its packages, or of those --package or --packages names.
 
 Options:
   --package <name>       Process only the specified package
@@ -183,13 +187,15 @@ Options:
 
 Exit codes:
   0  the command finished: sync wrote every package it was asked for, or found
-     it up to date; analyze wrote its report; derive wrote the file, or with
-     --check found it up to date
+     it up to date; analyze wrote its report; draft placed its pages; derive
+     wrote the file, or with --check found it up to date
   1  a package named by --package or --packages failed to sync, or does not
-     exist; the others were done; with derive --check, the file is stale
+     exist, or is not in the report (draft); the others were done; with
+     derive --check, the file is stale
   2  a refused command line, no twinBASIC install found, no snapshots to
-     analyze (run sync first), packages that declare different APIs under one
-     project name (derive), or a crash
+     analyze (run sync first), no report to draft from (run analyze first),
+     packages that declare different APIs under one project name (derive), or
+     a crash
 `;
 
 // The twinBASIC install the built-in and default packages are read from, as
@@ -282,8 +288,8 @@ withUsageError(() => {
   const applies = {
     ide: ["sync", "derive"],
     release: ["sync", "derive"],
-    package: ["sync", "analyze"],
-    packages: ["sync", "analyze"],
+    package: ["sync", "analyze", "draft"],
+    packages: ["sync", "analyze", "draft"],
     check: ["derive"],
     out: ["derive"],
   };
@@ -302,6 +308,9 @@ switch (command) {
   }
   case "analyze":
     process.exitCode = await runAnalyze(cli.filter, cli.values.all);
+    break;
+  case "draft":
+    process.exitCode = await runDraft(cli.filter);
     break;
   case "derive": {
     const install = cli.values.release ? null : (cli.install ?? withUsageError(() => resolveInstall()));
@@ -772,6 +781,97 @@ async function analyzeAudit(name, group, current, docsDir, exclusions) {
       excluded: excludedCount,
     },
   };
+}
+
+// --- draft command ---
+
+// Places the pages of the report analyze wrote last. indexer/.packages/draft/,
+// emptied first, gets the plan of each package (`<package>.json`), a file for
+// each batch of pages one agent of the doc-draft workflow writes
+// (`batch-<n>.json`), and `manifest.json`, which lists them and is what the
+// workflow is given.
+async function runDraft(filter) {
+  let reports;
+  try {
+    reports = JSON.parse(await fs.readFile(path.join(STORE_PATH, "report.json"), "utf-8"));
+  } catch {
+    die(2, "No report to draft from. Run analyze first.");
+  }
+  const chosen = filter ? reports.filter((r) => filter.includes(r.package)) : reports;
+  const documented = await documentedPackages(DOCS_REF_DIR);
+  const outDir = path.join(STORE_PATH, "draft");
+  await fs.rm(outDir, { recursive: true, force: true });
+  await fs.mkdir(outDir, { recursive: true });
+  const rel = (p) => path.relative(REPO_ROOT, p).split(path.sep).join("/");
+  const writeJson = (file, value) => fs.writeFile(file, `${JSON.stringify(value, null, 2)}\n`);
+
+  const manifest = { packages: [] };
+  let batchNo = 0;
+  for (const report of chosen) {
+    // A package with no section yet gets one in its group's folder, by its name,
+    // with a landing page like those of the group's other sections.
+    const section = documented.get(`${report.group}/${report.package}`);
+    const groupDir = path.join(DOCS_REF_DIR, groupFolder(report.group));
+    const sectionDir = section?.dir ?? path.join(groupDir, report.package);
+    let newLanding = null;
+    if (!section) {
+      const siblings = [];
+      for (const dir of new Set([...documented.values()].map((s) => s.dir))) {
+        if (path.dirname(dir) !== groupDir) continue;
+        const landing = (await sectionPages(dir)).find((p) => p.rel === "index.md");
+        if (landing) siblings.push({ folder: path.basename(dir), ...landing });
+      }
+      newLanding = newLandingFor(report.package, siblings);
+    }
+    const storeDir = path.join(STORE_PATH, report.group, report.package);
+    const api = JSON.parse(await fs.readFile(path.join(storeDir, "api.json"), "utf-8"));
+    const plan = planPackage({
+      report,
+      api,
+      pages: await sectionPages(sectionDir),
+      sectionDir: rel(sectionDir),
+      sourceDir: rel(path.join(storeDir, "sources")),
+      newLanding,
+    });
+    const planFile = path.join(outDir, `${report.package}.json`);
+    await writeJson(planFile, plan);
+
+    const batches = [];
+    for (const batch of batchTasks(plan)) {
+      const file = path.join(outDir, `batch-${batchNo++}.json`);
+      const { package: name, sectionDir: dir, landing, permalinks } = plan;
+      await writeJson(file, { package: name, sectionDir: dir, landing, permalinks, ...batch });
+      batches.push({ file: rel(file), container: batch.container, pages: batch.tasks.length });
+    }
+    manifest.packages.push({
+      package: plan.package,
+      group: plan.group,
+      mode: plan.mode,
+      version: plan.version,
+      sectionDir: plan.sectionDir,
+      landing: plan.landing,
+      plan: rel(planFile),
+      batches,
+      unplaced: plan.unplaced.length,
+      flagged: plan.flagged.length,
+    });
+
+    const created = plan.tasks.filter((t) => t.new).length;
+    console.log(
+      `${plan.package}: ${created} page(s) to write, ${plan.tasks.length - created} to change, in ${batches.length} batch(es)`,
+    );
+    for (const t of plan.unplaced)
+      console.log(`  unplaced: ${t.kind} ${t.container ? `${t.container}.` : ""}${t.symbol} (${t.reason})`);
+    for (const t of plan.flagged)
+      console.log(`  no longer declared: ${t.kind} ${t.symbol}${t.file ? ` (${t.file})` : ""}`);
+  }
+  const manifestFile = path.join(outDir, "manifest.json");
+  await writeJson(manifestFile, manifest);
+  console.log(`\nPlan written to ${rel(outDir)}/; the workflow takes ${rel(manifestFile)}`);
+
+  const missing = (filter ?? []).filter((name) => !chosen.some((r) => r.package === name));
+  for (const name of missing) console.warn(`  The report has no package named ${name}`);
+  return missing.length ? 1 : 0;
 }
 
 // --- derive command ---

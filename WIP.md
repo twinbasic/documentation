@@ -419,6 +419,14 @@ as it is. The rules:
 
 - **Run `analyze` to find what a page set lacks**, before and after a batch of pages; see the
   [per-symbol workflow](WIP.Authoring.md#per-symbol-workflow).
+- **`draft` places what `analyze` lists**: each page's file, parent and permalink, from the
+  section's own layout, in `indexer/.packages/draft/`. To have Claude write the drafts, pass the
+  parsed `indexer/.packages/draft/manifest.json` as `args` to the Workflow tool with `scriptPath:
+  "indexer/draft/workflow.mjs"` --- only when the owner asks for it, since it runs one agent per
+  batch of twelve pages and three per package. It writes pages and compiles their samples, and
+  commits nothing; read every draft against its source before committing it. The workflow is
+  described here and in [WIP.Indexer.md](WIP.Indexer.md) only: nothing under
+  `docs/Documentation/` may require Claude.
 - **Bump a section's `indexed_from` when its package is re-indexed**, and commit the pages, the
   new `indexed_from`, the new snapshots and `derive`'s `builder/package-api.json` together.
   `analyze` compares with the snapshot at `HEAD` and only when its `version` is the
