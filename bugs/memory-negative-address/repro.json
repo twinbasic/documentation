@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:memory",
+  "tests": [
+    "neg, which is -8, gives a first row at &HFFFFFFF8 and a second at &H00000008"
+  ],
+  "steps": "1. Run a project whose Sub Main has Dim neg As Long: neg = -8: Stop, and wait for the Stop.\n2. View > MEMORY 1, type neg in the box and press Enter.\n3. The first row's address reads &HFFFFFFF8, the second &H00000008 and the third &H00000018."
+}

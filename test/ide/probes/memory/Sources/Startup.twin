@@ -1,0 +1,30 @@
+' The project test/ide/memory.test.mjs runs. Main prints the address of n and stops; at the
+' stop the test enters expressions in the MEMORY 1 pane: VarPtr(n), the names of variables of
+' several types, and 0.
+Module Startup
+
+    Private Type Rec
+        A As Long
+        B As Integer
+        C As Integer
+    End Type
+
+    Public Sub Main()
+        Dim n As Long
+        Dim d As Double
+        Dim flag As Boolean
+        Dim udt As Rec
+        Dim neg As Long
+        n = 1234
+        d = 1.5
+        flag = True
+        udt.A = &H11223344
+        udt.B = 5
+        udt.C = 6
+        neg = -8
+        Debug.Print "VarPtr(n)=" & Hex(VarPtr(n))
+        Stop
+        Debug.Print "done"
+    End Sub
+
+End Module

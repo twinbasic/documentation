@@ -32,4 +32,5 @@ export default [
   { file: "customising.test.mjs" },
   { file: "code-find.test.mjs" },
   { file: "code-editor.test.mjs" },
+  { file: "memory.test.mjs" },
 ];

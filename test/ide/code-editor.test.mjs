@@ -1,4 +1,4 @@
-// The code editor and the panels used while writing code, tested against five entries in
+// The code editor and the panels used while writing code, tested against seven entries in
 // BUGS-TO-REPORT.md:
 //
 //   "Format Selection from a continuation line fails with *IDE startup failure*, and closes an IDE
@@ -10,6 +10,10 @@
 //   "Go To Definition, Ctrl+Up and Ctrl+Down put the caret on the line after a declaration"
 //   (bugs/definition-line-after)
 //   "Escape does not remove the extra cursors" (bugs/escape-keeps-cursors)
+//   "An editor tab opened after the compiler has reported its file is not tinted for the file's
+//   warnings or errors" (bugs/tab-tint-opened-later)
+//   "Shift+F10 opens the code editor's context menu at the top-left corner of the IDE window, not
+//   at the caret" (bugs/shift-f10-menu-corner)
 //
 // The project in probes/code-editor has two files: Editing.twin, whose Subs Continued and Plain
 // are left unindented for Format Selection, and Helpers.twin, with the function Twice and two
@@ -200,6 +204,102 @@ scenario("the code editor and its panels", (lane) => {
     c.dialogs.length = 0;
     await lane.closeProject();
     await start();
+  });
+
+  // start() opens Editing.twin only, so Helpers.twin, which has the warning TB0018, has no tab yet.
+  const HELPERS_NODE = `fs.tree.resolvePath(${JSON.stringify(`twinbasic:${HELPERS}`)})`;
+  const helpersTint = () =>
+    c.evaluate(`(() => {
+      const n = ${HELPERS_NODE};
+      const tab = n.openEditorNode && n.openEditorNode.tabElement;
+      return { row: n.treeItemClass || "", warnings: n.cachedDiagnostics_warningCount || 0, tab: tab ? tab.className : null };
+    })()`);
+
+  test("a tab opened on a file the compiler has already reported stays untinted, while its Project Explorer row is tinted", async (t) => {
+    const reported = await waitFor(
+      c,
+      async () => {
+        const s = await helpersTint();
+        return s.row === "warning" ? s : null;
+      },
+      { timeout: 30 * 1000 },
+    );
+    t.diagnostic(`before the tab opens: ${JSON.stringify(reported ?? (await helpersTint()))}`);
+    assert.ok(reported, "the Project Explorer row of Helpers.twin is not tinted for its warning");
+    assert.equal(reported.tab, null, "Helpers.twin has a tab already");
+    await openFile(c, HELPERS, { line: 1, column: 1 });
+    await sleep(3000);
+    const now = await helpersTint();
+    t.diagnostic(`3 s after the tab opened: ${JSON.stringify(now)}`);
+    assert.ok(now.tab, "Helpers.twin has no tab");
+    assert.ok(now.tab.includes("tabItem"), `not a tab: ${now.tab}`);
+    assert.doesNotMatch(now.tab, /\b(warning|error)\b/, "the tab is tinted");
+    assert.equal(now.row, "warning", "the Project Explorer row is no longer tinted");
+  });
+
+  test("control: after an edit to the file and its undo, the compiler reports it again and its tab is tinted", async (t) => {
+    await openFile(c, HELPERS, { line: 1, column: 1 });
+    const original = await c.evaluate("editor.getModel().getValue()");
+    const version = await c.evaluate("editor.getModel().getAlternativeVersionId()");
+    await c.evaluate(
+      `editor.executeEdits("code-editor.test", [{ range: new monaco.Range(1, editor.getModel().getLineMaxColumn(1), 1, editor.getModel().getLineMaxColumn(1)), text: " " }])`,
+    );
+    const tinted = await waitFor(
+      c,
+      async () => {
+        const s = await helpersTint();
+        return /\bwarning\b/.test(s.tab ?? "") ? s : null;
+      },
+      { timeout: 15 * 1000, interval: 100 },
+    );
+    const undone = await c.evaluate(`(() => {
+      const m = editor.getModel();
+      for (let i = 0; i < 20 && m.getAlternativeVersionId() !== ${version} && m.canUndo(); i++) editor.trigger("code-editor.test", "undo");
+      return m.getAlternativeVersionId() === ${version};
+    })()`);
+    t.diagnostic(`after the edit: ${JSON.stringify(tinted ?? (await helpersTint()))}`);
+    assert.ok(undone, "the edit could not be undone");
+    assert.equal(await c.evaluate("editor.getModel().getValue()"), original);
+    assert.ok(tinted, "the tab of Helpers.twin was not tinted after the edit");
+  });
+
+  // The open context menu's place, or null when none is open.
+  const menuRect = () =>
+    c.evaluate(`(() => {
+      const m = document.getElementById("contextMenu");
+      const r = m && m.getBoundingClientRect();
+      return r && r.width && m.children.length ? { x: r.x, y: r.y, items: [...m.children].map((e) => e.innerText.replace(/\\s+/g, " ").trim()).filter(Boolean) } : null;
+    })()`);
+  async function closeMenu() {
+    await pressKey(c, "Escape");
+    assert.ok(await waitFor(c, async () => !(await menuRect())), "the context menu stayed open after Escape");
+  }
+
+  test("control: a right-click in the code opens the editor's menu at the pointer", async (t) => {
+    await openFile(c, EDITING, { line: MAIN_PRINT, column: 9 });
+    const at = await pointAt(c, MAIN_PRINT, 9);
+    assert.ok(at, "the line is not on screen");
+    await rightClick(at.x, at.y);
+    const menu = await menuRect();
+    t.diagnostic(`clicked at ${Math.round(at.x)},${Math.round(at.y)}; the menu: ${JSON.stringify(menu)}`);
+    assert.ok(menu, "no menu opened");
+    assert.match(menu.items[0], /^Go To Definition\b/);
+    assert.ok(Math.abs(menu.x - at.x) < 30 && Math.abs(menu.y - at.y) < 30, "the menu is not at the pointer");
+    await closeMenu();
+  });
+
+  test("Shift+F10 opens the editor's menu at the top-left corner of the IDE window, not at the caret", async (t) => {
+    await setCursor(c, MAIN_PRINT, 9);
+    const caret = await pointAt(c, MAIN_PRINT, 9);
+    assert.equal(await menuRect(), null, "a menu is open already");
+    await pressKey(c, "F10", { shift: true });
+    const menu = await waitFor(c, menuRect, { timeout: 5000 });
+    t.diagnostic(`the caret at ${Math.round(caret.x)},${Math.round(caret.y)}; the menu: ${JSON.stringify(menu)}`);
+    assert.ok(menu, "Shift+F10 opened no menu");
+    assert.match(menu.items[0], /^Go To Definition\b/);
+    assert.ok(caret.x > 100 && caret.y > 100, "the caret is too near the corner to tell");
+    assert.deepEqual([Math.round(menu.x), Math.round(menu.y)], [0, 0]);
+    await closeMenu();
   });
 
   test("Escape leaves the two cursors that Ctrl+Alt+Down added", async (t) => {

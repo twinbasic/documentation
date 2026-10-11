@@ -3040,3 +3040,201 @@ Escape is not among the keys the IDE stops before they reach Monaco (`monacoAppl
 Severity: low. A click removes the extra cursors.
 
 <!-- Reproducer: bugs/escape-keeps-cursors/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "Escape leaves the two cursors that Ctrl+Alt+Down added", which passes on BETA 1005; the control "a click in the code goes back to one cursor" passes too. Alt+click is from the trials, not the lane). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, may name it in a NOTE where it describes several cursors; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 11). -->
+
+---
+
+## In the Memory pane, the name of a Double, Boolean or user-defined type variable throws an uncaught BigInt error, and the box is not marked invalid
+
+**Describe the bug**
+The Memory pane's box sends the expression to the debugger and turns the result into an address: a String gives `StrPtr`, an object `ObjPtr`, an array `VarPtr`, and any other result is read as a whole number with `BigInt`. A result that is not a whole number --- a **Double** such as `1.5`, a **Boolean** (`True`), a variable of a user-defined type (`{user defined type, 8 bytes}`) --- makes `BigInt` throw. The exception is not caught: the DEBUG CONSOLE prints `IDE internal error: Uncaught SyntaxError: Cannot convert 1.5 to a BigInt`, the box is not turned red, and the rows stay as they were. It was observed by typing the names into the box in an IDE started with an `APPDATA` of its own, at a `Stop`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Run a project with:
+   ```
+   Module Startup
+       Private Type Rec
+           A As Long
+           B As Integer
+           C As Integer
+       End Type
+
+       Public Sub Main()
+           Dim d As Double, flag As Boolean, udt As Rec
+           d = 1.5: flag = True: udt.A = 5
+           Stop
+       End Sub
+   End Module
+   ```
+2. At the `Stop`, choose View > MEMORY 1, type `d` in the box and press Enter. The DEBUG CONSOLE prints `IDE internal error: Uncaught SyntaxError: Cannot convert 1.5 to a BigInt`; the box keeps `d`, is not red, and the rows do not move.
+3. The same with `flag` (`Cannot convert True to a BigInt`) and `udt` (`Cannot convert {user defined type, 8 bytes} to a BigInt`).
+
+**Expected behavior**
+The box turned red, as it is for an expression the debugger cannot evaluate, since the value is not an address; or, for a variable, the pane showing the variable itself (its `VarPtr`), as it does for an array.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The throw is in the box's `evaluate` callback (`BigInt(a)` in `createHexEditor`, `ide/main.js`).
+
+Severity: low. `VarPtr(d)`, `VarPtr(flag)` and `VarPtr(udt)` show the variables.
+
+<!-- Reproducer: bugs/memory-bigint-throw/ (mode lane: asserted by `ide-test.bat --only memory` (test/ide/memory.test.mjs), the three tests "the name d throws ...", "the name flag throws ..." and "the name udt throws ...", which pass on BETA 1005; the control "a name the debugger cannot evaluate turns the box red and leaves the rows" passes too). No project and no zip: the steps give the code. docs/IDE/Memory.md carries a NOTE for it, under "What to enter in the expression box", after the list of what each result becomes; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Memory page (its fact sheet's defect 1). -->
+
+---
+
+## In a 64-bit program, the Memory pane's Address column drops the high 32 bits
+
+**Describe the bug**
+In a program built for win64, the Memory pane reads and shows the right memory, but its **Address** column shows only the low 32 bits of each address. A stack variable's address above 4 GB, such as `&H4232CFF438`, is shown as `&H32CFF438`, which is another address, with nothing on screen to say so. It was observed in an IDE started with an `APPDATA` of its own, by comparing the column with the address the program printed.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Switch a project to win64 with the toolbar's architecture box. Its `Sub Main`:
+   ```
+   Dim n As Long
+   n = 1234
+   Debug.Print Hex(VarPtr(n))
+   Stop
+   ```
+2. Run it. At the `Stop` the DEBUG CONSOLE shows an address above 4 GB, such as `4232CFF438`.
+3. Choose View > MEMORY 1, type `VarPtr(n)` in the box and press Enter. The first row holds `n`'s bytes, `D2 04 00 00`, and its address reads `&H32CFF438`.
+
+**Expected behavior**
+The Address column showing the whole address, `&H0000004232CFF438` or `&H4232CFF438`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The pane is made with `createHexEditor(r, {stream: n, addressBits: 32, columns: 16})` whatever the build target (`_hexEditorPanel`, `ide/main.js`), and the label of each row is masked to `addressBits`. The cell that takes the focus has the whole address in its `data-addr`, and the reads use it.
+
+Severity: medium. An address copied from the column, or compared with one the program prints, is wrong, and nothing shows it.
+
+<!-- Reproducer: bugs/memory-address-64bit/ (mode lane: asserted by `ide-test.bat --only memory` (test/ide/memory.test.mjs), the test "in a 64-bit run, VarPtr(n) shows n's bytes, and the Address column only the low 32 bits of its address", which passes on BETA 1005; it switches the lane's project with lane.setBuildTarget and fails, rather than passing, if the run's VarPtr(n) is below 4 GB). No project and no zip. docs/IDE/Memory.md carries a WARNING for it, under "Display formats and columns", after the paragraph on the address column; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Memory page (its fact sheet's defect 2). -->
+
+---
+
+## The Memory pane shows memory it cannot read as still loading, with ?? in every cell
+
+**Describe the bug**
+At an address the program cannot read, such as `0`, `16` or the value of a **Long** variable, every value cell of the Memory pane shows `??` and every text cell `·`, with the class `loading`: the placeholders of a cell whose bytes are still being read. They never change. The pane has a style for unreadable memory, blank grey cells (`invalidMem`), but the panel never applies it. It was observed in an IDE started with an `APPDATA` of its own, five seconds after the expression was entered.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Run any project to a `Stop`.
+2. Choose View > MEMORY 1, type `0` in the box and press Enter.
+3. Every row, from `&H00000000`, shows `??` in all its value cells and `·` in its text cells, and still does after any wait.
+
+**Expected behavior**
+The cells of unreadable memory drawn as unreadable (blank and grey, the `invalidMem` style), so that they differ from memory still being read.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`invalidMem` is set only through the stream's `onInvalidate`, which only a demonstration stream in `ide/main.js` calls.
+
+Severity: low. Memory that stays `??` is in practice unreadable, but a slow read looks the same.
+
+<!-- Reproducer: bugs/memory-unreadable-loading/ (mode lane: asserted by `ide-test.bat --only memory` (test/ide/memory.test.mjs), the test "0 shows ?? in every value cell, as cells still being read, and never as unreadable memory", which passes on BETA 1005). No project and no zip. docs/IDE/Memory.md carries a NOTE for it, under "What to enter in the expression box", after the sentence saying what `??` marks; when a fixed build is released, that NOTE goes, and the sentence then describes the unreadable style. Found 2026-10-11 in the trials for the Memory page (its fact sheet's defect 3). -->
+
+---
+
+## A negative number in the Memory pane's box gives rows whose addresses jump
+
+**Describe the bug**
+When the expression in the Memory pane's box gives a negative number, the pane starts at that negative address. The first row is labelled with it masked to 32 bits, and the rows after it count up from the negative number: with `-8`, the rows read `&HFFFFFFF8`, `&H00000008`, `&H00000018`. It was observed in an IDE started with an `APPDATA` of its own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Run a project whose `Sub Main` has:
+   ```
+   Dim neg As Long
+   neg = -8
+   Stop
+   ```
+2. At the `Stop`, choose View > MEMORY 1, type `neg` in the box and press Enter.
+3. The first row's address reads `&HFFFFFFF8`, the second `&H00000008` and the third `&H00000018`. Every cell shows `??`.
+
+**Expected behavior**
+The box turned red, since a negative number is not an address; or the number read as the unsigned address `&HFFFFFFF8`, with each row's label and reads following from it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The base address is kept as a signed `BigInt`; only each row's label is masked.
+
+Severity: low. Nothing at a negative address can be read.
+
+<!-- Reproducer: bugs/memory-negative-address/ (mode lane: asserted by `ide-test.bat --only memory` (test/ide/memory.test.mjs), the test "neg, which is -8, gives a first row at &HFFFFFFF8 and a second at &H00000008", which passes on BETA 1005). No project and no zip. docs/IDE/Memory.md carries a NOTE for it, under "What to enter in the expression box", after the paragraph on where the first row starts; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Memory page (its fact sheet's defect 4). -->
+
+---
+
+## Shift+F10 opens the code editor's context menu at the top-left corner of the IDE window, not at the caret
+
+**Describe the bug**
+Shift+F10 (`tbEditor_ShowContextMenu`) opens the code editor's context menu at the top-left corner of the IDE window, over the menu bar, wherever the caret is. A right-click opens the same menu at the pointer. It was observed by pressing the key in an IDE started with an `APPDATA` of its own and reading where the menu opened.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module, and put the caret on a line in the middle of the code editor.
+2. Press Shift+F10. The menu that starts with **Go To Definition** opens with its top-left corner at the top-left corner of the window.
+
+**Expected behavior**
+The menu at the caret, as Shift+F10 opens a context menu elsewhere in Windows and in the Monaco editor the code editor is built on.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The command calls `showContextMenuMonaco({clientX: 0, clientY: 0})` (`ide/main.js`).
+
+Severity: low. The menu works; it opens far from where the reader is looking.
+
+<!-- Reproducer: bugs/shift-f10-menu-corner/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "Shift+F10 opens the editor's menu at the top-left corner of the IDE window, not at the caret", which passes on BETA 1005; the control "a right-click in the code opens the editor's menu at the pointer" passes too). No project and no zip. docs/IDE/Code/Editor.md carries a NOTE for it, under "The right-click menu"; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the Shift+F10 part of the fact sheet's defect 10). -->
+
+---
+
+## An editor tab opened after the compiler has reported its file is not tinted for the file's warnings or errors
+
+**Describe the bug**
+A file that has errors or warnings has its row in the Project Explorer tinted, and its editor tab too, but the tab is tinted only when the compiler reports the file while the tab is open. A tab opened on a file the compiler has already reported --- the usual case, since the whole project is compiled when it opens --- stays untinted until the compiler checks the file again, after an edit to it. The Project Explorer row is tinted either way. It was observed in an IDE started with an `APPDATA` of its own, by reading the classes of the row and the tab.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project with a module that has a warning, such as:
+   ```
+   Module Helpers
+       Public Sub Narrowing()
+           Dim narrow As Integer
+           Dim wide As Long
+           wide = 5
+           narrow = wide
+       End Sub
+   End Module
+   ```
+   with TB0018 set to a warning in the project's settings (`"project.warnings": {"warnings": ["TB0018"]}`), and do not open the module. Its row in the Project Explorer is tinted.
+2. Double-click the row. The module's tab opens untinted, and stays so.
+3. Type a space at the end of a line, or type it and undo it. The compiler reports the file again, and the tab is tinted.
+
+**Expected behavior**
+The tab tinted as soon as it opens, as the Project Explorer row is.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`syncFileDiagnosticsToExplorer` (`ide/main.js`) sets the tab's class only when the file has an open tab at the time; opening a tab does not read the file's cached counts.
+
+Severity: low. The Project Explorer and the Diagnostics panel show the problems.
+
+<!-- Reproducer: bugs/tab-tint-opened-later/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "a tab opened on a file the compiler has already reported stays untinted, while its Project Explorer row is tinted", which passes on BETA 1005; the control "after an edit to the file and its undo, the compiler reports it again and its tab is tinted" passes too. The lane's module is test/ide/probes/code-editor/Sources/Helpers.twin, whose warning is TB0018). No project and no zip. docs/IDE/Code/Editor.md carries a NOTE for it, under "Tabs"; when a fixed build is released, that NOTE goes. scripts/shoot_docs.mjs's Tabs_States shot edits and undoes Inventory.twin to get the tint, and can drop that once the fix is released. Found 2026-10-11 by the screenshot work for the Writing code pages. -->

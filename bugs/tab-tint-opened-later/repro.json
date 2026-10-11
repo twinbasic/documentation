@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-editor",
+  "tests": [
+    "a tab opened on a file the compiler has already reported stays untinted, while its Project Explorer row is tinted"
+  ],
+  "steps": "1. Open a project with a module that has a warning, and do not open the module: its row in the Project Explorer is tinted.\n2. Double-click the row. The module's tab opens untinted, and stays so.\n3. Make any edit to the module, or make one and undo it. The compiler reports the file again, and the tab is now tinted.\nControl: step 3 is the lane's control test."
+}

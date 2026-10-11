@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-editor",
+  "tests": [
+    "Shift+F10 opens the editor's menu at the top-left corner of the IDE window, not at the caret"
+  ],
+  "steps": "1. Open any project and a module, and put the caret on a line in the middle of the code editor.\n2. Press Shift+F10. The editor's context menu (Go To Definition, Last Position, ...) opens at the top-left corner of the IDE window, over the menu bar, not at the caret.\nControl: a right-click in the code opens the same menu at the pointer."
+}

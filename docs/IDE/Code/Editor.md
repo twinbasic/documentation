@@ -21,10 +21,13 @@ The editor's fonts, the minimap, the indent guides, the line numbers and the oth
 Each open file has a tab. The tab shows the file's icon, its name and a close button.
 
 - A file with changes you have not saved shows a dot in place of the close button.
-- A file that has errors or warnings has a tinted row in the Project Explorer. Its tab is tinted when the compiler reports the file while the tab is open. A tab opened after that report stays untinted until the compiler checks the file again, for example after the next edit to it.
+- A file that has errors or warnings has a tinted row in the Project Explorer, and a tinted tab.
 - Pointing at a tab for about a second and a half shows the full path of the file.
 - Drag a tab to move it. A mark on the left or the right half of the tab under the pointer shows where it will land.
 - Click the middle mouse button on a tab to close it.
+
+> [!NOTE]
+> In twinBASIC BETA 1005, a tab is tinted only when the compiler reports its file while the tab is open. A tab opened after that report stays untinted until the compiler checks the file again, for example after the next edit to it. The Project Explorer row is tinted either way.
 
 A tab in italics is a *preview tab*. When **File Explorer: Single-Click Preview** is on, a single click on a file in the Project Explorer opens it in a preview tab, and the next single click replaces it. A double-click, or any edit, makes the tab permanent. The **Find / Replace** panel also opens the files it visits in a preview tab. [IDE Options](../Customising/IDE-Options) describes the option.
 
