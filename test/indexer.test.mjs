@@ -357,6 +357,55 @@ describe("buildApi on a hand-made package", () => {
     assert.deepEqual(bad.api.problems[0], { file: "Bad.twin", line: 3, why: "End Module does not close what is open" });
     assert.ok(!/"line"/.test(build().json));
   });
+
+  test("the forms the scanner once lost are in the snapshot: name lists, #If alternatives, a Declare's visibility, [Hidden(False)]", () => {
+    const { api } = buildApi({
+      symbol: "Forms",
+      version: "1",
+      files: [
+        file(
+          "Sources/Forms.twin",
+          lines(
+            "Public Class Derived",
+            "    Inherits BaseA, BaseB",
+            "    Implements IA, IB",
+            "    [Hidden(False)]",
+            "    Public Sub Shown()",
+            "    End Sub",
+            "#If VBA7 Then",
+            "    Public Property Get hWnd() As LongPtr",
+            "#Else",
+            "    Public Property Get hWnd() As Long Overrides Base.hWnd",
+            "#End If",
+            "        Return 0",
+            "    End Property",
+            "    Public gdiRefCount& = 0",
+            "End Class",
+            "Public CoClass Pub",
+            "    [Default] Interface stdole.IUnknown",
+            "End CoClass",
+            "Public Module Api",
+            '    Declare PtrSafe Function Tick Lib "kernel32" () As Long',
+            "End Module",
+          ),
+        ),
+      ],
+    });
+    const derived = find(api, "Derived");
+    const member = (name) => derived.members.filter((m) => m.name === name);
+    assert.deepEqual(api.problems, []);
+    assert.deepEqual(derived.inherits, ["BaseA", "BaseB"]);
+    assert.deepEqual(derived.implements, ["IA", "IB"]);
+    assert.equal(member("Shown")[0].hidden, undefined);
+    assert.deepEqual(
+      member("hWnd").map((m) => m.returnType),
+      ["LongPtr", "Long"],
+    );
+    assert.equal(member("gdiRefCount")[0].kind, "field");
+    assert.deepEqual(find(api, "Pub").interfaces, [{ name: "stdole.IUnknown", default: true }]);
+    const tick = find(api, "Api").members[0];
+    assert.deepEqual([tick.name, tick.vis, tick.declare], ["Tick", "public", true]);
+  });
 });
 
 describe("buildApi on the files of a package", () => {

@@ -709,10 +709,15 @@ out `-text`: a CRLF checkout of the copy would differ from the LF the build writ
 build.
 
 `scripts/check_symbol_index.mjs` is the gate on all three pieces, in `test.bat` and both
-CI workflows: seventy-five probes on fixtures, no tree, no install. The scanner's probes are
+CI workflows: over a hundred probes on fixtures, no tree, no install. The scanner's probes are
 the traps the packages' `.twin` sources contain, the community packages' included, and what
 a declaration's record says (signature, attributes with their arguments, description, return
-type, accessor, the project name); the derivation's are each a rule the real
+type, accessor, the project name). A block of them holds the forms an audit of `parseTwin`
+found it losing without a word (lists after `Inherits` and `Implements`, a qualified CoClass
+interface, `[Hidden(False)]`, modifier-named and initialised fields, brackets in a Type, a
+result type before `Overrides`, an unmodified `Declare`, and the `#If` branches as
+alternatives), each with the compiler's answer in its comment, checked with `tbrun --tests`
+on BETA 1005; the derivation's are each a rule the real
 site exercises only once or twice (`symbols:`, a section heading named like a member, the
 ellipsis the typographer puts in a Core H1).
 
