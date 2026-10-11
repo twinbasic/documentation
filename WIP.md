@@ -21,6 +21,7 @@ one covering what you are about to change.
 | run or change Wisdom, the Discord harvester | [WIP.Wisdom.md](WIP.Wisdom.md) --- the three-phase pipeline and the Phase 3 extract flow |
 | retake the documentation's IDE screenshots, or change the tool that takes them | [WIP.Screenshots.md](WIP.Screenshots.md) --- `shoot_docs.mjs`: the setups, cut-outs, the annotation overlay and the owner's decisions |
 | work on the IDE help add-in, or on testing IDE add-ins by machine | [WIP.HelpAddin.md](WIP.HelpAddin.md) --- the plan, the IDE facts it rests on, and the probes still open |
+| find the documentation work a new twinBASIC build leaves, or change the package indexer (`indexer/`) | [WIP.Indexer.md](WIP.Indexer.md) --- the store and the snapshots, the one shared scanner, `api.json` format 3, the owner's decisions and the open items |
 | run a use-case evaluation round | [eval/README.md](eval/README.md) --- start every evaluator with `eval/run_case.mjs`, **never as a subagent**: a subagent inherits this session's `CLAUDE.md`, and with it this file, which is the answer key the corpus withholds |
 
 The rule that decides where a new note belongs: **this file says what to do, a
@@ -398,6 +399,36 @@ Node. After a change to its `src/`, pack `imagestrip.twinproj` again with `impex
 `[TestCase]`s with `tbrun --tests`, and run the half of `test/compact-image.test.mjs` that tests
 it with `IMAGESTRIP_EXE` set to its exe: no gate can build it, so nothing else will.
 The full accounting, and what the two ports gained, is in [WIP.Build.md](WIP.Build.md).
+
+### The package indexer
+
+`indexer/twin-index.mjs` is how a session finds the documentation work a twinBASIC build
+leaves. `sync` indexes every package's sources into an `api.json`; `analyze` compares the
+current ones with the snapshots committed in `indexer/snapshots/` (those of the build each
+section's `indexed_from` names) and lists the public symbols to create, update and remove, in
+`indexer/.packages/report.json`. It needs a twinBASIC install (or `--release`, for a machine
+without one), is outside every gate and CI, and is documented in
+[Tools-Build](docs/Documentation/Tools-Build.md#twin-index) and
+[indexer/README.md](indexer/README.md); [WIP.Indexer.md](WIP.Indexer.md) says why it is built
+as it is. The rules:
+
+- **Run `analyze` to find what a page set lacks**, before and after a batch of pages; see the
+  [per-symbol workflow](WIP.Authoring.md#per-symbol-workflow).
+- **Bump a section's `indexed_from` when its package is re-indexed**, and commit the pages, the
+  new `indexed_from` and the new snapshots together. `analyze` compares with the snapshot at
+  `HEAD` and only when its `version` is the `indexed_from` tag; a `sync` against a newer build
+  rewrites the working-tree snapshots, and committing them on their own, or the bump without
+  them, drops the next `analyze` into audit mode.
+- **A change to `scripts/lib/twin-api.mjs`, `scripts/lib/twin-declarations.mjs`,
+  `indexer/lib/api-model.mjs` or `indexer/lib/vb6-preprocess.mjs`, or to `format` in
+  `api.json`, regenerates the committed snapshots in the same commit**, with `sync --ide`
+  naming the install of the build they record. Otherwise `analyze` reports the scanner's
+  changes as changes to the API.
+- **There is one scanner, `parseTwin`.** A misread declaration is fixed in
+  `scripts/lib/twin-api.mjs` and pinned in `scripts/check_symbol_index.mjs`, never worked
+  around in `indexer/`.
+- **A user name never reaches a committed file.** The manifests keep the BETA number, never an
+  install's path; keep a path out of a snapshot, a note and a commit message too.
 
 ### The published docs assume manual work
 

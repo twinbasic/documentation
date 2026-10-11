@@ -324,6 +324,21 @@ system remains a genuine consumer of the permalinks.
 4. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
 5. **Run the [site integrity check](WIP.md#site-integrity-check)** after the batch and before committing.
 
+**Finding the symbols to write.** After a `sync`, `node indexer/twin-index.mjs analyze --package <name>`
+lists what is public in the package and the section's pages lack, in
+`indexer/.packages/report.json`. A section with `indexed_from` is compared with the snapshot of
+that build: symbols **added** (create a page), **changed** (update it; the report gives the old
+and the new signature) and **removed** (flagged: reword or remove the page by hand). A section
+without it is audited: each public symbol is matched by name with the `title:` of the section's
+pages, so a member documented inline on its container's page is listed as missing, and a name
+that several types share counts as documented once any page has it. A symbol is a type or a
+name a type declares, so a property's Get, Let and Set and the overloads of a name are one.
+Anything deliberately undocumented belongs in the landing page's `exclude_from_docs` or
+`exclude_kinds` (see [Authoring-only frontmatter](#authoring-only-frontmatter)), not left in
+the list. When the batch is done, bump `indexed_from` and commit the new snapshots with it; the
+rules and the reasons are in [WIP.md](WIP.md#the-package-indexer) and
+[WIP.Indexer.md](WIP.Indexer.md).
+
 ## twinBASIC deviations from VBA to flag
 
 Add a `> [!NOTE]` callout or rewrite the affected section when source diverges. Known cases:
