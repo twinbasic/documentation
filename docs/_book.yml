@@ -268,22 +268,7 @@ parts:
         no_heading_shift: true
         outline_closed: true
       - title: Project Settings
-        page: /tB/IDE/Project/Settings
-        no_outline_entry: true
-        no_heading_shift: true
-        outline_closed: true
-      - title: File Menu
-        page: /tB/IDE/Project/Menu/File
-        no_outline_entry: true
-        no_heading_shift: true
-        outline_closed: true
-      - title: Toolbar
-        page: /tB/IDE/Project/Toolbar
-        no_outline_entry: true
-        no_heading_shift: true
-        outline_closed: true
-      - title: Debug Menu
-        page: /tB/IDE/Project/Menu/Debug
+        page: /tB/IDE/Project-Settings
         no_outline_entry: true
         no_heading_shift: true
         outline_closed: true
@@ -304,6 +289,12 @@ parts:
         page: /tB/IDE/AddIns/Help
         no_outline_entry: true
         no_heading_shift: true
+        outline_closed: true
+      - title: IDE Reference
+        pages:
+          - /tB/IDE/Reference/Menu/File
+          - /tB/IDE/Reference/Menu/Debug
+          - /tB/IDE/Reference/Toolbar
         outline_closed: true
 
   - title: The Core Language
@@ -609,20 +600,21 @@ left_out:
       - /tB/IDE/Project/Editor/Form
       - /tB/IDE/Project/Explorer
       - /tB/IDE/AddIns/Community
-      - /tB/IDE/Project/Menu
-      - /tB/IDE/Project/Menu/Edit
-      - /tB/IDE/Project/Menu/View
-      - /tB/IDE/Project/Menu/Project
-      - /tB/IDE/Project/Menu/Format
-      - /tB/IDE/Project/Menu/Run
-      - /tB/IDE/Project/Menu/AddIns
-      - /tB/IDE/Project/Menu/Help
-      - /tB/IDE/Project/Menu/Tools      # one real line, under a visible TODO note
+      - /tB/IDE/Reference/Menu
+      - /tB/IDE/Reference/Menu/Edit
+      - /tB/IDE/Reference/Menu/View
+      - /tB/IDE/Reference/Menu/Project
+      - /tB/IDE/Reference/Menu/Format
+      - /tB/IDE/Reference/Menu/Run
+      - /tB/IDE/Reference/Menu/AddIns
+      - /tB/IDE/Reference/Menu/Help
+      - /tB/IDE/Reference/Menu/Tools      # one real line, under a visible TODO note
 
   - reason: IDE pages that are complete but too short, or too much a list, to earn space in print yet
     no_descent: true
     pages:
-      - /tB/IDE/Project/StatusBar
+      - /tB/IDE/Reference/StatusBar
+      - /tB/IDE/Reference
       - /tB/IDE/Project/Toolbox
       - /tB/IDE/Project/Editor/Report
       - /tB/IDE/Project/Properties
@@ -634,4 +626,4 @@ left_out:
       - /tB/IDE/Project/OpenEditors
       - /tB/IDE/Project/PackagePublishing
       - /tB/IDE/AddIns/GlobalSearch
-      - /tB/IDE/Project/Menu/Window     # ~800 lines of shortcut JSON that would print unfolded
+      - /tB/IDE/Reference/Menu/Window     # ~800 lines of shortcut JSON that would print unfolded

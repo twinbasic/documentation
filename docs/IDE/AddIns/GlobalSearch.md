@@ -15,7 +15,7 @@ Latest Release
 Developer
 : twinBASIC
 
-The global search add in will contain a [Toolbar](../Project/Toolbar) item.
+The global search add in will contain a [Toolbar](../Reference/Toolbar) item.
 
 ![A single toolbar button labelled Global Search.](Images/Toolbar_GlobalSearch.png){:width="101" height="35"}
 

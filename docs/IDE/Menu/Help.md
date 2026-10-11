@@ -1,9 +1,11 @@
 ---
 title: Help
 parent: Menu
-grand_parent: IDE
+grand_parent: IDE Reference
 nav_order: 11
-permalink: /tB/IDE/Project/Menu/Help
+permalink: /tB/IDE/Reference/Menu/Help
+redirect_from:
+  - /tB/IDE/Project/Menu/Help
 ---
 
 # Help Menu

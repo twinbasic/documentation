@@ -12,7 +12,7 @@ index: new project dialog
 
 ![The IDE File menu open with no project loaded. New Project, Open Project, Open Recent and Exit are available; Close Project, Save Project, Save Project As, Export Project, Save Current Document, Build and Clean are all greyed out.](Menu/Images/Menu_File.png){:width="190" height="337"}
 
-Shortcut: <kbd>CTRL</kbd> + <kbd>N</kbd>
+Shortcut: <kbd>Ctrl</kbd>+<kbd>N</kbd>
 
 ## Options
 {: index="standard exe; create an ActiveX DLL; create ActiveX DLL" index_also="create a DLL project; create dll project; create a dll; create dll" }
@@ -32,9 +32,9 @@ Browse \| Open \| Cancel
 
 Opens a project from a folder of source files, such as the folder that **File → Export Project** writes. It shows a *Browse For Folder* dialog titled *Select folder of the existing twinBASIC project...*: choose the folder that holds the project's `Settings` file.
 
-The project opens with no `.twinproj` file behind it: it is unsaved, and marked as changed. Because it has no file, the first **Save Project** (<kbd>CTRL</kbd> + <kbd>S</kbd>) opens the *Save As* dialog to ask for one. The folder it is saved in becomes `${SourcePath}`, which the project's [*Export Path*](Settings#export-path) may use.
+The project opens with no `.twinproj` file behind it: it is unsaved, and marked as changed. Because it has no file, the first **Save Project** (<kbd>Ctrl</kbd>+<kbd>S</kbd>) opens the *Save As* dialog to ask for one. The folder it is saved in becomes `${SourcePath}`, which the project's [*Export Path*](../Project-Settings#export-path) may use.
 
-If the folder holds the compiler packages under `Packages`, as an export by the IDE does, delete their folders first: imported with them, the project gets a copy of them that the compiler does not use. See [Packing the export back into a project](Menu/File#packing-the-export-back-into-a-project). [Keeping a project in Git from the IDE](../../../Features/Packages/Import-Export-Tool#keeping-a-project-in-git-from-the-ide) uses this command to open a fresh clone.
+If the folder holds the compiler packages under `Packages`, as an export by the IDE does, delete their folders first: imported with them, the project gets a copy of them that the compiler does not use. See [Packing the export back into a project](../Reference/Menu/File#packing-the-export-back-into-a-project). [Keeping a project in Git from the IDE](../../../Features/Packages/Import-Export-Tool#keeping-a-project-in-git-from-the-ide) uses this command to open a fresh clone.
 
 ## Samples
 

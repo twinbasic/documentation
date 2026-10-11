@@ -17,4 +17,4 @@ Once you open a project whose build type is Package TWINPACK, the pane shows its
 
 ![The Package Publishing pane with a package project open and its values filled in: Namespace SampleProject, Description SampleProject description, Licence MIT, Visibility PRIVATE and Version 1.0.0.0. Publisher still offers Sign In, and the Publish This Package button is now enabled.](Images/PackagePublishing_1.png){:width="300" height="330"}
 
-Click the "EDIT" and this will open the [Project Settings](Settings)
+Click the "EDIT" and this will open the [Project Settings](../Project-Settings)

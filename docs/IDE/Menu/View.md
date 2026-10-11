@@ -1,9 +1,11 @@
 ---
 title: View
 parent: Menu
-grand_parent: IDE
+grand_parent: IDE Reference
 nav_order: 3
-permalink: /tB/IDE/Project/Menu/View
+permalink: /tB/IDE/Reference/Menu/View
+redirect_from:
+  - /tB/IDE/Project/Menu/View
 ---
 
 # View Menu
@@ -11,11 +13,11 @@ permalink: /tB/IDE/Project/Menu/View
 ![The View menu open. The upper commands --- Code Editor, Object Designer, Definition, Last Position, Object Browser, Zoom In and Zoom Out --- are greyed out. Below them the seventeen panel names from EDITOR down to MEMORY 1 are all available, each beside its own icon, with CTRL+L against CALL STACK and CTRL+G against DEBUG CONSOLE.](Images/Menu_View.png){:width="218" height="626"}
 
 - Code Editor
-- Object Designer <kbd>SHIFT</kbd> + <kbd>F7</kbd>
+- Object Designer <kbd>Shift</kbd>+<kbd>F7</kbd>
 
 ---
-- Definition <kbd>SHIFT</kbd> + <kbd>F2</kbd> / <kbd>F12</kbd>
-- Last Position <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>F2</kbd>
+- Definition <kbd>Shift</kbd>+<kbd>F2</kbd> / <kbd>F12</kbd>
+- Last Position <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F2</kbd>
 
 ---
 - Object Browser
@@ -28,10 +30,10 @@ permalink: /tB/IDE/Project/Menu/View
 - OPEN EDITORS
 - HISTORY
 - OUTLINE
-- CALL STACK <kbd>CTRL</kbd> + <kbd>L</kbd>
+- CALL STACK <kbd>Ctrl</kbd>+<kbd>L</kbd>
 - VARIABLES
 - WATCHES
-- DEBUG CONSOLE <kbd>CTRL</kbd> + <kbd>G</kbd>
+- DEBUG CONSOLE <kbd>Ctrl</kbd>+<kbd>G</kbd>
 - DIAGNOSTICS
 - PACKAGE PUBLISHING
 - TOOLBAR

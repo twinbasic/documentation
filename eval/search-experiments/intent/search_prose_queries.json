@@ -11,7 +11,7 @@
   { "q": "regular expressions", "expected": ["/tB/IDE/Project/FindReplace"] },
   { "q": "error handling", "expected": ["/Reference/Categories"] },
   { "q": "threading and atomics", "expected": ["/Reference/Categories"] },
-  { "q": "array bounds checks", "expected": ["/tB/IDE/Project/Settings"] },
+  { "q": "array bounds checks", "expected": ["/tB/IDE/Project-Settings"] },
   { "q": "File I/O", "expected": ["/Features/Standard-Library/File-IO"] },
   { "q": "Fusion", "expected": ["/Features/Fusion"] },
   { "q": "AddressOf operator", "expected": ["/tB/Core/AddressOf"] },

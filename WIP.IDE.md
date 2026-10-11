@@ -66,6 +66,10 @@ Where a merged page's pictures live does not change: `shoot_docs.mjs` writes the
 the chapters. The how-to sections of `IDE-Features.md`, `Debugging.md` and `CodeLens.md` move
 here, and those pages get `redirect_from` only if they are removed outright.
 
+**Nav order.** The chapters take `nav_order` 1--10 in the order of the table above.
+`IDE Reference` has 99. The nav sorts numbered pages before unnumbered ones, so until a pane
+page is absorbed it sorts after the Reference.
+
 **The book.** `_book.yml`'s IDE part becomes Part A's chapters followed by Part B. A page leaves
 `left_out:` when it is finished, not before.
 

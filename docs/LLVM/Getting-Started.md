@@ -20,7 +20,7 @@ During compilation, LLVM translates your code into an *intermediate representati
 
 ## LLVM in twinBASIC
 
-You turn LLVM on in [Project Settings](../tB/IDE/Project/Settings). It is off by default while it is experimental. Project Settings has these options for it:
+You turn LLVM on in [Project Settings](../tB/IDE/Project-Settings). It is off by default while it is experimental. Project Settings has these options for it:
 
 ![The Project Settings dialog scrolled to its two compiler option sections, Compiler Options (BUILD) and Compiler Options (DEBUG). Each has the same unticked boxes in two columns: Enable LLVM Compilation, LLVM: Generate optimized code, LLVM: Optimize for smaller filesize, and one LLVM: Target CPUs with box for each of AES, AVX, AVX2, BMI2, FMA, FXSR, LZCNT, POPCNT, RDSEED, SHA, SSE, SSE2, SSE3, SSE4.1, SSE4.2, SSSE3, XSAVE, XSAVEC, XSAVEOPT and XSAVES. Under the BUILD section a note says that software built for a CPU feature will not run on a CPU without it. Under the DEBUG section a bold note says that LLVM compilation in the IDE debug environment is not recommended, because LLVM-compiled code cannot be debugged.](Images/llvmdoc1.png){:width="1102" height="774"}
 
@@ -41,7 +41,7 @@ The remaining options, from **LLVM: Target CPUs with AES** to **LLVM: Target CPU
 
 When LLVM is on, a progress dialog appears when you build or run your program showing the completion percentage of the build process. For large applications, and for applications with very large individual procedures, compiling with LLVM can take much longer than the standard compiler. A very large application can take several minutes or more to compile, depending on your hardware.
 
-twinBASIC keeps a cache of compiled code, so later builds are usually much faster: code that has not changed is not compiled again. To clear the cache and compile everything on the next build, choose **Flush the LLVM compiler cache** on the [**Tools** menu](../tB/IDE/Project/Menu/Tools).
+twinBASIC keeps a cache of compiled code, so later builds are usually much faster: code that has not changed is not compiled again. To clear the cache and compile everything on the next build, choose **Flush the LLVM compiler cache** on the [**Tools** menu](../tB/IDE/Reference/Menu/Tools).
 
 ## Availability
 
@@ -75,7 +75,7 @@ All other language features should work, in both 32-bit and 64-bit builds. Pleas
 
 ## General LLVM options
 
-Besides the project settings, three settings in [IDE Options](../tB/IDE/Project/Menu/Tools) control how LLVM works when it is on:
+Besides the project settings, three settings in [IDE Options](../tB/IDE/Reference/Menu/Tools) control how LLVM works when it is on:
 
 ![Part of the twinBASIC IDE Options dialog, showing three LLVM settings: LLVM Compiler: Maximum number of threads, set to its default of 1; LLVM Compiler: Complex procedure reporting threshold (milliseconds), set to 10000; and LLVM Compiler: Keep cache process alive after exiting the IDE, ticked.](Images/llvmdoc2.png){:width="628" height="187"}
 

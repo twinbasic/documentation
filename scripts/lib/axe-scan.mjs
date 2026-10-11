@@ -77,7 +77,7 @@ export const SAMPLE_PAGES = [
   "/404.html",
   "/Documentation/Development/Pipeline-Stages.html",
   "/Features/index.html",
-  "/tB/IDE/Project/Menu/Window.html",
+  "/tB/IDE/Reference/Menu/Window.html",
   "/Videos/tB.html",
   "/Reference/Procedures-and-Functions.html",
   // The only page in the site carrying both an IMPORTANT and a TIP
@@ -206,7 +206,7 @@ export const PAGE_STATES = {
 // that nothing looked at before.  Neither substitutes for the other.
 export const STATE_AUDITS = [
   {
-    filePath: "/tB/IDE/Project/Menu/Window.html",
+    filePath: "/tB/IDE/Reference/Menu/Window.html",
     state: "section-links-open",
   },
   {

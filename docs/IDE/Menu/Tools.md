@@ -1,9 +1,11 @@
 ---
 title: Tools
 parent: Menu
-grand_parent: IDE
+grand_parent: IDE Reference
 nav_order: 8
-permalink: /tB/IDE/Project/Menu/Tools
+permalink: /tB/IDE/Reference/Menu/Tools
+redirect_from:
+  - /tB/IDE/Project/Menu/Tools
 ---
 
 # Tools Menu

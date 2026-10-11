@@ -1,9 +1,11 @@
 ---
 title: Window
 parent: Menu
-grand_parent: IDE
+grand_parent: IDE Reference
 nav_order: 10
-permalink: /tB/IDE/Project/Menu/Window
+permalink: /tB/IDE/Reference/Menu/Window
+redirect_from:
+  - /tB/IDE/Project/Menu/Window
 ---
 
 # Window Menu
@@ -22,7 +24,7 @@ permalink: /tB/IDE/Project/Menu/Window
 
 ![The Window menu with Panel Layouts highlighted and its submenu open to the right: a ticked Default Built-in Layout with CTRL+#, Full Screen Editor Layout, then Save Current Panel Layout As and Manage Panel Layouts.](Images/Menu_Window_PanelLayouts.png){:width="389" height="159"}
 
-- Default Built-in Layout <kbd>CTRL</kbd> + <kbd>#</kbd>
+- Default Built-in Layout <kbd>Ctrl</kbd>+<kbd>#</kbd>
 - Full Screen Editor Layout
 
 ---
