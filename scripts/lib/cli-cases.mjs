@@ -308,6 +308,9 @@ const CASES = [
   { tool: "indexer/twin-index.mjs", args: ["bogus", "--help=1"], exit: 2, stderr: "--help takes no value\n" },
   { tool: "indexer/twin-index.mjs", args: ["bogus", "-x"], exit: 2, stderr: "unknown option: -x\n" },
   { tool: "indexer/twin-index.mjs", args: ["bogus", "--package", "x", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--ide"], exit: 2, stderr: "--ide needs a value\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--ide="], exit: 2, stderr: "--ide needs a non-empty value\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--release=1"], exit: 2, stderr: "--release takes no value\n" },
 
   // tbdocs, beyond the cases above. Every command-line
   // error exits 2. A value flag refuses a missing value and one that starts
@@ -958,9 +961,20 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
   );
 }
 // The indexer's command in these is never a real one, for the same reason, and
-// its package names are read straight after the parse.
+// its package names and the install it reads are checked straight after the
+// parse. The last case names a real command, `analyze`, which is refused before
+// it reads anything; no case names `sync`, which would start a sync over the
+// network if the refusal it records ever stopped firing.
 {
   const tool = "indexer/twin-index.mjs";
+  bad(
+    tool,
+    ["bogus", "--ide", "no-such.exe"],
+    /^no twinBASIC\.exe at no-such\.exe: pass --ide or set TB_IDE, or use --release\n$/,
+  );
+  bad(tool, ["bogus", "--ide", "--release"], "--ide needs a value\n");
+  bad(tool, ["bogus", "--release", "--ide", "no-such.exe"], "--ide and --release cannot be given together\n");
+  bad(tool, ["analyze", "--release"], "--release does not apply to analyze\n");
   bad(tool, ["bogus", "--packages", ","], "--packages expects package names separated by commas, got: ,\n");
   bad(tool, ["bogus", "--packages=VBA,,VB"], "--packages expects package names separated by commas, got: VBA,,VB\n");
   bad(

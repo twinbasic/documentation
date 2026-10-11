@@ -1,11 +1,20 @@
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { CliError, die, exitOnCrash, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
+import { findIde } from "../scripts/lib/tb-install.mjs";
 import { compareWithManifest, fetchPackage, versionString } from "./lib/sync.mjs";
-import { compareBuiltinManifest, extractBuiltinPackages } from "./lib/builtin-sync.mjs";
+import {
+  compareBuiltinManifest,
+  compareInstallManifest,
+  extractBuiltinPackages,
+  installBeta,
+  listInstalledPackages,
+  readInstalledPackages,
+} from "./lib/builtin-sync.mjs";
 import { downloadRelease } from "./lib/github-release.mjs";
 import { preprocessVB6, CONTAINER_MAP } from "./lib/vb6-preprocess.mjs";
 import { lex } from "./lib/lexer.mjs";
@@ -225,12 +234,20 @@ Indexes the twinBASIC packages into API snapshots, and lists what the
 documentation still has to say about them.
 
 Commands:
-  sync      Download packages, extract sources, generate api.json snapshots
+  sync      Read packages, extract sources, generate api.json snapshots
   analyze   Diff API snapshots against documented baseline
+
+sync reads the built-in and default packages from the local twinBASIC install,
+and the contributed packages from TWINSERV.
 
 Options:
   --package <name>       Process only the specified package
   --packages <a>,<b>     Process only the specified packages
+  --ide <path>           sync: the install to read, its folder or its
+                         twinBASIC.exe (default: $TB_IDE, else the newest
+                         Desktop\\twinBASIC_IDE_BETA_<n>)
+  --release              sync: download the built-in and default packages from
+                         the latest GitHub release instead of reading an install
   -h, --help             Print this text and exit
 
 Exit codes:
@@ -238,8 +255,33 @@ Exit codes:
      it up to date; analyze wrote its report
   1  a package named by --package or --packages failed to sync, or does not
      exist; the others were done
-  2  a refused command line, no snapshots to analyze (run sync first), or a crash
+  2  a refused command line, no twinBASIC install found, no snapshots to
+     analyze (run sync first), or a crash
 `;
+
+// The twinBASIC install the built-in and default packages are read from, as
+// scripts/build_package_api.mjs finds it: the one --ide names, as its folder or
+// its twinBASIC.exe, else $TB_IDE, else the newest twinBASIC_IDE_BETA_<n> on the
+// Desktop. Returns its folder and its BETA number.
+function resolveInstall(explicit) {
+  const remedy = "pass --ide or set TB_IDE, or use --release";
+  let ide = findIde(explicit);
+  if (ide && !/\.exe$/i.test(ide)) ide = path.join(ide, "twinBASIC.exe");
+  if (!ide) throw new CliError("no-install", `no twinBASIC install found: ${remedy}`);
+  if (!existsSync(ide)) throw new CliError("no-install", `no twinBASIC.exe at ${ide}: ${remedy}`);
+  const root = path.dirname(ide);
+  if (!existsSync(path.join(root, "packages"))) {
+    throw new CliError("no-install", `no packages folder in ${root}: ${remedy}`);
+  }
+  const beta = installBeta(root);
+  if (!beta) {
+    throw new CliError(
+      "no-install",
+      `cannot tell which BETA ${root} is: ide/build.js is missing, and the folder is not named twinBASIC_IDE_BETA_<n>`,
+    );
+  }
+  return { root, beta };
+}
 
 // --package is one name, --packages a comma-separated list; either gives the
 // names a command is limited to, or null for every package.
@@ -270,13 +312,19 @@ const cli = withUsageError(() => {
       help: { type: "boolean", short: "h" },
       package: { type: "string" },
       packages: { type: "string" },
+      ide: { type: "string" },
+      release: { type: "boolean" },
     },
     positionals: { max: 1 },
     stopAt: ["help"],
   });
   if (read.stopped === "help") return read;
   refuseTogether(read.values, ["package", "packages"]);
-  return { ...read, filter: packageFilter(read.values) };
+  refuseTogether(read.values, ["ide", "release"]);
+  const filter = packageFilter(read.values);
+  // An install that is not there is refused with the command line, whatever the command.
+  const install = read.values.ide === undefined ? null : resolveInstall(read.values.ide);
+  return { ...read, filter, install };
 });
 if (cli.values.help) printHelpAndExit(USAGE);
 
@@ -286,10 +334,22 @@ if (!COMMANDS.includes(command)) {
   printHelpAndExit(USAGE, { stream: "stderr", exitCode: 2 });
 }
 
+// Where the built-in and default packages come from is a matter for sync alone.
+withUsageError(() => {
+  if (command === "sync") return;
+  for (const option of ["ide", "release"]) {
+    if (cli.values[option] !== undefined)
+      throw new CliError("not-applicable", `--${option} does not apply to ${command}`);
+  }
+});
+
 switch (command) {
-  case "sync":
-    process.exitCode = await runSync(cli.filter);
+  case "sync": {
+    // The install is looked for before anything is fetched.
+    const install = cli.values.release ? null : (cli.install ?? withUsageError(() => resolveInstall()));
+    process.exitCode = await runSync(cli.filter, install);
     break;
+  }
   case "analyze":
     process.exitCode = await runAnalyze(cli.filter);
     break;
@@ -297,7 +357,26 @@ switch (command) {
 
 // --- sync command ---
 
-async function runSync(filter) {
+// The built-in and default packages a run can name without asking anyone: the
+// three default ones, and what the install holds or the last release had.
+async function knownBuiltinNames(install) {
+  const names = new Set(DEFAULT_PACKAGES);
+  if (install) {
+    for (const { symbol } of listInstalledPackages(install.root)) names.add(symbol);
+    return names;
+  }
+  try {
+    const manifest = JSON.parse(await fs.readFile(path.join(MANIFESTS_DIR, "built-in.json"), "utf-8"));
+    for (const { symbol } of Object.values(manifest.packages ?? {})) names.add(symbol);
+  } catch {
+    /* no manifest yet */
+  }
+  return names;
+}
+
+// `install` is `{ root, beta }` for the local twinBASIC install the built-in and
+// default packages are read from, or null for the latest GitHub release.
+async function runSync(filter, install) {
   await fs.mkdir(MANIFESTS_DIR, { recursive: true });
   await ensureStore(STORE_PATH, SNAPSHOTS_PATH);
 
@@ -306,7 +385,41 @@ async function runSync(filter) {
   // Every package name either source knows, to tell a name that matches nothing.
   const known = new Set();
 
-  // --- Contributed packages (TWINSERV) ---
+  // A run limited to built-in and default packages has nothing to ask TWINSERV.
+  const builtinNames = await knownBuiltinNames(install);
+  if (filter?.every((name) => builtinNames.has(name))) {
+    console.log("Skipping TWINSERV: only built-in and default packages are named.");
+  } else {
+    await syncContributed(filter, { synced, failed, known });
+  }
+  await syncBuiltin(filter, install, { synced, known });
+
+  // --- Commit store and copy snapshots ---
+  if (synced.length) {
+    const parts = synced.map((s) => {
+      if (s.from && s.from !== s.to) return `${s.package} ${s.from}→${s.to}`;
+      return `${s.package} ${s.to}`;
+    });
+    const committed = await commitStore(STORE_PATH, `sync: ${parts.join(", ")}`);
+    if (committed) {
+      await copyToSnapshots(STORE_PATH, SNAPSHOTS_PATH, synced);
+      console.log("\nSnapshots updated.");
+    }
+  }
+
+  for (const name of filter ?? []) {
+    if (known.has(name)) continue;
+    failed.push({ symbol: name, error: "no such package" });
+    console.warn(`  No package named ${name}`);
+  }
+
+  console.log(`\nDone. ${synced.length} synced` + (failed.length ? `, ${failed.length} failed` : "") + ".");
+  return failed.length ? 1 : 0;
+}
+
+// --- Contributed packages (TWINSERV) ---
+
+async function syncContributed(filter, { synced, failed, known }) {
   const contribManifestPath = path.join(MANIFESTS_DIR, "contributed.json");
   console.log("Fetching TWINSERV package index...");
   const { toDownload, unchanged, removed, manifest: contribManifest } = await compareWithManifest(contribManifestPath);
@@ -369,16 +482,25 @@ async function runSync(filter) {
 
   contribManifest.syncedAt = new Date().toISOString();
   await fs.writeFile(contribManifestPath, JSON.stringify(contribManifest, null, 2) + "\n");
+}
 
-  // --- Built-in + Default packages (GitHub release) ---
+// --- Built-in + Default packages (the local install, or the GitHub release) ---
+
+async function syncBuiltin(filter, install, { synced, known }) {
   const builtinManifestPath = path.join(MANIFESTS_DIR, "built-in.json");
-  console.log("\nChecking twinBASIC release...");
-  const release = await compareBuiltinManifest(builtinManifestPath);
-  console.log(`  Tag: ${release.tag}`);
+  let built;
+  if (install) {
+    console.log(`\nReading twinBASIC BETA ${install.beta} from ${install.root}...`);
+    built = await compareInstallManifest(builtinManifestPath, install);
+  } else {
+    console.log("\nChecking twinBASIC release...");
+    built = await compareBuiltinManifest(builtinManifestPath);
+  }
+  console.log(`  Tag: ${built.tag}`);
 
-  // Force re-download if any built-in/default packages are missing from the store
-  if (!release.needsUpdate) {
-    const symbols = Object.values(release.manifest.packages || {}).map((p) => p.symbol);
+  // Read again if any built-in/default packages are missing from the store
+  if (!built.needsUpdate) {
+    const symbols = Object.values(built.manifest.packages || {}).map((p) => p.symbol);
     for (const sym of symbols) {
       if (filter && !filter.includes(sym)) continue;
       const group = packageGroup(sym, "builtin");
@@ -386,41 +508,51 @@ async function runSync(filter) {
         await fs.access(path.join(STORE_PATH, group, sym, "sources"));
       } catch {
         console.log(`  Missing sources: ${sym}`);
-        release.needsUpdate = true;
+        built.needsUpdate = true;
         break;
       }
     }
   }
 
-  if (release.needsUpdate) {
-    console.log("  Downloading release...");
-    const zipBuffer = await downloadRelease(release.assetUrl);
-    const builtinPackages = extractBuiltinPackages(zipBuffer);
-    console.log(`  Extracted ${builtinPackages.length} packages`);
+  if (built.needsUpdate) {
+    let builtinPackages;
+    if (install) {
+      builtinPackages = readInstalledPackages(built.root);
+      console.log(`  Read ${builtinPackages.length} packages`);
+    } else {
+      console.log("  Downloading release...");
+      const zipBuffer = await downloadRelease(built.assetUrl);
+      builtinPackages = extractBuiltinPackages(zipBuffer);
+      console.log(`  Extracted ${builtinPackages.length} packages`);
+    }
 
     const toProcess = filter ? builtinPackages.filter((p) => filter.includes(p.symbol)) : builtinPackages;
 
+    // Where the packages were read from, and which build: the BETA number of an
+    // install, the tag of a release. Never the install's path, which names its user.
     const builtinManifest = {
       syncedAt: new Date().toISOString(),
-      twinbasicTag: release.tag,
-      publishedAt: release.publishedAt,
+      source: built.source,
+      beta: built.beta,
+      twinbasicTag: built.tag,
+      publishedAt: built.publishedAt,
       packages: {},
     };
 
-    if (filter && release.manifest.packages) {
-      Object.assign(builtinManifest.packages, release.manifest.packages);
+    if (filter && built.manifest.packages) {
+      Object.assign(builtinManifest.packages, built.manifest.packages);
     }
 
     for (const pkg of toProcess) {
       const sourceFiles = prepareSourceFiles(pkg.files);
       const { fileResults, declCount } = indexFiles(sourceFiles);
       const group = packageGroup(pkg.symbol, "builtin");
-      const apiJson = emitApiJson(pkg.symbol, release.tag, fileResults);
+      const apiJson = emitApiJson(pkg.symbol, built.tag, fileResults);
 
       await writeToStore(group, pkg.symbol, pkg.files, apiJson);
 
       builtinManifest.packages[pkg.guid] = { symbol: pkg.symbol };
-      synced.push({ group, package: pkg.symbol, from: release.manifest.twinbasicTag, to: release.tag });
+      synced.push({ group, package: pkg.symbol, from: built.manifest.twinbasicTag, to: built.tag });
       console.log(`    ${pkg.symbol}: ${sourceFiles.length} files, ${declCount} declarations`);
     }
 
@@ -433,31 +565,9 @@ async function runSync(filter) {
     await fs.writeFile(builtinManifestPath, JSON.stringify(builtinManifest, null, 2) + "\n");
     for (const { symbol } of Object.values(builtinManifest.packages)) known.add(symbol);
   } else {
-    console.log(`  Up to date (${release.tag}).`);
-    for (const { symbol } of Object.values(release.manifest.packages || {})) known.add(symbol);
+    console.log(`  Up to date (${built.tag}).`);
+    for (const { symbol } of Object.values(built.manifest.packages || {})) known.add(symbol);
   }
-
-  // --- Commit store and copy snapshots ---
-  if (synced.length) {
-    const parts = synced.map((s) => {
-      if (s.from && s.from !== s.to) return `${s.package} ${s.from}→${s.to}`;
-      return `${s.package} ${s.to}`;
-    });
-    const committed = await commitStore(STORE_PATH, `sync: ${parts.join(", ")}`);
-    if (committed) {
-      await copyToSnapshots(STORE_PATH, SNAPSHOTS_PATH, synced);
-      console.log("\nSnapshots updated.");
-    }
-  }
-
-  for (const name of filter ?? []) {
-    if (known.has(name)) continue;
-    failed.push({ symbol: name, error: "no such package" });
-    console.warn(`  No package named ${name}`);
-  }
-
-  console.log(`\nDone. ${synced.length} synced` + (failed.length ? `, ${failed.length} failed` : "") + ".");
-  return failed.length ? 1 : 0;
 }
 
 // --- analyze command ---
