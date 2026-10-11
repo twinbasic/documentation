@@ -1,4 +1,4 @@
-const BASE_URL = 'https://www.everythingaccess.com/twinbasic/packages';
+const BASE_URL = "https://www.everythingaccess.com/twinbasic/packages";
 
 async function queryPackages() {
   const res = await fetch(`${BASE_URL}/query?auth=`);
@@ -8,7 +8,7 @@ async function queryPackages() {
 
 async function downloadPackage(projectId, version) {
   const params = new URLSearchParams({
-    auth: '',
+    auth: "",
     id: projectId,
     versionMajor: String(version.versionMajor),
     versionMinor: String(version.versionMinor),

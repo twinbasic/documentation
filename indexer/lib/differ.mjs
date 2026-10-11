@@ -14,7 +14,7 @@ function flattenSymbols(apiJson) {
 
     // Skip members/events of Private containers — they are not
     // part of the package's public API surface.
-    if (mod.access === 'Private') continue;
+    if (mod.access === "Private") continue;
 
     for (const mem of mod.members || []) {
       symbols.push({
@@ -34,8 +34,8 @@ function flattenSymbols(apiJson) {
       symbols.push({
         container: mod.name,
         name: evt.name,
-        kind: 'Event',
-        access: 'Public',
+        kind: "Event",
+        access: "Public",
         signature: evt.signature,
         file: mod.file,
         key: `${mod.name}.${evt.name}.Event`,
@@ -47,7 +47,7 @@ function flattenSymbols(apiJson) {
     symbols.push({
       container: null,
       name: e.name,
-      kind: 'Enum',
+      kind: "Enum",
       access: e.access,
       signature: null,
       file: e.file,
@@ -59,7 +59,7 @@ function flattenSymbols(apiJson) {
     symbols.push({
       container: null,
       name: t.name,
-      kind: 'Type',
+      kind: "Type",
       access: t.access,
       signature: null,
       file: t.file,
@@ -90,10 +90,7 @@ function diffApi(baseline, current) {
     const base = baseMap.get(key);
     if (!base) {
       added.push(cur);
-    } else if (
-      cur.signature !== base.signature ||
-      JSON.stringify(cur.attributes) !== JSON.stringify(base.attributes)
-    ) {
+    } else if (cur.signature !== base.signature || JSON.stringify(cur.attributes) !== JSON.stringify(base.attributes)) {
       modified.push({ current: cur, baseline: base });
     } else {
       unchanged.push(cur);
@@ -114,17 +111,24 @@ function auditCoverage(apiJson, docPageMap) {
   const undocumented = [];
 
   for (const mod of apiJson.modules || []) {
-    if (mod.access === 'Private') continue;
+    if (mod.access === "Private") continue;
 
     const page = docPageMap.get(mod.name);
     if (page) {
-      documented.push({ name: mod.name, kind: mod.kind, access: mod.access, container: null, file: mod.file, docPage: page });
+      documented.push({
+        name: mod.name,
+        kind: mod.kind,
+        access: mod.access,
+        container: null,
+        file: mod.file,
+        docPage: page,
+      });
     } else {
       undocumented.push({ name: mod.name, kind: mod.kind, access: mod.access, container: null, file: mod.file });
     }
 
     for (const mem of mod.members || []) {
-      if (mem.access === 'Private') continue;
+      if (mem.access === "Private") continue;
       const page = docPageMap.get(mem.name);
       if (page) {
         documented.push({ ...mem, container: mod.name, file: mod.file, docPage: page });
@@ -136,30 +140,37 @@ function auditCoverage(apiJson, docPageMap) {
     for (const evt of mod.events || []) {
       const page = docPageMap.get(evt.name);
       if (page) {
-        documented.push({ name: evt.name, kind: 'Event', access: 'Public', container: mod.name, file: mod.file, docPage: page });
+        documented.push({
+          name: evt.name,
+          kind: "Event",
+          access: "Public",
+          container: mod.name,
+          file: mod.file,
+          docPage: page,
+        });
       } else {
-        undocumented.push({ name: evt.name, kind: 'Event', access: 'Public', container: mod.name, file: mod.file });
+        undocumented.push({ name: evt.name, kind: "Event", access: "Public", container: mod.name, file: mod.file });
       }
     }
   }
 
   for (const e of apiJson.enums || []) {
-    if (e.access === 'Private') continue;
+    if (e.access === "Private") continue;
     const page = docPageMap.get(e.name);
     if (page) {
-      documented.push({ name: e.name, kind: 'Enum', access: e.access, container: null, file: e.file, docPage: page });
+      documented.push({ name: e.name, kind: "Enum", access: e.access, container: null, file: e.file, docPage: page });
     } else {
-      undocumented.push({ name: e.name, kind: 'Enum', access: e.access, container: null, file: e.file });
+      undocumented.push({ name: e.name, kind: "Enum", access: e.access, container: null, file: e.file });
     }
   }
 
   for (const t of apiJson.types || []) {
-    if (t.access === 'Private') continue;
+    if (t.access === "Private") continue;
     const page = docPageMap.get(t.name);
     if (page) {
-      documented.push({ name: t.name, kind: 'Type', access: t.access, container: null, file: t.file, docPage: page });
+      documented.push({ name: t.name, kind: "Type", access: t.access, container: null, file: t.file, docPage: page });
     } else {
-      undocumented.push({ name: t.name, kind: 'Type', access: t.access, container: null, file: t.file });
+      undocumented.push({ name: t.name, kind: "Type", access: t.access, container: null, file: t.file });
     }
   }
 

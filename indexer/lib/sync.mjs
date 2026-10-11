@@ -1,6 +1,6 @@
-import { readFile } from 'node:fs/promises';
-import { queryPackages, downloadPackage } from './twinserv-client.mjs';
-import { parseTwinpack, collectFiles } from './twinpack-parser.mjs';
+import { readFile } from "node:fs/promises";
+import { queryPackages, downloadPackage } from "./twinserv-client.mjs";
+import { parseTwinpack, collectFiles } from "./twinpack-parser.mjs";
 
 function latestVersion(pkg) {
   return pkg.versions[pkg.versions.length - 1];
@@ -12,7 +12,7 @@ function versionString(v) {
 
 async function loadManifest(manifestPath) {
   try {
-    return JSON.parse(await readFile(manifestPath, 'utf8'));
+    return JSON.parse(await readFile(manifestPath, "utf8"));
   } catch {
     return { syncedAt: null, packages: {} };
   }
@@ -37,9 +37,9 @@ async function compareWithManifest(manifestPath) {
     const cached = manifest.packages[id];
 
     if (!cached) {
-      toDownload.push({ id, pkg, version: latest, symbol: latest.symbol, reason: 'added' });
+      toDownload.push({ id, pkg, version: latest, symbol: latest.symbol, reason: "added" });
     } else if (cached.version !== ver) {
-      toDownload.push({ id, pkg, version: latest, symbol: latest.symbol, reason: 'updated' });
+      toDownload.push({ id, pkg, version: latest, symbol: latest.symbol, reason: "updated" });
     } else {
       unchanged.push({ id, pkg, version: latest, symbol: cached.symbol });
     }

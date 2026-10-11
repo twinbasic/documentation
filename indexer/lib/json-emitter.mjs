@@ -7,13 +7,13 @@ function buildModule(node, file) {
 
   for (const child of children) {
     switch (child.kind) {
-      case 'Implements':
+      case "Implements":
         implementsList.push(child.name);
         break;
-      case 'Inherits':
+      case "Inherits":
         inheritsName = child.name;
         break;
-      case 'Event':
+      case "Event":
         events.push({
           name: child.name,
           signature: child.signature || `Event ${child.name}`,
@@ -41,7 +41,7 @@ function buildModule(node, file) {
     name: node.name,
     kind: node.kind,
     file,
-    access: node.access || 'Public',
+    access: node.access || "Public",
     attributes: node.attrs || [],
     implements: implementsList,
     inherits: inheritsName,
@@ -54,8 +54,8 @@ function buildEnum(node, file) {
   return {
     name: node.name,
     file,
-    access: node.access || 'Public',
-    members: (node.members || []).map(m => ({
+    access: node.access || "Public",
+    members: (node.members || []).map((m) => ({
       name: m.name,
       value: m.value ?? null,
     })),
@@ -64,8 +64,8 @@ function buildEnum(node, file) {
 
 function buildType(node, file) {
   const fields = (node.children || [])
-    .filter(c => c.kind === 'Field')
-    .map(c => ({
+    .filter((c) => c.kind === "Field")
+    .map((c) => ({
       name: c.name,
       signature: c.signature || c.name,
     }));
@@ -73,7 +73,7 @@ function buildType(node, file) {
   return {
     name: node.name,
     file,
-    access: node.access || 'Public',
+    access: node.access || "Public",
     fields,
   };
 }
@@ -86,16 +86,16 @@ function emitApiJson(packageName, version, fileResults) {
   for (const { relativePath, declarations } of fileResults) {
     for (const node of declarations) {
       switch (node.kind) {
-        case 'Module':
-        case 'Class':
-        case 'Interface':
-        case 'CoClass':
+        case "Module":
+        case "Class":
+        case "Interface":
+        case "CoClass":
           modules.push(buildModule(node, relativePath));
           break;
-        case 'Enum':
+        case "Enum":
           enums.push(buildEnum(node, relativePath));
           break;
-        case 'Type':
+        case "Type":
           types.push(buildType(node, relativePath));
           break;
       }
@@ -106,7 +106,7 @@ function emitApiJson(packageName, version, fileResults) {
   enums.sort((a, b) => a.name.localeCompare(b.name));
   types.sort((a, b) => a.name.localeCompare(b.name));
 
-  return JSON.stringify({ package: packageName, version, modules, enums, types }, null, 2) + '\n';
+  return JSON.stringify({ package: packageName, version, modules, enums, types }, null, 2) + "\n";
 }
 
 export { emitApiJson };

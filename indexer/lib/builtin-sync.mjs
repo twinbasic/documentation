@@ -1,13 +1,13 @@
-import { readFile } from 'node:fs/promises';
-import { getLatestRelease, downloadRelease } from './github-release.mjs';
-import { readZipDirectory, extractFile } from './zip-reader.mjs';
-import { parseTwinpack, collectFiles } from './twinpack-parser.mjs';
+import { readFile } from "node:fs/promises";
+import { getLatestRelease, downloadRelease } from "./github-release.mjs";
+import { readZipDirectory, extractFile } from "./zip-reader.mjs";
+import { parseTwinpack, collectFiles } from "./twinpack-parser.mjs";
 
 const FOLDER_RE = /^\.?\{([0-9A-Fa-f-]+)\}_(.+)$/;
 
 async function loadManifest(manifestPath) {
   try {
-    return JSON.parse(await readFile(manifestPath, 'utf8'));
+    return JSON.parse(await readFile(manifestPath, "utf8"));
   } catch {
     return { syncedAt: null, twinbasicTag: null, publishedAt: null, packages: {} };
   }

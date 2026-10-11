@@ -1,22 +1,22 @@
-const ATTR_SKIP = new Set(['UseGetLastError', 'MustBeQualified']);
+const ATTR_SKIP = new Set(["UseGetLastError", "MustBeQualified"]);
 
 function lex(fileContent) {
-  const raw = fileContent.replace(/^﻿/, '');
+  const raw = fileContent.replace(/^﻿/, "");
   const physicalLines = raw.split(/\r?\n/);
   const result = [];
 
   let i = 0;
   while (i < physicalLines.length) {
     const startLine = i + 1; // 1-based
-    let joinedCode = '';
-    let joinedRaw = '';
+    let joinedCode = "";
+    let joinedRaw = "";
 
     for (;;) {
-      const physLine = physicalLines[i] ?? '';
+      const physLine = physicalLines[i] ?? "";
       i++;
 
       // character-by-character strip
-      let code = '';
+      let code = "";
       let inString = false;
       for (let c = 0; c < physLine.length; c++) {
         const ch = physLine[c];
@@ -41,12 +41,12 @@ function lex(fileContent) {
       }
 
       joinedCode += code;
-      joinedRaw += (joinedRaw ? '\n' : '') + physLine;
+      joinedRaw += (joinedRaw ? "\n" : "") + physLine;
 
       // check continuation: _ preceded by whitespace at end of stripped code
       const contMatch = joinedCode.match(/\s_\s*$/);
       if (contMatch) {
-        joinedCode = joinedCode.slice(0, contMatch.index) + ' ';
+        joinedCode = joinedCode.slice(0, contMatch.index) + " ";
         if (i >= physicalLines.length) break;
         // continue to next physical line
       } else {
@@ -74,11 +74,12 @@ function scanAttributes(rawText) {
     const inner = bm[1];
     // split by commas, but not commas inside parentheses
     const parts = [];
-    let depth = 0, start = 0;
+    let depth = 0,
+      start = 0;
     for (let c = 0; c < inner.length; c++) {
-      if (inner[c] === '(') depth++;
-      else if (inner[c] === ')') depth--;
-      else if (inner[c] === ',' && depth === 0) {
+      if (inner[c] === "(") depth++;
+      else if (inner[c] === ")") depth--;
+      else if (inner[c] === "," && depth === 0) {
         parts.push(inner.slice(start, c).trim());
         start = c + 1;
       }
@@ -91,7 +92,7 @@ function scanAttributes(rawText) {
       const name = am[1];
       const value = am[2]?.trim() ?? null;
       if (ATTR_SKIP.has(name)) continue;
-      if (name === 'Description') {
+      if (name === "Description") {
         if (value) {
           const strMatch = value.match(/"([^"]*)"/);
           if (strMatch && strMatch[1]) description = strMatch[1];

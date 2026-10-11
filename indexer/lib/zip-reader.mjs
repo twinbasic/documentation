@@ -1,4 +1,4 @@
-import { inflateRawSync } from 'node:zlib';
+import { inflateRawSync } from "node:zlib";
 
 // End of Central Directory signature
 const EOCD_SIG = 0x06054b50;
@@ -18,18 +18,17 @@ function readZipDirectory(buffer) {
       break;
     }
   }
-  if (eocdOffset === -1) throw new Error('ZIP: End of Central Directory not found');
+  if (eocdOffset === -1) throw new Error("ZIP: End of Central Directory not found");
 
   const cdEntryCount = view.getUint16(eocdOffset + 10, true);
   const cdOffset = view.getUint32(eocdOffset + 16, true);
 
   const entries = new Map();
   let pos = cdOffset;
-  const decoder = new TextDecoder('utf-8');
+  const decoder = new TextDecoder("utf-8");
 
   for (let i = 0; i < cdEntryCount; i++) {
-    if (view.getUint32(pos, true) !== CDFH_SIG)
-      throw new Error(`ZIP: bad central directory header at offset ${pos}`);
+    if (view.getUint32(pos, true) !== CDFH_SIG) throw new Error(`ZIP: bad central directory header at offset ${pos}`);
 
     const compressionMethod = view.getUint16(pos + 10, true);
     const compressedSize = view.getUint32(pos + 20, true);

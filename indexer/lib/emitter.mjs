@@ -1,41 +1,41 @@
 function formatSignature(node) {
   switch (node.kind) {
-    case 'Module':
-    case 'Class':
-    case 'Type':
-    case 'CoClass':
+    case "Module":
+    case "Class":
+    case "Type":
+    case "CoClass":
       return `${node.kind} ${node.name}`;
-    case 'Interface':
+    case "Interface":
       return node.extends ? `Interface ${node.name} Extends ${node.extends}` : `Interface ${node.name}`;
-    case 'Enum':
+    case "Enum":
       return `Enum ${node.name}`;
-    case 'Declare': {
+    case "Declare": {
       let sig = `Declare ${node.subKind} ${node.name}`;
       if (node.returnType) sig += `() As ${node.returnType}`;
       return sig;
     }
-    case 'Sub':
-    case 'Function': {
+    case "Sub":
+    case "Function": {
       let sig = `${node.kind} ${node.name}`;
       if (node.returnType) sig += `() As ${node.returnType}`;
       return sig;
     }
-    case 'Property': {
+    case "Property": {
       let sig = `Property ${node.accessor} ${node.name}`;
       if (node.returnType) sig += `() As ${node.returnType}`;
       return sig;
     }
-    case 'Const':
+    case "Const":
       return `Const ${node.name}`;
-    case 'Event':
+    case "Event":
       return `Event ${node.name}`;
-    case 'Implements':
+    case "Implements":
       return `Implements ${node.name}`;
-    case 'Inherits':
+    case "Inherits":
       return `Inherits ${node.name}`;
-    case 'Field':
+    case "Field":
       return node.withEvents ? `WithEvents ${node.name}` : node.name;
-    case 'CoClassInterface':
+    case "CoClassInterface":
       return node.signature || `Interface ${node.name}`;
     default:
       return node.name;
@@ -43,17 +43,17 @@ function formatSignature(node) {
 }
 
 function emitNode(node, depth, lines) {
-  const indent = '  '.repeat(depth);
+  const indent = "  ".repeat(depth);
   let entry = `${indent}- L${node.line}: \`${formatSignature(node)}\``;
 
-  if (node.kind === 'Enum' && node.members) {
+  if (node.kind === "Enum" && node.members) {
     const count = node.members.length;
     const anchor = node.name.toLowerCase();
-    entry += ` (${count} member${count !== 1 ? 's' : ''}) — [full listing](#${anchor})`;
+    entry += ` (${count} member${count !== 1 ? "s" : ""}) — [full listing](#${anchor})`;
   }
 
   if (node.attrs && node.attrs.length) {
-    entry += ` \`[${node.attrs.join(', ')}]\``;
+    entry += ` \`[${node.attrs.join(", ")}]\``;
   }
   if (node.description) {
     entry += ` — ${node.description}`;
@@ -69,15 +69,15 @@ function emitNode(node, depth, lines) {
 }
 
 function emitMarkdown(packageName, fileResults) {
-  const lines = [`# ${packageName}`, ''];
+  const lines = [`# ${packageName}`, ""];
 
   for (const { relativePath, declarations } of fileResults) {
     if (!declarations.length) continue;
-    lines.push(`## ${relativePath}`, '');
+    lines.push(`## ${relativePath}`, "");
     for (const decl of declarations) {
       emitNode(decl, 0, lines);
     }
-    lines.push('');
+    lines.push("");
   }
 
   // Enum Details chapter
@@ -89,20 +89,20 @@ function emitMarkdown(packageName, fileResults) {
   }
 
   if (allEnums.length) {
-    lines.push('## Enum Details', '');
+    lines.push("## Enum Details", "");
     for (const e of allEnums) {
       lines.push(`### ${e.name}`);
-      lines.push(`_${e.file}, L${e.line}_`, '');
-      lines.push('| Value | Name |');
-      lines.push('|-------|------|');
+      lines.push(`_${e.file}, L${e.line}_`, "");
+      lines.push("| Value | Name |");
+      lines.push("|-------|------|");
       for (const mem of e.members) {
-        lines.push(`| ${mem.value ?? ''} | ${mem.name} |`);
+        lines.push(`| ${mem.value ?? ""} | ${mem.name} |`);
       }
-      lines.push('');
+      lines.push("");
     }
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 export { formatSignature, emitNode, emitMarkdown };

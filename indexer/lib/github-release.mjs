@@ -1,17 +1,16 @@
-const RELEASES_URL = 'https://api.github.com/repos/twinbasic/twinbasic/releases';
+const RELEASES_URL = "https://api.github.com/repos/twinbasic/twinbasic/releases";
 
 async function getLatestRelease() {
   const res = await fetch(RELEASES_URL, {
-    headers: { 'Accept': 'application/vnd.github+json' },
+    headers: { Accept: "application/vnd.github+json" },
   });
   if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
 
   const releases = await res.json();
-  if (!Array.isArray(releases) || releases.length === 0)
-    throw new Error('GitHub API returned no releases');
+  if (!Array.isArray(releases) || releases.length === 0) throw new Error("GitHub API returned no releases");
 
   const release = releases[0];
-  const asset = release.assets?.find(a => a.name.endsWith('.zip'));
+  const asset = release.assets?.find((a) => a.name.endsWith(".zip"));
   if (!asset) throw new Error(`No .zip asset in release ${release.tag_name}`);
 
   return {

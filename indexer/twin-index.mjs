@@ -1,42 +1,42 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { fileURLToPath } from 'node:url';
-import { compareWithManifest, fetchPackage, versionString } from './lib/sync.mjs';
-import { compareBuiltinManifest, extractBuiltinPackages } from './lib/builtin-sync.mjs';
-import { downloadRelease } from './lib/github-release.mjs';
-import { preprocessVB6, CONTAINER_MAP } from './lib/vb6-preprocess.mjs';
-import { lex } from './lib/lexer.mjs';
-import { extract } from './lib/extractor.mjs';
-import { emitApiJson } from './lib/json-emitter.mjs';
-import { ensureStore, commitStore, copyToSnapshots } from './lib/store.mjs';
-import { diffApi, auditCoverage } from './lib/differ.mjs';
+import fs from "node:fs/promises";
+import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
+import { compareWithManifest, fetchPackage, versionString } from "./lib/sync.mjs";
+import { compareBuiltinManifest, extractBuiltinPackages } from "./lib/builtin-sync.mjs";
+import { downloadRelease } from "./lib/github-release.mjs";
+import { preprocessVB6, CONTAINER_MAP } from "./lib/vb6-preprocess.mjs";
+import { lex } from "./lib/lexer.mjs";
+import { extract } from "./lib/extractor.mjs";
+import { emitApiJson } from "./lib/json-emitter.mjs";
+import { ensureStore, commitStore, copyToSnapshots } from "./lib/store.mjs";
+import { diffApi, auditCoverage } from "./lib/differ.mjs";
 
 const execFileP = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const STORE_PATH = path.join(__dirname, '.packages');
-const SNAPSHOTS_PATH = path.join(__dirname, 'snapshots');
-const MANIFESTS_DIR = path.join(__dirname, 'manifests');
-const DOCS_REF_DIR = path.resolve(__dirname, '..', 'docs', 'Reference');
-const REPO_ROOT = path.resolve(__dirname, '..');
+const STORE_PATH = path.join(__dirname, ".packages");
+const SNAPSHOTS_PATH = path.join(__dirname, "snapshots");
+const MANIFESTS_DIR = path.join(__dirname, "manifests");
+const DOCS_REF_DIR = path.resolve(__dirname, "..", "docs", "Reference");
+const REPO_ROOT = path.resolve(__dirname, "..");
 
-const DEFAULT_PACKAGES = ['VBA', 'VBRUN', 'VB'];
+const DEFAULT_PACKAGES = ["VBA", "VBRUN", "VB"];
 const VB6_EXTS = new Set(Object.keys(CONTAINER_MAP));
-const SOURCE_EXTS = new Set(['.twin', ...VB6_EXTS]);
+const SOURCE_EXTS = new Set([".twin", ...VB6_EXTS]);
 
 // --- Helpers ---
 
 function packageGroup(symbol, source) {
-  if (source === 'contributed') return 'contributed';
-  return DEFAULT_PACKAGES.includes(symbol) ? 'default' : 'built-in';
+  if (source === "contributed") return "contributed";
+  return DEFAULT_PACKAGES.includes(symbol) ? "default" : "built-in";
 }
 
 function groupDocsName(group) {
-  if (group === 'default') return 'Default';
-  if (group === 'built-in') return 'Built-In';
-  return 'Contributed';
+  if (group === "default") return "Default";
+  if (group === "built-in") return "Built-In";
+  return "Contributed";
 }
 
 function countDecls(nodes) {
@@ -70,51 +70,53 @@ function indexFiles(files) {
 
 function prepareSourceFiles(files) {
   return files
-    .filter(f => SOURCE_EXTS.has(path.extname(f.relativePath).toLowerCase()))
-    .map(f => {
-      const rel = f.relativePath.startsWith('Sources/')
-        ? f.relativePath.slice('Sources/'.length)
-        : f.relativePath;
-      return { relativePath: rel, content: f.content.toString('utf-8') };
+    .filter((f) => SOURCE_EXTS.has(path.extname(f.relativePath).toLowerCase()))
+    .map((f) => {
+      const rel = f.relativePath.startsWith("Sources/") ? f.relativePath.slice("Sources/".length) : f.relativePath;
+      return { relativePath: rel, content: f.content.toString("utf-8") };
     });
 }
 
 async function writeToStore(group, symbol, rawFiles, apiJsonStr) {
   const pkgDir = path.join(STORE_PATH, group, symbol);
-  const sourcesDir = path.join(pkgDir, 'sources');
+  const sourcesDir = path.join(pkgDir, "sources");
   await fs.rm(sourcesDir, { recursive: true, force: true });
   for (const f of rawFiles) {
     const ext = path.extname(f.relativePath).toLowerCase();
     if (!SOURCE_EXTS.has(ext)) continue;
     let rel = f.relativePath;
-    if (rel.startsWith('Sources/')) rel = rel.slice('Sources/'.length);
+    if (rel.startsWith("Sources/")) rel = rel.slice("Sources/".length);
     const dest = path.join(sourcesDir, rel);
     await fs.mkdir(path.dirname(dest), { recursive: true });
     await fs.writeFile(dest, f.content);
   }
-  await fs.writeFile(path.join(pkgDir, 'api.json'), apiJsonStr, 'utf-8');
+  await fs.writeFile(path.join(pkgDir, "api.json"), apiJsonStr, "utf-8");
 }
 
 async function buildPackageNameMap() {
   const map = new Map();
-  for (const group of ['Default', 'Built-In', 'Contributed']) {
+  for (const group of ["Default", "Built-In", "Contributed"]) {
     const groupDir = path.join(DOCS_REF_DIR, group);
     try {
       const entries = await fs.readdir(groupDir, { withFileTypes: true });
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
-        const indexPath = path.join(groupDir, entry.name, 'index.md');
+        const indexPath = path.join(groupDir, entry.name, "index.md");
         try {
-          const content = await fs.readFile(indexPath, 'utf-8');
+          const content = await fs.readFile(indexPath, "utf-8");
           const m = content.match(/^package_name:\s*(.+)$/m);
           if (m) {
-            for (const n of m[1].split(',')) {
+            for (const n of m[1].split(",")) {
               map.set(n.trim(), path.join(groupDir, entry.name));
             }
           }
-        } catch { /* no index.md */ }
+        } catch {
+          /* no index.md */
+        }
       }
-    } catch { /* group dir doesn't exist */ }
+    } catch {
+      /* group dir doesn't exist */
+    }
   }
   return map;
 }
@@ -122,18 +124,24 @@ async function buildPackageNameMap() {
 async function findPackageDocsDir(name, group, packageNameMap) {
   const docsGroup = groupDocsName(group);
   const newPath = path.join(DOCS_REF_DIR, docsGroup, name);
-  try { await fs.access(newPath); return newPath; } catch {}
+  try {
+    await fs.access(newPath);
+    return newPath;
+  } catch {}
   if (packageNameMap && packageNameMap.has(name)) {
     return packageNameMap.get(name);
   }
   const oldPath = path.join(DOCS_REF_DIR, name);
-  try { await fs.access(oldPath); return oldPath; } catch {}
+  try {
+    await fs.access(oldPath);
+    return oldPath;
+  } catch {}
   return null;
 }
 
 async function readIndexedFrom(filePath) {
   try {
-    const content = await fs.readFile(filePath, 'utf-8');
+    const content = await fs.readFile(filePath, "utf-8");
     const m = content.match(/^indexed_from:\s*(.+)$/m);
     return m ? m[1].trim() : null;
   } catch {
@@ -142,21 +150,21 @@ async function readIndexedFrom(filePath) {
 }
 
 function parseYamlList(content, field) {
-  const re = new RegExp(`^${field}:\\s*\\n((?:[ \\t]+- .+\\n?)*)`, 'm');
+  const re = new RegExp(`^${field}:\\s*\\n((?:[ \\t]+- .+\\n?)*)`, "m");
   const m = content.match(re);
   if (!m) return [];
   return m[1]
-    .split('\n')
-    .map(line => line.replace(/^\s+-\s*/, '').trim())
+    .split("\n")
+    .map((line) => line.replace(/^\s+-\s*/, "").trim())
     .filter(Boolean);
 }
 
 async function readExclusions(filePath) {
   try {
-    const content = await fs.readFile(filePath, 'utf-8');
+    const content = await fs.readFile(filePath, "utf-8");
     return {
-      containers: new Set(parseYamlList(content, 'exclude_from_docs')),
-      kinds: new Set(parseYamlList(content, 'exclude_kinds')),
+      containers: new Set(parseYamlList(content, "exclude_from_docs")),
+      kinds: new Set(parseYamlList(content, "exclude_kinds")),
     };
   } catch {
     return { containers: new Set(), kinds: new Set() };
@@ -180,12 +188,14 @@ async function scanDocPages(docsDir) {
   try {
     const files = await walkDir(docsDir);
     for (const file of files) {
-      if (!file.endsWith('.md')) continue;
-      const content = await fs.readFile(file, 'utf-8');
+      if (!file.endsWith(".md")) continue;
+      const content = await fs.readFile(file, "utf-8");
       const m = content.match(/^title:\s*(.+)$/m);
       if (m) pages.set(m[1].trim(), file);
     }
-  } catch { /* directory doesn't exist */ }
+  } catch {
+    /* directory doesn't exist */
+  }
   return pages;
 }
 
@@ -195,7 +205,7 @@ async function walkDir(dir) {
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      results.push(...await walkDir(full));
+      results.push(...(await walkDir(full)));
     } else {
       results.push(full);
     }
@@ -210,37 +220,37 @@ const command = cliArgs[0];
 
 let packageFilter = null;
 for (let i = 1; i < cliArgs.length; i++) {
-  if (cliArgs[i] === '--package' && cliArgs[i + 1]) {
+  if (cliArgs[i] === "--package" && cliArgs[i + 1]) {
     packageFilter = [cliArgs[++i]];
-  } else if (cliArgs[i] === '--packages' && cliArgs[i + 1]) {
-    packageFilter = cliArgs[++i].split(',').map(s => s.trim());
-  } else if (cliArgs[i] === '--help' || cliArgs[i] === '-h') {
+  } else if (cliArgs[i] === "--packages" && cliArgs[i + 1]) {
+    packageFilter = cliArgs[++i].split(",").map((s) => s.trim());
+  } else if (cliArgs[i] === "--help" || cliArgs[i] === "-h") {
     showHelp();
     process.exit(0);
   }
 }
 
 function showHelp() {
-  console.log('Usage: node indexer/twin-index.mjs <command> [options]');
-  console.log('');
-  console.log('Commands:');
-  console.log('  sync      Download packages, extract sources, generate api.json snapshots');
-  console.log('  analyze   Diff API snapshots against documented baseline');
-  console.log('');
-  console.log('Options:');
-  console.log('  --package <name>       Process only the specified package');
-  console.log('  --packages <a>,<b>     Process only the specified packages');
+  console.log("Usage: node indexer/twin-index.mjs <command> [options]");
+  console.log("");
+  console.log("Commands:");
+  console.log("  sync      Download packages, extract sources, generate api.json snapshots");
+  console.log("  analyze   Diff API snapshots against documented baseline");
+  console.log("");
+  console.log("Options:");
+  console.log("  --package <name>       Process only the specified package");
+  console.log("  --packages <a>,<b>     Process only the specified packages");
 }
 
 switch (command) {
-  case 'sync':
+  case "sync":
     await runSync(packageFilter);
     break;
-  case 'analyze':
+  case "analyze":
     await runAnalyze(packageFilter);
     break;
-  case '--help':
-  case '-h':
+  case "--help":
+  case "-h":
   case undefined:
     showHelp();
     break;
@@ -260,34 +270,31 @@ async function runSync(filter) {
   const failed = [];
 
   // --- Contributed packages (TWINSERV) ---
-  const contribManifestPath = path.join(MANIFESTS_DIR, 'contributed.json');
-  console.log('Fetching TWINSERV package index...');
-  const { toDownload, unchanged, removed, manifest: contribManifest } =
-    await compareWithManifest(contribManifestPath);
+  const contribManifestPath = path.join(MANIFESTS_DIR, "contributed.json");
+  console.log("Fetching TWINSERV package index...");
+  const { toDownload, unchanged, removed, manifest: contribManifest } = await compareWithManifest(contribManifestPath);
 
-  let contribToDownload = filter
-    ? toDownload.filter(p => filter.includes(p.symbol))
-    : toDownload;
+  let contribToDownload = filter ? toDownload.filter((p) => filter.includes(p.symbol)) : toDownload;
 
   // Re-download unchanged packages whose store directories are missing (fresh clone)
   const missingContrib = [];
   for (const item of unchanged) {
     if (filter && !filter.includes(item.symbol)) continue;
     try {
-      await fs.access(path.join(STORE_PATH, 'contributed', item.symbol, 'sources'));
+      await fs.access(path.join(STORE_PATH, "contributed", item.symbol, "sources"));
     } catch {
-      contribToDownload.push({ ...item, reason: 'missing-sources' });
+      contribToDownload.push({ ...item, reason: "missing-sources" });
       missingContrib.push(item.symbol);
     }
   }
-  if (missingContrib.length) console.log(`  Missing sources: ${missingContrib.join(', ')}`);
+  if (missingContrib.length) console.log(`  Missing sources: ${missingContrib.join(", ")}`);
 
-  const addedC = contribToDownload.filter(p => p.reason === 'added');
-  const updatedC = contribToDownload.filter(p => p.reason === 'updated');
-  if (addedC.length) console.log(`  Add: ${addedC.map(p => p.symbol).join(', ')}`);
-  if (updatedC.length) console.log(`  Update: ${updatedC.map(p => p.symbol).join(', ')}`);
-  if (!filter && removed.length) console.log(`  Remove: ${removed.map(p => p.symbol).join(', ')}`);
-  if (!contribToDownload.length && !removed.length) console.log('  Up to date.');
+  const addedC = contribToDownload.filter((p) => p.reason === "added");
+  const updatedC = contribToDownload.filter((p) => p.reason === "updated");
+  if (addedC.length) console.log(`  Add: ${addedC.map((p) => p.symbol).join(", ")}`);
+  if (updatedC.length) console.log(`  Update: ${updatedC.map((p) => p.symbol).join(", ")}`);
+  if (!filter && removed.length) console.log(`  Remove: ${removed.map((p) => p.symbol).join(", ")}`);
+  if (!contribToDownload.length && !removed.length) console.log("  Up to date.");
 
   for (const item of contribToDownload) {
     try {
@@ -298,7 +305,7 @@ async function runSync(filter) {
       const ver = versionString(item.version);
       const apiJson = emitApiJson(item.symbol, ver, fileResults);
 
-      await writeToStore('contributed', item.symbol, files, apiJson);
+      await writeToStore("contributed", item.symbol, files, apiJson);
 
       contribManifest.packages[item.id] = {
         symbol: item.symbol,
@@ -308,7 +315,7 @@ async function runSync(filter) {
         publishedTime: item.version.publishedTime,
       };
 
-      synced.push({ group: 'contributed', package: item.symbol, from: null, to: ver });
+      synced.push({ group: "contributed", package: item.symbol, from: null, to: ver });
       console.log(`    ${sourceFiles.length} files, ${declCount} declarations`);
     } catch (e) {
       failed.push({ symbol: item.symbol, error: e.message });
@@ -323,22 +330,22 @@ async function runSync(filter) {
   }
 
   contribManifest.syncedAt = new Date().toISOString();
-  await fs.writeFile(contribManifestPath, JSON.stringify(contribManifest, null, 2) + '\n');
+  await fs.writeFile(contribManifestPath, JSON.stringify(contribManifest, null, 2) + "\n");
 
   // --- Built-in + Default packages (GitHub release) ---
-  const builtinManifestPath = path.join(MANIFESTS_DIR, 'built-in.json');
-  console.log('\nChecking twinBASIC release...');
+  const builtinManifestPath = path.join(MANIFESTS_DIR, "built-in.json");
+  console.log("\nChecking twinBASIC release...");
   const release = await compareBuiltinManifest(builtinManifestPath);
   console.log(`  Tag: ${release.tag}`);
 
   // Force re-download if any built-in/default packages are missing from the store
   if (!release.needsUpdate) {
-    const symbols = Object.values(release.manifest.packages || {}).map(p => p.symbol);
+    const symbols = Object.values(release.manifest.packages || {}).map((p) => p.symbol);
     for (const sym of symbols) {
       if (filter && !filter.includes(sym)) continue;
-      const group = packageGroup(sym, 'builtin');
+      const group = packageGroup(sym, "builtin");
       try {
-        await fs.access(path.join(STORE_PATH, group, sym, 'sources'));
+        await fs.access(path.join(STORE_PATH, group, sym, "sources"));
       } catch {
         console.log(`  Missing sources: ${sym}`);
         release.needsUpdate = true;
@@ -348,14 +355,12 @@ async function runSync(filter) {
   }
 
   if (release.needsUpdate) {
-    console.log('  Downloading release...');
+    console.log("  Downloading release...");
     const zipBuffer = await downloadRelease(release.assetUrl);
     const builtinPackages = extractBuiltinPackages(zipBuffer);
     console.log(`  Extracted ${builtinPackages.length} packages`);
 
-    const toProcess = filter
-      ? builtinPackages.filter(p => filter.includes(p.symbol))
-      : builtinPackages;
+    const toProcess = filter ? builtinPackages.filter((p) => filter.includes(p.symbol)) : builtinPackages;
 
     const builtinManifest = {
       syncedAt: new Date().toISOString(),
@@ -371,7 +376,7 @@ async function runSync(filter) {
     for (const pkg of toProcess) {
       const sourceFiles = prepareSourceFiles(pkg.files);
       const { fileResults, declCount } = indexFiles(sourceFiles);
-      const group = packageGroup(pkg.symbol, 'builtin');
+      const group = packageGroup(pkg.symbol, "builtin");
       const apiJson = emitApiJson(pkg.symbol, release.tag, fileResults);
 
       await writeToStore(group, pkg.symbol, pkg.files, apiJson);
@@ -387,35 +392,32 @@ async function runSync(filter) {
       }
     }
 
-    await fs.writeFile(builtinManifestPath, JSON.stringify(builtinManifest, null, 2) + '\n');
+    await fs.writeFile(builtinManifestPath, JSON.stringify(builtinManifest, null, 2) + "\n");
   } else {
     console.log(`  Up to date (${release.tag}).`);
   }
 
   // --- Commit store and copy snapshots ---
   if (synced.length) {
-    const parts = synced.map(s => {
+    const parts = synced.map((s) => {
       if (s.from && s.from !== s.to) return `${s.package} ${s.from}→${s.to}`;
       return `${s.package} ${s.to}`;
     });
-    const committed = await commitStore(STORE_PATH, `sync: ${parts.join(', ')}`);
+    const committed = await commitStore(STORE_PATH, `sync: ${parts.join(", ")}`);
     if (committed) {
       await copyToSnapshots(STORE_PATH, SNAPSHOTS_PATH, synced);
-      console.log('\nSnapshots updated.');
+      console.log("\nSnapshots updated.");
     }
   }
 
-  console.log(
-    `\nDone. ${synced.length} synced` +
-    (failed.length ? `, ${failed.length} failed` : '') + '.',
-  );
+  console.log(`\nDone. ${synced.length} synced` + (failed.length ? `, ${failed.length} failed` : "") + ".");
 }
 
 // --- analyze command ---
 
 async function runAnalyze(filter) {
   const packageNameMap = await buildPackageNameMap();
-  const groups = ['default', 'built-in', 'contributed'];
+  const groups = ["default", "built-in", "contributed"];
   const packageList = [];
 
   for (const group of groups) {
@@ -426,17 +428,21 @@ async function runAnalyze(filter) {
         if (filter && !filter.includes(pkg)) continue;
         const stat = await fs.stat(path.join(groupDir, pkg));
         if (!stat.isDirectory()) continue;
-        const apiPath = path.join(groupDir, pkg, 'api.json');
+        const apiPath = path.join(groupDir, pkg, "api.json");
         try {
           await fs.access(apiPath);
           packageList.push({ group, name: pkg, apiPath });
-        } catch { /* no api.json for this package */ }
+        } catch {
+          /* no api.json for this package */
+        }
       }
-    } catch { /* group directory doesn't exist */ }
+    } catch {
+      /* group directory doesn't exist */
+    }
   }
 
   if (!packageList.length) {
-    console.log('No packages to analyze. Run sync first.');
+    console.log("No packages to analyze. Run sync first.");
     return;
   }
 
@@ -444,10 +450,10 @@ async function runAnalyze(filter) {
 
   for (const { group, name, apiPath } of packageList) {
     console.log(`\nAnalyzing ${name} (${group})...`);
-    const current = JSON.parse(await fs.readFile(apiPath, 'utf-8'));
+    const current = JSON.parse(await fs.readFile(apiPath, "utf-8"));
 
     const docsDir = await findPackageDocsDir(name, group, packageNameMap);
-    const indexMdPath = docsDir ? path.join(docsDir, 'index.md') : null;
+    const indexMdPath = docsDir ? path.join(docsDir, "index.md") : null;
     const indexedFrom = indexMdPath ? await readIndexedFrom(indexMdPath) : null;
     const exclusions = indexMdPath ? await readExclusions(indexMdPath) : null;
 
@@ -462,8 +468,8 @@ async function runAnalyze(filter) {
     printReport(report);
   }
 
-  const reportPath = path.join(STORE_PATH, 'report.json');
-  await fs.writeFile(reportPath, JSON.stringify(allReports, null, 2) + '\n');
+  const reportPath = path.join(STORE_PATH, "report.json");
+  await fs.writeFile(reportPath, JSON.stringify(allReports, null, 2) + "\n");
   console.log(`\nReport written to ${reportPath}`);
 }
 
@@ -471,9 +477,11 @@ async function analyzeUpdate(name, group, current, indexedFrom, docsDir, exclusi
   const snapshotRel = `indexer/snapshots/${group}/${name}/api.json`;
   let baseline = null;
   try {
-    const { stdout } = await execFileP('git', ['show', `HEAD:${snapshotRel}`], { cwd: REPO_ROOT });
+    const { stdout } = await execFileP("git", ["show", `HEAD:${snapshotRel}`], { cwd: REPO_ROOT });
     baseline = JSON.parse(stdout);
-  } catch { /* no committed snapshot */ }
+  } catch {
+    /* no committed snapshot */
+  }
 
   if (!baseline || baseline.version !== indexedFrom) {
     if (baseline && baseline.version !== indexedFrom) {
@@ -486,25 +494,31 @@ async function analyzeUpdate(name, group, current, indexedFrom, docsDir, exclusi
   const docPages = await scanDocPages(docsDir);
 
   let excludedCount = 0;
-  const notExcluded = s => {
-    if (isExcluded(s, exclusions)) { excludedCount++; return false; }
+  const notExcluded = (s) => {
+    if (isExcluded(s, exclusions)) {
+      excludedCount++;
+      return false;
+    }
     return true;
   };
-  const notExcludedMod = m => {
-    if (isExcluded(m.current, exclusions)) { excludedCount++; return false; }
+  const notExcludedMod = (m) => {
+    if (isExcluded(m.current, exclusions)) {
+      excludedCount++;
+      return false;
+    }
     return true;
   };
 
-  const publicAdded = diff.added.filter(s => s.access !== 'Private').filter(notExcluded);
-  const publicModified = diff.modified.filter(m => m.current.access !== 'Private').filter(notExcludedMod);
-  const publicRemoved = diff.removed.filter(s => s.access !== 'Private').filter(notExcluded);
-  const publicUnchanged = diff.unchanged.filter(s => s.access !== 'Private').filter(notExcluded);
+  const publicAdded = diff.added.filter((s) => s.access !== "Private").filter(notExcluded);
+  const publicModified = diff.modified.filter((m) => m.current.access !== "Private").filter(notExcludedMod);
+  const publicRemoved = diff.removed.filter((s) => s.access !== "Private").filter(notExcluded);
+  const publicUnchanged = diff.unchanged.filter((s) => s.access !== "Private").filter(notExcluded);
 
   const tasks = [];
 
   for (const sym of publicAdded) {
     tasks.push({
-      action: 'create',
+      action: "create",
       module: sym.container || sym.name,
       symbol: sym.name,
       kind: sym.kind,
@@ -515,11 +529,11 @@ async function analyzeUpdate(name, group, current, indexedFrom, docsDir, exclusi
 
   for (const { current: cur, baseline: base } of publicModified) {
     tasks.push({
-      action: 'update',
+      action: "update",
       module: cur.container || cur.name,
       symbol: cur.name,
       kind: cur.kind,
-      reason: 'signature_changed',
+      reason: "signature_changed",
       old_signature: base.signature,
       new_signature: cur.signature,
       file: cur.file,
@@ -529,7 +543,7 @@ async function analyzeUpdate(name, group, current, indexedFrom, docsDir, exclusi
 
   for (const sym of publicRemoved) {
     tasks.push({
-      action: 'flag_removal',
+      action: "flag_removal",
       module: sym.container || sym.name,
       symbol: sym.name,
       kind: sym.kind,
@@ -537,13 +551,12 @@ async function analyzeUpdate(name, group, current, indexedFrom, docsDir, exclusi
     });
   }
 
-  const totalPublic = publicAdded.length + publicModified.length +
-    publicRemoved.length + publicUnchanged.length;
+  const totalPublic = publicAdded.length + publicModified.length + publicRemoved.length + publicUnchanged.length;
 
   return {
     package: name,
     group,
-    mode: 'update',
+    mode: "update",
     from: baseline.version,
     to: current.version,
     tasks,
@@ -566,9 +579,12 @@ async function analyzeAudit(name, group, current, docsDir, exclusions) {
   let excludedCount = 0;
   const tasks = [];
   for (const sym of coverage.undocumented) {
-    if (isExcluded(sym, exclusions)) { excludedCount++; continue; }
+    if (isExcluded(sym, exclusions)) {
+      excludedCount++;
+      continue;
+    }
     tasks.push({
-      action: 'create',
+      action: "create",
       module: sym.container || sym.name,
       symbol: sym.name,
       kind: sym.kind,
@@ -578,15 +594,18 @@ async function analyzeAudit(name, group, current, docsDir, exclusions) {
   }
 
   // Also count excluded symbols from the documented list for accurate totals
-  const documentedFiltered = coverage.documented.filter(s => {
-    if (isExcluded(s, exclusions)) { excludedCount++; return false; }
+  const documentedFiltered = coverage.documented.filter((s) => {
+    if (isExcluded(s, exclusions)) {
+      excludedCount++;
+      return false;
+    }
     return true;
   });
 
   return {
     package: name,
     group,
-    mode: 'audit',
+    mode: "audit",
     from: null,
     to: current.version,
     tasks,
