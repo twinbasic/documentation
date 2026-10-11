@@ -88,5 +88,5 @@ To deliver a new build after that, replace the file in `%APPDATA%\twinBASIC\pack
 
 ### Checking which build a project uses
 
-- After **Apply Changes**, the [DEBUG CONSOLE](../../tB/IDE/Project/DebugConsole) shows whether the compiler restarted. `[COMPILER] Project settings changes require compiler-restart` means the IDE saved the project and restarted the compiler. `[COMPILER] Project settings updated` means the compiler kept running, with the build it already had.
+- After **Apply Changes**, the [DEBUG CONSOLE](../../tB/IDE/Debugging/Debug-Console) shows whether the compiler restarted. `[COMPILER] Project settings changes require compiler-restart` means the IDE saved the project and restarted the compiler. `[COMPILER] Project settings updated` means the compiler kept running, with the build it already had.
 - The **Version** column on the **Enabled Libraries** tab shows the version recorded when the package was imported or linked. It cannot tell apart two builds with the same Version, and for a linked package it does not change when the file is replaced.

@@ -55,7 +55,7 @@ The last seventeen items show a panel. A panel that is in no layout in use comes
 : The open files, the places where you edited, and the symbols of the current file. See [Navigating](../../Code/Navigating).
 
 **CALL STACK** (<kbd>Ctrl</kbd>+<kbd>L</kbd>), **VARIABLES**, **WATCHES**, **DEBUG CONSOLE** (<kbd>Ctrl</kbd>+<kbd>G</kbd>) and **MEMORY 1**
-: The debugging panels: the chain of calls, the variables in scope, your watch expressions, the program's output and commands, and raw memory. See [Call Stack](../../Project/CallStack), [Variables](../../Project/Variables), [Watches](../../Project/Watches), [Debug Console](../../Project/DebugConsole) and [Memory](../../Project/Memory).
+: The debugging panels: the chain of calls, the variables in scope, your watch expressions, the program's output and commands, and raw memory. See [Call Stack](../../Debugging/Inspecting#call-stack), [Variables](../../Debugging/Inspecting#variables), [Watches](../../Debugging/Inspecting#watches), [Debug Console](../../Debugging/Debug-Console) and [Memory](../../Debugging/Memory). The Watches and Memory panels are not in the default layout.
 
 **DIAGNOSTICS**
 : The errors and warnings of the project. See [Diagnostics](../../Code/Diagnostics).

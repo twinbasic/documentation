@@ -6,7 +6,7 @@ permalink: /tB/Modules/Debug
 # Debug
 {: .no_toc }
 
-The intrinsic debugging object. Writes to the IDE's [Debug Console](../IDE/Project/DebugConsole), clears it, asserts a condition, and writes to the trace log.
+The intrinsic debugging object. Writes to the IDE's [Debug Console](../IDE/Debugging/Debug-Console), clears it, asserts a condition, and writes to the trace log.
 
 **Debug** is a built-in class with a predeclared instance, so there is nothing to declare or construct --- the name **Debug** is the object. It has four methods and no properties.
 
@@ -20,7 +20,7 @@ The intrinsic debugging object. Writes to the IDE's [Debug Console](../IDE/Proje
 ## Debug.Print
 {: #print }
 
-Writes text to the [Debug Console](../IDE/Project/DebugConsole).
+Writes text to the [Debug Console](../IDE/Debugging/Debug-Console).
 
 Syntax: **Debug.Print** [ *outputlist* ]
 
@@ -60,7 +60,7 @@ End Sub
 ## Debug.Cls
 {: #cls }
 
-Clears the [Debug Console](../IDE/Project/DebugConsole).
+Clears the [Debug Console](../IDE/Debugging/Debug-Console).
 
 Syntax: **Debug.Cls**
 
@@ -106,7 +106,7 @@ End Function
 
 ## See Also
 
-- [Debug Console](../IDE/Project/DebugConsole) -- the IDE pane **Print** writes to, and its buttons
+- [Debug Console](../IDE/Debugging/Debug-Console) -- the IDE pane **Print** writes to, and its buttons
 - [Debugging Features](../../Features/Compiler-IDE/Debugging) -- the trace logger **TracePrint** feeds, and its project settings
 - [Assert Package](../Packages/Assert/) -- assertions for unit tests, with reported results
 - [ErrObject](ErrObject/) -- the other intrinsic object in this package

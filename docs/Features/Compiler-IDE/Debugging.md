@@ -7,31 +7,15 @@ permalink: /Features/Compiler-IDE/Debugging
 
 # Debugging Features
 
-twinBASIC includes several features to help with debugging. Breakpoints, stepping through code, and what the IDE shows when a run-time error stops a program are on the [Debug menu](../../tB/IDE/Reference/Menu/Debug#when-a-run-time-error-stops-the-program) page.
+twinBASIC adds three debugging features to those of VB6: a trace logger that also works in a compiled executable, the **Debug.Cls** statement, and detection of stale pointers. Breakpoints, stepping, the panel that opens at a run-time error and the Variables, Watches, Call Stack and Debug Console panels are described in [Running and debugging](../../tB/IDE/Debugging/).
 
 ## Debug Trace Logger
 
-New to the debugging experience is a trace logging feature that automatically creates detailed logs to either the debug console or a file. Messages can be output with [**Debug.TracePrint**](../../tB/Modules/Debug#traceprint). The logger works both when running from the IDE and in compiled executables.
-
-![The Project Settings dialog scrolled to the Trace Flags row, a column of eleven unticked boxes from Trace Procedure Entry and Exit points to Trace RaiseEvent calls and arguments, and to the Trace Output row, an empty text box above a description of the ${SESSIONID}, ${DATE}, ${TIME} and ${DEBUG} placeholders.](../Images/4fc2bf99-2bec-4943-837d-21038d791574.png){:width="760" height="531"}
-
-```tb check_build
-Public Sub ProcessOrder(ByVal orderId As Long)
-    Debug.TracePrint "ProcessOrder called, orderId=" & CStr(orderId)
-    ' ... processing ...
-End Sub
-```
+A trace logger creates detailed logs, to the debug console or to a file. Messages can be output with [**Debug.TracePrint**](../../tB/Modules/Debug#traceprint). The logger works both when running from the IDE and in compiled executables. [The trace logger](../../tB/IDE/Debugging/Debug-Console#the-trace-logger) explains the trace settings and shows an example.
 
 ## Clearing the Debug Console
 
-[**Debug.Cls**](../../tB/Modules/Debug#cls) empties the [Debug Console](../../tB/IDE/Project/DebugConsole) from code, the same as its *Clear Debug Console* button. Calling it as a run begins separates that run's output from the previous one, which is the difference between reading a log and scrolling for where it started:
-
-```tb check_build
-Private Sub Form_Load()
-    Debug.Cls
-    Debug.Print "--- run starting ---"
-End Sub
-```
+[**Debug.Cls**](../../tB/Modules/Debug#cls) empties the [Debug Console](../../tB/IDE/Debugging/Debug-Console) from code, the same as its *Clear Debug Console* button. Calling it as a run begins [separates that run's output from the previous one](../../tB/IDE/Debugging/Debug-Console#separate-one-run-from-the-next).
 
 ## Stale/Dangling Pointer Detection
 

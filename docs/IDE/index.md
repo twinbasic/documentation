@@ -10,7 +10,7 @@ permalink: /tB/IDE
 
 The IDE consists of several fixed panes and tool windows. The [**Project Explorer**](IDE/Project/Explorer) shows the file tree of the open project; the [**Editor**](IDE/Code/Editor) is the main code and designer surface; the [**Properties**](IDE/Project/Properties) pane shows and edits properties for the selected item; the [**Toolbox**](IDE/Project/Toolbox) lists the controls available to drop onto a form.
 
-The debug tool windows --- [**Call Stack**](IDE/Project/CallStack), [**Watches**](IDE/Project/Watches), [**Variables**](IDE/Project/Variables), [**Debug Console**](IDE/Project/DebugConsole) and [**Memory**](IDE/Project/Memory) --- open during a debug session.
+The debugging panels --- [**Call Stack**](IDE/Debugging/Inspecting#call-stack), [**Variables**](IDE/Debugging/Inspecting#variables), [**Debug Console**](IDE/Debugging/Debug-Console), [**Watches**](IDE/Debugging/Inspecting#watches) and [**Memory**](IDE/Debugging/Memory) --- are described in [**Running and debugging**](IDE/Debugging/). Nothing opens them when a program stops. The Call Stack, Variables and Debug Console are in the default layout. Watches and Memory are not: open them from the **View** menu.
 
 The panels you use while writing code --- [**Diagnostics**](IDE/Code/Diagnostics), [**Outline**](IDE/Code/Navigating#outline), [**Open Editors**](IDE/Code/Navigating#open-editors), [**History**](IDE/Code/Navigating#history) and [**Find / Replace**](IDE/Code/Finding) --- are described, with the editor, in [**Writing code**](IDE/Code/).
 

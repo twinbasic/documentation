@@ -319,7 +319,7 @@ git commit -m "Describe the change"
 
 A file removed or renamed in the IDE disappears from `src` as well, because the export empties
 the folder first, and `git add -A` records that. An export can fail without a message box, so
-check that the [Debug Console](../../tB/IDE/Project/DebugConsole) shows `[EXPORT] COMPLETED`
+check that the [Debug Console](../../tB/IDE/Debugging/Debug-Console) shows `[EXPORT] COMPLETED`
 for the save before committing.
 
 **Open a fresh clone** in the IDE. It holds `src` and the `.gitignore`, but no `.twinproj`:

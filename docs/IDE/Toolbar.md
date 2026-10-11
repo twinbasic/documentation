@@ -23,12 +23,12 @@ redirect_from:
 - Switch Between Form And Code
 - Undo
 - Redo
-- Start / Continue (<kbd>F5</kbd>)
-- Break Into Code (<kbd>Ctrl</kbd>+<kbd>Break</kbd>)
-- Stop
-- Step Over (<kbd>Shift</kbd>+<kbd>F8</kbd> / <kbd>F10</kbd>)
-- Step Into (<kbd>F8</kbd> / <kbd>F11</kbd>)
-- Step Out (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F8</kbd> / <kbd>Shift</kbd>+<kbd>F11</kbd>)
+- Start / Continue (<kbd>F5</kbd>) -- [Start, Break and End](../Debugging/Running#start-break-and-end)
+- Break Into Code (<kbd>Ctrl</kbd>+<kbd>Break</kbd>) -- [Break](../Debugging/Running#break)
+- Stop -- [Start, Break and End](../Debugging/Running#start-break-and-end)
+- Step Over (<kbd>Shift</kbd>+<kbd>F8</kbd> / <kbd>F10</kbd>) -- [Step commands](../Debugging/Breakpoints-and-Stepping#step-commands)
+- Step Into (<kbd>F8</kbd> / <kbd>F11</kbd>) -- [Step commands](../Debugging/Breakpoints-and-Stepping#step-commands)
+- Step Out (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F8</kbd> / <kbd>Shift</kbd>+<kbd>F11</kbd>) -- [Step commands](../Debugging/Breakpoints-and-Stepping#step-commands)
 - [Choose a build configuration](#build-configuration)
 - Restart the compiler
 - Clean (Deregister & delete build)
@@ -49,7 +49,7 @@ redirect_from:
 - Bring the selected control to the FRONT of the z-order
 - Send the selected control to the BACK of the z-order
 - Form designer zoom ratio
-- Launch the form in isolation to test the functionality
+- Launch the form in isolation to test the functionality -- [Run Or Preview](../Debugging/Running#run-or-preview)
 - Change IDE Theme
 - Global Search
 

@@ -56,7 +56,7 @@ What an accepted entry adds:
 > [!NOTE]
 > In twinBASIC BETA 1005, typing `(` to accept a function from the list doubles the bracket: `Area` becomes `Area(()`. Accept the function with <kbd>Tab</kbd> or <kbd>Enter</kbd> instead. It gives `Area()` with the caret between the brackets, so type the arguments without the opening bracket.
 
-The Debug Console has the same list in its entry box. See [Debug Console](../Project/DebugConsole).
+The Debug Console has the same list in its entry box. See [Debug Console](../Debugging/Debug-Console).
 
 ## Signature help
 
@@ -128,4 +128,4 @@ The Project Setting **CodeLens - Show Run Procedure** turns the bars on and off 
 - [IDE Options](../Customising/IDE-Options) -- the IntelliSense mode and the hover options
 - [Editor](Editor) -- Enter, Auto Prettify and the editing commands
 - [Diagnostics](Diagnostics) -- the problems the compiler reports
-- [Debug Console](../Project/DebugConsole) -- where CodeLens output appears
+- [Debug Console](../Debugging/Debug-Console) -- where CodeLens output appears

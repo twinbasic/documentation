@@ -95,7 +95,7 @@ This project type allows making a true console project rather than a GUI project
 
 A tool that a batch file runs must put its output where the batch file can redirect it, and report failure through its exit code, which a batch file tests with `if errorlevel`. Four things behave differently from what the template and VBA suggest:
 
-- **`Debug.Print` writes only to the IDE's [Debug Console](../../tB/IDE/Project/DebugConsole).** The built `.exe` prints nothing with it.
+- **`Debug.Print` writes only to the IDE's [Debug Console](../../tB/IDE/Debugging/Debug-Console).** The built `.exe` prints nothing with it.
 - **The template's `Console.WriteLine` writes only to a console window.** It calls `WriteConsoleW`, which writes nothing to a file or a pipe. With the program's output redirected, as in `mytool > out.txt`, it writes nothing and raises error 5.
 - **`End` stops the program with exit code 0.** To set the exit code, call the Windows `ExitProcess` function, after closing any files the program has open.
 - **`Command$` returns the arguments as they were typed.** For `mytool "my file.txt"` it returns `"my file.txt"`, quotes included.

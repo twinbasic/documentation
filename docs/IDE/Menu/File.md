@@ -30,7 +30,7 @@ With [*Export After Save*](../../Project-Settings#export-after-save) set, every 
 
 ### When a file cannot be deleted
 
-A read-only file stops the export part-way. Everything before it in alphabetical order is already deleted by then, everything after it is left, and nothing is written. No message appears. The only record is in the [Debug Console](../../Project/DebugConsole):
+A read-only file stops the export part-way. Everything before it in alphabetical order is already deleted by then, everything after it is left, and nothing is written. No message appears. The only record is in the [Debug Console](../../Debugging/Debug-Console):
 
 ```text
 [EXPORT]  DELETE FAILED: \\?\C:\Work\MyApp\notes.txt

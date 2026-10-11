@@ -1,8 +1,11 @@
 ---
 title: Memory
-parent: IDE
-# nav_order: 
-permalink: /tB/IDE/Project/Memory
+parent: Running and debugging
+grand_parent: IDE
+nav_order: 5
+permalink: /tB/IDE/Debugging/Memory
+redirect_from:
+  - /tB/IDE/Project/Memory
 index:
   - memory window
   - memory panel
@@ -11,11 +14,11 @@ index:
 
 # Memory
 
-![The Memory 1 pane showing only its toolbar row: a button of two curved arrows, an empty box prompting for an expression to watch, a display format dropdown set to Byte (Hex), and a column count dropdown set to Cols 16. No memory contents are listed.](Images/Memory.png){:width="696" height="82"}
+![The Memory 1 pane showing only its toolbar row: a button of two curved arrows, an empty box prompting for an expression to watch, a display format dropdown set to Byte (Hex), and a column count dropdown set to Cols 16. No memory contents are listed.](../Images/Memory.png){:width="696" height="82"}
 
 The Memory pane displays the raw contents of process memory while the program is paused in the debugger, with addresses in the left column, the values in the middle and the same bytes as text on the right. It is useful for inspecting data structures at the byte level, and it can also change them.
 
-**View → MEMORY 1** opens the pane. There is one Memory pane, and its title is always **MEMORY 1**.
+**View → MEMORY 1** opens the pane. There is one Memory pane, and its title is always **MEMORY 1**. The pane is not in the default layout. It is one of the [panels used while the program is paused](../Debugging/#the-panels-that-show-a-paused-program).
 
 A toolbar runs along the top of the pane:
 
@@ -79,7 +82,7 @@ In a 64-bit program each pointer takes 8 bytes instead of 4.
 
 Below, `s` holds "Hello twinBASIC". After `s` is entered, the box reads `StrPtr(s)`. Each character takes two bytes, the second of them `00`, and the last two zero bytes end the string:
 
-![The MEMORY 1 pane with StrPtr(s) in its box, Byte (Hex) and Cols 16 chosen, and two rows. The first row, at address &H0F423AC8, holds 48 00 65 00 6C 00 6C 00 6F 00 20 00 74 00 77 00, and its text column reads H.e.l.l.o. .t.w. The second row, at &H0F423AD8, holds 69 00 6E 00 42 00 41 00 53 00 49 00 43 00 00 00 and reads i.n.B.A.S.I.C...](Images/Memory_String.png){:width="696" height="120"}
+![The MEMORY 1 pane with StrPtr(s) in its box, Byte (Hex) and Cols 16 chosen, and two rows. The first row, at address &H0F423AC8, holds 48 00 65 00 6C 00 6C 00 6F 00 20 00 74 00 77 00, and its text column reads H.e.l.l.o. .t.w. The second row, at &H0F423AD8, holds 69 00 6E 00 42 00 41 00 53 00 49 00 43 00 00 00 and reads i.n.B.A.S.I.C...](../Images/Memory_String.png){:width="696" height="120"}
 
 `??` in the value cells, and `·` in the text column, mark memory the program cannot read.
 

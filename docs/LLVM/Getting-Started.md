@@ -83,7 +83,7 @@ Besides the project settings, three settings in [IDE Options](../tB/IDE/Customis
 : The number of threads the LLVM compiler can create. More threads can make LLVM compilation faster, but use more memory. If LLVM compilation starts to crash, this value is probably too high, and lowering it should stop the crashes. The default is 1, but newer computers can probably handle 10 or more.
 
 **LLVM Compiler: Complex procedure reporting threshold (milliseconds)**
-: A compile time. Every procedure that takes at least this long to compile is listed in the [Debug Console](../tB/IDE/Project/DebugConsole), which shows the procedures you may want to split up to reduce compile time. The default is 10000 milliseconds, which is 10 seconds.
+: A compile time. Every procedure that takes at least this long to compile is listed in the [Debug Console](../tB/IDE/Debugging/Debug-Console), which shows the procedures you may want to split up to reduce compile time. The default is 10000 milliseconds, which is 10 seconds.
 
 **LLVM Compiler: Keep cache process alive after exiting the IDE**
 : Keeps the LLVM cache running after you exit the IDE, so that LLVM does not have to do a long full compile again. It is on by default.

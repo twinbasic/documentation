@@ -277,12 +277,10 @@ parts:
         page: /tB/IDE/Code/
         landing_is_target: true
         outline_closed: true
-      - title: Debugging Panes
-        pages:
-          - /tB/IDE/Project/DebugConsole
-          - /tB/IDE/Project/CallStack
-          - /tB/IDE/Project/Variables
-          - /tB/IDE/Project/Memory
+      - title: Running and debugging
+        landing_page: /tB/IDE/Debugging/
+        page: /tB/IDE/Debugging/
+        landing_is_target: true
         outline_closed: true
       - title: Customising the IDE
         landing_page: /tB/IDE/Customising/
@@ -303,7 +301,6 @@ parts:
       - title: IDE Reference
         pages:
           - /tB/IDE/Reference/Menu/File
-          - /tB/IDE/Reference/Menu/Debug
           - /tB/IDE/Reference/Toolbar
         outline_closed: true
 
@@ -610,7 +607,6 @@ left_out:
       - /tB/IDE/Reference/Menu
       - /tB/IDE/Reference/Menu/Project
       - /tB/IDE/Reference/Menu/Format
-      - /tB/IDE/Reference/Menu/Run
       - /tB/IDE/Reference/Menu/AddIns
       - /tB/IDE/Reference/Menu/Help
 
@@ -624,10 +620,11 @@ left_out:
       - /tB/IDE/Project/Properties
       - /tB/IDE/Project/Webpage
       - /tB/IDE/Project/Splash
-      - /tB/IDE/Project/Watches
       - /tB/IDE/Project/PackagePublishing
       - /tB/IDE/AddIns/GlobalSearch
       - /tB/IDE/Reference/Menu/Edit
+      - /tB/IDE/Reference/Menu/Run
+      - /tB/IDE/Reference/Menu/Debug
       - /tB/IDE/Reference/Menu/View
       - /tB/IDE/Reference/Menu/Tools
       - /tB/IDE/Reference/Menu/Window     # ~800 lines of shortcut JSON that would print unfolded

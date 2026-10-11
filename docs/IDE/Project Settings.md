@@ -210,7 +210,7 @@ When set to **Yes**, the compiler includes the names of procedures in built EXEs
 
 ## Trace Flags
 
-What the trace logger records, together with [Trace Output](#trace-output). [Debug Trace Logger](../../Features/Compiler-IDE/Debugging#debug-trace-logger) describes the logger. Each flag has a box, and no box is ticked by default:
+What the trace logger records, together with [Trace Output](#trace-output). [The trace logger](Debugging/Debug-Console#the-trace-logger) describes the logger. Each flag has a box, and no box is ticked by default:
 
 - **Trace Procedure Entry and Exit points**
 - **Trace Procedure Arguments** -- needs *Trace Procedure Entry and Exit points* as well
@@ -233,7 +233,7 @@ Where the trace log goes: the full path of the log file. A new project does not 
 - `${SESSIONID}` -- a GUID that is unique to each session and each thread
 - `${DATE}` -- the date, as `YYYYMMDD`
 - `${TIME}` -- the time, as `HHNNSS`
-- `${DEBUG}` -- sends the log to the IDE's [DEBUG CONSOLE](Project/DebugConsole) only
+- `${DEBUG}` -- sends the log to the IDE's [DEBUG CONSOLE](Debugging/Debug-Console) only
 
 In the `Settings` file it is `compiler.traceOutput`.
 
@@ -294,7 +294,7 @@ When set to **Yes**, every save of the project also runs **Export Project** into
 
 ### Export Verbose
 
-When set to **Yes**, **Export Project** writes a line to the [Debug Console](Project/DebugConsole) for each file and folder it deletes, `[EXPORT]  DELETED: …`, and for each file it writes, `[EXPORT]  DONE: …`. When set to **No**, the console shows only the line that starts the export, the `[EXPORT] COMPLETED` line that ends it, and any failure. It is **No** by default. In the `Settings` file it is `project.exportVerbose`.
+When set to **Yes**, **Export Project** writes a line to the [Debug Console](Debugging/Debug-Console) for each file and folder it deletes, `[EXPORT]  DELETED: …`, and for each file it writes, `[EXPORT]  DONE: …`. When set to **No**, the console shows only the line that starts the export, the `[EXPORT] COMPLETED` line that ends it, and any failure. It is **No** by default. In the `Settings` file it is `project.exportVerbose`.
 
 ## Force DPI Awareness At Startup
 {: #dpi-awareness index="high DPI" }
@@ -313,7 +313,7 @@ When set to **Yes**, the memory of a **String**, **Variant** or array is overwri
 
 When set to **Yes**, a run-time error stops the program at the failing line even while an `On Error Resume Next` or `On Error GoTo` statement is in effect, with the same error panel as an error that nothing handles. It is **No** by default, and then the handler gets the error. **Debug → Debugger Options → Break On All Errors** turns the same setting on and off. In the `Settings` file it is `debugger.breakOnAllErrors`.
 
-[When a run-time error stops the program](Reference/Menu/Debug#when-a-run-time-error-stops-the-program) describes the panel. [Debugger Options](Reference/Menu/Debug#debugger-options) says what **Ignore (Resume Next)** does when this setting is on.
+[When a run-time error stops the program](Debugging/Breakpoints-and-Stepping#when-a-run-time-error-stops-the-program) describes the panel. [Break On All Errors and Debuggable](Debugging/Breakpoints-and-Stepping#break-on-all-errors-and-debuggable) says what **Ignore (Resume Next)** does when this setting is on.
 
 ## Build Stack Reserve Size
 
