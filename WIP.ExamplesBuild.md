@@ -12,7 +12,7 @@ compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
 ## State
 
-Of 1,249 `tb` fences in 613 pages, **1,197 are marked `check_build`** and compile, and 52
+Of 1,351 `tb` fences in 675 pages, **1,298 are marked `check_build`** and compile, and 52
 are `inert` with a recorded reason. **None is undecided**, so the backlog the census measures
 is empty. No fence is an `excerpt`. The run takes about 110 s. 33 of the marked samples are
 also `check_run`.
@@ -298,17 +298,48 @@ updates it, which beats a sample that quietly stops demonstrating anything.
 
 Version-controlled exported trees under `test/example-projects/<name>/` --- a `Settings`
 file plus `Sources/`, exactly what `node scripts/impexp.mjs export` produces and what `tbrun`
-already consumes. Three exist:
+already consumes. Three whole ones exist:
 
 | template | references | for |
 |---|---|---|
 | `console` | stdole, VB (Forms), AppGlobalClassObject | everything by default |
 | `packages` | the above plus all eleven other shipped packages | `Reference/Built-In/` and the package tutorials |
 | `form` | `console`, a delta | a `check_run` sample that needs a real form: drawing, `Cls`, `Print`, `Scale`, a form property. Never inferred: a fence says `project=form` |
+| `contributed-<Package>` | `console`, a delta: one `Settings` referencing one documented TWINSERV package, embedded | `Reference/Contributed/<Package>/` |
 
 (The table is the three whole templates. The deltas over them --- `vb-private`, `cc-private`,
 `wnc-private`, `cef-private`, `implicit`, `cef`, `webview2` --- are `TEMPLATE_BASE` in
-`scripts/lib/example-batches.mjs`, with `form`.)
+`scripts/lib/example-batches.mjs`, with `form` and the `contributed-<Package>` ones, which
+`TEMPLATE_BASE` gets from the directories so named.)
+
+**`contributed-<Package>`: packages embedded, not committed.** A project uses a TWINSERV
+package by embedding its whole exported tree under `Packages/<symbolId>/`, with a reference
+whose `path32` and `path64` are `/Packages/<symbolId>` (an AutoCompleteLib `.twinpack` embeds
+AutoCompleteGuids this way). A template commits only that `Settings`; `embeddedPackages`
+reads the references, and `fetchEmbedded` in `check_examples.mjs` downloads each package at
+the reference's version from TWINSERV into `%TEMP%\tb-twinserv\<id>_<version>.twinpack`,
+unpacks it beside, and copies it into every batch staged from the template. The code is not
+the repository's to commit: four of the nine ship no licence file, and WinReg embeds WinDevLib,
+14 MB.
+
+- **One template per package, because a reader's project references one.** With the nine in
+  one project, VBA_JSON's `Dictionary` class hid the `Scripting.Dictionary` that WinReg's
+  samples name.
+- **A project does not see the names a package's own references declare.** WinReg embeds
+  WinDevLib, and its samples' `HKEY_CURRENT_USER`, `REGTYPES` and `BOOL` were unresolved
+  until `contributed-WinReg` referenced WinDevLib (at the version WinReg embeds, 8.8.0.507)
+  and the Scripting Runtime itself. The WinReg landing page tells the reader the same.
+- **An error inside an embedded package is the package's, and fails nothing**
+  (`splitPackageFaults`). BigNumberLib 0.0.0.0 and WinReg 0.0.0.0 do not compile on BETA
+  1005: each passes a pointer to a `ByRef` structure parameter without `ByVal` (TB5001). The
+  template-alone build finds those rows; the run prints them as a note naming the package
+  rather than as a template FAIL, every other template row still fails, and the samples are
+  judged by their own rows as before. Their landing pages say so in a NOTE.
+- **When a section's `indexed_from` moves to a new version, change the version fields in its
+  `test/example-projects/contributed-<Package>/Settings` with it**, or its samples compile
+  against the old package. A new contributed section needs a template of its own: a copy of
+  another's `Settings` with the reference's `id`, `name`, `symbolId`, `path32`, `path64` and
+  version fields (strings) changed, from the package's own `Settings` and its TWINSERV version.
 
 **Template inheritance.** `TEMPLATE_BASE` names each template's base. The stager copies
 base-first, delta-over, so a template holds only the files that *differ*: `vb-private` is

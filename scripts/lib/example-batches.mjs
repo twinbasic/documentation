@@ -8,7 +8,7 @@
 // run. The lane that stages and builds for real stays in check_examples.mjs,
 // with everything else that reads the command line.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import {
@@ -70,6 +70,16 @@ export const TEMPLATE_BASE = {
   webview2: "packages",
 };
 
+// One template for each contributed package the reference documents,
+// `contributed-<Package>`: one Settings over `console`, referencing that package
+// alone, as a reader's project does, so that two packages' names cannot meet
+// (VBA_JSON's Dictionary class would hide the Scripting.Dictionary WinReg's
+// samples name). The directories say which there are.
+const TEMPLATES_DIR = path.join(REPO_ROOT, "test", "example-projects");
+for (const name of existsSync(TEMPLATES_DIR) ? readdirSync(TEMPLATES_DIR) : []) {
+  if (name.startsWith("contributed-")) TEMPLATE_BASE[name] = "console";
+}
+
 /** A template and everything it inherits from, base first. */
 export function templateChain(name) {
   const chain = [];
@@ -78,6 +88,63 @@ export function templateChain(name) {
     chain.unshift(n);
   }
   return chain;
+}
+
+/**
+ * The packages a template's Settings references inside the project rather than
+ * from the install: a reference whose path is `/Packages/<folder>`, which the
+ * IDE resolves to the package embedded in that folder. The `contributed-<Package>`
+ * templates reference the documented TWINSERV packages this way. Their code is
+ * not this repository's to commit -- some ship no licence, and WinReg embeds
+ * WinDevLib, 14 MB -- so check_examples downloads each at the version its
+ * reference names and embeds it in every batch staged from the template.
+ *
+ * `key` names the package's download in a cache: its id without braces and its
+ * version, as TWINSERV writes a version, Major.Minor.Revision.Build.
+ */
+export function embeddedPackages(settings) {
+  const out = [];
+  for (const r of settings["project.references"] ?? []) {
+    const m = /^\/Packages\/([^/\\]+)$/.exec(typeof r.path32 === "string" ? r.path32 : "");
+    if (!m) continue;
+    const version = {
+      versionMajor: Number(r.versionMajor),
+      versionMinor: Number(r.versionMinor),
+      versionRevision: Number(r.versionRevision),
+      versionBuild: Number(r.versionBuild),
+    };
+    const v = `${version.versionMajor}.${version.versionMinor}.${version.versionRevision}.${version.versionBuild}`;
+    out.push({ id: r.id, folder: m[1], version, key: `${String(r.id).replace(/[{}]/g, "")}_${v}` });
+  }
+  return out;
+}
+
+/**
+ * A template's own rows split by whose they are. A row inside a package the
+ * template embeds -- `{ERROR} /Packages/<folder>/...`, a nested package's
+ * included -- is that package's defect: third-party code the reference documents
+ * and cannot fix, whose page says it does not compile. It is reported, under the
+ * package's name, and does not fail the run. Every other row, an unreadable one
+ * included, is still the template's.
+ *
+ * @param {string[]} rows  the template faults of a run
+ * @param {Set<string>} folders  the folders the run's templates embed packages in
+ */
+export function splitPackageFaults(rows, folders) {
+  const byPackage = new Map();
+  const own = [];
+  for (const row of rows) {
+    const folder = /^\{\w+\} \/Packages\/([^/]+)\//.exec(row)?.[1];
+    if (folder && folders.has(folder)) byPackage.set(folder, [...(byPackage.get(folder) ?? []), row]);
+    else own.push(row);
+  }
+  return { byPackage, own };
+}
+
+/** The Settings a template stages with: the last one along its chain. */
+export function templateSettingsPath(templatesDir, name) {
+  const withSettings = templateChain(name).filter((n) => existsSync(path.join(templatesDir, n, "Settings")));
+  return withSettings.length ? path.join(templatesDir, withSettings.at(-1), "Settings") : null;
 }
 
 /** Does this template resolve to a project with a Settings anywhere in its chain? */
@@ -749,7 +816,7 @@ export async function runBatch(batch, lane) {
  */
 export function sectionOf(rel) {
   const parts = rel.split(/[\\/]/);
-  if (parts[0] === "Reference" && (parts[1] === "Default" || parts[1] === "Built-In")) {
+  if (parts[0] === "Reference" && ["Default", "Built-In", "Contributed"].includes(parts[1])) {
     return parts.slice(0, 3).join("/");
   }
   if (parts[0] === "Reference") return parts.slice(0, 2).join("/");
@@ -1696,6 +1763,54 @@ export async function runProbes(say) {
     delete TEMPLATE_BASE["probe-b"];
   }
   expect(cycleThrown, "templates: a cycle in TEMPLATE_BASE did not throw");
+  // An embedded package is a reference at /Packages/<folder>, keyed by id and version in TWINSERV's
+  // order; a type library or an installed package is not one. `contributed-WinReg` embeds WinReg and
+  // the WinDevLib its samples name, is a delta over `console`, and `console` embeds nothing.
+  const made = embeddedPackages({
+    "project.references": [
+      {
+        id: "{AB-12}",
+        path32: "/Packages/Pkg",
+        versionMajor: "2",
+        versionMinor: "3",
+        versionRevision: "0",
+        versionBuild: "1",
+      },
+      { id: "{00020430-0000-0000-C000-000000000046}", path32: "C:\\Windows\\SysWOW64\\stdole2.tlb" },
+      { id: "{C192FB39-64CA-4D9B-B477-A5502F48EFCC}", isCompilerPackage: true, path32: "" },
+    ],
+  });
+  expect(
+    made.length === 1 &&
+      made[0].folder === "Pkg" &&
+      made[0].key === "AB-12_2.3.0.1" &&
+      made[0].version.versionBuild === 1,
+    `templates: embeddedPackages read ${JSON.stringify(made)}`,
+  );
+  const settingsOf = (name) => JSON.parse(readFileSync(templateSettingsPath(templates, name), "utf8"));
+  // A row inside an embedded package is that package's; one in a package the run does not embed,
+  // in the project's own sources or in no readable shape stays the template's.
+  const split = splitPackageFaults(
+    [
+      "{ERROR} /Packages/Pkg/Sources/A.twin [1,2]: TB5001 x",
+      "{ERROR} /Packages/Pkg/Packages/Dep/Sources/B.twin [3,4]: TB5001 y",
+      "{ERROR} /Packages/Other/Sources/C.twin [5,6]: TB5001 z",
+      "{ERROR} /Sources/tbxStage.twin [7,8]: TB5079 w",
+      "something unreadable",
+    ],
+    new Set(["Pkg"]),
+  );
+  expect(
+    [...split.byPackage.keys()].join() === "Pkg" && split.byPackage.get("Pkg").length === 2 && split.own.length === 3,
+    `templates: splitPackageFaults gave ${JSON.stringify({ packages: [...split.byPackage], own: split.own })}`,
+  );
+  const winReg = embeddedPackages(settingsOf("contributed-WinReg")).map((p) => p.folder);
+  expect(
+    winReg.join() === "WinReg,WinDevLib" &&
+      templateChain("contributed-WinReg").join() === "console,contributed-WinReg" &&
+      embeddedPackages(settingsOf("console")).length === 0,
+    `templates: contributed-WinReg embeds ${winReg}, or is not over console, or console embeds a package`,
+  );
   const readTemplate = (name, file) => readFileSync(path.join(templates, name, "Sources", file), "utf8");
   // The declarations of a stage set: its lines that are neither blank nor a comment.
   const declarationsOf = (text) => text.split(/\r?\n/).filter((l) => l.trim() && !l.trim().startsWith("'"));
