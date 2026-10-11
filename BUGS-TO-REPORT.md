@@ -2614,3 +2614,107 @@ The effect on screen was not observed. In the IDE's `styles.css`, the rule of `.
 Severity: low. No data is lost, and the look of one kind of heading is the only thing that changes, but the IDE says nothing about it. A theme file that sets the two properties again, with its `;`, avoids it: a custom theme that inherits from Dark or Light, with `DiagnosticsGroupFontSize: 90%;` and `DiagnosticsGroupFontWeight: 500;` among its own lines, loads them.
 
 <!-- Reproducer: bugs/theme-missing-semicolon/ (mode probe: scripts/probe_theme_semicolon.mjs reads every .theme file in the install's themes folder with the rule of applyThemeData in ide/main.js and prints one line for each piece the loader drops; exit 1 while the defect is there). No project and no zip, as for the entry about the IDE's styles.css. `verify` reproduces on BETA 1005; the probe prints the same two lines on 997 and 957. No page carries a callout for it. If a page of the IDE section describes the theme file format, it states the loader's rule (read from main.js) and may name this fault; when it is fixed, the sentence naming it goes. The "custom theme avoids it" sentence in Severity follows from the loader's rule and was not tried in the IDE. The effect on screen (Problems panel group headings) is read from styles.css and the CSS rules, not seen. -->
+
+---
+
+## A `Dark.theme` or `Light.theme` in `%APPDATA%\twinBASIC\themes` stops every custom theme from inheriting, and Reload from disk from applying the theme
+
+**Describe the bug**
+When the common themes folder, `%APPDATA%\twinBASIC\themes`, holds a file named `Dark.theme` or `Light.theme`, no custom theme is linked to the theme it inherits from. Window > Theme lists every custom theme, the shipped Classic included, as `<name> (undefined)` instead of `<name> (Light)` or `<name> (Dark)`. Choosing one gives the dark base whatever its `inherits:` line says, with only the theme's own properties changed and every other colour left as the previous theme had it. Window > Theme > Reload from disk then reads the files again but never applies the active theme, so an edit to it does not show until the IDE is restarted. No message is shown. It was observed in an IDE started with an `APPDATA` of its own, by reading the theme list and the CSS variables of the IDE's page.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Close the IDE. There is no project to open: the defect is in how the IDE reads its theme folders. In `%APPDATA%\twinBASIC\themes` (the IDE creates the folder), write `AtStart.theme`:
+   ```
+   inherits: light;
+   MenuBackColor: rgb(255, 0, 0);
+   ```
+   and `Dark.theme`, with any text: its contents are not read.
+2. Start the IDE and cancel the New / Open dialog. Open Window > Theme: it lists `Classic (undefined)` and `AtStart (undefined)`.
+3. Choose `AtStart`: the IDE takes the dark base (dark panels, the dark code editor) with a red menu bar.
+4. Change the colour in `AtStart.theme` to `rgb(0, 128, 0)` and choose Window > Theme > Reload from disk: the menu bar stays red.
+5. Delete `Dark.theme` and restart the IDE: the list shows `Classic (Light)` and `AtStart (Light)`, `AtStart` gives the light base with a red menu bar, and Reload from disk after the same edit turns the menu bar green at once.
+
+**Expected behavior**
+The themes keep their parents whatever else the common folder holds, as in step 5: `Classic (Light)` and `AtStart (Light)` in the list, the light base for `AtStart`, and Reload from disk applying the edit. A `Dark.theme` or `Light.theme` there is either ignored, as the code means it to be, or replaces the shipped theme of that name.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: `reloadThemesFromDisk`, which runs at start-up and for Reload from disk, counts every `.theme` file of both folders into `customThemesCount`, but in the common folder it skips `Dark.theme` and `Light.theme` without calling `addTheme`. `addTheme` links the themes to their parents (`inheritsFromLink` and `group`), and runs `afterRefreshedThemes`, only once `customThemes.length` reaches `customThemesCount`, which then never happens. Reload from disk applies the theme in `afterRefreshedThemes`, so that never runs either. Counting only the files that are added would cure both.
+
+Only `Dark.theme` was tried; `Light.theme` takes the same branch of the code. The file was in place when the IDE started; adding it and choosing Reload from disk goes through the same function, and was not tried.
+
+Severity: moderate. Nothing is lost, but copying the shipped `Dark.theme` into the common folder to change it, the obvious way to adjust a shipped theme, makes every custom theme wrong, and nothing says why.
+
+<!-- Reproducer: bugs/theme-override-breaks-inheritance/ (mode lane: asserted by `ide-test.bat --only customising` (test/ide/customising.test.mjs), the test "a Dark.theme in the APPDATA themes folder unlinks every custom theme, and Reload from disk stops applying", which passes on BETA 1005; the first test of that file is the control without Dark.theme, and passes too). No project and no zip: the steps write the theme files. docs/IDE/Customising/Themes.md carries a WARNING for it, the first of its two; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Customising pages. -->
+
+---
+
+## Two themes that inherit from each other freeze the IDE, and choosing one fails with a stack overflow
+
+**Describe the bug**
+When two theme files name each other in their `inherits:` lines, loading the themes stops the IDE's page for several seconds and leaves the themes half linked: one of the two is listed as `<name> (undefined)`. Choosing either of them afterwards changes nothing on screen: the page raises an uncaught `RangeError: Maximum call stack size exceeded` while it applies the theme, and the previous theme's colours stay. Nothing on screen reports the error. It was observed in an IDE started with an `APPDATA` of its own, with a timer in the IDE's page recording the longest time the page did not run, and a listener for the page's `error` event catching the exception.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE. There is no project to open. In `%APPDATA%\twinBASIC\themes`, write `LoopA.theme`:
+   ```
+   inherits: LoopB;
+   MenuBackColor: rgb(1, 1, 1);
+   ```
+   and `LoopB.theme`:
+   ```
+   inherits: LoopA;
+   MenuBackColor: rgb(2, 2, 2);
+   ```
+2. Choose Window > Theme > Reload from disk. The IDE does not respond for about seven seconds (7.5 s on the machine it was found on).
+3. Open Window > Theme: it lists `LoopB (undefined)`.
+4. Choose `LoopA`: the menu bar does not take `rgb(1, 1, 1)`, and nothing else changes.
+5. To recover, remove the loop from the files and restart the IDE.
+
+**Expected behavior**
+The IDE stays responsive, and the themes in the loop fall back to the Dark theme, which the code in `addTheme` means them to do: it checks for a theme met twice, and sets the group to Dark when it finds one. Choosing `LoopA` then applies at least its own `MenuBackColor`. A message naming the loop would help the person who wrote it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: in `addTheme`, the pass that gives each theme its group follows `inheritsFromLink` in a `while` loop and records each theme it passes. When it meets a theme a second time it sets the group to Dark, but does not leave the loop, so it keeps going round the two themes until it stops after several seconds without finishing: `LoopB` is never given a group, and `afterRefreshedThemes` is still pending afterwards. `applyThemeData` then follows the same links recursively when a theme of the loop is applied, and overflows the stack. A `break` after the fall-back, and the same check in `applyThemeData`, would cure both.
+
+Start-up loads the themes through the same `reloadThemesFromDisk`, so an IDE started with the two files in place should freeze the same way; only Reload from disk was tried. A longer chain that returns to its first theme takes the same path in the code, and was not tried.
+
+Severity: moderate. Nothing is lost and the IDE recovers, but the freeze looks like a hang, and nothing says which files cause it.
+
+<!-- Reproducer: bugs/theme-inherit-loop/ (mode lane: asserted by `ide-test.bat --only customising` (test/ide/customising.test.mjs), the test "two themes that inherit each other freeze the page, and choosing one fails with a stack overflow", which passes on BETA 1005 with a pause of 7.5 s; it asserts a pause of at least 2 s, LoopB listed as (undefined), LoopA's colour not applied and the RangeError). No project and no zip. docs/IDE/Customising/Themes.md carries a WARNING for it, the second of its two; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Customising pages; the fact sheet had expected the fall-back to Dark. -->
+
+---
+
+## A keyboard-shortcut group whose name contains `|` switches other groups on and off
+
+**Describe the bug**
+The IDE keeps the list of keyboard-shortcut groups that are on as one string, each name between two bars, such as `|Mine||Other|`, and looks a name up in it as text. Manage Keyboard Shortcuts accepts a group name that contains `|`, and that name's entry can then contain another group's: with groups `A|B` and `B`, the text `|A|B|` is the entry of `A|B` and also contains `|B|`. Clicking `B` in Window > Keyboard Shortcuts then removes the wrong text: the first click leaves `B` ticked, and the second switches `A|B` off as well and saves a list that ends in a broken `|A`. Nothing warns about the name. It was observed by operating Manage Keyboard Shortcuts and the commands of the Window > Keyboard Shortcuts items in an IDE whose saves were blocked, and reading the list and the menu's ticks after each step.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. There is no project to open. The steps change the groups saved in `HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE\IDESettings` (`CUSTOM_KEYBOARD_SHORTCUT_GROUPS` and `ACTIVE_KEYBOARD_SHORTCUT_GROUPS`): export that key first if they matter. Choose Window > Keyboard Shortcuts > Manage Keyboard Shortcuts..., Add New..., type `A|B`, press Enter, and Save Changes. The new group is switched on.
+2. Do the same with the name `B`. Window > Keyboard Shortcuts shows `Custom 1. A|B` and `Custom 2. B`, both ticked. The list of groups that are on is `|A|B||B|`.
+3. Click `Custom 2. B`. It stays ticked: the IDE removed the first `|B|` it found, which is the one inside `|A|B|`, and the list is now `|A|B|`.
+4. Click `Custom 2. B` again. `A|B` and `B` are both unticked, though only `B` was clicked, and the list saved is `|A`, which names no group.
+
+**Expected behavior**
+Step 3 switches `B` off and leaves `A|B` on. Either Manage Keyboard Shortcuts refuses a name that contains `|`, as it refuses one that starts with `<`, or the list is kept in a form that a name cannot break, such as a JSON array of names.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The code, read from `ide\main.js`: `toggleActiveKeyboardShortcutName` tests the list with `indexOf("|" + name + "|")` and removes the entry with `replace`, which replaces the first match; `getCustomKeyboardShortcutMenuOptions` ticks a group by the same `indexOf`. The merge of the groups that are on matches names the same way: with the list `|A|B|`, `A|B` on and `B` defined but never switched on, a shortcut that only `B` defines works, and `B` is ticked in the menu. That was tried with the groups set in the IDE's page as Save Changes sets them, and a real key press.
+
+Severity: low. A name with `|` is unusual, and the groups themselves are kept, but the saved list is corrupted without a message, and the menu shows a group as on after it was switched off.
+
+<!-- Reproducer: bugs/keyboard-group-bar-name/ (mode lane: asserted by `ide-test.bat --only customising` (test/ide/customising.test.mjs), the test "a group named A|B switches B on with it, and toggling B twice switches both off", which passes on BETA 1005; it adds the groups through the Manage Keyboard Shortcuts dialog and runs the menu item's command, tbKeyboardShortcuts_ToggleActiveKeyboardShortcutGroupCustom2, with every save the IDE makes blocked in its page). No project and no zip. docs/IDE/Customising/Keyboard-Shortcuts.md carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Customising pages. -->

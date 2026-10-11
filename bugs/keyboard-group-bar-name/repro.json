@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:customising",
+  "tests": [
+    "a group named A|B switches B on with it, and toggling B twice switches both off"
+  ],
+  "steps": "It changes the user's own keyboard-shortcut groups, saved in HKCU\\Software\\VB and VBA Program Settings\\twinBASIC_IDE\\IDESettings (CUSTOM_KEYBOARD_SHORTCUT_GROUPS and ACTIVE_KEYBOARD_SHORTCUT_GROUPS). Export that key first with reg export, and import it back afterwards.\n1. Window > Keyboard Shortcuts > Manage Keyboard Shortcuts... Add New..., type A|B, Enter, Save Changes.\n2. The same again with the name B. Window > Keyboard Shortcuts now shows Custom 1. A|B and Custom 2. B, both ticked; the active list is |A|B||B|.\n3. Click Custom 2. B. Expected: B is unticked and A|B stays ticked. Actual: B stays ticked; the IDE removed the first |B| it found, the one inside |A|B|, and the list is |A|B|.\n4. Click Custom 2. B again: A|B and B are both unticked, though only B was clicked, and the saved list is |A, which names no group."
+}
