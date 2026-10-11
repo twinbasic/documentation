@@ -118,7 +118,8 @@ for contributors.
     keys;
   - `ideOptionsSchema`: the IDE Options, one flat list of about 30 options;
   - `rootMenu…offsetHeight` blocks: the menus;
-  - `runningProcessesContainer`: the Run menu's process list;
+  - `runningProcessesContainer`: the running programs, shown as **PROCESS** boxes in the
+    status bar (not in the Run menu);
   - `createDropDowns`: the editor's three combo boxes;
   - `showDesignerContextMenu`: the form designer's context menu;
   - `tbFormDesigner_MenuEditor*`: the menu editor;
@@ -193,7 +194,7 @@ From the survey of BETA 1005. Each chapter's fact sheet confirms the items in it
 - **Properties:** search, the system-colour picker, ActiveX property pages.
 - **Report designer:** everything beyond the list of bands and tools.
 - **Running:**
-  - the Run menu's process list (Terminate, Bring To Front);
+  - the status bar's **PROCESS** boxes for running programs (Terminate, Bring To Front);
   - **Run Or Preview** (<kbd>F6</kbd>);
   - setting a breakpoint in the gutter, and whether breakpoints persist;
   - Step Out (on the toolbar, not on the Debug menu).
