@@ -315,6 +315,15 @@ Needs git; no browser, no built tree, no twinBASIC, about 1 s.
 
 Exit codes: **0** every test passed, **1** a test failed.
 
+## indexer.test.mjs
+{: #indexer-test }
+
+    node --test test/indexer.test.mjs
+
+Unit tests for the package indexer in `indexer/lib/`, which turns the packages' sources into the `api.json` files the documentation is maintained from. The indexer promises that a snapshot changes only when the API does, and each test is a case where that promise fails without a sound if a rule stops working. The VB6 preprocessing is tested for the name a file gets (its `VB_Name`, else its file's name, as for a file that is commented out whole), the header it drops, and the extension that decides whether it is a Module or a Class. The reading of a package's files is tested on `indexer/sample.twinpack` and on a project packed for the test: the files come back in code-unit order and not in the order of any locale, and whatever sits under a `Packages` folder, a copy of another package, is left out. The model is tested on hand-made sources and on the sample: types sorted by their path, with the type they are declared in as `in`; members sorted by name, uppercase first; the values of an enumeration and the fields of a `Type` in the order they are written; a type-declaration character stripped from an unbracketed name and kept in a bracketed one; the public flag of a type; the VB6 files and the designer files in a package; and the same bytes from the same files in any order. The differ is tested on small `api.json` objects: what is added, removed and modified, and in what (signature, attributes or detail); a property's accessors as one symbol; a nested type told apart from a type of the same name elsewhere; a `Declare`; Private and Protected members; and the coverage audit of the public symbols against a map of page titles. It needs no network, no git, no twinBASIC install and no built tree, and runs in well under a second.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
 ## check_page_baseline.mjs
 {: #check-page-baseline }
 
@@ -351,7 +360,7 @@ Verifies the [symbol index](Building#the-symbol-index) still places each kind of
 
 A build that indexes the reference cleanly says nothing about the rules that did not fire on it, so each rule is asserted against the case that made it necessary:
 
-- **The `.twin` scanner:** a `Type` whose `Sub`s have bodies, an `Interface` line inside a `CoClass`, `[Hidden]` on a module whose members are global, a `$` name escaped in brackets, an `Alias`, a field named for a keyword, a procedure whose body shares its line, an enumeration value named for a modifier, and what the record of a declaration says: its signature, the arguments of its attributes, its description, its return type and its accessor.
+- **The `.twin` scanner:** a `Type` whose `Sub`s have bodies, an `Interface` line inside a `CoClass`, `[Hidden]` on a module whose members are global, a `$` name escaped in brackets, an `Alias`, a field named for a keyword, a procedure whose body shares its line, an enumeration value named for a modifier, an enumeration value written as `[Name]` on a line of its own (a value, as the compiler reads it, and not the attribute of the next line), and what the record of a declaration says: its signature, the arguments of its attributes, its description, its return type and its accessor.
 - **The derivation:** a member on a page of its own and under a heading, an inherited member found on its declaring type's page, a page filed under one module and declared in another, a `$` form, a `## Properties` heading on a type that has a `Properties` property, and the ellipsis the typographer puts in a Core page's heading.
 - **The guard:** a lost anchor fails and is named, and CI never writes the list.
 

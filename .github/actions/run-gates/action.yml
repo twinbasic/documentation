@@ -148,6 +148,15 @@ runs:
     - name: Unit-test the help add-in's project file (test/addin-project.test.mjs)
       shell: bash
       run: node --test test/addin-project.test.mjs
+    # Unit tests for the package indexer, indexer/lib/: the VB6 preprocessing,
+    # the files of a package, the api.json built from them (sorted by code
+    # unit, nested types by their path, values and fields in declaration order,
+    # the same bytes from the same files) and the differ that compares two of
+    # them. Reads indexer/sample.twinpack; no network, no git, no install. No
+    # browser, no built tree, well under a second.
+    - name: Unit-test the package indexer (test/indexer.test.mjs)
+      shell: bash
+      run: node --test test/indexer.test.mjs
     # A regex that backtracks exponentially does not fail a build, it stops
     # one: the corpus passes until a page happens to contain the trigger, and
     # then a render worker sits inside String.replace forever. Nothing else

@@ -109,6 +109,14 @@ node --test test/ports.test.mjs
 @rem the file is in each tree. Needs git; no tree, no install, about 1 s.
 node --test test/addin-project.test.mjs
 @if errorlevel 1 goto :fail
+@rem Unit tests for the package indexer, indexer/lib/: the VB6 preprocessing,
+@rem the files of a package, the api.json built from them (sorted by code
+@rem unit, nested types by their path, values and fields in declaration
+@rem order, the same bytes from the same files) and the differ that compares
+@rem two of them. Reads indexer/sample.twinpack; no network, no git, no
+@rem install. No tree, no browser, well under a second.
+node --test test/indexer.test.mjs
+@if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus
 @rem passes until some page happens to contain the trigger, and then the

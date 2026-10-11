@@ -318,6 +318,11 @@ indexer/
   .packages/                   (gitignored) local git repo with sources
 ```
 
+Its unit tests are `test/indexer.test.mjs` (`node --test test/indexer.test.mjs`,
+run by `test.bat` and in CI): the VB6 preprocessing, the reading of a package's
+files from `sample.twinpack`, `api.json` and the differ, on small inputs.
+They need no network, git or twinBASIC install.
+
 ## Troubleshooting
 
 **"No packages to analyze. Run sync first."**

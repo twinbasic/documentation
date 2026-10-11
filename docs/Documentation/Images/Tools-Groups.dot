@@ -133,7 +133,8 @@ digraph tools_groups {
         t19 [label="check_twin_parsers"]   t20 [label="check_attribute_sweep"]
         t21 [label="check_cli"]            t22 [label="check_pdf_shims_equiv"]
         t23 [label="check_impexp_parity"]  t24 [label="check_axe_patch_equiv"]
-        t1 -> t5 -> t9  -> t13 -> t17 -> t21
+        t25 [label="indexer.test"]
+        t1 -> t5 -> t9  -> t13 -> t17 -> t21 -> t25
         t2 -> t6 -> t10 -> t14 -> t18 -> t22
         t3 -> t7 -> t11 -> t15 -> t19 -> t23
         t4 -> t8 -> t12 -> t16 -> t20 -> t24
@@ -186,7 +187,7 @@ digraph tools_groups {
     edge [weight=1]
     wp -> s1    b7 -> c1
     s9 -> t1    s10 -> t2   cp2 -> t3   c6 -> t4
-    t21 -> e1   t22 -> i1   t24 -> d1
+    t25 -> e1   t22 -> i1   t24 -> d1
 
     // ---- links ----
     // Each link has a tooltip describing the tool or group, which a pointer shows on hover.
@@ -342,6 +343,8 @@ digraph tools_groups {
          tooltip="Verifies that the Node and Python editions of impexp behave the same: same tests, exit codes, output and files."]
     t24 [URL="Tools-Toolchain-Tests#check-axe-patch-equiv"
          tooltip="Checks that the patched axe source computes the same colour values as the stock source, for the color-contrast rule."]
+    t25 [URL="Tools-Toolchain-Tests#indexer-test"
+         tooltip="Runs unit tests for the package indexer: VB6 preprocessing, package files, the api.json model and the differ."]
 
     e1 [URL="Tools-Samples#check-examples"
         tooltip="Compiles the code samples marked check_build and reports each diagnostic against the page line it came from. Samples marked check_run are also run."]
