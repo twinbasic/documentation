@@ -57,7 +57,7 @@
 //              window draws and no capture of the page holds, drawn as a replica: its
 //              options from the element, the selected one marked, in the owner's one style
 //              (a white list, a 1 px grey border, the select's own font, the selected option
-//              white on #6E6E6E). `select` is a `css` anchor of the select or of an element
+//              white on #6E6E6E; an option the page sets in bold, bold). `select` is a `css` anchor of the select or of an element
 //              inside or around it; `at` the list's top-left corner, by default the select's
 //              bottom-left, where the OS list opens; `rows` how many options show, the rest
 //              behind a scroll bar, the selected one in the middle. Drawn in the order of the
@@ -433,19 +433,23 @@ function draw(prims, S, resolve = null) {
     const first = scrolls ? Math.max(0, Math.min(options.length - shownRows, current - Math.floor(shownRows / 2))) : 0;
     const g = el("g", { class: "tbShotList", "data-name": p.name ?? String(lists) });
     lists++;
-    const write = (s, x, y, fill) => {
+    // an option the page sets in bold (the editor's combo boxes mark an event that has a
+    // handler so) is written in bold
+    const bold = (o) => Number.parseInt(getComputedStyle(o).fontWeight, 10) >= 600;
+    const write = (s, x, y, fill, heavy = false) => {
       const t = el(
         "text",
         { x, y, fill, "font-family": style.fontFamily, "font-size": size, "dominant-baseline": "central" },
         g,
       );
+      if (heavy) t.setAttribute("font-weight", "bold");
       t.textContent = s;
       return t;
     };
     // the width: the select's, or the longest option's
     let longest = 0;
     for (const o of options) {
-      const t = write(o.text, 0, 0, "none");
+      const t = write(o.text, 0, 0, "none", bold(o));
       longest = Math.max(longest, t.getComputedTextLength());
       t.remove();
     }
@@ -467,7 +471,7 @@ function draw(prims, S, resolve = null) {
       row.setAttribute("class", n === current ? "tbShotListRow tbShotListCurrent" : "tbShotListRow");
       row.setAttribute("data-text", options[n].text);
       if (n === current) row.setAttribute("fill", S.listCurrent);
-      write(options[n].text, x + 1 + S.listPadX, ry + rowH / 2, n === current ? "#fff" : "#000");
+      write(options[n].text, x + 1 + S.listPadX, ry + rowH / 2, n === current ? "#fff" : "#000", bold(options[n]));
     }
     if (scrolls) {
       const tx = x + w - 1 - S.listScrollbar;

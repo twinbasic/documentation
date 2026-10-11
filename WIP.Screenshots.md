@@ -183,7 +183,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
   alone), `programs`, `codelens`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
-  Chrome, not an IDE), `featuremap`, `customcontrols`, `code` and `sample9` (all described
+  Chrome, not an IDE), `featuremap`, `code-chapter`, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`.
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
@@ -248,6 +248,23 @@ anchored to an element or code span; Problems is labelled Diagnostics, its 997 t
 scroll, advanced hover info, inline hints, folding always shown and the debugger's memory figures
 are switched on in the page only; the memory figures, which change from run to run, are fixed in
 the page once real ones are shown, as History's times are.
+
+## The "Writing code" chapter
+
+Setup `code-chapter` (three parts): FeatureTour, the feature map's Inventory project, with
+`test/shots/codechapter/` staged onto it (`Helpers`, `Ev`/`Ev2`, `Watcher`) and the project's
+warnings set so that TB0016 is a hint and TB0012 information. Its 20 pictures are under
+`docs/IDE/Code/Images/`, plus `Menu_Edit` and `Menu_View`, now taken with the code focused.
+
+- **Each picture starts from the default layout and its own tabs** (`chapterTabs`), and closes
+  Monaco's find widget first: the editor is one for every file, so a widget left open shows over
+  the next file's code.
+- **The minimap is left out of every crop but Editor_Panel**: it is drawn a little differently
+  according to what the editor showed before, so a crop with it changes with the shots' order.
+- **A tab is tinted only when the compiler sends the file's diagnostics while it is open**, not
+  when it opens on a file already reported: Tabs_States edits Inventory and undoes it.
+- Edits are made in the page and undone (`editedThenUndone`) or discarded with their tab; the
+  clipboard is the tool's own text (`FAKE_CLIPBOARD`), never the host's.
 
 ## Special IDE states
 

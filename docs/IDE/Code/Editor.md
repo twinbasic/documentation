@@ -21,14 +21,14 @@ The editor's fonts, the minimap, the indent guides, the line numbers and the oth
 Each open file has a tab. The tab shows the file's icon, its name and a close button.
 
 - A file with changes you have not saved shows a dot in place of the close button.
-- A file that has errors or warnings has a tinted tab, and so has its row in the Project Explorer.
+- A file that has errors or warnings has a tinted row in the Project Explorer. Its tab is tinted when the compiler reports the file while the tab is open. A tab opened after that report stays untinted until the compiler checks the file again, for example after the next edit to it.
 - Pointing at a tab for about a second and a half shows the full path of the file.
 - Drag a tab to move it. A mark on the left or the right half of the tab under the pointer shows where it will land.
 - Click the middle mouse button on a tab to close it.
 
 A tab in italics is a *preview tab*. When **File Explorer: Single-Click Preview** is on, a single click on a file in the Project Explorer opens it in a preview tab, and the next single click replaces it. A double-click, or any edit, makes the tab permanent. The **Find / Replace** panel also opens the files it visits in a preview tab. [IDE Options](../Customising/IDE-Options) describes the option.
 
-<!-- SHOT code-tabs-states: the tab strip with four tabs: a normal one, one with unsaved changes (the dot in place of the close button), one in italics (a preview tab), and one tinted by an error; each tab labelled with an arrow -->
+![Four tabs, each named by a label with an arrow up to it. Types.twin is a normal tab. Inventory.twin is tinted, labelled Has warnings. Watcher.twin has a dot in place of its close button, labelled Unsaved changes. Ev.twin, the selected tab, has its name in italics, labelled Preview tab.](Images/Tabs_States.png){:width="465" height="135"}
 
 ### Close a tab
 
@@ -50,7 +50,7 @@ Right-click a tab for a menu of four items:
 **Close All**
 : Closes every tab, and asks about each file that has unsaved changes.
 
-<!-- SHOT code-tab-menu: the right-click menu of a tab, open, showing Close, Close Others, Close Saved and Close All -->
+![The right-click menu of the tab Helpers.twin, open under the tab, with the items Close, Close Others, Close Saved and Close All.](Images/Tab_Menu.png){:width="499" height="142"}
 
 The tab menu is in English whatever the [language of the IDE](../Customising/#the-language-of-the-ide) is.
 
@@ -94,7 +94,7 @@ By default the tabs wrap onto more than one row. With **IDE: Single row of code 
 
 Three combo boxes sit above the code, or below it, as **Show Code Editor Combo Selectors** in [IDE Options](../Customising/IDE-Options) decides. They show where the caret is, and they move it.
 
-<!-- SHOT code-combos: the Inventory sample project open, its class open in the editor with the caret inside one of its procedures, so that all three combo boxes show a selection (the component, (general) or an object, and the procedure); the bar of combo boxes with the first lines of code under it; badges 1, 2 and 3 on the boxes, matching the table below -->
+![The three combo boxes above the code of a class named Inventory, numbered 1 to 3. With the caret inside the Sub Add, box 1 shows Inventory, box 2 shows (general) and box 3 shows Add.](Images/Combos.png){:width="811" height="234"}
 
 | Box | Shows | Its list |
 |---|---|---|
@@ -106,7 +106,7 @@ An event handler shows in box 3 as the event followed by the handler's name in b
 
 The lists fill when you open them. Press <kbd>Ctrl</kbd>+<kbd>1</kbd>, <kbd>Ctrl</kbd>+<kbd>2</kbd> or <kbd>Ctrl</kbd>+<kbd>3</kbd> to move the focus to a box. After you choose an entry, the focus returns to the code.
 
-<!-- SHOT code-combo-lists: a class with a WithEvents field open in the editor, the caret inside the handler src_Changed; the third combo box open, listing the events of src with Changed [src_Changed] in bold above Reset -->
+![A class named Watcher, with the WithEvents fields src and other, and the caret inside the handler src_Changed. The combo boxes show Watcher, src and Changed [src_Changed]. The third box is open, listing the events of src: Changed [src_Changed] in bold and selected, and Reset.](Images/Combo_Lists.png){:width="811" height="306"}
 
 What choosing an entry does:
 
@@ -225,7 +225,7 @@ The editor does its own clipboard work, and it re-indents what you paste.
 
 Paste on a blank line, or with the caret at the end of the indent. Pasting at the end of a line that already has text joins the first pasted line to that text, and the later lines can end up indented too far.
 
-<!-- SHOT code-paste-as-comment: a module with a Sub; before and after pasting three lines of text (one blank) with Paste As Comment, side by side in one picture or as two stacked editor excerpts -->
+![A Sub named Third before and after Paste As Comment, side by side with an arrow from one to the other. Before, the Sub has a blank line under its Debug.Print line. After, three pasted lines take its place: ' Debug.Print Twice(6), a blank line, and ' Debug.Print Twice(7), indented to the code around them.](Images/Paste_As_Comment.png){:width="494" height="180"}
 
 ## What Enter does
 
@@ -299,7 +299,7 @@ A right-click in the editor moves the caret to the point, unless you click insid
 
 **Code Editor Options** is a submenu with the items of the **...** menu in the header: **Show Code Folding**, **Render Whitespace**, **Font Size**, **Show Navigation Bar**, **Show Indent Guides**, **Show Line Numbers**, **Code Hints Always Visible**, **Sticky Scroll**, **Show MiniMap**, **Show Advanced Info On Hover**, **Show Single Row Of Tabs**, **Auto Prettify Code** and **Show CodeLens Run Procedure**. [IDE Options](../Customising/IDE-Options#the-code-editors-menu) describes them.
 
-<!-- SHOT code-context-menu: the editor's right-click menu open over a line of code, with the Code Editor Options submenu open beside it -->
+![The editor's right-click menu open over the code, in six groups separated by lines: Go To Definition; Last Position and the bookmark commands; Rename Symbol and Change All Occurrences; Cut, Copy, Paste and Paste As Comment; Quick Find and Quick Replace; and Monaco Command Palette and Code Editor Options. The submenu of Code Editor Options is open beside it, with the four dropdowns Show Code Folding, Render Whitespace, Font Size and Show Navigation Bar above the toggles.](Images/Context_Menu.png){:width="672" height="772"}
 
 <kbd>Shift</kbd>+<kbd>F10</kbd> opens the same menu from the keyboard.
 
@@ -323,7 +323,7 @@ The palette also lists **Rename Symbol** (see [above](#rename-symbol-and-change-
 
 The key beside an action in the palette is the key Monaco gives it. It is not always a key that works in the IDE. The IDE stops every key press with <kbd>Ctrl</kbd> held from reaching the editor, apart from the commands it binds itself. So a palette action that shows a key with <kbd>Ctrl</kbd> does not respond to that key. The Monaco keys <kbd>F1</kbd>, <kbd>F8</kbd>, <kbd>Shift</kbd>+<kbd>F8</kbd> and <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> do nothing. <kbd>F1</kbd> does not open the palette, so open it from the menu.
 
-<!-- SHOT code-palette: the command palette open over the editor with the input empty (showing the first rows, Add Cursor Above and so on) -->
+![The command palette open at the top of the editor, over the code. Its box holds only the prompt character, and the list under it starts with Add Cursor Above, Add Cursor Below, Add Cursors To Bottom and Add Cursors to Line Ends.](Images/Command_Palette.png){:width="735" height="235"}
 
 ## Save often
 

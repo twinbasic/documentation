@@ -38,7 +38,7 @@ The list has one group for each file that has a problem to show. The group's hea
 
 Under a header, each row is one problem. A row shows an icon for its kind, the code and the message, and the position in square brackets as `[line,column]`. The code is `TB` and four digits, such as `TB0012`. When the compiler gives no code, the row shows `TB5000`. Pointing at a row shows its message in full.
 
-<!-- SHOT code-diagnostics-rows: the DIAGNOSTICS panel of a project with one error, two warnings, a hint and an information message, Hints and Information switched on, grouped under two files, and one row selected showing the Jump to issue and Help buttons under it -->
+![The DIAGNOSTICS panel with its counts of 1 error, 4 warnings, 1 hint and 1 information message, and with Hints and Information switched on. The rows are grouped under three files, Helpers.twin, Inventory.twin and MainModule.twin. Each row shows its icon, its code such as TB0012 or TB5079, its message and its position. The error's row, TB5079 Unrecognized symbol 'Undefined1', is selected, with Jump to issue and Help under it.](Images/Diagnostics_Rows.png){:width="560" height="360"}
 
 ### Go to a problem
 
@@ -68,7 +68,7 @@ Right-click in the list for a menu of five items. The menu is in English whateve
 **Collapse all**, **Expand all**
 : Collapse or expand every group.
 
-<!-- SHOT code-diagnostics-menu: the right-click menu of the DIAGNOSTICS panel open over a row, showing Copy, Copy All, Copy All Errors, Collapse all and Expand all -->
+![The right-click menu of the DIAGNOSTICS panel, open over the error's row, with Copy, Copy All and Copy All Errors above a separator and Collapse all and Expand all below it.](Images/Diagnostics_Menu.png){:width="576" height="376"}
 
 A copied row reads `{ERROR}` or `{WARNING}`, the path of the file, the position, and the code and message. **Copy All** and **Copy All Errors** begin with a line that names the IDE: `twinBASIC (` and the version, then `) compilation error report:`.
 

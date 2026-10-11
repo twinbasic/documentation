@@ -64,13 +64,13 @@ Signature help is a box above the line that shows the parameters of the procedur
 
 The box shows the whole signature: `Function Area(ByVal width As Long, ByVal height As Long) As Long`. An optional parameter is in square brackets, with its default value. The parameter you are writing is highlighted. It is the first after the `(` and the next one after each `,`. When a procedure has several overloads, the box lists them one under the other, each with its own highlighted parameter. `InStr(` shows both forms of `InStr`.
 
-<!-- SHOT code-signature-help: the signature-help box open above a line "x = InStr(", showing the two InStr overloads one under the other, each with its active parameter highlighted -->
+![The signature-help box open above a line reading i = InStr(), listing the two forms of InStr one under the other. In the first, ByRef String1 As Variant is highlighted, and in the second, ByRef Start As Variant. Under them is the first line of the documentation of InStr.](Images/SignatureHelp.png){:width="1430" height="126"}
 
 Under the signature is the first line of the procedure's documentation. For a procedure of your own that has none, the box says that no further information is available, and suggests the `Description` attribute above the procedure. The option **IDE: Signature-Help Show First Line Of Docs** turns that line off, and then only the signature shows.
 
 <kbd>F1</kbd> expands the box to the whole documentation, shown as formatted text. <kbd>F1</kbd> again collapses it. The fold icon at the left of the box does the same when you click it.
 
-<!-- SHOT code-signature-help-expanded: the same box after F1 for a call to MsgBox, showing the full documentation (Syntax and Parameters) -->
+![The signature-help box above a line reading MsgBox(), expanded with F1. Under the signature of MsgBox, with Prompt highlighted, the documentation scrolls in the box as formatted text: the name MsgBox and VBA.Interaction, a description, and the Syntax and Parameters sections.](Images/SignatureHelp_Expanded.png){:width="1399" height="306"}
 
 <kbd>Esc</kbd>, <kbd>Up</kbd>, <kbd>Down</kbd> and <kbd>Backspace</kbd> close the box. Typing `)` over the closing bracket that the editor added with `(` leaves the box open, and so does <kbd>Enter</kbd>.
 
@@ -83,7 +83,7 @@ Rest the pointer on a word for a second and a popup shows what the compiler know
 - For a class, it shows the instance size, the members, the fields, the implemented interfaces and the events.
 - For a keyword, a string and the functions of the VBA library, it shows nothing.
 
-<!-- SHOT code-hover: the hover popup over a call to a procedure of the project, showing its declaration and the module that holds it -->
+![The hover popup over Total in the line cost = stock.Total(0.2). It shows the declaration Function Total(ByVal taxRate As Double) As Double, then Total in FeatureTour._Inventory, the class that holds it, and the suggestion to add a Description attribute above the procedure.](Images/Hover.png){:width="818" height="166"}
 
 **IDE: Show Advanced Info On Hover** adds the offset of each member in the class's virtual table. [IDE Options](../Customising/IDE-Options) describes it, and [Modern IDE Features](../../../Features/Compiler-IDE/IDE-Features) lists the rest of what the popup shows.
 
@@ -98,6 +98,8 @@ The hover text is in English whatever the [language of the IDE](../Customising/#
 The compiler sends a short note for some lines, and the editor draws it after the end of the line, in italics. Most are the name of the block that an `End` line closes, such as `End Function` followed by an arrow and `Twice`. On an enum member that has no explicit value, the note is the value, such as `= 1 << 0`.
 
 ![An Enum named MyFlags marked with the Flags attribute, with four members flag1 to flag4. The editor's inline hints after the members read 1 << 0 to 1 << 3, each with the value in hexadecimal, from &H00000001& to &H00000008&.](../../Reference/Images/flags-attribute.png){:width="357" height="142"}
+
+![The function Total of a class with its inline code hints shown in grey italics after the ends of its blocks: each End If followed by an arrow and the condition of its If, Next by i = 0 To count - 1, and End Function by Total.](Images/Hints.png){:width="562" height="328"}
 
 The notes are hidden. They show while you hold <kbd>Ctrl</kbd> with the focus in the code, and hide again when you let go. With **Always show IDE Inline Code Hints** on, they stay on screen. The command `tbEditor_ToggleShowCodeHints` switches them on and off without a key.
 

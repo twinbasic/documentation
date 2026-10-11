@@ -163,7 +163,7 @@ If **Find What** is not in the `/pattern/flags` form, a box says **Invalid forma
 
 **Find In Project** has no dialog and no list of results of its own. It opens the **Find / Replace** panel with **Current Project** ticked, and you go through the matches with **Find Next**.
 
-<!-- SHOT code-find-project: the Find / Replace panel with Current Project ticked and Inside Packages enabled, Find What holding "Twice", docked or floating over an editor that shows a match selected in a second file -->
+![The Find / Replace panel floating over the editor, with Twice in Find What, Current Project ticked, and Inside Packages available but not ticked. Behind it, Find Next has gone on to a second file and selected the match Twice in its line Count = Count + Twice(n).](Images/Find_Project.png){:width="648" height="349"}
 
 A project search:
 
@@ -192,7 +192,7 @@ The Quick Find widget searches the file you are in, with a small box at the top 
 
 The widget opens with the selected text in its box, and with the count of the matches, such as *1 of 10*. Its toggles are **Match Case**, **Match Whole Word**, **Use Regular Expression** and **Find in Selection**, and the replace row has **Preserve Case**. <kbd>Shift</kbd>+<kbd>Enter</kbd> does nothing. The IDE does not remember the toggles between uses.
 
-<!-- SHOT code-quick-find: the Quick Find widget open at the top right of the editor with the replace row shown, a word typed and the match count visible, the matches highlighted in the code -->
+![The Quick Find widget at the top right of the editor, opened with Quick Replace so that its replace row shows. Its box holds Twice, with the toggles beside it and the count 2 of 2, and both matches of Twice are marked in the code.](Images/Quick_Find.png){:width="751" height="430"}
 
 With a word selected, <kbd>Ctrl</kbd>+<kbd>F3</kbd> in the code goes to its next occurrence and shows the widget.
 

@@ -12,11 +12,9 @@ redirect_from:
 
 The View menu switches between a file's code and its designer, moves around the code, changes the zoom, and shows the panels of the IDE.
 
-![The View menu open. The upper commands --- Code Editor, Object Designer, Definition, Last Position, Object Browser, Zoom In and Zoom Out --- are greyed out. Below them the seventeen panel names from EDITOR down to MEMORY 1 are all available, each beside its own icon, with CTRL+L against CALL STACK and CTRL+G against DEBUG CONSOLE.](Images/Menu_View.png){:width="218" height="626"}
+![The View menu open while the code editor has the focus. Code Editor and Object Browser are greyed out. Object Designer, Definition and Last Position are available, and so are Increase Font Size and Decrease Font Size, with CTRL++ and CTRL+-. Below them the seventeen panel names from EDITOR down to MEMORY 1 are all available, each beside its own icon, with CTRL+L against CALL STACK and CTRL+G against DEBUG CONSOLE.](Images/Menu_View.png){:width="218" height="626"}
 
-The picture shows the menu with nothing in focus. The upper commands depend on what has the focus; the panel names are always available.
-
-<!-- SHOT code-view-menu-editor: the View menu open while a code editor has the focus, showing Code Editor greyed, Object Designer, Definition, Last Position, Object Browser greyed, and Increase Font Size and Decrease Font Size with their keys -->
+The picture shows the menu while the code editor has the focus. The upper commands depend on what has the focus; the panel names are always available.
 
 ## Code and designer
 

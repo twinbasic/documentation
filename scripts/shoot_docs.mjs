@@ -58,6 +58,10 @@
 //   sample9     Sample 9 open: its WebView_Create handler, for the WebView2 tutorial
 //   featuremap  test/shots/featuremap, FeatureTour: the whole window with twelve of the IDE's
 //               features named, in a layout and with editor options set in the page only
+//   code-chapter  the same project with test/shots/codechapter staged onto it: the
+//               "Writing code" chapter's pictures of the editor (tabs, combo boxes, menus,
+//               IntelliSense, finding, bookmarks, Outline, DIAGNOSTICS) and the Edit and
+//               View menus with the code focused
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
@@ -237,7 +241,8 @@ forms and settings-webview2), and the CustomControls tutorial's pictures of a
 custom control's code and PROPERTIES (setup customcontrols), and the editor alone:
 the build select's greying, inline hints, a hover, a form's JSON (setups code,
 customcontrols and sample9), the whole window with its features named (setup
-featuremap), a procedure run by its CodeLens bar (setup codelens), the DEBUG
+featuremap), the editor's tabs, combo boxes, menus, IntelliSense, finding and DIAGNOSTICS
+in the same project (setup code-chapter), a procedure run by its CodeLens bar (setup codelens), the DEBUG
 CONSOLE after a package build and a Fusion host build (setups package and fusion),
 Project Settings' packages from TWINSERV, signed out, downloaded, embedded and linked
 (setups package-server, settings-linked and package-check; they need the network),
@@ -1274,6 +1279,32 @@ async function startFeatureMap(run) {
   return run.lane.open(src);
 }
 
+// ---- code-chapter: FeatureTour, the Inventory project of the feature map, with
+// test/shots/codechapter's files staged onto it (in the work folder only: the feature map does
+// not move), for the pictures of the "Writing code" chapter, all of one project. Helpers is a
+// module with an enumeration, a hexadecimal constant of the wrong width and a variable ReDim
+// declares; Ev and Ev2 are classes with events, one file; Watcher a class with WithEvents fields
+// of both, handling one event of the first. The project's warnings are set as a person sets them
+// in Project Settings, so that DIAGNOSTICS has a hint and an information message as well as the
+// feature map's warnings: TB0016 (ReDim declares a variable) a hint, TB0012 (a hexadecimal
+// literal of the wrong width) information. The project compiles clean; the one error its
+// pictures show is put in by the shot, in the page only.
+const CODE_CHAPTER = path.join(REPO_ROOT, "test", "shots", "codechapter");
+const CODE_CHAPTER_WARNINGS = { errors: [], hints: ["TB0016"], ignored: [], info: ["TB0012"], warnings: [] };
+
+async function startCodeChapter(run) {
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, FEATUREMAP)} with ${path.relative(REPO_ROOT, CODE_CHAPTER)}`);
+  const src = path.join(run.work, "codechapter-src");
+  cpSync(FEATUREMAP, src, { recursive: true });
+  cpSync(CODE_CHAPTER, src, { recursive: true });
+  const file = path.join(src, "Settings");
+  const settings = JSON.parse(readFileSync(file, "utf8"));
+  settings["project.warnings"] = CODE_CHAPTER_WARNINGS;
+  writeFileSync(file, `${JSON.stringify(settings, null, "\t")}\n`);
+  return run.lane.open(src);
+}
+
 // ---- community: the demo with the compiler started on no licence key, the status bar's
 // COMMUNITY EDITION badge as the IDE draws it for a key that is not there (the Community
 // Edition), and its LIMITED services badge while a compiler starts.The IDE reads the key from its settings into
@@ -1332,6 +1363,7 @@ const SETUPS = {
   code: { ports: 1, start: startCode, prepare: prepareSample },
   sample9: { ports: 1, start: startSample9, prepare: prepareSample },
   featuremap: { ports: 1, start: startFeatureMap, prepare: prepareSample },
+  "code-chapter": { ports: 1, start: startCodeChapter, prepare: prepareSample },
   project: { ports: 1, start: startProject, prepare: prepareProject },
   community: { ports: 1, start: startProject, prepare: prepareCommunity },
   splash: { ports: 1, start: startProject, prepare: prepareProject },
@@ -5316,6 +5348,1121 @@ async function takeFeatureMap({ c }) {
   }
 }
 
+// ---- the "Writing code" chapter (setup code-chapter): FeatureTour with test/shots/codechapter
+
+const CHAPTER_FILE = (name) => `/FeatureTour/Sources/${name}`;
+const CHAPTER_IMAGE = (name) => `IDE/Code/Images/${name}.png`;
+// The editor's three navigation combo boxes, native selects named by their class, left to
+// right, and the bar that holds them.
+const COMBOS = ["codePanelDropDownComponent", "codePanelDropDownScope", "codePanelDropDownProcedure"];
+const COMBO = (n) => ({ css: `select.${COMBOS[n]}` });
+const COMBO_BAR = ".codePanelDropDownContainer";
+// 16 pixels past the right end of box 3, where a picture of the boxes and the code stops: the
+// minimap beyond it is drawn a little differently according to what the editor showed before.
+const comboEnd = async (c) => {
+  const r = await rectOf(c, "select.codePanelDropDownProcedure");
+  return r.x + r.width + 16;
+};
+// What each combo box shows, closed.
+const comboTexts = (c) =>
+  c.evaluate(
+    `${JSON.stringify(COMBOS)}.map((k) => { const s = document.querySelector("select." + k); return s && s.selectedIndex >= 0 ? s.options[s.selectedIndex].text : null; })`,
+  );
+
+// The line and column (1-based) of the `nth` line of the open file holding `text`, `offset`
+// characters into it; throws when there is none.
+async function codePlace(c, text, { nth = 1, offset = 0 } = {}) {
+  const at = await c.evaluate(`(() => {
+  const ls = editor.getModel().getLinesContent();
+  let k = 0;
+  for (let i = 0; i < ls.length; i++) {
+    const j = ls[i].indexOf(${JSON.stringify(text)});
+    if (j >= 0 && ++k === ${nth}) return { line: i + 1, column: j + 1 + ${offset} };
+  }
+  return null;
+})()`);
+  if (!at) throw new Error(`the open file has no line holding ${JSON.stringify(text)}`);
+  return at;
+}
+
+// The caret on `text` in the open file (see codePlace), the focus in the code, and the view
+// scrolled so that `top` is the first line shown (1 by default).
+async function caretOn(c, text, { nth = 1, offset = 0, top = 1 } = {}) {
+  const at = await codePlace(c, text, { nth, offset });
+  await setCursor(c, at.line, at.column);
+  await c.evaluate(`editor.setScrollTop(editor.getTopForLineNumber(${top}))`);
+  await frames(c);
+  return at;
+}
+
+// The box of the editor's code area (the Monaco editor: margin, code, minimap).
+const editorBox = (c) =>
+  c.evaluate(`(() => {
+  const r = editor.getDomNode().getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+
+// The box of lines `from` to `to` of the open file as shown, the editor's width.
+async function linesBox(c, from, to) {
+  const r = await c.evaluate(`(() => {
+  const e = editor.getDomNode().getBoundingClientRect();
+  const top = editor.getTopForLineNumber(${from}) - editor.getScrollTop();
+  const bottom = editor.getTopForLineNumber(${to}) - editor.getScrollTop() + editor.getOption(monaco.editor.EditorOption.lineHeight);
+  return { x: e.x, y: e.y + top, width: e.width, height: bottom - top };
+})()`);
+  return r;
+}
+
+// Inventory open with the caret inside Add, so that the three combo boxes show the class, (general)
+// and the procedure; the bar of combo boxes and the first lines of the class under it, each box
+// numbered as the Editor page's table numbers it.
+const codeCombosShot = {
+  out: CHAPTER_IMAGE("Combos"),
+  setup: "code-chapter",
+  async take({ c }) {
+    await chapterTabs(c, ["Inventory.twin"]);
+    await caretOn(c, "ReDim Preserve items(count)", { offset: 0 });
+    const want = ["Inventory", "(general)", "Add"];
+    const shown = await waitFor(
+      c,
+      async () => {
+        const t = await comboTexts(c);
+        return t.every((s, i) => s?.startsWith(want[i])) && t;
+      },
+      { timeout: 10000, interval: 100 },
+    );
+    if (!shown) throw new Error(`the combo boxes show ${JSON.stringify(await comboTexts(c))}, not ${want.join(", ")}`);
+    const bar = await rectOf(c, COMBO_BAR);
+    if (!bar) throw new Error("the editor shows no combo boxes");
+    const code = await linesBox(c, 1, 11);
+    const area = { x: bar.x, y: bar.y, width: (await comboEnd(c)) - bar.x, height: code.y + code.height - bar.y };
+    // each badge inside its box, short of the box's arrow
+    const annotate = [0, 1, 2].map((n) => ({
+      type: "badge",
+      n: n + 1,
+      on: { of: COMBO(n), at: "right", dx: -44 },
+      side: "above",
+      gap: -11,
+    }));
+    return annotatedClip(c, "Combos", area, annotate);
+  },
+};
+
+// The editor alone in the window, every panel docked beside it out of the layout, in a page
+// `width` wide; the default layout put back after `fn`.
+async function editorAlone(c, width, fn, height = IDE_SIZE.height) {
+  await resetUi(c);
+  await closeFindWidget(c);
+  for (const id of DOCKED_BESIDE_EDITOR) await undock(c, id);
+  try {
+    return await atSize(c, width, height, async () => {
+      await settledBox(c, editorBox);
+      return fn();
+    });
+  } finally {
+    await defaultLayout(c);
+  }
+}
+
+// Runs `fn` on the open file and then undoes every edit made since, in the page, so that the
+// file is as it was opened and its tab shows no unsaved change; whatever box is open closed
+// first.
+async function editedThenUndone(c, fn) {
+  const version = await c.evaluate("editor.getModel().getAlternativeVersionId()");
+  let out;
+  let failure = null;
+  try {
+    out = await fn();
+  } catch (e) {
+    failure = e;
+  }
+  await pressKey(c, "Escape");
+  await pressKey(c, "Escape");
+  const back = await c.evaluate(`(() => {
+  const m = editor.getModel();
+  for (let i = 0; i < 100 && m.getAlternativeVersionId() !== ${version} && m.canUndo(); i++) editor.trigger("shoot_docs", "undo");
+  return m.getAlternativeVersionId() === ${version};
+})()`);
+  if (failure) throw failure;
+  if (!back) throw new Error("the edits made for the picture could not be undone");
+  return out;
+}
+
+// A new line put in after the `nth` line holding `after` in the open file, indented eight
+// spaces, holding `text`; returns its number.
+async function newLineAfter(c, after, text, { nth = 1 } = {}) {
+  const { line } = await codePlace(c, after, { nth });
+  await c.evaluate(
+    `editor.executeEdits("shoot_docs", [{ range: new monaco.Range(${line + 1}, 1, ${line + 1}, 1), text: ${JSON.stringify(`        ${text}\n`)} }])`,
+  );
+  return line + 1;
+}
+
+// The signature-help box, as the page holds it: whether it is on and shown, its box, its
+// signatures, and whether F1 has expanded it.
+const SIGNATURE = `(() => {
+  const b = debugConsoleEntryIntellisenseBoxSignature;
+  const r = b.getBoundingClientRect();
+  return { on: !!context.activeSignatureHelp.value, shown: r.width > 0 && r.height > 0,
+    box: { x: r.x, y: r.y, width: r.width, height: r.height },
+    sigs: b.querySelectorAll(".sigHelpHeaderText").length, expanded: sigHelpIsExpanded };
+})()`;
+
+// Signature help as it opens when `(` is typed after `call`, on a new line put in after the
+// `nth` line holding `after` in Inventory, with the editor alone in a page wide enough for the
+// whole box; with `expand`, after F1 too. The picture is the box and the code from the line
+// above it down to the typed line; the help under the typed line (its datatype) is left out.
+// The compiler underlines the call, which has no arguments yet, so the picture waits for that
+// underline: it is there or not according to when the picture is taken, else.
+function signatureShot(name, { after, nth = 1, call, sigs, expand = false }) {
+  return {
+    out: CHAPTER_IMAGE(name),
+    setup: "code-chapter",
+    take: ({ c }) =>
+      editorAlone(c, 1600, async () => {
+        await openFile(c, CHAPTER_FILE("Inventory.twin"));
+        return editedThenUndone(c, async () => {
+          const line = await newLineAfter(c, after, call, { nth });
+          await setCursor(c, line, 9 + call.length);
+          await frames(c);
+          await pressKey(c, "(");
+          const open = await waitFor(
+            c,
+            async () => {
+              const s = await c.evaluate(SIGNATURE);
+              return s.on && s.shown && s.sigs === sigs && s;
+            },
+            { timeout: 10000, interval: 100 },
+          );
+          if (!open) throw new Error(`typing ( after ${call} showed no signature help with ${sigs} signatures`);
+          const marked = await waitFor(
+            c,
+            () =>
+              c.evaluate(
+                `monaco.editor.getModelMarkers({ resource: editor.getModel().uri }).some((m) => m.startLineNumber === ${line})`,
+              ),
+            { timeout: 15000, interval: 100 },
+          );
+          if (!marked) throw new Error(`the compiler never marked the call on line ${line}`);
+          // F1 expands or collapses the box, and the page keeps the state for the next box it shows
+          const f1 = async (want) => {
+            if ((await c.evaluate(SIGNATURE)).expanded === want) return;
+            await pressKey(c, "F1");
+            const now = await waitFor(c, async () => (await c.evaluate(SIGNATURE)).expanded === want, {
+              timeout: 5000,
+              interval: 100,
+            });
+            if (!now) throw new Error(`F1 did not ${want ? "expand" : "collapse"} the signature help`);
+          };
+          await f1(expand);
+          const { box } = await settledBox(c, () => c.evaluate(SIGNATURE));
+          const lineBox = await linesBox(c, line - 1, line);
+          const ed = await editorBox(c);
+          // from the top of the line 6 pixels above the box, so that its edge has room
+          const crossed = await c.evaluate(
+            `editor.getTargetAtClientPoint(${ed.x + 8}, ${box.y - 6})?.position?.lineNumber ?? null`,
+          );
+          if (!crossed) throw new Error("no line of code lies under the signature help's top edge");
+          const top = (await linesBox(c, crossed, crossed)).y;
+          const area = {
+            x: ed.x,
+            y: top,
+            width: box.x + box.width + 12 - ed.x,
+            height: lineBox.y + lineBox.height - top,
+          };
+          try {
+            return await capture(c, name, snapOut(area, 1600, IDE_SIZE.height), { away: () => parkMouse(c) });
+          } finally {
+            await f1(false);
+          }
+        });
+      }),
+  };
+}
+
+// The hover over a call to a procedure of the project: Total, in MainModule's Main, a function
+// of the Inventory class. The picture is the popup and the line under it, from the editor's left.
+const codeHoverShot = {
+  out: CHAPTER_IMAGE("Hover"),
+  setup: "code-chapter",
+  async take({ c }) {
+    await chapterTabs(c, ["MainModule.twin"]);
+    const at = await codePlace(c, "stock.Total(", { offset: "stock.".length + 2 });
+    await c.evaluate("editor.setScrollTop(0)");
+    let shown = false;
+    for (let attempt = 0; attempt < 3 && !shown; attempt++) {
+      await restMouse(c, at.line, at.column);
+      shown = await waitFor(c, async () => (await hoverText(c))?.includes("Inventory") && true, { timeout: 6000 });
+    }
+    if (!shown) throw new Error(`the hover on Total showed nothing naming Inventory: ${await hoverText(c)}`);
+    try {
+      const popup = await settledBox(c, () =>
+        c.evaluate(`(() => {
+  const r = [...document.querySelectorAll(".monaco-hover")].find((e) => !e.classList.contains("hidden") && e.getBoundingClientRect().height > 0).getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`),
+      );
+      const lineBox = await linesBox(c, at.line, at.line);
+      const ed = await editorBox(c);
+      const top = Math.min(popup.y, lineBox.y) - 8;
+      const bottom = Math.max(popup.y + popup.height, lineBox.y + lineBox.height) + 8;
+      const area = { x: ed.x, y: top, width: popup.x + popup.width + 12 - ed.x, height: bottom - top };
+      // the mouse stays on Total: the popup goes when it leaves
+      return await capture(c, "Hover", snapOut(area));
+    } finally {
+      await mouseAway(c);
+    }
+  },
+};
+
+// Inventory's Total with the inline code hints on (Always show IDE Inline Code Hints, set in the
+// page only, as for flags-attribute): each End line, and Next, followed by the hint the compiler
+// sends for it. The picture is the function, from the editor's left to past the longest hint.
+const codeHintsShot = {
+  out: CHAPTER_IMAGE("Hints"),
+  setup: "code-chapter",
+  take: ({ c }) => editorAlone(c, IDE_SIZE.width, () => takeCodeHints(c)),
+};
+async function takeCodeHints(c) {
+  await openFile(c, CHAPTER_FILE("Inventory.twin"));
+  const first = (await codePlace(c, "Public Function Total")).line;
+  const last = (await codePlace(c, "Total = subtotal")).line + 1;
+  await caretOn(c, "Public Function Total", { top: first - 1 });
+  const hints = (on) => c.evaluate(`liveIDEOptions.${HINTS_OPTION} = ${on}; changedIdeOptions();`);
+  const ends = `[...document.querySelectorAll(".inlineDecoration")].map((e) => e.getBoundingClientRect()).filter((r) => r.width)`;
+  try {
+    await hints(true);
+    const drawn = await waitFor(
+      c,
+      () =>
+        c.evaluate(
+          `[...document.querySelectorAll(".inlineDecoration")].some((e) => getComputedStyle(e, "::after").content.includes("Total") && getComputedStyle(e, "::after").display !== "none")`,
+        ),
+      { timeout: 10000, interval: 100 },
+    );
+    if (!drawn) throw new Error("the editor drew no inline hint after End Function");
+    const box = await linesBox(c, first, last);
+    // past the longest hint and the longest line
+    const right = await settledBox(c, () =>
+      c.evaluate(`(() => {
+  const m = editor.getModel();
+  const left = editor.getDomNode().getBoundingClientRect().x;
+  const lines = [];
+  for (let n = ${first}; n <= ${last}; n++) lines.push(left + editor.getScrolledVisiblePosition({ lineNumber: n, column: m.getLineMaxColumn(n) }).left);
+  return Math.max(...lines, ...${ends}.filter((r) => r.y >= ${box.y} && r.y < ${box.y + box.height}).map((r) => r.right));
+})()`),
+    );
+    const ed = await editorBox(c);
+    const area = { x: ed.x, y: box.y - 4, width: right + 24 - ed.x, height: box.height + 4 };
+    return await capture(c, "Hints", snapOut(area), { away: () => parkMouse(c) });
+  } finally {
+    await hints(false);
+  }
+}
+
+// A right-click at a point of the page, as a person makes it: the mouse moved there first.
+async function rightClickAt(c, x, y) {
+  await mouseMove(c, x, y);
+  await c.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "right", buttons: 2, clickCount: 1 });
+  await c.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "right", buttons: 0, clickCount: 1 });
+}
+
+// The chapter's files open as tabs, in this order, and no other tab.
+// Monaco's find widget closed, as Esc in it closes it (the editor is one for every file, so a
+// widget left open shows over the next file's code), and its marks with it.
+async function closeFindWidget(c) {
+  const open = `!!editor.getDomNode().querySelector(".find-widget.visible")`;
+  if (!(await c.evaluate(open))) return;
+  await c.evaluate(`editor.getContribution("editor.contrib.findController").closeFindWidget()`);
+  if (!(await waitFor(c, async () => !(await c.evaluate(open)), { timeout: 3000, interval: 50 }))) {
+    throw new Error("the find widget would not close");
+  }
+  await frames(c);
+}
+
+// With `layout`, the default layout first: a picture of DIAGNOSTICS leaves it floated and hidden.
+async function chapterTabs(c, names, { layout = true } = {}) {
+  await resetUi(c);
+  await closeFindWidget(c);
+  if (layout) await defaultLayout(c);
+  await closeTabs(c, [], { discard: true });
+  for (const n of names) await openFile(c, CHAPTER_FILE(n));
+  const shown = (await editorTabs(c)).map((t) => t.name);
+  if (shown.join() !== names.join())
+    throw new Error(`the editor's tabs are ${shown.join(", ")}, not ${names.join(", ")}`);
+}
+
+const TAB = (name) => ({ css: "#codePanelTabs > .tabItem", text: name });
+
+// The tab strip with four tabs in four states, each named by a label under it with an arrow up
+// to it: Types as it was opened; Watcher with a change not saved (a space put in at the end of
+// its first line, in the page, and undone after), which puts a dot in place of the close button;
+// Inventory tinted by its warnings; and Ev opened by one click in the Project Explorer with
+// File Explorer: Single-Click Preview on (set in the page only), a preview tab in italics.
+const codeTabsStatesShot = {
+  out: CHAPTER_IMAGE("Tabs_States"),
+  setup: "code-chapter",
+  async take({ c }) {
+    await chapterTabs(c, ["Types.twin", "Inventory.twin"]);
+    // The page tints a tab when the compiler sends the file's diagnostics while the tab is open,
+    // not when a tab opens on a file the compiler has reported already: so Inventory is changed
+    // and the change undone, as a person editing it would, and the compiler reports it again.
+    const tinted = () =>
+      c.evaluate(
+        `[...document.querySelectorAll("#codePanelTabs > .tabItem")].some((e) => e.querySelector(".tabItemText").textContent.trim() === "Inventory.twin" && e.classList.contains("warning"))`,
+      );
+    await editedThenUndone(c, async () => {
+      await c.evaluate(
+        `editor.executeEdits("shoot_docs", [{ range: new monaco.Range(1, editor.getModel().getLineMaxColumn(1), 1, editor.getModel().getLineMaxColumn(1)), text: " " }])`,
+      );
+      if (!(await waitFor(c, tinted, { timeout: 15000, interval: 100 }))) {
+        throw new Error("the compiler's diagnostics for Inventory did not tint its tab");
+      }
+    });
+    await openFile(c, CHAPTER_FILE("Watcher.twin"));
+    const was = await c.evaluate("liveIDEOptions.previewDocs");
+    try {
+      await c.evaluate("liveIDEOptions.previewDocs = true; changedIdeOptions();");
+      // the change goes with the tab, closed with Discard Changes after the picture
+      await c.evaluate(
+        `editor.executeEdits("shoot_docs", [{ range: new monaco.Range(1, editor.getModel().getLineMaxColumn(1), 1, editor.getModel().getLineMaxColumn(1)), text: " " }])`,
+      );
+      await peOpen(c, "Sources", true);
+      await peSelect(c, "Ev.twin");
+      const states = await waitFor(
+        c,
+        () =>
+          c.evaluate(`(() => {
+  const tabs = [...document.querySelectorAll("#codePanelTabs > .tabItem")];
+  const t = (n) => tabs.find((e) => e.querySelector(".tabItemText").textContent.trim() === n);
+  const ok = !!t("Ev.twin")?.querySelector(".tabItemPreview") &&
+    t("Inventory.twin")?.classList.contains("warning") &&
+    !!t("Watcher.twin")?.querySelector(".circleIconSmall") &&
+    !t("Types.twin")?.classList.contains("warning") && !t("Types.twin")?.classList.contains("error");
+  return ok ? tabs.map((e) => e.className) : null;
+})()`),
+        { timeout: 10000, interval: 100 },
+      );
+      if (!states) {
+        const now = await c.evaluate(
+          `[...document.querySelectorAll("#codePanelTabs > .tabItem")].map((e) => e.className + " / " + e.innerHTML.replace(/\\s+/g, " ").slice(0, 300))`,
+        );
+        throw new Error(`the four tabs never showed their four states: ${JSON.stringify(now)}`);
+      }
+      await mouseAway(c);
+      const strip = await rectOf(c, "#codePanelTabs");
+      const tabs = [
+        ["Types.twin", "Normal"],
+        ["Inventory.twin", "Has warnings"],
+        ["Watcher.twin", "Unsaved changes"],
+        ["Ev.twin", "Preview tab"],
+      ];
+      // the labels in two rows, so that two side by side never touch
+      const annotate = tabs.flatMap(([name, text], i) => {
+        const gap = i % 2 ? 78 : 36;
+        return [
+          { type: "label", text, on: TAB(name), side: "below", gap },
+          { type: "arrow", from: { of: TAB(name), at: "bottom", dy: gap - 2 }, to: TAB(name) },
+        ];
+      });
+      const last = (await editorTabs(c)).at(-1).tab;
+      const area = { x: strip.x, y: strip.y, width: last.x + last.width + 40 - strip.x, height: strip.height };
+      // the strip and the labels on the strip's own ground, the code under it left out
+      const ground = await c.evaluate(`(() => {
+  for (let e = document.getElementById("codePanelTabs"); e; e = e.parentElement) {
+    const k = getComputedStyle(e).backgroundColor;
+    if (!/^rgba\\(.*, 0\\)$/.test(k) && k !== "transparent") return k;
+  }
+  return null;
+})()`);
+      if (!ground) throw new Error("the tab strip has no background colour");
+      return await annotatedClip(c, "Tabs_States", area, annotate, {
+        keep: ["#codePanelTabs", `#${LAYER_ID}`],
+        solid: ground,
+      });
+    } finally {
+      await c.evaluate(`liveIDEOptions.previewDocs = ${JSON.stringify(was)}; changedIdeOptions();`);
+      await closeTabs(c, [], { discard: true });
+    }
+  },
+};
+
+// The right-click menu of a tab, open over the editor: the tab strip and the menu.
+const codeTabMenuShot = {
+  out: CHAPTER_IMAGE("Tab_Menu"),
+  setup: "code-chapter",
+  async take({ c }) {
+    await chapterTabs(c, ["Types.twin", "Inventory.twin", "Helpers.twin"]);
+    // the active tab, at its lower right corner, so that the menu opens under it and covers no
+    // tab's name
+    const tab = (await editorTabs(c)).find((t) => t.name === "Helpers.twin").tab;
+    try {
+      await rightClickAt(c, tab.x + tab.width - 6, tab.y + tab.height - 3);
+      if (!(await menuOpened(c))) throw new Error("a right-click on a tab opened no menu");
+      const menu = await rectOf(c, "#contextMenu");
+      const strip = await rectOf(c, "#codePanelTabs");
+      // the strip's tabs and the menu, from the strip's left to past the menu, short of the minimap
+      // (see comboEnd)
+      const area = grow(union(strip, menu), 8);
+      area.x = strip.x;
+      area.width = menu.x + menu.width + 40 - strip.x;
+      return await capture(c, "Tab_Menu", snapOut(area), { away: () => parkMouse(c) });
+    } finally {
+      await closeMenus(c);
+      await closeTabs(c, [], { discard: true });
+    }
+  },
+};
+
+// The editor's right-click menu, opened over Twice's Return line in Helpers, with its Code Editor
+// Options submenu open: from the line above the one clicked, the code under the menu and the
+// submenu, with the editor alone in the window so that both open over code. The submenu opens
+// level with its item, near the menu's foot, and hangs below it: the page is tall enough that it
+// still ends over the code.
+const CONTEXT_MENU_HEIGHT = 1040;
+const codeContextMenuShot = {
+  out: CHAPTER_IMAGE("Context_Menu"),
+  setup: "code-chapter",
+  take: ({ c }) => editorAlone(c, IDE_SIZE.width, () => takeContextMenu(c), CONTEXT_MENU_HEIGHT),
+};
+async function takeContextMenu(c) {
+  await chapterTabs(c, ["Helpers.twin"]);
+  // the clicked line second in the view, so that the menu and its submenu open over code
+  const { line: returnLine } = await codePlace(c, "Return n * 2");
+  const at = await caretOn(c, "Return n * 2", { offset: 4, top: returnLine - 1 });
+  try {
+    const line = await linesBox(c, at.line, at.line);
+    const p = await c.evaluate(`(() => {
+  const e = editor.getDomNode().getBoundingClientRect();
+  const q = editor.getScrolledVisiblePosition({ lineNumber: ${at.line}, column: ${at.column} });
+  return { x: e.x + q.left, y: e.y + q.top + q.height / 2 };
+})()`);
+    await rightClickAt(c, p.x, p.y);
+    if (!(await menuOpened(c))) throw new Error("a right-click in the code opened no menu");
+    const sub = await hoverItem(c, "Code Editor Options");
+    const menu = await rectOf(c, "#contextMenu");
+    const above = { ...line, y: line.y - line.height, width: menu.x - line.x };
+    const area = grow(union(union(menu, sub), above), 8);
+    area.x = line.x;
+    area.y = above.y;
+    area.height = Math.max(menu.y + menu.height, sub.y + sub.height) + 8 - above.y;
+    return await capture(c, "Context_Menu", snapOut(area, IDE_SIZE.width, CONTEXT_MENU_HEIGHT));
+  } finally {
+    await closeMenus(c);
+  }
+}
+
+// Monaco's command palette, opened by the command of the right-click menu's Monaco Command
+// Palette, its input empty: the palette and the top of the editor round it.
+const codePaletteShot = {
+  out: CHAPTER_IMAGE("Command_Palette"),
+  setup: "code-chapter",
+  async take({ c }) {
+    await chapterTabs(c, ["Helpers.twin"]);
+    await caretOn(c, "Return n * 2", { offset: 4 });
+    const widget = `[...document.querySelectorAll(".quick-input-widget")].find((e) => e.getBoundingClientRect().height > 0 && getComputedStyle(e).display !== "none")`;
+    try {
+      await command(c, "tbEditor_ShowMonacoCommandPalette");
+      const box = await waitFor(
+        c,
+        () =>
+          c.evaluate(`(() => {
+  const w = ${widget};
+  if (!w || !w.querySelectorAll(".monaco-list-row").length) return null;
+  const r = w.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`),
+        { timeout: 5000, interval: 100 },
+      );
+      if (!box) throw new Error("the command palette did not open with its list");
+      const settled = await settledBox(c, () =>
+        c.evaluate(
+          `(() => { const r = ${widget}.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
+        ),
+      );
+      const ed = await editorBox(c);
+      // from the editor's left to past the palette, short of the minimap (see comboEnd)
+      const area = {
+        x: ed.x,
+        y: ed.y,
+        width: settled.x + settled.width + 24 - ed.x,
+        height: settled.y + settled.height + 16 - ed.y,
+      };
+      return await capture(c, "Command_Palette", snapOut(area), { away: () => parkMouse(c) });
+    } finally {
+      await pressKey(c, "Escape");
+      await waitFor(c, async () => !(await c.evaluate(`!!(${widget})`)), { timeout: 3000, interval: 50 });
+    }
+  },
+};
+
+// Watcher open with the caret in src_Changed, so that box 2 shows src and box 3 the event the
+// handler is for; box 3's list, which the page fills on a real press and an OS window draws, drawn
+// open as a replica below it: Changed [src_Changed] in bold above Reset. The bar and the class's
+// code under it.
+const codeComboListsShot = {
+  out: CHAPTER_IMAGE("Combo_Lists"),
+  setup: "code-chapter",
+  async take({ c }) {
+    await chapterTabs(c, ["Watcher.twin"]);
+    await caretOn(c, "Count = Count + Twice", { offset: 0 });
+    const want = ["Watcher", "src", "Changed [src_Changed]"];
+    const shown = await waitFor(
+      c,
+      async () => {
+        const t = await comboTexts(c);
+        return t.join("|") === want.join("|") && t;
+      },
+      { timeout: 10000, interval: 100 },
+    );
+    if (!shown) throw new Error(`the combo boxes show ${JSON.stringify(await comboTexts(c))}, not ${want.join(", ")}`);
+    const box = await rectOf(c, "select.codePanelDropDownProcedure");
+    const count = () =>
+      c.evaluate(
+        `[...document.querySelector("select.codePanelDropDownProcedure").options].filter((o) => !o.hidden && o.text).length`,
+      );
+    try {
+      // a real press fills the list, and opens the OS's, which Escape closes
+      await clickAt(c, box.x + box.width / 2, box.y + box.height / 2);
+      const filled = await waitFor(c, async () => (await count()) >= 2, { timeout: 5000, interval: 100 });
+      await pressKey(c, "Escape");
+      if (!filled) throw new Error("a press on box 3 did not fill its list");
+      const bar = await rectOf(c, COMBO_BAR);
+      const code = await linesBox(c, 1, 15);
+      const area = { x: bar.x, y: bar.y, width: (await comboEnd(c)) - bar.x, height: code.y + code.height - bar.y };
+      return await listClip(c, "Combo_Lists", area, [{ type: "list", select: COMBO(2) }], { margin: 0 });
+    } finally {
+      await caretOn(c, "Count = Count + Twice", { offset: 0 });
+    }
+  },
+};
+
+// The Edit and View menus with the code editor focused (the caret in Helpers), as cut-outs.
+const focusCode = async (c) => {
+  await chapterTabs(c, ["Helpers.twin"]);
+  await caretOn(c, "Return n * 2", { offset: 4 });
+  if (!(await c.evaluate("editor.hasTextFocus()"))) throw new Error("the code editor does not have the focus");
+};
+
+// ---- the EDITOR panel, its parts named
+
+// The EDITOR panel of the default layout on its own (a cut-out on the window's ground), Helpers
+// open with Types and Inventory as tabs beside it and the caret in Twice, the fold arrows shown
+// always (set in the page only, as the feature map sets them), and its parts named by labels in
+// the space the panels round it leave: the header's ... button from above, the Tabs List button,
+// the combo boxes and the minimap from the right, the tab strip and the margin from the left.
+const EDITOR_PANEL_MARK = "data-tb-shot-editor";
+const codeEditorPanelShot = {
+  out: CHAPTER_IMAGE("Editor_Panel"),
+  setup: "code-chapter",
+  async take({ c }) {
+    await chapterTabs(c, ["Types.twin", "Inventory.twin", "Helpers.twin"]);
+    await caretOn(c, "Return n * 2", { offset: 4 });
+    const options = { hideCodeEditorFolding: false, codeFoldingAlwaysVisible: true };
+    const keys = Object.keys(options);
+    const was = JSON.parse(
+      await c.evaluate(
+        `JSON.stringify(Object.fromEntries(${JSON.stringify(keys)}.map((k) => [k, liveIDEOptions[k] === undefined ? null : liveIDEOptions[k]])))`,
+      ),
+    );
+    try {
+      await c.evaluate(`Object.assign(liveIDEOptions, ${JSON.stringify(options)}); changedIdeOptions();`);
+      // the panel is marked for the cut-out, an attribute that draws nothing
+      const panel = await c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "EDITOR 1");
+  const p = h.closest(".toolWindowContainer");
+  p.setAttribute(${JSON.stringify(EDITOR_PANEL_MARK)}, "");
+  const r = p.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+      const shown = await waitFor(c, () => c.evaluate(`document.querySelectorAll(".monaco-editor .cldr").length > 0`), {
+        timeout: 5000,
+        interval: 100,
+      });
+      if (!shown) throw new Error("the editor shows no fold arrows");
+      const OPTIONS = { css: `[${EDITOR_PANEL_MARK}] .ellipsesIcon2` };
+      const TABS_LIST = { css: TABS_BUTTON };
+      const MINIMAP = { css: `[${EDITOR_PANEL_MARK}] .monaco-editor .minimap` };
+      const GUTTER = { css: `[${EDITOR_PANEL_MARK}] .monaco-editor .margin` };
+      const at = await resolveAnchors(c, {
+        options: OPTIONS,
+        tabsList: TABS_LIST,
+        box3: COMBO(2),
+        minimap: MINIMAP,
+        gutter: GUTTER,
+        tab: TAB("Types.twin"),
+      });
+      const right = panel.x + panel.width + 44;
+      const left = panel.x - 44;
+      const point = (x, y) => ({ rect: { x, y, width: 0, height: 0 } });
+      const mid = (r) => r.y + r.height / 2;
+      const marginY = mid(at.gutter) - 60;
+      const annotate = [
+        { type: "label", text: "Options", on: { of: OPTIONS, at: "top", dy: -44 }, side: "above", gap: 0 },
+        { type: "arrow", from: { of: OPTIONS, at: "top", dy: -42 }, to: OPTIONS },
+        { type: "label", text: "Tabs List", on: point(right, mid(at.tabsList)), side: "right", gap: 0 },
+        { type: "arrow", from: point(right - 4, mid(at.tabsList)), to: TABS_LIST },
+        { type: "label", text: "Combo boxes", on: point(right, mid(at.box3)), side: "right", gap: 0 },
+        { type: "arrow", from: point(right - 4, mid(at.box3)), to: COMBO(2) },
+        { type: "label", text: "Minimap", on: point(right, at.minimap.y + 60), side: "right", gap: 0 },
+        {
+          type: "arrow",
+          from: point(right - 4, at.minimap.y + 60),
+          to: point(at.minimap.x + at.minimap.width - 30, at.minimap.y + 60),
+        },
+        { type: "label", text: "Tab strip", on: point(left, mid(at.tab)), side: "left", gap: 0 },
+        { type: "arrow", from: point(left + 4, mid(at.tab)), to: TAB("Types.twin") },
+        { type: "label", text: "Margin", on: point(left, marginY), side: "left", gap: 0 },
+        { type: "arrow", from: point(left + 4, marginY), to: point(at.gutter.x + 24, marginY) },
+      ];
+      const ground = await c.evaluate("getComputedStyle(document.body).backgroundColor");
+      return await annotatedClip(c, "Editor_Panel", panel, annotate, {
+        keep: [`[${EDITOR_PANEL_MARK}]`, `#${LAYER_ID}`],
+        solid: ground,
+      });
+    } finally {
+      await c.evaluate(`(() => {
+  document.querySelector("[${EDITOR_PANEL_MARK}]")?.removeAttribute(${JSON.stringify(EDITOR_PANEL_MARK)});
+  const was = ${JSON.stringify(was)};
+  for (const k of Object.keys(was)) {
+    if (was[k] === null) delete liveIDEOptions[k];
+    else liveIDEOptions[k] = was[k];
+  }
+  changedIdeOptions();
+})()`);
+    }
+  },
+};
+
+// ---- Paste As Comment: before and after
+
+// The page's clipboard calls answered from a text of the tool's own, so that the IDE never reads
+// or writes the host's clipboard; put back by REAL_CLIPBOARD.
+const FAKE_CLIPBOARD = (text) => `(() => {
+  if (!window.tbRealRequest) {
+    window.tbRealRequest = debugSocket.request;
+    window.tbRealReadText = navigator.clipboard.readText;
+    window.tbRealWriteText = navigator.clipboard.writeText;
+  }
+  const real = window.tbRealRequest.bind(debugSocket);
+  const clip = { text: ${JSON.stringify(text)} };
+  debugSocket.request = function (method, params, cb, ...rest) {
+    if (method === "copyClipboardIDE") { clip.text = params.text; cb && cb({ body: {} }); return; }
+    if (method === "readClipboardIDE") { cb && cb({ body: { text: clip.text, extraData: undefined } }); return; }
+    return real(method, params, cb, ...rest);
+  };
+  navigator.clipboard.readText = () => Promise.resolve(clip.text);
+  navigator.clipboard.writeText = () => Promise.resolve();
+})()`;
+const REAL_CLIPBOARD = `(() => {
+  if (!window.tbRealRequest) return;
+  debugSocket.request = window.tbRealRequest;
+  navigator.clipboard.readText = window.tbRealReadText;
+  navigator.clipboard.writeText = window.tbRealWriteText;
+  delete window.tbRealRequest;
+})()`;
+// Three lines of text, the second blank, as another program would put them on the clipboard.
+const PASTED = "Debug.Print Twice(6)\r\n\r\nDebug.Print Twice(7)";
+
+// Helpers' Third with a blank line put in under its Debug.Print and the caret on it, and the same
+// Sub after Paste As Comment of PASTED there, side by side with an arrow from one to the other.
+const codePasteAsCommentShot = {
+  out: CHAPTER_IMAGE("Paste_As_Comment"),
+  setup: "code-chapter",
+  async take({ c }) {
+    await chapterTabs(c, ["Helpers.twin"]);
+    const { reference, prefer } = c.shot;
+    Object.assign(c.shot, { reference: null, prefer: null });
+    let made;
+    try {
+      made = await editedThenUndone(c, async () => {
+        const line = await newLineAfter(c, "Debug.Print Twice(5)", "");
+        await setCursor(c, line, 9);
+        const SUB = { code: "Public Sub Third()" };
+        const before = await codeLines(c, "Paste_As_Comment-before", "Public Sub Third()", "End Sub", {
+          anchors: { before: SUB },
+        });
+        await c.evaluate(FAKE_CLIPBOARD(PASTED));
+        try {
+          await setCursor(c, line, 9);
+          await command(c, "tbEditor_ClipboardPasteAsComment");
+          const pasted = await waitFor(
+            c,
+            () =>
+              c.evaluate(
+                `editor.getModel().getLinesContent().filter((l) => l.includes("' Debug.Print Twice(")).length === 2`,
+              ),
+            { timeout: 5000, interval: 100 },
+          );
+          if (!pasted) throw new Error("Paste As Comment put in no commented lines");
+        } finally {
+          await c.evaluate(REAL_CLIPBOARD);
+        }
+        await pressKey(c, "Escape");
+        const after = await codeLines(c, "Paste_As_Comment-after", "Public Sub Third()", "End Sub", {
+          anchors: { after: SUB },
+        });
+        return [before, { ...after, column: 1 }];
+      });
+    } finally {
+      Object.assign(c.shot, { reference, prefer });
+    }
+    try {
+      const { box } = await composite(c, made, [
+        {
+          type: "arrow",
+          from: { of: { ref: "before" }, at: "right", dx: 10 },
+          to: { of: { ref: "after" }, at: "left", dx: -4 },
+        },
+      ]);
+      return await capture(c, "Paste_As_Comment", snapOut(box), { away: () => parkMouse(c) });
+    } finally {
+      await uncomposite(c);
+    }
+  },
+};
+
+// ---- Finding
+
+const FIND = panelSel("FIND REPLACE");
+
+// Find In Project from the end of Helpers, Find What typed as a person types it, and Find Next
+// pressed once: the match after Helpers' last Twice is in Watcher, which the panel opens in a
+// preview tab with the match selected. The panel floating where it opens, and the editor round it.
+const codeFindProjectShot = {
+  out: CHAPTER_IMAGE("Find_Project"),
+  setup: "code-chapter",
+  async take({ c }) {
+    await chapterTabs(c, ["Helpers.twin"]);
+    await caretOn(c, "End Module");
+    const state = () =>
+      c.evaluate(`(() => { const t = findReplacePanel._this; return {
+  what: t.findWhatInput.value, project: t.findScopeProjectButton.checked, packages: !t.findInPackagesInput.disabled,
+  options: [t.findWholeWordGroupInput, t.findMatchCaseGroupInput, t.findUsePatternMatchingInput, t.findUseRegExpInput].some((e) => e.checked) }; })()`);
+    const click = async (expr) => {
+      const r = await c.evaluate(
+        `(() => { const e = ${expr}; const q = e && e.getBoundingClientRect(); return q && q.width ? { x: q.x + q.width / 2, y: q.y + q.height / 2 } : null; })()`,
+      );
+      if (!r) throw new Error(`nothing to click: ${expr}`);
+      await clickAt(c, r.x, r.y);
+    };
+    try {
+      await pressKey(c, "f", { ctrl: true, shift: true });
+      if (!(await waitFor(c, () => rectOf(c, FIND), { timeout: 5000, interval: 100 }))) {
+        throw new Error("Ctrl+Shift+F did not show the Find / Replace panel");
+      }
+      if (!(await state()).project) await click("findReplacePanel._this.findScopeProjectButton");
+      await click("findReplacePanel._this.findWhatInput");
+      await pressKey(c, "a", { ctrl: true });
+      await typeText(c, "Twice");
+      const s = await state();
+      if (s.what !== "Twice" || !s.project || !s.packages || s.options) {
+        throw new Error(`the Find / Replace panel is not as the picture needs it: ${JSON.stringify(s)}`);
+      }
+      // The search starts at the top of the current file: Find Next is pressed until the match it
+      // selects is in Watcher, a file after Helpers in the project's order.
+      const at = () =>
+        c.evaluate(`(() => {
+  const tab = document.querySelector("#codePanelTabs > .tabItemSelected .tabItemText")?.textContent.trim();
+  const p = editor.getPosition();
+  return { tab, line: p.lineNumber, column: p.column, selected: editor.getModel().getValueInRange(editor.getSelection()) };
+})()`);
+      let found = false;
+      for (let press = 0; press < 6 && !found; press++) {
+        const was = JSON.stringify(await at());
+        await click(
+          `[...document.querySelectorAll(${JSON.stringify(`${FIND} *`)})].find((b) => b.children.length === 0 && b.textContent.trim() === "Find Next")`,
+        );
+        const now = await waitFor(
+          c,
+          async () => {
+            const a = await at();
+            return JSON.stringify(a) !== was && a.selected === "Twice" && a;
+          },
+          { timeout: 10000, interval: 100 },
+        );
+        if (!now) throw new Error(`Find Next selected no further match: ${was}`);
+        found = now.tab === "Watcher.twin";
+      }
+      if (!found) throw new Error("Find Next never selected Twice in Watcher");
+      await frames(c);
+      const ed = await editorPanelRect(c);
+      // the floating panel moved inside the editor panel, as a person drags it there, so that the
+      // picture holds nothing of the panels beside the editor
+      await c.evaluate(`document.querySelector(${JSON.stringify(FIND)}).style.left = "${ed.x + 24}px"`);
+      await frames(c);
+      const panel = await rectOf(c, FIND);
+      // from the editor panel's left to past the panel, short of the minimap (see comboEnd)
+      const area = {
+        x: ed.x,
+        y: ed.y,
+        width: panel.x + panel.width + 24 - ed.x,
+        height: (await linesBox(c, 15, 15)).y + 4 - ed.y,
+      };
+      return await capture(c, "Find_Project", snapOut(area), { away: () => parkMouse(c) });
+    } finally {
+      await pressKey(c, "Escape");
+      await closePanelIfShown(c, "FIND REPLACE");
+      await closeTabs(c, [], { discard: true });
+    }
+  },
+};
+
+// Quick Replace (Alt+H) in Helpers: Monaco's find widget at the top right of the editor, its
+// replace row shown, Twice typed as the text to find, the count of matches, and the matches marked
+// in the code.
+const codeQuickFindShot = {
+  out: CHAPTER_IMAGE("Quick_Find"),
+  setup: "code-chapter",
+  async take({ c }) {
+    await chapterTabs(c, ["Helpers.twin"]);
+    await caretOn(c, "Public Function Twice", { offset: "Public Function ".length + 2 });
+    const widget = `editor.getDomNode().querySelector(".find-widget")`;
+    try {
+      await pressKey(c, "h", { alt: true });
+      const open = await waitFor(
+        c,
+        () =>
+          c.evaluate(`(() => { const w = ${widget}; return !!w && w.classList.contains("visible") && w.classList.contains("replaceToggled") &&
+  w.contains(document.activeElement); })()`),
+        { timeout: 5000, interval: 100 },
+      );
+      if (!open) throw new Error("Alt+H did not show the find widget with its replace row");
+      // the word typed into the box to find, over whatever an earlier search left there
+      await pressKey(c, "a", { ctrl: true });
+      await typeText(c, "Twice");
+      const counted = await waitFor(
+        c,
+        () =>
+          c.evaluate(`(() => { const w = ${widget}; return document.activeElement.value === "Twice" &&
+  /\\d+ of \\d+/.test(w.querySelector(".matchesCount")?.textContent ?? "") && w.querySelector(".matchesCount").textContent; })()`),
+        { timeout: 5000, interval: 100 },
+      );
+      if (!counted) throw new Error("typing Twice into the find widget counted no matches");
+      const box = await settledBox(c, () =>
+        c.evaluate(
+          `(() => { const r = ${widget}.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
+        ),
+      );
+      const ed = await editorBox(c);
+      const last = await codePlace(c, "Debug.Print Twice(5)");
+      const lines = await linesBox(c, 1, last.line);
+      // to just past the widget, short of the minimap (see comboEnd)
+      const area = {
+        x: ed.x,
+        y: ed.y,
+        width: box.x + box.width + 8 - ed.x,
+        height: Math.max(box.y + box.height, lines.y + lines.height) + 4 - ed.y,
+      };
+      return await capture(c, "Quick_Find", snapOut(area), { away: () => parkMouse(c) });
+    } finally {
+      await closeFindWidget(c);
+    }
+  },
+};
+
+// ---- Navigating
+
+// Helpers with a bookmark on Twice's first line and one on Third's, made with Ctrl+B, and the
+// glyph of the lower one named from below, the arrow straight up the glyph margin. The bookmarks
+// are cleared after with the right-click menu's Clear Bookmarks (Project) command.
+const codeBookmarksShot = {
+  out: CHAPTER_IMAGE("Bookmarks"),
+  setup: "code-chapter",
+  async take({ c }) {
+    await chapterTabs(c, ["Helpers.twin"]);
+    const first = await codePlace(c, "Public Function Twice");
+    try {
+      for (const text of ["Public Function Twice", "Public Sub Third"]) {
+        await caretOn(c, text, { offset: 4, top: first.line - 1 });
+        await pressKey(c, "b", { ctrl: true });
+      }
+      await caretOn(c, "End Module", { top: first.line - 1 });
+      const glyphs = await waitFor(
+        c,
+        () =>
+          c.evaluate(`(() => {
+  const g = [...document.querySelectorAll(".bookmarkActiveGlyph")].map((e) => e.getBoundingClientRect()).filter((r) => r.width);
+  return g.length === 2 ? g.sort((a, b) => a.y - b.y).map((r) => ({ x: r.x, y: r.y, width: r.width, height: r.height })) : null;
+})()`),
+        { timeout: 5000, interval: 100 },
+      );
+      if (!glyphs) throw new Error("Ctrl+B on two lines did not draw two bookmark glyphs");
+      const end = await codePlace(c, "End Module");
+      const code = await linesBox(c, first.line - 1, end.line);
+      const lower = glyphs[1];
+      const x = lower.x + lower.width / 2;
+      const labelY = code.y + code.height + 40;
+      // the label's left end under the glyph, the arrow up from its top edge: nothing of the label
+      // is left of the editor
+      const annotate = [
+        {
+          type: "label",
+          text: "Bookmark",
+          on: { rect: { x: lower.x - 4, y: labelY, width: 0, height: 0 } },
+          side: "right",
+          gap: 0,
+        },
+        { type: "arrow", from: { rect: { x, y: labelY - 16, width: 0, height: 0 } }, to: { rect: lower } },
+      ];
+      const area = { x: code.x, y: code.y, width: 560, height: code.height };
+      return await annotatedClip(c, "Bookmarks", area, annotate);
+    } finally {
+      await command(c, "tbEditor_ClearBookmarksProject");
+      await waitFor(c, () => c.evaluate(`document.querySelectorAll(".bookmarkActiveGlyph").length === 0`), {
+        timeout: 3000,
+        interval: 100,
+      });
+    }
+  },
+};
+
+// The OUTLINE panel, floating, for Helpers, with its ... menu open (a real click on the button).
+const codeOutlineMenuShot = annotatedPanelShot(
+  "Outline_Menu",
+  "OUTLINE",
+  { width: 300, height: 180 },
+  {
+    setup: "code-chapter",
+    out: CHAPTER_IMAGE("Outline_Menu"),
+    before: (c) => openFile(c, CHAPTER_FILE("Helpers.twin")),
+    async open(c) {
+      const b = await rectOf(c, `${panelSel("OUTLINE")} .ellipsesIcon2`);
+      if (!b) throw new Error("OUTLINE has no ... button");
+      await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+      if (!(await menuOpened(c))) throw new Error("the ... button of OUTLINE opened no menu");
+    },
+  },
+);
+
+// ---- Diagnostics
+
+// An error put into Helpers in the page (a line printing a name nothing declares, in Third), with
+// Hints and Information switched on in DIAGNOSTICS by their commands, as the count buttons do; the
+// error discarded and the switches put back after.
+const DIAG_ERROR = "Debug.Print Undefined1";
+// Waits for the project's counts of errors, warnings, hints and information messages, as the page
+// keeps them for the Project Explorer's root (which DIAGNOSTICS shows when it is open), to be
+// `want` for a second and a half: DIAGNOSTICS may be closed, its counters with it.
+async function waitProjectCounts(c, want) {
+  const counts = () =>
+    c.evaluate(
+      `["Error", "Warning", "Hint", "Info"].map((k) => fs.tree.rootFolder["cachedDiagnostics_child" + k + "Count"] ?? 0)`,
+    );
+  let since = 0;
+  const ok = await waitFor(
+    c,
+    async () => {
+      if ((await counts()).join() !== want.join()) {
+        since = 0;
+        return false;
+      }
+      since ||= Date.now();
+      return Date.now() - since > 1500;
+    },
+    { timeout: 30000, interval: 300 },
+  );
+  if (!ok)
+    throw new Error(`the project's diagnostics never settled at ${want.join(",")}: ${(await counts()).join(",")}`);
+}
+// With `layout`, the default layout first (before DIAGNOSTICS floats, never after).
+async function diagnosticsWithError(c, { layout = true } = {}) {
+  await chapterTabs(c, ["Helpers.twin"], { layout });
+  await newLineAfter(c, "Debug.Print Twice(5)", DIAG_ERROR);
+  await waitProjectCounts(c, [1, 4, 1, 1]);
+  const shown = await c.evaluate("JSON.stringify(problemsPanelOptions)");
+  c.shot.problemsShown = shown;
+  if (!(await c.evaluate("problemsPanelOptions.showHints"))) await command(c, "tbProblems_ToggleShowHints");
+  if (!(await c.evaluate("problemsPanelOptions.showInfos"))) await command(c, "tbProblems_ToggleShowInfos");
+}
+async function diagnosticsBack(c) {
+  const was = c.shot.problemsShown ? JSON.parse(c.shot.problemsShown) : null;
+  c.shot.problemsShown = null;
+  if (was) {
+    if ((await c.evaluate("problemsPanelOptions.showHints")) !== was.showHints)
+      await command(c, "tbProblems_ToggleShowHints");
+    if ((await c.evaluate("problemsPanelOptions.showInfos")) !== was.showInfos)
+      await command(c, "tbProblems_ToggleShowInfos");
+  }
+  await closeTabs(c, [], { discard: true });
+  await waitProjectCounts(c, [0, 4, 1, 1]);
+}
+// The box of the floating DIAGNOSTICS row holding `code`, once the panel lists a row of each kind.
+const diagRow = (c, code) =>
+  waitFor(
+    c,
+    () =>
+      c.evaluate(`(() => {
+  const rows = [...document.querySelectorAll(${JSON.stringify(`${DIAG} .problemNodeItem`)})];
+  if (!["TB5079", "TB0003", "TB0016", "TB0012"].every((k) => rows.some((e) => e.textContent.includes(k)))) return null;
+  const r = rows.find((e) => e.textContent.includes(${JSON.stringify(code)}))?.getBoundingClientRect();
+  return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`),
+    { timeout: 5000, interval: 100 },
+  );
+
+// DIAGNOSTICS floating, its rows of all four kinds in three files, the error's row selected with a
+// real click, which shows Jump to issue and Help under it.
+const codeDiagnosticsRowsShot = panelShot("Diagnostics_Rows", "PROBLEMS", [560, 360], {
+  setup: "code-chapter",
+  out: CHAPTER_IMAGE("Diagnostics_Rows"),
+  before: diagnosticsWithError,
+  async prepare(c) {
+    const r = await diagRow(c, "TB5079");
+    if (!r) throw new Error("DIAGNOSTICS has no row for the error");
+    await clickAt(c, r.x + 60, r.y + r.height / 2);
+    if (!(await waitFor(c, () => rectOf(c, `${DIAG} .problemButtonJump`), { timeout: 3000, interval: 50 }))) {
+      throw new Error("a click on the error's row showed no Jump to issue button");
+    }
+    await frames(c);
+  },
+  restore: diagnosticsBack,
+});
+
+// The same panel with its right-click menu open over the error's row.
+const codeDiagnosticsMenuShot = annotatedPanelShot(
+  "Diagnostics_Menu",
+  "PROBLEMS",
+  { width: 560, height: 360 },
+  {
+    setup: "code-chapter",
+    out: CHAPTER_IMAGE("Diagnostics_Menu"),
+    // the panel floats before this runs: the layout is left as it is
+    before: (c) => diagnosticsWithError(c, { layout: false }),
+    async open(c) {
+      const r = await diagRow(c, "TB5079");
+      if (!r) throw new Error("DIAGNOSTICS has no row for the error");
+      await rightClickAt(c, r.x + 60, r.y + r.height / 2);
+      if (!(await menuOpened(c))) throw new Error("a right-click on a DIAGNOSTICS row opened no menu");
+    },
+    after: diagnosticsBack,
+  },
+);
+
+const codeChapterShots = [
+  codeEditorPanelShot,
+  codeTabsStatesShot,
+  codeTabMenuShot,
+  codeComboListsShot,
+  codeContextMenuShot,
+  codePaletteShot,
+  // the Edit and View menus are shown as they are while a person types code
+  menuShot("Menu_Edit", "Edit", null, { setup: "code-chapter", before: focusCode }),
+  menuShot("Menu_View", "View", null, { setup: "code-chapter", before: focusCode }),
+  codeCombosShot,
+  signatureShot("SignatureHelp", { after: "Dim i As Long", nth: 2, call: "i = InStr", sigs: 2 }),
+  signatureShot("SignatureHelp_Expanded", { after: "count = 0", call: "MsgBox", sigs: 1, expand: true }),
+  codeHoverShot,
+  codeHintsShot,
+  codePasteAsCommentShot,
+  codeFindProjectShot,
+  codeQuickFindShot,
+  codeBookmarksShot,
+  codeOutlineMenuShot,
+  codeDiagnosticsRowsShot,
+  codeDiagnosticsMenuShot,
+];
+
 // The route a person takes: Standard EXE is selected on the New tab, and Open
 // asks for its options. Cancel closes the dialog and creates nothing. Last
 // of the setup, since the IDE has begun to start a project.
@@ -7630,8 +8777,6 @@ const SHOTS = [
   splashShot,
   menuBarShot,
   menuShot("Menu_File", "File"),
-  menuShot("Menu_Edit", "Edit"),
-  menuShot("Menu_View", "View"),
   menuShot("Menu_Project", "Project"),
   menuShot("Menu_Format", "Format"),
   menuShot("Menu_Debug", "Debug"),
@@ -7662,6 +8807,7 @@ const SHOTS = [
   ...codeShots,
   ...sample9Shots,
   featureMapShot,
+  ...codeChapterShots,
   newProjectOptionsShot,
   ...programShots,
   ...codeLensShots,
@@ -7685,6 +8831,10 @@ const PARTS = {
   sample: [
     { suffix: "-2", from: "IDE/Images/OpenEditors_1.png" },
     { suffix: "-3", from: "IDE/Images/PackagePublishing_1.png" },
+  ],
+  "code-chapter": [
+    { suffix: "-2", from: "IDE/Code/Images/Combos.png" },
+    { suffix: "-3", from: "IDE/Code/Images/Paste_As_Comment.png" },
   ],
   customcontrols: [
     { suffix: "-2", from: "Tutorials/CustomControls/Images/ccMyFieldClass.png" },
@@ -7719,6 +8869,9 @@ const JOB_SECONDS = {
   code: 33,
   sample9: 11,
   featuremap: 39,
+  "code-chapter": 95,
+  "code-chapter-2": 85,
+  "code-chapter-3": 100,
   "no-project": 68,
   "no-project-2": 59,
   "no-project-3": 70,
