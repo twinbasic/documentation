@@ -71,6 +71,8 @@
 //               in no theme; the ListView's is of the project run from the IDE (F5)
 //   codelens    test/shots/codelens: a procedure run by its CodeLens bar, the editor above
 //               the DEBUG CONSOLE
+//   memory      test/shots/memory: Sub Main run to its Stop, and the MEMORY 1 pane showing
+//               a String's characters
 //   package     the sample built as a TWINPACK package, and fusion test/shots/fusion, whose
 //               Fusion host the compiler builds as it loads: the DEBUG CONSOLE's lines,
 //               the paths they name on a folder of the tool's own (PACKAGE_ROOT)
@@ -242,7 +244,8 @@ custom control's code and PROPERTIES (setup customcontrols), and the editor alon
 the build select's greying, inline hints, a hover, a form's JSON (setups code,
 customcontrols and sample9), the whole window with its features named (setup
 featuremap), the editor's tabs, combo boxes, menus, IntelliSense, finding and DIAGNOSTICS
-in the same project (setup code-chapter), a procedure run by its CodeLens bar (setup codelens), the DEBUG
+in the same project (setup code-chapter), a procedure run by its CodeLens bar (setup codelens), the MEMORY 1
+pane at a Stop, showing a String (setup memory), the DEBUG
 CONSOLE after a package build and a Fusion host build (setups package and fusion),
 Project Settings' packages from TWINSERV, signed out, downloaded, embedded and linked
 (setups package-server, settings-linked and package-check; they need the network),
@@ -1380,6 +1383,7 @@ const SETUPS = {
   "no-project": { ports: 1, start: startNoProject, prepare: prepareNoProject },
   programs: { ports: 1, start: startPrograms, prepare: preparePrograms },
   codelens: { ports: 1, start: startCodeLens, prepare: prepareSample },
+  memory: { ports: 1, start: startMemory, prepare: prepareSample },
   package: { ports: 1, start: startPackage, prepare: prepareSample },
   fusion: { ports: 1, start: startFusion, prepare: prepareSample },
   "package-server": { ports: 1, start: startPackageServer, prepare: preparePackageServer },
@@ -7140,6 +7144,83 @@ const codeLensShots = [
   ),
 ];
 
+// ---- memory: test/shots/memory, MemoryDemo, whose Sub Main stops with s holding fifteen
+// characters (setup memory): the MEMORY 1 pane at the stop, `s` typed into its box and
+// entered, which the IDE turns into StrPtr(s). The pane is sized to two rows, which the
+// characters and their terminating null fill exactly. The string's address changes from run
+// to run: the address column is set in the page once the rows are read, as the CodeLens
+// pictures' console times are. The run is started before the pane floats and ended after.
+
+const MEMORY_PROJECT = path.join(REPO_ROOT, "test", "shots", "memory");
+const MEMORY_ADDRESSES = ["&H0F423AC8", "&H0F423AD8"];
+const MEMORY_TEXT = "H.e.l.l.o. .t.w.i.n.B.A.S.I.C...";
+
+async function startMemory(run) {
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, MEMORY_PROJECT)}`);
+  return run.lane.open(MEMORY_PROJECT);
+}
+
+// The pane's rows as the page shows them: their count, and the text column of each.
+const memoryRows = (c) =>
+  c.evaluate(`(() => {
+  const rows = [...hexEditorPanel.outerDiv.querySelectorAll(".hexedr tbody tr")];
+  return { count: rows.length, text: rows.map((r) => [...r.querySelectorAll("td.acell")].map((d) => d.textContent).join("")).join("") };
+})()`);
+
+const memoryShot = panelShot("Memory_String", "MEMORY 1", [696, 120], {
+  setup: "memory",
+  async before(c) {
+    await startRun(c);
+    if (!(await waitFor(c, () => c.evaluate("!!context.atBreakpoint?.value"), { timeout: 60000, interval: 100 }))) {
+      throw new Error("the program did not stop at its Stop statement");
+    }
+  },
+  async prepare(c) {
+    // the pane's height for two rows: the rows follow the pane's size
+    const sel = panelSel("MEMORY 1");
+    for (let i = 0; i < 20; i++) {
+      const { count } = await memoryRows(c);
+      if (count === 2) break;
+      await c.evaluate(`(() => {
+  const p = document.querySelector(${JSON.stringify(sel)});
+  p.style.height = (p.getBoundingClientRect().height + (${count} < 2 ? 4 : -4)) + "px";
+})()`);
+      await frames(c);
+    }
+    if ((await memoryRows(c)).count !== 2) throw new Error("the MEMORY 1 pane would not show two rows");
+    await c.evaluate(
+      `(() => { const i = hexEditorPanel.outerDiv.querySelector(".addr-input"); i.focus(); i.select(); })()`,
+    );
+    await typeText(c, "s");
+    await pressKey(c, "Enter");
+    // The rows are drawn again once the debugger answers, and the cell at the address then
+    // takes the focus: the box can already read StrPtr(s) from the theme before.
+    const read = await waitFor(
+      c,
+      async () =>
+        (await c.evaluate(`hexEditorPanel.outerDiv.querySelector(".addr-input").value`)) === "StrPtr(s)" &&
+        (await c.evaluate(`!!document.activeElement?.closest?.(".hexedr td.cell")`)) &&
+        (await memoryRows(c)).text === MEMORY_TEXT,
+      { timeout: 15000, interval: 100 },
+    );
+    if (!read) throw new Error(`the MEMORY 1 pane shows ${JSON.stringify(await memoryRows(c))}`);
+    await c.evaluate(`(() => {
+  const a = ${JSON.stringify(MEMORY_ADDRESSES)};
+  hexEditorPanel.outerDiv.querySelectorAll(".hexedr tbody th.addr").forEach((t, i) => { t.textContent = a[i]; });
+  document.activeElement?.blur();
+})()`);
+    await frames(c);
+    const shown = await c.evaluate(
+      `[...hexEditorPanel.outerDiv.querySelectorAll(".hexedr tbody th.addr")].map((t) => t.textContent)`,
+    );
+    if (JSON.stringify(shown) !== JSON.stringify(MEMORY_ADDRESSES)) {
+      throw new Error(`the MEMORY 1 pane drew its addresses again: ${JSON.stringify(shown)}`);
+    }
+  },
+  restore: (c) => stopRun(c),
+});
+
 // ---- package: the sample, a TWINPACK package, built (setup package), with its build path on a
 // folder of the tool's own at the root of the temp folder's drive, PACKAGE_ROOT: the DEBUG
 // CONSOLE names the file the build creates, and the lane's own build path is under the
@@ -8811,6 +8892,7 @@ const SHOTS = [
   newProjectOptionsShot,
   ...programShots,
   ...codeLensShots,
+  memoryShot,
   packageBuildShot,
   fusionShot,
   ...packageServerShots,
@@ -8877,6 +8959,7 @@ const JOB_SECONDS = {
   "no-project-3": 70,
   programs: 45,
   codelens: 35,
+  memory: 30,
   package: 25,
   fusion: 20,
   "package-server": 150,

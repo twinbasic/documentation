@@ -1,0 +1,12 @@
+' The project shoot_docs.mjs runs for the Memory pane's picture (setup memory). Main
+' stops with s holding fifteen characters: two bytes each and two for the terminating
+' null fill two rows of the pane at Cols 16, so nothing else in memory is shown.
+Module Startup
+
+    Public Sub Main()
+        Dim s As String
+        s = "Hello twinBASIC"
+        Stop
+    End Sub
+
+End Module

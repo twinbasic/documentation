@@ -181,7 +181,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   page's `currentDPI` to the 2x ratio, or the IDE's 5 s DPI check covers every designer with
   RESYNC), and `forms` (the same without the add-in), `community` (the demo, its compiler
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
-  alone), `programs`, `codelens`, `package` and `fusion` (pictures of a running program),
+  alone), `programs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
   Chrome, not an IDE), `featuremap`, `code-chapter`, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`.
@@ -370,6 +370,13 @@ warnings set so that TB0016 is a hint and TB0012 information. Its 20 pictures ar
   line times (the page's clock for some lines, the compiler's for `Debug.Print`) and the time
   taken are set in the page once shown. `Scale factor` prints what the lane's compiler reads,
   1.50 on this machine.
+- **`Memory_String`** (setup `memory`, `test/shots/memory`, MemoryDemo): Sub Main run with
+  Start to its `Stop`, the MEMORY 1 pane floated and sized to two rows, `s` typed into its box,
+  which the IDE turns into `StrPtr(s)`; the fifteen characters and their terminating null fill
+  the two rows, so no other memory shows. The string's address changes from run to run and is
+  set in the page once the rows are read (`MEMORY_ADDRESSES`). The box can already read
+  `StrPtr(s)` from the theme before, so the shot waits for the cell at the address to take the
+  focus, which happens only once the rows are drawn for the new answer, and then blurs it.
 - **`Toolbar_4`**: setup `designer`, the sample run with Start (`context.codeExecuting`) and
   stopped after.
 - **`8d74d820`** (setup `package`) and **Fusion's `569099635`** (setup `fusion`): the paths the
