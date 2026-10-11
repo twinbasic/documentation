@@ -35,8 +35,8 @@ redirect_from:
 - Build
 - Comment Selection (<kbd>Ctrl</kbd>+<kbd>K</kbd>)
 - Uncomment Selection (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd>)
-- Indent Block (<kbd>Ctrl</kbd>+<kbd>[</kbd>)
-- Outdent Block (<kbd>Ctrl</kbd>+<kbd>]</kbd>)
+- Indent Block (<kbd>Ctrl</kbd>+<kbd>]</kbd>)
+- Outdent Block (<kbd>Ctrl</kbd>+<kbd>[</kbd>)
 - Align controls to the LEFT (<kbd>Alt</kbd>+<kbd>Left</kbd>)
 - Align controls to the TOP (<kbd>Alt</kbd>+<kbd>Up</kbd>)
 - Align controls to the RIGHT (<kbd>Alt</kbd>+<kbd>Right</kbd>)

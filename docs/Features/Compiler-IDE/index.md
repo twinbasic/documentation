@@ -14,6 +14,6 @@ twinBASIC includes many compiler features and IDE enhancements to improve the de
 
 - [Compiler Warnings](Compiler-Warnings) - Compiler warnings and strict mode
 - [Debugging](Debugging) - Debug trace logger and stale pointer detection
-- [CodeLens](CodeLens) - Run Subs from the IDE
+- [CodeLens](../../tB/IDE/Code/IntelliSense#codelens) - Run Subs from the IDE
 - [IDE Features](IDE-Features) - Modern IDE capabilities
 - [Package Server](Package-Server) - Package management system

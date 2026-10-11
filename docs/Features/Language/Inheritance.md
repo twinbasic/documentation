@@ -194,7 +194,7 @@ Module AnimalsDemoMod
 End Module
 ```
 
-Running `DemoAnimals` --- for example from its [CodeLens](../Compiler-IDE/CodeLens) bar --- prints this to the Debug Console:
+Running `DemoAnimals` --- for example from its [CodeLens](../../tB/IDE/Code/IntelliSense#codelens) bar --- prints this to the Debug Console:
 
 ```text
 Rex says: woof

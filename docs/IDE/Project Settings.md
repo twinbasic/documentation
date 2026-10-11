@@ -184,12 +184,12 @@ Whether [**Option Explicit**](../Core/Option) is on in a file that has no **Opti
 
 ## Auto Prettify Source Code
 
-When set to **Yes**, the editor corrects the capitalization of words as they are typed, and corrects spacing to the usual VBE layout. It is **Yes** by default. In the `Settings` file it is `project.autoPrettify`.
+When set to **Yes**, the editor corrects the capitalization of words, and corrects spacing to the usual VBE layout. A correction to the line you are typing in appears when the caret moves to another line. [Auto Prettify](Code/Editor#auto-prettify) describes the rule. It is **Yes** by default. In the `Settings` file it is `project.autoPrettify`.
 
 ## CodeLens - Show Run Procedure
 {: #show-run-procedure }
 
-When set to **Yes**, the editor shows **▶ run** and the procedure's name in the CodeLens above each procedure in a standard module that takes no arguments. [CodeLens](../../Features/Compiler-IDE/CodeLens) describes running a procedure that way. It is **Yes** by default. In the `Settings` file it is `project.codeLensRunProcedure`.
+When set to **Yes**, the editor shows **▶ run** and the procedure's name in the CodeLens above each procedure in a standard module that takes no arguments. [CodeLens](Code/IntelliSense#codelens) describes running a procedure that way. It is **Yes** by default. In the `Settings` file it is `project.codeLensRunProcedure`.
 
 ## Runtime Windows Codepage
 

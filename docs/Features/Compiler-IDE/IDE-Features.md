@@ -24,10 +24,10 @@ Fully theme-able, with Dark (default), Light, and Classic (Light) built in. A th
 ## Editing Features
 
 - **Fully customizable keyboard shortcuts** covering all commands. You keep your changes in groups that you switch on and off, and each group is layered on top of the built-in keys. See [Keyboard shortcuts](../../tB/IDE/Customising/Keyboard-Shortcuts).
-- **Auto-indent on paste**.
-- **Paste as comment**.
-- **Inline code hints**, which provide annotations at the end of blocks for what the block is (see picture).
-- **Color-matching** for parentheses and brackets.
+- **Auto-indent on paste**, and **paste as comment**. See [Copy, cut and paste](../../tB/IDE/Code/Editor#copy-cut-and-paste).
+- **Inline code hints**, which provide annotations at the end of blocks for what the block is (see picture). See [Inline code hints](../../tB/IDE/Code/IntelliSense#inline-code-hints).
+- **Color-matching** for parentheses and brackets, which the theme sets.
+- **Several cursors**, **bookmarks**, **a list of recently closed tabs** and **combo boxes that insert event handlers**. [Writing code](../../tB/IDE/Code/) describes the editor in full.
 
 ## Advanced Features
 
@@ -37,9 +37,9 @@ Fully theme-able, with Dark (default), Light, and Classic (Light) built in. A th
 
 ## Panels and Windows
 
-- **A History panel** containing a list of recently modified methods.
-- **An Outline panel** with selectable categories.
-- **A Diagnostics panel** (the Problems panel), which lists all current errors and warnings (you can filter to show only one or the other).
+- **A History panel** containing a list of the places you edited recently. See [History](../../tB/IDE/Code/Navigating#history).
+- **An Outline panel** with selectable categories. See [Outline](../../tB/IDE/Code/Navigating#outline).
+- **A Diagnostics panel** (the Problems panel), which lists all current errors, warnings, hints and information messages, and which you can filter by kind. See [Diagnostics](../../tB/IDE/Code/Diagnostics).
 
 ## Form Designer Enhancements
 

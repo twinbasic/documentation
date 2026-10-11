@@ -80,7 +80,7 @@ Step-by-step guides, the first four written for someone new to twinBASIC. [Tutor
 
 ## The twinBASIC IDE
 
-The [**IDE section**](tB/IDE) documents the editor, project explorer, debugging panes (call stack, watches, diagnostics, debug console), the [**tbForm**](tB/IDE/Project/Editor/Form) and [**tbReport**](tB/IDE/Project/Editor/Report) designers, and the per-feature side panes. To install third-party addins, see [**Add Ins**](tB/IDE/AddIns/); to author your own, the [**tbIDE package**](tB/Packages/tbIDE/) is the addin SDK.
+The [**IDE section**](tB/IDE) documents the [code editor and the panels beside it](tB/IDE/Code/) (diagnostics, find, outline), the project explorer, the debugging panes (call stack, watches, debug console), the [**tbForm**](tB/IDE/Project/Editor/Form) and [**tbReport**](tB/IDE/Project/Editor/Report) designers, and the per-feature side panes. To install third-party addins, see [**Add Ins**](tB/IDE/AddIns/); to author your own, the [**tbIDE package**](tB/Packages/tbIDE/) is the addin SDK.
 
 ## Community and external resources
 

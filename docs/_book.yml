@@ -272,6 +272,11 @@ parts:
         no_outline_entry: true
         no_heading_shift: true
         outline_closed: true
+      - title: Writing code
+        landing_page: /tB/IDE/Code/
+        page: /tB/IDE/Code/
+        landing_is_target: true
+        outline_closed: true
       - title: Debugging Panes
         pages:
           - /tB/IDE/Project/DebugConsole
@@ -599,15 +604,10 @@ left_out:
   - reason: IDE pages that are still screenshots and the labels they show, or headings with nothing under them
     no_descent: true
     pages:
-      - /tB/IDE/Project/Diagnostics
-      - /tB/IDE/Project/FindReplace
-      - /tB/IDE/Project/Editor
       - /tB/IDE/Project/Editor/Form
       - /tB/IDE/Project/Explorer
       - /tB/IDE/AddIns/Community
       - /tB/IDE/Reference/Menu
-      - /tB/IDE/Reference/Menu/Edit
-      - /tB/IDE/Reference/Menu/View
       - /tB/IDE/Reference/Menu/Project
       - /tB/IDE/Reference/Menu/Format
       - /tB/IDE/Reference/Menu/Run
@@ -625,10 +625,9 @@ left_out:
       - /tB/IDE/Project/Webpage
       - /tB/IDE/Project/Splash
       - /tB/IDE/Project/Watches
-      - /tB/IDE/Project/Outline
-      - /tB/IDE/Project/History
-      - /tB/IDE/Project/OpenEditors
       - /tB/IDE/Project/PackagePublishing
       - /tB/IDE/AddIns/GlobalSearch
+      - /tB/IDE/Reference/Menu/Edit
+      - /tB/IDE/Reference/Menu/View
       - /tB/IDE/Reference/Menu/Tools
       - /tB/IDE/Reference/Menu/Window     # ~800 lines of shortcut JSON that would print unfolded
