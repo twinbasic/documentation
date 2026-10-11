@@ -822,6 +822,11 @@ async function runDraft(filter) {
         if (landing) siblings.push({ folder: path.basename(dir), ...landing });
       }
       newLanding = newLandingFor(report.package, siblings);
+      // A contributed package's landing page opens with its author: the publisher TWINSERV lists.
+      if (report.group === "contributed") {
+        const listed = Object.values((await readManifest("contributed"))?.packages ?? {});
+        newLanding.author = listed.find((p) => p.symbol === report.package)?.publisher ?? null;
+      }
     }
     const storeDir = path.join(STORE_PATH, report.group, report.package);
     const api = JSON.parse(await fs.readFile(path.join(storeDir, "api.json"), "utf-8"));

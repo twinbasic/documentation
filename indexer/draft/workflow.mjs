@@ -128,7 +128,11 @@ function listsPrompt(pkg) {
     ? `The section has no landing page yet. Write ${landing.file} first: frontmatter \`title: ${landing.title}\`` +
       (landing.parent ? `, \`parent: ${landing.parent}\`` : ', the parent the landing pages beside it use') +
       (landing.permalink ? `, \`permalink: ${landing.permalink}\`` : ', a permalink of the form the landing pages beside it use') +
-      `, \`has_toc: false\` and \`indexed_from: ${pkg.version}\`; a short description of the package from its sources (the \`source\` paths in the plan); then the lists. Model it on a landing page of another section in the same folder.\n\n`
+      `, \`has_toc: false\` and \`indexed_from: ${pkg.version}\`; ` +
+      (landing.author
+        ? `under the H1, the line \`**Author:** ${landing.author}\`, or the author the package's sources name if they name someone else (WIP.md, the contributed packages); `
+        : '') +
+      `a short description of the package from its sources (the \`source\` paths in the plan); then the lists, with no \`* TOC\` list when the page has only one or two sections. Model it on a landing page of another section in the same folder.\n\n`
     : ''
   return `Bring the lists of the ${pkg.package} section up to date with the pages just drafted for it.
 

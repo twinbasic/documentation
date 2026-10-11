@@ -92,8 +92,8 @@ function mostCommon(values, fallback) {
  * - `sectionDir`, `sourceDir`: the section's folder and the package's sources
  *   in the store, relative to the repository, with `/`.
  * - `newLanding`: for a section with no landing page yet, the `{ title,
- *   parent, permalink }` it is to get; the returned `landing` then says
- *   `new: true`.
+ *   parent, permalink }` it is to get, and for a contributed package its
+ *   `author`; the returned `landing` then says `new: true`.
  *
  * Returns `{ package, group, mode, version, sectionDir, landing, permalinks,
  * tasks, unplaced, flagged }`. Each of `tasks` names the page `file`
@@ -351,6 +351,7 @@ export function planPackage({ report, api, pages, sectionDir, sourceDir, newLand
           parent: landing.parent ?? null,
           permalink: landing.permalink ?? null,
           new: !!landing.new,
+          author: landing.author ?? null,
         }
       : null,
     permalinks,

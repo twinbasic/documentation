@@ -1852,7 +1852,7 @@ describe("planning the pages of a report", () => {
       pages: [],
       sectionDir: "docs/New",
       sourceDir: "s",
-      newLanding: newLandingFor("New", [sibling("A")]),
+      newLanding: { ...newLandingFor("New", [sibling("A")]), author: "Someone" },
     });
     assert.deepEqual(fresh.landing, {
       file: "docs/New/index.md",
@@ -1860,6 +1860,7 @@ describe("planning the pages of a report", () => {
       parent: "Contributed Packages",
       permalink: "/tB/Packages/Contributed/New/",
       new: true,
+      author: "Someone",
     });
     assert.equal(fresh.tasks[0].file, "docs/New/Gadget.md");
     assert.equal(fresh.tasks[0].parent, "New Package");
