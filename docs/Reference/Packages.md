@@ -11,3 +11,4 @@ A *package* groups related code --- modules, classes, controls, and enumerations
 
 - [**Default Packages**](Default/) -- VB, VBA, and VBRUN -- included in every project by default
 - [**Built-In Packages**](Built-In/) -- {{tbdocs:builtInPackages}} optional packages shipped with twinBASIC, always available offline
+- [**Contributed Packages**](Contributed/) -- community-authored packages published through TWINSERV, the twinBASIC package registry

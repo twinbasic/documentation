@@ -1,0 +1,336 @@
+{
+  "format": 3,
+  "package": "BigNumberLib",
+  "project": "BigNumberLib",
+  "version": "0.0.0.0",
+  "types": [
+    {
+      "name": "Absolute",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/Absolute.twin",
+      "signature": "Module Absolute",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "AddModulus",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/AddModulus.twin",
+      "signature": "Module AddModulus",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "Addition",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/Addition.twin",
+      "signature": "Module Addition",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "BigNumber",
+      "kind": "class",
+      "vis": "public",
+      "file": "BigNumber.twin",
+      "signature": "Public Class BigNumber",
+      "attrs": [{"name":"COMCreatable","args":"False"},{"name":"ClassId","args":"\"AAAF216D-144C-41E9-B225-03C74714CBDC\""},{"name":"InterfaceId","args":"\"3F8857C6-6B1B-43AD-A644-2F4C04366FC6\""}],
+      "members": [
+        {"name":"AssignAbsolute","kind":"function","vis":"public","signature":"Public Function AssignAbsolute(ByRef a As BigNumber) As Boolean","returnType":"Boolean","description":"{this} = -a"},
+        {"name":"AssignAddition","kind":"sub","vis":"public","signature":"Public Sub AssignAddition(ByRef a As BigNumber, ByRef b As BigNumber)","description":"{this} = a + b"},
+        {"name":"AssignAdditionModulus","kind":"sub","vis":"public","signature":"Public Sub AssignAdditionModulus(ByRef a As BigNumber, ByRef b As BigNumber, ByRef mod_c As BigNumber)","description":"{this} = a + b (mod c)"},
+        {"name":"AssignDivision","kind":"sub","vis":"public","signature":"Public Sub AssignDivision(ByRef a As BigNumber, ByRef b As BigNumber)","description":"{this} = a \\ b"},
+        {"name":"AssignFromLong","kind":"sub","vis":"public","signature":"Public Sub AssignFromLong(ByVal a As Long)","description":"{this} = a"},
+        {"name":"AssignGreatestCommonDivisor","kind":"sub","vis":"public","signature":"Public Sub AssignGreatestCommonDivisor(ByRef a As BigNumber, ByRef b As BigNumber)","description":"{this} = (a, b)"},
+        {"name":"AssignLeastCommonMultiple","kind":"sub","vis":"public","signature":"Public Sub AssignLeastCommonMultiple(ByRef a As BigNumber, ByRef b As BigNumber)","description":"{this} = [a, b]"},
+        {"name":"AssignModularMultiplicativeInverse","kind":"sub","vis":"public","signature":"Public Sub AssignModularMultiplicativeInverse(ByRef a As BigNumber, ByRef mod_b As BigNumber)","description":"{this} = 1/a (mod b)"},
+        {"name":"AssignModulus","kind":"sub","vis":"public","signature":"Public Sub AssignModulus(ByRef a As BigNumber, ByRef b As BigNumber)","description":"{this} = a mod b"},
+        {"name":"AssignMultiplication","kind":"sub","vis":"public","signature":"Public Sub AssignMultiplication(ByRef a As BigNumber, ByRef b As BigNumber)","description":"{this} = a * b"},
+        {"name":"AssignMultiplicationModulus","kind":"sub","vis":"public","signature":"Public Sub AssignMultiplicationModulus(ByRef a As BigNumber, ByRef b As BigNumber, ByRef mod_c As BigNumber)","description":"{this} = a * b (mod c)"},
+        {"name":"AssignNegation","kind":"function","vis":"public","signature":"Public Function AssignNegation(ByRef a As BigNumber) As Boolean","returnType":"Boolean","description":"{this} = -a"},
+        {"name":"AssignShiftLeft","kind":"sub","vis":"public","signature":"Public Sub AssignShiftLeft(ByRef a As BigNumber, ByVal shiftAmount_b As Long)","description":"{this} = a << b"},
+        {"name":"AssignShiftRight","kind":"sub","vis":"public","signature":"Public Sub AssignShiftRight(ByRef a As BigNumber, ByVal shiftAmount_b As Long)","description":"{this} = a >> b"},
+        {"name":"AssignSquared","kind":"sub","vis":"public","signature":"Public Sub AssignSquared(ByRef a As BigNumber)","description":"{this} = a * a"},
+        {"name":"AssignSquaredModulus","kind":"sub","vis":"public","signature":"Public Sub AssignSquaredModulus(ByRef a As BigNumber, ByRef mod_b As BigNumber)","description":"{this} = a * a (mod b)"},
+        {"name":"AssignSubtraction","kind":"sub","vis":"public","signature":"Public Sub AssignSubtraction(ByRef a As BigNumber, ByRef b As BigNumber)","description":"{this} = a - b"},
+        {"name":"AssignSubtractionModulus","kind":"sub","vis":"public","signature":"Public Sub AssignSubtractionModulus(ByRef a As BigNumber, ByRef b As BigNumber, ByRef mod_c As BigNumber)","description":"{this} = a - b (mod c)"},
+        {"name":"BinaryRadix","kind":"const","vis":"private","signature":"Const BinaryRadix As Long = 2"},
+        {"name":"DecimalRadix","kind":"const","vis":"private","signature":"Const DecimalRadix As Long = 10"},
+        {"name":"FP_EQ","kind":"const","vis":"private","signature":"Const FP_EQ As Long = 0"},
+        {"name":"FP_GT","kind":"const","vis":"private","signature":"Const FP_GT As Long = 1"},
+        {"name":"FP_LT","kind":"const","vis":"private","signature":"Const FP_LT As Long = -1"},
+        {"name":"FP_MEM","kind":"const","vis":"private","signature":"Const FP_MEM = 2"},
+        {"name":"FP_OKAY","kind":"const","vis":"private","signature":"Const FP_OKAY = 0"},
+        {"name":"FP_VAL","kind":"const","vis":"private","signature":"Const FP_VAL = 1"},
+        {"name":"HandleError","kind":"sub","vis":"public","signature":"Public Sub HandleError()"},
+        {"name":"HexRadix","kind":"const","vis":"private","signature":"Const HexRadix As Long = 16"},
+        {"name":"IsEqualTo","kind":"function","vis":"public","signature":"Public Function IsEqualTo(ByRef b As BigNumber) As Boolean","returnType":"Boolean","description":"a == b"},
+        {"name":"IsGreaterThan","kind":"function","vis":"public","signature":"Public Function IsGreaterThan(ByRef b As BigNumber) As Boolean","returnType":"Boolean","description":"a > b"},
+        {"name":"IsGreaterThanOrEqualTo","kind":"function","vis":"public","signature":"Public Function IsGreaterThanOrEqualTo(ByRef b As BigNumber) As Boolean","returnType":"Boolean","description":"a >= b"},
+        {"name":"IsLessThan","kind":"function","vis":"public","signature":"Public Function IsLessThan(ByRef b As BigNumber) As Boolean","returnType":"Boolean","description":"a < b"},
+        {"name":"IsLessThanOrEqualTo","kind":"function","vis":"public","signature":"Public Function IsLessThanOrEqualTo(ByRef b As BigNumber) As Boolean","returnType":"Boolean","description":"a <= b"},
+        {"name":"IsNegative","kind":"property","vis":"public","signature":"Public Property Get IsNegative() As Boolean","returnType":"Boolean","accessor":"Get"},
+        {"name":"IsNegative","kind":"property","vis":"public","signature":"Public Property Let IsNegative(Value As Boolean)","accessor":"Let"},
+        {"name":"OctalRadix","kind":"const","vis":"private","signature":"Const OctalRadix As Long = 8"},
+        {"name":"ValueBinary","kind":"property","vis":"public","signature":"Property Get ValueBinary() As String","returnType":"String","accessor":"Get","description":"returns/sets the value as a binary-string respresentation"},
+        {"name":"ValueBinary","kind":"property","vis":"public","signature":"Property Let ValueBinary(ByVal Value As String)","accessor":"Let","description":"returns/sets the value as a binary-string respresentation"},
+        {"name":"ValueHex","kind":"property","vis":"public","signature":"Property Get ValueHex() As String","returnType":"String","accessor":"Get","description":"returns/sets the value as a hex-string respresentation"},
+        {"name":"ValueHex","kind":"property","vis":"public","signature":"Property Let ValueHex(ByVal Value As String)","accessor":"Let","description":"returns/sets the value as a hex-string respresentation"},
+        {"name":"ValueOctal","kind":"property","vis":"public","signature":"Property Get ValueOctal() As String","returnType":"String","accessor":"Get","description":"returns/sets the value as a octal-string respresentation"},
+        {"name":"ValueOctal","kind":"property","vis":"public","signature":"Property Let ValueOctal(ByVal Value As String)","accessor":"Let","description":"returns/sets the value as a octal-string respresentation"},
+        {"name":"ValueString","kind":"property","vis":"public","signature":"Property Get ValueString() As String","returnType":"String","accessor":"Get","attrs":[{"name":"DefaultMember"}],"description":"returns/sets the value as a string respresentation"},
+        {"name":"ValueString","kind":"property","vis":"public","signature":"Property Let ValueString(ByVal Value As String)","accessor":"Let","attrs":[{"name":"DefaultMember"}],"description":"returns/sets the value as a string respresentation"},
+        {"name":"fp_add","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_add CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int, ByRef out As fp_int)"},
+        {"name":"fp_addmod","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_addmod CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int, ByRef mod As fp_int, ByRef out As fp_int) As Long","returnType":"Long"},
+        {"name":"fp_cmp","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_cmp CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int) As Long","returnType":"Long"},
+        {"name":"fp_cmp_mag","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_cmp_mag CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int) As Long","returnType":"Long"},
+        {"name":"fp_div","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_div CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int, ByRef out As fp_int, ByRef remainder As fp_int) As Long","returnType":"Long"},
+        {"name":"fp_div_2","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_div_2 CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int)"},
+        {"name":"fp_div_2d","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_div_2d CDecl Lib libtfm (ByRef a As fp_int, ByVal b As Long, ByRef out As fp_int, ByRef remainder As fp_int)"},
+        {"name":"fp_gcd","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_gcd CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int, ByRef out As fp_int)"},
+        {"name":"fp_invmod","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_invmod CDecl Lib libtfm (ByRef a As fp_int, ByRef mod As fp_int, ByRef out As fp_int) As Long","returnType":"Long"},
+        {"name":"fp_lcm","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_lcm CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int, ByRef out As fp_int)"},
+        {"name":"fp_mod","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_mod CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int, ByRef out As fp_int) As Long","returnType":"Long"},
+        {"name":"fp_mul","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_mul CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int, ByRef out As fp_int)"},
+        {"name":"fp_mul_2","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_mul_2 CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int)"},
+        {"name":"fp_mul_2d","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_mul_2d CDecl Lib libtfm (ByRef a As fp_int, ByVal b As Long, ByRef out As fp_int)"},
+        {"name":"fp_mulmod","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_mulmod CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int, ByRef mod As fp_int, ByRef out As fp_int) As Long","returnType":"Long"},
+        {"name":"fp_radix_size","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_radix_size CDecl Lib libtfm (ByRef value As fp_int, ByVal radix As Long, ByRef outSizeReqd As Long) As Long","returnType":"Long"},
+        {"name":"fp_read_radix","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_read_radix CDecl Lib libtfm (ByRef out As fp_int, ByVal string As String, ByVal radix As Long) As Long","returnType":"Long"},
+        {"name":"fp_set","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_set CDecl Lib libtfm (ByRef a As fp_int, ByVal b As Long)"},
+        {"name":"fp_sqr","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_sqr CDecl Lib libtfm (ByRef a As fp_int, ByRef out As fp_int)"},
+        {"name":"fp_sqrmod","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_sqrmod CDecl Lib libtfm (ByRef a As fp_int, ByRef mod As fp_int, ByRef out As fp_int) As Long","returnType":"Long"},
+        {"name":"fp_sub","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub fp_sub CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int, ByRef out As fp_int)"},
+        {"name":"fp_submod","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_submod CDecl Lib libtfm (ByRef a As fp_int, ByRef b As fp_int, ByRef mod As fp_int, ByRef out As fp_int) As Long","returnType":"Long"},
+        {"name":"fp_toradix","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function fp_toradix CDecl Lib libtfm (ByRef value As fp_int, ByVal result As String, ByVal radix As Long) As Long","returnType":"Long"},
+        {"name":"internalData","kind":"field","vis":"friend","signature":"Friend internalData As fp_int"},
+        {"name":"lastError","kind":"field","vis":"private","signature":"Private lastError As Long"}
+      ]
+    },
+    {
+      "name": "fp_int",
+      "kind": "type",
+      "in": "BigNumber",
+      "vis": "public",
+      "file": "BigNumber.twin",
+      "signature": "Type fp_int",
+      "fields": [
+        {"name":"blocks","vis":"public","signature":"blocks(0 To 63) As LongPtr"},
+        {"name":"blocks","vis":"public","signature":"blocks(0 To 127) As Long"},
+        {"name":"overReservedSpace","vis":"public","signature":"overReservedSpace(0 To 7) As LongPtr"},
+        {"name":"usedBlocks","vis":"public","signature":"usedBlocks As Long"},
+        {"name":"sign","vis":"public","signature":"sign As Long"}
+      ],
+      "members": []
+    },
+    {
+      "name": "BigNumberTests",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests.twin",
+      "signature": "Public Module BigNumberTests",
+      "members": [
+        {"name":"Example","kind":"sub","vis":"private","signature":"Private Sub Example()"},
+        {"name":"RunAllTests","kind":"sub","vis":"public","signature":"Public Sub RunAllTests()"}
+      ]
+    },
+    {
+      "name": "Comparisons",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/Comparisons.twin",
+      "signature": "Module Comparisons",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "Divide",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/Divide.twin",
+      "signature": "Module Divide",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "GreatestCommonDivisor",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/GreatestCommonDivisor.twin",
+      "signature": "Module GreatestCommonDivisor",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "LeastCommonMultiple",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/LeastCommonMultiple.twin",
+      "signature": "Module LeastCommonMultiple",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "ModularMultiplicativeInverse",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/ModularMultiplicativeInverse.twin",
+      "signature": "Module ModularMultiplicativeInverse",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "Modulus",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/Modulus.twin",
+      "signature": "Module Modulus",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "Multiply",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/Multiply.twin",
+      "signature": "Module Multiply",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "MultiplyModulus",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/MultiplyModulus.twin",
+      "signature": "Module MultiplyModulus",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "Negate",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/Negate.twin",
+      "signature": "Module Negate",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "ShiftLeft",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/ShiftLeft.twin",
+      "signature": "Module ShiftLeft",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "ShiftRight",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/ShiftRight.twin",
+      "signature": "Module ShiftRight",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "Square",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/Square.twin",
+      "signature": "Module Square",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "SquareModulus",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/SquareModulus.twin",
+      "signature": "Module SquareModulus",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "Subtract",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/Subtract.twin",
+      "signature": "Module Subtract",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "SubtractModulus",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/SubtractModulus.twin",
+      "signature": "Module SubtractModulus",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "ValueBinary",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/ValueBinary.twin",
+      "signature": "Module ValueBinary",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "ValueHex",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/ValueHex.twin",
+      "signature": "Module ValueHex",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "ValueOctal",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/ValueOctal.twin",
+      "signature": "Module ValueOctal",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    },
+    {
+      "name": "ValueString",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests/ValueString.twin",
+      "signature": "Module ValueString",
+      "members": [
+        {"name":"RunTests","kind":"sub","vis":"public","signature":"Sub RunTests()"}
+      ]
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}

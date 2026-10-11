@@ -510,6 +510,9 @@ left_out:
   - reason: Time-limited community contests
     page: /Challenges
 
+  - reason: Community packages from TWINSERV, versioned apart from twinBASIC, and the part covers what twinBASIC ships
+    page: /tB/Packages/Contributed/
+
   - reason: IDE pages that are still screenshots and the labels they show, or headings with nothing under them
     no_descent: true
     pages:

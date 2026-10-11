@@ -1,0 +1,59 @@
+{
+  "format": 3,
+  "package": "TBMANLIB_RES",
+  "project": "TBMANLIB_RES",
+  "version": "1.0.0.0",
+  "types": [
+    {
+      "name": "TBMAN",
+      "kind": "module",
+      "vis": "public",
+      "file": "TBMAN.twin",
+      "signature": "Module TBMAN",
+      "members": [
+        {"name":"Res","kind":"field","vis":"public","signature":"Public Res As new cRes"}
+      ]
+    },
+    {
+      "name": "cRes",
+      "kind": "class",
+      "vis": "public",
+      "file": "cRes.twin",
+      "signature": "Class cRes",
+      "members": [
+        {"name":"Read","kind":"function","vis":"public","signature":"Public Function Read(ByVal id As Variant, ByVal Type As Variant) As cRes","returnType":"cRes"},
+        {"name":"ReturnBase64","kind":"function","vis":"public","signature":"Public Function ReturnBase64(Optional ByVal Prefix As Base64Prefix = Base64Prefix_None) As String","returnType":"String"},
+        {"name":"ReturnBytes","kind":"function","vis":"public","signature":"Public Function ReturnBytes() As Byte()","returnType":"Byte()"},
+        {"name":"ReturnHex","kind":"function","vis":"public","signature":"Public Function ReturnHex(Optional ByVal Separator As String = \"\", Optional ByVal LineBreak As Long = 0) As String","returnType":"String"},
+        {"name":"ReturnPicture","kind":"function","vis":"public","signature":"Public Function ReturnPicture() As IPictureDisp","returnType":"IPictureDisp"},
+        {"name":"ReturnString","kind":"function","vis":"public","signature":"Public Function ReturnString(Optional ByVal Conversion As VbStrConv = vbUnicode) As String","returnType":"String"},
+        {"name":"m_Bytes","kind":"field","vis":"private","signature":"Private m_Bytes() As Byte"}
+      ]
+    },
+    {
+      "name": "Base64Prefix",
+      "kind": "enum",
+      "in": "cRes",
+      "vis": "public",
+      "file": "cRes.twin",
+      "signature": "Public Enum Base64Prefix",
+      "values": [
+        {"name":"Base64Prefix_None"},
+        {"name":"Base64Prefix_ImagePNG"},
+        {"name":"Base64Prefix_ImageJPEG"},
+        {"name":"Base64Prefix_ImageGIF"},
+        {"name":"Base64Prefix_ImageBMP"},
+        {"name":"Base64Prefix_ImageICO"},
+        {"name":"Base64Prefix_ImageWebP"},
+        {"name":"Base64Prefix_VideoMP4"},
+        {"name":"Base64Prefix_VideoWebM"},
+        {"name":"Base64Prefix_VideoOGG"},
+        {"name":"Base64Prefix_AudioMP3"},
+        {"name":"Base64Prefix_AudioWAV"},
+        {"name":"Base64Prefix_AudioOGG"}
+      ]
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}
