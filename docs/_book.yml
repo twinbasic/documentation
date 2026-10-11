@@ -532,6 +532,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: tbRegExp Package
+        subtitle: Regular expressions, in place of VBScript's RegExp object
+        landing_page: /tB/Packages/Contributed/tbRegExp/
+        page: /tB/Packages/Contributed/tbRegExp/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TwinTimerPackage Package
         subtitle: A Win32 timer class that reports the elapsed time
         landing_page: /tB/Packages/Contributed/TwinTimerPackage/

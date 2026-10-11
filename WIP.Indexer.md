@@ -250,6 +250,12 @@ the old tool's at BETA 997, and it takes half a second with no cache.
 - **The agents are Sonnet**, as the content agents of the contributed packages were; the
   drafts are read against the sources before they are committed, which no model choice
   replaces.
+- **The first run, tbRegExp 1.0.5.0 (28 pages, 5 batches), took 7 agents, 7 minutes and
+  0.96 M subagent tokens**, and its 30 samples compiled and ran on the first Check. The
+  review still found what no compile finds: the drafts state only what the code says, so
+  where the package differs from the object it replaces (VBScript's **RegExp**, run under
+  `cscript`) nothing said so, and claims read from the code but never run (`$0`, a lone `$`)
+  needed a probe page. Budget a review that runs the doubts the agents list.
 - **It is not in the published docs.** `draft` is (Tools-Build), because its plans serve a
   person writing pages by hand; the workflow is described here and in `WIP.md`, because
   nothing under `docs/Documentation/` may require Claude.
