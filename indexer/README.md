@@ -108,7 +108,20 @@ version than the source has now. The store is the record of what has been
 read: the manifest only says what was last fetched, so it cannot hide a package
 the store lacks, and a `sync` limited to some packages, which moves the
 manifest to the new build for all of them, leaves the others to be read again
-by the next one. The version in `api.json` is the release tag in both cases:
+by the next one.
+
+A package whose `api.json` was written by other code than this checkout has is
+indexed again as well, but from the sources the store already holds, with no
+download and under the version it had. Beside each `api.json` the store records
+a fingerprint of the code that wrote it (`indexer.json`): a hash of
+`scripts/lib/twin-api.mjs`, `scripts/lib/twin-declarations.mjs`,
+`lib/api-model.mjs` and `lib/vb6-preprocess.mjs`, the modules `api-model.mjs`
+imports (`lib/fingerprint.mjs` lists them, and a test checks the list), with the
+line ends made alike. A store from before the fingerprint, or any change to
+those files, makes the next `sync` index every package again; the store also
+keeps each package's `Settings` file for this, beside its `sources/`. `analyze`
+warns when the fingerprint of a package is not the checkout's. The version in
+`api.json` is the release tag in both cases:
 BETA 983 is `beta-x-0983`, as `indexed_from` in the package pages has it. The
 BETA number is read from the install's `ide/build.js`, else from the name of
 its folder.
@@ -118,7 +131,9 @@ its folder.
 | Path | Committed? | Contents |
 |------|-----------|----------|
 | `indexer/.packages/{group}/{pkg}/sources/` | No (gitignored) | Extracted `.twin` source files |
+| `indexer/.packages/{group}/{pkg}/Settings` | No (gitignored) | The package's Settings file, for its project name |
 | `indexer/.packages/{group}/{pkg}/api.json` | No (gitignored) | Full API snapshot |
+| `indexer/.packages/{group}/{pkg}/indexer.json` | No (gitignored) | The [fingerprint](#sync) of the code that wrote the `api.json` |
 | `indexer/.packages/manifests/contributed.json` | No (in the store) | TWINSERV sync state |
 | `indexer/.packages/manifests/built-in.json` | No (in the store) | Built-in and default sync state |
 | `indexer/snapshots/{group}/{pkg}/api.json` | Yes | Copy of the above, for the [documented packages](#documented-packages) only (survives cloning) |
@@ -447,6 +462,7 @@ indexer/
     zip-reader.mjs             Minimal ZIP reader (deflate)
     vb6-preprocess.mjs         VB6 -> twinBASIC normalization
     api-model.mjs              files -> api.json, through scripts/lib/twin-api.mjs
+    fingerprint.mjs            the hash of the code api.json depends on, kept beside each one in the store
     doc-pages.mjs              the reference's package sections: package_name, indexed_from, exclusions
     store.mjs                  .packages/ git repo lifecycle, sync state, what the store holds
     differ.mjs                 api.json diff + coverage audit

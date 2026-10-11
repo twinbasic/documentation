@@ -16,9 +16,19 @@ import {
   readInstalledPackages,
 } from "./lib/builtin-sync.mjs";
 import { downloadRelease } from "./lib/github-release.mjs";
-import { CONTAINER_MAP } from "./lib/vb6-preprocess.mjs";
 import { API_FORMAT, buildApi } from "./lib/api-model.mjs";
-import { STORE_PROBLEMS, commitStore, copyToSnapshots, ensureStore, manifestPath, storeStatus } from "./lib/store.mjs";
+import {
+  STORE_PROBLEMS,
+  commitStore,
+  copyToSnapshots,
+  ensureStore,
+  manifestPath,
+  recordedFingerprint,
+  reindexStored,
+  storeStatus,
+  writeToStore,
+} from "./lib/store.mjs";
+import { indexerFingerprint } from "./lib/fingerprint.mjs";
 import { diffApi, auditCoverage } from "./lib/differ.mjs";
 import { documentedPackages } from "./lib/doc-pages.mjs";
 
@@ -33,8 +43,6 @@ const DOCS_REF_DIR = path.join(DOCS_DIR, "Reference");
 
 const DEFAULT_PACKAGES = ["VBA", "VBRUN", "VB"];
 const GIT_SHOW_MAX_BYTES = 1 << 30;
-const VB6_EXTS = new Set(Object.keys(CONTAINER_MAP));
-const SOURCE_EXTS = new Set([".twin", ...VB6_EXTS]);
 
 // --- Helpers ---
 
@@ -74,20 +82,16 @@ function printStoreProblems(problems) {
   }
 }
 
-async function writeToStore(group, symbol, rawFiles, apiJsonStr) {
-  const pkgDir = path.join(STORE_PATH, group, symbol);
-  const sourcesDir = path.join(pkgDir, "sources");
-  await fs.rm(sourcesDir, { recursive: true, force: true });
-  for (const f of rawFiles) {
-    const ext = path.extname(f.relativePath).toLowerCase();
-    if (!SOURCE_EXTS.has(ext)) continue;
-    let rel = f.relativePath;
-    if (rel.startsWith("Sources/")) rel = rel.slice("Sources/".length);
-    const dest = path.join(sourcesDir, rel);
-    await fs.mkdir(path.dirname(dest), { recursive: true });
-    await fs.writeFile(dest, f.content);
+// Indexes again, from the sources the store already holds, the packages whose
+// api.json was written by another version of the scanner or the model than this
+// checkout's. No download, and no change to what the packages are of: their
+// version stays. `items` are `{ symbol, version }`; each lands in `synced`.
+async function reindexFromStore(group, items, synced) {
+  for (const { symbol, version } of items) {
+    const stats = await reindexStored(STORE_PATH, group, symbol);
+    synced.push({ group, package: symbol, from: version, to: version });
+    console.log(`    ${symbol}: indexed again from the stored sources; ${describeIndex(stats)}`);
   }
-  await fs.writeFile(path.join(pkgDir, "api.json"), apiJsonStr, "utf-8");
 }
 
 function isExcluded(sym, exclusions) {
@@ -346,12 +350,14 @@ async function syncContributed(filter, { synced, failed, known }) {
   // format, or one indexed from another version. The store is the record of
   // what has been read; the manifest only says what was last fetched.
   const problems = [];
+  const reindex = []; // held in the store, but indexed by another version of the scanner
   for (const item of unchanged) {
     if (filter && !filter.includes(item.symbol)) continue;
     const why = await storeStatus(STORE_PATH, "contributed", item.symbol, versionString(item.version));
     if (!why) continue;
-    contribToDownload.push({ ...item, reason: why });
     problems.push({ symbol: item.symbol, why });
+    if (why === "old-scanner") reindex.push(item);
+    else contribToDownload.push({ ...item, reason: why });
   }
   printStoreProblems(problems);
 
@@ -360,7 +366,15 @@ async function syncContributed(filter, { synced, failed, known }) {
   if (addedC.length) console.log(`  Add: ${addedC.map((p) => p.symbol).join(", ")}`);
   if (updatedC.length) console.log(`  Update: ${updatedC.map((p) => p.symbol).join(", ")}`);
   if (!filter && removed.length) console.log(`  Remove: ${removed.map((p) => p.symbol).join(", ")}`);
-  if (!contribToDownload.length && !removed.length) console.log("  Up to date.");
+  if (!contribToDownload.length && !reindex.length && !removed.length) console.log("  Up to date.");
+
+  // A package about to be downloaded is indexed with the rest; only the others are
+  // indexed again from what the store holds.
+  await reindexFromStore(
+    "contributed",
+    reindex.map((item) => ({ symbol: item.symbol, version: versionString(item.version) })),
+    synced,
+  );
 
   for (const item of contribToDownload) {
     try {
@@ -369,7 +383,7 @@ async function syncContributed(filter, { synced, failed, known }) {
       const ver = versionString(item.version);
       const { json: apiJson, stats } = buildApi({ symbol: item.symbol, version: ver, files });
 
-      await writeToStore("contributed", item.symbol, files, apiJson);
+      await writeToStore(STORE_PATH, "contributed", item.symbol, files, apiJson);
 
       contribManifest.packages[item.id] = {
         symbol: item.symbol,
@@ -418,6 +432,9 @@ async function syncBuiltin(filter, install, { synced, known }) {
   // recorded; the store says what it holds. A sync limited to some packages
   // moves the manifest to the new build for all of them, so only the store
   // can say that the others are still from the old one.
+  // A package held with its sources but indexed by another version of the scanner is
+  // indexed again from them, when nothing else needs the install to be read.
+  const reindex = [];
   if (!built.needsUpdate) {
     const problems = [];
     for (const { symbol } of Object.values(built.manifest.packages || {})) {
@@ -425,10 +442,12 @@ async function syncBuiltin(filter, install, { synced, known }) {
       const why = await storeStatus(STORE_PATH, packageGroup(symbol, "builtin"), symbol, built.tag);
       if (why) problems.push({ symbol, why });
     }
-    if (problems.length) {
-      printStoreProblems(problems);
-      built.needsUpdate = true;
-    }
+    printStoreProblems(problems);
+    if (problems.some((p) => p.why !== "old-scanner")) built.needsUpdate = true;
+    else reindex.push(...problems.map((p) => p.symbol));
+  }
+  for (const symbol of reindex) {
+    await reindexFromStore(packageGroup(symbol, "builtin"), [{ symbol, version: built.tag }], synced);
   }
 
   if (built.needsUpdate) {
@@ -464,7 +483,7 @@ async function syncBuiltin(filter, install, { synced, known }) {
       const group = packageGroup(pkg.symbol, "builtin");
       const { json: apiJson, stats } = buildApi({ symbol: pkg.symbol, version: built.tag, files: pkg.files });
 
-      await writeToStore(group, pkg.symbol, pkg.files, apiJson);
+      await writeToStore(STORE_PATH, group, pkg.symbol, pkg.files, apiJson);
 
       builtinManifest.packages[pkg.guid] = { symbol: pkg.symbol };
       synced.push({ group, package: pkg.symbol, from: built.manifest.twinbasicTag, to: built.tag });
@@ -529,6 +548,11 @@ async function runAnalyze(filter) {
     const current = JSON.parse(await fs.readFile(apiPath, "utf-8"));
     if (current.format !== API_FORMAT) {
       die(2, `${name}: its api.json is in an older format than this indexer writes. Run sync, which indexes it again.`);
+    }
+    if ((await recordedFingerprint(path.dirname(apiPath))) !== indexerFingerprint()) {
+      console.log(
+        "  Warning: its api.json was written by another version of the scanner than this checkout's. Run sync, which indexes it again from the stored sources.",
+      );
     }
 
     const section = documented.get(`${group}/${name}`);

@@ -18,7 +18,7 @@
 // Runs with a bare `node --test test/indexer.test.mjs`.
 
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
@@ -34,8 +34,17 @@ import {
   packageNames,
   readSection,
 } from "../indexer/lib/doc-pages.mjs";
+import { FINGERPRINTED, fingerprintOf, indexerFingerprint } from "../indexer/lib/fingerprint.mjs";
 import { readPackageFiles } from "../indexer/lib/package-files.mjs";
-import { apiHeadOf, copyToSnapshots, manifestPath, storeStatus } from "../indexer/lib/store.mjs";
+import {
+  apiHeadOf,
+  copyToSnapshots,
+  manifestPath,
+  readStoredFiles,
+  reindexStored,
+  storeStatus,
+  writeToStore,
+} from "../indexer/lib/store.mjs";
 import { CONTAINER_MAP, preprocessVB6 } from "../indexer/lib/vb6-preprocess.mjs";
 
 const SAMPLE = path.join(import.meta.dirname, "../indexer/sample.twinpack");
@@ -1113,12 +1122,15 @@ const apiText = (version, over = {}) =>
     ...over,
   });
 
-function putPackage(store, group, symbol, { sources = true, api } = {}) {
+// `fingerprint` is what the folder records of the code that wrote its api.json: the
+// current one, another string, or null for a store from before it was recorded.
+function putPackage(store, group, symbol, { sources = true, api, fingerprint = indexerFingerprint() } = {}) {
   const dir = path.join(store, group, symbol);
   mkdirSync(path.join(dir, "sources"), { recursive: true });
   if (sources) writeFileSync(path.join(dir, "sources", "M.twin"), "Module M\nEnd Module\n");
   else rmSync(path.join(dir, "sources"), { recursive: true });
   if (api !== undefined) writeFileSync(path.join(dir, "api.json"), api);
+  if (fingerprint !== null) writeFileSync(path.join(dir, "indexer.json"), JSON.stringify({ fingerprint }));
 }
 
 describe("storeStatus", () => {
@@ -1163,12 +1175,130 @@ describe("storeStatus", () => {
     assert.equal(await status("Decoy"), "other-build");
   });
 
-  test("apiHeadOf gives the format and the version, and null for a file that is not there", async () => {
+  test("apiHeadOf gives the format, the version and the project, and null for a file that is not there", async () => {
     assert.deepEqual(await apiHeadOf(path.join(store, "built-in", "Current", "api.json")), {
       format: API_FORMAT,
       version: "beta-x-1005",
+      project: null,
     });
+    assert.equal((await apiHeadOf(path.join(store, "built-in", "Named", "api.json"))).project, "Assert");
     assert.equal(await apiHeadOf(path.join(store, "built-in", "Never", "api.json")), null);
+  });
+
+  test("one indexed by another version of the scanner, or before the version was recorded, is to be indexed again", async () => {
+    putPackage(store, "built-in", "Other", { api: apiText("beta-x-1005"), fingerprint: "0".repeat(64) });
+    assert.equal(await status("Other"), "old-scanner");
+    putPackage(store, "built-in", "Unrecorded", { api: apiText("beta-x-1005"), fingerprint: null });
+    assert.equal(await status("Unrecorded"), "old-scanner");
+    // Another build is read again whatever the scanner: it needs its sources fetched.
+    putPackage(store, "built-in", "OtherBoth", { api: apiText("beta-x-0997"), fingerprint: "0".repeat(64) });
+    assert.equal(await status("OtherBoth"), "other-build");
+    putPackage(store, "built-in", "Garbled", { api: apiText("beta-x-1005") });
+    writeFileSync(path.join(store, "built-in", "Garbled", "indexer.json"), "{ not json");
+    assert.equal(await status("Garbled"), "old-scanner");
+  });
+});
+
+describe("the fingerprint of the scanner and the model", () => {
+  test("is the same for the same files, and not for another text or name, whatever the line ends", () => {
+    const a = fingerprintOf([{ name: "a.mjs", text: "one\ntwo\n" }]);
+    assert.match(a, /^[0-9a-f]{64}$/);
+    assert.equal(fingerprintOf([{ name: "a.mjs", text: "one\r\ntwo\r\n" }]), a);
+    assert.notEqual(fingerprintOf([{ name: "a.mjs", text: "one\ntwo \n" }]), a);
+    assert.notEqual(fingerprintOf([{ name: "b.mjs", text: "one\ntwo\n" }]), a);
+    // Where one file ends and the next begins matters.
+    assert.notEqual(
+      fingerprintOf([
+        { name: "a", text: "x" },
+        { name: "b", text: "y" },
+      ]),
+      fingerprintOf([{ name: "a", text: "x\nb\ny" }]),
+    );
+  });
+
+  test("is read from the code of this checkout, once", () => {
+    assert.match(indexerFingerprint(), /^[0-9a-f]{64}$/);
+    assert.equal(indexerFingerprint(), indexerFingerprint());
+  });
+
+  test("covers every module api-model.mjs imports, directly or through another", () => {
+    const seen = new Set();
+    const walk = (file) => {
+      if (seen.has(file)) return;
+      seen.add(file);
+      const text = readFileSync(file, "utf-8");
+      for (const m of text.matchAll(/^\s*import\b[^;]*?from\s+"(\.[^"]+)"/gm))
+        walk(path.resolve(path.dirname(file), m[1]));
+    };
+    walk(path.resolve(import.meta.dirname, "../indexer/lib/api-model.mjs"));
+    const listed = FINGERPRINTED.map((rel) => path.resolve(import.meta.dirname, "../indexer/lib", rel));
+    assert.deepEqual([...seen].sort(), listed.sort());
+  });
+});
+
+describe("a package written to the store, and indexed again from it", () => {
+  const SOURCES = [
+    file("Settings", '{"project.name": "Demo"}'),
+    file("Sources/Main.twin", lines("Public Module Zeta", "    Public Sub Go(): End Sub", "End Module")),
+    file("Sources/Sub/Old.bas", lines('Attribute VB_Name = "OldMod"', "Public Sub Legacy()", "End Sub")),
+    file("Sources/Form1.tbform", "{}"),
+    file("Resources/logo.png", "not a source"),
+  ];
+  const stored = (dir) => ({
+    json: readFileSync(path.join(dir, "api.json"), "utf-8"),
+    fingerprint: JSON.parse(readFileSync(path.join(dir, "indexer.json"), "utf-8")).fingerprint,
+  });
+  const built = buildApi({ symbol: "Demo", version: "beta-x-1005", files: SOURCES });
+
+  test("keeps its sources without Sources/, its Settings, its api.json and the fingerprint, and nothing else", async () => {
+    const store = mkdtempSync(path.join(tmp, "written-"));
+    await writeToStore(store, "built-in", "Demo", SOURCES, built.json);
+    const dir = path.join(store, "built-in", "Demo");
+    assert.equal(readFileSync(path.join(dir, "sources", "Main.twin"), "utf-8").startsWith("Public Module Zeta"), true);
+    assert.equal(readFileSync(path.join(dir, "sources", "Sub", "Old.bas"), "utf-8").includes("Legacy"), true);
+    assert.equal(readFileSync(path.join(dir, "Settings"), "utf-8"), '{"project.name": "Demo"}');
+    assert.deepEqual(stored(dir), { json: built.json, fingerprint: indexerFingerprint() });
+    assert.deepEqual(readdirSync(path.join(dir, "sources")).sort(), ["Main.twin", "Sub"]);
+    assert.equal(await storeStatus(store, "built-in", "Demo", "beta-x-1005"), null);
+  });
+
+  test("is indexed again into the api.json the sources were first indexed into, under the same version", async () => {
+    const store = mkdtempSync(path.join(tmp, "again-"));
+    await writeToStore(store, "built-in", "Demo", SOURCES, built.json);
+    const dir = path.join(store, "built-in", "Demo");
+    // As a store looks after the scanner changes: another fingerprint and an index of the old kind.
+    writeFileSync(path.join(dir, "indexer.json"), JSON.stringify({ fingerprint: "0".repeat(64) }));
+    writeFileSync(path.join(dir, "api.json"), built.json.replace('"Go"', '"Stale"'));
+    assert.equal(await storeStatus(store, "built-in", "Demo", "beta-x-1005"), "old-scanner");
+    const stats = await reindexStored(store, "built-in", "Demo");
+    assert.deepEqual(stats, built.stats);
+    assert.deepEqual(stored(dir), { json: built.json, fingerprint: indexerFingerprint() });
+    assert.equal(await storeStatus(store, "built-in", "Demo", "beta-x-1005"), null);
+  });
+
+  test("a store from before Settings were kept gives the project name from its api.json", async () => {
+    const store = mkdtempSync(path.join(tmp, "nosettings-"));
+    await writeToStore(store, "built-in", "Demo", SOURCES, built.json);
+    const dir = path.join(store, "built-in", "Demo");
+    rmSync(path.join(dir, "Settings"));
+    rmSync(path.join(dir, "indexer.json"));
+    assert.equal(await storeStatus(store, "built-in", "Demo", "beta-x-1005"), "old-scanner");
+    await reindexStored(store, "built-in", "Demo");
+    assert.equal(stored(dir).json, built.json);
+    assert.equal(JSON.parse(stored(dir).json).project, "Demo");
+  });
+
+  test("a package with no version in its api.json cannot be indexed again", async () => {
+    const store = mkdtempSync(path.join(tmp, "noversion-"));
+    putPackage(store, "built-in", "Bare", { api: "{}" });
+    await assert.rejects(reindexStored(store, "built-in", "Bare"), /no version/);
+  });
+
+  test("readStoredFiles gives each source under Sources/ with forward slashes, and the Settings file", async () => {
+    const store = mkdtempSync(path.join(tmp, "read-"));
+    await writeToStore(store, "built-in", "Demo", SOURCES, built.json);
+    const files = await readStoredFiles(path.join(store, "built-in", "Demo"));
+    assert.deepEqual(files.map((f) => f.relativePath).sort(), ["Settings", "Sources/Main.twin", "Sources/Sub/Old.bas"]);
   });
 });
 
