@@ -297,6 +297,32 @@ reads it; the site's builder ignores these keys):
 
 The group is the folder's: a package in `Built-In/` is a built-in one.
 
+The 13 sections and the 14 snapshots they have, all of BETA 997 (`beta-x-0997`),
+the build the reference was last indexed against:
+
+| Section | Packages (`package_name:`) | Snapshots | Size |
+|---------|----------------------------|-----------|------|
+| `Default/VB` | `VB` (no key) | `default/VB` | 1,424 KB |
+| `Default/VBA` | `VBA` (no key) | `default/VBA` | 411 KB |
+| `Default/VBRUN` | `VBRUN` (no key) | `default/VBRUN` | 104 KB |
+| `Built-In/AppGlobalClassObject` | `AppGlobalClassObject` (no key) | `built-in/AppGlobalClassObject` | 22 KB |
+| `Built-In/CEF` | `cefPackage145` | `built-in/cefPackage145` | 466 KB |
+| `Built-In/CustomControls` | `CustomControls, CustomControlsPackage` | `built-in/CustomControls`, `built-in/CustomControlsPackage` | 20 KB, 87 KB |
+| `Built-In/TwinBasicAssertions` (the `Assert` package) | `TwinBasicAssertions` (no key) | `built-in/TwinBasicAssertions` | 21 KB |
+| `Built-In/WebView2` | `WebView2Package` | `built-in/WebView2Package` | 189 KB |
+| `Built-In/WinEventLogLib` | `WinEventLogLib` (no key) | `built-in/WinEventLogLib` | 7 KB |
+| `Built-In/WinNamedPipesLib` | `WinNamedPipesLib` (no key) | `built-in/WinNamedPipesLib` | 56 KB |
+| `Built-In/WinNativeCommonCtls` | `WinNativeCommonCtls` (no key) | `built-in/WinNativeCommonCtls` | 313 KB |
+| `Built-In/WinServicesLib` | `WinServicesLib` (no key) | `built-in/WinServicesLib` | 41 KB |
+| `Built-In/tbIDE` | `tbIDE` (no key) | `built-in/tbIDE` | 48 KB |
+
+That is 3.2 MB as the files are, about 350 KB compressed. The project name inside
+the files (`project` in `api.json`) is not always the package's:
+`TwinBasicAssertions` is the project `Assert`, `AppGlobalClassObject` is
+`AppGlobalClassProject` and the three CEF packages are `cefPackage`. The
+builder's `PACKAGE_FOLDERS` in `builder/symbols.mjs` is the same list by
+project name.
+
 **One API, several builds.** The three CEF packages in an install,
 `cefPackage49`, `cefPackage109` and `cefPackage145`, are one source tree
 compiled against three CEF runtimes. Their `api.json` files differ only in

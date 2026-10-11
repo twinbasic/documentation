@@ -1,0 +1,2198 @@
+{
+  "format": 2,
+  "package": "WebView2Package",
+  "project": "WebView2Package",
+  "version": "beta-x-0997",
+  "types": [
+    {
+      "name": "ControlAlt",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Support/WebView2Misc.twin",
+      "signature": "Private Interface ControlAlt",
+      "attrs": [{"name":"InterfaceId","args":"\"FCFB3D25-A0FA-1068-A738-08002B3371B5\""},{"name":"COMExtensible"}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2.twin",
+      "signature": "Private Interface ICoreWebView2 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"76eceacb-0462-4d94-ac83-423a6793775e\""}],
+      "members": [
+        {"name":"AddHostObjectToScript","kind":"sub","vis":"public","signature":"Sub AddHostObjectToScript(ByVal Name As String, ByRef Object As Variant)"},
+        {"name":"AddScriptToExecuteOnDocumentCreated","kind":"sub","vis":"public","signature":"Sub AddScriptToExecuteOnDocumentCreated(ByVal javaScript As String, ByVal eventHandler As ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler)"},
+        {"name":"AddWebResourceRequestedFilter","kind":"sub","vis":"public","signature":"Sub AddWebResourceRequestedFilter(ByVal uri As String, ByVal resourceContext As wv2WebResourceContext)"},
+        {"name":"BrowserProcessId","kind":"property","vis":"public","signature":"Property Get BrowserProcessId() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"CallDevToolsProtocolMethod","kind":"sub","vis":"public","signature":"Sub CallDevToolsProtocolMethod(ByVal methodName As String, ByVal parametersAsJson As String, ByVal eventHandler As ICoreWebView2CallDevToolsProtocolMethodCompletedHandler)"},
+        {"name":"CanGoBack","kind":"property","vis":"public","signature":"Property Get CanGoBack() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"CanGoForward","kind":"property","vis":"public","signature":"Property Get CanGoForward() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"CapturePreview","kind":"sub","vis":"public","signature":"Sub CapturePreview()"},
+        {"name":"ContainsFullScreenElement","kind":"property","vis":"public","signature":"Property Get ContainsFullScreenElement() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"DocumentTitle","kind":"property","vis":"public","signature":"Property Get DocumentTitle() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"ExecuteScript","kind":"sub","vis":"public","signature":"Sub ExecuteScript(ByVal javaScript As String, ByVal eventHandler As ICoreWebView2ExecuteScriptCompletedHandler)"},
+        {"name":"GetDevToolsProtocolEventReceiver","kind":"sub","vis":"public","signature":"Sub GetDevToolsProtocolEventReceiver()"},
+        {"name":"GoBack","kind":"sub","vis":"public","signature":"Sub GoBack()"},
+        {"name":"GoForward","kind":"sub","vis":"public","signature":"Sub GoForward()"},
+        {"name":"Navigate","kind":"sub","vis":"public","signature":"Sub Navigate(ByVal uri As String)"},
+        {"name":"NavigateToString","kind":"sub","vis":"public","signature":"Sub NavigateToString(ByVal htmlContent As String)"},
+        {"name":"OpenDevToolsWindow","kind":"sub","vis":"public","signature":"Sub OpenDevToolsWindow()"},
+        {"name":"PostWebMessageAsJson","kind":"sub","vis":"public","signature":"Sub PostWebMessageAsJson(ByVal webMessageAsJson As String)"},
+        {"name":"PostWebMessageAsString","kind":"sub","vis":"public","signature":"Sub PostWebMessageAsString(ByVal webMessageAsString As String)"},
+        {"name":"Reload","kind":"sub","vis":"public","signature":"Sub Reload()"},
+        {"name":"RemoveHostObjectFromScript","kind":"sub","vis":"public","signature":"Sub RemoveHostObjectFromScript(ByVal Name As String)"},
+        {"name":"RemoveScriptToExecuteOnDocumentCreated","kind":"sub","vis":"public","signature":"Sub RemoveScriptToExecuteOnDocumentCreated(ByVal id As String)"},
+        {"name":"RemoveWebResourceRequestedFilter","kind":"sub","vis":"public","signature":"Sub RemoveWebResourceRequestedFilter(ByVal uri As String, ByVal resourceContext As wv2WebResourceContext)"},
+        {"name":"Settings","kind":"property","vis":"public","signature":"Property Get Settings() As ICoreWebView2Settings","returnType":"ICoreWebView2Settings","accessor":"Get"},
+        {"name":"Source","kind":"property","vis":"public","signature":"Property Get Source() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"Stop","kind":"sub","vis":"public","signature":"Sub Stop()"},
+        {"name":"add_ContainsFullScreenElementChanged","kind":"sub","vis":"public","signature":"Sub add_ContainsFullScreenElementChanged(ByVal eventHandler As ICoreWebView2ContainsFullScreenElementChangedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_ContentLoading","kind":"sub","vis":"public","signature":"Sub add_ContentLoading(ByVal eventHandler As ICoreWebView2ContentLoadingEventHandler, ByRef token As LongLong)"},
+        {"name":"add_DocumentTitleChanged","kind":"sub","vis":"public","signature":"Sub add_DocumentTitleChanged(ByVal eventHandler As ICoreWebView2DocumentTitleChangedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_FrameNavigationCompleted","kind":"sub","vis":"public","signature":"Sub add_FrameNavigationCompleted(ByVal eventHandler As ICoreWebView2NavigationCompletedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_FrameNavigationStarting","kind":"sub","vis":"public","signature":"Sub add_FrameNavigationStarting(ByVal eventHandler As ICoreWebView2NavigationStartingEventHandler, ByRef token As LongLong)"},
+        {"name":"add_HistoryChanged","kind":"sub","vis":"public","signature":"Sub add_HistoryChanged(ByVal eventHandler As ICoreWebView2HistoryChangedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_NavigationCompleted","kind":"sub","vis":"public","signature":"Sub add_NavigationCompleted(ByVal eventHandler As ICoreWebView2NavigationCompletedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_NavigationStarting","kind":"sub","vis":"public","signature":"Sub add_NavigationStarting(ByVal eventHandler As ICoreWebView2NavigationStartingEventHandler, ByRef token As LongLong)"},
+        {"name":"add_NewWindowRequested","kind":"sub","vis":"public","signature":"Sub add_NewWindowRequested(ByVal eventHandler As ICoreWebView2NewWindowRequestedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_PermissionRequested","kind":"sub","vis":"public","signature":"Sub add_PermissionRequested(ByVal eventHandler As ICoreWebView2PermissionRequestedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_ProcessFailed","kind":"sub","vis":"public","signature":"Sub add_ProcessFailed(ByVal eventHandler As ICoreWebView2ProcessFailedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_ScriptDialogOpening","kind":"sub","vis":"public","signature":"Sub add_ScriptDialogOpening(ByVal eventHandler As ICoreWebView2ScriptDialogOpeningEventHandler, ByRef token As LongLong)"},
+        {"name":"add_SourceChanged","kind":"sub","vis":"public","signature":"Sub add_SourceChanged(ByVal eventHandler As ICoreWebView2SourceChangedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_WebMessageReceived","kind":"sub","vis":"public","signature":"Sub add_WebMessageReceived(ByVal eventhandler As ICoreWebView2WebMessageReceivedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_WebResourceRequested","kind":"sub","vis":"public","signature":"Sub add_WebResourceRequested(ByVal eventHandler As ICoreWebView2WebResourceRequestedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_WindowCloseRequested","kind":"sub","vis":"public","signature":"Sub add_WindowCloseRequested(ByVal eventHandler As ICoreWebView2WindowCloseRequestedEventHandler, ByRef token As LongLong)"},
+        {"name":"remove_ContainsFullScreenElementChanged","kind":"sub","vis":"public","signature":"Sub remove_ContainsFullScreenElementChanged(ByVal token As LongLong)"},
+        {"name":"remove_ContentLoading","kind":"sub","vis":"public","signature":"Sub remove_ContentLoading(ByVal token As LongLong)"},
+        {"name":"remove_DocumentTitleChanged","kind":"sub","vis":"public","signature":"Sub remove_DocumentTitleChanged(ByVal token As LongLong)"},
+        {"name":"remove_FrameNavigationCompleted","kind":"sub","vis":"public","signature":"Sub remove_FrameNavigationCompleted(ByVal token As LongLong)"},
+        {"name":"remove_FrameNavigationStarting","kind":"sub","vis":"public","signature":"Sub remove_FrameNavigationStarting(ByVal token As LongLong)"},
+        {"name":"remove_HistoryChanged","kind":"sub","vis":"public","signature":"Sub remove_HistoryChanged(ByVal token As LongLong)"},
+        {"name":"remove_NavigationCompleted","kind":"sub","vis":"public","signature":"Sub remove_NavigationCompleted(ByVal token As LongLong)"},
+        {"name":"remove_NavigationStarting","kind":"sub","vis":"public","signature":"Sub remove_NavigationStarting(ByVal token As LongLong)"},
+        {"name":"remove_NewWindowRequested","kind":"sub","vis":"public","signature":"Sub remove_NewWindowRequested(ByVal token As LongLong)"},
+        {"name":"remove_PermissionRequested","kind":"sub","vis":"public","signature":"Sub remove_PermissionRequested(ByVal token As LongLong)"},
+        {"name":"remove_ProcessFailed","kind":"sub","vis":"public","signature":"Sub remove_ProcessFailed(ByVal token As LongLong)"},
+        {"name":"remove_ScriptDialogOpening","kind":"sub","vis":"public","signature":"Sub remove_ScriptDialogOpening(ByVal token As LongLong)"},
+        {"name":"remove_SourceChanged","kind":"sub","vis":"public","signature":"Sub remove_SourceChanged(ByVal token As LongLong)"},
+        {"name":"remove_WebMessageReceived","kind":"sub","vis":"public","signature":"Sub remove_WebMessageReceived(ByVal token As LongLong)"},
+        {"name":"remove_WebResourceRequested","kind":"sub","vis":"public","signature":"Sub remove_WebResourceRequested(ByVal token As LongLong)"},
+        {"name":"remove_WindowCloseRequested","kind":"sub","vis":"public","signature":"Sub remove_WindowCloseRequested(ByVal token As LongLong)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2AcceleratorKeyPressedEventArgs",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2AcceleratorKeyPressedEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2AcceleratorKeyPressedEventArgs Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"9f760f8a-fb79-42be-9990-7b56900fa9c7\""}],
+      "members": [
+        {"name":"Handled","kind":"property","vis":"public","signature":"Property Get Handled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Handled","kind":"property","vis":"public","signature":"Property Let Handled(ByVal Value As Long)","accessor":"Let"},
+        {"name":"KeyEventKind","kind":"property","vis":"public","signature":"Property Get KeyEventKind() As wv2KeyEventKind","returnType":"wv2KeyEventKind","accessor":"Get"},
+        {"name":"KeyEventLParam","kind":"property","vis":"public","signature":"Property Get KeyEventLParam() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"PhysicalKeyStatus","kind":"property","vis":"public","signature":"Property Get PhysicalKeyStatus() As COREWEBVIEW2_PHYSICAL_KEY_STATUS","returnType":"COREWEBVIEW2_PHYSICAL_KEY_STATUS","accessor":"Get"},
+        {"name":"VirtualKey","kind":"property","vis":"public","signature":"Property Get VirtualKey() As Long","returnType":"Long","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2AcceleratorKeyPressedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2AcceleratorKeyPressedEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2AcceleratorKeyPressedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"b29c7e28-fa79-41a8-8e44-65811c76dcb2\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2Controller, ByVal args As ICoreWebView2AcceleratorKeyPressedEventArgs)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler.twin",
+      "signature": "Private Interface ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"b99369f3-9b11-47b5-bc6f-8e7895fcea17\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal errorCode As Long, ByVal id As LongPtr)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2BrowserProcessExitedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2BrowserProcessExitedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"fa504257-a216-4911-a860-fe8825712861\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2CallDevToolsProtocolMethodCompletedHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2CallDevToolsProtocolMethodCompletedHandler.twin",
+      "signature": "Private Interface ICoreWebView2CallDevToolsProtocolMethodCompletedHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"5c4889f0-5ef6-4c5a-952c-d8f1b92d0574\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal errorCode As Long, ByVal returnObjectAsJson As LongPtr)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2ClientCertificateRequestedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2ClientCertificateRequestedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"d7175ba2-bcc3-11eb-8529-0242ac130003\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2ContainsFullScreenElementChangedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2ContainsFullScreenElementChangedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"e45d98b1-afef-45be-8baf-6c7728867f73\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2ContentLoadingEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2ContentLoadingEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"364471e7-f2be-4910-bdba-d72077d51c4b\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2Controller",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Controller.twin",
+      "signature": "Private Interface ICoreWebView2Controller Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"4d00c0d1-9434-4eb6-8078-8697a560334f\""}],
+      "members": [
+        {"name":"Bounds","kind":"property","vis":"public","signature":"Property Get Bounds() As VB.tbRECT","returnType":"VB.tbRECT","accessor":"Get"},
+        {"name":"Close","kind":"sub","vis":"public","signature":"Sub Close()"},
+        {"name":"CoreWebView2","kind":"property","vis":"public","signature":"Property Get CoreWebView2() As ICoreWebView2","returnType":"ICoreWebView2","accessor":"Get"},
+        {"name":"IsVisible","kind":"property","vis":"public","signature":"Property Get IsVisible() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsVisible","kind":"property","vis":"public","signature":"Property Let IsVisible(ByVal Value As Long)","accessor":"Let"},
+        {"name":"MoveFocus","kind":"sub","vis":"public","signature":"Sub MoveFocus(ByVal reason As Long)"},
+        {"name":"NotifyParentWindowPositionChanged","kind":"sub","vis":"public","signature":"Sub NotifyParentWindowPositionChanged()"},
+        {"name":"ParentWindow","kind":"property","vis":"public","signature":"Property Get ParentWindow() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"ParentWindow","kind":"property","vis":"public","signature":"Property Let ParentWindow(ByVal Value As Long)","accessor":"Let"},
+        {"name":"SetBoundsAndZoomFactor","kind":"sub","vis":"public","signature":"Sub SetBoundsAndZoomFactor(ByRef bounds As VB.tbRECT, ByVal zoomFactor As Double)"},
+        {"name":"SetBoundsAndZoomFactor","kind":"sub","vis":"public","signature":"Sub SetBoundsAndZoomFactor(ByVal boundsLeft As Long, ByVal boundsTop As Long, ByVal boundsRight As Long, ByVal boundsBottom As Long, ByVal zoomFactor As Double)"},
+        {"name":"ZoomFactor","kind":"property","vis":"public","signature":"Property Get ZoomFactor() As Double","returnType":"Double","accessor":"Get"},
+        {"name":"ZoomFactor","kind":"property","vis":"public","signature":"Property Let ZoomFactor(ByVal Value As Double)","accessor":"Let"},
+        {"name":"add_AcceleratorKeyPressed","kind":"sub","vis":"public","signature":"Sub add_AcceleratorKeyPressed(ByVal eventHandler As ICoreWebView2AcceleratorKeyPressedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_GotFocus","kind":"sub","vis":"public","signature":"Sub add_GotFocus(ByVal eventHandler As ICoreWebView2FocusChangedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_LostFocus","kind":"sub","vis":"public","signature":"Sub add_LostFocus(ByVal eventHandler As ICoreWebView2FocusChangedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_MoveFocusRequested","kind":"sub","vis":"public","signature":"Sub add_MoveFocusRequested(ByVal eventHandler As ICoreWebView2MoveFocusRequestedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_ZoomFactorChanged","kind":"sub","vis":"public","signature":"Sub add_ZoomFactorChanged(ByVal eventHandler As ICoreWebView2ZoomFactorChangedEventHandler, ByRef token As LongLong)"},
+        {"name":"put_Bounds","kind":"sub","vis":"public","signature":"Sub put_Bounds(ByRef rect As VB.tbRECT)"},
+        {"name":"put_Bounds","kind":"sub","vis":"public","signature":"Sub put_Bounds(ByVal left As Long, ByVal top As Long, ByVal right As Long, ByVal bottom As Long)"},
+        {"name":"remove_AcceleratorKeyPressed","kind":"sub","vis":"public","signature":"Sub remove_AcceleratorKeyPressed(ByVal token As LongLong)"},
+        {"name":"remove_GotFocus","kind":"sub","vis":"public","signature":"Sub remove_GotFocus(ByVal token As LongLong)"},
+        {"name":"remove_LostFocus","kind":"sub","vis":"public","signature":"Sub remove_LostFocus(ByVal token As LongLong)"},
+        {"name":"remove_MoveFocusRequested","kind":"sub","vis":"public","signature":"Sub remove_MoveFocusRequested(ByVal token As LongLong)"},
+        {"name":"remove_ZoomFactorChanged","kind":"sub","vis":"public","signature":"Sub remove_ZoomFactorChanged(ByVal token As LongLong)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2CookieManager",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2CookieManager Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"177CD9E7-B6F5-451A-94A0-5D7A3A4C4141\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2CreateCoreWebView2CompositionControllerCompletedHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2CreateCoreWebView2CompositionControllerCompletedHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"02fab84b-1428-4fb7-ad45-1b2e64736184\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2CreateCoreWebView2ControllerCompletedHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2CreateCoreWebView2ControllerCompletedHandler.twin",
+      "signature": "Private Interface ICoreWebView2CreateCoreWebView2ControllerCompletedHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"6c4819f3-c9b7-4260-8127-c9f5bde7f68c\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal errorCode As Long, ByVal createdController As ICoreWebView2Controller)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler.twin",
+      "signature": "Private Interface ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"4e8a3389-c9d8-4bd2-b6b5-124fee6cc14d\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal errorCode As Long, ByVal createdEnvironment As ICoreWebView2Environment)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2DOMContentLoadedEventArgs",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2DOMContentLoadedEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2DOMContentLoadedEventArgs Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"16B1E21A-C503-44F2-84C9-70ABA5031283\""}],
+      "members": [
+        {"name":"NavigationId","kind":"property","vis":"public","signature":"Property Get NavigationId() As LongLong","returnType":"LongLong","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2DOMContentLoadedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2DOMContentLoadedEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2DOMContentLoadedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"4BAC7E9C-199E-49ED-87ED-249303ACF019\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2DOMContentLoadedEventArgs)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Deferral",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Deferral.twin",
+      "signature": "Private Interface ICoreWebView2Deferral Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"c10e7f7b-b585-46f0-a623-8befbf3e4ee0\""}],
+      "members": [
+        {"name":"Complete","kind":"sub","vis":"public","signature":"Sub Complete()"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2DocumentTitleChangedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2DocumentTitleChangedEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2DocumentTitleChangedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"f5f2b923-953e-4042-9f95-f3a118e1afd4\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2, ByVal args As stdole.IUnknown)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2DownloadOperation",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2DownloadOperation Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"3d6b6cf2-afe1-44c7-a995-c65117714336\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2DownloadStartingEventArgs",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2DownloadStartingEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2DownloadStartingEventArgs Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"e99bbe21-43e9-4544-a732-282764eafa60\""}],
+      "members": [
+        {"name":"Cancel","kind":"property","vis":"public","signature":"Property Get Cancel() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Cancel","kind":"property","vis":"public","signature":"Property Let Cancel(ByVal Value As Long)","accessor":"Let"},
+        {"name":"DownloadOperation","kind":"property","vis":"public","signature":"Property Get DownloadOperation() As ICoreWebView2DownloadOperation","returnType":"ICoreWebView2DownloadOperation","accessor":"Get"},
+        {"name":"GetDeferral","kind":"function","vis":"public","signature":"Function GetDeferral() As ICoreWebView2Deferral","returnType":"ICoreWebView2Deferral"},
+        {"name":"Handled","kind":"property","vis":"public","signature":"Property Get Handled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Handled","kind":"property","vis":"public","signature":"Property Let Handled(ByVal Value As Long)","accessor":"Let"},
+        {"name":"ResultFilePath","kind":"property","vis":"public","signature":"Property Get ResultFilePath() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"ResultFilePath","kind":"property","vis":"public","signature":"Property Let ResultFilePath(ByVal Value As LongPtr)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2DownloadStartingEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2DownloadStartingEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2DownloadStartingEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"efedc989-c396-41ca-83f7-07f845a55724\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2DownloadStartingEventArgs)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Environment",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Environment.twin",
+      "signature": "Private Interface ICoreWebView2Environment Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"b96d755e-0319-4e92-a296-23436f46a1fc\""}],
+      "members": [
+        {"name":"BrowserVersionString","kind":"property","vis":"public","signature":"Property Get BrowserVersionString() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"CreateCoreWebView2Controller","kind":"sub","vis":"public","signature":"Sub CreateCoreWebView2Controller(ByVal parentWindow As LongPtr, ByVal handler As ICoreWebView2CreateCoreWebView2ControllerCompletedHandler)"},
+        {"name":"CreateWebResourceResponse","kind":"function","vis":"public","signature":"Function CreateWebResourceResponse(ByVal content As VB.IStream, ByVal statusCode As Long, ByVal reasonPhrase As String, ByVal headers As String) As ICoreWebView2WebResourceResponse","returnType":"ICoreWebView2WebResourceResponse"},
+        {"name":"add_NewBrowserVersionAvailable","kind":"sub","vis":"public","signature":"Sub add_NewBrowserVersionAvailable(ByVal eventHandler As ICoreWebView2NewBrowserVersionAvailableEventHandler, ByRef token As LongLong)"},
+        {"name":"remove_NewBrowserVersionAvailable","kind":"sub","vis":"public","signature":"Sub remove_NewBrowserVersionAvailable(ByVal token As LongLong)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Environment2",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Environment.twin",
+      "signature": "Private Interface ICoreWebView2Environment2 Extends ICoreWebView2Environment",
+      "extends": "ICoreWebView2Environment",
+      "attrs": [{"name":"InterfaceId","args":"\"41F3632B-5EF4-404F-AD82-2D606C5A9A21\""}],
+      "members": [
+        {"name":"CreateWebResourceRequest","kind":"function","vis":"public","signature":"Function CreateWebResourceRequest(ByVal uri As String, ByVal method As String, ByVal postData As VB.IStream, ByVal headers As String) As ICoreWebView2WebResourceRequest","returnType":"ICoreWebView2WebResourceRequest"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Environment3",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Environment.twin",
+      "signature": "Private Interface ICoreWebView2Environment3 Extends ICoreWebView2Environment2",
+      "extends": "ICoreWebView2Environment2",
+      "attrs": [{"name":"InterfaceId","args":"\"80a22ae3-be7c-4ce2-afe1-5a50056cdeeb\""}],
+      "members": [
+        {"name":"CreateCoreWebView2CompositionController","kind":"function","vis":"public","signature":"Function CreateCoreWebView2CompositionController(ByVal parentWindow As LongPtr) As ICoreWebView2CreateCoreWebView2CompositionControllerCompletedHandler","returnType":"ICoreWebView2CreateCoreWebView2CompositionControllerCompletedHandler"},
+        {"name":"CreateCoreWebView2PointerInfo","kind":"function","vis":"public","signature":"Function CreateCoreWebView2PointerInfo() As ICoreWebView2PointerInfo","returnType":"ICoreWebView2PointerInfo"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Environment4",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Environment.twin",
+      "signature": "Private Interface ICoreWebView2Environment4 Extends ICoreWebView2Environment3",
+      "extends": "ICoreWebView2Environment3",
+      "attrs": [{"name":"InterfaceId","args":"\"20944379-6dcf-41d6-a0a0-abc0fc50de0d\""}],
+      "members": [
+        {"name":"GetProviderForHwnd","kind":"function","vis":"public","signature":"Function GetProviderForHwnd(ByVal hWnd As LongPtr) As stdole.IUnknown","returnType":"stdole.IUnknown"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Environment5",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Environment.twin",
+      "signature": "Private Interface ICoreWebView2Environment5 Extends ICoreWebView2Environment4",
+      "extends": "ICoreWebView2Environment4",
+      "attrs": [{"name":"InterfaceId","args":"\"319e423d-e0d7-4b8d-9254-ae9475de9b17\""}],
+      "members": [
+        {"name":"add_BrowserProcessExited","kind":"sub","vis":"public","signature":"Sub add_BrowserProcessExited(ByVal eventHandler As ICoreWebView2BrowserProcessExitedEventHandler, ByRef token As LongLong)"},
+        {"name":"remove_BrowserProcessExited","kind":"sub","vis":"public","signature":"Sub remove_BrowserProcessExited(ByVal token As LongLong)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Environment6",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Environment.twin",
+      "signature": "Private Interface ICoreWebView2Environment6 Extends ICoreWebView2Environment5",
+      "extends": "ICoreWebView2Environment5",
+      "attrs": [{"name":"InterfaceId","args":"\"e59ee362-acbd-4857-9a8e-d3644d9459a9\""}],
+      "members": [
+        {"name":"CreatePrintSettings","kind":"function","vis":"public","signature":"Function CreatePrintSettings() As ICoreWebView2PrintSettings","returnType":"ICoreWebView2PrintSettings"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Environment7",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Environment.twin",
+      "signature": "Private Interface ICoreWebView2Environment7 Extends ICoreWebView2Environment6",
+      "extends": "ICoreWebView2Environment6",
+      "attrs": [{"name":"InterfaceId","args":"\"43C22296-3BBD-43A4-9C00-5C0DF6DD29A2\""}],
+      "members": [
+        {"name":"UserDataFolder","kind":"property","vis":"public","signature":"Property Get UserDataFolder() As LongPtr","returnType":"LongPtr","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Environment8",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Environment.twin",
+      "signature": "Private Interface ICoreWebView2Environment8 Extends ICoreWebView2Environment7",
+      "extends": "ICoreWebView2Environment7",
+      "attrs": [{"name":"InterfaceId","args":"\"D6EB91DD-C3D2-45E5-BD29-6DC2BC4DE9CF\""}],
+      "members": [
+        {"name":"GetProcessInfos","kind":"function","vis":"public","signature":"Function GetProcessInfos() As ICoreWebView2ProcessInfoCollection","returnType":"ICoreWebView2ProcessInfoCollection"},
+        {"name":"add_ProcessInfosChanged","kind":"sub","vis":"public","signature":"Sub add_ProcessInfosChanged(ByVal eventHandler As ICoreWebView2ProcessInfosChangedEventHandler, ByRef token As LongLong)"},
+        {"name":"remove_ProcessInfosChanged","kind":"sub","vis":"public","signature":"Sub remove_ProcessInfosChanged(ByVal token As LongLong)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2EnvironmentOptions",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2EnvironmentOptions.twin",
+      "signature": "Private Interface ICoreWebView2EnvironmentOptions Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"2fde08a8-1e9a-4766-8c05-95a9ceb9d1c5\""}],
+      "members": [
+        {"name":"AdditionalBrowserArguments","kind":"property","vis":"public","signature":"Property Get AdditionalBrowserArguments() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"AdditionalBrowserArguments","kind":"property","vis":"public","signature":"Property Let AdditionalBrowserArguments(ByVal value As LongPtr)","accessor":"Let"},
+        {"name":"AllowSingleSignOnUsingOSPrimaryAccount","kind":"property","vis":"public","signature":"Property Get AllowSingleSignOnUsingOSPrimaryAccount() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"AllowSingleSignOnUsingOSPrimaryAccount","kind":"property","vis":"public","signature":"Property Let AllowSingleSignOnUsingOSPrimaryAccount(ByVal value As Long)","accessor":"Let"},
+        {"name":"Language","kind":"property","vis":"public","signature":"Property Get Language() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"Language","kind":"property","vis":"public","signature":"Property Let Language(ByVal value As LongPtr)","accessor":"Let"},
+        {"name":"TargetCompatibleBrowserVersion","kind":"property","vis":"public","signature":"Property Get TargetCompatibleBrowserVersion() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"TargetCompatibleBrowserVersion","kind":"property","vis":"public","signature":"Property Let TargetCompatibleBrowserVersion(ByVal value As LongPtr)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2EnvironmentOptions2",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2EnvironmentOptions2.twin",
+      "signature": "Private Interface ICoreWebView2EnvironmentOptions2 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"FF85C98A-1BA7-4A6B-90C8-2B752C89E9E2\""}],
+      "members": [
+        {"name":"ExclusiveUserDataFolderAccess","kind":"property","vis":"public","signature":"Property Get ExclusiveUserDataFolderAccess() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"ExclusiveUserDataFolderAccess","kind":"property","vis":"public","signature":"Property Let ExclusiveUserDataFolderAccess(ByVal value As Long)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2EnvironmentOptions5",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2EnvironmentOptions2.twin",
+      "signature": "Private Interface ICoreWebView2EnvironmentOptions5 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"0ae35d64-c47f-4464-814e-259c345d1501\""}],
+      "members": [
+        {"name":"EnableTrackingPrevention","kind":"property","vis":"public","signature":"Property Get EnableTrackingPrevention() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"EnableTrackingPrevention","kind":"property","vis":"public","signature":"Property Let EnableTrackingPrevention(ByVal value As Long)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2ExecuteScriptCompletedHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2ExecuteScriptCompletedHandler.twin",
+      "signature": "Private Interface ICoreWebView2ExecuteScriptCompletedHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"49511172-cc67-4bca-9923-137112f4c4cc\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal errorCode As Long, ByVal returnObjectAsJson As LongPtr)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2FocusChangedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2FocusChangedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"05ea24bd-6452-4926-9014-4b82b498135d\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2FrameCreatedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2FrameCreatedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"38059770-9baa-11eb-a8b3-0242ac130003\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2HistoryChangedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2HistoryChangedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"c79a420c-efd9-4058-9295-3e8b4bcab645\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2HttpHeadersCollectionIterator",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2HttpHeadersCollectionIterator.twin",
+      "signature": "Private Interface ICoreWebView2HttpHeadersCollectionIterator Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"0702fc30-f43b-47bb-ab52-a42cb552ad9f\""}],
+      "members": [
+        {"name":"GetCurrentHeader","kind":"sub","vis":"public","signature":"Sub GetCurrentHeader(ByRef name As LongPtr, ByRef value As LongPtr)"},
+        {"name":"HasCurrentHeader","kind":"property","vis":"public","signature":"Property Get HasCurrentHeader() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"MoveNext","kind":"function","vis":"public","signature":"Function MoveNext() As Long","returnType":"Long"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2HttpRequestHeaders",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2HttpRequestHeaders.twin",
+      "signature": "Private Interface ICoreWebView2HttpRequestHeaders Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"e86cac0e-5523-465c-b536-8fb9fc8c8c60\""}],
+      "members": [
+        {"name":"Contains","kind":"function","vis":"public","signature":"Function Contains(ByVal name As String) As Long","returnType":"Long"},
+        {"name":"GetHeader","kind":"function","vis":"public","signature":"Function GetHeader(ByVal name As String) As LongPtr","returnType":"LongPtr"},
+        {"name":"GetHeaders","kind":"function","vis":"public","signature":"Function GetHeaders(ByVal name As String) As ICoreWebView2HttpHeadersCollectionIterator","returnType":"ICoreWebView2HttpHeadersCollectionIterator"},
+        {"name":"GetIterator","kind":"function","vis":"public","signature":"Function GetIterator() As ICoreWebView2HttpHeadersCollectionIterator","returnType":"ICoreWebView2HttpHeadersCollectionIterator"},
+        {"name":"RemoveHeader","kind":"sub","vis":"public","signature":"Sub RemoveHeader(ByVal name As String)"},
+        {"name":"SetHeader","kind":"sub","vis":"public","signature":"Sub SetHeader(ByVal name As String, ByVal value As String)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2HttpResponseHeaders",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2HttpResponseHeaders.twin",
+      "signature": "Private Interface ICoreWebView2HttpResponseHeaders Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"03c5ff5a-9b45-4a88-881c-89a9f328619c\""}],
+      "members": [
+        {"name":"AppendHeader","kind":"sub","vis":"public","signature":"Sub AppendHeader(ByVal name As String, ByVal value As String)"},
+        {"name":"Contains","kind":"function","vis":"public","signature":"Function Contains(ByVal name As String) As Long","returnType":"Long"},
+        {"name":"GetHeader","kind":"function","vis":"public","signature":"Function GetHeader(ByVal name As String) As LongPtr","returnType":"LongPtr"},
+        {"name":"GetHeaders","kind":"function","vis":"public","signature":"Function GetHeaders(ByVal name As String) As ICoreWebView2HttpHeadersCollectionIterator","returnType":"ICoreWebView2HttpHeadersCollectionIterator"},
+        {"name":"GetIterator","kind":"function","vis":"public","signature":"Function GetIterator() As ICoreWebView2HttpHeadersCollectionIterator","returnType":"ICoreWebView2HttpHeadersCollectionIterator"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2IsDefaultDownloadDialogOpenChangedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2IsDefaultDownloadDialogOpenChangedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"3117da26-ae13-438d-bd46-edbeb2c4ce81\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2IsDocumentPlayingAudioChangedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2IsDocumentPlayingAudioChangedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"5DEF109A-2F4B-49FA-B7F6-11C39E513328\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2IsMutedChangedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2IsMutedChangedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"57D90347-CD0E-4952-A4A2-7483A2756F08\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2MoveFocusRequestedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2MoveFocusRequestedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"69035451-6dc7-4cb8-9bce-b2bd70ad289f\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2NavigationCompletedEventArgs",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2NavigationCompletedEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2NavigationCompletedEventArgs Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"30d68b7d-20d9-4752-a9ca-ec8448fbb5c1\""}],
+      "members": [
+        {"name":"IsSuccess","kind":"property","vis":"public","signature":"Property Get IsSuccess() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"NavigationId","kind":"property","vis":"public","signature":"Property Get NavigationId() As LongLong","returnType":"LongLong","accessor":"Get"},
+        {"name":"WebErrorStatus","kind":"property","vis":"public","signature":"Property Get WebErrorStatus() As wv2ErrorStatus","returnType":"wv2ErrorStatus","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2NavigationCompletedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2NavigationCompletedEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2NavigationCompletedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"d33a35bf-1c49-4f98-93ab-006e0533fe1c\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2, ByVal Args As ICoreWebView2NavigationCompletedEventArgs)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2NavigationStartingEventArgs",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2NavigationStartingEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2NavigationStartingEventArgs Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"5b495469-e119-438a-9b18-7604f25f2e49\""}],
+      "members": [
+        {"name":"Cancel","kind":"property","vis":"public","signature":"Property Get Cancel() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Cancel","kind":"property","vis":"public","signature":"Property Let Cancel(ByVal Value As Long)","accessor":"Let"},
+        {"name":"IsRedirected","kind":"property","vis":"public","signature":"Property Get IsRedirected() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsUserInitiated","kind":"property","vis":"public","signature":"Property Get IsUserInitiated() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"NavigationId","kind":"property","vis":"public","signature":"Property Get NavigationId() As LongLong","returnType":"LongLong","accessor":"Get"},
+        {"name":"RequestHeaders","kind":"property","vis":"public","signature":"Property Get RequestHeaders() As ICoreWebView2HttpRequestHeaders","returnType":"ICoreWebView2HttpRequestHeaders","accessor":"Get"},
+        {"name":"Uri","kind":"property","vis":"public","signature":"Property Get Uri() As LongPtr","returnType":"LongPtr","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2NavigationStartingEventArgs2",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2NavigationStartingEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2NavigationStartingEventArgs2 Extends ICoreWebView2NavigationStartingEventArgs",
+      "extends": "ICoreWebView2NavigationStartingEventArgs",
+      "attrs": [{"name":"InterfaceId","args":"\"9086BE93-91AA-472D-A7E0-579F2BA006AD\""}],
+      "members": [
+        {"name":"AdditionalAllowedFrameAncestors","kind":"property","vis":"public","signature":"Property Get AdditionalAllowedFrameAncestors() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"AdditionalAllowedFrameAncestors","kind":"property","vis":"public","signature":"Property Let AdditionalAllowedFrameAncestors(ByVal Value As LongPtr)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2NavigationStartingEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2NavigationStartingEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2NavigationStartingEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"9adbe429-f36d-432b-9ddc-f8881fbd76e3\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2, ByVal Args As ICoreWebView2NavigationStartingEventArgs)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2NewBrowserVersionAvailableEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2NewBrowserVersionAvailableEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"f9a2976e-d34e-44fc-adee-81b6b57ca914\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2NewWindowRequestedEventArgs",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2NewWindowRequestedEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2NewWindowRequestedEventArgs Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"34acb11c-fc37-4418-9132-f9c21d1eafb9\""}],
+      "members": [
+        {"name":"GetDeferral","kind":"function","vis":"public","signature":"Function GetDeferral() As ICoreWebView2Deferral","returnType":"ICoreWebView2Deferral"},
+        {"name":"Handled","kind":"property","vis":"public","signature":"Property Let Handled(ByVal Value As Long)","accessor":"Let"},
+        {"name":"Handled","kind":"property","vis":"public","signature":"Property Get Handled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsUserInitiated","kind":"property","vis":"public","signature":"Property Get IsUserInitiated() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"NewWindow","kind":"property","vis":"public","signature":"Property Let NewWindow(ByVal Value As ICoreWebView2)","accessor":"Let"},
+        {"name":"NewWindow","kind":"property","vis":"public","signature":"Property Get NewWindow() As ICoreWebView2","returnType":"ICoreWebView2","accessor":"Get"},
+        {"name":"Uri","kind":"property","vis":"public","signature":"Property Get Uri() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"WindowFeatures","kind":"property","vis":"public","signature":"Property Get WindowFeatures() As ICoreWebView2WindowFeatures","returnType":"ICoreWebView2WindowFeatures","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2NewWindowRequestedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2NewWindowRequestedEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2NewWindowRequestedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"d4c185fe-c81c-4989-97af-2d3fa7ab5651\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2NewWindowRequestedEventArgs)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2PermissionRequestedEventArgs",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2PermissionRequestedEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2PermissionRequestedEventArgs Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"973ae2ef-ff18-4894-8fb2-3c758f046810\""}],
+      "members": [
+        {"name":"GetDeferral","kind":"function","vis":"public","signature":"Function GetDeferral() As ICoreWebView2Deferral","returnType":"ICoreWebView2Deferral"},
+        {"name":"IsUserInitiated","kind":"property","vis":"public","signature":"Property Get IsUserInitiated() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"PermissionKind","kind":"property","vis":"public","signature":"Property Get PermissionKind() As wv2PermissionKind","returnType":"wv2PermissionKind","accessor":"Get"},
+        {"name":"State","kind":"property","vis":"public","signature":"Property Get State() As wv2PermissionState","returnType":"wv2PermissionState","accessor":"Get"},
+        {"name":"State","kind":"property","vis":"public","signature":"Property Let State(ByVal Value As wv2PermissionState)","accessor":"Let"},
+        {"name":"Uri","kind":"property","vis":"public","signature":"Property Get Uri() As LongPtr","returnType":"LongPtr","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2PermissionRequestedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2PermissionRequestedEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2PermissionRequestedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"15e1c6a3-c72a-4df3-91d7-d097fbec6bfd\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2PermissionRequestedEventArgs)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2PointerInfo",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2PointerInfo Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"e6995887-d10d-4f5d-9359-4ce46e4f96b9\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2PrintSettings",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2PrintSettings.twin",
+      "signature": "Private Interface ICoreWebView2PrintSettings Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"377f3721-c74e-48ca-8db1-df68e51d60e2\""}],
+      "members": [
+        {"name":"FooterUri","kind":"property","vis":"public","signature":"Property Get FooterUri() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"FooterUri","kind":"property","vis":"public","signature":"Property Let FooterUri(ByVal Value As LongPtr)","accessor":"Let"},
+        {"name":"HeaderTitle","kind":"property","vis":"public","signature":"Property Get HeaderTitle() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"HeaderTitle","kind":"property","vis":"public","signature":"Property Let HeaderTitle(ByVal Value As LongPtr)","accessor":"Let"},
+        {"name":"MarginBottom","kind":"property","vis":"public","signature":"Property Get MarginBottom() As Double","returnType":"Double","accessor":"Get"},
+        {"name":"MarginBottom","kind":"property","vis":"public","signature":"Property Let MarginBottom(ByVal Value As Double)","accessor":"Let"},
+        {"name":"MarginLeft","kind":"property","vis":"public","signature":"Property Get MarginLeft() As Double","returnType":"Double","accessor":"Get"},
+        {"name":"MarginLeft","kind":"property","vis":"public","signature":"Property Let MarginLeft(ByVal Value As Double)","accessor":"Let"},
+        {"name":"MarginRight","kind":"property","vis":"public","signature":"Property Get MarginRight() As Double","returnType":"Double","accessor":"Get"},
+        {"name":"MarginRight","kind":"property","vis":"public","signature":"Property Let MarginRight(ByVal Value As Double)","accessor":"Let"},
+        {"name":"MarginTop","kind":"property","vis":"public","signature":"Property Get MarginTop() As Double","returnType":"Double","accessor":"Get"},
+        {"name":"MarginTop","kind":"property","vis":"public","signature":"Property Let MarginTop(ByVal Value As Double)","accessor":"Let"},
+        {"name":"Orientation","kind":"property","vis":"public","signature":"Property Get Orientation() As wv2PrintOrientation","returnType":"wv2PrintOrientation","accessor":"Get"},
+        {"name":"Orientation","kind":"property","vis":"public","signature":"Property Let Orientation(ByVal Value As wv2PrintOrientation)","accessor":"Let"},
+        {"name":"PageHeight","kind":"property","vis":"public","signature":"Property Get PageHeight() As Double","returnType":"Double","accessor":"Get"},
+        {"name":"PageHeight","kind":"property","vis":"public","signature":"Property Let PageHeight(ByVal Value As Double)","accessor":"Let"},
+        {"name":"PageWidth","kind":"property","vis":"public","signature":"Property Get PageWidth() As Double","returnType":"Double","accessor":"Get"},
+        {"name":"PageWidth","kind":"property","vis":"public","signature":"Property Let PageWidth(ByVal Value As Double)","accessor":"Let"},
+        {"name":"ScaleFactor","kind":"property","vis":"public","signature":"Property Get ScaleFactor() As Double","returnType":"Double","accessor":"Get"},
+        {"name":"ScaleFactor","kind":"property","vis":"public","signature":"Property Let ScaleFactor(ByVal Value As Double)","accessor":"Let"},
+        {"name":"ShouldPrintBackgrounds","kind":"property","vis":"public","signature":"Property Get ShouldPrintBackgrounds() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"ShouldPrintBackgrounds","kind":"property","vis":"public","signature":"Property Let ShouldPrintBackgrounds(ByVal Value As Long)","accessor":"Let"},
+        {"name":"ShouldPrintHeaderAndFooter","kind":"property","vis":"public","signature":"Property Get ShouldPrintHeaderAndFooter() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"ShouldPrintHeaderAndFooter","kind":"property","vis":"public","signature":"Property Let ShouldPrintHeaderAndFooter(ByVal Value As Long)","accessor":"Let"},
+        {"name":"ShouldPrintSelectionOnly","kind":"property","vis":"public","signature":"Property Get ShouldPrintSelectionOnly() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"ShouldPrintSelectionOnly","kind":"property","vis":"public","signature":"Property Let ShouldPrintSelectionOnly(ByVal Value As Long)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2PrintToPdfCompletedHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2PrintToPdfCompletedHandler.twin",
+      "signature": "Private Interface ICoreWebView2PrintToPdfCompletedHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"ccf1ef04-fd8e-4d5f-b2de-0983e41b8c36\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal errorCode As Long, ByVal isSuccessful As Long)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2ProcessFailedEventArgs",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2ProcessFailedEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2ProcessFailedEventArgs Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"8155a9a4-1474-4a86-8cae-151b0fa6b8ca\""}],
+      "members": [
+        {"name":"ProcessFailedKind","kind":"property","vis":"public","signature":"Property Get ProcessFailedKind() As wv2ProcessFailedKind","returnType":"wv2ProcessFailedKind","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2ProcessFailedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2ProcessFailedEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2ProcessFailedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"79e0aea4-990b-42d9-aa1d-0fcc2e5bc7f1\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2ProcessFailedEventArgs)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2ProcessInfoCollection",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2ProcessInfoCollection Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"402B99CD-A0CC-4FA5-B7A5-51D86A1D2339\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2ProcessInfosChangedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2ProcessInfosChangedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"F4AF0C39-44B9-40E9-8B11-0484CFB9E0A1\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2ScriptDialogOpeningEventArgs",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2ScriptDialogOpeningEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2ScriptDialogOpeningEventArgs Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"7390bb70-abe0-4843-9529-f143b31b03d6\""}],
+      "members": [
+        {"name":"Accept","kind":"sub","vis":"public","signature":"Sub Accept()"},
+        {"name":"DefaultText","kind":"property","vis":"public","signature":"Property Get DefaultText() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"GetDeferral","kind":"function","vis":"public","signature":"Function GetDeferral() As ICoreWebView2Deferral","returnType":"ICoreWebView2Deferral"},
+        {"name":"Kind","kind":"property","vis":"public","signature":"Property Get Kind() As wv2ScriptDialogKind","returnType":"wv2ScriptDialogKind","accessor":"Get"},
+        {"name":"Message","kind":"property","vis":"public","signature":"Property Get Message() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"ResultText","kind":"property","vis":"public","signature":"Property Get ResultText() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"ResultText","kind":"property","vis":"public","signature":"Property Let ResultText(ByVal Value As LongPtr)","accessor":"Let"},
+        {"name":"Uri","kind":"property","vis":"public","signature":"Property Get Uri() As LongPtr","returnType":"LongPtr","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2ScriptDialogOpeningEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2ScriptDialogOpeningEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2ScriptDialogOpeningEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"ef381bf9-afa8-4e37-91c4-8ac48524bdfb\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2ScriptDialogOpeningEventArgs)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Settings",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Settings.twin",
+      "signature": "Private Interface ICoreWebView2Settings Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"e562e4f0-d7fa-43ac-8d71-c05150499f00\""}],
+      "members": [
+        {"name":"AreDefaultContextMenusEnabled","kind":"property","vis":"public","signature":"Property Get AreDefaultContextMenusEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"AreDefaultContextMenusEnabled","kind":"property","vis":"public","signature":"Property Let AreDefaultContextMenusEnabled(ByVal Value As Long)","accessor":"Let"},
+        {"name":"AreDefaultScriptDialogsEnabled","kind":"property","vis":"public","signature":"Property Get AreDefaultScriptDialogsEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"AreDefaultScriptDialogsEnabled","kind":"property","vis":"public","signature":"Property Let AreDefaultScriptDialogsEnabled(ByVal Value As Long)","accessor":"Let"},
+        {"name":"AreDevToolsEnabled","kind":"property","vis":"public","signature":"Property Get AreDevToolsEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"AreDevToolsEnabled","kind":"property","vis":"public","signature":"Property Let AreDevToolsEnabled(ByVal Value As Long)","accessor":"Let"},
+        {"name":"AreHostObjectsAllowed","kind":"property","vis":"public","signature":"Property Get AreHostObjectsAllowed() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"AreHostObjectsAllowed","kind":"property","vis":"public","signature":"Property Let AreHostObjectsAllowed(ByVal Value As Long)","accessor":"Let"},
+        {"name":"IsBuiltInErrorPageEnabled","kind":"property","vis":"public","signature":"Property Get IsBuiltInErrorPageEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsBuiltInErrorPageEnabled","kind":"property","vis":"public","signature":"Property Let IsBuiltInErrorPageEnabled(ByVal Value As Long)","accessor":"Let"},
+        {"name":"IsScriptEnabled","kind":"property","vis":"public","signature":"Property Get IsScriptEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsScriptEnabled","kind":"property","vis":"public","signature":"Property Let IsScriptEnabled(ByVal Value As Long)","accessor":"Let"},
+        {"name":"IsStatusBarEnabled","kind":"property","vis":"public","signature":"Property Get IsStatusBarEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsStatusBarEnabled","kind":"property","vis":"public","signature":"Property Let IsStatusBarEnabled(ByVal Value As Long)","accessor":"Let"},
+        {"name":"IsWebMessageEnabled","kind":"property","vis":"public","signature":"Property Get IsWebMessageEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsWebMessageEnabled","kind":"property","vis":"public","signature":"Property Let IsWebMessageEnabled(ByVal Value As Long)","accessor":"Let"},
+        {"name":"IsZoomControlEnabled","kind":"property","vis":"public","signature":"Property Get IsZoomControlEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsZoomControlEnabled","kind":"property","vis":"public","signature":"Property Let IsZoomControlEnabled(ByVal Value As Long)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Settings2",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Settings.twin",
+      "signature": "Private Interface ICoreWebView2Settings2 Extends ICoreWebView2Settings",
+      "extends": "ICoreWebView2Settings",
+      "attrs": [{"name":"InterfaceId","args":"\"ee9a0f68-f46c-4e32-ac23-ef8cac224d2a\""}],
+      "members": [
+        {"name":"UserAgent","kind":"property","vis":"public","signature":"Property Get UserAgent() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"UserAgent","kind":"property","vis":"public","signature":"Property Let UserAgent(ByVal Value As LongPtr)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Settings3",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Settings.twin",
+      "signature": "Private Interface ICoreWebView2Settings3 Extends ICoreWebView2Settings2",
+      "extends": "ICoreWebView2Settings2",
+      "attrs": [{"name":"InterfaceId","args":"\"fdb5ab74-af33-4854-84f0-0a631deb5eba\""}],
+      "members": [
+        {"name":"AreBrowserAcceleratorKeysEnabled","kind":"property","vis":"public","signature":"Property Get AreBrowserAcceleratorKeysEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"AreBrowserAcceleratorKeysEnabled","kind":"property","vis":"public","signature":"Property Let AreBrowserAcceleratorKeysEnabled(ByVal Value As Long)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Settings4",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Settings.twin",
+      "signature": "Private Interface ICoreWebView2Settings4 Extends ICoreWebView2Settings3",
+      "extends": "ICoreWebView2Settings3",
+      "attrs": [{"name":"InterfaceId","args":"\"cb56846c-4168-4d53-b04f-03b6d6796ff2\""}],
+      "members": [
+        {"name":"IsGeneralAutoFillEnabled","kind":"property","vis":"public","signature":"Property Get IsGeneralAutoFillEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsGeneralAutoFillEnabled","kind":"property","vis":"public","signature":"Property Let IsGeneralAutoFillEnabled(ByVal Value As Long)","accessor":"Let"},
+        {"name":"IsPasswordAutoSaveEnabled","kind":"property","vis":"public","signature":"Property Get IsPasswordAutoSaveEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsPasswordAutoSaveEnabled","kind":"property","vis":"public","signature":"Property Let IsPasswordAutoSaveEnabled(ByVal Value As Long)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Settings5",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Settings.twin",
+      "signature": "Private Interface ICoreWebView2Settings5 Extends ICoreWebView2Settings4",
+      "extends": "ICoreWebView2Settings4",
+      "attrs": [{"name":"InterfaceId","args":"\"183e7052-1d03-43a0-ab99-98e043b66b39\""}],
+      "members": [
+        {"name":"IsPinchZoomEnabled","kind":"property","vis":"public","signature":"Property Get IsPinchZoomEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsPinchZoomEnabled","kind":"property","vis":"public","signature":"Property Let IsPinchZoomEnabled(ByVal Value As Long)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2Settings6",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2Settings.twin",
+      "signature": "Private Interface ICoreWebView2Settings6 Extends ICoreWebView2Settings5",
+      "extends": "ICoreWebView2Settings5",
+      "attrs": [{"name":"InterfaceId","args":"\"11cb3acd-9bc8-43b8-83bf-f40753714f87\""}],
+      "members": [
+        {"name":"IsSwipeNavigationEnabled","kind":"property","vis":"public","signature":"Property Get IsSwipeNavigationEnabled() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsSwipeNavigationEnabled","kind":"property","vis":"public","signature":"Property Let IsSwipeNavigationEnabled(ByVal Value As Long)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2SourceChangedEventArgs",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2SourceChangedEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2SourceChangedEventArgs Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"31e0e545-1dba-4266-8914-f63848a1f7d7\""}],
+      "members": [
+        {"name":"IsNewDocument","kind":"property","vis":"public","signature":"Property Get IsNewDocument() As Long","returnType":"Long","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2SourceChangedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2SourceChangedEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2SourceChangedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"3c067f9f-5388-4772-8b48-79f7ef1ab37c\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2, ByVal Args As ICoreWebView2SourceChangedEventArgs)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2TrySuspendCompletedHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2TrySuspendCompletedHandler.twin",
+      "signature": "Private Interface ICoreWebView2TrySuspendCompletedHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"00F206A7-9D17-4605-91F6-4E8E4DE192E3\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal errorCode As Long, ByVal isSuccessful As Long)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2WebMessageReceivedEventArgs",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2WebMessageReceivedEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2WebMessageReceivedEventArgs Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"0f99a40c-e962-4207-9e92-e3d542eff849\""}],
+      "members": [
+        {"name":"Source","kind":"property","vis":"public","signature":"Property Get Source() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"TryGetWebMessageAsString","kind":"function","vis":"public","signature":"Function TryGetWebMessageAsString() As LongPtr","returnType":"LongPtr"},
+        {"name":"WebMessageAsJson","kind":"property","vis":"public","signature":"Property Get WebMessageAsJson() As LongPtr","returnType":"LongPtr","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2WebMessageReceivedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2WebMessageReceivedEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2WebMessageReceivedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"57213f19-00e6-49fa-8e07-898ea01ecbd2\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2WebMessageReceivedEventArgs)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2WebResourceRequest",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2WebResourceRequest.twin",
+      "signature": "Private Interface ICoreWebView2WebResourceRequest Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"97055cd4-512c-4264-8b5f-e3f446cea6a5\""}],
+      "members": [
+        {"name":"Content","kind":"property","vis":"public","signature":"Property Get Content() As VB.IStream","returnType":"VB.IStream","accessor":"Get"},
+        {"name":"Content","kind":"property","vis":"public","signature":"Property Set Content(ByVal Value As VB.IStream)","accessor":"Set"},
+        {"name":"Headers","kind":"property","vis":"public","signature":"Property Get Headers() As ICoreWebView2HttpRequestHeaders","returnType":"ICoreWebView2HttpRequestHeaders","accessor":"Get"},
+        {"name":"Method","kind":"property","vis":"public","signature":"Property Get Method() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"Method","kind":"property","vis":"public","signature":"Property Let Method(ByVal Value As LongPtr)","accessor":"Let"},
+        {"name":"Uri","kind":"property","vis":"public","signature":"Property Get Uri() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"Uri","kind":"property","vis":"public","signature":"Property Let Uri(ByVal Value As LongPtr)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2WebResourceRequestedEventArgs",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2WebResourceRequestedEventArgs.twin",
+      "signature": "Private Interface ICoreWebView2WebResourceRequestedEventArgs Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"453e667f-12c7-49d4-be6d-ddbe7956f57a\""}],
+      "members": [
+        {"name":"GetDeferral","kind":"function","vis":"public","signature":"Function GetDeferral() As ICoreWebView2Deferral","returnType":"ICoreWebView2Deferral"},
+        {"name":"Request","kind":"property","vis":"public","signature":"Property Get Request() As ICoreWebView2WebResourceRequest","returnType":"ICoreWebView2WebResourceRequest","accessor":"Get"},
+        {"name":"ResourceContext","kind":"property","vis":"public","signature":"Property Get ResourceContext() As wv2WebResourceContext","returnType":"wv2WebResourceContext","accessor":"Get"},
+        {"name":"Response","kind":"property","vis":"public","signature":"Property Get Response() As ICoreWebView2WebResourceResponse","returnType":"ICoreWebView2WebResourceResponse","accessor":"Get"},
+        {"name":"Response","kind":"property","vis":"public","signature":"Property Set Response(ByVal Value As ICoreWebView2WebResourceResponse)","accessor":"Set"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2WebResourceRequestedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2WebResourceRequestedEventHandler.twin",
+      "signature": "Private Interface ICoreWebView2WebResourceRequestedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"ab00b74c-15f1-4646-80e8-e76341d25d71\""}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2WebResourceRequestedEventArgs)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2WebResourceResponse",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2WebResourceResponse.twin",
+      "signature": "Private Interface ICoreWebView2WebResourceResponse Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"aafcc94f-fa27-48fd-97df-830ef75aaec9\""}],
+      "members": [
+        {"name":"Content","kind":"property","vis":"public","signature":"Property Get Content() As VB.IStream","returnType":"VB.IStream","accessor":"Get"},
+        {"name":"Content","kind":"property","vis":"public","signature":"Property Set Content(ByVal Value As VB.IStream)","accessor":"Set"},
+        {"name":"Headers","kind":"property","vis":"public","signature":"Property Get Headers() As ICoreWebView2HttpResponseHeaders","returnType":"ICoreWebView2HttpResponseHeaders","accessor":"Get"},
+        {"name":"ReasonPhrase","kind":"property","vis":"public","signature":"Property Get ReasonPhrase() As LongPtr","returnType":"LongPtr","accessor":"Get"},
+        {"name":"ReasonPhrase","kind":"property","vis":"public","signature":"Property Let ReasonPhrase(ByVal Value As LongPtr)","accessor":"Let"},
+        {"name":"StatusCode","kind":"property","vis":"public","signature":"Property Get StatusCode() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"StatusCode","kind":"property","vis":"public","signature":"Property Let StatusCode(ByVal Value As Long)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2WebResourceResponseReceivedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2WebResourceResponseReceivedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"7DE9898A-24F5-40C3-A2DE-D4F458E69828\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2WindowCloseRequestedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2WindowCloseRequestedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"5c19e9e0-092f-486b-affa-ca8231913039\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2WindowFeatures",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2WindowFeatures.twin",
+      "signature": "Private Interface ICoreWebView2WindowFeatures Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"5eaf559f-b46e-4397-8860-e422f287ff1e\""}],
+      "members": [
+        {"name":"HasPosition","kind":"property","vis":"public","signature":"Property Get HasPosition() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"HasSize","kind":"property","vis":"public","signature":"Property Get HasSize() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Height","kind":"property","vis":"public","signature":"Property Get Height() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Left","kind":"property","vis":"public","signature":"Property Get Left() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"ShouldDisplayMenuBar","kind":"property","vis":"public","signature":"Property Get ShouldDisplayMenuBar() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"ShouldDisplayScrollBars","kind":"property","vis":"public","signature":"Property Get ShouldDisplayScrollBars() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"ShouldDisplayStatus","kind":"property","vis":"public","signature":"Property Get ShouldDisplayStatus() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"ShouldDisplayToolbar","kind":"property","vis":"public","signature":"Property Get ShouldDisplayToolbar() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Top","kind":"property","vis":"public","signature":"Property Get Top() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Width","kind":"property","vis":"public","signature":"Property Get Width() As Long","returnType":"Long","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2ZoomFactorChangedEventHandler",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/NotYetSupported.twin",
+      "signature": "Private Interface ICoreWebView2ZoomFactorChangedEventHandler Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"b52d71d6-c4df-4543-a90c-64a3e60f38cb\""}],
+      "members": []
+    },
+    {
+      "name": "ICoreWebView2_2",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2.twin",
+      "signature": "Private Interface ICoreWebView2_2 Extends ICoreWebView2",
+      "extends": "ICoreWebView2",
+      "attrs": [{"name":"InterfaceId","args":"\"9E8F0CF8-E670-4B5E-B2BC-73E061E3184C\""}],
+      "members": [
+        {"name":"NavigateWithWebResourceRequest","kind":"sub","vis":"public","signature":"Sub NavigateWithWebResourceRequest(ByVal request As ICoreWebView2WebResourceRequest)"},
+        {"name":"add_DOMContentLoaded","kind":"sub","vis":"public","signature":"Sub add_DOMContentLoaded(ByVal eventHandler As ICoreWebView2DOMContentLoadedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_WebResourceResponseReceived","kind":"sub","vis":"public","signature":"Sub add_WebResourceResponseReceived(ByVal eventHandler As ICoreWebView2WebResourceResponseReceivedEventHandler, ByRef token As LongLong)"},
+        {"name":"get_CookieManager","kind":"function","vis":"public","signature":"Function get_CookieManager() As ICoreWebView2CookieManager","returnType":"ICoreWebView2CookieManager"},
+        {"name":"get_Environment","kind":"function","vis":"public","signature":"Function get_Environment() As ICoreWebView2Environment","returnType":"ICoreWebView2Environment"},
+        {"name":"remove_DOMContentLoaded","kind":"sub","vis":"public","signature":"Sub remove_DOMContentLoaded(ByVal token As LongLong)"},
+        {"name":"remove_WebResourceResponseReceived","kind":"sub","vis":"public","signature":"Sub remove_WebResourceResponseReceived(ByVal token As LongLong)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2_3",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2.twin",
+      "signature": "Private Interface ICoreWebView2_3 Extends ICoreWebView2_2",
+      "extends": "ICoreWebView2_2",
+      "attrs": [{"name":"InterfaceId","args":"\"A0D6DF20-3B92-416D-AA0C-437A9C727857\""}],
+      "members": [
+        {"name":"ClearVirtualHostNameToFolderMapping","kind":"sub","vis":"public","signature":"Sub ClearVirtualHostNameToFolderMapping(ByVal hostName As String)"},
+        {"name":"Resume","kind":"sub","vis":"public","signature":"Sub Resume()"},
+        {"name":"SetVirtualHostNameToFolderMapping","kind":"sub","vis":"public","signature":"Sub SetVirtualHostNameToFolderMapping(ByVal hostName As String, ByVal folderPath As String, ByVal accessKind As wv2HostResourceAccessKind)"},
+        {"name":"TrySuspend","kind":"sub","vis":"public","signature":"Sub TrySuspend(ByVal eventHandler As ICoreWebView2TrySuspendCompletedHandler)"},
+        {"name":"get_IsSuspended","kind":"function","vis":"public","signature":"Function get_IsSuspended() As Long","returnType":"Long"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2_4",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2.twin",
+      "signature": "Private Interface ICoreWebView2_4 Extends ICoreWebView2_3",
+      "extends": "ICoreWebView2_3",
+      "attrs": [{"name":"InterfaceId","args":"\"20d02d59-6df2-42dc-bd06-f98a694b1302\""}],
+      "members": [
+        {"name":"add_DownloadStarting","kind":"sub","vis":"public","signature":"Sub add_DownloadStarting(ByVal eventHandler As ICoreWebView2DownloadStartingEventHandler, ByRef token As LongLong)"},
+        {"name":"add_FrameCreated","kind":"sub","vis":"public","signature":"Sub add_FrameCreated(ByVal eventHandler As ICoreWebView2FrameCreatedEventHandler, ByRef token As LongLong)"},
+        {"name":"remove_DownloadStarting","kind":"sub","vis":"public","signature":"Sub remove_DownloadStarting(ByVal token As LongLong)"},
+        {"name":"remove_FrameCreated","kind":"sub","vis":"public","signature":"Sub remove_FrameCreated(ByVal token As LongLong)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2_5",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2.twin",
+      "signature": "Private Interface ICoreWebView2_5 Extends ICoreWebView2_4",
+      "extends": "ICoreWebView2_4",
+      "attrs": [{"name":"InterfaceId","args":"\"bedb11b8-d63c-11eb-b8bc-0242ac130003\""}],
+      "members": [
+        {"name":"add_ClientCertificateRequested","kind":"sub","vis":"public","signature":"Sub add_ClientCertificateRequested(ByVal eventHandler As ICoreWebView2ClientCertificateRequestedEventHandler, ByRef token As LongLong)"},
+        {"name":"remove_ClientCertificateRequested","kind":"sub","vis":"public","signature":"Sub remove_ClientCertificateRequested(ByVal token As LongLong)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2_6",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2.twin",
+      "signature": "Private Interface ICoreWebView2_6 Extends ICoreWebView2_5",
+      "extends": "ICoreWebView2_5",
+      "attrs": [{"name":"InterfaceId","args":"\"499aadac-d92c-4589-8a75-111bfc167795\""}],
+      "members": [
+        {"name":"OpenTaskManagerWindow","kind":"sub","vis":"public","signature":"Sub OpenTaskManagerWindow()"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2_7",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2.twin",
+      "signature": "Private Interface ICoreWebView2_7 Extends ICoreWebView2_6",
+      "extends": "ICoreWebView2_6",
+      "attrs": [{"name":"InterfaceId","args":"\"79c24d83-09a3-45ae-9418-487f32a58740\""}],
+      "members": [
+        {"name":"PrintToPdf","kind":"sub","vis":"public","signature":"Sub PrintToPdf(ByVal resultFilePath As String, ByVal printSettings As ICoreWebView2PrintSettings, ByVal eventHandler As ICoreWebView2PrintToPdfCompletedHandler)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2_8",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2.twin",
+      "signature": "Private Interface ICoreWebView2_8 Extends ICoreWebView2_7",
+      "extends": "ICoreWebView2_7",
+      "attrs": [{"name":"InterfaceId","args":"\"E9632730-6E1E-43AB-B7B8-7B2C9E62E094\""}],
+      "members": [
+        {"name":"IsDocumentPlayingAudio","kind":"property","vis":"public","signature":"Property Get IsDocumentPlayingAudio() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsMuted","kind":"property","vis":"public","signature":"Property Get IsMuted() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"IsMuted","kind":"property","vis":"public","signature":"Property Let IsMuted(ByVal Value As Long)","accessor":"Let"},
+        {"name":"add_IsDocumentPlayingAudioChanged","kind":"sub","vis":"public","signature":"Sub add_IsDocumentPlayingAudioChanged(ByVal eventHandler As ICoreWebView2IsDocumentPlayingAudioChangedEventHandler, ByRef token As LongLong)"},
+        {"name":"add_IsMutedChanged","kind":"sub","vis":"public","signature":"Sub add_IsMutedChanged(ByVal eventHandler As ICoreWebView2IsMutedChangedEventHandler, ByRef token As LongLong)"},
+        {"name":"remove_IsDocumentPlayingAudioChanged","kind":"sub","vis":"public","signature":"Sub remove_IsDocumentPlayingAudioChanged(ByVal token As LongLong)"},
+        {"name":"remove_IsMutedChanged","kind":"sub","vis":"public","signature":"Sub remove_IsMutedChanged(ByVal token As LongLong)"}
+      ]
+    },
+    {
+      "name": "ICoreWebView2_9",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/ICoreWebView2.twin",
+      "signature": "Private Interface ICoreWebView2_9 Extends ICoreWebView2_8",
+      "extends": "ICoreWebView2_8",
+      "attrs": [{"name":"InterfaceId","args":"\"4d7b2eab-9fdc-468d-b998-a9260b5ed651\""}],
+      "members": [
+        {"name":"CloseDefaultDownloadDialog","kind":"sub","vis":"public","signature":"Sub CloseDefaultDownloadDialog()"},
+        {"name":"DefaultDownloadDialogCornerAlignment","kind":"property","vis":"public","signature":"Property Get DefaultDownloadDialogCornerAlignment() As wv2DefaultDownloadCornerAlign","returnType":"wv2DefaultDownloadCornerAlign","accessor":"Get"},
+        {"name":"DefaultDownloadDialogCornerAlignment","kind":"property","vis":"public","signature":"Property Let DefaultDownloadDialogCornerAlignment(ByVal Value As wv2DefaultDownloadCornerAlign)","accessor":"Let"},
+        {"name":"DefaultDownloadDialogMargin","kind":"property","vis":"public","signature":"Property Get DefaultDownloadDialogMargin() As VB.POINT","returnType":"VB.POINT","accessor":"Get"},
+        {"name":"DefaultDownloadDialogMargin","kind":"property","vis":"public","signature":"Property Let DefaultDownloadDialogMargin(ByRef Value As VB.POINT)","accessor":"Let"},
+        {"name":"DefaultDownloadDialogMargin","kind":"property","vis":"public","signature":"Property Let DefaultDownloadDialogMargin(ByVal ValueX As Long, ByVal ValueY As Long)","accessor":"Let"},
+        {"name":"IsDefaultDownloadDialogOpen","kind":"property","vis":"public","signature":"Property Get IsDefaultDownloadDialogOpen() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"OpenDefaultDownloadDialog","kind":"sub","vis":"public","signature":"Sub OpenDefaultDownloadDialog()"},
+        {"name":"add_IsDefaultDownloadDialogOpenChanged","kind":"sub","vis":"public","signature":"Sub add_IsDefaultDownloadDialogOpenChanged(ByVal eventHandler As ICoreWebView2IsDefaultDownloadDialogOpenChangedEventHandler, ByRef token As LongLong)"},
+        {"name":"remove_IsDefaultDownloadDialogOpenChanged","kind":"sub","vis":"public","signature":"Sub remove_IsDefaultDownloadDialogOpenChanged(ByVal token As LongLong)"}
+      ]
+    },
+    {
+      "name": "IDeferredCallback",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Classes/WebView2DeferredCallback.twin",
+      "signature": "Interface IDeferredCallback",
+      "attrs": [{"name":"InterfaceId","args":"\"80A3F5E4-4A34-4190-8A13-8AF6569E5B85\""}],
+      "members": [
+        {"name":"DownloadStarting","kind":"sub","vis":"public","signature":"Sub DownloadStarting(ByVal args As ICoreWebView2DownloadStartingEventArgs, ByVal Deferral As ICoreWebView2Deferral)"},
+        {"name":"NewWindowRequested","kind":"sub","vis":"public","signature":"Sub NewWindowRequested(ByVal args As ICoreWebView2NewWindowRequestedEventArgs, ByVal Deferral As ICoreWebView2Deferral)"},
+        {"name":"PermissionRequested","kind":"sub","vis":"public","signature":"Sub PermissionRequested(ByVal args As ICoreWebView2PermissionRequestedEventArgs, ByVal Deferral As ICoreWebView2Deferral)"},
+        {"name":"ScriptDialogOpening","kind":"sub","vis":"public","signature":"Sub ScriptDialogOpening(ByVal args As ICoreWebView2ScriptDialogOpeningEventArgs, ByVal Deferral As ICoreWebView2Deferral)"},
+        {"name":"WebResourceRequested","kind":"sub","vis":"public","signature":"Sub WebResourceRequested(ByVal args As ICoreWebView2WebResourceRequestedEventArgs, ByVal Deferral As ICoreWebView2Deferral)"}
+      ]
+    },
+    {
+      "name": "IEnumVARIANT",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Abstract/IEnumVARIANT.twin",
+      "signature": "Private Interface IEnumVARIANT Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"00020404-0000-0000-C000-000000000046\""}],
+      "members": [
+        {"name":"Clone","kind":"function","vis":"public","signature":"Function Clone() As IEnumVARIANT","returnType":"IEnumVARIANT"},
+        {"name":"Next","kind":"sub","vis":"public","signature":"Sub Next(ByVal celt As Long, ByRef rgVar As Variant, ByRef pCeltFetched As Long)"},
+        {"name":"Reset","kind":"sub","vis":"public","signature":"Sub Reset()"},
+        {"name":"Skip","kind":"sub","vis":"public","signature":"Sub Skip(ByVal celt As Long)"}
+      ]
+    },
+    {
+      "name": "IExecuteScriptCompleteCallback",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Classes/WebView2ExecuteScriptCompleteHandler.twin",
+      "signature": "Private Interface IExecuteScriptCompleteCallback Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"CBE70E33-3146-4EE5-8659-B3696A1EFCF2\""}],
+      "members": [
+        {"name":"ExecuteScriptComplete","kind":"sub","vis":"public","signature":"Sub ExecuteScriptComplete(ByVal Result As Variant, ByVal Token As LongLong, ByVal errorCode As Long)"}
+      ]
+    },
+    {
+      "name": "WebView2",
+      "kind": "class",
+      "vis": "public",
+      "file": "Classes/WebView2.twin",
+      "signature": "Class WebView2",
+      "inherits": ["VB.BaseControlFocusableNoFont"],
+      "implements": ["VB.IWindowElementEventsCommon","ControlAlt","VB.IWindowsControl","ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler","ICoreWebView2CreateCoreWebView2ControllerCompletedHandler","ICoreWebView2PermissionRequestedEventHandler","ICoreWebView2NavigationStartingEventHandler","ICoreWebView2NavigationCompletedEventHandler","ICoreWebView2SourceChangedEventHandler","ICoreWebView2AcceleratorKeyPressedEventHandler","ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler","ICoreWebView2WebResourceRequestedEventHandler","ICoreWebView2DocumentTitleChangedEventHandler","ICoreWebView2ProcessFailedEventHandler","ICoreWebView2ScriptDialogOpeningEventHandler","ICoreWebView2DOMContentLoadedEventHandler","ICoreWebView2TrySuspendCompletedHandler","ICoreWebView2DownloadStartingEventHandler","ICoreWebView2PrintToPdfCompletedHandler","ICoreWebView2NewWindowRequestedEventHandler","IExecuteScriptCompleteCallback","ICoreWebView2WebMessageReceivedEventHandler","IDeferredCallback"],
+      "attrs": [{"name":"WindowsControl","args":"\"/miscellaneous/ICONS/WebView2_48.png\""},{"name":"ClassId","args":"\"93B7E07E-6C7F-4758-8E51-4B1B17EC0A62\""},{"name":"InterfaceId","args":"\"8163681D-7C3C-4ADD-BCBC-B9A270D7E004\""},{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"AcceleratorKeyPressed","kind":"event","vis":"public","signature":"Public Event AcceleratorKeyPressed(ByRef KeyState As wv2KeyEventKind, ByVal IsExtendedKey As Boolean, ByVal WasKeyDown As Boolean, ByVal IsKeyReleased As Boolean, ByVal IsMenuKeyDown As Boolean, ByVal RepeatCount As Long, ByVal ScanCode As Long, ByRef IsHandled As Boolean)","description":"The AcceleratorKeyPressed event fires when accelerator keys have been pressed"},
+        {"name":"AcceleratorKeyPressedCallback","kind":"sub","vis":"private","signature":"Private Sub AcceleratorKeyPressedCallback(ByVal sender As ICoreWebView2Controller, ByVal args As ICoreWebView2AcceleratorKeyPressedEventArgs) Implements WebView2Package.ICoreWebView2AcceleratorKeyPressedEventHandler.Invoke"},
+        {"name":"AcceleratorKeyPressedDelegateToken","kind":"field","vis":"private","signature":"Private AcceleratorKeyPressedDelegateToken As LongLong"},
+        {"name":"AddObject","kind":"sub","vis":"public","signature":"Public Sub AddObject(ByVal ObjName As String, ByVal Object As Object, ByVal UseDeferredInvoke As Boolean = False)","description":"Makes a COM object accessible to the javascript side, through the chrome.webview.hostObjects.ObjName javascript syntax"},
+        {"name":"AddScriptToExecuteOnDocumentCreated","kind":"sub","vis":"public","signature":"Public Sub AddScriptToExecuteOnDocumentCreated(ByVal jsCode As String)","description":"Sets javascript code to be injected to every subsequent webpage that is navigated to.  Only takes effect on the next URL navigation."},
+        {"name":"AddScriptToExecuteOnDocumentCreatedCallback","kind":"sub","vis":"private","signature":"Private Sub AddScriptToExecuteOnDocumentCreatedCallback(ByVal errorCode As Long, ByVal id As LongPtr) Implements WebView2Package.ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler.Invoke"},
+        {"name":"AddWebResourceRequestedFilter","kind":"sub","vis":"public","signature":"Public Sub AddWebResourceRequestedFilter(ByVal sFilter As String, ByVal FilterContext As wv2WebResourceContext)","description":"Sets a URL filter that will trigger WebResourceRequested events.  Use * and ? for wildcard matching"},
+        {"name":"AdditionalAllowedFrameAncestors","kind":"field","vis":"public","signature":"Public AdditionalAllowedFrameAncestors As String"},
+        {"name":"AreBrowserAcceleratorKeysEnabled","kind":"property","vis":"public","signature":"Property Get AreBrowserAcceleratorKeysEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether all the default accelerator keys are enabled.  e.g. F5 for Reload.  Use AreBrowserAcceleratorKeysEnabled to check if this feature is supported."},
+        {"name":"AreBrowserAcceleratorKeysEnabled","kind":"property","vis":"public","signature":"Property Let AreBrowserAcceleratorKeysEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether all the default accelerator keys are enabled.  e.g. F5 for Reload. Use AreBrowserAcceleratorKeysEnabled to check if this feature is supported."},
+        {"name":"AreBrowserAcceleratorKeysEnabled_INIT","kind":"field","vis":"private","signature":"Private AreBrowserAcceleratorKeysEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"AreBrowserAcceleratorKeysEnabled\""}],"description":"Controls whether all the default accelerator keys are enabled.  e.g. F5 for Reload"},
+        {"name":"AreDefaultContextMenusEnabled","kind":"property","vis":"public","signature":"Property Get AreDefaultContextMenusEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether the default Edge context menus are enabled.  To use your own, set to False and listen for UserContextMenu events"},
+        {"name":"AreDefaultContextMenusEnabled","kind":"property","vis":"public","signature":"Property Let AreDefaultContextMenusEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether the default Edge context menus are enabled.  To use your own, set to False and listen for UserContextMenu events"},
+        {"name":"AreDefaultContextMenusEnabled_INIT","kind":"field","vis":"private","signature":"Private AreDefaultContextMenusEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"AreDefaultContextMenusEnabled\""}],"description":"Controls whether the default Edge context menus are enabled.  To use your own, set to False and listen for UserContextMenu events"},
+        {"name":"AreDefaultScriptDialogsEnabled","kind":"property","vis":"public","signature":"Property Get AreDefaultScriptDialogsEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether default script dialogs are enabled (e.g. javascript alert() function).  To implement your own dialogs, set this to False and listen for ScriptDialogOpening events"},
+        {"name":"AreDefaultScriptDialogsEnabled","kind":"property","vis":"public","signature":"Property Let AreDefaultScriptDialogsEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether default script dialogs are enabled (e.g. javascript alert() function).  To implement your own dialogs, set this to False and listen for ScriptDialogOpening events"},
+        {"name":"AreDefaultScriptDialogsEnabled_INIT","kind":"field","vis":"private","signature":"Private AreDefaultScriptDialogsEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"AreDefaultScriptDialogsEnabled\""}],"description":"Controls whether default script dialogs are enabled (e.g. javascript alert() function).  To implement your own dialogs, set this to False and listen for ScriptDialogOpening events"},
+        {"name":"AreDevToolsEnabled","kind":"property","vis":"public","signature":"Property Get AreDevToolsEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether the user is allowed to open DevTools via the Context Menu or accelerator keys (does not affect the OpenDevToolsWindow function)"},
+        {"name":"AreDevToolsEnabled","kind":"property","vis":"public","signature":"Property Let AreDevToolsEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether the user is allowed to open DevTools via the Context Menu or accelerator keys (does not affect the OpenDevToolsWindow function)"},
+        {"name":"AreDevToolsEnabled_INIT","kind":"field","vis":"private","signature":"Private AreDevToolsEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"AreDevToolsEnabled\""}],"description":"Controls whether the user is allowed to open DevTools via the Context Menu or accelerator keys (does not affect the OpenDevToolsWindow function)"},
+        {"name":"AreHostObjectsAllowed","kind":"property","vis":"public","signature":"Property Get AreHostObjectsAllowed() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether host COM objects can be shared with the javascript engine, using the AddObject feature"},
+        {"name":"AreHostObjectsAllowed","kind":"property","vis":"public","signature":"Property Let AreHostObjectsAllowed(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether host COM objects can be shared with the javascript engine, using the AddObject feature"},
+        {"name":"AreHostObjectsAllowed_INIT","kind":"field","vis":"private","signature":"Private AreHostObjectsAllowed_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"AreHostObjectsAllowed\""}],"description":"Controls whether host COM objects can be shared with the javascript engine, using the AddObject feature"},
+        {"name":"AsyncExecuteToken","kind":"field","vis":"private","signature":"Private AsyncExecuteToken As LongLong"},
+        {"name":"BackColor","kind":"field","vis":"public","signature":"Public BackColor As OLE_COLOR = &Ha0bd95","attrs":[{"name":"CustomDesigner","args":"\"designer_SpectrumWindows\""}],"description":"This is the color applied whilst the WebView2 is loading"},
+        {"name":"BrowserProcessId","kind":"property","vis":"public","signature":"Public Property Get BrowserProcessId() As Long","returnType":"Long","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Gets the ProcessID of the external browser EXE process"},
+        {"name":"BuildJsFuncString","kind":"function","vis":"private","signature":"Private Function BuildJsFuncString(ByVal FuncName As String, args() As Variant) As String","returnType":"String"},
+        {"name":"CacheSettingsObjects","kind":"sub","vis":"private","signature":"Private Sub CacheSettingsObjects()"},
+        {"name":"CacheWebViewObjects","kind":"sub","vis":"private","signature":"Private Sub CacheWebViewObjects()"},
+        {"name":"CallDevToolsProtocolMethod","kind":"sub","vis":"public","signature":"Public Sub CallDevToolsProtocolMethod(ByVal MethodName As String, ByVal ParamsAsJson As String, Optional CustomEventId As Variant)","description":"Sends protocol messages to the Developer Tools window.  If CustomEventId is provided, this will fire a DevToolsProtocolResponse event with the result."},
+        {"name":"CanGoBack","kind":"property","vis":"public","signature":"Public Property Get CanGoBack() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Determines if there is navigation history for the GoBack feature"},
+        {"name":"CanGoForward","kind":"property","vis":"public","signature":"Public Property Get CanGoForward() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Determines if there is navigation history for the GoForward feature"},
+        {"name":"Class_BeforeFirstMethodAccess","kind":"sub","vis":"private","signature":"Private Sub Class_BeforeFirstMethodAccess()"},
+        {"name":"Class_Terminate","kind":"sub","vis":"private","signature":"Private Sub Class_Terminate()"},
+        {"name":"ClearVirtualHostNameToFolderMapping","kind":"sub","vis":"public","signature":"Public Sub ClearVirtualHostNameToFolderMapping(ByVal hostName As String)","description":"Removes a virtual mapping of a specified hostname previously set with the SetVirtualHostNameToFolderMapping function.  Use SupportsFolderMappingFeatures to check if this feature is supported."},
+        {"name":"CloseDefaultDownloadDialog","kind":"sub","vis":"public","signature":"Public Sub CloseDefaultDownloadDialog()","description":"Closes the built-in Download manager dialog.  Use SupportsDownloadDialogFeatures to check if this feature is supported."},
+        {"name":"Controller","kind":"field","vis":"private","signature":"Private Controller As ICoreWebView2Controller"},
+        {"name":"CoreWebView","kind":"field","vis":"private","signature":"Private CoreWebView As ICoreWebView2"},
+        {"name":"CoreWebView2","kind":"field","vis":"private","signature":"Private CoreWebView2 As ICoreWebView2_2"},
+        {"name":"CoreWebView3","kind":"field","vis":"private","signature":"Private CoreWebView3 As ICoreWebView2_3"},
+        {"name":"CoreWebView4","kind":"field","vis":"private","signature":"Private CoreWebView4 As ICoreWebView2_4"},
+        {"name":"CoreWebView5","kind":"field","vis":"private","signature":"Private CoreWebView5 As ICoreWebView2_5"},
+        {"name":"CoreWebView6","kind":"field","vis":"private","signature":"Private CoreWebView6 As ICoreWebView2_6"},
+        {"name":"CoreWebView7","kind":"field","vis":"private","signature":"Private CoreWebView7 As ICoreWebView2_7"},
+        {"name":"CoreWebView8","kind":"field","vis":"private","signature":"Private CoreWebView8 As ICoreWebView2_8"},
+        {"name":"CoreWebView9","kind":"field","vis":"private","signature":"Private CoreWebView9 As ICoreWebView2_9"},
+        {"name":"Create","kind":"event","vis":"public","signature":"Public Event Create()","description":"The Create event fires just before the creation of the WebView2 control.  Use this to control EnvironmentOptions such as UserDataFolder"},
+        {"name":"CreateEventHasFired","kind":"field","vis":"private","signature":"Private CreateEventHasFired As Boolean"},
+        {"name":"DOMContentLoaded","kind":"event","vis":"public","signature":"Public Event DOMContentLoaded()","description":"The DOMContentLoaded event fires when the DOM document is fully loaded and ready to access from the javascript side"},
+        {"name":"DOMContentLoadedCallback","kind":"sub","vis":"private","signature":"Private Sub DOMContentLoadedCallback(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2DOMContentLoadedEventArgs) Implements WebView2Package.ICoreWebView2DOMContentLoadedEventHandler.Invoke"},
+        {"name":"DOMContentLoadedDelegateToken","kind":"field","vis":"private","signature":"Private DOMContentLoadedDelegateToken As LongLong"},
+        {"name":"DevToolsProtocolResponse","kind":"event","vis":"public","signature":"Public Event DevToolsProtocolResponse(ByVal CustomEventId As Variant, ByVal JsonResponse As String)","description":"The DevToolsProtocolResponse event fires in response to CallDevToolsProtocolMethod"},
+        {"name":"DocumentTitle","kind":"property","vis":"public","signature":"Public Property Get DocumentTitle() As String","returnType":"String","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Returns the current document title, as given by the HTML content"},
+        {"name":"DocumentTitleChanged","kind":"event","vis":"public","signature":"Public Event DocumentTitleChanged()","description":"The DocumentTitleChanged event fires when the DocumentTitle property has been updated, typically after page navigation"},
+        {"name":"DocumentTitleChangedCallback","kind":"sub","vis":"private","signature":"Private Sub DocumentTitleChangedCallback(ByVal sender As ICoreWebView2, ByVal args As stdole.IUnknown) Implements WebView2Package.ICoreWebView2DocumentTitleChangedEventHandler.Invoke"},
+        {"name":"DocumentTitleChangedDelegateToken","kind":"field","vis":"private","signature":"Private DocumentTitleChangedDelegateToken As LongLong"},
+        {"name":"DocumentURL","kind":"property","vis":"public","signature":"Public Property Get DocumentURL() As String","returnType":"String","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Returns the current document URL"},
+        {"name":"DocumentURL","kind":"property","vis":"public","signature":"Public Property Let DocumentURL(ByVal Value As String)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Sets the current document URL"},
+        {"name":"DocumentURL_INIT","kind":"field","vis":"private","signature":"Private DocumentURL_INIT As String = \"https://www.twinbasic.com\"","attrs":[{"name":"Serialize","args":"True, \"!DocumentURL\""}],"description":"Sets the URL to open.  URI requires protocol prefix, such as http://.  e.g. https://www.google.com"},
+        {"name":"DownloadStarting","kind":"event","vis":"public","signature":"Public Event DownloadStarting(ByRef ResultFilePath As String, ByRef Cancel As Boolean, ByRef Handled As Boolean)","description":"The DownloadStarting event fires when the user has clicked on something that will be downloaded, allowing you to override the download path or cancel the operation"},
+        {"name":"DownloadStartingCallback","kind":"sub","vis":"private","signature":"Private Sub DownloadStartingCallback(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2DownloadStartingEventArgs) Implements WebView2Package.ICoreWebView2DownloadStartingEventHandler.Invoke"},
+        {"name":"DownloadStartingDelegateToken","kind":"field","vis":"private","signature":"Private DownloadStartingDelegateToken As LongLong"},
+        {"name":"DownloadStarting_RaiseEvent","kind":"sub","vis":"private","signature":"Private Sub DownloadStarting_RaiseEvent(ByVal args As ICoreWebView2DownloadStartingEventArgs, ByVal Deferral As ICoreWebView2Deferral) Implements IDeferredCallback.DownloadStarting"},
+        {"name":"Environment","kind":"field","vis":"private","signature":"Private Environment As ICoreWebView2Environment"},
+        {"name":"EnvironmentOptions","kind":"field","vis":"public","signature":"Public EnvironmentOptions As WebView2EnvironmentOptions = New WebView2EnvironmentOptions"},
+        {"name":"Error","kind":"event","vis":"public","signature":"Public Event Error(ByVal code As Long, ByVal msg As String)","description":"The Error event is used to catch errors that occur during initialization of the WebView2 control"},
+        {"name":"ExecuteScript","kind":"sub","vis":"public","signature":"Public Sub ExecuteScript(ByVal jsCode As String)","description":"Triggers execution of the provided javascript code.  Does NOT wait for it to complete and does NOT provide a result."},
+        {"name":"ExecuteScriptCompleteCallback","kind":"sub","vis":"private","signature":"Private Sub ExecuteScriptCompleteCallback(ByVal Result As Variant, ByVal Token As LongLong, ByVal errorCode As Long) Implements WebView2Package.IExecuteScriptCompleteCallback.ExecuteScriptComplete"},
+        {"name":"ExecuteSync","kind":"function","vis":"private","signature":"Private Function ExecuteSync(expression As String) As Variant","returnType":"Variant"},
+        {"name":"FixupURI","kind":"sub","vis":"private","signature":"Private Sub FixupURI(ByRef value As String)"},
+        {"name":"GoBack","kind":"sub","vis":"public","signature":"Public Sub GoBack()","description":"Navigates to the previous URL in the browser navigation history"},
+        {"name":"GoForward","kind":"sub","vis":"public","signature":"Public Sub GoForward()","description":"Navigates to the next URL in the browser navigation history"},
+        {"name":"HandleChangePosition","kind":"sub","vis":"private","signature":"Private Sub HandleChangePosition() Implements VB.IWindowElementEventsCommon.Resize"},
+        {"name":"HandleCreate","kind":"sub","vis":"private","signature":"Private Sub HandleCreate() Implements VB.IWindowElementEventsCommon.Create"},
+        {"name":"HandleDestroy","kind":"sub","vis":"private","signature":"Private Sub HandleDestroy() Implements VB.IWindowsControl.Destroy"},
+        {"name":"HandleEraseBackground","kind":"sub","vis":"private","signature":"Private Sub HandleEraseBackground(ByVal hdc As VB.HDC, ByRef Handled As Boolean) Implements VB.IWindowElementEventsCommon.EraseBackground"},
+        {"name":"HandleInitialize","kind":"sub","vis":"private","signature":"Private Sub HandleInitialize(ByVal ControlContext As VB.ControlContext) Implements VB.IWindowsControl.Initialize"},
+        {"name":"HandleMouseDown","kind":"sub","vis":"private","signature":"Private Sub HandleMouseDown(ByVal Button As VBRUN.MouseButtonConstants, ByVal ShiftState As VBRUN.ShiftConstants, ByVal X As Single, ByVal Y As Single) Implements VB.IWindowElementEventsCommon.MouseDown"},
+        {"name":"InstanceCount","kind":"field","vis":"private","signature":"Private InstanceCount As Long = 0"},
+        {"name":"Invoke","kind":"sub","vis":"private","signature":"Private Sub Invoke(ByVal errorCode As Long, ByVal createdEnvironment As ICoreWebView2Environment) Implements ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler.Invoke"},
+        {"name":"Invoke","kind":"sub","vis":"private","signature":"Private Sub Invoke(ByVal errorCode As Long, ByVal createdController As ICoreWebView2Controller) Implements ICoreWebView2CreateCoreWebView2ControllerCompletedHandler.Invoke"},
+        {"name":"IsBuiltInErrorPageEnabled","kind":"property","vis":"public","signature":"Property Get IsBuiltInErrorPageEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether the built-in error pages are enabled (such as 404 navigation errors)"},
+        {"name":"IsBuiltInErrorPageEnabled","kind":"property","vis":"public","signature":"Property Let IsBuiltInErrorPageEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether the built-in error pages are enabled (such as 404 navigation errors)"},
+        {"name":"IsBuiltInErrorPageEnabled_INIT","kind":"field","vis":"private","signature":"Private IsBuiltInErrorPageEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"IsBuiltInErrorPageEnabled\""}],"description":"Controls whether the built-in error pages are enabled (such as 404 navigation errors)"},
+        {"name":"IsDefaultDownloadDialogOpen","kind":"property","vis":"public","signature":"Public Property Get IsDefaultDownloadDialogOpen() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Indicates whether the built-in Download manager dialog is currently open.  Use SupportsDownloadDialogFeatures to check if this feature is supported."},
+        {"name":"IsDesignMode","kind":"field","vis":"private","signature":"Private IsDesignMode As Boolean"},
+        {"name":"IsDocumentPlayingAudio","kind":"property","vis":"public","signature":"Public Property Get IsDocumentPlayingAudio() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Indicates if the WebView2 current document is playing audio.  Use SupportsAudioFeatures to check if this feature is supported."},
+        {"name":"IsGeneralAutoFillEnabled","kind":"property","vis":"public","signature":"Property Get IsGeneralAutoFillEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether general form information will be saved and autofilled.  Use SupportsAutoFillFeatures to check if this feature is supported."},
+        {"name":"IsGeneralAutoFillEnabled","kind":"property","vis":"public","signature":"Property Let IsGeneralAutoFillEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether general form information will be saved and autofilled.  Use SupportsAutoFillFeatures to check if this feature is supported."},
+        {"name":"IsGeneralAutoFillEnabled_INIT","kind":"field","vis":"private","signature":"Private IsGeneralAutoFillEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"IsGeneralAutoFillEnabled\""}],"description":"Controls whether general form information will be saved and autofilled"},
+        {"name":"IsMuted","kind":"property","vis":"public","signature":"Public Property Get IsMuted() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Indicates if the WebView2 audio is currently muted.  Use SupportsAudioFeatures to check if this feature is supported."},
+        {"name":"IsMuted","kind":"property","vis":"public","signature":"Public Property Let IsMuted(Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Indicates if the WebView2 audio is currently muted.  Use SupportsAudioFeatures to check if this feature is supported."},
+        {"name":"IsMuted_INIT","kind":"field","vis":"private","signature":"Private IsMuted_INIT As Boolean = False","attrs":[{"name":"Serialize","args":"True, \"IsMuted\""}],"description":"Controls whether audio is muted from the webview"},
+        {"name":"IsPasswordAutoSaveEnabled","kind":"property","vis":"public","signature":"Property Get IsPasswordAutoSaveEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether password information will be autosaved.  Use SupportsAutoFillFeatures to check if this feature is supported."},
+        {"name":"IsPasswordAutoSaveEnabled","kind":"property","vis":"public","signature":"Property Let IsPasswordAutoSaveEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether password information will be autosaved. Use SupportsAutoFillFeatures to check if this feature is supported."},
+        {"name":"IsPasswordAutoSaveEnabled_INIT","kind":"field","vis":"private","signature":"Private IsPasswordAutoSaveEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"IsPasswordAutoSaveEnabled\""}],"description":"Controls whether password information will be autosaved"},
+        {"name":"IsPinchZoomEnabled","kind":"property","vis":"public","signature":"Property Get IsPinchZoomEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether pinching motions control zooming on touch devices.  Use SupportsPinchZoomFeatures to check if this feature is supported."},
+        {"name":"IsPinchZoomEnabled","kind":"property","vis":"public","signature":"Property Let IsPinchZoomEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether pinching motions control zooming on touch devices.  Use SupportsPinchZoomFeatures to check if this feature is supported."},
+        {"name":"IsPinchZoomEnabled_INIT","kind":"field","vis":"private","signature":"Private IsPinchZoomEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"IsPinchZoomEnabled\""}],"description":"Controls whether pinching motions control zooming on touch devices"},
+        {"name":"IsScriptEnabled","kind":"property","vis":"public","signature":"Property Get IsScriptEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether javascript is enabled or not inside the webview"},
+        {"name":"IsScriptEnabled","kind":"property","vis":"public","signature":"Property Let IsScriptEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether javascript is enabled or not inside the webview"},
+        {"name":"IsScriptEnabled_INIT","kind":"field","vis":"private","signature":"Private IsScriptEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"IsScriptEnabled\""}],"description":"Controls whether javascript is enabled or not inside the webview"},
+        {"name":"IsStatusBarEnabled","kind":"property","vis":"public","signature":"Property Get IsStatusBarEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether the status bar is enabled"},
+        {"name":"IsStatusBarEnabled","kind":"property","vis":"public","signature":"Property Let IsStatusBarEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether the status bar is enabled"},
+        {"name":"IsStatusBarEnabled_INIT","kind":"field","vis":"private","signature":"Private IsStatusBarEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"IsStatusBarEnabled\""}],"description":"Controls whether the status bar is enabled"},
+        {"name":"IsSuspended","kind":"property","vis":"public","signature":"Public Property Get IsSuspended() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Indicates if the WebView2 processing/rendering has been suspended.  Use SupportsSuspendResumeFeatures to check if this feature is supported."},
+        {"name":"IsSwipeNavigationEnabled","kind":"property","vis":"public","signature":"Property Get IsSwipeNavigationEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether swipe motions control page navigation on touch devices.  Use SupportsSwipeNavigationFeatures to check if this feature is supported."},
+        {"name":"IsSwipeNavigationEnabled","kind":"property","vis":"public","signature":"Property Let IsSwipeNavigationEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether swipe motions control page navigation on touch devices.  Use SupportsSwipeNavigationFeatures to check if this feature is supported."},
+        {"name":"IsSwipeNavigationEnabled_INIT","kind":"field","vis":"private","signature":"Private IsSwipeNavigationEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"IsSwipeNavigationEnabled\""}],"description":"Controls whether swipe motions control page navigation on touch devices"},
+        {"name":"IsWebMessageEnabled","kind":"property","vis":"public","signature":"Property Get IsWebMessageEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether the PostWebMessage feature is enabled"},
+        {"name":"IsWebMessageEnabled","kind":"property","vis":"public","signature":"Property Let IsWebMessageEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether the PostWebMessage feature is enabled"},
+        {"name":"IsWebMessageEnabled_INIT","kind":"field","vis":"private","signature":"Private IsWebMessageEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"IsWebMessageEnabled\""}],"description":"Controls whether the PostWebMessage feature is enabled"},
+        {"name":"IsZoomControlEnabled","kind":"property","vis":"public","signature":"Property Get IsZoomControlEnabled() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether the user is allowed to change the zoom factor with Ctrl++/Ctr+-/Ctrl+mousewheel"},
+        {"name":"IsZoomControlEnabled","kind":"property","vis":"public","signature":"Property Let IsZoomControlEnabled(ByVal Value As Boolean)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Controls whether the user is allowed to change the zoom factor with Ctrl++/Ctr+-/Ctrl+mousewheel"},
+        {"name":"IsZoomControlEnabled_INIT","kind":"field","vis":"private","signature":"Private IsZoomControlEnabled_INIT As Boolean = True","attrs":[{"name":"Serialize","args":"True, \"IsZoomControlEnabled\""}],"description":"Controls whether the user is allowed to change the zoom factor with Ctrl++/Ctr+-/Ctrl+mousewheel"},
+        {"name":"JsAsyncResult","kind":"event","vis":"public","signature":"Public Event JsAsyncResult(ByVal Result As Variant, Token As LongLong, ErrString As String)","description":"The JsAsyncResult event fires in response to the JsRunAsync function, providing the javascript result asynchronously"},
+        {"name":"JsCallTimeOutSeconds","kind":"field","vis":"public","signature":"Public JsCallTimeOutSeconds As Double","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"JsMessage","kind":"event","vis":"public","signature":"Public Event JsMessage(ByVal Message As Variant)","description":"The JsMessage event fires when the javascript side calls window.chrome.webview.postMessage(...).  IsWebMessageEnabled must be True."},
+        {"name":"JsProp","kind":"function","vis":"public","signature":"Public Function JsProp(ByVal PropName As String) As Variant","returnType":"Variant","description":"Executes the given javascript code (e.g. 'document.url'), waits for it to complete, and returns the result."},
+        {"name":"JsRun","kind":"function","vis":"public","signature":"Public Function JsRun(ByVal FuncName As String, ParamArray args() As Variant) As Variant","returnType":"Variant","description":"Executes the javascript function with the provided arguments, waits for it to complete, and returns the result."},
+        {"name":"JsRunAsync","kind":"function","vis":"public","signature":"Public Function JsRunAsync(ByVal FuncName As String, ParamArray args() As Variant) As LongLong","returnType":"LongLong","description":"Triggers asynchronous execution of the given javascript function with the provided arguments.  Returns a token for identification.  Raises event JsAsyncResult when the result comes in (which provides the token as one of its arguments)"},
+        {"name":"MoveFocus","kind":"sub","vis":"public","signature":"Public Sub MoveFocus()","description":"Sets the focus to the WebView control"},
+        {"name":"Navigate","kind":"sub","vis":"public","signature":"Public Sub Navigate(ByVal uri As String)","description":"Navigates to the requested URI.  URI requires protocol prefix, such as http://.  Fires the NavigationStarting and NavigationComplete event"},
+        {"name":"NavigateCustom","kind":"sub","vis":"public","signature":"Public Sub NavigateCustom(ByVal uri As String, method As String, Optional headers As String, Optional postData As Variant, Optional postDataAsUTF8 As Boolean = True)","description":"Navigates to the requested URI using the indicated HTTP method (e.g. GET/POST), optional HTTP headers (vbCrLf delimited), and optional POST data.  URI requires protocol prefix, such as http://.  Fires the NavigationStarting and NavigationComplete event"},
+        {"name":"NavigateToString","kind":"sub","vis":"public","signature":"Public Sub NavigateToString(ByVal htmlContent As String)","description":"Navigates to the requested HTML string content.  Fires the NavigateStarted and NavigationComplete event"},
+        {"name":"NavigationComplete","kind":"event","vis":"public","signature":"Public Event NavigationComplete(ByVal IsSuccess As Boolean, ByVal WebErrorStatus As Long)","description":"The NavigationComplete event fires after calls such as Navigate, NavigateCustom and NavigateToString"},
+        {"name":"NavigationCompletedCallback","kind":"sub","vis":"private","signature":"Private Sub NavigationCompletedCallback(ByVal CoreWebView As ICoreWebView2, ByVal args As ICoreWebView2NavigationCompletedEventArgs) Implements WebView2Package.ICoreWebView2NavigationCompletedEventHandler.Invoke"},
+        {"name":"NavigationCompletedDelegateToken","kind":"field","vis":"private","signature":"Private NavigationCompletedDelegateToken As LongLong"},
+        {"name":"NavigationStarting","kind":"event","vis":"public","signature":"Public Event NavigationStarting(ByVal Uri As String, ByVal IsUserInitiated As Boolean, ByVal IsRedirected As Boolean, ByVal RequestHeaders As WebView2RequestHeaders, ByRef Cancel As Boolean)","description":"The NavigationStarting event fires before the navigation starts"},
+        {"name":"NavigationStartingCallback","kind":"sub","vis":"private","signature":"Private Sub NavigationStartingCallback(ByVal CoreWebView As ICoreWebView2, ByVal args As ICoreWebView2NavigationStartingEventArgs) Implements WebView2Package.ICoreWebView2NavigationStartingEventHandler.Invoke"},
+        {"name":"NavigationStartingDelegateToken","kind":"field","vis":"private","signature":"Private NavigationStartingDelegateToken As LongLong"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New()"},
+        {"name":"NewWindowRequested","kind":"event","vis":"public","signature":"Public Event NewWindowRequested(ByVal IsUserInitiated As Boolean, ByRef IsHandled As Boolean, ByVal Uri As String, ByVal HasPosition As Long, ByVal HasSize As Long, ByVal Left As Long, ByVal Top As Long, ByVal Width As Long, ByVal Height As Long, ByVal ShouldDisplayMenuBar As Long, ByVal ShouldDisplayStatus As Long, ByVal ShouldDisplayToolbar As Long, ByVal ShouldDisplayScrollBars As Long)","description":"The NewWindowRequested event fires when a new webpage window is to be opened.  Set IsHandled to True if you have handled the request (and so to suppress the default behaviour of opening a new Edge window)."},
+        {"name":"NewWindowRequestedCallback","kind":"sub","vis":"private","signature":"Private Sub NewWindowRequestedCallback(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2NewWindowRequestedEventArgs) Implements WebView2Package.ICoreWebView2NewWindowRequestedEventHandler.Invoke"},
+        {"name":"NewWindowRequestedCallback_RaiseEvent","kind":"sub","vis":"private","signature":"Private Sub NewWindowRequestedCallback_RaiseEvent(ByVal args As ICoreWebView2NewWindowRequestedEventArgs, ByVal Deferral As ICoreWebView2Deferral) Implements IDeferredCallback.NewWindowRequested"},
+        {"name":"NewWindowRequestedDelegateToken","kind":"field","vis":"private","signature":"Private NewWindowRequestedDelegateToken As LongLong"},
+        {"name":"OpenDefaultDownloadDialog","kind":"sub","vis":"public","signature":"Public Sub OpenDefaultDownloadDialog()","description":"Opens the built-in Download manager dialog.  Use SupportsDownloadDialogFeatures to check if this feature is supported."},
+        {"name":"OpenDevToolsWindow","kind":"sub","vis":"public","signature":"Public Sub OpenDevToolsWindow()","description":"Opens the Developer Tools window"},
+        {"name":"OpenTaskManagerWindow","kind":"sub","vis":"public","signature":"Public Sub OpenTaskManagerWindow()","description":"Opens the built-in Task manager dialog.  Use SupportsTaskManagerFeatures to check if this feature is supported."},
+        {"name":"PermissionRequested","kind":"event","vis":"public","signature":"Public Event PermissionRequested(ByVal IsUserInitiated As Boolean, ByRef State As wv2PermissionState, ByVal Uri As String, ByVal PermissionKind As wv2PermissionKind)","description":"The PermissionRequested event fires when the webpage needs authorization for a task, such as reading from the clipboard, or viewing live camera footage"},
+        {"name":"PermissionRequestedCallback","kind":"sub","vis":"private","signature":"Private Sub PermissionRequestedCallback(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2PermissionRequestedEventArgs) Implements WebView2Package.ICoreWebView2PermissionRequestedEventHandler.Invoke"},
+        {"name":"PermissionRequestedCallback_RaiseEvent","kind":"sub","vis":"private","signature":"Private Sub PermissionRequestedCallback_RaiseEvent(ByVal args As ICoreWebView2PermissionRequestedEventArgs, ByVal Deferral As ICoreWebView2Deferral) Implements IDeferredCallback.PermissionRequested"},
+        {"name":"PermissionRequestedDelegateToken","kind":"field","vis":"private","signature":"Private PermissionRequestedDelegateToken As LongLong"},
+        {"name":"PostWebMessage","kind":"sub","vis":"public","signature":"Public Sub PostWebMessage(Message As Variant)","description":"Posts a message to the javascript side, which can be picked up via window.chrome.webview.addEventListener('message', handler).  Requires IsWebMessageEnabled to be set to True."},
+        {"name":"PostWebMessageJSON","kind":"sub","vis":"public","signature":"Public Sub PostWebMessageJSON(jsonString As String)","description":"Posts a raw JSON value to the javascript side, which can be picked up via window.chrome.webview.addEventListener('message', handler).  Requires IsWebMessageEnabled to be set to True."},
+        {"name":"PrintToPdf","kind":"sub","vis":"public","signature":"Public Sub PrintToPdf(ByVal outputPath As String, Optional ByVal Orientation As wv2PrintOrientation = wv2PrintOrientation.wv2PrintPortrait, Optional ByVal ScaleFactor As Variant, Optional PageWidth As Variant, Optional PageHeight As Variant, Optional ByVal MarginTop As Variant, Optional ByVal MarginBottom As Variant, Optional ByVal MarginLeft As Variant, Optional ByVal MarginRight As Variant, Optional ByVal ShouldPrintBackgrounds As Boolean = False, Optional ByVal ShouldPrintSelectionOnly As Boolean = False, Optional ByVal ShouldPrintHeaderAndFooter As Boolean = True, Optional ByVal HeaderTitle As Variant, Optional ByVal FooterUri As Variant)","description":"Saves the current document to a PDF file.  Use SupportsPdfFeatures to check if this feature is supported."},
+        {"name":"PrintToPdfCallback","kind":"sub","vis":"private","signature":"Private Sub PrintToPdfCallback(ByVal errorCode As Long, ByVal isSuccessful As Long) Implements WebView2Package.ICoreWebView2PrintToPdfCompletedHandler.Invoke"},
+        {"name":"PrintToPdfCompleted","kind":"event","vis":"public","signature":"Public Event PrintToPdfCompleted()","description":"The PrintToPdfCompleted event fires in response to a successful PrintToPdf request"},
+        {"name":"PrintToPdfFailed","kind":"event","vis":"public","signature":"Public Event PrintToPdfFailed()","description":"The PrintToPdfCompleted event fires in response to a failed PrintToPdf request"},
+        {"name":"ProcessFailed","kind":"event","vis":"public","signature":"Public Event ProcessFailed(ByVal Kind As wv2ProcessFailedKind)","description":"The ProcessFailed event fires when one of the external EXE processes used by WebView2 fails (e.g. the rendering or javascript external processes)"},
+        {"name":"ProcessFailedCallback","kind":"sub","vis":"private","signature":"Private Sub ProcessFailedCallback(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2ProcessFailedEventArgs) Implements WebView2Package.ICoreWebView2ProcessFailedEventHandler.Invoke"},
+        {"name":"ProcessFailedDelegateToken","kind":"field","vis":"private","signature":"Private ProcessFailedDelegateToken As LongLong"},
+        {"name":"RaiseNotReadyError","kind":"sub","vis":"private","signature":"Private Sub RaiseNotReadyError()"},
+        {"name":"RaiseUnsupportedError","kind":"sub","vis":"private","signature":"Private Sub RaiseUnsupportedError()"},
+        {"name":"Ready","kind":"event","vis":"public","signature":"Public Event Ready()","description":"The Ready event fires after the WebView2 control is created and ready for use"},
+        {"name":"Reload","kind":"sub","vis":"public","signature":"Public Sub Reload()","description":"Reloads the current URL, like F5 key"},
+        {"name":"RemoveObject","kind":"sub","vis":"public","signature":"Public Sub RemoveObject(ByVal ObjName As String)","description":"Removes a COM object previously exposed through the AddObject function"},
+        {"name":"RemoveWebResourceRequestedFilter","kind":"sub","vis":"public","signature":"Public Sub RemoveWebResourceRequestedFilter(ByVal sFilter As String, ByVal FilterContext As wv2WebResourceContext)","description":"Removes a URL filter previously added with AddWebResourceRequestedFilter"},
+        {"name":"Resume","kind":"sub","vis":"public","signature":"Public Sub Resume()","description":"Resumes the WebView2 processing/rendering after a previous Suspend call.  Use SupportsSuspendResumeFeatures to check if this feature is supported."},
+        {"name":"ScriptDialogOpening","kind":"event","vis":"public","signature":"Public Event ScriptDialogOpening(ByVal ScriptDialogKind As wv2ScriptDialogKind, ByRef Accept As Boolean, ByVal ResultText As String, ByVal URI As String, ByVal Message As String, ByVal DefaultText As String)","description":"The ScriptDialogOpening event fires when AreDefaultScriptDialogsEnabled is set to False and allows you to present custom dialogs.  For example, you could use MsgBox to implement javascript alert()"},
+        {"name":"ScriptDialogOpeningCallback","kind":"sub","vis":"private","signature":"Private Sub ScriptDialogOpeningCallback(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2ScriptDialogOpeningEventArgs) Implements WebView2Package.ICoreWebView2ScriptDialogOpeningEventHandler.Invoke"},
+        {"name":"ScriptDialogOpeningDelegateToken","kind":"field","vis":"private","signature":"Private ScriptDialogOpeningDelegateToken As LongLong"},
+        {"name":"ScriptDialogOpening_RaiseEvent","kind":"sub","vis":"private","signature":"Private Sub ScriptDialogOpening_RaiseEvent(ByVal args As ICoreWebView2ScriptDialogOpeningEventArgs, ByVal Deferral As ICoreWebView2Deferral) Implements IDeferredCallback.ScriptDialogOpening"},
+        {"name":"SetVirtualHostNameToFolderMapping","kind":"sub","vis":"public","signature":"Public Sub SetVirtualHostNameToFolderMapping(ByVal hostName As String, ByVal folderPath As String, ByVal accessKind As wv2HostResourceAccessKind = wv2HostResourceAccessKind.wv2ResourceAllow)","description":"Creates a virtual mapping of a specified hostname to a local folder.  Use SupportsFolderMappingFeatures to check if this feature is supported."},
+        {"name":"Settings1","kind":"field","vis":"private","signature":"Private Settings1 As ICoreWebView2Settings"},
+        {"name":"Settings2","kind":"field","vis":"private","signature":"Private Settings2 As ICoreWebView2Settings2"},
+        {"name":"Settings3","kind":"field","vis":"private","signature":"Private Settings3 As ICoreWebView2Settings3"},
+        {"name":"Settings4","kind":"field","vis":"private","signature":"Private Settings4 As ICoreWebView2Settings4"},
+        {"name":"Settings5","kind":"field","vis":"private","signature":"Private Settings5 As ICoreWebView2Settings5"},
+        {"name":"Settings6","kind":"field","vis":"private","signature":"Private Settings6 As ICoreWebView2Settings6"},
+        {"name":"SourceChanged","kind":"event","vis":"public","signature":"Public Event SourceChanged(ByVal IsNewDocument As Boolean)","description":"The SourceChanged event fires when the DocumentURL property has been updated, typically after page navigation.  For example, use this to keep a URL bar in-sync"},
+        {"name":"SourceChangedCallback","kind":"sub","vis":"private","signature":"Private Sub SourceChangedCallback(ByVal CoreWebView As ICoreWebView2, ByVal Args As ICoreWebView2SourceChangedEventArgs) Implements WebView2Package.ICoreWebView2SourceChangedEventHandler.Invoke"},
+        {"name":"SourceChangedDelegateToken","kind":"field","vis":"private","signature":"Private SourceChangedDelegateToken As LongLong"},
+        {"name":"SupportsAcceleratorKeysFeatures","kind":"property","vis":"public","signature":"Public Property Get SupportsAcceleratorKeysFeatures() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"SupportsAudioFeatures","kind":"property","vis":"public","signature":"Public Property Get SupportsAudioFeatures() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"SupportsAutoFillFeatures","kind":"property","vis":"public","signature":"Public Property Get SupportsAutoFillFeatures() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"SupportsDownloadDialogFeatures","kind":"property","vis":"public","signature":"Public Property Get SupportsDownloadDialogFeatures() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"SupportsFolderMappingFeatures","kind":"property","vis":"public","signature":"Public Property Get SupportsFolderMappingFeatures() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"SupportsNavigateCustomFeatures","kind":"property","vis":"public","signature":"Public Property Get SupportsNavigateCustomFeatures() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"SupportsPdfFeatures","kind":"property","vis":"public","signature":"Public Property Get SupportsPdfFeatures() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"SupportsPinchZoomFeatures","kind":"property","vis":"public","signature":"Public Property Get SupportsPinchZoomFeatures() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"SupportsSuspendResumeFeatures","kind":"property","vis":"public","signature":"Public Property Get SupportsSuspendResumeFeatures() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"SupportsSwipeNavigationFeatures","kind":"property","vis":"public","signature":"Public Property Get SupportsSwipeNavigationFeatures() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"SupportsTaskManagerFeatures","kind":"property","vis":"public","signature":"Public Property Get SupportsTaskManagerFeatures() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"SupportsUserAgentFeatures","kind":"property","vis":"public","signature":"Public Property Get SupportsUserAgentFeatures() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}]},
+        {"name":"Suspend","kind":"sub","vis":"public","signature":"Public Sub Suspend()","description":"Suspends the WebView2 processing/rendering.  Useful for creating tabs.  Use SupportsSuspendResumeFeatures to check if this feature is supported."},
+        {"name":"SuspendCompleted","kind":"event","vis":"public","signature":"Public Event SuspendCompleted()","description":"The SuspendCompleted event fires in response to a successful Suspend request"},
+        {"name":"SuspendFailed","kind":"event","vis":"public","signature":"Public Event SuspendFailed()","description":"The SuspendFailed event fires in response to a failed Suspend request"},
+        {"name":"TrySuspendCallback","kind":"sub","vis":"private","signature":"Private Sub TrySuspendCallback(ByVal errorCode As Long, ByVal isSuccessful As Long) Implements WebView2Package.ICoreWebView2TrySuspendCompletedHandler.Invoke"},
+        {"name":"UseDeferredEvents","kind":"field","vis":"public","signature":"Public UseDeferredEvents As Boolean = True"},
+        {"name":"UserAgent","kind":"property","vis":"public","signature":"Property Get UserAgent() As String","returnType":"String","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Sets the UserAgent string that will be used in HTTP request headers.  Use SupportsUserAgentFeatures to check if this feature is supported."},
+        {"name":"UserAgent","kind":"property","vis":"public","signature":"Property Let UserAgent(ByVal Value As String)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Sets the UserAgent string that will be used in HTTP request headers.  Use SupportsUserAgentFeatures to check if this feature is supported."},
+        {"name":"UserAgent_INIT","kind":"field","vis":"private","signature":"Private UserAgent_INIT As String","attrs":[{"name":"Serialize","args":"True, \"UserAgent\""}],"description":"Sets the UserAgent string that will be used in HTTP request headers"},
+        {"name":"UserContextMenu","kind":"event","vis":"public","signature":"Public Event UserContextMenu(X As Single, Y As Single)","description":"The UserContextMenu event fires when the user right-clicks inside the WebView control.  Set AreDefaultContextMenusEnabled to False and use this event to implement your own context menus."},
+        {"name":"WebMessageReceivedCallback","kind":"sub","vis":"private","signature":"Private Sub WebMessageReceivedCallback(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2WebMessageReceivedEventArgs) Implements WebView2Package.ICoreWebView2WebMessageReceivedEventHandler.Invoke"},
+        {"name":"WebMessageReceivedDelegateToken","kind":"field","vis":"private","signature":"Private WebMessageReceivedDelegateToken As LongLong"},
+        {"name":"WebResourceRequested","kind":"event","vis":"public","signature":"Public Event WebResourceRequested(ByVal Request As WebView2Request, ByVal Response As WebView2Response)","description":"The WebResourceRequested event fires when a HTTP request is made that matches a URI that has been set up through AddWebResourceRequestedFilter"},
+        {"name":"WebResourceRequestedCallback","kind":"sub","vis":"private","signature":"Private Sub WebResourceRequestedCallback(ByVal sender As ICoreWebView2, ByVal args As ICoreWebView2WebResourceRequestedEventArgs) Implements WebView2Package.ICoreWebView2WebResourceRequestedEventHandler.Invoke"},
+        {"name":"WebResourceRequestedDelegateToken","kind":"field","vis":"private","signature":"Private WebResourceRequestedDelegateToken As LongLong"},
+        {"name":"WebResourceRequested_RaiseEvent","kind":"sub","vis":"private","signature":"Private Sub WebResourceRequested_RaiseEvent(ByVal args As ICoreWebView2WebResourceRequestedEventArgs, ByVal Deferral As ICoreWebView2Deferral) Implements IDeferredCallback.WebResourceRequested"},
+        {"name":"ZoomFactor","kind":"property","vis":"public","signature":"Public Property Get ZoomFactor() As Double","returnType":"Double","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Gets the overall zoom factor.  e.g. a value of 1.5 gives a 50% zoom"},
+        {"name":"ZoomFactor","kind":"property","vis":"public","signature":"Public Property Let ZoomFactor(ByVal Value As Double)","accessor":"Let","attrs":[{"name":"Serialize","args":"False"}],"description":"Sets the overall zoom factor.  e.g. a value of 1.5 gives a 50% zoom"},
+        {"name":"ZoomFactor_INIT","kind":"field","vis":"private","signature":"Private ZoomFactor_INIT As Double","attrs":[{"name":"Serialize","args":"True, \"ZoomFactor\""}],"description":"Sets the overall zoom factor.  e.g. a value of 1.5 gives a 50% zoom"},
+        {"name":"hWnd","kind":"property","vis":"public","signature":"Public Property Get hWnd() As LongPtr","returnType":"LongPtr","accessor":"Get","attrs":[{"name":"Serialize","args":"False"}],"description":"Returns the HWND window handle of the container"}
+      ]
+    },
+    {
+      "name": "WebView2DeferredCallback",
+      "kind": "class",
+      "vis": "private",
+      "public": false,
+      "file": "Classes/WebView2DeferredCallback.twin",
+      "signature": "Private Class WebView2DeferredCallback",
+      "implements": ["VB.IScheduledCallback"],
+      "attrs": [{"name":"COMCreatable","args":"False"},{"name":"ClassId","args":"\"383FCA6A-9D0B-4F03-B4D1-F040D7588B91\""},{"name":"InterfaceId","args":"\"304AEAC4-1717-4EF6-A14B-36FE63610EBD\""}],
+      "members": [
+        {"name":"Args","kind":"field","vis":"private","signature":"Private Args As stdole.IUnknown"},
+        {"name":"Control","kind":"field","vis":"private","signature":"Private Control As IDeferredCallback"},
+        {"name":"Deferral","kind":"field","vis":"private","signature":"Private Deferral As ICoreWebView2Deferral"},
+        {"name":"EventName","kind":"field","vis":"private","signature":"Private EventName As String"},
+        {"name":"Execute","kind":"sub","vis":"public","signature":"Public Sub Execute() Implements VB.IScheduledCallback.Execute"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New(ByVal Control As IDeferredCallback, ByVal EventName As String, ByVal Args As stdole.IUnknown, ByVal Deferral As ICoreWebView2Deferral)"}
+      ]
+    },
+    {
+      "name": "WebView2DeferredRaiseEvent",
+      "kind": "class",
+      "vis": "private",
+      "public": false,
+      "file": "Classes/WebView2DeferredRaiseEvent.twin",
+      "signature": "Private Class WebView2DeferredRaiseEvent",
+      "implements": ["VB.IScheduledCallback"],
+      "attrs": [{"name":"COMCreatable","args":"False"},{"name":"ClassId","args":"\"9B92FD8E-1F85-494F-BA97-02E2DDED0AD2\""},{"name":"InterfaceId","args":"\"77B47E7D-CBF7-4FC6-B1E3-0729F2093960\""}],
+      "members": [
+        {"name":"Args","kind":"field","vis":"private","signature":"Private Args As Variant"},
+        {"name":"Control","kind":"field","vis":"private","signature":"Private Control As WebView2"},
+        {"name":"EventName","kind":"field","vis":"private","signature":"Private EventName As String"},
+        {"name":"Execute","kind":"sub","vis":"public","signature":"Public Sub Execute() Implements VB.IScheduledCallback.Execute"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New(ByVal Control As WebView2, ByVal EventName As String, ParamArray Args() As Variant)"}
+      ]
+    },
+    {
+      "name": "WebView2DevToolsProtocolCallback",
+      "kind": "class",
+      "vis": "private",
+      "public": false,
+      "file": "Classes/WebView2DevToolsProtocolCallback.twin",
+      "signature": "Private Class WebView2DevToolsProtocolCallback",
+      "implements": ["ICoreWebView2CallDevToolsProtocolMethodCompletedHandler"],
+      "attrs": [{"name":"COMCreatable","args":"False"},{"name":"ClassId","args":"\"7F0992DA-7779-422C-A815-9AC88D8E5F0F\""},{"name":"InterfaceId","args":"\"D944A684-A7D1-4EBB-AFCD-393B311B2ECE\""}],
+      "members": [
+        {"name":"Callback","kind":"sub","vis":"private","signature":"Private Sub Callback(ByVal errorCode As Long, ByVal returnObjectAsJson As LongPtr) Implements ICoreWebView2CallDevToolsProtocolMethodCompletedHandler.Invoke"},
+        {"name":"Control","kind":"field","vis":"private","signature":"Private Control As WebView2"},
+        {"name":"CustomEventId","kind":"field","vis":"private","signature":"Private CustomEventId As String"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New(ByVal Control As WebView2, ByVal CustomEventId As String)"}
+      ]
+    },
+    {
+      "name": "WebView2EnvironmentOptions",
+      "kind": "class",
+      "vis": "private",
+      "public": false,
+      "file": "Classes/WebView2EnvironmentOptions.twin",
+      "signature": "Private Class WebView2EnvironmentOptions",
+      "implements": ["ICoreWebView2EnvironmentOptions","ICoreWebView2EnvironmentOptions2","ICoreWebView2EnvironmentOptions5"],
+      "attrs": [{"name":"COMCreatable","args":"False"},{"name":"ClassId","args":"\"185E63C0-E641-47ED-B6A9-8565168A7FCF\""},{"name":"InterfaceId","args":"\"E610040A-F023-4DC4-A766-2C2B75BDCC11\""}],
+      "members": [
+        {"name":"AdditionalBrowserArguments","kind":"field","vis":"public","signature":"Public AdditionalBrowserArguments As String","description":"Property must be set before or during the Create event in order to take effect"},
+        {"name":"AllowSingleSignOnUsingOSPrimaryAccount","kind":"field","vis":"public","signature":"Public AllowSingleSignOnUsingOSPrimaryAccount As Boolean","description":"Property must be set before or during the Create event in order to take effect"},
+        {"name":"BrowserExecutableFolder","kind":"field","vis":"public","signature":"Public BrowserExecutableFolder As String","description":"Property must be set before or during the Create event in order to take effect"},
+        {"name":"EnableTrackingPrevention","kind":"field","vis":"public","signature":"Public EnableTrackingPrevention As Boolean = True","description":"Property must be set before or during the Create event in order to take effect"},
+        {"name":"ExclusiveUserDataFolderAccess","kind":"field","vis":"public","signature":"Public ExclusiveUserDataFolderAccess As Boolean","description":"Property must be set before or during the Create event in order to take effect"},
+        {"name":"Language","kind":"field","vis":"public","signature":"Public Language As String","description":"Property must be set before or during the Create event in order to take effect"},
+        {"name":"TargetCompatibleBrowserVersion","kind":"field","vis":"public","signature":"Public TargetCompatibleBrowserVersion As String = \"86.0.616.0\"","description":"Property must be set before or during the Create event in order to take effect"},
+        {"name":"UserDataFolder","kind":"field","vis":"public","signature":"Public UserDataFolder As String","description":"Property must be set before or during the Create event in order to take effect"},
+        {"name":"impl_AdditionalBrowserArguments","kind":"property","vis":"private","signature":"Private Property Get impl_AdditionalBrowserArguments() As LongPtr Implements WebView2Package.ICoreWebView2EnvironmentOptions.AdditionalBrowserArguments","returnType":"LongPtr","accessor":"Get"},
+        {"name":"impl_AdditionalBrowserArguments","kind":"property","vis":"private","signature":"Private Property Let impl_AdditionalBrowserArguments(ByVal value As LongPtr) Implements WebView2Package.ICoreWebView2EnvironmentOptions.AdditionalBrowserArguments","accessor":"Let"},
+        {"name":"impl_AllowSingleSignOnUsingOSPrimaryAccount","kind":"property","vis":"private","signature":"Private Property Get impl_AllowSingleSignOnUsingOSPrimaryAccount() As Long Implements WebView2Package.ICoreWebView2EnvironmentOptions.AllowSingleSignOnUsingOSPrimaryAccount","returnType":"Long","accessor":"Get"},
+        {"name":"impl_AllowSingleSignOnUsingOSPrimaryAccount","kind":"property","vis":"private","signature":"Private Property Let impl_AllowSingleSignOnUsingOSPrimaryAccount(ByVal value As Long) Implements WebView2Package.ICoreWebView2EnvironmentOptions.AllowSingleSignOnUsingOSPrimaryAccount","accessor":"Let"},
+        {"name":"impl_EnableTrackingPrevention","kind":"property","vis":"private","signature":"Private Property Get impl_EnableTrackingPrevention() As Long Implements WebView2Package.ICoreWebView2EnvironmentOptions5.EnableTrackingPrevention","returnType":"Long","accessor":"Get"},
+        {"name":"impl_EnableTrackingPrevention","kind":"property","vis":"private","signature":"Private Property Let impl_EnableTrackingPrevention(ByVal value As Long) Implements WebView2Package.ICoreWebView2EnvironmentOptions5.EnableTrackingPrevention","accessor":"Let"},
+        {"name":"impl_ExclusiveUserDataFolderAccess","kind":"property","vis":"private","signature":"Private Property Get impl_ExclusiveUserDataFolderAccess() As Long Implements WebView2Package.ICoreWebView2EnvironmentOptions2.ExclusiveUserDataFolderAccess","returnType":"Long","accessor":"Get"},
+        {"name":"impl_ExclusiveUserDataFolderAccess","kind":"property","vis":"private","signature":"Private Property Let impl_ExclusiveUserDataFolderAccess(ByVal value As Long) Implements WebView2Package.ICoreWebView2EnvironmentOptions2.ExclusiveUserDataFolderAccess","accessor":"Let"},
+        {"name":"impl_Language","kind":"property","vis":"private","signature":"Private Property Get impl_Language() As LongPtr Implements WebView2Package.ICoreWebView2EnvironmentOptions.Language","returnType":"LongPtr","accessor":"Get"},
+        {"name":"impl_Language","kind":"property","vis":"private","signature":"Private Property Let impl_Language(ByVal value As LongPtr) Implements WebView2Package.ICoreWebView2EnvironmentOptions.Language","accessor":"Let"},
+        {"name":"impl_TargetCompatibleBrowserVersion","kind":"property","vis":"private","signature":"Private Property Get impl_TargetCompatibleBrowserVersion() As LongPtr Implements WebView2Package.ICoreWebView2EnvironmentOptions.TargetCompatibleBrowserVersion","returnType":"LongPtr","accessor":"Get"},
+        {"name":"impl_TargetCompatibleBrowserVersion","kind":"property","vis":"private","signature":"Private Property Let impl_TargetCompatibleBrowserVersion(ByVal value As LongPtr) Implements WebView2Package.ICoreWebView2EnvironmentOptions.TargetCompatibleBrowserVersion","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "WebView2ExecuteScriptCompleteHandler",
+      "kind": "class",
+      "vis": "private",
+      "public": false,
+      "file": "Classes/WebView2ExecuteScriptCompleteHandler.twin",
+      "signature": "Private Class WebView2ExecuteScriptCompleteHandler",
+      "implements": ["ICoreWebView2ExecuteScriptCompletedHandler"],
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Handler","kind":"field","vis":"private","signature":"Private Handler As IExecuteScriptCompleteCallback"},
+        {"name":"Invoke","kind":"sub","vis":"private","signature":"Private Sub Invoke(ByVal errorCode As Long, ByVal returnObjectAsJson As LongPtr) Implements WebView2Package.ICoreWebView2ExecuteScriptCompletedHandler.Invoke"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Sub New(ByVal Handler As IExecuteScriptCompleteCallback, ByVal Token As LongLong)"},
+        {"name":"Token","kind":"field","vis":"private","signature":"Private Token As LongLong"}
+      ]
+    },
+    {
+      "name": "WebView2ExecuteScriptCompleteHandler2",
+      "kind": "class",
+      "vis": "private",
+      "public": false,
+      "file": "Classes/WebView2ExecuteScriptCompleteHandler.twin",
+      "signature": "Private Class WebView2ExecuteScriptCompleteHandler2",
+      "implements": ["ICoreWebView2ExecuteScriptCompletedHandler"],
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Invoke","kind":"sub","vis":"private","signature":"Private Sub Invoke(ByVal errorCode As Long, ByVal returnObjectAsJson As LongPtr) Implements WebView2Package.ICoreWebView2ExecuteScriptCompletedHandler.Invoke"},
+        {"name":"IsComplete","kind":"field","vis":"public","signature":"Public IsComplete As Boolean"},
+        {"name":"Result","kind":"field","vis":"public","signature":"Public Result As Variant"},
+        {"name":"ResultErrorCode","kind":"field","vis":"public","signature":"Public ResultErrorCode As Long"}
+      ]
+    },
+    {
+      "name": "WebView2Header",
+      "kind": "class",
+      "vis": "public",
+      "file": "Classes/WebView2Header.twin",
+      "signature": "Public Class WebView2Header",
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Name","kind":"field","vis":"public","signature":"Public Name As String"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Sub New(ByVal Name As String, ByVal Value As String)"},
+        {"name":"Value","kind":"field","vis":"public","signature":"Public Value As String"}
+      ]
+    },
+    {
+      "name": "WebView2HeadersCollection",
+      "kind": "class",
+      "vis": "public",
+      "file": "Classes/WebView2HeadersCollection.twin",
+      "signature": "Public Class WebView2HeadersCollection",
+      "implements": ["tbIEnumVARIANT"],
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Clone","kind":"function","vis":"protected","signature":"Overridable Protected Function Clone() As IEnumVARIANT Implements WebView2Package.tbIEnumVARIANT.Clone","returnType":"IEnumVARIANT"},
+        {"name":"IterationIdx","kind":"field","vis":"protected","signature":"Protected IterationIdx As Long"},
+        {"name":"Iterator","kind":"field","vis":"protected","signature":"Protected Iterator As ICoreWebView2HttpHeadersCollectionIterator"},
+        {"name":"New","kind":"sub","vis":"protected","signature":"Protected Sub New(ByVal Iterator As ICoreWebView2HttpHeadersCollectionIterator)"},
+        {"name":"Next","kind":"sub","vis":"protected","signature":"Protected Sub Next(ByVal celt As Long, ByRef rgVar As CArrayOfVariants, ByRef pCeltFetched As Long) Implements WebView2Package.tbIEnumVARIANT.Next","attrs":[{"name":"ArrayBoundsChecks","args":"False"}]},
+        {"name":"Reset","kind":"sub","vis":"protected","signature":"Overridable Protected Sub Reset() Implements WebView2Package.tbIEnumVARIANT.Reset"},
+        {"name":"Skip","kind":"sub","vis":"protected","signature":"Protected Sub Skip(ByVal celt As Long) Implements WebView2Package.tbIEnumVARIANT.Skip"}
+      ]
+    },
+    {
+      "name": "WebView2HeadersCollection_RequestEnumerator",
+      "kind": "class",
+      "vis": "public",
+      "file": "Classes/WebView2RequestHeaders.twin",
+      "signature": "Public Class WebView2HeadersCollection_RequestEnumerator",
+      "inherits": ["WebView2HeadersCollection"],
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Overrides WebView2HeadersCollection.Clone","returnType":"IEnumVARIANT Overrides WebView2HeadersCollection.Clone"},
+        {"name":"Headers","kind":"field","vis":"protected","signature":"Protected Headers As ICoreWebView2HttpRequestHeaders"},
+        {"name":"Name","kind":"field","vis":"protected","signature":"Protected Name As String"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Sub New(ByVal Headers As ICoreWebView2HttpRequestHeaders, ByVal IterationIdxStart As Long)"},
+        {"name":"Reset","kind":"sub","vis":"private","signature":"Private Sub Reset() Overrides WebView2HeadersCollection.Reset"}
+      ]
+    },
+    {
+      "name": "WebView2HeadersCollection_RequestGetHeaders",
+      "kind": "class",
+      "vis": "public",
+      "file": "Classes/WebView2RequestHeaders.twin",
+      "signature": "Public Class WebView2HeadersCollection_RequestGetHeaders",
+      "inherits": ["WebView2HeadersCollection"],
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Overrides WebView2HeadersCollection.Clone","returnType":"IEnumVARIANT Overrides WebView2HeadersCollection.Clone"},
+        {"name":"Headers","kind":"field","vis":"protected","signature":"Protected Headers As ICoreWebView2HttpRequestHeaders"},
+        {"name":"Name","kind":"field","vis":"protected","signature":"Protected Name As String"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Sub New(ByVal Headers As ICoreWebView2HttpRequestHeaders, ByVal Name As String, ByVal IterationIdxStart As Long)"},
+        {"name":"Reset","kind":"sub","vis":"private","signature":"Private Sub Reset() Overrides WebView2HeadersCollection.Reset"}
+      ]
+    },
+    {
+      "name": "WebView2HeadersCollection_ResponseEnumerator",
+      "kind": "class",
+      "vis": "public",
+      "file": "Classes/WebView2ResponseHeaders.twin",
+      "signature": "Public Class WebView2HeadersCollection_ResponseEnumerator",
+      "inherits": ["WebView2HeadersCollection"],
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Overrides WebView2HeadersCollection.Clone","returnType":"IEnumVARIANT Overrides WebView2HeadersCollection.Clone"},
+        {"name":"Headers","kind":"field","vis":"protected","signature":"Protected Headers As ICoreWebView2HttpResponseHeaders"},
+        {"name":"Name","kind":"field","vis":"protected","signature":"Protected Name As String"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Sub New(ByVal Headers As ICoreWebView2HttpResponseHeaders, ByVal IterationIdxStart As Long)"},
+        {"name":"Reset","kind":"sub","vis":"private","signature":"Private Sub Reset() Overrides WebView2HeadersCollection.Reset"}
+      ]
+    },
+    {
+      "name": "WebView2HeadersCollection_ResponseGetHeaders",
+      "kind": "class",
+      "vis": "public",
+      "file": "Classes/WebView2ResponseHeaders.twin",
+      "signature": "Public Class WebView2HeadersCollection_ResponseGetHeaders",
+      "inherits": ["WebView2HeadersCollection"],
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Overrides WebView2HeadersCollection.Clone","returnType":"IEnumVARIANT Overrides WebView2HeadersCollection.Clone"},
+        {"name":"Headers","kind":"field","vis":"protected","signature":"Protected Headers As ICoreWebView2HttpResponseHeaders"},
+        {"name":"Name","kind":"field","vis":"protected","signature":"Protected Name As String"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Sub New(ByVal Headers As ICoreWebView2HttpResponseHeaders, ByVal Name As String, ByVal IterationIdxStart As Long)"},
+        {"name":"Reset","kind":"sub","vis":"private","signature":"Private Sub Reset() Overrides WebView2HeadersCollection.Reset"}
+      ]
+    },
+    {
+      "name": "WebView2Misc",
+      "kind": "module",
+      "vis": "private",
+      "public": false,
+      "file": "Support/WebView2Misc.twin",
+      "signature": "Private Module WebView2Misc",
+      "members": [
+        {"name":"BSTRToWString","kind":"function","vis":"public","signature":"Public Function BSTRToWString(ByVal value As String) As LongPtr","returnType":"LongPtr"},
+        {"name":"CoTaskMemAlloc","kind":"function","vis":"private","declare":true,"signature":"Private DeclareWide PtrSafe Function CoTaskMemAlloc Lib \"ole32\" (ByVal Size As LongPtr) As LongPtr","returnType":"LongPtr"},
+        {"name":"CoTaskMemFree","kind":"sub","vis":"private","declare":true,"signature":"Private DeclareWide PtrSafe Sub CoTaskMemFree Lib \"ole32\" (ByVal StringPtr As LongPtr)"},
+        {"name":"DecodeJSONString","kind":"function","vis":"public","signature":"Public Function DecodeJSONString(ByVal jsonValue As String) As String","returnType":"String"},
+        {"name":"EncodeJSONString","kind":"function","vis":"public","signature":"Public Function EncodeJSONString(ByVal value As String) As String","returnType":"String"},
+        {"name":"FALSE","kind":"const","vis":"private","signature":"Private Const FALSE As Long = 0"},
+        {"name":"HResultToString","kind":"function","vis":"public","signature":"Public Function HResultToString(ByVal HResult As Long) As String","returnType":"String"},
+        {"name":"JSONValueToVariant","kind":"function","vis":"public","signature":"Public Function JSONValueToVariant(ByVal jsonValue As String) As Variant","returnType":"Variant"},
+        {"name":"RPC_E_TIMEOUT","kind":"const","vis":"public","signature":"Public Const RPC_E_TIMEOUT As Long = &H8001011F"},
+        {"name":"RtlMoveMemory","kind":"sub","vis":"private","declare":true,"signature":"Private DeclareWide PtrSafe Sub RtlMoveMemory Lib \"kernel32\" (ByVal lpDest As LongPtr, ByVal lpSource As LongPtr, ByVal Size As LongPtr)"},
+        {"name":"SHCreateMemStream","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function SHCreateMemStream Lib \"Shlwapi\" (ByVal Data As LongPtr, ByVal cbInit As Long) As VB.IStream","returnType":"VB.IStream"},
+        {"name":"Sleep","kind":"sub","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Sub Sleep Lib \"kernel32\" (ByVal dwMilliseconds As Long)"},
+        {"name":"SysAllocString","kind":"function","vis":"private","declare":true,"signature":"Private DeclareWide PtrSafe Function SysAllocString Lib \"oleaut32\" (ByVal StringPtr As LongPtr) As String","returnType":"String"},
+        {"name":"TRUE","kind":"const","vis":"private","signature":"Private Const TRUE As Long = 1"},
+        {"name":"VariantBoolToWinBool","kind":"function","vis":"public","signature":"Public Function VariantBoolToWinBool(ByVal Value As Boolean) As Long","returnType":"Long"},
+        {"name":"VariantToJSONValue","kind":"function","vis":"public","signature":"Public Function VariantToJSONValue(ByVal value As Variant) As String","returnType":"String"},
+        {"name":"WStringToBSTR","kind":"function","vis":"public","signature":"Public Function WStringToBSTR(ByVal StringPtr As LongPtr) As String","returnType":"String"},
+        {"name":"WStringToBSTRAndFree","kind":"function","vis":"public","signature":"Public Function WStringToBSTRAndFree(ByVal StringPtr As LongPtr) As String","returnType":"String"}
+      ]
+    },
+    {
+      "name": "WebView2Request",
+      "kind": "class",
+      "vis": "public",
+      "file": "Classes/WebView2Request.twin",
+      "signature": "Public Class WebView2Request",
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"ContentBytes","kind":"property","vis":"public","signature":"Public Property Get ContentBytes() As Variant","returnType":"Variant","accessor":"Get"},
+        {"name":"ContentBytes","kind":"property","vis":"public","signature":"Public Property Let ContentBytes(Value As Variant)","accessor":"Let"},
+        {"name":"ContentUTF8","kind":"property","vis":"public","signature":"Public Property Get ContentUTF8() As String","returnType":"String","accessor":"Get"},
+        {"name":"ContentUTF8","kind":"property","vis":"public","signature":"Public Property Let ContentUTF8(ByVal Value As String)","accessor":"Let"},
+        {"name":"Headers","kind":"property","vis":"public","signature":"Public Property Get Headers() As WebView2RequestHeaders","returnType":"WebView2RequestHeaders","accessor":"Get"},
+        {"name":"Method","kind":"property","vis":"public","signature":"Public Property Get Method() As String","returnType":"String","accessor":"Get"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Sub New(Request As ICoreWebView2WebResourceRequest)"},
+        {"name":"Request","kind":"field","vis":"private","signature":"Private Request As ICoreWebView2WebResourceRequest"},
+        {"name":"Uri","kind":"property","vis":"public","signature":"Public Property Get Uri() As String","returnType":"String","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "WebView2RequestHeaders",
+      "kind": "class",
+      "vis": "public",
+      "file": "Classes/WebView2RequestHeaders.twin",
+      "signature": "Public Class WebView2RequestHeaders",
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"AppendHeader","kind":"sub","vis":"public","signature":"Sub AppendHeader(ByVal name As String, ByVal value As String)"},
+        {"name":"Contains","kind":"function","vis":"public","signature":"Function Contains(ByVal name As String) As Boolean","returnType":"Boolean"},
+        {"name":"GetHeader","kind":"function","vis":"public","signature":"Function GetHeader(ByVal name As String) As String","returnType":"String"},
+        {"name":"GetHeaders","kind":"function","vis":"public","signature":"Function GetHeaders(ByVal name As String) As WebView2HeadersCollection","returnType":"WebView2HeadersCollection"},
+        {"name":"Headers","kind":"field","vis":"private","signature":"Private Headers As ICoreWebView2HttpRequestHeaders"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Sub New(Headers As ICoreWebView2HttpRequestHeaders)"},
+        {"name":"RemoveHeader","kind":"sub","vis":"public","signature":"Sub RemoveHeader(ByVal name As String)"},
+        {"name":"_NewEnum","kind":"function","vis":"public","signature":"Public Function _NewEnum() As WebView2HeadersCollection","returnType":"WebView2HeadersCollection","attrs":[{"name":"Enumerator"}]}
+      ]
+    },
+    {
+      "name": "WebView2Response",
+      "kind": "class",
+      "vis": "public",
+      "file": "Classes/WebView2Response.twin",
+      "signature": "Public Class WebView2Response",
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"ContentBytes","kind":"property","vis":"public","signature":"Public Property Get ContentBytes() As Variant","returnType":"Variant","accessor":"Get"},
+        {"name":"ContentBytes","kind":"property","vis":"public","signature":"Public Property Let ContentBytes(Value As Variant)","accessor":"Let"},
+        {"name":"ContentUTF8","kind":"property","vis":"public","signature":"Public Property Get ContentUTF8() As String","returnType":"String","accessor":"Get"},
+        {"name":"ContentUTF8","kind":"property","vis":"public","signature":"Public Property Let ContentUTF8(ByVal Value As String)","accessor":"Let"},
+        {"name":"HasBeenSet","kind":"field","vis":"public","signature":"Public HasBeenSet As Boolean = False"},
+        {"name":"Headers","kind":"property","vis":"public","signature":"Public Property Get Headers() As WebView2ResponseHeaders","returnType":"WebView2ResponseHeaders","accessor":"Get"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Sub New(Response As ICoreWebView2WebResourceResponse)"},
+        {"name":"ReasonPhrase","kind":"property","vis":"public","signature":"Public Property Get ReasonPhrase() As String","returnType":"String","accessor":"Get"},
+        {"name":"ReasonPhrase","kind":"property","vis":"public","signature":"Public Property Let ReasonPhrase(Value As String)","accessor":"Let"},
+        {"name":"Response","kind":"field","vis":"private","signature":"Private Response As ICoreWebView2WebResourceResponse"},
+        {"name":"StatusCode","kind":"property","vis":"public","signature":"Public Property Get StatusCode() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"StatusCode","kind":"property","vis":"public","signature":"Public Property Let StatusCode(Value As Long)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "WebView2ResponseHeaders",
+      "kind": "class",
+      "vis": "public",
+      "file": "Classes/WebView2ResponseHeaders.twin",
+      "signature": "Public Class WebView2ResponseHeaders",
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"AppendHeader","kind":"sub","vis":"public","signature":"Sub AppendHeader(ByVal name As String, ByVal value As String)"},
+        {"name":"Contains","kind":"function","vis":"public","signature":"Function Contains(ByVal name As String) As Boolean","returnType":"Boolean"},
+        {"name":"GetHeader","kind":"function","vis":"public","signature":"Function GetHeader(ByVal name As String) As String","returnType":"String"},
+        {"name":"GetHeaders","kind":"function","vis":"public","signature":"Function GetHeaders(ByVal name As String) As WebView2HeadersCollection","returnType":"WebView2HeadersCollection"},
+        {"name":"Headers","kind":"field","vis":"private","signature":"Private Headers As ICoreWebView2HttpResponseHeaders"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Sub New(Headers As ICoreWebView2HttpResponseHeaders)"},
+        {"name":"_NewEnum","kind":"function","vis":"public","signature":"Public Function _NewEnum() As WebView2HeadersCollection","returnType":"WebView2HeadersCollection","attrs":[{"name":"Enumerator"}]}
+      ]
+    },
+    {
+      "name": "WebViewEnums",
+      "kind": "module",
+      "vis": "public",
+      "file": "Support/Enumerations.twin",
+      "signature": "Module WebViewEnums",
+      "members": []
+    },
+    {
+      "name": "wv2DefaultDownloadCornerAlign",
+      "kind": "enum",
+      "in": "WebViewEnums",
+      "vis": "public",
+      "file": "Support/Enumerations.twin",
+      "signature": "Enum wv2DefaultDownloadCornerAlign",
+      "values": [
+        {"name":"wv2CornerTopLeft","value":"0"},
+        {"name":"wv2CornerTopRight","value":"1"},
+        {"name":"wv2CornerBottomLeft","value":"2"},
+        {"name":"wv2CornerBottomRight","value":"3"}
+      ]
+    },
+    {
+      "name": "wv2ErrorStatus",
+      "kind": "enum",
+      "in": "WebViewEnums",
+      "vis": "public",
+      "file": "Support/Enumerations.twin",
+      "signature": "Enum wv2ErrorStatus",
+      "values": [
+        {"name":"wv2StateUnknown","value":"0"},
+        {"name":"wv2CertificateCommonNameIsIncorrect","value":"1"},
+        {"name":"wv2CertificateExpired","value":"2"},
+        {"name":"wv2ClientCertificateContainsErrors","value":"3"},
+        {"name":"wv2CertificateRevoked","value":"4"},
+        {"name":"wv2CertificateIsInvalid","value":"5"},
+        {"name":"wv2ServerUnreachable","value":"6"},
+        {"name":"wv2Timeout","value":"7"},
+        {"name":"wv2ErrorHttpInvalidServerResponse","value":"8"},
+        {"name":"wv2ConnectionAborted","value":"9"},
+        {"name":"wv2ConnectionReset","value":"10"},
+        {"name":"wv2Disconnected","value":"11"},
+        {"name":"wv2CannotConnect","value":"12"},
+        {"name":"wv2HostNameNotResolved","value":"13"},
+        {"name":"wv2OperationCanceled","value":"14"},
+        {"name":"wv2RedirectFailed","value":"15"},
+        {"name":"wv2UnexpectedError","value":"16"},
+        {"name":"wv2ValidAuthenticationCredentialsRequired","value":"17"},
+        {"name":"wv2ValidProxyAuthenticationRequired","value":"18"}
+      ]
+    },
+    {
+      "name": "wv2HostResourceAccessKind",
+      "kind": "enum",
+      "in": "WebViewEnums",
+      "vis": "public",
+      "file": "Support/Enumerations.twin",
+      "signature": "Enum wv2HostResourceAccessKind",
+      "values": [
+        {"name":"wv2ResourceDeny","value":"0"},
+        {"name":"wv2ResourceAllow","value":"1"},
+        {"name":"wv2ResourceDenyCors","value":"2"}
+      ]
+    },
+    {
+      "name": "wv2KeyEventKind",
+      "kind": "enum",
+      "in": "WebViewEnums",
+      "vis": "public",
+      "file": "Support/Enumerations.twin",
+      "signature": "Enum wv2KeyEventKind",
+      "values": [
+        {"name":"wv2EventKeyDown","value":"0"},
+        {"name":"wv2EventKeyUp","value":"1"},
+        {"name":"wv2EventSystemKeyDown","value":"2"},
+        {"name":"wv2EventSystemKeyUp","value":"3"}
+      ]
+    },
+    {
+      "name": "wv2PermissionKind",
+      "kind": "enum",
+      "in": "WebViewEnums",
+      "vis": "public",
+      "file": "Support/Enumerations.twin",
+      "signature": "Enum wv2PermissionKind",
+      "values": [
+        {"name":"wv2UnknownPermission","value":"0"},
+        {"name":"wv2Microphone","value":"1"},
+        {"name":"wv2Camera","value":"2"},
+        {"name":"wv2Geolocation","value":"3"},
+        {"name":"wv2Notifications","value":"4"},
+        {"name":"wv2Sensors","value":"5"},
+        {"name":"wv2ClipboardRead","value":"6"}
+      ]
+    },
+    {
+      "name": "wv2PermissionState",
+      "kind": "enum",
+      "in": "WebViewEnums",
+      "vis": "public",
+      "file": "Support/Enumerations.twin",
+      "signature": "Enum wv2PermissionState",
+      "values": [
+        {"name":"wv2StateDefault","value":"0"},
+        {"name":"wv2StateAllow","value":"1"},
+        {"name":"wv2StateDeny","value":"2"}
+      ]
+    },
+    {
+      "name": "wv2PrintOrientation",
+      "kind": "enum",
+      "in": "WebViewEnums",
+      "vis": "public",
+      "file": "Support/Enumerations.twin",
+      "signature": "Enum wv2PrintOrientation",
+      "values": [
+        {"name":"wv2PrintPortrait","value":"0"},
+        {"name":"wv2PrintLandscape","value":"1"}
+      ]
+    },
+    {
+      "name": "wv2ProcessFailedKind",
+      "kind": "enum",
+      "in": "WebViewEnums",
+      "vis": "public",
+      "file": "Support/Enumerations.twin",
+      "signature": "Enum wv2ProcessFailedKind",
+      "values": [
+        {"name":"wv2BrowserProcessExited","value":"0"},
+        {"name":"wv2RenderProcessExited","value":"1"},
+        {"name":"wv2RenderProcessUnresponsive","value":"2"},
+        {"name":"wv2FrameRenderProcessExited","value":"3"},
+        {"name":"wv2UtilityProcessExited","value":"4"},
+        {"name":"wv2SandboxHelperProcessExited","value":"5"},
+        {"name":"wv2GpuProcessExited","value":"6"},
+        {"name":"wv2PpapiPluginProcessExited","value":"7"},
+        {"name":"wv2PpapiBrokerProcessExited","value":"8"},
+        {"name":"wv2UnknownProcessExited","value":"9"}
+      ]
+    },
+    {
+      "name": "wv2ScriptDialogKind",
+      "kind": "enum",
+      "in": "WebViewEnums",
+      "vis": "public",
+      "file": "Support/Enumerations.twin",
+      "signature": "Enum wv2ScriptDialogKind",
+      "values": [
+        {"name":"wv2DialogAlert","value":"0"},
+        {"name":"wv2DialogConfirm","value":"1"},
+        {"name":"wv2DialogPrompt","value":"2"},
+        {"name":"wv2DialogBeforeUnload","value":"3"}
+      ]
+    },
+    {
+      "name": "wv2WebResourceContext",
+      "kind": "enum",
+      "in": "WebViewEnums",
+      "vis": "public",
+      "file": "Support/Enumerations.twin",
+      "signature": "Enum wv2WebResourceContext",
+      "values": [
+        {"name":"wv2All","value":"0"},
+        {"name":"wv2Document","value":"1"},
+        {"name":"wv2Stylesheet","value":"2"},
+        {"name":"wv2Image","value":"3"},
+        {"name":"wv2Media","value":"4"},
+        {"name":"wv2Font","value":"5"},
+        {"name":"wv2Script","value":"6"},
+        {"name":"wv2XMLHttpRequest","value":"7"},
+        {"name":"wv2Fetch","value":"8"},
+        {"name":"wv2TextTrack","value":"9"},
+        {"name":"wv2EventSource","value":"10"},
+        {"name":"wv2WebSocket","value":"11"},
+        {"name":"wv2Manifest","value":"12"},
+        {"name":"wv2SignedExchange","value":"13"},
+        {"name":"wv2Ping","value":"14"},
+        {"name":"wv2CspViolationReport","value":"15"},
+        {"name":"wv2Other","value":"16"}
+      ]
+    },
+    {
+      "name": "WebViewTypes",
+      "kind": "module",
+      "vis": "public",
+      "file": "Support/Types.twin",
+      "signature": "Module WebViewTypes",
+      "members": []
+    },
+    {
+      "name": "COREWEBVIEW2_PHYSICAL_KEY_STATUS",
+      "kind": "type",
+      "in": "WebViewTypes",
+      "vis": "public",
+      "file": "Support/Types.twin",
+      "signature": "Public Type COREWEBVIEW2_PHYSICAL_KEY_STATUS",
+      "fields": [
+        {"name":"RepeatCount","vis":"public","signature":"RepeatCount As Long"},
+        {"name":"ScanCode","vis":"public","signature":"ScanCode As Long"},
+        {"name":"IsExtendedKey","vis":"public","signature":"IsExtendedKey As Long"},
+        {"name":"IsMenuKeyDown","vis":"public","signature":"IsMenuKeyDown As Long"},
+        {"name":"WasKeyDown","vis":"public","signature":"WasKeyDown As Long"},
+        {"name":"IsKeyReleased","vis":"public","signature":"IsKeyReleased As Long"}
+      ],
+      "members": []
+    },
+    {
+      "name": "tbIEnumVARIANT",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "Classes/WebView2HeadersCollection.twin",
+      "signature": "Private Interface tbIEnumVARIANT Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"00020404-0000-0000-C000-000000000046\""}],
+      "members": [
+        {"name":"Clone","kind":"function","vis":"public","signature":"Function Clone() As IEnumVARIANT","returnType":"IEnumVARIANT"},
+        {"name":"Next","kind":"sub","vis":"public","signature":"Sub Next(ByVal celt As Long, ByRef rgVar As CArrayOfVariants, ByRef pCeltFetched As Long)"},
+        {"name":"Reset","kind":"sub","vis":"public","signature":"Sub Reset()"},
+        {"name":"Skip","kind":"sub","vis":"public","signature":"Sub Skip(ByVal celt As Long)"}
+      ]
+    },
+    {
+      "name": "CArrayOfVariants",
+      "kind": "type",
+      "in": "tbIEnumVARIANT",
+      "vis": "public",
+      "public": false,
+      "file": "Classes/WebView2HeadersCollection.twin",
+      "signature": "Type CArrayOfVariants",
+      "fields": [
+        {"name":"Elements","vis":"public","signature":"Elements(1) As Variant"}
+      ],
+      "members": []
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}

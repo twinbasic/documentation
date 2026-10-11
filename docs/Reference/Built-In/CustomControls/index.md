@@ -1,10 +1,11 @@
 ---
 title: CustomControls Package
+package_name: CustomControls, CustomControlsPackage
 parent: Built-In Packages
 nav_order: 5
 permalink: /tB/Packages/CustomControls/
 has_toc: false
-indexed_from: beta-x-0983
+indexed_from: beta-x-0997
 ---
 
 # CustomControls Package

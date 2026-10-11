@@ -1,0 +1,396 @@
+{
+  "format": 2,
+  "package": "CustomControls",
+  "project": "CustomControls",
+  "version": "beta-x-0997",
+  "types": [
+    {
+      "name": "Constants",
+      "kind": "module",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Module Constants",
+      "members": []
+    },
+    {
+      "name": "BorderStyle",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Public Enum BorderStyle",
+      "values": [
+        {"name":"tbNone","value":"0"},
+        {"name":"tbFixedSingle","value":"1"},
+        {"name":"tbFixedSizable","value":"2"},
+        {"name":"tbFixedDialog","value":"3"},
+        {"name":"tbFixedToolWindow","value":"4"},
+        {"name":"tbSizableToolWindow","value":"5"}
+      ]
+    },
+    {
+      "name": "Canvas",
+      "kind": "type",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Type Canvas",
+      "fields": [
+        {"name":"Pointer","vis":"public","signature":"Pointer As LongPtr"}
+      ],
+      "members": [
+        {"name":"RuntimeUICCCanvasAddElement","kind":"sub","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Sub RuntimeUICCCanvasAddElement Lib \"<runtimeuicanvas>\" Alias \"#1\" (ByVal Me As Canvas, ByRef ElementDescriptor As Any)","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"False"},{"name":"SimplerByVals","args":"True"}]},
+        {"name":"RuntimeUICCGetDpi","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RuntimeUICCGetDpi Lib \"<runtimeuicanvas>\" Alias \"#3\" (ByVal Me As Canvas) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"False"},{"name":"SimplerByVals","args":"True"}]},
+        {"name":"RuntimeUICCGetDpiScaleFactor","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RuntimeUICCGetDpiScaleFactor Lib \"<runtimeuicanvas>\" Alias \"#2\" (ByVal Me As Canvas) As Double","returnType":"Double","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"False"},{"name":"SimplerByVals","args":"True"}]},
+        {"name":"RuntimeUICCGetHeight","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RuntimeUICCGetHeight Lib \"<runtimeuicanvas>\" Alias \"#5\" (ByVal Me As Canvas) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"False"},{"name":"SimplerByVals","args":"True"}]},
+        {"name":"RuntimeUICCGetWidth","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RuntimeUICCGetWidth Lib \"<runtimeuicanvas>\" Alias \"#4\" (ByVal Me As Canvas) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"False"},{"name":"SimplerByVals","args":"True"}]}
+      ]
+    },
+    {
+      "name": "ColorRGBA",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Enum ColorRGBA",
+      "values": [
+        {"name":"_MAX","value":"0"}
+      ]
+    },
+    {
+      "name": "CornerShape",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Public Enum CornerShape",
+      "values": [
+        {"name":"tbCurve","value":"0"},
+        {"name":"tbNotched","value":"1"},
+        {"name":"tbCutOut","value":"2"}
+      ]
+    },
+    {
+      "name": "Customtate",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Public Enum Customtate",
+      "values": [
+        {"name":"tbNormal","value":"0"},
+        {"name":"tbMinimized","value":"1"},
+        {"name":"tbMaximized","value":"2"}
+      ]
+    },
+    {
+      "name": "DockMode",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Public Enum DockMode",
+      "values": [
+        {"name":"tbDockNone","value":"0"},
+        {"name":"tbDockLeft","value":"1"},
+        {"name":"tbDockTop","value":"2"},
+        {"name":"tbDockRight","value":"3"},
+        {"name":"tbDockBottom","value":"4"},
+        {"name":"tbDockFill","value":"5"}
+      ]
+    },
+    {
+      "name": "FillPattern",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Public Enum FillPattern",
+      "values": [
+        {"name":"tbPatternNone","value":"0"},
+        {"name":"tbGradientNorthToSouth","value":"1"},
+        {"name":"tbGradientSouthToNorth","value":"2"},
+        {"name":"tbGradientWestToEast","value":"3"},
+        {"name":"tbGradientEastToWest","value":"4"},
+        {"name":"tbGradientNorthWestToSouthEast","value":"5"},
+        {"name":"tbGradientNorthWestToSouthEastAlt","value":"6"},
+        {"name":"tbGradientNorthEastToSouthWest","value":"7"},
+        {"name":"tbGradientNorthEastToSouthWestAlt","value":"8"},
+        {"name":"tbGradientSouthWestToNorthEast","value":"9"},
+        {"name":"tbGradientSouthWestToNorthEastAlt","value":"10"},
+        {"name":"tbGradientSouthEastToNorthWest","value":"11"},
+        {"name":"tbGradientSouthEastToNorthWestAlt","value":"12"},
+        {"name":"tbGradientCornerTopLeft","value":"13"},
+        {"name":"tbGradientCornerTopRight","value":"14"},
+        {"name":"tbGradientCornerBottomLeft","value":"15"},
+        {"name":"tbGradientCornerBottomRight","value":"16"},
+        {"name":"tbGradientCornerTopLeftAlt","value":"17"},
+        {"name":"tbGradientCornerTopRightAlt","value":"18"},
+        {"name":"tbGradientCornerBottomLeftAlt","value":"19"},
+        {"name":"tbGradientCornerBottomRightAlt","value":"20"}
+      ]
+    },
+    {
+      "name": "FontWeight",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Public Enum FontWeight",
+      "values": [
+        {"name":"tbThin","value":"100"},
+        {"name":"tbExtraLight","value":"200"},
+        {"name":"tbLight","value":"300"},
+        {"name":"tbNormal","value":"400"},
+        {"name":"tbMedium","value":"500"},
+        {"name":"tbSemiBold","value":"600"},
+        {"name":"tbBold","value":"700"},
+        {"name":"tbExtraBold","value":"800"},
+        {"name":"tbHeavy","value":"900"}
+      ]
+    },
+    {
+      "name": "PixelCount",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Enum PixelCount",
+      "values": [
+        {"name":"_MAX","value":"0"}
+      ]
+    },
+    {
+      "name": "PointSize",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Enum PointSize",
+      "values": [
+        {"name":"_MAX","value":"0"}
+      ]
+    },
+    {
+      "name": "SerializeInfo",
+      "kind": "type",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Type SerializeInfo",
+      "fields": [
+        {"name":"Pointer","vis":"public","signature":"Pointer As LongPtr"}
+      ],
+      "members": [
+        {"name":"RuntimeUISrzDeserialize","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RuntimeUISrzDeserialize Lib \"<runtimeuisrz>\" Alias \"#1\" (ByVal Me As SerializeInfo, ByVal object As stdole.IUnknown, ByVal UseOuterOwner As Boolean) As Boolean","returnType":"Boolean","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"False"},{"name":"SimplerByVals","args":"True"}]},
+        {"name":"RuntimeUISrzGetFormHWND","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RuntimeUISrzGetFormHWND Lib \"<runtimeuisrz>\" Alias \"#5\" (ByVal Me As SerializeInfo) As LongPtr","returnType":"LongPtr","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"True"},{"name":"SimplerByVals","args":"True"}]},
+        {"name":"RuntimeUISrzGetOrientationHint","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RuntimeUISrzGetOrientationHint Lib \"<runtimeuisrz>\" Alias \"#8\" (ByVal Me As SerializeInfo) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"True"},{"name":"SimplerByVals","args":"True"}]},
+        {"name":"RuntimeUISrzGetRootCLSID","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RuntimeUISrzGetRootCLSID Lib \"<runtimeuisrz>\" Alias \"#2\" (ByVal Me As SerializeInfo) As String","returnType":"String","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"True"},{"name":"SimplerByVals","args":"True"}]},
+        {"name":"RuntimeUISrzGetRootClassDispatch","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RuntimeUISrzGetRootClassDispatch Lib \"<runtimeuisrz>\" Alias \"#3\" (ByVal Me As SerializeInfo) As Object","returnType":"Object","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"True"},{"name":"SimplerByVals","args":"True"}]},
+        {"name":"RuntimeUISrzIsDesignMode","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RuntimeUISrzIsDesignMode Lib \"<runtimeuisrz>\" Alias \"#4\" (ByVal Me As SerializeInfo) As Boolean","returnType":"Boolean","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"True"},{"name":"SimplerByVals","args":"True"}]},
+        {"name":"RuntimeUISrzIsReportMode","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RuntimeUISrzIsReportMode Lib \"<runtimeuisrz>\" Alias \"#6\" (ByVal Me As SerializeInfo) As Boolean","returnType":"Boolean","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"True"},{"name":"SimplerByVals","args":"True"}]},
+        {"name":"RuntimeUISrzIsRuntimeAdded","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RuntimeUISrzIsRuntimeAdded Lib \"<runtimeuisrz>\" Alias \"#7\" (ByVal Me As SerializeInfo) As Boolean","returnType":"Boolean","attrs":[{"name":"DLLStackCheck","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"PreserveSig","args":"True"},{"name":"SimplerByVals","args":"True"}]}
+      ]
+    },
+    {
+      "name": "StartupPosition",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Public Enum StartupPosition",
+      "values": [
+        {"name":"tbStartUpManual","value":"0"},
+        {"name":"tbStartUpCenterOwner","value":"1"},
+        {"name":"tbStartUpCenterScreen","value":"2"},
+        {"name":"tbStartUpWindowsDefault","value":"3"}
+      ]
+    },
+    {
+      "name": "TextAlignment",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Public Enum TextAlignment",
+      "values": [
+        {"name":"tbAlignTopLeft","value":"0"},
+        {"name":"tbAlignTopCenter","value":"1"},
+        {"name":"tbAlignTopRight","value":"2"},
+        {"name":"tbAlignMiddleLeft","value":"3"},
+        {"name":"tbAlignMiddleCenter","value":"4"},
+        {"name":"tbAlignMiddleRight","value":"5"},
+        {"name":"tbAlignBottomLeft","value":"6"},
+        {"name":"tbAlignBottomCenter","value":"7"},
+        {"name":"tbAlignBottomRight","value":"8"}
+      ]
+    },
+    {
+      "name": "TextOverflowMode",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Public Enum TextOverflowMode",
+      "values": [
+        {"name":"tbAllowPartialChars","value":"0"},
+        {"name":"tbDisallowPartialChars","value":"1"},
+        {"name":"tbAppendEllipsis","value":"2"},
+        {"name":"tbShrinkToFit","value":"3"}
+      ]
+    },
+    {
+      "name": "WindowState",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Public Enum WindowState",
+      "values": [
+        {"name":"tbNormal","value":"0"},
+        {"name":"tbMinimized","value":"1"},
+        {"name":"tbMaximized","value":"2"}
+      ]
+    },
+    {
+      "name": "CustomControlContext",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "CoClass CustomControlContext",
+      "interfaces": [{"name":"_CustomControlContext","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"746CF7F0-22A1-4237-A790-A50869615B0D\""}],
+      "members": []
+    },
+    {
+      "name": "CustomControlTimer",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "CoClass CustomControlTimer",
+      "interfaces": [{"name":"_CustomControlTimer","default":true},{"name":"_CustomControlTimerEvents","default":true,"source":true}],
+      "attrs": [{"name":"CoClassId","args":"\"E7F3D923-475B-4367-B5EF-568FCF3A74B5\""}],
+      "members": []
+    },
+    {
+      "name": "CustomControlsCollection",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "CoClass CustomControlsCollection",
+      "interfaces": [{"name":"_CustomControlsCollection","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"5A5B8745-E5CB-4B85-AB2F-B4FAF7B747D0\""}],
+      "members": []
+    },
+    {
+      "name": "CustomFormContext",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "CoClass CustomFormContext",
+      "interfaces": [{"name":"_CustomFormContext","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"8428F473-603D-4416-9911-BAEB8058FC14\""}],
+      "members": []
+    },
+    {
+      "name": "ICustomControl",
+      "kind": "interface",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Interface ICustomControl Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"90B3C34E-B89C-4CA5-8678-77441E4B0F83\""}],
+      "members": [
+        {"name":"Destroy","kind":"sub","vis":"public","signature":"Sub Destroy()"},
+        {"name":"Initialize","kind":"sub","vis":"public","signature":"Sub Initialize(ByVal Context As CustomControlContext)"},
+        {"name":"Paint","kind":"sub","vis":"public","signature":"Sub Paint(ByVal Canvas As Canvas)"}
+      ]
+    },
+    {
+      "name": "ICustomForm",
+      "kind": "interface",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Interface ICustomForm Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"52335998-8814-48E1-9D0E-4B1DA6B5C00A\""}],
+      "members": [
+        {"name":"Destroy","kind":"sub","vis":"public","signature":"Sub Destroy()"},
+        {"name":"Initialize","kind":"sub","vis":"public","signature":"Sub Initialize(ByVal Context As CustomFormContext)"},
+        {"name":"Paint","kind":"sub","vis":"public","signature":"Sub Paint(ByVal Canvas As Canvas)"}
+      ]
+    },
+    {
+      "name": "_CustomControlContext",
+      "kind": "interface",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Interface _CustomControlContext Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"A40CD6C4-A612-4965-ACB0-D5A4D74D4230\""}],
+      "members": [
+        {"name":"ChangeFocusedElement","kind":"sub","vis":"public","signature":"Sub ChangeFocusedElement(ByVal ElementTabIndex As Long)"},
+        {"name":"CreateTimer","kind":"function","vis":"public","signature":"Function CreateTimer() As stdole.IUnknown","returnType":"stdole.IUnknown"},
+        {"name":"GetSerializer","kind":"function","vis":"public","signature":"Function GetSerializer() As SerializeInfo","returnType":"SerializeInfo"},
+        {"name":"Repaint","kind":"sub","vis":"public","signature":"Sub Repaint()"}
+      ]
+    },
+    {
+      "name": "_CustomControlTimer",
+      "kind": "interface",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Interface _CustomControlTimer Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"047A75BA-1102-4DA2-92B0-230991730999\""}],
+      "members": [
+        {"name":"Enabled","kind":"property","vis":"public","signature":"Property Get Enabled() As Boolean","returnType":"Boolean","accessor":"Get"},
+        {"name":"Enabled","kind":"property","vis":"public","signature":"Property Let Enabled(ByVal Value As Boolean)","accessor":"Let"},
+        {"name":"Interval","kind":"property","vis":"public","signature":"Property Get Interval() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Interval","kind":"property","vis":"public","signature":"Property Let Interval(ByVal Value As Long)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "_CustomControlTimerEvents",
+      "kind": "interface",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Interface _CustomControlTimerEvents Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"E849E0ED-B599-46AD-A13E-340DB7A9F1DD\""}],
+      "members": [
+        {"name":"OnTimer","kind":"sub","vis":"public","signature":"Sub OnTimer()"}
+      ]
+    },
+    {
+      "name": "_CustomControlsCollection",
+      "kind": "interface",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Interface _CustomControlsCollection",
+      "attrs": [{"name":"InterfaceId","args":"\"FDE806AA-F365-4F4B-BF25-10672EA56391\""}],
+      "members": [
+        {"name":"Add","kind":"function","vis":"public","signature":"Function Add(ByVal ProgId As String, ByVal ControlName As String, ByVal Container As Object) As Object","returnType":"Object","attrs":[{"name":"DispId","args":"2"}]},
+        {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Long","returnType":"Long","accessor":"Get","attrs":[{"name":"DispId","args":"1"}]},
+        {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByRef IndexOrName As Variant) As Object","returnType":"Object","accessor":"Get","attrs":[{"name":"DispId","args":"0"}]},
+        {"name":"Remove","kind":"sub","vis":"public","signature":"Sub Remove(ByRef IndexOrName As Variant)","attrs":[{"name":"DispId","args":"3"}]},
+        {"name":"_NewEnum","kind":"function","vis":"public","signature":"Function _NewEnum() As stdole.IUnknown","returnType":"stdole.IUnknown","hidden":true,"attrs":[{"name":"DispId","args":"-4"},{"name":"Hidden"}]}
+      ]
+    },
+    {
+      "name": "_CustomFormContext",
+      "kind": "interface",
+      "vis": "public",
+      "file": "CustomControls.twin",
+      "signature": "Interface _CustomFormContext Extends _CustomControlContext",
+      "extends": "_CustomControlContext",
+      "attrs": [{"name":"InterfaceId","args":"\"FA16E0F6-CE83-4A6B-A016-0904A982B91F\""}],
+      "members": [
+        {"name":"Close","kind":"sub","vis":"public","signature":"Sub Close()"},
+        {"name":"Show","kind":"sub","vis":"public","signature":"Sub Show()"}
+      ]
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}

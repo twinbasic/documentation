@@ -1,0 +1,2160 @@
+{
+  "format": 2,
+  "package": "VBRUN",
+  "project": "VBRUN",
+  "version": "beta-x-0997",
+  "types": [
+    {
+      "name": "AmbientProperties",
+      "kind": "interface",
+      "vis": "public",
+      "file": "AmbientProperties.twin",
+      "signature": "Public Interface AmbientProperties Extends stdole.IDispatch",
+      "extends": "stdole.IDispatch",
+      "attrs": [{"name":"InterfaceId","args":"\"B28FA150-0FF0-11CF-A911-00AA0062BB4C\""},{"name":"COMExtensible"}],
+      "description": "The AmbientProperties object allows access to the ambient properties of the container.",
+      "members": [
+        {"name":"BackColor","kind":"property","vis":"public","signature":"Property Get BackColor() As stdole.OLE_COLOR","returnType":"stdole.OLE_COLOR","accessor":"Get","attrs":[{"name":"DispId","args":"-701"}]},
+        {"name":"DisplayAsDefault","kind":"property","vis":"public","signature":"Property Get DisplayAsDefault() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"DispId","args":"-713"}]},
+        {"name":"DisplayName","kind":"property","vis":"public","signature":"Property Get DisplayName() As String","returnType":"String","accessor":"Get","attrs":[{"name":"DispId","args":"-702"}]},
+        {"name":"Font","kind":"property","vis":"public","signature":"Property Get Font() As stdole.IFontDisp","returnType":"stdole.IFontDisp","accessor":"Get","attrs":[{"name":"DispId","args":"-703"}]},
+        {"name":"ForeColor","kind":"property","vis":"public","signature":"Property Get ForeColor() As stdole.OLE_COLOR","returnType":"stdole.OLE_COLOR","accessor":"Get","attrs":[{"name":"DispId","args":"-704"}]},
+        {"name":"LocaleID","kind":"property","vis":"public","signature":"Property Get LocaleID() As Long","returnType":"Long","accessor":"Get","attrs":[{"name":"DispId","args":"-705"}]},
+        {"name":"MessageReflect","kind":"property","vis":"public","signature":"Property Get MessageReflect() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"DispId","args":"-706"}]},
+        {"name":"Palette","kind":"property","vis":"public","signature":"Property Get Palette() As stdole.IPictureDisp","returnType":"stdole.IPictureDisp","accessor":"Get","attrs":[{"name":"DispId","args":"-726"}]},
+        {"name":"RightToLeft","kind":"property","vis":"public","signature":"Property Get RightToLeft() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"DispId","args":"-732"}]},
+        {"name":"ScaleUnits","kind":"property","vis":"public","signature":"Property Get ScaleUnits() As String","returnType":"String","accessor":"Get","attrs":[{"name":"DispId","args":"-707"}]},
+        {"name":"ShowGrabHandles","kind":"property","vis":"public","signature":"Property Get ShowGrabHandles() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"DispId","args":"-711"}]},
+        {"name":"ShowHatching","kind":"property","vis":"public","signature":"Property Get ShowHatching() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"DispId","args":"-712"}]},
+        {"name":"SupportsMnemonics","kind":"property","vis":"public","signature":"Property Get SupportsMnemonics() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"DispId","args":"-714"}]},
+        {"name":"TextAlign","kind":"property","vis":"public","signature":"Property Get TextAlign() As Integer","returnType":"Integer","accessor":"Get","attrs":[{"name":"DispId","args":"-708"}]},
+        {"name":"UIDead","kind":"property","vis":"public","signature":"Property Get UIDead() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"DispId","args":"-710"}]},
+        {"name":"UserMode","kind":"property","vis":"public","signature":"Property Get UserMode() As Boolean","returnType":"Boolean","accessor":"Get","attrs":[{"name":"DispId","args":"-709"}]}
+      ]
+    },
+    {
+      "name": "AsyncProperty",
+      "kind": "interface",
+      "vis": "public",
+      "file": "AsyncProperty.twin",
+      "signature": "Public Interface AsyncProperty Extends stdole.IDispatch",
+      "extends": "stdole.IDispatch",
+      "attrs": [{"name":"InterfaceId","args":"\"CBB76011-C508-11D1-A3E3-00A0C90AEA82\""}],
+      "description": "The AsyncProperty object is passed in to the AsyncReadComplete and AsyncReadProgress events, and contains the results of the asynchronous read.",
+      "members": [
+        {"name":"AsyncType","kind":"property","vis":"public","signature":"Property Get AsyncType() As AsyncTypeConstants","returnType":"AsyncTypeConstants","accessor":"Get","attrs":[{"name":"DispId","args":"2"}]},
+        {"name":"BytesMax","kind":"property","vis":"public","signature":"Property Get BytesMax() As Long","returnType":"Long","accessor":"Get","attrs":[{"name":"DispId","args":"6"}]},
+        {"name":"BytesRead","kind":"property","vis":"public","signature":"Property Get BytesRead() As Long","returnType":"Long","accessor":"Get","attrs":[{"name":"DispId","args":"5"}]},
+        {"name":"PropertyName","kind":"property","vis":"public","signature":"Property Get PropertyName() As String","returnType":"String","accessor":"Get","attrs":[{"name":"DispId","args":"3"}]},
+        {"name":"Status","kind":"property","vis":"public","signature":"Property Get Status() As String","returnType":"String","accessor":"Get","attrs":[{"name":"DispId","args":"7"}]},
+        {"name":"StatusCode","kind":"property","vis":"public","signature":"Property Get StatusCode() As AsyncStatusCodeConstants","returnType":"AsyncStatusCodeConstants","accessor":"Get","attrs":[{"name":"DispId","args":"8"}]},
+        {"name":"Target","kind":"property","vis":"public","signature":"Property Get Target() As String","returnType":"String","accessor":"Get","attrs":[{"name":"DispId","args":"4"}]},
+        {"name":"Value","kind":"property","vis":"public","signature":"Property Get Value() As Variant","returnType":"Variant","accessor":"Get","attrs":[{"name":"DispId","args":"1"}]}
+      ]
+    },
+    {
+      "name": "Constants",
+      "kind": "module",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Module Constants",
+      "members": [
+        {"name":"CreatePropertyBagObject","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function CreatePropertyBagObject Lib \"<hiddenmodule>\" Alias \"#30\" () As stdole.IUnknown","returnType":"stdole.IUnknown","hidden":true,"attrs":[{"name":"PreserveSig","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"DLLStackCheck","args":"False"},{"name":"Hidden"},{"name":"Restricted"}],"description":""}
+      ]
+    },
+    {
+      "name": "AlignConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum AlignConstants",
+      "values": [
+        {"name":"vbAlignNone","value":"0"},
+        {"name":"vbAlignTop","value":"1"},
+        {"name":"vbAlignBottom","value":"2"},
+        {"name":"vbAlignLeft","value":"3"},
+        {"name":"vbAlignRight","value":"4"}
+      ]
+    },
+    {
+      "name": "AlignmentConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum AlignmentConstants",
+      "values": [
+        {"name":"vbLeftJustify","value":"0"},
+        {"name":"vbRightJustify","value":"1"},
+        {"name":"vbCenter","value":"2"}
+      ]
+    },
+    {
+      "name": "AlignmentConstantsNoCenter",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum AlignmentConstantsNoCenter",
+      "values": [
+        {"name":"tbLeftJustify","value":"0"},
+        {"name":"tbRightJustify","value":"1"}
+      ]
+    },
+    {
+      "name": "AppearanceConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum AppearanceConstants",
+      "values": [
+        {"name":"vbAppearFlat","value":"0"},
+        {"name":"vbAppear3d","value":"1"}
+      ]
+    },
+    {
+      "name": "ApplicationStartConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ApplicationStartConstants",
+      "values": [
+        {"name":"vbSModeAutomation","value":"1"},
+        {"name":"vbSModeStandalone","value":"0"}
+      ]
+    },
+    {
+      "name": "AspectTypeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Enum AspectTypeConstants",
+      "values": [
+        {"name":"vbContent","value":"1"},
+        {"name":"vbThumbnail","value":"2"},
+        {"name":"vbIcon","value":"4"},
+        {"name":"vbDocPrint","value":"8"}
+      ]
+    },
+    {
+      "name": "AsyncReadConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum AsyncReadConstants",
+      "values": [
+        {"name":"vbAsyncReadForceUpdate","value":"&H10"},
+        {"name":"vbAsyncReadGetFromCacheIfNetFail","value":"&H80000&"},
+        {"name":"vbAsyncReadOfflineOperation","value":"8"},
+        {"name":"vbAsyncReadResynchronize","value":"&H200"},
+        {"name":"vbAsyncReadSynchronousDownload","value":"1"}
+      ]
+    },
+    {
+      "name": "AsyncStatusCodeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum AsyncStatusCodeConstants",
+      "values": [
+        {"name":"vbAsyncStatusCodeBeginDownloadData","value":"4"},
+        {"name":"vbAsyncStatusCodeBeginSyncOperation","value":"15"},
+        {"name":"vbAsyncStatusCodeCacheFileNameAvailable","value":"14"},
+        {"name":"vbAsyncStatusCodeConnecting","value":"2"},
+        {"name":"vbAsyncStatusCodeDownloadingData","value":"5"},
+        {"name":"vbAsyncStatusCodeEndDownloadData","value":"6"},
+        {"name":"vbAsyncStatusCodeEndSyncOperation","value":"16"},
+        {"name":"vbAsyncStatusCodeError","value":"0"},
+        {"name":"vbAsyncStatusCodeFindingResource","value":"1"},
+        {"name":"vbAsyncStatusCodeMIMETypeAvailable","value":"13"},
+        {"name":"vbAsyncStatusCodeRedirecting","value":"3"},
+        {"name":"vbAsyncStatusCodeSendingRequest","value":"11"},
+        {"name":"vbAsyncStatusCodeUsingCachedCopy","value":"10"}
+      ]
+    },
+    {
+      "name": "AsyncTypeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum AsyncTypeConstants",
+      "values": [
+        {"name":"vbAsyncTypeByteArray","value":"2"},
+        {"name":"vbAsyncTypeFile","value":"1"},
+        {"name":"vbAsyncTypePicture","value":"0"}
+      ]
+    },
+    {
+      "name": "BackFillStyleConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum BackFillStyleConstants",
+      "values": [
+        {"name":"vbBFTransparent","value":"0"},
+        {"name":"vbBFOpaque","value":"1"}
+      ]
+    },
+    {
+      "name": "BorderStyleConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum BorderStyleConstants",
+      "values": [
+        {"name":"vbBSDash","value":"2"},
+        {"name":"vbBSDashDot","value":"4"},
+        {"name":"vbBSDashDotDot","value":"5"},
+        {"name":"vbBSDot","value":"3"},
+        {"name":"vbBSInsideSolid","value":"6"},
+        {"name":"vbBSSolid","value":"1"},
+        {"name":"vbTransparent","value":"0"}
+      ]
+    },
+    {
+      "name": "ButtonConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ButtonConstants",
+      "values": [
+        {"name":"vbButtonGraphical","value":"1"},
+        {"name":"vbButtonStandard","value":"0"}
+      ]
+    },
+    {
+      "name": "CheckBoxConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum CheckBoxConstants",
+      "values": [
+        {"name":"vbUnchecked","value":"0"},
+        {"name":"vbChecked","value":"1"},
+        {"name":"vbGrayed","value":"2"}
+      ]
+    },
+    {
+      "name": "ClipboardConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ClipboardConstants",
+      "values": [
+        {"name":"vbCFText","value":"1"},
+        {"name":"vbCFBitmap","value":"2"},
+        {"name":"vbCFMetafile","value":"3"},
+        {"name":"vbCFDIB","value":"8"},
+        {"name":"vbCFPalette","value":"9"},
+        {"name":"vbCFUnicodeText","value":"13"},
+        {"name":"vbCFEMetafile","value":"14"},
+        {"name":"vbCFFiles","value":"15"},
+        {"name":"vbCFLink","value":"&HFFFFBF00"},
+        {"name":"vbCFRTF","value":"&HFFFFBF01"}
+      ]
+    },
+    {
+      "name": "ColorConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ColorConstants",
+      "values": [
+        {"name":"vbBlack","value":"0"},
+        {"name":"vbBlue","value":"16711680"},
+        {"name":"vbCyan","value":"16776960"},
+        {"name":"vbGreen","value":"65280"},
+        {"name":"vbMagenta","value":"16711935"},
+        {"name":"vbRed","value":"255"},
+        {"name":"vbWhite","value":"16777215"},
+        {"name":"vbYellow","value":"65535"}
+      ]
+    },
+    {
+      "name": "ComboBoxConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ComboBoxConstants",
+      "values": [
+        {"name":"vbComboDropdown","value":"0"},
+        {"name":"vbComboSimple","value":"1"},
+        {"name":"vbComboDropdownList","value":"2"}
+      ]
+    },
+    {
+      "name": "ControlBorderStyleConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ControlBorderStyleConstants",
+      "values": [
+        {"name":"vbNoBorder","value":"0"},
+        {"name":"vbFixedSingleBorder","value":"1"}
+      ]
+    },
+    {
+      "name": "ControlBorderStyleConstantsCustom",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ControlBorderStyleConstantsCustom",
+      "attrs": [{"name":"MustBeQualified"}],
+      "values": [
+        {"name":"vbNoBorder","value":"0"},
+        {"name":"vbFixedSingleBorder","value":"1"},
+        {"name":"vbCustomBorder","value":"2"}
+      ]
+    },
+    {
+      "name": "ControlTypeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ControlTypeConstants",
+      "values": [
+        {"name":"vbCommandButton","value":"0"},
+        {"name":"vbListBox","value":"1"},
+        {"name":"vbComboBox","value":"2"},
+        {"name":"vbOptionButton","value":"3"},
+        {"name":"vbCheckBox","value":"4"},
+        {"name":"vbFrame","value":"5"},
+        {"name":"vbLabel","value":"6"},
+        {"name":"vbPictureBox","value":"7"},
+        {"name":"vbTextBox","value":"8"},
+        {"name":"vbTimer","value":"9"},
+        {"name":"vbUserControl","value":"10"},
+        {"name":"vbHScrollBar","value":"11"},
+        {"name":"vbVScrollBar","value":"12"},
+        {"name":"vbImage","value":"13"},
+        {"name":"vbDirListBox","value":"14"},
+        {"name":"vbDriveListBox","value":"15"},
+        {"name":"vbFileListBox","value":"16"},
+        {"name":"vbForm","value":"17"},
+        {"name":"vbWebView2","value":"18"},
+        {"name":"vbActiveXExtender","value":"19"},
+        {"name":"vbShape","value":"20"},
+        {"name":"vbProgressBar","value":"21"},
+        {"name":"vbTreeView","value":"22"},
+        {"name":"vbOLEControl","value":"23"},
+        {"name":"vbDataControl","value":"24"},
+        {"name":"vbMenuControl","value":"25"},
+        {"name":"vbSlider","value":"26"},
+        {"name":"vbUpDown","value":"27"},
+        {"name":"vbDTPicker","value":"28"},
+        {"name":"vbMonthView","value":"29"},
+        {"name":"vbListView","value":"30"},
+        {"name":"vbImageList","value":"31"},
+        {"name":"vbPropertyPage","value":"32"},
+        {"name":"vbHwndControl","value":"33"},
+        {"name":"vbReport","value":"34"},
+        {"name":"vbCheckMark","value":"35"},
+        {"name":"vbFusion","value":"36"},
+        {"name":"vbCefBrowser","value":"37"}
+      ]
+    },
+    {
+      "name": "DataBOFconstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum DataBOFconstants",
+      "values": [
+        {"name":"vbBOF","value":"1"},
+        {"name":"vbMoveFirst","value":"0"}
+      ]
+    },
+    {
+      "name": "DataEOFConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum DataEOFConstants",
+      "values": [
+        {"name":"vbAddNew","value":"2"},
+        {"name":"vbEOF","value":"1"},
+        {"name":"vbMoveLast","value":"0"}
+      ]
+    },
+    {
+      "name": "DataErrorConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum DataErrorConstants",
+      "values": [
+        {"name":"vbDataErrContinue","value":"0"},
+        {"name":"vbDataErrDisplay","value":"1"}
+      ]
+    },
+    {
+      "name": "DataValidateConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum DataValidateConstants",
+      "values": [
+        {"name":"vbDataActionAddNew","value":"5"},
+        {"name":"vbDataActionBookmark","value":"9"},
+        {"name":"vbDataActionCancel","value":"0"},
+        {"name":"vbDataActionClose","value":"10"},
+        {"name":"vbDataActionDelete","value":"7"},
+        {"name":"vbDataActionFind","value":"8"},
+        {"name":"vbDataActionMoveFirst","value":"1"},
+        {"name":"vbDataActionMoveLast","value":"4"},
+        {"name":"vbDataActionMoveNext","value":"3"},
+        {"name":"vbDataActionMovePrevious","value":"2"},
+        {"name":"vbDataActionUnload","value":"11"},
+        {"name":"vbDataActionUpdate","value":"6"}
+      ]
+    },
+    {
+      "name": "DatabaseTypeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum DatabaseTypeConstants",
+      "values": [
+        {"name":"vbUseODBC","value":"1"},
+        {"name":"vbUseJet","value":"2"},
+        {"name":"vbUseACE","value":"3"}
+      ]
+    },
+    {
+      "name": "DefaultCursorTypeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum DefaultCursorTypeConstants",
+      "values": [
+        {"name":"vbUseDefaultCursor","value":"0"},
+        {"name":"vbUseODBCCursor","value":"1"},
+        {"name":"vbUseServersideCursor","value":"2"}
+      ]
+    },
+    {
+      "name": "DockModeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum DockModeConstants",
+      "values": [
+        {"name":"vbDockNone","value":"0"},
+        {"name":"vbDockLeft","value":"1"},
+        {"name":"vbDockTop","value":"2"},
+        {"name":"vbDockRight","value":"3"},
+        {"name":"vbDockBottom","value":"4"},
+        {"name":"vbDockFill","value":"5"}
+      ]
+    },
+    {
+      "name": "DragConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum DragConstants",
+      "values": [
+        {"name":"vbBeginDrag","value":"1"},
+        {"name":"vbCancel","value":"0"},
+        {"name":"vbEndDrag","value":"2"}
+      ]
+    },
+    {
+      "name": "DragModeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum DragModeConstants",
+      "values": [
+        {"name":"vbAutomatic","value":"1"},
+        {"name":"vbManual","value":"0"}
+      ]
+    },
+    {
+      "name": "DragOverConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum DragOverConstants",
+      "values": [
+        {"name":"vbEnter","value":"0"},
+        {"name":"vbLeave","value":"1"},
+        {"name":"vbOver","value":"2"}
+      ]
+    },
+    {
+      "name": "DrawModeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum DrawModeConstants",
+      "values": [
+        {"name":"vbBlackness","value":"1"},
+        {"name":"vbCopyPen","value":"13"},
+        {"name":"vbInvert","value":"6"},
+        {"name":"vbMaskNotPen","value":"3"},
+        {"name":"vbMaskPen","value":"9"},
+        {"name":"vbMaskPenNot","value":"5"},
+        {"name":"vbMergeNotPen","value":"12"},
+        {"name":"vbMergePen","value":"15"},
+        {"name":"vbMergePenNot","value":"14"},
+        {"name":"vbNop","value":"11"},
+        {"name":"vbNotCopyPen","value":"4"},
+        {"name":"vbNotMaskPen","value":"8"},
+        {"name":"vbNotMergePen","value":"2"},
+        {"name":"vbNotXorPen","value":"10"},
+        {"name":"vbWhiteness","value":"16"},
+        {"name":"vbXorPen","value":"7"}
+      ]
+    },
+    {
+      "name": "DrawStyleConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum DrawStyleConstants",
+      "values": [
+        {"name":"vbDash","value":"1"},
+        {"name":"vbDashDot","value":"3"},
+        {"name":"vbDashDotDot","value":"4"},
+        {"name":"vbDot","value":"2"},
+        {"name":"vbInsideSolid","value":"6"},
+        {"name":"vbInvisible","value":"5"},
+        {"name":"vbSolid","value":"0"}
+      ]
+    },
+    {
+      "name": "FillStyleConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum FillStyleConstants",
+      "values": [
+        {"name":"vbCross","value":"6"},
+        {"name":"vbDiagonalCross","value":"7"},
+        {"name":"vbDownwardDiagonal","value":"5"},
+        {"name":"vbFSSolid","value":"0"},
+        {"name":"vbFSTransparent","value":"1"},
+        {"name":"vbHorizontalLine","value":"2"},
+        {"name":"vbUpwardDiagonal","value":"4"},
+        {"name":"vbVerticalLine","value":"3"}
+      ]
+    },
+    {
+      "name": "FillStyleConstantsEx",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum FillStyleConstantsEx",
+      "attrs": [{"name":"MustBeQualified"}],
+      "values": [
+        {"name":"vbCross","value":"6"},
+        {"name":"vbDiagonalCross","value":"7"},
+        {"name":"vbDownwardDiagonal","value":"5"},
+        {"name":"vbFSSolid","value":"0"},
+        {"name":"vbFSTransparent","value":"1"},
+        {"name":"vbHorizontalLine","value":"2"},
+        {"name":"vbUpwardDiagonal","value":"4"},
+        {"name":"vbVerticalLine","value":"3"},
+        {"name":"vbGradientNS","value":"8"},
+        {"name":"vbGradientWE","value":"9"}
+      ]
+    },
+    {
+      "name": "FormArrangeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum FormArrangeConstants",
+      "values": [
+        {"name":"vbArrangeIcons","value":"3"},
+        {"name":"vbCascade","value":"0"},
+        {"name":"vbTileHorizontal","value":"1"},
+        {"name":"vbTileVertical","value":"2"}
+      ]
+    },
+    {
+      "name": "FormBorderStyleConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum FormBorderStyleConstants",
+      "values": [
+        {"name":"vbBSNone","value":"0"},
+        {"name":"vbFixedSingle","value":"1"},
+        {"name":"vbSizable","value":"2"},
+        {"name":"vbFixedDialog","value":"3"},
+        {"name":"vbFixedToolWindow","value":"4"},
+        {"name":"vbSizableToolWindow","value":"5"},
+        {"name":"vbSizableNoTitleBar","value":"6"},
+        {"name":"vbSizableToolWindowNoTitleBar","value":"7"}
+      ]
+    },
+    {
+      "name": "FormShowConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum FormShowConstants",
+      "values": [
+        {"name":"vbModeless","value":"0"},
+        {"name":"vbModal","value":"1"}
+      ]
+    },
+    {
+      "name": "FormWindowStateConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum FormWindowStateConstants",
+      "values": [
+        {"name":"vbNormal","value":"0"},
+        {"name":"vbMinimized","value":"1"},
+        {"name":"vbMaximized","value":"2"}
+      ]
+    },
+    {
+      "name": "HitResultConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum HitResultConstants",
+      "values": [
+        {"name":"vbHitResultClose","value":"2"},
+        {"name":"vbHitResultHit","value":"3"},
+        {"name":"vbHitResultOutside","value":"0"},
+        {"name":"vbHitResultTransparent","value":"1"}
+      ]
+    },
+    {
+      "name": "KeyCodeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum KeyCodeConstants",
+      "values": [
+        {"name":"vbKeyLButton","value":"1"},
+        {"name":"vbKeyRButton","value":"2"},
+        {"name":"vbKeyCancel","value":"3"},
+        {"name":"vbKeyMButton","value":"4"},
+        {"name":"vbKeyBack","value":"8"},
+        {"name":"vbKeyTab","value":"9"},
+        {"name":"vbKeyClear","value":"12"},
+        {"name":"vbKeyReturn","value":"13"},
+        {"name":"vbKeyShift","value":"16"},
+        {"name":"vbKeyControl","value":"17"},
+        {"name":"vbKeyMenu","value":"18"},
+        {"name":"vbKeyPause","value":"19"},
+        {"name":"vbKeyCapital","value":"20"},
+        {"name":"vbKeyEscape","value":"27"},
+        {"name":"vbKeySpace","value":"32"},
+        {"name":"vbKeyPageUp","value":"33"},
+        {"name":"vbKeyPageDown","value":"34"},
+        {"name":"vbKeyEnd","value":"35"},
+        {"name":"vbKeyHome","value":"36"},
+        {"name":"vbKeyLeft","value":"37"},
+        {"name":"vbKeyUp","value":"38"},
+        {"name":"vbKeyRight","value":"39"},
+        {"name":"vbKeyDown","value":"40"},
+        {"name":"vbKeySelect","value":"41"},
+        {"name":"vbKeyPrint","value":"42"},
+        {"name":"vbKeyExecute","value":"43"},
+        {"name":"vbKeySnapshot","value":"44"},
+        {"name":"vbKeyInsert","value":"45"},
+        {"name":"vbKeyDelete","value":"46"},
+        {"name":"vbKeyHelp","value":"47"},
+        {"name":"vbKeyNumlock","value":"144"},
+        {"name":"vbKeyScrollLock","value":"145"},
+        {"name":"vbKeyA","value":"65"},
+        {"name":"vbKeyB","value":"66"},
+        {"name":"vbKeyC","value":"67"},
+        {"name":"vbKeyD","value":"68"},
+        {"name":"vbKeyE","value":"69"},
+        {"name":"vbKeyF","value":"70"},
+        {"name":"vbKeyG","value":"71"},
+        {"name":"vbKeyH","value":"72"},
+        {"name":"vbKeyI","value":"73"},
+        {"name":"vbKeyJ","value":"74"},
+        {"name":"vbKeyK","value":"75"},
+        {"name":"vbKeyL","value":"76"},
+        {"name":"vbKeyM","value":"77"},
+        {"name":"vbKeyN","value":"78"},
+        {"name":"vbKeyO","value":"79"},
+        {"name":"vbKeyP","value":"80"},
+        {"name":"vbKeyQ","value":"81"},
+        {"name":"vbKeyR","value":"82"},
+        {"name":"vbKeyS","value":"83"},
+        {"name":"vbKeyT","value":"84"},
+        {"name":"vbKeyU","value":"85"},
+        {"name":"vbKeyV","value":"86"},
+        {"name":"vbKeyW","value":"87"},
+        {"name":"vbKeyX","value":"88"},
+        {"name":"vbKeyY","value":"89"},
+        {"name":"vbKeyZ","value":"90"},
+        {"name":"vbKey0","value":"48"},
+        {"name":"vbKey1","value":"49"},
+        {"name":"vbKey2","value":"50"},
+        {"name":"vbKey3","value":"51"},
+        {"name":"vbKey4","value":"52"},
+        {"name":"vbKey5","value":"53"},
+        {"name":"vbKey6","value":"54"},
+        {"name":"vbKey7","value":"55"},
+        {"name":"vbKey8","value":"56"},
+        {"name":"vbKey9","value":"57"},
+        {"name":"vbKeyNumpad0","value":"96"},
+        {"name":"vbKeyNumpad1","value":"97"},
+        {"name":"vbKeyNumpad2","value":"98"},
+        {"name":"vbKeyNumpad3","value":"99"},
+        {"name":"vbKeyNumpad4","value":"100"},
+        {"name":"vbKeyNumpad5","value":"101"},
+        {"name":"vbKeyNumpad6","value":"102"},
+        {"name":"vbKeyNumpad7","value":"103"},
+        {"name":"vbKeyNumpad8","value":"104"},
+        {"name":"vbKeyNumpad9","value":"105"},
+        {"name":"vbKeyMultiply","value":"106"},
+        {"name":"vbKeyAdd","value":"107"},
+        {"name":"vbKeySeparator","value":"108"},
+        {"name":"vbKeySubtract","value":"109"},
+        {"name":"vbKeyDecimal","value":"110"},
+        {"name":"vbKeyDivide","value":"111"},
+        {"name":"vbKeyF1","value":"112"},
+        {"name":"vbKeyF2","value":"113"},
+        {"name":"vbKeyF3","value":"114"},
+        {"name":"vbKeyF4","value":"115"},
+        {"name":"vbKeyF5","value":"116"},
+        {"name":"vbKeyF6","value":"117"},
+        {"name":"vbKeyF7","value":"118"},
+        {"name":"vbKeyF8","value":"119"},
+        {"name":"vbKeyF9","value":"120"},
+        {"name":"vbKeyF10","value":"121"},
+        {"name":"vbKeyF11","value":"122"},
+        {"name":"vbKeyF12","value":"123"},
+        {"name":"vbKeyF13","value":"124"},
+        {"name":"vbKeyF14","value":"125"},
+        {"name":"vbKeyF15","value":"126"},
+        {"name":"vbKeyF16","value":"127"}
+      ]
+    },
+    {
+      "name": "LinkModeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum LinkModeConstants",
+      "values": [
+        {"name":"vbLinkNone","value":"0"},
+        {"name":"vbLinkAutomatic","value":"1"},
+        {"name":"vbLinkSource","value":"1"},
+        {"name":"vbLinkManual","value":"2"},
+        {"name":"vbLinkNotify","value":"3"}
+      ]
+    },
+    {
+      "name": "ListBoxConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ListBoxConstants",
+      "values": [
+        {"name":"vbListBoxStandard","value":"0"},
+        {"name":"vbListBoxCheckbox","value":"1"},
+        {"name":"vbListBoxColorSwatch","value":"2"}
+      ]
+    },
+    {
+      "name": "LoadPictureColorConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum LoadPictureColorConstants",
+      "values": [
+        {"name":"vbLPDefault","value":"0"},
+        {"name":"vbLPMonochrome","value":"1"},
+        {"name":"vbLPVGAColor","value":"2"},
+        {"name":"vbLPColor","value":"3"}
+      ]
+    },
+    {
+      "name": "LoadPictureSizeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum LoadPictureSizeConstants",
+      "values": [
+        {"name":"vbLPSmall","value":"0"},
+        {"name":"vbLPLarge","value":"1"},
+        {"name":"vbLPSmallShell","value":"2"},
+        {"name":"vbLPLargeShell","value":"3"},
+        {"name":"vbLPCustom","value":"4"}
+      ]
+    },
+    {
+      "name": "LoadResConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum LoadResConstants",
+      "values": [
+        {"name":"vbResBitmap","value":"0"},
+        {"name":"vbResIcon","value":"1"},
+        {"name":"vbResCursor","value":"2"},
+        {"name":"vbResBitmapFromIcon","value":"3"}
+      ]
+    },
+    {
+      "name": "LogEventTypeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Enum LogEventTypeConstants",
+      "values": [
+        {"name":"vbLogEventTypeError","value":"1"},
+        {"name":"vbLogEventTypeWarning","value":"2"},
+        {"name":"vbLogEventTypeInformation","value":"4"}
+      ]
+    },
+    {
+      "name": "LogModeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Enum LogModeConstants",
+      "values": [
+        {"name":"vbLogAuto","value":"0"},
+        {"name":"vbLogOff","value":"1"},
+        {"name":"vbLogToFile","value":"2"},
+        {"name":"vbLogToNT","value":"3"},
+        {"name":"vbLogOverwrite","value":"16"},
+        {"name":"vbLogThreadID","value":"32"}
+      ]
+    },
+    {
+      "name": "MenuAccelConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum MenuAccelConstants",
+      "values": [
+        {"name":"vbMenuAccelCtrlA","value":"1"},
+        {"name":"vbMenuAccelCtrlB","value":"2"},
+        {"name":"vbMenuAccelCtrlC","value":"3"},
+        {"name":"vbMenuAccelCtrlD","value":"4"},
+        {"name":"vbMenuAccelCtrlE","value":"5"},
+        {"name":"vbMenuAccelCtrlF","value":"6"},
+        {"name":"vbMenuAccelCtrlG","value":"7"},
+        {"name":"vbMenuAccelCtrlH","value":"8"},
+        {"name":"vbMenuAccelCtrlI","value":"9"},
+        {"name":"vbMenuAccelCtrlJ","value":"10"},
+        {"name":"vbMenuAccelCtrlK","value":"11"},
+        {"name":"vbMenuAccelCtrlL","value":"12"},
+        {"name":"vbMenuAccelCtrlM","value":"13"},
+        {"name":"vbMenuAccelCtrlN","value":"14"},
+        {"name":"vbMenuAccelCtrlO","value":"15"},
+        {"name":"vbMenuAccelCtrlP","value":"16"},
+        {"name":"vbMenuAccelCtrlQ","value":"17"},
+        {"name":"vbMenuAccelCtrlR","value":"18"},
+        {"name":"vbMenuAccelCtrlS","value":"19"},
+        {"name":"vbMenuAccelCtrlT","value":"20"},
+        {"name":"vbMenuAccelCtrlU","value":"21"},
+        {"name":"vbMenuAccelCtrlV","value":"22"},
+        {"name":"vbMenuAccelCtrlW","value":"23"},
+        {"name":"vbMenuAccelCtrlX","value":"24"},
+        {"name":"vbMenuAccelCtrlY","value":"25"},
+        {"name":"vbMenuAccelCtrlZ","value":"26"},
+        {"name":"vbMenuAccelF1","value":"27"},
+        {"name":"vbMenuAccelF2","value":"28"},
+        {"name":"vbMenuAccelF3","value":"29"},
+        {"name":"vbMenuAccelF4","value":"30"},
+        {"name":"vbMenuAccelF5","value":"31"},
+        {"name":"vbMenuAccelF6","value":"32"},
+        {"name":"vbMenuAccelF7","value":"33"},
+        {"name":"vbMenuAccelF8","value":"34"},
+        {"name":"vbMenuAccelF9","value":"35"},
+        {"name":"vbMenuAccelF11","value":"36"},
+        {"name":"vbMenuAccelF12","value":"37"},
+        {"name":"vbMenuAccelCtrlF1","value":"38"},
+        {"name":"vbMenuAccelCtrlF2","value":"39"},
+        {"name":"vbMenuAccelCtrlF3","value":"40"},
+        {"name":"vbMenuAccelCtrlF4","value":"41"},
+        {"name":"vbMenuAccelCtrlF5","value":"42"},
+        {"name":"vbMenuAccelCtrlF6","value":"43"},
+        {"name":"vbMenuAccelCtrlF7","value":"44"},
+        {"name":"vbMenuAccelCtrlF8","value":"45"},
+        {"name":"vbMenuAccelCtrlF9","value":"46"},
+        {"name":"vbMenuAccelCtrlF11","value":"47"},
+        {"name":"vbMenuAccelCtrlF12","value":"48"},
+        {"name":"vbMenuAccelShiftF1","value":"49"},
+        {"name":"vbMenuAccelShfitF2","value":"50"},
+        {"name":"vbMenuAccelShiftF3","value":"51"},
+        {"name":"vbMenuAccelShiftF4","value":"52"},
+        {"name":"vbMenuAccelShiftF5","value":"53"},
+        {"name":"vbMenuAccelShiftF6","value":"54"},
+        {"name":"vbMenuAccelShiftF7","value":"55"},
+        {"name":"vbMenuAccelShiftF8","value":"56"},
+        {"name":"vbMenuAccelShiftF9","value":"57"},
+        {"name":"vbMenuAccelShiftF11","value":"58"},
+        {"name":"vbMenuAccelShiftF12","value":"59"},
+        {"name":"vbMenuAccelShiftCtrlF1","value":"60"},
+        {"name":"vbMenuAccelShiftCtrlF2","value":"61"},
+        {"name":"vbMenuAccelShiftCtrlF3","value":"62"},
+        {"name":"vbMenuAccelShiftCtrlF4","value":"63"},
+        {"name":"vbMenuAccelShiftCtrlF5","value":"64"},
+        {"name":"vbMenuAccelShiftCtrlF6","value":"65"},
+        {"name":"vbMenuAccelShiftCtrlF7","value":"66"},
+        {"name":"vbMenuAccelShiftCtrlF8","value":"67"},
+        {"name":"vbMenuAccelShiftCtrlF9","value":"68"},
+        {"name":"vbMenuAccelShiftCtrlF11","value":"69"},
+        {"name":"vbMenuAccelShiftCtrlF12","value":"70"},
+        {"name":"vbMenuAccelCtrlIns","value":"71"},
+        {"name":"vbMenuAccelShiftIns","value":"72"},
+        {"name":"vbMenuAccelDel","value":"73"},
+        {"name":"vbMenuAccelShiftDel","value":"74"},
+        {"name":"vbMenuAccelAltBksp","value":"75"}
+      ]
+    },
+    {
+      "name": "MenuControlConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum MenuControlConstants",
+      "values": [
+        {"name":"vbPopupMenuLeftAlign","value":"0"},
+        {"name":"vbPopupMenuCenterAlign","value":"4"},
+        {"name":"vbPopupMenuRightAlign","value":"8"},
+        {"name":"vbPopupMenuLeftButton","value":"0"},
+        {"name":"vbPopupMenuRightButton","value":"2"}
+      ]
+    },
+    {
+      "name": "MouseButtonConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum MouseButtonConstants",
+      "values": [
+        {"name":"vbLeftButton","value":"1"},
+        {"name":"vbRightButton","value":"2"},
+        {"name":"vbMiddleButton","value":"4"}
+      ]
+    },
+    {
+      "name": "MousePointerConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum MousePointerConstants",
+      "values": [
+        {"name":"vbDefault","value":"0"},
+        {"name":"vbArrow","value":"1"},
+        {"name":"vbCrosshair","value":"2"},
+        {"name":"vbIbeam","value":"3"},
+        {"name":"vbIconPointer","value":"4"},
+        {"name":"vbSizePointer","value":"5"},
+        {"name":"vbSizeNESW","value":"6"},
+        {"name":"vbSizeNS","value":"7"},
+        {"name":"vbSizeNWSE","value":"8"},
+        {"name":"vbSizeWE","value":"9"},
+        {"name":"vbUpArrow","value":"10"},
+        {"name":"vbHourglass","value":"11"},
+        {"name":"vbNoDrop","value":"12"},
+        {"name":"vbArrowHourglass","value":"13"},
+        {"name":"vbArrowQuestion","value":"14"},
+        {"name":"vbSizeAll","value":"15"},
+        {"name":"vbHand","value":"16"},
+        {"name":"vbPin","value":"17"},
+        {"name":"vbPerson","value":"18"},
+        {"name":"vbArrowCD","value":"19"},
+        {"name":"vbScrollN","value":"20"},
+        {"name":"vbScrollS","value":"21"},
+        {"name":"vbScrollE","value":"22"},
+        {"name":"vbScrollW","value":"23"},
+        {"name":"vbScrollNS","value":"24"},
+        {"name":"vbScrollWE","value":"25"},
+        {"name":"vbScrollNW","value":"26"},
+        {"name":"vbScrollNE","value":"27"},
+        {"name":"vbScrollSW","value":"28"},
+        {"name":"vbScrollSE","value":"29"},
+        {"name":"vbScrollAll","value":"30"},
+        {"name":"vbPen","value":"31"},
+        {"name":"vbCustom","value":"99"}
+      ]
+    },
+    {
+      "name": "MultiSelectConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum MultiSelectConstants",
+      "values": [
+        {"name":"vbMultiSelectNone","value":"0"},
+        {"name":"vbMultiSelectSimple","value":"1"},
+        {"name":"vbMultiSelectExtended","value":"2"}
+      ]
+    },
+    {
+      "name": "NegotiatePositionConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum NegotiatePositionConstants",
+      "values": [
+        {"name":"vbNegotiatePositionNone","value":"0"},
+        {"name":"vbNegotiatePositionLeft","value":"1"},
+        {"name":"vbNegotiatePositionMiddle","value":"2"},
+        {"name":"vbNegotiatePositionRight","value":"3"}
+      ]
+    },
+    {
+      "name": "OLEContainerActivateConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum OLEContainerActivateConstants",
+      "values": [
+        {"name":"vbOLE_ActivateManual","value":"0"},
+        {"name":"vbOLE_ActivateGetFocus","value":"1"},
+        {"name":"vbOLE_ActivateDoubleclick","value":"2"},
+        {"name":"vbOLE_ActivateAuto","value":"3"}
+      ]
+    },
+    {
+      "name": "OLEContainerConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum OLEContainerConstants",
+      "values": [
+        {"name":"vbOLELinked","value":"0"},
+        {"name":"vbOLEEmbedded","value":"1"},
+        {"name":"vbOLENone","value":"3"},
+        {"name":"vbOLEEither","value":"2"},
+        {"name":"vbOLEAutomatic","value":"0"},
+        {"name":"vbOLEFrozen","value":"1"},
+        {"name":"vbOLEManual","value":"2"},
+        {"name":"vbOLEActivateManual","value":"0"},
+        {"name":"vbOLEActivateGetFocus","value":"1"},
+        {"name":"vbOLEActivateDoubleclick","value":"2"},
+        {"name":"vbOLEActivateAuto","value":"3"},
+        {"name":"vbOLESizeClip","value":"0"},
+        {"name":"vbOLESizeStretch","value":"1"},
+        {"name":"vbOLESizeAutoSize","value":"2"},
+        {"name":"vbOLESizeZoom","value":"3"},
+        {"name":"vbOLEDisplayContent","value":"0"},
+        {"name":"vbOLEDisplayIcon","value":"1"},
+        {"name":"vbOLEChanged","value":"0"},
+        {"name":"vbOLESaved","value":"1"},
+        {"name":"vbOLEClosed","value":"2"},
+        {"name":"vbOLERenamed","value":"3"},
+        {"name":"vbOLEPrimary","value":"0"},
+        {"name":"vbOLEShow","value":"-1"},
+        {"name":"vbOLEOpen","value":"-2"},
+        {"name":"vbOLEHide","value":"-3"},
+        {"name":"vbOLEUIActivate","value":"-4"},
+        {"name":"vbOLEInPlaceActivate","value":"-5"},
+        {"name":"vbOLEDiscardUndoState","value":"-6"},
+        {"name":"vbOLEFlagGrayed","value":"1"},
+        {"name":"vbOLEFlagDisabled","value":"2"},
+        {"name":"vbOLEFlagChecked","value":"8"},
+        {"name":"vbOLEFlagSeparator","value":"2048"},
+        {"name":"vbOLEMiscFlagMemStorage","value":"1"},
+        {"name":"vbOLEMiscFlagDisableInPlace","value":"2"}
+      ]
+    },
+    {
+      "name": "OLEContainerDisplayTypeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum OLEContainerDisplayTypeConstants",
+      "values": [
+        {"name":"vbOLE_DisplayContent","value":"0"},
+        {"name":"vbOLE_DisplayIcon","value":"1"}
+      ]
+    },
+    {
+      "name": "OLEContainerSizeModeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum OLEContainerSizeModeConstants",
+      "values": [
+        {"name":"vbOLE_SizeClip","value":"0"},
+        {"name":"vbOLE_SizeStretch","value":"1"},
+        {"name":"vbOLE_SizeAutoSize","value":"2"},
+        {"name":"vbOLE_SizeZoom","value":"3"}
+      ]
+    },
+    {
+      "name": "OLEContainerTypesAllowedConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum OLEContainerTypesAllowedConstants",
+      "values": [
+        {"name":"vbOLE_Linked","value":"0"},
+        {"name":"vbOLE_Embedded","value":"1"},
+        {"name":"vbOLE_Either","value":"2"}
+      ]
+    },
+    {
+      "name": "OLEContainerUpdateOptionsConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum OLEContainerUpdateOptionsConstants",
+      "values": [
+        {"name":"vbOLE_UpdateAutomatic","value":"0"},
+        {"name":"vbOLE_UpdateFrozen","value":"1"},
+        {"name":"vbOLE_UpdateManual","value":"2"}
+      ]
+    },
+    {
+      "name": "OLEDragConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum OLEDragConstants",
+      "values": [
+        {"name":"vbOLEDragManual","value":"0"},
+        {"name":"vbOLEDragAutomatic","value":"1"}
+      ]
+    },
+    {
+      "name": "OLEDropConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum OLEDropConstants",
+      "values": [
+        {"name":"vbOLEDropNone","value":"0"},
+        {"name":"vbOLEDropManual","value":"1"},
+        {"name":"vbOLEDropAutomatic","value":"2"}
+      ]
+    },
+    {
+      "name": "OLEDropEffectConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum OLEDropEffectConstants",
+      "values": [
+        {"name":"vbDropEffectNone","value":"0"},
+        {"name":"vbDropEffectCopy","value":"1"},
+        {"name":"vbDropEffectMove","value":"2"},
+        {"name":"vbDropEffectLink","value":"4"},
+        {"name":"vbDropEffectScroll","value":"-2147483648"}
+      ]
+    },
+    {
+      "name": "OldLinkModeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum OldLinkModeConstants",
+      "values": [
+        {"name":"vbHot","value":"1"},
+        {"name":"vbServer","value":"1"},
+        {"name":"vbCold","value":"2"}
+      ]
+    },
+    {
+      "name": "PaletteModeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum PaletteModeConstants",
+      "values": [
+        {"name":"vbPaletteModeHalftone","value":"0"},
+        {"name":"vbPaletteModeUseZOrder","value":"1"},
+        {"name":"vbPaletteModeCustom","value":"2"},
+        {"name":"vbPaletteModeContainer","value":"3"},
+        {"name":"vbPaletteModeNone","value":"4"},
+        {"name":"vbPaletteModeObject","value":"5"}
+      ]
+    },
+    {
+      "name": "ParentControlsType",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ParentControlsType",
+      "values": [
+        {"name":"vbNoExtender","value":"0"},
+        {"name":"vbExtender","value":"1"}
+      ]
+    },
+    {
+      "name": "PictureTypeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum PictureTypeConstants",
+      "values": [
+        {"name":"vbPicTypeNone","value":"0"},
+        {"name":"vbPicTypeBitmap","value":"1"},
+        {"name":"vbPicTypeMetafile","value":"2"},
+        {"name":"vbPicTypeIcon","value":"3"},
+        {"name":"vbPicTypeEMetafile","value":"4"}
+      ]
+    },
+    {
+      "name": "PrinterObjectConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum PrinterObjectConstants",
+      "values": [
+        {"name":"vbPRCMMonochrome","value":"1"},
+        {"name":"vbPRCMColor","value":"2"},
+        {"name":"vbPRDPSimplex","value":"1"},
+        {"name":"vbPRDPHorizontal","value":"2"},
+        {"name":"vbPRDPVertical","value":"3"},
+        {"name":"vbPRORPortrait","value":"1"},
+        {"name":"vbPRORLandscape","value":"2"},
+        {"name":"vbPRPQDraft","value":"-1"},
+        {"name":"vbPRPQLow","value":"-2"},
+        {"name":"vbPRPQMedium","value":"-3"},
+        {"name":"vbPRPQHigh","value":"-4"},
+        {"name":"vbPRBNUpper","value":"1"},
+        {"name":"vbPRBNLower","value":"2"},
+        {"name":"vbPRBNMiddle","value":"3"},
+        {"name":"vbPRBNManual","value":"4"},
+        {"name":"vbPRBNEnvelope","value":"5"},
+        {"name":"vbPRBNEnvManual","value":"6"},
+        {"name":"vbPRBNAuto","value":"7"},
+        {"name":"vbPRBNTractor","value":"8"},
+        {"name":"vbPRBNSmallFmt","value":"9"},
+        {"name":"vbPRBNLargeFmt","value":"10"},
+        {"name":"vbPRBNLargeCapacity","value":"11"},
+        {"name":"vbPRBNCassette","value":"14"},
+        {"name":"vbPRPSLetter","value":"1"},
+        {"name":"vbPRPSLetterSmall","value":"2"},
+        {"name":"vbPRPSTabloid","value":"3"},
+        {"name":"vbPRPSLedger","value":"4"},
+        {"name":"vbPRPSLegal","value":"5"},
+        {"name":"vbPRPSStatement","value":"6"},
+        {"name":"vbPRPSExecutive","value":"7"},
+        {"name":"vbPRPSA3","value":"8"},
+        {"name":"vbPRPSA4","value":"9"},
+        {"name":"vbPRPSA4Small","value":"10"},
+        {"name":"vbPRPSA5","value":"11"},
+        {"name":"vbPRPSB4","value":"12"},
+        {"name":"vbPRPSB5","value":"13"},
+        {"name":"vbPRPSFolio","value":"14"},
+        {"name":"vbPRPSQuarto","value":"15"},
+        {"name":"vbPRPS10x14","value":"16"},
+        {"name":"vbPRPS11x17","value":"17"},
+        {"name":"vbPRPSNote","value":"18"},
+        {"name":"vbPRPSEnv9","value":"19"},
+        {"name":"vbPRPSEnv10","value":"20"},
+        {"name":"vbPRPSEnv11","value":"21"},
+        {"name":"vbPRPSEnv12","value":"22"},
+        {"name":"vbPRPSEnv14","value":"23"},
+        {"name":"vbPRPSCSheet","value":"24"},
+        {"name":"vbPRPSDSheet","value":"25"},
+        {"name":"vbPRPSESheet","value":"26"},
+        {"name":"vbPRPSEnvDL","value":"27"},
+        {"name":"vbPRPSEnvC3","value":"29"},
+        {"name":"vbPRPSEnvC4","value":"30"},
+        {"name":"vbPRPSEnvC5","value":"28"},
+        {"name":"vbPRPSEnvC6","value":"31"},
+        {"name":"vbPRPSEnvC65","value":"32"},
+        {"name":"vbPRPSEnvB4","value":"33"},
+        {"name":"vbPRPSEnvB5","value":"34"},
+        {"name":"vbPRPSEnvB6","value":"35"},
+        {"name":"vbPRPSEnvItaly","value":"36"},
+        {"name":"vbPRPSEnvMonarch","value":"37"},
+        {"name":"vbPRPSEnvPersonal","value":"38"},
+        {"name":"vbPRPSFanfoldUS","value":"39"},
+        {"name":"vbPRPSFanfoldStdGerman","value":"40"},
+        {"name":"vbPRPSFanfoldLglGerman","value":"41"},
+        {"name":"vbPRPSUser","value":"256"}
+      ]
+    },
+    {
+      "name": "PrinterObjectConstants_ColorMode",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum PrinterObjectConstants_ColorMode",
+      "attrs": [{"name":"MustBeQualified"}],
+      "values": [
+        {"name":"vbPRCMMonochrome","value":"1"},
+        {"name":"vbPRCMColor","value":"2"}
+      ]
+    },
+    {
+      "name": "PrinterObjectConstants_Duplex",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum PrinterObjectConstants_Duplex",
+      "attrs": [{"name":"MustBeQualified"}],
+      "values": [
+        {"name":"vbPRDPSimplex","value":"1"},
+        {"name":"vbPRDPHorizontal","value":"2"},
+        {"name":"vbPRDPVertical","value":"3"}
+      ]
+    },
+    {
+      "name": "PrinterObjectConstants_Orientation",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum PrinterObjectConstants_Orientation",
+      "attrs": [{"name":"MustBeQualified"}],
+      "values": [
+        {"name":"vbPRORPortrait","value":"1"},
+        {"name":"vbPRORLandscape","value":"2"}
+      ]
+    },
+    {
+      "name": "PrinterObjectConstants_PaperBin",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum PrinterObjectConstants_PaperBin",
+      "attrs": [{"name":"MustBeQualified"}],
+      "values": [
+        {"name":"vbPRBNUpper","value":"1"},
+        {"name":"vbPRBNLower","value":"2"},
+        {"name":"vbPRBNMiddle","value":"3"},
+        {"name":"vbPRBNManual","value":"4"},
+        {"name":"vbPRBNEnvelope","value":"5"},
+        {"name":"vbPRBNEnvManual","value":"6"},
+        {"name":"vbPRBNAuto","value":"7"},
+        {"name":"vbPRBNTractor","value":"8"},
+        {"name":"vbPRBNSmallFmt","value":"9"},
+        {"name":"vbPRBNLargeFmt","value":"10"},
+        {"name":"vbPRBNLargeCapacity","value":"11"},
+        {"name":"vbPRBNCassette","value":"14"}
+      ]
+    },
+    {
+      "name": "PrinterObjectConstants_PaperSize",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum PrinterObjectConstants_PaperSize",
+      "attrs": [{"name":"MustBeQualified"}],
+      "values": [
+        {"name":"vbPRPSLetter","value":"1"},
+        {"name":"vbPRPSLetterSmall","value":"2"},
+        {"name":"vbPRPSTabloid","value":"3"},
+        {"name":"vbPRPSLedger","value":"4"},
+        {"name":"vbPRPSLegal","value":"5"},
+        {"name":"vbPRPSStatement","value":"6"},
+        {"name":"vbPRPSExecutive","value":"7"},
+        {"name":"vbPRPSA3","value":"8"},
+        {"name":"vbPRPSA4","value":"9"},
+        {"name":"vbPRPSA4Small","value":"10"},
+        {"name":"vbPRPSA5","value":"11"},
+        {"name":"vbPRPSB4","value":"12"},
+        {"name":"vbPRPSB5","value":"13"},
+        {"name":"vbPRPSFolio","value":"14"},
+        {"name":"vbPRPSQuarto","value":"15"},
+        {"name":"vbPRPS10x14","value":"16"},
+        {"name":"vbPRPS11x17","value":"17"},
+        {"name":"vbPRPSNote","value":"18"},
+        {"name":"vbPRPSEnv9","value":"19"},
+        {"name":"vbPRPSEnv10","value":"20"},
+        {"name":"vbPRPSEnv11","value":"21"},
+        {"name":"vbPRPSEnv12","value":"22"},
+        {"name":"vbPRPSEnv14","value":"23"},
+        {"name":"vbPRPSCSheet","value":"24"},
+        {"name":"vbPRPSDSheet","value":"25"},
+        {"name":"vbPRPSESheet","value":"26"},
+        {"name":"vbPRPSEnvDL","value":"27"},
+        {"name":"vbPRPSEnvC3","value":"29"},
+        {"name":"vbPRPSEnvC4","value":"30"},
+        {"name":"vbPRPSEnvC5","value":"28"},
+        {"name":"vbPRPSEnvC6","value":"31"},
+        {"name":"vbPRPSEnvC65","value":"32"},
+        {"name":"vbPRPSEnvB4","value":"33"},
+        {"name":"vbPRPSEnvB5","value":"34"},
+        {"name":"vbPRPSEnvB6","value":"35"},
+        {"name":"vbPRPSEnvItaly","value":"36"},
+        {"name":"vbPRPSEnvMonarch","value":"37"},
+        {"name":"vbPRPSEnvPersonal","value":"38"},
+        {"name":"vbPRPSFanfoldUS","value":"39"},
+        {"name":"vbPRPSFanfoldStdGerman","value":"40"},
+        {"name":"vbPRPSFanfoldLglGerman","value":"41"},
+        {"name":"vbPRPSUser","value":"256"}
+      ]
+    },
+    {
+      "name": "PrinterObjectConstants_PrintQuality",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum PrinterObjectConstants_PrintQuality",
+      "attrs": [{"name":"MustBeQualified"}],
+      "values": [
+        {"name":"vbPRPQDraft","value":"-1"},
+        {"name":"vbPRPQLow","value":"-2"},
+        {"name":"vbPRPQMedium","value":"-3"},
+        {"name":"vbPRPQHigh","value":"-4"}
+      ]
+    },
+    {
+      "name": "QueryUnloadConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum QueryUnloadConstants",
+      "values": [
+        {"name":"vbFormControlMenu","value":"0"},
+        {"name":"vbFormCode","value":"1"},
+        {"name":"vbAppWindows","value":"2"},
+        {"name":"vbAppTaskManager","value":"3"},
+        {"name":"vbFormMDIForm","value":"4"},
+        {"name":"vbFormOwner","value":"5"}
+      ]
+    },
+    {
+      "name": "RasterOpConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum RasterOpConstants",
+      "values": [
+        {"name":"vbDstInvert","value":"&H550009&"},
+        {"name":"vbMergeCopy","value":"&HC000CA&"},
+        {"name":"vbMergePaint","value":"&HBB0226&"},
+        {"name":"vbNotSrcCopy","value":"&H330008&"},
+        {"name":"vbNotSrcErase","value":"&H1100A6&"},
+        {"name":"vbPatCopy","value":"&HF00021&"},
+        {"name":"vbPatInvert","value":"&H5A0049&"},
+        {"name":"vbPatPaint","value":"&HFB0A09&"},
+        {"name":"vbSrcAnd","value":"&H8800C6&"},
+        {"name":"vbSrcCopy","value":"&HCC0020&"},
+        {"name":"vbSrcErase","value":"&H440328&"},
+        {"name":"vbSrcInvert","value":"&H660046&"},
+        {"name":"vbSrcPaint","value":"&HEE0086&"}
+      ]
+    },
+    {
+      "name": "RecordsetTypeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum RecordsetTypeConstants",
+      "values": [
+        {"name":"vbRSTypeTable","value":"0"},
+        {"name":"vbRSTypeDynaset","value":"1"},
+        {"name":"vbRSTypeSnapShot","value":"2"}
+      ]
+    },
+    {
+      "name": "ScaleModeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ScaleModeConstants",
+      "values": [
+        {"name":"vbScaledPixels","value":"-1"},
+        {"name":"vbUser","value":"0"},
+        {"name":"vbTwips","value":"1"},
+        {"name":"vbPoints","value":"2"},
+        {"name":"vbPixels","value":"3"},
+        {"name":"vbCharacters","value":"4"},
+        {"name":"vbInches","value":"5"},
+        {"name":"vbMillimeters","value":"6"},
+        {"name":"vbCentimeters","value":"7"},
+        {"name":"vbHimetric","value":"8"},
+        {"name":"vbContainerPosition","value":"9"},
+        {"name":"vbContainerSize","value":"10"}
+      ]
+    },
+    {
+      "name": "ScrollBarConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ScrollBarConstants",
+      "values": [
+        {"name":"vbSBNone","value":"0"},
+        {"name":"vbHorizontal","value":"1"},
+        {"name":"vbVertical","value":"2"},
+        {"name":"vbBoth","value":"3"}
+      ]
+    },
+    {
+      "name": "ShapeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ShapeConstants",
+      "values": [
+        {"name":"vbShapeRectangle","value":"0"},
+        {"name":"vbShapeSquare","value":"1"},
+        {"name":"vbShapeOval","value":"2"},
+        {"name":"vbShapeCircle","value":"3"},
+        {"name":"vbShapeRoundedRectangle","value":"4"},
+        {"name":"vbShapeRoundedSquare","value":"5"},
+        {"name":"vbShapeStar","value":"6"},
+        {"name":"vbShapeArrowLeft","value":"7"},
+        {"name":"vbShapeArrowRight","value":"8"},
+        {"name":"vbShapeArrowUp","value":"9"},
+        {"name":"vbShapeArrowDown","value":"10"}
+      ]
+    },
+    {
+      "name": "ShiftConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ShiftConstants",
+      "values": [
+        {"name":"vbShiftMask","value":"1"},
+        {"name":"vbCtrlMask","value":"2"},
+        {"name":"vbAltMask","value":"4"}
+      ]
+    },
+    {
+      "name": "ShortcutConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Enum ShortcutConstants",
+      "values": [
+        {"name":"vbShortcutNone","value":"0"},
+        {"name":"vbShortcutCtrlA"},
+        {"name":"vbShortcutCtrlB"},
+        {"name":"vbShortcutCtrlC"},
+        {"name":"vbShortcutCtrlD"},
+        {"name":"vbShortcutCtrlE"},
+        {"name":"vbShortcutCtrlF"},
+        {"name":"vbShortcutCtrlG"},
+        {"name":"vbShortcutCtrlH"},
+        {"name":"vbShortcutCtrlI"},
+        {"name":"vbShortcutCtrlJ"},
+        {"name":"vbShortcutCtrlK"},
+        {"name":"vbShortcutCtrlL"},
+        {"name":"vbShortcutCtrlM"},
+        {"name":"vbShortcutCtrlN"},
+        {"name":"vbShortcutCtrlO"},
+        {"name":"vbShortcutCtrlP"},
+        {"name":"vbShortcutCtrlQ"},
+        {"name":"vbShortcutCtrlR"},
+        {"name":"vbShortcutCtrlS"},
+        {"name":"vbShortcutCtrlT"},
+        {"name":"vbShortcutCtrlU"},
+        {"name":"vbShortcutCtrlV"},
+        {"name":"vbShortcutCtrlW"},
+        {"name":"vbShortcutCtrlX"},
+        {"name":"vbShortcutCtrlY"},
+        {"name":"vbShortcutCtrlZ"},
+        {"name":"vbShortcutF1"},
+        {"name":"vbShortcutF2"},
+        {"name":"vbShortcutF3"},
+        {"name":"vbShortcutF4"},
+        {"name":"vbShortcutF5"},
+        {"name":"vbShortcutF6"},
+        {"name":"vbShortcutF7"},
+        {"name":"vbShortcutF8"},
+        {"name":"vbShortcutF9"},
+        {"name":"vbShortcutF11"},
+        {"name":"vbShortcutF12"},
+        {"name":"vbShortcutShiftF1"},
+        {"name":"vbShortcutShiftF2"},
+        {"name":"vbShortcutShiftF3"},
+        {"name":"vbShortcutShiftF4"},
+        {"name":"vbShortcutShiftF5"},
+        {"name":"vbShortcutShiftF6"},
+        {"name":"vbShortcutShiftF7"},
+        {"name":"vbShortcutShiftF8"},
+        {"name":"vbShortcutShiftF9"},
+        {"name":"vbShortcutShiftF11"},
+        {"name":"vbShortcutShiftF12"},
+        {"name":"vbShortcutCtrlF1"},
+        {"name":"vbShortcutCtrlF2"},
+        {"name":"vbShortcutCtrlF3"},
+        {"name":"vbShortcutCtrlF4"},
+        {"name":"vbShortcutCtrlF5"},
+        {"name":"vbShortcutCtrlF6"},
+        {"name":"vbShortcutCtrlF7"},
+        {"name":"vbShortcutCtrlF8"},
+        {"name":"vbShortcutCtrlF9"},
+        {"name":"vbShortcutCtrlF11"},
+        {"name":"vbShortcutCtrlF12"},
+        {"name":"vbShortcutShiftCtrlF1"},
+        {"name":"vbShortcutShiftCtrlF2"},
+        {"name":"vbShortcutShiftCtrlF3"},
+        {"name":"vbShortcutShiftCtrlF4"},
+        {"name":"vbShortcutShiftCtrlF5"},
+        {"name":"vbShortcutShiftCtrlF6"},
+        {"name":"vbShortcutShiftCtrlF7"},
+        {"name":"vbShortcutShiftCtrlF8"},
+        {"name":"vbShortcutShiftCtrlF9"},
+        {"name":"vbShortcutShiftCtrlF11"},
+        {"name":"vbShortcutShiftCtrlF12"},
+        {"name":"vbShortcutCtrlInsert"},
+        {"name":"vbShortcutShiftInsert"},
+        {"name":"vbShortcutDelete"},
+        {"name":"vbShortcutShiftDelete"},
+        {"name":"vbShortcutAltBackspace"}
+      ]
+    },
+    {
+      "name": "StartUpPositionConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum StartUpPositionConstants",
+      "values": [
+        {"name":"vbStartUpManual","value":"0"},
+        {"name":"vbStartUpOwner","value":"1"},
+        {"name":"vbStartUpScreen","value":"2"},
+        {"name":"vbStartUpWindowsDefault","value":"3"}
+      ]
+    },
+    {
+      "name": "StorageTypeContants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Enum StorageTypeContants",
+      "values": [
+        {"name":"vbHGlobal","value":"1"},
+        {"name":"vbFile","value":"2"},
+        {"name":"vbIStream","value":"4"},
+        {"name":"vbIStorage","value":"8"},
+        {"name":"vbGDI","value":"16"},
+        {"name":"vbMetaFile","value":"32"},
+        {"name":"vbEnhancedMetaFile","value":"64"}
+      ]
+    },
+    {
+      "name": "SystemColorConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum SystemColorConstants",
+      "values": [
+        {"name":"vbScrollBars","value":"&H80000000"},
+        {"name":"vbDesktop","value":"&H80000001"},
+        {"name":"vbActiveTitleBar","value":"&H80000002"},
+        {"name":"vbInactiveTitleBar","value":"&H80000003"},
+        {"name":"vbMenuBar","value":"&H80000004"},
+        {"name":"vbWindowBackground","value":"&H80000005"},
+        {"name":"vbWindowFrame","value":"&H80000006"},
+        {"name":"vbMenuText","value":"&H80000007"},
+        {"name":"vbWindowText","value":"&H80000008"},
+        {"name":"vbTitleBarText","value":"&H80000009"},
+        {"name":"vbActiveTitleBarText","value":"&H80000009"},
+        {"name":"vbActiveBorder","value":"&H8000000A"},
+        {"name":"vbInactiveBorder","value":"&H8000000B"},
+        {"name":"vbApplicationWorkspace","value":"&H8000000C"},
+        {"name":"vbHighlight","value":"&H8000000D"},
+        {"name":"vbHighlightText","value":"&H8000000E"},
+        {"name":"vbButtonFace","value":"&H8000000F"},
+        {"name":"vbButtonShadow","value":"&H80000010"},
+        {"name":"vbGrayText","value":"&H80000011"},
+        {"name":"vbButtonText","value":"&H80000012"},
+        {"name":"vbInactiveCaptionText","value":"&H80000013"},
+        {"name":"vbInactiveTitleBarText","value":"&H80000013"},
+        {"name":"vb3DHighlight","value":"&H80000014"},
+        {"name":"vb3DDKShadow","value":"&H80000015"},
+        {"name":"vb3DLight","value":"&H80000016"},
+        {"name":"vb3DFace","value":"&H8000000F"},
+        {"name":"vb3Dshadow","value":"&H80000010"},
+        {"name":"vbInfoText","value":"&H80000017"},
+        {"name":"vbInfoBackground","value":"&H80000018"},
+        {"name":"vbHotTrackText","value":"&H8000001A"},
+        {"name":"vbActiveTitleBarGradient","value":"&H8000001B"},
+        {"name":"vbInactiveTitleBarGradient","value":"&H8000001C"},
+        {"name":"vbMenuHighlight","value":"&H8000001D"},
+        {"name":"vbMenuBarFlat","value":"&H8000001E"}
+      ]
+    },
+    {
+      "name": "VariantTypeConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum VariantTypeConstants",
+      "values": [
+        {"name":"vbVEmpty","value":"0"},
+        {"name":"vbVNull","value":"1"},
+        {"name":"vbVInteger","value":"2"},
+        {"name":"vbVLong","value":"3"},
+        {"name":"vbVSingle","value":"4"},
+        {"name":"vbVDouble","value":"5"},
+        {"name":"vbVCurrency","value":"6"},
+        {"name":"vbVDate","value":"7"},
+        {"name":"vbVString","value":"8"}
+      ]
+    },
+    {
+      "name": "VerticalAlignmentConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum VerticalAlignmentConstants",
+      "values": [
+        {"name":"vbVerticalAlignTop","value":"0"},
+        {"name":"vbVerticalAlignMiddle","value":"1"},
+        {"name":"vbVerticalAlignBottom","value":"2"}
+      ]
+    },
+    {
+      "name": "ZOrderConstants",
+      "kind": "enum",
+      "in": "Constants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum ZOrderConstants",
+      "values": [
+        {"name":"vbBringToFront","value":"0"},
+        {"name":"vbSendToBack","value":"1"}
+      ]
+    },
+    {
+      "name": "ContainedControls",
+      "kind": "interface",
+      "vis": "public",
+      "file": "ContainedControls.twin",
+      "signature": "Public Interface ContainedControls Extends stdole.IDispatch",
+      "extends": "stdole.IDispatch",
+      "attrs": [{"name":"InterfaceId","args":"\"C0324960-2AAA-11CF-AD67-00AA00614F3E\""}],
+      "description": "A collection that allows access to the controls contained within the control that were added to the control by the developer who uses the control.",
+      "members": [
+        {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Long","returnType":"Long","accessor":"Get","attrs":[{"name":"DispId","args":"1"}]},
+        {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByVal index As Long) As Object","returnType":"Object","accessor":"Get","attrs":[{"name":"DispId","args":"0"}]},
+        {"name":"_NewEnum","kind":"function","vis":"public","signature":"Function _NewEnum() As IUnknown","returnType":"IUnknown","attrs":[{"name":"DispId","args":"-4"}]}
+      ]
+    },
+    {
+      "name": "DataMembers",
+      "kind": "interface",
+      "vis": "public",
+      "file": "DataMembers.twin",
+      "signature": "Public Interface DataMembers Extends stdole.IDispatch",
+      "extends": "stdole.IDispatch",
+      "attrs": [{"name":"InterfaceId","args":"\"83C49FF0-B294-11D0-9488-00A0C91110ED\""}],
+      "description": "A collection of data members to show at design time for this data source.",
+      "members": [
+        {"name":"Add","kind":"sub","vis":"public","signature":"Sub Add(ByVal DataMember As String)","attrs":[{"name":"DispId","args":"2"}]},
+        {"name":"Clear","kind":"sub","vis":"public","signature":"Sub Clear()","attrs":[{"name":"DispId","args":"3"}]},
+        {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Long","returnType":"Long","accessor":"Get","attrs":[{"name":"DispId","args":"1"}]},
+        {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByVal index As Long) As String","returnType":"String","accessor":"Get","attrs":[{"name":"DispId","args":"0"}]},
+        {"name":"Remove","kind":"sub","vis":"public","signature":"Sub Remove(ByVal index As Variant)","attrs":[{"name":"DispId","args":"4"}]},
+        {"name":"_NewEnum","kind":"function","vis":"public","signature":"Function _NewEnum() As IUnknown","returnType":"IUnknown","attrs":[{"name":"DispId","args":"-4"}]}
+      ]
+    },
+    {
+      "name": "DataObject",
+      "kind": "interface",
+      "vis": "public",
+      "file": "DataObject.twin",
+      "signature": "Public Interface DataObject",
+      "attrs": [{"name":"InterfaceId","args":"\"41A7D760-6018-11CF-9016-00AA0068841E\""}],
+      "members": [
+        {"name":"AvailableFormats","kind":"function","vis":"public","signature":"Function AvailableFormats() As DataObjectFormats","returnType":"DataObjectFormats","description":"Retrieves a collection of available data formats that the DataObject contains.\n### Syntax\n`Function AvailableFormats() As DataObjectFormats`\n### Return Value\nThis function returns a `DataObjectFormats` collection, an enumerable set of `DataObjectFormat` objects. Each `DataObjectFormat` object represents a format in which the data stored in the DataObject can be retrieved or set, providing properties like `FormatType` (indicating the format type as a `ClipboardConstants` value) and `Name` (a string representing the format name).\n### Example\n```vb\n' Assume a DataObject has various data formats available\nDim myDataObject As New DataObject\nDim format As DataObjectFormat\n' Retrieve the collection of available data formats\nDim availableFormats As DataObjectFormats\navailableFormats = myDataObject.AvailableFormats()\n' Iterate through the collection and display each format name and type\nFor Each format In availableFormats\n    Debug.Print format.Name & \"-\" & format.FormatType\nNext format\n```\n### Remarks\nThe `AvailableFormats` function is useful for determining what types of data are currently stored in a `DataObject`. This can be particularly helpful when working with clipboard operations or drag-and-drop features where the data formats of the incoming data are not known in advance."},
+        {"name":"Clear","kind":"sub","vis":"public","signature":"Sub Clear()","description":"Clears all data from the DataObject.\n### Syntax\n`Sub Clear()`\n### Example\n```vb\n' Create a new instance of a DataObject\nDim myDataObject As New DataObject\n' Set some data on the DataObject\nmyDataObject.SetData \"Some text\"\n' Clear the data from the DataObject\nmyDataObject.Clear\n```\n### Remarks\nThe `Clear` method removes all data formats and data from the DataObject. After calling `Clear`, \nthe DataObject will no longer contain any data until new data is set with `SetData` or similar methods.\nThis is particularly useful when reusing a DataObject for multiple operations or ensuring that it does not hold onto \nany data past its intended use."},
+        {"name":"Files","kind":"function","vis":"public","signature":"Function Files() As DataObjectFiles","returnType":"DataObjectFiles","description":"Retrieves a collection of file names from a DataObject that contains file data.\n### Syntax\n`Property Get Files() As Collection`\n### Return Value\nThe property returns a `Collection` of strings, where each string is the fully qualified path of a file present in the DataObject.\n### Example\n```vb\n' Assume a DataObject has been filled with file data via a drag-and-drop operation\nDim myDataObject As New DataObject\nDim file As Variant\n' Retrieve the collection of file names\nDim files As Collection\nSet files = myDataObject.Files\n' Iterate through the collection and display each file name\nFor Each file In files\n    Debug.Print file\nNext file\n```\n### Remarks\nThe `Files` property is commonly used when handling drag-and-drop file operations in a user interface. It allows the application to retrieve the list of files that have been dragged into it. This property is read-only, and attempting to set it will result in a compile-time error."},
+        {"name":"GetData","kind":"function","vis":"public","signature":"Function GetData([TypeHint(ClipboardConstants)] ByVal sFormat As Integer) As Variant","returnType":"Variant","description":"Retrieves data stored in the DataObject in a specified format.\n### Syntax\n`Function GetData(Optional ByVal Format As Variant) As Variant`\n### Parameters\n`Format` (Optional): The format in which to retrieve the data. Can be a standard Clipboard format or a custom format.\n### Return Value\nThe method returns the data in the DataObject as a Variant, in the specified format. If the format is not available, returns Nothing.\n### Example\n```vb\n' Create a new instance of a DataObject\nDim myDataObject As New DataObject\n' Set some text data on the DataObject\nmyDataObject.SetData \"Some text\", vbCFText\n' Retrieve the data as text\nDim strData As String\nstrData = myDataObject.GetData(vbCFText)\nIf strData Is Nothing Then\n    MsgBox \"Data not available in the requested format\"\nElse\n    MsgBox \"Data retrieved: \" & strData\nEnd If\n```\n### Remarks\nThe `GetData` method is used to retrieve data from the DataObject that has been stored using the `SetData` method. \nIf `Format` is omitted, the DataObject will attempt to retrieve the data in the format it was last set, \nor in a format that the DataObject deems the most appropriate based on the data types available.\nThis method is essential for transferring data between applications or components via the clipboard or drag-and-drop operations."},
+        {"name":"GetDataByName","kind":"function","vis":"public","signature":"Function GetDataByName(ByVal Format As String) As Variant","returnType":"Variant","description":"Retrieves data from a DataObject in the format specified by the format name.\n### Syntax\n`Function GetDataByName(ByVal Format As String) As Variant`\n### Parameters\n- **Format**: A `String` specifying the name of the format of the data to retrieve.\n### Return Value\nReturns the data contained in the DataObject that matches the specified format name. The data is returned as a `Variant`.\n### Example\n```vb\n' Assume a DataObject contains data in the 'Text' format\nDim myDataObject As New DataObject\nDim theData As Variant\n' Retrieve data in the 'Text' format\ntheData = myDataObject.GetDataByName(\"Text\")\nIf Not IsEmpty(theData) Then\n    MsgBox \"Data in 'Text' format: \" & theData\nElse\n    MsgBox \"No data in 'Text' format was found.\" \nEnd If\n```\n### Remarks\nThe `GetDataByName` function is particularly useful for accessing data in a specific format from a `DataObject` when the format name is known but the numerical clipboard format value is not. This is common when working with data copied to the clipboard from other applications or during drag-and-drop operations."},
+        {"name":"GetFormat","kind":"function","vis":"public","signature":"Function GetFormat([TypeHint(ClipboardConstants)] ByVal sFormat As Integer) As Boolean","returnType":"Boolean","description":"Checks if data stored in the DataObject is available in a specified format.\n### Syntax\n`Function GetFormat(Optional ByVal Format As Variant) As Boolean`\n### Parameters\n`Format` (Optional): The format to check for data availability. Can be a standard Clipboard format or a custom format.\n### Return Value\nThe method returns `True` if data is available in the specified format; otherwise, it returns `False`.\n### Example\n```vb\n' Create a new instance of a DataObject\nDim myDataObject As New DataObject\n' Set some text data on the DataObject\nmyDataObject.SetData \"Some text\", vbCFText\n' Check if the data is available in text format\nIf myDataObject.GetFormat(vbCFText) Then\n    MsgBox \"Data is available in the text format\"\nElse\n    MsgBox \"Data is not available in the requested format\"\nEnd If\n```\n### Remarks\nThe `GetFormat` method is used to check whether data in the DataObject is available in a specific format \nbefore attempting to retrieve it using the `GetData` method. This can prevent errors or unexpected results when \nworking with data in various formats."},
+        {"name":"GetFormatByName","kind":"function","vis":"public","signature":"Function GetFormatByName(ByVal Format As String) As Boolean","returnType":"Boolean","description":"Determines if a data object contains data in the specified format.\n### Syntax\n`Function GetFormatByName(ByVal Format As String) As Boolean`\n### Parameters\n- **Format**: A `String` specifying the name of the format to check for.\n### Return Value\nReturns `True` if the DataObject contains data in the format specified by `Format`. Otherwise, it returns `False`.\n### Example\n```vb\n' Assume a DataObject might contain data in the 'Text' format\nDim myDataObject As New DataObject\n' Check if 'Text' format data is available\nIf myDataObject.GetFormatByName(\"Text\") Then\n    MsgBox \"Text format is available.\" \nElse\n    MsgBox \"Text format is not available.\" \nEnd If\n```\n### Remarks\nThe `GetFormatByName` function is useful when you need to check for the presence of data in a specific format within a `DataObject`, especially when interacting with the clipboard or during drag-and-drop operations where the data may come in various formats."},
+        {"name":"GetIDataObject","kind":"function","vis":"public","signature":"Function GetIDataObject() As tbInternal_IDataObject","returnType":"tbInternal_IDataObject"},
+        {"name":"SetData","kind":"sub","vis":"public","signature":"Sub SetData(Optional ByVal Value As Variant, [TypeHint(ClipboardConstants)] Optional ByVal Format As Variant)","description":"Assigns data to the DataObject with an optional specified format.\n### Syntax\n`Sub SetData(Value, [Format]`\n### Parameters\n`Value` - The data to set on the DataObject. The type can be anything that is storable in a Variant.\n`Format` - [Optional] The format in which the data should be stored. This can be specified as a `ClipboardConstants` enumeration value.\n### Example\n```vb\n' Create a new instance of a DataObject\nDim myDataObject As New DataObject\n' Set text data on the DataObject without specifying the format\nmyDataObject.SetData \"Hello, world!\"\n' Set data with a specified format\nmyDataObject.SetData someData, ClipboardConstants.CF_TEXT\n```\n### Remarks\nThe `SetData` method is used to add data to the DataObject. If the format is not specified, \nthe DataObject may choose the default format based on the type of the `Value` provided. \nSpecifying the `Format` allows the data to be stored and retrieved in a specific clipboard format.\nWhen using custom data formats, ensure they are registered with the clipboard if necessary."}
+      ]
+    },
+    {
+      "name": "DataObjectFiles",
+      "kind": "interface",
+      "vis": "public",
+      "file": "DataObject.twin",
+      "signature": "Public Interface DataObjectFiles",
+      "attrs": [{"name":"InterfaceId","args":"\"41A7D761-6018-11CF-9016-00AA0068841E\""}],
+      "members": [
+        {"name":"Add","kind":"sub","vis":"public","signature":"Sub Add(ByVal Filename As String, Optional index As Variant)"},
+        {"name":"Clear","kind":"sub","vis":"public","signature":"Sub Clear()"},
+        {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByVal Index As Long) As String","returnType":"String","accessor":"Get","attrs":[{"name":"DefaultMember"}]},
+        {"name":"Remove","kind":"sub","vis":"public","signature":"Sub Remove(ByVal index As Variant)"},
+        {"name":"_NewEnum","kind":"function","vis":"public","signature":"Function _NewEnum() As stdole.IUnknown","returnType":"stdole.IUnknown","attrs":[{"name":"Enumerator"}]}
+      ]
+    },
+    {
+      "name": "DataObjectFormat",
+      "kind": "interface",
+      "vis": "public",
+      "file": "DataObject.twin",
+      "signature": "Public Interface DataObjectFormat",
+      "attrs": [{"name":"InterfaceId","args":"\"3BBFD45E-C8B7-4CAA-A681-AAF7A4D03594\""}],
+      "members": [
+        {"name":"AspectIndex","kind":"property","vis":"public","signature":"Property Get AspectIndex() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"AspectIndex","kind":"property","vis":"public","signature":"Property Let AspectIndex(ByVal Value As Long)","accessor":"Let"},
+        {"name":"AspectType","kind":"property","vis":"public","signature":"Property Get AspectType() As AspectTypeConstants","returnType":"AspectTypeConstants","accessor":"Get"},
+        {"name":"AspectType","kind":"property","vis":"public","signature":"Property Let AspectType(ByVal Value As AspectTypeConstants)","accessor":"Let"},
+        {"name":"FormatType","kind":"property","vis":"public","signature":"Property Get FormatType() As ClipboardConstants","returnType":"ClipboardConstants","accessor":"Get","description":"Allows get or set operations on the format type of the data within the DataObject.\n### Syntax\n' To retrieve the format type:\n`Property Get FormatType() As ClipboardConstants`\n' To assign a new format type:\n`Property Let FormatType(ByVal newFormatType As ClipboardConstants)`\n### Property Value\n`ClipboardConstants` enumeration representing the clipboard format type of the data.\n### Example\n```vb\n' Assume 'dataFormat' is a previously initialized DataObjectFormat object.\nDim fmtType As ClipboardConstants\nfmtType = dataFormat.FormatType\n' Check the current format type\nIf fmtType = ClipboardConstants.vbCFText Then\n    MsgBox \"Current format is text.\"\nElse\n    ' Set the format type to text\n    dataFormat.FormatType = ClipboardConstants.vbCFText\n    MsgBox \"Format type set to text.\"\nEnd If\n```\n### Remarks\nThe `FormatType` property allows you to get or set the type of data that is contained within a `DataObject`. The value returned or set corresponds to one of the constants in the `ClipboardConstants` enumeration, such as `vbCFText` or `vbCFBitmap`."},
+        {"name":"FormatType","kind":"property","vis":"public","signature":"Property Let FormatType(ByVal Value As ClipboardConstants)","accessor":"Let"},
+        {"name":"Name","kind":"property","vis":"public","signature":"Property Get Name() As String","returnType":"String","accessor":"Get"},
+        {"name":"StorageType","kind":"property","vis":"public","signature":"Property Get StorageType() As StorageTypeContants","returnType":"StorageTypeContants","accessor":"Get"},
+        {"name":"StorageType","kind":"property","vis":"public","signature":"Property Let StorageType(ByVal Value As StorageTypeContants)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "DataObjectFormats",
+      "kind": "interface",
+      "vis": "public",
+      "file": "DataObject.twin",
+      "signature": "Public Interface DataObjectFormats",
+      "attrs": [{"name":"InterfaceId","args":"\"D1A9A671-E57E-4DA7-B076-99DF04D5D643\""}],
+      "members": [
+        {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Item","kind":"function","vis":"public","signature":"Function Item(ByVal Index As Long) As DataObjectFormat","returnType":"DataObjectFormat"},
+        {"name":"_NewEnum","kind":"function","vis":"public","signature":"Function _NewEnum() As Variant","returnType":"Variant","attrs":[{"name":"Enumerator"}]}
+      ]
+    },
+    {
+      "name": "ErrorCallstack",
+      "kind": "interface",
+      "vis": "public",
+      "file": "ErrorCallstack.twin",
+      "signature": "Interface ErrorCallstack Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"B268048A-E6F4-4C74-9C7C-A85646F3D919\""}],
+      "members": [
+        {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Items","kind":"property","vis":"public","signature":"Property Get Items(ByVal Index As Long) As ErrorStackFrame","returnType":"ErrorStackFrame","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "ErrorContext",
+      "kind": "interface",
+      "vis": "public",
+      "file": "ErrorContext.twin",
+      "signature": "Interface ErrorContext Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"6AAB4CC5-CDF3-4017-B3D0-D0A7465885C2\""}],
+      "members": [
+        {"name":"Callstack","kind":"property","vis":"public","signature":"Property Get Callstack() As ErrorCallstack","returnType":"ErrorCallstack","accessor":"Get"},
+        {"name":"Description","kind":"property","vis":"public","signature":"Property Get Description() As String","returnType":"String","accessor":"Get"},
+        {"name":"HelpContext","kind":"property","vis":"public","signature":"Property Get HelpContext() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"HelpFile","kind":"property","vis":"public","signature":"Property Get HelpFile() As String","returnType":"String","accessor":"Get"},
+        {"name":"LastDLLError","kind":"property","vis":"public","signature":"Property Get LastDLLError() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Number","kind":"property","vis":"public","signature":"Property Get Number() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Source","kind":"property","vis":"public","signature":"Property Get Source() As String","returnType":"String","accessor":"Get"},
+        {"name":"State","kind":"property","vis":"public","signature":"Property Get State() As OnErrorStatus","returnType":"OnErrorStatus","accessor":"Get"},
+        {"name":"State","kind":"property","vis":"public","signature":"Property Let State(ByVal Value As OnErrorStatus)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "OnErrorStatus",
+      "kind": "enum",
+      "in": "ErrorContext",
+      "vis": "public",
+      "file": "ErrorContext.twin",
+      "signature": "Enum OnErrorStatus",
+      "values": [
+        {"name":"OnErrorGoto0","value":"&H1"},
+        {"name":"OnErrorResumeNext","value":"&H2"},
+        {"name":"OnErrorGotoLabel","value":"&H3"},
+        {"name":"OnErrorEnd","value":"&H4"},
+        {"name":"OnErrorDebug","value":"&H5"},
+        {"name":"CalledByLocalHandler","value":"&H6"},
+        {"name":"OnErrorRetry","value":"&H7"},
+        {"name":"OnErrorPropagate","value":"&H8"},
+        {"name":"OnErrorExitProcedure","value":"&H9"},
+        {"name":"OnErrorCatch","value":"&Ha"},
+        {"name":"OnErrorCatchAll","value":"&Hb"},
+        {"name":"OnErrorInsideCatch","value":"&Hc"},
+        {"name":"OnErrorInsideCatchAll","value":"&Hd"},
+        {"name":"OnErrorInsideFinally","value":"&He"},
+        {"name":"OnErrorPropagateCatch","value":"&Hf"},
+        {"name":"OnErrorPropagateCatchAll","value":"&H10"}
+      ]
+    },
+    {
+      "name": "ErrorStackFrame",
+      "kind": "interface",
+      "vis": "public",
+      "file": "ErrorStackFrame.twin",
+      "signature": "Interface ErrorStackFrame Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"3BDF54A4-96AC-4721-88A5-A156FB56BC40\""}],
+      "members": [
+        {"name":"ModuleName","kind":"property","vis":"public","signature":"Property Get ModuleName() As String","returnType":"String","accessor":"Get"},
+        {"name":"ProcedureName","kind":"property","vis":"public","signature":"Property Get ProcedureName() As String","returnType":"String","accessor":"Get"},
+        {"name":"ProjectName","kind":"property","vis":"public","signature":"Property Get ProjectName() As String","returnType":"String","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "Hyperlink",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Hyperlink.twin",
+      "signature": "Public Interface Hyperlink Extends stdole.IDispatch",
+      "extends": "stdole.IDispatch",
+      "attrs": [{"name":"InterfaceId","args":"\"888A5A60-B283-11CF-8AD5-00A0C90AEA82\""}],
+      "description": "The Hyperlink object allows browser navigation in a suitable host",
+      "members": [
+        {"name":"GoBack","kind":"sub","vis":"public","signature":"Sub GoBack()","attrs":[{"name":"DispId","args":"4"}]},
+        {"name":"GoForward","kind":"sub","vis":"public","signature":"Sub GoForward()","attrs":[{"name":"DispId","args":"3"}]},
+        {"name":"NavigateTo","kind":"sub","vis":"public","signature":"Sub NavigateTo(ByVal Target As String, Optional ByVal Location As String, Optional ByVal FrameName As String)","attrs":[{"name":"DispId","args":"5"}]}
+      ]
+    },
+    {
+      "name": "ParentControls",
+      "kind": "interface",
+      "vis": "public",
+      "file": "ParentControls.twin",
+      "signature": "Public Interface ParentControls Extends stdole.IDispatch",
+      "extends": "stdole.IDispatch",
+      "attrs": [{"name":"InterfaceId","args":"\"BE8F9800-2AAA-11CF-AD67-00AA00614F3E\""}],
+      "description": "A collection that allows access to the other controls in the control's container.",
+      "members": [
+        {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Long","returnType":"Long","accessor":"Get","attrs":[{"name":"DispId","args":"1"}]},
+        {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByVal index As Long) As Object","returnType":"Object","accessor":"Get","attrs":[{"name":"DispId","args":"0"}]},
+        {"name":"ParentControlsType","kind":"property","vis":"public","signature":"Property Get ParentControlsType() As ParentControlsType","returnType":"ParentControlsType","accessor":"Get","attrs":[{"name":"DispId","args":"2"}]},
+        {"name":"ParentControlsType","kind":"property","vis":"public","signature":"Property Let ParentControlsType(ByVal Value As ParentControlsType)","accessor":"Let","attrs":[{"name":"DispId","args":"2"}]},
+        {"name":"_NewEnum","kind":"function","vis":"public","signature":"Function _NewEnum() As IUnknown","returnType":"IUnknown","attrs":[{"name":"DispId","args":"-4"}]}
+      ]
+    },
+    {
+      "name": "PropertyBag",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "PropertyBag.twin",
+      "signature": "Public CoClass PropertyBag",
+      "interfaces": [{"name":"_PropertyBag","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"D5DE8D20-5BB8-11D1-A1E3-00A0C90F2731\""},{"name":"CoClassCustomConstructor","args":"\"CreatePropertyBagObject\""}],
+      "members": []
+    },
+    {
+      "name": "PropertyBag_VB5",
+      "kind": "interface",
+      "vis": "public",
+      "file": "PropertyBag.twin",
+      "signature": "Public Interface PropertyBag_VB5 Extends stdole.IDispatch",
+      "extends": "stdole.IDispatch",
+      "attrs": [{"name":"InterfaceId","args":"\"45046D60-08CA-11CF-A90F-00AA0062BB4C\""}],
+      "members": [
+        {"name":"ReadProperty","kind":"function","vis":"public","signature":"Function ReadProperty(ByVal Name As String, Optional ByVal DefaultValue As Variant) As Variant","returnType":"Variant","attrs":[{"name":"DispId","args":"1"}],"description":"Reads a property value from a PropertyBag object.\n### Syntax\n`Function ReadProperty(ByVal Name As String, Optional ByVal DefaultValue As Variant) As Variant`\n### Parameters\n- `Name`: The name of the property to read.\n- `DefaultValue`: An optional parameter that specifies the return value if the property is not found. The data type can be any.\n### Return Value\nThe function returns the value of the specified property. If the property is not found, it returns the `DefaultValue` if provided; otherwise, it returns `Null`.\n### Example\n```vb\n' Assume 'propBag' is a previously initialized PropertyBag object with properties set.\nDim myValue As Variant\nmyValue = propBag.ReadProperty(\"MyProperty\", \"DefaultValue\")\n```\n### Remarks\nThe `ReadProperty` function is typically used when an object needs to read its state from a PropertyBag, such as during the `ReadProperties` event when implementing persistence in ActiveX controls (UserControls) or documents."},
+        {"name":"WriteProperty","kind":"sub","vis":"public","signature":"Sub WriteProperty(ByVal Name As String, ByVal Value As Variant, Optional ByVal DefaultValue As Variant)","attrs":[{"name":"DispId","args":"2"}],"description":"Writes a property value to a PropertyBag object.\n### Syntax\n`Sub WriteProperty(ByVal Name As String, ByVal Value As Variant, Optional ByVal DefaultValue As Variant)`\n### Parameters\n- `Name`: The name of the property to write.\n- `Value`: The value to write to the property. The data type can be any that is supported by the PropertyBag.\n- `DefaultValue`: An optional parameter that specifies the value the client should assume as default when reading the property.\n### Return Value\nNone. This is a Sub procedure and does not return a value.\n### Example\n```vb\n' Assume 'propBag' is a previously initialized PropertyBag object.\npropBag.WriteProperty(\"MyProperty\", \"SomeValue\", \"DefaultValue\")\n```\n### Remarks\nThe `WriteProperty` procedure is typically used when an object needs to save its state to a PropertyBag, such as during the `WriteProperties` event when implementing persistence in ActiveX controls or documents. The `DefaultValue` parameter is used to optimize storage by not storing the value if it is the same as the default."}
+      ]
+    },
+    {
+      "name": "_PropertyBag",
+      "kind": "interface",
+      "vis": "public",
+      "file": "PropertyBag.twin",
+      "signature": "Public Interface _PropertyBag Extends PropertyBag_VB5",
+      "extends": "PropertyBag_VB5",
+      "attrs": [{"name":"InterfaceId","args":"\"4495AD01-C993-11D1-A3E4-00A0C90AEA82\""}],
+      "members": [
+        {"name":"Contents","kind":"property","vis":"public","signature":"Property Get Contents() As Variant","returnType":"Variant","accessor":"Get","attrs":[{"name":"DispId","args":"3"}],"description":"Retrieves or sets the entire state of the contents of a PropertyBag object.\n### Syntax\n`Property Let Contents(ByVal NewValue As Variant)`\n`Property Get Contents() As Variant`\n### Parameters\n- `NewValue`: The new value to assign to the contents of the PropertyBag when using `Let`.\n### Property Value\nA Variant containing the entire state of the PropertyBag when using `Get`.  The Variant subtype is a byte-array.\n### Example\n```vb\n' Assume 'propBag' is a previously initialized PropertyBag object.\n' To retrieve the contents:\nDim bagContents As Variant\nbagContents = propBag.Contents\n\n' To set the contents:\n' Assume 'newContents' is a Variant containing the state to load into the PropertyBag\npropBag.Contents = newContents\n```\n### Remarks\nThe `Contents` property is used to retrieve or set the complete state of the PropertyBag. This is useful when you need to load or save the state of the PropertyBag in one operation. When setting the `Contents`, the existing state is replaced by the `NewValue`. When reading the `Contents`, the entire state is retrieved as a Variant, which can then be manipulated as needed."},
+        {"name":"Contents","kind":"property","vis":"public","signature":"Property Let Contents(ByVal value As Variant)","accessor":"Let","attrs":[{"name":"DispId","args":"3"}],"description":"Retrieves or sets the entire state of the contents of a PropertyBag object.\n### Syntax\n`Property Let Contents(ByVal NewValue As Variant)`\n`Property Get Contents() As Variant`\n### Parameters\n- `NewValue`: The new value to assign to the contents of the PropertyBag when using `Let`.\n### Property Value\nA Variant containing the entire state of the PropertyBag when using `Get`.  The Variant subtype is a byte-array.\n### Example\n```vb\n' Assume 'propBag' is a previously initialized PropertyBag object.\n' To retrieve the contents:\nDim bagContents As Variant\nbagContents = propBag.Contents\n\n' To set the contents:\n' Assume 'newContents' is a Variant containing the state to load into the PropertyBag\npropBag.Contents = newContents\n```\n### Remarks\nThe `Contents` property is used to retrieve or set the complete state of the PropertyBag. This is useful when you need to load or save the state of the PropertyBag in one operation. When setting the `Contents`, the existing state is replaced by the `NewValue`. When reading the `Contents`, the entire state is retrieved as a Variant, which can then be manipulated as needed."}
+      ]
+    },
+    {
+      "name": "tbInternal_IAdviseSink",
+      "kind": "interface",
+      "vis": "public",
+      "file": "DataObject.twin",
+      "signature": "Public Interface tbInternal_IAdviseSink Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"0000010f-0000-0000-C000-000000000046\""}],
+      "members": [
+        {"name":"OnClose","kind":"sub","vis":"public","signature":"Sub OnClose()"},
+        {"name":"OnDataChange","kind":"sub","vis":"public","signature":"Sub OnDataChange(ByVal pFormatetc As LongPtr, ByVal pStgmed As LongPtr)"},
+        {"name":"OnRename","kind":"sub","vis":"public","signature":"Sub OnRename(ByVal pmk As tbInternal_IMoniker)"},
+        {"name":"OnSave","kind":"sub","vis":"public","signature":"Sub OnSave()"},
+        {"name":"OnViewChange","kind":"sub","vis":"public","signature":"Sub OnViewChange(ByVal dwAspect As Long, ByVal lindex As Long)"}
+      ]
+    },
+    {
+      "name": "tbInternal_IDataObject",
+      "kind": "interface",
+      "vis": "public",
+      "file": "DataObject.twin",
+      "signature": "Public Interface tbInternal_IDataObject Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"0000010e-0000-0000-C000-000000000046\""}],
+      "members": [
+        {"name":"DAdvise","kind":"sub","vis":"public","signature":"Sub DAdvise(ByRef pformatetc As tbInternal_FORMATETC, ByVal advf As Long, ByVal pAdvSink As tbInternal_IAdviseSink, ByRef pdwConnection As Long)"},
+        {"name":"DUnadvise","kind":"sub","vis":"public","signature":"Sub DUnadvise(ByVal dwConnection As Long)"},
+        {"name":"EnumDAdvise","kind":"sub","vis":"public","signature":"Sub EnumDAdvise(ByRef ppenumAdvise As tbInternal_IEnumSTATDATA)"},
+        {"name":"EnumFormatEtc","kind":"sub","vis":"public","signature":"Sub EnumFormatEtc(ByVal dwDirection As Long, ByRef ppenumFormatEtc As tbInternal_IEnumFORMATETC)"},
+        {"name":"GetCanonicalFormatEtc","kind":"sub","vis":"public","signature":"Sub GetCanonicalFormatEtc(ByRef pformatectIn As tbInternal_FORMATETC, ByRef pformatetcOut As tbInternal_FORMATETC)"},
+        {"name":"GetData","kind":"sub","vis":"public","signature":"Sub GetData(ByRef pformatetcIn As tbInternal_FORMATETC, ByRef pmedium As tbInternal_STGMEDIUM)"},
+        {"name":"GetDataHere","kind":"sub","vis":"public","signature":"Sub GetDataHere(ByRef pformatetcIn As tbInternal_FORMATETC, ByRef pmedium As tbInternal_STGMEDIUM)"},
+        {"name":"QueryGetData","kind":"sub","vis":"public","signature":"Sub QueryGetData(ByRef pformatetc As tbInternal_FORMATETC)"},
+        {"name":"SetData","kind":"sub","vis":"public","signature":"Sub SetData(ByRef pformatetc As tbInternal_FORMATETC, ByRef pmedium As tbInternal_STGMEDIUM, ByVal fRelease As Long)"}
+      ]
+    },
+    {
+      "name": "tbInternal_FORMATETC",
+      "kind": "type",
+      "in": "tbInternal_IDataObject",
+      "vis": "public",
+      "file": "DataObject.twin",
+      "signature": "Type tbInternal_FORMATETC",
+      "fields": [
+        {"name":"cfFormat","vis":"public","signature":"cfFormat As Integer"},
+        {"name":"ptd","vis":"public","signature":"ptd As LongPtr"},
+        {"name":"dwAspect","vis":"public","signature":"dwAspect As Long"},
+        {"name":"lindex","vis":"public","signature":"lindex As Long"},
+        {"name":"tymed","vis":"public","signature":"tymed As tbInternal_TYMED"}
+      ],
+      "members": []
+    },
+    {
+      "name": "tbInternal_STGMEDIUM",
+      "kind": "type",
+      "in": "tbInternal_IDataObject",
+      "vis": "public",
+      "file": "DataObject.twin",
+      "signature": "Type tbInternal_STGMEDIUM",
+      "fields": [
+        {"name":"tymed","vis":"public","signature":"tymed As tbInternal_TYMED"},
+        {"name":"unionData","vis":"public","signature":"unionData As LongPtr"},
+        {"name":"pUnkForRelease","vis":"public","signature":"pUnkForRelease As stdole.IUnknown"}
+      ],
+      "members": []
+    },
+    {
+      "name": "tbInternal_TYMED",
+      "kind": "enum",
+      "in": "tbInternal_IDataObject",
+      "vis": "public",
+      "file": "DataObject.twin",
+      "signature": "Enum tbInternal_TYMED",
+      "values": [
+        {"name":"tbInternal_TYMED_HGLOBAL","value":"1"},
+        {"name":"tbInternal_TYMED_FILE","value":"2"},
+        {"name":"tbInternal_TYMED_ISTREAM","value":"4"},
+        {"name":"tbInternal_TYMED_ISTORAGE","value":"8"},
+        {"name":"tbInternal_TYMED_GDI","value":"16"},
+        {"name":"tbInternal_TYMED_MFPICT","value":"32"},
+        {"name":"tbInternal_TYMED_ENHMF","value":"64"},
+        {"name":"tbInternal_TYMED_NULL","value":"0"}
+      ]
+    },
+    {
+      "name": "tbInternal_IEnumFORMATETC",
+      "kind": "interface",
+      "vis": "public",
+      "file": "DataObject.twin",
+      "signature": "Public Interface tbInternal_IEnumFORMATETC Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"00000103-0000-0000-C000-000000000046\""}],
+      "members": [
+        {"name":"Clone","kind":"sub","vis":"public","signature":"Sub Clone(ByRef ppenum As tbInternal_IEnumFORMATETC)"},
+        {"name":"Next","kind":"sub","vis":"public","signature":"Sub Next(ByVal celt As Long, ByRef rgelt As tbInternal_FORMATETC, ByRef pceltFetched As Long)"},
+        {"name":"Reset","kind":"sub","vis":"public","signature":"Sub Reset()"},
+        {"name":"Skip","kind":"sub","vis":"public","signature":"Sub Skip(ByVal celt As Long)"}
+      ]
+    },
+    {
+      "name": "tbInternal_IEnumSTATDATA",
+      "kind": "interface",
+      "vis": "public",
+      "file": "DataObject.twin",
+      "signature": "Public Interface tbInternal_IEnumSTATDATA Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"00000105-0000-0000-C000-000000000046\""}],
+      "members": []
+    },
+    {
+      "name": "tbInternal_IMoniker",
+      "kind": "interface",
+      "vis": "public",
+      "file": "DataObject.twin",
+      "signature": "Public Interface tbInternal_IMoniker Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"0000000f-0000-0000-C000-000000000046\""}],
+      "members": []
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}

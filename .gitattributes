@@ -17,6 +17,11 @@
 # cannot be run.
 wisdom/extract/workflow.mjs text eol=lf
 
+# The package indexer's snapshots are checked out byte for byte: a sync compares the
+# api.json it writes (LF) with the committed one, and a store seeded from the snapshots
+# has to start from the bytes a sync writes, or its first diff is every line.
+indexer/snapshots/** -text
+
 # The help add-in's resources are checked out byte for byte: every build compares its
 # copy of the symbol index with the LF file it writes (builder/addin-index.mjs).
 add-in/Resources/** -text
