@@ -34,7 +34,7 @@ import { indexerFingerprint } from "./lib/fingerprint.mjs";
 import { diffApi, auditCoverage } from "./lib/differ.mjs";
 import { documentedPackages, groupFolder, sectionPages } from "./lib/doc-pages.mjs";
 import { derivePackageApi } from "./lib/package-api.mjs";
-import { batchTasks, newLandingFor, planPackage } from "./lib/draft-plan.mjs";
+import { batchTasks, newLandingFor, planPackage, sectionModels } from "./lib/draft-plan.mjs";
 
 exitOnCrash();
 
@@ -805,6 +805,29 @@ async function runDraft(filter) {
   const rel = (p) => path.relative(REPO_ROOT, p).split(path.sep).join("/");
   const writeJson = (file, value) => fs.writeFile(file, `${JSON.stringify(value, null, 2)}\n`);
 
+  // The model pages each section of a group offers the others, the most
+  // documented section first, for the pages whose section has none of their kind.
+  const modelsByGroup = new Map();
+  const groupModels = async (group) => {
+    if (modelsByGroup.has(group)) return modelsByGroup.get(group);
+    const found = [];
+    for (const [key, section] of documented) {
+      const [g, name] = key.split("/");
+      if (g !== group) continue;
+      let api;
+      try {
+        api = JSON.parse(await fs.readFile(path.join(STORE_PATH, group, name, "api.json"), "utf-8"));
+      } catch {
+        continue; // not in the store
+      }
+      const pages = await sectionPages(section.dir);
+      found.push({ dir: rel(section.dir), size: pages.length, models: sectionModels({ api, pages }) });
+    }
+    found.sort((a, b) => b.size - a.size || a.dir.localeCompare(b.dir));
+    modelsByGroup.set(group, found);
+    return found;
+  };
+
   const manifest = { packages: [] };
   let batchNo = 0;
   for (const report of chosen) {
@@ -837,6 +860,7 @@ async function runDraft(filter) {
       sectionDir: rel(sectionDir),
       sourceDir: rel(path.join(storeDir, "sources")),
       newLanding,
+      borrowedModels: (await groupModels(report.group)).filter((s) => s.dir !== rel(sectionDir)),
     });
     const planFile = path.join(outDir, `${report.package}.json`);
     await writeJson(planFile, plan);

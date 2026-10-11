@@ -220,6 +220,12 @@ the old tool's at BETA 997, and it takes half a second with no cache.
   folder of the type returning it is limited to folders that already keep a type, because
   without that limit it moved Printer under Printers, Dictionary under JsonConverter and
   eight others that the sections keep at their roots.
+- **A new section borrows its model pages from its group.** Its pages have no sibling of
+  their kind to follow, so the plan of the first package drafted into a new section
+  (tbRegExp) gave every task `model: null`, and the agents would have invented a page
+  layout. A page of a kind its section lacks now takes a model from the group's largest
+  section that has one, of the same shape: a folder's `index.md` for a class that gets a
+  folder, never a one-page class.
 - **A permalink is computed only where the rule holds for every existing page** of the
   section (`followsFolders`). On staging at BETA 997 that is every section but VBA's, whose
   pages live under `/tB/Modules/`. A section that breaks the rule once gets no computed

@@ -80,6 +80,69 @@ function mostCommon(values, fallback) {
   return best;
 }
 
+// The page of each of a section's types that has one, by the type's path, and
+// how to find a symbol's page: the one titled with its name whose parent is its
+// type's page; for a type of the package's own, the first so titled. A control
+// (a class marked [WindowsControl] or [CustomControl]) is a kind of its own
+// (`kindKey`): the sections lay their controls out apart from their classes.
+function documentedTypes({ api, pages, landing }) {
+  const byTitle = new Map();
+  for (const p of pages) {
+    if (p.rel === "index.md") continue;
+    if (!byTitle.has(p.title)) byTitle.set(p.title, []);
+    byTitle.get(p.title).push(p);
+  }
+  const pageOf = (name, host, isTopType) => {
+    const found = byTitle.get(name) ?? [];
+    return found.find((p) => host && p.parent === host.title) ?? (isTopType ? found[0] : null) ?? null;
+  };
+  const symbols = flattenSymbols(api ?? {});
+  const types = symbols
+    .filter((s) => s.isType)
+    .map((s) => ({ ...s, path: s.container ? `${s.container}.${s.name}` : s.name }));
+  const controls = new Set(
+    types
+      .filter((t) => JSON.parse(t.attributes).some((a) => a.name === "WindowsControl" || a.name === "CustomControl"))
+      .map((t) => t.path),
+  );
+  const kindKey = (kind, typePath) => (controls.has(typePath) ? `${kind} control` : kind);
+  const typePages = new Map();
+  for (const t of types) {
+    const page = t.container ? pageOf(t.name, typePages.get(t.container), false) : pageOf(t.name, landing, true);
+    if (page) typePages.set(t.path, page);
+  }
+  return { symbols, types, kindKey, typePages, pageOf };
+}
+
+/**
+ * The pages a section offers another section of its group as models, for the
+ * kinds that one has no page of: a Map from each kind of type (`Class`,
+ * `Class control`, `Enum`...) to the pages documenting one, and from each kind
+ * of member (`member Property`) to the pages of their own its members have,
+ * `rel` to the section's folder, in the order of the api. `api` and `pages` are
+ * as `planPackage` takes them.
+ */
+export function sectionModels({ api, pages }) {
+  const landing = pages.find((p) => p.rel === "index.md") ?? null;
+  const { symbols, types, kindKey, typePages, pageOf } = documentedTypes({ api, pages, landing });
+  const models = new Map();
+  const add = (key, rel) => {
+    if (!models.has(key)) models.set(key, []);
+    if (!models.get(key).includes(rel)) models.get(key).push(rel);
+  };
+  for (const t of types) {
+    const page = typePages.get(t.path);
+    if (page) add(kindKey(t.kind, t.path), page.rel);
+  }
+  for (const s of symbols) {
+    if (s.isType || !s.public || !s.container) continue;
+    const host = typePages.get(s.container);
+    const page = host ? pageOf(s.name, host, false) : null;
+    if (page && page.rel !== host.rel) add(`member ${s.kind}`, page.rel);
+  }
+  return models;
+}
+
 /**
  * Plans the pages of one package's report.
  *
@@ -94,6 +157,10 @@ function mostCommon(values, fallback) {
  * - `newLanding`: for a section with no landing page yet, the `{ title,
  *   parent, permalink }` it is to get, and for a contributed package its
  *   `author`; the returned `landing` then says `new: true`.
+ * - `borrowedModels`: the other sections of the group, most preferred first,
+ *   each `{ dir, models }`, `dir` relative to the repository and `models` from
+ *   `sectionModels`; a page gets its model from them when its section has no
+ *   page of its kind, as a new section has none.
  *
  * Returns `{ package, group, mode, version, sectionDir, landing, permalinks,
  * tasks, unplaced, flagged }`. Each of `tasks` names the page `file`
@@ -101,12 +168,13 @@ function mostCommon(values, fallback) {
  * on the one page its type has; the `parent` title; the `permalink` (null for
  * an inline symbol, and when the section's permalinks do not follow its
  * folders); the `containerPage`, which may list its members; a `model` page of
- * the same kind in the section, to follow; and the `source` file to read.
+ * the same kind in the section, else in another section of the group, to
+ * follow; and the `source` file to read.
  * `unplaced` are the tasks no page can be found for, such as a member whose
  * type has no page and gets none; `flagged`, the symbols the package no longer
  * declares, with the page that documents each.
  */
-export function planPackage({ report, api, pages, sectionDir, sourceDir, newLanding = null }) {
+export function planPackage({ report, api, pages, sectionDir, sourceDir, newLanding = null, borrowedModels = [] }) {
   const landing =
     pages.find((p) => p.rel === "index.md") ?? (newLanding ? { rel: "index.md", new: true, ...newLanding } : null);
   const permalinks = followsFolders(pages, landing);
@@ -115,46 +183,21 @@ export function planPackage({ report, api, pages, sectionDir, sourceDir, newLand
   // The pages there are, and those planned so far.
   const rels = new Set(pages.map((p) => p.rel));
   const folderOf = (rel) => memberFolder(rel, rels);
-  const byTitle = new Map();
-  for (const p of pages) {
-    if (p.rel === "index.md") continue;
-    if (!byTitle.has(p.title)) byTitle.set(p.title, []);
-    byTitle.get(p.title).push(p);
-  }
-  // A symbol's page: the one titled with its name whose parent is its type's
-  // page; for a type of the package's own, the first so titled.
-  const pageOf = (name, host, isTopType) => {
-    const found = byTitle.get(name) ?? [];
-    return found.find((p) => host && p.parent === host.title) ?? (isTopType ? found[0] : null) ?? null;
-  };
+  const { symbols, types, kindKey, typePages, pageOf } = documentedTypes({ api, pages, landing });
 
-  // The page of each type that has one, by the type's path; for each kind of
-  // type, the folders the section keeps it in, and whether each is a folder of
-  // its own (`X/index.md`) or one page (`X.md`); and a page of each kind. A
-  // control (a class marked [WindowsControl] or [CustomControl]) is a kind of
-  // its own: the sections lay their controls out apart from their classes.
-  const typePages = new Map();
+  // For each kind of type, the folders the section keeps it in, and whether
+  // each is a folder of its own (`X/index.md`) or one page (`X.md`); and a page
+  // of each kind.
   const kindFolders = new Map();
   const kindStyles = new Map();
   const kindPages = new Map();
-  const symbols = flattenSymbols(api ?? {});
-  const types = symbols
-    .filter((s) => s.isType)
-    .map((s) => ({ ...s, path: s.container ? `${s.container}.${s.name}` : s.name }));
-  const controls = new Set(
-    types
-      .filter((t) => JSON.parse(t.attributes).some((a) => a.name === "WindowsControl" || a.name === "CustomControl"))
-      .map((t) => t.path),
-  );
-  const kindKey = (kind, typePath) => (controls.has(typePath) ? `${kind} control` : kind);
   const add = (map, key, value) => {
     if (!map.has(key)) map.set(key, []);
     map.get(key).push(value);
   };
   for (const t of types) {
-    const page = t.container ? pageOf(t.name, typePages.get(t.container), false) : pageOf(t.name, landing, true);
+    const page = typePages.get(t.path);
     if (!page) continue;
-    typePages.set(t.path, page);
     const key = kindKey(t.kind, t.path);
     if (!kindPages.has(key)) kindPages.set(key, page.rel);
     if (t.container) continue;
@@ -166,6 +209,20 @@ export function planPackage({ report, api, pages, sectionDir, sourceDir, newLand
   const byKind = (map, kind, typePath) => map.get(kindKey(kind, typePath)) ?? map.get(kind);
   const folderFor = (kind, typePath) => mostCommon(byKind(kindFolders, kind, typePath) ?? [], anyFolder);
   const modelFor = (kind, typePath) => kindPages.get(kindKey(kind, typePath)) ?? kindPages.get(kind) ?? null;
+  // A model from another section of the group, for a page of a kind this one
+  // has none of: one of the same shape (a folder's index.md, or a page of its
+  // own) where a section has one, else any, in the order the sections are given.
+  const isFolderPage = (rel) => rel === "index.md" || rel.endsWith("/index.md");
+  const borrow = (key, rel) => {
+    let any = null;
+    for (const { dir, models } of borrowedModels) {
+      for (const m of models.get(key) ?? []) {
+        if (isFolderPage(m) === isFolderPage(rel)) return `${dir}/${m}`;
+        any ??= `${dir}/${m}`;
+      }
+    }
+    return any;
+  };
   // Whether a new type of a kind gets a folder: as most of the section's types
   // of that kind have, else most of its types; null when it has none.
   const folderStyle = (kind, typePath) =>
@@ -293,6 +350,12 @@ export function planPackage({ report, api, pages, sectionDir, sourceDir, newLand
     }
     if (isType) typePages.set(ownPath, { rel, title: task.symbol, parent });
     rels.add(rel);
+    let modelFile = model && model !== rel ? inSection(model) : null;
+    if (!modelFile && !inline) {
+      modelFile = isType
+        ? (borrow(kindKey(task.kind, ownPath), rel) ?? borrow(task.kind, rel))
+        : borrow(`member ${task.kind}`, rel);
+    }
     tasks.push({
       ...common(task),
       file: inSection(rel),
@@ -301,7 +364,7 @@ export function planPackage({ report, api, pages, sectionDir, sourceDir, newLand
       parent,
       permalink: permalinks && !inline ? permalinkByFolder(landing.permalink, rel, rels) : null,
       containerPage: host ? inSection(host.rel) : null,
-      model: model && model !== rel ? inSection(model) : null,
+      model: modelFile,
     });
   }
 

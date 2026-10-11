@@ -243,7 +243,11 @@ pages and the package's `api.json` and decides, for each task:
 - **the permalink**, only when every page of the section has the permalink its
   folders give it (`followsFolders`); otherwise null, to follow the siblings.
   VBA's `/tB/Modules/...` is the one section that does not.
-- **a model page** of the same kind in the section, and the source file.
+- **a model page** of the same kind in the section, and the source file. A page
+  of a kind the section has none of, as every page of a new section is, takes
+  its model from another section of the group (`sectionModels`), the one with the
+  most pages first, and one of the same shape (a folder's `index.md`, or a page
+  of its own) where there is one.
 
 A package with no section gets `docs/Reference/<Group>/<Package>/` and a
 landing page like the group's others (`newLandingFor`): `<Package> Package`,
