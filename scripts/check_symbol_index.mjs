@@ -647,19 +647,142 @@ const show = (x) => JSON.stringify(x);
 }
 
 {
-  const { types } = parseTwin(
-    ["Enum Colour", '    [Hidden, Description("Last")]', "    [_MAX] = 7", "    Red = 1", "End Enum"].join("\n"),
+  const { types, problems } = parseTwin(
+    [
+      "Enum Colour",
+      '    [Hidden, Description("Last")] [_MAX] = 7',
+      "    [Hidden] Green = 5",
+      "    Red = 1",
+      "End Enum",
+    ].join("\n"),
   );
-  const [max, red] = types[0]?.members ?? [];
+  const [max, green, red] = types[0]?.members ?? [];
   check(
-    "an enumeration value has its signature as written and the attributes before it",
-    max?.name === "_MAX" &&
+    "an enumeration value has its signature as written and the attributes before it on its line",
+    problems.length === 0 &&
+      max?.name === "_MAX" &&
       max.signature === "[_MAX] = 7" &&
       max.hidden === true &&
       max.description === "Last" &&
+      green?.name === "Green" &&
+      green.hidden === true &&
+      green.signature === "Green = 5" &&
       red?.signature === "Red = 1" &&
-      red.attrs.length === 0,
-    show(types[0]?.members),
+      red.attrs.length === 0 &&
+      red.hidden === false,
+    show({ problems, members: types[0]?.members }),
+  );
+}
+
+{
+  // The compiler (BETA 983, 995 and 1005) reads a line that is only `[Name]` in an
+  // Enum body as a value of that name, with the next number, whatever is in the
+  // brackets; the scanner used to take it for the attributes of the next line, and
+  // an Enum made of such lines came out with no values at all.
+  const { types, problems } = parseTwin(
+    [
+      "Module Shims",
+      "    Private Enum LongPtr",
+      "        [_]",
+      "    End Enum",
+      "    Public Enum GridCellEffectEnum",
+      "        [Flat]",
+      "        [Raised]",
+      "        [Sunken]",
+      "    End Enum",
+      "    Enum ReportSizeConstants",
+      "        [ ]",
+      "        [A4 Portrait]",
+      "        [Letter Landscape]",
+      "    End Enum",
+      "    Public Enum Mixed",
+      "        Red = 1",
+      "        [Flat]",
+      "        [_MAX] = 7",
+      "        Blue",
+      "    End Enum",
+      "End Module",
+    ].join("\n"),
+  );
+  const values = (n) =>
+    types
+      .find((t) => t.name === n)
+      ?.members.map((m) => m.name)
+      .join("|");
+  check(
+    "a line of only [Name] in an Enum is a value, in the shim's one-value Enum and in a run of them",
+    problems.length === 0 &&
+      values("LongPtr") === "_" &&
+      values("GridCellEffectEnum") === "Flat|Raised|Sunken" &&
+      values("ReportSizeConstants") === " |A4 Portrait|Letter Landscape" &&
+      values("Mixed") === "Red|Flat|_MAX|Blue",
+    show({ problems, flat: values("GridCellEffectEnum"), mixed: values("Mixed") }),
+  );
+  const mixed = types.find((t) => t.name === "Mixed")?.members ?? [];
+  check(
+    "such a value has its bracketed signature, no attributes, and leaves the next value alone",
+    mixed.map((m) => m.signature).join("|") === "Red = 1|[Flat]|[_MAX] = 7|Blue" &&
+      mixed.every((m) => m.attrs.length === 0 && !m.hidden && m.description === null),
+    show(mixed),
+  );
+}
+
+{
+  // `[Hidden]` and `[Description("x")]` are attribute names, and still values here:
+  // the compiler gives `E.Hidden` the number 0 and `Red` the number 1, and refuses
+  // `[Hidden] Red` (TB5182), so no Enum value can carry an attribute.
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      "    Public Enum Odd",
+      "        [Hidden]",
+      "        [Hidden, Restricted]",
+      '        [Description("x")]',
+      "        Red = 3",
+      "    End Enum",
+      "End Module",
+    ].join("\n"),
+  );
+  const members = types.find((t) => t.name === "Odd")?.members ?? [];
+  check(
+    "an attribute-looking line of its own in an Enum is a value of that name, not an attribute",
+    problems.length === 0 &&
+      members.map((m) => m.name).join("|") === 'Hidden|Hidden, Restricted|Description("x")|Red' &&
+      members.every((m) => m.attrs.length === 0 && !m.hidden && m.description === null),
+    show({ problems, members }),
+  );
+}
+
+{
+  // Outside an Enum body a line of only an attribute list is still one: before the
+  // Enum, before the next member of its Module, and before a member that follows
+  // an Enum's `End Enum`.
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      '    [Description("Papers")]',
+      "    Public Enum Paper",
+      "        [A4 Portrait] = 1",
+      "        Letter",
+      "    End Enum",
+      "    [Hidden]",
+      "    Public Sub S()",
+      "    End Sub",
+      "    Public Sub T()",
+      "    End Sub",
+      "End Module",
+    ].join("\n"),
+  );
+  const paper = types.find((t) => t.name === "Paper");
+  const m = types.find((t) => t.name === "M");
+  check(
+    "an attribute list on a line of its own is still one before an Enum and before a member after it",
+    problems.length === 0 &&
+      paper?.description === "Papers" &&
+      paper.members.map((v) => v.name).join("|") === "A4 Portrait|Letter" &&
+      m?.members.find((x) => x.name === "S")?.hidden === true &&
+      m.members.find((x) => x.name === "T")?.hidden === false,
+    show({ problems, paper, members: m?.members }),
   );
 }
 

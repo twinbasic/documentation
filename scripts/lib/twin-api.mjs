@@ -13,7 +13,7 @@
 // once, keeps no expression, and follows no #If: every branch of a conditional
 // is read, which is right for this corpus -- the branches it has guard features,
 // not alternatives -- and what it cannot place goes to `problems` rather than
-// being guessed at. Ten ways to misread this corpus, the first seven met in the
+// being guessed at. Eleven ways to misread this corpus, the first seven met in the
 // BETA 983 packages (scripts/census_attributes.mjs lists six more, about
 // attributes):
 //
@@ -46,6 +46,17 @@
 //      (community ArrayList, whose class loses its members).
 //  10. An Enum value can be named for a modifier: `Static = 0`, `ReadOnly = 1`,
 //      or `Shared` alone. An Enum value has no modifiers.
+//  11. A line that is only `[Name]` in an Enum body is a value, not an attribute
+//      list for the next line. It is how an escaped name is written when the
+//      value has no `= n`: the `[_]` of the LongPtr shim the VB6-derived
+//      community packages carry (92 enums), xCalendar's `[Flat]`, VB's `[A4
+//      Portrait]`.
+//      BETA 983, 995 and 1005 agree on it, whatever the brackets hold:
+//      `[Hidden]`, `[Hidden, Restricted]` and `[Description("x")]` on a line of
+//      their own each declare a value of that name and take the next number, and
+//      an attribute in front of a value on the same line (`[Hidden] Red = 5`)
+//      is refused, TB5182. So an Enum value cannot carry an attribute. The
+//      scanner reads the same-line form as an attribute list all the same.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -186,7 +197,12 @@ function statementEnd(text) {
 // -- `[_HiddenModule].Foo`, `[_MAX] = 0` -- is not an attribute, and ends the run
 // where it starts. `open` is true when a bracket is still unclosed at the end of
 // the line. `rest` and `restRaw` are what follows, blanked and as written.
-function splitAttributes(text, raw) {
+//
+// In an Enum body (`inEnum`) a group that is the whole declaration, or all of it
+// but an `= value`, is a member's name, whatever it holds: `[_]`, `[Flat]`,
+// `[Hidden]`, `[A4 Portrait] = 1`, even `[Description("x")]`. A group with a
+// declaration after it is an attribute list as anywhere else.
+function splitAttributes(text, raw, inEnum = false) {
   const attrs = [];
   let i = 0;
   for (;;) {
@@ -201,7 +217,7 @@ function splitAttributes(text, raw) {
     if (j >= text.length) return { attrs, rest: text.slice(i), restRaw: raw.slice(i), open: true };
     const inner = text.slice(i + 1, j);
     const after = text.slice(j + 1).trimStart();
-    if (!attrs.length && /^[.=(]/.test(after) && !/[(,]/.test(inner)) break;
+    if (inEnum ? after === "" || after[0] === "=" : !attrs.length && /^[.=(]/.test(after) && !/[(,]/.test(inner)) break;
     attrs.push(...attributeItems(inner, raw.slice(i + 1, j)));
     i = j + 1;
   }
@@ -383,11 +399,12 @@ export function parseTwin(src, file = "") {
     const { line } = lines[li];
     if (!text.trim() || /^\s*#/.test(text)) continue; // #If, #Region, #Const
 
-    let split = splitAttributes(text, raw);
+    const inEnum = stack[stack.length - 1]?.type?.kind === "enum";
+    let split = splitAttributes(text, raw, inEnum);
     while (split.open && li + 1 < lines.length) {
       text += " " + lines[++li].text;
       raw += " " + lines[li].raw;
-      split = splitAttributes(text, raw);
+      split = splitAttributes(text, raw, inEnum);
     }
     pending.push(...split.attrs);
     const rest = split.rest.trim();
@@ -542,7 +559,9 @@ export function parseTwin(src, file = "") {
     }
 
     if (parent.kind === "enum") {
-      if ((m = ENUM_VALUE.exec(decl))) add(parent, m[1], "enumvalue", "public", hidden, line, undefined, info(sig()));
+      // The name is cut from the line as written: an escaped one can hold a string.
+      if ((m = ENUM_VALUE.exec(decl)))
+        add(parent, declRaw.slice(0, m[1].length), "enumvalue", "public", hidden, line, undefined, info(sig()));
       else problems.push({ file, line, why: `not an enumeration value: ${rest.slice(0, 60)}` });
       continue;
     }

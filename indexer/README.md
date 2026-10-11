@@ -248,11 +248,13 @@ JSON designer files with no declarations in them, and are skipped on purpose,
 as is everything outside `Sources/`. Text inside a `/* ... */` comment is not
 read.
 
-*What it does not read.* An enumeration value written as a bare `[Name]` on a
-line of its own is read by the scanner as an attribute of the next
-declaration, so an Enum made of such lines has no `values`; the `[_]`
-placeholder of the `Private Enum LongPtr` compatibility shim in the VB6-derived
-packages is the common case.
+*Enumeration values written in brackets.* A line that is only `[Name]` in an
+Enum body is a value of that name, not an attribute of the next line: the
+`[_]` placeholder of the `Private Enum LongPtr` compatibility shim in the
+VB6-derived packages, xCalendar's `[Flat]`, and the `[A4 Portrait]` of VB's
+`ReportSizeConstants`. The compiler reads every such line this way, whatever the
+brackets hold, so `[Hidden]` or `[Description("x")]` alone on a line is a value
+too, and an Enum value cannot carry an attribute.
 
 ## Package groups
 
