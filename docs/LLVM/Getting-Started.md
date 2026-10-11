@@ -75,7 +75,7 @@ All other language features should work, in both 32-bit and 64-bit builds. Pleas
 
 ## General LLVM options
 
-Besides the project settings, three settings in [IDE Options](../tB/IDE/Reference/Menu/Tools) control how LLVM works when it is on:
+Besides the project settings, three settings in [IDE Options](../tB/IDE/Customising/IDE-Options) control how LLVM works when it is on. Changing any of the three ends the LLVM cache process and restarts the compiler at once, with no question asked.
 
 ![Part of the twinBASIC IDE Options dialog, showing three LLVM settings: LLVM Compiler: Maximum number of threads, set to its default of 1; LLVM Compiler: Complex procedure reporting threshold (milliseconds), set to 10000; and LLVM Compiler: Keep cache process alive after exiting the IDE, ticked.](Images/llvmdoc2.png){:width="628" height="187"}
 

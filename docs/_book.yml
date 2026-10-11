@@ -279,6 +279,11 @@ parts:
           - /tB/IDE/Project/Variables
           - /tB/IDE/Project/Memory
         outline_closed: true
+      - title: Customising the IDE
+        landing_page: /tB/IDE/Customising/
+        page: /tB/IDE/Customising/
+        landing_is_target: true
+        outline_closed: true
       - title: Add Ins
         page: /tB/IDE/AddIns/
         no_descent: true
@@ -608,7 +613,6 @@ left_out:
       - /tB/IDE/Reference/Menu/Run
       - /tB/IDE/Reference/Menu/AddIns
       - /tB/IDE/Reference/Menu/Help
-      - /tB/IDE/Reference/Menu/Tools      # one real line, under a visible TODO note
 
   - reason: IDE pages that are complete but too short, or too much a list, to earn space in print yet
     no_descent: true
@@ -626,4 +630,5 @@ left_out:
       - /tB/IDE/Project/OpenEditors
       - /tB/IDE/Project/PackagePublishing
       - /tB/IDE/AddIns/GlobalSearch
+      - /tB/IDE/Reference/Menu/Tools
       - /tB/IDE/Reference/Menu/Window     # ~800 lines of shortcut JSON that would print unfolded

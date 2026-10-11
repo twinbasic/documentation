@@ -37,7 +37,7 @@ children. Second person ("you") is allowed here, as in tutorials.
 | 5 | Designing forms and reports | `/tB/IDE/Forms`, `/tB/IDE/Reports` | tbForm, Toolbox, Properties, the Format menu's operations, tbReport |
 | 6 | Running and debugging | `/tB/IDE/Debugging` + children | Menu/Debug's run-time error walkthrough and Debugger Options, Menu/Run, Debug Console, Variables, Watches, Call Stack, Memory, `Features/Compiler-IDE/Debugging` |
 | 7 | Building | `/tB/IDE/Building` | Toolbar's Build configuration, Menu/File's Build and Clean, Package Publishing, links to LLVM and Project-Types |
-| 8 | Customising the IDE | `/tB/IDE/Customising` + children | IDE Options (all of them), themes and custom `.theme` files, panel layouts, keyboard shortcuts, language (from Menu/Window and Menu/Tools) |
+| 8 | Customising the IDE | `/tB/IDE/Customising/` + children (**written**; open: what **IDE: Show Hidden Members** and **IDE: Auto refresh Explorer icon cache after build** visibly change) | IDE Options (all of them), themes and custom `.theme` files, panel layouts, keyboard shortcuts, language (from Menu/Window and Menu/Tools) |
 | 9 | Add-ins | `/tB/IDE/AddIns/` | AddIns/* as they are, Community given content |
 | 10 | When something goes wrong | `/tB/IDE/Troubleshooting` | Status Bar's service states, Restart the compiler, TRACE mode, error reporting |
 
@@ -65,6 +65,13 @@ Where a merged page's pictures live does not change: `shoot_docs.mjs` writes the
 **Features/Compiler-IDE** keeps a short "what's new compared to VB6" page that links into
 the chapters. The how-to sections of `IDE-Features.md`, `Debugging.md` and `CodeLens.md` move
 here, and those pages get `redirect_from` only if they are removed outright.
+
+**A landing page with children has a trailing slash** (`/tB/IDE/Customising/`, as
+`/tB/IDE/AddIns/`). Without the slash, the link check resolves `Customising#anchor` to the
+child folder.
+
+**Language names in a script the font subsets lack** (Cyrillic, Devanagari, Malayalam, CJK) are
+written in English only. The subsets cover Latin and Greek; see `scripts/build_fonts.py`.
 
 **Nav order.** The chapters take `nav_order` 1--10 in the order of the table above.
 `IDE Reference` has 99. The nav sorts numbered pages before unnumbered ones, so until a pane

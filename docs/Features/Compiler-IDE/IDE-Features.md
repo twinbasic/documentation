@@ -12,7 +12,7 @@ While the twinBASIC IDE still has a lot of work planned, it already includes a n
 ## Theme System
 {: index="dark mode" }
 
-Fully theme-able, with Dark (default), Light, and Classic (Light) built in, and an easy inheritance-based system to add your own themes via CSS files.
+Fully theme-able, with Dark (default), Light, and Classic (Light) built in. A theme is a short `.theme` text file of `Name: value;` pairs, which can inherit from another theme, so adding your own takes one small file. [Themes](../../tB/IDE/Customising/Themes) explains how.
 
 ## Code Navigation and Structure
 
@@ -23,7 +23,7 @@ Fully theme-able, with Dark (default), Light, and Classic (Light) built in, and 
 
 ## Editing Features
 
-- **Fully customizable keyboard shortcuts** covering all commands, with ability to save and switch between different sets.
+- **Fully customizable keyboard shortcuts** covering all commands. You keep your changes in groups that you switch on and off, and each group is layered on top of the built-in keys. See [Keyboard shortcuts](../../tB/IDE/Customising/Keyboard-Shortcuts).
 - **Auto-indent on paste**.
 - **Paste as comment**.
 - **Inline code hints**, which provide annotations at the end of blocks for what the block is (see picture).
