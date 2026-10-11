@@ -28,12 +28,22 @@ async function ensureStore(storePath, snapshotsPath) {
     needsInit = true;
   }
 
-  if (!needsInit) return;
+  // Some of the sources have names of over a hundred characters, which with the
+  // store's own path is more than Windows lets git open unless it is told to
+  // use long paths. A store made before this was set gets it too.
+  if (!needsInit) {
+    await git(storePath, "config", "core.longpaths", "true");
+    return;
+  }
 
   await fs.mkdir(storePath, { recursive: true });
   await git(storePath, "init");
   await git(storePath, "config", "user.name", "indexer");
   await git(storePath, "config", "user.email", "indexer@local");
+  await git(storePath, "config", "core.longpaths", "true");
+  // The sources are kept as the packages hold them, whatever the user's git
+  // converts line endings to.
+  await git(storePath, "config", "core.autocrlf", "false");
 
   let seeded = false;
   try {

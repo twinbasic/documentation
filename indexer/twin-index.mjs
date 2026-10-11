@@ -32,6 +32,7 @@ const SNAPSHOTS_PATH = path.join(INDEXER_DIR, "snapshots");
 const DOCS_REF_DIR = path.join(DOCS_DIR, "Reference");
 
 const DEFAULT_PACKAGES = ["VBA", "VBRUN", "VB"];
+const GIT_SHOW_MAX_BYTES = 1 << 30;
 const VB6_EXTS = new Set(Object.keys(CONTAINER_MAP));
 const SOURCE_EXTS = new Set([".twin", ...VB6_EXTS]);
 
@@ -560,20 +561,29 @@ async function analyzeUpdate(name, group, current, indexedFrom, docsDir, exclusi
   const snapshotRel = `indexer/snapshots/${group}/${name}/api.json`;
   let baseline = null;
   try {
-    const { stdout } = await execFileP("git", ["show", `HEAD:${snapshotRel}`], { cwd: REPO_ROOT });
+    // git show's output is held in memory up to maxBuffer, 1 MB by default and
+    // less than VB's snapshot.
+    const { stdout } = await execFileP("git", ["show", `HEAD:${snapshotRel}`], {
+      cwd: REPO_ROOT,
+      maxBuffer: GIT_SHOW_MAX_BYTES,
+    });
     baseline = JSON.parse(stdout);
   } catch {
     /* no committed snapshot */
   }
 
-  if (baseline && baseline.format !== API_FORMAT) {
+  if (!baseline) {
+    console.log(
+      `  Warning: no committed snapshot of ${name} to compare with; comparing against the documentation instead`,
+    );
+    return analyzeAudit(name, group, current, docsDir, exclusions);
+  }
+  if (baseline.format !== API_FORMAT) {
     console.log(`  Warning: the committed snapshot is in an older format; comparing against the documentation instead`);
     return analyzeAudit(name, group, current, docsDir, exclusions);
   }
-  if (!baseline || baseline.version !== indexedFrom) {
-    if (baseline && baseline.version !== indexedFrom) {
-      console.log(`  Warning: indexed_from (${indexedFrom}) != snapshot version (${baseline.version})`);
-    }
+  if (baseline.version !== indexedFrom) {
+    console.log(`  Warning: indexed_from (${indexedFrom}) != snapshot version (${baseline.version})`);
     return analyzeAudit(name, group, current, docsDir, exclusions);
   }
 

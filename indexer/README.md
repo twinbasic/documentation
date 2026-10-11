@@ -27,7 +27,12 @@ node indexer/twin-index.mjs sync
 
 This does everything on the first run:
 
-1. Creates `indexer/.packages/` as a local git repo (the "store").
+1. Creates `indexer/.packages/` as a local git repo (the "store"), seeded
+   with the committed snapshots as its baseline commit, so that the store's own
+   history shows what changed in each package's API. It keeps the sources as
+   the packages hold them (`core.autocrlf` off) and opens long paths
+   (`core.longpaths` on): some source names are over a hundred characters, which
+   Windows refuses from a deeply nested clone otherwise.
 2. Reads the built-in and default packages from the local twinBASIC
    install, and downloads all packages from TWINSERV (community).
 3. Reads the sources of every package with the repository's shared
