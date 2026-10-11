@@ -5,6 +5,12 @@ install, downloads the community ones, extracts their source code, and
 produces structured API snapshots (`api.json`) used to maintain the
 reference documentation at docs.twinbasic.com.
 
+This file is the reference for its layout, commands and `api.json`. The
+published account of the tool is its entry in
+[Build and Generation Tools](../docs/Documentation/Tools-Build.md#twin-index);
+why it is built as it is, and the decisions and open items that still
+matter, are in [WIP.Indexer.md](../WIP.Indexer.md).
+
 ## Prerequisites
 
 - Node.js 20+
@@ -436,23 +442,19 @@ twinBASIC project. Everything else the install (or the release zip) holds is
 ## Pipeline overview
 
 ```
-sync  -->  analyze  -->  draft  -->  verify  -->  human review
+sync  -->  analyze  -->  write the pages  -->  verify  -->  review
 ```
 
-1. **sync** — read, extract, generate api.json, commit to store _(done)_
-2. **analyze** — diff snapshots, produce change report _(done)_
-3. **draft** — Claude workflow fans out agents to write doc pages _(planned — Phase E)_
-4. **verify** — build the site, check links _(uses existing builder)_
-5. **human review** — developer reviews and commits
+1. **sync** — read, extract, generate api.json, commit to store
+2. **analyze** — diff snapshots, produce change report
+3. **write the pages** — the per-symbol workflow in
+   [`WIP.Authoring.md`](../WIP.Authoring.md#per-symbol-workflow), by hand
+   or with the `document-symbol` skill, from `report.json`; then set
+   `indexed_from` and commit the new snapshots with the pages
+4. **verify** — `build.bat`, `check.bat` (the existing builder)
+5. **review** — the developer reviews and commits
 
-Steps 1-2 are implemented. Step 3 will be a Claude Code workflow at
-`.claude/workflows/doc-draft.mjs` that reads `report.json` (from
-`analyze`) and dispatches agents to create or update doc pages
-following the conventions in [`WIP.md`](../WIP.md). Until then, use
-the report to drive manual documentation or the `/document-symbol`
-skill.
-
-See `PLAN-pipeline.md` for the full design, status, and future phases.
+The indexer implements steps 1 and 2. Step 3 is not automated.
 
 ## Directory layout
 
@@ -511,12 +513,9 @@ so it won't interfere with your global git config.
 
 | File | Description |
 |------|-------------|
-| `TWINSERV-protocol.md` | TWINSERV HTTP API specification. |
-| `PLAN-pipeline.md` | Full pipeline design, status, and future phases. |
-| `PLAN-auto-sync.md` | Historical: original module layout and interfaces. |
-| `query_response.json` | Captured TWINSERV `/query` response (238 KB, 32 packages). |
+| `TWINSERV-protocol.md` | TWINSERV HTTP API specification, reverse-engineered from BETA 983. The indexer calls only `query` and `download`. |
 | `sample.twinpack` | Sample `.twinpack` binary (CustomControlsPackage v0.0.3.0). |
-| `parse_tree.ps1` | PowerShell script to dump `.twinproj`/`.twinpack` entry trees. |
+| [`WIP.Indexer.md`](../WIP.Indexer.md) | Why the indexer is built as it is: decisions and open items. |
 
 The canonical `.twinpack` binary format spec is at
 [`docs/Features/Packages/TWINPACK file format.md`](../docs/Features/Packages/TWINPACK%20file%20format.md).

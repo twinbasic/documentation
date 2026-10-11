@@ -2,8 +2,9 @@
 
 Reverse-engineered from twinBASIC IDE Beta 983 (June 2026).
 
-Source material: `ide/main.js`, `ide/toolWindow.js` (beautified copies in this
-directory), plus direct API probing.
+Source material: `ide/main.js`, `ide/toolWindow.js` (the IDE's own files; this
+repository keeps no copy of them), plus direct API probing. The indexer calls
+only `query` and `download`.
 
 ## Overview
 
