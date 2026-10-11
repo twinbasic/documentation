@@ -145,10 +145,6 @@ An item can have any numeric type, **String**, **Boolean**, **Date**, **Currency
 > [!NOTE]
 > **TupleOf4** cannot be used in version 1.0.0.0. The package declares it with three type parameters, `TupleOf4(Of T1, T2, T3)`, but its fourth item uses a fourth, *T4*, which is not declared. With four type arguments, a declaration fails with TB5124, *Too many generic specifiers*. With three, the package's source fails with TB5079, *Unrecognized datatype symbol 'T4'*. A project that does not use **TupleOf4** is not affected. For four values, use **TupleOf5** and leave its last item unused.
 
-## Other public names
-
-The package also exposes `HelloWorldModule`, test code that was left in the package. Its `Show` procedure displays two message boxes: *Hello World*, held by a **TupleOf1**, and *One Two Three Four Five Six Seven*, the seven items of a **TupleOf7** joined together. The module has no page of its own.
-
 ## See Also
 
 - [Generics](../../../../Features/Language/Generics) -- generic classes, procedures and types in twinBASIC
