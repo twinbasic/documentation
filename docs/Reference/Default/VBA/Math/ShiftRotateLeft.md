@@ -25,7 +25,7 @@ Unlike the [**\<<**](../../Core/LeftShift) operator, which discards the bits shi
 With constant arguments, the call is evaluated when the code is compiled, so it can be used in a [**Const**](../../Core/Const) declaration, an **Enum** member's value or a **Case** expression.
 
 > [!WARNING]
-> In twinBASIC BETA 997, **ShiftRotateLeft** ignores the names of named arguments and takes its arguments in the order they are written: `ShiftRotateLeft(ShiftAmount:=4, Number:=&H12345678)` rotates 4 left by `&H12345678` bits, and gives the **Integer** `&H400`. Write the arguments by position, *number* first.
+> In twinBASIC BETA 1005, **ShiftRotateLeft** ignores the names of named arguments and takes its arguments in the order they are written: `ShiftRotateLeft(ShiftAmount:=4, Number:=&H12345678)` rotates 4 left by `&H12345678` bits, and gives the **Integer** `&H400`. Write the arguments by position, *number* first.
 
 > [!NOTE]
 > **ShiftRotateLeft** is a twinBASIC extension. VBA and VB6 have no function of this name: a call to it is the compile error *Sub or Function not defined*.

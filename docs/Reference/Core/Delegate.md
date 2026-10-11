@@ -25,7 +25,7 @@ Syntax:
 : The identifier naming the delegate type. Must be a valid twinBASIC identifier.
 
 *callconv*
-: *optional* The calling convention of the procedures the delegate refers to: **CDecl**, **ThisCall** or **FastCall**. The default is stdcall. A C-runtime callback such as the comparator of `qsort` is **CDecl**. See [Calling Conventions](../../Features/Advanced/API-Declarations#calling-conventions), which also describes a defect in BETA 997 that affects calls through **ThisCall** and **FastCall** delegates on 32-bit builds.
+: *optional* The calling convention of the procedures the delegate refers to: **CDecl**, **ThisCall** or **FastCall**. The default is stdcall. A C-runtime callback such as the comparator of `qsort` is **CDecl**. See [Calling Conventions](../../Features/Advanced/API-Declarations#calling-conventions), which also describes a defect in BETA 1005 that affects calls through **ThisCall** and **FastCall** delegates on 32-bit builds.
 
 *arglist*
 : *optional* Parameter signature, written exactly as for a [**Sub**](Sub) or [**Function**](Function) --- comma-separated `[ ByVal | ByRef ] [ Optional ] *varname* [ As *type* ]` parts.

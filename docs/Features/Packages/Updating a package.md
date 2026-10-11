@@ -16,29 +16,23 @@ How a project gets a newer build of a package depends on where the package came 
 
 The compiler will notify you if a newer version of a package in your project is available on TWINSERV when you load your project:
 
-![The DEBUG CONSOLE showing a PACKAGE CHECK notice that a newer version of the WinDevLib package is available](Images/db4636f6-d988-4e31-94a2-c4c170418e81.png)
+![The DEBUG CONSOLE showing a PACKAGE CHECK notice for the OLEGuids package: the project has version 1.0.0.9, marked with a red cross, and version 1.0.0.10 is available](Images/db4636f6-d988-4e31-94a2-c4c170418e81.png){:width="640" height="72"}
 
+If you find an updated package is available on TWINSERV, you must first remove the old package from your project by deselecting it. Open Settings to References and, on the **Enabled Libraries** tab, untick the box. The IDE deletes the project's copy of the package, the folder `/Packages/<name>`, at once, without asking (see the warning under [Replacing an embedded copy](#replacing-an-embedded-copy)):
 
-If you find an updated package is available on TWINSERV, you must first remove the old package from your project by deselecting it. Open Settings to References and untick the box. You will then be prompted to remove it from the filesystem:
+![The Enabled Libraries tab listing the ticked VBA, VBRUN and VB compatibility packages, OLE Automation, and the EMBEDDED-PACKAGE OLE Guid and interface definitions package with the library symbol OLEGuids and version 1.0.0.10, its tick box ringed in red](Images/a1331a0e-3ba3-45cf-8dc3-2e24f0fa1fe6.png){:width="859" height="246"}
 
-![The Enabled Libraries tab listing the four ticked compatibility packages with their VBA, VBRUN, VB and stdole symbols, and in front of it a twinBASIC message box asking whether to also remove the imported package from the filesystem, warning that it will delete the folder /Packages/WinDevLib, with Remove It and Leave It buttons.](Images/a1331a0e-3ba3-45cf-8dc3-2e24f0fa1fe6.png)
-<br/>
-<br/>
-<br/>
+Then go to the Available Packages tab and check the box for the latest version and **after it's done** downloading, which may take a few seconds since some packages are a few MB, press **Apply Changes**. In the Debug Console you'll first see
 
-select "Remove it".
+`[PACKAGES] downloading package '{7E880520-9F56-45E1-9772-DF9FFE246715}/1/0/10/0' from the online database... `
 
-Then go to the Available Packages tab and check the box for the latest version and **after it's done** downloading, which may take a few seconds since some packages are a few MB, Save Changes. In the Debug Console you'll first see
+then it's done and ready to be applied when a second message saying
 
-`[PACKAGES] downloading package '{1FCDB98D-617D-4995-9736-2ED0E4746A10}/8/7/0/498' from the online database... `
+`[PACKAGES] downloading package '{7E880520-9F56-45E1-9772-DF9FFE246715}/1/0/10/0' from the online database... [DONE]`
 
-then it's done and ready to be saved when a second message saying
+comes up. The checkbox also stops spinning and shows a tick, and the **Enabled Libraries** tab lists the package with `[EMBEDDED-PACKAGE]` before its name.
 
-`[PACKAGES] downloading package '{1FCDB98D-617D-4995-9736-2ED0E4746A10}/8/7/0/498' from the online database... [DONE]`
-
-comes up. It will also go from the checkbox spinning to the entry being moved to the top (below built in packages) with `[IMPORTED]` prepended to it.
-
-Restart the compiler if it doesn't on its own after saving, but it usually does.
+**Apply Changes** saves the project and restarts the compiler.
 
 **NOTE:** In the future there will be a simple update option. Keep an eye out for that change.
 
@@ -65,7 +59,7 @@ So the old copy has to be removed first:
 
 1. Open [Project Settings](../../tB/IDE/Project/Settings#library-references). Under **Library References**, on the **Enabled Libraries** tab, untick the package, and press **Apply Changes**. The IDE saves the project and restarts the compiler.
 2. Open Project Settings again. On the **Available Packages** tab, press **Import from file...** and choose the new `.twinpack` file.
-3. Tick the package in the **Available Packages** list. BETA 997 adds the imported package to the list but does not tick it.
+3. Tick the package in the **Available Packages** list. BETA 1005 adds the imported package to the list but does not tick it.
 4. Press **Apply Changes** again. The project now uses the new build.
 
 > [!WARNING]

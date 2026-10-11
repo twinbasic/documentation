@@ -16,7 +16,7 @@ While built in compiler packages are linked, this article concerns 3rd party pac
 
 When you check the box for a package for the first time on the current machine, it is **Embedded** by default. You'll see a column with that name next to the package name:
 
-![The Embedded column shown next to the package name](Images/1f7e3574-f3c8-4aee-972a-ff161c0e51ac.png)
+![The Available Packages tab with the OLE Guid and interface definitions package ticked; one red arrow points at the Embedded column's heading and another down at the tick in that column on the package's row](Images/1f7e3574-f3c8-4aee-972a-ff161c0e51ac.png){:width="830" height="181"}
 
 Uncheck the Embedded column and it will be converted to a linked package. A .twinpack file for the package is created in `%APPDATA%\twinBASIC\packages`, where it can remain available across tB IDE updates.
 
@@ -24,17 +24,17 @@ Uncheck the Embedded column and it will be converted to a linked package. A .twi
 
 Once you've performed the steps above in one project, the linked package is available to all projects. You add the reference in the same way, through Available Packages, only now you'll be prompted to ask if you want the linked version already on your system, or to redownload it from TWINSERV:
 
-![Prompt offering either the linked package already on the system or a fresh download from TWINSERV](Images/f48a7254-e5c9-48c5-8099-725c0951ae5f.png)
+![Prompt over the Available Packages list saying that the local package OLEGuids.twinpack exists, giving the local and TWINSERV versions, 1.0.0.10 each, with the buttons Use Local Package (LINK), Download it from TWINSERV (EMBED) and Cancel](Images/f48a7254-e5c9-48c5-8099-725c0951ae5f.png){:width="580" height="438"}
 
 This prompt provides the versions of both, which allows for updating the package if desired. If you do choose to download it again, you'll need to uncheck Embed again to keep it as a linked package. When you do, you'll be prompted to confirm you want to overwrite the local linked copy with the version newly downloaded from the package server:
 
-![Confirmation prompt before overwriting the local linked copy](Images/8cf72685-1188-4607-a55a-df16d4280474.png)
+![Confirmation prompt saying that the local package OLEGuids.twinpack already exists, giving its version and the embedded version, with the buttons Use Existing Local Package, Overwrite Local Package (export it from this project) and Cancel](Images/8cf72685-1188-4607-a55a-df16d4280474.png){:width="650" height="226"}
 
 ## Opening a project with missing linked package
 
 Sometimes you may want to open a .twinproj that refers to a linked package you do not currently have a copy of. If this happens, you'll see the standard missing reference message: 
 
-![The standard missing reference message](Images/f66fb240-dcb7-46ee-896d-78c3789a7876.png)
+![The standard missing reference message: the LINKED-PACKAGE row of OLE Guid and interface definitions on the Enabled Libraries tab, with a yellow ERROR unable to load this reference box and a FIX link](Images/f66fb240-dcb7-46ee-896d-78c3789a7876.png){:width="523" height="63"}
 
 And it's handled in the same way. **Uncheck the reference** -- "Fix" is not currently implemented. Then, go to the Available Packages tab and select the package-- and as described above, uncheck Embed to convert to a linked package.
 

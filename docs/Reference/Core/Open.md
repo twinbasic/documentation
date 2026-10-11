@@ -41,6 +41,17 @@ If the file specified by *pathname* doesn't exist, it is created when a file is 
 
 If the file is already opened by another process, and the specified type of access is not allowed, the **Open** operation fails and an error occurs.
 
+> [!NOTE]
+> In BETA 1005, each of these failures of **Open** raises run-time error -2147467259 (`&H80004005`), where VB6 raises the numbered error shown:
+>
+> - 53 (*File not found*) for a file that does not exist, opened for **Input**;
+> - 76 (*Path not found*) for a folder that does not exist;
+> - 75 (*Path/File access error*) for a folder, or for a read-only file opened for **Output**;
+> - 52 (*Bad file name or number*) for a file name that is not valid;
+> - 55 (*File already open*) for a *filenumber* that is already in use.
+>
+> An error handler that tests for one of these numbers does not recognise the error.
+
 The **Len** clause is ignored if *mode* is **Binary**.
 
 > [!IMPORTANT]

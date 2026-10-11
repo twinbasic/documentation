@@ -1,0 +1,12 @@
+' A method with a ParamArray, called early- and late-bound by the class cases of Cases.
+Class Widget
+
+    Public Function Second(ParamArray p() As Variant) As String
+        On Error GoTo Failed
+        Second = CStr(p(0)(1))
+        Exit Function
+    Failed:
+        Second = "error " & Err.Number
+    End Function
+
+End Class

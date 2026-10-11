@@ -12,8 +12,10 @@ An enumerator that yields [**WebView2Header**](WebView2Header) values one by one
 
 The collection implements the COM enumerator operations **Next**, **Skip**, **Reset** and **Clone**, which `For Each` and other COM enumerator clients call. They are not members that BASIC code can call. A loop reads the headers once, front to back; **Reset** starts the enumeration again from the first header. Every call to **GetHeaders** and every `For Each` loop produces a new enumerator, so a new loop always starts at the first header.
 
+**Clone** returns an enumerator at the position of the enumerator it copies.
+
 > [!WARNING]
-> In BETA 997, **Clone** returns an enumerator that starts at the first header, not at the position of the enumerator it copies: after **Next** has returned the first header, the clone's **Next** returns the first header again, and after **Skip** `2` the clone still starts at the first. `For Each` never calls **Clone**, so only a COM client that does is affected.
+> In BETA 1005, **Clone** on an enumerator of a [**WebView2ResponseHeaders**](WebView2ResponseHeaders) collection that has been **Reset** starts as many headers in as the enumerator had read before the **Reset**: after two **Next** calls and a **Reset**, the enumerator's **Next** returns the first header and the clone's **Next** the third. An enumerator of [**WebView2RequestHeaders**](WebView2RequestHeaders) is not affected. `For Each` never calls **Clone**, so only a COM client that does is affected.
 
 A **WebView2HeadersCollection** is never created by application code. The package returns one of the four derived classes listed under [Derived classes](#derived-classes), typed as **WebView2HeadersCollection**.
 

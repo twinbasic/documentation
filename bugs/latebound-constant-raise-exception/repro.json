@@ -1,0 +1,18 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS RaiseThroughLateBindingTests\\.UnknownMember_Raises438$",
+      "^PASS RaiseThroughLateBindingTests\\.EarlyBound_RaiseConstant_Raises380$",
+      "^PASS RaiseThroughLateBindingTests\\.LateBound_RaiseVariable_Raises380$",
+      "^FAIL RaiseThroughLateBindingTests\\.LateBound_RaiseConstantWithSource_Raises380: .*Actual: -2147352567 ",
+      "^FAIL RaiseThroughLateBindingTests\\.LateBound_RaiseConstantWithDescription_Raises380: .*Actual: -2147352567 ",
+      "^FAIL RaiseThroughLateBindingTests\\.LateBound_RaiseConstant_Raises380: .*Actual: -2147352567 ",
+      "^FAIL RaiseThroughLateBindingTests\\.LateBound_ErrorStatement_Raises380: .*Actual: -2147352567 ",
+      "^FAIL RaiseThroughLateBindingTests\\.LateBound_PropertyLet_Raises380: .*Actual: -2147352567 ",
+      "^FAIL RaiseThroughLateBindingTests\\.CallByName_RaiseConstant_Raises380: .*Actual: -2147352567 ",
+      "^FAIL RaiseThroughLateBindingTests\\.LateBound_FormColour_Raises380: .*Actual: -2147352567 "
+    ]
+  }
+}

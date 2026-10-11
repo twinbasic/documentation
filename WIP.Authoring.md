@@ -75,6 +75,7 @@ Formatting conventions:
 - Code blocks use ` ```tb ` (highlighted via Shiki using the vendored `builder/twinbasic.tmLanguage.json` grammar).
 - Parameter lists use the deflist `term` + `: definition` indentation pattern (NOT the MS-style markdown table).
 - Set `vba_attribution: true` in the frontmatter on any page derived from VBA-Docs; omit it on fully original content (e.g. VB package pages). The flag drives an extra line in the site footer.
+- An image names the dark `X.png` only, never `X.light.png`, `X.svg` or `X.light.svg`: the build pairs the two themes and shows each theme's SVG where `shoot_docs --svg` wrote one. `png` in the attribute block (`{:width="190" height="337" png}`) keeps that picture's PNG in every output. The rules are in [Authoring, A picture in both themes](docs/Documentation/Authoring.md#a-picture-in-both-themes) and the section after it.
 
 ### Attribution policy
 
@@ -109,10 +110,6 @@ The six packages carrying `indexed_from` are `AppGlobalClassObject`, `CustomCont
 **Bump `indexed_from` whenever a package is re-indexed against a newer build**, in the same
 commit as the content it adds. A stale value is worse than none: it asserts a completeness
 check was run against a build that no longer matches the package.
-
-> **These keys are also in active use by package documentation work that has not landed
-> yet**, covering packages beyond the six above. If you are about to document a package
-> from scratch, ask first --- it may already be written and waiting to merge.
 
 One other inert key is a different thing: `has_children` on four pages is a
 just-the-docs leftover. tbdocs derives the nav tree itself and never reads it. Nobody

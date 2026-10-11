@@ -1,0 +1,44 @@
+' A PNG's colour chunks go when all they say is sRGB, and stay otherwise. As
+' test/compact-image.test.mjs's "compactImage, PNG colour space", against the twinBASIC code.
+[TestFixture]
+Module ColourTests
+
+    [TestCase]
+    Public Sub DropsAnSrgbProfileWithGamaAndChrm()
+        Assert.Strict.IsTrue IsSrgb(GimpSrgb()), "GIMP's built-in profile is sRGB"
+        Assert.Strict.AreEqual "IHDR IDAT IEND", ChunksAfter(Png(Iccp(GimpSrgb()), GamaChunk(), ChrmChunk()))
+    End Sub
+
+    [TestCase]
+    Public Sub DropsAnSrgbChunkAndItsFallbacks()
+        Assert.Strict.AreEqual "IHDR IDAT IEND", ChunksAfter(Png(SrgbChunk(), GamaChunk(), ChrmChunk()))
+    End Sub
+
+    [TestCase]
+    Public Sub KeepsAProfileThatIsNotSrgbAndTheChunksBesideIt()
+        Dim gimp() As Byte, cut() As Byte
+        gimp = GimpSrgb()
+        Bytes.Slice gimp, 0, 140, cut
+        KeepsProfile SrgbProfile(0.515121, 0.241196, -0.001053, SrgbCurve()), "Display P3's red"
+        KeepsProfile SrgbProfile(0.436035, 0.222488, 0.013916, Gamma(2.2)), "a gamma of 2.2"
+        KeepsProfile SrgbProfile(0.436035, 0.222488, 0.013916, SrgbCurve(), "A2B0"), "a lookup table"
+        KeepsProfile cut, "a profile cut short"
+    End Sub
+
+    [TestCase]
+    Public Sub ReadsSrgbsCurveAsATableAndAsParametricType4()
+        Assert.Strict.IsTrue IsSrgb(SrgbProfile(0.436035, 0.222488, 0.013916, SrgbTable())), "a table"
+        Assert.Strict.IsTrue IsSrgb(SrgbProfile(0.436035, 0.222488, 0.013916, SrgbCurve4())), "parametric type 4"
+    End Sub
+
+    [TestCase]
+    Public Sub KeepsGamaAloneAndEveryColourChunkBesideACicp()
+        Assert.Strict.AreEqual "IHDR gAMA IDAT IEND", ChunksAfter(Png(GamaChunk()))
+        Assert.Strict.AreEqual "IHDR cICP iCCP IDAT IEND", ChunksAfter(Png(Chunk("cICP", Cat(1, 13, 0, 1)), Iccp(GimpSrgb())))
+    End Sub
+
+    Private Sub KeepsProfile(ByVal profile As Variant, ByVal what As String)
+        Assert.Strict.IsFalse IsSrgb(profile), what
+        Assert.Strict.AreEqual "IHDR iCCP sRGB gAMA IDAT IEND", ChunksAfter(Png(Iccp(profile), SrgbChunk(), GamaChunk())), what
+    End Sub
+End Module

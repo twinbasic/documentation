@@ -132,8 +132,13 @@ if (!IDE || !existsSync(IDE)) {
 }
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const SOURCE = path.join(REPO, "bugs", "concurrent-builds-shared-temp", "src");
-if (!existsSync(path.join(SOURCE, "Settings"))) die(2, `the reproducer's source is missing: ${SOURCE}`);
+// bugs/<slug>/ while the entry is queued, bugs/filed/<slug>/ once it is filed.
+const SOURCE = [
+  path.join(REPO, "bugs", "concurrent-builds-shared-temp", "src"),
+  path.join(REPO, "bugs", "filed", "concurrent-builds-shared-temp", "src"),
+].find((p) => existsSync(path.join(p, "Settings")));
+if (!SOURCE)
+  die(2, "the reproducer's source is missing: neither bugs/ nor bugs/filed/ holds concurrent-builds-shared-temp");
 
 // What the build log says when the type library is the part that failed.
 const TYPELIB_FAILED = /\[TYPELIB\] failed|FAILED to create type library/;

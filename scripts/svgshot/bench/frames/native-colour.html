@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>A document with scrollbar-color</title>
+<!--
+  scrollbar-color on the root element, which is what the docs site's dark theme
+  writes: the scrollbar rules of the page do not apply, and the platform's
+  scrollbar takes the two colours.
+-->
+<style>
+html { scrollbar-color: #404040 #1a1a1a; }
+body { margin: 0; padding: 8px; background: #27262b; color: #ddd; font: 13px "Segoe UI", sans-serif; }
+::-webkit-scrollbar { width: 20px; background: red; }
+.row { height: 22px; border-bottom: 1px solid #444; }
+</style>
+<body>
+<script>
+  for (let i = 0; i < 30; i++) document.body.insertAdjacentHTML("beforeend", `<div class="row">line ${i}</div>`);
+</script>
+</body>
+</html>

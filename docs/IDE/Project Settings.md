@@ -52,7 +52,7 @@ To add a reference, tick it on the **Available COM References** tab, which lists
 
 See [Packages](../../../Features/Packages/)
 
-![The Project Settings dialog open over the IDE, with hand-drawn red numbers marking the route: 1 on the toolbar settings gear, 2 on the Library References heading, 3 on the Available Packages tab. That tab lists the published packages with tick boxes and Library Symbol, Version and Publisher columns.](../Features/Packages/Images/e749e10f-e361-4f15-a977-d756fcb3b5dd.png)
+![The Project Settings dialog open over the IDE, with red numbers marking the route: 1 on the Project Explorer's Project Settings gear, 2 on the Library References heading, 3 on the Available Packages tab. That tab lists the built-in and published packages with tick boxes and Embedded and Library Symbol columns.](../Features/Packages/Images/e749e10f-e361-4f15-a977-d756fcb3b5dd.png){:width="1162" height="529"}
 
 ## Compiler Warnings
 

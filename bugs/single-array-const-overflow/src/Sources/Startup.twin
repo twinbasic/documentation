@@ -1,0 +1,29 @@
+' Regression tests for #2475 and its follow-up, as compile cases: each line that
+' ends in a  ' CASE <Name>: <expected>  comment must give that diagnostic on that
+' line (a code, "error" for any error, or "none"). tbrun --tests checks them.
+' Big overflows a Single and is accepted; Root, correct, is then refused with
+' TB5001. Declared alone, Root compiles, and Big(0) reads 1.#INF.
+Module Startup
+    ' Left in BETA 1005: a Single element that overflows is accepted, and the
+    ' array constant after it, which calls Sqr, is refused.
+    Const Big() As Single = Array(1E+39)  ' CASE SingleElementOverflow: error
+    Const Root() As Double = Array(Sqr(4))  ' CASE SqrAfterSingleOverflow: none
+
+    ' Fixed in #2475 (BETA 1005): an element too large for its type is TB5001,
+    ' where BETA 997 crashed the compiler.
+    Const L1() As Long = Array(2147483648)  ' CASE LongElementOverflow: TB5001
+    Const L2() As Long = Array(1, 2147483648)  ' CASE LongSecondElementOverflow: TB5001
+    Const L3() As Long = Array(3000000000.5)  ' CASE LongFractionOverflow: TB5001
+    Const I1() As Integer = Array(40000.5)  ' CASE IntegerElementOverflow: TB5001
+    Const Y1() As Byte = Array(300.5)  ' CASE ByteElementOverflow: TB5001
+    Const Y2() As Byte = Array(-1.5)  ' CASE ByteNegativeElement: TB5001
+    Const Q1() As LongLong = Array(9223372036854775808#)  ' CASE LongLongElementOverflow: TB5001
+    Const D1() As Double = Array(1E+300 * 1E+300)  ' CASE DoubleElementOverflow: TB5001
+
+    ' Control: a scalar Single constant that overflows is refused where it is used.
+    Const S As Single = 1E+39
+
+    Public Sub Main()
+        Debug.Print S  ' CASE ScalarSingleOverflowUse: TB5002
+    End Sub
+End Module

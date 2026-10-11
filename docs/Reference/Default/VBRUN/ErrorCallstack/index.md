@@ -15,7 +15,7 @@ An **ErrorCallstack** object is a snapshot of the chain of procedures that were 
 The snapshot is read through the **Callstack** property of an **ErrorContext** object, which is itself accessible from the structured error-handling machinery --- typically inside a `Catch` block or an **On Error** handler.
 
 > [!NOTE]
-> As of BETA 997, twinBASIC code cannot obtain an **ErrorCallstack** object, because it cannot obtain the [**ErrorContext**](../ErrorContext) that returns one. The sample below compiles, but no code can supply its argument.
+> As of BETA 1005, twinBASIC code cannot obtain an **ErrorCallstack** object, because it cannot obtain the [**ErrorContext**](../ErrorContext) that returns one. The sample below compiles, but no code can supply its argument.
 
 ```tb check_build
 Sub LogStackTrace(ByVal Stack As ErrorCallstack)

@@ -173,7 +173,7 @@ export async function listDotSources(srcRoot) {
 // the only record of which Graphviz produced the committed artifact -- so a
 // version bump shows up in the diff -- and a comment is valid in both XML and
 // HTML, which is the whole problem with the two lines above it.
-function stripXmlPrologue(svgXml, label) {
+export function stripXmlPrologue(svgXml, label) {
   const out = svgXml
     .replace(/^\uFEFF/, "")
     .replace(/^\s*<\?xml[\s\S]*?\?>\s*/i, "")

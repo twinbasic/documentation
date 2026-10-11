@@ -1,0 +1,14 @@
+{
+  "mode": "probe",
+  "probe": ["scripts/probe_ide_image_labels.mjs"],
+  "expect": {
+    "exit": 1,
+    "output": [
+      "^ide/styles\\.css line \\d+: labelled /png, the bytes are a PNG$",
+      "^ide/styles\\.css line \\d+: labelled image/png, the bytes are a GIF$",
+      "^ide/styles\\.css line \\d+: labelled image/png, the bytes are a JPEG$",
+      "^[1-9]\\d* of \\d+ images in the IDE's stylesheets are mislabelled \\(BETA \\d+\\)$"
+    ]
+  },
+  "steps": "1. Open ide\\styles.css, in the folder of the twinBASIC installation, in a text editor.\n2. Go to line 2947 (line 2935 in BETA 957). It is background-image: url('data:/png;base64,iVBORw0KGgo...'), the rule of .treeExpanded and .sectionExpanderIcon. The media type of the data: URI is /png, with no image in front of the slash. Decode the base64 after the comma: the first eight bytes are 89 50 4E 47 0D 0A 1A 0A, the signature of a PNG. Line 2952 (.treeExpanded1) is the same.\n3. Go to line 3917 (BETA 957: 3905), the rule of #progressSpinner and .progressSpinnerIcon. It is url('data:image/png;base64,R0lGODlh...'). Decode the base64: the first six bytes are 47 49 46 38 39 61, GIF89a, a GIF.\n4. Go to line 7412 (BETA 957: 7323), the rule of .vipGold1_autoWeighingSystemsLogo. It is url('data:image/png;base64,/9j/4AAQ...'). Decode the base64: the first three bytes are FF D8 FF, the start of a JPEG.\n5. Every other image the style sheets embed has the type its bytes have.\nscripts/probe_ide_image_labels.mjs does this for every image in the .css files of the installation (the newest twinBASIC_IDE_BETA_<n> folder on the Desktop, or --ide <twinBASIC.exe>) and prints one line for each that is mislabelled. On BETA 1005, 997 and 957 it prints the same four."
+}

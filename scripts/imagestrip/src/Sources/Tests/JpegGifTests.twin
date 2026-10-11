@@ -1,0 +1,31 @@
+' What a JPEG and a GIF keep. As test/compact-image.test.mjs's "compactImage, JPEG" and
+' "compactImage, GIF", against the twinBASIC code.
+[TestFixture]
+Module JpegGifTests
+
+    [TestCase]
+    Public Sub JpegDropsExifXmpIptcAndAnEditorsComment()
+        Assert.Strict.AreEqual ToHex(Cat(&HFF, &HD8, Jfif(), JpegIcc(), JpegAdobe(), JpegTables(), JpegScan())), _
+                               ToHex(CompactJpegOf(JpegWithMetadata()))
+    End Sub
+
+    [TestCase]
+    Public Sub JpegKeepsANoticeAndAnExifThatTurnsIt()
+        Assert.Strict.AreEqual ToHex(JpegWithNotices()), ToHex(CompactJpegOf(JpegWithNotices()))
+    End Sub
+
+    [TestCase]
+    Public Sub JpegItCannotFollowIsReturnedAsItWas()
+        Assert.Strict.AreEqual ToHex(JpegBroken()), ToHex(CompactJpegOf(JpegBroken()))
+    End Sub
+
+    [TestCase]
+    Public Sub GifDropsACommentAndKeepsTheAnimation()
+        Assert.Strict.AreEqual ToHex(Cat(GifHeader(), GifLoop(), GifImage(), ";")), ToHex(CompactGifOf(GifWithComment()))
+    End Sub
+
+    [TestCase]
+    Public Sub GifKeepsACommentThatIsANotice()
+        Assert.Strict.AreEqual ToHex(GifWithNotice()), ToHex(CompactGifOf(GifWithNotice()))
+    End Sub
+End Module

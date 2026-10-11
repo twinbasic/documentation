@@ -70,10 +70,7 @@ How the glyph is shaded when [**VisualStyles**](#visualstyles) is **False**. A m
 ### BackColor
 {: .no_toc }
 
-The background colour, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Used only when [**BackStyle**](#backstyle) is **vbBFOpaque**.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. Check a colour that comes from user input before assigning it.
+The background colour, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Used only when [**BackStyle**](#backstyle) is **vbBFOpaque**. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### BackStyle
 {: .no_toc }

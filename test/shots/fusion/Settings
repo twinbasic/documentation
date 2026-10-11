@@ -1,0 +1,43 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "FusionDemo",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard EXE",
+	"project.description": "FusionDemo: a 32-bit ActiveX control library run through a Fusion host",
+	"project.exportPathIsV2": true,
+	"project.id": "{5C0F8A71-3B2E-4D69-8A14-7E91C2D4C801}",
+	"project.name": "FusionDemo",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"symbolId": "stdole",
+			"versionMajor": 2,
+			"versionMinor": 0
+		},
+		{
+			"fusionMode": "fusionAllTo32",
+			"id": "{831FDD16-0C5C-11D2-A9FC-0000F8754DA1}",
+			"lcid": 0,
+			"name": "Microsoft Windows Common Controls 6.0 (SP6)",
+			"path32": "C:\\WINDOWS\\SysWow64\\mscomctl.ocx",
+			"path64": "",
+			"versionMajor": 2,
+			"versionMinor": 1
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.startupObject": "Sub Main",
+	"project.warnings": {
+		"errors": [],
+		"hints": [],
+		"ignored": [],
+		"info": [],
+		"warnings": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

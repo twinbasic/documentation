@@ -18,8 +18,9 @@ import puppeteer from "puppeteer";
 // this the launch fails in CI.  --disable-dev-shm-usage avoids crashes where
 // /dev/shm is small (containers).  Neither touches layout or computed style,
 // so a tool sees in CI exactly what it sees locally; book/render-book.mjs
-// passes the same pair for the same reason.
-const LAUNCH_ARGS = ["--no-sandbox", "--disable-dev-shm-usage"];
+// passes the same pair for the same reason. A tool that passes `args` of its
+// own starts from these (scripts/svgshot/bench.mjs).
+export const LAUNCH_ARGS = ["--no-sandbox", "--disable-dev-shm-usage"];
 
 // puppeteer.launch creates the temporary profile folder before it looks for the
 // browser, so a launch refused for a missing browser leaves the folder behind.

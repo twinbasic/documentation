@@ -7,7 +7,7 @@ this sample actually build*.
 [scripts/lib/tb-fences.mjs](scripts/lib/tb-fences.mjs) holds the half that needs no
 compiler, and [test/example-projects/](test/example-projects/) holds the template trees.
 Reader-facing documentation is the [`check_examples.mjs`
-entry](docs/Documentation/Tools.md) in Tools.md and [Checking that a sample
+entry](docs/Documentation/Tools-Samples.md#check-examples) in Tools-Samples.md and [Checking that a sample
 compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
 ## State
@@ -375,9 +375,8 @@ form with a `TextBox` on it, and impossible to compile alone, because the design
 than the code declares `Text1`. Declaring those instances lets the compiler check what the
 sample asserts: that the member exists, that it takes those arguments, that the types line up.
 
-Measured on the 263 `Reference/Built-In` fences: **99% fail against a bare template, 78%
-with every package referenced, 67% with the stage set**. Per package, CEF goes 85% → 15%,
-WebView2 73% → 27%, WinNativeCommonCtls 100% → 45%.
+Against a bare template 99% of the 263 `Reference/Built-In` fences fail; with every
+package referenced 78%; with the stage set 67%.
 
 **The list is written out rather than inferred, and that is the point.** A rule over "an
 identifier ending in a digit" would also declare `Var1`, `Arg1`, `Line2`, `SQLITE3`, `VBA7`,
@@ -386,8 +385,8 @@ deliberate fiction, so it stays explicit and greppable.
 
 **Stage entries are the biggest lever.** A flat tail of undeclared *names* is not a flat
 tail of *work*: 45 undeclared VB control instances (`lblName`, `mnuFileSaveAs`, `optPlain`,
-`dlgOptions`, `fraLeft`), each on one or two pages, bought 22 samples in `Default/VB` for
-one file edit.
+`dlgOptions`, `fraLeft`), each on one or two pages, cost one file edit and fixed 22 samples
+in `Default/VB`.
 
 ## Batching, which is the whole cost question
 
@@ -396,8 +395,7 @@ project size**: what is paid for is startup, not compilation.
 
 **Fill the lanes, not the batches.** Filling each batch to `--batch` before opening another
 put 120, 55, 4 and 3 samples on four lanes, and a run takes as long as its biggest batch. The
-batcher sizes to `ceil(total / jobs)` instead. On the VBA reference that was 28 s → 10.7 s
-for the same result.
+batcher sizes to `ceil(total / jobs)` instead.
 
 ### A sample can pass on its neighbour's declarations
 
@@ -453,8 +451,8 @@ All are forced by putting unrelated samples in one compilation unit:
   `project.name = "ProbeWS"`, a `Module ProbeWS` or a `Module probews` stops the
   `[RunAfterBuild]` Sub from running, even when it is empty and the Sub is in another module.
   Nothing reports it: the build is green, and the DEBUG CONSOLE ends at `[BUILD] Executing
-  '<project>.<module>.<Sub>'...` (BETA 995 and 997; the BUGS-TO-REPORT.md entry with the
-  reproducer `bugs/module-named-like-project/`). The tool names each project `DocSamples<n>`
+  '<project>.<module>.<Sub>'...` (BETA 995 and 997, twinbasic/twinbasic#2494). BETA 1005 runs
+  the Sub, so the rule matters only to an older build. The tool names each project `DocSamples<n>`
   and every module it generates `tbx...`, so the two cannot meet; a sample that declared
   `Module DocSamples3` would.
 
@@ -589,10 +587,6 @@ the Form page's `True`).
   crashes the compiler returns no rows at all, canary included; `runBatch` hands a crash to
   `isolateCrash` before it reads the canary, so that case never reaches it.
 
-  Ten failing samples across the console and `[implicit]` templates (among them an
-  unterminated `Sub`, garbage after a stray `End Sub` and an `If` with no `End If`) were each
-  reported with their own errors, with no canary event and no split, in about 13 s.
-
   **The canary is required only by a read with no errors in it.** It proves that the IDE
   published something, never that it published everything: a read that includes it and
   misses a later file's diagnostics would still pass that file. So a read holding real
@@ -630,12 +624,10 @@ the Form page's `True`).
   them, and when neither does, each half is searched with the other held. The members are
   blamed --- each has its own result, and none is a pass --- and one finding names them all.
   **No real crash of that shape is known**, so its tests are probes against a fake lane
-  whose builds crash on the sample sets a probe chooses. Four two-file candidates were
-  tried for a real one: inheritance cycles through interfaces, classes and UDTs, and the
-  fixture's placeholder name with a base declared in the other file. None crashes only as a
-  pair: the class and UDT cycles are diagnosed, the interface cycle is accepted without a
-  word, which is queued in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md), and the placeholder
-  crashes from its own file.
+  whose builds crash on the sample sets a probe chooses. Inheritance cycles and the
+  fixture's placeholder name are not such a crash: class and UDT cycles are diagnosed, the
+  interface cycle is accepted without a word (queued in
+  [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md)), and the placeholder crashes from its own file.
 
 ### A diagnostic that lands in a package's own source
 
@@ -662,8 +654,6 @@ Three parts to the handling, each forced:
   program, and a page's `hidden` fences are appended at the *end* of `batch.fences`, so a
   plain halving takes a group apart and drops one half's context, manufacturing the failure
   it then reports. The crash bisect has the same rule.
-
-Cost on this corpus: one blame in 1,103 samples, three extra builds.
 
 **`--only` cuts a `projname` group.** Narrowing to `WinServicesLib/ServiceCreator` leaves the
 page that declares `MyService` out of the run while keeping three pages that instantiate
@@ -723,8 +713,7 @@ that fails only the second is one LLVM cannot generate code for.
   - **A unit declaring its own `Sub Main` gets a project of its own, without `tbxMain`.**
     Two Mains compile, but binding the startup object fails the build ("'Main' is
     ambiguous"), as `tbxMain.twin`'s header says. `makeBatches`' `alone` picks the unit,
-    the batch carries `noMain`, and `stageBatch` leaves out `tbxMain.twin`. (HelpFile,
-    PrevInstance, Project-Types and the two WinServicesLib groups are such units.)
+    the batch carries `noMain`, and `stageBatch` leaves out `tbxMain.twin`.
   - **A `[DllExport]` name counts among a sample's names.** Two samples exporting
     `MyExportedFunction` (API-Declarations, Classes-and-Modules) compile together, and the
     linker refuses them ("duplicate [DLLExport] functions detected"); as names, the batcher
@@ -751,8 +740,7 @@ that fails only the second is one LLVM cannot generate code for.
   changing" as suspect on this compiler.**
 - **The classifier refuses a `<placeholder>` as a declaration name**, so a syntax skeleton
   such as `Interface <name> Extends <base-interface>` / `End Interface` (in
-  `Reference/Attributes.md`) takes an explicit `slot=` to reach the compiler. Through BETA
-  995 that skeleton crashes the compiler (twinbasic/twinbasic#2453); BETA 997 does not.
+  `Reference/Attributes.md`) takes an explicit `slot=` to reach the compiler.
 - **`project.buildPath` must be an explicit file.** The default `${SourcePath}\Build\...`
   template opens a native Save dialog, which on the private desktop is invisible and
   unreachable, so the build silently never happens --- and the WebView2 renderer stays
@@ -795,8 +783,6 @@ that fails only the second is one LLVM cannot generate code for.
   WIP.md's Don'ts arriving through `-e`. Write the script to a file.
 
 ## Rules from the survey passes
-
-What a maintainer needs from the survey work follows.
 
 **Count diagnostics, then try the fix.** A guess from counting diagnostics is not a result.
 "`[Me]` wants a fourth slot" (27 samples, TB5025): a bare `Class`
@@ -871,7 +857,7 @@ Decide shown versus hidden by one question: *would a reader of the page need to 
   `Toolbar1`), stand-ins for an external library's declarations (`ChooseColorFlags`), and
   the class boilerplate around a method the page is about.
 
-Language rules this work found:
+Language rules:
 
 - **`Dim x As New Foo(args)` is not valid twinBASIC.** Constructor arguments need the
   expression form, `Set x = New Foo(args)`. `twinBASIC-Additions.md`'s **Parameterised New**
@@ -930,12 +916,11 @@ a reader writes.
 - A `projname` is global, so two pages choosing `demo` would merge without saying so. Scoping
   it to the page would prevent that and would also prevent a group spanning pages, which a
   multi-page tutorial wants. Left global and documented; revisit if a collision happens.
-- **Should the remaining single-page stage entries move into `hidden` fences?** About a
-  dozen control instances are used by exactly one page --- `picCanvas`, `hsbVolume`,
-  `mfPanels`, `lblCoords`. They are one line each in a list whose stated purpose is
-  "the control instances the samples assume", so they stay. The invented *classes* go in
-  `hidden` fences, because a class is not a control instance and a page is where it belongs. The line between
-  the two is a judgement, not a rule.
+- **Single-page stage entries.** About a dozen control instances are used by exactly one
+  page --- `picCanvas`, `hsbVolume`, `mfPanels`, `lblCoords`. They stay in the stage set,
+  one line each, because its purpose is "the control instances the samples assume". The
+  invented *classes* go in `hidden` fences, because a class is not a control instance and a
+  page is where it belongs. The line between the two is a judgement, not a rule.
 - Which pages should carry `check_run` (33 samples do)? A sample states its output in its own
   text, as a trailing comment on a `Debug.Print` line or as the comment lines under
   `' Output:`; its comparison is only as useful as the pages that state a printed value.

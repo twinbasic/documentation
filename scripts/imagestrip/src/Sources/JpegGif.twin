@@ -1,0 +1,114 @@
+' A JPEG and a GIF without their metadata, as compactJpeg and compactGif in
+' scripts/lib/compact-image.mjs make them. One that cannot be followed is returned as it was.
+Module JpegGif
+
+    ' The segments that decode a JPEG (the frame, the tables, JFIF, the ICC profile in APP2, Adobe's
+    ' colour transform in APP14) stay; EXIF, XMP, Photoshop's IPTC, comments and other applications'
+    ' segments go, but for one that holds a notice of whose the picture is, and an EXIF that turns it.
+    Public Function CompactJpeg(b() As Byte, out() As Byte) As Long
+        Dim n As Long, p As Long, marker As Long, size As Long, keepIt As Boolean, data() As Byte, dn As Long
+        Dim builder As New ByteBuilder
+        n = Bytes.Length(b)
+        On Error GoTo Unchanged
+        builder.AddRange b, 0, 2
+        p = 2
+        Do While p + 4 <= n
+            If b(p) <> &HFF Then GoTo Unchanged
+            marker = b(p + 1)
+            If marker = &HDA Or marker = &HD9 Then
+                builder.AddRange b, p, n - p
+                CompactJpeg = builder.ToArray(out)
+                Exit Function
+            End If
+            If marker = &HFF Then
+                p = p + 1
+            ElseIf marker = 1 Or (marker >= &HD0 And marker <= &HD7) Then
+                builder.AddRange b, p, 2
+                p = p + 2
+            Else
+                size = Bytes.U16BE(b, p + 2)
+                dn = Bytes.Slice(b, p + 4, CDbl(p) + 2 + size, data)
+                keepIt = True
+                Select Case marker
+                    Case &HE1
+                        If Bytes.Latin1Range(data, 0, 6) = "Exif" & vbNullChar & vbNullChar Then
+                            keepIt = Rights.ExifHasRights(data)
+                            If Not keepIt Then keepIt = (Rights.ExifOrientation(data) <> 1)
+                        ElseIf Bytes.Latin1Range(data, 0, 29) = "http://ns.adobe.com/xap/1.0/" & vbNullChar Then
+                            keepIt = Rights.XmpHasRights(Bytes.Utf8Text(data, 29, dn))
+                        Else
+                            keepIt = False
+                        End If
+                    Case &HED
+                        keepIt = Rights.IptcHasRights(data)
+                    Case &HFE
+                        keepIt = Rights.NoticeText(Bytes.Utf8Text(data, 0, dn))
+                    Case &HE3 To &HEF
+                        If marker <> &HEE Then keepIt = False
+                End Select
+                If keepIt Then
+                    If p + 2 + size > n Then builder.AddRange b, p, n - p Else builder.AddRange b, p, 2 + size
+                End If
+                p = p + 2 + size
+            End If
+        Loop
+    Unchanged:
+        CompactJpeg = Bytes.Copy(b, out)
+    End Function
+
+    ' Where the sub-blocks that start at q end.
+    Private Function SubBlocksEnd(b() As Byte, ByVal q As Double) As Double
+        Do While Bytes.ByteAt(b, q) <> 0
+            q = q + Bytes.ByteAt(b, q) + 1
+        Loop
+        SubBlocksEnd = q + 1
+    End Function
+
+    ' A GIF without its comments, nor an XMP packet that names no author or terms: every other block,
+    ' the animation's included, stays as it was.
+    Public Function CompactGif(b() As Byte, out() As Byte) As Long
+        Dim n As Long, p As Double, q As Double, e As Double, keepIt As Boolean, partBytes() As Byte, pn As Long, size As Long
+        Dim builder As New ByteBuilder, parts As ByteBuilder
+        n = Bytes.Length(b)
+        On Error GoTo Unchanged
+        p = 13
+        If (Bytes.ByteAt(b, 10) And &H80) <> 0 Then p = p + 3 * 2 ^ ((Bytes.ByteAt(b, 10) And 7) + 1)
+        If p < n Then builder.AddRange b, 0, CLng(p) Else builder.AddRange b, 0, n
+        Do While p < n
+            If b(CLng(p)) = &H3B Then
+                builder.AddRange b, CLng(p), 1
+                CompactGif = builder.ToArray(out)
+                Exit Function
+            End If
+            keepIt = True
+            If b(CLng(p)) = &H21 Then
+                e = SubBlocksEnd(b, p + 2)
+                If Bytes.ByteAt(b, p + 1) = &HFE Then
+                    Set parts = New ByteBuilder
+                    q = p + 2
+                    Do While Bytes.ByteAt(b, q) <> 0
+                        size = Bytes.ByteAt(b, q)
+                        If q + 1 + size > n Then size = n - (q + 1)
+                        If size > 0 Then parts.AddRange b, CLng(q) + 1, size
+                        q = q + Bytes.ByteAt(b, q) + 1
+                    Loop
+                    pn = parts.ToArray(partBytes)
+                    keepIt = Rights.NoticeText(Bytes.Latin1Range(partBytes, 0, pn))
+                ElseIf Bytes.ByteAt(b, p + 1) = &HFF And Bytes.Latin1Range(b, p + 3, p + 14) = "XMP DataXMP" Then
+                    keepIt = Rights.XmpHasRights(Bytes.Utf8Text(b, p + 14, e))
+                End If
+            ElseIf b(CLng(p)) = &H2C Then
+                q = p + 10
+                If (Bytes.ByteAt(b, p + 9) And &H80) <> 0 Then q = q + 3 * 2 ^ ((Bytes.ByteAt(b, p + 9) And 7) + 1)
+                e = SubBlocksEnd(b, q + 1)
+            Else
+                GoTo Unchanged
+            End If
+            If e > n Then GoTo Unchanged
+            If keepIt Then builder.AddRange b, CLng(p), CLng(e - p)
+            p = e
+        Loop
+    Unchanged:
+        CompactGif = Bytes.Copy(b, out)
+    End Function
+End Module

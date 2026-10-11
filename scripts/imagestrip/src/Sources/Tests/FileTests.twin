@@ -1,0 +1,208 @@
+' Whole files: where a data: URI is read, how base64 is read, what is labelled and reported, and an
+' SVG file. As test/compact-image.test.mjs's "stripFile", against the twinBASIC code.
+[TestFixture]
+Module FileTests
+
+    [TestCase]
+    Public Sub ReadsBase64AsABrowserReadsADataUri()
+        Dim s As Variant
+        Assert.Strict.AreEqual "0001020304", Decoded64("AAEC" & vbCrLf & " AwQ=")
+        Assert.Strict.AreEqual "00", Decoded64("AA==")
+        Assert.Strict.AreEqual "0000", Decoded64("AAA")
+        For Each s In Array("", " " & vbCrLf, "A", "AA=", "A===", "AA*A", "AA==AA==")
+            Assert.Strict.AreEqual "refused", Decoded64(s), "[" & s & "]"
+        Next
+    End Sub
+
+    [TestCase]
+    Public Sub StripsAnImageInsideAnSvgInsideACssFileAndKeepsEachEncoding()
+        Dim css As String, out As String, counted As String, reported As String, payload As String
+        css = ".a { background: url(""data:image/svg+xml," & UrlText(NestedSvg()) & """); }" & vbLf
+        out = StripText(css, False)
+        counted = Counts()
+        reported = ReportsText()
+        payload = Mid$(out, InStr(out, "svg+xml,") + 8)
+        payload = Left$(payload, InStr(payload, """") - 1)
+        Assert.Strict.AreEqual StripText(NestedSvg(), True), PercentDecoded(payload)
+        Assert.Strict.IsFalse payload Like "*[<>""' ]*", "still percent-encoded"
+        Assert.Strict.AreEqual "5 5 1", counted
+        Assert.Strict.AreEqual "1: " & JpegReport(), reported
+    End Sub
+
+    [TestCase]
+    Public Sub ReportsOnAnImageInsideAnotherOnTheOuterLine()
+        Dim css As String, out As String, reported As String
+        css = "/* one */" & vbLf & "/* two */" & vbLf & ".a { background: url(""data:image/svg+xml;base64," & B64(Utf8(NestedSvg())) & """); }" & vbLf
+        out = StripText(css, False)
+        reported = ReportsText()
+        Assert.Strict.AreEqual "3: " & JpegReport(), reported
+        Assert.Strict.IsTrue InStr(out, B64(Utf8(StripText(NestedSvg(), True)))) > 0
+    End Sub
+
+    [TestCase]
+    Public Sub FindsADataUriJustAfterAQuoteOrAfterUrlAndNowhereElse()
+        Dim gimp As String, css As String, out As String
+        gimp = B64(GimpPng())
+        css = "a { b: url(  data:image/png;base64," & gimp & "  ) }" & vbLf & _
+              "c { d: x data:image/png;base64," & gimp & "; }" & vbLf & _
+              "e { f: url("" data:image/png;base64," & gimp & """) }" & vbLf
+        out = StripText(css, False)
+        Assert.Strict.AreEqual 1&, Strip.Images
+        Assert.Strict.AreEqual Replace(css, gimp, B64(CompactPngOf(GimpPng())), 1, 1), out
+    End Sub
+
+    [TestCase]
+    Public Sub StripsAnSvgFileOfItsOwnMetadataAndOfItsImages()
+        Dim svg As String, out As String, counted As String, reported As String, nested As String, png As String
+        png = B64(GimpPng())
+        svg = ChrW$(&HFEFF&) &"<?xml version=""1.0"" encoding=""UTF-8""?>" & vbLf & "<!-- Creator: CorelDRAW X6 -->" & vbLf & _
+              "<!-- Copyright 2020 A. Painter -->" & vbLf & _
+              "<svg xmlns=""http://www.w3.org/2000/svg""><metadata id=""CorelCorpID_0Corel-Layer""/>" & _
+              "<defs><style><![CDATA[ .a { fill: url(""data:image/png;base64," & png & """) } ]]></style></defs>" & _
+              "<image href=""data:image/svg+xml;base64," & B64(Utf8(NestedSvg())) & """/><title>Zo" & ChrW$(&HEB) & "</title></svg>" & vbLf
+        out = StripText(svg, True)
+        counted = Counts()
+        reported = ReportsText()
+        nested = StripText(NestedSvg(), True)
+        Assert.Strict.AreEqual "<!-- Copyright 2020 A. Painter -->" & vbLf & _
+                               "<svg xmlns=""http://www.w3.org/2000/svg"">" & _
+                               "<defs><style><![CDATA[ .a { fill: url(""data:image/png;base64," & B64(CompactPngOf(GimpPng())) & """) } ]]></style></defs>" & _
+                               "<image href=""data:image/svg+xml;base64," & B64(Utf8(nested)) & """/><title>Zo" & ChrW$(&HEB) & "</title></svg>", out
+        Assert.Strict.AreEqual "7 7 1", counted
+        Assert.Strict.AreEqual "4: " & JpegReport(), reported
+    End Sub
+
+    [TestCase]
+    Public Sub LeavesAnSvgFileThatIsNotUtf8AsItIs()
+        Dim latin1() As Byte
+        latin1 = Cat("<svg><title>Zo", &HEB, "</title></svg>")
+        Assert.Strict.AreEqual ToHex(latin1), ToHex(StripBytes(latin1, True))
+        Assert.Strict.AreEqual "1: an SVG that is not UTF-8; left unchanged", ReportsText()
+        Assert.Strict.AreEqual "0 0 0", Counts()
+    End Sub
+
+    [TestCase]
+    Public Sub ReadsAUriAnSvgWritesWithReferencesAndKeepsThemInWhatStays()
+        Dim gimp As String, lean As String, out As String
+        gimp = B64(GimpPng())
+        lean = B64(CompactPngOf(GimpPng()))
+        out = StripText(SvgReferences(), True)
+        ' The SVG, the two PNGs it reads, and the SVG written with references; not the PNG in CDATA.
+        Assert.Strict.AreEqual "4 3 0", Counts()
+        Assert.Strict.AreEqual "<svg><g style=""cursor: url(&quot;data:image/png;base64," & lean & "&quot;), auto""/>" & _
+                               "<image href=""data:image/png;base64," & lean & """/>" & _
+                               "<image href=""data:image/svg+xml,&lt;svg a=&quot;b&quot;&gt;&lt;/svg&gt;""/>" & _
+                               "<style><![CDATA[ .a { cursor: url(&quot;data:image/png;base64," & gimp & "&quot;) } ]]></style></svg>", out
+    End Sub
+
+    [TestCase]
+    Public Sub ReadsAnSvgsStyleElementsAndAttributesAsCss()
+        Dim head As String, tail As String, gimp As String, lean As String, svg As String, expected As String
+        ' An SVG's own CSS, read by CSS's rules: a <style> element with a CSS escape in a URI, a style
+        ' attribute whose base64 is broken over lines, which XML reads as spaces, a namespaced
+        ' <svg:style> that imports a style sheet, and a style attribute holding an SVG as text.
+        head = ".a { background: url(data:image/png;base64,"
+        tail = ") }"
+        gimp = B64(GimpPng())
+        lean = B64(CompactPngOf(GimpPng()))
+        svg = "<svg><style>.a { cursor: url(""data:image/png;base64,\69 " & Mid$(gimp, 2) & """) }</style>" & _
+              "<g style=""cursor: url('data:image/png;base64," & Wrapped(GimpPng()) & "')""/>" & _
+              "<svg:style xmlns:svg=""http://www.w3.org/2000/svg"">@import url(""data:text/css," & UrlText(head & gimp & tail) & """);</svg:style>" & _
+              "<g style='fill: url(""data:image/svg+xml,%3Csvg%3E%3C!-- x --%3E%3C/svg%3E"")'/></svg>"
+        expected = "<svg><style>.a { cursor: url(""data:image/png;base64," & lean & """) }</style>" & _
+                   "<g style=""cursor: url('data:image/png;base64," & lean & "')""/>" & _
+                   "<svg:style xmlns:svg=""http://www.w3.org/2000/svg"">@import url(""data:text/css," & UrlText(head) & lean & UrlText(tail) & """);</svg:style>" & _
+                   "<g style='fill: url(""data:image/svg+xml,%3Csvg%3E%3C/svg%3E"")'/></svg>"
+        Assert.Strict.AreEqual expected, StripText(svg, True)
+        ' The SVG, three PNGs and the SVG in a style attribute.
+        Assert.Strict.AreEqual "5 4 0", Counts()
+        Assert.Strict.AreEqual "", ReportsText()
+    End Sub
+
+    [TestCase]
+    Public Sub StripsTheImagesOfAStyleSheetInADataUri()
+        Dim head As String, tail As String, gimp As String, lean As String, css As String, expected As String, svg As String
+        ' A style sheet that embeds a PNG, imported in base64 and as text, and two that cannot be
+        ' read. In the text, only the PNG's characters change: those around it stay escaped.
+        head = ".a { background: url(data:image/png;base64,"
+        tail = ") }"
+        gimp = B64(GimpPng())
+        lean = B64(CompactPngOf(GimpPng()))
+        css = "@import url(""data:text/css;base64," & B64(Utf8(head & gimp & tail)) & """);" & vbLf & _
+              "@import url(""data:text/css," & UrlText(head & gimp & tail) & """);" & vbLf & _
+              "@import url(""data:text/css,%ZZ"");" & vbLf & _
+              "@import url(""data:text/css;base64,A==="");" & vbLf
+        expected = "@import url(""data:text/css;base64," & B64(Utf8(head & lean & tail)) & """);" & vbLf & _
+                   "@import url(""data:text/css," & UrlText(head) & lean & UrlText(tail) & """);" & vbLf & _
+                   "@import url(""data:text/css,%ZZ"");" & vbLf & _
+                   "@import url(""data:text/css;base64,A==="");" & vbLf
+        Assert.Strict.AreEqual expected, StripText(css, False)
+        ' A style sheet is not an image: the two PNGs are.
+        Assert.Strict.AreEqual "2 2 0", Counts()
+        Assert.Strict.AreEqual "3: a style sheet this cannot read; left unchanged" & _
+                               " | 4: labelled text/css, but its base64 cannot be read; left unchanged", ReportsText()
+        ' And in an SVG's <?xml-stylesheet?>.
+        svg = "<?xml-stylesheet type=""text/css"" href=""data:text/css," & UrlText(head & gimp & tail) & """?><svg/>"
+        Assert.Strict.AreEqual "<?xml-stylesheet type=""text/css"" href=""data:text/css," & UrlText(head) & lean & UrlText(tail) & """?><svg/>", _
+                               StripText(svg, True)
+    End Sub
+
+    [TestCase]
+    Public Sub WritesAnEmptyFileForAnEmptyOne()
+        Assert.Strict.AreEqual 0&, Size(StripBytes(Cat(), False))
+        Assert.Strict.AreEqual "0 0 0", Counts()
+        Assert.Strict.AreEqual 0&, Size(StripBytes(Cat(), True))
+        Assert.Strict.AreEqual "1 0 0", Counts()
+    End Sub
+
+    [TestCase]
+    Public Sub LabelsEachImageByItsBytesAndReportsWhatItCannotRead()
+        Dim out As String
+        out = StripText(LabelsCss(), False)
+        Assert.Strict.AreEqual "1: labelled image/png, but is a JPEG; now labelled image/jpeg" & _
+                               " | 2: labelled image/png, but is a GIF; now labelled image/gif" & _
+                               " | 3: labelled image/png, but is a BMP; now labelled image/bmp" & _
+                               " | 4: labelled image/png, but is no image this reads; left unchanged" & _
+                               " | 5: labelled image/png, but its base64 cannot be read; left unchanged" & _
+                               " | 6: an SVG this cannot read; left unchanged" & _
+                               " | 7: an SVG that is not UTF-8; left unchanged" & _
+                               " | 9: labelled application/octet-stream, but is a PNG; now labelled image/png", ReportsText()
+        Assert.Strict.AreEqual "5 4 4", Counts()
+        Assert.Strict.IsTrue InStr(out, ".a { background: url(""data:image/jpeg;base64," & B64(CompactJpegOf(JpegWithMetadata())) & """); }") > 0, "the JPEG"
+        Assert.Strict.IsTrue InStr(out, ".c { background: url(""data:image/bmp;base64," & B64(Bmp()) & """); }") > 0, "the BMP, only relabelled"
+        Assert.Strict.IsTrue InStr(out, ".h { background: url(""data:IMAGE/PNG;base64," & B64(CompactPngOf(GimpPng())) & """); }") > 0, "a label in capitals"
+    End Sub
+
+    [TestCase]
+    Public Sub ChangesNothingWhenRunOnWhatItWrote()
+        Dim once As String
+        once = StripText(LabelsCss(), False)
+        Assert.Strict.AreEqual once, StripText(once, False)
+        Assert.Strict.AreEqual 0&, Strip.Stripped
+        Assert.Strict.AreEqual 0&, Strip.Relabelled
+    End Sub
+
+    ' A CSS file whose images are labelled wrongly, or cannot be read, one to a line.
+    Private Function LabelsCss() As String
+        LabelsCss = ".a { background: url(""data:image/png;base64," & B64(JpegWithMetadata()) & """); }" & vbCrLf & _
+                    ".b { background: url(""data:image/png;base64," & B64(GifWithComment()) & """); }" & vbCrLf & _
+                    ".c { background: url(""data:image/png;base64," & B64(Bmp()) & """); }" & vbCrLf & _
+                    ".d { background: url(""data:image/png;base64," & B64(Cat("not a picture")) & """); }" & vbCrLf & _
+                    ".e { background: url(""data:image/png;base64,A===""); }" & vbCrLf & _
+                    ".f { background: url(""data:image/svg+xml,%3Csvg%3E%3C!-- %ZZ --%3E%3C/svg%3E""); }" & vbCrLf & _
+                    ".g { background: url(""data:image/svg+xml;base64," & B64(Cat("<svg", &HFF, "/>")) & """); }" & vbCrLf & _
+                    ".h { background: url(""data:IMAGE/PNG;base64," & B64(GimpPng()) & """); }" & vbCrLf & _
+                    ".i { background: url(""data:application/octet-stream;base64," & B64(LockPng()) & """); }" & vbCrLf
+    End Function
+
+    ' What Base64Decode makes of s, in hexadecimal, or "refused".
+    Private Function Decoded64(ByVal s As String) As String
+        Dim src() As Byte, data() As Byte, n As Long
+        src = Cat(s)
+        If Bytes.Base64Decode(src, 0, Bytes.Length(src), data, n) Then
+            Decoded64 = Left$(ToHex(data), 2 * n)
+        Else
+            Decoded64 = "refused"
+        End If
+    End Function
+End Module

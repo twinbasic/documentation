@@ -22,9 +22,6 @@ When the fractional part is exactly `0.5`, **CInt** always rounds it to the near
 
 **CInt** is the internationally aware alternative to [**Val**](Val) for converting a string to a numeric type.
 
-> [!WARNING]
-> In BETA 997, in a run from the IDE, a conversion of a constant outside the range of a **Long**, such as `CInt(1E+10)`, makes the run's first conversion of a **Single** or **Double** value to an integer raise error 6, *Overflow*, even for a value in range, and leaves its target at 0. The constant conversion has this effect wherever it appears in code the run compiles, even in a statement that never runs, such as `If False Then i = CInt(1E+10)`. Only the first such conversion of the run fails, and under **On Error Resume Next** its 0 goes unnoticed. A built executable, and code compiled with LLVM, are not affected. VB6 converts the value correctly.
-
 ### Example
 
 This example uses the **CInt** function to convert a value to an **Integer**.

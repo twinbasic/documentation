@@ -1,0 +1,11 @@
+{
+  "mode": "lane",
+  "lane": "ide:watches",
+  "tests": [
+    "a watch on p shows it as VARIABLES does",
+    "a watch on p.X works",
+    "the next stop shows the watches again",
+    "? p in the DEBUG CONSOLE fails with a codegen error, and the console reports a linker error"
+  ],
+  "steps": "1. Open console-print-udt-linker-error.twinproj in the twinBASIC IDE, put a breakpoint on the line marked BREAK (F9) and press F5. The run stops there.\n2. Add a watch on p and one on p.X. Fixed in #2485 (BETA 1005): the watch on p shows {user defined type, 8 bytes}, of type Point; the watch on p.X shows 7, of type Long; at the next stop (F5) both show again, and the DEBUG CONSOLE has no linker error.\n3. Type ? p in the DEBUG CONSOLE and press Enter.\n4. Expected: an error about the expression, such as that p has no single value to print, and no [LINKER] line. Actual (BETA 1005): (compile error: codegen error; check for compilation errors), and the DEBUG CONSOLE prints [LINKER] compilation (codegen) error detected in 'Startup.{temp_procedure}' at line #1.\nAsserted by `ide-test.bat --only watches` (the project is test/ide/probes/watches): its first three tests assert the fixed watch, and its last asserts the ? p defect, so the lane passes while the bug is there."
+}

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>The platform's scrollbars</title>
+<!--
+  The scrollbars Chromium draws when a page styles none (Windows' Fluent ones):
+  snapshot-svg.mjs's paintNativeScrollbar draws them as a track, an arrow at each
+  end, and a rounded thumb, fitted here: a bar down, along, and both with their
+  corner; the thumb at the start, the middle and the end of its run; the colours
+  scrollbar-color gives, and the default ones; a bar with nothing to scroll; and
+  a bar too short for its buttons.
+-->
+<style>
+body { margin: 0; background: #2b2b2b; }
+.b { position: absolute; box-sizing: border-box; background: #fff; }
+</style>
+<body>
+<div id="a" class="b" style="left:20px;top:10px;width:120px;height:180px;overflow-y:scroll"><div style="height:1000px"></div></div>
+<div id="b" class="b" style="left:160px;top:10px;width:120px;height:190px;overflow-y:scroll"><div style="height:1000px"></div></div>
+<div id="c" class="b" style="left:300px;top:10px;width:300px;height:110px;overflow-x:scroll"><div style="width:1500px;height:10px"></div></div>
+<div id="d" class="b" style="left:20px;top:215px;width:200px;height:150px;overflow:scroll"><div style="width:800px;height:700px"></div></div>
+<div id="e" class="b" style="left:240px;top:215px;width:120px;height:150px;overflow-y:scroll;background:#252526;scrollbar-color:#404040 #1a1a1a"><div style="height:1000px"></div></div>
+<div id="f" class="b" style="left:380px;top:215px;width:120px;height:150px;overflow:scroll"></div>
+<div id="g" class="b" style="left:520px;top:215px;width:120px;height:60px;overflow-y:scroll"><div style="height:1000px"></div></div>
+<div id="h" class="b" style="left:660px;top:215px;width:120px;height:150px;overflow-y:scroll;background:#252526;scrollbar-color:#9a9a9a #3a3a3a"><div style="height:400px"></div></div>
+<div id="i" class="b" style="left:620px;top:10px;width:120px;height:190px;overflow-y:scroll;background:#252526;color-scheme:dark"><div style="height:1000px"></div></div>
+<script>
+  document.getElementById("b").scrollTop = 810;
+  document.getElementById("c").scrollLeft = 400;
+  document.getElementById("d").scrollTop = 100;
+  document.getElementById("d").scrollLeft = 50;
+  document.getElementById("e").scrollTop = 200;
+  document.getElementById("g").scrollTop = 300;
+  document.getElementById("h").scrollTop = 100;
+</script>
+</body>
+</html>

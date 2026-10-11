@@ -1,7 +1,7 @@
 // Checks that the two editions of the impexp tool behave the same.
 //
 // scripts/impexp.mjs and scripts/impexp.py are one tool offered to readers in
-// two languages, and Tools.md promises that they print the same output and
+// two languages, and Tools-Compiler.md promises that they print the same output and
 // write byte-identical files. Each has the same built-in tests, and nothing ran
 // them. This runs both suites, which must pass with the same test names in the
 // same order, and then runs one sequence of commands through each edition, each

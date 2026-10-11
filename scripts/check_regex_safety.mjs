@@ -566,7 +566,7 @@ async function gate({ census }) {
     failed = true;
     console.error(`\nFAIL: ${exponential.length} regex(es) can backtrack exponentially:`);
     for (const r of exponential) printFinding(r);
-    // The advice agrees with Extending.md#regex-refused and Tools.md's
+    // The advice agrees with Extending.md#regex-refused and Tools-Toolchain-Tests.md's
     // entry. It does not say "narrow one of them", which leaves the regex
     // exponential one level down.
     console.error(

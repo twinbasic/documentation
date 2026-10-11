@@ -30,7 +30,7 @@ A single `build.bat` run executes `tbdocs` against a shared task DAG, dispatched
 - [Permanent Links](Development/Permanent-Links) --- the stable `/tB/` URL contract under which the IDE help system and external references resolve.
 - [Authoring Pages](Development/Authoring) --- how to write or edit a page so it matches the rest of the site: frontmatter and permalinks, heading levels, formatting, plain-English prose, attribution, and cross-section links.
 - [Building and Deployment](Development/Building) --- the day-to-day workflow for editing content: requirements, building, serving locally, link checking, Graphviz diagrams, screenshots, and the GitHub Pages deployment.
-- [Tools and Scripts](Development/Tools) --- one-line-per-tool reference for every script, batch file, and CLI flag exposed by the documentation toolchain (intended audience: doc contributors).
+- [Tools and Scripts](Development/Tools) --- reference for every script, batch file, and CLI flag exposed by the documentation toolchain, on a landing page for the batch wrappers and seven pages of tools grouped by what they work on (intended audience: doc contributors).
 - [tbdocs Builder](Development/Builder) --- detailed technical documentation for the `tbdocs` static site generator that lives under [`builder/`](https://github.com/twinbasic/documentation/tree/main/builder). Read this when modifying the build pipeline itself. Sub-pages:
     - [Pipeline Stages](Development/Pipeline-Stages) --- complete interface reference: per-task signatures and per-module export tables, plus the scheduler-level concepts (flag bits, task lifecycle, SAB layout).
     - [Book Configuration](Development/Book-Configuration) --- `_book.yml` key reference for the PDF chapter manifest.

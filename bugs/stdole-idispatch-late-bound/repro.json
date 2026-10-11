@@ -4,7 +4,7 @@
     "exit": 0,
     "output": [
       "^d\\.Hello: error 0, Hello ran 1 time\\(s\\)$",
-      "^d\\.GetTypeInfoCount: error -2147352570 \\(80020006\\) Unknown name\\.$"
+      "^d\\.GetTypeInfoCount: error 438 \\(1B6\\) Object doesn't support this property or method$"
     ]
   }
 }

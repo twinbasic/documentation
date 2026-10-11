@@ -24,6 +24,9 @@ ChDir "D:\TMP" ' Make "D:\TMP" the current folder.
 ChDrive "D"    ' Make "D" the current drive. 
 ```
 
+> [!NOTE]
+> In BETA 1005, **ChDir** raises run-time error -2147467259 (`&H80004005`) for a *path* that does not exist, where VB6 raises 76 (*Path not found*).
+
 <!--
 On Linux MacOS, the default drive always changes to the drive specified in *path*. Full path specifications begin with the volume name, and relative paths begin with a colon (**:**). **ChDir** resolves any aliases specified in the path: 
 

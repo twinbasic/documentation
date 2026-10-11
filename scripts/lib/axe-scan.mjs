@@ -95,6 +95,10 @@ export const SAMPLE_PAGES = [
   // site reports anything at all. Measured 272/236/229/215 ms over the
   // four combinations.
   "/FAQ.html",
+  // The only diagram whose boxes link: its figure is a group of 78 links
+  // rather than an image (builder/inline-diagram.mjs). Inlined as
+  // role="img", as every other diagram is, it reports nested-interactive.
+  "/Documentation/Development/Tools.html",
 ];
 
 // ---------------------------------------------------------------------------
@@ -635,9 +639,15 @@ export async function gotoPage(page, { rootDir, filePath, theme }) {
   // latent flake rather than a live one; wait it out rather than find out.
   // Giving the images intrinsic dimensions in the markup would be better
   // still, and would help readers as well.
+  //
+  // A picture in two themes is two lazy images, one hidden (builder/theme-pictures.mjs).
+  // The hidden one never loads, so its decode() never settles and the wait outlasts the
+  // protocol timeout: only images that are laid out are waited for, a lazy one among them
+  // made eager, since one below the fold would otherwise wait for a scroll.
   await page.evaluate(async () => {
-    const imgs = [...document.images].filter((i) => !i.complete);
+    const imgs = [...document.images].filter((i) => !i.complete && i.getClientRects().length);
     if (!imgs.length) return;
+    for (const i of imgs) if (i.loading === "lazy") i.loading = "eager";
     await Promise.all(imgs.map((i) => i.decode().catch(() => {})));
   });
 }

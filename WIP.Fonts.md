@@ -122,10 +122,8 @@ success, and why the same missing function also leaves `head`'s bbox at its sent
 Why upstream does not catch it: HarfBuzz *has* a regression test for exactly this
 (`instantiate_cff2_update_metrics.tests`, PR #4189), but its CFF2 goldens are copied from
 hb-subset's own output (`no_fonttools`), and the suite never runs an `HB_NO_DRAW` build.
-harfbuzzjs's tests do not exercise pinning at all. harfbuzzjs 1.2.1--1.4.0 had no CFF2
-subsetting at all; 1.5.0 onward has it, silently wrong. (HarfBuzz PR #6009 added the guard
-and a `#define HB_NO_CFF` that made the breakage loud; commit `38976fba` removed the loud
-half and kept the guard.)
+harfbuzzjs's tests do not exercise pinning at all. harfbuzzjs has subset CFF2 since 1.5.0,
+silently wrong.
 
 **The fix is one line in harfbuzzjs**: `#undef HB_NO_DRAW` in `config-override-subset.h`
 (or restore `-DHB_CONFIG_OVERRIDE_LAST_H`, which is what 1.2.0 used and why it was correct).
@@ -135,9 +133,7 @@ invalid `head` --- but the actionable report is harfbuzzjs's.
 
 **Not yet reported upstream (last checked 2026-09-21).** A full sweep of both trackers
 (every open issue and PR, closed-issue term searches, Discussions, and the `subset-font` /
-`subfont` / `cn-font-split` wrappers) found nothing. The closest prior art is a review
-comment on harfbuzz PR #6009 that named `config-override-subset.h` and the missing
-`#undef HB_NO_DRAW`, for the loud predecessor. Two look-alikes are different bugs: #6068
+`subfont` / `cn-font-split` wrappers) found nothing. Two look-alikes are different bugs: #6068
 (HVAR advances frozen on partial instancing; fixed) and the open #4029 (glyf `hhea` bounds
 not recomputed when the metrics map is empty --- the same shape, a different table). Both
 repos' `main` still carried the defect when checked.

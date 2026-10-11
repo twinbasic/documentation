@@ -15,6 +15,7 @@ import { renderFullNav, templatePhase, withPartialNav } from "./template.mjs";
 import { unpackShared } from "./sab-broadcast.mjs";
 import { deriveSearchEntries } from "./search.mjs";
 import { computeChunkSeo } from "./seo.mjs";
+import { pictureSvgOutputs, pngPictures } from "./theme-pictures.mjs";
 import { deriveOfflinePage, isWebsiteOnlyLink, websiteOf } from "./offline-rewrite.mjs";
 import { normalizeBaseurl } from "./url.mjs";
 
@@ -75,6 +76,7 @@ const handlers = {
       checkTrees,
       vendoredVideosObj,
       vendoredImagesObj,
+      pictureSizes,
       counts,
     } = unpackShared(_sharedSAB);
 
@@ -90,6 +92,7 @@ const handlers = {
       linkTables,
       baseurl,
       staticFiles,
+      pictureSizes,
       svgContents,
       vendoredVideos,
       vendoredImages,
@@ -125,7 +128,11 @@ const handlers = {
       }
     }
 
-    _renderEnv = { site, initData, offlineBase };
+    // An output that shows the pictures' PNGs (picture_svg) gets the renderer's HTML with
+    // each picture's SVG named back as its PNG; the others get it as rendered.
+    const svgOutputs = pictureSvgOutputs(siteData.config);
+    const asPng = (html) => pngPictures(html, staticFiles, baseurl || "");
+    _renderEnv = { site, initData, offlineBase, svgOutputs, asPng };
     return {};
   },
 
@@ -213,12 +220,16 @@ const handlers = {
       env.fullNav ??= renderFullNav(env.site);
       const writable = chunk.filter((p) => p.html !== undefined);
       for (const p of writable) {
-        const offlinePage = { ...p, html: withPartialNav(p.html, p, env.site, env.fullNav) };
+        const source = env.svgOutputs.offline ? p.html : env.asPng(p.html);
+        const offlinePage = { ...p, html: withPartialNav(source, p, env.site, env.fullNav) };
         const { html, misses } = deriveOfflinePage(offlinePage, offlineState);
         p.offlineHtml = html;
         p.offlineMisses = misses;
       }
     }
+
+    // The online page, once the offline one is taken from the HTML as rendered.
+    if (!env.svgOutputs.online) for (const p of chunk) if (p.html !== undefined) p.html = env.asPng(p.html);
 
     // Stash writable pages for the matching flush:i (FIFO; one batch per
     // render:i, drained by exactly one flush:i on the same worker).

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Frames</title>
+<!--
+  <iframe>s, whose documents are in the snapshot as documents of their own, in
+  their own coordinates: snapshot-svg.mjs draws each one at its place in paint
+  order, in the iframe's content box less its border and padding, less the
+  frame's scroll offset. The documents are in frames/, which the bench does not
+  take for pages. Each frame shows one construct:
+  a border and padding round the frame; a document that scrolls (the frame's
+  viewport scrollbar, here custom, and the thumb's place); a document that is
+  scrolled with no scrollbar; a background on the body, which becomes the
+  canvas of the frame (fills it past the end of the content), and on the root
+  element; a document with none, over the parent's own colour; text in two
+  fonts; a frame inside a frame; a frame with a CSS zoom; and a frame whose
+  viewport scrollbar is the platform's, in its own colours and in those of
+  scrollbar-color (which turns the page's ::-webkit-scrollbar rules off).
+-->
+<style>
+body { margin: 0; background: #2d2d30; color: #ddd; font: 13px "Segoe UI", sans-serif; }
+iframe { position: absolute; background: none; }
+.under { position: absolute; background: #7a2f2f; }
+.a { left: 10px; top: 10px; width: 150px; height: 110px; border: 3px solid #e0a030; padding: 6px; }
+.b { left: 200px; top: 10px; width: 170px; height: 110px; border: 1px solid #888; }
+.c { left: 410px; top: 10px; width: 150px; height: 110px; border: 0; }
+.d { left: 600px; top: 10px; width: 180px; height: 110px; border: 2px solid #aaa; }
+.e { left: 10px; top: 150px; width: 190px; height: 110px; border: 1px solid #888; }
+.f { left: 240px; top: 150px; width: 250px; height: 140px; border: 4px solid #4a90d9; padding: 3px 5px; }
+.g { left: 530px; top: 150px; width: 240px; height: 140px; border: 1px solid #888; zoom: 0.75; }
+.h { left: 10px; top: 300px; width: 190px; height: 90px; border: 1px solid #888; }
+.i { left: 230px; top: 310px; width: 190px; height: 80px; border: 1px solid #888; }
+.j { left: 450px; top: 310px; width: 190px; height: 80px; border: 1px solid #888; }
+</style>
+<body>
+<iframe class="a" src="frames/plain.html"></iframe>
+<iframe class="b" src="frames/scrolled.html"></iframe>
+<iframe class="c" src="frames/canvas.html"></iframe>
+<div class="under" style="left:595px;top:5px;width:190px;height:120px"></div>
+<iframe class="d" src="frames/clear.html"></iframe>
+<iframe class="e" src="frames/fonts.html"></iframe>
+<iframe class="f" src="frames/outer.html"></iframe>
+<iframe class="g" src="frames/plain.html"></iframe>
+<iframe class="h" src="frames/hidden-scroll.html"></iframe>
+<iframe class="i" src="frames/native.html"></iframe>
+<iframe class="j" src="frames/native-colour.html"></iframe>
+</body>
+</html>

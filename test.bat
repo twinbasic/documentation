@@ -77,6 +77,19 @@ node --test test/strftime.test.mjs
 @rem No tree, no browser, about 4 s.
 node --test test/png.test.mjs
 @if errorlevel 1 goto :fail
+@rem What an embedded image keeps (scripts/lib/compact-image.mjs): an
+@rem editor's metadata goes, and a notice of whose the picture is and on
+@rem what terms stays, over images built in the test. The half that runs
+@rem scripts/imagestrip/ is skipped unless IMAGESTRIP_EXE names its exe.
+@rem No tree, no browser, well under a second.
+node --test test/compact-image.test.mjs
+@if errorlevel 1 goto :fail
+@rem An SVG screenshot is written on one line (scripts/svgshot/snapshot-svg.mjs's
+@rem oneLine), so that a CRLF checkout changes only its last line ending. What
+@rem it keeps of an image it embeds is compact-image.test.mjs's, above.
+@rem No tree, no browser, well under a second.
+node --test test/svgshot.test.mjs
+@if errorlevel 1 goto :fail
 @rem check_examples.mjs's probes: batching, crash isolation through a fake
 @rem lane, the canaries and the fence classifier. check_examples.mjs needs a
 @rem twinBASIC install, so it runs only by hand; its probes need none.
@@ -180,7 +193,7 @@ node scripts/check_cli.mjs
 node scripts/check_pdf_shims_equiv.mjs
 @if errorlevel 1 goto :fail
 @rem impexp.mjs and impexp.py are one published tool in two languages, and
-@rem Tools.md promises they print the same and write the same bytes. Both
+@rem Tools-Compiler.md promises they print the same and write the same bytes. Both
 @rem built-in test suites must pass with the same names, and one sequence
 @rem of commands runs through each edition, comparing exit codes, output
 @rem and written files. Without Python it says SKIPPED and passes here;

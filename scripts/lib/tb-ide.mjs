@@ -332,6 +332,93 @@ export async function launchOnDesktop({ exe, arg = "", args, desktop, job = true
   return { pid, launcher: ps, exited, finished };
 }
 
+// Runs tb-launch.ps1 in its window mode (TBBUILD_WINDOWS) on a private desktop and returns
+// the one line of JSON it prints; throws with its error.
+function onDesktopWindows(desktop, vars) {
+  const script = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
+  return new Promise((resolve, reject) => {
+    const ps = spawn(
+      "powershell",
+      ["-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(BOOTSTRAP, "utf16le").toString("base64")],
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+        env: { ...process.env, TBBUILD_SCRIPT: script, TBBUILD_DESKTOP: desktop, ...vars },
+      },
+    );
+    let out = "",
+      err = "";
+    ps.stdout.on("data", (d) => {
+      out += d;
+    });
+    ps.stderr.on("data", (d) => {
+      err += d;
+    });
+    ps.on("error", reject);
+    ps.on("close", (code) => {
+      if (code) {
+        reject(new Error(`the windows of desktop ${desktop}: ${err.trim() || `exit ${code}`}`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(out.trim()));
+      } catch {
+        reject(new Error(`the windows of desktop ${desktop}: no JSON in ${JSON.stringify(out.slice(0, 200))}`));
+      }
+    });
+  });
+}
+
+/**
+ * The windows on a private desktop that launchOnDesktop (or launchIde, whose desktop is
+ * `tbbuild-<port>`) made and still holds open: every top-level window, and with `children`
+ * the child windows of each visible one, as tb-launch.ps1 describes them. A desktop is the
+ * process's own, so every window on it is the program's or a process it started.
+ *
+ * @param {string} desktop
+ * @param {object} [o]
+ * @param {boolean} [o.children]
+ * @returns {Promise<{hwnd: number, depth: number, class: string, title: string, pid: number, exe: string, visible: boolean, style: number, exStyle: number, owner: number, dpi: number, rect: number[]}[]>}
+ *   `rect` is [left, top, right, bottom] in physical pixels; `depth` 1 for a child
+ */
+export function desktopWindows(desktop, { children = false } = {}) {
+  return onDesktopWindows(desktop, { TBBUILD_WINDOWS: "list", TBBUILD_CHILDREN: children ? "1" : "0" });
+}
+
+/**
+ * A picture of one window on a private desktop, written as a PNG file: PrintWindow, which
+ * draws a window whether or not its desktop is the one on screen, with PW_RENDERFULLCONTENT
+ * by default (`flags` 2), the only way it holds what a WebView2 draws. Its frame is as the
+ * system draws it and its size the window's in physical pixels, at the desktop's DPI.
+ *
+ * The picture is not a page's, so the visible-text check of shoot_docs does not cover it:
+ * `texts` holds the window's title and its child windows' texts, which the caller searches
+ * for the Windows user name. Text a window draws itself (a WebView2's page, an owner-drawn
+ * control) is not among them.
+ *
+ * @param {string} desktop
+ * @param {number} hwnd   from desktopWindows
+ * @param {string} file   the PNG file to write
+ * @param {object} [o]
+ * The picture includes the invisible resize borders of a Windows 10 frame: `frame` is the
+ * visible frame in it (DWMWA_EXTENDED_FRAME_BOUNDS) and `client` the client area, each
+ * [left, top, right, bottom] in the picture's pixels. With PW_CLIENTONLY (1) the client area
+ * is drawn at the picture's top left. `layered` is a layered window's [colour key as a
+ * COLORREF, alpha, LWA_ flags], else null: PW_RENDERFULLCONTENT draws the key colour's pixels
+ * black and every pixel opaque, and flags 1 draws them in the key colour.
+ *
+ * @param {number} [o.flags]  PrintWindow's flags (default 2)
+ * @returns {Promise<{width: number, height: number, dpi: number, frame: number[], client: number[], layered: number[] | null, texts: string[]}>}
+ */
+export function captureWindow(desktop, hwnd, file, { flags = 2 } = {}) {
+  return onDesktopWindows(desktop, {
+    TBBUILD_WINDOWS: "capture",
+    TBBUILD_HWND: String(hwnd),
+    TBBUILD_FLAGS: String(flags),
+    TBBUILD_FILE: path.resolve(file),
+  });
+}
+
 /**
  * What a tool prints under --keep: the kept IDE's pid, and the commands that end
  * it with every process it started (/T takes the compiler and the rest of its

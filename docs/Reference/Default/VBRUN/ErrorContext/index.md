@@ -15,7 +15,7 @@ An **ErrorContext** object captures everything the runtime knows about a run-tim
 The error-identity properties (**Number**, **Description**, **Source**, **HelpFile**, **HelpContext**, **LastDLLError**) have the same meaning here as on the **Err** object --- see the [**ErrObject**](../../../Modules/ErrObject) module for a discussion of each. **State** and **Callstack** are unique to **ErrorContext** and reflect the structured error-handling machinery that has no equivalent on the legacy **Err** object.
 
 > [!NOTE]
-> As of BETA 997, twinBASIC code cannot obtain an **ErrorContext** object. The **ErrEx** object that returns one is not available, and neither are the **Try**, **Catch** and **Finally** blocks that several [**State**](#state) values refer to. The **Err** object does not implement this interface. The VBRUN package declares the interface and its members, so code that uses them compiles, but nothing returns an object that implements them.
+> As of BETA 1005, twinBASIC code cannot obtain an **ErrorContext** object. The **ErrEx** object that returns one is not available, and neither are the **Try**, **Catch** and **Finally** blocks that several [**State**](#state) values refer to. The **Err** object does not implement this interface. The VBRUN package declares the interface and its members, so code that uses them compiles, but nothing returns an object that implements them.
 
 ## Members
 

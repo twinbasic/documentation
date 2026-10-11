@@ -26,6 +26,9 @@ The return value depends on the file access mode:
 | **Sequential** | Current byte position in the file divided by 128.           |
 | **Binary**     | Position of the last byte read or written.                  |
 
+> [!NOTE]
+> In BETA 1005, **Loc** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
+
 ### Example
 
 This example uses the **Loc** function to return the current read/write position within an open file. This example assumes that `TESTFILE` is a text file with a few lines of sample data.

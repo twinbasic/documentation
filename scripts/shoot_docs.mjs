@@ -27,6 +27,9 @@
 //               on localhost, so build.bat has to have run
 //   project     test/addin/helpdemo open, with no add-in: what needs a compiler
 //               that has answered, as About's licence line does
+//   community   the same, its compiler restarted on no licence key (in the page only):
+//               the COMMUNITY EDITION badge, and the LIMITED one while a compiler starts
+//   splash      the same again, for the splash dialog alone (see splashShot)
 //   sample      test/shots/sample, SampleProject: the Project Explorer and the other
 //               panels with a project, and the editor
 //   settings    the sample with a Settings file of test/shots/settings, for the pictures
@@ -58,6 +61,27 @@
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
+//   programs    test/shots/programs, ShotPrograms, built in the IDE: each picture is the
+//               window of the exe, started on a private desktop with a command line naming
+//               its form, taken with PrintWindow (lib/tb-ide.mjs's captureWindow), once,
+//               in no theme; the ListView's is of the project run from the IDE (F5)
+//   codelens    test/shots/codelens: a procedure run by its CodeLens bar, the editor above
+//               the DEBUG CONSOLE
+//   package     the sample built as a TWINPACK package, and fusion test/shots/fusion, whose
+//               Fusion host the compiler builds as it loads: the DEBUG CONSOLE's lines,
+//               the paths they name on a folder of the tool's own (PACKAGE_ROOT)
+//   package-server  the sample with test/shots/packages, signed out, with the network to
+//               TWINSERV and an APPDATA of the tool's own on PACKAGE_ROOT: Project Settings'
+//               list of packages, packages downloaded, embedded and linked, and the questions
+//               the IDE asks about a linked copy; settings-linked the sample linking a package
+//               it has no copy of, and package-check the sample with an older build of a
+//               package from TWINSERV embedded, for the check the IDE makes as it loads it
+//   import      the sample open, and the VB6 project test/shots/vbp imported from a folder of
+//               the tool's own on PACKAGE_ROOT: the Import from twinproj dialog
+//   webpage     the demo open, and the Webpage pane on the documentation's home page, whose
+//               page is captured from its own DevTools target and put into the pane's picture
+//   web         no IDE: a Chrome (puppeteer's) on a private desktop, for the public web pages
+//               the FAQ shows, taken once, at 2x
 //
 // What makes the pictures repeatable, so that a second run changes no byte:
 //
@@ -67,11 +91,21 @@
 //     device-metrics override. A capture of a rectangle (Page.captureScreenshot
 //     with a clip) is exactly twice the rectangle's size, and the pages show it
 //     at half that size.
+//   * Text is drawn in grey levels, never ClearType (--disable-lcd-text, for the
+//     IDE's WebView2 and the web pages' Chrome alike). Without it Chromium chose
+//     per run: one picture came out in ClearType from a run of a few setups and in
+//     grey from a full run, and so changed from run to run.
 //   * Animations, transitions, the text caret and Monaco's cursor are turned
 //     off by a style sheet put into the document and into every shadow root
 //     (a tool window is one), in every picture. Otherwise a blink or a fade is
 //     in some captures.
-//   * The theme is dark, as the documentation shows it.
+//   * Every picture is taken twice, in the IDE's dark theme as X.png and in its Light
+//     theme as X.light.png, by one IDE: it takes its pictures, is switched to Light by
+//     the IDE's own command, and takes them again. The site shows the light picture in
+//     its light theme (builder/theme-pictures.mjs). A light picture with the dark one's
+//     pixels is not kept. Light lays the window out a few pixels differently, so a light
+//     picture can be a few pixels off the dark one's size; the page shows each at its own
+//     (SIZE_SLACK). A label's pill follows the theme (lib/shot-annotate.mjs).
 //   * What the user's machine would put into a picture is kept out of the IDE's
 //     page, in the page only (the no-project and project setups): the IDE's
 //     options are set to their defaults, the saved panel layouts and keyboard
@@ -89,12 +123,16 @@
 // The Windows user name must never be in a published picture. Before a picture
 // is kept, the visible text of the page it was taken from (the document, every
 // shadow root and the docs page in the pane's frame) is searched for it, and a
-// picture whose page holds it is refused. A tooltip is not drawn and is not
-// read; the IDE's title tooltip holds the project's path.
+// picture whose page holds it is refused. A native tooltip is not drawn and is not
+// read (the IDE's title tooltip holds the project's path), except the services badge's, a
+// replica drawn in the page (TOOLTIP_CSS) that is read like the rest. A program's window is
+// not a page: the texts of the window and its child windows are searched instead,
+// and what the program draws itself is the fixture's own text (see programShot).
 
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import path from "node:path";
+import puppeteer from "puppeteer";
 import { createStaticHandler } from "../builder/static-files.mjs";
 import {
   die,
@@ -108,13 +146,32 @@ import {
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { hoverText, mouseAway, pointOf, restMouse } from "../test/addin/hover.mjs";
 import { frameEval, frameOf, serveLoopback } from "../test/addin/pages.mjs";
+import { launchBrowser } from "./lib/browser.mjs";
 import { annotate as annotateOver, LAYER_ID, resolveAnchors, unannotate } from "./lib/shot-annotate.mjs";
 import { composite, uncomposite } from "./lib/shot-composite.mjs";
+import { decodePng, encodePng } from "./lib/png.mjs";
+import { iconGroup, iconImage, manifestResource, resFile } from "./lib/res-file.mjs";
 import { diffPicture } from "./lib/shot-diff.mjs";
 import { attach } from "./lib/tb-cdp.mjs";
 import { consoleMark, linesSince } from "./lib/tb-ide-console.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
-import { shutdownIde, sleep } from "./lib/tb-ide.mjs";
+import {
+  awaitNewCompiler,
+  buildProject,
+  COMPILE_TIMEOUT,
+  captureWindow,
+  compilerPid,
+  desktopWindows,
+  killTree,
+  launchOnDesktop,
+  shutdownIde,
+  sleep,
+  waitForCompile,
+} from "./lib/tb-ide.mjs";
+import { dropBundle, writeBundle } from "./svgshot/bundle.mjs";
+import { svgOfPage } from "./svgshot/capture.mjs";
+import { useSubsetCache } from "./svgshot/fonts.mjs";
+import { holdsUserName, judgeSvg, SVG_FAITHFUL, writeSvg } from "./svgshot/keep.mjs";
 import { unpackProject } from "./lib/tb-project.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
@@ -152,19 +209,26 @@ const DEMO_FILE = "/Inventory/Sources/Inventory.twin";
 const DEMO_SOURCE = path.join(DEMO, "Sources", "Inventory.twin");
 const SITE = path.join(REPO_ROOT, "docs", "_site");
 const DEFAULT_OUT = path.join(REPO_ROOT, "docs");
+const DEFAULT_BUNDLES = path.join(REPO_ROOT, ".svgshot-bundles");
 
 // The IDE page's size in CSS pixels, and the detached window's. Both at 2x.
 const IDE_SIZE = { width: 1280, height: 880 };
 const WINDOW_SIZE = { width: 900, height: 700 };
 const SCALE = 2;
-// Every IDE lays its page out at 100% whatever the display's scaling.
-const BROWSER_ARGS = "--force-device-scale-factor=1";
+// Every IDE lays its page out at 100% whatever the display's scaling, and draws its text in
+// grey levels, never ClearType (LCD_TEXT).
+const LCD_TEXT = "--disable-lcd-text";
+const BROWSER_ARGS = `--force-device-scale-factor=1 ${LCD_TEXT}`;
 
-const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--port N] [--ide <twinBASIC.exe>] [-h, --help]
+const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--port N] [--ide <twinBASIC.exe>] [--svg] [-h, --help]
 
 Takes the pictures of the IDE that the documentation shows, from IDEs on a
-private desktop, at 2x in the dark theme: the help add-in's eight (setup help),
+private desktop, at 2x, each in the IDE's dark theme (X.png) and then in its Light
+theme (X.light.png, not kept when it has the dark picture's pixels, and removed
+when there is one already): the help add-in's eight (setup help),
 the menus, dialogs, bars and panels that need no project (setups no-project and project),
+the splash and the status bar's COMMUNITY EDITION and LIMITED badges (setups splash and
+community),
 the panels, editor, Project Settings and icons of a sample project (setups sample,
 settings and glyphs), those of the IDE's Samples 15 and 6 (setups
 global-search and sample6), the form and report designers and the Format menu
@@ -172,27 +236,46 @@ global-search and sample6), the form and report designers and the Format menu
 forms and settings-webview2), and the CustomControls tutorial's pictures of a
 custom control's code and PROPERTIES (setup customcontrols), and the editor alone:
 the build select's greying, inline hints, a hover, a form's JSON (setups code,
-customcontrols and sample9), and the whole window with its features named (setup
-featuremap).
+customcontrols and sample9), the whole window with its features named (setup
+featuremap), a procedure run by its CodeLens bar (setup codelens), the DEBUG
+CONSOLE after a package build and a Fusion host build (setups package and fusion),
+Project Settings' packages from TWINSERV, signed out, downloaded, embedded and linked
+(setups package-server, settings-linked and package-check; they need the network),
+and the windows of a running program, the fixture test/shots/programs (setup
+programs): those are taken once, as the program draws them, at the display's
+DPI, and shown at their size at 96 DPI; a VB6 project's import (setup import),
+the Webpage pane on the documentation's home page (setup webpage), and the
+public web pages the FAQ shows, in a Chrome on a private desktop, once (setup
+web; it and webpage need the network).
+A light picture can be a few pixels off the dark one's size, since Light lays
+the window out a little differently; the site shows each at its own size.
 Each setup is one IDE, started when a picture in it is selected. A picture is
-written only when its bytes differ from the file already there; each is
-reported as new, updated or unchanged. The IDE's registry entries and the
+written only when it differs from the file already there by more than a
+capture's noise (a few grey levels at a few edge pixels); each is reported as
+new, updated or unchanged, and the run ends with how many of each
+theme came out each way. The IDE's registry entries and the
 saved settings of the add-ins it loads are put back afterwards. The help add-in's pane
 shows pages from docs/_site, so run build.bat first for those.
 
 A picture is refused, and the run fails, when the visible text of the page it
-was taken from holds the Windows user name.
+was taken from, or a text of the program window it is of, holds the Windows user
+name.
 
   --only <regex>   only the pictures whose path under the output folder
-                   (IDE/Menu/Images/Menu_File.png) matches
+                   (IDE/Menu/Images/Menu_File.png, or its .light.png) matches;
+                   each is taken in both themes, a program's window once
   --out <dir>      the folder the pictures' paths are under (default docs)
   --diffs <dir>    write a difference picture into <dir> (not under docs) for
-                   each picture that is updated: the file on disk, the new
+                   each picture that is updated, named for its path and theme
+                   (IDE__Menu__Images__Menu_File.dark.png): the file on disk, the new
                    picture and their difference side by side, the difference
                    amplified (yellow for one grey level, shading to red), with
                    the differing region magnified under them. Also one for each
-                   two captures of one state that disagree, named .capture-<n>.
-                   Files of the same name are overwritten
+                   two captures of one state that disagree, named .capture-<n>,
+                   one for each picture left as it is because it differs only by
+                   a capture's noise, named .noise, and one of the two themes of
+                   a light picture refused for its size, named .size. Files of
+                   the same name are overwritten
   --jobs <n>       how many IDEs run at once (default 6). The setups are queued,
                    the longest first, and the long ones (no-project, sample and
                    customcontrols) are split into parts that each get an IDE of their own; every
@@ -205,12 +288,28 @@ was taken from holds the Windows user name.
                    its own
   --ide <path>     the twinBASIC.exe to copy (default: $TB_IDE, else the
                    newest twinBASIC_IDE_BETA_* on the Desktop)
+  --svg            also write each picture as SVG beside its PNG (X.svg),
+                   drawn from the page's DOM at the moment of the capture, its
+                   text in subsets of the fonts the IDE drew it with (needs
+                   Python with fontTools: scripts/subset_font.py); each is
+                   reported with how much of it differs from the PNG, and with
+                   --diffs its difference map goes there as <name>.svg-diff.png.
+                   An SVG with more than 0.25% of its pixels far off the PNG's
+                   is not written, and one written before is removed, so that
+                   the page shows the PNG; with --diffs it goes there instead,
+                   as <name>.svg. An SVG that holds the Windows user name fails
+                   the picture. Each picture's bundle, what its SVG is drawn
+                   from, goes to the bundle cache for scripts/svgshot/replay.mjs
+  --bundles <dir>  with --svg, the bundle cache (default .svgshot-bundles in the
+                   repository, which git ignores); never under docs
   -h, --help       print this text and exit
 
 Exit codes:
   0  every picture was written or was unchanged
   1  a picture failed: an element was not found, the page showed the user name,
-     the add-in did not build, or the demo project does not compile
+     a light picture's size is more than 32 pixels off the dark one's (the IDE
+     was not in the state the dark picture shows), the add-in did not build, or
+     the demo project does not compile
   2  the tool could not run: a refused command line, no IDE, no built site, a
      registry it could not record, or a crash
   3  the registry or the work folder was not put back; see the lines above`;
@@ -221,9 +320,11 @@ const { values } = withUsageError(() =>
       only: { type: "string" },
       out: { type: "string" },
       diffs: { type: "string" },
+      bundles: { type: "string" },
       jobs: { type: "string" },
       port: { type: "string" },
       ide: { type: "string" },
+      svg: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
     stopAt: ["help"],
@@ -239,13 +340,20 @@ const firstPort = withUsageError(() =>
 );
 const outRoot = path.resolve(values.out ?? DEFAULT_OUT);
 const diffsRoot = values.diffs === undefined ? null : path.resolve(values.diffs);
+// With --svg, each picture's bundle (svgshot/bundle.mjs), for replay.mjs: never under docs,
+// since a bundle holds the Windows user name.
+const bundlesRoot = values.svg ? path.resolve(values.bundles ?? DEFAULT_BUNDLES) : null;
 // path.relative gives an absolute path across drives, which is outside docs and does not start with "..".
-if (diffsRoot) {
-  const rel = path.relative(path.join(REPO_ROOT, "docs"), diffsRoot);
-  if (!rel.startsWith("..") && !path.isAbsolute(rel)) {
-    die(2, `--diffs must not be under docs: ${values.diffs}`);
-  }
+for (const [option, root] of [
+  ["--diffs", diffsRoot],
+  ["--bundles", bundlesRoot],
+]) {
+  if (!root) continue;
+  const rel = path.relative(path.join(REPO_ROOT, "docs"), root);
+  if (!rel.startsWith("..") && !path.isAbsolute(rel)) die(2, `${option} must not be under docs: ${root}`);
 }
+// The fonts' cuts are kept beside the bundles, as replay.mjs keeps them (fonts.mjs).
+if (bundlesRoot) useSubsetCache(path.join(bundlesRoot, "subsets"));
 
 const ide = findIde(values.ide || undefined);
 if (!ide || !existsSync(ide)) {
@@ -394,19 +502,22 @@ async function cutoutOff(conn) {
 // connection shares it): `name` the setup's, for its lines; `reference` the bytes of the
 // file the running shot writes, when there is one, which `capture` prefers the version of a
 // picture that equals; `editedOriginal` the module of the sample that a shot has replaced in
-// the page, to put back.
-const newShotState = (name) => ({ name, out: null, reference: null, editedOriginal: null });
+// the page, to put back; for a light picture, `prefer` the dark picture when no light file is
+// there yet; with --svg, `svg` the SVG of the picture `capture` returned last.
+const newShotState = (name) => ({ name, out: null, reference: null, prefer: null, editedOriginal: null, svg: null });
 
 // A line of output, prefixed with the setup it is from (they run at once).
 const say = (name, text) => console.log(`[${name}] ${text}`);
 const complain = (name, text) => console.error(`[${name}] ${text}`);
 
 // With --diffs, the difference picture of `before` and `after` (PNG files) for the picture
-// `out`, as <out with its folders joined by __><suffix>.png. A failure to write it is said,
-// and fails nothing.
+// `out`, as <out with its folders joined by __ and no extension>.<theme><suffix>.png, the
+// theme dark or light. A failure to write it is said, and fails nothing.
 function writeDiff(name, out, before, after, { suffix = "", labels } = {}) {
   if (!diffsRoot) return;
-  const file = path.join(diffsRoot, `${out.replace(/[\\/]/g, "__").replace(/\.png$/i, "")}${suffix}.png`);
+  const theme = /\.light\.png$/i.test(out) ? "light" : "dark";
+  const base = out.replace(/[\\/]/g, "__").replace(/(\.light)?\.png$/i, "");
+  const file = path.join(diffsRoot, `${base}.${theme}${suffix}.png`);
   try {
     mkdirSync(diffsRoot, { recursive: true });
     writeFileSync(file, diffPicture(before, after, labels));
@@ -415,24 +526,101 @@ function writeDiff(name, out, before, after, { suffix = "", labels } = {}) {
   }
 }
 
+// Whether two captures (PNG files) are the same picture but for a capture's noise: one size, no
+// channel of any pixel more than NOISE_LEVELS grey levels apart, and no more than NOISE_SHARE of
+// the pixels apart at all. The noise seen: 1 to 14 levels, along a shadow's or an arrow's edge,
+// at a rounded corner, in a scaled bitmap (34 pixels; 81 on About's Close button; the most, 563
+// along a dialog's top edge, 0.13% of it). A change the IDE draws moves text or colour by far
+// more than 16 levels.
+// The pixels inside `rects` (unsteadyRects) are left out.
+const NOISE_LEVELS = 16;
+const NOISE_SHARE = 0.005;
+function nearly(a, b, rects = []) {
+  const A = decodePng(a);
+  const B = decodePng(b);
+  if (A.width !== B.width || A.height !== B.height) return false;
+  const most = Math.max(1, Math.floor(A.width * A.height * NOISE_SHARE));
+  let apart = 0;
+  for (let i = 0; i < A.rgba.length; i += 4) {
+    let d = 0;
+    for (let k = 0; k < 4; k++) d = Math.max(d, Math.abs(A.rgba[i + k] - B.rgba[i + k]));
+    if (!d || inRects(rects, (i / 4) % A.width, Math.floor(i / 4 / A.width))) continue;
+    if (d > NOISE_LEVELS || ++apart > most) return false;
+  }
+  return true;
+}
+
+const inRects = (rects, x, y) => rects.some((r) => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
+
+// Whether two captures are the same picture outside `rects`: byte for byte when there are none.
+function same(a, b, rects) {
+  if (a.equals(b)) return true;
+  if (!rects.length) return false;
+  const A = decodePng(a);
+  const B = decodePng(b);
+  if (A.width !== B.width || A.height !== B.height) return false;
+  for (let i = 0; i < A.rgba.length; i += 4) {
+    if (
+      A.rgba[i] === B.rgba[i] &&
+      A.rgba[i + 1] === B.rgba[i + 1] &&
+      A.rgba[i + 2] === B.rgba[i + 2] &&
+      A.rgba[i + 3] === B.rgba[i + 3]
+    )
+      continue;
+    if (!inRects(rects, (i / 4) % A.width, Math.floor(i / 4 / A.width))) return false;
+  }
+  return true;
+}
+
+// Where in a capture of `clip` the page draws differently from frame to frame of its own accord,
+// which no comparison of captures counts: a shot's `unsteady` regions, each `{on, pad}`, an
+// annotation anchor (lib/shot-annotate.mjs) and how far round its box, in CSS pixels (1 by
+// default, an edge's anti-aliasing), as device-pixel rects of the capture. A clip is in the
+// document's coordinates; a capture of the whole window, in the window's.
+async function unsteadyRects(conn, clip, unsteady) {
+  if (!unsteady?.length) return [];
+  const boxes = await resolveAnchors(conn, Object.fromEntries(unsteady.map((u, k) => [`u${k}`, u.on])));
+  const scroll = clip ? await conn.evaluate("({ x: scrollX, y: scrollY })") : { x: 0, y: 0 };
+  const ox = (clip?.x ?? 0) - scroll.x;
+  const oy = (clip?.y ?? 0) - scroll.y;
+  return unsteady.map((u, k) => {
+    const b = boxes[`u${k}`];
+    const pad = u.pad ?? 1;
+    return {
+      x0: Math.floor((b.x - pad - ox) * SCALE),
+      y0: Math.floor((b.y - pad - oy) * SCALE),
+      x1: Math.ceil((b.x + b.width + pad - ox) * SCALE),
+      y1: Math.ceil((b.y + b.height + pad - oy) * SCALE),
+    };
+  });
+}
+
 // The pauses between the captures `capture` takes of one state, in milliseconds: the
 // last two let the page rest long enough to settle.
 const CAPTURE_GAPS = [150, 150, 300, 600, 1500, 1500];
 // How long the page is left alone before the first capture.
 const REST_MS = 1000;
 
+// Fails the picture `name` when `text` holds the Windows user name, quoting where.
+function refuseUserName(text, name, what) {
+  const at = text.toLowerCase().indexOf(USER.toLowerCase());
+  if (at < 0) return;
+  const around = `${text.slice(Math.max(0, at - 40), at)}<user>${text.slice(at + USER.length, at + USER.length + 40)}`;
+  throw new Error(`${what} for ${name} shows the Windows user name: ${JSON.stringify(around)}`);
+}
+
 // A capture of `clip` (CSS pixels, on whole device pixels) from `conn`, refused
-// when the page's visible text holds the user name. `away` first takes the mouse
+// when the page's visible text holds the user name: before the first capture, and
+// again, with the SVG when there is one, when a capture is chosen. The page can draw
+// again in between (Project Settings put a row's real path back over the one a shot
+// set, a second after the first check), and a capture is written to its file as soon
+// as it is returned. `away` first takes the mouse
 // where it touches nothing, since a control under it draws its hover look, unless
 // the picture is of what the mouse rests on. `keep` makes it a cut-out, on a ground
-// of the colour `solid` when that is given.
-async function capture(conn, name, clip, { frame, away = null, keep = null, solid = null } = {}) {
-  const text = await textOf(conn, frame);
-  const at = text.toLowerCase().indexOf(USER.toLowerCase());
-  if (at >= 0) {
-    const around = `${text.slice(Math.max(0, at - 40), at)}<user>${text.slice(at + USER.length, at + USER.length + 40)}`;
-    throw new Error(`the page for ${name} shows the Windows user name: ${JSON.stringify(around)}`);
-  }
+// of the colour `solid` when that is given. `unsteady` names where the page draws
+// differently from frame to frame of its own accord (unsteadyRects).
+async function capture(conn, name, clip, { frame, away = null, keep = null, solid = null, unsteady = null } = {}) {
+  refuseUserName(await textOf(conn, frame), name, "the page");
   if (away) await away();
   await quiet(conn);
   try {
@@ -459,26 +647,50 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     // capture does, else the last capture that equals the one before it; with no file
     // there, the first that does. A picture is rewritten only when the IDE draws something
     // else.
+    // A new light picture has no file to equal, and prefers the dark picture (`prefer`) as
+    // long as its first capture is within the noise of it: then one the theme does not change
+    // comes out with the dark one's pixels. Else it is taken as a new picture.
     const want = conn.shot.reference;
+    let prefer = want ? null : conn.shot.prefer;
+    // With --svg, the SVG of the same clip, read while the page is still as captured
+    // (the cut-out on, the menu open, the overlay drawn); a cut-out has no background.
+    // Its size is the PNG's: a clip half a pixel past a whole CSS pixel (a menu 168.5
+    // wide) is captured a device pixel short of it (168), and an SVG of the whole clip
+    // would show the half of an edge the PNG cuts off.
+    const picked = async (png) => {
+      refuseUserName(await textOf(conn, frame), name, "the page as captured");
+      if (values.svg) {
+        const size = { width: png.readUInt32BE(16) / SCALE, height: png.readUInt32BE(20) / SCALE };
+        conn.shot.svg = await svgOfPage(conn, clip && { ...clip, ...size }, { background: !keep });
+        if (holdsUserName(conn.shot.svg.svg, USER)) throw new Error(`the SVG of ${name} holds the Windows user name`);
+      }
+      return png;
+    };
+    // Outside its unsteady regions a capture is compared byte for byte, as everywhere else;
+    // one that matches the file or the dark picture there keeps that picture's bytes, so a
+    // pixel that flickers does not rewrite the file on every run.
+    const masks = await unsteadyRects(conn, clip, unsteady);
     let last = null;
     let agreed = null;
     for (let i = 0; ; i++) {
       const { data } = await conn.send("Page.captureScreenshot", params);
       const png = Buffer.from(data, "base64");
-      if (want?.equals(png)) return png;
-      if (last && !last.equals(png) && conn.shot.out) {
+      if (want && same(want, png, masks)) return await picked(want);
+      if (prefer && i === 0 && !nearly(prefer, png, masks)) prefer = null;
+      if (prefer && same(prefer, png, masks)) return await picked(prefer);
+      if (last && !same(last, png, masks) && conn.shot.out) {
         writeDiff(conn.shot.name, conn.shot.out, last, png, {
           suffix: `.capture-${i}`,
           labels: { before: `CAPTURE ${i - 1}`, after: `CAPTURE ${i}` },
         });
       }
-      if (last?.equals(png)) agreed = png;
-      if (agreed && !want) return agreed;
+      if (last && same(last, png, masks)) agreed = png;
+      if (agreed && !want && !prefer) return await picked(agreed);
       if (i === CAPTURE_GAPS.length) break;
       last = png;
       await sleep(CAPTURE_GAPS[i]);
     }
-    if (agreed) return agreed;
+    if (agreed) return await picked(agreed);
     throw new Error(`the page for ${name} kept changing: no two captures in a row were equal`);
   } finally {
     if (keep) await cutoutOff(conn);
@@ -633,10 +845,19 @@ async function resetUi(c) {
 
 // ---------------------------------------------------------------- the IDE's page
 
-// The dark theme, as the documentation shows it.
-async function ensureDark(c) {
-  const isDark = () =>
-    c.evaluate(`(() => {
+// Every picture is taken in the IDE's dark theme and again in its Light one (not Classic):
+// X.png is the dark picture and X.light.png beside it the light one, and the site shows the
+// one for its own theme (builder/theme-pictures.mjs). A setup takes its pictures in dark,
+// is switched to Light and takes them again.
+const THEMES = ["dark", "light"];
+const THEME_COMMAND = { dark: "tbTheme_SwitchToDarkMode", light: "tbTheme_SwitchToLightMode" };
+const THEME_NAME = { dark: "dark", light: "Light" };
+// The path of a picture in a theme: the dark one is the path the shot table gives.
+const themedOut = (out, theme) => (theme === "dark" ? out : out.replace(/\.png$/, ".light.png"));
+
+// Whether the IDE's page is in a dark theme: its panels' colour is dark.
+const pageIsDark = (c) =>
+  c.evaluate(`(() => {
   const p = document.createElement("div");
   p.style.background = "var(--themeGeneralPanelBackColor)";
   document.body.appendChild(p);
@@ -644,10 +865,23 @@ async function ensureDark(c) {
   p.remove();
   return 0.299 * r + 0.587 * g + 0.114 * b < 128;
 })()`);
-  if (!(await isDark())) {
-    await c.evaluate('executeIdeCommand("tbTheme_SwitchToDarkMode")');
-    if (!(await waitFor(c, isDark, { timeout: 10000 }))) throw new Error("the IDE did not switch to the dark theme");
+
+// The IDE in `theme` (dark or light), switched by its own command as the Window menu's
+// Theme submenu switches it, once the page shows it: the panels' colour, the page's images
+// and its fonts loaded, and two frames on. The page's call that would save the theme is
+// one PAGE_DEFAULTS has made do nothing.
+async function ensureTheme(c, theme) {
+  const want = theme === "dark";
+  if ((await pageIsDark(c)) === want) return;
+  await c.evaluate(`executeIdeCommand(${JSON.stringify(THEME_COMMAND[theme])})`);
+  if (!(await waitFor(c, async () => (await pageIsDark(c)) === want, { timeout: 10000 }))) {
+    throw new Error(`the IDE did not switch to the ${THEME_NAME[theme]} theme`);
   }
+  const loaded = `document.fonts.status === "loaded" && [...document.images].every((i) => i.complete)`;
+  if (!(await waitFor(c, () => c.evaluate(loaded), { timeout: 10000, interval: 100 }))) {
+    throw new Error(`the page's images did not load in the ${THEME_NAME[theme]} theme`);
+  }
+  await frames(c);
 }
 
 // The page at its fixed size and density, IDE_SIZE at SCALE. The page names its scale in a
@@ -768,7 +1002,7 @@ async function prepareHelp(run) {
   }
   await openFile(c, DEMO_FILE, { line: 1, column: 1 });
   run.defaults = JSON.parse(await c.evaluate(PAGE_DEFAULTS));
-  await ensureDark(c);
+  await ensureTheme(c, "dark");
   await fixPageSize(c);
   const ctx = {
     c,
@@ -794,7 +1028,7 @@ async function prepareProject(run) {
   run.step = "shoot";
   await openFile(c, DEMO_FILE, { line: 1, column: 1 });
   run.defaults = JSON.parse(await c.evaluate(PAGE_DEFAULTS));
-  await ensureDark(c);
+  await ensureTheme(c, "dark");
   await fixPageSize(c);
   return { c };
 }
@@ -818,7 +1052,7 @@ async function prepareNoProject(run) {
   await sleep(1000);
   run.defaults = JSON.parse(await c.evaluate(PAGE_DEFAULTS));
   await closeModal(c, "Cancel");
-  await ensureDark(c);
+  await ensureTheme(c, "dark");
   await parkMouse(c);
   await frames(c);
   return { c };
@@ -879,7 +1113,7 @@ async function prepareSample(run) {
   run.defaults = JSON.parse(await c.evaluate(PAGE_DEFAULTS));
   // the Project Explorer starts in the file view whatever the IDE saved (in the page only)
   await c.evaluate("switchToProjectExplorerFileMode()");
-  await ensureDark(c);
+  await ensureTheme(c, "dark");
   await fixPageSize(c);
   await parkMouse(c);
   return { c };
@@ -1040,6 +1274,54 @@ async function startFeatureMap(run) {
   return run.lane.open(src);
 }
 
+// ---- community: the demo with the compiler started on no licence key, the status bar's
+// COMMUNITY EDITION badge as the IDE draws it for a key that is not there (the Community
+// Edition), and its LIMITED services badge while a compiler starts.The IDE reads the key from its settings into
+// the page's `licenceKey` and passes it to each compiler it starts, which answers with the
+// edition. The key is emptied in the page only, and the compiler restarted with the toolbar's
+// button, as a key removed in IDE Options would be: the setting itself is never read, changed
+// or removed by the tool, and the page's call that would save one is one PAGE_DEFAULTS has made
+// do nothing (the compiler hands back the key it was given, which is then the page's own, so
+// the IDE has nothing to save anyway).
+
+async function prepareCommunity(run) {
+  const ctx = await prepareProject(run);
+  const { c } = run;
+  if (
+    !(await waitFor(c, () => c.evaluate("licenceIsSet === true && !!compilerLicence.innerText"), {
+      timeout: 60000,
+      interval: 250,
+    }))
+  ) {
+    throw new Error("the compiler never answered the licence check");
+  }
+  await c.evaluate(`licenceKey = ""`);
+  say(run.name, "restarting the compiler with no licence key, in the page only");
+  await run.lane.restartCompiler();
+  const community = await waitFor(c, () => c.evaluate(`compilerLicence.innerText === "COMMUNITY EDITION"`), {
+    timeout: 60000,
+    interval: 250,
+  });
+  if (!community) throw new Error("the compiler started with no key, and the licence badge is not COMMUNITY EDITION");
+  await clearUserFromConsole(c);
+  return ctx;
+}
+
+// A compiler's restart writes a line to the DEBUG CONSOLE that names the project's folder,
+// which is under the Windows user's: while the page shows the user name, the console's Clear
+// button is pressed (a real click), and the page given time to empty it.
+async function clearUserFromConsole(c) {
+  const shows = async () => (await textOf(c)).toLowerCase().includes(USER.toLowerCase());
+  for (let i = 0; i < 5 && (await shows()); i++) {
+    const b = await rectOf(c, '[title="Clear Debug Console"]');
+    if (!b) throw new Error("the DEBUG CONSOLE has no Clear button");
+    await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+    await waitFor(c, async () => !(await shows()), { timeout: 10000, interval: 200 });
+  }
+  await parkMouse(c);
+  await frames(c);
+}
+
 const SETUPS = {
   help: { ports: 3, start: startHelp, prepare: prepareHelp },
   "global-search": { ports: 2, start: startGlobalSearch, prepare: prepareGlobalSearch },
@@ -1051,6 +1333,8 @@ const SETUPS = {
   sample9: { ports: 1, start: startSample9, prepare: prepareSample },
   featuremap: { ports: 1, start: startFeatureMap, prepare: prepareSample },
   project: { ports: 1, start: startProject, prepare: prepareProject },
+  community: { ports: 1, start: startProject, prepare: prepareCommunity },
+  splash: { ports: 1, start: startProject, prepare: prepareProject },
   sample: { ports: 1, start: startSample, prepare: prepareSample },
   settings: { ports: 1, start: startSettings("base"), prepare: prepareSample },
   "settings-symbols": { ports: 1, start: startSettings("symbols"), prepare: prepareSample },
@@ -1062,6 +1346,16 @@ const SETUPS = {
   "settings-fusion": { ports: 1, start: startSettings("fusion"), prepare: prepareFusion },
   glyphs: { ports: 1, start: startSample, prepare: prepareSample },
   "no-project": { ports: 1, start: startNoProject, prepare: prepareNoProject },
+  programs: { ports: 1, start: startPrograms, prepare: preparePrograms },
+  codelens: { ports: 1, start: startCodeLens, prepare: prepareSample },
+  package: { ports: 1, start: startPackage, prepare: prepareSample },
+  fusion: { ports: 1, start: startFusion, prepare: prepareSample },
+  "package-server": { ports: 1, start: startPackageServer, prepare: preparePackageServer },
+  "settings-linked": { ports: 1, start: startSettings("linked"), prepare: prepareSample },
+  "package-check": { ports: 1, start: startPackageCheck, prepare: prepareSample },
+  import: { ports: 1, start: startImport, prepare: prepareSample },
+  webpage: { ports: 1, start: startProject, prepare: prepareWebpage },
+  web: { ports: 1, start: startWeb, prepare: prepareWeb },
 };
 
 // ---------------------------------------------------------------- the shots of the no-project setup
@@ -1133,8 +1427,8 @@ const TOP_MODAL = `[...document.querySelectorAll(".modalDialogContainer")].filte
 // decoded and the page's fonts loaded, and two frames are drawn: a dialog that fills itself
 // in (Project Settings asks the compiler for its lists) is then done. Says so when the
 // dialog was still changing after `timeout`, and goes on. `root`, an expression for another
-// element, waits for that one instead.
-async function dialogStill(c, { ms = 250, timeout = 5000, root = TOP_MODAL } = {}) {
+// element, waits for that one instead, and `what` names it.
+async function dialogStill(c, { ms = 250, timeout = 5000, root = TOP_MODAL, what = null } = {}) {
   const r = await c.evaluate(
     `(async () => {
   const root = ${root};
@@ -1157,7 +1451,7 @@ async function dialogStill(c, { ms = 250, timeout = 5000, root = TOP_MODAL } = {
   if (r === "moving") {
     say(
       c.shot.name,
-      `  the ${root === TOP_MODAL ? "dialog" : "designer"} was still changing after ${timeout / 1000} s`,
+      `  the ${what ?? (root === TOP_MODAL ? "dialog" : "designer")} was still changing after ${timeout / 1000} s`,
     );
   }
 }
@@ -1719,7 +2013,6 @@ const debugConsoleShot = annotatedPanelShot(
         text: "Auto Scroll",
         on: { of: DC_BUTTON("Auto Scroll"), at: "top", dx: -70, dy: -34 },
         side: "above",
-        tone: "dark",
       },
       {
         type: "arrow",
@@ -1731,7 +2024,6 @@ const debugConsoleShot = annotatedPanelShot(
         text: "Clear Debug Console",
         on: { of: DC_BUTTON("Clear Debug Console"), at: "top", dx: 60, dy: -60 },
         side: "above",
-        tone: "dark",
       },
       {
         type: "arrow",
@@ -1740,9 +2032,9 @@ const debugConsoleShot = annotatedPanelShot(
       },
       // the menu is the Options button's: named from the right, since the arrows from the left
       // already converge on the buttons
-      { type: "label", text: "Options", on: { css: "#contextMenu" }, side: "right", gap: 70, tone: "dark" },
+      { type: "label", text: "Options", on: { css: "#contextMenu" }, side: "right", gap: 70 },
       { type: "arrow", from: { of: { css: "#contextMenu" }, at: "right", dx: 66 }, to: { css: "#contextMenu" } },
-      { type: "label", text: "Input", on: LEFT_OF(DC_PANEL, 203, -90), side: "left", tone: "dark" },
+      { type: "label", text: "Input", on: LEFT_OF(DC_PANEL, 203, -90), side: "left" },
       { type: "arrow", from: LEFT_OF(DC_PANEL, 203, -86), to: DC_INPUT, tipGap: 11 },
     ],
   },
@@ -1765,7 +2057,7 @@ const diagnosticsShot = annotatedPanelShot(
       ["Hints", "statusHints", 175],
       ["Information", "statusInfos", 215],
     ].flatMap(([text, id, dy]) => [
-      { type: "label", text, on: LEFT_OF(DIAG_PANEL, dy), side: "left", tone: "dark" },
+      { type: "label", text, on: LEFT_OF(DIAG_PANEL, dy), side: "left" },
       { type: "arrow", from: LEFT_OF(DIAG_PANEL, dy, -26), to: DIAG_BADGE(id), elbow: true },
     ]),
   },
@@ -2514,7 +2806,6 @@ const sampleShots = [
           on: { of: CS_THREAD, at: "bottom", dy: 52 },
           side: "below",
           gap: 0,
-          tone: "dark",
         },
         { type: "arrow", from: { of: CS_THREAD, at: "bottom", dy: 49 }, to: { of: CS_THREAD, at: "bottom", dy: 4 } },
         {
@@ -2590,7 +2881,6 @@ const sampleShots = [
           on: { of: DIAG_PANEL, at: "bottom-left", dx: 20, dy: 58 },
           side: "right",
           gap: 0,
-          tone: "dark",
         },
         ...["statusErrors", "statusWarnings", "statusHints", "statusInfos"].map((id) => ({
           type: "arrow",
@@ -2622,7 +2912,6 @@ const sampleShots = [
           on: { of: DIAG_PANEL, at: "bottom-left", dx: 20, dy: 58 },
           side: "right",
           gap: 0,
-          tone: "dark",
         },
         ...["errorCount", "warningCount", "hintCount", "infoCount"].map((id) => ({
           type: "arrow",
@@ -2756,9 +3045,8 @@ async function takeEditorOptions({ c }) {
             on: { of: POPUP, at: "top-right", dx: -54, dy: -32 },
             side: "left",
             gap: 0,
-            tone: "dark",
           },
-          { type: "label", text: "Tabs List", on: { css: TABS_BUTTON }, side: "left", gap: 64, tone: "dark" },
+          { type: "label", text: "Tabs List", on: { css: TABS_BUTTON }, side: "left", gap: 64 },
           {
             type: "arrow",
             from: { of: { css: TABS_BUTTON }, at: "left", dx: -60 },
@@ -2823,15 +3111,19 @@ const settingRow = (c, key) =>
 
 // A path in the dialog that holds the Windows user name (the build path the lane stages the
 // project with, a library registered under the profile folder) names the user "User"
-// instead, in the page only, in its text and in its text boxes.
-const nameUserAsUser = (c) =>
+// instead, in the page only, in its text and in its text boxes. nameUserAsUserIn does it in
+// each element `css` selects.
+const nameUserAsUserIn = (c, css) =>
   c.evaluate(`(() => {
   const re = new RegExp(${JSON.stringify(USER_PATTERN)}, "gi");
-  const m = [...document.querySelectorAll(".modalDialogContainer")].pop();
-  const walk = document.createTreeWalker(m, NodeFilter.SHOW_TEXT);
-  for (let n = walk.nextNode(); n; n = walk.nextNode()) n.nodeValue = n.nodeValue.replace(re, "User");
-  for (const i of m.querySelectorAll("input, textarea")) i.value = i.value.replace(re, "User");
+  const roots = ${css ? `[...document.querySelectorAll(${JSON.stringify(css)})]` : `[[...document.querySelectorAll(".modalDialogContainer")].pop()]`};
+  for (const m of roots) {
+    const walk = document.createTreeWalker(m, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) n.nodeValue = n.nodeValue.replace(re, "User");
+    for (const i of m.querySelectorAll("input, textarea")) i.value = i.value.replace(re, "User");
+  }
 })()`);
+const nameUserAsUser = (c) => nameUserAsUserIn(c, null);
 
 // The dialog of Project > Project Settings (or Project > References, which filters its
 // list to the library references), picture `out` of it, Cancel to close it. `prepare(c)`
@@ -2874,10 +3166,15 @@ const settingsShots = [
   settingsShot("Features/Images/569150839-9ffc87ac-250d-40a4-bb47-669b607ad76f.png", {
     async prepare(c) {
       // The lane stages the project with a build path in its temporary folder, and the
-      // dialog shows it: the template's own path, in the page only (Cancel keeps nothing).
+      // dialog shows it: the template's own path instead, typed as a user would (input and
+      // change), so that the dialog holds it and does not put the real path back when it
+      // draws the row again, as it does now and then; Cancel keeps nothing. capture refuses
+      // the picture if the real path shows all the same.
       await c.evaluate(`(() => {
   const i = document.querySelector(${JSON.stringify(`${settingPart("project.buildPath", "CONTENT")} input`)});
   i.value = "\${SourcePath}\\\\Build\\\\\${ProjectName}_\${Architecture}.\${FileExtension}";
+  i.dispatchEvent(new Event("input", { bubbles: true }));
+  i.dispatchEvent(new Event("change", { bubbles: true }));
 })()`);
       await scrollToSetting(c, "project.buildPath");
     },
@@ -3242,24 +3539,48 @@ const gsShot = (name, query, { packages = false, head = false } = {}) => ({
 // The toolbar with a project open, the Global Search add-in's button at the right: as wide
 // as Toolbar_1 and the button, which comes after the theme's, so that the close button of
 // the bar is as far from it as it is from the theme's there. `before(c)` brings the editor
-// to the state the toolbar shows.
-const searchToolbarShot = (name, setup, before) => ({
+// to the state the toolbar shows, and `after(c)`, when given, takes it out of that state.
+const searchToolbarShot = (name, setup, before, after = null) => ({
   out: `IDE/Images/${name}.png`,
   setup,
   async take({ c }) {
     await resetUi(c);
-    await before(c);
-    const theme = await rectOf(c, "#menuBarColorMode");
-    const b = await rectOf(c, `#${GS_BUTTON}`);
-    if (!theme || !b) throw new Error("the toolbar has no theme button or no Global Search button");
-    const width = Math.ceil(TOOLBAR_WIDTH + b.x + b.width - (theme.x + theme.width));
-    return atSize(c, width, IDE_SIZE.height, async () =>
-      capture(c, name, snapOut(await toolbarRect(c), width, IDE_SIZE.height), {
-        away: () => parkMouse(c),
-      }),
-    );
+    try {
+      await before(c);
+      const theme = await rectOf(c, "#menuBarColorMode");
+      const b = await rectOf(c, `#${GS_BUTTON}`);
+      if (!theme || !b) throw new Error("the toolbar has no theme button or no Global Search button");
+      const width = Math.ceil(TOOLBAR_WIDTH + b.x + b.width - (theme.x + theme.width));
+      return await atSize(c, width, IDE_SIZE.height, async () =>
+        capture(c, name, snapOut(await toolbarRect(c), width, IDE_SIZE.height), {
+          away: () => parkMouse(c),
+        }),
+      );
+    } finally {
+      if (after) await after(c);
+    }
   },
 });
+
+// Whether the IDE is running the project (Start pressed, not yet ended).
+const codeExecuting = (c) => c.evaluate("!!context.codeExecuting?.value");
+
+// The project run, as Start does, once the IDE says it is running; and ended, as Stop does.
+async function startRun(c) {
+  await command(c, "tbDebug_StartOrContinue");
+  if (!(await waitFor(c, () => codeExecuting(c), { timeout: 60000, interval: 100 }))) {
+    throw new Error("the IDE never started running the project");
+  }
+  await frames(c);
+}
+async function stopRun(c) {
+  if (!(await codeExecuting(c))) return;
+  await command(c, "tbDebug_Stop");
+  if (!(await waitFor(c, async () => !(await codeExecuting(c)), { timeout: 30000, interval: 100 }))) {
+    throw new Error("the IDE did not stop running the project");
+  }
+  await frames(c);
+}
 
 const globalSearchShots = [
   {
@@ -3523,6 +3844,24 @@ async function addReport(ctx) {
   if (ctx.report) return;
   const { c } = ctx;
   await resetUi(c);
+  // the other theme's pictures were taken after it was added: it is opened
+  const REPORT = SAMPLE_FILE("Sources/MyReport.tbreport");
+  if (await c.evaluate(`!!fs.tree.resolvePath(${JSON.stringify(`twinbasic:${REPORT}`)})`)) {
+    await openFile(c, REPORT);
+  } else {
+    await newReport(c);
+  }
+  const opened = await waitFor(c, async () => (await editorTabs(c)).some((t) => t.name === "MyReport.tbreport"), {
+    timeout: 10000,
+    interval: 100,
+  });
+  if (!opened) throw new Error("the new report did not open in the designer");
+  await designerShown(c);
+  ctx.report = true;
+}
+
+// Sources > Add > Add Windows Report in the Project Explorer, and its name taken as offered.
+async function newReport(c) {
   // the Project Explorer floats for it, since an earlier picture may have taken it out of the
   // layout, and goes again once the name is taken
   try {
@@ -3554,13 +3893,6 @@ async function addReport(ctx) {
   } finally {
     await unfloatPanel(c, "PROJECT EXPLORER");
   }
-  const opened = await waitFor(c, async () => (await editorTabs(c)).some((t) => t.name === "MyReport.tbreport"), {
-    timeout: 10000,
-    interval: 100,
-  });
-  if (!opened) throw new Error("the new report did not open in the designer");
-  await designerShown(c);
-  ctx.report = true;
 }
 
 // EDITOR 1's box, its header included.
@@ -3655,6 +3987,17 @@ const designerShots = [
   formatShot("Menu_Format_VerticalSpacing", "Vertical Spacing"),
   // the toolbar with a form open in the designer
   searchToolbarShot("Toolbar_3", "designer", (c) => openDesigner(c, "MyForm.tbform")),
+  // the same while the project runs: its Sub Main shows frmMain, which stays open until Stop
+  searchToolbarShot(
+    "Toolbar_4",
+    "designer",
+    async (c) => {
+      await openDesigner(c, "MyForm.tbform");
+      await startRun(c);
+      await clearUserFromConsole(c);
+    },
+    stopRun,
+  ),
   // the report's pictures last: the first of them adds the report to the project
   designerShot("tbReport", "MyReport.tbreport", { report: true }),
   {
@@ -4300,13 +4643,13 @@ function ccShot(name, parts, { before = null, after = null } = {}) {
       try {
         if (before) await before(c);
         // the parts are not the picture: capture keeps the first two captures that agree
-        const reference = c.shot.reference;
-        c.shot.reference = null;
+        const { reference, prefer } = c.shot;
+        Object.assign(c.shot, { reference: null, prefer: null });
         let made;
         try {
           made = await parts(c);
         } finally {
-          c.shot.reference = reference;
+          Object.assign(c.shot, { reference, prefer });
         }
         try {
           const { box } = await composite(
@@ -4894,7 +5237,6 @@ async function takeFeatureMap({ c }) {
         on: POINT(x, y),
         side,
         gap: 0,
-        tone: "dark",
       });
       const arrow = (from, to, extra = {}) => ({ type: "arrow", from, to, ...extra });
       const box = (r) => ({ rect: r });
@@ -5020,27 +5362,1841 @@ const aboutShot = {
   },
 };
 
-// The status bar's services badge once the compiler's services have all answered. (Its tooltip,
-// the four services each OPERATIONAL, is the badge's native title, which no capture holds.)
+// A badge's tooltip is its plain HTML `title`, which WebView2 draws as a native Windows tooltip
+// on a real mouse hover and in no other way: no capture holds it, and no mouse the tool can
+// move reaches a private desktop (WIP.Screenshots.md, Special IDE states). So it is drawn in the page, as
+// a replica of Windows 10's tooltip holding the badge's own title, read from the IDE: the
+// owner's decision (2026-10-10). The look is calibrated against the pictures taken by hand in
+// January: Segoe UI 9 pt (12 px) in #242424 on white, a 1 px #242424 border, 16 px lines, 7 px
+// of padding at the sides, 3 above and 4 below, the box a whole number of pixels wide. It does
+// not follow the IDE's theme, so the Light pass takes the dark pass's picture and keeps no file
+// of its own. It is placed as Windows places a tooltip by the cursor, which is taken to be at
+// the badge's middle: its left edge at the cursor, 21 px below it, or above the badge when it
+// would not fit below (the status bar is at the bottom of the window), and inside the window.
+const TOOLTIP_ID = "tbShotTooltip";
+const TOOLTIP_CSS =
+  "all:initial;position:fixed;z-index:2147483647;pointer-events:none;box-sizing:border-box;" +
+  "border:1px solid #242424;background:#fff;color:#242424;white-space:pre-line;" +
+  "font:12px/16px 'Segoe UI',sans-serif;padding:3px 7px 4px 7px;display:block";
+
+// Puts the replica of the tooltip of the element `sel` into the page; returns its text and
+// its rectangle in CSS pixels. Throws when the element has no title.
+async function tooltipOn(c, sel) {
+  const r = await c.evaluate(`(() => {
+    const badge = document.querySelector(${JSON.stringify(sel)});
+    if (!badge) return { error: "no such element" };
+    const text = badge.title;
+    if (!text) return { error: "the element has no title" };
+    document.getElementById(${JSON.stringify(TOOLTIP_ID)})?.remove();
+    const e = document.createElement("div");
+    e.id = ${JSON.stringify(TOOLTIP_ID)};
+    e.style.cssText = ${JSON.stringify(TOOLTIP_CSS)};
+    e.textContent = text;
+    document.body.appendChild(e);
+    e.style.left = "0px";
+    e.style.top = "0px";
+    e.style.width = Math.ceil(e.getBoundingClientRect().width) + "px";
+    const t = e.getBoundingClientRect();
+    const b = badge.getBoundingClientRect();
+    const cursor = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    const left = Math.max(0, Math.min(window.innerWidth - t.width, Math.round(cursor.x)));
+    const below = Math.round(cursor.y) + 21;
+    const top = below + t.height <= window.innerHeight ? below : Math.round(b.y) - t.height - 2;
+    e.style.left = left + "px";
+    e.style.top = top + "px";
+    const f = e.getBoundingClientRect();
+    return { text, rect: { x: f.x, y: f.y, width: f.width, height: f.height } };
+  })()`);
+  if (r.error) throw new Error(`the tooltip of ${sel}: ${r.error}`);
+  return r;
+}
+
+const tooltipOff = (c) => c.evaluate(`document.getElementById(${JSON.stringify(TOOLTIP_ID)})?.remove()`);
+
+// The picture of the replica alone, as the January ones are.
+async function tooltipShotTake(c, name, sel) {
+  const { text, rect } = await tooltipOn(c, sel);
+  try {
+    say(c.shot.name, `  the tooltip text: ${JSON.stringify(text)}`);
+    return await capture(c, name, snapOut(rect), { away: () => parkMouse(c) });
+  } finally {
+    await tooltipOff(c);
+  }
+}
+
+// The status bar's services badge once the compiler's services have all answered.
+const servicesBadgeReady = async (c) => {
+  await resetUi(c);
+  const ready = await waitFor(
+    c,
+    () =>
+      c.evaluate(
+        `(() => { const e = document.getElementById("compilerStatusOuter"); return !!e && e.classList.contains("servicesOK") && e.innerText.includes("OPERATIONAL"); })()`,
+      ),
+    { timeout: 60000, interval: 250 },
+  );
+  if (!ready) throw new Error("the services badge never said OPERATIONAL");
+};
+
 const servicesShot = {
   out: "IDE/Images/Services_Operational.png",
   setup: "project",
   async take({ c }) {
-    await resetUi(c);
-    const ready = await waitFor(
-      c,
-      () =>
-        c.evaluate(
-          `(() => { const e = document.getElementById("compilerStatusOuter"); return !!e && e.classList.contains("servicesOK") && e.innerText.includes("OPERATIONAL"); })()`,
-        ),
-      { timeout: 60000, interval: 250 },
-    );
-    if (!ready) throw new Error("the services badge never said OPERATIONAL");
+    await servicesBadgeReady(c);
     return capture(c, "Services_Operational", snapOut(await rectOf(c, "#compilerStatusOuter")), {
       away: () => parkMouse(c),
     });
   },
 };
+
+// The tooltip of that badge, the four services each OPERATIONAL (a replica, see TOOLTIP_CSS).
+const servicesTooltipShot = {
+  out: "IDE/Images/Services_Operational_Tooltip.png",
+  setup: "project",
+  async take({ c }) {
+    await servicesBadgeReady(c);
+    return tooltipShotTake(c, "Services_Operational_Tooltip", "#compilerStatusOuter");
+  },
+};
+
+// The services badge with no compiler connected, as the IDE starts with no project.
+const unavailableBadgeReady = async (c) => {
+  await resetUi(c);
+  const unavailable = await c.evaluate(
+    `!compilerStatusOuter.classList.contains("servicesOK") && !compilerStatusOuter.classList.contains("servicesPARTIAL") && /UNAVAILABLE/.test(compilerStatus.innerText)`,
+  );
+  if (!unavailable) throw new Error("the services badge does not say UNAVAILABLE");
+};
+
+// Its tooltip, each of the four services Not initialized (they read Disconnected only for 0.1 s
+// between one compiler and the next), is the badge's own title, drawn as a replica.
+const unavailableTooltipShot = {
+  out: "IDE/Images/Services_Unavailable_Tooltip.png",
+  setup: "no-project",
+  async take({ c }) {
+    await unavailableBadgeReady(c);
+    return tooltipShotTake(c, "Services_Unavailable_Tooltip", "#compilerStatusOuter");
+  },
+};
+
+const unavailableShot = {
+  out: "IDE/Images/Services_Unavailable.png",
+  setup: "no-project",
+  async take({ c }) {
+    await unavailableBadgeReady(c);
+    say(c.shot.name, `  the badge's title: ${JSON.stringify(await c.evaluate("compilerStatusOuter.title"))}`);
+    return capture(c, "Services_Unavailable", snapOut(await rectOf(c, "#compilerStatusOuter")), {
+      away: () => parkMouse(c),
+    });
+  },
+};
+
+// The licence badge of a compiler started on no licence key (setup community).
+const communityShot = {
+  out: "IDE/Images/Licence_CommunityEdition.png",
+  setup: "community",
+  async take({ c }) {
+    await resetUi(c);
+    const text = await c.evaluate("compilerLicence.innerText");
+    if (text !== "COMMUNITY EDITION") throw new Error(`the licence badge says ${JSON.stringify(text)}`);
+    return capture(c, "Licence_CommunityEdition", snapOut(await rectOf(c, "#compilerLicenceOuter")), {
+      away: () => parkMouse(c),
+    });
+  },
+};
+
+// The services badge while a compiler starts: the IDE draws LIMITED from the moment the new
+// compiler's own connection is up until the page has connected the other three, one after
+// another (FS, then LSP, then the debugger, once the compiler has loaded the project), about
+// 0.6 s, too short to capture. A closed connection is no route to a longer one: the compiler
+// ends within 0.1 s of losing any of its four (and the browser takes a minute to close one),
+// and the IDE starts another, so LIMITED shows for as long again. So the compiler is
+// restarted with the toolbar's button, and the page's first call of the three, fs.connect, is
+// held until the picture is taken: the IDE stays where its start-up is, the compiler up and the
+// other three not yet connected, and draws LIMITED itself. The call is then made as the IDE
+// made it, the other two follow, and the badge goes back to OPERATIONAL.
+const HOLD_FS_CONNECT = `(() => {
+  if (window.tbFsConnect) return;
+  const own = Object.prototype.hasOwnProperty.call(fs, "connect");
+  const connect = fs.connect;
+  window.tbFsConnect = { own, connect, held: null };
+  fs.connect = function (...args) {
+    window.tbFsConnect.held = () => connect.apply(fs, args);
+  };
+})()`;
+const RELEASE_FS_CONNECT = `(() => {
+  const h = window.tbFsConnect;
+  if (!h) return false;
+  delete window.tbFsConnect;
+  if (h.own) fs.connect = h.connect;
+  else delete fs.connect;
+  if (h.held) h.held();
+  return !!h.held;
+})()`;
+const servicesAre = (c, cls) => c.evaluate(`compilerStatusOuter.classList.contains(${JSON.stringify(cls)})`);
+const limitedShot = {
+  out: "IDE/Images/Services_Limited.png",
+  setup: "community",
+  async take({ c }) {
+    await resetUi(c);
+    if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 60000, interval: 250 }))) {
+      throw new Error("the services badge never said OPERATIONAL before the restart");
+    }
+    await c.evaluate(HOLD_FS_CONNECT);
+    try {
+      await click(c, "restartIcon");
+      const held = await waitFor(
+        c,
+        () =>
+          c.evaluate(
+            `!!window.tbFsConnect?.held && compilerStatusOuter.classList.contains("servicesPARTIAL") && /LIMITED/.test(compilerStatus.innerText)`,
+          ),
+        { timeout: 60000, interval: 100 },
+      );
+      if (!held) throw new Error("the restarted compiler never asked for its FS connection, with the badge LIMITED");
+      // The restart's line names the project's folder, under the user's, and the console's
+      // Clear does nothing until the compiler is connected: the name is replaced in the
+      // console's text, in the page only, as nameUserAsUser does in a dialog. The picture
+      // is of the badge, which holds no name.
+      await nameUserAsUserIn(c, ".debugConsoleOuter");
+      say(c.shot.name, `  the badge's title: ${JSON.stringify(await c.evaluate("compilerStatusOuter.title"))}`);
+      return await capture(c, "Services_Limited", snapOut(await rectOf(c, "#compilerStatusOuter")), {
+        away: () => parkMouse(c),
+      });
+    } finally {
+      await c.evaluate(RELEASE_FS_CONNECT);
+      if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 60000, interval: 250 }))) {
+        complain(c.shot.name, "the services badge did not go back to OPERATIONAL after the restart");
+      }
+      await clearUserFromConsole(c);
+    }
+  },
+};
+
+// Resolves once every CSS background image in the top dialog is decoded: the VIP Gold logos
+// are backgrounds, which dialogStill's wait for <img> elements does not cover.
+const dialogBackgrounds = (c) =>
+  c.evaluate(
+    `(async () => {
+  const root = ${TOP_MODAL};
+  if (!root) return 0;
+  const urls = new Set();
+  for (const e of [root, ...root.querySelectorAll("*")]) {
+    for (const m of getComputedStyle(e).backgroundImage.matchAll(/url\\("?([^")]*)"?\\)/g)) urls.add(m[1]);
+  }
+  await Promise.all([...urls].map((u) => { const i = new Image(); i.src = u; return i.decode().catch(() => {}); }));
+  return urls.size;
+})()`,
+    { awaitPromise: true },
+  );
+
+// The splash: the IDE's own dialog, which its start-up shows with showSplashWindow and closes
+// 2.5 s later with the New / Open Project dialog in its place. The page is not yet at its
+// fixed size by then, so the tool calls showSplashWindow again, as start-up does, and holds the
+// 2.5 s close (the one timer of that length the call starts) until the picture is taken; the
+// close then runs as the IDE wrote it, and New / Open Project is cancelled. The sponsors'
+// logos come out scaled one of two ways (one of them about 8,800 pixels apart from the other),
+// by what has drawn them before in the same IDE: in the no-project setup by whether the
+// start-up splash was drawn before or after the page was set to 2x, and in the project setup
+// About's light picture changed with the splash taken before it; and the New / Open Project
+// dialog its close shows leaves the status bar's badges a pixel shorter in the pictures after
+// it. So it has a setup of its own, the demo open, whose IDE draws the logos nowhere else and
+// showed no splash at start-up.
+const splashShot = {
+  out: dialogOut("IDE", "Splash_Screen"),
+  setup: "splash",
+  async take({ c }) {
+    await resetUi(c);
+    const shown = await c.evaluate(`(() => {
+  if (!window.chrome?.webview || inProcessPortNumber !== 0) return false;
+  const real = window.setTimeout;
+  window.setTimeout = (fn, ms, ...rest) => {
+    if (ms === 2500 && !window.tbSplashClose) {
+      window.tbSplashClose = fn;
+      return 0;
+    }
+    return real(fn, ms, ...rest);
+  };
+  try {
+    showSplashWindow();
+  } finally {
+    window.setTimeout = real;
+  }
+  return typeof window.tbSplashClose === "function";
+})()`);
+    if (!shown) throw new Error("showSplashWindow showed no splash");
+    try {
+      if (!(await waitModal(c, "Loading"))) throw new Error("the splash did not open");
+      await dialogStill(c);
+      await dialogBackgrounds(c);
+      return await dialogShot(c, "Splash_Screen");
+    } finally {
+      await c.evaluate(`(() => { const close = window.tbSplashClose; delete window.tbSplashClose; close?.(); })()`);
+      if (await waitModal(c, "New / Open", { timeout: 10000 })) await closeModal(c, "Cancel");
+      await resetUi(c);
+    }
+  },
+};
+
+// ---------------------------------------------------------------- pictures of a running program
+
+// The windows of a running program (setup programs): test/shots/programs, ShotPrograms, a
+// Standard EXE whose command line names the form it shows. The project is opened in the
+// setup's IDE and built there; each picture starts the exe on a private desktop of its own,
+// as a person starts a program, takes its window with PrintWindow (captureWindow in
+// lib/tb-ide.mjs) and ends it. The program and the tool take turns through files in a folder
+// (TB_SHOT_SIGNALS): the program writes "shown" once its form is drawn, a form that shows
+// anchoring is made larger on "grow" and writes "grown", and "end" ends it. The ListView's
+// picture is of the program run from the IDE (F5) instead, since Immediate Memory
+// Invalidation is the debugger's: the fixture's Settings give the run its command line,
+// "listview", and turn the setting on.
+//
+// A program's window is drawn as the system draws it, not by the IDE, so it is taken once: the
+// shot is `once`, taken in the dark pass only. Its pixels are at the desktop's DPI (144 on a
+// display at 150%), not at the page pictures' 2x; the page shows it at its size at 96 DPI
+// (`scale`). The capture is cropped to the window's visible frame: the invisible resize
+// borders of a Windows 10 frame are left out. A picture of two windows (a form before and
+// after it is made larger) has them side by side, their tops level, with a transparent gap.
+// The Windows user name: captureWindow returns the texts of the window and its child windows,
+// which are searched for it; the text the program draws itself (labels, the ListView's rows,
+// a frame's caption) is the fixture's own, which reads nothing from the machine.
+
+const PROGRAMS = path.join(REPO_ROOT, "test", "shots", "programs");
+// The class of a twinBASIC form's window: ThunderRT6FormDC in an exe, ThunderFormDC run from
+// the IDE (whose own window is a ThunderForm).
+const FORM_CLASS = /^Thunder(RT6)?Form(DC)?$/;
+// The gap between two windows of one picture, in pixels at 96 DPI.
+const WINDOW_GAP = 16;
+
+async function startPrograms(run) {
+  run.step = "open";
+  run.signals = path.join(run.work, "signals");
+  mkdirSync(run.signals, { recursive: true });
+  say(run.name, `opening ${path.relative(REPO_ROOT, PROGRAMS)}`);
+  return run.lane.open(PROGRAMS, { env: { TB_SHOT_SIGNALS: path.join(run.signals, "ide") } });
+}
+
+async function preparePrograms(run) {
+  const { c } = run;
+  run.step = "shoot";
+  const built = await buildProject(c);
+  if (!built.ok || !/\.exe$/i.test(built.file ?? "")) {
+    throw new Error(`ShotPrograms did not build: ${built.message ?? built.file}`);
+  }
+  say(run.name, `built ${path.basename(built.file)}`);
+  return {
+    c,
+    exe: built.file,
+    signals: run.signals,
+    // the programs' own desktop, and the IDE's, where a program run from the IDE shows
+    desktop: `tbshoot-programs-${run.ports[0]}`,
+    ideDesktop: `tbbuild-${run.ports[0]}`,
+  };
+}
+
+// Waits for the program's signal `name` in the folder `dir`.
+async function signalled(dir, name, { timeout = 30000 } = {}) {
+  if (!(await waitFor(null, () => existsSync(path.join(dir, name)), { timeout, interval: 50 }))) {
+    throw new Error(`the program never wrote "${name}"`);
+  }
+}
+
+// The visible form window on `desktop`: the program `pid`'s, or the one titled `title`.
+async function formWindow(desktop, { pid = null, title = null, timeout = 15000 } = {}) {
+  const found = await waitFor(
+    null,
+    async () =>
+      (await desktopWindows(desktop)).find(
+        (w) =>
+          w.depth === 0 &&
+          w.visible &&
+          FORM_CLASS.test(w.class) &&
+          (pid === null || w.pid === pid) &&
+          (title === null || w.title === title),
+      ),
+    { timeout, interval: 200 },
+  );
+  if (!found) throw new Error(`no form window${title ? ` titled ${JSON.stringify(title)}` : ""} on ${desktop}`);
+  return found;
+}
+
+// The pixels of a picture, `box` [left, top, right, bottom] of them.
+function crop({ width, rgba }, [left, top, right, bottom]) {
+  const w = right - left;
+  const h = bottom - top;
+  const out = Buffer.alloc(w * h * 4);
+  for (let y = 0; y < h; y++)
+    out.set(rgba.subarray(((top + y) * width + left) * 4, ((top + y) * width + right) * 4), y * w * 4);
+  return { width: w, height: h, rgba: out };
+}
+
+// One capture of a window, as `captureWindow` writes it to `file`, once two in a row are equal
+// (a window being drawn can differ from one to the next); refused when a text of the window
+// holds the user name.
+async function stableWindow(desktop, hwnd, name, file, flags = 2) {
+  let last = null;
+  for (let i = 0; i < 8; i++) {
+    const info = await captureWindow(desktop, hwnd, file, { flags });
+    const named = info.texts.find((t) => t.toLowerCase().includes(USER.toLowerCase()));
+    if (named !== undefined)
+      throw new Error(`the window of ${name} shows the Windows user name in ${JSON.stringify(named)}`);
+    const png = readFileSync(file);
+    if (last?.equals(png)) return { info, picture: decodePng(png) };
+    last = png;
+    await sleep(250);
+  }
+  throw new Error(`the window of ${name} kept changing: no two captures in a row were equal`);
+}
+
+// A window's picture, cropped to its visible frame. A layered window (a form's Opacity and
+// TransparencyKey) is given the alpha the system blends it with what is under it: its alpha
+// everywhere, and none where its client area has the key colour. PW_RENDERFULLCONTENT draws
+// those pixels black, so they are read from a capture of the client area alone (flags 1),
+// which draws them in the key colour. The page is then what is under the window.
+async function windowPicture(desktop, hwnd, name, file) {
+  const { info, picture } = await stableWindow(desktop, hwnd, name, file);
+  if (info.layered) {
+    const [key, alpha, lwa] = info.layered;
+    const { picture: client } = await stableWindow(desktop, hwnd, name, file.replace(/\.png$/, "-client.png"), 1);
+    const [cl, ct, cr, cb] = info.client;
+    const k = [key & 255, (key >> 8) & 255, (key >> 16) & 255];
+    for (let y = 0; y < picture.height; y++) {
+      for (let x = 0; x < picture.width; x++) {
+        let a = lwa & 2 ? alpha : 255;
+        if (lwa & 1 && x >= cl && x < cr && y >= ct && y < cb) {
+          const j = ((y - ct) * client.width + (x - cl)) * 4;
+          if (client.rgba[j] === k[0] && client.rgba[j + 1] === k[1] && client.rgba[j + 2] === k[2]) a = 0;
+        }
+        picture.rgba[(y * picture.width + x) * 4 + 3] = a;
+      }
+    }
+  }
+  return { picture: crop(picture, info.frame), dpi: info.dpi };
+}
+
+// The pictures of windows side by side, their tops level, WINDOW_GAP apart on a transparent
+// ground, as a PNG to be shown at its size at 96 DPI.
+function besideEachOther(windows) {
+  const { dpi } = windows[0];
+  const gap = Math.round((WINDOW_GAP * dpi) / 96);
+  const width = windows.reduce((n, w) => n + w.picture.width, 0) + gap * (windows.length - 1);
+  const height = Math.max(...windows.map((w) => w.picture.height));
+  const rgba = Buffer.alloc(width * height * 4);
+  let x0 = 0;
+  for (const { picture: p } of windows) {
+    for (let y = 0; y < p.height; y++)
+      rgba.set(p.rgba.subarray(y * p.width * 4, (y + 1) * p.width * 4), (y * width + x0) * 4);
+    x0 += p.width + gap;
+  }
+  return { png: encodePng({ width, height, rgba }), scale: dpi / 96 };
+}
+
+// Starts the program with `scene` on the setup's desktop, waits for its form, runs `fn` with
+// its folder of signals and its window, and ends it: by "end", or by its process id when it
+// has not ended ten seconds later. A box it opened (an unhandled error opens one) fails the
+// picture.
+async function withProgram(ctx, scene, fn) {
+  const dir = path.join(ctx.signals, scene);
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  const run = await launchOnDesktop({
+    exe: ctx.exe.split("/").join("\\"),
+    arg: scene,
+    desktop: ctx.desktop,
+    env: { ...process.env, TB_SHOT_SIGNALS: dir },
+    dialogs: "close",
+  });
+  let result;
+  try {
+    await signalled(dir, "shown");
+    result = await fn(dir, await formWindow(ctx.desktop, { pid: run.pid }));
+  } finally {
+    writeFileSync(path.join(dir, "end"), "");
+    if (!(await Promise.race([run.exited.then(() => true), sleep(10000).then(() => false)]))) {
+      killTree(run.pid);
+      run.launcher.kill();
+    }
+  }
+  const { dialogs } = await run.finished;
+  if (dialogs.length) {
+    throw new Error(`the program opened a box: ${dialogs.map((d) => `${d.title}: ${d.text}`).join("; ")}`);
+  }
+  return result;
+}
+
+// A form of the program, `scene` its command line; with `grow`, the form and then the form
+// made larger, side by side.
+const programShot = (out, scene, { grow = false } = {}) => ({
+  out,
+  setup: "programs",
+  once: true,
+  take: (ctx) =>
+    withProgram(ctx, scene, async (dir, w) => {
+      const shown = [await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "before.png"))];
+      if (grow) {
+        writeFileSync(path.join(dir, "grow"), "");
+        await signalled(dir, "grown");
+        shown.push(await windowPicture(ctx.desktop, w.hwnd, scene, path.join(dir, "after.png")));
+      }
+      return besideEachOther(shown);
+    }),
+});
+
+// The ListView whose column headers were given a freed string, run from the IDE with Immediate
+// Memory Invalidation on: the IDE's run (F5) of the project, whose command line is "listview".
+// Its window is on the IDE's desktop, where the IDE's window has the input; the program draws
+// its frame as the active window's (MainModule's Activate).
+const listViewShot = {
+  out: "Features/Images/021f6cbf-acce-445d-ade7-3fcad0af4927.png",
+  setup: "programs",
+  once: true,
+  async take(ctx) {
+    const { c } = ctx;
+    const dir = path.join(ctx.signals, "ide");
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
+    await startRun(c);
+    try {
+      await signalled(dir, "shown", { timeout: 60000 });
+      const w = await formWindow(ctx.ideDesktop, { title: "ListView Demo" });
+      return besideEachOther([await windowPicture(ctx.ideDesktop, w.hwnd, "listview", path.join(dir, "window.png"))]);
+    } finally {
+      // the program ends itself on "end"; Stop when it has not ten seconds later
+      writeFileSync(path.join(dir, "end"), "");
+      if (!(await waitFor(c, async () => !(await codeExecuting(c)), { timeout: 10000, interval: 200 }))) {
+        await stopRun(c);
+      }
+    }
+  },
+};
+
+const ANCHORS = (name) => `Features/Images/${name}.png`;
+const programShots = [
+  programShot(ANCHORS("fddbffa9-2b71-47f5-b925-e67fc66b9e5c"), "anchors-all", { grow: true }),
+  programShot(ANCHORS("3fa1cf2b-0af5-44ae-ae6a-3c0662f51f57"), "anchors-top-left-bottom", { grow: true }),
+  programShot(ANCHORS("0aeb25f6-d864-4ebb-a9f5-bbd7b5d242e8"), "anchors-right-bottom", { grow: true }),
+  programShot(ANCHORS("4829696d-788b-40ee-bebd-5afa44477460"), "frame-all", { grow: true }),
+  programShot(ANCHORS("bc9f3756-a14b-4ee7-b819-6822497b640a"), "frame-no-bottom", { grow: true }),
+  programShot(ANCHORS("599a66ad-31d5-449f-bbf5-00963fe9aa2a"), "dock-bottom"),
+  programShot(ANCHORS("80185a8d-2952-415f-bc02-ec3ddea89568"), "dock-multi"),
+  programShot(ANCHORS("4ad9c774-b31d-47d3-9963-6d99ac4f37bb"), "multiframe"),
+  programShot(ANCHORS("5fc60b7b-4f54-445c-8504-451019b7ec55"), "checkmark"),
+  programShot(ANCHORS("85f25aa2-abc8-4d42-8510-078f8ee4a324"), "translucent"),
+  listViewShot,
+];
+
+// ---- codelens: test/shots/codelens, CodeLensDemo, two modules whose procedures the editor's
+// CodeLens bar runs (setup codelens): the editor above the DEBUG CONSOLE, in a layout set in
+// the page, the procedure run by a real click on its bar. The console's line times (the
+// page's clock for some lines, the compiler's for what the procedure prints) and the time the
+// run took change from run to run: they are set in the page once the real ones are shown, as
+// the feature map's memory figures are.
+
+const CODELENS = path.join(REPO_ROOT, "test", "shots", "codelens");
+const CODELENS_TIME = "16:41:58.204";
+const CODELENS_LAYOUT = {
+  type: "horizontal",
+  variableSize: true,
+  size: "0%",
+  content: [
+    { id: "TOOLBAR", variableSize: false, size: "fit-content" },
+    { id: "EDITOR", variableSize: true, size: "0%" },
+    { id: "DEBUG CONSOLE", variableSize: false, size: "20%" },
+  ],
+};
+
+async function startCodeLens(run) {
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, CODELENS)}`);
+  return run.lane.open(CODELENS);
+}
+
+// The text of the DEBUG CONSOLE.
+const consoleText = (c) => c.evaluate(`document.querySelector(".debugConsoleOuter")?.innerText ?? ""`);
+
+// The CodeLens bar of `file`, which runs `procedure` (as the bar names it), clicked, and the
+// editor down to the end of the file with the DEBUG CONSOLE below it, once the console holds
+// each of `lines` ([text, how many times], once by default) and the time taken. `size` is the page's; the picture is `width` wide from
+// the editor's left edge.
+function codeLensShot(out, file, procedure, lines, { size, width, taken }) {
+  return {
+    out,
+    setup: "codelens",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        return await atSize(c, size.width, size.height, async () => {
+          if (!(await c.evaluate(`restorePanelLayout(${JSON.stringify(JSON.stringify(CODELENS_LAYOUT))})`))) {
+            throw new Error("the page refused the layout");
+          }
+          await openFile(c, `/CodeLensDemo/Sources/${file}`);
+          const bar = await waitFor(
+            c,
+            () =>
+              c.evaluate(`(() => {
+  const w = [...document.querySelectorAll(".codeLensWidget")].find((e) => e.innerText.includes(${JSON.stringify(procedure)}));
+  const t = w && [...w.querySelectorAll("*")].reverse().find((e) => e.innerText?.includes(${JSON.stringify(procedure)}));
+  const r = (t ?? w)?.getBoundingClientRect();
+  return r && r.width ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`),
+            { timeout: 30000, interval: 200 },
+          );
+          if (!bar) throw new Error(`the editor shows no CodeLens bar for ${procedure}`);
+          const clear = await rectOf(c, '[title="Clear Debug Console"]');
+          if (!clear) throw new Error("the DEBUG CONSOLE has no Clear button");
+          await clickAt(c, clear.x + clear.width / 2, clear.y + clear.height / 2);
+          if (!(await waitFor(c, () => c.evaluate("debugConsoleContent.dataNodes.length === 0"), { timeout: 5000 }))) {
+            throw new Error("the DEBUG CONSOLE was not cleared");
+          }
+          await clickAt(c, bar.x + Math.min(bar.width / 2, 40), bar.y + bar.height / 2);
+          const done = await waitFor(
+            c,
+            async () => {
+              const text = await consoleText(c);
+              return /time taken: [\d.]+s/.test(text) && lines.every(([l, n = 1]) => text.split(l).length > n);
+            },
+            { timeout: 30000, interval: 200 },
+          );
+          if (!done) throw new Error(`the run of ${procedure} printed ${JSON.stringify(await consoleText(c))}`);
+          // each line's time and the time taken, once the real ones are shown
+          await fixConsoleTimes(c, taken);
+          await parkMouse(c);
+          const area = await c.evaluate(`(() => {
+  const m = document.querySelector(".monaco-editor .lines-content").closest(".monaco-editor").getBoundingClientRect();
+  const dc = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "DEBUG CONSOLE").closest(".toolWindowContainer").getBoundingClientRect();
+  return { x: m.x, y: m.y, width: ${width}, height: dc.bottom - m.y };
+})()`);
+          return capture(c, path.basename(out, ".png"), snapOut(area, size.width, size.height));
+        });
+      } finally {
+        await closeTabs(c, [], { discard: true });
+        await defaultLayout(c);
+      }
+    },
+  };
+}
+
+const codeLensShots = [
+  codeLensShot(
+    "Features/Images/b0724fe2-636d-47db-a8fc-531a585ddaf9.png",
+    "Vehicles.twin",
+    "Garage.DoHonk",
+    [["Executing 'CodeLensDemo.Garage.DoHonk'"], ["HONK!", 2]],
+    { size: { width: 680, height: 860 }, width: 530, taken: "0.0000534s" },
+  ),
+  codeLensShot(
+    "Features/Images/351d0147-cad3-4e16-89e5-0a9e43496740.png",
+    "MyModule.twin",
+    "MyModule.CheckScale",
+    [["Executing 'CodeLensDemo.MyModule.CheckScale'"], ["Scale factor: "]],
+    { size: { width: 800, height: 880 }, width: 640, taken: "0.0001564s" },
+  ),
+];
+
+// ---- package: the sample, a TWINPACK package, built (setup package), with its build path on a
+// folder of the tool's own at the root of the temp folder's drive, PACKAGE_ROOT: the DEBUG
+// CONSOLE names the file the build creates, and the lane's own build path is under the
+// user's profile. The folder is made by the IDE and removed at the end of the run, unless it
+// was there before it. The console's times are set in the page once the real ones are shown,
+// as the CodeLens pictures' are.
+
+const PACKAGE_ROOT = path.join(path.parse(tmpdir()).root, "tbshots");
+const PACKAGE_BUILD_PATH = path.join(PACKAGE_ROOT, "Build", "${ProjectName}_${Architecture}.${FileExtension}");
+
+// Sets every line time of the DEBUG CONSOLE to CODELENS_TIME, and the time a CodeLens run took
+// to `taken` when given, in the page.
+const fixConsoleTimes = (c, taken = null) =>
+  c.evaluate(`(() => {
+  const walk = document.createTreeWalker(document.querySelector(".debugConsoleOuter"), NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    n.nodeValue = n.nodeValue.replace(/^\\d\\d:\\d\\d:\\d\\d\\.\\d{3}$/, ${JSON.stringify(CODELENS_TIME)});
+    ${taken ? `n.nodeValue = n.nodeValue.replace(/time taken: [\\d.]+s/, ${JSON.stringify(`time taken: ${taken}`)});` : ""}
+  }
+})()`);
+
+// ---- fusion: test/shots/fusion, FusionDemo, a Standard EXE referencing the 32-bit Microsoft
+// Windows Common Controls 6.0 (MSCOMCTL.OCX, which has to be registered on the machine) with
+// its Fusion mode fusionAllTo32: the compiler builds the Fusion host EXE as it loads the
+// project. Its output path, the project's ActiveX Fusion Host EXE Output Path, is set in the
+// staged copy to PACKAGE_ROOT, as the package's build path is.
+
+const FUSION = path.join(REPO_ROOT, "test", "shots", "fusion");
+const FUSION_LINE = "[BUILD] successfully built Fusion server file";
+
+async function startFusion(run) {
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, FUSION)}, its Fusion host path ${PACKAGE_BUILD_PATH}`);
+  const src = path.join(run.work, "fusion-src");
+  cpSync(FUSION, src, { recursive: true });
+  const file = path.join(src, "Settings");
+  const settings = JSON.parse(readFileSync(file, "utf8"));
+  settings["project.fusionBuildPath"] = PACKAGE_BUILD_PATH;
+  writeFileSync(file, JSON.stringify(settings, null, "\t"));
+  return run.lane.open(src);
+}
+
+// The DEBUG CONSOLE as the project's load leaves it, the line that says the host was built its
+// only one in BETA 997, floated on its own. A line before it would name the lane's folder: the
+// user's name is replaced in the console's text in the page, as for the LIMITED picture's
+// restart line, and the panel is sized to show the last line, which the console scrolls to.
+const fusionShot = {
+  out: "Features/Images/569099635-bc9553a6-fcce-487d-a478-dbee557f33b1.png",
+  setup: "fusion",
+  async take({ c }) {
+    await resetUi(c);
+    try {
+      // the panel's text is read once it shows: a hidden one has none
+      const box = await floatPanel(c, "DEBUG CONSOLE", { width: 560, height: 116 });
+      const text = await waitFor(
+        c,
+        async () => {
+          const t = await consoleText(c);
+          return (t.includes(FUSION_LINE) || /failed to build Fusion/.test(t)) && t;
+        },
+        { timeout: 60000, interval: 200 },
+      );
+      if (!text?.includes(FUSION_LINE)) {
+        throw new Error(
+          `the compiler did not build the Fusion host: ${JSON.stringify(text?.match(/.*Fusion.*/)?.[0])}`,
+        );
+      }
+      await nameUserAsUserIn(c, ".debugConsoleOuter");
+      await fixConsoleTimes(c);
+      return await capture(c, "569099635", snapOut(box), { away: () => parkMouse(c) });
+    } finally {
+      await unfloatPanel(c, "DEBUG CONSOLE");
+    }
+  },
+};
+
+async function startPackage(run) {
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)}, its build path ${PACKAGE_BUILD_PATH}`);
+  return run.lane.open(stageSample(run), { buildPath: PACKAGE_BUILD_PATH });
+}
+
+const packageBuildShot = {
+  out: "Features/Packages/Images/8d74d820-9907-4e76-ac42-71d0233187f1.png",
+  setup: "package",
+  async take({ c }) {
+    await resetUi(c);
+    try {
+      const box = await floatPanel(c, "DEBUG CONSOLE", { width: 560, height: 160 });
+      const clear = await rectOf(c, '[title="Clear Debug Console"]');
+      if (!clear) throw new Error("the DEBUG CONSOLE has no Clear button");
+      await clickAt(c, clear.x + clear.width / 2, clear.y + clear.height / 2);
+      if (!(await waitFor(c, () => c.evaluate("debugConsoleContent.dataNodes.length === 0"), { timeout: 5000 }))) {
+        throw new Error("the DEBUG CONSOLE was not cleared");
+      }
+      const built = await buildProject(c);
+      if (!built.ok || !/\.twinpack$/i.test(built.file ?? "")) {
+        throw new Error(`the sample did not build a package: ${built.message ?? built.file}`);
+      }
+      await fixConsoleTimes(c);
+      return await capture(c, "8d74d820", snapOut(box), { away: () => parkMouse(c) });
+    } finally {
+      await unfloatPanel(c, "DEBUG CONSOLE");
+    }
+  },
+};
+
+// ---- package-server: the sample with test/shots/packages staged onto it (Greeting, a class to
+// type a package's name into), signed out, with the network to TWINSERV: Project Settings' list
+// of the packages TWINSERV serves, packages downloaded from it and embedded, and a package linked
+// and the two questions the IDE then asks. The list is TWINSERV's live list, so the rows a
+// picture shows change as packages are published. Every picture brings the project to its state
+// itself and puts it back: what it ticks it unticks again before it leaves the dialog (the IDE
+// deletes the project's copy of an embedded package at once), and the local packages folder is
+// emptied, so each starts from the project as staged. packagesClean says when one did not.
+// The IDE's APPDATA is a folder of the tool's own on PACKAGE_ROOT, PACKAGES_APPDATA: the
+// questions about a linked copy name its path, and the lane's own APPDATA is under the user's
+// profile. Publishing needs a publisher signed in (packagePublisherPublish opens the sign-in
+// form first), so the confirmation box of a publish is not reachable and has no shot.
+//
+// settings-linked is the sample with a Settings file that links OLEGuids and an APPDATA with no
+// copy of it, as a project opened on a machine that lacks the package; package-check is the
+// sample with an older OLEGuids embedded, as the IDE embedded it when that was TWINSERV's newest:
+// the tool downloads it from TWINSERV, by the address the IDE downloads from, and writes the
+// reference the IDE writes for a package from TWINSERV. The IDE downloads only the newest build,
+// and a package imported from a file has no publisher, which the check needs.
+
+const PACKAGES = path.join(REPO_ROOT, "test", "shots", "packages");
+const PACKAGES_APPDATA = path.join(PACKAGE_ROOT, "AppData", "Roaming");
+const LOCAL_PACKAGES = path.join(PACKAGES_APPDATA, "twinBASIC", "packages");
+const TWINSERV = "https://www.everythingaccess.com/twinbasic/packages";
+// The package of the linked pictures and of the check, and the older build the check finds.
+const OLEGUIDS = "OLE Guid and interface definitions";
+const OLEGUIDS_ID = "{7E880520-9F56-45E1-9772-DF9FFE246715}";
+const OUTDATED_VERSION = "1.0.0.9";
+// The two packages of the import pictures, as the list names them.
+const FORMATTER = "CSharpishStringFormater";
+const FILE_PROPS = "FilePropertyExplorer";
+
+async function startPackageServer(run) {
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)} with ${path.relative(REPO_ROOT, PACKAGES)}`);
+  rmSync(PACKAGES_APPDATA, { recursive: true, force: true });
+  mkdirSync(PACKAGES_APPDATA, { recursive: true });
+  const src = stageSample(run);
+  cpSync(PACKAGES, src, { recursive: true });
+  return run.lane.open(src, { env: { APPDATA: PACKAGES_APPDATA } });
+}
+
+// The project's packages folder as staged, which every picture leaves as it found it.
+const projectPackages = (c) =>
+  c.evaluate(
+    `Object.keys(fs.tree.resolvePath("twinbasic:${SAMPLE_FILE("Packages")}")?.entries ?? {}).sort().join(",")`,
+  );
+
+async function preparePackageServer(run) {
+  const ctx = await prepareSample(run);
+  return { ...ctx, lane: run.lane, packages: await projectPackages(run.c) };
+}
+
+// Throws when an earlier picture left a package in the project (its folder, or a reference that
+// was applied), and empties the local packages folder (the IDE writes into it, and does not make it).
+async function packagesClean({ c, packages }) {
+  if (existsSync(LOCAL_PACKAGES)) {
+    for (const f of readdirSync(LOCAL_PACKAGES)) rmSync(path.join(LOCAL_PACKAGES, f), { recursive: true, force: true });
+  }
+  const now = await projectPackages(c);
+  const refs = await c.evaluate(
+    `new Promise((done) => getProjectSettings((s) => done((s["project.references"] ?? []).filter((r) => !r.isCompilerPackage && String(r.path32).startsWith("/Packages/")).map((r) => r.name))))`,
+    { awaitPromise: true },
+  );
+  if (now !== packages || refs.length) {
+    throw new Error(
+      `the project still holds a package from an earlier picture: its Packages folder holds ${now}, where ${packages} was staged${refs.length ? `, and it references ${refs.join(", ")}` : ""}`,
+    );
+  }
+}
+
+// Project > References, Cancel to close it.
+const inReferences = (c, run) =>
+  inDialog(c, { command: LIBRARY_REFERENCES, title: "Project Settings", close: "Cancel", still: 500 }, run);
+
+const PE_SETTINGS = { css: '.panelHeaderIcon[title="Project Settings"]' };
+// The IDE's completion list, its own box rather than Monaco's suggest widget.
+const COMPLETIONS = ".debugConsoleEntryIntellisenseBox";
+const REFERENCES_TAB = (name) => ({ css: ".referencesListChoiceOption", text: name });
+// The list of the tab shown: the dialog holds one for each tab, the others hidden, and the
+// list of Available COM References has the class of Available Packages' too.
+const SHOWN_LIST = ".referencesListNewOuter:not(.referenceListHidden)";
+const AVAILABLE_ROW = `${SHOWN_LIST} .referencesListNewAvailable .referencesListRow`;
+const ENABLED_ROW = `${SHOWN_LIST} .referencesListNew .referencesListRow`;
+const VERSION_HEADER = `${SHOWN_LIST} .referencesListRowHeader .referencesListColVersion`;
+const IMPORT_BUTTON = { css: ".loadFromFile" };
+const LOGIN_TIP = { css: ".warningNotLoggedIn" };
+// The rows of a package in the list of Available Packages, by the start of the name the list
+// shows, and the Enabled Libraries row of a reference, by a part of its name.
+const AVAILABLE_ROW_OF = (name) => `${AVAILABLE_ROW}:has(.referencesListColName2[title^="${name}"])`;
+const ENABLED_ROW_OF = (name) => `${ENABLED_ROW}:has(.referencesListColName[title*="${name}"])`;
+
+// The tab of the dialog `name`, a real click, once it shows; for Available Packages, once the list
+// holds TWINSERV's packages.
+async function referencesTab(c, name) {
+  await clickInModal(c, name);
+  if (name === "Available Packages") {
+    const listed = await waitFor(
+      c,
+      () => c.evaluate(`!!document.querySelector(${JSON.stringify(AVAILABLE_ROW_OF(OLEGUIDS))})`),
+      { timeout: 30000, interval: 200 },
+    );
+    if (!listed) throw new Error("the Available Packages list never showed TWINSERV's packages");
+  }
+  await dialogStill(c, { ms: 500 });
+}
+
+// The visible box of the references list (the tab shown).
+const referencesList = (c) => shownRect(c, SHOWN_LIST);
+
+// The tick of each row of package `name` in Available Packages: `enabled`, `embedded`, each
+// tickIcon2, tickIcon2empty or tickIconInProgress.
+const packageRows = (c, name) =>
+  c.evaluate(`[...document.querySelectorAll(${JSON.stringify(AVAILABLE_ROW_OF(name))})].map((r) => {
+  const t = (e) => e?.innerHTML.match(/tickIcon\\w*/)?.[0] ?? null;
+  return { enabled: t(r.querySelector(".referencesListColEnabled")), embedded: t(r.querySelector(".referencesListIsLocalPackage")) };
+})`);
+
+// A real click on `cell` (a class) of the first row of package `name` whose tick is `ticked`,
+// the list scrolled first so that the row is `below` pixels under its header.
+async function clickPackage(c, name, cell, { ticked, below = 56 }) {
+  const row = `[...document.querySelectorAll(${JSON.stringify(AVAILABLE_ROW_OF(name))})].find((r) => r.querySelector(${JSON.stringify(`.referencesListColEnabled ${ticked ? ".tickIcon2" : ".tickIcon2empty"}`)}))`;
+  const found = await c.evaluate(`(() => {
+  const r = ${row};
+  if (!r) return false;
+  const list = r.closest(".referencesListNewOuter");
+  const head = list.querySelector(".referencesListRowHeader").getBoundingClientRect();
+  list.scrollTop += r.getBoundingClientRect().top - head.bottom - ${below};
+  return true;
+})()`);
+  if (!found) throw new Error(`Available Packages has no ${ticked ? "ticked" : "unticked"} row of ${name}`);
+  await frames(c);
+  const p = await c.evaluate(`(() => {
+  const b = ${row}.querySelector(${JSON.stringify(cell)}).getBoundingClientRect();
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+})()`);
+  await clickAt(c, p.x, p.y);
+}
+
+// Ticks package `name` in Available Packages and waits for the IDE to download and embed it.
+async function tickPackage(c, name) {
+  await clickPackage(c, name, ".referencesListColEnabled", { ticked: false });
+  const embedded = await waitFor(
+    c,
+    async () => (await packageRows(c, name)).some((r) => r.enabled === "tickIcon2" && r.embedded === "tickIcon2"),
+    { timeout: 60000, interval: 200 },
+  );
+  if (!embedded)
+    throw new Error(`${name} was not downloaded and embedded: ${JSON.stringify(await packageRows(c, name))}`);
+  await dialogStill(c, { ms: 500 });
+}
+
+// Unticks package `name` in Available Packages, once no row of it is ticked; the IDE deletes the
+// project's copy of it at once.
+async function untickPackage(c, name) {
+  await clickPackage(c, name, ".referencesListColEnabled", { ticked: true });
+  const gone = await waitFor(c, async () => (await packageRows(c, name)).every((r) => r.enabled === "tickIcon2empty"), {
+    timeout: 30000,
+    interval: 200,
+  });
+  if (!gone) throw new Error(`${name} stayed ticked`);
+  await dialogStill(c, { ms: 500 });
+}
+
+// Unticks a reference in Enabled Libraries, a real click, once its row has gone.
+async function untickReference(c, name) {
+  const t = await shownRect(c, `${ENABLED_ROW_OF(name)} .referencesListColEnabled`);
+  if (!t) throw new Error(`Enabled Libraries has no row of ${name}`);
+  await clickAt(c, t.x + t.width / 2, t.y + t.height / 2);
+  if (!(await waitFor(c, async () => !(await shownRect(c, ENABLED_ROW_OF(name))), { timeout: 30000, interval: 200 }))) {
+    throw new Error(`${name} stayed in Enabled Libraries`);
+  }
+  await dialogStill(c, { ms: 500 });
+}
+
+// Apply Changes, a real click; waits for the compiler the IDE restarts to compile the project.
+async function applyChanges({ c, lane }) {
+  const before = await compilerPid(c);
+  // The IDE's own Clear, as its button does (the dialog covers the button): the crash count
+  // checkCompile reads is the DEBUG CONSOLE's, so a crash an earlier Apply met is not counted
+  // against this one. One does now and then: an ACCESS_VIOLATION in the compiler, BETA 1005.
+  await c.evaluate("clearDebugConsole()");
+  await clickInModal(c, "Apply Changes");
+  await awaitNewCompiler(c, before, { why: "Apply Changes" });
+  try {
+    lane.checkCompile(await waitForCompile(c, { project: lane.project, timeout: COMPILE_TIMEOUT }), "the sample");
+  } catch (e) {
+    // the DEBUG CONSOLE's lines about a crash, which the message only counts
+    const lines = await c.evaluate(
+      `(debugConsoleContent.dataNodes ?? []).filter((l) => /NATIVE EXCEPTION|ParsingFileStart|crash/i.test(l)).map((l) => l.replace(/<[^>]*>/g, " ").slice(0, 300))`,
+    );
+    throw new Error(`${e.message}${lines.length ? `\n${lines.join("\n")}` : ""}`);
+  }
+  await parkMouse(c);
+}
+
+// Waits for the top dialog to be the IDE's question that starts with `text`, and to be still.
+async function question(c, text) {
+  const asked = await waitFor(
+    c,
+    () => c.evaluate(`(${TOP_MODAL})?.innerText.includes(${JSON.stringify(text)}) ?? false`),
+    { timeout: 30000, interval: 200 },
+  );
+  if (!asked) throw new Error(`the IDE did not ask "${text}"`);
+  await dialogStill(c, { ms: 500 });
+}
+
+// OLEGuids downloaded, embedded and then linked: the IDE writes the local copy into the packages
+// folder and drops the project's own. Then unticked, which leaves the local copy, and ticked
+// again: the IDE asks whether to use the local copy or download it again.
+async function linkedThenTicked(c) {
+  await tickPackage(c, OLEGUIDS);
+  await clickPackage(c, OLEGUIDS, ".referencesListIsLocalPackage", { ticked: true });
+  const linked = await waitFor(
+    c,
+    async () =>
+      existsSync(path.join(LOCAL_PACKAGES, "OLEGuids.twinpack")) &&
+      (await packageRows(c, OLEGUIDS)).some((r) => r.enabled === "tickIcon2" && r.embedded === "tickIcon2empty"),
+    { timeout: 30000, interval: 200 },
+  );
+  if (!linked) throw new Error("OLEGuids was not linked: the packages folder holds no OLEGuids.twinpack");
+  await untickPackage(c, OLEGUIDS);
+  await clickPackage(c, OLEGUIDS, ".referencesListColEnabled", { ticked: false });
+  await question(c, "Local Package exists");
+}
+
+const PACKAGE_IMAGE = (name) => `Features/Packages/Images/${name}.png`;
+
+// A settingsShot taken once the compiler has said which references it could not load: the
+// dialog marks them as it opens, and the compiler says so a little after the project has
+// compiled.
+function missingLinkedShot(out, options) {
+  const shot = settingsShot(out, options);
+  return {
+    ...shot,
+    async take(ctx) {
+      const said = await waitFor(ctx.c, () => ctx.c.evaluate("problemReferences.length > 0"), {
+        timeout: 30000,
+        interval: 200,
+      });
+      if (!said) throw new Error("the compiler reported no reference it could not load");
+      return shot.take(ctx);
+    },
+  };
+}
+// A rectangle from the left and top of `a` to the right and bottom of `b`.
+const span = (a, b) => ({ x: a.x, y: a.y, width: b.x + b.width - a.x, height: b.y + b.height - a.y });
+
+// Project Settings opened by the Project Explorer's gear, a real click, scrolled to Library
+// References, on Available Packages; the gear, the heading and the tab ringed and numbered. The
+// dialog is shown whole, from its title, with the gear beside it, which a smaller page does
+// not make narrower: the dialog then covers the gear.
+async function takeE749(c) {
+  const gear = await rectOf(c, PE_SETTINGS.css);
+  if (!gear) throw new Error("the Project Explorer has no Project Settings button");
+  await clickAt(c, gear.x + gear.width / 2, gear.y + gear.height / 2);
+  if (!(await waitModal(c, "Project Settings"))) throw new Error("Project Settings did not open");
+  try {
+    await dialogStill(c, { ms: 500 });
+    await scrollToSetting(c, "project.references", 10);
+    await referencesTab(c, "Available Packages");
+    // The build path the lane stages the project with names the user's folder, and so do
+    // libraries registered under it, in the list of Available COM References that the whole
+    // dialog fills (hidden, its text still in the page's): once that list is filled.
+    await waitFor(
+      c,
+      () =>
+        c.evaluate(
+          `[...document.querySelectorAll(".referencesListNewOuter.referenceListHidden .referencesListNewAvailable")].some((l) => l.children.length > 3)`,
+        ),
+      { timeout: 20000, interval: 250 },
+    );
+    await nameUserAsUser(c);
+    const dialog = (await modals(c)).pop();
+    const list = await referencesList(c);
+    const x = dialog.x - 10;
+    const y = dialog.y - 10;
+    const area = { x, y, width: gear.x + gear.width + 30 - x, height: list.y + list.height + 12 - y };
+    const heading = { css: settingPart("project.references", "HEADER"), own: true };
+    const tab = REFERENCES_TAB("Available Packages");
+    const png = await annotatedClip(c, "e749e10f", area, [
+      { type: "ring", on: PE_SETTINGS },
+      { type: "badge", n: 1, on: PE_SETTINGS, side: "below" },
+      { type: "ring", on: heading },
+      { type: "badge", n: 2, on: heading, side: "below" },
+      { type: "ring", on: tab },
+      { type: "badge", n: 3, on: tab, side: "right" },
+    ]);
+    return png;
+  } finally {
+    await closeModal(c, "Cancel");
+  }
+}
+
+const packageServerShots = [
+  {
+    // the dialog opened by the Project Explorer's gear, on Available Packages: the gear, the
+    // Library References heading and the tab numbered in the order they are used
+    out: PACKAGE_IMAGE("e749e10f-e361-4f15-a977-d756fcb3b5dd"),
+    setup: "package-server",
+    async take(ctx) {
+      const { c } = ctx;
+      await packagesClean(ctx);
+      await resetUi(c);
+      return takeE749(c);
+    },
+  },
+  {
+    // the foot of the list, the Import from file... button numbered 4 and the TIP to sign in
+    out: PACKAGE_IMAGE("e35d5955-9e70-4d6e-abd7-748558da75ba"),
+    setup: "package-server",
+    async take(ctx) {
+      const { c } = ctx;
+      await packagesClean(ctx);
+      return inReferences(c, async () => {
+        await referencesTab(c, "Available Packages");
+        await c.evaluate(
+          `(() => { const l = document.querySelector(${JSON.stringify(SHOWN_LIST)}); l.scrollTop = l.scrollHeight; })()`,
+        );
+        await frames(c);
+        const list = await referencesList(c);
+        const button = await shownRect(c, IMPORT_BUTTON.css);
+        const tip = await shownRect(c, LOGIN_TIP.css);
+        const area = {
+          x: list.x - 6,
+          y: list.y + list.height - 74,
+          width: list.width + 12,
+          height: Math.max(button.y + button.height, tip.y + tip.height) + 14 - (list.y + list.height - 74),
+        };
+        return annotatedClip(c, "e35d5955", area, [
+          { type: "ring", on: IMPORT_BUTTON },
+          { type: "badge", n: 4, on: IMPORT_BUTTON, side: "right" },
+        ]);
+      });
+    },
+  },
+  {
+    // the TIP to sign in, below the list's lower right corner
+    out: PACKAGE_IMAGE("0fa1272d-41d6-4d0f-b19c-f47f24a47c4d"),
+    setup: "package-server",
+    async take(ctx) {
+      const { c } = ctx;
+      await packagesClean(ctx);
+      return inReferences(c, async () => {
+        await referencesTab(c, "Available Packages");
+        const list = await referencesList(c);
+        const tip = await shownRect(c, LOGIN_TIP.css);
+        const x = tip.x - 280;
+        const y = list.y + list.height - 80;
+        return annotatedClip(c, "0fa1272d", {
+          x,
+          y,
+          width: list.x + list.width + 6 - x,
+          height: tip.y + tip.height + 14 - y,
+        });
+      });
+    },
+  },
+  {
+    // Project > References on Available Packages, the built-in packages first, an arrow at the tab
+    out: "Features/Images/5951dab6-738e-4b63-83c4-3331ec6d36b9.png",
+    setup: "package-server",
+    async take(ctx) {
+      const { c } = ctx;
+      await packagesClean(ctx);
+      return inReferences(c, async () => {
+        await referencesTab(c, "Available Packages");
+        const heading = await shownRect(c, settingPart("project.references", "HEADER"));
+        const list = await referencesList(c);
+        const tip = await shownRect(c, LOGIN_TIP.css);
+        const x = heading.x + heading.width - 130;
+        const y = heading.y - 12;
+        const tab = REFERENCES_TAB("Available Packages");
+        return annotatedClip(
+          c,
+          "5951dab6",
+          { x, y, width: list.x + list.width + 12 - x, height: tip.y + tip.height + 14 - y },
+          [{ type: "arrow", from: { of: tab, at: "right", dx: 110 }, to: tab }],
+        );
+      });
+    },
+  },
+  {
+    // a package ticked for the first time on this machine: Embedded, the column and the row's tick
+    out: PACKAGE_IMAGE("1f7e3574-f3c8-4aee-972a-ff161c0e51ac"),
+    setup: "package-server",
+    async take(ctx) {
+      const { c } = ctx;
+      await packagesClean(ctx);
+      return inReferences(c, async () => {
+        await referencesTab(c, "Available Packages");
+        await tickPackage(c, OLEGUIDS);
+        try {
+          const tabs = await shownRect(c, ".referencesListChoice");
+          const list = await referencesList(c);
+          const row = await shownRect(c, AVAILABLE_ROW_OF(OLEGUIDS));
+          const symbol = await shownRect(c, `${AVAILABLE_ROW_OF(OLEGUIDS)} .referencesListColSymbol`);
+          const header = { css: ".referencesListRowHeader .referencesListColLocation", text: "Embedded" };
+          const tick = { css: `${AVAILABLE_ROW_OF(OLEGUIDS)} .referencesListIsLocalPackage .tickIcon2` };
+          const area = span(
+            { x: list.x - 4, y: tabs.y - 8 },
+            { x: symbol.x + symbol.width, y: row.y, width: 0, height: row.height * 2 + 4 },
+          );
+          return await annotatedClip(c, "1f7e3574", area, [
+            { type: "arrow", from: { of: header, at: "left", dx: -150 }, to: header },
+            { type: "arrow", from: { of: header, at: "bottom", dy: 2 }, to: tick },
+          ]);
+        } finally {
+          await untickPackage(c, OLEGUIDS);
+        }
+      });
+    },
+  },
+  {
+    // two packages downloaded and embedded: Enabled Libraries lists them
+    out: PACKAGE_IMAGE("f2fd8374-fe46-40b0-8c66-2443df4dc5b3"),
+    setup: "package-server",
+    async take(ctx) {
+      const { c } = ctx;
+      await packagesClean(ctx);
+      return inReferences(c, async () => {
+        await referencesTab(c, "Available Packages");
+        await tickPackage(c, FORMATTER);
+        await tickPackage(c, FILE_PROPS);
+        try {
+          await referencesTab(c, "Enabled Libraries");
+          const heading = await shownRect(c, settingPart("project.references", "HEADER"));
+          const last = await shownRect(c, ENABLED_ROW_OF(FILE_PROPS));
+          const version = await shownRect(c, VERSION_HEADER);
+          const x = heading.x + heading.width - 130;
+          const y = heading.y - 12;
+          return await annotatedClip(c, "f2fd8374", {
+            x,
+            y,
+            width: version.x + version.width + 4 - x,
+            height: last.y + last.height + 14 - y,
+          });
+        } finally {
+          await untickReference(c, FORMATTER);
+          await untickReference(c, FILE_PROPS);
+        }
+      });
+    },
+  },
+  {
+    // CSharpishStringFormater referenced and applied, and "fmt." typed in a method: the
+    // completion list offers the package's members
+    out: PACKAGE_IMAGE("e2a65dfe-4a9d-4524-b6d6-7a6d1bc35cdb"),
+    setup: "package-server",
+    async take(ctx) {
+      const { c } = ctx;
+      await packagesClean(ctx);
+      await inReferences(c, async () => {
+        await referencesTab(c, "Available Packages");
+        await tickPackage(c, FORMATTER);
+        await applyChanges(ctx);
+      });
+      let was = null;
+      try {
+        await openFile(c, SAMPLE_FILE("Sources/Greeting.twin"), { line: 4, column: 1 });
+        was = { text: await editorText(c), counts: await diagCounts(c) };
+        await setCursor(c, 4, 1);
+        await typeText(c, "        fmt");
+        // The list shows each member's type as "..." until the compiler has given it, which it
+        // now and then never does for a list: the dot is typed again then.
+        const listed = (resolved) =>
+          c.evaluate(`(() => {
+  const b = [...document.querySelectorAll(${JSON.stringify(COMPLETIONS)})].find((b) => b.getBoundingClientRect().width);
+  const rows = b ? [...b.querySelectorAll(".listitem")] : [];
+  if (!rows.some((r) => r.innerText.includes("AsciiEscapeBase"))) return false;
+  return !${resolved} || rows.every((r) => [...(r.querySelector(".isenseType")?.childNodes ?? [])].every((n) => n.nodeType !== 3 || n.nodeValue !== "..."));
+})()`);
+        // A list opened by the name typed before the dot is placed where that name starts, and
+        // the dot's list then opens where that one was: closed first, the dot's list opens at
+        // the dot, the same in every run.
+        const boxShown = () =>
+          c.evaluate(
+            `[...document.querySelectorAll(${JSON.stringify(COMPLETIONS)})].some((b) => b.getBoundingClientRect().width)`,
+          );
+        const noList = async () => {
+          await sleep(400);
+          for (let k = 0; k < 3 && (await boxShown()); k++) {
+            await pressKey(c, "Escape");
+            await waitFor(c, async () => !(await boxShown()), { timeout: 2000, interval: 100 });
+          }
+        };
+        let shown = false;
+        for (let i = 0; i < 3 && !shown; i++) {
+          if (i) {
+            await pressKey(c, "Escape");
+            await pressKey(c, "Backspace");
+          }
+          await noList();
+          await typeText(c, ".");
+          if (!(await waitFor(c, () => listed(false), { timeout: 30000, interval: 200 }))) {
+            throw new Error("typing fmt. opened no completion list of the package's members");
+          }
+          shown = await waitFor(c, () => listed(true), { timeout: 10000, interval: 200 });
+        }
+        if (!shown) throw new Error("the completion list never showed its members' types");
+        await sleep(500);
+        const area = await c.evaluate(`(() => {
+  const ed = editor.getDomNode().getBoundingClientRect();
+  const left = ed.x + editor.getLayoutInfo().contentLeft;
+  const top = ed.y + editor.getScrolledVisiblePosition({ lineNumber: 3, column: 1 }).top;
+  const w = [...document.querySelectorAll(${JSON.stringify(COMPLETIONS)})].find((b) => b.getBoundingClientRect().width).getBoundingClientRect();
+  return { x: left - 6, y: top - 6, width: w.right + 8 - (left - 6), height: w.bottom + 8 - (top - 6) };
+})()`);
+        return await capture(c, "e2a65dfe", snapOut(area));
+      } finally {
+        await pressKey(c, "Escape");
+        if (was) {
+          await c.evaluate(`editor.getModel().setValue(${JSON.stringify(was.text)})`);
+          await waitCounts(c, was.counts);
+        }
+        await closeTabs(c, [], { discard: true });
+        await inReferences(c, async () => {
+          await untickReference(c, FORMATTER);
+          await applyChanges(ctx);
+        });
+      }
+    },
+  },
+  {
+    // OLEGuids ticked again once a linked copy is on the machine: use it, or download it again
+    out: PACKAGE_IMAGE("f48a7254-e5c9-48c5-8099-725c0951ae5f"),
+    setup: "package-server",
+    async take(ctx) {
+      const { c } = ctx;
+      await packagesClean(ctx);
+      return inReferences(c, async () => {
+        await referencesTab(c, "Available Packages");
+        await linkedThenTicked(c);
+        try {
+          const box = (await modals(c)).pop();
+          const list = await referencesList(c);
+          const tabs = await shownRect(c, ".referencesListChoice");
+          // from the question's left edge: the row being ticked shows a spinning icon in the
+          // list's tick column, an animated picture that no two captures hold alike
+          const x = box.x - 2;
+          const y = tabs.y - 8;
+          return await annotatedClip(c, "f48a7254", {
+            x,
+            y,
+            width: box.x + box.width + 16 - x,
+            height: Math.max(list.y + list.height, box.y + box.height) + 4 - y,
+          });
+        } finally {
+          await closeModal(c, "Cancel");
+        }
+      });
+    },
+  },
+  {
+    // the same package downloaded again and its Embedded unticked: the IDE asks before it
+    // replaces the linked copy
+    out: PACKAGE_IMAGE("8cf72685-1188-4607-a55a-df16d4280474"),
+    setup: "package-server",
+    async take(ctx) {
+      const { c } = ctx;
+      await packagesClean(ctx);
+      return inReferences(c, async () => {
+        await referencesTab(c, "Available Packages");
+        await linkedThenTicked(c);
+        await closeModal(c, "Download it from TWINSERV (EMBED)");
+        const embedded = await waitFor(
+          c,
+          async () =>
+            (await packageRows(c, OLEGUIDS)).some((r) => r.enabled === "tickIcon2" && r.embedded === "tickIcon2"),
+          { timeout: 60000, interval: 200 },
+        );
+        if (!embedded) throw new Error("OLEGuids was not downloaded again");
+        await dialogStill(c, { ms: 500 });
+        await clickPackage(c, OLEGUIDS, ".referencesListIsLocalPackage", { ticked: true });
+        await question(c, "Local Package already exists");
+        try {
+          return await dialogShot(c, "8cf72685");
+        } finally {
+          await closeModal(c, "Cancel");
+          await untickPackage(c, OLEGUIDS);
+        }
+      });
+    },
+  },
+  {
+    // an embedded package in Enabled Libraries, its tick ringed: unticking it deletes the
+    // project's copy at once
+    out: PACKAGE_IMAGE("a1331a0e-3ba3-45cf-8dc3-2e24f0fa1fe6"),
+    setup: "package-server",
+    async take(ctx) {
+      const { c } = ctx;
+      await packagesClean(ctx);
+      return inReferences(c, async () => {
+        await referencesTab(c, "Available Packages");
+        await tickPackage(c, OLEGUIDS);
+        try {
+          await referencesTab(c, "Enabled Libraries");
+          const tabs = await shownRect(c, ".referencesListChoice");
+          const list = await referencesList(c);
+          const row = await shownRect(c, ENABLED_ROW_OF(OLEGUIDS));
+          const version = await shownRect(c, VERSION_HEADER);
+          return await annotatedClip(
+            c,
+            "a1331a0e",
+            span(
+              { x: list.x - 4, y: tabs.y - 8 },
+              { x: version.x + version.width + 4, y: row.y, width: 0, height: row.height + 30 },
+            ),
+            [{ type: "ring", on: { css: `${ENABLED_ROW_OF(OLEGUIDS)} .referencesListColEnabled .tickIcon2` } }],
+          );
+        } finally {
+          await untickReference(c, OLEGUIDS);
+        }
+      });
+    },
+  },
+  // a project that links OLEGuids, opened where there is no copy of it: the reference's error
+  missingLinkedShot(PACKAGE_IMAGE("f66fb240-dcb7-46ee-896d-78c3789a7876"), {
+    setup: "settings-linked",
+    command: LIBRARY_REFERENCES,
+    clipOf: async (_m, c) => {
+      const error = await waitFor(c, () => shownRect(c, `${ENABLED_ROW_OF(OLEGUIDS)} .referencesListError`), {
+        timeout: 10000,
+        interval: 200,
+      });
+      if (!error) throw new Error("the linked package's row shows no error");
+      await dialogStill(c, { ms: 500 });
+      const row = await shownRect(c, ENABLED_ROW_OF(OLEGUIDS));
+      return { x: row.x, y: row.y, width: error.x + error.width + 12 - row.x, height: row.height };
+    },
+  }),
+  {
+    // the DEBUG CONSOLE as the project's load leaves it: the check of its packages against TWINSERV
+    out: PACKAGE_IMAGE("db4636f6-d988-4e31-94a2-c4c170418e81"),
+    setup: "package-check",
+    async take({ c }) {
+      await resetUi(c);
+      try {
+        const box = await floatPanel(c, "DEBUG CONSOLE", { width: 640, height: 72 });
+        const line = `[PACKAGE CHECK] OLEGuids ${OUTDATED_VERSION}`;
+        const text = await waitFor(
+          c,
+          async () => {
+            const t = await consoleText(c);
+            return /is available/.test(t) && t;
+          },
+          { timeout: 60000, interval: 200 },
+        );
+        if (!text?.includes(line)) throw new Error(`the DEBUG CONSOLE holds no "${line}": ${JSON.stringify(text)}`);
+        await fixConsoleTimes(c);
+        return await capture(c, "db4636f6", snapOut(box), { away: () => parkMouse(c) });
+      } finally {
+        await unfloatPanel(c, "DEBUG CONSOLE");
+      }
+    },
+  },
+];
+
+// The sample with OLEGuids OUTDATED_VERSION embedded: downloaded from TWINSERV, unpacked into the
+// project's Packages folder and referenced as the IDE references a package from TWINSERV.
+async function startPackageCheck(run) {
+  run.step = "open";
+  const list = await fetch(`${TWINSERV}/query?auth=`, { signal: AbortSignal.timeout(30000) });
+  if (!list.ok) throw new Error(`TWINSERV's list of packages answered ${list.status}`);
+  const pkg = (await list.json()).public.find((p) => p.projectId === OLEGUIDS_ID);
+  const v = pkg?.versions.find(
+    (x) => [x.versionMajor, x.versionMinor, x.versionBuild, x.versionRevision].join(".") === OUTDATED_VERSION,
+  );
+  if (!v) throw new Error(`TWINSERV no longer serves OLEGuids ${OUTDATED_VERSION}: keep the old picture`);
+  const query = ["Major", "Minor", "Revision", "Build"].map((k) => `&version${k}=${v[`version${k}`]}`).join("");
+  const res = await fetch(`${TWINSERV}/download?auth=&id=${OLEGUIDS_ID}${query}`, {
+    signal: AbortSignal.timeout(60000),
+  });
+  if (!res.ok) throw new Error(`TWINSERV answered ${res.status} for OLEGuids ${OUTDATED_VERSION}`);
+  const file = path.join(run.work, "OLEGuids.twinpack");
+  writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+  say(run.name, `opening ${path.relative(REPO_ROOT, SAMPLE)} with OLEGuids ${OUTDATED_VERSION} from TWINSERV embedded`);
+  const src = stageSample(run);
+  unpackProject(file, path.join(src, "Packages", v.symbol));
+  const settingsFile = path.join(src, "Settings");
+  const settings = JSON.parse(readFileSync(settingsFile, "utf8"));
+  settings["project.references"].push({
+    autoCtlExt: true,
+    id: OLEGUIDS_ID,
+    licence: v.licence,
+    name: `[IMPORTED] ${v.description}`,
+    path32: `/Packages/${v.symbol}`,
+    path64: `/Packages/${v.symbol}`,
+    publishedDate: v.publishedDate,
+    publishedTime: v.publishedTime,
+    publisher: pkg.publisher,
+    symbolId: v.symbol,
+    versionBuild: v.versionBuild,
+    versionMajor: v.versionMajor,
+    versionMinor: v.versionMinor,
+    versionRevision: v.versionRevision,
+  });
+  writeFileSync(settingsFile, JSON.stringify(settings, null, "\t"));
+  return run.lane.open(src);
+}
+
+// ---------------------------------------------------------------- pictures not of the IDE's own UI
+
+// ---- import: the sample open, and a VB6 project, test/shots/vbp's ImportDemo, imported as the
+// Add menu's Import imports a .vbp. The IDE's own Open dialog is a native window, so the take
+// calls what the IDE calls with the file chosen in it (importFileByPath); the IDE then loads the
+// project in a compiler of its own and shows the Import from twinproj dialog, its tree of what
+// it found. The project is staged on PACKAGE_ROOT, a folder of the tool's own at the root of
+// the temp folder's drive, since the dialog names the .vbp's path: with CRLF line ends, as VB6
+// writes its files, a module in a folder beside the project's (Shared), which the IDE puts
+// under {PARENT-FOLDER}, and a resource file the tool writes (lib/res-file.mjs): three icons
+// and the manifest test/shots/vbp/manifest.xml.
+
+const VBP = path.join(REPO_ROOT, "test", "shots", "vbp");
+const VBP_ROOT = path.join(PACKAGE_ROOT, "Projects");
+const VBP_FILE = path.join(VBP_ROOT, "ImportDemo", "ImportDemo.vbp");
+
+function stageVbp() {
+  rmSync(VBP_ROOT, { recursive: true, force: true });
+  for (const dir of ["ImportDemo", "Shared"]) {
+    mkdirSync(path.join(VBP_ROOT, dir), { recursive: true });
+    for (const f of readdirSync(path.join(VBP, dir))) {
+      const text = readFileSync(path.join(VBP, dir, f), "utf8");
+      writeFileSync(path.join(VBP_ROOT, dir, f), text.replace(/\r?\n/g, "\r\n"));
+    }
+  }
+  writeFileSync(
+    path.join(VBP_ROOT, "ImportDemo", "ImportDemo.res"),
+    resFile([
+      ...iconGroup("APPICON", 1, iconImage(32, [200, 40, 40], "square")),
+      ...iconGroup("CIRCLE", 2, iconImage(32, [40, 90, 200], "circle")),
+      ...iconGroup("SQUARE", 3, iconImage(32, [40, 160, 70], "square")),
+      manifestResource(readFileSync(path.join(VBP, "manifest.xml"))),
+    ]),
+  );
+}
+
+async function startImport(run) {
+  stageVbp();
+  return startSample(run);
+}
+
+// A row of the import dialog's tree, by its name.
+const importRow = (name) => `[...document.querySelectorAll(".objListImportItem")].find((r) =>
+  r.querySelector(".objListText2")?.textContent.trim() === ${JSON.stringify(name)})`;
+const IMPORT_TICKED = ["Form1.frm.tbform", "Form1.frm.twin"];
+
+// The dialog with every folder open (the IDE opens all but Miscellaneous) and the form's two
+// files ticked with real clicks, as the FAQ tells the reader to: the dialog's title bar and its
+// tree, down to the last row and across to the end of the widest, as the page has always shown
+// it, without the empty rest of the list and the buttons.
+const importShot = {
+  out: "Miscellaneous/Images/16833fae-4bd7-418f-bb16-691a611a5b01.png",
+  setup: "import",
+  async take({ c }) {
+    await resetUi(c);
+    await c.evaluate(`importFileByPath(${JSON.stringify(VBP_FILE)}, () => {})`);
+    try {
+      if (!(await waitModal(c, "Import from twinproj", { timeout: 60000 }))) {
+        throw new Error("the Import from twinproj dialog did not open");
+      }
+      if (!(await waitFor(c, () => c.evaluate(`!!${importRow("Miscellaneous")}`), { timeout: 30000 }))) {
+        throw new Error("the import dialog never listed the project's files");
+      }
+      for (const name of IMPORT_TICKED) {
+        const box = await c.evaluate(`(() => {
+  const r = ${importRow(name)}?.querySelector("#checkMark")?.getBoundingClientRect();
+  return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+})()`);
+        if (!box) throw new Error(`the import dialog has no ${name}`);
+        await clickAt(c, box.x, box.y);
+        const ticked = `${importRow(name)}?.querySelector("#checkMark")?.classList.contains("codicon-check")`;
+        if (!(await waitFor(c, () => c.evaluate(ticked), { timeout: 3000, interval: 50 }))) {
+          throw new Error(`${name} was not ticked`);
+        }
+      }
+      await dialogStill(c);
+      return await dialogShot(c, "import", async (m) => {
+        const rows = await c.evaluate(`(() => {
+  const rs = [...document.querySelectorAll(".objListImportItem")].filter((r) => r.getBoundingClientRect().width);
+  const right = Math.max(...rs.flatMap((r) => [...r.children].map((k) => k.getBoundingClientRect().right)));
+  return { right, bottom: Math.max(...rs.map((r) => r.getBoundingClientRect().bottom)) };
+})()`);
+        // the dialog is centred, so its box can start half a CSS pixel above its border, on
+        // what is behind it
+        const top = Math.ceil(m.y);
+        return { x: m.x, y: top, width: rows.right + 16 - m.x, height: rows.bottom + 12 - top };
+      });
+    } finally {
+      await cancelImport(c);
+    }
+  },
+};
+
+// Cancel ends the compiler the IDE loaded the project in, and the IDE then restarts its own:
+// once that is done, the DEBUG CONSOLE's line about it, which names the work folder, under the
+// user's, is cleared, so that the next picture's page does not hold it. A compiler that does not
+// come back is said; the next picture's user-name check fails if its line is still there.
+async function cancelImport(c) {
+  if (!(await modals(c)).length) return;
+  await closeModal(c, "Cancel");
+  await waitFor(c, async () => /restarting from/.test(await consoleText(c)), { timeout: 15000, interval: 200 });
+  if (!(await waitFor(c, () => servicesAre(c, "servicesOK"), { timeout: 60000, interval: 250 }))) {
+    complain(c.shot.name, "the compiler did not come back after the import was cancelled");
+  }
+  await clearUserFromConsole(c);
+}
+
+// ---- webpage: the demo open, and the Webpage pane on its own, floating, showing the
+// documentation's home page at the IDE's default zoom, 70%. The pane's page is a second
+// WebView2 that the IDE's host lays over the pane, so a capture of the IDE's page holds the
+// pane's header and an empty body: the page is captured from its own DevTools target (the
+// host's WebView2s share the IDE's port) at the same 2x and put where the host puts it, one
+// pixel inside the pane's body (syncPosition). The pane's settings are the IDE's defaults with
+// the documentation's address, in the page only (the IDE's call that saves them is one
+// PAGE_DEFAULTS has made do nothing). The page follows the OS's light or dark preference,
+// set to the theme of the picture.
+
+const WEBPAGE_URL = "https://docs.twinbasic.com/";
+const WEBPAGE_PANEL = "webpagePanel._this.sectionHeader.panelDiv";
+const WEBPAGE_BOX = { left: 140, top: 120, width: 340, height: 500 };
+
+// The pane's page's target once it shows `url` and has loaded, its fonts and images too.
+async function paneTarget(port, url) {
+  const p = await waitFor(
+    null,
+    async () => {
+      try {
+        return await attach(port, url);
+      } catch {
+        return null;
+      }
+    },
+    { timeout: 30000, interval: 250 },
+  );
+  if (!p) throw new Error(`the Webpage pane never showed ${url}`);
+  // the page is still being replaced when its target first has the address: an evaluation
+  // then finds no document to run in
+  const loaded = `location.href === ${JSON.stringify(url)} && document.readyState === "complete" && document.fonts.status === "loaded" && [...document.images].every((i) => i.complete)`;
+  const ready = () => p.evaluate(loaded).catch(() => false);
+  if (!(await waitFor(p, ready, { timeout: 30000, interval: 100 }))) {
+    p.close();
+    throw new Error(`${url} did not finish loading in the Webpage pane`);
+  }
+  return p;
+}
+
+// Copies the pixels of `part` into `whole` (both decoded pictures) at (x, y).
+function paste(whole, part, x, y) {
+  for (let row = 0; row < part.height; row++) {
+    whole.rgba.set(
+      part.rgba.subarray(row * part.width * 4, (row + 1) * part.width * 4),
+      ((y + row) * whole.width + x) * 4,
+    );
+  }
+}
+
+async function prepareWebpage(run) {
+  return { ...(await prepareProject(run)), port: run.ports[0] };
+}
+
+const webpageShot = {
+  out: "IDE/Images/Webpage.png",
+  setup: "webpage",
+  async take({ c, port }) {
+    await resetUi(c);
+    const dark = await pageIsDark(c);
+    await c.evaluate(`liveWebpanelSettings = { zoom: 0.7, url: ${JSON.stringify(WEBPAGE_URL)}, mobileMode: false }`);
+    await command(c, "tbWebpage_ShowPanel");
+    let p = null;
+    try {
+      if (
+        !(await waitFor(c, () => c.evaluate(`!!${WEBPAGE_PANEL}?.getBoundingClientRect().width`), { timeout: 5000 }))
+      ) {
+        throw new Error("the Webpage pane did not appear");
+      }
+      await c.evaluate(`(() => {
+  Object.assign(${WEBPAGE_PANEL}.style, ${JSON.stringify(Object.fromEntries(Object.entries(WEBPAGE_BOX).map(([k, v]) => [k, `${v}px`])))});
+  webpagePanel.syncSettings();
+  webpagePanel.syncPosition();
+})()`);
+      const url = () => c.evaluate("webpagePanel.webpagePanelHeaderUrl.value");
+      if (!(await waitFor(c, async () => (await url()) === WEBPAGE_URL, { timeout: 30000 }))) {
+        throw new Error(`the Webpage pane's address is ${await url()}, not ${WEBPAGE_URL}`);
+      }
+      p = await paneTarget(port, WEBPAGE_URL);
+      p.shot = newShotState("webpage");
+      const inner = await rectOf(c, ".webpagePanelInner");
+      const view = { width: inner.width - 2, height: inner.height - 2 };
+      if (!Number.isInteger(inner.x) || !Number.isInteger(inner.y) || !Number.isInteger(view.width)) {
+        throw new Error(`the Webpage pane's body is not on whole pixels: ${JSON.stringify(inner)}`);
+      }
+      await p.send("Emulation.setEmulatedMedia", {
+        features: [{ name: "prefers-color-scheme", value: dark ? "dark" : "light" }],
+      });
+      await p.send("Emulation.setDeviceMetricsOverride", { ...view, deviceScaleFactor: SCALE, mobile: false });
+      await p.evaluate("window.scrollTo(0, 0)");
+      await frames(p);
+      const page = decodePng(await capture(p, "webpage", null));
+      if (page.width !== view.width * SCALE || page.height !== view.height * SCALE) {
+        throw new Error(
+          `the pane's page came out ${page.width}x${page.height} px, not ${view.width}x${view.height} at 2x`,
+        );
+      }
+      const panel = await c.evaluate(
+        `(() => { const r = ${WEBPAGE_PANEL}.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
+      );
+      const clip = snapOut(panel);
+      const whole = decodePng(await capture(c, "Webpage", clip, { frame: p, away: () => parkMouse(c) }));
+      paste(whole, page, (inner.x + 1 - clip.x) * SCALE, (inner.y + 1 - clip.y) * SCALE);
+      return encodePng(whole);
+    } finally {
+      if (p) {
+        await p.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
+        p.close();
+      }
+      await command(c, "tbWebpage_HidePanel");
+    }
+  },
+};
+
+// ---- web: public web pages the FAQ shows, in a Chrome the tool starts on a private desktop
+// of its own (puppeteer's, with a profile in the job's work folder), driven over DevTools as the
+// IDE's page is. A page is no part of the IDE, so each picture is taken once, at 2x, in the
+// page's light colours (the OS preference set to light). Their numbers are whatever the page
+// says today: a release's size and age, a runtime's version.
+
+async function startWeb(run) {
+  run.step = "open";
+  const port = run.ports[0];
+  const exe = await puppeteer.executablePath();
+  if (!existsSync(exe)) throw new Error(`no Chrome at ${exe}: run npm install`);
+  say(run.name, "starting Chrome");
+  const browser = await launchOnDesktop({
+    exe,
+    args: [
+      `--remote-debugging-port=${port}`,
+      `--user-data-dir=${path.join(run.work, "chrome")}`,
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--force-device-scale-factor=1",
+      LCD_TEXT,
+      "--window-size=1400,1000",
+      // a window on a desktop nobody sees counts as hidden, and Chrome then draws no frames:
+      // the captures would wait for one, or hold a blank page
+      "--disable-features=CalculateNativeWinOcclusion",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-renderer-backgrounding",
+      "about:blank",
+    ],
+    desktop: `tbshoot-web-${port}`,
+    env: process.env,
+  });
+  // ended as an IDE is, by the lane: by its process id, with every process it started
+  run.lane.run = browser;
+  const c = await waitFor(
+    null,
+    async () => {
+      try {
+        return await attach(port, "about:blank");
+      } catch {
+        return null;
+      }
+    },
+    { timeout: 30000, interval: 250 },
+  );
+  if (!c) throw new Error("Chrome never offered its page on its DevTools port");
+  c.dialogs = [];
+  run.lane.c = c;
+  await c.send("Page.enable");
+  await c.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "light" }] });
+  return c;
+}
+
+async function prepareWeb(run) {
+  run.step = "shoot";
+  return { c: run.c };
+}
+
+// Loads `url` into the page at `width` by IDE_SIZE.height CSS pixels, and waits until it and
+// its fonts and images have loaded.
+async function webPage(c, url, width) {
+  await c.send("Emulation.setDeviceMetricsOverride", {
+    width,
+    height: IDE_SIZE.height,
+    deviceScaleFactor: SCALE,
+    mobile: false,
+  });
+  await c.send("Page.navigate", { url });
+  const loaded = `document.readyState === "complete" && document.fonts.status === "loaded" && [...document.images].every((i) => i.complete)`;
+  if (
+    !(await waitFor(c, () => c.evaluate(`location.href !== "about:blank" && ${loaded}`), {
+      timeout: 60000,
+      interval: 250,
+    }))
+  ) {
+    throw new Error(`${url} did not finish loading`);
+  }
+  await quiet(c);
+}
+
+// The element the expression `find` gives, scrolled so that its top is `top` CSS pixels below
+// the window's (out from under a page's fixed header), once what scrolling into view starts has
+// settled; its box. A page that is still building itself after it has loaded (Microsoft's
+// replaces its content, and the document's scroll goes back to the top) is waited for: the page
+// is left until nothing in it has changed for a second, then scrolled, and that again until
+// the element stays where it was put.
+async function scrolledTo(c, find, top) {
+  const at = () =>
+    c.evaluate(
+      `(() => { const e = ${find}; if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
+    );
+  for (let i = 0; i < 6; i++) {
+    await dialogStill(c, { ms: 1000, timeout: 15000, root: "document.body", what: "page" });
+    const box = await waitFor(c, at, { timeout: 15000, interval: 200 });
+    if (!box) throw new Error(`nothing on the page answers ${find}`);
+    if (Math.abs(box.y - top) < 1) return box;
+    await c.evaluate(`window.scrollBy(0, ${Math.round(box.y - top)})`);
+    await sleep(500);
+  }
+  throw new Error(`the page would not keep ${find} where it was scrolled to`);
+}
+
+// A capture's clip is in the document's coordinates, not the window's: the window's box `r`,
+// inside a window `width` CSS pixels wide, snapped to whole device pixels and moved by how far
+// the page is scrolled.
+async function pageClip(c, r, width) {
+  const clip = snapOut(r, width);
+  const { x, y } = await c.evaluate("({ x: scrollX, y: scrollY })");
+  return { ...clip, x: clip.x + x, y: clip.y + y };
+}
+
+// Microsoft's WebView2 download page, its three cards: the arrow and the ring point at the
+// Evergreen Standalone Installer's x86 download. At the width of a desktop's window, where the
+// cards are in one row and the Fixed Version's two lists side by side.
+const WV2_HEADING = `[...document.querySelectorAll("h2")].find((h) => /Download the WebView2 Runtime/.test(h.textContent))`;
+const WV2_CARD = { css: "h3", text: "Evergreen Standalone Installer" };
+const WV2_WIDTH = 1280;
+const webView2Shot = {
+  out: "Miscellaneous/Images/94490c87-fafe-4d5b-ae39-d3cedba1c21d.png",
+  setup: "web",
+  once: true,
+  async take({ c }) {
+    await webPage(c, "https://developer.microsoft.com/en-us/microsoft-edge/webview2", WV2_WIDTH);
+    const heading = await scrolledTo(c, WV2_HEADING, 100);
+    const cards = await c.evaluate(`(() => {
+  const r = document.querySelector(".block-webview2").getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+    const area = {
+      x: cards.x - 8,
+      y: heading.y - 24,
+      width: cards.width + 16,
+      height: cards.y + cards.height + 16 - heading.y + 24,
+    };
+    try {
+      const { box } = await annotateOver(c, [
+        { type: "arrow", from: { of: WV2_CARD, at: "left", dx: -44 }, to: { of: WV2_CARD, at: "left", dx: -2 } },
+        { type: "ring", on: { css: "button", text: "x86" } },
+      ]);
+      // The Version list's arrow, an 8 by 9 inline SVG, changes a pixel by more than a
+      // capture's noise from frame to frame, with animations and transitions off.
+      return await capture(c, "webview2", await pageClip(c, union(area, box), WV2_WIDTH), {
+        unsteady: [{ on: { css: "#version .px-dropdown__icon" } }],
+      });
+    } finally {
+      await unannotate(c);
+    }
+  },
+};
+
+// The newest twinBASIC release on GitHub, its Assets list opened with a real click, as the
+// FAQ tells the reader to: the first release of the repository's list of releases, in a window
+// wide enough for the start of the file's SHA-256. The list, without the release's box around it.
+const ASSETS = `[...document.querySelectorAll("summary")].find((s) => /^Assets/.test(s.textContent.trim()))`;
+const RELEASE_WIDTH = 1280;
+const releaseShot = {
+  out: "Miscellaneous/Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png",
+  setup: "web",
+  once: true,
+  async take({ c }) {
+    await webPage(c, "https://github.com/twinbasic/twinbasic/releases", RELEASE_WIDTH);
+    const summary = await scrolledTo(c, ASSETS, 120);
+    const open = () => c.evaluate(`${ASSETS}.parentElement.open && /\\.zip/.test(${ASSETS}.parentElement.innerText)`);
+    if (!(await open())) {
+      await clickAt(c, summary.x + 20, summary.y + summary.height / 2);
+      if (!(await waitFor(c, open, { timeout: 15000, interval: 200 }))) throw new Error("the Assets list did not open");
+    }
+    await dialogStill(c, { ms: 500, timeout: 10000, root: `${ASSETS}.parentElement`, what: "Assets list" });
+    const list = await c.evaluate(
+      `(() => { const r = ${ASSETS}.parentElement.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
+    );
+    return capture(c, "release", await pageClip(c, grow(list, 12), RELEASE_WIDTH), { away: () => parkMouse(c) });
+  },
+};
+
+const notIdeShots = [importShot, webpageShot, webView2Shot, releaseShot];
 
 // ---------------------------------------------------------------- the shots of the help setup
 
@@ -5365,7 +7521,8 @@ function helpTakes(ctx) {
     return snap(c, "Toolbar", clip);
   });
 
-  // The detached window with a page. Last: the pane is gone afterwards.
+  // The detached window with a page; attached again afterwards, as the other theme's pass
+  // starts with the pane.
   shoot("Window", async () => {
     await showPage(AT.msgBox, HELP_PAGE);
     const mark = await consoleMark(c);
@@ -5404,12 +7561,21 @@ function helpTakes(ctx) {
         timeout: 30000,
       });
       if (!frame) throw new Error(`no frame of ${origin} on the window's DevTools port ${windowPort}`);
+      let png;
       try {
         await pageDrawn(win, frame);
-        return await snap(win, "Window", null, { frame });
+        png = await snap(win, "Window", null, { frame });
       } finally {
         frame.close();
       }
+      // The help back in the pane, with the window's Attach button, for the pictures of the
+      // next theme.
+      const back = await consoleMark(c);
+      await win.evaluate(`document.getElementById("helpAttach").click()`);
+      if (!(await waitFor(c, async () => (await addinLines(back)).includes("attached"), { timeout: 30000 }))) {
+        throw new Error(`the window's Attach did not attach: ${JSON.stringify(await addinLines(back))}`);
+      }
+      return png;
     } finally {
       win?.close();
     }
@@ -5456,6 +7622,12 @@ const SHOTS = [
   ...["Pane", "Hover", "Search", "Choices", "Description", "Settings", "Toolbar", "Window"].map(helpShot),
   aboutShot,
   servicesShot,
+  servicesTooltipShot,
+  communityShot,
+  limitedShot,
+  unavailableShot,
+  unavailableTooltipShot,
+  splashShot,
   menuBarShot,
   menuShot("Menu_File", "File"),
   menuShot("Menu_Edit", "Edit"),
@@ -5491,6 +7663,12 @@ const SHOTS = [
   ...sample9Shots,
   featureMapShot,
   newProjectOptionsShot,
+  ...programShots,
+  ...codeLensShots,
+  packageBuildShot,
+  fusionShot,
+  ...packageServerShots,
+  ...notIdeShots,
 ];
 
 // ---------------------------------------------------------------- the jobs
@@ -5519,34 +7697,47 @@ const PARTS = {
 // started after no-project, Diagnostics came out with 34 pixels of one arrow's edge a grey
 // level or two off, twice. Rerun twice after changing them.
 const JOB_SECONDS = {
-  help: 45,
-  project: 11,
-  sample: 34,
-  "sample-2": 55,
-  "sample-3": 62,
-  settings: 22,
-  "settings-symbols": 8,
-  "settings-webview2": 20,
-  "settings-fusion": 12,
-  glyphs: 24,
-  "global-search": 58,
-  sample6: 26,
-  designer: 62,
-  forms: 30,
-  customcontrols: 50,
-  "customcontrols-2": 45,
-  "customcontrols-3": 40,
-  code: 35,
-  sample9: 18,
-  featuremap: 30,
-  "no-project": 33,
-  "no-project-2": 38,
-  "no-project-3": 41,
+  help: 79,
+  project: 22,
+  community: 25,
+  splash: 15,
+  sample: 57,
+  "sample-2": 130,
+  "sample-3": 106,
+  settings: 45,
+  "settings-symbols": 10,
+  "settings-webview2": 24,
+  "settings-fusion": 14,
+  glyphs: 45,
+  "global-search": 45,
+  sample6: 21,
+  designer: 61,
+  forms: 40,
+  customcontrols: 54,
+  "customcontrols-2": 53,
+  "customcontrols-3": 35,
+  code: 33,
+  sample9: 11,
+  featuremap: 39,
+  "no-project": 68,
+  "no-project-2": 59,
+  "no-project-3": 70,
+  programs: 45,
+  codelens: 35,
+  package: 25,
+  fusion: 20,
+  "package-server": 150,
+  "settings-linked": 12,
+  "package-check": 15,
+  import: 20,
+  webpage: 20,
+  web: 20,
 };
 
 // ---------------------------------------------------------------- run
 
-const selected = SHOTS.filter((s) => !only || only.test(s.out));
+// --only selects a shot by its dark picture's path or its light one's, and a shot is taken in both.
+const selected = SHOTS.filter((s) => !only || THEMES.some((theme) => only.test(themedOut(s.out, theme))));
 const wanted = Object.keys(SETUPS).filter((name) => selected.some((s) => s.setup === name));
 if (!selected.length) die(2, `no picture's path matches ${values.only}`);
 if (wanted.includes("help") && !existsSync(path.join(SITE, "tB", "symbols.json"))) {
@@ -5618,6 +7809,16 @@ const savedApps = [...new Set(wanted.filter((name) => ADDIN_SETTINGS[name]).map(
 const settingsBefore = savedApps.length ? snapshotKeys(savedApps.map(settingsKey)) : null;
 if (settingsBefore) deleteSettings(savedApps);
 
+// The build folder the package and fusion setups write into, the APPDATA of the
+// package-server setup and the VB6 project the import setup stages, removed at the end unless
+// it was there before the run; the APPDATA and the project, the tool's own, are removed either way.
+const removePackageRoot = !existsSync(PACKAGE_ROOT)
+  ? () => rmSync(PACKAGE_ROOT, { recursive: true, force: true })
+  : () => {
+      if (wanted.includes("package-server")) rmSync(PACKAGES_APPDATA, { recursive: true, force: true });
+      if (wanted.includes("import")) rmSync(VBP_ROOT, { recursive: true, force: true });
+    };
+
 const running = new Set(); // the jobs with an IDE open: { lane, server }
 
 function restoreSettings() {
@@ -5629,24 +7830,149 @@ exitOnCrash(() => {
   for (const run of running) if (run.lane.run) shutdownIde(run.lane.run);
   finishTidy(tidy);
   restoreSettings();
+  removePackageRoot();
 });
 
-// Writes a picture when its bytes differ from the file's; says which.
-function keep(name, out, png) {
-  const file = path.join(outRoot, out);
+// How many pictures of each theme came out in each state, for the run's last lines.
+const tally = { dark: {}, light: {} };
+const count = (theme, state) => {
+  tally[theme][state] = (tally[theme][state] ?? 0) + 1;
+};
+const pngSize = (png) => ({ w: png.readUInt32BE(16), h: png.readUInt32BE(20) });
+
+// How far, in device pixels, a light picture's width or height may be from the dark one's.
+// The Light theme lays the window out a little differently (its toolbar is 4 CSS pixels
+// shorter, a panel's title bar 3, some buttons narrower), so a clip worked out from the page's
+// elements comes out up to a few pixels off, and the page shows each picture at its own size
+// (builder/theme-pictures.mjs). A larger difference is not the theme's: most likely the IDE
+// was not in the state the dark picture shows.
+const SIZE_SLACK = 32;
+
+// Writes a picture when its bytes differ from the file's; says which. `out` is the dark
+// picture's path. A light picture is compared with the dark one (`dark`, this run's, or the
+// file's): one with the same pixels, but for a capture's noise (`nearly`), is not kept, and a
+// light file there already is removed, since the page shows X.png in both themes then; one
+// more than SIZE_SLACK off its size fails. A picture within a capture's noise of its file is
+// not written either.
+function keep(name, out, png, theme, dark, scale = SCALE) {
+  const file = path.join(outRoot, themedOut(out, theme));
+  const { w, h } = pngSize(png);
+  let other = "";
+  if (theme === "light" && dark) {
+    const d = pngSize(dark);
+    if (Math.abs(d.w - w) > SIZE_SLACK || Math.abs(d.h - h) > SIZE_SLACK) {
+      writeDiff(name, themedOut(out, theme), dark, png, {
+        suffix: ".size",
+        labels: { before: "DARK", after: "LIGHT" },
+      });
+      throw new Error(
+        `the light picture is ${w}x${h} px and the dark one ${d.w}x${d.h} px: more than the theme's layout moves`,
+      );
+    }
+    if (d.w !== w || d.h !== h) {
+      count(theme, "of another size than the dark picture");
+      other = `; the dark picture is ${d.w}x${d.h} px`;
+    }
+    if (nearly(dark, png)) {
+      const had = existsSync(file);
+      if (had) rmSync(file);
+      count(theme, "the same as the dark picture");
+      say(
+        name,
+        `${themedOut(out, theme)}: the dark picture's pixels, but for a capture's noise: ${had ? "removed" : "not written"}`,
+      );
+      return false;
+    }
+  }
   mkdirSync(path.dirname(file), { recursive: true });
   let state = "new";
+  let write = true;
   if (existsSync(file)) {
     const was = readFileSync(file);
-    state = was.equals(png) ? "unchanged" : "updated";
-    if (state === "updated") writeDiff(name, out, was, png);
+    if (was.equals(png)) {
+      state = "unchanged";
+      write = false;
+    } else if (nearly(was, png)) {
+      // a run now and then settles on the other version of a capture's noise for every
+      // capture of a state (WIP.Screenshots.md, Capture): the file stays as it is
+      state = "unchanged but for a capture's noise";
+      write = false;
+      writeDiff(name, themedOut(out, theme), was, png, { suffix: ".noise" });
+    } else {
+      state = "updated";
+      writeDiff(name, themedOut(out, theme), was, png);
+    }
   }
-  if (state !== "unchanged") writeFileSync(file, png);
-  const w = png.readUInt32BE(16);
-  const h = png.readUInt32BE(20);
+  if (write) writeFileSync(file, png);
+  count(theme, state);
   say(
     name,
-    `${out}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${w / SCALE}" height="${h / SCALE}"})`,
+    `${themedOut(out, theme)}: ${state} (${w}x${h} px, ${png.length} bytes; shown at {:width="${Math.round(w / scale)}" height="${Math.round(h / scale)}"}${other})`,
+  );
+}
+
+// A `once` picture has no light file: one left from before is removed, and its SVG.
+function dropLight(name, out) {
+  const svg = path.join(outRoot, themedOut(out, "light").replace(/\.png$/i, ".svg"));
+  if (existsSync(svg)) rmSync(svg);
+  if (bundlesRoot) dropBundle(bundlesRoot, themedOut(out, "light"));
+  const file = path.join(outRoot, themedOut(out, "light"));
+  if (!existsSync(file)) return;
+  rmSync(file);
+  say(name, `${themedOut(out, "light")}: removed (the picture is taken once, in no theme)`);
+}
+
+// With --svg: one headless browser for the whole run, which renders each SVG to
+// compare it with its PNG; and a line per picture for the summary.
+let svgBrowser = null;
+const svgResults = [];
+
+// Writes a picture's SVG beside its PNG when it is faithful to the PNG it was
+// taken with (keep.mjs) and its bytes differ from the file's, refused when it
+// holds the user name; an SVG that is not faithful is not written, and one
+// written before is removed. Says how much of it differs from the PNG. The
+// picture's bundle goes to the bundle cache whether or not its SVG is written,
+// so that replay.mjs can draw it again once the converter draws it better.
+async function keepSvg(name, out, png, picture) {
+  const svgOut = out.replace(/\.png$/i, ".svg");
+  const file = path.join(outRoot, svgOut);
+  const drop = (why) => {
+    const had = existsSync(file);
+    if (had) rmSync(file);
+    say(name, `${svgOut}: ${had ? "removed" : "not written"}, the PNG is kept (${why})`);
+  };
+  if (!picture) {
+    drop("the picture is not a single capture");
+    return;
+  }
+  const { svg, stats, misses, bundle } = picture;
+  if (holdsUserName(svg, USER)) throw new Error(`the SVG of ${out} holds the Windows user name`);
+  // The bundle names the PNG as the file holds it: a capture within the noise of the file
+  // leaves the file as it was, and that file is what replay.mjs compares with.
+  const pngFile = path.join(outRoot, out);
+  if (bundlesRoot) writeBundle(bundlesRoot, out, bundle, existsSync(pngFile) ? readFileSync(pngFile) : png, misses);
+  svgBrowser ??= launchBrowser();
+  const { diff, faithful, measures } = await judgeSvg(await svgBrowser, svg, png, stats);
+  if (diffsRoot) {
+    mkdirSync(diffsRoot, { recursive: true });
+    writeFileSync(
+      path.join(diffsRoot, `${out.replace(/[\\/]/g, "__").replace(/\.png$/i, "")}.svg-diff.png`),
+      diff.diff,
+    );
+  }
+  const bytes = Buffer.byteLength(svg);
+  svgResults.push({ out: svgOut, bytes, png: png.length, faithful, ...diff.stats });
+  if (!faithful) {
+    drop(measures);
+    // To see what went wrong, the SVG goes beside its difference map.
+    if (diffsRoot)
+      writeFileSync(path.join(diffsRoot, `${out.replace(/[\\/]/g, "__").replace(/\.png$/i, "")}.svg`), svg);
+    return;
+  }
+  const state = writeSvg(file, svg);
+  say(
+    name,
+    `${svgOut}: ${state} (${(bytes / 1024).toFixed(0)} KB against the PNG's ${(png.length / 1024).toFixed(0)} KB; ${measures})`,
   );
 }
 
@@ -5659,6 +7985,29 @@ async function endRun(run) {
     complain(run.name, e.message);
   }
   run.server?.close();
+}
+
+// What a setup's page holds once it is prepared and that its shots change: the editor's
+// tabs, the Tabs List's Recently Closed, and the context's own keys (a take that does
+// something once records it there, as closedResources does).
+async function setupState(c, ctx) {
+  return {
+    tabs: (await editorTabs(c)).map((t) => t.name),
+    recent: await c.evaluate("typeof g_RecentlyClosedTabs === 'undefined' ? null : [...g_RecentlyClosedTabs]"),
+    keys: Object.keys(ctx),
+  };
+}
+
+// Between the two themes' passes: the setup back to the state it was prepared in, as near
+// as the page allows, so that the second pass's shots start where the first's did. Nothing
+// open; the tabs opened since closed with their changes discarded (the page's own: nothing
+// is saved), Recently Closed as it was, and what the takes recorded in the context dropped.
+async function backToPrepared(c, ctx, was) {
+  await resetUi(c);
+  await closeTabs(c, was.tabs, { discard: true });
+  if (was.recent) await c.evaluate(`g_RecentlyClosedTabs = ${JSON.stringify(was.recent)}`);
+  for (const k of Object.keys(ctx)) if (!was.keys.includes(k)) delete ctx[k];
+  await parkMouse(c);
 }
 
 // The exit code for an error from one step: 1 when it is the add-in's or the
@@ -5700,18 +8049,56 @@ async function runJob(job) {
         `page settings put to their defaults (in the page only, saved nowhere): ${run.defaults.join("; ") || "none differed"}`,
       );
     }
-    for (const shot of job.shots) {
-      const file = path.join(outRoot, shot.out);
-      state.reference = existsSync(file) ? readFileSync(file) : null;
-      state.out = shot.out;
-      try {
-        keep(job.name, shot.out, await shot.take(ctx));
-      } catch (e) {
-        complain(job.name, `${shot.out}: FAILED: ${e.message}`);
-        failed = 1;
-      } finally {
-        state.reference = null;
-        state.out = null;
+    // Each picture in dark, then the IDE in Light and each again, in the same IDE: a shot sets
+    // the state it shows, and backToPrepared puts back what the shots leave behind that a
+    // later one sees (tabs, Recently Closed, a take's done-once marks). A light picture
+    // with no file yet prefers a capture equal to the dark picture, so that one the theme
+    // does not change comes out identical to it rather than a capture's noise away.
+    // A `once` shot, a picture the IDE's theme has no part in (a running program's window), is
+    // taken in the dark pass only; a job of them has no light pass.
+    const darks = new Map();
+    const prepared = await setupState(run.c, ctx);
+    for (const theme of THEMES) {
+      const shots = theme === "dark" ? job.shots : job.shots.filter((s) => !s.once);
+      if (!shots.length) continue;
+      if (theme !== "dark") {
+        await backToPrepared(run.c, ctx, prepared);
+        await ensureTheme(run.c, theme);
+        say(job.name, `the IDE in its ${THEME_NAME[theme]} theme`);
+      }
+      for (const shot of shots) {
+        const out = themedOut(shot.out, theme);
+        const file = path.join(outRoot, out);
+        const darkFile = path.join(outRoot, shot.out);
+        const dark =
+          theme === "dark" ? null : (darks.get(shot.out) ?? (existsSync(darkFile) ? readFileSync(darkFile) : null));
+        state.reference = existsSync(file) ? readFileSync(file) : null;
+        state.prefer = dark;
+        state.out = out;
+        state.svg = null;
+        try {
+          // a take returns the PNG's bytes, or { png, scale } for a picture not at SCALE
+          const taken = await shot.take(ctx);
+          const png = Buffer.isBuffer(taken) ? taken : taken.png;
+          if (theme === "dark") darks.set(shot.out, png);
+          const kept = keep(job.name, shot.out, png, theme, dark, Buffer.isBuffer(taken) ? SCALE : taken.scale);
+          if (shot.once) dropLight(job.name, shot.out);
+          // A light picture that is the dark one is not kept, and neither is its SVG or bundle.
+          const svgFile = path.join(outRoot, out.replace(/\.png$/i, ".svg"));
+          if (values.svg && kept !== false) await keepSvg(job.name, out, png, state.svg);
+          else if (values.svg) {
+            if (existsSync(svgFile)) rmSync(svgFile);
+            dropBundle(bundlesRoot, out);
+          }
+        } catch (e) {
+          complain(job.name, `${out}: FAILED: ${e.message}`);
+          count(theme, "failed");
+          failed = 1;
+        } finally {
+          state.reference = null;
+          state.prefer = null;
+          state.out = null;
+        }
       }
     }
   } catch (e) {
@@ -5737,6 +8124,23 @@ async function runJob(job) {
   await Promise.all(Array.from({ length: Math.min(jobCount, jobs.length) }, worker));
 }
 console.log(`${((Date.now() - t0) / 1000).toFixed(1)} s`);
+for (const theme of THEMES) {
+  const states = Object.entries(tally[theme]).map(([state, n]) => `${n} ${state}`);
+  console.log(`${THEME_NAME[theme]}: ${states.join(", ") || "none taken"}`);
+}
+if (svgBrowser) {
+  await (await svgBrowser).close();
+  const kept = svgResults.filter((r) => r.faithful);
+  const sum = (k) => kept.reduce((n, r) => n + r[k], 0);
+  console.log(
+    `SVG: ${kept.length} pictures, ${(sum("bytes") / 1048576).toFixed(1)} MB against their PNGs' ${(sum("png") / 1048576).toFixed(1)} MB; ` +
+      `${svgResults.length - kept.length} left as PNG, more than ${SVG_FAITHFUL}% of their pixels strongly off. The furthest from their PNGs:`,
+  );
+  for (const r of svgResults.toSorted((a, b) => b.pct96 - a.pct96 || b.pct32 - a.pct32).slice(0, 15))
+    console.log(
+      `  ${r.pct32.toFixed(2).padStart(6)}% ${r.pct96.toFixed(2).padStart(6)}%  ${r.out}${r.faithful ? "" : "  (PNG kept)"}`,
+    );
+}
 
 const problems = [];
 if (!finishTidy(tidy)) problems.push("the IDE's registry entries could not be put back (see the warning above)");
@@ -5749,6 +8153,11 @@ try {
   removeTree(root);
 } catch (e) {
   problems.push(`${root} could not be removed (${e.code})`);
+}
+try {
+  removePackageRoot();
+} catch (e) {
+  problems.push(`${PACKAGE_ROOT} could not be removed (${e.code})`);
 }
 if (problems.length) {
   console.error(problems.join("\n"));

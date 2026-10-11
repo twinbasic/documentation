@@ -1,0 +1,33 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "CodeLensDemo",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard EXE",
+	"project.description": "CodeLensDemo: procedures in modules, run from the editor's CodeLens bar",
+	"project.exportPathIsV2": true,
+	"project.id": "{5C0F8A71-3B2E-4D69-8A14-7E91C2D4C701}",
+	"project.name": "CodeLensDemo",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"symbolId": "stdole",
+			"versionMajor": 2,
+			"versionMinor": 0
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.startupObject": "(None)",
+	"project.warnings": {
+		"errors": [],
+		"hints": [],
+		"ignored": [],
+		"info": [],
+		"warnings": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

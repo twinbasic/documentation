@@ -271,7 +271,7 @@ The repair is a re-levelling of the whole page, not a patch to one heading. The 
 
 The repair is conditional, and the condition is easy to break without noticing. **The plugin runs only on a page that uses `#` and `###` and no `##` anywhere** --- a single `##` and it does not run at all. More than four hundred pages on this site are currently in that state, so on most of them, adding one `##` section disarms the normalizer for the whole page: every `###` that was already there stops being repaired and becomes a live heading-order defect, in the same edit that added a correctly-levelled section.
 
-Nothing tells you. The build still succeeds --- heading order is not one of the things it checks --- and `check.bat`'s accessibility scan audits thirteen sample pages out of roughly 1,160, so unless you happened to edit one of those thirteen, the defect ships.
+Nothing tells you. The build still succeeds --- heading order is not one of the things it checks --- and `check.bat`'s accessibility scan audits fourteen sample pages out of roughly 1,160, so unless you happened to edit one of those fourteen, the defect ships.
 
 So when you add a section to a page whose headings start at `###`, pick one of these and finish it:
 
@@ -467,7 +467,7 @@ That failure is not hypothetical. The attribute reference once shipped all six o
 its admonitions as the literal text `[!NOTE]`, because the same pairing closed
 that page's opening fence on a marker in the middle of a line and every pairing
 after it was off by one. The mid-line case is fixed --- the rewrite now asks the
-site's parser where the fences are --- and [`check_code_regions.mjs`](Tools#check-code-regions), which
+site's parser where the fences are --- and [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions), which
 `test.bat` runs, is the only gate that sees this class of fault at all.
 
 ### Typography
@@ -478,7 +478,7 @@ The site ships its own fonts, so a page renders the same on every platform: **In
 
 Those two example glyphs are, deliberately, the only characters on the whole site that fall back --- so the ✔ and ⋮ above are being drawn by your system's symbol font right now, next to text that is not. That difference in weight and shape is the effect this section is about.
 
-Diagram exports carry the font with them. The Download / Copy SVG and PNG buttons above each diagram embed the typeface into the exported file, because an exported SVG has no access to the site's stylesheet and would otherwise render in whatever the viewer has installed. All four buttons work on every diagram.
+Diagram exports carry the font with them. The Download / Copy SVG and PNG buttons of each diagram embed the typeface into the exported file, because an exported SVG has no access to the site's stylesheet and would otherwise render in whatever the viewer has installed. All four buttons work on every diagram.
 
 **Do not hand-edit a diagram's `.svg`.** It is a build artifact: the `.dot` beside it is the source, and the next build overwrites your edit. Changing the face is the edit that looks most harmless and is not --- Graphviz sizes each box to the text it measured, so a diagram whose labels are painted in a font the layout never saw has text hanging outside its boxes. `check.bat` fails on that; see [Diagrams](#diagrams) below.
 
@@ -714,7 +714,7 @@ only half marked rather than reporting a missing symbol in the sample that is fi
 sample carrying one would simply never be compiled; the tool reports an unrecognised token
 rather than skipping it in silence.
 
-[Tools and Scripts](Tools#check-examples) covers running it --- the census and survey
+[Code Samples and Attributes](Tools-Samples#check-examples) covers running it --- the census and survey
 modes, the flags, and what the report means.
 
 ## Bullet lists, dashes, and parentheses
@@ -836,6 +836,8 @@ Name the font as the existing diagrams do --- copy the `node`, `edge` and `graph
 
 Two things to leave alone. Node text is deliberately dark against each node's light fill in both themes; only the cluster and edge labels follow the page's text colour, because those are the ones sitting on the page background. And a diagram needs alt text like any other image --- the whole diagram gets one accessible name, so describe what it shows, not what shapes it contains, and never `![Diagram]`. Everything under [Images](#images) about what makes alt text worth having, and about nothing in the build being able to tell you, applies here unchanged.
 
+A box can link somewhere: give its node, or its cluster, a `URL`, relative to the page that shows the diagram (`URL="Tools-Build#tbdocs"`). The diagram is then a group of links rather than one image, and the build moves each cluster's label just before the first box inside it, so that a reader, and the Tab key, takes each label and then its boxes. Declare the nodes in reading order and set `outputorder=nodesfirst` on the graph, so that the boxes come in that order too. `docs/Documentation/Images/Tools-Groups.dot` does both. The build's link check reports a link that leads nowhere, as it does for any other link.
+
 ## Images
 
 Images live in an `Images/` folder beside the page that uses them, and are referenced by a relative path:
@@ -846,7 +848,7 @@ Images live in an `Images/` folder beside the page that uses them, and are refer
 
 **The text in the square brackets is the image's alt text, and every image needs one.** Write what a reader who cannot see the picture would otherwise miss --- what the screenshot shows and which part of it the surrounding prose is pointing at --- rather than a label for the file. A caption-length phrase is usually right; the file name, the word *screenshot*, and the name of the button you happened to be looking for are not.
 
-Nothing in the build will correct you, and it is worth knowing exactly why. The accessibility scan's `image-alt` rule asks only whether an accessible name *exists*, never whether it is the right one. `![image](…)` passes it. So does `![img](…)`. So does an empty `![](…)`, because an empty alt is the explicit signal that an image is decorative and a screen reader should skip it --- true of a spacer or a bullet glyph, never true of a screenshot. A green `check.bat` therefore says only that something is present in the brackets. Whether it describes the picture is a judgement no gate here makes, and the scan samples thirteen pages in any case, so most images are never looked at by it at all.
+Nothing in the build will correct you, and it is worth knowing exactly why. The accessibility scan's `image-alt` rule asks only whether an accessible name *exists*, never whether it is the right one. `![image](…)` passes it. So does `![img](…)`. So does an empty `![](…)`, because an empty alt is the explicit signal that an image is decorative and a screen reader should skip it --- true of a spacer or a bullet glyph, never true of a screenshot. A green `check.bat` therefore says only that something is present in the brackets. Whether it describes the picture is a judgement no gate here makes, and the scan samples fourteen pages in any case, so most images are never looked at by it at all.
 
 One habit to avoid in particular: copy the *shape* of a neighbouring page's image markdown, never its alt text. The example above used to read `![Create Package]`, and that one string travelled from it onto ten further images across the site --- a references dialog, a toolbox, a properties window, an animated GIF --- describing none of them, on pages that passed every check the project has. They have since been rewritten, but nothing except a reader would ever have found them.
 
@@ -861,6 +863,48 @@ There are three reasons, in increasing order of severity:
 - **The PDF book fails to build.** The forked paged.js in `book/lib/` dropped support for loading images asynchronously, so an image that has not finished downloading by the time the page-breaking pass runs raises an error and aborts the whole render. A remote image makes `book.bat` depend on a reachable third-party host; when that host is slow, blocked, or has expired the asset, the build does not degrade to a missing picture --- it stops.
 
 [`build.bat`](Building#checking-link-integrity) enforces this. A remote `<img>` --- `http://`, `https://`, or protocol-relative `//host/...` --- is reported as `remote-asset:` and fails the run.
+
+### A figure's buttons
+
+An image that stands alone in its paragraph is shown as a *figure*: the image with a bar of buttons to download it, copy it and zoom it. That holds for a diagram, a picture in both themes and any other PNG, JPEG, GIF or WebP, with no markup of yours. An image inside a sentence, or inside a link, is a plain image and gets no bar, so put an image you want to be zoomable on a line of its own.
+
+Give a picture its `{:width="..." height="..."}`. The build uses the size to decide where the bar goes: a figure at least as tall as the bar stood on end gets the bar beside it, in the margin of a wide window and in view while the figure scrolls past, and a shorter figure gets the bar above it or at its top right. A picture with no stated size is treated as short: its bar stays above it, however tall it is. The decision is made in the build, so nothing on the page moves after it loads.
+
+### A picture in both themes
+
+A screenshot of the IDE shows one of its themes, and the site has two. To give a picture a version for the site's light theme, save it beside the first one under the same name with `.light` before the extension:
+
+```text
+docs/IDE/Images/Watches.png         <-- the dark picture: the page names this one
+docs/IDE/Images/Watches.light.png   <-- the light picture: the page never names it
+```
+
+Keep the page as it is, naming `Watches.png` with its `{:width height}`. The build finds the light picture by its name and puts both into the page: a reader sees the light one in the light theme and the dark one in the dark theme, whether the theme was chosen with the toggle or follows the operating system, and the browser downloads only the one it shows. The PDF book has the light picture only.
+
+Three things to get right:
+
+- **Never name the `.light.png` in a page**, in an image, a link or raw HTML. The build stops and says which page did it, because that picture would then show in both themes.
+- **Take the two pictures at the same scale.** The width and height in the page are for the dark picture, and the build shows the light one at the same scale: a light picture 8 pixels narrower is shown 4 pixels narrower when the page halves the dark one. The IDE's light theme lays some things out a few pixels smaller, so the two need not be exactly the same size.
+- **A `.light.png` needs its dark picture beside it.** One without stops the build, because it would never be shown.
+
+The IDE's own screenshots come from `scripts/shoot_docs.mjs`, which takes each one in both themes and writes both files; it keeps no light picture that looks exactly like the dark one. Describe a picture in words that are true in both themes: its alt text and the prose around it are the same for both. "The Run button" is true of both, while "the white Run button" is not.
+
+### A picture as SVG
+
+Most of the IDE's screenshots are also kept as SVG, beside their PNGs under the same name:
+
+```text
+docs/IDE/Images/Watches.png         <-- the page names this one
+docs/IDE/Images/Watches.svg         <-- shown in its place
+docs/IDE/Images/Watches.light.png
+docs/IDE/Images/Watches.light.svg   <-- shown in the light theme
+```
+
+`scripts/shoot_docs.mjs --svg` draws each SVG from the IDE's page at the moment it takes the PNG. Its text is real text, in the fonts the IDE drew it with, so the picture stays sharp at any zoom, and in the PDF book its text can be selected and searched. The page still names `Watches.png`: the build shows the SVG in its place wherever there is one, in each theme.
+
+- **Name the PNG, never the SVG.** The PNG stays in the repository. The SVG is checked against it when it is made, and an output that shows PNGs uses it. Which outputs show the SVGs is set by `picture_svg` in `docs/_config.yml`: the website and the PDF book do, and the offline copy and the IDE help add-in's archive show the PNGs. The SVGs would make that archive half as large again.
+- **To keep one picture's PNG everywhere**, put `png` in its attribute block: `![The Watches panel](Images/Watches.png){:width="190" height="337" png}`. The build takes the word out of the page.
+- **Do not edit a picture's SVG.** Take the picture again. `shoot_docs` writes an SVG only when it matches its PNG closely. One that has more than 0.25% of its pixels far from the PNG's is not written, and an older one is removed, so the page shows the PNG instead.
 
 ### Videos
 
@@ -924,7 +968,7 @@ Three severities, used distinctly:
 
 A known defect in twinBASIC follows the same scale. A defect that silently gives a wrong result --- a function that returns the wrong value and raises no error --- is a `> [!WARNING]` until a fixed build is released, because nothing tells the reader that their data is wrong. A defect that crashes the program is a `> [!WARNING]` too, because whatever it had not saved is lost. So is a defect whose error hides a silent part, such as a procedure that runs twice before the error is raised. A defect the reader cannot miss and that loses nothing, such as an error raised or a statement the compiler refuses, is a `> [!NOTE]`. Either callout names the build it applies to. Once a fixed build is out, the callout is removed, and the page describes the correct behaviour with no mention of the defect: the documentation is not a record of past defects.
 
-Where twinBASIC and VB6 behave differently, say what VB6 does. Check it in VB6 --- [`vb6run.mjs`](Tools#vb6run) builds and runs a sample there --- rather than writing it from memory. Where twinBASIC's behaviour is the intended one, the VB6 behaviour goes in a `> [!NOTE]`. Inside a defect's `> [!WARNING]` it is one sentence, such as "VB6 raises error 6, *Overflow*."
+Where twinBASIC and VB6 behave differently, say what VB6 does. Check it in VB6 --- [`vb6run.mjs`](Tools-Defects#vb6run) builds and runs a sample there --- rather than writing it from memory. Where twinBASIC's behaviour is the intended one, the VB6 behaviour goes in a `> [!NOTE]`. Inside a defect's `> [!WARNING]` it is one sentence, such as "VB6 raises error 6, *Overflow*."
 
 Use one callout per concern, and reserve them for genuine notes --- plain "why this is useful" prose should stay a plain paragraph.
 

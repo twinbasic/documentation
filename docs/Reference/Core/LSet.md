@@ -32,7 +32,7 @@ If *string* is longer than *stringvar*, **LSet** places only the leftmost charac
 **LSet** never changes the length of *stringvar*, so a *stringvar* of zero length stays empty. *stringvar* can be a variable-length string, a fixed-length string, or a **Variant** that holds a string. A *string* that is **Null** raises error 94.
 
 > [!WARNING]
-> BETA 997 has a defect: **LSet** on an element of a **Variant** that holds an array, such as `LSet v(0) = "zz"` with `v = Array("0123456789", "abcde")` or a **Variant** that was given its bounds with **ReDim**, changes nothing and raises no error. VB6 changes the element. An element of an array declared `Dim w(0 To 1) As Variant` works. To change an element of a **Variant** array, copy it to a **String** variable, use **LSet** on the variable and assign the variable back.
+> BETA 1005 has a defect: **LSet** on an element of a **Variant** that holds an array, such as `LSet v(0) = "zz"` with `v = Array("0123456789", "abcde")` or a **Variant** that was given its bounds with **ReDim**, changes nothing and raises no error. VB6 changes the element. An element of an array declared `Dim w(0 To 1) As Variant` works. To change an element of a **Variant** array, copy it to a **String** variable, use **LSet** on the variable and assign the variable back.
 
 When copying between user-defined types, **LSet** copies as many bytes as the smaller of the two types holds. If *varname1* is larger than *varname2*, its bytes beyond the end of the source keep their old values. Both types must be free of variable-length **String**, **Variant**, **Object** and dynamic-array fields; the compiler refuses the statement otherwise (error TB5249). Fixed-length **String** fields are allowed.
 

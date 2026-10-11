@@ -1,0 +1,126 @@
+' Regression tests for #2488 and its follow-up. A class with an Event is a
+' connectable object; these call its IConnectionPointContainer and its
+' IConnectionPoint with a null pointer, where the COM contract (the Windows SDK
+' pages for each method) says the method returns E_POINTER. Every out parameter
+' is declared ByVal LongPtr, so that a null one can be passed.
+
+[InterfaceId("B196B284-BAB4-101A-B69C-00AA00341D07")]
+Interface IConnectionPointContainerRaw Extends stdole.IUnknown
+    Sub EnumConnectionPoints(ByVal ppEnum As LongPtr)
+    Sub FindConnectionPoint(ByVal riid As LongPtr, ByVal ppCP As LongPtr)
+End Interface
+
+[InterfaceId("B196B285-BAB4-101A-B69C-00AA00341D07")]
+Interface IEnumConnectionPointsRaw Extends stdole.IUnknown
+    Sub Next(ByVal cConnections As Long, ByRef ppCP As IConnectionPointRaw, ByRef pcFetched As Long)
+End Interface
+
+[InterfaceId("B196B286-BAB4-101A-B69C-00AA00341D07")]
+Interface IConnectionPointRaw Extends stdole.IUnknown
+    Sub GetConnectionInterface(ByVal piid As LongPtr)
+    Sub GetConnectionPointContainer(ByVal ppCPC As LongPtr)
+    Function Advise(ByVal pUnkSink As stdole.IUnknown) As Long
+    Sub Unadvise(ByVal dwCookie As Long)
+End Interface
+
+Class EventSource
+    Public Event Ping()
+End Class
+
+Class NotASink
+    Public Value As Long
+End Class
+
+[TestFixture]
+Module ConnectionPointTests
+
+    Private Const E_POINTER As Long = &H80004003      ' the Windows SDK, for a null pointer argument
+    Private Const E_NOINTERFACE As Long = &H80004002
+
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" ( _
+        ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
+    ' The connection point of a new EventSource, through EnumConnectionPoints and Next.
+    Private Function PointOf(ByVal container As IConnectionPointContainerRaw) As IConnectionPointRaw
+        Dim pEnum As LongPtr
+        container.EnumConnectionPoints VarPtr(pEnum)
+        Dim points As IEnumConnectionPointsRaw
+        CopyMemory VarPtr(points), VarPtr(pEnum), LenB(pEnum)   ' takes over the reference
+        Dim fetched As Long
+        points.Next 1, PointOf, fetched
+    End Function
+
+    ' Fixed in #2488 (BETA 1005): Advise with a null sink returns E_POINTER.
+
+    [TestCase]
+    Public Sub Advise_Nothing_ReturnsEPointer()
+        Dim point As IConnectionPointRaw = PointOf(New EventSource)
+        On Error Resume Next
+        point.Advise Nothing
+        Assert.Strict.AreEqual E_POINTER, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Advise_UnassignedIUnknown_ReturnsEPointer()
+        Dim point As IConnectionPointRaw = PointOf(New EventSource)
+        Dim sink As stdole.IUnknown
+        On Error Resume Next
+        point.Advise sink
+        Assert.Strict.AreEqual E_POINTER, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub Advise_NotASink_ReturnsENoInterface()
+        Dim point As IConnectionPointRaw = PointOf(New EventSource)
+        On Error Resume Next
+        point.Advise New NotASink
+        Assert.Strict.AreEqual E_NOINTERFACE, Err.Number   ' as VB6 returns, too
+    End Sub
+
+    ' Left in BETA 1005: every other null pointer ends in an access violation.
+
+    [TestCase]
+    Public Sub GetConnectionInterface_NullIid_ReturnsEPointer()
+        Dim point As IConnectionPointRaw = PointOf(New EventSource)
+        On Error Resume Next
+        point.GetConnectionInterface 0
+        Assert.Strict.AreEqual E_POINTER, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub GetConnectionPointContainer_NullOut_ReturnsEPointer()
+        Dim point As IConnectionPointRaw = PointOf(New EventSource)
+        On Error Resume Next
+        point.GetConnectionPointContainer 0
+        Assert.Strict.AreEqual E_POINTER, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FindConnectionPoint_NullIid_ReturnsEPointer()
+        Dim container As IConnectionPointContainerRaw = New EventSource
+        Dim p As LongPtr
+        On Error Resume Next
+        container.FindConnectionPoint 0, VarPtr(p)
+        Assert.Strict.AreEqual E_POINTER, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub FindConnectionPoint_NullOut_ReturnsEPointer()
+        Dim container As IConnectionPointContainerRaw = New EventSource
+        Dim point As IConnectionPointRaw = PointOf(container)
+        Dim iid(15) As Byte
+        point.GetConnectionInterface VarPtr(iid(0))
+        On Error Resume Next
+        container.FindConnectionPoint VarPtr(iid(0)), 0
+        Assert.Strict.AreEqual E_POINTER, Err.Number
+    End Sub
+
+    [TestCase]
+    Public Sub EnumConnectionPoints_NullOut_ReturnsEPointer()
+        Dim container As IConnectionPointContainerRaw = New EventSource
+        On Error Resume Next
+        container.EnumConnectionPoints 0
+        Assert.Strict.AreEqual E_POINTER, Err.Number
+    End Sub
+
+End Module

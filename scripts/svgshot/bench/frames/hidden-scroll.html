@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>A document scrolled with no scrollbar</title>
+<!--
+  overflow: hidden on the root element, and the document scrolled by script
+  all the same: the frame shows its content from 50px down, with no scrollbar.
+-->
+<style>
+html { overflow: hidden; background: #fff; }
+body { margin: 0; padding: 8px; color: #111; font: 13px "Segoe UI", sans-serif; }
+.row { height: 20px; border-bottom: 1px solid #ccc; }
+</style>
+<body>
+<script>
+  for (let i = 0; i < 12; i++) document.body.insertAdjacentHTML("beforeend", `<div class="row">line ${i}</div>`);
+  window.scrollTo(0, 50);
+</script>
+</body>
+</html>

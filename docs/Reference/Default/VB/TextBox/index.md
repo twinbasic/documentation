@@ -95,10 +95,7 @@ Determines how the control's border is drawn by the OS. A member of [**Appearanc
 ### BackColor
 {: .no_toc }
 
-The background colour of the edit area, as an **OLE_COLOR**. Defaults to the system window-background colour.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The background colour of the edit area, as an **OLE_COLOR**. Defaults to the system window-background colour. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### BorderStyle
 {: .no_toc }
@@ -209,10 +206,7 @@ Shortcut for [**Font**](#font)`.Underline`. **Boolean**.
 ### ForeColor
 {: .no_toc }
 
-The text colour, as an **OLE_COLOR**. Defaults to the system window-text colour.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The text colour, as an **OLE_COLOR**. Defaults to the system window-text colour. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### Height
 {: .no_toc }
@@ -281,7 +275,7 @@ When **True**, the user can scroll, select, and copy text but cannot modify it. 
 The maximum number of characters the user can type into the control. **Long**, default `0` --- when zero, the OS imposes its own limit (typically 32 767 characters for single-line, much larger for multi-line). Setting **MaxLength** below the current text length does not truncate what is already there, but blocks further typing until the user deletes enough characters.
 
 > [!WARNING]
-> BETA 997 has a defect: assigning [**Text**](#text) in code is not limited by **MaxLength**. The whole string is stored, and no error is raised. VB6 truncates the string to **MaxLength** characters. Truncate the string in code before assigning it, with **Left$**.
+> BETA 1005 has a defect: assigning [**Text**](#text) in code is not limited by **MaxLength**. The whole string is stored, and no error is raised. VB6 truncates the string to **MaxLength** characters. Truncate the string in code before assigning it, with **Left$**.
 
 ### MouseIcon
 {: .no_toc }

@@ -1,0 +1,62 @@
+' Inflate reads what zlib writes, as Node's inflateSync does: the PNG text chunks and ICC profiles
+' it opens are compressed with all three kinds of block. The two compressed streams here were
+' written by Node's zlib.deflateSync.
+[TestFixture]
+Module InflateTests
+
+    [TestCase]
+    Public Sub ReadsFixedHuffmanCodes()
+        Assert.Strict.AreEqual "hello hello hello hello", Inflated(FromHex("789ccb48cdc9c957c8402701680308b1"))
+    End Sub
+
+    [TestCase]
+    Public Sub ReadsDynamicHuffmanCodes()
+        Dim expected As String, i As Long
+        For i = 0 To 39
+            expected = expected & "The quick brown fox " & ((i * 7919) Mod 97) & " jumps over the lazy dog. "
+        Next
+        Assert.Strict.AreEqual expected, Inflated(FromHex( _
+            "78da95d4db0dc2300c46e1553c01228993387b7401a081720d140a85e95900219df75f477ef8e46ea8729bf69ba3acc7f6bac8b6cdb294c374bedea53deb" & _
+            "288fa1ca69f5794bdf760be97ecc93677b9fd9de0adb47657b07fbe6d85e13bc07f67360fb60700f39449887dc0ae41621370ffb06b929e4e6603f436e0a" & _
+            "b9c17ca2da20b702b925c8cdc3be416e117273b09f213785dc603e436d813e4fa8016af35073f9a3ed0bc1a69aa4"))
+    End Sub
+
+    [TestCase]
+    Public Sub ReadsStoredBlocksOfAnySize()
+        Dim data() As Byte, z() As Byte, out() As Byte, n As Long, k As Long, same As Boolean
+        ReDim data(0 To 69999)
+        For k = 0 To 69999
+            data(k) = k Mod 251
+        Next
+        z = Zlib(data)
+        n = Inflate.ZlibInflate(z, 0, Bytes.Length(z), out)
+        Assert.Strict.AreEqual 70000&, n
+        same = True
+        For k = 0 To 69999
+            If out(k) <> data(k) Then
+                same = False
+                Exit For
+            End If
+        Next
+        Assert.Strict.IsTrue same, "byte " & k
+    End Sub
+
+    [TestCase]
+    Public Sub RefusesAStreamWhoseChecksumIsWrong()
+        Dim z() As Byte, out() As Byte, n As Long, number As Long
+        z = Zlib(Cat("abc"))
+        z(UBound(z)) = z(UBound(z)) Xor 1
+        On Error Resume Next
+        n = Inflate.ZlibInflate(z, 0, Bytes.Length(z), out)
+        number = Err.Number
+        On Error GoTo 0
+        Assert.Strict.AreEqual 5&, number
+    End Sub
+
+    Private Function Inflated(ByVal z As Variant) As String
+        Dim a() As Byte, out() As Byte, n As Long
+        a = z
+        n = Inflate.ZlibInflate(a, 0, Bytes.Length(a), out)
+        Inflated = Bytes.Latin1Range(out, 0, n)
+    End Function
+End Module

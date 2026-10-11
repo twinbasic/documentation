@@ -1,7 +1,7 @@
 // Composite pictures for shoot_docs.mjs: a picture made of parts of the IDE that are never on
 // the screen together (the code that declares a property, and the PROPERTIES panel that lists
 // it), with an annotation drawn across them. The plan and the owner's decisions are in
-// WIP.Screenshots.md (Annotations, Composites; Increment 4).
+// WIP.Screenshots.md (Annotations; Designers, code and composites).
 //
 //     const parts = [
 //       { png, clip, anchors: { field: rect }, column: 0 },   // each captured as its own clip
@@ -16,7 +16,7 @@
 // Each part is a capture of the page at 2x (`png`) of the rectangle `clip` (CSS pixels), with
 // the boxes of the anchors it holds, resolved while it was showing (resolveAnchors in
 // lib/shot-annotate.mjs). The parts are laid out in a layer over the whole page, in the same
-// page, as <img> elements drawn one to one, on the IDE's dark background: by columns, left to
+// page, as <img> elements drawn one to one, on the IDE's background in its theme: by columns, left to
 // right, each column's parts one under another, `gap` apart, `margin` round them all. `align`
 // moves the columns up or down so that the centre of the anchor `from` is `dy` from that of
 // `to` (the code is placed against the row the arrow ends at, so that the arrow is short). A
@@ -31,7 +31,8 @@ export const COMPOSITE_ID = "tbShotComposite";
 // The device pixels to a CSS pixel of the parts' captures.
 const SCALE = 2;
 
-// The IDE's dark background, as its page has it (body, rgb(43, 43, 43) in the dark theme).
+// The IDE's background, as its page has it in the theme it is in (body, rgb(43, 43, 43) in the
+// dark theme), so that a light picture's parts are on the Light theme's.
 const GROUND = "getComputedStyle(document.body).backgroundColor";
 
 // Where each part goes, and the layer's size: whole CSS pixels.

@@ -1,0 +1,148 @@
+' Each case calls a procedure that raises an error and has no error handler, from a procedure that has
+' one, and returns what that handler caught. [CompilerOptions("+llvm")] compiles a procedure with LLVM;
+' the VB6 project in vb6/ has the same procedures without it.
+Module Cases
+
+    ' --- The callees: none of them has an error handler ----------------------------------------
+
+    Private Sub ErrRaise_Plain()
+        Err.Raise 5000, "Callee", "raised by Err.Raise"
+    End Sub
+
+    [CompilerOptions("+llvm")]
+    Private Sub ErrRaise_Llvm()
+        Err.Raise 5000, "Callee", "raised by Err.Raise"
+    End Sub
+
+    Private Sub Divide_Plain(ByVal divisor As Long)
+        Dim x As Long
+        x = 1 \ divisor
+    End Sub
+
+    [CompilerOptions("+llvm")]
+    Private Sub Divide_Llvm(ByVal divisor As Long)
+        Dim x As Long
+        x = 1 \ divisor
+    End Sub
+
+    Private Sub Middle_Plain()
+        ErrRaise_Llvm
+    End Sub
+
+    ' --- The callers: each has an On Error GoTo handler and returns what it caught -------------
+
+    Public Function CallerPlain_CalleePlain_ErrRaise() As String
+        On Error GoTo Handler
+        ErrRaise_Plain
+        CallerPlain_CalleePlain_ErrRaise = "no error"
+        Exit Function
+    Handler:
+        CallerPlain_CalleePlain_ErrRaise = "caught " & Err.Number
+    End Function
+
+    Public Function CallerPlain_CalleeLlvm_ErrRaise() As String
+        On Error GoTo Handler
+        ErrRaise_Llvm
+        CallerPlain_CalleeLlvm_ErrRaise = "no error"
+        Exit Function
+    Handler:
+        CallerPlain_CalleeLlvm_ErrRaise = "caught " & Err.Number
+    End Function
+
+    [CompilerOptions("+llvm")]
+    Public Function CallerLlvm_CalleePlain_ErrRaise() As String
+        On Error GoTo Handler
+        ErrRaise_Plain
+        CallerLlvm_CalleePlain_ErrRaise = "no error"
+        Exit Function
+    Handler:
+        CallerLlvm_CalleePlain_ErrRaise = "caught " & Err.Number
+    End Function
+
+    [CompilerOptions("+llvm")]
+    Public Function CallerLlvm_CalleeLlvm_ErrRaise() As String
+        On Error GoTo Handler
+        ErrRaise_Llvm
+        CallerLlvm_CalleeLlvm_ErrRaise = "no error"
+        Exit Function
+    Handler:
+        CallerLlvm_CalleeLlvm_ErrRaise = "caught " & Err.Number
+    End Function
+
+    Public Function CallerPlain_CalleePlain_Divide() As String
+        On Error GoTo Handler
+        Divide_Plain 0
+        CallerPlain_CalleePlain_Divide = "no error"
+        Exit Function
+    Handler:
+        CallerPlain_CalleePlain_Divide = "caught " & Err.Number
+    End Function
+
+    Public Function CallerPlain_CalleeLlvm_Divide() As String
+        On Error GoTo Handler
+        Divide_Llvm 0
+        CallerPlain_CalleeLlvm_Divide = "no error"
+        Exit Function
+    Handler:
+        CallerPlain_CalleeLlvm_Divide = "caught " & Err.Number
+    End Function
+
+    [CompilerOptions("+llvm")]
+    Public Function CallerLlvm_CalleePlain_Divide() As String
+        On Error GoTo Handler
+        Divide_Plain 0
+        CallerLlvm_CalleePlain_Divide = "no error"
+        Exit Function
+    Handler:
+        CallerLlvm_CalleePlain_Divide = "caught " & Err.Number
+    End Function
+
+    [CompilerOptions("+llvm")]
+    Public Function CallerLlvm_CalleeLlvm_Divide() As String
+        On Error GoTo Handler
+        Divide_Llvm 0
+        CallerLlvm_CalleeLlvm_Divide = "no error"
+        Exit Function
+    Handler:
+        CallerLlvm_CalleeLlvm_Divide = "caught " & Err.Number
+    End Function
+
+    ' --- The same with On Error Resume Next, and with a procedure between caller and callee ------
+
+    Public Function CallerPlain_CalleeLlvm_ResumeNext() As String
+        On Error Resume Next
+        ErrRaise_Llvm
+        CallerPlain_CalleeLlvm_ResumeNext = "continued, Err.Number " & Err.Number
+    End Function
+
+    [CompilerOptions("+llvm")]
+    Public Function CallerLlvm_CalleePlain_ResumeNext() As String
+        On Error Resume Next
+        ErrRaise_Plain
+        CallerLlvm_CalleePlain_ResumeNext = "continued, Err.Number " & Err.Number
+    End Function
+
+    Public Function CallerPlain_MiddlePlain_CalleeLlvm() As String
+        On Error GoTo Handler
+        Middle_Plain
+        CallerPlain_MiddlePlain_CalleeLlvm = "no error"
+        Exit Function
+    Handler:
+        CallerPlain_MiddlePlain_CalleeLlvm = "caught " & Err.Number
+    End Function
+
+    ' --- A procedure compiled with LLVM that handles its own error ------------------------------
+
+    [CompilerOptions("+llvm")]
+    Public Function Llvm_OwnHandler_Divide() As String
+        On Error GoTo Handler
+        Dim divisor As Long
+        Dim x As Long
+        x = 1 \ divisor
+        Llvm_OwnHandler_Divide = "no error"
+        Exit Function
+    Handler:
+        Llvm_OwnHandler_Divide = "caught " & Err.Number
+    End Function
+
+End Module

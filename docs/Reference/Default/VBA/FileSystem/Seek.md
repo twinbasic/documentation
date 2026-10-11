@@ -43,6 +43,9 @@ Record numbers specified in [Get](../../Core/Get) and [Put](../../Core/Put) stat
 
 Performing a file-write operation after a **Seek** operation beyond the end of a file extends the file. Attempting a **Seek** to a negative or zero position causes an error.
 
+> [!NOTE]
+> In BETA 1005, the **Seek** function and statement raise run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*). The statement raises the same error for a *position* of 0, where VB6 raises 63 (*Bad record number*).
+
 ### Examples
 
 This example assumes that `TESTFILE` contains records of the user-defined type `Record`.

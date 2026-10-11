@@ -1,0 +1,132 @@
+' Regression tests for #2490 and its follow-up: the error a late-bound caller
+' sees when the member it calls raises one. Thing's members each raise error 380
+' (Invalid property value) a different way. Called early-bound, every one raises
+' 380; called late-bound, VB6 6.0 raises 380 for every one (the VB6 project beside
+' this one prints them). In BETA 1005 a member that raises with a constant number
+' and nothing else reaches the late-bound caller as &H80020009 (DISP_E_EXCEPTION,
+' "Exception occurred.").
+
+Class Thing
+    Private mValue As Long
+
+    Public Sub RaiseConstant()
+        Err.Raise 380
+    End Sub
+
+    Public Sub RaiseVariable(ByVal Number As Long)
+        Err.Raise Number
+    End Sub
+
+    Public Sub RaiseConstantWithSource()
+        Err.Raise 380, "Thing"
+    End Sub
+
+    Public Sub RaiseConstantWithDescription()
+        Err.Raise 380, "Thing", "the value is out of range"
+    End Sub
+
+    Public Sub ErrorStatement()
+        Error 380
+    End Sub
+
+    Public Property Get Value() As Long
+        Return mValue
+    End Property
+
+    Public Property Let Value(ByVal NewValue As Long)
+        If NewValue < 0 Then Err.Raise 380
+        mValue = NewValue
+    End Property
+End Class
+
+[TestFixture]
+Module RaiseThroughLateBindingTests
+
+    ' Fixed in #2490 (BETA 1005): a name the object does not have is error 438.
+
+    [TestCase]
+    Public Sub UnknownMember_Raises438()
+        Dim o As Object = New Thing
+        On Error Resume Next
+        o.Nope
+        Assert.Strict.AreEqual 438, Err.Number                ' VB6: 438
+    End Sub
+
+    ' Already as in VB6 in BETA 1005.
+
+    [TestCase]
+    Public Sub EarlyBound_RaiseConstant_Raises380()
+        Dim t As Thing = New Thing
+        On Error Resume Next
+        t.RaiseConstant
+        Assert.Strict.AreEqual 380, Err.Number                ' VB6: 380
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_RaiseVariable_Raises380()
+        Dim o As Object = New Thing
+        On Error Resume Next
+        o.RaiseVariable 380
+        Assert.Strict.AreEqual 380, Err.Number                ' VB6: 380
+    End Sub
+
+    ' Left in BETA 1005: &H80020009 in place of 380.
+
+    [TestCase]
+    Public Sub LateBound_RaiseConstantWithSource_Raises380()
+        Dim o As Object = New Thing
+        On Error Resume Next
+        o.RaiseConstantWithSource
+        Assert.Strict.AreEqual 380, Err.Number                ' VB6: 380
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_RaiseConstantWithDescription_Raises380()
+        Dim o As Object = New Thing
+        On Error Resume Next
+        o.RaiseConstantWithDescription
+        Assert.Strict.AreEqual 380, Err.Number                ' VB6: 380
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_RaiseConstant_Raises380()
+        Dim o As Object = New Thing
+        On Error Resume Next
+        o.RaiseConstant
+        Assert.Strict.AreEqual 380, Err.Number                ' VB6: 380
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_ErrorStatement_Raises380()
+        Dim o As Object = New Thing
+        On Error Resume Next
+        o.ErrorStatement
+        Assert.Strict.AreEqual 380, Err.Number                ' VB6: 380
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_PropertyLet_Raises380()
+        Dim o As Object = New Thing
+        On Error Resume Next
+        o.Value = -1
+        Assert.Strict.AreEqual 380, Err.Number                ' VB6: 380
+    End Sub
+
+    [TestCase]
+    Public Sub CallByName_RaiseConstant_Raises380()
+        Dim o As Object = New Thing
+        On Error Resume Next
+        CallByName o, "RaiseConstant", VbMethod
+        Assert.Strict.AreEqual 380, Err.Number                ' VB6: 380
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_FormColour_Raises380()
+        ' The VB package's own colour properties raise 380 the same way (#2484).
+        Dim o As Object = New PictureBox
+        On Error Resume Next
+        o.BackColor = -1
+        Assert.Strict.AreEqual 380, Err.Number                ' early-bound: 380
+    End Sub
+
+End Module

@@ -28,6 +28,7 @@ import { compressHtml } from "./compress.mjs";
 import { normalizeBaseurl } from "./url.mjs";
 import { escapeRegExp } from "./escape.mjs";
 import { CODE_OR_PRE, replaceOutsideCode } from "./code-guard.mjs";
+import { lightOnly, pictureSvgOutputs, pngPictures } from "./theme-pictures.mjs";
 
 // ---------------------------------------------------------------------------
 // §A  Phase 2: chapter resolver + sort_by_nav_order
@@ -297,7 +298,7 @@ const SUMMARY_OPEN_RE = /<summary[^>]*>/gi;
 const HEADING_SHIFT_RE = /<(\/?)h([1-6])\b/g;
 
 // PLAN-8 §6.3 / book-chapter-transform.rb#book_chapter_transform. Five
-// logical passes:
+// logical passes, after step 0 reduces a picture in two themes to its light one:
 //   1. strip `src="<baseurl>/` prefix (no-op when baseurl is empty)
 //   2. unwrap <details>/<summary> tags (FAQ-style collapsibles flatten
 //      for print); summary id= attributes are preserved as inline spans
@@ -307,7 +308,9 @@ const HEADING_SHIFT_RE = /<(\/?)h([1-6])\b/g;
 //   5. anchor-id prefix on all id= attributes and non-empty href="#..."
 export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor) {
   if (!body) return body;
-  let result = body;
+  // Step 0: a picture in two themes is its light picture alone on paper, a plain image
+  // (theme-pictures.mjs).
+  let result = lightOnly(body);
 
   // Step 1: strip the baseurl-prefixed src. With baseurl="" the strip
   // is `src="/` -> `src="`, which removes the leading slash from
@@ -425,6 +428,10 @@ function decodeUrlPath(p) {
 //   skipBaseHeadingShift   truthy. Skip the +1 1.5a base shift.
 //   extraHeadingShift      truthy. Apply an additional +1 shift (1.9
 //                          chaptered-part extra).
+// The book's view of a chapter's pictures: assembleBook sets it for the one synchronous
+// assembly it does (the PNGs, when picture_svg.book is false) and puts it back after.
+let bookPictures = (html) => html;
+
 function emitChapter(out, chapter, opts, subPageState, baseurl, imagePaths) {
   // An empty body is a legitimate chapter -- a landing page that carries
   // only a title. An *absent* one means the page's render result never
@@ -437,7 +444,7 @@ function emitChapter(out, chapter, opts, subPageState, baseurl, imagePaths) {
         `renderedContent; refusing to drop it from the book silently`,
     );
   }
-  let body = chapter.renderedContent;
+  let body = bookPictures(chapter.renderedContent);
   if (!body.trim()) return;
 
   // book-chapter-body.html line 59-64: if content starts with `<`, use
@@ -570,7 +577,7 @@ const MONTH_NAMES = [
 // returned `imagePaths` is an array of every page-relative `<img
 // src=>` path referenced from the assembled body, decoded to the file's
 // own name and deduplicated in emit order (Set insertion order).
-export function assembleBook(site, pages) {
+export function assembleBook(site, pages, staticFiles = null) {
   const bookData = site.bookData;
   if (!bookData) {
     throw new Error("Phase 8: site.bookData is unset; Phase 2 didn't run.");
@@ -580,15 +587,25 @@ export function assembleBook(site, pages) {
   const siteTitle = String(site.config?.title ?? "");
   const baseurl = String(site.config?.baseurl ?? "");
 
+  // A book that shows the pictures' PNGs (picture_svg.book false) names each picture's SVG
+  // back as its PNG, before the chapters' images are collected for the PDF tree.
+  if (staticFiles && !pictureSvgOutputs(site.config).book) {
+    const rels = new Set(staticFiles.map((s) => s.srcRel));
+    bookPictures = (html) => pngPictures(html, rels, baseurl);
+  }
   const out = [];
   const imagePaths = new Set();
-  out.push(renderBookHead(lang, siteTitle));
-  out.push("\n<body>\n");
-  out.push(renderTitlePage(site));
-  emitFrontMatter(out, bookData, baseurl, imagePaths);
-  (bookData.parts ?? []).forEach((part, i) => {
-    emitPart(out, part, i, site, baseurl, imagePaths);
-  });
+  try {
+    out.push(renderBookHead(lang, siteTitle));
+    out.push("\n<body>\n");
+    out.push(renderTitlePage(site));
+    emitFrontMatter(out, bookData, baseurl, imagePaths);
+    (bookData.parts ?? []).forEach((part, i) => {
+      emitPart(out, part, i, site, baseurl, imagePaths);
+    });
+  } finally {
+    bookPictures = (html) => html;
+  }
   out.push("\n</body>\n</html>\n");
 
   let bookHtml = out.join("");

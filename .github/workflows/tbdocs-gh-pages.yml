@@ -98,19 +98,78 @@ jobs:
         # offers. Never pass --no-help-archive here: the download would lose
         # the archive (check_ci_workflows.mjs refuses the flag).
         run: node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}' --no-fetch-assets --check-audit-index
+      # The book PDF render runs in parallel with the gates. This step starts
+      # it in the background and returns as soon as the process is up, so the
+      # gates begin immediately; the "Wait for the book PDF render" step
+      # below joins the backgrounded process, prints its captured output,
+      # and exits with its code. On the deploy workflow this saves ~90 s
+      # against the previous sequential layout (the book render takes about
+      # as long as the gates). checks.yml is unaffected -- it has no PDF to
+      # render -- and the gates' composite-action rendering stays as it was.
+      #
+      # nohup makes the child ignore SIGHUP and redirected stdio decouples
+      # it from this step's shell; together they keep the child alive after
+      # the shell exits -- the runner reparents it and leaves it running
+      # until the join step reads /tmp/book-render.log and
+      # /tmp/book-render.exit.
+      #
+      # No `setsid`: when bash backgrounds `setsid cmd`, the backgrounded
+      # setsid is a process-group leader and forks, the parent exits, and
+      # the real command runs under the child's PID -- so `$!` captures a
+      # dead PID and the join step's `kill -0` returns false in ~0 s,
+      # usually before the render has finished. nohup does not fork; `$!`
+      # captures the real PID, which stays live until the render completes.
+      - name: Start the book PDF render in the background
+        working-directory: ./docs
+        run: |
+          mkdir -p _pdf
+          nohup bash -c '
+            node ../book/render-book.mjs _site-pdf/book.html -o "_pdf/twinBASIC Book.pdf" --outline-tags h1,h2,h3,h4 --additional-script ../perf/detach-pages.js
+            echo $? > /tmp/book-render.exit
+          ' >/tmp/book-render.log 2>&1 </dev/null &
+          BOOK_PID=$!
+          echo "$BOOK_PID" > /tmp/book-render.pid
+          echo "started book render as PID $BOOK_PID"
       # The gates both workflows run, in one list: see
       # .github/actions/run-gates/action.yml, which check_ci_workflows.mjs
       # checks against test.bat and check.bat. checks.yml runs only on pull
       # requests, so this is the one place a change pushed straight to
       # `staging`, or a manual dispatch, meets them. Each gate is its own
-      # group in this step's log.
+      # step in the composite action's rendering, with its own duration.
+      #
+      # check_a11y.mjs is the FIRST step of the composite action, so its
+      # Chromium work overlaps with the backgrounded book render's early
+      # Chromium-heavy phase for ~40 s. The 24 Node gates below it are
+      # CPU-bound, so they run through the rest of the book render without
+      # Chromium contention.
       - name: Run the gates
         uses: ./.github/actions/run-gates
-      - name: Render book PDF
+      # Join the backgrounded book render, print its output, and exit with
+      # its code. This step's own duration shows how much the book overlapped
+      # with the gates: 0 s if the book finished during them, or
+      # book_time - gates_time if the gates finished first. The 15-minute
+      # step timeout is a backstop against a wedged render; a missing PID
+      # or exit file aborts rather than hanging.
+      - name: Wait for the book PDF render
+        timeout-minutes: 15
         run: |
-          mkdir -p _pdf
-          node ../book/render-book.mjs _site-pdf/book.html -o "_pdf/twinBASIC Book.pdf" --outline-tags h1,h2,h3,h4 --additional-script ../perf/detach-pages.js
-        working-directory: ./docs
+          if [ ! -f /tmp/book-render.pid ]; then
+            echo "::error::no PID file; the start step did not run"
+            exit 2
+          fi
+          BOOK_PID=$(cat /tmp/book-render.pid)
+          echo "waiting for book render PID $BOOK_PID"
+          while kill -0 "$BOOK_PID" 2>/dev/null; do
+            sleep 2
+          done
+          cat /tmp/book-render.log
+          if [ ! -f /tmp/book-render.exit ]; then
+            echo "::error::the book render process ended without writing its exit status"
+            exit 1
+          fi
+          BOOK_EXIT=$(cat /tmp/book-render.exit)
+          echo "book render exit code: $BOOK_EXIT"
+          exit "$BOOK_EXIT"
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:

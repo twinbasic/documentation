@@ -1,0 +1,243 @@
+// Source for Tools-Groups.svg, the map of the Tools and Scripts pages: one
+// cluster per group page, one node per tool. The SVG is a build artifact:
+// tbdocs regenerates it whenever this file is newer.
+//
+// There are no real edges. The invisible ones only lay the nodes out: a chain
+// inside a cluster stacks a column, a rank=same block holds a row of the
+// cluster together, and an edge from the bottom of one row of clusters to the
+// top of the next puts that row below it. A tool added to a page goes into its
+// cluster's chains and rows; keep the columns of a cluster within one node of
+// the same length.
+//
+// The clusters side by side in one row must have the same number of node rows.
+// dot spaces its ranks for the whole graph, so where a shorter cluster ends,
+// the gap its border needs opens inside its taller neighbour too. The
+// invisible nodes (wp, cp1, cp2, ep, dp) pad the shorter ones.
+//
+// Every node and cluster label is a link, set in the block at the end so the
+// layout above stays readable: a node to its tool's entry, by the id its
+// heading carries on the built page, and a cluster to its group page. The
+// URLs are relative to the Tools page, which inlines this diagram. A tool
+// added to a page gets a line there too; the build's link check reports one
+// whose entry has gone. The build moves each cluster's label just before its
+// first node (builder/inline-diagram.mjs), so a cluster's nodes are declared
+// together, row by row.
+//
+// Graphviz has no font machinery and would otherwise measure these labels
+// with Times; builder/dot-metrics.mjs installs Inter's real widths before
+// layout, and scripts/check_dot_fit.mjs asserts afterwards that no label
+// outgrew its box. See WIP.md, "Diagrams".
+
+digraph tools_groups {
+    rankdir=TB
+    bgcolor="transparent"
+    nodesep=0.22
+    ranksep=0.12
+    newrank=true
+    // The nodes in the SVG in the order declared here, which is reading order:
+    // the order a reader and the Tab key take the links in.
+    outputorder=nodesfirst
+
+    node [
+        shape=box
+        style="rounded,filled"
+        fontname="Inter,system-ui,-apple-system,Segoe UI,sans-serif"
+        fontsize=11
+        margin="0.10,0.04"
+        height=0.3
+        fillcolor="#fef7e0"
+        color="#f9ab00"
+    ]
+    // Heavy, so that a column stays packed rather than stretching towards the
+    // light edges that place the next row of clusters.
+    edge [style=invis weight=20]
+    graph [
+        color="#7a8090"
+        fontname="Inter,system-ui,-apple-system,Segoe UI,sans-serif"
+        fontsize=13
+        style="rounded"
+        labeljust="l"
+        margin=0
+    ]
+
+    // ---- row 1 ----
+    subgraph cluster_wrappers {
+        margin=12
+        label="Batch wrappers"
+        w1 [label="build.bat"]      w2 [label="serve.bat"]          w3 [label="check.bat"]
+        w4 [label="test.bat"]       w5 [label="book.bat"]           w6 [label="examples.bat"]
+        w7 [label="addin-test.bat"] w8 [label="ide-test.bat"]       w9 [label="try-help-addin.bat"]
+        wp [style=invis label=""]
+        w1 -> w4 -> w7 -> wp
+        w2 -> w5 -> w8
+        w3 -> w6 -> w9
+        { rank=same; w4 w5 w6 }
+        { rank=same; w7 w8 w9 }
+    }
+    subgraph cluster_build {
+        margin=12
+        label="Build and Generation"
+        b1 [label="tbdocs"]         b2 [label="render-book"]
+        b3 [label="compare_trees"]  b4 [label="survey_tooling"]
+        b5 [label="convert_em_dash_separators"] b6 [label="build_fonts.py"]
+        b7 [label="build_dot_metrics"] b8 [label="build_package_api"]
+        b1 -> b3 -> b5 -> b7
+        b2 -> b4 -> b6 -> b8
+        { rank=same; b3 b4 }
+        { rank=same; b5 b6 }
+        { rank=same; b7 b8 }
+    }
+
+    // ---- row 2 ----
+    subgraph cluster_site {
+        margin=12
+        label="Site Checks"
+        s1 [label="check_links"]        s2 [label="crawl_check"]
+        s3 [label="check_links_diff"]   s4 [label="check_tree_fresh"]
+        s5 [label="check_dot_fit"]      s6 [label="check_a11y"]
+        s7 [label="pick_a11y_sample"]   s8 [label="axe-scan"]
+        s9 [label="check_a11y_fingerprint"] s10 [label="sweep_a11y"]
+        s1 -> s3 -> s5 -> s7 -> s9
+        s2 -> s4 -> s6 -> s8 -> s10
+        { rank=same; s3 s4 }
+        { rank=same; s5 s6 }
+        { rank=same; s7 s8 }
+        { rank=same; s9 s10 }
+    }
+    subgraph cluster_compiler {
+        margin=12
+        label="Compiler Harness"
+        c1 [label="tbbuild"]            c2 [label="tbrun"]
+        c3 [label="impexp.mjs, impexp.py"] c4 [label="check_tb_registry"]
+        c5 [label="probe_shared_temp"]  c6 [label="probe_build_twice"]
+        cp1 [style=invis label=""]  cp2 [style=invis label=""]
+        c1 -> c3 -> c5 -> cp1 -> cp2
+        c2 -> c4 -> c6
+        { rank=same; c3 c4 }
+        { rank=same; c5 c6 }
+    }
+
+    // ---- row 3 ----
+    subgraph cluster_tests {
+        margin=12
+        label="Toolchain Tests"
+        t1  [label="check_publish_policy"] t2  [label="check_regex_safety"]
+        t3  [label="check_code_regions"]   t4  [label="check_gate_lists"]
+        t5  [label="check_ci_workflows"]   t6  [label="check_lint"]
+        t7  [label="search.test"]          t8  [label="render.test"]
+        t9  [label="strftime.test"]        t10 [label="png.test"]
+        t11 [label="compact-image.test"]   t12 [label="svgshot.test"]
+        t13 [label="example-batches.test"] t14 [label="ports.test"]
+        t15 [label="addin-project.test"]   t16 [label="check_page_baseline"]
+        t17 [label="check_book_coverage"]  t18 [label="check_symbol_index"]
+        t19 [label="check_twin_parsers"]   t20 [label="check_attribute_sweep"]
+        t21 [label="check_cli"]            t22 [label="check_pdf_shims_equiv"]
+        t23 [label="check_impexp_parity"]  t24 [label="check_axe_patch_equiv"]
+        t1 -> t5 -> t9  -> t13 -> t17 -> t21
+        t2 -> t6 -> t10 -> t14 -> t18 -> t22
+        t3 -> t7 -> t11 -> t15 -> t19 -> t23
+        t4 -> t8 -> t12 -> t16 -> t20 -> t24
+        { rank=same; t5  t6  t7  t8  }
+        { rank=same; t9  t10 t11 t12 }
+        { rank=same; t13 t14 t15 t16 }
+        { rank=same; t17 t18 t19 t20 }
+        { rank=same; t21 t22 t23 t24 }
+    }
+
+    // ---- row 4 ----
+    subgraph cluster_samples {
+        margin=12
+        label="Code Samples and Attributes"
+        e1 [label="check_examples"]     e2 [label="gen_attribute_probes"]
+        e3 [label="census_attributes"]  e4 [label="sweep_attributes"]
+        ep [style=invis label=""]
+        e1 -> e3 -> ep
+        e2 -> e4
+        { rank=same; e3 e4 }
+    }
+    subgraph cluster_ide {
+        margin=12
+        label="IDE Automation"
+        i1 [label="addin_test"]     i2 [label="ide_test"]
+        i3 [label="try_help_addin"] i4 [label="shoot_docs"]
+        i5 [label="imagestrip"]     i6 [label="probe_ide_image_labels"]
+        i7 [label="svgshot/replay"]
+        ip [style=invis label=""]
+        i1 -> i3 -> i5 -> i7
+        i2 -> i4 -> i6 -> ip
+        { rank=same; i3 i4 }
+        { rank=same; i5 i6 }
+        { rank=same; i7 ip }
+    }
+    subgraph cluster_defects {
+        margin=12
+        label="Defect Reproducers"
+        d1 [label="bug_repro"]
+        d2 [label="vb6run"]
+        dp [style=invis label=""]
+        d1 -> d2 -> dp
+    }
+
+    // ---- rows ----
+    { rank=same; w1 w2 w3 b1 b2 }
+    { rank=same; s1 s2 c1 c2 }
+    { rank=same; t1 t2 t3 t4 }
+    { rank=same; e1 e2 i1 i2 d1 }
+    edge [weight=1]
+    wp -> s1    b7 -> c1
+    s9 -> t1    s10 -> t2   cp2 -> t3   c6 -> t4
+    t21 -> e1   t22 -> i1   t24 -> d1
+
+    // ---- links ----
+    // A subgraph named again is the same subgraph, so these set the clusters'.
+    subgraph cluster_wrappers { URL="#batch-wrappers" }
+    subgraph cluster_build    { URL="Tools-Build" }
+    subgraph cluster_site     { URL="Tools-Site-Checks" }
+    subgraph cluster_compiler { URL="Tools-Compiler" }
+    subgraph cluster_tests    { URL="Tools-Toolchain-Tests" }
+    subgraph cluster_samples  { URL="Tools-Samples" }
+    subgraph cluster_ide      { URL="Tools-IDE" }
+    subgraph cluster_defects  { URL="Tools-Defects" }
+
+    w1 [URL="#buildbat"]        w2 [URL="#servebat"]          w3 [URL="#checkbat"]
+    w4 [URL="#testbat"]         w5 [URL="#bookbat"]           w6 [URL="#examplesbat"]
+    w7 [URL="#addin-testbat"]   w8 [URL="#ide-testbat"]       w9 [URL="#try-help-addinbat"]
+
+    b1 [URL="Tools-Build#tbdocs"]               b2 [URL="Tools-Build#bookrender-bookmjs"]
+    b3 [URL="Tools-Build#compare-trees"]        b4 [URL="Tools-Build#survey-tooling"]
+    b5 [URL="Tools-Build#convert-em-dash-separators"] b6 [URL="Tools-Build#build-fonts"]
+    b7 [URL="Tools-Build#build-dot-metrics"]    b8 [URL="Tools-Build#build-package-api"]
+
+    s1 [URL="Tools-Site-Checks#check-links"]      s2  [URL="Tools-Site-Checks#crawl-check"]
+    s3 [URL="Tools-Site-Checks#check-links-diff"] s4  [URL="Tools-Site-Checks#check-tree-fresh"]
+    s5 [URL="Tools-Site-Checks#check-dot-fit"]    s6  [URL="Tools-Site-Checks#check-a11y"]
+    s7 [URL="Tools-Site-Checks#pick-a11y-sample"] s8  [URL="Tools-Site-Checks#axe-scan"]
+    s9 [URL="Tools-Site-Checks#check-a11y-fingerprint"] s10 [URL="Tools-Site-Checks#sweep-a11y"]
+
+    c1 [URL="Tools-Compiler#tbbuild"]           c2 [URL="Tools-Compiler#tbrun"]
+    c3 [URL="Tools-Compiler#impexp"]            c4 [URL="Tools-Compiler#check-tb-registry"]
+    c5 [URL="Tools-Compiler#probe-shared-temp"] c6 [URL="Tools-Compiler#probe-build-twice"]
+
+    t1  [URL="Tools-Toolchain-Tests#check-publish-policy"]  t2  [URL="Tools-Toolchain-Tests#check-regex-safety"]
+    t3  [URL="Tools-Toolchain-Tests#check-code-regions"]    t4  [URL="Tools-Toolchain-Tests#check-gate-lists"]
+    t5  [URL="Tools-Toolchain-Tests#check-ci-workflows"]    t6  [URL="Tools-Toolchain-Tests#check-lint"]
+    t7  [URL="Tools-Toolchain-Tests#search-test"]           t8  [URL="Tools-Toolchain-Tests#render-test"]
+    t9  [URL="Tools-Toolchain-Tests#strftime-test"]         t10 [URL="Tools-Toolchain-Tests#png-test"]
+    t11 [URL="Tools-Toolchain-Tests#compact-image-test"]    t12 [URL="Tools-Toolchain-Tests#svgshot-test"]
+    t13 [URL="Tools-Toolchain-Tests#example-batches-test"]  t14 [URL="Tools-Toolchain-Tests#ports-test"]
+    t15 [URL="Tools-Toolchain-Tests#addin-project-test"]    t16 [URL="Tools-Toolchain-Tests#check-page-baseline"]
+    t17 [URL="Tools-Toolchain-Tests#check-book-coverage"]   t18 [URL="Tools-Toolchain-Tests#check-symbol-index"]
+    t19 [URL="Tools-Toolchain-Tests#check-twin-parsers"]    t20 [URL="Tools-Toolchain-Tests#check-attribute-sweep"]
+    t21 [URL="Tools-Toolchain-Tests#check-cli"]             t22 [URL="Tools-Toolchain-Tests#check-pdf-shims-equiv"]
+    t23 [URL="Tools-Toolchain-Tests#check-impexp-parity"]   t24 [URL="Tools-Toolchain-Tests#check-axe-patch-equiv"]
+
+    e1 [URL="Tools-Samples#check-examples"]     e2 [URL="Tools-Samples#gen-attribute-probes"]
+    e3 [URL="Tools-Samples#census-attributes"]  e4 [URL="Tools-Samples#sweep-attributes"]
+
+    i1 [URL="Tools-IDE#addin-test"]     i2 [URL="Tools-IDE#ide-test"]
+    i3 [URL="Tools-IDE#try-help-addin"] i4 [URL="Tools-IDE#shoot-docs"]
+    i5 [URL="Tools-IDE#imagestrip"]     i6 [URL="Tools-IDE#probe-ide-image-labels"]
+    i7 [URL="Tools-IDE#replay"]
+
+    d1 [URL="Tools-Defects#bug-repro"]  d2 [URL="Tools-Defects#vb6run"]
+}

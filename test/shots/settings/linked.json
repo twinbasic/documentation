@@ -1,0 +1,48 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "SampleProject",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Package TWINPACK",
+	"project.description": "SampleProject description",
+	"project.exportPathIsV2": true,
+	"project.id": "{5C0F8A71-3B2E-4D69-8A14-7E91C2D4B6F3}",
+	"project.licence": "MIT",
+	"project.name": "SampleProject",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"versionMajor": 2,
+			"versionMinor": 0
+		},
+		{
+			"autoCtlExt": true,
+			"id": "{7E880520-9F56-45E1-9772-DF9FFE246715}",
+			"isLocalPackage": true,
+			"licence": "MIT",
+			"name": "[IMPORTED] OLE Guid and interface definitions for 32-bit and 64-bit",
+			"path32": "/Packages/OLEGuids",
+			"path64": "/Packages/OLEGuids",
+			"publishedDate": "16-APR-2025",
+			"publishedTime": "18:29:19",
+			"publisher": "Krool",
+			"symbolId": "OLEGuids",
+			"versionBuild": "0",
+			"versionMajor": "1",
+			"versionMinor": "0",
+			"versionRevision": "10"
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.versionMajor": 1,
+	"project.versionMinor": 0,
+	"project.warnings": {
+		"errors": [],
+		"ignored": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

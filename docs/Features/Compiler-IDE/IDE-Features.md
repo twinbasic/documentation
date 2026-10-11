@@ -46,7 +46,6 @@ Fully theme-able, with Dark (default), Light, and Classic (Light) built in, and 
 On the Form Designer, control with `Visible = False` are faded to visually indicate this. Also, pressing and holding Control shows the tab index of each tab stop.
 
 ![The whole twinBASIC IDE window with a class open in the editor and twelve labels, each with an arrow: Sticky scroll at the class and function lines held at the top of the editor, Colour matching at a line of nested brackets, Unicode in the editor at a string holding an emoji and Japanese text, Indent guides at the guide line through an empty line inside an If block, Inline code hints at the hint after Next, Advanced info popup at the hover over a user-defined type that lists its members' offsets, its Len and LenB and its alignment, Mini-map at the code overview at the editor's right, Folding controls at a fold arrow beside a function, Memory usage and object counts at the status bar, and Outline, History and Diagnostics at those panels down the left of the window](../Images/IDE-FeatureMap.png){:width="1440" height="900"}
-[Full size](../Images/IDE-FeatureMap.png)
 
 ### New Code-Based Project Explorer
 

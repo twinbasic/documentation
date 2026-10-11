@@ -70,7 +70,8 @@ import { vendorAssets } from "./vendor-assets.mjs";
 import { computeSiteSeo } from "./seo.mjs";
 import { resolveBookChapters } from "./book.mjs";
 import { loadData } from "./data.mjs";
-import { createMarkdownIt, buildLinkTables, serializeLinkTables } from "./render.mjs";
+import { createMarkdownIt, buildLinkTables, diagramIsTall, serializeLinkTables } from "./render.mjs";
+import { isPictureSvg, pairSizes, pictureSvgOutputs, unpairedLightPictures } from "./theme-pictures.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 import { NAV_SCRIPT_REL, buildInitConfig, renderSidebar } from "./template.mjs";
 import {
@@ -447,12 +448,23 @@ const TASKS = {
       if (strays.length) {
         throw new Error(formatPublishRefusal(strays, { surface: "source", label: ctx.srcRoot }));
       }
-      return { pages, staticFiles, config };
+      // A light picture is shown only in place of its dark one (theme-pictures.mjs), so one
+      // with no dark picture beside it would never be shown.
+      const unpaired = unpairedLightPictures(staticFiles.map((s) => s.srcRel));
+      if (unpaired.length) {
+        throw new Error(
+          `${unpaired.length} light picture(s) with no dark picture beside them; ` +
+            `X.light.png needs X.png in the same folder:\n${unpaired.map((r) => `  ${r}`).join("\n")}`,
+        );
+      }
+      const pictureSizes = await pairSizes(staticFiles);
+      return { pages, staticFiles, config, pictureSizes };
     },
     submit(out, state) {
       state.pages = out.pages;
       state.staticFiles = out.staticFiles;
       state.site.config = out.config;
+      state.site.pictureSizes = out.pictureSizes;
       for (const p of out.pages) state.pageByDest.set(p.destPath, p);
     },
   },
@@ -537,6 +549,7 @@ const TASKS = {
         linkTables,
         baseurl,
         staticFiles: staticFileSet,
+        pictureSizes: state.site.pictureSizes,
         vendoredVideos: state.site.vendoredVideos,
         vendoredImages: state.site.vendoredImages,
         counts: state.site.counts,
@@ -635,6 +648,18 @@ const TASKS = {
       void _dotSignal; // dependency signal only -- static files already appended in dot.submit
       void _markdownInitSignal; // dependency signal only -- markdown + linkTablesSerialized + seoSiteTitle/seoLogoUrl already on state.site
       const chunks = chunkPages(state.pages, ctx.workerCount);
+      // An offline tree that shows the pictures' PNGs (picture_svg.offline false) holds no
+      // picture SVG either: each is added to offline_exclude, on the config every consumer of
+      // that list reads -- the trees' inventories, the offline copy, the workers' payload --
+      // so they all leave the same files out.
+      const staticSrcRels = new Set(state.staticFiles.map((f) => f.srcRel));
+      if (!pictureSvgOutputs(state.site.config).offline) {
+        const pictureSvgs = state.staticFiles.filter((f) => isPictureSvg(f.srcRel, staticSrcRels));
+        state.site.config.offline_exclude = [
+          ...(Array.isArray(state.site.config.offline_exclude) ? state.site.config.offline_exclude : []),
+          ...pictureSvgs.map((f) => f.destRel.replaceAll("\\", "/")),
+        ];
+      }
       const excludePatterns = Array.isArray(state.site.config?.offline_exclude)
         ? state.site.config.offline_exclude.map(String)
         : [];
@@ -715,9 +740,11 @@ const TASKS = {
         }
         state.checkTrees = checkTrees;
       }
+      // The SVGs the renderer may inline: not the pictures' (isPictureSvg), which are images
+      // like their PNGs and would otherwise travel to every worker, a few hundred KB each.
       const svgContentsMap = Object.create(null);
       for (const f of state.staticFiles) {
-        if (f.srcRel.endsWith(".svg")) {
+        if (f.srcRel.endsWith(".svg") && !isPictureSvg(f.srcRel, staticSrcRels)) {
           try {
             svgContentsMap[f.srcRel] = await fs.readFile(path.join(ctx.srcRoot, f.srcRel), "utf8");
           } catch {}
@@ -745,6 +772,7 @@ const TASKS = {
         // Plain objects, not Maps -- packShared serialises to JSON.
         vendoredVideosObj: Object.fromEntries(state.site.vendoredVideos ?? []),
         vendoredImagesObj: Object.fromEntries(state.site.vendoredImages ?? []),
+        pictureSizes: state.site.pictureSizes ?? {},
         counts: state.site.counts,
       };
       const sharedSAB = packShared(shared);
@@ -1338,7 +1366,16 @@ async function injectGanttChart(pages, destRoot, svgContent) {
     const svgStart = html.indexOf("<svg", idx);
     const svgEnd = html.indexOf("</svg>", svgStart);
     if (svgStart < 0 || svgEnd < 0) continue;
-    const patched = html.slice(0, svgStart) + svgContent + html.slice(svgEnd + 6);
+    // The figure around it was written for the placeholder, a pixel tall, so it says the
+    // figure is short; the chart decides that now (render.mjs, diagramIsTall).
+    let head = html.slice(0, svgStart);
+    const wrapStart = head.lastIndexOf('<div class="fig-wrap"', idx);
+    const wrapEnd = wrapStart < 0 ? -1 : head.indexOf(">", wrapStart);
+    if (wrapEnd >= 0 && wrapEnd < idx) {
+      const tag = head.slice(wrapStart, wrapEnd).replace(/ data-tall\b/, "");
+      head = head.slice(0, wrapStart) + tag + (diagramIsTall(svgContent) ? " data-tall" : "") + head.slice(wrapEnd);
+    }
+    const patched = head + svgContent + html.slice(svgEnd + 6);
     await fs.writeFile(htmlPath, patched, "utf8");
     await fs.writeFile(path.join(root, ...GANTT_SVG_REL.split("/")), svgContent, "utf8");
     injected.push({

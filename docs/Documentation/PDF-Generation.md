@@ -89,7 +89,7 @@ A paged.js stylesheet fetch that fails arrives as `error on LINK: <url>`. paged.
 
 `_site-pdf/` is `build.bat`'s output, so a render that stops before Chromium starts is reporting on the previous command.
 
-`book.bat`'s first action is [`check_tree_fresh.mjs`](Tools#check-tree-fresh) over `docs/_site-pdf`. It refuses two states, and neither one reaches the renderer.
+`book.bat`'s first action is [`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) over `docs/_site-pdf`. It refuses two states, and neither one reaches the renderer.
 
 **The tree is absent.** Exit code 2:
 
@@ -158,7 +158,7 @@ The same fork checks fonts on the same principle:
 
 **`book.bat` propagates both.** It copies `%ERRORLEVEL%` into a variable immediately after the renderer runs and exits with that variable once `popd` has restored the caller's directory --- the same pattern `build.bat` and `check.bat` already used. A batch file's exit code is otherwise its last command's, and an unguarded `popd` resets `ERRORLEVEL` to `0`; `book.bat` used to end on a bare `popd`, so a failed render always reported success to whatever launched it. A script can check `book.bat`'s own exit code directly now. Calling `node book\render-book.mjs` directly and reading its exit code, or watching for the `saved:` line, remain equally valid.
 
-**`book.bat`'s own pre-flight refusals never reach the renderer, and they share the renderer's 2.** [`check_tree_fresh.mjs`](Tools#check-tree-fresh) exits 2 for an absent `_site-pdf/` and 1 for a stale one, and a failed `npm install` exits 1. So what a script sees from `book.bat` is:
+**`book.bat`'s own pre-flight refusals never reach the renderer, and they share the renderer's 2.** [`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) exits 2 for an absent `_site-pdf/` and 1 for a stale one, and a failed `npm install` exits 1. So what a script sees from `book.bat` is:
 
 | Code | Sources |
 |---|---|

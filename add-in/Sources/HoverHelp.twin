@@ -2,9 +2,7 @@
 ' hover provider the page runs (hoverhelp.js) adds the links above the
 ' compiler's text in the IDE's own hover, next to the name. A name with no
 ' page shows nothing, since the IDE's hover already shows its declaration and
-' description. A click on a link raises Pick. On or off, the script also draws
-' every hover above the IDE's dock, which would otherwise take the mouse from
-' a hover reaching past the editor (twinbasic/twinbasic#2506).
+' description. A click on a link raises Pick.
 Private Class HoverHelp
     Public Event Pick(ByVal url As String)
 

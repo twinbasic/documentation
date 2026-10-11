@@ -48,7 +48,10 @@
 //   underline  on, gap? (3): a line under the anchor's box
 //   label      text, on, side? (right; left, above, below), gap? (8), dx?, dy?, tone?
 //              (light, a white pill with red text; dark, a dark red pill with white text,
-//              for a dark UI)
+//              for a dark UI). With no tone, the page's theme's: dark in the IDE's dark
+//              theme, light in its Light one, for a label over what follows the theme (a
+//              panel, the window's ground). A label over what is light in every theme (a
+//              drop-down, a dialog's body) says `tone: "light"`.
 //   badge      n, on, side? (left), gap? (8), dx?, dy?: a numbered red circle
 //   list       select, at?, rows?, name?: the open list of a native <select>, which an OS
 //              window draws and no capture of the page holds, drawn as a replica: its
@@ -106,6 +109,18 @@ function draw(prims, S, resolve = null) {
     document.body.appendChild(svg);
   }
   const font = getComputedStyle(document.body).fontFamily;
+  // A label's tone when it names none: the theme's, dark in a dark theme and light in a light
+  // one, read from the IDE's panel colour (the page's own background where it has none).
+  const themeTone = (() => {
+    const p = document.createElement("div");
+    p.style.background = `var(--themeGeneralPanelBackColor, ${getComputedStyle(document.body).backgroundColor})`;
+    document.body.appendChild(p);
+    const [r, g, b, a = 1] = getComputedStyle(p)
+      .backgroundColor.match(/[\d.]+/g)
+      .map(Number);
+    p.remove();
+    return a > 0 && 0.299 * r + 0.587 * g + 0.114 * b < 128 ? "dark" : "light";
+  })();
 
   let bounds = null;
   const note = (x, y, w, h, m = 0) => {
@@ -365,7 +380,7 @@ function draw(prims, S, resolve = null) {
   };
   const label = (p) => {
     const r = box(p.on);
-    const dark = p.tone === "dark";
+    const dark = (p.tone ?? themeTone) === "dark";
     const g = el("g", {});
     const t = text(g, p.text, 0, 0, dark ? "#fff" : S.red, S.labelSize, S.labelWeight);
     const w = Math.ceil(t.getComputedTextLength()) + 2 * S.labelPadX;

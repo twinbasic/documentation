@@ -1,0 +1,656 @@
+' The images the tests strip, built byte by byte as test/compact-image.test.mjs builds them in
+' Node: PNG chunks with their CRC, zlib streams of stored blocks, EXIF, IPTC and ICC profiles,
+' JPEG segments, GIF blocks, and SVGs with images inside them. Used only by the [TestFixture]
+' modules; tbrun --tests runs those (see the imagestrip entry of docs/Documentation/Tools.md).
+Module TestImages
+    Private mCrc(0 To 255) As Long
+    Private mCrcReady As Boolean
+
+    ' --- Bytes -------------------------------------------------------------------------------
+
+    ' The bytes of each argument, one after another: a Byte() array, a String (the low byte of
+    ' each character, so Latin-1), or a number (one byte).
+    Public Function Cat(ParamArray parts() As Variant) As Byte()
+        Dim b As New ByteBuilder, k As Long, part() As Byte, out() As Byte, item As Variant
+        For k = LBound(parts) To UBound(parts)
+            If IsArray(parts(k)) Then
+                ' Through a Variant: assigning parts(k) itself to the array raises -2147467259 when
+                ' the caller passed a Variant variable that holds an array. BUGS-TO-REPORT.md, "A
+                ' `ParamArray` element that is a `Variant` variable holding an array cannot be
+                ' indexed or assigned to an array: error -2147467259".
+                item = parts(k)
+                part = item
+                b.AddRange part, 0, Bytes.Length(part)
+            ElseIf VarType(parts(k)) = vbString Then
+                b.AddAscii parts(k)
+            Else
+                b.AddByte parts(k)
+            End If
+        Next
+        b.ToArray out
+        Cat = out
+    End Function
+
+    Public Function Zeros(ByVal n As Long) As Byte()
+        Dim out() As Byte
+        If n > 0 Then ReDim out(0 To n - 1)
+        Zeros = out
+    End Function
+
+    Public Function Size(ByVal b As Variant) As Long
+        Dim a() As Byte
+        a = b
+        Size = Bytes.Length(a)
+    End Function
+
+    Public Function Utf8(ByVal s As String) As Byte()
+        Dim units() As Long, n As Long, keep() As Boolean, out() As Byte, k As Long
+        n = Bytes.ToUnits(s, units)
+        If n > 0 Then
+            ReDim keep(0 To n - 1)
+            For k = 0 To n - 1
+                keep(k) = True
+            Next
+            Bytes.Utf8Encode units, n, keep, out
+        End If
+        Utf8 = out
+    End Function
+
+    Public Function Utf8Of(ByVal b As Variant) As String
+        Dim a() As Byte
+        a = b
+        Utf8Of = Bytes.Utf8Text(a, 0, Bytes.Length(a))
+    End Function
+
+    Public Function FromHex(ByVal s As String) As Byte()
+        Dim out() As Byte, k As Long
+        If Len(s) > 0 Then ReDim out(0 To Len(s) \ 2 - 1)
+        For k = 0 To Len(s) \ 2 - 1
+            out(k) = CByte("&H" & Mid$(s, 2 * k + 1, 2))
+        Next
+        FromHex = out
+    End Function
+
+    Public Function ToHex(ByVal b As Variant) As String
+        Dim a() As Byte, k As Long, s As String
+        a = b
+        For k = 0 To Bytes.Length(a) - 1
+            s = s & Right$("0" & LCase$(Hex$(a(k))), 2)
+        Next
+        ToHex = s
+    End Function
+
+    ' An unsigned 32-bit value, or a negative Long read as one, big- or little-endian.
+    Public Function BE32(ByVal v As Double) As Byte()
+        Dim out(0 To 3) As Byte, k As Long
+        If v < 0 Then v = v + 4294967296#
+        For k = 3 To 0 Step -1
+            out(k) = v - Int(v / 256) * 256
+            v = Int(v / 256)
+        Next
+        BE32 = out
+    End Function
+
+    Public Function LE32(ByVal v As Double) As Byte()
+        Dim be() As Byte
+        be = BE32(v)
+        LE32 = Cat(be(3), be(2), be(1), be(0))
+    End Function
+
+    Public Function BE16(ByVal v As Long) As Byte()
+        BE16 = Cat((v \ 256) And 255, v And 255)
+    End Function
+
+    Public Function LE16(ByVal v As Long) As Byte()
+        LE16 = Cat(v And 255, (v \ 256) And 255)
+    End Function
+
+    Public Function B64(ByVal b As Variant) As String
+        Dim a() As Byte
+        a = b
+        B64 = Bytes.Base64Text(a, Bytes.Length(a))
+    End Function
+
+    ' Base64 as Illustrator writes it inside an SVG: in lines of 76, each ended by CR LF.
+    Public Function Wrapped(ByVal b As Variant) As String
+        Wrapped = Broken(B64(b), vbCrLf)
+    End Function
+
+    ' s with sep after each whole 76 characters, as the JS test's replace(/.{76}/g, "$&" + sep).
+    Public Function Broken(ByVal s As String, ByVal sep As String) As String
+        Dim k As Long, out As String
+        For k = 1 To Len(s) Step 76
+            out = out & Mid$(s, k, 76)
+            If k + 76 <= Len(s) Then out = out & sep
+        Next
+        If Len(s) Mod 76 = 0 And Len(s) > 0 Then out = out & sep
+        Broken = out
+    End Function
+
+    ' Percent-encodes all but A to Z, a to z, 0 to 9 and - _ . ~, as the JS test's urlText does.
+    Public Function UrlText(ByVal s As String) As String
+        Dim u() As Byte, k As Long, c As Long, out As String
+        u = Utf8(s)
+        For k = 0 To Bytes.Length(u) - 1
+            c = u(k)
+            Select Case c
+                Case 48 To 57, 65 To 90, 97 To 122, 45, 46, 95, 126
+                    out = out & ChrW$(c)
+                Case Else
+                    out = out & "%" & Right$("0" & Hex$(c), 2)
+            End Select
+        Next
+        UrlText = out
+    End Function
+
+    ' Undoes UrlText, and any other %XX, as UTF-8.
+    Public Function PercentDecoded(ByVal s As String) As String
+        Dim b As New ByteBuilder, k As Long, out() As Byte
+        k = 1
+        Do While k <= Len(s)
+            If Mid$(s, k, 1) = "%" Then
+                b.AddByte CLng("&H" & Mid$(s, k + 1, 2))
+                k = k + 3
+            Else
+                b.AddByte AscW(Mid$(s, k, 1))
+                k = k + 1
+            End If
+        Loop
+        b.ToArray out
+        PercentDecoded = Utf8Of(out)
+    End Function
+
+    ' --- zlib and PNG ------------------------------------------------------------------------
+
+    Private Sub InitCrc()
+        Dim n As Long, c As Long, k As Long
+        For n = 0 To 255
+            c = n
+            For k = 0 To 7
+                If (c And 1) <> 0 Then
+                    c = &HEDB88320& Xor ((c >> 1) And &H7FFFFFFF&)
+                Else
+                    c = (c >> 1) And &H7FFFFFFF&
+                End If
+            Next
+            mCrc(n) = c
+        Next
+        mCrcReady = True
+    End Sub
+
+    Public Function Crc32(ByVal b As Variant) As Long
+        Dim a() As Byte, c As Long, i As Long
+        If Not mCrcReady Then InitCrc
+        a = b
+        c = -1
+        For i = 0 To Bytes.Length(a) - 1
+            c = mCrc((c Xor a(i)) And 255) Xor ((c >> 8) And &HFFFFFF)
+        Next
+        Crc32 = Not c
+    End Function
+
+    Public Function Adler32(ByVal b As Variant) As Double
+        Dim a() As Byte, lo As Long, hi As Long, i As Long
+        a = b
+        lo = 1
+        For i = 0 To Bytes.Length(a) - 1
+            lo = (lo + a(i)) Mod 65521
+            hi = (hi + lo) Mod 65521
+        Next
+        Adler32 = CDbl(hi) * 65536 + lo
+    End Function
+
+    ' A zlib stream of stored blocks, which Inflate reads as it reads compressed ones.
+    Public Function Zlib(ByVal data As Variant) As Byte()
+        Dim d() As Byte, b As New ByteBuilder, n As Long, p As Long, blockSize As Long, out() As Byte, tail() As Byte
+        d = data
+        n = Bytes.Length(d)
+        b.AddByte &H78
+        b.AddByte 1
+        Do
+            blockSize = n - p
+            If blockSize > 65535 Then blockSize = 65535
+            If p + blockSize >= n Then b.AddByte 1 Else b.AddByte 0
+            b.AddByte blockSize And 255
+            b.AddByte blockSize \ 256
+            b.AddByte (blockSize Xor &HFFFF&) And 255
+            b.AddByte (blockSize Xor &HFFFF&) \ 256
+            b.AddRange d, p, blockSize
+            p = p + blockSize
+        Loop While p < n
+        tail = BE32(Adler32(d))
+        b.AddRange tail, 0, 4
+        b.ToArray out
+        Zlib = out
+    End Function
+
+    Public Function Chunk(ByVal kind As String, ByVal data As Variant) As Byte()
+        Dim body() As Byte
+        body = Cat(kind, data)
+        Chunk = Cat(BE32(Size(data)), body, BE32(Crc32(body)))
+    End Function
+
+    Public Function TextChunk(ByVal keyword As String, ByVal value As String) As Byte()
+        TextChunk = Chunk("tEXt", Cat(keyword, 0, value))
+    End Function
+
+    Public Function ZText(ByVal keyword As String, ByVal value As String) As Byte()
+        ZText = Chunk("zTXt", Cat(keyword, 0, 0, Zlib(Cat(value))))
+    End Function
+
+    Public Function IText(ByVal keyword As String, ByVal value As String) As Byte()
+        IText = Chunk("iTXt", Cat(keyword, 0, 0, 0, 0, 0, Utf8(value)))
+    End Function
+
+    ' A 2 by 2 picture with the given chunks after its header.
+    Public Function Png(ParamArray extra() As Variant) As Byte()
+        Dim b As New ByteBuilder, k As Long, part() As Byte, out() As Byte
+        part = Cat(137, 80, 78, 71, 13, 10, 26, 10, Chunk("IHDR", Cat(BE32(2), BE32(2), 8, 6, 0, 0, 0)))
+        b.AddRange part, 0, Bytes.Length(part)
+        For k = LBound(extra) To UBound(extra)
+            part = extra(k)
+            b.AddRange part, 0, Bytes.Length(part)
+        Next
+        part = Cat(Chunk("IDAT", Zlib(Cat(0, 255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 0, 255, 255, 9, 9, 9, 128))), Chunk("IEND", Cat()))
+        b.AddRange part, 0, Bytes.Length(part)
+        b.ToArray out
+        Png = out
+    End Function
+
+    ' A PNG's chunks as "IHDR tEXt:Title IDAT IEND": a text chunk with its keyword.
+    Public Function ChunkList(ByVal pngBytes As Variant) As String
+        Dim b() As Byte, p As Double, n As Long, chunkSize As Double, kind As String, s As String, z As Long
+        b = pngBytes
+        n = Bytes.Length(b)
+        p = 8
+        Do While p + 12 <= n
+            chunkSize = Bytes.U32BE(b, p)
+            kind = Bytes.Latin1Range(b, p + 4, p + 8)
+            If kind = "tEXt" Or kind = "zTXt" Or kind = "iTXt" Then
+                z = Bytes.IndexOfByte(b, 0, CLng(p + 8))
+                kind = kind & ":" & Bytes.Latin1Range(b, p + 8, z)
+            End If
+            s = s & " " & kind
+            p = p + 12 + chunkSize
+        Loop
+        ChunkList = Mid$(s, 2)
+    End Function
+
+    ' An EXIF block: a little-endian TIFF header and one IFD of tag, type, count, value groups.
+    Public Function Exif(ParamArray v() As Variant) As Byte()
+        Dim n As Long, k As Long, out() As Byte
+        n = (UBound(v) - LBound(v) + 1) \ 4
+        out = Cat("II*", 0, LE32(8), LE16(n))
+        For k = 0 To n - 1
+            out = Cat(out, LE16(v(4 * k)), LE16(v(4 * k + 1)), LE32(v(4 * k + 2)), LE32(v(4 * k + 3)))
+        Next
+        Exif = Cat(out, LE32(0))
+    End Function
+
+    ' The text ImageMagick and GIMP write a raw profile as.
+    Public Function RawProfile(ByVal name As String, ByVal data As Variant) As String
+        RawProfile = vbLf & name & vbLf & Right$(Space$(8) & CStr(Size(data)), 8) & vbLf & ToHex(data) & vbLf
+    End Function
+
+    ' --- ICC profiles -------------------------------------------------------------------------
+
+    ' A number as an ICC s15Fixed16, rounded as JavaScript's Math.round rounds.
+    Public Function S15(ByVal v As Double) As Byte()
+        S15 = BE32(Int(v * 65536 + 0.5))
+    End Function
+
+    Public Function Xyz(ByVal x As Double, ByVal y As Double, ByVal z As Double) As Byte()
+        Xyz = Cat("XYZ ", 0, 0, 0, 0, S15(x), S15(y), S15(z))
+    End Function
+
+    Public Function Para(ByVal kind As Long, ParamArray p() As Variant) As Byte()
+        Dim out() As Byte, k As Long
+        out = Cat("para", 0, 0, 0, 0, 0, kind, 0, 0)
+        For k = LBound(p) To UBound(p)
+            out = Cat(out, S15(p(k)))
+        Next
+        Para = out
+    End Function
+
+    Public Function Curv(values() As Long, ByVal n As Long) As Byte()
+        Dim b As New ByteBuilder, k As Long, part() As Byte, out() As Byte
+        part = Cat("curv", 0, 0, 0, 0, BE32(n))
+        b.AddRange part, 0, 12
+        For k = 0 To n - 1
+            b.AddByte (values(k) \ 256) And 255
+            b.AddByte values(k) And 255
+        Next
+        b.ToArray out
+        Curv = out
+    End Function
+
+    ' A curve of one value: a gamma.
+    Public Function Gamma(ByVal g As Double) As Byte()
+        Dim v(0 To 0) As Long
+        v(0) = Int(g * 256 + 0.5)
+        Gamma = Curv(v, 1)
+    End Function
+
+    ' sRGB's curve as a table of 1024 entries.
+    Public Function SrgbTable() As Byte()
+        Dim v(0 To 1023) As Long, k As Long, x As Double, y As Double
+        For k = 0 To 1023
+            x = k / 1023
+            If x <= 0.04045 Then y = x / 12.92 Else y = ((x + 0.055) / 1.055) ^ 2.4
+            v(k) = Int(y * 65535 + 0.5)
+        Next
+        SrgbTable = Curv(v, 1024)
+    End Function
+
+    Public Function SrgbCurve() As Byte()
+        SrgbCurve = Para(3, 2.4, 1 / 1.055, 0.055 / 1.055, 1 / 12.92, 0.04045)
+    End Function
+
+    Public Function SrgbCurve4() As Byte()
+        SrgbCurve4 = Para(4, 2.4, 1 / 1.055, 0.055 / 1.055, 1 / 12.92, 0.04045, 0, 0)
+    End Function
+
+    ' An RGB display profile with the given signature, body pairs as its tags.
+    Public Function IccProfile(ParamArray tags() As Variant) As Byte()
+        Dim n As Long, k As Long, table() As Byte, bodies() As Byte, at As Long, total As Long
+        n = (UBound(tags) - LBound(tags) + 1) \ 2
+        at = 128 + 4 + 12 * n
+        table = BE32(n)
+        For k = 0 To n - 1
+            table = Cat(table, tags(2 * k), BE32(at), BE32(Size(tags(2 * k + 1))))
+            bodies = Cat(bodies, tags(2 * k + 1))
+            at = at + Size(tags(2 * k + 1))
+        Next
+        total = at
+        IccProfile = Cat(BE32(total), Zeros(8), "mntrRGB XYZ ", Zeros(104), table, bodies)
+    End Function
+
+    ' GIMP's built-in sRGB profile as a colour engine reads it, with red's colourant and the curve
+    ' given, and a tag more when extraSig is given.
+    Public Function SrgbProfile(ByVal rx As Double, ByVal ry As Double, ByVal rz As Double, ByVal curve As Variant, Optional ByVal extraSig As String) As Byte()
+        If Len(extraSig) = 0 Then
+            SrgbProfile = IccProfile("rXYZ", Xyz(rx, ry, rz), "gXYZ", Xyz(0.385117, 0.716904, 0.097061), "bXYZ", Xyz(0.143051, 0.060608, 0.713928), _
+                                     "rTRC", curve, "gTRC", curve, "bTRC", curve)
+        Else
+            SrgbProfile = IccProfile("rXYZ", Xyz(rx, ry, rz), "gXYZ", Xyz(0.385117, 0.716904, 0.097061), "bXYZ", Xyz(0.143051, 0.060608, 0.713928), _
+                                     "rTRC", curve, "gTRC", curve, "bTRC", curve, extraSig, Zeros(32))
+        End If
+    End Function
+
+    Public Function GimpSrgb() As Byte()
+        GimpSrgb = SrgbProfile(0.436035, 0.222488, 0.013916, SrgbCurve())
+    End Function
+
+    Public Function Iccp(ByVal profile As Variant) As Byte()
+        Iccp = Chunk("iCCP", Cat("ICC profile", 0, 0, Zlib(profile)))
+    End Function
+
+    Public Function SrgbChunk() As Byte()
+        SrgbChunk = Chunk("sRGB", Cat(0))
+    End Function
+
+    Public Function GamaChunk() As Byte()
+        GamaChunk = Chunk("gAMA", Cat(0, 0, &HB1, &H8F))
+    End Function
+
+    Public Function ChrmChunk() As Byte()
+        ChrmChunk = Chunk("cHRM", Zeros(32))
+    End Function
+
+    ' --- The PNGs ----------------------------------------------------------------------------
+
+    Public Function GimpXmp() As String
+        GimpXmp = "<x:xmpmeta xmlns:x=""adobe:ns:meta/""><rdf:RDF><rdf:Description rdf:about="""" xmp:CreatorTool=""GIMP 2.10"" " & _
+                  "GIMP:Version=""2.10.22""><plus:Licensor><rdf:Seq/></plus:Licensor><dc:title><rdf:Alt><rdf:li xml:lang=""x-default""/>" & _
+                  "</rdf:Alt></dc:title></rdf:Description></rdf:RDF></x:xmpmeta>"
+    End Function
+
+    ' An icon as GIMP saves it.
+    Public Function GimpPng() As Byte()
+        GimpPng = Png(ZText("Raw profile type exif", RawProfile("exif", Exif(&H100, 4, 1, 2))), _
+                      ZText("Raw profile type iptc", RawProfile("iptc", FromHex("1c0237000a323032312d30372d3036"))), _
+                      Chunk("iCCP", Cat("profile", 0, 0, "x")), _
+                      IText("XML:com.adobe.xmp", GimpXmp()), _
+                      Chunk("bKGD", Zeros(6)), _
+                      Chunk("pHYs", Zeros(9)), _
+                      Chunk("tIME", Zeros(7)), _
+                      TextChunk("Comment", "Created with GIMP"), _
+                      TextChunk("Software", "Paint.NET v3.5.10"))
+    End Function
+
+    ' The lock icon from fileformat.info, with its attribution.
+    Public Function LockPng() As Byte()
+        LockPng = Png(Chunk("pHYs", Zeros(9)), _
+                      TextChunk("Title", "LOCK (U+1F512)"), _
+                      TextChunk("Author", "Andrew Marcuse"), _
+                      TextChunk("Software", "info.fileformat.data.UnicodePngServlet"), _
+                      TextChunk("Description", "http://www.fileformat.info/info/unicode/1f512/index.htm"), _
+                      TextChunk("Copyright", "http://creativecommons.org/licenses/by-nc-sa/2.0/"))
+    End Function
+
+    ' The chunks of a two-frame animation, with an editor's name among them.
+    Public Function AnimatedPng() As Byte()
+        AnimatedPng = Png(Chunk("acTL", Cat(0, 0, 0, 2, 0, 0, 0, 0)), _
+                          Chunk("fcTL", Cat(0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 10, 0, 0)), _
+                          TextChunk("Software", "APNG Assembler"), _
+                          Chunk("fdAT", Cat(0, 0, 0, 1, &H78, &H9C, &H63, 0, 0, 0, 1, 0, 1)))
+    End Function
+
+    ' --- JPEG and GIF ------------------------------------------------------------------------
+
+    Public Function Segment(ByVal marker As Long, ByVal data As Variant) As Byte()
+        Segment = Cat(&HFF, marker, BE16(Size(data) + 2), data)
+    End Function
+
+    Public Function JpegOf(ParamArray segments() As Variant) As Byte()
+        Dim out() As Byte, k As Long
+        out = Cat(&HFF, &HD8)
+        For k = LBound(segments) To UBound(segments)
+            out = Cat(out, segments(k))
+        Next
+        JpegOf = Cat(out, JpegScan())
+    End Function
+
+    Public Function JpegScan() As Byte()
+        JpegScan = Cat(&HFF, &HDA, 0, 2, 1, 2, 3, &HFF, &HD9)
+    End Function
+
+    Public Function Jfif() As Byte()
+        Jfif = Segment(&HE0, Cat("JFIF", 0, 1, 1, 0, 0, 1, 0, 1, 0, 0))
+    End Function
+
+    Public Function JpegIcc() As Byte()
+        JpegIcc = Segment(&HE2, Cat("ICC_PROFILE", 0, 1, 1, "profile"))
+    End Function
+
+    Public Function JpegAdobe() As Byte()
+        JpegAdobe = Segment(&HEE, Cat("Adobe", 0, "d", 0, 0, 0, 0, 1))
+    End Function
+
+    Public Function JpegTables() As Byte()
+        JpegTables = Segment(&HDB, Zeros(65))
+    End Function
+
+    ' The IDE labels a JPEG image/png.
+    Public Function JpegWithMetadata() As Byte()
+        JpegWithMetadata = JpegOf(Jfif(), _
+                                  Segment(&HE1, Cat("Exif", 0, 0, Exif(&H112, 3, 1, 1))), _
+                                  Segment(&HE1, Cat("http://ns.adobe.com/xap/1.0/", 0, GimpXmp())), _
+                                  JpegIcc(), _
+                                  Segment(&HED, Cat("Photoshop 3.0", 0, "8BIM", 4, 4, 0, 0, 0, 0, 0, 5, &H1C, 2, "7", 0, 0)), _
+                                  Segment(&HEC, Cat("Ducky")), _
+                                  Segment(&HFE, Cat("Optimized with https://ezgif.com/optimize")), _
+                                  JpegAdobe(), _
+                                  JpegTables())
+    End Function
+
+    Public Function JpegWithNotices() As Byte()
+        JpegWithNotices = JpegOf(Jfif(), _
+                                 Segment(&HFE, Cat("Copyright 2020 A. Painter")), _
+                                 Segment(&HE1, Cat("Exif", 0, 0, Exif(&H112, 3, 1, 6))), _
+                                 Segment(&HE1, Cat("Exif", 0, 0, Exif(&H8298&, 2, 12, 26))), _
+                                 JpegTables())
+    End Function
+
+    Public Function JpegBroken() As Byte()
+        JpegBroken = Cat(&HFF, &HD8, 0, &H11, &H22)
+    End Function
+
+    Public Function GifHeader() As Byte()
+        GifHeader = Cat("GIF89a", 1, 0, 1, 0, &H80, 0, 0, Zeros(6))
+    End Function
+
+    Public Function GifLoop() As Byte()
+        GifLoop = Cat(&H21, &HFF, 11, "NETSCAPE2.0", 3, 1, 0, 0, 0)
+    End Function
+
+    Public Function GifImage() As Byte()
+        GifImage = Cat(&H2C, 0, 0, 0, 0, 1, 0, 1, 0, 0, 2, 2, &H44, 1, 0)
+    End Function
+
+    Public Function GifComment(ByVal s As String) As Byte()
+        GifComment = Cat(&H21, &HFE, Len(s), s, 0)
+    End Function
+
+    Public Function GifWithComment() As Byte()
+        GifWithComment = Cat(GifHeader(), GifLoop(), GifComment("Optimized with https://ezgif.com/optimize"), GifImage(), ";")
+    End Function
+
+    Public Function GifWithNotice() As Byte()
+        GifWithNotice = Cat(GifHeader(), GifComment("(c) 2019 A. Painter"), GifImage(), ";")
+    End Function
+
+    ' A one-pixel BMP, which the IDE's report designer would label image/png.
+    Public Function Bmp() As Byte()
+        Bmp = Cat("BM", LE32(58), 0, 0, 0, 0, LE32(54), LE32(40), LE32(1), LE32(1), LE16(1), LE16(24), LE32(0), LE32(4), Zeros(16), 255, 0, 0, 0)
+    End Function
+
+    ' --- What the tool makes of them -----------------------------------------------------------
+
+    Public Function CompactPngOf(ByVal b As Variant) As Byte()
+        Dim a() As Byte, out() As Byte, r() As Byte, n As Long
+        a = b
+        n = PngStrip.CompactPng(a, out)
+        Bytes.Slice out, 0, n, r
+        CompactPngOf = r
+    End Function
+
+    Public Function CompactJpegOf(ByVal b As Variant) As Byte()
+        Dim a() As Byte, out() As Byte, r() As Byte, n As Long
+        a = b
+        n = JpegGif.CompactJpeg(a, out)
+        Bytes.Slice out, 0, n, r
+        CompactJpegOf = r
+    End Function
+
+    Public Function CompactGifOf(ByVal b As Variant) As Byte()
+        Dim a() As Byte, out() As Byte, r() As Byte, n As Long
+        a = b
+        n = JpegGif.CompactGif(a, out)
+        Bytes.Slice out, 0, n, r
+        CompactGifOf = r
+    End Function
+
+    ' A PNG's chunk list after the tool strips it.
+    Public Function ChunksAfter(ByVal b As Variant) As String
+        ChunksAfter = ChunkList(CompactPngOf(b))
+    End Function
+
+    Public Function IsSrgb(ByVal profile As Variant) As Boolean
+        Dim a() As Byte
+        a = profile
+        IsSrgb = PngStrip.IsSrgbProfile(a)
+    End Function
+
+    ' What imagestrip writes for a file of this text, read back as UTF-8; Strip's Images,
+    ' Stripped, Relabelled and Reports then say what it did.
+    Public Function StripText(ByVal text As String, ByVal isSvg As Boolean) As String
+        StripText = Utf8Of(StripBytes(Utf8(text), isSvg))
+    End Function
+
+    Public Function StripBytes(ByVal file As Variant, ByVal isSvg As Boolean) As Byte()
+        Dim a() As Byte, out() As Byte, r() As Byte, n As Long
+        a = file
+        n = Strip.StripFile(a, Bytes.Length(a), isSvg, out)
+        Bytes.Slice out, 0, n, r
+        StripBytes = r
+    End Function
+
+    ' Strip's reports, one after another, separated by " | ".
+    Public Function ReportsText() As String
+        Dim r As Variant, s As String
+        For Each r In Strip.Reports
+            s = s & " | " & r
+        Next
+        ReportsText = Mid$(s, 4)
+    End Function
+
+    ' Strip's counts as "images stripped relabelled".
+    Public Function Counts() As String
+        Counts = Strip.Images & " " & Strip.Stripped & " " & Strip.Relabelled
+    End Function
+
+    ' --- SVGs ----------------------------------------------------------------------------------
+
+    Public Function SvgCorel() As String
+        SvgCorel = "<?xml version=""1.0"" encoding=""UTF-8"" standalone=""no""?>" & vbLf & _
+                   "<!DOCTYPE svg PUBLIC ""-//W3C//DTD SVG 1.1//EN"" ""http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"">" & vbLf & _
+                   "<!-- Creator: CorelDRAW X6 -->" & vbLf & _
+                   "<svg xmlns=""http://www.w3.org/2000/svg""><metadata id=""CorelCorpID_0Corel-Layer""/><path d=""M0 0h1""/></svg>"
+    End Function
+
+    Public Function SvgCorelStripped() As String
+        SvgCorelStripped = "<svg xmlns=""http://www.w3.org/2000/svg""><path d=""M0 0h1""/></svg>"
+    End Function
+
+    Public Function SvgIllustrator() As String
+        SvgIllustrator = "<!DOCTYPE svg [<!ENTITY ns_svg ""http://www.w3.org/2000/svg"">]>" & _
+                         "<!-- Generator: Adobe Illustrator 24.2.0 --><!-- Copyright 2020 A. Painter -->" & _
+                         "<svg xmlns=""&ns_svg;""><metadata><rdf:RDF><cc:Work><cc:license rdf:resource=""https://creativecommons.org/licenses/by/4.0/""/>" & _
+                         "</cc:Work></rdf:RDF></metadata></svg>"
+    End Function
+
+    ' As CorelDRAW writes its icons: the styles in CDATA, where a comment is the style sheet's.
+    Public Function SvgCdata() As String
+        SvgCdata = "<?xml version=""1.0"" encoding=""UTF-8""?>" & vbLf & "<!-- Creator: CorelDRAW X6 -->" & vbLf & _
+                   "<svg><defs><style type=""text/css""><![CDATA[ <!-- .fil0 {fill:#373435} --> ]]></style></defs>" & _
+                   "<metadata id=""CorelCorpID_0Corel-Layer""/><path class=""fil0"" d=""M0 0h1""/></svg>"
+    End Function
+
+    ' <?xml-stylesheet?> starts as the declaration does, and styles the picture.
+    Public Function SvgStylesheet() As String
+        SvgStylesheet = "<?xml-stylesheet href=""style.css"" type=""text/css""?><svg><path class=""a""/></svg>"
+    End Function
+
+    ' An SVG written as the IDE's Illustrator icons are, with images inside it: a PNG with GIMP's
+    ' metadata in base64 broken into lines, a JPEG labelled image/png, a GIF in a style's url( ),
+    ' and an SVG written as text.
+    Public Function NestedSvg() As String
+        NestedSvg = "<?xml version=""1.0"" encoding=""utf-8""?>" & vbCrLf & _
+                    "<!-- Generator: Adobe Illustrator 24.0.1, SVG Export Plug-In . SVG Version: 6.00 Build 0) -->" & vbCrLf & _
+                    "<svg version=""1.1"" xmlns=""http://www.w3.org/2000/svg"" xmlns:xlink=""http://www.w3.org/1999/xlink"" viewBox=""0 0 48 48"">" & vbCrLf & _
+                    vbTab & "<image width=""39"" height=""37"" xlink:href=""data:image/png;base64," & Wrapped(GimpPng()) & """ transform=""matrix(0.59 0 0 0.59 12 13)"">" & vbCrLf & _
+                    vbTab & "</image>" & vbCrLf & _
+                    vbTab & "<image href='data:image/png;base64," & B64(JpegWithMetadata()) & "'/>" & vbCrLf & _
+                    vbTab & "<rect style=""fill: url( data:image/gif;base64," & B64(GifWithComment()) & " )""/>" & vbCrLf & _
+                    vbTab & "<image href=""data:image/svg+xml," & UrlText(SvgCorel()) & """/>" & vbCrLf & _
+                    "</svg>" & vbCrLf
+    End Function
+
+    ' An SVG that writes its URIs with references, as a serializer writes a style attribute: a
+    ' quote as &quot; around a URI, a line break as &#10; in base64, and an SVG written as text
+    ' whose own quotes, as &quot;, do not end the attribute. In CDATA a reference is text, so the
+    ' last URI is not read.
+    Public Function SvgReferences() As String
+        Dim gimp As String
+        gimp = B64(GimpPng())
+        SvgReferences = "<svg><g style=""cursor: url(&quot;data:image/png;base64," & gimp & "&quot;), auto""/>" & _
+                        "<image href=""data:image/png;base64," & Broken(gimp, "&#10;") & """/>" & _
+                        "<image href=""data:image/svg+xml,&lt;svg a=&quot;b&quot;&gt;&lt;!-- x --&gt;&lt;/svg&gt;""/>" & _
+                        "<style><![CDATA[ .a { cursor: url(&quot;data:image/png;base64," & gimp & "&quot;) } ]]></style></svg>"
+    End Function
+
+    Public Function JpegReport() As String
+        JpegReport = "labelled image/png, but is a JPEG; now labelled image/jpeg"
+    End Function
+End Module

@@ -1,0 +1,388 @@
+' Whether a piece of an image's metadata is a notice of whose the picture is and on what terms, as
+' scripts/lib/compact-image.mjs decides it. Each regular expression there is a scan here.
+Module Rights
+
+    ' /©|\(c\)|copyright|licen[cs]e|all rights reserved/i
+    Public Function NoticeText(ByVal text As String) As Boolean
+        Dim t As String
+        t = Bytes.AsciiLower(text)
+        If InStr(t, ChrW$(169)) > 0 Then NoticeText = True: Exit Function
+        If InStr(t, "(c)") > 0 Then NoticeText = True: Exit Function
+        If InStr(t, "copyright") > 0 Then NoticeText = True: Exit Function
+        If InStr(t, "license") > 0 Then NoticeText = True: Exit Function
+        If InStr(t, "licence") > 0 Then NoticeText = True: Exit Function
+        If InStr(t, "all rights reserved") > 0 Then NoticeText = True
+    End Function
+
+    Private Function IsNameUnit(ByVal u As Long) As Boolean
+        IsNameUnit = Bytes.IsWordUnit(u) Or u = 45
+    End Function
+
+    Private Function AllWord(ByVal s As String) As Boolean
+        Dim i As Long
+        If Len(s) = 0 Then Exit Function
+        For i = 1 To Len(s)
+            If Not Bytes.IsWordUnit(AscW(Mid$(s, i, 1))) Then Exit Function
+        Next
+        AllWord = True
+    End Function
+
+    ' /^(dc:rights|dc:creator|xmpRights:\w+|cc:\w+|plus:(?:Licensor|CopyrightOwner|ImageCreator|ImageSupplier)|photoshop:(?:Credit|Source|AuthorsPosition))$/
+    Private Function IsXmpRightsName(ByVal name As String) As Boolean
+        Select Case name
+            Case "dc:rights", "dc:creator", "plus:Licensor", "plus:CopyrightOwner", "plus:ImageCreator", "plus:ImageSupplier", _
+                 "photoshop:Credit", "photoshop:Source", "photoshop:AuthorsPosition"
+                IsXmpRightsName = True
+            Case Else
+                If Left$(name, 10) = "xmpRights:" Then
+                    IsXmpRightsName = AllWord(Mid$(name, 11))
+                ElseIf Left$(name, 3) = "cc:" Then
+                    IsXmpRightsName = AllWord(Mid$(name, 4))
+                End If
+        End Select
+    End Function
+
+    ' [\w-]+:[\w-]+ from p, greedy: True with the colon and the end.
+    Private Function MatchQName(c() As Long, ByVal n As Long, ByVal p As Long, ByRef colon As Long, ByRef e As Long) As Boolean
+        Dim i As Long
+        i = p
+        Do While i < n
+            If Not IsNameUnit(c(i)) Then Exit Do
+            i = i + 1
+        Loop
+        If i = p Or i >= n Then Exit Function
+        If c(i) <> 58 Then Exit Function
+        colon = i
+        i = i + 1
+        Do While i < n
+            If Not IsNameUnit(c(i)) Then Exit Do
+            i = i + 1
+        Loop
+        If i = colon + 1 Then Exit Function
+        e = i
+        MatchQName = True
+    End Function
+
+    Private Function IsSpaceRange(c() As Long, ByVal s As Long, ByVal e As Long) As Boolean
+        Dim i As Long
+        For i = s To e - 1
+            If Not Bytes.IsJsSpace(c(i)) Then Exit Function
+        Next
+        IsSpaceRange = True
+    End Function
+
+    ' /="[^"]*\S[^"]*"/ anywhere in c[s, e).
+    Private Function HasQuotedValue(c() As Long, ByVal s As Long, ByVal e As Long) As Boolean
+        Dim i As Long, q As Long
+        For i = s To e - 2
+            If c(i) = 61 And c(i + 1) = 34 Then
+                q = i + 2
+                Do While q < e
+                    If c(q) = 34 Then Exit Do
+                    q = q + 1
+                Loop
+                If q < e Then
+                    If Not IsSpaceRange(c, i + 2, q) Then HasQuotedValue = True: Exit Function
+                End If
+            End If
+        Next
+    End Function
+
+    ' Whether c[s, e) holds anything but white space once every <...> is taken out.
+    Private Function HasTextOutsideTags(c() As Long, ByVal s As Long, ByVal e As Long) As Boolean
+        Dim i As Long, q As Long
+        i = s
+        Do While i < e
+            If c(i) = 60 Then
+                q = i + 1
+                Do While q < e
+                    If c(q) = 62 Then Exit Do
+                    q = q + 1
+                Loop
+                If q < e Then
+                    i = q + 1
+                Else
+                    HasTextOutsideTags = True
+                    Exit Function
+                End If
+            ElseIf Not Bytes.IsJsSpace(c(i)) Then
+                HasTextOutsideTags = True
+                Exit Function
+            Else
+                i = i + 1
+            End If
+        Loop
+    End Function
+
+    Private Function IndexOfUnits(c() As Long, ByVal n As Long, target() As Long, ByVal tn As Long, ByVal from As Long) As Long
+        Dim i As Long, k As Long
+        For i = from To n - tn
+            For k = 0 To tn - 1
+                If c(i + k) <> target(k) Then Exit For
+            Next
+            If k = tn Then IndexOfUnits = i: Exit Function
+        Next
+        IndexOfUnits = -1
+    End Function
+
+    ' Whether an XMP packet gives a value to a property that names the picture's author or terms.
+    Public Function XmpHasRights(ByVal xml As String) As Boolean
+        Dim c() As Long, n As Long, i As Long, colon As Long, e As Long, q As Long, g As Long, h As Long
+        Dim selfClose As Boolean, attrEnd As Long, closing() As Long, cn As Long
+        n = Bytes.ToUnits(xml, c)
+        ' As an attribute: /\s([\w-]+:[\w-]+)="([^"]*)"/g
+        i = 0
+        Do While i < n
+            q = -1
+            If Bytes.IsJsSpace(c(i)) Then
+                If MatchQName(c, n, i + 1, colon, e) Then
+                    If e + 1 < n Then
+                        If c(e) = 61 And c(e + 1) = 34 Then
+                            q = e + 2
+                            Do While q < n
+                                If c(q) = 34 Then Exit Do
+                                q = q + 1
+                            Loop
+                            If q >= n Then q = -1
+                        End If
+                    End If
+                End If
+            End If
+            If q >= 0 Then
+                If IsXmpRightsName(Bytes.UnitsText(c, i + 1, e - i - 1)) Then
+                    If Not IsSpaceRange(c, e + 2, q) Then XmpHasRights = True: Exit Function
+                End If
+                i = q + 1
+            Else
+                i = i + 1
+            End If
+        Loop
+        ' As an element: /<([\w-]+:[\w-]+)\b([^>]*?)(\/?)>/g
+        i = 0
+        Do While i < n
+            g = -1
+            If c(i) = 60 Then
+                If MatchQName(c, n, i + 1, colon, e) Then
+                    ' \b after the name: a trailing - is given back until a word character ends it.
+                    Do While e > colon + 1
+                        If Bytes.IsWordUnit(c(e - 1)) Then Exit Do
+                        e = e - 1
+                    Loop
+                    If e > colon + 1 Then
+                        g = e
+                        Do While g < n
+                            If c(g) = 62 Then Exit Do
+                            g = g + 1
+                        Loop
+                        If g >= n Then g = -1
+                    End If
+                End If
+            End If
+            If g >= 0 Then
+                selfClose = False
+                attrEnd = g
+                If g - 1 >= e Then
+                    If c(g - 1) = 47 Then selfClose = True: attrEnd = g - 1
+                End If
+                If IsXmpRightsName(Bytes.UnitsText(c, i + 1, e - i - 1)) Then
+                    If HasQuotedValue(c, e, attrEnd) Then XmpHasRights = True: Exit Function
+                    If Not selfClose Then
+                        cn = Bytes.ToUnits("</" & Bytes.UnitsText(c, i + 1, e - i - 1) & ">", closing)
+                        h = IndexOfUnits(c, n, closing, cn, g + 1)
+                        If h > 0 Then
+                            If HasTextOutsideTags(c, g + 1, h) Then XmpHasRights = True: Exit Function
+                        End If
+                    End If
+                End If
+                i = g + 1
+            Else
+                i = i + 1
+            End If
+        Loop
+    End Function
+
+    ' Whether an EXIF block (a TIFF header and its first IFD, with or without "Exif\0\0" before it)
+    ' gives an Artist (0x013B) or a Copyright (0x8298) tag a value longer than its closing NUL.
+    Public Function ExifHasRights(b() As Byte) As Boolean
+        Dim start As Long, le As Boolean, ifd As Double, n As Long, k As Long, e As Double, tag As Long
+        On Error GoTo Done
+        If Bytes.Latin1Range(b, 0, 6) = "Exif" & vbNullChar & vbNullChar Then start = 6
+        Select Case Bytes.Latin1Range(b, start, start + 2)
+            Case "II"
+                le = True
+            Case "MM"
+                le = False
+            Case Else
+                Exit Function
+        End Select
+        ifd = Read32(b, start + 4, le)
+        n = Read16(b, start + ifd, le)
+        For k = 0 To n - 1
+            e = ifd + 2 + k * 12
+            tag = Read16(b, start + e, le)
+            If tag = &H13B Or tag = &H8298& Then
+                If Read32(b, start + e + 4, le) > 1 Then ExifHasRights = True: Exit Function
+            End If
+        Next
+    Done:
+    End Function
+
+    ' The Orientation tag (0x0112) of an EXIF block as ExifHasRights reads one, 1 when it has none.
+    Public Function ExifOrientation(b() As Byte) As Long
+        Dim start As Long, le As Boolean, ifd As Double, n As Long, k As Long, e As Double
+        ExifOrientation = 1
+        On Error GoTo Done
+        If Bytes.Latin1Range(b, 0, 6) = "Exif" & vbNullChar & vbNullChar Then start = 6
+        Select Case Bytes.Latin1Range(b, start, start + 2)
+            Case "II"
+                le = True
+            Case "MM"
+                le = False
+            Case Else
+                Exit Function
+        End Select
+        ifd = Read32(b, start + 4, le)
+        n = Read16(b, start + ifd, le)
+        For k = 0 To n - 1
+            e = ifd + 2 + k * 12
+            If Read16(b, start + e, le) = &H112 Then
+                ExifOrientation = Read16(b, start + e + 8, le)
+                Exit Function
+            End If
+        Next
+    Done:
+    End Function
+
+    Private Function Read16(b() As Byte, ByVal p As Double, ByVal le As Boolean) As Long
+        If le Then Read16 = Bytes.U16LE(b, p) Else Read16 = Bytes.U16BE(b, p)
+    End Function
+
+    Private Function Read32(b() As Byte, ByVal p As Double, ByVal le As Boolean) As Double
+        If le Then Read32 = Bytes.U32LE(b, p) Else Read32 = Bytes.U32BE(b, p)
+    End Function
+
+    ' Whether an IPTC block holds a By-line (2:80), Credit (2:110), Source (2:115) or Copyright Notice (2:116) with a value.
+    Public Function IptcHasRights(b() As Byte) As Boolean
+        Dim p As Long, n As Long
+        n = Bytes.Length(b)
+        For p = 0 To n - 5
+            If b(p) = &H1C And b(p + 1) = 2 Then
+                Select Case b(p + 2)
+                    Case 80, 110, 115, 116
+                        If Bytes.U16BE(b, p + 3) > 0 Then IptcHasRights = True: Exit Function
+                End Select
+            End If
+        Next
+    End Function
+
+    ' The bytes of an ImageMagick "Raw profile type" text: a line naming the profile, one with its
+    ' length, and the bytes in hexadecimal, read as Buffer.from(hex, "hex") reads them.
+    Private Function RawProfile(ByVal text As String, out() As Byte) As Long
+        Dim c() As Long, n As Long, s As Long, e As Long, i As Long, lines As Long, digits() As Long, dn As Long
+        Dim builder As New ByteBuilder, hi As Long, lo As Long
+        n = Bytes.ToUnits(text, c)
+        s = 0
+        Do While s < n
+            If Not Bytes.IsJsSpace(c(s)) Then Exit Do
+            s = s + 1
+        Loop
+        e = n
+        Do While e > s
+            If Not Bytes.IsJsSpace(c(e - 1)) Then Exit Do
+            e = e - 1
+        Loop
+        If e <= s Then Exit Function
+        ReDim digits(0 To e - s)
+        For i = s To e - 1
+            If lines >= 2 Then
+                If Not Bytes.IsJsSpace(c(i)) Then
+                    digits(dn) = c(i)
+                    dn = dn + 1
+                End If
+            End If
+            If c(i) = 10 Then lines = lines + 1
+        Next
+        For i = 0 To dn - 2 Step 2
+            hi = HexValue(digits(i))
+            lo = HexValue(digits(i + 1))
+            If hi < 0 Or lo < 0 Then Exit For
+            builder.AddByte hi * 16 + lo
+        Next
+        RawProfile = builder.ToArray(out)
+    End Function
+
+    Private Function HexValue(ByVal u As Long) As Long
+        Select Case u
+            Case 48 To 57
+                HexValue = u - 48
+            Case 65 To 70
+                HexValue = u - 55
+            Case 97 To 102
+                HexValue = u - 87
+            Case Else
+                HexValue = -1
+        End Select
+    End Function
+
+    Private Function IsRightsKeyword(ByVal keyword As String) As Boolean
+        Select Case keyword
+            Case "Title", "Author", "Description", "Source", "Copyright", "Disclaimer"
+                IsRightsKeyword = True
+            Case Else
+                Dim t As String
+                t = Bytes.AsciiLower(keyword)
+                IsRightsKeyword = InStr(t, "license") > 0 Or InStr(t, "licence") > 0 Or InStr(t, "rights") > 0
+        End Select
+    End Function
+
+    ' Whether a PNG chunk is a notice of whose the picture is: a text chunk whose keyword names a
+    ' picture, author, source, terms or licence, or an EXIF, IPTC or XMP profile (in a text chunk,
+    ' or eXIf) that holds a notice of its own. A chunk that cannot be read is kept.
+    Public Function RightsChunk(ByVal chunkType As String, data() As Byte) As Boolean
+        Dim z As Long, n As Long, keyword As String, text As String, raw() As Byte, rawLen As Long, lang As Long, restStart As Long, lower As String
+        On Error GoTo Unreadable
+        If chunkType = "eXIf" Then
+            RightsChunk = ExifHasRights(data)
+            Exit Function
+        End If
+        If chunkType <> "tEXt" And chunkType <> "zTXt" And chunkType <> "iTXt" Then Exit Function
+        n = Bytes.Length(data)
+        z = Bytes.IndexOfByte(data, 0, 0)
+        keyword = Bytes.Latin1Range(data, 0, z)
+        If IsRightsKeyword(keyword) Then
+            RightsChunk = True
+            Exit Function
+        End If
+        Select Case chunkType
+            Case "tEXt"
+                text = Bytes.Latin1Range(data, z + 1, n)
+            Case "zTXt"
+                rawLen = Inflate.ZlibInflate(data, z + 2, n - (z + 2), raw)
+                text = Bytes.Latin1Range(raw, 0, rawLen)
+            Case "iTXt"
+                lang = Bytes.IndexOfByte(data, 0, z + 3)
+                restStart = Bytes.IndexOfByte(data, 0, lang + 1) + 1
+                If Bytes.ByteAt(data, z + 1) <> 0 Then
+                    rawLen = Inflate.ZlibInflate(data, restStart, n - restStart, raw)
+                    text = Bytes.Utf8Text(raw, 0, rawLen)
+                Else
+                    text = Bytes.Utf8Text(data, restStart, n)
+                End If
+        End Select
+        If keyword = "XML:com.adobe.xmp" Then
+            RightsChunk = XmpHasRights(text)
+            Exit Function
+        End If
+        lower = Bytes.AsciiLower(keyword)
+        If lower = "raw profile type exif" Or lower = "raw profile type app1" Then
+            rawLen = RawProfile(text, raw)
+            RightsChunk = ExifHasRights(raw)
+        ElseIf lower = "raw profile type iptc" Then
+            rawLen = RawProfile(text, raw)
+            RightsChunk = IptcHasRights(raw)
+        End If
+        Exit Function
+    Unreadable:
+        RightsChunk = True
+    End Function
+End Module

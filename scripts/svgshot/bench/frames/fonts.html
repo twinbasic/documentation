@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Text in two fonts</title>
+<!--
+  The frame's text is measured in the frame's own document: two fonts, a bold
+  italic one and an underlined run (an ink gap measured on a canvas).
+-->
+<style>
+html { background: #f4f4f4; overflow: hidden; }
+body { margin: 0; padding: 8px; color: #111; font: 13px "Segoe UI", sans-serif; }
+code { font: 12px Consolas, monospace; background: #e0e0e0; padding: 0 3px; }
+.u { text-decoration: underline; }
+</style>
+<body>
+<p>Segoe UI and <code>Consolas</code> text.</p>
+<p><b><i>Bold italic</i></b> and <span class="u">underlined gypsy jumps</span>.</p>
+</body>
+</html>

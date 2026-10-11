@@ -14,27 +14,255 @@
   border: 0;
 }
 
-// Inline SVG diagrams (Phase 13). Controls sit right-aligned above the
-// diagram; the SVG fills the column width.
-.svg-controls {
+// Figures (builder/render.mjs, figurePlugin; docs/assets/js/figure.js). A
+// figure is a .fig-wrap holding its controls bar, .fig-controls, and the
+// figure itself, .fig-container: a diagram's inline SVG (data-kind="diagram"),
+// or a picture's <img> (data-kind="picture"), two for a picture in two themes,
+// one of them hidden by the theme.
+//
+// The bar lies flat beside the figure, at its top right, where the column has
+// room for both on one line, and above the figure, against the column's right
+// edge, where it has not. One rule does both, at any width: the wrapper is a
+// wrapping flex row that shrinks to what it holds, the figure first and the bar
+// second, with the lines stacked bottom-up (wrap-reverse), so a bar that does
+// not fit beside the figure goes on the line above it. Stacked bottom-up, the
+// cross axis runs upwards, so `flex-end` is what aligns both to the top.
+//
+// A diagram is centred in the column, a picture keeps its place at the
+// column's left edge, as each did before it had a bar. A tall figure in a wide
+// window has its bar stood on end in the margin instead (below).
+.fig-wrap {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  align-items: flex-end;
+  gap: 4px 8px;
+  width: fit-content;
+  max-width: 100%;
+  margin-block: 1rem;
+}
+
+.fig-wrap[data-kind="diagram"] {
+  margin-inline: auto;
+}
+
+.fig-container {
+  order: 1;
+  min-width: 0;
+  max-width: 100%;
+  cursor: zoom-in;
+}
+
+// A diagram's container takes its whole line, so the diagram, centred in it,
+// stays centred in the column when the bar has gone above it.
+.fig-wrap[data-kind="diagram"] > .fig-container {
+  flex-grow: 1;
+}
+
+// The bar: right-aligned groups of icon buttons. A group is a pill set apart
+// by its fill alone, a tint of the text colour, so it darkens the page in the
+// light theme and lightens it in the dark one with no rule per theme. A format
+// group leads with its sign (vector or raster), drawn fainter than the buttons
+// because it is a label, not a control; Zoom is a group of its own. Glyphs are
+// the sprite's `fig-*` symbols (template.mjs) and draw in currentColor.
+.fig-controls {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.25rem 0.5rem;
-  font-size: 0.85em;
+  gap: 6px;
+  order: 2;
+  // Against the right edge when the bar has a line of its own.
+  margin-left: auto;
 
-  button {
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-    // WCAG 2.5.8 Target Size (Minimum): btn-reset strips all padding, leaving
-    // these ~21px-tall text buttons under the 24x24 CSS px floor -- and on a
-    // narrow column the old float layout wrapped them into rows spaced tighter
-    // than 24px. A 24px min-height clears the floor outright (no spacing
-    // exception needed); dropping the float also makes focus order follow the
-    // visual left-to-right order instead of reversing it.
-    min-height: 24px;
-    padding: 0 0.25rem;
+  // figure.js hides what does not work where the page is read (a picture's
+  // vector group offline, the copy buttons from disk); the display values
+  // below would otherwise show it all the same.
+  [hidden] {
+    display: none;
+  }
+}
+
+.fig-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 7px;
+  // The text colour, not the link colour a bare `span` rule and `.btn-reset`
+  // would give it: the fill below and every glyph are tints of it.
+  color: inherit;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.fig-format {
+  width: 18px;
+  height: 18px;
+  margin: 0 3px 0 5px;
+  opacity: 0.55;
+}
+
+.fig-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  // WCAG 2.5.8 Target Size (Minimum) asks for 24x24 CSS px; 28 clears it with
+  // room to spare, so no spacing exception is needed between buttons.
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  color: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, currentColor 14%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid;
+    outline-offset: 1px;
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// Stood on end beside a tall figure, where the window is wide enough. A
+// figure is tall (`data-tall`, render.mjs) when it is at least as tall as the
+// bar on end; a shorter one keeps its bar flat, as above, because the bar on
+// end would push the paragraph after it down by the difference. From 1120px
+// the margin right of the content column is at least 56px (measured: 32px at
+// 1024, 60px at 1120, 140px at 1280), room for the bar's 32px, its 8px gap and
+// 16px to the window's edge; below that, on every phone and in print, the bar
+// lies flat.
+//
+// The wrapper is a grid over the whole column. A diagram's has three columns,
+// the figure in the middle one and the bar at the start of the third: the two
+// outer columns share what the figure leaves, so a narrow diagram stays
+// centred with the bar against its right edge, and a full-width one leaves the
+// third column empty and the bar overflows it into the margin. A picture's has
+// two, the figure first, so it keeps to the left. The left margin is only 32px
+// up to about 1200px, so the bar never goes there.
+//
+// The bar is sticky in the grid's row: on a figure taller than the window it
+// stays in view while the figure scrolls past, and stops at the figure's foot.
+@media screen and (min-width: 1120px) {
+  .fig-wrap[data-tall] {
+    display: grid;
+    width: auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(0, 1fr);
+    gap: 0;
+
+    &[data-kind="picture"] {
+      grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+    }
+
+    > .fig-container {
+      grid-row: 1;
+      grid-column: -3 / -2;
+    }
+
+    > .fig-controls {
+      grid-row: 1;
+      grid-column: -2 / -1;
+      position: sticky;
+      top: 16px;
+      align-self: start;
+      justify-self: start;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      margin: 0 0 0 8px;
+    }
+
+    .fig-group {
+      flex-direction: column;
+    }
+
+    .fig-format {
+      margin: 5px 0 3px;
+    }
+  }
+}
+
+// Zoomed (figure.js): the container becomes an overlay over the whole window,
+// in the body's background, and the figure is given its zoomed width; the
+// script sets both. The figure is centred by auto margins rather than by the
+// flex alignment, which would cut off the top of a figure taller than the
+// window instead of letting it scroll.
+.fig-container[data-zoomed] {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  box-sizing: border-box;
+  padding: 1rem;
+  overflow: auto;
+  cursor: zoom-out;
+
+  > svg,
+  > img {
+    flex-shrink: 0;
+    margin: auto;
+  }
+}
+
+// The dark theme's own `span`, `button` and `.btn-reset` rules carry the dark
+// compilation's `html[data-theme]` prefix and so outrank the bare rules above;
+// the same selectors under that prefix keep the bar in the text colour there.
+@include dark-theme {
+  .fig-group,
+  .fig-controls button,
+  .fig-zoom-close {
+    color: inherit;
+  }
+
+  .fig-controls button {
+    background: transparent;
+
+    &:hover {
+      background: color-mix(in srgb, currentColor 14%, transparent);
+    }
+  }
+
+  .fig-zoom-close {
+    background: color-mix(in srgb, currentColor 14%, transparent);
+
+    &:hover {
+      background: color-mix(in srgb, currentColor 22%, transparent);
+    }
+  }
+}
+
+// The zoomed figure's close button (figure.js), in the bar's style.
+.fig-zoom-close {
+  position: fixed;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, currentColor 22%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid;
+    outline-offset: 1px;
+  }
+
+  svg {
+    width: 22px;
+    height: 22px;
   }
 }
 
@@ -59,7 +287,7 @@
 // sit against the left edge with the shortfall pooled on the right, which
 // reads as a layout mistake rather than a small diagram. Diagrams that hit
 // `max-width` have no shortfall, so this changes nothing for them.
-.svg-container svg {
+.fig-container > svg {
   display: block;
   width: auto;
   max-width: 100%;
@@ -76,12 +304,24 @@
 //
 // currentColor tracks the body text colour, so each label reads correctly in
 // whichever theme without hardcoding either palette here -- the same thing
-// admonitions.scss does for its icons. Scoped to DIRECT children of the two
-// groups that sit on the background: node text is inside g.node and must keep
-// the dark ink its own light fill needs.
-.svg-container g.cluster > text,
-.svg-container g.edge > text {
+// admonitions.scss does for its icons. Scoped to the label of each of the two
+// groups that sit on the background, a direct child or, when the group links
+// somewhere, the text of its link (Graphviz wraps it in `g > a`), which then
+// takes the link colour: node text is inside g.node and must keep the dark ink
+// its own light fill needs.
+.fig-container g.cluster > text,
+.fig-container g.edge > text,
+.fig-container g.cluster > g > a > text,
+.fig-container g.edge > g > a > text {
   fill: currentColor;
+}
+
+// A diagram's link (a Graphviz URL) holds its box's outline, a node's or a
+// cluster's, whichever shape Graphviz draws it as: the outline thickens under
+// the pointer and with keyboard focus.
+.fig-container a:hover > :not(text),
+.fig-container a:focus-visible > :not(text) {
+  stroke-width: 2.5;
 }
 
 // WCAG 2.1.1: builder/highlight.mjs marks the code-block scroll container
@@ -426,6 +666,25 @@ div.highlight:focus-visible,
 @include dark-theme {
   .aux-nav a.site-button:focus-visible {
     outline-color: #8cc2ff; // dark $link-color
+  }
+}
+
+// Pictures in two themes (builder/theme-pictures.mjs): an `X.png` with an
+// `X.light.png` beside it is written as two images (or two links), `.pic-light`
+// then `.pic-dark`, both `loading="lazy"`. Each theme hides the other's, and a
+// lazy image that is not displayed is never fetched. The two mixins are exact
+// complements and follow the toggle and, with no choice stored, the OS; no rule
+// gives the shown image a display value, so it keeps whatever it had. The dark
+// half is in the dark-theme mixin's two selectors, so it holds in both dark modes.
+@include light-theme {
+  .pic-dark {
+    display: none;
+  }
+}
+
+@include dark-theme {
+  .pic-light {
+    display: none;
   }
 }
 

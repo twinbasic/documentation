@@ -134,10 +134,7 @@ The rotation of the rendered shape, in degrees, anti-clockwise around the contro
 ### BackColor
 {: .no_toc }
 
-The colour painted into the **Shape**'s bounding rectangle (outside the shape's own outline) when [**BackStyle**](#backstyle) is **vbBFOpaque**. **OLE_COLOR**, defaults to the system window-background colour. Has no effect when [**BackStyle**](#backstyle) is **vbBFTransparent**.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The colour painted into the **Shape**'s bounding rectangle (outside the shape's own outline) when [**BackStyle**](#backstyle) is **vbBFOpaque**. **OLE_COLOR**, defaults to the system window-background colour. Has no effect when [**BackStyle**](#backstyle) is **vbBFTransparent**. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### BackStyle
 {: .no_toc }
@@ -182,10 +179,7 @@ The raster operation that the shape drawing applies when combining its pixels wi
 ### FillColor
 {: .no_toc }
 
-The primary colour used to fill the shape's interior. **OLE_COLOR**, defaults to the system scrollbar colour. Used as the only colour for solid and hatched fills, and as the start colour for gradient fills. Has no effect when [**FillStyle**](#fillstyle) is **vbFSTransparent**.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The primary colour used to fill the shape's interior. **OLE_COLOR**, defaults to the system scrollbar colour. Used as the only colour for solid and hatched fills, and as the start colour for gradient fills. Has no effect when [**FillStyle**](#fillstyle) is **vbFSTransparent**. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### FillColorAlt
 {: .no_toc }

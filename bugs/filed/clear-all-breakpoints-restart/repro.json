@@ -1,9 +1,0 @@
-{
-  "mode": "lane",
-  "lane": "ide:breakpoints",
-  "tests": [
-    "Clear All Breakpoints is undone by a restart: the breakpoint is back, and the run stops at it"
-  ],
-  "steps": "1. Open clear-all-breakpoints-restart.twinproj in the twinBASIC IDE and open Startup.twin.\n2. Put the cursor on the line marked BREAK and press F9. A breakpoint appears in the margin.\n3. Choose Debug > Clear All Breakpoints (Ctrl+Shift+F9). The breakpoint goes.\n4. Click Restart the compiler on the toolbar, and wait for the compile to end.\n5. Expected: no breakpoint. Actual: the breakpoint is back in the margin.\n6. Press F5. Expected: the DEBUG CONSOLE shows main start, the breakpoint's line and main end. Actual: the run stops at the breakpoint.\nControls: a breakpoint removed with F9 instead stays removed after a restart, and saving the project (Ctrl+S) between Clear All Breakpoints and the restart keeps them cleared. A breakpoint saved with the project survives a restart, as it should.\nAsserted on BETA 995 by `ide-test.bat --only breakpoints` (the project is test/ide/probes/breakpoints).",
-  "issue": 2502
-}

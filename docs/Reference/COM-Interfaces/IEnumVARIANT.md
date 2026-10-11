@@ -44,7 +44,7 @@ Private Interface IEnumVARIANT Extends stdole.IUnknown
 End Interface
 ```
 
-A class that implements a member marked [**[PreserveSig]**](../../tB/Core/Attributes#preservesig) does not compile (BETA 997), so an implementation cannot return its **HRESULT** as a function result. It sets [**Err.ReturnHResult**](../../tB/Modules/ErrObject/ReturnHResult) instead: `S_FALSE` is 1, `E_NOTIMPL` is `&H80004001`.
+A class that implements a member marked [**[PreserveSig]**](../../tB/Core/Attributes#preservesig) does not compile (BETA 1005), so an implementation cannot return its **HRESULT** as a function result. It sets [**Err.ReturnHResult**](../../tB/Modules/ErrObject/ReturnHResult) instead: `S_FALSE` is 1, `E_NOTIMPL` is `&H80004001`.
 
 ## Methods
 

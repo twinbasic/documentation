@@ -1,9 +1,0 @@
-Class WithArray
-
-    Public Const Arr() As Long = Array(1, 2, 3)
-
-    Public Sub Show()
-        Debug.Print Arr(1)
-    End Sub
-
-End Class

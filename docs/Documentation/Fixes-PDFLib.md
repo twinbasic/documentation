@@ -17,7 +17,7 @@ Each patch was written against the source of pdf-lib 1.17.1, which `package.json
 
 The root cause of the need for all these patches is the same: pdf-lib is designed for general-purpose use in both browsers and Node, and optimises for generality rather than throughput on a single large document.
 
-Each patch must leave the output unchanged. [`check_pdf_shims_equiv.mjs`](../Tools#check-pdf-shims-equiv), one of `test.bat`'s gates, saves one document with stock pdf-lib and with every patch `render-book.mjs` imports, compares the two files object by object, and fails if the patches are not the ones the gate lists, or if one never runs that the list does not mark as unreached.
+Each patch must leave the output unchanged. [`check_pdf_shims_equiv.mjs`](../Tools-Toolchain-Tests#check-pdf-shims-equiv), one of `test.bat`'s gates, saves one document with stock pdf-lib and with every patch `render-book.mjs` imports, compares the two files object by object, and fails if the patches are not the ones the gate lists, or if one never runs that the list does not mark as unreached.
 
 * TOC goes here
 {:toc}

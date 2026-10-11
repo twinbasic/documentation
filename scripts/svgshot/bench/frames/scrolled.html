@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>A document that scrolls</title>
+<!--
+  The frame's viewport scrolls: a custom ::-webkit-scrollbar style on the
+  document, in the shape the docs site's dark theme writes it, shown at the
+  right of the frame and its thumb at the place the scroll offset gives.
+-->
+<style>
+html { background: #1e1e1e; }
+body { margin: 0; color: #ddd; font: 13px "Segoe UI", sans-serif; }
+::-webkit-scrollbar { width: 15.5px; height: 15.5px; }
+::-webkit-scrollbar-track { background: #1a1a1a; }
+::-webkit-scrollbar-thumb { background: #404040; border-radius: 5.5px; border-left: 3.75px solid #1a1a1a; border-right: 3.75px solid #1a1a1a; }
+.row { height: 23px; line-height: 23px; padding: 0 8px; border-bottom: 1px solid #444; }
+.row:nth-child(5n) { background: #2c3e50; }
+</style>
+<body>
+<script>
+  for (let i = 0; i < 40; i++) document.body.insertAdjacentHTML("beforeend", `<div class="row">row ${i}</div>`);
+  window.scrollTo(0, 130);
+</script>
+</body>
+</html>

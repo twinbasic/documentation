@@ -1,0 +1,9 @@
+Module MainModule
+
+    ' FusionDemo references the 32-bit Microsoft Windows Common Controls 6.0 with its ActiveX
+    ' Fusion Mode set to fusionAllTo32: the compiler builds the Fusion host EXE as it loads
+    ' the project, and says so in the DEBUG CONSOLE (Fusion.md's picture).
+    Public Sub Main()
+    End Sub
+
+End Module

@@ -1,7 +1,0 @@
-Type=Exe
-Module=ModuleNamedLikeProject; Module1.bas
-Startup="Sub Main"
-ExeName32="Probe.exe"
-Name="ModuleNamedLikeProject"
-CompilationType=0
-OptimizationType=0

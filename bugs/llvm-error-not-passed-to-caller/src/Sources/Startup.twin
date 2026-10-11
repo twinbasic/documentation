@@ -1,0 +1,31 @@
+' Runs the cases of Cases in order, writing each one's name and then what its handler caught. In a build
+' that has the defect the run ends silently at the first case in which a procedure compiled with LLVM
+' raises the error or catches it: the last line in the DEBUG CONSOLE is then that case's name.
+Module Startup
+
+    ' The first case to run. Set it to 5, 6 and so on to see the cases after the first one that ends the run.
+    Private Const FirstCase As Long = 1
+
+    Public Sub Main()
+        Debug.Cls
+        Dim n As Long
+        For n = FirstCase To 12
+            Select Case n
+                Case 1: Debug.Print "CallerPlain_CalleePlain_ErrRaise": Debug.Print "    " & Cases.CallerPlain_CalleePlain_ErrRaise()
+                Case 2: Debug.Print "CallerPlain_CalleePlain_Divide": Debug.Print "    " & Cases.CallerPlain_CalleePlain_Divide()
+                Case 3: Debug.Print "Llvm_OwnHandler_Divide": Debug.Print "    " & Cases.Llvm_OwnHandler_Divide()
+                Case 4: Debug.Print "CallerPlain_CalleeLlvm_ErrRaise": Debug.Print "    " & Cases.CallerPlain_CalleeLlvm_ErrRaise()
+                Case 5: Debug.Print "CallerLlvm_CalleePlain_ErrRaise": Debug.Print "    " & Cases.CallerLlvm_CalleePlain_ErrRaise()
+                Case 6: Debug.Print "CallerLlvm_CalleeLlvm_ErrRaise": Debug.Print "    " & Cases.CallerLlvm_CalleeLlvm_ErrRaise()
+                Case 7: Debug.Print "CallerPlain_CalleeLlvm_Divide": Debug.Print "    " & Cases.CallerPlain_CalleeLlvm_Divide()
+                Case 8: Debug.Print "CallerLlvm_CalleePlain_Divide": Debug.Print "    " & Cases.CallerLlvm_CalleePlain_Divide()
+                Case 9: Debug.Print "CallerLlvm_CalleeLlvm_Divide": Debug.Print "    " & Cases.CallerLlvm_CalleeLlvm_Divide()
+                Case 10: Debug.Print "CallerPlain_CalleeLlvm_ResumeNext": Debug.Print "    " & Cases.CallerPlain_CalleeLlvm_ResumeNext()
+                Case 11: Debug.Print "CallerLlvm_CalleePlain_ResumeNext": Debug.Print "    " & Cases.CallerLlvm_CalleePlain_ResumeNext()
+                Case 12: Debug.Print "CallerPlain_MiddlePlain_CalleeLlvm": Debug.Print "    " & Cases.CallerPlain_MiddlePlain_CalleeLlvm()
+            End Select
+        Next
+        Debug.Print "end of Main"
+    End Sub
+
+End Module

@@ -92,7 +92,10 @@ Syntax: *object*.**GetTypeInfo** *iTInfo*, *lcid*, *ppTInfo*
 *ppTInfo*
 : *required* A **LongPtr** that receives the pointer.
 
-A twinBASIC class returns a description for *iTInfo* 0. For 1 it fails with `E_UNEXPECTED` (`&H8000FFFF`), not with `DISP_E_BADINDEX`. [**TypeName**](../../tB/Modules/Information/TypeName) calls this method to find the name of an object's class.
+A twinBASIC class returns a description for *iTInfo* 0, and fails with `DISP_E_BADINDEX` for any other value. [**TypeName**](../../tB/Modules/Information/TypeName) calls this method to find the name of an object's class.
+
+> [!NOTE]
+> A VB6 class fails with `TYPE_E_ELEMENTNOTFOUND` (`&H8002802B`) for an *iTInfo* other than 0.
 
 ### GetIDsOfNames
 {: .no_toc }
@@ -119,6 +122,8 @@ Syntax: *object*.**GetIDsOfNames** *riid*, *rgszNames*, *cNames*, *lcid*, *rgDis
 Name matching ignores case. A member keeps its identifier for the life of the object, so a caller can look it up once and use it for every later call.
 
 Returns `S_OK` when every name is known. When a name is not known it returns `DISP_E_UNKNOWNNAME` (`&H80020006`) and writes `DISPID_UNKNOWN` (-1) in that name's slot, and a name the object does know still gets its identifier.
+
+Called through a project's own declaration of the interface, `DISP_E_UNKNOWNNAME` raises run-time error 438, *Object doesn't support this property or method*, as it does in VB6. The same holds for `DISP_E_MEMBERNOTFOUND` from **Invoke**, and `DISP_E_TYPEMISMATCH` raises error 13.
 
 ### Invoke
 {: .no_toc }
@@ -219,19 +224,15 @@ The four [**VbCallType**](../../tB/Modules/Constants/VbCallType) values are the 
 
 | Situation | Error |
 |-----------|-------|
-| The name is not known (**GetIDsOfNames** fails) | `&H80020006`, *Unknown name.* |
-| **CallByName** with a name that is not known | `&H80004005`, *Unspecified error* |
+| The name is not known (**GetIDsOfNames** fails), in a statement or in **CallByName** | 438, *Object doesn't support this property or method* |
 | **Invoke** returns `DISP_E_MEMBERNOTFOUND` | 438, *Object doesn't support this property or method* |
 | **Invoke** returns `DISP_E_TYPEMISMATCH` | 13, *Type mismatch* |
 | **Invoke** returns any other failure code | that code as the error number, with the system's description of it |
 | The object is **Nothing** | 91, *Object variable or With block variable not set* |
 | **CallByName** on a value that is not an object | 424, *Object required* |
 
-> [!NOTE]
-> In VBA an unknown member raises error 438. In twinBASIC it raises `&H80020006`, so an error handler that tests for 438 does not catch it. This holds for objects of any origin: a twinBASIC class, a **Collection**, a **Dictionary** and a **FileSystemObject** all behave alike.
-
 > [!WARNING]
-> BETA 997 has a defect: a call that fails inside **Invoke** can be made twice, so its side effects happen twice and nothing says so. VB6 makes the call once. A failed property assignment is followed by a second **Invoke** with *wFlags* 3. A call with more arguments than a **Sub** takes runs the **Sub**, then fails with error 13, and a late-bound statement does this twice. Code that implements **Invoke** must not change state before it can still fail.
+> BETA 1005 has a defect: a call that fails inside **Invoke** can be made twice, so its side effects happen twice and nothing says so. VB6 makes the call once. A failed property assignment is followed by a second **Invoke** with *wFlags* 3. A call with more arguments than a **Sub** takes runs the **Sub**, then fails with error 13, and a late-bound statement does this twice. Code that implements **Invoke** must not change state before it can still fail.
 
 > [!NOTE]
 > **CallByName** repeats a call that returned `DISP_E_MEMBERNOTFOUND`: a second **Invoke** with the same identifier and *wFlags* and a null *pVarResult*, for **VbMethod**, **VbGet** and **VbLet** alike. VB6 does the same. A late-bound statement makes the call once.
@@ -295,7 +296,7 @@ An implementation has these constraints:
 
 ## The stdole declaration
 
-A variable declared **As stdole.IDispatch** does not reach the four methods. A call through it is compiled as a late-bound call by name, the same as a call through an **Object** variable: `d.GetTypeInfoCount n` compiles with any arguments, and raises `&H80020006` (*Unknown name*) when it runs, because the object has no member of that name. A member the object does have, such as `d.Answer`, is called as it would be through **Object**. Use a project's own declaration, as above.
+A variable declared **As stdole.IDispatch** does not reach the four methods. A call through it is compiled as a late-bound call by name, the same as a call through an **Object** variable: `d.GetTypeInfoCount n` compiles with any arguments, and raises error 438 (*Object doesn't support this property or method*) when it runs, because the object has no member of that name. A member the object does have, such as `d.Answer`, is called as it would be through **Object**. Use a project's own declaration, as above.
 
 ## COMExtensible
 
@@ -375,7 +376,7 @@ Class Gadget
 End Class
 ```
 
-Looking members up through the project's copy of the interface shows which identifiers a class has. The explicit and reserved identifiers are fixed; a **Private** member is not found, and the failed lookup leaves -1 in the identifier:
+Looking members up through the project's copy of the interface shows which identifiers a class has. The explicit and reserved identifiers are fixed; a **Private** member is not found, and the failed lookup leaves -1 in the identifier and raises error 438, `1B6` in hexadecimal:
 
 ```tb check_run projname=com-idispatch
 Dim g As New Gadget
@@ -385,8 +386,8 @@ Debug.Print GetId(g, "Beep", hr) & " " & Hex(hr)      ' 42 0
 Debug.Print GetId(g, "BEEP", hr) & " " & Hex(hr)      ' 42 0
 Debug.Print GetId(g, "Item", hr) & " " & Hex(hr)      ' 0 0
 Debug.Print GetId(g, "Items", hr) & " " & Hex(hr)     ' -4 0
-Debug.Print GetId(g, "Secret", hr) & " " & Hex(hr)    ' -1 80020006
-Debug.Print GetId(g, "Missing", hr) & " " & Hex(hr)   ' -1 80020006
+Debug.Print GetId(g, "Secret", hr) & " " & Hex(hr)    ' -1 1B6
+Debug.Print GetId(g, "Missing", hr) & " " & Hex(hr)   ' -1 1B6
 Debug.Print GetId(g, "Internal", hr) <> -1            ' True
 ```
 
@@ -415,7 +416,7 @@ d.GetTypeInfoCount count
 Debug.Print count                                   ' 1
 ```
 
-The same class through an **Object** variable and **CallByName**. An unknown name and a **Private** member fail alike, with the error of the failed lookup; **CallByName** reports the unknown name differently:
+The same class through an **Object** variable and **CallByName**. An unknown name and a **Private** member fail alike, with error 438, and so does **CallByName** with an unknown name:
 
 ```tb check_run projname=com-idispatch
 Dim o As Object = New Gadget
@@ -432,13 +433,13 @@ Debug.Print CallByName(o, "Label", vbGet)                ' new
 
 On Error Resume Next
 o.Secret
-Debug.Print Hex(Err.Number) & " " & Err.Description  ' 80020006 Unknown name.
+Debug.Print Hex(Err.Number) & " " & Err.Description  ' 1B6 Object doesn't support this property or method
 Err.Clear
 o.Missing
-Debug.Print Hex(Err.Number) & " " & Err.Description  ' 80020006 Unknown name.
+Debug.Print Hex(Err.Number) & " " & Err.Description  ' 1B6 Object doesn't support this property or method
 Err.Clear
 CallByName o, "Missing", vbMethod
-Debug.Print Hex(Err.Number) & " " & Err.Description  ' 80004005 Unspecified error
+Debug.Print Hex(Err.Number) & " " & Err.Description  ' 1B6 Object doesn't support this property or method
 Err.Clear
 o.Internal
 Debug.Print Err.Number                                ' 0

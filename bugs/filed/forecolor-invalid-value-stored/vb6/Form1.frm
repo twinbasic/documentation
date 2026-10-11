@@ -10,6 +10,13 @@ Begin VB.Form Form1
    ScaleWidth      =   4000
    StartUpPosition =   3  'Windows Default
    Visible         =   0   'False
+   Begin VB.OLE OLE1
+      Height          =   315
+      Left            =   1200
+      TabIndex        =   8
+      Top             =   2280
+      Width           =   855
+   End
    Begin Probe.UC1 UC1
       Height          =   1215
       Left            =   3360

@@ -28,15 +28,19 @@
 //                         the fault the event log records for it, and the boxes
 //                         it opens, each closed with OK
 //       --allow-name-clash  run a probe whose module holds a procedure named
-//                         like the module; twinBASIC does not run its
-//                         [RunAfterBuild] Sub, so tbrun refuses it otherwise
+//                         like the module on a build before 1005, which does
+//                         not run its [RunAfterBuild] Sub, so tbrun refuses
+//                         it there otherwise
+//       --tests           do not build: judge the project's compile cases and
+//                         run its [TestCase] Subs, printing PASS or FAIL for
+//                         each (lib/tb-tests.mjs)
 //
 // Exit: 0 captured output, 1 the project has compile errors, 2 the harness
 // could not run (a refused command line included), a compile never settled, or
 // it crashed -- a build that fails after a clean compile included, and a
 // [RunAfterBuild] Sub that fails code generation, since the probe never runs,
-// and a probe whose module holds a procedure named like the module, which
-// does not run either (unless --allow-name-clash),
+// and, before BETA 1005, a probe whose module holds a procedure named like the
+// module, which does not run either (unless --allow-name-clash),
 // and a procedure the probe calls that fails it, since the probe stops at the
 // call -- 3 no output: the build produced none in the console before the
 // timeout, or the probe ran and printed none after its last Debug.Cls -- 4 the
@@ -44,7 +48,8 @@
 // probe ended before it returned, its output printed all the same -- 6 with
 // --exe, the exe exited with a code other than 0, the event log records that it
 // faulted, it opened a box, or it was still running after --timeout; its
-// output, exit code, fault and boxes printed all the same.
+// output, exit code, fault and boxes printed all the same -- 7 with --tests, a
+// case failed.
 //
 // ---------------------------------------------------------------- why
 //
@@ -139,7 +144,7 @@ import {
   refuseTogether,
   withUsageError,
 } from "../lib/cli.mjs";
-import { findIde } from "./lib/tb-install.mjs";
+import { buildNumber, findIde } from "./lib/tb-install.mjs";
 import {
   COMPILE_TIMEOUT,
   TARGETS,
@@ -161,14 +166,16 @@ import { sentinelIndex, wrapProbe } from "./lib/tb-probe.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import { captureRun, checkCapture, strip } from "./lib/tb-run.mjs";
+import { caseLine, findCases, judgeCompiles, runTest } from "./lib/tb-tests.mjs";
 import { faultText, recordedFault } from "./lib/win-fault.mjs";
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe] [--allow-name-clash] [-h, --help]
+const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe | --tests] [--allow-name-clash] [-h, --help]
 
 Builds an exported twinBASIC source tree in the IDE, runs it, and prints what it
-writes to the DEBUG CONSOLE.
+writes to the DEBUG CONSOLE. With --tests it builds nothing, and runs the
+project's own test cases instead.
 
   --ide <path>        as tbbuild's
   --port <n>          DevTools port to start the IDE on (default 9346)
@@ -194,8 +201,15 @@ writes to the DEBUG CONSOLE.
                       the event log records for it, and the boxes it opens,
                       each closed with OK
   --allow-name-clash  run a probe whose module holds a procedure named like the
-                      module, which twinBASIC does not run (it is refused
-                      without this option)
+                      module on a build before 1005, which does not run it (it
+                      is refused there without this option)
+  --tests             compile the project and do not build it: print PASS or
+                      FAIL for each compile case (a line ending in the comment
+                      ' CASE <Name>: <codes>, ' CASE <Name>: error or
+                      ' CASE <Name>: none, which passes when the IDE reports
+                      those diagnostic codes on that line, any error, or
+                      nothing on it) and for each [TestCase] Sub of each
+                      [TestFixture] Module, run in the compiler's test mode
   -h, --help          print this text and exit
 
 Exit codes:
@@ -205,8 +219,10 @@ Exit codes:
      included), no IDE, an IDE that did not start, a compile that never
      settled, a build that failed after a clean compile, a probe that never ran or
      stopped at a procedure that failed code generation, a probe whose module holds
-     a procedure named like the module (unless --allow-name-clash), an --llvm run on a
-     Community or Personal licence, an --exe run with no exe built, or a crash
+     a procedure named like the module on a build before 1005 (unless
+     --allow-name-clash), an --llvm run on a
+     Community or Personal licence, an --exe run with no exe built, --tests on a
+     project with no case or with a [TestCase] it cannot call, or a crash
   3  no output: the console held none before the timeout, or the probe printed none
      after its last Debug.Cls
   4  the compiler crashed, or restarted twice, while compiling the project
@@ -215,7 +231,8 @@ Exit codes:
   6  --exe: the exe exited with a code other than 0, the event log records that it
      faulted, it opened a box (closed by tbrun, as an unhandled error opens one), or it
      was still running after --timeout and was ended; its output, exit code, fault and
-     boxes are printed all the same`;
+     boxes are printed all the same
+  7  --tests: a case failed; every case's line is printed all the same`;
 
 const { values, positionals } = withUsageError(
   () =>
@@ -231,6 +248,7 @@ const { values, positionals } = withUsageError(
         llvm: { type: "boolean", default: false },
         exe: { type: "boolean", default: false },
         "allow-name-clash": { type: "boolean", default: false },
+        tests: { type: "boolean", default: false },
         json: { type: "boolean", default: false },
         raw: { type: "boolean", default: false },
         keep: { type: "boolean", default: false },
@@ -251,6 +269,7 @@ const { port, arch, timeoutMs, quietMs } = withUsageError(
   () => {
     refuseTogether(values, ["show", "hide"]);
     refuseTogether(values, ["llvm", "compiler-options"]);
+    refuseTogether(values, ["exe", "tests"]);
     return {
       port: numberOption(values.port ?? "9346", { option: "--port", integer: true, min: 1, max: 65535 }),
       arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
@@ -313,23 +332,45 @@ mkdirSync(outDir, { recursive: true });
 const buildPath = path.join(outDir, "${ProjectName}_${Architecture}.${FileExtension}");
 const projPath = path.join(work, "tbrun-probe.twinproj");
 
-const sourceText = (() => {
+// Every .twin under dir, in its subfolders too, named by its path there with forward
+// slashes, as a diagnostic row ends: "Tests/Probe.twin" for /<Project>/Sources/Tests/Probe.twin.
+function twinFiles(dir) {
+  return readdirSync(dir, { recursive: true })
+    .filter((rel) => rel.toLowerCase().endsWith(".twin"))
+    .sort()
+    .map((rel) => ({ name: rel.split(path.sep).join("/"), text: readFileSync(path.join(dir, rel), "utf8") }));
+}
+
+const sourceFiles = (() => {
   const dir = path.join(srcDir, "Sources");
-  if (!existsSync(dir)) return "";
-  return readdirSync(dir)
-    .filter((f) => f.endsWith(".twin"))
-    .map((f) => readFileSync(path.join(dir, f), "utf8"))
-    .join(String.fromCharCode(10));
+  if (!existsSync(dir)) return [];
+  return twinFiles(dir);
 })();
+const sourceText = sourceFiles.map((f) => f.text).join(String.fromCharCode(10));
 const hasHook = /\[RunAfterBuild\]/i.test(sourceText);
 const hasCls = /Debug\s*\.\s*Cls/i.test(sourceText);
+// --tests: the cases are found before an IDE starts, so a project with none, or
+// with a [TestCase] the runner cannot call, costs nothing.
+const cases = values.tests ? findCases(sourceFiles) : null;
+if (cases) {
+  if (cases.problems.length) die(2, `tbrun --tests:\n${cases.problems.map((p) => `  ${p}`).join("\n")}`);
+  if (!cases.tests.length && !cases.compiles.length) {
+    die(
+      2,
+      "tbrun --tests: Sources/ holds no [TestCase] Sub in a [TestFixture] Module, " +
+        "and no line ending in a ' CASE <Name>: <codes> comment",
+    );
+  }
+}
 // The console also carries the IDE's own build log, and the linker writes to it
 // AFTER the build -- so a probe that does not clear the console first comes back
 // with its output mixed into [LINKER] chatter. Debug.Cls as the probe's first
 // statement is what makes the capture clean, and it is cheap to check for.
-if (!hasHook) {
+if (values.tests) {
+  // nothing is built, so nothing runs after a build
+} else if (!hasHook) {
   console.error(
-    "warning: no [RunAfterBuild] in Sources/*.twin -- nothing of yours will " +
+    "warning: no [RunAfterBuild] in Sources/ -- nothing of yours will " +
       "run after the build, so you will capture the IDE's build log and nothing else.",
   );
 } else if (!hasCls) {
@@ -365,11 +406,7 @@ try {
     },
     prepare: (dir) => {
       const sources = path.join(dir, "Sources");
-      const files = existsSync(sources)
-        ? readdirSync(sources)
-            .filter((f) => f.endsWith(".twin"))
-            .map((name) => ({ name, text: readFileSync(path.join(sources, name), "utf8") }))
-        : [];
+      const files = existsSync(sources) ? twinFiles(sources) : [];
       wrap = wrapProbe(files);
       for (const f of wrap.files) writeFileSync(path.join(sources, f.name), f.text, "utf8");
     },
@@ -384,20 +421,23 @@ try {
 } catch (e) {
   die(2, e.message);
 }
-if (hasHook && !wrap.wrapped) {
+if (hasHook && !wrap.wrapped && !values.tests) {
   console.error(
     `warning: ${wrap.why} -- so a probe that ends before it returns cannot be told from one that finished.`,
   );
 }
-// Refused before an IDE starts, which is the first thing after this that costs anything.
-if (wrap.wrapped?.clash && !values.allowNameClash) {
+// Refused before an IDE starts, which is the first thing after this that costs anything. Only
+// on a build before 1005, which fixed it (twinbasic/twinbasic#2481, #2494); an install whose
+// folder names no build is taken to be a newer one.
+const clashBuild = buildNumber(ide);
+if (wrap.wrapped?.clash && clashBuild !== null && clashBuild < 1005 && !values.allowNameClash && !values.tests) {
   die(
     2,
     `tbrun: module ${wrap.wrapped.module} holds the [RunAfterBuild] Sub ${wrap.wrapped.sub} and also a procedure named ` +
-      `${wrap.wrapped.clash}, like the module. In twinBASIC (BETA 997) a [RunAfterBuild] Sub does not run, and ` +
-      `nothing says so, when its module holds a procedure named like the module (BUGS-TO-REPORT.md, "A [RunAfterBuild] ` +
-      `Sub does not run, and nothing says so, when its module holds a procedure named like the module"). ` +
-      `Rename one of them, or pass --allow-name-clash to run it anyway.`,
+      `${wrap.wrapped.clash}, like the module. In twinBASIC before BETA 1005 (this is BETA ${clashBuild}) a ` +
+      `[RunAfterBuild] Sub does not run, and nothing says so, when its module holds a procedure named like the ` +
+      `module (twinbasic/twinbasic#2481, #2494). Rename one of them, use BETA 1005 or later, or pass ` +
+      `--allow-name-clash to run it anyway.`,
   );
 }
 
@@ -479,7 +519,8 @@ try {
 } catch (e) {
   failBuild(2, e.message);
 }
-if (outcome.counts[0] > 0) {
+// --tests judges the diagnostics itself: a compile case may expect an error.
+if (outcome.counts[0] > 0 && !values.tests) {
   failBuild(1, [...outcome.rows, summaryLine(outcome.counts)].join("\n"));
 }
 
@@ -491,6 +532,8 @@ if (usesLlvm) {
   licence = found.licence;
   if (found.refusal) failBuild(2, `tbrun: ${found.refusal}`);
 }
+
+if (values.tests) await runCases();
 
 // --------------------------------------------- build the exe, read the console
 
@@ -623,6 +666,47 @@ if (exeRun?.dialogs.length) die(6, `tbrun: the exe opened a box, which tbrun clo
 process.exit(0);
 
 // ------------------------------------------------------------------ helpers
+
+// --tests: the compile cases judged by the diagnostics the compile reported, and
+// each [TestCase] Sub run in the compiler's test mode (lib/tb-tests.mjs), one at a
+// time, --timeout each. A project with errors runs none of them, and says so for
+// each. The diagnostics follow the cases' lines, which are what a reproducer's
+// expect reads. Never returns.
+async function runCases() {
+  const results = judgeCompiles(cases.compiles, outcome.rows).map((r) => ({ ...r }));
+  const errors = outcome.counts[0] > 0;
+  try {
+    for (const t of cases.tests) {
+      const name = `${t.fixture}.${t.name}`;
+      if (errors) results.push({ name, pass: false, detail: "not run: the project has compile errors" });
+      else results.push({ name, ...(await runTest(cdp, t, timeoutMs)) });
+    }
+    cdp.close();
+  } catch (e) {
+    shutdown();
+    die(2, `tbrun: ${e.message}`);
+  }
+  const reaped = shutdown();
+  const failed = results.filter((r) => !r.pass).length;
+  if (values.json) {
+    console.log(
+      JSON.stringify(
+        { arch, cases: results, diagnostics: outcome.rows, licence, idePid: ideRun?.pid ?? null, reaped },
+        null,
+        2,
+      ),
+    );
+  } else {
+    for (const r of results) console.log(caseLine(r.name, r));
+    if (outcome.rows.length) {
+      console.log("diagnostics:");
+      for (const row of outcome.rows) console.log(`  ${row}`);
+    }
+    if (values.keep && ideRun?.pid) for (const l of keptIdeLines(ideRun.pid)) console.log(l);
+  }
+  if (failed) die(7, `tbrun: ${failed} of ${results.length} case${results.length === 1 ? "" : "s"} failed.`);
+  process.exit(0);
+}
 
 // --exe: the built exe, started as the IDE is, on a private desktop and inside
 // a kill-on-close job, so a window it opens -- a MsgBox -- is on no desktop

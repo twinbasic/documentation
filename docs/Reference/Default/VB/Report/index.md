@@ -162,10 +162,7 @@ Whether drawing performed on the report's window persists across invalidations. 
 ### BackColor
 {: .no_toc }
 
-The background colour of the report window's drawing surface, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Most of the window is occupied by the page preview (which uses [**PaperColor**](#papercolor)) and the toolbar, so this colour is only visible briefly during paint.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The background colour of the report window's drawing surface, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Most of the window is occupied by the page preview (which uses [**PaperColor**](#papercolor)) and the toolbar, so this colour is only visible briefly during paint. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### BorderStyle
 {: .no_toc }
@@ -253,10 +250,7 @@ Determines whether the report window accepts user input. A disabled report ignor
 ### FillColor
 {: .no_toc }
 
-The fill colour for closed shapes drawn by [**Circle**](#circle) and the rectangle form of [**Line**](#line) without **F**. **OLE_COLOR**, default `0` (black). Used only when [**FillStyle**](#fillstyle) is not **vbFSTransparent**.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so [**Circle**](#circle) and [**Line**](#line) then draw with it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The fill colour for closed shapes drawn by [**Circle**](#circle) and the rectangle form of [**Line**](#line) without **F**. **OLE_COLOR**, default `0` (black). Used only when [**FillStyle**](#fillstyle) is not **vbFSTransparent**. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### FillStyle
 {: .no_toc }
@@ -276,10 +270,7 @@ When **True** (default), text drawn on the report has a transparent background, 
 ### ForeColor
 {: .no_toc }
 
-The pen colour used by [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), and the text drawn by [**Print**](#print). **OLE_COLOR**.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1` or `&H8000001F`, raises error 5 and still stores the value, so a later read returns it and a handled error leaves the invalid colour in force. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The pen colour used by [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), and the text drawn by [**Print**](#print). **OLE_COLOR**. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### hDC
 {: .no_toc }

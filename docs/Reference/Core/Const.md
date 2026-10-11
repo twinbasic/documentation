@@ -57,14 +57,16 @@ Constants declared in a **Sub**, **Function**, or **Property** procedure are loc
 
 The **As** *type* clause is required. In a module or a class, *type* is **Byte**, **Integer**, **Long**, **LongLong**, **LongPtr**, **Single**, **Double**, **Currency**, **Date**, **Boolean** or an **Enum** type; any other type is compile error **TB5001**, *unsupported datatype for global Const - only scalar types are supported*. A constant declared in a procedure may also be an array of **String**, **Decimal** or **Variant**.
 
-Each element of *elementlist* is a constant expression, converted to *type* as an assignment would convert it: in a **Long** array, `2.5` becomes 2 and `"5"` becomes 5. Without bounds, the array starts at 0 and has one element for each item in *elementlist*; [**Option Base**](Option) does not change that. With bounds, the number of items must match them. `Array()` gives an empty array, whose **UBound** is -1.
+Each element of *elementlist* is a constant expression, converted to *type* as an assignment would convert it: in a **Long** array, `2.5` becomes 2 and `"5"` becomes 5. At module level, an element that does not fit *type*, such as `Array(2147483648)` in a **Long** array, is compile error **TB5001**, *Type mismatch*. Without bounds, the array starts at 0 and has one element for each item in *elementlist*; [**Option Base**](Option) does not change that. With bounds, the number of items must match them. `Array()` gives an empty array, whose **UBound** is -1.
 
 The elements are read as those of any array --- `Primes(2)`, with [**LBound**](../Modules/Information/LBound) and [**UBound**](../Modules/Information/UBound) for the bounds --- but the array cannot be changed or used as a whole:
 
 - Assigning to an element is compile error **TB5050**, *bad constant array accessor*.
 - **For Each** over the array is compile error **TB5109**; loop from **LBound** to **UBound** instead.
-- The array cannot be assigned to an array variable or a **Variant**, or passed as an array argument. To copy it, copy it element by element.
-- An element cannot be used in another constant expression: `Const First As Long = Primes(0)` is compile error **TB5002**.
+- The array cannot be assigned to an array variable or a **Variant**, or passed as an array argument. A module-level array constant passed to a **ParamArray** parameter is compile error **TB5028**, *Cannot convert unsupported type to a Variant*. To copy it, copy it element by element.
+- An element cannot be used in another constant expression: `Const First As Long = Primes(0)` is compile error **TB5002**. At module level, `Const Second() As Long = Array(Primes(0))` is compile error **TB5078**, *Unable to bind to global constant here*.
+
+In a class, an array constant is private to the class, as a scalar one is: declaring it **Public** is compile error **TB5250**, *Constants in a class cannot be Public*.
 
 ```tb check_run
 Const Primes() As Long = Array(2, 3, 5, 7, 11)
@@ -77,17 +79,10 @@ Debug.Print Total               ' 28
 ```
 
 > [!WARNING]
-> In twinBASIC BETA 997, two forms of module-level array constant crash the compiler, whether or not the constant is used, and the project can then be neither compiled nor run:
->
-> - an element that does not fit the element type, such as `Const Big() As Long = Array(2147483648)`;
-> - an element taken from another array constant, such as `Const Second() As Long = Array(Primes(0))`.
+> In twinBASIC BETA 1005, a module-level **Single** array constant whose element is too large for a **Single**, such as `Const Big() As Single = Array(1E+39)`, compiles without an error, and the element holds infinity. An array constant declared after it whose element calls **Sqr**, **Timer** or **Rnd** is then compile error **TB5001**, although it is correct.
 
 > [!NOTE]
-> In twinBASIC BETA 997, array constants also have these defects, each reported as an error:
->
-> - In a module, an array constant declared after a procedure is compile error **TB5079**, *Unrecognized symbol*, in the procedures that follow it. The procedures before it see an empty array: reading an element raises error 9. Declare array constants above the module's first procedure.
-> - A **Public** array constant in a class compiles, but code outside the class cannot reach it: the use is compile error **TB5027**. A **Public** scalar constant in a class is compile error **TB5250**.
-> - Passing a module-level array constant to a **ParamArray** parameter compiles without a diagnostic, and then fails with a *codegen error*.
+> In twinBASIC BETA 1005, in a module, an array constant declared after a procedure is compile error **TB5079**, *Unrecognized symbol*, in the procedures that follow it. The procedures before it see an empty array: reading an element raises error 9. Declare array constants above the module's first procedure.
 
 > [!NOTE]
 > Array constants are a twinBASIC extension. In VBA and VB6, `Const Primes() As Long = Array(2, 3)` is a syntax error.

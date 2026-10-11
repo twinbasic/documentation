@@ -1,0 +1,7 @@
+Class Greeting
+
+    Public Sub Show()
+
+    End Sub
+
+End Class

@@ -38,7 +38,7 @@ The four follow the Microsoft C/C++ conventions of the same names: `__stdcall`, 
 
 A 64-bit build has only one calling convention. There, all four keywords are accepted and have no effect.
 
-Name at most one convention. BETA 997 accepts two together without a diagnostic, and on an API declaration it drops **CDecl** and uses the other one.
+A declaration names at most one convention. Two together are compile error **TB5258**, *Too many calling conventions defined, only one allowed*.
 
 ### Examples
 
@@ -98,7 +98,7 @@ End Class
 On a 32-bit build, a **ThisCall** implementation takes `this` in the ECX register and removes its own arguments from the stack, so native code calls it through the interface's vtable as it calls a C++ virtual method. An error raised in the implementation reaches the native caller as a failure **HRESULT**, as from any member without **[PreserveSig]**. Code compiled with LLVM does not pass the error on yet; see [Language support](../../LLVM/Getting-Started#language-support).
 
 > [!NOTE]
-> In BETA 997, a class cannot implement a member marked [**[PreserveSig]**](../../tB/Core/Attributes#preservesig): the compiler reports the implementation as unmatched. Interfaces of this kind often return a value directly rather than an **HRESULT**, and are declared with **[PreserveSig]** for that reason. For a member that returns a 4-byte value, such as a **Long** or a C `BOOL`, declare it in the interface the class implements as a **Sub** without **[PreserveSig]**, and return the value with [**Err.ReturnHResult**](../../tB/Modules/ErrObject/ReturnHResult). Native code that calls this member as `long __thiscall Count()` gets 3 as its return value:
+> In BETA 1005, a class cannot implement a member marked [**[PreserveSig]**](../../tB/Core/Attributes#preservesig): the compiler reports the implementation as unmatched. Interfaces of this kind often return a value directly rather than an **HRESULT**, and are declared with **[PreserveSig]** for that reason. For a member that returns a 4-byte value, such as a **Long** or a C `BOOL`, declare it in the interface the class implements as a **Sub** without **[PreserveSig]**, and return the value with [**Err.ReturnHResult**](../../tB/Modules/ErrObject/ReturnHResult). Native code that calls this member as `long __thiscall Count()` gets 3 as its return value:
 >
 > ```tb check_build projname=calling-conventions-thiscall-return
 > [InterfaceId("2C4E8A61-5B3F-4D7E-9C1A-6E0B2F4D8A13")]
@@ -123,7 +123,7 @@ An ActiveX DLL's type library records a **ThisCall** or **FastCall** member as s
 A callback passed to an API must use the convention the API calls it with. Declare a [**Delegate**](../../tB/Core/Delegate) with that convention, use it as the parameter type, and give the target procedure the same keyword. [**AddressOf**](../../tB/Core/AddressOf) of a procedure with a different convention is accepted with a warning only (TB0026).
 
 > [!NOTE]
-> In BETA 997, on a 32-bit build, a call made from twinBASIC code *through* a **ThisCall** or **FastCall** delegate passes its arguments as stdcall does, and fails with *Bad DLL definition*. Calling the procedure directly works. **CDecl** delegates are not affected, and neither is a 64-bit build.
+> In BETA 1005, on a 32-bit build, a call made from twinBASIC code *through* a **ThisCall** or **FastCall** delegate passes its arguments as stdcall does, and fails with *Bad DLL definition*. Calling the procedure directly works. **CDecl** delegates are not affected, and neither is a 64-bit build.
 
 The following example performs a quicksort using the C runtime's [`qsort` function](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/qsort), which calls its comparator with the cdecl convention:
 

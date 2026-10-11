@@ -59,7 +59,8 @@ const TBRUN_MODULE_RE = /^[ \t]*(?:(?:Public|Private)[ \t]+)?Module[ \t]+TbRun\b
 /**
  * Wrap a probe's [RunAfterBuild] Sub, and add the TbRun module.
  *
- * @param {{name: string, text: string}[]} files  the tree's Sources/*.twin
+ * @param {{name: string, text: string}[]} files  the .twin files under the tree's Sources/, each named by its
+ *   path there
  * @returns {{files: {name: string, text: string}[], wrapped: {file: string, module: string, sub: string, clash?: string} | null, why?: string}}
  *   the files to write (changed or new), what was wrapped, and why nothing was.
  *   `clash` names a Sub or Function of the hook's module that has the module's

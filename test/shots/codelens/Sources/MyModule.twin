@@ -1,0 +1,24 @@
+Module MyModule
+
+    Private Const ppi As Long = 96
+    Private Const LOGPIXELSX As Long = 88
+    Public Declare PtrSafe Function GetDC Lib "user32" ( _
+        ByVal hWnd As LongPtr) As LongPtr
+    Public Declare PtrSafe Function ReleaseDC Lib "user32" ( _
+        ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Public Declare PtrSafe Function GetDeviceCaps Lib "gdi32" ( _
+        ByVal hDC As LongPtr, ByVal nIndex As Long) As Long
+
+    Private Sub CheckScale()
+        Dim snScale As Single
+        snScale = GetCaps(LOGPIXELSX) / ppi
+        Debug.Print "Scale factor: " & Format$(snScale, "0.00")
+    End Sub
+
+    Private Function GetCaps(ByVal idx As Long) As Long
+        Dim hDC As LongPtr = GetDC(0)
+        GetCaps = GetDeviceCaps(hDC, idx)
+        ReleaseDC 0, hDC
+    End Function
+
+End Module

@@ -39,4 +39,4 @@ Bugs result from using Strings and Variants after they have been freed. It may n
 
 Below shows an example where the ListView ColumnHeader text had been set by previously-freed string and detected by this feature:
 
-![A ListView whose column header text has been replaced by rows of warning symbols, marking the use of a freed string](../Images/021f6cbf-acce-445d-ade7-3fcad0af4927.png)
+![A ListView whose column header text has been replaced by rows of warning symbols, marking the use of a freed string](../Images/021f6cbf-acce-445d-ade7-3fcad0af4927.png){:width="461" height="151"}

@@ -1,0 +1,206 @@
+' Regression tests for #2484 and its follow-up. Assigning a value that is not a
+' colour to a colour property raises error 380, Invalid property value, and
+' leaves the colour it had: VB6 6.0 does this for each property it has (the VB6
+' project beside this one prints them), and twinBASIC does it for the other
+' controls. Form1 holds one control of each class; it is loaded, never shown.
+' Each case sets the colour to vbGreen, assigns the bad value early-bound under
+' On Error Resume Next, and checks the error and the colour read back.
+[TestFixture]
+Module ColourPropertyTests
+
+    Private Const NotAColour As Long = -1
+    Private Const SystemColourOutOfRange As Long = &H8000001F
+
+    Private Sub Expect380(ByVal Number As Long, ByVal After As Long)
+        Assert.Strict.AreEqual 380, Number, "the error"                   ' VB6: 380, Invalid property value
+        Assert.Strict.AreEqual CLng(vbGreen), After, "the colour it had"  ' VB6: the old colour is kept
+    End Sub
+
+    ' Fixed in #2484 (BETA 1005).
+
+    [TestCase]
+    Public Sub Form_ForeColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.ForeColor = vbGreen
+        On Error Resume Next: Form1.ForeColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.ForeColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub Form_ForeColor_SystemColourOutOfRange()
+        Dim number As Long, after As Long
+        Load Form1: Form1.ForeColor = vbGreen
+        On Error Resume Next: Form1.ForeColor = SystemColourOutOfRange: number = Err.Number: On Error GoTo 0
+        after = Form1.ForeColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub Form_BackColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.BackColor = vbGreen
+        On Error Resume Next: Form1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.BackColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub Form_FillColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.FillColor = vbGreen
+        On Error Resume Next: Form1.FillColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.FillColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub PictureBox_ForeColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.PictureBox1.ForeColor = vbGreen
+        On Error Resume Next: Form1.PictureBox1.ForeColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.PictureBox1.ForeColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub PictureBox_BackColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.PictureBox1.BackColor = vbGreen
+        On Error Resume Next: Form1.PictureBox1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.PictureBox1.BackColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub PictureBox_FillColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.PictureBox1.FillColor = vbGreen
+        On Error Resume Next: Form1.PictureBox1.FillColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.PictureBox1.FillColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub Label_ForeColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.Label1.ForeColor = vbGreen
+        On Error Resume Next: Form1.Label1.ForeColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.Label1.ForeColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub Label_BackColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.Label1.BackColor = vbGreen
+        On Error Resume Next: Form1.Label1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.Label1.BackColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub TextBox_ForeColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.TextBox1.ForeColor = vbGreen
+        On Error Resume Next: Form1.TextBox1.ForeColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.TextBox1.ForeColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub TextBox_BackColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.TextBox1.BackColor = vbGreen
+        On Error Resume Next: Form1.TextBox1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.TextBox1.BackColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub CommandButton_BackColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.CommandButton1.BackColor = vbGreen
+        On Error Resume Next: Form1.CommandButton1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.CommandButton1.BackColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub UserControl_ForeColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.UC1.TrySet "ForeColor", NotAColour, number, after: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub UserControl_BackColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.UC1.TrySet "BackColor", NotAColour, number, after: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub UserControl_FillColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.UC1.TrySet "FillColor", NotAColour, number, after: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub MDIForm_BackColor()
+        Dim number As Long, after As Long
+        Load MyMDIForm: MyMDIForm.BackColor = vbGreen
+        On Error Resume Next: MyMDIForm.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = MyMDIForm.BackColor: Unload MyMDIForm
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub MDIForm_BackColor_SystemColourOutOfRange()
+        Dim number As Long, after As Long
+        Load MyMDIForm: MyMDIForm.BackColor = vbGreen
+        On Error Resume Next: MyMDIForm.BackColor = SystemColourOutOfRange: number = Err.Number: On Error GoTo 0
+        after = MyMDIForm.BackColor: Unload MyMDIForm
+        Expect380 number, after
+    End Sub
+
+    ' Left in BETA 1005: these store the value and raise no error.
+
+    [TestCase]
+    Public Sub Data_ForeColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.Data1.ForeColor = vbGreen
+        On Error Resume Next: Form1.Data1.ForeColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.Data1.ForeColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub Data_BackColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.Data1.BackColor = vbGreen
+        On Error Resume Next: Form1.Data1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.Data1.BackColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub OLE_BackColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.OLE1.BackColor = vbGreen
+        On Error Resume Next: Form1.OLE1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.OLE1.BackColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+    [TestCase]
+    Public Sub MultiFrame_BackColor()
+        Dim number As Long, after As Long
+        Load Form1: Form1.MultiFrame1.BackColor = vbGreen
+        On Error Resume Next: Form1.MultiFrame1.BackColor = NotAColour: number = Err.Number: On Error GoTo 0
+        after = Form1.MultiFrame1.BackColor: Unload Form1
+        Expect380 number, after
+    End Sub
+
+End Module

@@ -213,9 +213,11 @@ export class Lane {
    * @param {string} [o.folder]   the folder the .twinproj is staged in (default the work
    *                              folder); give a folder of its own to a scenario that
    *                              writes into the project's folder
+   * @param {string} [o.buildPath]  the project's build path (default <work>\out\<name>.exe),
+   *                              for a build whose output path is shown
    * @returns {Promise<object>} the connection (attachIde's), which the tb-operate.mjs calls take
    */
-  async open(src, { timeout = COMPILE_TIMEOUT, env = {}, folder = this.work } = {}) {
+  async open(src, { timeout = COMPILE_TIMEOUT, env = {}, folder = this.work, buildPath = null } = {}) {
     if (this.run) throw new Error(`lane ${this.name} has a project open already: one IDE at a time`);
     const exe = this.copy();
     mkdirSync(folder, { recursive: true });
@@ -225,7 +227,7 @@ export class Lane {
       stage: path.join(this.work, "project-src"),
       project,
       settings: (original) => ({
-        "project.buildPath": path.join(this.work, "out", `${original["project.name"]}.exe`),
+        "project.buildPath": buildPath ?? path.join(this.work, "out", `${original["project.name"]}.exe`),
         "project.id": laneProjectId(2, this.port),
       }),
     });

@@ -1,0 +1,125 @@
+' Regression tests for #2496 and its follow-up. IEnumVARIANT::Clone returns an
+' enumerator with the same state as the one it is called on (the COM
+' documentation of IEnumVARIANT::Clone), so the clone's Next returns what the
+' enumerator's own Next returns next. Each case compares the two after one Next,
+' after Skip 2, and after two Next and a Reset, for the request headers and for
+' the response headers, which hold Ha, Hb, Hc and Hd.
+
+' IEnumVARIANT, declared here because the package's own declaration is private.
+[InterfaceId("00020404-0000-0000-C000-000000000046")]
+Interface IEnumVARIANTOwn Extends stdole.IUnknown
+    Type CArrayOfVariants
+        Elements(1) As Variant
+    End Type
+
+    Sub Next(ByVal celt As Long, ByRef rgVar As CArrayOfVariants, ByRef pCeltFetched As Long)
+    Sub Skip(ByVal celt As Long)
+    Sub Reset()
+    Function Clone() As stdole.IUnknown
+End Interface
+
+' What the enumerators returned, recorded by Form1 while it answers its request.
+Module HeaderEnumeration
+
+    Public Recorded As Boolean
+    Public Results As New Collection      ' "<side> <case>" -> "<enumerator's Next>|<clone's Next>"
+
+    Private Function NextName(ByVal e As IEnumVARIANTOwn) As String
+        Dim arr As IEnumVARIANTOwn.CArrayOfVariants
+        Dim fetched As Long
+        e.Next 1, arr, fetched
+        If fetched = 0 Then Return "(end)"
+        Dim hd As WebView2Header = arr.Elements(0)
+        Return hd.Name
+    End Function
+
+    ' Three fresh enumerators of one collection.
+    Public Sub Record(ByVal Side As String, ByVal u0 As stdole.IUnknown, ByVal u1 As stdole.IUnknown, ByVal u2 As stdole.IUnknown)
+        Dim e As IEnumVARIANTOwn, c As IEnumVARIANTOwn, first As String
+
+        Set e = u0
+        first = NextName(e)
+        Set c = e.Clone()
+        Results.Add NextName(e) & "|" & NextName(c), Side & " after one Next"
+
+        Set e = u1
+        NextName e
+        NextName e
+        e.Reset
+        Set c = e.Clone()
+        Results.Add NextName(e) & "|" & NextName(c), Side & " after Reset"
+
+        Set e = u2
+        e.Skip 2
+        Set c = e.Clone()
+        Results.Add NextName(e) & "|" & NextName(c), Side & " after Skip 2"
+    End Sub
+
+End Module
+
+[TestFixture]
+Module HeaderEnumerationTests
+
+    Private Declare PtrSafe Function SetEnvironmentVariableW Lib "kernel32" (ByVal lpName As LongPtr, ByVal lpValue As LongPtr) As Long
+
+    ' Shows Form1 until its request has been answered, once.
+    Private Sub Collect()
+        If HeaderEnumeration.Recorded Then Exit Sub
+        ' Only for an IDE that was started with these variables, as this repository's
+        ' test harness starts it: WebView2 would read them, and the control would fail.
+        Dim folder As String = Environ$("WEBVIEW2_USER_DATA_FOLDER")
+        Dim args As String = Environ$("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")
+        SetEnvironmentVariableW StrPtr("WEBVIEW2_USER_DATA_FOLDER"), 0
+        SetEnvironmentVariableW StrPtr("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"), 0
+        Form1.Show
+        Dim started As Double = Timer
+        Do Until HeaderEnumeration.Recorded Or Timer - started > 30
+            DoEvents
+        Loop
+        Unload Form1
+        If Len(folder) Then SetEnvironmentVariableW StrPtr("WEBVIEW2_USER_DATA_FOLDER"), StrPtr(folder)
+        If Len(args) Then SetEnvironmentVariableW StrPtr("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"), StrPtr(args)
+    End Sub
+
+    ' "<enumerator's Next>|<clone's Next>"
+    Private Function Pair(ByVal Key As String) As String
+        Collect
+        Assert.Strict.IsTrue HeaderEnumeration.Recorded, "the request was answered"
+        Return HeaderEnumeration.Results(Key)
+    End Function
+
+    ' Fixed in #2496 (BETA 1005): the clone continues from the enumerator's position.
+
+    [TestCase]
+    Public Sub Request_CloneAfterNext()
+        Assert.Strict.AreEqual "Upgrade-Insecure-Requests|Upgrade-Insecure-Requests", Pair("request after one Next")
+    End Sub
+
+    [TestCase]
+    Public Sub Request_CloneAfterSkip()
+        Assert.Strict.AreEqual "User-Agent|User-Agent", Pair("request after Skip 2")
+    End Sub
+
+    [TestCase]
+    Public Sub Request_CloneAfterReset()
+        Assert.Strict.AreEqual "Accept|Accept", Pair("request after Reset")
+    End Sub
+
+    [TestCase]
+    Public Sub Response_CloneAfterNext()
+        Assert.Strict.AreEqual "Hb|Hb", Pair("response after one Next")
+    End Sub
+
+    [TestCase]
+    Public Sub Response_CloneAfterSkip()
+        Assert.Strict.AreEqual "Hc|Hc", Pair("response after Skip 2")
+    End Sub
+
+    ' Left in BETA 1005: Reset does not rewind the position Clone copies.
+
+    [TestCase]
+    Public Sub Response_CloneAfterReset()
+        Assert.Strict.AreEqual "Ha|Ha", Pair("response after Reset")
+    End Sub
+
+End Module

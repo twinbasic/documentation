@@ -1,0 +1,14 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS HeaderEnumerationTests\\.Request_CloneAfterNext$",
+      "^PASS HeaderEnumerationTests\\.Request_CloneAfterSkip$",
+      "^PASS HeaderEnumerationTests\\.Request_CloneAfterReset$",
+      "^PASS HeaderEnumerationTests\\.Response_CloneAfterNext$",
+      "^PASS HeaderEnumerationTests\\.Response_CloneAfterSkip$",
+      "^FAIL HeaderEnumerationTests\\.Response_CloneAfterReset: .*Expected: \"Ha\\|Ha\" Actual: \"Ha\\|Hc\""
+    ]
+  }
+}

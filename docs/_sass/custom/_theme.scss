@@ -25,3 +25,20 @@
     @content;
   }
 }
+
+// The exact complement of dark-theme: the light theme chosen with the toggle, or no
+// choice on an OS that is not dark. For a rule that must apply in the light theme
+// only, where a bare rule would have to be undone in dark (the picture in two themes
+// hides its dark image here rather than showing it again under dark-theme, which
+// would mean giving an <img> a display value of its own).
+@mixin light-theme {
+  @media not all and (prefers-color-scheme: dark) {
+    html:not([data-theme="dark"]) {
+      @content;
+    }
+  }
+
+  html[data-theme="light"] {
+    @content;
+  }
+}

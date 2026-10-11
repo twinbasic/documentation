@@ -1,0 +1,16 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 5,
+    "output": [
+      "^CallerPlain_CalleePlain_ErrRaise\\r?\\n    caught 5000$",
+      "^CallerPlain_CalleePlain_Divide\\r?\\n    caught 11$",
+      "^Llvm_OwnHandler_Divide\\r?\\n    caught 11$",
+      "^CallerPlain_CalleeLlvm_ErrRaise$"
+    ],
+    "absent": [
+      "^CallerPlain_CalleeLlvm_ErrRaise\\r?\\n    ",
+      "^end of Main$"
+    ]
+  }
+}

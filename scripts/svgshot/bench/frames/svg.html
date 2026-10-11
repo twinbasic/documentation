@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Inline SVG in a frame</title>
+<!--
+  Inline <svg>s in a frame's document, read in the frame (the sprite is the
+  frame's own, and so are the styles): an icon in a line of text, a <use> of a
+  <symbol> in the frame's own sprite that takes its colour from the <use>, and
+  text in the frame's font.
+-->
+<style>
+html { background: #f4f4f4; overflow: hidden; }
+body { margin: 0; padding: 8px; color: #243b53; font: 13px "Segoe UI", sans-serif; }
+p { margin: 0 0 8px; }
+.cc { fill: currentColor; color: #d1741a; }
+svg { vertical-align: middle; }
+</style>
+<body>
+<svg style="display: none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="dot" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></symbol>
+</svg>
+<p>Icons in a frame <svg class="cc" width="16" height="16" viewBox="0 0 16 16"><path d="M8 1l2.2 4.6 5 .7-3.6 3.5.9 5L8 12.4 3.5 14.8l.9-5L.8 6.3l5-.7z"/></svg> in a line</p>
+<p><svg class="cc" width="32" height="32" style="color: #7b3fa0"><use href="#dot"/></svg>
+   <svg class="cc" width="32" height="32" style="color: #2563a8"><use href="#dot"/></svg></p>
+<svg width="150" height="24"><text x="4" y="17" style="font: 600 14px 'Segoe UI'; fill: #243b53">Text in a frame</text></svg>
+</body>
+</html>

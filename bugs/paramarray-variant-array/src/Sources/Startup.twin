@@ -1,0 +1,40 @@
+' Prints what each case of Cases gives, as the VB6 project in vb6/ prints what it gives in VB6.
+' The [TestCase]s of ParamArrayTests assert the VB6 results; tbrun --tests runs them.
+Module Startup
+
+    Public Sub Main()
+        Show "ArrayVariable_AssignedToByteArray", Cases.ArrayVariable_AssignedToByteArray()
+        Show "VariantVariable_AssignedToByteArray", Cases.VariantVariable_AssignedToByteArray()
+        Show "VariantVariable_AssignedToLongArray", Cases.VariantVariable_AssignedToLongArray()
+        Show "VariantVariable_AssignedToStringArray", Cases.VariantVariable_AssignedToStringArray()
+        Show "VariantVariable_AssignedToDoubleArray", Cases.VariantVariable_AssignedToDoubleArray()
+        Show "VariantVariable_AssignedToVariantArray", Cases.VariantVariable_AssignedToVariantArray()
+        Show "VariantVariable_Indexed", Cases.VariantVariable_Indexed()
+        Show "VariantVariable_TwoDimensions_Indexed", Cases.VariantVariable_TwoDimensions_Indexed()
+        Show "VariantVariable_WrittenThrough", Cases.VariantVariable_WrittenThrough()
+        Show "VariantVariable_Bounds", Cases.VariantVariable_Bounds()
+        Show "VariantVariable_IsArrayAndVarType", Cases.VariantVariable_IsArrayAndVarType()
+        Show "VariantVariable_ForEach", Cases.VariantVariable_ForEach()
+        Show "VariantVariable_Join", Cases.VariantVariable_Join()
+        Show "VariantVariable_PassedOnByVal_Indexed", Cases.VariantVariable_PassedOnByVal_Indexed()
+        Show "VariantVariable_ForwardedToParamArray_Indexed", Cases.VariantVariable_ForwardedToParamArray_Indexed()
+        Show "VariantVariable_ParamArrayPassedWhole_Indexed", Cases.VariantVariable_ParamArrayPassedWhole_Indexed()
+        Show "VariantVariable_UnpackedAsInIssue1660", Cases.VariantVariable_UnpackedAsInIssue1660()
+        Show "ModuleLevelVariant_Indexed", Cases.ModuleLevelVariant_Indexed()
+        Show "VariantArrayElement_Indexed", Cases.VariantArrayElement_Indexed()
+        Show "UdtVariantField_Indexed", Cases.UdtVariantField_Indexed()
+        Show "ByValParameter_Forwarded_Indexed", Cases.ByValParameter_Forwarded_Indexed()
+        Show "ByRefParameter_Forwarded_Indexed", Cases.ByRefParameter_Forwarded_Indexed()
+        Show "ClassMethod_EarlyBound_Indexed", Cases.ClassMethod_EarlyBound_Indexed()
+        Show "ClassMethod_LateBound_Indexed", Cases.ClassMethod_LateBound_Indexed()
+        Show "VariantInParentheses_Indexed", Cases.VariantInParentheses_Indexed()
+        Show "CVarOfArray_Indexed", Cases.CVarOfArray_Indexed()
+        Show "VariantFunctionResult_Indexed", Cases.VariantFunctionResult_Indexed()
+        Show "VariantVariable_ThroughLocalVariant_Indexed", Cases.VariantVariable_ThroughLocalVariant_Indexed()
+    End Sub
+
+    Private Sub Show(ByVal name As String, ByVal result As String)
+        Debug.Print name & ": " & result
+    End Sub
+
+End Module

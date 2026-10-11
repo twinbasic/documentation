@@ -30,6 +30,9 @@ If *errornumber* is defined, the **Error** statement calls the error handler aft
 
 If no error handler exists or if none is enabled, an error message is created and displayed from the **Err** object properties.
 
+> [!NOTE]
+> In BETA 1005, an error that a class member raises with the **Error** statement reaches a caller that called the member late-bound --- through an **Object** variable or [**CallByName**](../Modules/Interaction/CallByName) --- as error -2147352567 (`&H80020009`), *Exception occurred.*, not as *errornumber*. VB6 raises *errornumber*. An early-bound caller receives *errornumber* unchanged.
+
 ### Example
 
 This example uses the **Error** statement to simulate error number 11.

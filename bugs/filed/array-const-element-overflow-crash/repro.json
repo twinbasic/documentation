@@ -1,7 +1,0 @@
-{
-  "mode": "compile",
-  "expect": {
-    "exit": 4
-  },
-  "issue": 2475
-}

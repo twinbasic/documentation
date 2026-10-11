@@ -49,6 +49,9 @@ Private Sub Cases()
     Printer.FillColor = -1
     Print #9, "Printer.FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Printer.FillColor): Err.Clear
     Form1.UC1.RunCases
+    Form1.OLE1.BackColor = vbGreen
+    Form1.OLE1.BackColor = -1
+    Print #9, "OLE.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.OLE1.BackColor): Err.Clear
     Unload Form1
     Load MDIForm1
     MDIForm1.BackColor = vbGreen

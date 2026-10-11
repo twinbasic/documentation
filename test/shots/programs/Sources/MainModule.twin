@@ -1,0 +1,102 @@
+Module MainModule
+
+    ' The program behind the documentation's pictures of a running program
+    ' (scripts/shoot_docs.mjs, setup programs). Its command line names the form to show;
+    ' TB_SHOT_SIGNALS, when it is set, names a folder through which the tool and the
+    ' program take turns: the program writes "shown" once its form is drawn; for a form
+    ' that shows anchoring, it waits for "grow", makes the form larger and writes
+    ' "grown"; it ends when "end" appears or the form is closed.
+
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
+    Private Declare PtrSafe Function SetForegroundWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetForegroundWindow Lib "user32" () As LongPtr
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, _
+        ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Const WM_NCACTIVATE As Long = &H86
+
+    Public Sub Main()
+        ' Command$ is the command line as written, quotes included
+        Dim scene As String = LCase$(Trim$(Replace(Command$, """", "")))
+        Dim f As Form
+        Dim growBy As Long
+        Select Case scene
+            Case "anchors-all": Set f = frmAnchorsAll: growBy = 1
+            Case "anchors-top-left-bottom": Set f = frmAnchorsTopLeftBottom: growBy = 1
+            Case "anchors-right-bottom": Set f = frmAnchorsRightBottom: growBy = 1
+            Case "frame-all": Set f = frmFrameAll: growBy = 1
+            Case "frame-no-bottom": Set f = frmFrameNoBottom: growBy = 1
+            Case "dock-bottom": Set f = frmDockBottom
+            Case "dock-multi": Set f = frmDockMulti
+            Case "multiframe": Set f = frmMultiFrame
+            Case "checkmark": Set f = frmCheckMark
+            Case "translucent": Set f = frmTranslucent
+            Case "listview": Set f = frmListView
+            Case Else: Set f = frmAnchorsAll: growBy = 1
+        End Select
+        f.Show
+        Activate f
+        f.Refresh
+        DoEvents
+        Signal "shown"
+        If growBy Then
+            If Not WaitFor("grow", f) Then Exit Sub
+            ' 100 pixels wider and 80 taller, at 96 DPI
+            f.Move f.Left, f.Top, f.Width + 1500, f.Height + 1200
+            KeepActive f
+            f.Refresh
+            DoEvents
+            Signal "grown"
+        End If
+        If WaitFor("end", f) Then Unload f
+    End Sub
+
+    ' Makes the form the active window, as it is when a person starts the program. On the
+    ' tool's private desktop, which has no input, the foreground is not dependable: a program
+    ' started on its own takes it and can lose it again, and one run from the IDE never
+    ' gets it, since the IDE's window has it. So while the form waits, it draws its frame as
+    ' the active window's whenever it is not the foreground window, as it would be on the
+    ' desktop a person uses.
+    Private Sub Activate(ByVal f As Form)
+        SetForegroundWindow f.hWnd
+        DoEvents
+        KeepActive f
+    End Sub
+
+    Private Sub KeepActive(ByVal f As Form)
+        If GetForegroundWindow() <> f.hWnd Then SendMessageW f.hWnd, WM_NCACTIVATE, 1, 0
+    End Sub
+
+    ' The folder of the signals, or "" when no tool runs the program.
+    Private Function Signals() As String
+        Return Environ$("TB_SHOT_SIGNALS")
+    End Function
+
+    Private Sub Signal(ByVal Name As String)
+        If Len(Signals()) = 0 Then Exit Sub
+        Dim n As Integer = FreeFile
+        Open Signals() & "\" & Name For Output As #n
+        Close #n
+    End Sub
+
+    ' Waits until the signal is there (True), or until the form is closed (False).
+    Private Function WaitFor(ByVal Name As String, ByVal f As Form) As Boolean
+        Do
+            If Len(Signals()) Then
+                If Len(Dir$(Signals() & "\" & Name)) Then Return True
+            End If
+            If Not IsLoaded(f) Then Return False
+            KeepActive f
+            DoEvents
+            Sleep 50
+        Loop
+    End Function
+
+    Private Function IsLoaded(ByVal f As Form) As Boolean
+        Dim g As Form
+        For Each g In Forms
+            If g Is f Then Return True
+        Next
+        Return False
+    End Function
+
+End Module

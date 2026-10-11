@@ -126,9 +126,11 @@ export function renderGantt(grouped) {
   for (let t = 0; t <= maxT + 0.5; t += tick) ticks.push(t);
 
   const o = [];
-  o.push(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SVG_W} ${h}" style="width:100%;max-width:${SVG_W}px">`,
-  );
+  // Its own width and height, in px, as a Graphviz diagram has them in pt: the
+  // figure it is shown in (render.mjs, figurePlugin) shrinks to its figure, so
+  // an SVG with only a percentage width has no size of its own to shrink to,
+  // and the stylesheet's `max-width: 100%` already fits it to the column.
+  o.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SVG_W} ${h}" width="${SVG_W}" height="${h}">`);
   o.push(`<title>Build task timeline</title>`);
 
   // Dark palette rule bodies (theme-neutral selectors); emitted below under

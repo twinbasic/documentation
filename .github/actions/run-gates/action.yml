@@ -16,6 +16,28 @@ description: The gate steps both workflows share, checked against test.bat and c
 runs:
   using: composite
   steps:
+    # check_a11y runs FIRST. The deploy workflow backgrounds the book PDF
+    # render just before this composite action and joins it after, so the
+    # 24 non-a11y gates below mostly run in parallel with the book: they are
+    # Node scripts, CPU-bound, and the only two Chromium workloads (axe here
+    # and paged.js in the book render) overlap for just the ~40 s a11y
+    # takes, at the START of the run. a11y last would mean the two Chromiums
+    # fought over the runner's 2 vCPUs at the END, when the book render
+    # cannot amortise the slowdown.
+    #
+    # In check.bat, check_a11y now sits right after check_tree_fresh and
+    # before check_dot_fit / pick_a11y_sample --- the gate roster check
+    # requires check.bat's order to match the composite action's order after
+    # filtering to the gates both have.
+    #
+    # Matches check.bat: the build's own link check gates this, and a link
+    # failure short-circuits before the (slower) browser scan runs. Scans
+    # _site-offline/, whose relative asset paths actually resolve -- _site/
+    # uses root-absolute URLs that render unstyled here, making every
+    # colour-contrast result meaningless.
+    - name: Accessibility check (check_a11y.mjs)
+      shell: bash
+      run: node scripts/check_a11y.mjs
     # The build is the only pass over the site's HTML. This step is NOT a
     # second one: it runs the differential harness against a nine-file
     # synthetic tree that carries one fault of every kind, so
@@ -90,6 +112,21 @@ runs:
     - name: Unit-test the bug reproducers' pictures (test/png.test.mjs)
       shell: bash
       run: node --test test/png.test.mjs
+    # What an embedded image keeps (scripts/lib/compact-image.mjs's
+    # compactImage): an editor's metadata goes, and a notice of whose the
+    # picture is and on what terms stays, over images built in the test. The
+    # half that runs scripts/imagestrip/ needs its exe and Windows, which CI
+    # has not, and is skipped. No browser, no built tree, well under a second.
+    - name: Unit-test what an embedded image keeps (test/compact-image.test.mjs)
+      shell: bash
+      run: node --test test/compact-image.test.mjs
+    # An SVG screenshot is written on one line (scripts/svgshot/snapshot-svg.mjs's
+    # oneLine), so that a CRLF checkout changes only its last line ending. What
+    # it keeps of an image it embeds is test/compact-image.test.mjs's, above.
+    # No browser, no built tree, well under a second.
+    - name: Unit-test that SVG screenshots are one line (test/svgshot.test.mjs)
+      shell: bash
+      run: node --test test/svgshot.test.mjs
     # check_examples.mjs's probes: batching, crash isolation through a fake
     # lane, the canaries and the fence classifier. check_examples.mjs needs a
     # twinBASIC install, which CI has not; its probes need none.
@@ -258,11 +295,3 @@ runs:
     - name: Verify a11y sample coverage (pick_a11y_sample.mjs)
       shell: bash
       run: node scripts/pick_a11y_sample.mjs --check
-    # Matches check.bat: the build's own link check gates this, and a link
-    # failure short-circuits before the (slower) browser scan runs. Scans
-    # _site-offline/, whose relative asset paths actually resolve -- _site/
-    # uses root-absolute URLs that render unstyled here, making every
-    # colour-contrast result meaningless.
-    - name: Accessibility check (check_a11y.mjs)
-      shell: bash
-      run: node scripts/check_a11y.mjs

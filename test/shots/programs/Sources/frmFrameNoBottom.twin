@@ -1,0 +1,9 @@
+[Description("")]
+[FormDesignerId("5C0F8A71-3B2E-4D69-8A14-7E91C2D4C614")]
+[PredeclaredId]
+Class frmFrameNoBottom
+
+    Sub New()
+    End Sub
+
+End Class

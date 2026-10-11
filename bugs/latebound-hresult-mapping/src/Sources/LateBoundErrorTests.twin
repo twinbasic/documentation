@@ -1,0 +1,230 @@
+' Regression tests for #2490 and its follow-up: the error number a late-bound
+' call raises when the object fails it. The expected numbers are what VB6 6.0
+' raises for the same failure (the VB6 project beside this one prints them).
+'
+' HResultObject answers any name of the form Hr<hex> and fails the call with that
+' HRESULT, so o.Hr8002000E is a late-bound call whose Invoke returns
+' DISP_E_BADPARAMCOUNT.
+
+Module DispatchTypes
+    Public Type GUID
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Public Type DISPPARAMS
+        rgvarg As LongPtr
+        rgdispidNamedArgs As LongPtr
+        cArgs As Long
+        cNamedArgs As Long
+    End Type
+
+    Public Type EXCEPINFO
+        wCode As Integer
+        wReserved As Integer
+        bstrSource As LongPtr
+        bstrDescription As LongPtr
+        bstrHelpFile As LongPtr
+        dwHelpContext As Long
+        pvReserved As LongPtr
+        pfnDeferredFillIn As LongPtr
+        scode As Long
+    End Type
+
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" ( _
+        ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+    Private Declare PtrSafe Function lstrlenW Lib "kernel32" (ByVal lpString As LongPtr) As Long
+
+    Public Function PtrToString(ByVal p As LongPtr) As String
+        Dim n As Long = lstrlenW(p)
+        Dim s As String = Space$(n)
+        If n > 0 Then CopyMemory StrPtr(s), p, n * 2
+        Return s
+    End Function
+End Module
+
+[InterfaceId("00020400-0000-0000-C000-000000000046")]
+Interface IDispatchOwn Extends stdole.IUnknown
+    Sub GetTypeInfoCount(ByRef pctinfo As Long)
+    Sub GetTypeInfo(ByVal iTInfo As Long, ByVal lcid As Long, ByRef ppTInfo As LongPtr)
+    Sub GetIDsOfNames(ByRef riid As GUID, ByRef rgszNames As LongPtr, ByVal cNames As Long, ByVal lcid As Long, ByRef rgDispId As Long)
+    Sub Invoke(ByVal dispIdMember As Long, ByRef riid As GUID, ByVal lcid As Long, ByVal wFlags As Integer, ByRef pDispParams As DISPPARAMS, ByRef pVarResult As Variant, ByRef pExcepInfo As EXCEPINFO, ByRef puArgErr As Long)
+End Interface
+
+' Dispatched through its own IDispatchOwn methods, since it is NotDispatchable.
+NotDispatchable Class HResultObject
+    Implements IDispatchOwn
+
+    Private Sub GetTypeInfoCount(ByRef pctinfo As Long) Implements IDispatchOwn.GetTypeInfoCount
+        pctinfo = 0
+    End Sub
+
+    Private Sub GetTypeInfo(ByVal iTInfo As Long, ByVal lcid As Long, ByRef ppTInfo As LongPtr) Implements IDispatchOwn.GetTypeInfo
+        Err.ReturnHResult = &H80004001                   ' E_NOTIMPL
+    End Sub
+
+    ' "Hr8002000E" gets the DISPID &H8002000E.
+    Private Sub GetIDsOfNames(ByRef riid As GUID, ByRef rgszNames As LongPtr, ByVal cNames As Long, ByVal lcid As Long, ByRef rgDispId As Long) Implements IDispatchOwn.GetIDsOfNames
+        rgDispId = CLng("&H" & Mid$(PtrToString(rgszNames), 3))
+    End Sub
+
+    ' Fails with the HRESULT that is the DISPID.
+    Private Sub Invoke(ByVal dispIdMember As Long, ByRef riid As GUID, ByVal lcid As Long, ByVal wFlags As Integer, ByRef pDispParams As DISPPARAMS, ByRef pVarResult As Variant, ByRef pExcepInfo As EXCEPINFO, ByRef puArgErr As Long) Implements IDispatchOwn.Invoke
+        Err.ReturnHResult = dispIdMember
+    End Sub
+End Class
+
+Class Widget
+    Public Sub Hello()
+    End Sub
+End Class
+
+[TestFixture]
+Module LateBoundErrorTests
+
+    ' Fixed in #2490 (BETA 1005): a name the object does not have is error 438.
+
+    [TestCase]
+    Public Sub UnknownMember_Class_Raises438()
+        Dim o As Object = New Widget
+        On Error Resume Next
+        o.Nope
+        Assert.Strict.AreEqual 438, Err.Number        ' VB6: 438
+    End Sub
+
+    [TestCase]
+    Public Sub UnknownMember_Collection_Raises438()
+        Dim o As Object = New Collection
+        On Error Resume Next
+        o.Nope
+        Assert.Strict.AreEqual 438, Err.Number        ' VB6: 438
+    End Sub
+
+    [TestCase]
+    Public Sub UnknownMember_CallByName_Raises438()
+        Dim o As Object = New Widget
+        On Error Resume Next
+        CallByName o, "Nope", VbMethod
+        Assert.Strict.AreEqual 438, Err.Number        ' VB6: 438
+    End Sub
+
+    ' Already as in VB6 in BETA 1005: these failure codes are raised as VB6 raises them.
+
+    [TestCase]
+    Public Sub MemberNotFound_Raises438()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr80020003                                    ' DISP_E_MEMBERNOTFOUND
+        Assert.Strict.AreEqual 438, Err.Number        ' VB6: 438
+    End Sub
+
+    [TestCase]
+    Public Sub TypeMismatch_Raises13()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr80020005                                    ' DISP_E_TYPEMISMATCH
+        Assert.Strict.AreEqual 13, Err.Number         ' VB6: 13
+    End Sub
+
+    [TestCase]
+    Public Sub InvalidArg_Raises5()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr80070057                                    ' E_INVALIDARG
+        Assert.Strict.AreEqual 5, Err.Number          ' VB6: 5
+    End Sub
+
+    ' Left in BETA 1005: these are raised as the HRESULT itself.
+
+    [TestCase]
+    Public Sub BadParamCount_Collection_Raises450()
+        Dim o As Object = New Collection
+        Dim x As Variant
+        On Error Resume Next
+        x = o.Item(1, 2)                                ' Item takes one argument
+        Assert.Strict.AreEqual 450, Err.Number        ' VB6: 450, Wrong number of arguments or invalid property assignment
+    End Sub
+
+    [TestCase]
+    Public Sub BadParamCount_Raises450()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr8002000E                                    ' DISP_E_BADPARAMCOUNT
+        Assert.Strict.AreEqual 450, Err.Number        ' VB6: 450, Wrong number of arguments or invalid property assignment
+    End Sub
+
+    [TestCase]
+    Public Sub ParamNotOptional_Raises449()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr8002000F                                    ' DISP_E_PARAMNOTOPTIONAL
+        Assert.Strict.AreEqual 449, Err.Number        ' VB6: 449, Argument not optional
+    End Sub
+
+    [TestCase]
+    Public Sub NotImpl_Raises445()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr80004001                                    ' E_NOTIMPL
+        Assert.Strict.AreEqual 445, Err.Number        ' VB6: 445, Object doesn't support this action
+    End Sub
+
+    [TestCase]
+    Public Sub OutOfMemory_Raises7()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr8007000E                                    ' E_OUTOFMEMORY
+        Assert.Strict.AreEqual 7, Err.Number          ' VB6: 7, Out of memory
+    End Sub
+
+    [TestCase]
+    Public Sub BadIndex_Raises9()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr8002000B                                    ' DISP_E_BADINDEX
+        Assert.Strict.AreEqual 9, Err.Number          ' VB6: 9, Subscript out of range
+    End Sub
+
+    [TestCase]
+    Public Sub NoNamedArgs_Raises446()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr80020007                                    ' DISP_E_NONAMEDARGS
+        Assert.Strict.AreEqual 446, Err.Number        ' VB6: 446, Object doesn't support named arguments
+    End Sub
+
+    [TestCase]
+    Public Sub ArrayIsLocked_Raises10()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr8002000D                                    ' DISP_E_ARRAYISLOCKED
+        Assert.Strict.AreEqual 10, Err.Number         ' VB6: 10, This array is fixed or temporarily locked
+    End Sub
+
+    [TestCase]
+    Public Sub NoInterface_Raises430()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr80004002                                    ' E_NOINTERFACE
+        Assert.Strict.AreEqual 430, Err.Number        ' VB6: 430, Class does not support Automation or does not support expected interface
+    End Sub
+
+    [TestCase]
+    Public Sub AccessDenied_Raises70()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr80070005                                    ' E_ACCESSDENIED
+        Assert.Strict.AreEqual 70, Err.Number         ' VB6: 70, Permission denied
+    End Sub
+
+    [TestCase]
+    Public Sub Abort_Raises287()
+        Dim o As Object = New HResultObject
+        On Error Resume Next
+        o.Hr80004004                                    ' E_ABORT
+        Assert.Strict.AreEqual 287, Err.Number        ' VB6: 287, Application-defined or object-defined error
+    End Sub
+
+End Module

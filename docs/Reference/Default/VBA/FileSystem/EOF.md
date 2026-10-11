@@ -24,6 +24,9 @@ The **EOF** function returns **False** until the end of the file has been reache
 
 With files opened for **Binary** access, an attempt to read through the file by using the **Input** function until **EOF** returns **True** generates an error. Use the [LOF](LOF) and **Loc** functions instead of **EOF** when reading binary files with **Input**, or use **Get** when using the **EOF** function. With files opened for **Output**, **EOF** always returns **True**.
 
+> [!NOTE]
+> In BETA 1005, **EOF** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
+
 ### Example
 
 This example uses the **EOF** function to detect the end of a file. This example assumes that `MYFILE` is a text file with a few lines of text.

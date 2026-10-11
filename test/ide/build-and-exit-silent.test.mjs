@@ -8,7 +8,7 @@
 // Each test states what BETA 983, 995 and 997 do. If one fails after an IDE
 // update, the switch has changed: update the entry in BUGS-TO-REPORT.md or
 // bugs/filed/, the notes that name it (scripts/tbbuild.mjs, WIP.Harness.md,
-// docs/Documentation/Tools.md, docs/Features/Packages/Import-export tool.md),
+// docs/Documentation/Tools-Compiler.md, docs/Features/Packages/Import-export tool.md),
 // and then this file.
 //
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.

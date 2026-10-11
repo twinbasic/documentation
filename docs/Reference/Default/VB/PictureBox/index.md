@@ -101,10 +101,7 @@ When **True**, the control resizes itself to fit the assigned [**Picture**](#pic
 ### BackColor
 {: .no_toc }
 
-The background colour of the control's drawing surface, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Assigning a new value invalidates the surface and triggers a repaint.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The background colour of the control's drawing surface, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Assigning a new value invalidates the surface and triggers a repaint. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### BorderStyle
 {: .no_toc }
@@ -204,10 +201,7 @@ Determines whether the control accepts user input. **Boolean**, default **True**
 ### FillColor
 {: .no_toc }
 
-The colour used to fill closed shapes drawn by [**Line**](#line) with **B** and without **F**, and by [**Circle**](#circle), as an **OLE_COLOR**. Default **0** (black). Honoured only when [**FillStyle**](#fillstyle) is not **vbFSTransparent**.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so [**Circle**](#circle) and [**Line**](#line) then draw with it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The colour used to fill closed shapes drawn by [**Line**](#line) with **B** and without **F**, and by [**Circle**](#circle), as an **OLE_COLOR**. Default **0** (black). Honoured only when [**FillStyle**](#fillstyle) is not **vbFSTransparent**. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### FillStyle
 {: .no_toc }
@@ -257,10 +251,7 @@ Shortcut for [**Font**](#font)`.Underline`. **Boolean**.
 ### ForeColor
 {: .no_toc }
 
-The colour used by the graphics-method pen (lines, circles, points) and by [**Print**](#print) text, as an **OLE_COLOR**. Defaults to the system button-text colour.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1` or `&H8000001F`, raises error 5 and still stores the value, so a later read returns it and a handled error leaves the invalid colour in force. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The colour used by the graphics-method pen (lines, circles, points) and by [**Print**](#print) text, as an **OLE_COLOR**. Defaults to the system button-text colour. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### HasDC
 {: .no_toc }

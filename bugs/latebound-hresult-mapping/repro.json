@@ -1,0 +1,25 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS LateBoundErrorTests\\.UnknownMember_Class_Raises438$",
+      "^PASS LateBoundErrorTests\\.UnknownMember_Collection_Raises438$",
+      "^PASS LateBoundErrorTests\\.UnknownMember_CallByName_Raises438$",
+      "^PASS LateBoundErrorTests\\.MemberNotFound_Raises438$",
+      "^PASS LateBoundErrorTests\\.TypeMismatch_Raises13$",
+      "^PASS LateBoundErrorTests\\.InvalidArg_Raises5$",
+      "^FAIL LateBoundErrorTests\\.BadParamCount_Collection_Raises450: .*Actual: -2147352562 ",
+      "^FAIL LateBoundErrorTests\\.BadParamCount_Raises450: .*Actual: -2147352562 ",
+      "^FAIL LateBoundErrorTests\\.ParamNotOptional_Raises449: .*Actual: -2147352561 ",
+      "^FAIL LateBoundErrorTests\\.NotImpl_Raises445: .*Actual: -2147467263 ",
+      "^FAIL LateBoundErrorTests\\.OutOfMemory_Raises7: .*Actual: -2147024882 ",
+      "^FAIL LateBoundErrorTests\\.BadIndex_Raises9: .*Actual: -2147352565 ",
+      "^FAIL LateBoundErrorTests\\.NoNamedArgs_Raises446: .*Actual: -2147352569 ",
+      "^FAIL LateBoundErrorTests\\.ArrayIsLocked_Raises10: .*Actual: -2147352563 ",
+      "^FAIL LateBoundErrorTests\\.NoInterface_Raises430: .*Actual: -2147467262 ",
+      "^FAIL LateBoundErrorTests\\.AccessDenied_Raises70: .*Actual: -2147024891 ",
+      "^FAIL LateBoundErrorTests\\.Abort_Raises287: .*Actual: -2147467260 "
+    ]
+  }
+}

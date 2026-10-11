@@ -3,11 +3,9 @@
   "expect": {
     "exit": 0,
     "output": [
-      "^enumerator Next: Accept$",
-      "^clone Next:\\s+Accept$",
-      "^enumerator Next: Upgrade-Insecure-Requests$",
-      "^after Skip 2, enumerator Next: User-Agent$",
-      "^after Skip 2, clone Next:\\s+Accept$"
+      "^request: after two Next and Reset, enumerator Next: Accept, clone Next: Accept$",
+      "^response: after one Next \\(Ha\\), enumerator Next: Hb, clone Next: Hb$",
+      "^response: after two Next and Reset, enumerator Next: Ha, clone Next: Hc$"
     ]
   },
   "issue": 2496

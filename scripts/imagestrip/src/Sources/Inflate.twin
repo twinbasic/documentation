@@ -1,0 +1,246 @@
+' A zlib stream inflated as Node's inflateSync does it, header and Adler-32 checked: a PNG's ICC
+' profile and its compressed text chunks are zlib streams. Raises error 5 for a stream it cannot read.
+Module Inflate
+    Private mIn() As Byte
+    Private mInLen As Long
+    Private mPos As Long
+    Private mBits As Long
+    Private mBitCount As Long
+
+    Private mOut() As Byte
+    Private mOutLen As Long
+    Private mOutCap As Long
+
+    Private mLenCounts(0 To 16) As Long
+    Private mLenSyms(0 To 319) As Long
+    Private mDistCounts(0 To 16) As Long
+    Private mDistSyms(0 To 319) As Long
+
+    Private mLenBase(0 To 28) As Long
+    Private mLenExtra(0 To 28) As Long
+    Private mDistBase(0 To 29) As Long
+    Private mDistExtra(0 To 29) As Long
+    Private mOrder(0 To 18) As Long
+    Private mReady As Boolean
+
+    Private Sub InitTables()
+        Dim parts() As String, i As Long
+        parts = Split("3 4 5 6 7 8 9 10 11 13 15 17 19 23 27 31 35 43 51 59 67 83 99 115 131 163 195 227 258")
+        For i = 0 To 28: mLenBase(i) = CLng(parts(i)): Next
+        parts = Split("0 0 0 0 0 0 0 0 1 1 1 1 2 2 2 2 3 3 3 3 4 4 4 4 5 5 5 5 0")
+        For i = 0 To 28: mLenExtra(i) = CLng(parts(i)): Next
+        parts = Split("1 2 3 4 5 7 9 13 17 25 33 49 65 97 129 193 257 385 513 769 1025 1537 2049 3073 4097 6145 8193 12289 16385 24577")
+        For i = 0 To 29: mDistBase(i) = CLng(parts(i)): Next
+        parts = Split("0 0 0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 9 9 10 10 11 11 12 12 13 13")
+        For i = 0 To 29: mDistExtra(i) = CLng(parts(i)): Next
+        parts = Split("16 17 18 0 8 7 9 6 10 5 11 4 12 3 13 2 14 1 15")
+        For i = 0 To 18: mOrder(i) = CLng(parts(i)): Next
+        mReady = True
+    End Sub
+
+    ' Inflates src[start, start + count) into out, and returns its length.
+    Public Function ZlibInflate(src() As Byte, ByVal start As Long, ByVal count As Long, out() As Byte) As Long
+        Dim last As Long, kind As Long, cmf As Long, flg As Long, i As Long
+        If Not mReady Then InitTables
+        mInLen = Bytes.Slice(src, start, CDbl(start) + count, mIn)
+        mPos = 0
+        mBitCount = 0
+        mOutLen = 0
+        mOutCap = 0
+        Erase mOut
+        If mInLen < 2 Then Err.Raise 5
+        cmf = mIn(0)
+        flg = mIn(1)
+        If (cmf And 15) <> 8 Or (cmf \ 16) > 7 Or ((cmf * 256 + flg) Mod 31) <> 0 Or (flg And 32) <> 0 Then Err.Raise 5
+        mPos = 2
+        Do
+            last = GetBit()
+            kind = GetBits(2)
+            Select Case kind
+                Case 0
+                    StoredBlock
+                Case 1
+                    FixedTrees
+                    InflateBlock
+                Case 2
+                    DynamicTrees
+                    InflateBlock
+                Case Else
+                    Err.Raise 5
+            End Select
+        Loop Until last = 1
+        mBitCount = 0
+        If mPos + 4 > mInLen Then Err.Raise 5
+        If Bytes.U32BE(mIn, mPos) <> Adler32() Then Err.Raise 5
+        Erase out
+        If mOutLen > 0 Then
+            ReDim out(0 To mOutLen - 1)
+            For i = 0 To mOutLen - 1
+                out(i) = mOut(i)
+            Next
+        End If
+        ZlibInflate = mOutLen
+    End Function
+
+    Private Function GetBit() As Long
+        If mBitCount = 0 Then
+            If mPos >= mInLen Then Err.Raise 5
+            mBits = mIn(mPos)
+            mPos = mPos + 1
+            mBitCount = 8
+        End If
+        GetBit = mBits And 1
+        mBits = mBits \ 2
+        mBitCount = mBitCount - 1
+    End Function
+
+    Private Function GetBits(ByVal n As Long) As Long
+        Dim i As Long, weight As Long, v As Long
+        weight = 1
+        For i = 1 To n
+            If GetBit() = 1 Then v = v + weight
+            weight = weight * 2
+        Next
+        GetBits = v
+    End Function
+
+    Private Sub PutByte(ByVal value As Long)
+        If mOutLen = mOutCap Then
+            mOutCap = 2 * mOutCap + 1024
+            ReDim Preserve mOut(0 To mOutCap - 1)
+        End If
+        mOut(mOutLen) = value
+        mOutLen = mOutLen + 1
+    End Sub
+
+    Private Sub StoredBlock()
+        Dim size As Long, check As Long, i As Long
+        mBitCount = 0
+        If mPos + 4 > mInLen Then Err.Raise 5
+        size = mIn(mPos) + 256& * mIn(mPos + 1)
+        check = mIn(mPos + 2) + 256& * mIn(mPos + 3)
+        If (size Xor check) <> &HFFFF& Then Err.Raise 5
+        mPos = mPos + 4
+        If mPos + size > mInLen Then Err.Raise 5
+        For i = 0 To size - 1
+            PutByte mIn(mPos + i)
+        Next
+        mPos = mPos + size
+    End Sub
+
+    ' A canonical Huffman code from its code lengths, as counts per length and symbols in code order.
+    Private Sub BuildTree(lengths() As Long, ByVal first As Long, ByVal num As Long, counts() As Long, syms() As Long)
+        Dim i As Long, total As Long, offs(0 To 16) As Long
+        For i = 0 To 16
+            counts(i) = 0
+        Next
+        For i = 0 To num - 1
+            counts(lengths(first + i)) = counts(lengths(first + i)) + 1
+        Next
+        counts(0) = 0
+        For i = 0 To 16
+            offs(i) = total
+            total = total + counts(i)
+        Next
+        For i = 0 To num - 1
+            If lengths(first + i) <> 0 Then
+                syms(offs(lengths(first + i))) = i
+                offs(lengths(first + i)) = offs(lengths(first + i)) + 1
+            End If
+        Next
+    End Sub
+
+    Private Function DecodeSym(counts() As Long, syms() As Long) As Long
+        Dim total As Long, cur As Long, size As Long
+        Do
+            cur = 2 * cur + GetBit()
+            size = size + 1
+            If size > 15 Then Err.Raise 5
+            total = total + counts(size)
+            cur = cur - counts(size)
+        Loop While cur >= 0
+        DecodeSym = syms(total + cur)
+    End Function
+
+    Private Sub FixedTrees()
+        Dim lengths(0 To 319) As Long, i As Long
+        For i = 0 To 143: lengths(i) = 8: Next
+        For i = 144 To 255: lengths(i) = 9: Next
+        For i = 256 To 279: lengths(i) = 7: Next
+        For i = 280 To 287: lengths(i) = 8: Next
+        For i = 288 To 317: lengths(i) = 5: Next
+        BuildTree lengths, 0, 288, mLenCounts, mLenSyms
+        BuildTree lengths, 288, 30, mDistCounts, mDistSyms
+    End Sub
+
+    Private Sub DynamicTrees()
+        Dim hlit As Long, hdist As Long, hclen As Long, i As Long, num As Long, sym As Long, prev As Long, rep As Long
+        Dim lengths(0 To 319) As Long, clLengths(0 To 18) As Long, clCounts(0 To 16) As Long, clSyms(0 To 18) As Long
+        hlit = GetBits(5) + 257
+        hdist = GetBits(5) + 1
+        hclen = GetBits(4) + 4
+        For i = 0 To hclen - 1
+            clLengths(mOrder(i)) = GetBits(3)
+        Next
+        BuildTree clLengths, 0, 19, clCounts, clSyms
+        Do While num < hlit + hdist
+            sym = DecodeSym(clCounts, clSyms)
+            Select Case sym
+                Case 16
+                    If num = 0 Then Err.Raise 5
+                    prev = lengths(num - 1)
+                    rep = GetBits(2) + 3
+                Case 17
+                    prev = 0
+                    rep = GetBits(3) + 3
+                Case 18
+                    prev = 0
+                    rep = GetBits(7) + 11
+                Case Else
+                    prev = sym
+                    rep = 1
+            End Select
+            If num + rep > hlit + hdist Then Err.Raise 5
+            For i = 1 To rep
+                lengths(num) = prev
+                num = num + 1
+            Next
+        Loop
+        BuildTree lengths, 0, hlit, mLenCounts, mLenSyms
+        BuildTree lengths, hlit, hdist, mDistCounts, mDistSyms
+    End Sub
+
+    Private Sub InflateBlock()
+        Dim sym As Long, size As Long, dist As Long, i As Long, from As Long
+        Do
+            sym = DecodeSym(mLenCounts, mLenSyms)
+            If sym < 256 Then
+                PutByte sym
+            ElseIf sym = 256 Then
+                Exit Do
+            Else
+                sym = sym - 257
+                If sym > 28 Then Err.Raise 5
+                size = mLenBase(sym) + GetBits(mLenExtra(sym))
+                dist = DecodeSym(mDistCounts, mDistSyms)
+                If dist > 29 Then Err.Raise 5
+                dist = mDistBase(dist) + GetBits(mDistExtra(dist))
+                If dist > mOutLen Then Err.Raise 5
+                from = mOutLen - dist
+                For i = 0 To size - 1
+                    PutByte mOut(from + i)
+                Next
+            End If
+        Loop
+    End Sub
+
+    Private Function Adler32() As Double
+        Dim a As Long, b As Long, i As Long
+        a = 1
+        For i = 0 To mOutLen - 1
+            a = (a + mOut(i)) Mod 65521
+            b = (b + a) Mod 65521
+        Next
+        Adler32 = CDbl(b) * 65536 + a
+    End Function
+End Module

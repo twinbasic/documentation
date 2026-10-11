@@ -1,0 +1,157 @@
+' imagestrip <input> <output> -- strips the metadata from an SVG file, and from the images a CSS or
+' SVG file embeds as data: URIs, at any depth.
+Module MainModule
+    Private Declare PtrSafe Function GetStdHandle Lib "kernel32" (ByVal nStdHandle As Long) As LongPtr
+    Private Declare PtrSafe Function GetConsoleMode Lib "kernel32" (ByVal hConsoleHandle As LongPtr, ByRef lpMode As Long) As Long
+    Private Declare PtrSafe Function WriteConsoleW Lib "kernel32" (ByVal hConsoleOutput As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfCharsToWrite As Long, ByRef lpNumberOfCharsWritten As Long, ByVal lpReserved As LongPtr) As Long
+    Private Declare PtrSafe Function WriteFile Lib "kernel32" (ByVal hFile As LongPtr, ByRef lpBuffer As Any, ByVal nNumberOfBytesToWrite As Long, ByRef lpNumberOfBytesWritten As Long, ByVal lpOverlapped As LongPtr) As Long
+    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+    Private Const STD_OUTPUT_HANDLE As Long = -11
+    Private Const STD_ERROR_HANDLE As Long = -12
+
+    Public Sub Main()
+        Dim args As Collection
+        Set args = SplitArgs(Command$())
+        If args.Count <> 2 Then
+            WriteErr "Usage: imagestrip <input> <output>"
+            WriteErr ""
+            WriteErr "Writes a copy of a CSS or SVG file in which every image embedded as a data: URI keeps"
+            WriteErr "its pixels and any notice of whose it is, and nothing else: a PNG, a JPEG and a GIF"
+            WriteErr "lose their editors' metadata, and an SVG its declaration, comments and metadata, as"
+            WriteErr "does an SVG file itself. An image inside an SVG is stripped too, at any depth. Each"
+            WriteErr "image is labelled with the type its bytes are. Everything else in the file is copied"
+            WriteErr "unchanged. A file whose name ends in .svg is read as an SVG, any other as CSS. The"
+            WriteErr "output may be the input file."
+            WriteErr ""
+            WriteErr "Exit codes: 0 written, 1 a file could not be read or written, 2 a wrong command line."
+            ExitProcess 2
+        End If
+
+        ' Opening a missing file for Binary creates it, so the paths are checked first.
+        Dim attrs As Long, folder As String
+        attrs = Attributes(args(1))
+        If attrs = -1 Then Fail "no such file: " & args(1)
+        If (attrs And vbDirectory) <> 0 Then Fail "not a file: " & args(1)
+        attrs = Attributes(args(2))
+        If attrs <> -1 Then
+            If (attrs And vbDirectory) <> 0 Then Fail "not a file: " & args(2)
+        End If
+        folder = FolderOf(args(2))
+        If Len(folder) > 0 Then
+            attrs = Attributes(folder)
+            If attrs = -1 Then Fail "no such folder: " & folder
+            If (attrs And vbDirectory) = 0 Then Fail "no such folder: " & folder
+        End If
+
+        Dim file() As Byte, fileLen As Long, result() As Byte, resultLen As Long
+        On Error Resume Next
+        fileLen = ReadAll(args(1), file)
+        If Err.Number <> 0 Then Fail "cannot read " & args(1) & ": " & Err.Description
+        On Error GoTo 0
+
+        Dim report As Variant
+        resultLen = Strip.StripFile(file, fileLen, LCase$(Right$(args(1), 4)) = ".svg", result)
+        For Each report In Strip.Reports
+            WriteErr args(1) & ":" & report
+        Next
+
+        On Error Resume Next
+        WriteAll args(2), result, resultLen
+        If Err.Number <> 0 Then Fail "cannot write " & args(2) & ": " & Err.Description
+        On Error GoTo 0
+
+        WriteOut args(1) & ": " & Strip.Images & " images, " & Strip.Stripped & " stripped, " & Strip.Relabelled & " relabelled; " & fileLen & " -> " & resultLen & " bytes"
+    End Sub
+
+    Private Function ReadAll(ByVal path As String, data() As Byte) As Long
+        Dim f As Integer
+        f = FreeFile
+        Open path For Binary Access Read As #f
+        ReadAll = LOF(f)
+        If ReadAll > 0 Then
+            ReDim data(0 To ReadAll - 1)
+            Get #f, , data
+        End If
+        Close #f
+    End Function
+
+    Private Sub WriteAll(ByVal path As String, data() As Byte, ByVal length As Long)
+        Dim f As Integer
+        ' Opening for Output empties the file; Binary alone would keep the tail of a longer one.
+        f = FreeFile
+        Open path For Output As #f
+        Close #f
+        If length = 0 Then Exit Sub
+        f = FreeFile
+        Open path For Binary Access Write As #f
+        Put #f, , data
+        Close #f
+    End Sub
+
+    ' -1 when the path does not exist.
+    Private Function Attributes(ByVal path As String) As Long
+        On Error Resume Next
+        Attributes = -1
+        Attributes = GetAttr(path)
+    End Function
+
+    Private Function FolderOf(ByVal path As String) As String
+        Dim i As Long
+        For i = Len(path) To 1 Step -1
+            If Mid$(path, i, 1) = "\" Or Mid$(path, i, 1) = "/" Then
+                FolderOf = Left$(path, i)
+                Exit Function
+            End If
+        Next
+    End Function
+
+    ' Command$ returns the arguments as typed, quotes included.
+    Private Function SplitArgs(ByVal line As String) As Collection
+        Dim result As New Collection, current As String, started As Boolean, inQuotes As Boolean
+        Dim i As Long, ch As String
+        For i = 1 To Len(line)
+            ch = Mid$(line, i, 1)
+            If ch = """" Then
+                inQuotes = Not inQuotes
+                started = True
+            ElseIf (ch = " " Or ch = vbTab) And Not inQuotes Then
+                If started Then result.Add current
+                current = ""
+                started = False
+            Else
+                current = current & ch
+                started = True
+            End If
+        Next
+        If started Then result.Add current
+        Set SplitArgs = result
+    End Function
+
+    Private Sub Fail(ByVal message As String)
+        Close
+        WriteErr "imagestrip: " & message
+        ExitProcess 1
+    End Sub
+
+    Public Sub WriteOut(ByVal text As String)
+        WriteTo STD_OUTPUT_HANDLE, text & vbCrLf
+    End Sub
+
+    Public Sub WriteErr(ByVal text As String)
+        WriteTo STD_ERROR_HANDLE, text & vbCrLf
+    End Sub
+
+    ' WriteConsoleW writes nothing to a file or a pipe, so redirected output goes through WriteFile.
+    Private Sub WriteTo(ByVal stream As Long, ByVal text As String)
+        Dim handle As LongPtr, mode As Long, written As Long
+        handle = GetStdHandle(stream)
+        If GetConsoleMode(handle, mode) <> 0 Then
+            WriteConsoleW handle, StrPtr(text), Len(text), written, 0
+        Else
+            Dim buffer() As Byte
+            buffer = StrConv(text, vbFromUnicode)
+            WriteFile handle, buffer(0), UBound(buffer) + 1, written, 0
+        End If
+    End Sub
+End Module

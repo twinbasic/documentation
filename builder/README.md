@@ -92,8 +92,8 @@ drains SSE clients).
 
 The end-user-facing documentation about how the build pipeline works
 lives on the site itself under [Documentation Development](../docs/Documentation/):
-[Tools and Scripts](../docs/Documentation/Tools.md) is the one-line
-cheat sheet; [tbdocs Internals](../docs/Documentation/Builder.md) is
+[Tools and Scripts](../docs/Documentation/Tools.md) and its seven
+group pages are the cheat sheet; [tbdocs Internals](../docs/Documentation/Builder.md) is
 the architecture overview; [Extending the Builder](../docs/Documentation/Extending.md)
 is the how-to for adding a pipeline task, a markdown-it plugin or a
 render-worker sub-stage.

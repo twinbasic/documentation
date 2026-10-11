@@ -27,6 +27,9 @@ Syntax: **CallByName(** *object* **,** *procname* **,** *calltype* [ **,** *args
 
 The return value is a **Variant** containing whatever the call returned. For methods that return nothing, or for property assignments, the result is **Empty**.
 
+> [!NOTE]
+> In BETA 1005, when the member called raises an error itself with a constant number, as in `Err.Raise 380`, or with the [**Error**](../../Core/Error) statement, **CallByName** raises error -2147352567 (`&H80020009`), *Exception occurred.*, not that number. VB6 raises the member's own number. A number the member passes in a variable, as in `Err.Raise Number`, and a run-time error such as a division by zero arrive unchanged.
+
 ### Example
 
 These three calls use **CallByName** to operate on a control by name. The first sets its **MousePointer** property to the crosshair cursor, the second reads the same property back out, and the third invokes the **Move** method to reposition the control.

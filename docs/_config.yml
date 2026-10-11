@@ -62,6 +62,18 @@ also_build_offline: true
 # `_site/` output is unaffected.
 also_build_pdf: true
 
+# Pictures drawn as SVG (`scripts/shoot_docs.mjs --svg` writes X.svg beside
+# X.png) are shown in place of their PNGs in each output set true here. An
+# output set false shows the PNGs, and the offline tree then holds no picture
+# SVG at all. `offline` is also the help add-in's archive, which the SVGs
+# would make half as large again (18 MB on 37). A page keeps one picture's PNG
+# in every output with `png` in its attribute block:
+# `![alt](X.png){:width="190" height="337" png}`.
+picture_svg:
+  online: true
+  offline: false
+  book: true
+
 # Files written to `_site/` that have no purpose in the offline tree --
 # Pages / crawler metadata and the concatenated `book.html` that feeds
 # the PDF build. tbdocs's Phase 7 skips these when mirroring to

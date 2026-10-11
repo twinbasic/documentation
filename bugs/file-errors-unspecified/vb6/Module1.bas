@@ -1,0 +1,256 @@
+Attribute VB_Name = "Module1"
+Option Explicit
+
+' The VB6 side of bugs/file-errors-unspecified: the same cases as src/Sources/Startup.twin.
+' Build and run it with:  node scripts/bug_repro.mjs vb6 file-errors-unspecified
+' File number 9 is out.txt, so no case closes every file or uses number 9.
+
+Sub Show(ByVal Label As String)
+    Print #9, Label & ": " & Err.Number & " " & Err.Description
+End Sub
+
+Sub MakeFile(ByVal FilePath As String)
+    Dim f As Integer
+    f = FreeFile
+    Open FilePath For Output As #f
+    Print #f, "x"
+    Close #f
+End Sub
+
+Sub Main()
+    On Error GoTo Fail
+    Open App.Path & "\out.txt" For Output As #9
+    Cases
+    Close #9
+    Exit Sub
+Fail:
+    On Error Resume Next
+    Print #9, "unhandled error " & Err.Number & ": " & Err.Description
+    Close #9
+End Sub
+
+Sub Cases()
+    Dim d As String, f As Integer, n As Variant, s As String, b As Byte
+    d = Environ$("TEMP") & "\FileErrorsUnspecified-vb6-" & Hex$(Timer * 100)
+    MkDir d
+    MakeFile d & "\exists.txt"
+    MakeFile d & "\readonly.txt"
+    SetAttr d & "\readonly.txt", vbReadOnly
+    MkDir d & "\full"
+    MakeFile d & "\full\a.txt"
+
+    On Error Resume Next
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\missing.txt" For Input As #f
+    Show "Open missing file For Input"
+    Close #f
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\nofolder\x.txt" For Output As #f
+    Show "Open in missing folder For Output"
+    Close #f
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\nofolder\x.txt" For Append As #f
+    Show "Open in missing folder For Append"
+    Close #f
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\nofolder\x.txt" For Binary As #f
+    Show "Open in missing folder For Binary"
+    Close #f
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\nofolder\x.txt" For Random As #f
+    Show "Open in missing folder For Random"
+    Close #f
+
+    Err.Clear
+    f = FreeFile
+    Open d For Input As #f
+    Show "Open a folder For Input"
+    Close #f
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\readonly.txt" For Output As #f
+    Show "Open read-only file For Output"
+    Close #f
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\a|b.txt" For Output As #f
+    Show "Open invalid name For Output"
+    Close #f
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\exists.txt" For Input As #f
+    Open d & "\readonly.txt" For Input As #f
+    Show "Open with a file number in use"
+    Close #f
+
+    Err.Clear
+    n = GetAttr(d & "\missing.txt")
+    Show "GetAttr missing file"
+
+    Err.Clear
+    n = GetAttr(d & "\nofolder\x.txt")
+    Show "GetAttr in missing folder"
+
+    Err.Clear
+    n = FileLen(d & "\missing.txt")
+    Show "FileLen missing file"
+
+    Err.Clear
+    n = FileDateTime(d & "\missing.txt")
+    Show "FileDateTime missing file"
+
+    Err.Clear
+    SetAttr d & "\missing.txt", vbNormal
+    Show "SetAttr missing file"
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\exists.txt" For Input As #f
+    SetAttr d & "\exists.txt", vbNormal
+    Show "SetAttr open file"
+    Close #f
+
+    Err.Clear
+    Kill d & "\missing.txt"
+    Show "Kill missing file"
+
+    Err.Clear
+    Kill d & "\*.zzz"
+    Show "Kill pattern with no match"
+
+    Err.Clear
+    Kill d & "\readonly.txt"
+    Show "Kill read-only file"
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\open1.txt" For Output As #f
+    Kill d & "\open1.txt"
+    Show "Kill open file"
+    Close #f
+
+    Err.Clear
+    Name d & "\missing.txt" As d & "\new.txt"
+    Show "Name missing file"
+
+    Err.Clear
+    Name d & "\exists.txt" As d & "\readonly.txt"
+    Show "Name onto an existing file"
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\open2.txt" For Output As #f
+    Name d & "\open2.txt" As d & "\renamed.txt"
+    Show "Name open file"
+    Close #f
+
+    Err.Clear
+    MkDir d & "\full"
+    Show "MkDir existing folder"
+
+    Err.Clear
+    MkDir d & "\nofolder\sub"
+    Show "MkDir in missing folder"
+
+    Err.Clear
+    RmDir d & "\nofolder"
+    Show "RmDir missing folder"
+
+    Err.Clear
+    RmDir d & "\full"
+    Show "RmDir folder not empty"
+
+    Err.Clear
+    ChDir d & "\nofolder"
+    Show "ChDir missing folder"
+
+    Err.Clear
+    FileCopy d & "\missing.txt", d & "\copy.txt"
+    Show "FileCopy missing source"
+
+    Err.Clear
+    FileCopy d & "\exists.txt", d & "\nofolder\copy.txt"
+    Show "FileCopy into missing folder"
+
+    Err.Clear
+    n = EOF(99)
+    Show "EOF of file number 99, not open"
+
+    Err.Clear
+    n = LOF(99)
+    Show "LOF of file number 99, not open"
+
+    Err.Clear
+    n = Loc(99)
+    Show "Loc of file number 99, not open"
+
+    Err.Clear
+    n = Seek(99)
+    Show "Seek of file number 99, not open"
+
+    Err.Clear
+    n = FileAttr(99, 1)
+    Show "FileAttr of file number 99, not open"
+
+    Err.Clear
+    Get #99, 1, b
+    Show "Get from file number 99, not open"
+
+    Err.Clear
+    Put #99, 1, b
+    Show "Put to file number 99, not open"
+
+    Err.Clear
+    Print #99, "x"
+    Show "Print to file number 99, not open"
+
+    Err.Clear
+    Line Input #99, s
+    Show "Line Input from file number 99, not open"
+
+    Err.Clear
+    Close #99
+    Show "Close file number 99, not open"
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\exists.txt" For Input As #f
+    Line Input #f, s
+    Line Input #f, s
+    Show "Line Input past the end of the file"
+    Close #f
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\exists.txt" For Binary As #f
+    Seek #f, 0
+    Show "Seek to position 0"
+    Close #f
+
+    Err.Clear
+    f = FreeFile
+    Open d & "\record.dat" For Random As #f Len = 4
+    Put #f, 1, "longer than four bytes"
+    Show "Put a record longer than Len"
+    Close #f
+
+    Err.Clear
+    SetAttr d & "\readonly.txt", vbNormal
+    Kill d & "\*.*"
+    Kill d & "\full\*.*"
+    RmDir d & "\full"
+    RmDir d
+End Sub

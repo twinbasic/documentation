@@ -24,6 +24,9 @@ Syntax:
 *varname*
 : Valid variable name into which data is read.
 
+> [!NOTE]
+> In BETA 1005, **Get** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
+
 Data read with **Get** is usually written to a file with [**Put**](Put). The first record or byte in a file is at position 1, the second record or byte is at position 2, and so on. When *recnumber* is omitted, the next record or byte following the last **Get** or **Put** statement (or pointed to by the last [**Seek**](../Modules/FileSystem/Seek) function) is read. The delimiting commas must be included:
 
 ```tb check_build

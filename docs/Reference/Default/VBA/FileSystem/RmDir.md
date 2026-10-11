@@ -18,6 +18,9 @@ Syntax: **RmDir** *path*
 
 An error occurs when **RmDir** is used on a directory or folder containing files. Use the [**Kill**](Kill) statement to delete all files before attempting to remove a directory or folder.
 
+> [!NOTE]
+> In BETA 1005, **RmDir** raises run-time error -2147467259 (`&H80004005`) when it fails. VB6 raises 75 (*Path/File access error*) for a folder that holds files, and 76 (*Path not found*) for one that does not exist.
+
 ### See Also
 
 - [ChDir](ChDir), [ChDrive](ChDrive), [MkDir](MkDir) statements

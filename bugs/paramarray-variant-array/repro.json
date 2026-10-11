@@ -1,0 +1,36 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS ParamArrayTests\\.ArrayVariable_AssignedToByteArray$",
+      "^FAIL ParamArrayTests\\.VariantVariable_AssignedToByteArray: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.VariantVariable_AssignedToLongArray: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.VariantVariable_AssignedToStringArray: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.VariantVariable_AssignedToDoubleArray: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.VariantVariable_AssignedToVariantArray: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.VariantVariable_Indexed: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.VariantVariable_TwoDimensions_Indexed: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.VariantVariable_WrittenThrough: .*Actual: \"error -2147467259; the caller's element 1 is now 2\"",
+      "^PASS ParamArrayTests\\.VariantVariable_Bounds$",
+      "^PASS ParamArrayTests\\.VariantVariable_IsArrayAndVarType$",
+      "^PASS ParamArrayTests\\.VariantVariable_ForEach$",
+      "^FAIL ParamArrayTests\\.VariantVariable_Join: .*Actual: \"error 13\"",
+      "^PASS ParamArrayTests\\.VariantVariable_ThroughLocalVariant_Indexed$",
+      "^PASS ParamArrayTests\\.VariantVariable_PassedOnByVal_Indexed$",
+      "^FAIL ParamArrayTests\\.VariantVariable_ForwardedToParamArray_Indexed: .*Actual: \"error -2147467259\"",
+      "^PASS ParamArrayTests\\.VariantVariable_ParamArrayPassedWhole_Indexed$",
+      "^FAIL ParamArrayTests\\.VariantVariable_UnpackedAsInIssue1660: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.ModuleLevelVariant_Indexed: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.VariantArrayElement_Indexed: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.UdtVariantField_Indexed: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.ByValParameter_Forwarded_Indexed: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.ByRefParameter_Forwarded_Indexed: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.ClassMethod_EarlyBound_Indexed: .*Actual: \"error -2147467259\"",
+      "^FAIL ParamArrayTests\\.ClassMethod_LateBound_Indexed: .*Actual: \"error -2147467259\"",
+      "^PASS ParamArrayTests\\.VariantInParentheses_Indexed$",
+      "^PASS ParamArrayTests\\.CVarOfArray_Indexed$",
+      "^PASS ParamArrayTests\\.VariantFunctionResult_Indexed$"
+    ]
+  }
+}

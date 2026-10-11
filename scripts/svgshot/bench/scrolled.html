@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>A scrolled page with the annotation layer</title>
+<!--
+  A page scrolled down 880px, with an annotation layer added as shoot_docs's
+  shot-annotate.mjs adds it: one <svg id="tbShotAnnotation">, position: fixed at
+  0, 0, 100vw by 100vh, over everything, drawn in the window's coordinates from the
+  boxes getBoundingClientRect gives (ring, arrow, label and badge round the
+  target), and the mouse pointer, a fixed <div id="tbShotPointer"> holding an
+  <svg>. The picture is in the document's coordinates, with its clip at the scroll
+  offset (the bench passes the window's part of the page, as a shot does), so each
+  layer is placed at its box in the window plus the scroll: a layer placed at the
+  window's own 0, 0 lands a screenful above the picture. The page's own svg (an
+  icon in the target) is drawn in paint order below the layer.
+  html is overflow: hidden, so that there is no viewport scrollbar, which the
+  converter does not draw.
+-->
+<style>
+html { overflow: hidden; }
+body { margin: 0; height: 2600px; background: linear-gradient(#f7f3ea, #e9e1cf); color: #243b53; font: 14px "Segoe UI", sans-serif; }
+.far { position: absolute; left: 30px; top: 60px; font-size: 40px; color: #b7a98a; }
+.card { position: absolute; left: 80px; top: 1000px; width: 300px; height: 90px; padding: 14px 18px; box-sizing: border-box;
+        background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
+.card h3 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+.card svg { position: absolute; right: 14px; top: 14px; fill: #2563a8; }
+.side { position: absolute; left: 520px; top: 1060px; width: 200px; height: 120px; background: #243b53; color: #fff; padding: 12px; box-sizing: border-box; }
+.edge { position: absolute; left: 0; top: 880px; width: 800px; height: 3px; background: #b03a2e; }
+</style>
+<body>
+<div class="far">Far above the window</div>
+<div class="edge"></div>
+<div class="card" id="target"><h3>Download</h3>The page is scrolled.<svg width="20" height="20" viewBox="0 0 16 16"><path d="M8 1v9M4 7l4 4 4-4M2 14h12" style="fill: none; stroke: #2563a8; stroke-width: 1.8px"/></svg></div>
+<div class="side">Another box in the window</div>
+<script>
+  window.scrollTo(0, 880);
+  const NS = "http://www.w3.org/2000/svg";
+  const layer = document.createElementNS(NS, "svg");
+  layer.id = "tbShotAnnotation";
+  layer.setAttribute("xmlns", NS);
+  layer.style.cssText = "position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:2147483647;pointer-events:none;overflow:visible";
+  document.body.appendChild(layer);
+  const el = (name, attrs, parent = layer) => {
+    const e = document.createElementNS(NS, name);
+    for (const k of Object.keys(attrs)) e.setAttribute(k, attrs[k]);
+    parent.appendChild(e);
+    return e;
+  };
+  const t = document.getElementById("target").getBoundingClientRect();
+  // The ring: a white halo under a red band, round to half its height.
+  const ring = { x: t.x - 6, y: t.y - 6, width: t.width + 12, height: t.height + 12, rx: (t.height + 12) / 2, fill: "none" };
+  el("rect", { ...ring, stroke: "#fff", "stroke-width": 5 });
+  el("rect", { ...ring, stroke: "#E5252A", "stroke-width": 3 });
+  // The arrow, from the left of the window to the card's edge, with its head.
+  el("path", { d: `M20 ${t.y + 45} L${t.x - 24} ${t.y + 45}`, fill: "none", stroke: "#fff", "stroke-width": 5 });
+  el("path", { d: `M20 ${t.y + 45} L${t.x - 24} ${t.y + 45}`, fill: "none", stroke: "#E5252A", "stroke-width": 3 });
+  el("polygon", { points: `${t.x - 10},${t.y + 45} ${t.x - 25},${t.y + 37.5} ${t.x - 25},${t.y + 52.5}`, fill: "#E5252A", stroke: "#fff", "stroke-width": 1 });
+  // A label, a pill with text.
+  const s = layer.appendChild(document.createElementNS(NS, "g"));
+  el("rect", { x: t.x + 40, y: t.y - 44, width: 112, height: 27, rx: 13.5, fill: "#fff", stroke: "#E5252A" }, s);
+  const text = el("text", { x: t.x + 96, y: t.y - 30.5, "text-anchor": "middle", "dominant-baseline": "central", fill: "#E5252A" }, s);
+  text.style.cssText = "font: 600 15px 'Segoe UI'";
+  text.textContent = "Click here";
+  // A numbered badge.
+  el("circle", { cx: t.x + t.width + 24, cy: t.y + 20, r: 11, fill: "#E5252A", stroke: "#fff", "stroke-width": 1.5 });
+  const n = el("text", { x: t.x + t.width + 24, y: t.y + 20, "text-anchor": "middle", "dominant-baseline": "central", fill: "#fff" });
+  n.style.cssText = "font: 600 13px 'Segoe UI'";
+  n.textContent = "1";
+  // The mouse pointer.
+  const d = document.createElement("div");
+  d.id = "tbShotPointer";
+  d.style.cssText = `position:fixed;left:${t.x + 120}px;top:${t.y + 60}px;width:12px;height:19px;pointer-events:none;z-index:2147483647`;
+  d.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="19" viewBox="0 0 12 19"><path d="M0.5 0.5 V15.5 L4 12.3 L6.6 18.3 L9 17.3 L6.4 11.4 H11.4 Z" fill="#fff" stroke="#000" stroke-width="1" stroke-linejoin="round"/></svg>';
+  document.body.appendChild(d);
+</script>
+</body>
+</html>

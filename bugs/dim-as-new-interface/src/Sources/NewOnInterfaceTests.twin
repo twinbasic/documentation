@@ -1,0 +1,49 @@
+' Regression tests for #2486 and its follow-up, as compile cases: each line that
+' ends in a  ' CASE <Name>: <expected>  comment must give that diagnostic on that
+' line (a code, "error" for any error, or "none"). tbrun --tests checks them.
+' New needs a class; an Interface has none, so every way of constructing one is
+' a compile error, as New stdole.IUnknown is.
+
+[InterfaceId("E5B8C0A1-0000-4000-8000-0000000000D1")]
+Interface IParent
+    Function F() As Long
+End Interface
+
+[InterfaceId("E5B8C0A1-0000-4000-8000-0000000000D2")]
+Interface IChild Extends IParent
+    Function G() As Long
+End Interface
+
+Class Implementer
+    Implements IParent
+    Private Function IParent_F() As Long Implements IParent.F
+        Return 1
+    End Function
+End Class
+
+Class Holder
+    Public Item As New IParent  ' CASE AsNew_ClassField: error
+End Class
+
+Module NewOnInterfaceTests
+
+    Private ModuleLevel As New IParent  ' CASE AsNew_ModuleVariable: error
+
+    ' Fixed in #2486 (BETA 1005): New on an Interface is refused with TB5074.
+    Private Sub NewExpressions()
+        Dim a As IParent = New IParent  ' CASE New_ProjectInterface: TB5074
+        Dim b As IChild = New IChild  ' CASE New_DerivedInterface: TB5074
+        Dim c As ErrorContext = New ErrorContext  ' CASE New_PackageInterface: TB5074
+        Dim d As stdole.IUnknown = New stdole.IUnknown  ' CASE New_TypeLibraryInterface: TB5074
+        Dim e As IParent = New Implementer  ' CASE New_ClassThatImplements: none
+    End Sub
+
+    ' Left in BETA 1005: Dim ... As New on an Interface compiles.
+    Private Sub AsNewDeclarations()
+        Dim p As New IParent  ' CASE AsNew_ProjectInterface: error
+        Dim q As New IChild  ' CASE AsNew_DerivedInterface: error
+        Dim r As New ErrorContext  ' CASE AsNew_PackageInterface: error
+        Dim s As New Implementer  ' CASE AsNew_Class: none
+    End Sub
+
+End Module

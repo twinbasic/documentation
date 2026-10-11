@@ -127,10 +127,10 @@ In twinBASIC:
 - Cookies start at 1 for each source object and increase by one for every connection made. A cookie is not used again after its connection ends.
 - A sink that does not answer for the outgoing interface fails with `E_NOINTERFACE` (`&H80004002`), where the COM contract names `CONNECT_E_CANNOTCONNECT`. VB6 returns `E_NOINTERFACE` too. An object of an ordinary twinBASIC class is such a sink, even when the class implements **IDispatch**, and so is a class declared **NotDispatchable** that implements it. A twinBASIC class cannot answer for the identifier, because the identifier of a class's event interface changes with every build and so cannot be declared. A sink that works is the object twinBASIC creates for a **WithEvents** variable, which **EnumConnections** returns (see the example).
 - A sink that is already connected to the point is not connected a second time. **Advise** raises no error, returns 0, and adds nothing.
-- Passing **Nothing** is a defect in BETA 997, described in the warning below.
+- **Nothing** as the sink fails with `E_POINTER` (`&H80004003`), as the COM contract says.
 
-> [!WARNING]
-> BETA 997 has a defect: **Advise** with **Nothing** as the sink ends the program with an access violation, and any unsaved data is lost. The COM contract returns `E_POINTER`. VB6 ends with an access violation as well. Test the sink for **Nothing** before calling **Advise**.
+> [!NOTE]
+> In VB6, **Advise** with **Nothing** as the sink ends the program with an access violation.
 
 ### Unadvise
 {: .no_toc }
@@ -144,8 +144,10 @@ Syntax: *object*.**Unadvise** *dwCookie*
 
 The connection point releases the reference it held to the sink, and the source stops calling it. An event that the source raises afterwards does not reach that sink.
 
-> [!WARNING]
-> BETA 997 has a defect: **Unadvise** with a cookie that names no connection, 0 included, succeeds and does nothing, where the COM contract returns an error (`E_POINTER`). VB6 returns `CONNECT_E_NOCONNECTION` (`&H80040200`) for a cookie it never issued. A caller that releases a connection twice, or with a wrong cookie, is told that it worked.
+A cookie that names no connection, 0 included, fails with `CONNECT_E_NOCONNECTION` (`&H80040200`), and nothing changes.
+
+> [!NOTE]
+> VB6 returns `CONNECT_E_NOCONNECTION` for a cookie it never issued, and ends with an access violation for the cookie 0.
 
 A **WithEvents** variable whose connection was ended with **Unadvise** can still be set to **Nothing** without an error.
 
@@ -338,7 +340,7 @@ silentContainer.EnumConnectionPoints
 Debug.Print Err.Number                                     ' 445
 ```
 
-The sink that twinBASIC registers for a **WithEvents** variable can be taken from **EnumConnections** and advised by hand. Advising it while it is still connected adds nothing and returns 0. After **Unadvise** it can be advised again, and the new cookie is a new number. Its **IDispatch** runs the handler: event 1 of **Counter** is **Changed**, and event 2, **Finished**, has no handler to run. An ordinary object is not a sink, and **Unadvise** with a cookie nobody holds does nothing:
+The sink that twinBASIC registers for a **WithEvents** variable can be taken from **EnumConnections** and advised by hand. Advising it while it is still connected adds nothing and returns 0. After **Unadvise** it can be advised again, and the new cookie is a new number. Its **IDispatch** runs the handler: event 1 of **Counter** is **Changed**, and event 2, **Finished**, has no handler to run. An ordinary object is not a sink, and **Unadvise** with a cookie nobody holds fails:
 
 ```tb check_run projname=com-iconnpoint
 Dim c As New Counter
@@ -374,7 +376,7 @@ Dim refused As Long = point.Advise(notASink)
 Debug.Print Hex$(Err.Number)               ' 80004002
 Err.Clear
 point.Unadvise 99
-Debug.Print Err.Number                     ' 0
+Debug.Print Hex$(Err.Number)               ' 80040200
 ' Output:
 ' 1
 ' 0
@@ -384,7 +386,7 @@ Debug.Print Err.Number                     ' 0
 ' D: 2
 ' D: 41
 ' 80004002
-' 0
+' 80040200
 ```
 
 A **WithEvents** variable of a type from a type library works in the same way. This class holds the sink object of the WMI scripting library, a source of events that every Windows installation has. It needs a reference to *Microsoft WMI Scripting V1.2 Library* in the project:

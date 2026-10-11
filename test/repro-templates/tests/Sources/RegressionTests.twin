@@ -1,0 +1,13 @@
+' The issue's regression tests. One [TestCase] Sub per behaviour, named for it,
+' asserting the correct result; tbrun --tests runs each in the compiler's test
+' mode and prints PASS or FAIL. A compile-time defect is a compile case instead:
+' a line ending in the comment  ' CASE <Name>: TB5001  (or  : none).
+[TestFixture]
+Module RegressionTests
+
+    [TestCase]
+    Public Sub Example()
+        Assert.Strict.AreEqual 2, 1 + 1
+    End Sub
+
+End Module

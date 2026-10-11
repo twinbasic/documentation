@@ -111,7 +111,7 @@ End Sub
 
 ## Differences from Form
 
-Because the MDIForm is a frame, not a drawing surface, it does not have the following members of the **Form** interface. Used on the MDIForm's own class, as in `MDIForm1.ForeColor`, each is a compile error. Reached through a variable declared `As Form`, a property raises run-time error 380 (*Invalid property value*) and a method raises 438 (*Object doesn't support this property or method*). Reached through a variable declared `As Object`, each raises an error; in VB6 that error is 438.
+Because the MDIForm is a frame, not a drawing surface, it does not have the following members of the **Form** interface. Used on the MDIForm's own class, as in `MDIForm1.ForeColor`, each is a compile error. Reached through a variable declared `As Form`, a property raises run-time error 380 (*Invalid property value*) and a method raises 438 (*Object doesn't support this property or method*). Reached through a variable declared `As Object`, each raises error 438, as in VB6.
 
 | Category                     | Members                                                                              |
 |------------------------------|--------------------------------------------------------------------------------------|
@@ -122,7 +122,7 @@ Because the MDIForm is a frame, not a drawing surface, it does not have the foll
 | Other                        | **KeyPreview** (and the [**Form**](../Form/)'s **KeyDown** / **KeyUp** / **KeyPress** events do not exist on **MDIForm**), **MDIChild** (reads **False** through a variable declared `As Form`), **NegotiateMenus**, **Palette**, **PaletteMode** |
 
 > [!NOTE]
-> In twinBASIC, unlike VB6, an MDIForm also has [**Refresh**](#refresh), [**PrintForm**](#printform) and [**Point**](#point). **Print** on the MDIForm's own class compiles, and raises run-time error &H80004002 (*No such interface supported*). BETA 997 raises &H80020006 (*Unknown name*) in place of 438 for a member reached through `As Object`, and **CallByName** raises &H80004005.
+> In twinBASIC, unlike VB6, an MDIForm also has [**Refresh**](#refresh), [**PrintForm**](#printform) and [**Point**](#point). **Print** on the MDIForm's own class compiles, and raises run-time error &H80004002 (*No such interface supported*).
 
 ## Properties
 
@@ -157,10 +157,7 @@ When **True** (default), loading an MDI child class also shows it; when **False*
 ### BackColor
 {: .no_toc }
 
-The colour painted in the MDI client area, as an **OLE_COLOR**. Defaults to the system **vbApplicationWorkspace** colour. Used as the canvas behind [**Picture**](#picture) and behind every MDI child's title bar and outer border.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1` or `&H8000001F`, stores the value, so a later read returns it. While the form is loaded and not yet shown the assignment raises no error; once it is shown it raises error 5, and a handled error leaves the invalid colour in force. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The colour painted in the MDI client area, as an **OLE_COLOR**. Defaults to the system **vbApplicationWorkspace** colour. Used as the canvas behind [**Picture**](#picture) and behind every MDI child's title bar and outer border. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### Caption
 {: .no_toc }

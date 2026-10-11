@@ -115,8 +115,8 @@ button.copy-code { display: none; }
    already scaled down to fit (measured: 0.96x -> 0.84x, 0.58x -> 0.51x).
    Under `zoom` those four are untouched: they are wider than the column, so
    `max-width: 100%` still decides their size. */
-.svg-controls { display: none; }
-.svg-container svg {
+.fig-controls { display: none; }
+.fig-container > svg {
   display: block;            /* with the auto margins below, centres a  */
   margin-inline: auto;       /* diagram narrower than the text column   */
   max-width: 100%;

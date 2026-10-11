@@ -21,6 +21,9 @@ Syntax:
 *varname*
 : Name of the variable containing data to be written to disk.
 
+> [!NOTE]
+> In BETA 1005, **Put** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*). It raises the same error for data longer than the record length of a **Random** file, where VB6 raises 59 (*Bad record length*).
+
 Data written with **Put** is usually read from a file with [**Get**](Get).
 
 The first record or byte in a file is at position 1, the second record or byte is at position 2, and so on. When *recnumber* is omitted, the next record or byte after the last **Get** or **Put** statement, or pointed to by the last [**Seek**](../Modules/FileSystem/Seek) function, is written. The delimiting commas must be included:

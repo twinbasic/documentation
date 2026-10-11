@@ -25,6 +25,9 @@ Syntax:
 When the procedure is called, each argument supplied in the call becomes a corresponding element of the **Variant** array. If no arguments are supplied for the **ParamArray** position, the array is empty.
 
 > [!NOTE]
+> In BETA 1005, when an argument is a **Variant** variable that holds an array, its element cannot be used as an array: `Args(0)(1)`, `Args(0)(1) = x`, and `b = Args(0)` where *b* is a dynamic array of any type raise run-time error -2147467259, *Unspecified error*, and so does passing `Args(0)` on to another **ParamArray** that indexes it; **Join** raises error 13. **LBound**, **UBound**, **IsArray**, **VarType** and **For Each** work on the element, and an argument that is an array variable or an expression is not affected. VB6 raises no error. Assign the element to a **Variant** first (`v = Args(0)`), or have the caller put the argument in parentheses, which passes a copy.
+
+> [!NOTE]
 > A procedure that defines a **ParamArray** parameter cannot be called using named-argument syntax. All arguments to such a procedure must be positional. To omit individual elements within the **ParamArray** position at a call site, leave the position blank between commas.
 
 ### Example

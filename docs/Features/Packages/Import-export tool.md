@@ -365,7 +365,7 @@ None of these commands builds a project. The IDE, `twinBASIC.exe`, accepts
 `--buildAndExit32` and `--buildAndExit64` next to a project path, but it prints nothing,
 exits `0` when an error is in code nothing calls, and does not exit at all for an error the
 build reaches, so it cannot check a build unattended. The repository behind this documentation has
-`scripts/tbbuild.mjs` for that; see [Tools and Scripts](../../Documentation/Development/Tools#tbbuild).
+`scripts/tbbuild.mjs` for that; see [Compiler Harness](../../Documentation/Development/Tools-Compiler#tbbuild).
 
 ## See also
 

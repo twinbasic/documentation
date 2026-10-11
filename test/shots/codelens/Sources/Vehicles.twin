@@ -1,0 +1,24 @@
+[InterfaceId("1E913189-EC7F-48AF-A408-A26B433F1203")]
+Interface IVehicle Extends IUnknown
+    Sub Honk()
+End Interface
+
+Class cVehicle
+    Implements IVehicle
+    Private Sub IVehicle_Honk() Implements IVehicle.Honk
+        Debug.Print "HONK!"
+    End Sub
+End Class
+
+Class cCar
+    Implements IVehicle Via cVehicle = New cVehicle
+End Class
+
+Module Garage
+    Sub DoHonk()
+        Dim myCar As New cCar
+        Dim myOtherCar As New cCar
+        myCar.Honk
+        myOtherCar.Honk
+    End Sub
+End Module

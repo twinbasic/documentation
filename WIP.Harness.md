@@ -171,7 +171,7 @@ short: an entry written from the two targets someone tried, a Sub and a Const, s
 name (the page's, the compiler's token table's, `--names`) at each of about 60 sites in
 [scripts/lib/attribute-sites.mjs](scripts/lib/attribute-sites.mjs), in each argument shape ---
 and lays the answers against the page. Its reader-facing description is
-[Tools and Scripts](docs/Documentation/Tools.md#sweep-attributes); this is why it is built as
+[Tools and Scripts](docs/Documentation/Tools-Samples.md#sweep-attributes); this is why it is built as
 it is.
 
 **Against BETA 987: 34,526 probes in 134 builds, 8 to 16 minutes on four lanes.** That is
@@ -217,9 +217,7 @@ other 193 are refused at every site.
   run cut short.
 
 **It finds compiler crashes the documentation never would:** a crash in a batch is
-isolated by halving down to one probe beside the canaries, which is how a bare
-`[PopulateFrom]` on an Enum is found to kill the compiler (twinbasic/twinbasic#2450; BETA 997
-does not crash).
+isolated by halving down to one probe beside the canaries.
 
 **Read the report's "accepted at most sites" section before believing an acceptance.**
 `[Description]` is taken at 53 of 61 sites and `[Hidden]` and `[Restricted]` at 42: either
@@ -328,8 +326,8 @@ Running in one process gives four rules:
   a cleanup first; `sweep_attributes` uses it to write the report of what it had learned
   (`salvage`), and `tb-cdp` drops a frame that is not JSON instead of throwing from an event
   callback.
-- **The name.** tb-ide already exports a `buildProject(c)` that builds an exe through an open
-  connection, and the notes below mean that one; the new function is `compileProject`.
+- **The name.** tb-ide exports a `buildProject(c)` that builds an exe through an open
+  connection, and the notes below mean that one; `compileProject` is the compile-only function.
 
 Two further rules:
 
@@ -521,7 +519,7 @@ Build, then reads the DEBUG CONSOLE back over CDP. The staging is
 [scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs), which the add-in harness shares.
 The probe is a module with a `[RunAfterBuild]` Sub, which the IDE runs once the exe is
 linked. Reader-facing documentation is the [`tbrun.mjs` entry in
-Tools.md](docs/Documentation/Tools.md).
+Tools-Compiler.md](docs/Documentation/Tools-Compiler.md#tbrun).
 
 **The script owns the tree because of a silent trap.** A project whose `project.buildPath`
 is still the default `${SourcePath}\Build\...` template opens a native *Save* dialog when
@@ -642,6 +640,48 @@ outstanding. The sweep is a before/after snapshot diff restricted to processes t
 on an image allowlist, *and* windowless --- a new one that has a window is reported and left
 alone, since that cannot be told from a copy the user opened. `--no-reap` turns it off, and
 concurrent runs driving the same server should use it and sweep once at the end.
+
+### Running a project's test cases
+
+twinBASIC's own unit-test form is a Module marked `[TestFixture]` whose parameterless Subs
+are marked `[TestCase]` and check with the Assert package. **BETA 1005 has no way for a
+person to run one.** A `[TestCase]` Sub gets no CodeLens "run" link (an unmarked Sub in the
+same module gets one), the IDE's handler for the compiler's `custom/provideTests` request is
+an empty function in `main.js`, and the compiler never sent it in the runs here. Called from
+`Sub Main` or a `[RunAfterBuild]` Sub, a failed assertion raises -353703420 (`&HEAEAEA04`,
+*Assertion FAILED*) and stops the run at the error panel; `On Error` does not catch it, so a
+probe cannot count failures itself. (Measured with `tbrun`: the run ends at the first failed
+assertion, exit 5.)
+
+**The compiler has a test mode, and `tbrun --tests` uses it.** The CodeLens "run" link sends
+the debugger socket `evaluate` with the procedure's name as the expression
+(`twinbasic.runCode` in `main.js`). The compiler also reads `isTest` in that request (its
+strings list `expression`, `context`, `isTest`, `isStartupExecution`), and with `isTest: true`
+it runs the procedure as a test: the response is `success` with no `body.error` for a pass,
+and for a failure `body.error` with `body.lineNumber`, the case ends there and nothing stops:
+
+| the case | `body.error` |
+|---|---|
+| a failed `AreEqual` | `ASSERTION FAILED: the two values are not equal. \r\n Expected: 3 [Integer]\r\n   Actual: 2 [Integer]. ` |
+| `Inconclusive "x"` | `ASSERTION FAILED: [INCONCLUSIVE] x` |
+| an unhandled `Err.Raise 5` | `(runtime error 5: Invalid procedure call or argument)` |
+| an access violation | `(runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)`, line -1 |
+| a failed assertion under `On Error Resume Next` | the assertion's message: `On Error` does not hide it |
+
+A case that fails at its first assertion runs no further. The next case runs normally, even
+after an access violation. `Debug.Print` in a case writes to the DEBUG CONSOLE. A name that is
+not there is `success: false` with a compile-error message. An unmarked Sub runs the same way,
+so the attributes matter only to the runner that lists the cases: `scripts/lib/tb-tests.mjs`
+finds them in the sources (`[TestFixture]` before `Module`, `[TestCase]` before a
+parameterless `Sub`) and refuses one it cannot call. All measured on BETA 1005 over CDP.
+
+**`Assert.Exact` compares the type too**: `Assert.Exact.AreEqual 5, Err.Number` fails, 5 is
+an `Integer` and `Err.Number` a `Long`. The tests here use `Assert.Strict`.
+
+**A compile-time defect is a compile case**: a line ending `' CASE <Name>: <codes>`,
+`: error` or `: none`, judged against the diagnostics of the compile (`judgeCompiles`). `error`
+is for a defect whose fix may choose its own diagnostic, so the case does not fail on a code it
+cannot predict. A project with compile errors runs none of its `[TestCase]`s.
 
 ### Measuring LLVM
 
@@ -857,15 +897,15 @@ from outside the IDE.
   it started. So can an IDE of a run from another session, which is why a check of the
   registry waits until no other session's run is going.
 
-**An association that names the temp folder is never put back.** A run that starts while
-another run's IDE copy is open finds the association pointing at that copy. Put back at the
-end, it would point `.twinproj` files at a folder that has been deleted, and other sessions
-run `examples.bat` while add-in tests run copies, so the overlap is ordinary. `startTidy`
-notes whether the association it recorded names the temp folder, and if it did, `finishTidy`
-leaves the association as the IDEs set it and says so; the next IDE started from a real
-install points it at that install. An association found naming a deleted copy makes
-`.twinproj` files open nothing until an IDE is started from a real install. Fix it
-by hand if you find it so.
+**An association that names the temp folder is put back pointing at the newest install.** A
+run that starts while another run's IDE copy is open finds the association pointing at that
+copy. Put back as found, it would point `.twinproj` files at a folder that has been deleted,
+and other sessions run `examples.bat` while add-in tests run copies, so the overlap is
+ordinary. `startTidy` notes whether the association it recorded names the temp folder, and if
+it did, `finishTidy` puts it back with every path to a copy's `twinBASIC.exe` replaced by
+`findIde()`'s, the newest install on the Desktop (owner, 2026-10-10): what that install's IDE
+writes when it is next started. With no install outside the temp folder it leaves the
+association as the IDEs set it and says so.
 
 **The recent list is put back as it was found, not only swept.** On a real list the IDE
 changes it by itself while a run's projects are on it, in two ways, both in
@@ -1382,10 +1422,9 @@ probe lanes:
   been ended.
 
 **Timing, BETA 995:** the thirteen lanes other than widgets (24 s alone on BETA 997) take about two minutes at the default two at a time
-(the env lane is 16 s alone, the help lane 15 to 18 s, of which its sixteen cases are about 6 s). Typical lane costs (BETA 983): an add-in build about 10 s, a host IDE
-about 9 s, scenario 2 s; the keys lane 28 s (about 9 s of it pressing keys), panes 23 s,
-symbols and ideserver about 9 s each (they build nothing), appdata 18 s, arch 56 s (two builds
-and two switches of target), reload 47 s (two builds and two restarts), entry 19 s.
+(the env lane is 16 s alone, the help lane 15 to 18 s, of which its sixteen cases are about 6 s). Typical lane costs: an add-in build about 10 s, a host IDE
+about 9 s, a scenario 2 s; the slowest lanes are arch (56 s: two builds and two switches of
+target) and reload (47 s: two builds and two restarts).
 
 **Known gaps and behaviours:**
 

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Closed drop-down lists</title>
+<!--
+  The label of a closed <select> is no DOM text: snapshot-svg.mjs's
+  paintSelect sets it in the content box less Chromium's internal padding,
+  aligned by text-align-last, else text-align. A <select> does not take
+  text-align from its table cell; the IDE's Library References table centres
+  its labels with a rule of its own. A label too long for the box runs under
+  the arrow.
+-->
+<style>
+body { margin: 0; background: #fff; color: #000; font: 14px "Segoe UI", sans-serif; }
+/* Separate borders: the converter draws collapsed ones doubled, and the IDE has none. */
+table { position: absolute; left: 10px; top: 10px; border-spacing: 0; border-left: 1px solid #ccc; border-top: 1px solid #ccc; }
+td { border-right: 1px solid #ccc; border-bottom: 1px solid #ccc; padding: 4px 8px; }
+select { width: 150px; font: inherit; }
+.padded select { padding: 0 7px; }
+</style>
+<body>
+<table>
+  <tr><td>start</td><td><select><option>auto</option></select></td><td><select><option>fusionAllTo32</option></select></td></tr>
+  <tr style="text-align:center"><td>inherited center</td><td><select><option>auto</option></select></td><td><select><option>fusionAllTo32</option></select></td></tr>
+  <tr class="padded" style="text-align:center"><td>center, padded</td><td><select><option>auto</option></select></td><td><select><option selected>fusionAllTo32</option></select></td></tr>
+  <tr><td>right</td><td><select style="text-align:right"><option>auto</option></select></td><td><select style="text-align:right"><option>fusionAllTo32</option></select></td></tr>
+  <tr><td>text-align-last</td><td><select style="text-align-last:center"><option>auto</option></select></td><td><select style="text-align:right;text-align-last:left"><option>fusionAllTo32</option></select></td></tr>
+  <tr><td>too long</td><td><select style="width:80px"><option>a label too long to show</option></select></td><td><select style="width:80px;padding:0 7px"><option>a label too long to show</option></select></td></tr>
+  <tr><td>disabled</td><td><select disabled><option>disabled</option></select></td><td></td></tr>
+</table>
+</body>
+</html>

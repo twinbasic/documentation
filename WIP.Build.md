@@ -91,7 +91,7 @@ yet designed; the plan holds measurements and open questions for them.
 
 ## Tooling policy
 
-### Tooling is JavaScript, and the two remaining `.py` files each have a reason
+### Tooling is JavaScript, and the three remaining `.py` files each have a reason
 
 Everything under `scripts/`, `builder/`, `lib/`, `book/`, `eval/` and `wisdom/` is Node.js.
 One trap: **a tool that rewrites a file must preserve its line endings
@@ -100,7 +100,7 @@ universal-newline translation, rewriting any LF file it touches to CRLF on Windo
 --- a whole-file diff for a one-character fix. Some of the tree's markdown files
 are LF, so the trap is live.
 
-Two `.py` files stay, and neither is an oversight:
+Three `.py` files stay, and none is an oversight:
 
 - **`scripts/impexp.py`** is not tooling. It is a published download, declared in
   `_config.yml`'s `bundle_extra` beside `impexp.mjs` and offered to readers on
@@ -110,6 +110,14 @@ Two `.py` files stay, and neither is an oversight:
   use produces wrong CFF2 metrics --- a one-line build-configuration defect in harfbuzzjs,
   documented with the evidence in [WIP.Fonts.md](WIP.Fonts.md), which also holds the full
   account of the blocked JavaScript port.
+- **`scripts/subset_font.py`** cuts each font an SVG screenshot embeds down to the
+  characters it draws (`shoot_docs --svg`, [WIP.Screenshots.md](WIP.Screenshots.md)). It is
+  fontTools, the subsetter `build_fonts.py` already relies on. harfbuzzjs was tried first and
+  removed (owner: "don't mess with harfbuzz"); it is the library whose CFF2 defect keeps
+  `build_fonts.py` in Python. It loads a font without recalculating glyph bounds, because the
+  IDE's icon font stores loose glyph boxes and recalculating them moved icons a pixel, and it
+  keeps the hinting (owner's decision) and the font's timestamp, so a picture's SVG is the same
+  bytes from one run to the next.
 
 One `.ps1` exists for a third kind of reason. **`scripts/lib/tb-launch.ps1`** is Win32
 calls --- `CreateDesktop`, `CreateProcess` with `STARTUPINFO.lpDesktop`, and the job object
@@ -119,6 +127,58 @@ without a native FFI addon. Adding one for a few calls would mean
 `scripts/lib/tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so it never meets the
 execution policy. See [Compiling a twinBASIC project without the IDE in front of
 you](WIP.Harness.md#compiling-a-twinbasic-project-without-the-ide-in-front-of-you).
+
+One folder holds a program written in twinBASIC itself, for a fourth reason.
+**`scripts/imagestrip/`** strips the metadata from an SVG file and from the images a CSS or
+SVG file embeds as `data:` URIs, at any depth, for the IDE's own stylesheets. Its users are
+the twinBASIC developers, who run it in their own build, which has twinBASIC and need not
+have Node, so a Node edition of the program would serve nobody. Nothing in this repository
+runs it but the half of `test/compact-image.test.mjs` that is skipped unless `IMAGESTRIP_EXE`
+names its exe, because no gate can build it. It is laid out as a reproducer under `bugs/`
+is, an exported tree in `src/` with `imagestrip.twinproj` packed from it beside it, and
+both are checked out byte for byte so that the two agree; nothing checks that they do, so
+a change to `src/` is packed again by hand. See [Tools and
+Scripts](docs/Documentation/Tools-IDE.md#imagestrip).
+
+**Its own unit tests are twinBASIC `[TestFixture]` modules in `src/Sources/Tests/`**, with
+the images they build in `TestImages`, run by `tbrun --tests` (owner, 2026-10-10), which reads
+every `.twin` under `Sources/`. `TestImages.Cat` copies each `ParamArray` element through a
+`Variant` before assigning it to an array, around a twinBASIC defect queued in
+BUGS-TO-REPORT.md.
+
+**Its reference is `stripFile` in `scripts/lib/compact-image.mjs`.** The test runs the program
+over a corpus of CSS and SVG files and the newest install's stylesheets, and compares its
+output, summary line and reports with `stripFile`'s byte for byte; the negative control (a
+build without one rule) fails it. The two are kept in step by hand: a change to what one
+strips is a change to both. `compactImage` in the same module is what the SVG screenshots
+(`scripts/svgshot/snapshot-svg.mjs`, [Pictures as SVG](#pictures-as-svg)) embed their images
+through, so a change to what it strips reaches their SVGs on the next `shoot_docs --svg` run.
+What both strip was decided by the owner, 2026-10-10:
+
+- **An embedded image keeps its pixels and any notice of whose it is, and nothing else.**
+  The IDE's icons carry GIMP's EXIF, IPTC and XMP profiles (12 KB around a 28-pixel icon),
+  "Created with GIMP", Paint.NET's and ImageReady's names, CorelDRAW's and Illustrator's
+  comments and metadata, "Optimized with ezgif" in a GIF; its lock icon, from fileformat.info,
+  carries a CC BY-NC-SA attribution (Title, Author, Description with the source, Copyright)
+  that must stay with it. So a PNG keeps its image and colour chunks and the text chunks that
+  name a picture, its author, source or terms; its colour chunks go when they say only sRGB
+  (GIMP's built-in profile, 672 bytes in every PNG it saves, known by its colourants and
+  curves, with `gAMA` and `cHRM`). A JPEG keeps its coding segments, JFIF, ICC and Adobe's; a
+  GIF all but its comments; an SVG all but its declaration, an empty DOCTYPE, comments and
+  metadata; and any profile, comment or metadata that gives a value to an author or a rights
+  field stays whole, as does an EXIF that turns the picture.
+- **An image is named by its bytes.** The IDE labels a JPEG and a GIF `image/png`, and two
+  PNGs `/png` (BETA 1005).
+- **Recursive, so that CSS and SVG are handled alike.** An SVG image is stripped as an SVG
+  file is, images inside it included; one of the IDE's Illustrator icons holds a PNG with a
+  2.6 KB ICC profile in base64 broken by CR LF, which is why base64 is read as a browser
+  reads it.
+
+Two differences between the program and `compactImage` are deliberate and are `stripFile`'s
+too: a BMP is only relabelled, not converted to a PNG (that is compaction, and would need a
+PNG encoder in twinBASIC), and an image keeps its encoding --- base64 rewritten only when its
+image changed, a text SVG cut in place, escapes and all --- where `compactImage` writes every
+SVG as percent-encoded text.
 
 Two `.mjs` files also run a little PowerShell inline, for Windows state Node has no API
 for, and neither adds a file: `scripts/tbrun.mjs` takes a process snapshot with
@@ -726,7 +786,7 @@ The decisions, each with what it rules out:
   `scripts/` (`biome.jsonc`), because `check_tree_fresh.mjs` would not see a change to
   what the build imports. `impexp.mjs` is the one exception, by name in the rule: it
   imports nothing, the build already publishes it through `bundle_extra`, and
-  `check_tree_fresh.mjs` now watches it and `add-in/`. Not the compiler executable,
+  `check_tree_fresh.mjs` watches it and `add-in/`. Not the compiler executable,
   which CI does not have, and not `impexp.py`, which CI's Node job need not have.
 - **`--serve` writes it, `--dry-run` does not.** The preview has the page that links to
   it, and packing takes about 100 ms; the help archive is skipped under `--serve` because
@@ -743,8 +803,8 @@ The decisions, each with what it rules out:
 ### Build-time counts as named values
 
 `{{tbdocs:pages}}` in a page renders as the number of pages the build
-discovered. Designed in [builder/PLAN-counts.md](builder/PLAN-counts.md),
-implemented in [builder/counts.mjs](builder/counts.mjs), documented for
+discovered. Design: [builder/PLAN-counts.md](builder/PLAN-counts.md);
+code: [builder/counts.mjs](builder/counts.mjs); documented for
 contributors at [Authoring
 Pages](docs/Documentation/Authoring.md#counts-the-build-fills-in). Twelve names
 are live, and most of the prose is still hand-written.
@@ -1000,3 +1060,92 @@ are what say it does not.
 **CI never downloads.** `process.env.CI` selects offline mode (`--fetch-assets` / `--no-fetch-assets` override it), and in offline mode a referenced-but-uncommitted asset throws rather than fetching. If CI could fetch, an author who wrote the markdown but forgot to commit the image would get a green build while the published site went on hotlinking a third party -- the exact failure the whole mechanism exists to prevent. A fetch *failure* in dev mode is softer: warn, keep building, and flip the exit code, so one dead video doesn't block a local preview.
 
 The render-side halves are `videoLinkPlugin` (marked link -> poster frame + outbound link) and `remoteImagePlugin` (user-attachment `<img src>` -> the vendored copy), both in [builder/render.mjs](builder/render.mjs). Both emit **root-absolute** paths, because the PDF book flattens every page into one document and a page-relative src resolves against the book root there.
+
+### Pictures in two themes
+
+**The rule:** `X.png` is the dark picture, `X.light.png` beside it the light one, and a page
+names only `X.png`. `themePairPlugin` ([builder/render.mjs](builder/render.mjs)) writes an
+image whose file has a light sibling as two `<img>`, light then dark, with the same alt and
+attributes (the light one's width and height scaled, below), classes `pic-light` / `pic-dark` and both `loading="lazy"`; a link to such a picture
+becomes two links the same way (the feature map's "Full size" opens the picture the reader
+sees). The online and offline trees, and so the help archive, carry both; the book carries the
+light one alone, a plain `<img>` (`lightOnly` in
+[builder/theme-pictures.mjs](builder/theme-pictures.mjs), step 0 of `bookChapterTransform`).
+`scripts/shoot_docs.mjs` writes the pairs ([WIP.Screenshots.md](WIP.Screenshots.md)). Why:
+
+- **Not `<picture>` with a media query.** It follows the OS only, never the toggle.
+- **Lazy, because a hidden lazy image is never fetched.** Checked with puppeteer in all four modes (light and
+  dark stored, system with each OS scheme): only the shown theme's images are requested, and
+  toggling requests the other theme's images in view, and nothing else. The book's must not be
+  lazy: paged.js raises on an image that has not loaded. **Anything that waits for a page's
+  images must skip the hidden one**, whose `decode()` never settles: `gotoPage` in
+  `scripts/lib/axe-scan.mjs` waits only for images that are laid out, made eager (else
+  `check.bat` hangs until the protocol timeout).
+- **CSS, no script.** The head script sets `data-theme` before first paint, so there is no
+  flash. `custom.scss` hides `.pic-light` under `dark-theme` (both of its selectors, so both
+  dark modes) and `.pic-dark` under `light-theme`, its exact complement in
+  `docs/_sass/custom/_theme.scss`. No rule gives the shown image a `display` of its own.
+- **The sibling comes from the static-file list**, the set `relativeLinksPlugin` already
+  resolves against, never from the disk: a worker has the list and no business reading the tree.
+- **A page that names a `.light.png` fails the build** (markdown image or link, or raw HTML
+  `src`/`href`): it would show the light picture in both themes. **A `.light.png` with no
+  `X.png` beside it fails `discover`**: it would never be shown. Nothing else needs to know: a
+  `.light.png` is an ordinary static file to the publish allowlist, the link check and the index
+  audit, and each one adds one to the page baseline's static-file count.
+- **Each is shown at its own size, at one scale.** The page's `{:width height}` is the dark
+  picture's; the light `<img>` gets it scaled by the two files' pixel sizes, which `discover`
+  reads from their PNG headers on the main thread (`pairSizes`) and the workers receive with the
+  shared render data. The Light theme lays the IDE out a few pixels differently (the toolbar
+  4 CSS px shorter, a panel's title bar 3, some buttons narrower), so a light screenshot is up to
+  a few pixels off the dark one's size. Forcing the dark size on it instead either pulls
+  neighbouring UI into the frame (a line of the blue title bar over every light toolbar) or
+  crops the subject.
+
+### Pictures as SVG
+
+**The rule:** `X.svg` beside `X.png`, and `X.light.svg` beside `X.light.png`, is the picture
+drawn as SVG by `shoot_docs --svg` ([WIP.Screenshots.md](WIP.Screenshots.md#pictures-as-svg)).
+A page still names `X.png`. `themePairPlugin` names each theme's SVG in its place when that is
+among the static files, an image and a link alike, unless the attribute block holds `png`,
+which it takes out of the output. `picture_svg` in `_config.yml` says which outputs show the
+SVGs: online and book do, offline (and so the help archive) does not. Why:
+
+- **The page names the PNG.** The PNG stays as the picture the SVG was checked against, and as
+  the picture of an output that shows PNGs; and `shoot_docs` does not write an SVG that falls
+  short of its PNG, so a page cannot count on one existing.
+- **The renderer always writes the SVG, and an output that shows PNGs takes it back after.**
+  `pngPictures` ([builder/theme-pictures.mjs](builder/theme-pictures.mjs)) names each picture's
+  SVG back as its PNG in the rendered HTML: a `src` or `href` naming an `.svg` with its `.png`
+  beside it can only be one the renderer swapped, since a diagram's SVG has no PNG; it rewrites
+  outside code only (`replaceOutsideCode`). `cpu-worker.mjs` makes the offline page from the
+  SVG HTML and swaps it when offline shows PNGs, and the online page the same way;
+  `book.mjs` swaps before `pdf.mjs` collects the book's images. One rendering, three outputs.
+- **An offline tree that shows PNGs holds no picture SVG.** `tbdocs.mjs` adds each one's path
+  to `offline_exclude` in memory, so the offline copy, the help archive, the offline link check
+  and the index audit agree without knowing about pictures. That adds a few hundred literal
+  patterns, so `offlineExcluded` (and its copy in `check-tree.mjs`) compares a pattern with no
+  wildcard as a string instead of compiling it. The archive is a stored zip, 37 MB without
+  the SVGs, and the 310 of them (2026-10-10) would add 18 MB.
+- **A picture's SVG is never inlined.** `figurePlugin` inlines a diagram's SVG in its figure; a
+  picture's (`isPictureSvg`: an `.svg` with its `.png` beside it) stays an `<img>` in the
+  figure's container, and `tbdocs.mjs` does not put it in the `svgContentsMap` the workers
+  receive.
+- **What becomes a figure.** An image that is its paragraph's only content (or the two images of
+  a light and dark pair), of any kind: a diagram, a picture, a raster. `figurePlugin`'s `figures`
+  core rule decides it on the token stream, so an image with text beside it or inside a link
+  stays a plain `<img>`. The bar's groups (vector, raster, zoom) are chosen when `figure_open`
+  renders, from the image's `src` as `remoteImagePlugin` will write it.
+- **`data-tall` is decided at build time, so nothing moves after load.** The wrapper gets it when
+  the figure at the 736 px content column is at least as tall as its bar stood on end (220 px
+  with both groups, 126 px with the raster group only); the size is the page's `{:width height}`
+  for a picture and the root `<svg>`'s width and height (pt) for a diagram, and a picture with
+  no stated size counts as short. Measuring in the browser instead would reflow the page after
+  the first paint, and the sticky bar needs to know its side before layout.
+- **On `file://` a picture's bar keeps only Zoom.** The browser can neither fetch a `file://`
+  URL to put on the clipboard nor honour `download` on a `file://` link, so `figure.js` hides
+  a picture's download and copy groups there; the offline tree shows pictures as PNG, so its
+  vector group is hidden anyway. A diagram's actions serialise the SVG already in the page and
+  work offline.
+- **No `<picture>` with a PNG fallback** (owner): every browser the site supports shows an SVG
+  in an `<img>`. The fallback a page needs is the per-picture `png`.
+- **A page that names `X.light.svg` fails the build**, as one that names `X.light.png` does.

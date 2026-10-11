@@ -17,7 +17,7 @@ Display custom QR codes with a native control.
 
 ## Multiframe Control
 
-![A form divided into three coloured frames by the Multiframe control, sized at 20 percent, AUTO and 10 percent](../Images/4ad9c774-b31d-47d3-9963-6d99ac4f37bb.png)
+![A form divided into three coloured frames by the Multiframe control, sized at 20 percent, AUTO and 10 percent](../Images/4ad9c774-b31d-47d3-9963-6d99ac4f37bb.png){:width="521" height="331"}
 
 This control allows you to create a number of frames within it with their size specified as a percentage, such that as the control is resized the frames within expand proportionally. For details and a video demonstration, Mike Wolfe's twinBASIC Weekly Update [covered it when released](https://nolongerset.com/twinbasic-update-april-29-2025/#experimental-multi-frame-control).
 
@@ -25,6 +25,6 @@ Combined with anchors and docking, this allows designing highly functional and c
 
 ## CheckMark Control
 
-![A window comparing a normal CheckBox with three CheckMark controls drawn at increasing sizes](../Images/5fc60b7b-4f54-445c-8504-451019b7ec55.png)
+![A window comparing a normal CheckBox with three CheckMark controls drawn at increasing sizes](../Images/5fc60b7b-4f54-445c-8504-451019b7ec55.png){:width="301" height="151"}
 
 Primarily intended for reports but available in Forms and UserControls as well, the CheckMark control provides a scalable check component where this is fixed to a single size in a normal CheckBox control.

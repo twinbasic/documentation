@@ -1,0 +1,132 @@
+[Description("")]
+[FormDesignerId("5C0F8A71-3B2E-4D69-8A14-7E91C2D4C61A")]
+[PredeclaredId]
+Class frmListView
+
+    ' A Win32 ListView whose column headers are given the text of a String that has
+    ' already been freed: the bug Debugging.md's picture shows, with the project's
+    ' Immediate Memory Invalidation setting on. The items' texts are live Strings.
+
+    Private Type LVCOLUMNW
+        mask As Long
+        fmt As Long
+        cx As Long
+        pszText As LongPtr
+        cchTextMax As Long
+        iSubItem As Long
+        iImage As Long
+        iOrder As Long
+        cxMin As Long
+        cxDefault As Long
+        cxIdeal As Long
+    End Type
+
+    Private Type LVITEMW
+        mask As Long
+        iItem As Long
+        iSubItem As Long
+        state As Long
+        stateMask As Long
+        pszText As LongPtr
+        cchTextMax As Long
+        iImage As Long
+        lParam As LongPtr
+        iIndent As Long
+        iGroupId As Long
+        cColumns As Long
+        puColumns As LongPtr
+        piColFmt As LongPtr
+        iGroup As Long
+    End Type
+
+    Private Type INITCOMMONCONTROLSEX_T
+        dwSize As Long
+        dwICC As Long
+    End Type
+
+    Private Declare PtrSafe Function InitCommonControlsEx Lib "comctl32" (ByRef icc As INITCOMMONCONTROLSEX_T) As Long
+    Private Declare PtrSafe Function CreateWindowExW Lib "user32" (ByVal dwExStyle As Long, ByVal lpClassName As LongPtr, _
+        ByVal lpWindowName As LongPtr, ByVal dwStyle As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, _
+        ByVal nHeight As Long, ByVal hWndParent As LongPtr, ByVal hMenu As LongPtr, ByVal hInstance As LongPtr, _
+        ByVal lpParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, _
+        ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function SetWindowTheme Lib "uxtheme" (ByVal hWnd As LongPtr, ByVal pszSubAppName As LongPtr, _
+        ByVal pszSubIdList As LongPtr) As Long
+    Private Declare PtrSafe Function DestroyWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+
+    Private Const ICC_LISTVIEW_CLASSES As Long = &H1
+    Private Const WS_CHILD As Long = &H40000000
+    Private Const WS_VISIBLE As Long = &H10000000
+    Private Const WS_BORDER As Long = &H800000
+    Private Const LVS_REPORT As Long = &H1
+    Private Const LVM_SETEXTENDEDLISTVIEWSTYLE As Long = &H1036
+    Private Const LVS_EX_FULLROWSELECT As Long = &H20
+    Private Const LVM_INSERTCOLUMNW As Long = &H1061
+    Private Const LVM_INSERTITEMW As Long = &H104D
+    Private Const LVM_SETITEMTEXTW As Long = &H1074
+    Private Const LVCF_FMT As Long = &H1
+    Private Const LVCF_WIDTH As Long = &H2
+    Private Const LVCF_TEXT As Long = &H4
+    Private Const LVIF_TEXT As Long = &H1
+
+    Private hListView As LongPtr
+
+    ' The bug: the pointer to a copy of Text, which is freed when the function returns.
+    Private Function DanglingPtr(ByVal Text As String) As LongPtr
+        Return StrPtr(Text)
+    End Function
+
+    Private Sub Form_Load()
+        Dim icc As INITCOMMONCONTROLSEX_T
+        icc.dwSize = LenB(icc)
+        icc.dwICC = ICC_LISTVIEW_CLASSES
+        InitCommonControlsEx icc
+
+        Dim w As Long = CLng(ScaleX(ScaleWidth, ScaleMode, vbPixels))
+        Dim h As Long = CLng(ScaleY(ScaleHeight, ScaleMode, vbPixels))
+        hListView = CreateWindowExW(0, StrPtr("SysListView32"), 0, WS_CHILD Or WS_VISIBLE Or WS_BORDER Or LVS_REPORT, _
+            0, 0, w, h, Me.hWnd, 0, 0, 0)
+        SetWindowTheme hListView, StrPtr("Explorer"), 0
+        SendMessageW hListView, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT
+
+        Dim titles As Variant = Array("Name", "Type", "Size", "Modified")
+        Dim widths As Variant = Array(150, 120, 70, 120)
+        Dim col As LVCOLUMNW
+        Dim i As Long
+        For i = 0 To 3
+            col.mask = LVCF_FMT Or LVCF_WIDTH Or LVCF_TEXT
+            col.cx = CLng(widths(i) * w / 460)
+            col.pszText = DanglingPtr(titles(i))
+            SendMessageW hListView, LVM_INSERTCOLUMNW, i, VarPtr(col)
+        Next
+
+        AddRow 0, "Notes.txt", "Text Document", "2 KB", "2026-01-09 16:41"
+        AddRow 1, "Photos", "File folder", "", "2026-01-08 09:12"
+        AddRow 2, "Report.pdf", "PDF Document", "184 KB", "2026-01-07 18:02"
+    End Sub
+
+    Private Sub AddRow(ByVal Row As Long, ParamArray Texts() As Variant)
+        Dim item As LVITEMW
+        Dim s As String
+        Dim i As Long
+        For i = 0 To UBound(Texts)
+            s = Texts(i)
+            item.mask = LVIF_TEXT
+            item.iItem = Row
+            item.iSubItem = i
+            item.pszText = StrPtr(s)
+            If i = 0 Then
+                SendMessageW hListView, LVM_INSERTITEMW, 0, VarPtr(item)
+            Else
+                SendMessageW hListView, LVM_SETITEMTEXTW, Row, VarPtr(item)
+            End If
+        Next
+    End Sub
+
+    Private Sub Form_Unload(Cancel As Integer)
+        If hListView Then DestroyWindow hListView
+        hListView = 0
+    End Sub
+
+End Class

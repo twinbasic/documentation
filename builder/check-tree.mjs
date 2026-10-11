@@ -60,7 +60,7 @@ export function posix(p) {
 // is a much larger module and this is two functions.
 function excluded(rel, patterns) {
   if (!patterns || !patterns.length) return false;
-  return patterns.some((pat) => fnmatch(pat, rel));
+  return patterns.some((pat) => (/[*?]/.test(pat) ? fnmatch(pat, rel) : pat === rel));
 }
 
 // File.fnmatch(..., FNM_PATHNAME): `*` does not cross `/`, `**` does.

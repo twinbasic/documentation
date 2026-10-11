@@ -66,7 +66,7 @@ If one or more controls are not registered for the current architecture then twi
 
 When this occurs, you will see a note in the DEBUG CONSOLE:
 
-![tbFusionDebugConsole](Images/569099635-bc9553a6-fcce-487d-a478-dbee557f33b1.png){:width="412" height="73"}
+![The DEBUG CONSOLE with one line, saying that the Fusion server file FusionDemo_win32host.exe was built successfully](Images/569099635-bc9553a6-fcce-487d-a478-dbee557f33b1.png){:width="560" height="116"}
 
 This additional EXE acts as the out-of-process container for those controls and is managed automatically by the twinBASIC IDE
 

@@ -41,8 +41,8 @@
 //     every other option left as it is now; removed when the run set one
 //     where there was none; options that are not JSON left alone;
 //   * an association that named the temp folder when the run began, which is
-//     another run's IDE copy's and is left alone, against one that did not,
-//     which is put back;
+//     another run's IDE copy's and is pointed at the newest install, or left
+//     alone when there is none, against one that did not, which is put back;
 //   * two runs at once: the one that ends first puts nothing back, the last
 //     one removes both runs' entries, which an IDE wrote back after the first
 //     ended, and gives the user's list back; a run that died is swept by the
@@ -322,15 +322,29 @@ try {
   deleteValues(SETTINGS, ["GENERAL"]);
 
   // ------------------------------------------------ an association another run's copy held
-  // startTidy and finishTidy, the whole tidy, on the scratch keys.
+  // startTidy and finishTidy, the whole tidy, on the scratch keys. TB_IDE stands in for the
+  // newest install on the Desktop, which findIde would find.
   const COMMAND = ASSOC + "\\shell\\open\\command";
   const REAL = '"C:\\IDE\\twinBASIC.exe" "%1"';
-  const COPY = `"${path.join(tmpdir(), "tbaddin", "9870", "ide", "twinBASIC.exe")}" "%1"`;
-  setValues(COMMAND, { "": COPY }); // another run's copy has it
-  const dirty = R.startTidy({ root: ROOT, keys: [ASSOC] });
-  setValues(COMMAND, { "": REAL }); // an IDE from a real install takes it back
-  assert.equal(R.finishTidy(dirty).association, null);
-  assert.equal(readValue(COMMAND, ""), REAL, "an association naming the temp folder is never put back");
+  const COPY_EXE = path.join(tmpdir(), "tbaddin", "9870", "ide", "twinBASIC.exe");
+  const COPY = `"${COPY_EXE}" "%1"`;
+  const tbIde = process.env.TB_IDE;
+  try {
+    process.env.TB_IDE = "C:\\IDE\\twinBASIC.exe";
+    setValues(COMMAND, { "": COPY }); // another run's copy has it
+    const dirty = R.startTidy({ root: ROOT, keys: [ASSOC] });
+    assert.ok(R.finishTidy(dirty).association >= 1);
+    assert.equal(readValue(COMMAND, ""), REAL, "an association naming the temp folder points at the install");
+    process.env.TB_IDE = COPY_EXE; // no install outside the temp folder
+    setValues(COMMAND, { "": COPY });
+    const noInstall = R.startTidy({ root: ROOT, keys: [ASSOC] });
+    assert.equal(R.finishTidy(noInstall).association, null);
+    assert.equal(readValue(COMMAND, ""), COPY, "with no install it is left as the IDEs set it");
+  } finally {
+    if (tbIde === undefined) delete process.env.TB_IDE;
+    else process.env.TB_IDE = tbIde;
+  }
+  setValues(COMMAND, { "": REAL });
   const clean = R.startTidy({ root: ROOT, keys: [ASSOC] });
   setValues(COMMAND, { "": COPY }); // this run's copy takes it
   assert.ok(R.finishTidy(clean).association >= 1);

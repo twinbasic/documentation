@@ -13,6 +13,14 @@
 @rem passes. Refuse instead, naming build.bat.
 node scripts/check_tree_fresh.mjs
 @if errorlevel 1 goto :fail
+@rem check_a11y runs here, before the lighter gates below, because the
+@rem deploy workflow backgrounds the book PDF render and the composite
+@rem action runs check_a11y as its FIRST step -- so the two Chromium
+@rem workloads overlap just at the start. The gate roster check requires
+@rem check.bat's order to match the composite action's order after filtering
+@rem to the gates both have, so a11y lives here in both.
+node scripts/check_a11y.mjs
+@if errorlevel 1 goto :fail
 @rem Graphviz sizes its boxes from a width table; the browser paints the
 @rem text with a real font. Nothing in the build compares the two, so a
 @rem mismatch ships as a label hanging out of its box on a green build.
@@ -21,8 +29,6 @@ node scripts/check_tree_fresh.mjs
 node scripts/check_dot_fit.mjs
 @if errorlevel 1 goto :fail
 node scripts/pick_a11y_sample.mjs --check
-@if errorlevel 1 goto :fail
-node scripts/check_a11y.mjs
 @if errorlevel 1 goto :fail
 @popd
 @exit /b 0

@@ -52,7 +52,7 @@ export async function writePdf(
 
   resolveBookPage(pages); // existence check; throws if missing or duplicated
 
-  const { bookHtml, imagePaths } = deriveBookOutputs(pages, site);
+  const { bookHtml, imagePaths } = deriveBookOutputs(pages, site, staticFiles);
 
   const staticByDestRel = new Map(staticFiles.map((s) => [s.destRel.replaceAll("\\", "/"), s]));
   const counters = { bookBytes: 0, html: 0, css: 0, fonts: 0, images: 0, missing: 0 };
@@ -94,8 +94,8 @@ export async function writePdf(
 // PLAN-9 §5.9: image-path collection is folded into the assembly
 // itself (book.mjs's emitChapter populates a Set as it goes), so there
 // is no separate pass over book.html looking for images.
-function deriveBookOutputs(pages, site) {
-  return assembleBook(site, pages);
+function deriveBookOutputs(pages, site, staticFiles) {
+  return assembleBook(site, pages, staticFiles);
 }
 
 // PLAN-8 §5.1: locate the one `layout: book-combined` page. Throws on

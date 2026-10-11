@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Underlined text</title>
+<!--
+  Solid underlines, with each construct that snapshot-svg.mjs's
+  decoratingBoxes, underlineBand and inkBand depend on: auto thickness and
+  offset at the sizes where they step, a thickness and an offset that are
+  written, the line's colour (its own, then the colour and the fill of the box
+  that sets it), a line inside another, runs of spaces and inline boxes inside
+  the decorated one, the boxes that pass the decoration down or stop it (a
+  block, a flex item, an inline-block, a float, a positioned box), wrapped
+  lines, and the gaps Chromium cuts in the line where a descender crosses it
+  (skip-ink), at four sizes and with skip-ink off. The first rows have no
+  descender, so that what differs there is the line itself.
+
+  Left out, because Chromium draws no line under them and the converter does:
+  the spaces that white-space: pre keeps at the start and the end of a line.
+-->
+<style>
+body { margin: 0; background: #fff; color: #000; font: 14px "Segoe UI", sans-serif; }
+.r { position: relative; padding: 3px 10px; white-space: pre; }
+.u { text-decoration: underline; }
+</style>
+<body>
+<div class="r"><span class="u" style="font-size:11px">Eleven</span>  <span class="u" style="font-size:12px">Twelve</span>  <span class="u" style="font-size:13px">Thirteen</span>  <span class="u" style="font-size:14px">Fourteen</span>  <span class="u" style="font-size:16px">Sixteen</span>  <span class="u" style="font-size:19px">Nineteen</span>  <span class="u" style="font-size:20px">Twentieth</span>  <span class="u" style="font-size:24px">Tall</span>  <span class="u" style="font-size:30px">Bold</span></div>
+<div class="r" style="font-weight:700"><span class="u" style="font-size:11px">Eleven</span>  <span class="u" style="font-size:12px">Twelve</span>  <span class="u" style="font-size:13px">Thirteen</span>  <span class="u" style="font-size:14px">Fourteen</span>  <span class="u" style="font-size:16px">Sixteen</span>  <span class="u" style="font-size:19px">Nineteen</span>  <span class="u" style="font-size:20px">Twentieth</span>  <span class="u" style="font-size:24px">Tall</span></div>
+<div class="r"><span class="u">An underlined run   with     blanks, <b>bold</b>, <i>italic</i>, <span style="color:#c00">a red child</span>, <span style="font:12px Consolas, monospace">code</span> and <span style="font-size:20px">tall</span> text</span></div>
+<div class="r"><span class="u" style="text-underline-offset:2px">offset two</span>  <span class="u" style="font-size:20px;text-underline-offset:2px">offset two</span>  <span class="u" style="text-underline-offset:0">offset zero</span>  <span class="u" style="font-size:20px;text-underline-offset:0.3em">offset three tenths</span>  <span class="u" style="text-underline-offset:1px">offset one</span></div>
+<div class="r"><span class="u" style="text-decoration-thickness:3px">three thick</span>  <span class="u" style="font-size:20px;text-decoration-thickness:0.15em">fifteen hundredths</span>  <span class="u" style="font-size:30px;text-decoration-thickness:1px">one</span>  <span class="u" style="font-size:20px;text-decoration-thickness:10%">ten tenths</span>  <span class="u" style="text-decoration-thickness:2px;text-underline-offset:3px">both</span></div>
+<div class="r"><span class="u" style="color:#06c;text-decoration-color:#c00">red line, blue text</span>  <span class="u" style="color:#c60">amber <span style="color:#06c">blue child</span> amber</span>  <span class="u" style="color:#c00;-webkit-text-fill-color:#06c">fill is blue</span>  <span class="u" style="color:#c00;-webkit-text-fill-color:transparent">no fill</span>  <span class="u" style="opacity:.5">half dim</span>  <span class="u" style="text-decoration-color:#c00">red <span class="u" style="text-decoration-color:#06c">blue</span> red</span></div>
+<div class="r"><span class="u">outer <span style="display:inline-block">atomic</span> then <span style="float:right"><span class="u" style="color:#080">own line</span> floated</span> <span style="position:absolute;left:420px">located</span> and tail</span></div>
+<div class="r" style="padding:0 10px"><div class="u"><div>block child</div><div style="display:flex"><span>flex item</span><span>another</span></div></div></div>
+<div class="r" style="white-space:normal;width:180px"><span class="u">this note is held in lines like these, with a space at each break</span></div>
+<div class="r" style="font-size:20px"><span class="u">Typography</span>  <span class="u" style="font-weight:700">jumps quickly</span>  <span class="u" style="font-size:30px">gypsy</span>  <span class="u" style="font-size:14px">Typography, quick jumps (Qq)</span>  <span class="u" style="text-decoration-skip-ink:none">Typography</span></div>
+</body>
+</html>

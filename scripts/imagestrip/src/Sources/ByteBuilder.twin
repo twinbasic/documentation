@@ -1,0 +1,57 @@
+' A byte array that grows as it is appended to.
+Class ByteBuilder
+    Private mData() As Byte
+    Private mLen As Long
+    Private mCap As Long
+
+    Public Sub AddRange(src() As Byte, ByVal start As Long, ByVal count As Long)
+        Dim i As Long
+        If count <= 0 Then Exit Sub
+        Reserve count
+        For i = 0 To count - 1
+            mData(mLen + i) = src(start + i)
+        Next
+        mLen = mLen + count
+    End Sub
+
+    Public Sub AddByte(ByVal value As Long)
+        Reserve 1
+        mData(mLen) = value
+        mLen = mLen + 1
+    End Sub
+
+    ' The low byte of each character, which for ASCII text is the character.
+    Public Sub AddAscii(ByVal text As String)
+        Dim u() As Byte, i As Long, n As Long
+        n = Len(text)
+        If n = 0 Then Exit Sub
+        u = text
+        Reserve n
+        For i = 0 To n - 1
+            mData(mLen + i) = u(2 * i)
+        Next
+        mLen = mLen + n
+    End Sub
+
+    Public Property Get Count() As Long
+        Count = mLen
+    End Property
+
+    Public Function ToArray(out() As Byte) As Long
+        Dim i As Long
+        Erase out
+        If mLen > 0 Then
+            ReDim out(0 To mLen - 1)
+            For i = 0 To mLen - 1
+                out(i) = mData(i)
+            Next
+        End If
+        ToArray = mLen
+    End Function
+
+    Private Sub Reserve(ByVal extra As Long)
+        If mLen + extra <= mCap Then Exit Sub
+        mCap = 2 * (mLen + extra) + 64
+        ReDim Preserve mData(0 To mCap - 1)
+    End Sub
+End Class

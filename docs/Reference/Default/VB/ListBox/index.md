@@ -106,10 +106,7 @@ Determines how the control's border is drawn by the OS. A member of [**Appearanc
 ### BackColor
 {: .no_toc }
 
-The background colour of the list area, as an **OLE_COLOR**. Defaults to the system window-background colour. Items drawn in the selected state ignore **BackColor** in favour of the system highlight colour.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The background colour of the list area, as an **OLE_COLOR**. Defaults to the system window-background colour. Items drawn in the selected state ignore **BackColor** in favour of the system highlight colour. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### BorderStyle
 {: .no_toc }
@@ -195,10 +192,7 @@ The **StdFont** used to render item text. The convenience properties **FontName*
 ### ForeColor
 {: .no_toc }
 
-The text colour for entries that are not currently selected, as an **OLE_COLOR**. Defaults to the system window-text colour. Disabled entries draw in the system grey-text colour, and selected entries draw in the system highlight-text colour, regardless of this setting.
-
-> [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+The text colour for entries that are not currently selected, as an **OLE_COLOR**. Defaults to the system window-text colour. Disabled entries draw in the system grey-text colour, and selected entries draw in the system highlight-text colour, regardless of this setting. A value that is not a colour, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its colour.
 
 ### Height
 {: .no_toc }

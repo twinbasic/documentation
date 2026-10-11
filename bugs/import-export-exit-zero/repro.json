@@ -1,0 +1,24 @@
+{
+  "mode": "cli",
+  "cli": [
+    ["import", "{tmp}\\no-settings.twinproj", "{src}\\Sources\\"],
+    ["import", "{tmp}\\no-folder.twinproj", "{tmp}\\no-such-folder\\"],
+    ["export", "{tmp}\\no-such-project.twinproj", "{tmp}\\out\\"],
+    ["export", "{project}", "{src}\\"],
+    ["import", "{project}", "{src}\\"]
+  ],
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^\\s*ERROR: missing Settings file$",
+      "^\\s*ERROR: input folder does not exist$",
+      "^\\s*ERROR: input twinproj file does not exist$",
+      "ERROR: output file already exists and --overwrite not set: .*Settings$",
+      "ERROR: failed to create output file: .*\\(already exists and --overwrite not set\\)$",
+      "^\\.\\.\\. FAILED"
+    ],
+    "absent": [
+      "^\\.\\.\\. DONE"
+    ]
+  }
+}

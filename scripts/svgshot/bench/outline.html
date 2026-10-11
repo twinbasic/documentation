@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Focus rings</title>
+<!--
+  outline-style: auto, which is how Chromium draws the focus ring of a control
+  (:focus-visible): snapshot-svg.mjs's paintBox draws it as a ring of two bands,
+  fitted here. The pages here state the outline instead of focusing a control, so
+  that no state of the browser (which control was clicked last) changes it. A
+  control with a border of 1px or more has the ring drawn over its border; one
+  with none has it astride its edge; a corner follows the border radius; and
+  the ring's colours follow the outline colour (a light ring gets a dark outer band).
+-->
+<style>
+body { margin: 0; background: #2b2b2b; color: #ddd; font: 13px "Segoe UI", sans-serif; }
+.r { position: absolute; box-sizing: border-box; outline: -webkit-focus-ring-color auto 1px; }
+.dark { background: #2b2b2b; }
+</style>
+<body>
+<input class="r" style="left:20px;top:20px;width:160px;height:30px;border:1px solid #666;border-radius:3px;background:#2b2b2b;color:#ddd" value="input, 1px border, radius 3">
+<button class="r" style="left:200px;top:20px;width:160px;height:30px;border:0;border-radius:4px;background:#444;color:#ddd">button, no border</button>
+<div class="r" style="left:380px;top:20px;width:160px;height:30px;border:2px solid #aaa;background:#222"></div>
+<div class="r" style="left:560px;top:20px;width:160px;height:30px;background:#444"></div>
+<input class="r" style="left:20px;top:80px;width:160px;height:30px;border:1px solid #666;border-radius:3px;background:#2b2b2b;color:#ddd;outline-offset:3px" value="offset 3px">
+<div class="r" style="left:200px;top:80px;width:160px;height:30px;background:#444;border-radius:12px;outline-offset:-3px"></div>
+<div class="r" style="left:380px;top:80px;width:160px;height:30px;background:#444;outline-width:3px"></div>
+<div class="r" style="left:560px;top:80px;width:160px;height:30px;background:#ddd;outline-color:#fff"></div>
+<div class="r" style="left:20px;top:140px;width:160px;height:30px;background:#444;outline-color:#0078d7"></div>
+<div class="r" style="left:200px;top:140px;width:160px;height:30px;background:#444;border:3px solid #888"></div>
+<div style="position:absolute;left:380px;top:140px;width:340px;height:60px;background:#fff"></div>
+<div class="r" style="left:400px;top:150px;width:120px;height:30px;background:#eee;outline-color:#101010"></div>
+<div class="r" style="left:560px;top:150px;width:120px;height:30px;background:#eee;outline-color:#fff"></div>
+</body>
+</html>

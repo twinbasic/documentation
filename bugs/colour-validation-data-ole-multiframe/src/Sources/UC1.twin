@@ -1,0 +1,31 @@
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA11")]
+[ClassId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA10")]
+[InterfaceId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA12")]
+[EventInterfaceId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA13")]
+[COMControl]
+Public Class UC1
+
+    ' Sets one of the user control's own colour properties to vbGreen, then to
+    ' Value; returns the error the second assignment raised, and the colour after it.
+    Public Sub TrySet(ByVal Prop As String, ByVal Value As Long, ByRef Number As Long, ByRef After As Long)
+        Select Case Prop
+            Case "ForeColor": ForeColor = vbGreen
+            Case "BackColor": BackColor = vbGreen
+            Case "FillColor": FillColor = vbGreen
+        End Select
+        On Error Resume Next
+        Select Case Prop
+            Case "ForeColor": ForeColor = Value
+            Case "BackColor": BackColor = Value
+            Case "FillColor": FillColor = Value
+        End Select
+        Number = Err.Number
+        On Error GoTo 0
+        Select Case Prop
+            Case "ForeColor": After = ForeColor
+            Case "BackColor": After = BackColor
+            Case "FillColor": After = FillColor
+        End Select
+    End Sub
+
+End Class

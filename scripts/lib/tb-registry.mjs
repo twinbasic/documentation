@@ -25,7 +25,9 @@
 //   * The association keys are put back value by value, and only where they
 //     differ, so an untouched key is never written --- unless they named the
 //     temp folder when the run began, because then they were another run's
-//     IDE copy's, and putting them back would point at a deleted folder.
+//     IDE copy's, and putting them back would point at a deleted folder. They
+//     are then put back pointing at the newest install on the Desktop
+//     (findIde; owner, 2026-10-10), and left as they are only when there is none.
 //   * The build target the IDE remembers for each project path is deleted for
 //     every path under those folders, before the run and after it
 //     (sweepArchitectureMemory says why), and a named project's is put back
@@ -75,6 +77,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { findIde } from "./tb-install.mjs";
 
 export const IDE_SETTINGS_KEY = "Software\\VB and VBA Program Settings\\twinBASIC_IDE";
 export const ASSOCIATION_KEYS = ["Software\\Classes\\.twinproj", "Software\\Classes\\twinBASIC.ProjectFile"];
@@ -821,16 +824,22 @@ function putBackAll(tidy, all) {
     const p = restoreProjects({ root: tidy.root, entries, ...(base ? { recent: base.recent } : {}) }, { prefixes });
     // An association that named the temp folder when the run began belonged to
     // another run's copy of the IDE (tb-ide-copy.mjs), which will be deleted:
-    // putting it back would point .twinproj files at nothing. It is left as
-    // the IDEs set it, and the next IDE started from a real install points it
-    // back at that install.
+    // putting it back would point .twinproj files at nothing. It is put back
+    // pointing at the newest install instead, which is what that install's IDE
+    // would write when next started; with no install found it is left as the
+    // IDEs set it.
+    let keys = base?.keys;
     if (base?.keysInTemp) {
+      keys = repointAtInstall(base.keys, findIde());
       console.error(
-        "note: the .twinproj association pointed into the temp folder when this " +
-          "run began, at another run's copy of the IDE, so it is left as it is now",
+        keys
+          ? "note: the .twinproj association pointed into the temp folder when this run " +
+              "began, at another run's copy of the IDE; it now points at the newest install"
+          : "note: the .twinproj association pointed into the temp folder when this run " +
+              "began, at another run's copy of the IDE, and no install was found, so it is left as it is now",
       );
     }
-    done = { ...p, association: !base || base.keysInTemp ? null : restoreKeys(base.keys) };
+    done = { ...p, association: keys ? restoreKeys(keys) : null };
   } catch (e) {
     console.error(`warning: could not tidy the IDE's registry entries after this run: ${e.message}`);
     return null;
@@ -924,6 +933,31 @@ function namesTempFolder(snapshot) {
     ([].concat(snap.values ?? []).some((v) => [].concat(v?.data ?? []).some((d) => norm(d).includes(tmp))) ||
       [].concat(snap.keys ?? []).some((k) => named(k?.snap)));
   return [].concat(snapshot ?? []).some((e) => named(e?.snap));
+}
+
+// The association snapshot with every path to an IDE copy in the temp folder
+// (`...\Temp\...\twinBASIC.exe`) replaced by `exe`, another value left as it is.
+// Null when there is no install, or when it is itself in the temp folder (TB_IDE
+// naming a copy).
+export function repointAtInstall(snapshot, exe) {
+  const tmp = norm(path.resolve(tmpdir())) + "\\";
+  if (!exe || norm(path.resolve(exe)).includes(tmp)) return null;
+  const fix = (d) => {
+    if (typeof d !== "string") return d;
+    const at = norm(d).indexOf(tmp);
+    if (at < 0) return d;
+    const end = d.toLowerCase().indexOf("\\twinbasic.exe", at);
+    return end < 0 ? d : d.slice(0, at) + exe + d.slice(end + "\\twinbasic.exe".length);
+  };
+  const snap = (s) =>
+    s && {
+      ...s,
+      ...(s.values
+        ? { values: s.values.map((v) => ({ ...v, data: Array.isArray(v.data) ? v.data.map(fix) : fix(v.data) })) }
+        : {}),
+      ...(s.keys ? { keys: s.keys.map((k) => ({ ...k, snap: snap(k.snap) })) } : {}),
+    };
+  return snapshot.map((e) => ({ ...e, snap: snap(e.snap) }));
 }
 
 // Each with a warning of its own, so that failing here costs only this part of the tidy.

@@ -74,7 +74,7 @@ twinBASIC issues these calls itself, so the language has no statement for them:
 The three methods themselves cannot be called by name:
 
 - On a variable declared **As stdole.IUnknown**, `u.AddRef`, `u.Release` and `u.QueryInterface` are compile errors, TB5027 *Unrecognized member*. The same holds for a variable of a project's own interface that extends **stdole.IUnknown**.
-- On an **Object** variable, `o.AddRef` raises run-time error `&H80020006` (*Unknown name*) and `CallByName(o, "AddRef", VbMethod)` raises `&H80004005` (*Unspecified error*).
+- On an **Object** variable, `o.AddRef` and `CallByName(o, "AddRef", VbMethod)` raise run-time error 438 (*Object doesn't support this property or method*).
 - A project cannot redeclare **IUnknown** under its own name and call it. An **Interface** declared with no **Extends** clause derives from **IDispatch**, not from **IUnknown**, so its first method is at slot 7 and the three declared methods are not the three of **IUnknown**. Declared with **Extends stdole.IUnknown**, the first method is at slot 3. Neither reaches slots 0 to 2.
 
 > [!NOTE]
@@ -131,7 +131,7 @@ A class never needs to implement **IUnknown**: the compiler gives every class an
 `Implements stdole.IUnknown` compiles, and the class works as before. A project's own **Interface** that carries the identifier of **IUnknown** also compiles, and a class can implement it.
 
 > [!WARNING]
-> BETA 997 has a defect: that interface is unusable. **Set** to a variable of that type gives the object's ordinary **IUnknown** pointer, which has none of the interface's methods, and calling one ends the program with an access violation, and any unsaved data is lost. The compiler gives no diagnostic. Do not declare an **Interface** with the identifier of **IUnknown**; use `stdole.IUnknown`.
+> BETA 1005 has a defect: that interface is unusable. **Set** to a variable of that type gives the object's ordinary **IUnknown** pointer, which has none of the interface's methods, and calling one ends the program with an access violation, and any unsaved data is lost. The compiler gives no diagnostic. Do not declare an **Interface** with the identifier of **IUnknown**; use `stdole.IUnknown`.
 
 ## Example
 

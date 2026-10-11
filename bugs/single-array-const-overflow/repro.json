@@ -1,0 +1,19 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS LongElementOverflow$",
+      "^PASS LongSecondElementOverflow$",
+      "^PASS LongFractionOverflow$",
+      "^PASS IntegerElementOverflow$",
+      "^PASS ByteElementOverflow$",
+      "^PASS ByteNegativeElement$",
+      "^PASS LongLongElementOverflow$",
+      "^PASS DoubleElementOverflow$",
+      "^PASS ScalarSingleOverflowUse$",
+      "^FAIL SingleElementOverflow: ",
+      "^FAIL SqrAfterSingleOverflow: "
+    ]
+  }
+}

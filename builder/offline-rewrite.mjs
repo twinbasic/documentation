@@ -59,7 +59,9 @@ export function buildSitePathsSync(pages, staticFiles, excludePatterns, stubs, t
 // `*` does NOT cross `/`, `**` does.
 export function offlineExcluded(rel, patterns) {
   if (!patterns.length) return false;
-  return patterns.some((pat) => fnmatchPathname(pat, rel));
+  // A pattern with no wildcard matches only itself; the build adds a few hundred such
+  // (the pictures' SVGs, when picture_svg.offline is false), so they skip the regex.
+  return patterns.some((pat) => (/[*?]/.test(pat) ? fnmatchPathname(pat, rel) : pat === rel));
 }
 
 export function fnmatchPathname(pattern, str) {

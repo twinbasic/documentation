@@ -1,0 +1,265 @@
+' An SVG's text without what only its editor needs, as compactSvgText in
+' scripts/lib/compact-image.mjs makes it. What is removed is marked in keep() rather than cut out,
+' so that a caller can take the same characters out of the text as the CSS encodes it.
+Module SvgStrip
+
+    ' Clears keep(k) for each unit of units[0, n) that compactSvgText drops.
+    Public Sub CompactSvg(units() As Long, ByVal n As Long, keep() As Boolean)
+        Dim i As Long, partStart As Long, cdStart As Long, cdEnd As Long, first As Boolean
+        ReDim keep(0 To n)
+        For i = 0 To n - 1
+            keep(i) = True
+        Next
+        partStart = 0
+        first = True
+        Do
+            FindCdata units, n, partStart, cdStart, cdEnd
+            If cdStart < 0 Then
+                StripPart units, partStart, n, first, keep
+                Exit Do
+            End If
+            StripPart units, partStart, cdStart, first, keep
+            partStart = cdEnd
+            first = False
+        Loop
+        TrimEnds units, n, keep
+    End Sub
+
+    ' The next <![CDATA[ ... ]]> from the position given, as String.split finds it.
+    Private Sub FindCdata(units() As Long, ByVal n As Long, ByVal from As Long, ByRef cdStart As Long, ByRef cdEnd As Long)
+        Dim e As Long
+        cdStart = IndexOfText(units, n, "<![CDATA[", from, False)
+        If cdStart < 0 Then Exit Sub
+        e = IndexOfText(units, n, "]]>", cdStart + 9, False)
+        If e < 0 Then
+            cdStart = -1
+        Else
+            cdEnd = e + 3
+        End If
+    End Sub
+
+    ' What compactSvgText does to one of the parts outside the CDATA sections.
+    Private Sub StripPart(units() As Long, ByVal s As Long, ByVal e As Long, ByVal first As Boolean, keep() As Boolean)
+        Dim w() As Long, wo() As Long, m As Long, i As Long, cut() As Boolean
+        m = e - s
+        If m <= 0 Then Exit Sub
+        ReDim w(0 To m - 1)
+        ReDim wo(0 To m - 1)
+        For i = 0 To m - 1
+            w(i) = units(s + i)
+            wo(i) = s + i
+        Next
+        If first Then
+            ReDim cut(0 To m)
+            MarkRange cut, 0, DeclarationEnd(w, m)
+            m = Compact(w, wo, m, cut, keep)
+            ReDim cut(0 To m)
+            MarkDoctype w, m, cut
+            m = Compact(w, wo, m, cut, keep)
+        End If
+        ReDim cut(0 To m)
+        MarkComments w, m, cut
+        m = Compact(w, wo, m, cut, keep)
+        ReDim cut(0 To m)
+        MarkMetadata w, m, cut
+        m = Compact(w, wo, m, cut, keep)
+    End Sub
+
+    Private Sub MarkRange(cut() As Boolean, ByVal s As Long, ByVal e As Long)
+        Dim i As Long
+        For i = s To e - 1
+            cut(i) = True
+        Next
+    End Sub
+
+    ' Takes the units marked in cut() out of w and wo, and clears keep() for where they came from.
+    Private Function Compact(w() As Long, wo() As Long, ByVal m As Long, cut() As Boolean, keep() As Boolean) As Long
+        Dim i As Long, k As Long
+        For i = 0 To m - 1
+            If cut(i) Then
+                keep(wo(i)) = False
+            Else
+                w(k) = w(i)
+                wo(k) = wo(i)
+                k = k + 1
+            End If
+        Next
+        Compact = k
+    End Function
+
+    ' /^\u{FEFF}?\s*<\?xml\s[^?]*\?>\s*/u: where the XML declaration and the white space around it end,
+    ' or 0. The declaration is <?xml and white space: <?xml-stylesheet ...?> is an instruction that
+    ' styles the picture.
+    Private Function DeclarationEnd(w() As Long, ByVal m As Long) As Long
+        Dim p As Long, q As Long
+        Do While p < m
+            If Not Bytes.IsJsSpace(w(p)) Then Exit Do
+            p = p + 1
+        Loop
+        If Not TextAt(w, m, p, "<?xml", False) Then Exit Function
+        If p + 5 >= m Then Exit Function
+        If Not Bytes.IsJsSpace(w(p + 5)) Then Exit Function
+        q = p + 5
+        Do While q < m
+            If w(q) = 63 Then Exit Do
+            q = q + 1
+        Loop
+        If q + 1 >= m Then Exit Function
+        If w(q + 1) <> 62 Then Exit Function
+        q = q + 2
+        Do While q < m
+            If Not Bytes.IsJsSpace(w(q)) Then Exit Do
+            q = q + 1
+        Loop
+        DeclarationEnd = q
+    End Function
+
+    ' /<!DOCTYPE\s[^[>]*>\s*/i, the first one only: a DOCTYPE that declares nothing.
+    Private Sub MarkDoctype(w() As Long, ByVal m As Long, cut() As Boolean)
+        Dim i As Long, j As Long
+        i = 0
+        Do
+            i = IndexOfText(w, m, "<!DOCTYPE", i, True)
+            If i < 0 Then Exit Sub
+            If i + 9 < m Then
+                If Bytes.IsJsSpace(w(i + 9)) Then
+                    j = i + 10
+                    Do While j < m
+                        If w(j) = 91 Or w(j) = 62 Then Exit Do
+                        j = j + 1
+                    Loop
+                    If j < m Then
+                        If w(j) = 62 Then
+                            j = j + 1
+                            Do While j < m
+                                If Not Bytes.IsJsSpace(w(j)) Then Exit Do
+                                j = j + 1
+                            Loop
+                            MarkRange cut, i, j
+                            Exit Sub
+                        End If
+                    End If
+                End If
+            End If
+            i = i + 1
+        Loop
+    End Sub
+
+    ' /<!--([\s\S]*?)-->/g, but for a comment that is a notice.
+    Private Sub MarkComments(w() As Long, ByVal m As Long, cut() As Boolean)
+        Dim i As Long, s As Long, e As Long
+        Do
+            s = IndexOfText(w, m, "<!--", i, False)
+            If s < 0 Then Exit Sub
+            e = IndexOfText(w, m, "-->", s + 4, False)
+            If e < 0 Then Exit Sub
+            If Not Rights.NoticeText(Bytes.UnitsText(w, s + 4, e - s - 4)) Then MarkRange cut, s, e + 3
+            i = e + 3
+        Loop
+    End Sub
+
+    ' /<metadata\b[^>]*\/>|<metadata\b[^>]*>[\s\S]*?<\/metadata>/gi, but for metadata that is a
+    ' notice, names an author or terms, or holds a Creative Commons licence.
+    Private Sub MarkMetadata(w() As Long, ByVal m As Long, cut() As Boolean)
+        Dim i As Long, s As Long, e As Long, text As String
+        Do
+            s = IndexOfText(w, m, "<metadata", i, True)
+            If s < 0 Then Exit Sub
+            e = MetadataEnd(w, m, s)
+            If e < 0 Then
+                i = s + 1
+            Else
+                text = Bytes.UnitsText(w, s, e - s)
+                If Not (Rights.NoticeText(text) Or Rights.XmpHasRights(text) Or HasCcLicence(text)) Then MarkRange cut, s, e
+                i = e
+            End If
+        Loop
+    End Sub
+
+    Private Function MetadataEnd(w() As Long, ByVal m As Long, ByVal s As Long) As Long
+        Dim g As Long, h As Long
+        MetadataEnd = -1
+        If s + 9 >= m Then Exit Function
+        If Bytes.IsWordUnit(w(s + 9)) Then Exit Function
+        g = s + 9
+        Do While g < m
+            If w(g) = 62 Then Exit Do
+            g = g + 1
+        Loop
+        If g >= m Then Exit Function
+        If g - 1 >= s + 9 Then
+            If w(g - 1) = 47 Then
+                MetadataEnd = g + 1
+                Exit Function
+            End If
+        End If
+        h = IndexOfText(w, m, "</metadata>", g + 1, True)
+        If h >= 0 Then MetadataEnd = h + 11
+    End Function
+
+    ' /<cc:(License|license)\b/
+    Private Function HasCcLicence(ByVal text As String) As Boolean
+        Dim c() As Long, n As Long, i As Long
+        n = Bytes.ToUnits(text, c)
+        For i = 0 To n - 11
+            If TextAt(c, n, i, "<cc:License", False) Or TextAt(c, n, i, "<cc:license", False) Then
+                If i + 11 >= n Then
+                    HasCcLicence = True
+                    Exit Function
+                End If
+                If Not Bytes.IsWordUnit(c(i + 11)) Then
+                    HasCcLicence = True
+                    Exit Function
+                End If
+            End If
+        Next
+    End Function
+
+    ' String.trim over the units still kept.
+    Private Sub TrimEnds(units() As Long, ByVal n As Long, keep() As Boolean)
+        Dim i As Long
+        For i = 0 To n - 1
+            If keep(i) Then
+                If Not Bytes.IsJsSpace(units(i)) Then Exit For
+                keep(i) = False
+            End If
+        Next
+        For i = n - 1 To 0 Step -1
+            If keep(i) Then
+                If Not Bytes.IsJsSpace(units(i)) Then Exit For
+                keep(i) = False
+            End If
+        Next
+    End Sub
+
+    ' Whether text is at w(p), A to Z in either case when ignoreCase.
+    Private Function TextAt(w() As Long, ByVal m As Long, ByVal p As Long, ByVal text As String, ByVal ignoreCase As Boolean) As Boolean
+        Dim k As Long, a As Long, b As Long
+        If p < 0 Or p + Len(text) > m Then Exit Function
+        For k = 0 To Len(text) - 1
+            a = w(p + k)
+            b = AscW(Mid$(text, k + 1, 1))
+            If ignoreCase Then
+                a = Bytes.AsciiLowerUnit(a)
+                b = Bytes.AsciiLowerUnit(b)
+            End If
+            If a <> b Then Exit Function
+        Next
+        TextAt = True
+    End Function
+
+    Private Function IndexOfText(w() As Long, ByVal m As Long, ByVal text As String, ByVal from As Long, ByVal ignoreCase As Boolean) As Long
+        Dim i As Long, head As Long
+        head = Bytes.AsciiLowerUnit(AscW(text))
+        If from < 0 Then from = 0
+        For i = from To m - Len(text)
+            If Bytes.AsciiLowerUnit(w(i)) = head Then
+                If TextAt(w, m, i, text, ignoreCase) Then
+                    IndexOfText = i
+                    Exit Function
+                End If
+            End If
+        Next
+        IndexOfText = -1
+    End Function
+End Module

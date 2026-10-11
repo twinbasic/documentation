@@ -469,7 +469,7 @@ the token `do`, which existed nowhere in the index. Many twinBASIC keywords
 are English stop words, so every keyword query missed its own entry (`Do`
 ranked 18th, `For` 17th, `With` 55th, `Is` 177th). The fix is one line inside
 the `lunr(function(){...})` builder: `this.pipeline.remove(lunr.stopWordFilter);`.
-Every keyword query it fixes goes to rank 1, and the fix isn't specific to
+Every keyword query goes to rank 1, and the fix isn't specific to
 twinBASIC's keyword list. The cost: a few short, extremely common tokens
 (mostly other `vbXxx` constant name prefixes and `Index`/`Lock`/`Column`/`Time$`)
 crowd into more results; see "Known regressions" above.
@@ -614,7 +614,7 @@ experiments' copy is
 
 `eval/search_quality.mjs` records its ground truth in the baseline as a label
 (`intent-1` to `intent-5`), so `--compare` can tell a changed ground truth from
-a changed ranking. Each set below was added to the label in turn.
+a changed ranking. Each set below names the label it counts under.
 
 - **Bare names** (`intent-1`), judged by the tiers above, and **qualified
   names** (only that symbol's URL counts), both derived from
@@ -1022,9 +1022,8 @@ behaves here".
   set's elements plus the second's, an element in both counting twice), which
   `intersect()` uses to choose the set it walks, so even the order of a set's
   elements is lunr's. Results, refs and scores are unchanged, checked over
-  10,292 queries, one per page or section title; they took 718 s in the
-  replica before (worst 4,068 ms) and 86 s after (7 over 200 ms, worst 331
-  ms), and `a page` fell from 809 ms to 87 ms. The token-set guard's install
+  10,292 queries, one per page or section title; they take 86 s in the
+  replica (7 over 200 ms, worst 331 ms), and `a page` takes 87 ms. The token-set guard's install
   check allows a second install after `separateTokenSetKeys()`.
 - **`pinIndexFieldLengths()`** pins the `index` field's average length at 1.
 - **`buildIndexInSlices()`** builds the index in slices (Design §5 C).
@@ -1205,13 +1204,12 @@ it was measured while a lone clause's boost cancelled out, so it never had a
 fair test. Done with field boosts, as the `primary` field, it took tier-order
 violations to zero. Don't rebuild X1t without a new idea.
 
-The measurement also blamed the CheckBox control's `names` field for not
-listing every member, which was false: both entries' `names` are the single
-word `CheckBox`. The real difference: the CheckBox page's top entry
-(`/tB/Packages/VB/CheckBox/`) has 1 character of content, since a class's
-introduction sits under its own heading (`#checkbox-class`), while
-`DTPicker › CheckBox` has 467 characters that mention "checkbox" several
-times.
+The explanation that CheckBox's `names` field lists too few members was false:
+both entries' `names` are the single word `CheckBox`. The difference is the
+content: the CheckBox page's top entry (`/tB/Packages/VB/CheckBox/`) has 1
+character, since a class's introduction sits under its own heading
+(`#checkbox-class`), while `DTPicker › CheckBox` has 467 characters that
+mention "checkbox" several times.
 
 ### Known misses and limits
 
@@ -1255,8 +1253,8 @@ The counts are in "Resuming this work"; the diagnoses are here.
   setting without linking it, and twinBASIC-Additions' changelog anchors
   outrank the Features pages for `inline assembly`.
 - **The builder docs are in the reader's search**, and may crowd other
-  site-tooling words: `dark mode`, before its entry, put the site's own build
-  docs (Documentation/Development) first; `compile to exe` puts
+  site-tooling words: `dark mode` needed an entry to keep the site's own build
+  docs (Documentation/Development) off rank 1; `compile to exe` puts
   `TbExpressionService.Compile` first. Noted, not changed.
 - **Open content gaps:** `COM interop` (no clear target: Categories' COM and
   Automation list, Interfaces-CoClasses, ActiveX Registration), subclassing

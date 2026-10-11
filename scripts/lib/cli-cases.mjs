@@ -384,10 +384,14 @@ const HELP_TOOLS = {
   "scripts/impexp.mjs": "Usage:\n",
   "scripts/pick_a11y_sample.mjs": null,
   "scripts/probe_build_twice.mjs": null,
+  "scripts/probe_ide_image_labels.mjs": null,
   "scripts/probe_shared_temp.mjs": null,
   "scripts/survey_tooling.mjs": null,
   "scripts/sweep_a11y.mjs": null,
   "scripts/sweep_attributes.mjs": null,
+  "scripts/svgshot/bench.mjs": null,
+  "scripts/svgshot/pixels.mjs": null,
+  "scripts/svgshot/replay.mjs": null,
   "scripts/tbbuild.mjs": null,
   "scripts/tbrun.mjs": null,
   "scripts/vb6run.mjs": null,
@@ -461,10 +465,14 @@ const REFUSALS = {
   "scripts/impexp.mjs": [null, { prefix: "ERROR: " }],
   "scripts/pick_a11y_sample.mjs": ["sweep"],
   "scripts/probe_build_twice.mjs": ["ide"],
+  "scripts/probe_ide_image_labels.mjs": ["ide"],
   "scripts/probe_shared_temp.mjs": ["ide"],
   "scripts/survey_tooling.mjs": ["root"],
   "scripts/sweep_a11y.mjs": ["out"],
   "scripts/sweep_attributes.mjs": ["out"],
+  "scripts/svgshot/bench.mjs": ["out"],
+  "scripts/svgshot/pixels.mjs": ["beside"],
+  "scripts/svgshot/replay.mjs": ["bundles"],
   "scripts/tbbuild.mjs": ["ide"],
   "scripts/tbrun.mjs": ["ide"],
   "scripts/vb6run.mjs": ["vb6"],
@@ -557,6 +565,11 @@ bad(
   ["no-such-dir", "--compiler-options="],
   thenUsage("--compiler-options needs a non-empty value", "scripts/tbrun.mjs"),
 );
+bad(
+  "scripts/tbrun.mjs",
+  ["no-such-dir", "--exe", "--tests"],
+  thenUsage("--exe and --tests cannot be given together", "scripts/tbrun.mjs"),
+);
 
 // sweep_attributes reads its values before it looks for an IDE, and follows the
 // message with its usage.
@@ -598,7 +611,7 @@ bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE(
   bad(
     tool,
     ["new", "no-such-bug", "title", "--template", "no-such-template"],
-    thenUsage("--template expects console or webview2-form, got: no-such-template", tool),
+    thenUsage("--template expects console, tests or webview2-form, got: no-such-template", tool),
   );
   bad(tool, ["pack", "no-such-bug", "--template", "console"], thenUsage("--template does not apply to pack", tool));
   bad(tool, ["pack", "-x"], thenUsage("unknown option: -x", tool));

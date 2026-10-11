@@ -46,6 +46,18 @@ Module Startup
         Printer.FillColor = -1
         Debug.Print "Printer.FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Printer.FillColor): Err.Clear
         Form1.UC1.RunCases
+        Form1.Data1.ForeColor = vbGreen
+        Form1.Data1.ForeColor = -1
+        Debug.Print "Data.ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.Data1.ForeColor): Err.Clear
+        Form1.Data1.BackColor = vbGreen
+        Form1.Data1.BackColor = -1
+        Debug.Print "Data.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.Data1.BackColor): Err.Clear
+        Form1.OLE1.BackColor = vbGreen
+        Form1.OLE1.BackColor = -1
+        Debug.Print "OLE.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.OLE1.BackColor): Err.Clear
+        Form1.MultiFrame1.BackColor = vbGreen
+        Form1.MultiFrame1.BackColor = -1
+        Debug.Print "MultiFrame.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.MultiFrame1.BackColor): Err.Clear
         Unload Form1
         Load MyMDIForm
         MyMDIForm.BackColor = vbGreen

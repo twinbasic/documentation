@@ -16,6 +16,9 @@ Syntax: **GetAttr(** *pathname* **)**
 *pathname*
 : *required* String expression that specifies a file name. The *pathname* may include the directory or folder, and the drive.
 
+> [!NOTE]
+> In BETA 1005, **GetAttr** raises run-time error -2147467259 (`&H80004005`) for a *pathname* that does not exist. VB6 raises 53 (*File not found*), or 76 (*Path not found*) when the folder does not exist.
+
 ### Return Values
 
 The value returned by **GetAttr** is the sum of the following attribute values:

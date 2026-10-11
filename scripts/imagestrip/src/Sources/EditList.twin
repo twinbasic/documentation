@@ -1,0 +1,60 @@
+' Changes to an array of bytes: bytes [start, end) replaced by an ASCII text, which may be empty.
+' Apply takes them in any order and lets them overlap, as applyEdits in
+' scripts/lib/compact-image.mjs does: a byte any edit covers is dropped, and a text is put where
+' its edit starts.
+Class EditList
+    Private mStart() As Long
+    Private mEnd() As Long
+    Private mText() As String
+    Private mCount As Long
+
+    Public Sub Add(ByVal startAt As Long, ByVal endAt As Long, ByVal text As String)
+        If mCount = 0 Then
+            ReDim mStart(0 To 15)
+            ReDim mEnd(0 To 15)
+            ReDim mText(0 To 15)
+        ElseIf mCount > UBound(mStart) Then
+            ReDim Preserve mStart(0 To 2 * mCount - 1)
+            ReDim Preserve mEnd(0 To 2 * mCount - 1)
+            ReDim Preserve mText(0 To 2 * mCount - 1)
+        End If
+        mStart(mCount) = startAt
+        mEnd(mCount) = endAt
+        mText(mCount) = text
+        mCount = mCount + 1
+    End Sub
+
+    Public Property Get Count() As Long
+        Count = mCount
+    End Property
+
+    Public Function StartOf(ByVal k As Long) As Long
+        StartOf = mStart(k)
+    End Function
+
+    Public Function EndOf(ByVal k As Long) As Long
+        EndOf = mEnd(k)
+    End Function
+
+    Public Function TextOf(ByVal k As Long) As String
+        TextOf = mText(k)
+    End Function
+
+    ' src[0, n) with the edits made, into out; returns its length.
+    Public Function Apply(src() As Byte, ByVal n As Long, out() As Byte) As Long
+        Dim drop() As Boolean, insertAt() As Long, k As Long, i As Long, b As New ByteBuilder
+        ReDim drop(0 To n)
+        ReDim insertAt(0 To n)
+        For k = 0 To mCount - 1
+            For i = mStart(k) To mEnd(k) - 1
+                drop(i) = True
+            Next
+            If Len(mText(k)) > 0 Then insertAt(mStart(k)) = k + 1
+        Next
+        For i = 0 To n - 1
+            If insertAt(i) > 0 Then b.AddAscii mText(insertAt(i) - 1)
+            If Not drop(i) Then b.AddByte src(i)
+        Next
+        Apply = b.ToArray(out)
+    End Function
+End Class

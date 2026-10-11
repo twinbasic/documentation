@@ -25,7 +25,7 @@ A shift by as many bits as the type holds, or more, gives 0. A negative *shiftam
 With constant arguments, the call is evaluated when the code is compiled, so it can be used in a [**Const**](../../Core/Const) declaration, an **Enum** member's value or a **Case** expression.
 
 > [!WARNING]
-> In twinBASIC BETA 997, **ShiftUnsignedRight** ignores the names of named arguments and takes its arguments in the order they are written: `ShiftUnsignedRight(ShiftAmount:=4, Number:=&H12345678)` shifts 4 right by `&H12345678` bits, and gives 0. Write the arguments by position, *number* first.
+> In twinBASIC BETA 1005, **ShiftUnsignedRight** ignores the names of named arguments and takes its arguments in the order they are written: `ShiftUnsignedRight(ShiftAmount:=4, Number:=&H12345678)` shifts 4 right by `&H12345678` bits, and gives 0. Write the arguments by position, *number* first.
 
 > [!NOTE]
 > **ShiftUnsignedRight** is a twinBASIC extension. VBA and VB6 have no function of this name: a call to it is the compile error *Sub or Function not defined*.

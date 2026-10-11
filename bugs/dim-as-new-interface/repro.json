@@ -1,0 +1,19 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS New_ProjectInterface$",
+      "^PASS New_DerivedInterface$",
+      "^PASS New_PackageInterface$",
+      "^PASS New_TypeLibraryInterface$",
+      "^PASS New_ClassThatImplements$",
+      "^PASS AsNew_Class$",
+      "^FAIL AsNew_ClassField: ",
+      "^FAIL AsNew_ModuleVariable: ",
+      "^FAIL AsNew_ProjectInterface: ",
+      "^FAIL AsNew_DerivedInterface: ",
+      "^FAIL AsNew_PackageInterface: "
+    ]
+  }
+}

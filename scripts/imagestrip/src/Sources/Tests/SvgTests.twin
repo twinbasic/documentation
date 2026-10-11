@@ -1,0 +1,58 @@
+' What an SVG keeps of itself, and what becomes of the images inside it. As
+' test/compact-image.test.mjs's "compactImage, SVG" and "compactSvgText, images inside an SVG",
+' against the twinBASIC code.
+[TestFixture]
+Module SvgTests
+
+    [TestCase]
+    Public Sub DropsTheDeclarationAnEmptyDoctypeCommentsAndMetadata()
+        Assert.Strict.AreEqual SvgCorelStripped(), StripText(SvgCorel(), True)
+    End Sub
+
+    [TestCase]
+    Public Sub KeepsADoctypeThatDeclaresEntitiesAndANotice()
+        Assert.Strict.AreEqual "<!DOCTYPE svg [<!ENTITY ns_svg ""http://www.w3.org/2000/svg"">]><!-- Copyright 2020 A. Painter -->" & _
+                               "<svg xmlns=""&ns_svg;""><metadata><rdf:RDF><cc:Work><cc:license rdf:resource=""https://creativecommons.org/licenses/by/4.0/""/>" & _
+                               "</cc:Work></rdf:RDF></metadata></svg>", _
+                               StripText(SvgIllustrator(), True)
+    End Sub
+
+    [TestCase]
+    Public Sub DropsAroundACdataSectionAndLeavesItsInside()
+        Assert.Strict.AreEqual "<svg><defs><style type=""text/css""><![CDATA[ <!-- .fil0 {fill:#373435} --> ]]></style></defs>" & _
+                               "<path class=""fil0"" d=""M0 0h1""/></svg>", _
+                               StripText(SvgCdata(), True)
+    End Sub
+
+    [TestCase]
+    Public Sub KeepsAStyleSheetInstructionEvenFirst()
+        Assert.Strict.AreEqual SvgStylesheet(), StripText(SvgStylesheet(), True)
+        Assert.Strict.AreEqual SvgStylesheet(), StripText("<?xml version=""1.0""?>" & vbLf & SvgStylesheet(), True)
+    End Sub
+
+    [TestCase]
+    Public Sub StripsEachImageInsideAnSvgAndLabelsEachByItsBytes()
+        Dim svg As String, out As String, counted As String, reported As String, inner As String, at As Long
+        svg = NestedSvg()
+        out = StripText(svg, True)
+        counted = Counts()
+        reported = ReportsText()
+        Assert.Strict.AreEqual "<svg version=""1.1""", Left$(out, 18)
+        Assert.Strict.IsTrue InStr(out, "xlink:href=""data:image/png;base64," & B64(CompactPngOf(GimpPng())) & """") > 0, "the PNG"
+        Assert.Strict.IsTrue InStr(out, "href='data:image/jpeg;base64," & B64(CompactJpegOf(JpegWithMetadata())) & "'") > 0, "the JPEG"
+        Assert.Strict.IsTrue InStr(out, "url( data:image/gif;base64," & B64(CompactGifOf(GifWithComment())) & " )") > 0, "the GIF"
+        at = InStr(out, "data:image/svg+xml,") + 19
+        inner = Mid$(out, at, InStr(at, out, """") - at)
+        Assert.Strict.AreEqual SvgCorelStripped(), PercentDecoded(inner), "the SVG inside"
+        Assert.Strict.IsTrue InStr(UrlText(SvgCorel()), Left$(inner, 20)) > 0, "the SVG inside keeps its percent escapes"
+        Assert.Strict.AreEqual "5 5 1", counted
+        Assert.Strict.AreEqual LineOf(svg, "<image href='") & ": " & JpegReport(), reported
+    End Sub
+
+    ' The line of text that the first instance of what is on.
+    Private Function LineOf(ByVal text As String, ByVal what As String) As Long
+        Dim before As String
+        before = Left$(text, InStr(text, what))
+        LineOf = Len(before) - Len(Replace(before, vbLf, "")) + 1
+    End Function
+End Module

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>A frame with no background</title>
+<!--
+  No background on the root element or the body: the frame is transparent, and
+  the parent's colour shows through.
+-->
+<style>
+body { margin: 0; padding: 8px; color: #fff; font: 13px "Segoe UI", sans-serif; }
+.chip { display: inline-block; margin-top: 8px; padding: 2px 8px; background: rgba(255, 255, 255, 0.35); border-radius: 3px; }
+</style>
+<body>
+<p>Text over the parent's colour.</p>
+<span class="chip">a half-clear chip</span>
+</body>
+</html>

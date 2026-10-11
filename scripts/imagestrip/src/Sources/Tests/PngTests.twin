@@ -1,0 +1,88 @@
+' What a PNG keeps: its image and colour chunks, a notice of whose it is, an EXIF that turns it,
+' and an animation's frames; an editor's metadata goes. As test/compact-image.test.mjs's
+' "compactImage, PNG", against the twinBASIC code.
+[TestFixture]
+Module PngTests
+
+    [TestCase]
+    Public Sub DropsEditorMetadataKeepsColourAndPixels()
+        Dim gimp() As Byte, signature() As Byte
+        gimp = GimpPng()
+        Assert.Strict.AreEqual "IHDR iCCP IDAT IEND", ChunksAfter(gimp)
+        ' The chunks that stay are copied byte for byte: the pixels cannot change.
+        Bytes.Slice gimp, 0, 8, signature
+        Assert.Strict.AreEqual ToHex(Cat(signature, ChunkOf(gimp, "IHDR"), ChunkOf(gimp, "iCCP"), ChunkOf(gimp, "IDAT"), ChunkOf(gimp, "IEND"))), _
+                               ToHex(CompactPngOf(gimp))
+    End Sub
+
+    [TestCase]
+    Public Sub KeepsTheLockIconsAttribution()
+        Dim notice As String
+        Assert.Strict.AreEqual "IHDR tEXt:Title tEXt:Author tEXt:Description tEXt:Copyright IDAT IEND", ChunksAfter(LockPng())
+        notice = ToHex(TextChunk("Copyright", "http://creativecommons.org/licenses/by-nc-sa/2.0/"))
+        Assert.Strict.IsTrue InStr(ToHex(CompactPngOf(LockPng())), notice) > 0, "the notice is not rewritten"
+    End Sub
+
+    [TestCase]
+    Public Sub KeepsATextChunkThatNamesALicence()
+        Assert.Strict.AreEqual "IHDR zTXt:License IDAT IEND", ChunksAfter(Png(ZText("License", "CC0")))
+    End Sub
+
+    [TestCase]
+    Public Sub KeepsAProfileThatNamesAnAuthorOrTerms()
+        Dim rights As String
+        rights = "<x:xmpmeta><rdf:RDF><rdf:Description><dc:rights><rdf:Alt><rdf:li xml:lang=""x-default"">(c) 2021 A. Painter" & _
+                 "</rdf:li></rdf:Alt></dc:rights></rdf:Description></rdf:RDF></x:xmpmeta>"
+        Assert.Strict.AreEqual "IHDR iTXt:XML:com.adobe.xmp IDAT IEND", ChunksAfter(Png(IText("XML:com.adobe.xmp", rights))), "XMP with dc:rights"
+        Assert.Strict.AreEqual "IHDR iTXt:XML:com.adobe.xmp IDAT IEND", _
+                               ChunksAfter(Png(IText("XML:com.adobe.xmp", "<rdf:Description xmpRights:WebStatement=""https://example.org/terms""/>"))), _
+                               "XMP with a web statement"
+        Assert.Strict.AreEqual "IHDR IDAT IEND", ChunksAfter(Png(IText("XML:com.adobe.xmp", GimpXmp()))), "XMP with empty rights fields"
+        Assert.Strict.AreEqual "IHDR zTXt:Raw profile type exif IDAT IEND", _
+                               ChunksAfter(Png(ZText("Raw profile type exif", RawProfile("exif", Exif(&H13B, 2, 10, 26))))), "EXIF with an Artist"
+        Assert.Strict.AreEqual "IHDR IDAT IEND", _
+                               ChunksAfter(Png(ZText("Raw profile type exif", RawProfile("exif", Exif(&H13B, 2, 1, 0))))), "EXIF with an empty Artist"
+        Assert.Strict.AreEqual "IHDR zTXt:Raw profile type iptc IDAT IEND", _
+                               ChunksAfter(Png(ZText("Raw profile type iptc", RawProfile("iptc", FromHex("1c0274000548656c6c6f"))))), "IPTC with a Copyright Notice"
+    End Sub
+
+    [TestCase]
+    Public Sub KeepsAnExifChunkThatTurnsThePicture()
+        Dim b() As Byte
+        Assert.Strict.AreEqual "IHDR eXIf IDAT IEND", ChunksAfter(Png(Chunk("eXIf", Exif(&H112, 3, 1, 6))))
+        Assert.Strict.AreEqual "IHDR IDAT IEND", ChunksAfter(Png(Chunk("eXIf", Exif(&H112, 3, 1, 1))))
+        b = Exif(&H112, 3, 1, 8)
+        Assert.Strict.AreEqual 8&, Rights.ExifOrientation(b)
+        b = Exif()
+        Assert.Strict.AreEqual 1&, Rights.ExifOrientation(b)
+    End Sub
+
+    [TestCase]
+    Public Sub KeepsAnAnimatedPngsFrames()
+        Assert.Strict.AreEqual "IHDR acTL fcTL fdAT IDAT IEND", ChunksAfter(AnimatedPng())
+    End Sub
+
+    [TestCase]
+    Public Sub FollowsAPngCutShortOrWithBytesAfterIt()
+        Dim gimp() As Byte, cut() As Byte
+        gimp = GimpPng()
+        Bytes.Slice gimp, 0, Bytes.Length(gimp) - 20, cut
+        Assert.Strict.AreEqual "IHDR iCCP IDAT", ChunksAfter(cut)
+        Assert.Strict.AreEqual "IHDR IDAT IEND", ChunksAfter(Cat(Png(), "trailing junk"))
+    End Sub
+
+    ' The whole first chunk of this type.
+    Private Function ChunkOf(b() As Byte, ByVal kind As String) As Byte()
+        Dim p As Double, n As Double, r() As Byte
+        p = 8
+        Do While p + 12 <= Bytes.Length(b)
+            n = Bytes.U32BE(b, p)
+            If Bytes.Latin1Range(b, p + 4, p + 8) = kind Then
+                Bytes.Slice b, p, p + 12 + n, r
+                ChunkOf = r
+                Exit Function
+            End If
+            p = p + 12 + n
+        Loop
+    End Function
+End Module

@@ -1,0 +1,21 @@
+' Put a breakpoint on the line marked BREAK (F9) and press F5. At the stop, a watch
+' on p shows it, and a watch on p.X shows 7 (fixed in #2485). Type ? p in the
+' Debug Console: it fails with a codegen error, and the console reports a linker
+' error.
+Module Startup
+
+    Private Type Point
+        X As Long
+        Y As Long
+    End Type
+
+    Public Sub Main()
+        Dim p As Point
+        Dim i As Long
+        p.X = 7
+        For i = 1 To 2
+            Debug.Print "pass " & i ' BREAK
+        Next
+    End Sub
+
+End Module

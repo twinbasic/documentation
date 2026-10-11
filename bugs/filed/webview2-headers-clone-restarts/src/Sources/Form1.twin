@@ -1,6 +1,7 @@
 ' A form holding one WebView2 control. Once the control is ready it navigates to a
 ' page whose request it answers itself in WebResourceRequested, after enumerating the
-' request's headers there; when that navigation completes the form closes.
+' request's headers and the response's there; when that navigation completes the
+' form closes.
 
 [FormDesignerId("7B247400-0000-4000-9000-7B2474000F01")]
 [PredeclaredId]
@@ -15,9 +16,16 @@ Class Form1
 
     Private Sub WebView21_WebResourceRequested(ByVal Request As WebView2Request, ByVal Response As WebView2Response) _
             Handles WebView21.WebResourceRequested
+        Response.Headers.AppendHeader "Ha", "1"
+        Response.Headers.AppendHeader "Hb", "2"
+        Response.Headers.AppendHeader "Hc", "3"
+        Response.Headers.AppendHeader "Hd", "4"
         If Not Probed Then
             Probed = True
-            EnumProbe.Run Request.Headers
+            Dim rq As WebView2RequestHeaders = Request.Headers
+            EnumProbe.Run "request", rq._NewEnum(), rq._NewEnum(), rq._NewEnum()
+            Dim rs As WebView2ResponseHeaders = Response.Headers
+            EnumProbe.Run "response", rs._NewEnum(), rs._NewEnum(), rs._NewEnum()
         End If
         Response.StatusCode = 200
         Response.ReasonPhrase = "OK"

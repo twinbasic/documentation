@@ -152,7 +152,7 @@ The twinBASIC IDE is supported on Windows 7 through Windows 11. The installation
 
 WebView2 is required. This is normally preinstalled on newer versions of Windows, and is installed along with Edge if you've installed that browser. For Windows 10 and 11, you can also obtain it from [Microsoft's website](https://developer.microsoft.com/en-us/microsoft-edge/webview2?form=MA13LH#download-section). Select the Standalone Evergreen x86 version:
 
-![The Microsoft WebView2 Runtime download page. Three cards offer the Evergreen Bootstrapper, the Evergreen Standalone Installer and a Fixed Version; a red arrow points at the middle card and a red ring marks its x86 download button.](Images/94490c87-fafe-4d5b-ae39-d3cedba1c21d.png)
+![The Microsoft WebView2 Runtime download page. Three cards offer the Evergreen Bootstrapper, the Evergreen Standalone Installer and a Fixed Version; a red arrow points at the middle card and a red ring marks its x86 download link.](Images/94490c87-fafe-4d5b-ae39-d3cedba1c21d.png){:width="1089" height="485"}
 
 See the next entry for Windows 7.
 
@@ -186,7 +186,7 @@ Please direct all negative emotions to your overactive anti-virus vendor :)
 
 tB does not require a full installation process, you need only extract the ZIP file. Download the latest version from the [Releases page](https://github.com/twinbasic/twinbasic/releases), named `twinBASIC_IDE_BETA_xxx.zip` (where xxx is a version number; click on 'Assets' to expand the file list if it's not already visible).
 
-![The expanded Assets list of a GitHub release, with twinBASIC_IDE_BETA_920.zip and its SHA-256 at 25.4 MB above the two automatic source code archives.](Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png)
+![The expanded Assets list of a GitHub release: the release's twinBASIC_IDE_BETA zip file with the start of its SHA-256, its size and its age, above the two automatic source code archives.](Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png){:width="891" height="183"}
 
 Download the zip and extract it to an **empty** folder. Do not simply overwrite a previous version; either delete everything in the folder or use a different one. Odd errors have been known to occur otherwise.  It will run from this folder; some settings will be placed in AppData. 
 
@@ -195,7 +195,7 @@ Download the zip and extract it to an **empty** folder. Do not simply overwrite 
 <details>
 <summary markdown=span id="installation-size"><b>How big is the twinBASIC installation?</b></summary>
 
-The IDE is quite small, it's currently only a 25MB download, about 80MB extracted, and that is half due to LLVM libraries.
+The IDE is quite small: it's currently about a 40 MB download and about 120 MB extracted, and the LLVM libraries are almost half of that.
 
 </details>
 
@@ -247,7 +247,7 @@ You can import individual files, from VB projects or any type, through the Impor
 > [!NOTE]
 > You can select .bas/.cls files individually, but to import Forms, UserControls, Property Pages, and Resource Files you must currently select the .vbp file they're associated with. You'll then be shown a list of files you can import (with their new twinBASIC extensions .tbform/.twin etc-- make sure to import both, e.g. for Form1.frm you'll see Form1.frm.tbform and Form1.frm.twin:
 
-![The Import from twinproj dialog: a tick-box tree of everything found in RunAsTI.vbp, with the Resources branch expanded over its ICON and MANIFEST folders and a Sources branch below. Form1.frm.tbform and Form1.frm.twin are both ticked.](Images/16833fae-4bd7-418f-bb16-691a611a5b01.png){:style="width:50%; height:auto;"}
+![The Import from twinproj dialog: a tick-box tree of everything found in ImportDemo.vbp, with the Resources branch expanded over its ICON and MANIFEST folders and a Sources branch below, where a module from a folder beside the project's sits in a PARENT-FOLDER branch. Form1.frm.tbform and Form1.frm.twin are both ticked.](Images/16833fae-4bd7-418f-bb16-691a611a5b01.png){:width="468" height="397"}
 
 Importing a .vbp also carries over its [startup object](tB/IDE/Project/Settings#startup-object) and its [icon form](tB/IDE/Project/Settings#icon-form). A VB6 project that was linked as a console program --- its `LinkSwitches` line contains `/SUBSYSTEM:CONSOLE`, written in capitals --- becomes a [console application](tB/IDE/Project/Settings#is-console-application). No other linker switch is carried over.
 </details>

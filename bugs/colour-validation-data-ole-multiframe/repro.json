@@ -1,0 +1,29 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS ColourPropertyTests\\.Form_ForeColor$",
+      "^PASS ColourPropertyTests\\.Form_ForeColor_SystemColourOutOfRange$",
+      "^PASS ColourPropertyTests\\.Form_BackColor$",
+      "^PASS ColourPropertyTests\\.Form_FillColor$",
+      "^PASS ColourPropertyTests\\.PictureBox_ForeColor$",
+      "^PASS ColourPropertyTests\\.PictureBox_BackColor$",
+      "^PASS ColourPropertyTests\\.PictureBox_FillColor$",
+      "^PASS ColourPropertyTests\\.Label_ForeColor$",
+      "^PASS ColourPropertyTests\\.Label_BackColor$",
+      "^PASS ColourPropertyTests\\.TextBox_ForeColor$",
+      "^PASS ColourPropertyTests\\.TextBox_BackColor$",
+      "^PASS ColourPropertyTests\\.CommandButton_BackColor$",
+      "^PASS ColourPropertyTests\\.UserControl_ForeColor$",
+      "^PASS ColourPropertyTests\\.UserControl_BackColor$",
+      "^PASS ColourPropertyTests\\.UserControl_FillColor$",
+      "^PASS ColourPropertyTests\\.MDIForm_BackColor$",
+      "^PASS ColourPropertyTests\\.MDIForm_BackColor_SystemColourOutOfRange$",
+      "^FAIL ColourPropertyTests\\.Data_ForeColor: .*Expected: 380 .*Actual: 0 ",
+      "^FAIL ColourPropertyTests\\.Data_BackColor: .*Expected: 380 .*Actual: 0 ",
+      "^FAIL ColourPropertyTests\\.OLE_BackColor: .*Expected: 380 .*Actual: 0 ",
+      "^FAIL ColourPropertyTests\\.MultiFrame_BackColor: .*Expected: 380 .*Actual: 0 "
+    ]
+  }
+}

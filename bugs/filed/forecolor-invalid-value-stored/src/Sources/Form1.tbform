@@ -129,6 +129,36 @@
 				"Height": 100,
 				"_className": "UC1",
 				"_clsid": "{EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA10}"
+			},
+			{
+				"Index": -1,
+				"Name": "Data1",
+				"Left": 260,
+				"Top": 20,
+				"Width": 100,
+				"Height": 30,
+				"_className": "Data",
+				"_clsid": "{33AD4FF8-6699-11CF-B70C-00AA0060D393}"
+			},
+			{
+				"Index": -1,
+				"Name": "OLE1",
+				"Left": 260,
+				"Top": 60,
+				"Width": 100,
+				"Height": 30,
+				"_className": "OLE",
+				"_clsid": "{33AD5000-6699-11CF-B70C-00AA0060D393}"
+			},
+			{
+				"Index": -1,
+				"Name": "MultiFrame1",
+				"Left": 260,
+				"Top": 100,
+				"Width": 100,
+				"Height": 30,
+				"_className": "MultiFrame",
+				"_clsid": "{5724D906-E1EE-455E-9FE3-BB322399766F}"
 			}
 		]
 	}

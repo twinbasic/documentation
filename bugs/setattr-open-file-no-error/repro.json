@@ -1,0 +1,12 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^SetAttr vbReadOnly, file open For Output: error 0 ; attributes now 1$",
+      "^SetAttr vbReadOnly, file open For Append: error 0 ; attributes now 1$",
+      "^SetAttr vbReadOnly, file open For Binary: error 0 ; attributes now 1$",
+      "^SetAttr vbReadOnly, file open For Random: error 0 ; attributes now 1$"
+    ]
+  }
+}

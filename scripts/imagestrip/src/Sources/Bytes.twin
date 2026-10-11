@@ -1,0 +1,360 @@
+' Byte-array helpers that read as Node's Buffer does where the stripping depends on it:
+' a read past the end raises error 9 where Buffer's read throws, and a range is clamped
+' where Buffer's subarray and toString clamp it.
+Module Bytes
+    Private Const B64_ALPHABET As String = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    Private mB64Char(0 To 63) As Byte
+    Private mB64Value(0 To 255) As Integer
+    Private mB64Ready As Boolean
+
+    Public Function Length(b() As Byte) As Long
+        On Error Resume Next
+        Length = UBound(b) + 1
+    End Function
+
+    ' b[start, finish) copied into out, both ends clamped to the array as subarray clamps them.
+    Public Function Slice(b() As Byte, ByVal start As Double, ByVal finish As Double, out() As Byte) As Long
+        Dim n As Long, s As Long, e As Long, i As Long
+        n = Length(b)
+        If start < 0 Then start = 0
+        If start > n Then start = n
+        If finish > n Then finish = n
+        If finish < start Then finish = start
+        s = CLng(start)
+        e = CLng(finish)
+        Erase out
+        If e > s Then
+            ReDim out(0 To e - s - 1)
+            For i = s To e - 1
+                out(i - s) = b(i)
+            Next
+        End If
+        Slice = e - s
+    End Function
+
+    Public Function Copy(b() As Byte, out() As Byte) As Long
+        Copy = Slice(b, 0, Length(b), out)
+    End Function
+
+    ' b[i], or 0 past either end, as an undefined element is falsy in JavaScript.
+    Public Function ByteAt(b() As Byte, ByVal i As Double) As Long
+        If i >= 0 Then
+            If i < Length(b) Then ByteAt = b(CLng(i))
+        End If
+    End Function
+
+    Public Function IndexOfByte(b() As Byte, ByVal value As Long, ByVal from As Long) As Long
+        Dim i As Long
+        If from < 0 Then from = 0
+        For i = from To Length(b) - 1
+            If b(i) = value Then
+                IndexOfByte = i
+                Exit Function
+            End If
+        Next
+        IndexOfByte = -1
+    End Function
+
+    Public Function U16BE(b() As Byte, ByVal p As Double) As Long
+        Dim i As Long
+        i = CLng(p)
+        U16BE = CLng(b(i)) * 256 + b(i + 1)
+    End Function
+
+    Public Function U32BE(b() As Byte, ByVal p As Double) As Double
+        Dim i As Long
+        i = CLng(p)
+        U32BE = ((CDbl(b(i)) * 256 + b(i + 1)) * 256 + b(i + 2)) * 256 + b(i + 3)
+    End Function
+
+    Public Function S32BE(b() As Byte, ByVal p As Double) As Double
+        S32BE = U32BE(b, p)
+        If S32BE >= 2147483648# Then S32BE = S32BE - 4294967296#
+    End Function
+
+    Public Function U16LE(b() As Byte, ByVal p As Double) As Long
+        Dim i As Long
+        i = CLng(p)
+        U16LE = CLng(b(i + 1)) * 256 + b(i)
+    End Function
+
+    Public Function U32LE(b() As Byte, ByVal p As Double) As Double
+        Dim i As Long
+        i = CLng(p)
+        U32LE = ((CDbl(b(i + 3)) * 256 + b(i + 2)) * 256 + b(i + 1)) * 256 + b(i)
+    End Function
+
+    ' As Buffer's toString("latin1", start, finish).
+    Public Function Latin1Range(b() As Byte, ByVal start As Double, ByVal finish As Double) As String
+        Dim n As Long, s As Long, e As Long, i As Long, t As String
+        n = Length(b)
+        If start < 0 Then start = 0
+        If start >= n Then Exit Function
+        If finish > n Then finish = n
+        If finish <= start Then Exit Function
+        s = CLng(start)
+        e = CLng(finish)
+        t = String$(e - s, vbNullChar)
+        For i = s To e - 1
+            Mid$(t, i - s + 1, 1) = ChrW$(b(i))
+        Next
+        Latin1Range = t
+    End Function
+
+    ' As Buffer's toString("utf8", start, finish), but for how many U+FFFD an invalid sequence gives.
+    Public Function Utf8Text(b() As Byte, ByVal start As Double, ByVal finish As Double) As String
+        Dim units() As Long, uStart() As Long, uEnd() As Long, valid As Boolean, n As Long, count As Long
+        n = Length(b)
+        If start < 0 Then start = 0
+        If start >= n Then Exit Function
+        If finish > n Then finish = n
+        If finish <= start Then Exit Function
+        count = Utf8Units(b, CLng(start), CLng(finish), units, uStart, uEnd, valid)
+        Utf8Text = UnitsText(units, 0, count)
+    End Function
+
+    ' Decodes b[start, finish) as UTF-8 into UTF-16 units. A byte that does not begin a valid sequence
+    ' gives U+FFFD and clears valid. Unit k came from bytes [uStart(k), uEnd(k)); the low half of a
+    ' surrogate pair is given none of its own.
+    Public Function Utf8Units(b() As Byte, ByVal start As Long, ByVal finish As Long, units() As Long, uStart() As Long, uEnd() As Long, ByRef valid As Boolean) As Long
+        Dim p As Long, c0 As Long, cp As Long, need As Long, i As Long, k As Long, lo As Long, hi As Long, ok As Boolean
+        valid = True
+        If finish <= start Then Exit Function
+        ReDim units(0 To finish - start)
+        ReDim uStart(0 To finish - start)
+        ReDim uEnd(0 To finish - start)
+        p = start
+        Do While p < finish
+            c0 = b(p)
+            lo = &H80
+            hi = &HBF
+            If c0 < &H80 Then
+                cp = c0
+                need = 0
+            ElseIf c0 >= &HC2 And c0 <= &HDF Then
+                cp = c0 And &H1F
+                need = 1
+            ElseIf c0 >= &HE0 And c0 <= &HEF Then
+                cp = c0 And &HF
+                need = 2
+                If c0 = &HE0 Then lo = &HA0
+                If c0 = &HED Then hi = &H9F
+            ElseIf c0 >= &HF0 And c0 <= &HF4 Then
+                cp = c0 And 7
+                need = 3
+                If c0 = &HF0 Then lo = &H90
+                If c0 = &HF4 Then hi = &H8F
+            Else
+                need = -1
+            End If
+            ok = (need >= 0)
+            If ok Then
+                If p + need >= finish Then ok = False
+            End If
+            If ok Then
+                For i = 1 To need
+                    If b(p + i) < lo Or b(p + i) > hi Then
+                        ok = False
+                        Exit For
+                    End If
+                    cp = cp * 64 + (b(p + i) And &H3F)
+                    lo = &H80
+                    hi = &HBF
+                Next
+            End If
+            If Not ok Then
+                valid = False
+                units(k) = &HFFFD&
+                uStart(k) = p
+                uEnd(k) = p + 1
+                k = k + 1
+                p = p + 1
+            ElseIf cp >= &H10000 Then
+                cp = cp - &H10000
+                units(k) = &HD800& + cp \ 1024
+                uStart(k) = p
+                uEnd(k) = p + 4
+                units(k + 1) = &HDC00& + (cp And 1023)
+                uStart(k + 1) = p + 4
+                uEnd(k + 1) = p + 4
+                k = k + 2
+                p = p + 4
+            Else
+                units(k) = cp
+                uStart(k) = p
+                uEnd(k) = p + need + 1
+                k = k + 1
+                p = p + need + 1
+            End If
+        Loop
+        Utf8Units = k
+    End Function
+
+    ' The units kept, as UTF-8.
+    Public Function Utf8Encode(units() As Long, ByVal n As Long, keep() As Boolean, out() As Byte) As Long
+        Dim builder As New ByteBuilder, k As Long, cp As Long
+        For k = 0 To n - 1
+            If keep(k) Then
+                cp = units(k)
+                If cp >= &HD800& And cp <= &HDBFF& And k + 1 < n Then
+                    If units(k + 1) >= &HDC00& And units(k + 1) <= &HDFFF& Then
+                        cp = &H10000 + (cp - &HD800&) * 1024 + (units(k + 1) - &HDC00&)
+                        k = k + 1
+                    End If
+                End If
+                If cp < &H80 Then
+                    builder.AddByte cp
+                ElseIf cp < &H800 Then
+                    builder.AddByte &HC0 Or (cp \ 64)
+                    builder.AddByte &H80 Or (cp And &H3F)
+                ElseIf cp < &H10000 Then
+                    builder.AddByte &HE0 Or (cp \ 4096)
+                    builder.AddByte &H80 Or ((cp \ 64) And &H3F)
+                    builder.AddByte &H80 Or (cp And &H3F)
+                Else
+                    builder.AddByte &HF0 Or (cp \ 262144)
+                    builder.AddByte &H80 Or ((cp \ 4096) And &H3F)
+                    builder.AddByte &H80 Or ((cp \ 64) And &H3F)
+                    builder.AddByte &H80 Or (cp And &H3F)
+                End If
+            End If
+        Next
+        Utf8Encode = builder.ToArray(out)
+    End Function
+
+    Public Function UnitsText(units() As Long, ByVal start As Long, ByVal count As Long) As String
+        Dim t As String, i As Long
+        If count <= 0 Then Exit Function
+        t = String$(count, vbNullChar)
+        For i = 0 To count - 1
+            Mid$(t, i + 1, 1) = ChrW$(units(start + i))
+        Next
+        UnitsText = t
+    End Function
+
+    Public Function ToUnits(ByVal s As String, units() As Long) As Long
+        Dim bb() As Byte, i As Long, n As Long
+        n = Len(s)
+        If n = 0 Then Exit Function
+        bb = s
+        ReDim units(0 To n - 1)
+        For i = 0 To n - 1
+            units(i) = CLng(bb(2 * i + 1)) * 256 + bb(2 * i)
+        Next
+        ToUnits = n
+    End Function
+
+    ' JavaScript's \s, which is also what trim removes.
+    Public Function IsJsSpace(ByVal u As Long) As Boolean
+        Select Case u
+            Case 9 To 13, 32, &HA0, &H1680&, &H2000& To &H200A&, &H2028&, &H2029&, &H202F&, &H205F&, &H3000&, &HFEFF&
+                IsJsSpace = True
+        End Select
+    End Function
+
+    ' JavaScript's \w.
+    Public Function IsWordUnit(ByVal u As Long) As Boolean
+        Select Case u
+            Case 48 To 57, 65 To 90, 95, 97 To 122
+                IsWordUnit = True
+        End Select
+    End Function
+
+    Public Function AsciiLowerUnit(ByVal u As Long) As Long
+        If u >= 65 And u <= 90 Then AsciiLowerUnit = u + 32 Else AsciiLowerUnit = u
+    End Function
+
+    ' Only A to Z lowered, as a regular expression's /i flag matches them.
+    Public Function AsciiLower(ByVal s As String) As String
+        Dim units() As Long, n As Long, i As Long
+        n = ToUnits(s, units)
+        For i = 0 To n - 1
+            units(i) = AsciiLowerUnit(units(i))
+        Next
+        AsciiLower = UnitsText(units, 0, n)
+    End Function
+
+    Private Sub InitBase64()
+        Dim i As Long
+        For i = 0 To 255
+            mB64Value(i) = -1
+        Next
+        For i = 0 To 63
+            mB64Char(i) = Asc(Mid$(B64_ALPHABET, i + 1, 1))
+            mB64Value(mB64Char(i)) = i
+        Next
+        mB64Ready = True
+    End Sub
+
+    Public Function IsBase64Byte(ByVal value As Byte) As Boolean
+        If Not mB64Ready Then InitBase64
+        IsBase64Byte = mB64Value(value) >= 0 Or value = 61
+    End Function
+
+    ' Decodes src[start, start + count) as a browser decodes a data: URI (forgiving-base64): white
+    ' space ignored, and up to two = at the end of a multiple of four. False for what that refuses,
+    ' and for nothing at all.
+    Public Function Base64Decode(src() As Byte, ByVal start As Long, ByVal count As Long, data() As Byte, ByRef dataLen As Long) As Boolean
+        Dim i As Long, k As Long, r As Long, o As Long, v(0 To 3) As Long, s() As Byte, m As Long
+        If Not mB64Ready Then InitBase64
+        If count <= 0 Then Exit Function
+        ReDim s(0 To count - 1)
+        For i = start To start + count - 1
+            Select Case src(i)
+                Case 9, 10, 12, 13, 32
+                Case Else
+                    s(m) = src(i)
+                    m = m + 1
+            End Select
+        Next
+        If m > 0 And m Mod 4 = 0 Then
+            If s(m - 1) = 61 Then
+                m = m - 1
+                If s(m - 1) = 61 Then m = m - 1
+            End If
+        End If
+        If m = 0 Or m Mod 4 = 1 Then Exit Function
+        For i = 0 To m - 1
+            If mB64Value(s(i)) < 0 Then Exit Function
+        Next
+        dataLen = (m * 3) \ 4
+        ReDim data(0 To dataLen - 1)
+        For i = 0 To m - 1 Step 4
+            r = m - i
+            If r > 4 Then r = 4
+            For k = 0 To 3
+                v(k) = 0
+                If k < r Then v(k) = mB64Value(s(i + k))
+            Next
+            o = (i \ 4) * 3
+            data(o) = (v(0) * 4) Or (v(1) \ 16)
+            If r > 2 Then data(o + 1) = ((v(1) And 15) * 16) Or (v(2) \ 4)
+            If r > 3 Then data(o + 2) = ((v(2) And 3) * 64) Or v(3)
+        Next
+        Base64Decode = True
+    End Function
+
+    Public Function Base64Text(data() As Byte, ByVal dataLen As Long) As String
+        Dim builder As New ByteBuilder, out() As Byte, n As Long
+        Base64EncodeTo builder, data, dataLen
+        n = builder.ToArray(out)
+        Base64Text = Latin1Range(out, 0, n)
+    End Function
+
+    Public Sub Base64EncodeTo(builder As ByteBuilder, data() As Byte, ByVal dataLen As Long)
+        Dim i As Long, r As Long, b0 As Long, b1 As Long, b2 As Long
+        If Not mB64Ready Then InitBase64
+        For i = 0 To dataLen - 1 Step 3
+            r = dataLen - i
+            b0 = data(i)
+            b1 = 0
+            b2 = 0
+            If r > 1 Then b1 = data(i + 1)
+            If r > 2 Then b2 = data(i + 2)
+            builder.AddByte mB64Char(b0 \ 4)
+            builder.AddByte mB64Char(((b0 And 3) * 16) Or (b1 \ 16))
+            If r > 1 Then builder.AddByte mB64Char(((b1 And 15) * 4) Or (b2 \ 64)) Else builder.AddByte 61
+            If r > 2 Then builder.AddByte mB64Char(b2 And 63) Else builder.AddByte 61
+        Next
+    End Sub
+End Module

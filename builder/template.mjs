@@ -95,6 +95,7 @@ function templatePage(page, site, init) {
     `  <div id="a11y-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>\n` +
     init.svgSprites +
     `\n` +
+    (page.hasFigure ? FIGURE_SPRITE + `\n` : "") +
     init.sidebar +
     `\n` +
     `  <div class="main" id="page-top">\n` +
@@ -193,8 +194,8 @@ function renderHead(page, site, init) {
       : "") +
     (bu ? `  <script>window.jtdBaseurl=${JSON.stringify(bu)};</script>\n` : "") +
     `  <script src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/just-the-docs.js", bu))}"></script>\n` +
-    (page.hasSvg
-      ? `  <script src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/svg-inline.js", bu))}" defer></script>\n`
+    (page.hasFigure
+      ? `  <script src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/figure.js", bu))}" defer></script>\n`
       : "") +
     `  <meta name="viewport" content="width=device-width, initial-scale=1">\n` +
     headSeoBlock(page, site) +
@@ -350,6 +351,22 @@ const SVG_SYMBOLS_COPY = `<!-- Bootstrap Icons. MIT License: https://github.com/
 
 // Port of theme's _includes/icons/icons.html. The search icon is
 // conditional; the copy-code icons ship unconditionally.
+//
+// FIGURE_SPRITE is the figure controls bar's glyphs (render.mjs, figureButton),
+// written only on a page with a figure. Feather's style on its 24 grid, at the
+// 1.5 stroke of the theme toggle's icons; download, the clipboard and the
+// magnifier follow Feather's own, and vector (a curve on two anchors, with its
+// handles) and raster (pixels) are drawn for this bar.
+const FIGURE_SPRITE = `  <svg xmlns="http://www.w3.org/2000/svg" class="d-none">
+<symbol id="fig-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+<symbol id="fig-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol>
+<symbol id="fig-copied" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><polyline points="8.5 14 11 16.5 15.5 11.5"/></symbol>
+<symbol id="fig-zoom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16" y2="16"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></symbol>
+<symbol id="fig-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
+<symbol id="fig-vector" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="15" width="4" height="4" rx=".5"/><rect x="18" y="15" width="4" height="4" rx=".5"/><path d="M4 15C4 9 8 6 12 6s8 3 8 9"/><line x1="4" y1="6" x2="20" y2="6"/><circle cx="4" cy="6" r="1.3" fill="currentColor"/><circle cx="20" cy="6" r="1.3" fill="currentColor"/></symbol>
+<symbol id="fig-raster" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><g fill="currentColor" stroke="none"><rect x="3.5" y="3.5" width="5.5" height="5.5"/><rect x="15" y="3.5" width="5.5" height="5.5"/><rect x="9" y="9" width="6" height="6"/><rect x="3.5" y="15" width="5.5" height="5.5"/><rect x="15" y="15" width="5.5" height="5.5"/></g></symbol>
+</svg>`;
+
 function buildSvgSprites(config) {
   const searchEnabled = config.search_enabled !== false;
   const parts = [

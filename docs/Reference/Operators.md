@@ -148,7 +148,7 @@ A result that does not fit its type raises error 6, *Overflow*. Some combination
 | **String** `+` **Integer** | **Double**: `"34" + 6` is 40 |
 
 > [!WARNING]
-> In twinBASIC BETA 997, an addition, subtraction, multiplication or division whose result is a declared **Single** raises no error when the result overflows: the **Single** holds infinity (`1.#INF`) instead. VB6 raises error 6, *Overflow*. Declare the variable **Double** where an overflow must be caught. Code compiled with LLVM has a similar defect for **Double**; see [Language support](../LLVM/Getting-Started#language-support).
+> In twinBASIC BETA 1005, an addition, subtraction, multiplication or division whose result is a declared **Single** raises no error when the result overflows: the **Single** holds infinity (`1.#INF`) instead. VB6 raises error 6, *Overflow*. Declare the variable **Double** where an overflow must be caught. Code compiled with LLVM has a similar defect for **Double**; see [Language support](../LLVM/Getting-Started#language-support).
 
 ### Variant operands
 

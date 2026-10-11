@@ -1,5 +1,0 @@
-Class WithScalar
-
-    Public Const Num As Long = 5
-
-End Class

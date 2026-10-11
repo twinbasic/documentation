@@ -22,27 +22,25 @@ Module EnumProbe
         Return hd.Name
     End Function
 
-    Public Sub Run(ByVal Headers As WebView2RequestHeaders)
-        Dim h As WebView2Header
-        Dim names As String
-        For Each h In Headers
-            names &= " " & h.Name
-        Next
-        Debug.Print "For Each:" & names
-
-        Dim u As stdole.IUnknown = Headers._NewEnum()
-        Dim e As IEnumVARIANTProbe = u
-        Debug.Print "enumerator Next: " & NextName(e)
+    ' Three fresh enumerators of one collection: Clone after one Next, Clone after
+    ' two Next and a Reset, and Clone after Skip 2.
+    Public Sub Run(ByVal what As String, ByVal u0 As stdole.IUnknown, ByVal u1 As stdole.IUnknown, ByVal u2 As stdole.IUnknown)
+        Dim e As IEnumVARIANTProbe = u0
+        Dim first As String = NextName(e)
         Dim c As IEnumVARIANTProbe = e.Clone()
-        Debug.Print "clone Next:      " & NextName(c)
-        Debug.Print "enumerator Next: " & NextName(e)
+        Debug.Print what & ": after one Next (" & first & "), enumerator Next: " & NextName(e) & ", clone Next: " & NextName(c)
 
-        Set u = Headers._NewEnum()
-        Set e = u
+        Set e = u1
+        NextName e
+        NextName e
+        e.Reset
+        Set c = e.Clone()
+        Debug.Print what & ": after two Next and Reset, enumerator Next: " & NextName(e) & ", clone Next: " & NextName(c)
+
+        Set e = u2
         e.Skip 2
         Set c = e.Clone()
-        Debug.Print "after Skip 2, enumerator Next: " & NextName(e)
-        Debug.Print "after Skip 2, clone Next:      " & NextName(c)
+        Debug.Print what & ": after Skip 2, enumerator Next: " & NextName(e) & ", clone Next: " & NextName(c)
     End Sub
 
 End Module

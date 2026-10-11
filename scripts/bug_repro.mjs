@@ -20,9 +20,11 @@
 // asked whether it still does.
 //
 // bugs/<slug>/repro.json says how to ask. `verify` reads it for every reproducer:
-// the mode (compile, build, run, cli, lane, probe or manual), the target, and what
-// a reproduction looks like (`expect`). Its keys are listed by loadRepro() below,
-// and the contributor-facing description is docs/Documentation/Tools.md. A lane
+// the mode (compile, build, run, test, cli, lane, probe or manual), the target, and
+// what a reproduction looks like (`expect`). Its keys are listed by loadRepro() below,
+// and the contributor-facing description is docs/Documentation/Tools-Defects.md. A test
+// reproducer holds the issue's regression tests, [TestCase] Subs and compile cases,
+// and is judged by the PASS and FAIL lines `tbrun --tests` prints for them. A lane
 // reproducer names a lane of test/ide or test/addin and the tests in it that pass
 // while the bug is there; a probe reproducer names a script under scripts/ that
 // verify runs and judges by `expect`. Only a manual one needs a person.
@@ -197,7 +199,9 @@ Commands:
   run <slug>            run a copy of src/ whose [RunAfterBuild] probe calls Sub
                         Main, and print what it writes to the DEBUG CONSOLE (tbrun);
                         with "images" in repro.json, keep each picture as
-                        images/<name>-tb.png
+                        images/<name>-tb.png. A reproducer of mode test is run
+                        with tbrun --tests instead: a PASS or FAIL line for each
+                        of its test cases and compile cases
   vb6 <slug>            build vb6/ with VB6 in a copy under the temp folder (never
                         in the repository), run Probe.exe on a private desktop,
                         and print out.txt. A project may have forms. A project
@@ -214,8 +218,10 @@ Commands:
                         A lane reproducer ("lane": "ide:<lane>" or "addin:<lane>")
                         reproduces when every test it names passes; its lanes run
                         last, through ide_test or addin_test. A probe reproducer
-                        runs node <script> <args...> and is judged by its expect
-  file <slug> <issue>   move the entry whose reproducer is <slug> out of
+                        runs node <script> <args...> and is judged by its expect.
+                        A test reproducer runs tbrun --tests on src/, and is
+                        judged by its expect: the PASS and FAIL lines it prints
+  file <slug> <issue>  move the entry whose reproducer is <slug> out of
                         BUGS-TO-REPORT.md into bugs/filed/<slug>/REPORT.md, move
                         bugs/<slug>/ to bugs/filed/<slug>/, and record the issue in
                         its repro.json
@@ -256,7 +262,8 @@ Options:
 Exit codes:
   0  done: a project that compiled, built or ran as it should; with verify, every
      reproducer that can be run on its own still reproduces; with file, filed
-  1  a finding: the project has errors, or its build failed after a clean compile;
+  1  a finding: the project has errors, or its build failed after a clean compile,
+     or, with run on a reproducer of mode test, a case failed;
      with vb6, VB6 refused the project; with verify, at least one reproducer no
      longer reproduces
   2  a refused command line (a slug that is not kebab-case or is "filed", a
@@ -625,7 +632,7 @@ function pack(slug) {
 
 // ------------------------------------------------------------ repro.json
 
-const MODES = ["compile", "build", "run", "cli", "lane", "probe", "manual"];
+const MODES = ["compile", "build", "run", "test", "cli", "lane", "probe", "manual"];
 // The warnings loadRepro has printed, so that a reproducer read by several commands warns once.
 const warned = new Set();
 // What `expect` may hold in each mode. A lane reproducer has no `expect`: its tests are what it expects.
@@ -635,6 +642,7 @@ const EXPECT_KEYS = {
   run: ["exit", "output", "absent", "imagesDiffer"],
   cli: ["exit", "output", "absent"],
   probe: ["exit", "output", "absent"],
+  test: ["exit", "output", "absent"],
 };
 
 // The suites a lane reproducer names, as "<suite>:<lane>": the runner, and the
@@ -945,9 +953,9 @@ async function runProbe(slug, o) {
     cpSync(p.src, stage, { recursive: true });
     mkdirSync(path.join(stage, "Sources"), { recursive: true });
     if (!o.exe) writeFileSync(path.join(stage, "Sources", "TbRunProbe.twin"), PROBE);
-    // Always --allow-name-clash: tbrun refuses a probe whose module holds a procedure named like
-    // the module, because twinBASIC then does not run the [RunAfterBuild] Sub, and a reproducer
-    // exists to show a defect such as that one, so it must still run.
+    // Always --allow-name-clash: on a build before 1005 tbrun refuses a probe whose module holds a
+    // procedure named like the module, because those builds then do not run the [RunAfterBuild]
+    // Sub, and a reproducer exists to show a defect such as that one, so it must still run.
     const flags = [...ideFlags(o), "--allow-name-clash", ...(o.llvm ? ["--llvm"] : []), ...(o.exe ? ["--exe"] : [])];
     const env = imagesDir ? { [IMAGES_ENV]: imagesDir } : {};
     const r = await runNode([TBRUN, stage, ...flags], limitFor(o.timeout, 120), env);
@@ -957,6 +965,26 @@ async function runProbe(slug, o) {
     throw e;
   } finally {
     rmSync(stage, { recursive: true, force: true });
+  }
+}
+
+/**
+ * tbrun --tests on src/ itself: tbrun stages its own copy, and adds nothing to it, so
+ * no copy is made here. It prints a PASS or FAIL line for each of the project's test
+ * cases and compile cases (scripts/lib/tb-tests.mjs).
+ */
+async function runTests(slug, o) {
+  const flags = [...ideFlags(o), "--tests"];
+  const r = await runNode([TBRUN, where(slug).src, ...flags], limitFor(o.timeout, 120));
+  return { ...r, json: null, message: r.stderr.trim(), output: r.stdout };
+}
+
+/** The mode in a reproducer's repro.json, read without checking the rest, or null. */
+function reproMode(slug) {
+  try {
+    return JSON.parse(readFileSync(where(slug).repro, "utf8").replace(/^\u{FEFF}/u, "")).mode ?? null;
+  } catch {
+    return null;
   }
 }
 
@@ -1111,7 +1139,7 @@ async function runCli(slug, repro, o) {
 
 // tbbuild's and tbrun's exit codes in this tool's table.
 const TBBUILD_EXIT = { 0: 0, 1: 1, 2: 2, 3: 4, 4: 5, 5: 1 };
-const TBRUN_EXIT = { 0: 0, 1: 1, 2: 2, 3: 6, 4: 5, 5: 7, 6: 8 };
+const TBRUN_EXIT = { 0: 0, 1: 1, 2: 2, 3: 6, 4: 5, 5: 7, 6: 8, 7: 1 };
 const mapped = (table, code) => table[code] ?? 2;
 
 // ------------------------------------------------------------------- printing
@@ -1282,7 +1310,10 @@ async function verifyOne(slug, repro, lane) {
     let table;
     if (repro.mode === "cli") r = await runCli(slug, repro, o);
     else if (repro.mode === "probe") r = await runProbeScript(repro);
-    else if (repro.mode === "run") {
+    else if (repro.mode === "test") {
+      r = await runTests(slug, o);
+      table = TBRUN_EXIT;
+    } else if (repro.mode === "run") {
       const judged = "imagesDiffer" in repro.expect;
       r = await runProbe(slug, { ...o, llvm: repro.llvm, exe: repro.exe, images: judged ? repro.images : null });
       imagesDir = r.imagesDir;
@@ -1463,7 +1494,7 @@ async function verify() {
     requireReproducer(slug, { project: false });
     repros.set(slug, loadRepro(slug));
   }
-  const automatic = all.filter((s) => ["compile", "build", "run"].includes(repros.get(s).mode));
+  const automatic = all.filter((s) => ["compile", "build", "run", "test"].includes(repros.get(s).mode));
   const lanes = Math.min(jobs, Math.max(all.length, 1));
   if (automatic.length || all.some((s) => repros.get(s).mode === "cli")) findTools(values.ide);
   if (automatic.length) {
@@ -1827,6 +1858,14 @@ async function main() {
     case "run": {
       requireReproducer(slug);
       findTools(o.ide);
+      if (reproMode(slug) === "test") {
+        if (o.exe || o.llvm)
+          throw new Fail(`${o.exe ? "--exe" : "--llvm"} does not apply to a reproducer of mode test`);
+        const r = await runTests(slug, o);
+        printRun(r);
+        if (r.timedOut) throw new Fail("tbrun outlived its time limit and was ended");
+        return mapped(TBRUN_EXIT, r.code);
+      }
       const names = reproImages(slug);
       const r = await runProbe(slug, { ...o, images: names });
       try {

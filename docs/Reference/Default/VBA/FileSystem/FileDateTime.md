@@ -16,6 +16,9 @@ Syntax: **FileDateTime(** *pathname* **)**
 *pathname*
 : *required* String expression that specifies a file name. The *pathname* may include the directory or folder, and the drive.
 
+> [!NOTE]
+> In BETA 1005, **FileDateTime** raises run-time error -2147467259 (`&H80004005`) for a file that does not exist, where VB6 raises 53 (*File not found*).
+
 ### Example
 
 This example uses the **FileDateTime** function to determine the date and time a file was created or last modified. The format of the date and time displayed is based on the system's locale settings.

@@ -1,0 +1,255 @@
+' A PNG without its metadata, as compactPng in scripts/lib/compact-image.mjs makes it: the chunks
+' that decide what it looks like stay, but for colour chunks that say only sRGB, and so does a
+' notice of whose it is and an eXIf that turns it.
+Module PngStrip
+    Private mTypes() As String
+    Private mStart() As Long
+    Private mDataStart() As Long
+    Private mDataStop() As Long
+    Private mStop() As Long
+    Private mCount As Long
+
+    Private mCurveKind As Long
+    Private mGamma As Double, mA As Double, mB As Double, mC As Double, mD As Double, mE As Double, mF As Double
+    Private mTable() As Double
+    Private mTableLen As Long
+
+    Public Function CompactPng(b() As Byte, out() As Byte) As Long
+        Dim n As Long, p As Double, size As Double, i As Long, srgb As Boolean, keepIt As Boolean
+        Dim data() As Byte, builder As New ByteBuilder
+        n = Bytes.Length(b)
+        mCount = 0
+        p = 8
+        Do While p + 12 <= n
+            size = Bytes.U32BE(b, p)
+            AddChunk Bytes.Latin1Range(b, p + 4, p + 8), p, p + 8 + size, p + 12 + size, n
+            p = p + 12 + size
+        Loop
+        srgb = SaysOnlySrgb(b)
+        builder.AddRange b, 0, 8
+        For i = 0 To mCount - 1
+            Bytes.Slice b, mDataStart(i), mDataStop(i), data
+            If srgb And IsColourChunk(mTypes(i)) Then
+                keepIt = False
+            Else
+                keepIt = IsKeptChunk(mTypes(i))
+                If Not keepIt Then keepIt = Rights.RightsChunk(mTypes(i), data)
+                If Not keepIt And mTypes(i) = "eXIf" Then keepIt = (Rights.ExifOrientation(data) <> 1)
+            End If
+            If keepIt Then builder.AddRange b, mStart(i), mStop(i) - mStart(i)
+        Next
+        CompactPng = builder.ToArray(out)
+    End Function
+
+    Private Sub AddChunk(ByVal chunkType As String, ByVal start As Double, ByVal dataStop As Double, ByVal finish As Double, ByVal n As Long)
+        If mCount = 0 Then
+            ReDim mTypes(0 To 15)
+            ReDim mStart(0 To 15)
+            ReDim mDataStart(0 To 15)
+            ReDim mDataStop(0 To 15)
+            ReDim mStop(0 To 15)
+        ElseIf mCount > UBound(mTypes) Then
+            ReDim Preserve mTypes(0 To 2 * mCount - 1)
+            ReDim Preserve mStart(0 To 2 * mCount - 1)
+            ReDim Preserve mDataStart(0 To 2 * mCount - 1)
+            ReDim Preserve mDataStop(0 To 2 * mCount - 1)
+            ReDim Preserve mStop(0 To 2 * mCount - 1)
+        End If
+        If dataStop > n Then dataStop = n
+        If finish > n Then finish = n
+        mTypes(mCount) = chunkType
+        mStart(mCount) = CLng(start)
+        mDataStart(mCount) = CLng(start) + 8
+        mDataStop(mCount) = CLng(dataStop)
+        mStop(mCount) = CLng(finish)
+        mCount = mCount + 1
+    End Sub
+
+    ' The image's own chunks, its colour space's, and an animated PNG's frames.
+    Private Function IsKeptChunk(ByVal chunkType As String) As Boolean
+        Select Case chunkType
+            Case "IHDR", "PLTE", "tRNS", "IDAT", "IEND", "cHRM", "gAMA", "iCCP", "sBIT", "sRGB", "cICP", "mDCV", "cLLI", "acTL", "fcTL", "fdAT"
+                IsKeptChunk = True
+        End Select
+    End Function
+
+    ' The chunks dropped together when they say only sRGB.
+    Private Function IsColourChunk(ByVal chunkType As String) As Boolean
+        Select Case chunkType
+            Case "iCCP", "sRGB", "gAMA", "cHRM"
+                IsColourChunk = True
+        End Select
+    End Function
+
+    ' Whether the colour-space chunks say only that the PNG is sRGB, which is what a browser takes a
+    ' PNG that says nothing to be: an ICC profile that is sRGB's, or, with no profile, an sRGB chunk.
+    ' A cICP chunk outranks them all and is left to say what it says.
+    Private Function SaysOnlySrgb(b() As Byte) As Boolean
+        Dim i As Long, icc As Long, hasSrgb As Boolean, data() As Byte, z As Long, profile() As Byte
+        icc = -1
+        For i = 0 To mCount - 1
+            Select Case mTypes(i)
+                Case "cICP"
+                    Exit Function
+                Case "iCCP"
+                    If icc < 0 Then icc = i
+                Case "sRGB"
+                    hasSrgb = True
+            End Select
+        Next
+        If icc < 0 Then
+            SaysOnlySrgb = hasSrgb
+            Exit Function
+        End If
+        Bytes.Slice b, mDataStart(icc), mDataStop(icc), data
+        z = Bytes.IndexOfByte(data, 0, 0)
+        If z < 0 Or z + 1 >= Bytes.Length(data) Then Exit Function
+        If data(z + 1) <> 0 Then Exit Function
+        On Error GoTo NotSrgb
+        Inflate.ZlibInflate data, z + 2, Bytes.Length(data) - (z + 2), profile
+        SaysOnlySrgb = IsSrgbProfile(profile)
+    NotSrgb:
+    End Function
+
+    ' Whether an ICC profile is sRGB: an RGB profile with sRGB's colourants and three tone curves
+    ' that each put every 8-bit level within half a level of where sRGB's does, and no lookup table
+    ' that a colour engine would use instead of them.
+    Public Function IsSrgbProfile(p() As Byte) As Boolean
+        Dim n As Double, i As Double, e As Double, count As Long, k As Long, j As Long, x As Long
+        Dim sigs() As String, starts() As Double, stops() As Double, tag() As Byte, sig As String
+        Dim names As Variant, wanted As Variant, d As Double
+        On Error GoTo NotSrgb
+        If Bytes.Latin1Range(p, 16, 20) <> "RGB " Or Bytes.Latin1Range(p, 20, 24) <> "XYZ " Then Exit Function
+        n = Bytes.U32BE(p, 128)
+        ReDim sigs(0 To 15)
+        ReDim starts(0 To 15)
+        ReDim stops(0 To 15)
+        i = 0
+        Do While i < n
+            e = 132 + i * 12
+            If count > UBound(sigs) Then
+                ReDim Preserve sigs(0 To 2 * count - 1)
+                ReDim Preserve starts(0 To 2 * count - 1)
+                ReDim Preserve stops(0 To 2 * count - 1)
+            End If
+            sigs(count) = Bytes.Latin1Range(p, e, e + 4)
+            starts(count) = Bytes.U32BE(p, e + 4)
+            stops(count) = starts(count) + Bytes.U32BE(p, e + 8)
+            count = count + 1
+            i = i + 1
+        Loop
+        For k = 0 To count - 1
+            sig = sigs(k)
+            If Len(sig) = 4 Then
+                Select Case Left$(sig, 3)
+                    Case "A2B", "B2A", "D2B", "B2D"
+                        If Mid$(sig, 4, 1) >= "0" And Mid$(sig, 4, 1) <= "9" Then Exit Function
+                End Select
+            End If
+        Next
+        names = Array("rXYZ", "gXYZ", "bXYZ")
+        wanted = Array(Array(0.4360747, 0.2225045, 0.0139322), Array(0.3850649, 0.7168786, 0.0971045), Array(0.1430804, 0.0606169, 0.7141733))
+        For j = 0 To 2
+            If Not FindTag(p, sigs, starts, stops, count, names(j), tag) Then Exit Function
+            If Bytes.Latin1Range(tag, 0, 4) <> "XYZ " Then Exit Function
+            For k = 0 To 2
+                If Abs(Bytes.S32BE(tag, 8 + 4 * k) / 65536 - wanted(j)(k)) > 0.001 Then Exit Function
+            Next
+        Next
+        names = Array("rTRC", "gTRC", "bTRC")
+        For j = 0 To 2
+            If Not FindTag(p, sigs, starts, stops, count, names(j), tag) Then Exit Function
+            If Not ReadCurve(tag) Then Exit Function
+            For x = 0 To 255
+                d = Abs(SrgbEncode(CurveAt(x / 255)) - x / 255)
+                If Not (d <= 0.5 / 255) Then Exit Function
+            Next
+        Next
+        IsSrgbProfile = True
+        Exit Function
+    NotSrgb:
+        IsSrgbProfile = False
+    End Function
+
+    ' The last tag with the signature, as a Map that each tag is set into keeps it.
+    Private Function FindTag(p() As Byte, sigs() As String, starts() As Double, stops() As Double, ByVal count As Long, ByVal sig As String, tag() As Byte) As Boolean
+        Dim k As Long
+        For k = count - 1 To 0 Step -1
+            If sigs(k) = sig Then
+                Bytes.Slice p, starts(k), stops(k), tag
+                FindTag = True
+                Exit Function
+            End If
+        Next
+    End Function
+
+    ' Reads a tone curve tag; False for a form compact-image.mjs does not read.
+    Private Function ReadCurve(t() As Byte) As Boolean
+        Dim kind As String, n As Double, k As Long, paraType As Long
+        kind = Bytes.Latin1Range(t, 0, 4)
+        If kind = "curv" Then
+            n = Bytes.U32BE(t, 8)
+            If n = 0 Then
+                mCurveKind = 0
+            ElseIf n = 1 Then
+                mCurveKind = 1
+                mGamma = Bytes.U16BE(t, 12) / 256
+            Else
+                mCurveKind = 2
+                ReDim mTable(0 To CLng(n) - 1)
+                For k = 0 To CLng(n) - 1
+                    mTable(k) = Bytes.U16BE(t, 12 + 2 * k) / 65535
+                Next
+                mTableLen = CLng(n)
+            End If
+            ReadCurve = True
+            Exit Function
+        End If
+        If kind <> "para" Then Exit Function
+        paraType = Bytes.U16BE(t, 8)
+        If paraType = 0 Then
+            mCurveKind = 1
+            mGamma = Bytes.S32BE(t, 12) / 65536
+            ReadCurve = True
+            Exit Function
+        End If
+        If paraType <> 3 And paraType <> 4 Then Exit Function
+        mCurveKind = 3
+        mGamma = Bytes.S32BE(t, 12) / 65536
+        mA = Bytes.S32BE(t, 16) / 65536
+        mB = Bytes.S32BE(t, 20) / 65536
+        mC = Bytes.S32BE(t, 24) / 65536
+        mD = Bytes.S32BE(t, 28) / 65536
+        mE = 0
+        mF = 0
+        If paraType = 4 Then
+            mE = Bytes.S32BE(t, 32) / 65536
+            mF = Bytes.S32BE(t, 36) / 65536
+        End If
+        ReadCurve = True
+    End Function
+
+    ' The curve from the encoded level to linear light. A power that JavaScript gives NaN for
+    ' raises an error here, which IsSrgbProfile takes as JavaScript takes the NaN: not sRGB.
+    Private Function CurveAt(ByVal x As Double) As Double
+        Dim at As Double, k As Long
+        Select Case mCurveKind
+            Case 0
+                CurveAt = x
+            Case 1
+                CurveAt = x ^ mGamma
+            Case 2
+                at = x * (mTableLen - 1)
+                k = Int(at)
+                If k > mTableLen - 2 Then k = mTableLen - 2
+                CurveAt = mTable(k) + (mTable(k + 1) - mTable(k)) * (at - k)
+            Case 3
+                If x >= mD Then CurveAt = (mA * x + mB) ^ mGamma + mE Else CurveAt = mC * x + mF
+        End Select
+    End Function
+
+    ' sRGB's curve from linear light to the encoded level.
+    Private Function SrgbEncode(ByVal y As Double) As Double
+        If y <= 0.0031308 Then SrgbEncode = 12.92 * y Else SrgbEncode = 1.055 * y ^ (1 / 2.4) - 0.055
+    End Function
+End Module

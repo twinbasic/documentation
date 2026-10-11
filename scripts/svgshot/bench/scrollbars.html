@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Scrollbars styled with ::-webkit-scrollbar</title>
+<!--
+  Scrollbars written in the form the twinBASIC IDE writes its own
+  (ide/styles.css), with each construct that snapshot-svg.mjs's paintScrollbars
+  and capture.mjs's scrollbarParts depend on: a var() shorthand that a
+  longhand then overrides, which no rule text can be copied from; one button
+  at each end, sized along the bar, its arrow an SVG data: URL with a ;utf8
+  parameter and single-quoted sizes, blended into the track with hard-light;
+  a thumb with a transparent border and a padding-box background; a corner
+  rule left with no declaration; an ancestor selector with :has(); and a
+  second family of rules, inside a dialog, that wins by specificity.
+-->
+<style>
+:root {
+  --track: rgb(60 60 64);
+  --thumb: rgba(130, 120, 120, 0.8);
+  /* Not a blend mode: the declaration that uses it is dropped. */
+  --blend: none;
+  --dialog-track: rgb(230 226 226);
+  --dialog-thumb: rgba(90, 90, 90, 0.4);
+  --dialog-blend: hard-light;
+}
+body { margin: 0; background: #2d2d2d; color: #ddd; font: 13px "Segoe UI", sans-serif; }
+.box { position: absolute; border: 1px solid #888; }
+textarea { font: 12px Consolas, monospace; white-space: pre; resize: none; }
+
+:not(:has(.plain)) ::-webkit-scrollbar { width: 16px; height: 16px; }
+::-webkit-scrollbar-button:single-button { background: var(--track); display: block; background-repeat: no-repeat; }
+::-webkit-scrollbar-button:single-button:vertical:decrement {
+  height: 14px; background-size: 16px; background-position: center 4px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='rgb(100, 100, 100)'><polygon points='50,0 20,50 80,50'/></svg>");
+  background-blend-mode: var(--blend);
+}
+::-webkit-scrollbar-button:single-button:vertical:increment {
+  height: 14px; background-size: 16px; background-position: center 2px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='rgb(100, 100, 100)'><polygon points='20,0 80,0 50,50'/></svg>");
+  background-blend-mode: var(--blend);
+}
+::-webkit-scrollbar-button:single-button:horizontal:decrement {
+  width: 15px; background-size: 12px; background-position: 3px 1px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='rgb(100, 100, 100)'><polygon points='0,50 50,100 50,0'/></svg>");
+  background-blend-mode: var(--blend);
+}
+::-webkit-scrollbar-button:single-button:horizontal:increment {
+  width: 15px; background-size: 12px; background-position: 5px 1px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='rgb(100, 100, 100)'><polygon points='0,0 0,100 50,50'/></svg>");
+  background-blend-mode: var(--blend);
+}
+::-webkit-scrollbar-thumb { background: var(--thumb); background-clip: padding-box; border: 1px solid transparent; border-left: 0; border-radius: 5px; border: 4px solid transparent; }
+::-webkit-scrollbar-track { background: var(--track); }
+::-webkit-scrollbar-corner { background-color: not-a-colour; }
+
+.dialog ::-webkit-scrollbar-button:single-button { background: var(--dialog-track); }
+.dialog ::-webkit-scrollbar-button:single-button:vertical:decrement,
+.dialog ::-webkit-scrollbar-button:single-button:vertical:increment,
+.dialog ::-webkit-scrollbar-button:single-button:horizontal:decrement,
+.dialog ::-webkit-scrollbar-button:single-button:horizontal:increment { background-blend-mode: var(--dialog-blend); }
+.dialog ::-webkit-scrollbar-thumb { background: var(--dialog-thumb); background-clip: padding-box; }
+.dialog ::-webkit-scrollbar-track { background: var(--dialog-track); }
+
+/* A rule on the scroller itself, not on its ancestor: a thumb never shorter than 40px. */
+.tall::-webkit-scrollbar-thumb { min-height: 40px; border-radius: 10px; }
+</style>
+<body>
+<!-- Scrolled both ways, its thumb at the length an auto height gives it. -->
+<div class="dialog"><textarea id="long" class="box" style="left:10px;top:10px;width:300px;height:200px;background:white;color:black" wrap="off"></textarea></div>
+<!-- overflow: scroll with nothing to scroll: both bars disabled, no thumb. -->
+<div class="box" style="left:330px;top:10px;width:200px;height:200px;overflow:scroll;background:#333">nothing to scroll</div>
+<!-- Both bars, scrolled down; the corner shows the box's own background. -->
+<div id="both" class="box" style="left:550px;top:10px;width:220px;height:200px;overflow:auto;background:#252526"><div style="width:600px;height:900px">wide and tall</div></div>
+<!-- One bar, scrolled to its end. -->
+<div class="dialog"><div id="wide" class="box" style="left:10px;top:230px;width:400px;height:120px;overflow:auto;background:white;color:black"><div style="width:1500px;height:100px">wide only</div></div></div>
+<!-- A thumb whose minimum length a rule sets. -->
+<div id="tall" class="box tall" style="left:430px;top:230px;width:150px;height:150px;overflow-y:scroll;background:#252526"><div style="height:20000px"></div></div>
+<script>
+  const t = document.getElementById("long");
+  t.value = Array.from({ length: 200 }, (_, i) => `line ${i} ${"x".repeat(i % 90)}`).join("\n");
+  t.scrollTop = 600;
+  t.scrollLeft = 80;
+  document.getElementById("both").scrollTop = 350;
+  document.getElementById("wide").scrollLeft = 1100;
+  document.getElementById("tall").scrollTop = 7000;
+</script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+' Regression tests for "A `ParamArray` element that is a `Variant` variable holding an array
+' cannot be indexed or assigned to an array: error -2147467259". Each case of Cases is asserted to
+' give what it gives in VB6 6.0, which the VB6 project in vb6/ prints. The cases that pass today
+' guard the neighbouring forms: an array variable, an expression, a copy, a Variant read first.
+[TestFixture]
+Module ParamArrayTests
+
+    ' --- The element assigned to an array of each type ---------------------------------------
+
+    [TestCase]
+    Public Sub ArrayVariable_AssignedToByteArray()
+        Assert.Strict.AreEqual "2 98", Cases.ArrayVariable_AssignedToByteArray()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_AssignedToByteArray()
+        Assert.Strict.AreEqual "2 98", Cases.VariantVariable_AssignedToByteArray()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_AssignedToLongArray()
+        Assert.Strict.AreEqual "2 7", Cases.VariantVariable_AssignedToLongArray()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_AssignedToStringArray()
+        Assert.Strict.AreEqual "2 y", Cases.VariantVariable_AssignedToStringArray()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_AssignedToDoubleArray()
+        Assert.Strict.AreEqual "2 " & CStr(2.5), Cases.VariantVariable_AssignedToDoubleArray()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_AssignedToVariantArray()
+        Assert.Strict.AreEqual "2 y", Cases.VariantVariable_AssignedToVariantArray()
+    End Sub
+
+    ' --- The element read and written --------------------------------------------------------
+
+    [TestCase]
+    Public Sub VariantVariable_Indexed()
+        Assert.Strict.AreEqual "98", Cases.VariantVariable_Indexed()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_TwoDimensions_Indexed()
+        Assert.Strict.AreEqual "12", Cases.VariantVariable_TwoDimensions_Indexed()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_WrittenThrough()
+        Assert.Strict.AreEqual "written; the caller's element 1 is now 99", Cases.VariantVariable_WrittenThrough()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_Bounds()
+        Assert.Strict.AreEqual "0 to 2", Cases.VariantVariable_Bounds()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_IsArrayAndVarType()
+        Assert.Strict.AreEqual "True 8209", Cases.VariantVariable_IsArrayAndVarType()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_ForEach()
+        Assert.Strict.AreEqual "6", Cases.VariantVariable_ForEach()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_Join()
+        Assert.Strict.AreEqual "x+y+z", Cases.VariantVariable_Join()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_ThroughLocalVariant_Indexed()
+        Assert.Strict.AreEqual "98", Cases.VariantVariable_ThroughLocalVariant_Indexed()
+    End Sub
+
+    ' --- The element passed on ---------------------------------------------------------------
+
+    [TestCase]
+    Public Sub VariantVariable_PassedOnByVal_Indexed()
+        Assert.Strict.AreEqual "98", Cases.VariantVariable_PassedOnByVal_Indexed()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_ForwardedToParamArray_Indexed()
+        Assert.Strict.AreEqual "98", Cases.VariantVariable_ForwardedToParamArray_Indexed()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_ParamArrayPassedWhole_Indexed()
+        Assert.Strict.AreEqual "98", Cases.VariantVariable_ParamArrayPassedWhole_Indexed()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantVariable_UnpackedAsInIssue1660()
+        Assert.Strict.AreEqual "300", Cases.VariantVariable_UnpackedAsInIssue1660()
+    End Sub
+
+    ' --- Where the Variant is ----------------------------------------------------------------
+
+    [TestCase]
+    Public Sub ModuleLevelVariant_Indexed()
+        Assert.Strict.AreEqual "98", Cases.ModuleLevelVariant_Indexed()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantArrayElement_Indexed()
+        Assert.Strict.AreEqual "98", Cases.VariantArrayElement_Indexed()
+    End Sub
+
+    [TestCase]
+    Public Sub UdtVariantField_Indexed()
+        Assert.Strict.AreEqual "98", Cases.UdtVariantField_Indexed()
+    End Sub
+
+    [TestCase]
+    Public Sub ByValParameter_Forwarded_Indexed()
+        Assert.Strict.AreEqual "98", Cases.ByValParameter_Forwarded_Indexed()
+    End Sub
+
+    [TestCase]
+    Public Sub ByRefParameter_Forwarded_Indexed()
+        Assert.Strict.AreEqual "98", Cases.ByRefParameter_Forwarded_Indexed()
+    End Sub
+
+    ' --- A class's method ---------------------------------------------------------------------
+
+    [TestCase]
+    Public Sub ClassMethod_EarlyBound_Indexed()
+        Assert.Strict.AreEqual "98", Cases.ClassMethod_EarlyBound_Indexed()
+    End Sub
+
+    [TestCase]
+    Public Sub ClassMethod_LateBound_Indexed()
+        Assert.Strict.AreEqual "98", Cases.ClassMethod_LateBound_Indexed()
+    End Sub
+
+    ' --- Not a Variant variable: an expression or a copy -------------------------------------
+
+    [TestCase]
+    Public Sub VariantInParentheses_Indexed()
+        Assert.Strict.AreEqual "98", Cases.VariantInParentheses_Indexed()
+    End Sub
+
+    [TestCase]
+    Public Sub CVarOfArray_Indexed()
+        Assert.Strict.AreEqual "98", Cases.CVarOfArray_Indexed()
+    End Sub
+
+    [TestCase]
+    Public Sub VariantFunctionResult_Indexed()
+        Assert.Strict.AreEqual "98", Cases.VariantFunctionResult_Indexed()
+    End Sub
+
+End Module

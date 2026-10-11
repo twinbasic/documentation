@@ -69,6 +69,8 @@ const SERVING = /^serving site\.zip, \d+ files, at (http:\/\/localhost:\d+)$/;
 const HOST = path.join(HERE, "helphost");
 const FILE = "/HelpHost/Sources/Cases.twin";
 const PANE = "tbDocsHelpPane";
+// The page height the hover test emulates, so that a hover reaches past the editor.
+const SHORT_PAGE = 480;
 
 const addinLines = async (c, mark) => linesSince(c, mark, { prefix: "[tbDocsHelp] " });
 
@@ -412,11 +414,11 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.equal(r.headers.get("content-encoding"), "gzip");
     assert.ok(Buffer.from(await r.arrayBuffer()).equals(tree("tB/Modules/Interaction/MsgBox.html")));
 
-    r = await get("/Documentation/Images/af-vector-studio.png");
+    r = await get("/favicon.png");
     assert.equal(r.status, 200);
     assert.equal(r.headers.get("content-type"), "image/png");
     assert.equal(r.headers.get("content-encoding"), null);
-    assert.ok(Buffer.from(await r.arrayBuffer()).equals(tree("Documentation/Images/af-vector-studio.png")));
+    assert.ok(Buffer.from(await r.arrayBuffer()).equals(tree("favicon.png")));
 
     r = await get("/Features/Advanced?pane=1");
     assert.equal(r.status, 301);
@@ -1007,27 +1009,44 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   });
 
   // The IDE's dock resizer along the code editor's bottom edge, and the dock's
-  // drop targets, lie over a hover that reaches past it and take the mouse;
-  // Monaco then hides the hover. The add-in draws the hover above them, with
-  // hover help on or off (twinbasic/twinbasic#2506).
+  // drop targets, lay over a hover that reached past it and took the mouse, and
+  // Monaco then hid the hover (twinbasic/twinbasic#2506). The IDE draws the
+  // hover above them since BETA 1005; the add-in does nothing for it, with
+  // hover help on or off. This tests the IDE. The lane's window is large, so
+  // the page is emulated short enough that the hover reaches past the editor's
+  // bottom, and put back after.
   test("with the box unticked, the hover stays while the mouse slides down it past the editor's bottom", async () => {
     // The hover over Collection, without the link while the box is unticked.
     const COLLECTION_HOVER = "in package VBA";
-    await mouseHover(3, 22, COLLECTION_HOVER);
-    const box = await c.evaluate(`(() => {
+    const page = await c.evaluate(`({ width: innerWidth, height: innerHeight })`);
+    await c.send("Emulation.setDeviceMetricsOverride", {
+      width: page.width,
+      height: Math.min(page.height, SHORT_PAGE),
+      deviceScaleFactor: 0,
+      mobile: false,
+    });
+    try {
+      await mouseHover(3, 22, COLLECTION_HOVER);
+      const box = await c.evaluate(`(() => {
   const h = [...document.querySelectorAll(".monaco-hover")].find((e) => !e.classList.contains("hidden") && e.getBoundingClientRect().height > 0);
   const r = h.getBoundingClientRect(), e = editor.getDomNode().getBoundingClientRect();
   return { left: r.left, bottom: r.bottom, editor: e.bottom };
 })()`);
-    assert.ok(box.bottom > box.editor + 12, `the hover does not reach past the editor: ${JSON.stringify(box)}`);
-    const x = Math.round(box.left + 40);
-    for (let y = Math.round(box.editor) - 12; y <= Math.round(box.editor) + 12; y++) {
-      await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
-      await sleep(20);
-      const shown = await hoverText(c);
-      assert.ok(shown?.includes(COLLECTION_HOVER), `the hover went at ${x},${y}, the editor's bottom at ${box.editor}`);
+      assert.ok(box.bottom > box.editor + 12, `the hover does not reach past the editor: ${JSON.stringify(box)}`);
+      const x = Math.round(box.left + 40);
+      for (let y = Math.round(box.editor) - 12; y <= Math.round(box.editor) + 12; y++) {
+        await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+        await sleep(20);
+        const shown = await hoverText(c);
+        assert.ok(
+          shown?.includes(COLLECTION_HOVER),
+          `the hover went at ${x},${y}, the editor's bottom at ${box.editor}`,
+        );
+      }
+      await mouseAway(c);
+    } finally {
+      await c.send("Emulation.clearDeviceMetricsOverride");
     }
-    await mouseAway(c);
   });
 
   // The link is the hover's first line, where a long hover shows it without
@@ -1084,13 +1103,9 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     await mouseAway(c);
   });
 
-  test("unticking the box turns hover help off, and the hover is still drawn above the dock", async () => {
+  test("unticking the box turns hover help off", async () => {
     await clickHoverBox();
     assert.equal(await hoverBox(), false);
-    assert.ok(
-      await c.evaluate("!!document.getElementById('tbDocsHoverStay')"),
-      "the hover is no longer drawn above the dock",
-    );
     const t = await mouseHover(7, 21);
     assert.ok(t && !t.includes("Help:"), `the mouse hover: ${JSON.stringify(t)}`);
     await mouseAway(c);

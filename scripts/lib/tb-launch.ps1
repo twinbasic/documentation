@@ -35,6 +35,30 @@
 #
 # A launch that fails prints no pid, and its cause as one line on stderr.
 #
+# With TBBUILD_WINDOWS set, nothing is launched: the script works on the windows
+# of the private desktop TBBUILD_DESKTOP, which a launch made and still holds
+# open, prints one line of JSON and ends (tb-ide.mjs's desktopWindows and
+# captureWindow):
+#
+#   TBBUILD_WINDOWS=list     every top-level window on the desktop, with
+#                            TBBUILD_CHILDREN=1 the children of each visible one
+#                            too: handle, class, title, process id and
+#                            executable, visibility, styles, owner, DPI and its
+#                            rectangle in physical pixels
+#   TBBUILD_WINDOWS=capture  PrintWindow of the window TBBUILD_HWND, with the
+#                            flags TBBUILD_FLAGS (2, PW_RENDERFULLCONTENT, by
+#                            default: without it what a WebView2 or any other
+#                            DirectComposition content draws is left out), into
+#                            the PNG file TBBUILD_FILE; the line gives its size,
+#                            its DPI, its visible frame and client area, a layered
+#                            window's colour key and alpha, and the texts of the
+#                            window and its child windows, for the caller to
+#                            search for the user name
+#
+# The calls are made on a thread of their own that has been put on the desktop,
+# since a thread sees and draws only the windows of its own desktop, and that is
+# aware of each monitor's DPI, so that the sizes are physical pixels.
+#
 # Why a desktop at all: the twinBASIC IDE calls HostForceFocus() from its own
 # window.onload, so it takes the keyboard whatever window style it is started
 # with. `start /min` was tried and does not help. A process on another desktop
@@ -69,6 +93,168 @@ $ProgressPreference = "SilentlyContinue"
 trap {
   [Console]::Error.WriteLine($_.Exception.GetBaseException().Message)
   exit 1
+}
+
+if ($env:TBBUILD_WINDOWS) {
+  Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+
+public static class TbWindows {
+  public delegate bool EnumProc(IntPtr hwnd, IntPtr lParam);
+  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+
+  [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+  static extern IntPtr OpenDesktop(string name, int flags, bool inherit, uint access);
+  [DllImport("user32.dll", SetLastError = true)] static extern bool SetThreadDesktop(IntPtr desk);
+  [DllImport("user32.dll", SetLastError = true)] static extern bool EnumDesktopWindows(IntPtr desk, EnumProc cb, IntPtr lp);
+  [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr parent, EnumProc cb, IntPtr lp);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder sb, int max);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder sb, int max);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h, int index);
+  [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr h, uint cmd);
+  [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr ctx);
+  [DllImport("user32.dll", SetLastError = true)] static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
+  [DllImport("user32.dll")] static extern bool GetLayeredWindowAttributes(IntPtr h, out uint key, out byte alpha, out uint flags);
+  [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int a, out RECT r, int n);
+  [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] static extern int MapWindowPoints(IntPtr from, IntPtr to, ref RECT r, int n);
+  [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+  [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+  static extern bool QueryFullProcessImageName(IntPtr p, int flags, StringBuilder sb, ref int size);
+  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+
+  static Exception Failed(string what) {
+    return new Exception(what + " failed: " + new Win32Exception(Marshal.GetLastWin32Error()).Message);
+  }
+  static string Cls(IntPtr h) { StringBuilder sb = new StringBuilder(256); GetClassName(h, sb, 256); return sb.ToString(); }
+  static string Txt(IntPtr h) { StringBuilder sb = new StringBuilder(4096); GetWindowText(h, sb, 4096); return sb.ToString(); }
+  static string Exe(uint pid) {
+    // PROCESS_QUERY_LIMITED_INFORMATION
+    IntPtr p = OpenProcess(0x1000, false, pid);
+    if (p == IntPtr.Zero) return "";
+    StringBuilder sb = new StringBuilder(1024); int n = 1024;
+    string r = QueryFullProcessImageName(p, 0, sb, ref n) ? sb.ToString() : "";
+    CloseHandle(p);
+    return System.IO.Path.GetFileName(r);
+  }
+  static string Str(string s) {
+    StringBuilder b = new StringBuilder("\"");
+    foreach (char c in s) {
+      if (c == '"' || c == '\\') b.Append('\\').Append(c);
+      else if (c < 32) b.Append("\\u").Append(((int)c).ToString("x4"));
+      else b.Append(c);
+    }
+    return b.Append('"').ToString();
+  }
+  static string Describe(IntPtr h, int depth) {
+    uint pid; GetWindowThreadProcessId(h, out pid);
+    RECT r; GetWindowRect(h, out r);
+    return "{\"hwnd\":" + h.ToInt64() + ",\"depth\":" + depth + ",\"class\":" + Str(Cls(h)) +
+      ",\"title\":" + Str(Txt(h)) + ",\"pid\":" + pid + ",\"exe\":" + Str(Exe(pid)) +
+      ",\"visible\":" + (IsWindowVisible(h) ? "true" : "false") + ",\"style\":" + GetWindowLong(h, -16) +
+      ",\"exStyle\":" + GetWindowLong(h, -20) + ",\"owner\":" + GetWindow(h, 4).ToInt64() +
+      ",\"dpi\":" + GetDpiForWindow(h) + ",\"rect\":[" + r.Left + "," + r.Top + "," + r.Right + "," + r.Bottom + "]}";
+  }
+
+  // Runs `work` on a thread put on the desktop, which it can be as it owns no window yet
+  // (GENERIC_ALL), aware of each monitor's DPI (PER_MONITOR_AWARE_V2, -4).
+  static void OnDesktop(string desktop, Action<IntPtr> work) {
+    Exception failed = null;
+    Thread t = new Thread(() => {
+      IntPtr desk = IntPtr.Zero;
+      try {
+        desk = OpenDesktop(desktop, 0, false, 0x10000000);
+        if (desk == IntPtr.Zero) throw Failed("OpenDesktop " + desktop);
+        if (!SetThreadDesktop(desk)) throw Failed("SetThreadDesktop");
+        SetThreadDpiAwarenessContext(new IntPtr(-4));
+        work(desk);
+      } catch (Exception e) {
+        failed = e;
+      }
+    });
+    t.Start();
+    t.Join();
+    if (failed != null) throw failed;
+  }
+
+  public static string List(string desktop, bool children) {
+    List<string> rows = new List<string>();
+    OnDesktop(desktop, (desk) => {
+      List<IntPtr> top = new List<IntPtr>();
+      if (!EnumDesktopWindows(desk, delegate(IntPtr h, IntPtr l) { top.Add(h); return true; }, IntPtr.Zero)) {
+        throw Failed("EnumDesktopWindows");
+      }
+      foreach (IntPtr h in top) {
+        rows.Add(Describe(h, 0));
+        if (children && IsWindowVisible(h)) {
+          EnumChildWindows(h, delegate(IntPtr c, IntPtr l) { rows.Add(Describe(c, 1)); return true; }, IntPtr.Zero);
+        }
+      }
+    });
+    return "[" + string.Join(",", rows.ToArray()) + "]";
+  }
+
+  // [left, top, right, bottom] of `a` relative to `o`'s top left
+  static string Box(RECT a, RECT o) {
+    return "[" + (a.Left - o.Left) + "," + (a.Top - o.Top) + "," + (a.Right - o.Left) + "," + (a.Bottom - o.Top) + "]";
+  }
+
+  public static string Capture(string desktop, long hwnd, uint flags, string file) {
+    string result = null;
+    OnDesktop(desktop, (desk) => {
+      IntPtr h = new IntPtr(hwnd);
+      if (!IsWindow(h)) throw new Exception("there is no window " + hwnd);
+      RECT r; GetWindowRect(h, out r);
+      int w = r.Right - r.Left, ht = r.Bottom - r.Top;
+      if (w <= 0 || ht <= 0) throw new Exception("the window " + hwnd + " has no size");
+      using (Bitmap bmp = new Bitmap(w, ht, PixelFormat.Format32bppArgb)) {
+        using (Graphics g = Graphics.FromImage(bmp)) {
+          IntPtr hdc = g.GetHdc();
+          bool ok = PrintWindow(h, hdc, flags);
+          g.ReleaseHdc(hdc);
+          if (!ok) throw new Exception("PrintWindow drew nothing of the window " + hwnd);
+        }
+        bmp.Save(file, ImageFormat.Png);
+      }
+      List<string> texts = new List<string>();
+      texts.Add(Str(Txt(h)));
+      EnumChildWindows(h, delegate(IntPtr c, IntPtr l) { string t = Txt(c); if (t.Length > 0) texts.Add(Str(t)); return true; }, IntPtr.Zero);
+      // the visible frame (DWMWA_EXTENDED_FRAME_BOUNDS) and the client area in the picture,
+      // and a layered window's colour key, alpha and LWA_ flags
+      RECT f; if (DwmGetWindowAttribute(h, 9, out f, 16) != 0) f = r;
+      RECT cr; GetClientRect(h, out cr); MapWindowPoints(h, IntPtr.Zero, ref cr, 2);
+      uint key, lf; byte alpha;
+      string layered = GetLayeredWindowAttributes(h, out key, out alpha, out lf) ? "[" + key + "," + alpha + "," + lf + "]" : "null";
+      result = "{\"width\":" + w + ",\"height\":" + ht + ",\"dpi\":" + GetDpiForWindow(h) +
+        ",\"frame\":" + Box(f, r) + ",\"client\":" + Box(cr, r) +
+        ",\"layered\":" + layered + ",\"texts\":[" + string.Join(",", texts.ToArray()) + "]}";
+    });
+    return result;
+  }
+}
+'@
+  $desktop = $env:TBBUILD_DESKTOP
+  if ($env:TBBUILD_WINDOWS -eq "list") {
+    Write-Output ([TbWindows]::List($desktop, $env:TBBUILD_CHILDREN -eq "1"))
+  } elseif ($env:TBBUILD_WINDOWS -eq "capture") {
+    $flags = if ($env:TBBUILD_FLAGS) { [uint32]$env:TBBUILD_FLAGS } else { [uint32]2 }
+    Write-Output ([TbWindows]::Capture($desktop, [long]$env:TBBUILD_HWND, $flags, $env:TBBUILD_FILE))
+  } else {
+    throw "TBBUILD_WINDOWS is neither list nor capture: $($env:TBBUILD_WINDOWS)"
+  }
+  exit 0
 }
 
 $exe = $env:TBBUILD_EXE

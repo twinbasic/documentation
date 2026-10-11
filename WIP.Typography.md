@@ -35,7 +35,7 @@ centre far enough to intersect a neighbour. The link is sized outright
 clearance.
 
 Two rules follow. **Run the full sweep after any change that moves type
-metrics**: the thirteen-page sample stays clean through such a change and would
+metrics**: the fourteen-page sample stays clean through such a change and would
 ship the regression. And **treat a target that passes only on the spacing
 exception as unfixed**: the result depends on the font, the surrounding layout
 and the viewport at once, and any of the three can move.
@@ -82,7 +82,7 @@ Two rules that are easy to get wrong:
 ## Diagrams
 
 Inline SVG inherits the page's font environment, so the self-hosted faces apply
-to diagram labels too --- `svg-inline.js` puts the SVG in the DOM rather than
+to diagram labels too --- `figure.js` and `figurePlugin` put the SVG in the DOM rather than
 behind an `<img src>`, which would isolate it from the document's `@font-face`
 rules. The DOT sources --- `docs/assets/images/dot/` for shared diagrams,
 `Images/` beside a page for one that belongs to it --- and `builder/gantt.mjs`
@@ -177,7 +177,7 @@ stale but correct SVG beats a freshly wrong one.
 
 ### Diagram scale on the web: never stretch a diagram up
 
-The rule is `.svg-container svg { width: auto; max-width: 100% }`. A
+The rule is `.fig-container > svg { width: auto; max-width: 100% }`. A
 `width: 100%` rule would stretch every diagram to the column whatever its own
 size, and label size would become an accident of how wide Graphviz drew the
 diagram. Label size against 16px body text in a 736px column under `width: 100%`:
@@ -219,7 +219,7 @@ and on the printed page alike.
 ### Diagram scale in print: `zoom: 0.875`, never a text-only shrink
 
 **Do not shrink diagram text alone in `print.css`** (a rule such as
-`.svg-container text { font-size: 75% }`). Graphviz sizes each box to the text it
+`.fig-container text { font-size: 75% }`). Graphviz sizes each box to the text it
 measured and positions the label with `text-anchor="start"` at an x computed for
 that size, so shrinking only the text leaves it undersized *and* left of centre
 in a box that did not move. Across the book's five diagrams the worst off-centre
@@ -277,13 +277,15 @@ palette --- the same thing `admonitions.scss` does for its icons. Contrast:
 The selector is scoped to **direct** children, because node text must keep the
 dark ink its own light fill needs. Do not widen it to all `text`: the node
 labels would go light on a light fill in dark mode, the same defect with the
-themes swapped.
+themes swapped. A cluster or edge that links (a `URL` in the DOT) has its label
+at `g > a > text` instead, which the rule also names; inside the link,
+`currentColor` is the theme's link colour.
 
 ## Diagram exports carry their own font
 
-The four buttons above each inlined diagram (Download / Copy, SVG / PNG) all
+The four export buttons of each inlined diagram (Download / Copy, SVG / PNG) all
 route through `serializeWithFonts` in
-[docs/assets/js/svg-inline.js](docs/assets/js/svg-inline.js), which embeds the
+[docs/assets/js/figure.js](docs/assets/js/figure.js), which embeds the
 faces the diagram paints with as `data:` URIs in an inline `@font-face`.
 
 This is necessary because **an exported diagram is cut off from the page's
@@ -293,6 +295,12 @@ downloaded `.svg` opened somewhere else has no access to this site's
 stylesheet either. Both fall back to whatever the viewer has installed. On a
 machine with no local Inter, an exported PNG asking for `font-family="Inter"`
 rasterises *pixel-identical* to one asking for a font that does not exist.
+
+The stylesheet's colours are lost the same way. A cluster or edge label's
+`currentColor` (see above) does not reach the export, so it would be black, and
+on a dark theme's export, unreadable. `asTheReaderSeesIt` writes each label's
+computed fill into the copy and puts the page's background behind it: an export
+is the diagram as the reader sees it, in their theme.
 
 A `data:` URI is not an external fetch, so secure static mode permits it, and
 the bytes come from the HTTP cache because the page already downloaded them.

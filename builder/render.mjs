@@ -21,6 +21,16 @@ import { countPlugin, findSurvivingPlaceholder } from "./counts.mjs";
 import { replaceOutsideCode } from "./code-guard.mjs";
 import { splitFragment } from "./url.mjs";
 import { escapeMarkup, escapeMarkupAndQuotes, escapeRegExp } from "./escape.mjs";
+import { inlineDiagram } from "./inline-diagram.mjs";
+import {
+  isLightPicture,
+  isPictureSvg,
+  lightDimension,
+  lightSiblingOf,
+  PIC_DARK,
+  PIC_LIGHT,
+  svgOf,
+} from "./theme-pictures.mjs";
 
 export async function renderPhase(pages, site, staticFiles = []) {
   // Allow the orchestrator to pre-build the markdown-it instance (so
@@ -445,11 +455,12 @@ export function createMarkdownIt(ctx) {
   md.use(headingLevelNormalizePlugin);
   md.use(tocPlugin);
   md.use(relativeLinksPlugin, ctx);
+  md.use(themePairPlugin, ctx);
   md.use(blockHtmlRecursionPlugin);
   md.use(kramdownDashesPlugin);
   md.use(kramdownEllipsisPlugin);
   md.use(flattenAdjacentStrongPlugin);
-  md.use(svgInlinePlugin, ctx);
+  md.use(figurePlugin, ctx);
   md.use(videoLinkPlugin, ctx);
   md.use(remoteImagePlugin, ctx);
   // Substitutes {{tbdocs:<name>}} in prose. Registered last so it runs after
@@ -1599,6 +1610,125 @@ function walkTokens(tokens, fn) {
   }
 }
 
+// ---------- pictures in two themes (theme-pictures.mjs) ---------------------
+//
+// An image whose file has a light sibling among the static files (`X.png` and `X.light.png`)
+// becomes two images, the light one first, with the same alt text and attributes, each with
+// its theme's class and `loading="lazy"`; the light one's width and height are the page's
+// scaled by the two files' pixel sizes (`ctx.pictureSizes`, pairSizes in theme-pictures.mjs),
+// since the Light theme lays the IDE out a few pixels differently. The stylesheet hides the one for the other theme,
+// and a lazy image that is not displayed is never fetched. A link to such a picture (the
+// feature map's "Full size") becomes two links the same way, so that it opens the picture
+// the reader sees. The sibling is looked up in the static-file list the build already has,
+// never on disk. Runs after relativeLinksPlugin, so a static file's src is root-absolute.
+//
+// A page never names a light picture itself: one that does, in markdown or raw HTML, fails
+// the build, since a light picture shown in both themes is the mistake this exists to stop.
+// The book keeps the light picture alone (book.mjs, lightOnly).
+//
+// Each of the two is then shown as its SVG (X.svg, X.light.svg; theme-pictures.mjs) when
+// that is among the static files, an image and a link to the picture alike, unless the
+// attribute block names `png` -- `![alt](X.png){:width="190" height="337" png}` -- which
+// keeps the PNGs and is removed from the output. A picture with no light sibling gets its
+// SVG all the same. The light one's sizes still come from the PNG pair.
+const RAW_LIGHT_REF_RE = /\b(?:src|href)\s*=\s*["']?[^"'\s>]*\.light\.(?:png|svg)(?:[?#][^"'\s>]*)?(?:["'\s>]|$)/i;
+
+function themePairPlugin(md, ctx) {
+  const urlPath = (value) => {
+    const p = value.split(/[?#]/, 1)[0];
+    try {
+      return decodeURIComponent(p);
+    } catch {
+      return p;
+    }
+  };
+  const prefix = `${ctx.baseurl || ""}/`;
+  md.core.ruler.push("theme-pairs", (state) => {
+    const where = state.env?.page?.srcRel ?? "a page";
+    const refuse = (what) => {
+      throw new Error(
+        `${where}: ${what} names a light picture directly. Name the dark one, X.png: ` +
+          "the build shows X.light.png beside it in the light theme",
+      );
+    };
+    const checkRaw = (html) => {
+      const m = RAW_LIGHT_REF_RE.exec(html);
+      if (m) refuse(`raw HTML ${m[0].trim()}`);
+    };
+    const clone = (t) => {
+      const c = new state.Token(t.type, t.tag, t.nesting);
+      Object.assign(c, t);
+      c.attrs = t.attrs ? t.attrs.map((a) => [...a]) : null;
+      c.meta = t.meta ? { ...t.meta } : null;
+      return c;
+    };
+    const mark = (t, name) => {
+      setClass(t, name);
+      if (t.type === "image") t.attrSet("loading", "lazy");
+      t.meta = { ...(t.meta || {}), themePaired: true };
+    };
+    for (const block of state.tokens) {
+      if (block.type === "html_block") checkRaw(block.content);
+      if (block.type !== "inline" || !block.children) continue;
+      const kids = block.children;
+      for (let i = 0; i < kids.length; i++) {
+        const t = kids[i];
+        if (t.type === "html_inline") checkRaw(t.content);
+        const attr = t.type === "image" ? "src" : t.type === "link_open" ? "href" : null;
+        if (!attr || t.meta?.themePaired) continue;
+        const keepPng = t.attrGet("png") !== null;
+        if (keepPng) t.attrs = t.attrs.filter(([name]) => name !== "png");
+        const value = t.attrGet(attr);
+        if (!value) continue;
+        const target = urlPath(value);
+        if (isLightPicture(target)) refuse(`the ${t.type === "image" ? "image" : "link"} ${value}`);
+        if (!ctx.staticFiles || !target.startsWith(prefix)) continue;
+        const rel = target.slice(prefix.length);
+        // `v`, a URL naming the picture `pngRel`, as the URL of its SVG when there is one.
+        const asSvg = (v, pngRel) =>
+          !keepPng && ctx.staticFiles.has(svgOf(pngRel) ?? "") ? v.replace(/\.png(?=[?#]|$)/, ".svg") : v;
+        const light = lightSiblingOf(rel);
+        if (!light || !ctx.staticFiles.has(light)) {
+          t.attrSet(attr, asSvg(value, rel));
+          continue;
+        }
+        const lightValue = asSvg(value.replace(/\.png(?=[?#]|$)/, ".light.png"), light);
+        const darkValue = asSvg(value, rel);
+        if (t.type === "image") {
+          const copy = clone(t);
+          copy.attrSet("src", lightValue);
+          t.attrSet("src", darkValue);
+          const size = ctx.pictureSizes?.[light];
+          if (size) {
+            for (const [attr, i] of [
+              ["width", 0],
+              ["height", 1],
+            ]) {
+              const v = copy.attrGet(attr);
+              if (v !== null) copy.attrSet(attr, lightDimension(v, size[i], size[i + 2]));
+            }
+          }
+          mark(copy, PIC_LIGHT);
+          mark(t, PIC_DARK);
+          kids.splice(i, 0, copy);
+          i++;
+          continue;
+        }
+        const close = findLinkClose(kids, i);
+        if (close < 0) continue;
+        // The light link's contents are walked next (an image in it is paired in turn);
+        // both link_open tokens are marked, so neither is taken for a link to pair again.
+        const copies = kids.slice(i, close + 1).map(clone);
+        copies[0].attrSet("href", lightValue);
+        t.attrSet("href", darkValue);
+        mark(copies[0], PIC_LIGHT);
+        mark(t, PIC_DARK);
+        kids.splice(i, 0, ...copies);
+      }
+    }
+  });
+}
+
 // ---------- §5.2 GFM admonitions (pre-render text rewrite) ------------------
 //
 // Octicon SVG strings ported from the Ruby Octicons gem (v19.21.2) --
@@ -2043,85 +2173,166 @@ function remoteImagePlugin(md, ctx) {
   });
 }
 
-function svgInlinePlugin(md, ctx) {
-  const orig = md.renderer.rules.image;
+// Figures. An image that is its paragraph's only content -- a diagram, a picture in two
+// themes (the pair themePairPlugin wrote), or any other image -- is written as a figure: a
+// wrapper holding a controls bar and the image, which docs/assets/js/figure.js runs. The
+// bar has a group per format, each with Download and Copy, and Zoom; the stylesheet puts it
+// above the figure, or beside it where the window leaves a margin for it.
+//
+// A diagram (a site .svg that is no picture's SVG) is inlined: its SVG text goes into the
+// wrapper, so it draws in the page's own fonts and its labels take the theme's colour. Any
+// other image stays an <img>, and figure.js reads what to download or copy from the one
+// the reader sees.
+//
+// The wrapper is a <div>, and a lone `![alt](x.svg)` is a paragraph, so without hiding the
+// paragraph tokens the output is `<p><div …></div></p>` -- invalid, because <p> takes
+// phrasing content only. A browser repairs it by closing the paragraph early and leaving a
+// stray empty <p> behind, which is why it went unnoticed. Only a paragraph whose ENTIRE
+// content is the image (or the pair) qualifies: `See this: ![d](x.svg)` keeps its <p>, and
+// its image stays a plain <img>.
+//
+// Which it is, is decided on the token stream; what the bar holds is decided when the
+// figure_open token renders, from the image's src as remoteImagePlugin will write it (that
+// plugin rewrites a vendored attachment's URL only when the image itself renders, after
+// this).
+const RASTER_FORMATS = { png: "PNG", jpg: "JPEG", jpeg: "JPEG", gif: "GIF", webp: "WebP" };
 
-  // The wrapper below is a <div>, and a lone `![alt](x.svg)` is a
-  // paragraph, so without this the output is `<p><div …></div></p>` --
-  // invalid, because <p> takes phrasing content only. A browser repairs
-  // it by closing the paragraph early and leaving a stray empty <p>
-  // behind, which is why it went unnoticed. Hide the paragraph tokens
-  // instead, the same way markdown-it hides them inside tight lists.
-  //
-  // Only a paragraph whose ENTIRE content is the one image qualifies --
-  // `See this: ![d](x.svg)` keeps its <p>, and its image is left as a
-  // plain <img> rather than the <div> wrapper, because unwrapping only
-  // the paragraph's own <p>/<p> pair can't rescue an inline image that
-  // still has text siblings either side of it. Tag the image via
-  // meta.svgInline so the renderer rule below -- which is the one place
-  // that actually emits the wrapper -- makes the same decision instead of
-  // re-deriving it from the src alone.
-  md.core.ruler.push("svg_inline_unwrap_paragraph", (state) => {
+function figurePlugin(md, ctx) {
+  const orig = md.renderer.rules.image;
+  const prefix = `${ctx.baseurl || ""}/`;
+
+  // The site-relative path of the SVG to inline for this image, or null: only a site .svg
+  // that is no picture's SVG (a picture's SVG has its PNG beside it) and whose text the
+  // build has.
+  function inlinableSvgRel(token) {
+    const src = token.attrGet("src");
+    if (!src || !src.endsWith(".svg") || !src.startsWith(prefix)) return null;
+    const srcRel = src.slice(prefix.length);
+    if (ctx.staticFiles && isPictureSvg(srcRel, ctx.staticFiles)) return null;
+    return ctx.svgContents?.get(srcRel) ? srcRel : null;
+  }
+
+  // One image, or the two of a picture pair, and nothing else.
+  const isFigure = (kids) =>
+    kids.length === 1
+      ? kids[0].type === "image"
+      : kids.length === 2 && kids.every((k) => k.type === "image" && k.meta?.themePaired);
+
+  md.core.ruler.push("figures", (state) => {
     const toks = state.tokens;
     for (let i = 0; i + 2 < toks.length; i++) {
       if (toks[i].type !== "paragraph_open") continue;
       if (toks[i + 1].type !== "inline" || toks[i + 2].type !== "paragraph_close") continue;
-      const children = toks[i + 1].children;
-      if (!children || children.length !== 1 || children[0].type !== "image") continue;
-      if (!inlinableSvgRel(children[0])) continue;
+      const kids = toks[i + 1].children;
+      if (!kids || !isFigure(kids)) continue;
       toks[i].hidden = true;
       toks[i + 2].hidden = true;
-      children[0].meta = { ...(children[0].meta || {}), svgInline: true };
+      const open = new state.Token("figure_open", "div", 1);
+      open.meta = { images: kids.slice() };
+      if (kids.length === 1 && inlinableSvgRel(kids[0])) kids[0].meta = { ...(kids[0].meta || {}), figureInline: true };
+      kids.unshift(open);
+      kids.push(new state.Token("figure_close", "div", -1));
     }
   });
 
-  // Whether the src qualifies for inlining at all -- used both by the
-  // core rule above (to decide whether to hide the paragraph) and by the
-  // renderer rule below (to fetch the SVG content once it knows it's
-  // rendering the wrapper). It says nothing about paragraph context, so
-  // it is NOT sufficient on its own to decide the wrapper gets emitted --
-  // see meta.svgInline below.
-  function inlinableSvgRel(token) {
-    const srcIdx = token.attrIndex("src");
-    if (srcIdx < 0) return null;
-    const src = token.attrs[srcIdx][1];
-    if (!src.endsWith(".svg")) return null;
-    const prefix = (ctx.baseurl || "") + "/";
-    if (!src.startsWith(prefix)) return null;
-    const srcRel = src.slice(prefix.length);
-    return ctx.svgContents?.get(srcRel) ? srcRel : null;
-  }
+  md.renderer.rules.figure_open = (tokens, idx, options, env, self) => {
+    const images = tokens[idx].meta.images;
+    if (env?.page) env.page.hasFigure = true;
+    const first = images[0];
+    if (first.meta?.figureInline) {
+      const srcRel = inlinableSvgRel(first);
+      const alt = self.renderInlineAsText(first.children, options, env);
+      const stem = srcRel
+        .split("/")
+        .pop()
+        .replace(/\.svg$/, "");
+      return diagramFigureOpen(ctx.svgContents.get(srcRel), alt, stem, srcRel);
+    }
+    // The dark picture of a pair is the last; any image of the pair names the same formats,
+    // and the page's width and height are the dark one's.
+    const dark = images[images.length - 1];
+    const src = dark.attrGet("src") ?? "";
+    return pictureFigureOpen(resolveVendoredAttachment(src, ctx) ?? src, dark.attrGet("width"), dark.attrGet("height"));
+  };
+  md.renderer.rules.figure_close = () => `</div></div>`;
 
   md.renderer.rules.image = (tokens, idx, options, env, self) => {
+    // A diagram's SVG was written by figure_open.
+    if (tokens[idx].meta?.figureInline) return "";
+    if (orig) return orig(tokens, idx, options, env, self);
     const token = tokens[idx];
-    const srcRel = inlinableSvgRel(token);
-    // meta.svgInline is set only by the core rule above, only on an image
-    // that is its paragraph's sole content. Without this check here, a
-    // src match alone would inline the wrapper for a mixed paragraph too
-    // (`See this: ![d](x.svg)`) -- and that <p> is never hidden, so the
-    // <div> wrapper would end up nested inside it, which is invalid HTML.
-    if (srcRel === null || !token.meta?.svgInline) return fallback();
-    const svgContent = ctx.svgContents.get(srcRel);
-
-    const alt = self.renderInlineAsText(token.children, options, env);
-    const stem = srcRel
-      .split("/")
-      .pop()
-      .replace(/\.svg$/, "");
-
-    if (env?.page) env.page.hasSvg = true;
-
-    return buildSvgWrapper(svgContent, alt, stem, srcRel);
-
-    function fallback() {
-      if (orig) return orig(tokens, idx, options, env, self);
-      token.attrs[token.attrIndex("alt")][1] = self.renderInlineAsText(token.children, options, env);
-      return self.renderToken(tokens, idx, options);
-    }
+    token.attrs[token.attrIndex("alt")][1] = self.renderInlineAsText(token.children, options, env);
+    return self.renderToken(tokens, idx, options);
   };
 }
 
-function buildSvgWrapper(svgContent, alt, stem, srcRel) {
+// A glyph of the figure sprite (template.mjs, FIGURE_SPRITE), by its name.
+const figureGlyph = (name, cls = "") =>
+  `<svg${cls ? ` class="${cls}"` : ""} aria-hidden="true" focusable="false"><use href="#fig-${name}"></use></svg>`;
+
+// One button of a figure's controls bar: an icon, named by its aria-label and, for a
+// pointer, by its tooltip.
+const figureButton = (action, label, glyph, attrs = "") =>
+  `<button type="button" class="btn-reset" data-action="${action}"${attrs} aria-label="${label}" title="${label}">` +
+  figureGlyph(glyph) +
+  `</button>`;
+
+// A group of the bar, led by the sign of its format (`vector`, `raster`), or by nothing for
+// Zoom. The sign is a label, hidden from assistive technology: each button's own label
+// already names its format. `data-format` is what figure.js hides a group by.
+const figureGroup = (format, buttons) =>
+  `<span class="fig-group"${format ? ` data-format="${format}"` : ""}>` +
+  (format ? figureGlyph(format, "fig-format") : "") +
+  buttons.join("") +
+  `</span>`;
+
+const zoomGroup = () => figureGroup(null, [figureButton("zoom", "Zoom", "zoom")]);
+
+// Whether a figure is tall enough to have its bar stood on end beside it, in the margin
+// (custom.scss, `.fig-wrap[data-tall]`): at least as tall as that bar, as the page shows it
+// in the 736px content column a window that wide has. A shorter figure would leave the
+// paragraph after it pushed down by the bar's height, so its bar lies flat, beside it or
+// above it. Decided here, from sizes the page already states, so that nothing moves once
+// the page has loaded; a figure whose size is not known is taken as short.
+//
+// The bar's height follows from custom.scss: a group is 2px of padding at each end, its
+// format sign (18px and 8px of margin), and 28px buttons 1px apart; groups are 6px apart.
+const FIGURE_COLUMN = 736;
+const barHeight = (groups) =>
+  groups.reduce((sum, g) => sum + 4 + (g.sign ? 26 : 0) + 28 * g.buttons + (g.buttons - 1 + (g.sign ? 1 : 0)), 0) +
+  6 * (groups.length - 1);
+
+function tallAttr(width, height, groups) {
+  const w = Number(width);
+  const h = Number(height);
+  if (!(w > 0 && h > 0)) return "";
+  return h * Math.min(1, FIGURE_COLUMN / w) >= barHeight(groups) ? " data-tall" : "";
+}
+
+// Whether a diagram's figure is tall (tallAttr), by its SVG. A diagram's bar has both
+// format groups and Zoom. Exported for the Gantt chart, whose SVG replaces a placeholder
+// only after the page is written (tbdocs.mjs, injectGanttChart).
+export function diagramIsTall(svgContent) {
+  const groups = [
+    { sign: true, buttons: 2 },
+    { sign: true, buttons: 2 },
+    { sign: false, buttons: 1 },
+  ];
+  return tallAttr(...svgPixelSize(svgContent), groups) !== "";
+}
+
+// A diagram's size, from its root <svg>'s width and height: Graphviz writes them in pt.
+function svgPixelSize(svgContent) {
+  const root = /<svg\b[^>]*>/.exec(svgContent)?.[0] ?? "";
+  const px = (name) => {
+    const m = new RegExp(String.raw`\s${name}="([\d.]+)(pt|px)?"`).exec(root);
+    return m ? Number(m[1]) * (m[2] === "pt" ? 4 / 3 : 1) : 0;
+  };
+  return [px("width"), px("height")];
+}
+
+// The opening of a diagram's figure, its SVG included.
+function diagramFigureOpen(svgContent, alt, stem, srcRel) {
   const esc = escapeMarkupAndQuotes;
 
   // `role="img"` with an empty `aria-label` is worse than no role at all: it
@@ -2137,20 +2348,65 @@ function buildSvgWrapper(svgContent, alt, stem, srcRel) {
         `no accessible name. Add one: ![describe the diagram](...)`,
     );
   }
-  const imgRole = labelled ? ` role="img" aria-label="${esc(alt)}"` : "";
+  // A diagram whose boxes link somewhere (Graphviz's URL attribute) is a group of links,
+  // not an image: role="img" would make its links presentational, which axe reports as
+  // nested-interactive. inline-diagram.mjs says what else changes.
+  const { svg, linked } = inlineDiagram(svgContent);
+  svgContent = svg;
+  const imgRole = labelled ? ` role="${linked ? "group" : "img"}" aria-label="${esc(alt)}"` : "";
+  const name = ` data-filename="${esc(stem)}"`;
+  const tall = diagramIsTall(svgContent) ? " data-tall" : "";
 
   return (
-    `<div class="svg-inline-wrap">` +
-    `<div class="svg-controls">` +
-    `<button type="button" class="btn-reset" data-action="download-svg" data-filename="${esc(stem)}">Download SVG</button>` +
-    `<button type="button" class="btn-reset" data-action="copy-svg">Copy SVG</button>` +
-    `<button type="button" class="btn-reset" data-action="download-png" data-filename="${esc(stem)}">Download PNG</button>` +
-    `<button type="button" class="btn-reset" data-action="copy-png" data-filename="${esc(stem)}">Copy PNG</button>` +
-    `<button type="button" class="btn-reset" data-action="zoom-svg" aria-label="Zoom diagram">Zoom</button>` +
+    `<div class="fig-wrap" data-kind="diagram"${tall}>` +
+    `<div class="fig-controls">` +
+    figureGroup("vector", [
+      figureButton("download-svg", "Download SVG", "download", name),
+      figureButton("copy-svg", "Copy SVG", "copy"),
+    ]) +
+    figureGroup("raster", [
+      figureButton("download-png", "Download PNG", "download", name),
+      figureButton("copy-png", "Copy PNG", "copy", name),
+    ]) +
+    zoomGroup() +
     `</div>` +
-    `<div class="svg-container" data-svg-src="${esc(srcRel)}"${imgRole}>` +
-    svgContent +
+    `<div class="fig-container" data-svg-src="${esc(srcRel)}"${imgRole}>` +
+    svgContent
+  );
+}
+
+// The opening of a picture's or an image's figure. A picture drawn as SVG offers both
+// formats, its PNG being beside it; a raster image offers its own format, copied as PNG,
+// the one image format a clipboard takes. An image of any other kind gets Zoom alone.
+function pictureFigureOpen(src, width, height) {
+  const ext = /\.([a-z0-9]+)(?:[?#]|$)/i.exec(src)?.[1]?.toLowerCase() ?? "";
+  const raster = ext === "svg" ? "PNG" : RASTER_FORMATS[ext];
+  const groups = [];
+  const shape = [{ sign: false, buttons: 1 }];
+  if (raster) shape.unshift({ sign: true, buttons: 2 });
+  if (ext === "svg") shape.unshift({ sign: true, buttons: 2 });
+  if (ext === "svg") {
+    groups.push(
+      figureGroup("vector", [
+        figureButton("download-svg", "Download SVG", "download"),
+        figureButton("copy-svg", "Copy SVG", "copy"),
+      ]),
+    );
+  }
+  if (raster) {
+    groups.push(
+      figureGroup("raster", [
+        figureButton("download-png", `Download ${raster}`, "download"),
+        figureButton("copy-png", raster === "PNG" ? "Copy PNG" : "Copy as PNG", "copy"),
+      ]),
+    );
+  }
+  groups.push(zoomGroup());
+  return (
+    `<div class="fig-wrap" data-kind="picture"${tallAttr(width, height, shape)}>` +
+    `<div class="fig-controls">` +
+    groups.join("") +
     `</div>` +
-    `</div>`
+    `<div class="fig-container">`
   );
 }

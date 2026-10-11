@@ -15,31 +15,31 @@ The Status Bar runs along the bottom of the IDE window. It has four regions, lef
 
 ## Services
 
-![A red status bar badge with a warning triangle, reading tB Services: UNAVAILABLE.](Images/Services_Unavailable.png)
+![A red status bar badge with a warning triangle, reading tB Services: UNAVAILABLE.](Images/Services_Unavailable.png){:width="175" height="24"}
 
-![The tooltip that badge shows on hover, four lines giving COMPILER, FS, LSP and DEBUGGER each as Disconnected.](Images/Services_Unavailable_Tooltip.png)
+![The tooltip that badge shows on hover, four lines giving COMPILER, FS, LSP and DEBUGGER each as Not initialized.](Images/Services_Unavailable_Tooltip.png){:width="155" height="73"}
 
-![An olive status bar badge with a warning triangle, reading tB Services: LIMITED.](Images/Services_Limited.png)
+![An olive status bar badge, orange in the light theme, with a warning triangle, reading tB Services: LIMITED.](Images/Services_Limited.png){:width="175" height="25"}
 
 ![A green status bar badge with a tick, reading tB Services: OPERATIONAL.](Images/Services_Operational.png){:width="175" height="24"}
 
-![The tooltip that badge shows on hover, four lines giving COMPILER, FS, LSP and DEBUGGER each as OPERATIONAL.](Images/Services_Operational_Tooltip.png)
+![The tooltip that badge shows on hover, four lines giving COMPILER, FS, LSP and DEBUGGER each as OPERATIONAL.](Images/Services_Operational_Tooltip.png){:width="158" height="73"}
 
-COMPILER: Disconnected / OPERATIONAL
+The badge's tooltip has one line for each of the four connections between the IDE and the compiler: **COMPILER**, **FS** (the project's files), **LSP** (the editor's language features, over the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/)) and **DEBUGGER**. Each line gives that connection's state:
 
-FS: Disconnected / OPERATIONAL
+- **Not initialized** --- the connection has not been made, as with no project open;
+- **Connecting** or **Disconnecting** --- the connection is being opened or closed;
+- **OPERATIONAL** --- the connection is open;
+- **Disconnected** --- the connection has closed;
+- **Error occured** --- the connection failed. The IDE spells it this way.
 
-LSP: Disconnected / OPERATIONAL
-
-- [Language Server Protocol](https://microsoft.github.io/language-server-protocol/)
-
-DEBUGGER: Disconnected / OPERATIONAL
+The badge reads **LIMITED** while some of the four are connected and some are not, as it does for a moment while a compiler starts.
 
 ## Licence
 
 - [Pre Order](https://twinbasic.com/preorder.html)
 
-![An olive status bar badge with a warning triangle, reading COMMUNITY EDITION.](Images/Licence_CommunityEdition.png)
+![An olive status bar badge, orange in the light theme, with a warning triangle, reading COMMUNITY EDITION.](Images/Licence_CommunityEdition.png){:width="150" height="25"}
 
 - Community Edition
 - Professional Edition
@@ -47,7 +47,7 @@ DEBUGGER: Disconnected / OPERATIONAL
 
 ## Links
 
-![Four white icons in the status bar, after its badges: a Ko-fi coffee cup holding a heart, the Discord face, the Twitter bird and the GitHub cat.](Images/Links.png){:width="127" height="27"}
+![Four icons in the status bar, after its badges: a Ko-fi coffee cup holding a heart, the Discord face, the Twitter bird and the GitHub cat.](Images/Links.png){:width="127" height="27"}
 
 - https://ko-fi.com/twinbasic
 - https://discord.com/invite/UaW9GgKKuE

@@ -1,0 +1,16 @@
+{
+  "mode": "test",
+  "expect": {
+    "exit": 7,
+    "output": [
+      "^PASS ConnectionPointTests\\.Advise_Nothing_ReturnsEPointer$",
+      "^PASS ConnectionPointTests\\.Advise_UnassignedIUnknown_ReturnsEPointer$",
+      "^PASS ConnectionPointTests\\.Advise_NotASink_ReturnsENoInterface$",
+      "^FAIL ConnectionPointTests\\.GetConnectionInterface_NullIid_ReturnsEPointer: .*ACCESS_VIOLATION",
+      "^FAIL ConnectionPointTests\\.GetConnectionPointContainer_NullOut_ReturnsEPointer: .*ACCESS_VIOLATION",
+      "^FAIL ConnectionPointTests\\.FindConnectionPoint_NullIid_ReturnsEPointer: .*ACCESS_VIOLATION",
+      "^FAIL ConnectionPointTests\\.FindConnectionPoint_NullOut_ReturnsEPointer: .*ACCESS_VIOLATION",
+      "^FAIL ConnectionPointTests\\.EnumConnectionPoints_NullOut_ReturnsEPointer: .*ACCESS_VIOLATION"
+    ]
+  }
+}

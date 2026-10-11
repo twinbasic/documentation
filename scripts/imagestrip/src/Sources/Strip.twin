@@ -1,0 +1,852 @@
+' The images a CSS file or an SVG embeds as data: URIs, stripped at any depth, as stripFile in
+' scripts/lib/compact-image.mjs strips them. Each level returns its edits in its own positions,
+' and the level around it carries them through its own encoding to the file's bytes.
+Module Strip
+    ' What the last StripFile did: the images it read, those that lost something of their own, those
+    ' whose label changed, and its reports, each "<line>: <message>", in the order made.
+    Public Images As Long
+    Public Stripped As Long
+    Public Relabelled As Long
+    Public Reports As Collection
+
+    Private mFile() As Byte
+
+    ' file[0, n), a CSS file or, when isSvg, an SVG file, with every image it embeds stripped and,
+    ' for an SVG, what is only its editor's, into out; returns its length.
+    Public Function StripFile(file() As Byte, ByVal n As Long, ByVal isSvg As Boolean, out() As Byte) As Long
+        Dim edits As New EditList, t() As Long, posMap() As Long, i As Long, noRef() As Boolean
+        Images = 0
+        Stripped = 0
+        Relabelled = 0
+        Set Reports = New Collection
+        Erase mFile
+        If n > 0 Then mFile = file
+        If isSvg Then
+            If Not StripSvgBytes(file, n, edits, -1) Then Warn 0, "an SVG that is not UTF-8; left unchanged"
+        ElseIf n > 0 Then
+            ReDim t(0 To n - 1)
+            For i = 0 To n - 1
+                t(i) = file(i)
+            Next
+            ScanUris t, n, True, posMap, -1, edits, noRef, False
+        End If
+        StripFile = edits.Apply(file, n, out)
+    End Function
+
+    Public Sub Warn(ByVal pos As Long, ByVal message As String)
+        Dim i As Long, lineNo As Long
+        lineNo = 1
+        For i = 0 To pos - 1
+            If mFile(i) = 10 Then lineNo = lineNo + 1
+        Next
+        Reports.Add lineNo & ": " & message
+    End Sub
+
+    ' Adds to edits the edits that strip each image embedded as a data: URI in t[0, n): the bytes
+    ' of a CSS file (css), or the UTF-16 units of an SVG. A report on a URI at t(i) names the
+    ' file's byte i when posMode is -1, posMap(i) when it is -2, and posMode itself otherwise.
+    ' When hasRef, ref(i) says whether t(i) was written as a reference (XmlDecode).
+    Public Sub ScanUris(t() As Long, ByVal n As Long, ByVal css As Boolean, posMap() As Long, ByVal posMode As Long, edits As EditList, ref() As Boolean, ByVal hasRef As Boolean)
+        Dim i As Long, j As Long, comma As Long, finish As Long, pos As Long
+        Do While i + 5 <= n
+            finish = -1
+            If IsDataAt(t, i) Then
+                comma = -1
+                For j = i + 5 To i + 132
+                    If j >= n Then Exit For
+                    If t(j) = 44 Then
+                        comma = j
+                        Exit For
+                    End If
+                    If Not IsHeaderChar(t(j)) Then Exit For
+                Next
+                If comma >= 0 Then
+                    If posMode >= 0 Then
+                        pos = posMode
+                    ElseIf posMode = -1 Then
+                        pos = i
+                    Else
+                        pos = posMap(i)
+                    End If
+                    finish = StripUri(t, n, css, i, comma, edits, pos, ref, hasRef)
+                End If
+            End If
+            If finish >= 0 Then i = finish Else i = i + 1
+        Loop
+    End Sub
+
+    ' Adds to edits the edits that strip an SVG given as UTF-8 bytes b[0, n): what is only its
+    ' editor's (SvgStrip), and each image it embeds, at any depth, read with the SVG's references
+    ' undone (XmlDecode). False when it is not UTF-8. A report names the file's byte posFixed,
+    ' or, when that is -1, the byte of b it is about.
+    Public Function StripSvgBytes(b() As Byte, ByVal n As Long, edits As EditList, ByVal posFixed As Long) As Boolean
+        Dim units() As Long, us() As Long, ue() As Long, un As Long, valid As Boolean, keep() As Boolean
+        Dim w() As Long, wo() As Long, wn As Long, k As Long, first As Long, removed As Boolean
+        Dim d() As Long, ds() As Long, de() As Long, ref() As Boolean, dn As Long, a As Long, z As Long
+        Dim rStart() As Long, rEnd() As Long, rAttr() As Boolean, rn As Long, region() As Long, id As Long, j As Long, c As Long
+        Dim run() As Long, runRef() As Boolean, runMap() As Long, mode As Long, found As EditList, scanned As New EditList
+        Dim cssBytes() As Byte, bs() As Long, be() As Long, bn As Long, noRef() As Boolean
+        un = Bytes.Utf8Units(b, 0, n, units, us, ue, valid)
+        If Not valid Then Exit Function
+        StripSvgBytes = True
+        Images = Images + 1
+        SvgStrip.CompactSvg units, un, keep
+        If un > 0 Then
+            ReDim w(0 To un - 1)
+            ReDim wo(0 To un - 1)
+        End If
+        Do While k < un
+            If keep(k) Then
+                w(wn) = units(k)
+                wo(wn) = k
+                wn = wn + 1
+                k = k + 1
+            Else
+                first = k
+                Do While k < un
+                    If keep(k) Then Exit Do
+                    k = k + 1
+                Loop
+                edits.Add us(first), ue(k - 1), ""
+                removed = True
+            End If
+        Loop
+        If removed Then Stripped = Stripped + 1
+        ' d's units come from w's [ds, de), and w's from the SVG's units wo.
+        dn = XmlDecode(w, wn, d, ds, de, ref)
+        rn = CssRegions(w, wn, rStart, rEnd, rAttr)
+        If wn > 0 Then
+            ReDim region(0 To wn - 1)
+            For k = 0 To wn - 1
+                region(k) = -1
+            Next
+            For id = 0 To rn - 1
+                For k = rStart(id) To rEnd(id) - 1
+                    region(k) = id
+                Next
+            Next
+        End If
+        If posFixed < 0 Then mode = -2 Else mode = posFixed
+        ' Each run of d in the same region, or in none, is read on its own: CSS by CSS's rules, as
+        ' UTF-8, and the rest by an SVG's. scanned holds the edits in d.
+        a = 0
+        Do While a < dn
+            id = region(ds(a))
+            z = a + 1
+            Do While z < dn
+                If region(ds(z)) <> id Then Exit Do
+                z = z + 1
+            Loop
+            Set found = New EditList
+            If id < 0 Then
+                ReDim run(0 To z - a - 1)
+                ReDim runRef(0 To z - a - 1)
+                ReDim runMap(0 To z - a - 1)
+                For j = a To z - 1
+                    run(j - a) = d(j)
+                    runRef(j - a) = ref(j)
+                    runMap(j - a) = us(wo(ds(j)))
+                Next
+                ScanUris run, z - a, False, runMap, mode, found, runRef, True
+                For k = 0 To found.Count - 1
+                    scanned.Add a + found.StartOf(k), a + found.EndOf(k), found.TextOf(k)
+                Next
+            Else
+                ' An attribute's value has its line breaks and tabs read as spaces, as XML reads them.
+                ReDim run(0 To z - a - 1)
+                For j = a To z - 1
+                    c = d(j)
+                    If rAttr(id) And Not ref(j) Then
+                        If c = 9 Or c = 10 Or c = 13 Then c = 32
+                    End If
+                    run(j - a) = c
+                Next
+                bn = UnitsUtf8(run, 0, z - a, cssBytes, bs, be)
+                ToLongs cssBytes, bn, run
+                ReDim runMap(0 To bn - 1)
+                For j = 0 To bn - 1
+                    runMap(j) = us(wo(ds(a + bs(j))))
+                Next
+                ScanUris run, bn, True, runMap, mode, found, noRef, False
+                For k = 0 To found.Count - 1
+                    scanned.Add a + bs(found.StartOf(k)), a + be(found.EndOf(k) - 1), found.TextOf(k)
+                Next
+            End If
+            a = z
+        Loop
+        For k = 0 To scanned.Count - 1
+            a = ds(scanned.StartOf(k))
+            z = de(scanned.EndOf(k) - 1)
+            edits.Add us(wo(a)), ue(wo(z - 1)), scanned.TextOf(k)
+        Next
+    End Function
+
+    ' Where an SVG's text t[0, n) holds CSS: the text of each <style> element, CDATA and all, and
+    ' the value of each style attribute (rAttr), as [rStart, rEnd) in t; returns how many.
+    ' Comments, CDATA sections, processing instructions and declarations are passed over, and so is
+    ' the rest of a tag.
+    Private Function CssRegions(t() As Long, ByVal n As Long, rStart() As Long, rEnd() As Long, rAttr() As Boolean) As Long
+        Dim i As Long, k As Long, a As Long, z As Long, m As Long, tag As String, attrName As String, isEmpty As Boolean, closing As Long
+        ReDim rStart(0 To 15)
+        ReDim rEnd(0 To 15)
+        ReDim rAttr(0 To 15)
+        Do While i < n
+            If t(i) <> 60 Then
+                i = i + 1
+            ElseIf UnitsAt(t, n, i, "<!--") Then
+                i = SkipTo(t, n, "-->", i + 4)
+            ElseIf UnitsAt(t, n, i, "<![CDATA[") Then
+                i = SkipTo(t, n, "]]>", i + 9)
+            ElseIf UnitsAt(t, n, i, "<?") Then
+                i = SkipTo(t, n, "?>", i + 2)
+            ElseIf UnitsAt(t, n, i, "<!") Or UnitsAt(t, n, i, "</") Then
+                i = SkipTo(t, n, ">", i + 2)
+            ElseIf Not IsTagStart(UnitAt(t, n, i + 1)) Then
+                i = i + 1
+            Else
+                ' A start tag: its name, and each attribute, its value quoted or not.
+                k = i + 1
+                Do While k < n
+                    If Not IsTagChar(t(k)) Then Exit Do
+                    k = k + 1
+                Loop
+                tag = Bytes.UnitsText(t, i + 1, k - i - 1)
+                isEmpty = False
+                Do
+                    Do While k < n
+                        If Not IsSpace(t(k)) Then Exit Do
+                        k = k + 1
+                    Loop
+                    If k >= n Then Exit Do
+                    If t(k) = 62 Then
+                        k = k + 1
+                        Exit Do
+                    End If
+                    If t(k) = 47 And UnitAt(t, n, k + 1) = 62 Then
+                        isEmpty = True
+                        k = k + 2
+                        Exit Do
+                    End If
+                    a = k
+                    Do While k < n
+                        If IsSpace(t(k)) Or t(k) = 61 Or t(k) = 62 Or t(k) = 47 Then Exit Do
+                        k = k + 1
+                    Loop
+                    If k = a Then
+                        k = k + 1
+                    Else
+                        attrName = Bytes.UnitsText(t, a, k - a)
+                        Do While k < n
+                            If Not IsSpace(t(k)) Then Exit Do
+                            k = k + 1
+                        Loop
+                        If UnitAt(t, n, k) = 61 Then
+                            k = k + 1
+                            Do While k < n
+                                If Not IsSpace(t(k)) Then Exit Do
+                                k = k + 1
+                            Loop
+                            If UnitAt(t, n, k) = 34 Or UnitAt(t, n, k) = 39 Then
+                                z = k + 1
+                                Do While z < n
+                                    If t(z) = t(k) Then Exit Do
+                                    z = z + 1
+                                Loop
+                                If attrName = "style" Then m = AddRegion(rStart, rEnd, rAttr, m, k + 1, z, True)
+                                If z + 1 < n Then k = z + 1 Else k = n
+                            Else
+                                Do While k < n
+                                    If IsSpace(t(k)) Or t(k) = 62 Then Exit Do
+                                    k = k + 1
+                                Loop
+                            End If
+                        End If
+                    End If
+                Loop
+                i = k
+                If (tag = "style" Or Right$(tag, 6) = ":style") And Not isEmpty Then
+                    closing = UnitsIndexOf(t, n, "</" & tag, i)
+                    If closing < 0 Then closing = n
+                    m = AddRegion(rStart, rEnd, rAttr, m, i, closing, False)
+                    i = closing
+                End If
+            End If
+        Loop
+        CssRegions = m
+    End Function
+
+    Private Function AddRegion(rStart() As Long, rEnd() As Long, rAttr() As Boolean, ByVal m As Long, ByVal s As Long, ByVal e As Long, ByVal isAttr As Boolean) As Long
+        If m > UBound(rStart) Then
+            ReDim Preserve rStart(0 To 2 * m - 1)
+            ReDim Preserve rEnd(0 To 2 * m - 1)
+            ReDim Preserve rAttr(0 To 2 * m - 1)
+        End If
+        rStart(m) = s
+        rEnd(m) = e
+        rAttr(m) = isAttr
+        AddRegion = m + 1
+    End Function
+
+    ' Where text is in t from the position given, and past it; n when it is not there.
+    Private Function SkipTo(t() As Long, ByVal n As Long, ByVal text As String, ByVal from As Long) As Long
+        Dim k As Long
+        k = UnitsIndexOf(t, n, text, from)
+        If k < 0 Then SkipTo = n Else SkipTo = k + Len(text)
+    End Function
+
+    ' t(i), or -1 past either end.
+    Private Function UnitAt(t() As Long, ByVal n As Long, ByVal i As Long) As Long
+        If i < 0 Or i >= n Then UnitAt = -1 Else UnitAt = t(i)
+    End Function
+
+    Private Function IsTagStart(ByVal c As Long) As Boolean
+        IsTagStart = (c >= 65 And c <= 90) Or (c >= 97 And c <= 122) Or c = 95 Or c = 58 Or c >= 128
+    End Function
+
+    Private Function IsTagChar(ByVal c As Long) As Boolean
+        IsTagChar = IsTagStart(c) Or (c >= 48 And c <= 57) Or c = 45 Or c = 46
+    End Function
+
+    ' An SVG's text t[0, n) with its references undone, as an XML parser undoes them, but in CDATA
+    ' sections, into units; returns how many. Unit k came from t[s(k), e(k)), and ref(k) says
+    ' whether it was written as a reference: a quote written as one does not end an attribute's
+    ' value, so PayloadEnd tells the two apart.
+    Private Function XmlDecode(t() As Long, ByVal n As Long, units() As Long, s() As Long, e() As Long, ref() As Boolean) As Long
+        Dim i As Long, m As Long, cdEnd As Long, cp As Long, finish As Long, inCdata As Boolean
+        If n <= 0 Then Exit Function
+        ReDim units(0 To n)
+        ReDim s(0 To n)
+        ReDim e(0 To n)
+        ReDim ref(0 To n)
+        Do While i < n
+            inCdata = False
+            If t(i) = 60 Then
+                If UnitsAt(t, n, i, "<![CDATA[") Then
+                    cdEnd = UnitsIndexOf(t, n, "]]>", i + 9)
+                    inCdata = cdEnd >= 0
+                End If
+            End If
+            If inCdata Then
+                Do While i < cdEnd + 3
+                    units(m) = t(i)
+                    s(m) = i
+                    e(m) = i + 1
+                    m = m + 1
+                    i = i + 1
+                Loop
+            ElseIf t(i) = 38 And XmlReference(t, n, i, cp, finish) Then
+                If cp >= &H10000 Then
+                    units(m) = &HD800& + (cp - &H10000) \ 1024
+                    units(m + 1) = &HDC00& + ((cp - &H10000) And 1023)
+                    s(m) = i
+                    e(m) = finish
+                    ref(m) = True
+                    s(m + 1) = i
+                    e(m + 1) = finish
+                    ref(m + 1) = True
+                    m = m + 2
+                Else
+                    units(m) = cp
+                    s(m) = i
+                    e(m) = finish
+                    ref(m) = True
+                    m = m + 1
+                End If
+                i = finish
+            Else
+                units(m) = t(i)
+                s(m) = i
+                e(m) = i + 1
+                m = m + 1
+                i = i + 1
+            End If
+        Loop
+        XmlDecode = m
+    End Function
+
+    ' Whether t(i), which is "&", starts a character reference or one of the five references XML
+    ' defines without a DTD: then cp is its character and finish the unit after its ";". A
+    ' reference to an entity a DTD declares, such as Illustrator's &ns_svg;, stays as written.
+    Private Function XmlReference(t() As Long, ByVal n As Long, ByVal i As Long, ByRef cp As Long, ByRef finish As Long) As Boolean
+        Dim k As Long, from As Long, v As Long, isHex As Boolean, value As Double, name As String
+        If t(i) <> 38 Then Exit Function
+        k = i + 1
+        If k >= n Then Exit Function
+        If t(k) = 35 Then
+            If k + 1 < n Then isHex = (t(k + 1) = 120)
+            If isHex Then k = k + 2 Else k = k + 1
+            from = k
+            Do While k < n And k < from + 8
+                If isHex Then
+                    v = HexDigit(t(k))
+                ElseIf t(k) >= 48 And t(k) <= 57 Then
+                    v = t(k) - 48
+                Else
+                    v = -1
+                End If
+                If v < 0 Then Exit Do
+                If isHex Then value = value * 16 + v Else value = value * 10 + v
+                k = k + 1
+            Loop
+            If k = from Or k >= n Then Exit Function
+            If t(k) <> 59 Then Exit Function
+            If value < 1 Or value > &H10FFFF Then Exit Function
+            If value >= &HD800& And value <= &HDFFF& Then Exit Function
+            cp = CLng(value)
+        Else
+            Do While k < n And k < i + 6
+                If t(k) < 97 Or t(k) > 122 Then Exit Do
+                name = name & ChrW$(t(k))
+                k = k + 1
+            Loop
+            If k >= n Then Exit Function
+            If t(k) <> 59 Then Exit Function
+            Select Case name
+                Case "lt"
+                    cp = 60
+                Case "gt"
+                    cp = 62
+                Case "amp"
+                    cp = 38
+                Case "quot"
+                    cp = 34
+                Case "apos"
+                    cp = 39
+                Case Else
+                    Exit Function
+            End Select
+        End If
+        finish = k + 1
+        XmlReference = True
+    End Function
+
+    ' Whether text is at t(p).
+    Private Function UnitsAt(t() As Long, ByVal n As Long, ByVal p As Long, ByVal text As String) As Boolean
+        Dim k As Long
+        If p < 0 Or p + Len(text) > n Then Exit Function
+        For k = 0 To Len(text) - 1
+            If t(p + k) <> AscW(Mid$(text, k + 1, 1)) Then Exit Function
+        Next
+        UnitsAt = True
+    End Function
+
+    Private Function UnitsIndexOf(t() As Long, ByVal n As Long, ByVal text As String, ByVal from As Long) As Long
+        Dim i As Long
+        For i = from To n - Len(text)
+            If UnitsAt(t, n, i, text) Then
+                UnitsIndexOf = i
+                Exit Function
+            End If
+        Next
+        UnitsIndexOf = -1
+    End Function
+
+    ' Adds the edits for the data: URI at t(start), whose header ends at t(comma), and returns where
+    ' its text ends; -1 when it is none this reads.
+    Private Function StripUri(t() As Long, ByVal n As Long, ByVal css As Boolean, ByVal start As Long, ByVal comma As Long, edits As EditList, ByVal pos As Long, ref() As Boolean, ByVal hasRef As Boolean) As Long
+        Dim header As String, label As String, semi As Long, isBase64 As Boolean, finish As Long, k As Long
+        Dim url() As Byte, us() As Long, ue() As Long, un As Long
+        Dim svg() As Byte, ss() As Long, se() As Long, sn As Long, inner As EditList
+        Dim data() As Byte, dataLen As Long, clean() As Byte, cleanLen As Long, kind As String, changed As Boolean
+        Dim isSheet As Boolean, readable As Boolean, sheetUnits() As Long, noMap() As Long, noRef() As Boolean
+        StripUri = -1
+        header = Bytes.UnitsText(t, start + 5, comma - start - 5)
+        semi = InStr(header, ";")
+        If semi > 0 Then label = LCase$(Left$(header, semi - 1)) Else label = LCase$(header)
+        isBase64 = (LCase$(Right$(header, 7)) = ";base64")
+        ' A style sheet is stripped as a CSS file is: the images it embeds.
+        isSheet = (label = "text/css")
+        If Not isBase64 And label <> "image/svg+xml" And Not isSheet Then Exit Function
+        finish = PayloadEnd(t, n, css, start, comma, ref, hasRef)
+        If finish <= comma + 1 Then Exit Function
+        StripUri = finish
+        If css Then
+            un = CssUnescape(t, comma + 1, finish, url, us, ue)
+        Else
+            un = UnitsUtf8(t, comma + 1, finish, url, us, ue)
+        End If
+
+        If Not isBase64 Then
+            ' An SVG or a style sheet written as text keeps its encoding: what it loses is cut out of
+            ' the text as the file has it.
+            sn = -1
+            If un > 0 Then sn = PercentDecode(url, un, us, ue, svg, ss, se)
+            Set inner = New EditList
+            readable = (sn >= 0)
+            If readable Then
+                If isSheet Then
+                    ToLongs svg, sn, sheetUnits
+                    ScanUris sheetUnits, sn, True, noMap, pos, inner, noRef, False
+                Else
+                    readable = StripSvgBytes(svg, sn, inner, pos)
+                End If
+            End If
+            If Not readable Then
+                If isSheet Then
+                    Warn pos, "a style sheet this cannot read; left unchanged"
+                Else
+                    Warn pos, "an SVG this cannot read; left unchanged"
+                End If
+            Else
+                For k = 0 To inner.Count - 1
+                    edits.Add ss(inner.StartOf(k)), se(inner.EndOf(k) - 1), inner.TextOf(k)
+                Next
+            End If
+            Exit Function
+        End If
+
+        ' An image in base64 is known by its bytes, not by its label, and is labelled with what it is.
+        If Not Bytes.Base64Decode(url, 0, un, data, dataLen) Then
+            If Left$(label, 6) = "image/" Or isSheet Then Warn pos, "labelled " & label & ", but its base64 cannot be read; left unchanged"
+            Exit Function
+        End If
+        If isSheet Then
+            Set inner = New EditList
+            ToLongs data, dataLen, sheetUnits
+            ScanUris sheetUnits, dataLen, True, noMap, pos, inner, noRef, False
+            cleanLen = inner.Apply(data, dataLen, clean)
+            If Not SameBytes(data, dataLen, clean, cleanLen) Then edits.Add comma + 1, finish, Bytes.Base64Text(clean, cleanLen)
+            Exit Function
+        End If
+        kind = label
+        If label = "image/svg+xml" Then
+            Set inner = New EditList
+            If Not StripSvgBytes(data, dataLen, inner, pos) Then
+                Warn pos, "an SVG that is not UTF-8; left unchanged"
+                Exit Function
+            End If
+            cleanLen = inner.Apply(data, dataLen, clean)
+            changed = Not SameBytes(data, dataLen, clean, cleanLen)
+        Else
+            If IsPng(data, dataLen) Then
+                kind = "image/png"
+                cleanLen = PngStrip.CompactPng(data, clean)
+            ElseIf IsJpeg(data, dataLen) Then
+                kind = "image/jpeg"
+                cleanLen = JpegGif.CompactJpeg(data, clean)
+            ElseIf IsGif(data, dataLen) Then
+                kind = "image/gif"
+                cleanLen = JpegGif.CompactGif(data, clean)
+            ElseIf IsBmp(data, dataLen) Then
+                kind = "image/bmp"
+                cleanLen = Bytes.Copy(data, clean)
+            Else
+                Select Case label
+                    Case "image/png", "image/jpeg", "image/jpg", "image/gif", "image/bmp"
+                        Warn pos, "labelled " & label & ", but is no image this reads; left unchanged"
+                End Select
+                Exit Function
+            End If
+            Images = Images + 1
+            changed = cleanLen < dataLen
+            If changed Then Stripped = Stripped + 1
+        End If
+        If kind <> label Then
+            edits.Add start + 5, start + 5 + Len(label), kind
+            Relabelled = Relabelled + 1
+            Warn pos, "labelled " & label & ", but is " & Describe(kind) & "; now labelled " & kind
+        End If
+        ' An image with nothing to strip keeps its original text.
+        If changed Then edits.Add comma + 1, finish, Bytes.Base64Text(clean, cleanLen)
+    End Function
+
+    ' Where the text of the data: URI at t(start) ends: at the quote just before it, or at the ) of
+    ' a url( before it, white space between them allowed, with the white space before that ) left
+    ' out. In CSS a backslash escapes the character after it, and a string ends at a line end; in
+    ' an SVG neither, and a quote written as a reference (ref, when hasRef) is ended only by a
+    ' quote written as one, a quote written as itself only by itself. -1 for no such end, or no
+    ' such opener.
+    Private Function PayloadEnd(t() As Long, ByVal n As Long, ByVal css As Boolean, ByVal start As Long, ByVal comma As Long, ref() As Boolean, ByVal hasRef As Boolean) As Long
+        Dim p As Long, q As Long, k As Long, closer As Long, refQuote As Boolean
+        PayloadEnd = -1
+        p = start - 1
+        Do While p >= 0
+            If Not IsSpace(t(p)) Then Exit Do
+            p = p - 1
+        Loop
+        If p < 0 Then Exit Function
+        q = t(p)
+        If (q = 34 Or q = 39) And p = start - 1 Then
+            closer = q
+        ElseIf q = 40 Then
+            closer = 41
+        Else
+            Exit Function
+        End If
+        If hasRef And closer <> 41 Then refQuote = ref(p)
+        k = comma + 1
+        Do While k < n
+            If t(k) = closer Then
+                If Not hasRef Or closer = 41 Then Exit Do
+                If ref(k) = refQuote Then Exit Do
+            End If
+            If css And t(k) = 92 Then
+                k = k + 2
+            ElseIf css And closer <> 41 And (t(k) = 10 Or t(k) = 12 Or t(k) = 13) Then
+                Exit Function
+            Else
+                k = k + 1
+            End If
+        Loop
+        If k >= n Then Exit Function
+        If closer = 41 Then
+            Do While k > comma + 1
+                If Not IsSpace(t(k - 1)) Then Exit Do
+                k = k - 1
+            Loop
+        End If
+        PayloadEnd = k
+    End Function
+
+    Private Function IsSpace(ByVal c As Long) As Boolean
+        IsSpace = c = 9 Or c = 10 Or c = 12 Or c = 13 Or c = 32
+    End Function
+
+    ' The URL a CSS string or url() holds in bytes t[start, finish), its escapes undone as CSS
+    ' Syntax undoes them, as UTF-8: byte k came from t[outStart(k), outEnd(k)).
+    Private Function CssUnescape(t() As Long, ByVal start As Long, ByVal finish As Long, out() As Byte, outStart() As Long, outEnd() As Long) As Long
+        Dim i As Long, j As Long, k As Long, cp As Long, n As Long, b As New ByteBuilder, spans As Long, s() As Long, e() As Long
+        ReDim s(0 To 4 * (finish - start) + 4)
+        ReDim e(0 To 4 * (finish - start) + 4)
+        i = start
+        Do While i < finish
+            If t(i) <> 92 Then
+                b.AddByte t(i)
+                s(spans) = i
+                e(spans) = i + 1
+                spans = spans + 1
+                i = i + 1
+            Else
+                j = i + 1
+                If j >= finish Then
+                    spans = AddCodePoint(b, s, e, spans, &HFFFD&, i, finish)
+                    i = finish
+                ElseIf t(j) = 10 Or t(j) = 12 Then
+                    i = j + 1
+                ElseIf t(j) = 13 Then
+                    i = j + 1
+                    If i < finish Then
+                        If t(i) = 10 Then i = i + 1
+                    End If
+                ElseIf HexDigit(t(j)) >= 0 Then
+                    cp = 0
+                    k = j
+                    Do While k < finish And k < j + 6
+                        If HexDigit(t(k)) < 0 Then Exit Do
+                        cp = cp * 16 + HexDigit(t(k))
+                        k = k + 1
+                    Loop
+                    If k < finish Then
+                        Select Case t(k)
+                            Case 9, 10, 12, 32
+                                k = k + 1
+                            Case 13
+                                k = k + 1
+                                If k < finish Then
+                                    If t(k) = 10 Then k = k + 1
+                                End If
+                        End Select
+                    End If
+                    If cp = 0 Or (cp >= &HD800& And cp <= &HDFFF&) Or cp > &H10FFFF Then cp = &HFFFD&
+                    spans = AddCodePoint(b, s, e, spans, cp, i, k)
+                    i = k
+                Else
+                    ' The character after the backslash, as it is: all the bytes of its UTF-8.
+                    n = 1
+                    If t(j) >= &HC0 Then n = 2
+                    If t(j) >= &HE0 Then n = 3
+                    If t(j) >= &HF0 Then n = 4
+                    If j + n > finish Then n = finish - j
+                    For k = j To j + n - 1
+                        b.AddByte t(k)
+                        s(spans) = i
+                        e(spans) = j + n
+                        spans = spans + 1
+                    Next
+                    i = j + n
+                End If
+            End If
+        Loop
+        CssUnescape = b.ToArray(out)
+        CopySpans s, e, CssUnescape, outStart, outEnd
+    End Function
+
+    ' UTF-16 units t[start, finish) as UTF-8: byte k came from units [outStart(k), outEnd(k)).
+    ' A lone surrogate is written as the three bytes of its value.
+    Private Function UnitsUtf8(t() As Long, ByVal start As Long, ByVal finish As Long, out() As Byte, outStart() As Long, outEnd() As Long) As Long
+        Dim k As Long, cp As Long, width As Long, b As New ByteBuilder, spans As Long, s() As Long, e() As Long
+        ReDim s(0 To 4 * (finish - start) + 4)
+        ReDim e(0 To 4 * (finish - start) + 4)
+        k = start
+        Do While k < finish
+            cp = t(k)
+            width = 1
+            If cp >= &HD800& And cp <= &HDBFF& And k + 1 < finish Then
+                If t(k + 1) >= &HDC00& And t(k + 1) <= &HDFFF& Then
+                    cp = &H10000 + (cp - &HD800&) * 1024 + (t(k + 1) - &HDC00&)
+                    width = 2
+                End If
+            End If
+            spans = AddCodePoint(b, s, e, spans, cp, k, k + width)
+            k = k + width
+        Loop
+        UnitsUtf8 = b.ToArray(out)
+        CopySpans s, e, UnitsUtf8, outStart, outEnd
+    End Function
+
+    Private Sub CopySpans(s() As Long, e() As Long, ByVal count As Long, outStart() As Long, outEnd() As Long)
+        Dim k As Long
+        If count <= 0 Then Exit Sub
+        ReDim outStart(0 To count - 1)
+        ReDim outEnd(0 To count - 1)
+        For k = 0 To count - 1
+            outStart(k) = s(k)
+            outEnd(k) = e(k)
+        Next
+    End Sub
+
+    ' Appends a code point as UTF-8, each of its bytes from [spanStart, spanEnd); a lone surrogate
+    ' as the three bytes of its value.
+    Private Function AddCodePoint(b As ByteBuilder, s() As Long, e() As Long, ByVal spans As Long, ByVal cp As Long, ByVal spanStart As Long, ByVal spanEnd As Long) As Long
+        Dim utf8(0 To 3) As Long, n As Long, k As Long
+        If cp < &H80 Then
+            utf8(0) = cp
+            n = 1
+        ElseIf cp < &H800 Then
+            utf8(0) = &HC0 Or (cp \ 64)
+            utf8(1) = &H80 Or (cp And &H3F)
+            n = 2
+        ElseIf cp < &H10000 Then
+            utf8(0) = &HE0 Or (cp \ 4096)
+            utf8(1) = &H80 Or ((cp \ 64) And &H3F)
+            utf8(2) = &H80 Or (cp And &H3F)
+            n = 3
+        Else
+            utf8(0) = &HF0 Or (cp \ 262144)
+            utf8(1) = &H80 Or ((cp \ 4096) And &H3F)
+            utf8(2) = &H80 Or ((cp \ 64) And &H3F)
+            utf8(3) = &H80 Or (cp And &H3F)
+            n = 4
+        End If
+        For k = 0 To n - 1
+            b.AddByte utf8(k)
+            s(spans) = spanStart
+            e(spans) = spanEnd
+            spans = spans + 1
+        Next
+        AddCodePoint = spans
+    End Function
+
+    ' Percent-decodes a URL as decodeURIComponent does, its spans carried through; -1 for a % that
+    ' is no escape.
+    Private Function PercentDecode(url() As Byte, ByVal urlLen As Long, urlStart() As Long, urlEnd() As Long, out() As Byte, outStart() As Long, outEnd() As Long) As Long
+        Dim i As Long, k As Long, hi As Long, lo As Long
+        ReDim out(0 To urlLen)
+        ReDim outStart(0 To urlLen)
+        ReDim outEnd(0 To urlLen)
+        Do While i < urlLen
+            If url(i) = 37 Then
+                If i + 2 >= urlLen Then
+                    PercentDecode = -1
+                    Exit Function
+                End If
+                hi = HexDigit(url(i + 1))
+                lo = HexDigit(url(i + 2))
+                If hi < 0 Or lo < 0 Then
+                    PercentDecode = -1
+                    Exit Function
+                End If
+                out(k) = hi * 16 + lo
+                outStart(k) = urlStart(i)
+                outEnd(k) = urlEnd(i + 2)
+                i = i + 3
+            Else
+                out(k) = url(i)
+                outStart(k) = urlStart(i)
+                outEnd(k) = urlEnd(i)
+                i = i + 1
+            End If
+            k = k + 1
+        Loop
+        ReDim Preserve out(0 To k - 1)
+        PercentDecode = k
+    End Function
+
+    ' b[0, n) as units, which is what ScanUris reads a CSS file as.
+    Private Sub ToLongs(b() As Byte, ByVal n As Long, out() As Long)
+        Dim i As Long
+        If n <= 0 Then Exit Sub
+        ReDim out(0 To n - 1)
+        For i = 0 To n - 1
+            out(i) = b(i)
+        Next
+    End Sub
+
+    Private Function SameBytes(a() As Byte, ByVal an As Long, b() As Byte, ByVal bn As Long) As Boolean
+        Dim i As Long
+        If an <> bn Then Exit Function
+        For i = 0 To an - 1
+            If a(i) <> b(i) Then Exit Function
+        Next
+        SameBytes = True
+    End Function
+
+    Private Function IsDataAt(t() As Long, ByVal i As Long) As Boolean
+        IsDataAt = (t(i) Or 32) = 100 And (t(i + 1) Or 32) = 97 And (t(i + 2) Or 32) = 116 And _
+                   (t(i + 3) Or 32) = 97 And t(i + 4) = 58
+    End Function
+
+    Private Function IsHeaderChar(ByVal c As Long) As Boolean
+        Select Case c
+            Case 43, 45 To 57, 59, 61, 65 To 90, 95, 97 To 122
+                IsHeaderChar = True
+        End Select
+    End Function
+
+    Private Function HexDigit(ByVal value As Long) As Long
+        Select Case value
+            Case 48 To 57
+                HexDigit = value - 48
+            Case 65 To 70
+                HexDigit = value - 55
+            Case 97 To 102
+                HexDigit = value - 87
+            Case Else
+                HexDigit = -1
+        End Select
+    End Function
+
+    Private Function IsPng(data() As Byte, ByVal n As Long) As Boolean
+        If n < 8 Then Exit Function
+        IsPng = data(0) = 137 And data(1) = 80 And data(2) = 78 And data(3) = 71 And _
+                data(4) = 13 And data(5) = 10 And data(6) = 26 And data(7) = 10
+    End Function
+
+    Private Function IsJpeg(data() As Byte, ByVal n As Long) As Boolean
+        If n < 2 Then Exit Function
+        IsJpeg = data(0) = &HFF And data(1) = &HD8
+    End Function
+
+    Private Function IsGif(data() As Byte, ByVal n As Long) As Boolean
+        IsGif = Bytes.Latin1Range(data, 0, 4) = "GIF8"
+    End Function
+
+    Private Function IsBmp(data() As Byte, ByVal n As Long) As Boolean
+        If n < 54 Then Exit Function
+        If data(0) <> 66 Or data(1) <> 77 Then Exit Function
+        IsBmp = Bytes.U32LE(data, 14) >= 40
+    End Function
+
+    Private Function Describe(ByVal kind As String) As String
+        Select Case kind
+            Case "image/png"
+                Describe = "a PNG"
+            Case "image/jpeg"
+                Describe = "a JPEG"
+            Case "image/gif"
+                Describe = "a GIF"
+            Case "image/bmp"
+                Describe = "a BMP"
+        End Select
+    End Function
+End Module
