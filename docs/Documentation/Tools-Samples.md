@@ -200,7 +200,7 @@ The names come from every entry in `Attributes.md`, every name in the compiler's
 | `--timeout <secs>` | How long to wait for one build to settle. Default 180. |
 | `--show` / `--hide` | As for [`tbbuild.mjs`](Tools-Compiler#tbbuild). |
 
-**An Enum member cannot be tested.** An Enum body accepts any attribute written on its own line, including one that applies nowhere, and refuses every attribute written inline. The site is voided, and a target on an Enum member is reported as one the sweep could not test.
+**An Enum member cannot be tested.** On a line of its own inside an Enum, a bracket group is not an attribute but a member named by its text, so that form compiles whatever it names, an attribute that applies nowhere included; written inline, every attribute is refused. The site is voided, and a target on an Enum member is reported as one the sweep could not test.
 
 **A clean build says the compiler accepts an attribute at a site, not that the attribute does anything.** The sweep reads the IDE's background compile, so a check made only when linking is not seen. To show an attribute's effect, use an A/B probe like X29 to X33 in `gen_attribute_probes.mjs`.
 

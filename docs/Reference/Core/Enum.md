@@ -33,7 +33,7 @@ Syntax:
 : The name of the **Enum** type. The *name* must be a valid Visual Basic identifier and is specified as the type when declaring variables or parameters of the **Enum** type.
 
 *membername*
-: A valid Visual Basic identifier specifying the name by which a constituent element of the **Enum** type will be known.
+: A valid Visual Basic identifier specifying the name by which a constituent element of the **Enum** type will be known. A name in square brackets can also hold spaces and other characters an identifier cannot, as in `[A4 Portrait]` or `[_Max]`.
 
 *constantexpression*
 : *optional* Value of the element (evaluates to a **Long**). If no *constantexpression* is specified, the value assigned is either zero (if it is the first *membername* ), or 1 greater than the value of the immediately preceding *membername*.
@@ -53,6 +53,9 @@ An **Enum** statement can appear only at the module level. After the **Enum** ty
 **Public Enum** types in a class module are not members of the class; however, they are written to the type library. **Enum** types defined in standard modules aren't written to type libraries. **Public Enum** types of the same name can't be defined in both standard modules and class modules because they share the same name space. When two **Enum** types in different type libraries have the same name, but different elements, a reference to a variable of the type depends on which type library has higher priority in the **References**.
 
 An **Enum** type cannot be used as the target in a **With** block.
+
+> [!NOTE]
+> An **Enum** member cannot carry an attribute. Written before the member on the same line, as in `[Hidden] Red = 5`, an attribute is error **TB5182**. On a line of its own inside the **Enum**, a bracketed name such as `[Hidden]` is not an attribute but a member with that name, and it takes a value like any other member. An **Enum** whose body is `[Hidden]` followed by `Red` therefore has two members: `[Hidden]`, which is 0, and `Red`, which is 1.
 
 ### Example
 

@@ -366,7 +366,7 @@ Verifies that the scanners that read twinBASIC source and the attribute referenc
 
 The modifier words that may precede a declaration keyword are one list, in `scripts/lib/twin-declarations.mjs`, and a word missing from it makes the keyword after it invisible. So each word is run through all three scanners that use the list: the attribute census's `declarationKind`, `scripts/lib/twin-api.mjs`'s `parseTwin` and `scripts/lib/tb-fences.mjs`'s `classify`.
 
-The census's declaration kinds are asserted too, including an inline block comment before the keyword and a `Const` kept apart from a variable. So are the targets `parseTargets` in `scripts/lib/attributes-doc.mjs` reads from an `Applicable to:` line, including the phrases that must be matched before the line is split on commas and "and".
+The census's declaration kinds are asserted too, including an inline block comment before the keyword and a `Const` kept apart from a variable. So is what the census scanner, `scripts/lib/census-scan.mjs`, records for a bracket group alone on its line: an attribute in a Module or a **Type**, and nothing in an **Enum**, where the group is a member. So are the targets `parseTargets` in `scripts/lib/attributes-doc.mjs` reads from an `Applicable to:` line, including the phrases that must be matched before the line is split on commas and "and".
 
 Exit codes: **0** every probe passed, **1** a probe failed, **2** the gate could not run: a refused command line, or a crash.
 
