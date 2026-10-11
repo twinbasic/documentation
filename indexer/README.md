@@ -37,9 +37,11 @@ This does everything on the first run:
 5. Commits sources + snapshots to the store.
 6. Copies `api.json` files to `indexer/snapshots/` (committed to
    the docs repo).
-7. Updates `indexer/manifests/` (committed; tracks sync state).
+7. Records what it read in `indexer/.packages/manifests/` (in the store,
+   not committed).
 
-Subsequent runs only download what changed.
+Subsequent runs only read and download what changed. A fresh clone has no
+store, so its first `sync` reads everything.
 
 ## Commands
 
@@ -95,8 +97,13 @@ release zip of its build, so either source gives the same sources and the
 same `api.json`, byte for byte.
 
 A package is read again, whatever its manifest says, when its store has no
-sources or holds an `api.json` in an older format than the indexer writes
-(the `format` number below). The version in `api.json` is the release tag in both cases:
+sources or no `api.json`, holds an `api.json` in an older format than the
+indexer writes (the `format` number below), or holds one of another build or
+version than the source has now. The store is the record of what has been
+read: the manifest only says what was last fetched, so it cannot hide a package
+the store lacks, and a `sync` limited to some packages, which moves the
+manifest to the new build for all of them, leaves the others to be read again
+by the next one. The version in `api.json` is the release tag in both cases:
 BETA 983 is `beta-x-0983`, as `indexed_from` in the package pages has it. The
 BETA number is read from the install's `ide/build.js`, else from the name of
 its folder.
@@ -107,9 +114,14 @@ its folder.
 |------|-----------|----------|
 | `indexer/.packages/{group}/{pkg}/sources/` | No (gitignored) | Extracted `.twin` source files |
 | `indexer/.packages/{group}/{pkg}/api.json` | No (gitignored) | Full API snapshot |
+| `indexer/.packages/manifests/contributed.json` | No (in the store) | TWINSERV sync state |
+| `indexer/.packages/manifests/built-in.json` | No (in the store) | Built-in and default sync state |
 | `indexer/snapshots/{group}/{pkg}/api.json` | Yes | Copy of the above (survives cloning) |
-| `indexer/manifests/contributed.json` | Yes | TWINSERV sync state |
-| `indexer/manifests/built-in.json` | Yes | Built-in and default sync state |
+
+The manifests are in the store, with the sources they describe, and not in the
+repository: a manifest that travels with git says "up to date" about a store
+that a clone does not have, or holds from another build. A clone has no store
+and so no manifests, and its first `sync` reads every package.
 
 `built-in.json` records which source the packages were read from and which
 build: `source` is `install` or `release`, `beta` the BETA number and
@@ -306,16 +318,14 @@ indexer/
     zip-reader.mjs             Minimal ZIP reader (deflate)
     vb6-preprocess.mjs         VB6 -> twinBASIC normalization
     api-model.mjs              files -> api.json, through scripts/lib/twin-api.mjs
-    store.mjs                  .packages/ git repo lifecycle
+    store.mjs                  .packages/ git repo lifecycle, sync state, what the store holds
     differ.mjs                 api.json diff + coverage audit
-  manifests/                   (committed) sync state
-    built-in.json
-    contributed.json
   snapshots/                   (committed) latest api.json per package
     default/
     built-in/
     contributed/
   .packages/                   (gitignored) local git repo with sources
+    manifests/                 sync state: built-in.json, contributed.json
 ```
 
 Its unit tests are `test/indexer.test.mjs` (`node --test test/indexer.test.mjs`,
@@ -334,12 +344,11 @@ found none. Unpack the IDE's zip as a `twinBASIC_IDE_BETA_<n>` folder on the
 Desktop, pass `--ide <folder>` or set `TB_IDE`, or use `--release` to
 download the latest release instead.
 
-**Sync says "Up to date" but `.packages/` is empty.**
-This shouldn't happen — `sync` detects missing store directories and
-forces re-download even when the manifest says nothing changed. If it
-does happen, delete `indexer/manifests/built-in.json` and
-`indexer/manifests/contributed.json` (reset them to stubs), then run
-`sync` again.
+**Sync says "Up to date" but a package looks wrong.**
+`sync` compares what the store holds with the source, whatever the manifest
+says, so this should not happen. To start over, delete `indexer/.packages/`
+(the sources, the manifests and the store's history) and run `sync` again;
+the committed snapshots seed the new store.
 
 **Git errors during store operations.**
 The store requires `git` on PATH. Verify with `git --version`. The

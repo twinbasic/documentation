@@ -196,7 +196,7 @@ project file](#the-help-add-ins-project-file)).
 
 `wisdom/` — Discord knowledge-harvesting tool (three-phase: export → process → extract). Plans in `wisdom/PLAN-{1,2,3}.md`; implementation under `wisdom/`. Uses only Node.js built-in APIs. Running it is [WIP.Wisdom.md](WIP.Wisdom.md).
 
-`indexer/` — package indexer: reads the twinBASIC packages (the built-in and default ones from the local install, or with `--release` from the GitHub release; the community ones from TWINSERV), parses their `.twin` sources and writes an `api.json` snapshot per package into a local git store. The build does not use it. Uses only Node.js built-in APIs. Its layout and commands are in `indexer/README.md`. It is under the lint, format and regex-safety gates like the other tooling folders; `sample.twinpack` and the manifests are data, not scripts.
+`indexer/` — package indexer: reads the twinBASIC packages (the built-in and default ones from the local install, or with `--release` from the GitHub release; the community ones from TWINSERV), parses their `.twin` sources and writes an `api.json` snapshot per package into a local git store. The build does not use it. Uses only Node.js built-in APIs. Its layout and commands are in `indexer/README.md`. It is under the lint, format and regex-safety gates like the other tooling folders; `sample.twinpack` and the committed snapshots are data, not scripts; the sync state lives in the gitignored store, not in the repository.
 
 `eval/` — use-case evaluation of the developer documentation. `build_corpus.mjs` mirrors the
 repository with every non-prose file stubbed unreadable, so "documentation only" is a property

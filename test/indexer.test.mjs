@@ -24,8 +24,10 @@ import path from "node:path";
 import { after, describe, test } from "node:test";
 import { importProject } from "../scripts/impexp.mjs";
 import { API_FORMAT, buildApi, qualified, renderApi } from "../indexer/lib/api-model.mjs";
+import { compareInstallManifest } from "../indexer/lib/builtin-sync.mjs";
 import { auditCoverage, diffApi, flattenSymbols } from "../indexer/lib/differ.mjs";
 import { readPackageFiles } from "../indexer/lib/package-files.mjs";
+import { apiHeadOf, copyToSnapshots, manifestPath, storeStatus } from "../indexer/lib/store.mjs";
 import { CONTAINER_MAP, preprocessVB6 } from "../indexer/lib/vb6-preprocess.mjs";
 
 const SAMPLE = path.join(import.meta.dirname, "../indexer/sample.twinpack");
@@ -743,5 +745,137 @@ describe("auditCoverage", () => {
   test("with no pages every public symbol is undocumented, and with no types there is nothing to report", () => {
     assert.equal(auditCoverage(api, new Map()).documented.length, 0);
     assert.deepEqual(auditCoverage({}, pages), { documented: [], undocumented: [] });
+  });
+});
+
+// ----------------------------------------------------------- the store's sync state
+
+// A store folder as `sync` leaves it: sources and an api.json of `version`.
+const apiText = (version, over = {}) =>
+  renderApi({
+    format: API_FORMAT,
+    package: "P",
+    project: null,
+    version,
+    types: [],
+    aliases: [],
+    problems: [],
+    ...over,
+  });
+
+function putPackage(store, group, symbol, { sources = true, api } = {}) {
+  const dir = path.join(store, group, symbol);
+  mkdirSync(path.join(dir, "sources"), { recursive: true });
+  if (sources) writeFileSync(path.join(dir, "sources", "M.twin"), "Module M\nEnd Module\n");
+  else rmSync(path.join(dir, "sources"), { recursive: true });
+  if (api !== undefined) writeFileSync(path.join(dir, "api.json"), api);
+}
+
+describe("storeStatus", () => {
+  const store = mkdtempSync(path.join(tmp, "store-"));
+  const status = (symbol, version = "beta-x-1005") => storeStatus(store, "built-in", symbol, version);
+
+  test("a package with its sources and an api.json of the version is current", async () => {
+    putPackage(store, "built-in", "Current", { api: apiText("beta-x-1005") });
+    assert.equal(await status("Current"), null);
+  });
+
+  test("a package the store does not hold, or holds without its sources, is to be read again", async () => {
+    assert.equal(await status("Never"), "missing-sources");
+    // A store seeded from the committed snapshots has the api.json and no sources.
+    putPackage(store, "built-in", "Seeded", { sources: false, api: apiText("beta-x-1005") });
+    assert.equal(await status("Seeded"), "missing-sources");
+  });
+
+  test("so is one with no api.json, or one in an older format", async () => {
+    putPackage(store, "built-in", "NoIndex");
+    assert.equal(await status("NoIndex"), "missing-index");
+    putPackage(store, "built-in", "Format1", { api: apiText("beta-x-1005").replace('"format": 2', '"format": 1') });
+    assert.equal(await status("Format1"), "old-format");
+    putPackage(store, "built-in", "Unnumbered", { api: '{\n  "package": "P",\n  "version": "beta-x-1005"\n}\n' });
+    assert.equal(await status("Unnumbered"), "old-format");
+  });
+
+  test("so is one indexed from another build: the manifest cannot make a stale package current", async () => {
+    putPackage(store, "built-in", "Stale", { api: apiText("beta-x-0997") });
+    assert.equal(await status("Stale"), "other-build");
+    assert.equal(await status("Stale", "beta-x-0997"), null);
+  });
+
+  test("the version is read from the header whether the project is named or not, and nowhere else", async () => {
+    putPackage(store, "built-in", "Named", { api: apiText("beta-x-1005", { project: "Assert" }) });
+    assert.equal(await status("Named"), null);
+    // The text "version" inside a type's description is not the package's version.
+    const types = [{ name: "T", kind: "class", file: "T.twin", signature: 'Class T "version": "beta-x-1005"' }];
+    putPackage(store, "built-in", "Decoy", { api: apiText("beta-x-0997", { types }) });
+    assert.equal(await status("Decoy"), "other-build");
+  });
+
+  test("apiHeadOf gives the format and the version, and null for a file that is not there", async () => {
+    assert.deepEqual(await apiHeadOf(path.join(store, "built-in", "Current", "api.json")), {
+      format: API_FORMAT,
+      version: "beta-x-1005",
+    });
+    assert.equal(await apiHeadOf(path.join(store, "built-in", "Never", "api.json")), null);
+  });
+});
+
+describe("the manifests are in the store, not in the repository", () => {
+  test("a manifest is a file inside the store folder, so a clone, which has no store, has none", () => {
+    const store = path.join(tmp, "elsewhere", ".packages");
+    for (const name of ["built-in", "contributed"]) {
+      const rel = path.relative(store, manifestPath(store, name));
+      assert.ok(!rel.startsWith("..") && !path.isAbsolute(rel), rel);
+    }
+  });
+
+  test("with no manifest, the first sync reads every package, whatever the build", async () => {
+    const file = manifestPath(path.join(tmp, "never-synced"), "built-in");
+    const r = await compareInstallManifest(file, { root: tmp, beta: "1005" });
+    assert.equal(r.needsUpdate, true);
+    assert.equal(r.tag, "beta-x-1005");
+    assert.deepEqual(r.manifest.packages, {});
+  });
+
+  test("a manifest of the same build and source is up to date, another build or source is not", async () => {
+    const store = mkdtempSync(path.join(tmp, "synced-"));
+    const file = manifestPath(store, "built-in");
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify({ source: "install", twinbasicTag: "beta-x-1005", packages: {} }));
+    const same = await compareInstallManifest(file, { root: tmp, beta: "1005" });
+    assert.equal(same.needsUpdate, false);
+    assert.equal((await compareInstallManifest(file, { root: tmp, beta: "997" })).needsUpdate, true);
+    writeFileSync(file, JSON.stringify({ source: "release", twinbasicTag: "beta-x-1005", packages: {} }));
+    assert.equal((await compareInstallManifest(file, { root: tmp, beta: "1005" })).needsUpdate, true);
+  });
+});
+
+describe("copyToSnapshots", () => {
+  const store = mkdtempSync(path.join(tmp, "copy-store-"));
+  const snapshots = mkdtempSync(path.join(tmp, "copy-snapshots-"));
+  const both = [
+    { group: "default", package: "A" },
+    { group: "built-in", package: "B" },
+  ];
+  putPackage(store, "default", "A", { api: apiText("beta-x-1005") });
+  putPackage(store, "built-in", "B", { api: apiText("beta-x-1005") });
+  const snapshot = (group, name) => path.join(snapshots, group, name, "api.json");
+
+  test("copies the api.json of each package it is given, and names them", async () => {
+    assert.deepEqual(await copyToSnapshots(store, snapshots, both), both);
+    assert.equal(readFileSync(snapshot("built-in", "B"), "utf-8"), apiText("beta-x-1005"));
+  });
+
+  test("writes only what differs, and copies nothing it was not given", async () => {
+    assert.deepEqual(await copyToSnapshots(store, snapshots, both), []);
+    putPackage(store, "built-in", "B", { api: apiText("beta-x-1006") });
+    putPackage(store, "default", "C", { api: apiText("beta-x-1006") });
+    assert.deepEqual(await copyToSnapshots(store, snapshots, both), [{ group: "built-in", package: "B" }]);
+    assert.equal(readFileSync(snapshot("default", "A"), "utf-8"), apiText("beta-x-1005"));
+    assert.throws(() => readFileSync(snapshot("default", "C")), { code: "ENOENT" });
+  });
+
+  test("skips a package the store has no api.json for", async () => {
+    assert.deepEqual(await copyToSnapshots(store, snapshots, [{ group: "built-in", package: "Missing" }]), []);
   });
 });

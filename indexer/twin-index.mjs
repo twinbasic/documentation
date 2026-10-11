@@ -18,7 +18,7 @@ import {
 import { downloadRelease } from "./lib/github-release.mjs";
 import { CONTAINER_MAP } from "./lib/vb6-preprocess.mjs";
 import { API_FORMAT, buildApi } from "./lib/api-model.mjs";
-import { ensureStore, commitStore, copyToSnapshots } from "./lib/store.mjs";
+import { STORE_PROBLEMS, commitStore, copyToSnapshots, ensureStore, manifestPath, storeStatus } from "./lib/store.mjs";
 import { diffApi, auditCoverage } from "./lib/differ.mjs";
 
 exitOnCrash();
@@ -28,7 +28,6 @@ const execFileP = promisify(execFile);
 const INDEXER_DIR = path.join(REPO_ROOT, "indexer");
 const STORE_PATH = path.join(INDEXER_DIR, ".packages");
 const SNAPSHOTS_PATH = path.join(INDEXER_DIR, "snapshots");
-const MANIFESTS_DIR = path.join(INDEXER_DIR, "manifests");
 const DOCS_REF_DIR = path.join(DOCS_DIR, "Reference");
 
 const DEFAULT_PACKAGES = ["VBA", "VBRUN", "VB"];
@@ -54,32 +53,29 @@ function describeIndex({ files, types, members, problems }) {
   return problems ? `${text}; ${problems} declarations the scanner could not place (see "problems" in api.json)` : text;
 }
 
-// The `format` an api.json declares: null when the file is not there, 0 when it
-// declares none (written before the format was numbered). `format` is the
-// first key of the file, so its first bytes are all that is read.
-async function apiFormatOf(apiPath) {
-  let handle;
+// A sync-state file of the store, or the stub of one never written. The state
+// lives in the store, so a fresh clone has none and reads every package.
+async function readManifest(name) {
   try {
-    handle = await fs.open(apiPath);
-    const { buffer, bytesRead } = await handle.read(Buffer.alloc(64), 0, 64, 0);
-    const m = /^\{\s*"format":\s*(\d+)/.exec(buffer.toString("utf-8", 0, bytesRead));
-    return m ? Number(m[1]) : 0;
+    return JSON.parse(await fs.readFile(manifestPath(STORE_PATH, name), "utf-8"));
   } catch {
     return null;
-  } finally {
-    await handle?.close();
   }
 }
 
-// Whether a package has to be read again for want of what the store should
-// hold: its sources, and an api.json in the format this indexer writes.
-async function storeIncomplete(group, symbol) {
-  try {
-    await fs.access(path.join(STORE_PATH, group, symbol, "sources"));
-  } catch {
-    return "missing-sources";
+async function writeManifest(name, manifest) {
+  const file = manifestPath(STORE_PATH, name);
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, JSON.stringify(manifest, null, 2) + "\n");
+}
+
+// What `sync` prints for packages the store holds incompletely or from another
+// build: `problems` is a list of `{ symbol, why }`, one line for each reason.
+function printStoreProblems(problems) {
+  for (const why of Object.keys(STORE_PROBLEMS)) {
+    const symbols = problems.filter((p) => p.why === why).map((p) => p.symbol);
+    if (symbols.length) console.log(`  ${STORE_PROBLEMS[why]}: ${symbols.join(", ")}`);
   }
-  return (await apiFormatOf(path.join(STORE_PATH, group, symbol, "api.json"))) === API_FORMAT ? null : "old-format";
 }
 
 async function writeToStore(group, symbol, rawFiles, apiJsonStr) {
@@ -359,19 +355,14 @@ async function knownBuiltinNames(install) {
     for (const { symbol } of listInstalledPackages(install.root)) names.add(symbol);
     return names;
   }
-  try {
-    const manifest = JSON.parse(await fs.readFile(path.join(MANIFESTS_DIR, "built-in.json"), "utf-8"));
-    for (const { symbol } of Object.values(manifest.packages ?? {})) names.add(symbol);
-  } catch {
-    /* no manifest yet */
-  }
+  const manifest = await readManifest("built-in"); /* none in a store never synced */
+  for (const { symbol } of Object.values(manifest?.packages ?? {})) names.add(symbol);
   return names;
 }
 
 // `install` is `{ root, beta }` for the local twinBASIC install the built-in and
 // default packages are read from, or null for the latest GitHub release.
 async function runSync(filter, install) {
-  await fs.mkdir(MANIFESTS_DIR, { recursive: true });
   await ensureStore(STORE_PATH, SNAPSHOTS_PATH);
 
   const synced = [];
@@ -394,11 +385,11 @@ async function runSync(filter, install) {
       if (s.from && s.from !== s.to) return `${s.package} ${s.from}→${s.to}`;
       return `${s.package} ${s.to}`;
     });
-    const committed = await commitStore(STORE_PATH, `sync: ${parts.join(", ")}`);
-    if (committed) {
-      await copyToSnapshots(STORE_PATH, SNAPSHOTS_PATH, synced);
-      console.log("\nSnapshots updated.");
-    }
+    await commitStore(STORE_PATH, `sync: ${parts.join(", ")}`);
+    const written = await copyToSnapshots(STORE_PATH, SNAPSHOTS_PATH, synced);
+    console.log(
+      written.length ? `\nSnapshots updated: ${written.map((w) => w.package).join(", ")}.` : "\nSnapshots unchanged.",
+    );
   }
 
   for (const name of filter ?? []) {
@@ -414,26 +405,30 @@ async function runSync(filter, install) {
 // --- Contributed packages (TWINSERV) ---
 
 async function syncContributed(filter, { synced, failed, known }) {
-  const contribManifestPath = path.join(MANIFESTS_DIR, "contributed.json");
   console.log("Fetching TWINSERV package index...");
-  const { toDownload, unchanged, removed, manifest: contribManifest } = await compareWithManifest(contribManifestPath);
+  const {
+    toDownload,
+    unchanged,
+    removed,
+    manifest: contribManifest,
+  } = await compareWithManifest(manifestPath(STORE_PATH, "contributed"));
   for (const item of [...toDownload, ...unchanged]) known.add(item.symbol);
 
   let contribToDownload = filter ? toDownload.filter((p) => filter.includes(p.symbol)) : toDownload;
 
-  // Re-download unchanged packages whose store is incomplete: no sources (fresh
-  // clone), or an api.json written by an older indexer.
-  const missingContrib = [];
-  const oldFormat = [];
+  // Download again the packages the manifest calls unchanged but the store
+  // does not hold as they are now: no sources, no api.json, one in an older
+  // format, or one indexed from another version. The store is the record of
+  // what has been read; the manifest only says what was last fetched.
+  const problems = [];
   for (const item of unchanged) {
     if (filter && !filter.includes(item.symbol)) continue;
-    const why = await storeIncomplete("contributed", item.symbol);
+    const why = await storeStatus(STORE_PATH, "contributed", item.symbol, versionString(item.version));
     if (!why) continue;
     contribToDownload.push({ ...item, reason: why });
-    (why === "old-format" ? oldFormat : missingContrib).push(item.symbol);
+    problems.push({ symbol: item.symbol, why });
   }
-  if (missingContrib.length) console.log(`  Missing sources: ${missingContrib.join(", ")}`);
-  if (oldFormat.length) console.log(`  Index written by an older indexer: ${oldFormat.join(", ")}`);
+  printStoreProblems(problems);
 
   const addedC = contribToDownload.filter((p) => p.reason === "added");
   const updatedC = contribToDownload.filter((p) => p.reason === "updated");
@@ -473,14 +468,16 @@ async function syncContributed(filter, { synced, failed, known }) {
     }
   }
 
-  contribManifest.syncedAt = new Date().toISOString();
-  await fs.writeFile(contribManifestPath, JSON.stringify(contribManifest, null, 2) + "\n");
+  if (contribToDownload.length || (!filter && removed.length) || !(await readManifest("contributed"))) {
+    contribManifest.syncedAt = new Date().toISOString();
+    await writeManifest("contributed", contribManifest);
+  }
 }
 
 // --- Built-in + Default packages (the local install, or the GitHub release) ---
 
 async function syncBuiltin(filter, install, { synced, known }) {
-  const builtinManifestPath = path.join(MANIFESTS_DIR, "built-in.json");
+  const builtinManifestPath = manifestPath(STORE_PATH, "built-in");
   let built;
   if (install) {
     console.log(`\nReading twinBASIC BETA ${install.beta} from ${install.root}...`);
@@ -491,18 +488,21 @@ async function syncBuiltin(filter, install, { synced, known }) {
   }
   console.log(`  Tag: ${built.tag}`);
 
-  // Read again if any built-in/default package is missing from the store, or
-  // was indexed by an older indexer
+  // Read again if the store lacks a package the manifest lists, or holds it
+  // from another build or an older indexer. The manifest says what a sync
+  // recorded; the store says what it holds. A sync limited to some packages
+  // moves the manifest to the new build for all of them, so only the store
+  // can say that the others are still from the old one.
   if (!built.needsUpdate) {
-    const symbols = Object.values(built.manifest.packages || {}).map((p) => p.symbol);
-    for (const sym of symbols) {
-      if (filter && !filter.includes(sym)) continue;
-      const why = await storeIncomplete(packageGroup(sym, "builtin"), sym);
-      if (why) {
-        console.log(why === "old-format" ? `  Index written by an older indexer: ${sym}` : `  Missing sources: ${sym}`);
-        built.needsUpdate = true;
-        break;
-      }
+    const problems = [];
+    for (const { symbol } of Object.values(built.manifest.packages || {})) {
+      if (filter && !filter.includes(symbol)) continue;
+      const why = await storeStatus(STORE_PATH, packageGroup(symbol, "builtin"), symbol, built.tag);
+      if (why) problems.push({ symbol, why });
+    }
+    if (problems.length) {
+      printStoreProblems(problems);
+      built.needsUpdate = true;
     }
   }
 
@@ -552,7 +552,7 @@ async function syncBuiltin(filter, install, { synced, known }) {
       }
     }
 
-    await fs.writeFile(builtinManifestPath, JSON.stringify(builtinManifest, null, 2) + "\n");
+    await writeManifest("built-in", builtinManifest);
     for (const { symbol } of Object.values(builtinManifest.packages)) known.add(symbol);
   } else {
     console.log(`  Up to date (${built.tag}).`);
