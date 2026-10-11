@@ -162,13 +162,12 @@ digraph tools_groups {
         i1 [label="addin_test"]     i2 [label="ide_test"]
         i3 [label="try_help_addin"] i4 [label="shoot_docs"]
         i5 [label="imagestrip"]     i6 [label="probe_ide_image_labels"]
-        i7 [label="svgshot/replay"]
-        ip [style=invis label=""]
+        i7 [label="svgshot/replay"] i8 [label="probe_theme_semicolon"]
         i1 -> i3 -> i5 -> i7
-        i2 -> i4 -> i6 -> ip
+        i2 -> i4 -> i6 -> i8
         { rank=same; i3 i4 }
         { rank=same; i5 i6 }
-        { rank=same; i7 ip }
+        { rank=same; i7 i8 }
     }
     subgraph cluster_defects {
         margin=12
@@ -369,6 +368,8 @@ digraph tools_groups {
         tooltip="Lists the images in the style sheets of the IDE that are labelled with a media type their bytes do not have."]
     i7 [URL="Tools-IDE#replay"
         tooltip="Draws the SVG of each picture again from its saved bundle, with the converter as it is now. Starts no IDE and takes no picture."]
+    i8 [URL="Tools-IDE#probe-theme-semicolon"
+        tooltip="Lists the properties that the IDE silently drops when it loads the theme files it ships, because a property lacks its semicolon."]
 
     d1 [URL="Tools-Defects#bug-repro"
         tooltip="Builds, runs and verifies the reproducer projects for the entries of BUGS-TO-REPORT.md, one folder for each entry."]
