@@ -12,10 +12,10 @@ compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
 ## State
 
-Of 1,351 `tb` fences in 675 pages, **1,298 are marked `check_build`** and compile, and 52
-are `inert` with a recorded reason. **None is undecided**, so the backlog the census measures
-is empty. No fence is an `excerpt`. The run takes about 110 s. 33 of the marked samples are
-also `check_run`.
+Of 1,530 `tb` fences in 749 pages, **1,370 are marked `check_build`** and compile, and 159
+are `inert` with a recorded reason (107 of them OLEGuids' method signatures).
+**None is undecided**, so the backlog the census measures is empty. No fence is an
+`excerpt`. The run takes about 110 s. 88 of the marked samples are also `check_run`.
 
 New marked samples should come from editing pages, not from marking: the unmarked fences
 that are left are not programs (see [What cannot be marked](#what-cannot-be-marked)).
