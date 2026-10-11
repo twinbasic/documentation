@@ -504,6 +504,20 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: Fmt Package
+        subtitle: A string built from a format string and values, in the style of C#'s String.Format
+        landing_page: /tB/Packages/Contributed/Fmt/
+        page: /tB/Packages/Contributed/Fmt/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: OLEGuids Package
+        subtitle: OLE and COM interfaces and structures in twinBASIC source, in place of OLEGuids.tlb
+        landing_page: /tB/Packages/Contributed/OLEGuids/
+        page: /tB/Packages/Contributed/OLEGuids/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TBMANLIB_ListBoxHScroll Package
         subtitle: A horizontal scroll bar for a ListBox
         landing_page: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
