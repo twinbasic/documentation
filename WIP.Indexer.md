@@ -194,6 +194,57 @@ the old tool's at BETA 997, and it takes half a second with no cache.
   its 17 values at BETA 997, the first named `" "`, which the committed file lacked until it
   was derived again.
 
+## `draft` and the doc-draft workflow
+
+`twin-index draft` turns `report.json` into page plans (`lib/draft-plan.mjs`), and
+`indexer/draft/workflow.mjs` is the Claude Code workflow that writes the pages from them.
+
+- **Placement is read from each section, not from a convention**, because the sections do not
+  share one: the built-in packages keep enumerations in `Enumerations/`, the contributed ones
+  beside the classes; a class is `X/index.md` with member pages, `X.md` with its members
+  inline, or `_App/_App.md`. The draft workflow this replaced derived every path from one rule
+  (`<module>/<symbol>.md`, `<symbol>.md`), which matched no section exactly. Every rule in
+  `draft-plan.mjs` is a majority over the section's own pages.
+- **How well it places, checked by leaving each symbol out** of every section with a store
+  package (the thirteen built-in and default ones at BETA 997, and the nine contributed ones of
+  the `contributed-packages` branch) and planning it again: 994 of 998 members land on the file
+  the section has them on, with its parent and permalink; 138 of 156 types; and the landing
+  page of each contributed section, planned from the other eight, matches in all nine. The 18
+  types that miss are layout choices no API shows: six that are the only type of their kind
+  in their package, with nothing to follow (`AutoComplete.md`, not `AutoComplete/index.md`;
+  `_App/_App.md`); seven controls laid out unlike their package's other controls; two
+  `...State` classes kept in their control's folder; CustomControls' `Constants` module, at
+  the root while its other modules are in `Framework/`; and two collections whose owner's
+  folder the check had itself taken away. The four members that miss are documented unlike
+  the others of their kind in their type, or not at all. The rule that places a type in the
+  folder of the type returning it is limited to folders that already keep a type, because
+  without that limit it moved Printer under Printers, Dictionary under JsonConverter and
+  eight others that the sections keep at their roots.
+- **A permalink is computed only where the rule holds for every existing page** of the
+  section (`followsFolders`). On staging at BETA 997 that is every section but VBA's, whose
+  pages live under `/tB/Modules/`. A section that breaks the rule once gets no computed
+  permalinks at all, rather than a guess that a sibling page would contradict.
+- **The prep is Node and the workflow is thin**, as Wisdom's extract is
+  ([WIP.Wisdom.md](WIP.Wisdom.md)): a workflow script cannot read a file, so everything that
+  needs the tree --- the pages, their titles and permalinks, the kinds of the types they
+  document --- is decided by tested code, and the agents get finished decisions. The
+  manifest passed as `args` names the batch files and nothing more, because `args` is written
+  out by the calling session, at output-token cost; each agent reads its own batch.
+- **No two agents write one file.** A batch is a type with its new members, or one type's
+  members, and the pages that go on one type's one page are never split across batches. The
+  lists that several batches would all touch --- the landing page's, and a type page's list of
+  its members --- are left to one agent per package after its batches finish.
+- **The check step compiles before a person reads.** One agent per package runs
+  `check_examples --only` on the section, at a port of its own (9700 up, clear of the
+  harness's default 9480), and fixes the pages. A contributed package without a
+  `contributed-<Package>` template cannot be compiled, and the agent says so.
+- **The agents are Sonnet**, as the content agents of the contributed packages were; the
+  drafts are read against the sources before they are committed, which no model choice
+  replaces.
+- **It is not in the published docs.** `draft` is (Tools-Build), because its plans serve a
+  person writing pages by hand; the workflow is described here and in `WIP.md`, because
+  nothing under `docs/Documentation/` may require Claude.
+
 ## Open items
 
 - **`diffApi` reports `attributes` as changed as well as `signature` when only a property's

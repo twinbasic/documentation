@@ -1,0 +1,101 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "Documentation samples",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard EXE",
+	"project.description": "Template for scripts/check_examples.mjs. project.id, project.name and project.buildPath are rewritten in the staged copy, one per batch.",
+	"project.exportPathIsV2": true,
+	"project.id": "{7B247400-0000-4000-9000-7B2474000000}",
+	"project.name": "DocSamples",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"symbolId": "stdole",
+			"versionMajor": 2,
+			"versionMinor": 0
+		},
+		{
+			"id": "{F50B82D0-DCAB-43FE-9631-11959D4A4728}",
+			"isCompilerPackage": true,
+			"licence": "MIT",
+			"name": "[COMPILER PACKAGE] twinBASIC - VB Compatibility Package (Forms)",
+			"path32": "",
+			"path64": "",
+			"publisher": "TWINBASIC-COMPILER",
+			"symbolId": "VB",
+			"versionBuild": 0,
+			"versionMajor": 0,
+			"versionMinor": 0,
+			"versionRevision": 31
+		},
+		{
+			"id": "{C192FB39-64CA-4D9B-B477-A5502F48EFCC}",
+			"isCompilerPackage": true,
+			"licence": "MIT",
+			"name": "[COMPILER PACKAGE] twinBASIC - App global class object",
+			"path32": "",
+			"path64": "",
+			"publisher": "TWINBASIC-COMPILER",
+			"symbolId": "AppGlobalClassProject",
+			"versionBuild": 0,
+			"versionMajor": 1,
+			"versionMinor": 0,
+			"versionRevision": 0
+		},
+		{
+			"autoCtlExt": true,
+			"id": "{CA836295-929F-463F-A565-C913C5569B6E}",
+			"licence": "MIT",
+			"name": "[IMPORTED] WinReg",
+			"path32": "/Packages/WinReg",
+			"path64": "/Packages/WinReg",
+			"symbolId": "WinReg",
+			"versionBuild": "0",
+			"versionMajor": "0",
+			"versionMinor": "0",
+			"versionRevision": "0"
+		},
+		{
+			"autoCtlExt": true,
+			"id": "{1FCDB98D-617D-4995-9736-2ED0E4746A10}",
+			"licence": "CC0 1.0 Universal",
+			"name": "[IMPORTED] Windows Development Library for twinBASIC v8.8.507",
+			"path32": "/Packages/WinDevLib",
+			"path64": "/Packages/WinDevLib",
+			"publishedDate": "17-MAR-2025",
+			"publishedTime": "08:21:53",
+			"publisher": "fafalone",
+			"symbolId": "WinDevLib",
+			"versionBuild": "507",
+			"versionMajor": "8",
+			"versionMinor": "8",
+			"versionRevision": "0"
+		},
+		{
+			"autoCtlExt": true,
+			"id": "{420B2830-E718-11CF-893D-00A0C9054228}",
+			"lcid": 0,
+			"name": "Microsoft Scripting Runtime",
+			"path32": "C:\\Windows\\SysWOW64\\scrrun.dll",
+			"path64": "C:\\Windows\\System32\\scrrun.dll",
+			"symbolId": "Scripting",
+			"versionMajor": 1,
+			"versionMinor": 0
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.startupObject": "Sub Main",
+	"project.warnings": {
+		"errors": [],
+		"hints": [],
+		"ignored": [],
+		"info": [],
+		"warnings": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

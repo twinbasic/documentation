@@ -1,0 +1,374 @@
+{
+  "format": 3,
+  "package": "Fmt",
+  "project": "Fmt",
+  "version": "1.0.0.0",
+  "types": [
+    {
+      "name": "CurrencySFI",
+      "kind": "class",
+      "vis": "public",
+      "file": "CurrencySFI.cls",
+      "signature": "Class CurrencySFI",
+      "implements": ["IStringFormatIdentifier"],
+      "members": [
+        {"name":"IStringFormatIdentifier_GetFormattedValue","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IStringFormatIdentifier_IsIdentifierMatch","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean","returnType":"Boolean"}
+      ]
+    },
+    {
+      "name": "DateTimeSFI",
+      "kind": "class",
+      "vis": "public",
+      "file": "DateTimeSFI.cls",
+      "signature": "Class DateTimeSFI",
+      "implements": ["IStringFormatIdentifier"],
+      "members": [
+        {"name":"IStringFormatIdentifier_GetFormattedValue","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IStringFormatIdentifier_IsIdentifierMatch","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean","returnType":"Boolean"},
+        {"name":"formatStringFromIdentifierDict","kind":"property","vis":"private","signature":"Private Static Property Get formatStringFromIdentifierDict() As Dictionary","returnType":"Dictionary","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "DecimalSFI",
+      "kind": "class",
+      "vis": "public",
+      "file": "DecimalSFI.cls",
+      "signature": "Class DecimalSFI",
+      "implements": ["IStringFormatIdentifier"],
+      "members": [
+        {"name":"IStringFormatIdentifier_GetFormattedValue","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IStringFormatIdentifier_IsIdentifierMatch","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean","returnType":"Boolean"}
+      ]
+    },
+    {
+      "name": "EscapeSequence",
+      "kind": "class",
+      "vis": "public",
+      "file": "EscapeSequence.cls",
+      "signature": "Class EscapeSequence",
+      "members": [
+        {"name":"AsciiBase","kind":"property","vis":"public","signature":"Public Property Get AsciiBase() As AsciiEscapeBase","returnType":"AsciiEscapeBase","accessor":"Get"},
+        {"name":"AsciiBase","kind":"property","vis":"friend","signature":"Friend Property Let AsciiBase(value As AsciiEscapeBase)","accessor":"Let"},
+        {"name":"Create","kind":"function","vis":"public","signature":"Public Function Create(ByVal escape As String, ByVal replacement As String, Optional ByVal isAsciiReplacement As Boolean = False, Optional ByVal base As AsciiEscapeBase = Octal) As EscapeSequence","returnType":"EscapeSequence"},
+        {"name":"EscapeString","kind":"property","vis":"public","signature":"Public Property Get EscapeString() As String","returnType":"String","accessor":"Get"},
+        {"name":"EscapeString","kind":"property","vis":"friend","signature":"Friend Property Let EscapeString(value As String)","accessor":"Let"},
+        {"name":"Execute","kind":"sub","vis":"public","signature":"Public Sub Execute(ByRef string_value As String)"},
+        {"name":"IsAsciiCharacter","kind":"property","vis":"public","signature":"Public Property Get IsAsciiCharacter() As Boolean","returnType":"Boolean","accessor":"Get"},
+        {"name":"IsAsciiCharacter","kind":"property","vis":"friend","signature":"Friend Property Let IsAsciiCharacter(value As Boolean)","accessor":"Let"},
+        {"name":"ProcessAsciiEscape","kind":"sub","vis":"private","signature":"Private Sub ProcessAsciiEscape(ByRef format_string As String, ByVal regexPattern As String)"},
+        {"name":"ReplacementString","kind":"property","vis":"public","signature":"Public Property Get ReplacementString() As String","returnType":"String","accessor":"Get"},
+        {"name":"ReplacementString","kind":"property","vis":"friend","signature":"Friend Property Let ReplacementString(value As String)","accessor":"Let"},
+        {"name":"Self","kind":"property","vis":"friend","signature":"Friend Property Get Self() As EscapeSequence","returnType":"EscapeSequence","accessor":"Get"},
+        {"name":"this","kind":"field","vis":"private","signature":"Private this As tEscapeSequence"}
+      ]
+    },
+    {
+      "name": "AsciiEscapeBase",
+      "kind": "enum",
+      "in": "EscapeSequence",
+      "vis": "public",
+      "file": "EscapeSequence.cls",
+      "signature": "Public Enum AsciiEscapeBase",
+      "values": [
+        {"name":"Octal"},
+        {"name":"Hexadecimal"}
+      ]
+    },
+    {
+      "name": "tEscapeSequence",
+      "kind": "type",
+      "in": "EscapeSequence",
+      "vis": "private",
+      "public": false,
+      "file": "EscapeSequence.cls",
+      "signature": "Private Type tEscapeSequence",
+      "fields": [
+        {"name":"EscapeString","vis":"public","signature":"EscapeString As String"},
+        {"name":"ReplacementString","vis":"public","signature":"ReplacementString As String"},
+        {"name":"IsAsciiCharacter","vis":"public","signature":"IsAsciiCharacter As Boolean"},
+        {"name":"AsciiBase","vis":"public","signature":"AsciiBase As AsciiEscapeBase"}
+      ],
+      "members": []
+    },
+    {
+      "name": "ExponentialSFI",
+      "kind": "class",
+      "vis": "public",
+      "file": "ExponentialSFI.cls",
+      "signature": "Class ExponentialSFI",
+      "implements": ["IStringFormatIdentifier"],
+      "members": [
+        {"name":"IStringFormatIdentifier_GetFormattedValue","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IStringFormatIdentifier_IsIdentifierMatch","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean","returnType":"Boolean"},
+        {"name":"ParseExponent","kind":"function","vis":"public","signature":"Public Function ParseExponent(ByVal formattedValue As String) As Long","returnType":"Long"}
+      ]
+    },
+    {
+      "name": "FixedPointSFI",
+      "kind": "class",
+      "vis": "public",
+      "file": "FixedPointSFI.cls",
+      "signature": "Class FixedPointSFI",
+      "implements": ["IStringFormatIdentifier"],
+      "members": [
+        {"name":"IStringFormatIdentifier_GetFormattedValue","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IStringFormatIdentifier_IsIdentifierMatch","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean","returnType":"Boolean"}
+      ]
+    },
+    {
+      "name": "FormerEntryPoint",
+      "kind": "module",
+      "vis": "public",
+      "file": "FormerEntryPoint.bas",
+      "signature": "Module FormerEntryPoint",
+      "members": [
+        {"name":"FormerStringFormat","kind":"function","vis":"public","signature":"Public Function FormerStringFormat(format_string As String, ParamArray values() as variant) As String","returnType":"String"}
+      ]
+    },
+    {
+      "name": "FormerEscapeSequence",
+      "kind": "class",
+      "vis": "public",
+      "file": "FormerEscapeSequence.cls",
+      "signature": "Class FormerEscapeSequence",
+      "members": [
+        {"name":"Create","kind":"function","vis":"public","signature":"Public Function Create(escape As String, replacement As String) As FormerEscapeSequence","returnType":"FormerEscapeSequence"},
+        {"name":"EscapeString","kind":"property","vis":"public","signature":"Public Property Get EscapeString() As String","returnType":"String","accessor":"Get"},
+        {"name":"EscapeString","kind":"property","vis":"friend","signature":"Friend Property Let EscapeString(value As String)","accessor":"Let"},
+        {"name":"ReplacementString","kind":"property","vis":"public","signature":"Public Property Get ReplacementString() As String","returnType":"String","accessor":"Get"},
+        {"name":"ReplacementString","kind":"property","vis":"friend","signature":"Friend Property Let ReplacementString(value As String)","accessor":"Let"},
+        {"name":"this","kind":"field","vis":"private","signature":"Private this As tFormerEscapeSequence"}
+      ]
+    },
+    {
+      "name": "tFormerEscapeSequence",
+      "kind": "type",
+      "in": "FormerEscapeSequence",
+      "vis": "private",
+      "public": false,
+      "file": "FormerEscapeSequence.cls",
+      "signature": "Private Type tFormerEscapeSequence",
+      "fields": [
+        {"name":"EscapeString","vis":"public","signature":"EscapeString As String"},
+        {"name":"ReplacementString","vis":"public","signature":"ReplacementString As String"}
+      ],
+      "members": []
+    },
+    {
+      "name": "GeneralNumericSFI",
+      "kind": "class",
+      "vis": "public",
+      "file": "GeneralNumericSFI.cls",
+      "signature": "Class GeneralNumericSFI",
+      "implements": ["IStringFormatIdentifier"],
+      "members": [
+        {"name":"GetFormattedValue","kind":"function","vis":"public","signature":"Public Function GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IStringFormatIdentifier_GetFormattedValue","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IStringFormatIdentifier_IsIdentifierMatch","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean","returnType":"Boolean"}
+      ]
+    },
+    {
+      "name": "GenericDateTimeSFI",
+      "kind": "class",
+      "vis": "public",
+      "file": "GenericDateTimeSFI.cls",
+      "signature": "Class GenericDateTimeSFI",
+      "implements": ["IStringFormatIdentifier"],
+      "members": [
+        {"name":"IStringFormatIdentifier_GetFormattedValue","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IStringFormatIdentifier_IsIdentifierMatch","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean","returnType":"Boolean"},
+        {"name":"formatStringFromIdentifierDict","kind":"property","vis":"private","signature":"Private Static Property Get formatStringFromIdentifierDict() As Dictionary","returnType":"Dictionary","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "HelloWorldClass",
+      "kind": "class",
+      "vis": "public",
+      "file": "HelloWorldClass.twin",
+      "signature": "Class HelloWorldClass",
+      "members": [
+        {"name":"Show","kind":"sub","vis":"public","signature":"Public Sub Show()"}
+      ]
+    },
+    {
+      "name": "HelloWorldModule",
+      "kind": "module",
+      "vis": "public",
+      "file": "HelloWorldModule.twin",
+      "signature": "Module HelloWorldModule",
+      "members": [
+        {"name":"Show","kind":"sub","vis":"public","signature":"Public Sub Show()"}
+      ]
+    },
+    {
+      "name": "HexSFI",
+      "kind": "class",
+      "vis": "public",
+      "file": "HexSFI.cls",
+      "signature": "Class HexSFI",
+      "implements": ["IStringFormatIdentifier"],
+      "members": [
+        {"name":"IStringFormatIdentifier_GetFormattedValue","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IStringFormatIdentifier_IsIdentifierMatch","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean","returnType":"Boolean"}
+      ]
+    },
+    {
+      "name": "IStringFormatIdentifier",
+      "kind": "class",
+      "vis": "public",
+      "file": "IStringFormatIdentifier.cls",
+      "signature": "Class IStringFormatIdentifier",
+      "members": [
+        {"name":"GetFormattedValue","kind":"function","vis":"public","signature":"Public Function GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IsIdentifierMatch","kind":"function","vis":"public","signature":"Public Function IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean","returnType":"Boolean"}
+      ]
+    },
+    {
+      "name": "NumericPaddingSFI",
+      "kind": "class",
+      "vis": "public",
+      "file": "NumericPaddingSFI.cls",
+      "signature": "Class NumericPaddingSFI",
+      "implements": ["IStringFormatIdentifier"],
+      "members": [
+        {"name":"IStringFormatIdentifier_GetFormattedValue","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IStringFormatIdentifier_IsIdentifierMatch","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean","returnType":"Boolean"}
+      ]
+    },
+    {
+      "name": "PercentSFI",
+      "kind": "class",
+      "vis": "public",
+      "file": "PercentSFI.cls",
+      "signature": "Class PercentSFI",
+      "implements": ["IStringFormatIdentifier"],
+      "members": [
+        {"name":"IStringFormatIdentifier_GetFormattedValue","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IStringFormatIdentifier_IsIdentifierMatch","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean","returnType":"Boolean"}
+      ]
+    },
+    {
+      "name": "Pootle",
+      "kind": "module",
+      "vis": "public",
+      "file": "Pootle.bas",
+      "signature": "Module Pootle",
+      "members": [
+        {"name":"SimpleTest","kind":"sub","vis":"public","signature":"Sub SimpleTest()"}
+      ]
+    },
+    {
+      "name": "PublicEntryPoints",
+      "kind": "module",
+      "vis": "public",
+      "file": "PublicEntryPoints.bas",
+      "signature": "Module PublicEntryPoints",
+      "members": [
+        {"name":"StringFormat","kind":"function","vis":"public","signature":"Public Function StringFormat(format_string As String, ParamArray values() as variant) As String","returnType":"String"}
+      ]
+    },
+    {
+      "name": "RoundTripSFI",
+      "kind": "class",
+      "vis": "public",
+      "file": "RoundTripSFI.cls",
+      "signature": "Class RoundTripSFI",
+      "implements": ["IStringFormatIdentifier"],
+      "members": [
+        {"name":"IStringFormatIdentifier_GetFormattedValue","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String","returnType":"String"},
+        {"name":"IStringFormatIdentifier_IsIdentifierMatch","kind":"function","vis":"private","signature":"Private Function IStringFormatIdentifier_IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean","returnType":"Boolean"}
+      ]
+    },
+    {
+      "name": "StringFormatSpecifier",
+      "kind": "class",
+      "vis": "public",
+      "file": "StringFormatSpecifier.cls",
+      "signature": "Class StringFormatSpecifier",
+      "members": [
+        {"name":"Alignment","kind":"property","vis":"public","signature":"Public Property Get Alignment() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Alignment","kind":"property","vis":"public","signature":"Public Property Let Alignment(value As Long)","accessor":"Let"},
+        {"name":"CustomSpecifier","kind":"property","vis":"public","signature":"Public Property Get CustomSpecifier() As String","returnType":"String","accessor":"Get"},
+        {"name":"CustomSpecifier","kind":"property","vis":"public","signature":"Public Property Let CustomSpecifier(value As String)","accessor":"Let"},
+        {"name":"Index","kind":"property","vis":"public","signature":"Public Property Get Index() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Index","kind":"property","vis":"public","signature":"Public Property Let Index(value As Long)","accessor":"Let"},
+        {"name":"Precision","kind":"property","vis":"public","signature":"Public Property Get Precision() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"ToString","kind":"function","vis":"public","signature":"Public Function ToString() As String","returnType":"String"},
+        {"name":"identifier","kind":"property","vis":"public","signature":"Public Property Get identifier() As String","returnType":"String","accessor":"Get"},
+        {"name":"identifier","kind":"property","vis":"public","signature":"Public Property Let identifier(value As String)","accessor":"Let"},
+        {"name":"this","kind":"field","vis":"private","signature":"Private this As tSpecifier"}
+      ]
+    },
+    {
+      "name": "tSpecifier",
+      "kind": "type",
+      "in": "StringFormatSpecifier",
+      "vis": "private",
+      "public": false,
+      "file": "StringFormatSpecifier.cls",
+      "signature": "Private Type tSpecifier",
+      "fields": [
+        {"name":"Index","vis":"public","signature":"Index As Long"},
+        {"name":"identifier","vis":"public","signature":"identifier As String"},
+        {"name":"alignmentSpecifier","vis":"public","signature":"alignmentSpecifier As Long"},
+        {"name":"precisionSpecifier","vis":"public","signature":"precisionSpecifier As Long"},
+        {"name":"CustomSpecifier","vis":"public","signature":"CustomSpecifier As String"}
+      ],
+      "members": []
+    },
+    {
+      "name": "StringHelper",
+      "kind": "class",
+      "vis": "public",
+      "file": "StringHelper.cls",
+      "signature": "Class StringHelper",
+      "members": [
+        {"name":"Class_Initialize","kind":"sub","vis":"private","signature":"Private Sub Class_Initialize()"},
+        {"name":"DEFAULT_PADDING_CHAR","kind":"const","vis":"private","signature":"Private Const DEFAULT_PADDING_CHAR As String * 1 = \" \""},
+        {"name":"ERR_FORMAT_EXCEPTION","kind":"const","vis":"private","signature":"Private Const ERR_FORMAT_EXCEPTION As Long = vbObjectError Or 9001"},
+        {"name":"ERR_MSG_FORMAT_EXCEPTION","kind":"const","vis":"private","signature":"Private Const ERR_MSG_FORMAT_EXCEPTION As String = \"The number indicating an argument to format is less than zero, or greater than or equal to the length of the args array.\""},
+        {"name":"ERR_MSG_INVALID_FORMAT_STRING","kind":"const","vis":"private","signature":"Private Const ERR_MSG_INVALID_FORMAT_STRING As String = \"Invalid format string.\""},
+        {"name":"ERR_SOURCE","kind":"const","vis":"private","signature":"Private Const ERR_SOURCE As String = \"StringHelper\""},
+        {"name":"GetFormatSpecifiers","kind":"function","vis":"private","signature":"Private Function GetFormatSpecifiers(ByVal format_string As String, valuesCount As Long) As Collection","returnType":"Collection"},
+        {"name":"InitDateTimeSpecifiers","kind":"sub","vis":"private","signature":"Private Sub InitDateTimeSpecifiers()"},
+        {"name":"InitEscapeSequences","kind":"sub","vis":"private","signature":"Private Sub InitEscapeSequences()"},
+        {"name":"InitNumericSpecifiers","kind":"sub","vis":"private","signature":"Private Sub InitNumericSpecifiers()"},
+        {"name":"StringFormat","kind":"function","vis":"public","signature":"Public Function StringFormat(format_string As String, values() As Variant) As String","returnType":"String"},
+        {"name":"this","kind":"field","vis":"private","signature":"Private this As tString"}
+      ]
+    },
+    {
+      "name": "tString",
+      "kind": "type",
+      "in": "StringHelper",
+      "vis": "private",
+      "public": false,
+      "file": "StringHelper.cls",
+      "signature": "Private Type tString",
+      "fields": [
+        {"name":"PaddingCharacter","vis":"public","signature":"PaddingCharacter As String"},
+        {"name":"EscapeSequences","vis":"public","signature":"EscapeSequences As Collection"},
+        {"name":"NumericSpecifiers","vis":"public","signature":"NumericSpecifiers As Collection"},
+        {"name":"DateTimeSpecifiers","vis":"public","signature":"DateTimeSpecifiers As Collection"}
+      ],
+      "members": []
+    },
+    {
+      "name": "StringValidation",
+      "kind": "module",
+      "vis": "public",
+      "file": "StringValidation.bas",
+      "signature": "Module StringValidation",
+      "members": [
+        {"name":"CopyCapitalisation","kind":"function","vis":"public","signature":"Public Function CopyCapitalisation(ByVal source As String, ByVal applyTo As String) As String","returnType":"String"},
+        {"name":"StringContains","kind":"function","vis":"public","signature":"Public Function StringContains(ByVal haystack As String, ByVal needle As String, Optional ByVal caseSensitive As Boolean = False) As Boolean","returnType":"Boolean"},
+        {"name":"StringContainsAny","kind":"function","vis":"public","signature":"Public Function StringContainsAny(ByVal haystack As String, ByVal caseSensitive As Boolean, ParamArray needles() As Variant) As Boolean","returnType":"Boolean"},
+        {"name":"StringMatchesAny","kind":"function","vis":"public","signature":"Public Function StringMatchesAny(ByVal searchString As String, ParamArray possibleMatches() As Variant) As Boolean","returnType":"Boolean"},
+        {"name":"StringStartsWith","kind":"function","vis":"public","signature":"Public Function StringStartsWith(ByVal startingSequence As String, ByVal source As String) As Boolean","returnType":"Boolean"}
+      ]
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}

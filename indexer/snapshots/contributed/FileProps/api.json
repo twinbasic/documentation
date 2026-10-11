@@ -1,0 +1,128 @@
+{
+  "format": 3,
+  "package": "FileProps",
+  "project": "FileProps",
+  "version": "1.7.1.0",
+  "types": [
+    {
+      "name": "Example",
+      "kind": "module",
+      "vis": "public",
+      "file": "Example.twin",
+      "signature": "Public Module Example",
+      "members": [
+        {"name":"DisplayInDebugConsole","kind":"sub","vis":"public","signature":"Public Sub DisplayInDebugConsole(Optional FilePath As String)","description":"`FilePath` is optional, if omitted will display a file dialog for choosing the file"}
+      ]
+    },
+    {
+      "name": "FileProperties",
+      "kind": "class",
+      "vis": "public",
+      "file": "FileProperties.twin",
+      "signature": "Public Class FileProperties",
+      "members": [
+        {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Long","returnType":"Long","accessor":"Get","description":"Returns the count of properties defined in the collection"},
+        {"name":"FilePath","kind":"property","vis":"public","signature":"Property Get FilePath() As String","returnType":"String","accessor":"Get","description":"Returns a string containing the full file path of the file that was opened"},
+        {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByVal IndexOrNameOrID As Variant) As FileProperty","returnType":"FileProperty","accessor":"Get","description":"IndexOrNameOrID can be an integer index (from zero to .Count-1) or can be a name that corresponds to FileProperty.Name or can be an ID that corresponds to FileProperty.ID"},
+        {"name":"VCOMObject","kind":"field","vis":"public","signature":"Public VCOMObject As Object"}
+      ]
+    },
+    {
+      "name": "FileProperty",
+      "kind": "class",
+      "vis": "public",
+      "file": "FileProperty.twin",
+      "signature": "Public Class FileProperty",
+      "members": [
+        {"name":"ID","kind":"property","vis":"public","signature":"Property Get ID() As String","returnType":"String","accessor":"Get","description":"This is a unique identity that can always be used to refer to the property. It consists of a GUID (identifying the property schema) followed by an integer (identifying the property index in the schema)."},
+        {"name":"Name","kind":"property","vis":"public","signature":"Property Get Name() As String","returnType":"String","accessor":"Get","description":"Returns the system identity name of the property. e.g. 'System.ItemFolderNameDisplay'. This is safe to use as an identity field even on non-English systems. "},
+        {"name":"NameDesc","kind":"property","vis":"public","signature":"Property Get NameDesc() As String","returnType":"String","accessor":"Get","description":"This is a localized version of the name, but is not always available"},
+        {"name":"VCOMObject","kind":"field","vis":"public","signature":"Public VCOMObject As Object"},
+        {"name":"Value","kind":"property","vis":"public","signature":"Property Get Value() As Variant","returnType":"Variant","accessor":"Get","description":"This is a VARIANT value respresenting the current value of the property. TIP: This can be an array for multi-value type properties"},
+        {"name":"Value","kind":"property","vis":"public","signature":"Property Let Value(ByVal Value As Variant)","accessor":"Let","description":"This is the write method for the property Value. Requires Vista or newer. Returns a 'Permission Denied' error if the property is not writable"},
+        {"name":"ValueDesc","kind":"property","vis":"public","signature":"Property Get ValueDesc() As String","returnType":"String","accessor":"Get","description":"This is a STRING value representing the current value of the property, in LOCALIZED form. Multi-value properties are already combined into a single string"}
+      ]
+    },
+    {
+      "name": "FilePropertyExplorer",
+      "kind": "class",
+      "vis": "public",
+      "file": "FilePropertyExplorer.twin",
+      "signature": "Public Class FilePropertyExplorer",
+      "attrs": [{"name":"PredeclaredId"}],
+      "members": [
+        {"name":"BrowseAndOpenFile","kind":"function","vis":"public","signature":"Function BrowseAndOpenFile(Optional ByVal WriteSupport As Boolean) As FileProperties","returnType":"FileProperties","description":"Opens a file dialog for the user to select a file, and then returns a FileProperties collection that contains details of the properties available on the file"},
+        {"name":"CastToObject","kind":"sub","vis":"private","declare":true,"signatures":[{"cond":"VBA7 = False","signature":"Private Declare Sub CastToObject Lib \"kernel32\" Alias \"RtlMoveMemory\" (ByRef Dest As Object, ByRef Source As Long, ByVal Size As Long)"},{"cond":"Not (VBA7 = False)","signature":"Private Declare PtrSafe Sub CastToObject Lib \"kernel32\" Alias \"RtlMoveMemory\" (ByRef Dest As Object, ByRef Source As LongPtr, ByVal Size As LongPtr)"}]},
+        {"name":"Class_Initialize","kind":"sub","vis":"private","signature":"Private Sub Class_Initialize()"},
+        {"name":"CopyMemoryAnsi","kind":"sub","vis":"private","declare":true,"signatures":[{"cond":"VBA7 = False","signature":"Private Declare Sub CopyMemoryAnsi Lib \"kernel32\" Alias \"RtlMoveMemory\" (ByVal Dest As Long, ByVal Source As String, ByVal Size As Long)"},{"cond":"Not (VBA7 = False)","signature":"Private Declare PtrSafe Sub CopyMemoryAnsi Lib \"kernel32\" Alias \"RtlMoveMemory\" (ByVal Dest As LongPtr, ByVal Source As String, ByVal Size As LongPtr)"}]},
+        {"name":"DECOMPRESSED_EXT","kind":"const","vis":"private","signature":"Private Const DECOMPRESSED_EXT As Long = 56493"},
+        {"name":"ERR_OUT_OF_MEMORY","kind":"const","vis":"private","signature":"Private Const ERR_OUT_OF_MEMORY As Long = &H7"},
+        {"name":"GetModuleHandleA","kind":"function","vis":"private","declare":true,"signatures":[{"cond":"VBA7 = False","signature":"Private Declare Function GetModuleHandleA Lib \"kernel32\" (ByVal ProcName As String) As Long","returnType":"Long"},{"cond":"Not (VBA7 = False)","signature":"Private Declare PtrSafe Function GetModuleHandleA Lib \"kernel32\" (ByVal ProcName As String) As LongPtr","returnType":"LongPtr"}]},
+        {"name":"GetProcAddress","kind":"function","vis":"private","declare":true,"signatures":[{"cond":"VBA7 = False","signature":"Private Declare Function GetProcAddress Lib \"kernel32\" (ByVal Module As Long, ByVal ProcName As String) As Long","returnType":"Long"},{"cond":"Not (VBA7 = False)","signature":"Private Declare PtrSafe Function GetProcAddress Lib \"kernel32\" (ByVal Module As LongPtr, ByVal ProcName As String) As LongPtr","returnType":"LongPtr"}]},
+        {"name":"MEM_RESERVE_AND_COMMIT","kind":"const","vis":"private","signature":"Private Const MEM_RESERVE_AND_COMMIT As Long = &H3000"},
+        {"name":"OPTION_BASE","kind":"const","vis":"private","signature":"Private Const OPTION_BASE As Long = 0"},
+        {"name":"OPTION_DISABLEDCLASSES","kind":"const","vis":"private","signature":"Private Const OPTION_DISABLEDCLASSES As String = \"\""},
+        {"name":"OPTION_FLAGS","kind":"const","vis":"private","signature":"Private Const OPTION_FLAGS As Long = 2"},
+        {"name":"OPTION_INCLUDE_REFERENCEDOCS","kind":"const","vis":"private","signature":"Private Const OPTION_INCLUDE_REFERENCEDOCS As Long = 0"},
+        {"name":"OpenFile","kind":"function","vis":"public","signature":"Function OpenFile(ByVal FilePath As String, Optional ByVal WriteSupport As Boolean) As FileProperties","returnType":"FileProperties","description":"Given the path to a valid file, returns a FileProperties collection that contains details of the properties available on the file"},
+        {"name":"PAGE_EXECUTE_RW","kind":"const","vis":"private","signature":"Private Const PAGE_EXECUTE_RW As Long = &H40"},
+        {"name":"SIZEOF_PTR32","kind":"const","vis":"private","signature":"Private Const SIZEOF_PTR32 As Long = &H4"},
+        {"name":"SIZEOF_PTR64","kind":"const","vis":"private","signature":"Private Const SIZEOF_PTR64 As Long = &H8"},
+        {"name":"VirtualAlloc","kind":"function","vis":"private","declare":true,"signatures":[{"cond":"VBA7 = False","signature":"Private Declare Function VirtualAlloc Lib \"kernel32\" (ByVal Address As Long, ByVal Size As Long, ByVal AllocationType As Long, ByVal Protect As Long) As Long","returnType":"Long"},{"cond":"Not (VBA7 = False)","signature":"Private Declare PtrSafe Function VirtualAlloc Lib \"kernel32\" (ByVal Address As LongPtr, ByVal Size As LongPtr, ByVal AllocationType As Long, ByVal Protect As Long) As LongPtr","returnType":"LongPtr"}]},
+        {"name":"m_ClassFactory","kind":"field","vis":"private","signature":"Private m_ClassFactory As Object"}
+      ]
+    },
+    {
+      "name": "IDispatchVTable",
+      "kind": "type",
+      "in": "FilePropertyExplorer",
+      "vis": "private",
+      "public": false,
+      "file": "FilePropertyExplorer.twin",
+      "signature": "Private Type IDispatchVTable",
+      "fields": [
+        {"name":"QueryInterface","vis":"public","signature":"QueryInterface As Long"},
+        {"name":"AddRef","vis":"public","signature":"AddRef As Long"},
+        {"name":"Release","vis":"public","signature":"Release As Long"},
+        {"name":"GetTypeInfoCount","vis":"public","signature":"GetTypeInfoCount As Long"},
+        {"name":"GetTypeInfo","vis":"public","signature":"GetTypeInfo As Long"},
+        {"name":"GetIDsOfNames","vis":"public","signature":"GetIDsOfNames As Long"},
+        {"name":"Invoke","vis":"public","signature":"Invoke As Long"}
+      ],
+      "members": []
+    },
+    {
+      "name": "IDispatchVTable",
+      "kind": "type",
+      "in": "FilePropertyExplorer",
+      "vis": "private",
+      "public": false,
+      "file": "FilePropertyExplorer.twin",
+      "signature": "Private Type IDispatchVTable",
+      "fields": [
+        {"name":"QueryInterface","vis":"public","signature":"QueryInterface As LongPtr"},
+        {"name":"AddRef","vis":"public","signature":"AddRef As LongPtr"},
+        {"name":"Release","vis":"public","signature":"Release As LongPtr"},
+        {"name":"GetTypeInfoCount","vis":"public","signature":"GetTypeInfoCount As LongPtr"},
+        {"name":"GetTypeInfo","vis":"public","signature":"GetTypeInfo As LongPtr"},
+        {"name":"GetIDsOfNames","vis":"public","signature":"GetIDsOfNames As LongPtr"},
+        {"name":"Invoke","vis":"public","signature":"Invoke As LongPtr"}
+      ],
+      "members": []
+    },
+    {
+      "name": "FilePropertyExplorer_Helper",
+      "kind": "class",
+      "vis": "private",
+      "public": false,
+      "file": "FilePropertyExplorer_Helper.twin",
+      "signature": "Private Class FilePropertyExplorer_Helper",
+      "members": [
+        {"name":"New_FileProperties","kind":"field","vis":"public","signature":"Public New_FileProperties As New FileProperties"},
+        {"name":"New_FileProperty","kind":"field","vis":"public","signature":"Public New_FileProperty As New FileProperty"}
+      ]
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}

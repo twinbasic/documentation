@@ -1,0 +1,149 @@
+{
+  "format": 3,
+  "package": "VBA_JSON",
+  "project": "VBA_JSON",
+  "version": "2.3.0.1",
+  "types": [
+    {
+      "name": "Dictionary",
+      "kind": "class",
+      "vis": "public",
+      "file": "Dictionary.twin",
+      "signature": "Public Class Dictionary",
+      "attrs": [{"name":"ClassId","args":"\"6DB2FF1D-F9BE-4C3E-9D7F-515E46E36EAC\""},{"name":"InterfaceId","args":"\"217032FB-B259-4633-BED0-34C7C21DF57E\""}],
+      "members": [
+        {"name":"Item","kind":"property","vis":"public","signature":"Public Property Get Item(Key As String) As Variant","returnType":"Variant","accessor":"Get","attrs":[{"name":"DefaultMember"}]},
+        {"name":"Item","kind":"property","vis":"public","signature":"Public Property Let Item(Key As String, Value As Variant)","accessor":"Let"},
+        {"name":"Item","kind":"property","vis":"public","signature":"Public Property Set Item(Key As String, Value As Variant)","accessor":"Set"},
+        {"name":"Keys","kind":"property","vis":"public","signature":"Public Property Get Keys() As Variant","returnType":"Variant","accessor":"Get"},
+        {"name":"_NewEnum","kind":"function","vis":"private","signature":"Private Function _NewEnum() As Variant","returnType":"Variant","attrs":[{"name":"Enumerator"}]},
+        {"name":"m_Collection","kind":"field","vis":"private","signature":"Private m_Collection As Collection = New Collection"}
+      ]
+    },
+    {
+      "name": "JsonConverter",
+      "kind": "module",
+      "vis": "public",
+      "file": "JsonConverter.twin",
+      "signature": "Public Module JsonConverter",
+      "members": [
+        {"name":"ConvertToIso","kind":"function","vis":"public","signature":"Public Function ConvertToIso(utc_LocalDate As Date) As String","returnType":"String"},
+        {"name":"ConvertToJson","kind":"function","vis":"public","signature":"Public Function ConvertToJson(ByVal JsonValue As Variant, Optional ByVal Whitespace As Variant, Optional ByVal json_CurrentIndentation As Long = 0) As String","returnType":"String"},
+        {"name":"ConvertToUtc","kind":"function","vis":"public","signature":"Public Function ConvertToUtc(utc_LocalDate As Date) As Date","returnType":"Date"},
+        {"name":"JsonOptions","kind":"field","vis":"public","signature":"Public JsonOptions As json_Options"},
+        {"name":"ParseIso","kind":"function","vis":"public","signature":"Public Function ParseIso(utc_IsoString As String) As Date","returnType":"Date"},
+        {"name":"ParseJson","kind":"function","vis":"public","signature":"Public Function ParseJson(ByVal JsonString As String) As Object","returnType":"Object"},
+        {"name":"ParseUtc","kind":"function","vis":"public","signature":"Public Function ParseUtc(utc_UtcDate As Date) As Date","returnType":"Date"},
+        {"name":"json_BufferAppend","kind":"sub","vis":"private","signature":"Private Sub json_BufferAppend(ByRef json_Buffer As String, ByRef json_Append As Variant, ByRef json_BufferPosition As Long, ByRef json_BufferLength As Long)"},
+        {"name":"json_BufferToString","kind":"function","vis":"private","signature":"Private Function json_BufferToString(ByRef json_Buffer As String, ByVal json_BufferPosition As Long) As String","returnType":"String"},
+        {"name":"json_Encode","kind":"function","vis":"private","signature":"Private Function json_Encode(ByVal json_Text As Variant) As String","returnType":"String"},
+        {"name":"json_IsUndefined","kind":"function","vis":"private","signature":"Private Function json_IsUndefined(ByVal json_Value As Variant) As Boolean","returnType":"Boolean"},
+        {"name":"json_ParseArray","kind":"function","vis":"private","signature":"Private Function json_ParseArray(json_String As String, ByRef json_Index As Long) As Collection","returnType":"Collection"},
+        {"name":"json_ParseErrorMessage","kind":"function","vis":"private","signature":"Private Function json_ParseErrorMessage(json_String As String, ByRef json_Index As Long, ErrorMessage As String) As Variant","returnType":"Variant"},
+        {"name":"json_ParseKey","kind":"function","vis":"private","signature":"Private Function json_ParseKey(json_String As String, ByRef json_Index As Long) As String","returnType":"String"},
+        {"name":"json_ParseNumber","kind":"function","vis":"private","signature":"Private Function json_ParseNumber(json_String As String, ByRef json_Index As Long) As Variant","returnType":"Variant"},
+        {"name":"json_ParseObject","kind":"function","vis":"private","signature":"Private Function json_ParseObject(json_String As String, ByRef json_Index As Long) As Dictionary","returnType":"Dictionary"},
+        {"name":"json_ParseString","kind":"function","vis":"private","signature":"Private Function json_ParseString(json_String As String, ByRef json_Index As Long) As String","returnType":"String"},
+        {"name":"json_ParseValue","kind":"function","vis":"private","signature":"Private Function json_ParseValue(json_String As String, ByRef json_Index As Long) As Variant","returnType":"Variant"},
+        {"name":"json_Peek","kind":"function","vis":"private","signature":"Private Function json_Peek(json_String As String, ByVal json_Index As Long, Optional json_NumberOfCharacters As Long = 1) As String","returnType":"String"},
+        {"name":"json_SkipSpaces","kind":"sub","vis":"private","signature":"Private Sub json_SkipSpaces(json_String As String, ByRef json_Index As Long)"},
+        {"name":"json_StringIsLargeNumber","kind":"function","vis":"private","signature":"Private Function json_StringIsLargeNumber(json_String As Variant) As Boolean","returnType":"Boolean"},
+        {"name":"utc_ConvertDate","kind":"function","vis":"private","signature":"Private Function utc_ConvertDate(utc_Value As Date, Optional utc_ConvertToUtc As Boolean = False) As Date","returnType":"Date"},
+        {"name":"utc_DateToSystemTime","kind":"function","vis":"private","signature":"Private Function utc_DateToSystemTime(utc_Value As Date) As utc_SYSTEMTIME","returnType":"utc_SYSTEMTIME"},
+        {"name":"utc_ExecuteInShell","kind":"function","vis":"private","signature":"Private Function utc_ExecuteInShell(utc_ShellCommand As String) As utc_ShellResult","returnType":"utc_ShellResult"},
+        {"name":"utc_GetTimeZoneInformation","kind":"function","vis":"private","declare":true,"returnType":"Long","signatures":[{"cond":"Not (Mac) And VBA7","signature":"Private Declare PtrSafe Function utc_GetTimeZoneInformation Lib \"kernel32\" Alias \"GetTimeZoneInformation\" (utc_lpTimeZoneInformation As utc_TIME_ZONE_INFORMATION) As Long"},{"cond":"Not (Mac) And Not (VBA7)","signature":"Private Declare Function utc_GetTimeZoneInformation Lib \"kernel32\" Alias \"GetTimeZoneInformation\" (utc_lpTimeZoneInformation As utc_TIME_ZONE_INFORMATION) As Long"}]},
+        {"name":"utc_SystemTimeToDate","kind":"function","vis":"private","signature":"Private Function utc_SystemTimeToDate(utc_Value As utc_SYSTEMTIME) As Date","returnType":"Date"},
+        {"name":"utc_SystemTimeToTzSpecificLocalTime","kind":"function","vis":"private","declare":true,"returnType":"Long","signatures":[{"cond":"Not (Mac) And VBA7","signature":"Private Declare PtrSafe Function utc_SystemTimeToTzSpecificLocalTime Lib \"kernel32\" Alias \"SystemTimeToTzSpecificLocalTime\" (utc_lpTimeZoneInformation As utc_TIME_ZONE_INFORMATION, utc_lpUniversalTime As utc_SYSTEMTIME, utc_lpLocalTime As utc_SYSTEMTIME) As Long"},{"cond":"Not (Mac) And Not (VBA7)","signature":"Private Declare Function utc_SystemTimeToTzSpecificLocalTime Lib \"kernel32\" Alias \"SystemTimeToTzSpecificLocalTime\" (utc_lpTimeZoneInformation As utc_TIME_ZONE_INFORMATION, utc_lpUniversalTime As utc_SYSTEMTIME, utc_lpLocalTime As utc_SYSTEMTIME) As Long"}]},
+        {"name":"utc_TzSpecificLocalTimeToSystemTime","kind":"function","vis":"private","declare":true,"returnType":"Long","signatures":[{"cond":"Not (Mac) And VBA7","signature":"Private Declare PtrSafe Function utc_TzSpecificLocalTimeToSystemTime Lib \"kernel32\" Alias \"TzSpecificLocalTimeToSystemTime\" (utc_lpTimeZoneInformation As utc_TIME_ZONE_INFORMATION, utc_lpLocalTime As utc_SYSTEMTIME, utc_lpUniversalTime As utc_SYSTEMTIME) As Long"},{"cond":"Not (Mac) And Not (VBA7)","signature":"Private Declare Function utc_TzSpecificLocalTimeToSystemTime Lib \"kernel32\" Alias \"TzSpecificLocalTimeToSystemTime\" (utc_lpTimeZoneInformation As utc_TIME_ZONE_INFORMATION, utc_lpLocalTime As utc_SYSTEMTIME, utc_lpUniversalTime As utc_SYSTEMTIME) As Long"}]},
+        {"name":"utc_feof","kind":"function","vis":"private","declare":true,"signatures":[{"cond":"Mac And VBA7","signature":"Private Declare PtrSafe Function utc_feof Lib \"/usr/lib/libc.dylib\" Alias \"feof\" (ByVal utc_File As LongPtr) As LongPtr","returnType":"LongPtr"},{"cond":"Mac And Not (VBA7)","signature":"Private Declare Function utc_feof Lib \"libc.dylib\" Alias \"feof\" (ByVal utc_File As Long) As Long","returnType":"Long"}]},
+        {"name":"utc_fread","kind":"function","vis":"private","declare":true,"signatures":[{"cond":"Mac And VBA7","signature":"Private Declare PtrSafe Function utc_fread Lib \"/usr/lib/libc.dylib\" Alias \"fread\" (ByVal utc_Buffer As String, ByVal utc_Size As LongPtr, ByVal utc_Number As LongPtr, ByVal utc_File As LongPtr) As LongPtr","returnType":"LongPtr"},{"cond":"Mac And Not (VBA7)","signature":"Private Declare Function utc_fread Lib \"libc.dylib\" Alias \"fread\" (ByVal utc_Buffer As String, ByVal utc_Size As Long, ByVal utc_Number As Long, ByVal utc_File As Long) As Long","returnType":"Long"}]},
+        {"name":"utc_pclose","kind":"function","vis":"private","declare":true,"signatures":[{"cond":"Mac And VBA7","signature":"Private Declare PtrSafe Function utc_pclose Lib \"/usr/lib/libc.dylib\" Alias \"pclose\" (ByVal utc_File As LongPtr) As LongPtr","returnType":"LongPtr"},{"cond":"Mac And Not (VBA7)","signature":"Private Declare Function utc_pclose Lib \"libc.dylib\" Alias \"pclose\" (ByVal utc_File As Long) As Long","returnType":"Long"}]},
+        {"name":"utc_popen","kind":"function","vis":"private","declare":true,"signatures":[{"cond":"Mac And VBA7","signature":"Private Declare PtrSafe Function utc_popen Lib \"/usr/lib/libc.dylib\" Alias \"popen\" (ByVal utc_Command As String, ByVal utc_Mode As String) As LongPtr","returnType":"LongPtr"},{"cond":"Mac And Not (VBA7)","signature":"Private Declare Function utc_popen Lib \"libc.dylib\" Alias \"popen\" (ByVal utc_Command As String, ByVal utc_Mode As String) As Long","returnType":"Long"}]}
+      ]
+    },
+    {
+      "name": "json_Options",
+      "kind": "type",
+      "in": "JsonConverter",
+      "vis": "private",
+      "public": false,
+      "file": "JsonConverter.twin",
+      "signature": "Private Type json_Options",
+      "fields": [
+        {"name":"UseDoubleForLargeNumbers","vis":"public","signature":"UseDoubleForLargeNumbers As Boolean"},
+        {"name":"AllowUnquotedKeys","vis":"public","signature":"AllowUnquotedKeys As Boolean"},
+        {"name":"EscapeSolidus","vis":"public","signature":"EscapeSolidus As Boolean"}
+      ],
+      "members": []
+    },
+    {
+      "name": "utc_SYSTEMTIME",
+      "kind": "type",
+      "in": "JsonConverter",
+      "vis": "private",
+      "public": false,
+      "file": "JsonConverter.twin",
+      "signature": "Private Type utc_SYSTEMTIME",
+      "fields": [
+        {"name":"utc_wYear","vis":"public","signature":"utc_wYear As Integer"},
+        {"name":"utc_wMonth","vis":"public","signature":"utc_wMonth As Integer"},
+        {"name":"utc_wDayOfWeek","vis":"public","signature":"utc_wDayOfWeek As Integer"},
+        {"name":"utc_wDay","vis":"public","signature":"utc_wDay As Integer"},
+        {"name":"utc_wHour","vis":"public","signature":"utc_wHour As Integer"},
+        {"name":"utc_wMinute","vis":"public","signature":"utc_wMinute As Integer"},
+        {"name":"utc_wSecond","vis":"public","signature":"utc_wSecond As Integer"},
+        {"name":"utc_wMilliseconds","vis":"public","signature":"utc_wMilliseconds As Integer"}
+      ],
+      "members": []
+    },
+    {
+      "name": "utc_ShellResult",
+      "kind": "type",
+      "in": "JsonConverter",
+      "vis": "private",
+      "public": false,
+      "file": "JsonConverter.twin",
+      "signature": "Private Type utc_ShellResult",
+      "fields": [
+        {"name":"utc_Output","vis":"public","signature":"utc_Output As String"},
+        {"name":"utc_ExitCode","vis":"public","signature":"utc_ExitCode As LongPtr"}
+      ],
+      "members": []
+    },
+    {
+      "name": "utc_ShellResult",
+      "kind": "type",
+      "in": "JsonConverter",
+      "vis": "private",
+      "public": false,
+      "file": "JsonConverter.twin",
+      "signature": "Private Type utc_ShellResult",
+      "fields": [
+        {"name":"utc_Output","vis":"public","signature":"utc_Output As String"},
+        {"name":"utc_ExitCode","vis":"public","signature":"utc_ExitCode As Long"}
+      ],
+      "members": []
+    },
+    {
+      "name": "utc_TIME_ZONE_INFORMATION",
+      "kind": "type",
+      "in": "JsonConverter",
+      "vis": "private",
+      "public": false,
+      "file": "JsonConverter.twin",
+      "signature": "Private Type utc_TIME_ZONE_INFORMATION",
+      "fields": [
+        {"name":"utc_Bias","vis":"public","signature":"utc_Bias As Long"},
+        {"name":"utc_StandardName","vis":"public","signature":"utc_StandardName(0 To 31) As Integer"},
+        {"name":"utc_StandardDate","vis":"public","signature":"utc_StandardDate As utc_SYSTEMTIME"},
+        {"name":"utc_StandardBias","vis":"public","signature":"utc_StandardBias As Long"},
+        {"name":"utc_DaylightName","vis":"public","signature":"utc_DaylightName(0 To 31) As Integer"},
+        {"name":"utc_DaylightDate","vis":"public","signature":"utc_DaylightDate As utc_SYSTEMTIME"},
+        {"name":"utc_DaylightBias","vis":"public","signature":"utc_DaylightBias As Long"}
+      ],
+      "members": []
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}

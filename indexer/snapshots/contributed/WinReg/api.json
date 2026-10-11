@@ -1,0 +1,33 @@
+{
+  "format": 3,
+  "package": "WinReg",
+  "project": "WinReg",
+  "version": "0.0.0.0",
+  "types": [
+    {
+      "name": "RegCls",
+      "kind": "class",
+      "vis": "public",
+      "file": "RegCls.twin",
+      "signature": "Class RegCls",
+      "members": [
+        {"name":"ConvertValueToString","kind":"function","vis":"public","signature":"Function ConvertValueToString(ByVal hKey As Long, ByVal subkey As String, ByVal lType As Long) As String","returnType":"String"},
+        {"name":"ConvertValueToString","kind":"function","vis":"public","signature":"Function ConvertValueToString(buf() As Byte, ByVal lType As Long) As String","returnType":"String"},
+        {"name":"CreateKey","kind":"function","vis":"public","signature":"Public Function CreateKey(ByVal RootKey As RegKeyspace, ByVal KeyPath As String) As BOOL","returnType":"BOOL"},
+        {"name":"DeleteKey","kind":"function","vis":"public","signature":"Public Function DeleteKey(ByVal RootKey As RegKeyspace, ByVal KeyPath As String) As BOOL","returnType":"BOOL"},
+        {"name":"DeleteKeyEx","kind":"function","vis":"public","signature":"Public Function DeleteKeyEx(ByVal RootKey As RegKeyspace, ByVal KeyPath As String) As BOOL","returnType":"BOOL"},
+        {"name":"DeleteValue","kind":"function","vis":"public","signature":"Public Function DeleteValue(ByVal RootKey As RegKeyspace, ByVal KeyPath As String, ByVal ValueName As String) As BOOL","returnType":"BOOL"},
+        {"name":"EnumValues","kind":"function","vis":"public","signature":"Public Function EnumValues(ByVal RootKey As Long, ByVal KeyPath As String) As Dictionary","returnType":"Dictionary"},
+        {"name":"GetRegistryValueType","kind":"function","vis":"public","signature":"Function GetRegistryValueType(ByVal hKey As Long, ByVal subKey As String, ByVal valueName As String) As REGTYPES","returnType":"REGTYPES"},
+        {"name":"KeyExists","kind":"function","vis":"public","signature":"Public Function KeyExists(ByVal RootKey As RegKeyspace, ByVal KeyPath As String) As Boolean","returnType":"Boolean"},
+        {"name":"ReadDWORD","kind":"function","vis":"public","signature":"Public Function ReadDWORD(ByVal RootKey As RegKeyspace, ByVal KeyPath As String, ByVal ValueName As String, Optional DefaultValue As Long = -1) As Long","returnType":"Long"},
+        {"name":"ReadString","kind":"function","vis":"public","signature":"Public Function ReadString(ByVal RootKey As RegKeyspace, ByVal KeyPath As String, ByVal ValueName As String, Optional DefaultValue As String = \"\") As String","returnType":"String"},
+        {"name":"ValueExists","kind":"function","vis":"public","signature":"Public Function ValueExists(ByVal RootKey As RegKeyspace, ByVal KeyPath As String, ByVal ValueName As String) As Boolean","returnType":"Boolean"},
+        {"name":"WriteDWORD","kind":"function","vis":"public","signature":"Public Function WriteDWORD(ByVal RootKey As RegKeyspace, ByVal KeyPath As String, ByVal ValueName As String, ByVal ValueData As Long) As BOOL","returnType":"BOOL"},
+        {"name":"WriteString","kind":"function","vis":"public","signature":"Public Function WriteString(ByVal RootKey As RegKeyspace, ByVal KeyPath As String, ByVal ValueName As String, ByVal ValueData As String) As BOOL","returnType":"BOOL"}
+      ]
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}

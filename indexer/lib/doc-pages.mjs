@@ -23,6 +23,43 @@ const GROUP_FOLDERS = [
   ["contributed", "Contributed"],
 ];
 
+/** The folder of the reference a store group's sections are in, `Built-In` for `built-in`. */
+export const groupFolder = (group) => new Map(GROUP_FOLDERS).get(group);
+
+/**
+ * Every page of a section, `{ rel, title, parent, permalink }`, `rel` relative
+ * to the section's folder with `/` separators, in path order. A frontmatter
+ * value in quotes is read without them.
+ */
+export async function sectionPages(dir) {
+  const pages = [];
+  const unquote = (v) => (v && /^(["']).*\1$/.test(v) ? v.slice(1, -1) : v);
+  const walk = async (sub) => {
+    let entries;
+    try {
+      entries = await fs.readdir(path.join(dir, sub), { withFileTypes: true });
+    } catch {
+      return; /* no such folder */
+    }
+    for (const entry of entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+      const rel = sub ? `${sub}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) await walk(rel);
+      else if (entry.name.endsWith(".md")) {
+        const block = frontmatterOf(await fs.readFile(path.join(dir, rel), "utf-8"));
+        if (!block) continue;
+        pages.push({
+          rel,
+          title: unquote(frontmatterValue(block, "title")),
+          parent: unquote(frontmatterValue(block, "parent")),
+          permalink: unquote(frontmatterValue(block, "permalink")),
+        });
+      }
+    }
+  };
+  await walk("");
+  return pages;
+}
+
 /** The text of a page's frontmatter block, or null when the page has none. */
 export function frontmatterOf(text) {
   const m = /^﻿?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);

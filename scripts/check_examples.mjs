@@ -75,7 +75,16 @@
 // and the rest without it, a crash that names none bisects, O(log n) builds, and
 // one that needs several samples at once is reported with all of them.
 
-import { cpSync, mkdirSync, promises as fs, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  promises as fs,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -111,13 +120,16 @@ import {
   canaryProblem,
   crashedIn,
   diagKind,
+  embeddedPackages,
   joinConcatGroups,
   makeBatches,
   runBatch,
   runProbes,
   sectionOf,
+  splitPackageFaults,
   templateChain,
   templateResolves,
+  templateSettingsPath,
   unresolvedName,
 } from "./lib/example-batches.mjs";
 import {
@@ -135,7 +147,8 @@ import {
 import { compileProject } from "./lib/tb-build.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
-import { packTree } from "./lib/tb-project.mjs";
+import { packTree, unpackProject } from "./lib/tb-project.mjs";
+import { downloadPackage } from "../indexer/lib/twinserv-client.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
@@ -276,6 +289,10 @@ function defaultProject(rel) {
   if (/^(Tutorials|Reference\/Built-In)\/CEF\//.test(rel)) return "cef";
   if (/^(Tutorials|Reference\/Built-In)\/WebView2\//.test(rel)) return "webview2";
   if (/^Reference\/Built-In\//.test(rel)) return "packages";
+  // A contributed package's page: a project referencing that package alone,
+  // embedded in it (fetchEmbedded).
+  const contributed = /^Reference\/Contributed\/([^/]+)\//.exec(rel);
+  if (contributed) return `contributed-${contributed[1]}`;
   // A tutorial about a package needs that package. Most are a folder named
   // after one; Testing-with-Assert is a single file, so it is named here.
   if (/^Tutorials\/CustomControls\//.test(rel)) return "packages";
@@ -512,6 +529,38 @@ function checkGroups(all, selected) {
 
 let stageCounter = 0;
 
+// The packages a template embeds (embeddedPackages): downloaded from TWINSERV
+// once for each version and unpacked into a cache outside the repository, which
+// stageBatch copies into each batch's Packages/ folder. A download needs the
+// network the first time only; a version is never downloaded again.
+const TWINSERV_CACHE = path.join(tmpdir(), "tb-twinserv");
+const embeddedOf = new Map(); // template name -> its embedded packages
+
+async function fetchEmbedded(templates) {
+  for (const name of templates) {
+    const settingsPath = templateSettingsPath(TEMPLATES, name);
+    const list = settingsPath ? embeddedPackages(JSON.parse(readFileSync(settingsPath, "utf8"))) : [];
+    for (const p of list) {
+      const tree = path.join(TWINSERV_CACHE, p.key);
+      if (existsSync(path.join(tree, "Settings"))) continue;
+      const file = `${tree}.twinpack`;
+      if (!existsSync(file)) {
+        say(`check_examples: downloading ${p.folder} (${p.key}) from TWINSERV`);
+        let bytes;
+        try {
+          bytes = await downloadPackage(p.id, p.version);
+        } catch (e) {
+          throw new Error(`cannot download ${p.folder} for the ${name} template from TWINSERV: ${e.message}`);
+        }
+        mkdirSync(TWINSERV_CACHE, { recursive: true });
+        writeFileSync(file, bytes);
+      }
+      unpackProject(file, tree);
+    }
+    embeddedOf.set(name, list);
+  }
+}
+
 /** Stage a batch into its own tree, pack it, and return the .twinproj path. */
 function stageBatch(batch, work) {
   const index = stageCounter++;
@@ -521,6 +570,9 @@ function stageBatch(batch, work) {
   // base's copy of the same name, and everything else is inherited.
   for (const name of templateChain(batch.project)) {
     cpSync(path.join(TEMPLATES, name), dir, { recursive: true });
+  }
+  for (const p of embeddedOf.get(batch.project) ?? []) {
+    cpSync(path.join(TWINSERV_CACHE, p.key), path.join(dir, "Packages", p.folder), { recursive: true });
   }
   // The sample brings the project's Main (see makeBatches' `alone`).
   if (batch.noMain) rmSync(path.join(dir, "Sources", "tbxMain.twin"), { force: true });
@@ -1063,6 +1115,7 @@ async function main() {
     process.exit(2);
   }
   mkdirSync(work, { recursive: true });
+  await fetchEmbedded(new Set(batches.map((b) => b.project)));
 
   const staged = selected.length - samples.length;
   say(
@@ -1177,10 +1230,18 @@ async function main() {
     });
   }
 
-  if (templateFaults.length) {
+  // A row inside a package a template embeds is the package's (splitPackageFaults).
+  const embeddedFolders = new Set([...embeddedOf.values()].flat().map((p) => p.folder));
+  const { byPackage, own: ownFaults } = splitPackageFaults([...new Set(templateFaults)], embeddedFolders);
+  for (const [folder, rows] of byPackage) {
+    say(`\nnote  the embedded package ${folder} does not compile on this build: ${rows.length} error(s)`);
+    say("      in its own source, which no sample is blamed for and which fail nothing:");
+    for (const row of rows.slice(0, 5)) say(`        ${row}`);
+  }
+  if (ownFaults.length) {
     say("\nFAIL  diagnostics no sample can be blamed for -- rows the template");
     say("      produces with nothing in it, or rows in a shape this cannot read:");
-    for (const row of [...new Set(templateFaults)].slice(0, 10)) say(`        ${row}`);
+    for (const row of ownFaults.slice(0, 10)) say(`        ${row}`);
   }
 
   if (MODE_PROPOSE) {
@@ -1203,7 +1264,7 @@ async function main() {
   // A broken template fails the run. It is not a finding against any one page,
   // so it would otherwise print and be ignored -- which is the worst outcome,
   // because a template that does not compile makes every sample in it fail.
-  const real = findings.filter((f) => !f.advisory).length + (templateFaults.length ? 1 : 0);
+  const real = findings.filter((f) => !f.advisory).length + (ownFaults.length ? 1 : 0);
   if (AS_JSON) {
     console.log(JSON.stringify({ selected: samples.length, passed: passed.length, findings }, null, 2));
   } else {

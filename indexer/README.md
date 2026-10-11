@@ -71,9 +71,9 @@ exit codes below.
 
 | Code | Meaning |
 |------|---------|
-| 0 | The command finished: `sync` wrote every package it was asked for, or found it up to date; `analyze` wrote its report; `derive` wrote the file, or with `--check` found it up to date. |
-| 1 | A package named by `--package` or `--packages` failed to sync, or does not exist; the others were done. With `derive --check`, the file is stale. |
-| 2 | A refused command line, no twinBASIC install found, no snapshots to analyze (run `sync` first), packages that declare different APIs under one project name (`derive`), or a crash. |
+| 0 | The command finished: `sync` wrote every package it was asked for, or found it up to date; `analyze` wrote its report; `draft` placed its pages; `derive` wrote the file, or with `--check` found it up to date. |
+| 1 | A package named by `--package` or `--packages` failed to sync, or does not exist, or is not in the report (`draft`); the others were done. With `derive --check`, the file is stale. |
+| 2 | A refused command line, no twinBASIC install found, no snapshots to analyze (run `sync` first), no report to draft from (run `analyze` first), packages that declare different APIs under one project name (`derive`), or a crash. |
 
 `analyze` exits 0 whenever it writes its report, whatever the report lists:
 the list of symbols to document is its product, not a failure.
@@ -214,6 +214,47 @@ either.
 
 The report is printed to stdout and written to
 `indexer/.packages/report.json`.
+
+### draft
+
+```sh
+node indexer/twin-index.mjs draft [--package <name> | --packages <a>,<b>]
+```
+
+Places the pages the last report asks for. For each package of
+`report.json` (or each one named), `lib/draft-plan.mjs` reads the section's
+pages and the package's `api.json` and decides, for each task:
+
+- **the file**, as most of the section's pages of the same kind are. A new type
+  goes in the folder that keeps most types of its kind (a control, a class
+  marked `[WindowsControl]` or `[CustomControl]`, counts as a kind of its own),
+  as `<Type>/index.md` or `<Type>.md` as most of them are; with none to go by,
+  as a folder when it has new members. A type that a documented type's member
+  returns (`As ListItem`) goes in that type's folder instead, when the folder
+  already keeps another type, as `ListView/` keeps `ListItem`. A member of a
+  type whose page is a folder's (`X/index.md`, or `X/X.md` in a folder with no
+  `index.md`, as `_App/_App.md` is) gets `X/<Member>.md` if most of the type's
+  members of that kind have pages, else most of its members, else most members
+  in the section; otherwise it goes `inline` on the type's page, as VB's do. A
+  change goes to the page that documents the symbol: the one titled with its
+  name whose parent is its type's page.
+- **the parent**: the type's page, the folder's `index.md` (`Enumerations`), or
+  the landing page.
+- **the permalink**, only when every page of the section has the permalink its
+  folders give it (`followsFolders`); otherwise null, to follow the siblings.
+  VBA's `/tB/Modules/...` is the one section that does not.
+- **a model page** of the same kind in the section, and the source file.
+
+A package with no section gets `docs/Reference/<Group>/<Package>/` and a
+landing page like the group's others (`newLandingFor`): `<Package> Package`,
+their parent, and a permalink beside theirs. A member of a type with no page is
+`unplaced`; a removed symbol is `flagged` with its page.
+
+It writes `indexer/.packages/draft/`, emptied first: `<Package>.json` (the
+plan), `batch-<n>.json` (a type with its new members, or one type's members,
+twelve pages at most, never splitting the pages that go on one file), and
+`manifest.json`, which lists them. The manifest is what the Claude Code
+workflow `draft/workflow.mjs` takes; see [WIP.Indexer.md](../WIP.Indexer.md).
 
 ### derive
 
@@ -463,26 +504,31 @@ twinBASIC project. Everything else the install (or the release zip) holds is
 ## Pipeline overview
 
 ```
-sync  -->  analyze  -->  write the pages  -->  verify  -->  review
+sync  -->  analyze  -->  draft  -->  write the pages  -->  verify  -->  review
 ```
 
 1. **sync** — read, extract, generate api.json, commit to store
 2. **analyze** — diff snapshots, produce change report
-3. **write the pages** — the per-symbol workflow in
-   [`WIP.Authoring.md`](../WIP.Authoring.md#per-symbol-workflow), by hand
-   or with the `document-symbol` skill, from `report.json`; then set
-   `indexed_from`, run `derive`, and commit the new snapshots and
-   `builder/package-api.json` with the pages
-4. **verify** — `build.bat`, `check.bat` (the existing builder)
-5. **review** — the developer reviews and commits
+3. **draft** — place each page the report asks for: file, parent, permalink
+4. **write the pages** — the per-symbol workflow in
+   [`WIP.Authoring.md`](../WIP.Authoring.md#per-symbol-workflow), by hand,
+   with the `document-symbol` skill, or with the `draft/workflow.mjs`
+   Claude Code workflow, from the plans; then set `indexed_from`, run
+   `derive`, and commit the new snapshots and `builder/package-api.json`
+   with the pages
+5. **verify** — `build.bat`, `check.bat` (the existing builder), and
+   `examples.bat` for the new samples
+6. **review** — the developer reviews and commits
 
-The indexer implements steps 1 and 2. Step 3 is not automated.
+The indexer implements steps 1 to 3. Step 4 needs a person, or Claude.
 
 ## Directory layout
 
 ```
 indexer/
-  twin-index.mjs              CLI entry point (sync | analyze | derive)
+  twin-index.mjs              CLI entry point (sync | analyze | draft | derive)
+  draft/
+    workflow.mjs               the doc-draft Claude Code workflow, over draft's manifest
   lib/
     sync.mjs                   TWINSERV manifest comparison + download
     builtin-sync.mjs           install / GitHub release manifest comparison + extraction
@@ -497,6 +543,7 @@ indexer/
     doc-pages.mjs              the reference's package sections: package_name, indexed_from, exclusions
     store.mjs                  .packages/ git repo lifecycle, sync state, what the store holds
     differ.mjs                 api.json diff + coverage audit
+    draft-plan.mjs             report tasks -> page files, parents, permalinks, batches (draft)
   snapshots/                   (committed) latest api.json per package
     default/
     built-in/

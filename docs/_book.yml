@@ -369,7 +369,7 @@ parts:
         outline_closed: true
 
   - title: Packages
-    subtitle: The runtime and library packages shipped with twinBASIC
+    subtitle: The runtime and library packages shipped with twinBASIC, and those the community publishes
     outline_closed: true
     # The /tB/Packages/ landing page is the part's foreword; its content
     # (an overview of all built-in packages) sits between the part divider
@@ -481,6 +481,75 @@ parts:
         subtitle: The App global object available in every project
         landing_page: /tB/Packages/AppGlobalClassObject/
         page: /tB/Packages/AppGlobalClassObject/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: Contributed Packages
+        subtitle: Community packages published through TWINSERV, each versioned apart from twinBASIC
+        landing_page: /tB/Packages/Contributed/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: AutoCompleteLib Package
+        subtitle: Windows shell auto-complete for text-input controls
+        landing_page: /tB/Packages/Contributed/AutoCompleteLib/
+        page: /tB/Packages/Contributed/AutoCompleteLib/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: FileProps Package
+        subtitle: The Windows shell properties of a file
+        landing_page: /tB/Packages/Contributed/FileProps/
+        page: /tB/Packages/Contributed/FileProps/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: Fmt Package
+        subtitle: A string built from a format string and values, in the style of C#'s String.Format
+        landing_page: /tB/Packages/Contributed/Fmt/
+        page: /tB/Packages/Contributed/Fmt/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: OLEGuids Package
+        subtitle: OLE and COM interfaces and structures in twinBASIC source, in place of OLEGuids.tlb
+        landing_page: /tB/Packages/Contributed/OLEGuids/
+        page: /tB/Packages/Contributed/OLEGuids/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: TBMANLIB_ListBoxHScroll Package
+        subtitle: A horizontal scroll bar for a ListBox
+        landing_page: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
+        page: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: TBMANLIB_RES Package
+        subtitle: Resources embedded in an executable, as bytes, strings, hex, Base64 or pictures
+        landing_page: /tB/Packages/Contributed/TBMANLIB_RES/
+        page: /tB/Packages/Contributed/TBMANLIB_RES/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: TwinTimerPackage Package
+        subtitle: A Win32 timer class that reports the elapsed time
+        landing_page: /tB/Packages/Contributed/TwinTimerPackage/
+        page: /tB/Packages/Contributed/TwinTimerPackage/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: VBA_JSON Package
+        subtitle: JSON parsing and serialization, with UTC and ISO 8601 date conversion
+        landing_page: /tB/Packages/Contributed/VBA_JSON/
+        page: /tB/Packages/Contributed/VBA_JSON/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: VBComDlg Package
+        subtitle: The CommonDialog class, for the Windows common dialogs
+        landing_page: /tB/Packages/Contributed/VBComDlg/
+        page: /tB/Packages/Contributed/VBComDlg/
         landing_is_target: true
         outline_closed: true
 
