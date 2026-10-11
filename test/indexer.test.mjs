@@ -234,8 +234,8 @@ describe("buildApi on a hand-made package", () => {
 
   test("names the package, its project and its version, in the format the README describes", () => {
     const { api, json, stats } = build();
-    assert.equal(API_FORMAT, 2);
-    assert.equal(api.format, 2);
+    assert.equal(API_FORMAT, 3);
+    assert.equal(api.format, 3);
     assert.equal(api.package, "DemoPkg");
     assert.equal(api.project, "Demo");
     assert.equal(api.version, "1.2");
@@ -397,9 +397,14 @@ describe("buildApi on a hand-made package", () => {
     assert.deepEqual(derived.inherits, ["BaseA", "BaseB"]);
     assert.deepEqual(derived.implements, ["IA", "IB"]);
     assert.equal(member("Shown")[0].hidden, undefined);
+    // The two headers of the #If are one member with both signatures.
+    assert.equal(member("hWnd").length, 1);
     assert.deepEqual(
-      member("hWnd").map((m) => m.returnType),
-      ["LongPtr", "Long"],
+      member("hWnd")[0].signatures.map((s) => [s.cond, s.returnType]),
+      [
+        ["VBA7", "LongPtr"],
+        ["Not (VBA7)", "Long"],
+      ],
     );
     assert.equal(member("gdiRefCount")[0].kind, "field");
     assert.deepEqual(find(api, "Pub").interfaces, [{ name: "stdole.IUnknown", default: true }]);
@@ -567,6 +572,165 @@ describe("buildApi on indexer/sample.twinpack", () => {
   });
 });
 
+// ------------------------------------------------- the alternatives of an #If
+
+describe("the alternatives of an #If are one member", () => {
+  const build = (...src) => buildApi({ symbol: "Alt", version: "1", files: [file("Sources/Alt.twin", lines(...src))] });
+  const members = (api, name) => api.types.find((x) => x.name === "M").members.filter((x) => x.name === name);
+
+  test("two declarations in the branches of one #If are a member with a signature for each, in order", () => {
+    const { api, json } = build(
+      "Module M",
+      '    [Description("Window handle")]',
+      "#If VBA7 Then",
+      '    Public Declare PtrSafe Function Win Lib "user32" () As LongPtr',
+      "#Else",
+      '    Public Declare Function Win Lib "user32" () As Long',
+      "#End If",
+      "End Module",
+    );
+    assert.deepEqual(api.problems, []);
+    // What both have alike, the description from above the #If, is written once.
+    assert.deepEqual(members(api, "Win"), [
+      {
+        name: "Win",
+        kind: "function",
+        vis: "public",
+        declare: true,
+        description: "Window handle",
+        signatures: [
+          {
+            cond: "VBA7",
+            signature: 'Public Declare PtrSafe Function Win Lib "user32" () As LongPtr',
+            returnType: "LongPtr",
+          },
+          { cond: "Not (VBA7)", signature: 'Public Declare Function Win Lib "user32" () As Long', returnType: "Long" },
+        ],
+      },
+    ]);
+    assert.equal(json.split("\n").filter((l) => l.includes('"signatures"')).length, 1);
+  });
+
+  test("a declaration under a condition alone, overloads under one condition, and the same name in two #If blocks stay as they are", () => {
+    const { api } = build(
+      "Module M",
+      "#If A Then",
+      "    Public Sub One(): End Sub",
+      "    Public Sub Two(): End Sub",
+      "    Public Sub Two(a): End Sub",
+      "#End If",
+      "#If B Then",
+      "    Public Sub Same(): End Sub",
+      "#End If",
+      "#If C Then",
+      "    Public Sub Same(a): End Sub",
+      "#End If",
+      "End Module",
+    );
+    assert.deepEqual(members(api, "One"), [{ name: "One", kind: "sub", vis: "public", signature: "Public Sub One()" }]);
+    assert.deepEqual(
+      members(api, "Two").map((x) => x.signature),
+      ["Public Sub Two()", "Public Sub Two(a)"],
+    );
+    assert.deepEqual(
+      members(api, "Same").map((x) => x.signature),
+      ["Public Sub Same()", "Public Sub Same(a)"],
+    );
+    assert.ok([...members(api, "Two"), ...members(api, "Same")].every((x) => x.signatures === undefined));
+  });
+
+  test("a property's Get and Let are alternatives of their own kind: a Get of each branch is one member, a Let of each another", () => {
+    const { api } = build(
+      "Module M",
+      "#If P Then",
+      "    Public Property Get Pr() As Long",
+      "    End Property",
+      "    Public Property Let Pr(v As Long)",
+      "    End Property",
+      "#Else",
+      "    Public Property Get Pr() As Variant",
+      "    End Property",
+      "    Public Property Let Pr(v As Variant)",
+      "    End Property",
+      "#End If",
+      "End Module",
+    );
+    assert.deepEqual(
+      members(api, "Pr").map((x) => [x.accessor, x.signatures.map((s) => s.cond)]),
+      [
+        ["Get", ["P", "Not (P)"]],
+        ["Let", ["P", "Not (P)"]],
+      ],
+    );
+    assert.deepEqual(
+      members(api, "Pr")[0].signatures.map((s) => s.returnType),
+      ["Long", "Variant"],
+    );
+  });
+
+  test("a Declare and a procedure with a body are not alternatives of one another", () => {
+    const { api } = build(
+      "Module M",
+      "#If A Then",
+      '    Public Declare PtrSafe Function F Lib "k" () As Long',
+      "#Else",
+      "    Public Function F() As Long",
+      "    End Function",
+      "#End If",
+      "End Module",
+    );
+    assert.equal(members(api, "F").length, 2);
+    assert.ok(members(api, "F").every((x) => x.signatures === undefined));
+  });
+
+  test("a nested #If and an #ElseIf are alternatives of one block; the member is as visible as its most visible, and an item says when it is not", () => {
+    const { api } = build(
+      "Module M",
+      "#If Outer Then",
+      "  #If Inner Then",
+      "    Public Sub N(): End Sub",
+      "  #Else",
+      "    Private Sub N(): End Sub",
+      "  #End If",
+      "#ElseIf Other Then",
+      "    Public Sub N(): End Sub",
+      "#End If",
+      "End Module",
+    );
+    assert.deepEqual(members(api, "N"), [
+      {
+        name: "N",
+        kind: "sub",
+        vis: "public",
+        signatures: [
+          { cond: "Outer And Inner", signature: "Public Sub N()" },
+          { cond: "Outer And Not (Inner)", vis: "private", signature: "Private Sub N()" },
+          { cond: "Not (Outer) And Other", signature: "Public Sub N()" },
+        ],
+      },
+    ]);
+  });
+
+  test("a member after the #If, and one in a type declared under it, carry no condition of the #If", () => {
+    const { api } = build(
+      "#If X Then",
+      "Class C1",
+      "#Else",
+      "Class C2",
+      "#End If",
+      "    Public Sub S(): End Sub",
+      "End Class",
+    );
+    assert.deepEqual(
+      api.types.map((x) => [x.name, x.members.map((y) => y.signatures)]),
+      [
+        ["C1", [undefined]],
+        ["C2", [undefined]],
+      ],
+    );
+  });
+});
+
 // ------------------------------------------------------------ the differ
 
 // api.json objects small enough to read: a type is `{ name, kind, in?, vis, public?,
@@ -583,7 +747,15 @@ const t = (name, kind, body = {}, extra = {}) => ({
   ...extra,
   ...body,
 });
-const apiOf = (...types) => ({ format: 2, package: "P", project: "P", version: "1", types, aliases: [], problems: [] });
+const apiOf = (...types) => ({
+  format: API_FORMAT,
+  package: "P",
+  project: "P",
+  version: "1",
+  types,
+  aliases: [],
+  problems: [],
+});
 const keysOf = (list) => list.map((s) => s.key).sort();
 
 describe("flattenSymbols", () => {
@@ -801,6 +973,84 @@ describe("diffApi", () => {
   });
 });
 
+describe("a member holding the alternatives of an #If", () => {
+  // As buildApi writes one: the keys they share on the member, a signature for each.
+  const win = (...signatures) => ({
+    name: "Win",
+    kind: "function",
+    vis: "public",
+    declare: true,
+    description: "The handle.",
+    signatures,
+  });
+  const w64 = { cond: "Win64", signature: 'Public Declare PtrSafe Function Win Lib "u" () As LongLong' };
+  const w32 = { cond: "Not (Win64)", signature: 'Public Declare Function Win Lib "u" () As Long' };
+  const apiWith = (...members) => apiOf(t("Api", "module", { members }));
+
+  test("is one symbol of the kind of the Declare, with a line for each alternative, its condition in front", () => {
+    const syms = flattenSymbols(apiWith(win(w64, w32), m("Plain", "sub", "Public Sub Plain()")));
+    assert.deepEqual(
+      syms.map((s) => s.key),
+      ["Module:Api", "Api.Win.Declare", "Api.Plain.Sub"],
+    );
+    assert.equal(syms[1].signature, `#If Win64 Then ${w64.signature}\n#If Not (Win64) Then ${w32.signature}`);
+    assert.equal(syms[1].description, "The handle.");
+    assert.equal(syms[1].public, true);
+  });
+
+  test("shares its symbol with a plain declaration of the same name and kind", () => {
+    const syms = flattenSymbols(
+      apiWith(win(w64, w32), {
+        name: "Win",
+        kind: "function",
+        vis: "public",
+        declare: true,
+        signature: "Declare Function Win()",
+      }),
+    );
+    assert.deepEqual(
+      syms.map((s) => s.key),
+      ["Module:Api", "Api.Win.Declare"],
+    );
+    assert.equal(syms[1].signature.split("\n").length, 3);
+  });
+
+  test("the member is reachable when any alternative is", () => {
+    const priv = { cond: "Mac", vis: "private", signature: 'Private Declare Function Win Lib "u" () As Long' };
+    const open = flattenSymbols(apiWith(win(w64, priv)))[1];
+    assert.equal(open.public, true);
+    const closed = flattenSymbols(apiWith({ ...win(priv), vis: "private" }))[1];
+    assert.equal(closed.public, false);
+  });
+
+  test("a change of condition, an added alternative and an edited signature each modify the symbol; the same changes nothing", () => {
+    const base = apiWith(win(w64, w32));
+    const changes = (current) => {
+      const r = diffApi(base, apiWith(...current));
+      return [r.added.length, r.removed.length, r.modified.map((x) => x.changes.join()), r.unchanged.length];
+    };
+    assert.deepEqual(changes([win(w64, w32)]), [0, 0, [], 2]);
+    assert.deepEqual(changes([win({ ...w64, cond: "Win64 And VBA7" }, w32)]), [0, 0, ["signature"], 1]);
+    assert.deepEqual(
+      changes([win(w64, w32, { cond: "Mac", signature: 'Public Declare Function Win Lib "m" () As Long' })]),
+      // The alternative has an attribute list of its own, so the attributes differ too.
+      [0, 0, ["signature,attributes"], 1],
+    );
+    assert.deepEqual(changes([win(w64, { ...w32, signature: 'Public Declare Function Win Lib "u" () As Integer' })]), [
+      0,
+      0,
+      ["signature"],
+      1,
+    ]);
+  });
+
+  test("a plain declaration that gains an alternative under an #If is modified, not added or removed", () => {
+    const before = apiWith({ name: "Win", kind: "function", vis: "public", declare: true, signature: w64.signature });
+    const r = diffApi(before, apiWith(win(w64, w32)));
+    assert.deepEqual([r.added.length, r.removed.length, r.modified.length], [0, 0, 1]);
+  });
+});
+
 describe("auditCoverage", () => {
   const api = apiOf(
     t("Widget", "class", {
@@ -890,7 +1140,9 @@ describe("storeStatus", () => {
   test("so is one with no api.json, or one in an older format", async () => {
     putPackage(store, "built-in", "NoIndex");
     assert.equal(await status("NoIndex"), "missing-index");
-    putPackage(store, "built-in", "Format1", { api: apiText("beta-x-1005").replace('"format": 2', '"format": 1') });
+    putPackage(store, "built-in", "Format1", {
+      api: apiText("beta-x-1005").replace(`"format": ${API_FORMAT}`, '"format": 1'),
+    });
     assert.equal(await status("Format1"), "old-format");
     putPackage(store, "built-in", "Unnumbered", { api: '{\n  "package": "P",\n  "version": "beta-x-1005"\n}\n' });
     assert.equal(await status("Unnumbered"), "old-format");

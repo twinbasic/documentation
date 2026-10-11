@@ -719,8 +719,8 @@ result type before `Overrides`, an unmodified `Declare`, and the `#If` branches 
 alternatives), each with the compiler's answer in its comment, checked with `tbrun --tests`
 on BETA 1005. A second block holds the second step's: declarations joined by colons,
 identifiers with characters past ASCII (the compiler takes every one as part of a name, a
-no-break space included, so `\b` is no word boundary for them), and a type-declaration
-character on a name. The derivation's are each a rule the real
+no-break space included, so `\b` is no word boundary for them), a type-declaration
+character on a name, and the condition each `#If` branch gives its members. The derivation's are each a rule the real
 site exercises only once or twice (`symbols:`, a section heading named like a member, the
 ellipsis the typographer puts in a Core H1).
 

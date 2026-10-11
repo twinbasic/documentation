@@ -15,7 +15,7 @@ import { CONTAINER_MAP, preprocessVB6 } from "./vb6-preprocess.mjs";
  */
 
 /** Changes whenever the shape of api.json does; the first number in the file. */
-export const API_FORMAT = 2;
+export const API_FORMAT = 3;
 
 const SOURCES = /^Sources\//i;
 const VB6_EXTS = new Set(Object.keys(CONTAINER_MAP));
@@ -110,6 +110,75 @@ function memberRecord(m) {
   if (m.returnType != null) rec.returnType = m.returnType;
   if (m.accessor != null) rec.accessor = m.accessor;
   return common(rec, m);
+}
+
+/**
+ * A type's members as entries `{ name, kind, order, alts }`, `alts` the members
+ * to be one record: usually one, and several when they are the alternatives of
+ * one #If. Those are members declared under a condition in the same block of the
+ * type, of one name and kind, the same accessor (a Property Get is not an
+ * alternative of its Let) and both or neither a Declare, when more than one
+ * condition is among them. Two declarations under the same condition are
+ * overloads, and stay members of their own. `order` is where the first of `alts`
+ * was declared.
+ */
+function alternatives(members) {
+  // What the alternatives of one #If share. The block is the outermost #If the
+  // member is under, so that the branches of a nested one are alternatives too.
+  const keyOf = (m) => [m.ifLine, m.name, m.kind, m.accessor ?? "", isDeclare(m.signature)].join("\0");
+  const conditional = (m) => m.cond != null && m.ifLine != null;
+  const blocks = new Map();
+  for (const m of members) {
+    if (!conditional(m)) continue;
+    if (!blocks.has(keyOf(m))) blocks.set(keyOf(m), []);
+    blocks.get(keyOf(m)).push(m);
+  }
+  const entries = [];
+  const done = new Set();
+  members.forEach((m, order) => {
+    const block = conditional(m) ? blocks.get(keyOf(m)) : null;
+    if (!block || new Set(block.map((x) => x.cond)).size < 2) {
+      entries.push({ name: m.name, kind: m.kind, order, alts: [m] });
+    } else if (!done.has(keyOf(m))) {
+      done.add(keyOf(m));
+      entries.push({ name: m.name, kind: m.kind, order, alts: block });
+    }
+  });
+  return entries;
+}
+
+const ACCESS_ORDER = ["public", "protected", "friend", "private"];
+
+/**
+ * One member for the alternatives of an #If: `name`, `kind`, `vis` (the most
+ * accessible of theirs), `declare` and `accessor` as they all have them, and
+ * `signatures`, one item for each in declaration order: `{ cond, vis?, signature,
+ * returnType?, hidden?, attrs?, description? }`. `vis` is written on an item only
+ * when it is not the member's. So are the other keys, but for one that every
+ * alternative has alike (the attributes and the description above an #If, or a
+ * result type that is the same in each branch): that is written once, on the
+ * member, where a member that is not merged has it.
+ */
+function mergedRecord(alts) {
+  const recs = alts.map(memberRecord);
+  const vis = recs.map((r) => r.vis).sort((a, b) => ACCESS_ORDER.indexOf(a) - ACCESS_ORDER.indexOf(b))[0];
+  const shared = (key) =>
+    recs[0][key] !== undefined && recs.every((r) => JSON.stringify(r[key]) === JSON.stringify(recs[0][key]));
+  const rec = { name: recs[0].name, kind: recs[0].kind, vis };
+  if (recs[0].declare) rec.declare = true;
+  if (shared("returnType")) rec.returnType = recs[0].returnType;
+  if (recs[0].accessor !== undefined) rec.accessor = recs[0].accessor;
+  for (const key of ["hidden", "attrs", "description"]) if (shared(key)) rec[key] = recs[0][key];
+  rec.signatures = recs.map((r, k) => {
+    const item = { cond: alts[k].cond };
+    if (r.vis !== vis) item.vis = r.vis;
+    item.signature = r.signature;
+    for (const key of ["returnType", "hidden", "attrs", "description"]) {
+      if (r[key] !== undefined && rec[key] === undefined) item[key] = r[key];
+    }
+    return item;
+  });
+  return rec;
 }
 
 function valueRecord(m) {
@@ -215,22 +284,19 @@ export function buildApi({ symbol, version, files }) {
     }
     common(rec, t);
 
-    // Stable sorts: members of one name stay in declaration order.
-    const sorted = (list, map) =>
-      list
-        .map((m, order) => ({ m, order }))
-        .sort((a, b) => byCodeUnit(a.m.name, b.m.name) || byCodeUnit(a.m.kind, b.m.kind) || a.order - b.order)
-        .map(({ m }) => map(m));
+    // Stable sorts: members of one name stay in declaration order. The alternatives
+    // of an #If are one member, at the place of the first of them.
+    const sorted = (list) =>
+      alternatives(list)
+        .sort((a, b) => byCodeUnit(a.name, b.name) || byCodeUnit(a.kind, b.kind) || a.order - b.order)
+        .map(({ alts }) => (alts.length > 1 ? mergedRecord(alts) : memberRecord(alts[0])));
     if (t.kind === "enum") {
       rec.values = t.members.map(valueRecord);
     } else if (t.kind === "type" || t.kind === "union") {
       rec.fields = t.members.filter((m) => m.kind === "field").map(fieldRecord);
-      rec.members = sorted(
-        t.members.filter((m) => m.kind !== "field"),
-        memberRecord,
-      );
+      rec.members = sorted(t.members.filter((m) => m.kind !== "field"));
     } else {
-      rec.members = sorted(t.members, memberRecord);
+      rec.members = sorted(t.members);
     }
     return rec;
   });

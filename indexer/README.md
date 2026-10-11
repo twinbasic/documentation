@@ -192,12 +192,12 @@ The report is printed to stdout and written to
 
 One file for each package, written by `lib/api-model.mjs` from what
 `scripts/lib/twin-api.mjs` reads out of the package's sources. Its first key
-is `format`, which changes whenever the shape does (2 today); `sync` indexes a
+is `format`, which changes whenever the shape does (3 today); `sync` indexes a
 package again when the store holds another number.
 
 ```json
 {
-  "format": 2,
+  "format": 3,
   "package": "VBA",
   "project": "VBA",
   "version": "beta-x-1005",
@@ -234,7 +234,8 @@ package again when the store holds another number.
 | `fields` | A Type or Union has these as well as `members`, in declaration order. |
 
 **A member** is `{ name, kind, vis, declare?, signature, returnType?,
-accessor?, hidden?, attrs?, description? }`: `kind` is `sub`, `function`,
+accessor?, hidden?, attrs?, description? }` (or `signatures` for `signature`, for
+the alternatives of an `#If`, described below): `kind` is `sub`, `function`,
 `property`, `event`, `delegate`, `const` or `field`; `declare` is true for a
 `Declare` statement, which is a `sub`, `function` or `property` as well;
 `returnType` is the type after the parameter list of a Function, a Property Get
@@ -253,6 +254,30 @@ String, `^` LongLong) on a name written without brackets is not part of it, so
 `Public Function Command$()` is `Command`, whatever it names: a Function, a
 Property Get, a Delegate, a Declare, a variable, a field or a constant. The
 `signature` keeps it as written.
+
+**A member declared in the branches of an `#If`** is one member when its
+declarations are alternatives, and holds them in `signatures`, one item for each
+in declaration order: `{ cond, vis?, signature, returnType?, hidden?, attrs?,
+description? }`. `cond` is the condition of its branch, in the source's own
+words, with the branches before it negated: `Win64` and `Not (Win64)` for the
+two branches of `#If Win64 Then ... #Else ... #End If`, `Not (A) And B` for the
+`#ElseIf B` after `#If A`, `Outer And Inner` in a nested one. Declarations are
+alternatives when they are in one `#If` block (a nested one with its outer
+block), of one name and kind, the same `accessor` (a Property Get is not an
+alternative of its Let) and both or neither a Declare, with more than one
+condition among them; two declarations under the same condition are overloads
+and stay members of their own, as does a declaration under a condition on its
+own. The member has `name`, `kind`, `vis` (the most accessible of the
+alternatives), `declare` and `accessor`, and what all the alternatives have
+alike once, as a member that is not merged has it: `returnType`, `hidden`,
+`attrs` and `description`, which an attribute list above the `#If` gives to every
+branch. Only a key that differs is on an item, and `vis` is on one only when it
+is not the member's. A merged member has no `signature` of its own. The
+differ treats it as the members it holds: one symbol of the name and kind, a
+line in its `signature` for each alternative, `#If Win64 Then Public Declare ...`,
+so that a changed condition is a changed signature. The values of an Enum and
+the fields of a Type are not merged: their order is part of what they mean, and
+each alternative stays in it.
 
 **A value** is `{ name, value?, hidden?, attrs?, description? }`, `value` the
 text after the `=`. **A field** is `{ name, vis, signature, hidden?, attrs?,
@@ -304,7 +329,9 @@ branch closes the one body, and two alternative `Class` headers are two
 classes that each get the members after them. An attribute before the `#If`
 applies in every branch. Branches that leave different blocks open are
 listed in `problems`, as are an `#Else` or `#End If` with no `#If` and an `#If`
-that is never closed. Nothing is evaluated: every branch is indexed.
+that is never closed. Nothing is evaluated: every branch is indexed, and the
+alternatives of one name are written as one member with a `cond` for each
+(see [a member declared in the branches of an `#If`](#apijson) above).
 
 *Type bodies.* A field in a Type is a bare name, so `Default As Long` and
 `Static As Long` are fields, and a line that starts with `[` is an attribute list

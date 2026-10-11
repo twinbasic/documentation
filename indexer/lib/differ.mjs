@@ -36,6 +36,17 @@ const memberKindName = (m) => (m.declare ? "Declare" : (KIND_NAMES[m.kind] ?? m.
 const isReachable = (vis) => vis === "public" || vis === "protected";
 
 /**
+ * The declarations a member stands for: itself, or for a member that holds the
+ * alternatives of an #If (`signatures`), one for each, as if it were a member of
+ * its own. The condition goes in front of the signature, as `#If Win64 Then ...`,
+ * so that a change of condition is a change of signature.
+ */
+const declarationsOf = (m) =>
+  m.signatures
+    ? m.signatures.map((s) => ({ ...m, ...s, signature: s.cond ? `#If ${s.cond} Then ${s.signature}` : s.signature }))
+    : [m];
+
+/**
  * Every symbol of an api.json, in the order the file lists them:
  *
  * ```
@@ -53,7 +64,9 @@ const isReachable = (vis) => vis === "public" || vis === "protected";
  *   api.json says `public: false`; a member only if it is Public or Protected,
  *   and only the members of a public type are listed at all.
  * - `signature` is the declaration; for a name declared more than once, all of
- *   them on lines of their own.
+ *   them on lines of their own. A member that holds the alternatives of an `#If`
+ *   (`signatures` in api.json) contributes each of them, with its condition in
+ *   front: `#If Win64 Then Public Declare ...`.
  * - `attributes` and `detail` are JSON text, compared as text: the attributes,
  *   and for a type what the signature leaves out (the enumeration values, the
  *   fields, the interfaces a CoClass is built on, what a type inherits and
@@ -90,7 +103,7 @@ export function flattenSymbols(api) {
     if (!isPublic) continue;
 
     const groups = new Map();
-    for (const m of t.members ?? []) {
+    for (const m of (t.members ?? []).flatMap(declarationsOf)) {
       const id = `${m.name}\u0000${memberKindName(m)}`;
       if (!groups.has(id)) groups.set(id, []);
       groups.get(id).push(m);

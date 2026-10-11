@@ -457,6 +457,40 @@ const TYPE_CHAR_TYPES = {
   $: "String",
   "^": "LongLong",
 };
+// The condition an `#If Cond Then` or `#ElseIf Cond Then` line gives, as written with
+// white space made single spaces; null for the other lines of an #If, and for one with no
+// condition.
+function conditionOfLine(text, raw) {
+  const m = IF_LINE.exec(text);
+  if (!m) return null;
+  const cond = collapse(text.slice(m[0].length), raw.slice(m[0].length)).replace(THEN_END, "");
+  return cond || null;
+}
+const IF_LINE = new RegExp(String.raw`^\s*#\s*(?:ElseIf|If)${WORD_END}\s*`, "i");
+const THEN_END = new RegExp(String.raw`(?:^|\s)Then$`, "i");
+
+// What must hold for a declaration in the branch the open #If blocks are in, outermost
+// first: a block's own condition, and the negation of the branches before it, so that
+// the branches of `#If Win64 Then ... #Else ... #End If` are `Win64` and `Not (Win64)`,
+// and an #ElseIf after `A` is `Not (A) And B`. A condition that is not one plain name,
+// `Not (x)` or `(...)` is put in parentheses where it joins another.
+function conditionOf(blocks) {
+  const plain = (c) => /^(?:[\w.\u0080-\uFFFF]+|Not \([^()]*\))$/.test(c);
+  const wrap = (c) => (plain(c) ? c : `(${c})`);
+  const parts = blocks.map((f) => {
+    const now = f.exprs.length - 1;
+    const all = [
+      ...f.exprs
+        .slice(0, now)
+        .filter((e) => e != null)
+        .map((e) => `Not (${e})`),
+      ...(f.exprs[now] == null ? [] : [f.exprs[now]]),
+    ];
+    return all.length > 1 ? all.map(wrap).join(" And ") : (all[0] ?? "");
+  });
+  return parts.length > 1 ? parts.map(wrap).join(" And ") : parts[0];
+}
+
 const typeCharOf = (rawName) => (rawName[0] === "[" ? null : (TYPE_CHAR_TYPES[rawName.at(-1)] ?? null));
 
 function kindOf(keyword) {
@@ -481,8 +515,12 @@ function kindOf(keyword) {
  *   `(False)`. Each alternative header of an #If is a type of its own, and gets
  *   a copy of every member that follows. Each member is
  *   `{name, kind, vis, hidden, line, signature, attrs, description, returnType,
- *   accessor}` with `kind` sub, function, property, event, delegate, const,
- *   field or enumvalue. An alias is `{kind: "alias", name, target, vis, hidden,
+ *   accessor, cond, ifLine}` with `kind` sub, function, property, event,
+ *   delegate, const, field or enumvalue; `cond` is the condition of the #If
+ *   branch it is declared in (`Win64`, `Not (Win64)`, `Not (A) And B`, an outer
+ *   block's and an inner's joined by And) among the blocks opened since its type
+ *   was, and `ifLine` the line of the outermost of them, which names the block
+ *   whose branches are alternatives; both are null for a member under no #If. An alias is `{kind: "alias", name, target, vis, hidden,
  *   file, line, container, signature, attrs, description}`; it is kept apart
  *   from the types, which are what a package can be asked for by name.
  *
@@ -534,10 +572,13 @@ export function parseTwin(src, file = "") {
   // the branches end alike, what follows belongs to every alternative they left
   // open; when they end differently, the first branch's end is taken and the
   // difference reported.
-  const branch = (word, line) => {
+  // `expr` is the condition the line gives (null for #Else and #End If): each
+  // frame keeps those of its branches so far, which is how a member knows under
+  // what it is declared (`conditionOf`).
+  const branch = (word, line, expr) => {
     const w = word.toLowerCase().replace(/\s+/g, "");
     if (w === "if") {
-      frames.push({ base: stack.slice(), pending: pending.slice(), ends: [], attrs: [], line });
+      frames.push({ base: stack.slice(), pending: pending.slice(), ends: [], attrs: [], line, exprs: [expr] });
       return;
     }
     const f = frames[frames.length - 1];
@@ -548,6 +589,7 @@ export function parseTwin(src, file = "") {
     f.ends.push(stack.slice());
     f.attrs.push(pending);
     if (w !== "endif") {
+      f.exprs.push(expr);
       stack.splice(0, stack.length, ...f.base);
       pending = f.pending.slice();
       return;
@@ -571,7 +613,7 @@ export function parseTwin(src, file = "") {
         const alts = [];
         for (const e of f.ends)
           for (const t of [e[k].type, ...(e[k].alts ?? [])]) if (t !== entry.type && !alts.includes(t)) alts.push(t);
-        return alts.length ? { type: entry.type, alts } : entry;
+        return alts.length ? { ...entry, alts } : entry;
       }),
     );
   };
@@ -586,7 +628,7 @@ export function parseTwin(src, file = "") {
       const logical = lines[li++];
       const conditional = CONDITIONAL.exec(logical.text);
       if (conditional) {
-        branch(conditional[1], logical.line);
+        branch(conditional[1], logical.line, conditionOfLine(logical.text, logical.raw));
         continue;
       }
       if (!logical.text.trim() || /^\s*#/.test(logical.text)) continue; // #Region, #Const
@@ -728,7 +770,7 @@ export function parseTwin(src, file = "") {
         description: descriptionOf(attrs),
       };
       types.push(type);
-      stack.push({ type });
+      stack.push({ type, outer: new Set(frames) });
       continue;
     }
 
@@ -875,9 +917,22 @@ export function parseTwin(src, file = "") {
     // A type-declaration character is part of a name written without brackets only as
     // a hint to its type; an enumeration value has none.
     const name = kind !== "enumvalue" && typeCharOf(rawName) ? rawName.slice(0, -1) : unbracket(rawName);
-    const member = { name, kind, vis: vis ?? implicit, hidden, line, ...extra };
+    // The #If blocks this member is declared in, those opened since its type was:
+    // under what it exists, and which block it is one alternative of.
+    const entry = stack.findLast((s) => s.type === type);
+    const within = frames.filter((f) => !entry?.outer?.has(f));
+    const member = {
+      name,
+      kind,
+      vis: vis ?? implicit,
+      hidden,
+      line,
+      ...extra,
+      cond: within.length ? conditionOf(within) : null,
+      ifLine: within[0]?.line ?? null,
+    };
     type.members.push(member);
-    for (const alt of stack.findLast((s) => s.type === type)?.alts ?? []) alt.members.push({ ...member });
+    for (const alt of entry?.alts ?? []) alt.members.push({ ...member });
   }
 }
 

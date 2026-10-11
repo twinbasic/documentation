@@ -629,7 +629,7 @@ const show = (x) => JSON.stringify(x);
     show(w?.members.filter((x) => ["A", "B", "X", "Y"].includes(x.name)).map((x) => x.signature)),
   );
   check(
-    "a member with nothing to report has empty attrs, no description, no result and no accessor",
+    "a member with nothing to report has empty attrs, no description, no result, no accessor and no condition",
     show(m("Changed")) ===
       show({
         name: "Changed",
@@ -642,6 +642,8 @@ const show = (x) => JSON.stringify(x);
         description: null,
         returnType: null,
         accessor: null,
+        cond: null,
+        ifLine: null,
       }),
     show(m("Changed")),
   );
@@ -1360,6 +1362,88 @@ const show = (x) => JSON.stringify(x);
     "an #If with no #Else compares its branches with each other, not with the case where none is taken",
     problems.length === 0 && show(types[0]?.members.map((m) => m.name)) === show(["S", "After"]),
     show({ problems, members: types[0]?.members.map((m) => m.name) }),
+  );
+}
+
+{
+  // The condition under which a member is declared: the branch of each #If it is in, with the earlier
+  // branches negated, so that api.json can say which declaration is for which build.
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      "#If Win64 Then",
+      "    Sub F(): End Sub",
+      "#Else",
+      "    Sub F(ByVal a As Long): End Sub",
+      "#End If",
+      "#If VBA7 And Not Win64 Then",
+      "    Sub A(): End Sub",
+      "#ElseIf Win32   Or  TWINBASIC Then",
+      "    Sub A(x): End Sub",
+      "#ElseIf CEF_VERSION <= 49 Then",
+      "    Sub A(x, y): End Sub",
+      "#Else",
+      "    Sub A(x, y, z): End Sub",
+      "#End If",
+      "#If Outer Then",
+      "  #If Inner Then",
+      "    Sub N(): End Sub",
+      "  #Else",
+      "    Sub N(a): End Sub",
+      "  #End If",
+      "#End If",
+      "    Sub Plain(): End Sub",
+      "End Module",
+    ].join("\n"),
+  );
+  const conds = (n) => show(types[0]?.members.filter((m) => m.name === n).map((m) => m.cond));
+  check(
+    "a member records the condition of the #If branch it is declared in, negating the branches before it",
+    problems.length === 0 &&
+      conds("F") === show(["Win64", "Not (Win64)"]) &&
+      conds("A") ===
+        show([
+          "VBA7 And Not Win64",
+          "Not (VBA7 And Not Win64) And (Win32 Or TWINBASIC)",
+          "Not (VBA7 And Not Win64) And Not (Win32 Or TWINBASIC) And (CEF_VERSION <= 49)",
+          "Not (VBA7 And Not Win64) And Not (Win32 Or TWINBASIC) And Not (CEF_VERSION <= 49)",
+        ]) &&
+      conds("N") === show(["Outer And Inner", "Outer And Not (Inner)"]) &&
+      conds("Plain") === show([null]),
+    show(types[0]?.members.map((m) => [m.name, m.cond])),
+  );
+  const line = (n) => show(types[0]?.members.filter((m) => m.name === n).map((m) => m.ifLine));
+  check(
+    "the branches of one #If, a nested one's included, name the block by its outermost #If's line",
+    line("F") === show([2, 2]) &&
+      line("A") === show([7, 7, 7, 7]) &&
+      line("N") === show([16, 16]) &&
+      line("Plain") === show([null]),
+    show(types[0]?.members.map((m) => [m.name, m.ifLine])),
+  );
+}
+
+{
+  // A condition is relative to the type: the #If that a type is declared under, and the one a member is
+  // declared after, are not the member's.
+  const { types, problems } = parseTwin(
+    [
+      "#If X Then",
+      "Class C1",
+      "#Else",
+      "Class C2",
+      "#End If",
+      "    Sub S(): End Sub",
+      "#If Y Then",
+      "    Sub T(): End Sub",
+      "#End If",
+      "End Class",
+    ].join("\n"),
+  );
+  check(
+    "a member is not under the #If its type was declared under or ended before, only under one it is inside",
+    problems.length === 0 && types.every((t) => show(t.members.map((m) => m.cond)) === show([null, "Y"])),
+    show(types.map((t) => [t.name, t.members.map((m) => m.cond)])),
   );
 }
 

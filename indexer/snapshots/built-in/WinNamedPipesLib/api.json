@@ -1,5 +1,5 @@
 {
-  "format": 2,
+  "format": 3,
   "package": "WinNamedPipesLib",
   "project": "WinNamedPipesLib",
   "version": "beta-x-0997",
@@ -324,8 +324,7 @@
         {"name":"PostQueuedCompletionStatus","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function PostQueuedCompletionStatus Lib \"kernel32\" (ByVal CompletionPort As LongPtr, ByVal dwNumberOfBytesTransferred As Long, ByVal dwCompletionKey As LongPtr, ByVal lpOverlapped As LongPtr) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"}]},
         {"name":"ReadFile","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function ReadFile Lib \"kernel32\" (ByVal hFile As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfBytesToRead As Long, ByRef lpNumberOfBytesRead As Long, ByRef lpOverlapped As OVERLAPPED_CUSTOM) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"}]},
         {"name":"SetNamedPipeHandleState","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function SetNamedPipeHandleState Lib \"kernel32\" (ByVal hNamedPipe As LongPtr, ByRef lpMode As Long, ByRef lpMaxCollectionCount As Any, ByRef lpCollectDataTimeout As Any) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"}]},
-        {"name":"SetWindowLongPtrW","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function SetWindowLongPtrW Lib \"user32\" (ByVal hWnd As LongPtr, ByVal nIndex As Long, ByVal dwNewLong As LongPtr) As LongPtr","returnType":"LongPtr"},
-        {"name":"SetWindowLongPtrW","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function SetWindowLongPtrW Lib \"user32\" Alias \"SetWindowLongW\" (ByVal hWnd As LongPtr, ByVal nIndex As Long, ByVal dwNewLong As LongPtr) As LongPtr","returnType":"LongPtr"},
+        {"name":"SetWindowLongPtrW","kind":"function","vis":"public","declare":true,"returnType":"LongPtr","signatures":[{"cond":"WIN64","signature":"Public DeclareWide PtrSafe Function SetWindowLongPtrW Lib \"user32\" (ByVal hWnd As LongPtr, ByVal nIndex As Long, ByVal dwNewLong As LongPtr) As LongPtr"},{"cond":"Not (WIN64)","signature":"Public DeclareWide PtrSafe Function SetWindowLongPtrW Lib \"user32\" Alias \"SetWindowLongW\" (ByVal hWnd As LongPtr, ByVal nIndex As Long, ByVal dwNewLong As LongPtr) As LongPtr"}]},
         {"name":"Sleep","kind":"sub","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Sub Sleep Lib \"kernel32\" (ByVal dwMilliseconds As Long)","attrs":[{"name":"DLLStackCheck","args":"False"}]},
         {"name":"SysAllocString","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function SysAllocString Lib \"oleaut32\" (ByVal stringValue As String) As String","returnType":"String","attrs":[{"name":"DLLStackCheck","args":"False"}]},
         {"name":"TranslateMessage","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function TranslateMessage Lib \"user32\" (ByRef lpMsg As MSG) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"}]},
