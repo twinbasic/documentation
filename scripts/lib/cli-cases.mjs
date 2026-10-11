@@ -983,6 +983,17 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
     "--package expects one package name, got: VBA,VB (--packages takes a list)\n",
   );
   bad(tool, ["bogus", "--package", "VBA", "--packages", "VB"], "--package and --packages cannot be given together\n");
+  // --all is analyze's: every package in the store, so it is not given with names, and the
+  // refusal that it does not apply to another command is found with the options too.
+  bad(tool, ["bogus", "--all", "--package", "VBA"], "--all and --package cannot be given together\n");
+  bad(tool, ["bogus", "--all", "--packages", "VBA,VB"], "--all and --packages cannot be given together\n");
+  bad(
+    tool,
+    ["bogus", "--all", "--package", "VBA", "--packages", "VB"],
+    "--all, --package and --packages cannot be given together\n",
+  );
+  bad(tool, ["bogus", "--all"], "--all does not apply to bogus\n");
+  bad(tool, ["bogus", "--all=1"], "--all takes no value\n");
 }
 for (const made of BAD_VALUES) {
   CASES.push(made);

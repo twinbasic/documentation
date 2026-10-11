@@ -184,6 +184,42 @@ async function storeStatus(storePath, group, symbol, version) {
   return (await recordedFingerprint(dir)) === indexerFingerprint() ? null : "old-scanner";
 }
 
+/**
+ * The packages in the store that `analyze` covers, `{ group, name, apiPath }` in
+ * group order (default, built-in, contributed) and then by name, and how many
+ * others it leaves out. A package is covered when it has an api.json and either
+ * `names` (--package, --packages) lists it, whether or not the reference
+ * documents it, or no names are given and the reference has a section for it
+ * (`documented`, the keys `<group>/<package>` of `documentedPackages`) or `all`
+ * (--all) asks for every one.
+ */
+async function storedPackages(storePath, { documented, names = null, all = false }) {
+  const list = [];
+  let skipped = 0;
+  for (const group of ["default", "built-in", "contributed"]) {
+    const groupDir = path.join(storePath, group);
+    let packages;
+    try {
+      packages = (await fs.readdir(groupDir)).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    } catch {
+      continue; /* the group has no folder */
+    }
+    for (const name of packages) {
+      if (names && !names.includes(name)) continue;
+      const apiPath = path.join(groupDir, name, "api.json");
+      try {
+        if (!(await fs.stat(path.join(groupDir, name))).isDirectory()) continue;
+        await fs.access(apiPath);
+      } catch {
+        continue; /* not a package folder, or no api.json for it */
+      }
+      if (!names && !all && !documented.has(`${group}/${name}`)) skipped++;
+      else list.push({ group, name, apiPath });
+    }
+  }
+  return { list, skipped };
+}
+
 /** The fingerprint a package's folder in the store records, or null when it records none. */
 async function recordedFingerprint(dir) {
   try {
@@ -281,6 +317,7 @@ export {
   recordedFingerprint,
   reindexStored,
   readStoredFiles,
+  storedPackages,
   storeStatus,
   writeToStore,
 };

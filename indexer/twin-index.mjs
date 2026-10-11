@@ -25,6 +25,7 @@ import {
   manifestPath,
   recordedFingerprint,
   reindexStored,
+  storedPackages,
   storeStatus,
   writeToStore,
 } from "./lib/store.mjs";
@@ -152,9 +153,16 @@ Commands:
 sync reads the built-in and default packages from the local twinBASIC install,
 and the contributed packages from TWINSERV.
 
+analyze covers the packages the reference documents, those with a section in
+docs/Reference (a landing page, index.md), and no others: --package or
+--packages names the ones to analyze, documented or not, and --all takes every
+package in the store.
+
 Options:
   --package <name>       Process only the specified package
   --packages <a>,<b>     Process only the specified packages
+  --all                  analyze: every package in the store, not only the
+                         documented ones (not with --package or --packages)
   --ide <path>           sync: the install to read, its folder or its
                          twinBASIC.exe (default: $TB_IDE, else the newest
                          Desktop\\twinBASIC_IDE_BETA_<n>)
@@ -226,13 +234,19 @@ const cli = withUsageError(() => {
       packages: { type: "string" },
       ide: { type: "string" },
       release: { type: "boolean" },
+      all: { type: "boolean" },
     },
     positionals: { max: 1 },
     stopAt: ["help"],
   });
   if (read.stopped === "help") return read;
-  refuseTogether(read.values, ["package", "packages"]);
+  refuseTogether(read.values, ["all", "package", "packages"]);
   refuseTogether(read.values, ["ide", "release"]);
+  // Which packages analyze covers is its own matter, and sync reads the lot.
+  const named = read.positionals[0];
+  if (read.values.all && named !== undefined && named !== "analyze") {
+    throw new CliError("not-applicable", `--all does not apply to ${named}`);
+  }
   const filter = packageFilter(read.values);
   // An install that is not there is refused with the command line, whatever the command.
   const install = read.values.ide === undefined ? null : resolveInstall(read.values.ide);
@@ -263,7 +277,7 @@ switch (command) {
     break;
   }
   case "analyze":
-    process.exitCode = await runAnalyze(cli.filter);
+    process.exitCode = await runAnalyze(cli.filter, cli.values.all);
     break;
 }
 
@@ -506,38 +520,26 @@ async function syncBuiltin(filter, install, { synced, known }) {
 
 // --- analyze command ---
 
-async function runAnalyze(filter) {
+// `filter` is the names --package or --packages gave, or null; `all` is --all. A named
+// package is analyzed whether or not the reference documents it; with no name, the
+// packages the reference has a section for, or with --all every package in the store.
+async function runAnalyze(filter, all = false) {
   const documented = await documentedPackages(DOCS_REF_DIR);
-  const groups = ["default", "built-in", "contributed"];
-  const packageList = [];
-
-  for (const group of groups) {
-    const groupDir = path.join(STORE_PATH, group);
-    try {
-      const pkgs = await fs.readdir(groupDir);
-      for (const pkg of pkgs) {
-        if (filter && !filter.includes(pkg)) continue;
-        const stat = await fs.stat(path.join(groupDir, pkg));
-        if (!stat.isDirectory()) continue;
-        const apiPath = path.join(groupDir, pkg, "api.json");
-        try {
-          await fs.access(apiPath);
-          packageList.push({ group, name: pkg, apiPath });
-        } catch {
-          /* no api.json for this package */
-        }
-      }
-    } catch {
-      /* group directory doesn't exist */
-    }
-  }
+  const { list: packageList, skipped } = await storedPackages(STORE_PATH, { documented, names: filter, all });
 
   if (!packageList.length) {
     die(
       2,
       filter
         ? `No package to analyze is named ${filter.join(", ")}. Check the name, or run sync first.`
-        : "No packages to analyze. Run sync first.",
+        : skipped
+          ? `The store holds no package the reference documents; ${skipped} others are not analyzed. Run sync first, or pass --all.`
+          : "No packages to analyze. Run sync first.",
+    );
+  }
+  if (skipped) {
+    console.log(
+      `${skipped} packages in the store have no section in the reference and are not analyzed: --all analyzes them, --package <name> one.`,
     );
   }
 

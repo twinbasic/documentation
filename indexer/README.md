@@ -153,15 +153,21 @@ the same.
 ### analyze
 
 ```sh
-node indexer/twin-index.mjs analyze [--package <name>] [--packages <a>,<b>]
+node indexer/twin-index.mjs analyze [--package <name> | --packages <a>,<b> | --all]
 ```
 
 Compares the current API snapshots (from `sync`) against the
 documented baseline and produces a change report.
 
-It takes every package in the store, or those `--package` or `--packages`
-name. A package no landing page documents is audited against no pages at all,
-so every public symbol of it is listed as one to create.
+| Flag | Effect |
+|------|--------|
+| _(no flag)_ | The packages the reference documents ([see below](#documented-packages)): those a section's landing page names, which are the ones with a committed snapshot. The store's other packages are left out, and a line says how many. That is the three CEF packages' two spare builds (`cefPackage49`, `cefPackage109`, which share the section's `cefPackage145`) and the contributed packages, nearly all of them. |
+| `--package VBA`, `--packages VBA,tbIDE` | Those packages, documented or not. |
+| `--all` | Every package in the store. Not with `--package` or `--packages`, and not for `sync`. |
+
+A package no landing page documents is audited against no pages at all, so every
+public symbol of it is listed as one to create: the report for `--all` or for a
+named undocumented package is a list of everything to write.
 
 Two modes, chosen automatically per package:
 

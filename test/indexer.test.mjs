@@ -42,6 +42,7 @@ import {
   manifestPath,
   readStoredFiles,
   reindexStored,
+  storedPackages,
   storeStatus,
   writeToStore,
 } from "../indexer/lib/store.mjs";
@@ -1329,6 +1330,61 @@ describe("the manifests are in the store, not in the repository", () => {
     assert.equal((await compareInstallManifest(file, { root: tmp, beta: "997" })).needsUpdate, true);
     writeFileSync(file, JSON.stringify({ source: "release", twinbasicTag: "beta-x-1005", packages: {} }));
     assert.equal((await compareInstallManifest(file, { root: tmp, beta: "1005" })).needsUpdate, true);
+  });
+});
+
+describe("storedPackages", () => {
+  const store = mkdtempSync(path.join(tmp, "scope-"));
+  for (const [group, symbol] of [
+    ["default", "VBA"],
+    ["built-in", "tbIDE"],
+    ["built-in", "cefPackage145"],
+    ["built-in", "cefPackage49"],
+    ["contributed", "ArrayListLib"],
+    ["contributed", "NoIndex"],
+  ]) {
+    putPackage(store, group, symbol, { api: symbol === "NoIndex" ? undefined : apiText("beta-x-1005") });
+  }
+  writeFileSync(path.join(store, "built-in", "stray.txt"), "not a package");
+  // The reference documents VBA, tbIDE and, for the CEF section, only cefPackage145.
+  const documented = new Map([
+    ["default/VBA", {}],
+    ["built-in/tbIDE", {}],
+    ["built-in/cefPackage145", {}],
+  ]);
+  const ids = (r) => r.list.map((p) => `${p.group}/${p.name}`);
+
+  test("by default it takes the packages the reference documents, and counts the rest", async () => {
+    const r = await storedPackages(store, { documented });
+    assert.deepEqual(ids(r), ["default/VBA", "built-in/cefPackage145", "built-in/tbIDE"]);
+    assert.equal(r.skipped, 2);
+    assert.equal(r.list[0].apiPath, path.join(store, "default", "VBA", "api.json"));
+  });
+
+  test("--all takes every package that has an api.json, documented or not", async () => {
+    const r = await storedPackages(store, { documented, all: true });
+    assert.deepEqual(ids(r), [
+      "default/VBA",
+      "built-in/cefPackage145",
+      "built-in/cefPackage49",
+      "built-in/tbIDE",
+      "contributed/ArrayListLib",
+    ]);
+    assert.equal(r.skipped, 0);
+  });
+
+  test("a name takes that package whether or not it is documented, and nothing else", async () => {
+    const r = await storedPackages(store, { documented, names: ["cefPackage49", "VBA", "Missing"] });
+    assert.deepEqual(ids(r), ["default/VBA", "built-in/cefPackage49"]);
+    assert.equal(r.skipped, 0);
+    assert.deepEqual(ids(await storedPackages(store, { documented, names: ["ArrayListLib"] })), [
+      "contributed/ArrayListLib",
+    ]);
+  });
+
+  test("a store with no group folders, or with no package the reference documents, has none to take", async () => {
+    assert.deepEqual(await storedPackages(path.join(tmp, "no-such-store"), { documented }), { list: [], skipped: 0 });
+    assert.deepEqual(await storedPackages(store, { documented: new Map() }), { list: [], skipped: 5 });
   });
 });
 
