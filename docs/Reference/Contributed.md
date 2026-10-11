@@ -16,6 +16,7 @@ Each package is versioned apart from twinBASIC, and its section says which versi
 - [**FileProps**](FileProps/) -- the Windows shell properties of a file, read and written
 - [**Fmt**](Fmt/) -- **StringFormat**, a string built from a format string and values, in the style of C#'s **String.Format**
 - [**OLEGuids**](OLEGuids/) -- OLE and COM interfaces and structures in twinBASIC source, in place of `OLEGuids.tlb`
+- [**TBMANLIB_Dialog**](TBMANLIB_Dialog/) -- the **cDialog** class: the Open, Save and folder dialogs, with file filters and path helpers
 - [**TBMANLIB_ListBoxHScroll**](TBMANLIB_ListBoxHScroll/) -- a horizontal scroll bar for a **ListBox**
 - [**TBMANLIB_RES**](TBMANLIB_RES/) -- resources embedded in an executable, as bytes, strings, hex, Base64 or pictures
 - [**tbProjPacker**](tbProjPacker/) -- a `.twinproj` or `.twinpack` file unpacked into a folder of source files, and packed again

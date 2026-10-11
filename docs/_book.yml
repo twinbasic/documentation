@@ -518,6 +518,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: TBMANLIB_Dialog Package
+        subtitle: Open, Save and folder dialogs in a class, with file filters and path helpers
+        landing_page: /tB/Packages/Contributed/TBMANLIB_Dialog/
+        page: /tB/Packages/Contributed/TBMANLIB_Dialog/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TBMANLIB_ListBoxHScroll Package
         subtitle: A horizontal scroll bar for a ListBox
         landing_page: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
