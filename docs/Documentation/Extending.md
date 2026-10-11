@@ -50,7 +50,7 @@ So: **Ctrl+C and re-run after every builder edit.** There is no partial reload. 
 {: #regex-refused }
 
 `check_regex_safety.mjs` reads every regex in the `.mjs` files under `builder/`, `scripts/`, `lib/`,
-`book/`, `eval/` and `wisdom/` (vendored code excluded), and refuses one that can take exponential
+`book/`, `eval/`, `wisdom/` and `indexer/` (vendored code excluded), and refuses one that can take exponential
 time on some input. It runs in `test.bat` and in both CI workflows, so a regex can pass the build
 and `check.bat` and still be refused. The report starts with
 
@@ -787,7 +787,7 @@ Five commands cover the loop:
 1. **`build.bat`** --- full pipeline, including the link and integrity check over both trees. A clean exit and a sensible Gantt placement is the bar.
 2. **`serve.bat`** --- live-reload dev server for visual checks. Ctrl+C and restart after handler-code or task-graph changes. Check both themes if the change touches anything visible.
 3. **`check.bat`** --- the gates that read the built site. [Tools and Scripts](Tools#checkbat) lists them in order.
-4. **`test.bat`** --- the gates that test the toolchain, listed at [Tools and Scripts](Tools#testbat). Every change under `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, or to a wrapper or workflow, needs it --- that is every change this page describes. Most content edits do not, except that `check_code_regions.mjs` sweeps every markdown file under `docs/` and `check_gate_lists.mjs` reads `README.md` and every page under `docs/Documentation/`.
+4. **`test.bat`** --- the gates that test the toolchain, listed at [Tools and Scripts](Tools#testbat). Every change under `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `indexer/` or `test/`, or to a wrapper or workflow, needs it --- that is every change this page describes. Most content edits do not, except that `check_code_regions.mjs` sweeps every markdown file under `docs/` and `check_gate_lists.mjs` reads `README.md` and every page under `docs/Documentation/`.
 5. **`book.bat`** --- re-renders the PDF if your change affects `_site-pdf/` or any chapter body.
 
 A clean run of all five is the bar for "ready to commit".

@@ -322,7 +322,7 @@ A clean `build.bat && check.bat` is the bar for "ready to commit". **Add `test.b
 
 These gates test the build system rather than the site, and take about eight seconds. [`test.bat`](Tools#testbat) names them and their order.
 
-**Most of them cannot be affected by an edit confined to `docs/`.** Run `test.bat` when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/` or `wisdom/`.
+**Most of them cannot be affected by an edit confined to `docs/`.** Run `test.bat` when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `indexer/`.
 
 **Two of them do read `docs/`.** [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists) reads this page, `README.md` and every other page under `docs/Documentation/`, and fails on any gate count stated in prose that the wrappers do not run. An edit to a developer page can fail it.
 

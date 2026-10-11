@@ -16,6 +16,7 @@
       "book/lib/progress-handler.js",
       "eval/**/*.mjs",
       "wisdom/**/*.mjs",
+      "indexer/**/*.mjs",
       "test/**/*.mjs",
       "docs/assets/js/*.js",
       // Vendored code, and the two pagedjs-cli ports the review treats as
@@ -130,9 +131,10 @@
                       "**/book/**",
                       "**/eval/**",
                       "**/wisdom/**",
+                      "**/indexer/**",
                       "**/test/**"
                     ],
-                    "message": "lib/ must not import builder/, scripts/, book/, eval/, wisdom/ or test/."
+                    "message": "lib/ must not import builder/, scripts/, book/, eval/, wisdom/, indexer/ or test/."
                   }
                 ]
               }

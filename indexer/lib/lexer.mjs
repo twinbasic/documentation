@@ -113,7 +113,7 @@ function scanAttributes(rawText) {
 
 function isAttributeOnlyLine(text) {
   // after stripping all [...] blocks, only whitespace remains
-  return /^\s*(\[[^\]]*\]\s*,?\s*)+\s*$/.test(text);
+  return /^\s*(?:\[[^\]]*\]\s*(?:,\s*)?)+$/.test(text);
 }
 
 export { lex, scanAttributes, isAttributeOnlyLine, ATTR_SKIP };

@@ -145,7 +145,7 @@ Modules grouped by role. [Pipeline Stages](Pipeline-Stages) covers each in depth
 
 **Shared modules in `lib/`**
 
-`lib/` at the repo root holds modules that `builder/`, `scripts/`, `book/`, `eval/`, `wisdom/` and `test/` may all import. A module there imports none of those folders, only Node's own modules and installed packages. The builder imports these five. [`lib/README.md`](https://github.com/twinbasic/documentation/blob/main/lib/README.md) describes the folder.
+`lib/` at the repo root holds modules that `builder/`, `scripts/`, `book/`, `eval/`, `wisdom/`, `indexer/` and `test/` may all import. A module there imports none of those folders, only Node's own modules and installed packages. The builder imports these five. [`lib/README.md`](https://github.com/twinbasic/documentation/blob/main/lib/README.md) describes the folder.
 
 | File | Role | Imported by the builder in |
 |---|---|---|

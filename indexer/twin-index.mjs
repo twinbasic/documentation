@@ -324,7 +324,7 @@ async function runSync(filter) {
   }
 
   if (!filter) {
-    for (const { id, symbol } of removed) {
+    for (const { id } of removed) {
       delete contribManifest.packages[id];
     }
   }

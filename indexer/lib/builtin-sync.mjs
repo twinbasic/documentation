@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { getLatestRelease, downloadRelease } from "./github-release.mjs";
+import { getLatestRelease } from "./github-release.mjs";
 import { readZipDirectory, extractFile } from "./zip-reader.mjs";
 import { parseTwinpack, collectFiles } from "./twinpack-parser.mjs";
 

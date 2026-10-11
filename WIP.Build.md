@@ -93,7 +93,7 @@ yet designed; the plan holds measurements and open questions for them.
 
 ### Tooling is JavaScript, and the three remaining `.py` files each have a reason
 
-Everything under `scripts/`, `builder/`, `lib/`, `book/`, `eval/` and `wisdom/` is Node.js.
+Everything under `scripts/`, `builder/`, `lib/`, `book/`, `eval/`, `wisdom/` and `indexer/` is Node.js.
 One trap: **a tool that rewrites a file must preserve its line endings
 byte-exactly.** Python's `Path.read_text` / `write_text` round-trip applies
 universal-newline translation, rewriting any LF file it touches to CRLF on Windows
@@ -195,6 +195,8 @@ file, which the build packs the help add-in's project file with (see [The help a
 project file](#the-help-add-ins-project-file)).
 
 `wisdom/` — Discord knowledge-harvesting tool (three-phase: export → process → extract). Plans in `wisdom/PLAN-{1,2,3}.md`; implementation under `wisdom/`. Uses only Node.js built-in APIs. Running it is [WIP.Wisdom.md](WIP.Wisdom.md).
+
+`indexer/` — package indexer: downloads the twinBASIC packages (TWINSERV and the GitHub release), parses their `.twin` sources and writes an `api.json` snapshot per package into a local git store. The build does not use it. Uses only Node.js built-in APIs. Its layout and commands are in `indexer/README.md`. It is under the lint, format and regex-safety gates like the other tooling folders; `sample.twinpack` and the manifests are data, not scripts.
 
 `eval/` — use-case evaluation of the developer documentation. `build_corpus.mjs` mirrors the
 repository with every non-prose file stubbed unreadable, so "documentation only" is a property
@@ -926,7 +928,7 @@ polynomial. Every one of the constructions classifies `safe`.
 ### The regex-safety gate
 
 [scripts/check_regex_safety.mjs](scripts/check_regex_safety.mjs) parses every
-`.mjs` under `builder/`, `scripts/`, `lib/`, `book/`, `eval/` and `wisdom/` with
+`.mjs` under `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` and `indexer/` with
 acorn, takes the regex literals *and* every `new RegExp(...)` whose arguments the
 source decides, and refuses any that can backtrack exponentially. In `test.bat`
 and both CI workflows; ~10 s, no browser, no built tree. Exit 0 no exponential

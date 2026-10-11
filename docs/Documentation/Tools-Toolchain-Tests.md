@@ -40,7 +40,7 @@ Exit codes: **0** every assertion held, and the source tree holds no file the al
 
     node scripts/check_regex_safety.mjs [--census] [--self-test]
 
-Refuses a regex that can backtrack exponentially. Parses every `.mjs` under `builder/`, `scripts/`, `lib/`, `book/`, `eval/` and `wisdom/` with acorn and classifies each pattern with [recheck](https://makenowjust-labs.github.io/recheck/). No browser, no built tree, a few seconds.
+Refuses a regex that can backtrack exponentially. Parses every `.mjs` under `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` and `indexer/` with acorn and classifies each pattern with [recheck](https://makenowjust-labs.github.io/recheck/). No browser, no built tree, a few seconds.
 
 **It reads regex literals and every `new RegExp(...)` whose arguments can be resolved from the source.** Patterns built from shared fragments --- `const NUM = "..."; new RegExp(`${WRAP}${NUM}`)` --- are checked too. `--census` lists a construction it cannot resolve, with the reason --- *a function parameter, check the call sites*, *a `let`, so its value is not fixed* --- so the blind spot is a short list.
 
@@ -142,7 +142,7 @@ Exit codes: **0** both workflows run every gate the wrappers run, and its own pr
     node scripts/check_lint.mjs
     node scripts/check_lint.mjs --staged
 
-Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `test/` and the site's two scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. It runs `biome check`, which lints and checks formatting in one pass. No browser, no built tree, a fraction of a second.
+Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `indexer/`, `test/` and the site's two scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. It runs `biome check`, which lints and checks formatting in one pass. No browser, no built tree, a fraction of a second.
 
 The lint rules are Biome's correctness and suspicious groups, which find defects; none is about style. `biome.jsonc` names the few it turns off and the one it adds, `noUndeclaredVariables`, each with its reason. It declares the page globals --- `axe`, `Paged` --- only for the files whose code runs in that page.
 
