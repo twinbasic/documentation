@@ -3161,6 +3161,20 @@ const nameUserAsUserIn = (c, css) =>
 })()`);
 const nameUserAsUser = (c) => nameUserAsUserIn(c, null);
 
+// The lane stages the project with a build path in its temporary folder, and the dialog shows
+// it: the template's own path instead, typed as a user would (input and change), so that the
+// dialog holds it and does not put the real path back when it draws the row again, as it does
+// now and then over the value nameUserAsUser sets; Cancel keeps nothing. capture refuses the
+// picture if the real path shows all the same, in or out of the clip. For every shot of the
+// dialog in which the row may be drawn.
+const templateBuildPath = (c) =>
+  c.evaluate(`(() => {
+  const i = document.querySelector(${JSON.stringify(`${settingPart("project.buildPath", "CONTENT")} input`)});
+  i.value = "\${SourcePath}\\\\Build\\\\\${ProjectName}_\${Architecture}.\${FileExtension}";
+  i.dispatchEvent(new Event("input", { bubbles: true }));
+  i.dispatchEvent(new Event("change", { bubbles: true }));
+})()`);
+
 // The dialog of Project > Project Settings (or Project > References, which filters its
 // list to the library references), picture `out` of it, Cancel to close it. `prepare(c)`
 // scrolls or switches it; `clipOf(box, c)` takes a part of the dialog.
@@ -3201,17 +3215,7 @@ const settingsShots = [
   }),
   settingsShot("Features/Images/569150839-9ffc87ac-250d-40a4-bb47-669b607ad76f.png", {
     async prepare(c) {
-      // The lane stages the project with a build path in its temporary folder, and the
-      // dialog shows it: the template's own path instead, typed as a user would (input and
-      // change), so that the dialog holds it and does not put the real path back when it
-      // draws the row again, as it does now and then; Cancel keeps nothing. capture refuses
-      // the picture if the real path shows all the same.
-      await c.evaluate(`(() => {
-  const i = document.querySelector(${JSON.stringify(`${settingPart("project.buildPath", "CONTENT")} input`)});
-  i.value = "\${SourcePath}\\\\Build\\\\\${ProjectName}_\${Architecture}.\${FileExtension}";
-  i.dispatchEvent(new Event("input", { bubbles: true }));
-  i.dispatchEvent(new Event("change", { bubbles: true }));
-})()`);
+      await templateBuildPath(c);
       await scrollToSetting(c, "project.buildPath");
     },
     clipOf: (m) => ({ x: m.x, y: m.y, width: m.width, height: 460 }),
@@ -3271,6 +3275,8 @@ const settingsShots = [
     // the Compiler Warnings section, its heading to the fifteenth warning, TB0002's list drawn
     // open below its select and the two warnings Option Explicit is about ringed
     async prepare(c) {
+      // the build path row is outside the clip, but on the page the user-name check reads
+      await templateBuildPath(c);
       await c.evaluate(`(() => {
   const w = document.querySelector(".warningOptions");
   w.style.height = "360px";
