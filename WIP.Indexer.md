@@ -135,7 +135,10 @@ which would write the snapshots of another build.
 - **Snapshots are committed only for the documented packages, to start with**: 14 files, 3.2 MB
   (about 350 KB compressed). The contributed packages and the extra CEF builds are indexed into
   the store and left out of the repository. A package joins when its section does; `sync`
-  copies a snapshot for a documented package it indexed in that run.
+  copies a snapshot for a documented package it indexed in that run, and gives a documented
+  package with none the store's `api.json` when that is of its `indexed_from` version
+  (`adoptSnapshots`): a package is usually synced before its section exists, and a later
+  sync finds its store current and indexes nothing.
 - **They are taken from the build the reference was last indexed against, BETA 997**
   (`beta-x-0997`), not from a newer one, so that the pages and the baseline agree and
   `analyze` of a newer build shows the real distance.
@@ -220,6 +223,12 @@ the old tool's at BETA 997, and it takes half a second with no cache.
   folder of the type returning it is limited to folders that already keep a type, because
   without that limit it moved Printer under Printers, Dictionary under JsonConverter and
   eight others that the sections keep at their roots.
+- **A new section borrows its model pages from its group.** Its pages have no sibling of
+  their kind to follow, so the plan of the first package drafted into a new section
+  (tbRegExp) gave every task `model: null`, and the agents would have invented a page
+  layout. A page of a kind its section lacks now takes a model from the group's largest
+  section that has one, of the same shape: a folder's `index.md` for a class that gets a
+  folder, never a one-page class.
 - **A permalink is computed only where the rule holds for every existing page** of the
   section (`followsFolders`). On staging at BETA 997 that is every section but VBA's, whose
   pages live under `/tB/Modules/`. A section that breaks the rule once gets no computed
@@ -237,10 +246,24 @@ the old tool's at BETA 997, and it takes half a second with no cache.
 - **The check step compiles before a person reads.** One agent per package runs
   `check_examples --only` on the section, at a port of its own (9700 up, clear of the
   harness's default 9480), and fixes the pages. A contributed package without a
-  `contributed-<Package>` template cannot be compiled, and the agent says so.
+  `contributed-<Package>` template cannot be compiled, and the agent says so. **It also runs
+  the doubts the other agents return**: the workflow passes their results into its prompt,
+  and it settles each one a run can on a scratch page (`zz-probe.md`, every line expecting
+  `' ?`, so the report prints what each line printed) and, for a package that replaces
+  another object, on that object too (`cscript` for VBScript, `vb6run.mjs` for VB6). The
+  Draft agents only list doubts: they run concurrently, so none of them compiles. The Lists
+  agent reads a new package's README through read-only `gh` and lists the README's claims
+  as doubts as well.
 - **The agents are Sonnet**, as the content agents of the contributed packages were; the
   drafts are read against the sources before they are committed, which no model choice
   replaces.
+- **The first run, tbRegExp 1.0.5.0 (28 pages, 5 batches), took 7 agents, 7 minutes and
+  0.96 M subagent tokens**, and its 30 samples compiled and ran on the first Check. The
+  review still found what no compile finds: the drafts state only what the code says, so
+  where the package differs from the object it replaces (VBScript's **RegExp**, run under
+  `cscript`) nothing said so, and claims read from the code but never run (`$0`, a lone `$`)
+  needed a probe page. Running the doubts is now the Check agent's (above); the review
+  still reads the pages against the sources.
 - **It is not in the published docs.** `draft` is (Tools-Build), because its plans serve a
   person writing pages by hand; the workflow is described here and in `WIP.md`, because
   nothing under `docs/Documentation/` may require Claude.
@@ -260,10 +283,6 @@ the old tool's at BETA 997, and it takes half a second with no cache.
   `Assert` functions on `Exact.md`) shows as undocumented, and a name shared by several types
   shows as documented once any page carries it. Update mode does not audit, but finds a
   changed symbol's `doc_page` the same way.
-- **Adopting a package whose store is already current writes no snapshot.** By reading `runSync`:
-  the snapshots are copied for the packages the run indexed, and a package that is up to date
-  is not among them. Documenting a package that `sync` has already read needs its store folder
-  removed first, or a build newer than the store's.
 - **`indexer/TWINSERV-protocol.md` stays where it is, as reference beside the code.** It
   describes a third party's HTTP API, which is neither a reason nor a decision, and folding 239
   lines of it into this note would bury both. Its one reader is `lib/twinserv-client.mjs`, which

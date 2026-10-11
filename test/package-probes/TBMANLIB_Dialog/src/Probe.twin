@@ -1,0 +1,550 @@
+' Probe: what TBMANLIB_Dialog's cDialog does at run time.
+'
+' The exe runs Sub Main. The scenarios named by the PROBE environment variable, a
+' comma-separated list of ids ("1,2,6d"), are run in the order of ScenarioIds, and each prints
+' what it observed. A scenario's id is the number of the question it answers (the list below).
+'
+' The IDE-side [RunAfterBuild] Sub only prints: no dialog is ever opened in the IDE, and
+' every dialog the probe opens is driven by Auto (the timer-based driver) from inside the exe.
+'
+' Scenario ids and what they ask:
+'   1   ShowOpen, one file: the return value, its VarType and FileName
+'   2   ShowOpen with MultiSelect: one file, then two files
+'   3   Cancel in ShowOpen, ShowSave and ShowBrowseForFolder
+'   4   the dialog's title with DialogTitle empty and set (and where ShowBrowseForFolder shows it)
+'   5   the file-type combo after SetImageFilters, AddFilter alone and Filter = ""
+'   6   ShowSave: the file-name box's initial text, DefaultExt, a long FileName
+'   6d  ShowSave: OverwritePrompt and the prompt's answers
+'   7   FileMustExist and CreatePrompt on ShowOpen, and the boxes they raise
+'   8   NoChangeDir on ShowOpen and ShowSave: the current directory before and after
+'   9   ShowBrowseForFolder: typing a folder, InitialDir, NewDialogStyle
+'   9e  ShowBrowseForFolder with NewDialogStyle = False, left alone
+'   11  OpenFile on a nonexistent path
+'       (There is no OpenFile("") scenario: it returns 42 and opens a File Explorer window on the
+'       current directory, and the COM-started explorer.exe that shows it outlives the exe, with
+'       its window on the private desktop. Never call OpenFile on a path that exists, or on "".)
+'   12 HideReadOnly = False and ReadOnly = True: the Open dialog's child windows
+'   12b the default Open dialog, for comparison
+'   12c HideReadOnly = False: click the Open button's arrow, which opens its drop-down
+'   13  the properties' defaults (no dialog)
+
+Module Probe
+
+    Private Root As String
+
+    [RunAfterBuild]
+    Public Sub Hook()
+        Debug.Cls
+        Debug.Print "hook ran in the IDE; the dialogs run only in the exe"
+    End Sub
+
+    Private Const ScenarioIds As String = ",13,1,2,3,4,5,6,6d,7,8,9,9e,11,12,12b,12c,"
+
+    Public Sub Main()
+        Dim sel As String = "," & Replace(Environ$("PROBE"), " ", "") & ","
+        ' A folder of its own for each run, so that two runs at once do not meet.
+        Root = Environ$("TEMP") & "\dlgprobe" & Environ$("PROBE_TAG")
+        Auto.gRoot = Root
+        #If Win64 Then
+            Say "build: 64-bit (Win64), LenB(LongPtr)=" & LenB(CLngPtr(0))
+        #Else
+            Say "build: 32-bit, LenB(LongPtr)=" & LenB(CLngPtr(0))
+        #End If
+        InitFromEnv
+        Setup
+        Dim ids() As String
+        Dim i As Long
+        ids = Split(Mid$(ScenarioIds, 2, Len(ScenarioIds) - 2), ",")
+        For i = 0 To UBound(ids)
+            If InStr(sel, "," & ids(i) & ",") > 0 Then RunScenario ids(i)
+        Next
+        Say "== done"
+    End Sub
+
+    Private Sub RunScenario(ByVal id As String)
+        On Error GoTo EH
+        ChDir Root & "\cwd"
+        Select Case id
+            Case "1": S1
+            Case "2": S2
+            Case "3": S3
+            Case "4": S4
+            Case "5": S5
+            Case "6": S6
+            Case "6d": S6d
+            Case "7": S7
+            Case "8": S8
+            Case "9": S9
+            Case "9e": S9e
+            Case "11": S11
+            Case "12": S12
+            Case "12b": S12b
+            Case "12c": S12c
+            Case "13": S13
+        End Select
+        Exit Sub
+EH:
+        Disarm
+        Say "  ERROR in scenario " & id & ": " & Err.Number & " " & Err.Description
+    End Sub
+
+    '=========================================================================================
+    ' Helpers
+    '=========================================================================================
+
+    Private Sub MkDirIfMissing(ByVal p As String)
+        If Len(Dir$(p, vbDirectory)) = 0 Then MkDir p
+    End Sub
+
+    Private Sub PutFile(ByVal p As String, ByVal text As String)
+        Dim f As Integer = FreeFile
+        Open p For Output As #f
+        Print #f, text
+        Close #f
+    End Sub
+
+    ' <root>\data holds a.txt, b.txt and exist.txt; <root>\other holds c.txt; <root>\cwd is the
+    ' current directory the scenarios start in.
+    Private Sub Setup()
+        MkDirIfMissing Root
+        MkDirIfMissing Root & "\data"
+        MkDirIfMissing Root & "\other"
+        MkDirIfMissing Root & "\cwd"
+        PutFile Root & "\data\a.txt", "a"
+        PutFile Root & "\data\b.txt", "b"
+        PutFile Root & "\data\exist.txt", "exist"
+        PutFile Root & "\other\c.txt", "c"
+        Dim nm As Variant
+        For Each nm In Array("data\out.txt", "data\out", "data\out.dat", "data\nosuch.txt", "other\new.txt")
+            If Len(Dir$(Root & "\" & nm)) > 0 Then Kill Root & "\" & nm
+        Next
+    End Sub
+
+    ' A value as the probe prints it: its VarType, its type name and its text, or each element of an array.
+    Private Function Desc(ByVal x As Variant) As String
+        Dim i As Long
+        Dim s As String
+        If IsArray(x) Then
+            s = "Array VarType=" & VarType(x) & " " & LBound(x) & " To " & UBound(x)
+            For i = LBound(x) To UBound(x)
+                s = s & " [" & i & "]=" & Q(CStr(x(i)))
+            Next
+            Desc = s
+        Else
+            Desc = "VarType=" & VarType(x) & " " & TypeName(x) & " " & Q(CStr(x))
+        End If
+    End Function
+
+    ' What the driver saw during the episode that has just ended.
+    Private Sub Wrap(ByVal what As String)
+        Say "  after " & what & ": dialogSeen=" & gSeenMain & " stayedOpen=" & gStayedOpen & " timedOut=" & gTimedOut & " msgBoxes=" & gMsgCount
+    End Sub
+
+    '=========================================================================================
+    ' Scenarios
+    '=========================================================================================
+
+    Private Sub S1()
+        Say "== 1 ShowOpen one file"
+        Dim d As New cDialog
+        Dim r As Variant
+        d.InitialDir = Root & "\data"
+        Arm "S1", True, "a.txt", 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  result: " & Desc(r)
+        Say "  FileName=" & Q(d.FileName) & " InitialDir=" & Q(d.InitialDir)
+        Wrap "S1"
+    End Sub
+
+    Private Sub S2()
+        Say "== 2 ShowOpen MultiSelect"
+        Dim d As New cDialog
+        Dim d2 As New cDialog
+        Dim r As Variant
+        d.InitialDir = Root & "\data"
+        d.MultiSelect = True
+        Arm "S2a", True, "a.txt", 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (a) one file result: " & Desc(r)
+        Say "  (a) FileName=" & Q(d.FileName)
+        Wrap "S2a"
+        d2.InitialDir = Root & "\data"
+        d2.MultiSelect = True
+        Arm "S2b", True, """a.txt"" ""b.txt""", 1
+        r = d2.ShowOpen()
+        Disarm
+        Say "  (b) two files result: " & Desc(r)
+        Say "  (b) FileName=" & Q(d2.FileName)
+        Wrap "S2b"
+    End Sub
+
+    Private Sub S3()
+        Say "== 3 Cancel"
+        Dim d As New cDialog
+        Dim d2 As New cDialog
+        Dim d3 As New cDialog
+        Dim r As Variant
+        Dim s As String
+        d.InitialDir = Root & "\data"
+        d.FileName = "keep.txt"
+        Arm "S3open", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        Say "  ShowOpen cancel: " & Desc(r) & " FileName=" & Q(d.FileName) & " InitialDir=" & Q(d.InitialDir)
+        Wrap "S3open"
+        d2.InitialDir = Root & "\data"
+        d2.FileName = "keep.txt"
+        Arm "S3save", False, "", 2
+        s = d2.ShowSave()
+        Disarm
+        Say "  ShowSave cancel: " & Desc(s) & " FileName=" & Q(d2.FileName) & " InitialDir=" & Q(d2.InitialDir)
+        Wrap "S3save"
+        d3.InitialDir = Root & "\data"
+        d3.FileName = "keep.txt"
+        Arm "S3browse", False, "", 2
+        s = d3.ShowBrowseForFolder()
+        Disarm
+        Say "  ShowBrowseForFolder cancel: " & Desc(s) & " FileName=" & Q(d3.FileName) & " InitialDir=" & Q(d3.InitialDir)
+        Wrap "S3browse"
+    End Sub
+
+    Private Sub S4()
+        Say "== 4 Title"
+        Dim d As New cDialog
+        Dim d2 As New cDialog
+        Dim d3 As New cDialog
+        Dim r As Variant
+        Dim s As String
+        d.InitialDir = Root & "\data"
+        Arm "S4open-default", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        d.DialogTitle = "My Open Title"
+        Arm "S4open-set", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        d2.InitialDir = Root & "\data"
+        Arm "S4save-default", False, "", 2
+        s = d2.ShowSave()
+        Disarm
+        d2.DialogTitle = "My Save Title"
+        Arm "S4save-set", False, "", 2
+        s = d2.ShowSave()
+        Disarm
+        Arm "S4browse-default", False, "", 2
+        s = d3.ShowBrowseForFolder()
+        Disarm
+        d3.DialogTitle = "My Browse Title"
+        Arm "S4browse-set", False, "", 2
+        s = d3.ShowBrowseForFolder()
+        Disarm
+    End Sub
+
+    Private Sub S5()
+        Say "== 5 Filters"
+        Dim d As New cDialog
+        Dim d2 As New cDialog
+        Dim d3 As New cDialog
+        Dim r As Variant
+        d.InitialDir = Root & "\data"
+        d.SetImageFilters
+        Say "  Filter after SetImageFilters = " & Q(d.Filter)
+        Arm "S5image", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        d2.InitialDir = Root & "\data"
+        d2.AddFilter "Text (*.txt)", "*.txt"
+        Say "  Filter after AddFilter alone = " & Q(d2.Filter)
+        Arm "S5add", False, "", 2
+        r = d2.ShowOpen()
+        Disarm
+        d3.InitialDir = Root & "\data"
+        d3.Filter = ""
+        Arm "S5empty", False, "", 2
+        r = d3.ShowOpen()
+        Disarm
+    End Sub
+
+    ' 6a, 6b, 6c: ShowSave's file-name box, DefaultExt, a long FileName.
+    Private Sub S6()
+        Say "== 6 ShowSave"
+        Dim d As New cDialog
+        Dim s As String
+        Dim e As Variant
+        Dim nl As Variant
+        Dim d2 As cDialog
+        Dim d3 As New cDialog
+        Dim d4 As cDialog
+        Dim en As Long
+        Dim ed As String
+        d.InitialDir = Root & "\data"
+        d.FileName = ""
+        Arm "S6a-empty", False, "", 2
+        s = d.ShowSave()
+        Disarm
+        d.FileName = "x.txt"
+        Arm "S6a-x.txt", False, "", 2
+        s = d.ShowSave()
+        Disarm
+        ' (b) DefaultExt
+        For Each e In Array("txt", ".txt", "")
+            Set d2 = New cDialog
+            d2.InitialDir = Root & "\data"
+            d2.DefaultExt = CStr(e)
+            Arm "S6b-ext=" & CStr(e), True, "out", 1
+            s = d2.ShowSave()
+            Disarm
+            Say "  (b) DefaultExt=" & Q(CStr(e)) & " typed [out] -> " & Desc(s) & " FileName=" & Q(d2.FileName)
+            Wrap "S6b"
+        Next
+        ' (c) a long FileName: the source pads it to 260 characters with Space$(260 - Len)
+        d3.InitialDir = Root & "\data"
+        d3.FileName = String$(300, "x")
+        Arm "S6c-300", False, "", 2
+        On Error Resume Next
+        s = d3.ShowSave()
+        en = Err.Number
+        ed = Err.Description
+        On Error GoTo 0
+        Disarm
+        Say "  (c) FileName length 300: Err.Number=" & en & " Description=" & Q(ed) & " dialogSeen=" & gSeenMain & " timerTicks=" & gTicks
+        For Each nl In Array(250, 259, 260, 261)
+            Set d4 = New cDialog
+            d4.InitialDir = Root & "\data"
+            d4.FileName = String$(CLng(nl), "y")
+            Arm "S6c-" & nl, False, "", 2
+            On Error Resume Next
+            s = d4.ShowSave()
+            en = Err.Number
+            ed = Err.Description
+            On Error GoTo 0
+            Disarm
+            Say "  (c) FileName length " & nl & ": Err.Number=" & en & " Description=" & Q(ed) & " dialogSeen=" & gSeenMain & " timerTicks=" & gTicks & " result=" & Q(s)
+        Next
+    End Sub
+
+    ' 6d: the overwrite prompt, answered Yes, No, and with OverwritePrompt = False.
+    Private Sub S6d()
+        Say "== 6d ShowSave overwrite prompt"
+        Dim d As New cDialog
+        Dim d2 As New cDialog
+        Dim d3 As New cDialog
+        Dim s As String
+        d.InitialDir = Root & "\data"
+        MsgSeq 6
+        Arm "S6d-yes", True, "exist.txt", 1
+        s = d.ShowSave()
+        Disarm
+        Say "  (d) OverwritePrompt=" & d.OverwritePrompt & " answer Yes -> " & Desc(s) & " FileName=" & Q(d.FileName)
+        Wrap "S6d-yes"
+        d2.InitialDir = Root & "\data"
+        MsgSeq 7
+        Arm "S6d-no", True, "exist.txt", 1
+        s = d2.ShowSave()
+        Disarm
+        Say "  (d) answer No -> " & Desc(s) & " FileName=" & Q(d2.FileName)
+        Wrap "S6d-no"
+        d3.InitialDir = Root & "\data"
+        d3.OverwritePrompt = False
+        MsgSeq 1
+        Arm "S6d-noprompt", True, "exist.txt", 1
+        s = d3.ShowSave()
+        Disarm
+        Say "  (d) OverwritePrompt=False -> " & Desc(s)
+        Wrap "S6d-noprompt"
+    End Sub
+
+    Private Sub S7()
+        Say "== 7 FileMustExist / CreatePrompt"
+        Dim d As New cDialog
+        Dim d2 As New cDialog
+        Dim d3 As New cDialog
+        Dim d4 As New cDialog
+        Dim d5 As New cDialog
+        Dim r As Variant
+        d.InitialDir = Root & "\data"
+        MsgSeq 1
+        Arm "S7a-mustexist", True, "nosuch.txt", 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (a) FileMustExist=" & d.FileMustExist & " typed nosuch.txt -> " & Desc(r) & " FileName=" & Q(d.FileName)
+        Wrap "S7a"
+        d2.InitialDir = Root & "\data"
+        d2.FileMustExist = False
+        Arm "S7b-notmust", True, "nosuch.txt", 1
+        r = d2.ShowOpen()
+        Disarm
+        Say "  (b) FileMustExist=False typed nosuch.txt -> " & Desc(r) & " FileName=" & Q(d2.FileName)
+        Wrap "S7b"
+        d3.InitialDir = Root & "\data"
+        d3.CreatePrompt = True
+        MsgSeq 6
+        Arm "S7c-create-must", True, "nosuch.txt", 1
+        r = d3.ShowOpen()
+        Disarm
+        Say "  (c1) CreatePrompt=True FileMustExist=True, Yes -> " & Desc(r)
+        Wrap "S7c1"
+        d4.InitialDir = Root & "\data"
+        d4.CreatePrompt = True
+        d4.FileMustExist = False
+        MsgSeq 6
+        Arm "S7c-create-notmust", True, "nosuch.txt", 1
+        r = d4.ShowOpen()
+        Disarm
+        Say "  (c2) CreatePrompt=True FileMustExist=False, Yes -> " & Desc(r)
+        Wrap "S7c2"
+        d5.InitialDir = Root & "\data"
+        d5.CreatePrompt = True
+        d5.FileMustExist = False
+        MsgSeq 7
+        Arm "S7c-create-no", True, "nosuch.txt", 1
+        r = d5.ShowOpen()
+        Disarm
+        Say "  (c3) CreatePrompt=True FileMustExist=False, No -> " & Desc(r)
+        Wrap "S7c3"
+        Say "  file nosuch.txt exists afterwards: " & (Len(Dir$(Root & "\data\nosuch.txt")) > 0)
+    End Sub
+
+    Private Sub S8()
+        Say "== 8 NoChangeDir"
+        Dim ncd As Variant
+        Dim r As Variant
+        Dim s As String
+        Dim d As cDialog
+        Dim d2 As cDialog
+        For Each ncd In Array(False, True)
+            ChDir Root & "\cwd"
+            Set d = New cDialog
+            d.InitialDir = Root & "\other"
+            d.NoChangeDir = CBool(ncd)
+            Say "  ShowOpen NoChangeDir=" & ncd & ": before CurDir=" & Q(CurDir) & " api=" & Q(CurDirApi)
+            Arm "S8open-" & ncd, True, "c.txt", 1
+            r = d.ShowOpen()
+            Disarm
+            Say "    result " & Desc(r) & "; after CurDir=" & Q(CurDir) & " api=" & Q(CurDirApi)
+            ChDir Root & "\cwd"
+            Set d2 = New cDialog
+            d2.InitialDir = Root & "\other"
+            d2.NoChangeDir = CBool(ncd)
+            Say "  ShowSave NoChangeDir=" & ncd & ": before CurDir=" & Q(CurDir) & " api=" & Q(CurDirApi)
+            Arm "S8save-" & ncd, True, "new.txt", 1
+            s = d2.ShowSave()
+            Disarm
+            Say "    result " & Desc(s) & "; after CurDir=" & Q(CurDir) & " api=" & Q(CurDirApi)
+        Next
+    End Sub
+
+    Private Sub S9()
+        Say "== 9 ShowBrowseForFolder"
+        Dim s As String
+        Dim d As New cDialog
+        Dim d2 As New cDialog
+        Dim d3 As New cDialog
+        Dim d4 As New cDialog
+        gDump = True
+        Arm "S9a-type", True, Root & "\other", 1
+        s = d.ShowBrowseForFolder()
+        Disarm
+        gDump = False
+        Say "  (a) typed folder -> " & Desc(s) & " InitialDir=" & Q(d.InitialDir)
+        Wrap "S9a"
+        Arm "S9b-nothing", False, "", 1
+        s = d2.ShowBrowseForFolder()
+        Disarm
+        Say "  (b) no InitialDir, OK pressed with nothing typed -> " & Desc(s)
+        Wrap "S9b"
+        d3.InitialDir = Root & "\data"
+        Arm "S9c-initialdir", False, "", 1
+        s = d3.ShowBrowseForFolder()
+        Disarm
+        Say "  (c) InitialDir=data, OK pressed with nothing typed -> " & Desc(s)
+        Wrap "S9c"
+        d4.NewDialogStyle = False
+        Arm "S9d-oldstyle", False, "", 1
+        s = d4.ShowBrowseForFolder()
+        Disarm
+        Say "  (d) NewDialogStyle=False, OK pressed with nothing selected -> " & Desc(s)
+        Wrap "S9d"
+    End Sub
+
+    Private Sub S9e()
+        Say "== 9e ShowBrowseForFolder, NewDialogStyle=False, nothing pressed"
+        Dim s As String
+        Dim d As New cDialog
+        d.NewDialogStyle = False
+        d.DialogTitle = "Old Style Title"
+        gDump = True
+        Arm "S9e-oldstyle-idle", False, "", 3
+        s = d.ShowBrowseForFolder()
+        Disarm
+        gDump = False
+        Say "  (e) result after the driver cancelled -> " & Desc(s)
+        Wrap "S9e"
+    End Sub
+
+    Private Sub S11()
+        Say "== 11 OpenFile on a nonexistent path"
+        Dim d As New cDialog
+        Dim r As Long
+        MsgSeq 1
+        Arm "S11a", False, "", 2
+        r = d.OpenFile(Root & "\nosuchfolder\nosuchfile.xyz")
+        Disarm
+        Say "  OpenFile(nonexistent path) = " & r
+        Wrap "S11a"
+    End Sub
+
+    Private Sub S12()
+        Say "== 12 HideReadOnly = False, then ReadOnly = True: the Open dialog's controls"
+        Dim d As New cDialog
+        Dim d2 As New cDialog
+        Dim r As Variant
+        d.InitialDir = Root & "\data"
+        d.HideReadOnly = False
+        gDump = True
+        Arm "S12-hide-false", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        d2.InitialDir = Root & "\data"
+        d2.HideReadOnly = False
+        d2.ReadOnly = True
+        Arm "S12-readonly-true", False, "", 2
+        r = d2.ShowOpen()
+        Disarm
+        gDump = False
+    End Sub
+
+    Private Sub S12b()
+        Say "== 12b default Open dialog (HideReadOnly = True), for comparison"
+        Dim d As New cDialog
+        Dim r As Variant
+        d.InitialDir = Root & "\data"
+        Arm "S12b-default", False, "", 3
+        r = d.ShowOpen()
+        Disarm
+    End Sub
+
+    Private Sub S12c()
+        Say "== 12c HideReadOnly = False, click the Open button's arrow"
+        Dim d As New cDialog
+        Dim r As Variant
+        d.InitialDir = Root & "\data"
+        d.HideReadOnly = False
+        Arm "S12c-arrow", False, "", 4
+        r = d.ShowOpen()
+        Disarm
+        Say "  result: " & Desc(r)
+        Wrap "S12c"
+    End Sub
+
+    Private Sub S13()
+        Say "== 13 defaults"
+        Dim d As New cDialog
+        Say "  DialogTitle=" & Q(d.DialogTitle) & " InitialDir=" & Q(d.InitialDir) & " DefaultExt=" & Q(d.DefaultExt) & " FileName=" & Q(d.FileName) & " Filter=" & Q(d.Filter)
+        Say "  MultiSelect=" & d.MultiSelect & " OverwritePrompt=" & d.OverwritePrompt & " PathMustExist=" & d.PathMustExist & " FileMustExist=" & d.FileMustExist & " HideReadOnly=" & d.HideReadOnly & " ReadOnly=" & d.ReadOnly
+        Say "  NoChangeDir=" & d.NoChangeDir & " CreatePrompt=" & d.CreatePrompt & " NewDialogStyle=" & d.NewDialogStyle
+    End Sub
+
+End Module

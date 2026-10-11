@@ -1,0 +1,471 @@
+' Auto: the dialog driver of the TBMANLIB_Dialog probe.
+'
+' A modal common dialog (GetOpenFileName, GetSaveFileName, SHBrowseForFolder) runs its own
+' message loop on the calling thread, and that loop dispatches thread timers. So the probe
+' arms a timer (Arm), calls the dialog, and the timer procedure -- running inside the dialog's
+' loop -- finds the dialog and its children, records them, types into the file-name box, presses
+' a button and answers the message boxes the dialog raises (Confirm Save As, File not found...).
+' Disarm kills the timer once the dialog call has returned.
+'
+' Every episode is short: 300 ms per tick and gMaxTicks ticks (12, so 3.6 s). A dialog that has
+' not finished by then is cancelled and the failure recorded ("TIMED OUT"); a dialog that
+' cannot even be cancelled ends the process (ExitProcess 98), so a run never hangs.
+' With PROBE_SHOTS=1 (see InitFromEnv) the driver waits longer before it acts, so that the
+' outside runner (run-exe.mjs) can photograph each window.
+'
+' The action of an episode (the last argument of Arm):
+'   1 type the text (if any) and press button 1 (Open, Save, OK)
+'   2 press Cancel (button 2)
+'   3 press nothing: the dialog is left alone, then cancelled as "still open"
+'   4 click the right edge of button 1, which opens the drop-down of a split button
+'
+' Every line is written with TbRun.Out, so that it reaches the file the runner reads at once.
+
+Module Auto
+
+    Private Type RECT4
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+
+    Private Declare PtrSafe Function SetTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr
+    Private Declare PtrSafe Function KillTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal uIDEvent As LongPtr) As Long
+    Private Declare PtrSafe Function GetCurrentThreadId Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetCurrentDirectoryW Lib "kernel32" (ByVal nBufferLength As Long, ByVal lpBuffer As LongPtr) As Long
+    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+    Private Declare PtrSafe Function EnumThreadWindows Lib "user32" (ByVal dwThreadId As Long, ByVal lpfn As LongPtr, ByVal lParam As LongPtr) As Long
+    Private Declare PtrSafe Function EnumChildWindows Lib "user32" (ByVal hWndParent As LongPtr, ByVal lpEnumFunc As LongPtr, ByVal lParam As LongPtr) As Long
+    Private Declare PtrSafe Function GetClassNameW Lib "user32" (ByVal hWnd As LongPtr, ByVal lpClassName As LongPtr, ByVal nMaxCount As Long) As Long
+    Private Declare PtrSafe Function GetClientRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT4) As Long
+    Private Declare PtrSafe Function IsWindowVisible Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function IsWindowEnabled Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function IsWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetDlgCtrlID Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetParent Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetDlgItem Lib "user32" (ByVal hDlg As LongPtr, ByVal nIDDlgItem As Long) As LongPtr
+    Private Declare PtrSafe Function EndMenu Lib "user32" () As Long
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function PostMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As Long
+
+    Private Const WM_GETTEXT As Long = &HD
+    Private Const WM_GETTEXTLENGTH As Long = &HE
+    Private Const WM_SETTEXT As Long = &HC
+    Private Const WM_CLOSE As Long = &H10
+    Private Const WM_LBUTTONDOWN As Long = &H201
+    Private Const WM_LBUTTONUP As Long = &H202
+    Private Const BM_CLICK As Long = &HF5
+    Private Const TDM_CLICK_BUTTON As Long = &H466
+    Private Const CB_GETCOUNT As Long = &H146
+    Private Const CB_GETCURSEL As Long = &H147
+    Private Const CB_GETLBTEXT As Long = &H148
+    Private Const CB_GETLBTEXTLEN As Long = &H149
+
+    Private Const TICK_MS As Long = 300
+
+    ' The folder the probe replaces in every line it writes, so that no path of the machine is printed.
+    Public gRoot As String
+
+    ' What the last episode saw, for the probe to print.
+    Public gSeenMain As Boolean     ' a file or folder dialog appeared
+    Public gStayedOpen As Boolean   ' it was still open after the action (a message box refused it)
+    Public gTimedOut As Boolean
+    Public gMsgCount As Long        ' message boxes the dialog raised
+    Public gTicks As Long           ' ticks the episode lasted: 0 means the call returned within 300 ms
+
+    ' Settings the probe makes before an episode.
+    Public gDump As Boolean         ' list every child window of the dialog
+    Public gMsgSeq(0 To 7) As Long  ' the button each message box is answered with: 1 OK, 2 Cancel, 6 Yes, 7 No
+    Public gMsgSeqN As Long
+
+    Public gMaxTicks As Long = 12
+    Public gMsgDelay As Long = 0    ' ticks before a message box is answered
+    Public gMainDelay As Long = 2   ' ticks before the dialog is acted on
+
+    Private mTag As String
+    Private mDoType As Boolean
+    Private mTypeText As String
+    Private mAct As Long
+    Private mTimerId As LongPtr
+    Private mTick As Long
+    Private mSeen(0 To 63) As LongPtr
+    Private mSeenN As Long
+    Private mMainH As LongPtr
+    Private mMainTick As Long
+    Private mActedTick As Long
+    Private mMsgH As LongPtr
+    Private mMsgTick As Long
+    Private mMsgDone As Boolean
+    Private mMsgWant As Long
+    Private mTop(0 To 63) As LongPtr
+    Private mTopN As Long
+    Private mChH(0 To 255) As LongPtr
+    Private mChN As Long
+
+    '=========================================================================================
+    ' Output
+    '=========================================================================================
+
+    Public Sub Say(ByVal s As String)
+        If Len(gRoot) > 0 Then s = Replace(s, gRoot, "<root>")
+        TbRun.Out s
+    End Sub
+
+    ' A string in brackets, with its length; a null character is shown as <NUL>.
+    Public Function Q(ByVal s As String) As String
+        Q = "[" & Replace(s, vbNullChar, "<NUL>") & "] len=" & Len(s)
+    End Function
+
+    ' The current directory of the process, from the API (CurDir is VB's own view of it).
+    Public Function CurDirApi() As String
+        Dim s As String = String$(520, 0)
+        Dim n As Long = GetCurrentDirectoryW(520, StrPtr(s))
+        CurDirApi = Left$(s, n)
+    End Function
+
+    '=========================================================================================
+    ' Arming
+    '=========================================================================================
+
+    Public Sub InitFromEnv()
+        If Environ$("PROBE_SHOTS") = "1" Then
+            gMsgDelay = 8
+            gMainDelay = 8
+            gMaxTicks = 30
+        End If
+    End Sub
+
+    Public Sub Arm(ByVal tag As String, ByVal doType As Boolean, ByVal typeText As String, ByVal act As Long)
+        mTag = tag
+        mDoType = doType
+        mTypeText = typeText
+        mAct = act
+        mTick = 0
+        mSeenN = 0
+        mMainH = 0
+        mMainTick = 0
+        mActedTick = 0
+        mMsgH = 0
+        gMsgCount = 0
+        gSeenMain = False
+        gStayedOpen = False
+        gTimedOut = False
+        gTicks = 0
+        mTimerId = SetTimer(0, 0, TICK_MS, AddressOf TimerProc)
+    End Sub
+
+    Public Sub Disarm()
+        If mTimerId <> 0 Then KillTimer 0, mTimerId
+        mTimerId = 0
+        gTicks = mTick
+    End Sub
+
+    Public Sub MsgSeq(ParamArray ids() As Variant)
+        Dim i As Long
+        gMsgSeqN = 0
+        For i = LBound(ids) To UBound(ids)
+            If gMsgSeqN <= 7 Then
+                gMsgSeq(gMsgSeqN) = CLng(ids(i))
+                gMsgSeqN = gMsgSeqN + 1
+            End If
+        Next
+    End Sub
+
+    '=========================================================================================
+    ' Windows
+    '=========================================================================================
+
+    Public Function EnumTopProc(ByVal hWnd As LongPtr, ByVal lParam As LongPtr) As Long
+        If mTopN <= 63 Then
+            mTop(mTopN) = hWnd
+            mTopN = mTopN + 1
+        End If
+        EnumTopProc = 1
+    End Function
+
+    Public Function EnumChildProc(ByVal hWnd As LongPtr, ByVal lParam As LongPtr) As Long
+        If mChN <= 255 Then
+            mChH(mChN) = hWnd
+            mChN = mChN + 1
+        End If
+        EnumChildProc = 1
+    End Function
+
+    Private Function ClassOf(ByVal h As LongPtr) As String
+        Dim s As String = String$(256, 0)
+        Dim n As Long = GetClassNameW(h, StrPtr(s), 256)
+        ClassOf = Left$(s, n)
+    End Function
+
+    Private Function TextOf(ByVal h As LongPtr) As String
+        Dim n As Long = CLng(SendMessageW(h, WM_GETTEXTLENGTH, 0, 0))
+        Dim s As String = String$(n + 2, 0)
+        n = CLng(SendMessageW(h, WM_GETTEXT, n + 1, StrPtr(s)))
+        TextOf = Left$(s, n)
+    End Function
+
+    ' All descendants of h, copied into list(); returns how many. (EnumChildProc fills a shared
+    ' array, so a caller that nests another enumeration has to copy first.)
+    Private Function Children(ByVal h As LongPtr, ByRef list() As LongPtr) As Long
+        Dim i As Long
+        mChN = 0
+        EnumChildWindows h, AddressOf EnumChildProc, 0
+        For i = 0 To mChN - 1
+            list(i) = mChH(i)
+        Next
+        Children = mChN
+    End Function
+
+    Private Function WasSeen(ByVal h As LongPtr) As Boolean
+        Dim i As Long
+        For i = 0 To mSeenN - 1
+            If mSeen(i) = h Then WasSeen = True : Exit Function
+        Next
+    End Function
+
+    Private Sub MarkSeen(ByVal h As LongPtr)
+        If mSeenN <= 63 Then
+            mSeen(mSeenN) = h
+            mSeenN = mSeenN + 1
+        End If
+    End Sub
+
+    ' A file or folder dialog has an edit box, a combo box or a tree; a message box does not.
+    Private Function IsMain(ByVal h As LongPtr) As Boolean
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim c As String
+        Dim n As Long = Children(h, list)
+        For i = 0 To n - 1
+            c = ClassOf(list(i))
+            If c = "Edit" Or c = "ComboBoxEx32" Or c = "SysTreeView32" Or c = "ComboBox" Or c = "DUIViewWndClassName" Then
+                IsMain = True
+                Exit Function
+            End If
+        Next
+    End Function
+
+    Private Sub PressId(ByVal h As LongPtr, ByVal id As Long)
+        Dim b As LongPtr = GetDlgItem(h, id)
+        If b <> 0 Then
+            Say "    press id " & id & " (" & Q(TextOf(b)) & ", ena=" & IsWindowEnabled(b) & ")"
+            PostMessageW b, BM_CLICK, 0, 0
+        Else
+            Say "    no button id " & id & "; WM_COMMAND"
+            PostMessageW h, &H111, id, 0
+        End If
+    End Sub
+
+    '=========================================================================================
+    ' Recording
+    '=========================================================================================
+
+    ' Every child of the dialog, one line each (gDump).
+    Private Sub DumpChildren(ByVal h As LongPtr)
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long = Children(h, list)
+        For i = 0 To n - 1
+            Say "    child " & ClassOf(list(i)) & " id=0x" & Hex$(GetDlgCtrlID(list(i))) & " vis=" & IsWindowVisible(list(i)) & " ena=" & IsWindowEnabled(list(i)) & " parent=" & ClassOf(GetParent(list(i))) & " text=" & Q(TextOf(list(i)))
+        Next
+    End Sub
+
+    ' The window title, the edit boxes, the labels, the buttons, and the items of each combo box.
+    Private Sub RecordMain(ByVal h As LongPtr)
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim k As Long
+        Dim n As Long
+        Dim cnt As Long
+        Dim ln As Long
+        Dim buf As String
+        Say "  [" & mTag & "] dialog seen (tick " & mTick & ") title=" & Q(TextOf(h)) & " class=" & ClassOf(h)
+        If gDump Then DumpChildren h
+        cnt = Children(h, list)
+        For i = 0 To cnt - 1
+            Select Case ClassOf(list(i))
+                Case "Edit"
+                    If IsWindowVisible(list(i)) <> 0 Then Say "    Edit id=0x" & Hex$(GetDlgCtrlID(list(i))) & " parent=" & ClassOf(GetParent(list(i))) & " text=" & Q(TextOf(list(i)))
+                Case "Static"
+                    If Len(TextOf(list(i))) > 0 And IsWindowVisible(list(i)) <> 0 Then Say "    Static id=0x" & Hex$(GetDlgCtrlID(list(i))) & " text=" & Q(TextOf(list(i)))
+                Case "Button"
+                    If IsWindowVisible(list(i)) <> 0 Then Say "    Button id=0x" & Hex$(GetDlgCtrlID(list(i))) & " ena=" & IsWindowEnabled(list(i)) & " text=" & Q(TextOf(list(i)))
+                Case "ComboBox"
+                    n = CLng(SendMessageW(list(i), CB_GETCOUNT, 0, 0))
+                    If n > 0 Then
+                        Say "    ComboBox id=0x" & Hex$(GetDlgCtrlID(list(i))) & " items=" & n & " cursel=" & CLng(SendMessageW(list(i), CB_GETCURSEL, 0, 0))
+                        For k = 0 To n - 1
+                            ln = CLng(SendMessageW(list(i), CB_GETLBTEXTLEN, k, 0))
+                            buf = String$(ln + 2, 0)
+                            SendMessageW list(i), CB_GETLBTEXT, k, StrPtr(buf)
+                            Say "      item " & k & ": " & Q(Left$(buf, ln))
+                        Next
+                    End If
+            End Select
+        Next
+    End Sub
+
+    Private Sub RecordMainNow(ByVal h As LongPtr)
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long = Children(h, list)
+        For i = 0 To n - 1
+            If ClassOf(list(i)) = "Edit" And IsWindowVisible(list(i)) <> 0 Then Say "    now: Edit text=" & Q(TextOf(list(i)))
+        Next
+    End Sub
+
+    Private Sub RecordMsg(ByVal h As LongPtr)
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long
+        gMsgCount = gMsgCount + 1
+        Say "  [" & mTag & "] message box #" & gMsgCount & " title=" & Q(TextOf(h))
+        n = Children(h, list)
+        For i = 0 To n - 1
+            Select Case ClassOf(list(i))
+                Case "Static", "Button"
+                    Say "    child " & ClassOf(list(i)) & " text=" & Q(TextOf(list(i)))
+            End Select
+        Next
+        mMsgWant = 1
+        If gMsgSeqN > 0 Then
+            If gMsgCount <= gMsgSeqN Then mMsgWant = gMsgSeq(gMsgCount - 1) Else mMsgWant = gMsgSeq(gMsgSeqN - 1)
+        End If
+    End Sub
+
+    '=========================================================================================
+    ' Acting
+    '=========================================================================================
+
+    Private Sub DoAct(ByVal h As LongPtr)
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long
+        Dim ed As LongPtr
+        If mDoType Then
+            n = Children(h, list)
+            For i = 0 To n - 1
+                If ClassOf(list(i)) = "Edit" And IsWindowVisible(list(i)) <> 0 Then ed = list(i) : Exit For
+            Next
+            If ed <> 0 Then
+                SendMessageW ed, WM_SETTEXT, 0, StrPtr(mTypeText)
+                Say "    typed " & Q(mTypeText) & " -> now " & Q(TextOf(ed))
+            Else
+                Say "    NO EDIT BOX to type into"
+            End If
+        End If
+        Select Case mAct
+            Case 3
+                Say "    (no button pressed)"
+            Case 4
+                Dim bb As LongPtr = GetDlgItem(h, 1)
+                Dim rc As RECT4
+                GetClientRect bb, rc
+                Dim lp As LongPtr = ((rc.Bottom \ 2) * 65536) Or (rc.Right - 8)
+                PostMessageW bb, WM_LBUTTONDOWN, 1, lp
+                PostMessageW bb, WM_LBUTTONUP, 0, lp
+                Say "    clicked at the right edge of button 1 (client rect 0,0," & rc.Right & "," & rc.Bottom & ")"
+            Case 2
+                PressId h, 2
+            Case Else
+                PressId h, 1
+        End Select
+    End Sub
+
+    Private Sub AnswerMsg(ByVal h As LongPtr)
+        Dim btn As LongPtr = GetDlgItem(h, mMsgWant)
+        If btn = 0 Then btn = GetDlgItem(h, 1)
+        If btn = 0 Then btn = GetDlgItem(h, 2)
+        If btn <> 0 Then
+            Say "    answering with id " & GetDlgCtrlID(btn) & " (" & Q(TextOf(btn)) & ")"
+            PostMessageW btn, BM_CLICK, 0, 0
+        Else
+            ' The Confirm Save As and Create-the-file boxes are task dialogs: their buttons have no control id.
+            Say "    answering with TDM_CLICK_BUTTON " & mMsgWant
+            PostMessageW h, TDM_CLICK_BUTTON, mMsgWant, 0
+        End If
+    End Sub
+
+    Private Sub HandleDialog(ByVal h As LongPtr)
+        If Not IsMain(h) Then
+            If Not WasSeen(h) Then
+                MarkSeen h
+                mMsgH = h
+                mMsgTick = mTick
+                mMsgDone = False
+                RecordMsg h
+            End If
+            ' While a message box is up the dialog behind it is not "still open" for lack of an answer.
+            If mActedTick <> 0 Then mActedTick = mTick
+            If h = mMsgH And Not mMsgDone Then
+                If mTick - mMsgTick >= gMsgDelay Then
+                    mMsgDone = True
+                    AnswerMsg h
+                End If
+            End If
+        Else
+            If Not WasSeen(h) Then
+                MarkSeen h
+                mMainH = h
+                mMainTick = mTick
+                gSeenMain = True
+                RecordMain h
+            ElseIf h = mMainH Then
+                If mActedTick = 0 Then
+                    If mTick - mMainTick >= gMainDelay Then
+                        mActedTick = mTick
+                        DoAct h
+                    End If
+                ElseIf mTick - mActedTick >= IIf(mAct = 4, gMainDelay + 3, 3) Then
+                    gStayedOpen = True
+                    Say "  [" & mTag & "] dialog still open " & (mTick - mActedTick) & " ticks after the action"
+                    RecordMainNow h
+                    EndMenu
+                    PressId h, 2
+                    mActedTick = mTick
+                End If
+            End If
+        End If
+    End Sub
+
+    ' The timer procedure: runs inside the modal loop of the dialog.
+    Public Sub TimerProc(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal idEvent As LongPtr, ByVal dwTime As Long)
+        Dim i As Long
+        Dim h As LongPtr
+        Dim list(0 To 63) As LongPtr
+        Dim n As Long
+        mTick = mTick + 1
+        mTopN = 0
+        EnumThreadWindows GetCurrentThreadId(), AddressOf EnumTopProc, 0
+        n = mTopN
+        For i = 0 To n - 1
+            list(i) = mTop(i)
+        Next
+        For i = 0 To n - 1
+            h = list(i)
+            If IsWindow(h) <> 0 Then
+                If IsWindowVisible(h) <> 0 Then
+                    If ClassOf(h) = "#32770" Then
+                        If mTick >= gMaxTicks Then
+                            If Not gTimedOut Then
+                                gTimedOut = True
+                                Say "  [" & mTag & "] TIMED OUT at tick " & mTick & ", cancelling (dialog title " & Q(TextOf(h)) & ", main dialog seen: " & gSeenMain & ")"
+                            End If
+                            EndMenu
+                            PostMessageW h, TDM_CLICK_BUTTON, 2, 0
+                            PostMessageW h, WM_CLOSE, 0, 0
+                        Else
+                            HandleDialog h
+                        End If
+                    End If
+                End If
+            End If
+        Next
+        If mTick >= gMaxTicks + 6 Then
+            Say "  [" & mTag & "] STUCK: a window could not be cancelled, ending the process"
+            ExitProcess 98
+        End If
+    End Sub
+
+End Module

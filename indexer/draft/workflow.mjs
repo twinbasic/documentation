@@ -18,8 +18,10 @@
 // For each package, one agent writes each batch of pages, all at once; then one
 // agent adds the new pages to the lists of the landing page and of the pages
 // of their types, and writes a new section's landing page; then one compiles
-// the section's samples with check_examples and fixes what the compiler
-// refuses. Nothing here commits, builds or runs a gate: the drafts are drafts.
+// the section's samples with check_examples, fixes what the compiler refuses,
+// and runs the doubts the other agents listed: the claims no sample shows, and
+// where the package may differ from the object it replaces. Nothing here
+// commits, builds or runs a gate: the drafts are drafts.
 // WIP.Indexer.md says why the work is split this way.
 
 export const meta = {
@@ -29,7 +31,7 @@ export const meta = {
   phases: [
     { title: 'Draft', detail: 'one agent per batch of pages', model: 'sonnet' },
     { title: 'Lists', detail: 'one agent per package: landing page and member lists', model: 'sonnet' },
-    { title: 'Check', detail: 'one agent per package: compile the samples and fix them', model: 'sonnet' },
+    { title: 'Check', detail: 'one agent per package: compile the samples, run the doubts, fix the pages', model: 'sonnet' },
   ],
 }
 
@@ -74,7 +76,7 @@ const results = await pipeline(
       lists,
     })),
   (done, pkg, i) =>
-    agent(checkPrompt(pkg, CHECK_PORT_BASE + i * CHECK_PORT_STEP), {
+    agent(checkPrompt(pkg, CHECK_PORT_BASE + i * CHECK_PORT_STEP, [...done.drafted, done.lists].filter(Boolean).join('\n\n')), {
       label: `check:${pkg.package}`,
       phase: 'Check',
       model: 'sonnet',
@@ -115,9 +117,10 @@ Then, for each task:
 
 Rules:
 - State only what the source declares and its code does. Where the source does not make a behaviour clear, document the declaration and say nothing more: never invent semantics.
+- List as a doubt each claim a page makes that no sample's stated output shows, and, when the sources say the package replaces another object or library (VBScript's RegExp, a VB6 control), each behaviour that may differ from it. A later step runs them.
 - Every \`tb\` fence carries \`check_build\`. A statement sample whose output the page states also carries \`check_run\`, with the output as a trailing comment on each \`Debug.Print\` line; \`MsgBox\`, \`InputBox\` and \`End\` cannot be run.
 - Do not edit the landing page, or a type's page that lists its members, except to add an \`inline\` section: a later step updates the lists.
-- Write files with the Write and Edit tools, never through the shell. No git commands; do not build.
+- Write files with the Write and Edit tools, never through the shell. No git commands; do not build, and do not run check_examples: other agents are drafting beside you, and the later step compiles every page.
 
 Return one line for each task, \`<file>: written\`, \`changed\` or \`skipped (<why>)\`, then one line for each doubt about what the source means.`
 }
@@ -130,9 +133,9 @@ function listsPrompt(pkg) {
       (landing.permalink ? `, \`permalink: ${landing.permalink}\`` : ', a permalink of the form the landing pages beside it use') +
       `, \`has_toc: false\` and \`indexed_from: ${pkg.version}\`; ` +
       (landing.author
-        ? `under the H1, the line \`**Author:** ${landing.author}\`, or the author the package's sources name if they name someone else (WIP.md, the contributed packages); `
+        ? `under the H1, the line \`**Author:** ${landing.author}\`, or the author the package's sources name if they name someone else, followed by \`**On GitHub:** [owner/repo](url)\` when the sources name a repository that holds the package (WIP.md, the contributed packages); `
         : '') +
-      `a short description of the package from its sources (the \`source\` paths in the plan); then the lists, with no \`* TOC\` list when the page has only one or two sections. Model it on a landing page of another section in the same folder.\n\n`
+      `a short description of the package from its sources (the \`source\` paths in the plan) and, when the sources name its GitHub repository, its README (\`gh api repos/<owner>/<repo>/readme --jq .content\` gives it in base64; use gh only to read): what the package adds over the object it replaces and what it does not support, where the README says so; then the lists, with no \`* TOC\` list when the page has only one or two sections. Model it on a landing page of another section in the same folder. List as a doubt each README claim the page states that no sample on it shows.\n\n`
     : ''
   return `Bring the lists of the ${pkg.package} section up to date with the pages just drafted for it.
 
@@ -143,20 +146,29 @@ ${newLanding}1. Add each new page (\`new: true\`) to the landing page's lists, u
 3. Set \`indexed_from:\` in the landing page's frontmatter to \`${pkg.version}\`.
 4. Change nothing else. Write files with the Write and Edit tools, never through the shell; no git commands; do not build.
 
-Return one line for each file changed, saying what was added.`
+Return one line for each file changed, saying what was added, then one line for each doubt.`
 }
 
-function checkPrompt(pkg, port) {
+function checkPrompt(pkg, port, doubts) {
   const only = pkg.sectionDir.replace(/^docs\//, '')
-  return `Compile the samples of the ${pkg.package} section and fix the drafted pages the compiler refuses.
+  const probe = `${pkg.sectionDir}/zz-probe.md`
+  return `Compile the samples of the ${pkg.package} section, settle the doubts the drafting agents listed, and fix the drafted pages.
 
 Run, from the repository root:
   node scripts/check_examples.mjs --only "^${only}/" --port ${port} --jobs 2
 It needs a twinBASIC install. For a contributed package it also needs a sample template, test/example-projects/contributed-${pkg.package}/Settings: if the run says the harness or the template is missing, stop and say so.
 
-For each finding, fix the page it names: the sample, or what the page says it prints. Fix the page, never the harness or a template, and only pages listed in ${pkg.plan}. A \`check_run\` mismatch prints what the code really printed: that is the fact to document. Run again after fixing, three runs at most.
+For each finding, fix the page it names: the sample, or what the page says it prints. Fix the page, never the harness or a template, and only the pages listed in ${pkg.plan} and its landing page. A \`check_run\` mismatch prints what the code really printed: that is the fact to document. Run again after fixing, three runs at most.
+
+Then settle each doubt below that a run can settle:
+- Write a scratch page, ${probe}, with frontmatter \`title: zz probe\` and \`nav_exclude: true\` and one \`tb check_build check_run\` sample that prints each fact in doubt, every \`Debug.Print\` line ending in the expected output \`' ?\`, and run it with \`--only "^${only}/zz-probe"\` at the same port: the report shows what each line printed. Under \`On Error Resume Next\`, a \`Debug.Print\` whose expression raises an error prints nothing, so assign the value first and print \`Err.Number\` after it.
+- Where the sources say the package replaces another object, run the same input on that object when this machine can: VBScript's under \`cscript //nologo <file>.vbs\`, printing with \`WScript.Echo\`; VB6 code with \`node scripts/vb6run.mjs\`. Write those files outside the repository, and never call \`MsgBox\` or \`InputBox\`. Where the two differ, the page says what the replaced object does, in a \`> [!NOTE]\`.
+- Correct the pages to what the runs printed, delete ${probe}, and run the section once more.
+
+Doubts:
+${doubts || '(none listed)'}
 
 Write files with the Write and Edit tools, never through the shell; no git commands; do not build.
 
-Return the last run's summary line, then one line for each fix: \`<file>:<line>: <what changed>\`.`
+Return the last run's summary line, then one line for each fix: \`<file>:<line>: <what changed>\`, then one line for each doubt: settled, with what the run printed, or left, with why.`
 }

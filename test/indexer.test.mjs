@@ -42,11 +42,13 @@ import {
   PAGES_PER_BATCH,
   permalinkByFolder,
   planPackage,
+  sectionModels,
 } from "../indexer/lib/draft-plan.mjs";
 import { FINGERPRINTED, fingerprintOf, indexerFingerprint } from "../indexer/lib/fingerprint.mjs";
 import { derivePackageApi } from "../indexer/lib/package-api.mjs";
 import { readPackageFiles } from "../indexer/lib/package-files.mjs";
 import {
+  adoptSnapshots,
   apiHeadOf,
   copyToSnapshots,
   manifestPath,
@@ -1498,6 +1500,30 @@ describe("copyToSnapshots", () => {
   });
 });
 
+describe("adoptSnapshots", () => {
+  const store = mkdtempSync(path.join(tmp, "adopt-store-"));
+  const snapshots = mkdtempSync(path.join(tmp, "adopt-snapshots-"));
+  putPackage(store, "contributed", "New", { api: apiText("1.0.5.0") });
+  putPackage(store, "contributed", "Newer", { api: apiText("2.0.0.0") });
+  putPackage(store, "built-in", "Kept", { api: apiText("beta-x-1005") });
+  mkdirSync(path.join(snapshots, "built-in", "Kept"), { recursive: true });
+  writeFileSync(path.join(snapshots, "built-in", "Kept", "api.json"), apiText("beta-x-0997"));
+  const documented = new Map([
+    ["contributed/New", { indexedFrom: "1.0.5.0" }],
+    ["contributed/Newer", { indexedFrom: "1.0.0.0" }],
+    ["contributed/Unsynced", { indexedFrom: "1.0.0.0" }],
+    ["built-in/Kept", { indexedFrom: "beta-x-1005" }],
+  ]);
+
+  test("gives a documented package with no snapshot the store's, only at the version its section names", async () => {
+    assert.deepEqual(await adoptSnapshots(store, snapshots, documented), [{ group: "contributed", package: "New" }]);
+    assert.equal(readFileSync(path.join(snapshots, "contributed", "New", "api.json"), "utf-8"), apiText("1.0.5.0"));
+    assert.throws(() => readFileSync(path.join(snapshots, "contributed", "Newer", "api.json")), { code: "ENOENT" });
+    // A snapshot there is the baseline, whatever the store holds.
+    assert.equal(readFileSync(path.join(snapshots, "built-in", "Kept", "api.json"), "utf-8"), apiText("beta-x-0997"));
+  });
+});
+
 // ------------------------------------------------------- the reference's package sections
 
 const page = (frontmatter, body = "Text.\n") => `---\n${frontmatter}\n---\n\n# Title\n\n${body}`;
@@ -1694,6 +1720,43 @@ describe("planning the pages of a report", () => {
     assert.equal(t.parent, "Enumerations");
     assert.equal(t.permalink, "/tB/Packages/Toy/Enumerations/Hue");
     assert.equal(t.model, "docs/Toy/Enumerations/Shade.md");
+  });
+
+  test("a page of a kind its section has none of takes a model of the same shape from another section", () => {
+    const models = sectionModels({ api, pages });
+    assert.deepEqual(models.get("Class"), ["Widget/index.md"]);
+    assert.deepEqual(models.get("Enum"), ["Enumerations/Shade.md"]);
+    assert.deepEqual(models.get("Module"), ["Helpers.md"]);
+    assert.deepEqual(models.get("member Property"), ["Widget/Size.md"]);
+    assert.equal(models.has("member Sub"), false);
+
+    const fresh = planPackage({
+      report: {
+        ...report,
+        tasks: [
+          task("create", "Gadget", "Class", "Gadget"),
+          task("create", "Spin", "Sub", "Gadget"),
+          task("create", "Hue", "Enum", "Hue"),
+        ],
+      },
+      api,
+      pages: [],
+      sectionDir: "docs/New",
+      sourceDir: "s",
+      newLanding: newLandingFor("New", []),
+      borrowedModels: [
+        { dir: "docs/Flat", models: new Map([["Class", ["Flat.md"]]]) },
+        { dir: "docs/Toy", models },
+      ],
+    });
+    const model = (symbol) => fresh.tasks.find((t) => t.symbol === symbol).model;
+    // Gadget gets a folder, so Flat.md, a page of its own, is passed over.
+    assert.equal(model("Gadget"), "docs/Toy/Widget/index.md");
+    assert.equal(model("Hue"), "docs/Toy/Enumerations/Shade.md");
+    // No section has a Sub on a page of its own.
+    assert.equal(model("Spin"), null);
+    // A section's own model comes first.
+    assert.equal(of("Hue").model, "docs/Toy/Enumerations/Shade.md");
   });
 
   test("a new type with new members gets a folder, and its members pages in it", () => {

@@ -243,7 +243,11 @@ pages and the package's `api.json` and decides, for each task:
 - **the permalink**, only when every page of the section has the permalink its
   folders give it (`followsFolders`); otherwise null, to follow the siblings.
   VBA's `/tB/Modules/...` is the one section that does not.
-- **a model page** of the same kind in the section, and the source file.
+- **a model page** of the same kind in the section, and the source file. A page
+  of a kind the section has none of, as every page of a new section is, takes
+  its model from another section of the group (`sectionModels`), the one with the
+  most pages first, and one of the same shape (a folder's `index.md`, or a page
+  of its own) where there is one.
 
 A package with no section gets `docs/Reference/<Group>/<Package>/` and a
 landing page like the group's others (`newLandingFor`): `<Package> Package`,
@@ -432,7 +436,10 @@ refuses it): it is listed in `problems` as a line with no field.
 `indexer/snapshots/` holds the baseline the reference is compared with, so it
 holds a package only if the reference documents it, and only that package's
 `api.json`: the sources stay in the store. `sync` copies a snapshot when the
-package has a section in the reference, and `analyze` diffs against it. The
+package has a section in the reference, and `analyze` diffs against it. A
+section started after its package was synced gets its snapshot from the next
+`sync`, which copies the store's `api.json` when it is of the version the
+section's `indexed_from` names (`adoptSnapshots`). The
 other packages are indexed into the store and left out of the repository; most
 of the contributed ones are, and so are the builds of a package that is
 documented as one.

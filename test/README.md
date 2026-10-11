@@ -14,6 +14,9 @@ is input for three tools:
 - `ide/` for [`scripts/ide_test.mjs`](../scripts/ide_test.mjs), which `ide-test.bat` runs:
   the scenarios that operate the IDE itself. It is the add-in runner over its own
   `lanes.mjs`, and its scenario files use `scenario` from `addin/scenario.mjs`.
+- `package-probes/` for a person documenting a contributed package: a probe of what a
+  package does at run time that only a built program can show, run by hand and outside every
+  gate, with a README of its own. `TBMANLIB_Dialog/` operates the package's dialogs.
 
 If a fixture case has just gone red, start at [The invariant, and how it
 breaks](#the-invariant-and-how-it-breaks) --- the commit that broke it need not have touched
