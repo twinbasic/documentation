@@ -93,6 +93,10 @@ for contributors.
   `<kbd>Break</kbd>`, and arrows as `<kbd>Up</kbd>`, `<kbd>Down</kbd>`, `<kbd>Left</kbd>` and
   `<kbd>Right</kbd>`. Glyphs are avoided, because the font subsets need not hold them. The 59 existing `<kbd>CTRL</kbd>`
   are converted in one mechanical pass.
+- **Never re-list a picture's labels** (owner). The screenshots are SVGs whose text is
+  accessible, so a bare list of a menu's or dialog's items (label and keys, nothing else) only
+  repeats the picture. A reference entry says what the item does. An item with nothing to say
+  beyond its label is left to the picture.
 - **Headings** in sentence case, with no icon and no shortcut inside them.
 - **The section names no build**, except in a defect callout (owner's standing rule). Lines such
   as "Components list coming soon" go, unless the IDE itself shows that text and the page says
