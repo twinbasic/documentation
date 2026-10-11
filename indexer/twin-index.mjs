@@ -20,6 +20,7 @@ import { CONTAINER_MAP } from "./lib/vb6-preprocess.mjs";
 import { API_FORMAT, buildApi } from "./lib/api-model.mjs";
 import { STORE_PROBLEMS, commitStore, copyToSnapshots, ensureStore, manifestPath, storeStatus } from "./lib/store.mjs";
 import { diffApi, auditCoverage } from "./lib/differ.mjs";
+import { documentedPackages } from "./lib/doc-pages.mjs";
 
 exitOnCrash();
 
@@ -39,12 +40,6 @@ const SOURCE_EXTS = new Set([".twin", ...VB6_EXTS]);
 function packageGroup(symbol, source) {
   if (source === "contributed") return "contributed";
   return DEFAULT_PACKAGES.includes(symbol) ? "default" : "built-in";
-}
-
-function groupDocsName(group) {
-  if (group === "default") return "Default";
-  if (group === "built-in") return "Built-In";
-  return "Contributed";
 }
 
 // What `sync` prints for a package it indexed.
@@ -92,84 +87,6 @@ async function writeToStore(group, symbol, rawFiles, apiJsonStr) {
     await fs.writeFile(dest, f.content);
   }
   await fs.writeFile(path.join(pkgDir, "api.json"), apiJsonStr, "utf-8");
-}
-
-async function buildPackageNameMap() {
-  const map = new Map();
-  for (const group of ["Default", "Built-In", "Contributed"]) {
-    const groupDir = path.join(DOCS_REF_DIR, group);
-    try {
-      const entries = await fs.readdir(groupDir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-        const indexPath = path.join(groupDir, entry.name, "index.md");
-        try {
-          const content = await fs.readFile(indexPath, "utf-8");
-          const m = content.match(/^package_name:\s*(.+)$/m);
-          if (m) {
-            for (const n of m[1].split(",")) {
-              map.set(n.trim(), path.join(groupDir, entry.name));
-            }
-          }
-        } catch {
-          /* no index.md */
-        }
-      }
-    } catch {
-      /* group dir doesn't exist */
-    }
-  }
-  return map;
-}
-
-async function findPackageDocsDir(name, group, packageNameMap) {
-  const docsGroup = groupDocsName(group);
-  const newPath = path.join(DOCS_REF_DIR, docsGroup, name);
-  try {
-    await fs.access(newPath);
-    return newPath;
-  } catch {}
-  if (packageNameMap && packageNameMap.has(name)) {
-    return packageNameMap.get(name);
-  }
-  const oldPath = path.join(DOCS_REF_DIR, name);
-  try {
-    await fs.access(oldPath);
-    return oldPath;
-  } catch {}
-  return null;
-}
-
-async function readIndexedFrom(filePath) {
-  try {
-    const content = await fs.readFile(filePath, "utf-8");
-    const m = content.match(/^indexed_from:\s*(.+)$/m);
-    return m ? m[1].trim() : null;
-  } catch {
-    return null;
-  }
-}
-
-function parseYamlList(content, field) {
-  const re = new RegExp(`^${field}:\\s*\\n((?:[ \\t]+- .+\\n?)*)`, "m");
-  const m = content.match(re);
-  if (!m) return [];
-  return m[1]
-    .split("\n")
-    .map((line) => line.replace(/^\s+-\s*/, "").trim())
-    .filter(Boolean);
-}
-
-async function readExclusions(filePath) {
-  try {
-    const content = await fs.readFile(filePath, "utf-8");
-    return {
-      containers: new Set(parseYamlList(content, "exclude_from_docs")),
-      kinds: new Set(parseYamlList(content, "exclude_kinds")),
-    };
-  } catch {
-    return { containers: new Set(), kinds: new Set() };
-  }
 }
 
 function isExcluded(sym, exclusions) {
@@ -386,10 +303,17 @@ async function runSync(filter, install) {
       return `${s.package} ${s.to}`;
     });
     await commitStore(STORE_PATH, `sync: ${parts.join(", ")}`);
-    const written = await copyToSnapshots(STORE_PATH, SNAPSHOTS_PATH, synced);
+    // The committed snapshots are the baseline the documentation is compared
+    // with, so they are only for the packages the reference documents.
+    const documented = await documentedPackages(DOCS_REF_DIR);
+    const baseline = synced.filter((s) => documented.has(`${s.group}/${s.package}`));
+    const written = await copyToSnapshots(STORE_PATH, SNAPSHOTS_PATH, baseline);
     console.log(
       written.length ? `\nSnapshots updated: ${written.map((w) => w.package).join(", ")}.` : "\nSnapshots unchanged.",
     );
+    if (baseline.length < synced.length) {
+      console.log(`  ${synced.length - baseline.length} synced packages have no page in the reference: no snapshot.`);
+    }
   }
 
   for (const name of filter ?? []) {
@@ -563,7 +487,7 @@ async function syncBuiltin(filter, install, { synced, known }) {
 // --- analyze command ---
 
 async function runAnalyze(filter) {
-  const packageNameMap = await buildPackageNameMap();
+  const documented = await documentedPackages(DOCS_REF_DIR);
   const groups = ["default", "built-in", "contributed"];
   const packageList = [];
 
@@ -606,10 +530,10 @@ async function runAnalyze(filter) {
       die(2, `${name}: its api.json is in an older format than this indexer writes. Run sync, which indexes it again.`);
     }
 
-    const docsDir = await findPackageDocsDir(name, group, packageNameMap);
-    const indexMdPath = docsDir ? path.join(docsDir, "index.md") : null;
-    const indexedFrom = indexMdPath ? await readIndexedFrom(indexMdPath) : null;
-    const exclusions = indexMdPath ? await readExclusions(indexMdPath) : null;
+    const section = documented.get(`${group}/${name}`);
+    const docsDir = section?.dir ?? null;
+    const indexedFrom = section?.indexedFrom ?? null;
+    const exclusions = section?.exclusions ?? null;
 
     let report;
     if (indexedFrom) {

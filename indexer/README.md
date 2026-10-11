@@ -35,8 +35,8 @@ This does everything on the first run:
    index and the attribute census use too).
 4. Generates an `api.json` snapshot per package ([described below](#apijson)).
 5. Commits sources + snapshots to the store.
-6. Copies `api.json` files to `indexer/snapshots/` (committed to
-   the docs repo).
+6. Copies the `api.json` of each package the reference documents to
+   `indexer/snapshots/` (committed to the docs repo; [see below](#documented-packages)).
 7. Records what it read in `indexer/.packages/manifests/` (in the store,
    not committed).
 
@@ -116,7 +116,7 @@ its folder.
 | `indexer/.packages/{group}/{pkg}/api.json` | No (gitignored) | Full API snapshot |
 | `indexer/.packages/manifests/contributed.json` | No (in the store) | TWINSERV sync state |
 | `indexer/.packages/manifests/built-in.json` | No (in the store) | Built-in and default sync state |
-| `indexer/snapshots/{group}/{pkg}/api.json` | Yes | Copy of the above (survives cloning) |
+| `indexer/snapshots/{group}/{pkg}/api.json` | Yes | Copy of the above, for the [documented packages](#documented-packages) only (survives cloning) |
 
 The manifests are in the store, with the sources they describe, and not in the
 repository: a manifest that travels with git says "up to date" about a store
@@ -139,16 +139,22 @@ node indexer/twin-index.mjs analyze [--package <name>] [--packages <a>,<b>]
 Compares the current API snapshots (from `sync`) against the
 documented baseline and produces a change report.
 
+It takes every package in the store, or those `--package` or `--packages`
+name. A package no landing page documents is audited against no pages at all,
+so every public symbol of it is listed as one to create.
+
 Two modes, chosen automatically per package:
 
-- **Update mode** — the package's `index.md` has an `indexed_from`
+- **Update mode** — the package's landing page has an `indexed_from`
   field. Diffs the current `.packages/` api.json against the
-  last-committed snapshot (`git show HEAD:indexer/snapshots/...`).
+  last-committed snapshot (`git show HEAD:indexer/snapshots/...`), and
+  only when that snapshot's `version` is the `indexed_from` value.
   Reports added, modified, and removed public symbols. A committed
   snapshot in an older format is not diffed; the package is audited
   instead.
 
-- **Audit mode** — no `indexed_from` (new package, or pre-tracking).
+- **Audit mode** — no `indexed_from` (new package, or pre-tracking), or no
+  committed snapshot of the `indexed_from` version to diff against.
   Cross-references every public symbol in `api.json` against existing
   doc pages (matched by `title:` frontmatter). Reports documented vs
   undocumented symbols.
@@ -268,6 +274,39 @@ VB6-derived packages, xCalendar's `[Flat]`, and the `[A4 Portrait]` of VB's
 brackets hold, so `[Hidden]` or `[Description("x")]` alone on a line is a value
 too, and an Enum value cannot carry an attribute.
 
+## Documented packages
+
+`indexer/snapshots/` holds the baseline the reference is compared with, so it
+holds a package only if the reference documents it, and only that package's
+`api.json`: the sources stay in the store. `sync` copies a snapshot when the
+package has a section in the reference, and `analyze` diffs against it. The
+other packages are indexed into the store and left out of the repository; most
+of the contributed ones are, and so are the builds of a package that is
+documented as one.
+
+A package's section in `docs/Reference/` is the folder with its landing page,
+`docs/Reference/{Default,Built-In,Contributed}/<Section>/index.md`. The page's
+frontmatter ties the section to the packages in the store (`lib/doc-pages.mjs`
+reads it; the site's builder ignores these keys):
+
+| Key | Means |
+|-----|-------|
+| `package_name:` | The packages the section documents, by the names the store has, comma-separated: `CustomControls, CustomControlsPackage`. Without it the section documents the package named like its folder. It replaces that name, so the folder's own is listed too when it is a package. |
+| `indexed_from:` | The release tag the section was brought up to date with, `beta-x-0997`: the `version` of the committed snapshots. Bump it in the commit that updates the pages, and write the new snapshots in it. |
+| `exclude_from_docs:`, `exclude_kinds:` | Types, and kinds of symbol, that are deliberately not documented, so `analyze` does not list them. |
+
+The group is the folder's: a package in `Built-In/` is a built-in one.
+
+**One API, several builds.** The three CEF packages in an install,
+`cefPackage49`, `cefPackage109` and `cefPackage145`, are one source tree
+compiled against three CEF runtimes. Their `api.json` files differ only in
+the `package` key (checked on BETA 997 and 1005), and the reference has one
+section for them, so the section names one and the repository keeps one
+snapshot, of the newest, `cefPackage145`. `analyze` compares each package with
+its own snapshot, so naming all three would triple every CEF task and keep two
+copies of the same 460 KB. If a build ever declares an API of its own, it needs
+its own name in `package_name:` and a snapshot.
+
 ## Package groups
 
 Every package belongs to one group. The group determines where its
@@ -318,6 +357,7 @@ indexer/
     zip-reader.mjs             Minimal ZIP reader (deflate)
     vb6-preprocess.mjs         VB6 -> twinBASIC normalization
     api-model.mjs              files -> api.json, through scripts/lib/twin-api.mjs
+    doc-pages.mjs              the reference's package sections: package_name, indexed_from, exclusions
     store.mjs                  .packages/ git repo lifecycle, sync state, what the store holds
     differ.mjs                 api.json diff + coverage audit
   snapshots/                   (committed) latest api.json per package

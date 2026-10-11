@@ -26,6 +26,14 @@ import { importProject } from "../scripts/impexp.mjs";
 import { API_FORMAT, buildApi, qualified, renderApi } from "../indexer/lib/api-model.mjs";
 import { compareInstallManifest } from "../indexer/lib/builtin-sync.mjs";
 import { auditCoverage, diffApi, flattenSymbols } from "../indexer/lib/differ.mjs";
+import {
+  documentedPackages,
+  frontmatterList,
+  frontmatterOf,
+  frontmatterValue,
+  packageNames,
+  readSection,
+} from "../indexer/lib/doc-pages.mjs";
 import { readPackageFiles } from "../indexer/lib/package-files.mjs";
 import { apiHeadOf, copyToSnapshots, manifestPath, storeStatus } from "../indexer/lib/store.mjs";
 import { CONTAINER_MAP, preprocessVB6 } from "../indexer/lib/vb6-preprocess.mjs";
@@ -877,5 +885,100 @@ describe("copyToSnapshots", () => {
 
   test("skips a package the store has no api.json for", async () => {
     assert.deepEqual(await copyToSnapshots(store, snapshots, [{ group: "built-in", package: "Missing" }]), []);
+  });
+});
+
+// ------------------------------------------------------- the reference's package sections
+
+const page = (frontmatter, body = "Text.\n") => `---\n${frontmatter}\n---\n\n# Title\n\n${body}`;
+
+describe("a package page's frontmatter", () => {
+  test("is the block between the first two --- lines, with a byte order mark or CRLF line ends", () => {
+    assert.equal(frontmatterOf(page("title: A\nnav_order: 1")), "title: A\nnav_order: 1");
+    assert.equal(frontmatterOf(`﻿${page("title: A")}`), "title: A");
+    assert.equal(frontmatterOf(page("title: A\nnav_order: 1").replaceAll("\n", "\r\n")), "title: A\r\nnav_order: 1");
+    assert.equal(frontmatterOf("# No frontmatter\n"), null);
+  });
+
+  test("gives a key's value, and not a line of the body that looks like one", () => {
+    const text = page("title: A\nindexed_from: beta-x-0997 \n", "indexed_from: beta-x-0001\npackage_name: X\n");
+    const block = frontmatterOf(text);
+    assert.equal(frontmatterValue(block, "indexed_from"), "beta-x-0997");
+    assert.equal(frontmatterValue(block, "package_name"), null);
+    assert.equal(frontmatterValue(null, "title"), null);
+  });
+
+  test("gives the items of a list key, in order, and an empty list for a key that is not there", () => {
+    const block = frontmatterOf(
+      page(
+        "title: A\nexclude_from_docs:\n  - InternalStuff\n  - EventLogAPIs\nexclude_kinds:\n  - Declare\nindexed_from: x",
+      ),
+    );
+    assert.deepEqual(frontmatterList(block, "exclude_from_docs"), ["InternalStuff", "EventLogAPIs"]);
+    assert.deepEqual(frontmatterList(block, "exclude_kinds"), ["Declare"]);
+    assert.deepEqual(frontmatterList(block, "redirect_from"), []);
+  });
+
+  test("names the packages it documents by package_name, else by its folder", () => {
+    assert.deepEqual(packageNames("title: A", "VBA"), ["VBA"]);
+    assert.deepEqual(packageNames("package_name: WebView2Package", "WebView2"), ["WebView2Package"]);
+    assert.deepEqual(packageNames("package_name: CustomControls, CustomControlsPackage", "CustomControls"), [
+      "CustomControls",
+      "CustomControlsPackage",
+    ]);
+    assert.deepEqual(packageNames("package_name:  ", "Folder"), ["Folder"]);
+  });
+
+  test("gives a section its folder, packages, indexed_from and exclusions", () => {
+    const text = page(
+      "title: A\npackage_name: P1, P2\nindexed_from: beta-x-0997\nexclude_from_docs:\n  - Hidden\nexclude_kinds:\n  - Declare",
+    );
+    const s = readSection("/ref/Built-In/A", "A", text);
+    assert.equal(s.dir, "/ref/Built-In/A");
+    assert.deepEqual(s.packages, ["P1", "P2"]);
+    assert.equal(s.indexedFrom, "beta-x-0997");
+    assert.deepEqual([...s.exclusions.containers], ["Hidden"]);
+    assert.deepEqual([...s.exclusions.kinds], ["Declare"]);
+    assert.equal(readSection("/ref/Default/B", "B", page("title: B")).indexedFrom, null);
+  });
+});
+
+describe("documentedPackages", () => {
+  const ref = mkdtempSync(path.join(tmp, "reference-"));
+  const put = (rel, text) => {
+    mkdirSync(path.dirname(path.join(ref, rel)), { recursive: true });
+    writeFileSync(path.join(ref, rel), text);
+  };
+  put("Default/VBA/index.md", page("title: VBA Package\nindexed_from: beta-x-0997"));
+  put("Default/VBA/Strings/index.md", page("title: Strings\npackage_name: NotAPackage"));
+  put("Built-In/WebView2/index.md", page("title: WebView2 Package\npackage_name: WebView2Package"));
+  put("Built-In/CustomControls/index.md", page("title: CC\npackage_name: CustomControls, CustomControlsPackage"));
+  put("Built-In/NoIndex/Page.md", page("title: Not a section"));
+  put("Built-In/stray.md", page("title: A file, not a folder"));
+  const found = documentedPackages(ref);
+
+  test("keys each package by its group and name, from the sections of that group's folder", async () => {
+    assert.deepEqual(
+      [...(await found).keys()],
+      ["default/VBA", "built-in/CustomControls", "built-in/CustomControlsPackage", "built-in/WebView2Package"],
+    );
+  });
+
+  test("a package_name replaces the folder's name, and one section can document several packages", async () => {
+    const map = await found;
+    assert.equal(map.has("built-in/WebView2"), false);
+    assert.equal(map.get("built-in/CustomControls"), map.get("built-in/CustomControlsPackage"));
+    assert.equal(map.get("built-in/WebView2Package").dir, path.join(ref, "Built-In", "WebView2"));
+  });
+
+  test("only a folder's own index.md makes it a section, and a page deeper down is not one", async () => {
+    const map = await found;
+    assert.equal(map.has("built-in/NoIndex"), false);
+    assert.equal(map.has("default/NotAPackage"), false);
+    assert.equal(map.get("default/VBA").indexedFrom, "beta-x-0997");
+  });
+
+  test("a reference with none of the group folders documents nothing", async () => {
+    assert.equal((await documentedPackages(path.join(tmp, "no-such-reference"))).size, 0);
   });
 });
