@@ -87,15 +87,6 @@ function isDeclare(signature) {
   return false;
 }
 
-// The name a member is known by. A type-declaration character on a name written
-// without brackets is not part of the name: `Public Function Command$()` is
-// `Command`, and `Const REAL_EPSILON! = 1` is `REAL_EPSILON`. A name written in
-// brackets keeps it, as VBA's `Function [Chr$]` does.
-function declaredName(name, signature) {
-  if (!/[$%&!#@]$/.test(name) || signature.includes(`[${name}]`)) return name;
-  return name.slice(0, -1);
-}
-
 // An attribute as {name, args}; `args` is left out when it has no parentheses.
 const attrRecord = (a) => (a.args === null ? { name: a.name } : { name: a.name, args: a.args });
 
@@ -113,7 +104,7 @@ function common(rec, d) {
 }
 
 function memberRecord(m) {
-  const rec = { name: declaredName(m.name, m.signature), kind: m.kind, vis: m.vis };
+  const rec = { name: m.name, kind: m.kind, vis: m.vis };
   if (isDeclare(m.signature)) rec.declare = true;
   rec.signature = m.signature;
   if (m.returnType != null) rec.returnType = m.returnType;
@@ -129,7 +120,7 @@ function valueRecord(m) {
 }
 
 function fieldRecord(m) {
-  return common({ name: declaredName(m.name, m.signature), vis: m.vis, signature: m.signature }, m);
+  return common({ name: m.name, vis: m.vis, signature: m.signature }, m);
 }
 
 // The index in `types` of the type each is declared in, or -1: the nearest type

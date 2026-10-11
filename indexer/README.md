@@ -239,7 +239,8 @@ accessor?, hidden?, attrs?, description? }`: `kind` is `sub`, `function`,
 `Declare` statement, which is a `sub`, `function` or `property` as well;
 `returnType` is the type after the parameter list of a Function, a Property Get
 or a Delegate Function, without the `Implements`, `Overrides` or `Handles`
-clause that may follow it; `accessor` is `Get`, `Let` or `Set`. A member with no
+clause that may follow it, else the type the name's closing type-declaration
+character gives (`Function Size%()` returns `Integer`); `accessor` is `Get`, `Let` or `Set`. A member with no
 modifier is Public if it is a procedure, event, delegate or Declare in a Module
 or Class, Private if it is a variable or constant, and everything in an
 Interface, CoClass, Enum, Type or Union is Public (a Declare with no modifier is
@@ -247,8 +248,11 @@ Public in BETA 1005: another module calls it; a Class accepts only a Private
 Declare, TB5227). `hidden` is false for `[Hidden(False)]`, which hides nothing.
 A name declared in brackets
 keeps every character, as VBA's `Function [Chr$]` does; a type-declaration
-character on a name written without brackets is not part of it, so
-`Public Function Command$()` is `Command`.
+character (`%` Integer, `&` Long, `!` Single, `#` Double, `@` Currency, `$`
+String, `^` LongLong) on a name written without brackets is not part of it, so
+`Public Function Command$()` is `Command`, whatever it names: a Function, a
+Property Get, a Delegate, a Declare, a variable, a field or a constant. The
+`signature` keeps it as written.
 
 **A value** is `{ name, value?, hidden?, attrs?, description? }`, `value` the
 text after the `=`. **A field** is `{ name, vis, signature, hidden?, attrs?,
@@ -274,6 +278,15 @@ the module `mBSSubclass`). The `.tbform`, `.tbcontrol` and `.tbppage` files are
 JSON designer files with no declarations in them, and are skipped on purpose,
 as is everything outside `Sources/`. Text inside a `/* ... */` comment is not
 read.
+
+*Statements and identifiers.* A colon joins statements, and each is a declaration
+of its own, as BETA 1005 reads them: `Private x As Long: Private y As Long`,
+`Sub P(): End Sub: Sub Q(): End Sub`, `Class C: End Class`, `Enum E: A: B: End
+Enum`, `G = 1: H = 2`. A colon inside a string, brackets, parentheses or `:=` joins
+nothing, and a `[Attribute]` list belongs to the first statement after it. An
+identifier is made of the ASCII letters, digits and `_` and of every character
+past ASCII: `Größe`, `Café`, `日本語` are names, and so is `Publicé`, which is not
+the modifier `Public`.
 
 *Enumeration values written in brackets.* A line that is only `[Name]` in an
 Enum body is a value of that name, not an attribute of the next line: the

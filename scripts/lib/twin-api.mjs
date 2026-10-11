@@ -13,7 +13,7 @@
 // once, keeps no expression, and evaluates no #If: every branch of a conditional
 // is read, each as an alternative that starts from the block structure the #If
 // found (`branch`, below), and what it cannot place goes to `problems` rather than
-// being guessed at. Fifteen ways to misread this corpus, the first seven met in the
+// being guessed at. Eighteen ways to misread this corpus, the first seven met in the
 // BETA 983 packages (scripts/census_attributes.mjs lists six more, about
 // attributes):
 //
@@ -74,6 +74,16 @@
 //      (`stdole.IUnknown`), and `[Hidden(False)]` hides nothing.
 //  15. `Function F() As T Overrides Base.F` has a result type of T; the clause
 //      after it (`Implements`, `Overrides` or `Handles`) is not part of it.
+//  16. A colon joins statements, and every one is a declaration of its own:
+//      `Private x As Long: Private y As Long`, `Sub P(): End Sub: Sub Q(): End
+//      Sub`, `Class C: End Class`, `Enum E: A: B: End Enum`, `G = 1: H = 2`. The
+//      scanner reads each as a line (`statements`). BETA 1005 compiles them all.
+//  17. An identifier holds every character past ASCII, a no-break space and an
+//      emoji included: `Größe`, `Café`, `日本語`. `\b` is no boundary for it, so
+//      `Publicé` is a name and not the modifier `Public`; WORD_END is.
+//  18. A type-declaration character ends a name and gives its type: `Function
+//      Size%()` returns an Integer, `Public n&` is a Long, `FLL^` a LongLong. It
+//      is not part of the name, except in brackets (`Function [Chr$]`).
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -175,14 +185,15 @@ export function logicalLinesRaw(src) {
 
 // `text` with each run of white space outside a string literal made one space
 // and the ends trimmed, cut from `raw` so that the literals are as written. `text`
-// is the blanked form, in which a quote is always a literal's delimiter.
+// is the blanked form, in which a quote is always a literal's delimiter. White
+// space is ASCII's: a space past ASCII is part of an identifier (see WORD_END).
 function collapse(text, raw) {
   let out = "";
   let inStr = false;
   let gap = false;
   for (let k = 0; k < text.length; k++) {
     if (text[k] === '"') inStr = !inStr;
-    else if (!inStr && /\s/.test(text[k])) {
+    else if (!inStr && " \t\v\f".includes(text[k])) {
       gap = true;
       continue;
     }
@@ -193,10 +204,35 @@ function collapse(text, raw) {
   return out;
 }
 
-// Where the first statement of a line ends: the first `:` outside brackets that
-// is not the start of `:=`. `Function F() As Long: Return 1: End Function` is a
-// whole procedure on one line, and its declaration is what comes before the
-// colon.
+// The statements of a logical line, each as `{text, raw}`: the line cut at every `:`
+// outside brackets and parentheses that does not begin `:=` (a named argument). The
+// compiler reads `Private x As Long: Private y As Long`, `Const A = 1: Const B = 2`,
+// `Sub P(): End Sub: Sub Q(): End Sub`, `Class A: Inherits B`, `Class C: End Class`,
+// `G = 1: H = 2` and `Enum E: A: B: End Enum` as the lines they stand for (BETA
+// 1005), and `Done: End Sub` closes the procedure: a label is a statement of its
+// own. The contents of strings are blanked in `text`, so a colon inside one is
+// never seen.
+function statements(text, raw) {
+  const out = [];
+  let depth = 0;
+  let from = 0;
+  const cut = (to) => {
+    if (text.slice(from, to).trim()) out.push({ text: text.slice(from, to), raw: raw.slice(from, to) });
+    from = to + 1;
+  };
+  for (let k = 0; k < text.length; k++) {
+    const c = text[k];
+    if (c === "[" || c === "(") depth++;
+    else if ((c === "]" || c === ")") && depth > 0) depth--;
+    else if (c === ":" && depth === 0 && text[k + 1] !== "=") cut(k);
+  }
+  cut(text.length);
+  return out;
+}
+
+// Where the first statement of a text ends: the first `:` outside brackets that is
+// not the start of `:=`. A line is cut into statements before it is read, so this
+// finds a colon only in a text cut from the middle of one.
 function statementEnd(text) {
   let depth = 0;
   for (let k = 0; k < text.length; k++) {
@@ -342,47 +378,86 @@ function descriptionOf(attrs) {
 
 // ------------------------------------------------------------------ parsing
 
-const NAME = String.raw`(?:\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_]*[$%&!#@]?)`;
+// An identifier is made of the ASCII letters, digits and `_`, and of every
+// character past ASCII: BETA 1005 compiles `Größe`, `Café`, `日本語`, `x²`, `a−1`,
+// an emoji, and a no-break space inside a name, all as part of it. Only the first
+// character is more restricted, and only for a digit. So the classes below end at
+// U+FFFF, which takes a character outside the BMP as its two surrogates; and a
+// word boundary is spelt out, because `\b` treats a letter past ASCII as a
+// non-word character: `Publicé` is not the modifier `Public`.
+const WORD_END = String.raw`(?![A-Za-z0-9_\u0080-￿])`;
+const WORD_START = String.raw`(?<![A-Za-z0-9_\u0080-￿])`;
+// A name written without brackets may end in a type-declaration character, which
+// gives the type of what it names (`Function Size%()`, `Public n&`, `Const S$ =`).
+const NAME = String.raw`(?:\[[^\]]+\]|[A-Za-z_\u0080-￿][A-Za-z0-9_\u0080-￿]*[$%&!#@^]?)`;
 // `Dim` is read as a modifier too: what follows it is a field, as it is after
 // `Public`.
-const MODIFIER_RE = new RegExp(String.raw`^\s*(${MODIFIERS}|Dim)\b\s*`, "i");
+const MODIFIER_RE = new RegExp(String.raw`^\s*(${MODIFIERS}|Dim)${WORD_END}\s*`, "i");
 const TYPE_OPEN = new RegExp(String.raw`^(Module|Class|Interface|CoClass|Enum|Type|Union)\s+(${NAME})(.*)$`, "i");
-const TYPE_OR_PROC_END = /^End\s+(Sub|Function|Property|Module|Class|Interface|CoClass|Enum|Type|Union)\b/i;
+const TYPE_OR_PROC_END = new RegExp(
+  String.raw`^End\s+(Sub|Function|Property|Module|Class|Interface|CoClass|Enum|Type|Union)${WORD_END}`,
+  "i",
+);
 const DECLARE = new RegExp(
   String.raw`^(?:DeclareWide|Declare)\s+(?:PtrSafe\s+)?(Sub|Function|Property\s+(?:Get|Let|Set))\s+(${NAME})`,
   "i",
 );
 // `As` is never the name a procedure, event or constant declares: `Function As
 // Long` in a Type is a field called Function.
-const PROC = new RegExp(String.raw`^(Sub|Function|Property\s+(?:Get|Let|Set))\s+(?!As\b)(${NAME})`, "i");
-const EVENT = new RegExp(String.raw`^Event\s+(?!As\b)(${NAME})`, "i");
+const PROC = new RegExp(String.raw`^(Sub|Function|Property\s+(?:Get|Let|Set))\s+(?!As${WORD_END})(${NAME})`, "i");
+const EVENT = new RegExp(String.raw`^Event\s+(?!As${WORD_END})(${NAME})`, "i");
 const DELEGATE = new RegExp(String.raw`^Delegate\s+(Sub|Function)\s+(${NAME})`, "i");
-const CONST = /^Const\s+(?!As\b)(.*)$/i;
+const CONST = new RegExp(String.raw`^Const\s+(?!As${WORD_END})(.*)$`, "i");
 const ALIAS = new RegExp(String.raw`^Alias\s+(${NAME})\s+As\s+(\S.*)$`, "i");
 const LEADING_NAME = new RegExp(String.raw`^\s*(${NAME})`);
 // A name that may be qualified by a package or a type, `stdole.IUnknown`, with
 // no type-declaration character: what `Inherits`, `Implements` and a CoClass's
 // `Interface` lines name.
-const QNAME = String.raw`(?:\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_]*)(?:\.(?:\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_]*))*`;
+const QNAME = String.raw`(?:\[[^\]]+\]|[A-Za-z_\u0080-￿][A-Za-z0-9_\u0080-￿]*)(?:\.(?:\[[^\]]+\]|[A-Za-z_\u0080-￿][A-Za-z0-9_\u0080-￿]*))*`;
 const LISTED_NAME = new RegExp(String.raw`^\s*(?:WithEvents\s+)?(${QNAME})`, "i");
 const COCLASS_INTERFACE = new RegExp(String.raw`^Interface\s+(${QNAME})`, "i");
 // A field is a name, then a dimension list, `As`, an initialiser (`Public n& = 0`,
 // `Dim p = 5`: legal in a Module and a Class, a Variant with the warning TB0003
 // unless a suffix gives the type; a Type takes no initialiser), or nothing
 // (`Public r`, a Variant).
-const FIELD = new RegExp(String.raw`^\s*(${NAME})\s*(\(|As\b|=|$)`, "i");
+const FIELD = new RegExp(String.raw`^\s*(${NAME})\s*(\(|As${WORD_END}|=|$)`, "i");
 const ENUM_VALUE = new RegExp(String.raw`^(${NAME})\s*(=|$)`);
-// A procedure whose body and `End` are on its own line: `Function F() As Long:
-// Return 1: End Function`. It opens nothing.
-const ONE_LINE_PROC = /:\s*End\s+(?:Sub|Function|Property)\s*$/i;
 // A line of conditional compilation that bears on block structure; #Const,
 // #Region and the rest are skipped.
-const CONDITIONAL = /^\s*#\s*(ElseIf|Else|End\s*If|If)\b/i;
+const CONDITIONAL = new RegExp(String.raw`^\s*#\s*(ElseIf|Else|End\s*If|If)${WORD_END}`, "i");
+// What follows a modifier word that makes it the declaration's own name.
+const AFTER_MODIFIER_NAME = new RegExp(String.raw`^(As${WORD_END}|\(|=|$)`, "i");
+const EXTENDS = new RegExp(String.raw`${WORD_START}Extends\s+([A-Za-z0-9_.[\]\u0080-￿]+)`, "i");
+// `Alias As Long` in a Type is a field called Alias.
+const ALIAS_STATEMENT = new RegExp(String.raw`^Alias\s+(?!As${WORD_END})`, "i");
+const FILE_LEVEL = new RegExp(String.raw`^(Option|Imports|Import\s+Library)${WORD_END}`, "i");
+const BASE_LIST = new RegExp(String.raw`^(Inherits|Implements)\s+(?!As${WORD_END})`, "i");
+const AS_WORD = new RegExp(String.raw`${WORD_START}As${WORD_END}`, "i");
+const GENERIC_LIST = new RegExp(String.raw`^\(\s*Of${WORD_END}`, "i");
+// The clauses that may follow a result type: `Implements IFoo.F`, `Overrides Base.F`
+// and `Handles Form.Load`.
+const BINDING_CLAUSE = new RegExp(String.raw`\s(?:Implements|Overrides|Handles)${WORD_END}`, "i");
 
 // Types whose procedures have bodies, and so an `End Sub` to wait for.
 const WITH_BODIES = new Set(["module", "class", "type", "union"]);
 
 const unbracket = (name) => name.replace(/^\[(.*)\]$/, "$1");
+
+// The type a name's closing character gives: `Function Size%()` returns an Integer.
+// BETA 1005 accepts these seven on a function, a Property Get, a delegate, a Declare,
+// a variable, a field and a constant; on a Sub, a Property Let or Set and an Event it
+// refuses one (TB5204), and with an `As` clause as well (TB5171). A name in brackets
+// takes the character as part of itself, as VBA's `Function [Chr$]` does.
+const TYPE_CHAR_TYPES = {
+  "%": "Integer",
+  "&": "Long",
+  "!": "Single",
+  "#": "Double",
+  "@": "Currency",
+  $: "String",
+  "^": "LongLong",
+};
+const typeCharOf = (rawName) => (rawName[0] === "[" ? null : (TYPE_CHAR_TYPES[rawName.at(-1)] ?? null));
 
 function kindOf(keyword) {
   const k = keyword.toLowerCase();
@@ -420,13 +495,15 @@ function kindOf(keyword) {
  *     Lib and Alias; a Const keeps its `= value`, an enumeration value its own,
  *     a type its `Extends`. Of several names declared by one statement
  *     (`Public A, B As Long`), each gets the statement's modifiers before its
- *     own piece. A procedure whose body shares its line stops at the colon.
+ *     own piece. A statement ends at a colon outside brackets and parentheses.
  *   - `description` is the text of its `[Description(...)]`: a literal, or
  *     literals joined by `&` with the line-break constants (written \n); null
  *     when it has none or is not made of those.
  *   - `returnType` is the type after the parameter list of a Function, a
- *     Property Get or a Delegate Function; `accessor` is Get, Let or Set for a
- *     property procedure. Both are null where they do not apply.
+ *     Property Get or a Delegate Function, else the type the name's closing
+ *     type-declaration character gives (`Function Size%()` is Integer), which is
+ *     then left off the name; `accessor` is Get, Let or Set for a property
+ *     procedure. Both are null where they do not apply.
  */
 export function parseTwin(src, file = "") {
   const lines = logicalLinesRaw(src);
@@ -499,23 +576,40 @@ export function parseTwin(src, file = "") {
     );
   };
 
-  for (let li = 0; li < lines.length; li++) {
-    let { text, raw } = lines[li];
-    const { line } = lines[li];
-    const conditional = CONDITIONAL.exec(text);
-    if (conditional) {
-      branch(conditional[1], line);
+  // A logical line holds several statements when they are joined by colons
+  // (`Private x As Long: Private y As Long`, `Enum E: A: B: End Enum`), and each is
+  // read as a line of its own. The ones of the current line still to come wait here.
+  let queue = [];
+  let queueLine = 0;
+  for (let li = 0; li < lines.length || queue.length; ) {
+    if (!queue.length) {
+      const logical = lines[li++];
+      const conditional = CONDITIONAL.exec(logical.text);
+      if (conditional) {
+        branch(conditional[1], logical.line);
+        continue;
+      }
+      if (!logical.text.trim() || /^\s*#/.test(logical.text)) continue; // #Region, #Const
+      queue = statements(logical.text, logical.raw);
+      queueLine = logical.line;
       continue;
     }
-    if (!text.trim() || /^\s*#/.test(text)) continue; // #Region, #Const
+    let { text, raw } = queue.shift();
+    const line = queueLine;
 
     const openKind = stack[stack.length - 1]?.type?.kind;
     const inEnum = openKind === "enum";
     const inType = openKind === "type" || openKind === "union";
     let split = splitAttributes(text, raw, inEnum, inType);
-    while (split.open && li + 1 < lines.length) {
-      text += " " + lines[++li].text;
-      raw += " " + lines[li].raw;
+    if (split.open && !queue.length && li < lines.length) {
+      // An attribute list that goes on over the next lines. Once closed, what the
+      // joined text holds after it may be statements of their own.
+      while (split.open && li < lines.length) {
+        text += " " + lines[li].text;
+        raw += " " + lines[li++].raw;
+        split = splitAttributes(text, raw, inEnum, inType);
+      }
+      [{ text, raw }, ...queue] = statements(text, raw);
       split = splitAttributes(text, raw, inEnum, inType);
     }
     pending.push(...split.attrs);
@@ -557,7 +651,7 @@ export function parseTwin(src, file = "") {
     const modifiers = [];
     for (let m; (m = MODIFIER_RE.exec(decl)); ) {
       const after = decl.slice(m[0].length);
-      if ((modifiers.length || bareNames) && /^(As\b|\(|=|$)/i.test(after)) break;
+      if ((modifiers.length || bareNames) && AFTER_MODIFIER_NAME.test(after)) break;
       modifiers.push(m[1].toLowerCase());
       at += m[0].length;
       decl = after;
@@ -628,7 +722,7 @@ export function parseTwin(src, file = "") {
         inherits: [],
         implements: [],
         interfaces: [],
-        extends: /\bExtends\s+([\w.[\]]+)/i.exec(open[3])?.[1] ?? null,
+        extends: EXTENDS.exec(open[3])?.[1] ?? null,
         signature: sig(),
         attrs,
         description: descriptionOf(attrs),
@@ -639,7 +733,7 @@ export function parseTwin(src, file = "") {
     }
 
     // `Alias As Long` in a Type is a field called Alias.
-    if (/^Alias\s+(?!As\b)/i.test(decl)) {
+    if (ALIAS_STATEMENT.test(decl)) {
       const a = ALIAS.exec(decl);
       if (!a) {
         problems.push({ file, line, why: `not an alias: ${rest.slice(0, 60)}` });
@@ -663,8 +757,7 @@ export function parseTwin(src, file = "") {
       continue;
     }
     if (!parent) {
-      if (!/^(Option|Imports|Import\s+Library)\b/i.test(decl))
-        problems.push({ file, line, why: `outside any type: ${rest.slice(0, 60)}` });
+      if (!FILE_LEVEL.test(decl)) problems.push({ file, line, why: `outside any type: ${rest.slice(0, 60)}` });
       continue;
     }
 
@@ -672,7 +765,7 @@ export function parseTwin(src, file = "") {
     // `Inherits A, B` and `Implements A, B` name every type they list. An
     // `Implements` item may be `WithEvents T` or end in `Via member = New T(...)`,
     // and neither is part of the name.
-    if ((m = /^(Inherits|Implements)\s+(?!As\b)/i.exec(decl))) {
+    if ((m = BASE_LIST.exec(decl))) {
       const list = decl.slice(m[0].length);
       const names = topLevelPieces(list.slice(0, statementEnd(list)))
         .map(([a, b]) => LISTED_NAME.exec(list.slice(a, b))?.[1])
@@ -701,7 +794,7 @@ export function parseTwin(src, file = "") {
         hidden,
         line,
         "public",
-        info(sig(), shapeOf(m[1], decl, declRaw, m[0].length)),
+        info(sig(), shapeOf(m[1], decl, declRaw, m[0].length, m[2])),
       );
       continue;
     }
@@ -714,10 +807,9 @@ export function parseTwin(src, file = "") {
         hidden,
         line,
         "public",
-        info(sig(), shapeOf(m[1], decl, declRaw, m[0].length)),
+        info(sig(), shapeOf(m[1], decl, declRaw, m[0].length, m[2])),
       );
-      if (WITH_BODIES.has(parent.kind) && !modifiers.includes("mustoverride") && !ONE_LINE_PROC.test(rest))
-        stack.push({ proc: true });
+      if (WITH_BODIES.has(parent.kind) && !modifiers.includes("mustoverride")) stack.push({ proc: true });
       continue;
     }
     if ((m = EVENT.exec(decl))) {
@@ -733,7 +825,7 @@ export function parseTwin(src, file = "") {
         hidden,
         line,
         "public",
-        info(sig(), shapeOf(m[1], decl, declRaw, m[0].length)),
+        info(sig(), shapeOf(m[1], decl, declRaw, m[0].length, m[2])),
       );
       continue;
     }
@@ -780,7 +872,10 @@ export function parseTwin(src, file = "") {
   // public. A member of an alternative type (see `branch`) is added to each.
   function add(type, rawName, kind, vis, hidden, line, fallback, extra) {
     const implicit = ["interface", "coclass", "enum", "type", "union"].includes(type.kind) ? "public" : fallback;
-    const member = { name: unbracket(rawName), kind, vis: vis ?? implicit, hidden, line, ...extra };
+    // A type-declaration character is part of a name written without brackets only as
+    // a hint to its type; an enumeration value has none.
+    const name = kind !== "enumvalue" && typeCharOf(rawName) ? rawName.slice(0, -1) : unbracket(rawName);
+    const member = { name, kind, vis: vis ?? implicit, hidden, line, ...extra };
     type.members.push(member);
     for (const alt of stack.findLast((s) => s.type === type)?.alts ?? []) alt.members.push({ ...member });
   }
@@ -810,11 +905,15 @@ function topLevelPieces(s) {
 // returns. `keyword` is `Sub`, `Function` or `Property Get` as written, and the
 // name ends at `nameEnd` in `decl`, the declaration after its modifiers, with
 // `declRaw` its twin from logicalLinesRaw.
-function shapeOf(keyword, decl, declRaw, nameEnd) {
+function shapeOf(keyword, decl, declRaw, nameEnd, rawName) {
   const [word, accessor] = keyword.toLowerCase().split(/\s+/);
   const kind = word === "property" ? accessor[0].toUpperCase() + accessor.slice(1) : null;
   const hasResult = word === "function" || kind === "Get";
-  return { returnType: hasResult ? returnTypeOf(decl.slice(nameEnd), declRaw.slice(nameEnd)) : null, accessor: kind };
+  // The type is the `As` clause's, else the one the name's last character gives.
+  const returnType = hasResult
+    ? (returnTypeOf(decl.slice(nameEnd), declRaw.slice(nameEnd)) ?? typeCharOf(rawName))
+    : null;
+  return { returnType, accessor: kind };
 }
 
 // The type after `As` that follows a parameter list, in the text after a
@@ -829,7 +928,7 @@ function returnTypeOf(text, raw) {
   let listed = false;
   for (;;) {
     const open = text.indexOf("(", from);
-    if (open < 0 || /\bAs\b/i.test(text.slice(from, open))) break;
+    if (open < 0 || AS_WORD.test(text.slice(from, open))) break;
     let depth = 0;
     let k = open;
     for (; k < text.length; k++) {
@@ -838,7 +937,7 @@ function returnTypeOf(text, raw) {
     }
     if (k >= text.length) return null;
     listed = true;
-    const generic = /^\(\s*Of\b/i.test(text.slice(open));
+    const generic = GENERIC_LIST.test(text.slice(open));
     from = k + 1;
     if (!generic) break;
   }
@@ -849,7 +948,7 @@ function returnTypeOf(text, raw) {
   let end = statementEnd(type);
   // The binding clauses that may follow the type are not part of it: `Implements
   // IFoo.F`, `Overrides Base.F` and `Handles Form.Load`.
-  const clauseAt = /\s(?:Implements|Overrides|Handles)\b/i.exec(type.slice(0, end));
+  const clauseAt = BINDING_CLAUSE.exec(type.slice(0, end));
   if (clauseAt) end = clauseAt.index;
   return collapse(type.slice(0, end), raw.slice(start, start + end)) || null;
 }

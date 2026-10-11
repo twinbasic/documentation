@@ -119,6 +119,14 @@ for (const [decl, container, want] of [
   ["Dim Count As Long", "Module", "Variable"],
   ["Private WithEvents Source As Foo", "Class", "Variable"],
   ["End Sub", "Class", null],
+  // Every character past ASCII is part of an identifier (BETA 1005): a name that
+  // starts with a keyword and goes on past ASCII is not the keyword.
+  ["Public Caf\u{E9} As Long", "Class", "Variable"],
+  ["Public Class\u{E9} As Long", "Module", "Variable"],
+  ["Class\u{E9} As Long", "Type", "TypeMember"],
+  ["Gr\u{FC}n = 1", "Enum", "EnumMember"],
+  ["Const Gr\u{F6}\u{DF}e = 1", "Module", "Const"],
+  ["Public Sub \u{65E5}\u{672C}\u{8A9E}()", "Module", "Sub"],
 ]) {
   const got = declarationKind(decl, container);
   check(`declarationKind: ${decl} in ${container} is ${want}`, got === want, `got ${got}`);

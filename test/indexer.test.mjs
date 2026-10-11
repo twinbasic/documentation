@@ -406,6 +406,49 @@ describe("buildApi on a hand-made package", () => {
     const tick = find(api, "Api").members[0];
     assert.deepEqual([tick.name, tick.vis, tick.declare], ["Tick", "public", true]);
   });
+
+  test("colon-joined declarations, names past ASCII and type characters reach the snapshot", () => {
+    const { api } = buildApi({
+      symbol: "Forms2",
+      version: "1",
+      files: [
+        file(
+          "Sources/Forms2.twin",
+          lines(
+            "Public Module Gr\u{F6}\u{DF}e",
+            "    Private x As Long: Private y As Long",
+            "    Public Sub P(): End Sub: Public Sub Q(): End Sub",
+            '    Public Function Size%(): Return 1: End Function: Public Function Name$(): Return "a": End Function',
+            "    Public Caf\u{E9} As Long: Public Const Pi& = 3",
+            "    Public Enum E: A: B = 5: End Enum",
+            "End Module",
+            "Public Class C: End Class",
+          ),
+        ),
+      ],
+    });
+    assert.deepEqual(api.problems, []);
+    assert.deepEqual(
+      api.types.map((t) => t.name),
+      ["C", "Gr\u{F6}\u{DF}e", "E"],
+    );
+    const mod = find(api, "Gr\u{F6}\u{DF}e");
+    assert.deepEqual(
+      mod.members.map((m) => `${m.name}:${m.kind}:${m.returnType ?? "-"}`),
+      [
+        "Caf\u{E9}:field:-",
+        "Name:function:String",
+        "P:sub:-",
+        "Pi:const:-",
+        "Q:sub:-",
+        "Size:function:Integer",
+        "x:field:-",
+        "y:field:-",
+      ],
+    );
+    assert.equal(mod.members.find((m) => m.name === "Size").signature, "Public Function Size%()");
+    assert.deepEqual(find(api, "Gr\u{F6}\u{DF}e.E").values, [{ name: "A" }, { name: "B", value: "5" }]);
+  });
 });
 
 describe("buildApi on the files of a package", () => {

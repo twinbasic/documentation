@@ -1009,7 +1009,7 @@ const show = (x) => JSON.stringify(x);
     "a variable with an initialiser and no As is a field, with its visibility",
     problems.length === 0 &&
       show(mod?.members.map((m) => `${m.name}:${m.vis}`)) ===
-        show(["gdiPlusRefCount&:public", "p:private", "q:private", "r:private", "s:private", "t:public"]) &&
+        show(["gdiPlusRefCount:public", "p:private", "q:private", "r:private", "s:private", "t:public"]) &&
       mod.members[0].signature === "Public gdiPlusRefCount& = 0" &&
       mod.members[3].signature === 'Private r As Long = Foo(1, ")")' &&
       show(cls?.members.map((m) => `${m.name}:${m.vis}`)) === show(["c1:public", "c2:private"]),
@@ -1403,6 +1403,284 @@ const show = (x) => JSON.stringify(x);
       projectNameOf(null) === null &&
       parseSources([], null).project === null,
     show(projectNameOf('{"project.id": "{1}"}')),
+  );
+}
+
+// ------------------------------------------------------------ colons, identifiers, type characters
+//
+// The second hardening step. Each form below was put to BETA 1005 first (tbrun, compile cases and a
+// run that prints), and the answers are in the comments.
+
+{
+  // All of these compile, and a run shows the values in place: `x=5 y=6`, `G=1 H=2 B=1`. An Enum, a
+  // Type and a nested Class are written inside a Module; at the top of a file an Enum is TB5182.
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      "    Private x As Long: Private y As Long",
+      "    Const A = 1: Const B = 2",
+      "    Public Sub P(): End Sub: Public Sub Q(): End Sub",
+      "    Public Function F() As Long: Return 1: End Function: Public Function G() As Long: Return 2: End Function",
+      "    Public Property Get PG() As Long: PG = 1: End Property: Public Property Let PG(ByVal v As Long): End Property",
+      '    Private Declare PtrSafe Function Tick Lib "kernel32" Alias "GetTickCount" () As Long: Public Event E1(): Public Event E2()',
+      "    Public Sub After(): End Sub",
+      "End Module",
+    ].join("\n"),
+  );
+  const m = types[0];
+  check(
+    "declarations joined by colons are each read, and an End on the same line closes its procedure",
+    problems.length === 0 &&
+      show(m?.members.map((t) => `${t.name}:${t.kind}:${t.vis}`)) ===
+        show([
+          "x:field:private",
+          "y:field:private",
+          "A:const:private",
+          "B:const:private",
+          "P:sub:public",
+          "Q:sub:public",
+          "F:function:public",
+          "G:function:public",
+          "PG:property:public",
+          "PG:property:public",
+          "Tick:function:private",
+          "E1:event:public",
+          "E2:event:public",
+          "After:sub:public",
+        ]) &&
+      show(m.members.filter((t) => t.kind === "function").map((t) => t.returnType)) ===
+        show(["Long", "Long", "Long"]) &&
+      m.members[2].signature === "Const A = 1" &&
+      m.members[3].signature === "Const B = 2" &&
+      m.members[8].signature === "Public Property Get PG() As Long" &&
+      m.members[9].accessor === "Let",
+    show({ problems, members: m?.members.map((t) => [t.name, t.kind, t.signature]) }),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "Public Class BaseC: End Class",
+      "Public Class DerC: Inherits BaseC",
+      "    Public v As Long: Public w As Long",
+      "End Class",
+      "Public Module ModOne: End Module",
+      "Public Interface IOne: End Interface",
+      "Public Interface ITwo: Sub S(): End Interface",
+      "Module Outer",
+      "    Public Enum EnumA",
+      "        G = 1: H = 2",
+      "    End Enum",
+      "    Public Enum EnumB: A: B: End Enum",
+      "    Public Enum EnumC: A = 1: B = 2: End Enum",
+      "    Public Type Ty1: x As Long: y As Long: End Type",
+      "    Public Sub After(): End Sub",
+      "End Module",
+    ].join("\n"),
+  );
+  const t = (n) => types.find((x) => x.name === n);
+  const names = (n) => show(t(n)?.members.map((x) => x.name));
+  check(
+    "a Class, a Module, an Interface, an Enum and a Type opened and closed on one line are each read, with what is joined to them",
+    problems.length === 0 &&
+      show(types.map((x) => x.name)) ===
+        show(["BaseC", "DerC", "ModOne", "IOne", "ITwo", "Outer", "EnumA", "EnumB", "EnumC", "Ty1"]) &&
+      show(t("DerC").inherits) === show(["BaseC"]) &&
+      names("DerC") === show(["v", "w"]) &&
+      names("ITwo") === show(["S"]) &&
+      names("EnumA") === show(["G", "H"]) &&
+      names("EnumB") === show(["A", "B"]) &&
+      names("EnumC") === show(["A", "B"]) &&
+      t("EnumC").members[1].signature === "B = 2" &&
+      names("Ty1") === show(["x", "y"]) &&
+      t("Ty1").container === "Outer" &&
+      names("Outer") === show(["After"]),
+    show({ problems, types: types.map((x) => [x.name, x.container, x.members.map((y) => y.name)]) }),
+  );
+}
+
+{
+  // `Done: End Sub` compiles (the label is TB0032, a warning), as does a statement before an End on a
+  // body's last line. A label is a statement of its own.
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      "    Public Sub S1()",
+      "        Dim a As Long",
+      "        a = 1: End Sub",
+      "    Public Sub S2()",
+      "Done: End Sub",
+      "    Public Function F2() As Long",
+      "        F2 = 1: End Function",
+      "    Public Sub After(): End Sub",
+      "End Module",
+    ].join("\n"),
+  );
+  check(
+    "an End Sub after a statement or a label on a body's last line closes it",
+    problems.length === 0 && show(types[0]?.members.map((x) => x.name)) === show(["S1", "S2", "F2", "After"]),
+    show({ problems, members: types[0]?.members.map((x) => x.name) }),
+  );
+}
+
+{
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      '    [Description("a: b")] Public Sub S1(): End Sub',
+      "    [Hidden] Public Sub S2(): End Sub: Public Sub S3(): End Sub",
+      "    Public Const K = Foo(a:=1, b:=2): Public Const L = 2",
+      "    Public [A:B] As Long: Public C As Long",
+      "End Module",
+    ].join("\n"),
+  );
+  const mem = (n) => types[0]?.members.find((x) => x.name === n);
+  check(
+    "a colon in a string, in brackets or in := splits nothing, and an attribute list goes to the first statement only",
+    problems.length === 0 &&
+      show(types[0]?.members.map((x) => x.name)) === show(["S1", "S2", "S3", "K", "L", "A:B", "C"]) &&
+      mem("S1")?.description === "a: b" &&
+      mem("S2")?.hidden === true &&
+      mem("S3")?.hidden === false &&
+      mem("K")?.signature === "Public Const K = Foo(a:=1, b:=2)",
+    show({ problems, members: types[0]?.members.map((x) => [x.name, x.signature, x.hidden]) }),
+  );
+}
+
+{
+  // BETA 1005 takes every character past ASCII as part of an identifier, including a no-break space,
+  // an emoji and a minus sign: `Public x<NBSP>y As Long` declares one variable, and `Public<NBSP>x As
+  // Long` is a syntax error. The word boundary of a keyword is the end of the identifier, so
+  // `Publicé` is a name and `Public Asé As Long` declares one called Asé.
+  const E = "é";
+  const emoji = String.fromCodePoint(0x1f600);
+  const { types, problems } = parseTwin(
+    [
+      "Module Größe",
+      "    Public Caf" + E + " As Long",
+      "    Public Sub Z" + "ä" + "hle(): End Sub",
+      "    Public Function 日本語() As Long: 日本語 = 7: End Function",
+      "    Public Enum Farbe",
+      "        Grün = 1",
+      "        Rot",
+      "    End Enum",
+      "    Public Type Pünkt",
+      "        Zähler As Long",
+      "        Dim" + E + " As Long",
+      "    End Type",
+      "    Public Const Pi" + E + " As Long = 3",
+      '    Public Declare PtrSafe Function Grüße Lib "kernel32" Alias "GetTickCount" () As Long',
+      "    Public Publicé As Long",
+      "    Public Asé As Long",
+      "    Public x" + String.fromCodePoint(0xa0) + "y As Long",
+      "    Public a" + String.fromCodePoint(0x2212) + "1 As Long",
+      "    Public v" + emoji + " As Long",
+      "    Public Function Classé(ByVal x As Long) As Longé",
+      "    End Function",
+      "End Module",
+      "Class Süßes",
+      "    Inherits Bäse, Pkg.Fülle",
+      "    Implements IÜber",
+      "    Public Event Geändert()",
+      "End Class",
+      "Interface IÜber2 Extends IBäse",
+      "End Interface",
+      "CoClass Küche",
+      "    [Default] Interface Pkg.IKüche",
+      "End CoClass",
+    ].join("\n"),
+  );
+  const t = (n) => types.find((x) => x.name === n);
+  check(
+    "identifiers hold every character past ASCII, in a type's, a member's, an enumeration value's and a field's name",
+    problems.length === 0 &&
+      show(types.map((x) => x.name)) === show(["Größe", "Farbe", "Pünkt", "Süßes", "IÜber2", "Küche"]) &&
+      show(t("Größe").members.map((x) => x.name)) ===
+        show([
+          "Caf" + E,
+          "Zähle",
+          "日本語",
+          "Pi" + E,
+          "Grüße",
+          "Publicé",
+          "Asé",
+          "x" + String.fromCodePoint(0xa0) + "y",
+          "a" + String.fromCodePoint(0x2212) + "1",
+          "v" + emoji,
+          "Classé",
+        ]) &&
+      t("Größe").members[2].returnType === "Long" &&
+      t("Größe").members.at(-1).returnType === "Longé" &&
+      show(t("Farbe").members.map((x) => x.name)) === show(["Grün", "Rot"]) &&
+      show(t("Pünkt").members.map((x) => x.name)) === show(["Zähler", "Dim" + E]) &&
+      show(t("Süßes").inherits) === show(["Bäse", "Pkg.Fülle"]) &&
+      show(t("Süßes").implements) === show(["IÜber"]) &&
+      t("Süßes").members[0].name === "Geändert" &&
+      t("IÜber2").extends === "IBäse" &&
+      t("Küche").interfaces[0].name === "Pkg.IKüche",
+    show({ problems, types: types.map((x) => [x.name, x.members.map((y) => y.name)]) }),
+  );
+}
+
+{
+  // BETA 1005: a type-declaration character after a name gives its type, on a Function, a Property
+  // Get, a Delegate, a Declare, a variable, a field and a constant (`Function F%()` returns an Integer;
+  // `^` is LongLong); it is refused with an `As` clause (TB5171) and on a Sub, a Property Let or Set and
+  // an Event (TB5204). It is not part of the name, unless the name is in brackets.
+  const { types, problems } = parseTwin(
+    [
+      "Module M",
+      "    Public Function FInt%(): End Function",
+      "    Public Function FLong&(ByVal a As Long): End Function",
+      "    Public Function FSng!(): End Function",
+      "    Public Function FDbl#(): End Function",
+      "    Public Function FCur@(): End Function",
+      "    Public Function FStr$(): End Function",
+      "    Public Function FLL^(): End Function",
+      "    Public Property Get PInt%(): End Property",
+      "    Public Property Let PInt(ByVal v As Long): End Property",
+      '    Private Declare PtrSafe Function GetTick& Lib "kernel32" Alias "GetTickCount" ()',
+      "    Public Delegate Function Dlg%()",
+      "    Public Function Plain() As Long: End Function",
+      "    Public Function [Chr$](ByVal c As Long) As String: End Function",
+      "    Public vInt%, vLong&, vStr$",
+      "    Public vSng!, vDbl#, vCur@, vLL^",
+      "    Public Const cInt% = 1",
+      '    Public Const cStr$ = "x", cPow = 2 ^ 3',
+      "    Public Sub S(): End Sub",
+      "    Public Type T",
+      "        n% As Integer",
+      "    End Type",
+      "End Module",
+    ].join("\n"),
+  );
+  const mem = (n) => types[0]?.members.find((x) => x.name === n);
+  const ret = (...ns) => show(ns.map((n) => mem(n)?.returnType));
+  check(
+    "a type-declaration character on a name is left off it and gives the return type",
+    problems.length === 0 &&
+      ret("FInt", "FLong", "FSng", "FDbl", "FCur", "FStr", "FLL") ===
+        show(["Integer", "Long", "Single", "Double", "Currency", "String", "LongLong"]) &&
+      mem("PInt")?.returnType === "Integer" &&
+      mem("PInt")?.signature === "Public Property Get PInt%()" &&
+      mem("GetTick")?.returnType === "Long" &&
+      mem("Dlg")?.returnType === "Integer" &&
+      mem("FInt")?.signature === "Public Function FInt%()" &&
+      show(
+        ["vInt", "vLong", "vStr", "vSng", "vDbl", "vCur", "vLL", "cInt", "cStr", "cPow", "S"].map((n) => !!mem(n)),
+      ) === show(Array(11).fill(true)) &&
+      mem("vLL")?.signature === "Public vLL^" &&
+      mem("cPow")?.signature === "Public Const cPow = 2 ^ 3" &&
+      mem("Plain")?.returnType === "Long" &&
+      mem("S")?.returnType === null &&
+      show(types[1]?.members.map((x) => x.name)) === show(["n"]),
+    show({ problems, members: types[0]?.members.map((x) => [x.name, x.returnType]) }),
+  );
+  check(
+    "a name in brackets keeps its character, as VBA's Function [Chr$] does",
+    mem("Chr$")?.returnType === "String" && mem("Chr") === undefined,
+    show(types[0]?.members.map((x) => x.name)),
   );
 }
 
