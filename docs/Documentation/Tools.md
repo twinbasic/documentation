@@ -10,7 +10,7 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-Reference for every executable in the documentation repository. This page covers the nine Windows batch wrappers at the repository root, the conventions every command-line tool shares, and the configuration files the tools read. The tools themselves --- the Node and Python scripts under `scripts/`, the one twinBASIC program there, [`imagestrip`](Tools-IDE#imagestrip), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver --- are on seven pages, grouped by what they work on. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
+Reference for every executable in the documentation repository. This page covers the nine Windows batch wrappers at the repository root, the conventions every command-line tool shares, and the configuration files the tools read. The tools themselves --- the Node and Python scripts under `scripts/`, the twinBASIC program [`imagestrip`](Tools-IDE#imagestrip), `tbdocs` and its flags, and the PDF render driver --- are on seven pages, grouped by what they work on. For the day-to-day workflow, see [Building and Deployment](Building). To modify the build pipeline, see [tbdocs Internals](Builder).
 
 * TOC goes here
 {:toc}
@@ -29,12 +29,32 @@ Reference for every executable in the documentation repository. This page covers
 
 ## Command-line conventions
 
-Every Node tool answers `--help` or `-h` by printing its usage to standard output and exiting 0, without doing any of its work. A command line a tool cannot use is refused the same way by every Node tool: an unknown flag, a flag without its value or with an empty one, and an unexpected argument are reported on standard error and exit **2**. So is a crash. So is a value a tool cannot use, before it does any work: a number that is not one or is out of range (a fraction where a whole number is needed), a regular expression that does not compile, a URL that is not an absolute `http` or `https` one, a date that is not ISO 8601, a value outside a fixed set, and options that exclude each other. A tool that reads its command line through `lib/cli.mjs` and takes search terms, file names or folder names takes one that starts with a dash after `--`.
+Every Node tool answers `--help` or `-h` by printing its usage to standard output and exiting 0, without doing any work.
+
+Every Node tool refuses an unusable command line the same way: it reports the problem on standard error and exits **2**, before doing any work. A crash also exits 2. The refused cases are:
+
+- an unknown flag, a flag without its value or with an empty one, and an unexpected argument;
+- a number that is not a number, is out of range, or is a fraction where a whole number is needed;
+- a regular expression that does not compile;
+- a URL that is not an absolute `http` or `https` one;
+- a date that is not ISO 8601;
+- a value outside a fixed set;
+- options that exclude each other.
+
+A tool that reads its command line through `lib/cli.mjs` and takes search terms, file names or folder names accepts one that starts with a dash after `--`.
 
 ## Batch wrappers at the repository root
 {: #batch-wrappers }
 
-All nine sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](Tools-Build#bookrender-bookmjs) are all resolved against the working directory. `examples.bat`, `addin-test.bat`, `ide-test.bat` and `try-help-addin.bat` are the exceptions to "each entry below gives the POSIX equivalent": they need a twinBASIC install and drive the IDE, so they are Windows-only, and none is part of the site build. Four other tools are Windows-specific for the same reason and are likewise not part of it: [`scripts/tbbuild.mjs`](Tools-Compiler#tbbuild) and [`scripts/tbrun.mjs`](Tools-Compiler#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](Tools-Samples#census-attributes) and [`build_package_api.mjs`](Tools-Build#build-package-api), which unpack the packages of a twinBASIC install --- though those two are cross-platform when given an already-exported tree with `--exported`. [`imagestrip`](Tools-IDE#imagestrip) is a twinBASIC program, so it runs only on Windows too, and it is not part of the build either. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh), which guards against a failure mode CI cannot have.
+All nine sit at the repository root, beside `package.json`. Each uses `@pushd "%~dp0"` to run from that root wherever it is invoked, and each entry below gives the POSIX equivalent of what it runs. The equivalents have no `pushd`, so **run them from the repository root**: `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy)'s default source root and every path given to [`render-book.mjs`](Tools-Build#bookrender-bookmjs) resolve against the working directory.
+
+`examples.bat`, `addin-test.bat`, `ide-test.bat` and `try-help-addin.bat` have no POSIX equivalent. They need a twinBASIC install and drive the IDE, so they run only on Windows and are not part of the site build. Four other tools are Windows-specific for the same reason and are not part of the build either:
+
+- [`scripts/tbbuild.mjs`](Tools-Compiler#tbbuild) and [`scripts/tbrun.mjs`](Tools-Compiler#tbrun) drive the twinBASIC IDE.
+- [`census_attributes.mjs`](Tools-Samples#census-attributes) and [`build_package_api.mjs`](Tools-Build#build-package-api) unpack the packages of a twinBASIC install. Both are cross-platform when given an already-exported tree with `--exported`.
+- [`imagestrip`](Tools-IDE#imagestrip) is a twinBASIC program.
+
+`tbdocs` and every gate in both wrappers is a Node script. CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh), which guards against a failure CI cannot have.
 
 ### build.bat
 
@@ -44,13 +64,13 @@ POSIX:
 
     node builder/tbdocs.mjs --src docs --check-audit-index [extra tbdocs flags]
 
-Renders the documentation. Wraps `node builder/tbdocs.mjs --src docs --check-audit-index` and forwards extra arguments through `%*`. Produces `_site/`, `_site-offline/`, and `_site-pdf/`, modulo the `--no-offline` / `--no-pdf` flags and the `also_build_offline` / `also_build_pdf` keys in `_config.yml`. A local build also ends by writing the [help archive](Tools-Build#the-help-archive), unless `--no-help-archive` is given. It returns [`tbdocs`](Tools-Build#tbdocs)'s exit code as it is.
+Renders the documentation, forwarding extra arguments through `%*`. Produces `_site/`, `_site-offline/` and `_site-pdf/`, unless `--no-offline` / `--no-pdf` or the `also_build_offline` / `also_build_pdf` keys in `_config.yml` turn one off. A local build also writes the [help archive](Tools-Build#the-help-archive), unless `--no-help-archive` is given.
 
-`--check-audit-index` is the part of that invocation most easily lost in transcription, and losing it is silent: it implies `--check`, so a bare `node builder/tbdocs.mjs --src docs` writes the same three trees, runs no link check at all, and reports success --- a check that never ran has nothing to report.
+Keep `--check-audit-index` when running `tbdocs` by hand. It implies `--check`; without it the same three trees are written, no link check runs, and the build reports success.
 
-There is no fixed build time worth quoting here, because every run prints its own (`Done in …`, with the page and static-file counts). What that number tracks is page count, core count, and which passes ran: the check, the offline mirror, the PDF tree and the help archive are each part of the total, and `--no-check`, `--no-offline`, `--no-pdf` and `--no-help-archive` each remove one.
+Every run prints its own time (`Done in …`, with the page and static-file counts). The time depends on page count, core count and which passes ran: `--no-check`, `--no-offline`, `--no-pdf` and `--no-help-archive` each remove one.
 
-Exit codes: **0** nothing to report; **1** the build or its check found a problem: a link or integrity failure, a failed build step, a fall in the page count, or a symbol-index URL lost; **2** a refused command line, a build stopped by the stall watchdog, or a crash.
+Exit codes, those of [`tbdocs`](Tools-Build#tbdocs): **0** nothing to report; **1** the build or its check found a problem: a link or integrity failure, a failed build step, a fall in the page count, or a symbol-index URL lost; **2** a refused command line, a build stopped by the stall watchdog, or a crash.
 
 ### serve.bat
 
@@ -60,22 +80,22 @@ POSIX:
 
     node builder/tbdocs.mjs --src docs --serve [extra tbdocs flags]
 
-Starts a long-lived dev process. Wraps `node builder/tbdocs.mjs --src docs --serve` and forwards extra arguments through `%*`. After an initial build, an HTTP server binds to port 4000 (pass `--port <N>` to use a different port), a recursive source-tree watcher fires a debounced rebuild on each change, and a browser connected to the page auto-reloads via SSE on each successful rebuild. Offline and PDF passes are skipped each rebuild. Ctrl+C exits cleanly. **Only failures (4xx, 5xx, server exceptions) are logged** --- successful requests are silent. The watcher covers `docs/` and the worker pool is reused across rebuilds, so **an edit under `builder/` does not reach a running preview** and needs a restart --- see [why `serve.bat` does not show a builder change](Extending#serve-does-not-reload).
+Starts a live preview, forwarding extra arguments through `%*`. After an initial build it serves the site on port 4000 (`--port <N>` changes it), rebuilds on each change under `docs/`, and reloads a connected browser after each successful rebuild. The offline and PDF passes are skipped. Ctrl+C stops it. **Only failures (4xx, 5xx, server exceptions) are logged.** **An edit under `builder/` does not reach a running preview**; restart it --- see [why `serve.bat` does not show a builder change](Extending#serve-does-not-reload).
 
-Exit codes: `tbdocs`'s own, as the other wrappers return theirs: **0** the server was stopped with Ctrl+C, **2** a refused command line, a failed first build, a port already in use, or a crash.
+Exit codes, those of `tbdocs`: **0** the server was stopped with Ctrl+C, **2** a refused command line, a failed first build, a port already in use, or a crash.
 
 ### check.bat
 
     check.bat
 
-The gates that read the built site. Link and integrity checking is not among them any more --- that moved into `build.bat` (see [tbdocs](Tools-Build#tbdocs)). Tests of the toolchain itself are not among them either --- those are [`test.bat`](#testbat). Four steps, each stopping the run if it fails:
+The gates that read the built site; run `build.bat` first. Link and integrity checking is in `build.bat` (see [tbdocs](Tools-Build#tbdocs)), and tests of the toolchain are in [`test.bat`](#testbat). Four steps, each stopping the run if it fails:
 
-1. [`scripts/check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) --- refuses a tree older than the sources that produced it. Scanning a stale tree reports a pass for the previous build.
-2. [`scripts/check_a11y.mjs`](Tools-Site-Checks#check-a11y) --- the puppeteer + axe-core accessibility scan. First here and first in the composite action CI uses, so the deploy workflow's backgrounded book PDF render overlaps with it only at the start.
+1. [`scripts/check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) --- refuses a tree older than the sources that produced it.
+2. [`scripts/check_a11y.mjs`](Tools-Site-Checks#check-a11y) --- the puppeteer + axe-core accessibility scan.
 3. [`scripts/check_dot_fit.mjs`](Tools-Site-Checks#check-dot-fit) --- re-renders every committed diagram with the real webfont and fails if a label sits outside its box.
 4. [`scripts/pick_a11y_sample.mjs --check`](Tools-Site-Checks#pick-a11y-sample) --- verifies the sample still covers every markup construct the site uses.
 
-Requires `build.bat` to have run first. POSIX --- four commands, not one, chained so the run stops where `check.bat` would:
+POSIX --- four commands, chained so the run stops where `check.bat` would:
 
     node scripts/check_tree_fresh.mjs \
       && node scripts/check_a11y.mjs \
@@ -84,7 +104,7 @@ Requires `build.bat` to have run first. POSIX --- four commands, not one, chaine
 
 Exit codes: **0** every step passed; otherwise the code of the step that stopped the run, as that step's entry gives it.
 
-One of the four does not mean the same thing locally as it does in CI, on any platform. [`check_a11y.mjs`](Tools-Site-Checks#check-a11y)'s `target-size` rule measures rendered boxes, and an inline element's measured height is the content area of whatever `system-ui` resolves to on the machine running the scan --- which is why both workflows install `fonts-liberation` and the site's padding is calibrated against the smallest face in that band. A local pass does not predict the runner's, and it errs in the unhelpful direction: larger metrics clear controls that CI then fails. See [Building and Deployment](Building#fonts-liberation-installed-on-purpose) for the measurements.
+A local pass of [`check_a11y.mjs`](Tools-Site-Checks#check-a11y) does not predict CI's. Its `target-size` rule measures rendered boxes, and an inline element's height depends on the font `system-ui` resolves to on the machine running the scan. Both workflows install `fonts-liberation`, and the site's padding is calibrated against the smallest face in that band. Larger local metrics clear controls that CI then fails. See [Building and Deployment](Building#fonts-liberation-installed-on-purpose).
 
 ### test.bat
 
@@ -92,15 +112,15 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
 The tests the toolchain has to pass. Twenty-four steps, each stopping the run if it fails:
 
-1. [`scripts/check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
+1. [`scripts/check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy) --- verifies the publish allowlist still refuses the types it should. Needs neither a browser nor a built tree.
 2. [`scripts/check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
 3. [`scripts/check_ci_workflows.mjs`](Tools-Toolchain-Tests#check-ci-workflows) --- verifies both CI workflows run the gates the wrappers run, and build as `build.bat` does.
 4. [`scripts/check_lint.mjs`](Tools-Toolchain-Tests#check-lint) --- runs Biome's linter and formatter check over the tooling and fails on any finding, warnings and layout included.
 5. [`test/search.test.mjs`](Tools-Toolchain-Tests#search-test) --- unit tests for the site search: what the search entries hold, and that the copies of the search client agree.
 6. [`test/render.test.mjs`](Tools-Toolchain-Tests#render-test) --- unit tests for the markdown-it plugins, on inputs no page holds.
 7. [`test/strftime.test.mjs`](Tools-Toolchain-Tests#strftime-test) --- unit tests for the footer's date formatter, which no build calls.
-8. [`test/png.test.mjs`](Tools-Toolchain-Tests#png-test) --- unit tests for the pictures of a bug reproducer: PNG decoding, comparing and the side-by-side image, the files behind `images` and `expect.imagesDiffer`, and the refusals of `bug_repro.mjs` over fixtures.
-9. [`test/compact-image.test.mjs`](Tools-Toolchain-Tests#compact-image-test) --- unit tests for what an embedded image keeps: an editor's metadata goes, and a notice of whose the picture is and on what terms stays. The half that runs [`imagestrip`](Tools-IDE#imagestrip) is skipped unless its exe is named.
+8. [`test/png.test.mjs`](Tools-Toolchain-Tests#png-test) --- unit tests for the pictures of a bug reproducer: PNG decoding, comparing and the side-by-side image, the files behind `images` and `expect.imagesDiffer`, and the refusals of `bug_repro.mjs`.
+9. [`test/compact-image.test.mjs`](Tools-Toolchain-Tests#compact-image-test) --- unit tests for what an embedded image keeps: an editor's metadata goes, a notice of ownership and terms stays. The half that runs [`imagestrip`](Tools-IDE#imagestrip) is skipped unless its exe is named.
 10. [`test/svgshot.test.mjs`](Tools-Toolchain-Tests#svgshot-test) --- unit tests that an SVG screenshot is written on one line, that its underlines are placed as Chromium places them, that a background image is sized by its bytes, that a frame's page is placed inside its frame, that a web font is found and cut as the page uses it, that the page's own `<svg>` icons are found and kept apart, and that a colour filter is baked into the colours it paints.
 11. [`test/example-batches.test.mjs`](Tools-Toolchain-Tests#example-batches-test) --- runs `check_examples.mjs`'s probes, which test how samples are batched and how a crashed batch is cut down, without an IDE.
 12. [`test/ports.test.mjs`](Tools-Toolchain-Tests#ports-test) --- unit tests for how the harness claims the DevTools ports its IDEs use, without an IDE.
@@ -146,11 +166,13 @@ POSIX:
 
 Exit codes: **0** every step passed; otherwise the code of the step that stopped the run, as that step's entry gives it.
 
-**Twenty of the twenty-three cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, the help add-in's source in `add-in/`, a wrapper, or a workflow. Both CI workflows run all twenty-four unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
+**Twenty of the twenty-three cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, the help add-in's source in `add-in/`, a wrapper, or a workflow. Both CI workflows run all twenty-four unconditionally.
 
-The three exceptions are [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions), [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists), which reads this page, and [`check_lint.mjs`](Tools-Toolchain-Tests#check-lint), which lints the site's scripts in `docs/assets/js/`. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
+The three exceptions are [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions), [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists), which reads this page, and [`check_lint.mjs`](Tools-Toolchain-Tests#check-lint), which lints the site's scripts in `docs/assets/js/`.
 
-The split is by what a gate **interrogates**, not by what it happens to open. `check_axe_patch_equiv.mjs` loads a built page, so it does want `build.bat` to have run and it does want Chromium --- but only because its probe needs some document to run inside; what it tests is the axe patch. The test for where a new gate belongs is whether it would still mean something against an empty `docs/`.
+`check_code_regions.mjs` has two halves. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes run against their own sources whatever the tree holds, and cover the *mirror* fault, where a rewrite silently stops firing; the sweep cannot see that one. After adding a page with an unusual code construct, run `test.bat` and read the built page too.
+
+A gate belongs in `test.bat` rather than `check.bat` if it would still mean something against an empty `docs/`. `check_axe_patch_equiv.mjs` needs a built page and Chromium only because its probe needs some document to run inside; it tests the axe patch.
 
 ### book.bat
 {: #bookbat }
@@ -166,32 +188,30 @@ POSIX --- three commands, not one:
       --outline-tags h1,h2,h3,h4 \
       --additional-script perf/detach-pages.js
 
-Renders the PDF book from `docs\_site-pdf\book.html` into `docs\_pdf\twinBASIC Book.pdf`, by calling `node book\render-book.mjs` (see [below](Tools-Build#bookrender-bookmjs)). The output filename is set by the `-o` argument here; to rename the PDF, update it in `book.bat` and in `.github/workflows/tbdocs-gh-pages.yml`.
+Renders the PDF book from `docs\_site-pdf\book.html` into `docs\_pdf\twinBASIC Book.pdf` with `node book\render-book.mjs` (see [below](Tools-Build#bookrender-bookmjs)). To rename the PDF, change the `-o` argument in `book.bat` and in `.github/workflows/tbdocs-gh-pages.yml`.
 
-`build.bat` must have populated `_site-pdf/` first. `book.bat` checks that rather than assuming it --- see [the pre-flight](#book-preflight) below.
+Run `build.bat` first to populate `_site-pdf/`; `book.bat` checks this with [the pre-flight](#book-preflight) below.
 
-**The `npm install` guard tests for the package, not for the browser.** `puppeteer`'s own `postinstall` downloads Chromium, so an ordinary `npm install` normally leaves both in place. What `book.bat` checks is whether `node_modules\puppeteer\package.json` exists, and that says nothing about the browser --- so an install run with `--ignore-scripts` or `PUPPETEER_SKIP_DOWNLOAD`, or a puppeteer cache cleared afterwards, passes the only test `book.bat` makes and still has nothing to render with. `npx puppeteer browsers install chrome` fixes that case; both CI workflows run it as a step of its own rather than relying on the postinstall. [PDF Generation](PDF-Generation#chromium-is-not-installed) gives the error it produces.
+**The `npm install` guard tests for the package, not for the browser.** `book.bat` checks only that `node_modules\puppeteer\package.json` exists. An install run with `--ignore-scripts` or `PUPPETEER_SKIP_DOWNLOAD`, or a puppeteer cache cleared afterwards, passes that test with no Chromium to render with. `npx puppeteer browsers install chrome` fixes it. [PDF Generation](PDF-Generation#chromium-is-not-installed) gives the error.
 
-The `mkdir` is not housekeeping. `render-book.mjs` writes the PDF with a plain file write and never creates the directory above it, so a missing `docs/_pdf/` fails with `ENOENT` at the very end of the render, after the whole page-breaking pass has already run. `book.bat` and the deploy workflow both create it first, for that reason.
+`render-book.mjs` does not create the output directory. A missing `docs/_pdf/` fails with `ENOENT` at the end of the render, after the page-breaking pass has run, so `book.bat` and the deploy workflow create it first.
 
-**Do not chain the two as `build.bat && book.bat`.** `build.bat` sets a non-zero exit code when the link or integrity check finds something, and still writes all three trees --- the finding is a report, not an abort. `&&` reads only the exit code, so a broken link anywhere on the site cancels the render, for a reason that has nothing to do with the book. The terminal ends on the link findings and no PDF, which reads as a render that failed rather than as one that never started. Run them as two separate commands; see [Building and Deployment](Building#the-double-ampersand-trap).
+**Do not chain the two as `build.bat && book.bat`.** `build.bat` sets a non-zero exit code when the link or integrity check finds something, though it still writes all three trees. `&&` reads only the exit code, so a broken link anywhere cancels the render, and the terminal ends on the link findings and no PDF. Run them as two separate commands; see [Building and Deployment](Building#the-double-ampersand-trap).
 
-Exit codes: **0** the PDF was written; **1** the tree is stale, or `npm install` failed; **2** there is no built tree, or the render failed. [`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) runs first and `book.bat` returns its code as it is; [`render-book.mjs`](Tools-Build#bookrender-bookmjs) has no 1 of its own.
+Exit codes: **0** the PDF was written; **1** the tree is stale, or `npm install` failed; **2** there is no built tree, or the render failed. [`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) runs first and its code is returned as it is; [`render-book.mjs`](Tools-Build#bookrender-bookmjs) has no 1 of its own.
 
 #### The pre-flight freshness check
 {: #book-preflight }
 
-`book.bat`'s **first** action, before the `npm install` test and before the renderer starts, is:
+`book.bat` first runs, before the `npm install` test and the renderer:
 
     node scripts/check_tree_fresh.mjs --tree docs/_site-pdf --marker book.html
 
-[`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) refuses a `_site-pdf/` tree older than `docs/` or `builder/`. An existence test is not enough: edit a page, run `book.bat` without `build.bat`, and it would spend two minutes rendering the **previous** book and report success. Nothing downstream notices, because the PDF it produces is internally consistent, correctly paginated and correctly bookmarked. It is simply the wrong book.
+[`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) refuses a `_site-pdf/` tree older than `docs/` or `builder/`. Without it, editing a page and running `book.bat` without `build.bat` spends two minutes rendering the **previous** book and reports success. The PDF is internally consistent, so nothing flags it. The renderer cannot catch this: it refuses only a missing input (`input not found:` and the resolved path).
 
-Leaving the question to the renderer does not cover it either. `render-book.mjs` refuses a missing input with `input not found:` and the resolved path, which says nothing at all about a tree that is present and stale --- the case that costs two minutes and yields a wrong artifact.
+`--marker book.html` is required and `book.bat` is the only caller that passes it. The script identifies a tree by its `index.html`, and `_site-pdf/` holds only `book.html`.
 
-`--marker book.html` is required here, and `book.bat` is the only caller that passes it. The script identifies a tree by its `index.html`, which every output tree has except `_site-pdf/` --- that one holds a single `book.html`. Without the flag, `--tree docs/_site-pdf` looked for an `index.html` that never exists and exited 2, so `--tree` was there all along and could not actually be pointed at this tree.
-
-**A 2 does not say which half of `book.bat` failed; the message does.** The pre-flight returns 2 for an absent tree and the renderer returns 2 for a failed render, and `book.bat` hands whichever it got straight back to its caller. A 1 is unambiguous: a stale tree, or a failed `npm install`. Every pre-flight failure is prefixed `check_tree_fresh:`, and these are the two it prints:
+**A 2 does not say which half of `book.bat` failed; the message does.** The pre-flight returns 2 for an absent tree and the renderer returns 2 for a failed render. A 1 is unambiguous: a stale tree, or a failed `npm install`. Every pre-flight failure is prefixed `check_tree_fresh:`, and these are the two it prints:
 
     check_tree_fresh: docs/_site-pdf/book.html does not exist.
       Run build.bat first -- there is no built tree to check.
@@ -200,7 +220,7 @@ Leaving the question to the renderer does not cover it either. `render-book.mjs`
       Run build.bat first. Scanning a stale tree reports a pass for the
       previous build, which is the one thing these gates must never do.
 
-The check has one known false positive, which comes from the script rather than from this use of it. Its source list is `docs/` and `builder/`, and it does not distinguish code from notes, so editing a `builder/PLAN-*.md` marks every tree stale although nothing in the build reads those files. It errs toward refusing, which is the safe direction, but it does mean a note edit now blocks a render until you rebuild.
+The check has one known false positive: it watches all of `docs/` and `builder/`, so editing a `builder/PLAN-*.md` marks every tree stale although the build does not read it. Rebuild.
 
 ### examples.bat
 {: #examplesbat }
@@ -211,11 +231,11 @@ One invocation of [`check_examples.mjs`](Tools-Samples#check-examples), with eve
 
     node scripts/check_examples.mjs [flags]
 
-Compiles the documentation's own twinBASIC code samples --- every ` ```tb ` fence marked `check_build` --- and reports the ones the compiler refuses, against the line in the page they came from. A sample also marked `check_run` is run, and what it prints is checked against what the page says it prints. [Authoring Pages](Authoring#checking-that-a-sample-compiles) is the page for marking a sample and for what a pull request that changes one shows; this entry is about running the tool.
+Compiles the documentation's own twinBASIC code samples --- every ` ```tb ` fence marked `check_build` --- and reports the ones the compiler refuses, against the line in the page they came from. A sample also marked `check_run` is run, and what it prints is checked against the page. To mark a sample, and for what a pull request that changes one shows, see [Authoring Pages](Authoring#checking-that-a-sample-compiles).
 
-**It is not one of the gates, and it must not become one.** It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows, for three reasons that are not going to change: it needs a twinBASIC install, where `npm install` has to remain sufficient to build the docs; it needs Windows, a private desktop and a CDP-reachable WebView2, none of which exists on the CI box; and an IDE cold start is 6 to 8 seconds against a whole site build's four. It is run by a person, deliberately, which is the same arrangement [`sweep_a11y.mjs`](Tools-Site-Checks#sweep-a11y) already has.
+**It is not one of the gates, and must not become one.** It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows, because it needs a twinBASIC install (`npm install` alone must suffice to build the docs) and Windows with a private desktop and a CDP-reachable WebView2 (the CI box has neither). An IDE cold start also takes 6 to 8 seconds, against four for a whole site build. A person runs it, as with [`sweep_a11y.mjs`](Tools-Site-Checks#sweep-a11y).
 
-Exit codes: those of [`check_examples.mjs`](Tools-Samples#check-examples), returned as they are: **0** clean, **1** a sample does not compile, or does not run as its page says, **2** the harness failed.
+Exit codes, those of [`check_examples.mjs`](Tools-Samples#check-examples): **0** clean, **1** a sample does not compile, or does not run as its page says, **2** the harness failed.
 
 ### addin-test.bat
 {: #addin-testbat }
@@ -226,11 +246,11 @@ One invocation of [`addin_test.mjs`](Tools-IDE#addin-test), with every flag pass
 
     node scripts/addin_test.mjs [flags]
 
-Tests twinBASIC IDE add-ins by machine: it builds each add-in under test, loads it into an IDE, operates the IDE the way a person would, and checks what the add-in did.
+Tests twinBASIC IDE add-ins by machine: it builds each add-in under test, loads it into an IDE, operates the IDE as a person would, and checks what the add-in did.
 
-**It is not one of the gates either**, and for the reasons `examples.bat` is not: it needs a twinBASIC install, and it needs Windows, a private desktop and a CDP-reachable WebView2. It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows.
+**It is not one of the gates**, for the reasons `examples.bat` is not, and is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows.
 
-Exit codes: those of [`addin_test.mjs`](Tools-IDE#addin-test), returned as they are: **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed, **3** the registry or a work folder was not put back.
+Exit codes, those of [`addin_test.mjs`](Tools-IDE#addin-test): **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed, **3** the registry or a work folder was not put back.
 
 ### ide-test.bat
 {: #ide-testbat }
@@ -241,11 +261,11 @@ One invocation of [`ide_test.mjs`](Tools-IDE#ide-test), with every flag passed s
 
     node scripts/ide_test.mjs [flags]
 
-Tests the twinBASIC IDE itself by machine: it opens a project in an IDE, operates the IDE the way a person would (the debugger, Export Project, the Packages dialog), and checks what the IDE did. It is the runner of [`addin-test.bat`](#addin-testbat) for scenarios that test the IDE rather than an add-in.
+Tests the twinBASIC IDE itself by machine: it opens a project in an IDE, operates the IDE as a person would (the debugger, Export Project, the Packages dialog), and checks what the IDE did. It is [`addin-test.bat`](#addin-testbat)'s runner for scenarios that test the IDE rather than an add-in.
 
-**It is not one of the gates either**, and for the reasons `examples.bat` is not: it needs a twinBASIC install, and it needs Windows, a private desktop and a CDP-reachable WebView2. It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows.
+**It is not one of the gates**, for the reasons `examples.bat` is not, and is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows.
 
-Exit codes: those of [`ide_test.mjs`](Tools-IDE#ide-test), returned as they are: **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed, **3** the registry or a work folder was not put back.
+Exit codes, those of [`ide_test.mjs`](Tools-IDE#ide-test): **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed, **3** the registry or a work folder was not put back.
 
 ### try-help-addin.bat
 {: #try-help-addinbat }
@@ -258,15 +278,15 @@ One invocation of [`try_help_addin.mjs`](Tools-IDE#try-help-addin), with every f
 
 Opens an IDE on your desktop with the help add-in built and loaded, to try it by hand, and puts the registry back once the IDE is closed. **It is not one of the gates**: it needs a twinBASIC install and Windows.
 
-Exit codes: those of [`try_help_addin.mjs`](Tools-IDE#try-help-addin), returned as they are: **0** the IDE was closed and the registry is as it was found, **1** the add-in did not build or the project does not compile, **2** the tool could not run, **3** the registry or the work folder was not put back.
+Exit codes, those of [`try_help_addin.mjs`](Tools-IDE#try-help-addin): **0** the IDE was closed and the registry is as it was found, **1** the add-in did not build or the project does not compile, **2** the tool could not run, **3** the registry or the work folder was not put back.
 
 ## Configuration files
 
-The build pipeline also reads a handful of declarative files. They are not executable but the build's behaviour depends on them.
+The build also reads these declarative files.
 
 | File | Effect |
 |---|---|
 | `docs/_config.yml` | Site config. `tbdocs` reads `url`, `baseurl`, `title`, `logo`, `also_build_offline`, `also_build_pdf`, `offline_exclude`, `exclude` (which filters the source walk but is **not** the publish safety net --- see [`check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy)), the footer / aux-link knobs, the GitHub edit-link knobs, and the download-link knobs (`gh_offline_link`, `gh_offline_link_url`, `gh_pdf_link_url`). Jekyll-only keys (`markdown`, `kramdown`, `theme`, `highlighter`, the `defaults` block, the `compress_html` block) are ignored. |
-| `docs/_book.yml` | The PDF book's chapter manifest. Entries are resolved to pages via the selector schema (`page` / `pages` / `nav_page` / `nav_pages` / `no_descent`) and control PDF outline behaviour via `landing_page:`, `landing_is_target:`, `no_outline_entry:`, `no_heading_shift:`, and `outline_closed:`. Its `left_out:` list names the pages deliberately not in the book, each with a `reason:`; the build warns about a page that is in neither. Full schema is documented in the file header. Phase 2 resolves chapter arrays; Phase 8 assembles `book.html`. |
-| `builder/themes/Light.theme`, `Dark.theme`, `Classic.theme` | twinBASIC IDE theme files, vendored from the BETA installer. `builder/highlight-theme.mjs` parses them into a Symbol-keyed palette that determines both the renderer's scope-to-class mapping and the generated `tb-highlight.css`. Refresh from the installer when the IDE adds new palette entries. |
+| `docs/_book.yml` | The PDF book's chapter manifest. Entries are resolved to pages via the selector schema (`page` / `pages` / `nav_page` / `nav_pages` / `no_descent`) and control PDF outline behaviour via `landing_page:`, `landing_is_target:`, `no_outline_entry:`, `no_heading_shift:`, and `outline_closed:`. Its `left_out:` list names the pages not in the book, each with a `reason:`; the build warns about a page that is in neither. The file header documents the full schema. |
+| `builder/themes/Light.theme`, `Dark.theme`, `Classic.theme` | twinBASIC IDE theme files, vendored from the BETA installer. `builder/highlight-theme.mjs` parses them into the palette behind the renderer's scope-to-class mapping and the generated `tb-highlight.css`. Refresh them from the installer when the IDE adds palette entries. |
 | `builder/twinbasic.tmLanguage.json` | TextMate grammar for the twinBASIC language. Shiki uses it to tokenise every ` ```tb ` code block. |

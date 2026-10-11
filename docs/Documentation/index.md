@@ -9,21 +9,27 @@ permalink: /Documentation/Development/
 # Documentation Development
 {: .no_toc }
 
-This section covers everything related to the twinBASIC documentation: the URL contract the compiler and IDE rely on, how to author a page in the house style, the build / preview / deploy workflow for content contributors, every script and batch file in the repository, and the internals of the `tbdocs` static site generator that produces the site.
+This section covers the twinBASIC documentation's own tooling: the URL contract the compiler and IDE rely on, how to author a page in the house style, the build / preview / deploy workflow, every script and batch file in the repository, and the internals of the `tbdocs` static site generator.
 
 ## Toolchain overview
 
-Three commands handle the entire build-and-verify workflow for a content change. `build.bat` produces three output trees from the markdown source and link-checks them in the same pass; `check.bat` runs the further gates that read those trees, from the freshness check to the accessibility scan; `book.bat` renders the PDF from the third tree. A fourth wrapper, `test.bat`, tests the toolchain itself rather than the site, and is needed when a change reaches outside `docs/`. [Tools and Scripts](Development/Tools) names the gates each one runs, in order.
+Three commands build and verify a content change:
 
-One more wrapper, `examples.bat`, sits outside that workflow and outside CI altogether: it compiles the twinBASIC code samples in the pages themselves, which needs a twinBASIC install and Windows --- see [Checking that a sample compiles](Authoring#checking-that-a-sample-compiles).
+- `build.bat` produces three output trees from the markdown source and link-checks them in the same pass.
+- `check.bat` runs the further gates that read those trees, from the freshness check to the accessibility scan.
+- `book.bat` renders the PDF from the third tree.
+
+A fourth wrapper, `test.bat`, tests the toolchain rather than the site; run it when a change reaches outside `docs/`. [Tools and Scripts](Development/Tools) names the gates each wrapper runs, in order.
+
+`examples.bat` sits outside this workflow and outside CI. It compiles the twinBASIC code samples in the pages, which needs a twinBASIC install and Windows --- see [Checking that a sample compiles](Authoring#checking-that-a-sample-compiles).
 
 ![A flow chart running top to bottom from the docs/ source tree. One branch goes through serve.bat to the _serve/ tree and a local browser; the other goes through build.bat to three output trees: _site/ for the online HTML, _site-offline/ for the file:// mirror, and _site-pdf/ for the book source. check.bat reads the built trees, and book.bat turns the book source into the finished PDF.](/assets/images/dot/toolchain-overview.svg)
 
-`build.bat` must run before `check.bat` or `book.bat` --- `check.bat` audits `_site-offline/` and refuses a tree older than the sources that produced it, while `book.bat` reads from `_site-pdf/`. A clean `build.bat && check.bat` is the bar for "ready to commit".
+Run `build.bat` before `check.bat` or `book.bat`: `check.bat` audits `_site-offline/` and refuses a tree older than its sources, and `book.bat` reads `_site-pdf/`. A clean `build.bat && check.bat` is the bar for "ready to commit".
 
 ## Build pipeline
 
-A single `build.bat` run executes `tbdocs` against a shared task DAG, dispatched by a SharedArrayBuffer-based pull scheduler --- there is no central dispatcher and no fixed phase sequence; workers and the main thread compete for ready tasks directly. The graph is organised into five sections (**Seeds**, **Spine**, **Render**, **Write**, **Check**) that also label the timeline on the [Build Info](Development/BuildInfo) page; the [tbdocs Builder](Development/Builder) page documents the full DAG, the scheduler architecture, and each task's interface contract.
+A `build.bat` run executes `tbdocs` against a shared task graph. Workers and the main thread pull ready tasks from a SharedArrayBuffer-based scheduler; there is no central dispatcher and no fixed phase sequence. The graph is organised into five sections (**Seeds**, **Spine**, **Render**, **Write**, **Check**) that also label the timeline on the [Build Info](Development/BuildInfo) page. The [tbdocs Builder](Development/Builder) page documents the full graph, the scheduler and each task's interface contract.
 
 ## Sub-pages
 

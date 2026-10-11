@@ -9,24 +9,24 @@ permalink: /Documentation/Development/Extending
 # Extending the Builder
 {: .no_toc }
 
-How to extend `tbdocs` --- a new pipeline task, a markdown-it plugin, a render-worker sub-stage, a verification gate or a build-time count --- and how to change one that already exists. Read [tbdocs Builder](Builder) first for the architectural tour and [Pipeline Stages](Pipeline-Stages) for the data contracts each task operates on.
+How to extend `tbdocs` --- a new pipeline task, a markdown-it plugin, a render-worker sub-stage, a verification gate or a build-time count --- and how to change one that already exists. Read [tbdocs Builder](Builder) first for the architecture and [Pipeline Stages](Pipeline-Stages) for the data contracts each task uses.
 
 * TOC goes here
 {:toc}
 
 ## The extension points
 
-**Pipeline task** --- a new entry in the static `TASKS` graph in [`tbdocs.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs). The task declares its predecessors and either runs on the main thread or dispatches to a worker handler. No plugin registry or hook system is involved.
+**Pipeline task** --- a new entry in the static `TASKS` graph in [`tbdocs.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs). The task declares its predecessors and either runs on the main thread or dispatches to a worker handler. There is no plugin registry or hook system.
 
-**Markdown-it plugin** --- a function that configures the shared markdown-it instance. Registered in `createMarkdownIt` inside [`render.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs). Each render worker builds its own markdown-it from the same factory, so the plugin runs on every page on every worker.
+**Markdown-it plugin** --- a function that configures the shared markdown-it instance, registered in `createMarkdownIt` in [`render.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs). Each render worker builds its own markdown-it from that factory, so the plugin runs on every page.
 
-**Render-worker sub-stage** --- a transformation slotted into the per-chunk render handler in [`cpu-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/cpu-worker.mjs), between two of the existing sub-stages (`renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`). This is the right shape when the new work is per-page CPU compute that should run in parallel with the rest of the page render.
+**Render-worker sub-stage** --- a transformation slotted into the per-chunk render handler in [`cpu-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/cpu-worker.mjs), between two existing sub-stages (`renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`). Use it for per-page CPU work that should run in parallel with the page render.
 
-**Verification gate** --- a script under `scripts/`, run after the build by `check.bat` or `test.bat`, that decides whether what the build produced is acceptable. Nothing in `TASKS` or the plugin chain changes for one. It is the only extension point here that is not part of rendering the site, and the conventions it has to follow are not the ones above; see [Adding a verification gate](#adding-a-verification-gate), which also covers which of the two wrappers a new gate belongs in.
+**Verification gate** --- a script under `scripts/`, run after the build by `check.bat` or `test.bat`, that decides whether what the build produced is acceptable. It changes nothing in `TASKS` or the plugin chain; see [Adding a verification gate](#adding-a-verification-gate), which also says which wrapper it belongs in.
 
-**Build-time count** --- a named number the build derives and substitutes into prose, written `{{tbdocs:<name>}}` on a page. A new one is an entry in `deriveCounts` in [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs) plus a row in the table on [Authoring Pages](Authoring#counts). It is the smallest extension point here and the only one that changes no task and no plugin; see [Adding a build-time count](#adding-a-build-time-count).
+**Build-time count** --- a named number the build derives and substitutes into prose, written `{{tbdocs:<name>}}` on a page. A new one is an entry in `deriveCounts` in [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs) plus a row in the table on [Authoring Pages](Authoring#counts); see [Adding a build-time count](#adding-a-build-time-count).
 
-**Styling is not one of them.** A new component's CSS is not an extension point here at all: the site's own style rules live under `docs/_sass/`, are compiled into a single stylesheet by `scss.mjs`, and need no change to the task graph or the plugin chain. See [Project styling](Builder#project-styling) for where each rule belongs, the two-compilation model, and the dark-mode specificity trap: a rule that loses it applies in light mode and silently does not in dark.
+**Styling is not an extension point.** Style rules live under `docs/_sass/` and need no change to the task graph or the plugin chain. See [Project styling](Builder#project-styling) for where each rule belongs, the two-compilation model, and the dark-mode specificity trap: a rule that loses it applies in light mode and silently does not in dark.
 
 ---
 
@@ -36,22 +36,13 @@ How to extend `tbdocs` --- a new pipeline task, a markdown-it plugin, a render-w
 > [!NOTE]
 > Changes to task definitions, worker handlers, or markdown-it plugins are not hot-reloaded by serve mode. The worker pool is persistent: after editing any of these, stop `serve.bat` (Ctrl+C) and re-run to load the new code. SCSS and page content *are* watched and rebuilt.
 
-Two separate things produce the same symptom, and neither reports anything.
+Two things produce the same symptom, and neither reports anything.
 
-**The watcher never sees the edit.** `serve.bat` runs `tbdocs --src docs --serve`, and
-the watcher is on the source tree it was given --- `docs/`. `builder/` lives at the
-repository root, deliberately outside the content tree, so editing a builder module
-fires no rebuild at all.
+**The watcher never sees the edit.** `serve.bat` watches `docs/`. `builder/` is at the repository root, so editing a builder module fires no rebuild.
 
-**A forced rebuild still runs the old code.** Touch a page to provoke one and the
-rebuild happens, but the workers were started once and have the previous module
-already imported. A new task simply does not appear, which is obvious; a *changed*
-one goes on running its old body, which looks exactly like the change having no
-effect.
+**A forced rebuild still runs the old code.** If you touch a page to provoke a rebuild, the workers still have the previous module imported. A new task does not appear; a *changed* task goes on running its old body, which looks like the change having no effect.
 
-So: **Ctrl+C and re-run after every builder edit.** There is no flag for it and no
-partial reload. What *is* watched is everything under `docs/` --- page content and
-`docs/_sass/` alike --- so styling work needs no restart.
+So: **Ctrl+C and re-run after every builder edit.** There is no partial reload. Page content and `docs/_sass/` are watched, so styling work needs no restart.
 
 ---
 
@@ -59,33 +50,29 @@ partial reload. What *is* watched is everything under `docs/` --- page content a
 {: #regex-refused }
 
 `check_regex_safety.mjs` reads every regex in the `.mjs` files under `builder/`, `scripts/`, `lib/`,
-`book/`, `eval/` and `wisdom/` (vendored code excluded), and refuses one that can take exponential time on some input.
-It runs in `test.bat` and as a step of its own in the gates both CI workflows run, so a regex added
-to the builder can pass the build and `check.bat` and still be refused. The report
-starts with
+`book/`, `eval/` and `wisdom/` (vendored code excluded), and refuses one that can take exponential
+time on some input. It runs in `test.bat` and in both CI workflows, so a regex can pass the build
+and `check.bat` and still be refused. The report starts with
 
     FAIL: 1 regex(es) can backtrack exponentially:
 
-and names the file and line, the pattern, and a **witness** --- an input that makes
-that pattern take exponential time.
+and names the file and line, the pattern, and a **witness** --- an input that makes that pattern
+take exponential time.
 
-[The gate's own entry](Tools-Toolchain-Tests#check-regex-safety) explains the cause and the rewrite in
-full. The short form:
+[The gate's own entry](Tools-Toolchain-Tests#check-regex-safety) explains the cause and the
+rewrite in full. The short form:
 
 1. **Keep the witness.** Put the pattern and the witness in a scratch script and call
-   `re.test(witness)`: it hangs. That is the only test that can say the rewrite
-   worked, because the site's pages passed before the change and pass after it.
-2. **Find the two parts of the pattern that can match the same character.** That is
-   the cause every time. Narrowing a character class usually leaves the same ambiguity
-   one level down, so the pattern is still exponential.
-3. **Stop describing the structure between the delimiters.** Match `<tag([^>]*)>`,
-   and take the attributes apart afterwards in ordinary JavaScript, which cannot
-   backtrack.
+   `re.test(witness)`: it hangs. Only this shows the rewrite worked; the site's pages pass
+   both before and after.
+2. **Find the two parts of the pattern that can match the same character.** Narrowing a
+   character class usually leaves the same ambiguity one level down.
+3. **Stop describing the structure between the delimiters.** Match `<tag([^>]*)>`, and take the
+   attributes apart afterwards in ordinary JavaScript, which cannot backtrack.
 4. **Run the gate again, and `re.test(witness)` once more.** It must return at once.
 
-A regex like this that reaches a build does not fail it: it stops it, and the build
-prints its last line and waits. [When a build stops instead of
-failing](Building#when-a-build-stops) covers that side.
+Such a regex reaching a build does not fail it: it stops it, and the build prints its last line
+and waits. [When a build stops instead of failing](Building#when-a-build-stops) covers that.
 
 ---
 
@@ -98,21 +85,24 @@ an inline code span. It names each page:
 
     FAIL  Reference/Core/Example.md: 1 code region(s) altered by a pre-render rewrite
 
-Run `node scripts/check_code_regions.mjs --verbose` to see each region before and after,
-which usually shows which rewrite did it.
+Run `node scripts/check_code_regions.mjs --verbose` to see each region before and after, which
+usually shows which rewrite did it.
 
-The rewrites in `render.mjs` run over raw markdown, before markdown-it has parsed
-anything, so a rewrite cannot tell prose from code on its own. What is code in markdown
-source is decided in one place, [`lib/markdown.mjs`](https://github.com/twinbasic/documentation/blob/main/lib/markdown.mjs), by a
-block parse: `blockRegions` lists the fences, code blocks and HTML blocks with their lines,
-`maskCode` hides the code around a rewrite, `splitCodeSpans` cuts a line into prose and code
-spans, and `splitOnMarker` and `mapLines` split and rewrite by line. A rewrite, or a tool that
-scans page source, asks these rather than deciding with a regex of its own. The fix is in where
-the rewrite runs:
+The rewrites in `render.mjs` run over raw markdown, before markdown-it parses it, so a rewrite
+cannot tell prose from code. [`lib/markdown.mjs`](https://github.com/twinbasic/documentation/blob/main/lib/markdown.mjs)
+decides what is code, by a block parse:
+
+- `blockRegions` lists the fences, code blocks and HTML blocks with their lines.
+- `maskCode` hides the code around a rewrite.
+- `splitCodeSpans` cuts a line into prose and code spans.
+- `splitOnMarker` and `mapLines` split and rewrite by line.
+
+A rewrite, or a tool that scans page source, uses these instead of a regex of its own. The fix
+is in where the rewrite runs:
 
 1. **For a fence or an inline span, move the rewrite behind the mask.** In
-   `applyPreRenderRewrites`, code regions are replaced by placeholders before the
-   rewrites run and put back afterwards. A rewrite added between the two never sees code:
+   `applyPreRenderRewrites`, code regions are replaced by placeholders before the rewrites run
+   and put back afterwards. A rewrite added between the two never sees code:
 
    ```js
    const code = maskCode(source, { md });
@@ -123,68 +113,65 @@ the rewrite runs:
    return rewriteAdmonitions(code.restore(work), md);
    ```
 
-2. **For an indented code block, the mask cannot help.** It does not cover indented blocks
-   on purpose. Narrow the rewrite so it cannot match the block's
-   lines, and let the gate say when it no longer does. A rewrite that has to run outside
-   the mask can instead skip the lines `blockRegions` reports, as `rewriteAdmonitions` does.
-3. **Do not widen the mask to make the report go away.** Text the mask hides is text no
-   rewrite reaches, so a mask that hides prose stops the rewrites firing on it --- and the
-   region comparison cannot see that, because the hidden text comes back unchanged.
-4. **Read a built page the rewrite is meant to change.** That is the only check that the
-   rewrite still does its job: the gate's probes assert what the existing rewrites must
-   do, and nothing asserts what a new one must do.
+2. **For an indented code block, the mask cannot help.** It does not cover indented blocks.
+   Narrow the rewrite so it cannot match the block's lines, and let the gate say when it no
+   longer does. A rewrite that has to run outside the mask can skip the lines `blockRegions`
+   reports, as `rewriteAdmonitions` does.
+3. **Do not widen the mask to make the report go away.** No rewrite reaches text the mask hides,
+   so a mask that hides prose stops the rewrites firing on it --- and the region comparison
+   cannot see that, because the hidden text comes back unchanged.
+4. **Read a built page the rewrite is meant to change.** The gate's probes assert what the
+   existing rewrites must do, and nothing asserts what a new one must do.
 
 A failed probe that names a raw `<pre>`, such as
 `FAIL  probe: a void tag inside a raw <pre> and <code>`,
-is a rewrite over rendered HTML reaching into code. Pass its pattern to
-`replaceOutsideCode` from `builder/code-guard.mjs`, as `applyPostRenderRewrites` in
-`render.mjs` does, instead of calling `replace` over the whole page.
+is a rewrite over rendered HTML reaching into code. Pass its pattern to `replaceOutsideCode` from
+`builder/code-guard.mjs`, as `applyPostRenderRewrites` in `render.mjs` does, instead of calling
+`replace` over the whole page.
 
 ---
 
 ## Changing what is already there
 
-Most builder work is not an addition. The walkthroughs below are written forwards, from nothing to a working task, and a reader who arrives having already changed something should not have to read one of them backwards. This section is the index into them.
+Most builder work changes something that exists. The walkthroughs below run forwards, from nothing to a working task; this section indexes them for a reader who has already changed something.
 
-Find the row for what changed. The middle column is the step that explains the mechanism; the right-hand column is what else moves with it **in code**. What a change obliges in the *documentation* is a separate list and applies to every row alike --- see [What a change obliges in the documentation](#what-a-change-obliges-in-the-documentation).
+Find the row for what changed. The middle column is the step that explains the mechanism; the right-hand column is what else moves with it **in code**. What a change obliges in the *documentation* applies to every row alike --- see [What a change obliges in the documentation](#what-a-change-obliges-in-the-documentation).
 
 | Changed | Mechanism | Also moves, in code |
 |---|---|---|
-| A task's `expected` list | [Pick the right flags](#2-pick-the-right-flags) | Nothing. The scheduler derives successor edges from `expected`, so a static edge is declared exactly once. The dynamic edges are the exception: `render:i` and `flush:i` are wired in `dispatch.submit`, not in `TASKS`. |
+| A task's `expected` list | [Pick the right flags](#2-pick-the-right-flags) | Nothing. The scheduler derives successor edges from `expected`. The exception is the dynamic edges: `render:i` and `flush:i` are wired in `dispatch.submit`, not in `TASKS`. |
 | A task's `execute()` or handler return shape | [Define the task in `TASKS`](#4-define-the-task-in-tasks) | The task's own `submit()`, and every downstream task that reads the field back off `state`. |
-| Which thread a task runs on | [Decide where the work runs](#1-decide-where-the-work-runs) | Swap `runOnMain: true` + `execute` for `handler:` plus a `cpu-worker.mjs` entry, and add the name to `HANDLERS` in `sab-scheduler.mjs`. Moving a task onto a worker costs it direct access to `state`: everything it reads has to arrive through the payload SAB, and everything it produces has to come back through its return value. |
-| Which Gantt section a task charts under | --- | **`GANTT_SECTION` in `gantt.mjs`**, not the task definition. A `ganttSection` on the definition does win where it is set, which is why the walkthroughs below set one --- but only the `render:i` and `flush:i` tasks that `dispatch` registers carry one. Of the 33 static tasks, 31 are listed in the map; the other two, `warmInit` and `renderEnvInit`, are `unique_per_worker` tasks, whose per-lane timings chart as `Boot`. Any other task with no section, or with a section the chart does not draw, fails the build. |
-| A field on the per-page render delta | [Worked example B](#6-worked-example-b-distributed-compute) | The `pages.map(…)` projection at the end of the render handler **and** the merge in `dispatch.submit`'s `render:i` callback. Both, or the field never reaches main at all. |
-| What a markdown-it rule emits | [Write the plugin](#1-write-the-plugin) | Nothing in the chain, if the rule is self-contained. But changing the emitted HTML changes what the accessibility scan can see --- read the construct-family note at the end of [Verify](#3-verify). |
+| Which thread a task runs on | [Decide where the work runs](#1-decide-where-the-work-runs) | Swap `runOnMain: true` + `execute` for `handler:` plus a `cpu-worker.mjs` entry, and add the name to `HANDLERS` in `sab-scheduler.mjs`. A task moved onto a worker loses direct access to `state`: everything it reads must arrive through the payload SAB, and everything it produces must come back through its return value. |
+| Which Gantt section a task charts under | --- | **`GANTT_SECTION` in `gantt.mjs`**, not the task definition. A `ganttSection` on the definition wins where it is set, which is why the walkthroughs below set one, but only the `render:i` and `flush:i` tasks that `dispatch` registers carry one. Of the 33 static tasks, 31 are in the map; the other two, `warmInit` and `renderEnvInit`, are `unique_per_worker` tasks, whose per-lane timings chart as `Boot`. Any other task with no section, or with a section the chart does not draw, fails the build. |
+| A field on the per-page render delta | [Worked example B](#6-worked-example-b-distributed-compute) | The `pages.map(…)` projection at the end of the render handler **and** the merge in `dispatch.submit`'s `render:i` callback. Without both, the field never reaches main. |
+| What a markdown-it rule emits | [Write the plugin](#1-write-the-plugin) | Nothing in the chain, if the rule is self-contained. But changing the emitted HTML changes what the accessibility scan sees --- read the construct-family note at the end of [Verify](#3-verify). |
 
-Two things are easy to miss from a changer's position.
+A running `serve.bat` does not pick up an edit to a handler or a task definition; see the NOTE at the top of this page.
 
-**The worker pool is persistent, so an edit to a handler or a task definition does not reach a running `serve.bat`.** The NOTE at the top of this page says so, and it matters more when changing than when adding: a new task simply does not appear, which is obvious, while a changed one goes on running its old body, which looks like the change having no effect.
-
-**An `expected` list says what must have *merged*, not what the body reads.** Removing a predecessor because `execute()` ignores its input is the way to reintroduce a race. `writePdf` lists `renderJoin` and never touches it, because the book is assembled from `page.renderedContent` and `renderJoin` is what guarantees every chunk's content has been merged into the master pages. A dependency count reaching zero does not mean the `submit()` calls that merge those results have run; the barrier's `expected` list is the only thing the scheduler checks before letting it proceed.
+**An `expected` list says what must have *merged*, not what the body reads.** Removing a predecessor because `execute()` ignores its input reintroduces a race. `writePdf` lists `renderJoin` and never touches it: the book is assembled from `page.renderedContent`, and `renderJoin` guarantees every chunk's content has been merged into the master pages. The scheduler checks only a barrier's `expected` list before letting it proceed.
 
 ---
 
 ## Changing the link checker
 {: #changing-the-link-checker }
 
-The link check has two front ends. The build runs it over the HTML it holds in memory, and `scripts/check_links.mjs` runs it over a tree on disk; both call the same functions in `builder/check.mjs`, over the core in `builder/link-check.mjs`. A change to any of the three can make the two disagree, and **a checker that silently checks less reports a clean pass** --- on a healthy site nearly every category of finding is empty, so nothing else would notice.
+The link check has two front ends: the build runs it over the HTML it holds in memory, and `scripts/check_links.mjs` runs it over a tree on disk. Both call the same functions in `builder/check.mjs`, over the core in `builder/link-check.mjs`. A change to any of the three can make the two disagree, and **a checker that silently checks less reports a clean pass**.
 
 After changing `builder/link-check.mjs`, `builder/check.mjs` or `scripts/check_links.mjs`, run the full comparison by hand:
 
     node scripts/check_links_diff.mjs --a script --b fused
 
-It builds everything it compares --- the site into the usual trees, a copy under a base path, and the three-page fixture --- so both sides read the same bytes and no `build.bat` is needed first. It exits 1 if the two sides disagree in any category, or if a fixture stops finding what it is there to provoke.
+It builds everything it compares --- the site into the usual trees, a copy under a base path, and the three-page fixture --- so no `build.bat` is needed first. It exits 1 if the two sides disagree in any category, or if a fixture stops finding what it is there to provoke.
 
-**Nothing else runs this comparison.** `build.bat`, `check.bat` and `test.bat` never call it, and the CI workflows run only the fixture cases: both compare the script with its `index` variant over a synthetic tree, and the pull-request workflow also compares the script with the build's pass over the three-page fixture. Neither goes near the real site, so a green pull request says only that the two sides agree over the fixtures, not over the pages you will publish. A change meant to alter what the checker finds also moves the counts asserted after every fixture run, `FIXTURE_EXPECTED`, `FIXTURE_BUILT_ONLINE` and `FIXTURE_BUILT_OFFLINE` in `check_links_diff.mjs`; [`test/README.md`](https://github.com/twinbasic/documentation/blob/main/test/README.md) says what each fixture page is there to provoke.
+**Nothing else runs this comparison.** `build.bat`, `check.bat` and `test.bat` never call it. CI runs only fixture cases, so a green pull request says only that the two sides agree over the fixtures, not over the pages you will publish. A change meant to alter what the checker finds also moves the counts asserted after every fixture run: `FIXTURE_EXPECTED`, `FIXTURE_BUILT_ONLINE` and `FIXTURE_BUILT_OFFLINE` in `check_links_diff.mjs`. [`test/README.md`](https://github.com/twinbasic/documentation/blob/main/test/README.md) says what each fixture page provokes.
 
-If you changed the harness itself, or `check_links.mjs`, which is the harness's `script` side, also run:
+If you changed the harness, or `check_links.mjs` (the harness's `script` side), also run:
 
     node scripts/check_links_diff.mjs --self-test
 
-It runs `check_links.mjs`'s own regression guards, then compares the script with a deliberately corrupted copy of itself and fails unless the difference is reported. Without it, a harness that has stopped comparing anything prints the same agreement as one that works.
+It runs `check_links.mjs`'s own regression guards, then compares the script with a deliberately corrupted copy of itself and fails unless the difference is reported.
 
-[The link-checker parity fixtures](Building#the-link-checker-parity-fixtures) explains what CI runs and why, and [`check_links_diff.mjs`](Tools-Site-Checks#check-links-diff) is the full reference: every case, every side, and what each fixture holds the comparison to.
+[The link-checker parity fixtures](Building#the-link-checker-parity-fixtures) explains what CI runs, and [`check_links_diff.mjs`](Tools-Site-Checks#check-links-diff) is the full reference: every case, every side, and what each fixture holds the comparison to.
 
 ---
 
@@ -201,11 +188,11 @@ The first question is whether the task body needs the main thread.
 | The output is small and downstream tasks consume it via the inputs object. | The output is per-page and you want to fan out across cores. |
 | The task should join multiple worker outputs together. | The task should run multiple times in parallel (`render:i`, `flush:i`). |
 
-If the work is per-page CPU compute, prefer adding a sub-stage inside the existing render handler over creating a new task --- the render fan-out already runs at full parallelism, and a sub-stage avoids the extra postMessage round-trip. The render-worker sub-stage walkthrough below covers that case.
+For per-page CPU compute, prefer a sub-stage inside the existing render handler over a new task: the render fan-out already runs at full parallelism, and a sub-stage avoids an extra postMessage round-trip. The render-worker sub-stage walkthrough below covers that case.
 
 ### 2. Pick the right flags
 
-Past the main-vs-worker decision, the scheduling primitives compose. The common patterns:
+The scheduling primitives compose. The common patterns:
 
 | You want… | Set |
 |---|---|
@@ -258,7 +245,7 @@ const handlers = {
 };
 ```
 
-The handler's return value is the message body. It comes back to main as `{ done: taskIdx, output, timing, lane }`; the scheduler stores `output` in `results` and passes it to your task's `submit()`.
+The handler's return value comes back to main as `{ done: taskIdx, output, timing, lane }`. The scheduler stores `output` in `results` and passes it to your task's `submit()`.
 
 ### 4. Define the task in `TASKS`
 
@@ -306,11 +293,11 @@ myMainTask: {
 ```
 
 > [!IMPORTANT]
-> If the task writes to disk, check `ctx.opts.dryRun` and skip the writes when it is `true`. The flag is honoured by every existing task and contributors lean on it for fast iteration.
+> If the task writes to disk, check `ctx.opts.dryRun` and skip the writes when it is `true`. Every existing task honours the flag.
 
 ### 5. Worked example A: main-thread auxiliary task
 
-End-to-end: a task that emits `pages-manifest.json` listing every page's URL and title. The task depends on `flushJoin` (so the in-memory page set is fully populated) and `prepDest` (so the destination tree exists).
+A task that emits `pages-manifest.json` listing every page's URL and title. It depends on `flushJoin` (the in-memory page set is complete) and `prepDest` (the destination tree exists).
 
 ```js
 // builder/tbdocs.mjs
@@ -339,13 +326,13 @@ const TASKS = {
 };
 ```
 
-No other edits needed. The scheduler picks up the new entry on the next build; the task appears under "Write" in the Gantt chart with its timing label.
+No other edits are needed. The task appears under "Write" in the Gantt chart on the next build.
 
 ### 6. Worked example B: distributed compute
 
-End-to-end: per-page word count, with the count itself computed inside the render fan-out (so it scales with cores) and the consolidated result written by a main-thread task. This mirrors how `searchData` and per-page SEO are wired.
+A per-page word count, computed inside the render fan-out (so it scales with cores), with the consolidated result written by a main-thread task. `searchData` and per-page SEO work the same way.
 
-**Step 6a.** Compute the word count per page on the worker. The cleanest place is inside the existing `render` handler in `cpu-worker.mjs`, between `templatePhase` and the offline rewrite:
+**Step 6a.** Compute the word count per page on the worker, inside the existing `render` handler in `cpu-worker.mjs`, between `templatePhase` and the offline rewrite:
 
 ```js
 // builder/cpu-worker.mjs, inside the render handler
@@ -406,13 +393,12 @@ scheduler.tasks.set(rName, {
 ```
 
 > [!IMPORTANT]
-> **Throw on the merge path; never skip.** `pageByDest` is built from the same page
-> list the chunks were sliced from, so a page the callback cannot find means a chunk
-> produced something the build never dispatched. Skipping it silently drops that
-> page's `renderedContent`, and every consumer of that field --- the search index,
-> the PDF book --- skips a page that has none rather than complaining, so the page
-> vanishes from `search-data.json` with no error. Every skip on the chunk-merge path
-> throws; new fan-out code must do the same.
+> **Throw on the merge path; never skip.** `pageByDest` is built from the same page list the
+> chunks were sliced from, so a page the callback cannot find means a chunk produced something the
+> build never dispatched. Skipping it drops that page's `renderedContent`, and the search index
+> and the PDF book skip a page that has none without complaining, so the page vanishes from
+> `search-data.json` with no error. Every skip on the chunk-merge path throws; new fan-out code
+> must do the same.
 
 **Step 6d.** Write a consolidator task that runs after `renderJoin`:
 
@@ -436,11 +422,11 @@ writeWordCounts: {
 },
 ```
 
-That is the full pattern: per-chunk compute on the render workers, merge into the master pages in the render `submit()`, consolidate in a main-thread task after `renderJoin`.
+The pattern: per-chunk compute on the render workers, merge into the master pages in the render `submit()`, consolidate in a main-thread task after `renderJoin`.
 
 ### 7. Verify
 
-`build.bat` shows the new task in the timing summary line and in the Gantt chart on the [Build Info](BuildInfo) page. `check.bat` confirms nothing else broke on the site, and `test.bat` covers the toolchain --- a new task is a change under `builder/`, so both apply. Watch the chart to make sure the new task fits inside its expected section: a "Write" task that runs during the spine usually means a missing predecessor.
+`build.bat` shows the new task in the timing summary line and in the Gantt chart on the [Build Info](BuildInfo) page. A "Write" task that runs during the spine usually means a missing predecessor. Run `check.bat` and `test.bat` too: a new task is a change under `builder/`.
 
 ---
 
@@ -448,17 +434,17 @@ That is the full pattern: per-chunk compute on the render workers, merge into th
 
 ### Background
 
-`createMarkdownIt` in `render.mjs` builds the configured markdown-it instance. The plugins are applied in a fixed order: three from npm (`markdown-it-attrs`, `markdown-it-deflist`, `markdown-it-footnote`) interleaved with those defined in `render.mjs` itself, and `countPlugin` from `counts.mjs` registered last. A new plugin becomes part of that order.
+`createMarkdownIt` in `render.mjs` builds the configured markdown-it instance. The plugins are applied in a fixed order: three from npm (`markdown-it-attrs`, `markdown-it-deflist`, `markdown-it-footnote`) interleaved with those defined in `render.mjs`, and `countPlugin` from `counts.mjs` registered last. A new plugin becomes part of that order. [Pipeline Stages](Pipeline-Stages#the-plugin-chain) tabulates the chain in registration order, with what each plugin does.
 
-Those in-tree plugins cover token-stream transforms --- `figurePlugin` wraps a lone image in a figure and embeds a diagram's SVG, `headingLevelNormalizePlugin` repairs legacy pages that skip from `h1` to `h3` --- alongside link, slug, and typography helpers, most of them closing a behavioural gap between markdown-it and the kramdown dialect the content was authored against. [Pipeline Stages](Pipeline-Stages#the-plugin-chain) tabulates the chain in registration order, with what each one does.
+The in-tree plugins transform the token stream (`figurePlugin` wraps a lone image in a figure and embeds a diagram's SVG, `headingLevelNormalizePlugin` repairs legacy pages that skip from `h1` to `h3`) or provide link, slug and typography helpers. Most close a gap between markdown-it and the kramdown dialect the content was authored against.
 
-The same factory is called once on main (the shared site-level SEO instance, via `markdownInit`), once per render worker (via `renderEnvInit`), and once by each script that renders outside the build, such as `check_code_regions.mjs`. Plugins that reach for module-scope state must therefore work across worker boundaries --- in practice, that means no mutable closure-captured state, since each worker has its own module-scope instance.
+The factory is called once on main (the shared site-level SEO instance, via `markdownInit`), once per render worker (via `renderEnvInit`), and once by each script that renders outside the build, such as `check_code_regions.mjs`. A plugin therefore must not keep mutable closure-captured state: each worker has its own module-scope instance.
 
 ### 1. Write the plugin
 
-A markdown-it plugin is a function that receives the `md` instance and mutates it. Two common shapes follow. The first is presented as it ships rather than as something to write: the pattern reads more clearly from a rule that is live in the tree and can be inspected on any page, and this particular rule must not be written a second time.
+A markdown-it plugin is a function that receives the `md` instance and mutates it. Two common shapes follow. The first is shown as it ships, because it is live in the tree and must not be written a second time.
 
-**Renderer override** --- replace the function markdown-it uses to emit one token type. The site's live example is the table wrapper. `createMarkdownIt` applies it inline rather than through `md.use()`, which is the right shape for a pair of rules that no other plugin has to be ordered against:
+**Renderer override** --- replace the function markdown-it uses to emit one token type. The site's live example is the table wrapper. `createMarkdownIt` applies it inline rather than through `md.use()`, which suits a pair of rules that no other plugin has to be ordered against:
 
 ```js
 // builder/render.mjs, inside createMarkdownIt
@@ -472,16 +458,16 @@ md.renderer.rules.table_close = (tokens, idx, opts, _env, slf) =>
   `</table></div>` + slf.renderToken(tokens, idx, opts).replace(/<\/table>/, "");
 ```
 
-Three decisions sit in those six lines, and a rewrite drops all three:
+Those six lines hold three decisions:
 
-- **The default renderer runs first and its output is rewritten,** rather than the tag being built by hand. `renderToken` is what applies markdown-it's per-token block-prefix whitespace, so calling it keeps the leading newline the parser would have emitted when the table opens a list item, a definition, or a blockquote child. A wrapper concatenated around a literal `<table>` string loses it.
-- **`tabindex="0"` is an accessibility fix.** just-the-docs's `tables.scss` gives `.table-wrapper` `overflow-x: auto`, and a scroll container that cannot take focus cannot be scrolled without a pointer, and axe's `scrollable-region-focusable` rule reports exactly that. It is unconditional for the same reason `highlight.mjs` marks every `div.highlight`: whether a table overflows depends on the viewport, so there is no answer at render time. `custom/custom.scss` gives the resulting focus a visible ring.
-- **The wrapper exists because tbdocs renders no Liquid.** just-the-docs emitted it from an `_includes/table_wrappers.html` pass; the theme's vendored `_sass` still keys its table rules on `.table-wrapper`, so the div has to come from the renderer instead.
+- **The default renderer runs first and its output is rewritten,** rather than the tag being built by hand. `renderToken` keeps the leading newline the parser emits when the table opens a list item, a definition or a blockquote child; a wrapper concatenated around a literal `<table>` string loses it.
+- **`tabindex="0"` is an accessibility fix.** `.table-wrapper` has `overflow-x: auto`, and a scroll container that cannot take focus cannot be scrolled without a pointer (axe's `scrollable-region-focusable` rule). The attribute is unconditional because whether a table overflows depends on the viewport, which is unknown at render time. `custom/custom.scss` gives the focus a visible ring.
+- **The wrapper exists because tbdocs renders no Liquid.** The vendored `_sass` keys its table rules on `.table-wrapper`, so the renderer must produce the div.
 
 > [!IMPORTANT]
-> **Every table the site publishes is already wrapped, and a plugin must not wrap them again.** A second `table_open` override does not replace the shipped rule --- it composes with it, because the "original" such a plugin captures *is* the rule above. Each table then comes out inside two `.table-wrapper` divs, which the stylesheet makes two nested scroll containers, the outer one with no `tabindex` on it. Write the markdown; the wrapper and its focusability are automatic.
+> **Every table the site publishes is already wrapped, and a plugin must not wrap them again.** A second `table_open` override composes with the shipped rule, because the "original" it captures *is* the rule above. Each table then sits inside two `.table-wrapper` divs, which the stylesheet makes two nested scroll containers, the outer one with no `tabindex`. Write the markdown; the wrapper and its focusability are automatic.
 
-**Block rule** --- a new fenced syntax that emits a `<div class="callout">`. This one is genuinely unbuilt: nothing in the tree registers a `md.block.ruler` rule today, and the GFM admonitions the pages use are a pre-render text rewrite rather than a block rule.
+**Block rule** --- a new fenced syntax that emits a `<div class="callout">`. Nothing in the tree registers a `md.block.ruler` rule today, so this one is unbuilt; the GFM admonitions the pages use are a pre-render text rewrite.
 
 ```js
 // builder/callout-plugin.mjs
@@ -523,13 +509,13 @@ export function calloutPlugin(md) {
 }
 ```
 
-The `alt` list names the parse modes the rule is also consulted in. Without `"paragraph"` in it, a `:::` line following a line of prose is absorbed into that paragraph as literal text instead of opening a callout.
+The `alt` list names the parse modes the rule is also consulted in. Without `"paragraph"`, a `:::` line after a line of prose is absorbed into that paragraph as literal text instead of opening a callout.
 
-For the full rule API see the [markdown-it documentation](https://markdown-it.github.io/markdown-it/) and the existing in-tree plugins in `render.mjs` as worked examples.
+For the full rule API see the [markdown-it documentation](https://markdown-it.github.io/markdown-it/) and the in-tree plugins in `render.mjs`.
 
 ### 2. Register in `createMarkdownIt`
 
-A plugin written as its own module is registered in two steps. A renderer override written inline, as the table rules above are, needs neither --- it is already in the factory body.
+A plugin in its own module is registered in two steps. A renderer override written inline, like the table rules above, needs neither.
 
 Add an import at the top of `render.mjs`:
 
@@ -537,7 +523,7 @@ Add an import at the top of `render.mjs`:
 import { calloutPlugin } from "./callout-plugin.mjs";
 ```
 
-Find `createMarkdownIt` and add `md.use(calloutPlugin)` in the plugin chain. **Order matters** --- place the new plugin after any plugin it depends on and before any plugin that could interfere with its token types. Note that registration order only decides execution order for a rule added with `md.core.ruler.push()`; `.before(name)` and `.after(name)` insert at a named position regardless of when the plugin was registered, which is how `headingLevelNormalizePlugin` runs ahead of `headerIdPlugin` while being registered after it.
+Find `createMarkdownIt` and add `md.use(calloutPlugin)` in the plugin chain. **Order matters**: place the new plugin after any plugin it depends on and before any plugin that could interfere with its token types. Registration order decides execution order only for a rule added with `md.core.ruler.push()`. `.before(name)` and `.after(name)` insert at a named position whenever the plugin is registered, which is how `headingLevelNormalizePlugin` runs ahead of `headerIdPlugin` although it is registered after it.
 
 ```js
 export function createMarkdownIt(ctx) {
@@ -551,21 +537,21 @@ export function createMarkdownIt(ctx) {
 
 ### 3. Verify
 
-Run `build.bat` and open an affected page. **`serve.bat` will not show a plugin change** --- its worker pool is persistent, so a running preview goes on using the old plugin; the NOTE at the top of this page has the detail. Ctrl+C and re-run it first, and then it gives live feedback on the pages themselves as normal. A plugin that traverses the full token stream on every page runs N+1 times per build (one main thread + N workers), so check the per-task render timing in the summary or the Gantt chart for any spike.
+Run `build.bat` and open an affected page. **`serve.bat` will not show a plugin change**: its worker pool is persistent, so a running preview keeps the old plugin (see the NOTE at the top of this page). Ctrl+C and re-run it first. A plugin that traverses the full token stream on every page runs N+1 times per build (main thread plus N workers), so check the per-task render timing in the summary or the Gantt chart for a spike.
 
-Then write a unit test for the plugin in [`test/render.test.mjs`](https://github.com/twinbasic/documentation/blob/main/test/render.test.mjs), which builds the site's own `createMarkdownIt` and renders small inputs, one plugin per `describe` block. The build compares whole pages, so a plugin that is wrong only on input no page holds passes it; the test pins that input. Run it alone with `node --test test/render.test.mjs`; `test.bat` and both CI workflows run it too.
+Then write a unit test in [`test/render.test.mjs`](https://github.com/twinbasic/documentation/blob/main/test/render.test.mjs), which builds the site's own `createMarkdownIt` and renders small inputs, one plugin per `describe` block. The build compares whole pages, so a plugin that is wrong only on input no page holds passes it; the test pins that input. Run it alone with `node --test test/render.test.mjs`; `test.bat` and both CI workflows run it too.
 
-Then run `test.bat`, which is where a `render.mjs` edit is judged. Two of its gates read this file: `check_regex_safety.mjs` refuses a regex that can backtrack exponentially, and `check_code_regions.mjs` refuses a pre-render rewrite that alters the contents of a code fence or code span.
+Then run `test.bat`, which judges a `render.mjs` edit. Two of its gates read this file: `check_regex_safety.mjs` refuses a regex that can backtrack exponentially, and `check_code_regions.mjs` refuses a pre-render rewrite that alters the contents of a code fence or code span.
 
-**Assembling a pattern from string constants does not put it out of reach of the regex gate.** `new RegExp(`${A}${B}`)` is read if the source decides what `A` and `B` are; if it does not --- a function parameter, a `let` built in a loop --- `node scripts/check_regex_safety.mjs --census` says so by name, and the pattern is then yours to reason about. The resolvable shapes are the ones a reader can work out from that description --- a literal, a template, `+` concatenation, `String.raw`, a `const` declared once, `.source` of a `const` regex, a `join` over a `const` array, and a ternary checked both ways --- and the census is what tells you which bucket yours landed in; see [`check_regex_safety.mjs`](Tools-Toolchain-Tests#check-regex-safety).
+**A pattern assembled from string constants is still checked by the regex gate,** when the source decides what the constants are. If it does not (a function parameter, a `let` built in a loop), `node scripts/check_regex_safety.mjs --census` names the pattern and you must reason about it yourself. See [`check_regex_safety.mjs`](Tools-Toolchain-Tests#check-regex-safety) for the shapes it resolves.
 
-**If the plugin emits markup the site has not carried before --- a new wrapper element, a widget, a figure, a control --- register a construct family for it in [`scripts/pick_a11y_sample.mjs`](Tools-Site-Checks#pick-a11y-sample) in the same change.** The accessibility scan audits fourteen sample pages out of ~1,160, and a construct no sample page carries is a construct no axe rule keyed on it ever runs against. Leaving it out is not neutral: the gate goes on reporting a clean pass while covering less than it did before, which is the failure mode the derived sample exists to prevent. `node scripts/pick_a11y_sample.mjs --census` shows what the existing families are and which pages carry them; `--check` names the gaps and the cheapest page that closes each. The same obligation applies to a new task or sub-stage that changes the emitted HTML, and to a template change.
+**If the plugin emits markup the site has not carried before --- a new wrapper element, a widget, a figure, a control --- register a construct family for it in [`scripts/pick_a11y_sample.mjs`](Tools-Site-Checks#pick-a11y-sample) in the same change.** The accessibility scan audits fourteen sample pages out of ~1,160, and no axe rule keyed on a construct runs unless a sample page carries it. Without a family the gate keeps reporting a clean pass while covering less. `node scripts/pick_a11y_sample.mjs --census` shows the existing families and their pages; `--check` names the gaps and the cheapest page that closes each. A new task or sub-stage that changes the emitted HTML, or a template change, carries the same obligation.
 
 ---
 
 ## Adding a render-worker sub-stage
 
-When the new work is per-page CPU compute, slotting it into the existing `render` handler is the most direct path. Skip the per-task overhead, ride the same fan-out.
+For per-page CPU compute, a sub-stage in the existing `render` handler is the most direct path: it skips the per-task overhead and rides the same fan-out.
 
 ### Where to plug in
 
@@ -623,43 +609,43 @@ return {
 Then extend `dispatch.submit`'s `render:i` callback to merge the new field, exactly as the [worked example B](#6-worked-example-b-distributed-compute) above does.
 
 > [!NOTE]
-> Anything you mutate on a worker's chunk page must travel back through the delta to be visible on main. The worker's `chunk` is a structured-clone copy; main never sees those copies directly. The `pages.map(…)` projection at the end of the render handler is the single channel.
+> Anything you mutate on a worker's chunk page must travel back through the delta to be visible on main. The worker's `chunk` is a structured-clone copy, and the `pages.map(…)` projection at the end of the render handler is the only channel back.
 
 ---
 
 ## Adding a verification gate
 
-A gate runs after the build and decides whether what the build produced is acceptable. Two batch wrappers run them: [`check.bat`](Tools#checkbat) and [`test.bat`](Tools#testbat). Those two entries on [Tools and Scripts](Tools) are the authoritative list of which gate each wrapper runs, in the order they run --- read it there rather than from a copy, and give a new gate its own entry on that page in the same change.
+A gate runs after the build and decides whether what the build produced is acceptable. Two batch wrappers run them: [`check.bat`](Tools#checkbat) and [`test.bat`](Tools#testbat). The entries on [Tools and Scripts](Tools) are the authoritative list of which gate each wrapper runs, in order. Give a new gate its own entry on that page in the same change.
 
-**First decide whether it is a gate at all.** The link and integrity check runs inside the build, not as a gate, because both trees' final HTML is already decoded in worker memory when `flush:i` runs --- checking it on disk would mean writing ~270 MB out to read it straight back. The test is whether the check needs something the build does not already hold: a browser, a real font, a second implementation to compare against, a tree from an earlier run. If it needs none of those, it is a pipeline task, and the walkthroughs above apply instead.
+**First decide whether it is a gate at all.** The link and integrity check runs inside the build because both trees' final HTML is already decoded in worker memory when `flush:i` runs; checking it on disk would mean writing ~270 MB out to read it back. A check is a gate if it needs something the build does not hold: a browser, a real font, a second implementation to compare against, a tree from an earlier run. Otherwise it is a pipeline task, and the walkthroughs above apply.
 
 ### Which wrapper it goes in
 
 **A gate belongs in `test.bat` rather than `check.bat` if it would still mean something with no documentation in the tree.**
 
-That is a rule about what the gate *interrogates*, not about what it happens to open. [`check_axe_patch_equiv.mjs`](Tools-Toolchain-Tests#check-axe-patch-equiv) loads a built page and needs Chromium, which makes it look like a `check.bat` gate. It is not. The page is there only because the probe needs some document to run inside, and it never reads that page's DOM; what the gate tests is the vendored axe source patch. Against an empty `docs/` it would still be worth running, so it goes in `test.bat`.
+The rule is about what the gate *interrogates*, not what it opens. [`check_axe_patch_equiv.mjs`](Tools-Toolchain-Tests#check-axe-patch-equiv) loads a built page and needs Chromium, which makes it look like a `check.bat` gate. The page is only a document for the probe to run inside; the gate tests the vendored axe source patch. Against an empty `docs/` it would still be worth running, so it goes in `test.bat`.
 
-Two worked applications of the rule:
+Two applications of the rule:
 
-- **A regression test for a build-time rewrite that has stopped firing** interrogates the rewrite, not the corpus, so it goes in `test.bat`. [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions) is the gate of that shape already in the tree, and its admonition probes are the pattern to copy: each one asserts a defect that must stay fixed, in the normal run rather than behind a flag.
-- **A gate that compares this build's output against an earlier build's** interrogates the built tree, and says nothing at all about an empty `docs/`, so it goes in `check.bat`.
+- **A regression test for a build-time rewrite that has stopped firing** interrogates the rewrite, not the corpus, so it goes in `test.bat`. [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions) has this shape, and its admonition probes are the pattern to copy: each asserts a defect that must stay fixed, in the normal run rather than behind a flag.
+- **A gate that compares this build's output against an earlier build's** interrogates the built tree and says nothing about an empty `docs/`, so it goes in `check.bat`.
 
-The split exists so that an edit confined to `docs/` usually has to pay for `check.bat` only. Two `test.bat` gates are the exception and are worth knowing before you assume a content edit cannot go red there: [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions) tokenises every markdown file under `docs/`, and [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists) reads `README.md` and every page under `docs/Documentation/`. Both CI workflows run every gate from both wrappers unconditionally, each as its own step, so the wrapper choice changes what a local edit costs and nothing about what reaches `staging`.
+An edit confined to `docs/` therefore usually needs `check.bat` only. Two `test.bat` gates can still go red on a content edit: [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions) tokenises every markdown file under `docs/`, and [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists) reads `README.md` and every page under `docs/Documentation/`. Both CI workflows run every gate from both wrappers, each as its own step, so the choice of wrapper changes only what a local edit costs.
 
 ### Conventions
 
-**The command line goes through `lib/cli.mjs`.** `parseCli(argv, { options, positionals, stopAt })` is a strict parse over `node:util`'s `parseArgs`: an unknown option, a boolean given a value, a value flag without its value or with an empty one, and a positional the tool does not take are each a `CliError`. `options` is keyed by long name (`{ type: "string" | "boolean", short, multiple, default, empty }`), `positionals` is a count or `{ min, max }`, and the result's `values` is keyed by the camelCase of each name. A new tool follows one shape, which `check_tree_fresh.mjs` and `check_dot_fit.mjs` show in full:
+**The command line goes through `lib/cli.mjs`.** `parseCli(argv, { options, positionals, stopAt })` is a strict parse over `node:util`'s `parseArgs`. Each of these is a `CliError`: an unknown option, a boolean given a value, a value flag without its value or with an empty one, and a positional the tool does not take. `options` is keyed by long name (`{ type: "string" | "boolean", short, multiple, default, empty }`), `positionals` is a count or `{ min, max }`, and the result's `values` is keyed by the camelCase of each name. `check_tree_fresh.mjs` and `check_dot_fit.mjs` show the shape a new tool follows:
 
 - **Help first.** Declare `help: { type: "boolean", short: "h" }` and pass `stopAt: ["help"]`, so nothing after `--help` is read or checked. Answer it straight after the parse with `printHelpAndExit(USAGE)`, which prints to standard output and exits 0.
 - **Refusals exit 2.** Wrap the parse in `withUsageError(() => parseCli(...))`, which prints a `CliError`'s message to standard error and exits 2.
 - **Check values straight after the parse,** before the tool does any work: `numberOption`, `choiceOption`, `regexOption`, `urlOption` and `dateOption` read one value and throw a `CliError` that names the option, and `refuseTogether(values, names)` refuses options that exclude each other. Do not leave a value to fail later as `NaN`.
 - **Install `exitOnCrash()` at the entry point,** before anything else runs (see the exit codes below).
-- **Stop with `die(code, message)`** when the tool cannot go on: it prints the message to standard error and exits with the code. A tool that has something to put back first, as `sweep_attributes.mjs` has the registry, defines its own.
+- **Stop with `die(code, message)`** when the tool cannot go on: it prints the message to standard error and exits with the code. A tool that must put something back first, as `sweep_attributes.mjs` does the registry, defines its own.
 - **End the usage text with an `Exit codes:` block,** one `  <code>  <meaning>` line per code, a long meaning wrapped under itself.
 
-[`scripts/check_cli.mjs`](Tools-Toolchain-Tests#check-cli) holds every tool to this, and its cases are in `scripts/lib/cli-cases.mjs`. A new tool is added to that file's `HELP_TOOLS` list, which makes the tool answer `--help` and `-h` with exit 0 and end its usage with exactly one `Exit codes:` table, and to its `REFUSALS` list, which gives it a case for an unknown flag and for an empty value; the gate throws on start if the two lists disagree. A tool that checks a value after the parse gets a case of its own in the same file's bad-value list.
+[`scripts/check_cli.mjs`](Tools-Toolchain-Tests#check-cli) holds every tool to this; its cases are in `scripts/lib/cli-cases.mjs`. Add a new tool to that file's `HELP_TOOLS` list (the tool must answer `--help` and `-h` with exit 0 and end its usage with exactly one `Exit codes:` table) and to its `REFUSALS` list (a case for an unknown flag and for an empty value). The gate throws on start if the two lists disagree. A tool that checks a value after the parse gets a case of its own in the file's bad-value list.
 
-**Exit codes.** Three values, and a new gate in either wrapper uses them this way:
+**Exit codes.** A new gate in either wrapper uses three values:
 
 | Code | Means |
 |---|---|
@@ -667,67 +653,55 @@ The split exists so that an edit confined to `docs/` usually has to pay for `che
 | `1` | The checked thing failed. This is the finding. |
 | `2` | The harness or the environment failed --- a command line the tool refuses (an unknown flag, a flag without its value or with an empty one, an unexpected argument, a value it cannot use), an absent tree, a crash. Nothing was checked. |
 
-Separating 1 from 2 is what stops a broken gate reading as a clean site, and it has to hold at the top level too. Node's own exit for an uncaught exception is 1, which reads as a finding. So a new tool calls `exitOnCrash()` from `lib/cli.mjs` before it does anything else; it makes an uncaught exception, or a rejection nothing awaits, print the error and exit 2, and it also catches a rejected top-level await. It installs when called, never on import, so a module that can also be imported calls it only when it is the entry point. `exitOnCrash(cleanup)` runs `cleanup(err)` first for a tool that holds something the exit would lose. A script with a `main()` can instead end with `main().catch((err) => { console.error(err); process.exit(2); })`, as `check_a11y.mjs` does; either way a crash must not leave Node's own exit 1.
+Separating 1 from 2 stops a broken gate reading as a clean site, and it must hold at the top level too. Node's own exit for an uncaught exception is 1, which reads as a finding. So a new tool calls `exitOnCrash()` from `lib/cli.mjs` before it does anything else. It makes an uncaught exception, an unawaited rejection or a rejected top-level await print the error and exit 2. It installs when called, never on import, so a module that can also be imported calls it only when it is the entry point. `exitOnCrash(cleanup)` runs `cleanup(err)` first for a tool that holds something the exit would lose. A script with a `main()` can instead end with `main().catch((err) => { console.error(err); process.exit(2); })`, as `check_a11y.mjs` does.
 
-The rule is not limited to gates. Every tool under `builder/`, `scripts/`, `book/`, `eval/` and `wisdom/` reports a finding as 1 where it has findings, and everything that stops it doing its job as 2. A tool with more outcomes to tell apart adds codes above 2 --- `tbbuild` uses 3 and 4, `tbrun` 3 to 6, `addin_test` and `wisdom` use 3 --- and `impexp` keeps a table of its own, shared with its Python edition. **Each tool ends its `--help` text with an `Exit codes:` block, one line per code, and that block is the source of truth**: [Tools and Scripts](Tools) states the same codes once in each tool's entry, and a change to one goes into the other.
+The rule applies to every tool under `builder/`, `scripts/`, `book/`, `eval/` and `wisdom/`: 1 for a finding, 2 for anything that stops the tool doing its job. A tool with more outcomes to tell apart adds codes above 2 --- `tbbuild` uses 3 and 4, `tbrun` 3 to 6, `addin_test` and `wisdom` use 3 --- and `impexp` keeps a table of its own, shared with its Python edition. **Each tool ends its `--help` text with an `Exit codes:` block, one line per code, and that block is the source of truth**: [Tools and Scripts](Tools) states the same codes in each tool's entry, and a change to one goes into the other.
 
-**Say what a pass covered.** Nearly every gate in both wrappers does: `check_dot_fit.mjs` gives the diagram count, `pick_a11y_sample.mjs --check` the sample size and the number of construct families in use, `check_publish_policy.mjs` the probe counts on both sides, `check_code_regions.mjs` the number of files swept, the number whose code regions moved and the number of fences found, `check_a11y.mjs` the page × theme × viewport product it audited. A gate silent on success says nothing about whether it examined anything, which is the state a gate that has quietly stopped working also reports.
+**Say what a pass covered.** A gate silent on success does not show that it examined anything, and a gate that has quietly stopped working looks the same. So report coverage: `check_dot_fit.mjs` gives the diagram count, `pick_a11y_sample.mjs --check` the sample size and construct families in use, `check_a11y.mjs` the page × theme × viewport product it audited.
 
-**Name the artifact and the remedy.** A gate's output is read by someone who was in the middle of something else. `check_dot_fit.mjs` names the failing diagram, then `builder/dot-metrics.mjs` and an `@hpcc-js/wasm-graphviz` bump as the usual cause, then `build.bat` as the fix. `check_tree_fresh.mjs` names the source file that is newer than the tree and says to run `build.bat`. `pick_a11y_sample.mjs --check` names the uncovered construct *and* the cheapest page that would cover it.
+**Name the artifact and the remedy.** `check_dot_fit.mjs` names the failing diagram, then `builder/dot-metrics.mjs` and an `@hpcc-js/wasm-graphviz` bump as the usual cause, then `build.bat` as the fix. `check_tree_fresh.mjs` names the source file that is newer than the tree and says to run `build.bat`. `pick_a11y_sample.mjs --check` names the uncovered construct *and* the cheapest page that would cover it.
 
-**Resolve paths from the repository root in `lib/repo-paths.mjs`.** Import `REPO_ROOT`, or `DOCS_DIR` for `docs/`, rather than deriving either from `import.meta.url`, a private `path.resolve(__dirname, ...)` or the working directory, and the gate works from any directory. A path the user gives on the command line still resolves against the working directory, as someone typing a relative path expects. `check_publish_policy.mjs` is the one gate whose default is working-directory-relative (`--src` defaults to `docs`), which is why the batch wrappers `pushd` to the repository root before running anything.
+**Resolve paths from the repository root in `lib/repo-paths.mjs`.** Import `REPO_ROOT`, or `DOCS_DIR` for `docs/`, rather than deriving either from `import.meta.url`, `path.resolve(__dirname, ...)` or the working directory; the gate then works from any directory. A path given on the command line still resolves against the working directory. `check_publish_policy.mjs` is the one gate whose default is working-directory-relative (`--src` defaults to `docs`), which is why the batch wrappers `pushd` to the repository root first.
 
-**Find markdown through `lib/markdown-files.mjs`.** `markdownFiles(root)` lists the markdown under a tree and never enters the build's output trees (`_site*`, `_serve*`, `_pdf*`), which a running `serve.bat` rewrites while a private walk reads them. A walk that must read `docs/` some other way decides what an output tree is with `isOutputTree(name)` from the same module, as `check_tree_fresh.mjs` does. What is code inside a markdown file is a separate question, answered by `lib/markdown.mjs` (see [When `test.bat` fails in `check_code_regions`](#code-regions-altered)).
+**Find markdown through `lib/markdown-files.mjs`.** `markdownFiles(root)` lists the markdown under a tree and never enters the build's output trees (`_site*`, `_serve*`, `_pdf*`), which a running `serve.bat` rewrites. A walk that must read `docs/` some other way uses `isOutputTree(name)` from the same module, as `check_tree_fresh.mjs` does. `lib/markdown.mjs` decides what is code inside a markdown file (see [When `test.bat` fails in `check_code_regions`](#code-regions-altered)).
 
-**Be explicit about what may already have run.** Both wrappers stop at the first failure, so a gate's position decides what it can assume --- and the two do not offer the same guarantees. `check_tree_fresh.mjs` runs first in `check.bat`, so every later gate there may assume `_site-offline/` is current. `test.bat` has no freshness gate at all, and its one gate that opens a built page does not need one: `check_axe_patch_equiv.mjs` loads a single page and never reads that page's DOM, so a stale tree cannot change its result. Nothing in either wrapper may assume the build's own link check passed: a link failure sets the build's exit code without aborting the build, so a tree that failed it is still on disk and still fresh.
+**Be explicit about what may already have run.** Both wrappers stop at the first failure, so a gate's position decides what it can assume. `check_tree_fresh.mjs` runs first in `check.bat`, so every later gate there may assume `_site-offline/` is current. `test.bat` has no freshness gate; its one gate that opens a built page, `check_axe_patch_equiv.mjs`, never reads that page's DOM. Neither wrapper may assume the build's own link check passed: a link failure sets the build's exit code without aborting the build, so a tree that failed it is still on disk and fresh.
 
-**Register it everywhere a gate is listed.** A `node --test test/<name>.test.mjs` file is a gate too, and is registered the same way, named by its path.
+**Register it everywhere a gate is listed.** A `node --test test/<name>.test.mjs` file is a gate too, registered the same way, named by its path.
 
 - **The wrapper** it belongs in (`check.bat` or `test.bat`), at the position its assumptions need, with a comment saying what the gate protects against. Each step is followed by `if errorlevel 1 goto :fail`.
 - **`.github/actions/run-gates/action.yml`**, the one list of gates both CI workflows run, so a gate goes into CI once. Give it a step named after the gate, with the same arguments and in the same order as the wrapper.
 - **[Tools and Scripts](Tools)**: the gate's own entry under CLI tools (with its `{: #check-... }` anchor and its exit codes), a line in the wrapper's numbered list in [`check.bat`](Tools#checkbat) or [`test.bat`](Tools#testbat), the step count that section states, and the POSIX command block under the list.
 - **`WIP.md`**, the maintainers' file: the gate's row in its table of gates, and the wrapper's bullet under Build / preview.
 
-CI runs every gate from both wrappers, each as its own step of the action, so the wrapper choice does not change what CI does. Leaving a gate out of CI is a decision, not an omission, and is written down with its reason in `check_ci_workflows.mjs`'s list of allowed differences: `check_tree_fresh.mjs` is left out because CI builds in the same job and cannot have a stale tree.
+A gate left out of CI is listed with its reason in `check_ci_workflows.mjs`'s allowed differences: `check_tree_fresh.mjs` is left out because CI builds in the same job and cannot have a stale tree.
 
-Two checks enforce the registration, and neither reads the POSIX command blocks or `WIP.md`, so those two are a matter of care. [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists) compares both wrappers against `Tools.md`'s two numbered lists --- membership, order, and the step count each section states --- so adding a gate without the entry fails `test.bat` naming the disagreement. It then sweeps `README.md` and every page under `docs/Documentation/` for a gate count stated anywhere in prose and fails on those too, which is what makes one edit enough: `Tools.md` owns the lists and nothing else restates them. If you find yourself writing a gate count into a second page, that is the thing not to do. [`check_ci_workflows.mjs`](Tools-Toolchain-Tests#check-ci-workflows) does the same for CI: both workflows, read through the action, must run every wrapper gate with the same arguments and in the same order, and any difference not on its list of allowed ones fails `test.bat`.
+Two checks enforce the registration; neither reads the POSIX command blocks or `WIP.md`, so take care with those. [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists) compares both wrappers against `Tools.md`'s two numbered lists --- membership, order, and the step count each section states --- so a gate added without the entry fails `test.bat`. It also fails on a gate count stated in prose in `README.md` or any page under `docs/Documentation/`: do not write one. [`check_ci_workflows.mjs`](Tools-Toolchain-Tests#check-ci-workflows) checks that both workflows, read through the action, run every wrapper gate with the same arguments and in the same order, apart from its list of allowed differences.
 
 ### It must be able to fail
 
-**A gate that silently checks less reports exactly what a clean site reports.** A green run is therefore not evidence about the site until something independent says the gate can still go red.
+**A gate that silently checks less reports exactly what a clean site reports.** A green run is not evidence about the site until something independent shows the gate can still go red. A hand-picked accessibility sample can report a clean pass while pages outside it carry violations, and an optimisation that makes axe see fewer nodes can report a pass too.
 
-That is not a style note. A hand-picked accessibility sample can report a clean pass while pages outside it carry violations, and an optimisation that makes axe see fewer nodes can report a pass too; both stay green while covering less.
-
-So a new gate needs a second assertion of the opposite sign, and there are four shapes in the repository to copy:
+So a new gate needs a second assertion of the opposite sign. Four shapes in the repository to copy:
 
 - **Named probes on both sides.** `check_publish_policy.mjs` asserts that thirteen file types stay refused *and* that six stay published, because a policy that refuses everything also reports a clean sweep.
 - **A deliberately corrupted side.** `check_links_diff.mjs --self-test` diffs the checker against a mutated copy of itself and fails unless the difference is reported.
-- **A fixture that provokes one fault of each kind,** with the count asserted afterwards. The real site is clean, so without one every category compares empty against empty --- and a category that has stopped being checked looks identical to a category with nothing to find.
-- **An A/A control.** Running `check_a11y_fingerprint.mjs` with the same scheme on both sides says whether the harness is stable, before any A/B result from it is believed.
+- **A fixture that provokes one fault of each kind,** with the count asserted afterwards. The real site is clean, so without one every category compares empty against empty, and a category that has stopped being checked looks identical to a category with nothing to find.
+- **An A/A control.** Running `check_a11y_fingerprint.mjs` with the same scheme on both sides shows whether the harness is stable, before any A/B result from it is believed.
 
-A self-test made of named probes, such as `check_page_baseline.mjs`, records them with `createProbes(tool, onFailure)` from `scripts/lib/gate-probes.mjs`. `check(name, ok, detail)` records one probe; `report()` prints a line for each, with a failed probe's detail under it, then a summary, and returns the exit code (0, or 1 if any probe failed). The optional `onFailure` text ends the summary of a failed run, to say what a failed probe means. A drift guard whose baseline is a JSON file under `builder/` is probed against a scratch copy, through `baselineFixture(name)` from the same module, so no probe touches the committed baseline.
+A self-test made of named probes, such as `check_page_baseline.mjs`, records them with `createProbes(tool, onFailure)` from `scripts/lib/gate-probes.mjs`. `check(name, ok, detail)` records one probe. `report()` prints a line for each, with a failed probe's detail under it, then a summary, and returns the exit code (0, or 1 if any probe failed). The optional `onFailure` text ends the summary of a failed run, to say what a failed probe means. A drift guard whose baseline is a JSON file under `builder/` is probed against a scratch copy, through `baselineFixture(name)` from the same module, so no probe touches the committed baseline.
 
-When the gate cannot assert its own correctness from the inside, the proof goes in a sibling script and is named in the gate's header comment, so whoever changes the gate next finds it in the file they are already reading.
+When the gate cannot assert its own correctness from the inside, put the proof in a sibling script and name it in the gate's header comment.
 
 ---
 
 ## Adding a build-time count
 
-A count name is a number the build works out and substitutes into prose, so a sentence
-stating it cannot go stale. Readers write `{{tbdocs:<name>}}`; this is the other end.
+A count name is a number the build works out and substitutes into prose, so a sentence stating it cannot go stale. Readers write `{{tbdocs:<name>}}`; this is the other end.
 
-**One rule decides whether a name should exist at all: it is a derivation over build
-state, never a stored constant.** A registry holding `pages: 908` would not have removed
-the stale figure it replaced, only moved it from a page a contributor reads into a module
-nobody opens. If a number cannot be derived, it does not get a name and stays a digit.
+**A name must be a derivation over build state, never a stored constant.** A registry holding `pages: 908` only moves the stale figure from a page a contributor reads into a module nobody opens. A number that cannot be derived gets no name and stays a digit.
 
-Two shapes qualify. Most names count things `discover` already found --- pages under a
-prefix, static files, packages. `attributeAnchors` and `enumerations` are the other shape:
-they scan one page's `rawContent` for the pattern that makes an entry, which is legitimate
-because the page *is* the list, and carries the matching exposure --- change that page's
-list formatting and the number moves with it. Both scan only the lines outside code, which
-`proseLines` in `counts.mjs` gives them, so an example of the pattern in a fence is not
-counted; a new scan should do the same.
+Two shapes qualify. Most names count things `discover` already found: pages under a prefix, static files, packages. `attributeAnchors` and `enumerations` scan one page's `rawContent` for the pattern that makes an entry. That is legitimate because the page *is* the list, but changing that page's list formatting moves the number. Both scan only the lines outside code, which `proseLines` in `counts.mjs` gives them, so an example of the pattern in a fence is not counted; a new scan should do the same.
 
 1. **Add the entry.** A function beside the others in
    [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs),
@@ -735,38 +709,33 @@ counted; a new scan should do the same.
    it returns. That object's keys are the names a page may use, so nothing else registers it.
 2. **Add the row** to the name table on [Authoring Pages](Authoring#counts). An
    undocumented name is one nobody will use.
-3. **Use it**, or do not --- a name with no call sites is fine, and cheaper to add now than
+3. **Use it**, or do not. A name with no call sites is fine, and cheaper to add now than
    to retrofit when a figure goes stale.
 
-**Verify by building.** Two checks guard the feature and they fail differently, so a green
-build exercises both: `validateCountNames` runs on main before any worker renders and
-rejects an unknown name, naming the file, the line and the nearest match; and
-`findSurvivingPlaceholder` scans the rendered HTML for a placeholder that got through
-outside `<code>` and `<pre>`, which catches the case source validation structurally
-cannot --- a raw HTML block is one opaque token, so a placeholder inside one has a
-perfectly good name and would otherwise publish verbatim.
+**Verify by building.** Two checks guard the feature, and a green build exercises both:
 
-Then read the built page and check the number against the thing it counts. Nothing
-compares a derivation against reality: a name that returns the wrong number is as green
-as one that returns the right one.
+- `validateCountNames` runs on main before any worker renders and rejects an unknown name, naming the file, the line and the nearest match.
+- `findSurvivingPlaceholder` scans the rendered HTML for a placeholder that got through outside `<code>` and `<pre>`. Source validation cannot catch this case: a raw HTML block is one opaque token, so a placeholder inside one has a valid name and would publish verbatim.
+
+Then read the built page and check the number against the thing it counts. Nothing compares a derivation against reality: a name that returns the wrong number is as green as one that returns the right one.
 
 ---
 
 ## What a change obliges in the documentation
 
-Everything in [Verify](#7-verify) and [Testing](#testing) is a code gate. Not one of them compares a documentation page against the task graph it describes. So a contributor who follows this page exactly can ship a correct task, a green `build.bat`, a green `check.bat`, a green `test.bat`, and a pipeline reference that describes a build which no longer exists --- and nothing anywhere will report it. That is why the obligation is written down here rather than left to be reconstructed.
+Nothing in [Verify](#7-verify) or [Testing](#testing) compares a documentation page against the task graph it describes. A contributor who follows this page exactly can ship a correct task with a green `build.bat`, `check.bat` and `test.bat`, and a pipeline reference that describes a build which no longer exists. Nothing will report it.
 
-Four files under `docs/` model the task graph: `Pipeline-Stages.md`, `Builder.md`, this page, and `scheduler-dag.dot`. None of them is generated from `TASKS`. Every surface below is maintained by hand.
+Four files under `docs/` model the task graph: `Pipeline-Stages.md`, `Builder.md`, this page, and `scheduler-dag.dot`. None is generated from `TASKS`; every surface below is maintained by hand.
 
 ### `Pipeline-Stages.md`
 
 Three surfaces, and the second is the one that gets missed.
 
-**The task's own section.** One `###` heading per task, under the numbered section matching its Gantt section, opening with a fenced block that gives its `expected` array --- and its `execute()` return shape where the return value matters --- followed by prose for what `submit()` merges into `SharedState`. A per-lane start-up task, which the chart draws in the worker rows rather than in a section, goes under Render, as `warmInit` and `renderEnvInit` do. A new predecessor, a new field on the returned delta, a new key written to `state`: each is an edit here.
+**The task's own section.** One `###` heading per task, under the numbered section matching its Gantt section. It opens with a fenced block giving its `expected` array --- and its `execute()` return shape where that matters --- followed by prose for what `submit()` merges into `SharedState`. A per-lane start-up task, which the chart draws in the worker rows rather than in a section, goes under Render, as `warmInit` and `renderEnvInit` do. A new predecessor, a new field on the returned delta, a new key written to `state`: each is an edit here.
 
-**The reverse edges.** A task's position in the graph is stated once in its own section and again in the `expected` line of every task that depends on it. Add `myTask` to `writeAux.expected` in the code and `writeAux`'s section goes on printing the old list, because nothing connects the two. `Pipeline-Stages.md` names `renderJoin` on many lines; three of them are the `expected` declarations belonging to `searchData`, `symbolIndex` and `writePdf`. Grep the task name across the whole file rather than editing only the section that carries its name.
+**The reverse edges.** A task's position in the graph is stated in its own section and again in the `expected` line of every task that depends on it. Add `myTask` to `writeAux.expected` in the code and `writeAux`'s section goes on printing the old list. `Pipeline-Stages.md` names `renderJoin` on many lines; three of them are the `expected` declarations of `searchData`, `symbolIndex` and `writePdf`. Grep the task name across the whole file rather than editing only its own section.
 
-**The module export table.** [Module export tables](Pipeline-Stages#module-export-tables) gives the signature of the function each task calls, return shape included --- so a return shape is documented twice on one page, and the two copies go stale independently.
+**The module export table.** [Module export tables](Pipeline-Stages#module-export-tables) gives the signature of the function each task calls, return shape included. A return shape is thus documented twice on one page, and the two copies go stale independently.
 
 ### `Builder.md`
 
@@ -777,37 +746,37 @@ Four surfaces, none derived from `TASKS`:
 - The **per-task bullet** under the matching `### Seeds` / `### Spine` / `### Render` / `### Write` subsection, plus the task's row in [What runs where](Builder#what-runs-where).
 - The **two ASCII DAG sketches**, one under Spine and one under Render.
 
-Those four are not kept in step with each other either: a task can be named in a membership list and absent from both the per-task bullets and the "What runs where" table. So do not treat a neighbouring task's coverage as proof of what the full set is. Take the union of two, which is what the completeness test below does.
+These four are not kept in step with each other: a task can be named in a membership list and absent from both the per-task bullets and the "What runs where" table. Do not treat a neighbouring task's coverage as proof of the full set; take the union of two, as the completeness test below does.
 
 ### `scheduler-dag.dot`
 
-`docs/assets/images/dot/scheduler-dag.dot` is the DAG rendered on `Builder.md`, and it is **written by hand** --- node by node and edge by edge, against two-letter aliases declared at the top of the file. A new task needs a node (fill `#fef7e0` with stroke `#f9ab00` for main-thread, `#e8f0fe` with `#4285f4` for worker), one outgoing edge per entry in its `expected`, and one new incoming edge on every task that now depends on it.
+`docs/assets/images/dot/scheduler-dag.dot` is the DAG rendered on `Builder.md`, **written by hand** node by node and edge by edge, against two-letter aliases declared at the top of the file. A new task needs a node (fill `#fef7e0` with stroke `#f9ab00` for main-thread, `#e8f0fe` with `#4285f4` for worker), one outgoing edge per entry in its `expected`, and one new incoming edge on every task that now depends on it.
 
-`check_dot_fit.mjs` is not a guard against getting this wrong. It renders each committed `.svg` in a browser and asks whether every label still sits inside the box Graphviz drew for it, which is a geometry question. A diagram whose edges contradict `TASKS` passes that check, passes the build, and renders cleanly on the page. Nothing in the repository compares the diagram against the graph, so it has to be read against `TASKS` by eye.
+`check_dot_fit.mjs` does not guard this. It renders each committed `.svg` in a browser and asks whether every label sits inside the box Graphviz drew for it, a geometry question. A diagram whose edges contradict `TASKS` passes that check and the build. Read the diagram against `TASKS` by eye.
 
 ### What not to update
 
-A grep for a task name also hits `builder/`, which holds design documents at three different life stages. [`builder/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/README.md)'s Documentation list is the authority on which is which, and it marks two classes as not maintained reference:
+A grep for a task name also hits `builder/`, which holds design documents at three life stages. [`builder/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/README.md)'s Documentation list says which is which, and marks two classes as not maintained reference:
 
-- **`REVIEW-*.md` and `PLAN-REVIEW-*.md`** --- frozen audit snapshots of a commit range. Their whole value is that they record what was true at that commit; editing one to match a later change destroys it.
-- **`PLAN-scheduler.md`** --- the superseded push-based scheduler design, kept for its reasoning rather than as a description of the build. `PLAN-sab-pull-scheduler.md` is the current one, and it does need updating.
+- **`REVIEW-*.md` and `PLAN-REVIEW-*.md`** --- frozen audit snapshots of a commit range. Editing one to match a later change destroys its value.
+- **`PLAN-scheduler.md`** --- the superseded push-based scheduler design, kept for its reasoning. `PLAN-sab-pull-scheduler.md` is the current one, and it does need updating.
 
 Read the README entry for a `builder/` file before editing it.
 
 ### The completeness test
 
-There is no drift gate. Nothing fails when a task's documentation goes stale, so the honest test is a grep, run before committing:
+No gate fails when a task's documentation goes stale, so run a grep before committing:
 
     grep -rn "myTask" docs/ builder/
 
-Then triage every hit by the file it is in. Under `docs/` the legitimate homes are the four above; a hit anywhere else is either a page that has grown a dependency on the task graph or an ordinary English word, and both `dispatch` and `render` collide that way. Expect one more diagram in the results if the task is `writePdf`: `pdf-render-pipeline.dot` names it in a cluster label without modelling the graph.
+Triage every hit by the file it is in. Under `docs/` the legitimate homes are the four above; a hit anywhere else is a page that has grown a dependency on the task graph, or an ordinary English word (`dispatch` and `render` collide that way). For `writePdf`, expect one more diagram: `pdf-render-pipeline.dot` names it in a cluster label without modelling the graph.
 
-The more useful half is the inverse, and it is worth running before writing anything. Grep **two** existing tasks you did not touch, and take the union of the files they appear in:
+The inverse is more useful, and worth running before writing anything. Grep **two** existing tasks you did not touch, and take the union of the files they appear in:
 
     grep -rl "searchData" docs/ builder/
     grep -rl "writePdf"   docs/ builder/
 
-One task is not a template, because an existing task can itself be missing from a surface. Two are a much better one: where they agree is the obligatory set, and where they disagree is worth reading before deciding which of the two is wrong.
+One task is not a template, because an existing task can itself be missing from a surface. Where two agree is the obligatory set; where they disagree, read both before deciding which is wrong.
 
 ---
 
@@ -815,22 +784,22 @@ One task is not a template, because an existing task can itself be missing from 
 
 Five commands cover the loop:
 
-1. **`build.bat`** --- full pipeline, including the link and integrity check over both trees while their HTML is still in worker memory. A clean exit and a sensible Gantt placement is the bar.
-2. **`serve.bat`** --- live-reload dev server for visual checks. Remember the persistent pool: Ctrl+C and restart after handler-code or task-graph changes. Check both themes if the change touches anything visible.
-3. **`check.bat`** --- the gates that read the built site. [Tools and Scripts](Tools#checkbat) lists them in the order they run.
-4. **`test.bat`** --- the gates that test the toolchain itself, listed at [Tools and Scripts](Tools#testbat). Every change under `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, or to a wrapper or workflow, needs this one, which is every change this page describes. Most content edits do not, with two exceptions: `check_code_regions.mjs` sweeps every markdown file under `docs/`, and `check_gate_lists.mjs` reads `README.md` and every page under `docs/Documentation/`.
+1. **`build.bat`** --- full pipeline, including the link and integrity check over both trees. A clean exit and a sensible Gantt placement is the bar.
+2. **`serve.bat`** --- live-reload dev server for visual checks. Ctrl+C and restart after handler-code or task-graph changes. Check both themes if the change touches anything visible.
+3. **`check.bat`** --- the gates that read the built site. [Tools and Scripts](Tools#checkbat) lists them in order.
+4. **`test.bat`** --- the gates that test the toolchain, listed at [Tools and Scripts](Tools#testbat). Every change under `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, or to a wrapper or workflow, needs it --- that is every change this page describes. Most content edits do not, except that `check_code_regions.mjs` sweeps every markdown file under `docs/` and `check_gate_lists.mjs` reads `README.md` and every page under `docs/Documentation/`.
 5. **`book.bat`** --- re-renders the PDF if your change affects `_site-pdf/` or any chapter body.
 
 A clean run of all five is the bar for "ready to commit".
 
-Three gates are the ones a builder change is most likely to trip, and each fails for a reason worth reading rather than working around.
+Three gates are the ones a builder change is most likely to trip:
 
-- `pick_a11y_sample.mjs --check`, in `check.bat`, fails when a construct family the site uses is covered by no page in the sample --- normally because a build added or moved pages and the cheapest page for some family is no longer in the list. The fix is to add the page it names, not to widen the sample by hand. **It cannot report a genuinely new construct.** The gate iterates the registered `FAMILIES` and nothing else, so markup no family describes produces silence, and that silence is the exact failure a derived sample exists to prevent: the axe rule keyed on that construct then runs nowhere. Adding a family is the deliberate step, and [Site Checks](Tools-Site-Checks#pick-a11y-sample) gives the shape of one.
-- `check_publish_policy.mjs`, in `test.bat`, fails when a new emitted file type is not on the allowlist in `builder/publish-policy.mjs`. Add it to `BUILD_EXTENSIONS`, which is deliberately a separate set from `SOURCE_EXTENSIONS` so blessing a generated type does not also bless a stray one a contributor drops into `docs/`.
-- `check_code_regions.mjs`, also in `test.bat`, fails when a new pre-render rewrite alters the contents of a code fence, an indented code block or a code span. For a fence or a span, the fix is to move the rewrite inside `applyPreRenderRewrites` in `render.mjs`, between `maskCode` and its `restore`, rather than to widen the mask; an indented block is not masked at all. It also fails when a rewrite over rendered HTML changes a `<pre>` or `<code>` written as raw HTML. [When `test.bat` fails in `check_code_regions`](#code-regions-altered) has each case.
+- `pick_a11y_sample.mjs --check`, in `check.bat`, fails when a construct family the site uses is covered by no page in the sample, normally because a build added or moved pages and the cheapest page for some family is no longer in the list. Add the page it names; do not widen the sample by hand. **It cannot report a genuinely new construct.** The gate iterates the registered `FAMILIES` only, so markup no family describes produces silence, and the axe rule keyed on that construct then runs nowhere. Adding a family is the fix; [Site Checks](Tools-Site-Checks#pick-a11y-sample) shows the shape of one.
+- `check_publish_policy.mjs`, in `test.bat`, fails when a new emitted file type is not on the allowlist in `builder/publish-policy.mjs`. Add it to `BUILD_EXTENSIONS`, a separate set from `SOURCE_EXTENSIONS` so that allowing a generated type does not also allow a stray one a contributor drops into `docs/`.
+- `check_code_regions.mjs`, also in `test.bat`, fails when a new pre-render rewrite alters the contents of a code fence, an indented code block or a code span. For a fence or a span, move the rewrite inside `applyPreRenderRewrites` in `render.mjs`, between `maskCode` and its `restore`, rather than widening the mask; an indented block is not masked at all. It also fails when a rewrite over rendered HTML changes a `<pre>` or `<code>` written as raw HTML. [When `test.bat` fails in `check_code_regions`](#code-regions-altered) has each case.
 
 > [!NOTE]
-> Both `check.bat` and `test.bat` want `build.bat` to have run first, for different reasons. `check.bat` reads the built tree throughout, and `check_tree_fresh.mjs` refuses one older than the sources that produced it rather than letting the later gates report on stale output. `test.bat` needs a built tree only for its last gate, `check_axe_patch_equiv.mjs`, and does not care how old that tree is.
+> Both `check.bat` and `test.bat` want `build.bat` to have run first. `check.bat` reads the built tree throughout, and `check_tree_fresh.mjs` refuses one older than its sources. `test.bat` needs a built tree only for its last gate, `check_axe_patch_equiv.mjs`, and does not care how old it is.
 
 ---
 

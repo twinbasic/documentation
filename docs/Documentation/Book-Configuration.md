@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Book-Configuration
 # Book Configuration
 {: .no_toc }
 
-`docs/_book.yml` defines the chapter manifest for the PDF book: which pages appear, in what order, and how they map to named parts and chapters. `book.mjs` reads this file during Phase 2 (to resolve page selectors) and Phase 8 (to assemble `book.html`). See [Pipeline Stages](Pipeline-Stages) for the relevant interface contracts.
+`docs/_book.yml` is the chapter manifest for the PDF book: which pages appear, in what order, and how they group into named parts and chapters. `book.mjs` reads it during Phase 2 (to resolve page selectors) and Phase 8 (to assemble `book.html`). See [Pipeline Stages](Pipeline-Stages) for the interface contracts.
 
 * TOC goes here
 {:toc}
@@ -18,9 +18,9 @@ permalink: /Documentation/Development/Book-Configuration
 
 **File:** `docs/_book.yml`
 
-`data.mjs` loads `_book.yml` during Phase 2 and makes it available as `site.data.book`. The orchestrator then exposes `site.data.book` as `site.bookData` and passes it to `resolveBookChapters`. That call traverses the entire structure and resolves every selector to a concrete `Page[]` stored as `entry._chapters`, so Phase 8's `assembleBook` has no further page lookups to do.
+`data.mjs` loads `_book.yml` during Phase 2 as `site.data.book`. The orchestrator passes it to `resolveBookChapters` as `site.bookData`, which resolves every selector to a concrete `Page[]` stored as `entry._chapters`. Phase 8's `assembleBook` then needs no further page lookups.
 
-Run `build.bat` then `book.bat` to see the effect of changes. `build.bat` warns about a page the manifest does not mention; see [Pages left out of the book](#pages-left-out-of-the-book).
+To see the effect of a change, run `build.bat` then `book.bat`. `build.bat` warns about a page the manifest does not mention; see [Pages left out of the book](#pages-left-out-of-the-book).
 
 ## Top-level structure
 
@@ -40,29 +40,29 @@ left_out:
 
 **`front_matter`** entries are emitted between the title page and the first numbered Part. They produce no divider page and no part number.
 
-**`parts`** entries each produce a numbered divider page. A part may contain a flat set of pages or an ordered list of `chapters`, each of which produces its own sub-divider page.
+**`parts`** entries each produce a numbered divider page. A part holds either a flat set of pages or an ordered list of `chapters`, each with its own sub-divider page.
 
-Both `front_matter` entries and parts (and their chapters) share the [selector schema](#selector-schema) and [common entry options](#common-entry-options) described below.
+Front-matter entries, parts and chapters share the [selector schema](#selector-schema) and [common entry options](#common-entry-options).
 
-**`left_out`** entries name the pages that are not in the book on purpose. They use the selector schema and a `reason:`, and emit nothing; see [Pages left out of the book](#pages-left-out-of-the-book).
+**`left_out`** entries name pages that are not in the book. They use the selector schema and a `reason:`, and emit nothing; see [Pages left out of the book](#pages-left-out-of-the-book).
 
 ## Selector schema
 
-Every entry may combine any of these keys to select the pages it contributes to the book. All matches are `contains` by default --- the page's URL or nav-path must contain the prefix string. Set `no_descent: true` on the entry to switch all its matches to exact equality.
+An entry may combine any of these keys to select its pages. Matches are `contains` by default: the page's URL or nav-path must contain the prefix string. Set `no_descent: true` on the entry to make all its matches exact equality.
 
 | Key | Type | Description |
 |---|---|---|
 | `page` | `string` | Single URL prefix. Shorthand for a one-element `pages:` list. |
-| `pages` | `string[]` | List of URL prefixes. Each prefix is tested against the page's `permalink` field. |
+| `pages` | `string[]` | List of URL prefixes, each tested against the page's `permalink` field. |
 | `nav_page` | `string` | Single nav-path prefix. Shorthand for a one-element `nav_pages:` list. A page's nav-path is its slash-joined `grand_parent / parent / title` chain, as populated by `nav.mjs`. |
 | `nav_pages` | `string[]` | List of nav-path prefixes, tested against each page's `navPath` field. |
-| `no_descent` | `boolean` | When `true`, switches every match on this entry from `contains` to exact equality. Use this when a prefix like `/Foo/` should match only the index page and not its sub-pages, or when `page: /` would otherwise sweep in every page on the site. |
+| `no_descent` | `boolean` | When `true`, every match on this entry is exact equality instead of `contains`. Use it when `/Foo/` should match only the index page and not its sub-pages, or when `page: /` would otherwise sweep in every page on the site. |
 
-All selector keys are combinable within one entry. An entry with both `page` and `nav_page` collects the union of both selections. Selectors on a chapter entry are independent of the selectors on the containing part --- a chapter collects its own pages; the part does not automatically inherit them.
+An entry with several selector keys collects the union of their selections. A chapter's selectors are independent of its part's: the chapter collects its own pages, and the part does not inherit them.
 
 ## Pages left out of the book
 
-A page that no part, chapter or `front_matter` entry selects is not in the book. To leave a page out on purpose, name it in `left_out:` with the same selector keys and a `reason:`:
+A page that no part, chapter or `front_matter` entry selects is not in the book. To leave one out, name it in `left_out:` with the same selector keys and a `reason:`:
 
 ```yaml
 left_out:
@@ -70,7 +70,7 @@ left_out:
     page: /Challenges
 ```
 
-Every page has to be in one or the other. When the book is built, the build's summary prints a `book:` warning for:
+Every page has to be in one or the other. The build's summary prints a `book:` warning for:
 
 - a page that no entry selects and `left_out:` does not name;
 - a page that is in the book and in `left_out:` as well;
@@ -82,18 +82,18 @@ A new page with no entry looks like this:
       book:    1 page has no entry in _book.yml -- add each to a part, or to left_out with a reason:
                  IDE/Probe.md  (/tB/IDE/Project/Probe)
 
-These are warnings: the exit code does not change, and the book is complete for the manifest it was given. A build with nothing to report prints no `book:` line. `serve.bat` does not build the book, so it never prints one.
+These are warnings: the exit code does not change. A build with nothing to report prints no `book:` line, and `serve.bat` never prints one because it does not build the book.
 
-A link from inside the book to a page left out opens that page on the website, because a site path goes nowhere in a PDF. The link check's pass over `book.html` lists each such link as `OUT OF BOOK`:
+A link from inside the book to a left-out page opens that page on the website, since a site path goes nowhere in a PDF. The link check's pass over `book.html` lists each such link as `OUT OF BOOK`:
 
     _site-pdf/book.html:
       OUT OF BOOK  https://docs.twinbasic.com/tB/IDE/Project/Explorer -- not in the book; opens the website
 
-That list shows which left-out pages the book still links to. It is the first place to look for a page that belongs in the book after all.
+Look there first for a left-out page that belongs in the book after all.
 
 ## Common entry options
 
-Front_matter entries, parts, and chapters all support these options. Where behaviour differs between parts and chapters, the part form is noted first with the chapter form in parentheses.
+Front-matter entries, parts and chapters all support these options. Where parts and chapters differ, the part form comes first and the chapter form follows in parentheses.
 
 ### `title` / `subtitle`
 
@@ -102,9 +102,9 @@ title: "VBA Package"
 subtitle: "Standard runtime modules --- Strings, Math, FileSystem, and the rest"
 ```
 
-`title` is the text for the divider heading --- H1 for parts, H2 for chapters. `subtitle` is an optional subheading rendered below `title`. Both are used as the PDF bookmark label.
+`title` is the divider heading --- H1 for parts, H2 for chapters. `subtitle` is an optional subheading below it. Both serve as the PDF bookmark label.
 
-When `landing_is_target:` is set, `title` is injected into the landing page's article rather than rendered on a standalone divider page.
+With `landing_is_target:`, `title` is injected into the landing page's article instead of a standalone divider page.
 
 ### `landing_page`
 
@@ -112,7 +112,7 @@ When `landing_is_target:` is set, `title` is injected into the landing page's ar
 landing_page: /tB/Packages/VBA
 ```
 
-A single absolute URL. The named page is emitted first in the entry's content list, before any prefix-swept pages. It is excluded from prefix matches so it is not emitted twice. Its source H1 is stripped by the rewriter so the divider heading remains the sole PDF outline entry for the entry. Unlike `foreword_page:`, a `landing_page` renders with a normal running header and regular article styling.
+A single absolute URL. The page is emitted first in the entry's content, before any prefix-selected pages, and excluded from prefix matches so it appears once. The rewriter strips its source H1, so the divider heading is the entry's only PDF outline entry. Unlike `foreword_page:`, it renders with a normal running header and regular article styling.
 
 ### `landing_is_target`
 
@@ -121,7 +121,7 @@ landing_page: /tB/Packages/VBA
 landing_is_target: true
 ```
 
-Requires `landing_page:`. When set, the divider page renders silently and the entry `title` is injected as an H1 (part) or H2 (chapter) at the start of the landing-page article. The PDF bookmark navigates to the landing page rather than to a blank divider page. The landing's own source H1 is still stripped.
+Requires `landing_page:`. The divider page renders silently, and the entry `title` is injected as an H1 (part) or H2 (chapter) at the start of the landing-page article. The PDF bookmark goes to the landing page instead of a blank divider page. The landing's source H1 is still stripped.
 
 Pair with `outline_closed:` to start the bookmark collapsed.
 
@@ -131,9 +131,9 @@ Pair with `outline_closed:` to start the bookmark collapsed.
 no_outline_entry: true
 ```
 
-Emits the divider `title` as a silent `<p>` instead of an H1 or H2. PagedJS skips silent paragraphs when building the PDF outline, so the entry has no bookmark of its own. The first content heading in the entry's pages becomes the bookmark target instead.
+Emits the divider `title` as a silent `<p>` instead of an H1 or H2. PagedJS skips silent paragraphs when building the PDF outline, so the entry has no bookmark of its own; the first heading in its pages becomes the bookmark target.
 
-When combined with `landing_page:`, the landing's source H1 strip is skipped --- the landing's own first heading becomes the bookmark target.
+Combined with `landing_page:`, the landing's source H1 is not stripped, and its first heading becomes the bookmark target.
 
 Pair with `no_heading_shift:` to keep that heading at the correct depth.
 
@@ -143,7 +143,7 @@ Pair with `no_heading_shift:` to keep that heading at the correct depth.
 no_heading_shift: true
 ```
 
-Controls how the heading assembler shifts levels to prevent multiple H1s in the combined `book.html`. See [Heading-shift mechanics](#heading-shift-mechanics) below.
+Skips the heading shift that keeps `book.html` from having several H1s. See [Heading-shift mechanics](#heading-shift-mechanics) below.
 
 ### `outline_closed`
 
@@ -151,7 +151,7 @@ Controls how the heading assembler shifts levels to prevent multiple H1s in the 
 outline_closed: true
 ```
 
-Starts the PDF bookmark for this entry collapsed (children hidden until expanded in a PDF reader). The `data-pdf-bookmark-closed` attribute is stamped on:
+Starts the entry's PDF bookmark collapsed (children hidden until expanded in a PDF reader). The `data-pdf-bookmark-closed` attribute is stamped on:
 
 - the divider H1 / H2, for entries with a visible divider heading;
 - the first content article, for `no_outline_entry` entries (PagedJS finds the heading via `closest()`);
@@ -165,9 +165,7 @@ Starts the PDF bookmark for this entry collapsed (children hidden until expanded
 foreword_page: /tB/Packages/
 ```
 
-A single absolute URL. The named page is emitted as `<article class="part-foreword">` right after the part divider, before any chapter dividers. No running header (CSS suppresses the page chrome for foreword articles). The foreword's source H1 is not stripped and it does not become a PDF outline entry.
-
-Distinct from `landing_page:` in two ways: the source H1 is preserved, and there is no outline contribution from the foreword itself.
+A single absolute URL. The page is emitted as `<article class="part-foreword">` right after the part divider, before any chapter dividers. CSS suppresses its running header. Unlike `landing_page:`, its source H1 is kept and it adds no PDF outline entry.
 
 ### `chapters`
 
@@ -179,27 +177,27 @@ chapters:
     ...
 ```
 
-An ordered list of chapter entries. Each chapter produces its own divider page (H2) and uses the same selector schema and common entry options above. No chapter-specific options exist beyond those shared with parts.
+An ordered list of chapter entries. Each chapter has its own divider page (H2) and the same selector schema and common entry options as above. It has no options of its own.
 
 ## Heading-shift mechanics
 
-The PDF assembler shifts heading levels to prevent source H1s from competing with part and chapter divider headings:
+The PDF assembler shifts heading levels so that source H1s do not compete with part and chapter divider headings:
 
-- **Parts (no chapters):** every page in the part receives a +1 shift --- source H1 renders as H2, H2 as H3, and so on. Set `no_heading_shift: true` on the part entry to skip this shift and keep source H1 as H1.
-- **Chapters inside a part:** every page receives a +2 shift total (base +1 from the part, plus an additional +1 for the chapter level) --- source H1 renders as H3. Set `no_heading_shift: true` on the chapter entry to skip only the extra +1, so source H1 renders as H2 instead of H3.
+- **Parts (no chapters):** every page in the part is shifted +1 --- source H1 renders as H2, H2 as H3, and so on. `no_heading_shift: true` on the part skips the shift and keeps source H1 as H1.
+- **Chapters inside a part:** every page is shifted +2 (+1 for the part, +1 for the chapter) --- source H1 renders as H3. `no_heading_shift: true` on the chapter skips only the chapter's +1, so source H1 renders as H2.
 
-Typical pattern: pair `no_outline_entry: true` with `no_heading_shift: true` when a single-page part or chapter should use the landing's own H1 as the PDF bookmark target without a redundant silent divider above it.
+Typical pattern: pair `no_outline_entry: true` with `no_heading_shift: true` when a single-page part or chapter should use the landing's own H1 as the bookmark target, with no silent divider above it.
 
 ## Sort order
 
-Within each entry, selected pages are ordered by `sortByNavOrder`:
+Within each entry, `sortByNavOrder` orders the selected pages:
 
 1. **Index pages first** --- any page whose URL ends in `/`.
-2. **Pages with `nav_order`** --- ascending by `nav_order` value, with `title` as the tie-breaker.
+2. **Pages with `nav_order`** --- ascending by `nav_order`, ties broken by `title`.
 3. **Pages without `nav_order`** --- alphabetically by `title`.
 4. **Grouped by owning index** --- an index page and its direct sub-pages stay adjacent.
 
-A `landing_page:` URL is always placed first, before the sorted set, and is excluded from the sorted set so it is not emitted twice.
+A `landing_page:` URL always comes first, before the sorted pages.
 
 ## Worked examples
 
@@ -214,12 +212,12 @@ A `landing_page:` URL is always placed first, before the sorted set, and is excl
   outline_closed: true
 ```
 
-What this produces in the PDF:
+In the PDF:
 
-1. A chapter divider rendered silently (no visible H2 page), because `landing_is_target: true`.
-2. The VBA landing page at `/tB/Packages/VBA` --- first article, with `"VBA Package"` injected as an H2 at the top of its content. Its original source H1 is stripped.
-3. Every page whose URL contains `/tB/Modules/`, sorted by `sortByNavOrder`.
-4. The PDF bookmark for this chapter navigates to the VBA landing page and starts collapsed.
+1. The chapter divider is silent (no visible H2 page), because of `landing_is_target: true`.
+2. The VBA landing page at `/tB/Packages/VBA` comes first, with `"VBA Package"` injected as an H2 at the top. Its source H1 is stripped.
+3. Every page whose URL contains `/tB/Modules/` follows, sorted by `sortByNavOrder`.
+4. The chapter's bookmark goes to the VBA landing page and starts collapsed.
 
 ---
 
@@ -231,11 +229,11 @@ What this produces in the PDF:
   outline_closed: true
 ```
 
-What this produces:
+In the PDF:
 
 1. A visible H2 divider page titled "Operators".
 2. All pages whose `navPath` contains `Reference Section/Operators`, in nav order.
-3. A PDF bookmark navigating to the divider page, starting collapsed.
+3. A collapsed bookmark to the divider page.
 
 ---
 
@@ -251,11 +249,11 @@ front_matter:
     outline_closed: true
 ```
 
-What this produces:
+In the PDF:
 
-1. The root page (`/`) only --- `no_descent: true` prevents `/` from sweeping in every page on the site.
-2. The divider title "Introduction" renders as a silent `<p>` (no own bookmark). The page's source H1 becomes the PDF bookmark target instead.
-3. Because `no_heading_shift: true` is set, the source H1 renders as H1 rather than H2.
+1. The root page (`/`) only --- `no_descent: true` stops `/` from selecting every page on the site.
+2. The divider title "Introduction" is a silent `<p>` with no bookmark. The page's source H1 is the bookmark target instead.
+3. With `no_heading_shift: true`, that H1 renders as H1 rather than H2.
 4. The bookmark starts collapsed.
 
 ---
@@ -274,11 +272,11 @@ What this produces:
       ...
 ```
 
-What this produces:
+In the PDF:
 
 1. A part divider page (H1) titled "Packages".
-2. The page at `/tB/Packages/` emitted as a foreword article (no running header, no outline entry). Its H1 is preserved.
-3. Chapter divider pages (H2) for each chapter, followed by that chapter's pages in nav order.
+2. The page at `/tB/Packages/` as a foreword article (no running header, no outline entry), with its H1 kept.
+3. A divider page (H2) for each chapter, followed by that chapter's pages in nav order.
 
 ## See Also
 
