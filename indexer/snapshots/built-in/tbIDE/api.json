@@ -1,0 +1,792 @@
+{
+  "format": 3,
+  "package": "tbIDE",
+  "project": "tbIDE",
+  "version": "beta-x-0997",
+  "types": [
+    {
+      "name": "AddIn",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Addin.twin",
+      "signature": "Public CoClass AddIn",
+      "interfaces": [{"name":"IAddInV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"1C61491B-DFDD-4CDA-8076-B1A2E9631C8F\""}],
+      "members": []
+    },
+    {
+      "name": "AddinTimer",
+      "kind": "class",
+      "vis": "public",
+      "file": "AddinTimer.twin",
+      "signature": "Class AddinTimer",
+      "attrs": [{"name":"ClassId","args":"\"3870279B-BA39-4D3B-B143-48B55E4DEB37\""},{"name":"InterfaceId","args":"\"7EF1EE22-40A5-45A8-B775-A4F7858CF9A7\""},{"name":"EventInterfaceId","args":"\"C7CC3F1C-DDF1-466E-8326-57A343212D03\""}],
+      "members": [
+        {"name":"Changed","kind":"sub","vis":"private","signature":"Private Sub Changed() Handles Enabled.OnPropertyLet, Interval.OnPropertyLet"},
+        {"name":"Class_Terminate","kind":"sub","vis":"private","signature":"Private Sub Class_Terminate()"},
+        {"name":"Enabled","kind":"field","vis":"public","signature":"Public Enabled As Boolean"},
+        {"name":"Interval","kind":"field","vis":"public","signature":"Public Interval As Long"},
+        {"name":"KillTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function KillTimer Lib \"user32\" (ByVal hWnd As LongPtr, ByVal uIDEvent As LongPtr) As LongPtr","returnType":"LongPtr"},
+        {"name":"SetTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function SetTimer Lib \"user32\" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr","returnType":"LongPtr"},
+        {"name":"Timer","kind":"event","vis":"public","signature":"Public Event Timer()"},
+        {"name":"TimerCallback","kind":"sub","vis":"private","signature":"Private Sub TimerCallback(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal TimerID As Long, ByVal Tick As Long)"},
+        {"name":"TimerHandle","kind":"field","vis":"private","signature":"Private TimerHandle As LongPtr"}
+      ]
+    },
+    {
+      "name": "Button",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Button.twin",
+      "signature": "Public CoClass Button",
+      "interfaces": [{"name":"IButtonV1","default":true},{"name":"IButtonEventsV1","default":true,"source":true}],
+      "attrs": [{"name":"CoClassId","args":"\"E02050A9-D1A9-4AC8-8004-35289694D4F6\""}],
+      "members": []
+    },
+    {
+      "name": "CodeEditor",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "CodeEditor.twin",
+      "signature": "CoClass CodeEditor",
+      "interfaces": [{"name":"ICodeEditorV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"98E8FC4A-707D-42ED-AA4F-F53E528FBDB4\""}],
+      "members": []
+    },
+    {
+      "name": "DebugConsole",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "DebugConsole.twin",
+      "signature": "CoClass DebugConsole",
+      "interfaces": [{"name":"IDebugConsoleV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"CAF6EE4D-7334-4045-80B3-344D8836E4CA\""}],
+      "members": []
+    },
+    {
+      "name": "Editor",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Editor.twin",
+      "signature": "CoClass Editor",
+      "interfaces": [{"name":"IEditorV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"8799F462-9675-4975-B14A-C08BDD6F5BA2\""}],
+      "members": []
+    },
+    {
+      "name": "Editors",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Editors.twin",
+      "signature": "CoClass Editors",
+      "interfaces": [{"name":"IEditorsV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"4272F739-1019-48FB-B3B6-17BBE0DDE52E\""}],
+      "members": []
+    },
+    {
+      "name": "File",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "File.twin",
+      "signature": "CoClass File",
+      "interfaces": [{"name":"IFileV2","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"98357C97-4D32-40E1-BE56-9AE00AA91A45\""}],
+      "members": []
+    },
+    {
+      "name": "FileSystem",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "FileSystem.twin",
+      "signature": "CoClass FileSystem",
+      "interfaces": [{"name":"IFileSystemV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"9352542F-F3EA-46BA-BEA4-C04E1155AA78\""}],
+      "members": []
+    },
+    {
+      "name": "FileSystemItem",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "FileSystemItem.twin",
+      "signature": "CoClass FileSystemItem",
+      "interfaces": [{"name":"IFileSystemItemV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"8C87558B-0C15-42CE-A294-FA1E233BE000\""}],
+      "members": []
+    },
+    {
+      "name": "Folder",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Folder.twin",
+      "signature": "CoClass Folder",
+      "interfaces": [{"name":"IFolderV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"1F2257A8-4DB0-49DD-AB5A-B4CCEA658585\""}],
+      "members": []
+    },
+    {
+      "name": "Host",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Host.twin",
+      "signature": "Public CoClass Host",
+      "interfaces": [{"name":"IHostV1","default":true},{"name":"ItbHostEventsV3","default":true,"source":true}],
+      "attrs": [{"name":"CoClassId","args":"\"1C616DB9-06D0-4367-8E5F-5B4E86789463\""}],
+      "members": []
+    },
+    {
+      "name": "HtmlElement",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "HtmlElement.twin",
+      "signature": "CoClass HtmlElement",
+      "interfaces": [{"name":"IHtmlElementV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"9B1A0B76-D510-4863-B4FF-43347D35B231\""}],
+      "members": []
+    },
+    {
+      "name": "HtmlElementProperties",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "HtmlElementProperties.twin",
+      "signature": "CoClass HtmlElementProperties",
+      "interfaces": [{"name":"IHtmlElementPropertiesV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"6654E855-AD0B-4068-8703-77996F2699FA\""}],
+      "members": []
+    },
+    {
+      "name": "HtmlElementProperty",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "HtmlElementProperty.twin",
+      "signature": "CoClass HtmlElementProperty",
+      "interfaces": [{"name":"IHtmlElementPropertyV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"D4252D41-09FE-454E-A941-91D083899849\""}],
+      "members": []
+    },
+    {
+      "name": "HtmlElements",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "HtmlElements.twin",
+      "signature": "CoClass HtmlElements",
+      "interfaces": [{"name":"IHtmlElementsV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"0A48378A-BA34-46EA-BA42-5E0E0635552D\""}],
+      "members": []
+    },
+    {
+      "name": "HtmlEventProperties",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "IHtmlEventProperties.twin",
+      "signature": "CoClass HtmlEventProperties",
+      "interfaces": [{"name":"IHtmlEventPropertiesV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"8CB99AC2-51EE-4FDA-B3D5-80BB0E7706EE\""}],
+      "members": []
+    },
+    {
+      "name": "HtmlEventProperty",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "IHtmlEventProperty.twin",
+      "signature": "CoClass HtmlEventProperty",
+      "interfaces": [{"name":"IHtmlEventPropertyV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"77B49D53-18BF-4454-99F4-74F2574D71A6\""}],
+      "members": []
+    },
+    {
+      "name": "IAddInV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Addin.twin",
+      "signature": "Public Interface IAddInV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"F1BAB9A7-09A3-436C-8B57-A57A76C5DF98\""}],
+      "members": [
+        {"name":"Name","kind":"property","vis":"public","signature":"Property Get Name() As String","returnType":"String","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "IButtonEventsV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Button.twin",
+      "signature": "Public Interface IButtonEventsV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"437AA6B7-73BB-44C0-A686-58682A2E9213\""}],
+      "members": [
+        {"name":"OnClick","kind":"sub","vis":"public","signature":"Sub OnClick()"}
+      ]
+    },
+    {
+      "name": "IButtonV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Button.twin",
+      "signature": "Public Interface IButtonV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"2E18D17C-283F-4CBF-9C04-81CE101940AF\""}],
+      "members": [
+        {"name":"Caption","kind":"property","vis":"public","signature":"Property Get Caption() As String","returnType":"String","accessor":"Get","description":"The caption of the button.  If IconData is set, and this is a toolbar button, the caption will only be displayed when hovering over the icon"},
+        {"name":"Caption","kind":"property","vis":"public","signature":"Property Let Caption(ByVal value As String)","accessor":"Let","description":"The caption of the button.  If IconData is set, and this is a toolbar button, the caption will only be displayed when hovering over the icon"},
+        {"name":"ID","kind":"property","vis":"public","signature":"Property Get ID() As String","returnType":"String","accessor":"Get","description":"A unique ID, assigned to the button during creation"},
+        {"name":"IconData","kind":"property","vis":"public","signature":"Property Get IconData() As Variant","returnType":"Variant","accessor":"Get","description":"Byte-array data of a graphic that will be displayed for the button, or EMPTY to show the Caption instead"},
+        {"name":"IconData","kind":"property","vis":"public","signature":"Property Let IconData(ByVal value As Variant)","accessor":"Let","description":"Byte-array data of a graphic that will be displayed for the button, or EMPTY to show the Caption instead"}
+      ]
+    },
+    {
+      "name": "ICodeEditorV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "CodeEditor.twin",
+      "signature": "Public Interface ICodeEditorV1 Extends IEditorV1",
+      "extends": "IEditorV1",
+      "attrs": [{"name":"InterfaceId","args":"\"1E7CB20D-4421-4157-BAD3-FE32329178C3\""}],
+      "members": [
+        {"name":"AddMonacoWidget","kind":"function","vis":"public","signature":"Function AddMonacoWidget(ByVal LineNumber As Long, ByVal ColumnNumber As Long, ByVal Html As String, Optional ByVal Css As String) As HtmlElement","returnType":"HtmlElement","description":"Adds an overlay HTML element attached to a line of code.  If you pass zero for ColumnNumber, the content will be added immediately below the specified line and space will be added so that the content doesn't overlap the next line."},
+        {"name":"ExecuteMonacoCommand","kind":"sub","vis":"public","signature":"Sub ExecuteMonacoCommand(ByVal Command As String, ParamArray Args() As Variant)","description":"Sends a direct command to the monaco editor"},
+        {"name":"GetSelectionInfo","kind":"sub","vis":"public","signature":"Sub GetSelectionInfo(ByRef StartLine As Long, ByRef StartColumn As Long, ByRef EndLine As Long, ByRef EndColumn As Long)","description":"Returns the start and end positions for the selected text in the code pane"},
+        {"name":"RevealRange","kind":"sub","vis":"public","signature":"Sub RevealRange(ByVal StartLine As Long, ByVal StartColumn As Long, ByVal EndLine As Long, ByVal EndColumn As Long, Optional ByVal SmoothScroll As Boolean = True, Optional ByVal Area As RevealArea = RevealArea.Any)","description":"Sets the start and end positions for the selected text in the code pane"},
+        {"name":"SelectedText","kind":"property","vis":"public","signature":"Property Get SelectedText() As String","returnType":"String","accessor":"Get"},
+        {"name":"SelectedText","kind":"property","vis":"public","signature":"Property Let SelectedText(ByVal Value As String)","accessor":"Let","description":"Sets the selected text in the code pane"},
+        {"name":"SetSelectionInfo","kind":"sub","vis":"public","signature":"Sub SetSelectionInfo(ByVal StartLine As Long, ByVal StartColumn As Long, ByVal EndLine As Long, ByVal EndColumn As Long)","description":"Sets the start and end positions for the selected text in the code pane"},
+        {"name":"Text","kind":"property","vis":"public","signature":"Property Get Text() As String","returnType":"String","accessor":"Get","description":"Returns the full code pane text"},
+        {"name":"Text","kind":"property","vis":"public","signature":"Property Let Text(ByVal Value As String)","accessor":"Let","description":"Replaces the full code pane text"}
+      ]
+    },
+    {
+      "name": "RevealArea",
+      "kind": "enum",
+      "in": "ICodeEditorV1",
+      "vis": "public",
+      "file": "CodeEditor.twin",
+      "signature": "Enum RevealArea",
+      "values": [
+        {"name":"Any","value":"0"},
+        {"name":"Top","value":"1"},
+        {"name":"Center","value":"2"},
+        {"name":"CenterIfNotVisible","value":"3"},
+        {"name":"NearTop","value":"4"},
+        {"name":"NearTopIfNotVisible","value":"5"}
+      ]
+    },
+    {
+      "name": "IDebugConsoleV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "DebugConsole.twin",
+      "signature": "Public Interface IDebugConsoleV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"C565E796-7C5E-4EB5-999B-725618B1F65A\""}],
+      "members": [
+        {"name":"Clear","kind":"sub","vis":"public","signature":"Sub Clear()","description":"Clears the whole content of the DEBUG CONSOLE panel"},
+        {"name":"PrintText","kind":"sub","vis":"public","signature":"Sub PrintText(ByVal Prompt As String, Optional ByVal ColorRGB As Long)","description":"Prints a message to the DEBUG CONSOLE pane"},
+        {"name":"SetFocus","kind":"sub","vis":"public","signature":"Sub SetFocus()","description":"Sets focus on the DEBUG CONSOLE text entry point"}
+      ]
+    },
+    {
+      "name": "IEditorV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Editor.twin",
+      "signature": "Public Interface IEditorV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"66396D0D-CAF9-4CBB-B033-A8BFC2F37DBA\""}],
+      "members": [
+        {"name":"Close","kind":"sub","vis":"public","signature":"Sub Close()","description":"Closes the editor"},
+        {"name":"IsDirty","kind":"property","vis":"public","signature":"Property Get IsDirty() As Boolean","returnType":"Boolean","accessor":"Get","description":"Determines if the editor is in a dirty (unsaved) state"},
+        {"name":"Path","kind":"property","vis":"public","signature":"Property Get Path() As String","returnType":"String","accessor":"Get","description":"Returns the tB internal path representing the codepane"},
+        {"name":"Save","kind":"sub","vis":"public","signature":"Sub Save()","description":"Saves the editor"},
+        {"name":"SetFocus","kind":"sub","vis":"public","signature":"Sub SetFocus()","description":"Sets the focus to the editor"},
+        {"name":"Type","kind":"property","vis":"public","signature":"Property Get Type() As String","returnType":"String","accessor":"Get","description":"Gets the type of the editor, e.g. 'CodeEditor'"}
+      ]
+    },
+    {
+      "name": "IEditorsV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Editors.twin",
+      "signature": "Public Interface IEditorsV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"2150B095-8A49-4BC9-AD21-367F6B9259E0\""}],
+      "members": [
+        {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Long","returnType":"Long","accessor":"Get","description":"Count of active editors"},
+        {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByVal Index As Variant) As Editor","returnType":"Editor","accessor":"Get","attrs":[{"name":"DefaultMember"}],"description":"There is currently only ONE active editor, accessible via the Editors(0) syntax"},
+        {"name":"Open","kind":"sub","vis":"public","signature":"Sub Open(ByVal Path As String, Optional ByVal LineNumber As Long, Optional ByVal ColumnNumber As Long, Optional ByVal Options As EditorOpenOptions)","description":"Opens the editor associated with the given file"}
+      ]
+    },
+    {
+      "name": "EditorOpenOptions",
+      "kind": "enum",
+      "in": "IEditorsV1",
+      "vis": "public",
+      "file": "Editors.twin",
+      "signature": "Enum EditorOpenOptions",
+      "values": [
+        {"name":"NONE","value":"0"}
+      ]
+    },
+    {
+      "name": "IFileSystemItemV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "FileSystemItem.twin",
+      "signature": "Interface IFileSystemItemV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"3730018C-139B-42A3-B9AF-6F878A5F9A75\""}],
+      "members": [
+        {"name":"Name","kind":"property","vis":"public","signature":"Property Get Name() As String","returnType":"String","accessor":"Get"},
+        {"name":"Parent","kind":"property","vis":"public","signature":"Property Get Parent() As Folder","returnType":"Folder","accessor":"Get"},
+        {"name":"Path","kind":"property","vis":"public","signature":"Property Get Path() As String","returnType":"String","accessor":"Get"},
+        {"name":"Type","kind":"property","vis":"public","signature":"Property Get Type() As FileSystemItemType","returnType":"FileSystemItemType","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "FileSystemItemType",
+      "kind": "enum",
+      "in": "IFileSystemItemV1",
+      "vis": "public",
+      "file": "FileSystemItem.twin",
+      "signature": "Enum FileSystemItemType",
+      "values": [
+        {"name":"Folder","value":"0"},
+        {"name":"FileVIRTUALDOC","value":"1"},
+        {"name":"FileOTHER","value":"2"},
+        {"name":"FileTWIN","value":"3"},
+        {"name":"FileBAS","value":"4"},
+        {"name":"FileCLS","value":"5"},
+        {"name":"FileUIDESIGNER","value":"6"},
+        {"name":"FileJSON","value":"7"}
+      ]
+    },
+    {
+      "name": "IFileSystemV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "FileSystem.twin",
+      "signature": "Interface IFileSystemV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"CF2E63CA-26D2-41E4-BA22-77EA0D2E22AF\""}],
+      "members": [
+        {"name":"ResolvePath","kind":"function","vis":"public","signature":"Function ResolvePath(ByVal Path As String) As FileSystemItem","returnType":"FileSystemItem"},
+        {"name":"RootFolder","kind":"property","vis":"public","signature":"Property Get RootFolder() As Folder","returnType":"Folder","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "IFileV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "File.twin",
+      "signature": "Interface IFileV1 Extends IFileSystemItemV1",
+      "extends": "IFileSystemItemV1",
+      "attrs": [{"name":"InterfaceId","args":"\"02C9E67D-0883-4415-B6CD-7FE1E14C3C57\""}],
+      "members": [
+        {"name":"Data","kind":"property","vis":"public","signature":"Property Get Data() As Byte()","returnType":"Byte()","accessor":"Get","description":"gives access to the raw current binary data for the file, accessed via a byte array"},
+        {"name":"Data","kind":"property","vis":"public","signature":"Property Let Data(Value() As Byte)","accessor":"Let","attrs":[{"name":"Unimplemented"}],"description":"gives access to the raw current binary data for the file, accessed via a byte array"},
+        {"name":"DataLen","kind":"property","vis":"public","signature":"Property Get DataLen() As LongLong","returnType":"LongLong","accessor":"Get","description":"provides the length of the current raw byte data, without needing to access it via a byte array"},
+        {"name":"IsDirty","kind":"property","vis":"public","signature":"Property Get IsDirty() As Boolean","returnType":"Boolean","accessor":"Get","description":"indicates whether the file is considered dirty (has unsaved changes)"},
+        {"name":"Text","kind":"property","vis":"public","signature":"Property Get Text() As String","returnType":"String","accessor":"Get","description":"appropriate UTF-16 conversion of the current data, for known types (e.g. UTF8 to UTF16 for TWIN, ANSI to UTF16 for BAS/CLS)"},
+        {"name":"Text","kind":"property","vis":"public","signature":"Property Let Text(ByVal Value As String)","accessor":"Let","attrs":[{"name":"Unimplemented"}],"description":"appropriate UTF-16 conversion of the current data, for known types (e.g. UTF8 to UTF16 for TWIN, ANSI to UTF16 for BAS/CLS)"}
+      ]
+    },
+    {
+      "name": "IFileV2",
+      "kind": "interface",
+      "vis": "public",
+      "file": "File.twin",
+      "signature": "Interface IFileV2 Extends IFileV1",
+      "extends": "IFileV1",
+      "attrs": [{"name":"InterfaceId","args":"\"5C7802BE-D1BC-4C2A-B096-39A628638DF7\""}],
+      "members": [
+        {"name":"ReadText","kind":"function","vis":"public","signature":"Function ReadText(ByVal Options As ReadTextFlags) As String","returnType":"String","description":"appropriate UTF-16 conversion of the current data, for known types (e.g. UTF8 to UTF16 for TWIN, ANSI to UTF16 for BAS/CLS)"}
+      ]
+    },
+    {
+      "name": "ReadTextFlags",
+      "kind": "enum",
+      "in": "IFileV2",
+      "vis": "public",
+      "file": "File.twin",
+      "signature": "Enum ReadTextFlags",
+      "attrs": [{"name":"Flags"}],
+      "values": [
+        {"name":"CommentsToWhitespace"}
+      ]
+    },
+    {
+      "name": "IFolderV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Folder.twin",
+      "signature": "Interface IFolderV1 Extends IFileSystemItemV1",
+      "extends": "IFileSystemItemV1",
+      "attrs": [{"name":"InterfaceId","args":"\"55BFE437-3608-4F78-B23C-34A52D79C0F1\""}],
+      "members": [
+        {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Long","returnType":"Long","accessor":"Get","description":"CAREFUL: tb IDE is multi-threaded, and so the Count can potentially change after you've read the value. For example, using it for a loop counter is wrong, use For-Each syntax instead"},
+        {"name":"IsPackagesFolder","kind":"property","vis":"public","signature":"Property Get IsPackagesFolder() As Boolean","returnType":"Boolean","accessor":"Get","description":"Returns True if this folder is a representation of the special Packages folder"},
+        {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByVal IndexOrName As Variant) As FileSystemItem","returnType":"FileSystemItem","accessor":"Get","description":"CAREFUL: tb IDE is multi-threaded, try to avoid accessing entries by their index positions since the index might change by another thread.  Use the For-Each syntax instead."}
+      ]
+    },
+    {
+      "name": "IHostV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Host.twin",
+      "signature": "Public Interface IHostV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"8949AD52-19DB-4F38-A288-FE5455840DC9\""}],
+      "members": [
+        {"name":"ActiveEditors","kind":"property","vis":"public","signature":"Property Get ActiveEditors() As Editors","returnType":"Editors","accessor":"Get","description":"Provides access to a collection of editors that are currently active in the IDE.  Zero based index.  An editor might be a CodePane, or a UIDesigner for example"},
+        {"name":"CompilerVersion","kind":"property","vis":"public","signature":"Property Get CompilerVersion() As String","returnType":"String","accessor":"Get","description":"Returns the full compiler version string, e.g. '0.15.371'"},
+        {"name":"CurrentProject","kind":"property","vis":"public","signature":"Property Get CurrentProject() As Project","returnType":"Project","accessor":"Get","description":"Provides access to project features, such as retrieving the project name, or evaluating a string of text containing code"},
+        {"name":"DebugConsole","kind":"property","vis":"public","signature":"Property Get DebugConsole() As DebugConsole","returnType":"DebugConsole","accessor":"Get","description":"Provides access to DEBUG CONSOLE features, such as adding entries and clearing it"},
+        {"name":"FileSystem","kind":"property","vis":"public","signature":"Property Get FileSystem() As FileSystem","returnType":"FileSystem","accessor":"Get","description":"Provides access to the virtual filesystem used inside twinBASIC"},
+        {"name":"IDEProcessID","kind":"property","vis":"public","signature":"Property Get IDEProcessID() As Long","returnType":"Long","accessor":"Get","description":"The process ID relating to the IDE process"},
+        {"name":"IDEWindowHandle","kind":"property","vis":"public","signature":"Property Get IDEWindowHandle() As LongPtr","returnType":"LongPtr","accessor":"Get","description":"The IDE window HWND handle"},
+        {"name":"KeyboardShortcuts","kind":"property","vis":"public","signature":"Property Get KeyboardShortcuts() As KeyboardShortcuts","returnType":"KeyboardShortcuts","accessor":"Get","description":"Provides methods for adding keyboard shortcuts to the twinBASIC IDE"},
+        {"name":"ShowMessageBox","kind":"function","vis":"public","signature":"Function ShowMessageBox(ByVal Prompt As String, ByVal Buttons As String, ByVal Title As String) As Long","returnType":"Long","description":"Displays a modal popup message in the IDE. The Buttons string argument accepts multiple values delimited by '|'.  Return value is the zero-based index of the button that was pressed, or -1 for closure"},
+        {"name":"ShowNotification","kind":"sub","vis":"public","signature":"Sub ShowNotification(ByVal Prompt As String)","description":"Displays a non-modal, discreet notification popup message in the IDE"},
+        {"name":"Themes","kind":"property","vis":"public","signature":"Property Get Themes() As Themes","returnType":"Themes","accessor":"Get","description":"Provides methods for retrieving info about themes from the twinBASIC IDE"},
+        {"name":"ToolWindows","kind":"property","vis":"public","signature":"Property Get ToolWindows() As ToolWindows","returnType":"ToolWindows","accessor":"Get","description":"Provides access to a collection of toolwindows.  Zero based index."},
+        {"name":"Toolbars","kind":"property","vis":"public","signature":"Property Get Toolbars() As Toolbars","returnType":"Toolbars","accessor":"Get","description":"Provides access to TOOLBAR features, such as adding buttons"}
+      ]
+    },
+    {
+      "name": "DebuggerEvaluateOptions",
+      "kind": "enum",
+      "in": "IHostV1",
+      "vis": "public",
+      "file": "Host.twin",
+      "signature": "Enum DebuggerEvaluateOptions",
+      "values": [
+        {"name":"NONE","value":"0"}
+      ]
+    },
+    {
+      "name": "IHtmlElementPropertiesV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "HtmlElementProperties.twin",
+      "signature": "Public Interface IHtmlElementPropertiesV1",
+      "attrs": [{"name":"InterfaceId","args":"\"BA19FED7-5B3D-4437-AE24-48D5B41AF03F\""},{"name":"COMExtensible","args":"True"}],
+      "members": [
+        {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByVal DomPropertyName As String) As HtmlElementProperty","returnType":"HtmlElementProperty","accessor":"Get","attrs":[{"name":"DefaultMember"}]}
+      ]
+    },
+    {
+      "name": "IHtmlElementPropertyV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "HtmlElementProperty.twin",
+      "signature": "Public Interface IHtmlElementPropertyV1",
+      "attrs": [{"name":"InterfaceId","args":"\"A53385E0-6BC7-472D-A45C-1F53EC8A2BD1\""},{"name":"COMExtensible","args":"True"}],
+      "members": [
+        {"name":"Properties","kind":"property","vis":"public","signature":"Property Get Properties() As HtmlElementProperties","returnType":"HtmlElementProperties","accessor":"Get"},
+        {"name":"Value","kind":"property","vis":"public","signature":"Property Get Value() As Variant","returnType":"Variant","accessor":"Get","attrs":[{"name":"DefaultMember"}]},
+        {"name":"Value","kind":"property","vis":"public","signature":"Property Let Value(ByVal Value As Variant)","accessor":"Let","attrs":[{"name":"DefaultMember"}]}
+      ]
+    },
+    {
+      "name": "IHtmlElementV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "HtmlElement.twin",
+      "signature": "Public Interface IHtmlElementV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"A4003E2E-08A8-4C09-B467-49F5DBACBB71\""}],
+      "members": [
+        {"name":"AddEventListener","kind":"sub","vis":"public","signature":"Sub AddEventListener(ByVal DomEventName As String, ByVal CallbackFunc As LongPtr, Optional ByVal Data As Variant)"},
+        {"name":"AddEventListenerOLD1","kind":"sub","vis":"public","signature":"Sub AddEventListenerOLD1(ByVal DomEventName As String, ByVal CallbackFunc As LongPtr)","hidden":true,"attrs":[{"name":"Hidden"}]},
+        {"name":"ChildDomElements","kind":"property","vis":"public","signature":"Property Get ChildDomElements() As HtmlElements","returnType":"HtmlElements","accessor":"Get"},
+        {"name":"Name","kind":"property","vis":"public","signature":"Property Get Name() As String","returnType":"String","accessor":"Get"},
+        {"name":"Properties","kind":"property","vis":"public","signature":"Property Get Properties() As HtmlElementProperties","returnType":"HtmlElementProperties","accessor":"Get","attrs":[{"name":"DefaultMember"}]},
+        {"name":"Remove","kind":"sub","vis":"public","signature":"Sub Remove()"}
+      ]
+    },
+    {
+      "name": "IHtmlElementsV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "HtmlElements.twin",
+      "signature": "Public Interface IHtmlElementsV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"68F5D105-2E20-41DC-B330-C616D923FC99\""}],
+      "members": [
+        {"name":"Add","kind":"function","vis":"public","signature":"Function Add(ByVal ElementID As String, ByVal TagName As String) As HtmlElement","returnType":"HtmlElement"},
+        {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByVal ID As Variant) As HtmlElement","returnType":"HtmlElement","accessor":"Get","attrs":[{"name":"DefaultMember"}]}
+      ]
+    },
+    {
+      "name": "IHtmlEventPropertiesV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "IHtmlEventProperties.twin",
+      "signature": "Public Interface IHtmlEventPropertiesV1",
+      "attrs": [{"name":"InterfaceId","args":"\"D77A3BA7-731E-42DC-BBE6-2189EA245355\""},{"name":"COMExtensible","args":"True"}],
+      "members": [
+        {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByVal DomPropertyName As String) As HtmlEventProperty","returnType":"HtmlEventProperty","accessor":"Get","attrs":[{"name":"DefaultMember"}]}
+      ]
+    },
+    {
+      "name": "IHtmlEventPropertyV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "IHtmlEventProperty.twin",
+      "signature": "Public Interface IHtmlEventPropertyV1",
+      "attrs": [{"name":"InterfaceId","args":"\"74D2C447-BF2C-4484-959D-AC1ADA9C83A7\""},{"name":"COMExtensible","args":"True"}],
+      "members": [
+        {"name":"Properties","kind":"property","vis":"public","signature":"Property Get Properties() As HtmlEventProperties","returnType":"HtmlEventProperties","accessor":"Get"},
+        {"name":"Value","kind":"property","vis":"public","signature":"Property Get Value() As Variant","returnType":"Variant","accessor":"Get","attrs":[{"name":"DefaultMember"}]}
+      ]
+    },
+    {
+      "name": "IKeyboardShortcutsV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "KeyboardShortcuts.twin",
+      "signature": "Interface IKeyboardShortcutsV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"4218635B-0D01-4429-91C9-89F74E007AD9\""}],
+      "members": [
+        {"name":"Add","kind":"sub","vis":"public","signature":"Sub Add(ByVal keyString As String, ByVal Callback As LongPtr)","description":"keyString: accepts a simple string value indicating the key that press to match to.  Prefix with any of {CTRL} {SHIFT} {ALT}, e.g. '{CTRL}{SHIFT}d'"}
+      ]
+    },
+    {
+      "name": "IProjectV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Project.twin",
+      "signature": "Public Interface IProjectV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"58333CFF-4C50-4CCB-917E-B431ADA0C60E\""}],
+      "members": [
+        {"name":"Architecture","kind":"property","vis":"public","signature":"Property Get Architecture() As VbArchitecture","returnType":"VbArchitecture","accessor":"Get","description":"Returns the current Project architecture"},
+        {"name":"BaseFolderPath","kind":"property","vis":"public","signature":"Property Get BaseFolderPath() As String","returnType":"String","accessor":"Get","description":"Returns the folder path where the current Project twinproj file resides"},
+        {"name":"Build","kind":"sub","vis":"public","signature":"Sub Build()","description":"Builds the project (like menu File > Make/Build...)"},
+        {"name":"BuildFileExtension","kind":"property","vis":"public","signature":"Property Get BuildFileExtension() As String","returnType":"String","accessor":"Get","description":"Returns the current Project build output file extension"},
+        {"name":"BuildOutputPath","kind":"property","vis":"public","signature":"Property Get BuildOutputPath() As String","returnType":"String","accessor":"Get","description":"Returns the current Project full build output path, including file name"},
+        {"name":"BuildType","kind":"property","vis":"public","signature":"Property Get BuildType() As VbBuildType","returnType":"VbBuildType","accessor":"Get","description":"Returns the current Project build type enumeration"},
+        {"name":"Clean","kind":"sub","vis":"public","signature":"Sub Clean()","description":"Deregisters and deletes any built executables relating to this project"},
+        {"name":"Close","kind":"sub","vis":"public","signature":"Sub Close()","description":"Closes the project (like menu File > Close Project)"},
+        {"name":"Evaluate","kind":"function","vis":"public","signature":"Function Evaluate(ByVal EvalString As String, Optional ByVal Options As DebuggerEvaluateOptions = DebuggerEvaluateOptions.NONE) As Variant","returnType":"Variant","description":"Evaluates an expression in the context of the current project, as if entered in the DEBUG CONSOLE"},
+        {"name":"LoadMetaData","kind":"function","vis":"public","signature":"Function LoadMetaData(ByVal Key As String) As String","returnType":"String","description":"Meta data can be used for storing persistant data int he twinproj file for use by your addin"},
+        {"name":"Name","kind":"property","vis":"public","signature":"Property Get Name() As String","returnType":"String","accessor":"Get","description":"Returns the current project name, as specified in the Settings file"},
+        {"name":"Path","kind":"property","vis":"public","signature":"Property Get Path() As String","returnType":"String","accessor":"Get","description":"Returns the full path to the current Project twinproj file"},
+        {"name":"ProjectID","kind":"property","vis":"public","signature":"Property Get ProjectID() As String","returnType":"String","accessor":"Get","description":"Returns the current Project GUID as a string"},
+        {"name":"RootFolder","kind":"property","vis":"public","signature":"Property Get RootFolder() As Folder","returnType":"Folder","accessor":"Get","description":"Provides access to the projects root folder within the virtual filesystem inside twinBASIC"},
+        {"name":"Save","kind":"sub","vis":"public","signature":"Sub Save()","description":"Saves the project (like menu File > Save Project)"},
+        {"name":"SaveMetaData","kind":"sub","vis":"public","signature":"Sub SaveMetaData(ByVal Key As String, ByVal Value As String)","description":"Meta data can be used for storing persistant data int he twinproj file for use by your addin"},
+        {"name":"VersionBuild","kind":"property","vis":"public","signature":"Property Get VersionBuild() As Long","returnType":"Long","accessor":"Get","description":"Returns the current Project version number (Build)"},
+        {"name":"VersionMajor","kind":"property","vis":"public","signature":"Property Get VersionMajor() As Long","returnType":"Long","accessor":"Get","description":"Returns the current Project version number (Major)"},
+        {"name":"VersionMinor","kind":"property","vis":"public","signature":"Property Get VersionMinor() As Long","returnType":"Long","accessor":"Get","description":"Returns the current Project version number (Minor)"},
+        {"name":"VersionRevision","kind":"property","vis":"public","signature":"Property Get VersionRevision() As Long","returnType":"Long","accessor":"Get","description":"Returns the current Project version number (Revision)"}
+      ]
+    },
+    {
+      "name": "VbBuildType",
+      "kind": "enum",
+      "in": "IProjectV1",
+      "vis": "public",
+      "file": "Project.twin",
+      "signature": "Enum VbBuildType",
+      "values": [
+        {"name":"StandardEXE"},
+        {"name":"StandardDLL"},
+        {"name":"ActiveXDLL"},
+        {"name":"ActiveXControl"},
+        {"name":"PackageTWINPACK"}
+      ]
+    },
+    {
+      "name": "IThemesV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Themes.twin",
+      "signature": "Interface IThemesV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"CD1BB0FC-723D-4EB0-AB26-6DB25DD5D8CE\""}],
+      "members": [
+        {"name":"ActiveThemeName","kind":"property","vis":"public","signature":"Property Get ActiveThemeName() As String","returnType":"String","accessor":"Get","description":"Returns the name of the current IDE theme, e.g. 'Classic', 'Dark' or 'Light'"},
+        {"name":"ActiveThemeNameGroup","kind":"property","vis":"public","signature":"Property Get ActiveThemeNameGroup() As String","returnType":"String","accessor":"Get","description":"Returns the name of the current IDE theme group, either 'dark' or 'light'"}
+      ]
+    },
+    {
+      "name": "IToolWindowEventsV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "ToolWindow.twin",
+      "signature": "Public Interface IToolWindowEventsV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"6CF18B40-1CB4-4977-B2E3-FFF0F668B10D\""}],
+      "members": [
+        {"name":"OnClose","kind":"sub","vis":"public","signature":"Sub OnClose()"}
+      ]
+    },
+    {
+      "name": "IToolWindowV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "ToolWindow.twin",
+      "signature": "Public Interface IToolWindowV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"84F3ED66-22A0-4614-B36F-85E0BD8ECC99\""}],
+      "members": [
+        {"name":"ApplyCss","kind":"sub","vis":"public","signature":"Sub ApplyCss(ByVal styles As String)"},
+        {"name":"Close","kind":"sub","vis":"public","signature":"Sub Close()"},
+        {"name":"Name","kind":"property","vis":"public","signature":"Property Get Name() As String","returnType":"String","accessor":"Get"},
+        {"name":"Resizable","kind":"property","vis":"public","signature":"Property Get Resizable() As Boolean","returnType":"Boolean","accessor":"Get"},
+        {"name":"Resizable","kind":"property","vis":"public","signature":"Property Let Resizable(ByVal Value As Boolean)","accessor":"Let"},
+        {"name":"RootDomElement","kind":"property","vis":"public","signature":"Property Get RootDomElement() As HtmlElement","returnType":"HtmlElement","accessor":"Get","attrs":[{"name":"DefaultMember"}]},
+        {"name":"Title","kind":"property","vis":"public","signature":"Property Get Title() As String","returnType":"String","accessor":"Get"},
+        {"name":"Title","kind":"property","vis":"public","signature":"Property Let Title(ByVal Value As String)","accessor":"Let"},
+        {"name":"Visible","kind":"property","vis":"public","signature":"Property Get Visible() As Boolean","returnType":"Boolean","accessor":"Get"},
+        {"name":"Visible","kind":"property","vis":"public","signature":"Property Let Visible(ByVal Value As Boolean)","accessor":"Let"}
+      ]
+    },
+    {
+      "name": "IToolWindowsV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "ToolWindows.twin",
+      "signature": "Public Interface IToolWindowsV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"3A142F46-68EF-45E9-977E-4D4EAA8D9224\""}],
+      "members": [
+        {"name":"Add","kind":"function","vis":"public","signature":"Function Add(ByVal Name As String, Optional ByVal UniqueIdForPositionPersistance As String) As ToolWindow","returnType":"ToolWindow","description":"Displays a popup toolwindow in the IDE.  Starts out with Visible = False"}
+      ]
+    },
+    {
+      "name": "IToolbarV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Toolbar.twin",
+      "signature": "Public Interface IToolbarV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"2D3DB06C-CB77-4228-8C2D-58A0F1BCA600\""}],
+      "members": [
+        {"name":"AddButton","kind":"function","vis":"public","signature":"Function AddButton(ByVal Id As String, ByVal Caption As String, Optional ByVal IconData As Variant) As Button","returnType":"Button","description":"Adds a new button to the IDE toolbar.  IconData must be a byte array, or left empty"},
+        {"name":"AddSplitter","kind":"sub","vis":"public","signature":"Sub AddSplitter()","description":"Adds a splitter bar to the IDE toolbar"}
+      ]
+    },
+    {
+      "name": "IToolbarsV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Toolbars.twin",
+      "signature": "Public Interface IToolbarsV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"12A7D8E8-5670-4578-8F48-B9F1CCBE52FA\""}],
+      "members": [
+        {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Long","returnType":"Long","accessor":"Get","description":"Count of available toolbars"},
+        {"name":"Item","kind":"property","vis":"public","signature":"Property Get Item(ByVal Index As Variant) As Toolbar","returnType":"Toolbar","accessor":"Get","attrs":[{"name":"DefaultMember"}],"description":"There is currently only ONE toolbar, accessible via the Toolbars(0) syntax"}
+      ]
+    },
+    {
+      "name": "ItbHostEventsV1",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Host.twin",
+      "signature": "Public Interface ItbHostEventsV1 Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"33A394EF-0DF7-4D96-B57D-81E02260B220\""}],
+      "members": [
+        {"name":"OnProjectLoaded","kind":"sub","vis":"public","signature":"Sub OnProjectLoaded()"}
+      ]
+    },
+    {
+      "name": "ItbHostEventsV2",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Host.twin",
+      "signature": "Public Interface ItbHostEventsV2 Extends ItbHostEventsV1",
+      "extends": "ItbHostEventsV1",
+      "attrs": [{"name":"InterfaceId","args":"\"B09E36E6-2E68-4CA2-BBA2-DC58C857E99E\""}],
+      "members": [
+        {"name":"OnChangedActiveEditor","kind":"sub","vis":"public","signature":"Sub OnChangedActiveEditor(ByVal EditorIdx As Long, ByVal Editor As Editor)","attrs":[{"name":"AllowUnpopulatedVtableEntry"}]}
+      ]
+    },
+    {
+      "name": "ItbHostEventsV3",
+      "kind": "interface",
+      "vis": "public",
+      "file": "Host.twin",
+      "signature": "Public Interface ItbHostEventsV3 Extends ItbHostEventsV2",
+      "extends": "ItbHostEventsV2",
+      "attrs": [{"name":"InterfaceId","args":"\"C4AEA3F7-8C1A-48ED-B185-585735A8E6B8\""}],
+      "members": [
+        {"name":"OnChangedTheme","kind":"sub","vis":"public","signature":"Sub OnChangedTheme(ByVal ThemeName As String)","attrs":[{"name":"AllowUnpopulatedVtableEntry"}]}
+      ]
+    },
+    {
+      "name": "KeyboardShortcuts",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "KeyboardShortcuts.twin",
+      "signature": "CoClass KeyboardShortcuts",
+      "interfaces": [{"name":"IKeyboardShortcutsV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"1D906B99-74F3-4FE5-A97C-7BA71260554E\""}],
+      "members": []
+    },
+    {
+      "name": "Project",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Project.twin",
+      "signature": "CoClass Project",
+      "interfaces": [{"name":"IProjectV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"2B9593AF-DF94-48AC-863B-0764B2F9DF2E\""}],
+      "members": []
+    },
+    {
+      "name": "Themes",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Themes.twin",
+      "signature": "CoClass Themes",
+      "interfaces": [{"name":"IThemesV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"53E8BE88-57BC-45B0-8FDB-A4CAFB24C41B\""}],
+      "members": []
+    },
+    {
+      "name": "ToolWindow",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "ToolWindow.twin",
+      "signature": "CoClass ToolWindow",
+      "interfaces": [{"name":"IToolWindowV1","default":true},{"name":"IToolWindowEventsV1","default":true,"source":true}],
+      "attrs": [{"name":"CoClassId","args":"\"08EE2542-E136-4531-9D25-860A0F8A17F5\""}],
+      "members": []
+    },
+    {
+      "name": "ToolWindows",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "ToolWindows.twin",
+      "signature": "CoClass ToolWindows",
+      "interfaces": [{"name":"IToolWindowsV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"BCEC84F8-AABC-4AE2-90FA-24F86294E6AF\""}],
+      "members": []
+    },
+    {
+      "name": "Toolbar",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Toolbar.twin",
+      "signature": "CoClass Toolbar",
+      "interfaces": [{"name":"IToolbarV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"3D945747-033A-4A61-A011-7F6BFB24ABEB\""}],
+      "members": []
+    },
+    {
+      "name": "Toolbars",
+      "kind": "coclass",
+      "vis": "public",
+      "file": "Toolbars.twin",
+      "signature": "CoClass Toolbars",
+      "interfaces": [{"name":"IToolbarsV1","default":true}],
+      "attrs": [{"name":"CoClassId","args":"\"4371990B-AAE5-4B2F-BF95-3A3AFF777EEC\""}],
+      "members": []
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}

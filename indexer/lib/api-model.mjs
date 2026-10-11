@@ -1,0 +1,364 @@
+import path from "node:path";
+import { parseSources } from "../../scripts/lib/twin-api.mjs";
+import { MODIFIERS } from "../../scripts/lib/twin-declarations.mjs";
+import { CONTAINER_MAP, preprocessVB6 } from "./vb6-preprocess.mjs";
+
+/**
+ * The api.json a package is indexed into, built from what
+ * `scripts/lib/twin-api.mjs` reads out of its sources. The schema is described
+ * in indexer/README.md; this is the code that writes it.
+ *
+ * Every list is in code-unit order, with two exceptions: the values of an
+ * enumeration and the fields of a Type or Union stay in declaration order,
+ * because that order is part of what they mean. Line numbers are left out, so
+ * that a snapshot changes only when the API does.
+ */
+
+/** Changes whenever the shape of api.json does; the first number in the file. */
+export const API_FORMAT = 3;
+
+const SOURCES = /^Sources\//i;
+const VB6_EXTS = new Set(Object.keys(CONTAINER_MAP));
+const MODIFIER_WORD = new RegExp(`^(?:${MODIFIERS})$`, "i");
+
+const byCodeUnit = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+/** A type's name with the types it is declared in: `Outer.Inner`. */
+export const qualified = (t) => (t.in ? `${t.in}.${t.name}` : t.name);
+
+/**
+ * The source files of a package that are indexed, in the form
+ * `parseSources` takes. A `.twin` file is read as it is. A VB6-format file goes
+ * through preprocessVB6 first and is handed over as `<path>.twin`, because
+ * parseSources reads nothing else; `fileOf` maps that path back to the file's
+ * own, relative to `Sources/`. The `.tbform`, `.tbcontrol` and `.tbppage` files
+ * are JSON designer files with no declarations in them, and are skipped, as is
+ * everything outside `Sources/`.
+ */
+function sourceInputs(files) {
+  const inputs = [];
+  const fileOf = new Map();
+  let settings = null;
+  for (const { relativePath, content } of files) {
+    if (relativePath.toLowerCase() === "settings") {
+      settings = content.toString("utf-8");
+      continue;
+    }
+    if (!SOURCES.test(relativePath)) continue;
+    const ext = path.extname(relativePath).toLowerCase();
+    const inside = relativePath.slice("Sources/".length);
+    if (ext === ".twin") {
+      inputs.push({ path: relativePath, text: content.toString("utf-8") });
+      fileOf.set(relativePath, inside);
+    } else if (VB6_EXTS.has(ext)) {
+      const { content: text } = preprocessVB6(
+        content.toString("utf-8"),
+        ext,
+        path.basename(relativePath, path.extname(relativePath)),
+      );
+      inputs.push({ path: `${relativePath}.twin`, text });
+      fileOf.set(`${relativePath}.twin`, inside);
+    }
+  }
+  return { inputs, fileOf, settings };
+}
+
+/** The text after the `=` of an enumeration value's declaration, or null. */
+function enumValueOf(signature) {
+  let depth = 0;
+  let quoted = false;
+  for (let k = 0; k < signature.length; k++) {
+    const c = signature[k];
+    if (c === '"') quoted = !quoted;
+    else if (quoted) continue;
+    else if (c === "[") depth++;
+    else if (c === "]") depth--;
+    else if (c === "=" && depth <= 0) return signature.slice(k + 1).trim() || null;
+  }
+  return null;
+}
+
+/** Whether a procedure's declaration is a `Declare` statement: Declare after nothing but modifiers. */
+function isDeclare(signature) {
+  for (const word of signature.split(/\s+/)) {
+    if (/^Declare(?:Wide)?$/i.test(word)) return true;
+    if (!MODIFIER_WORD.test(word)) return false;
+  }
+  return false;
+}
+
+// An attribute as {name, args}; `args` is left out when it has no parentheses.
+const attrRecord = (a) => (a.args === null ? { name: a.name } : { name: a.name, args: a.args });
+
+/**
+ * What every declaration records besides its name, in the order api.json writes
+ * them. A Description attribute whose text was read is `description`, and is not
+ * repeated among the `attrs`.
+ */
+function common(rec, d) {
+  if (d.hidden) rec.hidden = true;
+  const attrs = d.description == null ? d.attrs : d.attrs.filter((a) => !/^Description$/i.test(a.name));
+  if (attrs.length) rec.attrs = attrs.map(attrRecord);
+  if (d.description != null) rec.description = d.description;
+  return rec;
+}
+
+function memberRecord(m) {
+  const rec = { name: m.name, kind: m.kind, vis: m.vis };
+  if (isDeclare(m.signature)) rec.declare = true;
+  rec.signature = m.signature;
+  if (m.returnType != null) rec.returnType = m.returnType;
+  if (m.accessor != null) rec.accessor = m.accessor;
+  return common(rec, m);
+}
+
+/**
+ * A type's members as entries `{ name, kind, order, alts }`, `alts` the members
+ * to be one record: usually one, and several when they are the alternatives of
+ * one #If. Those are members declared under a condition in the same block of the
+ * type, of one name and kind, the same accessor (a Property Get is not an
+ * alternative of its Let) and both or neither a Declare, when more than one
+ * condition is among them. Two declarations under the same condition are
+ * overloads, and stay members of their own. `order` is where the first of `alts`
+ * was declared.
+ */
+function alternatives(members) {
+  // What the alternatives of one #If share. The block is the outermost #If the
+  // member is under, so that the branches of a nested one are alternatives too.
+  const keyOf = (m) => [m.ifLine, m.name, m.kind, m.accessor ?? "", isDeclare(m.signature)].join("\0");
+  const conditional = (m) => m.cond != null && m.ifLine != null;
+  const blocks = new Map();
+  for (const m of members) {
+    if (!conditional(m)) continue;
+    if (!blocks.has(keyOf(m))) blocks.set(keyOf(m), []);
+    blocks.get(keyOf(m)).push(m);
+  }
+  const entries = [];
+  const done = new Set();
+  members.forEach((m, order) => {
+    const block = conditional(m) ? blocks.get(keyOf(m)) : null;
+    if (!block || new Set(block.map((x) => x.cond)).size < 2) {
+      entries.push({ name: m.name, kind: m.kind, order, alts: [m] });
+    } else if (!done.has(keyOf(m))) {
+      done.add(keyOf(m));
+      entries.push({ name: m.name, kind: m.kind, order, alts: block });
+    }
+  });
+  return entries;
+}
+
+const ACCESS_ORDER = ["public", "protected", "friend", "private"];
+
+/**
+ * One member for the alternatives of an #If: `name`, `kind`, `vis` (the most
+ * accessible of theirs), `declare` and `accessor` as they all have them, and
+ * `signatures`, one item for each in declaration order: `{ cond, vis?, signature,
+ * returnType?, hidden?, attrs?, description? }`. `vis` is written on an item only
+ * when it is not the member's. So are the other keys, but for one that every
+ * alternative has alike (the attributes and the description above an #If, or a
+ * result type that is the same in each branch): that is written once, on the
+ * member, where a member that is not merged has it.
+ */
+function mergedRecord(alts) {
+  const recs = alts.map(memberRecord);
+  const vis = recs.map((r) => r.vis).sort((a, b) => ACCESS_ORDER.indexOf(a) - ACCESS_ORDER.indexOf(b))[0];
+  const shared = (key) =>
+    recs[0][key] !== undefined && recs.every((r) => JSON.stringify(r[key]) === JSON.stringify(recs[0][key]));
+  const rec = { name: recs[0].name, kind: recs[0].kind, vis };
+  if (recs[0].declare) rec.declare = true;
+  if (shared("returnType")) rec.returnType = recs[0].returnType;
+  if (recs[0].accessor !== undefined) rec.accessor = recs[0].accessor;
+  for (const key of ["hidden", "attrs", "description"]) if (shared(key)) rec[key] = recs[0][key];
+  rec.signatures = recs.map((r, k) => {
+    const item = { cond: alts[k].cond };
+    if (r.vis !== vis) item.vis = r.vis;
+    item.signature = r.signature;
+    for (const key of ["returnType", "hidden", "attrs", "description"]) {
+      if (r[key] !== undefined && rec[key] === undefined) item[key] = r[key];
+    }
+    return item;
+  });
+  return rec;
+}
+
+function valueRecord(m) {
+  const rec = { name: m.name };
+  const value = enumValueOf(m.signature);
+  if (value !== null) rec.value = value;
+  return common(rec, m);
+}
+
+function fieldRecord(m) {
+  return common({ name: m.name, vis: m.vis, signature: m.signature }, m);
+}
+
+// The index in `types` of the type each is declared in, or -1: the nearest type
+// of that name before it in its file.
+function parentsOf(types) {
+  return types.map((t, i) => {
+    if (!t.container) return -1;
+    const want = t.container.toLowerCase();
+    for (let j = i - 1; j >= 0 && types[j].file === t.file; j--) {
+      if (types[j].name.toLowerCase() === want) return j;
+    }
+    return -1;
+  });
+}
+
+const inline = JSON.stringify;
+
+// A list with one item to a line, each written by `each`; an empty one is `[]`.
+function listing(items, pad, each) {
+  if (!items.length) return "[]";
+  return `[\n${items.map((item) => `${pad}  ${each(item)}`).join(",\n")}\n${pad}]`;
+}
+
+/**
+ * The text of an api.json: JSON, laid out so that a snapshot is small and a
+ * change to one member changes one line of it. The document and each type are
+ * written a key to a line, each member, value, field, alias and problem on a
+ * line of its own, and everything below those on the same line.
+ */
+export function renderApi(api) {
+  const type = (t, pad) => {
+    const keys = Object.entries(t).map(([k, v]) => {
+      const text = ["members", "values", "fields"].includes(k) ? listing(v, `${pad}  `, inline) : inline(v);
+      return `${pad}  ${inline(k)}: ${text}`;
+    });
+    return `{\n${keys.join(",\n")}\n${pad}}`;
+  };
+  const head = ["format", "package", "project", "version"].map((k) => `  ${inline(k)}: ${inline(api[k])}`);
+  return `{\n${[
+    ...head,
+    `  "types": ${listing(api.types, "  ", (t) => type(t, "    "))}`,
+    `  "aliases": ${listing(api.aliases, "  ", inline)}`,
+    `  "problems": ${listing(api.problems, "  ", inline)}`,
+  ].join(",\n")}\n}\n`;
+}
+
+/**
+ * What `parseSources` reads out of the files of a package: the input of
+ * buildApi, and of the symbol index's package half (`./package-api.mjs`).
+ * `inputs` are the sources it was given, and `inside` maps the path of one back
+ * to the file's own, relative to `Sources/`.
+ *
+ * @param {{relativePath: string, content: Buffer}[]} files  every file of the
+ *   package, the paths relative to its root, in any order
+ */
+export function parsePackageFiles(files) {
+  const { inputs, fileOf, settings } = sourceInputs(
+    [...files].sort((a, b) => byCodeUnit(a.relativePath, b.relativePath)),
+  );
+  return { parsed: parseSources(inputs, settings), inputs, inside: (file) => fileOf.get(file) ?? file };
+}
+
+/**
+ * The api.json of a package, as an object and as the text written to disk.
+ *
+ * @param {object} p
+ * @param {string} p.symbol  the package's name in the store
+ * @param {string} p.version  the version string
+ * @param {{relativePath: string, content: Buffer}[]} p.files  every file of
+ *   the package, the paths relative to its root
+ * @returns {{api: object, json: string, stats: {files: number, types: number,
+ *   members: number, aliases: number, problems: number}}}
+ */
+export function buildApi({ symbol, version, files }) {
+  const { parsed, inputs, inside } = parsePackageFiles(files);
+
+  const parents = parentsOf(parsed.types);
+  const inPath = [];
+  const reachable = [];
+  const records = parsed.types.map((t, i) => {
+    const p = parents[i];
+    inPath[i] = p < 0 ? null : `${inPath[p] ? `${inPath[p]}.` : ""}${parsed.types[p].name}`;
+    reachable[i] = t.vis === "public" && (p < 0 || reachable[p]);
+    // An Enum is public for its own modifier alone: the corpus declares them in
+    // Private modules for public use.
+    const isPublic = t.kind === "enum" ? t.vis === "public" : reachable[i];
+
+    const rec = { name: t.name, kind: t.kind };
+    if (inPath[i]) rec.in = inPath[i];
+    rec.vis = t.vis;
+    if (!isPublic) rec.public = false;
+    rec.file = inside(t.file);
+    rec.signature = t.signature;
+    if (t.extends) rec.extends = t.extends;
+    if (t.inherits.length) rec.inherits = t.inherits;
+    if (t.implements.length) rec.implements = t.implements;
+    if (t.interfaces.length) {
+      rec.interfaces = t.interfaces.map((x) => {
+        const o = { name: x.name };
+        if (x.isDefault) o.default = true;
+        if (x.isSource) o.source = true;
+        return o;
+      });
+    }
+    common(rec, t);
+
+    // Stable sorts: members of one name stay in declaration order. The alternatives
+    // of an #If are one member, at the place of the first of them.
+    const sorted = (list) =>
+      alternatives(list)
+        .sort((a, b) => byCodeUnit(a.name, b.name) || byCodeUnit(a.kind, b.kind) || a.order - b.order)
+        .map(({ alts }) => (alts.length > 1 ? mergedRecord(alts) : memberRecord(alts[0])));
+    if (t.kind === "enum") {
+      rec.values = t.members.map(valueRecord);
+    } else if (t.kind === "type" || t.kind === "union") {
+      rec.fields = t.members.filter((m) => m.kind === "field").map(fieldRecord);
+      rec.members = sorted(t.members.filter((m) => m.kind !== "field"));
+    } else {
+      rec.members = sorted(t.members);
+    }
+    return rec;
+  });
+
+  const types = records
+    .map((rec, order) => ({ rec, order }))
+    .sort(
+      (a, b) =>
+        byCodeUnit(qualified(a.rec), qualified(b.rec)) ||
+        byCodeUnit(a.rec.kind, b.rec.kind) ||
+        byCodeUnit(a.rec.file, b.rec.file) ||
+        a.order - b.order,
+    )
+    .map(({ rec }) => rec);
+
+  const aliases = parsed.aliases
+    .map((a, order) => ({ a, order }))
+    .sort(
+      (x, y) => byCodeUnit(x.a.name, y.a.name) || byCodeUnit(inside(x.a.file), inside(y.a.file)) || x.order - y.order,
+    )
+    .map(({ a }) => {
+      const rec = { name: a.name, target: a.target, vis: a.vis };
+      if (a.container) rec.in = a.container;
+      rec.file = inside(a.file);
+      rec.signature = a.signature;
+      return common(rec, a);
+    });
+
+  const problems = parsed.problems
+    .map((p) => ({ file: inside(p.file), line: p.line, why: p.why }))
+    .sort((a, b) => byCodeUnit(a.file, b.file) || a.line - b.line || byCodeUnit(a.why, b.why));
+
+  const api = {
+    format: API_FORMAT,
+    package: symbol,
+    project: parsed.project,
+    version,
+    types,
+    aliases,
+    problems,
+  };
+  const stats = {
+    files: inputs.length,
+    types: types.length,
+    members: types.reduce(
+      (n, t) => n + (t.members?.length ?? 0) + (t.values?.length ?? 0) + (t.fields?.length ?? 0),
+      0,
+    ),
+    aliases: aliases.length,
+    problems: problems.length,
+  };
+  return { api, json: renderApi(api), stats };
+}

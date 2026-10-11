@@ -83,17 +83,18 @@ The attribution rule is **per-page**, determined by content provenance — not b
 
 ### Authoring-only frontmatter
 
-Three keys on a package's `index.md` are **provenance for the authoring pass**. None of
+Four keys on a package's `index.md` are **provenance for the authoring pass**. None of
 them reaches the HTML --- `grep -r indexed_from docs/_site` returns nothing, because nothing
 in `template.mjs` iterates frontmatter generically; every consumer reads a named field. The
 build reads one of them, `exclude_from_docs`, for one purpose: the symbol index's count of
 public symbols that no page documents leaves those names out (`reportableGaps` in
 [builder/symbols.mjs](builder/symbols.mjs); `--symbol-gaps` writes the list). Leave all
-three in place.
+four in place.
 
 | Key | Means |
 |-----|-------|
-| `indexed_from` | The twinBASIC build whose package download the documentation was indexed against. Currently `beta-x-0983` on all six. |
+| `package_name` | The packages in the indexer's store that the section documents, by their names there, when the folder's name is not theirs: `WebView2Package` for `WebView2`, `CustomControls, CustomControlsPackage` for `CustomControls`, `cefPackage145` for `CEF`. Absent, the folder's name is the package's. `indexer/lib/doc-pages.mjs` reads it. |
+| `indexed_from` | The twinBASIC build whose package download the documentation was indexed against, as its release tag. Currently `beta-x-0997` on all thirteen, the build whose `indexer/snapshots/` the pages are compared with. |
 | `exclude_from_docs` | Modules or classes in that package deliberately left undocumented --- internals, private helpers, API shims. |
 | `exclude_kinds` | Member *kinds* deliberately left undocumented. Only `WinEventLogLib` uses it, for `Declare`. |
 
@@ -102,14 +103,16 @@ newer build, and anything new that is not named in `exclude_from_docs` or `exclu
 a documentation gap.** Without them a re-index cannot tell "not yet written" from
 "deliberately omitted", which is the whole point of recording them.
 
-The six packages carrying `indexed_from` are `AppGlobalClassObject`, `CustomControls`,
-`TwinBasicAssertions`, `WinEventLogLib`, `WinNamedPipesLib` and `WinServicesLib`.
-`exclude_from_docs` is on three of them (`InternalStuff`; `EventLogHelperPrivate` +
-`EventLogAPIs`; `ServicesConstantsPublic`).
+All thirteen package landing pages carry `indexed_from`. `exclude_from_docs` is on three
+of them (`InternalStuff`; `EventLogHelperPrivate` + `EventLogAPIs`;
+`ServicesConstantsPublic`). The three CEF builds are one section with one snapshot; why, and
+how the indexer ties a section to its snapshots: [indexer/README.md](indexer/README.md#documented-packages).
 
 **Bump `indexed_from` whenever a package is re-indexed against a newer build**, in the same
-commit as the content it adds. A stale value is worse than none: it asserts a completeness
-check was run against a build that no longer matches the package.
+commit as the content it adds, and write the new snapshots into `indexer/snapshots/` in it
+(`node indexer/twin-index.mjs sync`), with `builder/package-api.json` for a built-in or
+default package (`node indexer/twin-index.mjs derive`). A stale value is worse than none: it asserts a
+completeness check was run against a build that no longer matches the package.
 
 One other inert key is a different thing: `has_children` on four pages is a
 just-the-docs leftover. tbdocs derives the nav tree itself and never reads it. Nobody
@@ -321,6 +324,22 @@ system remains a genuine consumer of the permalinks.
 3. **Update the parent index** — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also add a bullet to `docs/Reference/Built-In.md` (or `Default.md`) and bump the count on `docs/Reference/Packages.md` and `docs/Reference/index.md`. `Packages.md` itself only links to those two landing pages -- it does not enumerate packages.
 4. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
 5. **Run the [site integrity check](WIP.md#site-integrity-check)** after the batch and before committing.
+
+**Finding the symbols to write.** After a `sync`, `node indexer/twin-index.mjs analyze --package <name>`
+lists what is public in the package and the section's pages lack, in
+`indexer/.packages/report.json`. A section with `indexed_from` is compared with the snapshot of
+that build: symbols **added** (create a page), **changed** (update it; the report gives the old
+and the new signature) and **removed** (flagged: reword or remove the page by hand). A section
+without it is audited: each public symbol is matched by name with the `title:` of the section's
+pages, so a member documented inline on its container's page is listed as missing, and a name
+that several types share counts as documented once any page has it. A symbol is a type or a
+name a type declares, so a property's Get, Let and Set and the overloads of a name are one.
+Anything deliberately undocumented belongs in the landing page's `exclude_from_docs` or
+`exclude_kinds` (see [Authoring-only frontmatter](#authoring-only-frontmatter)), not left in
+the list. When the batch is done, bump `indexed_from` and commit the new snapshots and
+`derive`'s `builder/package-api.json` with it; the
+rules and the reasons are in [WIP.md](WIP.md#the-package-indexer) and
+[WIP.Indexer.md](WIP.Indexer.md).
 
 ## twinBASIC deviations from VBA to flag
 

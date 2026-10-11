@@ -1,7 +1,7 @@
 # lib
 
 Modules that every part of the repository's tooling may import: `builder/`,
-`scripts/`, `book/`, `eval/`, `wisdom/` and `test/`. A module here imports none
+`scripts/`, `book/`, `eval/`, `wisdom/`, `indexer/` and `test/`. A module here imports none
 of those folders -- only Node's own modules, installed packages and other
 modules in `lib/` -- and `biome.jsonc` refuses an import that breaks the rule.
 

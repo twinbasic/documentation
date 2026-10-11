@@ -19,6 +19,9 @@
 //     from the list makes the keyword after it invisible to every one of them.
 //   - declarationKind, the kind the attribute census files a declaration
 //     under.
+//   - scanText (scripts/lib/census-scan.mjs), the census's scanner: which
+//     bracket groups it counts as attributes. A bracket group alone on its line
+//     in an Enum body is a member, not an attribute.
 //   - parseTargets (scripts/lib/attributes-doc.mjs), which turns an
 //     `Applicable to:` line into gen_attribute_probes.mjs's targets.
 //   - wrapProbe (scripts/lib/tb-probe.mjs), which moves a tbrun probe's
@@ -30,6 +33,7 @@
 
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { parseTargets } from "./lib/attributes-doc.mjs";
+import { scanText } from "./lib/census-scan.mjs";
 import { createProbes } from "./lib/gate-probes.mjs";
 import { classify } from "./lib/tb-fences.mjs";
 import { IDE_FLAG, SENTINEL, sentinelIndex, TBRUN_FILE, WRAPPER_SUB, wrapProbe } from "./lib/tb-probe.mjs";
@@ -115,9 +119,69 @@ for (const [decl, container, want] of [
   ["Dim Count As Long", "Module", "Variable"],
   ["Private WithEvents Source As Foo", "Class", "Variable"],
   ["End Sub", "Class", null],
+  // Every character past ASCII is part of an identifier (BETA 1005): a name that
+  // starts with a keyword and goes on past ASCII is not the keyword.
+  ["Public Caf\u{E9} As Long", "Class", "Variable"],
+  ["Public Class\u{E9} As Long", "Module", "Variable"],
+  ["Class\u{E9} As Long", "Type", "TypeMember"],
+  ["Gr\u{FC}n = 1", "Enum", "EnumMember"],
+  ["Const Gr\u{F6}\u{DF}e = 1", "Module", "Const"],
+  ["Public Sub \u{65E5}\u{672C}\u{8A9E}()", "Module", "Sub"],
 ]) {
   const got = declarationKind(decl, container);
   check(`declarationKind: ${decl} in ${container} is ${want}`, got === want, `got ${got}`);
+}
+
+// ----------------------------------------------------------------- scanText
+
+// A bracket group alone on its line in an Enum body is a member (BETA 1005:
+// `[Hidden]` is the member Hidden, value 0, and E.[Hidden] and E.Hidden resolve;
+// `[Description("x")]` and `[NoSuchAttribute]` are members of those names, and
+// `[Hidden] Red = 5` is refused, TB5182, at Red). So the census records no
+// attribute for it, and the scan finds neither a problem nor a block left open.
+// Each fixture is a file; `want` lists "attr container kind" for every site.
+const inModule = (body) => `Public Module M\n${body}\nEnd Module\n`;
+const inEnum = (body) => inModule(`    Public Enum E\n${body}\n        Red\n    End Enum`);
+for (const [what, text, want] of [
+  ["[Hidden] alone in an Enum", inEnum("        [Hidden]"), []],
+  ["[Hidden, Restricted] alone in an Enum", inEnum("        [Hidden, Restricted]"), []],
+  ['[Description("x")] alone in an Enum', inEnum('        [Description("x")]'), []],
+  ["a made-up name alone in an Enum", inEnum("        [NoSuchAttribute]"), []],
+  ["a leading underscore alone in an Enum", inEnum("        [_Max]"), []],
+  ["stacked groups in an Enum", inEnum('        [Hidden]\n        [Description("x")]'), []],
+  ["a comment after the group in an Enum", inEnum("        [Hidden] ' not an attribute"), []],
+  ["a name with a space in an Enum", inEnum("        [A4 Portrait]"), []],
+  // The VBCCR shape: the whole Enum is one escaped member.
+  ["the only member, before End Enum", "Private Enum LongPtr\n[_]\nEnd Enum\n", []],
+  // The Enum's end is still seen: the attribute below it belongs to the Module.
+  [
+    "an attribute after the Enum's End",
+    inModule(
+      "    Public Enum E\n        [Hidden]\n        Red\n    End Enum\n    [Hidden]\n    Public Sub S()\n    End Sub",
+    ),
+    ["Hidden Module Sub"],
+  ],
+  // The same groups elsewhere are attributes.
+  ["[Hidden] alone before a Const", inModule("    [Hidden]\n    Public Const C As Long = 7"), ["Hidden Module Const"]],
+  ["[Hidden] alone before a Sub", inModule("    [Hidden]\n    Public Sub S()\n    End Sub"), ["Hidden Module Sub"]],
+  [
+    "inline before a Const, as the VBA package writes them",
+    inModule('    [Hidden, Restricted] Public Const utf_8 As String = "utf-8"'),
+    ["Hidden Module Const", "Restricted Module Const"],
+  ],
+  [
+    "alone in a Type, before a field",
+    "Public Type T\n    [Hidden]\n    Field1 As Long\nEnd Type\n",
+    ["Hidden Type TypeMember"],
+  ],
+]) {
+  const { sites, problems } = scanText(text, "Fixture.twin", "Fixture");
+  const got = sites.map((s) => `${s.attr} ${s.container} ${s.kind}`);
+  check(
+    `scanText: ${what}`,
+    show(got) === show(want) && problems.length === 0,
+    show({ sites: got, problems: problems.map((p) => p.why) }),
+  );
 }
 
 // ------------------------------------------------------------- parseTargets

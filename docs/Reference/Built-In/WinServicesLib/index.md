@@ -4,7 +4,7 @@ parent: Built-In Packages
 nav_order: 10
 permalink: /tB/Packages/WinServicesLib/
 has_toc: false
-indexed_from: beta-x-0983
+indexed_from: beta-x-0997
 exclude_from_docs:
   - ServicesConstantsPublic
 ---

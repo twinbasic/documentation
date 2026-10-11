@@ -8,7 +8,7 @@ permalink: /Documentation/Development/Permanent-Links
 # Permanent Links
 {: .no_toc }
 
-The stable, or machine-accessible, part of the documentation tree is rooted on the `/tB/` prefix. URLs with this prefix --- and the internal links that target them, e.g. [`docs.twinbasic.com/tB/Modules/Math/Round`](../../tB/Modules/Math/Round) --- are guaranteed not to move. This is the contract the IDE help system and external links rely on; anything documented below should be treated as essential.
+The stable, machine-accessible part of the documentation tree is rooted on the `/tB/` prefix. URLs with this prefix --- and the internal links that target them, e.g. [`docs.twinbasic.com/tB/Modules/Math/Round`](../../tB/Modules/Math/Round) --- are guaranteed not to move. The IDE help system and external links rely on this contract.
 
 * TOC goes here
 {:toc}
@@ -16,20 +16,20 @@ The stable, or machine-accessible, part of the documentation tree is rooted on t
 ## What the guarantee covers, and what retires a URL
 {: #retiring-a-url }
 
-The guarantee is that a published `/tB/` URL is never **re-pointed**: it is not renamed, not restructured, and never made to resolve to a different symbol. A page that moves on disk keeps its `permalink`, which is why [the Default / Built-In split](../../tB/Packages/) changed no URL at all, and a page that takes over another's subject declares the old URL in `redirect_from:` rather than leaving it dead.
+A published `/tB/` URL is never **re-pointed**: it is not renamed, not restructured, and never made to resolve to a different symbol. A page that moves on disk keeps its `permalink`, which is why [the Default / Built-In split](../../tB/Packages/) changed no URL. A page that takes over another's subject declares the old URL in `redirect_from:`.
 
-**One case falls outside it: a symbol that no longer exists in twinBASIC.** Its page is [removed](Authoring#removing-a-page) and its URL goes with it, and that is a deliberate decision rather than a routine edit. The link check would not notice, because it only resolves links made from inside the tree and no link inside the tree survives the removal; what stops the build is the [symbol index](#the-symbol-index)'s list of every URL it has published, until a run with `--update-symbol-baseline` records the removal. Three things are expected of one:
+**The one exception is a symbol that no longer exists in twinBASIC.** Its page is [removed](Authoring#removing-a-page) and its URL goes with it. This is a deliberate decision, not a routine edit. The link check does not notice, because no link inside the tree survives the removal. The build stops instead on the [symbol index](#the-symbol-index)'s list of every URL it has published, until a run with `--update-symbol-baseline` records the removal. When you retire a URL:
 
-- **A redirect wherever anything can carry the URL.** If another page covers the subject now, it takes a `redirect_from:` entry for the old URL. Only a URL nothing can stand in for is allowed to 404.
-- **The entry comes out of this page in the same commit.** This page is the contract; a URL listed here that no longer resolves is worse than one that was never listed, because it is the thing an implementer reads to decide what is safe to link to.
-- **The commit message says which URL was retired.** Consumers of the contract are outside this repository --- the IDE help system above all --- and a commit message naming the URL is the only record they can be pointed at.
+- **Add a redirect wherever anything can carry the URL.** If another page covers the subject now, give it a `redirect_from:` entry for the old URL. Only a URL nothing can stand in for may 404.
+- **Remove the entry from this page in the same commit.** A URL listed here that no longer resolves misleads the implementers who read this page to decide what is safe to link to.
+- **Name the retired URL in the commit message.** The consumers of this contract, above all the IDE help system, are outside this repository, and the message is the only record they can be pointed at.
 
-Renaming a heading is the quieter version of the same thing: `redirect_from:` emits whole-page stubs and has no fragment remapping, so an anchor that some page links into breaks silently when its heading is reworded. Anchors named in the sections below are part of the contract for the same reason the URLs are, and so is every anchor in the symbol index --- a build that loses one fails, and the fix is to pin the old id on the reworded heading with `{: #old-id }` ([Renaming a heading](Authoring#renaming-a-heading-without-breaking-its-links)).
+Renaming a heading breaks anchors the same way: `redirect_from:` emits whole-page stubs and cannot remap a fragment, so an anchor some page links into breaks silently when its heading is reworded. Anchors named in the sections below are part of the contract, and so is every anchor in the symbol index. A build that loses one fails; pin the old id on the reworded heading with `{: #old-id }` ([Renaming a heading](Authoring#renaming-a-heading-without-breaking-its-links)).
 
 ## /tB/symbols.json --- the symbol index
 {: #the-symbol-index }
 
-Every name the reference documents, and the URL of the page or heading that documents it, in one file the build generates: `/tB/symbols.json`. The IDE help add-in looks up the name under the cursor in it. The file's own URL is part of this contract, and so is every URL in it.
+The build generates `/tB/symbols.json`, which lists every name the reference documents with the URL of the page or heading that documents it. The IDE help add-in looks up the name under the cursor in it. The file's own URL and every URL in it are part of this contract.
 
 ```json
 {
@@ -44,13 +44,13 @@ Every name the reference documents, and the URL of the page or heading that docu
 }
 ```
 
-- **`format`** changes when an entry's fields change meaning, so a reader holding a file it does not understand can tell.
-- **`api`** is the twinBASIC build whose packages the file's kinds and members were read from.
+- **`format`** changes when an entry's fields change meaning, so a reader can tell it holds a file it does not understand.
+- **`api`** is the twinBASIC build whose packages the kinds and members were read from.
 - **`packages`** maps each package's name as code writes it --- `Assert`, `cefPackage` --- to the name its pages use.
-- **`interfaces`** maps an interface to the class whose members it declares. The compiler names a member by the interface it is declared on --- hover over `Collection.Add` says `VBA._Collection` --- so a reader that has the compiler's answer looks the interface up here first.
-- **`symbols`** has one entry per name and URL. `name` is as the package declares it and is matched without regard to case; `package` and `container` are null for the language itself; and `url` is a path below the site's root: a page's permalink exactly as written, with the heading's id after `#` for a member documented under a heading. `kind` is one of `statement`, `keyword`, `operator`, `directive`, `attribute`, `package`, `module`, `class`, `control`, `interface`, `enum`, `type`, `object`, `function`, `sub`, `property`, `method`, `event`, `constant`, `variable`, `field`, `enumvalue`, `delegate` and `member` --- the last for a name the pages document and the packages do not declare.
+- **`interfaces`** maps an interface to the class whose members it declares. The compiler names a member by the interface it is declared on (hovering over `Collection.Add` says `VBA._Collection`), so a reader holding the compiler's answer looks the interface up here first.
+- **`symbols`** has one entry per name and URL. `name` is as the package declares it and is matched without regard to case. `package` and `container` are null for the language itself. `url` is a path below the site's root: a page's permalink exactly as written, with the heading's id after `#` for a member documented under a heading. `kind` is one of `statement`, `keyword`, `operator`, `directive`, `attribute`, `package`, `module`, `class`, `control`, `interface`, `enum`, `type`, `object`, `function`, `sub`, `property`, `method`, `event`, `constant`, `variable`, `field`, `enumvalue`, `delegate` and `member` --- the last for a name the pages document and the packages do not declare.
 
-A name can have several entries, and many do: `Add` is a method of a dozen classes, and `Print` is a statement, a method of six classes and a member of `Debug`. The index does not choose between them; its reader does. The `$` form of a function has the entry of its base --- `Left$` goes to `Left` --- as the section on modules below describes.
+A name can have several entries: `Add` is a method of a dozen classes, and `Print` is a statement, a method of six classes and a member of `Debug`. The index does not choose between them; its reader does. The `$` form of a function has the entry of its base --- `Left$` goes to `Left` --- as the section on modules below describes.
 
 ## /tB/Core/\<Statement\>
 
@@ -76,7 +76,7 @@ A name can have several entries, and many do: `Add` is a method of a dozen class
 
 ## /tB/Modules/\<ModuleName\>/\<Symbol\>
 
-Within each VBA module, each procedure, property, or statement has its own stand-alone page, e.g. [**LenB**: /tB/Modules/Strings/Len](../../tB/Modules/Strings/Len). The `$`-suffixed and `B`/`W` variants are documented on the same page as the base symbol (so `LenB`, `Len$`, etc. all share the [`Len`](../../tB/Modules/Strings/Len) page).
+Within each VBA module, each procedure, property, or statement has its own page, e.g. [**LenB**: /tB/Modules/Strings/Len](../../tB/Modules/Strings/Len). The `$`-suffixed and `B`/`W` variants share the base symbol's page, so `LenB`, `Len$`, etc. all use the [`Len`](../../tB/Modules/Strings/Len) page.
 
 - [Collection](../../tB/Modules/Collection)
 - [Compilation](../../tB/Modules/Compilation)
@@ -97,7 +97,7 @@ Within each VBA module, each procedure, property, or statement has its own stand
 
 Each package lives under `/tB/Packages/<Package>/`. The sub-structure depends on the package: modules, classes, enumerations, sub-objects, and interface members each have their own page.
 
-Depth differs by section. VBRUN is listed by module, and its members are reached from the module page, exactly as under `/tB/Modules/`. Every other package is listed page by page --- so **a new class, control, enumeration, sub-object, or member needs its own bullet here, in the commit that adds the page.** Nothing catches the omission: the link check confirms that the links a page makes resolve, and has no opinion about whether anything links to a published URL. [Authoring Pages](Authoring#listing-a-new-page) covers the other indexes a new page must join.
+VBRUN is listed by module, and its members are reached from the module page, as under `/tB/Modules/`. Every other package is listed page by page, so **a new class, control, enumeration, sub-object, or member needs its own bullet here, in the commit that adds the page.** Nothing catches the omission, because the link check does not look for pages nothing links to. [Authoring Pages](Authoring#listing-a-new-page) covers the other indexes a new page must join.
 
 ### VBRUN -- /tB/Packages/VBRUN/\<Module\>/
 
@@ -180,7 +180,7 @@ Depth differs by section. VBRUN is listed by module, and its members are reached
 
 ### AppGlobalClassObject -- /tB/Packages/AppGlobalClassObject/_App/\<Member\>
 
-The **App** global object is available in every project without a reference, and each of its members is documented on a page of its own. Those pages sit under the interface **App** implements, so every member URL carries an `_App/` segment --- `App.EXEName` is documented at [/tB/Packages/AppGlobalClassObject/_App/EXEName](../../tB/Packages/AppGlobalClassObject/_App/EXEName). The leading underscore is part of the interface name, after the COM hidden-interface convention; it is not a private-page marker.
+The **App** global object is available in every project without a reference, and each member has its own page. The pages sit under the interface **App** implements, so every member URL carries an `_App/` segment --- `App.EXEName` is at [/tB/Packages/AppGlobalClassObject/_App/EXEName](../../tB/Packages/AppGlobalClassObject/_App/EXEName). The leading underscore is part of the interface name, after the COM hidden-interface convention; it does not mark a private page.
 
 - Interface: [_App](../../tB/Packages/AppGlobalClassObject/_App/)
 - Properties: [Build](../../tB/Packages/AppGlobalClassObject/_App/Build), [Comments](../../tB/Packages/AppGlobalClassObject/_App/Comments), [CompanyName](../../tB/Packages/AppGlobalClassObject/_App/CompanyName), [EXEName](../../tB/Packages/AppGlobalClassObject/_App/EXEName), [FileDescription](../../tB/Packages/AppGlobalClassObject/_App/FileDescription), [HelpFile](../../tB/Packages/AppGlobalClassObject/_App/HelpFile), [hInstance](../../tB/Packages/AppGlobalClassObject/_App/hInstance), [IsInIDE](../../tB/Packages/AppGlobalClassObject/_App/IsInIDE), [LastBuildPath](../../tB/Packages/AppGlobalClassObject/_App/LastBuildPath), [LegalCopyright](../../tB/Packages/AppGlobalClassObject/_App/LegalCopyright), [LegalTrademarks](../../tB/Packages/AppGlobalClassObject/_App/LegalTrademarks), [LogMode](../../tB/Packages/AppGlobalClassObject/_App/LogMode), [LogPath](../../tB/Packages/AppGlobalClassObject/_App/LogPath), [Major](../../tB/Packages/AppGlobalClassObject/_App/Major), [Minor](../../tB/Packages/AppGlobalClassObject/_App/Minor), [ModulePath](../../tB/Packages/AppGlobalClassObject/_App/ModulePath), [NonModalAllowed](../../tB/Packages/AppGlobalClassObject/_App/NonModalAllowed), [OleRequestPendingMsgText](../../tB/Packages/AppGlobalClassObject/_App/OleRequestPendingMsgText), [OleRequestPendingMsgTitle](../../tB/Packages/AppGlobalClassObject/_App/OleRequestPendingMsgTitle), [OleRequestPendingTimeout](../../tB/Packages/AppGlobalClassObject/_App/OleRequestPendingTimeout), [OleServerBusyMsgText](../../tB/Packages/AppGlobalClassObject/_App/OleServerBusyMsgText), [OleServerBusyMsgTitle](../../tB/Packages/AppGlobalClassObject/_App/OleServerBusyMsgTitle), [OleServerBusyRaiseError](../../tB/Packages/AppGlobalClassObject/_App/OleServerBusyRaiseError), [OleServerBusyTimeout](../../tB/Packages/AppGlobalClassObject/_App/OleServerBusyTimeout), [Path](../../tB/Packages/AppGlobalClassObject/_App/Path), [PrevInstance](../../tB/Packages/AppGlobalClassObject/_App/PrevInstance), [ProductName](../../tB/Packages/AppGlobalClassObject/_App/ProductName), [RetainedProject](../../tB/Packages/AppGlobalClassObject/_App/RetainedProject), [Revision](../../tB/Packages/AppGlobalClassObject/_App/Revision), [StartMode](../../tB/Packages/AppGlobalClassObject/_App/StartMode), [TaskVisible](../../tB/Packages/AppGlobalClassObject/_App/TaskVisible), [ThreadID](../../tB/Packages/AppGlobalClassObject/_App/ThreadID), [Title](../../tB/Packages/AppGlobalClassObject/_App/Title), [UnattendedApp](../../tB/Packages/AppGlobalClassObject/_App/UnattendedApp)

@@ -38,9 +38,6 @@ const CASES = [
   { tool: "scripts/census_attributes.mjs", args: ["--out"], exit: 2, stderr: "--out needs a value\n" },
   { tool: "scripts/census_attributes.mjs", args: ["--exported", "--json"], exit: 2, stderr: "--exported needs a value\n" },
   { tool: "scripts/census_attributes.mjs", args: ["--src", "x"], exit: 2, stderr: "unknown option: --src\n" },
-  { tool: "scripts/build_package_api.mjs", args: ["--out"], exit: 2, stderr: "--out needs a value\n" },
-  { tool: "scripts/build_package_api.mjs", args: ["--exported", "--check"], exit: 2, stderr: "--exported needs a value\n" },
-  { tool: "scripts/build_package_api.mjs", args: ["--src", "x"], exit: 2, stderr: "unknown option: --src\n" },
 
   // The a11y and diagram tools. A value flag given
   // nothing, at the end or as "", or followed by another flag, is refused.
@@ -143,7 +140,6 @@ const CASES = [
   { tool: "scripts/census_attributes.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/census_attributes\.mjs \[options\]\n/ },
   { tool: "scripts/census_attributes.mjs", args: ["--help", "--attr"], exit: 0, stdout: /^usage: node scripts\/census_attributes\.mjs \[options\]\n/ },
   { tool: "scripts/census_attributes.mjs", args: ["--dump-sites"], exit: 2, stderr: "--dump-sites needs a value\n" },
-  { tool: "scripts/build_package_api.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/build_package_api\.mjs \[options\]\n/ },
   { tool: "scripts/gen_attribute_probes.mjs", args: [], exit: 2, stderr: /^Generate a twinBASIC probe project for Reference\/Attributes\.md applicability\.\n/ },
 
   // The gates and link tools. check_links prints its
@@ -291,6 +287,27 @@ const CASES = [
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "-x"], exit: 2, stderr: "unknown option: -x\n" },
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "--guild", "x", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
 
+  // The indexer reads its command line like wisdom: the command is the one
+  // positional, so an option may come before it, and an error found while
+  // reading the options comes before an unknown command. Its command in these
+  // is never a real one either, so that none can start a sync or an analysis,
+  // which `sync` would do over the network.
+  { tool: "indexer/twin-index.mjs", args: [], exit: 2, stderr: /^Usage: node indexer\/twin-index\.mjs <command> \[options\]\n/ },
+  { tool: "indexer/twin-index.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node indexer\/twin-index\.mjs <command> \[options\]\n/ },
+  { tool: "indexer/twin-index.mjs", args: ["bogus"], exit: 2, stderr: /^unknown command: bogus\nUsage: node indexer\/twin-index\.mjs <command> \[options\]\n/ },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--package"], exit: 2, stderr: "--package needs a value\n" },
+  { tool: "indexer/twin-index.mjs", args: ["--packages", "--bogus"], exit: 2, stderr: "--packages needs a value\n" },
+  { tool: "indexer/twin-index.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "stray"], exit: 2, stderr: "unexpected argument: stray\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--help"], exit: 0, stdout: /^Usage: node indexer\/twin-index\.mjs <command> \[options\]\n/ },
+  { tool: "indexer/twin-index.mjs", args: ["--package", "VBA", "--help"], exit: 0, stdout: /^Usage: node indexer\/twin-index\.mjs <command> \[options\]\n/ },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--help=1"], exit: 2, stderr: "--help takes no value\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "-x"], exit: 2, stderr: "unknown option: -x\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--package", "x", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--ide"], exit: 2, stderr: "--ide needs a value\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--ide="], exit: 2, stderr: "--ide needs a non-empty value\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--release=1"], exit: 2, stderr: "--release takes no value\n" },
+
   // tbdocs, beyond the cases above. Every command-line
   // error exits 2. A value flag refuses a missing value and one that starts
   // with a dash, "--" included; an unknown option is refused as given, as is a
@@ -340,6 +357,7 @@ const HELP_TOOLS = {
   "builder/tbdocs.mjs": null,
   "book/render-book.mjs": "usage: node render-book.mjs <input.html> ",
   "wisdom/wisdom.mjs": "Usage: node wisdom/wisdom.mjs <command> [options]\n",
+  "indexer/twin-index.mjs": "Usage: node indexer/twin-index.mjs <command> [options]\n",
   "eval/build_corpus.mjs": "Usage: node eval/build_corpus.mjs ",
   "eval/nav_hops.mjs": "Usage: node eval/nav_hops.mjs ",
   "eval/run_case.mjs": "Usage: node eval/run_case.mjs ",
@@ -352,7 +370,6 @@ const HELP_TOOLS = {
   "scripts/shoot_docs.mjs": null,
   "scripts/bug_repro.mjs": null,
   "scripts/build_dot_metrics.mjs": null,
-  "scripts/build_package_api.mjs": null,
   "scripts/census_attributes.mjs": null,
   "scripts/check_a11y.mjs": null,
   "scripts/check_a11y_fingerprint.mjs": null,
@@ -421,6 +438,7 @@ const REFUSALS = {
   "builder/tbdocs.mjs": ["src"],
   "book/render-book.mjs": ["output"],
   "wisdom/wisdom.mjs": ["guild", { args: ["bogus", "--bogus"], empty: ["bogus", "--guild="] }],
+  "indexer/twin-index.mjs": ["package", { args: ["bogus", "--bogus"], empty: ["bogus", "--package="] }],
   "eval/build_corpus.mjs": ["dest"],
   "eval/nav_hops.mjs": ["from"],
   "eval/run_case.mjs": ["corpus"],
@@ -433,7 +451,6 @@ const REFUSALS = {
   "scripts/shoot_docs.mjs": ["ide"],
   "scripts/bug_repro.mjs": ["ide"],
   "scripts/build_dot_metrics.mjs": [null],
-  "scripts/build_package_api.mjs": ["out"],
   "scripts/census_attributes.mjs": ["out"],
   "scripts/check_a11y.mjs": ["root-dir"],
   "scripts/check_a11y_fingerprint.mjs": ["pages"],
@@ -936,6 +953,51 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
     ["extract", "--since", "2024-01-01", "--all", "--force"],
     "--since, --all and --force cannot be given together\n",
   );
+}
+// The indexer's command in these is never a real one, for the same reason, and
+// its package names and the install it reads are checked straight after the
+// parse. Some cases name a real command, `analyze` or `derive`, which is refused
+// before it reads anything; no case names `sync`, which would start a sync over
+// the network if the refusal it records ever stopped firing.
+{
+  const tool = "indexer/twin-index.mjs";
+  bad(
+    tool,
+    ["bogus", "--ide", "no-such.exe"],
+    /^no twinBASIC\.exe at no-such\.exe: pass --ide or set TB_IDE, or use --release\n$/,
+  );
+  bad(tool, ["bogus", "--ide", "--release"], "--ide needs a value\n");
+  bad(tool, ["bogus", "--release", "--ide", "no-such.exe"], "--ide and --release cannot be given together\n");
+  bad(tool, ["analyze", "--release"], "--release does not apply to analyze\n");
+  bad(tool, ["bogus", "--packages", ","], "--packages expects package names separated by commas, got: ,\n");
+  bad(tool, ["bogus", "--packages=VBA,,VB"], "--packages expects package names separated by commas, got: VBA,,VB\n");
+  bad(
+    tool,
+    ["bogus", "--package", "VBA,VB"],
+    "--package expects one package name, got: VBA,VB (--packages takes a list)\n",
+  );
+  bad(tool, ["bogus", "--package", "VBA", "--packages", "VB"], "--package and --packages cannot be given together\n");
+  // --all is analyze's: every package in the store, so it is not given with names, and the
+  // refusal that it does not apply to another command is found with the options too.
+  bad(tool, ["bogus", "--all", "--package", "VBA"], "--all and --package cannot be given together\n");
+  bad(tool, ["bogus", "--all", "--packages", "VBA,VB"], "--all and --packages cannot be given together\n");
+  bad(
+    tool,
+    ["bogus", "--all", "--package", "VBA", "--packages", "VB"],
+    "--all, --package and --packages cannot be given together\n",
+  );
+  bad(tool, ["bogus", "--all"], "--all does not apply to bogus\n");
+  bad(tool, ["bogus", "--all=1"], "--all takes no value\n");
+  // derive covers every package and has options of its own. Each of its cases
+  // carries --check, so that one whose refusal stopped firing would read the
+  // install and compare, never write builder/package-api.json.
+  bad(tool, ["derive", "--check", "--package", "VBA"], "--package does not apply to derive\n");
+  bad(tool, ["derive", "--check", "--packages", "VBA,VB"], "--packages does not apply to derive\n");
+  bad(tool, ["derive", "--check", "--all"], "--all does not apply to derive\n");
+  bad(tool, ["derive", "--check", "--out"], "--out needs a value\n");
+  bad(tool, ["derive", "--check=1"], "--check takes no value\n");
+  bad(tool, ["analyze", "--check"], "--check does not apply to analyze\n");
+  bad(tool, ["analyze", "--out", "x.json"], "--out does not apply to analyze\n");
 }
 for (const made of BAD_VALUES) {
   CASES.push(made);

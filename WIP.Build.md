@@ -93,7 +93,7 @@ yet designed; the plan holds measurements and open questions for them.
 
 ### Tooling is JavaScript, and the three remaining `.py` files each have a reason
 
-Everything under `scripts/`, `builder/`, `lib/`, `book/`, `eval/` and `wisdom/` is Node.js.
+Everything under `scripts/`, `builder/`, `lib/`, `book/`, `eval/`, `wisdom/` and `indexer/` is Node.js.
 One trap: **a tool that rewrites a file must preserve its line endings
 byte-exactly.** Python's `Path.read_text` / `write_text` round-trip applies
 universal-newline translation, rewriting any LF file it touches to CRLF on Windows
@@ -195,6 +195,8 @@ file, which the build packs the help add-in's project file with (see [The help a
 project file](#the-help-add-ins-project-file)).
 
 `wisdom/` — Discord knowledge-harvesting tool (three-phase: export → process → extract). Plans in `wisdom/PLAN-{1,2,3}.md`; implementation under `wisdom/`. Uses only Node.js built-in APIs. Running it is [WIP.Wisdom.md](WIP.Wisdom.md).
+
+`indexer/` — package indexer: reads the twinBASIC packages (the built-in and default ones from the local install, or with `--release` from the GitHub release; the community ones from TWINSERV), parses their `.twin` sources and writes an `api.json` snapshot per package into a local git store. The build does not use it. Uses only Node.js built-in APIs. Its layout and commands are in `indexer/README.md`, and why it is built as it is in [WIP.Indexer.md](WIP.Indexer.md). It is under the lint, format and regex-safety gates like the other tooling folders; `sample.twinpack` and the committed snapshots are data, not scripts; the sync state lives in the gitignored store, not in the repository.
 
 `eval/` — use-case evaluation of the developer documentation. `build_corpus.mjs` mirrors the
 repository with every non-prose file stubbed unreadable, so "documentation only" is a property
@@ -679,9 +681,8 @@ Three decisions about the build side, each with the alternative it rules out:
   with no page and put the docs' own layout (Array filed under Information, the Styles
   classes documented though declared `Private`) in the wrong place.
 - **The snapshot is committed, like `inter-metrics.json`, because making it needs a
-  twinBASIC install.** `scripts/build_package_api.mjs` exports the packages through
-  `scripts/lib/tb-packages.mjs` (shared with `census_attributes.mjs`), scans them with
-  `scripts/lib/twin-api.mjs`, and writes ~255 KB. `package-api.json` is a build *input*, so `check_tree_fresh.mjs`
+  twinBASIC install.** `node indexer/twin-index.mjs derive` reads the packages' `.twinproj`
+  files as `sync` does, scans them with `scripts/lib/twin-api.mjs`, and writes ~255 KB. `package-api.json` is a build *input*, so `check_tree_fresh.mjs`
   watches it; `symbol-baseline.json` is an output and is in its `IGNORED_FILES`.
 - **The heading scan is `indexOf`, not a regex.** `/<h([1-6])\b([^>]*)>([\s\S]*?)<\/h\1>/`
   is cubic in the regex gate's census, and it runs over every reference page; the scan
@@ -707,8 +708,18 @@ out `-text`: a CRLF checkout of the copy would differ from the LF the build writ
 build.
 
 `scripts/check_symbol_index.mjs` is the gate on all three pieces, in `test.bat` and both
-CI workflows: forty-six probes on fixtures, no tree, no install. The scanner's probes are
-the traps the packages' `.twin` sources contain; the derivation's are each a rule the real
+CI workflows: over a hundred probes on fixtures, no tree, no install. The scanner's probes are
+the traps the packages' `.twin` sources contain, the community packages' included, and what
+a declaration's record says (signature, attributes with their arguments, description, return
+type, accessor, the project name). A block of them holds the forms an audit of `parseTwin`
+found it losing without a word (lists after `Inherits` and `Implements`, a qualified CoClass
+interface, `[Hidden(False)]`, modifier-named and initialised fields, brackets in a Type, a
+result type before `Overrides`, an unmodified `Declare`, and the `#If` branches as
+alternatives), each with the compiler's answer in its comment, checked with `tbrun --tests`
+on BETA 1005. A second block holds the second step's: declarations joined by colons,
+identifiers with characters past ASCII (the compiler takes every one as part of a name, a
+no-break space included, so `\b` is no word boundary for them), a type-declaration
+character on a name, and the condition each `#If` branch gives its members. The derivation's are each a rule the real
 site exercises only once or twice (`symbols:`, a section heading named like a member, the
 ellipsis the typographer puts in a Core H1).
 
@@ -926,7 +937,7 @@ polynomial. Every one of the constructions classifies `safe`.
 ### The regex-safety gate
 
 [scripts/check_regex_safety.mjs](scripts/check_regex_safety.mjs) parses every
-`.mjs` under `builder/`, `scripts/`, `lib/`, `book/`, `eval/` and `wisdom/` with
+`.mjs` under `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` and `indexer/` with
 acorn, takes the regex literals *and* every `new RegExp(...)` whose arguments the
 source decides, and refuses any that can backtrack exponentially. In `test.bat`
 and both CI workflows; ~10 s, no browser, no built tree. Exit 0 no exponential

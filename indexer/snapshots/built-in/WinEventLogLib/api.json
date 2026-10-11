@@ -1,0 +1,90 @@
+{
+  "format": 3,
+  "package": "WinEventLogLib",
+  "project": "WinEventLogLib",
+  "version": "beta-x-0997",
+  "types": [
+    {
+      "name": "EventLog",
+      "kind": "class",
+      "vis": "public",
+      "file": "EventLog.twin",
+      "signature": "Public Class EventLog(Of T1, T2)",
+      "attrs": [{"name":"COMCreatable","args":"False"},{"name":"ClassId","args":"\"4AEA12E8-D520-44E2-ABE2-EAEAEAEAEAEA\""}],
+      "description": "This is the main event log (generic) class.",
+      "members": [
+        {"name":"InternalHandle","kind":"field","vis":"private","signature":"Private InternalHandle As LongPtr"},
+        {"name":"InternalIsInitialized","kind":"field","vis":"private","signature":"Private InternalIsInitialized As Boolean"},
+        {"name":"InternalLogName","kind":"field","vis":"private","signature":"Private InternalLogName As String"},
+        {"name":"InternalLogPath","kind":"field","vis":"private","signature":"Private InternalLogPath As String"},
+        {"name":"LogArray","kind":"sub","vis":"private","signature":"Private Sub LogArray(ByVal Type As EventLogTypeConstants, ByVal EventId As T1, ByVal CategoryId As T2, AdditionalStrings() As Variant)","description":"The main Logging routine.  Use this to create a new log entry"},
+        {"name":"LogFailure","kind":"sub","vis":"public","signature":"Public Sub LogFailure(ByVal EventId As T1, ByVal CategoryId As T2, ParamArray AdditionalStrings())","description":"Creates a log entry into the system, using the provided arguments"},
+        {"name":"LogSuccess","kind":"sub","vis":"public","signature":"Public Sub LogSuccess(ByVal EventId As T1, ByVal CategoryId As T2, ParamArray AdditionalStrings())","description":"Creates a log entry into the system, using the provided arguments"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New(LogName As String)","description":"Creates a new instance of the event log class.  LogPath can be a simple string, e.g. 'MyService', or can be a full path such as 'System\\MyService'"},
+        {"name":"Register","kind":"sub","vis":"public","signature":"Public Sub Register()","description":"Registers the event log source on this machine, using the Windows Registry"}
+      ]
+    },
+    {
+      "name": "EventLogAPIs",
+      "kind": "module",
+      "vis": "private",
+      "public": false,
+      "file": "APIs.twin",
+      "signature": "Private Module EventLogAPIs",
+      "members": [
+        {"name":"RegCloseKey","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RegCloseKey Lib \"advapi32.dll\" (ByVal hKey As LongPtr) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"}]},
+        {"name":"RegCreateKeyExW","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RegCreateKeyExW Lib \"advapi32.dll\" (ByVal hKey As LongPtr, ByVal lpSubKey As String, ByVal Reserved As Long, ByVal lpClass As String, ByVal dwOptions As Long, ByVal samDesired As Long, ByVal lpSecurityAttributes As LongPtr, phkResult As LongPtr, lpdwDisposition As LongPtr) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"}]},
+        {"name":"RegDeleteKeyExW","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RegDeleteKeyExW Lib \"advapi32.dll\" (ByVal hKey As LongPtr, ByVal lpSubKey As String, ByVal samDesired As Long, ByVal Reserved As Long) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"}]},
+        {"name":"RegSetValueExW","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RegSetValueExW Lib \"advapi32.dll\" (ByVal hKey As LongPtr, ByVal lpValueName As String, ByVal Reserved As Long, ByVal dwType As Long, lpData As Any, ByVal cbData As Long) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"}]},
+        {"name":"RegisterEventSourceW","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function RegisterEventSourceW Lib \"advapi32\" (ByVal lpUNCServerName As String, ByVal lpSourceName As String) As LongPtr","returnType":"LongPtr","attrs":[{"name":"DLLStackCheck","args":"False"}]},
+        {"name":"ReportEventW","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function ReportEventW Lib \"advapi32\" (ByVal hEventLog As LongPtr, ByVal wType As Integer, ByVal wCategory As Integer, ByVal dwEventID As Long, ByVal lpUserSid As LongPtr, ByVal wNumStrings As Integer, ByVal dwDataSize As Long, ByVal lpStrings As LongPtr, ByVal lpRawData As LongPtr) As Long","returnType":"Long","attrs":[{"name":"DLLStackCheck","args":"False"}]}
+      ]
+    },
+    {
+      "name": "EventLogConstants",
+      "kind": "module",
+      "vis": "private",
+      "public": false,
+      "file": "Constants.twin",
+      "signature": "Private Module EventLogConstants",
+      "members": []
+    },
+    {
+      "name": "EventLogTypeConstants",
+      "kind": "enum",
+      "in": "EventLogConstants",
+      "vis": "public",
+      "file": "Constants.twin",
+      "signature": "Public Enum EventLogTypeConstants",
+      "values": [
+        {"name":"vbEventLogTypeSuccess","value":"0"},
+        {"name":"vbEventLogTypeAuditFailure","value":"&H10"},
+        {"name":"vbEventLogTypeAuditSuccess","value":"&H8"},
+        {"name":"vbEventLogTypeError","value":"&H1"},
+        {"name":"vbEventLogTypeWarning","value":"&H2"}
+      ]
+    },
+    {
+      "name": "EventLogHelperPrivate",
+      "kind": "module",
+      "vis": "public",
+      "file": "Helper.twin",
+      "signature": "Public Module EventLogHelperPrivate",
+      "members": [
+        {"name":"VariantArrayToStringArray","kind":"function","vis":"public","signature":"Public Function VariantArrayToStringArray(array() As Variant, Optional ByRef outCount As Long) As String()","returnType":"String()","description":"Converts a variant array into a string array"}
+      ]
+    },
+    {
+      "name": "EventLogHelperPublic",
+      "kind": "module",
+      "vis": "public",
+      "file": "Helper.twin",
+      "signature": "Public Module EventLogHelperPublic",
+      "members": [
+        {"name":"RegisterEventLogInternal","kind":"sub","vis":"public","signature":"Public Sub RegisterEventLogInternal(ByVal LogPath As String, ByVal CategoryCount As Long)","description":"Registers an event source into the Window Registry.  LogPath can be a simple name like 'MyService' which would be registered as 'Application\\MyService', or can be a full path like 'System\\MyService'"}
+      ]
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}

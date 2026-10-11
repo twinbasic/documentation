@@ -128,6 +128,7 @@ const SOURCE_GLOBS = [
   "book/*.mjs",
   "eval/*.mjs",
   "wisdom/**/*.mjs",
+  "indexer/**/*.mjs",
 ];
 // Vendored third-party code is not ours to fix.
 const IGNORE = ["**/node_modules/**", "**/vendor/**", "book/lib/**"];

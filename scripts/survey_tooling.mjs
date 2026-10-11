@@ -57,7 +57,7 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
 
-const TOOLING_DIRS = ["builder", "scripts", "lib", "book", "eval", "wisdom", "test", "perf"];
+const TOOLING_DIRS = ["builder", "scripts", "lib", "book", "eval", "wisdom", "indexer", "test", "perf"];
 const VENDORED = [/^book\/lib\/paged\.browser\.js$/, /^builder\/vendor\//];
 const LAB = "perf/";
 const MAX_OCCURRENCES = 40;

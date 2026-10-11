@@ -596,12 +596,12 @@ Applicable to: [**Class**](Class)
 
 Syntax: **[Hidden** [ **(** **True** \| **False** **)** ] **]**
 
-Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Interface**](Interface), [**Module**](Module), a [procedure](../Gloss#procedure) in a Class or Module, a procedure in an Interface, a variable in a Class, and an [**Enum**](Enum) member
+Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Interface**](Interface), [**Module**](Module), a [procedure](../Gloss#procedure) in a Class or Module, a procedure in an Interface, and a variable in a Class
 
 Hides the declaration from certain IntelliSense and other lists. It applies to a whole type --- a **Class**, **CoClass**, **Interface** or **Module** --- and equally to a single member of one, so a member can be kept out of those lists without hiding the type that declares it. Within a **Class** that covers procedures, variables, constants and events; within an **Interface**, the member prototypes; within a **Module**, procedures, variables, constants and [**Declare**](Declare) statements.
 
 > [!NOTE]
-> A **CoClass** can only be hidden whole. Its body holds nothing but **Interface** lines, and the attribute is refused there with TB5155 --- unlike [**Default**](#default) and [**Source**](#source), which are interface-line attributes. It is likewise refused on an **Enum** or [**Type**](Type) declaration, on a **Type** member, and on a procedure parameter. An individual **Enum** *member* is hidden the same way: the **Encoding** constants of [**Open**](Open) are marked `[Hidden, Restricted]`.
+> A **CoClass** can only be hidden whole. Its body holds nothing but **Interface** lines, and the attribute is refused there with TB5155 --- unlike [**Default**](#default) and [**Source**](#source), which are interface-line attributes. It is likewise refused on an **Enum** or [**Type**](Type) declaration, on a **Type** member, and on a procedure parameter. An **Enum** member cannot be hidden either: written before the member on the same line, the attribute is **TB5182**, and on a line of its own inside the **Enum**, `[Hidden]` declares a member named `Hidden` (see [**Enum**](Enum)).
 
 <!-- Applicability from scripts/census_attributes.mjs over BETA 995 (270 sites)
      plus the attribute sweep (scripts/sweep_attributes.mjs), BETA 995.
@@ -610,10 +610,12 @@ Hides the declaration from certain IntelliSense and other lists. It applies to a
      CoClass 3, whole Module 2, whole Interface 2.
      Swept clean: all four whole types, every procedure, variable, Const,
      Event and Declare site in a Class, Module or Interface.
-     The Enum member (the [Hidden, Restricted] shape Core/Open documents) also
-     compiles, but that proves nothing: an Enum body accepts ANY attribute on
-     its own line, an attribute that does not exist included, so the sweep
-     voids that site. Core/Open's Encoding constants are the only evidence.
+     The Enum member is not a site: on its own line inside an Enum, ANY
+     bracket group -- [Hidden], [Description("x")], a name that is no
+     attribute -- declares a member named by its text and takes the next
+     value, and the inline form is TB5182 (tbrun, BETA 1005). The sweep voids
+     the site for that reason. Core/Open's Encoding constants are Consts in
+     Module TextEncodingConstants, so they are Module Const sites.
      Swept TB5155: the Interface line inside a CoClass, a whole Enum, a whole
      Type, a Delegate, Implements and Inherits. TB5182: a Type member, a
      procedure parameter.

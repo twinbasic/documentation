@@ -33,7 +33,7 @@ makes it the strongest available evidence for what is legal syntax.
 
 The tooling unpacks and packs in process, through `unpackProject` and `packTree` in
 [scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs), which call impexp's
-`exportProject` and `importProject`: the census and `build_package_api`, `tbbuild --build`,
+`exportProject` and `importProject`: the census, `tbbuild --build`,
 `tbrun`, `check_examples`, `sweep_attributes`, `bug_repro`'s `pack`, and the add-in and IDE
 lanes. The compiler executable's `export` verb writes the same tree: on BETA 995 the two
 unpack the install's sixteen packages and thirty-two samples to identical trees, 1,633 files
@@ -139,7 +139,13 @@ comment in the file:
 - An **escaped identifier is spelled like an attribute**: `[_HiddenModule].Foo`,
   `[_MAX] = 0`. The tail after the `]` is what separates them. An Enum member may *be*
   one --- `Report.twin` declares `[ ]`, `[A4 Portrait]`, `[Letter Landscape]` as member
-  names.
+  names --- and **a bracket group alone on its line in an Enum body is always a member,
+  whatever is inside the brackets** (BETA 1005): `[Hidden]` is the member `Hidden`,
+  `E.[Hidden]` and `E.Hidden` are 0, `[Description("x")]` is a member of that name, and
+  `[NoSuchAttribute]` too. Code after the group (`[Hidden] Red = 5`) is refused, TB5182 at
+  `Red`. So the census records no attribute for such a group (`scripts/lib/census-scan.mjs`,
+  probes in `check_twin_parsers.mjs`); it once did for the 35 `[_]` members VBCCR's
+  `LongPtr` Enum declares in the samples.
 - **A comment can sit anywhere**: inline `/* voffset &H00A8*/ Property Get X()` before a
   declaration (DAO.twin), a trailing `' NOTE: ...` after a `]`, a whole `'` line *between*
   two attribute groups (VBA/Strings.twin; 142 sites), or a `#If` between an attribute and
@@ -195,13 +201,15 @@ other 193 are refused at every site.
   tool that takes a hyphenated option once with each of them before trusting it.
 - **A control must be refused for a site to mean anything.** An unknown name is built at every
   site, and a site whose control *compiles* is voided. An Enum body accepts any own-line
-  `[...]` --- `[ClassId("guid")]` and `[Hidden(True)]` included, neither of which can be a
-  member name --- so what it does with the line is unchecked, and nothing accepted there is
-  evidence. Inline, `[Name] X = 1`, the compiler refuses every attribute, `[Hidden]` included,
+  `[...]` --- `[ClassId("guid")]` and `[Hidden(True)]` included --- because the line is a
+  member, not an attribute (BETA 1005: `E.[Description("x")]` compiles and is 0, so such a
+  group is a legal member name), and nothing accepted there is evidence. Inline,
+  `[Name] X = 1`, the line is the member `[Name]` followed by text the parser has no
+  handler for (TB5182, at `X`), so the compiler refuses every attribute, `[Hidden]` included,
   though the page documents it on an Enum member. An Enum member target is therefore reported
-  as one the sweep cannot test, which is true. (The mechanism is not established; only the
-  behaviour was measured.) A local variable is different: an own-line `[Name]` in a Sub is a
-  *call* statement, so that variant is dropped and only the inline one is kept.
+  as one the sweep cannot test, which is true. A local variable is different: an own-line
+  `[Name]` in a Sub is a *call* statement, so that variant is dropped and only the inline one
+  is kept.
 - **A probe that draws what the control draws is a refusal, whatever the code.** The signature
   compared has the attribute's name (whole word, any case) and the probe's own generated names
   (`S000062`, `S000062_U`) taken out, or the control's message never equals the probe's.

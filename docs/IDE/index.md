@@ -1,6 +1,6 @@
 ---
 title: IDE
-# nav_order: 10
+nav_order: 9
 permalink: /tB/IDE
 ---
 

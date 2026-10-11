@@ -729,10 +729,9 @@ WinNativeCommonCtls' 738, 294 --- inherited members that pages name in a sentenc
   documents `=`, `<>` and four more. A page's first heading `# \ and \= operators` must be
   written `\\=`, since `\=` is a markdown escape.
 - **From the packages:** [builder/package-api.json](builder/package-api.json), which
-  [scripts/build_package_api.mjs](scripts/build_package_api.mjs) writes from the packages of
-  an install, through the export of [scripts/lib/tb-packages.mjs](scripts/lib/tb-packages.mjs)
-  (shared with `census_attributes.mjs`) and a declaration scanner,
-  [scripts/lib/twin-api.mjs](scripts/lib/twin-api.mjs). It is committed, like
+  `node indexer/twin-index.mjs derive` ([indexer/lib/package-api.mjs](indexer/lib/package-api.mjs))
+  writes from the packages of an install, read and parsed as the indexer's `sync` reads them,
+  through the declaration scanner [scripts/lib/twin-api.mjs](scripts/lib/twin-api.mjs). It is committed, like
   `inter-metrics.json`, because CI has no install. 1,379 types in 16 exports, 255 KB. It
   supplies each symbol's package, container and kind, lists the public symbols that have no
   page (documentation coverage as a side effect), and supplies each class's default
@@ -758,8 +757,9 @@ WinNativeCommonCtls' 738, 294 --- inherited members that pages name in a sentenc
     to `VBA.Collection` and `tbIDE.IToolWindowsV1` to `tbIDE.ToolWindows`, 37 in all, which
     is P5's hover answer turned into a lookup. A lookup that takes the compiler's word has
     to map `_Collection` to `Collection`.
-- **Regenerate** `package-api.json` with `node scripts/build_package_api.mjs` when the
-  reference is re-indexed against a newer build, and commit it with the pages.
+- **Regenerate** `package-api.json` with `node indexer/twin-index.mjs derive` when the
+  reference is re-indexed against a newer build, and commit it with the pages and the
+  indexer's snapshots.
 
 **The gates.** `builder/symbol-baseline.json` lists every published URL, and a build that
 loses one fails --- the case it exists for is a reworded member heading, which moves an

@@ -17,9 +17,23 @@
  * One literal rather than a concatenation: scripts/check_regex_safety.mjs
  * reads an imported `const` only when its initialiser is a literal, and three
  * files build their patterns from this one.
+ *
+ * `Abstract` and `Virtual` are not on it. BETA 1005 reads `Public Abstract Sub
+ * Y()` as a Variant variable named Abstract followed by a Sub the parser
+ * refuses (TB5182 at `Sub`), whether or not an `End Sub` follows, and refuses
+ * `Abstract Class` and `Virtual Class` the same way. A scanner that took them
+ * for modifiers would open a body that no source closes.
+ *
+ * Thirteen more words here are refused the same way (TB5182) in BETA 1005 before
+ * a Sub, a Function, a Class and a module-level variable alike: Shared, Partial,
+ * Overrides, Overloads, MustOverride, MustInherit, NotInheritable, Iterator,
+ * Async, Naked, Unsafe, Extern and Inline. They stay on the list until a
+ * source is found that needs them gone: `Overrides` is a clause after a
+ * procedure's result type (`Function F() As T Overrides Base.F`), never a
+ * modifier before it.
  */
 export const MODIFIERS =
-  "Public|Private|Friend|Global|Protected|Static|Shared|Partial|Default|ReadOnly|WriteOnly|WithEvents|NotDispatchable|Overridable|Overrides|Overloads|Virtual|Abstract|MustOverride|MustInherit|NotInheritable|Iterator|Async|PtrSafe|Naked|CDecl|StdCall|Unsafe|Extern|Inline";
+  "Public|Private|Friend|Global|Protected|Static|Shared|Partial|Default|ReadOnly|WriteOnly|WithEvents|NotDispatchable|Overridable|Overrides|Overloads|MustOverride|MustInherit|NotInheritable|Iterator|Async|PtrSafe|Naked|CDecl|StdCall|Unsafe|Extern|Inline";
 
 const BLOCK_COMMENT_RE = /\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\//g;
 
@@ -27,15 +41,24 @@ const BLOCK_COMMENT_RE = /\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\//g;
 // closed on the same line: the census reads its source a line at a time.
 export const decomment = (s) => s.replace(BLOCK_COMMENT_RE, " ");
 
+// An identifier holds the ASCII letters, digits and `_` and every character past
+// ASCII (BETA 1005 compiles `Café As Long` and `Sub 日本語()`), so a keyword ends
+// where the next character is none of them; `\b` would end `Class` before `é`.
+const KEYWORD_END = "(?![A-Za-z0-9_\\u0080-\\uFFFF])";
+
 // `Const` is a modifier here, so DECL_RE consumes it and never reports it as a
 // kind; declarationKind's own rule for it does.
 const DECL_RE = new RegExp(
   `^\\s*(?:(?:${MODIFIERS}|Const)\\s+)*(Class|Module|Interface|CoClass|Enum|Type|Union|Sub|` +
-    `Function|Property|Event|DeclareWide|Declare|Implements)\\b`,
+    `Function|Property|Event|DeclareWide|Declare|Implements)${KEYWORD_END}`,
   "i",
 );
-const TYPE_FIELD_RE = /^\s*\w+(?:\s*\([^)]*\))?\s+As\s+/i;
-const VAR_RE = new RegExp(`^\\s*(?:${MODIFIERS}|Const|Dim)\\s+[\\w\\[]`, "i");
+const TYPE_FIELD_RE = /^\s*[\w\u0080-\uFFFF]+(?:\s*\([^)]*\))?\s+As\s+/i;
+const VAR_RE = new RegExp(`^\\s*(?:${MODIFIERS}|Const|Dim)\\s+[\\w\\u0080-\\uFFFF\\[]`, "i");
+const NAMED_AS_RE = /^\s*[\w\u0080-\uFFFF]+\s+As\s+/i;
+// The white space between its words is ASCII's, `[ \t\f\v]`, because `\s` and the
+// identifier class both hold the no-break space and the regex would be ambiguous.
+const CONST_RE = new RegExp(`^\\s*(?:[\\w\\u0080-\\uFFFF]+[ \\t\\f\\v]+)*Const${KEYWORD_END}`, "i");
 
 /**
  * What the declaration an attribute decorates is, as the census counts it:
@@ -58,11 +81,11 @@ export function declarationKind(decl, container) {
     return k[0].toUpperCase() + k.slice(1).replace(/^eclarewide$/i, "eclareWide");
   }
   if (/^\s*End\s+\w/i.test(d)) return null; // unresolved
-  if (container === "Enum" && /^\s*\[?\w/.test(d)) return "EnumMember";
+  if (container === "Enum" && /^\s*\[?[\w\u0080-\uFFFF]/.test(d)) return "EnumMember";
   // The distinction matters: `Attributes.md` states "constants in a
   // module" and "variables in a Class" as different targets, and [DllExport]
   // is documented on a Const and refused on a variable.
-  if (/^\s*(?:\w+\s+)*Const\b/i.test(d)) return "Const";
-  if (VAR_RE.test(d) || /^\s*\w+\s+As\s+/i.test(d)) return "Variable";
+  if (CONST_RE.test(d)) return "Const";
+  if (VAR_RE.test(d) || NAMED_AS_RE.test(d)) return "Variable";
   return null;
 }
