@@ -277,7 +277,9 @@ palette --- the same thing `admonitions.scss` does for its icons. Contrast:
 The selector is scoped to **direct** children, because node text must keep the
 dark ink its own light fill needs. Do not widen it to all `text`: the node
 labels would go light on a light fill in dark mode, the same defect with the
-themes swapped.
+themes swapped. A cluster or edge that links (a `URL` in the DOT) has its label
+at `g > a > text` instead, which the rule also names; inside the link,
+`currentColor` is the theme's link colour.
 
 ## Diagram exports carry their own font
 

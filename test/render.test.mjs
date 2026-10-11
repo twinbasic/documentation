@@ -3,7 +3,8 @@
 // offline tree's URL rewrite when a link names a file only the website holds
 // (builder/offline-rewrite.mjs); and for a picture in two themes, X.png with
 // X.light.png beside it (themePairPlugin, and the book's lightOnly from
-// builder/theme-pictures.mjs).
+// builder/theme-pictures.mjs); and for a diagram whose boxes link
+// (builder/linked-diagram.mjs), on what Graphviz itself writes.
 //
 // The build compares whole pages, so a plugin that goes wrong only on input
 // the corpus does not hold passes it: kramdownEllipsisPlugin shortened every
@@ -17,6 +18,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, test } from "node:test";
+import { Graphviz } from "@hpcc-js/wasm-graphviz";
+import { linkDiagram } from "../builder/linked-diagram.mjs";
 import { isWebsiteOnlyLink, rewriteHtml, websiteOf } from "../builder/offline-rewrite.mjs";
 import { createMarkdownIt } from "../builder/render.mjs";
 import {
@@ -394,10 +397,16 @@ describe("figurePlugin", () => {
       "IDE/Images/J.jpg",
       "IDE/Images/D.svg",
       "IDE/Images/S.svg",
+      "IDE/Images/L.svg",
     ]),
     svgContents: new Map([
       ["IDE/Images/D.svg", '<svg width="600pt" height="300pt" viewBox="0 0 600 300"></svg>'],
       ["IDE/Images/S.svg", '<svg width="600pt" height="60pt" viewBox="0 0 600 60"></svg>'],
+      [
+        "IDE/Images/L.svg",
+        '<svg width="600pt" height="60pt" viewBox="0 0 600 60"><title>g</title>' +
+          '<a xlink:href="Other#x" xlink:title="x"><text>x</text></a></svg>',
+      ],
     ]),
   });
   const render = (src) => md.render(src, { page: { srcRel: "IDE/Page.md" } }).trim();
@@ -441,5 +450,52 @@ describe("figurePlugin", () => {
     assert.match(tall, /<div class="fig-container" data-svg-src="IDE\/Images\/D\.svg" role="img" aria-label="d"><svg /);
     assert.doesNotMatch(tall, /<img/);
     assert.doesNotMatch(render("![s](Images/S.svg)"), /data-tall/);
+  });
+
+  test("a diagram that links is a group, not an image, its links in href and its titles gone", () => {
+    const html = render("![l](Images/L.svg)");
+    assert.match(
+      html,
+      /<div class="fig-container" data-svg-src="IDE\/Images\/L\.svg" role="group" aria-label="l"><svg /,
+    );
+    assert.match(html, /<a href="Other#x"/);
+    assert.doesNotMatch(html, /xlink:href|<title>/);
+  });
+});
+
+describe("linkDiagram", async () => {
+  const gv = await Graphviz.load();
+  const shapes = (svg) => [...svg.matchAll(/\s(?:d|points)="[^"]*"/g)].map((m) => m[0]).sort();
+  const labels = (svg) => [...svg.matchAll(/<text\b[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
+  const balanced = (svg) => (svg.match(/<g[\s>]/g) ?? []).length === (svg.match(/<\/g>/g) ?? []).length;
+
+  test("each cluster comes just before its first node, nodes in the order declared", () => {
+    const svg = gv.dot(`digraph {
+      outputorder=nodesfirst
+      subgraph cluster_a { label="A" URL="A" a1 [URL="A#1"] a2 [URL="A#2"] }
+      subgraph cluster_b { label="B" URL="B" b1 [URL="B#1"] }
+      c1 [URL="C#1"]
+    }`);
+    // Graphviz emits every cluster first.
+    assert.deepEqual(labels(svg), ["A", "B", "a1", "a2", "b1", "c1"]);
+    const out = linkDiagram(svg);
+    assert.deepEqual(labels(out), ["A", "a1", "a2", "B", "b1", "c1"]);
+    assert.deepEqual(shapes(out), shapes(svg));
+    assert.ok(balanced(out));
+    assert.doesNotMatch(out, /xlink:href|<title>/);
+    assert.equal((out.match(/<a href="/g) ?? []).length, 6);
+  });
+
+  test("an outer cluster comes before an inner one, and one with no node stays first", () => {
+    const svg = gv.dot(`digraph {
+      outputorder=nodesfirst
+      subgraph cluster_e { label="E" e [style=invis label=""] }
+      subgraph cluster_o { label="O" subgraph cluster_i { label="I" i1 [URL="I#1"] } o1 [URL="O#1"] }
+    }`);
+    const out = linkDiagram(svg);
+    // i1 is the first node of both O and I.
+    assert.deepEqual(labels(out), ["E", "O", "I", "i1", "o1"]);
+    assert.deepEqual(shapes(out), shapes(svg));
+    assert.ok(balanced(out));
   });
 });

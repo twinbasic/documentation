@@ -14,6 +14,15 @@
 // the gap its border needs opens inside its taller neighbour too. The
 // invisible nodes (wp, cp1, cp2, ep, dp) pad the shorter ones.
 //
+// Every node and cluster label is a link, set in the block at the end so the
+// layout above stays readable: a node to its tool's entry, by the id its
+// heading carries on the built page, and a cluster to its group page. The
+// URLs are relative to the Tools page, which inlines this diagram. A tool
+// added to a page gets a line there too; the build's link check reports one
+// whose entry has gone. The build moves each cluster's label just before its
+// first node (builder/linked-diagram.mjs), so a cluster's nodes are declared
+// together, row by row.
+//
 // Graphviz has no font machinery and would otherwise measure these labels
 // with Times; builder/dot-metrics.mjs installs Inter's real widths before
 // layout, and scripts/check_dot_fit.mjs asserts afterwards that no label
@@ -25,6 +34,9 @@ digraph tools_groups {
     nodesep=0.22
     ranksep=0.12
     newrank=true
+    // The nodes in the SVG in the order declared here, which is reading order:
+    // the order a reader and the Tab key take the links in.
+    outputorder=nodesfirst
 
     node [
         shape=box
@@ -175,4 +187,57 @@ digraph tools_groups {
     wp -> s1    b7 -> c1
     s9 -> t1    s10 -> t2   cp2 -> t3   c6 -> t4
     t21 -> e1   t22 -> i1   t24 -> d1
+
+    // ---- links ----
+    // A subgraph named again is the same subgraph, so these set the clusters'.
+    subgraph cluster_wrappers { URL="#batch-wrappers" }
+    subgraph cluster_build    { URL="Tools-Build" }
+    subgraph cluster_site     { URL="Tools-Site-Checks" }
+    subgraph cluster_compiler { URL="Tools-Compiler" }
+    subgraph cluster_tests    { URL="Tools-Toolchain-Tests" }
+    subgraph cluster_samples  { URL="Tools-Samples" }
+    subgraph cluster_ide      { URL="Tools-IDE" }
+    subgraph cluster_defects  { URL="Tools-Defects" }
+
+    w1 [URL="#buildbat"]        w2 [URL="#servebat"]          w3 [URL="#checkbat"]
+    w4 [URL="#testbat"]         w5 [URL="#bookbat"]           w6 [URL="#examplesbat"]
+    w7 [URL="#addin-testbat"]   w8 [URL="#ide-testbat"]       w9 [URL="#try-help-addinbat"]
+
+    b1 [URL="Tools-Build#tbdocs"]               b2 [URL="Tools-Build#bookrender-bookmjs"]
+    b3 [URL="Tools-Build#compare-trees"]        b4 [URL="Tools-Build#survey-tooling"]
+    b5 [URL="Tools-Build#convert-em-dash-separators"] b6 [URL="Tools-Build#build-fonts"]
+    b7 [URL="Tools-Build#build-dot-metrics"]    b8 [URL="Tools-Build#build-package-api"]
+
+    s1 [URL="Tools-Site-Checks#check-links"]      s2  [URL="Tools-Site-Checks#crawl-check"]
+    s3 [URL="Tools-Site-Checks#check-links-diff"] s4  [URL="Tools-Site-Checks#check-tree-fresh"]
+    s5 [URL="Tools-Site-Checks#check-dot-fit"]    s6  [URL="Tools-Site-Checks#check-a11y"]
+    s7 [URL="Tools-Site-Checks#pick-a11y-sample"] s8  [URL="Tools-Site-Checks#axe-scan"]
+    s9 [URL="Tools-Site-Checks#check-a11y-fingerprint"] s10 [URL="Tools-Site-Checks#sweep-a11y"]
+
+    c1 [URL="Tools-Compiler#tbbuild"]           c2 [URL="Tools-Compiler#tbrun"]
+    c3 [URL="Tools-Compiler#impexp"]            c4 [URL="Tools-Compiler#check-tb-registry"]
+    c5 [URL="Tools-Compiler#probe-shared-temp"] c6 [URL="Tools-Compiler#probe-build-twice"]
+
+    t1  [URL="Tools-Toolchain-Tests#check-publish-policy"]  t2  [URL="Tools-Toolchain-Tests#check-regex-safety"]
+    t3  [URL="Tools-Toolchain-Tests#check-code-regions"]    t4  [URL="Tools-Toolchain-Tests#check-gate-lists"]
+    t5  [URL="Tools-Toolchain-Tests#check-ci-workflows"]    t6  [URL="Tools-Toolchain-Tests#check-lint"]
+    t7  [URL="Tools-Toolchain-Tests#search-test"]           t8  [URL="Tools-Toolchain-Tests#render-test"]
+    t9  [URL="Tools-Toolchain-Tests#strftime-test"]         t10 [URL="Tools-Toolchain-Tests#png-test"]
+    t11 [URL="Tools-Toolchain-Tests#compact-image-test"]    t12 [URL="Tools-Toolchain-Tests#svgshot-test"]
+    t13 [URL="Tools-Toolchain-Tests#example-batches-test"]  t14 [URL="Tools-Toolchain-Tests#ports-test"]
+    t15 [URL="Tools-Toolchain-Tests#addin-project-test"]    t16 [URL="Tools-Toolchain-Tests#check-page-baseline"]
+    t17 [URL="Tools-Toolchain-Tests#check-book-coverage"]   t18 [URL="Tools-Toolchain-Tests#check-symbol-index"]
+    t19 [URL="Tools-Toolchain-Tests#check-twin-parsers"]    t20 [URL="Tools-Toolchain-Tests#check-attribute-sweep"]
+    t21 [URL="Tools-Toolchain-Tests#check-cli"]             t22 [URL="Tools-Toolchain-Tests#check-pdf-shims-equiv"]
+    t23 [URL="Tools-Toolchain-Tests#check-impexp-parity"]   t24 [URL="Tools-Toolchain-Tests#check-axe-patch-equiv"]
+
+    e1 [URL="Tools-Samples#check-examples"]     e2 [URL="Tools-Samples#gen-attribute-probes"]
+    e3 [URL="Tools-Samples#census-attributes"]  e4 [URL="Tools-Samples#sweep-attributes"]
+
+    i1 [URL="Tools-IDE#addin-test"]     i2 [URL="Tools-IDE#ide-test"]
+    i3 [URL="Tools-IDE#try-help-addin"] i4 [URL="Tools-IDE#shoot-docs"]
+    i5 [URL="Tools-IDE#imagestrip"]     i6 [URL="Tools-IDE#probe-ide-image-labels"]
+    i7 [URL="Tools-IDE#replay"]
+
+    d1 [URL="Tools-Defects#bug-repro"]  d2 [URL="Tools-Defects#vb6run"]
 }

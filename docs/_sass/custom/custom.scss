@@ -304,12 +304,24 @@
 //
 // currentColor tracks the body text colour, so each label reads correctly in
 // whichever theme without hardcoding either palette here -- the same thing
-// admonitions.scss does for its icons. Scoped to DIRECT children of the two
-// groups that sit on the background: node text is inside g.node and must keep
-// the dark ink its own light fill needs.
+// admonitions.scss does for its icons. Scoped to the label of each of the two
+// groups that sit on the background, a direct child or, when the group links
+// somewhere, the text of its link (Graphviz wraps it in `g > a`), which then
+// takes the link colour: node text is inside g.node and must keep the dark ink
+// its own light fill needs.
 .fig-container g.cluster > text,
-.fig-container g.edge > text {
+.fig-container g.edge > text,
+.fig-container g.cluster > g > a > text,
+.fig-container g.edge > g > a > text {
   fill: currentColor;
+}
+
+// A diagram's link (a Graphviz URL) holds its box's outline, a node's or a
+// cluster's, whichever shape Graphviz draws it as: the outline thickens under
+// the pointer and with keyboard focus.
+.fig-container a:hover > :not(text),
+.fig-container a:focus-visible > :not(text) {
+  stroke-width: 2.5;
 }
 
 // WCAG 2.1.1: builder/highlight.mjs marks the code-block scroll container

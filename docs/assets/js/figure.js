@@ -340,10 +340,15 @@
     }
   }
 
-  // A click on the figure itself toggles zoom, as does its close button.
+  // A click on the figure itself toggles zoom, as does its close button. A click on a
+  // link in a diagram follows the link, out of the zoom first if it is zoomed.
   document.addEventListener("click", function (e) {
     var container = e.target.closest(".fig-container");
     if (!container) return;
+    if (e.target.closest("a[href]")) {
+      if (container.dataset.zoomed) zoomOut(container);
+      return;
+    }
     e.preventDefault();
     if (e.target.closest(".fig-zoom-close")) {
       zoomOut(container);

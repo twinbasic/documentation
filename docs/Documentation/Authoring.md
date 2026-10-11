@@ -836,6 +836,8 @@ Name the font as the existing diagrams do --- copy the `node`, `edge` and `graph
 
 Two things to leave alone. Node text is deliberately dark against each node's light fill in both themes; only the cluster and edge labels follow the page's text colour, because those are the ones sitting on the page background. And a diagram needs alt text like any other image --- the whole diagram gets one accessible name, so describe what it shows, not what shapes it contains, and never `![Diagram]`. Everything under [Images](#images) about what makes alt text worth having, and about nothing in the build being able to tell you, applies here unchanged.
 
+A box can link somewhere: give its node, or its cluster, a `URL`, relative to the page that shows the diagram (`URL="Tools-Build#tbdocs"`). The diagram is then a group of links rather than one image, and the build moves each cluster's label just before the first box inside it, so that a reader, and the Tab key, takes each label and then its boxes. Declare the nodes in reading order and set `outputorder=nodesfirst` on the graph, so that the boxes come in that order too. `docs/Documentation/Images/Tools-Groups.dot` does both. The build's link check reports a link that leads nowhere, as it does for any other link.
+
 ## Images
 
 Images live in an `Images/` folder beside the page that uses them, and are referenced by a relative path:
