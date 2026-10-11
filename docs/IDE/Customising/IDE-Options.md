@@ -164,13 +164,13 @@ Changing any of these options restarts the compiler. The three **LLVM Compiler**
 : Default on. Keeps the LLVM cache process running after the IDE closes.
 
 **IDE: Show Hidden Members**
-: Default off. Passes the compiler a flag named *show hidden members*. It is not the same switch as the Project Settings **Intellisense: Show Hidden Members** and **Debugger: Show Hidden Members**.
+: Default off. Shows members marked `[Hidden]` in tooltips, hovers and the other information the editor shows about code. It is not the same switch as the Project Settings **Intellisense: Show Hidden Members** and **Debugger: Show Hidden Members**.
 
 **IDE: Use new Handles/Implements syntax**
 : Default off. When you choose an event of a **WithEvents** variable in the editor's procedure combo box, the handler that the editor inserts has a **Handles** clause. With the option off, the handler is `Private Sub src_Changed(ByVal n As Long)`. With it on, it is `Private Sub src_Changed(ByVal n As Long) Handles src.Changed`. The name of the procedure is the same in both.
 
 **IDE: Auto refresh Explorer icon cache after build**
-: Default on. Passes the compiler a flag with this name.
+: Default on. After each build, tells Windows Explorer to refresh its cache of icons. Without the refresh, Explorer can go on showing a program's old icon after a build that changed it.
 
 ## Window and status bar
 
