@@ -1,85 +1,135 @@
-function flattenSymbols(apiJson) {
+import { qualified } from "./api-model.mjs";
+
+/**
+ * The symbols of an api.json, flattened for diffing and for the coverage audit:
+ * one for each type and one for each name a type declares. A name declared
+ * several times in a type -- a property's Get, Let and Set, or overloads -- is
+ * one symbol, the way the documentation has one page for it.
+ */
+
+// How a kind is written in a report and in a package page's `exclude_kinds:`.
+const KIND_NAMES = {
+  module: "Module",
+  class: "Class",
+  interface: "Interface",
+  coclass: "CoClass",
+  enum: "Enum",
+  type: "Type",
+  union: "Union",
+  sub: "Sub",
+  function: "Function",
+  property: "Property",
+  event: "Event",
+  delegate: "Delegate",
+  const: "Const",
+  field: "Field",
+};
+
+// A Declare statement is a Sub or a Function that is also a Declare; reports
+// call it a Declare.
+const memberKindName = (m) => (m.declare ? "Declare" : (KIND_NAMES[m.kind] ?? m.kind));
+
+/**
+ * Whether a member can be reached from outside its type: Public, or Protected
+ * for the types that inherit it. Private and Friend are the package's own.
+ */
+const isReachable = (vis) => vis === "public" || vis === "protected";
+
+/**
+ * Every symbol of an api.json, in the order the file lists them:
+ *
+ * ```
+ * { key, container, name, kind, isType, vis, public, signature, attributes,
+ *   detail, description, file }
+ * ```
+ *
+ * - `key` is what a symbol is identified by across two snapshots: the kind and
+ *   the type's name with the types it is declared in (`Interface:Outer.Inner`),
+ *   or the type's path, the name and the kind (`Outer.Name.Function`). Two
+ *   symbols with one key -- the same type declared in two files -- get `#2` and
+ *   so on, in file order.
+ * - `container` is the path of the type the symbol is declared in, or null.
+ * - `public` is whether documentation should cover it. A type is public unless
+ *   api.json says `public: false`; a member only if it is Public or Protected,
+ *   and only the members of a public type are listed at all.
+ * - `signature` is the declaration; for a name declared more than once, all of
+ *   them on lines of their own.
+ * - `attributes` and `detail` are JSON text, compared as text: the attributes,
+ *   and for a type what the signature leaves out (the enumeration values, the
+ *   fields, the interfaces a CoClass is built on, what a type inherits and
+ *   implements).
+ */
+export function flattenSymbols(api) {
   const symbols = [];
+  const seen = new Map();
+  const unique = (key) => {
+    const n = (seen.get(key) ?? 0) + 1;
+    seen.set(key, n);
+    return n === 1 ? key : `${key}#${n}`;
+  };
 
-  for (const mod of apiJson.modules || []) {
+  for (const t of api.types ?? []) {
+    const path = qualified(t);
+    const isPublic = t.public !== false;
+    const kind = KIND_NAMES[t.kind] ?? t.kind;
     symbols.push({
-      container: null,
-      name: mod.name,
-      kind: mod.kind,
-      access: mod.access,
-      signature: null,
-      file: mod.file,
-      key: `${mod.kind}:${mod.name}`,
-    });
-
-    // Skip members/events of Private containers — they are not
-    // part of the package's public API surface.
-    if (mod.access === "Private") continue;
-
-    for (const mem of mod.members || []) {
-      symbols.push({
-        container: mod.name,
-        name: mem.name,
-        kind: mem.kind,
-        access: mem.access,
-        signature: mem.signature,
-        description: mem.description,
-        attributes: mem.attributes,
-        file: mod.file,
-        key: `${mod.name}.${mem.name}.${mem.kind}`,
-      });
-    }
-
-    for (const evt of mod.events || []) {
-      symbols.push({
-        container: mod.name,
-        name: evt.name,
-        kind: "Event",
-        access: "Public",
-        signature: evt.signature,
-        file: mod.file,
-        key: `${mod.name}.${evt.name}.Event`,
-      });
-    }
-  }
-
-  for (const e of apiJson.enums || []) {
-    symbols.push({
-      container: null,
-      name: e.name,
-      kind: "Enum",
-      access: e.access,
-      signature: null,
-      file: e.file,
-      key: `Enum:${e.name}`,
-    });
-  }
-
-  for (const t of apiJson.types || []) {
-    symbols.push({
-      container: null,
+      key: unique(`${kind}:${path}`),
+      container: t.in ?? null,
       name: t.name,
-      kind: "Type",
-      access: t.access,
-      signature: null,
+      kind,
+      isType: true,
+      vis: t.vis,
+      public: isPublic,
+      signature: t.signature,
+      attributes: JSON.stringify(t.attrs ?? []),
+      detail: JSON.stringify([t.values, t.fields, t.interfaces, t.inherits, t.implements, t.extends]),
+      description: t.description ?? null,
       file: t.file,
-      key: `Type:${t.name}`,
     });
-  }
+    // The members of a type that is not public are not part of the package's API.
+    if (!isPublic) continue;
 
+    const groups = new Map();
+    for (const m of t.members ?? []) {
+      const id = `${m.name}\u0000${memberKindName(m)}`;
+      if (!groups.has(id)) groups.set(id, []);
+      groups.get(id).push(m);
+    }
+    for (const group of groups.values()) {
+      const first = group[0];
+      const kindName = memberKindName(first);
+      const reach = group.find((m) => isReachable(m.vis)) ?? first;
+      symbols.push({
+        key: unique(`${path}.${first.name}.${kindName}`),
+        container: path,
+        name: first.name,
+        kind: kindName,
+        isType: false,
+        vis: reach.vis,
+        public: isReachable(reach.vis),
+        signature: group.map((m) => m.signature).join("\n"),
+        attributes: JSON.stringify(group.map((m) => m.attrs ?? [])),
+        detail: "",
+        description: group.find((m) => m.description != null)?.description ?? null,
+        file: t.file,
+      });
+    }
+  }
   return symbols;
 }
 
-function diffApi(baseline, current) {
+/**
+ * What changed between two api.json snapshots of one package: `added` and
+ * `removed` symbols, `modified` ones as `{ current, baseline, changes }` with
+ * `changes` naming what differs (`signature`, `attributes`, `detail`), and
+ * the `unchanged`.
+ */
+export function diffApi(baseline, current) {
   const baseMap = new Map();
-  for (const sym of flattenSymbols(baseline)) {
-    baseMap.set(sym.key, sym);
-  }
+  for (const sym of flattenSymbols(baseline)) baseMap.set(sym.key, sym);
 
   const curMap = new Map();
-  for (const sym of flattenSymbols(current)) {
-    curMap.set(sym.key, sym);
-  }
+  for (const sym of flattenSymbols(current)) curMap.set(sym.key, sym);
 
   const added = [];
   const modified = [];
@@ -90,91 +140,36 @@ function diffApi(baseline, current) {
     const base = baseMap.get(key);
     if (!base) {
       added.push(cur);
-    } else if (cur.signature !== base.signature || JSON.stringify(cur.attributes) !== JSON.stringify(base.attributes)) {
-      modified.push({ current: cur, baseline: base });
-    } else {
-      unchanged.push(cur);
+      continue;
     }
+    const changes = ["signature", "attributes", "detail"].filter((field) => cur[field] !== base[field]);
+    if (changes.length) modified.push({ current: cur, baseline: base, changes });
+    else unchanged.push(cur);
   }
 
   for (const [key, base] of baseMap) {
-    if (!curMap.has(key)) {
-      removed.push(base);
-    }
+    if (!curMap.has(key)) removed.push(base);
   }
 
   return { added, modified, removed, unchanged };
 }
 
-function auditCoverage(apiJson, docPageMap) {
+/**
+ * Splits the public symbols of an api.json into those a documentation page
+ * already has -- one whose `title:` is the symbol's name, in `docPageMap`,
+ * title to file -- and those it has not. Each entry is a symbol of
+ * flattenSymbols; a documented one also has `docPage`.
+ */
+export function auditCoverage(apiJson, docPageMap) {
   const documented = [];
   const undocumented = [];
 
-  for (const mod of apiJson.modules || []) {
-    if (mod.access === "Private") continue;
-
-    const page = docPageMap.get(mod.name);
-    if (page) {
-      documented.push({
-        name: mod.name,
-        kind: mod.kind,
-        access: mod.access,
-        container: null,
-        file: mod.file,
-        docPage: page,
-      });
-    } else {
-      undocumented.push({ name: mod.name, kind: mod.kind, access: mod.access, container: null, file: mod.file });
-    }
-
-    for (const mem of mod.members || []) {
-      if (mem.access === "Private") continue;
-      const page = docPageMap.get(mem.name);
-      if (page) {
-        documented.push({ ...mem, container: mod.name, file: mod.file, docPage: page });
-      } else {
-        undocumented.push({ ...mem, container: mod.name, file: mod.file });
-      }
-    }
-
-    for (const evt of mod.events || []) {
-      const page = docPageMap.get(evt.name);
-      if (page) {
-        documented.push({
-          name: evt.name,
-          kind: "Event",
-          access: "Public",
-          container: mod.name,
-          file: mod.file,
-          docPage: page,
-        });
-      } else {
-        undocumented.push({ name: evt.name, kind: "Event", access: "Public", container: mod.name, file: mod.file });
-      }
-    }
-  }
-
-  for (const e of apiJson.enums || []) {
-    if (e.access === "Private") continue;
-    const page = docPageMap.get(e.name);
-    if (page) {
-      documented.push({ name: e.name, kind: "Enum", access: e.access, container: null, file: e.file, docPage: page });
-    } else {
-      undocumented.push({ name: e.name, kind: "Enum", access: e.access, container: null, file: e.file });
-    }
-  }
-
-  for (const t of apiJson.types || []) {
-    if (t.access === "Private") continue;
-    const page = docPageMap.get(t.name);
-    if (page) {
-      documented.push({ name: t.name, kind: "Type", access: t.access, container: null, file: t.file, docPage: page });
-    } else {
-      undocumented.push({ name: t.name, kind: "Type", access: t.access, container: null, file: t.file });
-    }
+  for (const sym of flattenSymbols(apiJson)) {
+    if (!sym.public) continue;
+    const page = docPageMap.get(sym.name);
+    if (page) documented.push({ ...sym, docPage: page });
+    else undocumented.push(sym);
   }
 
   return { documented, undocumented };
 }
-
-export { diffApi, auditCoverage };

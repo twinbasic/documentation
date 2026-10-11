@@ -6,7 +6,26 @@ const CONTAINER_MAP = {
   ".ctl": "Class",
 };
 
-function preprocessVB6(fileContent, extension) {
+/**
+ * A VB6-format file (.bas, .cls, .frm, .ctl, .dsr) rewritten as the twinBASIC
+ * source of the one type it holds, for the scanner of scripts/lib/twin-api.mjs:
+ * the VERSION line, the Begin...End block of a form or control and the header
+ * Attribute lines are dropped, a `Module <name>` or `Class <name>` line goes
+ * in front of the body, and the per-member `Attribute Name.VB_...` lines are
+ * dropped from the body.
+ *
+ * The type is named by the header's `Attribute VB_Name`, else by `fileName`, the
+ * file's own name without its extension. A file with no such attribute is one
+ * VB6 itself would name by its file: community NewTabCtl's subclass/mBSSubclass.bas
+ * is commented out whole, `' Attribute VB_Name = "mBSSubclass"` included, and
+ * would otherwise be a module called `Unnamed`.
+ *
+ * @param {string} fileContent
+ * @param {string} extension  with its dot, in any case
+ * @param {string} [fileName]  the file's name without its extension
+ * @returns {{content: string, lineOffset: number, name: string}}
+ */
+function preprocessVB6(fileContent, extension, fileName) {
   const lines = fileContent.replace(/^﻿/, "").split(/\r?\n/);
   const ext = extension.toLowerCase();
   const containerKind = CONTAINER_MAP[ext] || "Class";
@@ -33,9 +52,9 @@ function preprocessVB6(fileContent, extension) {
 
   // Skip Attribute VB_* lines, extract VB_Name
   while (i < lines.length) {
-    const m = lines[i].match(/^Attribute\s+VB_(\w+)\s*=\s*(.*)/);
+    const m = lines[i].match(/^Attribute\s+VB_(\w+)\s*=\s*(.*)/i);
     if (!m) break;
-    if (m[1] === "Name") {
+    if (/^Name$/i.test(m[1])) {
       const nm = m[2].match(/"([^"]*)"/);
       if (nm) name = nm[1];
     }
@@ -55,11 +74,11 @@ function preprocessVB6(fileContent, extension) {
     i++;
   }
 
-  if (!name) name = "Unnamed";
+  if (!name) name = fileName || "Unnamed";
 
   const content = `${containerKind} ${name}\n${bodyLines.join("\n")}\nEnd ${containerKind}`;
 
-  return { content, lineOffset };
+  return { content, lineOffset, name };
 }
 
 export { preprocessVB6, CONTAINER_MAP };

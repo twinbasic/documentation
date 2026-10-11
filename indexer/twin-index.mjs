@@ -16,10 +16,8 @@ import {
   readInstalledPackages,
 } from "./lib/builtin-sync.mjs";
 import { downloadRelease } from "./lib/github-release.mjs";
-import { preprocessVB6, CONTAINER_MAP } from "./lib/vb6-preprocess.mjs";
-import { lex } from "./lib/lexer.mjs";
-import { extract } from "./lib/extractor.mjs";
-import { emitApiJson } from "./lib/json-emitter.mjs";
+import { CONTAINER_MAP } from "./lib/vb6-preprocess.mjs";
+import { API_FORMAT, buildApi } from "./lib/api-model.mjs";
 import { ensureStore, commitStore, copyToSnapshots } from "./lib/store.mjs";
 import { diffApi, auditCoverage } from "./lib/differ.mjs";
 
@@ -50,42 +48,38 @@ function groupDocsName(group) {
   return "Contributed";
 }
 
-function countDecls(nodes) {
-  let c = 0;
-  for (const n of nodes) {
-    c++;
-    if (n.children) c += countDecls(n.children);
-  }
-  return c;
+// What `sync` prints for a package it indexed.
+function describeIndex({ files, types, members, problems }) {
+  const text = `${files} files, ${types} types, ${members} members, values and fields`;
+  return problems ? `${text}; ${problems} declarations the scanner could not place (see "problems" in api.json)` : text;
 }
 
-function indexFiles(files) {
-  const fileResults = [];
-  let declCount = 0;
-
-  for (const { relativePath, content } of files) {
-    const ext = path.extname(relativePath).toLowerCase();
-    let processedContent = content;
-    if (VB6_EXTS.has(ext)) {
-      ({ content: processedContent } = preprocessVB6(content, ext));
-    }
-    const logicalLines = lex(processedContent);
-    const { declarations, collectEnums, allEnums } = extract(logicalLines);
-    collectEnums(declarations, relativePath);
-    declCount += countDecls(declarations);
-    fileResults.push({ relativePath, declarations, enums: allEnums });
+// The `format` an api.json declares: null when the file is not there, 0 when it
+// declares none (written before the format was numbered). `format` is the
+// first key of the file, so its first bytes are all that is read.
+async function apiFormatOf(apiPath) {
+  let handle;
+  try {
+    handle = await fs.open(apiPath);
+    const { buffer, bytesRead } = await handle.read(Buffer.alloc(64), 0, 64, 0);
+    const m = /^\{\s*"format":\s*(\d+)/.exec(buffer.toString("utf-8", 0, bytesRead));
+    return m ? Number(m[1]) : 0;
+  } catch {
+    return null;
+  } finally {
+    await handle?.close();
   }
-
-  return { fileResults, declCount };
 }
 
-function prepareSourceFiles(files) {
-  return files
-    .filter((f) => SOURCE_EXTS.has(path.extname(f.relativePath).toLowerCase()))
-    .map((f) => {
-      const rel = f.relativePath.startsWith("Sources/") ? f.relativePath.slice("Sources/".length) : f.relativePath;
-      return { relativePath: rel, content: f.content.toString("utf-8") };
-    });
+// Whether a package has to be read again for want of what the store should
+// hold: its sources, and an api.json in the format this indexer writes.
+async function storeIncomplete(group, symbol) {
+  try {
+    await fs.access(path.join(STORE_PATH, group, symbol, "sources"));
+  } catch {
+    return "missing-sources";
+  }
+  return (await apiFormatOf(path.join(STORE_PATH, group, symbol, "api.json"))) === API_FORMAT ? null : "old-format";
 }
 
 async function writeToStore(group, symbol, rawFiles, apiJsonStr) {
@@ -186,10 +180,10 @@ function isExcluded(sym, exclusions) {
   if (!exclusions) return false;
   // Exclude if the symbol's kind matches
   if (exclusions.kinds.has(sym.kind)) return true;
-  // Exclude if the symbol IS an excluded container
-  if (!sym.container && exclusions.containers.has(sym.name)) return true;
-  // Exclude if the symbol belongs to an excluded container
-  if (sym.container && exclusions.containers.has(sym.container)) return true;
+  // Exclude if the symbol IS an excluded type
+  if (sym.isType && exclusions.containers.has(sym.name)) return true;
+  // Exclude if the symbol is declared in an excluded type, or in a type inside one
+  if (sym.container && sym.container.split(".").some((name) => exclusions.containers.has(name))) return true;
   return false;
 }
 
@@ -427,18 +421,19 @@ async function syncContributed(filter, { synced, failed, known }) {
 
   let contribToDownload = filter ? toDownload.filter((p) => filter.includes(p.symbol)) : toDownload;
 
-  // Re-download unchanged packages whose store directories are missing (fresh clone)
+  // Re-download unchanged packages whose store is incomplete: no sources (fresh
+  // clone), or an api.json written by an older indexer.
   const missingContrib = [];
+  const oldFormat = [];
   for (const item of unchanged) {
     if (filter && !filter.includes(item.symbol)) continue;
-    try {
-      await fs.access(path.join(STORE_PATH, "contributed", item.symbol, "sources"));
-    } catch {
-      contribToDownload.push({ ...item, reason: "missing-sources" });
-      missingContrib.push(item.symbol);
-    }
+    const why = await storeIncomplete("contributed", item.symbol);
+    if (!why) continue;
+    contribToDownload.push({ ...item, reason: why });
+    (why === "old-format" ? oldFormat : missingContrib).push(item.symbol);
   }
   if (missingContrib.length) console.log(`  Missing sources: ${missingContrib.join(", ")}`);
+  if (oldFormat.length) console.log(`  Index written by an older indexer: ${oldFormat.join(", ")}`);
 
   const addedC = contribToDownload.filter((p) => p.reason === "added");
   const updatedC = contribToDownload.filter((p) => p.reason === "updated");
@@ -451,10 +446,8 @@ async function syncContributed(filter, { synced, failed, known }) {
     try {
       console.log(`  Fetching ${item.symbol}...`);
       const files = await fetchPackage(item.id, item.version);
-      const sourceFiles = prepareSourceFiles(files);
-      const { fileResults, declCount } = indexFiles(sourceFiles);
       const ver = versionString(item.version);
-      const apiJson = emitApiJson(item.symbol, ver, fileResults);
+      const { json: apiJson, stats } = buildApi({ symbol: item.symbol, version: ver, files });
 
       await writeToStore("contributed", item.symbol, files, apiJson);
 
@@ -467,7 +460,7 @@ async function syncContributed(filter, { synced, failed, known }) {
       };
 
       synced.push({ group: "contributed", package: item.symbol, from: null, to: ver });
-      console.log(`    ${sourceFiles.length} files, ${declCount} declarations`);
+      console.log(`    ${describeIndex(stats)}`);
     } catch (e) {
       failed.push({ symbol: item.symbol, error: e.message });
       console.warn(`    FAILED: ${item.symbol}: ${e.message}`);
@@ -498,16 +491,15 @@ async function syncBuiltin(filter, install, { synced, known }) {
   }
   console.log(`  Tag: ${built.tag}`);
 
-  // Read again if any built-in/default packages are missing from the store
+  // Read again if any built-in/default package is missing from the store, or
+  // was indexed by an older indexer
   if (!built.needsUpdate) {
     const symbols = Object.values(built.manifest.packages || {}).map((p) => p.symbol);
     for (const sym of symbols) {
       if (filter && !filter.includes(sym)) continue;
-      const group = packageGroup(sym, "builtin");
-      try {
-        await fs.access(path.join(STORE_PATH, group, sym, "sources"));
-      } catch {
-        console.log(`  Missing sources: ${sym}`);
+      const why = await storeIncomplete(packageGroup(sym, "builtin"), sym);
+      if (why) {
+        console.log(why === "old-format" ? `  Index written by an older indexer: ${sym}` : `  Missing sources: ${sym}`);
         built.needsUpdate = true;
         break;
       }
@@ -544,16 +536,14 @@ async function syncBuiltin(filter, install, { synced, known }) {
     }
 
     for (const pkg of toProcess) {
-      const sourceFiles = prepareSourceFiles(pkg.files);
-      const { fileResults, declCount } = indexFiles(sourceFiles);
       const group = packageGroup(pkg.symbol, "builtin");
-      const apiJson = emitApiJson(pkg.symbol, built.tag, fileResults);
+      const { json: apiJson, stats } = buildApi({ symbol: pkg.symbol, version: built.tag, files: pkg.files });
 
       await writeToStore(group, pkg.symbol, pkg.files, apiJson);
 
       builtinManifest.packages[pkg.guid] = { symbol: pkg.symbol };
       synced.push({ group, package: pkg.symbol, from: built.manifest.twinbasicTag, to: built.tag });
-      console.log(`    ${pkg.symbol}: ${sourceFiles.length} files, ${declCount} declarations`);
+      console.log(`    ${pkg.symbol}: ${describeIndex(stats)}`);
     }
 
     for (const pkg of builtinPackages) {
@@ -612,6 +602,9 @@ async function runAnalyze(filter) {
   for (const { group, name, apiPath } of packageList) {
     console.log(`\nAnalyzing ${name} (${group})...`);
     const current = JSON.parse(await fs.readFile(apiPath, "utf-8"));
+    if (current.format !== API_FORMAT) {
+      die(2, `${name}: its api.json is in an older format than this indexer writes. Run sync, which indexes it again.`);
+    }
 
     const docsDir = await findPackageDocsDir(name, group, packageNameMap);
     const indexMdPath = docsDir ? path.join(docsDir, "index.md") : null;
@@ -649,6 +642,10 @@ async function analyzeUpdate(name, group, current, indexedFrom, docsDir, exclusi
     /* no committed snapshot */
   }
 
+  if (baseline && baseline.format !== API_FORMAT) {
+    console.log(`  Warning: the committed snapshot is in an older format; comparing against the documentation instead`);
+    return analyzeAudit(name, group, current, docsDir, exclusions);
+  }
   if (!baseline || baseline.version !== indexedFrom) {
     if (baseline && baseline.version !== indexedFrom) {
       console.log(`  Warning: indexed_from (${indexedFrom}) != snapshot version (${baseline.version})`);
@@ -675,10 +672,10 @@ async function analyzeUpdate(name, group, current, indexedFrom, docsDir, exclusi
     return true;
   };
 
-  const publicAdded = diff.added.filter((s) => s.access !== "Private").filter(notExcluded);
-  const publicModified = diff.modified.filter((m) => m.current.access !== "Private").filter(notExcludedMod);
-  const publicRemoved = diff.removed.filter((s) => s.access !== "Private").filter(notExcluded);
-  const publicUnchanged = diff.unchanged.filter((s) => s.access !== "Private").filter(notExcluded);
+  const publicAdded = diff.added.filter((s) => s.public).filter(notExcluded);
+  const publicModified = diff.modified.filter((m) => m.current.public).filter(notExcludedMod);
+  const publicRemoved = diff.removed.filter((s) => s.public).filter(notExcluded);
+  const publicUnchanged = diff.unchanged.filter((s) => s.public).filter(notExcluded);
 
   const tasks = [];
 
@@ -693,13 +690,14 @@ async function analyzeUpdate(name, group, current, indexedFrom, docsDir, exclusi
     });
   }
 
-  for (const { current: cur, baseline: base } of publicModified) {
+  for (const { current: cur, baseline: base, changes } of publicModified) {
     tasks.push({
       action: "update",
       module: cur.container || cur.name,
       symbol: cur.name,
       kind: cur.kind,
-      reason: "signature_changed",
+      reason: changes.includes("signature") ? "signature_changed" : "declaration_changed",
+      changes,
       old_signature: base.signature,
       new_signature: cur.signature,
       file: cur.file,
