@@ -1812,6 +1812,24 @@ describe("planning the pages of a report", () => {
     assert.equal(file("Dial").file, "K/Dial/index.md");
   });
 
+  test("a page named Index is named by its kind as well, never Index.md beside a folder's index.md", () => {
+    const withIndex = {
+      types: [
+        { ...api.types[0], members: [...api.types[0].members, member("Index", "property")] },
+        ...api.types.slice(1),
+      ],
+    };
+    const indexed = planPackage({
+      report: { ...report, tasks: [task("create", "Index", "Property", "Widget")] },
+      api: withIndex,
+      pages,
+      sectionDir: "docs/Toy",
+      sourceDir: "s",
+    });
+    assert.equal(indexed.tasks[0].file, "docs/Toy/Widget/IndexProperty.md");
+    assert.equal(indexed.tasks[0].permalink, "/tB/Packages/Toy/Widget/IndexProperty");
+  });
+
   test("a section with no landing page gets one like its group's others", () => {
     const sibling = (folder) => ({
       folder,

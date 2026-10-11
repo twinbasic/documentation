@@ -262,20 +262,24 @@ export function planPackage({ report, api, pages, sectionDir, sourceDir, newLand
     const place = host && !isType ? memberPlace(host, container, task.kind) : null;
     const folder = host ? (isType ? folderOf(host.rel) : place.folder) : null;
     const owner = isType && !container ? ownerOf(task.symbol) : null;
+    // A page of its own named Index would be written as Index.html, which on
+    // Windows is the folder's index.html: Fmt's StringFormatSpecifier.Index is
+    // IndexProperty.md.
+    const name = task.symbol.toLowerCase() === "index" ? `${task.symbol}${task.kind}` : task.symbol;
     if (owner) {
       // Kept in its owner's folder, with a folder of its own as the types there have.
       const own = styleIn(owner.folder) ?? false;
-      rel = own ? `${owner.folder}/${task.symbol}/index.md` : `${owner.folder}/${task.symbol}.md`;
+      rel = own ? `${owner.folder}/${task.symbol}/index.md` : `${owner.folder}/${name}.md`;
       parent = owner.title ?? landing?.title ?? null;
       model = modelFor(task.kind, ownPath);
     } else if (!container) {
       const kindFolder = folderFor(task.kind, ownPath);
       const stem = kindFolder === "." ? task.symbol : `${kindFolder}/${task.symbol}`;
-      rel = ownFolder ? `${stem}/index.md` : `${stem}.md`;
+      rel = ownFolder ? `${stem}/index.md` : `${kindFolder === "." ? name : `${kindFolder}/${name}`}.md`;
       parent = (kindFolder !== "." && titleOf.get(`${kindFolder}/index.md`)) || landing?.title || null;
       model = modelFor(task.kind, ownPath);
     } else if (folder !== null) {
-      rel = ownFolder ? `${folder}/${task.symbol}/index.md` : `${folder}/${task.symbol}.md`;
+      rel = ownFolder ? `${folder}/${task.symbol}/index.md` : `${folder}/${name}.md`;
       parent = host.title;
       model = isType ? modelFor(task.kind, ownPath) : place.model;
     } else if (host) {
