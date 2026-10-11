@@ -155,7 +155,7 @@ see [Book Configuration](Book-Configuration#pages-left-out-of-the-book).
 
 `check.bat` runs its four gates in order and ends on the scan's tally:
 
-    13 pages x 2 theme(s) x 2 viewport(s) + 8 state audit(s) checked: 0 violation(s), 42 incomplete check(s)
+    14 pages x 2 theme(s) x 2 viewport(s) + 8 state audit(s) checked: 0 violation(s), 46 incomplete check(s)
 
 **Incomplete is not a violation.** Those are checks axe declined to decide --- most often a
 colour-contrast node it could not resolve a background for --- and they are printed for a
@@ -429,7 +429,7 @@ documents.
 
     check.bat
 
-[`scripts/check_a11y.mjs`](Tools-Site-Checks#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over thirteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. It runs last, because the cheaper gates ahead of it stop the run if they fail: a freshness check that refuses a stale tree, the [DOT diagram fit check](#diagram-fonts-and-why-checkbat-measures-them), and the sample-coverage check that says whether the thirteen pages still cover every markup construct the site uses. [Tools and Scripts](Tools#checkbat) has the list in order.
+[`scripts/check_a11y.mjs`](Tools-Site-Checks#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over fourteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. It runs last, because the cheaper gates ahead of it stop the run if they fail: a freshness check that refuses a stale tree, the [DOT diagram fit check](#diagram-fonts-and-why-checkbat-measures-them), and the sample-coverage check that says whether the fourteen pages still cover every markup construct the site uses. [Tools and Scripts](Tools#checkbat) has the list in order.
 
 Each page is scanned in **both the light and dark themes** --- dark mode is a separate palette, so a light-mode pass says nothing about it --- and the scan runs against `_site-offline/` rather than `_site/`, because the online tree's root-absolute asset URLs do not resolve under `file://` and would leave every page unstyled. This stage needs the Chromium install from the [requirements](#requirements); the plain `build.bat` flow does not.
 

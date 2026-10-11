@@ -21,7 +21,7 @@ import { countPlugin, findSurvivingPlaceholder } from "./counts.mjs";
 import { replaceOutsideCode } from "./code-guard.mjs";
 import { splitFragment } from "./url.mjs";
 import { escapeMarkup, escapeMarkupAndQuotes, escapeRegExp } from "./escape.mjs";
-import { isLinkedDiagram, linkDiagram } from "./linked-diagram.mjs";
+import { inlineDiagram } from "./inline-diagram.mjs";
 import {
   isLightPicture,
   isPictureSvg,
@@ -2350,9 +2350,9 @@ function diagramFigureOpen(svgContent, alt, stem, srcRel) {
   }
   // A diagram whose boxes link somewhere (Graphviz's URL attribute) is a group of links,
   // not an image: role="img" would make its links presentational, which axe reports as
-  // nested-interactive. linked-diagram.mjs says what else it takes.
-  const linked = isLinkedDiagram(svgContent);
-  if (linked) svgContent = linkDiagram(svgContent);
+  // nested-interactive. inline-diagram.mjs says what else changes.
+  const { svg, linked } = inlineDiagram(svgContent);
+  svgContent = svg;
   const imgRole = labelled ? ` role="${linked ? "group" : "img"}" aria-label="${esc(alt)}"` : "";
   const name = ` data-filename="${esc(stem)}"`;
   const tall = diagramIsTall(svgContent) ? " data-tall" : "";

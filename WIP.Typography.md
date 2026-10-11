@@ -35,7 +35,7 @@ centre far enough to intersect a neighbour. The link is sized outright
 clearance.
 
 Two rules follow. **Run the full sweep after any change that moves type
-metrics**: the thirteen-page sample stays clean through such a change and would
+metrics**: the fourteen-page sample stays clean through such a change and would
 ship the regression. And **treat a target that passes only on the spacing
 exception as unfixed**: the result depends on the font, the surrounding layout
 and the viewport at once, and any of the three can move.
@@ -295,6 +295,12 @@ downloaded `.svg` opened somewhere else has no access to this site's
 stylesheet either. Both fall back to whatever the viewer has installed. On a
 machine with no local Inter, an exported PNG asking for `font-family="Inter"`
 rasterises *pixel-identical* to one asking for a font that does not exist.
+
+The stylesheet's colours are lost the same way. A cluster or edge label's
+`currentColor` (see above) does not reach the export, so it would be black, and
+on a dark theme's export, unreadable. `asTheReaderSeesIt` writes each label's
+computed fill into the copy and puts the page's background behind it: an export
+is the diagram as the reader sees it, in their theme.
 
 A `data:` URI is not an external fetch, so secure static mode permits it, and
 the bytes come from the HTTP cache because the page already downloaded them.

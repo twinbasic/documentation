@@ -20,7 +20,7 @@
 // URLs are relative to the Tools page, which inlines this diagram. A tool
 // added to a page gets a line there too; the build's link check reports one
 // whose entry has gone. The build moves each cluster's label just before its
-// first node (builder/linked-diagram.mjs), so a cluster's nodes are declared
+// first node (builder/inline-diagram.mjs), so a cluster's nodes are declared
 // together, row by row.
 //
 // Graphviz has no font machinery and would otherwise measure these labels

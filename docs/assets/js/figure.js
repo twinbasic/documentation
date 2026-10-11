@@ -111,6 +111,25 @@
     return Object.keys(wanted);
   }
 
+  // An export leaves the page's stylesheet behind, and with it the colour a
+  // cluster or edge label takes from the theme (custom.scss gives it
+  // currentColor): it would fall back to SVG's black, unreadable on a dark
+  // theme's export. So each label with no fill of its own gets the colour the
+  // reader sees, and the export the page's background behind it, so that a
+  // light label stays readable wherever the export is opened.
+  function asTheReaderSeesIt(svg, clone) {
+    var live = svg.querySelectorAll("text");
+    var copies = clone.querySelectorAll("text");
+    for (var i = 0; i < live.length; i++) {
+      if (!live[i].hasAttribute("fill")) copies[i].setAttribute("fill", getComputedStyle(live[i]).fill);
+    }
+    var bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bg.setAttribute("width", "100%");
+    bg.setAttribute("height", "100%");
+    bg.setAttribute("fill", getComputedStyle(document.body).backgroundColor);
+    clone.insertBefore(bg, clone.firstChild);
+  }
+
   // Serialize a diagram with the faces it uses carried inside it.
   // Falls back to a plain serialization if the bytes cannot be read.
   function serializeWithFonts(svg) {
@@ -138,6 +157,7 @@
     ).then(function (faces) {
       var css = faces.join("");
       var clone = svg.cloneNode(true);
+      asTheReaderSeesIt(svg, clone);
       if (css) {
         var style = document.createElementNS("http://www.w3.org/2000/svg", "style");
         style.textContent = css;

@@ -95,6 +95,10 @@ export const SAMPLE_PAGES = [
   // site reports anything at all. Measured 272/236/229/215 ms over the
   // four combinations.
   "/FAQ.html",
+  // The only diagram whose boxes link: its figure is a group of 78 links
+  // rather than an image (builder/inline-diagram.mjs). Inlined as
+  // role="img", as every other diagram is, it reports nested-interactive.
+  "/Documentation/Development/Tools.html",
 ];
 
 // ---------------------------------------------------------------------------

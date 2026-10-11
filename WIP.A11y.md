@@ -10,7 +10,7 @@ which refuses a tree older than the sources that produced it, then
 [scripts/pick_a11y_sample.mjs --check](scripts/pick_a11y_sample.mjs) --- see
 [Choosing the sample](#choosing-the-sample) --- and then
 [scripts/check_a11y.mjs](scripts/check_a11y.mjs), which runs puppeteer +
-axe-core over thirteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA
+axe-core over fourteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA
 (plus the `heading-order` best-practice rule) and exits non-zero on any
 violation. It requires `build.bat` to have produced an up-to-date `_site/`.
 
@@ -55,7 +55,7 @@ axe excludes `aria-hidden` subtrees from rule evaluation wholesale, so the icon 
 
 **A closed `<details>` is invisible to the scan.** Its subtree is `notRendered`, so axe never walks it -- the same property that makes the section-links disclosure cheap is what hides it. A defect inside it (for example `target-size` on every link) would pass `check.bat`, because the state a reader sees after one click is never audited.
 
-`STATE_AUDITS` in [scripts/lib/axe-scan.mjs](scripts/lib/axe-scan.mjs) closes that: entries layered onto the page x theme x viewport matrix that apply a DOM mutation from `PAGE_STATES` after navigation and before the audit. Two entries, each run across both themes and both viewports --- eight extra audits on top of the 52 the thirteen sample pages produce, for the 60 the scan reports.
+`STATE_AUDITS` in [scripts/lib/axe-scan.mjs](scripts/lib/axe-scan.mjs) closes that: entries layered onto the page x theme x viewport matrix that apply a DOM mutation from `PAGE_STATES` after navigation and before the audit. Two entries, each run across both themes and both viewports --- eight extra audits on top of the 56 the fourteen sample pages produce, for the 64 the scan reports.
 
 Three things about it are essential:
 
@@ -69,7 +69,7 @@ Syntax-highlight token colours are kept above 4.5:1 automatically: [builder/high
 
 ## Choosing the sample
 
-The scan audits thirteen pages out of ~1,160, so its page list decides what it can report at all -- and a page list that stops being representative fails *silently*. A hand-picked list goes stale as the site grows around it: a sample with no table, image, `<details>` widget or video card leaves `image-alt`, the table rules and `scrollable-region-focusable` in the run options with nothing to run on, and the gate reports a clean pass.
+The scan audits fourteen pages out of ~1,160, so its page list decides what it can report at all -- and a page list that stops being representative fails *silently*. A hand-picked list goes stale as the site grows around it: a sample with no table, image, `<details>` widget or video card leaves `image-alt`, the table rules and `scrollable-region-focusable` in the run options with nothing to run on, and the gate reports a clean pass.
 
 The full-site sweep ([scripts/sweep_a11y.mjs](scripts/sweep_a11y.mjs) — every page, both themes, both viewports, 3,476 audits, ~20 min) is the check on the sample. It shows which constructs the sample has to contain: table wrappers (`scrollable-region-focusable`), footnote back-links (`link-in-text-block`), the FAQ's `<summary>` elements at the phone viewport (`target-size`), heading structure (`heading-order`), diagrams (`role-img-alt`) and code-block colours (`color-contrast`).
 
@@ -79,7 +79,7 @@ So the sample is derived rather than maintained by hand. [scripts/pick_a11y_samp
 - `--propose`: greedy set cover, seeded from the current `SAMPLE_PAGES`, so it prints what to *add*. `--fresh` ignores the current set and covers from scratch, which is how to ask whether the existing pages still earn their place.
 - `--census`: what each family is, how many pages use it, which page uses it most.
 
-Cost is part of the choice: audit cost is super-linear in element count (k = 2.73), so the cheapest cover is not the smallest one, and `--propose` ranks candidates by measured per-page cost from the sweep's JSONL when one has been run. Across the full matrix, the thirteen-page sample costs 18.7 s of audit against 6.3 s for a small six-page sample -- 2.96x for a bit over twice the pages, because cost tracks element count rather than page count. `Pipeline-Stages.html` alone is 26 % of it, and earns that as the site's largest and most table-dense page.
+Cost is part of the choice: audit cost is super-linear in element count (k = 2.73), so the cheapest cover is not the smallest one, and `--propose` ranks candidates by measured per-page cost from the sweep's JSONL when one has been run. Across the full matrix, a thirteen-page sample costs 18.7 s of audit against 6.3 s for a small six-page sample -- 2.96x for a bit over twice the pages, because cost tracks element count rather than page count. `Pipeline-Stages.html` alone is 26 % of it, and earns that as the site's largest and most table-dense page.
 
 **When the docs start using a construct they have not used before** — a new admonition shape, a figure, a widget — add a family for it in `FAMILIES` and let `--check` say whether the sample already covers it. Leaving it out is not neutral: it means the rule for that construct never runs anywhere.
 
