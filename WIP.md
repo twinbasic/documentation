@@ -33,6 +33,8 @@ sibling. History goes nowhere: git keeps it.
 
 Reference documentation is **complete** for all thirteen packages: VBA, VBRUN, VB, WebView2, Assert, CustomControls, CEF, WinEventLogLib, WinNamedPipesLib, WinServicesLib, tbIDE, WinNativeCommonCtls and AppGlobalClassObject. It is adapted from primary sources: Microsoft VBA-Docs (CC-BY-4.0) for the runtime library, `.twin` source for the twinBASIC-specific packages. The CEF and WebView2 packages also carry a tutorial set.
 
+Nine **contributed** packages from TWINSERV have sections under `docs/Reference/Contributed/`: FileProps, WinReg, TwinTimerPackage, TBMANLIB_ListBoxHScroll, TBMANLIB_RES and VBA_JSON complete; AutoCompleteLib, BigNumberLib and VBComDlg their main class only. They are left out of the book.
+
 The rest of this file is the maintenance guide for updating existing pages or adding new ones: package surface notes, page conventions, and the integrity check.
 
 ## Where things live
@@ -43,7 +45,8 @@ The rest of this file is the maintenance guide for updating existing pages or ad
 > that ship with the IDE but are referenced on demand (`AppGlobalClassObject`, `CEF`,
 > `CustomControls`, `TwinBasicAssertions`, `WebView2`, `WinEventLogLib`,
 > `WinNamedPipesLib`, `WinNativeCommonCtls`, `WinServicesLib`, `tbIDE`). `Core/` is not
-> nested.
+> nested. The contributed packages from TWINSERV sit in `docs/Reference/Contributed/`, and
+> unlike the others their URLs say so: `/tB/Packages/Contributed/<Package>/`.
 >
 > **The folder layout does not affect URLs.** Every `permalink:` is independent of it, so the
 > [Cross-section linking](WIP.Authoring.md#cross-section-linking) tables are unaffected --- they
@@ -75,6 +78,7 @@ The rest of this file is the maintenance guide for updating existing pages or ad
   > would file the page as a *static file* and serve the raw markdown. Editors on
   > Windows add a BOM unasked. `lib/frontmatter.mjs` strips a leading BOM before parsing.
 - `docs/Reference/Built-In/tbIDE/` — IDE Extensibility package (this is the **addin SDK**). The package is type-only — it ships **public interfaces + CoClasses** that an addin DLL binds to; every implementation behind them lives in the twinBASIC IDE itself. The user-facing surface is one entry-point factory (`tbCreateCompilerAddin`) plus 23 CoClasses grouped by role: the addin contract (`AddIn`), the root API (`Host`), the loaded `Project`, the editors collection (`Editor` / `CodeEditor` / `Editors`), the virtual file system (`FileSystem` / `FileSystemItem` / `Folder` / `File`), the in-IDE UI surface (`Toolbar` / `Toolbars` / `Button` / `ToolWindow` / `ToolWindows`), the HTML DOM inside a tool window (`HtmlElement` / `HtmlElements` / `HtmlElementProperty` / `HtmlElementProperties` / `HtmlEventProperty` / `HtmlEventProperties`), the `DebugConsole`, `KeyboardShortcuts`, `Themes`, and the single concrete user-instantiable helper class `AddinTimer`. Flat layout — one page per CoClass / Class plus the index landing.
+- `docs/Reference/Contributed/` — the contributed packages, one folder each, landing page `Contributed.md` beside it. A class with member pages is a folder, `<Class>/index.md` at `/tB/Packages/Contributed/<Package>/<Class>/` with its members beside it, so a member links to its class as `(.)`; a class documented on one page is `<Class>.md`. The section is in `_book.yml`'s `left_out:`. A section's `indexed_from` is the four-part TWINSERV version, and its snapshot is under `indexer/snapshots/contributed/`.
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
 - `docs/LLVM/` — the LLVM section: compiling with the LLVM back end. A top-level section between Features and Reference Section in the nav, at `nav_order: 6` (Features is 5). `index.md` is the landing page and `Getting-Started.md` the only page so far, with its screenshots under `Images/`. Everything it describes arrived in **BETA 984**. Its language claims are measured on BETA 995 with `tbrun --llvm` and `--exe`: the comma, space and comma-space spellings of `[CompilerOptions]` all turn LLVM and `+optimize` on, `[CompilerOptions("")]` turns it off under project-wide LLVM, the long CPU-flag sample runs, and an error is lost between procedures when either the callee or the caller is LLVM-compiled. Its samples are marked `check_build`, which compiles them; `examples.bat --llvm` also builds them with LLVM.
