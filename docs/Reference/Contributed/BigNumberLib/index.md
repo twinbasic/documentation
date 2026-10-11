@@ -9,6 +9,8 @@ permalink: /tB/Packages/Contributed/BigNumberLib/
 # BigNumberLib Package
 {: .no_toc }
 
+**Author:** WaynePhillipsEA
+
 The **BigNumberLib** contributed package provides arbitrary-precision signed integer arithmetic for twinBASIC.
 
 > [!NOTE]

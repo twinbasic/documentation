@@ -9,6 +9,8 @@ permalink: /tB/Packages/Contributed/AutoCompleteLib/
 # AutoCompleteLib Package
 {: .no_toc }
 
+**Author:** Krool
+
 The **AutoCompleteLib** contributed package provides Windows shell auto-complete behavior for text-input controls. The package references the **AutoCompleteGuids** package, which holds the GUID and interface definitions the class uses.
 
 ## Classes

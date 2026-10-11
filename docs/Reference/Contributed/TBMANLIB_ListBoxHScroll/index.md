@@ -9,10 +9,9 @@ permalink: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
 # TBMANLIB_ListBoxHScroll Package
 {: .no_toc }
 
-The **TBMANLIB_ListBoxHScroll** contributed package provides a helper class that adds a functional horizontal scrollbar to a standard VB **ListBox** control by combining the `LB_SETHORIZONTALEXTENT` message, Win32 scroll-info APIs, and window subclassing.
+**Author:** woeoio
 
-* TOC
-{:toc}
+The **TBMANLIB_ListBoxHScroll** contributed package provides a helper class that adds a functional horizontal scrollbar to a standard VB **ListBox** control by combining the `LB_SETHORIZONTALEXTENT` message, Win32 scroll-info APIs, and window subclassing.
 
 ## Classes
 

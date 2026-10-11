@@ -9,10 +9,9 @@ permalink: /tB/Packages/Contributed/TwinTimerPackage/
 # TwinTimerPackage Package
 {: .no_toc }
 
-The **TwinTimerPackage** contributed package provides a Win32-backed timer class that fires a **Timer** event at a repeating interval and reports the total elapsed time in milliseconds. Unlike the built-in VB **Timer** control, **TwinTimer** does not require a form or control container and can be instantiated from any module.
+**Author:** Krool
 
-* TOC
-{:toc}
+The **TwinTimerPackage** contributed package provides a Win32-backed timer class that fires a **Timer** event at a repeating interval and reports the total elapsed time in milliseconds. Unlike the built-in VB **Timer** control, **TwinTimer** does not require a form or control container and can be instantiated from any module.
 
 ## Classes
 
