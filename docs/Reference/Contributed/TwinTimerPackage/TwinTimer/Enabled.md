@@ -41,7 +41,7 @@ Changing **Enabled** at run time takes effect immediately: the underlying Win32 
 
 This example creates a **TwinTimer** that fires every 500 milliseconds, then disables it after the first event.
 
-```tb
+```tb check_build
 Private WithEvents tmr As TwinTimer
 
 Private Sub Form_Load()

@@ -22,7 +22,7 @@ Unlike [**Name**](Name), which is a dotted system name such as `System.ItemFolde
 
 This example opens a file and prints the ID and name of each shell property to the Debug console.
 
-```tb
+```tb check_build
 Dim props As FileProperties
 Set props = FilePropertyExplorer.OpenFile("C:\example\photo.jpg")
 

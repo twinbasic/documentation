@@ -30,7 +30,7 @@ If the conversion fails, run-time error 10012 ("UTC conversion error") is raised
 
 This example converts the current local time to UTC and prints both values.
 
-```tb
+```tb check_build
 Dim localDate As Date
 Dim utcDate As Date
 

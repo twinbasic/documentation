@@ -22,7 +22,7 @@ To retrieve the value as a **Variant** (which can be an array for multi-value pr
 
 This example opens a file and prints the localized value of each shell property to the Debug console.
 
-```tb
+```tb check_build
 Dim Props As FileProperties
 Set Props = FilePropertyExplorer.OpenFile("C:\Music\track.mp3")
 

@@ -12,7 +12,7 @@ A string-keyed collection that maps **String** keys to **Variant** values, backe
 
 **Dictionary** is the object type returned by the JSON parser when a JSON object is decoded. Keys are strings, compared as the backing **Collection** compares its keys; **Dictionary** does not change that. Values can be any **Variant**---numbers, strings, **Boolean**, **Null** (for JSON `null`), or nested **Dictionary** and **Collection** objects (a JSON array becomes a **Collection**).
 
-```tb
+```tb check_build
 Dim d As New Dictionary
 
 d("name") = "Alice"
@@ -46,7 +46,7 @@ Reading a key that does not exist raises run-time error 5 (Invalid procedure cal
 
 Because **Item** is the default member, the parenthesized shorthand *object*(*Key*) is equivalent to *object*.**Item**(*Key*).
 
-```tb
+```tb check_build
 Dim d As New Dictionary
 
 ' Scalar value --- Property Let
@@ -69,22 +69,24 @@ Syntax: *object*.**Keys**
 
 The return value is a **Variant** holding the **String** array that the underlying **Collection.Keys** property produces: one element per key, in the order the entries were added. When the collection is empty, an empty array is returned.
 
-```tb
+```tb check_build
 Dim d As New Dictionary
 d("x") = 1
 d("y") = 2
 
 Dim k As Variant
 For Each k In d.Keys
-    Debug.Print k & " = " & d(k)
+    Debug.Print k & " = " & d(CStr(k))
 Next
 ```
+
+**Item** takes its key `ByRef` as a **String**, so a key held in a **Variant**, such as the loop variable of a **For Each** over **Keys**, is passed through **CStr**: passing the **Variant** itself is a compile error.
 
 ## Remarks
 
 **Dictionary** supports **For Each** iteration through the `[Enumerator]` attribute on its private `_NewEnum` function, which delegates to the backing **Collection**'s enumerator. Iterating with **For Each** yields the stored *values* (not keys):
 
-```tb
+```tb check_build
 Dim d As New Dictionary
 d("a") = 10
 d("b") = 20
@@ -101,16 +103,20 @@ Assigning to an existing key replaces the current value: **Item Let/Set** remove
 
 **Dictionary** has only the **Item** and **Keys** members: it has no **Count**, **Exists**, **Add** or **Remove**. To count entries, take the bounds of **Keys** with **UBound** and **LBound**:
 
-```tb
+```tb check_build
+Dim d As New Dictionary
+d("x") = 1
+d("y") = 2
+
 Dim keyCount As Long
-keyCount = UBound(d.Keys) - LBound(d.Keys) + 1
+keyCount = UBound(d.Keys) - LBound(d.Keys) + 1   ' 2
 ```
 
 ## Example
 
 This example parses a JSON string and reads values from the resulting **Dictionary**.
 
-```tb
+```tb check_build
 ' Assumes JsonConverter (VBA_JSON) is referenced and ParseJson is in scope.
 Dim parsed As Dictionary
 Set parsed = JsonConverter.ParseJson("{""name"":""Bob"",""score"":95}")
@@ -120,7 +126,7 @@ Debug.Print parsed("score")   ' 95
 
 Dim k As Variant
 For Each k In parsed.Keys
-    Debug.Print k & ": " & parsed(k)
+    Debug.Print k & ": " & parsed(CStr(k))
 Next
 ```
 

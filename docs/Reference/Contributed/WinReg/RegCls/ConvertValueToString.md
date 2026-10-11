@@ -55,7 +55,7 @@ Overload 1 neither closes nor otherwise modifies *hKey*. When using Overload 1, 
 
 This example opens a registry key, reads a value using Overload 1, then closes the key.
 
-```tb
+```tb check_build
 Dim reg As New RegCls
 Dim hKey As Long
 Dim ret As Long
@@ -71,7 +71,7 @@ End If
 
 This example uses Overload 2 inside a value-enumeration loop.
 
-```tb
+```tb check_build
 Dim reg As New RegCls
 Dim dict As Dictionary
 Set dict = reg.EnumValues(HKEY_CURRENT_USER, "Software\MyApp")

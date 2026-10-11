@@ -14,7 +14,7 @@ A read-only collection of Windows shell properties for a single file, returned b
 
 Instances are not constructed directly. Call [**FilePropertyExplorer.OpenFile**](../FilePropertyExplorer/OpenFile) or [**FilePropertyExplorer.BrowseAndOpenFile**](../FilePropertyExplorer/BrowseAndOpenFile) to obtain a **FileProperties** collection.
 
-```tb
+```tb check_build
 Dim Props As FileProperties
 Set Props = FilePropertyExplorer.OpenFile("C:\Music\track.mp3")
 
@@ -62,7 +62,10 @@ Syntax: *object*.**Item** ( *IndexOrNameOrID* ) **As FileProperty**
   - A **String** matching [**FileProperty.Name**](../FileProperty/Name) (the system identity name, e.g. `"System.Media.Duration"`).
   - A **String** matching [**FileProperty.ID**](../FileProperty/ID) (the unique property identifier).
 
-```tb
+```tb check_build
+Dim Props As FileProperties
+Set Props = FilePropertyExplorer.OpenFile("C:\Music\track.mp3")
+
 ' By zero-based index:
 Dim Prop As FileProperty
 Set Prop = Props.Item(0)
@@ -83,7 +86,7 @@ Holds the native-code COM object created internally by the Virtual-COM library. 
 
 This example opens the file at the given path and prints its path, its property count and all its shell properties to the Debug console.
 
-```tb
+```tb check_build
 Sub PrintShellProps(FilePath As String)
     Dim Props As FileProperties
     Set Props = FilePropertyExplorer.OpenFile(FilePath)

@@ -57,7 +57,7 @@ The **Set** accessor has the same replacement behaviour as **Let**: if *Key* alr
 
 This example stores and retrieves values from a **Dictionary**.
 
-```tb
+```tb check_build
 Dim dict As New Dictionary
 
 ' Store scalar values.

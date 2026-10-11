@@ -32,7 +32,7 @@ After **Show** returns, the **ListBox** scrolls horizontally when any item is wi
 
 This example attaches a horizontal scroll bar to a **ListBox** named `List1` after filling it with items.
 
-```tb
+```tb check_build
 Private hScroll As New cListboxHScroll
 
 Private Sub Form_Load()

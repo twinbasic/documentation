@@ -29,7 +29,7 @@ The argument is derived from the `dwTime` parameter of the Win32 timer callback 
 
 This example creates a **TwinTimer** that fires every 500 milliseconds and prints the cumulative elapsed time on each tick.
 
-```tb
+```tb check_build
 Private WithEvents tmr As TwinTimer
 
 Private Sub Form_Load()

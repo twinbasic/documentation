@@ -31,7 +31,7 @@ If the key cannot be opened or the value query fails, the function returns `REGT
 
 This example reads the data type of the `UserName` value under `HKEY_CURRENT_USER\Software\MyApp` and displays a message describing the type.
 
-```tb
+```tb check_build
 Dim reg As New RegCls
 Dim t As REGTYPES
 

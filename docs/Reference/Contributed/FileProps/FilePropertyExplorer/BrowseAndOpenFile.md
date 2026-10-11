@@ -23,7 +23,7 @@ Syntax: *object*.**BrowseAndOpenFile** [ (*WriteSupport*) ]
 
 This example uses **BrowseAndOpenFile** to let the user pick a file and then prints all its shell properties to the Debug console.
 
-```tb
+```tb check_build
 Dim Props As FileProperties
 Set Props = FilePropertyExplorer.BrowseAndOpenFile()
 

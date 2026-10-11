@@ -29,7 +29,7 @@ Syntax: *object*.**Read**( *id*, *Type* ) **As cRes**
 
 This example loads a custom binary resource by name and retrieves it as a byte array, then loads an image resource by integer ID and assigns it to a **PictureBox**.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     ' Load a named custom resource and retrieve the raw bytes.
     Dim res As New cRes

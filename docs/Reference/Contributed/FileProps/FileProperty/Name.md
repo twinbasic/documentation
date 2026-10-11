@@ -26,7 +26,7 @@ For an alternative unique identifier that includes the property schema GUID and 
 
 This example iterates over all shell properties for a file and prints the system name and value of each one to the Debug console.
 
-```tb
+```tb check_build
 Dim Props As FileProperties
 Set Props = FilePropertyExplorer.OpenFile("C:\Example\photo.jpg")
 

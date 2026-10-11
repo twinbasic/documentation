@@ -28,7 +28,7 @@ Write support requires Windows Vista or newer.
 
 This example opens an MP3 file and prints all its shell properties to the Debug console.
 
-```tb
+```tb check_build
 Dim Props As FileProperties
 Set Props = FilePropertyExplorer.OpenFile("C:\Music\track.mp3")
 

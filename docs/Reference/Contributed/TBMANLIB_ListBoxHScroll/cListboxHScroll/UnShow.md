@@ -26,7 +26,7 @@ Syntax: *object*.**UnShow**
 
 This example adds a horizontal scrollbar to a ListBox on a form, then removes it when a button is clicked.
 
-```tb
+```tb check_build
 Private HScroll As cListboxHScroll
 
 Private Sub Form_Load()

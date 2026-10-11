@@ -30,7 +30,7 @@ Raises run-time error 10014 (`"ISO 8601 conversion error"`) if an internal error
 
 This example converts the current local time to an ISO 8601 UTC string.
 
-```tb
+```tb check_build
 Dim IsoString As String
 IsoString = JsonConverter.ConvertToIso(Now)
 Debug.Print IsoString   ' e.g. "2024-03-15T14:30:00.000Z"
@@ -38,7 +38,7 @@ Debug.Print IsoString   ' e.g. "2024-03-15T14:30:00.000Z"
 
 This example shows how **ConvertToJson** automatically applies **ConvertToIso** when a **Date** value is in the data being serialized.
 
-```tb
+```tb check_build
 Dim Data As New Dictionary
 Data("timestamp") = CDate("2024-03-15 14:30:00")
 

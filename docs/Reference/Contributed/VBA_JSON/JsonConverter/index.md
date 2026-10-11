@@ -12,7 +12,7 @@ Provides JSON parsing, JSON serialization, and UTC/ISO 8601 date conversion for 
 
 **JsonConverter** is a standard module. It exposes two primary functions---[**ParseJson**](ParseJson) and [**ConvertToJson**](ConvertToJson)---plus four date-utility functions ([**ParseUtc**](ParseUtc), [**ConvertToUtc**](ConvertToUtc), [**ParseIso**](ParseIso), [**ConvertToIso**](ConvertToIso)) and one public variable ([**JsonOptions**](#jsonoptions)) that controls parsing and serialization behavior.
 
-```tb
+```tb check_build
 ' Parse a JSON string into an object graph.
 Dim Result As Object
 Set Result = ParseJson("{""name"":""Alice"",""score"":42}")
@@ -40,7 +40,7 @@ A public variable of the module-private `json_Options` type that controls parsin
 | `AllowUnquotedKeys` | **Boolean** | **False** | When **True**, **ParseJson** accepts JSON objects whose keys are not quoted. The JSON standard requires quoted keys; this option enables a non-standard extension. |
 | `EscapeSolidus` | **Boolean** | **False** | When **True**, **ConvertToJson** escapes forward slashes (`/`) as `\/` in the output. The JSON standard does not require solidus escaping; this option enables it for environments that expect it. |
 
-```tb
+```tb check_build
 ' Preserve large integer IDs as strings.
 JsonOptions.UseDoubleForLargeNumbers = False
 
@@ -134,7 +134,7 @@ Error numbers used by this module:
 
 This example reads a JSON payload, extracts fields, modifies the data, and writes the result back to JSON with two-space indentation.
 
-```tb
+```tb check_build
 Dim Json As String
 Json = "{""product"":""Widget"",""price"":9.99,""tags"":[""new"",""sale""]}"
 
@@ -161,7 +161,7 @@ Debug.Print ConvertToJson(Data, 2)
 
 This example serializes an object containing a **Date** field to show automatic ISO 8601 conversion.
 
-```tb
+```tb check_build
 Dim Order As New Dictionary
 Order("id") = 1001
 Order("placed") = CDate("2024-06-03 09:00:00")

@@ -14,7 +14,7 @@ A timer class that fires a **Timer** event at a repeating interval and reports t
 
 The elapsed-time counter passed to the **Timer** event is a monotonically increasing **LongLong** expressed in milliseconds. The implementation handles the 49.7-day rollover of the tick count that Windows supplies with each timer message (the same clock as `GetTickCount`), so the counter continues to increase correctly over long-running sessions.
 
-```tb
+```tb check_build
 Private WithEvents Timer1 As TwinTimer
 
 Private Sub Form_Load()
@@ -78,7 +78,7 @@ Syntax: *object*\_**Timer** ( *ElapsedTime* **As LongLong** )
 
 The value is derived from the `dwTime` parameter supplied with `WM_TIMER` (the number of milliseconds since the system started, as `GetTickCount` returns it). The class accounts for the 49.7-day `GetTickCount` rollover so *ElapsedTime* continues to increase correctly without wrapping.
 
-```tb
+```tb check_build
 Private Sub Timer1_Timer(ByVal ElapsedTime As LongLong)
     ' ElapsedTime is 0 on the first tick, then increases by ~Interval each tick.
     Debug.Print "Tick at " & ElapsedTime & " ms"
@@ -89,7 +89,7 @@ End Sub
 
 This example creates a countdown that stops itself 10 seconds after the first tick.
 
-```tb
+```tb check_build
 Private WithEvents Countdown As TwinTimer
 
 Private Sub Form_Load()

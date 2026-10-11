@@ -28,7 +28,7 @@ When *LineBreak* is greater than `0`, it takes precedence over *Separator*: the 
 
 This example loads a binary resource, prints it as a compact hex string, then as a space-separated string, and finally as 16-bytes-per-line blocks.
 
-```tb
+```tb check_build
 Dim res As New cRes
 res.Read 101, "BINARY"
 

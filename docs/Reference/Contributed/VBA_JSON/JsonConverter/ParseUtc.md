@@ -30,7 +30,7 @@ If the conversion fails, run-time error 10011 ("UTC parsing error") is raised.
 
 This example reads a UTC date, converts it to local time, and prints both values.
 
-```tb
+```tb check_build
 Dim utcDate As Date
 Dim localDate As Date
 

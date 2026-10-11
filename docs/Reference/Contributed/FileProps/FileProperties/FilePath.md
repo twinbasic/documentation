@@ -20,7 +20,7 @@ The value is the full path of the file that was passed to [**FilePropertyExplore
 
 This example opens a file and prints its path and property count to the Debug console.
 
-```tb
+```tb check_build
 Dim fp As FileProperties
 Set fp = FilePropertyExplorer.OpenFile("C:\Users\Public\sample.mp3")
 Debug.Print "File: " & fp.FilePath

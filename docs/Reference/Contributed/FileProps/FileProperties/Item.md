@@ -23,7 +23,7 @@ Syntax: *object*.**Item**(*IndexOrNameOrID*)
 
 This example opens a file, iterates the properties by index, and also retrieves one property by name.
 
-```tb
+```tb check_build
 Dim fp As FileProperties
 Set fp = FilePropertyExplorer.OpenFile("C:\Music\track.mp3")
 

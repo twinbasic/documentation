@@ -10,7 +10,7 @@ has_toc: false
 
 A **BigNumber** represents an arbitrary-precision signed integer backed by the TomsFastMath (libtfm) C library, supporting numbers up to 4096 bits. A multiplication accepts operands of up to 2048 bits each. The default property is [**ValueString**](#valuestring).
 
-```tb
+```tb check_build
 Dim a As New BigNumber
 Dim b As New BigNumber
 Dim result As New BigNumber
@@ -389,7 +389,7 @@ Syntax: *object*.**IsGreaterThanOrEqualTo**( *b* )
 
 This example computes the factorial of 50 using **BigNumber** arithmetic.
 
-```tb
+```tb check_build
 Public Function Factorial50() As String
     Dim result As New BigNumber
     Dim factor As New BigNumber

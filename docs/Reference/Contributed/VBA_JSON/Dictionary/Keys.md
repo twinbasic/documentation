@@ -20,7 +20,7 @@ The property returns a **Variant** containing an array of **String** values, one
 
 This example iterates over the keys of a dictionary.
 
-```tb
+```tb check_build
 Dim Dict As Dictionary
 Set Dict = New Dictionary
 Dict("name") = "Alice"
@@ -28,7 +28,7 @@ Dict("age")  = 30
 
 Dim k As Variant
 For Each k In Dict.Keys
-    Debug.Print k & " => " & Dict(k)
+    Debug.Print k & " => " & Dict(CStr(k))
 Next k
 ' Output (order added):
 '   name => Alice

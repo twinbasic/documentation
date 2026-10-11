@@ -40,7 +40,7 @@ The value is stored as a little-endian 32-bit integer, which is the standard **R
 
 This example stores an application run count and a feature flag under `HKEY_CURRENT_USER`.
 
-```tb
+```tb check_build
 Dim reg As New RegCls
 
 If reg.WriteDWORD(HKEY_CURRENT_USER, "Software\MyApp", "RunCount", 1) Then

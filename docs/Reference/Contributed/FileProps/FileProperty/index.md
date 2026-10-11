@@ -12,7 +12,7 @@ A **FileProperty** represents one Windows shell property attached to a file --- 
 
 **FileProperty** objects are not created directly. They are returned as items from the [**FileProperties**](../FileProperties/) collection, which is obtained by calling [**FilePropertyExplorer.OpenFile**](../FilePropertyExplorer/OpenFile) or [**FilePropertyExplorer.BrowseAndOpenFile**](../FilePropertyExplorer/BrowseAndOpenFile).
 
-```tb
+```tb check_build
 Dim Props As FileProperties
 Set Props = FilePropertyExplorer.OpenFile("C:\Photos\image.jpg")
 
@@ -96,7 +96,7 @@ Syntax: *object*.**VCOMObject** **As Object**
 
 This example opens a file and prints the system name, localized description, and value for each shell property.
 
-```tb
+```tb check_build
 Sub PrintFileProperties(ByVal FilePath As String)
     Dim Props As FileProperties
     Set Props = FilePropertyExplorer.OpenFile(FilePath)

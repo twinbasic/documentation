@@ -37,7 +37,7 @@ On parse failure the function raises run-time error 10013 with the source `"UtcC
 
 This example parses a UTC timestamp returned in a JSON payload and formats the equivalent local time.
 
-```tb
+```tb check_build
 Dim Json As Object
 Dim CreatedAt As Date
 
@@ -48,7 +48,7 @@ Debug.Print Format$(CreatedAt, "yyyy-mm-dd hh:nn:ss")   ' local equivalent of 09
 
 This example handles a timestamp that has an explicit UTC offset.
 
-```tb
+```tb check_build
 Dim LocalDate As Date
 LocalDate = ParseIso("2024-06-03T14:30:00+05:30")
 Debug.Print Format$(LocalDate, "yyyy-mm-dd hh:nn:ss")

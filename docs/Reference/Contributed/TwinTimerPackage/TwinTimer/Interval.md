@@ -40,7 +40,7 @@ Changing **Interval** at run time takes effect immediately: the underlying Win32
 
 This example creates a **TwinTimer** that fires every second and prints the elapsed time.
 
-```tb
+```tb check_build
 Private WithEvents tmr As TwinTimer
 
 Private Sub Form_Load()

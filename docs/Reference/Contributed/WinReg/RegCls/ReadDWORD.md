@@ -37,7 +37,7 @@ Registry DWORD values are 32-bit unsigned integers; the Windows API stores them 
 
 This example reads a run-count value from the registry, increments it, and writes it back.
 
-```tb
+```tb check_build
 Dim reg As New RegCls
 Dim RunCount As Long
 

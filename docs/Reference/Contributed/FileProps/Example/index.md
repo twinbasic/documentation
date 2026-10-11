@@ -27,7 +27,7 @@ Syntax: **DisplayInDebugConsole** [ *FilePath* ]
 
 This example prints all shell properties of a specific file to the Debug console by supplying a path directly.
 
-```tb
+```tb check_build
 Sub Main()
     Example.DisplayInDebugConsole "C:\Users\Public\Pictures\Sample.jpg"
 End Sub
@@ -35,7 +35,7 @@ End Sub
 
 To use the interactive file-open dialog instead, call the procedure without an argument:
 
-```tb
+```tb check_build
 Sub Main()
     Example.DisplayInDebugConsole
 End Sub

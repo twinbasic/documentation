@@ -20,7 +20,7 @@ Syntax: *object*.**ReturnPicture**() **As IPictureDisp**
 
 This example loads a PNG image embedded as a custom resource and assigns it to a **PictureBox** control.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Dim res As New cRes
     res.Read "MY_IMAGE", "CUSTOM"

@@ -12,7 +12,7 @@ A **CommonDialog** provides access to the Windows common dialogs: File Open, Fil
 
 The class wraps the Win32 `comdlg32` and `shell32` APIs directly. Each dialog is invoked by calling the corresponding `Show*` method. Every dialog except the extended Print dialog can also be invoked by assigning a numeric code to [**Action**](#action). Properties set before the call initialize the dialog; after the user closes it, the same properties reflect the user's selections.
 
-```tb
+```tb check_build
 Dim dlg As New CommonDialog
 dlg.Filter     = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*"
 dlg.FilterIndex = 1
@@ -757,7 +757,7 @@ Syntax: *object*\_**ReplaceAll**( )
 
 This example shows a File Open dialog filtered to text files, then reads and prints the first line of the selected file.
 
-```tb
+```tb check_build
 Private Sub OpenTextFile()
     Dim dlg As New CommonDialog
     dlg.Filter      = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*"

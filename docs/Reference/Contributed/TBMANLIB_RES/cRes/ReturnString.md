@@ -23,7 +23,7 @@ Syntax: *object*.**ReturnString** ( [ *Conversion* ] ) **As String**
 
 This example loads an ANSI text resource by ID, converts it to a **String**, and displays it in a message box.
 
-```tb
+```tb check_build
 Dim r As New cRes
 Dim s As String
 

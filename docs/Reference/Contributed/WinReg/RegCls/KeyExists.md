@@ -27,7 +27,7 @@ No error is raised when the key does not exist. On any failure, including access
 
 This example checks for a registry key before attempting to read a value from it.
 
-```tb
+```tb check_build
 Dim reg As New RegCls
 
 If reg.KeyExists(HKEY_CURRENT_USER, "Software\MyApp") Then

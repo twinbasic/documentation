@@ -12,7 +12,7 @@ A helper class that adds a functional horizontal scrollbar to a standard VB **Li
 
 The class measures the pixel width of each list item using GDI's `GetTextExtentPoint32W`, sets the scroll range to fit the widest item, and installs a subclass procedure to intercept `WM_HSCROLL` messages so the scrollbar thumb tracks correctly. Call [**Show**](#show) after populating the list and [**UnShow**](#unshow) (or allow the class instance to be destroyed) when the scroll handling is no longer needed.
 
-```tb
+```tb check_build
 Private HScroll As New cListboxHScroll
 
 Private Sub Form_Load()
@@ -70,7 +70,7 @@ Calls `RemoveWindowSubclass` to detach the `WM_HSCROLL` handler. After **UnShow*
 
 This example attaches a horizontal scrollbar to a **ListBox** and removes it when the form closes.
 
-```tb
+```tb check_build
 Private HScroll As cListboxHScroll
 
 Private Sub Form_Load()

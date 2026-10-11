@@ -11,6 +11,11 @@ permalink: /tB/Packages/Contributed/WinReg/
 
 The **WinReg** contributed package provides a Windows Registry helper class that reads, writes, deletes, and enumerates registry keys and values through the Win32 `advapi32` API. The package exposes a single **RegCls** class wrapping the most common registry operations into a convenient interface. It depends on types and API declarations from the **WinDevLib** package.
 
+**WinReg** references the **WinDevLib** package, but a project does not see the names a package's own references declare. A project that names WinDevLib's root keys (`HKEY_CURRENT_USER`), value types (`REGTYPES`) or `BOOL`, as the examples here do, references **WinDevLib** as well. One that declares the **Dictionary** that [**EnumValues**](RegCls/EnumValues) returns references the Microsoft Scripting Runtime.
+
+> [!NOTE]
+> Version 0.0.0.0 does not compile in twinBASIC BETA 1005, so a project that references it does not build. **RegCls** passes `VarPtr(0&)` to two `ByRef` structure parameters of WinDevLib's declarations: *lpSecurityAttributes* of `RegCreateKeyEx` and *lpftLastWriteTime* of `RegEnumKeyEx`. A pointer passed for a structure has to be passed `ByVal` (error TB5001).
+
 * TOC
 {:toc}
 

@@ -14,7 +14,7 @@ A predeclared factory class that opens a file and returns a [**FileProperties**]
 
 The class has the `[ PredeclaredId ]` attribute, so it acts as a default instance and its methods are callable without creating an explicit object variable:
 
-```tb
+```tb check_build
 Dim Props As FileProperties
 Set Props = FilePropertyExplorer.OpenFile("C:\Music\track.mp3")
 ```
@@ -34,7 +34,7 @@ Syntax: **FilePropertyExplorer**.**BrowseAndOpenFile** ( [ *WriteSupport* ] ) **
 *WriteSupport*
 : *optional* A **Boolean**. Pass **True** to open the file with write support so that [**FileProperty.Value**](../FileProperty/Value) can be assigned. Default: **False**.
 
-```tb
+```tb check_build
 Dim Props As FileProperties
 Set Props = FilePropertyExplorer.BrowseAndOpenFile()
 
@@ -61,7 +61,7 @@ Syntax: **FilePropertyExplorer**.**OpenFile** ( *FilePath* [, *WriteSupport* ] )
 *WriteSupport*
 : *optional* A **Boolean**. Pass **True** to open the file with write support so that [**FileProperty.Value**](../FileProperty/Value) can be assigned. Default: **False**.
 
-```tb
+```tb check_build
 Dim Props As FileProperties
 Set Props = FilePropertyExplorer.OpenFile("C:\Pictures\photo.jpg")
 
@@ -91,7 +91,7 @@ The shell property handler infrastructure requires Windows 2000 or later. If the
 
 This example opens a file-open dialog, then prints all shell properties for the selected file to the Debug console.
 
-```tb
+```tb check_build
 Sub ShowFileProps()
     Dim Props As FileProperties
     Set Props = FilePropertyExplorer.BrowseAndOpenFile()

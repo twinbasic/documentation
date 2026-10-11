@@ -30,7 +30,7 @@ Object keys must be quoted (single or double quotes) unless `JsonConverter.JsonO
 
 This example parses a JSON object and a JSON array, then reads values from each result.
 
-```tb
+```tb check_build
 Dim Json As Object
 
 ' Parse a JSON object -- result is a Dictionary.

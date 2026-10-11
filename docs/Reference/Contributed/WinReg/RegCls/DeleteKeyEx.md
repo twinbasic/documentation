@@ -34,7 +34,7 @@ Both enumeration loops always request index 0 and rely on each deletion to expos
 
 This example removes the `Software\MyApp` key and all of its contents from `HKEY_CURRENT_USER`.
 
-```tb
+```tb check_build
 Dim reg As New RegCls
 Dim success As Boolean
 

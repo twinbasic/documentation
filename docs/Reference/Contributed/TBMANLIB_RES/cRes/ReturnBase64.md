@@ -42,9 +42,9 @@ The following **Base64Prefix** values are defined:
 
 ### Example
 
-This example loads a PNG image from the resource file and shows it in a WebView2 control through a data URI in an `img` element.
+This example loads a PNG image from the resource file and builds an `img` element whose source is a data URI, for a browser control such as WebView2 to show.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Dim Res As New cRes
     Res.Read 101, "PNG"
@@ -53,7 +53,9 @@ Private Sub Form_Load()
     DataURI = Res.ReturnBase64(Base64Prefix_ImagePNG)
 
     ' DataURI starts with "data:image/png;base64,iVBOR..."
-    WebView21.NavigateToString "<img src=""" & DataURI & """>"
+    Dim Html As String
+    Html = "<img src=""" & DataURI & """>"
+    ' A browser control shows Html, for example with WebView2's NavigateToString.
 End Sub
 ```
 

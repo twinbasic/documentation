@@ -23,7 +23,7 @@ The returned array is a copy of the internal storage; modifying it does not affe
 
 This example loads a binary resource and writes it to a file.
 
-```tb
+```tb check_build
 Dim res As New cRes
 res.Read "MyData", "BINARY"
 

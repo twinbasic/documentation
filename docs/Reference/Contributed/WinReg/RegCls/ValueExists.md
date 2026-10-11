@@ -32,7 +32,7 @@ To test whether a key itself exists---rather than a value within it---use [**Key
 
 This example checks whether a user preference value is present before reading it.
 
-```tb
+```tb check_build
 Dim reg As New RegCls
 
 If reg.ValueExists(HKEY_CURRENT_USER, "Software\MyApp", "UserName") Then

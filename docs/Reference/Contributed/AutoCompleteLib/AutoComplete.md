@@ -12,7 +12,7 @@ A class that attaches Windows shell auto-complete behaviour to a text-input cont
 
 **AutoComplete** wraps the `IAutoComplete2` COM interface. After calling [**Init**](#init) with the window handle of an edit box and a source type, the Windows shell begins offering suggestions as the user types. The source can be the shell history, the file system, the most-recently-used list, all three combined, or a custom string array supplied through [**CustomSource**](#customsource).
 
-```tb
+```tb check_build
 Private m_AC As AutoComplete
 
 Private Sub Form_Load()
@@ -144,7 +144,7 @@ Calls `IAutoCompleteDropDown.ResetEnumerator` on the underlying COM object. Use 
 
 This example attaches file-system auto-complete to a text box and restricts suggestions to directories.
 
-```tb
+```tb check_build
 Private m_AC As AutoComplete
 
 Private Sub Form_Load()
@@ -157,7 +157,7 @@ End Sub
 
 This example supplies a fixed custom list.
 
-```tb
+```tb check_build
 Private m_AC As AutoComplete
 
 Private Sub Form_Load()

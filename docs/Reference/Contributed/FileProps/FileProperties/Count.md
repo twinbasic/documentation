@@ -20,7 +20,7 @@ Syntax: *object*.**Count**
 
 This example opens a file and prints the total number of shell properties it exposes.
 
-```tb
+```tb check_build
 Dim props As FileProperties
 Set props = FilePropertyExplorer.OpenFile("C:\example.mp3")
 Debug.Print "Property count: " & props.Count

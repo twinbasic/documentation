@@ -16,7 +16,7 @@ A standard module that exposes a pre-instantiated [**cRes**](cRes/) object as a 
 
 A pre-instantiated **cRes** object.
 
-```tb
+```tb check_build
 Public Res As New cRes
 ```
 
@@ -29,7 +29,7 @@ Because of **As New**, the instance is created automatically the first time **Re
 
 This example loads a PNG resource and assigns it to a **PictureBox** control.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Picture1.Picture = TBMAN.Res.Read(101, "PNG").ReturnPicture()
 End Sub

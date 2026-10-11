@@ -43,7 +43,7 @@ Not all shell properties are writable. To assign **Value**, open the file with w
 
 This example opens a file, reads the **System.Title** property, then updates it.
 
-```tb
+```tb check_build
 Dim Props As FileProperties
 Set Props = FilePropertyExplorer.OpenFile("C:\Documents\Report.docx", True)
 

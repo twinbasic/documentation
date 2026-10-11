@@ -12,7 +12,7 @@ A helper class that loads a binary resource from the compiled executable and con
 
 Call [**Read**](#read) to load a resource by ID and type; it returns the same **cRes** instance so further conversion calls can be chained immediately. The loaded bytes are held internally and can be retrieved in multiple formats without reloading the resource.
 
-```tb
+```tb check_build
 Dim res As New cRes
 res.Read 101, "BINARY"
 Debug.Print res.ReturnHex(" ")
@@ -58,9 +58,10 @@ Syntax: *object*.**Read** ( *id*, *Type* ) **As cRes**
 
 Returns the same **cRes** instance, so calls can be chained:
 
-```tb
+```tb check_build
+Dim r As New cRes
 Dim png As String
-png = New cRes().Read(101, "PNG").ReturnBase64(Base64Prefix_ImagePNG)
+png = r.Read(101, "PNG").ReturnBase64(Base64Prefix_ImagePNG)
 ```
 
 The bytes are loaded with the **LoadResData** function. If no resource in the compiled binary matches the ID and type, **LoadResData** raises a run-time error.
@@ -101,9 +102,10 @@ Syntax: *object*.**ReturnHex** ( [ *Separator* [, *LineBreak* ] ] ) **As String*
 
 Each byte is formatted as a two-character uppercase hex string (zero-padded). When both *Separator* and *LineBreak* are non-zero, the *LineBreak* threshold takes precedence at the end of each line.
 
-```tb
+```tb check_build
 ' Print 16 bytes per line, space-separated.
-Debug.Print New cRes().Read(101, "BINARY").ReturnHex(" ", 16)
+Dim r As New cRes
+Debug.Print r.Read(101, "BINARY").ReturnHex(" ", 16)
 ```
 
 ### ReturnBase64
@@ -118,10 +120,11 @@ Syntax: *object*.**ReturnBase64** ( [ *Prefix* ] ) **As String**
 
 Base64 encoding is performed via the MSXML2 DOM: an XML element is created, its `DataType` is set to `"bin.base64"`, the byte array is assigned to `nodeTypedValue`, and the resulting text is read back. This requires `MSXML2.DOMDocument` to be available on the target machine. MSXML puts a line feed (`vbLf`) after every 72 characters of Base64, and **ReturnBase64** does not remove them.
 
-```tb
+```tb check_build
 ' Embed a PNG resource as a Base64 data-URI for an HTML img tag.
+Dim r As New cRes
 Dim src As String
-src = New cRes().Read(101, "PNG").ReturnBase64(Base64Prefix_ImagePNG)
+src = r.Read(101, "PNG").ReturnBase64(Base64Prefix_ImagePNG)
 ' src is now: "data:image/png;base64,iVBORw0KGgo..."
 ```
 
@@ -136,15 +139,18 @@ Passes the internal byte array to `Global.LoadPicture`, the twinBASIC form of **
 
 The returned **IPictureDisp** can be assigned directly to the **Picture** property of a **PictureBox**, **Image**, or **Form**:
 
-```tb
-Picture1.Picture = New cRes().Read(101, "PNG").ReturnPicture()
+```tb check_build
+Sub ShowLogo(ByVal Target As PictureBox)
+    Dim r As New cRes
+    Set Target.Picture = r.Read(101, "PNG").ReturnPicture()
+End Sub
 ```
 
 ## Example
 
 This example loads a PNG resource by ID, displays it in a picture box, and also logs the Base64 representation to the immediate window.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Dim res As New cRes
 

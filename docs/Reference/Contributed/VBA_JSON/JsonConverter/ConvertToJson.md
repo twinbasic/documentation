@@ -48,7 +48,7 @@ The `json_CurrentIndentation` parameter in the full signature is for internal re
 
 This example converts a **Dictionary** to a compact JSON string and then to a pretty-printed one.
 
-```tb
+```tb check_build
 Dim Person As New Dictionary
 Person("name") = "Alice"
 Person("age") = 30
@@ -72,7 +72,7 @@ Pretty = ConvertToJson(Person, 2)
 
 This example converts a **Dictionary** that contains a nested **Collection** and a **Null** value.
 
-```tb
+```tb check_build
 Dim Tags As New Collection
 Tags.Add "twinBASIC"
 Tags.Add "JSON"

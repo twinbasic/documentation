@@ -22,7 +22,7 @@ When *FilePath* is omitted or empty, **FilePropertyExplorer.BrowseAndOpenFile** 
 
 This example prints the shell properties of a specific file by passing a path, then repeats the call without a path to let the user choose a file interactively.
 
-```tb
+```tb check_build
 ' Print properties for a known file.
 DisplayInDebugConsole "C:\Windows\notepad.exe"
 
