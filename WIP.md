@@ -579,6 +579,16 @@ whitespace inside inline `<code>` is content.
 
 Favor concise one-line git commit messages.
 
+**A piece of work goes in a short-lived worktree unless the owner says not to** (owner,
+2026-10-11): ask when starting, and without a no, proceed. `git worktree add -b <name>
+.claude/worktrees/<name> staging` branches from the local `staging`, which holds commits
+`origin` may not have yet; give it a `node_modules` junction to the main checkout's
+(`New-Item -ItemType Junction`) and run `build.bat` once. When the work is done: rebase on
+`staging`, fast-forward `staging` in the main checkout (git refuses while a file the branch
+changes has uncommitted changes there), then remove the junction on its own (`cmd /c rmdir
+<worktree>\node_modules`; a recursive delete would follow it into the main checkout's
+`node_modules`), then the worktree and the branch.
+
 **Lint before every commit:** `node scripts/check_lint.mjs`, a fraction of a second. It
 runs Biome's linter and formatter check over the tooling and the site's two scripts, and
 fails on a warning as well as an error, because Biome reports an unused import as a warning,

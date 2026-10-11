@@ -213,6 +213,16 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   `<path>.light…`; the run ends with a count per theme of each state.
 - Shared helpers: `openMenu`, `hoverItem`, `closeMenus`, `waitModal`, `closeModal`, the cut-out,
   the snap.
+- **Retry a failure once before looking into it.** These setups fail now and then and pass on
+  a second run of the same selection: `package-server` ("typing fmt. opened no completion
+  list", "OLE Guid and interface definitions stayed ticked"; it needs the network), `help`
+  ("the pane did not show /tB/Modules/Interaction/MsgBox", the setup taking minutes instead of
+  about 90 s), `sample6` ("the Project Explorer has no row Sources" or "Packages"), and `web`
+  and `webpage`, whose pages are live and change of their own accord. A picture that fails the
+  same way twice is a real fault.
+- **`Features/Images/a6525b1d...png` changes width from run to run** (1512 or 1514 px); its
+  light picture is narrower again (1498). Each comes out within the 32-pixel tolerance, so the
+  run passes, but the file can be rewritten for the width alone.
 
 ## Standing rules for what a picture shows (owner, 2026-10-09)
 
@@ -697,6 +707,11 @@ scrollbars. `svgOfPage` measures each frame in an isolated world of its own
 (`Page.createIsolatedWorld`), so its `@font-face` rules and styles apply; one `PictureFonts`
 serves the whole picture. A frame of another site is a target of its own and is not in the
 snapshot: it is reported as "a frame of another process" (Help_Window's, the Webpage pane's).
+Not done yet, and the way to do it: attach to that frame's own target (`Target.setAutoAttach`
+with `flatten`, or the targets `shoot_docs` already finds for the PNGs), take its snapshot and
+measure it there, and nest it at its `<iframe>`'s content box as a same-site frame is
+(`DOM.getFrameOwner` names the `<iframe>` of a frame id). A bench page gets such a frame from
+an `<iframe>` on `127.0.0.1` while the page is on `localhost`: another site, so its own process.
 
 **Web fonts** are found by CSS font matching on the run's `font-family` list, style and weight
 (`webFontFiles`, in the page), not by the face's own name: the site's Inter calls itself "Inter
@@ -765,5 +780,19 @@ decoration, geometry set by CSS (`d`, `width`, `x`), and animation (the state at
 is drawn). A duplicate id in one document resolves inside the svg first, where the browser
 takes the document's first. The WebView2 download page's Version arrow is an `unsteady`
 region. Drawn wrongly: a collapsed table
-border, doubled (the IDE has none). A canvas is a raster (the editor's minimap is drawn with
+border, doubled (the IDE has none); text is set on its exact baseline, where Chromium rounds
+the baseline to a whole CSS pixel (a device pixel off at most; an underline uses the rounded
+one). A canvas is a raster (the editor's minimap is drawn with
 `putImageData`). The run reports each under "not drawn".
+
+**Open, the owner's** (2026-10-11):
+- The SVGs are to be checked in browsers other than Chromium's, with an online tool; leave
+  them as they are until then.
+- fontTools' `gvar` subsetting bug, worked round by `patch_gvar_subset`, is to be reported
+  upstream: one line in `subset/__init__.py` (a glyph missing from `gvar.variations` read as
+  having no variation), with a reproducer on a font with two axes under a free licence, such as
+  Inter 4's variable file, never a Microsoft font.
+- Whether the licences of the Microsoft fonts the pictures embed subsets of allow publishing
+  them in the SVGs. Their embedding flags (OS/2 `fsType`) allow it: Segoe UI (regular, bold,
+  semilight), Consolas, Segoe MDL2 Assets, Segoe UI Symbol and the web's Segoe UI Variable are
+  0x8, editable embedding; Cascadia Mono is 0x0, installable. The flags are not the licence.
