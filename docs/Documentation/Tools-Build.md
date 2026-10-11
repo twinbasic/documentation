@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Tools-Build
 # Build and Generation Tools
 {: .no_toc }
 
-Builds the site and the PDF book, compares two builds, and regenerates the committed artifacts the build reads: the webfonts, the diagram font metrics and the packages' declared API. The command-line conventions every tool shares are under [Command-line conventions](Tools#command-line-conventions).
+Builds the site and the PDF book, compares two builds, and regenerates the committed files that the build or a maintainer reads: the webfonts, the diagram font metrics, the packages' declared API, and the API snapshots the reference is compared with. The command-line conventions every tool shares are under [Command-line conventions](Tools#command-line-conventions).
 
 * TOC goes here
 {:toc}
@@ -163,6 +163,58 @@ The JSON is committed and the build never runs the tool. It needs a twinBASIC in
 It shares [`census_attributes.mjs`](Tools-Samples#census-attributes)'s export and cache, and takes the same `--ide`, `--exported`, `--cache` and `--refresh` flags; `--out` writes elsewhere. Packages are keyed by the project name, not always the folder's: TwinBasicAssertions is `Assert`, and the three CEF builds are one `cefPackage`, whose APIs the tool checks are identical.
 
 Exit codes: **0** the file was written (with `--check`, it is up to date); **1** with `--check`, the file is stale; **2** a refused command line, no install, an export that failed, packages that declare different APIs under one name, or a crash.
+
+## twin-index.mjs
+{: #twin-index }
+
+    node indexer/twin-index.mjs sync [--package <name> | --packages <a>,<b>] [--ide <path> | --release]
+    node indexer/twin-index.mjs analyze [--package <name> | --packages <a>,<b> | --all]
+
+The package indexer, which finds the documentation work that a new twinBASIC build leaves. `sync` reads the sources of the packages and writes an `api.json` snapshot of each: every type the package declares and every member of each, with its visibility, kind and declaration. `analyze` compares the current snapshot of each documented package with the one the reference was last brought up to date with, and reports the public symbols to create a page for, to update and to remove.
+
+The build does not run it and it is not a gate. It sits in `indexer/` rather than `scripts/` because it keeps state of its own. It reads the sources with `scripts/lib/twin-api.mjs`, the scanner that [`build_package_api.mjs`](#build-package-api) uses. [`test/indexer.test.mjs`](Tools-Toolchain-Tests#indexer-test) tests it without a network, git or a twinBASIC install. The layout of `indexer/` and the format of `api.json` are in [`indexer/README.md`](https://github.com/twinbasic/documentation/blob/main/indexer/README.md).
+
+**Where the packages come from.** The built-in and default packages (`VB`, `VBA`, `VBRUN` and the ones the IDE ships) are read from the files of a twinBASIC install, the unzipped IDE release. `--ide` names it, as its folder or its `twinBASIC.exe`; without it the tool takes `TB_IDE`, and then the newest `twinBASIC_IDE_BETA_<n>` folder on the Desktop. The BETA number comes from the install's `ide/build.js`, else from its folder name. `--release` downloads the same packages from the latest GitHub release instead, for a machine with no install; an install and the release zip of its build hold the same files, so either gives the same `api.json`. Nothing starts the IDE. The contributed packages are downloaded from TWINSERV, the package repository. A run that names only built-in or default packages does not contact it, so `sync --package VBA` works offline.
+
+| Option | Command | Effect |
+|---|---|---|
+| `--package <name>` | both | Limits the command to one package, by the name the store has. |
+| `--packages <a>,<b>` | both | The same for a comma-separated list. Not with `--package`. |
+| `--all` | `analyze` | Covers every package in the store, not only the documented ones. Not with `--package` or `--packages`. |
+| `--ide <path>` | `sync` | The twinBASIC install to read the built-in and default packages from. Not with `--release`. |
+| `--release` | `sync` | Downloads the built-in and default packages from the latest GitHub release. |
+
+A name that matches no package is reported, the other packages are done, and the exit code is 1.
+
+**What `sync` writes.** `sync` reads again only what changed.
+
+| Path | Committed | Holds |
+|---|---|---|
+| `indexer/.packages/` | no | The store, a git repository of its own that `sync` creates. Each package has its `sources/`, its `Settings` file, its `api.json` and an `indexer.json` that records which version of the scanner wrote the `api.json`. A new store starts from the committed snapshots, so its history shows what changed in each package's API. |
+| `indexer/.packages/manifests/` | no | What was last read: `built-in.json` (the source, `install` or `release`, and the build) and `contributed.json` (the TWINSERV versions). They never hold the path of an install, which contains a user name. |
+| `indexer/.packages/report.json` | no | The report of the last `analyze`. |
+| `indexer/snapshots/<group>/<package>/api.json` | yes | A copy of the `api.json` of each package the reference documents, for `analyze` to compare with. `<group>` is `default`, `built-in` or `contributed`. |
+
+`sync` judges a package by what the store holds, never by the manifest. A package is read again when the store lacks its sources or its `api.json`, or holds an `api.json` in an older format or from another build. A package whose `api.json` another version of the scanner wrote is indexed again from the sources already in the store, with no download. A clone has no store, so its first `sync` reads every package.
+
+**Which packages are documented.** A section of the reference documents a package when its folder under `docs/Reference/Default/`, `Built-In/` or `Contributed/` has an `index.md`, and the landing page's `package_name` lists the package (without that key, the folder's name is the package's). The page's `package_name`, `indexed_from`, `exclude_from_docs` and `exclude_kinds` are described under [Frontmatter and permalinks](Authoring#frontmatter-and-permalinks); the indexer reads them and the build does not put them into any page. `sync` copies a package's `api.json` to `indexer/snapshots/` only if the reference documents the package and that run indexed it.
+
+**What `analyze` reports.** By default it covers the documented packages and says how many others it left out. `--package` and `--packages` name any package. A package that no section documents has no pages to compare with, so every public symbol of it is listed as one to create, and so it is for every package under `--all`. A symbol is a type, or a name that a type declares: the Get, Let and Set of a property, and the overloads of a name, are one symbol, as the reference has one page for each. Only Public and Protected members of public types count, less what `exclude_from_docs` and `exclude_kinds` name. Each package is analyzed in one of two modes.
+
+- **Update mode**, for a section whose landing page has `indexed_from`. The current `api.json` is compared with the snapshot committed at `HEAD`, provided that snapshot's `version` is the `indexed_from` tag. The report lists the symbols added (to create), changed (to update) and removed (to flag).
+- **Audit mode**, for a section with no `indexed_from`, and when update mode has nothing to compare with: no committed snapshot, one in an older format, or one of another version, each with a warning. Every public symbol is matched by name with the `title:` of the pages in the section, and those with no page are to create.
+
+`analyze` exits 0 whenever it writes its report, whatever the report lists: the list is the product, not a failure.
+
+**Moving the reference to a new build:**
+
+1. Run `sync` with the new install. It writes the new snapshots into the working tree, and `analyze` still compares with the ones at `HEAD`.
+2. Run `analyze` and write the pages it lists.
+3. Set `indexed_from` on each section to the new build's tag (`beta-x-0997` is BETA 997), and commit the pages, the new `indexed_from` and the new snapshots together. A snapshot committed on its own, or an `indexed_from` that is not the snapshot's `version`, sends the next `analyze` into audit mode.
+
+**After a change to the scanner or the model.** The code that writes `api.json` is `scripts/lib/twin-api.mjs`, `scripts/lib/twin-declarations.mjs`, `indexer/lib/api-model.mjs` and `indexer/lib/vb6-preprocess.mjs`. A change to any of them, the `format` number of `api.json` included, can change what the same sources index to. The next `sync` indexes every package again, and the committed snapshots have to be written again from the build they record, with `sync --ide` naming that build's install, in the same commit as the change. Otherwise `analyze` compares the output of the new code with that of the old and reports the difference as changes to the API. `--release` cannot do this: it downloads only the latest release.
+
+Exit codes: **0** the command finished: `sync` wrote every package it was asked for, or found it up to date; `analyze` wrote its report. **1** a package named by `--package` or `--packages` failed to sync, or does not exist; the others were done. **2** a refused command line, no twinBASIC install found, no snapshots to analyze (run `sync` first), or a crash.
 
 ## convert_em_dash_separators.mjs
 {: #convert-em-dash-separators }

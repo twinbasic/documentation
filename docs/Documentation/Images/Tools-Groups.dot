@@ -12,7 +12,7 @@
 // The clusters side by side in one row must have the same number of node rows.
 // dot spaces its ranks for the whole graph, so where a shorter cluster ends,
 // the gap its border needs opens inside its taller neighbour too. The
-// invisible nodes (wp, cp1, cp2, ep, dp) pad the shorter ones.
+// invisible nodes (wp, wp2, cp1, cp2, ep, dp) pad the shorter ones.
 //
 // Every node and cluster label is a link, set in the block at the end so the
 // layout above stays readable: a node to its tool's entry, by the id its
@@ -67,8 +67,8 @@ digraph tools_groups {
         w1 [label="build.bat"]      w2 [label="serve.bat"]          w3 [label="check.bat"]
         w4 [label="test.bat"]       w5 [label="book.bat"]           w6 [label="examples.bat"]
         w7 [label="addin-test.bat"] w8 [label="ide-test.bat"]       w9 [label="try-help-addin.bat"]
-        wp [style=invis label=""]
-        w1 -> w4 -> w7 -> wp
+        wp [style=invis label=""]   wp2 [style=invis label=""]
+        w1 -> w4 -> w7 -> wp -> wp2
         w2 -> w5 -> w8
         w3 -> w6 -> w9
         { rank=same; w4 w5 w6 }
@@ -81,7 +81,8 @@ digraph tools_groups {
         b3 [label="compare_trees"]  b4 [label="survey_tooling"]
         b5 [label="convert_em_dash_separators"] b6 [label="build_fonts.py"]
         b7 [label="build_dot_metrics"] b8 [label="build_package_api"]
-        b1 -> b3 -> b5 -> b7
+        b9 [label="twin-index"]
+        b1 -> b3 -> b5 -> b7 -> b9
         b2 -> b4 -> b6 -> b8
         { rank=same; b3 b4 }
         { rank=same; b5 b6 }
@@ -185,7 +186,7 @@ digraph tools_groups {
     { rank=same; t1 t2 t3 t4 }
     { rank=same; e1 e2 i1 i2 d1 }
     edge [weight=1]
-    wp -> s1    b7 -> c1
+    wp2 -> s1   b9 -> c1
     s9 -> t1    s10 -> t2   cp2 -> t3   c6 -> t4
     t25 -> e1   t22 -> i1   t24 -> d1
 
@@ -260,6 +261,8 @@ digraph tools_groups {
         tooltip="Measures the advance widths of Inter in a browser and writes builder/inter-metrics.json, which the build installs into Graphviz before it lays out a diagram."]
     b8 [URL="Tools-Build#build-package-api"
         tooltip="Writes builder/package-api.json, the types and public members that the packages of a twinBASIC install declare. Needs a twinBASIC install."]
+    b9 [URL="Tools-Build#twin-index"
+        tooltip="Indexes the twinBASIC packages into api.json snapshots, and lists the symbols that the reference has still to document, change or remove."]
 
     s1  [URL="Tools-Site-Checks#check-links"
          tooltip="Checks the links of a built tree on the filesystem, plus optional integrity checks. Several passes run in parallel."]
