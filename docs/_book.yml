@@ -497,13 +497,6 @@ parts:
         landing_is_target: true
         outline_closed: true
 
-      - title: BigNumberLib Package
-        subtitle: Arbitrary-precision signed integer arithmetic
-        landing_page: /tB/Packages/Contributed/BigNumberLib/
-        page: /tB/Packages/Contributed/BigNumberLib/
-        landing_is_target: true
-        outline_closed: true
-
       - title: FileProps Package
         subtitle: The Windows shell properties of a file
         landing_page: /tB/Packages/Contributed/FileProps/
@@ -543,13 +536,6 @@ parts:
         subtitle: The CommonDialog class, for the Windows common dialogs
         landing_page: /tB/Packages/Contributed/VBComDlg/
         page: /tB/Packages/Contributed/VBComDlg/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: WinReg Package
-        subtitle: Registry keys and values, read, written, deleted and enumerated
-        landing_page: /tB/Packages/Contributed/WinReg/
-        page: /tB/Packages/Contributed/WinReg/
         landing_is_target: true
         outline_closed: true
 

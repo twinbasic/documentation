@@ -33,7 +33,7 @@ sibling. History goes nowhere: git keeps it.
 
 Reference documentation is **complete** for all thirteen packages: VBA, VBRUN, VB, WebView2, Assert, CustomControls, CEF, WinEventLogLib, WinNamedPipesLib, WinServicesLib, tbIDE, WinNativeCommonCtls and AppGlobalClassObject. It is adapted from primary sources: Microsoft VBA-Docs (CC-BY-4.0) for the runtime library, `.twin` source for the twinBASIC-specific packages. The CEF and WebView2 packages also carry a tutorial set.
 
-Nine **contributed** packages from TWINSERV have sections under `docs/Reference/Contributed/`: FileProps, WinReg, TwinTimerPackage, TBMANLIB_ListBoxHScroll, TBMANLIB_RES and VBA_JSON complete; AutoCompleteLib, BigNumberLib and VBComDlg their main class only. Each has a chapter in the book's Packages part.
+Nine **contributed** packages from TWINSERV have sections under `docs/Reference/Contributed/`: FileProps, WinReg, TwinTimerPackage, TBMANLIB_ListBoxHScroll, TBMANLIB_RES and VBA_JSON complete; AutoCompleteLib, BigNumberLib and VBComDlg their main class only. Each published one has a chapter in the book's Packages part. **BigNumberLib and WinReg are not published**: their packages do not compile on BETA 1005, so their pages are kept but excluded in `_config.yml`'s `exclude:` (owner, 2026-10-11), whose comment says how to bring one back.
 
 The rest of this file is the maintenance guide for updating existing pages or adding new ones: package surface notes, page conventions, and the integrity check.
 

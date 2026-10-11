@@ -334,7 +334,9 @@ the repository's to commit: four of the nine ship no licence file, and WinReg em
   1005: each passes a pointer to a `ByRef` structure parameter without `ByVal` (TB5001). The
   template-alone build finds those rows; the run prints them as a note naming the package
   rather than as a template FAIL, every other template row still fails, and the samples are
-  judged by their own rows as before. Their landing pages say so in a NOTE.
+  judged by their own rows as before. Their landing pages say so in a NOTE, and both sections
+  are excluded from the site until the packages compile; `examples.bat` still compiles their
+  samples, since it reads every page under `docs/` whatever `exclude:` says.
 - **When a section's `indexed_from` moves to a new version, change the version fields in its
   `test/example-projects/contributed-<Package>/Settings` with it**, or its samples compile
   against the old package. A new contributed section needs a template of its own: a copy of
