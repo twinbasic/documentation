@@ -16,55 +16,10 @@ Every command on this menu acts on the controls selected in the form designer, s
 
 ![The same Format menu with two controls selected in the form designer: all of its commands are available rather than greyed out.](Images/Menu_Format_1.png){:width="232" height="281"}
 
-- Align
-- Make Same Size
-
----
-- Horizontal Spacing
-- Vertical Spacing
-
----
-- Center In Container (Horizontally)
-- Center In Container (Vertically)
-
----
-- Bring To Front
-- Send To Back
-
----
-- Lock Controls
-
 ![The Format menu with Align highlighted and its submenu open to the right. Left, Center (Horizontal) and Right sit above Top, Center (Vertical) and Bottom, with To Grid on its own below; the four edge commands carry ALT plus arrow-key shortcuts. All are available.](Images/Menu_Format_Align.png){:width="436" height="281"}
-
-- Left <kbd>Alt</kbd>+<kbd>Left</kbd>
-- Center (Horizontal)
-- Right <kbd>Alt</kbd>+<kbd>Right</kbd>
-
----
-- Top <kbd>Alt</kbd>+<kbd>Up</kbd>
-- Center (Vertical)
-- Bottom <kbd>Alt</kbd>+<kbd>Down</kbd>
-
----
-- To Grid
 
 ![The Format menu with Make Same Size highlighted and its submenu open to the right, offering Width (Widest), Width (Narrowest), Height (Tallest) and Height (Shortest), each with a CTRL plus SHIFT plus arrow-key shortcut.](Images/Menu_Format_MakeSameSize.png){:width="523" height="281"}
 
-- Width (Widest) <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Right</kbd>
-- Width (Narrowest) <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Left</kbd>
-- Height (Tallest) <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Down</kbd>
-- Height (Shortest) <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Up</kbd>
-
 ![The Format menu with Horizontal Spacing highlighted and its submenu open to the right. Make Equal is greyed out; Increase, Decrease and Remove are available.](Images/Menu_Format_HorizontalSpacing.png){:width="345" height="281"}
 
-- Make Equal
-- Increase
-- Decrease
-- Remove
-
 ![The Format menu with Vertical Spacing highlighted and its submenu open to the right. Make Equal is greyed out; Increase, Decrease and Remove are available.](Images/Menu_Format_VerticalSpacing.png){:width="345" height="281"}
-
-- Make Equal
-- Increase
-- Decrease
-- Remove

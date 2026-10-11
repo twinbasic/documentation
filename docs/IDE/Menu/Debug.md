@@ -12,23 +12,6 @@ redirect_from:
 
 ![The Debug menu open with every stepping, watch and breakpoint command greyed out --- Step Into, Step Over, Add Watch, Clear Watches, Toggle Breakpoint, Clear All Breakpoints and Set Next Statement --- leaving Debugger Options at the foot of the menu as the only available entry, marked with a submenu arrow.](Images/Menu_Debug.png){:width="291" height="258"}
 
-- Step Into <kbd>F8</kbd> / <kbd>F11</kbd>
-- Step Over <kbd>Shift</kbd>+<kbd>F8</kbd> / <kbd>F10</kbd>
-
----
-- Add Watch... <kbd>Shift</kbd>+<kbd>F9</kbd>
-- Clear Watches
-
----
-- Toggle Breakpoint <kbd>F9</kbd>
-- Clear All Breakpoints <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F9</kbd>
-
----
-- Set Next Statement (Jump To Line) <kbd>Ctrl</kbd>+<kbd>F9</kbd>
-
----
-- Debugger Options
-
 ## When a run-time error stops the program
 {: index="break mode" }
 
@@ -105,9 +88,6 @@ The last two are defects, as of BETA 1005.
 ## Debugger Options
 
 ![The same Debug menu with Debugger Options highlighted and its submenu open to the right, holding two entries: Break On All Errors, unticked, and Allow Breakpoints (Debuggable), ticked.](Images/Menu_Debug_DebuggerOptions.png){:width="534" height="285"}
-
-- Break On All Errors
-- ✓ Allow Breakpoints (Debuggable)
 
 ![A close-up of that submenu on its own: a tick against Allow Breakpoints (Debuggable) and none against Break On All Errors.](Images/Menu_Debug_DebuggerOptions_2.png){:width="252" height="56"}
 

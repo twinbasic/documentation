@@ -12,16 +12,6 @@ redirect_from:
 
 ![The Project menu open with every command greyed out: Add, which carries a submenu arrow, References with CTRL+T, Project Settings, Open Project Folder and Open Build Output Folder.](Images/Menu_Project.png){:width="200" height="169"}
 
-- Add
-
----
-- References... <kbd>Ctrl</kbd>+<kbd>T</kbd>
-- Project Settings...
-
----
-- Open Project Folder...
-- Open Build Output Folder...
-
 ## Add
 
 **Add** is the same as Right Click Add on the [Project Explorer](../../Project/Explorer)

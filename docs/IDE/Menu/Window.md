@@ -33,12 +33,6 @@ Opens a dialog that lists the built-in layouts, which are read-only, and the sav
 
 Five switches decide what can be done to panels. A tick means the action is allowed. See [Panel Features](../../Customising/Panel-Layouts#panel-features).
 
-- **Allow resizing of docked panels**
-- **Allow rearrangement of docked panels**
-- **Allow tear-out of docked panels**
-- **Allow resizing of floating panels**
-- **Allow movement of floating panels**
-
 ## Keyboard Shortcuts
 
 Switches groups of keyboard shortcuts on and off. See [Keyboard shortcuts](../../Customising/Keyboard-Shortcuts).

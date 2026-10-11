@@ -12,26 +12,6 @@ redirect_from:
 
 ![The File menu open below the menu bar. New Project with CTRL+N, Open Project with CTRL+O, Open Recent, and Exit with ALT+F4 are available; Close Project, Save Project, Save Project As, Export Project with CTRL+E, Save Current Document, Build and Clean are all greyed out.](Images/Menu_File.png){:width="190" height="337"}
 
-- New Project... <kbd>Ctrl</kbd>+<kbd>N</kbd>
-- Open Project... <kbd>Ctrl</kbd>+<kbd>O</kbd>
-- Open Recent...
-- Close Project
-
----
-- Save Project <kbd>Ctrl</kbd>+<kbd>S</kbd>
-- Save Project As...
-
----
-- Export Project... <kbd>Ctrl</kbd>+<kbd>E</kbd>
-- Save Current Document
-
----
-- Build
-- Clean
-
----
-- Exit <kbd>Alt</kbd>+<kbd>F4</kbd>
-
 ## Export Project
 
 Writes the open project out to a folder as separate files, instead of the single `.twinproj` file. The folder gets the project's `Settings` file, its `Sources`, `Resources` and other folders, and a `Packages` folder with the full source of every package the project references. For a small project that uses the **VB** package, the export held 477 files: two of the project's own, and 475 under `Packages`. <kbd>Ctrl</kbd>+<kbd>E</kbd> runs the same command.
