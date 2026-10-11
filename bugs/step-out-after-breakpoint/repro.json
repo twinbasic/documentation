@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:debugging",
+  "tests": [
+    "after a stop at a breakpoint in a procedure, Step Out does not stop in its caller: the run goes on",
+    "after a stop at a breakpoint in a procedure, F8 off its End Sub does not stop in its caller, but in the next procedure the caller calls"
+  ],
+  "steps": "1. A Sub Main that calls Direct, then prints m2, then calls more procedures; Direct holds one Debug.Print.\n2. Put a breakpoint on Direct's Debug.Print line and press F5. The run stops there.\n3. Step Out (Ctrl+Shift+F8). The run does not stop in Main on the line after the call: m2 is printed and the run goes on to the next breakpoint, error or the end.\n4. Again, but press F8 twice, to End Sub and off it: the next stop is the Sub line of the next procedure Main calls, after m2.\nControl: a breakpoint on Main's call to Direct, F8 into Direct, then Step Out stops in Main on the m2 line."
+}

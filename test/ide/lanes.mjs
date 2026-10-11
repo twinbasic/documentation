@@ -33,4 +33,5 @@ export default [
   { file: "code-find.test.mjs" },
   { file: "code-editor.test.mjs" },
   { file: "memory.test.mjs" },
+  { file: "debugging.test.mjs" },
 ];

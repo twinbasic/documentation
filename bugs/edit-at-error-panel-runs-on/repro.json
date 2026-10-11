@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:debugging",
+  "tests": [
+    "an edit at the error panel prints Aborting, and then the rest of Main runs"
+  ],
+  "steps": "1. A Sub Main that calls Fails, then prints main end; Fails raises an error with Err.Raise and then prints after raise.\n2. Press F5. The run stops at the error panel on the Err.Raise line.\n3. Type a letter anywhere in the code editor. The DEBUG CONSOLE prints [EDIT & CONTINUE] not yet supported.  Aborting., then main end: the rest of Fails is skipped, and the rest of Main runs.\nControl: the same edit at a breakpoint prints Aborting. and aborted, and nothing more of the program runs."
+}

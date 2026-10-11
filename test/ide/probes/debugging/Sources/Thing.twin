@@ -1,0 +1,8 @@
+' A class with a Sub that changes its state, for the hover test.
+Class Thing
+    Public Value As Long
+
+    Public Sub Bump()
+        Value = Value + 1
+    End Sub
+End Class

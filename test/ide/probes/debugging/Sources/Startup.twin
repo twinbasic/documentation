@@ -1,0 +1,41 @@
+' test/ide/debugging.test.mjs runs this program in the debugger. It finds the lines it uses
+' by their @ marks, so a mark moves with its line.
+Module Startup
+
+    Public Sub Main()
+        Debug.Print "m1"
+        Direct   ' @CALLDIRECT
+        Debug.Print "m2"   ' @M2
+        Locals
+        Debug.Print "m3"
+        Fails
+        Debug.Print "main end"
+    End Sub
+
+    Public Sub Direct()
+        Debug.Print "in direct"   ' @DIRECT
+    End Sub
+
+    Public Function Answer() As Long
+        Answer = 42   ' @ANSWER
+    End Function
+
+    Public Sub Locals()
+        Dim n As Long = 7
+        Dim s As String = "hello"
+        Dim d As Double = 2.5
+        Dim dt As Date = #10/11/2026 12:30:00 PM#
+        Dim t As New Thing
+        t.Value = 5
+        t.Bump   ' @BUMP
+        Debug.Print "locals end " & t.Value   ' @LOCALSEND
+    End Sub
+
+    Public Sub Fails()
+        Debug.Print "fails start"
+        Err.Raise 5, , "Fails with A & B"   ' @RAISE
+        Debug.Print "after raise"
+    End Sub
+
+    ' The tests type into the end of this line: @EDIT
+End Module

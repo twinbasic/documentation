@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:debugging",
+  "tests": [
+    "a compile error in a procedure Main calls is reported at F5 as a codegen error to report, at Main's call"
+  ],
+  "steps": "1. A Sub Main whose line 7 calls Direct. Add the line x = = 1 to Direct; the editor marks it as an error.\n2. Press F5. The DEBUG CONSOLE prints [LINKER] compilation (codegen) error detected in 'Startup.Main' at line #7, and the run stops on Main's Sub line with a panel headed ERROR OCCURRED: COMPILATION (CODEGEN) ERROR AT LINE #7.  PLEASE REPORT THIS ERROR TO https://git.io/JMh6S. Nothing of Main runs."
+}

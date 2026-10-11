@@ -3238,3 +3238,275 @@ The tab tinted as soon as it opens, as the Project Explorer row is.
 Severity: low. The Project Explorer and the Diagnostics panel show the problems.
 
 <!-- Reproducer: bugs/tab-tint-opened-later/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "a tab opened on a file the compiler has already reported stays untinted, while its Project Explorer row is tinted", which passes on BETA 1005; the control "after an edit to the file and its undo, the compiler reports it again and its tab is tinted" passes too. The lane's module is test/ide/probes/code-editor/Sources/Helpers.twin, whose warning is TB0018). No project and no zip. docs/IDE/Code/Editor.md carries a NOTE for it, under "Tabs"; when a fixed build is released, that NOTE goes. scripts/shoot_docs.mjs's Tabs_States shot edits and undoes Inventory.twin to get the tint, and can drop that once the fix is released. Found 2026-10-11 by the screenshot work for the Writing code pages. -->
+
+---
+
+## The Variables panel's edit box cuts a String at an apostrophe, and leaving it sets the variable to the empty string
+
+**Describe the bug**
+Double-clicking a String variable in the VARIABLES panel opens an edit box holding its value, but only up to the first apostrophe: for `"it's"` the box holds `"it`. Leaving the box --- Enter, or a click on another row --- commits its text even when nothing was typed, and the variable becomes the empty string. Nothing shows that the value was changed. It was observed in an IDE started with an `APPDATA` of its own, reading the row and `? s` in the DEBUG CONSOLE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Stop at a breakpoint in a procedure with `Dim s As String`.
+2. In the DEBUG CONSOLE, run `s = "it's"`. The VARIABLES panel shows `"it's"`.
+3. Double-click the `s` row. The edit box holds `"it`.
+4. Press Enter without typing. The row shows `""`, and `? s` prints an empty line.
+5. Set `s = "it's"` again, double-click the row and click another row. The same.
+
+**Expected behavior**
+The box holding the whole value, `"it's"`, and leaving it with nothing typed changing nothing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`onVariableDblClick` (`ide/main.js`) builds the box as HTML, `"<input id='renameInput' ... value='" + value + "' ...>"`, so the apostrophe ends the attribute; the box's `onblur` sends `setVariable` with whatever the box holds. A value with double quotes (`"say ""hi"""`) is shown and kept correctly. Escape leaves the variable as it was.
+
+Severity: medium. A variable's value is changed with nothing typed and nothing shown, and the program then runs on with it.
+
+<!-- Reproducer: bugs/variables-edit-apostrophe/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the tests "the Variables edit box holds a String only up to an apostrophe, and Enter sets the variable to the empty string" and "a click away from the Variables edit box, with nothing typed, sets a String with an apostrophe to the empty string", which pass on BETA 1005; the control "Escape in the Variables edit box leaves a String with an apostrophe as it was" passes too). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Inspecting.md, where it describes editing a value in Variables; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 2). -->
+
+---
+
+## Hovering over a Sub call while paused runs the Sub
+
+**Describe the bug**
+While a program is paused, holding the pointer over a word of the code evaluates the expression under it and shows the result. Over the name of a **Sub** in a call, such as `Bump` in `t.Bump`, the evaluation calls the Sub: its code runs, with all its effects, and the hover shows `t.Bump:   0`. Each hover runs it again. It was observed in an IDE started with an `APPDATA` of its own, with `? t.Value` in the DEBUG CONSOLE before and after the hover.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. A project with a class:
+   ```
+   Class Thing
+       Public Value As Long
+       Public Sub Bump()
+           Value = Value + 1
+       End Sub
+   End Class
+   ```
+   and a procedure that holds `Dim t As New Thing`, `t.Value = 5`, `t.Bump` and a line after it.
+2. Stop at a breakpoint on the line after `t.Bump`. In the DEBUG CONSOLE, `? t.Value` prints `6`.
+3. Hold the pointer over `Bump` in `t.Bump` until the hover shows. It reads `t.Bump:   0`.
+4. `? t.Value` prints `7`.
+
+**Expected behavior**
+A hover that does not run a Sub: it has no value to show, so no hover, or the compiler's description of the Sub.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The hover sends `evaluate` with `context: "hover"` and the expression `t.Bump`. A hover also runs a Function or a Property Get to show its value (`t.Doubled`, `Level1(n)`), which is how the hover is meant to work; for a Sub nothing is shown that could justify running it. Hovering over a variable, such as `Value` in `t.Value`, shows `t.Value:   6` and changes nothing.
+
+Severity: medium. The program's state changes with nothing shown, from moving the mouse.
+
+<!-- Reproducer: bugs/hover-runs-sub/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the test "hovering over a Sub call while paused runs the Sub", which passes on BETA 1005; the control "hovering over a variable while paused shows its value" passes too). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Inspecting.md, where it describes the hover while paused; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 6). -->
+
+---
+
+## An edit at the run-time error panel prints Aborting, and then the rest of the program runs
+
+**Describe the bug**
+An edit to the code while a program is paused ends the run, since Edit and Continue is not supported: at a breakpoint the DEBUG CONSOLE prints `[EDIT & CONTINUE] not yet supported.  Aborting.` and `aborted`, and nothing more runs. At the run-time error panel the same edit prints the same `Aborting.` line, but then only the failing procedure ends: its callers go on, and the rest of the program runs. It was observed in an IDE started with an `APPDATA` of its own, reading the DEBUG CONSOLE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Run a project with:
+   ```
+   Module Startup
+       Public Sub Main()
+           Fails
+           Debug.Print "main end"
+       End Sub
+
+       Public Sub Fails()
+           Err.Raise 5, , "Fails with A & B"
+           Debug.Print "after raise"
+       End Sub
+   End Module
+   ```
+2. The run stops at the error panel on the `Err.Raise` line.
+3. Type a letter anywhere in the code editor. The DEBUG CONSOLE prints `[EDIT & CONTINUE] not yet supported.  Aborting.`, then `main end`, then `(time taken: ...)`.
+
+**Expected behavior**
+The run aborted, as the message says and as the same edit at a breakpoint does: `aborted`, and no `main end`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+What runs is what the panel's **Stop** button runs: it ends only the failing procedure, which #2441 reports. Main runs on with code that the edit has since changed in the editor but not in the program.
+
+Severity: medium. Code runs after the reader was told the run is aborted --- files written, a database changed --- with nothing to warn of it.
+
+<!-- Reproducer: bugs/edit-at-error-panel-runs-on/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the test "an edit at the error panel prints Aborting, and then the rest of Main runs", which passes on BETA 1005; the control "an edit at a breakpoint aborts the run: the rest of Main does not run" passes too). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Running.md, where it says what ends a run; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 8). -->
+
+---
+
+## After an edit in the Variables panel, a Double or Date row shows a wrong value until the next refresh
+
+**Describe the bug**
+A **Double** or **Date** variable edited in the VARIABLES panel gets the value typed, but its row shows another value: `0` for a Double, `#12:00:00 AM#` for a Date. The row stays wrong until the panel is next refreshed, by a line in the DEBUG CONSOLE or the next stop. A **Long** edited the same way shows its new value at once. It was observed in an IDE started with an `APPDATA` of its own, reading the row two seconds after the edit and `? d` in the DEBUG CONSOLE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Stop at a breakpoint in a procedure with `Dim d As Double = 2.5` and `Dim dt As Date`.
+2. In the VARIABLES panel, double-click `d`, type `7.25` and press Enter. The row shows `0`.
+3. In the DEBUG CONSOLE, run `? d`. It prints `7.25`, and the row now shows `7.25`.
+4. Double-click `dt`, type `#1/2/2020#` and press Enter. The row shows `#12:00:00 AM#` until `? dt`, which prints `1/2/2020`.
+
+**Expected behavior**
+The row showing the value the variable now holds, as it does for a Long.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The row is redrawn from the answer to the `setVariable` request (`body.value`), so that answer holds `0` and `#12:00:00 AM#`. With `-1.5E+20` the row showed `2.19923962666636E-315`, which suggests the answer is read from the wrong type. Currency, Boolean, Variant and enum rows show the edit at once.
+
+Severity: medium. The variable is right; the panel shows a wrong value with nothing to say so, and a reader who checks the edit there concludes it failed.
+
+<!-- Reproducer: bugs/variables-edit-stale-display/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the tests "a Double edited in the Variables panel shows 0 until the next refresh, while the variable holds the value" and "a Date edited in the Variables panel shows #12:00:00 AM# until the next refresh, while the variable holds the value", which pass on BETA 1005; the control "a Long edited in the Variables panel shows its new value at once" passes too). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Inspecting.md, where it describes editing a value in Variables; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 3). -->
+
+---
+
+## After a stop at a breakpoint, Step Out does not stop in the procedure's caller
+
+**Describe the bug**
+When a run has stopped at a breakpoint inside a procedure, no step stops in a caller of that procedure. Step Out runs on to the next breakpoint, error or the end of the program; F8 off the procedure's `End Sub` stops only at the next procedure the caller calls. Steps inside the procedure, and into procedures it calls and back, work. When the procedure was entered by F8 from its caller, Step Out stops in the caller as it should. It was observed in an IDE started with an `APPDATA` of its own, reading the line the debugger stopped on and the DEBUG CONSOLE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Run a project with:
+   ```
+   Module Startup
+       Public Sub Main()
+           Direct
+           Debug.Print "m2"
+           Other
+       End Sub
+
+       Public Sub Direct()
+           Debug.Print "in direct"
+       End Sub
+
+       Public Sub Other()
+           Debug.Print "other"
+       End Sub
+   End Module
+   ```
+   with a breakpoint on `Debug.Print "in direct"`.
+2. The run stops there. Press Ctrl+Shift+F8 (Step Out). The run does not stop in `Main` on `Debug.Print "m2"`: `m2` is printed and the run goes on to its end.
+3. Run again to the breakpoint, and press F8 twice, to `End Sub` and off it. The next stop is `Other`'s `Sub` line, after `m2` is printed.
+
+**Expected behavior**
+A stop in `Main` on `Debug.Print "m2"`, the line after the call, as Step Out gives when `Direct` was entered by F8 from a breakpoint in `Main`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same for every caller tried: `Main` and another Sub, with the call made directly, inside `Select Case`, `If` or `For`, and a Function call in an assignment.
+
+Severity: low. The program runs its own code; the pause the reader asked for is lost.
+
+<!-- Reproducer: bugs/step-out-after-breakpoint/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the tests "after a stop at a breakpoint in a procedure, Step Out does not stop in its caller: the run goes on" and "after a stop at a breakpoint in a procedure, F8 off its End Sub does not stop in its caller, but in the next procedure the caller calls", which pass on BETA 1005; the control "after F8 into a procedure from a breakpoint in its caller, Step Out stops in the caller" passes too). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Breakpoints-and-Stepping.md, where it describes Step Out; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 1). -->
+
+---
+
+## A compile error at F5 is reported as a codegen error to report upstream, at the caller's line
+
+**Describe the bug**
+With a compile error in a procedure that `Main` calls, F5 does not say that the project has a compile error, or where. It stops on `Main`'s `Sub` line with a panel headed **ERROR OCCURRED** that reads `COMPILATION (CODEGEN) ERROR AT LINE #7.  PLEASE REPORT THIS ERROR TO https://git.io/JMh6S`, where line 7 is `Main`'s call to the procedure, and the DEBUG CONSOLE prints `[LINKER] compilation (codegen) error detected in 'Startup.Main' at line #7`. It was observed in an IDE started with an `APPDATA` of its own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project whose `Sub Main` calls `Direct` on line 7.
+2. Add the line `x = = 1` to `Direct`. The editor marks it, and the DIAGNOSTICS panel lists it.
+3. Press F5. The DEBUG CONSOLE prints `Executing 'Main'...` and the `[LINKER]` line above; the editor stops on `Main`'s `Sub` line with the panel above. Nothing of `Main` runs.
+
+**Expected behavior**
+A message that the project has compile errors, naming the line with the error, or the DIAGNOSTICS panel shown; not a request to report a compiler defect, and not a line that holds no error.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+With the error in `Main` itself there is no panel; the DEBUG CONSOLE prints `[LINKER] compilation (codegen) error detected in '{temp_component}.{temp_procedure}' at line #1` and `(compile error: codegen error; check for compilation errors)`.
+
+Severity: low. Nothing runs, and the DIAGNOSTICS panel lists the real error.
+
+<!-- Reproducer: bugs/compile-error-reported-as-codegen/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the test "a compile error in a procedure Main calls is reported at F5 as a codegen error to report, at Main's call", which passes on BETA 1005; it types the error into the lane's project, test/ide/probes/debugging, since the lane refuses to open a project that does not compile). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Running.md, where it says what Start runs; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 9). -->
+
+---
+
+## F6 does not find the procedure when the caret is right of the column where the procedure's End line ends, or on that End line
+
+**Describe the bug**
+F6 (Run Or Preview) runs the procedure the caret is in. On a line inside the procedure, it finds the procedure only when the caret is left of the column where the procedure's `End Sub` or `End Function` line ends; from that column on, and anywhere on the `End` line itself, the DEBUG CONSOLE prints `RunCodeUnderCursor: failed to identify the procedure at the cursor position.` and nothing runs. With the usual indentation, the caret in the word `Debug` of a `Debug.Print` line is already too far right in a Sub. It was observed in an IDE started with an `APPDATA` of its own, pressing F6 at several columns of each line.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a module with:
+   ```
+   Module Startup
+       Public Sub Direct()
+           Debug.Print "in direct"
+       End Sub
+
+       Public Function Answer() As Long
+           Answer = 42
+       End Function
+   End Module
+   ```
+2. Put the caret on the `Debug.Print` line at column 11 and press F6: `Direct` runs. At column 12, where the `End Sub` line ends, F6 prints the message.
+3. On the `Answer = 42` line, column 16 runs `Answer`, and column 17, where `End Function` ends, prints the message.
+4. On the `End Sub` line, F6 at any column prints the message.
+
+**Expected behavior**
+F6 running the procedure from any column of any of its lines, its `End` line included.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The IDE sends `runCodeUnderCursor` with the line and column, and the message is the compiler's answer. The procedure's own `Sub` line works at every column tried, right of that limit included. A trailing comment on the `End Sub` line moves the limit to where the comment starts. The check looks like a range test that compares the column with the end of the range on every line.
+
+Severity: low. Nothing runs, and the message says so.
+
+<!-- Reproducer: bugs/f6-procedure-not-found/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the tests "F6 on a line of a procedure, at or right of the column where its End line ends, does not find the procedure" and "F6 on an End Sub line does not find the procedure, at any column", which pass on BETA 1005; the control "F6 on a line of a procedure, left of the column where its End line ends, runs the procedure" passes too). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Running.md, where it describes Run Or Preview; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. The fact sheet's defect 7 said "in the word Debug"; the lane narrowed it to the column. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 7). -->
+
+---
+
+## Search Online on the run-time error panel does not encode the error text, so an & in it cuts the search short
+
+**Describe the bug**
+The run-time error panel's **Search Online** button opens a Google search for the error's header and description, but puts the text into the URL as it is. An `&` in the description ends the `q` parameter, so the search loses the rest of the text, and a `"` would end the quoted URL in the command line. It was observed in an IDE started with an `APPDATA` of its own, by recording the command line the button passes to the IDE host in place of running it; no browser was opened.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Run a project whose `Sub Main` executes `Err.Raise 5, , "Fails with A & B"`.
+2. At the error panel, click **Search Online**.
+3. The IDE runs `cmd.exe /c start "link" "https://www.google.com/search?q=twinBASIC VB6 Run-time error 5 (00000005) Fails with A & B"`, so the query the search receives ends at the `&`: `twinBASIC VB6 Run-time error 5 (00000005) Fails with A`.
+
+**Expected behavior**
+The query URL-encoded (`encodeURIComponent`), so that the search is for the whole text: `...q=twinBASIC%20VB6%20Run-time%20error%205%20(00000005)%20Fails%20with%20A%20%26%20B`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The button's handler (`showErrorWidget`, `ide/main.js`) is `root.Shell('cmd.exe /c start "link" "https://www.google.com/search?q=' + e + '"')`, with `e` the header and description joined by spaces.
+
+Severity: low. The search still opens, on part of the text.
+
+<!-- Reproducer: bugs/search-online-unencoded/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the test "Search Online passes the error's text into the search URL unencoded, so an & in it ends the query", which passes on BETA 1005; the lane replaces root.Shell with a recorder before any run, checks it again before the click, and opens no browser). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Breakpoints-and-Stepping.md, under the error panel; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 4). -->

@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:debugging",
+  "tests": [
+    "the Variables edit box holds a String only up to an apostrophe, and Enter sets the variable to the empty string",
+    "a click away from the Variables edit box, with nothing typed, sets a String with an apostrophe to the empty string"
+  ],
+  "steps": "1. Stop at a breakpoint in a procedure with Dim s As String.\n2. In the DEBUG CONSOLE, run s = \"it's\". The VARIABLES panel shows \"it's\".\n3. Double-click the s row. The edit box holds \"it --- the text up to the apostrophe.\n4. Press Enter, or click another row, with nothing typed. The row shows \"\", and ? s prints an empty line.\nControl: Escape leaves s as it was."
+}
