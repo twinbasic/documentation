@@ -1,5 +1,9 @@
 # Plan: Automated Package Sync and Multi-Format Indexer
 
+> Historical. The lexer, extractor and markdown emitter this plan lays out were replaced
+> by the repository's shared scanner, `scripts/lib/twin-api.mjs`, and the twinpack parser
+> by `scripts/impexp.mjs`'s. `README.md` describes the modules as they are.
+
 ## Context
 
 The current indexer (`twin-index.mjs`) reads `.twin` files from a manually-exported

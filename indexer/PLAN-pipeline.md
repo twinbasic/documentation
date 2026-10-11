@@ -13,8 +13,13 @@ GitHub Releases (built-in packages bundled with the IDE) — extracts
 their source code, parses declarations, and generates markdown index
 files. See `indexer/PLAN-auto-sync.md` for the current module layout,
 interfaces, and implementation history. This plan supersedes the
-directory structure and CLI interface described there; the module
-internals (lexer, extractor, twinpack-parser, etc.) remain valid.
+directory structure and CLI interface described there. The module
+internals it names have since been replaced: the lexer, extractor,
+json-emitter, markdown emitter and twinpack-parser are gone, and
+`api.json` is built by `lib/api-model.mjs` from the repository's shared
+scanner, `scripts/lib/twin-api.mjs`. `README.md` describes the current
+modules and the current `api.json`; the schema below is the first one
+(format 1), kept as the record of the original design.
 
 Documentation conventions (page format, frontmatter, cross-linking)
 are in `WIP.md`. The `document-symbol` skill

@@ -30,9 +30,10 @@ This does everything on the first run:
 1. Creates `indexer/.packages/` as a local git repo (the "store").
 2. Reads the built-in and default packages from the local twinBASIC
    install, and downloads all packages from TWINSERV (community).
-3. Parses every `.twin` / `.twinproj` source file through the
-   lexer and extractor.
-4. Generates an `api.json` snapshot per package.
+3. Reads the sources of every package with the repository's shared
+   twinBASIC scanner, `scripts/lib/twin-api.mjs` (the one the symbol
+   index and the attribute census use too).
+4. Generates an `api.json` snapshot per package ([described below](#apijson)).
 5. Commits sources + snapshots to the store.
 6. Copies `api.json` files to `indexer/snapshots/` (committed to
    the docs repo).
@@ -91,7 +92,11 @@ names only built-in or default packages does not ask TWINSERV at all, so
 
 An install holds the same `packages/<folder>/package.twinproj` files as the
 release zip of its build, so either source gives the same sources and the
-same `api.json`. The version in `api.json` is the release tag in both cases:
+same `api.json`, byte for byte.
+
+A package is read again, whatever its manifest says, when its store has no
+sources or holds an `api.json` in an older format than the indexer writes
+(the `format` number below). The version in `api.json` is the release tag in both cases:
 BETA 983 is `beta-x-0983`, as `indexed_from` in the package pages has it. The
 BETA number is read from the install's `ide/build.js`, else from the name of
 its folder.
@@ -127,15 +132,127 @@ Two modes, chosen automatically per package:
 - **Update mode** — the package's `index.md` has an `indexed_from`
   field. Diffs the current `.packages/` api.json against the
   last-committed snapshot (`git show HEAD:indexer/snapshots/...`).
-  Reports added, modified, and removed public symbols.
+  Reports added, modified, and removed public symbols. A committed
+  snapshot in an older format is not diffed; the package is audited
+  instead.
 
 - **Audit mode** — no `indexed_from` (new package, or pre-tracking).
   Cross-references every public symbol in `api.json` against existing
   doc pages (matched by `title:` frontmatter). Reports documented vs
   undocumented symbols.
 
+A current `api.json` is needed: `analyze` stops (exit 2) at a package
+whose file is in an older format, and `sync` writes it again.
+
+**What a symbol is.** One for each type, and one for each name a type
+declares: a property's Get, Let and Set, and overloads of a name, are one
+symbol, the way the documentation has one page for each. A symbol is
+*public*, and so covered by the report, when it is documentable: a type
+that `api.json` does not mark `"public": false`, and in such a type a member
+declared Public or Protected. The members of a type that is not public are
+not symbols. The enumeration values and Type fields belong to their type, and
+a change in them modifies it. A symbol's kind is written `Module`, `Class`,
+`Interface`, `CoClass`, `Enum`, `Type`, `Union`, `Sub`, `Function`,
+`Property`, `Event`, `Delegate`, `Const`, `Field`, or `Declare` for a Declare
+statement; those are the names a package page's `exclude_kinds:` lists.
+
+A symbol is identified across two snapshots by its kind and path:
+`Interface:Outer.Inner` for a type declared inside another, and
+`Outer.Name.Function` for a member. A package page's `exclude_from_docs:` names
+types; it excludes the type, the types inside it, and everything declared in
+either.
+
 The report is printed to stdout and written to
 `indexer/.packages/report.json`.
+
+## api.json
+
+One file for each package, written by `lib/api-model.mjs` from what
+`scripts/lib/twin-api.mjs` reads out of the package's sources. Its first key
+is `format`, which changes whenever the shape does (2 today); `sync` indexes a
+package again when the store holds another number.
+
+```json
+{
+  "format": 2,
+  "package": "VBA",
+  "project": "VBA",
+  "version": "beta-x-1005",
+  "types": [ ... ],
+  "aliases": [ ... ],
+  "problems": [ ... ]
+}
+```
+
+| Key | Contents |
+|-----|----------|
+| `package` | The package's name in the store. |
+| `project` | `project.name` from the package's Settings file, the name code knows it by, or null. It is not always the package's own: TwinBasicAssertions is `Assert`. |
+| `version` | The release tag for a built-in or default package, the four-part version for a contributed one. The same for an install and the release zip of its build. |
+| `types` | Every Module, Class, Interface, CoClass, Enum, Type and Union the package declares, nested ones included. |
+| `aliases` | Every `Alias X As Y` statement. |
+| `problems` | `{ file, line, why }` for each declaration the scanner could not place; empty when it placed them all. `sync` prints how many. |
+
+**A type** has these keys, those marked `?` only when they apply:
+
+| Key | Contents |
+|-----|----------|
+| `name`, `kind` | `kind` is `module`, `class`, `interface`, `coclass`, `enum`, `type` or `union`. |
+| `in?` | The path of the type it is declared in, `Outer` or `Outer.Inner`. A type with no `in` is at the top of its file. Most Enums and Types are inside a Module or Class. |
+| `vis` | `public`, `private`, `friend` or `protected`; `public` when no modifier is written. |
+| `public?` | `false`, written only when code outside the package cannot name the type: its own `vis` is not `public`, or it is declared in a type that is not public. An Enum is judged by its own modifier alone, because the packages declare Enums inside Private modules for public use. |
+| `file` | The file it is declared in, relative to `Sources/`. |
+| `signature` | The declaration as written, on one line, without its attributes, `Extends` included. |
+| `extends?`, `inherits?`, `implements?` | An Interface's base, a Class's `Inherits` and `Implements` lines. |
+| `interfaces?` | A CoClass's interfaces, `{ name, default?, source? }`: `default` for the one its members are declared on, `source` for its events. |
+| `hidden?`, `attrs?`, `description?` | `hidden` is true for `[Hidden]` and `[Restricted]`; it never removes a symbol, because the members of VBA's hidden module are globals. `attrs` are the attributes as `{ name, args? }`, `args` the text between the parentheses as written. `description` is the text of `[Description(...)]`, which `attrs` then leaves out. |
+| `members` | Every kind but an Enum has them, a Type or Union only its procedures. |
+| `values` | An Enum has these instead, in declaration order. |
+| `fields` | A Type or Union has these as well as `members`, in declaration order. |
+
+**A member** is `{ name, kind, vis, declare?, signature, returnType?,
+accessor?, hidden?, attrs?, description? }`: `kind` is `sub`, `function`,
+`property`, `event`, `delegate`, `const` or `field`; `declare` is true for a
+`Declare` statement, which is a `sub`, `function` or `property` as well;
+`returnType` is the type after the parameter list of a Function, a Property Get
+or a Delegate Function; `accessor` is `Get`, `Let` or `Set`. A member with no
+modifier is Public if it is a procedure, event or delegate in a Module or Class,
+Private if it is a variable, constant or Declare, and everything in an
+Interface, CoClass, Enum, Type or Union is Public. A name declared in brackets
+keeps every character, as VBA's `Function [Chr$]` does; a type-declaration
+character on a name written without brackets is not part of it, so
+`Public Function Command$()` is `Command`.
+
+**A value** is `{ name, value?, hidden?, attrs?, description? }`, `value` the
+text after the `=`. **A field** is `{ name, vis, signature, hidden?, attrs?,
+description? }`. **An alias** is `{ name, target, vis, in?, file, signature,
+hidden?, attrs?, description? }`.
+
+*Order and layout.* Types are in code-unit order of their path
+(`Outer.Inner.Name`), then `kind`, then `file`; members by `name`, then `kind`, then
+declaration order; aliases by `name`, then `file`; problems by `file`, `line`
+and `why`. Nothing is compared with `localeCompare`. The file is JSON written one
+type to a few lines, and one member, value, field, alias and problem to a
+line, so that a snapshot is small and a change to one member changes one
+line of it. It holds no line numbers except in `problems`, for the same
+reason.
+
+*What is read.* The `.twin` files under `Sources/` as they are, and the VB6-format
+`.bas`, `.cls`, `.frm`, `.ctl` and `.dsr` files after
+`lib/vb6-preprocess.mjs` has rewritten each as the one Module or Class it
+holds: the header and the `Attribute VB_*` lines go, and the type is named by
+`VB_Name`, else by the file's own name (community NewTabCtl's
+`subclass/mBSSubclass.bas` is commented out whole, `VB_Name` included, and is
+the module `mBSSubclass`). The `.tbform`, `.tbcontrol` and `.tbppage` files are
+JSON designer files with no declarations in them, and are skipped on purpose,
+as is everything outside `Sources/`. Text inside a `/* ... */` comment is not
+read.
+
+*What it does not read.* An enumeration value written as a bare `[Name]` on a
+line of its own is read by the scanner as an attribute of the next
+declaration, so an Enum made of such lines has no `values`; the `[_]`
+placeholder of the `Private Enum LongPtr` compatibility shim in the VB6-derived
+packages is the common case.
 
 ## Package groups
 
@@ -183,13 +300,10 @@ indexer/
     builtin-sync.mjs           install / GitHub release manifest comparison + extraction
     twinserv-client.mjs        TWINSERV HTTP client
     github-release.mjs         GitHub Releases client
-    twinpack-parser.mjs        .twinpack/.twinproj binary parser
+    package-files.mjs          .twinpack/.twinproj -> files, by scripts/impexp.mjs's parser
     zip-reader.mjs             Minimal ZIP reader (deflate)
     vb6-preprocess.mjs         VB6 -> twinBASIC normalization
-    lexer.mjs                  Tokenizer + attribute scanner
-    extractor.mjs              Declaration tree builder
-    emitter.mjs                Markdown emitter (retained for debug use)
-    json-emitter.mjs           api.json emitter
+    api-model.mjs              files -> api.json, through scripts/lib/twin-api.mjs
     store.mjs                  .packages/ git repo lifecycle
     differ.mjs                 api.json diff + coverage audit
   manifests/                   (committed) sync state
