@@ -385,11 +385,11 @@ function descriptionOf(attrs) {
 // U+FFFF, which takes a character outside the BMP as its two surrogates; and a
 // word boundary is spelt out, because `\b` treats a letter past ASCII as a
 // non-word character: `Publicé` is not the modifier `Public`.
-const WORD_END = String.raw`(?![A-Za-z0-9_\u0080-￿])`;
-const WORD_START = String.raw`(?<![A-Za-z0-9_\u0080-￿])`;
+const WORD_END = String.raw`(?![A-Za-z0-9_\u0080-\uFFFF])`;
+const WORD_START = String.raw`(?<![A-Za-z0-9_\u0080-\uFFFF])`;
 // A name written without brackets may end in a type-declaration character, which
 // gives the type of what it names (`Function Size%()`, `Public n&`, `Const S$ =`).
-const NAME = String.raw`(?:\[[^\]]+\]|[A-Za-z_\u0080-￿][A-Za-z0-9_\u0080-￿]*[$%&!#@^]?)`;
+const NAME = String.raw`(?:\[[^\]]+\]|[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF]*[$%&!#@^]?)`;
 // `Dim` is read as a modifier too: what follows it is a field, as it is after
 // `Public`.
 const MODIFIER_RE = new RegExp(String.raw`^\s*(${MODIFIERS}|Dim)${WORD_END}\s*`, "i");
@@ -413,7 +413,7 @@ const LEADING_NAME = new RegExp(String.raw`^\s*(${NAME})`);
 // A name that may be qualified by a package or a type, `stdole.IUnknown`, with
 // no type-declaration character: what `Inherits`, `Implements` and a CoClass's
 // `Interface` lines name.
-const QNAME = String.raw`(?:\[[^\]]+\]|[A-Za-z_\u0080-￿][A-Za-z0-9_\u0080-￿]*)(?:\.(?:\[[^\]]+\]|[A-Za-z_\u0080-￿][A-Za-z0-9_\u0080-￿]*))*`;
+const QNAME = String.raw`(?:\[[^\]]+\]|[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF]*)(?:\.(?:\[[^\]]+\]|[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF]*))*`;
 const LISTED_NAME = new RegExp(String.raw`^\s*(?:WithEvents\s+)?(${QNAME})`, "i");
 const COCLASS_INTERFACE = new RegExp(String.raw`^Interface\s+(${QNAME})`, "i");
 // A field is a name, then a dimension list, `As`, an initialiser (`Public n& = 0`,
@@ -427,7 +427,7 @@ const ENUM_VALUE = new RegExp(String.raw`^(${NAME})\s*(=|$)`);
 const CONDITIONAL = new RegExp(String.raw`^\s*#\s*(ElseIf|Else|End\s*If|If)${WORD_END}`, "i");
 // What follows a modifier word that makes it the declaration's own name.
 const AFTER_MODIFIER_NAME = new RegExp(String.raw`^(As${WORD_END}|\(|=|$)`, "i");
-const EXTENDS = new RegExp(String.raw`${WORD_START}Extends\s+([A-Za-z0-9_.[\]\u0080-￿]+)`, "i");
+const EXTENDS = new RegExp(String.raw`${WORD_START}Extends\s+([A-Za-z0-9_.[\]\u0080-\uFFFF]+)`, "i");
 // `Alias As Long` in a Type is a field called Alias.
 const ALIAS_STATEMENT = new RegExp(String.raw`^Alias\s+(?!As${WORD_END})`, "i");
 const FILE_LEVEL = new RegExp(String.raw`^(Option|Imports|Import\s+Library)${WORD_END}`, "i");

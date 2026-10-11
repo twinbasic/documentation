@@ -53,9 +53,9 @@ const DECL_RE = new RegExp(
     `Function|Property|Event|DeclareWide|Declare|Implements)${KEYWORD_END}`,
   "i",
 );
-const TYPE_FIELD_RE = /^\s*[\w\u0080-￿]+(?:\s*\([^)]*\))?\s+As\s+/i;
+const TYPE_FIELD_RE = /^\s*[\w\u0080-\uFFFF]+(?:\s*\([^)]*\))?\s+As\s+/i;
 const VAR_RE = new RegExp(`^\\s*(?:${MODIFIERS}|Const|Dim)\\s+[\\w\\u0080-\\uFFFF\\[]`, "i");
-const NAMED_AS_RE = /^\s*[\w\u0080-￿]+\s+As\s+/i;
+const NAMED_AS_RE = /^\s*[\w\u0080-\uFFFF]+\s+As\s+/i;
 // The white space between its words is ASCII's, `[ \t\f\v]`, because `\s` and the
 // identifier class both hold the no-break space and the regex would be ambiguous.
 const CONST_RE = new RegExp(`^\\s*(?:[\\w\\u0080-\\uFFFF]+[ \\t\\f\\v]+)*Const${KEYWORD_END}`, "i");
@@ -81,7 +81,7 @@ export function declarationKind(decl, container) {
     return k[0].toUpperCase() + k.slice(1).replace(/^eclarewide$/i, "eclareWide");
   }
   if (/^\s*End\s+\w/i.test(d)) return null; // unresolved
-  if (container === "Enum" && /^\s*\[?[\w\u0080-￿]/.test(d)) return "EnumMember";
+  if (container === "Enum" && /^\s*\[?[\w\u0080-\uFFFF]/.test(d)) return "EnumMember";
   // The distinction matters: `Attributes.md` states "constants in a
   // module" and "variables in a Class" as different targets, and [DllExport]
   // is documented on a Const and refused on a variable.
