@@ -246,7 +246,14 @@ the old tool's at BETA 997, and it takes half a second with no cache.
 - **The check step compiles before a person reads.** One agent per package runs
   `check_examples --only` on the section, at a port of its own (9700 up, clear of the
   harness's default 9480), and fixes the pages. A contributed package without a
-  `contributed-<Package>` template cannot be compiled, and the agent says so.
+  `contributed-<Package>` template cannot be compiled, and the agent says so. **It also runs
+  the doubts the other agents return**: the workflow passes their results into its prompt,
+  and it settles each one a run can on a scratch page (`zz-probe.md`, every line expecting
+  `' ?`, so the report prints what each line printed) and, for a package that replaces
+  another object, on that object too (`cscript` for VBScript, `vb6run.mjs` for VB6). The
+  Draft agents only list doubts: they run concurrently, so none of them compiles. The Lists
+  agent reads a new package's README through read-only `gh` and lists the README's claims
+  as doubts as well.
 - **The agents are Sonnet**, as the content agents of the contributed packages were; the
   drafts are read against the sources before they are committed, which no model choice
   replaces.
@@ -255,7 +262,8 @@ the old tool's at BETA 997, and it takes half a second with no cache.
   review still found what no compile finds: the drafts state only what the code says, so
   where the package differs from the object it replaces (VBScript's **RegExp**, run under
   `cscript`) nothing said so, and claims read from the code but never run (`$0`, a lone `$`)
-  needed a probe page. Budget a review that runs the doubts the agents list.
+  needed a probe page. Running the doubts is now the Check agent's (above); the review
+  still reads the pages against the sources.
 - **It is not in the published docs.** `draft` is (Tools-Build), because its plans serve a
   person writing pages by hand; the workflow is described here and in `WIP.md`, because
   nothing under `docs/Documentation/` may require Claude.
