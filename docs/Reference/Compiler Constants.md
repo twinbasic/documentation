@@ -113,10 +113,12 @@ Or more simply, to decide whether to use `PtrSafe`, and then `DeclareWide` or ot
 
 The twinBASIC editor shows in real time which compiler constants are active. Code in an `#If` block that will not run under the current settings is inactive, and appears greyed out. Unlike VBx, twinBASIC does not check inactive code for errors.
 
-For example, in 32-bit mode:\
+For example, in 32-bit mode:
+
 ![The toolbar's build list set to win32, above the editor with a module open. The two PtrSafe declares in the Win64 branch of the #If block are greyed out, and the two plain declares in the Else branch are active.](Images/oHpCiV1.png){:width="700" height="329"}
 
-Then after switching to 64-bit mode with the build list on the toolbar:\
+Then after switching to 64-bit mode with the build list on the toolbar:
+
 ![The same module with the build list set to win64. The two PtrSafe declares in the Win64 branch are now active, and the two plain declares in the Else branch are greyed out.](Images/TYizrRW.png){:width="700" height="329"}
 
 

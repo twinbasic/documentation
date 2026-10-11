@@ -14,14 +14,10 @@ redirect_from:
 To create a new TWINPACK package, navigate to the twinBASIC New Project dialog, and under the 'Samples' tab, choose the option labelled 'Package':
 
 ![The New / Open Project dialog on the Samples tab, with a red ring round the title of Sample 7. Package](Images/6ad7a172-0e1b-4276-ac89-042681552507.png){:width="522" height="405"}
-<br>
-<br>
 
 Once you've created the project, you should find the extra 'PACKAGE PUBLISHING' panel as a popup:
 
 ![The PACKAGE PUBLISHING panel, floating over the editor, with EDIT links for Namespace, Description, Licence, Visibility and Version and a SIGN IN link for Publisher, above the PUBLISH THIS PACKAGE button](Images/9eeffbcf-d73e-4a92-bce5-811ed60aba98.png){:width="348" height="378"}
-<br>
-<br>
 
 You should now edit the Namespace, Description, Licence, Visibility and Version properties appropriately by using the package manager 'EDIT' links, which will take you to the individual settings in the `Settings` file.   Once you've edited them, remember to close (and save) the `Settings` file in order for your changes to be reflected in the package manager panel.
 
@@ -35,59 +31,42 @@ You should now edit the Namespace, Description, Licence, Visibility and Version 
 
 You can now create components (Class, Module, Interface) in your project as normal, and when you are finished, it's time to finalize the package.   You have two options;
 
-<br>
-
 ## OPTION 1 - Finalize the package into a TWINPACK file
 
 Use this option if you want to just create a local TWINPACK file that you can use in other projects.  For this, the build process is the same as any ordinary twinBASIC build... just hit the Build button in the TWINBASIC toolbar:
 
 ![The twinBASIC toolbar with a red ring round the Build button, the last of the three icons after the win32 list](Images/4d90f313-35d5-426d-8fc3-852ca03382fa.png){:width="323" height="83"}
-<br>
-<br>
+
 ![The DEBUG CONSOLE reporting the TWINPACK file being created and the build succeeding](Images/8d74d820-9907-4e76-ac42-71d0233187f1.png){:width="560" height="160"}
 
 You'll see the build output notification in the `DEBUG CONSOLE`, as seen above.
 
 Job done.  See [Importing a package from a TWINPACK file](Importing-TWINPACK) for referencing and using the TWINPACK file in other twinBASIC projects. To get a later build of the package into projects that already use it, see [Updating a package you built yourself](Updating#updating-a-package-you-built-yourself).
 
-<br>
-
 ## OPTION 2 - Publish the package directly to the package manager service (TWINSERV)
 
 If you're publishing your package onto TWINSERV, you don't need to create the TWINPACK file manually.  Just use the 'PUBLISH THIS PACKAGE' button:
 
 ![The PACKAGE PUBLISHING panel with two arrows rising from below it to the lower corners of the PUBLISH THIS PACKAGE button](Images/packPublishButton.png){:width="316" height="361"}
-<br>
-<br>
 
 ***Publishing packages onto TWINSERV requires you to first create a publisher account.  If you haven't done so, you'll be prompted to do so at this stage.***
 
 You will then be prompted to confirm the package details:
 
-![A confirmation dialog listing the publisher, package namespace, description, version and licence, asking whether to proceed](Images/packPublishPackage1.png){:style="width:65%; height:auto;"}
-<br>
-<br>
+![A confirmation dialog listing the publisher, package namespace, description, version and licence, asking whether to proceed](Images/packPublishPackage1.png){:width="478" height="257"}
 
 After pressing `YES`, the package will be uploaded to TWINSERV.   Check the `DEBUG CONSOLE` for completion notices:
 
-![The DEBUG CONSOLE showing the publish attempt followed by a successful result](Images/packPublishComplete1.png){:style="width:85%; height:auto;"}
-
-<br>
-<br>
+![The DEBUG CONSOLE showing the publish attempt followed by a successful result](Images/packPublishComplete1.png){:width="626" height="64"}
 
  If the package got uploaded successfully, it should be available via TWINSERV within a few moments.   If you've created a `PUBLIC` package, others will be able to see and download it at this point.
 
 See [Importing a package from TWINSERV](Importing-TWINSERV) for referencing and using the uploaded packages.
-
-<br>
-<br>
 
 ## Special files LICENCE.md and CHANGELOG.md
 
 When you create a new package project, you'll see two additional files created for you in the project filesystem:
 
 ![The project file tree of a package, with the folders ImportedTypeLibraries to Sources above the files CHANGELOG.md and LICENCE.md, and an arrow from the right pointing at each of the two files](Images/packLicenceFiles.png){:width="416" height="252"}
-<br>
-<br>
 
 If you're publishing a `PUBLIC` package to the package manager service, it is important that you edit these two files before publishing.  These are both markdown files, and will in future become more accessible to users that are considering using your package from TWINSERV. 

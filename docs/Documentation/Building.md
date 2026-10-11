@@ -632,11 +632,11 @@ Self-hosting the body face settles the *text* at 17px on every machine, and does
 
 4. Select your repository and branch to merge from, and set the base branch to **`staging`**. That is the repository's default branch, the branch the deploy workflow publishes from, and the one the pull-request checks run against.
 
-   ![GitHub's Compare changes page, with the compare across forks link marked, and below it the head repository and compare branch selectors](Images/compare-changes.png)
+   ![GitHub's Compare changes page, with the compare across forks link marked, and below it the head repository and compare branch selectors](Images/compare-changes.png){:width="926" height="170"}
 
 5. Create the pull request. If it adds or changes a twinBASIC code sample, paste the `examples.bat` summary line into the description, as [Checking that a sample compiles](Authoring#checking-that-a-sample-compiles) describes --- no CI workflow compiles the samples.
 
-   ![The comparison after choosing the fork and branch, reporting Able to merge, with the green Create pull request button marked](Images/create-pull-request.png)
+   ![The comparison after choosing the fork and branch, reporting Able to merge, with the green Create pull request button marked](Images/create-pull-request.png){:width="1857" height="470"}
 
    A maintainer will merge the pull request into the documentation repository. You may wish to mention an outstanding request on the [#docs][hash-docs] channel, although the [#github-docs][hash-github-docs] channel provides automated notifications of pull requests. Normally, a maintainer will get a notification of a new pull request via Discord, and will merge it or comment with a request for changes.
 
@@ -644,15 +644,17 @@ Self-hosting the body face settles the *text* at 17px on every machine, and does
 
 6. Review, then merge the pull request or comment with required changes.
 
-   ![A pull request reporting no conflicts with the base branch, with the green Merge pull request button marked](Images/merge-pull-request.png)
+   ![A pull request reporting no conflicts with the base branch, with the green Merge pull request button marked](Images/merge-pull-request.png){:width="1371" height="416"}
 
-   ![The merge form's commit message, extended description and commit email fields, with the green Confirm merge button marked](Images/confirm-merge.png)
+   ![The merge form's commit message, extended description and commit email fields, with the green Confirm merge button marked](Images/confirm-merge.png){:width="1374" height="704"}
 
 7. Select the **Build & deploy docs** action.
-   ![The repository's Actions tab, and the workflow list in the left sidebar where the deploy workflow is chosen](Images/choose-workflow.png){:width="75%"}
+
+   ![The repository's Actions tab, and the workflow list in the left sidebar where the deploy workflow is chosen](Images/choose-workflow.png){:width="552" height="191"}
 
 8. Manually run the build and deployment workflow if a release snapshot is needed. Pushes to `staging` deploy to Pages automatically; only the manual run additionally cuts a GitHub release. See [Cutting a release](#cutting-a-release) for what it attaches and the one input it takes.
-   ![The Run workflow dropdown open on its branch selector, with the green Run workflow button that starts the manual deployment](Images/run-workflow.png){:width="50%"}
+
+   ![The Run workflow dropdown open on its branch selector, with the green Run workflow button that starts the manual deployment](Images/run-workflow.png){:width="368" height="231"}
 
 
 ### Cutting a release
