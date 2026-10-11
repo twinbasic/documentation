@@ -1,0 +1,35 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "BoxLib",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Package TWINPACK",
+	"project.description": "One generic class, for the reproducer",
+	"project.id": "{3E7F2B54-8A1D-4C60-B2F9-6D0A41C85E73}",
+	"project.licence": "MIT",
+	"project.name": "BoxLib",
+	"project.optionExplicit": true,
+	"project.packageVisibility": "PUBLIC",
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"symbolId": "stdole",
+			"versionMajor": 2,
+			"versionMinor": 0
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.versionMajor": 1,
+	"project.versionMinor": 0,
+	"project.warnings": {
+		"errors": [],
+		"hints": [],
+		"ignored": [],
+		"info": [],
+		"warnings": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

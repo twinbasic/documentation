@@ -1,0 +1,8 @@
+' A generic class with a constructor that takes the type argument.
+[COMCreatable(False)]
+Public Class Box(Of T)
+
+    Public Sub New(value As T)
+    End Sub
+
+End Class

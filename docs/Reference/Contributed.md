@@ -15,6 +15,7 @@ Each package is versioned apart from twinBASIC, and its section says which versi
 - [**AutoCompleteLib**](AutoCompleteLib/) -- Windows shell auto-complete for text-input controls
 - [**FileProps**](FileProps/) -- the Windows shell properties of a file, read and written
 - [**Fmt**](Fmt/) -- **StringFormat**, a string built from a format string and values, in the style of C#'s **String.Format**
+- [**Generics**](Generics/) -- tuples, read-only objects that hold one to seven values of declared types
 - [**OLEGuids**](OLEGuids/) -- OLE and COM interfaces and structures in twinBASIC source, in place of `OLEGuids.tlb`
 - [**TBMANLIB_Dialog**](TBMANLIB_Dialog/) -- the **cDialog** class: the Open, Save and folder dialogs, with file filters and path helpers
 - [**TBMANLIB_ListBoxHScroll**](TBMANLIB_ListBoxHScroll/) -- a horizontal scroll bar for a **ListBox**

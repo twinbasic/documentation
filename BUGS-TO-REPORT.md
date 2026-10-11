@@ -3510,3 +3510,124 @@ The button's handler (`showErrorWidget`, `ide/main.js`) is `root.Shell('cmd.exe 
 Severity: low. The search still opens, on part of the text.
 
 <!-- Reproducer: bugs/search-online-unencoded/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the test "Search Online passes the error's text into the search URL unencoded, so an & in it ends the query", which passes on BETA 1005; the lane replaces root.Shell with a recorder before any run, checks it again before the click, and opens no browser). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Breakpoints-and-Stepping.md, under the error panel; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 4). -->
+
+---
+
+## An array as the type argument of a generic class, interface, `Type` or procedure crashes the compiler
+
+**Describe the bug**
+Naming an array type as a type argument, as in `Box(Of Long())`, crashes the compiler. The IDE prints `NATIVE EXCEPTION: ACCESS_VIOLATION` in the DEBUG CONSOLE, restarts the compiler on the same project, and it crashes again, three times in a run, so nothing in the project compiles while the declaration is there. The declaration alone does it: nothing is constructed or called. A type argument that is not an array compiles, and `Variant` is refused with a diagnostic (TB5124, *Cannot pass Variant datatype as a generic specifier*), so the array is the one type argument that crashes the compiler instead of being compiled or refused. Observed in the IDE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `generic-array-type-argument-crash.twinproj` (attached as `generic-array-type-argument-crash.zip`). Its one source file, `Startup.twin`, holds the whole bug:
+   ```
+   Class Box(Of T)
+   End Class
+
+   Module Startup
+
+       Public Sub Main()
+           Dim b As Box(Of Long())
+       End Sub
+
+   End Module
+   ```
+2. Let the IDE compile it (it does so on opening).
+3. See the DEBUG CONSOLE: `NATIVE EXCEPTION: ACCESS_VIOLATION  {no-basic-code} [$1ED792A6:twinBASIC_win32.dll+003792A6]`, then `restarting from MEMORY [...]`, and the same exception twice more, each with a list of the compiler's threads in which the failing one is `>>> thread 0005: ResolveStageY_DataTypesStart3, /GenericArrayTypeArgumentCrash/Sources/Startup.twin; module Startup; line 4`. With `Box(Of Long)` in place of `Box(Of Long())` the project compiles without a diagnostic.
+
+Each of these was a project of its own, and crashed in the same way:
+- the class is empty or has a field, with or without `[COMCreatable(False)]`;
+- another array type: `String()`, `Byte()`, `Variant()`, `Long(,)`, `Long(3)`, an array of a user-defined type, and an array of an instantiated class, `Box(Of Box(Of Long)())`;
+- the declaration is at module level, inside a class (`Private b As Box(Of Long())`), a parameter's type or a function's result type, or `Set b = New Box(Of Long())`;
+- the generic is an `Interface` (`IBox(Of T)`, `Dim b As IBox(Of Long())`);
+- the generic is a `Type` declared in a module (`Type ListU(Of T)` with `value() As T`, and `Dim x As ListU(Of Long())`);
+- the generic is a procedure, and the array is given explicitly: `P(Of Long())` for `Sub P(Of T)()`, and `r = Ident(Of Long())(a)` for `Function Ident(Of T)(a As T) As T`;
+- the class comes from a package: `Dim t As TupleOf1(Of Long())` with the contributed package Generics 1.0.0.0.
+
+What does not crash it: `Box(Of Long)` and `Box(Of Collection)`; a generic function called with an array argument and *T* deduced (`Ident(a)`, with `a` a `Long()`), which compiles.
+
+**Expected behavior**
+A diagnostic, or a compiled project. An array that the compiler cannot use as a type argument is refused the way `Variant` is, with a message that names the type argument, and the project keeps compiling; one that it can use compiles, as `Box(Of Long)` does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same on BETA 997, 995 and 957 (the compiler is restarted two or three times there before the IDE gives up).
+
+Severity: high for a project that has the declaration. The compiler crashes on every attempt and restarts into the same crash, so the IDE reports nothing else about the project, and the line has to be found and removed by hand. No wrong code is produced.
+
+<!-- Reproducer: bugs/generic-array-type-argument-crash/ (mode compile; expect is tbbuild exit 4, the compiler crashing; verify reproduces on BETA 1005, 997, 995 and 957). The exception text above is from the IDE's DEBUG CONSOLE (tbbuild --keep, then the console read over CDP); the address is build-specific. The variants under "Each of these" were scratch projects of one declaration each, not kept; the Generics case needs the package (embedded under Packages/Generics, 14 MB with its WinDevLib dependency, which is why the reproducer does not use it). Found documenting the contributed package Generics: docs/Reference/Contributed/Generics/index.md, section "Types of the items", carries a WARNING naming BETA 1005 and lists "Arrays, such as Long()" among the types that cannot be used. When fixed: remove the WARNING, and rewrite the bullet to say whether an array item works. -->
+
+---
+
+## `New` of a generic class from a package does not bind when its type arguments are named in no declaration: TB5074
+
+**Describe the bug**
+When a generic class comes from a package, a `New` expression that gives its type arguments fails to compile if that combination of type arguments appears in no declaration of the project or the package, that is, as the type of no variable, parameter, field or function result. TB5074, *Could not bind to parameterized constructor of class 'Box'. No compatible Sub New() method found*, is reported, followed by TB5032 (target `As Any`, a bare `Dim t = ...`, `With`), TB5044 (`As Object`, `As Variant`, `Set o = ...`) or TB5093 (an argument of a call). The constructor exists and the call matches it. Naming the same combination in a declaration anywhere in the project, one that is never used included, makes the same line compile; so does declaring the class in the project itself instead of in a package. Observed in the IDE's diagnostics.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `package-generic-new-untyped-target.twinproj` (attached as `package-generic-new-untyped-target.zip`). It embeds a package, `BoxLib` (in `Packages/BoxLib`), that holds one class:
+   ```
+   [COMCreatable(False)]
+   Public Class Box(Of T)
+
+       Public Sub New(value As T)
+       End Sub
+
+   End Class
+   ```
+   The project's one source file, `Startup.twin`, holds the whole bug:
+   ```
+   Module Startup
+
+       Public Sub Main()
+           Dim a As Any = New Box(Of Long)(1)           ' TB5074 and TB5032
+           Dim o As Object = New Box(Of Double)(2)      ' TB5074 and TB5044
+           Dim t As Box(Of Byte) = New Box(Of Byte)(3)  ' compiles: the declaration names Box(Of Byte)
+       End Sub
+
+   End Module
+   ```
+2. Let the IDE compile it (it does so on opening).
+3. See four errors, two for each of the first two lines of `Main`:
+   - `TB5074 Could not bind to parameterized constructor of class 'Box'. No compatible Sub New() method found` and `TB5032 Set-expression must result in an object type. Type [Box] is not an object (2).`, at `New` in the `Dim a` line;
+   - `TB5074` as above and `TB5044 Unable to determine default interface of coclass 'Box'`, at the `Dim o` line.
+
+   The third line, where the target is declared with the instantiated type, compiles.
+
+What decides it, each tried in the project above with `Box(Of Long)`:
+
+| change | result |
+|---|---|
+| none: `Dim a As Any = New Box(Of Long)(1)` | TB5074 and TB5032 |
+| `Dim u As Box(Of Long)` before the line, after it, or in another module as a `Private` field | compiles |
+| `Private Function Unused() As Box(Of Long)` anywhere in the project | compiles |
+| a declaration with other type arguments, `Dim u As Box(Of Byte)` | TB5074 and TB5032 |
+| the package itself declaring `Box(Of Long)`, such as a function's result type | compiles |
+| the same class declared in the project's own code | compiles |
+| the class without `[COMCreatable(False)]`, or with one type parameter or three | TB5074 and TB5032 |
+| the class without a constructor, `Dim a As Any = New Box(Of Long)` | TB5032 only |
+| `Dim v As Variant` then `v = New Box(Of Long)(1)`; `Show New Box(Of Long)(1)` for `Show(x As Object)`; `Debug.Print TypeName(New Box(Of Long)(1))` | TB5074 with TB5044 / TB5093 |
+
+With the contributed package Generics 1.0.0.0, `Dim t As Any = New TupleOf2(Of String, Long)("a", 2)` fails as above, and so do `TupleOf3`, `TupleOf5` to `TupleOf7`, and `TupleOf1(Of Long)(1)`. `New TupleOf1(Of String)("a")` compiles, and so does `New TupleOf7(Of String, String, String, String, String, String, String)(...)`: the package's own module `HelloWorldModule` declares exactly those two instantiations. The number of type parameters is not the cause.
+
+**Expected behavior**
+`New Box(Of Long)(1)` binds to the constructor whether or not another declaration has named `Box(Of Long)`, as it does for a class declared in the project, and as `Dim t As Box(Of Long) = New Box(Of Long)(1)` does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same on BETA 997 and 995. On BETA 957 the first line reports TB5074 and then TB5028, *Unable to convert type 'Box' to type 'Any'*, in place of TB5032.
+
+Not tried: a generic class from a compiler package, such as `EventLog(Of T1, T2)` of WinEventLogLib.
+
+Severity: low. A compile error is reported, nothing goes wrong silently, and a declaration that names the instantiation avoids it, such as `Dim t As Box(Of Long) = New Box(Of Long)(1)`. The diagnostic points at a correct line and says nothing about the type arguments.
+
+<!-- Reproducer: bugs/package-generic-new-untyped-target/ (mode compile, expects exit 1 and TB5074, TB5032 and TB5044; the project embeds the small package BoxLib, made from the Generics package's Settings without its WinDevLib dependency; verify reproduces on BETA 1005, 997 and 995, and on 957 but for TB5028 in place of TB5032, which the expectation names, so verify says NO LONGER REPRODUCES there). Found documenting the contributed package Generics: docs/Reference/Contributed/Generics/index.md, section "Creating a tuple", carries a NOTE naming BETA 1005, with the workaround of a typed variable and a sample of it. Related, not the same: the filed bugs/filed/static-ctor-args (#2492), where a `Static` initialised with `New Dog("Rex")` fails with TB5074 when the class is declared later, as if the constructors of a type were not yet known when the line is bound. When fixed: remove the NOTE and its workaround sample, and retire the reproducer. -->
+
