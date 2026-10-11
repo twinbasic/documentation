@@ -75,8 +75,9 @@ page is absorbed it sorts after the Reference.
 
 ## Conventions
 
-These apply across `docs/IDE/` and also go into `WIP.Authoring.md` and
-`docs/Documentation/Authoring.md` so other sections follow them.
+These apply across `docs/IDE/`. The first three also apply to any page that names the IDE's
+controls or keys, and `docs/Documentation/Authoring.md` (*Formatting conventions*) states them
+for contributors.
 
 - **UI names** in bold, as the IDE spells them: **Project Explorer**, **Break On All Errors**.
 - **Menu paths** in bold with an arrow: **File → Export Project**.
