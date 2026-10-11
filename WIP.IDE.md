@@ -97,6 +97,11 @@ for contributors.
 - **The section names no build**, except in a defect callout (owner's standing rule). Lines such
   as "Components list coming soon" go, unless the IDE itself shows that text and the page says
   so.
+- **Defects the twinBASIC developers already know of** (owner) are not queued, but a page that
+  describes the feature still carries the callout rule 6 calls for:
+  - Rename Symbol (<kbd>F2</kbd>) renames nothing;
+  - accepting a function from the completion list by typing `(` doubles the parenthesis
+    (`Area(()`).
 - Callouts follow WIP.md rule 6. A twinBASIC defect found while writing goes into
   `BUGS-TO-REPORT.md` with a reproducer, never into a page alone.
 
