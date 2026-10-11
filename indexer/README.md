@@ -436,7 +436,10 @@ refuses it): it is listed in `problems` as a line with no field.
 `indexer/snapshots/` holds the baseline the reference is compared with, so it
 holds a package only if the reference documents it, and only that package's
 `api.json`: the sources stay in the store. `sync` copies a snapshot when the
-package has a section in the reference, and `analyze` diffs against it. The
+package has a section in the reference, and `analyze` diffs against it. A
+section started after its package was synced gets its snapshot from the next
+`sync`, which copies the store's `api.json` when it is of the version the
+section's `indexed_from` names (`adoptSnapshots`). The
 other packages are indexed into the store and left out of the repository; most
 of the contributed ones are, and so are the builds of a package that is
 documented as one.

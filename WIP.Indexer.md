@@ -135,7 +135,10 @@ which would write the snapshots of another build.
 - **Snapshots are committed only for the documented packages, to start with**: 14 files, 3.2 MB
   (about 350 KB compressed). The contributed packages and the extra CEF builds are indexed into
   the store and left out of the repository. A package joins when its section does; `sync`
-  copies a snapshot for a documented package it indexed in that run.
+  copies a snapshot for a documented package it indexed in that run, and gives a documented
+  package with none the store's `api.json` when that is of its `indexed_from` version
+  (`adoptSnapshots`): a package is usually synced before its section exists, and a later
+  sync finds its store current and indexes nothing.
 - **They are taken from the build the reference was last indexed against, BETA 997**
   (`beta-x-0997`), not from a newer one, so that the pages and the baseline agree and
   `analyze` of a newer build shows the real distance.
@@ -266,10 +269,6 @@ the old tool's at BETA 997, and it takes half a second with no cache.
   `Assert` functions on `Exact.md`) shows as undocumented, and a name shared by several types
   shows as documented once any page carries it. Update mode does not audit, but finds a
   changed symbol's `doc_page` the same way.
-- **Adopting a package whose store is already current writes no snapshot.** By reading `runSync`:
-  the snapshots are copied for the packages the run indexed, and a package that is up to date
-  is not among them. Documenting a package that `sync` has already read needs its store folder
-  removed first, or a build newer than the store's.
 - **`indexer/TWINSERV-protocol.md` stays where it is, as reference beside the code.** It
   describes a third party's HTTP API, which is neither a reason nor a decision, and folding 239
   lines of it into this note would bury both. Its one reader is `lib/twinserv-client.mjs`, which

@@ -20,6 +20,7 @@ import { downloadRelease, getLatestRelease } from "./lib/github-release.mjs";
 import { API_FORMAT, buildApi } from "./lib/api-model.mjs";
 import {
   STORE_PROBLEMS,
+  adoptSnapshots,
   commitStore,
   copyToSnapshots,
   ensureStore,
@@ -372,6 +373,11 @@ async function runSync(filter, install) {
       console.log(`  ${synced.length - baseline.length} synced packages have no page in the reference: no snapshot.`);
     }
   }
+  // A section started after its package was synced: the store is current, so
+  // the run above did not index the package, and its snapshot is the store's.
+  const adopted = await adoptSnapshots(STORE_PATH, SNAPSHOTS_PATH, await documentedPackages(DOCS_REF_DIR));
+  if (adopted.length)
+    console.log(`\nSnapshots of newly documented packages: ${adopted.map((w) => w.package).join(", ")}.`);
 
   for (const name of filter ?? []) {
     if (known.has(name)) continue;

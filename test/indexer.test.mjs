@@ -48,6 +48,7 @@ import { FINGERPRINTED, fingerprintOf, indexerFingerprint } from "../indexer/lib
 import { derivePackageApi } from "../indexer/lib/package-api.mjs";
 import { readPackageFiles } from "../indexer/lib/package-files.mjs";
 import {
+  adoptSnapshots,
   apiHeadOf,
   copyToSnapshots,
   manifestPath,
@@ -1496,6 +1497,30 @@ describe("copyToSnapshots", () => {
 
   test("skips a package the store has no api.json for", async () => {
     assert.deepEqual(await copyToSnapshots(store, snapshots, [{ group: "built-in", package: "Missing" }]), []);
+  });
+});
+
+describe("adoptSnapshots", () => {
+  const store = mkdtempSync(path.join(tmp, "adopt-store-"));
+  const snapshots = mkdtempSync(path.join(tmp, "adopt-snapshots-"));
+  putPackage(store, "contributed", "New", { api: apiText("1.0.5.0") });
+  putPackage(store, "contributed", "Newer", { api: apiText("2.0.0.0") });
+  putPackage(store, "built-in", "Kept", { api: apiText("beta-x-1005") });
+  mkdirSync(path.join(snapshots, "built-in", "Kept"), { recursive: true });
+  writeFileSync(path.join(snapshots, "built-in", "Kept", "api.json"), apiText("beta-x-0997"));
+  const documented = new Map([
+    ["contributed/New", { indexedFrom: "1.0.5.0" }],
+    ["contributed/Newer", { indexedFrom: "1.0.0.0" }],
+    ["contributed/Unsynced", { indexedFrom: "1.0.0.0" }],
+    ["built-in/Kept", { indexedFrom: "beta-x-1005" }],
+  ]);
+
+  test("gives a documented package with no snapshot the store's, only at the version its section names", async () => {
+    assert.deepEqual(await adoptSnapshots(store, snapshots, documented), [{ group: "contributed", package: "New" }]);
+    assert.equal(readFileSync(path.join(snapshots, "contributed", "New", "api.json"), "utf-8"), apiText("1.0.5.0"));
+    assert.throws(() => readFileSync(path.join(snapshots, "contributed", "Newer", "api.json")), { code: "ENOENT" });
+    // A snapshot there is the baseline, whatever the store holds.
+    assert.equal(readFileSync(path.join(snapshots, "built-in", "Kept", "api.json"), "utf-8"), apiText("beta-x-0997"));
   });
 });
 

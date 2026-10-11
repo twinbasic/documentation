@@ -119,6 +119,24 @@ async function copyToSnapshots(storePath, snapshotsPath, packages) {
 }
 
 /**
+ * Copies to the snapshots the api.json of each documented package that has none
+ * there, when the store holds the version its section was indexed from: a sync
+ * run before the section existed brought the store up to date, so no later sync
+ * indexes the package and copies it. `documented` is `documentedPackages`'s map.
+ * Returns the packages written, as `copyToSnapshots` does.
+ */
+async function adoptSnapshots(storePath, snapshotsPath, documented) {
+  const adopt = [];
+  for (const [key, section] of documented) {
+    const [group, pkg] = key.split("/");
+    if (await fs.stat(path.join(snapshotsPath, group, pkg, "api.json")).catch(() => null)) continue;
+    const head = await apiHeadOf(path.join(storePath, group, pkg, "api.json"));
+    if (head?.version && head.version === section.indexedFrom) adopt.push({ group, package: pkg });
+  }
+  return copyToSnapshots(storePath, snapshotsPath, adopt);
+}
+
+/**
  * What an api.json declares of itself, `{ format, version, project }`, read from
  * its first bytes (the file is written format, package, project, version, then
  * the types). `format` is 0 when the file declares none, as it did before the
@@ -309,6 +327,7 @@ async function reindexStored(storePath, group, symbol) {
 
 export {
   STORE_PROBLEMS,
+  adoptSnapshots,
   apiHeadOf,
   commitStore,
   copyToSnapshots,
