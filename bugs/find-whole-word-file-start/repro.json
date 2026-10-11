@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-find",
+  "tests": [
+    "with Whole Word Only, Find Next never finds Module at line 1, column 1"
+  ],
+  "steps": "1. Open a project with a module whose first line is Module Finder, so that the word Module stands at line 1, column 1 (test/ide/probes/code-find/Sources/Finder.twin).\n2. Put the caret on line 2 and press Ctrl+F. Type Module in Find What and tick Whole Word Only; Current File and Direction All are as Ctrl+F sets them.\n3. Click Find Next: the Module of End Module is found. Click Find Next again: The specified region has been searched. Line 1, column 1 is never found.\n4. With Whole Word Only cleared, the second press finds line 1, column 1."
+}

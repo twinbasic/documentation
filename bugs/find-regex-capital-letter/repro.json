@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-find",
+  "tests": [
+    "a regular expression with a capital letter, /End Sub/, finds nothing"
+  ],
+  "steps": "1. Open a module holding End Sub, press Ctrl+F and tick Regular Expressions, which clears Match Case.\n2. Type /End Sub/ in Find What and click Find Next: The specified region has been searched.\n3. /end sub/ and /End Sub/i find End Sub. With Match Case clear the IDE searches the text in lower case, and leaves the expression as it was typed."
+}

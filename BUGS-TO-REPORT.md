@@ -2718,3 +2718,325 @@ The code, read from `ide\main.js`: `toggleActiveKeyboardShortcutName` tests the 
 Severity: low. A name with `|` is unusual, and the groups themselves are kept, but the saved list is corrupted without a message, and the menu shows a group as on after it was switched off.
 
 <!-- Reproducer: bugs/keyboard-group-bar-name/ (mode lane: asserted by `ide-test.bat --only customising` (test/ide/customising.test.mjs), the test "a group named A|B switches B on with it, and toggling B twice switches both off", which passes on BETA 1005; it adds the groups through the Manage Keyboard Shortcuts dialog and runs the menu item's command, tbKeyboardShortcuts_ToggleActiveKeyboardShortcutGroupCustom2, with every save the IDE makes blocked in its page). No project and no zip. docs/IDE/Customising/Keyboard-Shortcuts.md carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Customising pages. -->
+
+---
+
+## Format Selection from a continuation line fails with *IDE startup failure*, and closes an IDE that was opened with its project
+
+**Describe the bug**
+Edit > Format Selection on a selection whose first line continues the line above it (the line above ends in ` _`) formats nothing, and the IDE's page raises `TypeError: Assignment to constant variable.` When the IDE was started with the project on its command line, as it is when a `.twinproj` is opened from Explorer, the error is shown as an alert headed *IDE startup failure*, and after the alert the IDE closes itself: at once when nothing is unsaved, and after asking whether to save when something is. Started from its icon, with the project opened from the New / Open dialog, the IDE prints the same error in the DEBUG CONSOLE and stays open. It was observed in an IDE started with an `APPDATA` of its own, by recording the page's alerts and watching the IDE's process.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project by double-clicking its `.twinproj`, so that the IDE starts with it. Add this procedure to a module, and save:
+   ```
+   Public Sub Continued()
+       Dim a As Long, _
+           b As Long
+       Select Case a
+           Case 1
+               a = 2
+       End Select
+   End Sub
+   ```
+2. Select from the start of the line `b As Long` to the end of `Select Case a`, and choose Edit > Format Selection.
+3. An alert reads `IDE startup failure (BETA twinBASIC IDE BETA 1005):`, then `JS Promise Rejection(1):`, `Assignment to constant variable.` and a stack trace through `provideDocumentRangeFormattingEdits`. Nothing is formatted. Click OK: the IDE closes.
+4. Open the project again, change anything, and repeat step 2. After the alert the IDE asks *You've made changes to this project. Save now?*, with Save, Discard Changes and Cancel. Cancel keeps the IDE open; the other two close it.
+
+**Expected behavior**
+The selection is re-indented, as it is when it starts on any other line: the formatter moves the start up to the first line of the continued statement and formats from there. A failure inside a command does not close the IDE.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js` and `ide\main2.js`: `provideDocumentRangeFormattingEdits` declares the start line with `const` and then decrements it (`o--`) in the loop that moves the start up over the lines ending in `_`, which throws as soon as the selection starts on a continuation line. The rejection reaches `window.onunhandledrejection` in `main2.js`, which alerts *IDE startup failure* and calls `hostAppObject.CloseWindow` unless `reportIDEerrorsToDebugConsole` is set, and only `startNow`, the start without a project, sets it. So in an IDE opened with its project, any unhandled rejection in the page closes the IDE.
+
+Format Selection on a selection that starts on any other line, the `Select Case` line included, works. Format Document, on the same text, works.
+
+Severity: high. The IDE closes during ordinary editing. Nothing is lost if the question in step 4 is answered Save or Cancel, but Discard Changes, a likely answer to a question nobody expected, loses every unsaved change.
+
+<!-- Reproducer: bugs/format-selection-continuation/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the tests "Format Selection on a selection that starts on a continuation line opens an IDE startup failure alert, and the IDE then closes" (nothing unsaved; the test then starts the lane's next IDE on the project) and "with unsaved changes, the same Format Selection changes nothing, and the IDE asks to save them before it closes" (answered Cancel); the control "Format Selection re-indents a selection that starts on a Select Case line" passes too, all on BETA 1005). The start from the icon (the error in the DEBUG CONSOLE, no alert, no close) was tried once with a probe that is not kept. No project and no zip: the steps give the code. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a WARNING for it where it describes Format Selection; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 2); that the IDE closes was found while writing the lane. -->
+
+---
+
+## Find with Whole Word Only never finds a match at the very start of the file
+
+**Describe the bug**
+With Whole Word Only ticked, the Find / Replace panel never finds a match that begins at line 1, column 1 of the file. Find Next passes over it, and the search ends with *The specified region has been searched.* No message says that a match was skipped. It was observed by operating the panel with mouse and key events in an IDE started with an `APPDATA` of its own, and reading the selection after each Find Next.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module whose first line is its `Module` line, with nothing above it, such as:
+   ```
+   Module Finder
+       Public Sub Main()
+           Debug.Print 1
+       End Sub
+   End Module
+   ```
+2. Put the caret on line 2 and press Ctrl+F. Type `Module` in Find What and tick Whole Word Only; Current File and Direction All are as Ctrl+F sets them.
+3. Click Find Next: the `Module` of `End Module` is selected. Click Find Next again: *The specified region has been searched.* So it goes on every later press: the `Module` at line 1, column 1 is never selected.
+4. Clear Whole Word Only and repeat from step 2: the second press selects line 1, column 1.
+
+**Expected behavior**
+The second press selects the `Module` at line 1, column 1. The start of the file is a word boundary, as the start of any other line is.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: `doFindMatch` takes the character before and the character after a match with `charAt`, and treats each as a boundary when its `charCodeAt(0)` is below 128 and it is not a letter or a digit. Before the first character of the text searched, `charAt` returns an empty string, whose `charCodeAt(0)` is `NaN`, so the match is taken to be inside a word and is skipped. The same code skips a match that ends at the last character of the text searched; that, and a match that starts exactly at the caret (the text searched starts there), were not tried.
+
+Severity: moderate. The search reports the region searched while it has skipped a match, and nothing shows it.
+
+<!-- Reproducer: bugs/find-whole-word-file-start/ (mode lane: asserted by `ide-test.bat --only code-find` (test/ide/code-find.test.mjs), the test "with Whole Word Only, Find Next never finds Module at line 1, column 1", which passes on BETA 1005; the control without Whole Word Only, the test before it, passes too). No project and no zip: the steps give the code. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a WARNING for it where it describes Whole Word Only; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 5). -->
+
+---
+
+## Find with Regular Expressions finds nothing when the pattern holds a capital letter
+
+**Describe the bug**
+With Regular Expressions ticked, a pattern that holds a capital letter finds nothing unless it carries the `i` flag: `/End Sub/` ends with *The specified region has been searched.* in a file full of `End Sub`, while `/end sub/` and `/End Sub/i` find it. With Match Case clear, the panel searches the file's text in lower case but leaves the regular expression as it was typed; and ticking Regular Expressions clears Match Case (ticking Match Case clears Regular Expressions), so a regular expression always runs against the text in lower case. It was observed by operating the panel with mouse and key events in an IDE started with an `APPDATA` of its own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module that holds `End Sub`. Press Ctrl+F and tick Regular Expressions; Match Case is cleared.
+2. Type `/End Sub/` in Find What, put the caret at line 1, column 1, and click Find Next: *The specified region has been searched.*
+3. Type `/end sub/`, or `/End Sub/i`, instead: Find Next selects `End Sub`.
+
+**Expected behavior**
+`/End Sub/` finds `End Sub`. Either the search runs on the text as it is, with the `i` flag added when Match Case is clear, or Match Case can be ticked together with Regular Expressions to make the search case-sensitive.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: the Find Next code lower-cases the text searched (`toLowerCase`) when Match Case is clear, and `createRegexFromUserString` builds the expression from the pattern as typed, adding only the `m` flag. A class such as `\D` (not a digit) matches lower-case text as before, so `/\Dim/` still finds `Dim`: only a literal capital letter fails.
+
+Severity: moderate. The search reports nothing found for text that is there.
+
+<!-- Reproducer: bugs/find-regex-capital-letter/ (mode lane: asserted by `ide-test.bat --only code-find` (test/ide/code-find.test.mjs), the test "a regular expression with a capital letter, /End Sub/, finds nothing", which passes on BETA 1005; the control "a regular expression in lower case, or with the i flag, finds End Sub" passes too). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a WARNING for it where it describes Regular Expressions; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 6). -->
+
+---
+
+## A regular-expression match that spans a line break is shown as an empty selection, and Find Next does not move past it
+
+**Describe the bug**
+When a regular expression in the Find / Replace panel matches across a line break, Find Next selects nothing: it puts the caret at the end of the line where the match starts, with an empty selection. The next Find Next finds the same match and stays at the same place, so the search can go no further. It was observed by operating the panel with mouse and key events in an IDE started with an `APPDATA` of its own, and reading the selection after each Find Next.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module in which an indented line comes before `End Sub`, such as:
+   ```
+   Module Finder
+       Public Sub Main()
+           Debug.Print 1
+       End Sub
+   End Module
+   ```
+2. Press Ctrl+F, tick Regular Expressions and type `/^\s+end sub$/` in Find What (in lower case: see the entry about capital letters). Put the caret at line 1, column 1 and click Find Next.
+3. The selection is empty, at the end of the `Debug.Print` line. Click Find Next again: the selection is at the same place, however often it is clicked.
+
+**Expected behavior**
+The match is selected, from the line break to the end of `End Sub`, and the next Find Next goes on from the end of the match.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: `doFindMatch` turns the start of the match into a line and a column, but puts its end on the same line, at the start column plus the match's length. For a match that holds a line break that column lies past the end of the line, and the editor shortens the selection to the line's end. The next search starts from that place, which is before the match, and finds it again. The match starts at the line break because the IDE adds the `m` flag, so `^` also matches inside the line break. A match within one line, such as `/sub$/i`, is selected properly.
+
+Severity: low. Patterns that span lines are rare, but Find Next cannot get past one.
+
+<!-- Reproducer: bugs/find-regex-line-break/ (mode lane: asserted by `ide-test.bat --only code-find` (test/ide/code-find.test.mjs), the test "a match of /^\s+end sub$/, which spans a line break, is an empty selection, and Find Next stays on it", which passes on BETA 1005; its project, test/ide/probes/code-find, has a longer Main than the module above). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a NOTE for it where it describes Regular Expressions; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 12). -->
+
+---
+
+## The Find / Replace panel's *Invalid RegExp:* alert leaves out the reason
+
+**Describe the bug**
+When the pattern in Find What is not a valid regular expression, Find Next shows an alert that reads only *Invalid RegExp:*, without saying what is wrong with the pattern. It was observed by recording the alerts of the IDE's page while operating the panel.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module. Press Ctrl+F, tick Regular Expressions and type `/(/` in Find What.
+2. Click Find Next. The alert reads `Invalid RegExp:` and nothing after the colon.
+
+**Expected behavior**
+The alert gives the reason, such as `Invalid RegExp: Invalid regular expression: /(/m: Unterminated group`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: `createRegexFromUserString` calls `alert("Invalid RegExp:", e.message)`. `alert` shows its first argument only, so the message is dropped; `alert("Invalid RegExp: " + e.message)` would show it.
+
+Severity: low.
+
+<!-- Reproducer: bugs/find-regex-alert-reason/ (mode lane: asserted by `ide-test.bat --only code-find` (test/ide/code-find.test.mjs), the test "the alert for an invalid regular expression, /(/, reads only Invalid RegExp:", which passes on BETA 1005). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, may name it in a NOTE where it describes Regular Expressions; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 13). -->
+
+---
+
+## After a search in Selected Text, the scope stays on a greyed Selected Text, and Find Next stops at once
+
+**Describe the bug**
+The Find / Replace panel ticks Selected Text when Ctrl+F is pressed with a selection of several lines. Once that selection is gone, after a click elsewhere in the code, the panel greys Selected Text but leaves it ticked, and ticks no other scope. Find Next then searches nothing: it asks at once whether to continue from the beginning, and finds nothing in the file. It was observed by operating the panel and the code editor with mouse and key events in an IDE started with an `APPDATA` of its own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module. Select three lines that hold the word `total` and press Ctrl+F: Selected Text is ticked. Type `total` in Find What and click Find Next: the first `total` in the selection is selected.
+2. Click in the code on a line outside the selection. Selected Text is still ticked, and greyed; Current File is not ticked.
+3. Click Find Next. At once: *End of search scope has been reached; do you want to continue from the beginning?*
+
+**Expected behavior**
+When Selected Text can no longer be used, the panel ticks Current File, as Ctrl+F does when there is no selection, and Find Next searches the file.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Ticking another scope, such as Current Procedure, recovers. Severity: low. The message suggests that the file holds no further match, while the search did not look.
+
+<!-- Reproducer: bugs/find-scope-stuck-selected-text/ (mode lane: asserted by `ide-test.bat --only code-find` (test/ide/code-find.test.mjs), the test "after a search in Selected Text and a click in the code, Selected Text stays ticked but greyed, and Find Next stops at once", which passes on BETA 1005). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a NOTE for it where it describes the scopes; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 9). -->
+
+---
+
+## The Diagnostics panel's Copy and Copy All put HTML in the text, and label an info or a hint {WARNING}
+
+**Describe the bug**
+The text that the DIAGNOSTICS panel's right-click menu copies holds the HTML the panel draws the diagnostic's code with: each message starts `<span>TB0018</span>`. Copy All also labels every row that is not an error `{WARNING}`, infos and hints included. It was observed in an IDE started with an `APPDATA` of its own, with the page's clipboard calls replaced by recorders, so that the copied text could be read.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project with a warning and an info, such as one whose settings make TB0012 an info and TB0018 a warning, with this module:
+   ```
+   Module Helpers
+       Public Const BigValue As Long = &H8000
+
+       Public Function Twice(ByVal n As Long) As Long
+           Return n * 2
+       End Function
+
+       Public Sub Narrowing()
+           Dim narrow As Integer
+           narrow = Twice(2)
+       End Sub
+   End Module
+   ```
+2. In the DIAGNOSTICS panel, right-click the TB0018 row and choose Copy. The text copied is `{WARNING} /<Project>/Sources/Helpers.twin [<line>,<column>]: <span>TB0018</span>implicit narrowing conversion from Long to Integer.  Use CInt(expression) to avoid this message.`
+3. Click the Info counter on the status bar, so that the panel shows infos, right-click a row and choose Copy All. Every row's code is between `<span>` and `</span>`, and the info TB0012 is labelled `{WARNING}`.
+
+**Expected behavior**
+Plain text, with the code and the message apart: `{WARNING} /<Project>/Sources/Helpers.twin [<line>,<column>]: TB0018 implicit narrowing conversion...`, and infos and hints labelled as what they are, such as `{INFO}` and `{HINT}`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: the panel adds each diagnostic with the caption `"<span>" + code + "</span>" + message`, the `<span>` styling the code, and `generateCopyPasteTextForProblem` copies the caption as it is, labelling severity 1 `{ERROR}` and every other severity `{WARNING}`. Copy All Errors copies the errors with the same `<span>`.
+
+Severity: low. The copied report has to be cleaned by hand before it is pasted into an issue or a message.
+
+<!-- Reproducer: bugs/diagnostics-copy-html/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "the Diagnostics panel's Copy puts the code in a <span>, and Copy All labels the info {WARNING}", which passes on BETA 1005; its project, test/ide/probes/code-editor, sets TB0012 to info and TB0018 to warning, and the test replaces navigator.clipboard.writeText and the copyClipboardIDE request in the page, so the Windows clipboard is never written). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a NOTE for it where it describes the Diagnostics panel; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 3). -->
+
+---
+
+## The Outline panel lists a file's modules and classes but none of their members
+
+**Describe the bug**
+The OUTLINE panel shows only the top-level types of the active file, one row each, with no arrow to expand them: `Editing` for a module, `Ev` and `Ev2` for a file holding two classes. None of the procedures, properties, variables or other members is listed, so the filters in the panel's `...` menu (Show Procedures, Show Variables and the rest) change nothing. The symbols the panel receives for the file have an empty `children` list. It was observed in an IDE started with an `APPDATA` of its own, by reading the panel and the symbols it holds (`outlinePanel.cachedSymbols`).
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module that holds procedures, such as:
+   ```
+   Module Editing
+       Public Sub Main()
+       End Sub
+
+       Public Sub Plain()
+       End Sub
+   End Module
+   ```
+2. Show the OUTLINE panel. It shows one row, `Editing`, with no arrow, and neither `Main` nor `Plain`.
+
+**Expected behavior**
+The module's row expands to its members, `Main` and `Plain`, as the panel's filters and its Sort Alphabetically option assume.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The symbols reach the panel's `syncSymbols` with `children: []` for every type, so either the compiler sends no members or the IDE drops them before the panel; which of the two was not settled.
+
+Severity: moderate. The panel cannot be used to move around a file.
+
+<!-- Reproducer: bugs/outline-no-members/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "the Outline lists the module Editing and none of its procedures", which passes on BETA 1005; the two-class file is from the trials, not the lane). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a NOTE for it where it describes the Outline panel; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 4). -->
+
+---
+
+## Go To Definition, Ctrl+Up and Ctrl+Down put the caret on the line after a declaration
+
+**Describe the bug**
+Go To Definition (F12 or Shift+F2) on the name of a procedure puts the caret on the line after the procedure's declaration, the first line of its body, instead of on the declaration. In the trials the same happened for a class member reached through an object variable, and for a class name (line 2 of a class declared on line 1). Ctrl+Down and Ctrl+Up, which move to the next and the previous procedure, also put the caret on the first line of the body, at column 1. Go To Definition on a local variable or an enum member puts the caret on its declaration. It was observed by pressing the keys in an IDE started with an `APPDATA` of its own and reading the caret's place.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project with a module:
+   ```
+   Module Helpers
+       Public Function Twice(ByVal n As Long) As Long
+           Return n * 2
+       End Function
+   End Module
+   ```
+   and, in a procedure of another module, the line `total = Helpers.Twice(3)`.
+2. Put the caret on `Twice` in that line and press F12. `Helpers.twin` opens with the caret on `Return n * 2`, the line after `Public Function Twice`.
+3. In a module with several procedures, put the caret in the first one and press Ctrl+Down: the caret goes to the first line of the next procedure's body, column 1. Ctrl+Up from inside a procedure goes to the first line of its own body.
+
+**Expected behavior**
+The caret on the declaration line, at the name, as Go To Definition does for a local variable, so that the declaration is what the reader sees first.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Severity: low. The declaration is one line above the caret, and in view.
+
+<!-- Reproducer: bugs/definition-line-after/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the tests "Go To Definition on a function in another module puts the caret on the line after its declaration" and "Ctrl+Down puts the caret on the line after the next procedure's declaration, and Ctrl+Up on the line after its own procedure's", which pass on BETA 1005; the control "Go To Definition on a local variable puts the caret on its Dim line" passes too. The class-member and class-name cases are from the trials, not the lane). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, may name it in a NOTE where it describes Go To Definition; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 10, without its Shift+F10 part). -->
+
+---
+
+## Escape does not remove the extra cursors
+
+**Describe the bug**
+After cursors are added with Ctrl+Alt+Down or Alt+click, Escape leaves them all: pressed once or twice, the code editor still has every cursor, and what is typed next goes in at each of them. A click in the code goes back to one cursor. It was observed by pressing the keys in an IDE started with an `APPDATA` of its own and reading the editor's selections.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module. Put the caret on a line that has two more lines below it and press Ctrl+Alt+Down twice: there are three cursors.
+2. Press Escape, then Escape again. The three cursors remain.
+
+**Expected behavior**
+Escape leaves only the first cursor, as it does in the Monaco editor the code editor is built on.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Escape is not among the keys the IDE stops before they reach Monaco (`monacoApplyKeyDownFilter`), and the IDE does not refer to Monaco's command for it, `removeSecondaryCursors`; where the key goes was not settled.
+
+Severity: low. A click removes the extra cursors.
+
+<!-- Reproducer: bugs/escape-keeps-cursors/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "Escape leaves the two cursors that Ctrl+Alt+Down added", which passes on BETA 1005; the control "a click in the code goes back to one cursor" passes too. Alt+click is from the trials, not the lane). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, may name it in a NOTE where it describes several cursors; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 11). -->

@@ -1,0 +1,26 @@
+Module Editing
+    ' test/ide/code-editor.test.mjs finds the lines it needs by their text. Continued
+    ' and Plain are left unindented for Format Selection.
+    Public Sub Main()
+        Dim total As Long
+        total = Helpers.Twice(3)
+        Debug.Print total
+    End Sub
+
+    Public Sub Continued()
+Dim a As Long, _
+b As Long
+Select Case a
+Case 1
+a = 2
+End Select
+    End Sub
+
+    Public Sub Plain()
+Dim c As Long
+Select Case c
+Case 1
+c = 2
+End Select
+    End Sub
+End Module

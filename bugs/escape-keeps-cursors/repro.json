@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-editor",
+  "tests": [
+    "Escape leaves the two cursors that Ctrl+Alt+Down added"
+  ],
+  "steps": "1. Put the caret on a line of code and press Ctrl+Alt+Down twice: there are three cursors.\n2. Press Escape, once or twice. The three cursors remain. A click in the code goes back to one cursor."
+}

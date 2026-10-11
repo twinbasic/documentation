@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-editor",
+  "tests": [
+    "Go To Definition on a function in another module puts the caret on the line after its declaration",
+    "Ctrl+Down puts the caret on the line after the next procedure's declaration, and Ctrl+Up on the line after its own procedure's"
+  ],
+  "steps": "1. In one module, call a function declared in another: total = Helpers.Twice(3), where Helpers.twin declares Public Function Twice on line 5.\n2. Put the caret on Twice and press F12 (or Shift+F2). Helpers.twin opens with the caret on line 6, column 5, the first line of the body. Go To Definition on a local variable puts the caret on its Dim line.\n3. In a procedure, press Ctrl+Down: the caret goes to the first line of the next procedure's body, column 1. Ctrl+Up from inside a procedure puts it on the first line of that procedure's body."
+}

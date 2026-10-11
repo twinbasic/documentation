@@ -1,0 +1,14 @@
+Module Finder
+    ' test/ide/code-find.test.mjs searches this file with the Find / Replace panel.
+    ' Its first word must stay at line 1, column 1, and no comment may hold it.
+    Public Sub Main()
+        Dim total As Long
+        total = 2
+        Debug.Print "total is " & total
+        Debug.Print Len("abc") + total
+    End Sub
+
+    Public Sub Second()
+        Debug.Print "second"
+    End Sub
+End Module

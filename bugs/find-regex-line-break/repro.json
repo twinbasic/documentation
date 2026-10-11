@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-find",
+  "tests": [
+    "a match of /^\\s+end sub$/, which spans a line break, is an empty selection, and Find Next stays on it"
+  ],
+  "steps": "1. Open a module in which an indented line comes before an End Sub. Press Ctrl+F, tick Regular Expressions and type /^\\s+end sub$/ in Find What.\n2. Put the caret at line 1, column 1 and click Find Next: the selection is empty, at the end of the line before End Sub.\n3. Click Find Next again: the selection is at the same place, and stays there however often it is clicked."
+}

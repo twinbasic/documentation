@@ -1,0 +1,13 @@
+Module Helpers
+    ' BigValue gives the info TB0012, and Narrowing the warning TB0018 (Settings sets both).
+    Public Const BigValue As Long = &H8000
+
+    Public Function Twice(ByVal n As Long) As Long
+        Return n * 2
+    End Function
+
+    Public Sub Narrowing()
+        Dim narrow As Integer
+        narrow = Twice(2)
+    End Sub
+End Module

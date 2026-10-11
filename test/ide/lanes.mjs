@@ -30,4 +30,6 @@ export default [
   { file: "typing-after-open.test.mjs" },
   { file: "restart-file-order.test.mjs" },
   { file: "customising.test.mjs" },
+  { file: "code-find.test.mjs" },
+  { file: "code-editor.test.mjs" },
 ];

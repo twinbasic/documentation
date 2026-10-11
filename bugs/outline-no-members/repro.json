@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-editor",
+  "tests": [
+    "the Outline lists the module Editing and none of its procedures"
+  ],
+  "steps": "1. Open any project and a module that holds procedures, and show the OUTLINE panel.\n2. The panel shows one row, the module's name, with no arrow, and none of the procedures. The symbols the compiler sends for the file have no children.\n3. The filters of the panel's ... menu (Show Procedures, Show Variables and the rest) change nothing."
+}
