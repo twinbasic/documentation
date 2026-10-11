@@ -681,9 +681,8 @@ Three decisions about the build side, each with the alternative it rules out:
   with no page and put the docs' own layout (Array filed under Information, the Styles
   classes documented though declared `Private`) in the wrong place.
 - **The snapshot is committed, like `inter-metrics.json`, because making it needs a
-  twinBASIC install.** `scripts/build_package_api.mjs` exports the packages through
-  `scripts/lib/tb-packages.mjs` (shared with `census_attributes.mjs`), scans them with
-  `scripts/lib/twin-api.mjs`, and writes ~255 KB. `package-api.json` is a build *input*, so `check_tree_fresh.mjs`
+  twinBASIC install.** `node indexer/twin-index.mjs derive` reads the packages' `.twinproj`
+  files as `sync` does, scans them with `scripts/lib/twin-api.mjs`, and writes ~255 KB. `package-api.json` is a build *input*, so `check_tree_fresh.mjs`
   watches it; `symbol-baseline.json` is an output and is in its `IGNORED_FILES`.
 - **The heading scan is `indexOf`, not a regex.** `/<h([1-6])\b([^>]*)>([\s\S]*?)<\/h\1>/`
   is cubic in the regex gate's census, and it runs over every reference page; the scan

@@ -118,9 +118,9 @@ function findInstall() {
 const buildNumberOf = (root) => /_BETA_(\d+)$/.exec(root)?.[1] ?? "unknown";
 
 // ------------------------------------------------------------- the export
-// scripts/lib/tb-packages.mjs, shared with scripts/build_package_api.mjs so the
-// two read the same export from the same cache. A failed export leaves no
-// folder behind, and is left out of the census rather than counted as empty.
+// scripts/lib/tb-packages.mjs, which keeps each build's export in a cache. A
+// failed export leaves no folder behind, and is left out of the census rather
+// than counted as empty.
 function exportAll(root, cacheDir, includeSamples) {
   try {
     const { projects, failed } = exportPackages({

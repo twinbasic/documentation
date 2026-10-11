@@ -969,7 +969,7 @@ const TASKS = {
         if (err.code !== "ENOENT") throw err;
         throw new Error(
           "builder/package-api.json is missing, and the symbol index needs it. " +
-            "Restore it from git, or regenerate it with node scripts/build_package_api.mjs",
+            "Restore it from git, or regenerate it with node indexer/twin-index.mjs derive",
         );
       }
       const pages = symbolPages(state.pages);

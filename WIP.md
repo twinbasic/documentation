@@ -406,7 +406,8 @@ The full accounting, and what the two ports gained, is in [WIP.Build.md](WIP.Bui
 leaves. `sync` indexes every package's sources into an `api.json`; `analyze` compares the
 current ones with the snapshots committed in `indexer/snapshots/` (those of the build each
 section's `indexed_from` names) and lists the public symbols to create, update and remove, in
-`indexer/.packages/report.json`. It needs a twinBASIC install (or `--release`, for a machine
+`indexer/.packages/report.json`; `derive` writes `builder/package-api.json`, the package half
+of the build's symbol index. It needs a twinBASIC install (or `--release`, for a machine
 without one), is outside every gate and CI, and is documented in
 [Tools-Build](docs/Documentation/Tools-Build.md#twin-index) and
 [indexer/README.md](indexer/README.md); [WIP.Indexer.md](WIP.Indexer.md) says why it is built
@@ -415,15 +416,17 @@ as it is. The rules:
 - **Run `analyze` to find what a page set lacks**, before and after a batch of pages; see the
   [per-symbol workflow](WIP.Authoring.md#per-symbol-workflow).
 - **Bump a section's `indexed_from` when its package is re-indexed**, and commit the pages, the
-  new `indexed_from` and the new snapshots together. `analyze` compares with the snapshot at
-  `HEAD` and only when its `version` is the `indexed_from` tag; a `sync` against a newer build
-  rewrites the working-tree snapshots, and committing them on their own, or the bump without
-  them, drops the next `analyze` into audit mode.
+  new `indexed_from`, the new snapshots and `derive`'s `builder/package-api.json` together.
+  `analyze` compares with the snapshot at `HEAD` and only when its `version` is the
+  `indexed_from` tag; a `sync` against a newer build rewrites the working-tree snapshots, and
+  committing them on their own, or the bump without them, drops the next `analyze` into audit
+  mode.
 - **A change to `scripts/lib/twin-api.mjs`, `scripts/lib/twin-declarations.mjs`,
   `indexer/lib/api-model.mjs` or `indexer/lib/vb6-preprocess.mjs`, or to `format` in
   `api.json`, regenerates the committed snapshots in the same commit**, with `sync --ide`
   naming the install of the build they record. Otherwise `analyze` reports the scanner's
-  changes as changes to the API.
+  changes as changes to the API. Run `derive --check --ide` on the same install too: a
+  scanner change can change `builder/package-api.json`.
 - **There is one scanner, `parseTwin`.** A misread declaration is fixed in
   `scripts/lib/twin-api.mjs` and pinned in `scripts/check_symbol_index.mjs`, never worked
   around in `indexer/`.
@@ -509,7 +512,7 @@ Why the report separates the wedged task from the merely blocked ones, and why
 - `node scripts/bug_repro.mjs` --- the reproducer projects under `bugs/<slug>/` for the entries of [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md): `new`, `pack` (impexp, then the zip, written in Node), `compile`, `build` and `run` through `tbbuild` and `tbrun`, `vb6` (builds the optional `vb6/` VB6 project beside the twinBASIC one in a temp copy, runs its exe on a private desktop, and prints its `out.txt`; a project with a form or a user control is built without Unattended Execution, which VB6 refuses for it; `pack` zips its sources into `<slug>-vb6.zip`; VB6 is started only by `scripts/lib/vb6.mjs`, never from a shell; a graphical defect's `images` key makes `run` and `vb6` keep what the `PngDump` modules of `test/repro-templates/png/` draw as `images/<name>-tb.png` and `-vb6.png`, with a `-compare.png` of both, tested by `test/png.test.mjs`), `file` (moves a filed entry and its reproducer to `bugs/filed/<slug>/`; `file --marked` does every marked entry), and `verify`, which reads each `bugs/*/repro.json` and `bugs/filed/*/repro.json` and says whether the bug still reproduces on the newest beta; a `lane` reproducer names the `ide-test` or `addin-test` lane and tests that assert its bug, which `verify` runs last through that runner, a `probe` one a script under `scripts/`, and a `test` one its own `[TestCase]` Subs and compile cases through `tbrun --tests`, judged by the `PASS` lines of what is fixed and the `FAIL` lines of the bug (`new --template tests` starts one). **No reproducer should need a person at the IDE** (owner, 2026-10-05): a bug the IDE has to be operated for gets a lane test, and `manual` is left for what cannot be automated at all. It has no wrapper. **`verify` is run by a person only**, never by a gate or CI: it needs a twinBASIC install, like `examples.bat`. Default port 9440, and `--jobs N` takes N ports from there. Its command-line cases are in `scripts/lib/cli-cases.mjs`, and need no IDE.
 - `node scripts/vb6run.mjs <file | ->` and `node scripts/vb6run.mjs --docs [--only <regex>]` --- build and run VB6 code, so that what a sample prints in twinBASIC can be compared with VB6: a stand-alone file of statements or a `.bas` module, or `--docs`, which builds the documentation's `check_run` fences in VB6 and says for each whether it prints what its page says (`same`, `differs`, `not VB6`, `error`, `refused`; a `projname=` group is built as a project of its own, its `slot=file` fences translated into VB6 `.cls` and `.bas` components). It has no wrapper and is outside every gate and outside CI: it needs VB6 (`--vb6`, `VB6_EXE`, or the standard install folder). **Never start `VB6.EXE` from a shell**: in Git Bash `/make` is rewritten as a path and VB6 answers with a modal box on the desktop; the tool spawns it from Node with an argument array, and a sample that calls `MsgBox` or `InputBox` or contains `End` is refused. Its `Debug.Print` rewrite and its file translation have probes in `test/example-batches.test.mjs`, and its command-line cases are in `scripts/lib/cli-cases.mjs`; both need no VB6. What it relies on is in [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md).
 
-Three generators sit outside that loop and produce committed artifacts rather than build output — none runs during a build, and none is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography). `node scripts/build_package_api.mjs` regenerates `builder/package-api.json`, the packages' declared API that the build's symbol index (`tB/symbols.json`, for the IDE help add-in) is annotated from; it needs a twinBASIC install, so **run it when the reference is re-indexed against a newer build** and commit it with the pages. See [WIP.HelpAddin.md, Stage 3](WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build).
+Three generators sit outside that loop and produce committed artifacts rather than build output — none runs during a build, and none is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography). `node indexer/twin-index.mjs derive` regenerates `builder/package-api.json`, the packages' declared API that the build's symbol index (`tB/symbols.json`, for the IDE help add-in) is annotated from; it needs a twinBASIC install (or `--release`), so **run it when the reference is re-indexed against a newer build** and commit it with the pages and the snapshots. See [WIP.HelpAddin.md, Stage 3](WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build).
 
 ## Site integrity check
 

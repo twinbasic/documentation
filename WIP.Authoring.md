@@ -110,7 +110,8 @@ how the indexer ties a section to its snapshots: [indexer/README.md](indexer/REA
 
 **Bump `indexed_from` whenever a package is re-indexed against a newer build**, in the same
 commit as the content it adds, and write the new snapshots into `indexer/snapshots/` in it
-(`node indexer/twin-index.mjs sync`). A stale value is worse than none: it asserts a
+(`node indexer/twin-index.mjs sync`), with `builder/package-api.json` for a built-in or
+default package (`node indexer/twin-index.mjs derive`). A stale value is worse than none: it asserts a
 completeness check was run against a build that no longer matches the package.
 
 One other inert key is a different thing: `has_children` on four pages is a
@@ -335,7 +336,8 @@ that several types share counts as documented once any page has it. A symbol is 
 name a type declares, so a property's Get, Let and Set and the overloads of a name are one.
 Anything deliberately undocumented belongs in the landing page's `exclude_from_docs` or
 `exclude_kinds` (see [Authoring-only frontmatter](#authoring-only-frontmatter)), not left in
-the list. When the batch is done, bump `indexed_from` and commit the new snapshots with it; the
+the list. When the batch is done, bump `indexed_from` and commit the new snapshots and
+`derive`'s `builder/package-api.json` with it; the
 rules and the reasons are in [WIP.md](WIP.md#the-package-indexer) and
 [WIP.Indexer.md](WIP.Indexer.md).
 

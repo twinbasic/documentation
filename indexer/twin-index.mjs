@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
@@ -8,6 +8,7 @@ import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 import { findIde } from "../scripts/lib/tb-install.mjs";
 import { compareWithManifest, fetchPackage, versionString } from "./lib/sync.mjs";
 import {
+  betaForTag,
   compareBuiltinManifest,
   compareInstallManifest,
   extractBuiltinPackages,
@@ -15,7 +16,7 @@ import {
   listInstalledPackages,
   readInstalledPackages,
 } from "./lib/builtin-sync.mjs";
-import { downloadRelease } from "./lib/github-release.mjs";
+import { downloadRelease, getLatestRelease } from "./lib/github-release.mjs";
 import { API_FORMAT, buildApi } from "./lib/api-model.mjs";
 import {
   STORE_PROBLEMS,
@@ -32,6 +33,7 @@ import {
 import { indexerFingerprint } from "./lib/fingerprint.mjs";
 import { diffApi, auditCoverage } from "./lib/differ.mjs";
 import { documentedPackages } from "./lib/doc-pages.mjs";
+import { derivePackageApi } from "./lib/package-api.mjs";
 
 exitOnCrash();
 
@@ -40,6 +42,7 @@ const execFileP = promisify(execFile);
 const INDEXER_DIR = path.join(REPO_ROOT, "indexer");
 const STORE_PATH = path.join(INDEXER_DIR, ".packages");
 const SNAPSHOTS_PATH = path.join(INDEXER_DIR, "snapshots");
+const PACKAGE_API_PATH = path.join(REPO_ROOT, "builder", "package-api.json");
 const DOCS_REF_DIR = path.join(DOCS_DIR, "Reference");
 
 const DEFAULT_PACKAGES = ["VBA", "VBRUN", "VB"];
@@ -139,7 +142,7 @@ async function walkDir(dir) {
 
 // --- CLI ---
 
-const COMMANDS = ["sync", "analyze"];
+const COMMANDS = ["sync", "analyze", "derive"];
 
 const USAGE = `Usage: node indexer/twin-index.mjs <command> [options]
 
@@ -149,9 +152,12 @@ documentation still has to say about them.
 Commands:
   sync      Read packages, extract sources, generate api.json snapshots
   analyze   Diff API snapshots against documented baseline
+  derive    Write builder/package-api.json, the package half of the symbol
+            index, from the built-in and default packages
 
 sync reads the built-in and default packages from the local twinBASIC install,
-and the contributed packages from TWINSERV.
+and the contributed packages from TWINSERV. derive reads the same install, and
+needs no sync first.
 
 analyze covers the packages the reference documents, those with a section in
 docs/Reference (a landing page, index.md), and no others: --package or
@@ -163,25 +169,32 @@ Options:
   --packages <a>,<b>     Process only the specified packages
   --all                  analyze: every package in the store, not only the
                          documented ones (not with --package or --packages)
-  --ide <path>           sync: the install to read, its folder or its
+  --ide <path>           sync, derive: the install to read, its folder or its
                          twinBASIC.exe (default: $TB_IDE, else the newest
                          Desktop\\twinBASIC_IDE_BETA_<n>)
-  --release              sync: download the built-in and default packages from
-                         the latest GitHub release instead of reading an install
+  --release              sync, derive: download the built-in and default
+                         packages from the latest GitHub release instead of
+                         reading an install
+  --check                derive: fail if the file is stale, instead of
+                         writing it
+  --out <file>           derive: write somewhere other than
+                         builder/package-api.json
   -h, --help             Print this text and exit
 
 Exit codes:
   0  the command finished: sync wrote every package it was asked for, or found
-     it up to date; analyze wrote its report
+     it up to date; analyze wrote its report; derive wrote the file, or with
+     --check found it up to date
   1  a package named by --package or --packages failed to sync, or does not
-     exist; the others were done
+     exist; the others were done; with derive --check, the file is stale
   2  a refused command line, no twinBASIC install found, no snapshots to
-     analyze (run sync first), or a crash
+     analyze (run sync first), packages that declare different APIs under one
+     project name (derive), or a crash
 `;
 
 // The twinBASIC install the built-in and default packages are read from, as
-// scripts/build_package_api.mjs finds it: the one --ide names, as its folder or
-// its twinBASIC.exe, else $TB_IDE, else the newest twinBASIC_IDE_BETA_<n> on the
+// the compiler harness finds it: the one --ide names, as its folder or its
+// twinBASIC.exe, else $TB_IDE, else the newest twinBASIC_IDE_BETA_<n> on the
 // Desktop. Returns its folder and its BETA number.
 function resolveInstall(explicit) {
   const remedy = "pass --ide or set TB_IDE, or use --release";
@@ -235,6 +248,8 @@ const cli = withUsageError(() => {
       ide: { type: "string" },
       release: { type: "boolean" },
       all: { type: "boolean" },
+      check: { type: "boolean" },
+      out: { type: "string" },
     },
     positionals: { max: 1 },
     stopAt: ["help"],
@@ -260,11 +275,20 @@ if (!COMMANDS.includes(command)) {
   printHelpAndExit(USAGE, { stream: "stderr", exitCode: 2 });
 }
 
-// Where the built-in and default packages come from is a matter for sync alone.
+// Where the built-in and default packages come from is a matter for the commands
+// that read them; derive reads every one, because the file covers them all, and
+// its own options are its alone.
 withUsageError(() => {
-  if (command === "sync") return;
-  for (const option of ["ide", "release"]) {
-    if (cli.values[option] !== undefined)
+  const applies = {
+    ide: ["sync", "derive"],
+    release: ["sync", "derive"],
+    package: ["sync", "analyze"],
+    packages: ["sync", "analyze"],
+    check: ["derive"],
+    out: ["derive"],
+  };
+  for (const [option, commands] of Object.entries(applies)) {
+    if (cli.values[option] !== undefined && !commands.includes(command))
       throw new CliError("not-applicable", `--${option} does not apply to ${command}`);
   }
 });
@@ -279,6 +303,11 @@ switch (command) {
   case "analyze":
     process.exitCode = await runAnalyze(cli.filter, cli.values.all);
     break;
+  case "derive": {
+    const install = cli.values.release ? null : (cli.install ?? withUsageError(() => resolveInstall()));
+    process.exitCode = await runDerive(install, { check: cli.values.check, out: cli.values.out });
+    break;
+  }
 }
 
 // --- sync command ---
@@ -743,6 +772,57 @@ async function analyzeAudit(name, group, current, docsDir, exclusions) {
       excluded: excludedCount,
     },
   };
+}
+
+// --- derive command ---
+
+// Writes builder/package-api.json from every built-in and default package of the
+// install, or of the latest release with --release: the snapshots hold only the
+// documented packages, and keep no declaration order. `install` is as for sync.
+async function runDerive(install, { check, out = PACKAGE_API_PATH }) {
+  let beta;
+  let packages;
+  if (install) {
+    console.log(`Reading twinBASIC BETA ${install.beta} from ${install.root}...`);
+    beta = install.beta;
+    packages = readInstalledPackages(install.root);
+  } else {
+    console.log("Downloading the latest twinBASIC release...");
+    const release = await getLatestRelease();
+    beta = betaForTag(release.tag);
+    packages = extractBuiltinPackages(await downloadRelease(release.assetUrl));
+  }
+  // A plain BETA number is written as a number, as it always has been; `999a` stays a string.
+  const build = /^\d+$/.test(beta ?? "") ? Number(beta) : beta;
+
+  let derived;
+  try {
+    derived = derivePackageApi({ build, packages });
+  } catch (e) {
+    die(2, e.message);
+  }
+  const { text, types, members, problems, unresolved } = derived;
+  console.log(`  ${packages.length} package(s), ${types} type(s), ${members} member(s)`);
+  for (const p of problems.slice(0, 20)) console.warn(`  ? ${p.pkg} ${p.file}:${p.line} ${p.why}`);
+  if (problems.length > 20) console.warn(`  ? ... and ${problems.length - 20} more`);
+  for (const u of unresolved.slice(0, 20)) console.warn(`  ? not found: ${u}`);
+
+  const shown = path.relative(REPO_ROOT, out);
+  if (check) {
+    const committed = existsSync(out) ? readFileSync(out, "utf8").replace(/\r\n/g, "\n") : null;
+    if (committed === text) {
+      console.log(`Up to date: ${shown}`);
+      return 0;
+    }
+    console.error(
+      `STALE: ${shown} differs from what BETA ${beta} gives; ` +
+        "run node indexer/twin-index.mjs derive and commit the result",
+    );
+    return 1;
+  }
+  writeFileSync(out, text, "utf8");
+  console.log(`Wrote ${shown} (${(text.length / 1024).toFixed(0)} KB)`);
+  return 0;
 }
 
 function printReport(report) {

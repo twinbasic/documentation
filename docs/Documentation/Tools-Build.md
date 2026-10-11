@@ -150,39 +150,28 @@ Run it after [`build_fonts.py`](#build-fonts) changes Inter. Forgetting shows up
 
 Exit codes: **0** the table was written or is unchanged (with `--check`, it is current); **1** with `--check`, the table is stale; **2** a refused command line, a browser that would not start, or a crash.
 
-## build_package_api.mjs
-{: #build-package-api }
-
-    node scripts/build_package_api.mjs            # regenerate
-    node scripts/build_package_api.mjs --check    # fail if stale
-
-Writes `builder/package-api.json`: every type the packages of a twinBASIC install declare, public or not, and the public members of each with their kinds. The [symbol index](Building#the-symbol-index) takes its entries from the pages, and this file annotates them with the kind of a member documented on a page of its own, an enumeration's values, and the interface a CoClass's members are declared on. It also says which public symbols no page documents.
-
-The JSON is committed and the build never runs the tool. It needs a twinBASIC install, so it is Windows-only. Run it when the reference is re-indexed against a newer build, and commit the result with the pages.
-
-It shares [`census_attributes.mjs`](Tools-Samples#census-attributes)'s export and cache, and takes the same `--ide`, `--exported`, `--cache` and `--refresh` flags; `--out` writes elsewhere. Packages are keyed by the project name, not always the folder's: TwinBasicAssertions is `Assert`, and the three CEF builds are one `cefPackage`, whose APIs the tool checks are identical.
-
-Exit codes: **0** the file was written (with `--check`, it is up to date); **1** with `--check`, the file is stale; **2** a refused command line, no install, an export that failed, packages that declare different APIs under one name, or a crash.
-
 ## twin-index.mjs
 {: #twin-index }
 
     node indexer/twin-index.mjs sync [--package <name> | --packages <a>,<b>] [--ide <path> | --release]
     node indexer/twin-index.mjs analyze [--package <name> | --packages <a>,<b> | --all]
+    node indexer/twin-index.mjs derive [--check] [--out <file>] [--ide <path> | --release]
 
-The package indexer, which finds the documentation work that a new twinBASIC build leaves. `sync` reads the sources of the packages and writes an `api.json` snapshot of each: every type the package declares and every member of each, with its visibility, kind and declaration. `analyze` compares the current snapshot of each documented package with the one the reference was last brought up to date with, and reports the public symbols to create a page for, to update and to remove.
+The package indexer, which finds the documentation work that a new twinBASIC build leaves. `sync` reads the sources of the packages and writes an `api.json` snapshot of each: every type the package declares and every member of each, with its visibility, kind and declaration. `analyze` compares the current snapshot of each documented package with the one the reference was last brought up to date with, and reports the public symbols to create a page for, to update and to remove. `derive` writes `builder/package-api.json`, the package half of the [symbol index](Building#the-symbol-index); see [The symbol index's packages](#package-api) below.
 
-The build does not run it and it is not a gate. It sits in `indexer/` rather than `scripts/` because it keeps state of its own. It reads the sources with `scripts/lib/twin-api.mjs`, the scanner that [`build_package_api.mjs`](#build-package-api) uses. [`test/indexer.test.mjs`](Tools-Toolchain-Tests#indexer-test) tests it without a network, git or a twinBASIC install. The layout of `indexer/` and the format of `api.json` are in [`indexer/README.md`](https://github.com/twinbasic/documentation/blob/main/indexer/README.md).
+The build does not run it and it is not a gate. It sits in `indexer/` rather than `scripts/` because it keeps state of its own. It reads the sources with `scripts/lib/twin-api.mjs`, the repository's one scanner of twinBASIC declarations, which [`check_symbol_index.mjs`](Tools-Toolchain-Tests#check-symbol-index) and [`check_twin_parsers.mjs`](Tools-Toolchain-Tests#check-twin-parsers) test. [`test/indexer.test.mjs`](Tools-Toolchain-Tests#indexer-test) tests it without a network, git or a twinBASIC install. The layout of `indexer/` and the format of `api.json` are in [`indexer/README.md`](https://github.com/twinbasic/documentation/blob/main/indexer/README.md).
 
 **Where the packages come from.** The built-in and default packages (`VB`, `VBA`, `VBRUN` and the ones the IDE ships) are read from the files of a twinBASIC install, the unzipped IDE release. `--ide` names it, as its folder or its `twinBASIC.exe`; without it the tool takes `TB_IDE`, and then the newest `twinBASIC_IDE_BETA_<n>` folder on the Desktop. The BETA number comes from the install's `ide/build.js`, else from its folder name. `--release` downloads the same packages from the latest GitHub release instead, for a machine with no install; an install and the release zip of its build hold the same files, so either gives the same `api.json`. Nothing starts the IDE. The contributed packages are downloaded from TWINSERV, the package repository. A run that names only built-in or default packages does not contact it, so `sync --package VBA` works offline.
 
 | Option | Command | Effect |
 |---|---|---|
-| `--package <name>` | both | Limits the command to one package, by the name the store has. |
-| `--packages <a>,<b>` | both | The same for a comma-separated list. Not with `--package`. |
+| `--package <name>` | `sync`, `analyze` | Limits the command to one package, by the name the store has. |
+| `--packages <a>,<b>` | `sync`, `analyze` | The same for a comma-separated list. Not with `--package`. |
 | `--all` | `analyze` | Covers every package in the store, not only the documented ones. Not with `--package` or `--packages`. |
-| `--ide <path>` | `sync` | The twinBASIC install to read the built-in and default packages from. Not with `--release`. |
-| `--release` | `sync` | Downloads the built-in and default packages from the latest GitHub release. |
+| `--ide <path>` | `sync`, `derive` | The twinBASIC install to read the built-in and default packages from. Not with `--release`. |
+| `--release` | `sync`, `derive` | Downloads the built-in and default packages from the latest GitHub release. |
+| `--check` | `derive` | Fails if `builder/package-api.json` is stale, instead of writing it. |
+| `--out <file>` | `derive` | Writes somewhere other than `builder/package-api.json`. |
 
 A name that matches no package is reported, the other packages are done, and the exit code is 1.
 
@@ -208,13 +197,15 @@ A name that matches no package is reported, the other packages are done, and the
 
 **Moving the reference to a new build:**
 
-1. Run `sync` with the new install. It writes the new snapshots into the working tree, and `analyze` still compares with the ones at `HEAD`.
+1. Run `sync` and `derive` with the new install. `sync` writes the new snapshots into the working tree, and `analyze` still compares with the ones at `HEAD`; `derive` writes the new `builder/package-api.json`.
 2. Run `analyze` and write the pages it lists.
-3. Set `indexed_from` on each section to the new build's tag (`beta-x-0997` is BETA 997), and commit the pages, the new `indexed_from` and the new snapshots together. A snapshot committed on its own, or an `indexed_from` that is not the snapshot's `version`, sends the next `analyze` into audit mode.
+3. Set `indexed_from` on each section to the new build's tag (`beta-x-0997` is BETA 997), and commit the pages, the new `indexed_from`, the new snapshots and `builder/package-api.json` together. A snapshot committed on its own, or an `indexed_from` that is not the snapshot's `version`, sends the next `analyze` into audit mode.
 
 **After a change to the scanner or the model.** The code that writes `api.json` is `scripts/lib/twin-api.mjs`, `scripts/lib/twin-declarations.mjs`, `indexer/lib/api-model.mjs` and `indexer/lib/vb6-preprocess.mjs`. A change to any of them, the `format` number of `api.json` included, can change what the same sources index to. The next `sync` indexes every package again, and the committed snapshots have to be written again from the build they record, with `sync --ide` naming that build's install, in the same commit as the change. Otherwise `analyze` compares the output of the new code with that of the old and reports the difference as changes to the API. `--release` cannot do this: it downloads only the latest release.
 
-Exit codes: **0** the command finished: `sync` wrote every package it was asked for, or found it up to date; `analyze` wrote its report. **1** a package named by `--package` or `--packages` failed to sync, or does not exist; the others were done. **2** a refused command line, no twinBASIC install found, no snapshots to analyze (run `sync` first), or a crash.
+**The symbol index's packages.**{: #package-api } `derive` writes `builder/package-api.json`: every type the built-in and default packages declare, public or not, and the public members of each with their kinds, in declaration order. The [symbol index](Building#the-symbol-index) takes its entries from the pages, and this file adds the kind of a member documented on a page of its own, an enumeration's values, and the interface a CoClass's members are declared on. It also says which public symbols no page documents. `derive` reads every package of the install, or of the latest release with `--release`, and parses them as `sync` does, so it needs no store and no `sync` first. The snapshots cannot serve instead: they hold only the documented packages, and keep no declaration order. Packages are keyed by the project name, which is not always the package's: TwinBasicAssertions is `Assert`, and the three CEF builds are one `cefPackage`, whose APIs `derive` checks are identical. The file is committed and the build never writes it, because that needs the packages. Run `derive` with the same install as `sync` when the reference moves to a new build, and commit the file with the pages and the snapshots. `--check` compares instead of writing.
+
+Exit codes: **0** the command finished: `sync` wrote every package it was asked for, or found it up to date; `analyze` wrote its report; `derive` wrote the file, or with `--check` found it up to date. **1** a package named by `--package` or `--packages` failed to sync, or does not exist, and the others were done; with `derive --check`, the file is stale. **2** a refused command line, no twinBASIC install found, no snapshots to analyze (run `sync` first), packages that declare different APIs under one project name (`derive`), or a crash.
 
 ## convert_em_dash_separators.mjs
 {: #convert-em-dash-separators }

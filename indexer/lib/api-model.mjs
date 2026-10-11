@@ -237,6 +237,22 @@ export function renderApi(api) {
 }
 
 /**
+ * What `parseSources` reads out of the files of a package: the input of
+ * buildApi, and of the symbol index's package half (`./package-api.mjs`).
+ * `inputs` are the sources it was given, and `inside` maps the path of one back
+ * to the file's own, relative to `Sources/`.
+ *
+ * @param {{relativePath: string, content: Buffer}[]} files  every file of the
+ *   package, the paths relative to its root, in any order
+ */
+export function parsePackageFiles(files) {
+  const { inputs, fileOf, settings } = sourceInputs(
+    [...files].sort((a, b) => byCodeUnit(a.relativePath, b.relativePath)),
+  );
+  return { parsed: parseSources(inputs, settings), inputs, inside: (file) => fileOf.get(file) ?? file };
+}
+
+/**
  * The api.json of a package, as an object and as the text written to disk.
  *
  * @param {object} p
@@ -248,11 +264,7 @@ export function renderApi(api) {
  *   members: number, aliases: number, problems: number}}}
  */
 export function buildApi({ symbol, version, files }) {
-  const { inputs, fileOf, settings } = sourceInputs(
-    [...files].sort((a, b) => byCodeUnit(a.relativePath, b.relativePath)),
-  );
-  const parsed = parseSources(inputs, settings);
-  const inside = (file) => fileOf.get(file) ?? file;
+  const { parsed, inputs, inside } = parsePackageFiles(files);
 
   const parents = parentsOf(parsed.types);
   const inPath = [];

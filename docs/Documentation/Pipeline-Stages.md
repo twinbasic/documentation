@@ -427,7 +427,7 @@ symbolIndex.expected = ["renderJoin", "prepDest"]
 symbolIndex.execute() → { entries, urls, gaps, unplaced, symbols }
 ```
 
-Writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index). Reads `builder/package-api.json` (the build fails, naming `scripts/build_package_api.mjs`, if it is missing), then calls `symbolPages(state.pages)`, `deriveSymbolIndex({ pages, api })` and `serializeSymbolIndex(...)` from `symbols.mjs`. It depends on `renderJoin` because an entry's anchor is the id the render gave its heading, read from `renderedContent`. Takes ~50 ms. With `--symbol-gaps <path>` it also writes `reportableGaps(...)` there as JSON.
+Writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index). Reads `builder/package-api.json` (the build fails, naming `node indexer/twin-index.mjs derive`, if it is missing), then calls `symbolPages(state.pages)`, `deriveSymbolIndex({ pages, api })` and `serializeSymbolIndex(...)` from `symbols.mjs`. It depends on `renderJoin` because an entry's anchor is the id the render gave its heading, read from `renderedContent`. Takes ~50 ms. With `--symbol-gaps <path>` it also writes `reportableGaps(...)` there as JSON.
 
 The result fields:
 

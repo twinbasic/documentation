@@ -3,7 +3,7 @@
 // member each one declares, with its visibility and kind.
 //
 // It exists for the documentation's symbol index (WIP.HelpAddin.md, Stage 3),
-// whose package half is scripts/build_package_api.mjs. The index takes its
+// whose package half `indexer/twin-index.mjs derive` writes. The index takes its
 // entries from the pages; what it needs from the packages is what only the
 // source says -- the kind of a member documented on a page of its own, the
 // values of an enumeration, the interface a CoClass's members are declared on

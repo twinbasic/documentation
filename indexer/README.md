@@ -71,9 +71,9 @@ exit codes below.
 
 | Code | Meaning |
 |------|---------|
-| 0 | The command finished: `sync` wrote every package it was asked for, or found it up to date; `analyze` wrote its report. |
-| 1 | A package named by `--package` or `--packages` failed to sync, or does not exist; the others were done. |
-| 2 | A refused command line, no twinBASIC install found, no snapshots to analyze (run `sync` first), or a crash. |
+| 0 | The command finished: `sync` wrote every package it was asked for, or found it up to date; `analyze` wrote its report; `derive` wrote the file, or with `--check` found it up to date. |
+| 1 | A package named by `--package` or `--packages` failed to sync, or does not exist; the others were done. With `derive --check`, the file is stale. |
+| 2 | A refused command line, no twinBASIC install found, no snapshots to analyze (run `sync` first), packages that declare different APIs under one project name (`derive`), or a crash. |
 
 `analyze` exits 0 whenever it writes its report, whatever the report lists:
 the list of symbols to document is its product, not a failure.
@@ -91,7 +91,7 @@ Reads packages, extracts sources, generates `api.json` snapshots.
 | `--package VBA` | Sync only VBA. |
 | `--packages VBA,ArrayListLib` | Sync multiple specific packages. |
 | _(no flag)_ | Sync everything. |
-| `--ide <path>` | Read the built-in and default packages from this twinBASIC install, given as its folder or its `twinBASIC.exe`. Without it: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop, found as `scripts/build_package_api.mjs` finds it. No path is built in. |
+| `--ide <path>` | Read the built-in and default packages from this twinBASIC install, given as its folder or its `twinBASIC.exe`. Without it: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop, found as the compiler harness finds it. No path is built in. |
 | `--release` | Download the built-in and default packages from the latest GitHub release instead of reading an install. Excludes `--ide`. |
 
 `--package` takes one name and `--packages` a comma-separated list; the two
@@ -214,6 +214,27 @@ either.
 
 The report is printed to stdout and written to
 `indexer/.packages/report.json`.
+
+### derive
+
+```sh
+node indexer/twin-index.mjs derive [--check] [--out <file>] [--ide <path> | --release]
+```
+
+Writes `builder/package-api.json`, the package half of the documentation's
+symbol index ([WIP.HelpAddin.md](../WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build)),
+from every built-in and default package of the install (`--ide`, found as
+`sync` finds it) or of the latest release (`--release`). It reads and parses the
+packages as `sync` does, with `parsePackageFiles` from `lib/api-model.mjs`,
+and needs no store. The snapshots cannot stand in for the packages: they hold
+only the documented ones, and an `api.json` keeps no declaration order, which
+the file keeps because the first declaration of a name gives a member its kind.
+The format and what the build takes from it are in `lib/package-api.mjs`.
+
+`--check` compares instead of writing, and exits 1 when the file is stale.
+`--out` writes elsewhere. Run it with the same install as `sync` when the
+reference moves to a new build, and commit the file with the pages and the
+snapshots.
 
 ## api.json
 
@@ -450,7 +471,8 @@ sync  -->  analyze  -->  write the pages  -->  verify  -->  review
 3. **write the pages** — the per-symbol workflow in
    [`WIP.Authoring.md`](../WIP.Authoring.md#per-symbol-workflow), by hand
    or with the `document-symbol` skill, from `report.json`; then set
-   `indexed_from` and commit the new snapshots with the pages
+   `indexed_from`, run `derive`, and commit the new snapshots and
+   `builder/package-api.json` with the pages
 4. **verify** — `build.bat`, `check.bat` (the existing builder)
 5. **review** — the developer reviews and commits
 
@@ -460,7 +482,7 @@ The indexer implements steps 1 and 2. Step 3 is not automated.
 
 ```
 indexer/
-  twin-index.mjs              CLI entry point (sync | analyze)
+  twin-index.mjs              CLI entry point (sync | analyze | derive)
   lib/
     sync.mjs                   TWINSERV manifest comparison + download
     builtin-sync.mjs           install / GitHub release manifest comparison + extraction
@@ -470,6 +492,7 @@ indexer/
     zip-reader.mjs             Minimal ZIP reader (deflate)
     vb6-preprocess.mjs         VB6 -> twinBASIC normalization
     api-model.mjs              files -> api.json, through scripts/lib/twin-api.mjs
+    package-api.mjs            packages -> builder/package-api.json (derive)
     fingerprint.mjs            the hash of the code api.json depends on, kept beside each one in the store
     doc-pages.mjs              the reference's package sections: package_name, indexed_from, exclusions
     store.mjs                  .packages/ git repo lifecycle, sync state, what the store holds

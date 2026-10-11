@@ -69,7 +69,7 @@ extractor of its own. It had them once, and they misread what the shared scanner
 a field named for a keyword opened a container nothing closed, a `Public CoClass` was missed,
 so were Delegates and a `/*Private*/ Module`, and the values of a nested Enum and the fields of
 a nested Type were dropped. On the same input `parseTwin` found a superset. Two scanners also
-drift: the symbol index (`scripts/build_package_api.mjs`) and the indexer would disagree about
+drift: the symbol index (`builder/package-api.json`) and the indexer would disagree about
 one package, and each fix would be made twice. The scanner is pinned by
 `scripts/check_symbol_index.mjs`, `scripts/check_twin_parsers.mjs` and
 `test/indexer.test.mjs`; its header comment lists the ways to misread this corpus.
@@ -167,17 +167,32 @@ which would write the snapshots of another build.
   (`1.3.0.0`), because that is the `version` of its snapshot; a three-part one never matches
   and `analyze` falls back to an audit.
 
-## The next step
+## `derive`: the symbol index's packages
 
-**Derive `builder/package-api.json` from the indexer's parse.** That file is the input of the
-help add-in's symbol index ([WIP.HelpAddin.md](WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build)),
-and `scripts/build_package_api.mjs` writes it today: it exports the packages of an install and
-scans them with `twin-api.mjs`. The scanner is already shared; what is not is the reading and
-the second pass over the same packages, and the install that tool needs. The snapshots hold the
-types, members, kinds, Enum values and CoClass interfaces that file annotates the index with.
-Nothing is designed beyond that. Two things to settle first: `package-api.json` is keyed by
-project name (`cefPackage`, `Assert`) where the snapshots are keyed by package, and it is a
-committed build input that `check_tree_fresh.mjs` watches.
+`builder/package-api.json` is the input of the help add-in's symbol index
+([WIP.HelpAddin.md](WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build)).
+`twin-index derive` writes it (`lib/package-api.mjs`), and `scripts/build_package_api.mjs`,
+which wrote it before, is gone. That tool exported every package through the compiler
+harness's impexp into a cache and read the exported folders; `derive` reads the `.twinproj`
+files with the reader `sync` uses and parses them with `parsePackageFiles`, the parse
+`buildApi` makes, so the two outputs come from one reading. Its output was byte-identical to
+the old tool's at BETA 997, and it takes half a second with no cache.
+
+- **It reads the packages, not the snapshots or the store.** An `api.json` sorts types and
+  members by name and drops line numbers, and `apiSnapshot` needs declaration order: the
+  first declaration of a name gives a member its kind, and the file lists types in that
+  order. The snapshots also hold only the documented packages, and the store only what the
+  last `sync` read. So `derive` needs no `sync` first, and takes `--ide` and `--release` as
+  `sync` does.
+- **It is keyed by project name**, `cefPackage` and `Assert`, where the snapshots are keyed
+  by package; each project lists its packages as `exports`. The three CEF builds must
+  declare one API, or `derive` exits 2.
+- **It stays committed.** It is a build input `check_tree_fresh.mjs` watches, and CI has no
+  packages to derive it from. `derive --check` is outside every gate for the same reason.
+- **A scanner change can change it**, as it can the snapshots. The `[ ]` Enum member (a
+  bracket group alone on a line is a member) gave VB's `ReportBaseCtl.ReportSizeConstants`
+  its 17 values at BETA 997, the first named `" "`, which the committed file lacked until it
+  was derived again.
 
 ## Open items
 

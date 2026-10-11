@@ -35,6 +35,7 @@ import {
   readSection,
 } from "../indexer/lib/doc-pages.mjs";
 import { FINGERPRINTED, fingerprintOf, indexerFingerprint } from "../indexer/lib/fingerprint.mjs";
+import { derivePackageApi } from "../indexer/lib/package-api.mjs";
 import { readPackageFiles } from "../indexer/lib/package-files.mjs";
 import {
   apiHeadOf,
@@ -579,6 +580,76 @@ describe("buildApi on indexer/sample.twinpack", () => {
     const d = diffApi(back, api);
     assert.deepEqual([d.added.length, d.modified.length, d.removed.length], [0, 0, 0]);
     assert.ok(d.unchanged.length > 0);
+  });
+});
+
+// ------------------------------------------- builder/package-api.json (derive)
+
+describe("derivePackageApi", () => {
+  const sample = readPackageFiles(readFileSync(SAMPLE));
+  const derive = (...packages) => derivePackageApi({ build: 997, packages });
+  const MINE = lines(
+    "Public Class Widget",
+    "    Public Property Get Zed() As Long",
+    "    End Property",
+    "    Public Property Let Zed(v As Long)",
+    "    End Property",
+    "    Public Sub Apply()",
+    "    End Sub",
+    "    Private Sub Hidden()",
+    "    End Sub",
+    "End Class",
+    "Public Enum Shade",
+    "    Light",
+    "    Dark",
+    "End Enum",
+  );
+
+  test("writes the same bytes whatever order the packages and their files come in", () => {
+    const mine = { symbol: "Mine", files: [file("Sources/A.twin", MINE)] };
+    const one = derive({ symbol: "CustomControlsPackage", files: sample }, mine);
+    const two = derive(mine, { symbol: "CustomControlsPackage", files: [...sample].reverse() });
+    assert.equal(one.text, two.text);
+    assert.deepEqual(one.problems, []);
+    assert.deepEqual(one.unresolved, []);
+  });
+
+  test("keeps declaration order, one type to a line, the first declaration of a name giving its kind", () => {
+    const { text, types, members } = derive({ symbol: "Mine", files: [file("Sources/A.twin", MINE)] });
+    assert.equal(
+      text,
+      lines(
+        "{",
+        '  "build": 997,',
+        '  "packages": {',
+        '    "Mine": {',
+        '      "exports": ["Mine"],',
+        '      "types": [',
+        '        {"name":"Widget","kind":"class","members":{"Zed":"property","Apply":"sub"}},',
+        '        {"name":"Shade","kind":"enum","values":["Light","Dark"]}',
+        "      ]",
+        "    }",
+        "  }",
+        "}",
+        "",
+      ),
+    );
+    assert.deepEqual([types, members], [2, 4]);
+  });
+
+  test("keys a package by its project name, and lists every package under one name", () => {
+    const { text } = derive({ symbol: "Copy", files: sample }, { symbol: "CustomControlsPackage", files: [...sample] });
+    const back = JSON.parse(text);
+    assert.deepEqual(Object.keys(back.packages), ["CustomControlsPackage"]);
+    assert.deepEqual(back.packages.CustomControlsPackage.exports, ["Copy", "CustomControlsPackage"]);
+  });
+
+  test("refuses packages that declare different APIs under one project name", () => {
+    const other = [...sample.filter((f) => !/\.twin$/i.test(f.relativePath)), file("Sources/X.twin", MINE)];
+    assert.throws(
+      () => derive({ symbol: "Copy", files: other }, { symbol: "CustomControlsPackage", files: sample }),
+      /are all 'CustomControlsPackage' but declare different APIs/,
+    );
   });
 });
 

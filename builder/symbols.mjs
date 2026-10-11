@@ -9,7 +9,7 @@
 // single-file ones do not, and VBA's package page is `/tB/Packages/VBA` with
 // neither -- or that plus the id the build gave a heading, read from the
 // rendered HTML and never computed a second time. What the pages cannot say
-// comes from builder/package-api.json, which scripts/build_package_api.mjs
+// comes from builder/package-api.json, which `indexer/twin-index.mjs derive`
 // writes from the packages an install ships: the kind of a member that has a
 // page of its own, the values of an enumeration, which type declares a member
 // a page documents, and the interface a CoClass's members are declared on. A

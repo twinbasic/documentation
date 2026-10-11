@@ -51,7 +51,7 @@ All nine sit at the repository root, beside `package.json`. Each uses `@pushd "%
 `examples.bat`, `addin-test.bat`, `ide-test.bat` and `try-help-addin.bat` have no POSIX equivalent. They need a twinBASIC install and drive the IDE, so they run only on Windows and are not part of the site build. Four other tools are Windows-specific for the same reason and are not part of the build either:
 
 - [`scripts/tbbuild.mjs`](Tools-Compiler#tbbuild) and [`scripts/tbrun.mjs`](Tools-Compiler#tbrun) drive the twinBASIC IDE.
-- [`census_attributes.mjs`](Tools-Samples#census-attributes) and [`build_package_api.mjs`](Tools-Build#build-package-api) unpack the packages of a twinBASIC install. Both are cross-platform when given an already-exported tree with `--exported`.
+- [`census_attributes.mjs`](Tools-Samples#census-attributes) unpacks the packages of a twinBASIC install. It is cross-platform when given an already-exported tree with `--exported`.
 - [`imagestrip`](Tools-IDE#imagestrip) is a twinBASIC program.
 
 `tbdocs` and every gate in both wrappers is a Node script. CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh), which guards against a failure CI cannot have.

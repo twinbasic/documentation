@@ -38,9 +38,6 @@ const CASES = [
   { tool: "scripts/census_attributes.mjs", args: ["--out"], exit: 2, stderr: "--out needs a value\n" },
   { tool: "scripts/census_attributes.mjs", args: ["--exported", "--json"], exit: 2, stderr: "--exported needs a value\n" },
   { tool: "scripts/census_attributes.mjs", args: ["--src", "x"], exit: 2, stderr: "unknown option: --src\n" },
-  { tool: "scripts/build_package_api.mjs", args: ["--out"], exit: 2, stderr: "--out needs a value\n" },
-  { tool: "scripts/build_package_api.mjs", args: ["--exported", "--check"], exit: 2, stderr: "--exported needs a value\n" },
-  { tool: "scripts/build_package_api.mjs", args: ["--src", "x"], exit: 2, stderr: "unknown option: --src\n" },
 
   // The a11y and diagram tools. A value flag given
   // nothing, at the end or as "", or followed by another flag, is refused.
@@ -143,7 +140,6 @@ const CASES = [
   { tool: "scripts/census_attributes.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/census_attributes\.mjs \[options\]\n/ },
   { tool: "scripts/census_attributes.mjs", args: ["--help", "--attr"], exit: 0, stdout: /^usage: node scripts\/census_attributes\.mjs \[options\]\n/ },
   { tool: "scripts/census_attributes.mjs", args: ["--dump-sites"], exit: 2, stderr: "--dump-sites needs a value\n" },
-  { tool: "scripts/build_package_api.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/build_package_api\.mjs \[options\]\n/ },
   { tool: "scripts/gen_attribute_probes.mjs", args: [], exit: 2, stderr: /^Generate a twinBASIC probe project for Reference\/Attributes\.md applicability\.\n/ },
 
   // The gates and link tools. check_links prints its
@@ -374,7 +370,6 @@ const HELP_TOOLS = {
   "scripts/shoot_docs.mjs": null,
   "scripts/bug_repro.mjs": null,
   "scripts/build_dot_metrics.mjs": null,
-  "scripts/build_package_api.mjs": null,
   "scripts/census_attributes.mjs": null,
   "scripts/check_a11y.mjs": null,
   "scripts/check_a11y_fingerprint.mjs": null,
@@ -456,7 +451,6 @@ const REFUSALS = {
   "scripts/shoot_docs.mjs": ["ide"],
   "scripts/bug_repro.mjs": ["ide"],
   "scripts/build_dot_metrics.mjs": [null],
-  "scripts/build_package_api.mjs": ["out"],
   "scripts/census_attributes.mjs": ["out"],
   "scripts/check_a11y.mjs": ["root-dir"],
   "scripts/check_a11y_fingerprint.mjs": ["pages"],
@@ -962,9 +956,9 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
 }
 // The indexer's command in these is never a real one, for the same reason, and
 // its package names and the install it reads are checked straight after the
-// parse. The last case names a real command, `analyze`, which is refused before
-// it reads anything; no case names `sync`, which would start a sync over the
-// network if the refusal it records ever stopped firing.
+// parse. Some cases name a real command, `analyze` or `derive`, which is refused
+// before it reads anything; no case names `sync`, which would start a sync over
+// the network if the refusal it records ever stopped firing.
 {
   const tool = "indexer/twin-index.mjs";
   bad(
@@ -994,6 +988,16 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
   );
   bad(tool, ["bogus", "--all"], "--all does not apply to bogus\n");
   bad(tool, ["bogus", "--all=1"], "--all takes no value\n");
+  // derive covers every package and has options of its own. Each of its cases
+  // carries --check, so that one whose refusal stopped firing would read the
+  // install and compare, never write builder/package-api.json.
+  bad(tool, ["derive", "--check", "--package", "VBA"], "--package does not apply to derive\n");
+  bad(tool, ["derive", "--check", "--packages", "VBA,VB"], "--packages does not apply to derive\n");
+  bad(tool, ["derive", "--check", "--all"], "--all does not apply to derive\n");
+  bad(tool, ["derive", "--check", "--out"], "--out needs a value\n");
+  bad(tool, ["derive", "--check=1"], "--check takes no value\n");
+  bad(tool, ["analyze", "--check"], "--check does not apply to analyze\n");
+  bad(tool, ["analyze", "--out", "x.json"], "--out does not apply to analyze\n");
 }
 for (const made of BAD_VALUES) {
   CASES.push(made);

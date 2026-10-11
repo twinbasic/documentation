@@ -1,5 +1,5 @@
 // Self-test for the symbol index: the .twin declaration scanner that
-// scripts/build_package_api.mjs runs over the packages, the derivation
+// `indexer/twin-index.mjs derive` runs over the packages, the derivation
 // builder/symbols.mjs runs over the pages, and the drift guard
 // builder/symbol-baseline.mjs keeps over the URLs the index publishes.
 //

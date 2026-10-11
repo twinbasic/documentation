@@ -1,7 +1,5 @@
-// The packages an IDE install ships, exported as source trees. Shared by
-// scripts/census_attributes.mjs and scripts/build_package_api.mjs, which read
-// the same trees for different questions, so that one export -- and one cache
-// of it -- answers both.
+// The packages an IDE install ships, exported as source trees, for
+// scripts/census_attributes.mjs, with a cache of each build's export.
 //
 // A package's sources are inside a .twinproj archive under the install's
 // `packages\`, one folder per package, named `{GUID}_<Name>`, with a leading
