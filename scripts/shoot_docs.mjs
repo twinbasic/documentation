@@ -91,6 +91,10 @@
 //     device-metrics override. A capture of a rectangle (Page.captureScreenshot
 //     with a clip) is exactly twice the rectangle's size, and the pages show it
 //     at half that size.
+//   * Text is drawn in grey levels, never ClearType (--disable-lcd-text, for the
+//     IDE's WebView2 and the web pages' Chrome alike). Without it Chromium chose
+//     per run: one picture came out in ClearType from a run of a few setups and in
+//     grey from a full run, and so changed from run to run.
 //   * Animations, transitions, the text caret and Monaco's cursor are turned
 //     off by a style sheet put into the document and into every shadow root
 //     (a tool window is one), in every picture. Otherwise a blink or a fade is
@@ -211,8 +215,10 @@ const DEFAULT_BUNDLES = path.join(REPO_ROOT, ".svgshot-bundles");
 const IDE_SIZE = { width: 1280, height: 880 };
 const WINDOW_SIZE = { width: 900, height: 700 };
 const SCALE = 2;
-// Every IDE lays its page out at 100% whatever the display's scaling.
-const BROWSER_ARGS = "--force-device-scale-factor=1";
+// Every IDE lays its page out at 100% whatever the display's scaling, and draws its text in
+// grey levels, never ClearType (LCD_TEXT).
+const LCD_TEXT = "--disable-lcd-text";
+const BROWSER_ARGS = `--force-device-scale-factor=1 ${LCD_TEXT}`;
 
 const USAGE = `usage: node scripts/shoot_docs.mjs [--only <regex>] [--out <dir>] [--diffs <dir>] [--jobs N] [--port N] [--ide <twinBASIC.exe>] [--svg] [-h, --help]
 
@@ -595,19 +601,26 @@ const CAPTURE_GAPS = [150, 150, 300, 600, 1500, 1500];
 // How long the page is left alone before the first capture.
 const REST_MS = 1000;
 
+// Fails the picture `name` when `text` holds the Windows user name, quoting where.
+function refuseUserName(text, name, what) {
+  const at = text.toLowerCase().indexOf(USER.toLowerCase());
+  if (at < 0) return;
+  const around = `${text.slice(Math.max(0, at - 40), at)}<user>${text.slice(at + USER.length, at + USER.length + 40)}`;
+  throw new Error(`${what} for ${name} shows the Windows user name: ${JSON.stringify(around)}`);
+}
+
 // A capture of `clip` (CSS pixels, on whole device pixels) from `conn`, refused
-// when the page's visible text holds the user name. `away` first takes the mouse
+// when the page's visible text holds the user name: before the first capture, and
+// again, with the SVG when there is one, when a capture is chosen. The page can draw
+// again in between (Project Settings put a row's real path back over the one a shot
+// set, a second after the first check), and a capture is written to its file as soon
+// as it is returned. `away` first takes the mouse
 // where it touches nothing, since a control under it draws its hover look, unless
 // the picture is of what the mouse rests on. `keep` makes it a cut-out, on a ground
 // of the colour `solid` when that is given. `unsteady` names where the page draws
 // differently from frame to frame of its own accord (unsteadyRects).
 async function capture(conn, name, clip, { frame, away = null, keep = null, solid = null, unsteady = null } = {}) {
-  const text = await textOf(conn, frame);
-  const at = text.toLowerCase().indexOf(USER.toLowerCase());
-  if (at >= 0) {
-    const around = `${text.slice(Math.max(0, at - 40), at)}<user>${text.slice(at + USER.length, at + USER.length + 40)}`;
-    throw new Error(`the page for ${name} shows the Windows user name: ${JSON.stringify(around)}`);
-  }
+  refuseUserName(await textOf(conn, frame), name, "the page");
   if (away) await away();
   await quiet(conn);
   try {
@@ -645,9 +658,11 @@ async function capture(conn, name, clip, { frame, away = null, keep = null, soli
     // wide) is captured a device pixel short of it (168), and an SVG of the whole clip
     // would show the half of an edge the PNG cuts off.
     const picked = async (png) => {
+      refuseUserName(await textOf(conn, frame), name, "the page as captured");
       if (values.svg) {
         const size = { width: png.readUInt32BE(16) / SCALE, height: png.readUInt32BE(20) / SCALE };
         conn.shot.svg = await svgOfPage(conn, clip && { ...clip, ...size }, { background: !keep });
+        if (holdsUserName(conn.shot.svg.svg, USER)) throw new Error(`the SVG of ${name} holds the Windows user name`);
       }
       return png;
     };
@@ -3151,10 +3166,15 @@ const settingsShots = [
   settingsShot("Features/Images/569150839-9ffc87ac-250d-40a4-bb47-669b607ad76f.png", {
     async prepare(c) {
       // The lane stages the project with a build path in its temporary folder, and the
-      // dialog shows it: the template's own path, in the page only (Cancel keeps nothing).
+      // dialog shows it: the template's own path instead, typed as a user would (input and
+      // change), so that the dialog holds it and does not put the real path back when it
+      // draws the row again, as it does now and then; Cancel keeps nothing. capture refuses
+      // the picture if the real path shows all the same.
       await c.evaluate(`(() => {
   const i = document.querySelector(${JSON.stringify(`${settingPart("project.buildPath", "CONTENT")} input`)});
   i.value = "\${SourcePath}\\\\Build\\\\\${ProjectName}_\${Architecture}.\${FileExtension}";
+  i.dispatchEvent(new Event("input", { bubbles: true }));
+  i.dispatchEvent(new Event("change", { bubbles: true }));
 })()`);
       await scrollToSetting(c, "project.buildPath");
     },
@@ -7021,6 +7041,7 @@ async function startWeb(run) {
       "--no-first-run",
       "--no-default-browser-check",
       "--force-device-scale-factor=1",
+      LCD_TEXT,
       "--window-size=1400,1000",
       // a window on a desktop nobody sees counts as hidden, and Chrome then draws no frames:
       // the captures would wait for one, or hold a blank page
@@ -7139,10 +7160,10 @@ const webView2Shot = {
         { type: "arrow", from: { of: WV2_CARD, at: "left", dx: -44 }, to: { of: WV2_CARD, at: "left", dx: -2 } },
         { type: "ring", on: { css: "button", text: "x86" } },
       ]);
-      // The Architecture list's arrow, an 8 by 9 inline SVG, changes a pixel by more than a
+      // The Version list's arrow, an 8 by 9 inline SVG, changes a pixel by more than a
       // capture's noise from frame to frame, with animations and transitions off.
       return await capture(c, "webview2", await pageClip(c, union(area, box), WV2_WIDTH), {
-        unsteady: [{ on: { css: "#architecture .px-dropdown__icon" } }],
+        unsteady: [{ on: { css: "#version .px-dropdown__icon" } }],
       });
     } finally {
       await unannotate(c);

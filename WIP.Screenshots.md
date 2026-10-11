@@ -80,7 +80,11 @@ Measured on BETA 997:
     private APPDATA — see Machine state in the pictures;
   - the licence line on About (`LICENCE: tB Licence: NOT READY` when the licence check has not
     finished) — the same section;
-  - the Windows user name: the existing visible-text check stays and covers every picture.
+  - the Windows user name: the visible-text check (text boxes included) covers every picture,
+    run before the first capture and again when a capture is chosen, with the SVG under
+    `--svg`: the page can draw again in between, as Project Settings did, putting the real
+    build path back over the template a shot had set in the page only (a shot that sets a
+    value types it, `input` and `change`, so the page keeps it).
 
 ## Capture
 
@@ -117,7 +121,7 @@ Measured on BETA 997:
   comparison `capture` makes leaves those pixels out (`same`, and `nearly`'s `rects`), and a
   capture that matches the file or the dark picture outside them keeps that picture's bytes,
   so the flicker never rewrites the file. Use it for a pixel no condition settles, as small as
-  the element allows: the WebView2 download page's Architecture arrow (`#architecture
+  the element allows: the WebView2 download page's Version arrow (`#version
   .px-dropdown__icon`, 8 by 9) changes a pixel by more than the noise between any two
   captures, animations and transitions off. A shot without it compares byte for byte.
 - **Settle by condition, not by sleep.** Fixed sleeps were most of a run (a closed menu leaves a
@@ -573,8 +577,14 @@ the PNG was just captured from, and the build shows it in place of the PNG
 - **A converter change is tried with `replay.mjs`, not a retake** (owner, 2026-10-10).
   `capture.mjs`'s `collectBundle` reads everything the converter needs from the page into a
   *bundle*: the snapshot, its style names (positional, so a bundle carries its own list), and
-  per document the measuring layer's answers, the runs' platform fonts, the web fonts' bytes,
-  the scrollbar styles and a frame's viewport and zoom. `bundle.mjs`'s `renderBundle` draws the
+  per document the measuring layer's answers, the runs' platform fonts, the web fonts, the
+  scrollbar styles, each inline `<svg>`'s markup and a frame's viewport and zoom. A web font is
+  kept as the `@font-face` rules of its family that some run was drawn with (`webFonts[key]`,
+  in the page's order, each `{family, range, lo, hi}`) and the files' bytes once by name
+  (`fontFiles`), so `webRulesFor` picks a character's file at replay as it does at capture;
+  an inline `<svg>` is `svgs`, pairs of a layout object's key and what `inlineSvg` read. The
+  annotation layer's box is already in document coordinates in its markup, so a scrolled page
+  needs nothing more. `bundle.mjs`'s `renderBundle` draws the
   SVG from it alone, and `svgOfPage` is the one then the other, so a replay with the converter
   unchanged gives the same bytes. `--svg` saves every picture's bundle, faithful or not, in
   `.svgshot-bundles/` (gitignored, never under `docs/`: a bundle holds the user name), **one
@@ -599,7 +609,12 @@ the PNG was just captured from, and the build shows it in place of the PNG
   were as fast as fourteen, and fourteen timed a screenshot out. A bundle answers only what the converter asked at capture; a question
   it has no answer for is a *miss*, counted by `renderBundle`, and replay lists a picture whose
   misses are new since its capture, whose PNG hash changed, or whose bundle lacks a style now
-  read, with the `--only` command that retakes them. Answering misses offline in headless
+  read, with the `--only` command that retakes them. **A change to what is read from the page
+  that no miss shows raises `BUNDLE_VERSION`**: version 2 (the web font rules, `fontFiles`,
+  `svgs`) does not read a version 1 bundle, and replay lists every one as needing a retake
+  (the 370 of this cache did). Reading version 1 would replay a split font with the one file it
+  kept, and a picture with an inline `<svg>` without it, and nothing in a version 1 bundle
+  says which pictures have either. Answering misses offline in headless
   Chromium, and drawing bundles in `tbdocs`, are later steps, not done: the second needs the
   bundles committed, so cleaned of the user name, and complete, since CI
   has no Windows fonts to measure with.
@@ -748,7 +763,7 @@ capture), so those pictures stay PNG. In an inline `<svg>`: a `<foreignObject>`,
 the page cannot read, a `<use>` of another file, a CSS `mask` or `clip-path` on the root, text
 decoration, geometry set by CSS (`d`, `width`, `x`), and animation (the state at the snapshot
 is drawn). A duplicate id in one document resolves inside the svg first, where the browser
-takes the document's first. The WebView2 download page's Architecture arrow is an `unsteady`
+takes the document's first. The WebView2 download page's Version arrow is an `unsteady`
 region. Drawn wrongly: a collapsed table
 border, doubled (the IDE has none). A canvas is a raster (the editor's minimap is drawn with
 `putImageData`). The run reports each under "not drawn".

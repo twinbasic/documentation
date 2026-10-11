@@ -197,14 +197,14 @@ describe("bundles", () => {
   // A page of a <select> 200 by 20 at 10, 10, whose selected option reads "Shown": a
   // run the converter measures (its font's metrics, the label's width).
   const STYLES = ["visibility", "background-color", "color", "font-family", "font-size", "font-weight", "font-style"];
-  function bundleOf(page) {
+  function bundleOf(page, weight = "400") {
     const strings = [];
     const s = (v) => {
       const i = strings.indexOf(v);
       return i >= 0 ? i : strings.push(v) - 1;
     };
     const names = ["#document", "HTML", "BODY", "SELECT", "OPTION", "#text"];
-    const style = (bg) => [s("visible"), s(bg), s("rgb(0, 0, 0)"), s("Arial"), s("13px"), s("400"), s("normal")];
+    const style = (bg) => [s("visible"), s(bg), s("rgb(0, 0, 0)"), s("Arial"), s("13px"), s(weight), s("normal")];
     const snapshot = {
       strings,
       documents: [
@@ -243,7 +243,7 @@ describe("bundles", () => {
         },
       ],
     };
-    const key = JSON.stringify(["normal", "400", "13px", "Arial"]);
+    const key = JSON.stringify(["normal", weight, "13px", "Arial"]);
     return {
       version: BUNDLE_VERSION,
       styles: STYLES,
@@ -259,6 +259,8 @@ describe("bundles", () => {
           skips: [],
           platform: [],
           webFonts: {},
+          fontFiles: {},
+          svgs: [],
           scrollbars: [],
         },
       ],
@@ -317,8 +319,149 @@ describe("bundles", () => {
     );
   });
 
-  test("refuses a bundle of another version", async () => {
+  test("refuses a bundle of another version, the one before this format included", async () => {
     await assert.rejects(renderBundle({ ...bundleOf(measured), version: BUNDLE_VERSION + 1 }), /a bundle of version/);
+    assert.equal(BUNDLE_VERSION, 2);
+    await assert.rejects(renderBundle({ ...bundleOf(measured), version: 1 }), /a bundle of version 1, not 2/);
+  });
+
+  describe("web fonts in a bundle", () => {
+    const font = (name) =>
+      `data:font/woff2;base64,${fs.readFileSync(`${REPO_ROOT}/docs/assets/fonts/${name}`).toString("base64")}`;
+    // The rules of one family split in two by unicode-range, as a site serves it: Inter has
+    // capitals and punctuation, Cascadia Mono the space and lower case, though both have them all.
+    const rules = [
+      { family: "inter", range: "U+21-5A", lo: 100, hi: 900 },
+      { family: "cascadia", range: "U+20, U+61-7A", lo: 200, hi: 700 },
+    ];
+    const files = { inter: font("inter-variable.woff2"), cascadia: font("cascadia-mono-variable.woff2") };
+    // A page whose label "Shown" is drawn by a web font at `weight`, kept in `webFonts`.
+    function withWebFonts(weight, webFonts, fontFiles) {
+      const bundle = bundleOf(measured, weight);
+      const key = JSON.stringify(["normal", weight, "13px", "Arial"]);
+      const platform = [[`${key}\u0000Shown`, [{ postScriptName: "Web", isCustomFont: true, glyphCount: 5 }]]];
+      Object.assign(bundle.docs[0], { platform, webFonts: { [key]: webFonts }, fontFiles });
+      return bundle;
+    }
+    const used = (face) =>
+      [...face.used]
+        .map((cp) => String.fromCodePoint(cp))
+        .sort()
+        .join("");
+
+    test("each file is the face of the characters its rule holds, whichever file has glyphs for more", () => {
+      const { fonts, misses } = drawBundle(withWebFonts("400", rules, files));
+      assert.deepEqual(misses, []);
+      // The later rule is listed first, and so is the first face; each face keeps the space.
+      assert.deepEqual(fonts.faces.map(used), [" hnow", " S"]);
+    });
+
+    test("a variable file is cut at the run's weight, held to the weights its rule declares", () => {
+      const { fonts } = drawBundle(withWebFonts("800", rules, files));
+      assert.deepEqual(
+        fonts.faces.map((f) => f.job.weight),
+        [700, 800],
+      );
+    });
+
+    test("a rule whose file could not be read draws nothing, and the rest is drawn", () => {
+      const { fonts, misses } = drawBundle(withWebFonts("400", [{ ...rules[0], family: null }, rules[1]], files));
+      assert.deepEqual(misses, []);
+      // The capital, whose rule has no file, goes to the one face there is.
+      assert.deepEqual(fonts.faces.map(used), [" Shnow"]);
+    });
+
+    test("a font of a key the bundle has no rules for is not drawn", () => {
+      const { fonts } = drawBundle(withWebFonts("400", [], files));
+      assert.equal(fonts.faces.length, 0);
+    });
+
+    test("the rules and the files are kept in the bundle file, and draw the same from it", async () => {
+      const bundle = withWebFonts("400", rules, files);
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-test-"));
+      try {
+        writeBundle(root, "Images/w.png", bundle, Buffer.from("png"), []);
+        const back = readBundle(root, "Images/w.png");
+        assert.deepEqual(back.docs[0].webFonts, bundle.docs[0].webFonts);
+        assert.deepEqual(back.docs[0].fontFiles, files);
+        assert.deepEqual(drawBundle(back).fonts.faces.map(used), [" hnow", " S"]);
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe("inline svgs in a bundle", () => {
+    const key = JSON.stringify(["normal", "400", "13px", "Arial"]);
+    // The page's <select>, renamed to an <svg> (its layout object, 200 by 20 at 10, 10, has the key 0:2),
+    // read as capture.mjs's inlineSvg reads one: a path with an id, a use of it, and a run of text.
+    function withSvg(extra = {}) {
+      const bundle = bundleOf((k) => ({
+        ...measured(k),
+        allRuns: [
+          [k, "Shown"],
+          [k, "Hi"],
+        ],
+        widths: [34, 10],
+      }));
+      bundle.snapshot.strings[bundle.snapshot.strings.indexOf("SELECT")] = "svg";
+      const read = {
+        attrs: { viewBox: "0 0 16 16", preserveAspectRatio: null, overflow: "visible" },
+        style: "fill:rgb(255, 0, 0)",
+        inner: '<path id="a" d="M0 0h8v8z"/><use href="#a" style="fill:url(#a)"/><text style="--tbk:0">Hi</text>',
+        texts: [{ key, text: "Hi" }],
+        foreign: 1,
+        dropped: 0,
+        ...extra,
+      };
+      bundle.docs[0].svgs = [["0:2", read]];
+      return bundle;
+    }
+
+    test("is drawn in its box at its place, with its ids given a prefix of its own", () => {
+      const { drawn, misses } = drawBundle(withSvg());
+      assert.match(
+        drawn.svg,
+        /<svg x="10" y="10" width="200" height="20" viewBox="0 0 16 16" overflow="visible" style="fill:rgb\(255, 0, 0\)">/,
+      );
+      assert.match(drawn.svg, /<path id="v0-a" d="M0 0h8v8z"\/><use href="#v0-a" style="fill:url\(#v0-a\)"\/>/);
+      // Its text is set in the picture's faces, and its marker is gone; no font was read here.
+      assert.ok(!drawn.svg.includes("--tbk"));
+      assert.deepEqual(
+        misses.map((m) => m.split(" ")[0]),
+        ["fonts"],
+      );
+      assert.equal(drawn.stats.svgs, 1);
+      assert.deepEqual(drawn.stats.unsupported, {
+        "foreignObject in an inline svg": 1,
+        "text in an unembedded font": 1,
+      });
+    });
+
+    test("an svg the page could not read is reported, and one with no entry is left to the overlays", () => {
+      const bundle = withSvg();
+      bundle.docs[0].svgs = [["0:2", { failed: "gone" }]];
+      assert.equal(drawBundle(bundle).drawn.stats.unsupported["an inline svg that could not be read"], 1);
+      bundle.docs[0].svgs = [];
+      const none = drawBundle(bundle).drawn;
+      assert.equal(none.stats.svgs, 0);
+      assert.deepEqual(none.stats.unsupported, {});
+    });
+
+    test("is drawn the same from the bundle file, and from the bundle trimmed to its view", () => {
+      const bundle = withSvg();
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-test-"));
+      try {
+        writeBundle(root, "Images/s.png", bundle, Buffer.from("png"), []);
+        const back = readBundle(root, "Images/s.png");
+        assert.deepEqual(back.docs[0].svgs, bundle.docs[0].svgs);
+        assert.equal(drawBundle(back).drawn.svg, drawBundle(bundle).drawn.svg);
+        const trimmed = trimSnapshot(bundle.snapshot, bundle.view, bundle.styles);
+        assert.equal(drawBundle({ ...bundle, snapshot: trimmed }).drawn.svg, drawBundle(bundle).drawn.svg);
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    });
   });
 
   test("trimmed to its view, draws the same picture, and drops what is far from it", () => {

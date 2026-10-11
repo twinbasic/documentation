@@ -5,9 +5,11 @@
 //
 // A bundle answers only what the converter asked when the picture was taken. A
 // picture is left as it is, and listed as needing a retake, when its PNG is no
-// longer the one its bundle was taken with, when its bundle lacks a computed style
-// the converter now reads, or when the converter asks a question its bundle has no
-// answer for (a miss the capture did not have). The list ends with the
+// longer the one its bundle was taken with, when its bundle is of another format
+// (BUNDLE_VERSION: the converter reads more from the page than that bundle holds,
+// and nothing shows which pictures it reaches), when its bundle lacks a computed
+// style the converter now reads, or when the converter asks a question its bundle
+// has no answer for (a miss the capture did not have). The list ends with the
 // shoot_docs.mjs command that takes them again.
 
 import { spawn } from "node:child_process";
@@ -17,7 +19,7 @@ import path from "node:path";
 import { exitOnCrash, numberOption, parseCli, printHelpAndExit, regexOption, withUsageError } from "../../lib/cli.mjs";
 import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import { LAUNCH_ARGS, launchBrowser } from "../lib/browser.mjs";
-import { listBundles, pngHash, readBundle, renderBundle } from "./bundle.mjs";
+import { BUNDLE_VERSION, listBundles, pngHash, readBundle, renderBundle } from "./bundle.mjs";
 import { SNAPSHOT_STYLES } from "./capture.mjs";
 import { useSubsetCache } from "./fonts.mjs";
 import { holdsUserName, judgeSvg, SVG_FAITHFUL, writeSvg } from "./keep.mjs";
@@ -33,10 +35,11 @@ are far off the PNG's and its bytes differ from the file's, else not written and
 an older one removed. Takes no picture and starts no IDE; needs Python with
 fontTools, as --svg does.
 
-A picture whose PNG is not the one its bundle was taken with, whose bundle lacks a
-computed style the converter now reads, or for which the converter asks something
-its bundle cannot answer, is left as it is and listed as needing a retake, with
-the shoot_docs.mjs command that takes them again.
+A picture whose PNG is not the one its bundle was taken with, whose bundle is of
+another format than the converter reads, whose bundle lacks a computed style the
+converter now reads, or for which the converter asks something its bundle cannot
+answer, is left as it is and listed as needing a retake, with the shoot_docs.mjs
+command that takes them again.
 
   --only <regex>   only the pictures whose path under docs (with .light for a
                    light one) matches
@@ -120,6 +123,8 @@ async function replay(out, browser) {
   if (!existsSync(pngFile)) return retake("the PNG is gone");
   const png = readFileSync(pngFile);
   if (pngHash(png) !== bundle.png) return retake("the PNG is not the one the bundle was taken with");
+  if (bundle.version !== BUNDLE_VERSION)
+    return retake(`the bundle is of format ${bundle.version}, the converter reads ${BUNDLE_VERSION}`);
   const lacking = SNAPSHOT_STYLES.filter((s) => !bundle.styles.includes(s));
   if (lacking.length) return retake(`the bundle has no ${lacking.join(", ")}`);
   const { svg, stats, misses } = await renderBundle(bundle);
