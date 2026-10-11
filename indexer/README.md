@@ -36,6 +36,28 @@ Subsequent runs only download what changed.
 
 ## Commands
 
+```sh
+node indexer/twin-index.mjs <command> [options]
+node indexer/twin-index.mjs --help
+```
+
+The command line is read strictly, as every tool in this repository reads
+it: an unknown option, an option without its value or with an empty one, a
+value given to an option that takes none, an unexpected argument and an
+unknown or missing command are each refused, with the reason on standard
+error and exit code 2. `-h` or `--help` prints the usage text to standard
+output and exits 0 without starting anything. The usage text ends with the
+exit codes below.
+
+| Code | Meaning |
+|------|---------|
+| 0 | The command finished: `sync` wrote every package it was asked for, or found it up to date; `analyze` wrote its report. |
+| 1 | A package named by `--package` or `--packages` failed to sync, or does not exist; the others were done. |
+| 2 | A refused command line, no snapshots to analyze (run `sync` first), or a crash. |
+
+`analyze` exits 0 whenever it writes its report, whatever the report lists:
+the list of symbols to document is its product, not a failure.
+
 ### sync
 
 ```sh
@@ -50,6 +72,10 @@ Downloads packages, extracts sources, generates `api.json` snapshots.
 | `--packages VBA,ArrayListLib` | Sync multiple specific packages. |
 | _(no flag)_ | Sync everything. |
 
+`--package` takes one name and `--packages` a comma-separated list; the two
+cannot be given together. A name that matches no package is reported and
+makes the exit code 1.
+
 **What it writes:**
 
 | Path | Committed? | Contents |
@@ -63,7 +89,7 @@ Downloads packages, extracts sources, generates `api.json` snapshots.
 ### analyze
 
 ```sh
-node indexer/twin-index.mjs analyze [--package <name>]
+node indexer/twin-index.mjs analyze [--package <name>] [--packages <a>,<b>]
 ```
 
 Compares the current API snapshots (from `sync`) against the

@@ -291,6 +291,24 @@ const CASES = [
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "-x"], exit: 2, stderr: "unknown option: -x\n" },
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "--guild", "x", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
 
+  // The indexer reads its command line like wisdom: the command is the one
+  // positional, so an option may come before it, and an error found while
+  // reading the options comes before an unknown command. Its command in these
+  // is never a real one either, so that none can start a sync or an analysis,
+  // which `sync` would do over the network.
+  { tool: "indexer/twin-index.mjs", args: [], exit: 2, stderr: /^Usage: node indexer\/twin-index\.mjs <command> \[options\]\n/ },
+  { tool: "indexer/twin-index.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node indexer\/twin-index\.mjs <command> \[options\]\n/ },
+  { tool: "indexer/twin-index.mjs", args: ["bogus"], exit: 2, stderr: /^unknown command: bogus\nUsage: node indexer\/twin-index\.mjs <command> \[options\]\n/ },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--package"], exit: 2, stderr: "--package needs a value\n" },
+  { tool: "indexer/twin-index.mjs", args: ["--packages", "--bogus"], exit: 2, stderr: "--packages needs a value\n" },
+  { tool: "indexer/twin-index.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "stray"], exit: 2, stderr: "unexpected argument: stray\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--help"], exit: 0, stdout: /^Usage: node indexer\/twin-index\.mjs <command> \[options\]\n/ },
+  { tool: "indexer/twin-index.mjs", args: ["--package", "VBA", "--help"], exit: 0, stdout: /^Usage: node indexer\/twin-index\.mjs <command> \[options\]\n/ },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--help=1"], exit: 2, stderr: "--help takes no value\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "-x"], exit: 2, stderr: "unknown option: -x\n" },
+  { tool: "indexer/twin-index.mjs", args: ["bogus", "--package", "x", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+
   // tbdocs, beyond the cases above. Every command-line
   // error exits 2. A value flag refuses a missing value and one that starts
   // with a dash, "--" included; an unknown option is refused as given, as is a
@@ -340,6 +358,7 @@ const HELP_TOOLS = {
   "builder/tbdocs.mjs": null,
   "book/render-book.mjs": "usage: node render-book.mjs <input.html> ",
   "wisdom/wisdom.mjs": "Usage: node wisdom/wisdom.mjs <command> [options]\n",
+  "indexer/twin-index.mjs": "Usage: node indexer/twin-index.mjs <command> [options]\n",
   "eval/build_corpus.mjs": "Usage: node eval/build_corpus.mjs ",
   "eval/nav_hops.mjs": "Usage: node eval/nav_hops.mjs ",
   "eval/run_case.mjs": "Usage: node eval/run_case.mjs ",
@@ -421,6 +440,7 @@ const REFUSALS = {
   "builder/tbdocs.mjs": ["src"],
   "book/render-book.mjs": ["output"],
   "wisdom/wisdom.mjs": ["guild", { args: ["bogus", "--bogus"], empty: ["bogus", "--guild="] }],
+  "indexer/twin-index.mjs": ["package", { args: ["bogus", "--bogus"], empty: ["bogus", "--package="] }],
   "eval/build_corpus.mjs": ["dest"],
   "eval/nav_hops.mjs": ["from"],
   "eval/run_case.mjs": ["corpus"],
@@ -936,6 +956,19 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
     ["extract", "--since", "2024-01-01", "--all", "--force"],
     "--since, --all and --force cannot be given together\n",
   );
+}
+// The indexer's command in these is never a real one, for the same reason, and
+// its package names are read straight after the parse.
+{
+  const tool = "indexer/twin-index.mjs";
+  bad(tool, ["bogus", "--packages", ","], "--packages expects package names separated by commas, got: ,\n");
+  bad(tool, ["bogus", "--packages=VBA,,VB"], "--packages expects package names separated by commas, got: VBA,,VB\n");
+  bad(
+    tool,
+    ["bogus", "--package", "VBA,VB"],
+    "--package expects one package name, got: VBA,VB (--packages takes a list)\n",
+  );
+  bad(tool, ["bogus", "--package", "VBA", "--packages", "VB"], "--package and --packages cannot be given together\n");
 }
 for (const made of BAD_VALUES) {
   CASES.push(made);

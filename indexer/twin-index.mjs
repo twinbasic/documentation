@@ -2,7 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { fileURLToPath } from "node:url";
+import { CliError, die, exitOnCrash, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
+import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 import { compareWithManifest, fetchPackage, versionString } from "./lib/sync.mjs";
 import { compareBuiltinManifest, extractBuiltinPackages } from "./lib/builtin-sync.mjs";
 import { downloadRelease } from "./lib/github-release.mjs";
@@ -13,14 +14,15 @@ import { emitApiJson } from "./lib/json-emitter.mjs";
 import { ensureStore, commitStore, copyToSnapshots } from "./lib/store.mjs";
 import { diffApi, auditCoverage } from "./lib/differ.mjs";
 
-const execFileP = promisify(execFile);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+exitOnCrash();
 
-const STORE_PATH = path.join(__dirname, ".packages");
-const SNAPSHOTS_PATH = path.join(__dirname, "snapshots");
-const MANIFESTS_DIR = path.join(__dirname, "manifests");
-const DOCS_REF_DIR = path.resolve(__dirname, "..", "docs", "Reference");
-const REPO_ROOT = path.resolve(__dirname, "..");
+const execFileP = promisify(execFile);
+
+const INDEXER_DIR = path.join(REPO_ROOT, "indexer");
+const STORE_PATH = path.join(INDEXER_DIR, ".packages");
+const SNAPSHOTS_PATH = path.join(INDEXER_DIR, "snapshots");
+const MANIFESTS_DIR = path.join(INDEXER_DIR, "manifests");
+const DOCS_REF_DIR = path.join(DOCS_DIR, "Reference");
 
 const DEFAULT_PACKAGES = ["VBA", "VBRUN", "VB"];
 const VB6_EXTS = new Set(Object.keys(CONTAINER_MAP));
@@ -215,49 +217,82 @@ async function walkDir(dir) {
 
 // --- CLI ---
 
-const cliArgs = process.argv.slice(2);
-const command = cliArgs[0];
+const COMMANDS = ["sync", "analyze"];
 
-let packageFilter = null;
-for (let i = 1; i < cliArgs.length; i++) {
-  if (cliArgs[i] === "--package" && cliArgs[i + 1]) {
-    packageFilter = [cliArgs[++i]];
-  } else if (cliArgs[i] === "--packages" && cliArgs[i + 1]) {
-    packageFilter = cliArgs[++i].split(",").map((s) => s.trim());
-  } else if (cliArgs[i] === "--help" || cliArgs[i] === "-h") {
-    showHelp();
-    process.exit(0);
+const USAGE = `Usage: node indexer/twin-index.mjs <command> [options]
+
+Indexes the twinBASIC packages into API snapshots, and lists what the
+documentation still has to say about them.
+
+Commands:
+  sync      Download packages, extract sources, generate api.json snapshots
+  analyze   Diff API snapshots against documented baseline
+
+Options:
+  --package <name>       Process only the specified package
+  --packages <a>,<b>     Process only the specified packages
+  -h, --help             Print this text and exit
+
+Exit codes:
+  0  the command finished: sync wrote every package it was asked for, or found
+     it up to date; analyze wrote its report
+  1  a package named by --package or --packages failed to sync, or does not
+     exist; the others were done
+  2  a refused command line, no snapshots to analyze (run sync first), or a crash
+`;
+
+// --package is one name, --packages a comma-separated list; either gives the
+// names a command is limited to, or null for every package.
+function packageFilter({ package: one, packages }) {
+  if (one !== undefined) {
+    if (one.includes(",")) {
+      throw new CliError("bad-list", `--package expects one package name, got: ${one} (--packages takes a list)`, {
+        option: "--package",
+        value: one,
+      });
+    }
+    return [one];
   }
+  if (packages === undefined) return null;
+  const names = packages.split(",").map((s) => s.trim());
+  if (names.some((n) => n === "")) {
+    throw new CliError("bad-list", `--packages expects package names separated by commas, got: ${packages}`, {
+      option: "--packages",
+      value: packages,
+    });
+  }
+  return [...new Set(names)];
 }
 
-function showHelp() {
-  console.log("Usage: node indexer/twin-index.mjs <command> [options]");
-  console.log("");
-  console.log("Commands:");
-  console.log("  sync      Download packages, extract sources, generate api.json snapshots");
-  console.log("  analyze   Diff API snapshots against documented baseline");
-  console.log("");
-  console.log("Options:");
-  console.log("  --package <name>       Process only the specified package");
-  console.log("  --packages <a>,<b>     Process only the specified packages");
+const cli = withUsageError(() => {
+  const read = parseCli(process.argv.slice(2), {
+    options: {
+      help: { type: "boolean", short: "h" },
+      package: { type: "string" },
+      packages: { type: "string" },
+    },
+    positionals: { max: 1 },
+    stopAt: ["help"],
+  });
+  if (read.stopped === "help") return read;
+  refuseTogether(read.values, ["package", "packages"]);
+  return { ...read, filter: packageFilter(read.values) };
+});
+if (cli.values.help) printHelpAndExit(USAGE);
+
+const command = cli.positionals[0];
+if (!COMMANDS.includes(command)) {
+  if (command) console.error(`unknown command: ${command}`);
+  printHelpAndExit(USAGE, { stream: "stderr", exitCode: 2 });
 }
 
 switch (command) {
   case "sync":
-    await runSync(packageFilter);
+    process.exitCode = await runSync(cli.filter);
     break;
   case "analyze":
-    await runAnalyze(packageFilter);
+    process.exitCode = await runAnalyze(cli.filter);
     break;
-  case "--help":
-  case "-h":
-  case undefined:
-    showHelp();
-    break;
-  default:
-    console.error(`Unknown command: ${command}`);
-    showHelp();
-    process.exit(1);
 }
 
 // --- sync command ---
@@ -268,11 +303,14 @@ async function runSync(filter) {
 
   const synced = [];
   const failed = [];
+  // Every package name either source knows, to tell a name that matches nothing.
+  const known = new Set();
 
   // --- Contributed packages (TWINSERV) ---
   const contribManifestPath = path.join(MANIFESTS_DIR, "contributed.json");
   console.log("Fetching TWINSERV package index...");
   const { toDownload, unchanged, removed, manifest: contribManifest } = await compareWithManifest(contribManifestPath);
+  for (const item of [...toDownload, ...unchanged]) known.add(item.symbol);
 
   let contribToDownload = filter ? toDownload.filter((p) => filter.includes(p.symbol)) : toDownload;
 
@@ -393,8 +431,10 @@ async function runSync(filter) {
     }
 
     await fs.writeFile(builtinManifestPath, JSON.stringify(builtinManifest, null, 2) + "\n");
+    for (const { symbol } of Object.values(builtinManifest.packages)) known.add(symbol);
   } else {
     console.log(`  Up to date (${release.tag}).`);
+    for (const { symbol } of Object.values(release.manifest.packages || {})) known.add(symbol);
   }
 
   // --- Commit store and copy snapshots ---
@@ -410,7 +450,14 @@ async function runSync(filter) {
     }
   }
 
+  for (const name of filter ?? []) {
+    if (known.has(name)) continue;
+    failed.push({ symbol: name, error: "no such package" });
+    console.warn(`  No package named ${name}`);
+  }
+
   console.log(`\nDone. ${synced.length} synced` + (failed.length ? `, ${failed.length} failed` : "") + ".");
+  return failed.length ? 1 : 0;
 }
 
 // --- analyze command ---
@@ -442,8 +489,12 @@ async function runAnalyze(filter) {
   }
 
   if (!packageList.length) {
-    console.log("No packages to analyze. Run sync first.");
-    return;
+    die(
+      2,
+      filter
+        ? `No package to analyze is named ${filter.join(", ")}. Check the name, or run sync first.`
+        : "No packages to analyze. Run sync first.",
+    );
   }
 
   const allReports = [];
@@ -471,6 +522,11 @@ async function runAnalyze(filter) {
   const reportPath = path.join(STORE_PATH, "report.json");
   await fs.writeFile(reportPath, JSON.stringify(allReports, null, 2) + "\n");
   console.log(`\nReport written to ${reportPath}`);
+
+  const analyzed = new Set(packageList.map((p) => p.name));
+  const missing = (filter ?? []).filter((name) => !analyzed.has(name));
+  for (const name of missing) console.warn(`  No package to analyze is named ${name}`);
+  return missing.length ? 1 : 0;
 }
 
 async function analyzeUpdate(name, group, current, indexedFrom, docsDir, exclusions) {
