@@ -599,6 +599,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: TBMANLIB Package
+        subtitle: A toolkit of helpers for JSON, logs, INI files, strings, bytes, files and dictionaries
+        landing_page: /tB/Packages/Contributed/TBMANLIB/
+        page: /tB/Packages/Contributed/TBMANLIB/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TBMANLIB_Aes Package
         subtitle: AES encryption of text and byte arrays, through the Windows Crypto API and CNG
         landing_page: /tB/Packages/Contributed/TBMANLIB_Aes/
