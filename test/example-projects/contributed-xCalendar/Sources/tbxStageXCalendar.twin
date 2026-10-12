@@ -1,0 +1,15 @@
+' The stage set for the xCalendar section: the control instance its samples assume.
+'
+' This template is a delta over `console`, as every `contributed-<Package>` template is: its
+' Settings references the package, and this is the one file besides that differs. A sample
+' on the xCalendar page says `xCalendar1.Value = Date`, which is form code-behind: the reader
+' has a form with an xCalendar on it, and the designer, not the code, declares xCalendar1.
+'
+' The variable's type is written `xCalendar.xCalendar`, the project's name and then the
+' class's: the two are the same word, and `xCalendar` alone is the project (TB5139).
+
+Module tbxStageXCalendar
+
+    Public xCalendar1 As xCalendar.xCalendar
+
+End Module

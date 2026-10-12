@@ -322,6 +322,10 @@ unpacks it beside, and copies it into every batch staged from the template. The 
 the repository's to commit: four of the nine ship no licence file, and WinReg embeds WinDevLib,
 14 MB.
 
+- **A control package's template also declares the control its samples name.**
+  `contributed-xCalendar` has `Sources/tbxStageXCalendar.twin` beside its `Settings`, with
+  `Public xCalendar1 As xCalendar.xCalendar`, as `tbxStage.twin` declares `Text1` for the
+  built-in controls.
 - **One template per package, because a reader's project references one.** With the nine in
   one project, VBA_JSON's `Dictionary` class hid the `Scripting.Dictionary` that WinReg's
   samples name.

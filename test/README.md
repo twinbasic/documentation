@@ -16,7 +16,8 @@ is input for three tools:
   `lanes.mjs`, and its scenario files use `scenario` from `addin/scenario.mjs`.
 - `package-probes/` for a person documenting a contributed package: a probe of what a
   package does at run time that only a built program can show, run by hand and outside every
-  gate, with a README of its own. `TBMANLIB_Dialog/` operates the package's dialogs.
+  gate, with a README of its own. `TBMANLIB_Dialog/` operates the package's dialogs, and
+  `xCalendar/` the package's calendar control on a form.
 
 If a fixture case has just gone red, start at [The invariant, and how it
 breaks](#the-invariant-and-how-it-breaks) --- the commit that broke it need not have touched

@@ -579,6 +579,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: xCalendar Package
+        subtitle: A calendar control, in place of the Calendar control of MSCAL.OCX
+        landing_page: /tB/Packages/Contributed/xCalendar/
+        page: /tB/Packages/Contributed/xCalendar/
+        landing_is_target: true
+        outline_closed: true
+
   - title: Appendices
     outline_closed: false
     

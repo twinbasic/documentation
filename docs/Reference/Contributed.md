@@ -25,3 +25,4 @@ Each package is versioned apart from twinBASIC, and its section says which versi
 - [**TwinTimerPackage**](TwinTimerPackage/) -- a Win32 timer class that reports the elapsed time
 - [**VBA_JSON**](VBA_JSON/) -- JSON parsing and serialization, with UTC and ISO 8601 date conversion
 - [**VBComDlg**](VBComDlg/) -- the **CommonDialog** class, for the Windows common dialogs
+- [**xCalendar**](xCalendar/) -- a calendar control, in place of the Calendar control of `MSCAL.OCX`
