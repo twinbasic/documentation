@@ -100,7 +100,7 @@ At the moment, the form-designer doesn't yet support code-behind-forms, so this 
 
 
 > [!TIP]
-> If you make changes to your CustomControl class, such as exposing new properties or changing how a control is drawn, these changes will get reflected immediately to any open form designers.  Form designers will show a 'resync' button when you return to them, once pressed the changes will be apparent.
+> If you make changes to your CustomControl class, such as exposing new properties or changing how a control is drawn, these changes will get reflected immediately to any open form designers.  A form designer that is open behind the code refreshes itself when you return to it, and the changes are then apparent.  See [RESYNC](../../tB/IDE/Forms/Previewing#resync).
 
 > [!TIP]
 > The serialization happens via JSON when running in the IDE, but via a binary format when running in a compiled DLL/EXE.  The `SerializeInfo` object that `GetSerializer()` returns is a different implementation when running in the IDE, but this should be transparent to you as a CustomControl implementer.

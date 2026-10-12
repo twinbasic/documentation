@@ -10,7 +10,7 @@ permalink: /Tutorials/WebView2/Driving-Monaco
 
 A case study combining everything from the previous tutorials: a form with **two** [**WebView2**](../../tB/Packages/WebView2/WebView2/) controls --- the Microsoft Monaco editor on the left, a live HTML preview on the right. As the user types, Monaco posts the edited source to twinBASIC, which mirrors it into the preview pane.
 
-The complete project ships as *Sample 0 --- WebView2 Examples* in the New-Project dialog (form *Example 3*).
+The complete project ships as *Sample 1a --- WebView2 Examples* in the New-Project dialog (form *Example 3*).
 
 ## Architecture
 

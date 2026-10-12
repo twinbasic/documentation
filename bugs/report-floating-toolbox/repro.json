@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "with a report open, a floating Toolbox lists every tool of a form"
+  ],
+  "steps": "1. Add a report with Add Windows Report. The docked Toolbox lists Pointer, Label, Shape, Line, Image, CheckMark and QRCode.\n2. Hide the Toolbox and show it again, so that it floats. It lists the 24 tools of a form, TextBox, CommandButton and Timer among them, and More components.\nControl: the docked Toolbox's seven."
+}

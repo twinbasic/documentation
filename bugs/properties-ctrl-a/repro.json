@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "Ctrl+A in a PROPERTIES box selects nothing"
+  ],
+  "steps": "1. Open a form and click Command1.\n2. Click in the Caption box of PROPERTIES and press End, then Ctrl+A.\n3. Nothing is selected in the box (the caret stays at 8), and the designer's selection is unchanged. Typing then adds to the caption.\nControl: Ctrl+A with the designer focused selects every control."
+}

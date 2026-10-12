@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "a form file with bad JSON opens an empty designer that adds no control, and Save leaves the file as it was"
+  ],
+  "steps": "1. A project with a form whose .tbform file has a JSON syntax error, such as \"Height\": 300,, (DIAGNOSTICS lists TB5246 bad JSON syntax).\n2. Open the .tbform. The notification reads ERROR: bad JSON encountered when parsing tbform, and the designer tab opens with no control and an empty PROPERTIES.\n3. Double-click the CommandButton tool: nothing is added, and the tab stays unchanged. Ctrl+S leaves the file as it was."
+}

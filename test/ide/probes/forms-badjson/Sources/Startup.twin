@@ -1,0 +1,7 @@
+' test/ide/forms.test.mjs: frmBad.tbform's JSON has a syntax error on purpose.
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+End Module

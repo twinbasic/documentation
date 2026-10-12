@@ -1,0 +1,25 @@
+[Description("")]
+[FormDesignerId("F0A3F001-3B2E-4D69-8A14-7E91C2D4C615")]
+[PredeclaredId]
+Class frmMain
+
+    Sub New()
+    End Sub
+
+    Private Sub Form_Load()
+        Debug.Print "form load"
+    End Sub
+
+    Private Sub Command1_Click()
+        Debug.Print "command1 click"
+    End Sub
+
+    Private Sub Text1_Change()
+        Debug.Print "text1 change"
+    End Sub
+
+    Private Sub Command2_Click(Index As Integer)
+        Debug.Print "command2 click " & Index
+    End Sub
+
+End Class

@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "a package's read-only designer file opens an empty tab of its name besides the notice that it cannot be opened"
+  ],
+  "steps": "1. In a project that references the VB package, open Packages/VB/Sources/DESIGNERS/tbObjectDesigner_PROPERTYPAGE.tbppage from Project Explorer.\n2. The notification reads Can't open designer for a read-only document., and a tab of that name is added and selected, empty, with no close icon. A middle click closes it."
+}

@@ -1,0 +1,56 @@
+[ClassId("3F6B2C1A-8E4D-4B7A-9C25-6A1D0E7F4B21")]
+Class GridColumn
+    Public Caption As String = "Column"
+    Public Width As CustomControls.PixelCount = 100
+End Class
+
+[CustomControl("/Miscellaneous/MyGrid.png")]
+[ClassId("8C2E5A47-1D3B-4F69-A0B8-5E7C9D2F1A63")]
+[COMCreatable(False)]
+Class MyGrid
+    Implements CustomControls.ICustomControl
+
+    Public Name As String
+    Public Left As CustomControls.PixelCount
+    Public Top As CustomControls.PixelCount
+    Public Width As CustomControls.PixelCount
+    Public Height As CustomControls.PixelCount
+    Public Anchors As CustomControlsPackage.Anchors = New CustomControlsPackage.Anchors
+    Public Dock As CustomControls.DockMode
+    Public Visible As Boolean
+
+    Public MyField As Long
+
+    Enum MyEnum
+        Value1
+        Value2
+        Value3
+    End Enum
+
+    Public MyEnumField As MyEnum
+
+    Public Columns() As GridColumn
+
+    Private Background As CustomControlsPackage.Fill
+
+    Private Sub OnInitialize(ByVal Context As CustomControls.CustomControlContext) _
+            Implements CustomControls.ICustomControl.Initialize
+        If Not Context.GetSerializer.RuntimeUISrzDeserialize(Me, False) Then
+            Visible = True
+        End If
+        Set Background = New CustomControlsPackage.Fill
+        Background.ColorPoints.SetSolidColor RGB(220, 230, 240)
+    End Sub
+
+    Private Sub OnDestroy() Implements CustomControls.ICustomControl.Destroy
+    End Sub
+
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+        Dim Area As CustomControlsPackage.ElementDescriptor
+        Area.Width = Canvas.RuntimeUICCGetWidth()
+        Area.Height = Canvas.RuntimeUICCGetHeight()
+        Set Area.BackgroundFill = Background
+        Canvas.RuntimeUICCCanvasAddElement Area
+    End Sub
+End Class

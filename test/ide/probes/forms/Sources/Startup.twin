@@ -1,0 +1,8 @@
+' test/ide/forms.test.mjs: Main shows frmMain.
+Module Startup
+
+    Public Sub Main()
+        frmMain.Show
+    End Sub
+
+End Module

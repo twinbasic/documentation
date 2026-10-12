@@ -1,0 +1,8 @@
+' The "Designing forms and reports" chapter's pictures: Main shows frmMain.
+Module Startup
+
+    Public Sub Main()
+        frmMain.Show
+    End Sub
+
+End Module

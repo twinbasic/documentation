@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "Align > Center (Horizontal) centres every selected control on the leftmost left edge",
+    "Align > Center (Vertical) centres every selected control on the topmost top edge"
+  ],
+  "steps": "1. Open a form with Command1 at 10,50, Check1 at 140,55 and Command2 at 250,110, each 100 wide.\n2. Select the three and choose Format > Align > Center (Horizontal). Each is at Left -40: centred on 10, the leftmost left edge, not on 180, the selection's centre.\n3. From the same start, Center (Vertical) centres each on Top 50, the topmost top edge, not on 95.\nControl: Align > Left puts all three at Left 10."
+}

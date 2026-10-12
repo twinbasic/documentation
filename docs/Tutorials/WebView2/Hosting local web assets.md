@@ -10,7 +10,7 @@ permalink: /Tutorials/WebView2/Hosting-Local-Web-Assets
 
 A [**WebView2**](../../tB/Packages/WebView2/WebView2/) control can serve HTML, JavaScript, CSS, and any other assets straight from a folder on disk --- no embedded HTTP server required. Edge's [**SetVirtualHostNameToFolderMapping**](../../tB/Packages/WebView2/WebView2/#setvirtualhostnametofoldermapping) routes a virtual `https://` hostname to a local folder so that resources behave as if they came from a real origin: same-origin `fetch`, Content Security Policy, service workers, and so on all work as expected.
 
-This tutorial demonstrates the pattern used by *Sample 0 --- WebView2 Examples* (forms *Example 2*, *Example 3*, *Example 4*).
+This tutorial demonstrates the pattern used by *Sample 1a --- WebView2 Examples* (forms *Example 2*, *Example 3*, *Example 4*).
 
 ## The three-step pattern
 

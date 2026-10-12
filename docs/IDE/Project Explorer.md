@@ -78,7 +78,7 @@ Same as Right-Click
 ## ![](Images/tB-Green.png){:width="16" height="16"} Windows Form
 {: #windows-form }
 
-[tbForm](Editor/Form)
+The form designer opens on the new file. See [Add a form](../Forms/Designer#add-a-form).
 
 ## ![](Images/tB-Green.png){:width="16" height="16"} Windows MDI Form
 {: #windows-mdi-form }
@@ -92,7 +92,7 @@ Same as Right-Click
 ## ![](Images/tB-Green.png){:width="16" height="16"} Windows Report
 {: #windows-report }
 
-[tbReport](Editor/Report)
+The report designer opens on the new file. See [Designing reports](../Reports/).
 
 ## ![](Images/tB-Green.png){:width="16" height="16"} CustomControls Forms
 {: #customcontrols-forms }

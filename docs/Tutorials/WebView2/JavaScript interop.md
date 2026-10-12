@@ -14,7 +14,7 @@ The [**WebView2**](../../tB/Packages/WebView2/WebView2/) control offers three co
 2. **Messages** --- push a value (string, number, array, …) in either direction and listen for it on the other side.
 3. **Scripted calls** --- call a named JavaScript function from BASIC and (optionally) wait for its return value.
 
-This tutorial covers all three, with the matching JavaScript side shown next to each BASIC side. The worked code comes from *Sample 0 --- WebView2 Examples* (form *Example 2*).
+This tutorial covers all three, with the matching JavaScript side shown next to each BASIC side. The worked code comes from *Sample 1a --- WebView2 Examples* (form *Example 2*).
 
 ## Bridge 1 --- Host objects
 

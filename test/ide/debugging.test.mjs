@@ -45,7 +45,16 @@ import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { sleep } from "../../scripts/lib/tb-ide.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
-import { click, clickAt, openFile, pressKey, setCursor, typeText, waitFor } from "../../scripts/lib/tb-operate.mjs";
+import {
+  click,
+  clickAt,
+  openFile,
+  pressKey,
+  setCursor,
+  typeText,
+  waitFor,
+  waitForEditAnswer,
+} from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "../addin/scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -174,6 +183,7 @@ scenario("running and debugging", (lane) => {
       assert.ok(await waitFor(c, async () => !(await c.evaluate(GLYPHS_JS)).length), "a breakpoint is left");
     }
     for (const line of lines) {
+      assert.ok(await waitForEditAnswer(c), "the compiler never answered the last edit");
       await setCursor(c, line, 9);
       await pressKey(c, "F9");
       assert.ok(await waitFor(c, async () => (await c.evaluate(GLYPHS_JS)).includes(line)), `no breakpoint on ${line}`);

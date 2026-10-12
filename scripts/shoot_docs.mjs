@@ -193,6 +193,7 @@ import {
   setCursor,
   typeText,
   waitFor,
+  waitForEditAnswer,
 } from "./lib/tb-operate.mjs";
 import { claimPorts } from "./lib/tb-ports.mjs";
 import { deleteSettings, finishTidy, restoreKeys, settingsKey, snapshotKeys, startTidy } from "./lib/tb-registry.mjs";
@@ -1321,6 +1322,28 @@ async function startCodeChapter(run, { extra = null } = {}) {
   return run.lane.open(src);
 }
 
+// ---- forms-chapter: test/shots/forms, FormsDemo, for the pictures of the "Designing forms and
+// reports" chapter (formsChapterShots): a form with a menu and controls of a few kinds, a
+// Frame holding a TextBox, a control array, and a report with controls in two of its bands.
+const FORMS_CHAPTER = path.join(REPO_ROOT, "test", "shots", "forms");
+
+async function startFormsChapter(run) {
+  run.step = "open";
+  say(run.name, `opening ${path.relative(REPO_ROOT, FORMS_CHAPTER)}`);
+  const src = path.join(run.work, "forms-src");
+  cpSync(FORMS_CHAPTER, src, { recursive: true });
+  return run.lane.open(src);
+}
+
+// The IDE's desktop, where a previewed form's window shows, and a folder for its captures.
+async function prepareFormsChapter(run) {
+  const ctx = await prepareWithDesigners(run);
+  ctx.desktop = `tbbuild-${run.ports[0]}`;
+  ctx.windows = path.join(run.work, "windows");
+  mkdirSync(ctx.windows, { recursive: true });
+  return ctx;
+}
+
 // ---- community: the demo with the compiler started on no licence key, the status bar's
 // COMMUNITY EDITION badge as the IDE draws it for a key that is not there (the Community
 // Edition), and its LIMITED services badge while a compiler starts.The IDE reads the key from its settings into
@@ -1375,6 +1398,7 @@ const SETUPS = {
   sample6: { ports: 1, start: startSample6, prepare: prepareSample },
   designer: { ports: 2, start: startDesigner, prepare: prepareDesigner },
   forms: { ports: 1, start: (run) => startDesigner(run, { addin: false }), prepare: prepareWithDesigners },
+  "forms-chapter": { ports: 1, start: startFormsChapter, prepare: prepareFormsChapter },
   customcontrols: { ports: 1, start: startCustomControls, prepare: prepareWithDesigners },
   code: { ports: 1, start: startCode, prepare: prepareSample },
   sample9: { ports: 1, start: startSample9, prepare: prepareSample },
@@ -4041,7 +4065,17 @@ const designerShots = [
   formatShot("Menu_Format_1"),
   formatShot("Menu_Format_Align", "Align"),
   formatShot("Menu_Format_MakeSameSize", "Make Same Size"),
-  formatShot("Menu_Format_HorizontalSpacing", "Horizontal Spacing"),
+  // with three controls selected, so that Make Equal is live (setup forms-chapter, frmMain:
+  // Command1, Check1 and Command2(0), at Left 10, 140 and 250 as in Arranging.md's example)
+  menuShot("Menu_Format_HorizontalSpacing", "Format", "Horizontal Spacing", {
+    setup: "forms-chapter",
+    before: async (c) => {
+      await formsDesigner(c);
+      await selectNamed(c, ["Command1", "Check1", "Command2(0)"]);
+      await parkMouse(c);
+    },
+    after: formsReset,
+  }),
   formatShot("Menu_Format_VerticalSpacing", "Vertical Spacing"),
   // the toolbar with a form open in the designer
   searchToolbarShot("Toolbar_3", "designer", (c) => openDesigner(c, "MyForm.tbform")),
@@ -4432,6 +4466,1041 @@ const formShots = [
     },
   },
 ];
+
+// ---- the "Designing forms and reports" chapter (setup forms-chapter): FormsDemo,
+// test/shots/forms. frmMain has a File menu (Open, a separator, Exit) and the controls the
+// chapter's pages name: Text1, Label1, Command1, Check1, Frame1 holding Text2, and the control
+// array Command2(0) and Command2(1); MyReport has a Label in its Report Header and a Line and a
+// Label in its Report Detail. The project refers to WinNativeCommonCtls, so a form's Toolbox
+// has a COMMON CONTROLS group. Every picture starts from no tab, no menu and the default layout
+// (formsReset), and closes the designer's tab with Discard Changes after it, so that a change
+// a picture makes (a lock, a menu, the outlines, the zoom) is never in the next one: the
+// designer reads the form from its file again when it opens.
+
+const FORMS_IMAGE = (name) => `IDE/Forms/Images/${name}.png`;
+const REPORTS_IMAGE = (name) => `IDE/Reports/Images/${name}.png`;
+const FORMS_FILE = (name) => `/FormsDemo/Sources/${name}`;
+
+async function formsReset(c) {
+  await resetUi(c);
+  await closeTabs(c, [], { discard: true });
+  await defaultLayout(c);
+  await parkMouse(c);
+}
+
+// `file` of FormsDemo open in its designer, alone, from its file.
+async function formsDesigner(c, file = "frmMain.tbform") {
+  await formsReset(c);
+  await openFile(c, FORMS_FILE(file));
+  await designerShown(c);
+}
+
+// The controls named selected as a person selects them: a click on the first, a Shift+click
+// on each other one. A name with an index, `Command2(1)`, is that member of the array.
+async function selectNamed(c, names) {
+  const centre = (n) =>
+    c.evaluate(`(() => {
+  const [, name, index] = /^(\\w+)(?:\\((\\d+)\\))?$/.exec(${JSON.stringify(n)});
+  const k = ${DESIGNER_GLOBALS}.allControls.find((x) => x.properties.Name === name && (index === undefined || x.properties.Index === Number(index)));
+  if (!k) return null;
+  const r = k.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+  for (const [i, n] of names.entries()) {
+    const at = await centre(n);
+    if (!at) throw new Error(`the designer does not draw ${n}`);
+    const modifiers = i ? 8 : 0;
+    await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: at.x, y: at.y, modifiers });
+    for (const type of ["mousePressed", "mouseReleased"]) {
+      await c.send("Input.dispatchMouseEvent", { type, x: at.x, y: at.y, button: "left", clickCount: 1, modifiers });
+    }
+  }
+  const want = names
+    .map((n) => n.replace(/\(\d+\)$/, ""))
+    .sort()
+    .join();
+  if (!(await waitFor(c, async () => (await selectedControls(c)).join() === want, { timeout: 3000, interval: 50 }))) {
+    throw new Error(`the clicks selected ${JSON.stringify(await selectedControls(c))}, not ${want}`);
+  }
+  await frames(c);
+}
+
+// The box of the open designer's form with its menu bar and the readouts under it.
+const formArea = (c) =>
+  c.evaluate(`(() => {
+  const g = ${DESIGNER_GLOBALS};
+  const boxes = [g.designer, g.designerMenuBar, g.designerDragInfoLeft, g.designerDragInfoRight]
+    .filter((e) => e && e.getBoundingClientRect().width)
+    .map((e) => e.getBoundingClientRect());
+  const x = Math.min(...boxes.map((r) => r.left));
+  const y = Math.min(...boxes.map((r) => r.top));
+  return { x, y, width: Math.max(...boxes.map((r) => r.right)) - x, height: Math.max(...boxes.map((r) => r.bottom)) - y };
+})()`);
+
+// The boxes of the selected control's middle grabber on its right edge and of its in-place
+// toolbar (the toolbar's element has no size of its own: its buttons' boxes, joined).
+const selectionParts = (c) =>
+  c.evaluate(`(() => {
+  const box = (r) => ({ x: r.x, y: r.y, width: r.width, height: r.height });
+  const pts = [...document.querySelectorAll(".selectedControlDragPointsContainer > *")]
+    .map((e) => e.getBoundingClientRect())
+    .filter((r) => r.width);
+  const right = Math.max(...pts.map((r) => r.x));
+  const column = pts.filter((r) => Math.abs(r.x - right) < 1).sort((a, b) => a.y - b.y);
+  const parts = [...document.querySelectorAll(".miniToolbarVisible *")]
+    .map((e) => e.getBoundingClientRect())
+    .filter((r) => r.width && r.height);
+  const x = Math.min(...parts.map((r) => r.left));
+  const y = Math.min(...parts.map((r) => r.top));
+  return {
+    grab: column.length ? box(column[Math.floor(column.length / 2)]) : null,
+    mini: parts.length ? { x, y, width: Math.max(...parts.map((r) => r.right)) - x, height: Math.max(...parts.map((r) => r.bottom)) - y } : null,
+  };
+})()`);
+
+// The striped ground round a designer's form is drawn a little differently from one capture to
+// the next (a few dozen pixels along the stripes, by more than a capture's noise), so that no two
+// captures of a picture with much of it agree. These are capture's `unsteady` regions for the
+// ground a clip shows: the clip less the form's own boxes (the form, its menu bar, the readouts)
+// and the boxes `over` names (a menu, a list), so that nothing but the ground is left out.
+async function groundUnsteady(c, clip, over = []) {
+  const { parts, ground, tabs } = await c.evaluate(`(() => {
+  const g = ${DESIGNER_GLOBALS};
+  const box = (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
+  return {
+    parts: [g.designer, g.designerMenuBar, g.designerDragInfoLeft, g.designerDragInfoRight]
+      .filter((e) => e && e.getBoundingClientRect().width)
+      .map((e) => ({ ...box(e), pill: e !== g.designer && e !== g.designerMenuBar })),
+    ground: (() => {
+      const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "EDITOR 1");
+      const p = h.closest(".toolWindowContainer").getBoundingClientRect();
+      const tabs = document.getElementById("codePanelTabs").getBoundingClientRect();
+      return { x: p.x, y: tabs.top, width: p.width, height: p.bottom - tabs.top };
+    })(),
+    // the tabs and the Tabs List button, in the row the ground is drawn behind
+    tabs: [...document.querySelectorAll("#codePanelTabs > *, #codePanelTabs ~ *")]
+      .filter((e) => {
+        const r = e.getBoundingClientRect();
+        const t = document.getElementById("codePanelTabs").getBoundingClientRect();
+        return r.width && r.top < t.bottom && r.bottom <= t.bottom + 4;
+      })
+      .map(box),
+  };
+})()`);
+  // the ground is the editor's area under its tabs
+  const x0 = Math.max(clip.x, ground.x);
+  const y0 = Math.max(clip.y, ground.y);
+  const x1 = Math.min(clip.x + clip.width, ground.x + ground.width);
+  const y1 = Math.min(clip.y + clip.height, ground.y + ground.height);
+  if (x0 >= x1 || y0 >= y1) return [];
+  let left = [{ x: x0, y: y0, width: x1 - x0, height: y1 - y0 }];
+  // The form's own boxes are compared only 2 pixels in from their edges, where the ground
+  // shows through their anti-aliased edges and shadows, and a readout, a pill, only between
+  // its rounded ends; a menu or a label over the ground is compared to 2 pixels beyond it.
+  const inner = (s) => {
+    const r = grow(s, -2);
+    return s.pill ? { ...r, x: s.x + s.height / 2, width: s.width - s.height } : r;
+  };
+  const cuts = [...parts.map(inner), ...[...tabs, ...over.filter(Boolean)].map((s) => grow(s, 2))];
+  for (const cut of cuts.filter((r) => r.width > 0 && r.height > 0)) {
+    left = left.flatMap((r) => {
+      const ix0 = Math.max(r.x, cut.x);
+      const iy0 = Math.max(r.y, cut.y);
+      const ix1 = Math.min(r.x + r.width, cut.x + cut.width);
+      const iy1 = Math.min(r.y + r.height, cut.y + cut.height);
+      if (ix0 >= ix1 || iy0 >= iy1) return [r];
+      return [
+        { x: r.x, y: r.y, width: r.width, height: iy0 - r.y },
+        { x: r.x, y: iy1, width: r.width, height: r.y + r.height - iy1 },
+        { x: r.x, y: iy0, width: ix0 - r.x, height: iy1 - iy0 },
+        { x: ix1, y: iy0, width: r.x + r.width - ix1, height: iy1 - iy0 },
+      ].filter((p) => p.width > 0 && p.height > 0);
+    });
+  }
+  return left.map((rect) => ({ on: { rect }, pad: 0 }));
+}
+
+// The boxes of what the annotation layer draws, each label, arrow and ring on its own: the
+// pictures whose labels lie on a designer's ground leave only the ground round them unsteady.
+const layerBoxes = (c) =>
+  c.evaluate(`(() => {
+  const l = document.getElementById(${JSON.stringify(LAYER_ID)});
+  if (!l) return [];
+  let kids = [...l.children].filter((e) => e.tagName !== "defs");
+  while (kids.length === 1 && kids[0].children.length) kids = [...kids[0].children];
+  return kids
+    .map((e) => e.getBoundingClientRect())
+    .filter((r) => r.width || r.height)
+    .map((r) => ({ x: r.x, y: r.y, width: r.width, height: r.height }));
+})()`);
+
+// A point of the open designer's form, in form pixels.
+const formPoint = (c, x, y) =>
+  c.evaluate(`(() => {
+  const r = ${DESIGNER_GLOBALS}.designer.getBoundingClientRect();
+  return { x: r.x + ${x}, y: r.y + ${y} };
+})()`);
+
+const formsChapterShots = [
+  {
+    // frmMain with Label1 selected: its grabbers and the in-place toolbar under it, and the
+    // readouts under the form, the pointer's position read with the mouse resting on an empty
+    // part of the form (no pointer is drawn). Labels on the editor's ground right of the form.
+    out: FORMS_IMAGE("Designer_Selected"),
+    setup: "forms-chapter",
+    async take({ c }) {
+      await formsDesigner(c);
+      try {
+        await selectNamed(c, ["Label1"]);
+        const rest = await formPoint(c, 300, 245);
+        await mouseMove(c, rest.x - 4, rest.y);
+        await mouseMove(c, rest.x, rest.y);
+        const shown = await waitFor(
+          c,
+          () => c.evaluate(`/^x:\\d+ y:\\d+$/.test(${DESIGNER_GLOBALS}.designerDragInfoLeft.innerText)`),
+          { timeout: 3000, interval: 50 },
+        );
+        if (!shown) throw new Error("the readouts do not show the pointer's position");
+        await frames(c);
+        const area = await formArea(c);
+        const { grab, mini } = await selectionParts(c);
+        const x = area.x + area.width + 36;
+        const mid = (r) => r.y + r.height / 2;
+        const READOUTS = { span: [{ css: ".designerDragInfoLeft" }, { css: ".designerDragInfoRight" }] };
+        const under = { of: READOUTS, at: "bottom", dy: 34 };
+        const annotate = [
+          { type: "label", text: "Grabbers", on: POINT(x, mid(grab)), side: "right", gap: 0 },
+          { type: "arrow", from: POINT(x - 4, mid(grab)), to: { rect: grab } },
+          { type: "label", text: "In-place toolbar", on: POINT(x, mid(mini)), side: "right", gap: 0 },
+          { type: "arrow", from: POINT(x - 4, mid(mini)), to: { rect: mini } },
+          { type: "label", text: "Readouts", on: under, side: "below", gap: 0 },
+          { type: "arrow", from: under, to: [{ css: ".designerDragInfoLeft" }, { css: ".designerDragInfoRight" }] },
+        ];
+        try {
+          const { box } = await annotateOver(c, annotate);
+          const clip = snapOut(union({ x: area.x, y: area.y, width: area.width + 6, height: area.height + 8 }, box));
+          return await capture(c, "Designer_Selected", clip, {
+            unsteady: await groundUnsteady(c, clip, await layerBoxes(c)),
+          });
+        } finally {
+          await unannotate(c);
+        }
+      } finally {
+        await formsReset(c);
+      }
+    },
+  },
+  formStateShot("Designer_TabIndex", async (c) => {
+    // the designer focused with a click on an empty part of the form, the pointer left there
+    // (moved away, the pointer readout shows or not by the moment it left), then Ctrl held
+    const at = await formPoint(c, 300, 245);
+    await pressAt(c, at.x, at.y);
+    await mouseMove(c, at.x, at.y);
+    const readout = () =>
+      c.evaluate(`(() => {
+  const e = ${DESIGNER_GLOBALS}.designerDragInfoLeft;
+  return !!e && e.getBoundingClientRect().width > 0 && e.innerText.includes("x:300 y:245");
+})()`);
+    if (!(await waitFor(c, readout, { timeout: 3000, interval: 50 }))) {
+      throw new Error("the pointer readout does not show x:300 y:245");
+    }
+    await c.send("Input.dispatchKeyEvent", {
+      type: "rawKeyDown",
+      key: "Control",
+      code: "ControlLeft",
+      windowsVirtualKeyCode: 17,
+      nativeVirtualKeyCode: 17,
+      modifiers: 2,
+    });
+    const shown = () => c.evaluate(`${DESIGNER_GLOBALS}.designer.classList.contains("designerShowTabIndex")`);
+    if (!(await waitFor(c, shown, { timeout: 3000, interval: 50 }))) {
+      throw new Error("holding Ctrl showed no TabIndex circles");
+    }
+  }),
+  formStateShot("Controls_MultiSelect", (c) => selectNamed(c, ["Command1", "Text1", "Check1"])),
+  formStateShot(
+    "Controls_RubberBand",
+    async (c) => {
+      // pressed on the form's empty top right, dragged down and left over Label1 and Text1
+      const from = await formPoint(c, 300, 4);
+      const to = await formPoint(c, 60, 46);
+      await mouseMove(c, from.x, from.y);
+      await c.send("Input.dispatchMouseEvent", {
+        type: "mousePressed",
+        x: from.x,
+        y: from.y,
+        button: "left",
+        clickCount: 1,
+        buttons: 1,
+      });
+      for (let i = 1; i <= 10; i++) {
+        await sleep(30);
+        const x = from.x + ((to.x - from.x) * i) / 10;
+        const y = from.y + ((to.y - from.y) * i) / 10;
+        await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "left", buttons: 1 });
+      }
+      await frames(c);
+    },
+    {
+      after: async (c) => {
+        const to = await formPoint(c, 60, 46);
+        await c.send("Input.dispatchMouseEvent", {
+          type: "mouseReleased",
+          x: to.x,
+          y: to.y,
+          button: "left",
+          clickCount: 1,
+        });
+      },
+    },
+  ),
+  formStateShot("Controls_Container", async (c) => {
+    // the OptionButton tool picked in the Toolbox, the pointer resting inside Frame1
+    const tool = await rectOf(c, `${TOOLBOX_TILE("OptionButton")}`);
+    if (!tool) throw new Error("the Toolbox has no OptionButton");
+    await pressAt(c, tool.x + tool.width / 2, tool.y + tool.height / 2);
+    const at = await formPoint(c, 120, 220);
+    await mouseMove(c, at.x - 6, at.y);
+    await mouseMove(c, at.x, at.y);
+    const red = await waitFor(
+      c,
+      () =>
+        c.evaluate(
+          `(() => { const f = ${DESIGNER_GLOBALS}.currentFlashingContainer; return f?.properties?.Name === "Frame1" && f.classList.contains("boxShadowRed"); })()`,
+        ),
+      { timeout: 3000, interval: 50 },
+    );
+    if (!red) throw new Error("Frame1 was not outlined in red under the OptionButton tool");
+    // The outline blinks (the IDE's borderBlink animation, red at its middle), and the quiet
+    // style sheet stops every animation at its start, where the outline is transparent: this
+    // one is held at its middle instead, as the IDE draws it half the time.
+    await c.evaluate(`(() => {
+  const s = document.createElement("style");
+  s.id = "tbShotBlink";
+  s.textContent = ".designer .boxShadowRed { animation: borderBlink 0.5s linear -0.25s 1 normal both paused !important }";
+  document.head.appendChild(s);
+})()`);
+  }),
+  formStateShot("Designer_Locked", async (c) => {
+    // the outlines on from the grid button's panel, then Command1 locked from the Format menu
+    await gridOptions(c);
+    const box = await rectOf(c, ".optionShowOutlines");
+    if (!box) throw new Error("the grid options have no Show Outlines");
+    await pressAt(c, box.x + box.width / 2, box.y + box.height / 2);
+    if (
+      !(await waitFor(
+        c,
+        () => c.evaluate(`${DESIGNER_GLOBALS}.state.item.form[0].__IDEOptions.showOutlines === true`),
+        { timeout: 3000, interval: 50 },
+      ))
+    ) {
+      throw new Error("Show Outlines did not turn the outlines on");
+    }
+    await parkMouse(c);
+    await waitFor(c, () => c.evaluate(`menuBarGridOptions.style.visibility !== "visible"`), {
+      timeout: 3000,
+      interval: 50,
+    });
+    await designerShown(c);
+    await selectNamed(c, ["Command1"]);
+    await openMenu(c, "Format", { close: false });
+    const lock = (await menuItems(c)).find((i) => i.text.startsWith("Lock Controls"));
+    if (!lock) throw new Error("the Format menu has no Lock Controls");
+    await clickAt(c, lock.x + lock.width / 2, lock.y + lock.height / 2);
+    if (!(await waitFor(c, () => rectOf(c, ".hasLockedIcon"), { timeout: 3000, interval: 50 }))) {
+      throw new Error("Lock Controls drew no lock");
+    }
+    await parkMouse(c);
+  }),
+  {
+    // the grid button's panel, opened by the pointer resting on the button, over the editor
+    out: FORMS_IMAGE("Designer_GridOptions"),
+    setup: "forms-chapter",
+    async take({ c }) {
+      await formsDesigner(c);
+      try {
+        await gridOptions(c);
+        const panel = await rectOf(c, ".menuBarGridOptions");
+        const button = await rectOf(c, "#menuBarGrid, .menuBarGrid");
+        const area = grow(union(panel, button), 12);
+        const clip = snapOut({ ...area, y: button.y - 4, height: area.y + area.height - button.y + 4 });
+        return await capture(c, "Designer_GridOptions", clip, {
+          unsteady: await groundUnsteady(c, clip, [panel]),
+        });
+      } finally {
+        await formsReset(c);
+      }
+    },
+  },
+  {
+    // 50 % picked in the zoom box, as a person picks it from the box's list, and the list drawn
+    // open over the toolbar, with the form at half size below
+    out: FORMS_IMAGE("Designer_Zoom"),
+    setup: "forms-chapter",
+    async take({ c }) {
+      await formsDesigner(c);
+      try {
+        const full = (await formArea(c)).width;
+        await c.evaluate(`(() => {
+  zoomSelect.selectedIndex = [...zoomSelect.options].findIndex((o) => o.text === "50%");
+  zoomSelect.dispatchEvent(new Event("change", { bubbles: true }));
+})()`);
+        const half = await waitFor(
+          c,
+          async () => {
+            const w = (await formArea(c)).width;
+            return w < full * 0.6 ? w : null;
+          },
+          { timeout: 5000, interval: 50 },
+        );
+        if (!half) throw new Error("50 % in the zoom box did not shrink the form");
+        await designerShown(c);
+        const zoom = await rectOf(c, "#zoomSelect");
+        try {
+          const { box } = await annotateOver(c, [{ type: "list", select: { css: "#zoomSelect" }, rows: 4 }]);
+          // the box and its list, with the toolbar's buttons left of it: the form drawn at half
+          // size is not in the picture, since its scaled dots come out differently in every
+          // capture
+          const area = grow(union(zoom, box), 8);
+          const clip = snapOut({ ...area, x: area.x - 160, width: area.width + 160 });
+          // four rows (the list scrolls): the Light theme's list is drawn in a smaller font, and
+          // a list of every option makes its picture 100 px shorter than the dark one
+          return await capture(c, "Designer_Zoom", clip, {
+            away: () => parkMouse(c),
+            unsteady: await groundUnsteady(c, clip, await layerBoxes(c)),
+          });
+        } finally {
+          await unannotate(c);
+        }
+      } finally {
+        await formsReset(c);
+      }
+    },
+  },
+  {
+    // a right click on Command1, with Command2(0) selected too, and the Align submenu open
+    out: FORMS_IMAGE("Controls_ContextMenu"),
+    setup: "forms-chapter",
+    async take({ c }) {
+      await formsDesigner(c);
+      try {
+        // the panels under the editor out of the layout, so that the menu is over the editor alone
+        for (const id of ["DEBUG CONSOLE", "PROBLEMS", "CALL STACK", "VARIABLES"]) await undock(c, id);
+        await designerShown(c);
+        await selectNamed(c, ["Command1", "Command2(0)"]);
+        const at = await formPoint(c, 60, 85);
+        await mouseMove(c, at.x, at.y);
+        await c.send("Input.dispatchMouseEvent", {
+          type: "mousePressed",
+          x: at.x,
+          y: at.y,
+          button: "right",
+          buttons: 2,
+          clickCount: 1,
+        });
+        await c.send("Input.dispatchMouseEvent", {
+          type: "mouseReleased",
+          x: at.x,
+          y: at.y,
+          button: "right",
+          buttons: 0,
+          clickCount: 1,
+        });
+        if (!(await menuOpened(c))) throw new Error("the right click on Command1 opened no menu");
+        const sub = await hoverItem(c, "Align");
+        const menu = await rectOf(c, "#contextMenu");
+        const clip = snapOut(grow(union(union(await formArea(c), menu), sub), 6));
+        return await capture(c, "Controls_ContextMenu", clip, { unsteady: await groundUnsteady(c, clip, [menu, sub]) });
+      } finally {
+        await closeMenus(c);
+        await formsReset(c);
+      }
+    },
+  },
+  {
+    // + menu clicked in the Form Menu bar, beside the File menu, and &Edit typed into the box
+    out: FORMS_IMAGE("MenuEditor_Bar"),
+    setup: "forms-chapter",
+    async take({ c }) {
+      await formsDesigner(c);
+      try {
+        const add = await rectOf(c, ".designerMenuItemAdd");
+        if (!add) throw new Error("the Form Menu bar has no + menu");
+        await pressAt(c, add.x + add.width / 2, add.y + add.height / 2);
+        const box = await waitFor(
+          c,
+          () => c.evaluate(`document.activeElement?.tagName === "INPUT" ? document.activeElement.value : null`),
+          {
+            timeout: 3000,
+            interval: 50,
+          },
+        );
+        if (box !== "Menu1") throw new Error(`+ menu opened a box holding ${JSON.stringify(box)}`);
+        await typeText(c, "&Edit");
+        await parkMouse(c);
+        await frames(c);
+        const bar = await c.evaluate(
+          `(() => { const r = ${DESIGNER_GLOBALS}.designerMenuBar.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
+        );
+        return await capture(c, "MenuEditor_Bar", snapOut({ ...bar, height: bar.height + 48 }), {});
+      } finally {
+        await pressKey(c, "Escape");
+        await formsReset(c);
+      }
+    },
+  },
+  {
+    // the File menu clicked in the Form Menu bar, its items listed under it, and the right-click
+    // menu of Open beside them
+    out: FORMS_IMAGE("MenuEditor_Open"),
+    setup: "forms-chapter",
+    async take({ c }) {
+      await formsDesigner(c);
+      try {
+        const item = (sel, text) =>
+          c.evaluate(`(() => {
+  const e = [...document.querySelectorAll(${JSON.stringify(sel)})].find((e) => e.getBoundingClientRect().width && e.textContent.trim() === ${JSON.stringify(text)});
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+        const file = await item(".designerMenuItem", "File");
+        if (!file) throw new Error("the Form Menu bar has no File");
+        await pressAt(c, file.x + file.width / 2, file.y + file.height / 2);
+        const open = await waitFor(c, () => item(".designerPopUpMenuItem", "Open"), { timeout: 3000, interval: 50 });
+        if (!open) throw new Error("File opened no list with Open");
+        // at the item's right end, so that the menu opens beside the list rather than over it
+        const at = { x: open.x + open.width - 4, y: open.y + open.height / 2 };
+        await mouseMove(c, at.x, at.y);
+        await c.send("Input.dispatchMouseEvent", {
+          type: "mousePressed",
+          x: at.x,
+          y: at.y,
+          button: "right",
+          buttons: 2,
+          clickCount: 1,
+        });
+        await c.send("Input.dispatchMouseEvent", {
+          type: "mouseReleased",
+          x: at.x,
+          y: at.y,
+          button: "right",
+          buttons: 0,
+          clickCount: 1,
+        });
+        if (!(await menuOpened(c))) throw new Error("the right click on Open opened no menu");
+        await parkMouse(c);
+        await frames(c);
+        const pop = await rectOf(c, ".designerPopUpMenuBar");
+        const bar = await c.evaluate(
+          `(() => { const r = ${DESIGNER_GLOBALS}.designerMenuBar.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
+        );
+        const menu = await rectOf(c, "#contextMenu");
+        const clip = snapOut(grow(union(union(bar, pop), menu), 6));
+        return await capture(c, "MenuEditor_Open", clip, { unsteady: await groundUnsteady(c, clip, [pop, menu]) });
+      } finally {
+        await closeMenus(c);
+        await formsReset(c);
+      }
+    },
+  },
+  {
+    // Add > Add Windows Form on Sources in the Project Explorer: the name box in the tree,
+    // holding MyForm.tbform with MyForm selected; Escape then creates nothing
+    out: FORMS_IMAGE("Designer_AddName"),
+    setup: "forms-chapter",
+    async take({ c }) {
+      await formsReset(c);
+      try {
+        await peOpen(c, "Sources", true);
+        await peRightClick(c, "Sources");
+        await hoverItem(c, "Add");
+        const it = (await menuItems(c, true)).find((i) => i.text.startsWith("Add Windows Form"));
+        if (!it) throw new Error("the Add submenu has no Add Windows Form");
+        await mouseMove(c, it.x + 20, it.y + it.height / 2);
+        await frames(c);
+        await clickAt(c, it.x + 20, it.y + it.height / 2);
+        const offered = await waitFor(
+          c,
+          () => c.evaluate(`document.activeElement?.tagName === "INPUT" ? document.activeElement.value : null`),
+          { timeout: 5000, interval: 50 },
+        );
+        if (offered !== "MyForm.tbform")
+          throw new Error(`Add Windows Form offered the name ${JSON.stringify(offered)}`);
+        await parkMouse(c);
+        await frames(c);
+        const panel = await dockedRect(c, "PROJECT EXPLORER");
+        // down to the last row of the tree, Startup.twin
+        const last = await c.evaluate(
+          `Math.max(...[...document.querySelectorAll("*")].filter((e) => e.childElementCount === 0 && e.textContent.trim() === "Startup.twin" && e.getBoundingClientRect().width).map((e) => e.getBoundingClientRect().bottom))`,
+        );
+        if (!(last > panel.y)) throw new Error("the Project Explorer shows no Startup.twin");
+        return await capture(c, "Designer_AddName", snapOut({ ...panel, height: last + 6 - panel.y }), {});
+      } finally {
+        await pressKey(c, "Escape");
+        await formsReset(c);
+        if (await c.evaluate(`!!fs.tree.resolvePath(${JSON.stringify(`twinbasic:${FORMS_FILE("MyForm.tbform")}`)})`)) {
+          complain(c.shot.name, "Escape in the name box created MyForm.tbform");
+        }
+      }
+    },
+  },
+  {
+    // MyReport with the Report Detail bar clicked: the bands, the controls in two of them, and
+    // the page's three bars
+    out: REPORTS_IMAGE("Report_Controls"),
+    setup: "forms-chapter",
+    async take({ c }) {
+      await formsDesigner(c, "MyReport.tbreport");
+      try {
+        // the panels beside the editor out of the layout, so that the editor is wide enough for
+        // the report and the bar right of it
+        for (const id of DOCKED_BESIDE_EDITOR) await undock(c, id);
+        await designerShown(c);
+        const bar = await c.evaluate(`(() => {
+  const b = [...document.querySelectorAll(".sectionBarDetail")].find((e) => e.getBoundingClientRect().width);
+  if (!b) return null;
+  const r = b.getBoundingClientRect();
+  return { x: r.x + 60, y: r.y + r.height / 2 };
+})()`);
+        if (!bar) throw new Error("the report shows no Report Detail bar");
+        await pressAt(c, bar.x, bar.y);
+        const picked = await waitFor(
+          c,
+          () =>
+            c.evaluate(
+              `(() => { const s = ${DESIGNER_GLOBALS}.controlSelecter; return s.options[s.selectedIndex]?.text.startsWith("Report Detail"); })()`,
+            ),
+          { timeout: 3000, interval: 50 },
+        );
+        if (!picked) throw new Error("the click on the Report Detail bar did not select the section");
+        // The three bars are drawn only under the pointer (opacity 0, 1 on hover): the pointer
+        // rests on PAGE WIDTH, at the report's right edge, half way down
+        const width = await c.evaluate(
+          `(() => { const r = ${DESIGNER_GLOBALS}.reportWidthResizerBar.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, height: r.height }; })()`,
+        );
+        if (!width.height) throw new Error("the report has no PAGE WIDTH bar");
+        await mouseMove(c, width.x - 20, width.y);
+        await mouseMove(c, width.x, width.y);
+        const shown = await waitFor(
+          c,
+          () => c.evaluate(`getComputedStyle(${DESIGNER_GLOBALS}.reportWidthResizerBar).opacity === "1"`),
+          { timeout: 3000, interval: 50 },
+        );
+        if (!shown) throw new Error("the PAGE WIDTH bar did not show under the pointer");
+        await frames(c);
+        const panel = await editorPanelRect(c);
+        const bottom = await c.evaluate(
+          `Math.max(...[...document.querySelectorAll(".designerContainerSectionResizer")].filter((e) => e.getBoundingClientRect().width).map((e) => e.getBoundingClientRect().bottom))`,
+        );
+        const label = await c.evaluate(
+          `(() => { const r = ${DESIGNER_GLOBALS}.reportWidthResizerBar.querySelector(".resizerBarLabel").getBoundingClientRect(); return r.right; })()`,
+        );
+        const clip = snapOut({ ...panel, width: label + 24 - panel.x, height: bottom + 12 - panel.y });
+        return await capture(c, "Report_Controls", clip, { unsteady: await groundUnsteady(c, clip) });
+      } finally {
+        await formsReset(c);
+      }
+    },
+  },
+  {
+    // the docked Toolbox of frmMain with Show Control Names chosen from its ... menu, in a page
+    // tall enough for every tool: the standard group and the COMMON CONTROLS group
+    out: FORMS_IMAGE("Toolbox_Form"),
+    setup: "forms-chapter",
+    async take({ c }) {
+      await formsDesigner(c);
+      try {
+        await toolboxNames(c, true);
+        // docked at the left the full height of the window, wide enough for the names, and
+        // scrolled to its end with the mouse wheel: the end of the first group, the COMMON
+        // CONTROLS group and More components (a capture holds no more than the window's
+        // own height, so a taller page does not show the whole list)
+        await useLayout(c, TOOLBOX_LAYOUT);
+        await designerShown(c);
+        const lastTile = () =>
+          c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "TOOLBOX");
+  const p = h.closest(".toolWindowContainer");
+  const t = [...p.querySelectorAll(".toolboxItemOuter")].filter((e) => e.getBoundingClientRect().width);
+  return { last: t[t.length - 1].getBoundingClientRect().bottom, bottom: p.getBoundingClientRect().bottom };
+})()`);
+        const panel = await dockedRect(c, "TOOLBOX");
+        const at = { x: panel.x + panel.width / 2, y: panel.y + panel.height / 2 };
+        await mouseMove(c, at.x, at.y);
+        for (let i = 0; i < 10 && (await lastTile()).last > (await lastTile()).bottom; i++) {
+          await c.send("Input.dispatchMouseEvent", { type: "mouseWheel", x: at.x, y: at.y, deltaX: 0, deltaY: 400 });
+          await frames(c);
+        }
+        const end = await lastTile();
+        if (end.last > end.bottom) throw new Error("the wheel did not scroll the Toolbox to its end");
+        await c.evaluate("document.activeElement?.blur?.()");
+        await parkMouse(c);
+        return await capture(c, "Toolbox_Form", snapOut(await dockedRect(c, "TOOLBOX")), { away: () => parkMouse(c) });
+      } finally {
+        await toolboxNames(c, false);
+        await formsReset(c);
+      }
+    },
+  },
+  {
+    // the Toolbox's search box opened with its magnifier and "Command, Text" typed into it, and
+    // the ... menu open on Show Control Names
+    out: FORMS_IMAGE("Toolbox_Search"),
+    setup: "forms-chapter",
+    async take({ c }) {
+      await formsDesigner(c);
+      try {
+        // the Toolbox docked wide enough for the search box
+        await useLayout(c, TOOLBOX_LAYOUT);
+        await designerShown(c);
+        const icon = await dockedRect(c, "TOOLBOX", ".searchObjectsIcon");
+        if (!icon) throw new Error("the Toolbox's title bar has no magnifier");
+        await pressAt(c, icon.x + icon.width / 2, icon.y + icon.height / 2);
+        const focused = await waitFor(
+          c,
+          () => c.evaluate("document.activeElement === toolboxDockablePanel.searchBarEntry"),
+          {
+            timeout: 3000,
+            interval: 50,
+          },
+        );
+        if (!focused) throw new Error("the magnifier opened no search box");
+        await typeText(c, "Command, Text");
+        const shown = () =>
+          c.evaluate(
+            `[...document.querySelectorAll(".toolboxItemOuter")].filter((e) => e.getBoundingClientRect().width).map((e) => e.title || e.innerText.trim()).join()`,
+          );
+        const narrowed = await waitFor(c, async () => /^Pointer,TextBox,CommandButton(,|$)/.test(await shown()), {
+          timeout: 3000,
+          interval: 50,
+        });
+        if (!narrowed) throw new Error(`the search left ${await shown()}`);
+        await openToolboxMenu(c);
+        const box = await toolboxBox(c);
+        const menu = await rectOf(c, "#contextMenu");
+        const clip = snapOut(grow(union(box, menu), 2));
+        return await capture(c, "Toolbox_Search", clip, {
+          away: () => parkMouse(c),
+          unsteady: await groundUnsteady(c, clip, [box, menu]),
+        });
+      } finally {
+        await closeMenus(c);
+        // Escape in the box ends the search and shows every tool again
+        if (await c.evaluate("!!toolboxDockablePanel.searchBarEntry?.getBoundingClientRect().width")) {
+          await c.evaluate("toolboxDockablePanel.searchBarEntry.focus()");
+          await pressKey(c, "Escape");
+        }
+        const all = await waitFor(c, () => rectOf(c, TOOLBOX_TILE("OptionButton")), { timeout: 3000, interval: 50 });
+        if (!all) complain(c.shot.name, "the Toolbox's search did not end");
+        await formsReset(c);
+      }
+    },
+  },
+  propertiesShot(
+    "Properties_Control",
+    async (c) => {
+      // the panel's parts named from its left
+      const parts = await c.evaluate(`(() => {
+  const p = document.querySelector(${JSON.stringify(PROPS)});
+  const box = (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
+  const own = (t) => [...p.querySelectorAll("*")].find((e) => e.childElementCount === 0 && e.textContent.trim() === t && e.getBoundingClientRect().width && !e.closest(".sectionHeader"));
+  const sel = p.querySelector(".controlSelecter");
+  const cat = [...p.querySelectorAll(".propertyCategory")].find((e) => e.getBoundingClientRect().height);
+  const tab = own("PROPERTIES");
+  return { sel: sel && box(sel), cat: cat && box(cat), tab: tab && box(tab), panel: box(p) };
+})()`);
+      if (!parts.sel || !parts.cat || !parts.tab)
+        throw new Error(`the PROPERTIES panel lacks a part: ${JSON.stringify(parts)}`);
+      const x = parts.panel.x - 64;
+      const mid = (r) => r.y + r.height / 2;
+      const row = (text, r) => [
+        { type: "label", text, on: POINT(x, mid(r)), side: "left", gap: 0 },
+        { type: "arrow", from: POINT(x + 4, mid(r)), to: { rect: { ...r, width: 24 } } },
+      ];
+      return [...row("Tabs", parts.tab), ...row("Object drop-down", parts.sel), ...row("Category", parts.cat)];
+    },
+    { left: 820 },
+  ),
+  propertiesShot(
+    "Properties_ColourPicker",
+    async (c) => {
+      await scrollProperties(c, "APPEARANCE");
+      const swatch = await rectOf(c, `${PROP_VALUE("BackColor")} .colorElement`);
+      if (!swatch) throw new Error("the BackColor row has no swatch");
+      await pressAt(c, swatch.x + swatch.width / 2, swatch.y + swatch.height / 2);
+      if (!(await waitFor(c, () => rectOf(c, ".sp-container:not(.sp-hidden)"), { timeout: 3000, interval: 50 }))) {
+        throw new Error("the swatch opened no colour picker");
+      }
+      await parkMouse(c);
+      return null;
+    },
+    {
+      extra: async (c) => [await rectOf(c, ".sp-container:not(.sp-hidden)")],
+      cut: [".sp-container"],
+      after: async (c) => {
+        const cancel = await rectOf(c, ".sp-container:not(.sp-hidden) .sp-cancel");
+        if (cancel) await pressAt(c, cancel.x + cancel.width / 2, cancel.y + cancel.height / 2);
+      },
+    },
+  ),
+  propertiesShot(
+    "Properties_SystemColours",
+    async (c) => {
+      await scrollProperties(c, "APPEARANCE");
+      const v = await rectOf(c, PROP_VALUE("BackColor"));
+      if (!v) throw new Error("the PROPERTIES panel has no BackColor row");
+      const at = { x: v.x + v.width - 30, y: v.y + v.height / 2 };
+      await mouseMove(c, at.x, at.y);
+      await c.send("Input.dispatchMouseEvent", {
+        type: "mousePressed",
+        x: at.x,
+        y: at.y,
+        button: "right",
+        buttons: 2,
+        clickCount: 1,
+      });
+      await c.send("Input.dispatchMouseEvent", {
+        type: "mouseReleased",
+        x: at.x,
+        y: at.y,
+        button: "right",
+        buttons: 0,
+        clickCount: 1,
+      });
+      if (!(await menuOpened(c))) throw new Error("the right click on BackColor's value opened no menu");
+      await hoverItem(c, "SYSTEM COLORS");
+      return null;
+    },
+    {
+      extra: async (c) => [await rectOf(c, "#contextMenu"), await rectOf(c, "#contextMenuSUB")],
+      after: closeMenus,
+      away: false,
+      cut: ["#contextMenu", "#contextMenuSUB"],
+    },
+  ),
+  {
+    // Add Windows Form in a project without the VB package (the settings setup's sample has
+    // none) asks for WinNativeForms first
+    out: FORMS_IMAGE("Designer_PackageNeeded"),
+    setup: "settings",
+    async take({ c }) {
+      await resetUi(c);
+      await peRightClick(c, "Sources");
+      await hoverItem(c, "Add");
+      const it = (await menuItems(c, true)).find((i) => i.text.startsWith("Add Windows Form"));
+      if (!it) throw new Error("the Add submenu has no Add Windows Form");
+      await mouseMove(c, it.x + 20, it.y + it.height / 2);
+      await frames(c);
+      await clickAt(c, it.x + 20, it.y + it.height / 2);
+      if (!(await waitModal(c, "twinBASIC", { timeout: 5000 }))) throw new Error("no Package needed message appeared");
+      await dialogStill(c);
+      try {
+        return await dialogShot(c, "Designer_PackageNeeded");
+      } finally {
+        await closeModal(c, "Cancel").catch(() => pressKey(c, "Escape"));
+      }
+    },
+  },
+  {
+    // frmMain previewed with the toolbar's PREVIEW: its window on the IDE's desktop, as it draws
+    // itself, with the File menu of the menu editor in its menu bar; taken once, as a running
+    // program's window is
+    out: FORMS_IMAGE("Preview_Window"),
+    setup: "forms-chapter",
+    once: true,
+    async take(ctx) {
+      const { c } = ctx;
+      await formsDesigner(c);
+      try {
+        const preview = await rectOf(c, "#menuBarPreview");
+        if (!preview) throw new Error("the toolbar has no PREVIEW button");
+        await pressAt(c, preview.x + preview.width / 2, preview.y + preview.height / 2);
+        await parkMouse(c);
+        const w = await formWindow(ctx.desktop, { title: "frmMain", timeout: 60000 });
+        return besideEachOther([
+          await windowPicture(ctx.desktop, w.hwnd, "preview", path.join(ctx.windows, "preview.png")),
+        ]);
+      } finally {
+        await stopRun(c);
+        await clearConsole(c);
+        await formsReset(c);
+      }
+    },
+  },
+  propertiesShot("Properties_Events", async (c) => {
+    const tab = await c.evaluate(
+      `(() => { const r = ${DESIGNER_GLOBALS}.toolbarEvents.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`,
+    );
+    await pressAt(c, tab.x + tab.width / 2, tab.y + tab.height / 2);
+    const shown = await waitFor(
+      c,
+      () =>
+        c.evaluate(
+          `[...document.querySelectorAll(${JSON.stringify(`${PROPS} .propertyName`)})].some((e) => e.getBoundingClientRect().height && e.textContent.trim() === "Click")`,
+        ),
+      { timeout: 3000, interval: 50 },
+    );
+    if (!shown) throw new Error("the EVENTS tab lists no Click");
+    await parkMouse(c);
+    return null;
+  }),
+];
+
+// The Toolbox docked at the left of the editor, the window's full height (set in the page and
+// saved nowhere; formsReset puts the default layout back).
+const TOOLBOX_LAYOUT = {
+  type: "horizontal",
+  variableSize: true,
+  size: "0%",
+  content: [
+    { id: "TOOLBAR", variableSize: false, size: "fit-content" },
+    {
+      type: "vertical",
+      variableSize: true,
+      size: "0%",
+      content: [
+        { id: "TOOLBOX", variableSize: false, size: "17%" },
+        { id: "EDITOR", variableSize: true, size: "0%" },
+      ],
+    },
+  ],
+};
+
+// The docked Toolbox, from its title bar to a little below its last tool.
+const toolboxBox = (c) =>
+  c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "TOOLBOX");
+  const p = h.closest(".toolWindowContainer");
+  const r = p.getBoundingClientRect();
+  const last = Math.max(...[...p.querySelectorAll(".toolboxItemOuter")].filter((e) => e.getBoundingClientRect().width).map((e) => e.getBoundingClientRect().bottom));
+  return { x: r.x, y: r.y, width: r.width, height: Math.min(r.bottom, last + 10) - r.y };
+})()`);
+
+// The docked Toolbox's ... menu, opened with a real click.
+async function openToolboxMenu(c) {
+  const dots = await dockedRect(c, "TOOLBOX", ".ellipsesIcon2");
+  if (!dots) throw new Error("the Toolbox's title bar has no ... button");
+  await pressAt(c, dots.x + dots.width / 2, dots.y + dots.height / 2);
+  if (!(await menuOpened(c))) throw new Error("the Toolbox's ... button opened no menu");
+}
+
+// Show Control Names ticked (`on`) or not, chosen from the Toolbox's ... menu when it is not
+// so already. The option it saves is saved nowhere (PAGE_DEFAULTS).
+async function toolboxNames(c, on) {
+  if ((await c.evaluate("!liveIDEOptions.showToolboxIconsOnly")) === on) return;
+  await openToolboxMenu(c);
+  const it = (await menuItems(c)).find((i) => i.text.startsWith("Show Control Names"));
+  if (!it) throw new Error("the Toolbox's ... menu has no Show Control Names");
+  await clickAt(c, it.x + it.width / 2, it.y + it.height / 2);
+  if (
+    !(await waitFor(c, async () => (await c.evaluate("!liveIDEOptions.showToolboxIconsOnly")) === on, {
+      timeout: 3000,
+      interval: 50,
+    }))
+  ) {
+    throw new Error("Show Control Names did not change the Toolbox");
+  }
+  await closeMenus(c);
+  await frames(c);
+}
+
+// frmMain open with Command1 selected and PROPERTIES floating on its own, brought to a state
+// by `state(c)`, which returns the annotations (or null). `extra(c)` gives a box the picture
+// holds as well as the panel (a colour picker, a menu); `after(c)` runs once it is taken.
+function propertiesShot(
+  name,
+  state,
+  { extra = null, after = null, away = true, left = 300, top = 120, height = 520, cut = null } = {},
+) {
+  return {
+    out: FORMS_IMAGE(name),
+    setup: "forms-chapter",
+    async take({ c }) {
+      await formsDesigner(c);
+      try {
+        await selectNamed(c, ["Command1"]);
+        await parkMouse(c);
+        await floatPanel(c, "PROPERTIES", { width: 360, height, left, top });
+        const annotate = await state(c);
+        let area = await rectOf(c, PROPS);
+        const solids = [area];
+        for (const box of extra ? await extra(c) : []) {
+          area = union(area, box);
+          solids.push(box);
+        }
+        try {
+          if (annotate) {
+            const { box } = await annotateOver(c, annotate);
+            area = union(area, box);
+            solids.push(...(await layerBoxes(c)));
+          }
+          const clip = snapOut(area);
+          return await capture(c, name, clip, {
+            away: away ? () => parkMouse(c) : null,
+            // a picture of the panel and what opens beside it is a cut-out of them, as a menu's is
+            ...(cut ? { keep: [PROPS, ...cut] } : { unsteady: await groundUnsteady(c, clip, solids) }),
+          });
+        } finally {
+          if (annotate) await unannotate(c);
+        }
+      } finally {
+        if (after) await after(c);
+        await unfloatPanel(c, "PROPERTIES");
+        await formsReset(c);
+      }
+    },
+  };
+}
+
+// A Toolbox tile by its tool's name.
+const TOOLBOX_TILE = (name) => `.toolboxItemOuter[title="${name}"]`;
+
+// The grid options panel, opened as the pointer opens it: moved onto the grid button.
+async function gridOptions(c) {
+  const b = await rectOf(c, "#menuBarGrid, .menuBarGrid");
+  if (!b) throw new Error("the toolbar has no grid button");
+  await mouseMove(c, b.x - 30, b.y + b.height / 2);
+  await mouseMove(c, b.x + b.width / 2, b.y + b.height / 2);
+  if (
+    !(await waitFor(c, () => c.evaluate(`menuBarGridOptions.style.visibility === "visible"`), {
+      timeout: 3000,
+      interval: 50,
+    }))
+  ) {
+    throw new Error("the grid options did not open under the pointer");
+  }
+  await frames(c);
+}
+
+// frmMain's form, its menu bar and readouts, in the state `state(c)` brings it to; `after(c)`
+// runs once the picture is taken, before the tab is closed.
+function formStateShot(name, state, { after = null, out = FORMS_IMAGE(name) } = {}) {
+  return {
+    out,
+    setup: "forms-chapter",
+    async take({ c }) {
+      await formsDesigner(c);
+      try {
+        await state(c);
+        const area = await formArea(c);
+        const clip = snapOut({ x: area.x, y: area.y, width: area.width + 6, height: area.height + 8 });
+        return await capture(c, name, clip, { unsteady: await groundUnsteady(c, clip) });
+      } finally {
+        if (after) await after(c);
+        await c.evaluate(`document.getElementById("tbShotBlink")?.remove()`);
+        await c.send("Input.dispatchKeyEvent", {
+          type: "keyUp",
+          key: "Control",
+          code: "ControlLeft",
+          windowsVirtualKeyCode: 17,
+          nativeVirtualKeyCode: 17,
+        });
+        await formsReset(c);
+      }
+    },
+  };
+}
 
 // ---- the CustomControls tutorial's property sheet: composites of the fixture's code and the
 // PROPERTIES panel (setup customcontrols)
@@ -6556,6 +7625,7 @@ async function debugReset(c) {
 // A breakpoint on the line of the open file holding `text`, set with F9 as a person sets it.
 async function breakpointOn(c, text) {
   const { line } = await codePlace(c, text);
+  if (!(await waitForEditAnswer(c))) throw new Error("the compiler never answered the last edit");
   await setCursor(c, line, 9);
   await pressKey(c, "F9");
   const set = await waitFor(
@@ -9815,6 +10885,7 @@ const SHOTS = [
   ...sample6Shots,
   ...designerShots,
   ...formShots,
+  ...formsChapterShots,
   ...customControlsShots,
   ...customControlsCodeShots,
   ...codeShots,
@@ -9882,6 +10953,7 @@ const JOB_SECONDS = {
   sample6: 21,
   designer: 61,
   forms: 40,
+  "forms-chapter": 90,
   customcontrols: 54,
   "customcontrols-2": 53,
   "customcontrols-3": 35,

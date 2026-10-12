@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "View > Zoom Out goes 100 %, 75 %, 50 % and then stays at 50 %, though the zoom box offers 25 %"
+  ],
+  "steps": "1. Open a form and click it, so that the designer has the focus.\n2. Choose View > Zoom Out four times. The zoom box reads 75 %, 50 %, 50 %, 50 %; it offers 25 %, which it can choose itself.\nControl: View > Zoom In from 50 % goes to 75 %."
+}

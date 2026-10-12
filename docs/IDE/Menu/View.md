@@ -70,7 +70,7 @@ The last seventeen items show a panel. A panel that is in no layout in use comes
 : The row of buttons under the menu. See [Toolbar](../Toolbar).
 
 **TOOLBOX** and **PROPERTIES**
-: The controls you can place on a form, and the properties of the selected one. See [Toolbox](../../Project/Toolbox) and [Properties](../../Project/Properties).
+: The controls you can place on a form, and the properties of the selected one. See [Toolbox](../../Forms/Toolbox) and [Properties](../../Forms/Properties).
 
 **WEBPAGE**
 : A web browser pane inside the IDE. See [Webpage](../../Project/Webpage).

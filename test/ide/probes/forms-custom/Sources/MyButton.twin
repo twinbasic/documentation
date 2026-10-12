@@ -1,0 +1,62 @@
+[ClassId("B4E1D7A2-6C3F-4E58-9A1B-2D7F0C5E8A94")]
+Class MyButtonState
+    Public Corners As CustomControlsPackage.Corners
+    Public BackgroundFill As CustomControlsPackage.Fill
+    Public Borders As CustomControlsPackage.Borders
+    Public TextRendering As CustomControlsPackage.TextRendering
+
+    Public Sub New()
+        Set Corners = New CustomControlsPackage.Corners
+        Set BackgroundFill = New CustomControlsPackage.Fill
+        Set Borders = New CustomControlsPackage.Borders
+        Set TextRendering = New CustomControlsPackage.TextRendering
+    End Sub
+End Class
+
+[CustomControl("/Miscellaneous/MyButton.png")]
+[ClassId("E7A3C915-2B6D-4F80-8D4E-1C9B6A2F7D35")]
+[COMCreatable(False)]
+Class MyButton
+    Implements CustomControls.ICustomControl
+
+    Event Click()
+    Event GotFocus()
+    Event LostFocus()
+
+    Public Name As String
+    Public Left As CustomControls.PixelCount
+    Public Top As CustomControls.PixelCount
+    Public Width As CustomControls.PixelCount
+    Public Height As CustomControls.PixelCount
+    Public Anchors As CustomControlsPackage.Anchors = New CustomControlsPackage.Anchors
+    Public Dock As CustomControls.DockMode
+    Public Visible As Boolean
+
+    Public NormalState As MyButtonState = New MyButtonState
+
+    Public Caption As String = "Button"
+
+    Private Sub OnInitialize(ByVal Context As CustomControls.CustomControlContext) _
+            Implements CustomControls.ICustomControl.Initialize
+        If Not Context.GetSerializer.RuntimeUISrzDeserialize(Me, False) Then
+            Visible = True
+            NormalState.BackgroundFill.ColorPoints.SetSolidColor RGB(70, 130, 200)
+        End If
+    End Sub
+
+    Private Sub OnDestroy() Implements CustomControls.ICustomControl.Destroy
+    End Sub
+
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+        Dim Face As CustomControlsPackage.ElementDescriptor
+        Face.Width = Canvas.RuntimeUICCGetWidth()
+        Face.Height = Canvas.RuntimeUICCGetHeight()
+        Set Face.BackgroundFill = NormalState.BackgroundFill
+        Set Face.Corners = NormalState.Corners
+        Set Face.Borders = NormalState.Borders
+        Face.Text = Caption
+        Set Face.TextRenderingOptions = NormalState.TextRendering
+        Canvas.RuntimeUICCCanvasAddElement Face
+    End Sub
+End Class

@@ -183,7 +183,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
   alone), `programs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
-  Chrome, not an IDE), `featuremap`, `code-chapter`, `debugging`, `customcontrols`, `code` and `sample9` (all described
+  Chrome, not an IDE), `featuremap`, `code-chapter`, `debugging`, `forms-chapter`, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`.
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
@@ -293,6 +293,61 @@ plus `Menu_Debug` (paused, the code focused) and `Menu_Run` (WaitAWhile running)
   is opened inside the panel instead.
 - A line for the console is put in its input row whole and entered (`consoleRun`): a space typed
   while the row's completion list is open accepts the list's first entry.
+
+## The "Designing forms and reports" chapter
+
+Setup `forms-chapter`: the fixture `test/shots/forms/`, FormsDemo, which refers to VB, the App
+global object and WinNativeCommonCtls (for the Toolbox's COMMON CONTROLS group). `frmMain` (380 by
+270, multi-coloured grabbers on) has a File menu (Open, a separator, Exit), Text1, Label1,
+Command1, Check1, Frame1 holding Text2, and the control array Command2(0) and (1); `MyReport`
+has a Label in Report Header and a Line and a Label in Report Detail. Its pictures are under
+`docs/IDE/Forms/Images/` and `docs/IDE/Reports/Images/`, plus `Menu_Format_HorizontalSpacing`,
+now taken with Command1, Check1 and Command2(0) selected (the page's own example of **Left** 10,
+140 and 250), so that Make Equal is live. `Designer_PackageNeeded` is taken in setup `settings`,
+whose project does not refer to the VB package.
+
+- **Each picture starts from nothing** (`formsReset`: no menu or dialog, every tab closed with its
+  changes discarded, the default layout), then opens its designer (`formsDesigner`) and selects
+  with real clicks (`selectNamed`: a click, then Shift+clicks; `Command2(1)` names an array
+  member).
+- **The striped ground round a designer is not steady**: it differs by a few dozen pixels from
+  one capture to the next, so a picture with much of it never gets two equal captures.
+  `groundUnsteady(c, clip, over)` gives `capture` the editor area under the tab row as
+  `unsteady`, less the form's boxes, the tabs and `over` (a menu, a list, the panel and, in an
+  annotated picture, each label and arrow of the overlay from `layerBoxes`; the overlay's own
+  box is too big for it). The form, its menu bar and its readouts are compared only 2 pixels in
+  from their edges, a readout only between its rounded ends: the ground shows through their
+  edges and shadows, and a 2-pixel band there failed Designer_Locked now and then. A cut-out
+  (`keep`) avoids the ground altogether.
+- **The container's red outline is an animation** (`borderBlink`, the outline red half the
+  time), which the quiet style sheet stops where the outline is transparent. Controls_Container
+  holds it at its middle with a style of its own (`tbShotBlink`, `animation ... -0.25s paused`),
+  removed afterwards.
+- **The TabIndex circles show while Ctrl is held**: a `rawKeyDown` of Control, settled by the
+  designer's class `designerShowTabIndex`, and the key released after the capture. The pointer
+  stays on the form where it clicked, and the shot waits for its readout: moved away, the
+  readout shows or not by the moment the pointer left, and the picture changed between runs. A circle is
+  drawn only on a control whose **TabStop** is True (the designer sets `data-tabindex` only for
+  those), so Label1 and Frame1 have none.
+- **The designer reverses a menu's children from the file**: the fixture lists Exit, `-`, Open
+  so that the drop-down shows Open, the separator, Exit.
+- **The zoom box is set by a `change` event on `#zoomSelect`**, never by the arrow keys, which
+  also move the selected controls. Designer_Zoom shows the box and its list only, four rows of
+  it: the Light theme's list has a smaller font, and the whole list makes the light picture 100
+  pixels shorter than the dark one. The form at 50 % is not in it: its scaled dots differ in
+  every capture, even with the ground left out.
+- **The Toolbox is scrolled with the mouse wheel**: a capture never holds more than the real
+  window's height, so a taller page does not show more of it. Show Control Names is set from the
+  panel's `...` menu and put back afterwards (saved nowhere). The search of Toolbox_Search is
+  ended (the box focused, Escape) after the capture, or every later picture's Toolbox lacks
+  tools.
+- **A report's PAGE WIDTH, LEFT MARGIN and RIGHT MARGIN bars show only under the pointer**
+  (opacity 0, 1 on hover): Report_Controls rests the pointer on PAGE WIDTH.
+- **Preview_Window** is a running program's window, taken once with `captureWindow` from the
+  IDE's desktop. The File menu is not open in it: a native menu is a window
+  of its own (`#32768`), which the tool cannot yet capture and lay over the form's window.
+- PROPERTIES shows no description line: in BETA 1005 its text is set in a footer of the
+  designer's own properties box, which is 0 pixels wide, so nothing is drawn.
 
 ## Special IDE states
 

@@ -1,0 +1,13 @@
+[
+	{
+		"Caption": "frmDeep",
+		"FormDesignerId": "{F0A3F011-3B2E-4D69-8A14-7E91C2D4C615}",
+		"Height": 300,
+		"Name": "frmDeep",
+		"ScaleMode": "vbPixels",
+		"Width": 300,
+		"_children": [],
+		"_className": "Form",
+		"_clsid": "{33AD4F38-6699-11CF-B70C-00AA0060D393}"
+	}
+]
