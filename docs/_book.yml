@@ -599,6 +599,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: TBMANLIB_Aes Package
+        subtitle: AES encryption of text and byte arrays, through the Windows Crypto API and CNG
+        landing_page: /tB/Packages/Contributed/TBMANLIB_Aes/
+        page: /tB/Packages/Contributed/TBMANLIB_Aes/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TBMANLIB_Xml Package
         subtitle: XML documents parsed, edited and written, in twinBASIC code
         landing_page: /tB/Packages/Contributed/TBMANLIB_Xml/
