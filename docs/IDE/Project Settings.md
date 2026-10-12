@@ -13,7 +13,7 @@ The Project Settings dialog, **Project → Project Settings...**, holds the sett
 
 ![The Option Explicit On setting in the Project Settings dialog, set to Yes, with an arrow pointing at the description under it](Images/project settings description text.png){:width="900" height="67"}
 
-The drop-down list of a setting ends with a **COMPILER DEFAULT** entry, which names the value used when the project does not set one. Choosing it removes the setting from the project's `Settings` file, and so does emptying a box. [**File → Export Project**](Reference/Menu/File#export-project) writes that file beside the project's `Sources` folder, and the entries below give the settings' keys in it.
+The drop-down list of a setting ends with a **COMPILER DEFAULT** entry, which names the value used when the project does not set one. Choosing it removes the setting from the project's `Settings` file, and so does emptying a box. [**File → Export Project**](Projects/Saving-and-Exporting#export-project) writes that file beside the project's `Sources` folder, and the entries below give the settings' keys in it.
 
 {: .toc }
 
@@ -52,7 +52,7 @@ To add a reference, tick it on the **Available COM References** tab, which lists
 
 ![The same dialog on its Available COM References tab. A search box sits above an alphabetical list of unticked type libraries registered on the machine --- on this machine ABBYY FineReader 16 SharePoint Integration Component, AccessibilityCplAdmin, Acrobat, Acrobat Access and so on --- against Library Symbol, Version and Publisher columns.](Images/ProjectSettings_AvailableCOMReferences.png){:width="1102" height="774"}
 
-See [Packages](../../Features/Packages/)
+See [Packages](../../Features/Packages/). [References and packages](Projects/References-and-Packages) describes the three lists, the questions the IDE asks, and closing the dialog.
 
 ![The Project Settings dialog open over the IDE, with red numbers marking the route: 1 on the Project Explorer's Project Settings gear, 2 on the Library References heading, 3 on the Available Packages tab. That tab lists the built-in and published packages with tick boxes and Embedded and Library Symbol columns.](../Features/Packages/Images/e749e10f-e361-4f15-a977-d756fcb3b5dd.png){:width="1162" height="529"}
 
@@ -278,7 +278,7 @@ When set to **Yes**, the build marks the file as DEP-aware. On hardware that sup
 ## Export
 
 > [!WARNING]
-> **File → Export Project** deletes everything in its target folder before it writes, without asking. Read [Export Project](Reference/Menu/File#export-project) before setting these.
+> **File → Export Project** deletes everything in its target folder before it writes, without asking. Read [Export Project](Projects/Saving-and-Exporting#export-project) before setting these.
 
 ### Export Path
 

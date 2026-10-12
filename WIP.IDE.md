@@ -31,7 +31,7 @@ children. Second person ("you") is allowed here, as in tutorials.
 |---|---|---|---|
 | 1 | A tour of the IDE (landing page) | `/tB/IDE` | `index.md` |
 | 2 | Starting a project | `/tB/IDE/Starting` | New Project, Splash Screen, FAQ's first-launch and VBP-import parts |
-| 3 | Projects and files | `/tB/IDE/Projects` | Project Explorer (file and object views, Add, context menu, resource editors), references and packages (links to Features/Packages), Export Project (from Menu/File) |
+| 3 | Projects and files | `/tB/IDE/Projects` | Project Explorer (file and object views, Add, context menu; no resource editors: images preview, the rest open as text), references and packages (links to Features/Packages), Export Project (from Menu/File) |
 | 3a | Project Settings (reference) | `/tB/IDE/Project-Settings` | `Project Settings.md`, kept whole; **its anchors stay**, as 19 links use them |
 | 4 | Writing code | `/tB/IDE/Code` + children | Editor, Find/Replace, Outline, Open Editors, History, Diagnostics, `Features/Compiler-IDE/CodeLens` |
 | 5 | Designing forms and reports | `/tB/IDE/Forms`, `/tB/IDE/Reports` | tbForm, Toolbox, Properties, the Format menu's operations, tbReport |

@@ -11,8 +11,9 @@ index:
   - zoom, form designer
   - lock controls
   - tab order
-  - View As JSON
   - Object Designer
+index_also:
+  - View As JSON
 ---
 
 # Designer
@@ -21,7 +22,7 @@ A form is two files, a designer file and a code file. This page describes how to
 
 ## Add a form
 
-The **Add** menu creates a form. It is in the right-click menu of the [Project Explorer](../Project/Explorer), and in the **Project** menu. The Windows items and the CustomControls item are always shown, whether the project refers to their package or not.
+The **Add** menu creates a form. It is in the right-click menu of the [Project Explorer](../Projects/Project-Explorer), and in the **Project** menu. [Adding files](../Projects/Adding-Files) describes the menu. The Windows items and the CustomControls item are always shown, whether the project refers to their package or not.
 
 | Item | Creates | Package it needs |
 |---|---|---|
@@ -93,7 +94,7 @@ A form's designer file and its `.twin` file belong together. Renaming one in the
 
 ### View a form as JSON
 
-**View As JSON** in the Project Explorer's right-click menu shows the designer file as text. It is in the menu for `.tbform`, `.tbcontrol`, `.tbppage` and `.tbreport` files and for the files in a package, and it is hidden when more than one item is selected. The text opens in a read-only tab titled `JSON: 'frmMain.tbform':`. A comment at its top gives the `URI:` of the file and the `SNAPSHOT:` time. The tab is a snapshot and does not follow later changes, but it includes the changes in the designer that you have not saved yet.
+**View As JSON** in the Project Explorer's right-click menu shows the designer file as text. It is in the menu for `.tbform`, `.tbcontrol`, `.tbppage` and `.tbreport` files and for the files in a package, and it is greyed out when a designer file is selected together with other items. The text opens in a read-only tab titled `JSON: 'frmMain.tbform':`. A comment at its top gives the `URI:` of the file and the `SNAPSHOT:` time. The tab is a snapshot and does not follow later changes, but it includes the changes in the designer that you have not saved yet.
 
 ## Switch between design and code
 
