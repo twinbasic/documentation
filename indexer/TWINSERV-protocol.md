@@ -86,9 +86,15 @@ List all packages visible to the current session.
 }
 ```
 
-The `versions` array is ordered newest-first.  Each entry within a publisher
+The `versions` array is ordered newest-first, so the latest version is
+`versions[0]`.  The order is the server's, and it is not always the order of the
+version numbers: on 2026-10-12 forliny's `{CA836295-...}` listed WinReg 1.0.1.1
+and 1.0.0.1 before WinSysTray 1.0.2.0 and 1.0.1.0, as if the fourth part were
+compared before the third.  Each entry within a publisher
 group shares the same `projectId` (a GUID) but may differ in `symbol` or
-`description` across versions.
+`description` across versions: Krool's TwinTimerPackage 1.0.0.0 became
+TwinTimerLib from 1.0.2.0, and forliny's GUID holds two libraries, WinReg and
+WinSysTray (with TbSysTray 1.0.0.0 between them).
 
 As of June 2026, 32 public packages are listed.
 

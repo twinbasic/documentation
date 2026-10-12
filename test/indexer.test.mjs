@@ -58,6 +58,7 @@ import {
   storeStatus,
   writeToStore,
 } from "../indexer/lib/store.mjs";
+import { latestVersion, versionString } from "../indexer/lib/sync.mjs";
 import { CONTAINER_MAP, preprocessVB6 } from "../indexer/lib/vb6-preprocess.mjs";
 
 const SAMPLE = path.join(import.meta.dirname, "../indexer/sample.twinpack");
@@ -1191,6 +1192,39 @@ describe("auditCoverage", () => {
 });
 
 // ----------------------------------------------------------- the store's sync state
+
+describe("latestVersion", () => {
+  const v = (symbol, versionMajor, versionMinor, versionRevision, versionBuild) => ({
+    symbol,
+    versionMajor,
+    versionMinor,
+    versionRevision,
+    versionBuild,
+  });
+
+  test("is the first version TWINSERV lists, never the last", () => {
+    const pkg = {
+      versions: [v("tbFileSysTools", 1, 8, 0, 0), v("tbFileSysTools", 1, 2, 0, 0), v("tbFileSysTools", 1, 1, 1, 0)],
+    };
+    assert.equal(versionString(latestVersion(pkg)), "1.8.0.0");
+  });
+
+  test("even where the first is not the highest number: the server's order decides", () => {
+    // forliny's {CA836295-...} as TWINSERV listed it on 2026-10-12.
+    const pkg = {
+      versions: [
+        v("WinReg", 1, 0, 1, 1),
+        v("WinReg", 1, 0, 0, 1),
+        v("WinSysTray", 1, 0, 2, 0),
+        v("WinSysTray", 1, 0, 1, 0),
+        v("TbSysTray", 1, 0, 0, 0),
+        v("WinReg", 0, 0, 0, 0),
+      ],
+    };
+    const latest = latestVersion(pkg);
+    assert.equal(`${latest.symbol} ${versionString(latest)}`, "WinReg 1.0.1.1");
+  });
+});
 
 // A store folder as `sync` leaves it: sources and an api.json of `version`.
 const apiText = (version, over = {}) =>

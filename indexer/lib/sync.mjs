@@ -2,8 +2,11 @@ import { readFile } from "node:fs/promises";
 import { queryPackages, downloadPackage } from "./twinserv-client.mjs";
 import { readPackageFiles } from "./package-files.mjs";
 
+// TWINSERV lists a package's versions newest first, by its own rule: forliny's
+// {CA836295-...} lists WinReg 1.0.1.1 before WinSysTray 1.0.2.0. The newest is the
+// first listed, never the highest number and never the last.
 function latestVersion(pkg) {
-  return pkg.versions[pkg.versions.length - 1];
+  return pkg.versions[0];
 }
 
 function versionString(v) {
@@ -59,4 +62,4 @@ async function fetchPackage(projectId, version) {
   return readPackageFiles(await downloadPackage(projectId, version));
 }
 
-export { compareWithManifest, fetchPackage, versionString };
+export { compareWithManifest, fetchPackage, latestVersion, versionString };
