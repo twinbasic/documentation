@@ -2,7 +2,7 @@
   "format": 3,
   "package": "AutoCompleteLib",
   "project": "AutoCompleteLib",
-  "version": "1.0.0.0",
+  "version": "1.0.3.0",
   "types": [
     {
       "name": "AutoComplete",
@@ -24,6 +24,7 @@
         {"name":"ACO_AUTOSUGGEST","kind":"const","vis":"private","signature":"Private Const ACO_AUTOSUGGEST As Long = &H1"},
         {"name":"ACO_FILTERPREFIXES","kind":"const","vis":"private","signature":"Private Const ACO_FILTERPREFIXES As Long = &H8"},
         {"name":"ACO_NONE","kind":"const","vis":"private","signature":"Private Const ACO_NONE As Long = &H0"},
+        {"name":"ACO_RTLREADING","kind":"const","vis":"private","signature":"Private Const ACO_RTLREADING As Long = &H40"},
         {"name":"ACO_SEARCH","kind":"const","vis":"private","signature":"Private Const ACO_SEARCH As Long = &H4"},
         {"name":"ACO_UPDOWNKEYDROPSLIST","kind":"const","vis":"private","signature":"Private Const ACO_UPDOWNKEYDROPSLIST As Long = &H20"},
         {"name":"ACO_USETAB","kind":"const","vis":"private","signature":"Private Const ACO_USETAB As Long = &H10"},
@@ -37,6 +38,7 @@
         {"name":"AutoCompleteOptionAppend","kind":"field","vis":"private","signature":"Private AutoCompleteOptionAppend"},
         {"name":"AutoCompleteOptionFilterPrefixes","kind":"field","vis":"private","signature":"Private AutoCompleteOptionFilterPrefixes"},
         {"name":"AutoCompleteOptionNone","kind":"field","vis":"private","signature":"Private AutoCompleteOptionNone"},
+        {"name":"AutoCompleteOptionRightToLeft","kind":"field","vis":"private","signature":"Private AutoCompleteOptionRightToLeft"},
         {"name":"AutoCompleteOptionSearch","kind":"field","vis":"private","signature":"Private AutoCompleteOptionSearch"},
         {"name":"AutoCompleteOptionSuggest","kind":"field","vis":"private","signature":"Private AutoCompleteOptionSuggest"},
         {"name":"AutoCompleteOptionSuggestAppend","kind":"field","vis":"private","signature":"Private AutoCompleteOptionSuggestAppend"},
@@ -112,7 +114,8 @@
         {"name":"AutoCompleteOptionSearch","value":"ACO_SEARCH"},
         {"name":"AutoCompleteOptionFilterPrefixes","value":"ACO_FILTERPREFIXES"},
         {"name":"AutoCompleteOptionUseTab","value":"ACO_USETAB"},
-        {"name":"AutoCompleteOptionUpDownKeyDropsList","value":"ACO_UPDOWNKEYDROPSLIST"}
+        {"name":"AutoCompleteOptionUpDownKeyDropsList","value":"ACO_UPDOWNKEYDROPSLIST"},
+        {"name":"AutoCompleteOptionRightToLeft","value":"ACO_RTLREADING"}
       ]
     },
     {
