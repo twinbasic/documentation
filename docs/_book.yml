@@ -592,6 +592,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: TBMANLIB_Xml Package
+        subtitle: XML documents parsed, edited and written, in twinBASIC code
+        landing_page: /tB/Packages/Contributed/TBMANLIB_Xml/
+        page: /tB/Packages/Contributed/TBMANLIB_Xml/
+        landing_is_target: true
+        outline_closed: true
+
       - title: WinReg Package
         subtitle: Registry keys and values, read, written, deleted and enumerated
         landing_page: /tB/Packages/Contributed/WinReg/
