@@ -9,7 +9,7 @@ permalink: /tB/Packages/Contributed/VBA_JSON/
 # VBA_JSON Package
 {: .no_toc }
 
-**Author:** Tim Hall, published on TWINSERV by WaynePhillipsEA. **On GitHub:** [VBA-tools/VBA-JSON](https://github.com/VBA-tools/VBA-JSON) and [VBA-tools/VBA-UTC](https://github.com/VBA-tools/VBA-UTC), the VBA libraries the package is made from.
+**Author:** Tim Hall, published on TWINSERV by WaynePhillipsEA. **Version:** 2.3.1.1. **On GitHub:** [VBA-tools/VBA-JSON](https://github.com/VBA-tools/VBA-JSON) and [VBA-tools/VBA-UTC](https://github.com/VBA-tools/VBA-UTC), the VBA libraries the package is made from.
 
 The **VBA_JSON** contributed package provides JSON parsing and serialization for VBA and twinBASIC projects, along with UTC and ISO 8601 date-conversion utilities. The package exposes a **JsonConverter** standard module containing the primary **ParseJson** and **ConvertToJson** functions, and a **Dictionary** class used to represent JSON objects in memory.
 

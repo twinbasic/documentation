@@ -12,7 +12,7 @@ permalink: /tB/Packages/Contributed/tbProjPacker/
 # tbProjPacker Package
 {: .no_toc }
 
-**Author:** GCuser99. **On GitHub:** [GCuser99/tbProjPacker](https://github.com/GCuser99/tbProjPacker), in the folder *Project*.
+**Author:** GCuser99. **Version:** 1.0.5.0. **On GitHub:** [GCuser99/tbProjPacker](https://github.com/GCuser99/tbProjPacker), in the folder *Project*.
 
 The **tbProjPacker** contributed package unpacks a twinBASIC project file, a `.twinproj` or `.twinpack` file, into a folder of source files, and packs such a folder into a project file again. It does from twinBASIC code what the [Import/export tool](../../../../Features/Packages/Import-Export-Tool) does from a command line: [**Unpack**](ProjPacker/Unpack) corresponds to the tool's `export` command, and [**Pack**](ProjPacker/Pack) to its `import` command.
 

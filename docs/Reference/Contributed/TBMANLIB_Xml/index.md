@@ -11,7 +11,7 @@ permalink: /tB/Packages/Contributed/TBMANLIB_Xml/
 # TBMANLIB_Xml Package
 {: .no_toc }
 
-**Author:** woeoio.
+**Author:** woeoio. **Version:** 1.0.0.0
 
 The **TBMANLIB_Xml** contributed package reads, changes and writes XML documents. It has the shape of a small DOM. A [**cXml**](cXml) object holds a document as a tree of [**cXmlNode**](cXmlNode) objects, finds elements by a path such as `library/book`, and reads and writes the document as a string or as a UTF-8 file. The [**mXml**](mXml) module holds the node types, the error numbers and two functions that convert between strings and UTF-8 bytes. The package is written in twinBASIC and calls two functions of the Windows API for the conversion. This section documents version 1.0.0.0, published under the MIT licence.
 

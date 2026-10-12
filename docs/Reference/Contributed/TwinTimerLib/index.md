@@ -9,7 +9,7 @@ permalink: /tB/Packages/Contributed/TwinTimerLib/
 # TwinTimerLib Package
 {: .no_toc }
 
-**Author:** Krool
+**Author:** Krool. **Version:** 1.0.7.0
 
 The **TwinTimerLib** contributed package provides a Win32-backed timer class that fires a **Timer** event at a repeating interval and reports the total elapsed time in milliseconds. Unlike the built-in VB **Timer** control, **TwinTimer** does not require a form or control container and can be instantiated from any module.
 

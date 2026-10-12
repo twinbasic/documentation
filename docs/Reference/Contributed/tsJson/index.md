@@ -44,7 +44,7 @@ permalink: /tB/Packages/Contributed/tsJson/
 # tsJson Package
 {: .no_toc }
 
-**Author:** thosti.
+**Author:** thosti. **Version:** 1.0.15.0
 
 The **tsJson** contributed package reads, builds and writes JSON, finds values in a document with JSON Pointer and JSONPath, changes documents with JSON Patch and JSON Merge Patch, validates them against a JSON Schema, and converts ISO 8601 dates. The package describes itself as "Parse, query, patch, validate - one JSON model." This section documents version 1.0.15.0, published under the MIT licence.
 

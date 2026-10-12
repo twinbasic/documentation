@@ -13,7 +13,7 @@ permalink: /tB/Packages/Contributed/tbFileSysTools/
 # tbFileSysTools Package
 {: .no_toc }
 
-**Author:** GCuser99. **On GitHub:** [GCuser99/tbFileSysTools](https://github.com/GCuser99/tbFileSysTools), in the folder *Package*.
+**Author:** GCuser99. **Version:** 1.1.1.0. **On GitHub:** [GCuser99/tbFileSysTools](https://github.com/GCuser99/tbFileSysTools), in the folder *Package*.
 
 The **tbFileSysTools** contributed package, listed in the Available Packages dialog as *File System Tools - Modern Replacement for FSO*, reads and changes files, folders and drives, as the **FileSystemObject** of the Scripting Runtime does, and is written in twinBASIC. It reads and writes text files in any Windows code page, with detection of the encoding and handling of byte-order marks (BOMs), detects and converts line endings, streams files of any size, and works with paths longer than 260 characters.
 

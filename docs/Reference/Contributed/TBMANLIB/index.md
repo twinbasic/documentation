@@ -13,7 +13,7 @@ permalink: /tB/Packages/Contributed/TBMANLIB/
 # TBMANLIB Package
 {: .no_toc }
 
-**Author:** woeoio. **On GitHub:** [woeoio/tbman](https://github.com/woeoio/tbman), the repository of the TBMAN toolkit. Its first commit, of 7 December 2024, the day this version was published, holds the code of this package. The repository has been developed since, and its current code differs from version 1.0.0.5.
+**Author:** woeoio. **Version:** 1.0.0.5. **On GitHub:** [woeoio/tbman](https://github.com/woeoio/tbman), the repository of the TBMAN toolkit. Its first commit, of 7 December 2024, the day this version was published, holds the code of this package. The repository has been developed since, and its current code differs from version 1.0.0.5.
 
 The **TBMANLIB** contributed package is the library of **TBMAN**, a toolkit for twinBASIC programmers that grew out of the author's VB6 library *vbman*. It is a collection of small helpers rather than a library with one theme: a JSON document class and parser, a log writer, a stopwatch, an INI file class, a message-box helper, and modules of functions for strings, arrays and bytes, UTF-8, dictionaries, files and folders, numbers and JavaScript objects. The package's own description on TWINSERV is the single word *TBMAN*.
 

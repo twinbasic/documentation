@@ -11,7 +11,7 @@ permalink: /tB/Packages/Contributed/TBMANLIB_ConsoleCore/
 # TBMANLIB_ConsoleCore Package
 {: .no_toc }
 
-**Author:** woeoio.
+**Author:** woeoio. **Version:** 1.0.0.1
 
 The **TBMANLIB_ConsoleCore** contributed package is a library for the console of a twinBASIC program. Its class [**cConsole**](cConsole) writes text in 16 colours, reads lines, single keys and passwords, moves the cursor, switches the console to UTF-8 and to the escape-sequence mode, and has a full-screen mode in which a program draws into an in-memory grid, [**cConsoleBuffer**](cConsoleBuffer), and receives key, mouse and window-size events. The module [**mConsoleStyle**](mConsoleStyle) builds the escape sequences for colours, text styles and cursor movement, and has helpers that align, shorten and wrap text. This section documents version 1.0.0.1, published on TWINSERV on 3 February 2026 under the MIT licence. The package describes itself as "TBMAN: Modern console library with UTF-8, colors, and full-screen support".
 

@@ -21,7 +21,7 @@ permalink: /tB/Packages/Contributed/tsPwGen/
 # tsPwGen Package
 {: .no_toc }
 
-**Author:** thosti.
+**Author:** thosti. **Version:** 1.0.8.0
 
 The **tsPwGen** contributed package generates passwords, PINs, hexadecimal tokens and passphrases, and computes the entropy of a recipe before anything is generated. The package describes itself as "Passwords you can measure before you generate." This section documents version 1.0.8.0, published under the MIT licence.
 

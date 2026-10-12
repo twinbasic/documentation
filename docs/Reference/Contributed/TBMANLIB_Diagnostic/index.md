@@ -14,7 +14,7 @@ permalink: /tB/Packages/Contributed/TBMANLIB_Diagnostic/
 # TBMANLIB_Diagnostic Package
 {: .no_toc }
 
-**Author:** woeoio.
+**Author:** woeoio. **Version:** 0.0.0.0
 
 The **TBMANLIB_Diagnostic** contributed package makes a diagnostic report of a Windows computer and of the processes that run on it, and writes the report as text, JSON or HTML. The package has three parts. A [**DiagnosticEngine**](DiagnosticEngine) runs *collectors*, classes that each find one kind of information (the operating system, the processor and its load, the memory, the disks, the network, the running processes, the regional settings, the environment variables, the installed runtimes and the uptime), and each returns a [**DiagnosticResult**](DiagnosticResult), a list of pairs of text. A *formatter* turns the results into one string. [**FileHelper**](FileHelper) can save the string as a UTF-8 file. The package is written in twinBASIC and calls the Windows API directly. It uses no other library, and none of its collectors asks for administrator rights.
 

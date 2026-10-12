@@ -9,7 +9,7 @@ permalink: /tB/Packages/Contributed/xCalendar/
 # xCalendar Package
 {: .no_toc }
 
-**Author:** sokinkeso.
+**Author:** sokinkeso. **Version:** 1.0.7.0
 
 The **xCalendar** contributed package provides a calendar control: a grid of the days of one month, in which the user selects a date by clicking a day, by pressing a key, or by choosing a month or a year from a list. It is meant as a replacement for the Calendar control of `MSCAL.OCX`.
 

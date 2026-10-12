@@ -13,7 +13,7 @@ permalink: /tB/Packages/Contributed/TBMANLIB_Aes/
 # TBMANLIB_Aes Package
 {: .no_toc }
 
-**Author:** woeoio.
+**Author:** woeoio. **Version:** 1.0.0.4
 
 The **TBMANLIB_Aes** contributed package encrypts and decrypts text and byte arrays with AES. Its class [**cAes**](cAes) has six cipher modes, named ECB, CBC, CFB, OFB, CTR and GCM, four padding modes, and keys of 128, 192 and 256 bits. The package calls two interfaces of Windows. The older Crypto API (`advapi32.dll`) does the modes named ECB and CBC, and Cryptography API: Next Generation, CNG (`bcrypt.dll`), does the other four. A second class, [**cAesHelper**](cAesHelper), holds the Base64, UTF-8 and padding functions that **cAes** uses, and the module [**mAesConstants**](mAesConstants) holds the enumerations and the constants. This section documents version 1.0.0.4, published on TWINSERV under the MIT licence. The package describes itself as "TBMAN: A crypto library contains AES (ECB/CBC/CFB/OFB/CTR/GCM)".
 

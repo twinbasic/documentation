@@ -11,7 +11,7 @@ permalink: /tB/Packages/Contributed/Generics/
 # Generics Package
 {: .no_toc }
 
-**Author:** mansellan.
+**Author:** mansellan. **Version:** 1.0.0.0
 
 The **Generics** contributed package provides seven tuple classes, **TupleOf1** to **TupleOf7**. A tuple is a read-only object that holds one to seven values, called its items, each of a type given when the tuple is declared.
 
