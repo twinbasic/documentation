@@ -17,7 +17,7 @@ Internals of the two-stage PDF pipeline: `tbdocs` Phase 8 assembles a sparse `_s
 
 ![A flow chart running top to bottom through two boxed stages. The first, tbdocs writePdf, holds three steps side by side: assembleBook combining the chapter HTML, copyPdfCss copying the two stylesheets, and copyPdfImages copying the referenced images. Together they produce _site-pdf/book.html with its stylesheets and images. That file feeds the second stage, render-book.mjs, whose three phases run in sequence: Phase 1 lays the document out with puppeteer and paged.js into one element per output page, Phase 2 extracts the metadata and outline tree and calls page.pdf for a raw buffer, and Phase 3 reloads that buffer through the fast pdf-lib shims, sets the metadata and outline, and saves. The result is the finished PDF under _pdf.](/assets/images/dot/pdf-render-pipeline.svg)
 
-The book runs to about 2,250 pages. `tbdocs` builds `_site-pdf/` as part of its normal run; `render-book.mjs` runs only when `book.bat` calls it, which keeps `puppeteer` and `pdf-lib` out of the site generator's dependency tree.
+The book runs to about 3,600 pages. `tbdocs` builds `_site-pdf/` as part of its normal run; `render-book.mjs` runs only when `book.bat` calls it, which keeps `puppeteer` and `pdf-lib` out of the site generator's dependency tree.
 
 ## Running the renderer
 
@@ -82,10 +82,12 @@ Live progress separates a stall from slowness. It differs per phase, and by whet
 | Generate | `generating: <elapsed>s`, a heartbeat every 500 ms, **on a terminal only** | Nothing is wrong. `page.pdf()` returns only at the end, so a piped run prints nothing meanwhile. |
 | Process | none | Nothing is wrong. The phase reports only when it finishes. |
 
-The renderer relays three kinds of in-browser fault, each with its own prefix:
+The renderer relays these in-browser faults, each with its own prefix:
 
 - **`[request failed] <url> <errorText>`** --- Chromium could not load a resource. A file missing from `_site-pdf/` appears as `net::ERR_FILE_NOT_FOUND` with its path, which points to an incomplete Phase 8 tree.
 - **`[page error] <message>`** --- an uncaught exception inside the page.
+- **`[layout] <report> at <element>: skipped from where it stops fitting`** --- paged.js could not place an element on any page, and reported `Layout repeated` or `Unable to layout item`. The element is named by its tag, the start of its text and the heading before it. The render skips the rest of it and goes on, so the book is complete apart from that part of the element ([Paged.js Patches](Fixes/PagedJS#an-element-no-page-can-hold)); the exit code stays 0. Under GitHub Actions each report is also a `::warning` annotation on the run.
+- **`[page console] <message>`** --- any other error the page writes to its console.
 - **`[render-book] error: <error>`** --- the top-level catch. It closes the browser and sets the exit code to 2.
 
 A paged.js stylesheet fetch that fails arrives as `error on LINK: <url>`.

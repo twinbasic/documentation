@@ -298,7 +298,9 @@ const SUMMARY_OPEN_RE = /<summary[^>]*>/gi;
 const HEADING_SHIFT_RE = /<(\/?)h([1-6])\b/g;
 
 // PLAN-8 §6.3 / book-chapter-transform.rb#book_chapter_transform. Five
-// logical passes, after step 0 reduces a picture in two themes to its light one:
+// logical passes, after step 0 reduces a picture in two themes to its light one,
+// and a sixth of tbdocs's own, which puts each line of a code block in a block
+// element of its own (codeLines, below):
 //   1. strip `src="<baseurl>/` prefix (no-op when baseurl is empty)
 //   2. unwrap <details>/<summary> tags (FAQ-style collapsibles flatten
 //      for print); summary id= attributes are preserved as inline spans
@@ -371,7 +373,59 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
     result = replaceOutsideCode(result, /href="#([^"]+)"/g, (_, frag) => `href="#${prefix}${frag}"`);
   }
 
+  // Step 6: each line of a code block in a block element of its own.
+  result = result.replace(CODE_BLOCK_RE, (_, open, body, close) => open + codeLines(body) + close);
+
   return result;
+}
+
+// paged.js cannot be trusted to split a text node that wraps over many
+// lines: in a code block, one text node often holds most of a listing, and
+// where paged.js picks the same break in it twice it gives up on the rest
+// (Fixes-PagedJS.md, "An element no page can hold"). With each line in an
+// inline span of its own, every line starts a node, and paged.js breaks code
+// between two nodes. The spans are inline and keep their newlines, so the
+// block lays out exactly as before: line boxes, and the orphans and widows
+// that decide where a page breaks it, are untouched. (Block spans broke
+// code as well, but a block of one line has no orphans or widows to keep.)
+const CODE_BLOCK_RE = /(<pre\b[^>]*>\s*<code\b[^>]*>)([\s\S]*?)(<\/code>\s*<\/pre>)/g;
+const CODE_TOKEN_RE = /(<\/?[a-zA-Z][^>]*>|\n)/;
+const VOID_ELEMENTS = new Set(["br", "wbr", "img", "hr", "input"]);
+
+// The body of a <code> as one `<span class="code-line">` per line, each
+// ending in its newline. A tag still open at a line end is closed before the
+// newline and opened again on the next line, so every line is well formed
+// and the text is unchanged.
+function codeLines(body) {
+  const lines = [];
+  const open = []; // [tag name, opening tag] of each element open here
+  let line = "";
+  const endLine = (newline) => {
+    const closing = open
+      .map(([name]) => `</${name}>`)
+      .reverse()
+      .join("");
+    lines.push(`<span class="code-line">${line}${closing}${newline}</span>`);
+    line = open.map(([, tag]) => tag).join("");
+  };
+  const trailing = body.endsWith("\n");
+  for (const token of (trailing ? body.slice(0, -1) : body).split(CODE_TOKEN_RE)) {
+    if (!token) continue;
+    if (token === "\n") {
+      endLine("\n");
+    } else if (token.startsWith("</")) {
+      open.pop();
+      line += token;
+    } else if (token.startsWith("<")) {
+      const name = token.slice(1).match(/^[a-zA-Z]+/)[0];
+      if (!token.endsWith("/>") && !VOID_ELEMENTS.has(name.toLowerCase())) open.push([name, token]);
+      line += token;
+    } else {
+      line += token;
+    }
+  }
+  endLine(trailing ? "\n" : "");
+  return lines.join("");
 }
 
 // ---------------------------------------------------------------------------

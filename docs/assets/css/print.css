@@ -638,6 +638,12 @@ div.highlighter-rouge {
   word-wrap: break-word;
   overflow-wrap: break-word;
   break-inside: auto;
+  /* At the default tab-size of 8, the twelve tabs that indent the IDE's
+     panel-layout JSON (Panel Layouts page) are 96 columns, wider than the
+     ~88 the column holds: Chromium on Linux then lays the block out so that
+     paged.js finds no break in it, logs "Layout repeated" and ends the book
+     there. At 3 the deepest line is 58 columns. */
+  tab-size: 3;
 }
 
 div.highlighter-rouge pre,

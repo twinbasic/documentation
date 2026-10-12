@@ -207,10 +207,46 @@ Renders an HTML book to a PDF with paged.js and headless Chromium.
   --additional-script <path> a script to inject after paged.js; repeatable
   -h, --help                 print this text and exit
 
+An element that paged.js cannot place on any page is skipped, from the point
+where it stops fitting, and the render goes on; each one is reported as a warning
+naming it, on stderr and, under GitHub Actions, as an annotation.
+
 Exit codes:
   0  the PDF was written
   2  a refused command line, an input or script that does not exist, a render that
      failed, or a crash`;
+
+// The two reports with which paged.js gives up on an element: "Layout repeated"
+// from the chunker's loop guard, "Unable to layout item" from Layout.renderTo. The
+// forked bundle skips the rest of the element and goes on (renderTo upstream, the
+// chunker by [PATCH: layout-repeated-skip]); these reports are all that says so.
+const LAYOUT_FAILURE_RE = /^(Layout repeated|Unable to layout item)\b/;
+const layoutFailures = [];
+
+// Names the element a report is about: its tag, the start of its text, and the
+// nearest heading before it, so that the page it is on can be found.
+async function describeLayoutFailure(text, handle) {
+  const what = text.match(LAYOUT_FAILURE_RE)[1];
+  if (!handle) return what;
+  try {
+    const where = await handle.evaluate((node) => {
+      const el = node.nodeType === 1 ? node : node.parentElement;
+      const snippet = (node.textContent || "").replace(/\s+/g, " ").trim().slice(0, 60);
+      let heading = "";
+      for (let cur = el; cur && !heading; cur = cur.parentElement) {
+        for (let sib = cur.previousElementSibling; sib && !heading; sib = sib.previousElementSibling) {
+          const h = sib.matches("h1, h2, h3, h4") ? sib : [...sib.querySelectorAll("h1, h2, h3, h4")].pop();
+          if (h) heading = h.textContent.replace(/\s+/g, " ").trim();
+        }
+      }
+      const tag = el ? `<${el.tagName.toLowerCase()}>` : "a node";
+      return `${tag} "${snippet}"${heading ? `, after the heading "${heading}"` : ""}`;
+    });
+    return `${what} at ${where}`;
+  } catch {
+    return what;
+  }
+}
 
 const { values, positionals, timeoutMs } = withUsageError(() => {
   const cli = parseCli(process.argv.slice(2), {
@@ -330,9 +366,19 @@ try {
   };
   // Render phase: progress-handler.js (loaded via addScriptTag below)
   // emits `[render-progress] page=N elapsed=Ns` from afterPageLayout.
+  // paged.js reports an element it cannot place on any page only on the
+  // console, and then ends the flow as if the book were done; each such
+  // report is kept, and fails the render below.
   page.on("console", (msg) => {
     const t = msg.text();
-    if (!t.startsWith("[render-progress]")) return;
+    if (LAYOUT_FAILURE_RE.test(t)) {
+      layoutFailures.push(describeLayoutFailure(t, msg.args()[1]));
+      return;
+    }
+    if (!t.startsWith("[render-progress]")) {
+      if (msg.type() === "error") console.error("[page console]", t);
+      return;
+    }
     const m = t.match(/page=(\d+)\s+elapsed=([\d.]+)/);
     if (!m) return;
     const line = `rendering: ${m[1]} pages (${m[2]}s)`;
@@ -387,6 +433,10 @@ try {
   const pageCount = await page.evaluate(() => document.querySelectorAll(".pagedjs_pages > .pagedjs_page").length);
   clearProgress();
   console.log(`render:   ${fmtMs(Date.now() - tRender)}  (${pageCount} pages)`);
+  for (const report of await Promise.all(layoutFailures)) {
+    console.error(`[layout] ${report}: skipped from where it stops fitting`);
+    if (process.env.GITHUB_ACTIONS === "true") console.log(`::warning title=Book layout::${report}`);
+  }
 
   // Generate -- meta extraction, outline walk, then Chromium DOM->PDF.
   //

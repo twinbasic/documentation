@@ -116,6 +116,18 @@ Each call site that receives the sync sentinel also calls `_assertSync(result, h
 
 **Fix.** `[PATCH: tokens-set]` The Array is replaced with a `Set`, so each lookup is O(1) instead of O(n).
 
+### An element no page can hold
+
+**Problem.** When the chunker laid out a page and got back a break token it had seen before, it logged `Layout repeated at:` and *returned* an error rather than throwing it. That ended the flow as if the content were done: the book stopped at that element. `render-book.mjs` relayed only the progress lines from the page's console, so it saved the pages laid out so far and exited 0. From 12 October 2026 the JSON listings on the IDE's Panel Layouts page, whose deepest lines are indented by twelve tabs, did this on the Linux runner, and the published book stopped at page 461.
+
+**Fix.** `[PATCH: layout-repeated-skip]` The chunker skips the rest of the block that holds the node --- the nearest `pre`, `table`, list, `p`, `div` or similar around it --- and goes on with the node after that block. The node after the node itself is not enough: a page laid out from inside a `<pre>` gives the same break again, and the render adds pages without end. A block whose next node has already been a break is not progress either, so the chunker climbs to the block around it. It still returns the error when nothing follows. `Layout.renderTo` upstream already skips to the node after one it reports as `Unable to layout item`. `render-book.mjs` relays both reports as warnings that name the element ([PDF Generation](../PDF-Generation#stalled-or-still-working)).
+
+### Code split across pages
+
+**Problem.** In a code block one text node often holds most of a listing, and paged.js does not split a text node that wraps over many lines reliably. Where it picks the same break twice, the Panel Layouts case above follows. Where it picks a break further on than the content it moves off the page, the lines between are lost without a report: the book of 12 October 2026 lacked 490 of its 8,862 code lines of 25 characters or more, and the Call statement's page stopped in the middle of its example.
+
+**Fix.** The book build puts each line of a code block, with its newline, in an inline `<span class="code-line">` of its own (`codeLines` in `builder/book.mjs`): every line starts a node, and paged.js breaks code between two nodes. The spans are inline, so the block lays out exactly as before, page breaks included; block spans would break code as well, but a block of one line has no orphans or widows to keep. With them, 168 of those lines are still missing: a break inside a code block can still lose lines, for a cause not yet found. `print.css` also sets `tab-size: 3` on code blocks, which keeps the Panel Layouts listings within the column.
+
 ## Margin group rendering
 
 **Problem.** The `finalizePage` hook computed `grid-template-columns` and `grid-template-rows` for each page's margin groups by reading `getComputedStyle()` at layout time. This forced a layout flush on every page.

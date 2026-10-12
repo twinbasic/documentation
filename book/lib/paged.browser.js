@@ -3213,12 +3213,35 @@
 					let newToken = breakToken.toJSON(true);
 					if (tokens.has(newToken)) {
 						// loop
-						let err = new OverflowContentError("Layout repeated", [breakToken.node]);
 						console.error("Layout repeated at: ", breakToken.node);
-						return err;
-					} else {
-						tokens.add(newToken);
+						// [PATCH: layout-repeated-skip] Upstream returns the error
+						// here, which ends the flow as if the content were done:
+						// one element no page can hold cut the book short at it.
+						// Skip the rest of the block that holds the node instead
+						// (the node after the node itself is not enough: a page
+						// laid out from inside a <pre> gives the same break again)
+						// and go on with what follows it. A block whose next node
+						// was a break already is not progress: climb to the block
+						// around it. The report above names the node;
+						// render-book.mjs passes it on as a warning.
+						const blocks = "pre, table, ul, ol, dl, blockquote, figure, p, li, dt, dd, div, section, h1, h2, h3, h4, h5, h6";
+						let el = breakToken.node && (breakToken.node.nodeType === 1 ? breakToken.node : breakToken.node.parentElement);
+						let block = el && (el.closest(blocks) || el);
+						let after;
+						while (block) {
+							after = nodeAfter(block);
+							if (!after) break;
+							newToken = new BreakToken(after).toJSON(true);
+							if (!tokens.has(newToken)) break;
+							after = undefined;
+							block = block.parentElement && block.parentElement.closest(blocks);
+						}
+						if (!after) {
+							return new OverflowContentError("Layout repeated", [breakToken.node]);
+						}
+						breakToken = new BreakToken(after);
 					}
+					tokens.add(newToken);
 				}
 
 				_assertSync(this.hooks.afterPageLayout.trigger(page.element, page, breakToken, this), "afterPageLayout");
