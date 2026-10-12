@@ -346,6 +346,26 @@ export const editorState = (c) => c.evaluate(EDITOR_JS);
 export const editorText = (c) =>
   c.evaluate("typeof editor !== 'undefined' && editor.getModel() ? editor.getModel().getValue() : null");
 
+// The IDE sends an edit to the compiler from a setTimeout(0) and marks the file
+// pendingChangeConfirmation until the answer arrives. That answer goes to
+// parseDocumentDecorations, which redraws every breakpoint glyph from the
+// answer's own list: a breakpoint set with F9 before it arrives loses its glyph,
+// and the next F9 in the file sends a list without it. So a script that edits
+// and then sets a breakpoint waits for this first. The answer takes 20--60 ms.
+const EDIT_ANSWERED_JS = `new Promise((done) => setTimeout(() => {
+  const tab = typeof openEditors === "undefined" ? null : openEditors.selectedEditorNode;
+  done(!tab || !tab.fileNode || !tab.fileNode.pendingChangeConfirmation);
+}, 0))`;
+
+/**
+ * Wait until the compiler has answered the last edit of the file in the code
+ * editor. True once it has, false when `timeout` runs out first.
+ */
+export async function waitForEditAnswer(c, { timeout = 5 * 1000 } = {}) {
+  const ok = await waitFor(c, (cc) => cc.evaluate(EDIT_ANSWERED_JS, { awaitPromise: true }), { timeout, interval: 10 });
+  return ok === true;
+}
+
 // How long the IDE may still put the cursor back where it last revealed a
 // line, in milliseconds. Opening a file at a place calls revealLineInEditor,
 // and whenever the compiler's decorations for the document arrive less than

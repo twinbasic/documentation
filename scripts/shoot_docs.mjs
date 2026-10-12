@@ -193,6 +193,7 @@ import {
   setCursor,
   typeText,
   waitFor,
+  waitForEditAnswer,
 } from "./lib/tb-operate.mjs";
 import { claimPorts } from "./lib/tb-ports.mjs";
 import { deleteSettings, finishTidy, restoreKeys, settingsKey, snapshotKeys, startTidy } from "./lib/tb-registry.mjs";
@@ -6556,6 +6557,7 @@ async function debugReset(c) {
 // A breakpoint on the line of the open file holding `text`, set with F9 as a person sets it.
 async function breakpointOn(c, text) {
   const { line } = await codePlace(c, text);
+  if (!(await waitForEditAnswer(c))) throw new Error("the compiler never answered the last edit");
   await setCursor(c, line, 9);
   await pressKey(c, "F9");
   const set = await waitFor(

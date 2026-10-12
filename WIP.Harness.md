@@ -1189,6 +1189,14 @@ Eight rules:
   anything else. When the IDE is still revealing lines 10 s later, `openFile`, `setCursor` and
   `select` throw, naming the file and the place, rather than go on while the cursor can still
   move; `afterReveal` itself returns `false`. The IDE's side of it is in BUGS-TO-REPORT.md.
+- **A breakpoint set straight after an edit is lost.** The compiler's answer to an edit goes to
+  `parseDocumentDecorations` too, which redraws every breakpoint glyph from the answer's own
+  list. An F9 pressed in the 20--60 ms before the answer arrives loses its glyph, though the
+  compiler keeps the breakpoint. The next F9 in that file sends a list without it, and it is
+  gone. So a script that edits and then sets a breakpoint calls `waitForEditAnswer` first, as
+  `shoot_docs.mjs`'s `breakpointOn` and the `debugging` lane do. It waits until the file is no
+  longer `pendingChangeConfirmation`. A person rarely presses F9 that fast, and the defect is
+  not queued (owner, 2026-10-12).
 - **A click checks where its press lands** (the `assert` lane of
   `ide-test.bat` shows it). The page can change between the call that aims and the press, a few
   milliseconds to a hundred later on a busy page. In an editor the debugger has just
