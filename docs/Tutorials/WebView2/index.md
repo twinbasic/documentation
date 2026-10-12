@@ -20,6 +20,6 @@ These tutorials demonstrate the most common patterns:
 - [JavaScript interop](JavaScript-Interop) -- the three bridges between BASIC and the page: host objects, messages, and scripted calls.
 - [Driving Monaco from twinBASIC](Driving-Monaco) -- a case study combining everything above: embed Microsoft's Monaco editor next to a live HTML preview pane.
 
-The complete sample code for the last four tutorials ships as *Sample 0 --- WebView2 Examples* in the New-Project dialog.
+The complete sample code for the last four tutorials ships as *Sample 1a --- WebView2 Examples* in the New-Project dialog.
 
 For the full set of members on the control itself, see the [**WebView2** class reference](../../tB/Packages/WebView2/WebView2/).
