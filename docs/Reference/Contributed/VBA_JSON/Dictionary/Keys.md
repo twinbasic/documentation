@@ -28,7 +28,7 @@ Dict("age")  = 30
 
 Dim k As Variant
 For Each k In Dict.Keys
-    Debug.Print k & " => " & Dict(CStr(k))
+    Debug.Print k & " => " & Dict(k)
 Next k
 ' Output (order added):
 '   name => Alice
