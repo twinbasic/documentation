@@ -35,7 +35,7 @@ The **Add** menu creates a form. It is in the right-click menu of the [Project E
 
 The new files go into the folder that the Project Explorer has selected. The Project Explorer switches to its file view, and a name box opens in the tree. It holds the default name, `MyForm.tbform` for a form, with the name part selected. If the name is taken, the box offers `MyForm2`, `MyForm3` and so on.
 
-<!-- SHOT forms-add-name-box: Project Explorer in file view, Sources selected, after Add Windows Form was chosen: the name box open in the tree holding MyForm.tbform with MyForm selected -->
+![The Project Explorer in its file view with the Sources folder expanded. The first row under Sources is a name box holding MyForm.tbform, with MyForm selected; the project's own files follow it.](Images/Designer_AddName.png){:width="267" height="304"}
 
 <kbd>Enter</kbd> creates both files at once and opens the designer in a normal tab, not a preview tab. <kbd>Esc</kbd>, or an empty name, creates nothing. A name with a space is written in square brackets, such as `Class [My Form]`, both in the class and in the form's **Name** property. A Windows form, an MDI form and a report are bracketed for a punctuation mark too, such as the dot in `a.b`. A user control, a property page and a CustomControls form are bracketed for a space only.
 
@@ -61,7 +61,7 @@ If the project does not refer to the package an item needs, the item shows a box
 
 ![A twinBASIC message box headed Package needed: CustomControls, saying that a reference to the CustomControls package must be added to the project first and that the compiler will be restarted once it is, above an Add CustomControls package button and a Cancel button.](../Images/RightClick-Add-CustomControlsForm-Popup.png){:width="539" height="194"}
 
-<!-- SHOT forms-package-needed-wnf: the Package needed: WinNativeForms box, shown by Add Windows Form in a project that does not refer to the VB package -->
+![A twinBASIC message box headed Package needed: WinNativeForms, saying that a reference to the WinNativeForms package must be added to the project first and that the compiler will be restarted once it is, above an Add WinNativeForms package button and a Cancel button.](Images/Designer_PackageNeeded.png){:width="544" height="194"}
 
 The button, **Add WinNativeForms package** or **Add CustomControls package**, adds the reference and restarts the compiler. It creates no form. Choose the **Add** item again to create one. **Cancel** creates nothing.
 
@@ -128,11 +128,11 @@ The designer uses the IDE's toolbar for its buttons. A button is greyed out unle
 | The surface | The form's client area, drawn from the compiler's picture of it. |
 | Size handles | Three handles on the form's right edge, bottom edge and bottom-right corner resize the form. The five others, on the top and left edges and the other corners, are drawn dimmer and do nothing. See [Size the form](Controls#size-the-form). |
 | Readouts | While you are not drawing, dragging or sizing a control, the pointer position (`x:` and `y:`) shows at the lower left of the surface and the form's size at the lower right, whatever is selected. While you draw, drag or size a control, its position and size show instead, and they disappear when you release the button. The readouts are always in pixels. |
-| Grabbers | Eight small squares round a selected control. A docked control has fewer. A locked control shows a lock icon. |
+| Grabbers | Eight small circles round a selected control. A docked control has fewer. A locked control shows a lock icon. |
 | Tab-index badges | Yellow circles that show while you hold <kbd>Ctrl</kbd>. See [Tab order](#tab-order). |
 | In-place toolbar | The small bar below a selected control. See [In-place editing](Controls#in-place-editing). |
 
-<!-- SHOT forms-selected-label: designer of the frmMain fixture at 100%, Label1 selected, showing its eight grabbers and the in-place toolbar below it (pencil, B, I, U, font size, alignment); labels with arrows for Grabbers, Readouts and In-place toolbar -->
+![A form in the designer at 100 %, with a File menu and the + menu button in the bar above it. The form holds two text boxes, a label, two command buttons, a check box, a frame round one of the text boxes, and a control array of two buttons. The label is selected: eight round grabbers surround it, and a bar of editing buttons sits below it. Under the form, a box at the left shows the pointer position and one at the right the form's size, 380 x 270. Labels with arrows name the grabbers, the bar and the two boxes.](Images/Designer_Selected.png){:width="548" height="387"}
 
 While the designer loads, an overlay lists the steps of the connection to the compiler, with a progress bar. A failure reads *error 802; connection closed*, *803 connection errored* or *804 connection abandoned*. **Ignore and continue** hides the overlay. The overlay shows for a fraction of a second on a normal start.
 
@@ -157,7 +157,7 @@ The grid options are in the panel that opens when the pointer enters the grid bu
 **Grid Width** and **Grid Height**
 : Default 10 pixels each. The smallest value is 1.
 
-<!-- SHOT forms-grid-options: the grid options panel open under the grid button, with Show Grid ticked and the dotted grid visible behind it -->
+![The grid options panel open below the grid button of the toolbar. Show Grid and Multi-coloured Grabbers are ticked, Align Controls To Grid and Show Outlines are not, and Grid Width and Grid Height each hold 10.](Images/Designer_GridOptions.png){:width="227" height="191"}
 
 These options belong to the form. They are saved in the form file, so another form can have another grid. Changing one is an undo step, marks the form changed and refreshes the designer from the compiler.
 
@@ -171,7 +171,10 @@ The zoom box in the toolbar offers 25 % to 400 % in steps of 25 %. The surface i
 
 With a designer focused, the **View** menu shows **Zoom In** and **Zoom Out** in place of **Increase Font Size** and **Decrease Font Size**. They have no keys. Zoom has no mouse-wheel shortcut and no key of its own.
 
-<!-- SHOT forms-zoom: the zoom box open with its list from 25 % to 400 %, and, beside it, the same form at 50 % so the half-size surface shows -->
+![The zoom box of the toolbar showing 50 %, with its list open below it and 50 % highlighted between 25 % and 75 %; the list scrolls on to further values.](Images/Designer_Zoom.png){:width="240" height="119"}
+
+<!-- SHOT forms-zoom: a second picture, the same form at 50 % so the half-size surface shows -->
+
 
 > [!NOTE]
 > In twinBASIC BETA 1005, **Zoom Out** stops at 50 %, although the box offers 25 %. Choose 25 % in the box.
@@ -181,24 +184,24 @@ With a designer focused, the **View** menu shows **Zoom In** and **Zoom Out** in
 
 ## Lock controls
 
-**Format → Lock Controls** locks each selected control that is unlocked and unlocks each one that is locked, so a mixed selection swaps. The right-click menu offers **Lock controls** and **Unlock controls** for a selection, and **Lock all controls** and **Unlock all controls** on the form itself. Each of the two commands for all controls then selects every control.
+**Format → Lock Controls** locks each selected control that is unlocked and unlocks each one that is locked, so a mixed selection swaps. The right-click menu offers **Lock Controls** and **Unlock controls** for a selection, and **Lock all controls** and **Unlock all controls** on the form itself. Each of the two commands for all controls then selects every control.
 
 A locked control is drawn grey, with a lock icon. You cannot move or size it with the mouse or the keys, and the commands that arrange controls skip it. You can still select, cut, delete and edit it in PROPERTIES. A locked control still counts in the bounding box that the align commands use.
 
 The lock is stored under the control's name, so it follows a rename, and it covers every member of a control array.
 
-<!-- SHOT forms-locked-outlines: a form with Show Outlines on and one CommandButton locked (grey, lock icon, grabbers drawn in the locked style) next to an unlocked one -->
+![A form with Show Outlines on, so that a dashed outline surrounds every control. The command button Command1 is selected and locked: a grey lock icon shows on it and its grabbers are grey. The other buttons are unlocked.](Images/Designer_Locked.png){:width="386" height="333"}
 
 > [!WARNING]
 > In twinBASIC BETA 1005, locking or unlocking controls does not mark the form changed. If you lock a control and close the tab, the IDE asks no question, and the lock is gone when you open the form again. The lock is saved only with the next real change. After you lock a control, make another change to the form, such as moving a control, before you save.
 
 ## Tab order
 
-Holding <kbd>Ctrl</kbd> while the designer has the focus shows a yellow circle at the top right of every control, holding the control's **TabIndex**. The circles disappear when you release the key. <kbd>Ctrl</kbd> is also the key that adds a control to the selection, so a <kbd>Ctrl</kbd>+click makes them flash.
+Holding <kbd>Ctrl</kbd> while the designer has the focus shows a yellow circle at the top right of every control whose **TabStop** is **True**, holding the control's **TabIndex**. A control that takes no focus, such as a **Label** or a **Frame**, has no circle, and neither has a control on a CustomControls form. The circles disappear when you release the key. <kbd>Ctrl</kbd> is also the key that adds a control to the selection, so a <kbd>Ctrl</kbd>+click makes them flash.
 
 There is no tab-order dialog and no tool that sets the order by clicking. You set **TabIndex** as a property in [PROPERTIES](Properties). A new control gets the highest **TabIndex** plus one.
 
-<!-- SHOT forms-tab-index: form with five controls while Ctrl is held, the yellow TabIndex circles visible on each control -->
+![A form while Ctrl is held. Yellow circles at the top right of the text boxes, the check box and the command buttons hold their TabIndex values, 0, 2, 3, 5, 6 and 7.](Images/Designer_TabIndex.png){:width="386" height="333"}
 
 ## Save, undo and history
 

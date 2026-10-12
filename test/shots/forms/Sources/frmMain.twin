@@ -1,0 +1,25 @@
+[Description("")]
+[FormDesignerId("F0A3F101-3B2E-4D69-8A14-7E91C2D4C615")]
+[PredeclaredId]
+Class frmMain
+
+    Sub New()
+    End Sub
+
+    Private Sub Command1_Click()
+        Text1.Text = "Clicked"
+    End Sub
+
+    Private Sub Text1_Change()
+        Label1.Caption = Text1.Text
+    End Sub
+
+    Private Sub Command2_Click(Index As Integer)
+        Text2.Text = "Command2(" & Index & ")"
+    End Sub
+
+    Private Sub Exit_Click()
+        Unload Me
+    End Sub
+
+End Class

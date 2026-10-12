@@ -22,9 +22,9 @@ The **PROPERTIES** pane shows the properties of the form or the control that is 
 
 Each open designer has a property sheet of its own, and the pane shows the one of the active designer. The pane is empty, as in the picture, while a code tab is active or no project is open. With a designer active and nothing selected, the pane shows the form's own properties.
 
-<!-- SHOT forms-properties-control: PROPERTIES with Command1 selected in the frmMain fixture: the object drop-down at the top, the PROPERTIES and EVENTS tabs, a few category headers, and, with the Left box focused, the description line at the foot; labels with arrows for each part -->
+![The PROPERTIES pane with Command1 selected. Under its title bar are the PROPERTIES and EVENTS tabs, then the object drop-down showing Command1 and CommandButton, then the list of properties under the category headers DESIGN, APPEARANCE and DRAWING. Labels with arrows on the left name the tabs, the drop-down and a category header.](Images/Properties_Control.png){:width="573" height="520"}
 
-From the top, the pane holds the object drop-down, the **PROPERTIES** and **EVENTS** tabs, the list of properties, and a description line at the foot. The magnifier in the title bar searches the list.
+From the top, the pane holds the **PROPERTIES** and **EVENTS** tabs, the object drop-down and the list of properties. The magnifier in the title bar searches the list.
 
 ## Choose what to edit
 
@@ -79,7 +79,7 @@ A colour property has a swatch. A click on the swatch, or a double-click on the 
 
 The text box beside the swatch holds the colour as `&H` and hexadecimal digits followed by `(BGR)`: blue, green and red, as Windows colours are. A system colour shows in the form `&H8000000F`. A value of -1 shows as `(not set)` for a property that allows it. The colour properties of the CustomControls controls hold alpha too, and their text reads `(ABGR)`.
 
-<!-- SHOT forms-colour-picker: the BackColor row of Command1 with its swatch and the &H text box, the colour picker open over it with its confirm and cancel buttons and the recent colours -->
+![The PROPERTIES pane of Command1 with the colour picker open below its BackColor row, whose swatch and text box read &H8000000F (BGR). The picker has a grid of colour swatches with a row of recent colours under it, a colour field with a hue bar, and Cancel and Choose buttons.](Images/Properties_ColourPicker.png){:width="589" height="520"}
 
 ### The right-click menu of a value
 
@@ -91,7 +91,7 @@ Right-click a value to open a menu with:
 
 There is no item that resets a property to its default, and nothing marks a property that still has its default.
 
-<!-- SHOT forms-system-colours: the right-click menu of the BackColor value with Copy, Paste, Copy To... and the SYSTEM COLORS submenu open to the right -->
+![The PROPERTIES pane of Command1 with the right-click menu of the BackColor value open: Copy, a greyed Paste, Copy '-2147483633' To... and SYSTEM COLORS, whose submenu lists the system colour constants from vbScrollBars to vbMenuBarFlat.](Images/Properties_SystemColours.png){:width="693" height="757"}
 
 ### What an edit also changes
 
@@ -105,17 +105,17 @@ Some properties change others when you set them:
 - A **Windowless** user control cannot also be a container. The IDE says *ERROR: A Windowless control cannot also be a container*.
 - A **FramesCount** smaller than the number of frames present is refused.
 
-## The description line
+## Descriptions
 
-The line at the foot shows a short description of the property, with an information icon, while the property's editor has the focus. It is empty when the focus is elsewhere. Pointing at a name or a value shows the same text as a tooltip. The compiler supplies the text for some properties only. For example, with **Left** focused, the line reads *Adjusts the left position of this control, in pixels, relative to the container*. **Top**, **Width**, **Height**, **Enabled**, **ToolTipText** and **TabIndex** have one too. **Caption**, **Style**, **BackColor** and **Index** have none.
+Pointing at a property's value shows a short description of the property as a tooltip. The compiler supplies the text for some properties only. For example, the description of **Left** reads *Adjusts the left position of this control, in pixels, relative to the container*. **Top**, **Width**, **Height**, **Enabled**, **ToolTipText** and **TabIndex** have one too. **Caption**, **Style**, **BackColor** and **Index** have none.
 
 ## Events
 
 The **EVENTS** tab lists the events of a control that you can handle. It works with exactly one control selected. With two controls or the form selected, the tab is empty.
 
-Each row is an event. The value reads `Command1_Click() ...` when the code has a handler for it, and `...` when it has none. Click the value, click the **...**, or double-click the name, and the code editor opens the handler. If the handler does not exist, the editor inserts an empty one with the caret in its body, and the tab for the `.twin` file is marked changed. For a member of a control array, the handler takes an `Index As Integer` argument. The same handlers open when you [double-click a control](Controls#open-an-event-handler).
+Each row is an event. The value reads `Command1_Click() ...` when the code has a handler for it, and is empty when it has none. Each row has a **...** button. Click the value, click the **...**, or double-click the name, and the code editor opens the handler. If the handler does not exist, the editor inserts an empty one with the caret in its body, and the tab for the `.twin` file is marked changed. For a member of a control array, the handler takes an `Index As Integer` argument. The same handlers open when you [double-click a control](Controls#open-an-event-handler).
 
-<!-- SHOT forms-events-tab: the EVENTS tab of Command1 with one event that has a handler (Click) and the rest without -->
+![The EVENTS tab of PROPERTIES for Command1, listing its events from Click to OLEStartDrag, each with a ... button. The Click row's value reads Command1_Click() ..., and the other rows' values are empty.](Images/Properties_Events.png){:width="360" height="520"}
 
 ## Units of position and size
 

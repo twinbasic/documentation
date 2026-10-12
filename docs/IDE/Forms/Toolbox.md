@@ -34,7 +34,7 @@ Each tool is an icon. A tool whose control runs in a separate process shows a sm
 
 By default the Toolbox shows icons only. The **...** button in the title bar opens a menu with one item, **Show Control Names**, which is ticked while the names are shown. Choosing it saves the IDE option **IDE: Show toolbox icons only** at once. See [IDE Options](../Customising/IDE-Options#form-designer-and-toolbox).
 
-<!-- SHOT forms-toolbox-form: the Toolbox of a Windows form docked, with control names shown, the standard group and a COMMON CONTROLS group with its title bar, in a project that refers to WinNativeCommonCtls -->
+![The docked Toolbox of a Windows form with control names shown, scrolled to its end. The first group, without a title bar, ends with ListBox to MultiFrame; under it the COMMON CONTROLS group lists DTPicker, ImageList, ListView, MonthView, ProgressBar, Slider, TreeView and UpDown, and More components ends the list.](Images/Toolbox_Form.png){:width="216" height="791"}
 
 ## Use a tool
 
@@ -50,7 +50,7 @@ The magnifier in the title bar opens a search box under it. Typing a printable c
 
 <kbd>Esc</kbd>, the close button of the box, or an empty box ends the search and shows the whole list.
 
-<!-- SHOT forms-toolbox-search: the Toolbox with the search box open under the title bar holding "Command, Text" and the filtered list, and the ... menu open on its Show Control Names item -->
+![The Toolbox with its search box holding Command, Text, beside three tool icons, the pointer, a text box and a command button, and More components below them. The menu of the ... button is open at the right, holding Show Control Names.](Images/Toolbox_Search.png){:width="377" height="129"}
 
 > [!NOTE]
 > In twinBASIC BETA 1005, a **floating** Toolbox lists every tool when a report is open, 24 controls and **More components**, where the docked Toolbox lists seven. A tool that a report does not allow is refused when you use it, so nothing is lost. Dock the Toolbox, or choose only the seven tools that a report allows.

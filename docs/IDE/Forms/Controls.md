@@ -44,7 +44,7 @@ Adding a **QRCode** control shows a message that the control is licensed under t
 - A band that selects nothing selects the form.
 - <kbd>Shift</kbd> pressed on the background while a control is selected starts no band.
 
-<!-- SHOT forms-rubber-band: frmMain fixture with a selection band in progress over Label1 and Text1 -->
+![A form in the designer while a band is dragged on it: a dashed rectangle runs from the empty part of the form at the right across Label1 and into the right half of Text1.](Images/Controls_RubberBand.png){:width="386" height="333"}
 
 <kbd>Ctrl</kbd>+<kbd>A</kbd> selects every control on the form, including those inside containers. It does not select the form. The right-click menu has **Select All** too.
 
@@ -52,7 +52,7 @@ Adding a **QRCode** control shows a message that the control is licensed under t
 
 The object drop-down at the top of [PROPERTIES](Properties) lists the form and every control, and choosing one selects it. It reaches a control that is hidden, outside the visible part of the form or covered by another. Menu items that are not visible are selected in the [menu editor](Menu-Editor).
 
-<!-- SHOT forms-multi-select: three controls selected with multi-coloured grabbers, each control's grabbers in a different colour -->
+![Three controls selected on a form: Command1 with blue grabbers, Text1 with green ones and Check1 with orange ones.](Images/Controls_MultiSelect.png){:width="386" height="333"}
 
 ## Move a control
 
@@ -108,7 +108,7 @@ A container is a control that holds other controls: a **Frame**, a **PictureBox*
 
 While a tool is selected, moving the pointer over a container outlines the container in red. The next control goes inside it. Hold <kbd>Ctrl</kbd> while you click to draw the control on the form instead.
 
-<!-- SHOT forms-container-outline: frmMain fixture with the Frame1 container outlined in red while the OptionButton tool is selected and the pointer is inside the frame -->
+![A form in the designer with a tool selected and the pointer inside Frame1: a red outline surrounds the frame.](Images/Controls_Container.png){:width="386" height="333"}
 
 Moving a container moves its controls, and deleting it deletes them. A paste with a container selected goes inside it, and <kbd>Esc</kbd> on a control inside selects the container. **Center In Container** needs all selected controls to have the same parent. Otherwise it moves nothing and shows the notification *Selected controls are inside different containers*.
 
@@ -159,7 +159,7 @@ For example, a double-click on a **Label** inserts `Label1_Click`, on a **TextBo
 
 A right-click opens a menu on the form, on a control, or on a menu item in the [menu editor](Menu-Editor). Its entries show the keys of the commands.
 
-<!-- SHOT forms-context-menu-control: right-click menu on a selected CommandButton with the Align submenu open to the right -->
+![The right-click menu of two selected command buttons, open over the form. It lists Cut, Copy, the greyed Paste items and the two Duplicate items; then Align, Make Same Size, Horizontal Spacing and Vertical Spacing; the two Center In Container items; Bring To Front and Send To Back; Align to grid; and Lock Controls. The Align submenu is open to the right with Left, Center (Horizontal), Right, Top, Center (Vertical), Bottom and To Grid, and the keys of four of them.](Images/Controls_ContextMenu.png){:width="522" height="563"}
 
 **On the form**, the menu has **View Code**, **Paste**, **Paste (same name, control array)** (not on a CustomControls form), **Select All**, and **Lock all controls** and **Unlock all controls**. Only the one of the two lock items that applies shows: with every control locked, **Unlock all controls**, and with some locked, **Lock all controls**.
 
@@ -170,7 +170,7 @@ A right-click opens a menu on the form, on a control, or on a menu item in the [
 - **Center In Container (Horizontally)** and **Center In Container (Vertically)**.
 - **Bring To Front** and **Send To Back**.
 - **Align to grid**, which snaps even one control to the grid.
-- **Lock controls** and **Unlock controls**.
+- **Lock Controls** and **Unlock controls**.
 - **ActiveX Properties...**, when a selected control is an ActiveX control, and, when exactly one selected control offers property pages, one item for each page. The label **ActiveX Properties...** is in English whatever the IDE language. The page names come from the control.
 
 ## Keys

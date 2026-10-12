@@ -76,7 +76,7 @@ A command changes nothing when the controls already have the same size.
 
 ## Space the controls evenly
 
-![The Format menu with Horizontal Spacing highlighted and its submenu open to the right. Make Equal is greyed out; Increase, Decrease and Remove are available.](../Menu/Images/Menu_Format_HorizontalSpacing.png){:width="345" height="281"}
+![The Format menu with Horizontal Spacing highlighted and its submenu open to the right. Make Equal, Increase, Decrease and Remove are all available.](../Menu/Images/Menu_Format_HorizontalSpacing.png){:width="345" height="281"}
 
 **Horizontal Spacing** works on the controls sorted by **Left**. **Vertical Spacing** does the same by **Top**, with the grid height and the bottom edge. In both, the first control stays where it is.
 
@@ -97,8 +97,6 @@ For example, take three controls 100 pixels wide with **Left** 10, 140 and 250, 
 | **Increase** | 150 and 270 |
 | **Decrease** | 130 and 230 |
 | **Remove** | 110 and 210 |
-
-<!-- SHOT forms-spacing-three: Format menu with three controls selected and Horizontal Spacing open, so Make Equal is available -->
 
 The spacing commands compare positions that count from each control's own parent. Controls in different containers therefore give odd results. For example, **Remove** on a text box in a frame and a button on the form places the button at the text box's right edge as counted from the frame's corner, not from the form's.
 

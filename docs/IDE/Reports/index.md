@@ -53,7 +53,9 @@ The designer lists no page-size control. Set the page by typing **ReportWidth** 
 - **LEFT MARGIN** sets the left margin. The right edge of the report stays where it is.
 - **RIGHT MARGIN** sets the right margin. Dragging it to the right makes the margin smaller and **ReportWidth** larger by the same distance.
 
-<!-- SHOT forms-report-controls: a report with a Label in Report Header and Line and Label controls in Report Detail, the Report Detail bar selected, and the PAGE WIDTH, LEFT MARGIN and RIGHT MARGIN bars visible with their labels -->
+Each of the three bars shows only while the pointer is over it.
+
+![The report designer with a ruler along the top and the five section bars, Report Header to Report Footer. Report Header holds a label reading Sales by region, and Report Detail a short line and a label reading Region. The Report Detail bar is selected and drawn darker than the others. The PAGE WIDTH bar shows at the right as a blue vertical line with its name beside it.](Images/Report_Controls.png){:width="947" height="450"}
 
 ## Controls in a report
 
