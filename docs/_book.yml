@@ -627,6 +627,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: TBMANLIB_Diagnostic Package
+        subtitle: A diagnostic report of the computer and its processes, as text, JSON or HTML
+        landing_page: /tB/Packages/Contributed/TBMANLIB_Diagnostic/
+        page: /tB/Packages/Contributed/TBMANLIB_Diagnostic/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TBMANLIB_Xml Package
         subtitle: XML documents parsed, edited and written, in twinBASIC code
         landing_page: /tB/Packages/Contributed/TBMANLIB_Xml/
