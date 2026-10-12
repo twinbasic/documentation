@@ -592,6 +592,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: ArrayListLib Package
+        subtitle: A list class in place of the ArrayList of .NET
+        landing_page: /tB/Packages/Contributed/ArrayListLib/
+        page: /tB/Packages/Contributed/ArrayListLib/
+        landing_is_target: true
+        outline_closed: true
+
       - title: BigNumberLib Package
         subtitle: Arbitrary-precision signed integer arithmetic
         landing_page: /tB/Packages/Contributed/BigNumberLib/
