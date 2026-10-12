@@ -204,7 +204,8 @@ From the survey of BETA 1005. Each chapter's fact sheet confirms the items in it
   Export…), the object view, search, and the empty headings for each Add item.
 - **Packages:** the Available Packages tab, Import from file, the link and overwrite prompts, and
   the "package needed" prompts for WinNativeForms and CustomControls.
-- **Status bar:** the error, warning, hint and info counters, and the memory figure.
+- **Status bar:** the memory figure, Ln/Col, LLVM progress and the Personal edition badge. The
+  error, warning, hint and info counters are in the DIAGNOSTICS panel's header, not here.
 - **Themes:** custom `.theme` files in a `themes` folder.
 - **Webpage:** mobile mode, and back, forward and reload.
 - **Troubleshooting:** the DevTools command (`tbIdeDevTools_Show`, which has no menu item).
