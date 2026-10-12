@@ -558,6 +558,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: tsPwGen Package
+        subtitle: Passwords, PINs and passphrases, with their entropy known before they are generated
+        landing_page: /tB/Packages/Contributed/tsPwGen/
+        page: /tB/Packages/Contributed/tsPwGen/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TwinTimerPackage Package
         subtitle: A Win32 timer class that reports the elapsed time
         landing_page: /tB/Packages/Contributed/TwinTimerPackage/
