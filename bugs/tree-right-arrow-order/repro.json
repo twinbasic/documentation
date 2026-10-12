@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["Right Arrow on an open folder selects its first entry in the compiler's order, not the first row shown"],
+  "steps": "1. In Project Explorer's file view, open Sources, whose first row shown is the folder Helpers.\n2. Click Sources/Startup.twin and press Left Arrow: Sources is selected.\n3. Press Right Arrow: Sources/frmMain.twin is selected, not Helpers."
+}

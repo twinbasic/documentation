@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["the object view's Rename and Delete commands only show an alert naming the command"],
+  "steps": "1. Open a project and press Ctrl+R for the object view; select an object.\n2. Run the commands tbProjectExplorer_ObjectList_RenameSelected and tbProjectExplorer_ObjectList_DeleteSelected (bound to a key, since the menu that holds them never opens).\n3. Each shows only an alert holding the command's name; nothing is renamed or deleted."
+}

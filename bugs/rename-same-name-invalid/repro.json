@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["F2 and Enter with the name unchanged, or changed only in case, is refused as an invalid name"],
+  "steps": "1. In Project Explorer, select Sources/Helpers/Thing2.twin (a file not open in a tab) and press F2, then Enter with the name unchanged: the notification Cannot rename: the new name entered is invalid.\n2. F2 again, type thing2.twin, Enter: the same notification; the file keeps the name Thing2.twin.\nControl: F2 and a new name renames a file."
+}

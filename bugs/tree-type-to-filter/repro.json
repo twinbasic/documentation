@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["typing letters in the file view does not filter the tree"],
+  "steps": "1. In Project Explorer's file view, click a file that is not open in a tab.\n2. Type ti: the tree shows the same rows, and no filter text appears.\nThe page receives keydown and keyup for each letter, but no keypress, which the tree's filter code listens for."
+}

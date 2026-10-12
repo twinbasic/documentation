@@ -1,0 +1,9 @@
+Class Thing
+
+    Public Value As Long = 21
+
+    Public Sub Bump()
+        Value = Value + 1
+    End Sub
+
+End Class

@@ -1,0 +1,29 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "ProjectsImport",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard EXE",
+	"project.description": "test/ide/projects.test.mjs packs it into the lane's work folder and imports it into probes/projects with Add > Import...: its Sources/Startup.twin has the path of the open project's.",
+	"project.exportPathIsV2": true,
+	"project.id": "{F0A3B7A1-0000-4000-9000-F0A3B7A100C7}",
+	"project.name": "ProjectsImport",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"versionMajor": 2,
+			"versionMinor": 0
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.startupObject": "Sub Main",
+	"project.warnings": {
+		"errors": [],
+		"ignored": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

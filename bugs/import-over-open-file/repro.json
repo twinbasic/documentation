@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects-import-crash",
+  "tests": [
+    "Add > Import... of a file over one that is not open crashes the compiler too",
+    "Add > Import... of a file over one open in a tab crashes the compiler, leaves the old text in the tab, and the next save writes it back over the import"
+  ],
+  "steps": "1. Open Sources/Helpers/Util.twin in a tab; do not edit it.\n2. Right-click it > Add > Import... and pick a file named Util.twin with other text.\n3. Nothing is asked; the Debug Console prints NATIVE EXCEPTION: ACCESS_VIOLATION {no-basic-code} and restarting from FILE.\n4. The project file holds the imported text; the tab and the IDE's copy keep the old text.\n5. Type a line in the tab and press Ctrl+S: the old text with the line is saved over the import.\nThe same import over a file that is not open crashes the compiler the same way, and then the file is replaced in the IDE and on disk (the control)."
+}

@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["Down Arrow on the last row selects the hidden Settings node, and Enter there raises a page TypeError"],
+  "steps": "1. In Project Explorer's file view, click the last row.\n2. Press Down Arrow: the selection is the project's Settings node, which has no row; nothing is highlighted.\n3. Press Enter: the page raises TypeError: Cannot read properties of undefined (reading 'ondblclick'), and no tab opens.\nControl: Enter on a file in the file view opens it in a tab."
+}

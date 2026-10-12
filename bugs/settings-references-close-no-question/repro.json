@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": [
+    "after a change to the references only, the title bar's X closes Project Settings without asking, and the change is lost"
+  ],
+  "steps": "1. Click a file in Project Explorer and press Ctrl+T.\n2. Clear the tick of Microsoft Scripting Runtime: Apply Changes is enabled.\n3. Click the title bar's X: the dialog closes with no question, and the project still references Microsoft Scripting Runtime.\nControl: after a change to the description, the title bar's X asks Close without saving?"
+}

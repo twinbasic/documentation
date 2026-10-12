@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects-loss",
+  "tests": ["Add WinNativeForms package, in the Package needed box, saves the project unasked"],
+  "steps": "1. Open a saved project that does not reference WinNativeForms.\n2. Right-click Sources > Add > Add Windows Form: the box Package needed: WinNativeForms, whose text speaks of a compiler restart and not of a save.\n3. Press Add WinNativeForms package: the console prints the [DONE] line of a save and restarting from FILE, and the Settings in the project file references WinNativeForms."
+}

@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["in the object view, a right click on an object, a form or a group opens no menu"],
+  "steps": "1. Open a project in Project Explorer and press Ctrl+R for the object view.\n2. Right-click the module Startup, the form frmMain or the group Modules: no menu opens.\nControl: a right click on a row of the file view opens its menu."
+}

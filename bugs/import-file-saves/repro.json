@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects-loss",
+  "tests": ["Add > Import... of a file imports it and saves the project, with another file's unsaved edit"],
+  "steps": "1. Open Sources/Helpers/Thing.twin and type a line; do not save.\n2. Right-click Sources/Helpers/Util.twin > Add > Import... and pick any file.\n3. The file is added to Helpers, the console prints the [DONE] line of a save, and the project file holds Thing.twin with the typed line. Nothing but the file dialog asked."
+}

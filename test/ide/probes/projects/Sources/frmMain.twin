@@ -1,0 +1,13 @@
+[Description("")]
+[FormDesignerId("D3B0F001-3B2E-4D69-8A14-7E91C2D4C615")]
+[PredeclaredId]
+Class frmMain
+
+    Sub New()
+    End Sub
+
+    Private Sub Command1_Click()
+        Text1.Text = "clicked"
+    End Sub
+
+End Class

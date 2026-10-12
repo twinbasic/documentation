@@ -1,0 +1,6 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": ["with nothing selected, Delete asks to delete the selected items, and Delete deletes nothing"],
+  "steps": "1. In Project Explorer's file view, click a file, then press Esc: nothing is selected.\n2. Press Delete: the box asks Are you sure you want to delete the selected items?\n3. Choose Delete: nothing is deleted."
+}

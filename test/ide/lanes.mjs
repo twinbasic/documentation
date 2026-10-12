@@ -40,4 +40,7 @@ export default [
   { file: "debugging.test.mjs" },
   { file: "forms.test.mjs" },
   { file: "vb6-import.test.mjs" },
+  { file: "projects.test.mjs" },
+  { file: "projects-loss.test.mjs" },
+  { file: "projects-import-crash.test.mjs" },
 ];

@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:projects",
+  "tests": [
+    "Add Other File on Packages, and Paste on Packages, each say they cannot create files inside the root resources folder"
+  ],
+  "steps": "1. In Project Explorer, right-click Packages > Add > Add Other File, and press Enter on the name MyFile: the notification cannot create files inside the root resources folder.\n2. Copy Resources/CUSTOM/notes.txt, click Packages and press Ctrl+V: the same notification. Nothing is added to Packages.\nControl: Add > Add Other File on a folder of Resources creates the file there."
+}
