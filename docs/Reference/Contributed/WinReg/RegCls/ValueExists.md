@@ -12,7 +12,7 @@ Returns **True** if a named value exists under the specified registry key.
 Syntax: *object*.**ValueExists**( *RootKey*, *KeyPath*, *ValueName* )
 
 *RootKey*
-: *required* A **RegKeyspace** value identifying the root hive to search, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
+: *required* A [**RegKeyspace**](../RegKeyspace) value identifying the root hive to search, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
 
 *KeyPath*
 : *required* A **String** giving the path of the key beneath *RootKey*, using backslash as the separator---for example, `"Software\MyApp"`.

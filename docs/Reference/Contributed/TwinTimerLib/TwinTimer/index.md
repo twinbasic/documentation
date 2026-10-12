@@ -1,7 +1,7 @@
 ---
 title: TwinTimer
-parent: TwinTimerPackage Package
-permalink: /tB/Packages/Contributed/TwinTimerPackage/TwinTimer/
+parent: TwinTimerLib Package
+permalink: /tB/Packages/Contributed/TwinTimerLib/TwinTimer/
 has_toc: false
 ---
 
@@ -44,7 +44,7 @@ Setting **Enabled** to **True** while **Interval** is `0` does not start the tim
 Syntax: *object*.**Enabled** [ = *value* ]
 
 *value*
-: A **Long**; the property is read as a **Boolean**. Zero (**False**) suppresses events; any other value, such as **True**, allows them.
+: A **Boolean**. **False** suppresses events; **True** allows them.
 
 > [!NOTE]
 > **Enabled** defaults to **True** at construction. A freshly constructed **TwinTimer** with **Interval** = `0` (the initial default) does not fire until **Interval** is set to a positive value.
@@ -111,4 +111,4 @@ End Sub
 
 ## See Also
 
-- [TwinTimerPackage](../) package -- overview and installation
+- [TwinTimerLib](../) package -- overview and installation

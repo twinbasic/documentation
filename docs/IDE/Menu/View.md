@@ -49,7 +49,7 @@ The last seventeen items show a panel. A panel that is in no layout in use comes
 : The code editor. See [Writing code](../../Code/).
 
 **PROJECT EXPLORER**
-: The files and objects of the project. See [Project Explorer](../../Project/Explorer).
+: The files and objects of the project. See [Project Explorer](../../Projects/Project-Explorer).
 
 **OPEN EDITORS**, **HISTORY** and **OUTLINE**
 : The open files, the places where you edited, and the symbols of the current file. See [Navigating](../../Code/Navigating).

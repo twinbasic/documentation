@@ -50,6 +50,6 @@ Stores the current tick count. Calling **Start** again starts a new measurement.
 
 - [TBMAN](TBMAN) module -- the shared instance **TBMAN.TimerUse**
 - [cLogs](cLogs) class -- writes log lines
-- [TwinTimerPackage](../TwinTimerPackage/) package -- a Win32 timer class that reports the elapsed time
+- [TwinTimerLib](../TwinTimerLib/) package -- a Win32 timer class that reports the elapsed time
 - [Timer](../../../Modules/DateTime/Timer) function -- the seconds since midnight
 - [TBMANLIB](.) package -- overview

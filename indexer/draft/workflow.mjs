@@ -133,7 +133,7 @@ function listsPrompt(pkg) {
       (landing.permalink ? `, \`permalink: ${landing.permalink}\`` : ', a permalink of the form the landing pages beside it use') +
       `, \`has_toc: false\` and \`indexed_from: ${pkg.version}\`; ` +
       (landing.author
-        ? `under the H1, the line \`**Author:** ${landing.author}\`, or the author the package's sources name if they name someone else, followed by \`**On GitHub:** [owner/repo](url)\` when the sources name a repository that holds the package (WIP.md, the contributed packages); `
+        ? `under the H1, the line \`**Author:** ${landing.author}. **Version:** ${pkg.version}\`, with the author the package's sources name in place of ${landing.author} if they name someone else, followed by \`. **On GitHub:** [owner/repo](url)\` when the sources name a repository that holds the package (WIP.md, the contributed packages); `
         : '') +
       `a short description of the package from its sources (the \`source\` paths in the plan) and, when the sources name its GitHub repository, its README (\`gh api repos/<owner>/<repo>/readme --jq .content\` gives it in base64; use gh only to read): what the package adds over the object it replaces and what it does not support, where the README says so; then the lists, with no \`* TOC\` list when the page has only one or two sections. Model it on a landing page of another section in the same folder. List as a doubt each README claim the page states that no sample on it shows.\n\n`
     : ''

@@ -8,7 +8,7 @@ indexed_from: 1.0.0.1
 
 # TBMANLIB_Dialog Package
 
-**Author:** woeoio
+**Author:** woeoio. **Version:** 1.0.0.1
 
 A twinBASIC package with one class, **cDialog**, that shows the Windows Open, Save As and Browse For Folder dialogs, builds the file-type filters of the first two, splits a file path into folder, name and extension, and opens a file in the program that Windows associates with it. The property names follow VB6's **CommonDialog** control. The **CommonDialog** class of the [VBComDlg](../VBComDlg/CommonDialog) package is the fuller alternative, with flags, a filter index, cancel errors and the Color, Font and Print dialogs.
 

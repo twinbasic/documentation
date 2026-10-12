@@ -13,7 +13,7 @@ permalink: /tB/Packages/Contributed/Fmt/
 # Fmt Package
 {: .no_toc }
 
-**Author:** FullValueRider
+**Author:** FullValueRider. **Version:** 1.0.0.0
 
 The **Fmt** contributed package provides [**StringFormat**](PublicEntryPoints/StringFormat), a function that builds a string from a format string and a list of values, in the style of C#'s **String.Format**. A format string holds text, format items such as `{0}`, `{1,8}` or `{2:F2}`, and C-style escape sequences such as `\n` and `\q`. Each format item is replaced by the value at its index, formatted and padded as the item says.
 

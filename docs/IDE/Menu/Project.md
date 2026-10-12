@@ -10,21 +10,32 @@ redirect_from:
 
 # Project Menu
 
-![The Project menu open with every command greyed out: Add, which carries a submenu arrow, References with CTRL+T, Project Settings, Open Project Folder and Open Build Output Folder.](Images/Menu_Project.png){:width="200" height="169"}
+The Project menu holds the commands that add to the project, change its references and settings, and open its folders. [Projects and files](../../Projects/) explains them.
+
+![The Project menu open with every command greyed out, because no project is open. Add has a submenu arrow, and References shows its key.](Images/Menu_Project.png){:width="200" height="169"}
+
+Every command needs an open project, and is greyed out until one is.
 
 ## Add
 
-**Add** is the same as Right Click Add on the [Project Explorer](../../Project/Explorer)
+**Add**
+: Opens the submenu of things to add: a folder, forms and other designers, modules and classes, other files, imports and three resources. It lists the same items as the **Add** entry of the right-click menu of the Project Explorer. See [Adding files](../../Projects/Adding-Files).
 
-![The Project Explorer context menu with Add highlighted and its submenu opened out to the left. The submenu lists Add Folder; five Windows item types from Form through MDI Form, UserControl and PropertyPage to Report; Add CustomControls Form; the Unicode-capable .TWIN module and class; the .BAS module and .CLS class; Add Other File; Import; and three Add Resource entries for a Visual Styles Manifest, a String Table and a MESSAGETABLE. On the parent menu, Cut, Copy, Paste, View As JSON and View As Markdown Preview are greyed out.](../Images/RightClick-Add.png){:width="510" height="492"}
-
-## References
+## References and settings
 {: index_also="add reference" }
 
-See [Project Settings](../../Project-Settings) filtered by "project.references".
+**References...** (<kbd>Ctrl</kbd>+<kbd>T</kbd>)
+: Opens [Project Settings](../../Project-Settings) with the filter `project.references`, so that only the **Library References** section shows. See [References and packages](../../Projects/References-and-Packages).
 
-![The Project Settings dialog with project.references in its filter box, showing the Library References section on its Enabled Libraries tab. Four ticked rows are listed in priority order against Library Symbol and Version columns: the twinBASIC VBA and VBRUN compatibility packages, OLE Automation as stdole, and the IDE Extensibility package as tbIDE.](../Images/ProjectSettings_LibraryReferences.png){:width="1102" height="774"}
+**Project Settings...**
+: Opens the whole [Project Settings](../../Project-Settings) dialog. It has no key.
 
-## Project Settings
+## Folders
 
-See [Project Settings](../../Project-Settings).
+**Open Project Folder...**
+: Opens the folder of the project's `.twinproj` file in Windows Explorer. For a project that has no file yet, it shows the notification **Project is not yet saved.  Please save the project first.** It has no key.
+
+**Open Build Output Folder...**
+: Opens the folder of the file that the [Build Output Path](../../Project-Settings#build-output-path) names. It does not create the folder, and it gives the same notification when the project has no file or no build output path. It has no key.
+
+See [Open a folder](../../Projects/Saving-and-Exporting#open-a-folder).

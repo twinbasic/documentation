@@ -9,7 +9,7 @@ permalink: /tB/Packages/Contributed/TBMANLIB_ConsoleComponents/
 # TBMANLIB_ConsoleComponents Package
 {: .no_toc }
 
-**Author:** woeoio.
+**Author:** woeoio. **Version:** 0.0.0.0
 
 The **TBMANLIB_ConsoleComponents** contributed package is a set of text-interface components for console programs. It has progress bars ([**cProgressBar**](cProgressBar)), small line charts ([**cSparkline**](cSparkline)), bar charts ([**cVBar**](cVBar)), a table ([**cDataGrid**](cDataGrid)), bordered panels ([**cConsolePanel**](cConsolePanel)), a manager that places panels in a grid, a sidebar or a header and footer ([**cConsoleLayout**](cConsoleLayout)), colour themes ([**cConsoleTheme**](cConsoleTheme)), and helpers for colours and positions ([**cColorHelper**, **cLayoutHelper**](Helpers)). The components draw into the screen buffer of the full-screen mode of [**cConsole**](../TBMANLIB_ConsoleCore/cConsole), in the package [TBMANLIB_ConsoleCore](../TBMANLIB_ConsoleCore/); the program then writes the buffer to the console with [**Refresh**](../TBMANLIB_ConsoleCore/cConsole#refresh). This section documents version 0.0.0.0, published on TWINSERV on 1 February 2026 with no licence declared. The package describes itself as "TBMAN: Text UI (TUI) component library base on ConsoleCore".
 

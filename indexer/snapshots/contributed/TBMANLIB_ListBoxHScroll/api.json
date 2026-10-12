@@ -2,7 +2,7 @@
   "format": 3,
   "package": "TBMANLIB_ListBoxHScroll",
   "project": "TBMANLIB_ListBoxHScroll",
-  "version": "1.0.0.0",
+  "version": "1.0.0.1",
   "types": [
     {
       "name": "cListboxHScroll",

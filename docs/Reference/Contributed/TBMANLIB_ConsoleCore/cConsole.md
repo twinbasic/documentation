@@ -66,7 +66,7 @@ The class checks the result of two functions only. [**EnableVirtualTerminal**](#
 | [**ReadLine**](#readline) | An empty string, at once. |
 | [**KeyAvailable**](#keyavailable), [**PeekEvent**](#peekevent) | **False**, and an empty [**ConsoleKeyInfo**](Types#consolekeyinfo). |
 | [**ReadKeyTimeout**](#readkeytimeout) | Returns the empty structure when the time is over. |
-| [**ReadKey**](#readkey), [**ReadPassword**](#readpassword) | Do not return; see [Known problems](#known-problems-in-version-0000). |
+| [**ReadKey**](#readkey), [**ReadPassword**](#readpassword) | Do not return; see [Known problems](#known-problems-in-version-1001). |
 | [**EnterFullScreenMode**](#enterfullscreenmode) | Creates the 80 by 25 [**cConsoleBuffer**](cConsoleBuffer); [**Refresh**](#refresh) writes nothing. |
 | [**IsKeyPressed**](#iskeypressed) | Works, since it does not use the console. |
 
@@ -80,10 +80,10 @@ A program that must work with redirected output writes with `WriteFile` in that 
 
 With the input read from the null device or from a file, [**ReadLine**](#readline) returns an empty string at once and [**KeyAvailable**](#keyavailable) is **False**. [**ReadKey**](#readkey) does not return.
 
-## Known problems in version 0.0.0.0
+## Known problems in version 1.0.0.1
 
 > [!WARNING]
-> In version 0.0.0.0, [**ReadKey**](#readkey) and [**ReadPassword**](#readpassword) never return when the program has no console input: `ReadKey` loops until `ReadConsoleInputW` delivers a key-down event, and the call fails at once when the program has no console or its input is not a console. A comparison of a key with a member of the [**ConsoleKey**](Types#consolekey) enumeration is true for the wrong key and raises no error: [**KeyCode**](Types#consolekeyinfo) holds Windows virtual-key codes, but the arrow, navigation and function keys of **ConsoleKey** have other values, so `keyInfo.KeyCode = ConsoleKey.KeyUp` is false for the Up Arrow key (38) and true for the H key (72).
+> In version 1.0.0.1, [**ReadKey**](#readkey) and [**ReadPassword**](#readpassword) never return when the program has no console input: `ReadKey` loops until `ReadConsoleInputW` delivers a key-down event, and the call fails at once when the program has no console or its input is not a console. A comparison of a key with a member of the [**ConsoleKey**](Types#consolekey) enumeration is true for the wrong key and raises no error: [**KeyCode**](Types#consolekeyinfo) holds Windows virtual-key codes, but the arrow, navigation and function keys of **ConsoleKey** have other values, so `keyInfo.KeyCode = ConsoleKey.KeyUp` is false for the Up Arrow key (38) and true for the H key (72).
 
 - **KeyAvailable and the key-up events.** [**KeyAvailable**](#keyavailable) is true while the input queue holds any event, including the event for a key that was released, so a loop that tests it and then calls [**ReadKey**](#readkey) can block in **ReadKey** until the next key press.
 - **The colours of the Write members.** [**WriteColored**](#writecolored), [**WriteLineColored**](#writelinecolored) and [**WriteAtColored**](#writeatcolored) use a black background unless one is given, and put back the colours that the object tracks, which are Gray on Black until a property sets others, and not the colours that the console had.
@@ -688,7 +688,7 @@ Returns a [**ConsoleKeyInfo**](Types#consolekeyinfo) for the first key-down even
 
 While it waits, the method sets the input mode to 0 and puts the old mode back before it returns. With no mode flags the console does not echo the key, does not edit a line, and does not turn Ctrl+C into an interruption. When *intercept* is **False** the method writes **KeyChar** itself with [**WriteTo**](#writeto), even when it is the character with code 0.
 
-Calls `GetConsoleMode`, `SetConsoleMode` (twice) and `ReadConsoleInputW`. Without a console, or with the input redirected, `ReadConsoleInputW` fails at once and the method never returns; see [Known problems](#known-problems-in-version-0000).
+Calls `GetConsoleMode`, `SetConsoleMode` (twice) and `ReadConsoleInputW`. Without a console, or with the input redirected, `ReadConsoleInputW` fails at once and the method never returns; see [Known problems](#known-problems-in-version-1001).
 
 ```tb check_build
 Dim con As New cConsole

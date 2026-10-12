@@ -9,7 +9,7 @@ permalink: /tB/Packages/Contributed/OLEGuids/
 # OLEGuids Package
 {: .no_toc }
 
-**Author:** Krool. **On GitHub:** [Kr00l/VBCCR](https://github.com/Kr00l/VBCCR/tree/master/twinBASIC%20Package/OLEGuids), in the folder *twinBASIC Package/OLEGuids*.
+**Author:** Krool. **Version:** 1.0.2.0. **On GitHub:** [Kr00l/VBCCR](https://github.com/Kr00l/VBCCR/tree/master/twinBASIC%20Package/OLEGuids), in the folder *twinBASIC Package/OLEGuids*.
 
 A twinBASIC package that declares 23 OLE and COM interfaces and 10 structures in twinBASIC source, so that a 32-bit or 64-bit project can call or implement them without a type library.
 

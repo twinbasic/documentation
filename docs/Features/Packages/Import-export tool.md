@@ -130,7 +130,7 @@ stops at the first folder inside `Packages\`: it writes nothing, prints neither 
 like this, among them the **WinNativeCommonCtls** package and the *Standard EXE (plus VBCCR
 v1.8)* template. The script packs them. An export made by the IDE's **File → Export Project**
 stops the same way, because it holds the compiler packages under `Packages\`; see [Packing
-the export back into a project](../../tB/IDE/Reference/Menu/File#packing-the-export-back-into-a-project).
+the export back into a project](../../tB/IDE/Projects/Saving-and-Exporting#packing-the-export-back-into-a-project).
 
 **The script's `import` adds the folders the IDE always writes.** Every project and package the
 IDE exports has `ImportedTypeLibraries`, `Miscellaneous`, `Packages`, `Resources` and `Sources`
@@ -193,7 +193,7 @@ IDE](#keeping-a-project-in-git-from-the-ide).
 > folder of its own, as the next section does. Its export also holds the source of the
 > compiler packages, and the tB executable cannot pack that export back into a project while
 > any folder remains under its `Packages`. See
-> [Export Project](../../tB/IDE/Reference/Menu/File#export-project).
+> [Export Project](../../tB/IDE/Projects/Saving-and-Exporting#export-project).
 
 The steps, in order:
 
@@ -259,7 +259,7 @@ them too.
 > Keep *Export Path* on a folder of its own. Every export deletes everything in its folder
 > before it writes, a `.git` folder included, so never set it to the repository's top folder
 > or to the folder that holds the `.twinproj`. See
-> [Export Project](../../tB/IDE/Reference/Menu/File#export-project).
+> [Export Project](../../tB/IDE/Projects/Saving-and-Exporting#export-project).
 
 **Make the folder that holds the `.twinproj` the repository's top folder**, with `git init`
 there. Once the project has been saved and the `.gitignore` below added, it holds:
@@ -291,7 +291,7 @@ they become a copy inside the project that the compiler ignores, and every later
 writes that copy back into `src\Packages`. So after an IDE update, a repository that holds
 them keeps the package source of the IDE that first exported them, while the project
 compiles against the packages of the IDE in use. [Packing the export back into a
-project](../../tB/IDE/Reference/Menu/File#packing-the-export-back-into-a-project) has the
+project](../../tB/IDE/Projects/Saving-and-Exporting#packing-the-export-back-into-a-project) has the
 measurements.
 
 Those four are the compiler packages of a Standard EXE with the default references. Add a

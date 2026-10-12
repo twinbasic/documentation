@@ -33,6 +33,12 @@ Assigning a value outside the documented range or set of constants to a property
 * TOC
 {:toc}
 
+## Owner window
+
+The owner of a dialog is the active window of the calling thread. If that window has an MDI client window, the owner is the active MDI child, or the MDI client itself when it has no active child.
+
+When the thread has no active window --- in a program that has no form, for example --- the File Open, File Save, Color, Font, Print, Page Setup and Folder Browser dialogs have no owner and are task-modal, as a message box with the **MB_TASKMODAL** style is: while the dialog is shown, the class disables every enabled top-level window of the thread, and it enables those windows again when the dialog closes. A window that was already disabled stays disabled. The extended Print dialog needs an owner, so it then uses the desktop window, and is task-modal in the same way. The Find and Replace dialogs also need an owner, so they are given a hidden one (see [**ShowFind**](#showfind)).
+
 ## Properties
 
 ### Action
@@ -91,7 +97,7 @@ The 16 custom colors shown in the lower half of the Color dialog.
 Syntax: *object*.**CustomColors** [ = *value* ]
 
 *value*
-: A single-dimensioned array of up to 16 numeric values (Long, Integer, Byte, Double, or Single). Each element is an RGB value or OLE color. The class reads the first 16 elements and ignores the rest. An element of any other type leaves the corresponding color unchanged. Assigning a multi-dimensional array raises run-time error 5; assigning an unallocated array raises run-time error 91. Assigning `Empty` has no effect; any other value that is not an array raises run-time error 380.
+: A single-dimensioned array of up to 16 values. Each element is converted to a **Long** and then to RGB, so it is an RGB value or an OLE color, and a **String** that holds a number is accepted. The first element of the array is the first custom color, whatever the array's lower bound. The class reads the first 16 elements and ignores the rest; with fewer than 16 elements, the remaining colors are unchanged. An element that cannot be converted raises run-time error 13 (*Type mismatch*), or run-time error 94 (*Invalid use of Null*) for a **Null** element, and the elements before it have already been stored. Assigning a multi-dimensional array raises run-time error 5; assigning an unallocated array raises run-time error 91. Assigning `Empty` restores the 16 default colors; any other value that is not an array raises run-time error 380.
 
 The getter returns a **Variant** array of 16 **Long** values (index 0 to 15).
 
@@ -521,7 +527,7 @@ Opens a modeless Find dialog and returns the dialog's window handle. Returns 0 i
 
 Syntax: *object*.**ShowFind** ( ) **As LongPtr**
 
-The dialog is non-modal: it remains open while the user interacts with the application. When the user clicks **Find Next**, [**FindWhat**](#findwhat) and [**Flags**](#flags) are updated and the [**FindNext**](#findnext) event fires. When the dialog closes, the internal handle is released automatically. Call this method again to reopen the dialog. The method returns 0 while a Find or Replace dialog opened by the same **CommonDialog** object is still open.
+The dialog is non-modal: it remains open while the user interacts with the application. When the user clicks **Find Next**, [**FindWhat**](#findwhat) and [**Flags**](#flags) are updated and the [**FindNext**](#findnext) event fires. When the dialog closes, the internal handle is released automatically. Call this method again to reopen the dialog. The method returns 0 while a Find or Replace dialog opened by the same **CommonDialog** object is still open. The dialog needs an owner window: when the thread has no active window, the owner is a hidden window that the class creates for the dialog and destroys when the dialog closes.
 
 If the dialog cannot be created, the method raises **CdlBufferLengthZero** (36848) when the *Find what* buffer is invalid.
 
@@ -595,7 +601,7 @@ Displays the extended Print dialog (the `PrintDlgEx` function) and returns a **C
 
 Syntax: *object*.**ShowPrinterEx** ( ) **As CdlPDResultConstants**
 
-Returns **CdlPDResultPrint** (1) when the user clicked **Print**, **CdlPDResultApply** (2) for **Apply**, or **CdlPDResultCancel** (0) for **Cancel**. Properties are updated on non-cancel results, the same as [**ShowPrinter**](#showprinter). When the user chooses **Cancel** and [**CancelError**](#cancelerror) is **True**, error `CdlCancel` is raised. The extended dialog requires a valid owner window; when the thread has no active window, the method uses the desktop window as the owner. When `PrintDlgEx` fails with an out-of-memory, invalid-argument, invalid-pointer, invalid-handle or unspecified error, the method raises **CdlInitFailure** (28665).
+Returns **CdlPDResultPrint** (1) when the user clicked **Print**, **CdlPDResultApply** (2) for **Apply**, or **CdlPDResultCancel** (0) for **Cancel**. Properties are updated on non-cancel results, the same as [**ShowPrinter**](#showprinter). When the user chooses **Cancel** and [**CancelError**](#cancelerror) is **True**, error `CdlCancel` is raised. The extended dialog requires a valid owner window; when the thread has no active window, the method uses the desktop window as the owner, and the dialog is task-modal (see [Owner window](#owner-window)). When `PrintDlgEx` fails with an out-of-memory, invalid-argument, invalid-pointer, invalid-handle or unspecified error, the method raises **CdlInitFailure** (28665).
 
 ### ShowReplace
 {: .no_toc }
@@ -751,7 +757,7 @@ Declared for the **Replace All** button of the Replace dialog.
 Syntax: *object*\_**ReplaceAll**( )
 
 > [!NOTE]
-> In version 1.0.3.0 of the package the class never raises this event. Its test for the **Replace All** button compares the masked flags with **CdlFRFindNext** instead of **CdlFRReplaceAll**, so the comparison is never true. Clicking **Replace All** raises none of the events.
+> In version 1.0.13.0 of the package the class never raises this event. Its test for the **Replace All** button compares the masked flags with **CdlFRFindNext** instead of **CdlFRReplaceAll**, so the comparison is never true. Clicking **Replace All** raises none of the events.
 
 ## Example
 

@@ -47,7 +47,7 @@ All four are **False** in a new instance.
 
 The pattern is compiled the first time a method or one of [**IsValid**](IsValid), [**LastError**](LastError) and [**LastErrorNumber**](LastErrorNumber) needs it. It is compiled again after [**Pattern**](Pattern) or [**IgnoreCase**](IgnoreCase) is set to a different value. [**Global**](Global), [**MultiLine**](MultiLine) and [**DotAll**](DotAll) are applied when a match is made and do not cause a new compilation.
 
-A pattern that does not compile does not raise an error at once. [**IsValid**](IsValid) returns **False**, and [**LastError**](LastError) and [**LastErrorNumber**](LastErrorNumber) describe the failure. [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) and [**Split**](Split) then raise that error, with the number in **LastErrorNumber**, the description in **LastError** and the source `RegExp`.
+A pattern that does not compile does not raise an error at once. [**IsValid**](IsValid) returns **False**, and [**LastError**](LastError) and [**LastErrorNumber**](LastErrorNumber) describe the failure. [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) and [**Split**](Split) then raise that error, with the number in **LastErrorNumber**, the description in **LastError** and the source `RegExp`. When **IsValid**, **LastError** or **LastErrorNumber** is the call that compiles an invalid pattern, it raises nothing, but the compile error stays in the **Err** object after it returns; [**IsValid**](IsValid) says what to do about it.
 
 ## Properties
 

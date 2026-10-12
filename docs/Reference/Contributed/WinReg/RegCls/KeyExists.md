@@ -12,7 +12,7 @@ Returns **True** if the specified registry key exists, **False** otherwise.
 Syntax: *object*.**KeyExists**( *RootKey*, *KeyPath* ) **As Boolean**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
 
 *KeyPath*
 : *required* A **String** specifying the subkey path within *RootKey*, for example `"Software\MyApp"`.

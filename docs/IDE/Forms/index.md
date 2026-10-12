@@ -59,6 +59,6 @@ Two kinds of setting differ in where they live. The grid, the outlines and the l
 ## See Also
 
 - [Writing code](../Code/) -- the code editor, for the `.twin` half of a form
-- [Project Explorer](../Project/Explorer) -- the **Add** menu that creates forms
+- [Adding files](../Projects/Adding-Files) -- the **Add** menu that creates forms
 - [Running and debugging](../Debugging/) -- running a program that shows forms
 - [Customising the IDE](../Customising/IDE-Options#form-designer-and-toolbox) -- the options of the designer and the Toolbox

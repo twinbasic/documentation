@@ -1,17 +1,17 @@
 ---
 title: tbRegExp Package
-parent: Contributed Packages
+parent: Experimental Packages
 has_toc: false
 exclude_from_docs:
   - StaticRegex
-indexed_from: 1.0.5.0
+indexed_from: 1.4.0.0
 permalink: /tB/Packages/Contributed/tbRegExp/
 ---
 
 # tbRegExp Package
 {: .no_toc }
 
-**Author:** GCuser99. **On GitHub:** [GCuser99/tbRegExp](https://github.com/GCuser99/tbRegExp), in the folder *Package*.
+**Author:** GCuser99. **Version:** 1.4.0.0. **On GitHub:** [GCuser99/tbRegExp](https://github.com/GCuser99/tbRegExp), in the folder *Package*.
 
 The **tbRegExp** contributed package provides regular expressions for twinBASIC projects, as a replacement for the **RegExp** object of VBScript. It follows the same object model. A [**RegExp**](RegExp/) is given a pattern and options, its [**Execute**](RegExp/Execute) method returns a [**MatchCollection**](MatchCollection/) of [**Match**](Match/) objects, and each **Match** holds the text captured by the groups of the pattern as a [**SubMatches**](SubMatches/) object. Positions are zero-based, as in VBScript.
 
@@ -19,11 +19,14 @@ The matching is done by the [vba-regex](https://github.com/sihlfall/vba-regex) e
 
 Beyond VBScript's object, **RegExp** has the [**DotAll**](RegExp/DotAll) and [**Flags**](RegExp/Flags) options, the [**Split**](RegExp/Split) method, and [**IsValid**](RegExp/IsValid), [**LastError**](RegExp/LastError) and [**LastErrorNumber**](RegExp/LastErrorNumber), which report an invalid pattern before it is used. [**Replace**](RegExp/Replace) reads a `$` in the replacement string differently from VBScript.
 
+> [!WARNING]
+> With [**Global**](RegExp/Global) set to **True**, a match of no characters is reported twice when the search had to skip at least one character to reach it. It happens to a pattern that matches no characters at a position after the one where the search started: `$`, `\b`, `^` with [**MultiLine**](RegExp/MultiLine), and a lookahead or lookbehind on its own. A pattern such as `x*`, which matches no characters at the position where the search starts, is not affected. [**Execute**](RegExp/Execute) returns the match twice, [**Replace**](RegExp/Replace) makes its replacement twice and [**Split**](RegExp/Split) adds an extra empty string, and nothing is raised. VBScript's **RegExp** reports such a match once. A match of one or more characters is never repeated, and with **Global** set to **False** nothing is. This is how version 1.4.0.0 behaves.
+
 ## Pattern syntax
 
 A pattern is written as for VBScript's **RegExp**. **tbRegExp** also accepts:
 
-- named groups, `(?<name>...)`: [**SubMatches.Item**](SubMatches/Item) returns one by its name, and [**Replace**](RegExp/Replace) inserts one as `$<name>`;
+- named groups, `(?<name>...)`: [**SubMatches.Item**](SubMatches/Item) returns one by its name, and [**Replace**](RegExp/Replace) inserts one as `$<name>`. A name starts with a letter or an underscore and goes on with letters, digits and underscores; a pattern with any other name is not valid;
 - lookbehind, `(?<=...)` and `(?<!...)`, as well as lookahead;
 - the options `i`, `m` and `s` inside the pattern: `(?i)` for the rest of the pattern, `(?i:...)` for one group.
 
@@ -41,7 +44,22 @@ Debug.Print re.Test("ABCDEF")                            ' True
 Debug.Print re.Test("ABCdef")                            ' False
 ```
 
-A pattern that holds `\k<name>`, `\A`, `\Z`, `\p{...}`, an atomic group `(?>...)` or a conditional is not valid: [**IsValid**](RegExp/IsValid) returns **False**. A numbered backreference such as `\1` works. `\w` matches only the ASCII letters and digits and `_`, as in VBScript, so `\w+` finds `caf` in `café`.
+A pattern that holds `\k<name>`, `\A`, `\Z`, `\p{...}`, an atomic group `(?>...)` or a conditional is not valid: [**IsValid**](RegExp/IsValid) returns **False**. A numbered backreference such as `\1` works when the pattern has that group; [**IsValid**](RegExp/IsValid) does not find a backreference to a group that is missing. `\w` matches only the ASCII letters and digits and `_`, as in VBScript, so `\w+` finds `caf` in `café`.
+
+A `{` has to start a quantifier: `{n}`, `{n,}`, `{n,m}` or `{,m}`, which means `{0,m}`. A pattern in which a `{` starts none, such as `a{` or `a{x}`, is not valid; write `\{` for the character. VBScript reads a `{` that starts no quantifier, and `{,m}`, as ordinary text. A `]` or `}` that closes nothing is an ordinary character, as in VBScript.
+
+```tb check_build check_run
+Dim re As New RegExp
+re.Pattern = "(?<_part2>\d)"
+Debug.Print re.IsValid                   ' True
+re.Pattern = "(?<2part>\d)"
+Debug.Print re.IsValid                   ' False
+
+re.Pattern = "a{x}"
+Debug.Print re.IsValid                   ' False
+re.Pattern = "a\{x}"
+Debug.Print re.Execute("a{x}")(0).Value  ' a{x}
+```
 
 ## Classes
 

@@ -12,7 +12,7 @@ permalink: /tB/Packages/Contributed/ArrayListLib/
 # ArrayListLib Package
 {: .no_toc }
 
-**Author:** R.Beltran. **On GitHub:** [Theadd/ArrayList](https://github.com/Theadd/ArrayList), in the folder *ArrayListLib*.
+**Author:** R.Beltran. **Version:** 1.4.0.134. **On GitHub:** [Theadd/ArrayList](https://github.com/Theadd/ArrayList), in the folder *ArrayListLib*.
 
 The **ArrayListLib** contributed package is a list class for twinBASIC, in place of the `ArrayList` class of .NET's `mscorlib` library. A VBA or VB6 program that needs a list which grows as items are added can use that class through `CreateObject("System.Collections.ArrayList")`. [**ArrayList**](ArrayList) has the members of that class which a COM client can call, under the same names, and needs no .NET Framework.
 

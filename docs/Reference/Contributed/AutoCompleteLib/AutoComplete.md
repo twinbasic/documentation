@@ -79,6 +79,7 @@ Syntax: *object*.**Options** [ = *value* ]
 | **AutoCompleteOptionFilterPrefixes** | &H8 | Does not match common prefixes such as `www.` and `http://`. |
 | **AutoCompleteOptionUseTab** | &H10 | Selects the highlighted suggestion when the user presses **Tab**. |
 | **AutoCompleteOptionUpDownKeyDropsList** | &H20 | Opens the drop-down list when the user presses the **Up** or **Down** arrow key. |
+| **AutoCompleteOptionRightToLeft** | &H40 | Shows the text of the drop-down list from right to left. |
 
 ## Methods
 

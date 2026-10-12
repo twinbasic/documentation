@@ -51,14 +51,14 @@
 			"autoCtlExt": true,
 			"id": "{B00CAB91-2215-4123-9768-F33903B4A788}",
 			"licence": "MIT",
-			"name": "[IMPORTED] CommonDialog class for 32-bit and 64-bit",
+			"name": "[IMPORTED] VB Common Dialog Class for 32-bit and 64-bit",
 			"path32": "/Packages/VBComDlg",
 			"path64": "/Packages/VBComDlg",
 			"symbolId": "VBComDlg",
 			"versionBuild": "0",
 			"versionMajor": "1",
 			"versionMinor": "0",
-			"versionRevision": "3"
+			"versionRevision": "13"
 		}
 	],
 	"project.settingsVersion": 1,

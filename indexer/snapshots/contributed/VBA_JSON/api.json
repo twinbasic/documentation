@@ -2,7 +2,7 @@
   "format": 3,
   "package": "VBA_JSON",
   "project": "VBA_JSON",
-  "version": "2.3.0.1",
+  "version": "2.3.1.1",
   "types": [
     {
       "name": "Dictionary",
@@ -12,9 +12,9 @@
       "signature": "Public Class Dictionary",
       "attrs": [{"name":"ClassId","args":"\"6DB2FF1D-F9BE-4C3E-9D7F-515E46E36EAC\""},{"name":"InterfaceId","args":"\"217032FB-B259-4633-BED0-34C7C21DF57E\""}],
       "members": [
-        {"name":"Item","kind":"property","vis":"public","signature":"Public Property Get Item(Key As String) As Variant","returnType":"Variant","accessor":"Get","attrs":[{"name":"DefaultMember"}]},
-        {"name":"Item","kind":"property","vis":"public","signature":"Public Property Let Item(Key As String, Value As Variant)","accessor":"Let"},
-        {"name":"Item","kind":"property","vis":"public","signature":"Public Property Set Item(Key As String, Value As Variant)","accessor":"Set"},
+        {"name":"Item","kind":"property","vis":"public","signature":"Public Property Get Item(ByVal Key As String) As Variant","returnType":"Variant","accessor":"Get","attrs":[{"name":"DefaultMember"}]},
+        {"name":"Item","kind":"property","vis":"public","signature":"Public Property Let Item(ByVal Key As String, Value As Variant)","accessor":"Let"},
+        {"name":"Item","kind":"property","vis":"public","signature":"Public Property Set Item(ByVal Key As String, Value As Variant)","accessor":"Set"},
         {"name":"Keys","kind":"property","vis":"public","signature":"Public Property Get Keys() As Variant","returnType":"Variant","accessor":"Get"},
         {"name":"_NewEnum","kind":"function","vis":"private","signature":"Private Function _NewEnum() As Variant","returnType":"Variant","attrs":[{"name":"Enumerator"}]},
         {"name":"m_Collection","kind":"field","vis":"private","signature":"Private m_Collection As Collection = New Collection"}

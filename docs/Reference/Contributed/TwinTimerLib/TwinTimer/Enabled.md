@@ -1,7 +1,7 @@
 ---
 title: Enabled
 parent: TwinTimer
-permalink: /tB/Packages/Contributed/TwinTimerPackage/TwinTimer/Enabled
+permalink: /tB/Packages/Contributed/TwinTimerLib/TwinTimer/Enabled
 has_toc: false
 ---
 # Enabled
@@ -27,7 +27,7 @@ Enables or disables the timer.
 Syntax: *object*.**Enabled** **=** *value*
 
 *value*
-: A **Long** that turns the timer on or off; the property is read as a **Boolean**. Zero (**False**) turns it off; any other value, such as **True**, turns it on.
+: A **Boolean** that turns the timer on or off. **False** turns it off; **True** turns it on.
 
 Setting **Enabled** destroys any running timer and restarts it under the new setting. When **Enabled** is set to **True**, the timer begins firing only if [**Interval**](Interval) is greater than zero. When **Enabled** is set to **False**, no **Timer** events are raised regardless of the **Interval** setting.
 

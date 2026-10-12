@@ -1,7 +1,7 @@
 ---
 title: Interval
 parent: TwinTimer
-permalink: /tB/Packages/Contributed/TwinTimerPackage/TwinTimer/Interval
+permalink: /tB/Packages/Contributed/TwinTimerLib/TwinTimer/Interval
 has_toc: false
 ---
 # Interval

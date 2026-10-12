@@ -51,14 +51,14 @@
 			"autoCtlExt": true,
 			"id": "{8113CC0A-F2B5-4226-AF6D-C80883BD8138}",
 			"licence": "MIT",
-			"name": "[IMPORTED] TwinTimer class for 32-bit and 64-bit",
-			"path32": "/Packages/TwinTimerPackage",
-			"path64": "/Packages/TwinTimerPackage",
-			"symbolId": "TwinTimerPackage",
+			"name": "[IMPORTED] TwinTimer Class for 32-bit and 64-bit",
+			"path32": "/Packages/TwinTimerLib",
+			"path64": "/Packages/TwinTimerLib",
+			"symbolId": "TwinTimerLib",
 			"versionBuild": "0",
 			"versionMajor": "1",
 			"versionMinor": "0",
-			"versionRevision": "0"
+			"versionRevision": "7"
 		}
 	],
 	"project.settingsVersion": 1,

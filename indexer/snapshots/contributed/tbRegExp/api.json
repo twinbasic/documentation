@@ -2,7 +2,7 @@
   "format": 3,
   "package": "tbRegExp",
   "project": "tbRegExp",
-  "version": "1.0.5.0",
+  "version": "1.4.0.0",
   "types": [
     {
       "name": "Match",
@@ -39,7 +39,7 @@
         {"name":"Count","kind":"property","vis":"public","signature":"Public Property Get Count() As Long","returnType":"Long","accessor":"Get","description":"Returns the number of Match objects found in the source string."},
         {"name":"Internal_Add","kind":"sub","vis":"friend","signature":"Friend Sub Internal_Add(obj As Match)"},
         {"name":"Item","kind":"property","vis":"public","signature":"Public Property Get Item(ByVal pItemIndex As Variant) As Match","returnType":"Match","accessor":"Get","attrs":[{"name":"DefaultMember"}],"description":"Returns the Match object associated with the provided index"},
-        {"name":"NewEnum","kind":"function","vis":"public","signature":"Public Function NewEnum() As IUnknown","returnType":"IUnknown","hidden":true,"attrs":[{"name":"Hidden","args":"True"},{"name":"Enumerator"}]},
+        {"name":"NewEnum","kind":"function","vis":"public","signature":"Public Function NewEnum() As IUnknown","returnType":"IUnknown","hidden":true,"attrs":[{"name":"Hidden"},{"name":"Enumerator"}]},
         {"name":"colMatches","kind":"field","vis":"private","signature":"Private colMatches As Collection"}
       ]
     },
@@ -53,9 +53,11 @@
       "description": "This class exposes a drop-in replacement for VBSript's regular expressions object model.",
       "members": [
         {"name":"Class_Initialize","kind":"sub","vis":"private","signature":"Private Sub Class_Initialize()"},
+        {"name":"DescribeRegexError","kind":"function","vis":"private","signature":"Private Function DescribeRegexError(ByVal errNum As Long) As String","returnType":"String"},
         {"name":"DotAll","kind":"property","vis":"public","signature":"Public Property Let DotAll(ByVal pDotAll As Boolean)","accessor":"Let","description":"If 'True', '.' pattern will match across new line charactors. Defaults to 'False'"},
         {"name":"DotAll","kind":"property","vis":"public","signature":"Public Property Get DotAll() As Boolean","returnType":"Boolean","accessor":"Get"},
         {"name":"EnsureCompiled","kind":"sub","vis":"private","signature":"Private Sub EnsureCompiled()"},
+        {"name":"ErrText","kind":"function","vis":"private","signature":"Private Function ErrText(ByVal errNum As Long, ByVal fallback As String) As String","returnType":"String"},
         {"name":"Execute","kind":"function","vis":"public","signature":"Public Function Execute(ByVal sourceString As String) As MatchCollection","returnType":"MatchCollection","description":"Returns a MatchCollection. Uses the Pattern property to search the sourceString."},
         {"name":"Flags","kind":"property","vis":"public","signature":"Public Property Let Flags(ByVal pFlags As String)","accessor":"Let","description":"Sets or Gets the options in use: g-global; m-multiline; i-ignore case; s-dot all. Example: 'gm' sets Global and MultiLine to 'True', IgnoreCase and DotAll to 'False'."},
         {"name":"Flags","kind":"property","vis":"public","signature":"Public Property Get Flags() As String","returnType":"String","accessor":"Get"},
@@ -72,7 +74,7 @@
         {"name":"Pattern","kind":"property","vis":"public","signature":"Public Property Let Pattern(ByVal pPattern As String)","accessor":"Let","description":"The regular expression pattern."},
         {"name":"Pattern","kind":"property","vis":"public","signature":"Public Property Get Pattern() As String","returnType":"String","accessor":"Get"},
         {"name":"Replace","kind":"function","vis":"public","signature":"Public Function Replace(ByVal sourceString As String, ByVal replaceString As String) As String","returnType":"String","description":"Replaces matches with replaceString and returns the String with replacements made."},
-        {"name":"Split","kind":"function","vis":"public","signature":"Public Function Split(ByVal sourceString As String) As Collection","returnType":"Collection","description":"Splits an input string into an array of substrings at the positions defined by a regular expression match."},
+        {"name":"Split","kind":"function","vis":"public","signature":"Public Function Split(ByVal sourceString As String) As Collection","returnType":"Collection","description":"Splits an input string into an array of substrings at the positions defined by a regular expression match. Needs Global Property set to 'True'."},
         {"name":"Test","kind":"function","vis":"public","signature":"Public Function Test(ByVal sourceString As String) As Boolean","returnType":"Boolean","description":"Returns 'True' if Pattern finds a match in sourceString, otherwise returns 'False'."},
         {"name":"mCompileAttempted","kind":"field","vis":"private","signature":"Private mCompileAttempted As Boolean"},
         {"name":"mDotAll","kind":"field","vis":"private","signature":"Private mDotAll As Boolean"},
@@ -141,6 +143,7 @@
         {"name":"InitializeUnicodeCanonLookupTable","kind":"sub","vis":"private","signature":"Private Sub InitializeUnicodeCanonLookupTable(ByRef t() As Long)"},
         {"name":"InitializeUnicodeCanonRunsTable","kind":"sub","vis":"private","signature":"Private Sub InitializeUnicodeCanonRunsTable(ByRef t() As Long)"},
         {"name":"IsIdentifierChar","kind":"function","vis":"private","signature":"Private Function IsIdentifierChar(ByVal c As Long) As Boolean","returnType":"Boolean"},
+        {"name":"IsIdentifierStart","kind":"function","vis":"private","signature":"Private Function IsIdentifierStart(ByVal c As Long) As Boolean","returnType":"Boolean"},
         {"name":"LEXER_ENDOFINPUT","kind":"const","vis":"private","signature":"Private Const LEXER_ENDOFINPUT As Long = -1"},
         {"name":"LexerParseEscapeU","kind":"function","vis":"private","signature":"Private Function LexerParseEscapeU(ByRef lexCtx As LexerContext) As Long","returnType":"Long"},
         {"name":"LexerParseEscapeX","kind":"function","vis":"private","signature":"Private Function LexerParseEscapeX(ByRef lexCtx As LexerContext) As Long","returnType":"Long"},
@@ -845,7 +848,7 @@
         {"name":"Count","kind":"property","vis":"public","signature":"Public Property Get Count() As Long","returnType":"Long","accessor":"Get","description":"Returns the number of SubMatch objects found in the source string."},
         {"name":"Internal_SetData","kind":"sub","vis":"friend","signature":"Friend Sub Internal_SetData(ByRef vals() As String, ByRef keys() As String, ByVal count As Long)"},
         {"name":"Item","kind":"property","vis":"public","signature":"Public Property Get Item(ByVal pItemIndex As Variant) As String","returnType":"String","accessor":"Get","attrs":[{"name":"DefaultMember"}],"description":"Returns the SubMatch string associated with the provided index. Named groups are allowed."},
-        {"name":"NewEnum","kind":"function","vis":"public","signature":"Public Function NewEnum() As IUnknown","returnType":"IUnknown","hidden":true,"attrs":[{"name":"Hidden","args":"True"},{"name":"Enumerator"}]},
+        {"name":"NewEnum","kind":"function","vis":"public","signature":"Public Function NewEnum() As IUnknown","returnType":"IUnknown","hidden":true,"attrs":[{"name":"Hidden"},{"name":"Enumerator"}]},
         {"name":"mCap","kind":"field","vis":"private","signature":"Private mCap As Long"},
         {"name":"mCount","kind":"field","vis":"private","signature":"Private mCount As Long"},
         {"name":"mKeys","kind":"field","vis":"private","signature":"Private mKeys() As String"},

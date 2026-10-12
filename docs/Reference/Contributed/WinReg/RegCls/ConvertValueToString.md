@@ -28,6 +28,9 @@ Syntax: *object*.**ConvertValueToString**( *hKey*, *subkey*, *lType* )
 
 Returns a **String**. For string types the null terminator is stripped. For DWORD types the value is returned as an eight-digit hexadecimal string prefixed with `0x`. For binary data the return value is formatted as `Binary (N bytes): XX XX ...` where each byte is a two-digit uppercase hex pair separated by spaces. For any other type code the return value is `Unsupported type: N`.
 
+> [!WARNING]
+> This overload does not find the value. It passes `StrPtr(subkey)` to a parameter that `RegQueryValueEx` declares `ByVal` **String**, so the name that reaches the function is not *subkey*, the query fails with error 2 (file not found), and the overload returns an empty string for `REG_SZ`, `REG_EXPAND_SZ`, the DWORD types and `REG_BINARY`. Only the `Unsupported type: N` result for any other type code is as described. Overload 2 and [**EnumValues**](EnumValues) are not affected.
+
 ## Overload 2 -- convert from byte array
 
 Converts a byte array already read by `RegQueryValueEx` into a string representation.
@@ -44,26 +47,26 @@ Returns a **String**. For string types the result is the text up to the first nu
 
 ### Remarks
 
-The two overloads cover different calling patterns. Overload 1 is convenient when the value name and type are known up front and the caller wants a one-step result. Overload 2 is intended for batch or enumeration scenarios such as [**EnumValues**](EnumValues), where the raw bytes and the type code have already been read, and the caller passes both directly to avoid a second API call.
+The two overloads cover different calling patterns. Overload 1 is meant for the case where the value name and type are known up front and the caller wants a one-step result. Overload 2 is intended for batch or enumeration scenarios such as [**EnumValues**](EnumValues), where the raw bytes and the type code have already been read, and the caller passes both directly to avoid a second API call.
 
 Overload 1 neither closes nor otherwise modifies *hKey*. When using Overload 1, open the key with at least `KEY_QUERY_VALUE` access and close it after all reads are complete.
 
 > [!NOTE]
-> Both overloads include `On Error Resume Next`, so a run-time error inside them is not raised to the caller. Overload 1 returns an empty string when the query fails. If an empty string is returned unexpectedly, verify that *hKey* is valid, that the value named by *subkey* exists, and that *lType* matches the value's actual type. The source comments mark Overload 1 as not yet tested.
+> Both overloads include `On Error Resume Next`, so a run-time error inside them is not raised to the caller. Overload 1 returns an empty string when the query fails. The source comments mark Overload 1 as not yet tested.
 
 ### Example
 
-This example opens a registry key, reads a value using Overload 1, then closes the key.
+This example opens a registry key, calls Overload 1 on a value, then closes the key. The key handle is a **LongPtr**, which the method takes as a **Long**.
 
 ```tb check_build
 Dim reg As New RegCls
-Dim hKey As Long
+Dim hKey As LongPtr
 Dim ret As Long
 Dim sData As String
 
 ret = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\MyApp", 0, KEY_READ, hKey)
 If ret = ERROR_SUCCESS Then
-    sData = reg.ConvertValueToString(hKey, "MyValue", REG_SZ)
+    sData = reg.ConvertValueToString(CLng(hKey), "MyValue", REG_SZ)
     Debug.Print sData
     RegCloseKey hKey
 End If

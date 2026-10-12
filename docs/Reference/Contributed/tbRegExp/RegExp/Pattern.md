@@ -34,7 +34,7 @@ Syntax: *object*.**Pattern** **=** *value*
 
 Setting a different pattern makes it compile again the next time it is needed. Setting the current pattern does nothing. A pattern that does not compile raises no error when it is set: [**IsValid**](IsValid), [**LastError**](LastError) and [**LastErrorNumber**](LastErrorNumber) report the failure, and [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) and [**Split**](Split) raise it.
 
-A named group is written `(?<name>...)`. Its text is read from the [**SubMatches**](../SubMatches/) of a [**Match**](../Match/) by name, and used in [**Replace**](Replace) as `$<name>`.
+A named group is written `(?<name>...)`. Its text is read from the [**SubMatches**](../SubMatches/) of a [**Match**](../Match/) by name, and used in [**Replace**](Replace) as `$<name>`. A name starts with a letter or an underscore and goes on with letters, digits and underscores. The [overview of the package](../#pattern-syntax) lists the other differences from VBScript's pattern syntax.
 
 ## Example
 

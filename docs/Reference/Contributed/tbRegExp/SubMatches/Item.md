@@ -29,7 +29,9 @@ Returns a **String**. The property is read-only.
 
 A position below 0, or not below [**Count**](Count), raises run-time error `vbObjectError + 9` with the message *Requested item not found in SubMatches collection*.
 
-A name is the one given to a group in the pattern, written `(?<name>...)`. **Item** returns the string of the first group that has that name. Letter case counts: `sm("YEAR")` does not find a group named `year`. A name that no group has returns an empty string and raises no error.
+A name is the one given to a group in the pattern, written `(?<name>...)`. **Item** returns the string of the group that has that name. Letter case counts: `sm("YEAR")` does not find a group named `year`. A name that no group has returns an empty string and raises no error. A name starts with a letter or an underscore and goes on with letters, digits and underscores.
+
+When several groups have the same name, **Item** returns the string of the last of them that took part in the match, as the last example shows.
 
 An empty result has three possible causes: a group that took no part in the match, a group that captured no characters, and a name that no group has.
 
@@ -64,6 +66,16 @@ Set sm = matches(0).SubMatches
 On Error Resume Next
 Debug.Print sm(1)
 Debug.Print Err.Number & ": " & Err.Description  ' -2147221495: Requested item not found in SubMatches collection
+```
+
+This example gives two groups the same name. In `ab` both groups took part, so the second one is returned. In `a` only the first group did.
+
+```tb check_build check_run
+Dim re As New RegExp
+re.Pattern = "(?<n>a)(?<n>b)?"
+
+Debug.Print re.Execute("ab")(0).SubMatches("n")  ' b
+Debug.Print re.Execute("a")(0).SubMatches("n")   ' a
 ```
 
 ## See Also

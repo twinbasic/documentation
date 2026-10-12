@@ -330,7 +330,7 @@ The key beside an action in the palette is the key Monaco gives it. It is not al
 
 ## Save often
 
-The IDE keeps no backup of your edits. If the IDE or the PC stops before you save, the edits made since the last save are lost. Nothing is offered when you open the project again. Save with [**File → Save Project**](../Reference/Menu/File) (<kbd>Ctrl</kbd>+<kbd>S</kbd>), and save often. The IDE saves the whole project at once. **Save Current Document**, on the same menu, is disabled.
+The IDE keeps no backup of your edits. If the IDE or the PC stops before you save, the edits made since the last save are lost. Nothing is offered when you open the project again. Save with [**File → Save Project**](../Projects/Saving-and-Exporting#save-project) (<kbd>Ctrl</kbd>+<kbd>S</kbd>), and save often. The IDE saves the whole project at once. **Save Current Document**, on the same menu, is disabled.
 
 What the IDE does keep, every five seconds, is the state of the project's editors: which files are open, the cursors and folds, the bookmarks and the History list. It is kept with the project and brought back when you reopen it. It holds none of your unsaved text.
 

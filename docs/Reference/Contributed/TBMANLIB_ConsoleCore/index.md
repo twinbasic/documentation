@@ -4,16 +4,16 @@ parent: Experimental Packages
 has_toc: false
 exclude_from_docs:
   - mConsoleAPI
-indexed_from: 0.0.0.0
+indexed_from: 1.0.0.1
 permalink: /tB/Packages/Contributed/TBMANLIB_ConsoleCore/
 ---
 
 # TBMANLIB_ConsoleCore Package
 {: .no_toc }
 
-**Author:** woeoio.
+**Author:** woeoio. **Version:** 1.0.0.1
 
-The **TBMANLIB_ConsoleCore** contributed package is a library for the console of a twinBASIC program. Its class [**cConsole**](cConsole) writes text in 16 colours, reads lines, single keys and passwords, moves the cursor, switches the console to UTF-8 and to the escape-sequence mode, and has a full-screen mode in which a program draws into an in-memory grid, [**cConsoleBuffer**](cConsoleBuffer), and receives key, mouse and window-size events. The module [**mConsoleStyle**](mConsoleStyle) builds the escape sequences for colours, text styles and cursor movement, and has helpers that align, shorten and wrap text. This section documents version 0.0.0.0, published on TWINSERV on 1 February 2026 with no licence declared. The package describes itself as "TBMAN: Modern console library with UTF-8, colors, and full-screen support".
+The **TBMANLIB_ConsoleCore** contributed package is a library for the console of a twinBASIC program. Its class [**cConsole**](cConsole) writes text in 16 colours, reads lines, single keys and passwords, moves the cursor, switches the console to UTF-8 and to the escape-sequence mode, and has a full-screen mode in which a program draws into an in-memory grid, [**cConsoleBuffer**](cConsoleBuffer), and receives key, mouse and window-size events. The module [**mConsoleStyle**](mConsoleStyle) builds the escape sequences for colours, text styles and cursor movement, and has helpers that align, shorten and wrap text. This section documents version 1.0.0.1, published on TWINSERV on 3 February 2026 under the MIT licence. The package describes itself as "TBMAN: Modern console library with UTF-8, colors, and full-screen support".
 
 The library is built on the Windows console functions of `kernel32.dll`. The package [TBMANLIB_ConsoleComponents](../TBMANLIB_ConsoleComponents/), by the same author, is a set of text-interface components that draw into the buffer of this package.
 
@@ -33,7 +33,7 @@ con.Restore
 ```
 
 > [!WARNING]
-> Several members of version 0.0.0.0 do not do what their names suggest. [**ReadKey**](cConsole#readkey) never returns in a program that has no console input, and a comparison of a key with a member of [**ConsoleKey**](Types#consolekey) is true for the wrong key. [Defects in version 0.0.0.0](#defects-in-version-0000) lists them with the pages that describe them.
+> Several members of version 1.0.0.1 do not do what their names suggest. [**ReadKey**](cConsole#readkey) never returns in a program that has no console input, and a comparison of a key with a member of [**ConsoleKey**](Types#consolekey) is true for the wrong key. [Defects in version 1.0.0.1](#defects-in-version-1001) lists them with the pages that describe them.
 
 * TOC
 {:toc}
@@ -53,7 +53,7 @@ A program with no console can create a **cConsole**, and the buffer of the full-
 - **The buffer.** [**cConsoleBuffer**](cConsoleBuffer) draws characters, lines, boxes and filled rectangles, copies and scrolls regions, and keeps a dirty rectangle so that [**Flush**](cConsoleBuffer#flush) writes only what changed.
 - **Escape sequences.** [**mConsoleStyle**](mConsoleStyle) returns the sequences for 16, 256 and 24-bit colours, bold, underline and the other styles, cursor movement, clearing, scrolling and the alternate screen, and constants for box-drawing, block, arrow and symbol characters.
 
-## Defects in version 0.0.0.0
+## Defects in version 1.0.0.1
 
 - [**ReadKey**](cConsole#readkey) and [**ReadPassword**](cConsole#readpassword) never return when the program has no console input.
 - The key codes of [**ConsoleKey**](Types#consolekey) are not the virtual-key codes that [**ReadKey**](cConsole#readkey) and the key handler return, except for Enter, Escape, Space, Backspace and Tab.

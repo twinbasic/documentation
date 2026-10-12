@@ -12,7 +12,7 @@ Deletes a registry key that has no subkeys.
 Syntax: *object*.**DeleteKey** ( *RootKey*, *KeyPath* )
 
 *RootKey*
-: *required* A **RegKeyspace** value identifying the root hive --- for example, `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
+: *required* A [**RegKeyspace**](../RegKeyspace) value identifying the root hive --- for example, `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
 
 *KeyPath*
 : *required* A **String** specifying the path of the key to delete, relative to *RootKey*. Segments are separated by backslashes --- for example, `"Software\MyApp"`.

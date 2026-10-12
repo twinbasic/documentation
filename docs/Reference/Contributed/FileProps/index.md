@@ -13,7 +13,7 @@ permalink: /tB/Packages/Contributed/FileProps/
 # FileProps Package
 {: .no_toc }
 
-**Author:** WaynePhillipsEA
+**Author:** WaynePhillipsEA. **Version:** 1.7.1.0
 
 The **FileProps** contributed package provides access to Windows shell file properties through a Virtual-COM wrapper. It exposes a predeclared **FilePropertyExplorer** class that opens a file and returns a **FileProperties** collection; each entry in that collection is a **FileProperty** object with the system name, localized name, unique ID, and current value of one shell property.
 

@@ -51,11 +51,11 @@
 			"autoCtlExt": true,
 			"id": "{9DCDACC6-9E5C-4034-A93A-5D0335102C78}",
 			"licence": "MIT",
-			"name": "[IMPORTED] TBMANLIB_ListBoxHScroll",
+			"name": "[IMPORTED] Horizontal scroll bar for Twinbasic ListBox control",
 			"path32": "/Packages/TBMANLIB_ListBoxHScroll",
 			"path64": "/Packages/TBMANLIB_ListBoxHScroll",
 			"symbolId": "TBMANLIB_ListBoxHScroll",
-			"versionBuild": "0",
+			"versionBuild": "1",
 			"versionMajor": "1",
 			"versionMinor": "0",
 			"versionRevision": "0"

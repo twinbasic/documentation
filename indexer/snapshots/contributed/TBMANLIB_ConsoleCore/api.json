@@ -2,7 +2,7 @@
   "format": 3,
   "package": "TBMANLIB_ConsoleCore",
   "project": "TBMANLIB_ConsoleCore",
-  "version": "0.0.0.0",
+  "version": "1.0.0.1",
   "types": [
     {
       "name": "cConsole",

@@ -57,8 +57,8 @@
 			"symbolId": "tbRegExp",
 			"versionBuild": "0",
 			"versionMajor": "1",
-			"versionMinor": "0",
-			"versionRevision": "5"
+			"versionMinor": "4",
+			"versionRevision": "0"
 		}
 	],
 	"project.settingsVersion": 1,

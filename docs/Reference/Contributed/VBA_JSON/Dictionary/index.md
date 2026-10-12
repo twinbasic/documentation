@@ -76,11 +76,11 @@ d("y") = 2
 
 Dim k As Variant
 For Each k In d.Keys
-    Debug.Print k & " = " & d(CStr(k))
+    Debug.Print k & " = " & d(k)
 Next
 ```
 
-**Item** takes its key `ByRef` as a **String**, so a key held in a **Variant**, such as the loop variable of a **For Each** over **Keys**, is passed through **CStr**: passing the **Variant** itself is a compile error.
+**Item** takes its key `ByVal` as a **String**, so a key held in a **Variant**, such as the loop variable of a **For Each** over **Keys**, is converted to a **String** when it is passed.
 
 ## Remarks
 
@@ -126,7 +126,7 @@ Debug.Print parsed("score")   ' 95
 
 Dim k As Variant
 For Each k In parsed.Keys
-    Debug.Print k & ": " & parsed(CStr(k))
+    Debug.Print k & ": " & parsed(k)
 Next
 ```
 

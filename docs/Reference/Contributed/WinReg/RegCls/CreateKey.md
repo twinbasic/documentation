@@ -12,7 +12,7 @@ Creates a registry key, including any intermediate keys in the path that do not 
 Syntax: *object*.**CreateKey** ( *RootKey*, *KeyPath* )
 
 *RootKey*
-: *required* A **RegKeyspace** value identifying the root key under which the new key is created. Typical values are **HKEY_CURRENT_USER**, **HKEY_LOCAL_MACHINE**, and the other root constants of the **RegKeyspace** enumeration from **WinDevLib**.
+: *required* A [**RegKeyspace**](../RegKeyspace) value identifying the root key under which the new key is created. Typical values are **HKEY_CURRENT_USER**, **HKEY_LOCAL_MACHINE**, and the other root constants of the **RegKeyspace** enumeration.
 
 *KeyPath*
 : *required* A **String** giving the subkey path relative to *RootKey*, using backslashes as separators --- for example, `"Software\MyApp\Settings\Advanced"`. All intermediate keys that do not yet exist are created.

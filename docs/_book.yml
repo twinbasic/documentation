@@ -267,6 +267,11 @@ parts:
         no_outline_entry: true
         no_heading_shift: true
         outline_closed: true
+      - title: Projects and files
+        landing_page: /tB/IDE/Projects/
+        page: /tB/IDE/Projects/
+        landing_is_target: true
+        outline_closed: true
       - title: Project Settings
         page: /tB/IDE/Project-Settings
         no_outline_entry: true
@@ -310,7 +315,6 @@ parts:
         outline_closed: true
       - title: IDE Reference
         pages:
-          - /tB/IDE/Reference/Menu/File
           - /tB/IDE/Reference/Toolbar
         outline_closed: true
 
@@ -568,13 +572,6 @@ parts:
         landing_is_target: true
         outline_closed: true
 
-      - title: tbRegExp Package
-        subtitle: Regular expressions, in place of VBScript's RegExp object
-        landing_page: /tB/Packages/Contributed/tbRegExp/
-        page: /tB/Packages/Contributed/tbRegExp/
-        landing_is_target: true
-        outline_closed: true
-
       - title: tsJson Package
         subtitle: A JSON model with parsing, JSONPath queries, JSON Pointer, JSON Patch and JSON Schema validation
         landing_page: /tB/Packages/Contributed/tsJson/
@@ -589,10 +586,10 @@ parts:
         landing_is_target: true
         outline_closed: true
 
-      - title: TwinTimerPackage Package
+      - title: TwinTimerLib Package
         subtitle: A Win32 timer class that reports the elapsed time
-        landing_page: /tB/Packages/Contributed/TwinTimerPackage/
-        page: /tB/Packages/Contributed/TwinTimerPackage/
+        landing_page: /tB/Packages/Contributed/TwinTimerLib/
+        page: /tB/Packages/Contributed/TwinTimerLib/
         landing_is_target: true
         outline_closed: true
 
@@ -672,6 +669,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: tbRegExp Package
+        subtitle: Regular expressions, in place of VBScript's RegExp object
+        landing_page: /tB/Packages/Contributed/tbRegExp/
+        page: /tB/Packages/Contributed/tbRegExp/
+        landing_is_target: true
+        outline_closed: true
+
       - title: WinReg Package
         subtitle: Registry keys and values, read, written, deleted and enumerated
         landing_page: /tB/Packages/Contributed/WinReg/
@@ -715,10 +719,8 @@ left_out:
   - reason: IDE pages that are still screenshots and the labels they show, or headings with nothing under them
     no_descent: true
     pages:
-      - /tB/IDE/Project/Explorer
       - /tB/IDE/AddIns/Community
       - /tB/IDE/Reference/Menu
-      - /tB/IDE/Reference/Menu/Project
       - /tB/IDE/Reference/Menu/AddIns
       - /tB/IDE/Reference/Menu/Help
 
@@ -731,7 +733,9 @@ left_out:
       - /tB/IDE/Project/Splash
       - /tB/IDE/Project/PackagePublishing
       - /tB/IDE/AddIns/GlobalSearch
+      - /tB/IDE/Reference/Menu/File
       - /tB/IDE/Reference/Menu/Edit
+      - /tB/IDE/Reference/Menu/Project
       - /tB/IDE/Reference/Menu/Format
       - /tB/IDE/Reference/Menu/Run
       - /tB/IDE/Reference/Menu/Debug

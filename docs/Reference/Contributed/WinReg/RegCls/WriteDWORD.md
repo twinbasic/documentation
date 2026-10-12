@@ -12,7 +12,7 @@ Writes a 32-bit integer value (**REG_DWORD**) to a registry key, creating the ke
 Syntax: *object*.**WriteDWORD**(*RootKey*, *KeyPath*, *ValueName*, *ValueData*)
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root key, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root key, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
 
 *KeyPath*
 : *required* A **String** giving the subkey path relative to *RootKey*, for example `"Software\MyApp\Settings"`. The key is created if it does not exist.

@@ -51,11 +51,11 @@
 			"autoCtlExt": true,
 			"id": "{86D452C1-BB0C-4CED-9427-C0615CF459CA}",
 			"licence": "MIT",
-			"name": "[IMPORTED] [TBMAN] Easy to use ResourcesFiles with Res object",
+			"name": "[IMPORTED] TBMAN: Easy to use ResourcesFiles with Res object",
 			"path32": "/Packages/TBMANLIB_RES",
 			"path64": "/Packages/TBMANLIB_RES",
 			"symbolId": "TBMANLIB_RES",
-			"versionBuild": "0",
+			"versionBuild": "4",
 			"versionMajor": "1",
 			"versionMinor": "0",
 			"versionRevision": "0"

@@ -2,16 +2,16 @@
   "format": 3,
   "package": "TBMANLIB_RES",
   "project": "TBMANLIB_RES",
-  "version": "1.0.0.0",
+  "version": "1.0.0.4",
   "types": [
     {
-      "name": "TBMAN",
+      "name": "GLOBAL_RES",
       "kind": "module",
       "vis": "public",
-      "file": "TBMAN.twin",
-      "signature": "Module TBMAN",
+      "file": "GLOBAL_RES.twin",
+      "signature": "Module GLOBAL_RES",
       "members": [
-        {"name":"Res","kind":"field","vis":"public","signature":"Public Res As new cRes"}
+        {"name":"Res","kind":"field","vis":"public","signature":"Public Res As New cRes"}
       ]
     },
     {

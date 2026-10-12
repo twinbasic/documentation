@@ -12,7 +12,7 @@ Recursively deletes a registry key and all of its subkeys and values.
 Syntax: *object*.**DeleteKeyEx** ( *RootKey*, *KeyPath* )
 
 *RootKey*
-: *required* A **RegKeyspace** value identifying the root hive, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
+: *required* A [**RegKeyspace**](../RegKeyspace) value identifying the root hive, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
 
 *KeyPath*
 : *required* A **String** specifying the path of the key to delete, relative to *RootKey*. For example, `"Software\MyApp"`.
@@ -21,7 +21,7 @@ Returns **True** if the key was deleted, **False** if the operation failed.
 
 ### Remarks
 
-**DeleteKeyEx** opens the target key with `KEY_ENUMERATE_SUB_KEYS`, `KEY_QUERY_VALUE`, and `KEY_ALL_ACCESS` rights, then iterates through all subkeys using `RegEnumKeyEx`, calling itself recursively on each one. After all subkeys are deleted, it removes every value under the current key with `RegDeleteValue`, closes the handle, and removes the now-empty key with `RegDeleteKey`.
+**DeleteKeyEx** opens the target key with `KEY_ENUMERATE_SUB_KEYS`, `KEY_QUERY_VALUE`, and `KEY_ALL_ACCESS` rights, then iterates through all subkeys using `RegEnumKeyEx`, calling itself recursively on each one. After all subkeys are deleted, it removes every value under the current key with `RegDeleteValue`, closes the handle, and removes the now-empty key with `RegDeleteKey`. The `KEY_ALL_ACCESS` that the class defines is `&H3F`, the six rights specific to a key, without the standard access rights that the Windows constant of the same name includes.
 
 This function is necessary because the Win32 `RegDeleteKey` API fails if the target key has subkeys. Use [**DeleteKey**](DeleteKey) instead when the key is known to have no subkeys.
 

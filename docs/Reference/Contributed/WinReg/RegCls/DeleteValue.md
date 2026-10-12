@@ -12,7 +12,7 @@ Deletes a named value from a registry key and returns **True** if the deletion s
 Syntax: *object*.**DeleteValue**( **ByVal** *RootKey* **As RegKeyspace**, **ByVal** *KeyPath* **As String**, **ByVal** *ValueName* **As String** ) **As BOOL**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive to open. Typical values are **HKEY_CURRENT_USER** and **HKEY_LOCAL_MACHINE**.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive to open. Typical values are **HKEY_CURRENT_USER** and **HKEY_LOCAL_MACHINE**.
 
 *KeyPath*
 : *required* A **String** giving the path to the subkey that contains the value, relative to *RootKey*. Path components are separated by backslashes---for example, `"Software\MyApp"`.

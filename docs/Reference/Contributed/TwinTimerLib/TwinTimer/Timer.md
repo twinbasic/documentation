@@ -1,7 +1,7 @@
 ---
 title: Timer
 parent: TwinTimer
-permalink: /tB/Packages/Contributed/TwinTimerPackage/TwinTimer/Timer
+permalink: /tB/Packages/Contributed/TwinTimerLib/TwinTimer/Timer
 has_toc: false
 ---
 # Timer

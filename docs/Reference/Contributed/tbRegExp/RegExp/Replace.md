@@ -46,6 +46,19 @@ A `$` at the end of *replaceString*, or followed by a character that is not in t
 
 With [**Global**](Global) set to **False**, only the first match is replaced. With **Global** set to **True**, every match is. [**IgnoreCase**](IgnoreCase), [**MultiLine**](MultiLine) and [**DotAll**](DotAll) change what counts as a match.
 
+> [!WARNING]
+> With **Global** set to **True**, the replacement is made twice at a position where a match of no characters was reached by skipping at least one character, such as the start of every line but the first with `^` and **MultiLine** set to **True**. The warning at [**Execute**](Execute#remarks) lists the patterns affected. VBScript's **RegExp** makes the replacement once. This is how version 1.4.0.0 behaves.
+
+In this example the pattern `^` is meant to put `> ` at the start of each of three lines. The second and third lines get it twice.
+
+```tb check_build check_run
+Dim re As New RegExp
+re.Global = True
+re.MultiLine = True
+re.Pattern = "^"
+Debug.Print Replace(re.Replace("a" & vbLf & "b" & vbLf & "c", "> "), vbLf, "/")  ' > a/> > b/> > c
+```
+
 An invalid pattern raises the compile error, with the number in [**LastErrorNumber**](LastErrorNumber) and the description in [**LastError**](LastError). Check [**IsValid**](IsValid) first to avoid it.
 
 ## Example
