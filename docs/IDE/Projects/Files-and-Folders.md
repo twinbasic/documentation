@@ -22,7 +22,7 @@ The commands that change files change the project in memory. Nothing reaches the
 
 A right click on a row opens the menu for the rows selected. A right click on a row that is not selected selects it first. A right click on the empty space below the tree opens the menu with nothing selected, and then only **Add** and **Export...** are available.
 
-<!-- SHOT projects-file-menu: the right-click menu on Sources/Startup.twin in the file view (Add not hovered): Cut, Copy, Paste, Copy Name, Copy Path, View As JSON (greyed), View As Markdown Preview (greyed), Rename, Export..., Delete Permanently, with their keys -->
+![The right-click menu of Startup.twin. Add with a submenu arrow is above a line, then Cut, Copy, Paste, Copy Name, Copy Path, View As JSON, View As Markdown Preview, Rename, Export... and Delete Permanently. Paste and both View As items are greyed out. Cut, Copy, Paste, Rename and Delete Permanently show their keys.](Images/RightClick-File.png){:width="218" height="273"}
 
 An item that does not apply is greyed out, not hidden. The keys work when the tree has the focus in the file view.
 
@@ -53,7 +53,9 @@ An item that does not apply is greyed out, not hidden. The keys work when the tr
 
 Select a row and press <kbd>F2</kbd>, or choose **Rename**. A text box replaces the name in the row, with the name selected up to the last period, or all of it for a name with none. Typing checks the name at every key, and the box turns red when the name is not allowed. <kbd>Enter</kbd>, or a click anywhere else, renames the file. <kbd>Esc</kbd> leaves the name as it was.
 
-<!-- SHOT projects-rename-box: the rename box open on Sources/Legacy.bas with "Legacy" selected; and beside it, as a second picture, the box red after typing "bad|name" -->
+![The Project Explorer with Sources open. In the row of Legacy.bas a text box replaces the name, holding Legacy.bas with Legacy selected.](Images/Rename_Box.png){:width="267" height="286"}
+
+![The same text box after bad|name is typed over the selection: it holds bad|name.bas and is red.](Images/Rename_Invalid.png){:width="267" height="286"}
 
 A name is refused, with a notification in the corner of the window, when it:
 
@@ -73,7 +75,7 @@ If the file is open in a tab with changes you have not saved, the IDE refuses th
 
 A form's designer file and its `.twin` file belong together. After you rename one, the IDE shows a notification, **Rename** *the partner* **to** *the new name* **also?**, with **YES** and **NO** buttons. **YES** renames the partner as well. **NO** leaves it. The question comes whichever of the two you rename. It does not come when the base names of the two files already differ. The class named inside the `.twin` file does not change either way: edit it in the code.
 
-<!-- SHOT projects-rename-partner: the notification "Rename frmMain.twin to frmA.twin also?" with YES and NO, after renaming frmMain.tbform -->
+![The notification after frmMain.tbform is renamed frmA.tbform: Rename frmMain.twin to frmA.twin also?, with a YES and a NO button under it and a close button at its right.](Images/Rename_Partner.png){:width="470" height="57"}
 
 ### The project
 
@@ -147,7 +149,7 @@ When **File Explorer: Ask Before Delete Files** is on, which is the default, a b
 - For one row that has a partner, a designer file or its `.twin` file: the two paths, with **Delete Both**, **Delete** *the file's name*, and **Cancel**. The second button deletes only the file you selected.
 - For several rows: **Are you sure you want to delete the selected items?**, with **Delete** and **Cancel**.
 
-<!-- SHOT projects-delete-pair: the box for frmMain.tbform, which has a partner: both paths, the line "You will not be able to undo this operation.", and the buttons Delete Both, Delete frmMain.tbform and Cancel -->
+![The box for frmMain.tbform: Are you sure you want to delete the following files?, the paths /MyProject/Sources/frmMain.tbform and /MyProject/Sources/frmMain.twin, and You will not be able to undo this operation. The buttons are Delete Both, Delete frmMain.tbform and Cancel.](Images/Delete_Pair.png){:width="415" height="188"}
 
 With the option off, the rows are deleted at once.
 

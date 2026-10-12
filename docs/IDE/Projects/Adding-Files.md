@@ -136,7 +136,7 @@ The IDE has no resource editors. An icon, a bitmap, a cursor, another image or a
 
 ![The Project Explorer's ICON folder open to two entries, MyOwnIcon.ico above twinBASIC.ico, beside the Toolbox and a form open in the designer.](../../Miscellaneous/Images/8611d12a-d7a6-48cc-9544-cb27c5299aa5.png){:width="642" height="461"}
 
-<!-- SHOT projects-resource-preview: a preview tab open on Resources/ICON/AppIcon.ico, the icon drawn in the tab, the tree beside it with ICON open -->
+![The editor with a tab named AppIcon.ico, the twinBASIC icon drawn in the middle of it, beside the Project Explorer. In the tree, Resources is open over ICON and MANIFEST, and ICON is open over AppIcon.ico, which is selected.](Images/Resource_Preview.png){:width="898" height="302"}
 
 The compiler decides which folder names are resource types. The [FAQ](../../../FAQ#resources) lists them. To add a resource of another type, make a folder with its name under `Resources`: choose **Add Folder** with `Resources` selected. Then select the new folder and use **Import...**. A file that is imported over a resource of the same name replaces it.
 
@@ -148,7 +148,7 @@ The [FAQ](../../../FAQ#app-icon) describes how the program gets its icon, from t
 
 If the file exists already, a box says **File already exists:** and gives the path. **Replace it** writes the template over the file and selects its tab. **Cancel** selects the tab of the existing file.
 
-<!-- SHOT projects-resource-exists: the box "File already exists: /MyProject/RESOURCES/MANIFEST/#1.xml" with Replace it and Cancel -->
+![The box File already exists: /MyProject/RESOURCES/MANIFEST/#1.xml, with the folder Resources written in capitals, and the buttons Replace it and Cancel.](Images/Resource_Exists.png){:width="369" height="158"}
 
 ### Visual Styles Manifest
 {: index="visual styles" }

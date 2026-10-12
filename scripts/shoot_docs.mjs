@@ -1351,6 +1351,63 @@ async function prepareFormsChapter(run) {
   return ctx;
 }
 
+// ---- projects: test/shots/projects, MyProject, for the pictures of the "Projects and files"
+// chapter (projectsShots): a form, a .bas module, a module and a class in a Helpers folder, a
+// manifest, and Resources/ICON/AppIcon.ico, the install's template icon under another name (a
+// binary, so not in the fixture). projects-refs is the same project with two references
+// changed, as the Settings file of a project can hold them: Microsoft Scripting Runtime with its
+// symbol overridden as SR, and a type library that is not on the machine, which makes the IDE
+// open Project Settings by itself once the project is loaded. projects-start is the IDE with no
+// project, for the Recent tab.
+const PROJECTS = path.join(REPO_ROOT, "test", "shots", "projects");
+const MISSING_LIBRARY = {
+  id: "{0BADC0DE-1234-4321-ABCD-0123456789AB}",
+  lcid: 0,
+  name: "Charts Library",
+  path32: "C:\\Libraries\\Charts.tlb",
+  path64: "C:\\Libraries\\Charts.tlb",
+  versionMajor: 1,
+  versionMinor: 0,
+};
+
+function stageProjects(run, { refs = false } = {}) {
+  const src = path.join(run.work, "projects-src");
+  cpSync(PROJECTS, src, { recursive: true });
+  const template = path.join(run.work, "template");
+  unpackProject(path.join(path.dirname(ide), "projects", "_Standard EXE", "projectName.twinproj"), template);
+  mkdirSync(path.join(src, "Resources", "ICON"), { recursive: true });
+  cpSync(path.join(template, "Resources", "ICON", "twinBASIC.ico"), path.join(src, "Resources", "ICON", "AppIcon.ico"));
+  if (refs) {
+    const file = path.join(src, "Settings");
+    const settings = JSON.parse(readFileSync(file, "utf8"));
+    const list = settings["project.references"];
+    const scripting = list.find((r) => r.name === "Microsoft Scripting Runtime");
+    scripting.overrideSymbol = "SR";
+    list.push(MISSING_LIBRARY);
+    writeFileSync(file, `${JSON.stringify(settings, null, "\t")}\n`);
+  }
+  return src;
+}
+
+const startProjects =
+  ({ refs = false } = {}) =>
+  async (run) => {
+    run.step = "open";
+    say(run.name, `opening ${path.relative(REPO_ROOT, PROJECTS)}${refs ? " with two references changed" : ""}`);
+    return run.lane.open(stageProjects(run, { refs }));
+  };
+
+// Project Settings, which the IDE opens by itself a second or so after it loads a project with
+// a reference it cannot load, closed with Cancel, so that the shots start with nothing open.
+async function prepareProjectsRefs(run) {
+  const ctx = await prepareSample(run);
+  if (await waitModal(run.c, "Project Settings", { timeout: 15000 })) {
+    await dialogStill(run.c, { ms: 500 });
+    await closeModal(run.c, "Cancel");
+  }
+  return ctx;
+}
+
 // ---- community: the demo with the compiler started on no licence key, the status bar's
 // COMMUNITY EDITION badge as the IDE draws it for a key that is not there (the Community
 // Edition), and its LIMITED services badge while a compiler starts.The IDE reads the key from its settings into
@@ -1406,6 +1463,9 @@ const SETUPS = {
   designer: { start: startDesigner, prepare: prepareDesigner },
   forms: { start: (run) => startDesigner(run, { addin: false }), prepare: prepareWithDesigners },
   "forms-chapter": { start: startFormsChapter, prepare: prepareFormsChapter },
+  projects: { start: startProjects(), prepare: prepareSample },
+  "projects-refs": { start: startProjects({ refs: true }), prepare: prepareProjectsRefs },
+  "projects-start": { start: startNoProject, prepare: prepareNoProject },
   customcontrols: { start: startCustomControls, prepare: prepareWithDesigners },
   code: { start: startCode, prepare: prepareSample },
   sample9: { start: startSample9, prepare: prepareSample },
@@ -1446,10 +1506,16 @@ const SETUPS = {
 // corners: the outline's corner is what fills the pixel the border's curve leaves.
 const OUTLINE = 1;
 // `before(c)` brings the IDE to the state the menu is shown in, after every menu is closed,
-// and `after(c)`, when given, takes it out of that state once the menu is closed.
-function menuShot(name, top, item = null, { subOnly = false, setup = "no-project", before = null, after = null } = {}) {
+// and `after(c)`, when given, takes it out of that state once the menu is closed. `out` is
+// the picture's path when it is not the Menu pages' folder.
+function menuShot(
+  name,
+  top,
+  item = null,
+  { subOnly = false, setup = "no-project", before = null, after = null, out = null } = {},
+) {
   return {
-    out: `IDE/Menu/Images/${name}.png`,
+    out: out ?? `IDE/Menu/Images/${name}.png`,
     setup,
     async take({ c }) {
       await resetUi(c);
@@ -5510,6 +5576,723 @@ function formStateShot(name, state, { after = null, out = FORMS_IMAGE(name) } = 
     },
   };
 }
+
+// ---------------------------------------------------------------- the "Projects and files" chapter
+
+// The pictures of docs/IDE/Projects/ (setups projects, projects-refs and projects-start). Each
+// starts from nothing (projectsReset) and sets the tree's folders it shows itself. A change a
+// picture makes to the project is undone after it: a rename is renamed back, a folder or a
+// module added is deleted, an edit is undone; the project stays changed (the title's dot) from
+// the first of them on, which no picture but the title's shows.
+
+const PJ_IMAGE = (name) => `IDE/Projects/Images/${name}.png`;
+const PJ_FILE = (rest) => `/MyProject/${rest}`;
+
+// The box of the button of the Project Explorer's title bar whose title starts with `title`,
+// docked or floating, when it is shown.
+const peButton = (c, title) =>
+  c.evaluate(`(() => {
+  const e = [...${PE_SCOPE}.querySelectorAll(".sectionHeader [title]")].find((x) => x.title.startsWith(${JSON.stringify(title)}) && x.getBoundingClientRect().width);
+  const r = e && e.getBoundingClientRect();
+  return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+
+// The object view is showing when the Project Explorer's Search button is.
+const peObjectView = async (c) => !!(await peButton(c, "Search"));
+
+// A real click on the Project Explorer's file view toggle, and the view switched.
+async function peToggleView(c) {
+  const was = await peObjectView(c);
+  const b = await peButton(c, "Toggle file view");
+  if (!b) throw new Error("the Project Explorer has no file view toggle");
+  await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+  if (!(await waitFor(c, async () => (await peObjectView(c)) !== was, { timeout: 5000, interval: 100 }))) {
+    throw new Error("the file view toggle did not switch the view");
+  }
+  await frames(c);
+}
+
+async function projectsReset(c) {
+  await resetUi(c);
+  await closeTabs(c, [], { discard: true });
+  await defaultLayout(c);
+  if (await peObjectView(c)) await peToggleView(c);
+  await parkMouse(c);
+  await frames(c);
+}
+
+// The tree's folders open or closed as `folders` says ({ name: open }), in that order.
+async function peFolders(c, folders) {
+  for (const [name, open] of Object.entries(folders)) await peOpen(c, name, open);
+}
+
+// The class of a tree row's inner element (`error`, `warning`, `treeItemSelected`), by its path
+// under the project; null when there is no such row.
+const peRowClass = (c, rest) =>
+  c.evaluate(`(() => {
+  const n = fs.tree.resolvePath("twinbasic:" + ${JSON.stringify(PJ_FILE(rest))});
+  return n && n.innerDiv ? n.innerDiv.className : null;
+})()`);
+
+// The docked Project Explorer from its top to `margin` pixels below the row named `last`.
+async function peDownTo(c, last, margin = 6) {
+  const panel = await dockedRect(c, "PROJECT EXPLORER");
+  const row = await peFind(c, last);
+  return { ...panel, height: row.row.y + row.row.height + margin - panel.y };
+}
+
+// The item of the Add submenu of the row `row`'s menu that starts with `item`, chosen with real
+// mouse moves and a click.
+async function peAdd(c, row, item) {
+  await peRightClick(c, row);
+  await hoverItem(c, "Add");
+  const it = (await menuItems(c, true)).find((i) => i.text.startsWith(item));
+  if (!it) throw new Error(`the Add submenu has no ${item}`);
+  await mouseMove(c, it.x + 20, it.y + it.height / 2);
+  await frames(c);
+  await clickAt(c, it.x + 20, it.y + it.height / 2);
+}
+
+// The name box the tree opens (Add, F2): its value once it is focused.
+const nameBox = (c) =>
+  waitFor(
+    c,
+    () =>
+      c.evaluate(`(() => {
+  const i = document.getElementById("renameInput");
+  return i && document.activeElement === i ? { value: i.value, start: i.selectionStart, end: i.selectionEnd, invalid: i.classList.contains("invalidRename") } : null;
+})()`),
+    { timeout: 5000, interval: 50 },
+  );
+
+// A real click on the button of the top dialog whose caption is `caption`, and the dialog gone.
+async function modalButton(c, caption) {
+  const before = (await modals(c)).length;
+  await clickInModal(c, caption, ".msgBoxButton");
+  if (!(await waitFor(c, async () => (await modals(c)).length < before, { timeout: 5000, interval: 100 }))) {
+    throw new Error(`the dialog did not close on "${caption}"`);
+  }
+  await frames(c);
+}
+
+// Deletes the file or folder `rest` with the Delete key and the box's Delete button. The row is
+// clicked first, whether or not it is selected, so that the key goes to the tree.
+async function peDelete(c, rest) {
+  const name = rest.split("/").pop();
+  await peSelect(c, name);
+  const selected = await c.evaluate("fs.tree.selectedItems.map((e) => e.getFullPath())");
+  if (selected.join() !== PJ_FILE(rest)) throw new Error(`the tree did not select ${rest}`);
+  const before = (await modals(c)).length;
+  await pressKey(c, "Delete");
+  if (!(await waitFor(c, async () => (await modals(c)).length > before, { timeout: 5000, interval: 100 }))) {
+    throw new Error(`Delete on ${rest} asked nothing`);
+  }
+  await modalButton(c, "Delete");
+  if (!(await waitFor(c, async () => (await peRowClass(c, rest)) === null, { timeout: 5000, interval: 100 }))) {
+    throw new Error(`${rest} is still in the tree after Delete`);
+  }
+}
+
+// Sources > Add > Add Module, the name the box offers kept (MyModule.twin); returns its path.
+async function addModule(c) {
+  await peOpen(c, "Sources", true);
+  await peAdd(c, "Sources", "Add Module");
+  const box = await nameBox(c);
+  if (!box) throw new Error("Add Module opened no name box");
+  await pressKey(c, "Enter");
+  const rest = `Sources/${box.value}`;
+  if (!(await waitFor(c, async () => (await peRowClass(c, rest)) !== null, { timeout: 5000, interval: 100 }))) {
+    throw new Error(`Add Module did not add ${rest}`);
+  }
+  return rest;
+}
+
+// The IDE's title as the menu bar shows it, centred or at the right: its text and box.
+const ideTitle = (c) =>
+  c.evaluate(`(() => {
+  for (const e of [rootMenuText, rootMenuTitleFull]) {
+    const r = e.getBoundingClientRect();
+    if (r.width && !e.classList.contains("invisible") && !e.classList.contains("hide"))
+      return { text: e.innerText, x: r.x, y: r.y, width: r.width, height: r.height };
+  }
+  return null;
+})()`);
+
+// The project marked changed, as a module added and deleted again marks it, unless it is so.
+async function projectChanged(c) {
+  if ((await ideTitle(c))?.text.startsWith("\u{2022} ")) return;
+  const rest = await addModule(c);
+  await closeTabs(c, [], { discard: true });
+  await peDelete(c, rest);
+  if (!(await waitFor(c, async () => (await ideTitle(c))?.text.startsWith("\u{2022} "), { timeout: 5000 }))) {
+    throw new Error("the title has no dot after a module was added and deleted");
+  }
+}
+
+// A double-click on the name of a tree row, as a mouse makes it.
+async function peDoubleClick(c, text) {
+  const n = await peFind(c, text);
+  const x = n.name.x + n.name.width / 2;
+  const y = n.name.y + n.name.height / 2;
+  await mouseMove(c, x, y);
+  for (const clickCount of [1, 2]) {
+    for (const type of ["mousePressed", "mouseReleased"]) {
+      await c.send("Input.dispatchMouseEvent", {
+        type,
+        x,
+        y,
+        button: "left",
+        buttons: type === "mousePressed" ? 1 : 0,
+        clickCount,
+      });
+    }
+  }
+}
+
+// Renames the row `name` with F2, typing `to` over the selected part, and Enter.
+async function peRename(c, name, to) {
+  await peSelect(c, name);
+  await pressKey(c, "F2");
+  if (!(await nameBox(c))) throw new Error(`F2 on ${name} opened no name box`);
+  await typeText(c, to);
+  await pressKey(c, "Enter");
+}
+
+// A notification showing whose text holds `text`: its box.
+const notification = (c, text) =>
+  c.evaluate(`(() => {
+  const e = [...document.querySelectorAll(".msgBoxElement")].find((b) => b.getBoundingClientRect().width && b.innerText.includes(${JSON.stringify(text)}));
+  if (!e) return null;
+  const r = e.getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`);
+
+// A real click on the inline button `caption` of the notification holding `text`.
+async function notificationButton(c, text, caption) {
+  const p = await c.evaluate(`(() => {
+  const e = [...document.querySelectorAll(".msgBoxElement")].find((b) => b.getBoundingClientRect().width && b.innerText.includes(${JSON.stringify(text)}));
+  const b = e && [...e.querySelectorAll(".inlineMsgBoxButtons > div")].find((x) => x.textContent.trim() === ${JSON.stringify(caption)});
+  if (!b) return null;
+  const r = b.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+  if (!p) throw new Error(`no notification holding "${text}" has a ${caption} button`);
+  await clickAt(c, p.x, p.y);
+  await waitFor(c, async () => !(await notification(c, text)), { timeout: 5000, interval: 100 });
+}
+
+// The tree from MyProject's row to Startup.twin's, the folders as most pictures have them.
+const SOURCES_OPEN = { Resources: false, Sources: true, Helpers: false };
+
+// Legacy.bas with F2 pressed: the name box, its base name selected; with `typed`, that typed
+// over it. Escape after: nothing is renamed.
+function renameBoxShot(name, typed = null) {
+  return {
+    out: PJ_IMAGE(name),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      try {
+        await peFolders(c, SOURCES_OPEN);
+        await peSelect(c, "Legacy.bas");
+        await pressKey(c, "F2");
+        // the box selects the base name a moment after it takes the focus
+        const box = await waitFor(
+          c,
+          async () => {
+            const b = await nameBox(c);
+            return b?.value === "Legacy.bas" && b.start === 0 && b.end === 6 && b;
+          },
+          { timeout: 3000, interval: 50 },
+        );
+        if (!box) throw new Error(`F2 on Legacy.bas opened ${JSON.stringify(await nameBox(c))}`);
+        if (typed) {
+          await typeText(c, typed);
+          if (!(await waitFor(c, async () => (await nameBox(c))?.invalid, { timeout: 3000, interval: 50 }))) {
+            throw new Error(`the name box did not turn red for ${typed}`);
+          }
+        }
+        await parkMouse(c);
+        return await capture(c, name, snapOut(await peDownTo(c, "Startup.twin")), {});
+      } finally {
+        await pressKey(c, "Escape");
+        await frames(c);
+        if ((await peRowClass(c, "Sources/Legacy.bas")) === null) complain(c.shot.name, "Escape renamed Legacy.bas");
+      }
+    },
+  };
+}
+
+const projectsShots = [
+  // the File menu with a saved project open
+  menuShot("Menu_File_Project", "File", null, { setup: "projects", out: PJ_IMAGE("Menu_File_Project") }),
+  {
+    // the object view with its search bar open from the Search button, holding Util
+    out: PJ_IMAGE("ObjectView_Search"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      try {
+        await peSelect(c, "Startup.twin");
+        await peToggleView(c);
+        const listed = () =>
+          c.evaluate(
+            `[...document.querySelectorAll(".objListRow")].filter((r) => r.getBoundingClientRect().height).map((r) => r.innerText.replace(/\\s+/g, " ").trim())`,
+          );
+        if (!(await waitFor(c, async () => (await listed()).includes("Util Util.twin"), { timeout: 15000 }))) {
+          throw new Error("the object view never listed Util");
+        }
+        const b = await peButton(c, "Search");
+        if (!b) throw new Error("the object view shows no Search button");
+        await clickAt(c, b.x + b.width / 2, b.y + b.height / 2);
+        if (!(await waitFor(c, () => c.evaluate(`document.activeElement?.classList.contains("objListSearchEntry")`)))) {
+          throw new Error("the Search button opened no search bar");
+        }
+        await typeText(c, "Util");
+        const filtered = await waitFor(
+          c,
+          async () => {
+            const rows = await listed();
+            return (
+              rows.includes("Util Util.twin") && !rows.includes("Legacy Legacy.bas") && rows.includes("VB") && rows
+            );
+          },
+          { timeout: 15000 },
+        );
+        if (!filtered) throw new Error(`the search for Util listed ${JSON.stringify(await listed())}`);
+        await parkMouse(c);
+        await sleep(500);
+        return await capture(c, "ObjectView_Search", snapOut(await dockedRect(c, "PROJECT EXPLORER")), {});
+      } finally {
+        await pressKey(c, "Escape");
+        await frames(c);
+        if (await peObjectView(c)) await peToggleView(c);
+      }
+    },
+  },
+  {
+    // the right-click menu of Startup.twin in the file view, as a cut-out
+    out: PJ_IMAGE("RightClick-File"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      try {
+        await peFolders(c, SOURCES_OPEN);
+        await peRightClick(c, "Startup.twin");
+        await parkMouse(c);
+        await frames(c);
+        return await capture(c, "RightClick-File", snapOut(grow(await rectOf(c, "#contextMenu"), OUTLINE)), {
+          keep: ["#contextMenu"],
+        });
+      } finally {
+        await closeMenus(c);
+      }
+    },
+  },
+  renameBoxShot("Rename_Box"),
+  renameBoxShot("Rename_Invalid", "bad|name"),
+  {
+    // frmMain.tbform renamed frmA.tbform: the notification that asks about frmMain.twin. NO, and
+    // the form renamed back
+    out: PJ_IMAGE("Rename_Partner"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      const QUESTION = "Rename frmMain.twin to frmA.twin also?";
+      let renamed = false;
+      try {
+        await peFolders(c, SOURCES_OPEN);
+        await peRename(c, "frmMain.tbform", "frmA");
+        renamed = await waitFor(c, async () => (await peRowClass(c, "Sources/frmA.tbform")) !== null, {
+          timeout: 5000,
+        });
+        const box = await waitFor(c, () => notification(c, QUESTION), { timeout: 5000, interval: 100 });
+        if (!box) throw new Error("renaming frmMain.tbform asked nothing about frmMain.twin");
+        await parkMouse(c);
+        await sleep(500);
+        return await capture(c, "Rename_Partner", snapOut(await notification(c, QUESTION)), {});
+      } finally {
+        if (await notification(c, QUESTION)) await notificationButton(c, QUESTION, "NO");
+        if (renamed) {
+          await peRename(c, "frmA.tbform", "frmMain");
+          if (
+            !(await waitFor(c, async () => (await peRowClass(c, "Sources/frmMain.tbform")) !== null, { timeout: 5000 }))
+          ) {
+            complain(c.shot.name, "frmA.tbform was not renamed back to frmMain.tbform");
+          }
+        }
+      }
+    },
+  },
+  {
+    // Delete on frmMain.tbform, which has a partner: the box with its three buttons; Cancel
+    out: PJ_IMAGE("Delete_Pair"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      await peFolders(c, SOURCES_OPEN);
+      await peSelect(c, "frmMain.tbform");
+      await pressKey(c, "Delete");
+      if (!(await waitModal(c, "twinBASIC", { timeout: 5000 })))
+        throw new Error("Delete on frmMain.tbform asked nothing");
+      await dialogStill(c);
+      try {
+        return await dialogShot(c, "Delete_Pair");
+      } finally {
+        await modalButton(c, "Cancel");
+      }
+    },
+  },
+  {
+    // AppIcon.ico double-clicked: its preview tab beside the tree, in a smaller window with the
+    // editor and the Project Explorer alone
+    out: PJ_IMAGE("Resource_Preview"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      try {
+        return await atSize(c, 900, 420, async () => {
+          await useLayout(c, PREVIEW_LAYOUT);
+          await peFolders(c, { Sources: false, Resources: true, ICON: true });
+          await peDoubleClick(c, "AppIcon.ico");
+          const shown = await waitFor(
+            c,
+            () =>
+              c.evaluate(`(() => {
+  const tab = [...document.querySelectorAll(".tabItem")].some((t) => t.innerText.trim() === "AppIcon.ico");
+  const e = [...document.querySelectorAll("embed")].find((x) => x.getBoundingClientRect().width);
+  return tab && !!e;
+})()`),
+            { timeout: 10000, interval: 100 },
+          );
+          if (!shown) throw new Error("the double-click opened no preview of AppIcon.ico");
+          await sleep(1000);
+          await parkMouse(c);
+          const editor = await dockedRect(c, "EDITOR 1");
+          const pe = await dockedRect(c, "PROJECT EXPLORER");
+          return await capture(c, "Resource_Preview", snapOut(union(editor, pe), 900, 420), {});
+        });
+      } finally {
+        await closeTabs(c, [], { discard: true });
+        await defaultLayout(c);
+      }
+    },
+  },
+  {
+    // Add Resource: Visual Styles Manifest with Resources/MANIFEST/#1.xml in the project: the
+    // box that says the file exists; Cancel
+    out: PJ_IMAGE("Resource_Exists"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      try {
+        await peFolders(c, SOURCES_OPEN);
+        await peAdd(c, "Sources", "Add Resource: Visual Styles Manifest");
+        if (!(await waitModal(c, "twinBASIC", { timeout: 5000 }))) throw new Error("the manifest item asked nothing");
+        await dialogStill(c);
+        return await dialogShot(c, "Resource_Exists");
+      } finally {
+        if ((await modals(c)).length) await modalButton(c, "Cancel");
+        await closeTabs(c, [], { discard: true });
+      }
+    },
+  },
+  {
+    // Project Settings with its description changed, the title bar's close button pressed: the
+    // question over the dialog; Yes, close, which keeps nothing
+    out: PJ_IMAGE("Settings_Close"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      try {
+        await command(c, "tbProject_ShowSettings");
+        if (!(await waitModal(c, "Project Settings", { timeout: 10000 })))
+          throw new Error("Project Settings did not open");
+        await dialogStill(c, { ms: 500 });
+        await nameUserAsUser(c);
+        await templateBuildPath(c);
+        await scrollToSetting(c, "project.description");
+        const input = `${settingPart("project.description", "CONTENT")} input`;
+        const i = await shownRect(c, input);
+        if (!i) throw new Error("Project Settings shows no description box");
+        await clickAt(c, i.x + i.width - 6, i.y + i.height / 2);
+        await pressKey(c, "End");
+        await typeText(c, " Updated.");
+        const x = await c.evaluate(`(() => {
+  const b = ${TOP_MODAL}.querySelector(".modalTitleBarCloseBtn");
+  const r = b && b.getBoundingClientRect();
+  return r && r.width ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+})()`);
+        if (!x) throw new Error("Project Settings has no close button");
+        await clickAt(c, x.x, x.y);
+        if (!(await waitFor(c, async () => (await modals(c)).length === 2, { timeout: 5000, interval: 100 }))) {
+          throw new Error("the close button asked nothing");
+        }
+        await dialogStill(c);
+        await c.evaluate("document.activeElement?.blur?.()");
+        await parkMouse(c);
+        await frames(c);
+        const [settings] = await modals(c);
+        return await capture(c, "Settings_Close", snapOut(settings), {});
+      } finally {
+        if ((await modals(c)).length === 2) await modalButton(c, "Yes, close");
+        await resetUi(c);
+      }
+    },
+  },
+  {
+    // a module with an error in Helpers and one with a warning in Sources (each made so by a
+    // line put in, in the page), and a new folder in Helpers, open: the tints and (empty). The
+    // folder is deleted and the lines undone afterwards
+    out: PJ_IMAGE("Tree_Tints"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      const edited = [];
+      let folder = null;
+      try {
+        for (const [file, after, text] of [
+          ["Sources/Helpers/Util.twin", "Public Function UtilTwice", "total = n"],
+          ["Sources/Startup.twin", "Debug.Print LegacyHello()", "ReDim made(3)"],
+        ]) {
+          await openFile(c, PJ_FILE(file));
+          edited.push({ file, version: await c.evaluate("editor.getModel().getAlternativeVersionId()") });
+          await newLineAfter(c, after, text);
+        }
+        await peFolders(c, { Resources: false, Sources: true, Helpers: true });
+        const tinted = await waitFor(
+          c,
+          async () =>
+            /\berror\b/.test(await peRowClass(c, "Sources/Helpers/Util.twin")) &&
+            /\bwarning\b/.test(await peRowClass(c, "Sources/Startup.twin")),
+          { timeout: 30000, interval: 200 },
+        );
+        if (!tinted) throw new Error("the tree never tinted Util.twin and Startup.twin");
+        await peAdd(c, "Helpers", "Add Folder");
+        const box = await nameBox(c);
+        if (!box) throw new Error("Add Folder opened no name box");
+        await pressKey(c, "Enter");
+        folder = `Sources/Helpers/${box.value}`;
+        if (!(await waitFor(c, async () => (await peRowClass(c, folder)) !== null, { timeout: 5000 }))) {
+          throw new Error(`Add Folder did not add ${folder}`);
+        }
+        await peOpen(c, box.value, true);
+        const empty = await waitFor(
+          c,
+          () =>
+            c.evaluate(
+              `[...fs.tree.sectionRoot.querySelectorAll("*")].some((e) => e.children.length === 0 && e.textContent.trim() === "(empty)" && e.getBoundingClientRect().width)`,
+            ),
+          { timeout: 3000 },
+        );
+        if (!empty) throw new Error(`the open ${box.value} shows no (empty)`);
+        await parkMouse(c);
+        await sleep(500);
+        return await capture(c, "Tree_Tints", snapOut(await peDownTo(c, "Startup.twin")), {});
+      } finally {
+        await resetUi(c);
+        if (folder && (await peRowClass(c, folder)) !== null) await peDelete(c, folder);
+        for (const { file, version } of edited) {
+          await openFile(c, PJ_FILE(file));
+          const back = await c.evaluate(`(() => {
+  const m = editor.getModel();
+  for (let i = 0; i < 100 && m.getAlternativeVersionId() !== ${version} && m.canUndo(); i++) editor.trigger("shoot_docs", "undo");
+  return m.getAlternativeVersionId() === ${version};
+})()`);
+          if (!back) complain(c.shot.name, `the line put in ${file} could not be undone`);
+        }
+        await closeTabs(c, [], { discard: true });
+        const clear = await waitFor(
+          c,
+          async () => !/\berror\b|\bwarning\b/.test((await peRowClass(c, "Sources/Helpers/Util.twin")) ?? ""),
+          { timeout: 30000, interval: 200 },
+        );
+        if (!clear) complain(c.shot.name, "the tree still tints Util.twin after the line was undone");
+      }
+    },
+  },
+  {
+    // a module added: the title in the menu bar, with the dot of a changed project. The module
+    // is deleted afterwards
+    out: PJ_IMAGE("Title_Changed"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      let added = null;
+      try {
+        added = await addModule(c);
+        if (!(await waitFor(c, async () => (await ideTitle(c))?.text.startsWith("\u{2022} "), { timeout: 5000 }))) {
+          throw new Error(`the title has no dot after a module was added: ${JSON.stringify(await ideTitle(c))}`);
+        }
+        await parkMouse(c);
+        await frames(c);
+        const t = await ideTitle(c);
+        const bar = await rectOf(c, "#rootMenu1");
+        return await capture(
+          c,
+          "Title_Changed",
+          snapOut({ x: t.x - 16, y: bar.y, width: t.width + 32, height: bar.height }),
+          {},
+        );
+      } finally {
+        await closeTabs(c, [], { discard: true });
+        if (added) await peDelete(c, added);
+      }
+    },
+  },
+  {
+    // File > Close Project with the project changed: the question; Cancel, which keeps it open
+    out: PJ_IMAGE("Close_Question"),
+    setup: "projects",
+    async take({ c }) {
+      await projectsReset(c);
+      await projectChanged(c);
+      await projectsReset(c);
+      await openMenu(c, "File");
+      const it = (await menuItems(c)).find((i) => i.text.startsWith("Close Project"));
+      if (!it) throw new Error("the File menu has no Close Project");
+      await mouseMove(c, it.x + 20, it.y + it.height / 2);
+      await frames(c);
+      await clickAt(c, it.x + 20, it.y + it.height / 2);
+      if (!(await waitModal(c, "twinBASIC", { timeout: 5000 }))) throw new Error("Close Project asked nothing");
+      await dialogStill(c);
+      try {
+        return await dialogShot(c, "Close_Question");
+      } finally {
+        await modalButton(c, "Cancel");
+        if ((await peRowClass(c, "Sources/Startup.twin")) === null) complain(c.shot.name, "Cancel closed the project");
+      }
+    },
+  },
+  {
+    // Project > References in a project with an overridden symbol and a library that is not on
+    // the machine: the Enabled Libraries list
+    out: PJ_IMAGE("References_Detail"),
+    setup: "projects-refs",
+    take: ({ c }) =>
+      inDialog(c, { command: LIBRARY_REFERENCES, title: "Project Settings", close: "Cancel", still: 500 }, async () => {
+        await nameUserAsUser(c);
+        const ok = await waitFor(
+          c,
+          () =>
+            c.evaluate(`(() => {
+  const t = [...document.querySelectorAll(".referencesListRow")].filter((r) => r.getBoundingClientRect().height).map((r) => r.innerText);
+  return t.some((x) => x.includes("unable to load this reference")) && t.some((x) => /Scripting[\\s\\S]*SR/.test(x));
+})()`),
+          { timeout: 10000 },
+        );
+        if (!ok) throw new Error("the Enabled Libraries list shows no error row or no SR");
+        // a movable row shows its two priority arrows only under the pointer: the pointer rests
+        // on Microsoft Scripting Runtime's name
+        const row = await c.evaluate(`(() => {
+  const r = [...document.querySelectorAll(".referencesListRow")].find((x) => x.getBoundingClientRect().height && x.innerText.includes("Microsoft Scripting Runtime"));
+  const n = r && r.querySelector(".referencesListColName");
+  const b = n && n.getBoundingClientRect();
+  return b ? { x: b.x + 40, y: b.y + b.height / 2 } : null;
+})()`);
+        if (!row) throw new Error("the list has no Microsoft Scripting Runtime row");
+        await c.evaluate("document.activeElement?.blur?.()");
+        await mouseMove(c, row.x, row.y);
+        const arrows = await waitFor(
+          c,
+          () =>
+            c.evaluate(
+              `[...document.querySelectorAll(".referencesListRow:hover .pinkArrowUp")].some((a) => getComputedStyle(a).visibility === "visible")`,
+            ),
+          { timeout: 3000, interval: 50 },
+        );
+        if (!arrows) throw new Error("the row under the pointer shows no priority arrows");
+        await frames(c);
+        const [m] = await modals(c);
+        const area = { ...m, height: (await lastReferenceBottom(c)) + 12 - m.y };
+        const png = await capture(c, "References_Detail", snapOut(area), {});
+        // No SVG: the converter does not draw a line-through (snapshot-svg.mjs), and the struck
+        // Scripting is what the picture is about; the page shows the PNG.
+        c.shot.svg = null;
+        return png;
+      }),
+  },
+  {
+    // the Recent tab with an entry whose file is gone, double-clicked: the box over the dialog;
+    // Keep It
+    out: PJ_IMAGE("Failed_To_Load"),
+    setup: "projects-start",
+    async take({ c }) {
+      await resetUi(c);
+      await setRecents(
+        c,
+        RECENT_GONE.map((p) => ({ name: p, projectPath: p })),
+      );
+      try {
+        await command(c, "tbProject_OpenRecent");
+        if (!(await waitModal(c, "New / Open", { timeout: 10000 }))) throw new Error("Open Recent opened no dialog");
+        await dialogStill(c);
+        const row = await c.evaluate(`(() => {
+  const e = [...document.querySelectorAll(".frontPageListViewItem")].find((x) => x.getBoundingClientRect().width && x.textContent.trim() === ${JSON.stringify(RECENT_GONE[0])});
+  const r = e && e.getBoundingClientRect();
+  return r ? { x: r.x + r.width / 3, y: r.y + r.height / 2 } : null;
+})()`);
+        if (!row) throw new Error("the Recent tab does not list the entry");
+        await mouseMove(c, row.x, row.y);
+        for (const clickCount of [1, 2]) {
+          for (const type of ["mousePressed", "mouseReleased"]) {
+            await c.send("Input.dispatchMouseEvent", {
+              type,
+              x: row.x,
+              y: row.y,
+              button: "left",
+              buttons: type === "mousePressed" ? 1 : 0,
+              clickCount,
+            });
+          }
+        }
+        const box = await waitFor(c, async () => (await modals(c)).find((m) => m.title === "twinBASIC") ?? null, {
+          timeout: 15000,
+          interval: 150,
+        });
+        if (!box) throw new Error("the double-click on a project that is gone asked nothing");
+        await dialogStill(c);
+        await c.evaluate("document.activeElement?.blur?.()");
+        await parkMouse(c);
+        await frames(c);
+        const all = await modals(c);
+        const shown = all.reduce((u, m) => union(u, m));
+        return await capture(c, "Failed_To_Load", snapOut(shown), {});
+      } finally {
+        if ((await modals(c)).some((m) => m.title === "twinBASIC")) await modalButton(c, "Keep It");
+        await resetUi(c);
+        await setRecents(c, []);
+      }
+    },
+  },
+];
+
+// The Recent tab's entries for Failed_To_Load: paths of projects that do not exist (the first
+// is double-clicked), in place of the user's own list, in the page only.
+const RECENT_GONE = [
+  "C:\\Projects\\Inventory\\Inventory.twinproj",
+  "C:\\Projects\\MyProject\\MyProject.twinproj",
+  "C:\\Projects\\Reports\\Reports.twinproj",
+];
+
+// The editor and the Project Explorer alone, side by side, for the preview tab.
+const PREVIEW_LAYOUT = {
+  type: "horizontal",
+  variableSize: true,
+  size: "0%",
+  content: [
+    { id: "TOOLBAR", variableSize: false, size: "fit-content" },
+    {
+      type: "vertical",
+      variableSize: true,
+      size: "0%",
+      content: [
+        { id: "EDITOR", variableSize: true, size: "0%" },
+        { id: "PROJECT EXPLORER", variableSize: false, size: "34%" },
+      ],
+    },
+  ],
+};
 
 // ---- the CustomControls tutorial's property sheet: composites of the fixture's code and the
 // PROPERTIES panel (setup customcontrols)
@@ -10904,6 +11687,7 @@ const SHOTS = [
   ...designerShots,
   ...formShots,
   ...formsChapterShots,
+  ...projectsShots,
   ...customControlsShots,
   ...customControlsCodeShots,
   ...codeShots,
@@ -10972,6 +11756,9 @@ const JOB_SECONDS = {
   designer: 61,
   forms: 40,
   "forms-chapter": 90,
+  projects: 120,
+  "projects-refs": 20,
+  "projects-start": 20,
   customcontrols: 54,
   "customcontrols-2": 53,
   "customcontrols-3": 35,

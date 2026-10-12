@@ -22,7 +22,7 @@ The project lives in memory until you save it. This page describes how the IDE s
 
 **File → Save Project** (<kbd>Ctrl</kbd>+<kbd>S</kbd>), and the toolbar button **Save All Changes**, write the whole project to its `.twinproj` file. First every open editor saves its text, the code editors and the designers alike. Then the compiler writes the file. The Debug Console prints `[PROJECT] twinBASIC project saving to disk [DONE]` in green when it has finished.
 
-<!-- SHOT projects-file-menu-open: the File menu with a saved project open: Save Project, Save Project As, Close Project, Export Project and Build live, with their keys; Save Current Document greyed -->
+![The File menu with a project open. Every item is available but Save Current Document, which is greyed out. New Project, Open Project, Save Project and Export Project show their keys, and Exit shows Alt+F4.](Images/Menu_File_Project.png){:width="190" height="337"}
 
 The command works on a project that has no changes, and writes the file again. For a project with no file yet, it opens the **Save As** dialog first. See [A project with no file](#a-project-with-no-file).
 
@@ -32,7 +32,7 @@ There is no save for a single file: **File → Save Current Document** is always
 
 A project with changes that are not saved shows a dot before its name in the title bar: `• project.twinproj - twinBASIC`. The title is the project's file name, then the name and version of the IDE. Saving removes the dot.
 
-<!-- SHOT projects-title-dirty: the IDE's title bar with the dot before the project's file name, after adding a module -->
+![The window's title, in the bar at the top of the IDE, after a module is added: a dot, then project.twinproj - twinBASIC and the IDE's version in brackets.](Images/Title_Changed.png){:width="703" height="25"}
 
 These make a project changed:
 
@@ -75,7 +75,7 @@ The state is kept in the registry, in a value for each project path, under `Proj
 
 **File → Close Project** closes the project. If it has changes that are not saved, a box asks **You've made changes to this project.  Save now?**, with three buttons.
 
-<!-- SHOT projects-close-question: the box "You've made changes to this project.  Save now?" with Save, Discard Changes and Cancel -->
+![The box You've made changes to this project. Save now?, with the buttons Save, Discard Changes and Cancel.](Images/Close_Question.png){:width="389" height="158"}
 
 - **Save** saves the project, with the **Save As** dialog first if it has no file, and then closes it.
 - **Discard Changes** closes it and leaves the file on disk as it was.
@@ -94,9 +94,9 @@ The project that is open is closed before the new one loads, and the question ab
 
 The **Recent** tab lists the full paths of the projects you opened last, the newest first. A double-click, or **Open**, opens one and moves it to the top. The **X** at the end of a row, titled **Remove from this list**, removes the entry at once, with no question. **Save Project As** adds the new path to the top. The list holds 21 entries and is kept in the registry with the IDE's settings.
 
-A project whose file is gone shows the box **Failed to load the project (error code** *n***)**, with the path and the question **Do you want to remove it from the list of recently opened projects?** The buttons are **Remove It** and **Keep It**. **Keep It** moves the entry to the top. Either way the IDE is left with no project open, because the previous one was closed first. A damaged file opens a native Windows message box instead.
+A project whose file is gone shows the box **Failed to load the project (error code ERROR_FILE_NOT_FOUND)**, with the path and the question **Do you want to remove it from the list of recently opened projects?** The **New / Open Project** dialog has closed by then. The buttons are **Remove It** and **Keep It**. **Keep It** moves the entry to the top. Either way the IDE is left with no project open, because the previous one was closed first. A damaged file opens a native Windows message box instead.
 
-<!-- SHOT projects-failed-to-load: the box "Failed to load the project (error code ...)" over the Recent tab, with the path, Remove It and Keep It -->
+![The box Failed to load the project (error code ERROR_FILE_NOT_FOUND), with the path C:\Projects\Inventory\Inventory.twinproj, the question Do you want to remove it from the list of recently opened projects?, and the buttons Remove It and Keep It.](Images/Failed_To_Load.png){:width="522" height="169"}
 
 ## Open a folder
 

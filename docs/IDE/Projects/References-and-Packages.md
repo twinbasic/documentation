@@ -60,7 +60,7 @@ Unticking a row removes the reference. For a package that is kept under `Package
 
 ### Priority
 
-The list is in order of priority. The two pink arrows of a row move it up, which gives it a higher priority, or down, which gives it a lower one. An arrow that cannot move the row is greyed out. The two compiler packages stay at the top.
+The list is in order of priority. A row shows two arrows while the pointer is over it, grey until the pointer is on one, which turns it pink. They move the row up, which gives it a higher priority, or down, which gives it a lower one. An arrow that cannot move the row is greyed out. The two compiler packages stay at the top.
 
 ### The library symbol
 
@@ -70,7 +70,7 @@ A library's *symbol* is the name its components are qualified with in code. It i
 
 A reference that the compiler cannot load shows **ERROR unable to load this reference** and a **FIX** link. About a second after the project loads, the dialog opens by itself to show it. It opened again after an **Apply Changes** that restarted the compiler. **FIX** does nothing but say that the feature is not implemented yet, and that you should remove the reference and add it again from **Available COM References**. A library listed twice shows **ERROR duplicate reference** on both rows.
 
-<!-- SHOT projects-refs-detail: the Enabled Libraries list with a project that has an overridden symbol (Scripting shown with the original struck through and SR beside it), the pink priority arrows on the movable rows, and one row with "ERROR unable to load this reference" and the FIX link -->
+![The Enabled Libraries tab of Project Settings. The Microsoft Scripting Runtime row, under the pointer, shows its two arrows, and its symbol Scripting is struck through with the override SR under it. The last row, Charts Library, has a yellow band reading ERROR unable to load this reference with a FIX link.](Images/References_Detail.png){:width="1102" height="369"}
 
 ## Available COM References
 
@@ -129,7 +129,7 @@ The dialog has a filter box, **Apply Changes** and **Cancel**. **Apply Changes**
 
 **Cancel** closes the dialog at once and drops every change, whichever it is, without asking. <kbd>Esc</kbd> does the same when the focus is in the filter box. The close button in the title bar asks first, in a box, **WARNING: you made changes but haven't saved them. Close without saving?**, with **Yes, close** and **No, keep editing**.
 
-<!-- SHOT projects-settings-close: Project Settings after a change to the description, the title bar's close button pressed, the box "WARNING: you made changes but haven't saved them. Close without saving?" with Yes, close and No, keep editing; Apply Changes is enabled behind it -->
+![Project Settings with a word added to its Project Description, and the box that its title bar's close button opened over it: WARNING: you made changes but haven't saved them. Close without saving?, with Yes, close and No, keep editing. Apply Changes and Cancel are at the foot of the dialog behind it.](Images/Settings_Close.png){:width="1102" height="774"}
 
 > [!WARNING] BETA 1005
 > The close button of the title bar does not ask when the only change is to the references. The dialog closes, the change is dropped, and nothing says so. The code that compares the settings leaves out the compiler warnings as well. Press **Apply Changes** before you close the dialog.

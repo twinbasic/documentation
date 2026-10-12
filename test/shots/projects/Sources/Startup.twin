@@ -1,0 +1,10 @@
+Module Startup
+
+    Public Sub Main()
+        Dim t As New Thing
+        Debug.Print UtilTwice(t.Value)
+        Debug.Print LegacyHello()
+        frmMain.Show
+    End Sub
+
+End Module

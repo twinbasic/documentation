@@ -186,7 +186,8 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
   alone), `programs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
-  Chrome, not an IDE), `featuremap`, `code-chapter`, `debugging`, `forms-chapter`, `customcontrols`, `code` and `sample9` (all described
+  Chrome, not an IDE), `featuremap`, `code-chapter`, `debugging`, `forms-chapter`, `projects`, `projects-refs`,
+  `projects-start`, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`.
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
@@ -353,6 +354,53 @@ whose project does not refer to the VB package.
   of its own (`#32768`), which the tool cannot yet capture and lay over the form's window.
 - PROPERTIES shows no description line: in BETA 1005 its text is set in a footer of the
   designer's own properties box, which is 0 pixels wide, so nothing is drawn.
+
+## The "Projects and files" chapter
+
+Setup `projects`: the fixture `test/shots/projects/`, MyProject (a form, `Legacy.bas`, `Startup`,
+and `Util` and `Thing` in a `Helpers` folder, `Resources/MANIFEST/#1.xml`), with
+`Resources/ICON/AppIcon.ico` staged from the install's template icon, as the sample's is. The
+project file the lane opens is `project.twinproj`, the name the title shows. `projects-refs` is
+the same project with Microsoft Scripting Runtime's symbol overridden as `SR` and a type library
+that is not on the machine (`MISSING_LIBRARY`) put in the staged `Settings`; the IDE opens
+Project Settings by itself a second after loading it, and the setup's prepare closes it.
+`projects-start` is the IDE with no project. Its 15 pictures are under `docs/IDE/Projects/Images/`;
+`Menu_File_Project` is the File menu with the project open (the Menu pages keep `Menu_File`, with
+none, which `New Project.md` also shows).
+
+- **Each picture starts from nothing** (`projectsReset`: no menu or dialog, no tab, the default
+  layout, the file view) and opens the tree's folders it shows itself (`peFolders`).
+- **What a picture changes in the project it undoes**: frmMain.tbform renamed frmA.tbform is
+  renamed back after NO; the folder Tree_Tints adds and the module Title_Changed adds are deleted
+  (`peDelete`: the row clicked first, so that Delete goes to the tree, then the box's Delete); the
+  lines Tree_Tints puts in Util and Startup (an undeclared variable, a `ReDim` that declares one)
+  are undone. The project stays changed from the first of them on, which only Title_Changed and
+  Close_Question show, and each of those makes the change itself when the title has no dot
+  (`projectChanged`).
+- **`headerButton` and `panelSel` name a floating panel only.** The docked Project Explorer's
+  title-bar buttons are found inside `PE_SCOPE` (`peButton`); its Search button is drawn only in
+  the object view, which is how `peObjectView` tells the views apart.
+- **The tree's tints are text colours and dots, not row colours**: an error row has a red dot at
+  its right, and in the dark theme its name and its folders' names are a light red (255, 230, 230
+  against 216, 203, 203); in Light only the dot shows. A warning row has a yellow dot and a yellow
+  name in both.
+- **A rename box selects the base name a moment after it takes the focus**: Rename_Box waits for
+  the selection, not the focus.
+- **A row's priority arrows in Enabled Libraries show only under the pointer** (CSS `:hover`),
+  grey until the pointer is on the arrow: References_Detail rests the pointer on Microsoft
+  Scripting Runtime's name. It has no SVG (`c.shot.svg = null`): the converter does not draw a
+  line-through, and the struck `Scripting` is what the picture shows.
+- **The Recent tab's double-click on a project that is gone closes the New / Open dialog** before
+  the box opens, so Failed_To_Load is the box alone. The entries are `RECENT_GONE`, set with
+  `setRecents` in the page; Keep It closes the box (its Remove It would call `RemoveRecentsList`,
+  which `PAGE_DEFAULTS` blocks anyway).
+- Settings_Close types into the description box with real keys, after `templateBuildPath`, and
+  closes the question with Yes, close, which keeps nothing.
+- **Not taken: the export console** (marker `projects-export-console` left). It was reached (Export
+  Path set in the staged copy to a folder under `PACKAGE_ROOT`, so that the first line holds no
+  user name; the console floated before Clear, which the docked console is too narrow to show; the
+  list scrolled with the wheel to its top and its end, as two parts of a composite), but with
+  Export Verbose every `DONE` line shows `&#92;` for each backslash, a defect not yet decided on.
 
 ## Special IDE states
 

@@ -72,9 +72,9 @@ The folders `Settings`, `Sources`, `Resources`, `References`, `Packages`, `Misce
 
 The icon of a file shows its kind. A `.twin` file has a red icon, a `.bas` file a blue one and a `.cls` file an orange one. The four kinds of designer file, `.tbform`, `.tbcontrol`, `.tbppage` and `.tbreport`, have a green one. The entries under `References`, the `Settings` file and the other files each have an icon of their own, and a folder has the folder icon.
 
-A file in which the compiler found an error has a light red row. Every folder above the file takes the colour as well, up to the project row, so a red folder says that something below it has an error. A file with only a warning has a yellow row. [Diagnostics](../Code/Diagnostics) lists the problems.
+A file in which the compiler found an error has a red dot at the right end of its row. In the dark theme its name is drawn in light red, and so is the name of every folder above it, up to the project row, so a red folder says that something below it has an error. A file with only a warning has a yellow dot and a yellow name. [Diagnostics](../Code/Diagnostics) lists the problems.
 
-<!-- SHOT projects-tree-tints: the tree of a project whose Sources/Helpers folder holds one module with an error and Sources holds one with a warning; Helpers expanded, a new empty folder expanded under it showing (empty); the red and yellow rows visible -->
+![The Project Explorer with Sources and its Helpers folder open. Under Helpers, a new folder named MyFolder is open and selected, with (empty) under it. Util.twin in Helpers has a red dot at the right of its row, and Startup.twin in Sources has a yellow name and a yellow dot.](Images/Tree_Tints.png){:width="267" height="370"}
 
 Pointing at a row for about a second and a half shows its IDE path, such as `/MyProject/Sources/Startup.twin`.
 
@@ -145,7 +145,7 @@ Each object has an icon for its kind and, in grey beside its name, the file it i
 
 The **Search** button, or the first letter you type with a row selected, opens a search bar over the list. The list shows only the objects whose name contains the text, without regard to case. While a filter is set, the packages and their groups are drawn open, and each group keeps its full count. <kbd>Esc</kbd>, or the bar's close button, closes the bar and brings back the whole list.
 
-<!-- SHOT projects-object-search: the object view with the search bar open over the list, holding "Util" (typed after selecting a row), the filtered list below it -->
+![The Project Explorer in its object view, with the search bar open at the top right of the list and Util typed in it. Under MyProject the Modules group lists only Util, beside its file Util.twin, and the Classes and Forms groups list nothing. The VBA, VBRUN and VB packages below are drawn open, and every group shows its full count.](Images/ObjectView_Search.png){:width="267" height="478"}
 
 > [!NOTE] BETA 1005
 > The object view has some defects.
