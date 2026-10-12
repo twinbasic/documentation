@@ -579,6 +579,26 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: Experimental Packages
+        subtitle: Community packages from TWINSERV that are not yet ready for use in a program
+        landing_page: /tB/Packages/Experimental/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: BigNumberLib Package
+        subtitle: Arbitrary-precision signed integer arithmetic
+        landing_page: /tB/Packages/Contributed/BigNumberLib/
+        page: /tB/Packages/Contributed/BigNumberLib/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: WinReg Package
+        subtitle: Registry keys and values, read, written, deleted and enumerated
+        landing_page: /tB/Packages/Contributed/WinReg/
+        page: /tB/Packages/Contributed/WinReg/
+        landing_is_target: true
+        outline_closed: true
+
       - title: xCalendar Package
         subtitle: A calendar control, in place of the Calendar control of MSCAL.OCX
         landing_page: /tB/Packages/Contributed/xCalendar/

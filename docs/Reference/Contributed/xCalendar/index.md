@@ -1,6 +1,6 @@
 ---
 title: xCalendar Package
-parent: Contributed Packages
+parent: Experimental Packages
 has_toc: false
 indexed_from: 1.0.7.0
 permalink: /tB/Packages/Contributed/xCalendar/

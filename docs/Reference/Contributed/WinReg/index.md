@@ -1,6 +1,6 @@
 ---
 title: WinReg Package
-parent: Contributed Packages
+parent: Experimental Packages
 has_toc: false
 indexed_from: 0.0.0.0
 permalink: /tB/Packages/Contributed/WinReg/

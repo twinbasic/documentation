@@ -10,7 +10,7 @@ has_toc: false
 
 Community-authored packages published through TWINSERV, the twinBASIC package registry. To use a contributed package, add it to Project → References (Ctrl-T) → Available Packages.
 
-Each package is versioned apart from twinBASIC, and its section says which version it documents.
+Each package is versioned apart from twinBASIC, and its section says which version it documents. Packages that are not yet ready for use in a program are listed under [Experimental Packages](../Experimental/).
 
 - [**AutoCompleteLib**](AutoCompleteLib/) -- Windows shell auto-complete for text-input controls
 - [**FileProps**](FileProps/) -- the Windows shell properties of a file, read and written
@@ -25,4 +25,3 @@ Each package is versioned apart from twinBASIC, and its section says which versi
 - [**TwinTimerPackage**](TwinTimerPackage/) -- a Win32 timer class that reports the elapsed time
 - [**VBA_JSON**](VBA_JSON/) -- JSON parsing and serialization, with UTC and ISO 8601 date conversion
 - [**VBComDlg**](VBComDlg/) -- the **CommonDialog** class, for the Windows common dialogs
-- [**xCalendar**](xCalendar/) -- a calendar control, in place of the Calendar control of `MSCAL.OCX`
