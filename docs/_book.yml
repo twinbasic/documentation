@@ -565,6 +565,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: tsJson Package
+        subtitle: A JSON model with parsing, JSONPath queries, JSON Pointer, JSON Patch and JSON Schema validation
+        landing_page: /tB/Packages/Contributed/tsJson/
+        page: /tB/Packages/Contributed/tsJson/
+        landing_is_target: true
+        outline_closed: true
+
       - title: tsPwGen Package
         subtitle: Passwords, PINs and passphrases, with their entropy known before they are generated
         landing_page: /tB/Packages/Contributed/tsPwGen/

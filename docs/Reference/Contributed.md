@@ -23,6 +23,7 @@ Each package is versioned apart from twinBASIC, and its section says which versi
 - [**TBMANLIB_RES**](TBMANLIB_RES/) -- resources embedded in an executable, as bytes, strings, hex, Base64 or pictures
 - [**tbProjPacker**](tbProjPacker/) -- a `.twinproj` or `.twinpack` file unpacked into a folder of source files, and packed again
 - [**tbRegExp**](tbRegExp/) -- regular expressions, in place of VBScript's **RegExp** object
+- [**tsJson**](tsJson/) -- a JSON model with parsing, JSONPath queries, JSON Pointer, JSON Patch and JSON Schema validation
 - [**tsPwGen**](tsPwGen/) -- passwords, PINs and passphrases, with their entropy known before they are generated
 - [**TwinTimerPackage**](TwinTimerPackage/) -- a Win32 timer class that reports the elapsed time
 - [**VBA_JSON**](VBA_JSON/) -- JSON parsing and serialization, with UTC and ISO 8601 date conversion
