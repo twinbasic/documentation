@@ -523,6 +523,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: tbFileSysTools Package
+        subtitle: Files, folders, drives and text streams, in place of the Scripting Runtime's FileSystemObject
+        landing_page: /tB/Packages/Contributed/tbFileSysTools/
+        page: /tB/Packages/Contributed/tbFileSysTools/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TBMANLIB_Dialog Package
         subtitle: Open, Save and folder dialogs in a class, with file filters and path helpers
         landing_page: /tB/Packages/Contributed/TBMANLIB_Dialog/

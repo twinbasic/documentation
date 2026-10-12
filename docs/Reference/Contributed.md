@@ -17,6 +17,7 @@ Each package is versioned apart from twinBASIC, and its section says which versi
 - [**Fmt**](Fmt/) -- **StringFormat**, a string built from a format string and values, in the style of C#'s **String.Format**
 - [**Generics**](Generics/) -- tuples, read-only objects that hold one to seven values of declared types
 - [**OLEGuids**](OLEGuids/) -- OLE and COM interfaces and structures in twinBASIC source, in place of `OLEGuids.tlb`
+- [**tbFileSysTools**](tbFileSysTools/) -- files, folders, drives and text streams, in place of the Scripting Runtime's **FileSystemObject**
 - [**TBMANLIB_Dialog**](TBMANLIB_Dialog/) -- the **cDialog** class: the Open, Save and folder dialogs, with file filters and path helpers
 - [**TBMANLIB_ListBoxHScroll**](TBMANLIB_ListBoxHScroll/) -- a horizontal scroll bar for a **ListBox**
 - [**TBMANLIB_RES**](TBMANLIB_RES/) -- resources embedded in an executable, as bytes, strings, hex, Base64 or pictures
