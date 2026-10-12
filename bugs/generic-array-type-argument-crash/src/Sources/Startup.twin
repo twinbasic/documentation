@@ -1,0 +1,10 @@
+Class Box(Of T)
+End Class
+
+Module Startup
+
+    Public Sub Main()
+        Dim b As Box(Of Long())
+    End Sub
+
+End Module

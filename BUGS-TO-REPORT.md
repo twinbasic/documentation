@@ -3510,3 +3510,419 @@ The button's handler (`showErrorWidget`, `ide/main.js`) is `root.Shell('cmd.exe 
 Severity: low. The search still opens, on part of the text.
 
 <!-- Reproducer: bugs/search-online-unencoded/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the test "Search Online passes the error's text into the search URL unencoded, so an & in it ends the query", which passes on BETA 1005; the lane replaces root.Shell with a recorder before any run, checks it again before the click, and opens no browser). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Breakpoints-and-Stepping.md, under the error panel; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 4). -->
+
+---
+
+## An array as the type argument of a generic class, interface, `Type` or procedure crashes the compiler
+
+**Describe the bug**
+Naming an array type as a type argument, as in `Box(Of Long())`, crashes the compiler. The IDE prints `NATIVE EXCEPTION: ACCESS_VIOLATION` in the DEBUG CONSOLE, restarts the compiler on the same project, and it crashes again, three times in a run, so nothing in the project compiles while the declaration is there. The declaration alone does it: nothing is constructed or called. A type argument that is not an array compiles, and `Variant` is refused with a diagnostic (TB5124, *Cannot pass Variant datatype as a generic specifier*), so the array is the one type argument that crashes the compiler instead of being compiled or refused. Observed in the IDE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `generic-array-type-argument-crash.twinproj` (attached as `generic-array-type-argument-crash.zip`). Its one source file, `Startup.twin`, holds the whole bug:
+   ```
+   Class Box(Of T)
+   End Class
+
+   Module Startup
+
+       Public Sub Main()
+           Dim b As Box(Of Long())
+       End Sub
+
+   End Module
+   ```
+2. Let the IDE compile it (it does so on opening).
+3. See the DEBUG CONSOLE: `NATIVE EXCEPTION: ACCESS_VIOLATION  {no-basic-code} [$1ED792A6:twinBASIC_win32.dll+003792A6]`, then `restarting from MEMORY [...]`, and the same exception twice more, each with a list of the compiler's threads in which the failing one is `>>> thread 0005: ResolveStageY_DataTypesStart3, /GenericArrayTypeArgumentCrash/Sources/Startup.twin; module Startup; line 4`. With `Box(Of Long)` in place of `Box(Of Long())` the project compiles without a diagnostic.
+
+Each of these was a project of its own, and crashed in the same way:
+- the class is empty or has a field, with or without `[COMCreatable(False)]`;
+- another array type: `String()`, `Byte()`, `Variant()`, `Long(,)`, `Long(3)`, an array of a user-defined type, and an array of an instantiated class, `Box(Of Box(Of Long)())`;
+- the declaration is at module level, inside a class (`Private b As Box(Of Long())`), a parameter's type or a function's result type, or `Set b = New Box(Of Long())`;
+- the generic is an `Interface` (`IBox(Of T)`, `Dim b As IBox(Of Long())`);
+- the generic is a `Type` declared in a module (`Type ListU(Of T)` with `value() As T`, and `Dim x As ListU(Of Long())`);
+- the generic is a procedure, and the array is given explicitly: `P(Of Long())` for `Sub P(Of T)()`, and `r = Ident(Of Long())(a)` for `Function Ident(Of T)(a As T) As T`;
+- the class comes from a package: `Dim t As TupleOf1(Of Long())` with the contributed package Generics 1.0.0.0.
+
+What does not crash it: `Box(Of Long)` and `Box(Of Collection)`; a generic function called with an array argument and *T* deduced (`Ident(a)`, with `a` a `Long()`), which compiles.
+
+**Expected behavior**
+A diagnostic, or a compiled project. An array that the compiler cannot use as a type argument is refused the way `Variant` is, with a message that names the type argument, and the project keeps compiling; one that it can use compiles, as `Box(Of Long)` does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same on BETA 997, 995 and 957 (the compiler is restarted two or three times there before the IDE gives up).
+
+Severity: high for a project that has the declaration. The compiler crashes on every attempt and restarts into the same crash, so the IDE reports nothing else about the project, and the line has to be found and removed by hand. No wrong code is produced.
+
+<!-- Reproducer: bugs/generic-array-type-argument-crash/ (mode compile; expect is tbbuild exit 4, the compiler crashing; verify reproduces on BETA 1005, 997, 995 and 957). The exception text above is from the IDE's DEBUG CONSOLE (tbbuild --keep, then the console read over CDP); the address is build-specific. The variants under "Each of these" were scratch projects of one declaration each, not kept; the Generics case needs the package (embedded under Packages/Generics, 14 MB with its WinDevLib dependency, which is why the reproducer does not use it). Found documenting the contributed package Generics: docs/Reference/Contributed/Generics/index.md, section "Types of the items", carries a WARNING naming BETA 1005 and lists "Arrays, such as Long()" among the types that cannot be used. When fixed: remove the WARNING, and rewrite the bullet to say whether an array item works. -->
+
+---
+
+## `New` of a generic class from a package does not bind when its type arguments are named in no declaration: TB5074
+
+**Describe the bug**
+When a generic class comes from a package, a `New` expression that gives its type arguments fails to compile if that combination of type arguments appears in no declaration of the project or the package, that is, as the type of no variable, parameter, field or function result. TB5074, *Could not bind to parameterized constructor of class 'Box'. No compatible Sub New() method found*, is reported, followed by TB5032 (target `As Any`, a bare `Dim t = ...`, `With`), TB5044 (`As Object`, `As Variant`, `Set o = ...`) or TB5093 (an argument of a call). The constructor exists and the call matches it. Naming the same combination in a declaration anywhere in the project, one that is never used included, makes the same line compile; so does declaring the class in the project itself instead of in a package. Observed in the IDE's diagnostics.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `package-generic-new-untyped-target.twinproj` (attached as `package-generic-new-untyped-target.zip`). It embeds a package, `BoxLib` (in `Packages/BoxLib`), that holds one class:
+   ```
+   [COMCreatable(False)]
+   Public Class Box(Of T)
+
+       Public Sub New(value As T)
+       End Sub
+
+   End Class
+   ```
+   The project's one source file, `Startup.twin`, holds the whole bug:
+   ```
+   Module Startup
+
+       Public Sub Main()
+           Dim a As Any = New Box(Of Long)(1)           ' TB5074 and TB5032
+           Dim o As Object = New Box(Of Double)(2)      ' TB5074 and TB5044
+           Dim t As Box(Of Byte) = New Box(Of Byte)(3)  ' compiles: the declaration names Box(Of Byte)
+       End Sub
+
+   End Module
+   ```
+2. Let the IDE compile it (it does so on opening).
+3. See four errors, two for each of the first two lines of `Main`:
+   - `TB5074 Could not bind to parameterized constructor of class 'Box'. No compatible Sub New() method found` and `TB5032 Set-expression must result in an object type. Type [Box] is not an object (2).`, at `New` in the `Dim a` line;
+   - `TB5074` as above and `TB5044 Unable to determine default interface of coclass 'Box'`, at the `Dim o` line.
+
+   The third line, where the target is declared with the instantiated type, compiles.
+
+What decides it, each tried in the project above with `Box(Of Long)`:
+
+| change | result |
+|---|---|
+| none: `Dim a As Any = New Box(Of Long)(1)` | TB5074 and TB5032 |
+| `Dim u As Box(Of Long)` before the line, after it, or in another module as a `Private` field | compiles |
+| `Private Function Unused() As Box(Of Long)` anywhere in the project | compiles |
+| a declaration with other type arguments, `Dim u As Box(Of Byte)` | TB5074 and TB5032 |
+| the package itself declaring `Box(Of Long)`, such as a function's result type | compiles |
+| the same class declared in the project's own code | compiles |
+| the class without `[COMCreatable(False)]`, or with one type parameter or three | TB5074 and TB5032 |
+| the class without a constructor, `Dim a As Any = New Box(Of Long)` | TB5032 only |
+| `Dim v As Variant` then `v = New Box(Of Long)(1)`; `Show New Box(Of Long)(1)` for `Show(x As Object)`; `Debug.Print TypeName(New Box(Of Long)(1))` | TB5074 with TB5044 / TB5093 |
+
+With the contributed package Generics 1.0.0.0, `Dim t As Any = New TupleOf2(Of String, Long)("a", 2)` fails as above, and so do `TupleOf3`, `TupleOf5` to `TupleOf7`, and `TupleOf1(Of Long)(1)`. `New TupleOf1(Of String)("a")` compiles, and so does `New TupleOf7(Of String, String, String, String, String, String, String)(...)`: the package's own module `HelloWorldModule` declares exactly those two instantiations. The number of type parameters is not the cause.
+
+**Expected behavior**
+`New Box(Of Long)(1)` binds to the constructor whether or not another declaration has named `Box(Of Long)`, as it does for a class declared in the project, and as `Dim t As Box(Of Long) = New Box(Of Long)(1)` does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same on BETA 997 and 995. On BETA 957 the first line reports TB5074 and then TB5028, *Unable to convert type 'Box' to type 'Any'*, in place of TB5032.
+
+Not tried: a generic class from a compiler package, such as `EventLog(Of T1, T2)` of WinEventLogLib.
+
+Severity: low. A compile error is reported, nothing goes wrong silently, and a declaration that names the instantiation avoids it, such as `Dim t As Box(Of Long) = New Box(Of Long)(1)`. The diagnostic points at a correct line and says nothing about the type arguments.
+
+<!-- Reproducer: bugs/package-generic-new-untyped-target/ (mode compile, expects exit 1 and TB5074, TB5032 and TB5044; the project embeds the small package BoxLib, made from the Generics package's Settings without its WinDevLib dependency; verify reproduces on BETA 1005, 997 and 995, and on 957 but for TB5028 in place of TB5032, which the expectation names, so verify says NO LONGER REPRODUCES there). Found documenting the contributed package Generics: docs/Reference/Contributed/Generics/index.md, section "Creating a tuple", carries a NOTE naming BETA 1005, with the workaround of a typed variable and a sample of it. Related, not the same: the filed bugs/filed/static-ctor-args (#2492), where a `Static` initialised with `New Dog("Rex")` fails with TB5074 when the class is declared later, as if the constructors of a type were not yet known when the line is bound. When fixed: remove the NOTE and its workaround sample, and retire the reproducer. -->
+
+---
+
+## `DateAdd` with a month, quarter or year interval runs into the next month instead of stopping at the last day of a shorter month
+
+**Describe the bug**
+`DateAdd` with the interval `"m"`, `"q"` or `"yyyy"` keeps the day of the month and lets it overflow into the next month, where it should stop at the last day of the month it lands in. `DateAdd("m", 1, #1/31/2026#)` returns March 3, 2026, the date `DateSerial(2026, 2, 31)` gives, and not February 28. No error is raised, so nothing shows that the date is wrong. The VBA documentation, and twinBASIC's own page for `DateAdd` after it, say that `DateAdd` does not return an invalid date and that adding a month to January 31 returns February 28; VB6 does that. The other intervals (`"d"`, `"y"`, `"w"`, `"ww"`, `"h"`, `"n"` and `"s"`) give the right dates. Observed in the IDE, with the result of each call written to the DEBUG CONSOLE as `Format(..., "yyyy-mm-dd")`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `dateadd-month-end-overflow.twinproj` (attached as `dateadd-month-end-overflow.zip`). Its one source file, `Startup.twin`, holds 18 calls, the first four of which are enough:
+   ```
+   Module Startup
+
+       Public Sub Main()
+           Debug.Print Format(DateAdd("m", 1, #1/31/2026#), "yyyy-mm-dd")
+           Debug.Print Format(DateAdd("m", -1, #3/31/2026#), "yyyy-mm-dd")
+           Debug.Print Format(DateAdd("yyyy", 1, #2/29/2024#), "yyyy-mm-dd")
+           Debug.Print Format(DateAdd("q", 1, #11/30/2025#), "yyyy-mm-dd")
+       End Sub
+
+   End Module
+   ```
+2. Run the project in the IDE (F5) and read the DEBUG CONSOLE.
+3. See `2026-03-03`, `2026-03-03`, `2025-03-01` and `2026-03-02`. VB6 (the same calls, attached as `dateadd-month-end-overflow-vb6.zip`, which writes each result to `out.txt`) gives `2026-02-28`, `2026-02-28`, `2025-02-28` and `2026-02-28`. The calls of the project, with the dates each gives:
+
+   | call | twinBASIC | VB6 |
+   |---|---|---|
+   | `DateAdd("m", 1, #1/31/2026#)` | 2026-03-03 | 2026-02-28 |
+   | the same, with the date in a `Date` variable | 2026-03-03 | 2026-02-28 |
+   | `DateAdd("m", 1, "31-Jan-95")` | 1995-03-03 | 1995-02-28 |
+   | `DateAdd("m", 1, #1/30/2026#)` | 2026-03-02 | 2026-02-28 |
+   | `DateAdd("m", 1, #1/29/2026#)` | 2026-03-01 | 2026-02-28 |
+   | `DateAdd("m", 1, #1/31/2024#)` | 2024-03-02 | 2024-02-29 |
+   | `DateAdd("m", 1, #10/31/2026#)` | 2026-12-01 | 2026-11-30 |
+   | `DateAdd("m", -1, #3/31/2026#)` | 2026-03-03 | 2026-02-28 |
+   | `DateAdd("m", -1, #3/30/2026#)` | 2026-03-02 | 2026-02-28 |
+   | `DateAdd("yyyy", 1, #2/29/2024#)` | 2025-03-01 | 2025-02-28 |
+   | `DateAdd("yyyy", -1, #2/29/2024#)` | 2023-03-01 | 2023-02-28 |
+   | `DateAdd("q", 1, #11/30/2025#)` | 2026-03-02 | 2026-02-28 |
+
+What decides it: the result is the date `DateSerial(year, month + number, day)` gives, so a day that exists in the target month is not affected, and one that does not is counted into the month after.
+- A day that exists in the target month is right: `DateAdd("m", 1, #1/28/2026#)` is 2026-02-28, and `DateAdd("yyyy", 4, #2/29/2024#)` is 2028-02-29, in both.
+- The other intervals are right: on January 31, 2026, `"d"` and `"y"` with 1 give 2026-02-01 and `"ww"` with 1 gives 2026-02-07, in both.
+- It makes no difference whether the date is a literal, a `Date` variable, `DateSerial(2026, 1, 31)` or a string; whether the number is positive or negative; or whether the date has a time of day, which is kept (`DateAdd("m", 1, #1/31/2026 13:45:10#)` is 2026-03-03 13:45:10). `DateAdd("m", 13, #1/31/2025#)` is 2026-03-03 as well.
+- `DateSerial(2026, 2, 31)` is 2026-03-03 in VB6 too, by design: it is not the defect.
+
+**Expected behavior**
+`DateAdd` with the interval `"m"`, `"q"` or `"yyyy"` returns the last day of the target month when the day of the date does not exist in it, as VB6 does and as the VBA documentation says: January 31 plus one month is February 28 (29 in a leap year), and February 29 plus one year is February 28.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same on BETA 997, 995 and 957. Not tried: an exe built from the project, and a project compiled with LLVM.
+
+Severity: high. The date is wrong and nothing signals it. A program that steps by months or years from a date late in the month (due dates, subscriptions, schedules, a calendar control's next-month button) is up to three days late, and a second step continues from the wrong day: `DateAdd("m", 1, DateAdd("m", 1, #1/31/2026#))` is 2026-04-03, where VB6 gives 2026-03-28. A workaround: `DateSerial(Year(d), Month(d) + n + 1, 0)` is the last day of the month `n` months after `d`, so the result is `DateSerial(Year(d), Month(d) + n, Day(d))` when `Day(d)` is smaller than that day, and that day otherwise.
+
+<!-- Reproducer: bugs/dateadd-month-end-overflow/ (mode run: `Sub Main` prints 18 cases with Debug.Print; expect is exit 0 and the 18 lines, which are the twinBASIC values of the twelve cases that overflow and of the six that do not; verify reproduces on BETA 1005, 997, 995 and 957, the oldest installed). expect names all twelve overflowing lines, so a fix of one interval alone makes verify say NO LONGER REPRODUCES: run `bug_repro.mjs run` and compare with the table for the intervals still wrong. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the table's VB6 column. The 13-month and time-of-day variants, the chained call and the workaround were run once in scratch copies of the project (twinBASIC) and `scripts/vb6run.mjs` (VB6), not kept. Found while documenting the contributed package xCalendar: its NextMonth, PreviousMonth, NextYear and PreviousYear methods call DateAdd. docs/Reference/Default/VBA/DateTime/DateAdd.md carries a WARNING naming BETA 1005, and so do docs/Reference/Default/VBA/DateTime/index.md ("Date arithmetic", after its sample whose comment says 2/28/2026) and docs/Reference/Contributed/xCalendar/index.md (at the start of "Methods", and NextMonth and NextYear mention it): when fixed, the three WARNINGs and those mentions go. -->
+
+---
+
+## `ReDim` with an upper bound below the lower bound raises *Unspecified error* (-2147467259), where VB6 raises error 9, *Subscript out of range*
+
+**Describe the bug**
+`ReDim` of a dynamic array with an upper bound below its lower bound, such as `ReDim a(0 To -1)`, `ReDim a(1 To 0)` or `ReDim a(5 To 2)`, raises error -2147467259, *Unspecified error* (E_FAIL). VB6 raises error 9, *Subscript out of range*, for each of them. The error is the same for every element type and for `ReDim Preserve`, and a failed `ReDim Preserve` leaves the array as it was. A program that handles error 9, or tests `Err.Number = 9`, around a `ReDim` does not recognise this one. Observed in the IDE, with the error of each statement written to the DEBUG CONSOLE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `redim-empty-range-unspecified-error.twinproj` (attached as `redim-empty-range-unspecified-error.zip`). Its one source file, `Startup.twin`, tries 24 `ReDim` statements, each followed by a line that writes the error; the first three are enough:
+   ```
+   Module Startup
+
+       Public Sub Main()
+           Dim a() As Long
+           On Error Resume Next
+           ReDim a(0 To -1)
+           Debug.Print Err.Number & vbTab & Err.Description
+           Err.Clear
+           ReDim a(5 To 2)
+           Debug.Print Err.Number & vbTab & Err.Description
+           Err.Clear
+           ReDim a(0 To 0)
+           Debug.Print Err.Number & vbTab & Err.Description
+       End Sub
+
+   End Module
+   ```
+2. Run the project in the IDE (F5) and read the DEBUG CONSOLE.
+3. See `-2147467259	Unspecified error` twice, then `0`. VB6 (the same statements, attached as `redim-empty-range-unspecified-error-vb6.zip`, which writes each result to `out.txt`) gives `9	Subscript out of range` twice, then `0`.
+
+What decides it, each tried in the project above:
+- Every range whose upper bound is below its lower bound raises the error: `(0 To -1)`, `(1 To 0)`, `(5 To 2)`, `(-3 To -5)`; `(-1)`, which is `0 To -1`, and `(n)` with `n = -1`; two dimensions, `(0, 0 To -1)` and `(1 To 0, 0 To 1)`. VB6 raises error 9 for each.
+- The element type makes no difference: **Long**, **String**, a user-defined type, **Object**, **Variant** (an array of Variant, and a **Variant** variable, empty or holding an array), and `ReDim s(5 To 2) As String`.
+- `ReDim Preserve` raises it too, for `(0 To -1)` of a **Long** array, a **String** array and a **Variant** variable that holds an array, and for `(5 To 2)` of a **Long** array. After the failed `ReDim Preserve a(0 To -1)`, `UBound(a)` is still 2, in both.
+- A range of one element or more is not affected: `(0 To 0)`, `(2 To 2)`, `(1 To 2)` and `(0)` raise nothing, in both.
+- A 64-bit program, and an exe built from the project, give the same errors.
+- With LLVM (the project compiled with `+llvm`) the results differ, and differ from VB6: a range that ends one below its start (`0 To -1`, `1 To 0`, `(-1)`, `(n)`, `(0, 0 To -1)`, `(1 To 0, 0 To 1)`, and the same for **String**, a user-defined type, **Object** and **Variant**) makes an empty array and raises nothing, so `UBound(a)` is `-1`; a range further below (`5 To 2`, `-3 To -5`) raises -2147024882, *Application-defined or object-defined error*; and `ReDim Preserve a(5 To 2)` raises error 9, as VB6 does.
+
+**Expected behavior**
+Error 9, *Subscript out of range*, for each of these statements, as in VB6, whether the code is compiled with LLVM or not.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same on BETA 997, 995 and 957 (not tried with LLVM there). Not tried: the run-time error panel for an unhandled error, and the exe built with LLVM.
+
+Severity: low. An error is raised either way, and an unhandled one stops the program either way; only its number and text differ, so code that tests for error 9 around a `ReDim` (a size computed from data that can be zero or negative) does not recognise it. With LLVM the statement can make an empty array where VB6 raises an error, which a program written for VB6 does not expect.
+
+<!-- Reproducer: bugs/redim-empty-range-unspecified-error/ (mode run: `Sub Main` prints 25 lines with Debug.Print; expect is exit 0 and all 25 as the default compiler gives them: the 20 errors of -2147467259, the `UBound` line after the failed Preserve and the four statements that raise nothing; verify reproduces on BETA 1005, 997, 995 and 957; an LLVM run gives other lines, so `verify` does not use it). The LLVM results, the 64-bit run and the built exe were run once with `bug_repro.mjs run --llvm`, `run --arch win64` and a scratch copy that wrote with TbRun.Out under `tbrun --exe`, not kept. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the VB6 column. Found documenting contributed packages on BETA 1005. docs/Reference/Core/ReDim.md carries a NOTE naming BETA 1005 and saying that VB6 raises error 9. When fixed: change that NOTE to state the error a fixed build raises (or remove the BETA sentence if it is 9), and retire the reproducer. -->
+
+---
+
+## A project that references the Microsoft Script Control crashes the compiler when it is built for 64-bit programs
+
+**Describe the bug**
+A project with a reference to *Microsoft Script Control 1.0* (`msscript.ocx`) crashes the compiler when its target is win64, although no code uses the reference. The IDE restarts the compiler on the same project (`restarting from MEMORY [...]` in the DEBUG CONSOLE, four times), it crashes again each time, and the IDE ends in Safe Mode, so nothing in the project compiles. With the target win32 the same project compiles with no diagnostic. A reference to the Script Control in an embedded package does the same to every project that embeds the package: the contributed package TBMANLIB 1.0.0.5, which references it, takes down a project of one `Debug.Print`. Observed in the IDE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `script-control-reference-win64-crash.twinproj` (attached as `script-control-reference-win64-crash.zip`). Its code is one module that prints `hello`; the project's references, in `Settings`, include
+   ```
+   {
+       "id": "{0E59F1D2-1FBE-11D0-8FF2-00A0D10038BC}",
+       "lcid": 0,
+       "name": "Microsoft Script Control 1.0",
+       "path32": "C:\\Windows\\SysWOW64\\msscript.ocx",
+       "path64": "",
+       "symbolId": "MSScriptControl",
+       "versionMajor": 1,
+       "versionMinor": 0
+   }
+   ```
+   (the reference as TBMANLIB 1.0.0.5 holds it).
+2. Choose **win64** in the target list of the toolbar, or let the IDE compile it for win64 in any way (`tbbuild --arch win64`).
+3. See the DEBUG CONSOLE: `restarting from MEMORY [<the project>]` four times, then the IDE in Safe Mode. With **win32** chosen the project compiles, 0 errors and 0 warnings.
+
+Each of these was a project of its own, one `Debug.Print "hello"` and the references of the project above, compiled for win64:
+
+| the project's extra reference | result |
+|---|---|
+| none | compiles, and builds |
+| Script Control, `path64` empty (as above) | the compiler crashes |
+| Script Control, `path64` the 32-bit file `C:\Windows\SysWOW64\msscript.ocx` | the compiler crashes |
+| Script Control, `path64` a file that does not exist | the compiler crashes |
+| Script Control in an embedded package of the project (`Packages/ScLib`, `path64` empty), none in the project | the compiler crashes |
+| Common Dialog Control 6.0 (`comdlg32.ocx`), also 32-bit only, `path64` empty or the 32-bit file | compiles |
+| Winsock Control 6.0 (`mswinsck.ocx`), also 32-bit only, `path64` empty or the 32-bit file | compiles |
+| Microsoft Scripting Runtime, or ADODB 2.8, with `path64` empty | compiles, and builds |
+| Microsoft Scripting Runtime with `path64` empty, in an embedded package | compiles, and builds |
+
+An empty `path64` is not the cause, then: the Script Control crashes the compiler whatever `path64` holds, and two other 32-bit-only controls do not.
+
+**Expected behavior**
+A compiled project, or a diagnostic that names the reference and says that it has no 64-bit component, and a compiler that keeps running.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The compiler crashes on BETA 1005, 997, 995 and 987, and does not on 983, 975 and 957. Not tried: BETA 964, 973, 974 and 982, the builds between 983 and 987 (not installed), a `path64` that names a 64-bit build of the control (there is none on this machine), the project built with LLVM, and the exception text (the DEBUG CONSOLE of the crashing IDE holds the `restarting from MEMORY` lines only).
+
+Severity: high for a project that has the reference. It cannot be compiled for 64-bit programs at all, the IDE ends in Safe Mode, and nothing says which reference is the cause. No wrong code is produced. In a 32-bit program the reference is harmless. A 64-bit program cannot use the control, which exists only as a 32-bit component, so the workaround is to remove the reference.
+
+<!-- Reproducer: bugs/script-control-reference-win64-crash/ (mode compile, "arch": "win64"; expect is tbbuild exit 4, the compiler crashing; verify reproduces on BETA 1005, 997 and 995; on 957 verify is a harness failure, because that IDE cannot restart its compiler for another target, and 957, 975 and 983 were compiled with `tbbuild` on a scratch copy of the project whose path the IDE already remembered as win64, which gave no crash). The table's variants were scratch projects of one reference each, built by a script from the reproducer's Settings and run with `tbbuild --arch win64` one at a time (a win32 compile crashed once while five IDEs ran at once, and compiled clean alone, so a crash is trusted only from a run alone); not kept. The BETA 987/983 boundary, and 975, came from `tbbuild --ide` on the same project. Found documenting the contributed package TBMANLIB: docs/Reference/Contributed/TBMANLIB/index.md, section "32-bit and 64-bit programs", carries a WARNING naming BETA 1005 for the crash. That section says the package's reference has a path for 32-bit programs and none for 64-bit programs, and puts the crash down to the reference; the crash does not depend on `path64`, so when this entry is edited or fixed read the section again. When fixed: remove the WARNING, and rewrite "cannot be built for 64-bit" in ToolsJScript.md and the section to what the compiler then does. -->
+
+---
+
+## A variable declared as the class of an ActiveX control cannot hold the control: `Set` raises *No such interface supported*, and every member of a `Dim ... As New` variable raises error 91
+
+**Describe the bug**
+An object variable whose declared type is the class of an ActiveX control, such as `MSScriptControl.ScriptControl`, never receives the object. `Set sc = New MSScriptControl.ScriptControl` and `Set sc = CreateObject("MSScriptControl.ScriptControl")` raise error -2147467262, *No such interface supported* (E_NOINTERFACE). `Dim sc As New MSScriptControl.ScriptControl` raises nothing at the declaration, `TypeName(sc)` is `ScriptControl` and `sc Is Nothing` is False, and then the first member that is used raises error 91, *Object variable or With block variable not set*. The control itself is created and has its interface: the same `New` and `CreateObject` give a working object when the variable is declared `As Object` or `As MSScriptControl.IScriptControl`, the control's default interface. The same happens with the Winsock and Common Dialog controls. The classes of libraries that are not controls (`Scripting.Dictionary`, `ADODB.Connection`) are not affected. VB6 creates every one of these. Observed in the IDE, with the error of each statement written to the DEBUG CONSOLE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `activex-control-class-variable.twinproj` (attached as `activex-control-class-variable.zip`). It references Microsoft Script Control 1.0, Microsoft Winsock Control 6.0, Microsoft Common Dialog Control 6.0, Microsoft Scripting Runtime and ADO 2.8 (all 32-bit, so the project's target stays win32), and its module `Startup` runs 21 statements with a line after each that writes the error. Four of them:
+   ```
+   Dim sc As New MSScriptControl.ScriptControl
+   sc.Language = "JScript"                                  ' error 91
+   Dim sc2 As MSScriptControl.ScriptControl
+   Set sc2 = New MSScriptControl.ScriptControl              ' -2147467262, No such interface supported
+   Dim o As Object
+   Set o = New MSScriptControl.ScriptControl                ' no error
+   Dim i As MSScriptControl.IScriptControl
+   Set i = New MSScriptControl.ScriptControl                ' no error, and i.Eval("1 + 2") is 3
+   ```
+2. Run the project in the IDE (F5) and read the DEBUG CONSOLE.
+3. See, for the statements of the project (each is one line in the console, with its error number and text):
+
+   | statement | twinBASIC | VB6 |
+   |---|---|---|
+   | `Dim sc As New ScriptControl`, then `sc.Language = "JScript"` or `sc.Eval("1 + 2")` | 91 | no error, `Eval` is 3 |
+   | `Private ModuleSc As New ScriptControl` at module level, then `ModuleSc.Language = ...` | 91 | no error |
+   | `Public Sc As New ScriptControl` as a class field, then `h.Sc.Language = ...` | 91 | no error |
+   | `Set sc = New ScriptControl`, `sc` declared `As ScriptControl` | -2147467262, No such interface supported | no error |
+   | `Set sc = CreateObject("MSScriptControl.ScriptControl")`, `sc` declared `As ScriptControl` | -2147467262 | no error |
+   | `Set sc = o`, `o` an **Object** holding the control, `sc` declared `As ScriptControl` | -2147467262 | no error |
+   | `Set o = New ScriptControl`, and `Set o = CreateObject(...)`, `o` declared `As Object` | no error, `o.Eval("1 + 2")` is 3 | the same |
+   | `Set i = New ScriptControl`, `i` declared `As IScriptControl` | no error, `i.Eval("1 + 2")` is 3 | the same |
+   | `Set w = New MSWinsockLib.Winsock`, `w` declared `As Winsock`; the same with `MSComDlg.CommonDialog` | -2147467262 | no error |
+   | `Dim wa As New MSWinsockLib.Winsock`, then `wa.LocalPort` | 91 | no error |
+   | the same two classes, the variable declared `As Object` | no error | no error |
+   | `Dim d As New Scripting.Dictionary`, `Dim c As New ADODB.Connection`, then a member | no error | no error |
+
+   VB6 is the same statements (attached as `activex-control-class-variable-vb6.zip`, which writes each result to `out.txt`).
+
+What decides it, each tried in the project above:
+- The variable's declared type decides: a class that is an ActiveX control (the coclass has the `control` flag in its type library), as a variable's type, fails; `Object`, the default interface and a class that is not a control work. `Dim x As MSScriptControl.DScriptControlSource`, the events interface the class lists beside its default one, fails with the same error on `Set x = o`.
+- `New` and `CreateObject` make no difference: `Set o = New ...` and `Set o = CreateObject(...)` both work for an `Object`.
+- `Dim ... As New` hides the failure until a member is used; `Set` reports it at the statement. `TypeName` and `Is Nothing` do not show it.
+- A built exe gives the same results as a run in the IDE (the statements written with `TbRun.Out` in a scratch copy).
+- `Dim j As New MSScriptControl.IScriptControl` is refused with TB5121, *Unable to create instance of type 'IScriptControl'*, so the interface type is usable with `Set` only.
+
+**Expected behavior**
+A variable declared as the class of an ActiveX control holds the control, as in VB6: `Set sc = New MSScriptControl.ScriptControl` and `Dim sc As New MSScriptControl.ScriptControl` give a usable object, and `sc.Eval("1 + 2")` is 3.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same on BETA 997, 995 and 957. The type libraries of the failing classes list two implemented interfaces flagged `default`: the dual interface (`IScriptControl`) and, flagged `default` and `source`, the events dispinterface (`DScriptControlSource`). `ADODB.Connection` lists the same pair and works, so the pair alone does not explain it; the three classes that fail are flagged `control` in their type libraries, and the two that work are not.
+
+Not tried: a control that is registered for 64-bit, and a form that hosts the control (a variable of the control's class on a form is the usual use).
+
+Severity: medium. A visible error is raised, never a wrong value, but it is raised at the first use with a message that points at an object that was never set, and a VB6 program that holds an ActiveX control's class in a typed variable, or declares one `As New`, must be changed to `As Object` or to the interface. The contributed package TBMANLIB 1.0.0.5 does this for the Script Control (`Dim MSSC As New MSScriptControl.ScriptControl`), and both functions of its **ToolsJScript** module fail with error 91 for that reason.
+
+<!-- Reproducer: bugs/activex-control-class-variable/ (mode run: `Sub Main` prints 21 lines with Debug.Print; expect is exit 0 and the 17 lines of the failing and working statements; verify reproduces on BETA 1005, 997, 995 and 957). VB6 side in vb6/ (VB6 6.0; a project with a class module, `Holder.cls`, and references to the five libraries): `bug_repro.mjs vb6` prints the VB6 column. The exe run, the `IScriptControl` and `DScriptControlSource` variables and the `Dim ... As New IScriptControl` refusal were run in scratch copies, not kept. Found documenting the contributed package TBMANLIB: docs/Reference/Contributed/TBMANLIB/ToolsJScript.md carries a NOTE naming BETA 1005 for it, and docs/Reference/Contributed/TBMANLIB/ToolsDic.md (ToWwwFormUrlencoded, which uses NewArr) and index.md ("Defects of version 1.0.0.5") state the failures that follow from it, without a callout: when fixed, correct the three, which assume that the control cannot be created (the package's `NewObj` still assigns to the name of the other function, as its page says). -->
+
+---
+
+## `Private Sub New` does not make construction private: `New` from another module, or from a project that references the class's package, compiles and runs the constructor
+
+**Describe the bug**
+A class whose constructor is declared `Private Sub New()` can be created with `New` by code outside the class: another module of the same project, another class, and a project that references the package that holds the class. There is no diagnostic, and the private constructor runs. Other private members are enforced: a `Private Sub` of the same class is refused from another module with TB5027, *Unrecognized member*, in a project and in a package, so the constructor is the one private member that the compiler lets anybody call. A class that wants its objects created only by its own code, such as a factory method that sets the object up after `New`, cannot say so. Observed in the IDE's diagnostics, and in a run.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `private-constructor-callable.twinproj` (attached as `private-constructor-callable.zip`). It embeds a package, `CtorLib` (in `Packages/CtorLib`), with one class:
+   ```
+   [COMCreatable(False)]
+   Public Class Locked
+
+       Public V As Long
+
+       Private Sub New()
+           V = 5
+       End Sub
+
+   End Class
+   ```
+   The project has the same in a class of its own, `ZPriv`, in `Classes.twin`, and its module `Startup` creates both:
+   ```
+   Module Startup
+
+       Public Sub Main()
+           Dim a As ZPriv = New ZPriv
+           Debug.Print a.V
+           Dim j As Locked = New Locked
+           Debug.Print j.V
+       End Sub
+
+   End Module
+   ```
+2. Let the IDE compile it (it does so on opening): 0 errors, 0 warnings.
+3. Run the project in the IDE (F5): the DEBUG CONSOLE shows `5` and `5`, the value the private constructor sets.
+
+What decides it, each tried in the project above (`Classes.twin` and `Startup.twin` hold all of them, 11 lines of output):
+- Every way of creating the object compiles and runs the constructor: `Dim a As ZPriv = New ZPriv`, `Dim b As New ZPriv`, `Set c = New ZPriv`.
+- A constructor with parameters is the same: `Private Sub New(ByVal x As Long)` and `New ZPrivArgs(3)`.
+- `Private Class ZPrivateClass` with `Private Sub New()` is created with `New` from another module too.
+- `New` from another class of the project (`Set Make = New ZPriv` in a method of `ZCaller`) compiles.
+- From the package: `Dim j As Locked = New Locked` and `Dim k As New Locked` compile, and the constructor runs.
+- `Friend Sub New` also compiles (`New ZFriend`), and so does `New` of a package class whose constructor is `Friend Sub New`; and a `Friend Sub` that is an ordinary method of a package class can be called from the project. Whether `Friend` should stop that is not part of this entry.
+- Not affected: `New` inside the class itself, a factory method on the predeclared object (`ZFactory.Create`, which does `Set Create = New ZFactory`), which has to keep working; and `Public Sub New`, the control.
+
+**Expected behavior**
+A diagnostic for `New ZPriv`, `Dim ... As New ZPriv` and `New Locked` outside the class, as for a private member that is used from outside; `New` inside the class compiles and runs as it does now.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same on BETA 997, 995 and 957.
+
+Not tried: a `Private Sub New` in a class of a package built from the project's own `Packages` folder compared with one installed from a `.twinpack` file, and `New` through `CreateObject` (the class is `[COMCreatable(False)]` here).
+
+Severity: low. The compiler accepts code that the class's author meant to forbid, and nothing else goes wrong. For a class that relies on it, such as a settings object that is meant to be created only from presets, an object made with `New` is in the state that the constructor leaves, which the class never intended anybody to use.
+
+<!-- Reproducer: bugs/private-constructor-callable/ (mode compile; the bug state is a clean compile, so expect is exit 0 and noDiagnostics, the first reproducer to use that key; verify reproduces on BETA 1005, 997, 995 and 957, and says NO LONGER REPRODUCES once a diagnostic appears). `bug_repro.mjs run` prints the 11 lines of V values. The package half is the small package CtorLib, made from the BoxLib package of package-generic-new-untyped-target. The `Friend` variants and the check that a `Private Sub` is refused (TB5027) in a project and in a package were run once in a scratch copy with `tbrun --tests` compile cases, not kept. No VB6 comparison: VB6 has no `Sub New`. Found documenting the contributed package tsPwGen, whose PwGenOptions is `[PredeclaredId] [COMCreatable(False)]` with `Private Sub New()`: docs/Reference/Contributed/tsPwGen/PwGenOptions.md and docs/Features/Advanced/Classes-and-Modules.md ("Parameterized Class Constructors") carry a NOTE naming BETA 1005: when fixed, remove both NOTEs. -->
+

@@ -1,0 +1,42 @@
+' A Private Sub New does not make construction private: New compiles in another module,
+' and in a project that references the package of the class, and the constructor runs.
+Module Startup
+
+    Public Sub Main()
+        Dim a As ZPriv = New ZPriv
+        Debug.Print "Dim a As ZPriv = New ZPriv: a.V = " & a.V
+
+        Dim b As New ZPriv
+        Debug.Print "Dim b As New ZPriv: b.V = " & b.V
+
+        Dim c As ZPriv
+        Set c = New ZPriv
+        Debug.Print "Set c = New ZPriv: c.V = " & c.V
+
+        Dim d As ZPrivArgs = New ZPrivArgs(3)
+        Debug.Print "Private Sub New(x): New ZPrivArgs(3): d.V = " & d.V
+
+        Dim e As ZFriend = New ZFriend
+        Debug.Print "Friend Sub New: New ZFriend: e.V = " & e.V
+
+        Dim f As ZPrivateClass = New ZPrivateClass
+        Debug.Print "Private Class: New ZPrivateClass: f.V = " & f.V
+
+        Dim g As ZFactory = ZFactory.Create
+        Debug.Print "New inside the class: ZFactory.Create.V = " & g.V
+
+        Dim h As ZPublic = New ZPublic
+        Debug.Print "Public Sub New: New ZPublic: h.V = " & h.V
+
+        Dim caller As New ZCaller
+        Dim i As ZPriv = caller.Make
+        Debug.Print "New inside another class: i.V = " & i.V
+
+        Dim j As Locked = New Locked
+        Debug.Print "Package class, Private Sub New: New Locked: j.V = " & j.V
+
+        Dim k As New Locked
+        Debug.Print "Package class: Dim k As New Locked: k.V = " & k.V
+    End Sub
+
+End Module

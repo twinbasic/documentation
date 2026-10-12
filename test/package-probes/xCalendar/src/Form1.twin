@@ -1,0 +1,63 @@
+' Form1: the startup form of the xCalendar probe. It holds one xCalendar control (xCalendar1,
+' declared in Form1.tbform) and writes every event the control raises, with its arguments,
+' through Probe.Ev.
+
+[Description("")]
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F02")]
+[PredeclaredId]
+Class Form1
+
+    Private Sub xCalendar1_Click() Handles xCalendar1.Click
+        Probe.Ev "Click"
+    End Sub
+
+    Private Sub xCalendar1_DblClick() Handles xCalendar1.DblClick
+        Probe.Ev "DblClick"
+    End Sub
+
+    Private Sub xCalendar1_KeyDown(KeyCode As Integer, Shift As Integer) Handles xCalendar1.KeyDown
+        Probe.Ev "KeyDown KeyCode=" & KeyCode & " Shift=" & Shift & " Value=" & Probe.Dt(xCalendar1.Value)
+    End Sub
+
+    Private Sub xCalendar1_KeyPress(KeyAscii As Integer) Handles xCalendar1.KeyPress
+        Probe.Ev "KeyPress KeyAscii=" & KeyAscii
+    End Sub
+
+    Private Sub xCalendar1_KeyUp(KeyCode As Integer, Shift As Integer) Handles xCalendar1.KeyUp
+        Probe.Ev "KeyUp KeyCode=" & KeyCode & " Shift=" & Shift
+    End Sub
+
+    Private Sub xCalendar1_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles xCalendar1.MouseDown
+        Probe.Ev "MouseDown Button=" & Button & " Shift=" & Shift & " X=" & X & " Y=" & Y
+    End Sub
+
+    Private Sub xCalendar1_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles xCalendar1.MouseMove
+        If Probe.gLogMouseMove Then Probe.Ev "MouseMove Button=" & Button & " Shift=" & Shift & " X=" & X & " Y=" & Y
+    End Sub
+
+    Private Sub xCalendar1_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles xCalendar1.MouseUp
+        Probe.Ev "MouseUp Button=" & Button & " Shift=" & Shift & " X=" & X & " Y=" & Y
+    End Sub
+
+    Private Sub xCalendar1_BeforeUpdate(Cancel As Integer) Handles xCalendar1.BeforeUpdate
+        Probe.gBefore = Probe.gBefore + 1
+        Probe.Ev "BeforeUpdate Cancel(in)=" & Cancel & " Value=" & Probe.Dt(xCalendar1.Value)
+        If Probe.gCancel Then
+            Cancel = Probe.gCancelVal
+            Probe.Ev "  (handler sets Cancel = " & Probe.gCancelVal & ")"
+        End If
+    End Sub
+
+    Private Sub xCalendar1_AfterUpdate() Handles xCalendar1.AfterUpdate
+        Probe.Ev "AfterUpdate Value=" & Probe.Dt(xCalendar1.Value)
+    End Sub
+
+    Private Sub xCalendar1_NewMonth() Handles xCalendar1.NewMonth
+        Probe.Ev "NewMonth Value=" & Probe.Dt(xCalendar1.Value)
+    End Sub
+
+    Private Sub xCalendar1_NewYear() Handles xCalendar1.NewYear
+        Probe.Ev "NewYear Value=" & Probe.Dt(xCalendar1.Value)
+    End Sub
+
+End Class

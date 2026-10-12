@@ -1,0 +1,155 @@
+{
+  "format": 3,
+  "package": "Generics",
+  "project": "Generics",
+  "version": "1.0.0.0",
+  "types": [
+    {
+      "name": "HelloWorldModule",
+      "kind": "module",
+      "vis": "public",
+      "file": "HelloWorldModule.twin",
+      "signature": "Module HelloWorldModule",
+      "members": [
+        {"name":"GetBigTuple","kind":"function","vis":"private","signature":"Private Function GetBigTuple() As TupleOf7(Of String, String, String, String, String, String, String)","returnType":"TupleOf7(Of String, String, String, String, String, String, String)"},
+        {"name":"GetTuple","kind":"function","vis":"private","signature":"Private Function GetTuple() As TupleOf1(Of String)","returnType":"TupleOf1(Of String)"},
+        {"name":"Show","kind":"sub","vis":"public","signature":"Public Sub Show()"}
+      ]
+    },
+    {
+      "name": "TupleOf1",
+      "kind": "class",
+      "vis": "public",
+      "file": "Tuple.twin",
+      "signature": "Public Class TupleOf1(Of T1)",
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Item1","kind":"property","vis":"public","signature":"Public Property Get Item1() As T1","returnType":"T1","accessor":"Get"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New(item1 As T1)"},
+        {"name":"_item1","kind":"field","vis":"private","signature":"Private _item1 As T1"}
+      ]
+    },
+    {
+      "name": "TupleOf2",
+      "kind": "class",
+      "vis": "public",
+      "file": "Tuple.twin",
+      "signature": "Public Class TupleOf2(Of T1, T2)",
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Item1","kind":"property","vis":"public","signature":"Public Property Get Item1() As T1","returnType":"T1","accessor":"Get"},
+        {"name":"Item2","kind":"property","vis":"public","signature":"Public Property Get Item2() As T2","returnType":"T2","accessor":"Get"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New(item1 As T1, item2 As T2)"},
+        {"name":"_item1","kind":"field","vis":"private","signature":"Private _item1 As T1"},
+        {"name":"_item2","kind":"field","vis":"private","signature":"Private _item2 As T2"}
+      ]
+    },
+    {
+      "name": "TupleOf3",
+      "kind": "class",
+      "vis": "public",
+      "file": "Tuple.twin",
+      "signature": "Public Class TupleOf3(Of T1, T2, T3)",
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Item1","kind":"property","vis":"public","signature":"Public Property Get Item1() As T1","returnType":"T1","accessor":"Get"},
+        {"name":"Item2","kind":"property","vis":"public","signature":"Public Property Get Item2() As T2","returnType":"T2","accessor":"Get"},
+        {"name":"Item3","kind":"property","vis":"public","signature":"Public Property Get Item3() As T3","returnType":"T3","accessor":"Get"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New(item1 As T1, item2 As T2, item3 As T3)"},
+        {"name":"_item1","kind":"field","vis":"private","signature":"Private _item1 As T1"},
+        {"name":"_item2","kind":"field","vis":"private","signature":"Private _item2 As T2"},
+        {"name":"_item3","kind":"field","vis":"private","signature":"Private _item3 As T3"}
+      ]
+    },
+    {
+      "name": "TupleOf4",
+      "kind": "class",
+      "vis": "public",
+      "file": "Tuple.twin",
+      "signature": "Public Class TupleOf4(Of T1, T2, T3)",
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Item1","kind":"property","vis":"public","signature":"Public Property Get Item1() As T1","returnType":"T1","accessor":"Get"},
+        {"name":"Item2","kind":"property","vis":"public","signature":"Public Property Get Item2() As T2","returnType":"T2","accessor":"Get"},
+        {"name":"Item3","kind":"property","vis":"public","signature":"Public Property Get Item3() As T3","returnType":"T3","accessor":"Get"},
+        {"name":"Item4","kind":"property","vis":"public","signature":"Public Property Get Item4() As T4","returnType":"T4","accessor":"Get"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New(item1 As T1, item2 As T2, item3 As T3, item4 As T4)"},
+        {"name":"_item1","kind":"field","vis":"private","signature":"Private _item1 As T1"},
+        {"name":"_item2","kind":"field","vis":"private","signature":"Private _item2 As T2"},
+        {"name":"_item3","kind":"field","vis":"private","signature":"Private _item3 As T3"},
+        {"name":"_item4","kind":"field","vis":"private","signature":"Private _item4 As T4"}
+      ]
+    },
+    {
+      "name": "TupleOf5",
+      "kind": "class",
+      "vis": "public",
+      "file": "Tuple.twin",
+      "signature": "Public Class TupleOf5(Of T1, T2, T3, T4, T5)",
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Item1","kind":"property","vis":"public","signature":"Public Property Get Item1() As T1","returnType":"T1","accessor":"Get"},
+        {"name":"Item2","kind":"property","vis":"public","signature":"Public Property Get Item2() As T2","returnType":"T2","accessor":"Get"},
+        {"name":"Item3","kind":"property","vis":"public","signature":"Public Property Get Item3() As T3","returnType":"T3","accessor":"Get"},
+        {"name":"Item4","kind":"property","vis":"public","signature":"Public Property Get Item4() As T4","returnType":"T4","accessor":"Get"},
+        {"name":"Item5","kind":"property","vis":"public","signature":"Public Property Get Item5() As T5","returnType":"T5","accessor":"Get"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New(item1 As T1, item2 As T2, item3 As T3, item4 As T4, item5 As T5)"},
+        {"name":"_item1","kind":"field","vis":"private","signature":"Private _item1 As T1"},
+        {"name":"_item2","kind":"field","vis":"private","signature":"Private _item2 As T2"},
+        {"name":"_item3","kind":"field","vis":"private","signature":"Private _item3 As T3"},
+        {"name":"_item4","kind":"field","vis":"private","signature":"Private _item4 As T4"},
+        {"name":"_item5","kind":"field","vis":"private","signature":"Private _item5 As T5"}
+      ]
+    },
+    {
+      "name": "TupleOf6",
+      "kind": "class",
+      "vis": "public",
+      "file": "Tuple.twin",
+      "signature": "Public Class TupleOf6(Of T1, T2, T3, T4, T5, T6)",
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Item1","kind":"property","vis":"public","signature":"Public Property Get Item1() As T1","returnType":"T1","accessor":"Get"},
+        {"name":"Item2","kind":"property","vis":"public","signature":"Public Property Get Item2() As T2","returnType":"T2","accessor":"Get"},
+        {"name":"Item3","kind":"property","vis":"public","signature":"Public Property Get Item3() As T3","returnType":"T3","accessor":"Get"},
+        {"name":"Item4","kind":"property","vis":"public","signature":"Public Property Get Item4() As T4","returnType":"T4","accessor":"Get"},
+        {"name":"Item5","kind":"property","vis":"public","signature":"Public Property Get Item5() As T5","returnType":"T5","accessor":"Get"},
+        {"name":"Item6","kind":"property","vis":"public","signature":"Public Property Get Item6() As T6","returnType":"T6","accessor":"Get"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New(item1 As T1, item2 As T2, item3 As T3, item4 As T4, item5 As T5, item6 As T6)"},
+        {"name":"_item1","kind":"field","vis":"private","signature":"Private _item1 As T1"},
+        {"name":"_item2","kind":"field","vis":"private","signature":"Private _item2 As T2"},
+        {"name":"_item3","kind":"field","vis":"private","signature":"Private _item3 As T3"},
+        {"name":"_item4","kind":"field","vis":"private","signature":"Private _item4 As T4"},
+        {"name":"_item5","kind":"field","vis":"private","signature":"Private _item5 As T5"},
+        {"name":"_item6","kind":"field","vis":"private","signature":"Private _item6 As T6"}
+      ]
+    },
+    {
+      "name": "TupleOf7",
+      "kind": "class",
+      "vis": "public",
+      "file": "Tuple.twin",
+      "signature": "Public Class TupleOf7(Of T1, T2, T3, T4, T5, T6, T7)",
+      "attrs": [{"name":"COMCreatable","args":"False"}],
+      "members": [
+        {"name":"Item1","kind":"property","vis":"public","signature":"Public Property Get Item1() As T1","returnType":"T1","accessor":"Get"},
+        {"name":"Item2","kind":"property","vis":"public","signature":"Public Property Get Item2() As T2","returnType":"T2","accessor":"Get"},
+        {"name":"Item3","kind":"property","vis":"public","signature":"Public Property Get Item3() As T3","returnType":"T3","accessor":"Get"},
+        {"name":"Item4","kind":"property","vis":"public","signature":"Public Property Get Item4() As T4","returnType":"T4","accessor":"Get"},
+        {"name":"Item5","kind":"property","vis":"public","signature":"Public Property Get Item5() As T5","returnType":"T5","accessor":"Get"},
+        {"name":"Item6","kind":"property","vis":"public","signature":"Public Property Get Item6() As T6","returnType":"T6","accessor":"Get"},
+        {"name":"Item7","kind":"property","vis":"public","signature":"Public Property Get Item7() As T7","returnType":"T7","accessor":"Get"},
+        {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New(item1 As T1, item2 As T2, item3 As T3, item4 As T4, item5 As T5, item6 As T6, item7 As T7)"},
+        {"name":"_item1","kind":"field","vis":"private","signature":"Private _item1 As T1"},
+        {"name":"_item2","kind":"field","vis":"private","signature":"Private _item2 As T2"},
+        {"name":"_item3","kind":"field","vis":"private","signature":"Private _item3 As T3"},
+        {"name":"_item4","kind":"field","vis":"private","signature":"Private _item4 As T4"},
+        {"name":"_item5","kind":"field","vis":"private","signature":"Private _item5 As T5"},
+        {"name":"_item6","kind":"field","vis":"private","signature":"Private _item6 As T6"},
+        {"name":"_item7","kind":"field","vis":"private","signature":"Private _item7 As T7"}
+      ]
+    }
+  ],
+  "aliases": [],
+  "problems": []
+}

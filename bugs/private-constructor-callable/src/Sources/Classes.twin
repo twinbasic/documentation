@@ -1,0 +1,65 @@
+' Classes whose constructor is not public. Each is created with New from another
+' module (Startup.twin), and each compiles.
+
+Class ZPriv
+    Public V As Long
+
+    Private Sub New()
+        V = 5
+    End Sub
+End Class
+
+[COMCreatable(False)]
+Class ZPrivArgs
+    Public V As Long
+
+    Private Sub New(ByVal x As Long)
+        V = x
+    End Sub
+End Class
+
+Class ZFriend
+    Public V As Long
+
+    Friend Sub New()
+        V = 7
+    End Sub
+End Class
+
+Private Class ZPrivateClass
+    Public V As Long
+
+    Private Sub New()
+        V = 9
+    End Sub
+End Class
+
+' New inside the class itself: a factory on the predeclared object
+[PredeclaredId]
+Class ZFactory
+    Public V As Long
+
+    Private Sub New()
+        V = 11
+    End Sub
+
+    Public Function Create() As ZFactory
+        Set Create = New ZFactory
+    End Function
+End Class
+
+' the control: a public constructor
+Class ZPublic
+    Public V As Long
+
+    Public Sub New()
+        V = 13
+    End Sub
+End Class
+
+' New inside another class of the same project
+Class ZCaller
+    Public Function Make() As ZPriv
+        Set Make = New ZPriv
+    End Function
+End Class

@@ -1,0 +1,33 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Long \\(0 To -1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^Long \\(1 To 0\\)\\s+-2147467259\\s+Unspecified error$",
+      "^Long \\(5 To 2\\)\\s+-2147467259\\s+Unspecified error$",
+      "^Long \\(-3 To -5\\)\\s+-2147467259\\s+Unspecified error$",
+      "^Long \\(-1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^Long \\(n\\), n = -1\\s+-2147467259\\s+Unspecified error$",
+      "^Long \\(0 To n\\), n = -1\\s+-2147467259\\s+Unspecified error$",
+      "^Long \\(0, 0 To -1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^Long \\(1 To 0, 0 To 1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^String \\(0 To -1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^UDT \\(0 To -1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^Object \\(0 To -1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^Variant array \\(0 To -1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^Variant variable \\(0 To -1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^Variant holding an array \\(0 To -1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^String \\(5 To 2\\) As String\\s+-2147467259\\s+Unspecified error$",
+      "^Long Preserve \\(0 To -1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^\\s+after it, UBound\\(a\\) = 2, error 0$",
+      "^Long Preserve \\(5 To 2\\)\\s+-2147467259\\s+Unspecified error$",
+      "^String Preserve \\(0 To -1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^Variant Preserve \\(0 To -1\\)\\s+-2147467259\\s+Unspecified error$",
+      "^Long \\(0 To 0\\)\\s+0\\s*$",
+      "^Long \\(2 To 2\\)\\s+0\\s*$",
+      "^Long \\(1 To 2\\)\\s+0\\s*$",
+      "^Long \\(0\\)\\s+0\\s*$"
+    ]
+  }
+}

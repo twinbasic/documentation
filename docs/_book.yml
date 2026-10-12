@@ -509,10 +509,24 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: Generics Package
+        subtitle: Tuples, read-only objects that hold one to seven values of declared types
+        landing_page: /tB/Packages/Contributed/Generics/
+        page: /tB/Packages/Contributed/Generics/
+        landing_is_target: true
+        outline_closed: true
+
       - title: OLEGuids Package
         subtitle: OLE and COM interfaces and structures in twinBASIC source, in place of OLEGuids.tlb
         landing_page: /tB/Packages/Contributed/OLEGuids/
         page: /tB/Packages/Contributed/OLEGuids/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: tbFileSysTools Package
+        subtitle: Files, folders, drives and text streams, in place of the Scripting Runtime's FileSystemObject
+        landing_page: /tB/Packages/Contributed/tbFileSysTools/
+        page: /tB/Packages/Contributed/tbFileSysTools/
         landing_is_target: true
         outline_closed: true
 
@@ -551,6 +565,20 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: tsJson Package
+        subtitle: A JSON model with parsing, JSONPath queries, JSON Pointer, JSON Patch and JSON Schema validation
+        landing_page: /tB/Packages/Contributed/tsJson/
+        page: /tB/Packages/Contributed/tsJson/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: tsPwGen Package
+        subtitle: Passwords, PINs and passphrases, with their entropy known before they are generated
+        landing_page: /tB/Packages/Contributed/tsPwGen/
+        page: /tB/Packages/Contributed/tsPwGen/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TwinTimerPackage Package
         subtitle: A Win32 timer class that reports the elapsed time
         landing_page: /tB/Packages/Contributed/TwinTimerPackage/
@@ -569,6 +597,82 @@ parts:
         subtitle: The CommonDialog class, for the Windows common dialogs
         landing_page: /tB/Packages/Contributed/VBComDlg/
         page: /tB/Packages/Contributed/VBComDlg/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: Experimental Packages
+        subtitle: Community packages from TWINSERV that are not yet ready for use in a program
+        landing_page: /tB/Packages/Experimental/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: ArrayListLib Package
+        subtitle: A list class in place of the ArrayList of .NET
+        landing_page: /tB/Packages/Contributed/ArrayListLib/
+        page: /tB/Packages/Contributed/ArrayListLib/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: BigNumberLib Package
+        subtitle: Arbitrary-precision signed integer arithmetic
+        landing_page: /tB/Packages/Contributed/BigNumberLib/
+        page: /tB/Packages/Contributed/BigNumberLib/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: TBMANLIB Package
+        subtitle: A toolkit of helpers for JSON, logs, INI files, strings, bytes, files and dictionaries
+        landing_page: /tB/Packages/Contributed/TBMANLIB/
+        page: /tB/Packages/Contributed/TBMANLIB/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: TBMANLIB_Aes Package
+        subtitle: AES encryption of text and byte arrays, through the Windows Crypto API and CNG
+        landing_page: /tB/Packages/Contributed/TBMANLIB_Aes/
+        page: /tB/Packages/Contributed/TBMANLIB_Aes/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: TBMANLIB_ConsoleComponents Package
+        subtitle: Text-interface components for console programs, drawn into the buffer of TBMANLIB_ConsoleCore
+        landing_page: /tB/Packages/Contributed/TBMANLIB_ConsoleComponents/
+        page: /tB/Packages/Contributed/TBMANLIB_ConsoleComponents/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: TBMANLIB_ConsoleCore Package
+        subtitle: A console library with colours, UTF-8 and a full-screen mode
+        landing_page: /tB/Packages/Contributed/TBMANLIB_ConsoleCore/
+        page: /tB/Packages/Contributed/TBMANLIB_ConsoleCore/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: TBMANLIB_Diagnostic Package
+        subtitle: A diagnostic report of the computer and its processes, as text, JSON or HTML
+        landing_page: /tB/Packages/Contributed/TBMANLIB_Diagnostic/
+        page: /tB/Packages/Contributed/TBMANLIB_Diagnostic/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: TBMANLIB_Xml Package
+        subtitle: XML documents parsed, edited and written, in twinBASIC code
+        landing_page: /tB/Packages/Contributed/TBMANLIB_Xml/
+        page: /tB/Packages/Contributed/TBMANLIB_Xml/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: WinReg Package
+        subtitle: Registry keys and values, read, written, deleted and enumerated
+        landing_page: /tB/Packages/Contributed/WinReg/
+        page: /tB/Packages/Contributed/WinReg/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: xCalendar Package
+        subtitle: A calendar control, in place of the Calendar control of MSCAL.OCX
+        landing_page: /tB/Packages/Contributed/xCalendar/
+        page: /tB/Packages/Contributed/xCalendar/
         landing_is_target: true
         outline_closed: true
 

@@ -1,0 +1,12 @@
+' A class whose constructor is private. A project that references the package
+' can still create one with New.
+[COMCreatable(False)]
+Public Class Locked
+
+    Public V As Long
+
+    Private Sub New()
+        V = 5
+    End Sub
+
+End Class

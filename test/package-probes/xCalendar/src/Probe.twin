@@ -1,0 +1,2285 @@
+' Probe: what the contributed package xCalendar's xCalendar control does at run time.
+'
+' The exe runs Sub Main. The scenarios named by the PROBE environment variable, a comma-separated
+' list of ids ("1,2,9"), are run in the order of ScenarioIds, and each prints what it observed.
+' A scenario's id is the number of the question it answers (the list below). Every line is written
+' with TbRun.Out, so that it reaches the file the runner reads at once; every event the control
+' raises is written by Form1's handlers through Ev, indented under the action that caused it
+' ("ev> ...").
+'
+' Input is simulated by sending window messages (Win.twin): mouse messages to the control's window,
+' key messages to the window that has the keyboard focus. The message loop is run by Pump, a
+' bounded loop: the control asks for a repaint again after every paint while its selectors are
+' visible (scenario 16), and DoEvents would not return.
+'
+' The IDE-side [RunAfterBuild] Sub only prints: the form is shown only in the exe.
+'
+' Scenario ids and what they ask:
+'   1   the control's windows, and every property's value right after the form loads
+'   2   Value set to a date in the same month, another month, another year, with a time, odd values
+'   3   Day, Month and Year set one at a time, and out of range
+'   4   NextDay ... PreviousYear, and at the boundaries
+'   5   Today
+'   6   ValueIsNull
+'   7   ValueStr
+'   8   BeforeUpdate with Cancel = True, for code and clicks
+'   9   clicks on day cells, the grey days, other places, right button, double click
+'   10  keys, with and without Shift and Ctrl, and sent to the wrong window
+'   11  Enabled = False
+'   12  the Month and Year selectors (two combo boxes)
+'   12x a selector change that makes an impossible date (Jan 31 to February); never returns
+'   12y the same for the year list (Feb 29 2024 to 2025)
+'   13  FirstDay, DayLength, MonthLength, GridCellEffect and the margins, out of range
+'   14  the colours and fonts set from code; Show* flags and the layout they give
+'   15  pictures of the form window (the run-exe.mjs runner takes them); 15b more of them
+'   16  the message loop: how many WM_PAINT messages the control keeps asking for
+'
+' The scenarios below answer the page author's numbered questions (xcal-probe-questions.md), and
+' read the control's pixels with GetPixel from its window DC:
+'   p2  the title's position with ShowDateSelectors False (Q2)
+'   p3  the selected cell for a Value with a time of day (Q3)
+'   p5  Enabled = False and the colours, with the keyboard focus (Q4, Q5)
+'   p7  hit-testing in a control 255 pixels wide (Q7)
+'   p9  the keys as the system sends them, through DoEvents: Shift, Ctrl, Alt (Q8, Q9, Q11)
+'   p10 Tab into the control; arrow keys after a click; KeyDown, KeyPress, KeyUp order (Q10, Q11)
+'   p11 keys posted to the queue, through the probe's loop and through DoEvents (Q8, Q11)
+'   p12 where the focus is after a click, from several starting points, and the arrow keys (Q10)
+'   p13 the clicks of scenario 9 as the system delivers them, through DoEvents (Q6, Q13, Q14, Q34)
+'   p14 pixels of the three text colours: do they reach the text? (not a question of the page)
+'   p18 changing a font object in place; one font object in two properties (Q18)
+'   p19 TitleMargin and DaysMargin in pixels (Q19)
+'   p20 FirstDay and the grid (Q20, Q31)
+'   p21 the grid-line colours (Q21)
+'   p24 Value and the grid (Q24)
+'   p25 ValueIsNull: any change in the drawing (Q25)
+'   p29 NextMonth twice, PreviousMonth twice (Q29)
+'   p33 Cancel = True, 1 and 0 in BeforeUpdate (Q33)
+'   p22x Month = 13, then a repaint; may end the run (Q22)
+
+Module Probe
+
+    Public gCancel As Boolean
+    Public gLogMouseMove As Boolean
+    Public gQuiet As Boolean
+    Public gEvCount As Long
+    Public gBefore As Long
+    Public gPumped As Long
+    Public gCancelVal As Integer
+    Public gReal As Boolean
+
+    Private Cal As xCalendar.xCalendar
+    Private Cmd1H As LongPtr
+    Private Cmd2H As LongPtr
+    Private gDC As LongPtr
+    Private mAckBase As String
+
+    ' The control's windows (FindWindows) and the grid's geometry in device pixels (Calibrate).
+    Private CalH As LongPtr
+    Private FocusH As LongPtr
+    Private YearH As LongPtr
+    Private MonthH As LongPtr
+    Private CalW As Long
+    Private CalHt As Long
+    Private gHeader As Long     ' the height above the first row of day cells: title + day names
+    Private gRowH As Double
+    Private gColW As Double
+
+    [RunAfterBuild]
+    Public Sub Hook()
+        Debug.Cls
+        Debug.Print "hook ran in the IDE; the form runs only in the exe"
+    End Sub
+
+    Private Const ScenarioIds As String = ",1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,15b,16,p2,p3,p5,p7,p9,p10,p11,p12,p13,p14,p18,p19,p20,p21,p24,p25,p29,p33,12x,12y,12z,p22x,"
+
+    Public Sub Main()
+        Dim sel As String = "," & Replace(Environ$("PROBE"), " ", "") & ","
+        mAckBase = Environ$("PROBE_ACK")
+        #If Win64 Then
+            Say "build: 64-bit (Win64), LenB(LongPtr)=" & LenB(CLngPtr(0))
+        #Else
+            Say "build: 32-bit, LenB(LongPtr)=" & LenB(CLngPtr(0))
+        #End If
+        Win.SetTimer 0, 0, 30000, AddressOf Watchdog
+        Say "date: " & Format$(Date, "yyyy-mm-dd") & " (" & Format$(Date, "dddd") & ")"
+        Say "CStr(DateSerial(2026, 6, 15)) = [" & CStr(DateSerial(2026, 6, 15)) & "]"
+        Say "CStr(DateSerial(2026, 6, 15) + TimeSerial(14, 30, 5)) = [" & CStr(DateSerial(2026, 6, 15) + TimeSerial(14, 30, 5)) & "]"
+        Load Form1
+        Form1.Show
+        Pump
+        Say "form loaded and shown; the first pump dispatched " & gPumped & " messages"
+        Set Cal = Form1.xCalendar1
+        FindWindows
+        Dim ids() As String
+        Dim i As Long
+        ids = Split(Mid$(ScenarioIds, 2, Len(ScenarioIds) - 2), ",")
+        For i = 0 To UBound(ids)
+            If InStr(sel, "," & ids(i) & ",") > 0 Then RunScenario ids(i)
+        Next
+        Say "== done"
+        Set Cal = Nothing
+        Unload Form1
+    End Sub
+
+    Public Sub Watchdog(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal idEvent As LongPtr, ByVal dwTime As Long)
+        Say "WATCHDOG: the probe ran for 30 s, ending the process"
+        Win.ExitProcess 97
+    End Sub
+
+    Private Sub RunScenario(ByVal id As String)
+        On Error GoTo EH
+        Say ""
+        Say "######## scenario " & id
+        If id <> "1" And id <> "15" And id <> "16" Then Reset   ' 15 shows the control as loaded first
+        Select Case id
+            Case "1": S1
+            Case "2": S2
+            Case "3": S3
+            Case "4": S4
+            Case "5": S5
+            Case "6": S6
+            Case "7": S7
+            Case "8": S8
+            Case "9": S9
+            Case "10": S10
+            Case "11": S11
+            Case "12": S12
+            Case "12x": S12x
+            Case "12y": S12y
+            Case "12z": S12z
+            Case "13": S13
+            Case "14": S14
+            Case "15": S15
+            Case "15b": S15b
+            Case "16": S16
+            Case "p2": P2
+            Case "p3": P3
+            Case "p5": P5
+            Case "p7": P7
+            Case "p9": P9
+            Case "p10": P10
+            Case "p11": P11
+            Case "p12": P12
+            Case "p13": P13
+            Case "p14": P14
+            Case "p18": P18
+            Case "p19": P19
+            Case "p20": P20
+            Case "p21": P21
+            Case "p24": P24
+            Case "p25": P25
+            Case "p29": P29
+            Case "p33": P33
+            Case "p22x": P22x
+        End Select
+        Exit Sub
+EH:
+        Say "  ERROR escaped scenario " & id & ": " & Err.Number & " " & Err.Description
+    End Sub
+
+    '=========================================================================================
+    ' Helpers
+    '=========================================================================================
+
+    Public Sub Say(ByVal s As String)
+        TbRun.Out s
+    End Sub
+
+    ' An event the control raised.
+    Public Sub Ev(ByVal s As String)
+        gEvCount = gEvCount + 1
+        If Not gQuiet Then TbRun.Out "      ev> " & s
+    End Sub
+
+    Public Function Dt(ByVal d As Date) As String
+        Dt = Format$(d, "yyyy-mm-dd hh:nn:ss")
+    End Function
+
+    ' Processes the messages that are waiting, until the queue is empty or three WM_PAINT
+    ' messages have been dispatched (a control that keeps invalidating itself never empties it),
+    ' or 400 messages have. Sets gPumped to how many were dispatched. With dlg, each message goes
+    ' to the form's dialog manager first, as a modal loop does for Tab and the other dialog keys.
+    Public Sub Pump(Optional ByVal logFirst As Long = 0, Optional ByVal dlg As Boolean = False)
+        Dim m As Win.MSG
+        Dim n As Long
+        Dim nPaint As Long
+        Sleep 20
+        Do While n < 400 And nPaint < 3
+            If Win.PeekMessageW(m, 0, 0, 0, 1) = 0 Then Exit Do
+            If n < logFirst Then Say "    msg 0x" & Hex$(m.message) & " to [" & Win.ClassOf(m.hWnd) & "] wParam=" & m.wParam & " lParam=" & m.lParam
+            If m.message = &HF Then nPaint = nPaint + 1
+            If dlg And Win.IsDialogMessageW(Form1.hWnd, m) <> 0 Then
+                ' handled by the dialog manager
+            Else
+                Win.TranslateMessage m
+                Win.DispatchMessageW m
+            End If
+            n = n + 1
+        Loop
+        gPumped = n
+    End Sub
+
+    ' Reports the error the last statement raised, or "ok", and clears it.
+    Private Sub Chk(ByVal what As String)
+        If Err.Number <> 0 Then
+            Say "  " & what & "  -> ERROR " & Err.Number & " [" & Err.Description & "] source=[" & Err.Source & "]"
+            Err.Clear
+        Else
+            Say "  " & what & "  -> ok"
+        End If
+    End Sub
+
+    ' Value and what follows it, on one line.
+    Private Sub St(ByVal tag As String)
+        On Error Resume Next
+        Dim v As Date = Cal.Value
+        Say "  state[" & tag & "]: Value=" & Dt(v) & " (" & CDbl(v) & ") Day=" & Cal.Day & " Month=" & Cal.Month & " Year=" & Cal.Year & " ValueIsNull=" & Cal.ValueIsNull & " ValueStr=[" & Cal.ValueStr & "] lists=[" & Win.TextOf(MonthH) & "|" & Win.TextOf(YearH) & "]"
+        If Err.Number <> 0 Then Chk "reading the state"
+    End Sub
+
+    ' Announces an action, and zeroes the event counter.
+    Private Sub Act(ByVal what As String)
+        Say "  >> " & what
+        gEvCount = 0
+        gBefore = 0
+    End Sub
+
+    ' After an action: process the messages, and say so when no event was raised.
+    Private Sub Done()
+        Pump
+        If gEvCount = 0 Then Say "      (no event)"
+    End Sub
+
+    ' The known state every scenario but 1, 15 and 16 starts from: 2026-06-15, a Monday.
+    Private Sub Reset()
+        On Error Resume Next
+        gCancel = False
+        gCancelVal = -1
+        gReal = False
+        gLogMouseMove = False
+        gQuiet = False
+        Win.SetMods 0
+        Cal.Enabled = True
+        Cal.ShowDateSelectors = True
+        Cal.ShowTitle = True
+        Cal.ShowDays = True
+        Cal.ShowHorizontalGrid = True
+        Cal.ShowVerticalGrid = True
+        Cal.FirstDay = 2
+        Cal.TitleMargin = 5
+        Cal.DaysMargin = 5
+        Cal.ValueIsNull = False
+        Cal.Value = DateSerial(2026, 6, 15)
+        Cal.Month = 6
+        If Err.Number <> 0 Then Chk "Reset"
+        Pump
+        gEvCount = 0
+    End Sub
+
+    ' The photographed window: the runner takes the picture while the probe waits for its answer.
+    Private Sub Shot(ByVal name As String)
+        Pump
+        Say "SHOT " & name & " hwnd=" & Form1.hWnd
+        If Len(mAckBase) = 0 Then Exit Sub
+        Dim t As Long = GetTickCount
+        Do While Len(Dir$(mAckBase & name)) = 0 And GetTickCount - t < 12000
+            Pump
+            Sleep 40
+        Loop
+        Say "  (shot " & name & IIf(Len(Dir$(mAckBase & name)) > 0, " taken)", " NOT taken)")
+    End Sub
+
+    Private Sub Tree(ByVal h As LongPtr, ByVal depth As Long, ByVal org As RECT)
+        Dim c As LongPtr = Win.GetWindow(h, Win.GW_CHILD)
+        Dim r As RECT
+        Do While c <> 0
+            Win.GetWindowRect c, r
+            Say Space$(2 + depth * 2) & "- " & Win.ClassOf(c) & " id=" & Win.GetDlgCtrlID(c) & " visible=" & Win.IsWindowVisible(c) & " enabled=" & Win.IsWindowEnabled(c) & " size=" & (r.Right - r.Left) & "x" & (r.Bottom - r.Top) & " at(" & (r.Left - org.Left) & "," & (r.Top - org.Top) & ") style=0x" & Hex$(Win.GetWindowLongW(c, -16)) & " exstyle=0x" & Hex$(Win.GetWindowLongW(c, -20)) & " text=[" & Win.TextOf(c) & "]"
+            Tree c, depth + 1, org
+            c = Win.GetWindow(c, Win.GW_HWNDNEXT)
+        Loop
+    End Sub
+
+    ' The control's window, and its picture box (the one that takes the keys) and two combo boxes.
+    Private Sub FindWindows()
+        Dim c As LongPtr = Win.GetWindow(Form1.hWnd, Win.GW_CHILD)
+        Do While c <> 0
+            Select Case Win.ClassOf(c)
+                Case "ThunderRT6UserControlDC": CalH = c
+                Case "ThunderRT6CommandButton"
+                    If Win.TextOf(c) = "Command1" Then Cmd1H = c
+                    If Win.TextOf(c) = "Command2" Then Cmd2H = c
+            End Select
+            c = Win.GetWindow(c, Win.GW_HWNDNEXT)
+        Loop
+        Say "form children: control [" & IIf(CalH <> 0, "found", "NOT found") & "] Command1 [" & IIf(Cmd1H <> 0, "found", "NOT found") & "] Command2 [" & IIf(Cmd2H <> 0, "found", "NOT found") & "]"
+        Dim r As RECT
+        Win.GetClientRect CalH, r
+        CalW = r.Right
+        CalHt = r.Bottom
+        c = Win.GetWindow(CalH, Win.GW_CHILD)
+        Do While c <> 0
+            Select Case Win.ClassOf(c)
+                Case "ThunderRT6PictureBoxDC"
+                    If Win.IsWindowVisible(c) <> 0 Then FocusH = c
+                Case "ThunderRT6ComboBox"
+                    If IsNumeric(Win.TextOf(c)) Then YearH = c Else MonthH = c
+            End Select
+            c = Win.GetWindow(c, Win.GW_HWNDNEXT)
+        Loop
+        Say "control window [" & Win.ClassOf(CalH) & "] client " & CalW & "x" & CalHt & "; picture box (keys) [" & IIf(FocusH <> 0, "found", "NOT found") & "]; year combo [" & IIf(YearH <> 0, "found", "NOT found") & "]; month combo [" & IIf(MonthH <> 0, "found", "NOT found") & "]"
+    End Sub
+
+    ' ---- mouse ----
+
+    ' A mouse message to the control window: sent, or (gReal) posted to the queue and dispatched
+    ' by DoEvents, the runtime's own loop, as the system delivers a real mouse's. gReal needs the
+    ' selectors hidden, or DoEvents does not return (scenario 16).
+    Private Sub Msg(ByVal m As Long, ByVal w As LongPtr, ByVal l As LongPtr)
+        If gReal Then
+            Win.PostMessageW CalH, m, w, l
+            DoEvents
+        Else
+            Win.SendMessageW CalH, m, w, l
+        End If
+    End Sub
+
+    Private Sub MouseAt(ByVal x As Long, ByVal y As Long)
+        Msg Win.WM_MOUSEMOVE, 0, Win.MakeLParam(x, y)
+    End Sub
+
+    ' A click as a mouse sends it: the move, the button down, the button up. button 1 is the left.
+    Private Sub ClickAt(ByVal x As Long, ByVal y As Long, Optional ByVal button As Long = 1)
+        If gLogMouseMove Then Say "      (" & IIf(gReal, "posted", "sent") & " at client x=" & x & " y=" & y & " of the control window, button " & button & ")"
+        MouseAt x, y
+        If button = 1 Then
+            Msg Win.WM_LBUTTONDOWN, Win.MK_LBUTTON, Win.MakeLParam(x, y)
+            Msg Win.WM_LBUTTONUP, 0, Win.MakeLParam(x, y)
+        Else
+            Msg Win.WM_RBUTTONDOWN, Win.MK_RBUTTON, Win.MakeLParam(x, y)
+            Msg Win.WM_RBUTTONUP, 0, Win.MakeLParam(x, y)
+        End If
+    End Sub
+
+    ' The cell of the grid at row r (0 to 5) and column c (0 to 6), by its centre.
+    Private Sub ClickCell(ByVal r As Long, ByVal c As Long, Optional ByVal button As Long = 1)
+        ClickAt CLng((c + 0.5) * gColW), CLng(gHeader + (r + 0.5) * gRowH), button
+    End Sub
+
+    ' Finds where the day cells start: the first y at which a left button press raises BeforeUpdate
+    ' (the control tests Y > title height + day-names height). Cancels each press so that nothing
+    ' changes.
+    Private Sub Calibrate()
+        Dim lo As Long = 0
+        Dim hi As Long = CalHt
+        Dim mid As Long
+        Dim saveCancel As Boolean = gCancel
+        Dim saveQuiet As Boolean = gQuiet
+        Dim saveReal As Boolean = gReal
+        gReal = False
+        gCancel = True
+        gQuiet = True
+        Do While hi - lo > 1
+            mid = (lo + hi) \ 2
+            gBefore = 0
+            Win.SendMessageW CalH, Win.WM_LBUTTONDOWN, Win.MK_LBUTTON, Win.MakeLParam(10, mid)
+            Win.SendMessageW CalH, Win.WM_LBUTTONUP, 0, Win.MakeLParam(10, mid)
+            If gBefore > 0 Then hi = mid Else lo = mid
+        Loop
+        gCancel = saveCancel
+        gQuiet = saveQuiet
+        gReal = saveReal
+        gHeader = lo
+        gRowH = (CalHt - gHeader) / 6
+        gColW = CalW / 7
+        gEvCount = 0
+        gBefore = 0
+    End Sub
+
+    ' ---- keys ----
+
+    Private Sub KeyTo(ByVal h As LongPtr, ByVal vk As Long, Optional ByVal mods As Long = 0)
+        Win.SendKey h, vk, mods
+    End Sub
+
+    Private Function VkName(ByVal vk As Long) As String
+        Select Case vk
+            Case Win.VK_LEFT: VkName = "Left"
+            Case Win.VK_RIGHT: VkName = "Right"
+            Case Win.VK_UP: VkName = "Up"
+            Case Win.VK_DOWN: VkName = "Down"
+            Case Win.VK_PRIOR: VkName = "PageUp"
+            Case Win.VK_NEXT: VkName = "PageDown"
+            Case Win.VK_HOME: VkName = "Home"
+            Case Win.VK_END: VkName = "End"
+            Case Else: VkName = "vk" & vk
+        End Select
+    End Function
+
+    '=========================================================================================
+    ' 1: the windows and the defaults
+    '=========================================================================================
+
+    Private Sub S1()
+        On Error Resume Next
+        Dim fr As RECT
+        Win.GetWindowRect Form1.hWnd, fr
+        Say "form window: " & Win.ClassOf(Form1.hWnd) & " size=" & (fr.Right - fr.Left) & "x" & (fr.Bottom - fr.Top) & " dpi=" & Win.GetDpiForWindow(Form1.hWnd)
+        Dim cr As RECT
+        Win.GetClientRect Form1.hWnd, cr
+        Say "form client: " & cr.Right & "x" & cr.Bottom
+        Say "window tree (positions relative to the form window's top left corner; the control is 256x192 at 100% scale):"
+        Tree Form1.hWnd, 0, fr
+        Say "class style of the control window: 0x" & Hex$(Win.GetClassLongW(CalH, -26)) & " (CS_DBLCLKS is 0x8: " & ((Win.GetClassLongW(CalH, -26) And 8) <> 0) & ")"
+        Say "focus: [" & Win.ClassOf(Win.GetFocus) & "] foreground is the form: " & (Win.GetForegroundWindow = Form1.hWnd)
+        Dim v As Date = Cal.Value
+        Say "Value = " & Dt(v) & "  CDbl=" & CDbl(v) & "  VarType=" & VarType(Cal.Value)
+        Say "Value is today: " & (Int(CDbl(v)) = Int(CDbl(Date))) & "  (Date = " & Dt(Date) & ")"
+        Say "ValueIsNull = " & Cal.ValueIsNull
+        Say "ValueStr = [" & Cal.ValueStr & "]"
+        Say "Day = " & Cal.Day & "  Month = " & Cal.Month & "  Year = " & Cal.Year
+        Say "FirstDay = " & Cal.FirstDay & "  DayLength = " & Cal.DayLength & "  MonthLength = " & Cal.MonthLength & "  GridCellEffect = " & Cal.GridCellEffect
+        Say "DayFontColor = &H" & Hex$(Cal.DayFontColor) & "  DayBackColor = &H" & Hex$(Cal.DayBackColor)
+        Say "GridFontColor = &H" & Hex$(Cal.GridFontColor) & "  GridLinesColor = &H" & Hex$(Cal.GridLinesColor)
+        Say "TitleFontColor = &H" & Hex$(Cal.TitleFontColor) & "  BackColor = &H" & Hex$(Cal.BackColor)
+        Say "ShowDateSelectors = " & Cal.ShowDateSelectors & "  ShowDays = " & Cal.ShowDays & "  ShowTitle = " & Cal.ShowTitle
+        Say "ShowHorizontalGrid = " & Cal.ShowHorizontalGrid & "  ShowVerticalGrid = " & Cal.ShowVerticalGrid
+        Say "TitleMargin = " & Cal.TitleMargin & "  DaysMargin = " & Cal.DaysMargin & "  Enabled = " & Cal.Enabled
+        Say "DayFont is Nothing: " & (Cal.DayFont Is Nothing) & "  GridFont is Nothing: " & (Cal.GridFont Is Nothing) & "  TitleFont is Nothing: " & (Cal.TitleFont Is Nothing)
+        Say "DayFont: " & Cal.DayFont.Name & ", " & Cal.DayFont.Size & " pt, Bold=" & Cal.DayFont.Bold
+        Say "GridFont: " & Cal.GridFont.Name & ", " & Cal.GridFont.Size & " pt, Bold=" & Cal.GridFont.Bold
+        Say "TitleFont: " & Cal.TitleFont.Name & ", " & Cal.TitleFont.Size & " pt, Bold=" & Cal.TitleFont.Bold
+        If Err.Number <> 0 Then Chk "S1"
+        Say "events raised while the form loaded and was read: " & gEvCount
+        Calibrate
+        Say "geometry (device pixels): header (title + day names) = " & gHeader & ", row height = " & Format$(gRowH, "0.00") & ", column width = " & Format$(gColW, "0.00") & ", client " & CalW & "x" & CalHt
+    End Sub
+
+    '=========================================================================================
+    ' 2: Value
+    '=========================================================================================
+
+    Private Sub SetValue(ByVal what As String, ByVal v As Variant)
+        On Error Resume Next
+        Act "Value = " & what
+        Cal.Value = v
+        Chk "Value = " & what
+        Done
+        St "after"
+    End Sub
+
+    Private Sub S2()
+        On Error Resume Next
+        St "start"
+        SetValue "#2026-06-20# (same month)", DateSerial(2026, 6, 20)
+        SetValue "#2026-08-03# (another month)", DateSerial(2026, 8, 3)
+        SetValue "#2027-01-09# (another year)", DateSerial(2027, 1, 9)
+        SetValue "#2027-01-09# again (the same date)", DateSerial(2027, 1, 9)
+        SetValue "#2026-06-15 14:30:05# (with a time)", DateSerial(2026, 6, 15) + TimeSerial(14, 30, 5)
+        SetValue "#1900-01-01# (the first year of the selector)", DateSerial(1900, 1, 1)
+        SetValue "#2100-12-31# (the last year of the selector)", DateSerial(2100, 12, 31)
+        SetValue "#2101-01-01# (above the selector's years)", DateSerial(2101, 1, 1)
+        SetValue "#1899-12-31# (below the selector's years)", DateSerial(1899, 12, 31)
+        SetValue "#1850-05-05# (far below)", DateSerial(1850, 5, 5)
+        SetValue "0 (an empty date)", CDate(0)
+        SetValue "Null", Null
+        SetValue """2026-09-09"" (a String)", "2026-09-09"
+        SetValue """abc"" (a String that is no date)", "abc"
+        SetValue "46000 (a Double)", 46000#
+        SetValue "#2026-06-15# (back)", DateSerial(2026, 6, 15)
+    End Sub
+
+    '=========================================================================================
+    ' 3: Day, Month, Year
+    '=========================================================================================
+
+    Private Sub SetDay(ByVal d As Variant)
+        On Error Resume Next
+        Act "Day = " & d
+        Cal.Day = d
+        Chk "Day = " & d
+        Done
+        St "after"
+    End Sub
+
+    Private Sub SetMonth(ByVal d As Variant)
+        On Error Resume Next
+        Act "Month = " & d
+        Cal.Month = d
+        Chk "Month = " & d
+        Done
+        St "after"
+    End Sub
+
+    Private Sub SetYear(ByVal d As Variant)
+        On Error Resume Next
+        Act "Year = " & d
+        Cal.Year = d
+        Chk "Year = " & d
+        Done
+        St "after"
+    End Sub
+
+    Private Sub S3()
+        On Error Resume Next
+        St "start"
+        Say "-- valid values, one at a time"
+        SetDay 20
+        SetMonth 8
+        SetYear 2027
+        SetYear 2024
+        SetMonth 2
+        SetDay 29
+        SetYear 2025
+        Say "-- invalid values, each from 2026-06-15"
+        Cal.Value = DateSerial(2026, 6, 15): Pump
+        SetDay 31
+        Cal.Value = DateSerial(2026, 6, 15): Pump
+        SetDay 0
+        Cal.Value = DateSerial(2026, 6, 15): Pump
+        SetDay 32
+        Cal.Value = DateSerial(2026, 6, 15): Pump
+        SetDay -1
+        Cal.Value = DateSerial(2026, 6, 15): Pump
+        SetMonth 13
+        Cal.Value = DateSerial(2026, 6, 15): Pump
+        SetMonth 0
+        Cal.Value = DateSerial(2026, 6, 15): Pump
+        SetYear 0
+        Cal.Value = DateSerial(2026, 6, 15): Pump
+        SetYear 1899
+        Cal.Value = DateSerial(2026, 6, 15): Pump
+        SetYear 2101
+        Cal.Value = DateSerial(2026, 6, 15): Pump
+        SetYear 100
+        Cal.Value = DateSerial(2026, 6, 15): Pump
+        SetYear 32767
+        Say "-- a month with fewer days than the current Day"
+        Cal.Value = DateSerial(2026, 1, 31): Pump
+        SetMonth 2
+        Cal.Value = DateSerial(2026, 1, 31): Pump
+        SetMonth 4
+        Cal.Value = DateSerial(2024, 2, 29): Pump
+        SetYear 2025
+        Say "-- is the state usable after an error? Day = 31 in February, then Value = a date"
+        Cal.Value = DateSerial(2026, 2, 10): Pump
+        SetDay 31
+        SetValue "#2026-03-03#", DateSerial(2026, 3, 3)
+    End Sub
+
+    '=========================================================================================
+    ' 4: NextDay ... PreviousYear
+    '=========================================================================================
+
+    Private Sub Nav(ByVal start As Date, ByVal op As String)
+        On Error Resume Next
+        Cal.Value = start
+        Pump
+        Say "  >> Value = " & Dt(start) & ", then " & op
+        gEvCount = 0
+        Select Case op
+            Case "NextDay": Cal.NextDay
+            Case "PreviousDay": Cal.PreviousDay
+            Case "NextWeek": Cal.NextWeek
+            Case "PreviousWeek": Cal.PreviousWeek
+            Case "NextMonth": Cal.NextMonth
+            Case "PreviousMonth": Cal.PreviousMonth
+            Case "NextYear": Cal.NextYear
+            Case "PreviousYear": Cal.PreviousYear
+            Case "Today": Cal.Today
+        End Select
+        Chk op
+        Done
+        St "after"
+    End Sub
+
+    Private Sub S4()
+        Dim b As Date = DateSerial(2026, 6, 15)
+        Say "VBA.DateAdd on its own: m,1,#2026-01-31# = " & Dt(DateAdd("m", 1, DateSerial(2026, 1, 31))) & "; m,-1,#2026-03-31# = " & Dt(DateAdd("m", -1, DateSerial(2026, 3, 31))) & "; yyyy,1,#2024-02-29# = " & Dt(DateAdd("yyyy", 1, DateSerial(2024, 2, 29))) & "; yyyy,-1,#2024-02-29# = " & Dt(DateAdd("yyyy", -1, DateSerial(2024, 2, 29))) & "; d,1,#2026-12-31# = " & Dt(DateAdd("d", 1, DateSerial(2026, 12, 31)))
+        Nav b, "NextDay"
+        Nav b, "PreviousDay"
+        Nav b, "NextWeek"
+        Nav b, "PreviousWeek"
+        Nav b, "NextMonth"
+        Nav b, "PreviousMonth"
+        Nav b, "NextYear"
+        Nav b, "PreviousYear"
+        Say "-- boundaries"
+        Nav DateSerial(2026, 1, 31), "NextMonth"
+        Nav DateSerial(2026, 3, 31), "PreviousMonth"
+        Nav DateSerial(2026, 12, 31), "NextDay"
+        Nav DateSerial(2026, 1, 1), "PreviousDay"
+        Nav DateSerial(2026, 12, 28), "NextWeek"
+        Nav DateSerial(2026, 1, 3), "PreviousWeek"
+        Nav DateSerial(2026, 12, 15), "NextMonth"
+        Nav DateSerial(2026, 1, 15), "PreviousMonth"
+        Nav DateSerial(2024, 2, 29), "NextYear"
+        Nav DateSerial(2024, 2, 29), "PreviousYear"
+        Nav DateSerial(2026, 8, 31), "NextMonth"
+        Say "-- the selector's year range"
+        Nav DateSerial(2100, 12, 31), "NextDay"
+        Nav DateSerial(2100, 12, 15), "NextMonth"
+        Nav DateSerial(1900, 1, 15), "PreviousMonth"
+        Nav DateSerial(2100, 6, 1), "NextYear"
+        Nav DateSerial(1900, 1, 1), "PreviousDay"
+        Nav DateSerial(1900, 6, 1), "PreviousYear"
+    End Sub
+
+    '=========================================================================================
+    ' 5: Today
+    '=========================================================================================
+
+    Private Sub S5()
+        Nav DateSerial(2026, 6, 15), "Today"
+        Nav DateSerial(2020, 1, 31), "Today"
+        Nav Date, "Today"
+        Nav Date + TimeSerial(14, 30, 5), "Today"
+        Nav DateSerial(2020, 1, 1) + TimeSerial(15, 30, 0), "Today"
+        Nav DateSerial(2100, 1, 1), "Today"
+        Nav DateSerial(1900, 1, 1), "Today"
+    End Sub
+
+    '=========================================================================================
+    ' 6: ValueIsNull
+    '=========================================================================================
+
+    Private Sub S6()
+        On Error Resume Next
+        St "start"
+        Act "ValueIsNull = True"
+        Cal.ValueIsNull = True
+        Chk "ValueIsNull = True"
+        Done
+        St "after"
+        SetValue "#2026-07-04#", DateSerial(2026, 7, 4)
+        Act "ValueIsNull = False"
+        Cal.ValueIsNull = False
+        Chk "ValueIsNull = False"
+        St "after"
+        Act "ValueIsNull = True, then a click on a day cell"
+        Cal.ValueIsNull = True
+        Calibrate
+        ClickCell 1, 3
+        Done
+        St "after"
+        Act "ValueIsNull = True, then NextDay"
+        Cal.NextDay
+        Done
+        St "after"
+        Act "ValueIsNull = True, then ValueStr = ""2026-12-24"""
+        Cal.ValueStr = "2026-12-24"
+        Chk "ValueStr = 2026-12-24"
+        St "after"
+        Act "ValueIsNull = 5 (a number)"
+        Cal.ValueIsNull = 5
+        Chk "ValueIsNull = 5"
+        Say "  ValueIsNull reads back: " & Cal.ValueIsNull & " (" & TypeName(Cal.ValueIsNull) & ")"
+        Cal.ValueIsNull = False
+    End Sub
+
+    '=========================================================================================
+    ' 7: ValueStr
+    '=========================================================================================
+
+    Private Sub S7()
+        On Error Resume Next
+        Dim d As Variant
+        Dim s As String
+        Say "-- reading ValueStr"
+        For Each d In Array(DateSerial(2026, 3, 15), DateSerial(2026, 3, 15) + TimeSerial(14, 30, 0), DateSerial(2026, 6, 15), DateSerial(2026, 1, 2), DateSerial(2024, 2, 29), DateSerial(1900, 1, 1), DateSerial(2026, 12, 31), DateSerial(2026, 6, 15) + TimeSerial(14, 30, 5), DateSerial(2026, 6, 15) + TimeSerial(0, 0, 1))
+            Cal.Value = d
+            s = Cal.ValueStr
+            Say "  Value=" & Dt(CDate(d)) & "  ValueStr=[" & s & "] len=" & Len(s) & "  CStr(Value)=[" & CStr(Cal.Value) & "]  same: " & (s = CStr(Cal.Value))
+        Next
+        Say "-- setting ValueStr"
+        For Each d In Array("2026-12-24", "12/24/2026", "24 Dec 2026", "December 24, 2026", "12/24/26", "13/12/2026", "2026-02-30", "2026-12-24 14:30:05", "14:30", "", "not a date", "1/1/1850", "2101-01-01", "  2026-07-07  ")
+            Act "ValueStr = """ & d & """"
+            Cal.ValueStr = d
+            Chk "ValueStr = """ & d & """"
+            Done
+            St "after"
+        Next
+        Say "-- is ValueStr a stored property (Let works with a Date)?"
+        Act "ValueStr = a Date value #2026-03-03#"
+        Cal.ValueStr = DateSerial(2026, 3, 3)
+        Chk "ValueStr = Date"
+        St "after"
+    End Sub
+
+    '=========================================================================================
+    ' 8: BeforeUpdate with Cancel = True
+    '=========================================================================================
+
+    Private Sub S8()
+        On Error Resume Next
+        gCancel = True
+        Say "gCancel = True: Form1's BeforeUpdate handler sets Cancel = -1"
+        Act "Value = #2026-06-20# (code)"
+        Cal.Value = DateSerial(2026, 6, 20)
+        Done
+        St "after"
+        Act "NextDay (code)"
+        Cal.NextDay
+        Done
+        St "after"
+        Act "Day = 5 (code)"
+        Cal.Day = 5
+        Done
+        St "after"
+        Cal.Value = DateSerial(2026, 6, 15)
+        Pump
+        Calibrate
+        Act "a click on the cell for 2026-06-09 (row 1, column 1), with gCancel = True"
+        gCancel = True
+        ClickCell 1, 1
+        Done
+        St "after"
+        Act "the same click with gCancel = False"
+        gCancel = False
+        ClickCell 1, 1
+        Done
+        St "after"
+    End Sub
+
+    '=========================================================================================
+    ' 9: clicks
+    '=========================================================================================
+
+    Private Sub S9()
+        On Error Resume Next
+        Rebase DateSerial(2026, 7, 15)
+        Calibrate
+        Say "geometry: header=" & gHeader & " rowH=" & Format$(gRowH, "0.00") & " colW=" & Format$(gColW, "0.00")
+        Say "base Value is 2026-07-15; July 2026 starts on a Wednesday, so with Monday first row 0 is Jun 29 .. Jul 5 and row 5 is Aug 3 .. Aug 9"
+        gLogMouseMove = True
+        Rebase DateSerial(2026, 7, 15)
+        Act "click on row 1, column 3 (Thursday 2026-07-09, this month)"
+        ClickCell 1, 3
+        Done
+        St "after"
+        Rebase DateSerial(2026, 7, 15)
+        Act "click on row 0, column 0 (2026-06-29, a grey day of the previous month)"
+        ClickCell 0, 0
+        Done
+        St "after"
+        Rebase DateSerial(2026, 7, 15)
+        Act "click on row 5, column 2 (2026-08-05, a grey day of the next month)"
+        ClickCell 5, 2
+        Done
+        St "after"
+        Rebase DateSerial(2026, 7, 15)
+        Act "click on row 5, column 6 (2026-08-09, the last cell)"
+        ClickCell 5, 6
+        Done
+        St "after"
+        Rebase DateSerial(2026, 7, 15)
+        ClickCell 1, 3
+        Pump
+        gEvCount = 0
+        Act "click again on the day that is already selected (row 1, column 3 = 2026-07-09)"
+        ClickCell 1, 3
+        Done
+        St "after"
+        Rebase DateSerial(2026, 7, 15)
+        Act "right-click on row 2, column 2"
+        ClickCell 2, 2, 2
+        Done
+        St "after"
+        Rebase DateSerial(2026, 7, 15)
+        Act "click in the title band (y = 4)"
+        ClickAt 20, 4
+        Done
+        St "after"
+        Rebase DateSerial(2026, 7, 15)
+        Act "click in the day-names band (y = header - 3)"
+        ClickAt 20, gHeader - 3
+        Done
+        St "after"
+        Rebase DateSerial(2026, 7, 15)
+        Act "click on the last pixel row of the header (y = header) and on the first of the cells (y = header + 1)"
+        ClickAt 20, gHeader
+        ClickAt 20, gHeader + 1
+        Done
+        St "after"
+        Rebase DateSerial(2026, 7, 15)
+        Act "click at the very bottom of the control (y = height - 1), column 3"
+        ClickAt CLng(3.5 * gColW), CalHt - 1
+        Done
+        St "after"
+        Rebase DateSerial(2026, 7, 15)
+        Act "click on the grid line between two columns (x = column width * 2 exactly), row 1"
+        ClickAt CLng(2 * gColW), CLng(gHeader + 1.5 * gRowH)
+        Done
+        St "after"
+        Say "focus after the clicks: [" & Win.ClassOf(Win.GetFocus) & "]"
+        Rebase DateSerial(2026, 7, 15)
+        Act "double click on row 1, column 5 (2026-07-11): down, up, double-click, up"
+        MouseAt CLng(5.5 * gColW), CLng(gHeader + 1.5 * gRowH)
+        Msg Win.WM_LBUTTONDOWN, Win.MK_LBUTTON, Win.MakeLParam(CLng(5.5 * gColW), CLng(gHeader + 1.5 * gRowH))
+        Msg Win.WM_LBUTTONUP, 0, Win.MakeLParam(CLng(5.5 * gColW), CLng(gHeader + 1.5 * gRowH))
+        Msg Win.WM_LBUTTONDBLCLK, Win.MK_LBUTTON, Win.MakeLParam(CLng(5.5 * gColW), CLng(gHeader + 1.5 * gRowH))
+        Msg Win.WM_LBUTTONUP, 0, Win.MakeLParam(CLng(5.5 * gColW), CLng(gHeader + 1.5 * gRowH))
+        Done
+        St "after"
+        Act "the same double click as down, up, down, up (a window class without CS_DBLCLKS)"
+        MouseAt CLng(1.5 * gColW), CLng(gHeader + 3.5 * gRowH)
+        ClickCell 3, 1
+        ClickCell 3, 1
+        Done
+        St "after"
+        gLogMouseMove = False
+    End Sub
+
+    ' The clicks of scenario 9 again, as the system delivers a mouse's messages: posted to the
+    ' queue and dispatched by DoEvents (Q6, Q13, Q14, Q34).
+    Private Sub P13()
+        On Error Resume Next
+        Cal.ShowDateSelectors = False
+        Pump
+        gReal = True
+        S9
+        gReal = False
+        Cal.ShowDateSelectors = True
+        Pump
+    End Sub
+
+    '=========================================================================================
+    ' 10: keys
+    '=========================================================================================
+
+    Private Sub KeyCase(ByVal h As LongPtr, ByVal vk As Long, ByVal mods As Long, ByVal toWhat As String)
+        On Error Resume Next
+        Cal.Value = DateSerial(2026, 6, 15)
+        Pump
+        Act "key " & VkName(vk) & IIf((mods And 1) <> 0, " + Shift", "") & IIf((mods And 2) <> 0, " + Ctrl", "") & IIf((mods And 4) <> 0, " + Alt", "") & " sent to " & toWhat
+        KeyTo h, vk, mods
+        Done
+        St "after"
+    End Sub
+
+    Private Sub S10()
+        On Error Resume Next
+        Dim vk As Variant
+        Say "focus before: [" & Win.ClassOf(Win.GetFocus) & "]"
+        Dim prev As LongPtr = Win.SetFocus(FocusH)
+        Pump
+        Say "SetFocus(picture box) returned [" & Win.ClassOf(prev) & "]; GetFocus is now the picture box: " & (Win.GetFocus = FocusH) & " (" & Win.ClassOf(Win.GetFocus) & ")"
+        Say "GetKeyState(Shift/Ctrl) after SetMods(1)/(2):"
+        Win.SetMods 1
+        Say "  Shift: " & Win.GetKeyState(Win.VK_SHIFT) & ", Ctrl: " & Win.GetKeyState(Win.VK_CONTROL)
+        Win.SetMods 2
+        Say "  Shift: " & Win.GetKeyState(Win.VK_SHIFT) & ", Ctrl: " & Win.GetKeyState(Win.VK_CONTROL)
+        Win.SetMods 0
+        Say "-- keys sent to the picture box that has the focus"
+        For Each vk In Array(Win.VK_LEFT, Win.VK_RIGHT, Win.VK_UP, Win.VK_DOWN, Win.VK_PRIOR, Win.VK_NEXT, Win.VK_HOME, Win.VK_END)
+            KeyCase FocusH, CLng(vk), 0, "the picture box"
+        Next
+        Say "-- with Shift"
+        For Each vk In Array(Win.VK_LEFT, Win.VK_UP, Win.VK_PRIOR, Win.VK_NEXT, Win.VK_HOME)
+            KeyCase FocusH, CLng(vk), 1, "the picture box"
+        Next
+        Say "-- with Ctrl"
+        For Each vk In Array(Win.VK_LEFT, Win.VK_UP, Win.VK_PRIOR, Win.VK_NEXT, Win.VK_HOME)
+            KeyCase FocusH, CLng(vk), 2, "the picture box"
+        Next
+        Say "-- with Shift and Ctrl"
+        KeyCase FocusH, Win.VK_PRIOR, 3, "the picture box"
+        KeyCase FocusH, Win.VK_NEXT, 3, "the picture box"
+        Say "-- with Alt (sent as WM_SYSKEYDOWN and WM_SYSKEYUP, what Windows sends then)"
+        For Each vk In Array(Win.VK_LEFT, Win.VK_PRIOR, Win.VK_NEXT, Win.VK_HOME)
+            KeyCase FocusH, CLng(vk), 4, "the picture box"
+        Next
+        Say "-- characters"
+        Act "WM_CHAR 'a' sent to the picture box"
+        Win.SendMessageW FocusH, Win.WM_CHAR, 97, 1
+        Done
+        St "after"
+        Act "WM_CHAR Enter (13) sent to the picture box"
+        Win.SendMessageW FocusH, Win.WM_CHAR, 13, 1
+        Done
+        St "after"
+        Say "-- the same keys sent to the control's own window instead of the picture box"
+        For Each vk In Array(Win.VK_LEFT, Win.VK_PRIOR, Win.VK_HOME)
+            KeyCase CalH, CLng(vk), 0, "the control window"
+        Next
+        Act "WM_CHAR 'a' sent to the control window"
+        Win.SendMessageW CalH, Win.WM_CHAR, 97, 1
+        Done
+        Say "-- after a click the keyboard focus is"
+        Win.SetFocus Form1.hWnd
+        Pump
+        Calibrate
+        ClickCell 2, 2
+        Pump
+        Say "  focus after a click on a cell (a click sent as a message does not move the focus itself): [" & Win.ClassOf(Win.GetFocus) & "]"
+    End Sub
+
+    '=========================================================================================
+    ' 11: Enabled = False
+    '=========================================================================================
+
+    Private Sub S11()
+        On Error Resume Next
+        Win.SetFocus FocusH
+        Pump
+        Calibrate
+        Say "enabled state of the windows before: control=" & Win.IsWindowEnabled(CalH) & " picture box=" & Win.IsWindowEnabled(FocusH) & " year combo=" & Win.IsWindowEnabled(YearH) & " month combo=" & Win.IsWindowEnabled(MonthH)
+        Act "Enabled = False"
+        Cal.Enabled = False
+        Chk "Enabled = False"
+        Done
+        Say "  Enabled reads back: " & Cal.Enabled
+        Say "enabled state of the windows after: control=" & Win.IsWindowEnabled(CalH) & " picture box=" & Win.IsWindowEnabled(FocusH) & " year combo=" & Win.IsWindowEnabled(YearH) & " month combo=" & Win.IsWindowEnabled(MonthH)
+        Say "focus: [" & Win.ClassOf(Win.GetFocus) & "]"
+        Dim r As LongPtr = Win.SetFocus(FocusH)
+        Say "SetFocus(picture box) while disabled returned [" & Win.ClassOf(r) & "], GetFocus is [" & Win.ClassOf(Win.GetFocus) & "]"
+        Say "(Windows never sends mouse or key input to a disabled window, so a real click or key does nothing; the messages below are sent directly and show what the control's own code does)"
+        Act "a click on row 1, column 3, sent as a message"
+        ClickCell 1, 3
+        Done
+        St "after"
+        Act "key Right sent as a message to the picture box"
+        KeyTo FocusH, Win.VK_RIGHT
+        Done
+        St "after"
+        Act "NextDay (code)"
+        Cal.NextDay
+        Done
+        St "after"
+        Act "Value = #2026-09-09# (code)"
+        Cal.Value = DateSerial(2026, 9, 9)
+        Done
+        St "after"
+        Act "key Down sent as a message to the month combo"
+        KeyTo MonthH, Win.VK_DOWN
+        Done
+        St "after"
+        Act "Enabled = True"
+        Cal.Enabled = True
+        Done
+        Say "enabled state of the windows after: control=" & Win.IsWindowEnabled(CalH) & " picture box=" & Win.IsWindowEnabled(FocusH) & " year combo=" & Win.IsWindowEnabled(YearH) & " month combo=" & Win.IsWindowEnabled(MonthH)
+    End Sub
+
+    '=========================================================================================
+    ' 12: the selectors
+    '=========================================================================================
+
+    Private Sub ComboInfo(ByVal name As String, ByVal h As LongPtr)
+        Dim n As Long = CLng(Win.SendMessageW(h, Win.CB_GETCOUNT, 0, 0))
+        Dim cur As Long = CLng(Win.SendMessageW(h, Win.CB_GETCURSEL, 0, 0))
+        Dim r As RECT
+        Win.GetWindowRect h, r
+        Dim style As Long = Win.GetWindowLongW(h, -16)
+        Say "  " & name & ": class=" & Win.ClassOf(h) & " items=" & n & " cursel=" & cur & " text=[" & Win.TextOf(h) & "] size=" & (r.Right - r.Left) & "x" & (r.Bottom - r.Top) & " visible=" & Win.IsWindowVisible(h) & " enabled=" & Win.IsWindowEnabled(h) & " CBS type=" & (style And 3) & " (3 = CBS_DROPDOWNLIST)"
+    End Sub
+
+    Private Sub ItemText(ByVal h As LongPtr, ByVal i As Long)
+        Dim ln As Long = CLng(Win.SendMessageW(h, Win.CB_GETLBTEXTLEN, i, 0))
+        Dim buf As String = String$(ln + 2, 0)
+        Win.SendMessageW h, Win.CB_GETLBTEXT, i, StrPtr(buf)
+        Say "      item " & i & ": [" & Left$(buf, ln) & "]"
+    End Sub
+
+    Private Sub S12()
+        On Error Resume Next
+        Dim i As Long
+        ComboInfo "month combo", MonthH
+        ComboInfo "year combo", YearH
+        For i = 0 To 11
+            ItemText MonthH, i
+        Next
+        ItemText YearH, 0
+        ItemText YearH, 1
+        ItemText YearH, 200
+        Say "-- choosing from the month combo by key (Down: July)"
+        Win.SetFocus MonthH
+        Pump
+        Act "key Down sent to the month combo"
+        KeyTo MonthH, Win.VK_DOWN
+        Done
+        St "after"
+        Say "  focus: [" & Win.ClassOf(Win.GetFocus) & "], is the picture box: " & (Win.GetFocus = FocusH)
+        ComboInfo "month combo", MonthH
+        Act "key Up sent to the month combo twice (back to June, then May)"
+        KeyTo MonthH, Win.VK_UP
+        KeyTo MonthH, Win.VK_UP
+        Done
+        St "after"
+        Act "key Down sent to the year combo (2027)"
+        KeyTo YearH, Win.VK_DOWN
+        Done
+        St "after"
+        ComboInfo "year combo", YearH
+        Act "key Up sent to the year combo (2026)"
+        KeyTo YearH, Win.VK_UP
+        Done
+        St "after"
+        Say "-- choosing as the combo does: CB_SETCURSEL then WM_COMMAND/CBN_SELCHANGE to the control window"
+        Act "month combo: CB_SETCURSEL 11 (December) and the notification"
+        Win.SendMessageW MonthH, Win.CB_SETCURSEL, 11, 0
+        Win.SendMessageW CalH, Win.WM_COMMAND, Win.MakeLParam(Win.GetDlgCtrlID(MonthH), 1), MonthH
+        Done
+        St "after"
+        Act "CB_SETCURSEL 3 (April) only, with no notification"
+        Win.SendMessageW MonthH, Win.CB_SETCURSEL, 3, 0
+        Done
+        St "after"
+        Say "-- the drop-down"
+        Act "CB_SHOWDROPDOWN True on the month combo"
+        Win.SendMessageW MonthH, Win.CB_SHOWDROPDOWN, 1, 0
+        Pump
+        Say "  dropped state: " & Win.SendMessageW(MonthH, Win.CB_GETDROPPEDSTATE, 0, 0)
+        Win.SendMessageW MonthH, Win.CB_SHOWDROPDOWN, 0, 0
+        Pump
+        Say "  dropped state after closing: " & Win.SendMessageW(MonthH, Win.CB_GETDROPPEDSTATE, 0, 0)
+        Say "-- ShowDateSelectors"
+        Cal.Value = DateSerial(2026, 6, 15)
+        Pump
+        Act "ShowDateSelectors = False"
+        Cal.ShowDateSelectors = False
+        Chk "ShowDateSelectors = False"
+        Done
+        Say "  visible: month combo=" & Win.IsWindowVisible(MonthH) & " year combo=" & Win.IsWindowVisible(YearH)
+        Act "ShowDateSelectors = False, then NextMonth (code)"
+        Cal.NextMonth
+        Done
+        St "after"
+        Act "ShowDateSelectors = True"
+        Cal.ShowDateSelectors = True
+        Chk "ShowDateSelectors = True"
+        Done
+        Say "  visible: month combo=" & Win.IsWindowVisible(MonthH) & " year combo=" & Win.IsWindowVisible(YearH)
+        ComboInfo "month combo", MonthH
+        ComboInfo "year combo", YearH
+    End Sub
+
+    ' A selector change that makes an impossible date: January 31 to February. The control builds
+    ' the date from year, month and the old day, in its own event handler, so the error is raised
+    ' inside the control with no caller to take it. Run on its own: it may end the run.
+    Private Sub S12x()
+        On Error Resume Next
+        Cal.Value = DateSerial(2026, 1, 31)
+        Pump
+        St "start"
+        Act "key Down sent to the month combo, on 2026-01-31"
+        KeyTo MonthH, Win.VK_DOWN
+        Done
+        St "after"
+        ComboInfo "month combo", MonthH
+    End Sub
+
+    ' 12x again with the key posted to the queue and dispatched by the probe's loop, not sent.
+    Private Sub S12z()
+        On Error Resume Next
+        Cal.Value = DateSerial(2026, 1, 31)
+        Pump
+        Act "key Down posted to the month combo, on 2026-01-31"
+        Win.PostKey MonthH, Win.VK_DOWN
+        Pump
+        Say "  returned from the loop"
+        St "after"
+    End Sub
+
+    ' The same for the year list: 2024-02-29 to 2025. Run on its own: it may end the run.
+    Private Sub S12y()
+        On Error Resume Next
+        Cal.Value = DateSerial(2024, 2, 29)
+        Pump
+        St "start"
+        Act "key Down sent to the year combo, on 2024-02-29"
+        KeyTo YearH, Win.VK_DOWN
+        Done
+        St "after"
+    End Sub
+
+    '=========================================================================================
+    ' 13: out-of-range values
+    '=========================================================================================
+
+    Private Sub TryProp(ByVal prop As String, ByVal v As Variant)
+        On Error Resume Next
+        Dim back As Variant
+        Select Case prop
+            Case "FirstDay": Cal.FirstDay = v: back = Cal.FirstDay
+            Case "DayLength": Cal.DayLength = v: back = Cal.DayLength
+            Case "MonthLength": Cal.MonthLength = v: back = Cal.MonthLength
+            Case "GridCellEffect": Cal.GridCellEffect = v: back = Cal.GridCellEffect
+            Case "TitleMargin": Cal.TitleMargin = v: back = Cal.TitleMargin
+            Case "DaysMargin": Cal.DaysMargin = v: back = Cal.DaysMargin
+        End Select
+        Dim msg As String = prop & " = " & v
+        If Err.Number <> 0 Then
+            Say "  " & msg & "  -> ERROR " & Err.Number & " [" & Err.Description & "]; reads back " & back
+            Err.Clear
+        Else
+            Say "  " & msg & "  -> ok; reads back " & back
+        End If
+        ' put the property back at once, before any paint
+        Select Case prop
+            Case "FirstDay": Cal.FirstDay = 2
+            Case "DayLength": Cal.DayLength = 1
+            Case "MonthLength": Cal.MonthLength = 1
+            Case "GridCellEffect": Cal.GridCellEffect = 1
+            Case "TitleMargin": Cal.TitleMargin = 5
+            Case "DaysMargin": Cal.DaysMargin = 5
+        End Select
+        Err.Clear
+        Pump
+    End Sub
+
+    Private Sub S13()
+        Dim v As Variant
+        Say "(each value is put back to its default right after, before the next paint)"
+        For Each v In Array(1, 2, 7, 0, 8, 9, -1, 100)
+            TryProp "FirstDay", v
+        Next
+        For Each v In Array(0, 1, 2, 3, -1, 5)
+            TryProp "DayLength", v
+        Next
+        For Each v In Array(0, 1, 2, -1)
+            TryProp "MonthLength", v
+        Next
+        For Each v In Array(0, 1, 2, 3, -1, 7)
+            TryProp "GridCellEffect", v
+        Next
+        For Each v In Array(0, -5, 20, 100, 32767, 40000)
+            TryProp "TitleMargin", v
+        Next
+        For Each v In Array(0, -5, 20, 100)
+            TryProp "DaysMargin", v
+        Next
+        Say "-- the same, left in place until the next paint (FirstDay = 9)"
+        On Error Resume Next
+        Cal.FirstDay = 9
+        Chk "FirstDay = 9"
+        Say "  Pump (a paint with FirstDay = 9):"
+        gQuiet = False
+        Pump
+        Say "  pump dispatched " & gPumped & " messages"
+        Cal.FirstDay = 2
+        Err.Clear
+        Pump
+    End Sub
+
+    '=========================================================================================
+    ' 14: colours, fonts, Show* and the layout
+    '=========================================================================================
+
+    Private Sub Layout(ByVal what As String)
+        Pump
+        Calibrate
+        Say "  layout[" & what & "]: header=" & gHeader & " px, row height=" & Format$(gRowH, "0.00") & " px"
+    End Sub
+
+    Private Sub S14()
+        On Error Resume Next
+        Layout "default"
+        Cal.ShowTitle = False
+        Layout "ShowTitle = False (selectors visible)"
+        Cal.ShowDateSelectors = False
+        Layout "ShowTitle = False, ShowDateSelectors = False"
+        Cal.ShowTitle = True
+        Layout "ShowTitle = True, ShowDateSelectors = False"
+        Cal.ShowDateSelectors = True
+        Cal.ShowDays = False
+        Layout "ShowDays = False"
+        Cal.ShowDays = True
+        Cal.TitleMargin = 15
+        Layout "TitleMargin = 15"
+        Cal.TitleMargin = 5
+        Cal.DaysMargin = 15
+        Layout "DaysMargin = 15"
+        Cal.DaysMargin = 5
+        Cal.TitleFont.Size = 10
+        Layout "TitleFont.Size = 10 (changed in place)"
+        Cal.TitleFont.Size = 16
+        Cal.DayFont.Size = 14
+        Layout "DayFont.Size = 14 (changed in place)"
+        Cal.DayFont.Size = 8
+        Chk "layout tests"
+        Say "-- colours"
+        Cal.DayBackColor = vbRed
+        Cal.DayFontColor = vbWhite
+        Cal.GridFontColor = vbBlue
+        Cal.GridLinesColor = vbGreen
+        Cal.TitleFontColor = vbMagenta
+        Cal.BackColor = vbYellow
+        Chk "setting six colours"
+        Say "  read back: DayBackColor=&H" & Hex$(Cal.DayBackColor) & " DayFontColor=&H" & Hex$(Cal.DayFontColor) & " GridFontColor=&H" & Hex$(Cal.GridFontColor) & " GridLinesColor=&H" & Hex$(Cal.GridLinesColor) & " TitleFontColor=&H" & Hex$(Cal.TitleFontColor) & " BackColor=&H" & Hex$(Cal.BackColor)
+        Pump
+        Shot "colours"
+        Cal.DayBackColor = &HDCA86F
+        Cal.DayFontColor = 0
+        Cal.GridFontColor = &HA00000
+        Cal.GridLinesColor = &H80000010
+        Cal.TitleFontColor = &H80FF&
+        Cal.BackColor = &HE0E0E0
+        Say "-- fonts: Set TitleFont to a new StdFont (Courier New, 12, bold)"
+        Dim f As New StdFont
+        f.Name = "Courier New"
+        f.Size = 12
+        f.Bold = True
+        Set Cal.TitleFont = f
+        Chk "Set TitleFont"
+        Say "  TitleFont reads back: " & Cal.TitleFont.Name & ", " & Cal.TitleFont.Size & " pt, Bold=" & Cal.TitleFont.Bold & "; same object: " & (Cal.TitleFont Is f)
+        Set Cal.GridFont = f
+        Set Cal.DayFont = f
+        Chk "Set GridFont, DayFont to the same object"
+        Say "  GridFont is the same object: " & (Cal.GridFont Is f) & ", DayFont is: " & (Cal.DayFont Is f)
+        Pump
+        Shot "fonts"
+        Set Cal.TitleFont = Nothing
+        Chk "Set TitleFont = Nothing"
+        Pump
+        Chk "paint after TitleFont = Nothing"
+    End Sub
+
+    '=========================================================================================
+    ' 15: pictures
+    '=========================================================================================
+
+    Private Sub S15()
+        On Error Resume Next
+        Shot "default"
+        Cal.Value = DateSerial(2026, 7, 15)
+        Pump
+        Shot "selected_stale"
+        Rebase DateSerial(2026, 7, 15)
+        Shot "selected"
+        Cal.Value = DateSerial(2026, 7, 15) + TimeSerial(14, 30, 5)
+        Pump
+        Shot "selected_with_time"
+        Cal.Value = DateSerial(2026, 7, 15)
+        Cal.Enabled = False
+        Pump
+        Shot "disabled"
+        Cal.Enabled = True
+        Chk "S15"
+    End Sub
+
+    ' More pictures: the grid-line effects, the day and month names, Sunday first, nothing but the grid.
+    Private Sub S15b()
+        On Error Resume Next
+        Rebase DateSerial(2026, 7, 15)
+        Cal.GridCellEffect = 0
+        Pump
+        Shot "effect0"
+        Cal.GridCellEffect = 2
+        Pump
+        Shot "effect2"
+        Cal.GridCellEffect = 1
+        Cal.DayLength = 0
+        Cal.MonthLength = 0
+        Cal.FirstDay = 1
+        Rebase DateSerial(2026, 7, 15)
+        Shot "short_sunday"
+        Cal.DayLength = 2
+        Cal.MonthLength = 1
+        Cal.FirstDay = 2
+        Rebase DateSerial(2026, 7, 15)
+        Shot "longdays"
+        Cal.DayLength = 1
+        Cal.ShowDateSelectors = False
+        Cal.ShowTitle = False
+        Cal.ShowDays = False
+        Pump
+        Shot "bare"
+        Cal.ShowDateSelectors = True
+        Cal.ShowTitle = True
+        Cal.ShowDays = True
+        Chk "S15b"
+    End Sub
+
+    '=========================================================================================
+    ' 16: the repaint loop
+    '=========================================================================================
+
+    ' A run of the message loop for ms milliseconds: how many messages, and how many of them are
+    ' WM_PAINT. Reports how long it really took.
+    Private Sub Storm(ByVal what As String, ByVal ms As Long)
+        Dim m As Win.MSG
+        Dim t As Long = GetTickCount
+        Dim n As Long
+        Dim nPaint As Long
+        Dim nOther As Long
+        Dim other As String
+        Do While GetTickCount - t < ms
+            If Win.PeekMessageW(m, 0, 0, 0, 1) = 0 Then
+                Sleep 5
+            Else
+                n = n + 1
+                If m.message = &HF Then
+                    nPaint = nPaint + 1
+                Else
+                    nOther = nOther + 1
+                    If nOther <= 6 Then other = other & " 0x" & Hex$(m.message)
+                End If
+                Win.TranslateMessage m
+                Win.DispatchMessageW m
+            End If
+        Loop
+        Say "  storm[" & what & "]: " & n & " messages in " & (GetTickCount - t) & " ms, " & nPaint & " WM_PAINT; first others:" & other
+    End Sub
+
+    Private Sub S16()
+        On Error Resume Next
+        Storm "as loaded", 1500
+        Cal.ShowDateSelectors = False
+        Storm "ShowDateSelectors = False", 1000
+        Cal.ShowTitle = False
+        Storm "ShowTitle = False as well", 1000
+        Cal.ShowTitle = True
+        Cal.ShowDateSelectors = True
+        Cal.Refresh
+        Storm "both back, after Refresh", 1000
+        Form1.Hide
+        Storm "form hidden", 1000
+        Form1.Show
+        Storm "form shown again", 1000
+        Chk "S16"
+    End Sub
+
+    '=========================================================================================
+    ' Pixels: read from the control's window DC with GetPixel (a COLORREF, 0x00BBGGRR, the same
+    ' number as an OLE_COLOR property), after the control has painted.
+    '=========================================================================================
+
+    Private Sub PxOpen()
+        gDC = Win.GetDC(CalH)
+    End Sub
+
+    Private Sub PxClose()
+        Win.ReleaseDC CalH, gDC
+        gDC = 0
+    End Sub
+
+    Private Function Hx(ByVal c As Long) As String
+        Hx = "&H" & Hex$(c)
+    End Function
+
+    ' The runs of one colour down column x from y0 to y1, as "y0-y1:colour".
+    Private Function ColRuns(ByVal x As Long, ByVal y0 As Long, ByVal y1 As Long) As String
+        Dim y As Long
+        Dim c As Long
+        Dim prev As Long = -2
+        Dim start As Long
+        Dim s As String
+        PxOpen
+        For y = y0 To y1
+            c = Win.GetPixel(gDC, x, y)
+            If c <> prev Then
+                If y > y0 Then s = s & start & "-" & (y - 1) & ":" & Hx(prev) & "  "
+                start = y
+                prev = c
+            End If
+        Next
+        s = s & start & "-" & y1 & ":" & Hx(prev)
+        PxClose
+        ColRuns = s
+    End Function
+
+    ' The same along row y from x0 to x1.
+    Private Function RowRuns(ByVal y As Long, ByVal x0 As Long, ByVal x1 As Long) As String
+        Dim x As Long
+        Dim c As Long
+        Dim prev As Long = -2
+        Dim start As Long
+        Dim s As String
+        PxOpen
+        For x = x0 To x1
+            c = Win.GetPixel(gDC, x, y)
+            If c <> prev Then
+                If x > x0 Then s = s & start & "-" & (x - 1) & ":" & Hx(prev) & "  "
+                start = x
+                prev = c
+            End If
+        Next
+        s = s & start & "-" & x1 & ":" & Hx(prev)
+        PxClose
+        RowRuns = s
+    End Function
+
+    Private Function PxAt(ByVal x As Long, ByVal y As Long) As Long
+        PxOpen
+        PxAt = Win.GetPixel(gDC, x, y)
+        PxClose
+    End Function
+
+    ' The first (or last) y from y0 to y1 at which column x has colour c; -1 when none.
+    Private Function FirstY(ByVal x As Long, ByVal c As Long, ByVal y0 As Long, ByVal y1 As Long) As Long
+        Dim y As Long
+        FirstY = -1
+        PxOpen
+        For y = y0 To y1
+            If Win.GetPixel(gDC, x, y) = c Then
+                FirstY = y
+                Exit For
+            End If
+        Next
+        PxClose
+    End Function
+
+    Private Function LastY(ByVal x As Long, ByVal c As Long, ByVal y0 As Long, ByVal y1 As Long) As Long
+        Dim y As Long
+        LastY = -1
+        PxOpen
+        For y = y0 To y1
+            If Win.GetPixel(gDC, x, y) = c Then LastY = y
+        Next
+        PxClose
+    End Function
+
+    Private Function CountPx(ByVal c As Long, ByVal x0 As Long, ByVal y0 As Long, ByVal x1 As Long, ByVal y1 As Long) As Long
+        Dim x As Long
+        Dim y As Long
+        Dim n As Long
+        PxOpen
+        For y = y0 To y1
+            For x = x0 To x1
+                If Win.GetPixel(gDC, x, y) = c Then n = n + 1
+            Next
+        Next
+        PxClose
+        CountPx = n
+    End Function
+
+    ' The bounding box of the pixels that are not colour bg in the rectangle.
+    Private Sub BBox(ByVal x0 As Long, ByVal y0 As Long, ByVal x1 As Long, ByVal y1 As Long, ByVal bg As Long, ByRef minX As Long, ByRef minY As Long, ByRef maxX As Long, ByRef maxY As Long)
+        Dim x As Long
+        Dim y As Long
+        minX = 99999: minY = 99999: maxX = -1: maxY = -1
+        PxOpen
+        For y = y0 To y1
+            For x = x0 To x1
+                If Win.GetPixel(gDC, x, y) <> bg Then
+                    If x < minX Then minX = x
+                    If x > maxX Then maxX = x
+                    If y < minY Then minY = y
+                    If y > maxY Then maxY = y
+                End If
+            Next
+        Next
+        PxClose
+    End Sub
+
+    ' A number that changes when any sampled pixel of the control changes.
+    Private Function Fingerprint() As Double
+        Dim x As Long
+        Dim y As Long
+        Dim h As Double
+        PxOpen
+        For y = 0 To CalHt - 1 Step 5
+            For x = 0 To CalW - 1 Step 5
+                h = h + CDbl(Win.GetPixel(gDC, x, y)) * (1 + ((x * 7 + y * 13) Mod 17))
+            Next
+        Next
+        PxClose
+        Fingerprint = h
+    End Function
+
+    ' Re-bases the grid on a date: Value, then Month, whose setter recomputes the first date of
+    ' the grid (Value's setter does not).
+    Private Sub Rebase(ByVal d As Date)
+        On Error Resume Next
+        Cal.Value = d
+        Cal.Month = VBA.Month(d)
+        Pump
+        gEvCount = 0
+        gBefore = 0
+    End Sub
+
+    ' Where the keyboard focus is, by name.
+    Private Function FocusName() As String
+        Dim h As LongPtr = Win.GetFocus
+        Dim s As String
+        If h = 0 Then
+            s = "nothing"
+        ElseIf h = FocusH Then
+            s = "the control's picture box (picFocus)"
+        ElseIf h = CalH Then
+            s = "the control window itself"
+        ElseIf h = Cmd1H Then
+            s = "Command1"
+        ElseIf h = Cmd2H Then
+            s = "Command2"
+        ElseIf h = YearH Then
+            s = "the year combo"
+        ElseIf h = MonthH Then
+            s = "the month combo"
+        ElseIf h = Form1.hWnd Then
+            s = "the form"
+        Else
+            s = "another window"
+        End If
+        FocusName = s & " [" & Win.ClassOf(h) & "]"
+    End Function
+
+    '=========================================================================================
+    ' p2: the title with the selectors hidden (Q2)
+    '=========================================================================================
+
+    Private Sub TitleSpan(ByVal what As String, ByVal xmax As Long)
+        Pump
+        Calibrate
+        Dim top As Long = FirstY(3, Cal.DayBackColor, 0, CalHt - 1)
+        Dim x0 As Long
+        Dim y0 As Long
+        Dim x1 As Long
+        Dim y1 As Long
+        BBox 1, 2, xmax, top - 3, Cal.BackColor, x0, y0, x1, y1
+        Say "  title[" & what & "]: day-names band starts at y=" & top & "; title text pixels span x=" & x0 & ".." & x1 & " (centre " & ((x0 + x1) / 2) & "), y=" & y0 & ".." & y1 & "; control width " & CalW & ": W/2 = " & (CalW / 2) & ", (W - 140)/2 = " & ((CalW - 140) / 2)
+    End Sub
+
+    Private Sub P2()
+        On Error Resume Next
+        TitleSpan "ShowDateSelectors = True", CalW - 145
+        Cal.ShowDateSelectors = False
+        TitleSpan "ShowDateSelectors = False", CalW - 1
+        Shot "title_noselectors"
+        Cal.ShowDateSelectors = True
+        Chk "P2"
+    End Sub
+
+    '=========================================================================================
+    ' p14: do the three text colours reach the text? Pixels of exactly those colours (not a hit
+    ' of the page's questions: found in the pictures)
+    '=========================================================================================
+
+    ' The most frequent colours in a rectangle, "colour x count" each, the background first left out.
+    Private Function TopColours(ByVal x0 As Long, ByVal y0 As Long, ByVal x1 As Long, ByVal y1 As Long, ByVal skip As Long) As String
+        Dim cols(0 To 63) As Long
+        Dim cnt(0 To 63) As Long
+        Dim n As Long
+        Dim x As Long
+        Dim y As Long
+        Dim c As Long
+        Dim i As Long
+        Dim j As Long
+        Dim s As String
+        PxOpen
+        For y = y0 To y1
+            For x = x0 To x1
+                c = Win.GetPixel(gDC, x, y)
+                If c <> skip Then
+                    For i = 0 To n - 1
+                        If cols(i) = c Then cnt(i) = cnt(i) + 1: Exit For
+                    Next
+                    If i = n And n <= 63 Then cols(n) = c: cnt(n) = 1: n = n + 1
+                End If
+            Next
+        Next
+        PxClose
+        ' the five largest
+        For j = 1 To 5
+            Dim best As Long = -1
+            Dim bi As Long = -1
+            For i = 0 To n - 1
+                If cnt(i) > best Then best = cnt(i): bi = i
+            Next
+            If bi >= 0 Then
+                s = s & Hx(cols(bi)) & " x" & cnt(bi) & "  "
+                cnt(bi) = -2
+            End If
+        Next
+        TopColours = s
+    End Function
+
+    Private Sub TextColours(ByVal what As String)
+        Pump
+        Calibrate
+        Say "  " & what & ": TitleFontColor=" & Hx(Cal.TitleFontColor) & ", the colours in the title text's box: " & TopColours(40, 8, 200, 36, Cal.BackColor)
+        Say "  " & what & ": DayFontColor=" & Hx(Cal.DayFontColor) & ", the colours in the first day name's box: " & TopColours(4, 52, 50, gHeader - 4, Cal.DayBackColor)
+        Say "  " & what & ": GridFontColor=" & Hx(Cal.GridFontColor) & ", the colours in the first cell's box: " & TopColours(4, gHeader + 3, 50, gHeader + 22, Cal.BackColor)
+    End Sub
+
+    Private Sub P14()
+        On Error Resume Next
+        TextColours "defaults"
+        Cal.TitleFontColor = RGB(255, 0, 255)
+        Cal.GridFontColor = RGB(0, 0, 255)
+        Cal.DayFontColor = RGB(255, 255, 255)
+        TextColours "magenta title, blue grid, white day names"
+        Chk "P14"
+    End Sub
+
+    '=========================================================================================
+    ' p3: a Value with a time of day (Q3)
+    '=========================================================================================
+
+    Private Sub P3()
+        On Error Resume Next
+        Dim hl As Long = &H82868E
+        Calibrate
+        Rebase DateSerial(2026, 3, 15)
+        Say "  grid for March 2026, Value = 2026-03-15: pixels of the selected-cell colour " & Hx(hl) & " in the grid: " & CountPx(hl, 0, gHeader + 1, CalW - 1, CalHt - 1)
+        St "date only"
+        Cal.Value = DateSerial(2026, 3, 15) + TimeSerial(14, 30, 0)
+        Pump
+        Say "  Value = 2026-03-15 14:30:00: pixels of the selected-cell colour in the grid: " & CountPx(hl, 0, gHeader + 1, CalW - 1, CalHt - 1)
+        St "with a time"
+        Shot "timesel"
+        Chk "P3"
+    End Sub
+
+    '=========================================================================================
+    ' p5: Enabled = False, the colours and the keyboard focus (Q4, Q5)
+    '=========================================================================================
+
+    Private Sub BandColour(ByVal what As String)
+        Pump
+        Calibrate
+        Say "  " & what & ": day-names band colour " & Hx(PxAt(3, gHeader - 6)) & " (enabled &HDCA86F, disabled &HEEEEEE); Enabled=" & Cal.Enabled & " window enabled=" & Win.IsWindowEnabled(CalH) & "; focus is " & FocusName()
+    End Sub
+
+    Private Sub P5()
+        On Error Resume Next
+        BandColour "enabled, nothing focused"
+        Win.SetFocus Cmd1H
+        Pump
+        Win.SetFocus FocusH
+        Pump
+        BandColour "enabled, the control's picture box has the focus"
+        Act "Enabled = False"
+        Cal.Enabled = False
+        Done
+        BandColour "after Enabled = False"
+        Say "  windows enabled now: control=" & Win.IsWindowEnabled(CalH) & " picture box=" & Win.IsWindowEnabled(FocusH) & " year combo=" & Win.IsWindowEnabled(YearH) & " month combo=" & Win.IsWindowEnabled(MonthH)
+        Shot "disabled_nofocus_move"
+        Act "the focus moves to Command2"
+        Win.SetFocus Cmd2H
+        Done
+        BandColour "after the focus moved to Command2"
+        Shot "disabled_after_blur"
+        Act "the focus moves back to the picture box, then to Command1"
+        Win.SetFocus FocusH
+        Pump
+        BandColour "after SetFocus on the picture box"
+        Win.SetFocus Cmd1H
+        Done
+        BandColour "after the focus moved to Command1"
+        Cal.Enabled = True
+        Pump
+        Say "-- the focus placed by a left click on a day cell (what puts it in the picture box), then Enabled = False"
+        Win.SetFocus Cmd1H
+        Pump
+        Calibrate
+        ClickCell 2, 2
+        Pump
+        BandColour "enabled, after a click"
+        Act "Enabled = False"
+        Cal.Enabled = False
+        Done
+        BandColour "after Enabled = False"
+        Say "  windows enabled now: control=" & Win.IsWindowEnabled(CalH) & " picture box=" & Win.IsWindowEnabled(FocusH) & " year combo=" & Win.IsWindowEnabled(YearH) & " month combo=" & Win.IsWindowEnabled(MonthH)
+        Act "the focus moves to Command2"
+        Win.SetFocus Cmd2H
+        Done
+        BandColour "after the focus moved to Command2"
+        Shot "disabled_blur2"
+        Cal.Enabled = True
+        Pump
+        BandColour "Enabled = True again"
+        Chk "P5"
+    End Sub
+
+    '=========================================================================================
+    ' p7: hit-testing in a control 255 pixels wide (Q7)
+    '=========================================================================================
+
+    Private Sub P7()
+        On Error Resume Next
+        Dim r As RECT
+        Dim pt As Win.POINT
+        Win.GetWindowRect CalH, r
+        pt.x = r.Left
+        pt.y = r.Top
+        Win.ScreenToClient Form1.hWnd, pt
+        Win.MoveWindow CalH, pt.x, pt.y, 255, 292, 1
+        Pump
+        Win.GetClientRect CalH, r
+        CalW = r.Right
+        CalHt = r.Bottom
+        Calibrate
+        Say "control resized: client " & CalW & "x" & CalHt & ", header " & gHeader & ", cell width " & Format$(CalW / 7, "0.0000") & " (VBA rounds it to " & CLng(CalW / 7) & " for \), cell height " & Format$((CalHt - gHeader) / 6, "0.0000") & " (rounds to " & CLng((CalHt - gHeader) / 6) & ")"
+        Dim base As Date = DateSerial(2026, 6, 1)
+        Say "the grid is June 2026 with Monday first: the cell at row r, column c is 2026-06-01 + 7r + c days"
+        Dim xs As Variant
+        Dim ys As Variant
+        Dim x As Variant
+        Dim y As Variant
+        For Each x In Array(3, 218, 219, 251, 252, 254)
+            Rebase DateSerial(2026, 6, 15)
+            Act "left press at x=" & x & ", y=" & (gHeader + 5) & " (first row, the middle of the top of the cell)"
+            ClickAt CLng(x), gHeader + 5
+            Pump
+            Say "      Value is 2026-06-01 + " & CLng(Cal.Value - base) & " days = " & Dt(Cal.Value) & "  (a column of the grid is 0 to 6)"
+        Next
+        For Each y In Array(CalHt - 1, CalHt - 2, CalHt - 3, CalHt - 5)
+            Rebase DateSerial(2026, 6, 15)
+            Act "left press at x=3, y=" & y & " (column 0)"
+            ClickAt 3, CLng(y)
+            Pump
+            Say "      Value is 2026-06-01 + " & CLng(Cal.Value - base) & " days = " & Dt(Cal.Value) & "  (a row of the grid is 0 to 5, so 0, 7, ... 35 are the valid first-column offsets)"
+        Next
+        Win.MoveWindow CalH, pt.x, pt.y, 384, 288, 1
+        Pump
+        Win.GetClientRect CalH, r
+        CalW = r.Right
+        CalHt = r.Bottom
+        Calibrate
+        Chk "P7"
+    End Sub
+
+    '=========================================================================================
+    ' p10: Tab into the control; arrow keys after a click; the order of the key events (Q10, Q11)
+    '=========================================================================================
+
+    Private Sub P10()
+        On Error Resume Next
+        Dim i As Long
+        Cal.ShowDateSelectors = False
+        Pump
+        Win.SetFocus Cmd1H
+        Pump
+        Say "focus: " & FocusName()
+        Say "-- Tab, posted to the queue and dispatched through the form's dialog manager (IsDialogMessage)"
+        For i = 1 To 3
+            Win.PostKey Win.GetFocus, Win.VK_TAB
+            Pump 0, True
+            Say "  after Tab #" & i & ": focus is " & FocusName()
+        Next
+        Say "-- Shift+Tab"
+        Win.SetMods 1
+        Win.PostKey Win.GetFocus, Win.VK_TAB
+        Pump 0, True
+        Win.SetMods 0
+        Say "  after Shift+Tab: focus is " & FocusName()
+        Say "-- Tab through DoEvents (the runtime's own loop)"
+        Win.SetFocus Cmd1H
+        Pump
+        Win.PostKey Win.GetFocus, Win.VK_TAB
+        DoEvents
+        Say "  after Tab: focus is " & FocusName()
+        Cal.ShowDateSelectors = True
+        Pump
+        Say "-- arrow keys after a left click on a day cell (the click is sent as messages)"
+        Win.SetFocus Cmd1H
+        Pump
+        Calibrate
+        Rebase DateSerial(2026, 6, 15)
+        ClickCell 2, 2
+        Pump
+        Say "  focus after the click: " & FocusName()
+        St "after the click"
+        Act "Right arrow sent to the window that has the focus"
+        KeyTo Win.GetFocus, Win.VK_RIGHT
+        Done
+        St "after"
+        Say "-- the order of the key events, with the focus in the picture box"
+        Win.SetFocus FocusH
+        Pump
+        Rebase DateSerial(2026, 6, 15)
+        gLogMouseMove = False
+        Act "the A key posted to the queue: WM_KEYDOWN and WM_KEYUP, and TranslateMessage adds WM_CHAR"
+        Win.PostKey FocusH, 65
+        Pump
+        St "after"
+        Act "the Right arrow key posted to the queue"
+        Win.PostKey FocusH, Win.VK_RIGHT
+        Pump
+        St "after"
+        Act "WM_KEYDOWN, WM_CHAR 'a', WM_KEYUP sent in turn to the picture box"
+        Win.SendMessageW FocusH, Win.WM_KEYDOWN, 65, Win.KeyLParam(65, False, False)
+        Win.SendMessageW FocusH, Win.WM_CHAR, 97, 1
+        Win.SendMessageW FocusH, Win.WM_KEYUP, 65, Win.KeyLParam(65, True, False)
+        Done
+        Act "WM_KEYDOWN, WM_CHAR 'a', WM_KEYUP sent in turn to the control window"
+        Win.SendMessageW CalH, Win.WM_KEYDOWN, 65, Win.KeyLParam(65, False, False)
+        Win.SendMessageW CalH, Win.WM_CHAR, 97, 1
+        Win.SendMessageW CalH, Win.WM_KEYUP, 65, Win.KeyLParam(65, True, False)
+        Done
+        Chk "P10"
+    End Sub
+
+    '=========================================================================================
+    ' p9: the keys, as the system sends them: posted to the queue and dispatched by the runtime's
+    ' own loop (DoEvents), the key-down first, the key-up after it (Q8, Q9, Q11)
+    '=========================================================================================
+
+    ' A key press: WM_KEYDOWN (WM_SYSKEYDOWN with Alt) posted to the window h and dispatched by
+    ' DoEvents, which also delivers the WM_CHAR that TranslateMessage makes from it, then the
+    ' key-up the same way. mods: bit 0 Shift, bit 1 Ctrl, bit 2 Alt, held by SetKeyboardState.
+    Private Sub KeyReal(ByVal h As LongPtr, ByVal vk As Long, Optional ByVal mods As Long = 0)
+        Dim alt As Boolean = (mods And 4) <> 0
+        If mods <> 0 Then Win.SetMods mods
+        Win.PostMessageW h, IIf(alt, Win.WM_SYSKEYDOWN, Win.WM_KEYDOWN), vk, Win.KeyLParam(vk, False, alt)
+        DoEvents
+        Win.PostMessageW h, IIf(alt, Win.WM_SYSKEYUP, Win.WM_KEYUP), vk, Win.KeyLParam(vk, True, alt)
+        DoEvents
+        If mods <> 0 Then Win.SetMods 0
+    End Sub
+
+    Private Sub RealCase(ByVal h As LongPtr, ByVal vk As Long, ByVal mods As Long)
+        On Error Resume Next
+        Cal.Value = DateSerial(2026, 6, 15)
+        Pump
+        Act "key " & VkName(vk) & IIf((mods And 1) <> 0, " + Shift", "") & IIf((mods And 2) <> 0, " + Ctrl", "") & IIf((mods And 4) <> 0, " + Alt", "")
+        KeyReal h, vk, mods
+        Pump
+        If gEvCount = 0 Then Say "      (no event)"
+        St "after"
+    End Sub
+
+    Private Sub P9()
+        On Error Resume Next
+        Dim vk As Variant
+        Dim h As LongPtr
+        Cal.ShowDateSelectors = False
+        Pump
+        Calibrate
+        ClickCell 2, 2
+        Pump
+        h = Win.GetFocus
+        Say "after a click on a cell the focus is " & FocusName() & "; the keys are posted to it"
+        Say "-- plain keys"
+        For Each vk In Array(Win.VK_LEFT, Win.VK_RIGHT, Win.VK_UP, Win.VK_DOWN, Win.VK_PRIOR, Win.VK_NEXT, Win.VK_HOME, Win.VK_END, 65, 13, 32, 9)
+            RealCase h, CLng(vk), 0
+        Next
+        Say "-- with Shift"
+        For Each vk In Array(Win.VK_LEFT, Win.VK_PRIOR, Win.VK_NEXT, Win.VK_HOME)
+            RealCase h, CLng(vk), 1
+        Next
+        Say "-- with Ctrl"
+        For Each vk In Array(Win.VK_LEFT, Win.VK_PRIOR, Win.VK_NEXT, Win.VK_HOME)
+            RealCase h, CLng(vk), 2
+        Next
+        Say "-- with Alt (WM_SYSKEYDOWN / WM_SYSKEYUP)"
+        For Each vk In Array(Win.VK_LEFT, Win.VK_PRIOR, Win.VK_NEXT, Win.VK_HOME)
+            RealCase h, CLng(vk), 4
+        Next
+        Say "-- with Shift and Ctrl"
+        RealCase h, Win.VK_PRIOR, 3
+        RealCase h, Win.VK_NEXT, 3
+        Cal.ShowDateSelectors = True
+        Pump
+        Chk "P9"
+    End Sub
+
+    '=========================================================================================
+    ' p11: which key events a real key press raises: keys posted to the queue (Q8, Q11)
+    '=========================================================================================
+
+    Private Sub P11()
+        On Error Resume Next
+        Dim h As LongPtr
+        Calibrate
+        Win.SetFocus Cmd1H
+        Pump
+        Rebase DateSerial(2026, 6, 15)
+        ClickCell 2, 2
+        Pump
+        Say "after a click on a cell, focus is " & FocusName()
+        h = Win.GetFocus
+        Rebase DateSerial(2026, 6, 15)
+        Act "only WM_KEYDOWN (Right) posted to the focus window and dispatched by the probe's loop"
+        Win.PostMessageW h, Win.WM_KEYDOWN, Win.VK_RIGHT, Win.KeyLParam(Win.VK_RIGHT, False, False)
+        Pump
+        St "after"
+        Act "only WM_KEYUP (Right) posted"
+        Win.PostMessageW h, Win.WM_KEYUP, Win.VK_RIGHT, Win.KeyLParam(Win.VK_RIGHT, True, False)
+        Pump
+        St "after"
+        Act "WM_KEYDOWN and WM_KEYUP (Right) posted, probe's loop"
+        Win.PostKey h, Win.VK_RIGHT
+        Pump
+        St "after"
+        Act "WM_KEYDOWN and WM_KEYUP ('A', 65) posted, probe's loop"
+        Win.PostKey h, 65
+        Pump
+        Say "-- the same through DoEvents, the runtime's own loop (selectors hidden so that it returns)"
+        Cal.ShowDateSelectors = False
+        Pump
+        Rebase DateSerial(2026, 6, 15)
+        ClickCell 2, 2
+        Pump
+        h = Win.GetFocus
+        Say "  focus is " & FocusName()
+        Rebase DateSerial(2026, 6, 15)
+        Act "WM_KEYDOWN and WM_KEYUP (Right) posted, DoEvents"
+        Win.PostKey h, Win.VK_RIGHT
+        DoEvents
+        St "after"
+        Act "WM_KEYDOWN and WM_KEYUP ('A') posted, DoEvents"
+        Win.PostKey h, 65
+        DoEvents
+        Act "WM_KEYDOWN (Shift+Page Down) posted, DoEvents (Shift set with SetKeyboardState)"
+        Win.SetMods 1
+        Win.PostKey h, Win.VK_NEXT
+        DoEvents
+        Win.SetMods 0
+        St "after"
+        Cal.ShowDateSelectors = True
+        Chk "P11"
+    End Sub
+
+    '=========================================================================================
+    ' p12: where the keyboard focus is after a click, and whether the arrow keys then work (Q10)
+    '=========================================================================================
+
+    ' A click on a cell (focus first on `from`), then where the focus is, and what Right does.
+    Private Sub FocusAfterClick(ByVal what As String, ByVal from As LongPtr, Optional ByVal outsideGrid As Boolean = False)
+        On Error Resume Next
+        Dim v0 As Date
+        Win.SetFocus from
+        Pump
+        Rebase DateSerial(2026, 6, 15)
+        Say "  " & what & ": focus before the click: " & FocusName()
+        gQuiet = True
+        If outsideGrid Then ClickAt 20, 4 Else ClickCell 2, 2
+        Pump
+        gQuiet = False
+        v0 = Cal.Value
+        Say "  " & what & ": focus after the click: " & FocusName() & "; Value " & Dt(v0)
+        gEvCount = 0
+        KeyReal Win.GetFocus, Win.VK_RIGHT, 0
+        Pump
+        Say "  " & what & ": after Right arrow (posted to the focus window, DoEvents): Value " & Dt(Cal.Value) & IIf(Cal.Value <> v0, "  -> the arrow key moved the selection", "  -> the arrow key did nothing") & "; events " & gEvCount
+    End Sub
+
+    Private Sub P12()
+        On Error Resume Next
+        Cal.ShowDateSelectors = False
+        Pump
+        Calibrate
+        FocusAfterClick "1 from Command1", Cmd1H
+        FocusAfterClick "2 from Command1 again", Cmd1H
+        FocusAfterClick "3 from Command2", Cmd2H
+        FocusAfterClick "4 from the form", Form1.hWnd
+        FocusAfterClick "5 from the control window", CalH
+        FocusAfterClick "6 from the picture box", FocusH
+        Cal.Enabled = False
+        Cal.Enabled = True
+        Pump
+        FocusAfterClick "7 after Enabled False then True, from Command1", Cmd1H
+        gCancel = True
+        FocusAfterClick "8 with BeforeUpdate cancelling the click, from Command1", Cmd1H
+        gCancel = False
+        FocusAfterClick "9 a click in the title band, from Command1", Cmd1H, True
+        Say "-- clicks in a row: the first, then the second and third with the focus where the first left it"
+        Win.SetFocus Cmd1H
+        Pump
+        Rebase DateSerial(2026, 6, 15)
+        ClickCell 2, 2
+        Pump
+        Say "  after the 1st click: focus is " & FocusName()
+        ClickCell 3, 3
+        Pump
+        Say "  after the 2nd click: focus is " & FocusName()
+        ClickCell 1, 1
+        Pump
+        Say "  after the 3rd click: focus is " & FocusName()
+        Cal.ShowDateSelectors = True
+        Pump
+        Chk "P12"
+    End Sub
+
+    '=========================================================================================
+    ' p18: a font object changed in place (Q18)
+    '=========================================================================================
+
+    Private Sub P18()
+        On Error Resume Next
+        Dim f As Font
+        Dim g As New StdFont
+        Dim a As Long
+        Dim b As Long
+        Dim c As Long
+        Dim d As Long
+        Dim x0 As Long
+        Dim y0 As Long
+        Dim x1 As Long
+        Dim y1 As Long
+        Dim h0 As Long
+        Say "-- selectors visible (the control repaints all the time)"
+        Pump
+        Calibrate
+        h0 = gHeader
+        Set f = Cal.TitleFont
+        f.Size = 24
+        Pump
+        Calibrate
+        Say "  header (title + day names) before: " & h0 & "; after f.Size = 24 on f = Cal.TitleFont (no Set) and a pump: " & gHeader
+        f.Size = 16
+        Pump
+        Say "-- selectors hidden (nothing repaints until something asks)"
+        Cal.ShowDateSelectors = False
+        Pump
+        Calibrate
+        h0 = gHeader
+        f.Size = 24
+        Calibrate
+        Say "  header before: " & h0 & "; right after f.Size = 24 (no message processed yet): " & gHeader
+        Pump
+        Calibrate
+        Say "  after a pump of the message loop: " & gHeader & " (" & gPumped & " messages)"
+        Cal.Refresh
+        Calibrate
+        Say "  right after Cal.Refresh: " & gHeader
+        Pump
+        Calibrate
+        Say "  after another pump: " & gHeader
+        f.Size = 16
+        Cal.Refresh
+        Pump
+        Cal.ShowDateSelectors = True
+        Pump
+        Say "-- one font object (Arial) in DayFont and GridFont, changed in place"
+        g.Name = "Arial"
+        g.Size = 8
+        Set Cal.DayFont = g
+        Set Cal.GridFont = g
+        Cal.Refresh
+        Pump
+        Calibrate
+        h0 = gHeader
+        BBox 2, gHeader + 2, CLng(gColW) - 2, CLng(gHeader + gRowH) - 2, Cal.BackColor, x0, y0, x1, y1
+        Say "  g.Size = 8: header " & gHeader & "; digits of the first cell span " & (x1 - x0 + 1) & " x " & (y1 - y0 + 1) & " pixels"
+        g.Size = 20
+        Cal.Refresh
+        Pump
+        Calibrate
+        BBox 2, gHeader + 2, CLng(gColW) - 2, CLng(gHeader + gRowH) - 2, Cal.BackColor, x0, y0, x1, y1
+        Say "  g.Size = 20 (no Set): header " & gHeader & "; digits of the first cell span " & (x1 - x0 + 1) & " x " & (y1 - y0 + 1) & " pixels"
+        Say "  Cal.DayFont Is Cal.GridFont: " & (Cal.DayFont Is Cal.GridFont)
+        Shot "sharedfont"
+        Set Cal.DayFont = Nothing
+        Set Cal.GridFont = Nothing
+        Chk "restoring"
+    End Sub
+
+    '=========================================================================================
+    ' p19: TitleMargin and DaysMargin in pixels (Q19)
+    '=========================================================================================
+
+    Private Sub Edges(ByVal what As String)
+        Pump
+        Calibrate
+        Say "  " & what & ": day-names band y=" & FirstY(3, Cal.DayBackColor, 0, CalHt - 1) & ".." & LastY(3, Cal.DayBackColor, 0, CalHt - 1) & "; hit-test header " & gHeader & " (dpi " & Win.GetDpiForWindow(CalH) & ")"
+    End Sub
+
+    Private Sub P19()
+        On Error Resume Next
+        Edges "defaults 5, 5"
+        Cal.TitleMargin = 15
+        Edges "TitleMargin = 15"
+        Cal.TitleMargin = 5
+        Cal.DaysMargin = 15
+        Edges "DaysMargin = 15"
+        Cal.DaysMargin = 5
+        Edges "defaults again"
+        Chk "P19"
+    End Sub
+
+    '=========================================================================================
+    ' p20: FirstDay and the grid (Q20, Q31)
+    '=========================================================================================
+
+    Private Sub P20()
+        On Error Resume Next
+        Rebase DateSerial(2026, 6, 15)
+        Calibrate
+        Say "June 2026 with Monday first: row 0 is Mon 1 ... Sun 7"
+        Shot "fd_monday"
+        Act "FirstDay = 1 (Sunday)"
+        Cal.FirstDay = 1
+        Pump
+        Shot "fd_sunday_stale"
+        Act "Refresh"
+        Cal.Refresh
+        Pump
+        Shot "fd_refresh"
+        Act "NextMonth then PreviousMonth (a change of month places the dates again)"
+        Cal.NextMonth
+        Cal.PreviousMonth
+        Pump
+        Shot "fd_replaced"
+        Say "-- the dates the stale grid holds, read through a click on cell (0, 0)"
+        Cal.FirstDay = 2
+        Rebase DateSerial(2026, 6, 15)
+        Cal.FirstDay = 1
+        Pump
+        gLogMouseMove = False
+        Act "left click on cell (0, 0) with FirstDay = 1 and no change of month since"
+        ClickCell 0, 0
+        Pump
+        St "Value after the click is the first date the grid held"
+        Cal.FirstDay = 2
+        Chk "P20"
+    End Sub
+
+    '=========================================================================================
+    ' p21: the grid-line colours (Q21)
+    '=========================================================================================
+
+    Private Sub P21()
+        On Error Resume Next
+        Dim y As Long
+        Cal.GridCellEffect = 0
+        Pump
+        Calibrate
+        y = CLng(gHeader + gRowH * 0.85)
+        Say "GridCellEffect = 0 (Flat), default GridLinesColor " & Hx(Cal.GridLinesColor) & "; vertical lines near x = " & CLng(gColW) & ", " & CLng(2 * gColW) & ": colours along row y=" & y
+        Say "  " & RowRuns(y, 0, CLng(2 * gColW) + 3)
+        Say "  colours down column x=20 over the first two rows: " & ColRuns(20, gHeader - 2, CLng(gHeader + gRowH) + 3)
+        Cal.GridLinesColor = RGB(255, 0, 0)
+        Pump
+        Say "GridLinesColor = RGB(255, 0, 0) = " & Hx(Cal.GridLinesColor) & ": colours along row y=" & y
+        Say "  " & RowRuns(y, 0, CLng(2 * gColW) + 3)
+        Say "  colours down column x=20 over the first two rows: " & ColRuns(20, gHeader - 2, CLng(gHeader + gRowH) + 3)
+        Shot "linecolour"
+        Cal.GridLinesColor = &H80000010
+        Cal.GridCellEffect = 1
+        Chk "P21"
+    End Sub
+
+    '=========================================================================================
+    ' p24: Value and the grid (Q24)
+    '=========================================================================================
+
+    Private Sub P24()
+        On Error Resume Next
+        Calibrate
+        Rebase DateSerial(2026, 3, 15)
+        Shot "val_march"
+        Act "Value = #2030-06-15#"
+        Cal.Value = DateSerial(2030, 6, 15)
+        Pump
+        Say "  title says: " & Cal.Month & "/" & Cal.Year
+        Shot "val_2030"
+        Say "-- the first date the grid holds, read through a click on cell (0, 0)"
+        ClickCell 0, 0
+        Pump
+        St "after the click on cell (0, 0)"
+        Shot "val_afterclick"
+        Chk "P24"
+    End Sub
+
+    '=========================================================================================
+    ' p25: ValueIsNull and the drawing (Q25)
+    '=========================================================================================
+
+    Private Sub P25()
+        On Error Resume Next
+        Dim f0 As Double
+        Dim f1 As Double
+        Dim f2 As Double
+        Pump
+        f0 = Fingerprint()
+        Act "ValueIsNull = True"
+        Cal.ValueIsNull = True
+        Chk "ValueIsNull = True"
+        Done
+        Pump
+        f1 = Fingerprint()
+        Say "  ValueIsNull reads " & Cal.ValueIsNull
+        Act "ValueIsNull = False"
+        Cal.ValueIsNull = False
+        Chk "ValueIsNull = False"
+        Done
+        Pump
+        f2 = Fingerprint()
+        Say "  ValueIsNull reads " & Cal.ValueIsNull
+        Say "  fingerprints of the control's pixels: before " & f0 & ", ValueIsNull = True " & f1 & ", False again " & f2 & ": identical = " & (f0 = f1 And f1 = f2)
+        Chk "P25"
+    End Sub
+
+    '=========================================================================================
+    ' p29: chains of NextMonth and PreviousMonth (Q29)
+    '=========================================================================================
+
+    Private Sub Step(ByVal op As String)
+        On Error Resume Next
+        Select Case op
+            Case "NextMonth": Cal.NextMonth
+            Case "PreviousMonth": Cal.PreviousMonth
+            Case "NextYear": Cal.NextYear
+            Case "PreviousYear": Cal.PreviousYear
+        End Select
+        Chk op
+        Pump
+        St "after"
+    End Sub
+
+    Private Sub P29()
+        On Error Resume Next
+        Cal.Value = DateSerial(2026, 1, 31)
+        Pump
+        Say "from 2026-01-31:"
+        Step "NextMonth"
+        Step "NextMonth"
+        Step "NextMonth"
+        Cal.Value = DateSerial(2026, 3, 31)
+        Pump
+        Say "from 2026-03-31:"
+        Step "PreviousMonth"
+        Step "PreviousMonth"
+        Cal.Value = DateSerial(2024, 2, 29)
+        Pump
+        Say "from 2024-02-29:"
+        Step "NextYear"
+        Step "PreviousYear"
+        Step "PreviousYear"
+        Cal.Value = DateSerial(2024, 2, 29)
+        Pump
+        Step "PreviousYear"
+        Chk "P29"
+    End Sub
+
+    '=========================================================================================
+    ' p33: the value of Cancel in BeforeUpdate (Q33)
+    '=========================================================================================
+
+    Private Sub P33()
+        On Error Resume Next
+        Dim v As Variant
+        Dim f0 As Double
+        Calibrate
+        gCancel = True
+        For Each v In Array(-1, 1, 0)
+            gCancelVal = CInt(v)
+            Rebase DateSerial(2026, 6, 15)
+            Pump
+            f0 = Fingerprint()
+            Act "left click on cell (1, 3) (2026-06-11), the handler sets Cancel = " & v
+            ClickCell 1, 3
+            Pump
+            St "after"
+            Say "      drawing unchanged: " & (Fingerprint() = f0)
+        Next
+        gCancel = False
+        gCancelVal = -1
+        Chk "P33"
+    End Sub
+
+    '=========================================================================================
+    ' p22x: Month = 13 and then a repaint (Q22). Run on its own: it may end the run.
+    '=========================================================================================
+
+    Private Sub P22x()
+        On Error Resume Next
+        Act "Month = 13"
+        Cal.Month = 13
+        Chk "Month = 13"
+        St "after"
+        Say "  Month reads " & Cal.Month & " and the month list shows: [" & Win.TextOf(MonthH) & "]"
+        Act "Refresh"
+        Cal.Refresh
+        Chk "Refresh"
+        Done
+        Say "  pumped " & gPumped & " messages"
+        Cal.Month = 6
+        Chk "Month = 6"
+        St "after"
+    End Sub
+
+End Module

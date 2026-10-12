@@ -1,0 +1,35 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "CtorLib",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Package TWINPACK",
+	"project.description": "One class with a private constructor, for the reproducer",
+	"project.id": "{5C0E7A12-3D84-4F69-B1A7-92E6D80C4B35}",
+	"project.licence": "MIT",
+	"project.name": "CtorLib",
+	"project.optionExplicit": true,
+	"project.packageVisibility": "PUBLIC",
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"symbolId": "stdole",
+			"versionMajor": 2,
+			"versionMinor": 0
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.versionMajor": 1,
+	"project.versionMinor": 0,
+	"project.warnings": {
+		"errors": [],
+		"hints": [],
+		"ignored": [],
+		"info": [],
+		"warnings": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

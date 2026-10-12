@@ -1,0 +1,35 @@
+' DateAdd with a month, quarter or year interval keeps the day of the month and lets
+' it run into the next month, where VB6 clamps it to the last day of the month.
+Module Startup
+
+    Private Function F(d As Date) As String
+        F = Format(d, "yyyy-mm-dd")
+    End Function
+
+    Public Sub Main()
+        Dim d As Date
+        d = #1/31/2026#
+        ' the month ends that overflow
+        Debug.Print "m +1 Jan 31 2026       " & F(DateAdd("m", 1, #1/31/2026#))
+        Debug.Print "m +1 Date variable     " & F(DateAdd("m", 1, d))
+        Debug.Print "m +1 31-Jan-95         " & F(DateAdd("m", 1, "31-Jan-95"))
+        Debug.Print "m +1 Jan 30 2026       " & F(DateAdd("m", 1, #1/30/2026#))
+        Debug.Print "m +1 Jan 29 2026       " & F(DateAdd("m", 1, #1/29/2026#))
+        Debug.Print "m +1 Jan 31 2024       " & F(DateAdd("m", 1, #1/31/2024#))
+        Debug.Print "m +1 Oct 31 2026       " & F(DateAdd("m", 1, #10/31/2026#))
+        Debug.Print "m -1 Mar 31 2026       " & F(DateAdd("m", -1, #3/31/2026#))
+        Debug.Print "m -1 Mar 30 2026       " & F(DateAdd("m", -1, #3/30/2026#))
+        Debug.Print "yyyy +1 Feb 29 2024    " & F(DateAdd("yyyy", 1, #2/29/2024#))
+        Debug.Print "yyyy -1 Feb 29 2024    " & F(DateAdd("yyyy", -1, #2/29/2024#))
+        Debug.Print "q +1 Nov 30 2025       " & F(DateAdd("q", 1, #11/30/2025#))
+        ' the same intervals where the day exists in the target month, and the other intervals
+        Debug.Print "m +1 Jan 28 2026       " & F(DateAdd("m", 1, #1/28/2026#))
+        Debug.Print "yyyy +4 Feb 29 2024    " & F(DateAdd("yyyy", 4, #2/29/2024#))
+        Debug.Print "d +1 Jan 31 2026       " & F(DateAdd("d", 1, #1/31/2026#))
+        Debug.Print "y +1 Jan 31 2026       " & F(DateAdd("y", 1, #1/31/2026#))
+        Debug.Print "ww +1 Jan 31 2026      " & F(DateAdd("ww", 1, #1/31/2026#))
+        ' DateSerial normalises a day past the end of the month, in both
+        Debug.Print "DateSerial(2026, 2, 31) " & F(DateSerial(2026, 2, 31))
+    End Sub
+
+End Module

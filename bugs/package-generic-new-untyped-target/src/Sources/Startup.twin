@@ -1,0 +1,9 @@
+Module Startup
+
+    Public Sub Main()
+        Dim a As Any = New Box(Of Long)(1)           ' TB5074 and TB5032
+        Dim o As Object = New Box(Of Double)(2)      ' TB5074 and TB5044
+        Dim t As Box(Of Byte) = New Box(Of Byte)(3)  ' compiles: the declaration names Box(Of Byte)
+    End Sub
+
+End Module

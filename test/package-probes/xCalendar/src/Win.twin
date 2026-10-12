@@ -1,0 +1,171 @@
+' Win: the Win32 declarations and small helpers of the xCalendar probe.
+'
+' The probe simulates input by sending window messages to the control's windows with SendMessage:
+' it is delivered synchronously, in the order the probe sends it, to the window procedure the
+' control's events are raised from. A modifier key is simulated with SetKeyboardState, which
+' writes the table GetKeyState reads (the Shift argument of a key or mouse event comes from it).
+
+Module Win
+
+    Public Type RECT
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+
+    Public Type POINT
+        x As Long
+        y As Long
+    End Type
+
+    Public Type MSG
+        hWnd As LongPtr
+        message As Long
+        wParam As LongPtr
+        lParam As LongPtr
+        time As Long
+        pt As POINT
+    End Type
+
+    Public Declare PtrSafe Function PeekMessageW Lib "user32" (ByRef lpMsg As MSG, ByVal hWnd As LongPtr, ByVal wMsgFilterMin As Long, ByVal wMsgFilterMax As Long, ByVal wRemoveMsg As Long) As Long
+    Public Declare PtrSafe Function TranslateMessage Lib "user32" (ByRef lpMsg As MSG) As Long
+    Public Declare PtrSafe Function DispatchMessageW Lib "user32" (ByRef lpMsg As MSG) As LongPtr
+    Public Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Public Declare PtrSafe Function PostMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As Long
+    Public Declare PtrSafe Function GetWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal uCmd As Long) As LongPtr
+    Public Declare PtrSafe Function GetParent Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Public Declare PtrSafe Function GetClassNameW Lib "user32" (ByVal hWnd As LongPtr, ByVal lpClassName As LongPtr, ByVal nMaxCount As Long) As Long
+    Public Declare PtrSafe Function GetWindowRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT) As Long
+    Public Declare PtrSafe Function GetClientRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT) As Long
+    Public Declare PtrSafe Function IsWindowVisible Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Public Declare PtrSafe Function IsWindowEnabled Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Public Declare PtrSafe Function GetDlgCtrlID Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Public Declare PtrSafe Function GetFocus Lib "user32" () As LongPtr
+    Public Declare PtrSafe Function SetFocus Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Public Declare PtrSafe Function GetForegroundWindow Lib "user32" () As LongPtr
+    Public Declare PtrSafe Function GetKeyboardState Lib "user32" (ByRef lpKeyState As Byte) As Long
+    Public Declare PtrSafe Function SetKeyboardState Lib "user32" (ByRef lpKeyState As Byte) As Long
+    Public Declare PtrSafe Function GetKeyState Lib "user32" (ByVal nVirtKey As Long) As Integer
+    Public Declare PtrSafe Function MapVirtualKeyW Lib "user32" (ByVal uCode As Long, ByVal uMapType As Long) As Long
+    Public Declare PtrSafe Function GetWindowLongW Lib "user32" (ByVal hWnd As LongPtr, ByVal nIndex As Long) As Long
+    Public Declare PtrSafe Function GetClassLongW Lib "user32" (ByVal hWnd As LongPtr, ByVal nIndex As Long) As Long
+    Public Declare PtrSafe Function SetTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr
+    Public Declare PtrSafe Function GetDpiForWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Public Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+    Public Declare PtrSafe Function GetTickCount Lib "kernel32" () As Long
+    Public Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+    Public Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Public Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Public Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hDC As LongPtr, ByVal x As Long, ByVal y As Long) As Long
+    Public Declare PtrSafe Function MoveWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal bRepaint As Long) As Long
+    Public Declare PtrSafe Function IsDialogMessageW Lib "user32" (ByVal hDlg As LongPtr, ByRef lpMsg As MSG) As Long
+    Public Declare PtrSafe Function GetAncestor Lib "user32" (ByVal hWnd As LongPtr, ByVal gaFlags As Long) As LongPtr
+    Public Declare PtrSafe Function IsChild Lib "user32" (ByVal hWndParent As LongPtr, ByVal hWnd As LongPtr) As Long
+    Public Declare PtrSafe Function ScreenToClient Lib "user32" (ByVal hWnd As LongPtr, ByRef lpPoint As POINT) As Long
+
+    Public Const WM_SYSKEYDOWN As Long = &H104
+    Public Const WM_SYSKEYUP As Long = &H105
+    Public Const VK_TAB As Long = 9
+    Public Const VK_MENU_ALT As Long = &H12
+
+    Public Const WM_SETFOCUS As Long = &H7
+    Public Const WM_GETTEXT As Long = &HD
+    Public Const WM_GETTEXTLENGTH As Long = &HE
+    Public Const WM_KEYDOWN As Long = &H100
+    Public Const WM_KEYUP As Long = &H101
+    Public Const WM_CHAR As Long = &H102
+    Public Const WM_COMMAND As Long = &H111
+    Public Const WM_MOUSEMOVE As Long = &H200
+    Public Const WM_LBUTTONDOWN As Long = &H201
+    Public Const WM_LBUTTONUP As Long = &H202
+    Public Const WM_LBUTTONDBLCLK As Long = &H203
+    Public Const WM_RBUTTONDOWN As Long = &H204
+    Public Const WM_RBUTTONUP As Long = &H205
+    Public Const CB_GETCOUNT As Long = &H146
+    Public Const CB_GETCURSEL As Long = &H147
+    Public Const CB_GETLBTEXT As Long = &H148
+    Public Const CB_GETLBTEXTLEN As Long = &H149
+    Public Const CB_SETCURSEL As Long = &H14E
+    Public Const CB_SHOWDROPDOWN As Long = &H14F
+    Public Const CB_GETDROPPEDSTATE As Long = &H157
+    Public Const GW_HWNDNEXT As Long = 2
+    Public Const GW_CHILD As Long = 5
+    Public Const MK_LBUTTON As Long = 1
+    Public Const MK_RBUTTON As Long = 2
+    Public Const MK_SHIFT As Long = 4
+    Public Const MK_CONTROL As Long = 8
+    Public Const VK_SHIFT As Long = &H10
+    Public Const VK_CONTROL As Long = &H11
+    Public Const VK_MENU As Long = &H12
+
+    Public Function ClassOf(ByVal h As LongPtr) As String
+        Dim s As String = String$(256, 0)
+        Dim n As Long = GetClassNameW(h, StrPtr(s), 256)
+        ClassOf = Left$(s, n)
+    End Function
+
+    Public Function TextOf(ByVal h As LongPtr) As String
+        Dim n As Long = CLng(SendMessageW(h, WM_GETTEXTLENGTH, 0, 0))
+        Dim s As String = String$(n + 2, 0)
+        n = CLng(SendMessageW(h, WM_GETTEXT, n + 1, StrPtr(s)))
+        TextOf = Left$(s, n)
+    End Function
+
+    Public Function MakeLParam(ByVal x As Long, ByVal y As Long) As LongPtr
+        MakeLParam = CLngPtr(((y And &HFFFF&) * &H10000) Or (x And &HFFFF&))
+    End Function
+
+    ' The virtual key codes the probe sends.
+    Public Const VK_PRIOR As Long = &H21
+    Public Const VK_NEXT As Long = &H22
+    Public Const VK_END As Long = &H23
+    Public Const VK_HOME As Long = &H24
+    Public Const VK_LEFT As Long = &H25
+    Public Const VK_UP As Long = &H26
+    Public Const VK_RIGHT As Long = &H27
+    Public Const VK_DOWN As Long = &H28
+
+    ' Sets the modifier keys GetKeyState reports: bit 0 Shift, bit 1 Ctrl, bit 2 Alt.
+    Public Sub SetMods(ByVal mods As Long)
+        Dim ks(0 To 255) As Byte
+        GetKeyboardState ks(0)
+        ks(VK_SHIFT) = IIf((mods And 1) <> 0, &H80, 0)
+        ks(&HA0) = ks(VK_SHIFT)
+        ks(VK_CONTROL) = IIf((mods And 2) <> 0, &H80, 0)
+        ks(&HA2) = ks(VK_CONTROL)
+        ks(VK_MENU) = IIf((mods And 4) <> 0, &H80, 0)
+        ks(&HA4) = ks(VK_MENU)
+        SetKeyboardState ks(0)
+    End Sub
+
+    ' The lParam of a key message: repeat count 1, the scan code, the extended-key bit for the
+    ' cursor block, the context bit (Alt held) for a system key, and the key-up bits.
+    Public Function KeyLParam(ByVal vk As Long, ByVal isUp As Boolean, ByVal alt As Boolean) As LongPtr
+        Dim scan As Long = MapVirtualKeyW(vk, 0)
+        Dim lp As Long = 1 Or (scan * &H10000)
+        If vk >= VK_PRIOR And vk <= VK_DOWN Then lp = lp Or &H1000000
+        If alt Then lp = lp Or &H20000000
+        If isUp Then lp = lp Or &HC0000000
+        KeyLParam = CLngPtr(lp)
+    End Function
+
+    ' WM_KEYDOWN then WM_KEYUP for a virtual key, sent to the window h, with the modifiers mods
+    ' held (bit 0 Shift, bit 1 Ctrl, bit 2 Alt). With Alt held they are the system messages
+    ' WM_SYSKEYDOWN and WM_SYSKEYUP, which is what Windows sends then.
+    Public Sub SendKey(ByVal h As LongPtr, ByVal vk As Long, Optional ByVal mods As Long = 0)
+        Dim alt As Boolean = (mods And 4) <> 0
+        If mods <> 0 Then SetMods mods
+        SendMessageW h, IIf(alt, WM_SYSKEYDOWN, WM_KEYDOWN), vk, KeyLParam(vk, False, alt)
+        SendMessageW h, IIf(alt, WM_SYSKEYUP, WM_KEYUP), vk, KeyLParam(vk, True, alt)
+        If mods <> 0 Then SetMods 0
+    End Sub
+
+    ' The same two messages posted to the queue of the window h, for the message loop to dispatch:
+    ' its TranslateMessage then adds the WM_CHAR a character key makes.
+    Public Sub PostKey(ByVal h As LongPtr, ByVal vk As Long)
+        PostMessageW h, WM_KEYDOWN, vk, KeyLParam(vk, False, False)
+        PostMessageW h, WM_KEYUP, vk, KeyLParam(vk, True, False)
+    End Sub
+
+End Module
