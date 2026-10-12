@@ -44,7 +44,7 @@ End If
 con.Restore
 ```
 
-## Known problems in version 0.0.0.0
+## Known problems in version 1.0.0.1
 
 - [**RepeatStr**](#repeatstr) repeats the first character of its string, not the string.
 - [**StripAnsi**](#stripansi) ends a sequence only at one of eight letters, so it also removes the text after the sequences that end in another letter, such as the one made by **CursorHide**.
