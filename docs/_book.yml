@@ -593,10 +593,10 @@ parts:
         landing_is_target: true
         outline_closed: true
 
-      - title: TwinTimerPackage Package
+      - title: TwinTimerLib Package
         subtitle: A Win32 timer class that reports the elapsed time
-        landing_page: /tB/Packages/Contributed/TwinTimerPackage/
-        page: /tB/Packages/Contributed/TwinTimerPackage/
+        landing_page: /tB/Packages/Contributed/TwinTimerLib/
+        page: /tB/Packages/Contributed/TwinTimerLib/
         landing_is_target: true
         outline_closed: true
 

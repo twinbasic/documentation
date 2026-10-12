@@ -1,8 +1,8 @@
 {
   "format": 3,
-  "package": "TwinTimerPackage",
-  "project": "TwinTimerPackage",
-  "version": "1.0.0.0",
+  "package": "TwinTimerLib",
+  "project": "TwinTimerLib",
+  "version": "1.0.7.0",
   "types": [
     {
       "name": "TwinTimer",
@@ -17,18 +17,18 @@
         {"name":"CreateTimer","kind":"sub","vis":"private","signature":"Private Sub CreateTimer()"},
         {"name":"DestroyTimer","kind":"sub","vis":"private","signature":"Private Sub DestroyTimer()"},
         {"name":"Enabled","kind":"property","vis":"public","signature":"Public Property Get Enabled() As Boolean","returnType":"Boolean","accessor":"Get"},
-        {"name":"Enabled","kind":"property","vis":"public","signature":"Public Property Let Enabled(ByVal Value As Long)","accessor":"Let"},
+        {"name":"Enabled","kind":"property","vis":"public","signature":"Public Property Let Enabled(ByVal Value As Boolean)","accessor":"Let"},
         {"name":"GetTickCount","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function GetTickCount Lib \"kernel32\" () As Long","returnType":"Long"},
         {"name":"Interval","kind":"property","vis":"public","signature":"Public Property Get Interval() As Long","returnType":"Long","accessor":"Get"},
         {"name":"Interval","kind":"property","vis":"public","signature":"Public Property Let Interval(ByVal Value As Long)","accessor":"Let"},
-        {"name":"KillTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function KillTimer Lib \"user32\" (ByVal hWnd As LongPtr, ByVal nIDEvent As Long) As Long","returnType":"Long"},
+        {"name":"KillTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function KillTimer Lib \"user32\" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr) As Long","returnType":"Long"},
         {"name":"PropEnabled","kind":"field","vis":"private","signature":"Private PropEnabled As Boolean"},
-        {"name":"PropID","kind":"field","vis":"private","signature":"Private PropID As Long"},
+        {"name":"PropID","kind":"field","vis":"private","signature":"Private PropID As LongPtr"},
         {"name":"PropInterval","kind":"field","vis":"private","signature":"Private PropInterval As Long"},
         {"name":"PropStartTime","kind":"field","vis":"private","signature":"Private PropStartTime As LongLong"},
-        {"name":"SetTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function SetTimer Lib \"user32\" (ByVal hWnd As LongPtr, ByVal nIDEvent As Long, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As Long","returnType":"Long"},
+        {"name":"SetTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function SetTimer Lib \"user32\" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr","returnType":"LongPtr"},
         {"name":"Timer","kind":"event","vis":"public","signature":"Public Event Timer(ByVal ElapsedTime As LongLong)"},
-        {"name":"TimerProc","kind":"sub","vis":"private","signature":"Private Sub TimerProc(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal nIDEvent As Long, ByVal dwTime As Long)"}
+        {"name":"TimerProc","kind":"sub","vis":"private","signature":"Private Sub TimerProc(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal nIDEvent As LongPtr, ByVal dwTime As Long)"}
       ]
     }
   ],

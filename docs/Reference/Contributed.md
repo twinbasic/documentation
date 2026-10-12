@@ -25,6 +25,6 @@ Each package is versioned apart from twinBASIC, and its section says which versi
 - [**tbRegExp**](tbRegExp/) -- regular expressions, in place of VBScript's **RegExp** object
 - [**tsJson**](tsJson/) -- a JSON model with parsing, JSONPath queries, JSON Pointer, JSON Patch and JSON Schema validation
 - [**tsPwGen**](tsPwGen/) -- passwords, PINs and passphrases, with their entropy known before they are generated
-- [**TwinTimerPackage**](TwinTimerPackage/) -- a Win32 timer class that reports the elapsed time
+- [**TwinTimerLib**](TwinTimerLib/) -- a Win32 timer class that reports the elapsed time
 - [**VBA_JSON**](VBA_JSON/) -- JSON parsing and serialization, with UTC and ISO 8601 date conversion
 - [**VBComDlg**](VBComDlg/) -- the **CommonDialog** class, for the Windows common dialogs
