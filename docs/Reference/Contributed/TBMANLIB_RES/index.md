@@ -3,12 +3,12 @@ title: TBMANLIB_RES Package
 parent: Contributed Packages
 has_toc: false
 permalink: /tB/Packages/Contributed/TBMANLIB_RES/
-indexed_from: 1.0.0.0
+indexed_from: 1.0.0.4
 ---
 
 # TBMANLIB_RES Package
 
-**Author:** woeoio. **Version:** 1.0.0.0
+**Author:** woeoio. **Version:** 1.0.0.4
 
 A twinBASIC package for loading binary resources embedded in a compiled executable and converting them to bytes, strings, hex, Base64, or pictures.
 
@@ -18,7 +18,7 @@ A twinBASIC package for loading binary resources embedded in a compiled executab
 
 ## Modules
 
-- [TBMAN](TBMAN) -- exposes a pre-instantiated `cRes` object as a public variable, providing package-wide access to resource loading without requiring a separate instance.
+- [GLOBAL_RES](GLOBAL_RES) -- exposes a pre-instantiated `cRes` object as a public variable, providing package-wide access to resource loading without requiring a separate instance.
 
 ## Enumerations
 

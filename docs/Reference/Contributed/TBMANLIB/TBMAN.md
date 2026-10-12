@@ -22,7 +22,7 @@ Debug.Print TypeName(TBMAN.Json)
 
 The variables are declared `As New`, so each object is created the first time it is used. Because the instance is shared, its state is shared: the document in [**Json**](#json), the data in [**Csv**](#csv) and the settings in [**Logs**](#logs) are the same wherever the program reads them. A program that needs two documents, or logs with different settings, makes its own objects with `New`.
 
-The package [TBMANLIB_RES](../TBMANLIB_RES/TBMAN) also has a module named **TBMAN**. The name of the package can be put in front of the name of the module, as `TBMANLIB.TBMAN.Json`, to say which module is meant.
+The name of the package can be put in front of the name of the module, as `TBMANLIB.TBMAN.Json`, when another package the project references also has a module named **TBMAN**.
 
 ```tb check_build check_run
 Debug.Print TypeName(TBMANLIB.TBMAN.Json)
