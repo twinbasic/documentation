@@ -35,7 +35,7 @@ Which of them work depends on the [state of the program](../Debugging/#the-three
 
 The toolbar buttons and the menu items follow the same rules. [Breakpoints and stepping](Breakpoints-and-Stepping) describes the paused state.
 
-<!-- SHOT debug-toolbar-paused: the toolbar while the Inventory sample project is paused in TotalPrice: Start / Continue and Stop active, Break grey, the three step buttons active; labels with arrows naming Continue, Stop and the step buttons -->
+![The run and step buttons of the toolbar while the program is paused: a green triangle, a grey pause sign, a red square and three step arrows. The pause sign alone is greyed out. A label with an arrow names each of the other five buttons.](Images/Toolbar_Paused.png){:width="256" height="175"}
 
 At a run-time error, **End** ends only the procedure that failed; see [Traps](Breakpoints-and-Stepping#traps).
 
@@ -98,7 +98,7 @@ The CodeLens **▶ run** link above a procedure runs it by another route: [CodeL
 
 A program that your program starts with `Shell` shows in the status bar as a green box reading **PROCESS** *pid* **: RUNNING**, one box for each process. A run that you start with <kbd>F5</kbd> or <kbd>F6</kbd> makes no box of its own. The box appears when the console writes `[SHELL] process <pid> started.` and goes away when the process ends, with `[SHELL] process <pid> exited with code 0`.
 
-<!-- SHOT debug-process-box: the right end of the status bar with one green PROCESS box (a program started by Shell), and its menu open: the command line, Terminate and Bring To Front -->
+![Part of the status bar with one green box reading PROCESS 10432: RUNNING, and the box's menu open above it: the command line ping -n 20 127.0.0.1, a line under it, then Terminate and Bring To Front.](Images/Process_Box.png){:width="351" height="125"}
 
 Click a box to open its menu. The first line of the menu is the command line of the process. Under it are two commands:
 

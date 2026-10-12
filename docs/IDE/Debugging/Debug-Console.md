@@ -71,7 +71,7 @@ The row along the bottom of the console has a `>` at its left. It takes one line
 - **A statement** runs: `idx = 5` gives a variable a new value, and a procedure's name, such as `Module1.Main` or just `Main`, calls it.
 - **An expression on its own** is refused: `i` gives `(compile error: Expression is neither used nor assigned)`.
 
-<!-- SHOT debug-console-run: Inventory sample project paused in TotalPrice; the Debug Console after the lines "? total" and "total = 5" were entered: each echoed, its result, and the (time taken: ...) line, with the Debug.Print output of the run above them -->
+![The DEBUG CONSOLE while the program is paused. Above, the line that started the run and the line the program printed. Then the line ? subtotal, repeated, its output 360 and a (time taken: ...) line, and the line subtotal = 5, repeated, with only a (time taken: ...) line after it. The input row at the bottom is empty.](Images/Console_Run.png){:width="560" height="236"}
 
 What the line can see depends on the state of the program:
 
@@ -108,7 +108,7 @@ The input row is one line. There is no way to enter a multi-line construct.
 
 Right-click anywhere in the panel for a menu of two items. The menu is in English whatever the language of the IDE is.
 
-<!-- SHOT debug-console-menu: the Debug Console with some output, right-click menu open over a line: Copy All and Copy All (With Timestamps) -->
+![The DEBUG CONSOLE after a run, each line with its time, and the menu that a right-click opens over it, holding Copy All and Copy All (With Timestamps).](Images/Console_Menu.png){:width="640" height="180"}
 
 **Copy All**
 : Puts every line of the console on the clipboard, one line to a row, without the times.

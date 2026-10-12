@@ -19,7 +19,7 @@ index:
 
 When the program is paused, three panels show its state: **VARIABLES** holds the values in scope, **WATCHES** holds expressions that you chose, and **CALL STACK** holds the chain of calls that led to the stop. Pointing at a variable in the editor shows its value as well.
 
-<!-- SHOT debug-paused-panels: Inventory sample project paused at the breakpoint in TotalPrice: the editor with the yellow arrow, and the Call Stack (two frames), Variables (Locals with key and total), Watches (total and prices.Count with values) and Debug Console (the Debug.Print lines) all visible -->
+![The IDE paused in a function named Total, on the second pass of its loop. The yellow arrow over a red dot marks the paused line, which is highlighted. Under the editor, four panels: DEBUG CONSOLE with the line that announced the run and the line the first pass printed; CALL STACK with the main thread expanded to two frames, Total, marked with the arrow, and Main, which called it; VARIABLES with Locals expanded, each row with its name, value and type; and WATCHES with two expressions and their values.](Images/Paused_Panels.png){:width="1280" height="880"}
 
 All three show the **active frame**. At a stop it is the top frame, the procedure that is running. Click a row of the Call Stack to make another frame the active one. The Variables panel, the watches, the Debug Console and the hover then all work in that frame.
 
@@ -27,13 +27,13 @@ The panels are empty when nothing is paused. Each one is cleared the moment the 
 
 ## Variables
 
-The **VARIABLES** panel is a tree. Each *scope* of the active frame is a folder at the top level. The folder is named **Locals** in a procedure of a module, and it holds the procedure's arguments and local variables. In an event procedure of a form, it holds `Me` as well. Module-level variables are not listed there. Add a watch for one, or point at it in the editor.
+The **VARIABLES** panel is a tree. Each *scope* of the active frame is a folder at the top level. The folder is named **Locals** in a procedure of a module, and it holds the procedure's arguments and local variables. In a **Sub**, **Function** or **Property Get** of a class, and in an event procedure of a form, it holds `Me` as well. In a **Function** or a **Property Get**, of a module or of a class, it also holds a variable with the procedure's name, which holds the value that the procedure returns. Module-level variables are not listed there. Add a watch for one, or point at it in the editor.
 
 ![The Variables pane, empty apart from its title bar, with no variables listed.](../Images/Variables.png){:width="240" height="248"}
 
 Each variable is a row with three columns: its name, its value and its type. A value that has parts, such as an array, a user-defined type or an object, is a folder you can expand. The panel reads the parts when you first expand it. Folders come first in each list, and every group is sorted by name. The IDE remembers which folders you expanded and saves them with the project.
 
-<!-- SHOT debug-variables-expanded: Inventory sample project paused in TotalPrice; the Variables panel with Locals expanded, the Collection or the Dictionary object of the caller expanded to show its members -->
+![The VARIABLES panel while the program is paused in a procedure named Main. Locals is expanded. Its first row, first, a user-defined type of 16 bytes, is expanded to three fields: Name "Widget", Price 2.5 and Quantity 120, with the type of each at the right. Next comes stock, an object, collapsed, and last cost, a Variant holding a Double.](Images/Variables_Expanded.png){:width="420" height="214"}
 
 The value column shows these forms:
 
@@ -56,7 +56,7 @@ The panel runs the property procedures of an object to show their values, so a p
 
 Double-click a value to edit it. A text box replaces the value. <kbd>Enter</kbd>, or a click anywhere else, applies the text, and <kbd>Escape</kbd> leaves the value as it was. The row then shows the value the program holds, and the IDE evaluates the watches again. The program uses the new value from then on.
 
-<!-- SHOT debug-variables-edit: Variables panel paused in TotalPrice, the value of total being edited (text box open on the row) and, in a second shot, the tooltip of the same row with Type, Value and Copy Value To Clipboard -->
+![The VARIABLES panel with the locals of a function. The row of subtotal is a white text box across the panel, holding its value, 360, selected.](Images/Variables_Edit.png){:width="400" height="236"}
 
 - A **Long**, a **String**, an enumeration member, a field of a user-defined type and an element of an array can all be edited. Type a string with its quotes. Type an enumeration member by name, such as `Red`.
 - A value that the program refuses, such as `abc` for a **Long**, is ignored, with no message.
@@ -72,6 +72,8 @@ Double-click a value to edit it. A text box replaces the value. <kbd>Enter</kbd>
 ### What the tooltip shows
 
 Hold the pointer over a row to see its tooltip: the name, as a dotted path from the top-level variable, then the **Type** and the **Value**. A pointer value has a line labelled **Pointer**. A **Copy Value To Clipboard** icon copies the value. The panel has no context menu and no search box.
+
+![The VARIABLES panel with the row of subtotal highlighted under the pointer, and its tooltip below it: the name subtotal, then Type Variant [Double], Value 360 and Pointer with an address, and a copy icon at the lower right.](Images/Variables_Tooltip.png){:width="429" height="335"}
 
 ## Watches
 
@@ -95,7 +97,7 @@ Double-click a watch to change its expression in place; an empty expression remo
 
 ### What a watch shows
 
-<!-- SHOT debug-watches-values: WATCHES panel paused in TotalPrice with four rows: total with a value, prices.Count with a value, one row with the ERROR type and a compile-error message, and (second shot, after End) the same rows reading not available -->
+![The WATCHES panel while the program is paused, with four watches: items(i).Name reads "Gadget", a String; items(i).Quantity reads 8, a Long; subtotal reads 360, a Variant holding a Double; and subtotal * reads (compile error: Unexpected end of expression), with the type ERROR.](Images/Watches_Values.png){:width="520" height="128"}
 
 Each row holds the expression, its value and its type, in the same three columns as the Variables panel, and it can be expanded in the same way. The rows are sorted by expression, capitals first. Hold the pointer over a row for a tooltip with the expression, the type and the value.
 
@@ -103,6 +105,8 @@ Each row holds the expression, its value and its type, in the same three columns
 - An expression that fails shows the compiler's message in place of the value, such as `(compile error: Unexpected end of expression)`, and the type **ERROR**.
 - The expression can be anything the Debug Console takes, including a call to a procedure. The call runs at every stop, and when you choose another frame, so a watch can change the state of the program.
 - A watch on a variable of a user-defined type shows `{user defined type, 8 bytes}`, as the Variables panel does.
+
+![The same four watches once the program has ended: each reads not available, and the type column is empty.](Images/Watches_NotAvailable.png){:width="520" height="128"}
 
 The watches are saved with the project and come back when you open it. They also survive **Restart the compiler**, which keeps the expanded state of each one.
 
@@ -116,7 +120,7 @@ The row of the program's thread reads **[EXECUTING]** while the program runs, an
 
 Expand a thread to see its frames, the most recent call first. A frame has three columns: the procedure, the file and `line:column`. The top frame has a yellow arrow. A frame in code of a package, such as `RaiseClickEvent` in `CommandButton.twin`, shows `-1:1` for its position.
 
-<!-- SHOT debug-callstack-frames: Inventory sample project paused in TotalPrice, the Call Stack with MAIN_THREAD expanded to TotalPrice and Main, the Main frame selected, with its line highlighted in the editor and no arrow -->
+![The IDE paused in Total after a click on the Main row of CALL STACK. The editor shows MainModule.twin with the line cost = stock.Total(0.2), the call to Total, highlighted and no arrow in its margin. CALL STACK still marks Total with the arrow, and VARIABLES shows the locals of Main: first, stock and cost.](Images/CallStack_Frames.png){:width="1100" height="610"}
 
 Click a frame to make it the active frame. The editor opens the frame's file at that line and highlights it, without the arrow, and the Variables panel, the watches, the console and the hover all work in that frame. The watches are evaluated again. The error panel is hidden. A click opens the file in a preview tab when **Single-Click Preview** is on in [IDE Options](../Customising/IDE-Options). A double-click always opens it in a normal tab.
 
@@ -128,12 +132,14 @@ The Call Stack shows the frames of the other threads of the program as well. A f
 
 While the program is paused, pointing at an expression in the editor evaluates it in the active frame, and the popup shows `expression:   value`. The popup appears about a second after the pointer stops.
 
-<!-- SHOT debug-hover: Inventory sample project paused in TotalPrice; the pointer over the variable total in "total += prices(key)", with the popup showing the name and value; a second shot or inset with an expression selected and hovered -->
+![The paused line subtotal = subtotal + items(i).Quantity * price, with a popup above it reading subtotal: 360.](Images/Hover_Paused.png){:width="544" height="90"}
 
 The IDE builds the expression like this:
 
 - If the pointer is inside a selection, the expression is the selected text. Select `x + y`, point at it, and the popup shows its value.
 - Otherwise it is the word under the pointer, extended to the left over `.` and `!` and over an argument list in brackets, and to the right over an argument list that follows. Pointing at `Items` in `obj.Items(i).Name` evaluates the whole `obj.Items(i).Name`.
+
+![The same line with items(i).Quantity * price selected, and a popup reading items(i).Quantity * price: 141.6.](Images/Hover_Selection.png){:width="603" height="90"}
 
 A user-defined type shows `{user defined type, 8 bytes}` and one line for each field. An object shows its address. A word that is not an expression, such as a keyword or a type name, shows `(compile error: Unrecognized symbol 'For')`. A name that is not in the active frame shows the same message.
 

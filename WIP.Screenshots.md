@@ -183,7 +183,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
   alone), `programs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
-  Chrome, not an IDE), `featuremap`, `code-chapter`, `customcontrols`, `code` and `sample9` (all described
+  Chrome, not an IDE), `featuremap`, `code-chapter`, `debugging`, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`.
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
@@ -265,6 +265,34 @@ warnings set so that TB0016 is a hint and TB0012 information. Its 20 pictures ar
   when it opens on a file already reported: Tabs_States edits Inventory and undoes it.
 - Edits are made in the page and undone (`editedThenUndone`) or discarded with their tab; the
   clipboard is the tool's own text (`FAKE_CLIPBOARD`), never the host's.
+
+## The "Running and debugging" chapter
+
+Setup `debugging` (three parts): the code-chapter project with `test/shots/debugging/`
+staged onto it as well, a module `Checks` with the chapter's `FillTable` (a Subscript error on
+its fourth pass), `PingLater` (`Shell "ping -n 20 127.0.0.1", vbHide`) and `WaitAWhile` (a
+`DoEvents` loop of a minute at most). It is a setup of its own because the code chapter's
+combo boxes list the project's modules. Its 16 pictures are under `docs/IDE/Debugging/Images/`,
+plus `Menu_Debug` (paused, the code focused) and `Menu_Run` (WaitAWhile running).
+
+- **Each picture starts from nothing** (`debugReset`: the program stopped, no breakpoint, no
+  watch, no tab, the default layout, an empty DEBUG CONSOLE) and leaves the IDE so. Most stop
+  `Main` in `Inventory.Total` at the loop line (`pausedInTotal`, first or second pass);
+  `pausedInMain` stops it on Main's last line.
+- **What changes from run to run is set in the page before the capture**: an object's
+  `{object: N}` (`OBJECT_ADDRESS`), the Variables tooltip's `Pointer` (`POINTER_TEXT`), the
+  PROCESS box's id (`PROCESS_ID`), and the console's times and `time taken` (`fixConsoleTimes`).
+- **The ping ends with the run**: the box's own Terminate, else `killTree` on the id the console
+  printed (`endPing`).
+- A tree row is expanded with a click on its plus box, made again until the flip holds
+  (`toggleRow`); the Variables edit box opens with a double-click made again the same way.
+- The Variables tooltip is taken with the panel docked (a floating panel is drawn over it), once
+  it has the class `visibleTooltip` and its fade has ended: before that it is laid out, hidden,
+  at another place.
+- The DEBUG CONSOLE is never cut out: a cut-out shows the line it measures text with. Its menu
+  is opened inside the panel instead.
+- A line for the console is put in its input row whole and entered (`consoleRun`): a space typed
+  while the row's completion list is open accepts the list's first entry.
 
 ## Special IDE states
 

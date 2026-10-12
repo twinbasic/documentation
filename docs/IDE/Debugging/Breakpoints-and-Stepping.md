@@ -22,7 +22,7 @@ A breakpoint pauses the program on a line you choose. Once it is paused, the ste
 
 Click in the margin of the code editor beside a line, or put the caret in the line and press <kbd>F9</kbd> (**Debug → Toggle Breakpoint**). Either one sets the breakpoint at once, or clears it if the line has one. Nothing is asked, and no line is selected first. A breakpoint belongs to a code editor: a form designer has no margin, and <kbd>F9</kbd> does nothing there.
 
-<!-- SHOT debug-breakpoint-glyphs: Inventory sample project, module Inventory open at TotalPrice, a red breakpoint dot in the margin of the line "total += prices(key)", the pointer over the margin of the line above so its faint ghost dot shows; labels with arrows for Breakpoint and Ghost dot -->
+![The margin of the code editor beside the loop of a function. Line 24 has a red dot. The mouse pointer rests in the margin of line 23, above it, which shows a fainter dot. A label with an arrow names each dot.](Images/Breakpoint_Glyphs.png){:width="722" height="180"}
 
 The margin shows four marks:
 
@@ -62,9 +62,9 @@ A breakpoint, a step, a `Stop` statement, the **Break** command and a run-time e
 - The panels fill: [Call Stack, Variables and the watches](Inspecting), and the [Memory](Memory) pane if it is shown. The IDE evaluates every watch.
 - The IDE shows its own window and asks for the keyboard focus.
 
-<!-- SHOT debug-paused-arrow: Inventory sample project paused at the breakpoint in TotalPrice: the yellow arrow, the pale yellow line and the red dot of a second breakpoint on another line; the Call Stack and Variables panels beside it -->
+![The editor stopped at a breakpoint in a function named Total. The line subtotal = subtotal + items(i).Quantity * price is highlighted, and the yellow arrow in its margin covers the breakpoint's red dot. A second breakpoint, a red dot with no arrow, marks the line Total = subtotal further down. Under the editor, CALL STACK lists Total, marked with the arrow, and Main under it, and VARIABLES shows the locals of Total.](Images/Paused_Line.png){:width="1100" height="610"}
 
-The arrow and the background belong to the top frame, the procedure that is running. When you click another row in the Call Stack, the background moves to that frame's line, in that frame's file, and no arrow is drawn anywhere. The Variables panel, the watches, the console and the hover then all use that frame.
+The arrow and the background belong to the top frame, the procedure that is running. When you click another row in the Call Stack, the background moves to that frame's line, in that frame's file, and no arrow is drawn in the margin of any editor. The Variables panel, the watches, the console and the hover then all use that frame.
 
 The marks, and what the panels hold, are cleared the moment the program continues, steps or ends.
 
@@ -139,7 +139,7 @@ The editor opens the module, highlights the whole failing line, `a(idx) = i * 10
 - **DESCRIPTION:** and the error's description, here *Subscript out of range*;
 - four buttons: **Try Again (Resume)**, **Ignore (Resume Next)**, **Stop** and **Search Online**.
 
-<!-- SHOT debug-error-panel: the debugger probe project paused at the Subscript error in FillTable: the failing line a(idx) = i * 10 highlighted, the yellow arrow, and the error panel under it with its header, DESCRIPTION row and four buttons; Call Stack and Variables (Locals expanded) beside it -->
+![The editor stopped at the error in FillTable. The line a(idx) = i * 10 is highlighted, with the yellow arrow in its margin, and the error panel under it shows Run-time error 9 (00000009), the description Subscript out of range and the four buttons. Under the editor, CALL STACK lists one frame, FillTable, at 12:1, marked with the arrow, and VARIABLES shows Locals expanded: a, an array of 6 elements, then i 4, idx 7 and total 6.](Images/Error_Panel.png){:width="1100" height="610"}
 
 The number is the one `Err.Number` holds. When the error was raised with `Err.Raise` and a source, a **SOURCE:** row with the source text shows below the buttons. When the compiler gives no header, the panel is titled **ERROR OCCURRED**. Nothing about the error is written to the [Debug Console](Debug-Console). The panel's **×** only hides the panel.
 

@@ -62,6 +62,8 @@
 //               "Writing code" chapter's pictures of the editor (tabs, combo boxes, menus,
 //               IntelliSense, finding, bookmarks, Outline, DIAGNOSTICS) and the Edit and
 //               View menus with the code focused
+//   debugging   the same with test/shots/debugging staged as well: the "Running and
+//               debugging" chapter's pictures of a paused program, run from the IDE
 //   no-project  no project, as from the IDE's icon: every menu in its
 //               no-project state, the dialogs that need no project, and the window,
 //               its bars and its panels (each shown as a floating window on its own)
@@ -244,7 +246,9 @@ custom control's code and PROPERTIES (setup customcontrols), and the editor alon
 the build select's greying, inline hints, a hover, a form's JSON (setups code,
 customcontrols and sample9), the whole window with its features named (setup
 featuremap), the editor's tabs, combo boxes, menus, IntelliSense, finding and DIAGNOSTICS
-in the same project (setup code-chapter), a procedure run by its CodeLens bar (setup codelens), the MEMORY 1
+in the same project (setup code-chapter), the same project paused, stopped by an error
+and running, with its panels, hovers, console and the Debug and Run menus (setup debugging),
+a procedure run by its CodeLens bar (setup codelens), the MEMORY 1
 pane at a Stop, showing a String (setup memory), the DEBUG
 CONSOLE after a package build and a Fusion host build (setups package and fusion),
 Project Settings' packages from TWINSERV, signed out, downloaded, embedded and linked
@@ -1295,12 +1299,21 @@ async function startFeatureMap(run) {
 const CODE_CHAPTER = path.join(REPO_ROOT, "test", "shots", "codechapter");
 const CODE_CHAPTER_WARNINGS = { errors: [], hints: ["TB0016"], ignored: [], info: ["TB0012"], warnings: [] };
 
-async function startCodeChapter(run) {
+// ---- debugging: the same project with test/shots/debugging staged onto it as well, for the
+// "Running and debugging" chapter: a module, Checks, with the chapter's FillTable (a Subscript
+// error on its fourth pass), a Sub that starts a short ping with Shell, and a Sub that waits a
+// minute at most. It is a setup of its own, so that the Writing code chapter's pictures (whose
+// combo boxes list the project's modules) do not change.
+const DEBUGGING = path.join(REPO_ROOT, "test", "shots", "debugging");
+
+async function startCodeChapter(run, { extra = null } = {}) {
   run.step = "open";
-  say(run.name, `opening ${path.relative(REPO_ROOT, FEATUREMAP)} with ${path.relative(REPO_ROOT, CODE_CHAPTER)}`);
-  const src = path.join(run.work, "codechapter-src");
+  const what = [CODE_CHAPTER, ...(extra ? [extra] : [])].map((d) => path.relative(REPO_ROOT, d)).join(" and ");
+  say(run.name, `opening ${path.relative(REPO_ROOT, FEATUREMAP)} with ${what}`);
+  const src = path.join(run.work, extra ? "debugging-src" : "codechapter-src");
   cpSync(FEATUREMAP, src, { recursive: true });
   cpSync(CODE_CHAPTER, src, { recursive: true });
+  if (extra) cpSync(extra, src, { recursive: true });
   const file = path.join(src, "Settings");
   const settings = JSON.parse(readFileSync(file, "utf8"));
   settings["project.warnings"] = CODE_CHAPTER_WARNINGS;
@@ -1367,6 +1380,7 @@ const SETUPS = {
   sample9: { ports: 1, start: startSample9, prepare: prepareSample },
   featuremap: { ports: 1, start: startFeatureMap, prepare: prepareSample },
   "code-chapter": { ports: 1, start: startCodeChapter, prepare: prepareSample },
+  debugging: { ports: 1, start: (run) => startCodeChapter(run, { extra: DEBUGGING }), prepare: prepareSample },
   project: { ports: 1, start: startProject, prepare: prepareProject },
   community: { ports: 1, start: startProject, prepare: prepareCommunity },
   splash: { ports: 1, start: startProject, prepare: prepareProject },
@@ -1401,15 +1415,16 @@ const SETUPS = {
 // border box, so the clip is grown by it, which is also what rounds their
 // corners: the outline's corner is what fills the pixel the border's curve leaves.
 const OUTLINE = 1;
-// `before(c)` brings the IDE to the state the menu is shown in, after every menu is closed.
-function menuShot(name, top, item = null, { subOnly = false, setup = "no-project", before = null } = {}) {
+// `before(c)` brings the IDE to the state the menu is shown in, after every menu is closed,
+// and `after(c)`, when given, takes it out of that state once the menu is closed.
+function menuShot(name, top, item = null, { subOnly = false, setup = "no-project", before = null, after = null } = {}) {
   return {
     out: `IDE/Menu/Images/${name}.png`,
     setup,
     async take({ c }) {
       await resetUi(c);
-      if (before) await before(c);
       try {
+        if (before) await before(c);
         const drop = await openMenu(c, top, { close: !before });
         const title = await rectOf(c, `#${TOP[top]}`);
         const sub = item ? await hoverItem(c, item) : null;
@@ -1427,6 +1442,7 @@ function menuShot(name, top, item = null, { subOnly = false, setup = "no-project
         return await capture(c, name, snapOut(area), { keep });
       } finally {
         await closeMenus(c);
+        if (after) await after(c);
       }
     },
   };
@@ -6473,6 +6489,915 @@ const codeChapterShots = [
   codeDiagnosticsMenuShot,
 ];
 
+// ---- the "Running and debugging" chapter (setup debugging): the Writing code chapter's project,
+// FeatureTour, with test/shots/debugging's Checks module as well. Main calls Inventory.Total,
+// whose loop line takes the breakpoint; the program prints one line on the loop's first pass.
+// Every picture starts from nothing running, no breakpoint, no watch, an empty DEBUG CONSOLE and
+// the default layout (debugReset), and leaves it so. The DEBUG CONSOLE's line times and the time
+// a line took change from run to run: they are set in the page once the real ones are shown, as
+// the CodeLens pictures' are.
+
+const DEBUG_IMAGE = (name) => `IDE/Debugging/Images/${name}.png`;
+const LOOP_LINE = "subtotal = subtotal + items(i).Quantity * price";
+const isPaused = (c) => c.evaluate("!!context.atBreakpoint?.value");
+
+// The value a panel's tree shows for the row at `names` (from the top), or null.
+const treeValue = (c, panel, names) =>
+  c.evaluate(`(() => {
+  let f = ${panel}.tree.rootFolder;
+  for (const n of ${JSON.stringify(names)}) f = f && Object.values(f.entries || {}).find((e) => e.name === n);
+  return f ? ((f.customRenderData || {}).value ?? null) : null;
+})()`);
+
+// The text of the WATCHES panel: each row's expression, value and type on lines of their own.
+const watchesText = (c) =>
+  c.evaluate(String.raw`watchPanel.tree.sectionHeader.parentNode.innerText.replace(/\n{2,}/g, "\n")`);
+
+// An object's address changes from run to run: each one the page shows is set to OBJECT_ADDRESS,
+// in the page, once the real ones are shown.
+const OBJECT_ADDRESS = "441954992";
+const fixObjectAddresses = (c) =>
+  c.evaluate(String.raw`(() => {
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (n.nodeValue.includes("{object: ")) n.nodeValue = n.nodeValue.replace(/\{object: \d+\}/g, "{object: ${OBJECT_ADDRESS}}");
+  }
+})()`);
+
+// The DEBUG CONSOLE emptied with its own button.
+async function clearConsole(c) {
+  if (await c.evaluate("debugConsoleContent.dataNodes.length === 0")) return;
+  const clear = await rectOf(c, '[title="Clear Debug Console"]');
+  if (!clear) throw new Error("the DEBUG CONSOLE has no Clear button");
+  await clickAt(c, clear.x + clear.width / 2, clear.y + clear.height / 2);
+  if (!(await waitFor(c, () => c.evaluate("debugConsoleContent.dataNodes.length === 0"), { timeout: 5000 }))) {
+    throw new Error("the DEBUG CONSOLE was not cleared");
+  }
+  await parkMouse(c);
+}
+
+// Nothing running, no breakpoint, no watch, no tab, the default layout and an empty console.
+async function debugReset(c) {
+  await resetUi(c);
+  await removePointer(c);
+  for (let i = 0; i < 3 && (await codeExecuting(c)); i++) {
+    await command(c, "tbDebug_Stop");
+    await waitFor(c, async () => !(await codeExecuting(c)), { timeout: 15000, interval: 100 });
+  }
+  if (await codeExecuting(c)) throw new Error("the program would not end");
+  await command(c, "tbDebug_BreakpointsClear");
+  await command(c, "tbWatches_Clear");
+  await closeTabs(c, [], { discard: true });
+  await defaultLayout(c);
+  await clearConsole(c);
+  await frames(c);
+}
+
+// A breakpoint on the line of the open file holding `text`, set with F9 as a person sets it.
+async function breakpointOn(c, text) {
+  const { line } = await codePlace(c, text);
+  await setCursor(c, line, 9);
+  await pressKey(c, "F9");
+  const set = await waitFor(
+    c,
+    () =>
+      c.evaluate(
+        `editor.getModel().getAllDecorations().some((d) => d.range.startLineNumber === ${line} && /breakpointActiveGlyph/.test(d.options.glyphMarginClassName || ""))`,
+      ),
+    { timeout: 5000, interval: 50 },
+  );
+  if (!set) throw new Error(`F9 set no breakpoint on ${JSON.stringify(text)}`);
+  return line;
+}
+
+// A watch added with Debug > Add Watch..., its expression typed and entered.
+async function addWatch(c, expression) {
+  await command(c, "tbWatches_Add");
+  const box = await waitFor(c, () => c.evaluate(`document.activeElement?.placeholder === "Expression to watch"`), {
+    timeout: 5000,
+    interval: 50,
+  });
+  if (!box) throw new Error("Add Watch... opened no box");
+  await typeText(c, expression);
+  await pressKey(c, "Enter");
+  const added = await waitFor(
+    c,
+    () =>
+      c.evaluate(
+        `Object.values(watchPanel.tree.rootFolder.entries || {}).some((e) => e.name === ${JSON.stringify(expression)})`,
+      ),
+    { timeout: 5000, interval: 50 },
+  );
+  if (!added) throw new Error(`the watch ${expression} was not added`);
+}
+
+// Waits for the program to be paused with `test` true; throws naming `what` otherwise.
+async function waitStop(c, test, what) {
+  const ok = await waitFor(c, async () => (await isPaused(c)) && (await test()), { timeout: 60000, interval: 150 });
+  if (!ok) throw new Error(`the program did not stop ${what}`);
+  await frames(c);
+}
+
+// Main run with a breakpoint on Total's loop line (and on `also`, if given), stopped there on
+// the loop's first pass (`pass` 1, i = 0) or its second (`pass` 2, i = 1), when the first has
+// printed its line. Inventory is open; `before` runs before Start.
+async function pausedInTotal(c, { pass = 1, also = null, before = null } = {}) {
+  await openFile(c, CHAPTER_FILE("Inventory.twin"));
+  await breakpointOn(c, LOOP_LINE);
+  if (also) await breakpointOn(c, also);
+  if (before) await before(c);
+  await clearConsole(c);
+  await startRun(c);
+  const iIs = (v) => async () => (await treeValue(c, "variablesPanel", ["Locals", "i"])) === v;
+  await waitStop(c, iIs("0"), "at the breakpoint in Total");
+  if (pass === 2) {
+    await command(c, "tbDebug_StartOrContinue");
+    // the console's text, whether or not the layout shows it
+    const printed = async () =>
+      (await c.evaluate(`document.querySelector(".debugConsoleOuter")?.textContent ?? ""`)).includes(": Widget") &&
+      (await iIs("1")());
+    await waitStop(c, printed, "on the loop's second pass");
+  }
+  // the panels fill in turn: wait for the call stack's two frames
+  const frames2 = await waitFor(
+    c,
+    () =>
+      c.evaluate(
+        `Object.values(liveStackTraceInfo).some((t) => Object.values(t || {}).filter((f) => f && f.name).length >= 2)`,
+      ),
+    { timeout: 10000, interval: 100 },
+  );
+  if (!frames2) throw new Error("the Call Stack never showed Total and Main");
+}
+
+// A layout set in the page and saved nowhere.
+async function useLayout(c, layout) {
+  if (!(await c.evaluate(`restorePanelLayout(${JSON.stringify(JSON.stringify(layout))})`))) {
+    throw new Error("the page refused the layout");
+  }
+  await frames(c);
+}
+const LAYOUT_ROWS = (bottom, size) => ({
+  type: "horizontal",
+  variableSize: true,
+  size: "0%",
+  content: [
+    { id: "TOOLBAR", variableSize: false, size: "fit-content" },
+    { id: "EDITOR", variableSize: true, size: "0%" },
+    { type: "vertical", variableSize: false, size, content: bottom },
+  ],
+});
+// the editor with its panels below it, each `[id, size]` and the last taking the rest
+const panelsRow = (panels) =>
+  panels.map(([id, size], i) =>
+    i === panels.length - 1 ? { id, variableSize: true, size: "0%" } : { id, variableSize: false, size },
+  );
+const PAUSED_LAYOUT = LAYOUT_ROWS(
+  panelsRow([["DEBUG CONSOLE", "30%"], ["CALL STACK", "22%"], ["VARIABLES", "24%"], ["WATCHES"]]),
+  "34%",
+);
+const STOP_LAYOUT = LAYOUT_ROWS(panelsRow([["CALL STACK", "42%"], ["VARIABLES"]]), "23%");
+// the TOOLBOX, empty beside code, wide enough for labels on the editor's left
+const GLYPHS_LAYOUT = {
+  type: "horizontal",
+  variableSize: true,
+  size: "0%",
+  content: [
+    { id: "TOOLBAR", variableSize: false, size: "fit-content" },
+    {
+      type: "vertical",
+      variableSize: true,
+      size: "0%",
+      content: [
+        { id: "TOOLBOX", variableSize: false, size: "22%" },
+        { id: "EDITOR", variableSize: true, size: "0%" },
+      ],
+    },
+  ],
+};
+
+// The box of the docked panel headed `title` (EDITOR 1, CALL STACK...).
+const panelBox = (c, title) =>
+  c.evaluate(`(() => {
+  const h = [...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === ${JSON.stringify(title)});
+  const r = h?.closest(".toolWindowContainer")?.getBoundingClientRect();
+  return r && r.width ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+
+// The whole window paused in Total on the loop's second pass, in a layout with the DEBUG
+// CONSOLE, CALL STACK, VARIABLES and WATCHES under the editor; two watches.
+const debugPausedPanelsShot = {
+  out: DEBUG_IMAGE("Paused_Panels"),
+  setup: "debugging",
+  async take({ c }) {
+    await debugReset(c);
+    try {
+      await useLayout(c, PAUSED_LAYOUT);
+      await pausedInTotal(c, {
+        pass: 2,
+        before: async (c) => {
+          await addWatch(c, "subtotal");
+          await addWatch(c, "items(i).Quantity");
+        },
+      });
+      const watched = await waitFor(c, async () => (await watchesText(c)).includes("items(i).Quantity:\n8\n"), {
+        timeout: 10000,
+        interval: 100,
+      });
+      if (!watched) {
+        const shown = await watchesText(c);
+        throw new Error(`the watches never showed their values: ${JSON.stringify(shown)}`);
+      }
+      await c.evaluate(
+        `editor.setScrollTop(editor.getTopForLineNumber(${(await codePlace(c, "Public Function Total")).line}))`,
+      );
+      await fixConsoleTimes(c);
+      await fixObjectAddresses(c);
+      await frames(c);
+      return await capture(c, "Paused_Panels", snapOut({ x: 0, y: 0, ...IDE_SIZE }), { away: () => parkMouse(c) });
+    } finally {
+      await debugReset(c);
+    }
+  },
+};
+
+// FillTable run with F6 and stopped by its Subscript error: the editor with the error panel
+// under the failing line, and CALL STACK and VARIABLES under the editor.
+const debugErrorPanelShot = {
+  out: DEBUG_IMAGE("Error_Panel"),
+  setup: "debugging",
+  async take({ c }) {
+    await debugReset(c);
+    try {
+      return await atSize(c, 1100, 700, async () => {
+        await useLayout(c, STOP_LAYOUT);
+        await openFile(c, CHAPTER_FILE("Checks.twin"));
+        await caretOn(c, "For i = 1 To 6", { offset: 4 });
+        await command(c, "tbDebug_RunOrPreview");
+        await waitStop(
+          c,
+          async () =>
+            (await c.evaluate(`document.querySelectorAll(".errorWidgetButton").length`)) === 4 &&
+            (await treeValue(c, "variablesPanel", ["Locals", "idx"])) === "7",
+          "at the Subscript error",
+        );
+        await c.evaluate(
+          `editor.setScrollTop(editor.getTopForLineNumber(${(await codePlace(c, "Public Sub FillTable")).line}))`,
+        );
+        await frames(c);
+        const ed = await panelBox(c, "EDITOR 1");
+        const vars = await panelBox(c, "VARIABLES");
+        if (!ed || !vars) throw new Error("the editor or VARIABLES is not in the layout");
+        const area = { x: 0, y: ed.y, width: 1100, height: vars.y + vars.height - ed.y };
+        return capture(c, "Error_Panel", snapOut(area, 1100, 700), { away: () => parkMouse(c) });
+      });
+    } finally {
+      await debugReset(c);
+    }
+  },
+};
+
+// Inventory at Total with a breakpoint on the loop line and the mouse resting in the margin of
+// the line above, which shows the faint dot there; a pointer drawn at the mouse, and the two
+// dots named by labels in the empty TOOLBOX on the editor's left.
+const debugBreakpointGlyphsShot = {
+  out: DEBUG_IMAGE("Breakpoint_Glyphs"),
+  setup: "debugging",
+  async take({ c }) {
+    await debugReset(c);
+    try {
+      await useLayout(c, GLYPHS_LAYOUT);
+      await openFile(c, CHAPTER_FILE("Inventory.twin"));
+      const bp = await breakpointOn(c, LOOP_LINE);
+      const first = (await codePlace(c, "Public Function Total")).line;
+      await caretOn(c, "Public Sub Add", { top: first });
+      const above = bp - 1;
+      const at = await c.evaluate(`(() => {
+  const e = editor.getDomNode().getBoundingClientRect();
+  const l = editor.getLayoutInfo();
+  const lh = editor.getOption(monaco.editor.EditorOption.lineHeight);
+  const y = e.y + editor.getTopForLineNumber(${above}) - editor.getScrollTop() + lh / 2;
+  return { x: e.x + l.glyphMarginLeft + l.glyphMarginWidth - 3, y: y + 3 };
+})()`);
+      await mouseMove(c, at.x - 6, at.y);
+      await mouseMove(c, at.x, at.y);
+      const ghost = await waitFor(c, () => rectOf(c, ".breakpointInactiveGlyph"), { timeout: 5000, interval: 50 });
+      if (!ghost) throw new Error("the margin showed no faint dot under the mouse");
+      await drawPointer(c, at);
+      const code = await linesBox(c, first + 3, bp + 4);
+      const ed = await editorBox(c);
+      const left = ed.x - 64;
+      const dot = await rectOf(c, ".breakpointActiveGlyph");
+      const mid = (r) => r.y + r.height / 2;
+      const annotate = [
+        { type: "label", text: "Breakpoint", on: POINT(left, mid(dot) + 16), side: "left", gap: 0 },
+        { type: "arrow", from: POINT(left + 4, mid(dot) + 16), to: { css: ".breakpointActiveGlyph" } },
+        { type: "label", text: "Faint dot", on: POINT(left, mid(ghost) - 16), side: "left", gap: 0 },
+        { type: "arrow", from: POINT(left + 4, mid(ghost) - 16), to: { css: ".breakpointInactiveGlyph" } },
+      ];
+      const area = { x: ed.x, y: code.y, width: 560, height: code.height };
+      return await annotatedClip(c, "Breakpoint_Glyphs", area, annotate, { away: null });
+    } finally {
+      await removePointer(c);
+      await mouseMove(c, 2, IDE_SIZE.height - 10);
+      await debugReset(c);
+    }
+  },
+};
+
+// The first colour of the element `sel` and its ancestors that is not transparent: the ground
+// a cut-out of it is put on.
+const groundOf = (c, sel) =>
+  c.evaluate(`(() => {
+  for (let e = document.querySelector(${JSON.stringify(sel)}); e; e = e.parentElement) {
+    const k = getComputedStyle(e).backgroundColor;
+    if (!/^rgba\\(.*, 0\\)$/.test(k) && k !== "transparent") return k;
+  }
+  return null;
+})()`);
+
+// The open file scrolled so that the line holding `text` is the first shown.
+async function scrollToLine(c, text) {
+  await c.evaluate(`editor.setScrollTop(editor.getTopForLineNumber(${(await codePlace(c, text)).line}))`);
+  await frames(c);
+}
+
+// Main run with a breakpoint on its last line, stopped there once Locals holds `first`.
+async function pausedInMain(c) {
+  await openFile(c, CHAPTER_FILE("MainModule.twin"));
+  await breakpointOn(c, "Debug.Print first.Quantity");
+  await clearConsole(c);
+  await startRun(c);
+  await waitStop(c, async () => (await treeValue(c, "variablesPanel", ["Locals", "first"])) !== null, "in Main");
+}
+
+// The node of a panel's tree at `names` (from the top), as an expression for the page.
+const treeNode = (panel, names) =>
+  `(() => { let f = ${panel}.tree.rootFolder; for (const n of ${JSON.stringify(names)}) f = f && Object.values(f.entries || {}).find((e) => e.name === n); return f || null; })()`;
+
+// A folder of a panel's tree expanded (or collapsed, with `open` false) by a click on its
+// plus (or minus) box, as a person does it, once its rows show. A click flips the folder at
+// once, and the panel draws it again when its parts arrive, from the expanded state it keeps
+// for each path: the flip does not always hold, so the click is made again until it does.
+async function toggleRow(c, panel, names, open = true) {
+  const node = treeNode(panel, names);
+  const there = () =>
+    c.evaluate(
+      `(() => { const f = ${node}; return !!f && f.isCollapsed === ${!open} && (${!open} || Object.keys(f.entries || {}).length > 0); })()`,
+    );
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if ((await there()) && (await sleep(500), await there())) {
+      await parkMouse(c);
+      await frames(c);
+      return;
+    }
+    const at = await c.evaluate(`(() => {
+  const d = ${node}?.innerDiv?.querySelector(".treeNodeIcon");
+  const r = d?.getBoundingClientRect();
+  return r && r.width ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+})()`);
+    if (!at) throw new Error(`the ${panel} has no row ${names.join(" > ")}`);
+    await clickAt(c, at.x, at.y);
+    await waitFor(c, there, { timeout: 3000, interval: 50 });
+  }
+  throw new Error(`four clicks did not ${open ? "expand" : "collapse"} ${names.join(" > ")}`);
+}
+
+// A line typed into the DEBUG CONSOLE's input row and entered, once the console shows the
+// time it took. The text is put in the row whole: a space typed while the row's completion
+// list is open accepts the list's first entry.
+async function consoleRun(c, line) {
+  const taken = async () => ((await consoleText(c)).match(/\(time taken: /g) || []).length;
+  const before = await taken();
+  await c.evaluate(`(() => { const i = debugConsoleEntry; i.focus(); i.value = ${JSON.stringify(line)}; })()`);
+  await pressKey(c, "Enter");
+  if (!(await waitFor(c, async () => (await taken()) > before, { timeout: 15000, interval: 100 }))) {
+    throw new Error(`the console never finished ${JSON.stringify(line)}`);
+  }
+  await frames(c);
+}
+
+// Inventory paused at its loop line on the loop's first pass, with a second breakpoint on the
+// function's last line: the editor, and CALL STACK and VARIABLES under it.
+const debugPausedLineShot = {
+  out: DEBUG_IMAGE("Paused_Line"),
+  setup: "debugging",
+  async take({ c }) {
+    await debugReset(c);
+    try {
+      return await atSize(c, 1100, 700, async () => {
+        await useLayout(c, STOP_LAYOUT);
+        await pausedInTotal(c, { also: "Total = subtotal" });
+        await scrollToLine(c, "Public Function Total");
+        await fixObjectAddresses(c);
+        await frames(c);
+        const ed = await panelBox(c, "EDITOR 1");
+        const vars = await panelBox(c, "VARIABLES");
+        if (!ed || !vars) throw new Error("the editor or VARIABLES is not in the layout");
+        const area = { x: 0, y: ed.y, width: 1100, height: vars.y + vars.height - ed.y };
+        return capture(c, "Paused_Line", snapOut(area, 1100, 700), { away: () => parkMouse(c) });
+      });
+    } finally {
+      await debugReset(c);
+    }
+  },
+};
+
+// The toolbar's run and step buttons while Inventory is paused, cut out on the toolbar's own
+// ground (its other controls left out), each button that works named by a label below, the
+// labels in a column at the right, the rightmost button's highest, so that no arrow crosses
+// another.
+const RUN_BUTTONS = ["playIcon", "pauseIcon", "stopIcon", "debugStepOverIcon", "debugStepIntoIcon", "debugStepOutIcon"];
+const debugToolbarPausedShot = {
+  out: DEBUG_IMAGE("Toolbar_Paused"),
+  setup: "debugging",
+  async take({ c }) {
+    await debugReset(c);
+    try {
+      await pausedInTotal(c);
+      const bar = await toolbarRect(c);
+      const ground = await groundOf(c, "#playIcon");
+      if (!ground) throw new Error("the toolbar has no background colour");
+      const ids = ["debugStepOutIcon", "debugStepIntoIcon", "debugStepOverIcon", "stopIcon", "playIcon"];
+      const names = ["Step Out", "Step Into", "Step Over", "Stop", "Continue"];
+      const boxes = [];
+      for (const id of ids) {
+        const r = await rectOf(c, `#${id}`);
+        if (!r) throw new Error(`the toolbar has no #${id}`);
+        boxes.push(r);
+      }
+      const live = await c.evaluate(
+        `${JSON.stringify(ids)}.every((id) => !document.getElementById(id).classList.contains("disabledCommand")) && document.getElementById("pauseIcon").classList.contains("disabledCommand")`,
+      );
+      if (!live) throw new Error("the toolbar's buttons are not as they are at a stop");
+      const right = boxes[0].x + boxes[0].width + 28;
+      const below = bar.y + bar.height;
+      const annotate = ids.flatMap((id, i) => {
+        const y = below + 22 + 26 * i;
+        return [
+          { type: "label", text: names[i], on: POINT(right, y), side: "right", gap: 0 },
+          { type: "arrow", from: POINT(right - 4, y), to: { css: `#${id}` }, elbow: true },
+        ];
+      });
+      const left = boxes[4].x - 12;
+      const area = { x: left, y: bar.y, width: right - left, height: bar.height };
+      return await annotatedClip(c, "Toolbar_Paused", area, annotate, {
+        keep: [...RUN_BUTTONS.map((id) => `#${id}`), `#${LAYER_ID}`],
+        solid: ground,
+      });
+    } finally {
+      await debugReset(c);
+    }
+  },
+};
+
+// The status bar's box for a program that the program started (Checks' PingLater, a ping with
+// no window, typed into the console with nothing running), its menu open above it: the status
+// bar from a little left of the box to a little right of it, cut out on the window's ground. The box
+// names the process id, which changes from run to run: it is set in the page to PROCESS_ID.
+// The ping is ended with the menu's Terminate, or by its id if the box has gone.
+const PROCESS_BOX = "#runningProcessesContainer > .runningProcessOuter";
+const PROCESS_ID = "10432";
+const debugProcessBoxShot = {
+  out: DEBUG_IMAGE("Process_Box"),
+  setup: "debugging",
+  async take({ c }) {
+    await debugReset(c);
+    let pid = null;
+    try {
+      await consoleRun(c, "PingLater");
+      if (!(await waitFor(c, () => rectOf(c, PROCESS_BOX), { timeout: 15000, interval: 100 }))) {
+        throw new Error("PingLater put no PROCESS box in the status bar");
+      }
+      pid = Number((await consoleText(c)).match(/\[SHELL\] process (\d+) started/)?.[1]) || null;
+      await c.evaluate(
+        `document.querySelector(${JSON.stringify(`${PROCESS_BOX} .runningProcess`)}).textContent = "PROCESS ${PROCESS_ID}: RUNNING"`,
+      );
+      await frames(c);
+      const box = await rectOf(c, PROCESS_BOX);
+      await clickAt(c, box.x + box.width / 2, box.y + box.height / 2);
+      if (!(await menuOpened(c))) throw new Error("a click on the PROCESS box opened no menu");
+      const menu = await rectOf(c, "#contextMenu");
+      const bar = await rectOf(c, "#rootStatusBar");
+      const ground = await c.evaluate("getComputedStyle(document.body).backgroundColor");
+      const left = Math.min(box.x, menu.x) - 24;
+      const top = menu.y - 12;
+      const right = Math.max(box.x + box.width, menu.x + menu.width) + 160;
+      const area = { x: left, y: top, width: right - left, height: bar.y + bar.height - top };
+      return await capture(c, "Process_Box", snapOut(area), {
+        keep: ["#rootStatusBar", "#contextMenu"],
+        solid: ground,
+        away: () => parkMouse(c),
+      });
+    } finally {
+      await endPing(c, pid);
+      await debugReset(c);
+    }
+  },
+};
+
+// The ping PingLater started ended: with Terminate on its box's menu while the box is there,
+// else by its process id.
+async function endPing(c, pid) {
+  await closeMenus(c);
+  const box = await rectOf(c, PROCESS_BOX);
+  if (box) {
+    await clickAt(c, box.x + box.width / 2, box.y + box.height / 2);
+    if (await menuOpened(c)) {
+      const t = (await menuItems(c)).find((i) => i.text === "Terminate");
+      if (t) await clickAt(c, t.x + t.width / 2, t.y + t.height / 2);
+    }
+    await waitFor(c, async () => !(await rectOf(c, PROCESS_BOX)), { timeout: 15000, interval: 100 });
+    await closeMenus(c);
+  }
+  if (pid) killTree(pid);
+}
+
+// VARIABLES floated on its own, `width` by `height`.
+const floatVariables = (c, width = 420, height = 214) => floatPanel(c, "VARIABLES", { width, height });
+
+// Main paused on its last line, VARIABLES floated with the user-defined type `first` expanded.
+const debugVariablesExpandedShot = {
+  out: DEBUG_IMAGE("Variables_Expanded"),
+  setup: "debugging",
+  async take({ c }) {
+    await debugReset(c);
+    try {
+      await pausedInMain(c);
+      await toggleRow(c, "variablesPanel", ["Locals", "first"]);
+      const box = await floatVariables(c);
+      await fixObjectAddresses(c);
+      await frames(c);
+      return await capture(c, "Variables_Expanded", snapOut(box), { away: () => parkMouse(c) });
+    } finally {
+      if (await c.evaluate(`${treeNode("variablesPanel", ["Locals", "first"])}?.isCollapsed === false`)) {
+        await toggleRow(c, "variablesPanel", ["Locals", "first"], false);
+      }
+      await unfloatPanel(c, "VARIABLES");
+      await debugReset(c);
+    }
+  },
+};
+
+// Total paused on the loop's second pass: VARIABLES floated, `subtotal`'s value double-clicked
+// and its text box open (`edit`); or VARIABLES docked at the editor's right, the mouse resting
+// on `subtotal`'s row and its tooltip shown, the top of the panel and the tooltip cut out on
+// the panel's ground (a floating panel is drawn over the tooltip). The tooltip names the
+// value's address, which changes from run to run: it is set in the page to POINTER_TEXT.
+const POINTER_TEXT = "(&H0019F3A4)";
+const TIP_MARK = "data-tb-shot-tip";
+const PANEL_MARK = "data-tb-shot-panel";
+const TIP_LAYOUT = {
+  type: "horizontal",
+  variableSize: true,
+  size: "0%",
+  content: [
+    { id: "TOOLBAR", variableSize: false, size: "fit-content" },
+    {
+      type: "vertical",
+      variableSize: true,
+      size: "0%",
+      content: [
+        { id: "VARIABLES", variableSize: false, size: "33%" },
+        { id: "EDITOR", variableSize: true, size: "0%" },
+      ],
+    },
+  ],
+};
+function variablesRowShot(name, { edit }) {
+  return {
+    out: DEBUG_IMAGE(name),
+    setup: "debugging",
+    async take({ c }) {
+      await debugReset(c);
+      try {
+        await pausedInTotal(c, { pass: 2 });
+        if (!edit) await useLayout(c, TIP_LAYOUT);
+        await fixObjectAddresses(c);
+        let box;
+        if (edit) box = await floatVariables(c, 400, 236);
+        else {
+          const panel = await panelBox(c, "VARIABLES");
+          if (!panel) throw new Error("VARIABLES is not in the layout");
+          box = { ...panel, height: 250 };
+          await c.evaluate(
+            `[...document.querySelectorAll(".sectionHeaderInner")].find((e) => e.textContent === "VARIABLES").closest(".toolWindowContainer").setAttribute(${JSON.stringify(PANEL_MARK)}, "")`,
+          );
+        }
+        const row = `${treeNode("variablesPanel", ["Locals", "subtotal"])}?.innerDiv`;
+        const at = await c.evaluate(`(() => {
+  const v = ${row}?.querySelector(".variableValue")?.getBoundingClientRect();
+  const n = ${row}?.querySelector(".variableName")?.getBoundingClientRect();
+  return v && n ? { value: { x: v.x + v.width / 2, y: v.y + v.height / 2 }, name: { x: n.x + n.width / 2, y: n.y + n.height / 2 } } : null;
+})()`);
+        if (!at) throw new Error("VARIABLES has no row for subtotal");
+        if (edit) {
+          // the first click of the two draws the row again, which can lose the double-click:
+          // it is made again until the box opens
+          let open = false;
+          for (let attempt = 0; attempt < 3 && !open; attempt++) {
+            await clickAt(c, at.value.x, at.value.y);
+            await clickAt(c, at.value.x, at.value.y, { clickCount: 2 });
+            open = await waitFor(
+              c,
+              () =>
+                c.evaluate(
+                  `document.activeElement?.tagName === "INPUT" && !!document.activeElement.closest(${JSON.stringify(panelSel("VARIABLES"))})`,
+                ),
+              { timeout: 3000, interval: 50 },
+            );
+          }
+          if (!open) throw new Error("a double-click on subtotal's value opened no text box");
+          await fixObjectAddresses(c);
+          await frames(c);
+          return await capture(c, name, snapOut(box), { away: () => parkMouse(c) });
+        }
+        await mouseMove(c, at.name.x - 4, at.name.y);
+        await mouseMove(c, at.name.x, at.name.y);
+        // The tooltip is laid out, hidden, as soon as the mouse rests, and placed again when it
+        // is shown (class visibleTooltip) about a second later, then fades in: its box once it
+        // is shown and its fade has ended, else null.
+        const tipBox = () =>
+          c.evaluate(`(() => {
+  const t = document.getElementById("hoverTooltip");
+  if (!t?.classList.contains("visibleTooltip") || t.getAnimations({ subtree: true }).length) return null;
+  t.setAttribute(${JSON.stringify(TIP_MARK)}, "");
+  const walk = document.createTreeWalker(t, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) n.nodeValue = n.nodeValue.replace(/\\(&H[0-9A-F]+\\)/, ${JSON.stringify(POINTER_TEXT)});
+  const r = t.getBoundingClientRect();
+  return r.width ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+})()`);
+        if (!(await waitFor(c, tipBox, { timeout: 8000, interval: 100 }))) {
+          throw new Error("resting on subtotal's row showed no tooltip");
+        }
+        const shown = await settledBox(c, tipBox);
+        const ground = await groundOf(c, `[${PANEL_MARK}] .sectionBody`);
+        const png = await capture(c, name, snapOut(grow(union(box, shown), 8)), {
+          keep: [`[${PANEL_MARK}]`, `[${TIP_MARK}]`],
+          solid: ground,
+        });
+        const still = await tipBox();
+        if (JSON.stringify(still) !== JSON.stringify(shown)) {
+          throw new Error(
+            `the tooltip moved during the capture: ${JSON.stringify(shown)}, then ${JSON.stringify(still)}`,
+          );
+        }
+        return png;
+      } finally {
+        await pressKey(c, "Escape");
+        await c.evaluate(`(() => {
+  document.querySelector("[${TIP_MARK}]")?.removeAttribute(${JSON.stringify(TIP_MARK)});
+  document.querySelector("[${PANEL_MARK}]")?.removeAttribute(${JSON.stringify(PANEL_MARK)});
+})()`);
+        if (edit) await unfloatPanel(c, "VARIABLES");
+        await debugReset(c);
+      }
+    },
+  };
+}
+
+// WATCHES floated with four watches, one an expression the compiler refuses: while Total is
+// paused on the loop's second pass, or (`ended`) once the program has been ended there.
+const WATCHES = ["items(i).Name", "items(i).Quantity", "subtotal", "subtotal *"];
+function watchesShot(name, { ended }) {
+  return {
+    out: DEBUG_IMAGE(name),
+    setup: "debugging",
+    async take({ c }) {
+      await debugReset(c);
+      try {
+        await pausedInTotal(c, {
+          pass: 2,
+          before: async (c) => {
+            for (const w of WATCHES) await addWatch(c, w);
+          },
+        });
+        const evaluated = await waitFor(
+          c,
+          async () => {
+            const t = await watchesText(c);
+            return t.includes("(compile error") && t.includes('"Gadget"') && t;
+          },
+          { timeout: 10000, interval: 100 },
+        );
+        if (!evaluated) throw new Error(`the watches were never evaluated: ${JSON.stringify(await watchesText(c))}`);
+        if (ended) {
+          await stopRun(c);
+          const gone = await waitFor(
+            c,
+            async () => ((await watchesText(c)).match(/not available/g) || []).length === WATCHES.length,
+            { timeout: 10000, interval: 100 },
+          );
+          if (!gone)
+            throw new Error(`the watches did not all read not available: ${JSON.stringify(await watchesText(c))}`);
+        }
+        const box = await floatPanel(c, "WATCHES", { width: 520, height: 128 });
+        return await capture(c, name, snapOut(box), { away: () => parkMouse(c) });
+      } finally {
+        await unfloatPanel(c, "WATCHES");
+        await debugReset(c);
+      }
+    },
+  };
+}
+
+// Total paused on the loop's first pass, Main's row of CALL STACK clicked: MainModule's line
+// highlighted with no arrow, VARIABLES showing Main's variables.
+const debugCallStackFramesShot = {
+  out: DEBUG_IMAGE("CallStack_Frames"),
+  setup: "debugging",
+  async take({ c }) {
+    await debugReset(c);
+    try {
+      return await atSize(c, 1100, 700, async () => {
+        await useLayout(c, STOP_LAYOUT);
+        await pausedInTotal(c);
+        const at = await c.evaluate(`(() => {
+  for (const t of Object.values(callStackPanel.tree.rootFolder.entries)) {
+    for (const f of Object.values(t.entries || {})) {
+      const d = f.innerDiv;
+      if (d && /^Main\\n/.test(d.innerText)) { const r = d.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }
+    }
+  }
+  return null;
+})()`);
+        if (!at) throw new Error("CALL STACK has no row for Main");
+        await clickAt(c, at.x, at.y);
+        const moved = await waitFor(
+          c,
+          async () =>
+            (await c.evaluate(`editor.getModel().getLinesContent().some((l) => l.includes("Public Sub Main"))`)) &&
+            (await treeValue(c, "variablesPanel", ["Locals", "first"])) !== null,
+          { timeout: 10000, interval: 100 },
+        );
+        if (!moved) throw new Error("a click on Main in CALL STACK did not show Main");
+        await c.evaluate("editor.setScrollTop(0)");
+        await parkMouse(c);
+        await fixObjectAddresses(c);
+        await frames(c);
+        const ed = await panelBox(c, "EDITOR 1");
+        const vars = await panelBox(c, "VARIABLES");
+        if (!ed || !vars) throw new Error("the editor or VARIABLES is not in the layout");
+        const area = { x: 0, y: ed.y, width: 1100, height: vars.y + vars.height - ed.y };
+        return capture(c, "CallStack_Frames", snapOut(area, 1100, 700), { away: () => parkMouse(c) });
+      });
+    } finally {
+      await debugReset(c);
+    }
+  },
+};
+
+// Total paused on the loop's second pass, the mouse resting on the loop line: on `subtotal`,
+// or (`selection`) inside `items(i).Quantity * price`, selected. The picture is the popup and
+// the line, from the editor's left.
+function debugHoverShot(name, { selection }) {
+  return {
+    out: DEBUG_IMAGE(name),
+    setup: "debugging",
+    async take({ c }) {
+      await debugReset(c);
+      try {
+        await pausedInTotal(c, { pass: 2 });
+        await scrollToLine(c, "Public Function Total");
+        const at = await codePlace(c, LOOP_LINE);
+        let col = at.column + 3;
+        let want = "subtotal";
+        if (selection) {
+          const text = "items(i).Quantity * price";
+          const from = at.column + LOOP_LINE.indexOf(text);
+          await c.evaluate(
+            `editor.setSelection(new monaco.Selection(${at.line}, ${from}, ${at.line}, ${from + text.length}))`,
+          );
+          col = from + 10;
+          want = text;
+        }
+        let shown = false;
+        for (let attempt = 0; attempt < 3 && !shown; attempt++) {
+          await restMouse(c, at.line, col);
+          shown = await waitFor(c, async () => (await hoverText(c))?.includes(`${want}:`) && true, { timeout: 6000 });
+        }
+        if (!shown) throw new Error(`the hover showed no value of ${want}: ${await hoverText(c)}`);
+        const popup = await settledBox(c, () =>
+          c.evaluate(`(() => {
+  const r = [...document.querySelectorAll(".monaco-hover")].find((e) => !e.classList.contains("hidden") && e.getBoundingClientRect().height > 0).getBoundingClientRect();
+  return { x: r.x, y: r.y, width: r.width, height: r.height };
+})()`),
+        );
+        const lineBox = await linesBox(c, at.line, at.line);
+        const ed = await editorBox(c);
+        const top = Math.min(popup.y, lineBox.y) - 8;
+        const bottom = Math.max(popup.y + popup.height, lineBox.y + lineBox.height) + 8;
+        const right = Math.max(popup.x + popup.width, (await pointOf(c, at.line, at.column + LOOP_LINE.length)).x);
+        const area = { x: ed.x, y: top, width: right + 12 - ed.x, height: bottom - top };
+        // the mouse stays on the line: the popup goes when it leaves
+        return await capture(c, name, snapOut(area));
+      } finally {
+        await mouseAway(c);
+        await debugReset(c);
+      }
+    },
+  };
+}
+
+// The DEBUG CONSOLE floated on its own, `width` (560) by `height`.
+const floatConsole = (c, height, width = 560) => floatPanel(c, "DEBUG CONSOLE", { width, height });
+
+// Total paused on the loop's second pass, two lines entered in the DEBUG CONSOLE: the value of
+// subtotal printed, then a new value given to it.
+const debugConsoleRunShot = {
+  out: DEBUG_IMAGE("Console_Run"),
+  setup: "debugging",
+  async take({ c }) {
+    await debugReset(c);
+    try {
+      await pausedInTotal(c, { pass: 2 });
+      await consoleRun(c, "? subtotal");
+      await consoleRun(c, "subtotal = 5");
+      const box = await floatConsole(c, 236);
+      await fixConsoleTimes(c, "0.0001023s");
+      await frames(c);
+      return await capture(c, "Console_Run", snapOut(box), { away: () => parkMouse(c) });
+    } finally {
+      await unfloatPanel(c, "DEBUG CONSOLE");
+      await debugReset(c);
+    }
+  },
+};
+
+// The DEBUG CONSOLE floated after Main has run to its end, its menu opened with a right-click
+// right of its first line, the menu inside the panel and clear of the lines. (A cut-out of the console would show
+// the line it measures its text with, which it hides.)
+const debugConsoleMenuShot = {
+  out: DEBUG_IMAGE("Console_Menu"),
+  setup: "debugging",
+  async take({ c }) {
+    await debugReset(c);
+    try {
+      // the run can be over before the IDE is seen running: its last line is the time it took
+      await command(c, "tbDebug_StartOrContinue");
+      const ended = await waitFor(
+        c,
+        async () => (await consoleText(c)).includes("(time taken: ") && !(await codeExecuting(c)),
+        { timeout: 60000, interval: 100 },
+      );
+      if (!ended) throw new Error("Main did not run to its end");
+      const box = await floatConsole(c, 180, 640);
+      await fixConsoleTimes(c, "0.0021175s");
+      await frames(c);
+      await rightClickAt(c, box.x + 410, box.y + 34);
+      if (!(await menuOpened(c))) throw new Error("a right-click in the DEBUG CONSOLE opened no menu");
+      const menu = await rectOf(c, "#contextMenu");
+      if (union(box, menu).width !== box.width || union(box, menu).height !== box.height) {
+        throw new Error("the menu is not inside the DEBUG CONSOLE");
+      }
+      return await capture(c, "Console_Menu", snapOut(box), { away: () => parkMouse(c) });
+    } finally {
+      await closeMenus(c);
+      await unfloatPanel(c, "DEBUG CONSOLE");
+      await debugReset(c);
+    }
+  },
+};
+
+// The Debug and Run menus as they are while a program is paused and while one runs: Total
+// paused, the caret in the code; Checks' WaitAWhile run with F6, a loop of a minute at most.
+async function pausedForMenu(c) {
+  await debugReset(c);
+  await pausedInTotal(c);
+  const top = (await codePlace(c, "Public Function Total")).line;
+  await caretOn(c, LOOP_LINE, { offset: 4, top });
+  if (!(await c.evaluate("editor.hasTextFocus()"))) throw new Error("the code editor does not have the focus");
+}
+async function runningForMenu(c) {
+  await debugReset(c);
+  await openFile(c, CHAPTER_FILE("Checks.twin"));
+  await caretOn(c, "started = Timer", { offset: 4 });
+  await command(c, "tbDebug_RunOrPreview");
+  if (!(await waitFor(c, () => codeExecuting(c), { timeout: 30000, interval: 100 }))) {
+    throw new Error("F6 never started WaitAWhile");
+  }
+  await frames(c);
+}
+
+const debuggingShots = [
+  debugPausedPanelsShot,
+  debugErrorPanelShot,
+  debugBreakpointGlyphsShot,
+  debugPausedLineShot,
+  debugToolbarPausedShot,
+  debugProcessBoxShot,
+  debugVariablesExpandedShot,
+  variablesRowShot("Variables_Edit", { edit: true }),
+  variablesRowShot("Variables_Tooltip", { edit: false }),
+  watchesShot("Watches_Values", { ended: false }),
+  watchesShot("Watches_NotAvailable", { ended: true }),
+  debugCallStackFramesShot,
+  debugHoverShot("Hover_Paused", { selection: false }),
+  debugHoverShot("Hover_Selection", { selection: true }),
+  debugConsoleRunShot,
+  debugConsoleMenuShot,
+];
+
 // The route a person takes: Standard EXE is selected on the New tab, and Open
 // asks for its options. Cancel closes the dialog and creates nothing. Last
 // of the setup, since the IDE has begun to start a project.
@@ -8866,8 +9791,9 @@ const SHOTS = [
   menuShot("Menu_File", "File"),
   menuShot("Menu_Project", "Project"),
   menuShot("Menu_Format", "Format"),
-  menuShot("Menu_Debug", "Debug"),
-  menuShot("Menu_Run", "Run"),
+  // the Debug menu while a program is paused, the Run menu while one runs
+  menuShot("Menu_Debug", "Debug", null, { setup: "debugging", before: pausedForMenu, after: debugReset }),
+  menuShot("Menu_Run", "Run", null, { setup: "debugging", before: runningForMenu, after: debugReset }),
   menuShot("Menu_Tools", "Tools"),
   menuShot("Menu_Add-Ins", "Add-Ins"),
   menuShot("Menu_Window", "Window"),
@@ -8895,6 +9821,7 @@ const SHOTS = [
   ...sample9Shots,
   featureMapShot,
   ...codeChapterShots,
+  ...debuggingShots,
   newProjectOptionsShot,
   ...programShots,
   ...codeLensShots,
@@ -8923,6 +9850,10 @@ const PARTS = {
   "code-chapter": [
     { suffix: "-2", from: "IDE/Code/Images/Combos.png" },
     { suffix: "-3", from: "IDE/Code/Images/Paste_As_Comment.png" },
+  ],
+  debugging: [
+    { suffix: "-2", from: "IDE/Debugging/Images/Variables_Expanded.png" },
+    { suffix: "-3", from: "IDE/Debugging/Images/CallStack_Frames.png" },
   ],
   customcontrols: [
     { suffix: "-2", from: "Tutorials/CustomControls/Images/ccMyFieldClass.png" },
@@ -8960,6 +9891,9 @@ const JOB_SECONDS = {
   "code-chapter": 95,
   "code-chapter-2": 85,
   "code-chapter-3": 100,
+  debugging: 74,
+  "debugging-2": 64,
+  "debugging-3": 71,
   "no-project": 68,
   "no-project-2": 59,
   "no-project-3": 70,
