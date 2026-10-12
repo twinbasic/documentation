@@ -1,6 +1,6 @@
 ---
 title: tbRegExp Package
-parent: Contributed Packages
+parent: Experimental Packages
 has_toc: false
 exclude_from_docs:
   - StaticRegex
@@ -20,7 +20,7 @@ The matching is done by the [vba-regex](https://github.com/sihlfall/vba-regex) e
 Beyond VBScript's object, **RegExp** has the [**DotAll**](RegExp/DotAll) and [**Flags**](RegExp/Flags) options, the [**Split**](RegExp/Split) method, and [**IsValid**](RegExp/IsValid), [**LastError**](RegExp/LastError) and [**LastErrorNumber**](RegExp/LastErrorNumber), which report an invalid pattern before it is used. [**Replace**](RegExp/Replace) reads a `$` in the replacement string differently from VBScript.
 
 > [!WARNING]
-> With [**Global**](RegExp/Global) set to **True**, a match of no characters is reported twice when the search had to skip at least one character to reach it. A pattern that can match no characters is affected: `$`, `\b`, `^` with [**MultiLine**](RegExp/MultiLine), and a lookahead or lookbehind on its own. [**Execute**](RegExp/Execute) returns the match twice, [**Replace**](RegExp/Replace) makes its replacement twice and [**Split**](RegExp/Split) adds an extra empty string, and nothing is raised. VBScript's **RegExp** reports such a match once. A match of one or more characters is never repeated, and with **Global** set to **False** nothing is. This is how version 1.4.0.0 behaves.
+> With [**Global**](RegExp/Global) set to **True**, a match of no characters is reported twice when the search had to skip at least one character to reach it. It happens to a pattern that matches no characters at a position after the one where the search started: `$`, `\b`, `^` with [**MultiLine**](RegExp/MultiLine), and a lookahead or lookbehind on its own. A pattern such as `x*`, which matches no characters at the position where the search starts, is not affected. [**Execute**](RegExp/Execute) returns the match twice, [**Replace**](RegExp/Replace) makes its replacement twice and [**Split**](RegExp/Split) adds an extra empty string, and nothing is raised. VBScript's **RegExp** reports such a match once. A match of one or more characters is never repeated, and with **Global** set to **False** nothing is. This is how version 1.4.0.0 behaves.
 
 ## Pattern syntax
 

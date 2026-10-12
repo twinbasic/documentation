@@ -27,7 +27,7 @@ With [**Global**](Global) set to **False**, the collection holds at most one mat
 [**IgnoreCase**](IgnoreCase), [**MultiLine**](MultiLine) and [**DotAll**](DotAll) change what counts as a match.
 
 > [!WARNING]
-> With **Global** set to **True**, a match of no characters is returned twice when the search had to skip at least one character to reach it, so the collection holds one **Match** too many at each such position. A pattern that can match no characters is affected: `$`, `\b`, `^` with **MultiLine** set to **True**, and a lookahead or lookbehind on its own. VBScript's **RegExp** returns each such match once. A match of one or more characters is never repeated, and with **Global** set to **False** nothing is. This is how version 1.4.0.0 behaves.
+> With **Global** set to **True**, a match of no characters is returned twice when the search had to skip at least one character to reach it, so the collection holds one **Match** too many at each such position. It happens to a pattern that matches no characters at a position after the one where the search started: `$`, `\b`, `^` with **MultiLine** set to **True**, and a lookahead or lookbehind on its own. A pattern such as `x*`, which matches no characters at the position where the search starts, is not affected. VBScript's **RegExp** returns each such match once. A match of one or more characters is never repeated, and with **Global** set to **False** nothing is. This is how version 1.4.0.0 behaves.
 
 The pattern in this example matches no characters, before each capital letter. `fooBarBaz` has two capitals, and the collection holds four matches.
 
