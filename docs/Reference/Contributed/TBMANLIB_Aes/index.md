@@ -6,7 +6,7 @@ exclude_from_docs:
   - mWin32CNG
   - mWin32CryptoAPI
   - mAesUsage
-indexed_from: 1.0.0.2
+indexed_from: 1.0.0.4
 permalink: /tB/Packages/Contributed/TBMANLIB_Aes/
 ---
 
@@ -15,7 +15,7 @@ permalink: /tB/Packages/Contributed/TBMANLIB_Aes/
 
 **Author:** woeoio.
 
-The **TBMANLIB_Aes** contributed package encrypts and decrypts text and byte arrays with AES. Its class [**cAes**](cAes) has six cipher modes, named ECB, CBC, CFB, OFB, CTR and GCM, four padding modes, and keys of 128, 192 and 256 bits. The package calls two interfaces of Windows. The older Crypto API (`advapi32.dll`) does the modes named ECB and CBC, and Cryptography API: Next Generation, CNG (`bcrypt.dll`), does the other four. A second class, [**cAesHelper**](cAesHelper), holds the Base64, UTF-8 and padding functions that **cAes** uses, and the module [**mAesConstants**](mAesConstants) holds the enumerations and the constants. This section documents version 1.0.0.2, published on TWINSERV under the MIT licence. The package describes itself as "TBMAN: A crypto library contains AES (ECB/CBC/CFB/OFB/CTR/GCM)".
+The **TBMANLIB_Aes** contributed package encrypts and decrypts text and byte arrays with AES. Its class [**cAes**](cAes) has six cipher modes, named ECB, CBC, CFB, OFB, CTR and GCM, four padding modes, and keys of 128, 192 and 256 bits. The package calls two interfaces of Windows. The older Crypto API (`advapi32.dll`) does the modes named ECB and CBC, and Cryptography API: Next Generation, CNG (`bcrypt.dll`), does the other four. A second class, [**cAesHelper**](cAesHelper), holds the Base64, UTF-8 and padding functions that **cAes** uses, and the module [**mAesConstants**](mAesConstants) holds the enumerations and the constants. This section documents version 1.0.0.4, published on TWINSERV under the MIT licence. The package describes itself as "TBMAN: A crypto library contains AES (ECB/CBC/CFB/OFB/CTR/GCM)".
 
 Add the package to the project as [Importing a package from TWINSERV](../../../../Features/Packages/Importing-TWINSERV) describes. The classes are then created with `New`.
 
@@ -42,7 +42,7 @@ Debug.Print aes.DecryptString(cipherText)                ' Hello, AES!
 The text that **EncryptString** returns is Base64 of the ciphertext alone. The program keeps the IV, and in GCM mode the tag, and sets them in the object that decrypts.
 
 > [!WARNING]
-> In version 1.0.0.2 the name of a cipher mode is not always the mode that runs: **ECB** runs CBC, **CBC** runs ECB, and **OFB** and **CTR** run CFB. Neither **ECB** nor **CBC** uses the IV, so the same key and plaintext always give the same ciphertext, and the default mode, **CBC**, gives equal ciphertext blocks for equal plaintext blocks. A test that decrypts what it has encrypted does not show this. [Known problems in version 1.0.0.2](#known-problems-in-version-1002) lists this and the other defects.
+> In version 1.0.0.4 the name of a cipher mode is not always the mode that runs: **ECB** runs CBC, **CBC** runs ECB, and **OFB** and **CTR** run CFB. Neither **ECB** nor **CBC** uses the IV, so the same key and plaintext always give the same ciphertext, and the default mode, **CBC**, gives equal ciphertext blocks for equal plaintext blocks. A test that decrypts what it has encrypted does not show this. [Known problems in version 1.0.0.4](#known-problems-in-version-1004) lists this and the other defects.
 
 * TOC
 {:toc}
@@ -56,7 +56,7 @@ The text that **EncryptString** returns is Base64 of the ciphertext alone. The p
 
 The conversion of text to Base64 and back uses `CryptBinaryToStringW` and `CryptStringToBinaryW` of `crypt32.dll`, and the conversion to UTF-8 and back uses `WideCharToMultiByte` and `MultiByteToWideChar` of `kernel32.dll`. The four CNG modes need CNG, which Windows has had since Windows Vista; the sources name Vista as the oldest version.
 
-## Known problems in version 1.0.0.2
+## Known problems in version 1.0.0.4
 
 - **The mode names.** **ECB** runs CBC with an IV of zero bytes, **CBC** runs ECB, **OFB** and **CTR** run CFB, and the CFB of the CNG modes has an 8-bit feedback. [Which mode runs](cAes#which-mode-runs) has the details and a sample for each.
 - **The key of ECB and CBC.** These modes hash [**Key**](cAes#key) with SHA-256 and use the hash as the AES key, and Windows adds its padding to the output. Other AES software that is given the same key does not decrypt it, and the standard test vectors of NIST SP 800-38A for ECB and CBC do not come out. See [The Crypto API modes](cAes#the-crypto-api-modes) and [Reading the output with other software](cAes#reading-the-output-with-other-software).

@@ -2,7 +2,7 @@
   "format": 3,
   "package": "TBMANLIB_Aes",
   "project": "TBMANLIB_Aes",
-  "version": "1.0.0.2",
+  "version": "1.0.0.4",
   "types": [
     {
       "name": "cAes",
