@@ -43,7 +43,7 @@ A property of a recipe checks nothing when it is set. A value that cannot be use
 > ```
 
 > [!NOTE]
-> The class declares a **Private** constructor and the attribute `[COMCreatable(False)]`, but a project that references the package can still create an object with **New**. It is a recipe in which every property has the empty value of its type: **Length** 0, no class enabled, empty strings, **MinPerClass** 0, **Mode** **pgmRandom** and **RandomSource** **Nothing**. **Generate** returns an empty string for it, with the error `InvalidLength`, until the properties are set. The presets are the way to get the defaults.
+> The class declares a **Private** constructor and the attribute `[COMCreatable(False)]`, so that only its presets create recipes. In BETA 1005 twinBASIC does not enforce a **Private** constructor, and a project that references the package can still create an object with **New**. It is a recipe in which every property has the empty value of its type: **Length** 0, no class enabled, empty strings, **MinPerClass** 0, **Mode** **pgmRandom** and **RandomSource** **Nothing**. **Generate** returns an empty string for it, with the error `InvalidLength`, until the properties are set. The presets are the way to get the defaults.
 >
 > ```tb check_build check_run
 > Dim o As PwGenOptions = New PwGenOptions

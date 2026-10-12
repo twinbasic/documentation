@@ -73,7 +73,7 @@ The references of a package are not visible to the project that uses it. A progr
 The Microsoft Script Control exists only as a 32-bit component, and the package's reference to it has a path for 32-bit programs and none for 64-bit programs.
 
 > [!WARNING]
-> In BETA 1005, a project that embeds TBMANLIB and is built for 64-bit programs (**Win64**) crashes the compiler, again after each restart, until the IDE falls back to Safe Mode, even when the program uses nothing of the package. The cause is the reference to the Script Control: when that reference and the module that uses it are removed from a copy of the package, the compiler no longer crashes, and reports only the errors of the code that needed the reference. The package can be used in 32-bit programs only.
+> In BETA 1005, a project that embeds TBMANLIB and is built for 64-bit programs (**Win64**) crashes the compiler, again after each restart, until the IDE falls back to Safe Mode, even when the program uses nothing of the package. The cause is a defect of twinBASIC, not of the package: any project that references the Microsoft Script Control, directly or through a package, crashes the compiler in a 64-bit build, whatever path the reference gives for 64-bit programs. Other 32-bit-only controls, such as the Common Dialog control, do not. The package can be used in 32-bit programs only.
 
 The Script Control is used by **ToolsJScript** and, through it, by **ToolsDic.ToWwwFormUrlencoded**. Those members do not work in 32-bit programs either; see [ToolsJScript](ToolsJScript). The other components are available to 32-bit programs.
 

@@ -46,6 +46,9 @@ Similarly, with **Preserve**, the size of the array can only change by changing 
 
 When an array becomes smaller than it was, data in the eliminated elements will be lost.
 
+> [!NOTE]
+> An upper bound below the lower bound, as in `ReDim X(0 To -1)`, raises an error. In BETA 1005 the error is -2147467259, *Unspecified error*; VB6 raises error 9, *Subscript out of range*.
+
 When variables are initialized, a numeric variable is initialized to 0, a variable-length string is initialized to a zero-length string (""), and a fixed-length string is filled with zeros. **Variant** variables are initialized to **Empty**. Each element of a user-defined type variable is initialized as if it were a separate variable.
 
 A variable that refers to an object must be assigned an existing object by using the [**Set**](Set) statement before it can be used. Until it is assigned an object, the declared object variable has the special value **Nothing**, which indicates that it doesn't refer to any particular instance of an object.
