@@ -634,6 +634,20 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: TBMANLIB_ConsoleComponents Package
+        subtitle: Text-interface components for console programs, drawn into the buffer of TBMANLIB_ConsoleCore
+        landing_page: /tB/Packages/Contributed/TBMANLIB_ConsoleComponents/
+        page: /tB/Packages/Contributed/TBMANLIB_ConsoleComponents/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: TBMANLIB_ConsoleCore Package
+        subtitle: A console library with colours, UTF-8 and a full-screen mode
+        landing_page: /tB/Packages/Contributed/TBMANLIB_ConsoleCore/
+        page: /tB/Packages/Contributed/TBMANLIB_ConsoleCore/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TBMANLIB_Diagnostic Package
         subtitle: A diagnostic report of the computer and its processes, as text, JSON or HTML
         landing_page: /tB/Packages/Contributed/TBMANLIB_Diagnostic/
