@@ -29,6 +29,8 @@ Syntax: **Debug.Print** [ *outputlist* ]
 
 The console is monospaced, so a zone here is 14 characters wide and zones begin at columns 0, 14, 28 and so on. An expression that reaches the end of its zone pushes the next one into the zone after.
 
+In a built executable, **Debug.Print** writes nothing. To log from an executable, use [**Debug.TracePrint**](#traceprint).
+
 ```tb check_build
 Debug.Print                       ' a blank line
 Debug.Print "value: "; 42         ' value: 42
@@ -84,7 +86,7 @@ Syntax: **Debug.Assert** *booleanexpression*
 *booleanexpression*
 : An expression evaluating to **True** or **False**. Execution continues when it is **True** and breaks when it is **False**.
 
-In a procedure compiled with [LLVM](../../LLVM/Getting-Started), **Debug.Assert** is ignored: it does not break, and *booleanexpression* is not evaluated.
+In a built executable, and in a procedure compiled with [LLVM](../../LLVM/Getting-Started), **Debug.Assert** is ignored: it does not break, and *booleanexpression* is not evaluated.
 
 Use it to state something the surrounding code relies on, so a violated assumption stops at the line that states it rather than further away.
 
