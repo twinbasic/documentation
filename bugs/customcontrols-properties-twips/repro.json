@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "on a CustomControls form, PROPERTIES shows a control's Left in twips but takes a typed value in pixels"
+  ],
+  "steps": "1. Open a CustomControls form whose control MyButton1 is at Left 20 (pixels, in the .tbform file).\n2. Select MyButton1. PROPERTIES shows Left 300.\n3. Type 40 in Left and press Enter. The control moves to Left 40 pixels, and the box then shows 600.\nControl: on a form of the VB package, Command1 at 10 pixels shows Left 150, and typing 450 moves it to 30 pixels."
+}

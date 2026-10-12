@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "at 50 %, Center In Container puts a control in a Frame off centre"
+  ],
+  "steps": "1. Open a form with a Frame 200 x 130 holding a TextBox 120 x 24 at 20,30.\n2. Choose View > Zoom Out twice, to 50 %.\n3. Select the TextBox and choose Format > Center In Container (Horizontally), then (Vertically). It goes to -9.98,20.52, not to 40,53.\nControl: at 100 % the same commands put it at 40,53."
+}

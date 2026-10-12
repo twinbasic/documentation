@@ -1,0 +1,64 @@
+[
+	{
+		"BackgroundFill": {
+			"ColorPoints": {
+				"Granularity": 100,
+				"Values": [
+					{
+						"Color": -1710618,
+						"PositionPercent": 0,
+						"_className": "FillColorPoint",
+						"_clsid": "{089D4C70-CF05-432E-ADFF-8E72CD22FFA8}"
+					}
+				],
+				"_className": "FillColorPoints",
+				"_clsid": "{DE27CE92-3E3D-4738-8688-CFB118F87D88}"
+			},
+			"Pattern": "tbGradientNorthToSouth",
+			"_className": "Fill",
+			"_clsid": "{CA65F55C-1A19-4003-A6F9-D89A7D84F5EA}"
+		},
+		"Caption": "frmCustomJson",
+		"FormDesignerId": "{7D3E1A64-9C20-4B85-A6F1-3E58B2C09D47}",
+		"Height": 320,
+		"Left": 0,
+		"Name": "frmCustomJson",
+		"Top": 0,
+		"Width": 480,
+		"WindowsOptions": {
+			"BorderStyle": "tbFixedSingle",
+			"ControlBox": true,
+			"MaximizeButton": true,
+			"MinimizeButton": true,
+			"ShowInTaskbar": true,
+			"StartUpPosition": "tbStartUpCenterScreen",
+			"WindowState": "tbNormal",
+			"_className": "WindowsFormOptions",
+			"_clsid": "{D3086FE1-A140-4DC6-85A3-03E8B94DC6E3}"
+		},
+		"_children": [
+			{
+				"Anchors": {
+					"Bottom": false,
+					"Left": true,
+					"Right": false,
+					"Top": true,
+					"_className": "Anchors",
+					"_clsid": "{8524D4B5-72A9-40A9-A189-29E7905C40CA}"
+				},
+				"Dock": "tbDockNone",
+				"Height": 160,
+				"Left": 20,
+				"MyField": 0,
+				"Name": "MyGrid1",
+				"Top": 20,
+				"Visible": true,
+				"Width": 300,
+				"_className": "MyGrid",
+				"_clsid": "{8C2E5A47-1D3B-4F69-A0B8-5E7C9D2F1A63}"
+			}
+		],
+		"_className": "WaynesForm",
+		"_clsid": "{18C42F40-B03D-474E-B99E-7853A314E664}"
+	}
+]

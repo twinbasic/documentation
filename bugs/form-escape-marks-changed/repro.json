@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "Escape, which selects the form, and then a pointer move over it mark the form changed with no control moved",
+    "the change that Escape and a pointer move make is an undo step that changes nothing"
+  ],
+  "steps": "1. Open a form that has not been changed and click a control.\n2. Press Escape: the form is selected.\n3. Move the pointer over the form, with no button pressed. The tab is marked changed, and closing asks to save; no control has moved.\n4. After an arrow key on a control and steps 2 and 3, the first Ctrl+Z changes nothing; the next undoes the arrow key.\nControl: a click on one control and then on another leaves the tab unchanged."
+}

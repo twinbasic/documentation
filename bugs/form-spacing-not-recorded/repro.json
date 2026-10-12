@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "Horizontal Spacing > Remove moves the controls but sends no change, makes no undo step and leaves the form's state and the tab as they were",
+    "after Vertical Spacing > Remove, closing the designer asks nothing, and the form opens again with the old positions"
+  ],
+  "steps": "1. Open a form with three controls side by side, such as Command1 at Left 10, Check1 at 140 and Command2 at 250, each 100 wide.\n2. Select the three and choose Format > Horizontal Spacing > Remove. Check1 moves to 110 and Command2 to 210.\n3. The tab is not marked changed, Ctrl+Z does nothing, and closing the designer asks nothing. Opened again, the controls are at 140 and 250.\nThe same with Vertical Spacing > Remove, Make Equal and Increase.\nControl: Format > Align > Left marks the form changed, is undone by Ctrl+Z and is kept."
+}

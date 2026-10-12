@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "Add Windows Form accepts the name 1bad, which is not an identifier, and writes Class 1bad, which does not compile"
+  ],
+  "steps": "1. In Project Explorer, choose Add > Add Windows Form.\n2. Type 1bad over the name offered and press Enter.\n3. 1bad.tbform and 1bad.twin are created with no message; 1bad.twin holds Class 1bad, and DIAGNOSTICS lists TB5174 Invalid number format at it.\nControl: the name My Form gives Class [My Form]."
+}

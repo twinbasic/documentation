@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "Lock Controls on its own does not mark the form changed: closing asks nothing, and the lock is gone when the form is opened again"
+  ],
+  "steps": "1. Open a form and click a control.\n2. Choose Format > Lock Controls. The control shows the lock icon; the tab is not marked changed.\n3. Close the designer: nothing is asked. Open it again: the control is not locked.\nControl: Lock Controls followed by an arrow key on another control and Ctrl+S keeps the lock."
+}

@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "Make Same Size > Height (Shortest) marks the form changed, but the form's state keeps the old heights, and Save writes them"
+  ],
+  "steps": "1. Open a form with Command1 and Command2 30 high and Check1 24 high.\n2. Select the three and choose Format > Make Same Size > Height (Shortest). All three are 24 high, and the tab is marked changed.\n3. Press Ctrl+S, close the designer and open it again. Command1 and Command2 are 30 high.\nControl: the same followed by an arrow key on another control, then Ctrl+S, keeps the 24."
+}

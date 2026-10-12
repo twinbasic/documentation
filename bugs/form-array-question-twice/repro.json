@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "renaming Label1 to Check1 asks the control-array question twice: the first YES makes Check1 an array, the second renames Label1"
+  ],
+  "steps": "1. Open a form with Label1 and Check1, neither in an array.\n2. Select Label1, type Check1 in its Name box in PROPERTIES and press Enter. The box asks: A control already exists with the name 'Check1'. Do you want to create a control array?\n3. Click YES. Check1 becomes Check1(0), Label1 keeps its name, and the same question comes again.\n4. Click YES. Label1 becomes Check1(1).\nControl: answering NO to the question asks nothing more and keeps the old name."
+}

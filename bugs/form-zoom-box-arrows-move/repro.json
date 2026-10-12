@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "Up Arrow in the zoom box zooms out and also moves the selected control up, as a change to the form"
+  ],
+  "steps": "1. Open a form and click a control, such as Command1 at Top 50.\n2. Put the focus in the toolbar's zoom box (100 %) and press Up Arrow twice.\n3. The zoom goes to 75 % and then 50 %, and Command1 moves up one device pixel at each press (Top 48.67 at 150 % display scaling). The tab is marked changed, and each press is an undo step."
+}

@@ -34,4 +34,5 @@ export default [
   { file: "code-editor.test.mjs" },
   { file: "memory.test.mjs" },
   { file: "debugging.test.mjs" },
+  { file: "forms.test.mjs" },
 ];

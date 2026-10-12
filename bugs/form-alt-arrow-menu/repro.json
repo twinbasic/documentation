@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "Alt+Left in the designer also opens the IDE's menu bar"
+  ],
+  "steps": "1. Open a form and select two controls.\n2. Press Alt+Left. The controls' left edges are aligned, and the IDE's menu bar opens its first menu.\nControl: the alignment itself."
+}

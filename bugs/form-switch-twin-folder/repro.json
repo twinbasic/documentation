@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "Shift+F7 in the code of a form in the folder v1.twin.forms says the document is not part of a form"
+  ],
+  "steps": "1. A project with a form frmDeep in the folder Sources/v1.twin.forms.\n2. Open frmDeep.twin and press Shift+F7. The notification reads Unable to switch form design mode: this document is not part of a form, and the designer does not open.\nControl: Shift+F7 in frmMain.twin, in Sources, opens its designer, and the switch from frmDeep's designer opens frmDeep.twin."
+}

@@ -1,0 +1,103 @@
+[
+	{
+		"BackgroundFill": {
+			"ColorPoints": {
+				"Granularity": 100,
+				"Values": [
+					{
+						"Color": -1710618,
+						"PositionPercent": 0,
+						"_className": "FillColorPoint",
+						"_clsid": "{089D4C70-CF05-432E-ADFF-8E72CD22FFA8}"
+					}
+				],
+				"_className": "FillColorPoints",
+				"_clsid": "{DE27CE92-3E3D-4738-8688-CFB118F87D88}"
+			},
+			"Pattern": "tbGradientNorthToSouth",
+			"_className": "Fill",
+			"_clsid": "{CA65F55C-1A19-4003-A6F9-D89A7D84F5EA}"
+		},
+		"Caption": "frmCustom",
+		"FormDesignerId": "{2A7C4E91-5B3D-4F18-9E6A-0D8B1C3F5E72}",
+		"Height": 320,
+		"Left": 0,
+		"Name": "frmCustom",
+		"Top": 0,
+		"Width": 480,
+		"WindowsOptions": {
+			"BorderStyle": "tbFixedSingle",
+			"ControlBox": true,
+			"MaximizeButton": true,
+			"MinimizeButton": true,
+			"ShowInTaskbar": true,
+			"StartUpPosition": "tbStartUpCenterScreen",
+			"WindowState": "tbNormal",
+			"_className": "WindowsFormOptions",
+			"_clsid": "{D3086FE1-A140-4DC6-85A3-03E8B94DC6E3}"
+		},
+		"_children": [
+			{
+				"Anchors": {
+					"Bottom": false,
+					"Left": true,
+					"Right": false,
+					"Top": true,
+					"_className": "Anchors",
+					"_clsid": "{8524D4B5-72A9-40A9-A189-29E7905C40CA}"
+				},
+				"Columns": [
+					{
+						"Caption": "Name",
+						"Width": 120,
+						"_className": "GridColumn",
+						"_clsid": "{3F6B2C1A-8E4D-4B7A-9C25-6A1D0E7F4B21}"
+					},
+					{
+						"Caption": "Price",
+						"Width": 80,
+						"_className": "GridColumn",
+						"_clsid": "{3F6B2C1A-8E4D-4B7A-9C25-6A1D0E7F4B21}"
+					},
+					{
+						"Caption": "Stock",
+						"Width": 60,
+						"_className": "GridColumn",
+						"_clsid": "{3F6B2C1A-8E4D-4B7A-9C25-6A1D0E7F4B21}"
+					}
+				],
+				"Dock": "tbDockNone",
+				"Height": 160,
+				"Left": 20,
+				"Name": "MyGrid1",
+				"Top": 20,
+				"Visible": true,
+				"Width": 300,
+				"_className": "MyGrid",
+				"_clsid": "{8C2E5A47-1D3B-4F69-A0B8-5E7C9D2F1A63}"
+			},
+			{
+				"Anchors": {
+					"Bottom": false,
+					"Left": true,
+					"Right": false,
+					"Top": true,
+					"_className": "Anchors",
+					"_clsid": "{8524D4B5-72A9-40A9-A189-29E7905C40CA}"
+				},
+				"Caption": "Button",
+				"Dock": "tbDockNone",
+				"Height": 32,
+				"Left": 20,
+				"Name": "MyButton1",
+				"Top": 200,
+				"Visible": true,
+				"Width": 120,
+				"_className": "MyButton",
+				"_clsid": "{E7A3C915-2B6D-4F80-8D4E-1C9B6A2F7D35}"
+			}
+		],
+		"_className": "WaynesForm",
+		"_clsid": "{18C42F40-B03D-474E-B99E-7853A314E664}"
+	}
+]

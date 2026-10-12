@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:forms",
+  "tests": [
+    "the History entry for a change in a designer reads [line: undefined] in its tooltip"
+  ],
+  "steps": "1. Open a form, click a control and press Right Arrow.\n2. Show the HISTORY panel and hold the pointer over the entry for the form. The tooltip reads /<Project>/Sources/frmMain.tbform [line: undefined] and the date.\nControl: an edit inside a procedure of a code file gives an entry whose tooltip reads [line: 5]."
+}

@@ -3926,3 +3926,492 @@ Severity: low. The compiler accepts code that the class's author meant to forbid
 
 <!-- Reproducer: bugs/private-constructor-callable/ (mode compile; the bug state is a clean compile, so expect is exit 0 and noDiagnostics, the first reproducer to use that key; verify reproduces on BETA 1005, 997, 995 and 957, and says NO LONGER REPRODUCES once a diagnostic appears). `bug_repro.mjs run` prints the 11 lines of V values. The package half is the small package CtorLib, made from the BoxLib package of package-generic-new-untyped-target. The `Friend` variants and the check that a `Private Sub` is refused (TB5027) in a project and in a package were run once in a scratch copy with `tbrun --tests` compile cases, not kept. No VB6 comparison: VB6 has no `Sub New`. Found documenting the contributed package tsPwGen, whose PwGenOptions is `[PredeclaredId] [COMCreatable(False)]` with `Private Sub New()`: docs/Reference/Contributed/tsPwGen/PwGenOptions.md and docs/Features/Advanced/Classes-and-Modules.md ("Parameterized Class Constructors") carry a NOTE naming BETA 1005: when fixed, remove both NOTEs. -->
 
+
+---
+
+## Horizontal and Vertical Spacing move the controls with no undo step and without marking the form changed
+
+**Describe the bug**
+In the form designer, the commands of Format > Horizontal Spacing and Format > Vertical Spacing (Make Equal, Increase, Decrease, Remove) move the selected controls on the surface, but the move is not recorded: the tab is not marked changed, Ctrl+Z does nothing, and the designer's own copy of the form keeps the old positions. Closing the designer asks nothing, and the form opens again with the controls where they were. If another change follows before the form is saved, the moved positions are saved with it. It was observed in an IDE started with an `APPDATA` of its own, reading the designer's controls and its form state, and the messages it sends to the IDE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a form with three controls side by side: Command1 at Left 10, Check1 at Left 140 and Command2 at Left 250, each 100 wide.
+2. Select the three and choose Format > Horizontal Spacing > Remove. Check1 moves to Left 110 and Command2 to Left 210.
+3. The tab shows no change mark, and Ctrl+Z leaves the controls where they are.
+4. Close the designer: nothing is asked. Open the form again: Check1 is at 140 and Command2 at 250.
+5. The same with Format > Vertical Spacing > Remove (Check1 to Top 80, Command2 to Top 104), Make Equal and Increase.
+
+**Expected behavior**
+Each spacing command an undo step that marks the form changed, as every other Format command is: Align > Left marks the tab, Ctrl+Z undoes it, and it is saved.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The designer sends no `onChanged` or `onSignificantChange` for a spacing command. `formDesginer_RemoveSpacingHorizontal`, `formDesginer_RemoveSpacingVertical` and `formDesigner_AdjustSpacingOfSelectedControls_Horizontal` / `_Vertical` (`ide/main.js`) never call `undoPoint`, which `alignControlsLeft` calls at its end. A later change, such as an arrow key on another control, writes the whole surface into the form, the spaced positions included.
+
+Severity: medium. The arrangement the reader sees is lost on close with nothing to warn of it, or is saved later as part of an unrelated change that cannot be undone separately.
+
+<!-- Reproducer: bugs/form-spacing-not-recorded/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the tests "Horizontal Spacing > Remove moves the controls but sends no change, makes no undo step and leaves the form's state and the tab as they were" and "after Vertical Spacing > Remove, closing the designer asks nothing, and the form opens again with the old positions", which pass on BETA 1005; the control "Align > Left sends a change, makes an undo step, marks the form changed and reaches the form's state" passes too). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Arranging.md, under the spacing commands; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N1). -->
+
+---
+
+## Make Same Size marks the form changed, but Save keeps the old sizes unless another change follows
+
+**Describe the bug**
+Format > Make Same Size resizes the selected controls on the surface and marks the tab changed, and Ctrl+Z undoes it, but the designer's own copy of the form keeps the old sizes. Ctrl+S then saves the old sizes: closing and opening the form again shows them. If another change follows before the save --- an arrow key on another control, or a click on the form's background --- the new sizes are saved with it. It was observed in an IDE started with an `APPDATA` of its own, reading the designer's controls and its form state.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a form with Command1 and Command2 30 high and Check1 24 high.
+2. Select the three and choose Format > Make Same Size > Height (Shortest). All three are 24 high, and the tab is marked changed.
+3. Press Ctrl+S at once. The tab's change mark goes.
+4. Close the designer and open the form again. Command1 and Command2 are 30 high.
+
+**Expected behavior**
+The new sizes saved, as an Align command's new positions are.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+After step 2 the designer's form state (`state.item.form`, what Save writes) still holds `Height: 30`. With an arrow key on another control between steps 2 and 3, the form opens again with the 24s. A click on the form's background between them saves them too.
+
+Severity: medium. The reader sees the sizes changed and saved, and the form is not.
+
+<!-- Reproducer: bugs/form-same-size-not-saved/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "Make Same Size > Height (Shortest) marks the form changed, but the form's state keeps the old heights, and Save writes them", which passes on BETA 1005, on the probe's copy frmSizes; the control "Make Same Size followed by another change is saved" passes too, on frmSaved). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Arranging.md, under Make Same Size; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N2). -->
+
+---
+
+## Arrow keys in the designer's zoom box also move the selected controls
+
+**Describe the bug**
+The form designer's toolbar has a zoom box, a drop-down of 25 % to 400 %. With the focus in it, Up Arrow and Down Arrow change the zoom, as a drop-down does, and also move the controls selected in the designer by one device pixel, as the same key in the designer does. Each press is a change to the form: the tab is marked changed and an undo step is made. Nothing on screen points to the move, since the zoom changes at the same time. It was observed in an IDE started with an `APPDATA` of its own, reading the control's position and the messages the designer sends to the IDE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a form and click Command1, at Top 50.
+2. Put the focus in the zoom box, which reads 100 % (a person has it there after picking a value from it).
+3. Press Up Arrow twice. The zoom goes to 75 % and then 50 %, and Command1 moves up a device pixel at each press: Top 48.67 at 150 % display scaling. The tab is marked changed.
+
+**Expected behavior**
+Keys in the zoom box changing only the zoom.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Each press sends `onChanged` and `onSignificantChange`, as an arrow key in the designer does. At 100 % display scaling a press moves a control 1 pixel. With two controls selected, Up twice and Down twice make four undo steps.
+
+Severity: medium. A control's position changes with nothing to show it, and the change is saved with the form.
+
+<!-- Reproducer: bugs/form-zoom-box-arrows-move/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "Up Arrow in the zoom box zooms out and also moves the selected control up, as a change to the form", which passes on BETA 1005; the lane puts the focus in the box with zoomSelect.focus(), as the trial did). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md, under the zoom; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N5). -->
+
+---
+
+## Lock Controls does not mark the form changed, so a lock made on its own is lost when the designer is closed
+
+**Describe the bug**
+Format > Lock Controls locks the selected controls in the designer, which shows a lock icon on them and refuses to move them, but does not mark the form changed. The lock list in the form's `__IDEOptions.lockedControls` is not updated either. Closing the designer asks nothing, and the form opens again with nothing locked. A lock is saved only when another change to the form follows it. It was observed in an IDE started with an `APPDATA` of its own, reading the designer's lock list and its form state.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a form and click Command1.
+2. Choose Format > Lock Controls. Command1 shows the lock icon; the tab shows no change mark.
+3. Close the designer: nothing is asked.
+4. Open the form again: Command1 is not locked.
+
+**Expected behavior**
+The lock marked as a change to the form and saved with it, as the grid options, which are stored in the same `__IDEOptions`, are.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`lockTheControl` (`ide/main.js`) is called by the lock commands with an argument that skips `IDEOptionsChanged`, and they make no undo point; by the code, the form's context menu's Lock all controls and Unlock all controls are the same, which was not tested. Lock Controls, an arrow key on another control and Ctrl+S keep the lock.
+
+Severity: medium. The reader locks controls to protect a layout and the lock is silently lost.
+
+<!-- Reproducer: bugs/form-lock-not-saved/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "Lock Controls on its own does not mark the form changed: closing asks nothing, and the lock is gone when the form is opened again", which passes on BETA 1005; the control "Lock Controls followed by another change is saved" passes too, on the probe's copy frmSaved). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md, under locking controls; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's D12). -->
+
+---
+
+## Align > Center (Horizontal) and Center (Vertical) centre the controls on the selection's left or top edge, not on its centre
+
+**Describe the bug**
+Format > Align > Center (Horizontal) puts the centre of every selected control on the leftmost left edge of the selection, and Center (Vertical) puts each centre on the topmost top edge, so the controls move half their width left of the selection, or half their height above it. VB6's Format > Align > Centers centres the controls on the selection's centre line. It was observed in an IDE started with an `APPDATA` of its own, reading the controls' positions.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a form with Command1 at 10,50, Check1 at 140,55 and Command2 at 250,110, each 100 wide; Command1 and Command2 30 high, Check1 24.
+2. Select the three and choose Format > Align > Center (Horizontal). All three are at Left -40, centred on 10, partly off the form.
+3. From the same start, choose Center (Vertical). Command1 and Command2 are at Top 35 and Check1 at 38: centred on 50.
+
+**Expected behavior**
+The controls centred on the selection's centre: Left 130 (the selection spans 10 to 350), or their centres on 95 (it spans 50 to 140).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`alignControlsCenterHorizontal` (`ide/main.js`) takes its line from `getTopLeftOfAllControls`, which returns the smallest left and the smallest top, and `alignControlsCenterVertical` from `getTopRightOfAllControls().y`. Align > Left, Right, Top and Bottom are right. The command is an undo step, so Ctrl+Z puts the controls back.
+
+Severity: low. The result is on screen and can be undone.
+
+<!-- Reproducer: bugs/form-align-center-edge/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the tests "Align > Center (Horizontal) centres every selected control on the leftmost left edge" and "Align > Center (Vertical) centres every selected control on the topmost top edge", which pass on BETA 1005; the control "Align > Left puts the selected controls' left edges on the leftmost one" passes too). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Arranging.md, under Align; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's D1). -->
+
+---
+
+## Center In Container puts a control off centre when the designer is zoomed
+
+**Describe the bug**
+Format > Center In Container (Horizontally) and (Vertically) centre the selected controls in their container at 100 %. At any other zoom they move the controls by the wrong amount: at 50 % a TextBox in a Frame goes partly out of the Frame, and three controls on the form move left instead of right. It was observed in an IDE started with an `APPDATA` of its own, reading the controls' positions.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a form with a Frame 200 x 130 holding a TextBox 120 x 24 at Left 20, Top 30.
+2. Choose View > Zoom Out twice: the zoom box reads 50 %.
+3. Select the TextBox and choose Format > Center In Container (Horizontally). It goes to Left -9.98.
+4. Choose Center In Container (Vertically). It goes to Top 20.52.
+
+**Expected behavior**
+The TextBox at Left 40 and Top 53, centred in the Frame, as the same commands give at 100 %.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`tbFormDesigner_CenterSelectedGroupInContainerHorizontal` (`ide/main.js`) reads the container's size with `getBoundingClientRect()`, which is the zoomed size, and compares it with the controls' unzoomed positions. Three controls on the form spanning 10 to 350, centred horizontally at 50 %, moved by -80 instead of +20.
+
+Severity: low. The result is on screen and can be undone.
+
+<!-- Reproducer: bugs/form-center-in-container-zoom/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "at 50 %, Center In Container puts a control in a Frame off centre", which passes on BETA 1005; the control "at 100 %, Center In Container centres a control in its Frame" passes too). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Arranging.md, under Center In Container; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's D9). -->
+
+---
+
+## On a CustomControls form, PROPERTIES shows a control's position in twips but takes a typed value in pixels
+
+**Describe the bug**
+On a form of the CustomControls package the controls' `Left`, `Top`, `Width` and `Height` are pixels, in the `.tbform` file and on the surface. PROPERTIES shows them multiplied by 15, as twips, but takes a value typed into the same box as pixels. So retyping the value shown moves the control 15 times as far. On a form of the VB package, PROPERTIES shows and takes twips alike. It was observed in an IDE started with an `APPDATA` of its own, reading the PROPERTIES box and the control's position.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a CustomControls form with a control at Left 20, Top 200, 120 x 32 (pixels, in the `.tbform` file).
+2. Select the control. PROPERTIES shows Left 300, Top 3000, Width 1800, Height 480.
+3. Type 40 in Left and press Enter. The control moves to Left 40 pixels, and the box then shows 600.
+
+**Expected behavior**
+PROPERTIES showing and taking the same unit: pixels on a CustomControls form, whose controls are laid out in pixels.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`cacheParentScaleModeInfo` (`ide/main.js`) takes a form with no `ScaleMode`, as a CustomControls form is, to be in `vbTwips` and multiplies by 15 for the display. On a VB form in twips, Command1 at 10 pixels shows Left 150, and typing 450 moves it to 30 pixels.
+
+Severity: low. The control moves on the surface at once, so the mistake is visible.
+
+<!-- Reproducer: bugs/customcontrols-properties-twips/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "on a CustomControls form, PROPERTIES shows a control's Left in twips but takes a typed value in pixels", which passes on BETA 1005, on the lane's third project, test/ide/probes/forms-custom, a copy of test/shots/customcontrols; the control "on a form of the VB package, PROPERTIES shows a control's Left in twips and takes a typed value in twips" passes too). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Properties.md, under units; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's D13). -->
+
+---
+
+## Escape and then a pointer move over the form mark the form changed, with an undo step that changes nothing
+
+**Describe the bug**
+In a form designer with a control selected, Escape selects the form. The next move of the pointer over the form, with no button pressed, or a click on a control, marks the form changed and makes an undo step, though nothing has moved. Closing then asks to save, and Ctrl+Z first steps through the empty undo step before it reaches the last real change. It was observed in an IDE started with an `APPDATA` of its own, reading the tab, the messages the designer sends to the IDE, and the controls' positions.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a form that has not been changed. Click a control, Command1.
+2. Press Escape. The form is selected.
+3. Move the pointer over the form. The tab is marked changed; no control has moved.
+4. For the undo step: open the form again, click Command1, press Right Arrow, then do steps 2 and 3. Ctrl+Z leaves Command1 where the arrow put it; a second Ctrl+Z moves it back.
+
+**Expected behavior**
+No change and no undo step until something on the form changes, as a click on one control and then another gives.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+After step 3 the designer sends `onChanged` and `onSignificantChange`. It writes the surface into the form state, so at a display scaling other than 100 % a position the surface rounds to a device pixel changes in what Save writes: at 150 %, Check1's `Top` of 55 became 54.6667. It does not happen every time: in the trials one try in four did not do it, when Escape had first closed an open File menu, and in the reproducer's first four runs two plain tries in seven did not. A click on a control, a Format menu opened and closed, and the grid panel shown and left do not do it.
+
+Severity: low. Nothing visible moves; the reader is asked to save a form they did not change.
+
+<!-- Reproducer: bugs/form-escape-marks-changed/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the tests "Escape, which selects the form, and then a pointer move over it mark the form changed with no control moved" and "the change that Escape and a pointer move make is an undo step that changes nothing", which pass on BETA 1005; the control "a click on one control and then on another leaves the form unchanged" passes too. Each test makes up to five tries, each in a designer opened afresh, and passes on the first that shows the defect: the defect showed on five tries in seven, so five tries all miss it about once in five hundred runs, when verify would wrongly say it no longer reproduces; run it again before believing that). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md, under selecting; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's D14). -->
+
+---
+
+## Ctrl+A does nothing in a PROPERTIES box
+
+**Describe the bug**
+In the PROPERTIES pane, Ctrl+A in a property's box neither selects the box's text nor does anything else: the caret stays where it was, and the designer's selection is unchanged. Typing then adds to the value. It was observed in an IDE started with an `APPDATA` of its own, reading the box's selection.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a form and click Command1.
+2. Click in the Caption box of PROPERTIES and press End. The caret is at 8, after `Command1`.
+3. Press Ctrl+A. The selection is still 8 to 8, and only Command1 is selected in the designer.
+4. Type `Go`: the box holds `Command1Go`.
+
+**Expected behavior**
+Ctrl+A selecting the box's text, as it does in every other text box.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+With the designer focused, Ctrl+A selects every control, as it should. In a PROPERTIES box the key is consumed and does neither.
+
+Severity: low. Home, Shift+End or the mouse select the text.
+
+<!-- Reproducer: bugs/properties-ctrl-a/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "Ctrl+A in a PROPERTIES box selects nothing", which passes on BETA 1005; the control "Ctrl+A with the designer focused selects every control" passes too). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Properties.md, under editing a value; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N3). -->
+
+---
+
+## Alt+arrow in the form designer also opens the IDE's menu bar
+
+**Describe the bug**
+In the form designer, Alt+Left, Alt+Right, Alt+Up and Alt+Down align the selected controls (lefts, rights, tops, bottoms). Each also opens the IDE's menu bar, which then has to be closed with Escape. The IDE opens its menu bar as soon as Alt goes down, so every Alt shortcut opens it. It was observed in an IDE started with an `APPDATA` of its own, sending the keys as a keyboard does.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a form and select Command1 and Check1.
+2. Press Alt+Left. Check1's left edge moves to Command1's, and the IDE's menu bar opens.
+
+**Expected behavior**
+The alignment only. A menu bar opened by Alt alone, when it is released with no other key pressed, as Windows does.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Alt pressed and held alone opens the menu bar before it is released. With the arrow's key events carrying the Alt flag but no key event for Alt itself, the menu bar opens on the arrow's key-up.
+
+Severity: low. The alignment is done; the menu is in the way.
+
+<!-- Reproducer: bugs/form-alt-arrow-menu/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "Alt+Left in the designer also opens the IDE's menu bar", which passes on BETA 1005; the control "Alt+Left aligns the selected controls' left edges" passes too). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Arranging.md, under the keys; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N7). -->
+
+---
+
+## Renaming a control to another control's name asks the control-array question twice
+
+**Describe the bug**
+Typing the name of another control into a control's Name box in PROPERTIES asks whether to create a control array. Answered YES, the other control becomes element 0 of an array, but the renamed control keeps its name and the same question is asked again; a second YES renames it as element 1. It was observed in an IDE started with an `APPDATA` of its own, reading the boxes shown and the controls' names.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a form with Label1 and Check1, neither in an array.
+2. Select Label1, type `Check1` in its Name box and press Enter. The box asks: *A control already exists with the name 'Check1'. Do you want to create a control array?*
+3. Click YES. Check1 becomes Check1(0), Label1 is still Label1, and the same box is shown again.
+4. Click YES. Label1 becomes Check1(1).
+
+**Expected behavior**
+One question; YES makes both controls the array, Check1(0) and Check1(1).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Answering NO to the first question asks nothing more and keeps the old name. Renaming to the name of an existing array (Command1 to Command2, with Command2(0) and Command2(1) on the form) asks nothing and makes Command2(2).
+
+Severity: low. The second question can be answered, and the result is then right.
+
+<!-- Reproducer: bugs/form-array-question-twice/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "renaming Label1 to Check1 asks the control-array question twice: the first YES makes Check1 an array, the second renames Label1", which passes on BETA 1005; the control "renaming a control to another's name and answering NO asks once and keeps the name" passes too). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Properties.md or Designer.md, under control arrays; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N4). -->
+
+---
+
+## Add Windows Form accepts a name that is not an identifier
+
+**Describe the bug**
+Add Windows Form (and the other Add commands for a designer) asks for the file's name and makes the class's name from it. A name with a space is turned into a bracketed identifier, `[My Form]`, but a name that starts with a digit is taken as it is: `1bad` gives `Class 1bad`, with no message, and the project then does not compile. It was observed in an IDE started with an `APPDATA` of its own, reading the new `.twin` file and the diagnostics.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In Project Explorer, choose Add > Add Windows Form. The name box offers `MyForm.tbform` with `MyForm` selected.
+2. Type `1bad` and press Enter. `1bad.tbform` and `1bad.twin` are created and the designer opens; nothing is said.
+3. `1bad.twin` holds `Class 1bad`, and DIAGNOSTICS lists `TB5174 Invalid number format` at line 4.
+
+**Expected behavior**
+The name refused with a message, or made into an identifier as `My Form` is.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`a.b` gives `Class [a.b]`, and `My Form` gives `Class [My Form]` and a form whose `Name` is `[My Form]`.
+
+Severity: low. The compile error is listed at once.
+
+<!-- Reproducer: bugs/add-form-bad-name/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "Add Windows Form accepts the name 1bad, which is not an identifier, and writes Class 1bad, which does not compile", which passes on BETA 1005; the control "Add Windows Form named My Form writes Class [My Form]" passes too). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md, under adding a form; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. The trial left open whether the project compiles; the lane found TB5174. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N6). -->
+
+---
+
+## View > Zoom Out stops at 50 %, though the zoom box offers 25 %
+
+**Describe the bug**
+With a form designer focused, View > Zoom Out lowers the zoom one step at a time, 75 %, then 50 %, and then does nothing more, though the toolbar's zoom box offers 25 % and can choose it. View > Zoom In from 50 % steps up to 400 %. It was observed in an IDE started with an `APPDATA` of its own, reading the zoom box after each command.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a form and click it, so that the designer has the focus.
+2. Choose View > Zoom Out four times. The zoom box reads 75 %, 50 %, 50 %, 50 %.
+
+**Expected behavior**
+A third Zoom Out going to 25 %, the box's smallest value.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`tbFormDesigner_ZoomDecrease` (`ide/main.js`) steps only `if (zoomSelect.selectedIndex > 1)`, and 25 % is index 0. The same commands scale the zoom by `g_textScaleFactor` the opposite way from the zoom box (`value * (textScale/100)` against `value / (textScale/100)`), which matters only when the Windows text size is above 100 %; that is not reported here, since it could not be tested.
+
+Severity: low. The box reaches 25 %.
+
+<!-- Reproducer: bugs/form-zoom-out-floor/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "View > Zoom Out goes 100 %, 75 %, 50 % and then stays at 50 %, though the zoom box offers 25 %", which passes on BETA 1005; the control "View > Zoom In goes up one step from 50 %" passes too). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md, under the zoom; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. The fact sheet's D3 (the opposite scale factors) is in the same code and needs the Windows text size above 100 %, so a person, not a lane. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's D8). -->
+
+---
+
+## The History entry for a change in a designer reads [line: undefined]
+
+**Describe the bug**
+A change in a form designer adds an entry to the HISTORY panel, named after the form. Its tooltip reads the file's path followed by `[line: undefined]`, where an entry for an edit in a code file gives the line. It was observed in an IDE started with an `APPDATA` of its own, holding the pointer on the entry.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a form, click a control and press Right Arrow.
+2. Show the HISTORY panel and hold the pointer on the entry for the form. The tooltip reads `/<Project>/Sources/frmMain.tbform [line: undefined]` and the date.
+
+**Expected behavior**
+No line in the tooltip of a designer's entry, since a designer has none.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The designer's `onSignificantChange` handler calls `updateHistory(uri, <form name>)` with no line, and the tooltip is built as `<path> [line: <line>]`. An edit inside a procedure of a code file gives an entry whose tooltip reads `[line: 5]`. A double-click on the form's entry opens the designer, as it should.
+
+Severity: low. Cosmetic.
+
+<!-- Reproducer: bugs/history-form-line-undefined/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "the History entry for a change in a designer reads [line: undefined] in its tooltip", which passes on BETA 1005; the control "the History entry for an edit in a procedure names the line in its tooltip" passes too). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md; the chapter is being written), will carry a NOTE for it, or the Writing code chapter's docs/IDE/Code/Navigating.md, which already states [line: undefined]; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's D5). -->
+
+---
+
+## Shift+F7 does not switch from a form's code to its designer when a folder in its path has .twin in its name
+
+**Describe the bug**
+Shift+F7, and the toolbar's Switch Between Form And Code, open a form's designer from its code file. When a folder in the file's path has `.twin` in its name, such as `Sources/v1.twin.forms/frmDeep.twin`, they show the notification *Unable to switch form design mode: this document is not part of a form* and open nothing. From the designer to the code the switch works. It was observed in an IDE started with an `APPDATA` of its own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. A project with a form frmDeep in the folder `Sources/v1.twin.forms` (`frmDeep.tbform` and `frmDeep.twin`).
+2. Open `frmDeep.twin` and press Shift+F7. The notification above is shown, and the designer does not open.
+
+**Expected behavior**
+The designer of frmDeep opened, as Shift+F7 does for a form in `Sources`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`switchToFormPart` (`ide/main.js`) replaces the first `.twin` in the whole path with `.tbform`, giving `Sources/v1.tbform.forms/frmDeep.twin`, which does not exist. From the designer the first `.tbform` in the path is the file's own, so that direction works.
+
+Severity: low. The designer opens from Project Explorer.
+
+<!-- Reproducer: bugs/form-switch-twin-folder/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "Shift+F7 in the code of a form in the folder v1.twin.forms says the document is not part of a form", which passes on BETA 1005; the control "Shift+F7 switches from a form's code to its designer, and the switch from frmDeep's designer opens its code" passes too). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md, under switching to code and back; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's D11). -->
+
+---
+
+## With a report open, a floating Toolbox lists every form control
+
+**Describe the bug**
+With a report designer open, the docked Toolbox lists only the tools a report can hold: Pointer, Label, Shape, Line, Image, CheckMark and QRCode. When the Toolbox floats, it lists all 24 tools of a form and More components. A tool a report cannot hold is refused when used, with the notification *Can't add CommandButton to a report. Only windowless controls allowed.* It was observed in an IDE started with an `APPDATA` of its own, reading the tools shown.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Add a report with Add Windows Report and Enter. The docked Toolbox lists the seven tools above.
+2. Hide the Toolbox and show it again (View > TOOLBOX twice), so that it floats. It lists Pointer, PictureBox, Label, TextBox, Frame, CommandButton and the rest, 24 tools, and More components.
+
+**Expected behavior**
+The same seven tools as the docked Toolbox.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The rule that hides the other tools for a report (`.reportDesignerMode ...`) applies only inside `#bodyInner`, where the docked Toolbox is; a floating panel is outside it.
+
+Severity: low. Nothing wrong can be added.
+
+<!-- Reproducer: bugs/report-floating-toolbox/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "with a report open, a floating Toolbox lists every tool of a form", which passes on BETA 1005; the control "with a report open, the docked Toolbox lists the report's seven tools" passes too). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Reports/ (the report designer's tools; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's D4). -->
+
+---
+
+## A package's read-only designer file opens an empty tab besides the notice that it cannot be opened
+
+**Describe the bug**
+A designer file of a referenced package, such as the VB package's `tbObjectDesigner_PROPERTYPAGE.tbppage`, is read-only. Opening it from Project Explorer shows the notification *Can't open designer for a read-only document.*, and also adds a tab of that name and selects it: an empty tab with no close icon. A middle click closes it. It was observed in an IDE started with an `APPDATA` of its own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. In a project that references the VB package, expand Packages > VB > Sources > DESIGNERS in Project Explorer.
+2. Double-click `tbObjectDesigner_PROPERTYPAGE.tbppage`. The notification above is shown, and an empty tab `tbObjectDesigner_PROPERTYPAGE.tbppage` is added and selected.
+
+**Expected behavior**
+The notification only, with no tab; or the file shown read-only, as View As JSON can.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The IDE never reports the file as opened (the open's completion callback is not called), and the page throws a `TypeError` in a websocket request handler.
+
+Severity: low. Cosmetic; the tab closes with a middle click.
+
+<!-- Reproducer: bugs/readonly-designer-empty-tab/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "a package's read-only designer file opens an empty tab of its name besides the notice that it cannot be opened", which passes on BETA 1005; it opens the file with openEditors.openFile, as a double-click in Project Explorer does, and asserts the tab has no close icon). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N8). -->
+
+---
+
+## A form file with bad JSON opens an empty designer that takes no edit
+
+**Describe the bug**
+A `.tbform` file whose JSON has a syntax error (the project lists `TB5246 bad JSON syntax` for it) opens in a designer tab that shows no control and an empty PROPERTIES pane, with the notification *ERROR: bad JSON encountered when parsing tbform*. The designer looks usable but takes no edit: a control drawn or double-clicked from the Toolbox is not added, the tab is never marked changed, and Ctrl+S leaves the file as it was. Nothing is lost. It was observed in an IDE started with an `APPDATA` of its own, reading the designer and the saved project file.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. A project with a form whose `.tbform` file has a doubled comma, `"Height": 300,,`.
+2. Open the `.tbform`. The notification above is shown, and the designer tab is empty.
+3. Double-click the CommandButton tool. Nothing is added, and the tab shows no change mark.
+4. Press Ctrl+S. The file is as it was.
+
+**Expected behavior**
+The designer not opened, with the notification, or a message in the designer that the file cannot be read, so that the reader opens it as text to repair it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The page throws `TypeError: Cannot read properties of undefined (reading '0')` in `formDesigner_syncToState` when the designer opens, and `addControl` throws at the double-click. A `.tbform` with no `FormDesignerId` opens normally.
+
+Severity: low. Nothing is lost; the empty designer is misleading.
+
+<!-- Reproducer: bugs/form-bad-json-empty-designer/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "a form file with bad JSON opens an empty designer that adds no control, and Save leaves the file as it was", which passes on BETA 1005, on the lane's second project, test/ide/probes/forms-badjson, which the lane opens accepting its two errors, TB5246 and TB5247). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md, under the .tbform file; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N9). -->
