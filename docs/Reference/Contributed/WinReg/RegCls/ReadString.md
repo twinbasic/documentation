@@ -12,7 +12,7 @@ Reads a **REG_SZ** string value from the Windows registry and returns it as a **
 Syntax: *object*.**ReadString** ( *RootKey*, *KeyPath*, *ValueName* [, *DefaultValue* ] )
 
 *RootKey*
-: *required* A **RegKeyspace** value identifying the root hive to open. Common values are `HKEY_CURRENT_USER` and `HKEY_LOCAL_MACHINE`.
+: *required* A [**RegKeyspace**](../RegKeyspace) value identifying the root hive to open. Common values are `HKEY_CURRENT_USER` and `HKEY_LOCAL_MACHINE`.
 
 *KeyPath*
 : *required* A **String** giving the path to the registry key beneath *RootKey*, using backslashes as separators (for example, `"Software\MyApp"`).
@@ -24,6 +24,9 @@ Syntax: *object*.**ReadString** ( *RootKey*, *KeyPath*, *ValueName* [, *DefaultV
 : *optional* A **String** to return when the key cannot be opened, the named value does not exist, or the value is not of type **REG_SZ**. Defaults to `""` (empty string) when omitted.
 
 Returns a **String** containing the data stored in the registry value, or *DefaultValue* if the value cannot be read.
+
+> [!WARNING]
+> The string that **ReadString** returns is longer than the stored text. For a text of *n* characters the result has 2*n* + 1: the text, then *n* + 1 NUL characters (`Chr(0)`). The method cuts its buffer to the size that `RegQueryValueEx` reports, less one, and that size counts bytes while a character of the buffer is two bytes. `ReadString(...) = "Alice"` is therefore **False** for a stored `Alice`, and a stored empty string comes back as one NUL character. A *DefaultValue* is returned as it is, with no NUL characters. To get the text, cut the result at the first NUL, as the second example does.
 
 ### Remarks
 
@@ -42,6 +45,17 @@ Dim Reg As New RegCls
 Dim UserName As String
 
 UserName = Reg.ReadString(HKEY_CURRENT_USER, "Software\MyApp", "UserName", "DefaultUser")
+Debug.Print "User: " & UserName
+```
+
+This example cuts the result at the first NUL character, which leaves the stored text, or the default:
+
+```tb check_build
+Dim Reg As New RegCls
+Dim UserName As String
+
+UserName = Reg.ReadString(HKEY_CURRENT_USER, "Software\MyApp", "UserName", "DefaultUser")
+UserName = Split(UserName, vbNullChar)(0)
 Debug.Print "User: " & UserName
 ```
 

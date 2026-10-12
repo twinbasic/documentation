@@ -55,10 +55,10 @@
 			"path32": "/Packages/WinReg",
 			"path64": "/Packages/WinReg",
 			"symbolId": "WinReg",
-			"versionBuild": "0",
-			"versionMajor": "0",
+			"versionBuild": "1",
+			"versionMajor": "1",
 			"versionMinor": "0",
-			"versionRevision": "0"
+			"versionRevision": "1"
 		},
 		{
 			"autoCtlExt": true,

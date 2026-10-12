@@ -12,7 +12,7 @@ Returns the data type of a named registry value without reading its data.
 Syntax: *object*.**GetRegistryValueType**( *hKey*, *subKey*, *valueName* ) **As REGTYPES**
 
 *hKey*
-: *required* A **Long** holding a key handle, usually a predefined root key. Pass a `RegKeyspace` constant such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
+: *required* A **Long** holding a key handle, usually a predefined root key. Pass a [**RegKeyspace**](../RegKeyspace) constant such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
 
 *subKey*
 : *required* A **String** specifying the path to the registry key beneath *hKey*, for example `"Software\MyApp"`.
@@ -23,6 +23,9 @@ Syntax: *object*.**GetRegistryValueType**( *hKey*, *subKey*, *valueName* ) **As 
 **GetRegistryValueType** opens *subKey* under *hKey* with `KEY_QUERY_VALUE` access, calls `RegQueryValueEx` to retrieve the type code without reading the value data, then closes the key. It returns a `REGTYPES` member identifying the data type stored under *valueName*---for example `REG_SZ`, `REG_DWORD`, or `REG_BINARY`.
 
 If the key cannot be opened or the value query fails, the function returns `REGTYPES.REG_NONE`.
+
+> [!WARNING]
+> The function returns `REG_NONE` for every value that holds data. It asks `RegQueryValueEx` for the type with a data pointer and a size of zero, and the call fails with error 234 (*more data*) when the value has any data. Only a value of zero length, such as an empty `REG_BINARY`, gets its type. A program that needs the type of a value calls `RegQueryValueEx` itself.
 
 > [!NOTE]
 > *hKey* is declared as **Long**, not as **RegKeyspace**. The two types are assignment-compatible in twinBASIC, so passing a `RegKeyspace` constant works without an explicit cast.

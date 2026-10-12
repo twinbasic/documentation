@@ -10,7 +10,7 @@ has_toc: false
 
 A Windows Registry helper class that reads, writes, deletes, and enumerates registry keys and values through the Win32 `advapi32` API.
 
-**RegCls** wraps the most common registry operations---reading and writing string and DWORD values, creating and deleting keys, checking whether a key or value exists, and enumerating all values under a key---into a single class. It depends on the types and API declarations from the **WinDevLib** package (`RegKeyspace`, `REGTYPES`, `RegOpenKeyEx`, `RegCreateKeyEx`, and so on); the source contains commented-out copies of those declarations and recommends using the **WinDevLib** package instead.
+**RegCls** wraps the most common registry operations---reading and writing string and DWORD values, creating and deleting keys, checking whether a key or value exists, and enumerating all values under a key---into a single class. It declares the [**RegKeyspace**](../RegKeyspace) and [**enumRegSzType**](../enumRegSzType) enumerations and its own copies of the `advapi32` declarations it uses, and takes `RegOpenKeyEx`, `RegSetValueEx` and the types **BOOL** and **REGTYPES** from the **WinDevLib** package. A comment in the source recommends the declarations of **WinDevLib** over the class's own.
 
 ```tb check_build
 Dim reg As New RegCls
@@ -55,6 +55,9 @@ Returns an empty string when the call fails. For `REG_SZ` / `REG_EXPAND_SZ` valu
 > [!NOTE]
 > This overload queries the value through the provided key handle. The caller must keep the handle open for the duration of the call and close it with `RegCloseKey` afterwards. The source comments mark this overload as not yet tested.
 
+> [!WARNING]
+> This overload does not find the value. It passes `StrPtr(subkey)` to a parameter that `RegQueryValueEx` declares `ByVal` **String**, so the name that reaches the function is not *subkey*, the query fails with error 2 (file not found), and the overload returns an empty string for `REG_SZ`, `REG_EXPAND_SZ`, the DWORD types and `REG_BINARY`. Any other type code returns `"Unsupported type: "` followed by the code. Overload 2 and [**EnumValues**](#enumvalues) are not affected.
+
 ### ConvertValueToString (overload 2)
 {: .no_toc }
 
@@ -78,7 +81,7 @@ Creates a registry key, including any intermediate sub-keys that do not yet exis
 Syntax: *object*.**CreateKey** ( *RootKey*, *KeyPath* ) **As BOOL**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
 
 *KeyPath*
 : *required* A **String** with the backslash-delimited sub-key path beneath *RootKey*, e.g. `"Software\MyApp\Settings\Advanced"`. Multi-level paths are created in one call.
@@ -96,7 +99,7 @@ Deletes a registry key. The key must have no sub-keys for this call to succeed; 
 Syntax: *object*.**DeleteKey** ( *RootKey*, *KeyPath* ) **As BOOL**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive.
 
 *KeyPath*
 : *required* A **String** with the sub-key path to delete beneath *RootKey*.
@@ -111,7 +114,7 @@ Recursively deletes a registry key together with all its sub-keys and values.
 Syntax: *object*.**DeleteKeyEx** ( *RootKey*, *KeyPath* ) **As BOOL**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive.
 
 *KeyPath*
 : *required* A **String** with the sub-key path to delete beneath *RootKey*.
@@ -129,7 +132,7 @@ Deletes a single named value from a registry key.
 Syntax: *object*.**DeleteValue** ( *RootKey*, *KeyPath*, *ValueName* ) **As BOOL**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive.
 
 *KeyPath*
 : *required* A **String** with the sub-key path containing the value.
@@ -147,7 +150,7 @@ Returns all named values under a registry key as a **Dictionary** mapping each v
 Syntax: *object*.**EnumValues** ( *RootKey*, *KeyPath* ) **As Dictionary**
 
 *RootKey*
-: *required* A **Long** identifying the root hive (compatible with the `RegKeyspace` enum values).
+: *required* A **Long** identifying the root hive. Pass a member of [**RegKeyspace**](../RegKeyspace).
 
 *KeyPath*
 : *required* A **String** with the sub-key path to enumerate.
@@ -174,6 +177,9 @@ Syntax: *object*.**GetRegistryValueType** ( *hKey*, *subKey*, *valueName* ) **As
 
 Returns a member of the `REGTYPES` enumeration (from **WinDevLib**), such as `REG_SZ`, `REG_DWORD`, or `REG_BINARY`. Returns `REG_NONE` if the sub-key cannot be opened or the value does not exist.
 
+> [!WARNING]
+> The method returns `REG_NONE` for every value that holds data. It asks `RegQueryValueEx` for the type with a data pointer and a size of zero, and the call fails with error 234 (*more data*) when the value has any data. Only a value of zero length, such as an empty `REG_BINARY`, gets its type.
+
 ### KeyExists
 {: .no_toc }
 
@@ -182,7 +188,7 @@ Returns whether a registry key exists.
 Syntax: *object*.**KeyExists** ( *RootKey*, *KeyPath* ) **As Boolean**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive.
 
 *KeyPath*
 : *required* A **String** with the sub-key path to test.
@@ -197,7 +203,7 @@ Reads a `REG_DWORD` value from the registry and returns it as a **Long**.
 Syntax: *object*.**ReadDWORD** ( *RootKey*, *KeyPath*, *ValueName* [, *DefaultValue* ] ) **As Long**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive.
 
 *KeyPath*
 : *required* A **String** with the sub-key path containing the value.
@@ -216,7 +222,7 @@ Reads a `REG_SZ` value from the registry and returns it as a **String**.
 Syntax: *object*.**ReadString** ( *RootKey*, *KeyPath*, *ValueName* [, *DefaultValue* ] ) **As String**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive.
 
 *KeyPath*
 : *required* A **String** with the sub-key path containing the value.
@@ -227,6 +233,9 @@ Syntax: *object*.**ReadString** ( *RootKey*, *KeyPath*, *ValueName* [, *DefaultV
 *DefaultValue*
 : *optional* A **String** returned when the key or value does not exist, or when the stored type is not `REG_SZ`. Default: `""` (empty string).
 
+> [!WARNING]
+> The string that **ReadString** returns is longer than the stored text. For a text of *n* characters the result has 2*n* + 1: the text, then *n* + 1 NUL characters (`Chr(0)`). The method cuts its buffer to the size that `RegQueryValueEx` reports, less one, and that size counts bytes while a character of the buffer is two bytes. `ReadString(...) = "Alice"` is therefore **False** for a stored `Alice`. A *DefaultValue* is returned as it is, with no NUL characters. To get the text, cut the result at the first NUL: `Split(ReadString(...), vbNullChar)(0)`.
+
 ### ValueExists
 {: .no_toc }
 
@@ -235,7 +244,7 @@ Returns whether a named value exists within a registry key.
 Syntax: *object*.**ValueExists** ( *RootKey*, *KeyPath*, *ValueName* ) **As Boolean**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive.
 
 *KeyPath*
 : *required* A **String** with the sub-key path containing the value.
@@ -253,7 +262,7 @@ Creates or updates a `REG_DWORD` value in the registry.
 Syntax: *object*.**WriteDWORD** ( *RootKey*, *KeyPath*, *ValueName*, *ValueData* ) **As BOOL**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive.
 
 *KeyPath*
 : *required* A **String** with the sub-key path. The key is created if it does not exist.
@@ -274,7 +283,7 @@ Creates or updates a `REG_SZ` value in the registry.
 Syntax: *object*.**WriteString** ( *RootKey*, *KeyPath*, *ValueName*, *ValueData* ) **As BOOL**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive.
 
 *KeyPath*
 : *required* A **String** with the sub-key path. The key is created if it does not exist.
@@ -292,7 +301,7 @@ Returns **True** on success, **False** if the key could not be created or the va
 
 ## Remarks
 
-**RegCls** requires the **WinDevLib** package. The source file includes commented-out copies of the needed API declarations and enum constants as a reference, but the live code relies on WinDevLib's exported symbols (`RegOpenKeyEx`, `RegCreateKeyEx`, `RegSetValueEx`, `RegQueryValueEx`, `RegDeleteValue`, `RegDeleteKey`, `RegCloseKey`, `RegEnumKeyEx`, `RegEnumValue`, `RegKeyspace`, `REGTYPES`, and the `KEY_*` / `REG_*` / `ERROR_SUCCESS` constants). Add a reference to WinDevLib before compiling.
+**RegCls** requires the **WinDevLib** package. The class declares the enumerations [**RegKeyspace**](../RegKeyspace) and [**enumRegSzType**](../enumRegSzType), its own copies of `RegCreateKeyEx`, `RegQueryValueEx`, `RegDeleteValue`, `RegDeleteKey`, `RegCloseKey`, `RegEnumKeyEx` and `RegEnumValue`, and the constants `ERROR_SUCCESS` and `KEY_*` that it uses. The code relies on **WinDevLib** for `RegOpenKeyEx`, `RegSetValueEx`, the types `REGTYPES` and `BOOL`, and the types that its own declarations use (`RegOptions`, `REGSAM`, `SECURITY_ATTRIBUTES`, `FILETIME` and `RegistryCreateDispositions`). The package embeds **WinDevLib**; a project that names those types or calls those functions itself references **WinDevLib** as well.
 
 The `BOOL` return type used by the create, write and delete methods is declared by WinDevLib. The methods assign it a **Boolean** result, so it can be tested directly in an `If` statement.
 

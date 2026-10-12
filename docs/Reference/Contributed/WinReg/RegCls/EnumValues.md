@@ -12,7 +12,7 @@ Returns a **Dictionary** containing the names and string representations of all 
 Syntax: *object*.**EnumValues** ( *RootKey*, *KeyPath* )
 
 *RootKey*
-: *required* A **Long** identifying the root hive. Pass one of the `RegKeyspace` constants: **HKEY_CLASSES_ROOT**, **HKEY_CURRENT_USER**, **HKEY_LOCAL_MACHINE**, **HKEY_USERS**, etc.
+: *required* A **Long** identifying the root hive. Pass one of the [**RegKeyspace**](../RegKeyspace) constants: **HKEY_CLASSES_ROOT**, **HKEY_CURRENT_USER**, **HKEY_LOCAL_MACHINE**, **HKEY_USERS**, etc.
 
 *KeyPath*
 : *required* A **String** giving the path to the subkey beneath *RootKey*, for example `"Software\MyApp"`.

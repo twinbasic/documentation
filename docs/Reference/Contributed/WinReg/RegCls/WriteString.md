@@ -12,7 +12,7 @@ Writes a string value to a registry key, creating the key if it does not exist.
 Syntax: *object*.**WriteString**( *RootKey*, *KeyPath*, *ValueName*, *ValueData* ) **As BOOL**
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the root hive, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the root hive, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
 
 *KeyPath*
 : *required* A **String** specifying the subkey path within *RootKey*, for example `"Software\MyApp"`. Intermediate keys are created automatically if they do not exist.

@@ -330,11 +330,12 @@ the repository's to commit: four of the nine ship no licence file, and WinReg em
   one project, VBA_JSON's `Dictionary` class hid the `Scripting.Dictionary` that WinReg's
   samples name.
 - **A project does not see the names a package's own references declare.** WinReg embeds
-  WinDevLib, and its samples' `HKEY_CURRENT_USER`, `REGTYPES` and `BOOL` were unresolved
+  WinDevLib, and its samples' `REGTYPES`, `BOOL` and `RegOpenKeyEx` (and, before 1.0.1.1,
+  `HKEY_CURRENT_USER`, which WinReg's own `RegKeyspace` now supplies) were unresolved
   until `contributed-WinReg` referenced WinDevLib (at the version WinReg embeds, 8.8.0.507)
   and the Scripting Runtime itself. The WinReg landing page tells the reader the same.
 - **An error inside an embedded package is the package's, and fails nothing**
-  (`splitPackageFaults`). BigNumberLib 0.0.0.0, WinReg 0.0.0.0 and ArrayListLib 1.4.0.134 do not compile on BETA
+  (`splitPackageFaults`). BigNumberLib 0.0.0.0, WinReg 1.0.1.1 and ArrayListLib 1.4.0.134 do not compile on BETA
   1005: each passes a pointer to a `ByRef` structure parameter without `ByVal` (TB5001). The
   template-alone build finds those rows; the run prints them as a note naming the package
   rather than as a template FAIL, every other template row still fails, and the samples are

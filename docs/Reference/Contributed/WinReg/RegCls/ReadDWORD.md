@@ -12,7 +12,7 @@ Reads a **REG_DWORD** value from the Windows registry and returns it as a **Long
 Syntax: *object*.**ReadDWORD** ( *RootKey*, *KeyPath*, *ValueName* [ , *DefaultValue* ] )
 
 *RootKey*
-: *required* A **RegKeyspace** constant identifying the registry hive to read from, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
+: *required* A [**RegKeyspace**](../RegKeyspace) constant identifying the registry hive to read from, such as `HKEY_CURRENT_USER` or `HKEY_LOCAL_MACHINE`.
 
 *KeyPath*
 : *required* A **String** giving the path to the registry key, relative to *RootKey*. Components are separated by backslashes---for example, `"Software\MyApp\Settings"`.
