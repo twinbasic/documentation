@@ -33,7 +33,7 @@ Returns **True** when *outputFile* was written, and **False** when it was not. T
 
 The root of the project file is named after the last folder of *inputDir*. Everything in *inputDir* is stored, in all its subfolders: hidden files, empty folders and a `.git` folder included. Keep the project's files in a folder of their own. The top folder of a Git repository would put the repository's own data into the project file.
 
-Version 1.0.5.0 stores each file exactly as it is on disk. It does not convert line endings. The IDE stores `.twin`, `.bas` and `.cls` files with CR LF line endings, so a checkout that has changed them to LF is packed with LF.
+Every file is stored as it is on disk, except the code files that [Line endings](#line-endings) describes.
 
 Every project that the IDE exports has the folders `Resources`, `Sources`, `ImportedTypeLibraries`, `Miscellaneous` and `Packages`, even when they are empty. Git does not store an empty folder, so a folder checked out from a repository can lack some of them. **Pack** does not add the missing folders. It prints two lines after the summary line, and still returns **True**:
 
@@ -41,6 +41,28 @@ Every project that the IDE exports has the folders `Resources`, `Sources`, `Impo
   note: expected folders not present on disk: Resources, Sources, ImportedTypeLibraries, Miscellaneous, Packages.
   twinBASIC should rebuild them on Open Project.
 ```
+
+## Line endings
+
+The IDE stores `.twin`, `.bas` and `.cls` files with CR LF line endings. A checkout that Git or an editor has changed to LF would otherwise be packed with LF, so **Pack** converts these files to CR LF while it packs them. A file is converted when both of these hold:
+
+- Its extension is `.twin`, `.bas` or `.cls`, in any letter case.
+- It is in a folder named `Sources`, or in a folder below one. The folder name is matched in exact letter case and can be at any depth below *inputDir*: `Sources\Forms`, `Resources\Sources` and `Other\Sources` count, and `sources` does not.
+
+Every other file is stored as it is on disk, a text file in `Sources` and a code file outside it included. The folder *inputDir* itself is not tested for its name.
+
+The conversion removes every CR and then turns every LF into CR LF. A file that already has CR LF line endings comes out unchanged. The files on disk are never changed; only the copy in the project file is.
+
+> [!NOTE]
+> A CR that is not followed by LF is removed, and no line break replaces it. A code file whose lines end in a CR alone, as old Macintosh text files do, is packed as one line. The Import/export tool leaves such a CR in place.
+
+After the summary line, **Pack** prints the number of files that the conversion changed. A file that already had CR LF line endings is not counted, and when no file changed, the line is not printed:
+
+```
+  note: converted 7 code file(s) under Sources from Unix (LF) to Windows (CRLF) line endings.
+```
+
+The line follows the note about missing folders, when there is one.
 
 ## Refusals
 

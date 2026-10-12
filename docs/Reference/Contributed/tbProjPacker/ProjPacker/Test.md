@@ -25,7 +25,7 @@ Returns **True** when no test failed, and **False** when a test failed or *sampl
 
 ## What the tests check
 
-There are 23 tests. Each runs on its own, so a failure in one does not stop the others. The tests work in a new folder, named `impexp-test-` and a number, in the folder that the `TEMP` environment variable names. The folder is deleted when the tests end.
+There are 24 tests. Each runs on its own, so a failure in one does not stop the others. The tests work in a new folder, named `impexp-test-` and a number, in the folder that the `TEMP` environment variable names. The folder is deleted when the tests end.
 
 Four tests need the sample file:
 
@@ -34,11 +34,11 @@ Four tests need the sample file:
 - Writing, parsing and writing again gives the same bytes both times.
 - Unpacking the sample, packing the folder and unpacking that file gives two folders with the same files and the same bytes.
 
-Nineteen tests need no sample:
+Twenty tests need no sample:
 
 - **File format (6).** An empty project, a project with one file, the flags of the entries, Unicode names with their sort order, a file with a wrong magic number, and a file cut short.
 - **Long path (1).** A file whose path is longer than 260 characters survives a pack and an unpack.
-- **Pack (4).** [**Pack**](Pack) refuses a folder with no `Settings` file and accepts one with it. It refuses to replace an existing file, and replaces it when *overwrite* is **True**.
+- **Pack (5).** [**Pack**](Pack) refuses a folder with no `Settings` file and accepts one with it. It refuses to replace an existing file, and replaces it when *overwrite* is **True**. It converts the [line endings](Pack#line-endings) of the code files under `Sources`, and leaves a text file there and a code file elsewhere as they are.
 - **Unpack with *cleanFirst* (6).** [**Unpack**](Unpack) removes leftover files, counts the levels of a path correctly, refuses a folder that has no `Settings` file and a folder whose `Settings` is a folder, and accepts a project folder and an empty folder.
 - **Other refusals (2).** **Pack** refuses a folder whose `Settings` is a folder. **Unpack** reports a project file that does not exist.
 
@@ -55,21 +55,21 @@ Sample:            C:\...\imagestrip.twinproj
   [INFO] root "imagestrip", 18 files, 6 directories, 170595 bytes
   [PASS] Parse sample (invariants + re-parse consistency)
   [PASS] In-memory round-trip (parse -> serialize -> re-parse)
-  ... 21 more lines, one for each of the other tests ...
+  ... 22 more lines, one for each of the other tests ...
 
-23/23 tests passed.
+24/24 tests passed.
 ```
 
 Without a sample, the four sample tests print `[SKIP]` and the summary ends with the number skipped:
 
 ```
-19/19 tests passed (4 skipped -- pass a .twinproj or .twinpack path to run them).
+20/20 tests passed (4 skipped -- pass a .twinproj or .twinpack path to run them).
 ```
 
 A *samplePath* that does not exist prints `Sample not found: ` and the path. No test runs.
 
 > [!NOTE]
-> An empty *samplePath* does not make the method fail. With 19 of the 19 tests that run passed and 4 skipped, it returns **True**. Pass a project file to run all 23.
+> An empty *samplePath* does not make the method fail. With 20 of the 20 tests that run passed and 4 skipped, it returns **True**. Pass a project file to run all 24.
 
 ## Example
 

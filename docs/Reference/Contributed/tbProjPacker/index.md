@@ -3,22 +3,22 @@ title: tbProjPacker Package
 parent: Contributed Packages
 has_toc: false
 exclude_from_docs:
-  - modPackUnpack
+  - modImpExp
   - modWin32
-indexed_from: 1.0.5.0
+indexed_from: 1.1.0.0
 permalink: /tB/Packages/Contributed/tbProjPacker/
 ---
 
 # tbProjPacker Package
 {: .no_toc }
 
-**Author:** GCuser99. **Version:** 1.0.5.0. **On GitHub:** [GCuser99/tbProjPacker](https://github.com/GCuser99/tbProjPacker), in the folder *Project*.
+**Author:** GCuser99. **Version:** 1.1.0.0. **On GitHub:** [GCuser99/tbProjPacker](https://github.com/GCuser99/tbProjPacker), in the folder *Project*.
 
 The **tbProjPacker** contributed package unpacks a twinBASIC project file, a `.twinproj` or `.twinpack` file, into a folder of source files, and packs such a folder into a project file again. It does from twinBASIC code what the [Import/export tool](../../../../Features/Packages/Import-Export-Tool) does from a command line: [**Unpack**](ProjPacker/Unpack) corresponds to the tool's `export` command, and [**Pack**](ProjPacker/Pack) to its `import` command.
 
 A project file is one binary file, which version control can neither compare nor merge. The folder it unpacks to is made of text files, which it can. A build routine can also unpack a copy of a project, change the copy (remove helper code, edit the `Settings` file) and pack it for release, and the original project is not touched.
 
-The package has one public class, [**ProjPacker**](ProjPacker/), with three methods: **Unpack** and **Pack**, and [**Test**](ProjPacker/Test), which runs the package's own tests. A project that references the package sees nothing else. The code that reads and writes the file format, the Windows calls under it and the tests are in private modules and classes. This section documents version 1.0.5.0, published under the MIT licence.
+The package has one public class, [**ProjPacker**](ProjPacker/), with three methods: **Unpack** and **Pack**, and [**Test**](ProjPacker/Test), which runs the package's own tests. A project that references the package sees nothing else. The code that reads and writes the file format, the Windows calls under it and the tests are in private modules and classes. This section documents version 1.1.0.0, published under the MIT licence.
 
 ```tb check_build
 Dim pp As New ProjPacker
@@ -53,7 +53,7 @@ Some calls are refused, and return **False**, because they would lose data or pr
 
 The tool's script and the package read and write the same file format. They differ in what they do around it:
 
-- The tool's `import` converts LF line endings to CRLF in `.twin`, `.bas` and `.cls` files. **Pack** stores every file as it is.
+- The tool's `import` converts LF line endings to CRLF in every `.twin`, `.bas` and `.cls` file. **Pack** converts them only in a folder named `Sources` and the folders below it, and stores every other file as it is. The tool leaves a CR that is not followed by LF in place, and **Pack** removes it. [**Pack**](ProjPacker/Pack#line-endings) describes the rule.
 - The script skips a `.git` folder. **Pack** packs it, with every other hidden file and empty folder.
 - The script adds the folders that the IDE always writes (`ImportedTypeLibraries`, `Miscellaneous`, `Packages`, `Resources` and `Sources`) when the folder lacks them. **Pack** adds none and prints a note naming the missing ones.
 - The tool's `export` refuses to replace files already in the folder unless `--overwrite` is given. **Unpack** replaces them without asking, and has *cleanFirst* to empty the folder first.

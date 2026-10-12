@@ -2,7 +2,7 @@
   "format": 3,
   "package": "tbProjPacker",
   "project": "tbProjPacker",
-  "version": "1.0.5.0",
+  "version": "1.1.0.0",
   "types": [
     {
       "name": "ByteBuffer",
@@ -109,29 +109,25 @@
       ]
     },
     {
-      "name": "modOutput",
+      "name": "modExample",
       "kind": "module",
       "vis": "private",
       "public": false,
-      "file": "modOutput.twin",
-      "signature": "Private Module modOutput",
+      "file": "Examples/modExample.twin",
+      "signature": "Private Module modExample",
       "members": [
-        {"name":"LogClose","kind":"sub","vis":"public","signature":"Public Sub LogClose()"},
-        {"name":"LogOpen","kind":"sub","vis":"public","signature":"Public Sub LogOpen(ByVal path As String)"},
-        {"name":"Say","kind":"sub","vis":"public","signature":"Public Sub Say(ByVal s As String)"},
-        {"name":"mLogHandle","kind":"field","vis":"private","signature":"Private mLogHandle As LongPtr"},
-        {"name":"mLogOpen","kind":"field","vis":"private","signature":"Private mLogOpen As Boolean"}
+        {"name":"Example","kind":"sub","vis":"private","signature":"Private Sub Example()"}
       ]
     },
     {
-      "name": "modPackUnpack",
+      "name": "modImpExp",
       "kind": "module",
       "vis": "private",
       "public": false,
       "file": "modImpExp.twin",
-      "signature": "Private Module modPackUnpack",
+      "signature": "Private Module modImpExp",
       "members": [
-        {"name":"BuildTree","kind":"function","vis":"private","signature":"Private Function BuildTree(ByVal dirPath As String) As Entry","returnType":"Entry"},
+        {"name":"BuildTree","kind":"function","vis":"private","signature":"Private Function BuildTree(ByVal dirPath As String, Optional ByVal withinSources As Boolean = False) As Entry","returnType":"Entry"},
         {"name":"CategoryFor","kind":"function","vis":"public","signature":"Public Function CategoryFor(ByVal name As String) As Byte","returnType":"Byte"},
         {"name":"CleanTargetForImport","kind":"sub","vis":"private","signature":"Private Sub CleanTargetForImport(ByVal outputDir As String)"},
         {"name":"CountEntry","kind":"sub","vis":"private","signature":"Private Sub CountEntry(ByVal e As Entry, ByRef res As PP_RESULT)"},
@@ -168,13 +164,14 @@
         {"name":"SerializeTree","kind":"function","vis":"public","signature":"Public Function SerializeTree(ByVal root As Entry, ByRef outLen As Long) As Byte()","returnType":"Byte()"},
         {"name":"WellKnownCategoryNames","kind":"function","vis":"private","signature":"Private Function WellKnownCategoryNames() As String","returnType":"String"},
         {"name":"WriteEntry","kind":"sub","vis":"private","signature":"Private Sub WriteEntry(ByVal bb As ByteBuffer, ByVal e As Entry, ByRef isFirst As Boolean)"},
-        {"name":"WriteStr","kind":"sub","vis":"private","signature":"Private Sub WriteStr(ByVal bb As ByteBuffer, ByVal s As String)"}
+        {"name":"WriteStr","kind":"sub","vis":"private","signature":"Private Sub WriteStr(ByVal bb As ByteBuffer, ByVal s As String)"},
+        {"name":"mNormalizedCount","kind":"field","vis":"private","signature":"Private mNormalizedCount As Long"}
       ]
     },
     {
       "name": "EntryKindEnum",
       "kind": "enum",
-      "in": "modPackUnpack",
+      "in": "modImpExp",
       "vis": "public",
       "file": "modImpExp.twin",
       "signature": "Public Enum EntryKindEnum",
@@ -186,7 +183,7 @@
     {
       "name": "PP_RESULT",
       "kind": "type",
-      "in": "modPackUnpack",
+      "in": "modImpExp",
       "vis": "public",
       "public": false,
       "file": "modImpExp.twin",
@@ -198,6 +195,21 @@
         {"name":"DirCount","vis":"public","signature":"DirCount As Long"}
       ],
       "members": []
+    },
+    {
+      "name": "modOutput",
+      "kind": "module",
+      "vis": "private",
+      "public": false,
+      "file": "modOutput.twin",
+      "signature": "Private Module modOutput",
+      "members": [
+        {"name":"LogClose","kind":"sub","vis":"public","signature":"Public Sub LogClose()"},
+        {"name":"LogOpen","kind":"sub","vis":"public","signature":"Public Sub LogOpen(ByVal path As String)"},
+        {"name":"Say","kind":"sub","vis":"public","signature":"Public Sub Say(ByVal s As String)"},
+        {"name":"mLogHandle","kind":"field","vis":"private","signature":"Private mLogHandle As LongPtr"},
+        {"name":"mLogOpen","kind":"field","vis":"private","signature":"Private mLogOpen As Boolean"}
+      ]
     },
     {
       "name": "modSelfTest",
@@ -214,7 +226,9 @@
         {"name":"CountRoot","kind":"sub","vis":"private","signature":"Private Sub CountRoot(ByVal root As Entry, ByRef fileCount As Long, ByRef dirCount As Long)"},
         {"name":"CountTree","kind":"sub","vis":"private","signature":"Private Sub CountTree(ByVal e As Entry, ByRef fileCount As Long, ByRef dirCount As Long)"},
         {"name":"EntryContentEqual","kind":"function","vis":"private","signature":"Private Function EntryContentEqual(ByVal x As Entry, ByVal y As Entry) As Boolean","returnType":"Boolean"},
+        {"name":"EntryIsCRLF","kind":"function","vis":"private","signature":"Private Function EntryIsCRLF(ByVal root As Entry, ByVal relPath As String) As Boolean","returnType":"Boolean"},
         {"name":"Fail","kind":"sub","vis":"private","signature":"Private Sub Fail(ByVal msg As String)"},
+        {"name":"FindEntry","kind":"function","vis":"private","signature":"Private Function FindEntry(ByVal root As Entry, ByVal relPath As String) As Entry","returnType":"Entry"},
         {"name":"FlattenTree","kind":"sub","vis":"private","signature":"Private Sub FlattenTree(ByVal e As Entry, ByVal prefix As String, ByVal paths As Collection, ByVal entries As Collection)"},
         {"name":"Info","kind":"sub","vis":"private","signature":"Private Sub Info(ByVal msg As String)"},
         {"name":"MakeProjectTree","kind":"function","vis":"private","signature":"Private Function MakeProjectTree(ByVal name As String, ByVal withSettings As Boolean) As String","returnType":"String"},
@@ -234,6 +248,7 @@
         {"name":"T_Idempotence","kind":"sub","vis":"private","signature":"Private Sub T_Idempotence()"},
         {"name":"T_ImportMissingInput","kind":"sub","vis":"private","signature":"Private Sub T_ImportMissingInput()"},
         {"name":"T_InMemoryRoundTrip","kind":"sub","vis":"private","signature":"Private Sub T_InMemoryRoundTrip()"},
+        {"name":"T_LineEndingNormalization","kind":"sub","vis":"private","signature":"Private Sub T_LineEndingNormalization()"},
         {"name":"T_LongPath","kind":"sub","vis":"private","signature":"Private Sub T_LongPath()"},
         {"name":"T_OverwriteGuardFires","kind":"sub","vis":"private","signature":"Private Sub T_OverwriteGuardFires()"},
         {"name":"T_OverwritePassesWithFlag","kind":"sub","vis":"private","signature":"Private Sub T_OverwritePassesWithFlag()"},
@@ -245,6 +260,7 @@
         {"name":"T_TruncationRejected","kind":"sub","vis":"private","signature":"Private Sub T_TruncationRejected()"},
         {"name":"T_UnicodeAndOrdering","kind":"sub","vis":"private","signature":"Private Sub T_UnicodeAndOrdering()"},
         {"name":"WalkDisk","kind":"sub","vis":"private","signature":"Private Sub WalkDisk(ByVal dirPath As String, ByVal prefix As String, ByVal paths As Collection)"},
+        {"name":"WriteLfFile","kind":"sub","vis":"private","signature":"Private Sub WriteLfFile(ByVal path As String, ByVal s As String)"},
         {"name":"mFailed","kind":"field","vis":"private","signature":"Private mFailed As Long"},
         {"name":"mHasSample","kind":"field","vis":"private","signature":"Private mHasSample As Boolean"},
         {"name":"mPassed","kind":"field","vis":"private","signature":"Private mPassed As Long"},
@@ -266,13 +282,16 @@
         {"name":"AbsPath","kind":"function","vis":"public","signature":"Public Function AbsPath(ByVal p As String) As String","returnType":"String"},
         {"name":"ApiPath","kind":"function","vis":"public","signature":"Public Function ApiPath(ByVal canonicalAbsPath As String) As String","returnType":"String"},
         {"name":"BaseName","kind":"function","vis":"public","signature":"Public Function BaseName(ByVal p As String) As String","returnType":"String"},
+        {"name":"CodeExtensions","kind":"function","vis":"public","signature":"Public Function CodeExtensions() As String","returnType":"String"},
         {"name":"DeleteTree","kind":"sub","vis":"public","signature":"Public Sub DeleteTree(ByVal dirPath As String)"},
         {"name":"EnsureDirectory","kind":"sub","vis":"public","signature":"Public Sub EnsureDirectory(ByVal p As String)"},
+        {"name":"IsCodeFileName","kind":"function","vis":"public","signature":"Public Function IsCodeFileName(ByVal fileName As String) As Boolean","returnType":"Boolean"},
         {"name":"IsDirEmpty","kind":"function","vis":"public","signature":"Public Function IsDirEmpty(ByVal dirPath As String) As Boolean","returnType":"Boolean"},
         {"name":"IsDirectory","kind":"function","vis":"public","signature":"Public Function IsDirectory(ByVal p As String) As Boolean","returnType":"Boolean"},
         {"name":"IsFile","kind":"function","vis":"public","signature":"Public Function IsFile(ByVal p As String) As Boolean","returnType":"Boolean"},
         {"name":"JoinPath","kind":"function","vis":"public","signature":"Public Function JoinPath(ByVal a As String, ByVal b As String) As String","returnType":"String"},
         {"name":"ListDirectory","kind":"sub","vis":"public","signature":"Public Sub ListDirectory(ByVal dirPath As String, ByRef outNames() As String, ByRef outIsDir() As Boolean, ByRef outCount As Long)"},
+        {"name":"NormalizeNewlines","kind":"function","vis":"public","signature":"Public Function NormalizeNewlines(ByRef inBuf() As Byte, ByVal inLen As Long, ByRef outBuf() As Byte, ByRef outLen As Long) As Boolean","returnType":"Boolean"},
         {"name":"OrdinalCompare","kind":"function","vis":"public","signature":"Public Function OrdinalCompare(ByVal a As String, ByVal b As String) As Long","returnType":"Long"},
         {"name":"PP_LONGPATH_THRESHOLD","kind":"const","vis":"private","signature":"Private Const PP_LONGPATH_THRESHOLD As Long = 248"},
         {"name":"ParentPath","kind":"function","vis":"public","signature":"Public Function ParentPath(ByVal p As String) As String","returnType":"String"},
@@ -284,18 +303,6 @@
         {"name":"Utf8Encode","kind":"sub","vis":"public","signature":"Public Sub Utf8Encode(ByVal s As String, ByRef outBuf() As Byte, ByRef outLen As Long)"},
         {"name":"WCharBufToStr","kind":"function","vis":"private","signature":"Private Function WCharBufToStr(ByRef firstChar As Integer, ByVal maxChars As Long) As String","returnType":"String"},
         {"name":"WriteWholeFile","kind":"sub","vis":"public","signature":"Public Sub WriteWholeFile(ByVal path As String, ByRef buf() As Byte, ByVal length As Long)"}
-      ]
-    },
-    {
-      "name": "modTest",
-      "kind": "module",
-      "vis": "private",
-      "public": false,
-      "file": "Examples/modTest.twin",
-      "signature": "Private Module modTest",
-      "members": [
-        {"name":"PackTwinProj","kind":"sub","vis":"private","signature":"Private Sub PackTwinProj()"},
-        {"name":"UnpackTwinProj","kind":"sub","vis":"private","signature":"Private Sub UnpackTwinProj()"}
       ]
     },
     {
