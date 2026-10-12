@@ -96,7 +96,7 @@ Close #1 ' Close file.
 
 ## Writing to the Debug Console
 
-[**Debug.Print**](../Modules/Debug#print) writes to the IDE's [Debug Console](../IDE/Project/DebugConsole). The console is monospaced, so a print zone there is 14 characters wide and zones begin at columns 0, 14, 28 and so on. [**Debug.TracePrint**](../Modules/Debug#traceprint) takes the same *outputlist* but writes to the trace log instead.
+[**Debug.Print**](../Modules/Debug#print) writes to the IDE's [Debug Console](../IDE/Debugging/Debug-Console). The console is monospaced, so a print zone there is 14 characters wide and zones begin at columns 0, 14, 28 and so on. [**Debug.TracePrint**](../Modules/Debug#traceprint) takes the same *outputlist* but writes to the trace log instead.
 
 ## Writing to a drawing surface
 

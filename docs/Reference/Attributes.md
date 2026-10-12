@@ -63,7 +63,7 @@ Syntax: **[ArrayBoundsChecks** [ **( True** \| **False )** ] **]**
 
 Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
-Disables or enables array element access bounds checking within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **ArrayBoundsChecks(False)** turns the check off. **ArrayBoundsChecks(True)** turns it back on where the project setting [**Disable Array Bounds Checks**](../IDE/Project/Settings#disable-array-bounds-checks) has turned it off for the whole project.
+Disables or enables array element access bounds checking within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **ArrayBoundsChecks(False)** turns the check off. **ArrayBoundsChecks(True)** turns it back on where the project setting [**Disable Array Bounds Checks**](../IDE/Project-Settings#disable-array-bounds-checks) has turned it off for the whole project.
 
 ## BindOnlyIfNoArguments  (optional Bool)
 {: #bindonlyifnoarguments }
@@ -226,7 +226,7 @@ Syntax: **[CompilerOptions( "** options **" )]**
 
 Applicable to: [procedure definitions](../Gloss#procedure)
 
-Sets the LLVM compiler options for one procedure, in place of the **Compiler Options** in [Project Settings](../IDE/Project/Settings). *options* is a comma-separated list of flags; an empty string turns LLVM off for the procedure. Typical use would be `[CompilerOptions("+llvm,+optimize,+optimizesize")]` to compile the procedure using the built-in LLVM instead of the default compiler, with chosen optimizations. [Getting Started with LLVM](../../LLVM/Getting-Started) describes LLVM compilation in full. Compiler options available:
+Sets the LLVM compiler options for one procedure, in place of the **Compiler Options** in [Project Settings](../IDE/Project-Settings). *options* is a comma-separated list of flags; an empty string turns LLVM off for the procedure. Typical use would be `[CompilerOptions("+llvm,+optimize,+optimizesize")]` to compile the procedure using the built-in LLVM instead of the default compiler, with chosen optimizations. [Getting Started with LLVM](../../LLVM/Getting-Started) describes LLVM compilation in full. Compiler options available:
 
 - **+llvm** - uses LLVM to compile this procedure. This feature is experimental at the moment. The LLVM compiler back-end is built into twinBASIC. It is not necessary to have LLVM separately installed, and any such installation is ignored by twinBASIC.
 - **+optimize** - enables optimization during compilation of this procedure
@@ -582,7 +582,7 @@ Syntax: **[FloatingPointErrorChecks** [ **( True** \| **False)** ] **]**
 
 Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
-Disables or enables floating point error checks within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **FloatingPointErrorChecks(False)** turns the checks off. **FloatingPointErrorChecks(True)** turns them back on where the project setting [**Disable FPU Error Checks**](../IDE/Project/Settings#disable-fpu-error-checks) has turned them off for the whole project.
+Disables or enables floating point error checks within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **FloatingPointErrorChecks(False)** turns the checks off. **FloatingPointErrorChecks(True)** turns them back on where the project setting [**Disable FPU Error Checks**](../IDE/Project-Settings#disable-fpu-error-checks) has turned them off for the whole project.
 
 ## FormDesignerId  (String)
 {: #formdesignerid }
@@ -701,7 +701,7 @@ Syntax: **[IntegerOverflowChecks** [ **( True** \| **False )** ] **]**
 
 Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
-Disables or enables integer overflow checks within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **IntegerOverflowChecks(False)** turns the checks off. **IntegerOverflowChecks(True)** turns them back on where the project setting [**Disable Overflow Checks**](../IDE/Project/Settings#disable-overflow-checks) has turned them off for the whole project.
+Disables or enables integer overflow checks within the scope of a class, module, or a single procedure/method. Used on performance-critical routines. **IntegerOverflowChecks(False)** turns the checks off. **IntegerOverflowChecks(True)** turns them back on where the project setting [**Disable Overflow Checks**](../IDE/Project-Settings#disable-overflow-checks) has turned them off for the whole project.
 
 Dividing the most negative **Integer**, **Long** or **LongLong** by -1 with [**\\**](IntegerDivide) or [**Mod**](Mod) raises error 6 whatever this attribute or the project setting says.
 

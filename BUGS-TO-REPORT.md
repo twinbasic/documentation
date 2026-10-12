@@ -2579,3 +2579,934 @@ What does not reproduce it: neither procedure compiled with LLVM (cases 1 and 2)
 Severity: high for a program compiled with LLVM. An error that the caller handles ends the program, and with a callee compiled with LLVM it ends with an access violation. In the IDE the run ends without a message, so the cause is hard to find. No wrong result is produced. Compiling both procedures without LLVM avoids it.
 
 <!-- Reproducer: bugs/llvm-error-not-passed-to-caller/ (mode run: `Sub Main` runs the 12 cases in order and the run ends silently at case 4; expect is tbrun exit 5, the output of cases 1 to 3 and the name of case 4, and absent the result line of case 4 and `end of Main`; verify reproduces on BETA 1005, 997, 995 and 987). expect judges case 4 only: when verify says NO LONGER REPRODUCES, set FirstCase in Startup.twin to 5 and run again, because a fix of the callee case alone leaves the caller cases. Test mode was tried and is not used: `tbrun --tests` honours the per-procedure attribute, but the first LLVM case waits 120 s (`no answer from the compiler after 120 s`) and every case after it fails with `main thread is busy`, so one run cannot tell the cases apart. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6` prints the table's VB6 column. The exe results are from `tbrun --exe` (and `--arch win64`) on scratch copies of src/ whose Startup prints with TbRun.Out, one case per run, not kept; the project-wide LLVM results are from `tbrun --llvm --exe` on the same. Stated in a WARNING naming BETA 1005 in docs/LLVM/Getting-Started.md, "Language support", after the sentence "The main feature not yet supported is passing an error up to the calling procedure. A fix is planned.": when fixed, the WARNING and that sentence go. The entry "A `ParamArray` element that is a `Variant` variable holding an array..." mentions the LLVM-exe case in its Additional context ("a separate defect of LLVM-compiled code"): name this entry's issue there once it is filed, and drop the sentence when this is fixed. Not narrowed, so not in the entry: an LLVM-compiled procedure whose handler re-raises the error with `Err.Raise Err.Number`, called from an ordinary procedure with a handler, left the BETA 1005 exe running until it was ended. -->
+
+---
+
+## The shipped `Dark.theme` and `Light.theme` lack a `;` after `DiagnosticsGroupFontSize`, so the IDE loads neither it nor `DiagnosticsGroupFontWeight`
+
+**Describe the bug**
+Line 63 of both `themes\Dark.theme` and `themes\Light.theme`, the two theme files that the IDE ships and that every other theme inherits from, reads `DiagnosticsGroupFontSize: 90%` with no `;` at its end. The IDE's theme loader cuts a theme file into properties at each `;`, so the property runs into the next line, and the piece it cuts is not a property. The loader drops such a piece without a message, so both `DiagnosticsGroupFontSize` and `DiagnosticsGroupFontWeight` are lost. Each of the two files has 495 properties that load, and these 2 are not among them. No other piece of the three shipped theme files (`Classic.theme` is the third) is dropped.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `themes\Dark.theme`, in the folder of the twinBASIC installation, in a text editor. There is no project to attach: the defect is in the installation's own files.
+2. Lines 63 and 64 read:
+   ```
+   DiagnosticsGroupFontSize:               90%
+   DiagnosticsGroupFontWeight:             500;
+   ```
+   Line 63 ends without the `;` that ends line 64 and every other property of the file. (In the file, the spaces after each colon are tabs.) `themes\Light.theme` has the same two lines at the same place.
+3. Open `ide\main.js` and find `applyThemeData`, the function that loads a theme file. It removes the `/* */` comments, cuts the text at each `;` followed by a space, a tab or a line end, removes the line breaks from each piece, cuts each piece at each `: ` and `:` followed by a tab, and keeps a piece only if that gives exactly two parts (the name and the value). Lines 63 and 64 are one piece, `DiagnosticsGroupFontSize:` and its value, then `DiagnosticsGroupFontWeight:` and its value, with nothing between them but the line break the loader removes. It gives three parts, so the piece is dropped. The loader's code has no other branch for a piece, and it writes no message.
+4. Instead of reading the code, run `node scripts/probe_theme_semicolon.mjs` from the repository. It applies the same rule to every `.theme` file in the install's `themes` folder, and prints one line for each piece it drops. It starts no IDE.
+
+**Expected behavior**
+Both properties load, with the values the files give: a font size of `90%` and a font weight of `500` for the Diagnostics group. That needs a `;` at the end of line 63 in both files. Any other property run together with the next one is lost in the same way, so the loader could also say which piece it dropped, in the DEBUG CONSOLE or the IDE's trace output.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+BETA 997 and 957 have the same two lines at the same place. `Classic.theme` has no such piece: it contains `inherits: light;` and its own properties, all of which end with `;`. The loader's rule was checked by applying the code of `applyThemeData` unchanged to each file: `Dark.theme` and `Light.theme` give 495 properties each, without the two, and `Classic.theme` gives 188.
+
+The effect on screen was not observed. In the IDE's `styles.css`, the rule of `.problemNodeGroup` reads `font-weight: var(--themeDiagnosticsGroupFontWeight); font-size: var(--themeDiagnosticsGroupFontSize);`, and the loader sets one CSS variable for each property it loads, so with these two missing, the variables have no value. By the CSS rules, a `var()` of a variable with no value makes the declaration invalid when the style is computed, and `font-size` and `font-weight` then take the value they inherit. So the elements of that class (by its name, the group headings of the Problems panel) would use the size and weight they inherit instead of 90% and 500.
+
+Severity: low. No data is lost, and the look of one kind of heading is the only thing that changes, but the IDE says nothing about it. A theme file that sets the two properties again, with its `;`, avoids it: a custom theme that inherits from Dark or Light, with `DiagnosticsGroupFontSize: 90%;` and `DiagnosticsGroupFontWeight: 500;` among its own lines, loads them.
+
+<!-- Reproducer: bugs/theme-missing-semicolon/ (mode probe: scripts/probe_theme_semicolon.mjs reads every .theme file in the install's themes folder with the rule of applyThemeData in ide/main.js and prints one line for each piece the loader drops; exit 1 while the defect is there). No project and no zip, as for the entry about the IDE's styles.css. `verify` reproduces on BETA 1005; the probe prints the same two lines on 997 and 957. No page carries a callout for it. If a page of the IDE section describes the theme file format, it states the loader's rule (read from main.js) and may name this fault; when it is fixed, the sentence naming it goes. The "custom theme avoids it" sentence in Severity follows from the loader's rule and was not tried in the IDE. The effect on screen (Problems panel group headings) is read from styles.css and the CSS rules, not seen. -->
+
+---
+
+## A `Dark.theme` or `Light.theme` in `%APPDATA%\twinBASIC\themes` stops every custom theme from inheriting, and Reload from disk from applying the theme
+
+**Describe the bug**
+When the common themes folder, `%APPDATA%\twinBASIC\themes`, holds a file named `Dark.theme` or `Light.theme`, no custom theme is linked to the theme it inherits from. Window > Theme lists every custom theme, the shipped Classic included, as `<name> (undefined)` instead of `<name> (Light)` or `<name> (Dark)`. Choosing one gives the dark base whatever its `inherits:` line says, with only the theme's own properties changed and every other colour left as the previous theme had it. Window > Theme > Reload from disk then reads the files again but never applies the active theme, so an edit to it does not show until the IDE is restarted. No message is shown. It was observed in an IDE started with an `APPDATA` of its own, by reading the theme list and the CSS variables of the IDE's page.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Close the IDE. There is no project to open: the defect is in how the IDE reads its theme folders. In `%APPDATA%\twinBASIC\themes` (the IDE creates the folder), write `AtStart.theme`:
+   ```
+   inherits: light;
+   MenuBackColor: rgb(255, 0, 0);
+   ```
+   and `Dark.theme`, with any text: its contents are not read.
+2. Start the IDE and cancel the New / Open dialog. Open Window > Theme: it lists `Classic (undefined)` and `AtStart (undefined)`.
+3. Choose `AtStart`: the IDE takes the dark base (dark panels, the dark code editor) with a red menu bar.
+4. Change the colour in `AtStart.theme` to `rgb(0, 128, 0)` and choose Window > Theme > Reload from disk: the menu bar stays red.
+5. Delete `Dark.theme` and restart the IDE: the list shows `Classic (Light)` and `AtStart (Light)`, `AtStart` gives the light base with a red menu bar, and Reload from disk after the same edit turns the menu bar green at once.
+
+**Expected behavior**
+The themes keep their parents whatever else the common folder holds, as in step 5: `Classic (Light)` and `AtStart (Light)` in the list, the light base for `AtStart`, and Reload from disk applying the edit. A `Dark.theme` or `Light.theme` there is either ignored, as the code means it to be, or replaces the shipped theme of that name.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: `reloadThemesFromDisk`, which runs at start-up and for Reload from disk, counts every `.theme` file of both folders into `customThemesCount`, but in the common folder it skips `Dark.theme` and `Light.theme` without calling `addTheme`. `addTheme` links the themes to their parents (`inheritsFromLink` and `group`), and runs `afterRefreshedThemes`, only once `customThemes.length` reaches `customThemesCount`, which then never happens. Reload from disk applies the theme in `afterRefreshedThemes`, so that never runs either. Counting only the files that are added would cure both.
+
+Only `Dark.theme` was tried; `Light.theme` takes the same branch of the code. The file was in place when the IDE started; adding it and choosing Reload from disk goes through the same function, and was not tried.
+
+Severity: moderate. Nothing is lost, but copying the shipped `Dark.theme` into the common folder to change it, the obvious way to adjust a shipped theme, makes every custom theme wrong, and nothing says why.
+
+<!-- Reproducer: bugs/theme-override-breaks-inheritance/ (mode lane: asserted by `ide-test.bat --only customising` (test/ide/customising.test.mjs), the test "a Dark.theme in the APPDATA themes folder unlinks every custom theme, and Reload from disk stops applying", which passes on BETA 1005; the first test of that file is the control without Dark.theme, and passes too). No project and no zip: the steps write the theme files. docs/IDE/Customising/Themes.md carries a WARNING for it, the first of its two; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Customising pages. -->
+
+---
+
+## Two themes that inherit from each other freeze the IDE, and choosing one fails with a stack overflow
+
+**Describe the bug**
+When two theme files name each other in their `inherits:` lines, loading the themes stops the IDE's page for several seconds and leaves the themes half linked: one of the two is listed as `<name> (undefined)`. Choosing either of them afterwards changes nothing on screen: the page raises an uncaught `RangeError: Maximum call stack size exceeded` while it applies the theme, and the previous theme's colours stay. Nothing on screen reports the error. It was observed in an IDE started with an `APPDATA` of its own, with a timer in the IDE's page recording the longest time the page did not run, and a listener for the page's `error` event catching the exception.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Start the IDE. There is no project to open. In `%APPDATA%\twinBASIC\themes`, write `LoopA.theme`:
+   ```
+   inherits: LoopB;
+   MenuBackColor: rgb(1, 1, 1);
+   ```
+   and `LoopB.theme`:
+   ```
+   inherits: LoopA;
+   MenuBackColor: rgb(2, 2, 2);
+   ```
+2. Choose Window > Theme > Reload from disk. The IDE does not respond for about seven seconds (7.5 s on the machine it was found on).
+3. Open Window > Theme: it lists `LoopB (undefined)`.
+4. Choose `LoopA`: the menu bar does not take `rgb(1, 1, 1)`, and nothing else changes.
+5. To recover, remove the loop from the files and restart the IDE.
+
+**Expected behavior**
+The IDE stays responsive, and the themes in the loop fall back to the Dark theme, which the code in `addTheme` means them to do: it checks for a theme met twice, and sets the group to Dark when it finds one. Choosing `LoopA` then applies at least its own `MenuBackColor`. A message naming the loop would help the person who wrote it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: in `addTheme`, the pass that gives each theme its group follows `inheritsFromLink` in a `while` loop and records each theme it passes. When it meets a theme a second time it sets the group to Dark, but does not leave the loop, so it keeps going round the two themes until it stops after several seconds without finishing: `LoopB` is never given a group, and `afterRefreshedThemes` is still pending afterwards. `applyThemeData` then follows the same links recursively when a theme of the loop is applied, and overflows the stack. A `break` after the fall-back, and the same check in `applyThemeData`, would cure both.
+
+Start-up loads the themes through the same `reloadThemesFromDisk`, so an IDE started with the two files in place should freeze the same way; only Reload from disk was tried. A longer chain that returns to its first theme takes the same path in the code, and was not tried.
+
+Severity: moderate. Nothing is lost and the IDE recovers, but the freeze looks like a hang, and nothing says which files cause it.
+
+<!-- Reproducer: bugs/theme-inherit-loop/ (mode lane: asserted by `ide-test.bat --only customising` (test/ide/customising.test.mjs), the test "two themes that inherit each other freeze the page, and choosing one fails with a stack overflow", which passes on BETA 1005 with a pause of 7.5 s; it asserts a pause of at least 2 s, LoopB listed as (undefined), LoopA's colour not applied and the RangeError). No project and no zip. docs/IDE/Customising/Themes.md carries a WARNING for it, the second of its two; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Customising pages; the fact sheet had expected the fall-back to Dark. -->
+
+---
+
+## A keyboard-shortcut group whose name contains `|` switches other groups on and off
+
+**Describe the bug**
+The IDE keeps the list of keyboard-shortcut groups that are on as one string, each name between two bars, such as `|Mine||Other|`, and looks a name up in it as text. Manage Keyboard Shortcuts accepts a group name that contains `|`, and that name's entry can then contain another group's: with groups `A|B` and `B`, the text `|A|B|` is the entry of `A|B` and also contains `|B|`. Clicking `B` in Window > Keyboard Shortcuts then removes the wrong text: the first click leaves `B` ticked, and the second switches `A|B` off as well and saves a list that ends in a broken `|A`. Nothing warns about the name. It was observed by operating Manage Keyboard Shortcuts and the commands of the Window > Keyboard Shortcuts items in an IDE whose saves were blocked, and reading the list and the menu's ticks after each step.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. There is no project to open. The steps change the groups saved in `HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE\IDESettings` (`CUSTOM_KEYBOARD_SHORTCUT_GROUPS` and `ACTIVE_KEYBOARD_SHORTCUT_GROUPS`): export that key first if they matter. Choose Window > Keyboard Shortcuts > Manage Keyboard Shortcuts..., Add New..., type `A|B`, press Enter, and Save Changes. The new group is switched on.
+2. Do the same with the name `B`. Window > Keyboard Shortcuts shows `Custom 1. A|B` and `Custom 2. B`, both ticked. The list of groups that are on is `|A|B||B|`.
+3. Click `Custom 2. B`. It stays ticked: the IDE removed the first `|B|` it found, which is the one inside `|A|B|`, and the list is now `|A|B|`.
+4. Click `Custom 2. B` again. `A|B` and `B` are both unticked, though only `B` was clicked, and the list saved is `|A`, which names no group.
+
+**Expected behavior**
+Step 3 switches `B` off and leaves `A|B` on. Either Manage Keyboard Shortcuts refuses a name that contains `|`, as it refuses one that starts with `<`, or the list is kept in a form that a name cannot break, such as a JSON array of names.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The code, read from `ide\main.js`: `toggleActiveKeyboardShortcutName` tests the list with `indexOf("|" + name + "|")` and removes the entry with `replace`, which replaces the first match; `getCustomKeyboardShortcutMenuOptions` ticks a group by the same `indexOf`. The merge of the groups that are on matches names the same way: with the list `|A|B|`, `A|B` on and `B` defined but never switched on, a shortcut that only `B` defines works, and `B` is ticked in the menu. That was tried with the groups set in the IDE's page as Save Changes sets them, and a real key press.
+
+Severity: low. A name with `|` is unusual, and the groups themselves are kept, but the saved list is corrupted without a message, and the menu shows a group as on after it was switched off.
+
+<!-- Reproducer: bugs/keyboard-group-bar-name/ (mode lane: asserted by `ide-test.bat --only customising` (test/ide/customising.test.mjs), the test "a group named A|B switches B on with it, and toggling B twice switches both off", which passes on BETA 1005; it adds the groups through the Manage Keyboard Shortcuts dialog and runs the menu item's command, tbKeyboardShortcuts_ToggleActiveKeyboardShortcutGroupCustom2, with every save the IDE makes blocked in its page). No project and no zip. docs/IDE/Customising/Keyboard-Shortcuts.md carries a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Customising pages. -->
+
+---
+
+## Format Selection from a continuation line fails with *IDE startup failure*, and closes an IDE that was opened with its project
+
+**Describe the bug**
+Edit > Format Selection on a selection whose first line continues the line above it (the line above ends in ` _`) formats nothing, and the IDE's page raises `TypeError: Assignment to constant variable.` When the IDE was started with the project on its command line, as it is when a `.twinproj` is opened from Explorer, the error is shown as an alert headed *IDE startup failure*, and after the alert the IDE closes itself: at once when nothing is unsaved, and after asking whether to save when something is. Started from its icon, with the project opened from the New / Open dialog, the IDE prints the same error in the DEBUG CONSOLE and stays open. It was observed in an IDE started with an `APPDATA` of its own, by recording the page's alerts and watching the IDE's process.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project by double-clicking its `.twinproj`, so that the IDE starts with it. Add this procedure to a module, and save:
+   ```
+   Public Sub Continued()
+       Dim a As Long, _
+           b As Long
+       Select Case a
+           Case 1
+               a = 2
+       End Select
+   End Sub
+   ```
+2. Select from the start of the line `b As Long` to the end of `Select Case a`, and choose Edit > Format Selection.
+3. An alert reads `IDE startup failure (BETA twinBASIC IDE BETA 1005):`, then `JS Promise Rejection(1):`, `Assignment to constant variable.` and a stack trace through `provideDocumentRangeFormattingEdits`. Nothing is formatted. Click OK: the IDE closes.
+4. Open the project again, change anything, and repeat step 2. After the alert the IDE asks *You've made changes to this project. Save now?*, with Save, Discard Changes and Cancel. Cancel keeps the IDE open; the other two close it.
+
+**Expected behavior**
+The selection is re-indented, as it is when it starts on any other line: the formatter moves the start up to the first line of the continued statement and formats from there. A failure inside a command does not close the IDE.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js` and `ide\main2.js`: `provideDocumentRangeFormattingEdits` declares the start line with `const` and then decrements it (`o--`) in the loop that moves the start up over the lines ending in `_`, which throws as soon as the selection starts on a continuation line. The rejection reaches `window.onunhandledrejection` in `main2.js`, which alerts *IDE startup failure* and calls `hostAppObject.CloseWindow` unless `reportIDEerrorsToDebugConsole` is set, and only `startNow`, the start without a project, sets it. So in an IDE opened with its project, any unhandled rejection in the page closes the IDE.
+
+Format Selection on a selection that starts on any other line, the `Select Case` line included, works. Format Document, on the same text, works.
+
+Severity: high. The IDE closes during ordinary editing. Nothing is lost if the question in step 4 is answered Save or Cancel, but Discard Changes, a likely answer to a question nobody expected, loses every unsaved change.
+
+<!-- Reproducer: bugs/format-selection-continuation/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the tests "Format Selection on a selection that starts on a continuation line opens an IDE startup failure alert, and the IDE then closes" (nothing unsaved; the test then starts the lane's next IDE on the project) and "with unsaved changes, the same Format Selection changes nothing, and the IDE asks to save them before it closes" (answered Cancel); the control "Format Selection re-indents a selection that starts on a Select Case line" passes too, all on BETA 1005). The start from the icon (the error in the DEBUG CONSOLE, no alert, no close) was tried once with a probe that is not kept. No project and no zip: the steps give the code. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a WARNING for it where it describes Format Selection; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 2); that the IDE closes was found while writing the lane. -->
+
+---
+
+## Find with Whole Word Only never finds a match at the very start of the file
+
+**Describe the bug**
+With Whole Word Only ticked, the Find / Replace panel never finds a match that begins at line 1, column 1 of the file. Find Next passes over it, and the search ends with *The specified region has been searched.* No message says that a match was skipped. It was observed by operating the panel with mouse and key events in an IDE started with an `APPDATA` of its own, and reading the selection after each Find Next.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module whose first line is its `Module` line, with nothing above it, such as:
+   ```
+   Module Finder
+       Public Sub Main()
+           Debug.Print 1
+       End Sub
+   End Module
+   ```
+2. Put the caret on line 2 and press Ctrl+F. Type `Module` in Find What and tick Whole Word Only; Current File and Direction All are as Ctrl+F sets them.
+3. Click Find Next: the `Module` of `End Module` is selected. Click Find Next again: *The specified region has been searched.* So it goes on every later press: the `Module` at line 1, column 1 is never selected.
+4. Clear Whole Word Only and repeat from step 2: the second press selects line 1, column 1.
+
+**Expected behavior**
+The second press selects the `Module` at line 1, column 1. The start of the file is a word boundary, as the start of any other line is.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: `doFindMatch` takes the character before and the character after a match with `charAt`, and treats each as a boundary when its `charCodeAt(0)` is below 128 and it is not a letter or a digit. Before the first character of the text searched, `charAt` returns an empty string, whose `charCodeAt(0)` is `NaN`, so the match is taken to be inside a word and is skipped. The same code skips a match that ends at the last character of the text searched; that, and a match that starts exactly at the caret (the text searched starts there), were not tried.
+
+Severity: moderate. The search reports the region searched while it has skipped a match, and nothing shows it.
+
+<!-- Reproducer: bugs/find-whole-word-file-start/ (mode lane: asserted by `ide-test.bat --only code-find` (test/ide/code-find.test.mjs), the test "with Whole Word Only, Find Next never finds Module at line 1, column 1", which passes on BETA 1005; the control without Whole Word Only, the test before it, passes too). No project and no zip: the steps give the code. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a WARNING for it where it describes Whole Word Only; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 5). -->
+
+---
+
+## Find with Regular Expressions finds nothing when the pattern holds a capital letter
+
+**Describe the bug**
+With Regular Expressions ticked, a pattern that holds a capital letter finds nothing unless it carries the `i` flag: `/End Sub/` ends with *The specified region has been searched.* in a file full of `End Sub`, while `/end sub/` and `/End Sub/i` find it. With Match Case clear, the panel searches the file's text in lower case but leaves the regular expression as it was typed; and ticking Regular Expressions clears Match Case (ticking Match Case clears Regular Expressions), so a regular expression always runs against the text in lower case. It was observed by operating the panel with mouse and key events in an IDE started with an `APPDATA` of its own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module that holds `End Sub`. Press Ctrl+F and tick Regular Expressions; Match Case is cleared.
+2. Type `/End Sub/` in Find What, put the caret at line 1, column 1, and click Find Next: *The specified region has been searched.*
+3. Type `/end sub/`, or `/End Sub/i`, instead: Find Next selects `End Sub`.
+
+**Expected behavior**
+`/End Sub/` finds `End Sub`. Either the search runs on the text as it is, with the `i` flag added when Match Case is clear, or Match Case can be ticked together with Regular Expressions to make the search case-sensitive.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: the Find Next code lower-cases the text searched (`toLowerCase`) when Match Case is clear, and `createRegexFromUserString` builds the expression from the pattern as typed, adding only the `m` flag. A class such as `\D` (not a digit) matches lower-case text as before, so `/\Dim/` still finds `Dim`: only a literal capital letter fails.
+
+Severity: moderate. The search reports nothing found for text that is there.
+
+<!-- Reproducer: bugs/find-regex-capital-letter/ (mode lane: asserted by `ide-test.bat --only code-find` (test/ide/code-find.test.mjs), the test "a regular expression with a capital letter, /End Sub/, finds nothing", which passes on BETA 1005; the control "a regular expression in lower case, or with the i flag, finds End Sub" passes too). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a WARNING for it where it describes Regular Expressions; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 6). -->
+
+---
+
+## A regular-expression match that spans a line break is shown as an empty selection, and Find Next does not move past it
+
+**Describe the bug**
+When a regular expression in the Find / Replace panel matches across a line break, Find Next selects nothing: it puts the caret at the end of the line where the match starts, with an empty selection. The next Find Next finds the same match and stays at the same place, so the search can go no further. It was observed by operating the panel with mouse and key events in an IDE started with an `APPDATA` of its own, and reading the selection after each Find Next.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module in which an indented line comes before `End Sub`, such as:
+   ```
+   Module Finder
+       Public Sub Main()
+           Debug.Print 1
+       End Sub
+   End Module
+   ```
+2. Press Ctrl+F, tick Regular Expressions and type `/^\s+end sub$/` in Find What (in lower case: see the entry about capital letters). Put the caret at line 1, column 1 and click Find Next.
+3. The selection is empty, at the end of the `Debug.Print` line. Click Find Next again: the selection is at the same place, however often it is clicked.
+
+**Expected behavior**
+The match is selected, from the line break to the end of `End Sub`, and the next Find Next goes on from the end of the match.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: `doFindMatch` turns the start of the match into a line and a column, but puts its end on the same line, at the start column plus the match's length. For a match that holds a line break that column lies past the end of the line, and the editor shortens the selection to the line's end. The next search starts from that place, which is before the match, and finds it again. The match starts at the line break because the IDE adds the `m` flag, so `^` also matches inside the line break. A match within one line, such as `/sub$/i`, is selected properly.
+
+Severity: low. Patterns that span lines are rare, but Find Next cannot get past one.
+
+<!-- Reproducer: bugs/find-regex-line-break/ (mode lane: asserted by `ide-test.bat --only code-find` (test/ide/code-find.test.mjs), the test "a match of /^\s+end sub$/, which spans a line break, is an empty selection, and Find Next stays on it", which passes on BETA 1005; its project, test/ide/probes/code-find, has a longer Main than the module above). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a NOTE for it where it describes Regular Expressions; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 12). -->
+
+---
+
+## The Find / Replace panel's *Invalid RegExp:* alert leaves out the reason
+
+**Describe the bug**
+When the pattern in Find What is not a valid regular expression, Find Next shows an alert that reads only *Invalid RegExp:*, without saying what is wrong with the pattern. It was observed by recording the alerts of the IDE's page while operating the panel.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module. Press Ctrl+F, tick Regular Expressions and type `/(/` in Find What.
+2. Click Find Next. The alert reads `Invalid RegExp:` and nothing after the colon.
+
+**Expected behavior**
+The alert gives the reason, such as `Invalid RegExp: Invalid regular expression: /(/m: Unterminated group`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: `createRegexFromUserString` calls `alert("Invalid RegExp:", e.message)`. `alert` shows its first argument only, so the message is dropped; `alert("Invalid RegExp: " + e.message)` would show it.
+
+Severity: low.
+
+<!-- Reproducer: bugs/find-regex-alert-reason/ (mode lane: asserted by `ide-test.bat --only code-find` (test/ide/code-find.test.mjs), the test "the alert for an invalid regular expression, /(/, reads only Invalid RegExp:", which passes on BETA 1005). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, may name it in a NOTE where it describes Regular Expressions; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 13). -->
+
+---
+
+## After a search in Selected Text, the scope stays on a greyed Selected Text, and Find Next stops at once
+
+**Describe the bug**
+The Find / Replace panel ticks Selected Text when Ctrl+F is pressed with a selection of several lines. Once that selection is gone, after a click elsewhere in the code, the panel greys Selected Text but leaves it ticked, and ticks no other scope. Find Next then searches nothing: it asks at once whether to continue from the beginning, and finds nothing in the file. It was observed by operating the panel and the code editor with mouse and key events in an IDE started with an `APPDATA` of its own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module. Select three lines that hold the word `total` and press Ctrl+F: Selected Text is ticked. Type `total` in Find What and click Find Next: the first `total` in the selection is selected.
+2. Click in the code on a line outside the selection. Selected Text is still ticked, and greyed; Current File is not ticked.
+3. Click Find Next. At once: *End of search scope has been reached; do you want to continue from the beginning?*
+
+**Expected behavior**
+When Selected Text can no longer be used, the panel ticks Current File, as Ctrl+F does when there is no selection, and Find Next searches the file.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Ticking another scope, such as Current Procedure, recovers. Severity: low. The message suggests that the file holds no further match, while the search did not look.
+
+<!-- Reproducer: bugs/find-scope-stuck-selected-text/ (mode lane: asserted by `ide-test.bat --only code-find` (test/ide/code-find.test.mjs), the test "after a search in Selected Text and a click in the code, Selected Text stays ticked but greyed, and Find Next stops at once", which passes on BETA 1005). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a NOTE for it where it describes the scopes; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 9). -->
+
+---
+
+## The Diagnostics panel's Copy and Copy All put HTML in the text, and label an info or a hint {WARNING}
+
+**Describe the bug**
+The text that the DIAGNOSTICS panel's right-click menu copies holds the HTML the panel draws the diagnostic's code with: each message starts `<span>TB0018</span>`. Copy All also labels every row that is not an error `{WARNING}`, infos and hints included. It was observed in an IDE started with an `APPDATA` of its own, with the page's clipboard calls replaced by recorders, so that the copied text could be read.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project with a warning and an info, such as one whose settings make TB0012 an info and TB0018 a warning, with this module:
+   ```
+   Module Helpers
+       Public Const BigValue As Long = &H8000
+
+       Public Function Twice(ByVal n As Long) As Long
+           Return n * 2
+       End Function
+
+       Public Sub Narrowing()
+           Dim narrow As Integer
+           narrow = Twice(2)
+       End Sub
+   End Module
+   ```
+2. In the DIAGNOSTICS panel, right-click the TB0018 row and choose Copy. The text copied is `{WARNING} /<Project>/Sources/Helpers.twin [<line>,<column>]: <span>TB0018</span>implicit narrowing conversion from Long to Integer.  Use CInt(expression) to avoid this message.`
+3. Click the Info counter on the status bar, so that the panel shows infos, right-click a row and choose Copy All. Every row's code is between `<span>` and `</span>`, and the info TB0012 is labelled `{WARNING}`.
+
+**Expected behavior**
+Plain text, with the code and the message apart: `{WARNING} /<Project>/Sources/Helpers.twin [<line>,<column>]: TB0018 implicit narrowing conversion...`, and infos and hints labelled as what they are, such as `{INFO}` and `{HINT}`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The cause, read from `ide\main.js`: the panel adds each diagnostic with the caption `"<span>" + code + "</span>" + message`, the `<span>` styling the code, and `generateCopyPasteTextForProblem` copies the caption as it is, labelling severity 1 `{ERROR}` and every other severity `{WARNING}`. Copy All Errors copies the errors with the same `<span>`.
+
+Severity: low. The copied report has to be cleaned by hand before it is pasted into an issue or a message.
+
+<!-- Reproducer: bugs/diagnostics-copy-html/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "the Diagnostics panel's Copy puts the code in a <span>, and Copy All labels the info {WARNING}", which passes on BETA 1005; its project, test/ide/probes/code-editor, sets TB0012 to info and TB0018 to warning, and the test replaces navigator.clipboard.writeText and the copyClipboardIDE request in the page, so the Windows clipboard is never written). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a NOTE for it where it describes the Diagnostics panel; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 3). -->
+
+---
+
+## The Outline panel lists a file's modules and classes but none of their members
+
+**Describe the bug**
+The OUTLINE panel shows only the top-level types of the active file, one row each, with no arrow to expand them: `Editing` for a module, `Ev` and `Ev2` for a file holding two classes. None of the procedures, properties, variables or other members is listed, so the filters in the panel's `...` menu (Show Procedures, Show Variables and the rest) change nothing. The symbols the panel receives for the file have an empty `children` list. It was observed in an IDE started with an `APPDATA` of its own, by reading the panel and the symbols it holds (`outlinePanel.cachedSymbols`).
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module that holds procedures, such as:
+   ```
+   Module Editing
+       Public Sub Main()
+       End Sub
+
+       Public Sub Plain()
+       End Sub
+   End Module
+   ```
+2. Show the OUTLINE panel. It shows one row, `Editing`, with no arrow, and neither `Main` nor `Plain`.
+
+**Expected behavior**
+The module's row expands to its members, `Main` and `Plain`, as the panel's filters and its Sort Alphabetically option assume.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The symbols reach the panel's `syncSymbols` with `children: []` for every type, so either the compiler sends no members or the IDE drops them before the panel; which of the two was not settled.
+
+Severity: moderate. The panel cannot be used to move around a file.
+
+<!-- Reproducer: bugs/outline-no-members/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "the Outline lists the module Editing and none of its procedures", which passes on BETA 1005; the two-class file is from the trials, not the lane). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, will carry a NOTE for it where it describes the Outline panel; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 4). -->
+
+---
+
+## Go To Definition, Ctrl+Up and Ctrl+Down put the caret on the line after a declaration
+
+**Describe the bug**
+Go To Definition (F12 or Shift+F2) on the name of a procedure puts the caret on the line after the procedure's declaration, the first line of its body, instead of on the declaration. In the trials the same happened for a class member reached through an object variable, and for a class name (line 2 of a class declared on line 1). Ctrl+Down and Ctrl+Up, which move to the next and the previous procedure, also put the caret on the first line of the body, at column 1. Go To Definition on a local variable or an enum member puts the caret on its declaration. It was observed by pressing the keys in an IDE started with an `APPDATA` of its own and reading the caret's place.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project with a module:
+   ```
+   Module Helpers
+       Public Function Twice(ByVal n As Long) As Long
+           Return n * 2
+       End Function
+   End Module
+   ```
+   and, in a procedure of another module, the line `total = Helpers.Twice(3)`.
+2. Put the caret on `Twice` in that line and press F12. `Helpers.twin` opens with the caret on `Return n * 2`, the line after `Public Function Twice`.
+3. In a module with several procedures, put the caret in the first one and press Ctrl+Down: the caret goes to the first line of the next procedure's body, column 1. Ctrl+Up from inside a procedure goes to the first line of its own body.
+
+**Expected behavior**
+The caret on the declaration line, at the name, as Go To Definition does for a local variable, so that the declaration is what the reader sees first.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Severity: low. The declaration is one line above the caret, and in view.
+
+<!-- Reproducer: bugs/definition-line-after/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the tests "Go To Definition on a function in another module puts the caret on the line after its declaration" and "Ctrl+Down puts the caret on the line after the next procedure's declaration, and Ctrl+Up on the line after its own procedure's", which pass on BETA 1005; the control "Go To Definition on a local variable puts the caret on its Dim line" passes too. The class-member and class-name cases are from the trials, not the lane). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, may name it in a NOTE where it describes Go To Definition; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 10, without its Shift+F10 part). -->
+
+---
+
+## Escape does not remove the extra cursors
+
+**Describe the bug**
+After cursors are added with Ctrl+Alt+Down or Alt+click, Escape leaves them all: pressed once or twice, the code editor still has every cursor, and what is typed next goes in at each of them. A click in the code goes back to one cursor. It was observed by pressing the keys in an IDE started with an `APPDATA` of its own and reading the editor's selections.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module. Put the caret on a line that has two more lines below it and press Ctrl+Alt+Down twice: there are three cursors.
+2. Press Escape, then Escape again. The three cursors remain.
+
+**Expected behavior**
+Escape leaves only the first cursor, as it does in the Monaco editor the code editor is built on.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Escape is not among the keys the IDE stops before they reach Monaco (`monacoApplyKeyDownFilter`), and the IDE does not refer to Monaco's command for it, `removeSecondaryCursors`; where the key goes was not settled.
+
+Severity: low. A click removes the extra cursors.
+
+<!-- Reproducer: bugs/escape-keeps-cursors/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "Escape leaves the two cursors that Ctrl+Alt+Down added", which passes on BETA 1005; the control "a click in the code goes back to one cursor" passes too. Alt+click is from the trials, not the lane). No project and no zip. A page of docs/IDE/Code/, the "Writing code" chapter now being written, may name it in a NOTE where it describes several cursors; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the fact sheet's defect 11). -->
+
+---
+
+## In the Memory pane, the name of a Double, Boolean or user-defined type variable throws an uncaught BigInt error, and the box is not marked invalid
+
+**Describe the bug**
+The Memory pane's box sends the expression to the debugger and turns the result into an address: a String gives `StrPtr`, an object `ObjPtr`, an array `VarPtr`, and any other result is read as a whole number with `BigInt`. A result that is not a whole number --- a **Double** such as `1.5`, a **Boolean** (`True`), a variable of a user-defined type (`{user defined type, 8 bytes}`) --- makes `BigInt` throw. The exception is not caught: the DEBUG CONSOLE prints `IDE internal error: Uncaught SyntaxError: Cannot convert 1.5 to a BigInt`, the box is not turned red, and the rows stay as they were. It was observed by typing the names into the box in an IDE started with an `APPDATA` of its own, at a `Stop`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Run a project with:
+   ```
+   Module Startup
+       Private Type Rec
+           A As Long
+           B As Integer
+           C As Integer
+       End Type
+
+       Public Sub Main()
+           Dim d As Double, flag As Boolean, udt As Rec
+           d = 1.5: flag = True: udt.A = 5
+           Stop
+       End Sub
+   End Module
+   ```
+2. At the `Stop`, choose View > MEMORY 1, type `d` in the box and press Enter. The DEBUG CONSOLE prints `IDE internal error: Uncaught SyntaxError: Cannot convert 1.5 to a BigInt`; the box keeps `d`, is not red, and the rows do not move.
+3. The same with `flag` (`Cannot convert True to a BigInt`) and `udt` (`Cannot convert {user defined type, 8 bytes} to a BigInt`).
+
+**Expected behavior**
+The box turned red, as it is for an expression the debugger cannot evaluate, since the value is not an address; or, for a variable, the pane showing the variable itself (its `VarPtr`), as it does for an array.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The throw is in the box's `evaluate` callback (`BigInt(a)` in `createHexEditor`, `ide/main.js`).
+
+Severity: low. `VarPtr(d)`, `VarPtr(flag)` and `VarPtr(udt)` show the variables.
+
+<!-- Reproducer: bugs/memory-bigint-throw/ (mode lane: asserted by `ide-test.bat --only memory` (test/ide/memory.test.mjs), the three tests "the name d throws ...", "the name flag throws ..." and "the name udt throws ...", which pass on BETA 1005; the control "a name the debugger cannot evaluate turns the box red and leaves the rows" passes too). No project and no zip: the steps give the code. docs/IDE/Memory.md carries a NOTE for it, under "What to enter in the expression box", after the list of what each result becomes; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Memory page (its fact sheet's defect 1). -->
+
+---
+
+## In a 64-bit program, the Memory pane's Address column drops the high 32 bits
+
+**Describe the bug**
+In a program built for win64, the Memory pane reads and shows the right memory, but its **Address** column shows only the low 32 bits of each address. A stack variable's address above 4 GB, such as `&H4232CFF438`, is shown as `&H32CFF438`, which is another address, with nothing on screen to say so. It was observed in an IDE started with an `APPDATA` of its own, by comparing the column with the address the program printed.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Switch a project to win64 with the toolbar's architecture box. Its `Sub Main`:
+   ```
+   Dim n As Long
+   n = 1234
+   Debug.Print Hex(VarPtr(n))
+   Stop
+   ```
+2. Run it. At the `Stop` the DEBUG CONSOLE shows an address above 4 GB, such as `4232CFF438`.
+3. Choose View > MEMORY 1, type `VarPtr(n)` in the box and press Enter. The first row holds `n`'s bytes, `D2 04 00 00`, and its address reads `&H32CFF438`.
+
+**Expected behavior**
+The Address column showing the whole address, `&H0000004232CFF438` or `&H4232CFF438`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The pane is made with `createHexEditor(r, {stream: n, addressBits: 32, columns: 16})` whatever the build target (`_hexEditorPanel`, `ide/main.js`), and the label of each row is masked to `addressBits`. The cell that takes the focus has the whole address in its `data-addr`, and the reads use it.
+
+Severity: medium. An address copied from the column, or compared with one the program prints, is wrong, and nothing shows it.
+
+<!-- Reproducer: bugs/memory-address-64bit/ (mode lane: asserted by `ide-test.bat --only memory` (test/ide/memory.test.mjs), the test "in a 64-bit run, VarPtr(n) shows n's bytes, and the Address column only the low 32 bits of its address", which passes on BETA 1005; it switches the lane's project with lane.setBuildTarget and fails, rather than passing, if the run's VarPtr(n) is below 4 GB). No project and no zip. docs/IDE/Memory.md carries a WARNING for it, under "Display formats and columns", after the paragraph on the address column; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Memory page (its fact sheet's defect 2). -->
+
+---
+
+## The Memory pane shows memory it cannot read as still loading, with ?? in every cell
+
+**Describe the bug**
+At an address the program cannot read, such as `0`, `16` or the value of a **Long** variable, every value cell of the Memory pane shows `??` and every text cell `·`, with the class `loading`: the placeholders of a cell whose bytes are still being read. They never change. The pane has a style for unreadable memory, blank grey cells (`invalidMem`), but the panel never applies it. It was observed in an IDE started with an `APPDATA` of its own, five seconds after the expression was entered.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Run any project to a `Stop`.
+2. Choose View > MEMORY 1, type `0` in the box and press Enter.
+3. Every row, from `&H00000000`, shows `??` in all its value cells and `·` in its text cells, and still does after any wait.
+
+**Expected behavior**
+The cells of unreadable memory drawn as unreadable (blank and grey, the `invalidMem` style), so that they differ from memory still being read.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`invalidMem` is set only through the stream's `onInvalidate`, which only a demonstration stream in `ide/main.js` calls.
+
+Severity: low. Memory that stays `??` is in practice unreadable, but a slow read looks the same.
+
+<!-- Reproducer: bugs/memory-unreadable-loading/ (mode lane: asserted by `ide-test.bat --only memory` (test/ide/memory.test.mjs), the test "0 shows ?? in every value cell, as cells still being read, and never as unreadable memory", which passes on BETA 1005). No project and no zip. docs/IDE/Memory.md carries a NOTE for it, under "What to enter in the expression box", after the sentence saying what `??` marks; when a fixed build is released, that NOTE goes, and the sentence then describes the unreadable style. Found 2026-10-11 in the trials for the Memory page (its fact sheet's defect 3). -->
+
+---
+
+## A negative number in the Memory pane's box gives rows whose addresses jump
+
+**Describe the bug**
+When the expression in the Memory pane's box gives a negative number, the pane starts at that negative address. The first row is labelled with it masked to 32 bits, and the rows after it count up from the negative number: with `-8`, the rows read `&HFFFFFFF8`, `&H00000008`, `&H00000018`. It was observed in an IDE started with an `APPDATA` of its own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Run a project whose `Sub Main` has:
+   ```
+   Dim neg As Long
+   neg = -8
+   Stop
+   ```
+2. At the `Stop`, choose View > MEMORY 1, type `neg` in the box and press Enter.
+3. The first row's address reads `&HFFFFFFF8`, the second `&H00000008` and the third `&H00000018`. Every cell shows `??`.
+
+**Expected behavior**
+The box turned red, since a negative number is not an address; or the number read as the unsigned address `&HFFFFFFF8`, with each row's label and reads following from it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The base address is kept as a signed `BigInt`; only each row's label is masked.
+
+Severity: low. Nothing at a negative address can be read.
+
+<!-- Reproducer: bugs/memory-negative-address/ (mode lane: asserted by `ide-test.bat --only memory` (test/ide/memory.test.mjs), the test "neg, which is -8, gives a first row at &HFFFFFFF8 and a second at &H00000008", which passes on BETA 1005). No project and no zip. docs/IDE/Memory.md carries a NOTE for it, under "What to enter in the expression box", after the paragraph on where the first row starts; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Memory page (its fact sheet's defect 4). -->
+
+---
+
+## Shift+F10 opens the code editor's context menu at the top-left corner of the IDE window, not at the caret
+
+**Describe the bug**
+Shift+F10 (`tbEditor_ShowContextMenu`) opens the code editor's context menu at the top-left corner of the IDE window, over the menu bar, wherever the caret is. A right-click opens the same menu at the pointer. It was observed by pressing the key in an IDE started with an `APPDATA` of its own and reading where the menu opened.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open any project and a module, and put the caret on a line in the middle of the code editor.
+2. Press Shift+F10. The menu that starts with **Go To Definition** opens with its top-left corner at the top-left corner of the window.
+
+**Expected behavior**
+The menu at the caret, as Shift+F10 opens a context menu elsewhere in Windows and in the Monaco editor the code editor is built on.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The command calls `showContextMenuMonaco({clientX: 0, clientY: 0})` (`ide/main.js`).
+
+Severity: low. The menu works; it opens far from where the reader is looking.
+
+<!-- Reproducer: bugs/shift-f10-menu-corner/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "Shift+F10 opens the editor's menu at the top-left corner of the IDE window, not at the caret", which passes on BETA 1005; the control "a right-click in the code opens the editor's menu at the pointer" passes too). No project and no zip. docs/IDE/Code/Editor.md carries a NOTE for it, under "The right-click menu"; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Writing code pages (the Shift+F10 part of the fact sheet's defect 10). -->
+
+---
+
+## An editor tab opened after the compiler has reported its file is not tinted for the file's warnings or errors
+
+**Describe the bug**
+A file that has errors or warnings has its row in the Project Explorer tinted, and its editor tab too, but the tab is tinted only when the compiler reports the file while the tab is open. A tab opened on a file the compiler has already reported --- the usual case, since the whole project is compiled when it opens --- stays untinted until the compiler checks the file again, after an edit to it. The Project Explorer row is tinted either way. It was observed in an IDE started with an `APPDATA` of its own, by reading the classes of the row and the tab.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project with a module that has a warning, such as:
+   ```
+   Module Helpers
+       Public Sub Narrowing()
+           Dim narrow As Integer
+           Dim wide As Long
+           wide = 5
+           narrow = wide
+       End Sub
+   End Module
+   ```
+   with TB0018 set to a warning in the project's settings (`"project.warnings": {"warnings": ["TB0018"]}`), and do not open the module. Its row in the Project Explorer is tinted.
+2. Double-click the row. The module's tab opens untinted, and stays so.
+3. Type a space at the end of a line, or type it and undo it. The compiler reports the file again, and the tab is tinted.
+
+**Expected behavior**
+The tab tinted as soon as it opens, as the Project Explorer row is.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`syncFileDiagnosticsToExplorer` (`ide/main.js`) sets the tab's class only when the file has an open tab at the time; opening a tab does not read the file's cached counts.
+
+Severity: low. The Project Explorer and the Diagnostics panel show the problems.
+
+<!-- Reproducer: bugs/tab-tint-opened-later/ (mode lane: asserted by `ide-test.bat --only code-editor` (test/ide/code-editor.test.mjs), the test "a tab opened on a file the compiler has already reported stays untinted, while its Project Explorer row is tinted", which passes on BETA 1005; the control "after an edit to the file and its undo, the compiler reports it again and its tab is tinted" passes too. The lane's module is test/ide/probes/code-editor/Sources/Helpers.twin, whose warning is TB0018). No project and no zip. docs/IDE/Code/Editor.md carries a NOTE for it, under "Tabs"; when a fixed build is released, that NOTE goes. scripts/shoot_docs.mjs's Tabs_States shot edits and undoes Inventory.twin to get the tint, and can drop that once the fix is released. Found 2026-10-11 by the screenshot work for the Writing code pages. -->
+
+---
+
+## The Variables panel's edit box cuts a String at an apostrophe, and leaving it sets the variable to the empty string
+
+**Describe the bug**
+Double-clicking a String variable in the VARIABLES panel opens an edit box holding its value, but only up to the first apostrophe: for `"it's"` the box holds `"it`. Leaving the box --- Enter, or a click on another row --- commits its text even when nothing was typed, and the variable becomes the empty string. Nothing shows that the value was changed. It was observed in an IDE started with an `APPDATA` of its own, reading the row and `? s` in the DEBUG CONSOLE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Stop at a breakpoint in a procedure with `Dim s As String`.
+2. In the DEBUG CONSOLE, run `s = "it's"`. The VARIABLES panel shows `"it's"`.
+3. Double-click the `s` row. The edit box holds `"it`.
+4. Press Enter without typing. The row shows `""`, and `? s` prints an empty line.
+5. Set `s = "it's"` again, double-click the row and click another row. The same.
+
+**Expected behavior**
+The box holding the whole value, `"it's"`, and leaving it with nothing typed changing nothing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`onVariableDblClick` (`ide/main.js`) builds the box as HTML, `"<input id='renameInput' ... value='" + value + "' ...>"`, so the apostrophe ends the attribute; the box's `onblur` sends `setVariable` with whatever the box holds. A value with double quotes (`"say ""hi"""`) is shown and kept correctly. Escape leaves the variable as it was.
+
+Severity: medium. A variable's value is changed with nothing typed and nothing shown, and the program then runs on with it.
+
+<!-- Reproducer: bugs/variables-edit-apostrophe/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the tests "the Variables edit box holds a String only up to an apostrophe, and Enter sets the variable to the empty string" and "a click away from the Variables edit box, with nothing typed, sets a String with an apostrophe to the empty string", which pass on BETA 1005; the control "Escape in the Variables edit box leaves a String with an apostrophe as it was" passes too). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Inspecting.md, where it describes editing a value in Variables; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 2). -->
+
+---
+
+## Hovering over a Sub call while paused runs the Sub
+
+**Describe the bug**
+While a program is paused, holding the pointer over a word of the code evaluates the expression under it and shows the result. Over the name of a **Sub** in a call, such as `Bump` in `t.Bump`, the evaluation calls the Sub: its code runs, with all its effects, and the hover shows `t.Bump:   0`. Each hover runs it again. It was observed in an IDE started with an `APPDATA` of its own, with `? t.Value` in the DEBUG CONSOLE before and after the hover.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. A project with a class:
+   ```
+   Class Thing
+       Public Value As Long
+       Public Sub Bump()
+           Value = Value + 1
+       End Sub
+   End Class
+   ```
+   and a procedure that holds `Dim t As New Thing`, `t.Value = 5`, `t.Bump` and a line after it.
+2. Stop at a breakpoint on the line after `t.Bump`. In the DEBUG CONSOLE, `? t.Value` prints `6`.
+3. Hold the pointer over `Bump` in `t.Bump` until the hover shows. It reads `t.Bump:   0`.
+4. `? t.Value` prints `7`.
+
+**Expected behavior**
+A hover that does not run a Sub: it has no value to show, so no hover, or the compiler's description of the Sub.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The hover sends `evaluate` with `context: "hover"` and the expression `t.Bump`. A hover also runs a Function or a Property Get to show its value (`t.Doubled`, `Level1(n)`), which is how the hover is meant to work; for a Sub nothing is shown that could justify running it. Hovering over a variable, such as `Value` in `t.Value`, shows `t.Value:   6` and changes nothing.
+
+Severity: medium. The program's state changes with nothing shown, from moving the mouse.
+
+<!-- Reproducer: bugs/hover-runs-sub/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the test "hovering over a Sub call while paused runs the Sub", which passes on BETA 1005; the control "hovering over a variable while paused shows its value" passes too). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Inspecting.md, where it describes the hover while paused; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 6). -->
+
+---
+
+## An edit at the run-time error panel prints Aborting, and then the rest of the program runs
+
+**Describe the bug**
+An edit to the code while a program is paused ends the run, since Edit and Continue is not supported: at a breakpoint the DEBUG CONSOLE prints `[EDIT & CONTINUE] not yet supported.  Aborting.` and `aborted`, and nothing more runs. At the run-time error panel the same edit prints the same `Aborting.` line, but then only the failing procedure ends: its callers go on, and the rest of the program runs. It was observed in an IDE started with an `APPDATA` of its own, reading the DEBUG CONSOLE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Run a project with:
+   ```
+   Module Startup
+       Public Sub Main()
+           Fails
+           Debug.Print "main end"
+       End Sub
+
+       Public Sub Fails()
+           Err.Raise 5, , "Fails with A & B"
+           Debug.Print "after raise"
+       End Sub
+   End Module
+   ```
+2. The run stops at the error panel on the `Err.Raise` line.
+3. Type a letter anywhere in the code editor. The DEBUG CONSOLE prints `[EDIT & CONTINUE] not yet supported.  Aborting.`, then `main end`, then `(time taken: ...)`.
+
+**Expected behavior**
+The run aborted, as the message says and as the same edit at a breakpoint does: `aborted`, and no `main end`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+What runs is what the panel's **Stop** button runs: it ends only the failing procedure, which #2441 reports. Main runs on with code that the edit has since changed in the editor but not in the program.
+
+Severity: medium. Code runs after the reader was told the run is aborted --- files written, a database changed --- with nothing to warn of it.
+
+<!-- Reproducer: bugs/edit-at-error-panel-runs-on/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the test "an edit at the error panel prints Aborting, and then the rest of Main runs", which passes on BETA 1005; the control "an edit at a breakpoint aborts the run: the rest of Main does not run" passes too). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Running.md, where it says what ends a run; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 8). -->
+
+---
+
+## After an edit in the Variables panel, a Double or Date row shows a wrong value until the next refresh
+
+**Describe the bug**
+A **Double** or **Date** variable edited in the VARIABLES panel gets the value typed, but its row shows another value: `0` for a Double, `#12:00:00 AM#` for a Date. The row stays wrong until the panel is next refreshed, by a line in the DEBUG CONSOLE or the next stop. A **Long** edited the same way shows its new value at once. It was observed in an IDE started with an `APPDATA` of its own, reading the row two seconds after the edit and `? d` in the DEBUG CONSOLE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Stop at a breakpoint in a procedure with `Dim d As Double = 2.5` and `Dim dt As Date`.
+2. In the VARIABLES panel, double-click `d`, type `7.25` and press Enter. The row shows `0`.
+3. In the DEBUG CONSOLE, run `? d`. It prints `7.25`, and the row now shows `7.25`.
+4. Double-click `dt`, type `#1/2/2020#` and press Enter. The row shows `#12:00:00 AM#` until `? dt`, which prints `1/2/2020`.
+
+**Expected behavior**
+The row showing the value the variable now holds, as it does for a Long.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The row is redrawn from the answer to the `setVariable` request (`body.value`), so that answer holds `0` and `#12:00:00 AM#`. With `-1.5E+20` the row showed `2.19923962666636E-315`, which suggests the answer is read from the wrong type. Currency, Boolean, Variant and enum rows show the edit at once.
+
+Severity: medium. The variable is right; the panel shows a wrong value with nothing to say so, and a reader who checks the edit there concludes it failed.
+
+<!-- Reproducer: bugs/variables-edit-stale-display/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the tests "a Double edited in the Variables panel shows 0 until the next refresh, while the variable holds the value" and "a Date edited in the Variables panel shows #12:00:00 AM# until the next refresh, while the variable holds the value", which pass on BETA 1005; the control "a Long edited in the Variables panel shows its new value at once" passes too). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Inspecting.md, where it describes editing a value in Variables; the chapter is being written), will carry a WARNING for it; when a fixed build is released, that WARNING goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 3). -->
+
+---
+
+## After a stop at a breakpoint, Step Out does not stop in the procedure's caller
+
+**Describe the bug**
+When a run has stopped at a breakpoint inside a procedure, no step stops in a caller of that procedure. Step Out runs on to the next breakpoint, error or the end of the program; F8 off the procedure's `End Sub` stops only at the next procedure the caller calls. Steps inside the procedure, and into procedures it calls and back, work. When the procedure was entered by F8 from its caller, Step Out stops in the caller as it should. It was observed in an IDE started with an `APPDATA` of its own, reading the line the debugger stopped on and the DEBUG CONSOLE.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Run a project with:
+   ```
+   Module Startup
+       Public Sub Main()
+           Direct
+           Debug.Print "m2"
+           Other
+       End Sub
+
+       Public Sub Direct()
+           Debug.Print "in direct"
+       End Sub
+
+       Public Sub Other()
+           Debug.Print "other"
+       End Sub
+   End Module
+   ```
+   with a breakpoint on `Debug.Print "in direct"`.
+2. The run stops there. Press Ctrl+Shift+F8 (Step Out). The run does not stop in `Main` on `Debug.Print "m2"`: `m2` is printed and the run goes on to its end.
+3. Run again to the breakpoint, and press F8 twice, to `End Sub` and off it. The next stop is `Other`'s `Sub` line, after `m2` is printed.
+
+**Expected behavior**
+A stop in `Main` on `Debug.Print "m2"`, the line after the call, as Step Out gives when `Direct` was entered by F8 from a breakpoint in `Main`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same for every caller tried: `Main` and another Sub, with the call made directly, inside `Select Case`, `If` or `For`, and a Function call in an assignment.
+
+Severity: low. The program runs its own code; the pause the reader asked for is lost.
+
+<!-- Reproducer: bugs/step-out-after-breakpoint/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the tests "after a stop at a breakpoint in a procedure, Step Out does not stop in its caller: the run goes on" and "after a stop at a breakpoint in a procedure, F8 off its End Sub does not stop in its caller, but in the next procedure the caller calls", which pass on BETA 1005; the control "after F8 into a procedure from a breakpoint in its caller, Step Out stops in the caller" passes too). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Breakpoints-and-Stepping.md, where it describes Step Out; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 1). -->
+
+---
+
+## A compile error at F5 is reported as a codegen error to report upstream, at the caller's line
+
+**Describe the bug**
+With a compile error in a procedure that `Main` calls, F5 does not say that the project has a compile error, or where. It stops on `Main`'s `Sub` line with a panel headed **ERROR OCCURRED** that reads `COMPILATION (CODEGEN) ERROR AT LINE #7.  PLEASE REPORT THIS ERROR TO https://git.io/JMh6S`, where line 7 is `Main`'s call to the procedure, and the DEBUG CONSOLE prints `[LINKER] compilation (codegen) error detected in 'Startup.Main' at line #7`. It was observed in an IDE started with an `APPDATA` of its own.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a project whose `Sub Main` calls `Direct` on line 7.
+2. Add the line `x = = 1` to `Direct`. The editor marks it, and the DIAGNOSTICS panel lists it.
+3. Press F5. The DEBUG CONSOLE prints `Executing 'Main'...` and the `[LINKER]` line above; the editor stops on `Main`'s `Sub` line with the panel above. Nothing of `Main` runs.
+
+**Expected behavior**
+A message that the project has compile errors, naming the line with the error, or the DIAGNOSTICS panel shown; not a request to report a compiler defect, and not a line that holds no error.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+With the error in `Main` itself there is no panel; the DEBUG CONSOLE prints `[LINKER] compilation (codegen) error detected in '{temp_component}.{temp_procedure}' at line #1` and `(compile error: codegen error; check for compilation errors)`.
+
+Severity: low. Nothing runs, and the DIAGNOSTICS panel lists the real error.
+
+<!-- Reproducer: bugs/compile-error-reported-as-codegen/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the test "a compile error in a procedure Main calls is reported at F5 as a codegen error to report, at Main's call", which passes on BETA 1005; it types the error into the lane's project, test/ide/probes/debugging, since the lane refuses to open a project that does not compile). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Running.md, where it says what Start runs; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 9). -->
+
+---
+
+## F6 does not find the procedure when the caret is right of the column where the procedure's End line ends, or on that End line
+
+**Describe the bug**
+F6 (Run Or Preview) runs the procedure the caret is in. On a line inside the procedure, it finds the procedure only when the caret is left of the column where the procedure's `End Sub` or `End Function` line ends; from that column on, and anywhere on the `End` line itself, the DEBUG CONSOLE prints `RunCodeUnderCursor: failed to identify the procedure at the cursor position.` and nothing runs. With the usual indentation, the caret in the word `Debug` of a `Debug.Print` line is already too far right in a Sub. It was observed in an IDE started with an `APPDATA` of its own, pressing F6 at several columns of each line.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open a module with:
+   ```
+   Module Startup
+       Public Sub Direct()
+           Debug.Print "in direct"
+       End Sub
+
+       Public Function Answer() As Long
+           Answer = 42
+       End Function
+   End Module
+   ```
+2. Put the caret on the `Debug.Print` line at column 11 and press F6: `Direct` runs. At column 12, where the `End Sub` line ends, F6 prints the message.
+3. On the `Answer = 42` line, column 16 runs `Answer`, and column 17, where `End Function` ends, prints the message.
+4. On the `End Sub` line, F6 at any column prints the message.
+
+**Expected behavior**
+F6 running the procedure from any column of any of its lines, its `End` line included.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The IDE sends `runCodeUnderCursor` with the line and column, and the message is the compiler's answer. The procedure's own `Sub` line works at every column tried, right of that limit included. A trailing comment on the `End Sub` line moves the limit to where the comment starts. The check looks like a range test that compares the column with the end of the range on every line.
+
+Severity: low. Nothing runs, and the message says so.
+
+<!-- Reproducer: bugs/f6-procedure-not-found/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the tests "F6 on a line of a procedure, at or right of the column where its End line ends, does not find the procedure" and "F6 on an End Sub line does not find the procedure, at any column", which pass on BETA 1005; the control "F6 on a line of a procedure, left of the column where its End line ends, runs the procedure" passes too). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Running.md, where it describes Run Or Preview; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. The fact sheet's defect 7 said "in the word Debug"; the lane narrowed it to the column. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 7). -->
+
+---
+
+## Search Online on the run-time error panel does not encode the error text, so an & in it cuts the search short
+
+**Describe the bug**
+The run-time error panel's **Search Online** button opens a Google search for the error's header and description, but puts the text into the URL as it is. An `&` in the description ends the `q` parameter, so the search loses the rest of the text, and a `"` would end the quoted URL in the command line. It was observed in an IDE started with an `APPDATA` of its own, by recording the command line the button passes to the IDE host in place of running it; no browser was opened.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Run a project whose `Sub Main` executes `Err.Raise 5, , "Fails with A & B"`.
+2. At the error panel, click **Search Online**.
+3. The IDE runs `cmd.exe /c start "link" "https://www.google.com/search?q=twinBASIC VB6 Run-time error 5 (00000005) Fails with A & B"`, so the query the search receives ends at the `&`: `twinBASIC VB6 Run-time error 5 (00000005) Fails with A`.
+
+**Expected behavior**
+The query URL-encoded (`encodeURIComponent`), so that the search is for the whole text: `...q=twinBASIC%20VB6%20Run-time%20error%205%20(00000005)%20Fails%20with%20A%20%26%20B`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The button's handler (`showErrorWidget`, `ide/main.js`) is `root.Shell('cmd.exe /c start "link" "https://www.google.com/search?q=' + e + '"')`, with `e` the header and description joined by spaces.
+
+Severity: low. The search still opens, on part of the text.
+
+<!-- Reproducer: bugs/search-online-unencoded/ (mode lane: asserted by `ide-test.bat --only debugging` (test/ide/debugging.test.mjs), the test "Search Online passes the error's text into the search URL unencoded, so an & in it ends the query", which passes on BETA 1005; the lane replaces root.Shell with a recorder before any run, checks it again before the click, and opens no browser). No project and no zip. A page of the Running and debugging chapter, docs/IDE/Debugging/ (Breakpoints-and-Stepping.md, under the error panel; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-11 in the trials for the Running and debugging pages (their fact sheet's defect 4). -->

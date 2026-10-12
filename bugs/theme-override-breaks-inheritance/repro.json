@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:customising",
+  "tests": [
+    "a Dark.theme in the APPDATA themes folder unlinks every custom theme, and Reload from disk stops applying"
+  ],
+  "steps": "1. Close the twinBASIC IDE. In %APPDATA%\\twinBASIC\\themes, which the IDE creates, write AtStart.theme with the two lines inherits: light; and MenuBackColor: rgb(255, 0, 0); and Dark.theme with any text (its contents are ignored).\n2. Start the IDE and cancel the New / Open dialog. Open Window > Theme. Expected: AtStart (Light) and Classic (Light). Actual: AtStart (undefined) and Classic (undefined).\n3. Choose AtStart. Expected: the light base with a red menu bar. Actual: the dark base with a red menu bar.\n4. Change the colour in AtStart.theme to rgb(0, 128, 0) and choose Window > Theme > Reload from disk. Expected: the menu bar turns green. Actual: it stays red.\n5. Delete Dark.theme and restart the IDE: AtStart is listed as AtStart (Light) again, and Reload from disk applies an edit."
+}

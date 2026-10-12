@@ -2,7 +2,9 @@
 title: Project Settings
 parent: IDE
 # nav_order: 1
-permalink: /tB/IDE/Project/Settings
+permalink: /tB/IDE/Project-Settings
+redirect_from:
+  - /tB/IDE/Project/Settings
 ---
 
 # Project Settings
@@ -11,7 +13,7 @@ The Project Settings dialog, **Project → Project Settings...**, holds the sett
 
 ![The Option Explicit On setting in the Project Settings dialog, set to Yes, with an arrow pointing at the description under it](Images/project settings description text.png){:width="900" height="67"}
 
-The drop-down list of a setting ends with a **COMPILER DEFAULT** entry, which names the value used when the project does not set one. Choosing it removes the setting from the project's `Settings` file, and so does emptying a box. [**File → Export Project**](Menu/File#export-project) writes that file beside the project's `Sources` folder, and the entries below give the settings' keys in it.
+The drop-down list of a setting ends with a **COMPILER DEFAULT** entry, which names the value used when the project does not set one. Choosing it removes the setting from the project's `Settings` file, and so does emptying a box. [**File → Export Project**](Reference/Menu/File#export-project) writes that file beside the project's `Sources` folder, and the entries below give the settings' keys in it.
 
 {: .toc }
 
@@ -25,11 +27,11 @@ The description of the type library, when the build produces one. It can include
 
 ## Application Title
 
-The title that [**MsgBox**](../../Modules/Interaction/MsgBox) and [**InputBox**](../../Modules/Interaction/InputBox) show when the call gives none, and the value that [**App.Title**](../../Packages/AppGlobalClassObject/_App/Title) returns. When [Product Name](#product-name) is not set, the build also writes it into the file's version resource as the product name. In the `Settings` file it is `project.appTitle`.
+The title that [**MsgBox**](../Modules/Interaction/MsgBox) and [**InputBox**](../Modules/Interaction/InputBox) show when the call gives none, and the value that [**App.Title**](../Packages/AppGlobalClassObject/_App/Title) returns. When [Product Name](#product-name) is not set, the build also writes it into the file's version resource as the product name. In the `Settings` file it is `project.appTitle`.
 
 ## Application HelpFile
 
-The help file of the program. [**App.HelpFile**](../../Packages/AppGlobalClassObject/_App/HelpFile) returns it at run time, and forms use it for **F1** and *What's This* help. A new project does not set it. In the `Settings` file it is `project.appHelpFile`.
+The help file of the program. [**App.HelpFile**](../Packages/AppGlobalClassObject/_App/HelpFile) returns it at run time, and forms use it for **F1** and *What's This* help. A new project does not set it. In the `Settings` file it is `project.appHelpFile`.
 
 ## Startup Object
 
@@ -50,7 +52,7 @@ To add a reference, tick it on the **Available COM References** tab, which lists
 
 ![The same dialog on its Available COM References tab. A search box sits above an alphabetical list of unticked type libraries registered on the machine --- on this machine ABBYY FineReader 16 SharePoint Integration Component, AccessibilityCplAdmin, Acrobat, Acrobat Access and so on --- against Library Symbol, Version and Publisher columns.](Images/ProjectSettings_AvailableCOMReferences.png){:width="1102" height="774"}
 
-See [Packages](../../../Features/Packages/)
+See [Packages](../../Features/Packages/)
 
 ![The Project Settings dialog open over the IDE, with red numbers marking the route: 1 on the Project Explorer's Project Settings gear, 2 on the Library References heading, 3 on the Available Packages tab. That tab lists the built-in and published packages with tick boxes and Embedded and Library Symbol columns.](../Features/Packages/Images/e749e10f-e361-4f15-a977-d756fcb3b5dd.png){:width="1162" height="529"}
 
@@ -58,7 +60,7 @@ See [Packages](../../../Features/Packages/)
 
 How the compiler reports each of its warnings in this project. The dialog lists every warning by its code and message, and each one can be set to **WARNING**, **HINT**, **INFO**, **IGNORE** or **ERROR**. In a new project, TB0015 and TB0030 are at **HINT**; TB0018 to TB0021, TB0024, TB0025 and TB0029 are at **IGNORE**; and every other warning is at **WARNING**.
 
-The [**IgnoreWarnings**](../../Core/Attributes#ignorewarnings), [**EnforceWarnings**](../../Core/Attributes#enforcewarnings) and [**EnforceErrors**](../../Core/Attributes#enforceerrors) attributes override these settings in a class, a module or a procedure. [Compiler Warnings](../../../Features/Compiler-IDE/Compiler-Warnings) describes some of the warnings. In the `Settings` file the setting is `project.warnings`, which holds a list of codes for each level: `errors`, `hints`, `ignored`, `info` and `warnings`.
+The [**IgnoreWarnings**](../Core/Attributes#ignorewarnings), [**EnforceWarnings**](../Core/Attributes#enforcewarnings) and [**EnforceErrors**](../Core/Attributes#enforceerrors) attributes override these settings in a class, a module or a procedure. [Compiler Warnings](../../Features/Compiler-IDE/Compiler-Warnings) describes some of the warnings. In the `Settings` file the setting is `project.warnings`, which holds a list of codes for each level: `errors`, `hints`, `ignored`, `info` and `warnings`.
 
 ## Project ID
 
@@ -70,22 +72,22 @@ When set to **Yes**, the type library that the build produces takes the [Project
 
 ## Build Output Path
 
-The full path of the file the compiler creates. Its description in the dialog lists these variables: `${SourcePath}`, the folder that holds the `.twinproj` file, and `${ProjectName}`, `${ProjectID}`, `${FileExtension}`, `${Architecture}`, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}` and `${VersionRevision}`. `${Architecture}` is `win32` or `win64`, whichever the toolbar's [build configuration](Toolbar#build-configuration) box is set to. The IDE add-in samples use one more that the description leaves out, `${IdePath}`, the folder the IDE is installed in: their `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}` builds straight into the IDE's own `addins` folder, which works until the IDE has loaded the add-in --- see [Rebuilding an addin the IDE has loaded](../../Packages/tbIDE/#rebuilding-an-addin-the-ide-has-loaded).
+The full path of the file the compiler creates. Its description in the dialog lists these variables: `${SourcePath}`, the folder that holds the `.twinproj` file, and `${ProjectName}`, `${ProjectID}`, `${FileExtension}`, `${Architecture}`, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}` and `${VersionRevision}`. `${Architecture}` is `win32` or `win64`, whichever the toolbar's [build configuration](Reference/Toolbar#build-configuration) box is set to. The IDE add-in samples use one more that the description leaves out, `${IdePath}`, the folder the IDE is installed in: their `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}` builds straight into the IDE's own `addins` folder, which works until the IDE has loaded the add-in --- see [Rebuilding an addin the IDE has loaded](../Packages/tbIDE/#rebuilding-an-addin-the-ide-has-loaded).
 
-Every project template sets it to `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`: a `Build` folder beside the `.twinproj` file, and a different file name for each architecture. A Standard DLL project named `MathGreetLib` builds `Build\MathGreetLib_win32.dll` or `Build\MathGreetLib_win64.dll`, and a `Declare` that calls it has to name that file --- see [Calling a Standard DLL from VBA or Excel](../../../Features/Project-Configuration/Project-Types#calling-a-standard-dll-from-vba-or-excel). In the `Settings` file it is `project.buildPath`.
+Every project template sets it to `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`: a `Build` folder beside the `.twinproj` file, and a different file name for each architecture. A Standard DLL project named `MathGreetLib` builds `Build\MathGreetLib_win32.dll` or `Build\MathGreetLib_win64.dll`, and a `Declare` that calls it has to name that file --- see [Calling a Standard DLL from VBA or Excel](../../Features/Project-Configuration/Project-Types#calling-a-standard-dll-from-vba-or-excel). In the `Settings` file it is `project.buildPath`.
 
 ## ActiveX Fusion Host EXE Output Path
 
-The full path of the host EXE that the compiler creates for [Fusion](../../../Features/Fusion): the separate program that ActiveX controls run in. It can use the same variables as [Build Output Path](#build-output-path), except that `${Architecture}` is `win32host` or `win64host`. When it is not set, the compiler uses *Build Output Path* when it needs the file. A built program expects the host EXE in its own folder. For a host EXE kept anywhere else, the program has to set `App.FusionHostEXEPath` as it starts --- see [Runtime Behaviour and Deployment](../../../Features/Fusion#runtime-behaviour-and-deployment). In the `Settings` file it is `project.fusionBuildPath`.
+The full path of the host EXE that the compiler creates for [Fusion](../../Features/Fusion): the separate program that ActiveX controls run in. It can use the same variables as [Build Output Path](#build-output-path), except that `${Architecture}` is `win32host` or `win64host`. When it is not set, the compiler uses *Build Output Path* when it needs the file. A built program expects the host EXE in its own folder. For a host EXE kept anywhere else, the program has to set `App.FusionHostEXEPath` as it starts --- see [Runtime Behaviour and Deployment](../../Features/Fusion#runtime-behaviour-and-deployment). In the `Settings` file it is `project.fusionBuildPath`.
 
 ## Build Type
 {: index_also="standard exe; create an ActiveX DLL; create ActiveX DLL" }
 
-The type of file the compiler creates: **Standard EXE**, **ActiveX DLL**, **ActiveX Control**, **Standard DLL** or **Package TWINPACK**. [Project Types](../../../Features/Project-Configuration/Project-Types) describes the Standard DLL, and code can test the setting with the [`TWINBASIC_BUILD_TYPE`](../../../Reference/Compiler-Constants#twinbasic_build_type) compiler constant. In the `Settings` file it is `project.buildType`.
+The type of file the compiler creates: **Standard EXE**, **ActiveX DLL**, **ActiveX Control**, **Standard DLL** or **Package TWINPACK**. [Project Types](../../Features/Project-Configuration/Project-Types) describes the Standard DLL, and code can test the setting with the [`TWINBASIC_BUILD_TYPE`](../../Reference/Compiler-Constants#twinbasic_build_type) compiler constant. In the `Settings` file it is `project.buildType`.
 
 ## Licence Type
 
-For a package published to the package database: its licence, shown to the people who use the package. A new project does not set it. [Creating a TWINPACK Package](../../../Features/Packages/Creating-TWINPACK) describes the settings of a package. In the `Settings` file it is `project.licence`.
+For a package published to the package database: its licence, shown to the people who use the package. A new project does not set it. [Creating a TWINPACK Package](../../Features/Packages/Creating-TWINPACK) describes the settings of a package. In the `Settings` file it is `project.licence`.
 
 ## Package Visibility
 
@@ -97,31 +99,31 @@ The version number of the build, and the text that the build writes into the fil
 
 ### Major/Minor/Build/Revision
 
-The four parts of the version number: *Major*, *Minor*, *Build* and *Revision*. The build writes them into the file's version resource, and [**App.Major**](../../Packages/AppGlobalClassObject/_App/Major), [**App.Minor**](../../Packages/AppGlobalClassObject/_App/Minor), [**App.Build**](../../Packages/AppGlobalClassObject/_App/Build) and [**App.Revision**](../../Packages/AppGlobalClassObject/_App/Revision) return them. When they are not set, the version is 1.0.0.0. In the `Settings` file they are `project.versionMajor`, `project.versionMinor`, `project.versionBuild` and `project.versionRevision`.
+The four parts of the version number: *Major*, *Minor*, *Build* and *Revision*. The build writes them into the file's version resource, and [**App.Major**](../Packages/AppGlobalClassObject/_App/Major), [**App.Minor**](../Packages/AppGlobalClassObject/_App/Minor), [**App.Build**](../Packages/AppGlobalClassObject/_App/Build) and [**App.Revision**](../Packages/AppGlobalClassObject/_App/Revision) return them. When they are not set, the version is 1.0.0.0. In the `Settings` file they are `project.versionMajor`, `project.versionMinor`, `project.versionBuild` and `project.versionRevision`.
 
 ### Product Name
 
-The `ProductName` text that the build writes into the file's version resource. When it is not set, the build writes the [Application Title](#application-title) there instead. At run time, [**App.ProductName**](../../Packages/AppGlobalClassObject/_App/ProductName) returns the product name. In the `Settings` file it is `project.versionProductName`.
+The `ProductName` text that the build writes into the file's version resource. When it is not set, the build writes the [Application Title](#application-title) there instead. At run time, [**App.ProductName**](../Packages/AppGlobalClassObject/_App/ProductName) returns the product name. In the `Settings` file it is `project.versionProductName`.
 
 ### Company Name
 
-The `CompanyName` text that the build writes into the file's version resource. [**App.CompanyName**](../../Packages/AppGlobalClassObject/_App/CompanyName) returns it at run time. A new project does not set it. In the `Settings` file it is `project.versionCompanyName`.
+The `CompanyName` text that the build writes into the file's version resource. [**App.CompanyName**](../Packages/AppGlobalClassObject/_App/CompanyName) returns it at run time. A new project does not set it. In the `Settings` file it is `project.versionCompanyName`.
 
 ### File Description
 
-The `FileDescription` text that the build writes into the file's version resource. [**App.FileDescription**](../../Packages/AppGlobalClassObject/_App/FileDescription) returns it at run time. A new project does not set it. In the `Settings` file it is `project.versionFileDescription`.
+The `FileDescription` text that the build writes into the file's version resource. [**App.FileDescription**](../Packages/AppGlobalClassObject/_App/FileDescription) returns it at run time. A new project does not set it. In the `Settings` file it is `project.versionFileDescription`.
 
 ### Legal Copyright
 
-The `LegalCopyright` text that the build writes into the file's version resource. [**App.LegalCopyright**](../../Packages/AppGlobalClassObject/_App/LegalCopyright) returns it at run time. A new project does not set it. In the `Settings` file it is `project.versionLegalCopyright`.
+The `LegalCopyright` text that the build writes into the file's version resource. [**App.LegalCopyright**](../Packages/AppGlobalClassObject/_App/LegalCopyright) returns it at run time. A new project does not set it. In the `Settings` file it is `project.versionLegalCopyright`.
 
 ### Legal Trademarks
 
-The `LegalTrademarks` text that the build writes into the file's version resource. [**App.LegalTrademarks**](../../Packages/AppGlobalClassObject/_App/LegalTrademarks) returns it at run time. A new project does not set it. In the `Settings` file it is `project.versionLegalTrademarks`.
+The `LegalTrademarks` text that the build writes into the file's version resource. [**App.LegalTrademarks**](../Packages/AppGlobalClassObject/_App/LegalTrademarks) returns it at run time. A new project does not set it. In the `Settings` file it is `project.versionLegalTrademarks`.
 
 ### Comments
 
-The `Comments` text that the build writes into the file's version resource. [**App.Comments**](../../Packages/AppGlobalClassObject/_App/Comments) returns it at run time. A new project does not set it. In the `Settings` file it is `project.versionComments`.
+The `Comments` text that the build writes into the file's version resource. [**App.Comments**](../Packages/AppGlobalClassObject/_App/Comments) returns it at run time. A new project does not set it. In the `Settings` file it is `project.versionComments`.
 
 ### Auto-Increment
 
@@ -158,7 +160,7 @@ How a built EXE initializes COM and OLE, which sets its threading model: **OleIn
 
 ## Is Console Application
 
-When set to **Yes**, the built executable is marked as a console application rather than a GUI application. It is **No** by default; the **Standard EXE (Console App)** template sets it to **Yes**. In the `Settings` file it is `project.isConsoleApplication`. [Writing a command-line tool](../../../Features/Project-Configuration/Project-Types#writing-a-command-line-tool-output-exit-code-and-arguments) shows how such a program writes its output and sets its exit code.
+When set to **Yes**, the built executable is marked as a console application rather than a GUI application. It is **No** by default; the **Standard EXE (Console App)** template sets it to **Yes**. In the `Settings` file it is `project.isConsoleApplication`. [Writing a command-line tool](../../Features/Project-Configuration/Project-Types#writing-a-command-line-tool-output-exit-code-and-arguments) shows how such a program writes its output and sets its exit code.
 
 ## Native Subsystem
 
@@ -170,32 +172,32 @@ The name of a procedure to use as the entry point of the built file. That proced
 
 ## Runtime Binding of DLL Declares
 
-When set to **Yes**, the project's [**Declare**](../../Core/Declare) statements are resolved at run time. When set to **No**, they are added to the import address table (IAT) of the built file. It is **Yes** by default. A **Declare** that comes from a type library always goes into the import address table, whatever this setting says. In the `Settings` file it is `project.dllRuntimeBinding`.
+When set to **Yes**, the project's [**Declare**](../Core/Declare) statements are resolved at run time. When set to **No**, they are added to the import address table (IAT) of the built file. It is **Yes** by default. A **Declare** that comes from a type library always goes into the import address table, whatever this setting says. In the `Settings` file it is `project.dllRuntimeBinding`.
 
 ## Conditional Compilation Args
 
-Conditional compilation constants for the whole project, as `name=value` pairs separated by colons: `foo=42:bar=-42`. Each value must be between -32768 and 32767. These are the project-wide constants that [**#If**](../../Core/Topic-Preprocessor) can test; **#Const** defines a constant for its own module only. A new project does not set it. In the `Settings` file it is `project.conditionalCompilationArguments`.
+Conditional compilation constants for the whole project, as `name=value` pairs separated by colons: `foo=42:bar=-42`. Each value must be between -32768 and 32767. These are the project-wide constants that [**#If**](../Core/Topic-Preprocessor) can test; **#Const** defines a constant for its own module only. A new project does not set it. In the `Settings` file it is `project.conditionalCompilationArguments`.
 
 ## Option Explicit On
 
-Whether [**Option Explicit**](../../Core/Option) is on in a file that has no **Option Explicit** statement of its own. It is **Yes** by default. In the `Settings` file it is `project.optionExplicit`.
+Whether [**Option Explicit**](../Core/Option) is on in a file that has no **Option Explicit** statement of its own. It is **Yes** by default. In the `Settings` file it is `project.optionExplicit`.
 
 ## Auto Prettify Source Code
 
-When set to **Yes**, the editor corrects the capitalization of words as they are typed, and corrects spacing to the usual VBE layout. It is **Yes** by default. In the `Settings` file it is `project.autoPrettify`.
+When set to **Yes**, the editor corrects the capitalization of words, and corrects spacing to the usual VBE layout. A correction to the line you are typing in appears when the caret moves to another line. [Auto Prettify](Code/Editor#auto-prettify) describes the rule. It is **Yes** by default. In the `Settings` file it is `project.autoPrettify`.
 
 ## CodeLens - Show Run Procedure
 {: #show-run-procedure }
 
-When set to **Yes**, the editor shows **▶ run** and the procedure's name in the CodeLens above each procedure in a standard module that takes no arguments. [CodeLens](../../../Features/Compiler-IDE/CodeLens) describes running a procedure that way. It is **Yes** by default. In the `Settings` file it is `project.codeLensRunProcedure`.
+When set to **Yes**, the editor shows **▶ run** and the procedure's name in the CodeLens above each procedure in a standard module that takes no arguments. [CodeLens](Code/IntelliSense#codelens) describes running a procedure that way. It is **Yes** by default. In the `Settings` file it is `project.codeLensRunProcedure`.
 
 ## Runtime Windows Codepage
 
-The Windows code page that [**Chr**](../../Modules/Strings/Chr), **Chr$**, [**String**](../../Modules/Strings/String), **String$**, [**StrConv**](../../Modules/Strings/StrConv) and [**Asc**](../../Modules/Strings/Asc) use at run time. The choices are the system code page at compile time, the system code page at run time, fourteen code pages named by number, from **CODEPAGE 1252 - WESTERN EUROPEAN (Latin-1)** to **CODEPAGE 949 - KOREAN (KS C 5601)**, and **OTHER**. The default is **SYSTEM CODEPAGE [AT COMPILE TIME]**. In the `Settings` file it is `project.ansiCodePageRuntime`.
+The Windows code page that [**Chr**](../Modules/Strings/Chr), **Chr$**, [**String**](../Modules/Strings/String), **String$**, [**StrConv**](../Modules/Strings/StrConv) and [**Asc**](../Modules/Strings/Asc) use at run time. The choices are the system code page at compile time, the system code page at run time, fourteen code pages named by number, from **CODEPAGE 1252 - WESTERN EUROPEAN (Latin-1)** to **CODEPAGE 949 - KOREAN (KS C 5601)**, and **OTHER**. The default is **SYSTEM CODEPAGE [AT COMPILE TIME]**. In the `Settings` file it is `project.ansiCodePageRuntime`.
 
 ## Use Unicode Standard Library
 
-When set to **Yes**, the compiler uses the Unicode versions of Windows API calls wherever it can: [**MsgBox**](../../Modules/Interaction/MsgBox) calls `MessageBoxW` rather than `MessageBoxA`, for example. It is **Yes** by default. In the `Settings` file it is `runtime.useUnicodeStandardLibrary`.
+When set to **Yes**, the compiler uses the Unicode versions of Windows API calls wherever it can: [**MsgBox**](../Modules/Interaction/MsgBox) calls `MessageBoxW` rather than `MessageBoxA`, for example. It is **Yes** by default. In the `Settings` file it is `runtime.useUnicodeStandardLibrary`.
 
 ## Unicode Control Notifications
 
@@ -204,11 +206,11 @@ When set to **Yes**, twinBASIC container windows --- forms, UserControls, Pictur
 ## Include Procedure Name Symbols in Built Executables
 {: #include-procedure-name-symbols }
 
-When set to **Yes**, the compiler includes the names of procedures in built EXEs and DLLs, and the call stack information read at run time uses them. When set to **No**, [**ErrorStackFrame**](../../Packages/VBRUN/ErrorStackFrame/) gives `{unknown}` for those names in a built executable. It is **No** by default. The names make the file slightly larger and do not slow it down. In the `Settings` file it is `compiler.includeStackSymbols`.
+When set to **Yes**, the compiler includes the names of procedures in built EXEs and DLLs, and the call stack information read at run time uses them. When set to **No**, [**ErrorStackFrame**](../Packages/VBRUN/ErrorStackFrame/) gives `{unknown}` for those names in a built executable. It is **No** by default. The names make the file slightly larger and do not slow it down. In the `Settings` file it is `compiler.includeStackSymbols`.
 
 ## Trace Flags
 
-What the trace logger records, together with [Trace Output](#trace-output). [Debug Trace Logger](../../../Features/Compiler-IDE/Debugging#debug-trace-logger) describes the logger. Each flag has a box, and no box is ticked by default:
+What the trace logger records, together with [Trace Output](#trace-output). [The trace logger](Debugging/Debug-Console#the-trace-logger) describes the logger. Each flag has a box, and no box is ticked by default:
 
 - **Trace Procedure Entry and Exit points**
 - **Trace Procedure Arguments** -- needs *Trace Procedure Entry and Exit points* as well
@@ -216,7 +218,7 @@ What the trace logger records, together with [Trace Output](#trace-output). [Deb
 - **Trace IDispatch::GetIDsOfNames calls**
 - **Trace IDispatch::Invoke calls**
 - **Trace Window (HWND) Messages**
-- **Trace Debug.TracePrint output** -- what [**Debug.TracePrint**](../../Modules/Debug#traceprint) writes
+- **Trace Debug.TracePrint output** -- what [**Debug.TracePrint**](../Modules/Debug#traceprint) writes
 - **Buffered Trace Log File Writing** -- not for tracing a hard crash
 - **Trace IClassFactory::CreateInstance and IClassFactory2::CreateInstanceLic calls for exposed COM classes**
 - **Trace DllGetClassObject calls** -- COM and ActiveX creation of the project's exposed classes
@@ -231,7 +233,7 @@ Where the trace log goes: the full path of the log file. A new project does not 
 - `${SESSIONID}` -- a GUID that is unique to each session and each thread
 - `${DATE}` -- the date, as `YYYYMMDD`
 - `${TIME}` -- the time, as `HHNNSS`
-- `${DEBUG}` -- sends the log to the IDE's [DEBUG CONSOLE](DebugConsole) only
+- `${DEBUG}` -- sends the log to the IDE's [DEBUG CONSOLE](Debugging/Debug-Console) only
 
 In the `Settings` file it is `compiler.traceOutput`.
 
@@ -240,15 +242,15 @@ In the `Settings` file it is `compiler.traceOutput`.
 
 ## Disable Overflow Checks
 
-When set to **Yes**, the compiler leaves out every run-time check for integer overflow in arithmetic, which produces more efficient code. It is **No** by default. It is the same as [**IntegerOverflowChecks(False)**](../../Core/Attributes#integeroverflowchecks) on every procedure in the project. [**IntegerOverflowChecks(True)**](../../Core/Attributes#integeroverflowchecks) on a procedure, module or class turns the integer overflow checks back on there. Dividing the most negative **Integer**, **Long** or **LongLong** by -1 with [**\\**](../../Core/IntegerDivide) or [**Mod**](../../Core/Mod) raises error 6 whatever the setting. It affects the project only, not the packages it references. In the `Settings` file it is `compiler.disableOverflowChecks`.
+When set to **Yes**, the compiler leaves out every run-time check for integer overflow in arithmetic, which produces more efficient code. It is **No** by default. It is the same as [**IntegerOverflowChecks(False)**](../Core/Attributes#integeroverflowchecks) on every procedure in the project. [**IntegerOverflowChecks(True)**](../Core/Attributes#integeroverflowchecks) on a procedure, module or class turns the integer overflow checks back on there. Dividing the most negative **Integer**, **Long** or **LongLong** by -1 with [**\\**](../Core/IntegerDivide) or [**Mod**](../Core/Mod) raises error 6 whatever the setting. It affects the project only, not the packages it references. In the `Settings` file it is `compiler.disableOverflowChecks`.
 
 ## Disable Array Bounds Checks
 
-When set to **Yes**, the compiler leaves out every run-time check of array bounds when array elements are read and written, which produces more efficient code. It is **No** by default. It is the same as [**ArrayBoundsChecks(False)**](../../Core/Attributes#arrayboundschecks) on every procedure in the project. [**ArrayBoundsChecks(True)**](../../Core/Attributes#arrayboundschecks) on a procedure, module or class turns the array bounds checks back on there. It affects the project only, not the packages it references. In the `Settings` file it is `compiler.disableArrayBoundsChecks`.
+When set to **Yes**, the compiler leaves out every run-time check of array bounds when array elements are read and written, which produces more efficient code. It is **No** by default. It is the same as [**ArrayBoundsChecks(False)**](../Core/Attributes#arrayboundschecks) on every procedure in the project. [**ArrayBoundsChecks(True)**](../Core/Attributes#arrayboundschecks) on a procedure, module or class turns the array bounds checks back on there. It affects the project only, not the packages it references. In the `Settings` file it is `compiler.disableArrayBoundsChecks`.
 
 ## Disable FPU Error Checks
 
-When set to **Yes**, the compiler leaves out every run-time check for floating-point (FPU) errors in arithmetic, which produces more efficient code. It is **No** by default. It is the same as [**FloatingPointErrorChecks(False)**](../../Core/Attributes#floatingpointerrorchecks) on every procedure in the project. [**FloatingPointErrorChecks(True)**](../../Core/Attributes#floatingpointerrorchecks) on a procedure, module or class turns the floating-point error checks back on there. It affects the project only, not the packages it references. In the `Settings` file it is `compiler.disableFPUErrorChecks`.
+When set to **Yes**, the compiler leaves out every run-time check for floating-point (FPU) errors in arithmetic, which produces more efficient code. It is **No** by default. It is the same as [**FloatingPointErrorChecks(False)**](../Core/Attributes#floatingpointerrorchecks) on every procedure in the project. [**FloatingPointErrorChecks(True)**](../Core/Attributes#floatingpointerrorchecks) on a procedure, module or class turns the floating-point error checks back on there. It affects the project only, not the packages it references. In the `Settings` file it is `compiler.disableFPUErrorChecks`.
 
 ## Sanitize Booleans
 
@@ -256,7 +258,7 @@ When set to **Yes**, the compiler makes sure that a **Boolean** value from an ex
 
 ## Constant Function Folding
 
-Experimental. When set to **Yes**, the compiler replaces some function calls with their results as it compiles, where the result is fully known at compile time. It affects only calls to the VBA standard library, and calls to standard-module functions marked with the [**ConstantFoldable**](../../Core/Attributes#constantfoldable) attribute. It is **No** by default. In the `Settings` file it is `optimizer.constantFunctionFolding`.
+Experimental. When set to **Yes**, the compiler replaces some function calls with their results as it compiles, where the result is fully known at compile time. It affects only calls to the VBA standard library, and calls to standard-module functions marked with the [**ConstantFoldable**](../Core/Attributes#constantfoldable) attribute. It is **No** by default. In the `Settings` file it is `optimizer.constantFunctionFolding`.
 
 ## Large Address Aware (LAA)
 {: .la-aware }
@@ -276,7 +278,7 @@ When set to **Yes**, the build marks the file as DEP-aware. On hardware that sup
 ## Export
 
 > [!WARNING]
-> **File → Export Project** deletes everything in its target folder before it writes, without asking. Read [Export Project](Menu/File#export-project) before setting these.
+> **File → Export Project** deletes everything in its target folder before it writes, without asking. Read [Export Project](Reference/Menu/File#export-project) before setting these.
 
 ### Export Path
 
@@ -292,7 +294,7 @@ When set to **Yes**, every save of the project also runs **Export Project** into
 
 ### Export Verbose
 
-When set to **Yes**, **Export Project** writes a line to the [Debug Console](DebugConsole) for each file and folder it deletes, `[EXPORT]  DELETED: …`, and for each file it writes, `[EXPORT]  DONE: …`. When set to **No**, the console shows only the line that starts the export, the `[EXPORT] COMPLETED` line that ends it, and any failure. It is **No** by default. In the `Settings` file it is `project.exportVerbose`.
+When set to **Yes**, **Export Project** writes a line to the [Debug Console](Debugging/Debug-Console) for each file and folder it deletes, `[EXPORT]  DELETED: …`, and for each file it writes, `[EXPORT]  DONE: …`. When set to **No**, the console shows only the line that starts the export, the `[EXPORT] COMPLETED` line that ends it, and any failure. It is **No** by default. In the `Settings` file it is `project.exportVerbose`.
 
 ## Force DPI Awareness At Startup
 {: #dpi-awareness index="high DPI" }
@@ -301,7 +303,7 @@ How the program sets its DPI awareness as it starts: **NONE**, **SYSTEM_DPI_AWAR
 
 ## Runtime Command Line Args
 
-The text that [**Command$**](../../Modules/Interaction/Command) returns while the project runs in a debug session in the IDE. A new project does not set it. In the `Settings` file it is `debugger.runtimeCommandLineArguments`.
+The text that [**Command$**](../Modules/Interaction/Command) returns while the project runs in a debug session in the IDE. A new project does not set it. In the `Settings` file it is `debugger.runtimeCommandLineArguments`.
 
 ## Immediate Memory Invalidation
 
@@ -311,7 +313,7 @@ When set to **Yes**, the memory of a **String**, **Variant** or array is overwri
 
 When set to **Yes**, a run-time error stops the program at the failing line even while an `On Error Resume Next` or `On Error GoTo` statement is in effect, with the same error panel as an error that nothing handles. It is **No** by default, and then the handler gets the error. **Debug → Debugger Options → Break On All Errors** turns the same setting on and off. In the `Settings` file it is `debugger.breakOnAllErrors`.
 
-[When a run-time error stops the program](Menu/Debug#when-a-run-time-error-stops-the-program) describes the panel. [Debugger Options](Menu/Debug#debugger-options) says what **Ignore (Resume Next)** does when this setting is on.
+[When a run-time error stops the program](Debugging/Breakpoints-and-Stepping#when-a-run-time-error-stops-the-program) describes the panel. [Break On All Errors and Debuggable](Debugging/Breakpoints-and-Stepping#break-on-all-errors-and-debuggable) says what **Ignore (Resume Next)** does when this setting is on.
 
 ## Build Stack Reserve Size
 
@@ -323,7 +325,7 @@ The version of Windows that the built file is marked for. The build writes it in
 
 ## Codegen Model
 
-The kind of code that the compiler generates for a built file, especially when it does not use [LLVM](../../../LLVM/Getting-Started#llvm-in-twinbasic): **SMALL** makes the file as small as it can, whatever the speed; **FAST** generates larger code, aiming to run slightly faster; **BALANCED** is between the two. The default is **BALANCED**. Only the main project's setting counts: a package uses the setting of the project that references it. In the `Settings` file it is `project.codegenModel`.
+The kind of code that the compiler generates for a built file, especially when it does not use [LLVM](../../LLVM/Getting-Started#llvm-in-twinbasic): **SMALL** makes the file as small as it can, whatever the speed; **FAST** generates larger code, aiming to run slightly faster; **BALANCED** is between the two. The default is **BALANCED**. Only the main project's setting counts: a package uses the setting of the project that references it. In the `Settings` file it is `project.codegenModel`.
 
 ## Strip PE File Relocation Symbols
 {: #strip-pe-symbols }
@@ -346,7 +348,7 @@ Overrides the image base address in the PE header of a Win64 EXE, DLL or OCX. Th
 
 ## Debuggable
 
-When set to **Yes**, breakpoints can be set in the project's procedures, and stepping into them works as usual. It is **Yes** by default. **No** is mainly useful in a package, to keep the projects that use the package from stepping into its code. The [**Debuggable**](../../Core/Attributes#debuggable) attribute changes it for a module, a class or a procedure. In the `Settings` file it is `project.debuggable`.
+When set to **Yes**, breakpoints can be set in the project's procedures, and stepping into them works as usual. It is **Yes** by default. **No** is mainly useful in a package, to keep the projects that use the package from stepping into its code. The [**Debuggable**](../Core/Attributes#debuggable) attribute changes it for a module, a class or a procedure. In the `Settings` file it is `project.debuggable`.
 
 ## Feature Flags
 
@@ -360,8 +362,8 @@ In the `Settings` file they are `project.featureFlagsUI` and `project.featureFla
 
 ## Compiler Options (BUILD)
 
-Turns on [LLVM compilation](../../../LLVM/Getting-Started#llvm-in-twinbasic) and its optimizations for the executable a build produces.
+Turns on [LLVM compilation](../../LLVM/Getting-Started#llvm-in-twinbasic) and its optimizations for the executable a build produces.
 
 ## Compiler Options (DEBUG)
 
-Turns on [LLVM compilation](../../../LLVM/Getting-Started#llvm-in-twinbasic) and its optimizations when the project runs in the IDE. This is not recommended: the IDE cannot debug code compiled with LLVM.
+Turns on [LLVM compilation](../../LLVM/Getting-Started#llvm-in-twinbasic) and its optimizations when the project runs in the IDE. This is not recommended: the IDE cannot debug code compiled with LLVM.

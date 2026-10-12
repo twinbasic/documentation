@@ -102,7 +102,7 @@ There are two ways to run a test Sub:
 
 1. **CodeLens** --- above each `Sub` line, the editor shows a **▶ run** link. Click it to run that one Sub. A test that passes returns without printing anything; one that fails stops on the failing assertion, as described below.
 
-2. **F6 from inside the Sub** --- place the cursor inside the Sub and press **F6**. twinBASIC runs that procedure and stops when it returns or when an assertion fails. **F5** does not do this: it starts the whole project, as **Run → Start** does.
+2. **F6 from inside the Sub** --- place the cursor inside the Sub and press **F6**. twinBASIC runs that procedure and stops when it returns or when an assertion fails. **F5** does not do this: it starts the whole project, as **Run → Start** does. With the cursor in the code of a form, **F6** previews the form instead of running a procedure; see [Run Or Preview](../tB/IDE/Debugging/Running#run-or-preview).
 
 To run all tests in a batch, add a runner Sub to `TestStringUtils` that calls each test in sequence:
 
@@ -124,7 +124,7 @@ Place the cursor inside `RunAllTests` and press **F6**, or click the **▶ run**
 All PadLeft tests passed.
 ```
 
-If an assertion fails, the run stops on that line with the run-time error **Assertion FAILED** (-353703420, `&HEAEAEA04`), before the final `Debug.Print`. The IDE shows the failing line, and the call stack names the test it is in. The error panel under the line has four buttons: **Try Again (Resume)**, **Ignore (Resume Next)**, **Stop** and **Search Online**. [When a run-time error stops the program](../tB/IDE/Project/Menu/Debug#when-a-run-time-error-stops-the-program) describes them, and how to look at the test's variables. Nothing about the failure is written to the Debug Console, and the expected and actual values are not shown.
+If an assertion fails, the run stops on that line with the run-time error **Assertion FAILED** (-353703420, `&HEAEAEA04`), before the final `Debug.Print`. The IDE shows the failing line, and the call stack names the test it is in. The error panel under the line has four buttons: **Try Again (Resume)**, **Ignore (Resume Next)**, **Stop** and **Search Online**. [When a run-time error stops the program](../tB/IDE/Debugging/Breakpoints-and-Stepping#when-a-run-time-error-stops-the-program) describes them, and how to look at the test's variables. Nothing about the failure is written to the Debug Console, and the expected and actual values are not shown.
 
 > [!IMPORTANT]
 > **Stop** and **Ignore (Resume Next)** do not end the run at a failed assertion. Both let the test go on past the failed check as if it had passed, so `RunAllTests` runs the remaining tests and then prints `All PadLeft tests passed.` To end the run, click the failing test's `End Sub` line, press **Ctrl+F9** (**Debug → Set Next Statement**), then choose **Run → End**.

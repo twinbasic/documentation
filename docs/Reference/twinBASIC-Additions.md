@@ -177,7 +177,7 @@ See [Features → Enhanced API Declarations](../Features/Advanced/API-Declaratio
 
 ## IDE additions
 
-- **CodeLens** --- inline action bars above procedures ("Run", "Debug", "Test") without leaving the editor. See [Features → CodeLens](../Features/Compiler-IDE/CodeLens).
+- **CodeLens** --- inline action bars above procedures ("Run", "Debug", "Test") without leaving the editor. See [CodeLens](../tB/IDE/Code/IntelliSense#codelens).
 - **Package server** (TWINSERV) --- install packages from a central registry without leaving the IDE. See [Features → Importing a package](../Features/Packages/Importing-TWINSERV).
 - **Type inference** --- `Dim x = 1` infers **Long**; `For Each item In collection` infers the element type when the collection is typed. See [Features → Type Inference](../Features/Language/Type-Inference).
 - **Conditional compilation constants** (`#Const`, `#If`) --- a superset of the VBA set; see [Compiler Constants](Compiler-Constants).

@@ -1,238 +1,54 @@
 ---
 title: Window
 parent: Menu
-grand_parent: IDE
+grand_parent: IDE Reference
 nav_order: 10
-permalink: /tB/IDE/Project/Menu/Window
+permalink: /tB/IDE/Reference/Menu/Window
+redirect_from:
+  - /tB/IDE/Project/Menu/Window
 ---
 
 # Window Menu
 
+The Window menu sets how the IDE is arranged and how it looks: its panel layouts, what can be done to panels, its keyboard shortcuts, its theme and its language. [Customising the IDE](../../Customising/) explains each entry.
+
 ![The Window menu open with five available entries, each carrying a submenu arrow: Panel Layouts, Panel Features and Keyboard Shortcuts, then Theme beside a palette icon and Language beside a globe icon.](Images/Menu_Window.png){:width="172" height="159"}
-
-- Panel Layouts
-- Panel Features
-- Keyboard Shortcuts
-
----
-- Theme
-- Language
 
 ## Panel Layouts
 
-![The Window menu with Panel Layouts highlighted and its submenu open to the right: a ticked Default Built-in Layout with CTRL+#, Full Screen Editor Layout, then Save Current Panel Layout As and Manage Panel Layouts.](Images/Menu_Window_PanelLayouts.png){:width="389" height="159"}
+Switches the arrangement of the panels, and saves and manages arrangements. See [Panel layouts](../../Customising/Panel-Layouts).
 
-- Default Built-in Layout <kbd>CTRL</kbd> + <kbd>#</kbd>
-- Full Screen Editor Layout
-
----
-- ✓ Custom Layout (Unsaved) --- shown, and ticked, while none of the named layouts is the active one
-- Custom Layout *n*. *name* --- one for each saved layout
-
----
-- Save Current Panel Layout As...
-- Manage Panel Layouts...
-
+- **Default Built-in Layout** --- <kbd>Ctrl</kbd>+<kbd>#</kbd>. Restores the arrangement the IDE starts with.
+- **Full Screen Editor Layout** --- docks only the toolbar, the Toolbox, the Editor and Properties, and gives the Editor most of the room.
+- **Custom Layout (Unsaved)** --- shown, and ticked, while none of the named layouts is in use.
+- **Custom** *n*. *name* --- one item for each saved layout. A tick marks the layout in use.
+- **Save Current Panel Layout As...** --- saves the current arrangement under a name.
+- **Manage Panel Layouts...** --- adds layouts, deletes them and edits them as text.
 
 ### Manage Panel Layouts...
 
-![The Manage Panel Layouts dialog. Its left pane lists two built-in layouts, DEFAULT and FULLSCREEN, with DEFAULT selected; the right pane shows that layout JSON --- a docked tree of TOOLBAR, TOOLBOX and EDITOR entries with percentage sizes. Add New sits at the bottom left, with a greyed-out Save Changes and a Cancel button at the right.](Images/Menu_Window_PanelLayouts_ManagePanelLayouts_Default.png){:width="1016" height="638"}
-
-<details>
-<summary markdown=span>&lt;DEFAULT&gt; (built-in)</summary>
-
-```json
-{
-	"docked": {
-		"type": "horizontal",
-		"variableSize": true,
-		"size": "0%",
-		"content": [
-			{
-				"id": "TOOLBAR",
-				"variableSize": false,
-				"size": "fit-content"
-			},
-			{
-				"type": "vertical",
-				"variableSize": true,
-				"size": "0%",
-				"content": [
-					{
-						"type": "horizontal",
-						"variableSize": false,
-						"size": "79.0109%",
-						"content": [
-							{
-								"type": "vertical",
-								"variableSize": false,
-								"size": "73.8657%",
-								"content": [
-									{
-										"id": "TOOLBOX",
-										"variableSize": false,
-										"size": "13.0192%"
-									},
-									{
-										"id": "EDITOR",
-										"variableSize": true,
-										"size": "0%"
-									}
-								]
-							},
-							{
-								"type": "vertical",
-								"variableSize": true,
-								"size": "0%",
-								"content": [
-									{
-										"type": "vertical",
-										"variableSize": false,
-										"size": "67.9395%",
-										"content": [
-											{
-												"id": "DEBUG CONSOLE",
-												"variableSize": false,
-												"size": "53.0193%"
-											},
-											{
-												"id": "PROBLEMS",
-												"variableSize": true,
-												"size": "0%"
-											}
-										]
-									},
-									{
-										"type": "vertical",
-										"variableSize": true,
-										"size": "0%",
-										"content": [
-											{
-												"id": "CALL STACK",
-												"variableSize": true,
-												"size": "0%"
-											},
-											{
-												"id": "VARIABLES",
-												"variableSize": true,
-												"size": "0%"
-											}
-										]
-									}
-								]
-							}
-						]
-					},
-					{
-						"type": "horizontal",
-						"variableSize": true,
-						"size": "0%",
-						"content": [
-							{
-								"id": "PROJECT EXPLORER",
-								"variableSize": false,
-								"size": "60.4237%"
-							},
-							{
-								"id": "PROPERTIES",
-								"variableSize": true,
-								"size": "0%"
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"floating": []
-}
-```
-
-</details>
-
-![The same dialog with FULLSCREEN selected instead, its JSON showing a TOOLBAR sized to fit its content, a TOOLBOX at about 8.5 per cent, and an EDITOR and PROPERTIES pair filling the rest.](Images/Menu_Window_PanelLayouts_ManagePanelLayouts_Fullscreen.png){:width="1016" height="638"}
-
-<details>
-<summary markdown=span>&lt;FULLSCREEN&gt; (built-in)</summary>
-
-```json
-{
-	"docked": {
-		"type": "horizontal",
-		"variableSize": true,
-		"size": "0%",
-		"content": [
-			{
-				"id": "TOOLBAR",
-				"variableSize": false,
-				"size": "fit-content"
-			},
-			{
-				"type": "vertical",
-				"variableSize": true,
-				"size": "0%",
-				"content": [
-					{
-						"id": "TOOLBOX",
-						"variableSize": false,
-						"size": "8.49705%"
-					},
-					{
-						"type": "vertical",
-						"variableSize": true,
-						"size": "0%",
-						"content": [
-							{
-								"id": "EDITOR",
-								"variableSize": false,
-								"size": "81.8591%"
-							},
-							{
-								"id": "PROPERTIES",
-								"variableSize": true,
-								"size": "0%"
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"floating": []
-}
-```
-
-</details>
+Opens a dialog that lists the built-in layouts, which are read-only, and the saved ones. See [Manage layouts](../../Customising/Panel-Layouts#manage-layouts).
 
 ## Panel Features
 
-![The Window menu with Panel Features highlighted and its submenu open to the right, holding five options that are all ticked: resizing, rearrangement and tear-out of docked panels, then resizing and movement of floating panels.](Images/Menu_Window_PanelFeatures.png){:width="421" height="186"}
-
-- ✓ Allow resizing of docked panels
-- ✓ Allow rearrangement of docked panels
-- ✓ Allow tear-out of docked panels
-
----
-- ✓ Allow resizing of floating panels
-- ✓ Allow movement of floating panels
+Five switches decide what can be done to panels. A tick means the action is allowed. See [Panel Features](../../Customising/Panel-Layouts#panel-features).
 
 ## Keyboard Shortcuts
 
-![The Window menu with Keyboard Shortcuts highlighted and its submenu open to the right: a ticked Default Built-in Keyboard Shortcuts above Manage Keyboard Shortcuts.](Images/Menu_Window_KeyboardShortcuts.png){:width="404" height="159"}
+Switches groups of keyboard shortcuts on and off. See [Keyboard shortcuts](../../Customising/Keyboard-Shortcuts).
 
-- ✓ Default Built-in Keyboard Shortcuts
-
----
-- Manage Keyboard Shortcuts
+- **Default Built-in Keyboard Shortcuts** --- always ticked. The group cannot be switched off.
+- **Custom** *n*. *name* --- one item for each group that has been created. A tick means the group is on.
+- **Manage Keyboard Shortcuts...** --- creates, edits and deletes groups.
 
 ### Manage Keyboard Shortcuts
 
-![The Manage Keyboard Shortcuts dialog. A paragraph across the top explains that groups are merged in the order listed, and how to override an existing shortcut or add one alongside it. The left pane holds the single built-in group, DEFAULT; the right pane shows its JSON with the Edit as JSON box ticked, mapping names such as tbEditor_SelectAll and tbEditor_ClipboardCopy to KEYDOWN sequences. Save Changes is greyed out.](Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts.png){:width="1016" height="736"}
+Opens a dialog that lists the built-in group, which is read-only, and the groups that have been created, and shows each as JSON text. See [Manage keyboard shortcuts](../../Customising/Keyboard-Shortcuts#manage-keyboard-shortcuts) and [The text of a group](../../Customising/Keyboard-Shortcuts#the-text-of-a-group).
 
-![The same dialog with the Edit as JSON box cleared: the editing pane is empty apart from the line Keyboard editor coming soon.](Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts_1.png){:width="1016" height="736"}
+The built-in group follows. The names are the IDE's command names, and each is followed by its keys.
 
 <details>
-<summary markdown=span>Options</summary>
+<summary markdown=span>Default keyboard shortcuts</summary>
 
 ```json
 {
@@ -934,7 +750,7 @@ permalink: /tB/IDE/Project/Menu/Window
 		"{KEYDOWN}{CTRL}SPACE"
 	],
 	"tbIntellisense_ShowAfterKeyPress": [
-		"{ALLEXCEPT}ARROWUP|ARROWDOWN|ARROWLEFT|ARROWRIGHT|ESCAPE|SHIFT|CONTROL|ALT|TAB|SPACE|ENTER|BACKSPACE|F1|F2|F3|F4|F5|F6|F7|F8|F9|F10|F11|F12|F13|F14|F15|F16|F17|F18|F19|F20|DELETE|HOME|END|CANCEL|PAGEUP|PAGEDOWN|&|+|-|*|/|\\|^"
+		"{ALLEXCEPT}ARROWUP|ARROWDOWN|ARROWLEFT|ARROWRIGHT|ESCAPE|SHIFT|CONTROL|ALT|TAB|SPACE|ENTER|BACKSPACE|F1|F2|F3|F4|F5|F6|F7|F8|F9|F10|F11|F12|F13|F14|F15|F16|F17|F18|F19|F20|DELETE|HOME|END|CANCEL|PAGEUP|PAGEDOWN|&|+|-|*|/|\\|^|CAPSLOCK"
 	],
 	"tbDebugConsole_SelectAllEntryBox": [
 		"{KEYDOWN}{CTRL}A"
@@ -952,6 +768,9 @@ permalink: /tB/IDE/Project/Menu/Window
 	"tbToolbox_SelectPrevTool": [
 		"{KEYDOWN}{KEYDOWNREPEAT}ARROWUP",
 		"{KEYDOWN}{KEYDOWNREPEAT}ARROWLEFT"
+	],
+	"tbBuild_Fusion": [
+		"{KEYDOWN}{CTRL}{SHIFT}B"
 	]
 }
 ```
@@ -961,37 +780,12 @@ permalink: /tB/IDE/Project/Menu/Window
 ## Theme
 {: index_also="dark mode" }
 
-![The Window menu with Theme highlighted and its submenu open to the right, listing Classic (Light), a ticked Dark, and Light, with Reload from disk below a separator.](Images/Menu_Window_Theme.png){:width="312" height="219"}
+Lists the themes and switches between them. See [Themes](../../Customising/Themes).
 
-- Classic (Light)
-- ✓ Dark
-- Light
-
----
-- Reload from disk
+- **Classic (Light)**, **Dark** and **Light** --- the three themes that ship with the IDE. A tick marks the theme in use.
+- Any theme added as a `.theme` file is listed after these, as its file name and its family, such as **Red (Light)**.
+- **Reload from disk** --- reads the theme files again, so that a new or edited file takes effect without restarting the IDE.
 
 ## Language
 
-![The Window menu with Language highlighted and its submenu open to the right, listing nineteen languages in one tall column from Catalan and German through to Chinese Simplified and Chinese Traditional. Each is named in English with its own native spelling beside it, and English, British English, carries the tick.](Images/Menu_Window_Language.png){:width="390" height="577"}
-
-Each language is listed by its English name, followed by its native name. British English is the base language; a string that another language pack does not translate is shown in British English.
-
-- Catalan
-- German
-- Greek
-- English (British English)
-- Spanish
-- French
-- Hindi
-- Hungarian
-- Indonesian
-- Italian
-- Japanese
-- Malayalam
-- Polish
-- Portuguese (Brazil)
-- Russian
-- Swedish
-- Turkish
-- Chinese Simplified
-- Chinese Traditional
+Lists the language packs and switches between them. The choice applies at once. The names are listed, with what changes and what stays in English, under [The language of the IDE](../../Customising/#the-language-of-the-ide).

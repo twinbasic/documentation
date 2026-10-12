@@ -31,6 +31,23 @@ The output is one line for each mislabelled image, `<file> line <n>: labelled <l
 
 Exit codes: **0** every embedded image is labelled with the type its bytes have; **1** at least one is not; **2** a refused command line, no IDE, no `ide` folder, no style sheet or no embedded image in it to check, or a crash.
 
+## probe_theme_semicolon.mjs
+{: #probe-theme-semicolon }
+
+    node scripts/probe_theme_semicolon.mjs [--ide <twinBASIC.exe>]
+
+Lists the properties that the twinBASIC IDE silently drops when it loads the theme files it ships. It is the check behind the `BUGS-TO-REPORT.md` entry whose reproducer is `bugs/theme-missing-semicolon/`: in BETA 1005, line 63 of `Dark.theme` and of `Light.theme` is `DiagnosticsGroupFontSize: 90%` with no `;`, so it runs into the next line, and the loader loses both `DiagnosticsGroupFontSize` and `DiagnosticsGroupFontWeight`. It starts no IDE and no program and writes nothing, but it needs an unpacked twinBASIC install. It is outside every gate and CI.
+
+It reads every `.theme` file in the install's `themes` folder and cuts each one as `applyThemeData` in the IDE's `ide\main.js` does. The loader removes the `/* */` comments, cuts the text at each `;` followed by a space, a tab or a line end, removes the line breaks from each piece, cuts each piece at each `: ` and `:` followed by a tab, and keeps the piece only if that gives exactly two parts. Any other piece is dropped without a message.
+
+| Flag | Effect |
+|---|---|
+| `--ide <path>` | Path to `twinBASIC.exe`, found as for `tbbuild`. The `.theme` files read are those in the `themes` folder beside it. |
+
+The output is one line for each dropped piece that holds text, `<file> line <n>: dropped <what it holds>`, with the file relative to the install and the line where the piece starts. A piece made of several properties run together is shown as their names. The last line is a summary, `<n> properties are lost in <k> of <total> shipped themes (BETA <build>)`, or `no shipped theme loses a property (BETA <build>)`.
+
+Exit codes: **0** every piece of every shipped theme loads; **1** at least one is dropped; **2** a refused command line, no IDE, no `themes` folder or no `.theme` file in it, or a crash.
+
 ## addin_test.mjs
 {: #addin-test }
 

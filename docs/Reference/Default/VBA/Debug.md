@@ -6,7 +6,7 @@ permalink: /tB/Modules/Debug
 # Debug
 {: .no_toc }
 
-The intrinsic debugging object. Writes to the IDE's [Debug Console](../IDE/Project/DebugConsole), clears it, asserts a condition, and writes to the trace log.
+The intrinsic debugging object. Writes to the IDE's [Debug Console](../IDE/Debugging/Debug-Console), clears it, asserts a condition, and writes to the trace log.
 
 **Debug** is a built-in class with a predeclared instance, so there is nothing to declare or construct --- the name **Debug** is the object. It has four methods and no properties.
 
@@ -20,7 +20,7 @@ The intrinsic debugging object. Writes to the IDE's [Debug Console](../IDE/Proje
 ## Debug.Print
 {: #print }
 
-Writes text to the [Debug Console](../IDE/Project/DebugConsole).
+Writes text to the [Debug Console](../IDE/Debugging/Debug-Console).
 
 Syntax: **Debug.Print** [ *outputlist* ]
 
@@ -28,6 +28,8 @@ Syntax: **Debug.Print** [ *outputlist* ]
 : *optional* Expressions to write. Separate them with a comma to start each at the next **print zone**, or with a semicolon to place them immediately after one another. **Tab(***n***)** moves to column *n* and **Tab** with no argument to the next zone; **Spc(***n***)** inserts *n* spaces. A trailing semicolon holds the cursor on the same line, so the next **Print** continues it; without one, the line ends. With no *outputlist* at all, **Print** writes a blank line. The full grammar is on the [**Print** statement](../Core/Print#the-output-list) page, which **Debug.Print** shares with **Print #** and with the drawing-surface classes.
 
 The console is monospaced, so a zone here is 14 characters wide and zones begin at columns 0, 14, 28 and so on. An expression that reaches the end of its zone pushes the next one into the zone after.
+
+In a built executable, **Debug.Print** writes nothing. To log from an executable, use [**Debug.TracePrint**](#traceprint).
 
 ```tb check_build
 Debug.Print                       ' a blank line
@@ -60,7 +62,7 @@ End Sub
 ## Debug.Cls
 {: #cls }
 
-Clears the [Debug Console](../IDE/Project/DebugConsole).
+Clears the [Debug Console](../IDE/Debugging/Debug-Console).
 
 Syntax: **Debug.Cls**
 
@@ -84,7 +86,7 @@ Syntax: **Debug.Assert** *booleanexpression*
 *booleanexpression*
 : An expression evaluating to **True** or **False**. Execution continues when it is **True** and breaks when it is **False**.
 
-In a procedure compiled with [LLVM](../../LLVM/Getting-Started), **Debug.Assert** is ignored: it does not break, and *booleanexpression* is not evaluated.
+In a built executable, and in a procedure compiled with [LLVM](../../LLVM/Getting-Started), **Debug.Assert** is ignored: it does not break, and *booleanexpression* is not evaluated.
 
 Use it to state something the surrounding code relies on, so a violated assumption stops at the line that states it rather than further away.
 
@@ -106,7 +108,7 @@ End Function
 
 ## See Also
 
-- [Debug Console](../IDE/Project/DebugConsole) -- the IDE pane **Print** writes to, and its buttons
+- [Debug Console](../IDE/Debugging/Debug-Console) -- the IDE pane **Print** writes to, and its buttons
 - [Debugging Features](../../Features/Compiler-IDE/Debugging) -- the trace logger **TracePrint** feeds, and its project settings
 - [Assert Package](../Packages/Assert/) -- assertions for unit tests, with reported results
 - [ErrObject](ErrObject/) -- the other intrinsic object in this package

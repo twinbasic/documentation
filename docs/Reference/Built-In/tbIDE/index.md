@@ -77,7 +77,7 @@ The build path above writes the DLL into the IDE's own `addins` folder, and the 
 
 and then names the process that holds the file, the IDE's own compiler, `twinBASIC_win32_noDEP.exe`. Error code 32 is Windows' *file in use*. To change an addin and build it again, build it somewhere else and copy it in while the IDE is closed:
 
-1. Set the addin project's [Build Output Path](../../IDE/Project/Settings#build-output-path) to `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`, the path the other project templates use.
+1. Set the addin project's [Build Output Path](../../IDE/Project-Settings#build-output-path) to `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`, the path the other project templates use.
 2. Build. The DLL goes into a `Build` folder beside the `.twinproj`, as `MyAddIn_win32.dll`.
 3. Close the IDE, copy the new DLL over the old one in the installation's `addins\win32` folder, keeping the old one's name, and start the IDE again. It loads the new build.
 

@@ -24,9 +24,9 @@ When a Project is open contextual icons will appear.
 
 ## ![](Images/Settings.png){:width="16" height="16"} Project Settings
 
-- [Info](Settings)
+- [Info](../Project-Settings)
 
-## ![](Images/Toggle.png){:width="16" height="16"} Toggle file view (<kbd>CTRL</kbd> + <kbd>R</kbd>)
+## ![](Images/Toggle.png){:width="16" height="16"} Toggle file view (<kbd>Ctrl</kbd>+<kbd>R</kbd>)
 
 
 ## ![](Images/Add.png){:width="16" height="16"} Add...
@@ -116,7 +116,7 @@ Same as Right-Click
 
 An application manifest is an XML file that Windows reads when it starts the program. The one this command adds declares a dependency on version 6 of the Windows Common Controls, so that the program's buttons, lists and other controls are drawn in the current Windows visual style rather than the classic one. It is stored as resource `#1` in the project's `MANIFEST` resource folder, and the build embeds it in the program.
 
-A manifest can also declare the program's DPI awareness. A program whose manifest does should set [Force DPI Awareness At Startup](Settings#dpi-awareness) to **NONE**.
+A manifest can also declare the program's DPI awareness. A program whose manifest does should set [Force DPI Awareness At Startup](../Project-Settings#dpi-awareness) to **NONE**.
 
 See ![A small yellow folder icon](Images/Folder.png){:width="16" height="11"} `/.../Resources/MANIFEST/#1.xml`
 

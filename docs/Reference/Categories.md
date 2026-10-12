@@ -464,7 +464,7 @@ Procedures:
 
 Methods of the intrinsic [Debug](../tB/Modules/Debug) object:
 
-* [Debug.Print](../tB/Modules/Debug#print) - write to the [Debug Console](../tB/IDE/Project/DebugConsole)
+* [Debug.Print](../tB/Modules/Debug#print) - write to the [Debug Console](../tB/IDE/Debugging/Debug-Console)
 * [Debug.TracePrint](../tB/Modules/Debug#traceprint) - write to the active trace output, which also works in a compiled executable
 * [Debug.Cls](../tB/Modules/Debug#cls) - clear the Debug Console
 * [Debug.Assert](../tB/Modules/Debug#assert) - halt when a condition is **False**

@@ -181,9 +181,9 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   page's `currentDPI` to the 2x ratio, or the IDE's 5 s DPI check covers every designer with
   RESYNC), and `forms` (the same without the add-in), `community` (the demo, its compiler
   restarted on an empty licence key in the page) and `splash` (the demo, for the splash
-  alone), `programs`, `codelens`, `package` and `fusion` (pictures of a running program),
+  alone), `programs`, `codelens`, `memory`, `package` and `fusion` (pictures of a running program),
   `package-server`, `settings-linked` and `package-check`, `import`, `webpage` and `web` (a
-  Chrome, not an IDE), `featuremap`, `customcontrols`, `code` and `sample9` (all described
+  Chrome, not an IDE), `featuremap`, `code-chapter`, `debugging`, `customcontrols`, `code` and `sample9` (all described
   below). A setup is `{name, start, prepare}`.
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
@@ -248,6 +248,51 @@ anchored to an element or code span; Problems is labelled Diagnostics, its 997 t
 scroll, advanced hover info, inline hints, folding always shown and the debugger's memory figures
 are switched on in the page only; the memory figures, which change from run to run, are fixed in
 the page once real ones are shown, as History's times are.
+
+## The "Writing code" chapter
+
+Setup `code-chapter` (three parts): FeatureTour, the feature map's Inventory project, with
+`test/shots/codechapter/` staged onto it (`Helpers`, `Ev`/`Ev2`, `Watcher`) and the project's
+warnings set so that TB0016 is a hint and TB0012 information. Its 20 pictures are under
+`docs/IDE/Code/Images/`, plus `Menu_Edit` and `Menu_View`, now taken with the code focused.
+
+- **Each picture starts from the default layout and its own tabs** (`chapterTabs`), and closes
+  Monaco's find widget first: the editor is one for every file, so a widget left open shows over
+  the next file's code.
+- **The minimap is left out of every crop but Editor_Panel**: it is drawn a little differently
+  according to what the editor showed before, so a crop with it changes with the shots' order.
+- **A tab is tinted only when the compiler sends the file's diagnostics while it is open**, not
+  when it opens on a file already reported: Tabs_States edits Inventory and undoes it.
+- Edits are made in the page and undone (`editedThenUndone`) or discarded with their tab; the
+  clipboard is the tool's own text (`FAKE_CLIPBOARD`), never the host's.
+
+## The "Running and debugging" chapter
+
+Setup `debugging` (three parts): the code-chapter project with `test/shots/debugging/`
+staged onto it as well, a module `Checks` with the chapter's `FillTable` (a Subscript error on
+its fourth pass), `PingLater` (`Shell "ping -n 20 127.0.0.1", vbHide`) and `WaitAWhile` (a
+`DoEvents` loop of a minute at most). It is a setup of its own because the code chapter's
+combo boxes list the project's modules. Its 16 pictures are under `docs/IDE/Debugging/Images/`,
+plus `Menu_Debug` (paused, the code focused) and `Menu_Run` (WaitAWhile running).
+
+- **Each picture starts from nothing** (`debugReset`: the program stopped, no breakpoint, no
+  watch, no tab, the default layout, an empty DEBUG CONSOLE) and leaves the IDE so. Most stop
+  `Main` in `Inventory.Total` at the loop line (`pausedInTotal`, first or second pass);
+  `pausedInMain` stops it on Main's last line.
+- **What changes from run to run is set in the page before the capture**: an object's
+  `{object: N}` (`OBJECT_ADDRESS`), the Variables tooltip's `Pointer` (`POINTER_TEXT`), the
+  PROCESS box's id (`PROCESS_ID`), and the console's times and `time taken` (`fixConsoleTimes`).
+- **The ping ends with the run**: the box's own Terminate, else `killTree` on the id the console
+  printed (`endPing`).
+- A tree row is expanded with a click on its plus box, made again until the flip holds
+  (`toggleRow`); the Variables edit box opens with a double-click made again the same way.
+- The Variables tooltip is taken with the panel docked (a floating panel is drawn over it), once
+  it has the class `visibleTooltip` and its fade has ended: before that it is laid out, hidden,
+  at another place.
+- The DEBUG CONSOLE is never cut out: a cut-out shows the line it measures text with. Its menu
+  is opened inside the panel instead.
+- A line for the console is put in its input row whole and entered (`consoleRun`): a space typed
+  while the row's completion list is open accepts the list's first entry.
 
 ## Special IDE states
 
@@ -353,6 +398,13 @@ the page once real ones are shown, as History's times are.
   line times (the page's clock for some lines, the compiler's for `Debug.Print`) and the time
   taken are set in the page once shown. `Scale factor` prints what the lane's compiler reads,
   1.50 on this machine.
+- **`Memory_String`** (setup `memory`, `test/shots/memory`, MemoryDemo): Sub Main run with
+  Start to its `Stop`, the MEMORY 1 pane floated and sized to two rows, `s` typed into its box,
+  which the IDE turns into `StrPtr(s)`; the fifteen characters and their terminating null fill
+  the two rows, so no other memory shows. The string's address changes from run to run and is
+  set in the page once the rows are read (`MEMORY_ADDRESSES`). The box can already read
+  `StrPtr(s)` from the theme before, so the shot waits for the cell at the address to take the
+  focus, which happens only once the rows are drawn for the new answer, and then blurs it.
 - **`Toolbar_4`**: setup `designer`, the sample run with Start (`context.codeExecuting`) and
   stopped after.
 - **`8d74d820`** (setup `package`) and **Fusion's `569099635`** (setup `fusion`): the paths the

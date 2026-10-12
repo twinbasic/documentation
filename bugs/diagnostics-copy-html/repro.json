@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-editor",
+  "tests": [
+    "the Diagnostics panel's Copy puts the code in a <span>, and Copy All labels the info {WARNING}"
+  ],
+  "steps": "1. Open a project with a warning and an info, such as test/ide/probes/code-editor, whose Helpers.twin holds Public Const BigValue As Long = &H8000 (TB0012, an info in its settings) and a narrowing assignment (TB0018, a warning).\n2. In the DIAGNOSTICS panel, right-click the TB0018 row and choose Copy. The text copied is {WARNING} /CodeEditorProbe/Sources/Helpers.twin [11,9]: <span>TB0018</span>implicit narrowing conversion from Long to Integer. ...\n3. Show the infos (the Info counter on the status bar) and choose Copy All. Each row's code is in <span> and </span>, and the info TB0012 is labelled {WARNING}."
+}

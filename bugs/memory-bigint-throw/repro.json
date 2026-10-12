@@ -1,0 +1,10 @@
+{
+  "mode": "lane",
+  "lane": "ide:memory",
+  "tests": [
+    "the name d throws \"Cannot convert 1.5 to a BigInt\", and leaves the box unmarked and the rows as they were",
+    "the name flag throws \"Cannot convert True to a BigInt\", and leaves the box unmarked and the rows as they were",
+    "the name udt throws \"Cannot convert {user defined type, 8 bytes} to a BigInt\", and leaves the box unmarked and the rows as they were"
+  ],
+  "steps": "1. Run a project whose Sub Main has Dim d As Double: d = 1.5: Stop, and wait for the Stop.\n2. View > MEMORY 1, type d in the box and press Enter.\n3. The DEBUG CONSOLE prints IDE internal error: Uncaught SyntaxError: Cannot convert 1.5 to a BigInt. The box is not turned red and the rows do not change. The same for a Boolean (True) and a variable of a user-defined type ({user defined type, 8 bytes}).\nControl: a name the debugger cannot evaluate turns the box red."
+}

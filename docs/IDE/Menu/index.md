@@ -1,8 +1,11 @@
 ---
 title: Menu
-parent: IDE
+parent: IDE Reference
+grand_parent: IDE
 # nav_order: 1
-permalink: /tB/IDE/Project/Menu
+permalink: /tB/IDE/Reference/Menu
+redirect_from:
+  - /tB/IDE/Project/Menu
 ---
 
 # Menu

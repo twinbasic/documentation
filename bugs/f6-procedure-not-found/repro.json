@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:debugging",
+  "tests": [
+    "F6 on a line of a procedure, at or right of the column where its End line ends, does not find the procedure",
+    "F6 on an End Sub line does not find the procedure, at any column"
+  ],
+  "steps": "1. Open a module with:\n    Public Sub Direct()\n        Debug.Print \"in direct\"\n    End Sub\n2. Put the caret on the Debug.Print line at column 12 (in the word Debug), and press F6. The DEBUG CONSOLE prints RunCodeUnderCursor: failed to identify the procedure at the cursor position. and nothing runs.\n3. The same at column 11 runs Direct. Column 12 is where the End Sub line ends; in a Function whose End Function ends at column 17, columns up to 16 run it and 17 does not.\n4. On the End Sub line, F6 at any column prints the same message."
+}

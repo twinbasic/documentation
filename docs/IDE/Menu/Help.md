@@ -1,31 +1,16 @@
 ---
 title: Help
 parent: Menu
-grand_parent: IDE
+grand_parent: IDE Reference
 nav_order: 11
-permalink: /tB/IDE/Project/Menu/Help
+permalink: /tB/IDE/Reference/Menu/Help
+redirect_from:
+  - /tB/IDE/Project/Menu/Help
 ---
 
 # Help Menu
 
 ![The Help menu open with every entry available, each beside its own icon: About twinBASIC, Licence Agreement and Automatic IDE Error Reporting; the Discord, GitHub and Twitter support links; Purchase A Licence, Enter Licence Key and Buy us a Coffee; and a closing status line reading Compiler services TRACE mode: Disabled.](Images/Menu_Help.png){:width="268" height="294"}
-
-- About twinBASIC...
-- Licence Agreement...
-- Automatic IDE Error Reporting...
-
----
-- Help & Support (Discord Server)...
-- Help & Support (GitHub repository)...
-- Twitter (News Feed)...
-
----
-- Purchase A Licence...
-- Enter Licence Key...
-- Buy us a Coffee! (Ko-Fi)...
-
----
-- Compiler services TRACE mode: Disabled
 
 ## About twinBASIC...
 

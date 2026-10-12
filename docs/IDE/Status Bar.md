@@ -1,8 +1,11 @@
 ---
 title: Status Bar
-parent: IDE
+parent: IDE Reference
+grand_parent: IDE
 # nav_order: 2
-permalink: /tB/IDE/Project/StatusBar
+permalink: /tB/IDE/Reference/StatusBar
+redirect_from:
+  - /tB/IDE/Project/StatusBar
 ---
 
 # Status Bar

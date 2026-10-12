@@ -88,7 +88,7 @@ This option makes it mandatory to require variable declarations. There is no com
 
 When **Option Explicit** appears in a module, all variables must be explicitly declared by using the [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](ReDim), or [**Static**](Static) statements. Attempting to use an undeclared variable name raises an error at [compile time](../Gloss#compile-time).
 
-Without the **Option Explicit** statement, and when the [**Option Explicit On**](../IDE/Project/Settings#option-explicit-on) project setting is changed to its non-default value of *No*, all undeclared variables are of **Variant** type unless the default type is otherwise specified with a [**Def**_type_](Deftype) statement.
+Without the **Option Explicit** statement, and when the [**Option Explicit On**](../IDE/Project-Settings#option-explicit-on) project setting is changed to its non-default value of *No*, all undeclared variables are of **Variant** type unless the default type is otherwise specified with a [**Def**_type_](Deftype) statement.
 
 > [!NOTE]
 > The **Option Explicit On** project setting is *Yes* by default in new projects.

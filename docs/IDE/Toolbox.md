@@ -25,4 +25,4 @@ Click on the _Available COM References_ tab.
 
 ![The same dialog on its Available COM References tab, where a search box sits above an alphabetical list of unticked type libraries registered on the machine, ABBYY FineReader 16 SharePoint Integration Component, AccessibilityCplAdmin, Acrobat and Acrobat Access among them on this machine, against Library Symbol, Version and Publisher columns.](Images/ProjectSettings_AvailableCOMReferences.png){:width="1102" height="774"}
 
-See [Project Settings](Settings) for more info.
+See [Project Settings](../Project-Settings) for more info.

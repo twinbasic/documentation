@@ -28,7 +28,7 @@ The help pane is an ordinary IDE tool window: it can float, or be docked like th
 The gear
 : Opens the [settings](#settings).
 
-The **Help** button the add-in adds to the IDE's [toolbar](../Project/Toolbar) shows the pane and puts the cursor in its search box, ready to type.
+The **Help** button the add-in adds to the IDE's [toolbar](../Reference/Toolbar) shows the pane and puts the cursor in its search box, ready to type.
 
 ![The right end of the IDE's toolbar: the zoom box showing 100%, the PREVIEW button, and the Help button with a half-filled circle as its icon.](Images/Help_Toolbar.png){:width="313" height="36"}
 

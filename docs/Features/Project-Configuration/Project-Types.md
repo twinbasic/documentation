@@ -52,11 +52,11 @@ Three things stop the obvious VBA code from working: a new project builds a 32-b
 
 ### Build for the bitness of Office
 
-64-bit Office --- the usual installation today --- loads only 64-bit DLLs, because Windows does not load a 32-bit DLL into a 64-bit process. Set the [build configuration](../../tB/IDE/Project/Toolbar#build-configuration) box on the toolbar to **win64** before building. Only 32-bit Office uses the **win32** build.
+64-bit Office --- the usual installation today --- loads only 64-bit DLLs, because Windows does not load a 32-bit DLL into a 64-bit process. Set the [build configuration](../../tB/IDE/Reference/Toolbar#build-configuration) box on the toolbar to **win64** before building. Only 32-bit Office uses the **win32** build.
 
 ### Name the DLL by its full path
 
-With the default [Build Output Path](../../tB/IDE/Project/Settings#build-output-path), the file goes into a `Build` folder beside the `.twinproj` file, and its name ends in the architecture: `Build\MathGreetLib_win64.dll` from a win64 build, `Build\MathGreetLib_win32.dll` from a win32 one. So `Lib "MathGreetLib.dll"` names a file that does not exist. Give `Lib` the full path.
+With the default [Build Output Path](../../tB/IDE/Project-Settings#build-output-path), the file goes into a `Build` folder beside the `.twinproj` file, and its name ends in the architecture: `Build\MathGreetLib_win64.dll` from a win64 build, `Build\MathGreetLib_win32.dll` from a win32 one. So `Lib "MathGreetLib.dll"` names a file that does not exist. Give `Lib` the full path.
 
 ### Pass strings as pointers
 
@@ -89,13 +89,13 @@ For 32-bit Office, change the two paths to the win32 build. The rest of the code
 
 ## Console Applications
 
-This project type allows making a true console project rather than a GUI project: the program runs in the Command Prompt window it was started from, or in a console window of its own. Start one with **File → New Project → Standard EXE (Console App)**. The template turns on [*Is Console Application*](../../tB/IDE/Project/Settings#is-console-application), starts the program at `Sub Main` in its `MainModule`, and adds a `Console` class with `Cls`, `WriteLine` and `ReadLine` members for the console window. The class is a starting point, not a requirement; [Writing a command-line tool](#writing-a-command-line-tool-output-exit-code-and-arguments) replaces it with output that a batch file can capture.
+This project type allows making a true console project rather than a GUI project: the program runs in the Command Prompt window it was started from, or in a console window of its own. Start one with **File → New Project → Standard EXE (Console App)**. The template turns on [*Is Console Application*](../../tB/IDE/Project-Settings#is-console-application), starts the program at `Sub Main` in its `MainModule`, and adds a `Console` class with `Cls`, `WriteLine` and `ReadLine` members for the console window. The class is a starting point, not a requirement; [Writing a command-line tool](#writing-a-command-line-tool-output-exit-code-and-arguments) replaces it with output that a batch file can capture.
 
 ## Writing a command-line tool: output, exit code and arguments
 
 A tool that a batch file runs must put its output where the batch file can redirect it, and report failure through its exit code, which a batch file tests with `if errorlevel`. Four things behave differently from what the template and VBA suggest:
 
-- **`Debug.Print` writes only to the IDE's [Debug Console](../../tB/IDE/Project/DebugConsole).** The built `.exe` prints nothing with it.
+- **`Debug.Print` writes only to the IDE's [Debug Console](../../tB/IDE/Debugging/Debug-Console).** The built `.exe` prints nothing with it.
 - **The template's `Console.WriteLine` writes only to a console window.** It calls `WriteConsoleW`, which writes nothing to a file or a pipe. With the program's output redirected, as in `mytool > out.txt`, it writes nothing and raises error 5.
 - **`End` stops the program with exit code 0.** To set the exit code, call the Windows `ExitProcess` function, after closing any files the program has open.
 - **`Command$` returns the arguments as they were typed.** For `mytool "my file.txt"` it returns `"my file.txt"`, quotes included.
@@ -163,7 +163,7 @@ Module MainModule
 End Module
 ```
 
-With the default [Build Output Path](../../tB/IDE/Project/Settings#build-output-path), a project named `linecount` builds `Build\linecount_win32.exe`. Rename the file, or change the setting, to run it as `linecount`. At a command prompt, with `three.txt` holding three lines:
+With the default [Build Output Path](../../tB/IDE/Project-Settings#build-output-path), a project named `linecount` builds `Build\linecount_win32.exe`. Rename the file, or change the setting, to run it as `linecount`. At a command prompt, with `three.txt` holding three lines:
 
 ```text
 C:\Tools>linecount three.txt

@@ -465,7 +465,7 @@ Note that the named arguments don't have to appear in the normal positional orde
 ## namespace
 {: index="namespaces" }
 
-(twinBASIC) A name that groups the names declared under it, so that code reaches them through it, followed by a dot. A [package](#package) groups its components under the namespace given when it is [published](../Features/Packages/Creating-TWINPACK), and a project that references the package reaches them through that name; see [Packages](../Features/Packages/). A project's own namespace is its [**Project Name**](IDE/Project/Settings#project-name). **Import Library** ... **As** *namespace* names a [statically linked library](../Features/Advanced/Static-Linking#generic-syntax), which **Declare** statements then use in place of a DLL name. A class with the **[AppObject]** [attribute](../Features/Language/Interfaces-CoClasses) is part of the global namespace.
+(twinBASIC) A name that groups the names declared under it, so that code reaches them through it, followed by a dot. A [package](#package) groups its components under the namespace given when it is [published](../Features/Packages/Creating-TWINPACK), and a project that references the package reaches them through that name; see [Packages](../Features/Packages/). A project's own namespace is its [**Project Name**](IDE/Project-Settings#project-name). **Import Library** ... **As** *namespace* names a [statically linked library](../Features/Advanced/Static-Linking#generic-syntax), which **Declare** statements then use in place of a DLL name. A class with the **[AppObject]** [attribute](../Features/Language/Interfaces-CoClasses) is part of the global namespace.
 
 ## Null
 

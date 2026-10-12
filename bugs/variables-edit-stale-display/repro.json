@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:debugging",
+  "tests": [
+    "a Double edited in the Variables panel shows 0 until the next refresh, while the variable holds the value",
+    "a Date edited in the Variables panel shows #12:00:00 AM# until the next refresh, while the variable holds the value"
+  ],
+  "steps": "1. Stop at a breakpoint in a procedure with Dim d As Double = 2.5 and Dim dt As Date.\n2. In the VARIABLES panel, double-click d, type 7.25 and press Enter. The row shows 0, and still does seconds later.\n3. In the DEBUG CONSOLE, run ? d. It prints 7.25, and the row now shows 7.25.\n4. The same for dt with #1/2/2020#: the row shows #12:00:00 AM# until the next console line.\nControl: a Long edited the same way shows its new value at once."
+}

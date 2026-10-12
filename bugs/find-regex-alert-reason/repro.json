@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-find",
+  "tests": [
+    "the alert for an invalid regular expression, /(/, reads only Invalid RegExp:"
+  ],
+  "steps": "1. Press Ctrl+F, tick Regular Expressions and type /(/ in Find What.\n2. Click Find Next. The alert reads Invalid RegExp: and nothing after the colon."
+}

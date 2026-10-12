@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:memory",
+  "tests": [
+    "in a 64-bit run, VarPtr(n) shows n's bytes, and the Address column only the low 32 bits of its address"
+  ],
+  "steps": "1. Switch a project to win64 with the toolbar's architecture box. Its Sub Main has Dim n As Long: n = 1234: Debug.Print Hex(VarPtr(n)): Stop.\n2. Run it to the Stop. The DEBUG CONSOLE shows an address above 4 GB, such as 4232CFF438.\n3. View > MEMORY 1, type VarPtr(n) in the box and press Enter. The first row shows n's bytes, D2 04 00 00, but its address reads &H32CFF438: the high 32 bits are gone."
+}

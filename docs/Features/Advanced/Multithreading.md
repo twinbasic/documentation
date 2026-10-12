@@ -123,7 +123,7 @@ Module Threads
 End Module
 ```
 
-Run from the IDE, in a 32-bit or a 64-bit build, **RunBoth** prints to the [Debug Console](../../tB/IDE/Project/DebugConsole):
+Run from the IDE, in a 32-bit or a 64-bit build, **RunBoth** prints to the [Debug Console](../../tB/IDE/Debugging/Debug-Console):
 
 ```text
 Primes below 200,000: 17984

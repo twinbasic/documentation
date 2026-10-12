@@ -32,7 +32,7 @@ For files opened for **Binary** access, an attempt to read through the file usin
 
 ### Example
 
-This example uses the **Input** function to read one character at a time from a file and print it to the [Debug Console](../../IDE/Project/DebugConsole). *TESTFILE* is assumed to be a text file with a few lines of sample data.
+This example uses the **Input** function to read one character at a time from a file and print it to the [Debug Console](../../IDE/Debugging/Debug-Console). *TESTFILE* is assumed to be a text file with a few lines of sample data.
 
 ```tb check_build
 Dim MyChar As Variant

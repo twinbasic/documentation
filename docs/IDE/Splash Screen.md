@@ -14,4 +14,4 @@ The Splash Screen appears when the IDE starts with no project to open, as it doe
 Below the twinBASIC logo, a banner thanks the VIP Gold Supporters and a grid of tiles carries their logos. A tile with no sponsor reads **See your logo here!** and invites the reader to become one. A twinBASIC Ltd copyright line closes the window.
 
 > [!NOTE]
-> The splash screen shows no version number and no build date. Those are on the **About twinBASIC** dialog --- see [Help](Menu/Help), which also repeats the VIP Gold Supporters grid.
+> The splash screen shows no version number and no build date. Those are on the **About twinBASIC** dialog --- see [Help](../Reference/Menu/Help), which also repeats the VIP Gold Supporters grid.

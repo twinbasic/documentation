@@ -1,9 +1,11 @@
 ---
 title: Add-Ins
 parent: Menu
-grand_parent: IDE
+grand_parent: IDE Reference
 nav_order: 9
-permalink: /tB/IDE/Project/Menu/AddIns
+permalink: /tB/IDE/Reference/Menu/AddIns
+redirect_from:
+  - /tB/IDE/Project/Menu/AddIns
 ---
 
 # Add-Ins Menu

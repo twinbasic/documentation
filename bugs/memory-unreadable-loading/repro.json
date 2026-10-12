@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:memory",
+  "tests": [
+    "0 shows ?? in every value cell, as cells still being read, and never as unreadable memory"
+  ],
+  "steps": "1. Run any project to a Stop.\n2. View > MEMORY 1, type 0 in the box and press Enter.\n3. Every value cell shows ?? and every text cell a middle dot, the placeholders of a cell still being read, and they stay so. The pane's style for unreadable memory, blank grey cells, is never used."
+}

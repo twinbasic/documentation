@@ -130,7 +130,7 @@ stops at the first folder inside `Packages\`: it writes nothing, prints neither 
 like this, among them the **WinNativeCommonCtls** package and the *Standard EXE (plus VBCCR
 v1.8)* template. The script packs them. An export made by the IDE's **File → Export Project**
 stops the same way, because it holds the compiler packages under `Packages\`; see [Packing
-the export back into a project](../../tB/IDE/Project/Menu/File#packing-the-export-back-into-a-project).
+the export back into a project](../../tB/IDE/Reference/Menu/File#packing-the-export-back-into-a-project).
 
 **The script's `import` adds the folders the IDE always writes.** Every project and package the
 IDE exports has `ImportedTypeLibraries`, `Miscellaneous`, `Packages`, `Resources` and `Sources`
@@ -193,7 +193,7 @@ IDE](#keeping-a-project-in-git-from-the-ide).
 > folder of its own, as the next section does. Its export also holds the source of the
 > compiler packages, and the tB executable cannot pack that export back into a project while
 > any folder remains under its `Packages`. See
-> [Export Project](../../tB/IDE/Project/Menu/File#export-project).
+> [Export Project](../../tB/IDE/Reference/Menu/File#export-project).
 
 The steps, in order:
 
@@ -243,15 +243,15 @@ tracks, so the repository is ready to commit after every save. Two project setti
 up, and a fresh clone is opened in the IDE too; the import/export tool is not needed.
 
 **Set these two project settings**, under *Export* in [Project
-Settings](../../tB/IDE/Project/Settings#export) (**Project → Project Settings...**):
+Settings](../../tB/IDE/Project-Settings#export) (**Project → Project Settings...**):
 
 | Setting | Value |
 |---------|-------|
-| [*Export Path*](../../tB/IDE/Project/Settings#export-path) | `${SourcePath}\src` |
-| [*Export After Save*](../../tB/IDE/Project/Settings#export-after-save) | **Yes** |
+| [*Export Path*](../../tB/IDE/Project-Settings#export-path) | `${SourcePath}\src` |
+| [*Export After Save*](../../tB/IDE/Project-Settings#export-after-save) | **Yes** |
 
 `${SourcePath}` is the folder that holds the `.twinproj` file, so every **Save Project**
-(<kbd>CTRL</kbd> + <kbd>S</kbd>) now exports the project into a `src` folder beside it. The
+(<kbd>Ctrl</kbd>+<kbd>S</kbd>) now exports the project into a `src` folder beside it. The
 `Settings` file that the export writes keeps both settings, so a clone of the repository has
 them too.
 
@@ -259,7 +259,7 @@ them too.
 > Keep *Export Path* on a folder of its own. Every export deletes everything in its folder
 > before it writes, a `.git` folder included, so never set it to the repository's top folder
 > or to the folder that holds the `.twinproj`. See
-> [Export Project](../../tB/IDE/Project/Menu/File#export-project).
+> [Export Project](../../tB/IDE/Reference/Menu/File#export-project).
 
 **Make the folder that holds the `.twinproj` the repository's top folder**, with `git init`
 there. Once the project has been saved and the `.gitignore` below added, it holds:
@@ -291,7 +291,7 @@ they become a copy inside the project that the compiler ignores, and every later
 writes that copy back into `src\Packages`. So after an IDE update, a repository that holds
 them keeps the package source of the IDE that first exported them, while the project
 compiles against the packages of the IDE in use. [Packing the export back into a
-project](../../tB/IDE/Project/Menu/File#packing-the-export-back-into-a-project) has the
+project](../../tB/IDE/Reference/Menu/File#packing-the-export-back-into-a-project) has the
 measurements.
 
 Those four are the compiler packages of a Standard EXE with the default references. Add a
@@ -307,7 +307,7 @@ of `src`.
 **The fifth line leaves out the `.twinproj`.** `src` is what gets committed and merged, and
 the project file is rebuilt from it, as a fresh clone does below; the `.twinproj` itself is
 one binary file that Git cannot merge. The last line leaves out what
-[**Build**](../../tB/IDE/Project/Menu/File#build) writes: the project templates build into a
+[**Build**](../../tB/IDE/Reference/Menu/File#build) writes: the project templates build into a
 `Build` folder beside the `.twinproj`.
 
 **Commit after a save.** Once the save has finished, `src` matches the project:
@@ -319,7 +319,7 @@ git commit -m "Describe the change"
 
 A file removed or renamed in the IDE disappears from `src` as well, because the export empties
 the folder first, and `git add -A` records that. An export can fail without a message box, so
-check that the [Debug Console](../../tB/IDE/Project/DebugConsole) shows `[EXPORT] COMPLETED`
+check that the [Debug Console](../../tB/IDE/Debugging/Debug-Console) shows `[EXPORT] COMPLETED`
 for the save before committing.
 
 **Open a fresh clone** in the IDE. It holds `src` and the `.gitignore`, but no `.twinproj`:
@@ -340,7 +340,7 @@ for the save before committing.
    Project](../../tB/IDE/Project/New#import-from-folder)).
 3. In the *Browse For Folder* dialog, choose the clone's `src` folder. The project opens
    unsaved, with no file behind it yet.
-4. Save it with <kbd>CTRL</kbd> + <kbd>S</kbd>. The project has no file, so **Save Project**
+4. Save it with <kbd>Ctrl</kbd>+<kbd>S</kbd>. The project has no file, so **Save Project**
    opens the *Save As* dialog. Save the `.twinproj` in the clone's top folder, beside `src`,
    and not inside `src`: *Export Path* is relative to the folder that holds the `.twinproj`,
    so a project saved inside `src` exports into `src\src`, and the `src` that Git tracks is

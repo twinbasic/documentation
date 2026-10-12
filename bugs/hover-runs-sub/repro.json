@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:debugging",
+  "tests": [
+    "hovering over a Sub call while paused runs the Sub"
+  ],
+  "steps": "1. A class Thing with Public Value As Long and Public Sub Bump(): Value = Value + 1.\n2. Stop at a breakpoint in a procedure that holds Dim t As New Thing and a line t.Bump.\n3. In the DEBUG CONSOLE, ? t.Value prints a number, such as 6.\n4. Hold the pointer over Bump in t.Bump. The hover reads t.Bump:   0.\n5. ? t.Value prints 7: the hover ran Bump.\nControl: hovering over Value in t.Value shows t.Value:   6 and changes nothing."
+}

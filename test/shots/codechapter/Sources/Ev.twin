@@ -1,0 +1,20 @@
+Class Ev
+
+    Public Event Changed(ByVal n As Long)
+    Public Event Reset()
+
+    Public Sub Fire(ByVal n As Long)
+        RaiseEvent Changed(n)
+    End Sub
+
+End Class
+
+Class Ev2
+
+    Public Event Ping()
+
+    Public Sub Go()
+        RaiseEvent Ping()
+    End Sub
+
+End Class

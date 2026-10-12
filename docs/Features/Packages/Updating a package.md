@@ -57,7 +57,7 @@ The IDE refuses to import a package that the project already contains, whatever 
 
 So the old copy has to be removed first:
 
-1. Open [Project Settings](../../tB/IDE/Project/Settings#library-references). Under **Library References**, on the **Enabled Libraries** tab, untick the package, and press **Apply Changes**. The IDE saves the project and restarts the compiler.
+1. Open [Project Settings](../../tB/IDE/Project-Settings#library-references). Under **Library References**, on the **Enabled Libraries** tab, untick the package, and press **Apply Changes**. The IDE saves the project and restarts the compiler.
 2. Open Project Settings again. On the **Available Packages** tab, press **Import from file...** and choose the new `.twinpack` file.
 3. Tick the package in the **Available Packages** list. BETA 1005 adds the imported package to the list but does not tick it.
 4. Press **Apply Changes** again. The project now uses the new build.
@@ -72,7 +72,7 @@ So the old copy has to be removed first:
 
 A [linked package](Linked) is stored once, in `%APPDATA%\twinBASIC\packages`, and every project that links it loads it from there.
 
-To link a package in a project that uses it, open Project Settings, go to the **Available Packages** tab, and untick **Embedded** on the package's row. Press **Apply Changes**, then save the project with **File → Save Project** (<kbd>CTRL</kbd> + <kbd>S</kbd>). **Apply Changes** does not save this change.
+To link a package in a project that uses it, open Project Settings, go to the **Available Packages** tab, and untick **Embedded** on the package's row. Press **Apply Changes**, then save the project with **File → Save Project** (<kbd>Ctrl</kbd>+<kbd>S</kbd>). **Apply Changes** does not save this change.
 
 - In the first project, the IDE writes the package to `%APPDATA%\twinBASIC\packages` as a `.twinpack` file named after the package, and removes the project's own copy.
 - In each further project the file already exists, so the IDE asks what to do. **Local Version** is the version of the shared file, and **Embedded Version** the version of this project's own copy. Choose **Use Existing Local Package**. **Overwrite Local Package (export it from this project)** replaces the shared file with this project's copy, for every project that links it.
@@ -80,7 +80,7 @@ To link a package in a project that uses it, open Project Settings, go to the **
 To deliver a new build after that, replace the file in `%APPDATA%\twinBASIC\packages` with the new `.twinpack` file.
 
 > [!IMPORTANT]
-> The compiler reads a linked package only when it starts: when the project is opened, or when **Restart the compiler** is pressed on the [toolbar](../../tB/IDE/Project/Toolbar). A build does not read the file again. So after switching a project to the shared file, save the project and restart the compiler. After replacing the file, restart the compiler in each project that is open.
+> The compiler reads a linked package only when it starts: when the project is opened, or when **Restart the compiler** is pressed on the [toolbar](../../tB/IDE/Reference/Toolbar). A build does not read the file again. So after switching a project to the shared file, save the project and restart the compiler. After replacing the file, restart the compiler in each project that is open.
 
 - The file is found by the package's project ID, not by its file name.
 - A project that still embeds the package is not affected by the shared file.
@@ -88,5 +88,5 @@ To deliver a new build after that, replace the file in `%APPDATA%\twinBASIC\pack
 
 ### Checking which build a project uses
 
-- After **Apply Changes**, the [DEBUG CONSOLE](../../tB/IDE/Project/DebugConsole) shows whether the compiler restarted. `[COMPILER] Project settings changes require compiler-restart` means the IDE saved the project and restarted the compiler. `[COMPILER] Project settings updated` means the compiler kept running, with the build it already had.
+- After **Apply Changes**, the [DEBUG CONSOLE](../../tB/IDE/Debugging/Debug-Console) shows whether the compiler restarted. `[COMPILER] Project settings changes require compiler-restart` means the IDE saved the project and restarted the compiler. `[COMPILER] Project settings updated` means the compiler kept running, with the build it already had.
 - The **Version** column on the **Enabled Libraries** tab shows the version recorded when the package was imported or linked. It cannot tell apart two builds with the same Version, and for a linked package it does not change when the file is replaced.

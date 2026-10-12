@@ -74,7 +74,7 @@ Exit codes: **0** the project compiled without errors; **1** the project has err
                            [--llvm | --compiler-options S] [--exe | --tests] [--allow-name-clash]
 
 Builds a probe project and captures what it writes to the IDE's
-[Debug Console](../../tB/IDE/Project/DebugConsole). Where [`tbbuild.mjs`](#tbbuild) answers
+[Debug Console](../../tB/IDE/Debugging/Debug-Console). Where [`tbbuild.mjs`](#tbbuild) answers
 *does this compile*, this answers *what does this print*.
 
 It takes an **exported source tree** (the folder holding `Sources/` and `Settings`), not a

@@ -1,0 +1,24 @@
+Module Helpers
+
+    Public Enum Colour
+        Red = 1
+        Green = 2
+        Blue = 4
+    End Enum
+
+    Public Const BigValue As Long = &H8000
+
+    Public Function Twice(ByVal n As Long) As Long
+        Return n * 2
+    End Function
+
+    Public Sub WithWarning()
+        ReDim made(3)
+        Debug.Print UBound(made)
+    End Sub
+
+    Public Sub Third()
+        Debug.Print Twice(5)
+    End Sub
+
+End Module

@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-find",
+  "tests": [
+    "after a search in Selected Text and a click in the code, Selected Text stays ticked but greyed, and Find Next stops at once"
+  ],
+  "steps": "1. Open a module, select three lines that hold the word total and press Ctrl+F: Selected Text is ticked. Type total in Find What and click Find Next: total is found in the selection.\n2. Click in the code on a line outside the selection. Selected Text stays ticked but is greyed, and Current File is not ticked.\n3. Click Find Next. The IDE asks at once: End of search scope has been reached; do you want to continue from the beginning?"
+}

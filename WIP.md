@@ -12,6 +12,7 @@ one covering what you are about to change.
 | About to | Read first |
 |---|---|
 | write or edit any page under `docs/` | [WIP.Authoring.md](WIP.Authoring.md) --- page template, frontmatter, cross-section linking tables, per-symbol workflow |
+| write or restructure a page under `docs/IDE/` | [WIP.IDE.md](WIP.IDE.md) --- the plan for finishing the IDE section: its structure, conventions, fact sources and chapter workflow |
 | document a specific package | that package's own file, listed under [Package API notes](#package-api-notes) |
 | run or change the twinBASIC compiler harness | [WIP.Harness.md](WIP.Harness.md) --- `export`, the attribute census, `tbbuild`, `tbrun`, the add-in test runner |
 | change `builder/`, `scripts/`, or any gate | [WIP.Build.md](WIP.Build.md) --- the pipeline and why each gate exists |

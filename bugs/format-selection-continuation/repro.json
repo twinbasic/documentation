@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "ide:code-editor",
+  "tests": [
+    "Format Selection on a selection that starts on a continuation line opens an IDE startup failure alert, and the IDE then closes",
+    "with unsaved changes, the same Format Selection changes nothing, and the IDE asks to save them before it closes"
+  ],
+  "steps": "1. Open the project by double-clicking its .twinproj, so that the IDE starts with the project on its command line. In a procedure, write these lines without indents: Dim a As Long, _ / b As Long / Select Case a / Case 1 / a = 2 / End Select. Save.\n2. Select from the start of b As Long to the end of the next line, and choose Edit > Format Selection.\n3. An alert reads IDE startup failure (BETA twinBASIC IDE BETA 1005): JS Promise Rejection(1): Assignment to constant variable. Nothing is formatted. After OK the IDE closes.\n4. With unsaved changes, the IDE asks You've made changes to this project. Save now? (Save, Discard Changes, Cancel) before closing; Cancel keeps it open.\n5. Started from its icon, with the project opened from the New / Open dialog, the IDE prints the same error in the DEBUG CONSOLE and stays open; nothing is formatted either."
+}

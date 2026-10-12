@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:debugging",
+  "tests": [
+    "Search Online passes the error's text into the search URL unencoded, so an & in it ends the query"
+  ],
+  "steps": "1. Run a program that executes Err.Raise 5, , \"Fails with A & B\".\n2. At the error panel, click Search Online.\n3. The IDE runs cmd.exe /c start \"link\" \"https://www.google.com/search?q=twinBASIC VB6 Run-time error 5 (00000005) Fails with A & B\": the text is not URL-encoded, so the browser's query ends at the &, and searches for twinBASIC VB6 Run-time error 5 (00000005) Fails with A.\nThe lane records the command line in place of root.Shell and opens no browser."
+}

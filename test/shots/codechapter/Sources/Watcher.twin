@@ -1,0 +1,15 @@
+Class Watcher
+
+    Private WithEvents src As Ev
+    Private WithEvents other As Ev2
+    Public Count As Long
+
+    Public Sub Attach(ByVal e As Ev)
+        Set src = e
+    End Sub
+
+    Private Sub src_Changed(ByVal n As Long)
+        Count = Count + Twice(n)
+    End Sub
+
+End Class
