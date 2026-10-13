@@ -2,7 +2,7 @@
   "format": 3,
   "package": "BigNumberLib",
   "project": "BigNumberLib",
-  "version": "0.0.0.0",
+  "version": "1.0.2.0",
   "types": [
     {
       "name": "Absolute",

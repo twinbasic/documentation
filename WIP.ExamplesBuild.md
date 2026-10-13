@@ -335,7 +335,7 @@ the repository's to commit: four of the nine ship no licence file, and WinReg em
   until `contributed-WinReg` referenced WinDevLib (at the version WinReg embeds, 8.8.0.507)
   and the Scripting Runtime itself. The WinReg landing page tells the reader the same.
 - **An error inside an embedded package is the package's, and fails nothing**
-  (`splitPackageFaults`). BigNumberLib 0.0.0.0, WinReg 1.0.1.1 and ArrayListLib 1.4.0.134 do not compile on BETA
+  (`splitPackageFaults`). WinReg 1.0.1.1 and ArrayListLib 1.4.0.134 do not compile on BETA
   1005: each passes a pointer to a `ByRef` structure parameter without `ByVal` (TB5001). The
   template-alone build finds those rows; the run prints them as a note naming the package
   rather than as a template FAIL, every other template row still fails, and the samples are
