@@ -8,7 +8,7 @@ has_toc: false
 # cXml class
 {: .no_toc }
 
-A **cXml** holds one XML document. It reads the document from a string or a file, or starts a new one with a root element. It finds, reads and changes elements and attributes by a path such as `library/book`, and writes the document back as a string or a file. The elements, text and comments of the document are [**cXmlNode**](cXmlNode) objects, which the [**Document**](#document) and [**RootElement**](#rootelement) properties and the search methods return.
+A **cXml** holds one XML document. It reads the document from a string or a file, or starts a new one with a root element. It finds, reads and changes elements and attributes by a path such as `library/book`, and writes the document back as a string or a file. The [**XPath**](#xpath) methods find nodes by an XPath expression, in the subset that the [**mXPath**](mXPath) module reads. The elements, text and comments of the document are [**cXmlNode**](cXmlNode) objects, which the [**Document**](#document) and [**RootElement**](#rootelement) properties and the search methods return.
 
 An object is created with `Dim x As New cXml`. A new object holds no document. [**Parse**](#parse), [**LoadFromFile**](#loadfromfile), [**CreateNew**](#createnew) or the [**XmlString**](#xmlstring) property gives it one, and until then the members that take a path find nothing.
 
@@ -31,7 +31,7 @@ Debug.Print x.ToXmlString(False)
 ```
 
 > [!WARNING]
-> In version 1.0.0.0, the parser reads some valid XML wrongly and raises no error: a self-closing element, `&amp;` and other entities in text, a tag that uses both kinds of quote or has a line break between its attributes, and a processing instruction. A comment, a CDATA section or a DOCTYPE declaration in the wrong place makes **Parse** loop forever. [Defects in version 1.0.0.0](#defects) lists each case.
+> In version 1.0.0.1, the parser reads some valid XML wrongly and raises no error: a self-closing element, `&amp;` and other entities in text, a tag that uses both kinds of quote or has a line break between its attributes, and a processing instruction. A comment, a CDATA section or a DOCTYPE declaration in the wrong place makes **Parse** loop forever. [Defects in version 1.0.0.1](#defects) lists each case.
 
 * TOC
 {:toc}
@@ -39,13 +39,13 @@ Debug.Print x.ToXmlString(False)
 ## Paths
 {: #paths }
 
-The members that take an *xpath* parameter find an element by a path: [**SelectElement**](#selectelement), [**GetElementText**](#getelementtext), [**SetElementText**](#setelementtext), [**GetAttribute**](#getattribute), [**SetAttribute**](#setattribute), [**RemoveAttribute**](#removeattribute) and [**RemoveElement**](#removeelement), and [**AddElement**](#addelement) for its *parentXPath*. The name of the parameter is misleading: the syntax is a small one of the package's own and is not XPath.
+The members that take an *xpath* parameter find an element by a path: [**SelectElement**](#selectelement), [**GetElementText**](#getelementtext), [**SetElementText**](#setelementtext), [**GetAttribute**](#getattribute), [**SetAttribute**](#setattribute), [**RemoveAttribute**](#removeattribute) and [**RemoveElement**](#removeelement), and [**AddElement**](#addelement) for its *parentXPath*. The name of the parameter is misleading: the syntax is a small one of the package's own and is not XPath. The [**XPath**](#xpath) methods read XPath expressions.
 
 - A path is a list of names separated by `/`, such as `library/book`. The search starts at the document node, so the first name is the name of the root element: `library/book` finds a book, and `book` finds nothing.
 - Each name selects the first child, of the node found so far, whose name equals it. Letter case is ignored. Only direct children count, and when several children have the name, the first one is taken.
 - White space around a name is removed, and an empty name is ignored. `/library//book` and ` library / book ` both mean `library/book`.
 - A name is compared as a whole, so a namespace prefix is part of it: `ns:item` is the name of an element written `<ns:item>`. The package does no namespace processing.
-- Nothing else has a meaning. A position (`book[2]`), an attribute (`@id`), `*`, `.` and `..` are names that no element has, so the path selects nothing. `//book` does not search at any depth: the empty name is ignored, and the path means `book`. [**SelectElements**](#selectelements) searches at any depth, and the **ChildNodes** of a node reach the other children.
+- Nothing else has a meaning. A position (`book[2]`), an attribute (`@id`), `*`, `.` and `..` are names that no element has, so the path selects nothing. `//book` does not search at any depth: the empty name is ignored, and the path means `book`. [**SelectElements**](#selectelements) searches at any depth, and the **ChildNodes** of a node reach the other children. The [**XPath**](#xpath) methods read positions, attribute tests, `*`, `.` and `//`.
 - The nodes that are not elements have names too, `#text`, `#comment` and `#cdata-section`, and a path can select them: `library/#comment` is the first comment directly inside the root element.
 - A path with no name, an empty string or `/`, selects nothing, and the Debug Console shows `SelectElement failed: Subscript out of range`.
 
@@ -87,14 +87,14 @@ Debug.Print children(2).GetAttribute("id")
 ## Reporting failures
 {: #reporting-failures }
 
-A member that cannot do its work returns a value that says so, and does not stop the program. [**Parse**](#parse), [**LoadFromFile**](#loadfromfile), [**SaveToFile**](#savetofile), [**Validate**](#validate) and [**RemoveElement**](#removeelement) return **False**. [**SelectElement**](#selectelement) and [**AddElement**](#addelement) return **Nothing**. [**GetElementText**](#getelementtext) and [**GetAttribute**](#getattribute) return an empty string, and [**SelectElements**](#selectelements) an empty collection. A method that returns nothing, such as [**SetAttribute**](#setattribute), does nothing.
+A member that cannot do its work returns a value that says so, and does not stop the program. [**Parse**](#parse), [**LoadFromFile**](#loadfromfile), [**SaveToFile**](#savetofile), [**Validate**](#validate) and [**RemoveElement**](#removeelement) return **False**. [**SelectElement**](#selectelement), [**AddElement**](#addelement) and [**XPathSingle**](#xpathsingle) return **Nothing**. [**GetElementText**](#getelementtext), [**GetAttribute**](#getattribute), [**XPathText**](#xpathtext) and [**XPathAttribute**](#xpathattribute) return an empty string, and [**SelectElements**](#selectelements), [**XPath**](#xpath) and [**XPathFromRoot**](#xpathfromroot) an empty collection. A method that returns nothing, such as [**SetAttribute**](#setattribute), does nothing.
 
 When an error causes the failure, the member also:
 
 - writes a line to the Debug Console that names the member and gives the error's description, such as `Parse failed: XML string cannot be empty` or `SelectElement failed: Document not initialized`. In a built executable, **Debug.Print** writes nothing (see [**Debug**](../../../Modules/Debug)), so the line appears in the IDE only;
 - leaves the error in the **Err** object. After the call returns, **Err.Number**, **Err.Source** and **Err.Description** describe it. A program reads them straight after the call, because the next call of most members clears them, and calls `Err.Clear` before the call so that an earlier error does not remain in them.
 
-The errors that occur are [**ERR_EMPTY_DOCUMENT**](mXml#err_empty_document), which [**Parse**](#parse) raises for an empty string and [**SelectElement**](#selectelement) for a document that has not been read or created, and the errors of the Visual Basic runtime that the code meets while it works: 5 (*Invalid procedure call or argument*) for a tag cut off by the end of the text, 9 (*Subscript out of range*) for a path with no name, and 91 (*Object variable or With block variable not set*) in [**RemoveElement**](#removeelement) for a path that selects nothing. The other error constants of [**mXml**](mXml#constants) are not used.
+The errors that occur are [**ERR_EMPTY_DOCUMENT**](mXml#err_empty_document), which [**Parse**](#parse) raises for an empty string and [**SelectElement**](#selectelement) for a document that has not been read or created, and the errors of the Visual Basic runtime that the code meets while it works: 5 (*Invalid procedure call or argument*) for a tag cut off by the end of the text, 9 (*Subscript out of range*) for a path with no name, and 91 (*Object variable or With block variable not set*) in [**RemoveElement**](#removeelement) for a path that selects nothing. The XPath members meet error 6 (*Overflow*) for a position too large for a **Long**, and write `XPath query failed:`, `XPathSingle query failed:` or `XPathFromRoot query failed:` and the description. The other error constants of [**mXml**](mXml#constants) are not used.
 
 The members that let an error reach the program are [**XmlString**](#xmlstring), [**ToXmlString**](#toxmlstring) and [**Merge**](#merge).
 
@@ -131,7 +131,7 @@ Syntax: *object*.**Document** **As cXmlNode**
 *object*
 : *required* An object expression that evaluates to a **cXml**.
 
-Read-only. The node has the **NodeType** **Document** and the **Name** `#document`. Its **ChildNodes** hold the root element and any comments and text outside it, in document order, including text that is only white space. A new object holds an empty document node. [**Parse**](#parse), [**LoadFromFile**](#loadfromfile), [**CreateNew**](#createnew) and [**XmlString**](#xmlstring) replace it.
+Read-only. The node has the **NodeType** **Document** and the **Name** `#document`. Its **ChildNodes** hold the root element and any comments and text outside it, in document order. Text that is only spaces is not kept, and text that has a line break or a tab in it is. A new object holds an empty document node. [**Parse**](#parse), [**LoadFromFile**](#loadfromfile), [**CreateNew**](#createnew) and [**XmlString**](#xmlstring) replace it.
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -431,7 +431,7 @@ Syntax: *object*.**GetElementText** ( *xpath* ) **As String**
 *xpath*
 : *required* A **String**, the [path](#paths) of the element.
 
-Returns the text of the element: the values of all the text nodes and CDATA sections inside it, at any depth, one after the other in document order with nothing between them. Comments add nothing. Text that is only white space is included, so the text of an element in an indented document holds the line breaks and the indentation. Entities in the text are returned as written; see [Entities](#defect-entities).
+Returns the text of the element: the values of all the text nodes and CDATA sections inside it, at any depth, one after the other in document order with nothing between them. Comments add nothing. White space that has a line break or a tab in it is included, so the text of an element in an indented document holds the line breaks and the indentation; text that is only spaces is not in the document ([White space](#defect-whitespace)). Entities in the text are returned as written; see [Entities](#defect-entities).
 
 Returns an empty string when the path selects nothing, which a program cannot tell from an element with no text.
 
@@ -540,7 +540,7 @@ Syntax: *object*.**Parse** ( *xml* ) **As Boolean**
 
 Replaces the document with the one in the text, sets [**RootElement**](#rootelement) and [**XmlString**](#xmlstring), and returns **True**. The `version` and `encoding` of an XML declaration, written with double quotes, set [**Version**](#version) and [**Encoding**](#encoding).
 
-The parser builds these nodes: elements with their attributes, text, comments and CDATA sections. Text that is only white space is kept, in the document and inside elements. An end tag closes the innermost open element whatever its name is, and an element still open at the end of the text is closed by it. Processing instructions and the declaration are not kept.
+The parser builds these nodes: elements with their attributes, text, comments and CDATA sections. Text that is only spaces is left out, in the document and inside elements; text that has a line break or a tab in it is kept ([White space](#defect-whitespace)). An end tag closes the innermost open element whatever its name is, and an element still open at the end of the text is closed by it. Processing instructions and the declaration are not kept.
 
 Returns **False**, and writes `Parse failed:` and the description to the Debug Console, for an empty string and for a tag that the end of the text cuts off, such as `<` or `<a`. Any other text gives **True**: the parser does not check that the text is well formed XML, so text that is not XML, an unclosed element and an end tag that names another element all succeed. [**Validate**](#validate) detects almost none of them. A **Parse** that fails part-way has already replaced the document with what it had read; see [Malformed text and failed parses](#defect-malformed).
 
@@ -632,7 +632,7 @@ Debug.Print x.RemoveElement("r/missing")
 
 Writes the document to a file.
 
-Syntax: *object*.**SaveToFile** ( *filePath* [ , *withDeclaration* ] ) **As Boolean**
+Syntax: *object*.**SaveToFile** ( *filePath* [ , *withDeclaration* [ , *prettyPrint* [ , *indent* ] ] ] ) **As Boolean**
 
 *object*
 : *required* An object expression that evaluates to a **cXml**.
@@ -643,7 +643,13 @@ Syntax: *object*.**SaveToFile** ( *filePath* [ , *withDeclaration* ] ) **As Bool
 *withDeclaration*
 : *optional* A **Boolean**. **True** (the default) writes the XML declaration before the document.
 
-Writes the three bytes of a UTF-8 byte order mark, then the document as [**ToXmlString**](#toxmlstring) returns it with *withDeclaration* and no other option, converted with [**StringToUTF8Bytes**](mXml#stringtoutf8bytes). The text is never indented. Returns **True** when the file was written, and **False**, with `SaveToFile failed:` and the description in the Debug Console, when it could not be, for example because the folder does not exist.
+*prettyPrint*
+: *optional* A **Boolean**. **False** (the default) writes the document compactly. **True** puts each element, comment, CDATA section and text on a line of its own, as [**ToXmlString**](#toxmlstring) does.
+
+*indent*
+: *optional* A **String**, the indentation for each level of nesting when *prettyPrint* is **True**. The default is two spaces.
+
+Writes the three bytes of a UTF-8 byte order mark, then the document as [**ToXmlString**](#toxmlstring) returns it for the same three options, converted with [**StringToUTF8Bytes**](mXml#stringtoutf8bytes). Returns **True** when the file was written, and **False**, with `SaveToFile failed:` and the description in the Debug Console, when it could not be, for example because the folder does not exist.
 
 The file is UTF-8 whatever [**Encoding**](#encoding) says, and the declaration states that value. A document with no content written without a declaration is the byte order mark followed by one zero byte.
 
@@ -674,6 +680,30 @@ Kill path
 ' EF BB BF
 ' True
 ' Ada
+```
+
+The *prettyPrint* and *indent* parameters change the size of the file. The text for each level of nesting is *indent*, and every line ends with a carriage return and a line feed:
+
+```tb check_build check_run
+Dim path As String
+path = Environ$("TEMP") & "\tbxml_savetofile_pretty.xml"
+
+Dim x As New cXml
+x.CreateNew "r"
+x.AddElement "r", "a"
+x.SetElementText "r/a", "t"
+
+x.SaveToFile path, False
+Debug.Print FileLen(path)
+x.SaveToFile path, False, True
+Debug.Print FileLen(path)
+x.SaveToFile path, False, True, vbTab
+Debug.Print FileLen(path)
+Kill path
+' Output:
+' 18
+' 36
+' 32
 ```
 
 ### SelectElement
@@ -818,20 +848,17 @@ Syntax: *object*.**ToXmlString** ( [ *withDeclaration* [ , *prettyPrint* [ , *in
 : *required* An object expression that evaluates to a **cXml**.
 
 *withDeclaration*
-: *optional* A **Boolean**. **True** (the default) starts the text with a declaration such as `<?xml version="1.0" encoding="UTF-8"?>`, written from [**Version**](#version) and [**Encoding**](#encoding), with no line break after it.
+: *optional* A **Boolean**. **True** (the default) starts the text with a declaration such as `<?xml version="1.0" encoding="UTF-8"?>`, written from [**Version**](#version) and [**Encoding**](#encoding). A line break follows the declaration when *prettyPrint* is **True**, and nothing follows it otherwise.
 
 *prettyPrint*
-: *optional* A **Boolean**. **False** (the default) writes the document compactly: nothing is added between the nodes. **True** puts each element, comment, CDATA section and text on a line of its own, ends every line with a carriage return and a line feed, and leaves out the text nodes that are only white space. See [Pretty printing](#defect-pretty) for what the indentation looks like.
+: *optional* A **Boolean**. **False** (the default) writes the document compactly: nothing is added between the nodes. **True** puts each element, comment, CDATA section and text on a line of its own, indents each line by one *indent* for each level of nesting, and ends every line with a carriage return and a line feed, the last one included. A text node that is only spaces is left out. See [Pretty printing](#defect-pretty) for reading the text back.
 
 *indent*
-: *optional* A **String**, the indentation for each level of nesting. The default is two spaces. Only the first character of the string is used.
+: *optional* A **String**, the indentation for each level of nesting, written once for each level. The default is two spaces. An empty string writes no indentation.
 
 The text holds elements, text, comments and CDATA sections. An element with no child is written as `<name/>`, and an element with children as `<name>...</name>`. The characters `&`, `<`, `>`, `"` and `'` are replaced by `&amp;`, `&lt;`, `&gt;`, `&quot;` and `&apos;` in text and in the values of attributes. Comments and CDATA sections are written as they are. The attributes of an element are written in the order of its attribute list.
 
 A document that holds nothing gives the declaration alone, or an empty string without one.
-
-> [!NOTE]
-> An empty *indent* with *prettyPrint* **True** raises error 5, *Invalid procedure call or argument*, as soon as the document has an element.
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -846,6 +873,29 @@ Debug.Print x.ToXmlString(False)
 ' Output:
 ' <?xml version="1.0" encoding="UTF-8"?><r id="1"><a>x &lt; y</a><empty/></r>
 ' <r id="1"><a>x &lt; y</a><empty/></r>
+```
+
+With *prettyPrint*, the nodes are on lines of their own. The sample shows the spaces as dots and the line breaks as bars:
+
+```tb check_build check_run
+Dim x As New cXml
+x.CreateNew "r"
+x.AddElement "r", "a"
+x.SetElementText "r/a", "t"
+x.AddElement "r", "b"
+x.AddElement "r/b", "c"
+
+Dim s As String
+s = x.ToXmlString(True, True)
+Debug.Print Replace(Replace(s, " ", "."), vbCrLf, "|")
+s = x.ToXmlString(False, True, "--")
+Debug.Print Replace(Replace(s, " ", "."), vbCrLf, "|")
+s = x.ToXmlString(False, True, "")
+Debug.Print Replace(Replace(s, " ", "."), vbCrLf, "|")
+' Output:
+' <?xml.version="1.0".encoding="UTF-8"?>|<r>|..<a>|....t|..</a>|..<b>|....<c/>|..</b>|</r>|
+' <r>|--<a>|----t|--</a>|--<b>|----<c/>|--</b>|</r>|
+' <r>|<a>|t|</a>|<b>|<c/>|</b>|</r>|
 ```
 
 ### Validate
@@ -881,10 +931,171 @@ Debug.Print x.Validate()
 ' True
 ```
 
-## Defects in version 1.0.0.0
+### XPath
+{: .no_toc }
+
+Returns the nodes that an XPath expression selects.
+
+Syntax: *object*.**XPath** ( *path* ) **As Collection**
+
+*object*
+: *required* An object expression that evaluates to a **cXml**.
+
+*path*
+: *required* A **String**, an XPath expression; see the [syntax](mXPath#syntax) that [**mXPath**](mXPath) reads.
+
+Evaluates the expression with [**SelectNodes**](mXPath#selectnodes), starting at the document node, so `/library/book` and `library/book` both select the books of a root element named `library`. Returns a new **Collection** of [**cXmlNode**](cXmlNode) objects, numbered from 1, with each node in it once. The collection is empty, and is never **Nothing**, when nothing is selected, when *path* is empty, and when [**Initialized**](#initialized) is **False**. When the evaluation raises an error, the method writes `XPath query failed:` and the description to the Debug Console, leaves the error in **Err**, and returns an empty collection.
+
+The engine reads a part of XPath 1.0 and reads some expressions wrongly; see [Defects](mXPath#defects).
+
+```tb check_build check_run
+Dim x As New cXml
+x.Parse "<library><book id='1' lang='en'>Dune</book><book id='2' lang='fr'>Emma</book><book id='3' lang='en'>Ulysses</book></library>"
+
+Dim n As cXmlNode
+For Each n In x.XPath("/library/book[@lang='en']")
+    Debug.Print n.GetAttribute("id") & " " & n.Text
+Next
+Debug.Print x.XPath("//book").Count
+Debug.Print x.XPath("/library/magazine").Count
+' Output:
+' 1 Dune
+' 3 Ulysses
+' 3
+' 0
+```
+
+### XPathAttribute
+{: .no_toc }
+
+Returns an attribute of the first node that an XPath expression selects.
+
+Syntax: *object*.**XPathAttribute** ( *xpath* , *attrName* ) **As String**
+
+*object*
+: *required* An object expression that evaluates to a **cXml**.
+
+*xpath*
+: *required* A **String**, an XPath expression that selects the element.
+
+*attrName*
+: *required* A **String**, the name of the attribute. Letter case is ignored.
+
+Returns the value of the attribute, as [**GetAttribute**](cXmlNode#getattribute) of the first node that [**XPath**](#xpath) selects does. Returns an empty string when the expression selects nothing or the node has no such attribute, which a program cannot tell from an attribute whose value is empty. The expression is evaluated by [**XPathSingle**](#xpathsingle), which writes the line for an error.
+
+```tb check_build check_run
+Dim x As New cXml
+x.Parse "<library><book id='1' lang='en'>Dune</book><book id='2' lang='fr'>Emma</book></library>"
+
+Debug.Print x.XPathAttribute("//book[@id='2']", "lang")
+Debug.Print x.XPathAttribute("//book[1]", "LANG")
+Debug.Print "[" & x.XPathAttribute("//book", "missing") & "]"
+Debug.Print "[" & x.XPathAttribute("//magazine", "lang") & "]"
+' Output:
+' fr
+' en
+' []
+' []
+```
+
+### XPathFromRoot
+{: .no_toc }
+
+Returns the nodes that an XPath expression selects, starting at the root element.
+
+Syntax: *object*.**XPathFromRoot** ( *xpath* ) **As Collection**
+
+*object*
+: *required* An object expression that evaluates to a **cXml**.
+
+*xpath*
+: *required* A **String**, an XPath expression.
+
+Works as [**XPath**](#xpath) does, with the [**RootElement**](#rootelement) as the starting node and not the document node. The first step selects among the children of the root element, so `book` selects the books, `/library/book` selects nothing when the root element is `library`, and `.` selects the root element. Returns an empty collection when the object holds no root element, and writes `XPathFromRoot query failed:` and the description for an error.
+
+```tb check_build check_run
+Dim x As New cXml
+x.Parse "<library><book id='1'></book><book id='2'></book></library>"
+
+Debug.Print x.XPathFromRoot("book").Count
+Debug.Print x.XPathFromRoot("/library/book").Count
+Debug.Print x.XPathFromRoot(".").Item(1).Name
+Debug.Print x.XPathFromRoot("//book").Count
+Debug.Print x.XPath("/library/book").Count
+' Output:
+' 2
+' 0
+' library
+' 2
+' 2
+```
+
+### XPathSingle
+{: .no_toc }
+
+Returns the first node that an XPath expression selects.
+
+Syntax: *object*.**XPathSingle** ( *xpath* ) **As** [**cXmlNode**](cXmlNode)
+
+*object*
+: *required* An object expression that evaluates to a **cXml**.
+
+*xpath*
+: *required* A **String**, an XPath expression.
+
+Returns the first node of what [**XPath**](#xpath) returns, or **Nothing** when that is empty or [**Initialized**](#initialized) is **False**. When the evaluation raises an error, it writes `XPathSingle query failed:` and the description to the Debug Console, leaves the error in **Err**, and returns **Nothing**.
+
+```tb check_build check_run
+Dim x As New cXml
+x.Parse "<library><book id='1'>Dune</book><book id='2'>Emma</book></library>"
+
+Dim n As cXmlNode
+Set n = x.XPathSingle("//book[@id='2']")
+Debug.Print n.Text
+Debug.Print (x.XPathSingle("//magazine") Is Nothing)
+Debug.Print x.XPathSingle("//book").GetAttribute("id")
+' Output:
+' Emma
+' True
+' 1
+```
+
+### XPathText
+{: .no_toc }
+
+Returns the text of the first node that an XPath expression selects.
+
+Syntax: *object*.**XPathText** ( *xpath* ) **As String**
+
+*object*
+: *required* An object expression that evaluates to a **cXml**.
+
+*xpath*
+: *required* A **String**, an XPath expression that selects the node.
+
+Returns the text of the node as [**GetElementText**](#getelementtext) does: the values of all the text nodes and CDATA sections inside it, at any depth, one after the other in document order. When the expression selects a text node or a CDATA section, the result is its value. Returns an empty string when the expression selects nothing, which a program cannot tell from a node with no text. The expression is evaluated by [**XPathSingle**](#xpathsingle), which writes the line for an error.
+
+The [**XPathText**](cXmlNode#xpathtext) of a node is different: it returns only the text directly inside the node it selects.
+
+```tb check_build check_run
+Dim x As New cXml
+x.Parse "<a>x<b>y</b>z</a>"
+
+Debug.Print x.XPathText("/a")
+Debug.Print x.XPathText("/a/b")
+Debug.Print x.XPathText("//b/text()")
+Debug.Print "[" & x.XPathText("/zzz") & "]"
+' Output:
+' xyz
+' y
+' y
+' []
+```
+
+## Defects in version 1.0.0.1
 {: #defects }
 
-Each of these sections describes a case in which the package gives a wrong result or never returns. The samples show the result of the version named here.
+Each of these sections describes a case in which the package gives a wrong result or never returns. The samples show the result of the version named here. The defects of the XPath engine are on the page of the [**mXPath**](mXPath#defects) module.
 
 ### Self-closing elements
 {: #defect-self-closing .no_toc }
@@ -1022,18 +1233,47 @@ Debug.Print "[" & x.GetElementText("a") & "]"
 ' []
 ```
 
+### White space
+{: #defect-whitespace .no_toc }
+
+> [!WARNING]
+> **Parse** leaves out a text node that holds only spaces, and keeps one that has a line break or a tab in it. A space between two elements is lost: `<p><b>a</b> <i>b</i></p>` is read as `<p><b>a</b><i>b</i></p>`, and its text is `ab`. An element that holds only spaces is read as an empty element. The white space of an indented document is kept, because it holds line breaks.
+
+```tb check_build check_run
+Dim x As New cXml
+x.Parse "<p><b>a</b> <i>b</i></p>"
+Debug.Print x.ToXmlString(False)
+Debug.Print x.GetElementText("p")
+
+x.Parse "<b> </b>"
+Debug.Print x.ToXmlString(False)
+
+x.Parse "<r> <a>1</a> </r>"
+Debug.Print x.RootElement.ChildNodes.Count
+
+x.Parse "<r>" & vbCrLf & "<a>1</a>" & vbCrLf & "</r>"
+Debug.Print x.RootElement.ChildNodes.Count
+' Output:
+' <p><b>a</b><i>b</i></p>
+' ab
+' <b/>
+' 1
+' 3
+```
+
+Text set with [**SetElementText**](#setelementtext) is kept whatever it holds, spaces only included.
+
 ### Pretty printing
 {: #defect-pretty .no_toc }
 
 > [!WARNING]
-> **ToXmlString** with *prettyPrint* **True** indents one level with the first character of *indent* alone, so the default of two spaces indents by one space, and `vbTab & vbTab` by one tab. It also puts the text of an element on lines of its own, so the text of the element in the written document is the text with line breaks and indentation around it. Reading it back with [**GetElementText**](#getelementtext) returns them. The text changes each time the document is written and read.
+> A document written with *prettyPrint* **True** does not read back as the document that was written. The line breaks and the indentation around the text of an element are text to the parser, which keeps white space that has a line break in it. [**GetElementText**](#getelementtext) of the element returns them, and writing the document again with *prettyPrint* puts them on lines of their own, so the text changes each time the document is written and read.
 
 ```tb check_build check_run
 Dim x As New cXml
 x.CreateNew "r"
 x.AddElement "r", "a"
 x.SetElementText "r/a", "t"
-x.AddElement "r", "empty"
 
 Dim s As String
 s = x.ToXmlString(False, True)
@@ -1042,9 +1282,13 @@ Debug.Print Replace(Replace(s, " ", "."), vbCrLf, "|")
 Dim y As New cXml
 y.Parse s
 Debug.Print Replace(Replace(y.GetElementText("r/a"), " ", "."), vbCrLf, "|")
+
+s = y.ToXmlString(False, True)
+Debug.Print Replace(Replace(s, " ", "."), vbCrLf, "|")
 ' Output:
-' <r>|.<a>|..t|.</a>|.<empty/>|</r>|
-' |..t|.
+' <r>|..<a>|....t|..</a>|</r>|
+' |....t|..
+' <r>|..|..|..<a>|....|....t|..|..</a>|..||</r>|||
 ```
 
 ### Clone, Merge and the root element
@@ -1143,4 +1387,5 @@ A file with fewer than three bytes cannot be loaded, and an empty file gives **F
 
 - [cXmlNode](cXmlNode) class -- the nodes of the document
 - [mXml](mXml) module -- the node types, the error numbers and the UTF-8 functions
+- [mXPath](mXPath) module -- the XPath engine behind the **XPath** methods
 - [TBMANLIB_Xml](.) package -- overview
