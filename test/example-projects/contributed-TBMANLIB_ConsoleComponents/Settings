@@ -55,8 +55,8 @@
 			"path32": "/Packages/TBMANLIB_ConsoleComponents",
 			"path64": "/Packages/TBMANLIB_ConsoleComponents",
 			"symbolId": "TBMANLIB_ConsoleComponents",
-			"versionBuild": "0",
-			"versionMajor": "0",
+			"versionBuild": "1",
+			"versionMajor": "1",
 			"versionMinor": "0",
 			"versionRevision": "0"
 		},
@@ -68,8 +68,8 @@
 			"path32": "/Packages/TBMANLIB_ConsoleCore",
 			"path64": "/Packages/TBMANLIB_ConsoleCore",
 			"symbolId": "TBMANLIB_ConsoleCore",
-			"versionBuild": "0",
-			"versionMajor": "0",
+			"versionBuild": "1",
+			"versionMajor": "1",
 			"versionMinor": "0",
 			"versionRevision": "0"
 		}

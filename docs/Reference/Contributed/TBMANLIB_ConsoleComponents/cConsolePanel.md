@@ -72,7 +72,7 @@ The number of cells between the border and the content area, on every side. **Lo
 ### Rect
 {: .no_toc }
 
-The rectangle of the panel. A [**ConsoleRect**](../TBMANLIB_ConsoleCore/Types#consolerect), with inclusive edges. The constructor, [**Move**](#move) and [**Resize**](#resize) set it. A program that references the published package TBMANLIB_ConsoleCore cannot read its fields: see [The two packages](./#the-two-packages). [**ContentWidth**](#contentwidth) and [**ContentHeight**](#contentheight) give sizes as **Long** values.
+The rectangle of the panel. A [**ConsoleRect**](../TBMANLIB_ConsoleCore/Types#consolerect), with inclusive edges. The constructor, [**Move**](#move) and [**Resize**](#resize) set it. A program that references the packages TBMANLIB_ConsoleCore and TBMANLIB_ConsoleComponents cannot read its fields: see [The two packages](./#the-two-packages). [**ContentWidth**](#contentwidth) and [**ContentHeight**](#contentheight) give sizes as **Long** values.
 
 ### Title
 {: .no_toc }

@@ -10,7 +10,7 @@ has_toc: false
 
 Draws a table of text into the screen buffer, with a header row, columns of fixed widths, aligned cells, coloured rows and one selected row.
 
-A **cDataGrid** keeps the [**Buffer**](../TBMANLIB_ConsoleCore/cConsole#buffer) of the console it was made with. The program gives it the rows of text, the widths and alignments of the columns and the colours of the rows with the four `Set` members, and then calls [**Render**](#render), which draws the whole table at a position. The grid holds no scroll position and does not read keys: a program that lets the user choose a row calls [**MoveUp**](#moveup) and [**MoveDown**](#movedown) from its own key handler and draws the table again.
+A **cDataGrid** keeps the [**Buffer**](../TBMANLIB_ConsoleCore/cConsole#buffer) of the console it was made with. The program gives it the rows of text, the widths and alignments of the columns and the colours of the rows with the four `Set` members, and then calls [**Render**](#render), which draws the whole table at a position. The grid holds no scroll position and does not read keys: a program that lets the user choose a row calls [**MoveUp**](#moveup) and [**MoveDown**](#movedown) from its own key handler and draws the table again. The key handler is that of [**cConsole**](../TBMANLIB_ConsoleCore/cConsole#onkeypress), which [reports virtual-key codes](../TBMANLIB_ConsoleCore/#defects-in-version-1001), most of which differ from the members of **ConsoleKey**: a program compares them with constants such as `vbKeyUp`.
 
 ```tb check_build
 Dim con As New cConsole
