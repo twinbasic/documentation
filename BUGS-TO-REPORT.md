@@ -4415,3 +4415,70 @@ The page throws `TypeError: Cannot read properties of undefined (reading '0')` i
 Severity: low. Nothing is lost; the empty designer is misleading.
 
 <!-- Reproducer: bugs/form-bad-json-empty-designer/ (mode lane: asserted by `ide-test.bat --only forms` (test/ide/forms.test.mjs), the test "a form file with bad JSON opens an empty designer that adds no control, and Save leaves the file as it was", which passes on BETA 1005, on the lane's second project, test/ide/probes/forms-badjson, which the lane opens accepting its two errors, TB5246 and TB5247). No project and no zip. A page of the Designing forms and reports chapter, docs/IDE/Forms/ (Designer.md, under the .tbform file; the chapter is being written), will carry a NOTE for it; when a fixed build is released, that NOTE goes. Found 2026-10-12 in the trials for the Designing forms and reports pages (their fact sheet's N9). -->
+
+---
+
+## `QueryInterface` of an object of a twinBASIC class returns E_NOINTERFACE and leaves its out pointer as it was, where COM sets it to NULL
+
+**Describe the bug**
+`IUnknown::QueryInterface`, called through slot 0 of the vtable of an object of a class that twinBASIC compiles (a class of the project, a form, a control), asks for an interface the object does not have and returns `E_NOINTERFACE` (`&H80004002`), but leaves the out pointer, `*ppvObject`, as it was. The COM contract is that the method sets `*ppvObject` to NULL when it fails. A variable set to 12345 before the call is still 12345 after it. Observed in the DEBUG CONSOLE, by calling slot 0 through an interface that the project declares, and again with `DispCallFunc` on the object's own pointer.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `queryinterface-leaves-out-pointer.twinproj` (attached as `queryinterface-leaves-out-pointer.zip`). Its module `Startup` asks seven objects for an interface that none of them has, and sets the out variable to 12345 before each call.
+2. Press F5. Each object is asked twice: through `IRawUnknown`, an interface of the project that has `IUnknown`'s interface identifier and `Extends Nothing`, so that its first method is slot 0 and `[PreserveSig]` returns the raw HRESULT; and with `DispCallFunc`, calling slot 0 of the pointer that `ObjPtr` gives for the `Object` variable.
+3. See the DEBUG CONSOLE. For `Plain`, `Implementer` (a class that implements an interface), `Form1` and `CommandButton` (a control added to the form with `Controls.Add`), both calls return `E_NOINTERFACE` and leave `out=12345`. Here is the line for `Plain`, and the line for the `Collection`, which sets the variable to 0 as COM requires:
+
+```
+Plain: missing interface: hr=80004002 out=12345; with DispCallFunc: hr=80004002 out=12345; IUnknown: hr=0 out is a pointer=True; IDispatch: hr=0 out is a pointer=True
+Collection: missing interface: hr=80004002 out=0; with DispCallFunc: hr=80004002 out=0; IUnknown: hr=0 out is a pointer=True; IDispatch: hr=0 out is a pointer=True
+```
+
+The narrowed reproduction is that project cut down to one object and one call:
+```vb
+[InterfaceId("00000000-0000-0000-C000-000000000046")]
+Private Interface IMin Extends Nothing
+    [PreserveSig]
+    Function QueryInterface(ByVal priid As LongPtr, ByRef ppvObject As LongPtr) As Long
+End Interface
+
+Private Class Plain
+    Public Value As Long
+End Class
+
+Module Startup
+
+    Private Type Guid128
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Public Sub Main()
+        Dim u As IMin = New Plain
+        Dim iid As Guid128          ' an interface that Plain does not have
+        iid.Data1 = &H12345
+        Dim p As LongPtr = 12345
+        Dim hr As Long = u.QueryInterface(VarPtr(iid), p)
+        Debug.Print Hex$(hr), p     ' prints 80004002 and 12345; COM requires 0
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+`*ppvObject` is 0 after every call that fails, so that every line of the output shows `out=0` in place of `out=12345`, as the line for the `Collection` does. The Windows documentation of `IUnknown::QueryInterface` says that `*ppvObject` is set to NULL when the object does not support the interface. VB6 does it for its own classes: its `Class` instance, `Collection`, `Err` and a `Scripting.Dictionary` all return `E_NOINTERFACE` and set the variable to 0 (the VB6 project is attached as `queryinterface-leaves-out-pointer-vb6.zip`; it calls slot 0 with `DispCallFunc`, as VB6 cannot declare the interface).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Which objects: the pointer is left as it was for an object of a class that twinBASIC compiles: a plain class, a class that implements an interface of the project, a form, the VB package's `CommandButton`, and (in another project, not attached) the `WebView2` control on a form. It is set to 0, correctly, for the objects of the runtime library: `Collection` and `Err` in the attached project, and `App`, `Screen` and a form's `Controls` in the other. A `Scripting.Dictionary` from the Scripting Runtime library sets it to 0 too.
+
+What does not reproduce it: asking for an interface the object has. `IUnknown` and `IDispatch` return `S_OK` and write a new pointer, for every object above (the `IUnknown` and `IDispatch` columns of the output). The result is the same through the project's own interface and through `DispCallFunc`, so it is not a side effect of the declaration, and the same in a 32-bit and a 64-bit run.
+
+Severity: low. The failure is reported, by the HRESULT, so a caller that tests it is not affected. A caller that tests the pointer instead, as a C or C++ client may, sees the value it passed in. When the variable is reused after an earlier successful call, that value is a pointer the caller has released.
+
+<!-- Reproducer: bugs/queryinterface-leaves-out-pointer/ (mode run: expect lists the four lines of classes that twinBASIC compiles with out=12345 and the three runtime lines with out=0); verified on BETA 1005 by `bug_repro.mjs verify`, and run with --arch win64 too (the IDE's own run; not as a built exe, where Debug.Print writes nothing). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6`. The narrowed module above was run on its own in a scratch project (output `80004002       12345`); the interface needs only the interface identifier of IUnknown, Extends Nothing and a [PreserveSig] first method (no [OleAutomation(False)], no AddRef or Release). Pages: docs/Reference/Contributed/OLEGuids/IUnknownUnrestricted.md carries a NOTE for it after its QueryInterface section (its check_run sample uses a Collection, which sets the variable to 0, so it does not show the defect), and docs/Reference/COM-Interfaces/IUnknown.md carries one after the return value of its QueryInterface section; both NOTEs go when a fixed build is released. Found 2026-10-13 documenting the OLEGuids package. -->

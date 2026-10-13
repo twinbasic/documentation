@@ -1,0 +1,7 @@
+' An empty form: one of the objects whose QueryInterface the project asks.
+
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F02")]
+[PredeclaredId]
+Class Form1
+
+End Class
