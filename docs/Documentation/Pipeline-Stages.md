@@ -288,7 +288,7 @@ dispatch.execute() → { chunks, sharedSAB }
 prepDest.expected = ["dispatch"]
 ```
 
-Cleans and recreates the trees the run owns. A build owns `<destRoot>`, `<destRoot>-offline` and `<destRoot>-pdf`, and all three exist afterwards whether or not the offline and PDF passes ran. Serve mode owns `<destRoot>` alone. It runs after `dispatch` so the wipe does not contend with `discover`'s reads on small machines.
+Cleans and recreates the trees the run writes: `<destRoot>`, and `<destRoot>-offline` and `<destRoot>-pdf` when their passes run. A build removes a sibling whose pass it skips (`--no-offline`, `--no-pdf`, or `also_build_offline` / `also_build_pdf` set to `false`) and does not recreate it, so no tree from an earlier build survives beside the new one and none is left empty. Serve mode skips both passes and owns `<destRoot>` alone, so it removes nothing beside it. `destinationTrees` in `write.mjs` makes that decision from the same `skipsOffline` and `skipsPdf` every other task asks. It runs after `dispatch` so the wipe does not contend with `discover`'s reads on small machines.
 
 ### `prepPageDirs` (main)
 
@@ -811,7 +811,8 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | Symbol | Signature | Description |
 |---|---|---|
 | `writePhase` | `(pages, staticFiles, { destRoot, dryRun?, generatedAssets?, baseurl?, skipPages? }) → Promise<stats>` | Writes the page set, vendored theme, project static files and generated CSS. `writeAssets` passes `skipPages: true`, since `flush:i` writes the pages. |
-| `prepareDestinations` | `(roots, dryRun) → Promise<void>` | Deletes and recreates each path in `roots`. `prepDest` passes `[destRoot, destRoot+"-offline", destRoot+"-pdf"]` for a build, and `[destRoot]` in serve mode. |
+| `destinationTrees` | `(destRoot, { skipOffline, skipPdf, serve? }) → { roots, gone }` | The trees `prepDest` prepares. `roots` is `destRoot`, with `destRoot+"-offline"` and `destRoot+"-pdf"` when their passes run; `gone` is the siblings whose passes are skipped, empty in serve mode. Probed by `scripts/check_cli.mjs`. |
+| `prepareDestinations` | `(roots, dryRun, gone?) → Promise<void>` | Deletes and recreates each path in `roots`, and deletes each path in `gone`. Refuses any path outside the project before deleting anything. |
 | `preparePageDirs` | `(pages, staticFiles, destRoot, offlineRoot) → Promise<void>` | Pre-creates every page output directory on both trees. Called by `prepPageDirs`. |
 | `WRITE_LIMIT` | `64` | Concurrency ceiling for `runLimited`. |
 | `isUnderProject` | `(destRoot) → boolean` | Guard against destructive `--dest` values. Used by `writeOffline` and `writePdf`. |
@@ -871,20 +872,22 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | Symbol | Signature | Description |
 |---|---|---|
 | `GUARDED_SRC` | `string` | The repo-relative, forward-slashed source root the baselines describe: `"docs"`. `checkBaseline` skips any other source root; `scripts/check_page_baseline.mjs` and `scripts/check_symbol_index.mjs` pass it in their probes. |
-| `checkBaseline` | `(guard, { record, write, force, file }) → Promise<{ failed, text }>` | The drift guard `checkPageBaseline` and `checkSymbolBaseline` share. `guard` names the file (`"page"` or `"symbol"`) and says what a loss and a gain are; `record` is what this build publishes, as the file holds it. Does nothing unless `record.src` is `GUARDED_SRC`. With `force` it writes `record` to `file`. Otherwise a missing file fails, or is created when `write` is set; a loss fails; and a gain rewrites `file` when `write` is set. The file is `record` as JSON, indented two spaces, with a closing newline. |
+| `GUARDED_DEST` | `string` | The absolute path of `docs/_site`, the online tree `build.bat` writes. |
+| `baselineWrites` | `({ destRoot, ci?, serve?, dryRun? }) → { write, heldBack }` | Whether this build may rewrite the committed files it compares with: the two baselines and the help add-in's copy of the index. `write` is set only for a build into `GUARDED_DEST` outside CI, `--serve` and `--dry-run`. `heldBack` names the destination (`built into .claude/my-site`) when it is the reason, and is `""` otherwise. Called by `runBuild`, and probed by `scripts/check_page_baseline.mjs`. |
+| `checkBaseline` | `(guard, { record, write, heldBack, force, file }) → Promise<{ failed, text }>` | The drift guard `checkPageBaseline` and `checkSymbolBaseline` share. `guard` names the file (`"page"` or `"symbol"`) and says what a loss and a gain are; `record` is what this build publishes, as the file holds it. Does nothing unless `record.src` is `GUARDED_SRC`. With `force` it writes `record` to `file`. Otherwise a missing file fails, or is created when `write` is set; a loss fails; and a gain rewrites `file` when `write` is set, or is reported as not raised when `heldBack` says why. The file is `record` as JSON, indented two spaces, with a closing newline. |
 
 ### `symbol-baseline.mjs`
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `checkSymbolBaseline` | `({ src, urls, write, force, file }) → Promise<{ failed, text }>` | The symbol index's drift guard: fails on a URL `builder/symbol-baseline.json` has and `urls` does not, rewrites the file when `urls` adds one and `write` is set, and does nothing for a source root other than `docs`. |
+| `checkSymbolBaseline` | `({ src, urls, write, heldBack, force, file }) → Promise<{ failed, text }>` | The symbol index's drift guard: fails on a URL `builder/symbol-baseline.json` has and `urls` does not, rewrites the file when `urls` adds one and `write` is set (or says it did not, when `heldBack` says why), and does nothing for a source root other than `docs`. |
 | `SYMBOL_BASELINE_PATH` | `URL` | `builder/symbol-baseline.json`. |
 
 ### `addin-index.mjs`
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `syncAddinIndex` | `({ src, json, write, file }) → Promise<string>` | Compares `json`, the `tB/symbols.json` this build wrote, with the help add-in's committed copy, and rewrites the copy when they differ and `write` is set. Does nothing for a source root other than `GUARDED_SRC`, or when `json` is empty (`--dry-run`). Returns the line to print, `""` when the copy is current; a difference never fails the build. Called by `runBuild` after the symbol index's drift guard. |
+| `syncAddinIndex` | `({ src, json, write, heldBack, file }) → Promise<string>` | Compares `json`, the `tB/symbols.json` this build wrote, with the help add-in's committed copy, and rewrites the copy when they differ and `write` is set; otherwise it says that they differ, and names the destination when `heldBack` does. Does nothing for a source root other than `GUARDED_SRC`, or when `json` is empty (`--dry-run`). Returns the line to print, `""` when the copy is current; a difference never fails the build. Called by `runBuild` after the symbol index's drift guard. |
 | `ADDIN_INDEX_REL` | `string` | `"add-in/Resources/SYMBOLS/symbols.json"`, the default `file` under the repository root. |
 
 ### `addin-project.mjs`
@@ -901,7 +904,7 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | Symbol | Signature | Description |
 |---|---|---|
 | `BASELINE_PATH` | `URL` | `builder/page-baseline.json`, the default `file` of `checkPageBaseline`. |
-| `checkPageBaseline` | `({ src, pages, staticFiles, write, force, file }) → Promise<{ failed, text }>` | The page-count drift guard, which does nothing unless `src` is `GUARDED_SRC`. With `force` it writes this build's counts to `file`, up or down. Otherwise a missing baseline fails, or is created when `write` is set; a page or static-file count below the baseline fails; and a count above it rewrites `file` when `write` is set. Called by `runBuild` in `tbdocs.mjs`, and by the probes in `scripts/check_page_baseline.mjs`. |
+| `checkPageBaseline` | `({ src, pages, staticFiles, write, heldBack, force, file }) → Promise<{ failed, text }>` | The page-count drift guard, which does nothing unless `src` is `GUARDED_SRC`. With `force` it writes this build's counts to `file`, up or down. Otherwise a missing baseline fails, or is created when `write` is set; a page or static-file count below the baseline fails; and a count above it rewrites `file` when `write` is set, or is reported as not raised when `heldBack` says why. Called by `runBuild` in `tbdocs.mjs`, and by the probes in `scripts/check_page_baseline.mjs`. |
 
 ### `offline.mjs`
 

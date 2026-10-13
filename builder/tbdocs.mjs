@@ -76,6 +76,7 @@ import { loadHighlightTheme } from "./highlight-theme.mjs";
 import { NAV_SCRIPT_REL, buildInitConfig, renderSidebar } from "./template.mjs";
 import {
   writePhase,
+  destinationTrees,
   prepareDestinations,
   preparePageDirs,
   writeFileMkdirp,
@@ -97,6 +98,7 @@ import { deriveTreeRels } from "./check-tree.mjs";
 import { syncAddinIndex } from "./addin-index.mjs";
 import { addinProjectOf, formatAddinProject, writeAddinProject } from "./addin-project.mjs";
 import { helpArchiveStep, recheckHelpArchive } from "./help-archive-step.mjs";
+import { baselineWrites } from "./baseline.mjs";
 import { checkPageBaseline } from "./page-baseline.mjs";
 import { checkSymbolBaseline } from "./symbol-baseline.mjs";
 import { deriveSymbolIndex, reportableGaps, serializeSymbolIndex, symbolPages, SYMBOL_INDEX_REL } from "./symbols.mjs";
@@ -181,6 +183,14 @@ function registerBarrier(scheduler, views, join, joinIdx, prefix, n) {
   setDepCount(views, joinIdx, n);
 }
 
+// Does this run skip the offline or the PDF pass? --no-offline and --no-pdf
+// (serve mode passes both), else _config.yml's also_build_offline and
+// also_build_pdf. Every task that writes or prepares a tree asks here, so that
+// none of them decides it differently: prepDest once made both trees for a run
+// that skipped them.
+const skipsOffline = (ctx, state) => ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
+const skipsPdf = (ctx, state) => ctx.opts.skipPdf ?? state.site.config.also_build_pdf === false;
+
 const TASKS = {
   // ── Seeds ─────────────────────────────────────────────────────────────────
 
@@ -251,7 +261,7 @@ const TASKS = {
       await fs.mkdir(path.dirname(dest), { recursive: true });
       await fs.writeFile(dest, online, "utf8");
 
-      const skipOffline = ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
+      const skipOffline = skipsOffline(ctx, state);
       let offlineMisses = 0;
       if (!skipOffline) {
         const offlineState = {
@@ -284,20 +294,22 @@ const TASKS = {
     },
   },
 
-  // Clean and recreate the trees the run owns. A build owns three -- _site/,
-  // _site-offline/ and _site-pdf/ -- and all three exist after it, whichever
-  // passes ran. Serve mode owns _serve/ alone: it never runs the offline or PDF
-  // pass, and preparing all three left an empty _serve-offline/ and _serve-pdf/
-  // beside _serve/ after every rebuild. Deferred to after dispatch so the wipe
+  // Clean and recreate the trees the run writes: the online tree, and
+  // <dest>-offline and <dest>-pdf when their passes run. A build with
+  // --no-offline --no-pdf leaves the online tree alone; destinationTrees says
+  // what happens to a skipped sibling. Deferred to after dispatch so the wipe
   // doesn't contend with discover's source-file reads. Joined by write and
   // searchData.
   prepDest: {
     expected: ["dispatch"],
     runOnMain: true,
-    async execute(_, ctx) {
-      const r = ctx.destRoot;
-      const roots = ctx.opts.serve ? [r] : [r, r + "-offline", r + "-pdf"];
-      await prepareDestinations(roots, ctx.opts.dryRun);
+    async execute(_, ctx, state) {
+      const { roots, gone } = destinationTrees(ctx.destRoot, {
+        skipOffline: skipsOffline(ctx, state),
+        skipPdf: skipsPdf(ctx, state),
+        serve: !!ctx.opts.serve,
+      });
+      await prepareDestinations(roots, ctx.opts.dryRun, gone);
       return {};
     },
     submit() {},
@@ -310,7 +322,7 @@ const TASKS = {
     runOnMain: true,
     async execute(_, ctx, state) {
       if (ctx.opts.dryRun) return {};
-      const skipOffline = ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
+      const skipOffline = skipsOffline(ctx, state);
       const offlineRoot = skipOffline ? null : ctx.destRoot + "-offline";
       await preparePageDirs(state.pages, state.staticFiles, ctx.destRoot, offlineRoot);
       return {};
@@ -680,7 +692,7 @@ const TASKS = {
         NAV_SCRIPT_REL,
       ]);
       state.sitePaths = sitePaths;
-      const skipOffline = ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
+      const skipOffline = skipsOffline(ctx, state);
 
       // Everything deriveTreeRels needs is settled at this point: pages
       // from discover, stubs from deriveRedirects, staticFiles after dot
@@ -1009,7 +1021,7 @@ const TASKS = {
     expected: ["flushJoin", "scss", "writeOffline"],
     runOnMain: true,
     async execute(_, ctx, state) {
-      const skipOffline = ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
+      const skipOffline = skipsOffline(ctx, state);
       return helpArchiveStep({
         src: path.relative(REPO_ROOT, ctx.srcRoot).replaceAll(path.sep, "/"),
         offlineRoot: skipOffline ? null : `${ctx.destRoot}-offline`,
@@ -1075,7 +1087,7 @@ const TASKS = {
     expected: ["writeAux", "writeAssets"],
     runOnMain: true,
     async execute({ writeAux: { redirectStats, sitemapStats, searchStats } }, ctx, state) {
-      const skipOffline = ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
+      const skipOffline = skipsOffline(ctx, state);
       if (ctx.opts.dryRun || skipOffline) return null;
       const auxStats = { redirects: redirectStats, sitemap: sitemapStats, search: searchStats };
       return writeOffline(state.staticFiles, state.site, ctx.destRoot, {
@@ -1107,7 +1119,7 @@ const TASKS = {
     expected: ["flushJoin", "renderJoin", "dot", "resolveBookChapters"],
     runOnMain: true,
     async execute(_, ctx, state) {
-      const skipPdf = ctx.opts.skipPdf ?? state.site.config.also_build_pdf === false;
+      const skipPdf = skipsPdf(ctx, state);
       if (ctx.opts.dryRun || skipPdf) return null;
       return writePdf(state.pages, state.staticFiles, state.site, ctx.destRoot, {
         tolerateMissingImages: ctx.opts.tolerateMissingImages,
@@ -1659,12 +1671,19 @@ export async function runBuild(opts) {
   // build was invoked. tbdocs also runs over test/fixtures/check-src, which
   // has no baseline and must not be measured against the site's.
   const guardedSrc = path.relative(REPO_ROOT, path.resolve(opts.src ?? "docs")).replaceAll(path.sep, "/");
-  const mayWrite = !process.env.CI && !opts.serve && !opts.dryRun;
+  // A build into another --dest compares and writes nothing -- see baseline.mjs.
+  const { write: mayWrite, heldBack } = baselineWrites({
+    destRoot,
+    ci: !!process.env.CI,
+    serve: !!opts.serve,
+    dryRun: !!opts.dryRun,
+  });
   const drift = await checkPageBaseline({
     src: guardedSrc,
     pages: pages.length,
     staticFiles: staticFiles.length,
     write: mayWrite,
+    heldBack,
     force: !!opts.updatePageBaseline,
   });
   if (drift.text) process.stdout.write(drift.text);
@@ -1677,13 +1696,14 @@ export async function runBuild(opts) {
       src: guardedSrc,
       urls: symbolStats.urls,
       write: mayWrite,
+      heldBack,
       force: !!opts.updateSymbolBaseline,
     });
     if (lost.text) process.stdout.write(lost.text);
     if (lost.failed) failBuild();
 
     // The help add-in embeds a committed copy of the index -- see addin-index.mjs.
-    process.stdout.write(await syncAddinIndex({ src: guardedSrc, json: symbolStats.json, write: mayWrite }));
+    process.stdout.write(await syncAddinIndex({ src: guardedSrc, json: symbolStats.json, write: mayWrite, heldBack }));
   }
 
   // The help add-in's archive was written before the Gantt injection above, so

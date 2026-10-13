@@ -574,7 +574,7 @@ wrapper:
 |---|---|---|
 | `build.bat` | link + integrity check | broken intra-site links, missing pages, malformed `redirect_from`, duplicate ids, remote `<img src>`, sitemap / search-index gaps, canonical mismatches. Runs on the worker lanes that produced the HTML, so neither tree is written out only to be read back |
 | `build.bat` | publish allowlist | refuses any file that may not ship. It aborts the build rather than flipping an exit code, because a tree with a private key in it is one `upload-pages-artifact` from being published |
-| `build.bat` | page-count baseline | a rise rewrites `builder/page-baseline.json` and says so; a fall fails the build |
+| `build.bat` | page-count baseline | a rise rewrites `builder/page-baseline.json` and says so; a fall fails the build. Only a build into `docs/_site` writes it (or the next row's file, or the add-in's index copy): a build into another `--dest` compares and reports, so builds into private folders never touch the working copy |
 | `build.bat` | symbol-index URLs | every URL `tB/symbols.json` has published is still in it: a new one rewrites `builder/symbol-baseline.json`, a lost one --- most often a reworded member heading --- fails the build |
 | `build.bat` | nav integrity | every nav-visible `parent:` resolves to exactly one page |
 | `build.bat` | Gantt sections | every task handed to the build's Gantt chart has a section, and the chart has a place for it: a band for a main-thread task, a colour for a worker's |

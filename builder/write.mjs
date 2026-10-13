@@ -100,18 +100,36 @@ async function writeGeneratedAssets(assets, destRoot, limit, baseurl) {
 
 // ---------- §5.1 prepareDestinations ------------------------------------
 
-export async function prepareDestinations(roots, dryRun) {
+// The trees a run prepares beside its online tree `destRoot`. `roots` are the
+// trees it writes: <dest>-offline and <dest>-pdf only when their passes run.
+// `gone` are the siblings whose pass it skips. A build removes them, so no
+// tree from an earlier build survives beside this one and none is left empty.
+// Serve mode skips both passes and owns its one tree, so it removes nothing.
+export function destinationTrees(destRoot, { skipOffline, skipPdf, serve = false }) {
+  const roots = [destRoot];
+  const gone = [];
+  (skipOffline ? gone : roots).push(`${destRoot}-offline`);
+  (skipPdf ? gone : roots).push(`${destRoot}-pdf`);
+  return { roots, gone: serve ? [] : gone };
+}
+
+// Empties each of `roots`, creating it if need be, and removes each of `gone`.
+export async function prepareDestinations(roots, dryRun, gone = []) {
   if (dryRun) {
     for (const root of roots) console.log(`[dry-run] would clean ${root}`);
+    for (const root of gone) console.log(`[dry-run] would remove ${root}`);
     return;
   }
+  const all = [...roots, ...gone];
+  for (const root of all) {
+    if (!isUnderProject(root)) {
+      throw new Error(`refusing to clean ${root}: not under the project tree`);
+    }
+  }
   await Promise.all(
-    roots.map(async (root) => {
-      if (!isUnderProject(root)) {
-        throw new Error(`refusing to clean ${root}: not under the project tree`);
-      }
+    all.map(async (root) => {
       await fs.rm(root, { recursive: true, force: true });
-      await fs.mkdir(root, { recursive: true });
+      if (roots.includes(root)) await fs.mkdir(root, { recursive: true });
     }),
   );
 }

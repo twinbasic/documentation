@@ -78,7 +78,9 @@ const PAGE_GUARD = {
  * @param {number} o.pages        this build's page count
  * @param {number} o.staticFiles  this build's static-file count
  * @param {boolean} o.write       may the baseline be rewritten? (false under
- *                                CI, --serve and --dry-run)
+ *                                CI, --serve and --dry-run, and for a --dest
+ *                                other than docs/_site: baselineWrites)
+ * @param {string} [o.heldBack]   why not, said beside a rise left unwritten
  * @param {boolean} o.force       write whatever the counts are, up or down
  *                                (--update-page-baseline)
  * @param {URL|string} [o.file]   the baseline to read and write. Only
@@ -87,6 +89,14 @@ const PAGE_GUARD = {
  *                                without touching the committed file.
  * @returns {Promise<{failed: boolean, text: string}>}
  */
-export async function checkPageBaseline({ src, pages, staticFiles, write, force = false, file = BASELINE_PATH }) {
-  return checkBaseline(PAGE_GUARD, { record: { src, pages, staticFiles }, write, force, file });
+export async function checkPageBaseline({
+  src,
+  pages,
+  staticFiles,
+  write,
+  heldBack = "",
+  force = false,
+  file = BASELINE_PATH,
+}) {
+  return checkBaseline(PAGE_GUARD, { record: { src, pages, staticFiles }, write, heldBack, force, file });
 }
