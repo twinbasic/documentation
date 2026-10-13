@@ -19,9 +19,10 @@
 // Matches the pagedjs-cli CLI surface that book.bat used:
 //   --outline-tags    : headings to include in the PDF outline.
 //                       Defaults to h1,h2,h3,h4 if omitted.
-//   -t / --timeout    : per-operation puppeteer timeout in ms. 0
-//                       disables. Default 0 (we have no untrusted
-//                       input; the 1638-page book takes ~100 s).
+//   -t / --timeout    : per-operation puppeteer timeout in ms, each
+//                       CDP call included (page.pdf() of the 3,700-page
+//                       book takes about 3 minutes). 0 disables. Default 0
+//                       (we have no untrusted input).
 //   --additional-script
 //                     : extra in-page script to inject after the
 //                       paged.js bundle. Repeatable. Used by book.bat
@@ -203,7 +204,8 @@ Renders an HTML book to a PDF with paged.js and headless Chromium.
   <input.html>               the book to render
   -o, --output <output.pdf>  the PDF to write
   --outline-tags <tags>      headings to put in the PDF outline (default h1,h2,h3,h4)
-  -t, --timeout <ms>         per-operation timeout in milliseconds; 0 disables (default 0)
+  -t, --timeout <ms>         per-operation timeout in milliseconds, each DevTools call
+                             included; 0 disables (default 0)
   --additional-script <path> a script to inject after paged.js; repeatable
   -h, --help                 print this text and exit
 
@@ -436,6 +438,11 @@ const browser = await puppeteer.launch({
     "--disable-gpu",
     "--disable-software-rasterizer",
   ],
+  // Every CDP call, not only the page's own operations, waits as long as -t
+  // says: puppeteer's own limit of 180 s ended page.pdf() on a CI runner once
+  // the book was laid out whole, its 3,700 pages taking about that long to
+  // generate. 0, the default, is no limit; CI's step timeout is the backstop.
+  protocolTimeout: timeoutMs,
 });
 
 let exitCode = 0;

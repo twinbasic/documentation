@@ -33,7 +33,7 @@ node book/render-book.mjs <input.html> -o <output.pdf>
 | `<input.html>` | required | Path to the assembled HTML file (usually `_site-pdf/book.html`). |
 | `-o` / `--output` | required | Destination PDF path. |
 | `--outline-tags` | `h1,h2,h3,h4` | Comma-separated heading tags to include in the PDF bookmark tree. |
-| `-t` / `--timeout` | `0` (disabled) | Per-operation puppeteer timeout in milliseconds, a whole number from 0 to 2147483647. |
+| `-t` / `--timeout` | `0` (disabled) | Per-operation puppeteer timeout in milliseconds, a whole number from 0 to 2147483647: the page's own operations and each DevTools (CDP) call, `page.pdf()` included. |
 | `--additional-script` | --- | Inject an extra in-page script after the paged.js bundle. Repeatable. |
 
 `book.bat` runs the standard production invocation:
