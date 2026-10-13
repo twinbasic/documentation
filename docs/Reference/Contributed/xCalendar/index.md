@@ -2,20 +2,20 @@
 title: xCalendar Package
 parent: Experimental Packages
 has_toc: false
-indexed_from: 1.0.7.0
+indexed_from: 1.0.17.0
 permalink: /tB/Packages/Contributed/xCalendar/
 ---
 
 # xCalendar Package
 {: .no_toc }
 
-**Author:** sokinkeso. **Version:** 1.0.7.0
+**Author:** sokinkeso. **Version:** 1.0.17.0
 
 The **xCalendar** contributed package provides a calendar control: a grid of the days of one month, in which the user selects a date by clicking a day, by pressing a key, or by choosing a month or a year from a list. It is meant as a replacement for the Calendar control of `MSCAL.OCX`.
 
-The package has one public class, **xCalendar**, a user control that draws itself with GDI calls. The class has 27 properties, 10 methods and 12 events, and four enumerations belong to it. This section documents version 1.0.7.0, published under the MIT licence. The package describes itself as "Calendar MSCAL replacement (Experimental, 32-bit and 64-bit)", and its 32-bit and 64-bit builds behave the same.
+The package has one public class, **xCalendar**, a user control that draws itself with GDI calls. The class has 27 properties, 10 methods and 12 events, and four enumerations belong to it. This section documents version 1.0.17.0, published under the MIT licence. The package describes itself as "Calendar MSCAL replacement (Experimental, 32-bit and 64-bit)", and its 32-bit and 64-bit builds behave the same.
 
-The package has defects: choosing a month from the month list can hang the program, and the colour properties of the text have no effect. [Known problems in version 1.0.7.0](#known-problems-in-version-1070) lists them.
+The package has defects: setting **Value** to a date in another month leaves the grid showing the old month, and the colour properties of the text have no effect. [Known problems in version 1.0.17.0](#known-problems-in-version-10170) lists them.
 
 ```tb check_build
 Private Sub Form_Load()
@@ -78,16 +78,14 @@ The start values of the properties are set when the control is placed on a form.
 
 The control is drawn in up to three areas, one above the other: the title area, the row of day names and the grid of days. It draws into a hidden picture box and copies the result to its own surface. The control can have any size: the seven columns share the width equally, and the six rows share the height that the other areas leave.
 
-The sizes inside the control, such as the margins and the two lists, are in device pixels and are not scaled with the DPI of the display. At 144 DPI a control that is 256 pixels wide at design time is 384 pixels wide, and its lists and margins keep their pixel sizes.
+The two lists are scaled with the DPI of the display, by the [**DpiScale**](../../VB/UserControl#dpiscale) of the control: the sizes given for them below are those at 96 DPI. The other sizes inside the control, the margins, the frame and the lines, are in device pixels and are not scaled. At 144 DPI a control that is 256 pixels wide at design time is 384 pixels wide, and its margins keep their pixel sizes.
 
 ### Title area
 
-The title area is present when **ShowTitle** or **ShowDateSelectors** is **True**, and has no height when both are **False**. Its height is the height of the title text in **TitleFont**, plus **TitleMargin** above and below. Its background is **BackColor**. It holds two things.
+The title area is present when **ShowTitle** or **ShowDateSelectors** is **True**, and has no height when both are **False**. Its height is the height of one line of text in **TitleFont**, plus **TitleMargin** above and below. The control works the height out when it is created and when its size changes, and again when **TitleFont** is assigned with **Set** or **TitleMargin** or **ShowDateSelectors** is set. Its background is **BackColor**. It holds two things.
 
-- **The title** is the name of the shown month and the year, such as `October 2026`, in **TitleFont**, centred in the space to the left of the date selectors. **MonthLength** decides whether the month is written in full or as its first three letters. It is drawn only when **ShowTitle** is **True**. The month name comes from the [**MonthName**](../../../Modules/Strings/MonthName) function, so it is in the language of the system.
-- **The date selectors** are two drop-down lists at the right edge, drawn only when **ShowDateSelectors** is **True**. The month list is 80 pixels wide and holds the names of the twelve months. The year list is 50 pixels wide and holds the years 1900 to 2100. Both are 21 pixels high and centred in the height of the title area. The year list ends 5 pixels from the right edge of the control, and the month list ends 5 pixels before the year list. Choosing an entry changes the shown month or year, keeps the selected day of the month, and raises **NewMonth** or **NewYear**.
-
-The title is centred in the width of the control less 140 pixels, the space that the two lists take, whether or not the lists are shown. At 144 DPI the lists are too small for their text: the year list shows `20` for 2026 and the month list `Octobe` for October. [Known problems](#known-problems-in-version-1070) describes both.
+- **The title** is the name of the shown month and the year, such as `October 2026`, in **TitleFont**, centred in the space to the left of the month list, or in the whole width of the control when the lists are not shown. A title wider than that space is cut off at both ends: see [Known problems](#known-problems-in-version-10170). **MonthLength** decides whether the month is written in full or as its first three letters. It is drawn only when **ShowTitle** is **True**. The month name comes from the [**MonthName**](../../../Modules/Strings/MonthName) function, so it is in the language of the system.
+- **The date selectors** are two drop-down lists at the right edge, drawn only when **ShowDateSelectors** is **True**. At 96 DPI the month list is 80 pixels wide and holds the names of the twelve months, and the year list is 50 pixels wide and holds the years 1900 to 2100. Both are 21 pixels high, placed so that a list of that height is centred in the height of the title area. The year list ends 5 pixels from the right edge of the control, and the month list ends 5 pixels before the year list. At 144 DPI each of these sizes is 1.5 times as large: the lists are 120 and 75 pixels wide, and the year list ends 8 pixels from the right edge. The height of a drop-down list is fixed by its font, so at 144 DPI each list is 28 pixels high, not the 31 that the control asks for, and sits 2 pixels above the centre of the title area. When the control is resized the lists keep their distance from the right edge, and the title is centred again in the space to their left. Choosing an entry changes the shown month or year, keeps the selected day of the month, and raises **NewMonth** or **NewYear**.
 
 ### Row of day names
 
@@ -97,7 +95,7 @@ The row is present when **ShowDays** is **True**. It has seven cells of the same
 
 The grid has six rows of seven cells, 42 days in all, whatever the month. The first cell holds the latest date, on or before the first day of the shown month, that falls on the weekday **FirstDay** names. A month therefore starts in the first row, and the cells before its first day hold the last days of the month before. Each cell shows the day of the month at its top left corner, in **GridFont**. The cell of the selected date, **Value**, is filled with a fixed warm grey (`&H82868E`) and has a black line along its left and top edges.
 
-All the text of the control is drawn in the same near-black, whatever the colour properties say: the days of the month before and the month after are not grey, and the title is not in **TitleFontColor**. See [Known problems](#known-problems-in-version-1070).
+All the text of the control is drawn in the same near-black, whatever the colour properties say: the days of the month before and the month after are not grey, and the title is not in **TitleFontColor**. See [Known problems](#known-problems-in-version-10170).
 
 **ShowVerticalGrid** and **ShowHorizontalGrid** switch the lines between the cells on and off, and **GridCellEffect** and **GridLinesColor** decide how the lines look. A black frame of one pixel always surrounds the row of day names and the grid, whichever lines are on.
 
@@ -105,7 +103,7 @@ A cell is selected only when its date is equal to **Value**. A **Value** with a 
 
 ### Disabled state
 
-When **Enabled** is **False**, the two lists are disabled and drawn in grey, and the row of day names has the background `&HEEEEEE` in place of **DayBackColor**. With **Flat** lines, the grid lines are `&H5B5B5B` in place of **GridLinesColor**. **BackColor** is the same as for an enabled control, and the text keeps its colour.
+When **Enabled** is set to **False** by the program, the two lists are disabled and drawn in grey, and the row of day names has the background `&HEEEEEE` in place of **DayBackColor**. A control that loads from a form with **Enabled** already **False** draws its lists as an enabled control does: see [Known problems](#known-problems-in-version-10170). With **Flat** lines, the grid lines are `&H5B5B5B` in place of **GridLinesColor**. **BackColor** is the same as for an enabled control, and the text keeps its colour.
 
 A disabled control does not receive the mouse or the keyboard from the user, and the focus cannot be given to it. Code can still change its date, for example with **NextDay** or **Value**.
 
@@ -115,11 +113,11 @@ A disabled control does not receive the mouse or the keyboard from the user, and
 
 Pressing the left mouse button on a cell of the grid selects the date of that cell. The control raises **BeforeUpdate**, which can cancel the selection, then moves the selection and redraws, and raises **AfterUpdate**. A day of the month before or the month after is selected in the same way, and the control then shows its month; no **NewMonth** or **NewYear** event is raised for that change of month. A click with the right button, and a click on the title area or the row of day names, select nothing: they raise **MouseUp** and **Click** only.
 
-A press near the right edge or the bottom edge of the grid can select a date that the grid does not show: see [Known problems](#known-problems-in-version-1070).
+A press near the right edge or the bottom edge of the grid can select a date that the grid does not show: see [Known problems](#known-problems-in-version-10170).
 
 ### With the keyboard
 
-The control handles these keys while the keyboard focus is in the control. A click on the control gives it the focus, and Tab does not: see [Known problems](#known-problems-in-version-1070).
+The control handles these keys while the keyboard focus is in the control. A click on the control gives it the focus, and Tab does not: see [Known problems](#known-problems-in-version-10170).
 
 | Key | Effect | Method it calls |
 |:----|:-------|:----------------|
@@ -155,13 +153,11 @@ Setting **Value**, **Day**, **Month** or **Year**, and calling the methods that 
 
 **MouseDown** is declared but never raised.
 
-## Known problems in version 1.0.7.0
+## Known problems in version 1.0.17.0
 
 > [!WARNING]
-> Version 1.0.7.0 of the package stops the program, or gives a wrong result without an error, in these cases.
+> Version 1.0.17.0 of the package gives a wrong result without an error in these cases.
 >
-> - **A month or a year chosen from a list can hang the program.** Choosing a month in which the selected day does not exist, such as February when the selected day is the 31st, or the year 2025 when the selected date is February 29, 2024, makes the program run at full processor load and never return. The same dates set from code raise run-time error 13 instead.
-> - **The control asks to be painted again after every paint while the date selectors are shown**, a few hundred times a second, so a program that calls **DoEvents** does not come back from it, and the processor is busy. With **ShowDateSelectors** **False** it stops.
 > - **The colour properties of the text have no effect.** **DayFontColor**, **GridFontColor** and **TitleFontColor** are stored and returned, but the day names, the day numbers and the title are always drawn in the same near-black (`&H4`), and so are the days of the month before and the month after, which the control means to draw in grey. The disabled state has no effect on the text colour either.
 > - **Setting Value to a date in another month, or setting FirstDay, does not place the dates of the grid again.** After **Value** is set, the title and the two lists show the new month, but the grid still shows the dates of the month before, with no cell selected. After **FirstDay** is set, the day names move to the new order and the dates do not, so the names and the dates disagree. **Refresh** does not correct either. The dates are placed again when the selection is next moved, by a click on a cell, by **Today** or by one of the **Next** and **Previous** methods.
 > - **A press near the right edge or the bottom edge can select a date that the grid does not show.** In a control 255 pixels wide, a cell is 36.43 pixels, which the control takes as 36, and a press at 252 to 254 pixels from the left selects the date of a column after the last, the first date of the next row. In a control 292 pixels high, a press at 290 or 291 pixels from the top selects a date a row below the grid.
@@ -170,14 +166,17 @@ Setting **Value**, **Day**, **Month** or **Year**, and calling the methods that 
 > - **A year outside 1900 to 2100 is not shown in the year list.** Setting **Year** or **Value** to 1899 or earlier leaves the year list blank, and to 2101 or later leaves it as it was. No error is raised, and **Value** and the title show the year.
 
 > [!NOTE]
-> Version 1.0.7.0 of the package has these other problems. Each raises an error, or concerns how the control looks or is reached.
+> Version 1.0.17.0 of the package has these other problems. Each raises an error, or concerns how the control looks or is reached.
 >
+> - **A month or a year chosen from a list can open the run-time error box.** Choosing a month in which the selected day does not exist, such as February when the selected day is the 31st, or the year 2025 when the selected date is February 29, 2024, raises run-time error 13, *Type mismatch*, in the control's own code, where the program cannot handle it: the program shows its error box, and goes on when the box is closed. The list then shows the new month or year, and **Month** or **Year** returns it, but **Value** and **Day** keep the old date, the grid is not drawn again, and **NewMonth** or **NewYear** is not raised. The same dates set from code raise run-time error 13 to the caller.
 > - **Setting ValueIsNull raises run-time error 438**, *Object doesn't support this property or method*, to **True** or to **False**. The value is stored all the same, and nothing else in the control uses it.
 > - **A day, month or year that makes an impossible date raises run-time error 13**, *Type mismatch*: **Day** 0 or 32, or 31 in a month of 30 days, **Month** 13 or 0, **Month** 2 when **Day** is 31, **Year** 2025 when the selected date is February 29, 2024. The property then returns the value assigned and **Value** keeps its old date, until the next valid assignment. After a **Month** of 13, **Refresh** raises an error (-2147352567, *Exception occurred.*) until **Month** is set to a valid value.
 > - **Tab never moves the keyboard focus to the control**, so a user who does not click on it cannot reach the arrow keys. A click on the control, and a choice in either list, give it the focus.
 > - **MouseDown is never raised.**
-> - **The title is centred in the width of the control less 140 pixels**, also when the date selectors are not shown, so it stands left of the centre.
-> - **The two lists are 80 and 50 pixels wide at any DPI.** At 144 DPI the month list shows `Octobe` for October, and the year list `20` for 2026.
+> - **A title wider than the space to the left of the month list is cut off at both ends.** At 144 DPI, with the control at its default size (384 pixels wide) and the default **TitleFont**, that space is 174 pixels wide, and `October 2026` does not fit in it. A wider control, a smaller **TitleFont**, a short month name (**MonthLength** **ShortLength**: `Oct 2026` fits) or **ShowDateSelectors** **False** gives the title room.
+> - **A control that loads from a form with Enabled False shows its two lists as enabled.** Setting **Enabled** to **False** in code draws them in grey, but a control saved with **Enabled** **False** draws them as for an enabled control. The row of day names is drawn as disabled in both cases.
+> - **Setting ShowTitle to True does not bring the title back when both ShowTitle and ShowDateSelectors were False.** The title area has no height then, and keeps none: the title is not drawn, and the row of day names stays at the top. Setting **ShowDateSelectors** to **True**, setting **TitleMargin**, or changing the size of the control gives the title area its height again.
+> - **The height of the title area does not follow a change made to the title font object.** After `xCalendar1.TitleFont.Size = 24`, the title is drawn at the new size, but the title area keeps its old height and the lists keep their places. Assigning the object to **TitleFont** with **Set** again, or setting **TitleMargin**, fits the area to the font. The row of day names and the day numbers follow a change to **DayFont** or **GridFont** at the next paint.
 
 ## Properties
 
@@ -193,7 +192,7 @@ The background colour of the title area and of the cells of the grid, apart from
 
 The day of the month of the selected date, from 1 to 31. **Integer**. Default: the day of the month on which the control was placed on the form.
 
-Setting **Day** selects that day of the shown month and year, and redraws the control. A day that the shown month does not have, such as 31 in June, or a value below 1 or above 31, raises run-time error 13, *Type mismatch*. **Day** then returns the value assigned, and **Value** is unchanged. See [Known problems](#known-problems-in-version-1070).
+Setting **Day** selects that day of the shown month and year, and redraws the control. A day that the shown month does not have, such as 31 in June, or a value below 1 or above 31, raises run-time error 13, *Type mismatch*. **Day** then returns the value assigned, and **Value** is unchanged. See [Known problems](#known-problems-in-version-10170).
 
 ### DayBackColor
 {: .no_toc }
@@ -210,7 +209,7 @@ The control keeps the object that is assigned, not a copy of it. Assigning a fon
 ### DayFontColor
 {: .no_toc }
 
-The colour of the day names. **OLE_COLOR**. Default: black. The value is stored, and it has no effect on the colour of the text: see [Known problems](#known-problems-in-version-1070).
+The colour of the day names. **OLE_COLOR**. Default: black. The value is stored, and it has no effect on the colour of the text: see [Known problems](#known-problems-in-version-10170).
 
 ### DayLength
 {: .no_toc }
@@ -234,7 +233,7 @@ Whether the control responds to the user. **Boolean**. Default: **True**. A disa
 
 The weekday of the first column of the grid. A [**WeekDaysEnum**](#weekdaysenum) member. Default: **Monday**.
 
-Changing **FirstDay** at run time moves the day names at once, but the dates of the grid are placed again only when the selection next moves, so the names and the dates disagree until then. **Refresh** does not correct it. See [Known problems](#known-problems-in-version-1070). A value outside 0 to 7 raises run-time error 5, *Invalid procedure call or argument*, and **FirstDay** returns the value assigned.
+Changing **FirstDay** at run time moves the day names at once, but the dates of the grid are placed again only when the selection next moves, so the names and the dates disagree until then. **Refresh** does not correct it. See [Known problems](#known-problems-in-version-10170). A value outside 0 to 7 raises run-time error 5, *Invalid procedure call or argument*, and **FirstDay** returns the value assigned.
 
 ### GridCellEffect
 {: .no_toc }
@@ -251,19 +250,19 @@ The font of the day numbers in the grid. A **Font** object. Default: Arial, 8 po
 ### GridFontColor
 {: .no_toc }
 
-The colour of the day numbers. **OLE_COLOR**. Default: dark blue (`&HA00000`, blue 160). The value is stored, and it has no effect on the colour of the text: see [Known problems](#known-problems-in-version-1070).
+The colour of the day numbers. **OLE_COLOR**. Default: dark blue (`&HA00000`, blue 160). The value is stored, and it has no effect on the colour of the text: see [Known problems](#known-problems-in-version-10170).
 
 ### GridLinesColor
 {: .no_toc }
 
-The colour of the lines of the grid when **GridCellEffect** is **Flat**. **OLE_COLOR**. Default: `&H80000010`, the system colour [**vbButtonShadow**](../../VBRUN/Constants/SystemColorConstants). The default is drawn as near-black, and not as the system colour: see [Known problems](#known-problems-in-version-1070).
+The colour of the lines of the grid when **GridCellEffect** is **Flat**. **OLE_COLOR**. Default: `&H80000010`, the system colour [**vbButtonShadow**](../../VBRUN/Constants/SystemColorConstants). The default is drawn as near-black, and not as the system colour: see [Known problems](#known-problems-in-version-10170).
 
 ### Month
 {: .no_toc }
 
 The month of the selected date, from 1 to 12. **Integer**. Default: the month in which the control was placed on the form.
 
-Setting **Month** selects the same day of that month in the shown year, shows the month, and updates the month list. A month number outside 1 to 12, or a month that lacks the selected day (**Day** is 31 and the month has 30 days), raises run-time error 13, *Type mismatch*. **Month** then returns the value assigned, and **Value** and the month list are unchanged. See [Known problems](#known-problems-in-version-1070).
+Setting **Month** selects the same day of that month in the shown year, shows the month, and updates the month list. A month number outside 1 to 12, or a month that lacks the selected day (**Day** is 31 and the month has 30 days), raises run-time error 13, *Type mismatch*. **Month** then returns the value assigned, and **Value** and the month list are unchanged. See [Known problems](#known-problems-in-version-10170).
 
 ### MonthLength
 {: .no_toc }
@@ -277,7 +276,7 @@ A value other than **ShortLength** shows the whole name.
 
 Whether the month list and the year list are shown. **Boolean**. Default: **True**.
 
-While the lists are shown the control is painted again continuously, and the title is centred in the width less 140 pixels whether or not they are shown. See [Known problems](#known-problems-in-version-1070).
+Setting the property moves the lists to their places and works out the height of the title area again. The title is centred in the space to the left of the lists, or in the whole width when they are not shown. With **ShowTitle** **False** as well, the title area has no height: see [Known problems](#known-problems-in-version-10170).
 
 ### ShowDays
 {: .no_toc }
@@ -292,7 +291,7 @@ Whether the horizontal lines between the rows of the grid are drawn. **Boolean**
 ### ShowTitle
 {: .no_toc }
 
-Whether the title, the month and the year as text, is drawn. **Boolean**. Default: **True**. With **ShowTitle** **False** and **ShowDateSelectors** **True**, the title area keeps its height and shows only the two lists.
+Whether the title, the month and the year as text, is drawn. **Boolean**. Default: **True**. With **ShowTitle** **False** and **ShowDateSelectors** **True**, the title area keeps its height and shows only the two lists. With both **False** the title area has no height, and setting **ShowTitle** to **True** does not give it one: see [Known problems](#known-problems-in-version-10170).
 
 ### ShowVerticalGrid
 {: .no_toc }
@@ -302,17 +301,17 @@ Whether the vertical lines between the columns of the grid are drawn. **Boolean*
 ### TitleFont
 {: .no_toc }
 
-The font of the title. A **Font** object. Default: Arial, 16 points. The remarks for [**DayFont**](#dayfont) apply.
+The font of the title. A **Font** object. Default: Arial, 16 points. The remarks for [**DayFont**](#dayfont) apply, with one exception: the height of the title area, and the places of the two lists in it, follow the font only when it is assigned with **Set**, not when a property of the object changes. See [Known problems](#known-problems-in-version-10170).
 
 ### TitleFontColor
 {: .no_toc }
 
-The colour of the title. **OLE_COLOR**. Default: orange (`&H80FF&`, red 255, green 128, blue 0). The value is stored, and it has no effect on the colour of the text: see [Known problems](#known-problems-in-version-1070).
+The colour of the title. **OLE_COLOR**. Default: orange (`&H80FF&`, red 255, green 128, blue 0). The value is stored, and it has no effect on the colour of the text: see [Known problems](#known-problems-in-version-10170).
 
 ### TitleMargin
 {: .no_toc }
 
-The space above and below the title, in device pixels. **Integer**. Default: `5`. The height of the title area is the height of the title text plus twice this value. At 144 DPI, raising the value from 5 to 15 moves the top edge of the row of day names down by 20 pixels, twice the change.
+The space above and below the title, in device pixels. **Integer**. Default: `5`. The height of the title area is the height of one line of the title font plus twice this value, and the two lists are placed in the height again when the value is set. At 144 DPI, raising the value from 5 to 15 moves the top edge of the row of day names down by 20 pixels, twice the change.
 
 ### Value
 {: .no_toc }
@@ -321,28 +320,26 @@ The selected date. A **Date**. Default: the date on which the control was placed
 
 Setting **Value** changes **Year**, **Month** and **Day** to the parts of the date, updates the two lists, and redraws the control. The time of day of the date is kept, and a **Value** with a time of day selects no cell. Setting **Value** raises no event. A String that is a date is converted; a String that is not a date raises run-time error 13, *Type mismatch*, and **Null** raises error 94.
 
-When the new date is in a month other than the shown one, the title and the lists show the new month, and the grid keeps the dates of the month it showed before, with no cell selected, until the selection next moves. See [Known problems](#known-problems-in-version-1070).
+When the new date is in a month other than the shown one, the title and the lists show the new month, and the grid keeps the dates of the month it showed before, with no cell selected, until the selection next moves. See [Known problems](#known-problems-in-version-10170).
 
 ### ValueIsNull
 {: .no_toc }
 
 **Boolean**. Default: **False**.
 
-Setting the property raises run-time error 438, *Object doesn't support this property or method*. The value is stored all the same, and nothing else in the control uses it: it has no effect on **Value** or on how the control is drawn. See [Known problems](#known-problems-in-version-1070).
+Setting the property raises run-time error 438, *Object doesn't support this property or method*. The value is stored all the same, and nothing else in the control uses it: it has no effect on **Value** or on how the control is drawn. See [Known problems](#known-problems-in-version-10170).
 
 ### ValueStr
 {: .no_toc }
 
 The selected date as a **String**. Reading it returns **Value** as **CStr** converts it: the short date of the regional settings, such as `3/15/2026` with US regional settings, followed by the time, such as `2:30:00 PM`, only when **Value** has a time of day. Setting it converts the string with **CDate** and assigns the result to **Value**. A string that **CDate** cannot read, an empty string among them, raises run-time error 13, *Type mismatch*.
 
-The source marks the property as temporary: it is there until the property page can edit a date.
-
 ### Year
 {: .no_toc }
 
 The year of the selected date. **Integer**. Default: the year in which the control was placed on the form.
 
-Setting **Year** selects the same day and month in that year, shows the year, and updates the year list, which holds 1900 to 2100. A year that lacks the selected day (**Day** is 29, **Month** is 2, and the year is not a leap year) raises run-time error 13, *Type mismatch*; **Year** then returns the value assigned, and **Value** is unchanged. A year outside 1900 to 2100 raises no error, but it is not in the year list. See [Known problems](#known-problems-in-version-1070).
+Setting **Year** selects the same day and month in that year, shows the year, and updates the year list, which holds 1900 to 2100. A year that lacks the selected day (**Day** is 29, **Month** is 2, and the year is not a leap year) raises run-time error 13, *Type mismatch*; **Year** then returns the value assigned, and **Value** is unchanged. A year outside 1900 to 2100 raises no error, but it is not in the year list. See [Known problems](#known-problems-in-version-10170).
 
 ## Methods
 
@@ -394,7 +391,7 @@ Selects the same day one year before the selected one. The remarks for [**NextYe
 ### Refresh
 {: .no_toc }
 
-Draws the control again. It does not place the dates of the grid again, and so does not correct a grid that disagrees with the day names or with **Value** (see [Known problems](#known-problems-in-version-1070)).
+Draws the control again. It does not place the dates of the grid again, and so does not correct a grid that disagrees with the day names or with **Value** (see [Known problems](#known-problems-in-version-10170)).
 
 ### Today
 {: .no_toc }
@@ -494,7 +491,7 @@ The parameters are those of [**KeyDown**](#keydown).
 ### MouseDown
 {: .no_toc }
 
-Declared, and never raised. A handler for it is never called. See [Known problems](#known-problems-in-version-1070).
+Declared, and never raised. A handler for it is never called. See [Known problems](#known-problems-in-version-10170).
 
 Syntax: *object*\_**MouseDown**( *Button* **As Integer**, *Shift* **As Integer**, *X* **As Single**, *Y* **As Single** )
 
@@ -530,7 +527,7 @@ Raised after the user chooses a month in the month list, once the selection has 
 
 Syntax: *object*\_**NewMonth**( )
 
-A change of month by any other means, such as a click on a day of another month, a key, a method or a property, does not raise it. Choosing a month in which the selected day does not exist can hang the program: see [Known problems](#known-problems-in-version-1070).
+A change of month by any other means, such as a click on a day of another month, a key, a method or a property, does not raise it. Choosing a month in which the selected day does not exist raises run-time error 13 in the control and does not raise this event: see [Known problems](#known-problems-in-version-10170).
 
 ### NewYear
 {: .no_toc }
@@ -539,7 +536,7 @@ Raised after the user chooses a year in the year list.
 
 Syntax: *object*\_**NewYear**( )
 
-A change of year by any other means does not raise it. Choosing a year in which the selected day does not exist, February 29 in a year that is not a leap year, can hang the program: see [Known problems](#known-problems-in-version-1070).
+A change of year by any other means does not raise it. Choosing a year in which the selected day does not exist, February 29 in a year that is not a leap year, raises run-time error 13 in the control and does not raise this event: see [Known problems](#known-problems-in-version-10170).
 
 ## Enumerations
 
