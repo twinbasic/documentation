@@ -24,7 +24,7 @@ Next
 ' xml -> Text .txt
 ```
 
-The text formatter, which `text`, `txt` and every name that is not known give, raises run-time error 5 when it begins a report in version 0.0.0.0: see [TextFormatter](Formatters#textformatter). The names `json` and `html` work.
+The text formatter is the one that `text`, `txt` and every name that is not known give, such as `xml` in the sample. The function raises no error for an unknown name, and the report is then a text report: see [TextFormatter](Formatters#textformatter).
 
 * TOC
 {:toc}
@@ -41,7 +41,7 @@ Syntax: **FormatterFactory.CreateFormatter** ( *formatName* ) **As** [**IOutputF
 *formatName*
 : *required* A **String**. The letter case does not matter. `text` and `txt` give a [**TextFormatter**](Formatters#textformatter), `json` a [**JsonFormatter**](Formatters#jsonformatter), and `html` and `htm` an [**HtmlFormatter**](Formatters#htmlformatter).
 
-Returns a new formatter each time. Any other name, including an empty string, gives a **TextFormatter** without an error. In version 0.0.0.0 that formatter fails later, when a report begins (see [TextFormatter](Formatters#textformatter)), so a name that is not `json` or `html` makes no report.
+Returns a new formatter each time. Any other name, including an empty string, gives a **TextFormatter** without an error.
 
 ### CreateFormatterFromArg
 {: .no_toc }

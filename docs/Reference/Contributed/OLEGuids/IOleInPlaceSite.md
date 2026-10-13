@@ -54,7 +54,7 @@ Returns what the object needs to run in place. *ppFrame* receives the container'
 ### Scroll
 
 ```tb inert=signature
-Sub Scroll(ByVal scrollExtant As Currency)
+Sub Scroll(ByVal ScrollExtant As Currency)
 ```
 
 Asks the container to scroll the object by a number of pixels. The Windows method takes a `SIZE` by value, the distances in the x and y directions. This declaration passes the same eight bytes as a **Currency**. After the scroll, the container gives the object the new clipping rectangle with [**IOleInPlaceObject.SetObjectRects**](IOleInPlaceObject#setobjectrects).

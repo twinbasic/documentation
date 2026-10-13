@@ -64,6 +64,7 @@ End Sub
 ## See Also
 
 - [IOleWindow](IOleWindow) interface -- the base interface
+- [IOleInPlaceObjectWindowless](IOleInPlaceObjectWindowless) interface -- extends this interface for an object that has no window
 - [IOleInPlaceSite](IOleInPlaceSite) interface -- the container-side site for in-place activation
 - [IOleInPlaceActiveObject](IOleInPlaceActiveObject) interface -- messages, activation and border changes for an in-place active object
 - [OLERECT](OLERECT) type -- a rectangle

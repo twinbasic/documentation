@@ -58,7 +58,7 @@ Four flags whose names describe options of a parser.
 | **IgnoreProcessingInstructions** | 4 |
 | **ValidateOnParse** | 8 |
 
-Nothing in version 1.0.0.0 of the package reads a **ParseOption**: [**Parse**](cXml#parse) and the other members that read XML take no such parameter. They always keep text that is only white space, always create nodes for comments and always skip processing instructions, and no member checks the text while it reads it.
+Nothing in version 1.0.0.1 of the package reads a **ParseOption**: [**Parse**](cXml#parse) and the other members that read XML take no such parameter. They always leave out text that is only spaces, always keep text that has a line break in it, always create nodes for comments and always skip processing instructions, and no member checks the text while it reads it.
 
 ## Constants
 

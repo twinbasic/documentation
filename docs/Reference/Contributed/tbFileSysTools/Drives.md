@@ -32,13 +32,15 @@ Debug.Print ds(1).Path = ds.Item(1).Path              ' True
 ```tb check_build check_run
 Dim ds As Drives, d As Drive
 Set ds = GetDrives()
+Debug.Print ds("c:").Path              ' C:
+Debug.Print ds("C:\").Path             ' C:
 
 On Error Resume Next
-Set d = ds("C:")
+Set d = ds("1")
 Debug.Print Err.Number                 ' 5
 Err.Clear
 Set d = ds(0)
-Debug.Print Err.Number                 ' 9
+Debug.Print Err.Number                 ' 5
 Err.Clear
 On Error GoTo 0
 ```
@@ -60,11 +62,11 @@ One drive of the collection. This is the default member.
 Syntax: *object*.**Item** ( *letterOrIndex* ) **As Drive**
 
 *letterOrIndex*
-: *required* A **Variant**: the drive letter alone, such as `"C"`, without a colon, or the position of the drive, counted from 1.
+: *required* A **Variant**: a drive letter such as `"C"`, or the position of the drive, counted from 1. A string is read by its first character, so `"C"`, `"c"`, `"C:"` and `"C:\"` all name the drive C.
 
-The drives are in the order of their letters, and the letter is not case-sensitive. A letter that is not in the collection raises error 5, and so does `"C:"`, a letter with a colon. A position below 1 or above [**Count**](#count) raises error 9 (*Subscript out of range*).
+The drives are in the order of their letters, and the letter is not case-sensitive. A letter that is not in the collection, and a position below 1 or above [**Count**](#count), raise error 5 (*Invalid procedure call or argument*), with the message *No drive 'x' in the collection*.
 
-The Scripting Runtime accepts `"C:"`, raises error 68 (*Device unavailable*) for a letter that is not in use, and raises error 5 for a position.
+The Scripting Runtime raises error 68 (*Device unavailable*) for a letter that is not in use, and error 5 for a position.
 
 ### NewEnum
 {: .no_toc }

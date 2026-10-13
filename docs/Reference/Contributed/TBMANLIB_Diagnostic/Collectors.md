@@ -180,7 +180,7 @@ Category `CPU Info`; mode **Static**; no summary. **Description**: `CPU architec
 | `Processor Count` | The number of logical processors that `GetNativeSystemInfo` reports. |
 | `Processor Level` | The `wProcessorLevel` number, a decimal number whose meaning depends on the architecture. |
 | `Processor Revision` | `0x` and the `wProcessorRevision` number in hexadecimal. |
-| `Page Size` | The size of a memory page, written by [**FormatBytes**](FormatHelper#formatbytes) with no decimals. The text is `4. KB`, with a decimal separator after the number: see [Known problems](.#known-problems-in-version-0000). |
+| `Page Size` | The size of a memory page, written by [**FormatBytes**](FormatHelper#formatbytes) with no decimals. The text is `4. KB`, with a decimal separator after the number: see [Known problems](.#known-problems-in-version-1001). |
 | `Processor Name` | The text of the registry value `ProcessorNameString`, without leading and trailing spaces. Left out when it is empty or cannot be read. |
 | `Frequency` | The registry value `~MHz` and ` MHz`, such as `3600 MHz`. Left out when it cannot be read. |
 
@@ -208,7 +208,7 @@ Category `Locale`; mode **Static**; no summary. **Description**: `Regional setti
 | `Timezone` | `UTC`, the sign, the hours and, when it is not a whole hour, a colon and two digits of minutes: `UTC+0`, `UTC+1`, `UTC-5`, `UTC+5:30`. |
 | `Timezone Name` | The name of the time zone in standard time. Left out when empty. |
 
-`Timezone` is built from the **Bias** field of the Windows time-zone record, which is the offset of standard time. The **DaylightBias** field is not read, and neither is the value that tells whether daylight saving time is in effect, so the offset does not change in summer, and `Timezone Name` is the standard-time name all year. On a computer in Central European Summer Time, where the clock is at UTC+2, the items are `Timezone` = `UTC+1` and `Timezone Name` = `W. Europe Standard Time`. See [Known problems](.#known-problems-in-version-0000).
+`Timezone` is built from the **Bias** field of the Windows time-zone record, which is the offset of standard time. The **DaylightBias** field is not read, and neither is the value that tells whether daylight saving time is in effect, so the offset does not change in summer, and `Timezone Name` is the standard-time name all year. On a computer in Central European Summer Time, where the clock is at UTC+2, the items are `Timezone` = `UTC+1` and `Timezone Name` = `W. Europe Standard Time`. See [Known problems](.#known-problems-in-version-1001).
 
 **Windows functions.** All of `kernel32.dll`: `GetUserDefaultLCID`, `GetLocaleInfoW` with the four type constants for the ISO language and country codes and the English language and country names, `GetACP`, `GetOEMCP` and `GetTimeZoneInformation`.
 
@@ -443,7 +443,7 @@ The keys of the next adapter are `Adapter 1` and `IPAddress1`, and so on. The ke
 
 **Windows functions.** `WSAStartup`, `gethostname` and `WSACleanup` of `ws2_32.dll` for the host name; `GetAdaptersInfo` of `iphlpapi.dll`, which is called twice, once for the size of the buffer and once for the data; `RtlMoveMemory` of `kernel32.dll` to copy the records. The host name and the descriptions are converted from the ANSI code page. Only IPv4 addresses are reported, because `GetAdaptersInfo` returns no others.
 
-The collector reads the adapters one after the other in steps of 640 bytes, a fixed number that its source calls approximate. It tests the pointer that links the records of the list only for 0 and does not follow it. The size of an `IP_ADAPTER_INFO` record depends on the size of a pointer. In a 32-bit program the records are 640 bytes apart, and the collector lists every adapter. In a 64-bit program `LenB` of the package's `IP_ADAPTER_INFO` type is 696 and the records are 704 bytes apart, so the second step does not reach the second record: on a computer with several adapters the full result lists `Adapter 0` only, and the summary may have no `Primary IP`. See [Known problems](.#known-problems-in-version-0000).
+The collector reads the adapters one after the other in steps of 640 bytes, a fixed number that its source calls approximate. It tests the pointer that links the records of the list only for 0 and does not follow it. The size of an `IP_ADAPTER_INFO` record depends on the size of a pointer. In a 32-bit program the records are 640 bytes apart, and the collector lists every adapter. In a 64-bit program `LenB` of the package's `IP_ADAPTER_INFO` type is 696 and the records are 704 bytes apart, so the second step does not reach the second record: on a computer with several adapters the full result lists `Adapter 0` only, and the summary may have no `Primary IP`. See [Known problems](.#known-problems-in-version-1001).
 
 **When the information is missing.** The host name is left out when Winsock cannot start or `gethostname` fails. When there are no adapters, or `GetAdaptersInfo` fails, the full result has no adapter items and the summary has no `Primary IP`. The collector has no error result.
 

@@ -25,11 +25,11 @@ Debug.Print Comparer.Compare(#1/2/2026#, #1/1/2026#)
 
 **Compare** takes the first rule that applies:
 
-1. It subtracts the second value from the first and takes the sign of the difference ([**Sgn**](../../../Modules/Math/Sgn)). This is the comparison of numbers and of dates.
-2. When the subtraction raises an error, two values that are not objects are compared with the `<` and `>` operators. The comparison of strings is by their characters, so an upper-case letter is smaller than a lower-case one.
+1. It subtracts the second value from the first and takes the sign of the difference ([**Sgn**](../../../Modules/Math/Sgn)). This is the comparison of numbers and of dates. Two strings that both look like numbers are compared as numbers too, so `"10"` is greater than `"9"`, and a **Boolean** counts as its number, so **True** (-1) is smaller than **False** (0).
+2. When the subtraction raises an error, two values that are not objects are compared with the `<` and `>` operators. The comparison of strings is by their characters, so an upper-case letter is smaller than a lower-case one. A text is greater than a number, and a **Null** is equal to every value.
 3. When one of the two values is an array, the first element of the array stands for it: **Compare** compares `X(0)` with `Y(0)`, or with the other value when it is not an array.
 4. When the first value is an object, the result is that of its **CompareTo** method called with the second value. The result is returned as the object gives it, not reduced to -1, 0 or 1.
-5. When the comparison of rule 2, 3 or 4 raises an error, the result is 0: the two values count as equal. This is the result for an object with no **CompareTo**, and for two values that cannot be compared with each other.
+5. An error raised by the comparison of rule 2, 3 or 4 reaches the caller of **Compare**, and a **Sort** or **BinarySearch** that called it stops with the same error. Errors come from an object with no **CompareTo** (error 438), from a value compared with such an object, from an array with no elements (error 9) and from a **CompareTo** that raises one.
 
 ## Writing a comparer
 

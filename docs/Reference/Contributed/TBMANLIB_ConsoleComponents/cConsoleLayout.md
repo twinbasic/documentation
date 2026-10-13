@@ -31,7 +31,7 @@ Debug.Print layout.PanelCount
 ' 3
 ```
 
-The root panel covers columns 0 to 39 and rows 0 to 11, so its content area is columns 2 to 37 and rows 2 to 9. **list** takes columns 2 to 10 and **detail** columns 12 to 37, both in rows 2 to 9; the sample prints the size of the content area inside the border and padding of each. A program that references only the published package TBMANLIB_ConsoleCore cannot read the **Rect** of a panel; see [The two packages](./#the-two-packages).
+The root panel covers columns 0 to 39 and rows 0 to 11, so its content area is columns 2 to 37 and rows 2 to 9. **list** takes columns 2 to 10 and **detail** columns 12 to 37, both in rows 2 to 9; the sample prints the size of the content area inside the border and padding of each. A program that references the packages TBMANLIB_ConsoleCore and TBMANLIB_ConsoleComponents cannot read the **Rect** of a panel; see [The two packages](./#the-two-packages).
 
 * TOC
 {:toc}

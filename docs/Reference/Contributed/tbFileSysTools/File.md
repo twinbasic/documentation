@@ -8,7 +8,7 @@ has_toc: false
 # File class
 {: .no_toc }
 
-A **File** represents one file on disk: its name, size, dates and attributes, and operations to copy, move, rename and delete it, to open it as a [**TextStream**](TextStream) and to read its content. It has the members of the **File** of the Scripting Runtime, and adds [**Encoding**](#encoding), [**LineEnding**](#lineending), [**Normalize**](#normalize), [**Refresh**](#refresh), [**HasAttribute**](#hasattribute), [**SetAttribute**](#setattribute), [**ToString**](#tostring), [**ToStream**](#tostream), [**ExtensionName**](#extensionname) and [**Version**](#version).
+A **File** represents one file on disk: its name, size, dates and attributes, and operations to copy, move, rename and delete it, to open it as a [**TextStream**](TextStream) and to read its content. It has the members of the **File** of the Scripting Runtime, and adds [**ContainsText**](#containstext), [**Encoding**](#encoding), [**IsLocked**](#islocked), [**LineEnding**](#lineending), [**Normalize**](#normalize), [**Refresh**](#refresh), [**HasAttribute**](#hasattribute), [**SetAttribute**](#setattribute), [**ToString**](#tostring), [**ToStream**](#tostream), [**ExtensionName**](#extensionname) and [**Version**](#version).
 
 A **File** is not created with **New**. [**GetFile**](FileSystemTools#getfile) returns one, and so does the [**Files**](Files) collection of a [**Folder**](Folder#files).
 
@@ -46,8 +46,8 @@ A **File** keeps only the path of the file. Each member that reads a property lo
 
 The price is that every read costs a call to Windows. Read a value once and keep it, rather than reading it in a loop. These cost more than the rest:
 
-- [**Encoding**](#encoding) reads the first 64 KB of the file.
-- [**LineEnding**](#lineending) reads the whole file.
+- [**Encoding**](#encoding) reads the first 32 KB of the file.
+- [**ContainsText**](#containstext) and [**LineEnding**](#lineending) read the whole file.
 - [**Version**](#version) reads the version resource of the file.
 - [**Type**](#type) asks the Windows shell.
 
@@ -107,12 +107,9 @@ Returns the [**Drive**](Drive) of the path, for a network path the share.
 
 The text encoding of the file.
 
-Syntax: *object*.**Encoding** [ ( *sampleBytes* ) ] **As TextEncoding**
+Syntax: *object*.**Encoding** **As TextEncoding**
 
-*sampleBytes*
-: *optional* A **Long**, the number of bytes at the start of the file to examine. Default: 65536.
-
-The same as [**GetFileEncoding**](FileSystemTools#getfileencoding): a [**TextEncoding**](FileSystemTools#textencoding) member, negative when the file starts with a BOM, and **encUnknown** for an empty or binary file. The file is read on each call.
+The same as [**GetFileEncoding**](FileSystemTools#getfileencoding): a [**TextEncoding**](FileSystemTools#textencoding) member, negative when the file starts with a BOM, and **encUnknown** for an empty or binary file. The first 32 KB of the file are read on each call.
 
 ### ExtensionName
 {: .no_toc }
@@ -221,6 +218,36 @@ The same as [**GetFileVersion**](FileSystemTools#getfileversion): an empty strin
 
 ## Methods
 
+### ContainsText
+{: .no_toc }
+
+Whether the file holds a piece of text.
+
+Syntax: *object*.**ContainsText** ( *searchText* [, *ignoreCase* ] ) **As Boolean**
+
+*searchText*
+: *required* A **String**, the text to look for. It must not be empty. Every character stands for itself: `*` and `?` are not wildcards.
+
+*ignoreCase*
+: *optional* A **Boolean**. **True** (default) ignores the letter case of the text. **False** compares the characters exactly.
+
+The same as [**FileContainsText**](FileSystemTools#filecontainstext) for the path of the file: **True** when the text of the file, read in the encoding that [**Encoding**](#encoding) finds, holds *searchText*. **False** for an empty file and for a file that looks like binary data. Raises error 5 when *searchText* is empty.
+
+```tb check_build check_run
+Dim work As String, f As File
+work = BuildPath(Environ$("TEMP"), GetTempName("fst", ""))
+CreateFolder work
+StringToTextFile "Hello World", BuildPath(work, "a.txt")
+Set f = GetFile(BuildPath(work, "a.txt"))
+
+Debug.Print f.ContainsText("world")             ' True
+Debug.Print f.ContainsText("world", False)      ' False
+Debug.Print f.IsLocked                          ' False
+Debug.Print f.Encoding = encUtf8                ' True
+
+DeleteFolder work
+```
+
 ### Copy
 {: .no_toc }
 
@@ -248,6 +275,15 @@ Syntax: *object*.**Delete** ( [ *force* ] )
 
 See [**DeleteFile**](FileSystemTools#deletefile). The object cannot be used afterwards: its members raise error 53.
 
+### IsLocked
+{: .no_toc }
+
+Whether the file is in use.
+
+Syntax: *object*.**IsLocked** **As Boolean**
+
+The same as [**IsFileLocked**](FileSystemTools#isfilelocked) for the path of the file: **True** when the file cannot be opened for reading and writing with exclusive access at this moment, because a program has it open or because it is read-only. The answer holds for the instant of the call only. Raises error 53 when the file does not exist.
+
 ### Move
 {: .no_toc }
 
@@ -265,9 +301,9 @@ See [**MoveFile**](FileSystemTools#movefile) for the rules and errors. The objec
 
 Rewrites a text file with a chosen encoding and line ending.
 
-Syntax: *object*.**Normalize** ( [ *toEncoding* [, *toLineEnding* [, *fromEncoding* [, *toAttributes* [, *skipIfUnchanged* ] ] ] ] ] ) **As Boolean**
+Syntax: *object*.**Normalize** ( [ *toEncoding* [, *toLineEnding* [, *fromEncoding* [, *toAttributes* ] ] ] ] ) **As Boolean**
 
-The arguments, their defaults and the result are those of [**NormalizeTextFile**](FileSystemTools#normalizetextfile), where *toLineEnding* is called *toNewLine*: **encUtf8**, **nlWindows**, **encAutoDetect**, **faNoChange** and **True**. Returns **True** when the file was changed. The object reads the file again afterwards.
+The arguments, their defaults and the result are those of [**NormalizeTextFile**](FileSystemTools#normalizetextfile), where *toLineEnding* is called *toNewLine*: **encUtf8**, **nlWindows**, **encAutoDetect** and **faNoChange**. Returns **True** when the file was changed. The object reads the file again afterwards.
 
 ### OpenAsTextStream
 {: .no_toc }
@@ -325,7 +361,7 @@ Syntax: *object*.**SetAttribute** ( *attr*, *state* )
 : *required* A **Boolean**. **True** sets the attribute and **False** clears it. The other attributes stay as they are.
 
 > [!WARNING]
-> In version 1.1.1.0, **SetAttribute** sets nothing, and raises no error, on a file that has no attribute at all, because [**Attributes**](#attributes) then reports **faNormal**, and **faNormal** wins over the attribute being set. A new file has the archive attribute, so it is a file from which the program cleared every attribute that this applies to. To give such a file an attribute, assign [**Attributes**](#attributes). The same method of a [**Folder**](Folder#setattribute) is not affected.
+> In version 1.8.0.0, **SetAttribute** sets nothing, and raises no error, on a file that has no attribute at all, because [**Attributes**](#attributes) then reports **faNormal**, and **faNormal** wins over the attribute being set. A new file has the archive attribute, so it is a file from which the program cleared every attribute that this applies to. To give such a file an attribute, assign [**Attributes**](#attributes). The same method of a [**Folder**](Folder#setattribute) is not affected.
 
 ```tb check_build check_run
 Dim work As String, f As File

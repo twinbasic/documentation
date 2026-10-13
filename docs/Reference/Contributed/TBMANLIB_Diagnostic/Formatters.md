@@ -8,11 +8,11 @@ has_toc: false
 # Formatters
 {: .no_toc }
 
-The package has three formatters. Each one turns a list of diagnostic results into one string, in a format for reading (text), for programs (JSON) or for a browser (HTML). The text formatter fails in version 0.0.0.0, so a report is made with the JSON or the HTML formatter. They implement [**IOutputFormatter**](IOutputFormatter), so [**FormatterFactory.FormatResults**](FormatterFactory#formatresults) runs them in the same way, and [**FormatterFactory.CreateFormatter**](FormatterFactory#createformatter) creates one from a name.
+The package has three formatters. Each one turns a list of diagnostic results into one string, in a format for reading (text), for programs (JSON) or for a browser (HTML). They implement [**IOutputFormatter**](IOutputFormatter), so [**FormatterFactory.FormatResults**](FormatterFactory#formatresults) runs them in the same way, and [**FormatterFactory.CreateFormatter**](FormatterFactory#createformatter) creates one from a name.
 
 | Class | Name | Extension | Output |
 |:------|:-----|:----------|:-------|
-| [**TextFormatter**](#textformatter) | `Text` | `.txt` | Meant to be a report in lines of 50 characters, with a box round the title and a frame round each group. In version 0.0.0.0 it raises error 5 and makes no report. |
+| [**TextFormatter**](#textformatter) | `Text` | `.txt` | A report in the layout of an INI file: a title line, a line `[group]` for each group and a line `key = value` for each item. It has no time and no escaping. |
 | [**JsonFormatter**](#jsonformatter) | `JSON` | `.json` | One JSON object, with an object for each group, and every value a string. |
 | [**HtmlFormatter**](#htmlformatter) | `HTML` | `.html` | A complete HTML document with its style sheet, and a table for each group. |
 
@@ -22,6 +22,7 @@ The formatters have these properties in common:
 - The line breaks are **vbCrLf**.
 - One object can make any number of reports, because **BeginFormat** discards what the last report left in it.
 - Each report names the tool as `Twinbasic Diagnostic Tool v1.0`, or, in JSON, as `"toolVersion": "1.0"`. The text is fixed in the code, and is not the version of the package.
+- The JSON and HTML reports give the time at which **BeginFormat** was called. The text report does not.
 - The classes declare the members of the interface as **Public**, so a variable of the class type reaches them by the long names, such as `IOutputFormatter_FormatItem`.
 
 ```tb check_build check_run
@@ -57,33 +58,79 @@ Next i
 ## TextFormatter
 {: .no_toc }
 
-Meant to write a report as text, in lines that are 50 characters wide, with a double-line box round the title and a frame round each group, drawn with the box-drawing characters of Unicode. **FormatterName** is `Text` and **FileExtension** is `.txt`.
+Writes a report as plain text, in the layout of an INI file. **FormatterName** is `Text` and **FileExtension** is `.txt`.
 
-**In version 0.0.0.0 the formatter cannot make a report.** [**BeginFormat**](IOutputFormatter#beginformat) raises run-time error 5, *Invalid procedure call or argument*. The class builds the box with the **Chr$** function and the code points 9556 (`╔`), 9552 (`═`) and others above 255, and [**Chr$**](../../../Modules/Strings/Chr) accepts only 0 to 255. **ChrW$** accepts the code points. The error is the same in a project that sets `runtime.useUnicodeStandardLibrary` to **False**, in a 32-bit program and in a 64-bit program. See [Known problems](.#known-problems-in-version-0000).
+```text
+# Twinbasic Diagnostic Tool v1.0
+
+[CPU Info]
+Processor Count = 8
+Path = C:\Tools "x"
+
+[Memory]
+Memory Load = 54%
+```
+
+- The first line is the title, `# Twinbasic Diagnostic Tool v1.0`, and an empty line follows it.
+- Each group is a line with its name in square brackets, and then a line for each item: the key, a space, an equals sign, a space and the value.
+- A group that has items is followed by an empty line. A group with no items has no empty line after it, and its header line is followed at once by the next one.
+- The report has no time and no closing line.
+- [**FormatResults**](FormatterFactory#formatresults) passes a failed result as one item with the key `Error`, so its group has the line `Error = ` and the message.
+- Nothing is escaped. A key or a value that holds ` = ` or a line break is written as it is, and then a reader cannot always split the text back into keys and values.
 
 ```tb check_build check_run
 Dim f As IOutputFormatter
 Set f = New TextFormatter
-On Error Resume Next
 f.BeginFormat
-Debug.Print Err.Number & ": " & Err.Description
-Err.Clear
+f.FormatCategory "CPU Info"
+f.FormatItem "Processor Count", "8"
+f.FormatItem "Path", "C:\Tools ""x"""
+f.EndCategory
+f.FormatCategory "Empty"
+f.EndCategory
+f.FormatCategory "Memory"
+f.FormatItem "Memory Load", "54%"
+f.EndCategory
 
-Dim s As String
-s = Chr$(9556)
-Debug.Print Err.Number
-Err.Clear
-s = ChrW$(9556)
-Debug.Print Err.Number & " " & AscW(s)
+Dim lines() As String
+Dim i As Long
+lines = Split(f.EndFormat(), vbCrLf)
+For i = 0 To UBound(lines) - 1
+    Debug.Print "|" & lines(i) & "|"
+Next i
 ' Output:
-' 5: Invalid procedure call or argument
-' 5
-' 0 9556
+' |# Twinbasic Diagnostic Tool v1.0|
+' ||
+' |[CPU Info]|
+' |Processor Count = 8|
+' |Path = C:\Tools "x"|
+' ||
+' |[Empty]|
+' |[Memory]|
+' |Memory Load = 54%|
+' ||
 ```
 
-Because [**FormatterFactory.CreateFormatter**](FormatterFactory#createformatter) gives a **TextFormatter** for `text`, for `txt` and for every name it does not know, a report made with one of those names fails in the same way. Use `json` or `html`.
+[**FormatterFactory.CreateFormatter**](FormatterFactory#createformatter) gives a **TextFormatter** for `text`, for `txt` and for every name it does not know. A list of results is formatted with [**FormatResults**](FormatterFactory#formatresults):
 
-The source builds the report from a title in a box, one block for each group (a header line, a line for each item as `│`, two spaces, the key, a colon, a space and the value, and a closing line), and a last line `Generated: ` and the time as `yyyy-mm-dd hh:nn:ss`. A program that wants a text report can write its own formatter: see [**IOutputFormatter**](IOutputFormatter).
+```tb check_build check_run
+Dim results As New List(Of DiagnosticResult(Of KeyValuePair(Of String, String)))
+Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+
+Set r = New DiagnosticResult(Of KeyValuePair(Of String, String))("Uptime")
+r.AddItem New KeyValuePair(Of String, String)("Total Days", "3")
+results.Add r
+
+Set r = New DiagnosticResult(Of KeyValuePair(Of String, String))("Memory")
+r.SetError "Failed to get memory status"
+results.Add r
+
+Dim text As String
+text = FormatterFactory.FormatResults(results, FormatterFactory.CreateFormatter("text"))
+Debug.Print Replace(text, vbCrLf, "|")
+' Output:
+' # Twinbasic Diagnostic Tool v1.0||[Uptime]|Total Days = 3||[Memory]|Error = Failed to get memory status||
+```
 
 ## JsonFormatter
 {: .no_toc }

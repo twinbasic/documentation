@@ -106,7 +106,7 @@ Syntax: *object*.**Files** **As Files**
 Returns a [**Files**](Files) collection of the files directly in the folder. Hidden and system files are in it, which differs from [**GetFilePaths**](FileSystemTools#getfilepaths). The folder is read when the property is read, and the collection does not change afterwards. Raises error 70 when the folder cannot be read, as the Scripting Runtime does.
 
 > [!NOTE]
-> In version 1.1.1.0, **Files**, [**SubFolders**](#subfolders) and [**Size**](#size) raise error 76 (*Path not found*) for a folder whose path has 258 characters or more, although the folder exists and its [**Name**](#name) can be read. The same members work for a folder with 256 characters.
+> In version 1.8.0.0, **Files**, [**SubFolders**](#subfolders) and [**Size**](#size) raise error 76 (*Path not found*) for a folder whose path has 258 characters or more, although the folder exists and its [**Name**](#name) can be read. The same members work for a folder with 256 characters.
 
 ```tb check_build check_run
 Dim work As String, deep As String, n As Long
@@ -270,7 +270,7 @@ Syntax: *object*.**Delete** ( [ *force* ] )
 *force*
 : *optional* A **Boolean**. **True** clears the read-only, hidden and system attributes as the contents are deleted. Default: **False**.
 
-See [**DeleteFolder**](FileSystemTools#deletefolder), including its warning about links. The object cannot be used afterwards: its members raise error 76.
+See [**DeleteFolder**](FileSystemTools#deletefolder), including its note about links. The object cannot be used afterwards: its members raise error 76.
 
 ### Move
 {: .no_toc }

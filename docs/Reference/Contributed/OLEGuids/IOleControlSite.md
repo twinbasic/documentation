@@ -35,10 +35,10 @@ Asks the container to keep the control active in place, when *fLock* is not 0, o
 ### GetExtendedControl
 
 ```tb inert=signature
-Function GetExtendedControl() As OLEGuids.IDispatch
+Function GetExtendedControl() As stdole.IDispatch
 ```
 
-Returns the container's extended control: the object that holds the properties and methods the container maintains for the control, and that the control could not reach otherwise. The result is the package's [IDispatch](IDispatch). The Windows method returns it through an output parameter.
+Returns the container's extended control: the object that holds the properties and methods the container maintains for the control, and that the control could not reach otherwise. The result is a **stdole.IDispatch**, so a call through it is late-bound by name. To call the four methods of **IDispatch** on it, assign it to an [IDispatchUnrestricted](IDispatchUnrestricted) variable. The Windows method returns it through an output parameter.
 
 ### TransformCoords
 
@@ -79,7 +79,7 @@ Asks the container to show the control's property pages itself, so that they can
 ## See Also
 
 - [IOleControl](IOleControl) interface -- the control's side
-- [IDispatch](IDispatch) interface -- finds and calls members of an automation object
+- [IDispatchUnrestricted](IDispatchUnrestricted) interface -- finds and calls members of an automation object by name or dispatch identifier
 - [OLECONTROLINFO](OLECONTROLINFO) type -- the keyboard mnemonic table of a control
 - [OLEACCELMSG](OLEACCELMSG) type -- a window message
 - [OLEPOINT](OLEPOINT) type -- a point

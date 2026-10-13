@@ -39,7 +39,12 @@ Syntax: *object*.**QueryInterface** *riid*, *ppvObject*
 *ppvObject*
 : *required* Receives the interface pointer, or a null pointer when the object does not support the interface.
 
-Returns `S_OK` and a pointer with one reference added for the caller, or `E_NOINTERFACE` (`&H80004002`) and a null pointer. Three rules govern the answer:
+Returns `S_OK` and a pointer with one reference added for the caller, or `E_NOINTERFACE` (`&H80004002`) and a null pointer.
+
+> [!NOTE]
+> In BETA 1005, an object of a class that the project compiles --- a class, a form, a control --- returns `E_NOINTERFACE` for an interface it does not support but leaves *ppvObject* as it was, instead of setting it to a null pointer. The runtime's own objects, such as a **Collection**, set it to a null pointer, as every object of VB6 does. A caller tests the result, not the pointer.
+
+Three rules govern the answer:
 
 - **Identity.** Asking any interface of an object for **IUnknown** always returns the same pointer value. A caller finds out whether two interface pointers belong to one object by asking each for **IUnknown** and comparing the results.
 - **A fixed set.** If the object answers `S_OK` for an interface once, it never answers `E_NOINTERFACE` for it later, and the reverse.

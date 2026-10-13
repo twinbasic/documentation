@@ -50,7 +50,7 @@ Set f = fs("missing.txt")
 Debug.Print Err.Number                 ' 5
 Err.Clear
 Set f = fs(2)
-Debug.Print Err.Number                 ' 9
+Debug.Print Err.Number                 ' 5
 Err.Clear
 On Error GoTo 0
 
@@ -76,7 +76,7 @@ Syntax: *object*.**Item** ( *nameOrIndex* ) **As File**
 *nameOrIndex*
 : *required* A **Variant**: the name of the file with its extension, such as `"readme.txt"`, in any letter case, or the position of the file, counted from 1.
 
-The files are in the order in which Windows lists the folder. A name that is not in the collection raises error 5, and a position below 1 or above [**Count**](#count) raises error 9 (*Subscript out of range*).
+The files are in the order in which Windows lists the folder. A name that is not in the collection, and a position below 1 or above [**Count**](#count), raise error 5 (*Invalid procedure call or argument*), with the message *No item 'x' in the collection*.
 
 The Scripting Runtime takes a name only: it raises error 53 (*File not found*) for a name that is not in the collection, and error 5 for a position.
 

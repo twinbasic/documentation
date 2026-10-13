@@ -57,8 +57,8 @@
 			"symbolId": "tbFileSysTools",
 			"versionBuild": "0",
 			"versionMajor": "1",
-			"versionMinor": "1",
-			"versionRevision": "1"
+			"versionMinor": "8",
+			"versionRevision": "0"
 		}
 	],
 	"project.settingsVersion": 1,

@@ -1,0 +1,128 @@
+' IUnknown::QueryInterface (slot 0 of an object's vtable), asked for an interface that the
+' object does not have, returns E_NOINTERFACE (&H80004002) and leaves the out pointer as it
+' was, for an object of a class that twinBASIC compiles. COM requires it to be set to NULL.
+' The call is made twice: through this project's own interface, which declares slot 0,
+' and with DispCallFunc on the object's vtable, with no interface of the project's involved.
+
+[InterfaceId("00000000-0000-0000-C000-000000000046")]
+[OleAutomation(False)]
+Private Interface IRawUnknown Extends Nothing
+    [PreserveSig]
+    Function QueryInterface(ByVal priid As LongPtr, ByRef ppvObject As LongPtr) As Long
+    [PreserveSig]
+    Function AddRef() As Long
+    [PreserveSig]
+    Function Release() As Long
+End Interface
+
+Private Interface IThing
+    Sub Dummy()
+End Interface
+
+Private Class Plain
+    Public Value As Long
+End Class
+
+Private Class Implementer
+    Implements IThing
+    Private Sub IThing_Dummy() Implements IThing.Dummy
+    End Sub
+End Class
+
+Module Startup
+
+    Private Type Guid128
+        Data1 As Long
+        Data2 As Integer
+        Data3 As Integer
+        Data4(0 To 7) As Byte
+    End Type
+
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" ( _
+        ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+    Private Declare PtrSafe Function DispCallFunc Lib "oleaut32" ( _
+        ByVal pvInstance As LongPtr, ByVal oVft As LongPtr, ByVal cc As Long, ByVal vtReturn As Integer, _
+        ByVal cActuals As Long, ByRef prgvt As Integer, ByRef prgpvarg As LongPtr, ByRef pvargResult As Variant) As Long
+
+    Private Const SENTINEL As LongPtr = 12345
+
+    Public Sub Main()
+        ' Objects of classes that twinBASIC compiles.
+        Ask "Plain", New Plain
+        Ask "Implementer", New Implementer
+        Load Form1
+        Ask "Form1", Form1
+        Ask "CommandButton", Form1.Controls.Add("VB.CommandButton", "Command1")
+        Unload Form1
+        ' Objects of the runtime library, and an object of another COM library, for comparison.
+        Ask "Collection", New Collection
+        Ask "Err", Err
+        Ask "Scripting.Dictionary", CreateObject("Scripting.Dictionary")
+    End Sub
+
+    Private Sub Ask(ByVal Label As String, ByVal Obj As Object)
+        Dim u As IRawUnknown = Obj      ' asks for IUnknown
+
+        Dim missing As Guid128          ' an interface identifier that no object here has
+        missing.Data1 = &H12345
+
+        Dim iidUnknown As Guid128       ' IUnknown: {00000000-0000-0000-C000-000000000046}
+        iidUnknown.Data4(0) = &HC0
+        iidUnknown.Data4(7) = &H46
+
+        Dim iidDispatch As Guid128      ' IDispatch: {00020400-0000-0000-C000-000000000046}
+        iidDispatch.Data1 = &H20400
+        iidDispatch.Data4(0) = &HC0
+        iidDispatch.Data4(7) = &H46
+
+        Dim p As LongPtr = SENTINEL
+        Dim hr As Long = u.QueryInterface(VarPtr(missing), p)
+        Dim line As String = Label & ": missing interface: hr=" & Hex$(hr) & " out=" & CStr(p)
+
+        p = SENTINEL
+        hr = CallQueryInterface(ObjPtr(Obj), VarPtr(missing), p)    ' the pointer of the Object variable
+        line &= "; with DispCallFunc: hr=" & Hex$(hr) & " out=" & CStr(p)
+
+        p = SENTINEL
+        hr = u.QueryInterface(VarPtr(iidUnknown), p)
+        line &= "; IUnknown: hr=" & Hex$(hr) & " out is a pointer=" & CStr(p <> SENTINEL And p <> 0)
+        GiveBack p
+
+        p = SENTINEL
+        hr = u.QueryInterface(VarPtr(iidDispatch), p)
+        line &= "; IDispatch: hr=" & Hex$(hr) & " out is a pointer=" & CStr(p <> SENTINEL And p <> 0)
+        GiveBack p
+
+        Debug.Print line
+    End Sub
+
+    ' Slot 0 of the vtable of pObj, called with DispCallFunc.
+    Private Function CallQueryInterface(ByVal pObj As LongPtr, ByVal pIid As LongPtr, ByRef Out As LongPtr) As Long
+        Dim vals(0 To 1) As Variant
+        Dim vts(0 To 1) As Integer
+        Dim ptrs(0 To 1) As LongPtr
+        Dim ret As Variant
+        vals(0) = pIid
+        vals(1) = VarPtr(Out)
+        Dim i As Long
+        For i = 0 To 1
+            vts(i) = VarType(vals(i))
+            ptrs(i) = VarPtr(vals(i))
+        Next
+        ret = 0&
+        Dim rc As Long = DispCallFunc(pObj, 0, 4, 3, 2, vts(0), ptrs(0), ret)
+        If rc <> 0 Then
+            CallQueryInterface = rc
+        Else
+            CallQueryInterface = CLng(ret)
+        End If
+    End Function
+
+    ' Releases the reference that a successful QueryInterface added.
+    Private Sub GiveBack(ByVal p As LongPtr)
+        If p = 0 Or p = SENTINEL Then Exit Sub
+        Dim holder As IRawUnknown
+        CopyMemory VarPtr(holder), VarPtr(p), LenB(p)    ' the variable now owns the reference
+    End Sub
+
+End Module

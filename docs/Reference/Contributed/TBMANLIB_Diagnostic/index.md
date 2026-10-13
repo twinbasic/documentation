@@ -7,22 +7,22 @@ exclude_from_docs:
   - WinAPIStructures
   - DelegatesModule
   - RefreshModeModule
-indexed_from: 0.0.0.0
+indexed_from: 1.0.0.1
 permalink: /tB/Packages/Contributed/TBMANLIB_Diagnostic/
 ---
 
 # TBMANLIB_Diagnostic Package
 {: .no_toc }
 
-**Author:** woeoio. **Version:** 0.0.0.0
+**Author:** woeoio. **Version:** 1.0.0.1
 
 The **TBMANLIB_Diagnostic** contributed package makes a diagnostic report of a Windows computer and of the processes that run on it, and writes the report as text, JSON or HTML. The package has three parts. A [**DiagnosticEngine**](DiagnosticEngine) runs *collectors*, classes that each find one kind of information (the operating system, the processor and its load, the memory, the disks, the network, the running processes, the regional settings, the environment variables, the installed runtimes and the uptime), and each returns a [**DiagnosticResult**](DiagnosticResult), a list of pairs of text. A *formatter* turns the results into one string. [**FileHelper**](FileHelper) can save the string as a UTF-8 file. The package is written in twinBASIC and calls the Windows API directly. It uses no other library, and none of its collectors asks for administrator rights.
 
 The package is the reusable part of woeoio's entry for [twinBASIC Monthly Challenge #1](../../../../Challenges/1), *Self-Contained Diagnostic Tool*. The entry is a console program that shows the values on a live screen, or writes a report when it is started with an argument such as `/json`. That program is not in the package; [**FormatterFactory.CreateFormatterFromArg**](FormatterFactory#createformatterfromarg) reads such an argument.
 
-This section documents version 0.0.0.0, published on TWINSERV on 1 February 2026 with no licence. The package compiles in BETA 1005, as a 32-bit and as a 64-bit program. The repository [woeoio/tbman](https://github.com/woeoio/tbman), the toolkit of the same author whose package is [**TBMANLIB**](../TBMANLIB/), does not hold the code of this package.
+This section documents version 1.0.0.1, published on TWINSERV on 3 February 2026 under the MIT licence. The package compiles in BETA 1005, as a 32-bit and as a 64-bit program. The repository [woeoio/tbman](https://github.com/woeoio/tbman), the toolkit of the same author whose package is [**TBMANLIB**](../TBMANLIB/), does not hold the code of this package.
 
-The package has defects: the text formatter and the **Dictionary** class cannot be used, and several members give a wrong result without an error. [Known problems in version 0.0.0.0](#known-problems-in-version-0000) lists them. The sample below uses the parts that work.
+The package has defects: the **Dictionary** class cannot be used, and several members give a wrong result without an error. [Known problems in version 1.0.0.1](#known-problems-in-version-1001) lists them. The sample below uses the parts that work.
 
 ```tb check_build check_run
 Dim engine As New DiagnosticEngine
@@ -57,7 +57,7 @@ FileHelper.DeleteFile path
 
 1. **Register collectors.** A new [**DiagnosticEngine**](DiagnosticEngine) has none. A program registers an object of each collector class that it wants with [**RegisterCollector**](DiagnosticEngine#registercollector). The order of registration is the order of the report. The [eleven collectors](Collectors) of the package are classes with names such as **OSInfoCollector** and **MemoryInfoCollector**, and a program can write its own, see [**IDiagnosticCollector**](IDiagnosticCollector).
 2. **Run them.** [**RunAll**](DiagnosticEngine#runall) runs every collector and returns a list of results. [**RunCategory**](DiagnosticEngine#runcategory) runs one by its name, and [**RunByRefreshMode**](DiagnosticEngine#runbyrefreshmode) runs those that change at one rate. The engine raises events and calls callbacks while it works, so a program can show the progress or cancel.
-3. **Format.** [**FormatterFactory.CreateFormatter**](FormatterFactory#createformatter) makes a [formatter](Formatters) from the name `text`, `json` or `html`, and [**FormatResults**](FormatterFactory#formatresults) returns the report as a string. A formatter only builds the string. In version 0.0.0.0 the text formatter fails, so a report is made from `json` or `html`.
+3. **Format.** [**FormatterFactory.CreateFormatter**](FormatterFactory#createformatter) makes a [formatter](Formatters) from the name `text`, `json` or `html`, and [**FormatResults**](FormatterFactory#formatresults) returns the report as a string. A formatter only builds the string.
 4. **Save.** [**FileHelper.WriteFile**](FileHelper#writefile) writes the string, and the formatter's **FileExtension** property gives the extension for the file name.
 
 A result can also be read directly, without a formatter. Each [item](KeyValuePair) has a key and a value, both text: the key is the label of the line, such as `Total Physical`, and the value is its text, such as `15.9 GB`.
@@ -102,7 +102,7 @@ The package declares a generic class named **Dictionary**, and the Scripting Run
 | `Dim c As New Scripting.Dictionary` | the class of the Scripting Runtime | the class of the Scripting Runtime |
 | `Dim d As New TBMANLIB_Diagnostic.Dictionary(Of String, Long)` | the class of the package | the class of the package |
 
-A project that wants the Scripting Runtime's class writes `Scripting.Dictionary`, which does not depend on the order. The package's class cannot be created in version 0.0.0.0 (see [**Dictionary**](Dictionary)), so a project has no reason to write its name. A project with only the package, which has no `Scripting` library, shows the first row of the table:
+A project that wants the Scripting Runtime's class writes `Scripting.Dictionary`, which does not depend on the order. The package's class cannot be created in version 1.0.0.1 (see [**Dictionary**](Dictionary)), so a project has no reason to write its name. A project with only the package, which has no `Scripting` library, shows the first row of the table:
 
 ```tb check_build expect-error=TB5136
 Dim a As New Dictionary
@@ -124,10 +124,10 @@ The package has four modules whose contents a program has no need for:
 - **DelegatesModule** declares the four delegate types. Three are the types of the callbacks of the engine, see [Delegates](DiagnosticEngine#delegates), and the fourth is [**FormatterFactoryDelegate**](FormatterFactory#formatterfactorydelegate).
 - **RefreshModeModule** holds only the enumeration [**RefreshMode**](RefreshMode).
 
-## Known problems in version 0.0.0.0
+## Known problems in version 1.0.0.1
 
 > [!WARNING]
-> Version 0.0.0.0 of the package gives a wrong result without an error, or loses data, in these cases.
+> Version 1.0.0.1 of the package gives a wrong result without an error, or loses data, in these cases.
 >
 > - **[List.Insert](List#insert) puts the new item one place too late**, and **[List.SetItem](List#setitem) with the index 0 puts it in the second place.** `SetItem` with the index 0 on a list of one item removes the item and then raises error 5, so the list is empty afterwards.
 > - **[FileHelper.WriteFile](FileHelper#writefile) does not shorten an existing file.** The bytes after the new content stay: writing `ab` over a file of 13 bytes leaves a file of 13 bytes.
@@ -140,10 +140,9 @@ The package has four modules whose contents a program has no need for:
 > - **[NetworkInfoCollector](Collectors#networkinfocollector) lists the first adapter only in a 64-bit program.** It reads the adapters in steps of 640 bytes, and the records are 704 bytes apart in a 64-bit program. The summary may then have no `Primary IP`. A 32-bit program lists every adapter.
 
 > [!NOTE]
-> Version 0.0.0.0 has these other problems. Each raises an error.
+> Version 1.0.0.1 has these other problems. Each raises an error.
 >
 > - **A [Dictionary](Dictionary) cannot be created.** `New Dictionary(Of TKey, TValue)` raises run-time error 91, *Object variable or With block variable not set*.
-> - **The [TextFormatter](Formatters#textformatter) cannot make a report.** Its **BeginFormat** raises error 5, *Invalid procedure call or argument*, because it builds the box with **Chr$** and code points above 255. [**FormatterFactory.CreateFormatter**](FormatterFactory#createformatter) gives this formatter for `text`, for `txt` and for every name it does not know. The names `json` and `html` work.
 > - **[List.Contains](List#contains), [IndexOf](List#indexof) and [Remove](List#remove) raise error 438**, *Object doesn't support this property or method*, for a list of objects of a class that has no default member.
 > - **[List.Insert](List#insert) with the index 0 raises error 5 on an empty list.**
 > - **[WriteFile](FileHelper#writefile) and [AppendFile](FileHelper#appendfile) make only the last folder of a path.** For a path whose parent folder is missing they return the error text `Error -2147467259: Unspecified error` and the path. The **Open** statement raises error 76, *Path not found*, for it in VB6.
@@ -175,7 +174,7 @@ Two behaviours follow from the code and can look like defects. [**CPULoadCollect
 - [FormatHelper](FormatHelper) -- formats sizes, durations, percentages, dates and text, and escapes text for JSON and HTML
 - [FileHelper](FileHelper) -- writes, appends to and reads text files, tests for files and folders, and takes paths apart
 - [List](List) -- a list with a 0-based index
-- [Dictionary](Dictionary) -- values found by a key; it cannot be created in version 0.0.0.0
+- [Dictionary](Dictionary) -- values found by a key; it cannot be created in version 1.0.0.1
 - [StringBuilder](StringBuilder) -- builds a long string from parts
 
 ## See Also

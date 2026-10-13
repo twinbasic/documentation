@@ -55,10 +55,10 @@
 			"path32": "/Packages/ArrayListLib",
 			"path64": "/Packages/ArrayListLib",
 			"symbolId": "ArrayListLib",
-			"versionBuild": "134",
+			"versionBuild": "1",
 			"versionMajor": "1",
-			"versionMinor": "4",
-			"versionRevision": "0"
+			"versionMinor": "6",
+			"versionRevision": "151"
 		}
 	],
 	"project.settingsVersion": 1,

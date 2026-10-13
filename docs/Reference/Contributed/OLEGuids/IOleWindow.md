@@ -36,7 +36,7 @@ Turns context-sensitive help mode on, when *fEnterMode* is not 0, or off, when i
 
 This class reports one window handle, which it is given when it is created. Its **ContextSensitiveHelp** does nothing, because the class has no help mode.
 
-```tb check_build slot=file
+```tb check_build projname=og-olewindow slot=file
 Class WindowSite
     Implements IOleWindow
 
@@ -53,6 +53,16 @@ Class WindowSite
     Private Sub IOleWindow_ContextSensitiveHelp(ByVal fEnterMode As Long) Implements IOleWindow.ContextSensitiveHelp
     End Sub
 End Class
+```
+
+A caller asks the object for its window through the interface:
+
+```tb check_run projname=og-olewindow
+Dim site As New WindowSite
+site.Init &H1234
+
+Dim w As IOleWindow = site
+Debug.Print Hex(w.GetWindow())  ' 1234
 ```
 
 ## See Also

@@ -86,7 +86,7 @@ Syntax: *object*.**DeleteFile** ( *fileSpec* [, *force* [, *ignoreMissing* ] ] )
 
 Syntax: *object*.**DeleteFolder** ( *folderSpec* [, *force* [, *ignoreMissing* ] ] )
 
-*folderSpec* is *folderPath* in the module. See [**DeleteFolder**](FileSystemTools#deletefolder), including its warning about links.
+*folderSpec* is *folderPath* in the module. See [**DeleteFolder**](FileSystemTools#deletefolder), including its note about links.
 
 ### GetFilePaths
 {: .no_toc }
@@ -135,7 +135,7 @@ See [**CleanFileName**](FileSystemTools#cleanfilename).
 ### GetAbsolutePathName
 {: .no_toc }
 
-Syntax: *object*.**GetAbsolutePathName** ( *path* [, *baseDirectory* [, *useLongPathPrefix* ] ] ) **As String**
+Syntax: *object*.**GetAbsolutePathName** ( *path* [, *baseDirectory* ] ) **As String**
 
 See [**GetAbsolutePathName**](FileSystemTools#getabsolutepathname).
 
@@ -239,7 +239,7 @@ See [**SetCurrentDir**](FileSystemTools#setcurrentdir).
 ### GetFileEncoding
 {: .no_toc }
 
-Syntax: *object*.**GetFileEncoding** ( *filePath* [, *sampleBytes* ] ) **As TextEncoding**
+Syntax: *object*.**GetFileEncoding** ( *filePath* ) **As TextEncoding**
 
 See [**GetFileEncoding**](FileSystemTools#getfileencoding).
 
@@ -263,6 +263,13 @@ See [**GetFileType**](FileSystemTools#getfiletype).
 Syntax: *object*.**GetFileVersion** ( *fileName* [, *source* ] ) **As String**
 
 *fileName* is *filePath* in the module. See [**GetFileVersion**](FileSystemTools#getfileversion).
+
+### IsFileLocked
+{: .no_toc }
+
+Syntax: *object*.**IsFileLocked** ( *filePath* ) **As Boolean**
+
+See [**IsFileLocked**](FileSystemTools#isfilelocked).
 
 ## Objects
 
@@ -313,7 +320,7 @@ See [**MergeTextFiles**](FileSystemTools#mergetextfiles).
 ### NormalizeTextFile
 {: .no_toc }
 
-Syntax: *object*.**NormalizeTextFile** ( *filePath* [, *toEncoding* [, *toNewLine* [, *fromEncoding* [, *toAttributes* [, *skipIfUnchanged* ] ] ] ] ] ) **As Boolean**
+Syntax: *object*.**NormalizeTextFile** ( *filePath* [, *toEncoding* [, *toNewLine* [, *fromEncoding* [, *toAttributes* ] ] ] ] ) **As Boolean**
 
 See [**NormalizeTextFile**](FileSystemTools#normalizetextfile).
 
@@ -351,6 +358,38 @@ See [**TextFileToString**](FileSystemTools#textfiletostring).
 Syntax: *object*.**WriteStream** ( *stream*(), *filePath* )
 
 See [**WriteStream**](FileSystemTools#writestream).
+
+## Searching text
+
+```tb check_build check_run
+Dim fso As New FileSystemObject
+Dim work As String, hits As Collection
+work = fso.BuildPath(Environ$("TEMP"), fso.GetTempName("fst", ""))
+fso.CreateFolder work
+fso.StringToTextFile "find me", fso.BuildPath(work, "a.txt")
+fso.StringToTextFile "other", fso.BuildPath(work, "b.txt")
+
+Debug.Print fso.FileContainsText(fso.BuildPath(work, "a.txt"), "FIND")   ' True
+Set hits = fso.FindInTextFiles(work, "find")
+Debug.Print hits.Count                                                   ' 1
+Debug.Print fso.IsFileLocked(fso.BuildPath(work, "a.txt"))               ' False
+
+fso.DeleteFolder work
+```
+
+### FileContainsText
+{: .no_toc }
+
+Syntax: *object*.**FileContainsText** ( *filePath*, *searchText* [, *ignoreCase* ] ) **As Boolean**
+
+See [**FileContainsText**](FileSystemTools#filecontainstext).
+
+### FindInTextFiles
+{: .no_toc }
+
+Syntax: *object*.**FindInTextFiles** ( *folderPath*, *searchText* [, *filePattern* [, *recursive* [, *ignoreCase* [, *fileSizeCapInMb* ] ] ] ] ) **As Collection**
+
+See [**FindInTextFiles**](FileSystemTools#findintextfiles).
 
 ## Text streams
 

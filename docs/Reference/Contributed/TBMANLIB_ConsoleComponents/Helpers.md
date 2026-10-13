@@ -35,7 +35,7 @@ The four numbers are **ConsoleColor** values: 10 is **Green**, 14 is **Yellow** 
 
 Every colour parameter and result is a [**ConsoleColor**](../TBMANLIB_ConsoleCore/Types#consolecolor), and every function is called on an object, as in `helper.DimColor(...)`. The numbers that give the choice of a colour are in each entry; they are fixed in the code. In the syntax lines of this section, *object* is a **cColorHelper**.
 
-Known problems in version 0.0.0.0: [**BrightenColor**](#brightencolor) returns 16 for **DarkGray**, [**DimColor**](#dimcolor) returns **DarkGray** for every dark colour, [**IntensityColor**](#intensitycolor) ignores its *baseColor*, and [**GradientColor**](#gradientcolor) chooses among three colours and does not blend.
+Known problems in version 1.0.0.1: [**BrightenColor**](#brightencolor) returns 16 for **DarkGray**, [**DimColor**](#dimcolor) returns **DarkGray** for every dark colour, [**IntensityColor**](#intensitycolor) ignores its *baseColor*, and [**GradientColor**](#gradientcolor) chooses among three colours and does not blend.
 
 ### BrightenColor
 {: .no_toc }
@@ -214,6 +214,8 @@ Computes positions and [**ConsoleRect**](../TBMANLIB_ConsoleCore/Types#consolere
 
 The members that give several rectangles or numbers return them in a **Variant** that holds an array, with indexes from 0, in the order the entry names. The rectangles of one result do not overlap and have no gap between them, except where the entry says so. A division by a count of 0 raises error 11, *Division by zero*.
 
+A program that includes the source files of the components (see [The two packages](./#the-two-packages)) reads an array of rectangles by assigning the **Variant** to an array variable of the type: with `Dim rects() As ConsoleRect`, the statement `rects = helper.Grid(2, 2)` gives `rects(0)` to `rects(3)`. An element cannot be taken out of the **Variant** itself: `r = parts(0)`, with `r` a **ConsoleRect**, is refused (TB5028, *Unable to convert type 'Variant' to type 'ConsoleRect'*), and `parts(0).Left` raises error -2147467259, *Unspecified error*. An array of **Long**, as **SpacedPositions** gives, is read element by element from the **Variant**, as the sample below does.
+
 ```tb check_build
 Dim con As New cConsole
 Dim layout As cLayoutHelper = New cLayoutHelper(con)
@@ -232,7 +234,7 @@ Debug.Print columns(0) & " " & columns(1) & " " & columns(2)
 The output is that of a console of 80 columns by 25 rows, which is also the size that a program without a console gets.
 
 > [!NOTE]
-> The members that give a **ConsoleRect** or a **ConsolePosition** can be called, but a program that references the published package TBMANLIB_ConsoleCore cannot read the result: the compiler refuses the members of the value and its assignment to a variable of the type. See [The two packages](./#the-two-packages). The members that give a **Long** or an array of **Long** are not affected.
+> The members that give a **ConsoleRect** or a **ConsolePosition** can be called, but a program that references the packages TBMANLIB_ConsoleCore and TBMANLIB_ConsoleComponents cannot read the result: the compiler refuses the members of the value and its assignment to a variable of the type. See [The two packages](./#the-two-packages). The members that give a **Long** or an array of **Long** are not affected.
 
 ### New
 {: .no_toc }

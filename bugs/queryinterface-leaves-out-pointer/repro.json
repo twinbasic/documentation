@@ -1,0 +1,15 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Plain: missing interface: hr=80004002 out=12345; with DispCallFunc: hr=80004002 out=12345; IUnknown: hr=0 out is a pointer=True; IDispatch: hr=0 out is a pointer=True$",
+      "^Implementer: missing interface: hr=80004002 out=12345; with DispCallFunc: hr=80004002 out=12345;",
+      "^Form1: missing interface: hr=80004002 out=12345; with DispCallFunc: hr=80004002 out=12345;",
+      "^CommandButton: missing interface: hr=80004002 out=12345; with DispCallFunc: hr=80004002 out=12345;",
+      "^Collection: missing interface: hr=80004002 out=0; with DispCallFunc: hr=80004002 out=0;",
+      "^Err: missing interface: hr=80004002 out=0; with DispCallFunc: hr=80004002 out=0;",
+      "^Scripting\\.Dictionary: missing interface: hr=80004002 out=0; with DispCallFunc: hr=80004002 out=0;"
+    ]
+  }
+}

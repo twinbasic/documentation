@@ -10,7 +10,7 @@ has_toc: false
 
 Functions that write, append to and read a text file, test whether a file or folder exists, and take paths apart. A program uses them to save a report that a [formatter](Formatters) made. They call the file statements of the runtime library (**Open**, **Put**, **Get**, **Kill**, **MkDir**, **GetAttr**), and need no other library.
 
-The functions are called with the name of the module, as in `FileHelper.WriteFile(report, path)`. Three of them, **WriteFile**, **AppendFile** and **ReadFile**, return a **Variant** and never raise an error. **WriteFile** and **AppendFile** return **True**, and when something fails, a **String** that describes the failure; a program tells the two apart with **VarType**. **ReadFile** returns a **String** in both cases, the content of the file or the description of the failure, and the description starts with the text `Error `. A file that does not exist is not a failure for **ReadFile** and **GetFileSize**: they create it. See [Known problems](.#known-problems-in-version-0000).
+The functions are called with the name of the module, as in `FileHelper.WriteFile(report, path)`. Three of them, **WriteFile**, **AppendFile** and **ReadFile**, return a **Variant** and never raise an error. **WriteFile** and **AppendFile** return **True**, and when something fails, a **String** that describes the failure; a program tells the two apart with **VarType**. **ReadFile** returns a **String** in both cases, the content of the file or the description of the failure, and the description starts with the text `Error `. A file that does not exist is not a failure for **ReadFile** and **GetFileSize**: they create it. See [Known problems](.#known-problems-in-version-1001).
 
 ```tb check_build check_run
 Dim folder As String = Environ$("TEMP") & "\diag-filehelper"
@@ -212,7 +212,7 @@ Syntax: **FileHelper.GetFileSize** ( *filePath* ) **As LongLong**
 *filePath*
 : *required* A **String**, the path of the file, absolute or relative to **App.Path**.
 
-Opens the file in binary mode and returns the result of **LOF**. Returns -1 when an error occurs, such as a folder that does not exist. The function opens the file with `For Binary`, and that mode creates a file that does not exist, so a missing file in a folder that exists is not an error: it is created with no content and the function returns 0. See [Known problems](.#known-problems-in-version-0000).
+Opens the file in binary mode and returns the result of **LOF**. Returns -1 when an error occurs, such as a folder that does not exist. The function opens the file with `For Binary`, and that mode creates a file that does not exist, so a missing file in a folder that exists is not an error: it is created with no content and the function returns 0. See [Known problems](.#known-problems-in-version-1001).
 
 ```tb check_build check_run
 Dim path As String = Environ$("TEMP") & "\diag-missing.bin"
@@ -265,7 +265,7 @@ Syntax: **FileHelper.NormalizePath** ( *path* ) **As String**
 
 Changes every slash to a backslash and every run of backslashes to one. It then goes through the parts between the backslashes: it removes the spaces at both ends of a part, drops an empty part and a part `.`, and lets a part `..` remove the part before it. A `..` with nothing before it is dropped. The parts are joined with a backslash, and the result has no backslash at the start or at the end.
 
-Because an empty first part is dropped, a path from the root, such as `\a\b`, loses its first backslash, and so does a UNC path: `\\server\share\f.txt` becomes `server\share\f.txt`, which is a relative path. [**GetFullPath**](#getfullpath) treats such a path as absolute and does not add **App.Path**, so a file in a UNC path is opened as the relative path `server\share\f.txt`. See [Known problems](.#known-problems-in-version-0000).
+Because an empty first part is dropped, a path from the root, such as `\a\b`, loses its first backslash, and so does a UNC path: `\\server\share\f.txt` becomes `server\share\f.txt`, which is a relative path. [**GetFullPath**](#getfullpath) treats such a path as absolute and does not add **App.Path**, so a file in a UNC path is opened as the relative path `server\share\f.txt`. See [Known problems](.#known-problems-in-version-1001).
 
 ```tb check_build check_run
 Debug.Print FileHelper.NormalizePath("C:/a//b/./c/../d.txt")
@@ -299,7 +299,7 @@ Syntax: **FileHelper.ReadFile** ( *filePath* ) **As Variant**
 *filePath*
 : *required* A **String**, the path of the file, absolute or relative to **App.Path**.
 
-Returns the content of the file as a **String**, and an empty string for an empty file. When an error occurs, such as a folder that does not exist, it returns an error text in the form that [**AppendFile**](#appendfile) describes. A file that does not exist is not an error: it is created with no content, as for [**GetFileSize**](#getfilesize), and the function returns an empty string, so a missing file and an empty file look the same. See [Known problems](.#known-problems-in-version-0000).
+Returns the content of the file as a **String**, and an empty string for an empty file. When an error occurs, such as a folder that does not exist, it returns an error text in the form that [**AppendFile**](#appendfile) describes. A file that does not exist is not an error: it is created with no content, as for [**GetFileSize**](#getfilesize), and the function returns an empty string, so a missing file and an empty file look the same. See [Known problems](.#known-problems-in-version-1001).
 
 The function reads the bytes of the file into a string as characters, and does not decode UTF-8 or remove a byte-order mark. A file that [**WriteFile**](#writefile) wrote therefore starts with the three characters of its byte-order mark, and a character above 127 is several characters.
 
@@ -340,7 +340,7 @@ Syntax: **FileHelper.WriteFile** ( *content*, *filePath* ) **As Variant**
 
 Creates the file, and the folder that holds it when only that last folder is missing (see [**EnsureDirectoryExists**](#ensuredirectoryexists)). It writes the byte-order mark and then the text in UTF-8, from the start of the file. Returns **True**, or an error text as [**AppendFile**](#appendfile) describes.
 
-**WriteFile** opens the file in binary mode and does not shorten it. When the file exists and is longer than the new content, the bytes after the new content stay in the file. See [Known problems](.#known-problems-in-version-0000).
+**WriteFile** opens the file in binary mode and does not shorten it. When the file exists and is longer than the new content, the bytes after the new content stay in the file. See [Known problems](.#known-problems-in-version-1001).
 
 ```tb check_build check_run
 Dim path As String = Environ$("TEMP") & "\diag-writefile.txt"

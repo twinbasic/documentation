@@ -22,12 +22,27 @@ See [IUnknown](../../../../Reference/COM-Interfaces/IUnknown) for the contract o
 
 ```tb inert=signature
 [PreserveSig]
-Function QueryInterface(ByVal priid As LongPtr, ppvObject As LongPtr) As Long
+Function QueryInterface(ByVal priid As LongPtr, ByRef ppvObject As LongPtr) As Long
 ```
 
-Asks the object for another interface. *priid* is the address of the interface identifier requested, such as the address of an [OLECLSID](OLECLSID) variable. *ppvObject* is passed by reference and receives the interface pointer, or 0 when the object does not support the interface. The result is the HRESULT: 0 (`S_OK`) on success, `&H80004002` (`E_NOINTERFACE`) when the interface is not supported.
+Asks the object for another interface. *priid* is the address of the interface identifier requested, such as the address of an [OLECLSID](OLECLSID) variable. *ppvObject* is passed by reference and receives the interface pointer. The result is the HRESULT: 0 (`S_OK`) on success, `&H80004002` (`E_NOINTERFACE`) when the interface is not supported.
 
 A pointer that **QueryInterface** returns comes with a reference, which the caller gives back with **Release**.
+
+> [!NOTE]
+> When the interface is not supported, the COM contract sets *ppvObject* to 0. In BETA 1005, an object of a class that the project compiles --- a class, a form, a control --- returns `E_NOINTERFACE` and leaves the variable as it was. The runtime's own objects, such as a **Collection**, set it to 0, as every object of VB6 does. Set the variable to 0 before the call, and test the result rather than the pointer.
+
+```tb check_run
+Dim u As IUnknownUnrestricted = New Collection
+
+Dim iid As OLECLSID  ' an interface identifier that the object does not have
+iid.Data1 = &H12345
+
+Dim p As LongPtr = 0
+Dim hr As Long = u.QueryInterface(VarPtr(iid), p)
+Debug.Print Hex(hr)  ' 80004002
+Debug.Print p        ' 0
+```
 
 ### AddRef
 

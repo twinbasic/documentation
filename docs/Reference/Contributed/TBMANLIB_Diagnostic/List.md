@@ -28,7 +28,7 @@ Debug.Print names.Contains("Bob")
 
 **Item** is a function, so an item is read as `names.Item(0)`. The class has no default member and no enumerator: there is no `names(0)`, and the items are visited with an index loop from 0 to **Count** - 1.
 
-**Insert**, and **SetItem** with the index 0, put the item in the wrong place in version 0.0.0.0, and **SetItem** can lose an item. Both pass the position as the fourth argument of **Collection.Add**, which is *after*, where the code needs *before*. [**Insert**](#insert) puts the new item one place too late, and [**SetItem**](#setitem) with the index 0 puts it in the second place. See [Known problems](.#known-problems-in-version-0000).
+**Insert**, and **SetItem** with the index 0, put the item in the wrong place in version 1.0.0.1, and **SetItem** can lose an item. Both pass the position as the fourth argument of **Collection.Add**, which is *after*, where the code needs *before*. [**Insert**](#insert) puts the new item one place too late, and [**SetItem**](#setitem) with the index 0 puts it in the second place. See [Known problems](.#known-problems-in-version-1001).
 
 ```tb check_build check_run
 Dim text As String

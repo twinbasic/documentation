@@ -9,8 +9,8 @@
 '
 ' Input is simulated by sending window messages (Win.twin): mouse messages to the control's window,
 ' key messages to the window that has the keyboard focus. The message loop is run by Pump, a
-' bounded loop: the control asks for a repaint again after every paint while its selectors are
-' visible (scenario 16), and DoEvents would not return.
+' bounded loop: in package 1.0.7.0 the control asked for a repaint again after every paint while
+' its selectors were visible and DoEvents did not return (scenario 16); 1.0.17.0 does not.
 '
 ' The IDE-side [RunAfterBuild] Sub only prints: the form is shown only in the exe.
 '
@@ -27,12 +27,21 @@
 '   10  keys, with and without Shift and Ctrl, and sent to the wrong window
 '   11  Enabled = False
 '   12  the Month and Year selectors (two combo boxes)
-'   12x a selector change that makes an impossible date (Jan 31 to February); never returns
+'   12x a selector change that makes an impossible date (Jan 31 to February); opens the
+'       run-time error box (1.0.7.0: never returned)
 '   12y the same for the year list (Feb 29 2024 to 2025)
+'   12z 12x again, with the key posted to the queue and dispatched by the probe's loop
+'   12w a key posted to the month list on a date every month has (June 15): one step?
 '   13  FirstDay, DayLength, MonthLength, GridCellEffect and the margins, out of range
 '   14  the colours and fonts set from code; Show* flags and the layout they give
 '   15  pictures of the form window (the run-exe.mjs runner takes them); 15b more of them
-'   16  the message loop: how many WM_PAINT messages the control keeps asking for
+'   16  the message loop: how many WM_PAINT messages the control keeps asking for, and
+'       whether DoEvents returns with the selectors shown
+'   17  what package 1.0.17.0 changed: the lists' size and place at the DPI of the display and
+'       when the control is resized, the title area's height (TitleFont, TitleMargin, ShowTitle
+'       and ShowDateSelectors), and the title's place
+'       (A control that loads with Enabled False is shown by scenario 1 on a form that
+'       designer.mjs --edit Enabled=False wrote: probe.mjs --form FILE 1)
 '
 ' The scenarios below answer the page author's numbered questions (xcal-probe-questions.md), and
 ' read the control's pixels with GetPixel from its window DC:
@@ -90,7 +99,7 @@ Module Probe
         Debug.Print "hook ran in the IDE; the form runs only in the exe"
     End Sub
 
-    Private Const ScenarioIds As String = ",1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,15b,16,p2,p3,p5,p7,p9,p10,p11,p12,p13,p14,p18,p19,p20,p21,p24,p25,p29,p33,12x,12y,12z,p22x,"
+    Private Const ScenarioIds As String = ",1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,15b,16,17,p2,p3,p5,p7,p9,p10,p11,p12,p13,p14,p18,p19,p20,p21,p24,p25,p29,p33,12x,12y,12z,12w,p22x,"
 
     Public Sub Main()
         Dim sel As String = "," & Replace(Environ$("PROBE"), " ", "") & ","
@@ -147,11 +156,13 @@ Module Probe
             Case "12x": S12x
             Case "12y": S12y
             Case "12z": S12z
+            Case "12w": S12w
             Case "13": S13
             Case "14": S14
             Case "15": S15
             Case "15b": S15b
             Case "16": S16
+            Case "17": S17
             Case "p2": P2
             Case "p3": P3
             Case "p5": P5
@@ -333,8 +344,8 @@ EH:
     ' ---- mouse ----
 
     ' A mouse message to the control window: sent, or (gReal) posted to the queue and dispatched
-    ' by DoEvents, the runtime's own loop, as the system delivers a real mouse's. gReal needs the
-    ' selectors hidden, or DoEvents does not return (scenario 16).
+    ' by DoEvents, the runtime's own loop, as the system delivers a real mouse's. With package
+    ' 1.0.7.0 gReal needed the selectors hidden, or DoEvents did not return (scenario 16).
     Private Sub Msg(ByVal m As Long, ByVal w As LongPtr, ByVal l As LongPtr)
         If gReal Then
             Win.PostMessageW CalH, m, w, l
@@ -1055,7 +1066,9 @@ EH:
 
     ' A selector change that makes an impossible date: January 31 to February. The control builds
     ' the date from year, month and the old day, in its own event handler, so the error is raised
-    ' inside the control with no caller to take it. Run on its own: it may end the run.
+    ' inside the control with no caller to take it. In 1.0.7.0 the run never came back from the key
+    ' and was ended by the runner's timeout; in 1.0.17.0 the runtime opens its run-time error box,
+    ' which the runner closes, and the run goes on. Run on its own.
     Private Sub S12x()
         On Error Resume Next
         Cal.Value = DateSerial(2026, 1, 31)
@@ -1075,12 +1088,25 @@ EH:
         Pump
         Act "key Down posted to the month combo, on 2026-01-31"
         Win.PostKey MonthH, Win.VK_DOWN
-        Pump
+        Pump 12
         Say "  returned from the loop"
         St "after"
     End Sub
 
-    ' The same for the year list: 2024-02-29 to 2025. Run on its own: it may end the run.
+    ' The control of 12z on a date every month has: one Down key posted to the queue is one step
+    ' of the month list (the control of 12z took two after the error).
+    Private Sub S12w()
+        On Error Resume Next
+        Cal.Value = DateSerial(2026, 6, 15)
+        Pump
+        Act "key Down posted to the month combo, on 2026-06-15"
+        Win.PostKey MonthH, Win.VK_DOWN
+        Pump 12
+        Say "  returned from the loop"
+        St "after"
+    End Sub
+
+    ' The same for the year list: 2024-02-29 to 2025. Run on its own.
     Private Sub S12y()
         On Error Resume Next
         Cal.Value = DateSerial(2024, 2, 29)
@@ -1324,6 +1350,10 @@ EH:
     Private Sub S16()
         On Error Resume Next
         Storm "as loaded", 1500
+        ' With 1.0.7.0 this DoEvents does not return, and the 30 s watchdog ends the process.
+        Dim t0 As Long = GetTickCount
+        DoEvents
+        Say "  DoEvents with the selectors shown returned after " & (GetTickCount - t0) & " ms"
         Cal.ShowDateSelectors = False
         Storm "ShowDateSelectors = False", 1000
         Cal.ShowTitle = False
@@ -1337,6 +1367,146 @@ EH:
         Form1.Show
         Storm "form shown again", 1000
         Chk "S16"
+    End Sub
+
+    '=========================================================================================
+    ' 17: what package 1.0.17.0 changed: the lists and the title area
+    '=========================================================================================
+
+    ' Where both lists are, in the control's client area.
+    Private Sub Lists(ByVal what As String)
+        Dim rc As RECT
+        Dim rm As RECT
+        Dim ry As RECT
+        Win.GetWindowRect CalH, rc
+        Win.GetWindowRect MonthH, rm
+        Win.GetWindowRect YearH, ry
+        Say "  lists[" & what & "]: control " & CalW & "x" & CalHt & "; month list x=" & (rm.Left - rc.Left) & ".." & (rm.Right - rc.Left) & " y=" & (rm.Top - rc.Top) & ".." & (rm.Bottom - rc.Top) & "; year list x=" & (ry.Left - rc.Left) & ".." & (ry.Right - rc.Left) & " y=" & (ry.Top - rc.Top) & ".." & (ry.Bottom - rc.Top) & "; space right of the year list " & (CalW - (ry.Right - rc.Left)) & "; visible " & Win.IsWindowVisible(MonthH) & "/" & Win.IsWindowVisible(YearH)
+    End Sub
+
+    ' The header (title area + day names) and the first pixel row of the day names' band.
+    Private Sub Header(ByVal what As String)
+        Pump
+        Calibrate
+        Say "  header[" & what & "]: " & gHeader & " px; the day names' band starts at y=" & FirstY(3, Cal.DayBackColor, 0, CalHt - 1)
+    End Sub
+
+    ' The control's window put to a new size, its top left corner kept.
+    Private Sub ResizeControl(ByVal w As Long, ByVal h As Long)
+        Dim rc As RECT
+        Dim p As Win.POINT
+        Win.GetWindowRect CalH, rc
+        p.x = rc.Left
+        p.y = rc.Top
+        Win.ScreenToClient Form1.hWnd, p
+        Win.MoveWindow CalH, p.x, p.y, w, h, 1
+        Pump
+        Win.GetClientRect CalH, rc
+        CalW = rc.Right
+        CalHt = rc.Bottom
+    End Sub
+
+    Private Sub S17()
+        On Error Resume Next
+        Dim f As New StdFont
+        Say "dpi of the control window: " & Win.GetDpiForWindow(CalH)
+        Header "as loaded"
+        Lists "as loaded"
+        TitleSpan "ShowDateSelectors = True", ListsLeft() - 2
+        Cal.Value = DateSerial(2026, 10, 13)
+        Cal.Month = 10
+        TitleSpan "October 2026", ListsLeft() - 2
+        Cal.MonthLength = 0
+        TitleSpan "Oct 2026 (MonthLength = ShortLength)", ListsLeft() - 2
+        Cal.MonthLength = 1
+        Cal.Value = DateSerial(2026, 6, 15)
+        Cal.Month = 6
+        Say "-- the control's window resized with MoveWindow, its top left corner kept"
+        ResizeControl 300, 288
+        Lists "300 x 288"
+        TitleSpan "ShowDateSelectors = True", ListsLeft() - 2
+        ResizeControl 384, 250
+        Lists "384 x 250"
+        ResizeControl 384, 288
+        Lists "384 x 288 again"
+        Say "-- TitleMargin"
+        Cal.TitleMargin = 15
+        Header "TitleMargin = 15"
+        Lists "TitleMargin = 15"
+        Cal.TitleMargin = 5
+        Header "TitleMargin = 5"
+        Say "-- TitleFont: Set to a 24 pt font, changed in place to 10 pt, then Set again"
+        f.Name = "Arial"
+        f.Size = 24
+        Set Cal.TitleFont = f
+        Chk "Set TitleFont"
+        Header "24 pt set"
+        Lists "24 pt set"
+        TitleSpan "24 pt set", ListsLeft() - 2
+        f.Size = 10
+        Header "f.Size = 10 in place"
+        Lists "f.Size = 10 in place"
+        TitleSpan "f.Size = 10 in place, no Refresh", ListsLeft() - 2
+        Set Cal.TitleFont = f
+        Header "Set TitleFont = f again"
+        Lists "Set TitleFont = f again"
+        TitleSpan "Set TitleFont = f again", ListsLeft() - 2
+        f.Size = 16
+        Set Cal.TitleFont = f
+        Header "16 pt set, as at the start"
+        Say "-- GridFont changed in place, no Refresh: is the grid drawn again?"
+        Dim g As New StdFont
+        Dim x0 As Long
+        Dim y0 As Long
+        Dim x1 As Long
+        Dim y1 As Long
+        g.Name = "Arial"
+        g.Size = 8
+        Set Cal.GridFont = g
+        Pump
+        Calibrate
+        BBox 2, gHeader + 2, CLng(gColW) - 2, CLng(gHeader + gRowH) - 2, Cal.BackColor, x0, y0, x1, y1
+        Say "  g.Size = 8 set: digits of the first cell span " & (x1 - x0 + 1) & " x " & (y1 - y0 + 1) & " pixels"
+        g.Size = 20
+        Pump
+        Calibrate
+        BBox 2, gHeader + 2, CLng(gColW) - 2, CLng(gHeader + gRowH) - 2, Cal.BackColor, x0, y0, x1, y1
+        Say "  g.Size = 20 in place, a pump, no Refresh: digits of the first cell span " & (x1 - x0 + 1) & " x " & (y1 - y0 + 1) & " pixels"
+        g.Size = 8
+        Set Cal.GridFont = g
+        Pump
+        Say "-- ShowTitle and ShowDateSelectors"
+        Cal.ShowTitle = False
+        Header "ShowTitle = False, lists shown"
+        Cal.ShowDateSelectors = False
+        Header "ShowTitle = False, ShowDateSelectors = False"
+        Cal.ShowTitle = True
+        Header "ShowTitle = True again, lists hidden"
+        Cal.ShowDateSelectors = True
+        Header "ShowDateSelectors = True"
+        Lists "ShowDateSelectors = True"
+        Say "-- again, ended by TitleMargin in place of ShowDateSelectors"
+        Cal.ShowTitle = False
+        Cal.ShowDateSelectors = False
+        Header "both False"
+        Cal.ShowTitle = True
+        Header "ShowTitle = True again, lists hidden"
+        Cal.TitleMargin = 5
+        Header "TitleMargin = 5 (the value it has)"
+        Cal.ShowDateSelectors = True
+        Header "ShowDateSelectors = True"
+        Say "-- and a third time, ended by a change of the control's size"
+        Cal.ShowTitle = False
+        Cal.ShowDateSelectors = False
+        Header "both False"
+        Cal.ShowTitle = True
+        Header "ShowTitle = True again, lists hidden"
+        ResizeControl 380, 288
+        Header "the control 380 wide"
+        ResizeControl 384, 288
+        Cal.ShowDateSelectors = True
+        Header "ShowDateSelectors = True"
+        Chk "S17"
     End Sub
 
     '=========================================================================================
@@ -1518,6 +1688,17 @@ EH:
     ' p2: the title with the selectors hidden (Q2)
     '=========================================================================================
 
+    ' The left edge of the month list, in the control's client area: the title is drawn to its left.
+    ' (A pixel under a list or a picture box reads as -1 from the control's DC, so a box that
+    ' reaches the lists finds "text" there.)
+    Private Function ListsLeft() As Long
+        Dim rc As RECT
+        Dim rm As RECT
+        Win.GetWindowRect CalH, rc
+        Win.GetWindowRect MonthH, rm
+        ListsLeft = rm.Left - rc.Left
+    End Function
+
     Private Sub TitleSpan(ByVal what As String, ByVal xmax As Long)
         Pump
         Calibrate
@@ -1527,12 +1708,12 @@ EH:
         Dim x1 As Long
         Dim y1 As Long
         BBox 1, 2, xmax, top - 3, Cal.BackColor, x0, y0, x1, y1
-        Say "  title[" & what & "]: day-names band starts at y=" & top & "; title text pixels span x=" & x0 & ".." & x1 & " (centre " & ((x0 + x1) / 2) & "), y=" & y0 & ".." & y1 & "; control width " & CalW & ": W/2 = " & (CalW / 2) & ", (W - 140)/2 = " & ((CalW - 140) / 2)
+        Say "  title[" & what & "]: day-names band starts at y=" & top & "; title text pixels in x=1.." & xmax & " span x=" & x0 & ".." & x1 & " (centre " & ((x0 + x1) / 2) & "), y=" & y0 & ".." & y1 & "; control width " & CalW & ": W/2 = " & (CalW / 2) & "; the month list starts at x=" & ListsLeft() & ", half of it " & (ListsLeft() / 2)
     End Sub
 
     Private Sub P2()
         On Error Resume Next
-        TitleSpan "ShowDateSelectors = True", CalW - 145
+        TitleSpan "ShowDateSelectors = True", ListsLeft() - 2
         Cal.ShowDateSelectors = False
         TitleSpan "ShowDateSelectors = False", CalW - 1
         Shot "title_noselectors"
@@ -1587,7 +1768,7 @@ EH:
     Private Sub TextColours(ByVal what As String)
         Pump
         Calibrate
-        Say "  " & what & ": TitleFontColor=" & Hx(Cal.TitleFontColor) & ", the colours in the title text's box: " & TopColours(40, 8, 200, 36, Cal.BackColor)
+        Say "  " & what & ": TitleFontColor=" & Hx(Cal.TitleFontColor) & ", the colours in the title text's box: " & TopColours(8, 8, ListsLeft() - 4, 36, Cal.BackColor)
         Say "  " & what & ": DayFontColor=" & Hx(Cal.DayFontColor) & ", the colours in the first day name's box: " & TopColours(4, 52, 50, gHeader - 4, Cal.DayBackColor)
         Say "  " & what & ": GridFontColor=" & Hx(Cal.GridFontColor) & ", the colours in the first cell's box: " & TopColours(4, gHeader + 3, 50, gHeader + 22, Cal.BackColor)
     End Sub
@@ -2000,7 +2181,7 @@ EH:
         Dim x1 As Long
         Dim y1 As Long
         Dim h0 As Long
-        Say "-- selectors visible (the control repaints all the time)"
+        Say "-- selectors visible"
         Pump
         Calibrate
         h0 = gHeader
@@ -2011,7 +2192,7 @@ EH:
         Say "  header (title + day names) before: " & h0 & "; after f.Size = 24 on f = Cal.TitleFont (no Set) and a pump: " & gHeader
         f.Size = 16
         Pump
-        Say "-- selectors hidden (nothing repaints until something asks)"
+        Say "-- selectors hidden"
         Cal.ShowDateSelectors = False
         Pump
         Calibrate
@@ -2262,7 +2443,7 @@ EH:
     End Sub
 
     '=========================================================================================
-    ' p22x: Month = 13 and then a repaint (Q22). Run on its own: it may end the run.
+    ' p22x: Month = 13 and then a repaint (Q22). Run on its own.
     '=========================================================================================
 
     Private Sub P22x()

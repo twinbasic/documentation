@@ -10,7 +10,7 @@ has_toc: false
 
 A collection of values that are found by a key. It is a generic class, **Dictionary(Of TKey, TValue)**, and is not the **Dictionary** of the Scripting Runtime. It keeps the keys in one [**List**](List) and the values in another, in the order in which they were added, and finds a key by looking at the keys one after the other, so it is meant for a few dozen items and not a large number. Nothing else in the package uses it.
 
-**In version 0.0.0.0 a dictionary cannot be created.** The constructor assigns the two lists to its fields without **Set**, and `New Dictionary(Of TKey, TValue)` raises run-time error 91, *Object variable or With block variable not set*. The variable keeps the value **Nothing**, so every member fails as well. See [Known problems](.#known-problems-in-version-0000).
+**In version 1.0.0.1 a dictionary cannot be created.** The constructor assigns the two lists to its fields without **Set**, and `New Dictionary(Of TKey, TValue)` raises run-time error 91, *Object variable or With block variable not set*. The variable keeps the value **Nothing**, so every member fails as well. See [Known problems](.#known-problems-in-version-1001).
 
 ```tb check_build check_run
 Dim ages As Dictionary(Of String, Long)
@@ -113,7 +113,7 @@ Creates an empty dictionary.
 
 Syntax: **New** **Dictionary(Of TKey, TValue)**
 
-In version 0.0.0.0 it raises run-time error 91: see the start of this page.
+In version 1.0.0.1 it raises run-time error 91: see the start of this page.
 
 ### Remove
 {: .no_toc }
