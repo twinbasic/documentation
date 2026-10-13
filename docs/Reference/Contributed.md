@@ -21,6 +21,7 @@ Each package is versioned apart from twinBASIC, and its section says which versi
 - [**TBMANLIB_ListBoxHScroll**](TBMANLIB_ListBoxHScroll/) -- a horizontal scroll bar for a **ListBox**
 - [**TBMANLIB_RES**](TBMANLIB_RES/) -- resources embedded in an executable, as bytes, strings, hex, Base64 or pictures
 - [**tbProjPacker**](tbProjPacker/) -- a `.twinproj` or `.twinpack` file unpacked into a folder of source files, and packed again
+- [**tbRegExp**](tbRegExp/) -- regular expressions, in place of VBScript's **RegExp** object; a match is at most about 3,300 characters long
 - [**tsJson**](tsJson/) -- a JSON model with parsing, JSONPath queries, JSON Pointer, JSON Patch and JSON Schema validation
 - [**tsPwGen**](tsPwGen/) -- passwords, PINs and passphrases, with their entropy known before they are generated
 - [**TwinTimerLib**](TwinTimerLib/) -- a Win32 timer class that reports the elapsed time

@@ -1,6 +1,6 @@
 ---
 title: tbRegExp Package
-parent: Experimental Packages
+parent: Contributed Packages
 has_toc: false
 exclude_from_docs:
   - StaticRegex
@@ -15,12 +15,8 @@ permalink: /tB/Packages/Contributed/tbRegExp/
 
 The **tbRegExp** contributed package provides regular expressions for twinBASIC projects, as a replacement for the **RegExp** object of VBScript. It follows the same object model. A [**RegExp**](RegExp/) is given a pattern and options, its [**Execute**](RegExp/Execute) method returns a [**MatchCollection**](MatchCollection/) of [**Match**](Match/) objects, and each **Match** holds the text captured by the groups of the pattern as a [**SubMatches**](SubMatches/) object. Positions are zero-based, as in VBScript.
 
-The matching is done by the [vba-regex](https://github.com/sihlfall/vba-regex) engine of sihlfall, which the package includes as a private module, **StaticRegex**.
-
-Beyond VBScript's object, **RegExp** has the [**DotAll**](RegExp/DotAll) and [**Flags**](RegExp/Flags) options, the [**Split**](RegExp/Split) method, and [**IsValid**](RegExp/IsValid), [**LastError**](RegExp/LastError) and [**LastErrorNumber**](RegExp/LastErrorNumber), which report an invalid pattern before it is used. [**Replace**](RegExp/Replace) reads a `$` in the replacement string as VBScript does, and adds `$<name>` for a named group.
-
 > [!WARNING]
-> A match of more than a few thousand characters is cut short, and nothing is raised. The engine gives up a search from one starting position after 10,000 steps, where a step is one operation of the compiled pattern, and then starts again one character later. A pattern that repeats one character, such as `a*`, `.*` or `[^,]*`, takes three steps for each character it matches, so the longest match it can make is 3,331 characters, and a pattern with more to do for each character makes a shorter one. On a string of 5,000 `a`, `a*` finds a match that starts at position 1669 and is 3,331 characters long, where VBScript's **RegExp** finds the whole string from position 0, and `^.*$` finds no match at all, so [**Test**](RegExp/Test) returns **False**. Each starting position that fails costs up to 10,000 steps, so a search over a long run is slow as well: `a*` over a run of 9,500 characters takes several seconds, and returns a match of 3,331 characters from position 6169. This is how version 1.7.0.0 behaves.
+> A match can be at most about 3,300 characters long. A longer one is reported cut short, later in the string, or not at all, and no error is raised. The engine gives up a search from one starting position after 10,000 steps, where a step is one operation of the compiled pattern, and then starts again one character later. The limit is fixed inside the package, and a program cannot change it. A pattern that repeats one character, such as `a*`, `.*` or `[^,]*`, takes three steps for each character it matches, so its longest match is 3,331 characters, and a pattern with more to do for each character has a shorter longest match. On a string of 5,000 `a`, `a*` finds a match that starts at position 1669 and is 3,331 characters long, where VBScript's **RegExp** finds the whole string from position 0, and `^.*$` finds no match at all, so [**Test**](RegExp/Test) returns **False**. Each starting position that fails costs up to 10,000 steps, so a search over a long run is slow as well: `a*` over a run of 9,500 characters takes several seconds, and returns a match of 3,331 characters from position 6169. This is how version 1.7.0.0 behaves.
 
 ```tb check_build check_run
 Dim re As New RegExp
@@ -31,6 +27,10 @@ Debug.Print m.FirstIndex & ", " & m.Length  ' 1669, 3331
 re.Pattern = "^.*$"
 Debug.Print re.Test(String(5000, "a"))      ' False
 ```
+
+The matching is done by the [vba-regex](https://github.com/sihlfall/vba-regex) engine of sihlfall, which the package includes as a private module, **StaticRegex**.
+
+Beyond VBScript's object, **RegExp** has the [**DotAll**](RegExp/DotAll) and [**Flags**](RegExp/Flags) options, the [**Split**](RegExp/Split) method, and [**IsValid**](RegExp/IsValid), [**LastError**](RegExp/LastError) and [**LastErrorNumber**](RegExp/LastErrorNumber), which report an invalid pattern before it is used. [**Replace**](RegExp/Replace) reads a `$` in the replacement string as VBScript does, and adds `$<name>` for a named group.
 
 ## Pattern syntax
 

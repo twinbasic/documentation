@@ -565,6 +565,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: tbRegExp Package
+        subtitle: Regular expressions, in place of VBScript's RegExp object
+        landing_page: /tB/Packages/Contributed/tbRegExp/
+        page: /tB/Packages/Contributed/tbRegExp/
+        landing_is_target: true
+        outline_closed: true
+
       - title: tsJson Package
         subtitle: A JSON model with parsing, JSONPath queries, JSON Pointer, JSON Patch and JSON Schema validation
         landing_page: /tB/Packages/Contributed/tsJson/
@@ -666,13 +673,6 @@ parts:
         subtitle: XML documents parsed, edited and written, in twinBASIC code
         landing_page: /tB/Packages/Contributed/TBMANLIB_Xml/
         page: /tB/Packages/Contributed/TBMANLIB_Xml/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: tbRegExp Package
-        subtitle: Regular expressions, in place of VBScript's RegExp object
-        landing_page: /tB/Packages/Contributed/tbRegExp/
-        page: /tB/Packages/Contributed/tbRegExp/
         landing_is_target: true
         outline_closed: true
 
