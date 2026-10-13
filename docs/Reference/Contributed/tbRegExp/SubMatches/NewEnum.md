@@ -16,15 +16,13 @@ Syntax: *object*.**NewEnum** **As IUnknown**
 *object*
 : *required* An object expression that evaluates to a **SubMatches**.
 
-Returns an **IUnknown** that refers to the enumerator of a **Collection** holding the strings of the capture groups.
+Returns an **IUnknown** that refers to a new enumerator over the strings of the capture groups, which starts at the first one.
 
 ## Remarks
 
 **NewEnum** is declared with the [**Enumerator**](../../../../Core/Attributes#enumerator) attribute, which makes it the member that [**For Each**](../../../../Core/For-Each-Next) calls to start an enumeration. [Custom Enumerators](../../../../../Features/Language/Custom-Enumerators) describes the rule. It is also declared [**Hidden**](../../../../Core/Attributes#hidden), so it does not appear in certain IntelliSense lists.
 
 The elements come in the order of their positions, from 0 to [**Count**](Count) - 1, and each is the string of one group. A group that took no part in the match gives an empty string. A **Variant** variable receives each element, as in the example.
-
-The class builds the **Collection** when the first enumeration asks for it, and keeps it for the later ones. Reading by position or by name with [**Item**](Item) does not build it.
 
 A program does not need to call **NewEnum**. **For Each** does it.
 

@@ -15,13 +15,13 @@ Syntax: *object*.**NewEnum** **As IUnknown**
 *object*
 : *required* An object expression that evaluates to a **MatchCollection**.
 
-Returns an **IUnknown** that refers to the enumerator of the **Collection** holding the matches.
+Returns an **IUnknown** that refers to a new enumerator over the matches, which starts at the first one.
 
 ## Remarks
 
 **NewEnum** is declared with the [**Enumerator**](../../../../Core/Attributes#enumerator) attribute, which makes it the member that [**For Each**](../../../../Core/For-Each-Next) calls to start an enumeration. [Custom Enumerators](../../../../../Features/Language/Custom-Enumerators) describes the rule. It is also declared [**Hidden**](../../../../Core/Attributes#hidden), so it does not appear in certain IntelliSense lists.
 
-The enumerator is the one of the **Collection** inside the class, so each element is a **Match**, and the matches come in the order they were found. The element variable of a **For Each** loop can be declared **As Match**, as in the example.
+Each element is a **Match**, and the matches come in the order they were found. A collection can be enumerated any number of times, and an enumeration inside another one is independent. The element variable of a **For Each** loop can be declared **As Match**, as in the example.
 
 A program does not need to call **NewEnum**. **For Each** does it.
 

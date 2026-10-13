@@ -25,7 +25,7 @@ Returns a new **String** with the replacements made. It is *sourceString* unchan
 
 ## Substitution items
 
-A `$` in *replaceString* starts a substitution item. Any other text is copied as it is.
+A `$` in *replaceString* starts a substitution item. Any other text is copied as it is, and so is a `$` that starts no item.
 
 | Item | Is replaced with |
 |------|------------------|
@@ -33,31 +33,31 @@ A `$` in *replaceString* starts a substitution item. Any other text is copied as
 | `$&` | The matched text. |
 | `` $` `` | The part of *sourceString* before the match. |
 | `$'` | The part of *sourceString* after the match. |
-| `$`*n* | The text of numbered group *n*, counting from 1. All the digits after the `$` are read as the number. It is an empty string when the group matched nothing or the pattern has no such group. `$0` raises a run-time error. |
-| `$<`*name*`>` | The text of the group written `(?<name>...)`. It is an empty string when the group matched nothing or no group has the name. |
+| `$`*n* or `$`*nn* | The text of numbered group *n*, counting from 1. Two digits are read as the number when the pattern has a group with that number, otherwise one. It is an empty string when the group matched nothing. When the pattern has no group *n*, the `$` is copied, and so are the digits: `$0` and `$00` are never items, and `$3` in a pattern of two groups is the text `$3`. |
+| `$<`*name*`>` | The text of the group written `(?<name>...)`. It is an empty string when the group matched nothing or no group has the name. When the pattern has no named group, or the `>` is missing, or the name is empty, the `$` is copied. |
 | `$~` | Nothing. The item is dropped. |
 
-A `$` at the end of *replaceString*, or followed by a character that is not in the table, raises error `vbObjectError + 3031`. The error is raised even when *sourceString* has no match, so a literal `$` is written `$$`.
+A `$` that starts no item raises no error, so a replacement string can hold a literal `$` as it is, at the end or before any other character. Before a character that would make an item, write `$$`: `$$$&` inserts a `$` and then the matched text, as the last example does.
 
 > [!NOTE]
-> VBScript's **RegExp** copies into the result, as written, any `$` that does not start one of its own items (`$$`, `$&`, `` $` ``, `$'` and `$`*n*). Here a `$` at the end or before another character raises an error, `$0` raises an error, `$~` is dropped and `$`*n* of a group the pattern does not have is an empty string. A replacement string written for VBScript that holds a literal `$` needs `$$`.
+> Items are read as in VBScript's **RegExp**, with two differences: `$<`*name*`>` is an addition of this package, and `$~` is dropped, where VBScript copies `$~` into the result.
 
 ## Remarks
 
 With [**Global**](Global) set to **False**, only the first match is replaced. With **Global** set to **True**, every match is. [**IgnoreCase**](IgnoreCase), [**MultiLine**](MultiLine) and [**DotAll**](DotAll) change what counts as a match.
 
-> [!WARNING]
-> With **Global** set to **True**, the replacement is made twice at a position where a match of no characters was reached by skipping at least one character, such as the start of every line but the first with `^` and **MultiLine** set to **True**. The warning at [**Execute**](Execute#remarks) lists the patterns affected. VBScript's **RegExp** makes the replacement once. This is how version 1.4.0.0 behaves.
-
-In this example the pattern `^` is meant to put `> ` at the start of each of three lines. The second and third lines get it twice.
+A match of no characters is replaced once, wherever it is found. In this example the pattern `^` puts `> ` at the start of each of three lines.
 
 ```tb check_build check_run
 Dim re As New RegExp
 re.Global = True
 re.MultiLine = True
 re.Pattern = "^"
-Debug.Print Replace(re.Replace("a" & vbLf & "b" & vbLf & "c", "> "), vbLf, "/")  ' > a/> > b/> > c
+Debug.Print Replace(re.Replace("a" & vbLf & "b" & vbLf & "c", "> "), vbLf, "/")  ' > a/> b/> c
 ```
+
+> [!WARNING]
+> A match of more than a few thousand characters is cut short, and nothing is raised, so **Replace** replaces a shorter part of the text than the pattern describes. The [overview of the package](../) describes the limit.
 
 An invalid pattern raises the compile error, with the number in [**LastErrorNumber**](LastErrorNumber) and the description in [**LastError**](LastError). Check [**IsValid**](IsValid) first to avoid it.
 
@@ -74,6 +74,7 @@ Debug.Print re.Replace("ann@example.com, bob@test.com", "$2:$1")  ' example:ann,
 
 re.Pattern = "\d+"
 Debug.Print re.Replace("5 and 12", "$$$&")                        ' $5 and $12
+Debug.Print re.Replace("x5", "$ $x $3")                           ' x$ $x $3
 
 re.Pattern = "(?<first>\w+) (?<last>\w+)"
 Debug.Print re.Replace("Ada Lovelace", "$<last>, $<first>")       ' Lovelace, Ada

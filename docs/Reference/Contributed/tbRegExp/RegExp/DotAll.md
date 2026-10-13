@@ -8,7 +8,7 @@ has_toc: false
 # DotAll
 {: .no_toc }
 
-Returns or sets whether `.` in the pattern matches line terminators.
+Returns or sets whether `.` in the pattern matches a line feed.
 
 ## Get
 
@@ -28,11 +28,11 @@ Sets the value.
 Syntax: *object*.**DotAll** **=** *value*
 
 *value*
-: A **Boolean**. **True** lets `.` match any character, line terminators included. **False** makes `.` match any character except a line terminator.
+: A **Boolean**. **True** lets `.` match any character, a line feed included. **False** makes `.` match any character except a line feed.
 
 ## Remarks
 
-The line terminators are the line feed (`vbLf`), the carriage return (`vbCr`), and the characters U+2028 and U+2029.
+As in VBScript's **RegExp**, only the line feed (`vbLf`) is excluded when the value is **False**. The carriage return (`vbCr`) and the characters U+2028 and U+2029 are matched by `.` whatever the value. [**MultiLine**](MultiLine) treats all four as line terminators for `^` and `$`.
 
 The value is applied when [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) or [**Split**](Split) makes a match. Changing it does not compile the pattern again. The flag `s` of [**Flags**](Flags) reads and sets the same value.
 
@@ -43,6 +43,7 @@ Dim re As RegExp
 Set re = New RegExp
 re.Pattern = "a.b"
 Debug.Print re.Test("a" & vbLf & "b")  ' False
+Debug.Print re.Test("a" & vbCr & "b")  ' True
 
 re.DotAll = True
 Debug.Print re.Test("a" & vbLf & "b")  ' True

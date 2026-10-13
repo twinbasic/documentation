@@ -30,10 +30,7 @@ When [**Pattern**](Pattern) finds no match, the collection holds one item, the w
 
 [**IgnoreCase**](IgnoreCase), [**MultiLine**](MultiLine) and [**DotAll**](DotAll) apply to the matching.
 
-> [!WARNING]
-> With **Global** set to **True**, a match of no characters that was reached by skipping at least one character splits the string twice, which adds an empty string to the collection. The warning at [**Execute**](Execute#remarks) lists the patterns affected. VBScript's **RegExp** has no **Split**, and its **Execute** reports such a match once. This is how version 1.4.0.0 behaves.
-
-In this example the string is to be split before each capital letter. The result holds an empty string between `foo` and `Bar`, and between `Bar` and `Baz`.
+A match of no characters splits the string at its position, once. In this example the string is split before each capital letter.
 
 ```tb check_build check_run
 Dim re As New RegExp
@@ -42,9 +39,12 @@ re.Pattern = "(?=[A-Z])"
 
 Dim parts As Collection
 Set parts = re.Split("fooBarBaz")
-Debug.Print parts.Count                                          ' 5
-Debug.Print parts(1) & "|" & parts(2) & "|" & parts(3) & "|" & parts(4) & "|" & parts(5)  ' foo||Bar||Baz
+Debug.Print parts.Count                                          ' 3
+Debug.Print parts(1) & "|" & parts(2) & "|" & parts(3)           ' foo|Bar|Baz
 ```
+
+> [!WARNING]
+> A match of more than a few thousand characters is cut short, and nothing is raised, so **Split** splits at a shorter part of the text than the pattern describes. The [overview of the package](../) describes the limit.
 
 When **Pattern** is not a valid regular expression, **Split** raises the compile error. Its number is [**LastErrorNumber**](LastErrorNumber), its description is [**LastError**](LastError), and its source is `RegExp`. Read [**IsValid**](IsValid) first to avoid the error.
 

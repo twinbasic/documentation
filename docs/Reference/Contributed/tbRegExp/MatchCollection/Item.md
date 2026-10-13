@@ -24,7 +24,7 @@ Returns a [**Match**](../Match/). The property is read-only.
 
 **Item** is the default member of the class, so `matches(1)` is the same as `matches.Item(1)`.
 
-The position is zero-based, as in the VBScript object model that the package replaces, although the **Collection** inside the class is one-based. A match has no key, so the argument is always a position.
+The position is zero-based, as in the VBScript object model that the package replaces. A match has no key, so the argument is always a position.
 
 A position below 0, or not below [**Count**](Count), raises run-time error `vbObjectError + 9` with the message *Requested item not found in Matches collection*.
 

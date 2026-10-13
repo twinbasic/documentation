@@ -26,17 +26,18 @@ With [**Global**](Global) set to **False**, the collection holds at most one mat
 
 [**IgnoreCase**](IgnoreCase), [**MultiLine**](MultiLine) and [**DotAll**](DotAll) change what counts as a match.
 
-> [!WARNING]
-> With **Global** set to **True**, a match of no characters is returned twice when the search had to skip at least one character to reach it, so the collection holds one **Match** too many at each such position. It happens to a pattern that matches no characters at a position after the one where the search started: `$`, `\b`, `^` with **MultiLine** set to **True**, and a lookahead or lookbehind on its own. A pattern such as `x*`, which matches no characters at the position where the search starts, is not affected. VBScript's **RegExp** returns each such match once. A match of one or more characters is never repeated, and with **Global** set to **False** nothing is. This is how version 1.4.0.0 behaves.
-
-The pattern in this example matches no characters, before each capital letter. `fooBarBaz` has two capitals, and the collection holds four matches.
+A match can have no characters, as `(?=[A-Z])` has before each capital letter, and each such match is returned once. `fooBarBaz` has two capitals, so the collection holds two matches, at positions 3 and 6.
 
 ```tb check_build check_run
 Dim re As New RegExp
 re.Global = True
 re.Pattern = "(?=[A-Z])"
-Debug.Print re.Execute("fooBarBaz").Count  ' 4
+Debug.Print re.Execute("fooBarBaz").Count         ' 2
+Debug.Print re.Execute("fooBarBaz")(1).FirstIndex  ' 6
 ```
+
+> [!WARNING]
+> A match of more than a few thousand characters is cut short, and nothing is raised: `a*` on a string of 5,000 `a` returns one match that starts at position 1669 and is 3,331 characters long, not the whole string. The [overview of the package](../) describes the limit.
 
 Each **Match** gives the matched text ([**Value**](../Match/Value)), the position where it starts ([**FirstIndex**](../Match/FirstIndex), counted from 0), its length, and the text of each group of the pattern ([**SubMatches**](../Match/SubMatches)). A group written `(?<name>...)` can be read by its name.
 
