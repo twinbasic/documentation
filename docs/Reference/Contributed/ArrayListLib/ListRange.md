@@ -8,9 +8,9 @@ has_toc: false
 # ListRange class
 {: .no_toc }
 
-A **ListRange** is a view of a run of items in an [**ArrayList**](ArrayList). It shows those items under indexes that start at 0, and it does not copy them: a change made through the view changes the list. [**GetRange**](ArrayList#getrange) of an **ArrayList** (or of another **ListRange**) returns one.
+A **ListRange** is a view of a run of items in an [**ArrayList**](ArrayList). It shows those items under indexes that start at its [**BaseIndex**](#baseindex), which it takes from its list when it is made, and it does not copy them: a change made through the view changes the list. [**GetRange**](ArrayList#getrange) of an **ArrayList** (or of another **ListRange**) returns one.
 
-A range is made by **GetRange**; the class is marked as not creatable. **GetRange** returns the range as an [**IListRange**](Interfaces#ilistrange), which has no **Reverse**, **LastIndexOf**, **Capacity**, **Clone** or **Items**. A range implements [**IArrayList**](Interfaces#iarraylist) and the class **ArrayList** as well; the type **IArrayList** has all the members of a range.
+A range is made by **GetRange**; the class is marked as not creatable. **GetRange** returns the range as an [**IListRange**](Interfaces#ilistrange), which has no **Reverse**, **LastIndexOf**, **Capacity**, **BaseIndex** or **Items**. A range implements [**IArrayList**](Interfaces#iarraylist), [**ICloneable**](Interfaces#icloneable) and the class **ArrayList** as well; the type **IArrayList** has all the members of a range except **Clone**.
 
 ```tb check_build
 Dim list As New ArrayList
@@ -33,15 +33,31 @@ Next
 
 ## When a range stops being valid
 
-A range keeps the version number that the list had when the range was made. Each call of the range first compares that number with the list's. A change that the range makes itself keeps the numbers equal, with the two exceptions below. Any other change to the list --- [**Add**](ArrayList#add), [**Insert**](ArrayList#insert), [**RemoveAt**](ArrayList#removeat), [**Sort**](ArrayList#sort) or an assignment to an item, for example --- makes them differ, and the next call of the range raises error -2146233079 (`vbObjectError + 988425`) with the text *This ArrayList range is no longer valid.* Make a new range with **GetRange** after such a change.
+A range keeps the version number that the list had when the range was made. Each call of the range first compares that number with the list's. A change that the range makes itself keeps the numbers equal, with the two exceptions below. Any other change to the list --- [**Add**](ArrayList#add), [**Insert**](ArrayList#insert), [**RemoveAt**](ArrayList#removeat), [**Sort**](ArrayList#sort), an assignment to an item or an assignment to [**BaseIndex**](ArrayList#baseindex), for example --- makes them differ, and the next call of the range raises error -2146233079 (`vbObjectError + 988425`) with the text *This ArrayList range is no longer valid.* Make a new range with **GetRange** after such a change.
 
 The number is the value that the documentation of the .NET class **InvalidOperationException** gives for its HRESULT, `COR_E_INVALIDOPERATION` (`&H80131509`).
 
 Two changes made through the range itself make it invalid, because they count differently in the range and in the list. An assignment to an item (`r.Item(0) = x`, or with **Set**) adds 1 to the range's version number and nothing to the list's. [**SetRange**](#setrange) of a range, with a list or a range as its argument, adds 1 to the range's number and 2 to the list's. See [Known problems](./#known-problems).
 
-A change made through one range adds to the version number of the list, so every other range of the same list is invalid afterwards.
+A change made through one range adds to the version number of the list, so every other range of the same list is invalid afterwards. A range made by **GetRange** of another range compares its number with the number of that range, not with the list's: a change made through the outer range makes the inner one invalid, a change made through the inner one leaves the outer one valid, and a change made to the list directly invalidates the outer range and leaves the inner one valid.
+
+## A range after the list grows
+
+A range reads the items from the address they had when the range was made. A change made through the range that makes the list enlarge its array, such as [**Add**](#add), [**AddRange**](#addrange), [**Insert**](#insert) or [**InsertRange**](#insertrange) on a list with no room, can move the array. The range then goes on reading the old array, which has been released, and does not notice: the range and the list keep the same version number.
+
+> [!WARNING]
+> After such a change the items that the range shows can be the old ones, or whatever now occupies that memory. A range of two items of a list with room for five, after three calls of **Add** through the range, showed `a b c d` and an empty item, where the list held `a b X Y Z c d`. Make the list large enough first, by giving [**New**](ArrayList#new) a capacity or assigning [**Capacity**](ArrayList#capacity), or make a new range with **GetRange** after the change.
 
 ## Properties
+
+### BaseIndex
+{: .no_toc }
+
+The number of the first item of the range. **Long**, read/write.
+
+Syntax: *object*.**BaseIndex** [ **=** *value* ]
+
+A range has the **BaseIndex** that its list or outer range has when the range is made. An assignment changes the numbering of this range only; the list and the other ranges keep theirs, and the range stays valid. See [**BaseIndex**](ArrayList#baseindex) of **ArrayList**.
 
 ### Capacity
 {: .no_toc }
@@ -69,7 +85,7 @@ The item at a position in the range. **Variant**, read/write, and the default me
 Syntax: [ **Set** ] *object*.**Item** ( *index* ) [ **=** *value* ]
 
 *index*
-: A **Long** from 0 to **Count** - 1 of the range. A value outside the range raises error 9.
+: A **Long** from [**BaseIndex**](#baseindex) to **BaseIndex** + **Count** - 1 of the range. A value outside the range raises error 9.
 
 See [**Item**](ArrayList#item) of **ArrayList**. An assignment makes the range invalid, as described above.
 
@@ -96,7 +112,7 @@ The items are inserted in the list after the last item of the range, and the ran
 ### BinarySearch
 {: .no_toc }
 
-Searches a sorted run of the range and returns the index of a value, counted from the start of the range.
+Searches a sorted run of the range and returns the index of a value, counted from the [**BaseIndex**](#baseindex) of the range.
 
 Syntax: *object*.**BinarySearch** ( *Index*, *GetCount*, *Value* [ , *Comparer* ] ) **As Long**
 
@@ -118,7 +134,8 @@ Returns a copy of the items of the range.
 
 Syntax: *object*.**Clone** ( ) **As Variant**
 
-Returns a **Variant** that holds a new **ArrayList** with the items of the range, as [**Clone**](ArrayList#clone) of an **ArrayList** does.
+Returns a **Variant** that holds a new **ArrayList** with the items of the range and the **BaseIndex** of the range, as [**Clone**](ArrayList#clone) of an **ArrayList** does. **Clone** is the member of [**ICloneable**](Interfaces#icloneable); the interface **IArrayList** does not have it.
+
 ### Contains
 {: .no_toc }
 
@@ -144,7 +161,7 @@ Returns the enumerator that **For Each** uses over the items of the range.
 
 Syntax: *object*.**GetEnumerator** ( [ *Index* ] [ , *GetCount* ] [ , *GetStep* ] [ , *ThisEnumerator* ] ) **As stdole.IUnknown**
 
-As [**GetEnumerator**](ArrayList#getenumerator), with *Index* counted from the start of the range.
+As [**GetEnumerator**](ArrayList#getenumerator), with *Index* counted from the first item of the range, which is 0 whatever the **BaseIndex** of the range is. The range keeps two enumerators in the same way as a list, with the same effects: see the warning there. A range with no items has no enumerator, and a **For Each** over it raises an error.
 
 ### GetRange
 {: .no_toc }
@@ -153,7 +170,7 @@ Returns a view of a run of items of the range.
 
 Syntax: *object*.**GetRange** ( *Index*, *GetCount* ) **As IListRange**
 
-*Index* is counted from the start of the range. Error 9 is raised when the run does not lie in the range. A range of a range is a view of the same items of the list; a change through either makes the other invalid.
+*Index* is counted from the **BaseIndex** of the range. Error 9 is raised when the run does not lie in the range. A range of a range is a view of the same items of the list. See [When a range stops being valid](#when-a-range-stops-being-valid) for which changes make which range invalid.
 
 ### IndexOf
 {: .no_toc }
@@ -162,7 +179,7 @@ Returns the index in the range of the first item that matches a value, or -1.
 
 Syntax: *object*.**IndexOf** ( *Value* [ , *Index* [ , *GetCount* ] ] ) **As Long**
 
-As [**IndexOf**](ArrayList#indexof), with *Index* and the result counted from the start of the range. Error 9 is raised when *Index* is outside the range or the run does not fit in it.
+As [**IndexOf**](ArrayList#indexof), with *Index* and the result counted from the **BaseIndex** of the range. The default of *Index* is that **BaseIndex**. Error 9 is raised when *Index* is outside the range or the run does not fit in it.
 
 ### Insert
 {: .no_toc }
@@ -171,7 +188,7 @@ Inserts an item at a position of the range.
 
 Syntax: *object*.**Insert** ( *Index*, *Value* )
 
-*Index* is counted from the start of the range, and the item is inserted in the list at that position. The range grows by one. *Index* is not checked against the range.
+*Index* is counted from the **BaseIndex** of the range, and the item is inserted in the list at that position. The range grows by one. *Index* is not checked against the range. The call is passed on to the list, so [**Insert**](ArrayList#insert) of the list applies, with its failure at the first position of a list that has little room, and the range can be left reading released memory: see [A range after the list grows](#a-range-after-the-list-grows).
 
 ### InsertRange
 {: .no_toc }
@@ -187,9 +204,9 @@ As [**InsertRange**](ArrayList#insertrange), with *Index* counted from the start
 
 Returns the index in the range of the last item that matches a value, or -1.
 
-Syntax: *object*.**LastIndexOf** ( *Value*, *Index*, *GetCount* ) **As Long**
+Syntax: *object*.**LastIndexOf** ( *Value* [ , *Index* [ , *GetCount* ] ] ) **As Long**
 
-As [**LastIndexOf**](ArrayList#lastindexof), with *Index* and the result counted from the start of the range. On a range, *Index* and *GetCount* are declared without **Optional**.
+As [**LastIndexOf**](ArrayList#lastindexof), with *Index* and the result counted from the **BaseIndex** of the range. The default of *Index* is the last item of the range.
 
 ### Remove
 {: .no_toc }
@@ -198,7 +215,7 @@ Removes the first item of the range that matches a value.
 
 Syntax: *object*.**Remove** ( *Value* )
 
-As [**Remove**](ArrayList#remove). The item is removed from the list, and the range shrinks by one.
+As [**Remove**](ArrayList#remove), including its failure with a **BaseIndex** below 0. The item is removed from the list, and the range shrinks by one.
 
 ### RemoveAt
 {: .no_toc }
@@ -223,9 +240,9 @@ Syntax: *object*.**RemoveRange** ( *Index*, *GetCount* )
 
 Reverses the order of the items of the range, or of a run of them.
 
-Syntax: *object*.**Reverse** ( *Index*, *GetCount* )
+Syntax: *object*.**Reverse** ( [ *Index* ] [ , *GetCount* ] )
 
-As [**Reverse**](ArrayList#reverse), with *Index* counted from the start of the range, with the same loop. On a range, both arguments are declared without **Optional**.
+As [**Reverse**](ArrayList#reverse), with *Index* counted from the **BaseIndex** of the range, and with the same loop. A run with an even number of items keeps its two middle items in place: see the warning there.
 
 ### SetRange
 {: .no_toc }
@@ -252,7 +269,16 @@ Returns the items of the range as an array.
 
 Syntax: *object*.**ToArray** ( ) **As Variant()**
 
-As [**ToArray**](ArrayList#toarray), for the items of the range.
+As [**ToArray**](ArrayList#toarray), for the items of the range. The lower bound of the array is the **BaseIndex** of the range.
+
+### ToString
+{: .no_toc }
+
+Returns the items of the range as text.
+
+Syntax: *object*.**ToString** ( [ *TextQualifier* ] [ , *UseNullAsEmpty* ] ) **As String**
+
+As [**ToString**](ArrayList#tostring), for the items of the range. Through a variable of type **IListRange** or **IArrayList** both arguments are required. It never returns for a range with no items.
 
 ## Hidden members
 
@@ -267,12 +293,12 @@ Syntax: *object*.**Bind** ( *TargetList* [ , *Index* [ , *GetCount* ] ] ) **As L
 : *required* An [**IArrayList**](Interfaces#iarraylist): the list or range to look at.
 
 *Index*
-: *optional* A **Long**: the index in *TargetList* of the first item. The default is 0.
+: *optional* A **Long**: the index in *TargetList* of the first item, counted from the **BaseIndex** of *TargetList*. The default is that **BaseIndex**. The parameter is declared as a **Variant**, so that a call can leave it out and give *GetCount*.
 
 *GetCount*
 : *optional* The number of items. The default is all the items from *Index*.
 
-Returns the range itself. **GetRange** calls **Bind**; a program has no reason to.
+Returns the range itself, and gives it the **BaseIndex** of *TargetList*. **GetRange** calls **Bind**; a program has no reason to.
 
 ### IndexOf_2, IndexOf_3, LastIndexOf_2, LastIndexOf_3, BinarySearch_2, BinarySearch_3, Sort_2
 {: .no_toc }
@@ -291,7 +317,7 @@ Returns the items of the range as an array that shares their memory.
 
 Syntax: *object*.**Items** ( ) **As Variant()**
 
-As [**Items**](ArrayList#items): use the result only as the subject of **For Each**.
+As [**Items**](ArrayList#items): use the result only as the subject of **For Each**. Its lower bound is 0.
 
 ### SyncRoot
 {: .no_toc }

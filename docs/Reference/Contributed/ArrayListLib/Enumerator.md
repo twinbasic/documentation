@@ -43,7 +43,7 @@ For Each v In list.GetEnumerator(, , , e)
 Next
 ```
 
-**Next** adds the step to the position before it reads an item, except for the first item, where the step to add is 0. **Reset** sets the position but not that step. After an item has been returned, the step is the enumerator's own, so the first **Next** after a **Reset** moves past the first item. See [Known problems](./#known-problems).
+**Next** adds the step to the position before it reads an item, except for the first item, where the step to add is 0. **Reset** and [**Bind**](#bind) set the position to the first item of the part and make the step to add 0, so the first **Next** after either of them returns the first item.
 
 Nothing checks that the array is unchanged during the loop. See [Enumerating](ArrayList#enumerating).
 
@@ -71,7 +71,7 @@ Syntax: **New Enumerator** [ ( *TargetArray* [ , *Index* [ , *GetCount* [ , *Get
 *ThisEnumerator*
 : *optional* An [**IEnumerator**](Interfaces#ienumerator) variable that receives the new enumerator.
 
-Without arguments, the enumerator has no array; call [**Bind**](#bind) to give it one. With arguments, it is bound by **Bind** at once.
+Without arguments, the enumerator has no array; call [**Bind**](#bind) to give it one. Until then its [**CurrentSize**](#currentsize) and [**CurrentStep**](#currentstep) are 0, and **Next** reports the end of the part at once. With arguments, it is bound by **Bind** at once.
 
 ## Properties
 
@@ -109,6 +109,15 @@ Syntax: *object*.**CurrentStep** [ **=** *value* ]
 
 A step of 0 returns the same item for ever, so a loop with it does not end.
 
+### IsAvailable
+{: .no_toc }
+
+Whether the enumerator is free for a new loop. **Boolean**, read-only.
+
+Syntax: *object*.**IsAvailable**
+
+The value is **True** for a new enumerator. It becomes **False** when [**Reset**](#reset) is called, which **For Each** does at the start of a loop, and **True** again when a call of **Next** reaches the end of the part. A loop left with **Exit For** leaves it **False**. The property belongs to the class **Enumerator**; the interface **IEnumerator** does not have it. [**GetEnumerator**](ArrayList#getenumerator) of a list uses it to find out whether the enumerator it kept can serve another loop.
+
 ## Methods
 
 ### Bind
@@ -130,7 +139,7 @@ Syntax: *object*.**Bind** ( *TargetArray*, *Index*, *GetCount*, *GetStep* )
 *GetStep*
 : *required* A **Long**: how far the position moves for each item.
 
-The enumerator reads the memory of the array in place, so the array must not be resized or erased while the enumerator is in use. For a negative *GetStep*, the position is set to the last item of the part. For a positive one, **Bind** leaves the position and the step that **Next** adds as they are.
+The enumerator reads the memory of the array in place, so the array must not be resized or erased while the enumerator is in use. The position is set to the first item of the part, or to the last one for a negative *GetStep*, and the step that **Next** adds becomes 0, so the next **Next** returns that item. **Bind** does not change [**IsAvailable**](#isavailable).
 
 ### GetEnumerator
 {: .no_toc }
@@ -182,7 +191,7 @@ Returns the next item.
 Syntax: *object*.**Next** ( *celt*, *rgvar*, *pceltFetched* )
 
 *celt*
-: *required* A **Long**, which has to be 1. Any other value fails with the error code `E_INVALIDARG` (&H80070057).
+: *required* A **Long**, which has to be 1. Any other value fails with the error code `E_INVALIDARG` (&H80070057), which a program that calls the member through an **IEnumerator** variable sees as error 5.
 
 *rgvar*
 : *required* A **Variant** that receives the item. An object is stored as a reference.
@@ -199,7 +208,7 @@ Goes back to the start of the part.
 
 Syntax: *object*.**Reset** ( )
 
-The position becomes 0, or the last item of the part for a negative step. **For Each** calls **Reset** before the first **Next**. The step that **Next** adds is not cleared: see [Position, step and size](#position-step-and-size).
+The position becomes 0, or the last item of the part for a negative step, and the step that **Next** adds becomes 0, so the first **Next** after it returns the first item. **For Each** calls **Reset** before the first **Next**. [**IsAvailable**](#isavailable) becomes **False**.
 
 ### Skip
 {: .no_toc }

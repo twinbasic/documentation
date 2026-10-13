@@ -15,13 +15,17 @@ IEnumerable
   ICollection
     IList
       IListRange
-        IArrayList   (also implements ICloneable)
+        IArrayList
+ICloneable
 IEnumVARIANT
   IEnumerator
 IComparer
 ```
 
-[**ArrayList**](ArrayList) and [**ListRange**](ListRange) implement **IArrayList**, so a variable of any of these types can hold a list. A function that only reads items can take an **IList**; a function that sorts or takes parts can take an **IListRange**. [**Enumerator**](Enumerator) implements **IEnumerator**, and [**Comparer**](Comparer) implements **IComparer**.
+[**ArrayList**](ArrayList) and [**ListRange**](ListRange) implement **IArrayList** and **ICloneable**, so a variable of any of these types can hold a list. A function that only reads items can take an **IList**; a function that sorts or takes parts can take an **IListRange**. [**Enumerator**](Enumerator) implements **IEnumerator**, and [**Comparer**](Comparer) implements **IComparer**.
+
+> [!WARNING]
+> A **For Each** over a variable declared as **IList**, **ICollection**, **IEnumerable**, **IListRange** or **IArrayList** raises error -2147352567, *Exception occurred.* A call of **GetEnumerator** through such a variable with fewer than all four arguments does not compile. A variable declared as **ArrayList**, **ListRange**, **Object** or **Variant** can be used in a **For Each**; a function that takes an interface can loop over the items with an index. See [Known problems](./#known-problems).
 
 ```tb check_build
 Dim items As IList = New ArrayList
@@ -29,9 +33,9 @@ items.Add "a"
 items.Add "b"
 Debug.Print items.Count
 Debug.Print items.Item(1)
-Dim v As Variant
-For Each v In items
-    Debug.Print v
+Dim i As Long
+For i = 0 To items.Count - 1
+    Debug.Print items.Item(i)
 Next
 ```
 
@@ -51,7 +55,7 @@ Returns the enumerator that **For Each** uses.
 
 Syntax: *object*.**GetEnumerator** ( [ *Index* ] [ , *GetCount* ] [ , *GetStep* ] [ , *ThisEnumerator* ] ) **As stdole.IUnknown**
 
-The member is marked [**[Enumerator]**](../../../Core/Attributes#enumerator). The parameters are those of [**GetEnumerator**](ArrayList#getenumerator) of **ArrayList**; here *ThisEnumerator* is declared **As Any**, an untyped reference.
+The member is marked [**[Enumerator]**](../../../Core/Attributes#enumerator). The parameters are those of [**GetEnumerator**](ArrayList#getenumerator) of **ArrayList**; here *ThisEnumerator* is declared **As Any**, an untyped reference. Called through a variable of an interface type, the member does not compile with fewer than all four arguments (TB5050), and a **For Each** that calls it raises error -2147352567.
 
 ## ICollection
 
@@ -264,9 +268,33 @@ Syntax: *object*.**ToArray** ( ) **As Variant()**
 
 See [**ToArray**](ArrayList#toarray).
 
+### ToString
+{: #ilistrange-tostring .no_toc }
+
+Returns the items as text.
+
+Syntax: *object*.**ToString** ( *TextQualifier*, *UseNullAsEmpty* ) **As String**
+
+*TextQualifier*
+: *required* A **String**.
+
+*UseNullAsEmpty*
+: *required* A **Boolean**.
+
+See [**ToString**](ArrayList#tostring). Through the interface both arguments are required; the classes declare them optional.
+
 ## IArrayList
 
-Extends **IListRange** and implements **ICloneable**. The interface of a whole list. Interface identifier `1043D433-27BB-40F7-9255-50F4724FAB94`.
+Extends **IListRange**. The interface of a whole list. It does not have **Clone**, which belongs to [**ICloneable**](#icloneable). Interface identifier `1043D433-27BB-40F7-9255-50F4724FAB94`.
+
+### BaseIndex
+{: #iarraylist-baseindex .no_toc }
+
+The number of the first item. **Long**, read/write.
+
+Syntax: *object*.**BaseIndex** [ **=** *value* ]
+
+See [**BaseIndex**](ArrayList#baseindex).
 
 ### Capacity
 {: #iarraylist-capacity .no_toc }
@@ -276,15 +304,6 @@ The number of items the list has room for. **Long**, read/write.
 Syntax: *object*.**Capacity** [ **=** *value* ]
 
 See [**Capacity**](ArrayList#capacity).
-
-### Clone
-{: #iarraylist-clone .no_toc }
-
-Returns a copy of the list.
-
-Syntax: *object*.**Clone** ( ) **As Variant**
-
-The member of [**ICloneable**](#icloneable) again; see [**Clone**](ArrayList#clone).
 
 ### CloneTo
 {: #iarraylist-cloneto .no_toc }
@@ -333,7 +352,7 @@ See [**Version**](ArrayList#version).
 
 ## ICloneable
 
-An object that can make a copy of itself. **IArrayList** implements it. Interface identifier `8ABD76D4-42F5-4920-927A-BC766E00CE46`.
+An object that can make a copy of itself. [**ArrayList**](ArrayList#clone) and [**ListRange**](ListRange#clone) implement it. The interface **IArrayList** does not have **Clone**, so a variable of that type has to be assigned to an **ICloneable** variable to copy the list. Interface identifier `8ABD76D4-42F5-4920-927A-BC766E00CE46`.
 
 ### Clone
 {: #icloneable-clone .no_toc }
