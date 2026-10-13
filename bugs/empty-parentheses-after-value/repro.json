@@ -1,0 +1,17 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Asc\\(s\\)\\(\\) \\[Long\\]: result=\\[97\\] error 0$",
+      "^Len\\(s\\)\\(\\) \\[Long\\]: result=\\[3\\] error 0$",
+      "^Twice\\(3\\)\\(\\) \\[Long\\]: result=\\[6\\] error 0$",
+      "^n\\(\\) \\[Long variable\\]: result=\\[5\\] error 0$",
+      "^s\\(\\) \\[String variable\\]: result=\\[abc\\] error 0$",
+      "^Chr\\$\\(65\\)\\(\\) \\[String\\]: result=\\[A\\] error 0$",
+      "^Chr\\(65\\)\\(\\) \\[Variant\\]: result=\\[\\] error -2147467259$",
+      "^VarLong\\(\\)\\(\\) \\[Variant\\]: result=\\[\\] error -2147467259$",
+      "^v\\(\\) \\[Variant variable\\]: result=\\[\\] error -2147467259$"
+    ]
+  }
+}

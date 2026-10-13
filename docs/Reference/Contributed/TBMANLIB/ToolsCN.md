@@ -30,7 +30,7 @@ For each character, the code takes the number that **Asc** returns for it. A num
 An empty string returns an empty string.
 
 > [!NOTE]
-> The function raises error -2147467259, *Unspecified error*, for every text that is not empty, even for plain English letters. The line that reads the character code is written `Asc(Mid(CnChar, i, 1))()`, with a pair of parentheses after the call, and that raises the error when it runs. The pinyin table and the search through it are therefore not reached in version 1.0.0.29. The loop over the characters also uses the variable `i` for its own search through the table, so it would skip characters if the error did not stop it.
+> In version 1.0.0.29 the function raises error -2147467259, *Unspecified error*, for any text that holds a character with a code from 1 to 159, such as an English letter, a digit or a space. The line that copies such a character is written `G = Chr(Num)()`, with a pair of parentheses after the call to **Chr**, which returns a **Variant**, and that raises the error when it runs. On a computer whose code page is not a Chinese one, a Chinese character becomes `?`, code 63, so it raises the error too. Any other character is dropped with no error: `GetPinYin(ChrW(233))` returns an empty string. The same pair of parentheses after the call to **Asc** on the line before has no effect. The loop over the characters also uses the variable `i` for its own search through the table, so on a Chinese code page it would skip characters after a Chinese character.
 
 ## See Also
 

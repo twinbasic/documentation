@@ -1,0 +1,54 @@
+' Empty parentheses after a function result or a variable, as in  Num = Asc(c)()  or
+' G = Chr(Num)(). twinBASIC compiles every line below. Where the value is of a type other
+' than Variant, the parentheses are ignored and the value is used (Asc(c)() is Asc(c)).
+' Where it is a Variant, the parentheses fail when the line runs, with error -2147467259,
+' "Unspecified error". VB6 refuses the first group when it compiles ("Type mismatch",
+' "Syntax error" or "Expected array") and raises error 9, "Subscript out of range", for the
+' second (the VB6 side is in vb6/).
+
+Module Startup
+
+    Private Function Twice(ByVal n As Long) As Long
+        Twice = n * 2
+    End Function
+
+    Private Function VarLong() As Variant
+        VarLong = 7&
+    End Function
+
+    Private Sub Report(ByVal Label As String, ByVal Result As Variant)
+        Debug.Print Label & ": result=[" & Result & "] error " & Err.Number
+        Err.Clear
+    End Sub
+
+    Public Sub Main()
+        Dim s As String = "abc"
+        Dim n As Long = 5
+        Dim v As Variant = 6
+        Dim t As Variant
+        On Error Resume Next
+
+        ' A value that is not a Variant: the parentheses are ignored.
+        t = Empty: t = Asc(s)()
+        Report "Asc(s)() [Long]", t
+        t = Empty: t = Len(s)()
+        Report "Len(s)() [Long]", t
+        t = Empty: t = Twice(3)()
+        Report "Twice(3)() [Long]", t
+        t = Empty: t = n()
+        Report "n() [Long variable]", t
+        t = Empty: t = s()
+        Report "s() [String variable]", t
+        t = Empty: t = Chr$(65)()
+        Report "Chr$(65)() [String]", t
+
+        ' A Variant: the parentheses raise an error.
+        t = Empty: t = Chr(65)()
+        Report "Chr(65)() [Variant]", t
+        t = Empty: t = VarLong()()
+        Report "VarLong()() [Variant]", t
+        t = Empty: t = v()
+        Report "v() [Variant variable]", t
+    End Sub
+
+End Module
