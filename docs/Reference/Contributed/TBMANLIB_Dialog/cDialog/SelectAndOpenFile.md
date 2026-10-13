@@ -10,12 +10,12 @@ has_toc: false
 
 Shows the Open dialog and opens the file or files that the user chose.
 
-Syntax: *object*.**SelectAndOpenFile** ( ) **As Long**
+Syntax: *object*.**SelectAndOpenFile** ( ) **As LongPtr**
 
 *object*
 : *required* An object expression that evaluates to a **cDialog**.
 
-Returns a **Long**:
+Returns a **LongPtr** (a **Long** in a 32-bit program, a **LongLong** in a 64-bit one):
 
 - 0 when the user cancelled the dialog or the dialog failed.
 - Otherwise the value that [**OpenFile**](OpenFile) returned for the path. A value above 32 means that the file was opened.
@@ -24,10 +24,7 @@ Returns a **Long**:
 
 **SelectAndOpenFile** calls [**ShowOpen**](ShowOpen) with the current properties of the object, so every option that applies to the Open dialog ([**Filter**](Filter), [**InitialDir**](InitialDir), [**MultiSelect**](MultiSelect) and the others) applies here. It then calls **OpenFile** with the verb `open` for the path. The file is run as **OpenFile** describes: a program starts, and a document opens in its associated program.
 
-> [!WARNING]
-> With [**MultiSelect**](MultiSelect) **True** and several files selected, **ShowOpen** returns only the folder of the files, so **SelectAndOpenFile** passes the folder to **OpenFile**, which opens the folder in File Explorer. None of the selected files is opened, and no error is raised.
-
-The source also has a branch for an array result, which opens each element and returns 1. **ShowOpen** never returns an array, so the branch never runs.
+With [**MultiSelect**](MultiSelect) **True** and two or more files selected, **ShowOpen** returns an array, and **SelectAndOpenFile** calls **OpenFile** for each element in turn. It then returns 1, whatever the individual calls returned, so the return value does not report a file that failed to open. For a single file it returns what **OpenFile** returned.
 
 ## Example
 
@@ -35,7 +32,7 @@ This example lets the user pick any file and opens it.
 
 ```tb check_build
 Dim dlg As New cDialog
-Dim result As Long
+Dim result As LongPtr
 
 dlg.DialogTitle = "Open a document"
 dlg.SetDocumentFilters

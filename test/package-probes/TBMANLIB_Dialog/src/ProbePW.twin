@@ -1,0 +1,168 @@
+' ProbePW: the scenarios d30..d34 of the TBMANLIB_Dialog probe: cDialogPassword.
+'
+' Every password typed here is a made-up string. The driver reports whether each Edit control is
+' masked (EM_GETPASSWORDCHAR); a typed string is shown in the output as the driver typed it.
+
+Module ProbePW
+
+    Public Sub Run(ByVal id As String)
+        Select Case id
+            Case "d30": D30
+            Case "d31": D31
+            Case "d32": D32
+            Case "d33": D33
+            Case "d33b": D33b
+            Case "d34": D34
+            Case "d34b": D34b
+        End Select
+    End Sub
+
+    Private Function B(ByVal x As Boolean) As String
+        B = IIf(x, "True", "False")
+    End Function
+
+    Private Sub D30()
+        AutoD.SayD "== d30 cDialogPassword: defaults, the InputBox, its mask, OK, cancel"
+        Dim c As New cDialogPassword
+        Dim ok As Boolean
+        AutoD.SayD "  (a) a new object:"
+        AutoD.SayD "    Title=" & AutoD.QD(c.Title) & " Prompt=" & AutoD.QD(c.Prompt) & " Password=" & AutoD.QD(c.Password) & " PasswordChar=" & AutoD.QD(c.PasswordChar)
+        AutoD.SayD "    ShowStrength=" & B(c.ShowStrength) & " RequireConfirm=" & B(c.RequireConfirm) & " MinLength=" & c.MinLength & " MaxLength=" & c.MaxLength & " RequireUppercase=" & B(c.RequireUppercase) & " RequireLowercase=" & B(c.RequireLowercase) & " RequireNumber=" & B(c.RequireNumber) & " RequireSpecial=" & B(c.RequireSpecial)
+        AutoD.SayD "    AllowShowPassword=" & B(c.AllowShowPassword) & " MaxAttempts=" & c.MaxAttempts & " OwnerHwnd=" & c.OwnerHwnd & " Cancelled=" & B(c.Cancelled)
+        AutoD.gMaxTicksD = 40
+        AutoD.SayD "  (b) ShowDialog, type [Zq7-demo-xx], OK:"
+        AutoD.ArmD "d30b", "t=Zq7-demo-xx|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " Cancelled=" & B(c.Cancelled) & " Password=" & AutoD.QD(c.Password)
+        AutoD.SayD "  (c) ShowDialog again, Cancel:"
+        AutoD.ArmD "d30c", "id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " Cancelled=" & B(c.Cancelled) & " Password=" & AutoD.QD(c.Password)
+        AutoD.SayD "  (d) Reset:"
+        c.Reset
+        AutoD.SayD "    Password=" & AutoD.QD(c.Password) & " Cancelled=" & B(c.Cancelled)
+    End Sub
+
+    Private Sub D31()
+        AutoD.SayD "== d31 cDialogPassword: failed validation and attempts"
+        Dim c As New cDialogPassword
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 70
+        AutoD.SayD "  (a) three bad entries, [short], [alllowercase1], [ALLUPPERCASE1], each message box answered OK:"
+        AutoD.ArmD "d31a", "t=short|id=1;id=2;t=alllowercase1|id=1;id=2;t=ALLUPPERCASE1|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " Cancelled=" & B(c.Cancelled) & " Password=" & AutoD.QD(c.Password) & " windows seen " & AutoD.gWindows
+        AutoD.SayD "  (b) MaxAttempts 0:"
+        c.MaxAttempts = 0
+        AutoD.ArmD "d31b", "none"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " Cancelled=" & B(c.Cancelled) & " windows seen " & AutoD.gWindows
+    End Sub
+
+    Private Sub D32()
+        AutoD.SayD "== d32 cDialogPassword: RequireConfirm"
+        Dim c As New cDialogPassword
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 70
+        c.RequireConfirm = True
+        AutoD.SayD "  (a) [Zq7-demo-xx], confirm [other-text-1A] (a mismatch), message box OK, then [Zq7-demo-xx] twice:"
+        AutoD.ArmD "d32a", "t=Zq7-demo-xx|id=1;t=other-text-1A|id=1;id=2;t=Zq7-demo-xx|id=1;t=Zq7-demo-xx|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " Cancelled=" & B(c.Cancelled) & " Password=" & AutoD.QD(c.Password) & " windows seen " & AutoD.gWindows
+        AutoD.SayD "  (b) the confirm box cancelled:"
+        AutoD.ArmD "d32b", "t=Zq7-demo-xx|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " Cancelled=" & B(c.Cancelled) & " Password=" & AutoD.QD(c.Password)
+    End Sub
+
+    Private Sub D33()
+        AutoD.SayD "== d33 cDialogPassword: ShowChangeDialog"
+        Dim c As New cDialogPassword
+        Dim ok As Boolean
+        Dim old As String
+        AutoD.gMaxTicksD = 70
+        old = "Old-demo-pw1"
+        AutoD.SayD "  (a) old password supplied; steps: current [Old-demo-pw1], new [New-demo-pw2], confirm [New-demo-pw2]:"
+        AutoD.ArmD "d33a", "t=Old-demo-pw1|id=1;t=New-demo-pw2|id=1;t=New-demo-pw2|id=1"
+        ok = c.ShowChangeDialog(old)
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " Cancelled=" & B(c.Cancelled) & " Password=" & AutoD.QD(c.Password) & " oldPassword now " & AutoD.QD(old) & " windows seen " & AutoD.gWindows
+        AutoD.SayD "  (b) wrong current password [nope], message box OK:"
+        AutoD.ArmD "d33b", "t=nope|id=1;id=2"
+        ok = c.ShowChangeDialog(old)
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " Cancelled=" & B(c.Cancelled) & " oldPassword still " & AutoD.QD(old)
+        old = ""
+        AutoD.SayD "  (c) oldPassword empty, so no check; current [anything], new [anything], new again:"
+        AutoD.ArmD "d33c", "t=anything|id=1;t=Newer-demo-pw3|id=1;t=Newer-demo-pw3|id=1"
+        ok = c.ShowChangeDialog(old)
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " oldPassword now " & AutoD.QD(old)
+    End Sub
+
+    Private Sub D33b()
+        AutoD.SayD "== d33b cDialogPassword: ShowChangeDialog, the ways it ends without a change"
+        Dim c As New cDialogPassword
+        Dim ok As Boolean
+        Dim old As String
+        AutoD.gMaxTicksD = 70
+        old = "Old-demo-pw1"
+        AutoD.SayD "  (a) new password too short [abc]:"
+        AutoD.ArmD "d33b-a", "t=Old-demo-pw1|id=1;t=abc|id=1;id=2"
+        ok = c.ShowChangeDialog(old)
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " Cancelled=" & B(c.Cancelled) & " oldPassword " & AutoD.QD(old) & " windows seen " & AutoD.gWindows
+        AutoD.SayD "  (b) new password equal to the old one:"
+        AutoD.ArmD "d33b-b", "t=Old-demo-pw1|id=1;t=Old-demo-pw1|id=1;id=2"
+        ok = c.ShowChangeDialog(old)
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " Cancelled=" & B(c.Cancelled) & " oldPassword " & AutoD.QD(old) & " windows seen " & AutoD.gWindows
+        AutoD.SayD "  (c) confirmation differs:"
+        AutoD.ArmD "d33b-c", "t=Old-demo-pw1|id=1;t=New-demo-pw2|id=1;t=Other-demo-pw3|id=1;id=2"
+        ok = c.ShowChangeDialog(old)
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " Cancelled=" & B(c.Cancelled) & " oldPassword " & AutoD.QD(old) & " windows seen " & AutoD.gWindows
+        AutoD.SayD "  (d) cancelled at the second box:"
+        AutoD.ArmD "d33b-d", "t=Old-demo-pw1|id=1;id=2"
+        ok = c.ShowChangeDialog(old)
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & " Cancelled=" & B(c.Cancelled) & " oldPassword " & AutoD.QD(old) & " windows seen " & AutoD.gWindows
+    End Sub
+
+    Private Sub D34b()
+        AutoD.SayD "== d34b cDialogPassword: an empty Title"
+        Dim c As New cDialogPassword
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 40
+        c.Title = ""
+        AutoD.ArmD "d34b", "id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "  -> " & B(ok)
+    End Sub
+
+    Private Sub D34()
+        AutoD.SayD "== d34 cDialogPassword: PasswordChar"
+        Dim c As New cDialogPassword
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 40
+        c.PasswordChar = "#"
+        AutoD.SayD "  PasswordChar = [#] -> " & AutoD.QD(c.PasswordChar)
+        c.PasswordChar = "abc"
+        AutoD.SayD "  PasswordChar = [abc] -> " & AutoD.QD(c.PasswordChar)
+        c.PasswordChar = ""
+        AutoD.SayD "  PasswordChar = [] -> " & AutoD.QD(c.PasswordChar)
+        c.PasswordChar = "#"
+        AutoD.ArmD "d34", "id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "  -> " & B(ok)
+    End Sub
+
+End Module

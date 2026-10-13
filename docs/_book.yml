@@ -544,13 +544,6 @@ parts:
         landing_is_target: true
         outline_closed: true
 
-      - title: TBMANLIB_Dialog Package
-        subtitle: Open, Save and folder dialogs in a class, with file filters and path helpers
-        landing_page: /tB/Packages/Contributed/TBMANLIB_Dialog/
-        page: /tB/Packages/Contributed/TBMANLIB_Dialog/
-        landing_is_target: true
-        outline_closed: true
-
       - title: TBMANLIB_ListBoxHScroll Package
         subtitle: A horizontal scroll bar for a ListBox
         landing_page: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
@@ -659,6 +652,13 @@ parts:
         subtitle: A diagnostic report of the computer and its processes, as text, JSON or HTML
         landing_page: /tB/Packages/Contributed/TBMANLIB_Diagnostic/
         page: /tB/Packages/Contributed/TBMANLIB_Diagnostic/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: TBMANLIB_Dialog Package
+        subtitle: Open, Save, folder, Color, Font, Print and other dialogs in classes, with file filters and path helpers
+        landing_page: /tB/Packages/Contributed/TBMANLIB_Dialog/
+        page: /tB/Packages/Contributed/TBMANLIB_Dialog/
         landing_is_target: true
         outline_closed: true
 

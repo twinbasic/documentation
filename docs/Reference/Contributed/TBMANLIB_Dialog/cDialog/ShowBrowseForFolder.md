@@ -17,12 +17,9 @@ Syntax: *object*.**ShowBrowseForFolder** ( ) **As String**
 
 Returns a **String**, the path of the chosen folder, or an empty string when the user cancelled.
 
-> [!WARNING]
-> **ShowBrowseForFolder** works in 32-bit programs only. In a 64-bit program it ends the program with an access violation (exception 0xC0000005 in KERNELBASE.dll) before any dialog appears, whatever [**NewDialogStyle**](NewDialogStyle) holds, and unsaved data is lost. The class declares the handles and pointers of `BROWSEINFO`, and the item list that `SHBrowseForFolder` returns, as **Long**, which is the wrong size in a 64-bit program.
-
 ## Remarks
 
-**ShowBrowseForFolder** calls `SHBrowseForFolder` with a `BROWSEINFO` structure, then turns the item that the user chose into a path with `SHGetPathFromIDListA` and frees the item with `CoTaskMemFree`. Two properties apply:
+**ShowBrowseForFolder** calls `SHBrowseForFolderW` with a `BROWSEINFO` structure, then turns the item that the user chose into a path with `SHGetPathFromIDListW` and frees the item with `CoTaskMemFree`. Two properties apply:
 
 | Property | What **ShowBrowseForFolder** passes |
 |---|---|
@@ -36,7 +33,7 @@ The dialog does not start in the folder that [**InitialDir**](InitialDir) holds.
 > [!NOTE]
 > When the user confirms a folder, **ShowBrowseForFolder** stores the path in [**InitialDir**](InitialDir). A [**ShowOpen**](ShowOpen) or [**ShowSave**](ShowSave) after it passes that folder to Windows as its starting folder. A path typed into the edit box of the new-style dialog and confirmed is returned and stored in the same way. A cancelled dialog returns an empty string and leaves **InitialDir** as it was. [**FileName**](FileName) is not used or changed.
 
-The class reads the path with the ANSI function `SHGetPathFromIDListA`, into a buffer of 260 characters. An empty string results when the user cancels, and also when Windows cannot turn the chosen item into a path. The method raises no error.
+The class uses the Unicode functions and reads the path into a buffer of 260 characters, so a folder name with characters that the ANSI code page lacks is returned intact. The method works in 32-bit and in 64-bit programs. An empty string results when the user cancels, and also when Windows cannot turn the chosen item into a path. The method raises no error.
 
 ## Example
 

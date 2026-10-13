@@ -15,7 +15,7 @@ Syntax: *object*.**ShowOpen** ( ) **As Variant**
 *object*
 : *required* An object expression that evaluates to a **cDialog**.
 
-Returns a **Variant** that always holds a **String**. When the user confirms the dialog, it holds the full path of the chosen file. When the user cancels, it holds an empty string. With [**MultiSelect**](MultiSelect) **True** and several files selected, it holds only a folder, as [below](#several-files) describes.
+Returns a **Variant**. When the user confirms the dialog, it holds the full path of the chosen file as a **String**. When the user cancels, it holds an empty string. With [**MultiSelect**](MultiSelect) **True** and two or more files selected, it holds a 0-based array of **String** values, one full path for each file, as [below](#several-files) describes.
 
 ## Remarks
 
@@ -41,14 +41,11 @@ A flag is set when its property is **True**. The method always sets `OFN_LONGNAM
 
 An empty string means that the user cancelled, or that Windows reported a failure, such as a selected path that does not fit into the buffer, and no value tells which of the two happened. The buffer holds 260 characters, or 32,768 when [**MultiSelect**](MultiSelect) is **True** or [**FileName**](FileName) is not empty. Neither case raises an error.
 
-A confirmed **ShowOpen** also stores the path it returns in [**FileName**](FileName), and leaves [**InitialDir**](InitialDir) as it was. A cancelled dialog changes neither. The next call therefore passes the previous path as the initial file name.
+A confirmed **ShowOpen** that returns a **String** also stores it in [**FileName**](FileName), and leaves [**InitialDir**](InitialDir) as it was. A cancelled dialog changes neither. The next call therefore passes the previous path as the initial file name.
 
 ### Several files
 
-> [!WARNING]
-> With [**MultiSelect**](MultiSelect) **True** and two or more files selected, **ShowOpen** returns a **String** that holds only the folder of the files, never an array, and [**FileName**](FileName) becomes the folder. The names of the files are lost, and no error is raised. One selected file gives its full path.
-
-Windows returns the selected names in one buffer, and the class cuts that buffer at its first null character, which ends the folder, before it looks for the separators between the names. The code that splits the names and returns an array of full paths therefore never runs. See [**MultiSelect**](MultiSelect) for a way to detect the result.
+With [**MultiSelect**](MultiSelect) **True**, Windows returns the folder and then the name of each selected file in one buffer. **ShowOpen** joins the folder to each name with a backslash and returns the full paths as an array of **String** values, in the order in which the names stand in the File name box, and sets [**FileName**](FileName) to an empty string. One selected file gives its full path as a **String**, as without **MultiSelect**. Test the result with **IsArray**, or call [**SelectFiles**](SelectFiles), which returns a **Collection** in both cases.
 
 ## Example
 
@@ -76,6 +73,7 @@ End If
 - [ShowSave](ShowSave) method -- shows the Save As dialog
 - [ShowBrowseForFolder](ShowBrowseForFolder) method -- shows the Browse For Folder dialog
 - [SelectAndOpenFile](SelectAndOpenFile) method -- shows this dialog and opens the file
+- [SelectFiles](SelectFiles) method -- shows this dialog and returns the files as a collection
 - [MultiSelect](MultiSelect) property -- lets the user select several files
 - [FileName](FileName) property -- holds the path afterwards
 - [cDialog](.) class -- overview

@@ -1,0 +1,580 @@
+' DrvB1: a scripted dialog driver for the common dialogs of TBMANLIB_Dialog
+' (cDialogColor, cDialogFont, cDialogPrint, cDialogPageSetup, cDialogFindReplace).
+'
+' Auto.twin drives a file dialog with one action (type, press OK, press Cancel). The Color,
+' Font, Print, Page Setup and Find dialogs need more: set the text of a control, click a check
+' box or a radio button, choose an item of a combo box, read the state of a control. So a
+' scenario arms this driver with a script, a list of steps separated by "|", then shows the
+' dialog; a thread timer, dispatched by the dialog's own message loop (modal dialogs) or by
+' DPump (the modeless Find dialog), finds the dialog and runs one step per tick.
+'
+' Steps (the first word is the verb; ID is a control id, decimal or &H...):
+'   rec               list the dialog: title, every child with class, id, visible, enabled, check state, text
+'   ctl ID            one control: the same line, and for a combo box its count and current item
+'   items ID [N]      the first N (default 8) items of a combo box or list box, and the count
+'   settext ID text   WM_SETTEXT on the control
+'   click ID          BM_CLICK on the control (a button, a check box or a radio button)
+'   cbsel ID n        choose item n (0-based) of a combo box and notify the dialog (CBN_SELCHANGE)
+'   cbfind ID text    choose the first item of a combo box that starts with text, and notify the dialog
+'   needfind          cancel the dialog and end the script unless the last cbfind chose an item
+'   msg N             answer the next message boxes with button N (1 OK, 2 Cancel, 6 Yes, 7 No)
+'   wait N            wait N ticks
+'   ok / cancel       click the button with id 1 / 2
+'   quit              (modeless) post WM_QUIT, which ends DPump
+'
+' The read steps (rec, ctl, items) take no time of their own; every other step takes one tick
+' (TICK_MS). A dialog still open after the script, or open after DMaxTicks ticks, is cancelled;
+' a window that cannot be cancelled ends the process (ExitProcess 98), so a run never hangs.
+' Every line is written with TbRun.Out, so that it reaches the file the runner reads at once.
+
+Module DrvB1
+
+    Private Type MSG4
+        hWnd As LongPtr
+        message As Long
+        wParam As LongPtr
+        lParam As LongPtr
+        time As Long
+        ptX As Long
+        ptY As Long
+    End Type
+
+    Private Declare PtrSafe Function SetTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr
+    Private Declare PtrSafe Function KillTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal uIDEvent As LongPtr) As Long
+    Private Declare PtrSafe Function GetCurrentThreadId Lib "kernel32" () As Long
+    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+    Private Declare PtrSafe Function EnumThreadWindows Lib "user32" (ByVal dwThreadId As Long, ByVal lpfn As LongPtr, ByVal lParam As LongPtr) As Long
+    Private Declare PtrSafe Function EnumChildWindows Lib "user32" (ByVal hWndParent As LongPtr, ByVal lpEnumFunc As LongPtr, ByVal lParam As LongPtr) As Long
+    Private Declare PtrSafe Function GetClassNameW Lib "user32" (ByVal hWnd As LongPtr, ByVal lpClassName As LongPtr, ByVal nMaxCount As Long) As Long
+    Private Declare PtrSafe Function IsWindowVisible Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function IsWindowEnabled Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function IsWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetDlgCtrlID Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetParent Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetDlgItem Lib "user32" (ByVal hDlg As LongPtr, ByVal nIDDlgItem As Long) As LongPtr
+    Private Declare PtrSafe Function GetWindowLongW Lib "user32" (ByVal hWnd As LongPtr, ByVal nIndex As Long) As Long
+    Private Declare PtrSafe Function EndMenu Lib "user32" () As Long
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function PostMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As Long
+    Private Declare PtrSafe Sub PostQuitMessage Lib "user32" (ByVal nExitCode As Long)
+    Private Declare PtrSafe Function GetMessageW Lib "user32" (ByRef lpMsg As MSG4, ByVal hWnd As LongPtr, ByVal wMsgFilterMin As Long, ByVal wMsgFilterMax As Long) As Long
+    Private Declare PtrSafe Function TranslateMessage Lib "user32" (ByRef lpMsg As MSG4) As Long
+    Private Declare PtrSafe Function DispatchMessageW Lib "user32" (ByRef lpMsg As MSG4) As LongPtr
+    Private Declare PtrSafe Function IsDialogMessageW Lib "user32" (ByVal hDlg As LongPtr, ByRef lpMsg As MSG4) As Long
+
+    Private Const WM_GETTEXT As Long = &HD
+    Private Const WM_GETTEXTLENGTH As Long = &HE
+    Private Const WM_SETTEXT As Long = &HC
+    Private Const WM_CLOSE As Long = &H10
+    Private Const WM_COMMAND As Long = &H111
+    Private Const BM_GETCHECK As Long = &HF0
+    Private Const BM_CLICK As Long = &HF5
+    Private Const TDM_CLICK_BUTTON As Long = &H466
+    Private Const CB_GETCOUNT As Long = &H146
+    Private Const CB_GETCURSEL As Long = &H147
+    Private Const CB_GETLBTEXT As Long = &H148
+    Private Const CB_GETLBTEXTLEN As Long = &H149
+    Private Const CB_SETCURSEL As Long = &H14E
+    Private Const LB_GETCOUNT As Long = &H18B
+    Private Const LB_GETCURSEL As Long = &H188
+    Private Const LB_GETTEXT As Long = &H189
+    Private Const LB_GETTEXTLEN As Long = &H18A
+    Private Const LVM_GETITEMCOUNT As Long = &H1004
+    Private Const GWL_STYLE As Long = -16
+    Private Const CBN_SELCHANGE As Long = 1
+
+    Private Const TICK_MS As Long = 250
+
+    ' The folder the probe replaces in every line it writes, so that no path of the machine is printed.
+    Public DRoot As String
+
+    ' What the last episode saw, for the probe to print.
+    Public DSeenMain As Boolean     ' the dialog appeared
+    Public DTimedOut As Boolean
+    Public DMsgCount As Long        ' message boxes the dialog raised
+    Public DTicks As Long           ' ticks the episode lasted: 0 means the call returned within one tick
+    Public DStayedOpen As Boolean   ' the dialog was still open after the script ended
+
+    ' The Print and Page Setup dialogs show the name, driver and port of the printers of the
+    ' computer: with DMask the driver prints no combo box text and no printer status text.
+    Public DMask As Boolean
+
+    Public DMaxTicks As Long = 16
+    Public DModeless As Boolean     ' the dialog is driven from DPump: the time-out ends the loop
+    Public DMainDelay As Long = 2   ' ticks between the first sight of the dialog and the first step
+
+    Private mTag As String
+    Private mSteps() As String
+    Private mStepN As Long
+    Private mStepI As Long
+    Private mTimerId As LongPtr
+    Private mTick As Long
+    Private mMainH As LongPtr
+    Private mMainTick As Long
+    Private mNextTick As Long
+    Private mScriptDone As Boolean
+    Private mFindOk As Boolean
+    Private mGoneTick As Long
+    Private mDoneTick As Long
+    Private mMsgSeen(0 To 31) As LongPtr
+    Private mMsgSeenN As Long
+    Private mMsgWant As Long
+    Private mMsgTick As Long
+    Private mTop(0 To 63) As LongPtr
+    Private mTopN As Long
+    Private mChH(0 To 255) As LongPtr
+    Private mChN As Long
+
+    Public Sub DSay(ByVal s As String)
+        If Len(DRoot) > 0 Then s = Replace(s, DRoot, "<root>")
+        TbRun.Out s
+    End Sub
+
+    ' A string in brackets, with its length; a null character is shown as <NUL>.
+    Public Function DQ(ByVal s As String) As String
+        DQ = "[" & Replace(s, vbNullChar, "<NUL>") & "] len=" & Len(s)
+    End Function
+
+    '=========================================================================================
+    ' Arming
+    '=========================================================================================
+
+    Public Sub DArm(ByVal tag As String, ByVal script As String)
+        mTag = tag
+        mSteps = Split(script, "|")
+        mStepN = UBound(mSteps) + 1
+        mStepI = 0
+        mTick = 0
+        mMainH = 0
+        mMainTick = 0
+        mNextTick = 0
+        mScriptDone = False
+        mGoneTick = 0
+        mDoneTick = 0
+        mMsgSeenN = 0
+        mMsgWant = 1
+        DMsgCount = 0
+        DSeenMain = False
+        DTimedOut = False
+        DStayedOpen = False
+        DTicks = 0
+        mTimerId = SetTimer(0, 0, TICK_MS, AddressOf DTimer)
+    End Sub
+
+    Public Sub DDisarm()
+        If mTimerId <> 0 Then KillTimer 0, mTimerId
+        mTimerId = 0
+        DTicks = mTick
+    End Sub
+
+    Public Sub DWrap(ByVal what As String)
+        DSay "  after " & what & ": dialogSeen=" & DSeenMain & " stayedOpen=" & DStayedOpen & " timedOut=" & DTimedOut & " msgBoxes=" & DMsgCount & " ticks=" & mTick
+    End Sub
+
+    ' The message loop for a modeless dialog: runs until a "quit" step (or the time-out) posts WM_QUIT.
+    Public Sub DPump()
+        Dim m As MSG4
+        Dim r As Long
+        DModeless = True
+        Do
+            r = GetMessageW(m, 0, 0, 0)
+            If r <= 0 Then Exit Do
+            TranslateMessage m
+            DispatchMessageW m
+        Loop
+        DModeless = False
+    End Sub
+
+    '=========================================================================================
+    ' Windows
+    '=========================================================================================
+
+    Public Function DEnumTop(ByVal hWnd As LongPtr, ByVal lParam As LongPtr) As Long
+        If mTopN <= 63 Then
+            mTop(mTopN) = hWnd
+            mTopN = mTopN + 1
+        End If
+        DEnumTop = 1
+    End Function
+
+    Public Function DEnumChild(ByVal hWnd As LongPtr, ByVal lParam As LongPtr) As Long
+        If mChN <= 255 Then
+            mChH(mChN) = hWnd
+            mChN = mChN + 1
+        End If
+        DEnumChild = 1
+    End Function
+
+    Private Function ClassOf(ByVal h As LongPtr) As String
+        Dim s As String = String$(256, 0)
+        Dim n As Long = GetClassNameW(h, StrPtr(s), 256)
+        ClassOf = Left$(s, n)
+    End Function
+
+    Private Function TextOf(ByVal h As LongPtr) As String
+        Dim n As Long = CLng(SendMessageW(h, WM_GETTEXTLENGTH, 0, 0))
+        Dim s As String = String$(n + 2, 0)
+        n = CLng(SendMessageW(h, WM_GETTEXT, n + 1, StrPtr(s)))
+        TextOf = Left$(s, n)
+    End Function
+
+    ' All descendants of h, copied into list(); returns how many.
+    Private Function Children(ByVal h As LongPtr, ByRef list() As LongPtr) As Long
+        Dim i As Long
+        mChN = 0
+        EnumChildWindows h, AddressOf DEnumChild, 0
+        For i = 0 To mChN - 1
+            list(i) = mChH(i)
+        Next
+        Children = mChN
+    End Function
+
+    ' A common dialog has an edit box, a combo box, a tree or a list view; a message box does not.
+    Private Function IsMain(ByVal h As LongPtr) As Boolean
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim c As String
+        Dim n As Long = Children(h, list)
+        For i = 0 To n - 1
+            c = ClassOf(list(i))
+            If c = "Edit" Or c = "ComboBoxEx32" Or c = "SysTreeView32" Or c = "ComboBox" Or c = "SysListView32" Or c = "ListBox" Then
+                IsMain = True
+                Exit Function
+            End If
+        Next
+    End Function
+
+    Private Function CtlLine(ByVal h As LongPtr) As String
+        Dim cls As String = ClassOf(h)
+        Dim s As String
+        Dim style As Long = GetWindowLongW(h, GWL_STYLE)
+        s = cls & " id=" & GetDlgCtrlID(h) & " vis=" & IsWindowVisible(h) & " ena=" & IsWindowEnabled(h)
+        If cls = "Button" Then s = s & " chk=" & CLng(SendMessageW(h, BM_GETCHECK, 0, 0)) & " btnstyle=" & (style And &HF&)
+        If cls = "ComboBox" Then s = s & " count=" & CLng(SendMessageW(h, CB_GETCOUNT, 0, 0)) & " cursel=" & CLng(SendMessageW(h, CB_GETCURSEL, 0, 0))
+        If cls = "ListBox" Then s = s & " count=" & CLng(SendMessageW(h, LB_GETCOUNT, 0, 0)) & " cursel=" & CLng(SendMessageW(h, LB_GETCURSEL, 0, 0))
+        If cls = "SysListView32" Then s = s & " count=" & CLng(SendMessageW(h, LVM_GETITEMCOUNT, 0, 0))
+        If DMask And (cls = "ComboBox" Or (cls = "Static" And GetDlgCtrlID(h) >= 1098 And GetDlgCtrlID(h) <= 1101)) Then
+            s = s & " text=<masked>"
+        Else
+            s = s & " text=" & DQ(TextOf(h))
+        End If
+        CtlLine = s
+    End Function
+
+    Private Function ParseId(ByVal s As String) As Long
+        ParseId = CLng(Val(Trim$(s)))
+    End Function
+
+    '=========================================================================================
+    ' Steps
+    '=========================================================================================
+
+    Private Sub StepRec(ByVal h As LongPtr)
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long = Children(h, list)
+        DSay "    rec: window title=" & DQ(TextOf(h)) & " class=" & ClassOf(h) & " children=" & n
+        For i = 0 To n - 1
+            DSay "    child " & CtlLine(list(i)) & " parent=" & ClassOf(GetParent(list(i)))
+        Next
+    End Sub
+
+    Private Sub StepItems(ByVal h As LongPtr, ByVal id As Long, ByVal maxN As Long)
+        Dim c As LongPtr = GetDlgItem(h, id)
+        Dim cnt As Long
+        Dim k As Long
+        Dim ln As Long
+        Dim buf As String
+        Dim isCombo As Boolean
+        If c = 0 Then
+            DSay "    items " & id & ": no such control"
+            Exit Sub
+        End If
+        isCombo = (ClassOf(c) = "ComboBox")
+        If isCombo Then cnt = CLng(SendMessageW(c, CB_GETCOUNT, 0, 0)) Else cnt = CLng(SendMessageW(c, LB_GETCOUNT, 0, 0))
+        DSay "    items " & id & ": count=" & cnt & " cursel=" & CLng(SendMessageW(c, IIf(isCombo, CB_GETCURSEL, LB_GETCURSEL), 0, 0))
+        For k = 0 To cnt - 1
+            If k >= maxN Then Exit For
+            If isCombo Then ln = CLng(SendMessageW(c, CB_GETLBTEXTLEN, k, 0)) Else ln = CLng(SendMessageW(c, LB_GETTEXTLEN, k, 0))
+            buf = String$(ln + 2, 0)
+            If isCombo Then SendMessageW c, CB_GETLBTEXT, k, StrPtr(buf) Else SendMessageW c, LB_GETTEXT, k, StrPtr(buf)
+            If DMask And Left$(buf, 10) <> "Microsoft " Then
+                DSay "      item " & k & ": <masked>"
+            Else
+                DSay "      item " & k & ": " & DQ(Left$(buf, ln))
+            End If
+        Next
+    End Sub
+
+    Private Sub StepNotify(ByVal h As LongPtr, ByVal c As LongPtr, ByVal id As Long)
+        PostMessageW h, WM_COMMAND, (CBN_SELCHANGE * 65536) Or id, c
+    End Sub
+
+    Private Sub StepCbFind(ByVal h As LongPtr, ByVal id As Long, ByVal txt As String)
+        Dim c As LongPtr = GetDlgItem(h, id)
+        Dim cnt As Long
+        Dim k As Long
+        Dim ln As Long
+        Dim buf As String
+        mFindOk = False
+        If c = 0 Then
+            DSay "    cbfind " & id & ": no such control"
+            Exit Sub
+        End If
+        cnt = CLng(SendMessageW(c, CB_GETCOUNT, 0, 0))
+        For k = 0 To cnt - 1
+            ln = CLng(SendMessageW(c, CB_GETLBTEXTLEN, k, 0))
+            buf = String$(ln + 2, 0)
+            SendMessageW c, CB_GETLBTEXT, k, StrPtr(buf)
+            If LCase$(Left$(Left$(buf, ln), Len(txt))) = LCase$(txt) Then
+                SendMessageW c, CB_SETCURSEL, k, 0
+                StepNotify h, c, id
+                mFindOk = True
+                DSay "    cbfind " & id & " " & DQ(txt) & ": chose item " & k & " " & DQ(Left$(buf, ln))
+                Exit Sub
+            End If
+        Next
+        DSay "    cbfind " & id & " " & DQ(txt) & ": no item starts with it (count=" & cnt & ")"
+    End Sub
+
+    ' Runs the steps from mStepI on; returns after the first step that takes time.
+    Private Sub RunSteps(ByVal h As LongPtr)
+        Dim st As String
+        Dim verb As String
+        Dim rest As String
+        Dim sp As Long
+        Dim id As Long
+        Dim c As LongPtr
+        Dim sp2 As Long
+        Do While mStepI < mStepN
+            st = Trim$(mSteps(mStepI))
+            mStepI = mStepI + 1
+            If Len(st) = 0 Then GoTo NextStep
+            sp = InStr(st, " ")
+            If sp > 0 Then
+                verb = LCase$(Left$(st, sp - 1))
+                rest = Mid$(st, sp + 1)
+            Else
+                verb = LCase$(st)
+                rest = ""
+            End If
+            Select Case verb
+                Case "rec"
+                    StepRec h
+                Case "ctl"
+                    id = ParseId(rest)
+                    c = GetDlgItem(h, id)
+                    If c = 0 Then DSay "    ctl " & id & ": no such control" Else DSay "    ctl " & CtlLine(c)
+                Case "items"
+                    sp2 = InStr(rest, " ")
+                    If sp2 > 0 Then StepItems h, ParseId(Left$(rest, sp2 - 1)), ParseId(Mid$(rest, sp2 + 1)) Else StepItems h, ParseId(rest), 8
+                Case "settext"
+                    sp2 = InStr(rest, " ")
+                    id = ParseId(Left$(rest, sp2 - 1))
+                    c = GetDlgItem(h, id)
+                    If c = 0 Then
+                        DSay "    settext " & id & ": no such control"
+                    Else
+                        SendMessageW c, WM_SETTEXT, 0, StrPtr(Mid$(rest, sp2 + 1))
+                        DSay "    settext " & id & " " & DQ(Mid$(rest, sp2 + 1)) & " -> now " & DQ(TextOf(c))
+                    End If
+                    mNextTick = mTick + 1
+                    Exit Sub
+                Case "click"
+                    id = ParseId(rest)
+                    c = GetDlgItem(h, id)
+                    If c = 0 Then
+                        DSay "    click " & id & ": no such control"
+                    Else
+                        DSay "    click " & id & " (" & DQ(TextOf(c)) & ", ena=" & IsWindowEnabled(c) & ")"
+                        PostMessageW c, BM_CLICK, 0, 0
+                    End If
+                    mNextTick = mTick + 1
+                    Exit Sub
+                Case "cbsel"
+                    sp2 = InStr(rest, " ")
+                    id = ParseId(Left$(rest, sp2 - 1))
+                    c = GetDlgItem(h, id)
+                    If c = 0 Then
+                        DSay "    cbsel " & id & ": no such control"
+                    Else
+                        SendMessageW c, CB_SETCURSEL, ParseId(Mid$(rest, sp2 + 1)), 0
+                        StepNotify h, c, id
+                        DSay "    cbsel " & id & " " & Mid$(rest, sp2 + 1) & " -> cursel=" & CLng(SendMessageW(c, CB_GETCURSEL, 0, 0)) & " text=" & DQ(TextOf(c))
+                    End If
+                    mNextTick = mTick + 1
+                    Exit Sub
+                Case "cbfind"
+                    sp2 = InStr(rest, " ")
+                    StepCbFind h, ParseId(Left$(rest, sp2 - 1)), Mid$(rest, sp2 + 1)
+                    mNextTick = mTick + 1
+                    Exit Sub
+                Case "needfind"
+                    If Not mFindOk Then
+                        DSay "    needfind: the last cbfind found nothing, cancelling"
+                        PressId h, 2
+                        mScriptDone = True
+                        mDoneTick = mTick
+                        mNextTick = mTick + 1
+                        Exit Sub
+                    End If
+                Case "msg"
+                    mMsgWant = ParseId(rest)
+                Case "wait"
+                    mNextTick = mTick + ParseId(rest)
+                    Exit Sub
+                Case "ok"
+                    PressId h, 1
+                    mNextTick = mTick + 1
+                    Exit Sub
+                Case "cancel"
+                    PressId h, 2
+                    mNextTick = mTick + 1
+                    Exit Sub
+                Case "quit"
+                    DSay "    quit"
+                    PostQuitMessage 0
+                    mNextTick = mTick + 1
+                    Exit Sub
+                Case Else
+                    DSay "    unknown step " & DQ(st)
+            End Select
+NextStep:
+        Loop
+        mScriptDone = True
+        mDoneTick = mTick
+    End Sub
+
+    Private Sub PressId(ByVal h As LongPtr, ByVal id As Long)
+        Dim b As LongPtr = GetDlgItem(h, id)
+        If b <> 0 Then
+            DSay "    press id " & id & " (" & DQ(TextOf(b)) & ", ena=" & IsWindowEnabled(b) & ")"
+            PostMessageW b, BM_CLICK, 0, 0
+        Else
+            DSay "    no button id " & id & "; WM_COMMAND"
+            PostMessageW h, WM_COMMAND, id, 0
+        End If
+    End Sub
+
+    '=========================================================================================
+    ' Dialogs
+    '=========================================================================================
+
+    Private Function MsgWasSeen(ByVal h As LongPtr) As Boolean
+        Dim i As Long
+        For i = 0 To mMsgSeenN - 1
+            If mMsgSeen(i) = h Then MsgWasSeen = True : Exit Function
+        Next
+    End Function
+
+    ' A message box the dialog raised: record it, and answer it with the button of the last "msg" step.
+    Private Sub HandleMsgBox(ByVal h As LongPtr)
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long
+        Dim btn As LongPtr
+        If Not MsgWasSeen(h) Then
+            If mMsgSeenN <= 31 Then
+                mMsgSeen(mMsgSeenN) = h
+                mMsgSeenN = mMsgSeenN + 1
+            End If
+            mMsgTick = mTick
+            DMsgCount = DMsgCount + 1
+            DSay "  [" & mTag & "] message box #" & DMsgCount & " title=" & DQ(TextOf(h))
+            n = Children(h, list)
+            For i = 0 To n - 1
+                Select Case ClassOf(list(i))
+                    Case "Static", "Button"
+                        DSay "    child " & ClassOf(list(i)) & " id=" & GetDlgCtrlID(list(i)) & " text=" & DQ(TextOf(list(i)))
+                End Select
+            Next
+        ElseIf mTick - mMsgTick = 1 Then
+            btn = GetDlgItem(h, mMsgWant)
+            If btn = 0 Then btn = GetDlgItem(h, 1)
+            If btn = 0 Then btn = GetDlgItem(h, 2)
+            If btn <> 0 Then
+                DSay "    answering with id " & GetDlgCtrlID(btn) & " (" & DQ(TextOf(btn)) & ")"
+                PostMessageW btn, BM_CLICK, 0, 0
+            Else
+                DSay "    answering with TDM_CLICK_BUTTON " & mMsgWant
+                PostMessageW h, TDM_CLICK_BUTTON, mMsgWant, 0
+            End If
+        End If
+        ' While a message box is up, the dialog behind it is not "still open" for lack of an answer.
+        If mScriptDone Then mDoneTick = mTick
+    End Sub
+
+    Private Sub HandleDialog(ByVal h As LongPtr)
+        If Not IsMain(h) Then
+            HandleMsgBox h
+            Exit Sub
+        End If
+        If mMainH = 0 Then
+            mMainH = h
+            mMainTick = mTick
+            DSeenMain = True
+            DSay "  [" & mTag & "] dialog seen (tick " & mTick & ") title=" & DQ(TextOf(h)) & " class=" & ClassOf(h)
+        ElseIf h = mMainH Then
+            If Not mScriptDone Then
+                If mTick - mMainTick >= DMainDelay And mTick >= mNextTick Then RunSteps h
+            ElseIf mTick - mDoneTick >= 4 Then
+                DStayedOpen = True
+                DSay "  [" & mTag & "] dialog still open " & (mTick - mDoneTick) & " ticks after the script, cancelling"
+                EndMenu
+                PressId h, 2
+                mDoneTick = mTick
+            End If
+        End If
+    End Sub
+
+    ' The timer procedure: runs inside the modal loop of the dialog, or inside DPump.
+    Public Sub DTimer(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal idEvent As LongPtr, ByVal dwTime As Long)
+        Dim i As Long
+        Dim h As LongPtr
+        Dim list(0 To 63) As LongPtr
+        Dim n As Long
+        mTick = mTick + 1
+        mTopN = 0
+        EnumThreadWindows GetCurrentThreadId(), AddressOf DEnumTop, 0
+        n = mTopN
+        For i = 0 To n - 1
+            list(i) = mTop(i)
+        Next
+        For i = 0 To n - 1
+            h = list(i)
+            If IsWindow(h) <> 0 Then
+                If IsWindowVisible(h) <> 0 Then
+                    If ClassOf(h) = "#32770" Then
+                        If mTick >= DMaxTicks Then
+                            If Not DTimedOut Then
+                                DTimedOut = True
+                                DSay "  [" & mTag & "] TIMED OUT at tick " & mTick & ", cancelling (dialog title " & DQ(TextOf(h)) & ", main dialog seen: " & DSeenMain & ")"
+                            End If
+                            EndMenu
+                            PostMessageW h, TDM_CLICK_BUTTON, 2, 0
+                            PostMessageW h, WM_CLOSE, 0, 0
+                        Else
+                            HandleDialog h
+                        End If
+                    End If
+                End If
+            End If
+        Next
+        If DModeless And mTick = DMaxTicks Then PostQuitMessage 0
+        ' A modeless dialog that has closed (Cancel, Close) ends the pump two ticks later.
+        If DModeless And mMainH <> 0 Then
+            If IsWindow(mMainH) = 0 Then
+                If mGoneTick = 0 Then
+                    mGoneTick = mTick
+                    DSay "  [" & mTag & "] the dialog window is gone (tick " & mTick & ")"
+                End If
+                If mTick - mGoneTick >= 2 Then PostQuitMessage 0
+            End If
+        End If
+        If mTick >= DMaxTicks + 6 Then
+            DSay "  [" & mTag & "] STUCK: a window could not be cancelled, ending the process"
+            ExitProcess 98
+        End If
+    End Sub
+
+End Module

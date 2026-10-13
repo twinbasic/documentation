@@ -27,10 +27,87 @@
 '   12b the default Open dialog, for comparison
 '   12c HideReadOnly = False: click the Open button's arrow, which opens its drop-down
 '   13  the properties' defaults (no dialog)
+'   14  PathCombine on twenty pairs (no dialog)
+'   15  SelectFiles: one file, two files, cancel, one file with MultiSelect
+'   16  ShowOpen with MultiSelect, three files; FileName kept before a two-file result
+'   17  SelectAndOpenFile on nonexistent files (one, two, cancel)
+'   18  ShowBrowseForFolder with a typed folder whose name has non-ANSI characters
+'
+' The cDialogEx scenarios are in ProbeEx.twin; run them with --timeout 35:
+'   x0  defaults and Reset, GetPresetFilter, the Set...Filters texts, SystemIconId (no dialog)
+'   x1  ShowOpen one file (the name only)     x2  ShowOpen MultiSelect
+'   x3  cancel                                 x4  titles of the three dialogs
+'   x5  Filter: pipe counts, the file-type list, a closing pipe, the Save As dialog
+'   x6  ShowSave: DefaultExt, OverwritePrompt   x7  FileMustExist, PathMustExist, CreatePrompt
+'   x8  NoChangeDir        x9  ShowBrowseForFolder and PickFolders    x10 icons
+'   x11 OwnerHwnd          x12 SelectFiles    x13 path helpers       x14 SelectAndOpenFile
+'   x15 InitialDir         x16 FilterIndex
+'   y1  mDialog (no dialog)   y2  IShellItem identifier   y3  GetDisplayName with both SIGDN values
+'   y4  SetDefaultFolder with the true IShellItem identifier: ENDS THE RUN with an access
+'       violation in windows.storage.dll, which is its answer; run it alone
+'
+' The common dialogs (cDialogColor, Font, Print, PageSetup, FindReplace) are in ProbeB1.twin, driven by
+' DrvB1.twin:
+'   c1  Color: defaults and conversions (no dialog)
+'   c2  Color: Cancel; the dialog as it opens
+'   c3  Color: OK with FullOpen; the edit boxes; PreventFullOpen
+'   c4  Color: typed red, green and blue; Add to Custom Colors; the custom colors afterwards
+'   c11 Font: defaults, Style, Bold, Italic, ToCssFont, ToDescription (no dialog)
+'   c12 Font: Cancel; the dialog as it opens
+'   c13 Font: OK as it opens
+'   c14 Font: a chosen face, style, size and underline
+'   c15 Font: FixedPitchOnly, ForceFontExist, ShowEffects
+'   c16 Font: MinSize, MaxSize, ScreenFontsOnly = False
+'   c17 Font: MaxSize alone, MinSize above MaxSize, a size inside the limits
+'   c21 Print: defaults; a page number that does not fit an Integer (no dialog)
+'   c22 Print: Cancel; the dialog as it opens
+'   c23 Print: OK as it opens (no device context)
+'   c24 Print: page range and selection
+'   c25 Print: AllowSelection, AllowPageRange, HidePrintToFile, AllowPrintToFile, PrintToFile
+'   c26 Print: ReturnDC (only with a virtual default printer)
+'   c27 Print: FromPage, ToPage, MinPage, MaxPage and Copies that do not fit an Integer
+'   c31 Page Setup: defaults, conversions, ToDescription (no dialog)
+'   c32 Page Setup: Cancel; the dialog as it opens
+'   c33 Page Setup: OK as it opens, in inches
+'   c34 Page Setup: Unit = Millimeters, a paper size, Landscape
+'   c35 Page Setup: AllowMargins, AllowOrientation, AllowPaper
+'   c41 Find: defaults, MessageId, UpdateFromFlags with no dialog (no dialog)
+'   c42 Find: ShowFind and ShowReplace with no owner window
+'   c43 Find: ShowFind with an owner window; Find Next; Cancel
+'   c44 Find: ShowReplace; Replace; Replace All; Cancel
+'   c45 Find: AllowUpDown, AllowMatchCase, AllowWholeWord, MatchCase, WholeWord, Direction
+'   c46 Find: what the owner window receives (lParam), with the stack reused in between
+'   c47 Find: FindText called directly, the structure in a module-level variable (the control)
+'   c48 Find: FindText called directly, the structure in a local variable, as ShowFind does
+'
+' The dialogs of the package's own making (cDialogCountdownMsgBox, cDialogDateTime, cDialogInputBox,
+' cDialogPassword, cDialogProgress) are in ProbeD.twin, ProbeDT.twin, ProbeIB.twin, ProbePW.twin and
+' ProbePG.twin, driven by AutoD.twin (ProgSink.twin receives the events of d40):
+'   d0   how the runtime's InputBox, MsgBox and MessageBoxTimeout windows are built (no class)
+'   d1   cDialogCountdownMsgBox: the window, the countdown text, Timeout, the properties after
+'   d2   cDialogCountdownMsgBox: every Show* method, the buttons, closing with the X
+'   d3   cDialogCountdownMsgBox: AutoClose False, ShowProgress False, 0 and negative seconds
+'   d4   cDialogCountdownMsgBox: an overflow of CountdownSeconds, a button value the class does not map
+'   d5   cDialogCountdownMsgBox: OwnerHwnd
+'   d10  cDialogDateTime: the InputBox, OK, cancel, an empty entry
+'   d11  cDialogDateTime: invalid entries, the Invalid box, the state afterwards
+'   d11c cDialogDateTime: a time with AM or PM, in the 12 hour format
+'   d12  cDialogDateTime: ShowDatePicker, ShowTimePicker, AM and PM
+'   d12d cDialogDateTime: time only in the 12 hour format, OK on the offered text; a good date with a bad time
+'   d20  cDialogInputBox: the InputBox, hint and length text, OK, cancel
+'   d21  cDialogInputBox: validation failures, three attempts, Value afterwards
+'   d22  cDialogInputBox: ShowInteger overflow, the quick methods
+'   d23  cDialogInputBox: OwnerHwnd, Multiline and PasswordChar
+'   d30  cDialogPassword: the InputBox, its mask, OK, cancel; Password afterwards
+'   d31  cDialogPassword: validation failures, attempts
+'   d32  cDialogPassword: RequireConfirm
+'   d33  cDialogPassword: ShowChangeDialog
+'   d34  cDialogPassword: PasswordChar "#"
+'   d40  cDialogProgress: the logic, no window (the same in a 64-bit build)
 
 Module Probe
 
-    Private Root As String
+    Public Root As String
 
     [RunAfterBuild]
     Public Sub Hook()
@@ -38,13 +115,15 @@ Module Probe
         Debug.Print "hook ran in the IDE; the dialogs run only in the exe"
     End Sub
 
-    Private Const ScenarioIds As String = ",13,1,2,3,4,5,6,6d,7,8,9,9e,11,12,12b,12c,"
+    Private Const ScenarioIds As String = ",13,1,2,3,4,5,6,6d,7,8,9,9e,11,12,12b,12c,14,15,16,17,18,x0,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,x16,y1,y2,y3,y4,c1,c2,c3,c4,c11,c12,c13,c14,c15,c16,c17,c21,c22,c23,c24,c25,c26,c27,c31,c32,c33,c34,c35,c41,c42,c43,c44,c45,c46,c47,c48,d0,d0b,d1,d2,d2b,d2c,d2t,d3,d4,d5,d10,d10b,d11,d11b,d11c,d12,d12d,d20,d20b,d21,d22,d22b,d23,d30,d31,d32,d33,d33b,d34,d34b,d40,"
 
     Public Sub Main()
         Dim sel As String = "," & Replace(Environ$("PROBE"), " ", "") & ","
         ' A folder of its own for each run, so that two runs at once do not meet.
         Root = Environ$("TEMP") & "\dlgprobe" & Environ$("PROBE_TAG")
         Auto.gRoot = Root
+        DrvB1.DRoot = Root
+        AutoD.gRootD = Root
         #If Win64 Then
             Say "build: 64-bit (Win64), LenB(LongPtr)=" & LenB(CLngPtr(0))
         #Else
@@ -81,10 +160,27 @@ Module Probe
             Case "12b": S12b
             Case "12c": S12c
             Case "13": S13
+            Case "14": S14
+            Case "15": S15
+            Case "16": S16
+            Case "17": S17
+            Case "18": S18
+            Case "y1": Y1
+            Case "y2": Y2
+            Case "y3": Y3
+            Case "y4": Y4
+            Case Else
+                Select Case Left$(id, 1)
+                    Case "x": RunEx id
+                    Case "c": ProbeB1.RunB1 id
+                    Case "d": ProbeD.Run id
+                End Select
         End Select
         Exit Sub
 EH:
         Disarm
+        DrvB1.DDisarm
+        AutoD.DisarmD
         Say "  ERROR in scenario " & id & ": " & Err.Number & " " & Err.Description
     End Sub
 
@@ -121,7 +217,7 @@ EH:
     End Sub
 
     ' A value as the probe prints it: its VarType, its type name and its text, or each element of an array.
-    Private Function Desc(ByVal x As Variant) As String
+    Public Function Desc(ByVal x As Variant) As String
         Dim i As Long
         Dim s As String
         If IsArray(x) Then
@@ -136,7 +232,7 @@ EH:
     End Function
 
     ' What the driver saw during the episode that has just ended.
-    Private Sub Wrap(ByVal what As String)
+    Public Sub Wrap(ByVal what As String)
         Say "  after " & what & ": dialogSeen=" & gSeenMain & " stayedOpen=" & gStayedOpen & " timedOut=" & gTimedOut & " msgBoxes=" & gMsgCount
     End Sub
 
@@ -487,7 +583,7 @@ EH:
     Private Sub S11()
         Say "== 11 OpenFile on a nonexistent path"
         Dim d As New cDialog
-        Dim r As Long
+        Dim r As Variant    ' OpenFile returns LongPtr in 1.1.0.0, which a Long does not take in a 64-bit build
         MsgSeq 1
         Arm "S11a", False, "", 2
         r = d.OpenFile(Root & "\nosuchfolder\nosuchfile.xyz")
@@ -537,6 +633,142 @@ EH:
         Disarm
         Say "  result: " & Desc(r)
         Wrap "S12c"
+    End Sub
+
+    ' 14: PathCombine, no dialog.
+    Private Sub S14()
+        Say "== 14 PathCombine"
+        Dim d As New cDialog
+        Dim p As Variant
+        For Each p In Array( _
+                Array("C:\a", "b"), Array("C:\a\", "b"), Array("C:\a", "\b"), Array("C:\a\", "\b"), _
+                Array("", "b"), Array("a", ""), Array("", ""), Array("C:\a", "D:\b"), Array("C:\a", "D:b"), _
+                Array("C:\a", "\\srv\x"), Array("C:\a", "\b\c"), Array("C:\a", "..\b"), Array("a", "b/c"), _
+                Array("C:", "b"), Array("C:\", "b"), Array("C:\a\\", "b"), Array("a", "c:"), Array("a/", "b"), _
+                Array("C:\a", "http://x/y"), Array("C:\a\b.txt", "c"))
+            Say "  PathCombine(" & Q(CStr(p(0))) & ", " & Q(CStr(p(1))) & ") = " & Q(d.PathCombine(CStr(p(0)), CStr(p(1))))
+        Next
+    End Sub
+
+    ' 15: SelectFiles: one file, two files, cancel.
+    Private Sub S15()
+        Say "== 15 SelectFiles"
+        Dim d As New cDialog
+        Dim d2 As New cDialog
+        Dim d3 As New cDialog
+        Dim d4 As New cDialog
+        Dim c As Collection
+        Dim v As Variant
+        d.InitialDir = Root & "\data"
+        Arm "S15a", True, "a.txt", 1
+        Set c = d.SelectFiles()
+        Disarm
+        Say "  (a) one file, MultiSelect=False: Count=" & c.Count & " FileName=" & Q(d.FileName)
+        For Each v In c
+            Say "      " & Desc(v)
+        Next
+        Wrap "S15a"
+        d2.InitialDir = Root & "\data"
+        d2.MultiSelect = True
+        Arm "S15b", True, """a.txt"" ""b.txt""", 1
+        Set c = d2.SelectFiles()
+        Disarm
+        Say "  (b) two files, MultiSelect=True: Count=" & c.Count & " FileName=" & Q(d2.FileName)
+        For Each v In c
+            Say "      " & Desc(v)
+        Next
+        Wrap "S15b"
+        d3.InitialDir = Root & "\data"
+        Arm "S15c", False, "", 2
+        Set c = d3.SelectFiles()
+        Disarm
+        Say "  (c) cancel: Count=" & c.Count & " TypeName=" & TypeName(c)
+        Wrap "S15c"
+        d4.InitialDir = Root & "\data"
+        d4.MultiSelect = True
+        Arm "S15d", True, "a.txt", 1
+        Set c = d4.SelectFiles()
+        Disarm
+        Say "  (d) one file, MultiSelect=True: Count=" & c.Count & " FileName=" & Q(d4.FileName)
+        For Each v In c
+            Say "      " & Desc(v)
+        Next
+        Wrap "S15d"
+    End Sub
+
+    ' 16: ShowOpen with MultiSelect, three files, and FileName afterwards.
+    Private Sub S16()
+        Say "== 16 ShowOpen MultiSelect, three files"
+        Dim d As New cDialog
+        Dim d2 As New cDialog
+        Dim r As Variant
+        d.InitialDir = Root & "\data"
+        d.MultiSelect = True
+        Arm "S16a", True, """exist.txt"" ""b.txt"" ""a.txt""", 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (a) three files: " & Desc(r)
+        Say "  (a) FileName=" & Q(d.FileName) & " IsArray=" & IsArray(r)
+        Wrap "S16a"
+        d2.InitialDir = Root & "\data"
+        d2.MultiSelect = True
+        d2.FileName = "keep.txt"
+        Arm "S16b", True, """a.txt"" ""b.txt""", 1
+        r = d2.ShowOpen()
+        Disarm
+        Say "  (b) FileName was keep.txt, two files: " & Desc(r)
+        Say "  (b) FileName=" & Q(d2.FileName)
+        Wrap "S16b"
+    End Sub
+
+    ' 17: SelectAndOpenFile with names of files that do not exist, so that no program starts.
+    Private Sub S17()
+        Say "== 17 SelectAndOpenFile, nonexistent files"
+        Dim d As New cDialog
+        Dim d2 As New cDialog
+        Dim d3 As New cDialog
+        Dim r As LongPtr
+        d.InitialDir = Root & "\data"
+        d.FileMustExist = False
+        MsgSeq 1
+        Arm "S17a", True, "nosuch1.txt", 1
+        r = d.SelectAndOpenFile()
+        Disarm
+        Say "  (a) one nonexistent file: " & r & " FileName=" & Q(d.FileName)
+        Wrap "S17a"
+        d2.InitialDir = Root & "\data"
+        d2.FileMustExist = False
+        d2.MultiSelect = True
+        MsgSeq 1
+        Arm "S17b", True, """nosuch1.txt"" ""nosuch2.txt""", 1
+        r = d2.SelectAndOpenFile()
+        Disarm
+        Say "  (b) two nonexistent files: " & r & " FileName=" & Q(d2.FileName)
+        Wrap "S17b"
+        d3.InitialDir = Root & "\data"
+        Arm "S17c", False, "", 2
+        r = d3.SelectAndOpenFile()
+        Disarm
+        Say "  (c) cancel: " & r
+        Wrap "S17c"
+    End Sub
+
+    ' 18: ShowBrowseForFolder with a folder whose name is not in the ANSI code page.
+    Private Sub S18()
+        Say "== 18 ShowBrowseForFolder, a Unicode folder name"
+        Dim d As New cDialog
+        Dim s As String
+        Dim fld As String
+        fld = Root & "\f" & ChrW(&H3A9) & ChrW(&H4E2D) & ChrW(&H6587)
+        MkDirIfMissing fld
+        Say "  folder made: " & Q(Mid$(fld, Len(Root) + 1)) & " exists=" & (Len(Dir$(fld, vbDirectory)) > 0)
+        gDump = False
+        Arm "S18a", True, fld, 1
+        s = d.ShowBrowseForFolder()
+        Disarm
+        Say "  (a) typed folder -> " & Q(s) & " same as typed: " & (s = fld) & " InitialDir same: " & (d.InitialDir = fld)
+        Wrap "S18a"
+        RmDir fld
     End Sub
 
     Private Sub S13()

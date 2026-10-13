@@ -28,8 +28,6 @@ With **False**, **ShowBrowseForFolder** sets only `BIF_RETURNONLYFSDIRS`, which 
 
 The Windows documentation of `SHBrowseForFolder` requires COM to be initialised before the call, with apartment threading if the program calls `CoInitializeEx`, and says that the call fails when `BIF_NEWDIALOGSTYLE` is passed and COM is initialised as multithreaded.
 
-In a 64-bit program **ShowBrowseForFolder** ends the program with an access violation whatever **NewDialogStyle** holds, as the warning on its page describes.
-
 ## Example
 
 ```tb check_build check_run

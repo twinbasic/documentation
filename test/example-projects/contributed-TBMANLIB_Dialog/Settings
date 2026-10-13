@@ -55,9 +55,9 @@
 			"path32": "/Packages/TBMANLIB_Dialog",
 			"path64": "/Packages/TBMANLIB_Dialog",
 			"symbolId": "TBMANLIB_Dialog",
-			"versionBuild": "1",
+			"versionBuild": "0",
 			"versionMajor": "1",
-			"versionMinor": "0",
+			"versionMinor": "1",
 			"versionRevision": "0"
 		}
 	],
