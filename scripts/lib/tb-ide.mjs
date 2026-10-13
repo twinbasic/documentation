@@ -15,6 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { attach } from "./tb-cdp.mjs";
 import { click, pagePicture } from "./tb-click.mjs";
+import { removeTree, removeTreeAsync } from "./tb-ide-copy.mjs";
 import { consoleMark, keepClears, keptClears, linesSince, readConsole } from "./tb-ide-console.mjs";
 import { watchCompiles } from "./tb-wire.mjs";
 
@@ -120,9 +121,10 @@ export function killTree(pid) {
  *                            DevTools ones, e.g. "--force-device-scale-factor=1"
  *                            to lay the page out at 100% whatever the display's
  *                            scaling
- * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null}>}
- *   `pid` is the IDE's own. Throws when the port is taken, or when the launch
- *   fails.
+ * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null, folders: string[]}>}
+ *   `pid` is the IDE's own. `folders` are its temp folder and WebView2 profile,
+ *   which shutdownIde removes. Throws when the port is taken, or when the
+ *   launch fails.
  */
 export async function launchIde({ exe, project, port, show = false, keep = false, env = {}, browserArgs = "" }) {
   const waitFrom = Date.now();
@@ -149,12 +151,21 @@ export async function launchIde({ exe, project, port, show = false, keep = false
   // typelibrary.  Disk error?`: 0 in 192 with a folder per IDE, 8 in 192 with
   // one for all eight at once (BETA 995).
   const ideTemp = path.join(process.env.TEMP, `tbbuild-tmp-${port}`);
-  try {
-    rmSync(ideTemp, { recursive: true, force: true });
-  } catch {
-    // a file still held open: the IDE gets the folder as it is
+  // The WebView2 profile, 28 MB once the IDE has run. Emptied here as well, for
+  // what a run that was killed left behind, and removed when the IDE ends
+  // (shutdownIde), so that a run leaves neither folder.
+  const ideProfile = path.join(process.env.TEMP, `tbbuild-wv2-${port}`);
+  for (const dir of [ideTemp, ideProfile]) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // a file still held open: the IDE gets the folder as it is
+    }
   }
   mkdirSync(ideTemp, { recursive: true });
+  // What shutdownIde removes once the IDE is gone: only these two, which this
+  // function has just made or emptied, never a folder a caller names.
+  const folders = [ideTemp, ideProfile];
   // Node leaves out of a child's environment any variable whose value is
   // undefined, so `env` can remove one as well as set it.
   const fullEnv = {
@@ -164,7 +175,7 @@ export async function launchIde({ exe, project, port, show = false, keep = false
     WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [`--remote-debugging-port=${port}`, "--remote-allow-origins=*", browserArgs]
       .filter(Boolean)
       .join(" "),
-    WEBVIEW2_USER_DATA_FOLDER: `${process.env.TEMP}/tbbuild-wv2-${port}`,
+    WEBVIEW2_USER_DATA_FOLDER: ideProfile,
     [ADDIN_TEST_ENV]: "1",
     ...env,
   };
@@ -179,7 +190,7 @@ export async function launchIde({ exe, project, port, show = false, keep = false
       child.once("error", (e) => reject(new Error(`could not start the IDE: ${e.message}`)));
     });
     child.unref();
-    return { pid: child.pid, launcher: null };
+    return { pid: child.pid, launcher: null, folders };
   }
 
   // lib/tb-launch.ps1 does the Win32 calls Node cannot -- CreateDesktop,
@@ -211,8 +222,10 @@ export async function launchIde({ exe, project, port, show = false, keep = false
       job: !keep,
       env: fullEnv,
     });
-    return { pid, launcher };
+    return { pid, launcher, folders };
   } catch (e) {
+    // No IDE started, so nothing holds the folders and nothing else would remove them.
+    for (const dir of folders) rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
     throw new Error(
       `could not start the IDE on a private desktop:\n${e.message}\n(--show runs it on your own desktop instead)`,
     );
@@ -442,6 +455,12 @@ export function keptIdeLines(pid) {
  * end of a process: tidying the registry before the process has actually gone
  * could lose to one last write. It is normally over in well under a second,
  * and it gives up after five.
+ *
+ * Once the process is gone its temp folder and WebView2 profile are removed
+ * (`ide.folders`, which launchIde made): without that every run left both under
+ * %TEMP%, 28 MB of profile for each port it used. A process still alive keeps
+ * its folders, since they are in use. A folder that cannot be removed is
+ * reported on stderr and left; launchIde empties it when the port is next used.
  */
 export function shutdownIde(ide) {
   if (!ide) return;
@@ -454,7 +473,14 @@ export function shutdownIde(ide) {
   } catch {
     /* already gone */
   }
-  waitForExit(ide.pid, 5000);
+  if (!waitForExit(ide.pid, 5000)) return;
+  for (const dir of ide.folders ?? []) {
+    try {
+      removeTree(dir);
+    } catch (e) {
+      console.error(`could not remove ${dir}: ${e.code ?? e.message}`);
+    }
+  }
 }
 
 /**
@@ -476,14 +502,23 @@ export async function shutdownIdeAsync(ide) {
     /* already gone */
   }
   const until = Date.now() + 5000;
-  while (Date.now() < until) {
+  for (;;) {
     try {
       process.kill(ide.pid, 0);
     } catch {
-      return;
+      break;
     }
+    if (Date.now() >= until) return;
     await sleep(100);
   }
+  // The folders go as shutdownIde's do, with its own reasons.
+  await Promise.all(
+    (ide.folders ?? []).map((dir) =>
+      removeTreeAsync(dir).catch((e) => {
+        console.error(`could not remove ${dir}: ${e.code ?? e.message}`);
+      }),
+    ),
+  );
 }
 
 /**

@@ -98,7 +98,8 @@ node --test test/example-batches.test.mjs
 @if errorlevel 1 goto :fail
 @rem Unit tests for scripts/lib/tb-ports.mjs, which claims the DevTools
 @rem ports the harness's IDEs use: two claims at once are disjoint, a port
-@rem in use and a live lock are passed over, a stale lock is taken over.
+@rem in use and a live lock are passed over, a stale lock is taken over;
+@rem and for what ending an IDE removes of its temp folder and profile.
 @rem Starts no IDE. No tree, no browser, about 2 s.
 node --test test/ports.test.mjs
 @if errorlevel 1 goto :fail

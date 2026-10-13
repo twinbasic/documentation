@@ -27,6 +27,7 @@
 // hold a startTidy/finishTidy around them, which tbbuild and tbrun already do.
 
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -161,8 +162,29 @@ export function removeTree(dir, { timeout = 5000 } = {}) {
       rmSync(dir, { recursive: true, force: true });
       return;
     } catch (e) {
-      if (!["EPERM", "EBUSY", "ENOTEMPTY", "EACCES"].includes(e.code) || Date.now() >= until) throw e;
+      if (!HELD.includes(e.code) || Date.now() >= until) throw e;
       Atomics.wait(cell, 0, 0, 100);
     }
   }
 }
+
+/**
+ * removeTree without blocking the event loop, for a caller that removes a folder
+ * while other work is going on in the same process (shutdownIdeAsync, with
+ * several lanes at once).
+ */
+export async function removeTreeAsync(dir, { timeout = 5000 } = {}) {
+  const until = Date.now() + timeout;
+  for (;;) {
+    try {
+      await rm(dir, { recursive: true, force: true });
+      return;
+    } catch (e) {
+      if (!HELD.includes(e.code) || Date.now() >= until) throw e;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+}
+
+// The codes Windows gives for a file another process still has open.
+const HELD = ["EPERM", "EBUSY", "ENOTEMPTY", "EACCES"];
