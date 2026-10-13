@@ -8,7 +8,7 @@ has_toc: false
 # ToolsMath module
 {: .no_toc }
 
-Two number functions: **Ceil** rounds up to a chosen number of decimal places, and **GetRandRange** returns a random whole number in a range. The module needs no other component. [**ToolsStr.GetRandStr**](ToolsStr#getrandstr) uses **GetRandRange**.
+Two number functions: **Ceil** rounds up to a chosen number of decimal places, and **GetRandRange** returns a random whole number in a range. The module needs no other component. [**ToolsStr.GetRandStr**](cToolsStr#getrandstr) uses **GetRandRange**.
 
 ```tb check_build check_run
 Debug.Print ToolsMath.Ceil(1.231, 2)
@@ -58,6 +58,6 @@ Each call runs **Randomize** with no argument, which seeds the generator from th
 
 ## See Also
 
-- [ToolsStr](ToolsStr) module -- **GetRandStr** and **GetRandByte** use the generator
+- [cToolsStr](cToolsStr) class -- **GetRandStr** and **GetRandByte** use the generator
 - [Randomize](../../../Modules/Math/Randomize) statement and [Rnd](../../../Modules/Math/Rnd) function -- the generator that **GetRandRange** uses
 - [TBMANLIB](.) package -- overview

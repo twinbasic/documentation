@@ -8,7 +8,7 @@ has_toc: false
 # ToolsDic module
 {: .no_toc }
 
-Helpers for **Scripting.Dictionary** objects: reading and writing the `name=value&name=value` text of web forms, setting a value two levels deep, merging one dictionary into another, and copying one. A dictionary is passed as a `Scripting.Dictionary` parameter, so a program that names the type in its own code references the Microsoft Scripting Runtime.
+Helpers for **Scripting.Dictionary** objects: reading the `name=value&name=value` text of web forms, setting a value two levels deep, merging one dictionary into another, and copying one. A dictionary is passed as a `Scripting.Dictionary` parameter, so a program that names the type in its own code references the Microsoft Scripting Runtime.
 
 ```tb check_build check_run
 Dim Form As New Scripting.Dictionary
@@ -130,39 +130,6 @@ Debug.Print A("z")
 ' 30
 ```
 
-### ToWwwFormUrlencoded
-{: .no_toc }
-
-Writes a dictionary as a `name=value&name=value` text.
-
-Syntax: **ToolsDic.ToWwwFormUrlencoded** ( *Dic* ) **As String**
-
-*Dic*
-: *required* A **Scripting.Dictionary** of names and simple values.
-
-The function is meant to build the text in a JavaScript array made with [**ToolsJScript.NewArr**](ToolsJScript#newarr), and to turn the array into text with `&` in place of the commas. The values would not be percent-encoded, and a comma in a name or in a value would become `&`.
-
-> [!WARNING]
-> In version 1.0.0.5 the function never returns a text. It adds the entries `a` with the value 1 and `bbb` with the value 2 to *Dic*, and then fails with error 91, *Object variable or With block variable not set*, because [**ToolsJScript.NewArr**](ToolsJScript#newarr) cannot create its array. The two entries stay in the dictionary. A second call with the same dictionary fails earlier, with error 457, because the keys `a` and `bbb` are already there.
-
-```tb check_build check_run
-Dim Form As New Scripting.Dictionary
-Form("name") = "Ann"
-
-On Error Resume Next
-Debug.Print ToolsDic.ToWwwFormUrlencoded(Form)
-Debug.Print Err.Number
-Err.Clear
-Debug.Print Form.Count
-
-Debug.Print ToolsDic.ToWwwFormUrlencoded(Form)
-Debug.Print Err.Number
-' Output:
-' 91
-' 3
-' 457
-```
-
 ### TowLevelDicAssign
 {: .no_toc }
 
@@ -197,6 +164,5 @@ Debug.Print D("a").Count
 
 ## See Also
 
-- [ToolsJScript](ToolsJScript) module -- the JavaScript array that **ToWwwFormUrlencoded** uses
 - [cJson](cJson) class -- keeps a JSON document in dictionaries
 - [TBMANLIB](.) package -- overview
