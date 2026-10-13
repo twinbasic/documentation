@@ -19,9 +19,10 @@
 // Matches the pagedjs-cli CLI surface that book.bat used:
 //   --outline-tags    : headings to include in the PDF outline.
 //                       Defaults to h1,h2,h3,h4 if omitted.
-//   -t / --timeout    : per-operation puppeteer timeout in ms. 0
-//                       disables. Default 0 (we have no untrusted
-//                       input; the 1638-page book takes ~100 s).
+//   -t / --timeout    : per-operation puppeteer timeout in ms, each
+//                       CDP call included (page.pdf() of the 3,700-page
+//                       book takes about 3 minutes). 0 disables. Default 0
+//                       (we have no untrusted input).
 //   --additional-script
 //                     : extra in-page script to inject after the
 //                       paged.js bundle. Repeatable. Used by book.bat
@@ -203,14 +204,147 @@ Renders an HTML book to a PDF with paged.js and headless Chromium.
   <input.html>               the book to render
   -o, --output <output.pdf>  the PDF to write
   --outline-tags <tags>      headings to put in the PDF outline (default h1,h2,h3,h4)
-  -t, --timeout <ms>         per-operation timeout in milliseconds; 0 disables (default 0)
+  -t, --timeout <ms>         per-operation timeout in milliseconds, each DevTools call
+                             included; 0 disables (default 0)
   --additional-script <path> a script to inject after paged.js; repeatable
   -h, --help                 print this text and exit
+
+An element that paged.js cannot place on any page is skipped, from the point
+where it stops fitting, and the render goes on; each one is reported as a warning
+naming it, on stderr and, under GitHub Actions, as an annotation. So is each code
+block that lacks lines on the pages.
 
 Exit codes:
   0  the PDF was written
   2  a refused command line, an input or script that does not exist, a render that
      failed, or a crash`;
+
+// The two reports with which paged.js gives up on an element: "Layout repeated"
+// from the chunker's loop guard, "Unable to layout item" from Layout.renderTo. The
+// forked bundle skips the rest of the element and goes on (renderTo upstream, the
+// chunker by [PATCH: layout-repeated-skip]); these reports are all that says so.
+const LAYOUT_FAILURE_RE = /^(Layout repeated|Unable to layout item)\b/;
+const layoutFailures = [];
+
+// Names the element a report is about: its tag, the start of its text, and the
+// nearest heading before it, so that the page it is on can be found.
+async function describeLayoutFailure(text, handle) {
+  const what = text.match(LAYOUT_FAILURE_RE)[1];
+  if (!handle) return what;
+  try {
+    const where = await handle.evaluate((node) => {
+      const el = node.nodeType === 1 ? node : node.parentElement;
+      const snippet = (node.textContent || "").replace(/\s+/g, " ").trim().slice(0, 60);
+      let heading = "";
+      for (let cur = el; cur && !heading; cur = cur.parentElement) {
+        for (let sib = cur.previousElementSibling; sib && !heading; sib = sib.previousElementSibling) {
+          const h = sib.matches("h1, h2, h3, h4") ? sib : [...sib.querySelectorAll("h1, h2, h3, h4")].pop();
+          if (h) heading = h.textContent.replace(/\s+/g, " ").trim();
+        }
+      }
+      const tag = el ? `<${el.tagName.toLowerCase()}>` : "a node";
+      return `${tag} "${snippet}"${heading ? `, after the heading "${heading}"` : ""}`;
+    });
+    return `${what} at ${where}`;
+  } catch {
+    return what;
+  }
+}
+
+// paged.js can lose lines where it splits a code block across pages, and says
+// nothing (Fixes-PagedJS.md, "Code split across pages"). Before the render,
+// markCodeBlocks numbers each <pre> in an attribute, which paged.js copies to
+// every piece of a block it splits, and returns each block's text and the
+// heading before it; after it, collectRenderedCode puts each block's pieces
+// together again. Both run in the page.
+function markCodeBlocks() {
+  const headingBefore = (el) => {
+    for (let cur = el; cur; cur = cur.parentElement) {
+      for (let sib = cur.previousElementSibling; sib; sib = sib.previousElementSibling) {
+        const h = sib.matches("h1, h2, h3, h4") ? sib : [...sib.querySelectorAll("h1, h2, h3, h4")].pop();
+        if (h) return h.textContent.replace(/\s+/g, " ").trim();
+      }
+    }
+    return "";
+  };
+  return [...document.querySelectorAll("pre")].map((pre, i) => {
+    pre.setAttribute("data-code-check", String(i));
+    return { text: pre.textContent, heading: headingBefore(pre) };
+  });
+}
+
+// A line that paged.js leaves on a page outside its content box (in the
+// overflow column to its right, or below it) is in the page but not in the
+// PDF: only the lines that start inside the box count. The book build puts
+// each line in a span.code-line (codeLines in builder/book.mjs); a block
+// without them counts whole, by where it starts.
+function collectRenderedCode() {
+  const pieces = {};
+  for (const el of document.querySelectorAll(".pagedjs_pages pre[data-code-check]")) {
+    const box = el.closest(".pagedjs_page_content")?.getBoundingClientRect();
+    const shown = (node) => {
+      if (!box) return true;
+      const r = node.getBoundingClientRect();
+      return r.left < box.right - 1 && r.top < box.bottom - 1;
+    };
+    const lines = el.querySelectorAll(".code-line");
+    let text = "";
+    if (lines.length) {
+      for (const line of lines) if (shown(line)) text += line.textContent;
+    } else if (shown(el)) {
+      text = el.textContent;
+    }
+    const i = el.getAttribute("data-code-check");
+    pieces[i] = (pieces[i] ?? "") + text;
+  }
+  return pieces;
+}
+
+// One report for each block whose rendered pieces lack lines of its source,
+// lines compared without their whitespace. The lines kept are a longest
+// common subsequence of the two, so a missing line that also occurs later in
+// the block (an `End Sub`) is not matched there, taking the lines between
+// with it.
+function missingCodeLines(blocks, pieces) {
+  const keys = (text) =>
+    text
+      .split("\n")
+      .map((l) => l.replace(/\s+/g, ""))
+      .filter(Boolean);
+  const reports = [];
+  blocks.forEach((block, i) => {
+    const src = keys(block.text);
+    const got = keys(pieces[i] ?? "");
+    const n = src.length;
+    const m = got.length;
+    const lcs = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+    for (let a = n - 1; a >= 0; a--) {
+      for (let b = m - 1; b >= 0; b--) {
+        lcs[a][b] = src[a] === got[b] ? lcs[a + 1][b + 1] + 1 : Math.max(lcs[a + 1][b], lcs[a][b + 1]);
+      }
+    }
+    const missing = [];
+    for (let a = 0, b = 0; a < n; ) {
+      if (b < m && src[a] === got[b]) {
+        a++;
+        b++;
+      } else if (b < m && lcs[a][b + 1] >= lcs[a + 1][b]) {
+        b++;
+      } else {
+        missing.push(a);
+        a++;
+      }
+    }
+    if (!missing.length) return;
+    const first = block.text
+      .split("\n")
+      .filter((l) => l.trim())
+      [missing[0]].trim();
+    const where = block.heading ? ` after the heading "${block.heading}"` : "";
+    reports.push(`${missing.length} of ${n} lines missing from the code block${where}, first "${first.slice(0, 60)}"`);
+  });
+  return reports;
+}
 
 const { values, positionals, timeoutMs } = withUsageError(() => {
   const cli = parseCli(process.argv.slice(2), {
@@ -304,6 +438,11 @@ const browser = await puppeteer.launch({
     "--disable-gpu",
     "--disable-software-rasterizer",
   ],
+  // Every CDP call, not only the page's own operations, waits as long as -t
+  // says: puppeteer's own limit of 180 s ended page.pdf() on a CI runner once
+  // the book was laid out whole, its 3,700 pages taking about that long to
+  // generate. 0, the default, is no limit; CI's step timeout is the backstop.
+  protocolTimeout: timeoutMs,
 });
 
 let exitCode = 0;
@@ -330,9 +469,19 @@ try {
   };
   // Render phase: progress-handler.js (loaded via addScriptTag below)
   // emits `[render-progress] page=N elapsed=Ns` from afterPageLayout.
+  // paged.js reports an element it cannot place on any page only on the
+  // console, and then ends the flow as if the book were done; each such
+  // report is kept, and fails the render below.
   page.on("console", (msg) => {
     const t = msg.text();
-    if (!t.startsWith("[render-progress]")) return;
+    if (LAYOUT_FAILURE_RE.test(t)) {
+      layoutFailures.push(describeLayoutFailure(t, msg.args()[1]));
+      return;
+    }
+    if (!t.startsWith("[render-progress]")) {
+      if (msg.type() === "error") console.error("[page console]", t);
+      return;
+    }
     const m = t.match(/page=(\d+)\s+elapsed=([\d.]+)/);
     if (!m) return;
     const line = `rendering: ${m[1]} pages (${m[2]}s)`;
@@ -358,35 +507,63 @@ try {
   }
 
   // Render -- paged.js per-page layout.
-  // PagedPolyfill.preview() is fully synchronous in our forked bundle
-  // (the entire chain preview -> chunker.flow -> render -> *layout is
-  // now sync; loadFonts is a sync assertion that page.goto's
-  // waitUntil:'load' already satisfied; stylesheets are loaded via
-  // synchronous XHR). Inner IIFE is a plain sync arrow; outer await
-  // is just the CDP round-trip puppeteer needs to ferry the result.
+  // The chain under PagedPolyfill.flow() is fully synchronous in our
+  // forked bundle (chunker.flow -> render -> *layout; stylesheets are
+  // loaded via synchronous XHR). It runs in two calls with a wait between:
+  // prepare() replaces the stylesheets with paged.js's processed copies,
+  // which makes every @font-face a font face that loads again, and flow()
+  // must not lay out a page before they have [PATCH: fonts-before-flow].
+  // Each inner arrow is plain and sync; the outer await is the CDP
+  // round-trip puppeteer needs to ferry the result.
+  const codeBlocks = await page.evaluate(markCodeBlocks);
   const tRender = Date.now();
-  await page.evaluate(() => {
-    if (!window.PagedPolyfill) {
-      throw new Error("paged.js bundle did not expose window.PagedPolyfill");
-    }
-    try {
-      window.PagedPolyfill.preview();
-    } catch (err) {
-      // Unwrap the undecorated ProgressEvent paged.js throws on fetch
-      // failures so the message includes the offending URL.
-      const e =
-        err && err.target
-          ? new Error(
-              `${err.type || "event"} on ${err.target.tagName || "?"}: ${err.target.src || err.target.href || ""}`,
-            )
-          : err;
-      throw e;
-    }
+  const pagedStep = (step) =>
+    page.evaluate((step) => {
+      if (!window.PagedPolyfill) {
+        throw new Error("paged.js bundle did not expose window.PagedPolyfill");
+      }
+      try {
+        window.PagedPolyfill[step]();
+      } catch (err) {
+        // Unwrap the undecorated ProgressEvent paged.js throws on fetch
+        // failures so the message includes the offending URL.
+        const e =
+          err && err.target
+            ? new Error(
+                `${err.type || "event"} on ${err.target.tagName || "?"}: ${err.target.src || err.target.href || ""}`,
+              )
+            : err;
+        throw e;
+      }
+    }, step);
+  await pagedStep("prepare");
+  const unloaded = await page.evaluate(async () => {
+    await Promise.all([...document.fonts].map((f) => f.load().catch(() => {})));
+    await document.fonts.ready;
+    return [...document.fonts].filter((f) => f.status !== "loaded").map((f) => `${f.family} ${f.style} ${f.weight}`);
   });
+  if (unloaded.length) console.error(`[fonts] not loaded, so laid out in a fallback font: ${unloaded.join(", ")}`);
+  await pagedStep("flow");
   await page.waitForSelector(".pagedjs_pages");
   const pageCount = await page.evaluate(() => document.querySelectorAll(".pagedjs_pages > .pagedjs_page").length);
   clearProgress();
   console.log(`render:   ${fmtMs(Date.now() - tRender)}  (${pageCount} pages)`);
+  for (const report of await Promise.all(layoutFailures)) {
+    console.error(`[layout] ${report}: skipped from where it stops fitting`);
+    if (process.env.GITHUB_ACTIONS === "true") console.log(`::warning title=Book layout::${report}`);
+  }
+  // GitHub shows the first ten annotations of a kind on a run's page; the
+  // count says how many there are.
+  const codeReports = missingCodeLines(codeBlocks, await page.evaluate(collectRenderedCode));
+  codeReports.forEach((report, i) => {
+    console.error(`[code] ${report}`);
+    if (process.env.GITHUB_ACTIONS === "true" && i < 10) console.log(`::warning title=Book code::${report}`);
+  });
+  if (codeReports.length) {
+    const summary = `${codeReports.length} of ${codeBlocks.length} code blocks have lines missing from the book`;
+    console.error(`[code] ${summary}`);
+    if (process.env.GITHUB_ACTIONS === "true") console.log(`::warning title=Book code::${summary}`);
+  }
 
   // Generate -- meta extraction, outline walk, then Chromium DOM->PDF.
   //

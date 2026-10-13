@@ -1870,6 +1870,24 @@
 
 		}
 
+		// [PATCH: avoid-when-it-fits] Gives `break-inside: auto` to the first
+		// element (in document order) with `break-inside: avoid` that lies
+		// wholly past the page, and says whether there was one.
+		relaxAvoid(rendered, bounds) {
+			let end = Math.round(bounds.right + this.gap);
+			let vEnd = Math.round(bounds.bottom);
+			for (let el of rendered.querySelectorAll("*")) {
+				if (el.style.breakInside) continue;
+				if (window.getComputedStyle(el).breakInside !== "avoid") continue;
+				let r = el.getBoundingClientRect();
+				if (Math.round(r.left) >= end || Math.round(r.top) >= vEnd) {
+					el.style.breakInside = "auto";
+					return true;
+				}
+			}
+			return false;
+		}
+
 		findBreakToken(rendered, source, bounds = this.bounds, prevBreakToken, extract = true) {
 			let overflow = this.findOverflow(rendered, bounds);
 			let breakToken, breakLetter;
@@ -1893,6 +1911,19 @@
 
 				// Stop removal if we are in a loop
 				if (breakToken && breakToken.equals(prevBreakToken)) {
+					// [PATCH: avoid-when-it-fits] The break is where the page
+					// began: nothing fitted. When an element with `break-inside:
+					// avoid` lies past the page, Chromium pushed it there whole,
+					// and it will on every page: paged.js lays a page out a part
+					// at a time, so it sees only the part of a long callout that
+					// fits in a column, and a heading's `break-after: avoid` took
+					// the break back to before the heading. An element that fits
+					// on no page cannot avoid a break, as CSS has it: let it
+					// break where it is, and look again. Nothing has been removed
+					// from the page yet.
+					if (this.relaxAvoid(rendered, bounds)) {
+						return this.findBreakToken(rendered, source, bounds, prevBreakToken, extract);
+					}
 					return breakToken;
 				}
 
@@ -3213,12 +3244,35 @@
 					let newToken = breakToken.toJSON(true);
 					if (tokens.has(newToken)) {
 						// loop
-						let err = new OverflowContentError("Layout repeated", [breakToken.node]);
 						console.error("Layout repeated at: ", breakToken.node);
-						return err;
-					} else {
-						tokens.add(newToken);
+						// [PATCH: layout-repeated-skip] Upstream returns the error
+						// here, which ends the flow as if the content were done:
+						// one element no page can hold cut the book short at it.
+						// Skip the rest of the block that holds the node instead
+						// (the node after the node itself is not enough: a page
+						// laid out from inside a <pre> gives the same break again)
+						// and go on with what follows it. A block whose next node
+						// was a break already is not progress: climb to the block
+						// around it. The report above names the node;
+						// render-book.mjs passes it on as a warning.
+						const blocks = "pre, table, ul, ol, dl, blockquote, figure, p, li, dt, dd, div, section, h1, h2, h3, h4, h5, h6";
+						let el = breakToken.node && (breakToken.node.nodeType === 1 ? breakToken.node : breakToken.node.parentElement);
+						let block = el && (el.closest(blocks) || el);
+						let after;
+						while (block) {
+							after = nodeAfter(block);
+							if (!after) break;
+							newToken = new BreakToken(after).toJSON(true);
+							if (!tokens.has(newToken)) break;
+							after = undefined;
+							block = block.parentElement && block.parentElement.closest(blocks);
+						}
+						if (!after) {
+							return new OverflowContentError("Layout repeated", [breakToken.node]);
+						}
+						breakToken = new BreakToken(after);
 					}
+					tokens.add(newToken);
 				}
 
 				_assertSync(this.hooks.afterPageLayout.trigger(page.element, page, breakToken, this), "afterPageLayout");
@@ -33113,7 +33167,20 @@
 		// the call is also sync, so the entire script execution runs
 		// inside one EvaluateScript frame instead of being scheduled
 		// across multiple microtask continuations.
+		// [PATCH: fonts-before-flow] preview() in two halves. polisher.add()
+		// replaces the document's stylesheets with processed copies, and every
+		// @font-face in them becomes a new font face that has to load again.
+		// Upstream's async preview awaited loadFonts() in between; the sync
+		// chain does not, so the whole flow ran on fallback fonts and the
+		// pages were printed in the real ones: every break was chosen for text
+		// of the wrong width, and text near a page's end moved off it.
+		// render-book.mjs calls prepare(), awaits document.fonts, then flow().
 		preview(content, stylesheets, renderTo) {
+			this.prepare(content, stylesheets, renderTo);
+			return this.flow();
+		}
+
+		prepare(content, stylesheets, renderTo) {
 
 			_assertSync(this.hooks.beforePreview.trigger(content, renderTo), "beforePreview");
 
@@ -33130,6 +33197,13 @@
 			this.handlers = this.initializeHandlers();
 
 			this.polisher.add(...stylesheets);
+
+			this._prepared = { content, renderTo };
+		}
+
+		flow() {
+			let { content, renderTo } = this._prepared;
+			this._prepared = undefined;
 
 			let startTime = performance.now();
 
