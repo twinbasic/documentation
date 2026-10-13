@@ -37,11 +37,11 @@ End Type
 
 For the identifier `00020400-0000-0000-C000-000000000046`, *Data1* is `&H00020400`, *Data2* and *Data3* are 0, and *Data4* holds `&HC0`, 0, 0, 0, 0, 0, 0 and `&H46`.
 
-An **OLECLSID** variable that is not filled in holds only zeros, which is the null identifier `IID_NULL` that [**IDispatch.GetIDsOfNames**](IDispatch#getidsofnames) and [**IDispatch.Invoke**](IDispatch#invoke) ask for in their *riid* parameter.
+An **OLECLSID** variable that is not filled in holds only zeros, which is the null identifier `IID_NULL` that [**IDispatchUnrestricted.GetIDsOfNames**](IDispatchUnrestricted#getidsofnames) and [**IDispatchUnrestricted.Invoke**](IDispatchUnrestricted#invoke) ask for in their *riid* parameter.
 
 ## Where it is used
 
-- [**IDispatch.GetIDsOfNames**](IDispatch#getidsofnames) and [**IDispatch.Invoke**](IDispatch#invoke) -- *riid*, by reference.
+- [**IDispatchUnrestricted.GetIDsOfNames**](IDispatchUnrestricted#getidsofnames) and [**IDispatchUnrestricted.Invoke**](IDispatchUnrestricted#invoke) -- *riid*, by reference.
 - [**IObjectSafety.GetInterfaceSafetyOptions**](IObjectSafety#getinterfacesafetyoptions) and [**SetInterfaceSafetyOptions**](IObjectSafety#setinterfacesafetyoptions) -- *riid*, by reference.
 - [**IPerPropertyBrowsing.MapPropertyToPage**](IPerPropertyBrowsing#mappropertytopage) -- *pCLSID*, by reference.
 - [**IRichEditOle.ConvertObject**](IRichEditOle#convertobject) -- *pCLSIDNew*, and [**IRichEditOle.ActivateAs**](IRichEditOle#activateas) -- *pCLSID* and *pCLSIDAs*, by reference.
@@ -68,6 +68,6 @@ End Function
 
 ## See Also
 
-- [IDispatch](IDispatch) interface -- finds and calls members of an automation object
+- [IDispatchUnrestricted](IDispatchUnrestricted) interface -- finds and calls members of an automation object by name or dispatch identifier
 - [IObjectSafety](IObjectSafety) interface -- reports and sets an object's safety options
 - [OLECAUUID](OLECAUUID) type -- a counted array of GUIDs

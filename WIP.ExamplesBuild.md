@@ -13,7 +13,7 @@ compiles](docs/Documentation/Authoring.md) in Authoring.md.
 ## State
 
 Of 1,530 `tb` fences in 749 pages, **1,370 are marked `check_build`** and compile, and 159
-are `inert` with a recorded reason (107 of them OLEGuids' method signatures).
+are `inert` with a recorded reason (111 of them OLEGuids' method signatures).
 **None is undecided**, so the backlog the census measures is empty. No fence is an
 `excerpt`. The run takes about 110 s. 88 of the marked samples are also `check_run`.
 

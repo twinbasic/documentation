@@ -76,4 +76,4 @@ End Class
 ## See Also
 
 - [OLECLSID](OLECLSID) type -- a class or interface identifier
-- [IDispatch](IDispatch) interface -- finds and calls members of an automation object
+- [IDispatchUnrestricted](IDispatchUnrestricted) interface -- finds and calls members of an automation object by name or dispatch identifier

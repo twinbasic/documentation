@@ -41,5 +41,6 @@ Tells the control that the user pressed one of its mnemonic keys. The Windows me
 - [IOleControl](IOleControl) interface -- the Windows interface this one corresponds to
 - [IOleInPlaceActiveObjectVB](IOleInPlaceActiveObjectVB) interface -- Visual Basic-style **TranslateAccelerator**
 - [IPerPropertyBrowsingVB](IPerPropertyBrowsingVB) interface -- Visual Basic-style versions of three **IPerPropertyBrowsing** methods
+- [IOleInPlaceObjectWindowlessVB](IOleInPlaceObjectWindowlessVB) interface -- Visual Basic-style **OnWindowMessage**
 - [OLECONTROLINFO](OLECONTROLINFO) type -- the keyboard mnemonic table of a control
 - [OLEACCELMSG](OLEACCELMSG) type -- a window message

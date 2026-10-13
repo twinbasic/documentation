@@ -2,7 +2,7 @@
   "format": 3,
   "package": "OLEGuids",
   "project": "OLEGuids",
-  "version": "1.0.2.0",
+  "version": "1.0.10.0",
   "types": [
     {
       "name": "IDataObject",
@@ -16,18 +16,18 @@
       "members": []
     },
     {
-      "name": "IDispatch",
+      "name": "IDispatchUnrestricted",
       "kind": "interface",
       "vis": "public",
       "file": "OLEGuids.twin",
-      "signature": "Interface IDispatch Extends stdole.IUnknown",
+      "signature": "Interface IDispatchUnrestricted Extends stdole.IUnknown",
       "extends": "stdole.IUnknown",
       "attrs": [{"name":"InterfaceId","args":"\"00020400-0000-0000-C000-000000000046\""},{"name":"OleAutomation","args":"False"}],
       "members": [
-        {"name":"GetIDsOfNames","kind":"sub","vis":"public","signature":"Sub GetIDsOfNames(ByRef riid As OLEGuids.OLECLSID, ByRef rgszNames As LongPtr, ByVal cNames As Long, ByVal lcid As Long, ByRef rgDispID As Long)"},
+        {"name":"GetIDsOfNames","kind":"sub","vis":"public","signature":"Sub GetIDsOfNames(ByRef riid As OLEGuids.OLECLSID, ByRef rgszNames As LongPtr, ByVal cNames As Long, ByVal lcid As Long, ByRef rgDispId As Long)"},
         {"name":"GetTypeInfo","kind":"sub","vis":"public","signature":"Sub GetTypeInfo(ByVal itinfo As Long, ByVal lcid As Long, ByRef pptinfo As LongPtr)"},
         {"name":"GetTypeInfoCount","kind":"sub","vis":"public","signature":"Sub GetTypeInfoCount(ByRef pctInfo As Long)"},
-        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal DispIDMember As Long, ByRef riid As OLEGuids.OLECLSID, ByVal lcid As Long, ByVal wFlags As Integer, ByRef pdispparams As stdole.DISPPARAMS, ByRef pvarResult As Variant, ByRef pexcepinfo As stdole.EXCEPINFO, ByRef puArgErr As Long)"}
+        {"name":"Invoke","kind":"sub","vis":"public","signature":"Sub Invoke(ByVal DispId As Long, ByRef riid As OLEGuids.OLECLSID, ByVal lcid As Long, ByVal wFlags As Integer, ByVal lpdispparams As LongPtr, ByVal lpvarResult As LongPtr, ByVal lpexcepinfo As LongPtr, ByRef puArgErr As Long)"}
       ]
     },
     {
@@ -40,7 +40,7 @@
       "attrs": [{"name":"InterfaceId","args":"\"00020404-0000-0000-C000-000000000046\""},{"name":"OleAutomation","args":"False"}],
       "members": [
         {"name":"Clone","kind":"sub","vis":"public","signature":"Sub Clone(ByRef ppEnum As stdole.IEnumVARIANT)"},
-        {"name":"Next","kind":"sub","vis":"public","signature":"Sub Next(ByVal cElt As Long, ByRef rgVar As Variant, ByVal pcEltFetched As Long)"},
+        {"name":"Next","kind":"sub","vis":"public","signature":"Sub Next(ByVal cElt As Long, ByRef rgVar As Variant, ByVal lpcEltFetched As LongPtr)"},
         {"name":"Reset","kind":"sub","vis":"public","signature":"Sub Reset()"},
         {"name":"Skip","kind":"sub","vis":"public","signature":"Sub Skip(ByVal cElt As Long)"}
       ]
@@ -80,7 +80,7 @@
       "members": [
         {"name":"FreezeEvents","kind":"sub","vis":"public","signature":"Sub FreezeEvents(ByVal bFreeze As Long)"},
         {"name":"GetControlInfo","kind":"function","vis":"public","signature":"Function GetControlInfo(ByRef pCI As OLECONTROLINFO) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]},
-        {"name":"OnAmbientPropertyChange","kind":"sub","vis":"public","signature":"Sub OnAmbientPropertyChange(ByVal DispID As Long)"},
+        {"name":"OnAmbientPropertyChange","kind":"sub","vis":"public","signature":"Sub OnAmbientPropertyChange(ByVal DispId As Long)"},
         {"name":"OnMnemonic","kind":"function","vis":"public","signature":"Function OnMnemonic(ByRef pMsg As OLEACCELMSG) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]}
       ]
     },
@@ -93,7 +93,7 @@
       "extends": "stdole.IUnknown",
       "attrs": [{"name":"InterfaceId","args":"\"B196B289-BAB4-101A-B69C-00AA00341D07\""},{"name":"OleAutomation","args":"False"}],
       "members": [
-        {"name":"GetExtendedControl","kind":"function","vis":"public","signature":"Function GetExtendedControl() As OLEGuids.IDispatch","returnType":"OLEGuids.IDispatch"},
+        {"name":"GetExtendedControl","kind":"function","vis":"public","signature":"Function GetExtendedControl() As stdole.IDispatch","returnType":"stdole.IDispatch"},
         {"name":"LockInPlaceActive","kind":"sub","vis":"public","signature":"Sub LockInPlaceActive(ByVal fLock As Long)"},
         {"name":"OnControlInfoChanged","kind":"sub","vis":"public","signature":"Sub OnControlInfoChanged()"},
         {"name":"OnFocus","kind":"sub","vis":"public","signature":"Sub OnFocus(ByVal fGotFocus As Long)"},
@@ -142,7 +142,7 @@
       "extends": "stdole.IDispatch",
       "attrs": [{"name":"InterfaceId","args":"\"38584260-0CFB-45E7-8FBB-5D20B311F5B8\""}],
       "members": [
-        {"name":"TranslateAccelerator","kind":"sub","vis":"public","signature":"Sub TranslateAccelerator(Handled As Boolean, RetVal As Long, ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr, ByVal Shift As Long)"}
+        {"name":"TranslateAccelerator","kind":"sub","vis":"public","signature":"Sub TranslateAccelerator(ByRef Handled As Boolean, ByRef RetVal As Long, ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr, ByVal Shift As Long)"}
       ]
     },
     {
@@ -172,6 +172,31 @@
       ]
     },
     {
+      "name": "IOleInPlaceObjectWindowless",
+      "kind": "interface",
+      "vis": "public",
+      "file": "OLEGuids.twin",
+      "signature": "Interface IOleInPlaceObjectWindowless Extends OLEGuids.IOleInPlaceObject",
+      "extends": "OLEGuids.IOleInPlaceObject",
+      "attrs": [{"name":"InterfaceId","args":"\"1C2056CC-5EF4-101B-8BC8-00AA003E3B29\""},{"name":"OleAutomation","args":"False"}],
+      "members": [
+        {"name":"GetDropTarget","kind":"function","vis":"public","signature":"Function GetDropTarget(ByRef lppDropTarget As LongPtr) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]},
+        {"name":"OnWindowMessage","kind":"function","vis":"public","signature":"Function OnWindowMessage(ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr, ByRef Result As LongPtr) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]}
+      ]
+    },
+    {
+      "name": "IOleInPlaceObjectWindowlessVB",
+      "kind": "interface",
+      "vis": "public",
+      "file": "OLEGuids.twin",
+      "signature": "Interface IOleInPlaceObjectWindowlessVB Extends stdole.IDispatch",
+      "extends": "stdole.IDispatch",
+      "attrs": [{"name":"InterfaceId","args":"\"061D3A2F-A213-4016-9756-B89140604819\""}],
+      "members": [
+        {"name":"OnWindowMessage","kind":"sub","vis":"public","signature":"Sub OnWindowMessage(ByRef Handled As Boolean, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr, ByRef Result As LongPtr)","attrs":[{"name":"DispId","args":"1"}]}
+      ]
+    },
+    {
       "name": "IOleInPlaceSite",
       "kind": "interface",
       "vis": "public",
@@ -189,7 +214,7 @@
         {"name":"OnPosRectChange","kind":"sub","vis":"public","signature":"Sub OnPosRectChange(ByVal lprcPosRect As LongPtr)"},
         {"name":"OnUIActivate","kind":"sub","vis":"public","signature":"Sub OnUIActivate()"},
         {"name":"OnUIDeactivate","kind":"sub","vis":"public","signature":"Sub OnUIDeactivate(ByVal fUndoable As Long)"},
-        {"name":"Scroll","kind":"sub","vis":"public","signature":"Sub Scroll(ByVal scrollExtant As Currency)"}
+        {"name":"Scroll","kind":"sub","vis":"public","signature":"Sub Scroll(ByVal ScrollExtant As Currency)"}
       ]
     },
     {
@@ -232,8 +257,8 @@
       "kind": "interface",
       "vis": "public",
       "file": "OLEGuids.twin",
-      "signature": "Interface IOleWindow Extends IUnknown",
-      "extends": "IUnknown",
+      "signature": "Interface IOleWindow Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
       "attrs": [{"name":"InterfaceId","args":"\"00000114-0000-0000-C000-000000000046\""},{"name":"OleAutomation","args":"False"}],
       "members": [
         {"name":"ContextSensitiveHelp","kind":"sub","vis":"public","signature":"Sub ContextSensitiveHelp(ByVal fEnterMode As Long)"},
@@ -249,10 +274,10 @@
       "extends": "stdole.IUnknown",
       "attrs": [{"name":"InterfaceId","args":"\"376BD3AA-3845-101B-84ED-08002B2EC713\""},{"name":"OleAutomation","args":"False"}],
       "members": [
-        {"name":"GetDisplayString","kind":"function","vis":"public","signature":"Function GetDisplayString(ByVal DispID As Long, ByRef lpDisplayName As LongPtr) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]},
-        {"name":"GetPredefinedStrings","kind":"function","vis":"public","signature":"Function GetPredefinedStrings(ByVal DispID As Long, ByRef pCaStringsOut As OLEGuids.OLECALPOLESTR, ByRef pCaCookiesOut As OLEGuids.OLECADWORD) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]},
-        {"name":"GetPredefinedValue","kind":"function","vis":"public","signature":"Function GetPredefinedValue(ByVal DispID As Long, ByVal dwCookie As Long, ByRef pVarOut As Variant) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]},
-        {"name":"MapPropertyToPage","kind":"function","vis":"public","signature":"Function MapPropertyToPage(ByVal DispID As Long, ByRef pCLSID As OLEGuids.OLECLSID) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]}
+        {"name":"GetDisplayString","kind":"function","vis":"public","signature":"Function GetDisplayString(ByVal DispId As Long, ByRef lpDisplayName As LongPtr) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]},
+        {"name":"GetPredefinedStrings","kind":"function","vis":"public","signature":"Function GetPredefinedStrings(ByVal DispId As Long, ByRef pCaStringsOut As OLEGuids.OLECALPOLESTR, ByRef pCaCookiesOut As OLEGuids.OLECADWORD) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]},
+        {"name":"GetPredefinedValue","kind":"function","vis":"public","signature":"Function GetPredefinedValue(ByVal DispId As Long, ByVal dwCookie As Long, ByRef pVarOut As Variant) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]},
+        {"name":"MapPropertyToPage","kind":"function","vis":"public","signature":"Function MapPropertyToPage(ByVal DispId As Long, ByRef pCLSID As OLEGuids.OLECLSID) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]}
       ]
     },
     {
@@ -264,9 +289,9 @@
       "extends": "stdole.IDispatch",
       "attrs": [{"name":"InterfaceId","args":"\"D5D3BBE3-DB60-4522-AF5B-D767FE736DDB\""}],
       "members": [
-        {"name":"GetDisplayString","kind":"sub","vis":"public","signature":"Sub GetDisplayString(ByRef Handled As Boolean, ByVal DispID As Long, ByRef DisplayName As String)","attrs":[{"name":"DispId","args":"1"}]},
-        {"name":"GetPredefinedStrings","kind":"sub","vis":"public","signature":"Sub GetPredefinedStrings(ByRef Handled As Boolean, ByVal DispID As Long, ByRef StringsOut As String(), ByRef CookiesOut As Long())","attrs":[{"name":"DispId","args":"2"}]},
-        {"name":"GetPredefinedValue","kind":"sub","vis":"public","signature":"Sub GetPredefinedValue(ByRef Handled As Boolean, ByVal DispID As Long, ByVal Cookie As Long, ByRef Value As Variant)","attrs":[{"name":"DispId","args":"3"}]}
+        {"name":"GetDisplayString","kind":"sub","vis":"public","signature":"Sub GetDisplayString(ByRef Handled As Boolean, ByVal DispId As Long, ByRef DisplayName As String)","attrs":[{"name":"DispId","args":"1"}]},
+        {"name":"GetPredefinedStrings","kind":"sub","vis":"public","signature":"Sub GetPredefinedStrings(ByRef Handled As Boolean, ByVal DispId As Long, ByRef StringsOut As String(), ByRef CookiesOut As Long())","attrs":[{"name":"DispId","args":"2"}]},
+        {"name":"GetPredefinedValue","kind":"sub","vis":"public","signature":"Sub GetPredefinedValue(ByRef Handled As Boolean, ByVal DispId As Long, ByVal Cookie As Long, ByRef Value As Variant)","attrs":[{"name":"DispId","args":"3"}]}
       ]
     },
     {
@@ -350,7 +375,7 @@
       "attrs": [{"name":"InterfaceId","args":"\"00000000-0000-0000-C000-000000000046\""},{"name":"OleAutomation","args":"False"}],
       "members": [
         {"name":"AddRef","kind":"function","vis":"public","signature":"Function AddRef() As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]},
-        {"name":"QueryInterface","kind":"function","vis":"public","signature":"Function QueryInterface(ByVal priid As LongPtr, ppvObject As LongPtr) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]},
+        {"name":"QueryInterface","kind":"function","vis":"public","signature":"Function QueryInterface(ByVal priid As LongPtr, ByRef ppvObject As LongPtr) As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]},
         {"name":"Release","kind":"function","vis":"public","signature":"Function Release() As Long","returnType":"Long","attrs":[{"name":"PreserveSig"}]}
       ]
     },
@@ -445,6 +470,21 @@
         {"name":"hAccel","vis":"public","signature":"hAccel As LongPtr"},
         {"name":"cAccel","vis":"public","signature":"cAccel As Integer"},
         {"name":"dwFlags","vis":"public","signature":"dwFlags As Long"}
+      ],
+      "members": []
+    },
+    {
+      "name": "OLEDISPPARAMS",
+      "kind": "type",
+      "in": "OLEGuids",
+      "vis": "public",
+      "file": "OLEGuids.twin",
+      "signature": "Public Type OLEDISPPARAMS",
+      "fields": [
+        {"name":"rgvarg","vis":"public","signature":"rgvarg As LongPtr"},
+        {"name":"rgdispidNamedArgs","vis":"public","signature":"rgdispidNamedArgs As LongPtr"},
+        {"name":"cArgs","vis":"public","signature":"cArgs As Long"},
+        {"name":"cNamedArgs","vis":"public","signature":"cNamedArgs As Long"}
       ],
       "members": []
     },

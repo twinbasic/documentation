@@ -37,10 +37,10 @@ Tells the control that the user pressed one of the mnemonic keys it listed in **
 ### OnAmbientPropertyChange
 
 ```tb inert=signature
-Sub OnAmbientPropertyChange(ByVal DispID As Long)
+Sub OnAmbientPropertyChange(ByVal DispId As Long)
 ```
 
-Tells the control that an ambient property of the container changed. *DispID* is the dispatch identifier of the property, or -1 (`DISPID_UNKNOWN`) when more than one property changed.
+Tells the control that an ambient property of the container changed. *DispId* is the dispatch identifier of the property, or -1 (`DISPID_UNKNOWN`) when more than one property changed.
 
 ### FreezeEvents
 

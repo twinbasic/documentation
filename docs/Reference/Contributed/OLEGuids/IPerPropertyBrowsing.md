@@ -14,7 +14,7 @@ Lets a property browser ask an object for the display string, the property page 
 
 The declaration is complete: it has all four methods of the Windows interface, and every one is marked `[PreserveSig]`. Each returns the raw HRESULT as a **Long**; `E_NOTIMPL` (`&H80004001`) means that the object does not provide that kind of information. A class cannot implement this interface; it is for calling. [IPerPropertyBrowsingVB](IPerPropertyBrowsingVB) declares three of the methods in a form a class can implement.
 
-Each property is named by its dispatch identifier, *DispID*.
+Each property is named by its dispatch identifier, *DispId*.
 
 ## Methods
 
@@ -22,7 +22,7 @@ Each property is named by its dispatch identifier, *DispID*.
 
 ```tb inert=signature
 [PreserveSig]
-Function GetDisplayString(ByVal DispID As Long, ByRef lpDisplayName As LongPtr) As Long
+Function GetDisplayString(ByVal DispId As Long, ByRef lpDisplayName As LongPtr) As Long
 ```
 
 Returns a text string that describes a property, for a property browser to display. *lpDisplayName* receives a pointer to a `BSTR` that the object allocates. The caller frees it with `SysFreeString`.
@@ -31,7 +31,7 @@ Returns a text string that describes a property, for a property browser to displ
 
 ```tb inert=signature
 [PreserveSig]
-Function MapPropertyToPage(ByVal DispID As Long, ByRef pCLSID As OLEGuids.OLECLSID) As Long
+Function MapPropertyToPage(ByVal DispId As Long, ByRef pCLSID As OLEGuids.OLECLSID) As Long
 ```
 
 Returns the class identifier of the property page on which the property can be edited, in *pCLSID*. When the method fails, *pCLSID* is set to the null identifier.
@@ -40,7 +40,7 @@ Returns the class identifier of the property page on which the property can be e
 
 ```tb inert=signature
 [PreserveSig]
-Function GetPredefinedStrings(ByVal DispID As Long, ByRef pCaStringsOut As OLEGuids.OLECALPOLESTR, ByRef pCaCookiesOut As OLEGuids.OLECADWORD) As Long
+Function GetPredefinedStrings(ByVal DispId As Long, ByRef pCaStringsOut As OLEGuids.OLECALPOLESTR, ByRef pCaCookiesOut As OLEGuids.OLECADWORD) As Long
 ```
 
 Returns the names of the values a property can take, for a drop-down list. *pCaStringsOut* receives a counted array of string pointers, and *pCaCookiesOut* a counted array of cookies. Each string has a cookie in the same position. The object allocates the strings and both arrays, and the caller frees them with `CoTaskMemFree`. A cookie is passed to **GetPredefinedValue** to get the value the string names.
@@ -49,7 +49,7 @@ Returns the names of the values a property can take, for a drop-down list. *pCaS
 
 ```tb inert=signature
 [PreserveSig]
-Function GetPredefinedValue(ByVal DispID As Long, ByVal dwCookie As Long, ByRef pVarOut As Variant) As Long
+Function GetPredefinedValue(ByVal DispId As Long, ByVal dwCookie As Long, ByRef pVarOut As Variant) As Long
 ```
 
 Returns, in *pVarOut*, the value that corresponds to *dwCookie*, a cookie that **GetPredefinedStrings** returned.

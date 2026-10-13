@@ -14,7 +14,7 @@ Visual Basic-style versions of three **IPerPropertyBrowsing** methods, which a c
 
 It exists because [**IPerPropertyBrowsing**](IPerPropertyBrowsing) has `[PreserveSig]` members, which a twinBASIC class cannot implement. Each method here is a **Sub** that corresponds to one of that interface's methods, and uses Visual Basic types in place of pointers: a **String** for a `BSTR*`, and arrays of **String** and **Long** for the counted arrays. **MapPropertyToPage** has no counterpart.
 
-*Handled* is the first parameter of every method. It is passed by reference, and it is a flag that an implementation which dealt with the call sets to **True**. *DispID* is the dispatch identifier of the property.
+*Handled* is the first parameter of every method. It is passed by reference, and it is a flag that an implementation which dealt with the call sets to **True**. *DispId* is the dispatch identifier of the property.
 
 ## Methods
 
@@ -22,7 +22,7 @@ It exists because [**IPerPropertyBrowsing**](IPerPropertyBrowsing) has `[Preserv
 
 ```tb inert=signature
 [DispId(1)]
-Sub GetDisplayString(ByRef Handled As Boolean, ByVal DispID As Long, ByRef DisplayName As String)
+Sub GetDisplayString(ByRef Handled As Boolean, ByVal DispId As Long, ByRef DisplayName As String)
 ```
 
 Returns a text string that describes the property, for a property browser to display, in *DisplayName*. Corresponds to [**IPerPropertyBrowsing.GetDisplayString**](IPerPropertyBrowsing#getdisplaystring).
@@ -31,7 +31,7 @@ Returns a text string that describes the property, for a property browser to dis
 
 ```tb inert=signature
 [DispId(2)]
-Sub GetPredefinedStrings(ByRef Handled As Boolean, ByVal DispID As Long, ByRef StringsOut As String(), ByRef CookiesOut As Long())
+Sub GetPredefinedStrings(ByRef Handled As Boolean, ByVal DispId As Long, ByRef StringsOut As String(), ByRef CookiesOut As Long())
 ```
 
 Returns the names of the values the property can take, in *StringsOut*, and a cookie for each in *CookiesOut*, at the same position. Corresponds to [**IPerPropertyBrowsing.GetPredefinedStrings**](IPerPropertyBrowsing#getpredefinedstrings).
@@ -40,7 +40,7 @@ Returns the names of the values the property can take, in *StringsOut*, and a co
 
 ```tb inert=signature
 [DispId(3)]
-Sub GetPredefinedValue(ByRef Handled As Boolean, ByVal DispID As Long, ByVal Cookie As Long, ByRef Value As Variant)
+Sub GetPredefinedValue(ByRef Handled As Boolean, ByVal DispId As Long, ByVal Cookie As Long, ByRef Value As Variant)
 ```
 
 Returns, in *Value*, the value that corresponds to *Cookie*, a cookie that **GetPredefinedStrings** returned. Corresponds to [**IPerPropertyBrowsing.GetPredefinedValue**](IPerPropertyBrowsing#getpredefinedvalue).
@@ -50,3 +50,4 @@ Returns, in *Value*, the value that corresponds to *Cookie*, a cookie that **Get
 - [IPerPropertyBrowsing](IPerPropertyBrowsing) interface -- the Windows interface this one corresponds to
 - [IOleControlVB](IOleControlVB) interface -- Visual Basic-style **GetControlInfo** and **OnMnemonic**
 - [IOleInPlaceActiveObjectVB](IOleInPlaceActiveObjectVB) interface -- Visual Basic-style **TranslateAccelerator**
+- [IOleInPlaceObjectWindowlessVB](IOleInPlaceObjectWindowlessVB) interface -- Visual Basic-style **OnWindowMessage**
