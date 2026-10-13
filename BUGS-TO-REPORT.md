@@ -4482,3 +4482,61 @@ What does not reproduce it: asking for an interface the object has. `IUnknown` a
 Severity: low. The failure is reported, by the HRESULT, so a caller that tests it is not affected. A caller that tests the pointer instead, as a C or C++ client may, sees the value it passed in. When the variable is reused after an earlier successful call, that value is a pointer the caller has released.
 
 <!-- Reproducer: bugs/queryinterface-leaves-out-pointer/ (mode run: expect lists the four lines of classes that twinBASIC compiles with out=12345 and the three runtime lines with out=0); verified on BETA 1005 by `bug_repro.mjs verify`, and run with --arch win64 too (the IDE's own run; not as a built exe, where Debug.Print writes nothing). VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6`. The narrowed module above was run on its own in a scratch project (output `80004002       12345`); the interface needs only the interface identifier of IUnknown, Extends Nothing and a [PreserveSig] first method (no [OleAutomation(False)], no AddRef or Release). Pages: docs/Reference/Contributed/OLEGuids/IUnknownUnrestricted.md carries a NOTE for it after its QueryInterface section (its check_run sample uses a Collection, which sets the variable to 0, so it does not show the defect), and docs/Reference/COM-Interfaces/IUnknown.md carries one after the return value of its QueryInterface section; both NOTEs go when a fixed build is released. Found 2026-10-13 documenting the OLEGuids package. -->
+
+## A `For Each` that cannot get an enumerator never ends under `On Error Resume Next`
+
+**Describe the bug**
+A `For Each` whose *group* gives no enumerator --- `Nothing`, an object of a class with no `[Enumerator]` member, or an object whose `[Enumerator]` member returns `Nothing` or raises an error --- never ends when it runs under `On Error Resume Next`, or under an error handler that ends with `Resume Next`. The error in the `For Each` line resumes into the loop body; then `Next` raises error 91, *Object variable or With block variable not set*, and resumes into the body again, without end. The expression after `In` is evaluated once only. Nothing is reported, and the program stops responding.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `for-each-resume-next-loops.twinproj` (attached as `for-each-resume-next-loops.zip`). Its module `Startup` runs five loops under `On Error Resume Next` and four under a handler that ends with `Resume Next`. Each counts how often the expression after `In` is evaluated (`header=`) and how often the body runs, and leaves the loop after six passes so that the program ends.
+2. Press F5.
+3. See the DEBUG CONSOLE. The control, a `Collection` of one item, runs once. Every other loop is evaluated once and runs its body until the guard ends it, with error 91 at each pass:
+
+```
+Collection (control): header=1 body=1 errors: 0 | after Next: 0
+Nothing: header=1 body=6 errors: 91 91 91 91 91 91 | after Next: 0
+Class with no enumerator: header=1 body=6 errors: 91 91 91 91 91 91 | after Next: 0
+Enumerator returns Nothing: header=1 body=6 errors: 91 91 91 91 91 91 | after Next: 0
+Enumerator raises error 5: header=1 body=6 errors: 91 91 91 91 91 91 | after Next: 0
+Nothing, handler with Resume Next: header=1 body=4 passes: error -2147467259 error 91 body error 91 body error 91 body error 91 body error 91
+```
+
+The narrowed reproduction:
+```vb
+Module Startup
+    Public Sub Main()
+        Dim o As Object, v As Variant, n As Long
+        On Error Resume Next
+        For Each v In o          ' o is Nothing: an error, resumed
+            n = n + 1
+            If n = 1000 Then Exit For   ' without this line the loop never ends
+        Next
+        Debug.Print n            ' prints 1000; VB6 prints 1
+    End Sub
+End Module
+```
+
+**Expected behavior**
+The loop ends. VB6 runs the body once, then raises error 92, *For loop not initialized*, at `Next`, and `Resume Next` continues after the loop. Every loop of the attached VB6 project (`for-each-resume-next-loops-vb6.zip`, the same cases, with classes whose `NewEnum` has the procedure identifier -4) prints `body=1`, then error 92:
+
+```
+Nothing: header=1 body=1 errors: 424 | after Next: 92
+Class with no enumerator: header=1 body=1 errors: 438 | after Next: 92
+Enumerator returns Nothing: header=1 body=1 errors: 451 | after Next: 92
+Enumerator raises error 5: header=1 body=1 errors: 5 | after Next: 92
+```
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same in a 32-bit and a 64-bit run. A package can meet it without the program's knowledge: the contributed package ArrayListLib returns `Nothing` from its enumerator for a list with no items, and its `ToString` method goes through a list with `For Each` under `On Error Resume Next`, so `ToString` of an empty list never returns.
+
+The first error also differs from VB6's, which the handler cases show (VB6 in parentheses): `Nothing` raises -2147467259, `E_FAIL` (VB6 424, *Object required*); an enumerator that returns `Nothing` raises -2147467259 (VB6 451, *Property let procedure not defined and property get procedure did not return an object*); an error 5 raised in the enumerator arrives as -2147352567, *Exception occurred* (VB6 5); a class with no enumerator raises 438 in both.
+
+Severity: high. The program stops responding with no error, in code written to go on after an error, and a program that loops over what a package returns cannot see it coming.
+
+<!-- Reproducer: bugs/for-each-resume-next-loops/ (mode run: expect lists the control, the four Resume Next loops with body=6 and the first handler line); verified on BETA 1005 by `bug_repro.mjs verify`, and run with --arch win64 too. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6`. The narrowed module above was run on its own in a scratch project with tbrun (output 1000). Pages: docs/Reference/Core/For-Each-Next.md carries a WARNING after the paragraph on [Enumerator]; it goes when a fixed build is released, and with it the two mentions of "a twinBASIC defect" in docs/Reference/Contributed/ArrayListLib/index.md (Known problems: For Each over a list with no items, ToString). Found 2026-10-13 documenting the ArrayListLib package. -->
