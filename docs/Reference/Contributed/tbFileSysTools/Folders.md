@@ -52,7 +52,7 @@ Syntax: *object*.**Item** ( *nameOrIndex* ) **As Folder**
 *nameOrIndex*
 : *required* A **Variant**: the name of the folder, such as `"bin"`, in any letter case, or the position of the folder, counted from 1.
 
-The folders are in the order in which Windows lists the folder that holds them. A name that is not in the collection raises error 5, and a position below 1 or above [**Count**](#count) raises error 9 (*Subscript out of range*).
+The folders are in the order in which Windows lists the folder that holds them. A name that is not in the collection, and a position below 1 or above [**Count**](#count), raise error 5 (*Invalid procedure call or argument*), with the message *No item 'x' in the collection*.
 
 The Scripting Runtime takes a name only: it raises error 76 (*Path not found*) for a name that is not in the collection, and error 5 for a position. It also has an **Add** method, which creates a folder; this collection has none, and [**CreateFolder**](FileSystemTools#createfolder) does that work.
 

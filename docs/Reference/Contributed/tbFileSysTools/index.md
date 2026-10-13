@@ -6,14 +6,14 @@ exclude_from_docs:
   - FSTShared
   - TextCodec
   - WinAPI
-indexed_from: 1.1.1.0
+indexed_from: 1.8.0.0
 permalink: /tB/Packages/Contributed/tbFileSysTools/
 ---
 
 # tbFileSysTools Package
 {: .no_toc }
 
-**Author:** GCuser99. **Version:** 1.1.1.0. **On GitHub:** [GCuser99/tbFileSysTools](https://github.com/GCuser99/tbFileSysTools), in the folder *Package*.
+**Author:** GCuser99. **Version:** 1.8.0.0. **On GitHub:** [GCuser99/tbFileSysTools](https://github.com/GCuser99/tbFileSysTools), in the folder *Package*.
 
 The **tbFileSysTools** contributed package, listed in the Available Packages dialog as *File System Tools - Modern Replacement for FSO*, reads and changes files, folders and drives, as the **FileSystemObject** of the Scripting Runtime does, and is written in twinBASIC. It reads and writes text files in any Windows code page, with detection of the encoding and handling of byte-order marks (BOMs), detects and converts line endings, streams files of any size, and works with paths longer than 260 characters.
 
@@ -48,8 +48,7 @@ ts.Close
 DeleteFolder work
 ```
 
-> [!NOTE]
-> This section documents version 1.1.1.0, the version on the package server, published under the MIT licence. The GitHub repository has moved on: its README describes version 1.8.0.0, and its change log lists changes from 1.2.0.0 on. Some members that the README names, such as **FindInTextFiles**, **FileContainsText** and **IsFileLocked**, do not exist in 1.1.1.0. The change log also records that later versions removed the *useLongPathPrefix* argument of **GetAbsolutePathName** and the *skipIfUnchanged* argument of **NormalizeTextFile**, which this version has, and that they changed some of the behaviour described on these pages.
+The package is published under the MIT licence.
 
 The public types of the package are the module and the eight classes on these pages, and the enumerations that the module declares. Three private modules, **FSTShared** (shared file code and the error mapping), **TextCodec** (encoding, decoding and detection) and **WinAPI** (Windows declarations), are not part of the interface and are not described.
 
@@ -61,8 +60,9 @@ A call that works with the Scripting Runtime's **FileSystemObject** keeps its na
 
 - Whole files: [**StringToTextFile**](FileSystemTools#stringtotextfile), [**TextFileToString**](FileSystemTools#textfiletostring), [**ArrayToTextFile**](FileSystemTools#arraytotextfile), [**TextFileToArray**](FileSystemTools#textfiletoarray), [**ReadStream**](FileSystemTools#readstream), [**WriteStream**](FileSystemTools#writestream), [**NormalizeTextFile**](FileSystemTools#normalizetextfile) and [**MergeTextFiles**](FileSystemTools#mergetextfiles).
 - Detection: [**GetFileEncoding**](FileSystemTools#getfileencoding) and [**GetFileLineEnding**](FileSystemTools#getfilelineending).
+- Searching and locks: [**FindInTextFiles**](FileSystemTools#findintextfiles), [**FileContainsText**](FileSystemTools#filecontainstext) and [**IsFileLocked**](FileSystemTools#isfilelocked).
 - Paths and directories: [**CleanFileName**](FileSystemTools#cleanfilename), [**GetRelativePath**](FileSystemTools#getrelativepath), [**GetFilePaths**](FileSystemTools#getfilepaths), [**GetFileType**](FileSystemTools#getfiletype), [**GetCurrentDir**](FileSystemTools#getcurrentdir), [**SetCurrentDir**](FileSystemTools#setcurrentdir) and [**Rename**](FileSystemTools#rename).
-- On [**File**](File): **Encoding**, **ExtensionName**, **HasAttribute**, **LineEnding**, **Normalize**, **Refresh**, **Rename**, **SetAttribute**, **ToStream**, **ToString** and **Version**. On [**Folder**](Folder): **HasAttribute**, **Refresh**, **Rename** and **SetAttribute**. On [**Drive**](Drive): **SerialNumberHex** and **UnsignedSerialNumber**. On [**TextStream**](TextStream): **Encoding**, **Flush** and **IsStreaming**.
+- On [**File**](File): **ContainsText**, **Encoding**, **ExtensionName**, **HasAttribute**, **IsLocked**, **LineEnding**, **Normalize**, **Refresh**, **Rename**, **SetAttribute**, **ToStream**, **ToString** and **Version**. On [**Folder**](Folder): **HasAttribute**, **Refresh**, **Rename** and **SetAttribute**. On [**Drive**](Drive): **SerialNumberHex** and **UnsignedSerialNumber**. On [**TextStream**](TextStream): **Encoding**, **Flush** and **IsStreaming**.
 - [**Files**](Files), [**Folders**](Folders) and [**Drives**](Drives) return an item by position as well as by name.
 - Enumerations for the encodings, line endings and 25 special folders.
 
@@ -76,21 +76,20 @@ A call that works with the Scripting Runtime's **FileSystemObject** keeps its na
 
 - [**GetSpecialFolder**](FileSystemTools#getspecialfolder) returns the path as a **String**, where the Scripting Runtime returns a **Folder**. It accepts 25 folders, and not only the Windows, System and Temporary folders.
 - [**FileAttribute**](FileSystemTools#fileattribute) has no *Volume* (8) and no *Alias* (1024). The label of a volume is [**Drive.VolumeName**](Drive#volumename), and an alias is **faReparsePoint**. [**File**](File#setattribute) and [**Folder**](Folder#setattribute) add **SetAttribute** and **HasAttribute**, which change and test one attribute.
-- [**Folder.Size**](Folder#size) does not enter directory junctions and symbolic links. The Scripting Runtime does, and counts the target of a link twice when it is in the same tree: 2,500 bytes there for a folder that holds 1,500.
+- [**Folder.Size**](Folder#size), [**CopyFolder**](FileSystemTools#copyfolder), [**DeleteFolder**](FileSystemTools#deletefolder) and [**GetFilePaths**](FileSystemTools#getfilepaths) with *recursive* do not enter directory junctions and symbolic links. The Scripting Runtime does, and counts the target of a link twice when it is in the same tree: 2,500 bytes there for a folder that holds 1,500. Its **CopyFolder** copies the files of the target into the copy, and its **DeleteFolder** deletes them.
 - [**BuildPath**](FileSystemTools#buildpath) and [**GetParentFolderName**](FileSystemTools#getparentfoldername) turn `/` into `\`. `BuildPath("C:\a", "b/c")` returns `C:\a\b\c` and the Scripting Runtime `C:\a\b/c`; `GetParentFolderName("C:/a/b.txt")` returns `C:\a` and the Scripting Runtime `C:/a`.
 - [**GetAbsolutePathName**](FileSystemTools#getabsolutepathname) raises error 52 for an empty string, where the Scripting Runtime returns the current directory.
-- [**GetDrive**](FileSystemTools#getdrive) accepts a full path and reduces it to its drive: `GetDrive("C:\Windows")` is `C:`. The Scripting Runtime raises error 5.
 - [**CopyFile**](FileSystemTools#copyfile), [**CopyFolder**](FileSystemTools#copyfolder), [**MoveFile**](FileSystemTools#movefile) and [**MoveFolder**](FileSystemTools#movefolder) put the source inside an existing destination folder, whether or not the destination ends in a backslash. The Scripting Runtime does so only with a backslash. Without one it raises error 70 for **CopyFile**, 58 for **MoveFile** and **MoveFolder**, and **CopyFolder** copies the contents of the source straight into the folder.
 - [**MoveFile**](FileSystemTools#movefile) moves a folder when *source* names one. The Scripting Runtime raises error 53.
 - [**DeleteFolder**](FileSystemTools#deletefolder) of a folder that holds a read-only file raises error 75 without *force*; the Scripting Runtime raises 70.
 - [**GetFileVersion**](FileSystemTools#getfileversion) returns an empty string for a file that does not exist. The Scripting Runtime raises an error.
 - At the end of a stream, [**ReadAll**](TextStream#readall) returns an empty string and [**Skip**](TextStream#skip) does nothing, where the Scripting Runtime raises error 62. A closed stream raises 52 here and 91 there.
-- [**Files.Item**](Files#item), [**Folders.Item**](Folders#item) and [**Drives.Item**](Drives#item) take a position as well as a name. A name that is not in the collection raises error 5; the Scripting Runtime raises 53, 76 and 68 for the three. `Drives("C:")` raises error 5, and the Scripting Runtime accepts it.
+- [**Files.Item**](Files#item), [**Folders.Item**](Folders#item) and [**Drives.Item**](Drives#item) take a position as well as a name. A name or a position that is not in the collection raises error 5; the Scripting Runtime raises 53, 76 and 68 for a name that is not in the three.
 - [**GetTempName**](FileSystemTools#gettempname) returns eight random letters and digits and `.tmp`. The Scripting Runtime returns `rad` and five hexadecimal digits.
 - A path longer than 260 characters works in most procedures. The Scripting Runtime does not accept it: **FileExists** and **FolderExists** return **False** for it, **GetFile** raises error 53 and **OpenTextFile** raises 76.
 - [**StringToTextFile**](FileSystemTools#stringtotextfile), [**ArrayToTextFile**](FileSystemTools#arraytotextfile) and [**WriteStream**](FileSystemTools#writestream) replace a read-only file without an error. [**CreateTextFile**](FileSystemTools#createtextfile) raises error 70 for it, as the Scripting Runtime's does.
 
-**The same.** For these failures the two raise the same error numbers: a missing file (53) or folder (76) from **GetFile**, **GetFolder**, **CopyFile**, **DeleteFile**, **DeleteFolder** and **OpenTextFile**; an existing folder or destination (58) from **CreateFolder**, **CopyFile**, **MoveFile** and **CreateTextFile**; a missing parent folder (76) from **CreateFolder**; a drive that does not exist (68) from **GetDrive**; a read-only destination or file (70) from **CopyFile**, **DeleteFile** and **CreateTextFile**; an unreadable folder (70) from **Files**, **SubFolders** and **Size**; the wrong direction of a stream (54) and a read at the end (62) from **TextStream**. Both enter a junction or symbolic link when they delete a folder, and both match a pattern against the 8.3 name of a file too.
+**The same.** For these failures the two raise the same error numbers: a missing file (53) or folder (76) from **GetFile**, **GetFolder**, **CopyFile**, **DeleteFile**, **DeleteFolder** and **OpenTextFile**; an existing folder or destination (58) from **CreateFolder**, **CopyFile**, **MoveFile** and **CreateTextFile**; a missing parent folder (76) from **CreateFolder**; a drive that does not exist (68) and a path that is longer than a drive (5) from **GetDrive**; a read-only destination or file (70) from **CopyFile**, **DeleteFile** and **CreateTextFile**; an unreadable folder (70) from **Files**, **SubFolders** and **Size**; the wrong direction of a stream (54) and a read at the end (62) from **TextStream**. Both match a pattern against the 8.3 name of a file in **CopyFile**, **DeleteFile** and **MoveFile**, and both accept `C:` as the item of **Drives**.
 
 ## Using the package with the Scripting Runtime
 
@@ -111,10 +110,9 @@ The other ways out are to remove the reference to the Scripting Runtime, or to l
 
 The procedures raise the error numbers that VB6 uses for the same failures. **Err.Source** names the operation, such as `CopyFile`, and **Err.Description** names the path. The errors of [**OpenTextFile**](FileSystemTools#opentextfile), [**CreateTextFile**](FileSystemTools#createtextfile) and the other procedures that open a stream have an empty **Err.Source** and only the standard text of their number, without the path. Each entry says which numbers it raises.
 
-- 5 -- *Invalid procedure call or argument*: a wildcard in a destination, a folder copied into itself, a text procedure given a binary file, a value that is not a member of an enumeration, a name that is not in a collection, and the *file not found!* of [**ReadStream**](FileSystemTools#readstream).
+- 5 -- *Invalid procedure call or argument*: a wildcard in a destination, a folder copied into itself, a text procedure given a binary file, a value that is not a member of an enumeration, a name or a position that is not in a collection, a string that is not a drive, and an empty search text.
 - 7 -- *Out of memory*: a whole file that is too large for one array or **String** (more than 2 GB).
-- 9 -- *Subscript out of range*: a position outside a collection.
-- 52 -- *Bad file name or number*: a name with a character that Windows does not allow, and a closed [**TextStream**](TextStream).
+- 52 -- *Bad file name or number*: a name with a character that Windows does not allow, or a reserved device name such as `con`, and a closed [**TextStream**](TextStream).
 - 53 -- *File not found*.
 - 54 -- *Bad file mode*: a read on a stream open for writing, or the reverse.
 - 58 -- *File already exists*. The text says *File* also when a folder is in the way.
@@ -128,39 +126,45 @@ The procedures raise the error numbers that VB6 uses for the same failures. **Er
 Windows reports a failure with its own code, and the package maps it to one of those numbers: *file not found* (2) to 53, *path not found* (3) and *bad directory name* (267) to 76, *file exists* (80 and 183) to 58, *access denied* and the sharing violations (5, 32 and 33) to 70, and *invalid name* (123) to 52.
 
 > [!NOTE]
-> Version 1.1.1.0 raises some errors that the Scripting Runtime does not raise, or other numbers. The sample shows the first three.
+> A few failures raise a number that is not the one the same failure raises elsewhere in the package. The sample shows the first two.
 >
-> - A file name with a character above U+7FFF, such as the Chinese character U+8A9E, the Hangul letter U+AC00 or an emoji, raises error 52 in [**StringToTextFile**](FileSystemTools#stringtotextfile), [**ArrayToTextFile**](FileSystemTools#arraytotextfile), [**CreateTextFile**](FileSystemTools#createtextfile), [**OpenTextFile**](FileSystemTools#opentextfile) with *create* **True**, the output file of [**MergeTextFiles**](FileSystemTools#mergetextfiles) and [**Folder.CreateTextFile**](Folder#createtextfile). The Scripting Runtime accepts the names, and so do [**WriteStream**](FileSystemTools#writestream) and [**CreateFolder**](FileSystemTools#createfolder).
-> - A missing file raises error 5 and not 53 in [**TextFileToString**](FileSystemTools#textfiletostring), [**TextFileToArray**](FileSystemTools#textfiletoarray), [**GetFileEncoding**](FileSystemTools#getfileencoding), [**GetFileLineEnding**](FileSystemTools#getfilelineending), [**NormalizeTextFile**](FileSystemTools#normalizetextfile), [**ReadStream**](FileSystemTools#readstream) and the first file of [**MergeTextFiles**](FileSystemTools#mergetextfiles). [**OpenTextFile**](FileSystemTools#opentextfile) and [**GetFile**](FileSystemTools#getfile) raise 53.
-> - A folder that does not exist raises the unspecified error -2147467259, not 76, in [**StringToTextFile**](FileSystemTools#stringtotextfile), [**ArrayToTextFile**](FileSystemTools#arraytotextfile) and [**WriteStream**](FileSystemTools#writestream). [**CreateTextFile**](FileSystemTools#createtextfile) and [**OpenTextFile**](FileSystemTools#opentextfile) raise 76.
+> - A file that is held open with exclusive access raises the unspecified error -2147467259 when it is read, by [**TextFileToString**](FileSystemTools#textfiletostring), [**GetFileEncoding**](FileSystemTools#getfileencoding), [**ReadStream**](FileSystemTools#readstream) and the other procedures that read a whole file. Writing to it raises 70.
+> - A reserved device name, such as `con` or `nul`, raises 52 in the procedures that write a file ([**StringToTextFile**](FileSystemTools#stringtotextfile), [**ArrayToTextFile**](FileSystemTools#arraytotextfile), [**CreateTextFile**](FileSystemTools#createtextfile), [**OpenTextFile**](FileSystemTools#opentextfile) with *create* **True**, [**Folder.CreateTextFile**](Folder#createtextfile)) and in [**CopyFile**](FileSystemTools#copyfile). It raises 75 in [**CreateFolder**](FileSystemTools#createfolder) and [**MoveFile**](FileSystemTools#movefile), and 5 in [**Rename**](FileSystemTools#rename).
 > - [**Folder.Files**](Folder#files), [**SubFolders**](Folder#subfolders) and [**Size**](Folder#size) raise error 76 for a folder whose path has 258 characters or more.
 
 ```tb check_build check_run
-Dim work As String, s As String, ts As TextStream
+Dim work As String, p As String, s As String, fn As Long
 work = BuildPath(Environ$("TEMP"), GetTempName("fst", ""))
 CreateFolder work
+p = BuildPath(work, "a.txt")
+StringToTextFile "x", p
 
 On Error Resume Next
-StringToTextFile "x", BuildPath(work, ChrW$(&H8A9E&) & ".txt")
+fn = FreeFile()
+Open p For Binary Access Read Write Lock Read Write As #fn
+s = TextFileToString(p)
+Debug.Print Err.Number                              ' -2147467259
+Err.Clear
+StringToTextFile "y", p
+Debug.Print Err.Number                              ' 70
+Err.Clear
+Close #fn
+
+StringToTextFile "x", BuildPath(work, "con")
 Debug.Print Err.Number                              ' 52
 Err.Clear
-StringToTextFile "x", BuildPath(work, ChrW$(&H65E5&) & ".txt")
-Debug.Print Err.Number                              ' 0
-s = TextFileToString(BuildPath(work, "missing.txt"))
+CreateFolder BuildPath(work, "con")
+Debug.Print Err.Number                              ' 75
+Err.Clear
+Rename p, "con"
 Debug.Print Err.Number                              ' 5
-Err.Clear
-Set ts = OpenTextFile(BuildPath(work, "missing.txt"))
-Debug.Print Err.Number                              ' 53
-Err.Clear
-StringToTextFile "x", BuildPath(work, "nofolder\x.txt")
-Debug.Print Err.Number                              ' -2147467259
 Err.Clear
 On Error GoTo 0
 
 DeleteFolder work
 ```
 
-Test with [**FileExists**](FileSystemTools#fileexists) first when the number of a missing-file error matters.
+In the procedures that read or write the text or the bytes of a file, a file that does not exist raises error 53, and a folder that does not exist raises 76.
 
 ## Classes and modules
 
@@ -175,7 +179,9 @@ Test with [**FileExists**](FileSystemTools#fileexists) first when the number of 
   - [DeleteFile](FileSystemTools#deletefile) -- deletes one or more files
   - [DeleteFolder](FileSystemTools#deletefolder) -- deletes a folder and everything in it
   - [DriveExists](FileSystemTools#driveexists) -- returns whether a drive exists
+  - [FileContainsText](FileSystemTools#filecontainstext) -- returns whether a text file contains a piece of text
   - [FileExists](FileSystemTools#fileexists) -- returns whether a file exists
+  - [FindInTextFiles](FileSystemTools#findintextfiles) -- returns the paths of the text files in a folder that contain a piece of text
   - [FolderExists](FileSystemTools#folderexists) -- returns whether a folder exists
   - [GetAbsolutePathName](FileSystemTools#getabsolutepathname) -- returns the full path for a path specification
   - [GetBaseName](FileSystemTools#getbasename) -- returns the last component of a path without its extension
@@ -197,6 +203,7 @@ Test with [**FileExists**](FileSystemTools#fileexists) first when the number of 
   - [GetSpecialFolder](FileSystemTools#getspecialfolder) -- returns the path of a well-known Windows folder
   - [GetStandardStream](FileSystemTools#getstandardstream) -- returns a TextStream for standard input, output or error
   - [GetTempName](FileSystemTools#gettempname) -- returns a random name for a temporary file or folder
+  - [IsFileLocked](FileSystemTools#isfilelocked) -- returns whether a file is in use
   - [MergeTextFiles](FileSystemTools#mergetextfiles) -- joins two text files into one
   - [MoveFile](FileSystemTools#movefile) -- moves one or more files
   - [MoveFolder](FileSystemTools#movefolder) -- moves one or more folders
@@ -229,7 +236,7 @@ Test with [**FileExists**](FileSystemTools#fileexists) first when the number of 
 - [Drives](Drives) -- the collection of the drives
 - [File](File) -- a file
   - [Attributes](File#attributes), [DateCreated](File#datecreated), [DateLastAccessed](File#datelastaccessed), [DateLastModified](File#datelastmodified), [Drive](File#drive), [Encoding](File#encoding), [ExtensionName](File#extensionname), [HasAttribute](File#hasattribute), [LineEnding](File#lineending), [Name](File#name), [ParentFolder](File#parentfolder), [Path](File#path), [ShortName](File#shortname), [ShortPath](File#shortpath), [Size](File#size), [Type](File#type), [Version](File#version) -- the properties
-  - [Copy](File#copy), [Delete](File#delete), [Move](File#move), [Normalize](File#normalize), [OpenAsTextStream](File#openastextstream), [Refresh](File#refresh), [Rename](File#rename), [SetAttribute](File#setattribute), [ToStream](File#tostream), [ToString](File#tostring) -- the methods
+  - [ContainsText](File#containstext), [Copy](File#copy), [Delete](File#delete), [IsLocked](File#islocked), [Move](File#move), [Normalize](File#normalize), [OpenAsTextStream](File#openastextstream), [Refresh](File#refresh), [Rename](File#rename), [SetAttribute](File#setattribute), [ToStream](File#tostream), [ToString](File#tostring) -- the methods
 - [Files](Files) -- the collection of the files of a folder
 - [Folder](Folder) -- a folder
   - [Attributes](Folder#attributes), [DateCreated](Folder#datecreated), [DateLastAccessed](Folder#datelastaccessed), [DateLastModified](Folder#datelastmodified), [Drive](Folder#drive), [Files](Folder#files), [HasAttribute](Folder#hasattribute), [IsRootFolder](Folder#isrootfolder), [Name](Folder#name), [ParentFolder](Folder#parentfolder), [Path](Folder#path), [ShortName](Folder#shortname), [ShortPath](Folder#shortpath), [Size](Folder#size), [SubFolders](Folder#subfolders), [Type](Folder#type) -- the properties
