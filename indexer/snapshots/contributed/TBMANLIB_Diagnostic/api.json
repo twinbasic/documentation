@@ -2,7 +2,7 @@
   "format": 3,
   "package": "TBMANLIB_Diagnostic",
   "project": "TBMANLIB_Diagnostic",
-  "version": "0.0.0.0",
+  "version": "1.0.0.1",
   "types": [
     {
       "name": "CPUInfoCollector",
@@ -561,13 +561,6 @@
       "implements": ["IOutputFormatter"],
       "attrs": [{"name":"ClassId","args":"\"20A2B3C4-D5E6-F7A8-B9C0-D1E2F3A4B5C6\""},{"name":"InterfaceId","args":"\"20A2B3C4-D5E6-F7A8-B9C0-D1E2F3A4B5C7\""}],
       "members": [
-        {"name":"BOX_WIDTH","kind":"const","vis":"private","signature":"Private Const BOX_WIDTH As Long = 50"},
-        {"name":"GetBottomBorder","kind":"function","vis":"private","signature":"Private Function GetBottomBorder() As String","returnType":"String"},
-        {"name":"GetCategoryFooter","kind":"function","vis":"private","signature":"Private Function GetCategoryFooter() As String","returnType":"String"},
-        {"name":"GetCategoryHeader","kind":"function","vis":"private","signature":"Private Function GetCategoryHeader(ByVal categoryName As String) As String","returnType":"String"},
-        {"name":"GetCenteredLine","kind":"function","vis":"private","signature":"Private Function GetCenteredLine(ByVal text As String) As String","returnType":"String"},
-        {"name":"GetItemLine","kind":"function","vis":"private","signature":"Private Function GetItemLine(ByVal key As String, ByVal value As String) As String","returnType":"String"},
-        {"name":"GetTopBorder","kind":"function","vis":"private","signature":"Private Function GetTopBorder() As String","returnType":"String"},
         {"name":"IOutputFormatter_BeginFormat","kind":"sub","vis":"public","signature":"Public Sub IOutputFormatter_BeginFormat()"},
         {"name":"IOutputFormatter_EndCategory","kind":"sub","vis":"public","signature":"Public Sub IOutputFormatter_EndCategory()"},
         {"name":"IOutputFormatter_EndFormat","kind":"function","vis":"public","signature":"Public Function IOutputFormatter_EndFormat() As String","returnType":"String"},
@@ -577,6 +570,7 @@
         {"name":"IOutputFormatter_FormatterName","kind":"property","vis":"public","signature":"Public Property Get IOutputFormatter_FormatterName() As String","returnType":"String","accessor":"Get"},
         {"name":"New","kind":"sub","vis":"public","signature":"Public Sub New()"},
         {"name":"m_Builder","kind":"field","vis":"private","signature":"Private m_Builder As StringBuilder"},
+        {"name":"m_HasItems","kind":"field","vis":"private","signature":"Private m_HasItems As Boolean"},
         {"name":"m_InCategory","kind":"field","vis":"private","signature":"Private m_InCategory As Boolean"}
       ]
     },

@@ -99,7 +99,7 @@ Syntax: **FormatHelper.FormatBytes** ( *bytes* [ , *decimals* ] ) **As String**
 
 The units are 1024 times larger one after the other, and are written `KB`, `MB`, `GB` and `TB`. The function picks the largest unit that is at most the size, divides, and writes the number with *decimals* digits, a space and the unit: `1.5 KB`. A size below 1024 is written in whole bytes as `512 B`, whatever *decimals* is. A size of 1024 TB or more is shown in TB. The number is made with the **Format** function and a pattern of zeros, so the digits are rounded. A negative size is written in bytes.
 
-With *decimals* set to 0 the pattern is `0.`, and the decimal separator stays in the text: `4. KB` and not `4 KB`. The **Page Size** item of [**CPUInfoCollector**](Collectors#cpuinfocollector) is written this way. See [Known problems](.#known-problems-in-version-0000).
+With *decimals* set to 0 the pattern is `0.`, and the decimal separator stays in the text: `4. KB` and not `4 KB`. The **Page Size** item of [**CPUInfoCollector**](Collectors#cpuinfocollector) is written this way. See [Known problems](.#known-problems-in-version-1001).
 
 ```tb check_build check_run
 Debug.Print FormatHelper.FormatBytes(4096, 0)
