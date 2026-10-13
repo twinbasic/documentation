@@ -39,7 +39,7 @@ Four properties change how the pattern is matched. [**Flags**](Flags) reads and 
 | [**Global**](Global) | `g` | All matches are used. When **False**, [**Execute**](Execute), [**Replace**](Replace) and [**Split**](Split) use only the first match. |
 | [**MultiLine**](MultiLine) | `m` | `^` and `$` also match at the start and end of each line. |
 | [**IgnoreCase**](IgnoreCase) | `i` | Letter case is ignored. |
-| [**DotAll**](DotAll) | `s` | `.` also matches line terminators. |
+| [**DotAll**](DotAll) | `s` | `.` also matches a line feed. |
 
 All four are **False** in a new instance.
 
@@ -51,7 +51,7 @@ A pattern that does not compile does not raise an error at once. [**IsValid**](I
 
 ## Properties
 
-- [DotAll](DotAll) -- returns or sets whether `.` matches line terminators
+- [DotAll](DotAll) -- returns or sets whether `.` matches a line feed
 - [Flags](Flags) -- returns or sets the four options as a string of letters
 - [Global](Global) -- returns or sets whether all matches are used
 - [IgnoreCase](IgnoreCase) -- returns or sets whether letter case is ignored

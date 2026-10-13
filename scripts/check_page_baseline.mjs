@@ -24,9 +24,11 @@
 //     node scripts/check_page_baseline.mjs
 
 import { readFile } from "node:fs/promises";
-import { GUARDED_SRC } from "../builder/baseline.mjs";
+import path from "node:path";
+import { baselineWrites, GUARDED_DEST, GUARDED_SRC } from "../builder/baseline.mjs";
 import { checkPageBaseline } from "../builder/page-baseline.mjs";
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { baselineFixture, createProbes } from "./lib/gate-probes.mjs";
 
 exitOnCrash();
@@ -143,6 +145,42 @@ await withBaseline(null, async (file) => {
     !r.failed && (await readJson(file)).pages === 908,
     r.text.trim(),
   );
+});
+
+// --- only a build into docs/_site writes -------------------------------------
+//
+// Agents building side by side into folders of their own each rewrote the
+// committed baseline, and each had to undo the others' rise after every build.
+
+{
+  const w = baselineWrites({ destRoot: GUARDED_DEST });
+  check("a build into docs/_site may write", w.write && w.heldBack === "", JSON.stringify(w));
+  const other = baselineWrites({ destRoot: path.join(REPO_ROOT, ".claude", "agent-site") });
+  check(
+    "a build into another --dest may not, and says where it went",
+    !other.write && other.heldBack.includes(".claude/agent-site"),
+    JSON.stringify(other),
+  );
+  const ci = baselineWrites({ destRoot: GUARDED_DEST, ci: true });
+  check(
+    "CI may not write into docs/_site either, and says nothing",
+    !ci.write && ci.heldBack === "",
+    JSON.stringify(ci),
+  );
+  const serve = baselineWrites({ destRoot: GUARDED_DEST, serve: true });
+  check("--serve may not write", !serve.write && serve.heldBack === "", JSON.stringify(serve));
+}
+
+await withBaseline(BASE, async (file) => {
+  const { write, heldBack } = baselineWrites({ destRoot: path.join(REPO_ROOT, ".claude", "agent-site") });
+  const r = await checkPageBaseline({ ...BASE, pages: 920, write, heldBack, file });
+  check(
+    "a rise built into another --dest leaves the file alone and says so",
+    !r.failed && (await readJson(file)).pages === 908 && r.text.includes("not raised") && r.text.includes("920"),
+    r.text.trim(),
+  );
+  const fall = await checkPageBaseline({ ...BASE, pages: 871, write, heldBack, file });
+  check("a fall built into another --dest still fails", fall.failed, fall.text.trim());
 });
 
 // --- report ------------------------------------------------------------------

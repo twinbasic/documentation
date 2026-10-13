@@ -1,0 +1,1081 @@
+' ProbeB1: what the five common dialogs of TBMANLIB_Dialog do at run time.
+'
+' cDialogColor (ChooseColor), cDialogFont (ChooseFont), cDialogPrint (PrintDlg),
+' cDialogPageSetup (PageSetupDlg) and cDialogFindReplace (FindText, ReplaceText). Probe.twin
+' calls RunB1 for the ids below; DrvB1.twin drives the dialogs.
+'
+' NEVER PRINT. Nothing here sends anything to a printer. The Print and Page Setup dialogs are
+' answered with OK only where the class's code after the dialog reads the structure and frees the
+' memory the dialog allocated; no scenario calls StartDoc, and the one that asks for a printer
+' device context (c26) runs only when the default printer is a Microsoft virtual one and deletes
+' the context at once. No scenario changes the default printer or the settings of a printer.
+'
+' Scenario ids (c = common dialogs) and what they ask:
+'   c1  Color: defaults and conversions (no dialog)
+'   c2  Color: Cancel; the dialog as it opens
+'   c3  Color: OK with FullOpen; the edit boxes; PreventFullOpen
+'   c4  Color: typed red, green and blue; Add to Custom Colors; the custom colors afterwards
+'   c11 Font: defaults, Style, Bold, Italic, ToCssFont, ToDescription (no dialog)
+'   c12 Font: Cancel; the dialog as it opens
+'   c13 Font: OK as it opens
+'   c14 Font: a chosen face, style, size and underline
+'   c15 Font: FixedPitchOnly, ForceFontExist, ShowEffects
+'   c16 Font: MinSize, MaxSize, ScreenFontsOnly = False
+'   c17 Font: MaxSize alone, MinSize above MaxSize, a size inside the limits
+'   c21 Print: defaults; a page number that does not fit an Integer (no dialog)
+'   c22 Print: Cancel; the dialog as it opens
+'   c23 Print: OK as it opens (no device context)
+'   c24 Print: page range and selection
+'   c25 Print: AllowSelection, AllowPageRange, HidePrintToFile, AllowPrintToFile, PrintToFile
+'   c26 Print: ReturnDC (only with a virtual default printer)
+'   c27 Print: FromPage, ToPage, MinPage, MaxPage and Copies that do not fit an Integer
+'   c31 Page Setup: defaults, conversions, ToDescription (no dialog)
+'   c32 Page Setup: Cancel; the dialog as it opens
+'   c33 Page Setup: OK as it opens, in inches
+'   c34 Page Setup: Unit = Millimeters, a paper size, Landscape
+'   c35 Page Setup: AllowMargins, AllowOrientation, AllowPaper
+'   c41 Find: defaults, MessageId, UpdateFromFlags with no dialog (no dialog)
+'   c42 Find: ShowFind and ShowReplace with no owner window
+'   c43 Find: ShowFind with an owner window; Find Next; Cancel
+'   c44 Find: ShowReplace; Replace; Replace All; Cancel
+'   c45 Find: AllowUpDown, AllowMatchCase, AllowWholeWord, MatchCase, WholeWord, Direction
+'   c46 Find: what the owner window receives (lParam), with the stack reused in between
+'   c47 Find: FindText called directly, the structure in a module-level variable (the control)
+'   c48 Find: FindText called directly, the structure in a local variable, as ShowFind does
+
+Module ProbeB1
+
+    Private Declare PtrSafe Function GetDefaultPrinterW Lib "winspool.drv" (ByVal pszBuffer As LongPtr, ByRef pcchBuffer As Long) As Long
+    Private Declare PtrSafe Function IsWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function GetDeviceCaps Lib "gdi32" (ByVal hDC As LongPtr, ByVal nIndex As Long) As Long
+    Private Declare PtrSafe Function RegisterClassExW Lib "user32" (ByRef lpwcx As WNDCLASSEXB1) As Integer
+    Private Declare PtrSafe Function UnregisterClassW Lib "user32" (ByVal lpClassName As LongPtr, ByVal hInstance As LongPtr) As Long
+    Private Declare PtrSafe Function CreateWindowExW Lib "user32" (ByVal dwExStyle As Long, ByVal lpClassName As LongPtr, ByVal lpWindowName As LongPtr, ByVal dwStyle As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As LongPtr, ByVal hMenu As LongPtr, ByVal hInstance As LongPtr, ByVal lpParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DestroyWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function DefWindowProcW Lib "user32" (ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetModuleHandleW Lib "kernel32" (ByVal lpModuleName As LongPtr) As LongPtr
+    Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+    Private Declare PtrSafe Function RegisterWindowMessageW Lib "user32" (ByVal lpString As LongPtr) As Long
+
+    Private Type WNDCLASSEXB1
+        cbSize As Long
+        style As Long
+        lpfnWndProc As LongPtr
+        cbClsExtra As Long
+        cbWndExtra As Long
+        hInstance As LongPtr
+        hIcon As LongPtr
+        hCursor As LongPtr
+        hbrBackground As LongPtr
+        lpszMenuName As LongPtr
+        lpszClassName As LongPtr
+        hIconSm As LongPtr
+    End Type
+
+    ' The structure of FindText, as cDialogFindReplace declares it (for c47 and c48).
+    Private Type FINDREPLACEB1
+        lStructSize As Long
+        hwndOwner As LongPtr
+        hInstance As LongPtr
+        flags As Long
+        lpstrFindWhat As LongPtr
+        lpstrReplaceWith As LongPtr
+        wFindWhatLen As Integer
+        wReplaceWithLen As Integer
+        lCustData As LongPtr
+        lpfnHook As LongPtr
+        lpTemplateName As LongPtr
+    End Type
+
+    Private Declare PtrSafe Function FindTextB1 Lib "comdlg32.dll" Alias "FindTextW" (ByRef lpfr As FINDREPLACEB1) As LongPtr
+
+    Private mStaticFr As FINDREPLACEB1
+    Private mBuf As String
+
+    Private Const OwnerClassName As String = "DlgProbeB1Owner"
+
+    Private mOwner As LongPtr
+    Private mFindMsg As Long
+    Private mFR As cDialogFindReplace
+    Private mFound As Long          ' how many times the owner window received the find message
+    Private mReadStruct As Boolean  ' c46: read the structure behind lParam
+    Private mSink As Long
+
+    Public Sub RunB1(ByVal id As String)
+        Dim n As Long = CLng(Val(Mid$(id, 2)))
+        ' The Print and Page Setup dialogs show the printers of the computer: print none of that.
+        DrvB1.DMask = (n >= 21 And n <= 35)
+        Select Case id
+            Case "c1": C1
+            Case "c2": C2
+            Case "c3": C3
+            Case "c4": C4
+            Case "c11": C11
+            Case "c12": C12
+            Case "c13": C13
+            Case "c14": C14
+            Case "c15": C15
+            Case "c16": C16
+            Case "c17": C17
+            Case "c21": C21
+            Case "c22": C22
+            Case "c23": C23
+            Case "c24": C24
+            Case "c25": C25
+            Case "c26": C26
+            Case "c27": C27
+            Case "c31": C31
+            Case "c32": C32
+            Case "c33": C33
+            Case "c34": C34
+            Case "c35": C35
+            Case "c41": C41
+            Case "c42": C42
+            Case "c43": C43
+            Case "c44": C44
+            Case "c45": C45
+            Case "c46": C46
+            Case "c47": C47
+            Case "c48": C48
+        End Select
+    End Sub
+
+    '=========================================================================================
+    ' Helpers
+    '=========================================================================================
+
+    Private Function Cols(ByVal d As cDialogColor) As String
+        Cols = "Color=&H" & Hex$(d.Color) & " R=" & d.Red & " G=" & d.Green & " B=" & d.Blue
+    End Function
+
+    Private Function CustomColors(ByVal d As cDialogColor) As String
+        Dim i As Long
+        Dim s As String
+        For i = 0 To 15
+            s = s & Hex$(d.GetCustomColor(i)) & " "
+        Next
+        CustomColors = s
+    End Function
+
+    Private Function PtrSz() As Long
+        #If Win64 Then
+            PtrSz = 8
+        #Else
+            PtrSz = 4
+        #End If
+    End Function
+
+    Private Function PeekL(ByVal p As LongPtr) As Long
+        Dim v As Long
+        RtlMoveMemory VarPtr(v), p, 4
+        PeekL = v
+    End Function
+
+    Private Function PeekP(ByVal p As LongPtr) As LongPtr
+        Dim v As LongPtr
+        RtlMoveMemory VarPtr(v), p, PtrSz()
+        PeekP = v
+    End Function
+
+    ' The default printer's name, or "" when there is none.
+    Private Function DefaultPrinter() As String
+        Dim n As Long = 0
+        Dim s As String
+        GetDefaultPrinterW 0, n
+        If n <= 0 Then Exit Function
+        s = String$(n + 2, 0)
+        If GetDefaultPrinterW(StrPtr(s), n) <> 0 Then DefaultPrinter = Left$(s, n - 1)
+    End Function
+
+    '=========================================================================================
+    ' cDialogColor
+    '=========================================================================================
+
+    Private Sub C1()
+        DSay "== c1 Color: defaults and conversions"
+        Dim d As New cDialogColor
+        Dim v As Variant
+        DSay "  defaults: " & Cols(d) & " FullOpen=" & d.FullOpen & " PreventFullOpen=" & d.PreventFullOpen & " SolidColor=" & d.SolidColor & " AnyColor=" & d.AnyColor & " OwnerHwnd=" & d.OwnerHwnd
+        DSay "  custom colors: " & CustomColors(d)
+        DSay "  GetCustomColor(-1)=" & d.GetCustomColor(-1) & " GetCustomColor(16)=" & d.GetCustomColor(16)
+        d.SetCustomColor 3, &H112233
+        d.SetCustomColor 16, &H1
+        d.SetCustomColor -1, &H1
+        DSay "  after SetCustomColor 3: " & CustomColors(d)
+        d.SetRgb 255, 128, 0
+        DSay "  SetRgb 255,128,0: " & Cols(d) & " html=" & d.ToHtmlColor() & " rgb=" & d.ToRgbString()
+        d.SetRgb 300, -5, 7
+        DSay "  SetRgb 300,-5,7: " & Cols(d)
+        d.Red = 256
+        d.Green = 256
+        d.Blue = 256
+        DSay "  Red/Green/Blue = 256: " & Cols(d) & " html=" & d.ToHtmlColor()
+        d.Color = &H123456
+        DSay "  Color=&H123456: " & Cols(d) & " html=" & d.ToHtmlColor()
+        d.Color = vbRed
+        DSay "  Color=vbRed: " & Cols(d) & " html=" & d.ToHtmlColor()
+        d.Color = &H80000005
+        DSay "  Color=&H80000005 (a system color): " & Cols(d) & " html=" & d.ToHtmlColor()
+        d.Color = -1
+        DSay "  Color=-1: " & Cols(d) & " html=" & d.ToHtmlColor()
+        For Each v In Array("#00FF7F", "ff8000", "  #102030  ", "#abc", "", "#GG0000", "#12345G", "#1234567", "&HFF0000", "#a0b0c0")
+            d.Color = &H0
+            d.FromHtmlColor CStr(v)
+            DSay "  FromHtmlColor " & DQ(CStr(v)) & ": " & Cols(d) & " html=" & d.ToHtmlColor()
+        Next
+        d.FullOpen = True
+        d.PreventFullOpen = True
+        d.SolidColor = True
+        d.AnyColor = False
+        d.OwnerHwnd = 12345
+        d.SetCustomColor 0, &HABCDEF
+        d.Reset
+        DSay "  after Reset: " & Cols(d) & " FullOpen=" & d.FullOpen & " PreventFullOpen=" & d.PreventFullOpen & " SolidColor=" & d.SolidColor & " AnyColor=" & d.AnyColor & " OwnerHwnd=" & d.OwnerHwnd
+        DSay "  custom colors after Reset: " & CustomColors(d)
+        DSay "  QBColor(1)=&H" & Hex$(QBColor(1)) & " QBColor(12)=&H" & Hex$(QBColor(12)) & " vbWhite=&H" & Hex$(vbWhite)
+    End Sub
+
+    Private Sub C2()
+        DSay "== c2 Color: Cancel; the dialog as it opens"
+        Dim d As New cDialogColor
+        Dim r As Boolean
+        d.Color = RGB(10, 20, 30)
+        DArm "c2", "rec|cancel"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  ShowDialog=" & r & " " & Cols(d)
+        DWrap "c2"
+    End Sub
+
+    Private Sub C3()
+        DSay "== c3 Color: OK with FullOpen; PreventFullOpen"
+        Dim d As New cDialogColor
+        Dim d2 As New cDialogColor
+        Dim d3 As New cDialogColor
+        Dim r As Boolean
+        d.Color = RGB(10, 20, 30)
+        d.FullOpen = True
+        DArm "c3a", "wait 1|ctl 706|ctl 707|ctl 708|ctl 719|ok"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  (a) FullOpen, OK: ShowDialog=" & r & " " & Cols(d)
+        DWrap "c3a"
+        d2.Color = RGB(10, 20, 30)
+        DArm "c3b", "ctl 706|ctl 719|ok"
+        r = d2.ShowDialog()
+        DDisarm
+        DSay "  (b) not FullOpen, OK: ShowDialog=" & r & " " & Cols(d2)
+        DWrap "c3b"
+        d3.Color = RGB(10, 20, 30)
+        d3.PreventFullOpen = True
+        d3.FullOpen = True
+        DArm "c3c", "ctl 706|ctl 719|cancel"
+        r = d3.ShowDialog()
+        DDisarm
+        DSay "  (c) PreventFullOpen and FullOpen both True, Cancel: ShowDialog=" & r & " " & Cols(d3)
+        DWrap "c3c"
+    End Sub
+
+    Private Sub C4()
+        DSay "== c4 Color: typed red, green and blue; Add to Custom Colors"
+        Dim d As New cDialogColor
+        Dim d2 As New cDialogColor
+        Dim r As Boolean
+        d.FullOpen = True
+        DArm "c4a", "settext 706 200|settext 707 100|settext 708 50|wait 1|ctl 706|ctl 707|ctl 708|click 712|wait 1|ok"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  (a) typed 200,100,50, Add, OK: ShowDialog=" & r & " " & Cols(d) & " html=" & d.ToHtmlColor()
+        DSay "      custom colors: " & CustomColors(d)
+        DWrap "c4a"
+        d2.FullOpen = True
+        DArm "c4b", "settext 706 1|settext 707 2|settext 708 3|wait 1|click 712|wait 1|cancel"
+        r = d2.ShowDialog()
+        DDisarm
+        DSay "  (b) typed 1,2,3, Add, Cancel: ShowDialog=" & r & " " & Cols(d2)
+        DSay "      custom colors: " & CustomColors(d2)
+        DWrap "c4b"
+    End Sub
+
+    '=========================================================================================
+    ' cDialogFont
+    '=========================================================================================
+
+    Private Function Fnt(ByVal d As cDialogFont) As String
+        Fnt = "Face=" & DQ(d.FaceName) & " Size=" & d.Size & " Style=" & d.Style & " Bold=" & d.Bold & " Italic=" & d.Italic & " Underline=" & d.Underline & " StrikeOut=" & d.StrikeOut & " Color=&H" & Hex$(d.Color)
+    End Function
+
+    Private Sub C11()
+        DSay "== c11 Font: defaults, Style, Bold, Italic, ToCssFont, ToDescription"
+        Dim d As New cDialogFont
+        DSay "  defaults: " & Fnt(d)
+        DSay "  MinSize=" & d.MinSize & " MaxSize=" & d.MaxSize & " FixedPitchOnly=" & d.FixedPitchOnly & " ForceFontExist=" & d.ForceFontExist & " ShowEffects=" & d.ShowEffects & " ScreenFontsOnly=" & d.ScreenFontsOnly & " OwnerHwnd=" & d.OwnerHwnd
+        DSay "  ToDescription=" & DQ(d.ToDescription())
+        DSay "  ToCssFont=" & DQ(d.ToCssFont())
+        d.Bold = True
+        DSay "  Bold=True: " & Fnt(d)
+        d.Italic = True
+        DSay "  Italic=True: " & Fnt(d)
+        d.Bold = False
+        DSay "  Bold=False: " & Fnt(d)
+        d.Style = FontStyle.StyleBoldItalic
+        DSay "  Style=StyleBoldItalic: Style=" & d.Style & " Bold=" & d.Bold & " Italic=" & d.Italic
+        d.Style = 4
+        DSay "  Style=4: Style=" & d.Style & " Bold=" & d.Bold & " Italic=" & d.Italic
+        d.Style = FontStyle.StyleRegular
+        d.Size = 0
+        DSay "  Size=0: Size=" & d.Size
+        d.Size = -3
+        DSay "  Size=-3: Size=" & d.Size
+        d.Size = 10.5
+        DSay "  Size=10.5: Size=" & d.Size
+        d.FaceName = "Courier New"
+        d.Bold = True
+        d.Italic = True
+        d.Underline = True
+        d.StrikeOut = True
+        d.Color = RGB(255, 0, 0)
+        DSay "  ToDescription=" & DQ(d.ToDescription())
+        DSay "  ToCssFont=" & DQ(d.ToCssFont())
+        d.FaceName = "O'Brien Sans"
+        DSay "  ToCssFont with a quote in the face name=" & DQ(d.ToCssFont())
+        d.Reset
+        DSay "  after Reset: " & Fnt(d) & " ToDescription=" & DQ(d.ToDescription())
+        DSay "  FontWeight FW_BOLD=" & FontWeight.FW_BOLD & " FontFamily FF_SWISS=" & FontFamily.FF_SWISS & " FontPitch FIXED_PITCH=" & FontPitch.FIXED_PITCH & " FontStyle StyleBoldItalic=" & FontStyle.StyleBoldItalic
+    End Sub
+
+    Private Sub C12()
+        DSay "== c12 Font: Cancel; the dialog as it opens"
+        Dim d As New cDialogFont
+        Dim r As Boolean
+        DArm "c12", "rec|items 1136 6|items 1137|items 1138 20|items 1139 20|cancel"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  ShowDialog=" & r & " " & Fnt(d)
+        DWrap "c12"
+    End Sub
+
+    Private Sub C13()
+        DSay "== c13 Font: OK as it opens"
+        Dim d As New cDialogFont
+        Dim d2 As New cDialogFont
+        Dim r As Boolean
+        DArm "c13a", "ctl 1136|ctl 1137|ctl 1138|ctl 1139|ctl 1040|ctl 1041|ok"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  (a) defaults, OK: ShowDialog=" & r & " " & Fnt(d)
+        DWrap "c13a"
+        d2.FaceName = "Arial"
+        d2.Size = 12
+        d2.Bold = True
+        d2.Italic = True
+        d2.Underline = True
+        d2.StrikeOut = True
+        d2.Color = RGB(0, 0, 255)
+        DArm "c13b", "ctl 1136|ctl 1137|ctl 1138|ctl 1139|ctl 1040|ctl 1041|ok"
+        r = d2.ShowDialog()
+        DDisarm
+        DSay "  (b) Arial 12 bold italic underline strikeout blue, OK: ShowDialog=" & r & " " & Fnt(d2)
+        DWrap "c13b"
+    End Sub
+
+    Private Sub C14()
+        DSay "== c14 Font: a chosen face, style, size and effects"
+        Dim d As New cDialogFont
+        Dim r As Boolean
+        DArm "c14", "cbfind 1136 Courier New|wait 1|items 1137|cbfind 1137 Bold Italic|cbfind 1138 14|click 1041|click 1040|cbsel 1139 2|ctl 1136|ctl 1137|ctl 1138|ctl 1139|ok"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  ShowDialog=" & r & " " & Fnt(d)
+        DSay "  ToDescription=" & DQ(d.ToDescription())
+        DSay "  ToCssFont=" & DQ(d.ToCssFont())
+        DWrap "c14"
+    End Sub
+
+    Private Sub C15()
+        DSay "== c15 Font: FixedPitchOnly, ForceFontExist, ShowEffects"
+        Dim d As New cDialogFont
+        Dim d2 As New cDialogFont
+        Dim d3 As New cDialogFont
+        Dim d4 As New cDialogFont
+        Dim r As Boolean
+        DArm "c15a", "items 1136 0|cancel"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  (a) all fonts: ShowDialog=" & r
+        d2.FixedPitchOnly = True
+        d2.FaceName = "Consolas"
+        DArm "c15b", "items 1136 40|ctl 1136|ok"
+        r = d2.ShowDialog()
+        DDisarm
+        DSay "  (b) FixedPitchOnly, face Consolas, OK: ShowDialog=" & r & " " & Fnt(d2)
+        d3.FaceName = "No Such Font Face"
+        DArm "c15c", "msg 1|ctl 1136|ok|wait 2|cancel"
+        r = d3.ShowDialog()
+        DDisarm
+        DSay "  (c) ForceFontExist=True, face that does not exist, OK then Cancel: ShowDialog=" & r & " " & Fnt(d3)
+        DWrap "c15c"
+        d4.FaceName = "No Such Font Face"
+        d4.ForceFontExist = False
+        DArm "c15d", "msg 1|ctl 1136|ok"
+        r = d4.ShowDialog()
+        DDisarm
+        DSay "  (d) ForceFontExist=False, face that does not exist, OK: ShowDialog=" & r & " " & Fnt(d4)
+        DWrap "c15d"
+    End Sub
+
+    Private Sub C16()
+        DSay "== c16 Font: ShowEffects, MinSize, MaxSize, ScreenFontsOnly"
+        Dim d As New cDialogFont
+        Dim d2 As New cDialogFont
+        Dim d3 As New cDialogFont
+        Dim d4 As New cDialogFont
+        Dim r As Boolean
+        d.ShowEffects = False
+        DArm "c16a", "ctl 1040|ctl 1041|ctl 1139|cancel"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  (a) ShowEffects=False: ShowDialog=" & r
+        d2.MinSize = 10
+        d2.MaxSize = 14
+        DArm "c16b", "items 1138 40|ok"
+        r = d2.ShowDialog()
+        DDisarm
+        DSay "  (b) MinSize=10 MaxSize=14, OK: ShowDialog=" & r & " " & Fnt(d2)
+        d3.MinSize = 10
+        DArm "c16c", "items 1138 40|cancel"
+        r = d3.ShowDialog()
+        DDisarm
+        DSay "  (c) MinSize=10 only: ShowDialog=" & r
+        DWrap "c16c"
+        d4.ScreenFontsOnly = False
+        DArm "c16d", "rec|cancel"
+        r = d4.ShowDialog()
+        DDisarm
+        DSay "  (d) ScreenFontsOnly=False: ShowDialog=" & r & " " & Fnt(d4)
+        DWrap "c16d"
+    End Sub
+
+    Private Sub C17()
+        DSay "== c17 Font: MaxSize alone, MinSize above MaxSize, a size inside the limits"
+        Dim d As New cDialogFont
+        Dim d2 As New cDialogFont
+        Dim d3 As New cDialogFont
+        Dim r As Boolean
+        d.MaxSize = 14
+        DArm "c17a", "items 1138 40|ok"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  (a) MaxSize=14 only: ShowDialog=" & r & " " & Fnt(d)
+        DWrap "c17a"
+        d2.MinSize = 20
+        d2.MaxSize = 10
+        DArm "c17b", "items 1138 40|cancel"
+        r = d2.ShowDialog()
+        DDisarm
+        DSay "  (b) MinSize=20 MaxSize=10: ShowDialog=" & r
+        DWrap "c17b"
+        d3.MinSize = 10
+        d3.MaxSize = 14
+        d3.Size = 12
+        DArm "c17c", "items 1138 40|ok"
+        r = d3.ShowDialog()
+        DDisarm
+        DSay "  (c) MinSize=10 MaxSize=14 Size=12, OK: ShowDialog=" & r & " " & Fnt(d3)
+        DWrap "c17c"
+    End Sub
+
+    '=========================================================================================
+    ' cDialogPrint
+    '=========================================================================================
+
+    Private Function Prn(ByVal d As cDialogPrint) As String
+        Prn = "FromPage=" & d.FromPage & " ToPage=" & d.ToPage & " MinPage=" & d.MinPage & " MaxPage=" & d.MaxPage & " Copies=" & d.Copies & " Collate=" & d.Collate & " PrintToFile=" & d.PrintToFile & " Range=" & d.PrintRangeMode & " Cancelled=" & d.Cancelled & " LastError=" & d.LastError & " hDC=" & d.hDC
+    End Function
+
+    Private Sub C21()
+        DSay "== c21 Print: defaults; a page number that does not fit an Integer"
+        Dim d As New cDialogPrint
+        Dim d2 As New cDialogPrint
+        Dim r As Boolean
+        Dim en As Long
+        Dim ed As String
+        DSay "  defaults: " & Prn(d)
+        DSay "  AllowSelection=" & d.AllowSelection & " AllowPageRange=" & d.AllowPageRange & " AllowPrintToFile=" & d.AllowPrintToFile & " HidePrintToFile=" & d.HidePrintToFile & " ReturnDC=" & d.ReturnDC & " OwnerHwnd=" & d.OwnerHwnd
+        DSay "  ToDescription=" & DQ(d.ToDescription())
+        d.Copies = 0
+        DSay "  Copies=0: Copies=" & d.Copies
+        d.Copies = -2
+        DSay "  Copies=-2: Copies=" & d.Copies
+        d.Copies = 3
+        d.Collate = True
+        d.PrintToFile = True
+        d.PrintRangeMode = PrintRange.PageRange
+        d.FromPage = 2
+        d.ToPage = 4
+        DSay "  ToDescription (3 copies, collate, file, pages 2-4)=" & DQ(d.ToDescription())
+        d.PrintRangeMode = PrintRange.Selection
+        DSay "  ToDescription (selection)=" & DQ(d.ToDescription())
+        d.PrintRangeMode = 7
+        DSay "  PrintRangeMode=7: ToDescription=" & DQ(d.ToDescription())
+        d.Reset
+        DSay "  after Reset: " & Prn(d)
+        d2.MaxPage = 40000
+        On Error Resume Next
+        r = d2.ShowDialog()
+        en = Err.Number
+        ed = Err.Description
+        On Error GoTo 0
+        DSay "  MaxPage=40000, ShowDialog: Err.Number=" & en & " " & DQ(ed) & " returned " & r
+    End Sub
+
+    ' One field of the class set to a value, then ShowDialog; a dialog that opens is cancelled.
+    Private Sub C27Try(ByVal what As String, ByVal v As Long)
+        Dim d As New cDialogPrint
+        Dim r As Boolean
+        Dim en As Long
+        d.ReturnDC = False
+        Select Case what
+            Case "FromPage": d.FromPage = v
+            Case "ToPage": d.ToPage = v
+            Case "MinPage": d.MinPage = v
+            Case "MaxPage": d.MaxPage = v
+            Case "Copies": d.Copies = v
+        End Select
+        DArm "c27" & what, "cancel"
+        On Error Resume Next
+        r = d.ShowDialog()
+        en = Err.Number
+        On Error GoTo 0
+        DDisarm
+        DSay "  " & what & "=" & v & ": Err.Number=" & en & " returned " & r & " cancelled=" & d.Cancelled & " lasterror=" & d.LastError
+    End Sub
+
+    Private Sub C27()
+        DSay "== c27 Print: values that do not fit an Integer, field by field"
+        C27Try "FromPage", 40000
+        C27Try "ToPage", 40000
+        C27Try "MinPage", 40000
+        C27Try "MaxPage", 32768
+        C27Try "MaxPage", 32767
+        C27Try "MaxPage", -40000
+        C27Try "Copies", 40000
+    End Sub
+
+    Private Sub C22()
+        DSay "== c22 Print: Cancel; the dialog as it opens"
+        Dim d As New cDialogPrint
+        Dim r As Boolean
+        d.ReturnDC = False
+        DArm "c22", "rec|cancel"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  ShowDialog=" & r & " " & Prn(d)
+        DWrap "c22"
+    End Sub
+
+    Private Sub C23()
+        DSay "== c23 Print: OK as it opens (no device context)"
+        Dim d As New cDialogPrint
+        Dim r As Boolean
+        d.ReturnDC = False
+        DArm "c23", "ok"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  ShowDialog=" & r & " " & Prn(d)
+        DSay "  ToDescription=" & DQ(d.ToDescription())
+        DWrap "c23"
+    End Sub
+
+    Private Sub C24()
+        DSay "== c24 Print: page range and selection"
+        Dim d As New cDialogPrint
+        Dim d2 As New cDialogPrint
+        Dim d3 As New cDialogPrint
+        Dim r As Boolean
+        d.ReturnDC = False
+        d.MinPage = 1
+        d.MaxPage = 20
+        d.FromPage = 3
+        d.ToPage = 7
+        d.PrintRangeMode = PrintRange.PageRange
+        DArm "c24a", "rec|ok"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  (a) PageRange 3-7 of 1-20, OK: ShowDialog=" & r & " " & Prn(d)
+        DWrap "c24a"
+        d2.ReturnDC = False
+        d2.PrintRangeMode = PrintRange.Selection
+        DArm "c24b", "ok"
+        r = d2.ShowDialog()
+        DDisarm
+        DSay "  (b) Selection, OK: ShowDialog=" & r & " " & Prn(d2)
+        DWrap "c24b"
+        d3.ReturnDC = False
+        d3.MinPage = 1
+        d3.MaxPage = 20
+        d3.FromPage = 3
+        d3.ToPage = 7
+        d3.PrintRangeMode = PrintRange.PageRange
+        DArm "c24c", "settext 1152 5|settext 1153 9|wait 1|ctl 1058|ok"
+        r = d3.ShowDialog()
+        DDisarm
+        DSay "  (c) PageRange, typed 5 to 9, OK: ShowDialog=" & r & " " & Prn(d3)
+        DWrap "c24c"
+    End Sub
+
+    Private Sub C25()
+        DSay "== c25 Print: AllowSelection, AllowPageRange, HidePrintToFile, AllowPrintToFile, PrintToFile"
+        Dim d As New cDialogPrint
+        Dim d2 As New cDialogPrint
+        Dim d3 As New cDialogPrint
+        Dim d4 As New cDialogPrint
+        Dim r As Boolean
+        d.ReturnDC = False
+        d.AllowSelection = False
+        d.AllowPageRange = False
+        DArm "c25a", "rec|cancel"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  (a) AllowSelection=False AllowPageRange=False, Cancel: ShowDialog=" & r
+        d2.ReturnDC = False
+        d2.HidePrintToFile = True
+        DArm "c25b", "rec|cancel"
+        r = d2.ShowDialog()
+        DDisarm
+        DSay "  (b) HidePrintToFile=True, Cancel: ShowDialog=" & r
+        d3.ReturnDC = False
+        d3.AllowPrintToFile = False
+        DArm "c25c", "rec|cancel"
+        r = d3.ShowDialog()
+        DDisarm
+        DSay "  (c) AllowPrintToFile=False, Cancel: ShowDialog=" & r
+        d4.ReturnDC = False
+        d4.PrintToFile = True
+        d4.Collate = True
+        d4.Copies = 3
+        DArm "c25d", "rec|cancel"
+        r = d4.ShowDialog()
+        DDisarm
+        DSay "  (d) PrintToFile=True Collate=True Copies=3, Cancel: ShowDialog=" & r & " " & Prn(d4)
+    End Sub
+
+    Private Sub C26()
+        DSay "== c26 Print: ReturnDC"
+        Dim d As New cDialogPrint
+        Dim r As Boolean
+        Dim p As String = DefaultPrinter()
+        ' The default ReturnDC = True makes the dialog create a device context for the printer
+        ' chosen. That is not printing, but only a Microsoft virtual printer is used for it: the
+        ' scenario chooses "Microsoft Print to PDF" in the dialog, cancels when the list has no such
+        ' printer, and checks that the default printer is the same afterwards.
+        DSay "  ReturnDC=" & d.ReturnDC
+        DArm "c26", "cbfind 1139 Microsoft Print to PDF|needfind|wait 1|ctl 1139|ok"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  ShowDialog=" & r & " hDC<>0: " & (d.hDC <> 0) & " Copies=" & d.Copies
+        DSay "  the default printer is the same as before: " & (DefaultPrinter() = p)
+        If d.hDC <> 0 Then
+            DSay "  HORZRES=" & GetDeviceCaps(d.hDC, 8) & " LOGPIXELSX=" & GetDeviceCaps(d.hDC, 88)
+            DSay "  DeleteDC returned " & DeleteDC(d.hDC)
+        End If
+        DWrap "c26"
+    End Sub
+
+    '=========================================================================================
+    ' cDialogPageSetup
+    '=========================================================================================
+
+    Private Function Pg(ByVal d As cDialogPageSetup) As String
+        Pg = "Paper=" & d.PaperWidth & "x" & d.PaperHeight & " Margins L/R/T/B=" & d.MarginLeft & "/" & d.MarginRight & "/" & d.MarginTop & "/" & d.MarginBottom & " Orientation=" & d.Orientation & " Unit=" & d.Unit
+    End Function
+
+    Private Sub C31()
+        DSay "== c31 Page Setup: defaults, conversions, ToDescription"
+        Dim d As New cDialogPageSetup
+        DSay "  defaults: " & Pg(d)
+        DSay "  AllowMargins=" & d.AllowMargins & " AllowOrientation=" & d.AllowOrientation & " AllowPaper=" & d.AllowPaper & " DefaultMinMargins=" & d.DefaultMinMargins & " OwnerHwnd=" & d.OwnerHwnd
+        DSay "  ToDescription=" & DQ(d.ToDescription())
+        DSay "  printable " & d.GetPrintableWidth() & " x " & d.GetPrintableHeight()
+        d.SetA4Size
+        DSay "  SetA4Size: " & Pg(d)
+        d.SetLegalSize
+        DSay "  SetLegalSize: " & Pg(d)
+        d.SetLetterSize
+        d.SetNarrowMargins
+        DSay "  SetLetterSize, SetNarrowMargins: " & Pg(d) & " printable " & d.GetPrintableWidth() & " x " & d.GetPrintableHeight()
+        d.SetDefaultMargins
+        DSay "  SetDefaultMargins: " & Pg(d)
+        d.SetA4Size
+        d.Unit = MeasurementUnit.Millimeters
+        DSay "  A4, Unit=Millimeters: " & Pg(d)
+        DSay "  ToDescription=" & DQ(d.ToDescription())
+        d.Orientation = PaperOrientation.Landscape
+        DSay "  Orientation=Landscape: paper is still " & d.PaperWidth & "x" & d.PaperHeight & " ToDescription=" & DQ(d.ToDescription())
+        d.Unit = MeasurementUnit.Inches
+        d.Reset
+        DSay "  after Reset: " & Pg(d)
+        DSay "  mDialog: InchesToTwips(1)=" & InchesToTwips(1) & " PAPER_A4_WIDTH=" & PAPER_A4_WIDTH
+    End Sub
+
+    Private Sub C32()
+        DSay "== c32 Page Setup: Cancel; the dialog as it opens"
+        Dim d As New cDialogPageSetup
+        Dim r As Boolean
+        DArm "c32", "rec|cancel"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  ShowDialog=" & r & " " & Pg(d)
+        DWrap "c32"
+    End Sub
+
+    Private Sub C33()
+        DSay "== c33 Page Setup: OK as it opens, in inches"
+        Dim d As New cDialogPageSetup
+        Dim d2 As New cDialogPageSetup
+        Dim r As Boolean
+        DArm "c33a", "rec|ok"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  (a) defaults, OK: ShowDialog=" & r & " " & Pg(d)
+        DSay "      ToDescription=" & DQ(d.ToDescription())
+        DWrap "c33a"
+        d2.PaperWidth = 8.5
+        d2.PaperHeight = 14
+        d2.MarginLeft = 0.5
+        d2.MarginRight = 0.75
+        d2.MarginTop = 1.25
+        d2.MarginBottom = 0.3
+        DArm "c33b", "ok"
+        r = d2.ShowDialog()
+        DDisarm
+        DSay "  (b) legal paper, margins 0.5/0.75/1.25/0.3, OK: ShowDialog=" & r & " " & Pg(d2)
+        DWrap "c33b"
+    End Sub
+
+    Private Sub C34()
+        DSay "== c34 Page Setup: Unit = Millimeters, Landscape"
+        Dim d As New cDialogPageSetup
+        Dim d2 As New cDialogPageSetup
+        Dim r As Boolean
+        d.Unit = MeasurementUnit.Millimeters
+        d.MarginLeft = 1
+        d.MarginRight = 1
+        d.MarginTop = 1
+        d.MarginBottom = 1
+        DArm "c34a", "rec|ok"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  (a) Millimeters, margins 1 inch, OK: ShowDialog=" & r & " " & Pg(d)
+        DWrap "c34a"
+        DArm "c34b", "click 1057|wait 1|settext 1155 0.5|ok"
+        r = d2.ShowDialog()
+        DDisarm
+        DSay "  (b) Landscape chosen in the dialog, OK: ShowDialog=" & r & " " & Pg(d2)
+        DWrap "c34b"
+    End Sub
+
+    Private Sub C35()
+        DSay "== c35 Page Setup: AllowMargins, AllowOrientation, AllowPaper"
+        Dim d As New cDialogPageSetup
+        Dim r As Boolean
+        d.AllowMargins = False
+        d.AllowOrientation = False
+        d.AllowPaper = False
+        DArm "c35", "rec|cancel"
+        r = d.ShowDialog()
+        DDisarm
+        DSay "  (a) ShowDialog=" & r
+        DWrap "c35a"
+        Dim d2 As New cDialogPageSetup
+        d2.Orientation = PaperOrientation.Landscape
+        d2.SetA4Size
+        DArm "c35b", "ctl 1056|ctl 1057|ctl 1137|ok"
+        r = d2.ShowDialog()
+        DDisarm
+        DSay "  (b) Orientation=Landscape, SetA4Size, OK: ShowDialog=" & r & " " & Pg(d2)
+        DWrap "c35b"
+    End Sub
+
+    '=========================================================================================
+    ' cDialogFindReplace
+    '=========================================================================================
+
+    Private Function Fr(ByVal d As cDialogFindReplace) As String
+        Fr = "FindWhat=" & DQ(d.FindWhat) & " ReplaceWith=" & DQ(d.ReplaceWith) & " MatchCase=" & d.MatchCase & " WholeWord=" & d.WholeWord & " Direction=" & d.Direction & " Mode=" & d.Mode & " LastAction=" & d.LastAction & " LastError=" & d.LastError & " IsVisible=" & d.IsVisible() & " hWnd<>0: " & (d.hWnd <> 0)
+    End Function
+
+    Private Sub C41()
+        DSay "== c41 Find: defaults, MessageId, UpdateFromFlags with no dialog"
+        Dim d As New cDialogFindReplace
+        Dim d2 As New cDialogFindReplace
+        DSay "  defaults: " & Fr(d)
+        DSay "  AllowUpDown=" & d.AllowUpDown & " AllowMatchCase=" & d.AllowMatchCase & " AllowWholeWord=" & d.AllowWholeWord & " OwnerHwnd=" & d.OwnerHwnd
+        DSay "  MessageId=" & d.MessageId & " same as RegisterWindowMessage(commdlg_FindReplace): " & (d.MessageId = RegisterWindowMessageW(StrPtr("commdlg_FindReplace"))) & " second object: " & (d2.MessageId = d.MessageId)
+        DSay "  ToDescription=" & DQ(d.ToDescription())
+        d.FindWhat = "alpha"
+        d.ReplaceWith = "beta"
+        d.MatchCase = True
+        d.Direction = SearchDirection.Up
+        DSay "  ToDescription=" & DQ(d.ToDescription())
+        d.Mode = DialogMode.ReplaceMode
+        DSay "  Mode=ReplaceMode: ToDescription=" & DQ(d.ToDescription())
+        DSay "  FindWhat before UpdateFromFlags=" & DQ(d.FindWhat)
+        d.UpdateFromFlags 1 + 4 + 8
+        DSay "  UpdateFromFlags(FR_DOWN|FR_MATCHCASE|FR_FINDNEXT): " & Fr(d)
+        d.UpdateFromFlags 2 + 16
+        DSay "  UpdateFromFlags(FR_WHOLEWORD|FR_REPLACE): " & Fr(d)
+        d.UpdateFromFlags 32
+        DSay "  UpdateFromFlags(FR_REPLACEALL): " & Fr(d)
+        d.UpdateFromFlags &H40
+        DSay "  UpdateFromFlags(FR_DIALOGTERM): " & Fr(d)
+        d.UpdateFromFlags 0
+        DSay "  UpdateFromFlags(0): " & Fr(d)
+        d.UpdateFromFlags 8 + 32
+        DSay "  UpdateFromFlags(FR_FINDNEXT|FR_REPLACEALL): " & Fr(d)
+        d.Reset
+        DSay "  after Reset: " & Fr(d)
+        DSay "  enums: DialogMode.ReplaceMode=" & DialogMode.ReplaceMode & " SearchDirection.Down=" & SearchDirection.Down & " FindAction.DialogClosed=" & FindAction.DialogClosed & " FindAction.ReplaceAll=" & FindAction.ReplaceAll
+    End Sub
+
+    Private Sub C42()
+        DSay "== c42 Find: ShowFind and ShowReplace with no owner window"
+        Dim d As New cDialogFindReplace
+        Dim d2 As New cDialogFindReplace
+        Dim r As Boolean
+        d.FindWhat = "x"
+        DArm "c42a", "rec|cancel"
+        r = d.ShowFind()
+        DDisarm
+        DSay "  ShowFind with OwnerHwnd=0: " & r & " " & Fr(d) & " LastError hex=&H" & Hex$(d.LastError)
+        DWrap "c42a"
+        DArm "c42b", "rec|cancel"
+        r = d2.ShowReplace()
+        DDisarm
+        DSay "  ShowReplace with OwnerHwnd=0: " & r & " " & Fr(d2) & " LastError hex=&H" & Hex$(d2.LastError)
+        DWrap "c42b"
+    End Sub
+
+    ' The owner window: it receives the find message that the dialog sends.
+    Public Function OwnerProc(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+        If mFindMsg <> 0 And uMsg = mFindMsg Then
+            OnFindMessage lParam
+            OwnerProc = 0
+        Else
+            OwnerProc = DefWindowProcW(hWnd, uMsg, wParam, lParam)
+        End If
+    End Function
+
+    Private Function FlagsOffset() As Long
+        #If Win64 Then
+            FlagsOffset = 24
+        #Else
+            FlagsOffset = 12
+        #End If
+    End Function
+
+    Private Sub OnFindMessage(ByVal lParam As LongPtr)
+        Dim flags As Long
+        Dim sz As Long
+        Dim own As LongPtr
+        mFound = mFound + 1
+        sz = PeekL(lParam)
+        own = PeekP(lParam + PtrSz())
+        flags = PeekL(lParam + FlagsOffset())
+        DSay "    owner received the find message #" & mFound & ": lStructSize=" & sz & " hwndOwner is the owner: " & (own = mOwner) & " Flags=&H" & Hex$(flags)
+        If mReadStruct Then
+            DSay "      lpstrFindWhat<>0: " & (PeekP(lParam + FlagsOffset() + PtrSz()) <> 0)
+        End If
+        If Not (mFR Is Nothing) Then
+            mFR.UpdateFromFlags flags
+            DSay "    after UpdateFromFlags: " & Fr(mFR)
+        Else
+            DSay "    the text in the buffer: " & DQ(Left$(mBuf, InStr(mBuf, vbNullChar) - 1))
+        End If
+    End Sub
+
+    Private Function MakeOwner() As Boolean
+        Dim wc As WNDCLASSEXB1
+        Dim inst As LongPtr = GetModuleHandleW(0)
+        wc.cbSize = IIf(PtrSz() = 8, 80, 48)
+        wc.lpfnWndProc = AddressOf OwnerProc
+        wc.hInstance = inst
+        wc.lpszClassName = StrPtr(OwnerClassName)
+        If RegisterClassExW(wc) = 0 Then
+            DSay "  RegisterClassExW failed"
+            Exit Function
+        End If
+        mOwner = CreateWindowExW(0, StrPtr(OwnerClassName), StrPtr("probe owner"), 0, 0, 0, 100, 100, 0, 0, inst, 0)
+        If mOwner = 0 Then
+            DSay "  CreateWindowExW failed"
+            Exit Function
+        End If
+        mFindMsg = RegisterWindowMessageW(StrPtr("commdlg_FindReplace"))
+        MakeOwner = True
+    End Function
+
+    Private Sub FreeOwner()
+        If mOwner <> 0 Then DestroyWindow mOwner
+        mOwner = 0
+        UnregisterClassW StrPtr(OwnerClassName), GetModuleHandleW(0)
+    End Sub
+
+    Private Sub C43()
+        DSay "== c43 Find: ShowFind with an owner window; Find Next; Cancel"
+        Dim r As Boolean
+        If Not MakeOwner() Then Exit Sub
+        Set mFR = New cDialogFindReplace
+        mFR.OwnerHwnd = mOwner
+        mFR.FindWhat = "alpha"
+        mFR.MatchCase = True
+        mFR.WholeWord = False
+        mFound = 0
+        r = mFR.ShowFind()
+        DSay "  ShowFind=" & r & " " & Fr(mFR) & " hWnd is a window: " & (mFR.hWnd <> 0)
+        DArm "c43", "rec|settext 1152 beta gamma|click 1041|wait 1|click 1|wait 2|cancel|wait 2|quit"
+        DPump
+        DDisarm
+        DSay "  the Find window still exists: " & (IsWindow(mFR.hWnd) <> 0)
+        DSay "  messages received: " & mFound & "; at the end: " & Fr(mFR)
+        DWrap "c43"
+        FreeOwner
+    End Sub
+
+    Private Sub C44()
+        DSay "== c44 Find: ShowReplace; Replace; Replace All; Cancel"
+        Dim r As Boolean
+        If Not MakeOwner() Then Exit Sub
+        Set mFR = New cDialogFindReplace
+        mFR.OwnerHwnd = mOwner
+        mFR.FindWhat = "old"
+        mFR.ReplaceWith = "new"
+        mFound = 0
+        r = mFR.ShowReplace()
+        DSay "  ShowReplace=" & r & " " & Fr(mFR)
+        DArm "c44", "rec|settext 1152 one|settext 1153 two|wait 1|click 1024|wait 2|click 1025|wait 2|click 1|wait 2|cancel|wait 2|quit"
+        DPump
+        DDisarm
+        DSay "  messages received: " & mFound & "; at the end: " & Fr(mFR)
+        DWrap "c44"
+        FreeOwner
+    End Sub
+
+    Private Sub C45()
+        DSay "== c45 Find: AllowUpDown, AllowMatchCase, AllowWholeWord, Direction"
+        Dim r As Boolean
+        If Not MakeOwner() Then Exit Sub
+        Set mFR = New cDialogFindReplace
+        mFR.OwnerHwnd = mOwner
+        mFR.AllowUpDown = False
+        mFR.AllowMatchCase = False
+        mFR.AllowWholeWord = False
+        r = mFR.ShowFind()
+        DArm "c45a", "rec|cancel|wait 2|quit"
+        DPump
+        DDisarm
+        DSay "  (a) all three Allow = False: " & Fr(mFR)
+        Set mFR = New cDialogFindReplace
+        mFR.OwnerHwnd = mOwner
+        mFR.Direction = SearchDirection.Up
+        mFR.WholeWord = True
+        mFR.MatchCase = True
+        r = mFR.ShowFind()
+        DArm "c45b", "rec|click 1|wait 2|cancel|wait 2|quit"
+        DPump
+        DDisarm
+        DSay "  (b) Direction=Up WholeWord MatchCase: " & Fr(mFR)
+        FreeOwner
+    End Sub
+
+    ' Calls FindText as cDialogFindReplace.ShowFind does, with the structure in a variable of
+    ' this procedure (useStatic = False) or in a variable of the module (useStatic = True).
+    Private Function ShowFindDirect(ByVal useStatic As Boolean) As LongPtr
+        Dim localFr As FINDREPLACEB1
+        mBuf = "alpha" & String$(251, 0)
+        If useStatic Then
+            With mStaticFr
+                .lStructSize = IIf(PtrSz() = 8, 80, 40)
+                .hwndOwner = mOwner
+                .flags = 1
+                .lpstrFindWhat = StrPtr(mBuf)
+                .wFindWhatLen = 256
+            End With
+            ShowFindDirect = FindTextB1(mStaticFr)
+        Else
+            With localFr
+                .lStructSize = IIf(PtrSz() = 8, 80, 40)
+                .hwndOwner = mOwner
+                .flags = 1
+                .lpstrFindWhat = StrPtr(mBuf)
+                .wFindWhatLen = 256
+            End With
+            ShowFindDirect = FindTextB1(localFr)
+        End If
+    End Function
+
+    Private Sub C47()
+        DSay "== c47 Find: FindText called directly, the structure in a module-level variable"
+        Dim h As LongPtr
+        If Not MakeOwner() Then Exit Sub
+        Set mFR = Nothing
+        mFound = 0
+        h = ShowFindDirect(True)
+        DSay "  FindText returned a window: " & (h <> 0)
+        DArm "c47", "settext 1152 beta gamma|wait 1|click 1|wait 2|cancel|wait 2|quit"
+        DPump
+        DDisarm
+        DSay "  the Find window still exists: " & (IsWindow(h) <> 0)
+        DSay "  messages received: " & mFound
+        DWrap "c47"
+        FreeOwner
+    End Sub
+
+    Private Sub C48()
+        DSay "== c48 Find: FindText called directly, the structure in a local variable"
+        Dim h As LongPtr
+        If Not MakeOwner() Then Exit Sub
+        Set mFR = Nothing
+        mFound = 0
+        h = ShowFindDirect(False)
+        DSay "  FindText returned a window: " & (h <> 0)
+        DArm "c48", "settext 1152 beta gamma|wait 1|click 1|wait 2|cancel|wait 2|quit"
+        DPump
+        DDisarm
+        DSay "  the Find window still exists: " & (IsWindow(h) <> 0)
+        DSay "  messages received: " & mFound
+        DWrap "c48"
+        FreeOwner
+    End Sub
+
+    Private Sub StackFill()
+        Dim a(0 To 2047) As Long
+        Dim i As Long
+        For i = 0 To 2047
+            a(i) = &H41414141
+        Next
+        mSink = a(2047)
+    End Sub
+
+    Private Sub C46()
+        DSay "== c46 Find: what the owner window receives, with the stack reused in between"
+        Dim r As Boolean
+        If Not MakeOwner() Then Exit Sub
+        mReadStruct = True
+        Set mFR = New cDialogFindReplace
+        mFR.OwnerHwnd = mOwner
+        mFR.FindWhat = "alpha"
+        mFound = 0
+        r = mFR.ShowFind()
+        StackFill
+        DSay "  ShowFind=" & r & ", the stack below the caller overwritten"
+        DArm "c46", "settext 1152 beta|wait 1|click 1|wait 2|cancel|wait 2|quit"
+        DPump
+        DDisarm
+        DSay "  messages received: " & mFound & "; at the end: " & Fr(mFR)
+        DWrap "c46"
+        mReadStruct = False
+        FreeOwner
+    End Sub
+
+End Module

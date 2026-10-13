@@ -1,0 +1,209 @@
+' ProbeIB: the scenarios d20..d23 of the TBMANLIB_Dialog probe: cDialogInputBox.
+
+Module ProbeIB
+
+    Private Declare PtrSafe Function CreateWindowExW Lib "user32" (ByVal dwExStyle As Long, ByVal lpClassName As LongPtr, ByVal lpWindowName As LongPtr, ByVal dwStyle As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As LongPtr, ByVal hMenu As LongPtr, ByVal hInstance As LongPtr, ByVal lpParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DestroyWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function IsWindowEnabled Lib "user32" (ByVal hWnd As LongPtr) As Long
+
+    Public Sub Run(ByVal id As String)
+        Select Case id
+            Case "d20": D20
+            Case "d20b": D20b
+            Case "d21": D21
+            Case "d22": D22
+            Case "d22b": D22b
+            Case "d23": D23
+        End Select
+    End Sub
+
+    Private Function B(ByVal x As Boolean) As String
+        B = IIf(x, "True", "False")
+    End Function
+
+    Private Sub DumpIB(ByVal c As cDialogInputBox)
+        AutoD.SayD "    Value=" & AutoD.QD(c.Value) & " Cancelled=" & B(c.Cancelled) & " Title=" & AutoD.QD(c.Title) & " Prompt=" & AutoD.QD(c.Prompt)
+    End Sub
+
+    Private Sub D20()
+        AutoD.SayD "== d20 cDialogInputBox: defaults, the InputBox, OK, cancel, empty"
+        Dim c As New cDialogInputBox
+        Dim ok As Boolean
+        AutoD.SayD "  (a) a new object:"
+        AutoD.SayD "    Title=" & AutoD.QD(c.Title) & " Prompt=" & AutoD.QD(c.Prompt) & " DefaultValue=" & AutoD.QD(c.DefaultValue) & " Placeholder=" & AutoD.QD(c.Placeholder) & " Value=" & AutoD.QD(c.Value)
+        AutoD.SayD "    Multiline=" & B(c.Multiline) & " MaxLength=" & c.MaxLength & " MinLength=" & c.MinLength & " Validation=" & c.Validation & " CustomPattern=" & AutoD.QD(c.CustomPattern) & " AllowEmpty=" & B(c.AllowEmpty) & " PasswordChar=" & AutoD.QD(c.PasswordChar) & " OwnerHwnd=" & c.OwnerHwnd & " Cancelled=" & B(c.Cancelled)
+        AutoD.gMaxTicksD = 40
+        c.Prompt = "Your name?"
+        c.Title = "Name"
+        c.DefaultValue = "Ann"
+        AutoD.SayD "  (b) ShowDialog with Prompt, Title and DefaultValue; OK pressed as it stands:"
+        AutoD.ArmD "d20b", "id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpIB c
+        AutoD.SayD "  (c) type [Bob], OK:"
+        AutoD.ArmD "d20c", "t=Bob|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpIB c
+        AutoD.SayD "  (d) Cancel:"
+        AutoD.ArmD "d20d", "id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpIB c
+        AutoD.SayD "  (e) empty text, OK (AllowEmpty is True):"
+        AutoD.ArmD "d20e", "t=|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpIB c
+    End Sub
+
+    Private Sub D20b()
+        AutoD.SayD "== d20b cDialogInputBox: the prompt the dialog shows"
+        Dim c As New cDialogInputBox
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 40
+        c.Prompt = "Code?"
+        c.Placeholder = "like ABC"
+        c.MinLength = 3
+        c.MaxLength = 8
+        AutoD.SayD "  (a) Placeholder, MinLength 3, MaxLength 8:"
+        AutoD.ArmD "d20b-a", "id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        c.Placeholder = ""
+        c.MaxLength = 0
+        AutoD.SayD "  (b) MinLength 3 only:"
+        AutoD.ArmD "d20b-b", "id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        c.MinLength = 0
+        c.MaxLength = 8
+        AutoD.SayD "  (c) MaxLength 8 only:"
+        AutoD.ArmD "d20b-c", "id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        c.MaxLength = 0
+        c.Multiline = True
+        c.PasswordChar = "*"
+        c.Validation = InputValidation.Custom
+        c.CustomPattern = "[0-9]+"
+        AutoD.SayD "  (d) Multiline True, PasswordChar [*], Validation Custom, CustomPattern [0-9]+:"
+        AutoD.ArmD "d20b-d", "id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+    End Sub
+
+    Private Sub D21()
+        AutoD.SayD "== d21 cDialogInputBox: validation failures and three attempts"
+        Dim c As New cDialogInputBox
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 60
+        c.Prompt = "Age?"
+        c.Title = "Age"
+        AutoD.SayD "  (a) first an accepted entry [keep]:"
+        AutoD.ArmD "d21a", "t=keep|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpIB c
+        c.Validation = InputValidation.Integer
+        c.DefaultValue = "zz"
+        AutoD.SayD "  (b) Validation Integer; three entries [a1], [b2], [c3], OK each; each message box answered OK:"
+        AutoD.ArmD "d21b", "t=a1|id=1;id=2;t=b2|id=1;id=2;t=c3|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok) & ", windows seen " & AutoD.gWindows
+        DumpIB c
+    End Sub
+
+    Private Sub D22()
+        AutoD.SayD "== d22 cDialogInputBox: ShowInteger, ShowNumeric, ShowSimple"
+        Dim c As New cDialogInputBox
+        Dim n As Long
+        Dim d As Double
+        Dim s As String
+        AutoD.gMaxTicksD = 40
+        AutoD.SayD "  (a) ShowInteger, [12]:"
+        AutoD.ArmD "d22a", "t=12|id=1"
+        n = c.ShowInteger("n?")
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & n & " Value=" & AutoD.QD(c.Value) & " Title=" & AutoD.QD(c.Title) & " Validation=" & c.Validation & " AllowEmpty=" & B(c.AllowEmpty)
+        AutoD.SayD "  (b) ShowInteger, [1e3]:"
+        AutoD.ArmD "d22b", "t=1e3|id=1"
+        n = c.ShowInteger("n?")
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & n & " Value=" & AutoD.QD(c.Value)
+        AutoD.SayD "  (c) ShowInteger, [99999999999] (more than a Long holds):"
+        AutoD.ArmD "d22c", "t=99999999999|id=1"
+        On Error Resume Next
+        n = 0
+        n = c.ShowInteger("n?")
+        If Err.Number <> 0 Then AutoD.SayD "    ERROR " & Err.Number & " " & Err.Description
+        On Error GoTo 0
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & n & " Value=" & AutoD.QD(c.Value) & " Cancelled=" & B(c.Cancelled)
+        AutoD.SayD "  (d) ShowInteger, Cancel; ShowNumeric, [3.5]:"
+        AutoD.ArmD "d22d", "id=2"
+        n = c.ShowInteger("n?")
+        AutoD.DisarmD
+        AutoD.SayD "    ShowInteger cancelled -> " & n & " Cancelled=" & B(c.Cancelled)
+        AutoD.ArmD "d22d2", "t=3.5|id=1"
+        d = c.ShowNumeric("x?")
+        AutoD.DisarmD
+        AutoD.SayD "    ShowNumeric [3.5] -> " & d & " Value=" & AutoD.QD(c.Value) & " GetValueAsNumber=" & c.GetValueAsNumber() & " GetValueAsInteger=" & c.GetValueAsInteger()
+        AutoD.SayD "  (e) ShowSimple, [x y]; DefaultValue passed:"
+        AutoD.ArmD "d22e", "id=1"
+        s = c.ShowSimple("p?", "T", "default text")
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & AutoD.QD(s) & " Validation=" & c.Validation & " AllowEmpty=" & B(c.AllowEmpty)
+    End Sub
+
+    Private Sub D22b()
+        AutoD.SayD "== d22b cDialogInputBox: ShowEmail, ShowPhone, ShowURL"
+        Dim c As New cDialogInputBox
+        Dim s As String
+        AutoD.gMaxTicksD = 40
+        AutoD.SayD "  (a) ShowEmail, OK as it stands (empty text; AllowEmpty is False), then [a@b.c]:"
+        AutoD.ArmD "d22b-a", "id=1;id=2;t=a@b.c|id=1"
+        s = c.ShowEmail("mail?")
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & AutoD.QD(s) & " Placeholder=" & AutoD.QD(c.Placeholder) & " DefaultValue=" & AutoD.QD(c.DefaultValue)
+        AutoD.SayD "  (b) ShowSimple afterwards keeps the placeholder:"
+        AutoD.ArmD "d22b-b", "id=2"
+        s = c.ShowSimple("p?")
+        AutoD.DisarmD
+        AutoD.SayD "  (c) ShowURL, OK as it stands ([https://]):"
+        AutoD.ArmD "d22b-c", "id=1"
+        s = c.ShowURL("url?")
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & AutoD.QD(s)
+        AutoD.SayD "  (d) ShowPhone, [+1 (555) 123-4567]:"
+        AutoD.ArmD "d22b-d", "t=+1 (555) 123-4567|id=1"
+        s = c.ShowPhone("tel?")
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & AutoD.QD(s)
+    End Sub
+
+    Private Sub D23()
+        AutoD.SayD "== d23 cDialogInputBox: OwnerHwnd"
+        Dim c As New cDialogInputBox
+        Dim own As LongPtr
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 40
+        own = CreateWindowExW(0, StrPtr("STATIC"), StrPtr("probe owner"), &H90000000, 10, 10, 100, 50, 0, 0, 0, 0)
+        AutoD.gOwner = own
+        c.OwnerHwnd = own
+        AutoD.ArmD "d23", "id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "  -> " & B(ok) & "; the owner stayed enabled: " & IsWindowEnabled(own)
+        AutoD.gOwner = 0
+        DestroyWindow own
+    End Sub
+
+End Module

@@ -50,6 +50,10 @@ The **For...Each...Next** statement cannot be used with an array of user-defined
 
 An object of a class can be the *group* when the class has a member marked [**[Enumerator]**](Attributes#enumerator) that supplies an enumerator. See [Custom Enumerators](../../Features/Language/Custom-Enumerators) for how to write one.
 
+> [!WARNING]
+>
+> In BETA 1005, a **For Each** that cannot get an enumerator from *group* never ends when it runs under `On Error Resume Next`, or under an error handler that ends with **Resume Next**. That happens when *group* is **Nothing**, an object of a class with no **[Enumerator]** member, or an object whose **[Enumerator]** member returns **Nothing** or raises an error. The error resumes into the loop body, and **Next** raises error 91 and goes back to the body, again and again. Test *group* before the loop. VB6 runs the body once, then raises error 92 at **Next**, and the loop ends.
+
 ### Example
 
 This example uses the **For Each...Next** statement to search the **Text** property of all elements in a collection for the existence of the string "Hello". In the example, *MyObject* is a text-related object and is an element of the collection *MyCollection*. Both are generic names used for illustration purposes only.

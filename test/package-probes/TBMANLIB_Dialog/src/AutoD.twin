@@ -1,0 +1,431 @@
+' AutoD: the dialog driver for the dialogs of the package's own making (cDialogCountdownMsgBox,
+' cDialogDateTime, cDialogInputBox, cDialogPassword).
+'
+' Those classes show Windows' MessageBoxTimeout or the runtime's InputBox and MsgBox. Each of
+' them runs its own message loop on the calling thread, and that loop dispatches thread timers.
+' So the probe arms a timer (Arm), calls the dialog, and the timer procedure -- running inside
+' the dialog's loop -- finds the windows of the thread, records them and acts on them by a
+' script. Disarm kills the timer once the dialog call has returned.
+'
+' The script given to Arm is one section per window, in the order the windows appear, sections
+' separated by ";", the actions of a section by "|":
+'   t=TEXT   set the text of the first visible Edit control (WM_SETTEXT)
+'   id=N     click the button with control id N (BM_CLICK); WM_COMMAND when there is none
+'   key=VK   post a key press (WM_KEYDOWN, WM_KEYUP) of virtual key VK to the Edit control, or
+'            to the window when it has none
+'   close    post WM_CLOSE to the window (the close button of its title bar)
+'   wait=N   do nothing for N more ticks
+'   none     do nothing: the window is left open until the episode times out
+' A window with no section is cancelled after gMaxTicks ticks of the episode.
+'
+' Every episode is gMaxTicks ticks of TICK_MS (100 ms). At the end every window of the thread
+' is closed with WM_CLOSE and a click on id 2; a window that still stands six ticks later ends
+' the process (ExitProcess 98), so a run never hangs.
+'
+' Every line is written with TbRun.Out, so that it reaches the file the runner reads at once.
+
+Module AutoD
+
+    Private Type RECT4
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+
+    Private Declare PtrSafe Function SetTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr
+    Private Declare PtrSafe Function KillTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal uIDEvent As LongPtr) As Long
+    Private Declare PtrSafe Function GetCurrentThreadId Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetTickCount Lib "kernel32" () As Long
+    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+    Private Declare PtrSafe Function EnumThreadWindows Lib "user32" (ByVal dwThreadId As Long, ByVal lpfn As LongPtr, ByVal lParam As LongPtr) As Long
+    Private Declare PtrSafe Function EnumChildWindows Lib "user32" (ByVal hWndParent As LongPtr, ByVal lpEnumFunc As LongPtr, ByVal lParam As LongPtr) As Long
+    Private Declare PtrSafe Function GetClassNameW Lib "user32" (ByVal hWnd As LongPtr, ByVal lpClassName As LongPtr, ByVal nMaxCount As Long) As Long
+    Private Declare PtrSafe Function GetWindowRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT4) As Long
+    Private Declare PtrSafe Function IsWindowVisible Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function IsWindowEnabled Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function IsWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetDlgCtrlID Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetDlgItem Lib "user32" (ByVal hDlg As LongPtr, ByVal nIDDlgItem As Long) As LongPtr
+    Private Declare PtrSafe Function GetWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal uCmd As Long) As LongPtr
+    Private Declare PtrSafe Function GetWindowLongW Lib "user32" (ByVal hWnd As LongPtr, ByVal nIndex As Long) As Long
+    Private Declare PtrSafe Function GetForegroundWindow Lib "user32" () As LongPtr
+    Private Declare PtrSafe Function GetFocus Lib "user32" () As LongPtr
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function PostMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As Long
+
+    Private Const WM_GETTEXT As Long = &HD
+    Private Const WM_GETTEXTLENGTH As Long = &HE
+    Private Const WM_SETTEXT As Long = &HC
+    Private Const WM_CLOSE As Long = &H10
+    Private Const WM_COMMAND As Long = &H111
+    Private Const WM_KEYDOWN As Long = &H100
+    Private Const WM_KEYUP As Long = &H101
+    Private Const BM_CLICK As Long = &HF5
+    Private Const EM_GETLIMITTEXT As Long = &HD5
+    Private Const EM_GETPASSWORDCHAR As Long = &HD2
+    Private Const STM_GETICON As Long = &H171
+    Private Const GWL_STYLE As Long = -16
+    Private Const GWL_EXSTYLE As Long = -20
+    Private Const GW_OWNER As Long = 4
+
+    Private Const TICK_MS As Long = 100
+    Private Const MAXW As Long = 16
+
+    ' The folder the probe replaces in every line it writes.
+    Public gRootD As String
+
+    ' What the last episode saw.
+    Public gWindows As Long         ' windows of the thread that appeared
+    Public gTicksD As Long
+    Public gTimedOutD As Boolean
+    Public gMaxTicksD As Long = 80
+    Public gActDelay As Long = 2    ' ticks between a window's appearance and its first action
+    Public gOwner As LongPtr        ' a window the probe made, to compare with each dialog's owner
+    Public gDumpChildren As Boolean = True
+    Public gTrace As Boolean        ' print each tick with its time
+    Public gFirstSeenMs As Long     ' GetTickCount() when the first window of the episode was seen
+
+    Private mTag As String
+    Private mSections() As String
+    Private mSectionN As Long
+    Private mTimerId As LongPtr
+    Private mTick As Long
+    Private mStartMs As Long
+    Private mTop(0 To 63) As LongPtr
+    Private mTopN As Long
+    Private mChH(0 To 255) As LongPtr
+    Private mChN As Long
+    Private mWin(0 To MAXW - 1) As LongPtr
+    Private mWinSeenTick(0 To MAXW - 1) As Long
+    Private mWinActs(0 To MAXW - 1) As String
+    Private mWinActIdx(0 To MAXW - 1) As Long
+    Private mWinNext(0 To MAXW - 1) As Long
+    Private mWinSig(0 To MAXW - 1) As String
+    Private mWinChanges(0 To MAXW - 1) As Long
+    Private mWinN As Long
+
+    '=========================================================================================
+    ' Output
+    '=========================================================================================
+
+    Public Sub SayD(ByVal s As String)
+        If Len(gRootD) > 0 Then s = Replace(s, gRootD, "<root>")
+        TbRun.Out s
+    End Sub
+
+    ' A string in brackets, with its length; a null character is shown as <NUL>, a line break as <CRLF>/<LF>.
+    Public Function QD(ByVal s As String) As String
+        s = Replace(s, vbNullChar, "<NUL>")
+        s = Replace(s, vbCrLf, "<CRLF>")
+        s = Replace(s, vbLf, "<LF>")
+        s = Replace(s, vbCr, "<CR>")
+        QD = "[" & s & "] len=" & Len(s)
+    End Function
+
+    ' Milliseconds since Arm.
+    Public Function ElapsedMs() As Long
+        ElapsedMs = GetTickCount() - mStartMs
+    End Function
+
+    ' Milliseconds from the first window of the episode to now: how long the dialog stood.
+    ' (A window appears about two seconds after the call that shows it in every episode after
+    ' the second one, so the time since Arm says nothing about a timeout.)
+    Public Function LifeMs() As Long
+        If gFirstSeenMs = 0 Then LifeMs = -1 Else LifeMs = GetTickCount() - gFirstSeenMs
+    End Function
+
+    '=========================================================================================
+    ' Arming
+    '=========================================================================================
+
+    Public Sub ArmD(ByVal tag As String, ByVal script As String)
+        mTag = tag
+        If Len(script) = 0 Then
+            ReDim mSections(0 To 0)
+            mSectionN = 0
+        Else
+            mSections = Split(script, ";")
+            mSectionN = UBound(mSections) + 1
+        End If
+        mTick = 0
+        mWinN = 0
+        gWindows = 0
+        gTicksD = 0
+        gTimedOutD = False
+        gFirstSeenMs = 0
+        mStartMs = GetTickCount()
+        mTimerId = SetTimer(0, 0, TICK_MS, AddressOf TimerProcD)
+    End Sub
+
+    Public Sub DisarmD()
+        If mTimerId <> 0 Then KillTimer 0, mTimerId
+        mTimerId = 0
+        gTicksD = mTick
+    End Sub
+
+    '=========================================================================================
+    ' Windows
+    '=========================================================================================
+
+    Public Function EnumTopProcD(ByVal hWnd As LongPtr, ByVal lParam As LongPtr) As Long
+        If mTopN <= 63 Then
+            mTop(mTopN) = hWnd
+            mTopN = mTopN + 1
+        End If
+        EnumTopProcD = 1
+    End Function
+
+    Public Function EnumChildProcD(ByVal hWnd As LongPtr, ByVal lParam As LongPtr) As Long
+        If mChN <= 255 Then
+            mChH(mChN) = hWnd
+            mChN = mChN + 1
+        End If
+        EnumChildProcD = 1
+    End Function
+
+    Public Function ClassOf(ByVal h As LongPtr) As String
+        Dim s As String = String$(256, 0)
+        Dim n As Long = GetClassNameW(h, StrPtr(s), 256)
+        ClassOf = Left$(s, n)
+    End Function
+
+    Public Function TextOf(ByVal h As LongPtr) As String
+        Dim n As Long = CLng(SendMessageW(h, WM_GETTEXTLENGTH, 0, 0))
+        Dim s As String = String$(n + 2, 0)
+        n = CLng(SendMessageW(h, WM_GETTEXT, n + 1, StrPtr(s)))
+        TextOf = Left$(s, n)
+    End Function
+
+    Private Function Children(ByVal h As LongPtr, ByRef list() As LongPtr) As Long
+        Dim i As Long
+        mChN = 0
+        EnumChildWindows h, AddressOf EnumChildProcD, 0
+        For i = 0 To mChN - 1
+            list(i) = mChH(i)
+        Next
+        Children = mChN
+    End Function
+
+    ' The texts of the Static and Button children, one string: a change in it means the window changed what it says.
+    Private Function Signature(ByVal h As LongPtr) As String
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long = Children(h, list)
+        Dim s As String
+        For i = 0 To n - 1
+            Select Case ClassOf(list(i))
+                Case "Static", "Button"
+                    If IsWindowVisible(list(i)) <> 0 Then s = s & "{" & TextOf(list(i)) & "}"
+            End Select
+        Next
+        Signature = s
+    End Function
+
+    Private Function WinIndex(ByVal h As LongPtr) As Long
+        Dim i As Long
+        WinIndex = -1
+        For i = 0 To mWinN - 1
+            If mWin(i) = h And h <> 0 Then WinIndex = i : Exit Function
+        Next
+    End Function
+
+    '=========================================================================================
+    ' Recording
+    '=========================================================================================
+
+    Private Sub Record(ByVal h As LongPtr, ByVal k As Long)
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long
+        Dim rc As RECT4
+        Dim st As Long
+        Dim ex As Long
+        Dim owner As LongPtr
+        Dim cls As String
+        GetWindowRect h, rc
+        st = GetWindowLongW(h, GWL_STYLE)
+        ex = GetWindowLongW(h, GWL_EXSTYLE)
+        owner = GetWindow(h, GW_OWNER)
+        SayD "  [" & mTag & "] window #" & k & " at tick " & mTick & " (+" & ElapsedMs() & " ms): class=" & QD(ClassOf(h)) & " title=" & QD(TextOf(h))
+        SayD "    style=0x" & Hex$(st) & " exstyle=0x" & Hex$(ex) & " size=" & (rc.Right - rc.Left) & "x" & (rc.Bottom - rc.Top) & " topmost=" & ((ex And &H8) <> 0) & " hasOwner=" & (owner <> 0) & " ownerIsProbeOwner=" & (owner = gOwner And gOwner <> 0) & " probeOwnerEnabled=" & IIf(gOwner <> 0, CStr(IsWindowEnabled(gOwner)), "n/a")
+        n = Children(h, list)
+        For i = 0 To n - 1
+            cls = ClassOf(list(i))
+            If gDumpChildren Or cls = "Edit" Then
+                Dim line As String = "    child " & cls & " id=" & GetDlgCtrlID(list(i)) & " vis=" & IsWindowVisible(list(i)) & " ena=" & IsWindowEnabled(list(i)) & " style=0x" & Hex$(GetWindowLongW(list(i), GWL_STYLE)) & " text=" & QD(TextOf(list(i)))
+                If cls = "Edit" Then
+                    line = line & " passwordChar=" & CLng(SendMessageW(list(i), EM_GETPASSWORDCHAR, 0, 0)) & " limit=" & CLng(SendMessageW(list(i), EM_GETLIMITTEXT, 0, 0)) & " multiline=" & ((GetWindowLongW(list(i), GWL_STYLE) And &H4) <> 0) & " readonly=" & ((GetWindowLongW(list(i), GWL_STYLE) And &H800) <> 0)
+                End If
+                SayD line
+            End If
+        Next
+    End Sub
+
+    '=========================================================================================
+    ' Acting
+    '=========================================================================================
+
+    Private Function FirstEdit(ByVal h As LongPtr) As LongPtr
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long = Children(h, list)
+        For i = 0 To n - 1
+            If ClassOf(list(i)) = "Edit" Then
+                If IsWindowVisible(list(i)) <> 0 Then FirstEdit = list(i) : Exit Function
+            End If
+        Next
+    End Function
+
+    Private Sub Act(ByVal k As Long, ByVal h As LongPtr, ByVal action As String)
+        Dim ed As LongPtr
+        Dim arg As String
+        Dim p As Long = InStr(action, "=")
+        Dim verb As String = action
+        If p > 0 Then
+            verb = Left$(action, p - 1)
+            arg = Mid$(action, p + 1)
+        End If
+        Select Case verb
+            Case "t"
+                ed = FirstEdit(h)
+                If ed <> 0 Then
+                    SendMessageW ed, WM_SETTEXT, 0, StrPtr(arg)
+                    SayD "    #" & k & " typed " & QD(arg) & " -> now " & QD(TextOf(ed))
+                Else
+                    SayD "    #" & k & " NO EDIT BOX to type into"
+                End If
+            Case "id"
+                Dim id As Long = CLng(arg)
+                Dim b As LongPtr = GetDlgItem(h, id)
+                If b <> 0 Then
+                    SayD "    #" & k & " press id " & id & " (" & QD(TextOf(b)) & ", ena=" & IsWindowEnabled(b) & ")"
+                    PostMessageW b, BM_CLICK, 0, 0
+                Else
+                    SayD "    #" & k & " no button id " & id & "; WM_COMMAND"
+                    PostMessageW h, WM_COMMAND, id, 0
+                End If
+            Case "key"
+                Dim vk As Long = CLng(arg)
+                ed = FirstEdit(h)
+                If ed = 0 Then ed = h
+                SayD "    #" & k & " key " & vk & " to " & ClassOf(ed)
+                PostMessageW ed, WM_KEYDOWN, vk, 0
+                PostMessageW ed, WM_KEYUP, vk, &HC0000001
+            Case "close"
+                SayD "    #" & k & " WM_CLOSE"
+                PostMessageW h, WM_CLOSE, 0, 0
+            Case "wait"
+                mWinNext(k) = mTick + CLng(arg)
+            Case "none"
+                SayD "    #" & k & " (left alone)"
+            Case Else
+                SayD "    #" & k & " unknown action " & QD(action)
+        End Select
+    End Sub
+
+    Private Sub Service(ByVal k As Long, ByVal h As LongPtr)
+        Dim acts() As String
+        Dim sig As String
+        ' A change of the texts the window shows.
+        sig = Signature(h)
+        If sig <> mWinSig(k) Then
+            If mWinChanges(k) < 4 Then SayD "    #" & k & " texts changed at tick " & mTick & " (+" & ElapsedMs() & " ms): " & QD(sig)
+            mWinChanges(k) = mWinChanges(k) + 1
+            mWinSig(k) = sig
+        End If
+        If Len(mWinActs(k)) = 0 Then Exit Sub
+        acts = Split(mWinActs(k), "|")
+        If mWinActIdx(k) > UBound(acts) Then Exit Sub
+        If mTick < mWinNext(k) Then Exit Sub
+        Dim a As String = acts(mWinActIdx(k))
+        mWinActIdx(k) = mWinActIdx(k) + 1
+        mWinNext(k) = mTick + 1
+        Act k, h, a
+    End Sub
+
+    ' Ends a window by every means: WM_CLOSE, WM_COMMAND 2, and a click on each of its buttons.
+    Private Sub CloseWindow(ByVal h As LongPtr)
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long
+        PostMessageW h, WM_CLOSE, 0, 0
+        PostMessageW h, WM_COMMAND, 2, 0
+        n = Children(h, list)
+        For i = 0 To n - 1
+            If ClassOf(list(i)) = "Button" Then
+                If IsWindowVisible(list(i)) <> 0 Then PostMessageW list(i), BM_CLICK, 0, 0
+            End If
+        Next
+    End Sub
+
+    ' The timer procedure: runs inside the modal loop of the dialog.
+    Public Sub TimerProcD(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal idEvent As LongPtr, ByVal dwTime As Long)
+        Dim i As Long
+        Dim k As Long
+        Dim h As LongPtr
+        Dim list(0 To 63) As LongPtr
+        Dim n As Long
+        Dim openCount As Long
+        mTick = mTick + 1
+        If gTrace Then SayD "      tick " & mTick & " +" & ElapsedMs() & " ms"
+        ' A window that has gone is forgotten, so that a new window with the same handle is a new one.
+        For i = 0 To mWinN - 1
+            If mWin(i) <> 0 Then
+                If IsWindow(mWin(i)) = 0 Then
+                    mWin(i) = 0
+                ElseIf IsWindowVisible(mWin(i)) = 0 Then
+                    mWin(i) = 0
+                End If
+            End If
+        Next
+        mTopN = 0
+        EnumThreadWindows GetCurrentThreadId(), AddressOf EnumTopProcD, 0
+        n = mTopN
+        For i = 0 To n - 1
+            list(i) = mTop(i)
+        Next
+        For i = 0 To n - 1
+            h = list(i)
+            If IsWindow(h) <> 0 Then
+                If IsWindowVisible(h) <> 0 Then
+                    If h <> gOwner Then
+                        k = WinIndex(h)
+                        If k < 0 And mWinN < MAXW Then
+                            k = mWinN
+                            mWinN = mWinN + 1
+                            mWin(k) = h
+                            mWinSeenTick(k) = mTick
+                            If k < mSectionN Then mWinActs(k) = mSections(k) Else mWinActs(k) = ""
+                            mWinActIdx(k) = 0
+                            mWinNext(k) = mTick + gActDelay
+                            mWinSig(k) = Signature(h)
+                            mWinChanges(k) = 0
+                            gWindows = gWindows + 1
+                            If gFirstSeenMs = 0 Then gFirstSeenMs = GetTickCount()
+                            Record h, k
+                            SayD "    #" & k & " texts: " & QD(mWinSig(k))
+                        End If
+                        If k >= 0 Then
+                            openCount = openCount + 1
+                            If mTick >= gMaxTicksD Then
+                                If Not gTimedOutD Then
+                                    gTimedOutD = True
+                                    SayD "  [" & mTag & "] TIMED OUT at tick " & mTick & ", closing the windows"
+                                End If
+                                CloseWindow h
+                            Else
+                                Service k, h
+                            End If
+                        End If
+                    End If
+                End If
+            End If
+        Next
+        If mTick >= gMaxTicksD + 6 Then
+            SayD "  [" & mTag & "] STUCK: a window could not be closed, ending the process"
+            ExitProcess 98
+        End If
+    End Sub
+
+End Module

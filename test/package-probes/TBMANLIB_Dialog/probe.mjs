@@ -24,13 +24,18 @@ import {
   withUsageError,
 } from "../../../lib/cli.mjs";
 
-const USAGE = `usage: node test/package-probes/TBMANLIB_Dialog/probe.mjs [--arch win32|win64] [--port N] <ids> [<ids> ...] [-h, --help]
+const USAGE = `usage: node test/package-probes/TBMANLIB_Dialog/probe.mjs [--arch win32|win64] [--port N] [--timeout S] [--overlay D] <ids> [<ids> ...] [-h, --help]
 
 Builds the TBMANLIB_Dialog probe (src/) with tbrun, then runs the exe on a private desktop once
 for each <ids>, a comma-separated list of the scenario ids listed at the top of src/Probe.twin.
 
   --arch A    win32 (default) or win64
   --port N    the IDE's DevTools port (default 9720); it also keys the work folders
+  --timeout S end each run of the exe after S seconds (default 25; the cDialogEx scenarios,
+              which open several slower dialogs, are run with 35)
+  --overlay D a folder whose files replace the package's own sources in the work tree (the path
+              under Sources/ is the path under D): to try a change to the package's code. Keep D
+              outside the repository; the package's code is not the repository's to commit.
   -h, --help  print this text and exit
 
 Exit codes:
@@ -47,6 +52,8 @@ const { values, positionals } = withUsageError(
       options: {
         arch: { type: "string", default: "win32" },
         port: { type: "string", default: "9720" },
+        timeout: { type: "string", default: "25" },
+        overlay: { type: "string" },
         help: { type: "boolean", short: "h" },
       },
       positionals: { min: 1 },
@@ -55,10 +62,11 @@ const { values, positionals } = withUsageError(
   usageError,
 );
 if (values.help) printHelpAndExit(USAGE);
-const { arch, port } = withUsageError(
+const { arch, port, timeout } = withUsageError(
   () => ({
     arch: choiceOption(values.arch, { option: "--arch", choices: ["win32", "win64"] }),
     port: numberOption(values.port, { option: "--port", integer: true, min: 1024, max: 65535 }),
+    timeout: numberOption(values.timeout, { option: "--timeout", integer: true, min: 5, max: 120 }),
   }),
   usageError,
 );
@@ -82,8 +90,17 @@ cpSync(
 const embedded = path.join(tree, "Packages", "TBMANLIB_Dialog");
 mkdirSync(path.join(embedded, "Sources"), { recursive: true });
 cpSync(path.join(pkg, "Settings"), path.join(embedded, "Settings"));
+// Since 1.1.0.0 the sources hold folders (more/, test/): copy them whole.
 for (const f of readdirSync(path.join(pkg, "sources")))
-  cpSync(path.join(pkg, "sources", f), path.join(embedded, "Sources", f));
+  cpSync(path.join(pkg, "sources", f), path.join(embedded, "Sources", f), { recursive: true });
+if (values.overlay) {
+  const overlay = path.resolve(values.overlay);
+  if (!existsSync(overlay)) {
+    console.error(`probe: no overlay folder ${overlay}`);
+    process.exit(2);
+  }
+  cpSync(overlay, path.join(embedded, "Sources"), { recursive: true });
+}
 for (const f of readdirSync(path.join(here, "src"))) {
   const text = readFileSync(path.join(here, "src", f), "utf8").replace(/\r?\n/g, "\r\n");
   writeFileSync(path.join(tree, "Sources", f), text, "utf8");
@@ -113,7 +130,15 @@ for (const ids of positionals) {
   console.log(`######## ${arch} run: ${ids}`);
   const run = spawnSync(
     process.execPath,
-    [path.join(here, "run-exe.mjs"), path.join(outDir, exe), ids, "--timeout", "25", "--desktop", `dlgprobe-${port}`],
+    [
+      path.join(here, "run-exe.mjs"),
+      path.join(outDir, exe),
+      ids,
+      "--timeout",
+      String(timeout),
+      "--desktop",
+      `dlgprobe-${port}`,
+    ],
     { cwd: repo, stdio: "inherit" },
   );
   if (run.status === 2 || run.status === null) {

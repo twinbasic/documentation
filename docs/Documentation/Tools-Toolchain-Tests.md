@@ -329,12 +329,14 @@ Exit codes: **0** every test passed, **1** a test failed.
 
     node scripts/check_page_baseline.mjs
 
-Verifies the [page-count drift guard](Building#the-page-count-drift-guard) still refuses what it exists to refuse. Eleven probes run against a scratch baseline file in the system temp directory, so `builder/page-baseline.json` is never touched. No browser, no built tree, well under a second.
+Verifies the [page-count drift guard](Building#the-page-count-drift-guard) still refuses what it exists to refuse, and still writes only where it may. Seventeen probes run against a scratch baseline file in the system temp directory, so `builder/page-baseline.json` is never touched. No browser, no built tree, well under a second.
 
 The guard says nothing on a healthy tree, so a build whose guard has stopped working sounds the same. The first probe is a whole package lost to a blanket `exclude:` rule, which a fixed floor on the page count would not notice. Two probes look redundant and are not:
 
 - **A foreign source root must be ignored.** [`check_links_diff.mjs`](Tools-Site-Checks#check-links-diff) builds a three-page fixture tree, and a baseline keyed to nothing would report every other page missing.
 - **CI must refuse a missing baseline** instead of creating one, because a run that wrote the file would record whatever drop it had been asked to catch.
+
+The last six ask who may write: a build into `docs/_site` may, and a build into another `--dest`, CI and `--serve` may not. A rise built into another destination leaves the file alone and says so, and a fall there still fails.
 
 Exit codes: **0** every probe passed, **1** a probe failed, **2** the gate could not run: a refused command line, or a crash.
 
@@ -410,7 +412,7 @@ Verifies `lib/cli.mjs`, the module the tools read their command lines through, a
 
 The module's probes cover what `parseCli` returns and refuses, compared with a strict `node:util` `parseArgs` over the same argument lists. They also cover `numberOption`, `choiceOption`, `regexOption`, `urlOption`, `dateOption`, `refuseTogether`, `withUsageError` and `printHelpAndExit`. The first five read a value after the parse, and `refuseTogether` refuses options that exclude each other.
 
-The parse is strict for every tool. `parseCli` refuses an unknown option, a boolean flag given a value, a value flag with no value, a positional beyond the count the tool declares, and an empty value unless the option allows one --- only `tbdocs`'s `--baseurl` does. The probes cover each refusal and the `--` that ends the options. They also cover the options `builder/command-line.mjs` returns for `tbdocs`, where `--no-check` makes the order of the flags matter. No recorded case can test that, since each of those command lines starts a build.
+The parse is strict for every tool. `parseCli` refuses an unknown option, a boolean flag given a value, a value flag with no value, a positional beyond the count the tool declares, and an empty value unless the option allows one --- only `tbdocs`'s `--baseurl` does. The probes cover each refusal and the `--` that ends the options. They also cover the options `builder/command-line.mjs` returns for `tbdocs`, where `--no-check` makes the order of the flags matter, and the trees those options make the build prepare (`destinationTrees` in `builder/write.mjs`): with `--no-offline` and `--no-pdf`, the online tree alone, the other two removed. No recorded case can test that, since each of those command lines starts a build.
 
 The recorded cases are invocations that stop while the tool reads its command line, or at its first check of the project, folder, file or install the command line names. Each records its exit code and what it prints on each stream: the tool's own words for the error exactly, a crash's only by the line that names the problem, and the opening of a usage text printed after it.
 

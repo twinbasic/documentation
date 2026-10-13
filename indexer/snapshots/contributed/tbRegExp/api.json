@@ -2,8 +2,24 @@
   "format": 3,
   "package": "tbRegExp",
   "project": "tbRegExp",
-  "version": "1.4.0.0",
+  "version": "1.7.0.0",
   "types": [
+    {
+      "name": "IEnumVARIANT",
+      "kind": "interface",
+      "vis": "private",
+      "public": false,
+      "file": "RegExp.twin",
+      "signature": "Private Interface IEnumVARIANT Extends stdole.IUnknown",
+      "extends": "stdole.IUnknown",
+      "attrs": [{"name":"InterfaceId","args":"\"00020404-0000-0000-C000-000000000046\""}],
+      "members": [
+        {"name":"Clone","kind":"function","vis":"public","signature":"Function Clone() As IEnumVARIANT","returnType":"IEnumVARIANT"},
+        {"name":"Next","kind":"sub","vis":"public","signature":"Sub Next(ByVal celt As Long, ByRef rgVar As Variant, ByRef pCeltFetched As Long)"},
+        {"name":"Reset","kind":"sub","vis":"public","signature":"Sub Reset()"},
+        {"name":"Skip","kind":"sub","vis":"public","signature":"Sub Skip(ByVal celt As Long)"}
+      ]
+    },
     {
       "name": "Match",
       "kind": "class",
@@ -34,13 +50,38 @@
       "attrs": [{"name":"PredeclaredId","args":"False"},{"name":"Hidden","args":"False"}],
       "description": "This class represents a collection of match objects.",
       "members": [
-        {"name":"Class_Initialize","kind":"sub","vis":"private","signature":"Private Sub Class_Initialize()"},
         {"name":"Class_Terminate","kind":"sub","vis":"private","signature":"Private Sub Class_Terminate()"},
         {"name":"Count","kind":"property","vis":"public","signature":"Public Property Get Count() As Long","returnType":"Long","accessor":"Get","description":"Returns the number of Match objects found in the source string."},
         {"name":"Internal_Add","kind":"sub","vis":"friend","signature":"Friend Sub Internal_Add(obj As Match)"},
+        {"name":"Internal_ItemAt","kind":"function","vis":"friend","signature":"Friend Function Internal_ItemAt(ByVal pIndex As Long) As Match","returnType":"Match"},
         {"name":"Item","kind":"property","vis":"public","signature":"Public Property Get Item(ByVal pItemIndex As Variant) As Match","returnType":"Match","accessor":"Get","attrs":[{"name":"DefaultMember"}],"description":"Returns the Match object associated with the provided index"},
         {"name":"NewEnum","kind":"function","vis":"public","signature":"Public Function NewEnum() As IUnknown","returnType":"IUnknown","hidden":true,"attrs":[{"name":"Hidden"},{"name":"Enumerator"}]},
-        {"name":"colMatches","kind":"field","vis":"private","signature":"Private colMatches As Collection"}
+        {"name":"mCap","kind":"field","vis":"private","signature":"Private mCap As Long"},
+        {"name":"mCount","kind":"field","vis":"private","signature":"Private mCount As Long"},
+        {"name":"mItems","kind":"field","vis":"private","signature":"Private mItems() As Match"}
+      ]
+    },
+    {
+      "name": "MatchCollectionEnum",
+      "kind": "class",
+      "vis": "private",
+      "public": false,
+      "file": "RegExp.twin",
+      "signature": "Private Class MatchCollectionEnum",
+      "implements": ["IEnumVARIANT"],
+      "hidden": true,
+      "attrs": [{"name":"PredeclaredId","args":"False"},{"name":"Hidden","args":"True"}],
+      "members": [
+        {"name":"Attach","kind":"sub","vis":"friend","signature":"Friend Sub Attach(ByVal src As MatchCollection, ByVal startPos As Long)"},
+        {"name":"Class_Terminate","kind":"sub","vis":"private","signature":"Private Sub Class_Terminate()"},
+        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Implements IEnumVARIANT.Clone","returnType":"IEnumVARIANT"},
+        {"name":"Next","kind":"sub","vis":"private","signature":"Private Sub Next(ByVal celt As Long, ByRef rgVar As Variant, ByRef pCeltFetched As Long) Implements IEnumVARIANT.Next"},
+        {"name":"Reset","kind":"sub","vis":"private","signature":"Private Sub Reset() Implements IEnumVARIANT.Reset"},
+        {"name":"S_FALSE","kind":"const","vis":"private","signature":"Private Const S_FALSE As Long = 1"},
+        {"name":"Skip","kind":"sub","vis":"private","signature":"Private Sub Skip(ByVal celt As Long) Implements IEnumVARIANT.Skip"},
+        {"name":"mCount","kind":"field","vis":"private","signature":"Private mCount As Long"},
+        {"name":"mPos","kind":"field","vis":"private","signature":"Private mPos As Long"},
+        {"name":"mSrc","kind":"field","vis":"private","signature":"Private mSrc As MatchCollection"}
       ]
     },
     {
@@ -52,6 +93,7 @@
       "attrs": [{"name":"PredeclaredId","args":"False"},{"name":"Hidden","args":"False"}],
       "description": "This class exposes a drop-in replacement for VBSript's regular expressions object model.",
       "members": [
+        {"name":"CacheCaptureInfo","kind":"sub","vis":"private","signature":"Private Sub CacheCaptureInfo()"},
         {"name":"Class_Initialize","kind":"sub","vis":"private","signature":"Private Sub Class_Initialize()"},
         {"name":"DescribeRegexError","kind":"function","vis":"private","signature":"Private Function DescribeRegexError(ByVal errNum As Long) As String","returnType":"String"},
         {"name":"DotAll","kind":"property","vis":"public","signature":"Public Property Let DotAll(ByVal pDotAll As Boolean)","accessor":"Let","description":"If 'True', '.' pattern will match across new line charactors. Defaults to 'False'"},
@@ -61,7 +103,6 @@
         {"name":"Execute","kind":"function","vis":"public","signature":"Public Function Execute(ByVal sourceString As String) As MatchCollection","returnType":"MatchCollection","description":"Returns a MatchCollection. Uses the Pattern property to search the sourceString."},
         {"name":"Flags","kind":"property","vis":"public","signature":"Public Property Let Flags(ByVal pFlags As String)","accessor":"Let","description":"Sets or Gets the options in use: g-global; m-multiline; i-ignore case; s-dot all. Example: 'gm' sets Global and MultiLine to 'True', IgnoreCase and DotAll to 'False'."},
         {"name":"Flags","kind":"property","vis":"public","signature":"Public Property Get Flags() As String","returnType":"String","accessor":"Get"},
-        {"name":"GetNamedCapturesInfo","kind":"sub","vis":"private","signature":"Private Sub GetNamedCapturesInfo(ByRef colNames As Collection, ByRef colEntryPoints As Collection)"},
         {"name":"Global","kind":"property","vis":"public","signature":"Public Property Let Global(ByVal pGlobal As Boolean)","accessor":"Let","description":"If 'True', all matches will be returned. If 'False', only the first match will be returned. Defaults to 'False'"},
         {"name":"Global","kind":"property","vis":"public","signature":"Public Property Get Global() As Boolean","returnType":"Boolean","accessor":"Get"},
         {"name":"IgnoreCase","kind":"property","vis":"public","signature":"Public Property Let IgnoreCase(ByVal pIgnoreCase As Boolean)","accessor":"Let","description":"If 'True', matches will be case-insensitive. If 'False', matches will be case-sensitive. Defaults to 'False'"},
@@ -76,6 +117,8 @@
         {"name":"Replace","kind":"function","vis":"public","signature":"Public Function Replace(ByVal sourceString As String, ByVal replaceString As String) As String","returnType":"String","description":"Replaces matches with replaceString and returns the String with replacements made."},
         {"name":"Split","kind":"function","vis":"public","signature":"Public Function Split(ByVal sourceString As String) As Collection","returnType":"Collection","description":"Splits an input string into an array of substrings at the positions defined by a regular expression match. Needs Global Property set to 'True'."},
         {"name":"Test","kind":"function","vis":"public","signature":"Public Function Test(ByVal sourceString As String) As Boolean","returnType":"Boolean","description":"Returns 'True' if Pattern finds a match in sourceString, otherwise returns 'False'."},
+        {"name":"mCapEntryPoints","kind":"field","vis":"private","signature":"Private mCapEntryPoints() As Long"},
+        {"name":"mCapNames","kind":"field","vis":"private","signature":"Private mCapNames() As String"},
         {"name":"mCompileAttempted","kind":"field","vis":"private","signature":"Private mCompileAttempted As Boolean"},
         {"name":"mDotAll","kind":"field","vis":"private","signature":"Private mDotAll As Boolean"},
         {"name":"mGlobal","kind":"field","vis":"private","signature":"Private mGlobal As Boolean"},
@@ -84,6 +127,8 @@
         {"name":"mLastErrNumber","kind":"field","vis":"private","signature":"Private mLastErrNumber As Long"},
         {"name":"mLastError","kind":"field","vis":"private","signature":"Private mLastError As String"},
         {"name":"mMultiLine","kind":"field","vis":"private","signature":"Private mMultiLine As Boolean"},
+        {"name":"mNamedCount","kind":"field","vis":"private","signature":"Private mNamedCount As Long"},
+        {"name":"mNumCaptures","kind":"field","vis":"private","signature":"Private mNumCaptures As Long"},
         {"name":"mPattern","kind":"field","vis":"private","signature":"Private mPattern As String"},
         {"name":"regex","kind":"field","vis":"private","signature":"Private regex As StaticRegex.RegexTy"}
       ]
@@ -152,7 +197,7 @@
         {"name":"MatchNext","kind":"function","vis":"public","signature":"Public Function MatchNext( ByRef matcherState As MatcherStateTy, ByRef regex As RegexTy, ByRef haystack As String ) As Boolean","returnType":"Boolean"},
         {"name":"MatchThenJoin","kind":"function","vis":"public","signature":"Public Function MatchThenJoin( ByRef regex As RegexTy, ByRef haystack As String, Optional ByRef format As String = \"$&\", Optional ByRef delimiter As String = vbNullString, Optional ByVal localMatch As Boolean = False, Optional ByVal multiline As Boolean = False, Optional ByVal dotAll As Boolean = False ) As String","returnType":"String"},
         {"name":"MatchThenList","kind":"sub","vis":"public","signature":"Public Sub MatchThenList( ByRef results() As String, ByRef regex As RegexTy, ByRef haystack As String, ByRef formatStrings() As String, Optional ByVal localMatch As Boolean = False, Optional ByVal multiline As Boolean = False, Optional ByVal dotAll As Boolean = False )"},
-        {"name":"Parse","kind":"sub","vis":"private","signature":"Private Sub Parse(ByRef lex As LexerContext, ByVal caseInsensitive As Boolean, ByRef ast As ArrayBuffer)"},
+        {"name":"Parse","kind":"sub","vis":"private","signature":"Private Sub Parse(ByRef lex As LexerContext, ByVal caseInsensitive As Boolean, ByRef ast As ArrayBuffer, ByRef outReparseWith As Long)"},
         {"name":"ParseFormatString","kind":"sub","vis":"private","signature":"Private Sub ParseFormatString(ByRef parsedFormat As ArrayBuffer, ByRef formatString As String, ByRef bytecode() As Long, ByRef pattern As String)"},
         {"name":"ParseReRanges","kind":"sub","vis":"private","signature":"Private Sub ParseReRanges(lexCtx As LexerContext, ByRef outBuffer As ArrayBuffer, ByRef nranges As Long, ByVal ignoreCase As Boolean)"},
         {"name":"ParseReToken","kind":"sub","vis":"private","signature":"Private Sub ParseReToken(ByRef lexCtx As LexerContext, ByRef outToken As ReToken)"},
@@ -186,6 +231,7 @@
         {"name":"TryInitializeRegex","kind":"function","vis":"public","signature":"Public Function TryInitializeRegex( ByRef regex As RegexTy, ByRef pattern As String, Optional ByVal caseInsensitive As Boolean = False ) As Boolean","returnType":"Boolean"},
         {"name":"UnicodeInitialize","kind":"sub","vis":"private","signature":"Private Sub UnicodeInitialize()"},
         {"name":"UnicodeInitialized","kind":"field","vis":"private","signature":"Private UnicodeInitialized As Boolean"},
+        {"name":"UnicodeIsDotLineTerminator","kind":"function","vis":"private","signature":"Private Function UnicodeIsDotLineTerminator(ByVal codepoint As Long) As Boolean","returnType":"Boolean"},
         {"name":"UnicodeIsLineTerminator","kind":"function","vis":"private","signature":"Private Function UnicodeIsLineTerminator(ByVal codepoint As Long) As Boolean","returnType":"Boolean"},
         {"name":"UnicodeReIsWordchar","kind":"function","vis":"private","signature":"Private Function UnicodeReIsWordchar(c As Long) As Boolean","returnType":"Boolean"},
         {"name":"Unionize","kind":"function","vis":"private","signature":"Private Function Unionize(ByRef ary() As Long, ByVal b As Long, ByVal t As Long) As Long","returnType":"Long"},
@@ -459,7 +505,8 @@
         {"name":"iEnd","vis":"public","signature":"iEnd As Long"},
         {"name":"inputStr","vis":"public","signature":"inputStr As String"},
         {"name":"currentCharacter","vis":"public","signature":"currentCharacter As Long"},
-        {"name":"identifierTree","vis":"public","signature":"identifierTree As IdentifierTreeTy"}
+        {"name":"identifierTree","vis":"public","signature":"identifierTree As IdentifierTreeTy"},
+        {"name":"nCapturesKnown","vis":"public","signature":"nCapturesKnown As Long"}
       ],
       "members": []
     },
@@ -484,6 +531,7 @@
         {"name":"UNICODE_0","value":"48"},
         {"name":"UNICODE_1","value":"49"},
         {"name":"UNICODE_7","value":"55"},
+        {"name":"UNICODE_8","value":"56"},
         {"name":"UNICODE_9","value":"57"},
         {"name":"UNICODE_COLON","value":"58"},
         {"name":"UNICODE_LT","value":"60"},
@@ -492,6 +540,7 @@
         {"name":"UNICODE_QUESTION","value":"63"},
         {"name":"UNICODE_UC_A","value":"65"},
         {"name":"UNICODE_UC_B","value":"66"},
+        {"name":"UNICODE_UC_C","value":"67"},
         {"name":"UNICODE_UC_D","value":"68"},
         {"name":"UNICODE_UC_F","value":"70"},
         {"name":"UNICODE_UC_S","value":"83"},
@@ -685,6 +734,7 @@
         {"name":"REGEX_ERR_INVALID_QUANTIFIER_NO_ATOM","value":"REGEX_ERR + 12"},
         {"name":"REGEX_ERR_INVALID_IDENTIFIER","value":"REGEX_ERR + 13"},
         {"name":"REGEX_ERR_INVALID_MODIFIER","value":"REGEX_ERR + 14"},
+        {"name":"REGEX_ERR_INVALID_BACKREFERENCE","value":"REGEX_ERR + 15"},
         {"name":"REGEX_ERR_INTERNAL_LOGIC_ERR","value":"REGEX_ERR + 20"},
         {"name":"REGEX_ERR_INVALID_FLAG_ERR","value":"REGEX_ERR + 30"},
         {"name":"REGEX_ERR_INVALID_REPLACEMENT_STRING","value":"REGEX_ERR + 31"},
@@ -844,16 +894,38 @@
       "attrs": [{"name":"PredeclaredId","args":"False"},{"name":"Hidden","args":"False"}],
       "description": "This class provides the means to access SubMatch (Group) values.",
       "members": [
-        {"name":"Class_Terminate","kind":"sub","vis":"private","signature":"Private Sub Class_Terminate()"},
         {"name":"Count","kind":"property","vis":"public","signature":"Public Property Get Count() As Long","returnType":"Long","accessor":"Get","description":"Returns the number of SubMatch objects found in the source string."},
         {"name":"Internal_SetData","kind":"sub","vis":"friend","signature":"Friend Sub Internal_SetData(ByRef vals() As String, ByRef keys() As String, ByVal count As Long)"},
+        {"name":"Internal_ValueAt","kind":"function","vis":"friend","signature":"Friend Function Internal_ValueAt(ByVal pIndex As Long) As String","returnType":"String"},
         {"name":"Item","kind":"property","vis":"public","signature":"Public Property Get Item(ByVal pItemIndex As Variant) As String","returnType":"String","accessor":"Get","attrs":[{"name":"DefaultMember"}],"description":"Returns the SubMatch string associated with the provided index. Named groups are allowed."},
         {"name":"NewEnum","kind":"function","vis":"public","signature":"Public Function NewEnum() As IUnknown","returnType":"IUnknown","hidden":true,"attrs":[{"name":"Hidden"},{"name":"Enumerator"}]},
         {"name":"mCap","kind":"field","vis":"private","signature":"Private mCap As Long"},
         {"name":"mCount","kind":"field","vis":"private","signature":"Private mCount As Long"},
         {"name":"mKeys","kind":"field","vis":"private","signature":"Private mKeys() As String"},
-        {"name":"mVals","kind":"field","vis":"private","signature":"Private mVals() As String"},
-        {"name":"oEnumColl","kind":"field","vis":"private","signature":"Private oEnumColl As Collection"}
+        {"name":"mVals","kind":"field","vis":"private","signature":"Private mVals() As String"}
+      ]
+    },
+    {
+      "name": "SubMatchesEnum",
+      "kind": "class",
+      "vis": "private",
+      "public": false,
+      "file": "RegExp.twin",
+      "signature": "Private Class SubMatchesEnum",
+      "implements": ["IEnumVARIANT"],
+      "hidden": true,
+      "attrs": [{"name":"PredeclaredId","args":"False"},{"name":"Hidden","args":"True"}],
+      "members": [
+        {"name":"Attach","kind":"sub","vis":"friend","signature":"Friend Sub Attach(ByVal src As SubMatches, ByVal startPos As Long)"},
+        {"name":"Class_Terminate","kind":"sub","vis":"private","signature":"Private Sub Class_Terminate()"},
+        {"name":"Clone","kind":"function","vis":"private","signature":"Private Function Clone() As IEnumVARIANT Implements IEnumVARIANT.Clone","returnType":"IEnumVARIANT"},
+        {"name":"Next","kind":"sub","vis":"private","signature":"Private Sub Next(ByVal celt As Long, ByRef rgVar As Variant, ByRef pCeltFetched As Long) Implements IEnumVARIANT.Next"},
+        {"name":"Reset","kind":"sub","vis":"private","signature":"Private Sub Reset() Implements IEnumVARIANT.Reset"},
+        {"name":"S_FALSE","kind":"const","vis":"private","signature":"Private Const S_FALSE As Long = 1"},
+        {"name":"Skip","kind":"sub","vis":"private","signature":"Private Sub Skip(ByVal celt As Long) Implements IEnumVARIANT.Skip"},
+        {"name":"mCount","kind":"field","vis":"private","signature":"Private mCount As Long"},
+        {"name":"mPos","kind":"field","vis":"private","signature":"Private mPos As Long"},
+        {"name":"mSrc","kind":"field","vis":"private","signature":"Private mSrc As SubMatches"}
       ]
     },
     {

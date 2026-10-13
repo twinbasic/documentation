@@ -116,5 +116,5 @@ Uses the time zone of the system. Raises error 10011 on failure. See [ParseUtc](
 
 - [JsonConverter](../VBA_JSON/JsonConverter/) module -- the same code in the VBA_JSON package, with a full page for each function
 - [cJson](cJson) class -- a JSON document object built on this module
-- [ToolsStr](ToolsStr) module -- **UnicodeEncode** and **UnicodeDecode** for the `\uXXXX` escapes
+- [cToolsStr](cToolsStr) class -- **UnicodeEncode** and **UnicodeDecode** for the `\uXXXX` escapes
 - [TBMANLIB](.) package -- overview

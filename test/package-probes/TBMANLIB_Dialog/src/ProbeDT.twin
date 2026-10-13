@@ -1,0 +1,254 @@
+' ProbeDT: the scenarios d10..d12 of the TBMANLIB_Dialog probe: cDialogDateTime.
+
+Module ProbeDT
+
+    Public Sub Run(ByVal id As String)
+        Select Case id
+            Case "d10": D10
+            Case "d10b": D10b
+            Case "d11": D11
+            Case "d11b": D11b
+            Case "d11c": D11c
+            Case "d12": D12
+            Case "d12d": D12d
+        End Select
+    End Sub
+
+    Private Function B(ByVal x As Boolean) As String
+        B = IIf(x, "True", "False")
+    End Function
+
+    Private Sub DumpDT(ByVal c As cDialogDateTime)
+        AutoD.SayD "    Year=" & c.Year & " Month=" & c.Month & " Day=" & c.Day & " Hour=" & c.Hour & " Minute=" & c.Minute & " Second=" & c.Second & " Cancelled=" & B(c.Cancelled)
+        AutoD.SayD "    DateValue=" & Format$(c.DateValue, "yyyy-mm-dd") & " TimeValue=" & Format$(c.TimeValue, "hh:nn:ss") & " DateTimeValue=" & Format$(c.DateTimeValue, "yyyy-mm-dd hh:nn:ss") & " Mode=" & c.Mode & " Title=" & AutoD.QD(c.Title)
+    End Sub
+
+    Private Sub SetFixed(ByVal c As cDialogDateTime)
+        c.DateTimeValue = DateSerial(2026, 3, 15) + TimeSerial(14, 5, 9)
+    End Sub
+
+    Private Sub D10()
+        AutoD.SayD "== d10 cDialogDateTime: defaults, the InputBox, OK, cancel, an empty entry"
+        Dim c As New cDialogDateTime
+        Dim ok As Boolean
+        AutoD.SayD "  (a) a new object:"
+        AutoD.SayD "    Title=" & AutoD.QD(c.Title) & " Prompt=" & AutoD.QD(c.Prompt) & " Mode=" & c.Mode & " MinYear=" & c.MinYear & " MaxYear=" & c.MaxYear
+        AutoD.SayD "    ShowSeconds=" & B(c.ShowSeconds) & " Is24HourFormat=" & B(c.Is24HourFormat) & " CustomFormat=" & AutoD.QD(c.CustomFormat) & " OwnerHwnd=" & c.OwnerHwnd & " Cancelled=" & B(c.Cancelled)
+        AutoD.SayD "    Year is the current year: " & B(c.Year = Year(Date)) & ", Month: " & B(c.Month = Month(Date)) & ", Day: " & B(c.Day = Day(Date))
+        SetFixed c
+        DumpDT c
+        AutoD.gMaxTicksD = 40
+        AutoD.SayD "  (b) ShowDialog, Cancel:"
+        AutoD.ArmD "d10b", "id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        AutoD.SayD "  (c) ShowDialog, type [07/04/2027 08:30], OK:"
+        AutoD.ArmD "d10c", "t=07/04/2027 08:30|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        AutoD.SayD "  (d) ShowDialog, empty text, OK:"
+        AutoD.ArmD "d10d", "t=|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+    End Sub
+
+    Private Sub D10b()
+        AutoD.SayD "== d10b cDialogDateTime: date only, time only, dashes, text that is not a date"
+        Dim c As New cDialogDateTime
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 40
+        SetFixed c
+        AutoD.SayD "  (a) [11/12/2028] with no time (Mode = DateTime):"
+        AutoD.ArmD "d10b-a", "t=11/12/2028|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        AutoD.SayD "  (b) [23:59] with no date:"
+        AutoD.ArmD "d10b-b", "t=23:59|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        AutoD.SayD "  (c) [01-02-2029 03:04:05] with hyphens and seconds:"
+        AutoD.ArmD "d10b-c", "t=01-02-2029 03:04:05|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        AutoD.SayD "  (d) [hello] (not a date or time):"
+        AutoD.ArmD "d10b-d", "t=hello|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        AutoD.SayD "  (e) [1/2] (two parts):"
+        AutoD.ArmD "d10b-e", "t=1/2|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+    End Sub
+
+    Private Sub D11()
+        AutoD.SayD "== d11 cDialogDateTime: invalid entries, the Invalid box, the state afterwards"
+        Dim c As New cDialogDateTime
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 40
+        SetFixed c
+        AutoD.SayD "  (a) [13/45/2026]:"
+        AutoD.ArmD "d11a", "t=13/45/2026|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        SetFixed c
+        AutoD.SayD "  (b) [02/30/2026]:"
+        AutoD.ArmD "d11b", "t=02/30/2026|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        SetFixed c
+        AutoD.SayD "  (c) [25:61]:"
+        AutoD.ArmD "d11c", "t=25:61|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+    End Sub
+
+    Private Sub D11b()
+        AutoD.SayD "== d11b cDialogDateTime: letters in a date, a time with PM and no space"
+        Dim c As New cDialogDateTime
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 40
+        SetFixed c
+        c.Is24HourFormat = False
+        AutoD.SayD "  (a) [ab/cd/ef]:"
+        AutoD.ArmD "d11b-a", "t=ab/cd/ef|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        SetFixed c
+        AutoD.SayD "  (b) [9:30pm] (no space before PM):"
+        AutoD.ArmD "d11b-b", "t=9:30pm|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        SetFixed c
+        AutoD.SayD "  (c) [9:30 pm] (a space):"
+        AutoD.ArmD "d11b-c", "t=9:30 pm|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+    End Sub
+
+    Private Sub D11c()
+        AutoD.SayD "== d11c cDialogDateTime: a time with AM or PM, 12 hour format"
+        Dim c As New cDialogDateTime
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 40
+        SetFixed c
+        c.Is24HourFormat = False
+        AutoD.ArmD "d11c-a", "t=12:15 AM|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "  (a) [12:15 AM] -> " & B(ok) & " Hour=" & c.Hour & " Minute=" & c.Minute
+        SetFixed c
+        AutoD.ArmD "d11c-b", "t=03/15/2026 12:15 AM|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "  (b) [03/15/2026 12:15 AM] -> " & B(ok) & " Hour=" & c.Hour & " Minute=" & c.Minute
+        SetFixed c
+        AutoD.ArmD "d11c-c", "t=03/15/2026 12:30 PM|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "  (c) [03/15/2026 12:30 PM] -> " & B(ok) & " Hour=" & c.Hour & " Minute=" & c.Minute
+        SetFixed c
+        AutoD.ArmD "d11c-d", "t=03/15/2026 9:30 PM|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "  (d) [03/15/2026 9:30 PM] -> " & B(ok) & " Hour=" & c.Hour & " Minute=" & c.Minute
+        c.Is24HourFormat = True
+        SetFixed c
+        AutoD.ArmD "d11c-e", "t=03/15/2026 9:30 PM|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "  (e) 24 h, [03/15/2026 9:30 PM] -> " & B(ok) & " Hour=" & c.Hour & " Minute=" & c.Minute
+    End Sub
+
+    Private Sub D12d()
+        AutoD.SayD "== d12d cDialogDateTime: time only, 12 hour format, OK on the text it offers"
+        Dim c As New cDialogDateTime
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 40
+        SetFixed c
+        c.Is24HourFormat = False
+        c.Mode = PickerMode.TimeOnly
+        AutoD.SayD "  (a) OK on the offered text:"
+        AutoD.ArmD "d12d-a", "id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        AutoD.SayD "  (b) [21:30]:"
+        AutoD.ArmD "d12d-b", "t=21:30|id=1"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        AutoD.SayD "  (c) [9:30 PM]:"
+        AutoD.ArmD "d12d-c", "t=9:30 PM|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        AutoD.SayD "  (d) DateTime mode: a good date, then a bad time [04/05/2027 25:00]:"
+        c.Mode = PickerMode.DateTime
+        SetFixed c
+        AutoD.ArmD "d12d-d", "t=04/05/2027 25:00|id=1;id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+    End Sub
+
+    Private Sub D12()
+        AutoD.SayD "== d12 cDialogDateTime: ShowDatePicker, ShowTimePicker"
+        Dim c As New cDialogDateTime
+        Dim ok As Boolean
+        AutoD.gMaxTicksD = 40
+        SetFixed c
+        AutoD.SayD "  (a) ShowDatePicker, Cancel:"
+        AutoD.ArmD "d12a", "id=2"
+        ok = c.ShowDatePicker()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        AutoD.SayD "  (b) ShowTimePicker(""My time""), Is24HourFormat False, ShowSeconds True, Cancel:"
+        c.Is24HourFormat = False
+        c.ShowSeconds = True
+        AutoD.ArmD "d12b", "id=2"
+        ok = c.ShowTimePicker("My time")
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+        DumpDT c
+        AutoD.SayD "  (c) Mode DateTime again, ShowDialog, Cancel:"
+        c.Mode = PickerMode.DateTime
+        AutoD.ArmD "d12c", "id=2"
+        ok = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & B(ok)
+    End Sub
+
+End Module

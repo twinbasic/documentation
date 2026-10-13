@@ -10,7 +10,7 @@ has_toc: false
 
 Shows the Windows Open, Save As and Browse For Folder dialogs, builds the file-type list of the first two, takes file paths apart, and opens a file in the program that Windows associates with it.
 
-Properties set the options of a dialog before it is shown. [**ShowOpen**](ShowOpen), [**ShowSave**](ShowSave) and [**ShowBrowseForFolder**](ShowBrowseForFolder) show the dialogs and return the path that the user chose. A cancelled dialog returns an empty string. **ShowOpen** and **ShowSave** also store the path in [**FileName**](FileName).
+Properties set the options of a dialog before it is shown. **cDialog** works in 32-bit and in 64-bit programs. [**ShowOpen**](ShowOpen), [**ShowSave**](ShowSave) and [**ShowBrowseForFolder**](ShowBrowseForFolder) show the dialogs and return the path that the user chose. A cancelled dialog returns an empty string. **ShowOpen** and **ShowSave** also store the path in [**FileName**](FileName); several files chosen with [**MultiSelect**](MultiSelect) come back as an array, and **FileName** is then empty.
 
 ```tb check_build
 Dim dlg As New cDialog
@@ -29,13 +29,7 @@ End If
 The options are the members and flags of the Win32 structures that the dialogs take: [OPENFILENAME](https://learn.microsoft.com/en-us/windows/win32/api/commdlg/ns-commdlg-openfilenamew) for **ShowOpen** (`GetOpenFileNameW`) and **ShowSave** (`GetSaveFileNameW`), and [BROWSEINFO](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/ns-shlobj_core-browseinfow) for **ShowBrowseForFolder** (`SHBrowseForFolder`). Each property page names the flag it sets and the dialogs in which it takes effect, and the table [below](#which-dialog-uses-which-property) lists them all.
 
 > [!NOTE]
-> The property names follow VB6's **CommonDialog** control, but **cDialog** is a class with a smaller set of members. It has no **Flags** property (each option is a **Boolean** property of its own), no **FilterIndex** (the first filter is always selected, and the filter that the user chose is not reported), no **CancelError** (a cancelled dialog returns an empty string), no **FileTitle** or **MaxFileSize**, and no owner window. **InitialDir** is the control's **InitDir**. **ShowOpen** returns the file name, as well as storing it in **FileName**, and there is no Color, Font or Print dialog. The [**CommonDialog**](../../VBComDlg/CommonDialog) class of the VBComDlg package has **Flags**, **FilterIndex**, **CancelError**, **FileTitle**, **MaxFileSize** and those dialogs.
-
-> [!WARNING]
-> **ShowBrowseForFolder** works in 32-bit programs only. In a 64-bit program it ends the program with an access violation before any dialog appears, because the class declares the handles, pointers and item list of that dialog as **Long**.
-
-> [!WARNING]
-> With [**MultiSelect**](MultiSelect) **True** and several files selected, **ShowOpen** returns only the folder of the files, as a **String**, and the names of the files are lost. No error is raised.
+> The property names follow VB6's **CommonDialog** control, but **cDialog** is a class with a smaller set of members. It has no **Flags** property (each option is a **Boolean** property of its own), no **FilterIndex** (the first filter is always selected, and the filter that the user chose is not reported), no **CancelError** (a cancelled dialog returns an empty string), no **FileTitle** or **MaxFileSize**, and no owner window. **InitialDir** is the control's **InitDir**. **ShowOpen** returns the file name, as well as storing it in **FileName**, and there is no Color, Font or Print dialog in this class (the package has a class for each of them, listed on its [landing page](../)). The [**cDialogEx**](../cDialogEx) class of this package has a **FilterIndex** and an owner window. The [**CommonDialog**](../../VBComDlg/CommonDialog) class of the VBComDlg package has **Flags**, **FilterIndex**, **CancelError**, **FileTitle**, **MaxFileSize** and those dialogs.
 
 ## Defaults
 
@@ -114,8 +108,10 @@ Some settings cannot be changed.
 - [GetFileNameWithoutExt](GetFileNameWithoutExt) -- returns the file name of a path without its extension
 - [GetFilePath](GetFilePath) -- returns the part of a path before its last backslash
 - [OpenFile](OpenFile) -- runs a shell verb, by default `open`, on a file or a program
+- [PathCombine](PathCombine) -- joins two path parts with one backslash
 - [Reset](Reset) -- restores every property to its starting value
 - [SelectAndOpenFile](SelectAndOpenFile) -- shows the Open dialog and opens the chosen file or files
+- [SelectFiles](SelectFiles) -- shows the Open dialog and returns the chosen files as a collection
 - [SetCodeFilters](SetCodeFilters) -- replaces the filter with one for source code files
 - [SetCommonFilters](SetCommonFilters) -- replaces the filter with Text Files and All Files
 - [SetDocumentFilters](SetDocumentFilters) -- replaces the filter with one for office documents
@@ -127,4 +123,5 @@ Some settings cannot be changed.
 ## See Also
 
 - [TBMANLIB_Dialog](../) package -- overview
+- [cDialogEx](../cDialogEx) class -- the same dialogs in the style of Windows Vista and later
 - [CommonDialog](../../VBComDlg/CommonDialog) class -- the fuller alternative, with flags, a filter index, cancel errors and the Color, Font and Print dialogs

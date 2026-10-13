@@ -25,12 +25,12 @@ The engine raises its pattern errors with numbers of the form `vbObjectError + 3
 
 | *n* | Fault | Example |
 |-----|-------|---------|
-| 1 | An escape the engine does not know, or a backslash at the end | `\k<n>`, `\A`, `\p{L}`, `\` |
+| 1 | A backslash at the end, a `\c` without a letter, or a `\0` followed by `8` or `9` | `\`, `\c1`, `\08` |
 | 2 | A `\x` or `\u` escape without its hexadecimal digits | `\u00` |
 | 3 | A range in a character class that runs backwards | `[z-a]` |
 | 4 | A character class without its `]` | `[abc` |
 | 6 | A group construct `(?<` that is neither a lookbehind nor a valid name | `(?<1a>x)` |
-| 8 | A `{` that does not start a quantifier, or a count that is too large | `a{2` |
+| 8 | A `{` that does not start a quantifier, or a count that is too large | `a{2`, `\p{L}` |
 | 9 | A group without its `)` | `(\d+` |
 | 11 | A `)` that closes no group | `)` |
 | 12 | A quantifier with nothing to repeat | `*a` |

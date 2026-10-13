@@ -544,13 +544,6 @@ parts:
         landing_is_target: true
         outline_closed: true
 
-      - title: TBMANLIB_Dialog Package
-        subtitle: Open, Save and folder dialogs in a class, with file filters and path helpers
-        landing_page: /tB/Packages/Contributed/TBMANLIB_Dialog/
-        page: /tB/Packages/Contributed/TBMANLIB_Dialog/
-        landing_is_target: true
-        outline_closed: true
-
       - title: TBMANLIB_ListBoxHScroll Package
         subtitle: A horizontal scroll bar for a ListBox
         landing_page: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
@@ -569,6 +562,13 @@ parts:
         subtitle: Project files unpacked into source folders, and packed again
         landing_page: /tB/Packages/Contributed/tbProjPacker/
         page: /tB/Packages/Contributed/tbProjPacker/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: tbRegExp Package
+        subtitle: Regular expressions, in place of VBScript's RegExp object
+        landing_page: /tB/Packages/Contributed/tbRegExp/
+        page: /tB/Packages/Contributed/tbRegExp/
         landing_is_target: true
         outline_closed: true
 
@@ -662,17 +662,17 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: TBMANLIB_Dialog Package
+        subtitle: Open, Save, folder, Color, Font, Print and other dialogs in classes, with file filters and path helpers
+        landing_page: /tB/Packages/Contributed/TBMANLIB_Dialog/
+        page: /tB/Packages/Contributed/TBMANLIB_Dialog/
+        landing_is_target: true
+        outline_closed: true
+
       - title: TBMANLIB_Xml Package
         subtitle: XML documents parsed, edited and written, in twinBASIC code
         landing_page: /tB/Packages/Contributed/TBMANLIB_Xml/
         page: /tB/Packages/Contributed/TBMANLIB_Xml/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: tbRegExp Package
-        subtitle: Regular expressions, in place of VBScript's RegExp object
-        landing_page: /tB/Packages/Contributed/tbRegExp/
-        page: /tB/Packages/Contributed/tbRegExp/
         landing_is_target: true
         outline_closed: true
 

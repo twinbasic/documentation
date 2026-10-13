@@ -11,7 +11,7 @@
 // the change. Each guard's module says why its figures are guarded, and gives
 // checkBaseline what to compare.
 //
-// Two restrictions on the write, both deliberate:
+// Three restrictions on the write, all deliberate, decided by baselineWrites:
 //
 //   - **CI never writes.** A CI run that rewrote a baseline would bless the
 //     loss it was asked to catch. It compares, and an absent file is a failure
@@ -21,6 +21,13 @@
 //     `docs/`, so a page half-deleted in an editor would ratchet a baseline
 //     down and a half-added one would ratchet it up. The comparison still
 //     runs, so the console still says what happened.
+//   - **Only a build into the default tree writes**, `docs/_site` as build.bat
+//     builds it. A build into another `--dest` is someone's private copy:
+//     compare_trees builds two, and agents working side by side each build
+//     into a folder of their own. Each of those rewriting the committed file
+//     left every other checkout with a change to undo after every build. It
+//     still compares, and says what a build into the default tree would
+//     record. The help archive (help-archive-step.mjs) has the same rule.
 //
 // **A baseline describes one source tree, and the guard says which.** tbdocs
 // is not only run over `docs/`: scripts/check_links_diff.mjs spawns it over
@@ -33,10 +40,36 @@
 // never about it.
 
 import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 // Repo-relative, forward slashes. The documentation site is the only tree the
 // guards have figures for.
 export const GUARDED_SRC = "docs";
+
+// The online tree build.bat writes, tbdocs's default --dest for GUARDED_SRC.
+export const GUARDED_DEST = path.join(REPO_ROOT, GUARDED_SRC, "_site");
+
+/**
+ * May this build rewrite the committed files it compares with (the two
+ * baselines and the help add-in's copy of the index)?
+ *
+ * @param {object} o
+ * @param {string} o.destRoot  the online tree this build writes, absolute
+ * @param {boolean} [o.ci]     the build runs under CI ($CI set)
+ * @param {boolean} [o.serve]  the build is a `--serve` rebuild
+ * @param {boolean} [o.dryRun] the build writes nothing
+ * @returns {{write: boolean, heldBack: string}} `heldBack` says why a change
+ *   is not written when the destination is the reason, "" otherwise: CI and
+ *   `--serve` compare without a word about it
+ */
+export function baselineWrites({ destRoot, ci = false, serve = false, dryRun = false }) {
+  if (ci || serve || dryRun) return { write: false, heldBack: "" };
+  // Windows paths compare without case, which path.relative allows for.
+  if (path.relative(path.resolve(destRoot), GUARDED_DEST) === "") return { write: true, heldBack: "" };
+  const rel = path.relative(REPO_ROOT, path.resolve(destRoot)).replaceAll(path.sep, "/");
+  return { write: false, heldBack: `built into ${rel}` };
+}
 
 async function readBaseline(file) {
   try {
@@ -86,13 +119,15 @@ function acceptCommands(name) {
  * @param {object} o.record  what this build publishes, as the file holds it;
  *        its `src` is this build's source root, repo-relative with forward
  *        slashes, and anything but GUARDED_SRC is skipped
- * @param {boolean} o.write  may the file be rewritten? (false under CI,
- *        --serve and --dry-run)
+ * @param {boolean} o.write  may the file be rewritten? (baselineWrites: false
+ *        under CI, --serve and --dry-run, and for another --dest)
+ * @param {string} [o.heldBack]  why it may not, said beside a gain that is not
+ *        written; "" says nothing
  * @param {boolean} [o.force]  write it whatever changed (--update-<name>-baseline)
  * @param {URL|string} o.file  the file to read and write
  * @returns {Promise<{failed: boolean, text: string}>}
  */
-export async function checkBaseline(guard, { record, write, force = false, file }) {
+export async function checkBaseline(guard, { record, write, heldBack = "", force = false, file }) {
   if (record.src !== GUARDED_SRC) return { failed: false, text: "" };
   const baseline = await readBaseline(file);
 
@@ -124,6 +159,12 @@ export async function checkBaseline(guard, { record, write, force = false, file 
     return {
       failed: false,
       text: `${guard.name} baseline raised: ${gained} (commit builder/${guard.name}-baseline.json)\n`,
+    };
+  }
+  if (gained && heldBack) {
+    return {
+      failed: false,
+      text: `${guard.name} baseline not raised: ${gained} (${heldBack}; a build into ${GUARDED_SRC}/_site records it)\n`,
     };
   }
   return { failed: false, text: "" };

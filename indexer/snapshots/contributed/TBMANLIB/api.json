@@ -2,8 +2,37 @@
   "format": 3,
   "package": "TBMANLIB",
   "project": "TBMANLIB",
-  "version": "1.0.0.5",
+  "version": "1.0.0.29",
   "types": [
+    {
+      "name": "Consts",
+      "kind": "module",
+      "vis": "public",
+      "file": "Common/Consts.twin",
+      "signature": "Module Consts",
+      "members": [
+        {"name":"TOOLS_HTTP_CONTENT_TYPE_FORM_MULTIPART","kind":"const","vis":"public","signature":"Public Const TOOLS_HTTP_CONTENT_TYPE_FORM_MULTIPART As String = \"multipart/form-data\""},
+        {"name":"TOOLS_HTTP_CONTENT_TYPE_FORM_URLENCODED","kind":"const","vis":"public","signature":"Public Const TOOLS_HTTP_CONTENT_TYPE_FORM_URLENCODED As String = \"application/x-www-form-urlencoded\""},
+        {"name":"TOOLS_HTTP_CONTENT_TYPE_JSON","kind":"const","vis":"public","signature":"Public Const TOOLS_HTTP_CONTENT_TYPE_JSON As String = \"application/json\""},
+        {"name":"TOOLS_HTTP_CONTENT_TYPE_STREAM","kind":"const","vis":"public","signature":"Public Const TOOLS_HTTP_CONTENT_TYPE_STREAM As String = \"application/octet-stream\""},
+        {"name":"TOOLS_HTTP_CONTENT_TYPE_TEXT_HTML","kind":"const","vis":"public","signature":"Public Const TOOLS_HTTP_CONTENT_TYPE_TEXT_HTML As String = \"text/html\""},
+        {"name":"TOOLS_HTTP_CONTENT_TYPE_TEXT_PLAIN","kind":"const","vis":"public","signature":"Public Const TOOLS_HTTP_CONTENT_TYPE_TEXT_PLAIN As String = \"text/plain\""},
+        {"name":"TOOLS_HTTP_HEADER_FIELD_CONTENT_LENGHT","kind":"const","vis":"public","signature":"Public Const TOOLS_HTTP_HEADER_FIELD_CONTENT_LENGHT As String = \"Content-Lenght\""},
+        {"name":"TOOLS_HTTP_HEADER_FIELD_CONTENT_TYPE","kind":"const","vis":"public","signature":"Public Const TOOLS_HTTP_HEADER_FIELD_CONTENT_TYPE As String = \"Content-Type\""}
+      ]
+    },
+    {
+      "name": "ForDialog",
+      "kind": "class",
+      "vis": "public",
+      "file": "Tools/Dialog/helper/ForDialog.twin",
+      "signature": "Class ForDialog",
+      "attrs": [{"name":"FormDesignerId","args":"\"3B89E512-84A3-4F99-8596-BA36442198E8\""},{"name":"PredeclaredId"}],
+      "description": "",
+      "members": [
+        {"name":"New","kind":"sub","vis":"public","signature":"Sub New()"}
+      ]
+    },
     {
       "name": "TBMAN",
       "kind": "module",
@@ -12,12 +41,36 @@
       "signature": "Module TBMAN",
       "members": [
         {"name":"Csv","kind":"field","vis":"public","signature":"Public Csv As New TBMANLIB.cCsv"},
+        {"name":"HttpClient","kind":"field","vis":"public","signature":"Public HttpClient As New TBMANLIB.cHttpClient"},
         {"name":"Ini","kind":"field","vis":"public","signature":"Public Ini As New TBMANLIB.cIni"},
         {"name":"Json","kind":"field","vis":"public","signature":"Public Json As New TBMANLIB.cJson"},
         {"name":"Layer","kind":"field","vis":"public","signature":"Public Layer As New TBMANLIB.cLayer"},
         {"name":"Logs","kind":"field","vis":"public","signature":"Public Logs As New TBMANLIB.cLogs"},
+        {"name":"SysTray","kind":"field","vis":"public","signature":"Public SysTray As New TBMANLIB.cSysTray"},
         {"name":"TimerUse","kind":"field","vis":"public","signature":"Public TimerUse As New TBMANLIB.cTimeuse"},
         {"name":"Version","kind":"property","vis":"public","signature":"Public Property Get Version() As String","returnType":"String","accessor":"Get"}
+      ]
+    },
+    {
+      "name": "Tests",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tests.twin",
+      "signature": "Module Tests",
+      "members": [
+        {"name":"TestHttpClient","kind":"sub","vis":"public","signature":"Sub TestHttpClient()"},
+        {"name":"UploadAndDownloadDemo","kind":"sub","vis":"public","signature":"Sub UploadAndDownloadDemo()"}
+      ]
+    },
+    {
+      "name": "Tools",
+      "kind": "module",
+      "vis": "public",
+      "file": "Common/Tools.twin",
+      "signature": "Module Tools",
+      "members": [
+        {"name":"ToolsStr","kind":"field","vis":"public","signature":"Public ToolsStr As New cToolsStr"},
+        {"name":"ToolsStream","kind":"field","vis":"public","signature":"Public ToolsStream As New cToolsStream"}
       ]
     },
     {
@@ -77,6 +130,28 @@
       "members": []
     },
     {
+      "name": "ToolsCN",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tools/Chinese/ToolsCN.twin",
+      "signature": "Module ToolsCN",
+      "members": [
+        {"name":"Dic","kind":"field","vis":"private","signature":"Dim Dic As Object"},
+        {"name":"GetPinYin","kind":"function","vis":"public","signature":"Public Function GetPinYin(CnChar As String) As String","returnType":"String"},
+        {"name":"InitDictinary","kind":"sub","vis":"private","signature":"Private Sub InitDictinary()"}
+      ]
+    },
+    {
+      "name": "ToolsDialog",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tools/Dialog/ToolsDialog.twin",
+      "signature": "Module ToolsDialog",
+      "members": [
+        {"name":"LastError","kind":"field","vis":"public","signature":"Public LastError As String"}
+      ]
+    },
+    {
       "name": "ToolsDic",
       "kind": "module",
       "vis": "public",
@@ -86,7 +161,6 @@
         {"name":"DeepCopy","kind":"function","vis":"public","signature":"Public Function DeepCopy(srcDic As Scripting.Dictionary) As Scripting.Dictionary","returnType":"Scripting.Dictionary"},
         {"name":"FromWwwFormUrlencoded","kind":"function","vis":"public","signature":"Public Function FromWwwFormUrlencoded(Content As String, Dic As Scripting.Dictionary) As Boolean","returnType":"Boolean"},
         {"name":"OverWrite","kind":"sub","vis":"public","signature":"Public Sub OverWrite(DistDic As Scripting.Dictionary, srcDic As Scripting.Dictionary, Optional OnlyKey As Boolean = True)"},
-        {"name":"ToWwwFormUrlencoded","kind":"function","vis":"public","signature":"Public Function ToWwwFormUrlencoded(Dic As Scripting.Dictionary) As String","returnType":"String"},
         {"name":"TowLevelDicAssign","kind":"sub","vis":"public","signature":"Public Sub TowLevelDicAssign(Dic As Scripting.Dictionary, Lv1Name As String, Lv2Name As String, Value As Variant)"}
       ]
     },
@@ -107,18 +181,80 @@
       ]
     },
     {
+      "name": "ToolsHttp",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tools/Http/ToolsHttp.twin",
+      "signature": "Module ToolsHttp",
+      "members": [
+        {"name":"AddToQueryString","kind":"function","vis":"public","signature":"Public Function AddToQueryString(ByVal Url As String, ByVal QS As String) As String","returnType":"String"},
+        {"name":"C_CONTENT_TYPE_FORM_MULTIPART","kind":"const","vis":"public","signature":"Public Const C_CONTENT_TYPE_FORM_MULTIPART As String = \"multipart/form-data\""},
+        {"name":"C_CONTENT_TYPE_FORM_URLENCODED","kind":"const","vis":"public","signature":"Public Const C_CONTENT_TYPE_FORM_URLENCODED As String = \"application/x-www-form-urlencoded\""},
+        {"name":"C_CONTENT_TYPE_JSON","kind":"const","vis":"public","signature":"Public Const C_CONTENT_TYPE_JSON As String = \"application/json\""},
+        {"name":"C_CONTENT_TYPE_STREAM","kind":"const","vis":"public","signature":"Public Const C_CONTENT_TYPE_STREAM As String = \"application/octet-stream\""},
+        {"name":"C_CONTENT_TYPE_TEXT_HTML","kind":"const","vis":"public","signature":"Public Const C_CONTENT_TYPE_TEXT_HTML As String = \"text/html\""},
+        {"name":"C_CONTENT_TYPE_TEXT_PLAIN","kind":"const","vis":"public","signature":"Public Const C_CONTENT_TYPE_TEXT_PLAIN As String = \"text/plain\""},
+        {"name":"C_HEADER_FIELD_CONTENT_LENGHT","kind":"const","vis":"public","signature":"Public Const C_HEADER_FIELD_CONTENT_LENGHT As String = \"Content-Lenght\""},
+        {"name":"C_HEADER_FIELD_CONTENT_TYPE","kind":"const","vis":"public","signature":"Public Const C_HEADER_FIELD_CONTENT_TYPE As String = \"Content-Type\""},
+        {"name":"MakeContent","kind":"function","vis":"public","signature":"Public Function MakeContent(Dic As Scripting.Dictionary) As String","returnType":"String"},
+        {"name":"MapMethod","kind":"function","vis":"public","signature":"Public Function MapMethod(Name As String) As Long","returnType":"Long"},
+        {"name":"MapMethodName","kind":"function","vis":"public","signature":"Public Function MapMethodName(Index As Long) As String","returnType":"String"},
+        {"name":"ParseContent","kind":"function","vis":"public","signature":"Public Function ParseContent(Content As String, Obj As Scripting.Dictionary) As Boolean","returnType":"Boolean"},
+        {"name":"ParseKeyValue","kind":"function","vis":"public","signature":"Public Function ParseKeyValue(Content As String, Obj As Scripting.Dictionary) As Boolean","returnType":"Boolean"},
+        {"name":"Test","kind":"sub","vis":"public","signature":"Sub Test()"},
+        {"name":"UrlDecode","kind":"function","vis":"public","signature":"Public Function UrlDecode(ByVal Url As String) As String","returnType":"String"},
+        {"name":"UrlDecodeUtf8","kind":"function","vis":"public","signature":"Public Function UrlDecodeUtf8(ByVal Url As String) As String","returnType":"String"},
+        {"name":"UrlEncodUtf8","kind":"function","vis":"public","signature":"Public Function UrlEncodUtf8(ByVal szInput As Variant) As String","returnType":"String"},
+        {"name":"UrlEncode","kind":"function","vis":"public","signature":"Public Function UrlEncode(ByRef strURL As String) As String","returnType":"String"}
+      ]
+    },
+    {
+      "name": "EnumRequestContentType",
+      "kind": "enum",
+      "in": "ToolsHttp",
+      "vis": "public",
+      "file": "Tools/Http/ToolsHttp.twin",
+      "signature": "Public Enum EnumRequestContentType",
+      "values": [
+        {"name":"JsonString","value":"1"},
+        {"name":"FormEncode","value":"2"},
+        {"name":"FormMultiPart","value":"3"},
+        {"name":"TextPlain","value":"4"},
+        {"name":"TextHtml","value":"5"}
+      ]
+    },
+    {
+      "name": "EnumRequestMethod",
+      "kind": "enum",
+      "in": "ToolsHttp",
+      "vis": "public",
+      "file": "Tools/Http/ToolsHttp.twin",
+      "signature": "Public Enum EnumRequestMethod",
+      "values": [
+        {"name":"ReqPost","value":"1"},
+        {"name":"ReqGet","value":"2"},
+        {"name":"ReqPut","value":"3"},
+        {"name":"ReqDelete","value":"4"},
+        {"name":"ReqOptions","value":"5"}
+      ]
+    },
+    {
+      "name": "ToolsHttpMimeType",
+      "kind": "module",
+      "vis": "public",
+      "file": "Tools/Http/ToolsHttpMimeType.twin",
+      "signature": "Module ToolsHttpMimeType",
+      "members": [
+        {"name":"MapMimeType","kind":"function","vis":"public","signature":"Public Function MapMimeType(FilePath As String) As String","returnType":"String"}
+      ]
+    },
+    {
       "name": "ToolsJScript",
       "kind": "module",
       "vis": "public",
       "file": "Tools/JScript/ToolsJScript.twin",
       "signature": "Module ToolsJScript",
-      "members": [
-        {"name":"Init","kind":"sub","vis":"private","signature":"Private Sub Init()"},
-        {"name":"IsInit","kind":"field","vis":"private","signature":"Dim IsInit As Boolean"},
-        {"name":"MSSC","kind":"field","vis":"private","signature":"Dim MSSC As New MSScriptControl.ScriptControl"},
-        {"name":"NewArr","kind":"function","vis":"public","signature":"Public Function NewArr(ParamArray Item() As Variant) As Object","returnType":"Object"},
-        {"name":"NewObj","kind":"function","vis":"public","signature":"Public Function NewObj() As Object","returnType":"Object"}
-      ]
+      "members": []
     },
     {
       "name": "ToolsJsonUcs",
@@ -263,56 +399,6 @@
       ]
     },
     {
-      "name": "ToolsStr",
-      "kind": "module",
-      "vis": "public",
-      "file": "Tools/String/ToolsStr.twin",
-      "signature": "Module ToolsStr",
-      "members": [
-        {"name":"GetFirstChar","kind":"function","vis":"public","signature":"Public Function GetFirstChar(Txt As String, Optional Length As Long = 1) As String","returnType":"String"},
-        {"name":"GetGUID","kind":"function","vis":"public","signature":"Public Function GetGUID(Optional isFull As Boolean) As String","returnType":"String"},
-        {"name":"GetLastChar","kind":"function","vis":"public","signature":"Public Function GetLastChar(Txt As String, Optional Length As Long = 1) As String","returnType":"String"},
-        {"name":"GetNewIds","kind":"function","vis":"public","signature":"Public Function GetNewIds(Optional ByVal Bath As Long) As String","returnType":"String"},
-        {"name":"GetRandByte","kind":"function","vis":"public","signature":"Public Function GetRandByte() As Byte()","returnType":"Byte()"},
-        {"name":"GetRandStr","kind":"function","vis":"public","signature":"Public Function GetRandStr(Optional ByVal Lens As Integer = 32, Optional Zuhe As String = \"1aA\") As String","returnType":"String"},
-        {"name":"HasStr","kind":"function","vis":"public","signature":"Public Function HasStr(FindStr As String, FullStr As String, Optional StartPos As Long = 1, Optional CompType As VbCompareMethod = vbTextCompare) As Long","returnType":"Long"},
-        {"name":"InsertSpan","kind":"function","vis":"public","signature":"Public Function InsertSpan(ByRef inputStr As String, ByVal Span As String, ByVal SetpNum As Long, Optional HeadFoot As Boolean) As String","returnType":"String"},
-        {"name":"IsEmptyEx","kind":"function","vis":"public","signature":"Public Function IsEmptyEx(Text As String) As Boolean","returnType":"Boolean"},
-        {"name":"IsString","kind":"function","vis":"public","signature":"Public Function IsString(var As Variant) As Boolean","returnType":"Boolean"},
-        {"name":"JoinStr","kind":"function","vis":"public","signature":"Public Function JoinStr(Span As String, ParamArray Strings() As Variant) As String","returnType":"String"},
-        {"name":"LeftEx","kind":"function","vis":"public","signature":"Public Function LeftEx(Text As Variant, Length As Long) As String","returnType":"String"},
-        {"name":"LenBytes","kind":"function","vis":"public","signature":"Public Function LenBytes(inputArray() As Byte) As Long","returnType":"Long"},
-        {"name":"MidEx","kind":"function","vis":"public","signature":"Public Function MidEx(FullStr As String, Lstr As String, Rstr As String, Optional starindex As Long) As String","returnType":"String"},
-        {"name":"PercentDecode","kind":"function","vis":"public","signature":"Function PercentDecode(encodedStr As String) As String","returnType":"String"},
-        {"name":"PercentEncode","kind":"function","vis":"public","signature":"Public Function PercentEncode(inputStr As String) As String","returnType":"String"},
-        {"name":"RightEx","kind":"function","vis":"public","signature":"Public Function RightEx(Text As Variant, Length As Long) As String","returnType":"String"},
-        {"name":"SliceString","kind":"function","vis":"public","signature":"Public Function SliceString(ByVal Arr As String, ByVal StartPos As Long, Optional ByVal EndPos As Long = -1) As String","returnType":"String"},
-        {"name":"SubStr","kind":"function","vis":"public","signature":"Public Function SubStr(ByVal Txt As String, ByVal txtF$, Optional ByVal txtE$, Optional RetInt As Boolean) As String","returnType":"String"},
-        {"name":"ToBytes","kind":"function","vis":"public","signature":"Public Function ToBytes(inputString As String) As Byte()","returnType":"Byte()"},
-        {"name":"ToHex","kind":"function","vis":"public","signature":"Public Function ToHex(inputArray() As Byte) As String","returnType":"String"},
-        {"name":"ToString","kind":"function","vis":"public","signature":"Public Function ToString(inputArray() As Byte) As String","returnType":"String"},
-        {"name":"TrimEx","kind":"function","vis":"public","signature":"Public Function TrimEx(ByRef Text As String) As String","returnType":"String"},
-        {"name":"UniVbCrLf","kind":"function","vis":"public","signature":"Public Function UniVbCrLf(Text As String) As String","returnType":"String"},
-        {"name":"UnicodeDecode","kind":"function","vis":"public","signature":"Public Function UnicodeDecode(Text As String, Optional PreFix As String = \"\\u\") As String","returnType":"String"},
-        {"name":"UnicodeEncode","kind":"function","vis":"public","signature":"Public Function UnicodeEncode(ByVal inputString As String, Optional PreFix As String = \"\\u\") As String","returnType":"String"}
-      ]
-    },
-    {
-      "name": "ToolsStream",
-      "kind": "module",
-      "vis": "public",
-      "file": "Tools/FSO/ToolsStream.twin",
-      "signature": "Module ToolsStream",
-      "members": [
-        {"name":"Inst","kind":"field","vis":"public","signature":"Public Inst As New ADODB.Stream"},
-        {"name":"LastError","kind":"field","vis":"public","signature":"Public LastError As String"},
-        {"name":"LoadFileAsBinary","kind":"function","vis":"public","signature":"Public Function LoadFileAsBinary(ByVal Path As String, OutData() As Byte) As Boolean","returnType":"Boolean"},
-        {"name":"LoadFileAsText","kind":"function","vis":"public","signature":"Public Function LoadFileAsText(ByVal FileName As String, Optional CharSet As String = \"UTF-8\") As String","returnType":"String"},
-        {"name":"SaveFileAsBinary","kind":"function","vis":"public","signature":"Public Function SaveFileAsBinary(ByVal Path As String, OutData() As Byte) As Boolean","returnType":"Boolean"},
-        {"name":"SaveFileAsText","kind":"function","vis":"public","signature":"Public Function SaveFileAsText(ByVal FileName As String, Data As String, Optional CharSet As String = \"UTF-8\") As Boolean","returnType":"Boolean"}
-      ]
-    },
-    {
       "name": "ToolsUtf8",
       "kind": "module",
       "vis": "public",
@@ -334,13 +420,102 @@
       "file": "Libs/FileSystem/Csv/cCsv.twin",
       "signature": "Class cCsv",
       "members": [
-        {"name":"FileStream","kind":"field","vis":"private","signature":"Dim FileStream As Scripting.TextStream"},
-        {"name":"FixFileExtName","kind":"sub","vis":"private","signature":"Private Sub FixFileExtName(Path As String)"},
-        {"name":"Fso","kind":"field","vis":"private","signature":"Dim Fso As New Scripting.FileSystemObject"},
+        {"name":"Class_Initialize","kind":"sub","vis":"private","signature":"Private Sub Class_Initialize()"},
+        {"name":"CurrentLineDic","kind":"field","vis":"public","signature":"Public CurrentLineDic As New Scripting.Dictionary"},
+        {"name":"CurrentLineNumber","kind":"field","vis":"public","signature":"Public CurrentLineNumber As Long"},
+        {"name":"Data","kind":"field","vis":"public","signature":"Public Data As New Scripting.Dictionary"},
+        {"name":"DeleteColumn","kind":"function","vis":"public","signature":"Public Function DeleteColumn(Optional ColumnNumber As Long) As Boolean","returnType":"Boolean"},
+        {"name":"Delimiter","kind":"field","vis":"public","signature":"Public Delimiter As String"},
+        {"name":"GetLine","kind":"function","vis":"public","signature":"Public Function GetLine(ByVal LineNumber As Long, Optional ByRef LineDic As Scripting.Dictionary) As Boolean","returnType":"Boolean"},
+        {"name":"HasHeadTitle","kind":"field","vis":"public","signature":"Public HasHeadTitle As Boolean"},
+        {"name":"HeadTitle","kind":"field","vis":"public","signature":"Public HeadTitle As New Scripting.Dictionary"},
+        {"name":"HeadTitleWidth","kind":"field","vis":"public","signature":"Public HeadTitleWidth As New Scripting.Dictionary"},
+        {"name":"HeadTitleWidthAuto","kind":"field","vis":"public","signature":"Public HeadTitleWidthAuto As Boolean"},
+        {"name":"HeadTitleWidthDefault","kind":"field","vis":"public","signature":"Public HeadTitleWidthDefault As Long"},
+        {"name":"HeadTitleWidthMax","kind":"field","vis":"public","signature":"Public HeadTitleWidthMax As Long"},
+        {"name":"HeadTitleWidthWord","kind":"field","vis":"public","signature":"Public HeadTitleWidthWord As Long"},
+        {"name":"Initialize","kind":"sub","vis":"private","signature":"Private Sub Initialize()"},
+        {"name":"IsFirstLineToHead","kind":"field","vis":"public","signature":"Public IsFirstLineToHead As Boolean"},
         {"name":"LastError","kind":"field","vis":"public","signature":"Public LastError As String"},
-        {"name":"LoadFrom","kind":"function","vis":"public","signature":"Public Function LoadFrom(ByVal Path As String) As cIni","returnType":"cIni"},
-        {"name":"Root","kind":"field","vis":"public","signature":"Public Root As Scripting.Dictionary"},
-        {"name":"SaveTo","kind":"function","vis":"public","signature":"Public Function SaveTo(Optional ByVal Path As String) As Boolean","returnType":"Boolean"}
+        {"name":"LoadFrom","kind":"function","vis":"public","signature":"Public Function LoadFrom(ByVal FilePath As String, Optional IsFirstHead As Boolean = True) As cCsv","returnType":"cCsv"},
+        {"name":"NewColumn","kind":"function","vis":"public","signature":"Public Function NewColumn(ByVal Title As String, Optional Width As Long, Optional Content As String) As Boolean","returnType":"Boolean"},
+        {"name":"NewLine","kind":"function","vis":"public","signature":"Public Function NewLine(ParamArray FieldsData() As Variant) As Boolean","returnType":"Boolean"},
+        {"name":"ParseCsvLine","kind":"function","vis":"private","signature":"Private Function ParseCsvLine(ByVal Content As String, ByRef LineDic As Scripting.Dictionary) As Boolean","returnType":"Boolean"},
+        {"name":"QuoteCsvField","kind":"function","vis":"private","signature":"Private Function QuoteCsvField(ByVal field As String) As String","returnType":"String"},
+        {"name":"Reset","kind":"sub","vis":"public","signature":"Public Sub Reset(Optional OnlyData As Boolean)"},
+        {"name":"SaveTo","kind":"function","vis":"public","signature":"Public Function SaveTo(ByVal FilePath As String) As Boolean","returnType":"Boolean"},
+        {"name":"SetCurrentLineData","kind":"function","vis":"public","signature":"Public Function SetCurrentLineData(ByVal ColumnNumber As Long, ByVal Dat As Variant, Optional ByRef LineDic As Scripting.Dictionary) As Boolean","returnType":"Boolean"},
+        {"name":"SetHeadTitleWidth","kind":"function","vis":"public","signature":"Public Function SetHeadTitleWidth(ByVal ColumnNumber As Long, ByVal ColumnWidth As Long) As Boolean","returnType":"Boolean"},
+        {"name":"SetHeadTitleWidthByDic","kind":"function","vis":"public","signature":"Public Function SetHeadTitleWidthByDic(ByVal Dic As Scripting.Dictionary) As Boolean","returnType":"Boolean"},
+        {"name":"SetLine","kind":"function","vis":"public","signature":"Public Function SetLine(ByVal LineNumber As Long, ByRef LineDic As Scripting.Dictionary) As Boolean","returnType":"Boolean"},
+        {"name":"SyncColumnLength","kind":"sub","vis":"private","signature":"Private Sub SyncColumnLength(LineDic As Scripting.Dictionary)"},
+        {"name":"SyncColumnWidth","kind":"sub","vis":"private","signature":"Private Sub SyncColumnWidth()"},
+        {"name":"Y","kind":"field","vis":"private","signature":"Dim Y As Variant"},
+        {"name":"value","kind":"property","vis":"public","signature":"Public Property Get value(ByVal LineNumber As Long, ByVal ColumnNumber As Long) As Variant","returnType":"Variant","accessor":"Get"},
+        {"name":"value","kind":"property","vis":"public","signature":"Public Property Set value(ByVal LineNumber As Long, ByVal ColumnNumber As Long, ByVal Dat As Variant)","accessor":"Set"},
+        {"name":"x","kind":"field","vis":"private","signature":"Dim x As Variant"},
+        {"name":"z","kind":"field","vis":"private","signature":"Dim z As Variant"}
+      ]
+    },
+    {
+      "name": "cHttpClient",
+      "kind": "class",
+      "vis": "public",
+      "file": "Libs/HttpClient/cHttpClient.twin",
+      "signature": "Class cHttpClient",
+      "members": [
+        {"name":"AllowRedirects","kind":"function","vis":"public","signature":"Public Function AllowRedirects(Bool As Boolean) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"Async","kind":"function","vis":"public","signature":"Public Function Async(Bool As Boolean) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"Class_Initialize","kind":"sub","vis":"private","signature":"Private Sub Class_Initialize()"},
+        {"name":"Class_Terminate","kind":"sub","vis":"private","signature":"Private Sub Class_Terminate()"},
+        {"name":"ConcatByteArrays","kind":"function","vis":"private","signature":"Private Function ConcatByteArrays(ByRef Arr1() As Byte, ByRef Arr2() As Byte) As Byte()","returnType":"Byte()"},
+        {"name":"Cookies","kind":"field","vis":"public","signature":"Public Cookies As New Scripting.Dictionary"},
+        {"name":"CopyMemory","kind":"sub","vis":"private","declare":true,"signature":"Private Declare Sub CopyMemory Lib \"kernel32\" Alias \"RtlMoveMemory\" (Destination As Any, Source As Any, ByVal length As Long)"},
+        {"name":"DebugInfo","kind":"field","vis":"public","signature":"Public DebugInfo As New cJson"},
+        {"name":"DebugStart","kind":"field","vis":"public","signature":"Public DebugStart As Boolean"},
+        {"name":"DownloadFile","kind":"function","vis":"public","signature":"Public Function DownloadFile(ByVal url As String, ByVal savePath As String, Optional Overwrite As Boolean = True) As Boolean","returnType":"Boolean"},
+        {"name":"DownloadFileAsync","kind":"function","vis":"public","signature":"Public Function DownloadFileAsync(ByVal url As String, ByVal savePath As String, Optional Overwrite As Boolean = True) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"EnableRedirects","kind":"field","vis":"public","signature":"Public EnableRedirects As Boolean"},
+        {"name":"Fetch","kind":"function","vis":"public","signature":"Public Function Fetch(Method As EnumRequestMethod, ByVal url As String, Optional Body As String) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"FinishDownloadFile","kind":"function","vis":"public","signature":"Public Function FinishDownloadFile() As Boolean","returnType":"Boolean"},
+        {"name":"FollowRedirect","kind":"function","vis":"public","signature":"Public Function FollowRedirect(Optional RedirectMethod As EnumRequestMethod = 0) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"GetRedirectUrl","kind":"function","vis":"public","signature":"Public Function GetRedirectUrl() As String","returnType":"String"},
+        {"name":"Inst","kind":"field","vis":"private","signature":"Dim WithEvents Inst As WinHttp.WinHttpRequest"},
+        {"name":"IsAsync","kind":"field","vis":"private","signature":"Dim IsAsync As Boolean"},
+        {"name":"Json","kind":"field","vis":"private","signature":"Dim Json As New cJson"},
+        {"name":"LastError","kind":"field","vis":"public","signature":"Public LastError As String"},
+        {"name":"MapRequestContentType","kind":"function","vis":"public","signature":"Public Function MapRequestContentType(ReqType As EnumRequestContentType, Optional ContentType As String) As String","returnType":"String"},
+        {"name":"MaxRedirects","kind":"field","vis":"public","signature":"Public MaxRedirects As Long"},
+        {"name":"OnResponseFinished","kind":"event","vis":"public","signature":"Public Event OnResponseFinished()"},
+        {"name":"RedirectCount","kind":"field","vis":"private","signature":"Dim RedirectCount As Long"},
+        {"name":"RequestChartSet","kind":"field","vis":"public","signature":"Public RequestChartSet As String"},
+        {"name":"RequestContentType","kind":"field","vis":"public","signature":"Public RequestContentType As String"},
+        {"name":"RequestData","kind":"field","vis":"public","signature":"Public RequestData() As Byte"},
+        {"name":"RequestDataBody","kind":"field","vis":"public","signature":"Public RequestDataBody As New Scripting.Dictionary"},
+        {"name":"RequestDataForm","kind":"field","vis":"public","signature":"Public RequestDataForm As New Scripting.Dictionary"},
+        {"name":"RequestDataJson","kind":"field","vis":"public","signature":"Public RequestDataJson As New cJson"},
+        {"name":"RequestDataQuery","kind":"field","vis":"public","signature":"Public RequestDataQuery As New Scripting.Dictionary"},
+        {"name":"RequestHeaders","kind":"field","vis":"public","signature":"Public RequestHeaders As New Scripting.Dictionary"},
+        {"name":"RequestTimeOut","kind":"field","vis":"public","signature":"Public RequestTimeOut As Long"},
+        {"name":"ResetRedirectCount","kind":"function","vis":"public","signature":"Public Function ResetRedirectCount() As cHttpClient","returnType":"cHttpClient"},
+        {"name":"ResponseHeaders","kind":"field","vis":"public","signature":"Public ResponseHeaders As New Scripting.Dictionary"},
+        {"name":"ResponseRaw","kind":"field","vis":"public","signature":"Public ResponseRaw As Variant"},
+        {"name":"ReturnBody","kind":"function","vis":"public","signature":"Public Function ReturnBody() As Byte()","returnType":"Byte()"},
+        {"name":"ReturnJson","kind":"function","vis":"public","signature":"Public Function ReturnJson(Optional IsUtf8 As Boolean = True, Optional IsConvert As Boolean) As cJson","returnType":"cJson"},
+        {"name":"ReturnStream","kind":"function","vis":"public","signature":"Public Function ReturnStream() As Variant","returnType":"Variant"},
+        {"name":"ReturnText","kind":"function","vis":"public","signature":"Public Function ReturnText(Optional IsUtf8 As Boolean = True, Optional IsConvert As Boolean) As String","returnType":"String"},
+        {"name":"Send","kind":"function","vis":"public","signature":"Public Function Send(Method As EnumRequestMethod, ByVal Url As String, Optional Body As String) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"SendDelete","kind":"function","vis":"public","signature":"Public Function SendDelete(ByVal url As String, Optional Body As String) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"SendGet","kind":"function","vis":"public","signature":"Public Function SendGet(ByVal url As String, Optional Body As String) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"SendOptions","kind":"function","vis":"public","signature":"Public Function SendOptions(ByVal url As String, Optional Body As String) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"SendPost","kind":"function","vis":"public","signature":"Public Function SendPost(ByVal url As String, Optional Body As String) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"SendPut","kind":"function","vis":"public","signature":"Public Function SendPut(ByVal url As String, Optional Body As String) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"SetCookies","kind":"function","vis":"public","signature":"Public Function SetCookies(ByVal Value As String) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"SetRequestContentType","kind":"function","vis":"public","signature":"Public Function SetRequestContentType(ReqType As EnumRequestContentType, Optional ContentType As String) As String","returnType":"String"},
+        {"name":"ShellExecute","kind":"function","vis":"private","declare":true,"signature":"Private Declare Function ShellExecute Lib \"shell32.dll\" Alias \"ShellExecuteA\" ( ByVal hWnd As Long, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long","returnType":"Long"},
+        {"name":"ShowPage","kind":"sub","vis":"public","signature":"Public Sub ShowPage(url As String)"},
+        {"name":"UploadFile","kind":"function","vis":"public","signature":"Public Function UploadFile(ByVal url As String, ByVal filePath As String, Optional fieldName As String = \"file\", Optional additionalFormData As Scripting.Dictionary = Nothing) As cHttpClient","returnType":"cHttpClient"},
+        {"name":"UploadFileSimple","kind":"function","vis":"public","signature":"Public Function UploadFileSimple(ByVal url As String, ByVal filePath As String) As Boolean","returnType":"Boolean"}
       ]
     },
     {
@@ -349,7 +524,17 @@
       "vis": "public",
       "file": "Libs/FileSystem/Ini/cIni.twin",
       "signature": "Class cIni",
-      "members": []
+      "members": [
+        {"name":"FileStream","kind":"field","vis":"private","signature":"Dim FileStream As Scripting.TextStream"},
+        {"name":"FixFileExtName","kind":"sub","vis":"private","signature":"Private Sub FixFileExtName(Path As String)"},
+        {"name":"Fso","kind":"field","vis":"private","signature":"Dim Fso As New Scripting.FileSystemObject"},
+        {"name":"LastError","kind":"field","vis":"public","signature":"Public LastError As String"},
+        {"name":"LoadFrom","kind":"function","vis":"public","signature":"Public Function LoadFrom(ByVal Path As String) As cIni","returnType":"cIni"},
+        {"name":"Root","kind":"property","vis":"public","signature":"Public Property Get Root() As Scripting.Dictionary","returnType":"Scripting.Dictionary","accessor":"Get"},
+        {"name":"RootDic","kind":"field","vis":"private","signature":"Dim RootDic As New Scripting.Dictionary"},
+        {"name":"SaveTo","kind":"function","vis":"public","signature":"Public Function SaveTo(Optional ByVal Path As String) As Boolean","returnType":"Boolean"},
+        {"name":"Section","kind":"property","vis":"public","signature":"Public Property Get Section(ByVal Key As String) As New Scripting.Dictionary","returnType":"New Scripting.Dictionary","accessor":"Get"}
+      ]
     },
     {
       "name": "cJson",
@@ -368,6 +553,7 @@
         {"name":"Item","kind":"property","vis":"public","signature":"Public Property Let Item(ByVal Key As String, Dat As Variant)","accessor":"Let"},
         {"name":"Items","kind":"property","vis":"public","signature":"Public Property Get Items(ByVal Index As Long) As Variant","returnType":"Variant","accessor":"Get"},
         {"name":"Items","kind":"property","vis":"public","signature":"Public Property Set Items(ByVal Index As Long, Dat As Variant)","accessor":"Set"},
+        {"name":"Items","kind":"property","vis":"public","signature":"Public Property Let Items(ByVal Index As Long, Dat As Variant)","accessor":"Let"},
         {"name":"LastError","kind":"field","vis":"public","signature":"Public LastError As String"},
         {"name":"LastSuccess","kind":"property","vis":"public","signature":"Public Property Get LastSuccess() As Boolean","returnType":"Boolean","accessor":"Get"},
         {"name":"LoadFrom","kind":"function","vis":"public","signature":"Public Function LoadFrom(ByVal Path As String, Optional CharSet As String = \"UTF-8\") As cJson","returnType":"cJson"},
@@ -381,8 +567,7 @@
         {"name":"RootText","kind":"field","vis":"public","signature":"Public RootText As String"},
         {"name":"SaveTo","kind":"function","vis":"public","signature":"Public Function SaveTo( ByVal FileName As String, Optional CharSet As String = \"UTF-8\", Optional Whitespace As Variant, Optional FromUnicode As Boolean) As String","returnType":"String"},
         {"name":"ToArray","kind":"function","vis":"public","signature":"Public Function ToArray() As Variant","returnType":"Variant"},
-        {"name":"WhiteSpaceSet","kind":"field","vis":"public","signature":"Public WhiteSpaceSet As Variant"},
-        {"name":"uuItems","kind":"property","vis":"public","signature":"Public Property Let uuItems(ByVal Index As Long, Dat As Variant)","accessor":"Let"}
+        {"name":"WhiteSpaceSet","kind":"field","vis":"public","signature":"Public WhiteSpaceSet As Variant"}
       ]
     },
     {
@@ -458,12 +643,88 @@
       ]
     },
     {
+      "name": "cSubClass",
+      "kind": "class",
+      "vis": "public",
+      "file": "Libs/SubClass/cSubClass.twin",
+      "signature": "Class cSubClass",
+      "members": [
+        {"name":"Callback","kind":"function","vis":"public","signature":"Public Function Callback(ByVal Msg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long","returnType":"Long"},
+        {"name":"ClassPoolKey","kind":"field","vis":"private","signature":"Dim ClassPoolKey As String"},
+        {"name":"GWL_WNDPROC","kind":"const","vis":"private","signature":"Private Const GWL_WNDPROC = -4"},
+        {"name":"GetWindowLong","kind":"function","vis":"private","declare":true,"signature":"Private Declare Function GetWindowLong Lib \"user32\" Alias \"GetWindowLongW\" (ByVal hwnd As Long, ByVal nIndex As Long) As Long","returnType":"Long"},
+        {"name":"Hook","kind":"sub","vis":"public","signature":"Public Sub Hook(ByVal hWnd As Long)"},
+        {"name":"NewWinRet","kind":"field","vis":"private","signature":"Dim NewWinRet As Long"},
+        {"name":"OrgWinRet","kind":"field","vis":"private","signature":"Dim OrgWinRet As Long"},
+        {"name":"SetWindowLong","kind":"function","vis":"private","declare":true,"signature":"Private Declare Function SetWindowLong Lib \"user32\" Alias \"SetWindowLongW\" (ByVal hwnd As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long","returnType":"Long"},
+        {"name":"UnHook","kind":"sub","vis":"public","signature":"Public Sub UnHook()"},
+        {"name":"WindowProc","kind":"event","vis":"public","signature":"Public Event WindowProc(Msg As Long, wParam As Long, lParam As Long, CancelNextCall As Boolean)"},
+        {"name":"mHWnd","kind":"field","vis":"public","signature":"Public mHWnd As Long"}
+      ]
+    },
+    {
+      "name": "cSysTray",
+      "kind": "class",
+      "vis": "public",
+      "file": "Libs/TaskBar/SysTray/cSysTray.twin",
+      "signature": "Class cSysTray",
+      "members": []
+    },
+    {
       "name": "cTimer",
       "kind": "class",
       "vis": "public",
-      "file": "Libs/DateTime/cTimer.twin",
+      "file": "Libs/DateTime/Timer/cTimer.twin",
       "signature": "Class cTimer",
-      "members": []
+      "members": [
+        {"name":"Class_Initialize","kind":"sub","vis":"private","signature":"Private Sub Class_Initialize()"},
+        {"name":"Class_Terminate","kind":"sub","vis":"private","signature":"Private Sub Class_Terminate()"},
+        {"name":"DEBUGMODE","kind":"const","vis":"private","signature":"Private Const DEBUGMODE As Boolean = False"},
+        {"name":"Disable","kind":"sub","vis":"public","signature":"Sub Disable()"},
+        {"name":"Enable","kind":"sub","vis":"public","signature":"Sub Enable()"},
+        {"name":"EnableTimer","kind":"sub","vis":"public","signature":"Sub EnableTimer(mInterval As Long)"},
+        {"name":"Enabled","kind":"property","vis":"public","signature":"Property Get Enabled() As Boolean","returnType":"Boolean","accessor":"Get"},
+        {"name":"Enabled","kind":"property","vis":"public","signature":"Property Let Enabled(activateIt As Boolean)","accessor":"Let"},
+        {"name":"Index","kind":"property","vis":"friend","signature":"Friend Property Let Index(lIndex As Long)","accessor":"Let"},
+        {"name":"Index","kind":"property","vis":"friend","signature":"Friend Property Get Index() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"Interval","kind":"field","vis":"public","signature":"Public Interval As Long"},
+        {"name":"KillTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function KillTimer Lib \"user32\" (ByVal hwnd As Long, ByVal nIDEvent As Long) As Long","returnType":"Long"},
+        {"name":"ParentsColKey","kind":"property","vis":"friend","signature":"Friend Property Let ParentsColKey(key As Long)","accessor":"Let"},
+        {"name":"ParentsColKey","kind":"property","vis":"friend","signature":"Friend Property Get ParentsColKey() As Long","returnType":"Long","accessor":"Get"},
+        {"name":"RaiseTimer_Event","kind":"sub","vis":"public","signature":"Public Sub RaiseTimer_Event()"},
+        {"name":"Reset","kind":"sub","vis":"public","signature":"Sub Reset()"},
+        {"name":"SetTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function SetTimer Lib \"user32\" (ByVal hwnd As Long, ByVal nIDEvent As Long, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As Long","returnType":"Long"},
+        {"name":"Tag","kind":"field","vis":"public","signature":"Public Tag As Variant"},
+        {"name":"Timer","kind":"event","vis":"public","signature":"Public Event Timer()"},
+        {"name":"TimerCreate","kind":"function","vis":"private","signature":"Private Function TimerCreate() As Boolean","returnType":"Boolean"},
+        {"name":"TimerDestroy","kind":"function","vis":"private","signature":"Private Function TimerDestroy() As Long","returnType":"Long"},
+        {"name":"TimerExists","kind":"function","vis":"private","signature":"Private Function TimerExists() As Boolean","returnType":"Boolean"},
+        {"name":"dbg","kind":"function","vis":"private","signature":"Private Function dbg(msg As String) As Variant","returnType":"Variant"},
+        {"name":"isActive","kind":"field","vis":"private","signature":"Private isActive As Boolean"},
+        {"name":"mIndex","kind":"field","vis":"private","signature":"Private mIndex As Long"},
+        {"name":"mParentsColKey","kind":"field","vis":"private","signature":"Private mParentsColKey As Variant"},
+        {"name":"timerId","kind":"field","vis":"private","signature":"Private timerId As Long"}
+      ]
+    },
+    {
+      "name": "cTimers",
+      "kind": "class",
+      "vis": "public",
+      "file": "Libs/DateTime/Timer/cTimers.twin",
+      "signature": "Class cTimers",
+      "members": [
+        {"name":"Add","kind":"function","vis":"public","signature":"Function Add() As Integer","returnType":"Integer"},
+        {"name":"BulkLoad","kind":"function","vis":"public","signature":"Function BulkLoad(num As Integer) As Variant","returnType":"Variant"},
+        {"name":"Class_Initialize","kind":"sub","vis":"private","signature":"Private Sub Class_Initialize()"},
+        {"name":"Class_Terminate","kind":"sub","vis":"private","signature":"Private Sub Class_Terminate()"},
+        {"name":"Count","kind":"property","vis":"public","signature":"Property Get Count() As Integer","returnType":"Integer","accessor":"Get"},
+        {"name":"Item","kind":"function","vis":"public","signature":"Function Item(ByVal Index As Integer) As cTimer","returnType":"cTimer"},
+        {"name":"RaiseTimer_Event","kind":"function","vis":"friend","signature":"Friend Function RaiseTimer_Event(ByVal Index As Integer) As Variant","returnType":"Variant"},
+        {"name":"Timer","kind":"event","vis":"public","signature":"Public Event Timer(ByVal Index As Integer)"},
+        {"name":"mClassKey","kind":"field","vis":"private","signature":"Private mClassKey As Integer"},
+        {"name":"mCol","kind":"field","vis":"private","signature":"Private mCol As New Collection"},
+        {"name":"mCount","kind":"field","vis":"private","signature":"Private mCount As Integer"}
+      ]
     },
     {
       "name": "cTimeuse",
@@ -476,6 +737,93 @@
         {"name":"Show","kind":"function","vis":"public","signature":"Public Function Show(Optional Txt As String = \"耗时：{*} 毫秒\") As Variant","returnType":"Variant"},
         {"name":"Start","kind":"sub","vis":"public","signature":"Public Sub Start()"},
         {"name":"startTime","kind":"field","vis":"private","signature":"Dim startTime As Long"}
+      ]
+    },
+    {
+      "name": "cToolsStr",
+      "kind": "class",
+      "vis": "public",
+      "file": "Tools/String/cToolsStr.twin",
+      "signature": "Class cToolsStr",
+      "members": [
+        {"name":"GetFirstChar","kind":"function","vis":"public","signature":"Public Function GetFirstChar(Txt As String, Optional Length As Long = 1) As String","returnType":"String"},
+        {"name":"GetGUID","kind":"function","vis":"public","signature":"Public Function GetGUID(Optional isFull As Boolean) As String","returnType":"String"},
+        {"name":"GetLastChar","kind":"function","vis":"public","signature":"Public Function GetLastChar(Txt As String, Optional Length As Long = 1) As String","returnType":"String"},
+        {"name":"GetNewIds","kind":"function","vis":"public","signature":"Public Function GetNewIds(Optional ByVal Bath As Long) As String","returnType":"String"},
+        {"name":"GetRandByte","kind":"function","vis":"public","signature":"Public Function GetRandByte() As Byte()","returnType":"Byte()"},
+        {"name":"GetRandStr","kind":"function","vis":"public","signature":"Public Function GetRandStr(Optional ByVal Lens As Integer = 32, Optional Zuhe As String = \"1aA\") As String","returnType":"String"},
+        {"name":"HasStr","kind":"function","vis":"public","signature":"Public Function HasStr(FindStr As String, FullStr As String, Optional StartPos As Long = 1, Optional CompType As VbCompareMethod = vbTextCompare) As Long","returnType":"Long"},
+        {"name":"InsertSpan","kind":"function","vis":"public","signature":"Public Function InsertSpan(ByRef inputStr As String, ByVal Span As String, ByVal SetpNum As Long, Optional HeadFoot As Boolean) As String","returnType":"String"},
+        {"name":"IsEmptyEx","kind":"function","vis":"public","signature":"Public Function IsEmptyEx(Text As String) As Boolean","returnType":"Boolean"},
+        {"name":"IsString","kind":"function","vis":"public","signature":"Public Function IsString(var As Variant) As Boolean","returnType":"Boolean"},
+        {"name":"JoinLinesFromCollection","kind":"function","vis":"public","signature":"Public Function JoinLinesFromCollection(Coll As Collection) As String","returnType":"String"},
+        {"name":"JoinStr","kind":"function","vis":"public","signature":"Public Function JoinStr(Span As String, ParamArray Strings() As Variant) As String","returnType":"String"},
+        {"name":"LeftEx","kind":"function","vis":"public","signature":"Public Function LeftEx(Text As Variant, Length As Long) As String","returnType":"String"},
+        {"name":"LenBytes","kind":"function","vis":"public","signature":"Public Function LenBytes(inputArray() As Byte) As Long","returnType":"Long"},
+        {"name":"MidEx","kind":"function","vis":"public","signature":"Public Function MidEx(FullStr As String, Lstr As String, Rstr As String, Optional starindex As Long) As String","returnType":"String"},
+        {"name":"PercentDecode","kind":"function","vis":"public","signature":"Function PercentDecode(encodedStr As String) As String","returnType":"String"},
+        {"name":"PercentEncode","kind":"function","vis":"public","signature":"Public Function PercentEncode(inputStr As String) As String","returnType":"String"},
+        {"name":"RightEx","kind":"function","vis":"public","signature":"Public Function RightEx(Text As Variant, Length As Long) As String","returnType":"String"},
+        {"name":"SliceString","kind":"function","vis":"public","signature":"Public Function SliceString(ByVal Arr As String, ByVal StartPos As Long, Optional ByVal EndPos As Long = -1) As String","returnType":"String"},
+        {"name":"SplitLinesToCollection","kind":"function","vis":"public","signature":"Public Function SplitLinesToCollection(ByVal Text As String) As Collection","returnType":"Collection"},
+        {"name":"SubStr","kind":"function","vis":"public","signature":"Public Function SubStr(ByVal Txt As String, ByVal txtF$, Optional ByVal txtE$, Optional RetInt As Boolean) As String","returnType":"String"},
+        {"name":"ToBytes","kind":"function","vis":"public","signature":"Public Function ToBytes(inputString As String) As Byte()","returnType":"Byte()"},
+        {"name":"ToHex","kind":"function","vis":"public","signature":"Public Function ToHex(inputArray() As Byte) As String","returnType":"String"},
+        {"name":"ToString","kind":"function","vis":"public","signature":"Public Function ToString(inputArray() As Byte) As String","returnType":"String"},
+        {"name":"TrimEx","kind":"function","vis":"public","signature":"Public Function TrimEx(ByRef Text As String) As String","returnType":"String"},
+        {"name":"UniVbCrLf","kind":"function","vis":"public","signature":"Public Function UniVbCrLf(Text As String) As String","returnType":"String"},
+        {"name":"UnicodeDecode","kind":"function","vis":"public","signature":"Public Function UnicodeDecode(Text As String, Optional PreFix As String = \"\\u\") As String","returnType":"String"},
+        {"name":"UnicodeEncode","kind":"function","vis":"public","signature":"Public Function UnicodeEncode(ByVal inputString As String, Optional PreFix As String = \"\\u\") As String","returnType":"String"}
+      ]
+    },
+    {
+      "name": "cToolsStream",
+      "kind": "class",
+      "vis": "public",
+      "file": "Tools/FSO/cToolsStream.twin",
+      "signature": "Class cToolsStream",
+      "members": [
+        {"name":"Class_Initialize","kind":"sub","vis":"private","signature":"Private Sub Class_Initialize()"},
+        {"name":"Class_Terminate","kind":"sub","vis":"private","signature":"Private Sub Class_Terminate()"},
+        {"name":"Inst","kind":"field","vis":"public","signature":"Public Inst As New ADODB.Stream"},
+        {"name":"LastError","kind":"field","vis":"public","signature":"Public LastError As String"},
+        {"name":"LineData","kind":"field","vis":"public","signature":"Public LineData As New Collection"},
+        {"name":"LineNumber","kind":"field","vis":"public","signature":"Public LineNumber As Long"},
+        {"name":"LoadFileAsBinary","kind":"function","vis":"public","signature":"Public Function LoadFileAsBinary(ByVal Path As String, OutData() As Byte) As Boolean","returnType":"Boolean"},
+        {"name":"LoadFileAsText","kind":"function","vis":"public","signature":"Public Function LoadFileAsText(ByVal FileName As String, Optional ByVal CharSet As String = \"UTF-8\") As String","returnType":"String"},
+        {"name":"ReadLine","kind":"function","vis":"public","signature":"Public Function ReadLine(Optional ByVal Line As Long) As String","returnType":"String"},
+        {"name":"SaveFileAsBinary","kind":"function","vis":"public","signature":"Public Function SaveFileAsBinary(ByVal Path As String, OutData() As Byte) As Boolean","returnType":"Boolean"},
+        {"name":"SaveFileAsText","kind":"function","vis":"public","signature":"Public Function SaveFileAsText(ByVal FileName As String, Optional Data As String, Optional ByVal CharSet As String = \"UTF-8\") As Boolean","returnType":"Boolean"},
+        {"name":"UseLine","kind":"field","vis":"public","signature":"Public UseLine As Boolean"},
+        {"name":"UseLineMode","kind":"function","vis":"public","signature":"Public Function UseLineMode(v As Boolean) As cToolsStream","returnType":"cToolsStream"},
+        {"name":"WriteLine","kind":"function","vis":"public","signature":"Public Function WriteLine(Text As String, Optional ByVal Line As Long) As Boolean","returnType":"Boolean"}
+      ]
+    },
+    {
+      "name": "mCallBackSubClass",
+      "kind": "module",
+      "vis": "public",
+      "file": "Libs/SubClass/inc/mCallBackSubClass.twin",
+      "signature": "Module mCallBackSubClass",
+      "members": [
+        {"name":"CallWindowProc","kind":"function","vis":"private","declare":true,"signature":"Private Declare Function CallWindowProc Lib \"user32\" Alias \"CallWindowProcW\" (ByVal lpPrevWndFunc As Long, ByVal hwnd As Long, ByVal Msg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long","returnType":"Long"},
+        {"name":"Callback","kind":"function","vis":"public","signature":"Public Function Callback(ByVal wHwnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long","returnType":"Long"},
+        {"name":"ClassPool","kind":"field","vis":"public","signature":"Public ClassPool As New Collection"}
+      ]
+    },
+    {
+      "name": "mTimer",
+      "kind": "module",
+      "vis": "public",
+      "file": "Libs/DateTime/Timer/mTimer.twin",
+      "signature": "Module mTimer",
+      "members": [
+        {"name":"CTimersCol","kind":"field","vis":"public","signature":"Public CTimersCol As New Collection"},
+        {"name":"KillTimer","kind":"function","vis":"private","declare":true,"signature":"Private Declare PtrSafe Function KillTimer Lib \"user32\" (ByVal hwnd As Long, ByVal nIDEvent As Long) As Long","returnType":"Long"},
+        {"name":"RegisterTimerCollection","kind":"function","vis":"public","signature":"Function RegisterTimerCollection(c As cTimers) As Integer","returnType":"Integer"},
+        {"name":"TimerProc","kind":"sub","vis":"public","signature":"Sub TimerProc(ByVal hwnd As Long, ByVal uMsg As Long, ByVal idEvent As Long, ByVal dwTime As Long)"},
+        {"name":"mTimersColCount","kind":"field","vis":"private","signature":"Private mTimersColCount As Integer"},
+        {"name":"timers","kind":"field","vis":"public","signature":"Public timers As New Collection"}
       ]
     }
   ],

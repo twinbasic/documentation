@@ -41,6 +41,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { DEFAULTS, parseCommandLine } from "../builder/command-line.mjs";
+import { destinationTrees } from "../builder/write.mjs";
 import {
   CliError,
   choiceOption,
@@ -715,6 +716,34 @@ function capture(fn) {
   check(
     "tbdocs keeps the flags the negations set",
     pick(["--no-offline", "--no-pdf"], ["skipOffline", "skipPdf"]) === show({ skipOffline: true, skipPdf: true }),
+  );
+
+  // The negations reach the task that makes the trees: prepDest once cleaned
+  // and recreated <dest>-offline and <dest>-pdf whatever they said, which left
+  // two empty folders beside every --no-offline --no-pdf build.
+  const trees = (args, serve = false) => {
+    const o = parsed(args);
+    return show(destinationTrees("d", { skipOffline: !!o.skipOffline, skipPdf: !!o.skipPdf, serve }));
+  };
+  check(
+    "tbdocs prepares all three trees by default",
+    trees([]) === show({ roots: ["d", "d-offline", "d-pdf"], gone: [] }),
+    trees([]),
+  );
+  check(
+    "tbdocs with --no-offline --no-pdf prepares the online tree alone, and removes the other two",
+    trees(["--no-offline", "--no-pdf"]) === show({ roots: ["d"], gone: ["d-offline", "d-pdf"] }),
+    trees(["--no-offline", "--no-pdf"]),
+  );
+  check(
+    "tbdocs with --no-pdf keeps the offline tree",
+    trees(["--no-pdf"]) === show({ roots: ["d", "d-offline"], gone: ["d-pdf"] }),
+    trees(["--no-pdf"]),
+  );
+  check(
+    "tbdocs --serve prepares its one tree and removes nothing beside it",
+    trees(["--no-offline", "--no-pdf"], true) === show({ roots: ["d"], gone: [] }),
+    trees(["--no-offline", "--no-pdf"], true),
   );
 }
 

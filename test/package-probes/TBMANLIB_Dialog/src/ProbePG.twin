@@ -1,0 +1,192 @@
+' ProbePG: the scenario d40 of the TBMANLIB_Dialog probe: cDialogProgress.
+' The class opens no window, so there is no dialog to drive; the scenario runs its logic, in the
+' 32-bit and the 64-bit build.
+
+Module ProbePG
+
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+
+    Public Sub Run(ByVal id As String)
+        Select Case id
+            Case "d40": D40
+        End Select
+    End Sub
+
+    Private Function B(ByVal x As Boolean) As String
+        B = IIf(x, "True", "False")
+    End Function
+
+    Private Sub Dump(ByVal p As cDialogProgress)
+        AutoD.SayD "    Progress=" & p.Progress & " Min=" & p.Min & " Max=" & p.Max & " Step=" & p.Step & " Percentage=" & p.Percentage & " Cancelled=" & B(p.Cancelled)
+    End Sub
+
+    Private Sub D40()
+        AutoD.SayD "== d40 cDialogProgress: no window; the logic"
+        Dim p As New cDialogProgress
+        Dim sink As New ProgSink
+        Dim i As Long
+        Dim n As Long
+        Dim r As Long
+        Dim s As String
+        sink.Attach p
+        AutoD.SayD "  (a) a new object:"
+        AutoD.SayD "    Title=" & AutoD.QD(p.Title) & " Message=" & AutoD.QD(p.Message) & " DetailMessage=" & AutoD.QD(p.DetailMessage) & " Style=" & p.Style & " ShowCancel=" & B(p.ShowCancel) & " ShowElapsedTime=" & B(p.ShowElapsedTime) & " ShowRemainingTime=" & B(p.ShowRemainingTime) & " OwnerHwnd=" & p.OwnerHwnd
+        Dump p
+        AutoD.SayD "    GetElapsedTime=" & p.GetElapsedTime() & " GetRemainingTime=" & p.GetRemainingTime() & " GetElapsedTimeString=" & AutoD.QD(p.GetElapsedTimeString()) & " GetRemainingTimeString=" & AutoD.QD(p.GetRemainingTimeString())
+
+        AutoD.SayD "  (b) Start, Progress = 40, 150, -1, 40 again, Increment x3 with Step 30, PerformStep, Complete:"
+        sink.Clear
+        p.Start
+        AutoD.SayD "    after Start: events " & sink.Changed
+        p.Progress = 40
+        p.Progress = 150
+        p.Progress = -1
+        p.Progress = 40
+        p.Step = 30
+        p.Increment
+        p.Increment
+        p.Increment
+        p.PerformStep
+        AutoD.SayD "    events " & sink.Changed & " values: " & sink.Log
+        Dump p
+        p.Complete
+        AutoD.SayD "    after Complete: events " & sink.Changed & " " & sink.Log
+        Dump p
+
+        AutoD.SayD "  (c) Min 10, Max 110, SetPercentage 25, 101, -1, 0, 100:"
+        p.Reset
+        sink.Clear
+        p.Min = 10
+        p.Max = 110
+        p.SetPercentage 25
+        AutoD.SayD "    SetPercentage 25 -> Progress " & p.Progress & " Percentage " & p.Percentage
+        p.SetPercentage 101
+        p.SetPercentage -1
+        AutoD.SayD "    after 101 and -1: events " & sink.Changed & " Progress " & p.Progress
+        p.SetPercentage 0
+        AutoD.SayD "    SetPercentage 0 -> Progress " & p.Progress
+        p.SetPercentage 100
+        AutoD.SayD "    SetPercentage 100 -> Progress " & p.Progress
+        AutoD.SayD "    Min changed after Progress was set: Min = 60 -> Progress " & p.Progress & " Percentage " & p.Percentage
+        p.Min = 60
+        AutoD.SayD "    -> Progress " & p.Progress & " Percentage " & p.Percentage
+        p.Min = 200
+        AutoD.SayD "    Min 200 above Max -> Percentage " & p.Percentage
+
+        AutoD.SayD "  (d) Percentage with a large range, Max 100,000,000, Progress 50,000,000:"
+        p.Reset
+        p.Max = 100000000
+        p.Progress = 50000000
+        On Error Resume Next
+        n = p.Percentage
+        If Err.Number <> 0 Then AutoD.SayD "    Percentage ERROR " & Err.Number & " " & Err.Description Else AutoD.SayD "    Percentage = " & n
+        Err.Clear
+        p.SetPercentage 50
+        If Err.Number <> 0 Then AutoD.SayD "    SetPercentage 50 ERROR " & Err.Number & " " & Err.Description Else AutoD.SayD "    SetPercentage 50 -> Progress " & p.Progress
+        Err.Clear
+        On Error GoTo 0
+
+        AutoD.SayD "  (e) GetRemainingTime right after Start and Progress = 50 (10 tries):"
+        p.Reset
+        n = 0
+        For i = 1 To 10
+            p.Start
+            p.Progress = 50
+            On Error Resume Next
+            Err.Clear
+            r = p.GetRemainingTime()
+            If Err.Number <> 0 Then
+                n = n + 1
+                If n = 1 Then AutoD.SayD "    try " & i & ": ERROR " & Err.Number & " " & Err.Description
+            End If
+            On Error GoTo 0
+        Next
+        AutoD.SayD "    " & n & " of 10 raised an error"
+        AutoD.SayD "    GetDescription right after Start and Progress = 50 (10 tries):"
+        n = 0
+        For i = 1 To 10
+            p.Start
+            p.Progress = 50
+            On Error Resume Next
+            Err.Clear
+            s = p.GetDescription()
+            If Err.Number <> 0 Then n = n + 1
+            On Error GoTo 0
+        Next
+        AutoD.SayD "    " & n & " of 10 raised an error"
+
+        AutoD.SayD "  (f) elapsed and remaining time after 2.3 s with Progress = 50 of 100:"
+        p.Reset
+        p.Message = "Copying"
+        p.DetailMessage = "file.txt"
+        p.Start
+        Sleep 2300
+        p.Progress = 50
+        AutoD.SayD "    GetElapsedTime=" & p.GetElapsedTime() & " String=" & AutoD.QD(p.GetElapsedTimeString())
+        AutoD.SayD "    GetRemainingTime=" & p.GetRemainingTime() & " String=" & AutoD.QD(p.GetRemainingTimeString())
+        AutoD.SayD "    GetDescription=" & AutoD.QD(p.GetDescription())
+        p.Style = ProgressStyle.Marquee
+        AutoD.SayD "    Style Marquee: GetDescription=" & AutoD.QD(p.GetDescription())
+        p.Style = ProgressStyle.ProgressBar
+        p.ShowElapsedTime = False
+        AutoD.SayD "    ShowElapsedTime False: GetDescription=" & AutoD.QD(p.GetDescription())
+        p.ShowRemainingTime = False
+        AutoD.SayD "    ShowRemainingTime False too: GetDescription=" & AutoD.QD(p.GetDescription())
+        p.ShowProgress
+        AutoD.SayD "    (ShowProgress called: it prints with Debug.Print; nothing appears in an exe)"
+
+        AutoD.SayD "  (g) Cancel and Start:"
+        p.Reset
+        sink.Clear
+        p.Cancel
+        AutoD.SayD "    after Cancel: Cancelled=" & B(p.Cancelled) & " CancelClicked events " & sink.Cancels
+        p.Start
+        AutoD.SayD "    after Start: Cancelled=" & B(p.Cancelled)
+
+        AutoD.SayD "  (h) SimulateProgress(5) with Max 5, events:"
+        p.Reset
+        sink.Clear
+        p.Max = 5
+        p.SimulateProgress 5
+        AutoD.SayD "    events " & sink.Changed & " values: " & sink.Log
+        Dump p
+
+        AutoD.SayD "  (i) SimulateProgress(5) with Max 100 and Cancel called by the handler at the 3rd event:"
+        p.Reset
+        sink.Clear
+        sink.CancelAfter = 3
+        p.SimulateProgress 5
+        AutoD.SayD "    events " & sink.Changed & " values: " & sink.Log
+        Dump p
+        sink.CancelAfter = 0
+
+        AutoD.SayD "  (j) SimulateProgress with Step 0, Cancel at the 4th event:"
+        p.Reset
+        sink.Clear
+        sink.CancelAfter = 4
+        p.Step = 0
+        p.SimulateProgress 1
+        AutoD.SayD "    events " & sink.Changed & " values: " & sink.Log
+        Dump p
+        sink.CancelAfter = 0
+
+        AutoD.SayD "  (k) SimulateProgress with Step 25, Max 100, then the same with Step -1:"
+        p.Reset
+        sink.Clear
+        p.Step = 25
+        p.SimulateProgress 1
+        AutoD.SayD "    events " & sink.Changed & " values: " & sink.Log
+        p.Reset
+        sink.Clear
+        p.Step = -1
+        p.SimulateProgress 1
+        AutoD.SayD "    Step -1: events " & sink.Changed & " values: " & sink.Log
+        Dump p
+
+        AutoD.SayD "  (l) Reset keeps OwnerHwnd:"
+        p.OwnerHwnd = 1234
+        p.Reset
+        AutoD.SayD "    OwnerHwnd after Reset = " & p.OwnerHwnd
+    End Sub
+
+End Module

@@ -1,14 +1,16 @@
 ---
-title: ToolsStr
+title: cToolsStr
 parent: TBMANLIB Package
-permalink: /tB/Packages/Contributed/TBMANLIB/ToolsStr
+permalink: /tB/Packages/Contributed/TBMANLIB/cToolsStr
 has_toc: false
 ---
 
-# ToolsStr module
+# cToolsStr class
 {: .no_toc }
 
-String functions: trimming and testing, searching and cutting out a part, the conversions to `%XX` and `\uXXXX` escapes, conversion between strings and bytes, and random text and identifiers. Twenty-six functions, in five groups. Most use nothing but the language; [**GetGUID**](#getguid) uses the Windows object `Scriptlet.TypeLib`.
+String functions: trimming and testing, searching and cutting out a part, the conversions to `%XX` and `\uXXXX` escapes, the splitting of text into lines, conversion between strings and bytes, and random text and identifiers. Twenty-eight functions, in six groups. Most use nothing but the language; [**GetGUID**](#getguid) uses the Windows object `Scriptlet.TypeLib`.
+
+The class has no fields. The package keeps one instance of it, named **ToolsStr**, in the module [**Tools**](Tools), so a program writes `ToolsStr.TrimEx(...)` without a `New`, and the syntax lines below use that name. In the package's earlier versions **ToolsStr** was a module, and the calls are the same. A program that wants an object of its own writes `Dim S As New cToolsStr`.
 
 ```tb check_build check_run
 Debug.Print ToolsStr.TrimEx(vbTab & "  a b " & vbCrLf)
@@ -433,6 +435,62 @@ Syntax: **ToolsStr.UnicodeEncode** ( *inputString* [ **,** *PreFix* ] ) **As Str
 
 Characters with a code from 0 to 127 stay as they are, the control characters included. Every other character becomes *PreFix* and the four hexadecimal digits of its code, with letters in upper case. A character that is made of two UTF-16 units, such as an emoji, becomes two such groups.
 
+## Lines
+
+### JoinLinesFromCollection
+{: .no_toc }
+
+Joins the items of a collection into one text, one item to a line.
+
+Syntax: **ToolsStr.JoinLinesFromCollection** ( *Coll* ) **As String**
+
+*Coll*
+: *required* A **Collection**, passed by reference and not changed. The items are taken in order from 1 and converted to strings.
+
+Returns the items with a carriage return and line feed (**vbCrLf**) between them, and none after the last. A collection with no items gives an empty string.
+
+```tb check_build check_run
+Dim Lines As New Collection
+Lines.Add "one"
+Lines.Add "two"
+Lines.Add 3
+Debug.Print Replace(ToolsStr.JoinLinesFromCollection(Lines), vbCrLf, "|")
+Debug.Print "[" & ToolsStr.JoinLinesFromCollection(New Collection) & "]"
+' Output:
+' one|two|3
+' []
+```
+
+### SplitLinesToCollection
+{: .no_toc }
+
+Splits a text into lines.
+
+Syntax: **ToolsStr.SplitLinesToCollection** ( *Text* ) **As Collection**
+
+*Text*
+: *required* A **String**.
+
+Returns a new **Collection** that holds one string for each line, numbered from 1. Lines end at a carriage return and line feed (**vbCrLf**) only. A line feed or a carriage return alone does not end a line: the lines of a text from another system stay in one item. An empty text gives an empty collection. A text that ends with **vbCrLf** gives an empty last item.
+
+> [!WARNING]
+> The loop stops when its position is equal to the length of the text, which is the position of the last character. When the last line has exactly one character, the loop stops before it and the line is lost: `"a" & vbCrLf & "b"` gives one item, `a`, and the text `"a"` gives none. A last line of two or more characters is kept.
+
+```tb check_build check_run
+Dim Lines As Collection
+Set Lines = ToolsStr.SplitLinesToCollection("one" & vbCrLf & "two" & vbCrLf & "three")
+Debug.Print Lines.Count & " " & Lines(1) & " " & Lines(3)
+
+Set Lines = ToolsStr.SplitLinesToCollection("a" & vbCrLf & "b")
+Debug.Print Lines.Count
+Set Lines = ToolsStr.SplitLinesToCollection("a" & vbCrLf & "bc" & vbCrLf)
+Debug.Print Lines.Count & " [" & Lines(3) & "]"
+' Output:
+' 3 one three
+' 1
+' 3 []
+```
+
 ## Bytes
 
 ### LenBytes
@@ -579,6 +637,8 @@ Debug.Print Len(ToolsStr.GetRandStr(0))
 
 ## See Also
 
+- [Tools](Tools) module -- the shared instance **ToolsStr**
+- [cToolsStream](cToolsStream) class -- reads and writes whole files
 - [ToolsArray](ToolsArray) module -- searching and cutting byte arrays
 - [ToolsUtf8](ToolsUtf8) module -- UTF-8 conversion of strings and bytes
 - [ToolsMath](ToolsMath) module -- the random numbers behind **GetRandStr**

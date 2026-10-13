@@ -28,7 +28,8 @@
 // The comparison, and the restrictions on the write, are builder/baseline.mjs's,
 // shared with the page guard: never under CI, which would bless the loss it
 // was asked to catch; never under --serve, whose rebuilds follow every
-// half-typed heading; and only for the source tree the list describes.
+// half-typed heading; never from a build into another --dest, someone's
+// private copy; and only for the source tree the list describes.
 
 import { checkBaseline } from "./baseline.mjs";
 
@@ -76,13 +77,22 @@ const SYMBOL_GUARD = {
  *                              skipped
  * @param {Iterable<string>} o.urls  every URL in this build's index
  * @param {boolean} o.write     may the list be rewritten? (false under CI,
- *                              --serve and --dry-run)
+ *                              --serve and --dry-run, and for a --dest other
+ *                              than docs/_site: baselineWrites)
+ * @param {string} [o.heldBack] why not, said beside new URLs left unwritten
  * @param {boolean} [o.force]   write it whatever changed (--update-symbol-baseline)
  * @param {URL|string} [o.file] the list to read and write; only the self-test
  *                              passes one
  * @returns {Promise<{failed: boolean, text: string}>}
  */
-export async function checkSymbolBaseline({ src, urls, write, force = false, file = SYMBOL_BASELINE_PATH }) {
+export async function checkSymbolBaseline({
+  src,
+  urls,
+  write,
+  heldBack = "",
+  force = false,
+  file = SYMBOL_BASELINE_PATH,
+}) {
   const record = { src, urls: [...new Set(urls)].sort() };
-  return checkBaseline(SYMBOL_GUARD, { record, write, force, file });
+  return checkBaseline(SYMBOL_GUARD, { record, write, heldBack, force, file });
 }

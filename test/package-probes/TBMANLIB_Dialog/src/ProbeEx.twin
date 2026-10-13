@@ -1,0 +1,843 @@
+' ProbeEx: what TBMANLIB_Dialog's cDialogEx does at run time (package 1.1.0.0).
+'
+' Scenario ids (run through Probe.Main, which lists them in ScenarioIds):
+'   x0   cDialogEx's properties after New and after Reset (no dialog), GetPresetFilter
+'   x1   ShowOpen, one file: the return value, FileName, the dialog's title and controls
+'   x2   ShowOpen with MultiSelect: one file, two files, three files
+'   x3   Cancel in ShowOpen, ShowSave and ShowBrowseForFolder
+'   x4   the titles of the three dialogs, DialogTitle empty and set
+'   x5   Filter: the file-type list of the dialog for a filter built by AddFilter and by hand
+'   x6   ShowSave: the initial name, DefaultExt, OverwritePrompt
+'   x7   FileMustExist, PathMustExist and CreatePrompt on ShowOpen
+'   x8   NoChangeDir on ShowOpen and ShowSave
+'   x9   ShowBrowseForFolder and PickFolders: a typed folder, InitialDir
+'   x10  SetSystemIcon, SetCustomIcon and ClearIcon: the dialog's icons, and whether a file is still accepted
+'   x11  OwnerHwnd
+'   x12  SelectFiles
+'   x13  GetFilePath, GetFileName, GetFileExtension, GetFileNameWithoutExt, PathCombine (no dialog)
+'   x14  SelectAndOpenFile with names of files that do not exist
+'   x15  InitialDir
+'   x16  FilterIndex
+'
+' Never call OpenFile or SelectAndOpenFile on a path that exists, or on "": it starts a program.
+
+Module ProbeEx
+
+    Private Declare PtrSafe Function CreateWindowExW Lib "user32" (ByVal dwExStyle As Long, ByVal lpClassName As LongPtr, ByVal lpWindowName As LongPtr, ByVal dwStyle As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As LongPtr, ByVal hMenu As LongPtr, ByVal hInstance As LongPtr, ByVal lpParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DestroyWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function LoadIconW Lib "user32" (ByVal hInstance As LongPtr, ByVal lpIconName As LongPtr) As LongPtr
+
+    Public Sub RunEx(ByVal id As String)
+        Dim keep As Long = gMaxTicks
+        ' A Vista dialog is slower to appear than the old ones, and some scenarios navigate first.
+        If keep < 24 Then gMaxTicks = 24
+        gNavDir = ""
+        Select Case id
+            Case "x0": X0
+            Case "x1": X1
+            Case "x2": X2
+            Case "x3": X3
+            Case "x4": X4
+            Case "x5": X5
+            Case "x6": X6
+            Case "x7": X7
+            Case "x8": X8
+            Case "x9": X9
+            Case "x10": X10
+            Case "x11": X11
+            Case "x12": X12
+            Case "x13": X13
+            Case "x14": X14
+            Case "x15": X15
+            Case "x16": X16
+        End Select
+        gNavDir = ""
+        gMaxTicks = keep
+    End Sub
+
+    ' A value as the probe prints it, with the type of an array's elements.
+    Private Function Show(ByVal x As Variant) As String
+        Show = Desc(x)
+    End Function
+
+    Private Sub X0()
+        Say "== x0 defaults"
+        Dim d As New cDialogEx
+        Say "  DialogTitle=" & Q(d.DialogTitle) & " InitialDir=" & Q(d.InitialDir) & " DefaultExt=" & Q(d.DefaultExt) & " FileName=" & Q(d.FileName) & " Filter=" & Q(d.Filter)
+        Say "  FilterIndex=" & d.FilterIndex & " OwnerHwnd=" & d.OwnerHwnd
+        Say "  MultiSelect=" & d.MultiSelect & " OverwritePrompt=" & d.OverwritePrompt & " PathMustExist=" & d.PathMustExist & " FileMustExist=" & d.FileMustExist
+        Say "  NoChangeDir=" & d.NoChangeDir & " CreatePrompt=" & d.CreatePrompt & " PickFolders=" & d.PickFolders
+        d.MultiSelect = True
+        d.OverwritePrompt = True
+        d.PathMustExist = True
+        d.FileMustExist = True
+        d.PickFolders = True
+        d.NoChangeDir = True
+        d.CreatePrompt = True
+        d.DialogTitle = "t"
+        d.InitialDir = "C:\x"
+        d.DefaultExt = "txt"
+        d.FileName = "f"
+        d.FilterIndex = 3
+        d.AddFilter "A", "*.a"
+        d.OwnerHwnd = 1234
+        d.SetSystemIcon SIID_FOLDER
+        d.Reset
+        Say "  after Reset: DialogTitle=" & Q(d.DialogTitle) & " InitialDir=" & Q(d.InitialDir) & " DefaultExt=" & Q(d.DefaultExt) & " FileName=" & Q(d.FileName) & " Filter=" & Q(d.Filter)
+        Say "  after Reset: FilterIndex=" & d.FilterIndex & " OwnerHwnd=" & d.OwnerHwnd & " MultiSelect=" & d.MultiSelect & " OverwritePrompt=" & d.OverwritePrompt & " PathMustExist=" & d.PathMustExist & " FileMustExist=" & d.FileMustExist
+        Say "  after Reset: NoChangeDir=" & d.NoChangeDir & " CreatePrompt=" & d.CreatePrompt & " PickFolders=" & d.PickFolders
+        Dim nm As Variant
+        For Each nm In Array("all", "text", "images", "image", "documents", "document", "executables", "executable", "ALL", " Text ", "code", "")
+            Say "  GetPresetFilter(" & Q(CStr(nm)) & ") = " & Q(d.GetPresetFilter(CStr(nm)))
+        Next
+        d.SetCommonFilters
+        Say "  SetCommonFilters -> " & Q(d.Filter)
+        d.SetImageFilters
+        Say "  SetImageFilters -> " & Q(d.Filter)
+        d.SetDocumentFilters
+        Say "  SetDocumentFilters -> " & Q(d.Filter)
+        d.SetCodeFilters
+        Say "  SetCodeFilters -> " & Q(d.Filter)
+        d.ClearFilter
+        Say "  ClearFilter -> " & Q(d.Filter)
+        d.AddFilter "Text", "*.txt"
+        d.AddFilter "All", "*.*"
+        Say "  AddFilter x2 -> " & Q(d.Filter)
+        Say "  SystemIconId: SIID_DOCUMENT=" & SIID_DOCUMENT & " SIID_FOLDER=" & SIID_FOLDER & " SIID_FOLDEROPEN=" & SIID_FOLDEROPEN & " SIID_DISK=" & SIID_DISK & " SIID_DRIVEFIXED=" & SIID_DRIVEFIXED & " SIID_DRIVECD=" & SIID_DRIVECD & " SIID_DRIVEHD=" & SIID_DRIVEHD & " SIID_SERVER=" & SIID_SERVER & " SIID_STAROFFILE=" & SIID_STAROFFILE & " SIID_SHARE=" & SIID_SHARE & " SIID_INVALID=" & SIID_INVALID
+    End Sub
+
+    Private Sub X1()
+        Say "== x1 ShowOpen one file"
+        Dim d As New cDialogEx
+        Dim r As Variant
+        d.InitialDir = Root & "\data"
+        gDump = False
+        Arm "X1", True, DP("a.txt"), 1
+        r = d.ShowOpen()
+        Disarm
+        gDump = False
+        Say "  result: " & Desc(r)
+        Say "  FileName=" & Q(d.FileName) & " InitialDir=" & Q(d.InitialDir)
+        Wrap "X1"
+    End Sub
+
+    ' y1: the mDialog module (no dialog).
+    Public Sub Y1()
+        Say "== y1 mDialog"
+        Dim r As Long, g As Long, b As Long
+        Say "  InchesToMM(1)=" & InchesToMM(1) & " InchesToMM(8.5)=" & InchesToMM(8.5) & " MMToInches(25.4)=" & MMToInches(25.4) & " MMToInches(210)=" & MMToInches(210)
+        Say "  InchesToPoints(1)=" & InchesToPoints(1) & " PointsToInches(36)=" & PointsToInches(36) & " TwipsToInches(720)=" & TwipsToInches(720)
+        Say "  InchesToTwips(1)=" & InchesToTwips(1) & " InchesToTwips(1.5)=" & InchesToTwips(1.5) & " InchesToTwips(0.0003)=" & InchesToTwips(0.0003) & " InchesToTwips(0.0004)=" & InchesToTwips(0.0004)
+        Say "  TypeName: InchesToMM=" & TypeName(InchesToMM(1)) & " InchesToTwips=" & TypeName(InchesToTwips(1)) & " TwipsToInches=" & TypeName(TwipsToInches(1))
+        Say "  mDialog.InchesToMM(2)=" & mDialog.InchesToMM(2)
+        Say "  MM_PER_INCH=" & MM_PER_INCH & " TWIPS_PER_INCH=" & TWIPS_PER_INCH & " POINTS_PER_INCH=" & POINTS_PER_INCH
+        Say "  Letter " & PAPER_LETTER_WIDTH & " x " & PAPER_LETTER_HEIGHT & ", Legal " & PAPER_LEGAL_WIDTH & " x " & PAPER_LEGAL_HEIGHT & ", A4 " & PAPER_A4_WIDTH & " x " & PAPER_A4_HEIGHT & ", A3 " & PAPER_A3_WIDTH & " x " & PAPER_A3_HEIGHT
+        Say "  TypeName: MM_PER_INCH=" & TypeName(MM_PER_INCH) & " TWIPS_PER_INCH=" & TypeName(TWIPS_PER_INCH) & " PAPER_A4_WIDTH=" & TypeName(PAPER_A4_WIDTH)
+        Say "  RGBToHtml(255,128,0)=" & Q(RGBToHtml(255, 128, 0)) & " (0,0,0)=" & Q(RGBToHtml(0, 0, 0)) & " (10,11,12)=" & Q(RGBToHtml(10, 11, 12))
+        Say "  RGBToHtml(256,-1,300)=" & Q(RGBToHtml(256, -1, 300)) & " RGBToHtml(65535,0,0)=" & Q(RGBToHtml(65535, 0, 0))
+        Dim h As Variant
+        For Each h In Array("#FF8000", "ff8000", " #00ff7f ", "#FFF", "FF80", "#GG0000", "", "#FF8000FF", "#-10000", "#+12345", "#1 2345")
+            r = 99: g = 99: b = 99
+            HtmlToRGB CStr(h), r, g, b
+            Say "  HtmlToRGB(" & Q(CStr(h)) & ") = " & r & ", " & g & ", " & b
+        Next
+        Dim pt As mDialog.POINT
+        pt.X = 3: pt.Y = 4
+        Dim rc As RECT
+        rc.Left = 1: rc.Bottom = 9
+        Dim rcq As mDialog.RECT
+        rcq.Left = 2
+        Dim gu As mDialog.GUID
+        gu.Data1 = 5
+        Dim fs As COMDLG_FILTERSPEC
+        Say "  POINT " & pt.X & "," & pt.Y & " RECT " & rc.Left & "," & rc.Top & "," & rc.Right & "," & rc.Bottom & " GUID " & gu.Data1 & " LenB(POINT)=" & LenB(pt) & " LenB(RECT)=" & LenB(rc) & " LenB(GUID)=" & LenB(gu) & " LenB(COMDLG_FILTERSPEC)=" & LenB(fs)
+        Say "  LenB(mDialog.RECT)=" & LenB(rcq) & " rcq.Left=" & rcq.Left
+    End Sub
+
+    Private Declare PtrSafe Function SHCreateItemFromParsingName Lib "shell32" (ByVal pszPath As LongPtr, ByVal pbc As LongPtr, ByRef riid As mDialog.GUID, ByRef ppv As Any) As Long
+    Private Declare PtrSafe Function SHCreateItemFromParsingName2 Lib "shell32" Alias "SHCreateItemFromParsingName" (ByVal pszPath As LongPtr, ByVal pbc As LongPtr, ByVal riid As LongPtr, ByVal ppv As LongPtr) As Long
+    Private Declare PtrSafe Function CoInitialize Lib "ole32" (ByVal pvReserved As LongPtr) As Long
+    Private Declare PtrSafe Sub CoTaskMemFree Lib "ole32" (ByVal pv As LongPtr)
+    Private Declare PtrSafe Function lstrlenW Lib "kernel32" (ByVal lpString As LongPtr) As Long
+    Private Declare PtrSafe Sub MemCopy Lib "kernel32" Alias "RtlMoveMemory" (ByVal Destination As LongPtr, ByRef Source As Any, ByVal Length As Long)
+
+    ' y2: the package's IShellItem, called by the probe itself, for the name that GetDisplayName returns.
+    Public Sub Y2()
+        Say "== y2 IShellItem.GetDisplayName"
+        Say "  CoInitialize -> " & Hex$(CoInitialize(0))
+        Dim g As mDialog.GUID
+        g.Data1 = &H43826D1E
+        g.Data2 = &HE718
+        g.Data3 = &H42EE
+        g.Data4(0) = &HBC: g.Data4(1) = &H55: g.Data4(2) = &HA1: g.Data4(3) = &HE2
+        g.Data4(4) = &H61: g.Data4(5) = &HC3: g.Data4(6) = &H37: g.Data4(7) = &HFE
+        Dim bytes(0 To 15) As Byte
+        Dim bi As Long
+        Dim hx As String
+        MemCopy VarPtr(bytes(0)), g, 16
+        For bi = 0 To 15
+            hx = hx & Right$("0" & Hex$(bytes(bi)), 2) & " "
+        Next
+        Say "  GUID bytes: " & hx
+        Dim gu As mDialog.GUID
+        gu.Data1 = 0: gu.Data2 = 0: gu.Data3 = 0
+        gu.Data4(0) = &HC0: gu.Data4(7) = &H46
+        Dim rawu As LongPtr
+        Dim pth As Variant
+        For Each pth In Array("C:\Windows", DP("a.txt"), Root & "\data")
+            rawu = 0
+            Dim hru As Long = SHCreateItemFromParsingName2(StrPtr(CStr(pth)), 0, VarPtr(gu), VarPtr(rawu))
+            Say "  IID_IUnknown for " & Q(CStr(pth)) & ": hr=" & Hex$(hru) & " ptr=" & (rawu <> 0)
+            rawu = 0
+            hru = SHCreateItemFromParsingName2(StrPtr(CStr(pth)), 0, VarPtr(g), VarPtr(rawu))
+            Say "  IID_IShellItem for " & Q(CStr(pth)) & ": hr=" & Hex$(hru) & " ptr=" & (rawu <> 0)
+        Next
+        Dim gi2 As mDialog.GUID
+        gi2.Data1 = &H7E9FB0D3: gi2.Data2 = &H919F: gi2.Data3 = &H4307
+        gi2.Data4(0) = &HAB: gi2.Data4(1) = &H2E: gi2.Data4(2) = &H9B: gi2.Data4(3) = &H18
+        gi2.Data4(4) = &H60: gi2.Data4(5) = &H31: gi2.Data4(6) = &HC: gi2.Data4(7) = &H93
+        Dim gpo As mDialog.GUID
+        gpo.Data1 = &H10C: gpo.Data2 = 0: gpo.Data3 = 0
+        gpo.Data4(0) = &HC0: gpo.Data4(7) = &H46
+        rawu = 0
+        Dim hr3 As Long = SHCreateItemFromParsingName2(StrPtr(DP("a.txt")), 0, VarPtr(gi2), VarPtr(rawu))
+        Say "  IID_IShellItem2: hr=" & Hex$(hr3) & " ptr=" & (rawu <> 0)
+        rawu = 0
+        hr3 = SHCreateItemFromParsingName2(StrPtr(DP("a.txt")), 0, VarPtr(gpo), VarPtr(rawu))
+        Say "  IID_IPersist: hr=" & Hex$(hr3) & " ptr=" & (rawu <> 0)
+        ' The IID of IShellItem is 43826D1E-E718-42EE-BC55-A1E261C37BFE: the byte before the last is 7B.
+        ' The package's GetIID_IShellItem has 37 there (g above); gc has the true value.
+        Dim gc As mDialog.GUID
+        gc = g
+        gc.Data4(6) = &H7B
+        Dim path As String = DP("a.txt")
+        Dim si As IShellItem
+        Dim hr As Long = SHCreateItemFromParsingName(StrPtr(path), 0, g, si)
+        Say "  package's IID (..C3 37 FE): hr=" & Hex$(hr) & " item made: " & Not (si Is Nothing)
+        hr = SHCreateItemFromParsingName(StrPtr(path), 0, gc, si)
+        Say "  true IID (..C3 7B FE): hr=" & Hex$(hr) & " item made: " & Not (si Is Nothing)
+        If Not (si Is Nothing) Then Say "  FILESYSPATH of that item: " & DispName(si, &H80058000)
+    End Sub
+
+    Private Declare PtrSafe Function CoCreateInstance Lib "ole32" (ByRef rclsid As mDialog.GUID, ByVal pUnkOuter As LongPtr, ByVal dwClsContext As Long, ByRef riid As mDialog.GUID, ByRef ppv As Any) As Long
+
+    Private Function DispName(ByVal si As IShellItem, ByVal sigdn As Long) As String
+        Dim p As LongPtr = 0
+        On Error Resume Next
+        si.GetDisplayName sigdn, p
+        If Err.Number <> 0 Then DispName = "ERROR " & Err.Number & " " & Err.Description : Exit Function
+        On Error GoTo 0
+        Dim n As Long = lstrlenW(p)
+        Dim s As String = Space$(n)
+        If n > 0 Then MemCopy StrPtr(s), ByVal p, n * 2
+        If p <> 0 Then CoTaskMemFree p
+        DispName = Q(s)
+    End Function
+
+    ' y3: the package's IFileOpenDialog, driven by the probe, and the names its result item gives.
+    Public Sub Y3()
+        Say "== y3 IFileOpenDialog.GetResult"
+        Dim clsid As mDialog.GUID
+        clsid.Data1 = &HDC1C5A9C: clsid.Data2 = &HE88A: clsid.Data3 = &H4DDE
+        clsid.Data4(0) = &HA5: clsid.Data4(1) = &HA1: clsid.Data4(2) = &H60: clsid.Data4(3) = &HF8
+        clsid.Data4(4) = &H2A: clsid.Data4(5) = &H20: clsid.Data4(6) = &HAE: clsid.Data4(7) = &HF7
+        Dim iid As mDialog.GUID
+        iid.Data1 = &HD57C7288: iid.Data2 = &HD4AD: iid.Data3 = &H4768
+        iid.Data4(0) = &HBE: iid.Data4(1) = &H2: iid.Data4(2) = &H9D: iid.Data4(3) = &H96
+        iid.Data4(4) = &H95: iid.Data4(5) = &H32: iid.Data4(6) = &HD9: iid.Data4(7) = &H60
+        Dim dlg As IFileOpenDialog
+        Dim hr As Long = CoCreateInstance(clsid, 0, 1, iid, dlg)
+        Say "  CoCreateInstance hr=" & Hex$(hr) & " made: " & Not (dlg Is Nothing)
+        dlg.SetOptions &H40
+        Arm "Y3", True, DP("a.txt"), 1
+        hr = dlg.Show(0)
+        Disarm
+        Say "  Show hr=" & Hex$(hr)
+        Dim si As IShellItem
+        dlg.GetResult si
+        Say "  GetResult item: " & Not (si Is Nothing)
+        Say "  NORMALDISPLAY            " & DispName(si, 0)
+        Say "  PARENTRELATIVEPARSING    " & DispName(si, &H80018001)
+        Say "  DESKTOPABSOLUTEPARSING   " & DispName(si, &H80028000)
+        Say "  PARENTRELATIVEEDITING    " & DispName(si, &H80031001)
+        Say "  DESKTOPABSOLUTEEDITING   " & DispName(si, &H8004C000)
+        Say "  FILESYSPATH (&H80058000) " & DispName(si, &H80058000)
+        Say "  the package's constant (&H80058001) " & DispName(si, &H80058001)
+        Say "  URL                      " & DispName(si, &H80068000)
+        Say "  PARENTRELATIVEFORADDRESSBAR " & DispName(si, &H8007C001)
+        Say "  PARENTRELATIVE           " & DispName(si, &H80080001)
+    End Sub
+
+    ' y4: SetDefaultFolder on the package's IFileOpenDialog with an IShellItem made from the true IID,
+    ' to show what InitialDir would do if the package's IID were right. It ends the run with an access
+    ' violation (the interface declares the folder ByRef, a pointer to the pointer): run it alone.
+    Public Sub Y4()
+        Say "== y4 SetDefaultFolder with the true IID of IShellItem"
+        Dim clsid As mDialog.GUID
+        clsid.Data1 = &HDC1C5A9C: clsid.Data2 = &HE88A: clsid.Data3 = &H4DDE
+        clsid.Data4(0) = &HA5: clsid.Data4(1) = &HA1: clsid.Data4(2) = &H60: clsid.Data4(3) = &HF8
+        clsid.Data4(4) = &H2A: clsid.Data4(5) = &H20: clsid.Data4(6) = &HAE: clsid.Data4(7) = &HF7
+        Dim iid As mDialog.GUID
+        iid.Data1 = &HD57C7288: iid.Data2 = &HD4AD: iid.Data3 = &H4768
+        iid.Data4(0) = &HBE: iid.Data4(1) = &H2: iid.Data4(2) = &H9D: iid.Data4(3) = &H96
+        iid.Data4(4) = &H95: iid.Data4(5) = &H32: iid.Data4(6) = &HD9: iid.Data4(7) = &H60
+        Dim gc As mDialog.GUID
+        gc.Data1 = &H43826D1E: gc.Data2 = &HE718: gc.Data3 = &H42EE
+        gc.Data4(0) = &HBC: gc.Data4(1) = &H55: gc.Data4(2) = &HA1: gc.Data4(3) = &HE2
+        gc.Data4(4) = &H61: gc.Data4(5) = &HC3: gc.Data4(6) = &H7B: gc.Data4(7) = &HFE
+        Dim dlg As IFileOpenDialog
+        Dim folder As IShellItem
+        Dim hr As Long
+        Dim k As Long
+        For k = 1 To 2
+            hr = CoCreateInstance(clsid, 0, 1, iid, dlg)
+            hr = SHCreateItemFromParsingName(StrPtr(Root & IIf(k = 1, "\other", "\data")), 0, gc, folder)
+            Say "  item for " & IIf(k = 1, "other", "data") & ": hr=" & Hex$(hr)
+            dlg.SetDefaultFolder folder
+            dlg.SetOptions &H40
+            Arm "Y4-" & k, False, "", 2
+            hr = dlg.Show(0)
+            Disarm
+            Say "  Show hr=" & Hex$(hr)
+        Next
+    End Sub
+
+    ' <root>\data\<name>
+    Private Function DP(ByVal nm As String) As String
+        DP = Root & "\data\" & nm
+    End Function
+
+    Private Sub X2()
+        Say "== x2 ShowOpen MultiSelect"
+        Dim d As cDialogEx
+        Dim r As Variant
+        Dim tag As Variant
+        Dim names As Variant
+        Dim k As Long
+        tag = Array("a", "b", "c")
+        names = Array("""a.txt""", """a.txt"" ""b.txt""", """exist.txt"" ""b.txt"" ""a.txt""")
+        gNavDir = Root & "\data"
+        For k = 0 To 2
+            Set d = New cDialogEx
+            d.MultiSelect = True
+            Arm "X2" & tag(k), True, CStr(names(k)), 1
+            r = d.ShowOpen()
+            Disarm
+            Say "  (" & tag(k) & ") typed " & names(k) & " -> " & Desc(r)
+            Say "  (" & tag(k) & ") FileName=" & Q(d.FileName)
+            Wrap "X2" & tag(k)
+        Next
+        gNavDir = ""
+    End Sub
+
+    Private Sub X3()
+        Say "== x3 Cancel"
+        Dim d As New cDialogEx
+        Dim d2 As New cDialogEx
+        Dim d3 As New cDialogEx
+        Dim r As Variant
+        Dim s As String
+        d.InitialDir = Root & "\data"
+        d.FileName = "keep.txt"
+        Arm "X3open", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        Say "  ShowOpen cancel: " & Desc(r) & " FileName=" & Q(d.FileName) & " InitialDir=" & Q(d.InitialDir)
+        Wrap "X3open"
+        d2.InitialDir = Root & "\data"
+        d2.FileName = "keep.txt"
+        Arm "X3save", False, "", 2
+        s = d2.ShowSave()
+        Disarm
+        Say "  ShowSave cancel: " & Desc(s) & " FileName=" & Q(d2.FileName) & " InitialDir=" & Q(d2.InitialDir)
+        Wrap "X3save"
+        d3.InitialDir = Root & "\data"
+        d3.FileName = "keep.txt"
+        Arm "X3browse", False, "", 2
+        s = d3.ShowBrowseForFolder()
+        Disarm
+        Say "  ShowBrowseForFolder cancel: " & Desc(s) & " FileName=" & Q(d3.FileName) & " InitialDir=" & Q(d3.InitialDir)
+        Wrap "X3browse"
+    End Sub
+
+    Private Sub X4()
+        Say "== x4 Title"
+        Dim d As New cDialogEx
+        Dim d2 As New cDialogEx
+        Dim d3 As New cDialogEx
+        Dim d4 As New cDialogEx
+        Dim r As Variant
+        Dim s As String
+        Arm "X4open-default", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        d.DialogTitle = "My Open Title"
+        Arm "X4open-set", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        Arm "X4save-default", False, "", 2
+        s = d2.ShowSave()
+        Disarm
+        d2.DialogTitle = "My Save Title"
+        Arm "X4save-set", False, "", 2
+        s = d2.ShowSave()
+        Disarm
+        Arm "X4browse-default", False, "", 2
+        s = d3.ShowBrowseForFolder()
+        Disarm
+        d3.DialogTitle = "My Browse Title"
+        Arm "X4browse-set", False, "", 2
+        s = d3.ShowBrowseForFolder()
+        Disarm
+        d4.PickFolders = True
+        Arm "X4pick-default", False, "", 2
+        r = d4.ShowOpen()
+        Disarm
+    End Sub
+
+    Private Sub X5()
+        Say "== x5 Filter"
+        Dim d As cDialogEx
+        Dim r As Variant
+        Dim f As Variant
+        Dim k As Long
+        Dim tag As Variant
+        tag = Array("none", "AddFilter-1", "AddFilter-2", "SetImageFilters", "hand-trailing-pipe", "hand-3-pipes", "hand-2-pipes", "hand-1-pipe", "preset")
+        k = 0
+        For Each f In Array("", "T1", "T2", "IMG", "Text (*.txt)|*.txt|All (*.*)|*.*|", "Text (*.txt)|*.txt|All (*.*)|*.*", "Text (*.txt)|*.txt|All", "Text (*.txt)|*.txt", "P")
+            Set d = New cDialogEx
+            Select Case CStr(f)
+                Case "T1": d.AddFilter "Text (*.txt)", "*.txt"
+                Case "T2": d.AddFilter "Text (*.txt)", "*.txt": d.AddFilter "All (*.*)", "*.*"
+                Case "IMG": d.SetImageFilters
+                Case "P": d.Filter = d.GetPresetFilter("images")
+                Case Else: d.Filter = CStr(f)
+            End Select
+            Say "  (" & tag(k) & ") Filter=" & Q(d.Filter)
+            Arm "X5-" & tag(k), False, "", 2
+            r = d.ShowOpen()
+            Disarm
+            k = k + 1
+        Next
+        ' SetImageFilters with a closing pipe added, and the same Filter on the Save As dialog.
+        Set d = New cDialogEx
+        d.SetImageFilters
+        d.Filter = d.Filter & "|"
+        Say "  (SetImageFilters+pipe) Filter ends with: " & Q(Right$(d.Filter, 8))
+        Arm "X5-SetImageFilters+pipe", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        Set d = New cDialogEx
+        d.Filter = "Text (*.txt)|*.txt|All (*.*)|*.*|"
+        d.FilterIndex = 2
+        Arm "X5-save-trailing-pipe", False, "", 2
+        r = d.ShowSave()
+        Disarm
+        Set d = New cDialogEx
+        d.Filter = "Text (*.txt)|*.txt|All (*.*)|*.*"
+        Arm "X5-save-no-pipe", False, "", 2
+        r = d.ShowSave()
+        Disarm
+    End Sub
+
+    Private Sub X6()
+        Say "== x6 ShowSave"
+        Dim d As cDialogEx
+        Dim s As String
+        Dim e As Variant
+        Set d = New cDialogEx
+        Arm "X6a-empty", False, "", 2
+        s = d.ShowSave()
+        Disarm
+        d.FileName = "x.txt"
+        Arm "X6a-x.txt", False, "", 2
+        s = d.ShowSave()
+        Disarm
+        For Each e In Array("txt", ".txt", "")
+            Set d = New cDialogEx
+            d.DefaultExt = CStr(e)
+            Arm "X6b-ext=" & CStr(e), True, DP("out"), 1
+            s = d.ShowSave()
+            Disarm
+            Say "  (b) DefaultExt=" & Q(CStr(e)) & " typed [<root>\data\out] -> " & Desc(s) & " FileName=" & Q(d.FileName)
+            Wrap "X6b"
+        Next
+        Set d = New cDialogEx
+        d.DefaultExt = "txt"
+        Arm "X6b-typed-ext", True, DP("out.dat"), 1
+        s = d.ShowSave()
+        Disarm
+        Say "  (b) DefaultExt=txt typed out.dat -> " & Desc(s)
+        Wrap "X6b2"
+        ' (d) the overwrite prompt: default False accepts an existing file; True asks.
+        Set d = New cDialogEx
+        Arm "X6d-default", True, DP("exist.txt"), 1
+        s = d.ShowSave()
+        Disarm
+        Say "  (d) OverwritePrompt=" & d.OverwritePrompt & ", typed existing exist.txt -> " & Desc(s)
+        Wrap "X6d-default"
+        Set d = New cDialogEx
+        d.OverwritePrompt = True
+        MsgSeq 6
+        Arm "X6d-yes", True, DP("exist.txt"), 1
+        s = d.ShowSave()
+        Disarm
+        Say "  (d) OverwritePrompt=True, answer Yes -> " & Desc(s) & " FileName=" & Q(d.FileName)
+        Wrap "X6d-yes"
+        Set d = New cDialogEx
+        d.OverwritePrompt = True
+        MsgSeq 7
+        Arm "X6d-no", True, DP("exist.txt"), 1
+        s = d.ShowSave()
+        Disarm
+        Say "  (d) OverwritePrompt=True, answer No -> " & Desc(s)
+        Wrap "X6d-no"
+    End Sub
+
+    Private Sub X7()
+        Say "== x7 FileMustExist / PathMustExist / CreatePrompt"
+        Dim d As cDialogEx
+        Dim r As Variant
+        Set d = New cDialogEx
+        Arm "X7a-defaults-nofile", True, DP("nosuch.txt"), 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (a) all False, typed nonexistent file -> " & Desc(r) & " FileName=" & Q(d.FileName)
+        Wrap "X7a"
+        Set d = New cDialogEx
+        Arm "X7b-defaults-nopath", True, Root & "\nosuchdir\x.txt", 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (b) all False, typed file in a nonexistent folder -> " & Desc(r)
+        Wrap "X7b"
+        Set d = New cDialogEx
+        d.FileMustExist = True
+        MsgSeq 1
+        Arm "X7c-mustexist", True, DP("nosuch.txt"), 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (c) FileMustExist=True, typed nonexistent file -> " & Desc(r)
+        Wrap "X7c"
+        Set d = New cDialogEx
+        d.PathMustExist = True
+        MsgSeq 1
+        Arm "X7d-pathmust", True, Root & "\nosuchdir\x.txt", 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (d) PathMustExist=True, typed file in a nonexistent folder -> " & Desc(r)
+        Wrap "X7d"
+        Set d = New cDialogEx
+        d.CreatePrompt = True
+        MsgSeq 6
+        Arm "X7e-create-yes", True, DP("nosuch.txt"), 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (e) CreatePrompt=True, answer Yes -> " & Desc(r)
+        Wrap "X7e"
+        Set d = New cDialogEx
+        d.CreatePrompt = True
+        MsgSeq 7
+        Arm "X7f-create-no", True, DP("nosuch.txt"), 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (f) CreatePrompt=True, answer No -> " & Desc(r)
+        Wrap "X7f"
+        Say "  file nosuch.txt exists afterwards: " & (Len(Dir$(DP("nosuch.txt"))) > 0)
+    End Sub
+
+    Private Sub X8()
+        Say "== x8 NoChangeDir"
+        Dim ncd As Variant
+        Dim r As Variant
+        Dim s As String
+        Dim d As cDialogEx
+        For Each ncd In Array(False, True)
+            ChDir Root & "\cwd"
+            Set d = New cDialogEx
+            d.NoChangeDir = CBool(ncd)
+            gNavDir = Root & "\other"
+            Say "  ShowOpen NoChangeDir=" & ncd & ": before CurDir=" & Q(CurDir) & " api=" & Q(CurDirApi)
+            Arm "X8open-" & ncd, True, "c.txt", 1
+            r = d.ShowOpen()
+            Disarm
+            gNavDir = ""
+            Say "    result " & Desc(r) & "; after CurDir=" & Q(CurDir) & " api=" & Q(CurDirApi)
+            ChDir Root & "\cwd"
+            Set d = New cDialogEx
+            d.NoChangeDir = CBool(ncd)
+            gNavDir = Root & "\other"
+            Say "  ShowSave NoChangeDir=" & ncd & ": before CurDir=" & Q(CurDir) & " api=" & Q(CurDirApi)
+            Arm "X8save-" & ncd, True, "new.txt", 1
+            s = d.ShowSave()
+            Disarm
+            gNavDir = ""
+            Say "    result " & Desc(s) & "; after CurDir=" & Q(CurDir) & " api=" & Q(CurDirApi)
+        Next
+    End Sub
+
+    Private Sub X9()
+        Say "== x9 ShowBrowseForFolder and PickFolders"
+        Dim s As String
+        Dim r As Variant
+        Dim d As New cDialogEx
+        Dim d2 As New cDialogEx
+        Dim d3 As New cDialogEx
+        Dim d4 As New cDialogEx
+        d.FileName = "keep.txt"
+        Arm "X9a-type", True, Root & "\other", 1
+        s = d.ShowBrowseForFolder()
+        Disarm
+        Say "  (a) typed folder -> " & Desc(s) & " FileName=" & Q(d.FileName) & " InitialDir=" & Q(d.InitialDir)
+        Wrap "X9a"
+        d2.PickFolders = True
+        d2.MultiSelect = True
+        Arm "X9b-pick", True, Root & "\data", 1
+        r = d2.ShowOpen()
+        Disarm
+        Say "  (b) PickFolders=True MultiSelect=True ShowOpen, typed folder -> " & Desc(r) & " FileName=" & Q(d2.FileName)
+        Wrap "X9b"
+        Arm "X9c-nothing", False, "", 1
+        s = d3.ShowBrowseForFolder()
+        Disarm
+        Say "  (c) OK pressed with nothing typed -> " & Desc(s) & " FileName=" & Q(d3.FileName)
+        Wrap "X9c"
+        MsgSeq 1
+        Arm "X9d-file", True, DP("a.txt"), 1
+        s = d4.ShowBrowseForFolder()
+        Disarm
+        Say "  (d) typed an existing file -> " & Desc(s)
+        Wrap "X9d"
+    End Sub
+
+    Private Sub X10()
+        Say "== x10 icons"
+        Dim d As cDialogEx
+        Dim r As Variant
+        Dim s As String
+        Dim hIcon As LongPtr
+        hIcon = LoadIconW(0, 32516)      ' IDI_INFORMATION
+        Say "  LoadIcon(IDI_INFORMATION) = " & hIcon
+        gShowIcon = True
+        Set d = New cDialogEx
+        Arm "X10a-none", True, DP("a.txt"), 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (a) no icon set -> " & Desc(r)
+        Set d = New cDialogEx
+        d.SetSystemIcon SIID_FOLDER
+        Arm "X10b-system", True, DP("a.txt"), 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (b) SetSystemIcon(SIID_FOLDER) -> " & Desc(r) & " FileName=" & Q(d.FileName)
+        Wrap "X10b"
+        Set d = New cDialogEx
+        d.SetCustomIcon hIcon
+        Arm "X10c-custom", True, DP("a.txt"), 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (c) SetCustomIcon(IDI_INFORMATION) -> " & Desc(r)
+        Wrap "X10c"
+        Set d = New cDialogEx
+        d.SetSystemIcon SIID_DRIVECD
+        d.ClearIcon
+        Arm "X10d-cleared", True, DP("a.txt"), 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (d) SetSystemIcon then ClearIcon -> " & Desc(r)
+        Set d = New cDialogEx
+        d.SetSystemIcon SIID_INVALID
+        Arm "X10e-invalid", True, DP("a.txt"), 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (e) SetSystemIcon(SIID_INVALID) -> " & Desc(r)
+        Set d = New cDialogEx
+        d.SetCustomIcon hIcon
+        Arm "X10f-save", True, DP("out.dat"), 1
+        s = d.ShowSave()
+        Disarm
+        Say "  (f) SetCustomIcon, ShowSave -> " & Desc(s)
+        Wrap "X10f"
+        Set d = New cDialogEx
+        d.SetCustomIcon hIcon
+        Arm "X10g-folder", True, Root & "\data", 1
+        s = d.ShowBrowseForFolder()
+        Disarm
+        Say "  (g) SetCustomIcon, ShowBrowseForFolder -> " & Desc(s)
+        Wrap "X10g"
+        gShowIcon = False
+    End Sub
+
+    Private Sub X11()
+        Say "== x11 OwnerHwnd"
+        Dim d As New cDialogEx
+        Dim d2 As New cDialogEx
+        Dim r As Variant
+        Dim own As LongPtr
+        own = CreateWindowExW(0, StrPtr("STATIC"), StrPtr("probe owner"), &H10000000, 0, 0, 10, 10, 0, 0, 0, 0)
+        Say "  owner window made: " & (own <> 0)
+        gShowOwner = True
+        gOwnerWant = own
+        d.OwnerHwnd = own
+        Arm "X11a-owner", True, DP("a.txt"), 1
+        r = d.ShowOpen()
+        Disarm
+        Say "  (a) OwnerHwnd = a window of the program -> " & Desc(r)
+        Wrap "X11a"
+        gOwnerWant = 0
+        Arm "X11b-noowner", True, DP("a.txt"), 1
+        r = d2.ShowOpen()
+        Disarm
+        Say "  (b) OwnerHwnd = 0 -> " & Desc(r)
+        Wrap "X11b"
+        gShowOwner = False
+        d2.OwnerHwnd = 12345
+        Arm "X11c-badowner", False, "", 2
+        r = d2.ShowOpen()
+        Disarm
+        Say "  (c) OwnerHwnd = 12345 -> " & Desc(r)
+        Wrap "X11c"
+        If own <> 0 Then DestroyWindow own
+    End Sub
+
+    Private Sub X12()
+        Say "== x12 SelectFiles"
+        Dim d As cDialogEx
+        Dim c As Collection
+        Dim v As Variant
+        gNavDir = Root & "\data"
+        Set d = New cDialogEx
+        Arm "X12a", True, "a.txt", 1
+        Set c = d.SelectFiles()
+        Disarm
+        Say "  (a) one file, MultiSelect=False: Count=" & c.Count & " FileName=" & Q(d.FileName)
+        For Each v In c
+            Say "      " & Desc(v)
+        Next
+        Set d = New cDialogEx
+        d.MultiSelect = True
+        Arm "X12b", True, """a.txt"" ""b.txt""", 1
+        Set c = d.SelectFiles()
+        Disarm
+        Say "  (b) two files, MultiSelect=True: Count=" & c.Count & " FileName=" & Q(d.FileName)
+        For Each v In c
+            Say "      " & Desc(v)
+        Next
+        gNavDir = ""
+        Set d = New cDialogEx
+        Arm "X12c", False, "", 2
+        Set c = d.SelectFiles()
+        Disarm
+        Say "  (c) cancel: Count=" & c.Count & " TypeName=" & TypeName(c)
+        Set d = New cDialogEx
+        d.PickFolders = True
+        Arm "X12d", True, Root & "\other", 1
+        Set c = d.SelectFiles()
+        Disarm
+        Say "  (d) PickFolders=True: Count=" & c.Count
+        For Each v In c
+            Say "      " & Desc(v)
+        Next
+    End Sub
+
+    Private Sub X13()
+        Say "== x13 path helpers: cDialogEx against cDialog"
+        Dim d As New cDialogEx
+        Dim c As New cDialog
+        Dim p As Variant
+        Dim a As String
+        Dim b As String
+        For Each p In Array("C:\dir\file.tar.gz", "file", "C:\dir\", "C:\dir.x\file", "", ".hidden", "C:\a.b\c", "\\srv\share\f.txt", "a/b.txt", "C:\dir\file.", "C:\f.txt\")
+            Say "  path " & Q(CStr(p))
+            Say "    GetFilePath=" & Q(d.GetFilePath(CStr(p))) & " GetFileName=" & Q(d.GetFileName(CStr(p))) & " GetFileExtension=" & Q(d.GetFileExtension(CStr(p))) & " GetFileNameWithoutExt=" & Q(d.GetFileNameWithoutExt(CStr(p)))
+            a = d.GetFilePath(CStr(p)) & "|" & d.GetFileName(CStr(p)) & "|" & d.GetFileExtension(CStr(p)) & "|" & d.GetFileNameWithoutExt(CStr(p))
+            b = c.GetFilePath(CStr(p)) & "|" & c.GetFileName(CStr(p)) & "|" & c.GetFileExtension(CStr(p)) & "|" & c.GetFileNameWithoutExt(CStr(p))
+            Say "    same as cDialog: " & (a = b)
+        Next
+        Dim pc As Variant
+        Dim same As Boolean = True
+        For Each pc In Array(Array("C:\a", "b"), Array("C:\a\", "\b"), Array("", "b"), Array("a", ""), Array("C:\a", "D:\b"), Array("C:\a", "\\srv\x"), Array("C:", "b"))
+            If d.PathCombine(CStr(pc(0)), CStr(pc(1))) <> c.PathCombine(CStr(pc(0)), CStr(pc(1))) Then same = False
+        Next
+        Say "  PathCombine gives the same as cDialog for seven pairs: " & same
+    End Sub
+
+    Private Sub X14()
+        Say "== x14 SelectAndOpenFile and OpenFile, files that do not exist"
+        Dim d As New cDialogEx
+        Dim d2 As New cDialogEx
+        Dim d3 As New cDialogEx
+        Dim r As LongPtr
+        gNavDir = Root & "\data"
+        MsgSeq 1
+        Arm "X14a", True, "nosuch1.txt", 1
+        r = d.SelectAndOpenFile()
+        Disarm
+        Say "  (a) one nonexistent file: " & r & " FileName=" & Q(d.FileName)
+        Wrap "X14a"
+        d2.MultiSelect = True
+        Arm "X14b", True, """nosuch1.txt"" ""nosuch2.txt""", 1
+        r = d2.SelectAndOpenFile()
+        Disarm
+        Say "  (b) two nonexistent files: " & r & " FileName=" & Q(d2.FileName)
+        Wrap "X14b"
+        gNavDir = ""
+        Arm "X14c", False, "", 2
+        r = d3.SelectAndOpenFile()
+        Disarm
+        Say "  (c) cancel: " & r
+        Wrap "X14c"
+        MsgSeq 1
+        Arm "X14d", False, "", 2
+        r = d3.OpenFile(Root & "\nosuchfolder\nosuchfile.xyz")
+        Disarm
+        Say "  (d) OpenFile(nonexistent) = " & r & " TypeName=" & TypeName(r)
+        Wrap "X14d"
+    End Sub
+
+    Private Sub X15()
+        Say "== x15 InitialDir"
+        Dim d As cDialogEx
+        Dim r As Variant
+        Set d = New cDialogEx
+        d.InitialDir = Root & "\data"
+        Arm "X15a-data", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        Set d = New cDialogEx
+        d.InitialDir = Root & "\other"
+        Arm "X15b-other", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        Set d = New cDialogEx
+        Arm "X15c-none", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        Set d = New cDialogEx
+        d.InitialDir = Root & "\nosuchdir"
+        Arm "X15d-missing", False, "", 2
+        r = d.ShowOpen()
+        Disarm
+        Set d = New cDialogEx
+        d.InitialDir = Root & "\data"
+        Arm "X15e-save", False, "", 2
+        r = d.ShowSave()
+        Disarm
+    End Sub
+
+    Private Sub X16()
+        Say "== x16 FilterIndex"
+        Dim d As cDialogEx
+        Dim r As Variant
+        Dim fi As Variant
+        For Each fi In Array(2, 0, 3, 99, -1)
+            Set d = New cDialogEx
+            d.Filter = "Text (*.txt)|*.txt|Data (*.dat)|*.dat|All (*.*)|*.*|"
+            d.FilterIndex = CLng(fi)
+            Arm "X16-" & fi, True, DP("a.txt"), 3
+            r = d.ShowOpen()
+            Disarm
+            Say "  FilterIndex=" & fi & " -> result " & Desc(r) & " FilterIndex afterwards=" & d.FilterIndex & " dialogSeen=" & gSeenMain
+        Next
+    End Sub
+
+End Module

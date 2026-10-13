@@ -1,0 +1,32 @@
+' ProgSink: receives the events of a cDialogProgress for the d40 scenario of the probe.
+
+Class ProgSink
+
+    Private WithEvents mP As cDialogProgress
+
+    Public Changed As Long          ' ProgressChanged events received
+    Public Cancels As Long          ' CancelClicked events received
+    Public Log As String            ' the values of the ProgressChanged events, in order
+    Public CancelAfter As Long      ' call Cancel on the object at this many ProgressChanged events (0: never)
+
+    Public Sub Attach(ByVal p As cDialogProgress)
+        Set mP = p
+    End Sub
+
+    Public Sub Clear()
+        Changed = 0
+        Cancels = 0
+        Log = ""
+    End Sub
+
+    Private Sub mP_ProgressChanged(ByVal value As Long)
+        Changed = Changed + 1
+        If Len(Log) < 200 Then Log = Log & value & " "
+        If CancelAfter > 0 And Changed >= CancelAfter Then mP.Cancel
+    End Sub
+
+    Private Sub mP_CancelClicked()
+        Cancels = Cancels + 1
+    End Sub
+
+End Class

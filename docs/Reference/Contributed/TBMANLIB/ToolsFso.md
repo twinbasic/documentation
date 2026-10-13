@@ -126,6 +126,6 @@ A procedure of the author's own tests. It writes the names of the files and fold
 
 ## See Also
 
-- [ToolsStream](ToolsStream) module -- reads and writes the files that this module prepares
+- [cToolsStream](cToolsStream) class -- reads and writes the files that this module prepares
 - [cJson](cJson) class -- **SaveTo** completes the file name with this module
 - [TBMANLIB](.) package -- overview

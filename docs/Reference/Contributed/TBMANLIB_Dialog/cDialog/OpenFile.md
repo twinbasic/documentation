@@ -10,18 +10,18 @@ has_toc: false
 
 Runs a shell verb, by default `open`, on a file or a program.
 
-Syntax: *object*.**OpenFile** ( *strFilePath* [, *strOperation* ] ) **As Long**
+Syntax: *object*.**OpenFile** ( *strFilePath* [, *strOperation* ] ) **As LongPtr**
 
 *object*
 : *required* An object expression that evaluates to a **cDialog**.
 
 *strFilePath*
-: *required* A **String**, the file to act on or the program to start. Any value that [ShellExecute](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecutea) accepts as its file argument is allowed: a document, a program, a folder or a web address.
+: *required* A **String**, the file to act on or the program to start. Any value that [ShellExecute](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecutew) accepts as its file argument is allowed: a document, a program, a folder or a web address.
 
 *strOperation*
 : *optional* A **String**, the verb to run, such as `open`, `edit`, `explore`, `print` or `properties`. The default is `open`. The verbs that exist depend on the type of the file.
 
-Returns a **Long**, the value that `ShellExecute` returned. A value above 32 means that the call succeeded. A smaller value is an error code.
+Returns a **LongPtr** (a **Long** in a 32-bit program, a **LongLong** in a 64-bit one), the value that `ShellExecute` returned. A value above 32 means that the call succeeded. A smaller value is an error code.
 
 | Value | Meaning |
 |---|---|
@@ -37,7 +37,7 @@ The Windows documentation of `ShellExecute` lists the other values.
 
 ## Remarks
 
-**OpenFile** calls `ShellExecuteA`, the ANSI form of `ShellExecute`, with no owner window, no parameters and no working folder, and shows the program's window normally (`SW_SHOWNORMAL`). The method raises no error: the return value is the only report. A path that does not exist returns 2 and shows no message.
+**OpenFile** calls `ShellExecuteW`, the Unicode form of `ShellExecute`, so a path with any character is passed intact. It passes no owner window, no parameters and no working folder, and shows the program's window normally (`SW_SHOWNORMAL`). The method raises no error: the return value is the only report. A path that does not exist returns 2 and shows no message.
 
 For a program, the verb `open` starts the program. For a document, it starts the program that Windows associates with the document. For a folder, it opens the folder in File Explorer.
 
@@ -50,7 +50,7 @@ This example opens a document and reports an error code.
 
 ```tb check_build
 Dim dlg As New cDialog
-Dim result As Long
+Dim result As LongPtr
 
 result = dlg.OpenFile("C:\Reports\summary.pdf")
 If result <= 32 Then

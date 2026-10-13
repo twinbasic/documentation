@@ -485,13 +485,17 @@ the bytes of the [help add-in's project file](#the-help-add-ins-project-file).
 
 **Which folders under `docs/` are outputs comes from one list.** A build given
 `--dest docs/_site-basepath` writes `_site-basepath-offline` and
-`_site-basepath-pdf` as well, so naming output folders one at a time misses some
-and reads them as sources. The script skips the top-level folders that
-`isOutputTree` in [lib/markdown-files.mjs](lib/markdown-files.mjs) names --- the
-prefix list (`_site`, `_serve`, `_pdf`) the markdown walk uses --- and keeps only
-`.git` and `node_modules` as names of its own. Serve mode prepares `_serve` alone
-(`prepDest` in `builder/tbdocs.mjs`), so it leaves no `_serve-offline` or
-`_serve-pdf` beside it.
+`_site-basepath-pdf` as well, unless `--no-offline` and `--no-pdf` skip them, so
+naming output folders one at a time misses some and reads them as sources. The
+script skips the top-level folders that `isOutputTree` in
+[lib/markdown-files.mjs](lib/markdown-files.mjs) names --- the prefix list
+(`_site`, `_serve`, `_pdf`) the markdown walk uses --- and keeps only `.git` and
+`node_modules` as names of its own. `prepDest` in `builder/tbdocs.mjs` prepares
+only the trees whose passes run (`destinationTrees` in `builder/write.mjs`): a
+build removes a skipped sibling rather than leaving it empty, and serve mode
+prepares `_serve` alone, so it leaves no `_serve-offline` or `_serve-pdf` beside
+it. `check_cli.mjs` probes the rule, because nothing else would notice two empty
+folders beside a `--no-offline --no-pdf` build.
 
 **Files the build writes into a source folder are not sources.**
 `page-baseline.json` and `symbol-baseline.json` (`IGNORED_FILES`) are written
@@ -610,11 +614,18 @@ and symbol guards share, and the second in
   that added a page. The script's sources are "the inputs that decide the built
   bytes", and a baseline decides none of them. `dot` and `vendorAssets` write into
   `docs/` and escape this only because they run early.
-- **Neither CI nor `--serve` may write.** A CI run that rewrote the file would
-  record the drop it was asked to catch, so there a missing baseline is an error
-  rather than a first run. `--serve` rebuilds on every save under `docs/`, so a
-  page half-deleted in an editor would lower the baseline and a half-added one
-  would raise it.
+- **Neither CI nor `--serve` may write, nor a build into another `--dest`.** A
+  CI run that rewrote the file would record the drop it was asked to catch, so
+  there a missing baseline is an error rather than a first run. `--serve`
+  rebuilds on every save under `docs/`, so a page half-deleted in an editor
+  would lower the baseline and a half-added one would raise it. A build into a
+  `--dest` other than `docs/_site` is a private copy: agents building side by
+  side into `.claude/<name>-site` would each rewrite the committed file, and
+  every other checkout would have to undo it after every build. Such a build
+  compares and prints `page baseline not raised: ...` for a rise; a fall still
+  fails it. `baselineWrites` decides all three, and the symbol baseline and the
+  add-in's index copy follow it too. `--update-page-baseline` writes whatever
+  the destination.
 
 **Mark a build failed through `failBuild`, never by assigning
 `process.exitCode`.** `failBuild` is the one place `runBuild` sets the found-problems
@@ -622,8 +633,8 @@ exit code (1), so no later step can clear it; a refused command line or a crash
 exits 2 instead.
 
 `scripts/check_page_baseline.mjs` is the gate on the gate, in `test.bat` and
-both CI workflows: eleven probes against a scratch baseline, no browser, no
-built tree. **It is not optional bookkeeping** --- the guard is silent on a
+both CI workflows: seventeen probes against a scratch baseline, no browser, no
+built tree, six of them on who may write. **It is not optional bookkeeping** --- the guard is silent on a
 healthy tree, so a green build is exactly what a guard that has stopped working
 produces. One probe replays the loss of 37 pages; the two that look redundant
 (foreign source root, missing baseline under CI) each guard one of the rules
@@ -691,8 +702,8 @@ Three decisions about the build side, each with the alternative it rules out:
 **The drift guard is the page-count guard's shape applied to URLs**
 ([builder/symbol-baseline.mjs](builder/symbol-baseline.mjs)): `builder/symbol-baseline.json`
 lists every URL the index has published, one to a line. A build that loses one fails and
-names it; a build that adds one rewrites the list; CI, `--serve` and `--dry-run` never
-write; a source root other than `docs` is skipped; `--update-symbol-baseline` records a
+names it; a build that adds one rewrites the list; CI, `--serve`, `--dry-run` and a build
+into another `--dest` never write; a source root other than `docs` is skipped; `--update-symbol-baseline` records a
 removal. It exists because **an anchor has no `redirect_from:`** --- a reworded member
 heading moves its id, an installed add-in keeps the old URL, and the link check only
 follows links made inside the site, so nothing else would notice. The failure message
@@ -701,7 +712,8 @@ leads with the usual fix, pinning the old id on the reworded heading.
 **The help add-in's copy of the index** ([builder/addin-index.mjs](builder/addin-index.mjs)):
 `add-in/Resources/SYMBOLS/symbols.json` is committed so that the add-in builds from its
 tree as it is, and a build of `docs` rewrites it whenever it differs from the index the
-build wrote, under the guards' write rules (not CI, not `--serve`, not `--dry-run`). A
+build wrote, under the guards' write rules (not CI, not `--serve`, not `--dry-run`, not
+another `--dest`). A
 difference is reported, never a failure: a stale copy is an older index, not a broken one.
 The comparison is byte for byte, which is why `.gitattributes` checks `add-in/Resources/`
 out `-text`: a CRLF checkout of the copy would differ from the LF the build writes on every

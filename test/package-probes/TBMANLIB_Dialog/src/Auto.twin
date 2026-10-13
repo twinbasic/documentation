@@ -44,6 +44,7 @@ Module Auto
     Private Declare PtrSafe Function IsWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
     Private Declare PtrSafe Function GetDlgCtrlID Lib "user32" (ByVal hWnd As LongPtr) As Long
     Private Declare PtrSafe Function GetParent Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal uCmd As Long) As LongPtr
     Private Declare PtrSafe Function GetDlgItem Lib "user32" (ByVal hDlg As LongPtr, ByVal nIDDlgItem As Long) As LongPtr
     Private Declare PtrSafe Function EndMenu Lib "user32" () As Long
     Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
@@ -53,6 +54,8 @@ Module Auto
     Private Const WM_GETTEXTLENGTH As Long = &HE
     Private Const WM_SETTEXT As Long = &HC
     Private Const WM_CLOSE As Long = &H10
+    Private Const WM_GETICON As Long = &H7F
+    Private Const GW_OWNER As Long = 4
     Private Const WM_LBUTTONDOWN As Long = &H201
     Private Const WM_LBUTTONUP As Long = &H202
     Private Const BM_CLICK As Long = &HF5
@@ -76,6 +79,11 @@ Module Auto
 
     ' Settings the probe makes before an episode.
     Public gDump As Boolean         ' list every child window of the dialog
+    Public gNavDir As String        ' a folder the driver first types into the file-name box and opens (Vista dialogs), then acts
+    Public gShowIcon As Boolean     ' print the dialog's big and small icon handles when it is acted on
+    Public gShowOwner As Boolean    ' print the dialog's owner window when it is acted on
+    Public gOwnerSeen As LongPtr    ' the owner window the last such dialog had
+    Public gOwnerWant As LongPtr    ' the window the probe made to own it
     Public gMsgSeq(0 To 7) As Long  ' the button each message box is answered with: 1 OK, 2 Cancel, 6 Yes, 7 No
     Public gMsgSeqN As Long
 
@@ -94,6 +102,8 @@ Module Auto
     Private mMainH As LongPtr
     Private mMainTick As Long
     Private mActedTick As Long
+    Private mNavStage As Long
+    Private mNavTick As Long
     Private mMsgH As LongPtr
     Private mMsgTick As Long
     Private mMsgDone As Boolean
@@ -112,9 +122,22 @@ Module Auto
         TbRun.Out s
     End Sub
 
-    ' A string in brackets, with its length; a null character is shown as <NUL>.
+    ' A string in brackets, with its length; a null character is shown as <NUL>, and a character
+    ' above 126 as \uXXXX, so that the file the runner reads is plain ASCII.
     Public Function Q(ByVal s As String) As String
-        Q = "[" & Replace(s, vbNullChar, "<NUL>") & "] len=" & Len(s)
+        Dim i As Long
+        Dim c As Long
+        Dim t As String
+        For i = 1 To Len(s)
+            c = AscW(Mid$(s, i, 1))
+            If c < 0 Then c = c + 65536
+            If c > 126 Then
+                t = t & "\u" & Right$("0000" & Hex$(c), 4)
+            Else
+                t = t & Mid$(s, i, 1)
+            End If
+        Next
+        Q = "[" & Replace(t, vbNullChar, "<NUL>") & "] len=" & Len(s)
     End Function
 
     ' The current directory of the process, from the API (CurDir is VB's own view of it).
@@ -146,6 +169,8 @@ Module Auto
         mMainH = 0
         mMainTick = 0
         mActedTick = 0
+        mNavStage = 0
+        mNavTick = 0
         mMsgH = 0
         gMsgCount = 0
         gSeenMain = False
@@ -338,16 +363,56 @@ Module Auto
     ' Acting
     '=========================================================================================
 
-    Private Sub DoAct(ByVal h As LongPtr)
+    ' The file-name box is an edit box inside a combo box; the Vista dialogs also hold a search box.
+    Private Function NameEdit(ByVal h As LongPtr) As LongPtr
         Dim list(0 To 255) As LongPtr
         Dim i As Long
-        Dim n As Long
+        Dim n As Long = Children(h, list)
+        For i = 0 To n - 1
+            If ClassOf(list(i)) = "Edit" And IsWindowVisible(list(i)) <> 0 Then
+                If ClassOf(GetParent(list(i))) = "ComboBox" Then NameEdit = list(i) : Exit Function
+            End If
+        Next
+        For i = 0 To n - 1
+            If ClassOf(list(i)) = "Edit" And IsWindowVisible(list(i)) <> 0 Then NameEdit = list(i) : Exit Function
+        Next
+    End Function
+
+    ' The folder that a Vista dialog shows: the text of its address band.
+    Private Sub RecordAddress(ByVal h As LongPtr, ByVal what As String)
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long = Children(h, list)
+        For i = 0 To n - 1
+            If ClassOf(list(i)) = "ToolbarWindow32" Then
+                If Left$(TextOf(list(i)), 9) = "Address: " Then Say "    " & what & ": " & Q(TextOf(list(i)))
+            End If
+        Next
+    End Sub
+
+    ' Types a folder into the file-name box and presses the default button, which opens the folder.
+    Private Sub DoNav(ByVal h As LongPtr)
+        Dim ed As LongPtr = NameEdit(h)
+        RecordAddress h, "before navigating"
+        If ed <> 0 Then
+            SendMessageW ed, WM_SETTEXT, 0, StrPtr(gNavDir)
+            Say "    navigating: typed " & Q(gNavDir)
+            PressId h, 1
+        Else
+            Say "    NO EDIT BOX to navigate with"
+        End If
+    End Sub
+
+    Private Sub DoAct(ByVal h As LongPtr)
         Dim ed As LongPtr
+        If Len(gNavDir) > 0 Then RecordAddress h, "after navigating" Else RecordAddress h, "address"
+        If gShowIcon Then Say "    icons: big=" & SendMessageW(h, WM_GETICON, 1, 0) & " small=" & SendMessageW(h, WM_GETICON, 0, 0)
+        If gShowOwner Then
+            gOwnerSeen = GetWindow(h, GW_OWNER)
+            Say "    owner window is the one the probe made: " & (gOwnerSeen <> 0 And gOwnerSeen = gOwnerWant)
+        End If
         If mDoType Then
-            n = Children(h, list)
-            For i = 0 To n - 1
-                If ClassOf(list(i)) = "Edit" And IsWindowVisible(list(i)) <> 0 Then ed = list(i) : Exit For
-            Next
+            ed = NameEdit(h)
             If ed <> 0 Then
                 SendMessageW ed, WM_SETTEXT, 0, StrPtr(mTypeText)
                 Say "    typed " & Q(mTypeText) & " -> now " & Q(TextOf(ed))
@@ -414,8 +479,16 @@ Module Auto
             ElseIf h = mMainH Then
                 If mActedTick = 0 Then
                     If mTick - mMainTick >= gMainDelay Then
-                        mActedTick = mTick
-                        DoAct h
+                        If Len(gNavDir) > 0 And mNavStage = 0 Then
+                            mNavStage = 1
+                            mNavTick = mTick
+                            DoNav h
+                        ElseIf mNavStage = 1 And mTick - mNavTick < 4 Then
+                            ' wait for the dialog to open the folder
+                        Else
+                            mActedTick = mTick
+                            DoAct h
+                        End If
                     End If
                 ElseIf mTick - mActedTick >= IIf(mAct = 4, gMainDelay + 3, 3) Then
                     gStayedOpen = True

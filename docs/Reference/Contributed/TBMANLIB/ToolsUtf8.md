@@ -97,6 +97,6 @@ Debug.Print Err.Number
 
 ## See Also
 
-- [ToolsStream](ToolsStream) module -- reads and writes files in a chosen character set, UTF-8 by default
-- [ToolsStr](ToolsStr) module -- **ToBytes** and **ToString**, which convert with the ANSI code page
+- [cToolsStream](cToolsStream) class -- reads and writes files in a chosen character set, UTF-8 by default
+- [cToolsStr](cToolsStr) class -- **ToBytes** and **ToString**, which convert with the ANSI code page
 - [TBMANLIB](.) package -- overview

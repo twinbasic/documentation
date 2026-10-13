@@ -276,6 +276,11 @@ A tight constant would fail on every legitimate removal, and a gate that fails o
 - **CI**, recognised by the `CI` environment variable. A run there that rewrote the baseline would accept the drop it was asked to catch. A missing `page-baseline.json` is an error in CI, not a first run.
 - **`serve.bat`.** Its watcher rebuilds on every save, so a half-deleted page would lower the baseline. The comparison still runs and the console says what happened.
 - **`--dry-run`**, which writes no tree.
+- **A build into another `--dest`.** Only a build into `docs/_site`, the tree `build.bat` writes, records a rise. A build into a folder of your own, so as to keep a second copy of the site or to build beside someone else, leaves the committed file alone and says what a build into `docs/_site` would record:
+
+      page baseline not raised: pages 1259 -> 1267 (built into .claude/my-site; a build into docs/_site records it)
+
+  A fall fails such a build as it fails any other. `--update-page-baseline` writes the file whatever the destination, because it is asked for.
 
 [`scripts/check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) skips this file, or the build writing a raised baseline would make the tree it just produced report as stale.
 
@@ -296,13 +301,13 @@ An installed add-in keeps its copy of the index, so a URL the index has given ou
              build.bat --update-symbol-baseline
              node builder/tbdocs.mjs --src docs --check-audit-index --update-symbol-baseline
 
-The usual fix is the first: keep the new wording and pin the old id on the heading. New URLs need nothing --- a local build adds them to the list and says so, and you commit the file with the pages. The file is written under the same three restrictions as the page-count guard, and `check_tree_fresh.mjs` skips it.
+The usual fix is the first: keep the new wording and pin the old id on the heading. New URLs need nothing --- a local build adds them to the list and says so, and you commit the file with the pages. The file is written under the same four restrictions as the page-count guard, and `check_tree_fresh.mjs` skips it.
 
 The help add-in in `add-in/` embeds a committed copy of the index, `add-in/Resources/SYMBOLS/symbols.json`. A local build rewrites that copy whenever its own index differs and says so:
 
     add-in index updated: add-in/Resources/SYMBOLS/symbols.json (commit it)
 
-Commit it with the pages that changed it. CI and `--serve` only report that it differs. A copy one build behind is not a failure. The published project file is packed with the index that build wrote, so the download is current regardless.
+Commit it with the pages that changed it. CI, `--serve` and a build into another `--dest` only report that it differs. A copy one build behind is not a failure. The published project file is packed with the index that build wrote, so the download is current regardless.
 
 A page in a package folder that gives no entry at all is reported by name after the summary. Its title names nothing the package declares, most often because the page's subject has an internal name, as the (Default) module's is `_HiddenModule`. [`symbols:` in its frontmatter](Authoring#symbols) says what it documents.
 

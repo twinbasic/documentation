@@ -8,7 +8,7 @@ has_toc: false
 # cLayer class
 {: .no_toc }
 
-A **cLayer** is meant to hold the user-interface helpers of the package. In version 1.0.0.5 it has one member, [**Toast**](#toast), which shows a message box. The package keeps one ready-made instance, [**TBMAN.Layer**](TBMAN#layer).
+A **cLayer** is meant to hold the user-interface helpers of the package. In version 1.0.0.29 it has one member, [**Toast**](#toast), which shows a message box. The package keeps one ready-made instance, [**TBMAN.Layer**](TBMAN#layer).
 
 ```tb check_build
 Dim Layer As New cLayer

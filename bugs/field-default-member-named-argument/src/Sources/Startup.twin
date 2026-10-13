@@ -1,0 +1,67 @@
+' An assignment through a default member that takes an argument, written on a public field
+' of an object (obj.Field(key) = value), is refused with TB5090, "named argument already
+' provided". The same assignment through a local variable, a module variable, a property
+' that returns the object, Me, or a late-bound object compiles; so does the read of the
+' field, and the assignment with the default member written out (obj.Field.Item(key) = value).
+' Compile it: the lines marked REFUSED are the ones TB5090 reports. The VB6 side is in vb6/.
+
+Class Bag
+    Private mValue As Long
+
+    [DefaultMember]
+    Property Get Item(ByVal Key As String) As Long
+        Item = mValue
+    End Property
+
+    [DefaultMember]
+    Property Let Item(ByVal Key As String, ByVal Value As Long)
+        mValue = Value
+    End Property
+End Class
+
+Class Holder
+    Public Field As New Bag                 ' a class of this project
+    Public Dict As New Scripting.Dictionary ' the Scripting Runtime's Dictionary
+    Public Plain As Bag                     ' the same, with no New
+    Private mBag As New Bag
+
+    Public Property Get Prop() As Bag
+        Set Prop = mBag
+    End Property
+
+    Public Sub Inside()
+        Me.Field("a") = 1                   ' compiles
+        Field("a") = 1                      ' compiles
+    End Sub
+End Class
+
+Module Startup
+
+    Private ModBag As New Bag
+
+    Public Sub Main()
+        Dim h As New Holder
+        Dim b As New Bag
+        Dim o As Object
+        Dim v As Long
+
+        h.Field("a") = 1                    ' REFUSED: TB5090
+        h.Dict("a") = 1                     ' REFUSED: TB5090
+        h.Plain("a") = 1                    ' REFUSED: TB5090
+        h.Field("a") = h.Field("a") + 1     ' REFUSED: TB5090 (on the left-hand side)
+        With h
+            .Field("a") = 1                 ' REFUSED: TB5090
+        End With
+
+        h.Field.Item("a") = 1               ' compiles: the default member written out
+        v = h.Field("a")                    ' compiles: a read
+        b("a") = 1                          ' compiles: a local variable
+        ModBag("a") = 1                     ' compiles: a module variable
+        Startup.ModBag("a") = 1             ' compiles: a module variable, qualified
+        h.Prop("a") = 1                     ' compiles: a property that returns the object
+        Set o = h
+        o.Field("a") = 1                    ' compiles: a late-bound object
+        h.Inside
+    End Sub
+
+End Module

@@ -350,7 +350,7 @@ Debug.Print UBound(ToolsArray.StringToByteArray("abc"))
 
 ## See Also
 
-- [ToolsStr](ToolsStr) module -- **ToBytes**, **ToString** and **ToHex**, which convert between strings and byte arrays
+- [cToolsStr](cToolsStr) class -- **ToBytes**, **ToString** and **ToHex**, which convert between strings and byte arrays
 - [ToolsUtf8](ToolsUtf8) module -- UTF-8 conversion
 - [Split](../../../Modules/Strings/Split) function -- splits a string
 - [TBMANLIB](.) package -- overview

@@ -1,0 +1,318 @@
+' ProbeD: the scenarios d0..d99 of the TBMANLIB_Dialog probe. The ids and what
+' they ask are listed at the top of Probe.twin.
+
+Module ProbeD
+
+    Private Declare PtrSafe Function MessageBoxTimeoutW Lib "user32" (ByVal hWnd As LongPtr, ByVal lpText As LongPtr, ByVal lpCaption As LongPtr, ByVal uType As Long, ByVal wLanguageId As Long, ByVal dwMilliseconds As Long) As Long
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+    Private Declare PtrSafe Function CreateWindowExW Lib "user32" (ByVal dwExStyle As Long, ByVal lpClassName As LongPtr, ByVal lpWindowName As LongPtr, ByVal dwStyle As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As LongPtr, ByVal hMenu As LongPtr, ByVal hInstance As LongPtr, ByVal lpParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DestroyWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function IsWindowEnabled Lib "user32" (ByVal hWnd As LongPtr) As Long
+
+    Public Sub Run(ByVal id As String)
+        Select Case id
+            Case "d0": D0
+            Case "d0b": D0b
+            Case "d1": D1
+            Case "d2": D2
+            Case "d2b": D2b
+            Case "d2c": D2c
+            Case "d2t": D2t
+            Case "d3": D3
+            Case "d4": D4
+            Case "d5": D5
+            Case "d10", "d10b", "d11", "d11b", "d11c", "d12", "d12d": ProbeDT.Run id
+            Case "d20", "d20b", "d21", "d22", "d22b", "d23": ProbeIB.Run id
+            Case "d30", "d31", "d32", "d33", "d33b", "d34", "d34b": ProbePW.Run id
+            Case "d40": ProbePG.Run id
+        End Select
+    End Sub
+
+    ' A value as the probe prints it.
+    Private Function Desc(ByVal x As Variant) As String
+        Desc = "VarType=" & VarType(x) & " " & TypeName(x) & " " & AutoD.QD(CStr(x))
+    End Function
+
+    Private Function B(ByVal x As Boolean) As String
+        B = IIf(x, "True", "False")
+    End Function
+
+    Private Sub D0b()
+        AutoD.SayD "== d0b delay between dialogs"
+        Dim s As String
+        Dim i As Long
+        AutoD.gMaxTicksD = 30
+        AutoD.gTrace = False
+        For i = 1 To 6
+            AutoD.ArmD "d0b-" & i, IIf(i Mod 2 = 0, "id=2", "close")
+            s = InputBox("prompt", "TitleIB" & i, "dflt")
+            AutoD.DisarmD
+            AutoD.SayD "  episode " & i & ": InputBox returned after " & AutoD.ElapsedMs() & " ms"
+            If i = 4 Then Sleep 3000
+        Next
+    End Sub
+
+    Private Sub D0()
+        AutoD.SayD "== d0 the runtime's InputBox, MsgBox, MessageBoxTimeout"
+        Dim s As String
+        Dim r As Long
+        AutoD.gMaxTicksD = 20
+        AutoD.ArmD "d0-inputbox", "none"
+        s = InputBox("line one" & vbCrLf & "line two", "TitleIB", "dflt")
+        AutoD.DisarmD
+        AutoD.SayD "  InputBox closed by the driver: StrPtr=" & B(StrPtr(s) <> 0) & " " & AutoD.QD(s)
+
+        AutoD.ArmD "d0-inputbox-ok-empty", "t=|id=1"
+        s = InputBox("prompt", "TitleIB2", "dflt")
+        AutoD.DisarmD
+        AutoD.SayD "  InputBox OK with empty text: StrPtr=" & B(StrPtr(s) <> 0) & " " & AutoD.QD(s)
+
+        AutoD.ArmD "d0-msgbox", "close|wait=3|id=7"
+        r = MsgBox("text of the box", vbExclamation + vbYesNo, "TitleMB")
+        AutoD.DisarmD
+        AutoD.SayD "  MsgBox Yes/No: WM_CLOSE, then No: result " & r
+
+        AutoD.ArmD "d0-msgbox-ok", "close"
+        r = MsgBox("text of the box", vbInformation, "TitleMB2")
+        AutoD.DisarmD
+        AutoD.SayD "  MsgBox OK-only: WM_CLOSE: result " & r
+
+        AutoD.ArmD "d0-mbt", "none"
+        r = MessageBoxTimeoutW(0, StrPtr("timeout box"), StrPtr("TitleMBT"), 0, 0, 1500)
+        AutoD.DisarmD
+        AutoD.SayD "  MessageBoxTimeout 1500 ms, MB_OK: result " & r & ", the box stood " & AutoD.LifeMs() & " ms"
+    End Sub
+
+    '=========================================================================================
+    ' cDialogCountdownMsgBox
+    '=========================================================================================
+
+    Private Sub DumpCountdown(ByVal c As cDialogCountdownMsgBox)
+        AutoD.SayD "    Title=" & AutoD.QD(c.Title) & " Message=" & AutoD.QD(c.Message) & " CountdownSeconds=" & c.CountdownSeconds & " RemainingSeconds=" & c.RemainingSeconds
+        AutoD.SayD "    Buttons=" & c.Buttons & " Icon=" & c.Icon & " DefaultButton=" & c.DefaultButton & " ShowProgress=" & B(c.ShowProgress) & " AutoClose=" & B(c.AutoClose) & " OwnerHwnd=" & c.OwnerHwnd
+        AutoD.SayD "    Result=" & c.Result & " IsTimedOut=" & B(c.IsTimedOut()) & " GetResultDescription=" & AutoD.QD(c.GetResultDescription())
+    End Sub
+
+    Private Sub D1()
+        AutoD.SayD "== d1 cDialogCountdownMsgBox: defaults, the window, a timeout"
+        Dim c As New cDialogCountdownMsgBox
+        Dim r As Long
+        AutoD.SayD "  (a) a new object, before any dialog:"
+        DumpCountdown c
+        AutoD.gMaxTicksD = 60
+        c.Message = "Disk almost full"
+        c.Title = "Warn"
+        c.CountdownSeconds = 2
+        AutoD.SayD "  (b) CountdownSeconds=2, Message and Title set; ShowDialog, nothing pressed:"
+        AutoD.ArmD "d1b", "none"
+        r = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    ShowDialog returned " & r & " after the box stood " & AutoD.LifeMs() & " ms; windows seen " & AutoD.gWindows
+        DumpCountdown c
+        AutoD.SayD "  (c) ShowInfo, OK pressed after the countdown text was recorded:"
+        AutoD.ArmD "d1c", "id=2"
+        r = c.ShowInfo("Saved.", "Done", 5)
+        AutoD.DisarmD
+        AutoD.SayD "    ShowInfo returned " & r
+        DumpCountdown c
+        AutoD.SayD "  (d) Reset:"
+        c.Reset
+        DumpCountdown c
+    End Sub
+
+    ' d2: every Show* method with a button pressed; Enter and Esc; the X.
+    Private Sub D2()
+        AutoD.SayD "== d2 cDialogCountdownMsgBox: Show* methods and the buttons"
+        Dim c As New cDialogCountdownMsgBox
+        Dim r As Long
+        AutoD.gMaxTicksD = 40
+        AutoD.ArmD "d2-info", "id=2"
+        r = c.ShowInfo("m", "t")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowInfo, OK -> " & r & " (" & c.GetResultDescription() & ") Buttons=" & c.Buttons & " Icon=" & c.Icon & " CountdownSeconds=" & c.CountdownSeconds
+        AutoD.ArmD "d2-warning", "id=2"
+        r = c.ShowWarning("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowWarning, OK -> " & r & " Buttons=" & c.Buttons & " Icon=" & c.Icon & " CountdownSeconds=" & c.CountdownSeconds & " Title=" & AutoD.QD(c.Title)
+        AutoD.ArmD "d2-error", "id=2"
+        r = c.ShowError("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowError, OK -> " & r & " Buttons=" & c.Buttons & " Icon=" & c.Icon & " CountdownSeconds=" & c.CountdownSeconds & " Title=" & AutoD.QD(c.Title)
+        AutoD.ArmD "d2-question-yes", "id=6"
+        r = c.ShowQuestion("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowQuestion, Yes -> " & r & " Buttons=" & c.Buttons & " Icon=" & c.Icon & " CountdownSeconds=" & c.CountdownSeconds & " Title=" & AutoD.QD(c.Title)
+        AutoD.ArmD "d2-question-no", "id=7"
+        r = c.ShowQuestion("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowQuestion, No -> " & r
+    End Sub
+
+    Private Sub D2b()
+        Dim c As New cDialogCountdownMsgBox
+        Dim r As Long
+        AutoD.gMaxTicksD = 40
+        AutoD.ArmD "d2b-confirm-cancel", "id=2"
+        r = c.ShowConfirm("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowConfirm, Cancel -> " & r & " Buttons=" & c.Buttons & " Icon=" & c.Icon & " CountdownSeconds=" & c.CountdownSeconds
+        AutoD.ArmD "d2b-confirm-esc", "key=27"
+        r = c.ShowConfirm("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowConfirm, Esc -> " & r
+        AutoD.ArmD "d2b-confirm-x", "close"
+        r = c.ShowConfirm("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowConfirm, X -> " & r
+        AutoD.ArmD "d2b-confirm-enter", "key=13"
+        r = c.ShowConfirm("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowConfirm, Enter -> " & r
+    End Sub
+
+    Private Sub D2c()
+        Dim c As New cDialogCountdownMsgBox
+        Dim r As Long
+        AutoD.gMaxTicksD = 40
+        AutoD.ArmD "d2c-info-x", "close"
+        r = c.ShowInfo("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowInfo, X -> " & r
+        AutoD.ArmD "d2c-info-enter", "key=13"
+        r = c.ShowInfo("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowInfo, Enter -> " & r
+        AutoD.ArmD "d2c-question-x", "close|wait=4|id=7"
+        r = c.ShowQuestion("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowQuestion, X then (3 ticks later) No -> " & r
+        AutoD.ArmD "d2c-question-esc", "key=27|wait=4|id=7"
+        r = c.ShowQuestion("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowQuestion, Esc then (3 ticks later) No -> " & r
+        c.DefaultButton = MB_DEFBUTTON2
+        AutoD.ArmD "d2c-question-def2-enter", "key=13"
+        r = c.ShowQuestion("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowQuestion with DefaultButton MB_DEFBUTTON2, Enter -> " & r
+        c.DefaultButton = MB_DEFBUTTON1
+        AutoD.ArmD "d2c-question-def1-enter", "key=13"
+        r = c.ShowQuestion("m")
+        AutoD.DisarmD
+        AutoD.SayD "  ShowQuestion with DefaultButton MB_DEFBUTTON1, Enter -> " & r
+    End Sub
+
+    ' d2t: what each button set returns when the countdown ends.
+    Private Sub D2t()
+        AutoD.SayD "== d2t cDialogCountdownMsgBox: the result when the countdown ends, for each button set"
+        Dim c As New cDialogCountdownMsgBox
+        Dim r As Long
+        Dim i As Long
+        Dim names As Variant = Array("OK", "OKCancel", "AbortRetryIgnore", "YesNoCancel", "YesNo", "RetryCancel")
+        AutoD.gMaxTicksD = 60
+        For i = 0 To 5
+            c.Reset
+            c.Buttons = i
+            c.Message = "m"
+            c.CountdownSeconds = 1
+            AutoD.ArmD "d2t-" & names(i), "none"
+            r = c.ShowDialog()
+            AutoD.DisarmD
+            AutoD.SayD "  Buttons=" & i & " (" & names(i) & "), 1 s, nothing pressed -> " & r & " (" & c.GetResultDescription() & ") IsTimedOut=" & B(c.IsTimedOut()) & ", the box stood " & AutoD.LifeMs() & " ms"
+        Next
+    End Sub
+
+    Private Sub D3()
+        AutoD.SayD "== d3 cDialogCountdownMsgBox: AutoClose, ShowProgress, 0 and negative seconds"
+        Dim c As New cDialogCountdownMsgBox
+        Dim r As Long
+        AutoD.gMaxTicksD = 40
+        c.Message = "Body"
+        c.CountdownSeconds = 1
+        c.AutoClose = False
+        AutoD.SayD "  (a) AutoClose=False, CountdownSeconds=1; the driver presses OK after 3 s:"
+        AutoD.ArmD "d3a", "wait=28|id=2"
+        r = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & r & " (" & c.GetResultDescription() & "), the box stood " & AutoD.LifeMs() & " ms"
+        c.AutoClose = True
+        c.ShowProgress = False
+        AutoD.SayD "  (b) ShowProgress=False, AutoClose=True, 1 s:"
+        AutoD.ArmD "d3b", "none"
+        r = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & r & " (" & c.GetResultDescription() & "), the box stood " & AutoD.LifeMs() & " ms"
+        c.ShowProgress = True
+        c.CountdownSeconds = 0
+        AutoD.SayD "  (c) CountdownSeconds=0, AutoClose=True; the driver presses OK after 3 s:"
+        AutoD.ArmD "d3c", "wait=28|id=2"
+        r = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & r & " (" & c.GetResultDescription() & "), the box stood " & AutoD.LifeMs() & " ms"
+        c.CountdownSeconds = -5
+        AutoD.SayD "  (d) CountdownSeconds=-5; the driver presses OK after 3 s:"
+        AutoD.ArmD "d3d", "wait=28|id=2"
+        r = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & r & " (" & c.GetResultDescription() & "), the box stood " & AutoD.LifeMs() & " ms"
+    End Sub
+
+    Private Sub D4()
+        AutoD.SayD "== d4 cDialogCountdownMsgBox: overflow of the milliseconds, a button value the class does not map"
+        Dim c As New cDialogCountdownMsgBox
+        Dim r As Long
+        AutoD.gMaxTicksD = 40
+        c.Message = "Body"
+        c.Title = "Big"
+        c.Buttons = MB_YESNO
+        c.Icon = MB_ICONQUESTION
+        c.CountdownSeconds = 3000000
+        AutoD.SayD "  (a) CountdownSeconds=3000000, Buttons=MB_YESNO, Icon=MB_ICONQUESTION; the driver presses id 7 (No) or 1 (OK):"
+        AutoD.ArmD "d4a", "id=2"
+        On Error Resume Next
+        r = c.ShowDialog()
+        If Err.Number <> 0 Then AutoD.SayD "    ERROR " & Err.Number & " " & Err.Description
+        On Error GoTo 0
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & r & " (" & c.GetResultDescription() & "), windows seen " & AutoD.gWindows
+        c.Reset
+        c.Message = "Body"
+        c.Buttons = MB_ABORTRETRYIGNORE
+        c.Buttons = 6
+        c.CountdownSeconds = 30
+        AutoD.SayD "  (b) Buttons=6 (Cancel, Try Again, Continue); Result before is " & c.Result & "; the driver presses id 10 (Try Again):"
+        AutoD.ArmD "d4b", "id=10"
+        r = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & r & " (" & c.GetResultDescription() & ")"
+        AutoD.ArmD "d4b2", "id=2"
+        r = c.ShowInfo("m", "t", 30)
+        AutoD.DisarmD
+        AutoD.SayD "  (c) a ShowInfo, OK -> " & r & ", then Buttons=6 again, Try Again (id 10):"
+        c.Buttons = 6
+        AutoD.ArmD "d4c", "id=10"
+        r = c.ShowDialog()
+        AutoD.DisarmD
+        AutoD.SayD "    -> " & r & " (" & c.GetResultDescription() & ")"
+    End Sub
+
+    Private Sub D5()
+        AutoD.SayD "== d5 cDialogCountdownMsgBox: OwnerHwnd"
+        Dim c As New cDialogCountdownMsgBox
+        Dim r As Long
+        Dim own As LongPtr
+        AutoD.gMaxTicksD = 40
+        own = CreateWindowExW(0, StrPtr("STATIC"), StrPtr("probe owner"), &H90000000, 10, 10, 100, 50, 0, 0, 0, 0)
+        AutoD.SayD "  owner window created: " & B(own <> 0) & " enabled=" & IsWindowEnabled(own)
+        AutoD.gOwner = own
+        c.OwnerHwnd = own
+        AutoD.SayD "  OwnerHwnd round trip: " & B(c.OwnerHwnd = own)
+        AutoD.ArmD "d5", "id=2"
+        r = c.ShowInfo("m", "t", 5)
+        AutoD.DisarmD
+        AutoD.SayD "  -> " & r & "; the owner is enabled again: " & IsWindowEnabled(own)
+        AutoD.gOwner = 0
+        DestroyWindow own
+    End Sub
+
+End Module

@@ -22,7 +22,7 @@ Syntax: *object*.**FileName** [ = *string* ]
 
 **Before a dialog.** [**ShowOpen**](ShowOpen) and [**ShowSave**](ShowSave) copy the text into the buffer that Windows uses for the `lpstrFile` member of `OPENFILENAME`, which initialises the File name box. The Save As dialog shows an empty box for an empty **FileName** and `x.txt` for `x.txt`. [**ShowSave**](ShowSave) pads the buffer with spaces, and the dialog does not show the padding.
 
-**After a dialog.** A **ShowSave** or **ShowOpen** that the user confirms stores the path it returns in **FileName**. For a [**MultiSelect**](MultiSelect) selection of several files that is the folder, not a file name. A cancelled dialog leaves **FileName** as it was, and [**ShowBrowseForFolder**](ShowBrowseForFolder) neither reads nor changes it.
+**After a dialog.** A **ShowSave** or **ShowOpen** that the user confirms stores the path it returns in **FileName**. For a [**MultiSelect**](MultiSelect) selection of several files, which **ShowOpen** returns as an array, **FileName** becomes an empty string. A cancelled dialog leaves **FileName** as it was, and [**ShowBrowseForFolder**](ShowBrowseForFolder) neither reads nor changes it.
 
 > [!NOTE]
 > Because a confirmed dialog stores the full path, the next **ShowOpen** or **ShowSave** passes that path as the initial file name. Set **FileName** to an empty string, or call [**Reset**](Reset), to start without it.

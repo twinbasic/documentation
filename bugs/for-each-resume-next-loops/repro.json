@@ -1,0 +1,14 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Collection \\(control\\): header=1 body=1 errors: 0 \\| after Next: 0$",
+      "^Nothing: header=1 body=6 errors: 91 91 91 91 91 91 ",
+      "^Class with no enumerator: header=1 body=6 ",
+      "^Enumerator returns Nothing: header=1 body=6 ",
+      "^Enumerator raises error 5: header=1 body=6 ",
+      "^Nothing, handler with Resume Next: header=1 body=4 passes: error -2147467259 error 91 body error 91 body"
+    ]
+  }
+}

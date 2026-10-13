@@ -76,32 +76,29 @@ Debug.Print "[" & J.Item("missing") & "]"
 ### Items
 {: .no_toc }
 
-Reads the item at a position in [**RootItems**](#rootitems).
+Reads an item of [**RootItems**](#rootitems), or adds one to it.
 
-Syntax: *object*.**Items** ( *Index* )
+Syntax: *object*.**Items** ( *Index* ) [ **=** *value* ]
 
 *Index*
 : *required* A **Long**, the position of the item, counted from 1.
 
-Returns a **Variant**, an object for a nested object or array. If *Index* is greater than the number of items, the result is **Empty**. A position of 0 or less is not checked, and the **Collection** raises its own error.
+Reading returns a **Variant**, an object for a nested object or array. If *Index* is greater than the number of items, the result is **Empty**. A position of 0 or less is not checked, and the **Collection** raises its own error.
 
-The class declares a **Set** accessor for **Items**, which is meant to replace the item at a position with an object, and declares the accessor that would assign a value other than an object under the name `uuItems`, not `Items`. Neither works. `J.Items(1) = 5`, `Set J.Items(1) = New Collection` and `J.uuItems(1) = 5` all compile, and each raises the error *Unspecified error* (-2147467259) and leaves the array as it was.
+Assigning a value, with or without **Set**, adds it as a new last item of **RootItems**, whatever *Index* is: the item at *Index* is not replaced, and an *Index* beyond the end does not leave a gap. A value that is an object, such as a **Scripting.Dictionary** or another **Collection**, is added as a nested object or array.
 
 ```tb check_build check_run
 Dim J As New cJson
 J.Decode "[1,2]"
-On Error Resume Next
 J.Items(1) = 5
-Debug.Print Err.Number
-Err.Clear
+Debug.Print J.Encode()
+J.Items(9) = "x"
 Set J.Items(1) = New Collection
-Debug.Print Err.Number
 Debug.Print J.Encode()
 Debug.Print J.Items(2)
 ' Output:
-' -2147467259
-' -2147467259
-' [1,2]
+' [1,2,5]
+' [1,2,5,"x",[]]
 ' 2
 ```
 
@@ -278,10 +275,10 @@ Syntax: *object*.**LoadFrom** ( *Path* [ **,** *CharSet* ] ) **As cJson**
 *CharSet*
 : *optional* A **String**, the name of the character set of the file, `UTF-8` by default. It is passed to an ADODB.Stream, so it can be any name that the stream accepts. A byte order mark at the start of a UTF-8 file is not part of the text.
 
-The file is read by [**ToolsStream.LoadFileAsText**](ToolsStream#loadfileastext) and the text goes to [**Decode**](#decode), so its rules and errors apply. Returns the object itself.
+The file is read by [**ToolsStream.LoadFileAsText**](cToolsStream#loadfileastext) and the text goes to [**Decode**](#decode), so its rules and errors apply. Returns the object itself.
 
-> [!IMPORTANT]
-> A file that cannot be opened raises the error of the ADODB.Stream and leaves the shared stream of [**ToolsStream**](ToolsStream) open. Every later call to **LoadFrom** or **SaveTo** then fails until the stream is closed with `ToolsStream.Inst.Close`. See [**LoadFileAsText**](ToolsStream#loadfileastext).
+> [!WARNING]
+> **ToolsStream.LoadFileAsText** leaves the shared stream open, and raises error 3705, *Operation is not allowed when the object is open*, when it finds it open. A **LoadFrom** therefore fails after any earlier **LoadFrom** or [**SaveTo**](#saveto) of the program, and after a file that could not be opened. See [**cToolsStream**](cToolsStream). `ToolsStream.Inst.Close` after each call makes the next one work.
 
 ### NewItem
 {: .no_toc }
@@ -349,7 +346,7 @@ Syntax: *object*.**SaveTo** ( *FileName* [ **,** *CharSet* ] [ **,** *Whitespace
 : *required* A **String**, the file to write. A name that does not contain `:\` is taken to be relative and gets the folder of the program (`App.Path`) and a backslash in front. Forward slashes become backslashes, and the folders of the path are created if they are missing. See [**AutoCompleteFullPath**](ToolsFso#autocompletefullpath). A path with a drive that is written with forward slashes, such as `C:/data/a.json`, has no `:\` and is treated as relative.
 
 *CharSet*
-: *optional* A **String**, the name of the character set, `UTF-8` by default. The file is written by [**ToolsStream.SaveFileAsText**](ToolsStream#savefileastext), which replaces a file that exists.
+: *optional* A **String**, the name of the character set, `UTF-8` by default. The file is written by [**ToolsStream.SaveFileAsText**](cToolsStream#savefileastext), which replaces a file that exists.
 
 *Whitespace*
 : *optional* A **Variant**; as for [**Encode**](#encode).
@@ -359,6 +356,9 @@ Syntax: *object*.**SaveTo** ( *FileName* [ **,** *CharSet* ] [ **,** *Whitespace
 
 The text is made by [**Encode**](#encode) of the object's [**Root**](#root), so the rules of that method apply, among them that an empty document writes the text of an earlier call. The function returns the text that it wrote to the file. A file written with the character set `UTF-8` begins with the byte order mark EF BB BF.
 
+> [!WARNING]
+> **ToolsStream.SaveFileAsText** leaves the shared stream open and, when it finds it open, writes over the text that is still in it. After a first **SaveTo**, a second one with a shorter document, in the same or another file, writes the new text with the end of the old text after it, which is not valid JSON: saving `{"a":"long long"}` and then `{"b":1}` leaves `{"b":1}ong long"}` in the second file. No error is raised. See [**cToolsStream**](cToolsStream). `ToolsStream.Inst.Close` after each call avoids it.
+
 ```tb check_build check_run
 Dim Path As String
 Path = Environ$("TEMP") & "\tbmanlib-docs\sample.json"
@@ -367,8 +367,10 @@ Dim J As New cJson
 Dim K As New cJson
 J.Item("word") = "caf" & ChrW(233)
 Debug.Print J.SaveTo(Path)
+ToolsStream.Inst.Close
 
 K.LoadFrom Path
+ToolsStream.Inst.Close
 Debug.Print AscW(Right$(K.Item("word"), 1))
 
 Kill Path
@@ -391,7 +393,7 @@ If [**RootItem**](#rootitem) has entries, the result is an array of one element 
 
 - [TBMAN](TBMAN) module -- the shared instance **TBMAN.Json**
 - [ToolsJsonVba](ToolsJsonVba) module -- the parser and writer behind **Decode** and **Encode**
-- [ToolsStream](ToolsStream) module -- reads and writes the files for **LoadFrom** and **SaveTo**
-- [ToolsStr](ToolsStr) module -- the `\uXXXX` conversion of **Encode**
+- [cToolsStream](cToolsStream) class -- reads and writes the files for **LoadFrom** and **SaveTo**
+- [cToolsStr](cToolsStr) class -- the `\uXXXX` conversion of **Encode**
 - [JsonConverter](../VBA_JSON/JsonConverter/) module -- the same parser and writer, in the VBA_JSON package
 - [TBMANLIB](.) package -- overview

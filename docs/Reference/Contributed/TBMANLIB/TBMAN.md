@@ -8,7 +8,7 @@ has_toc: false
 # TBMAN module
 {: .no_toc }
 
-The module that gives the package its name. It holds one ready-made instance of each of the package's classes, as public variables, and a **Version** property. A program can use them without a `New`, and every part of the program shares the same instance of each.
+The module that gives the package its name. It holds one ready-made instance of eight of the package's classes, as public variables, and a **Version** property. A program can use them without a `New`, and every part of the program shares the same instance of each.
 
 ```tb check_build check_run
 TBMAN.Json.Clear
@@ -38,16 +38,25 @@ Debug.Print TypeName(TBMANLIB.TBMAN.Json)
 ### Csv
 {: .no_toc }
 
-A shared [**cCsv**](cCsv): in version 1.0.0.5, the reader and writer of INI files.
+A shared [**cCsv**](cCsv), a table of text that can be read from and written to CSV files.
 
 Syntax: **TBMAN.Csv** **As cCsv**
 
 ### Ini
 {: .no_toc }
 
-A shared **cIni**. The class has no members; see [Types without members](.#types-without-members).
+A shared [**cIni**](cIni), which reads and writes INI files.
 
 Syntax: **TBMAN.Ini** **As cIni**
+
+### HttpClient
+{: .no_toc }
+
+A shared [**cHttpClient**](cHttpClient), which sends HTTP requests.
+
+Syntax: **TBMAN.HttpClient** **As cHttpClient**
+
+The request settings of a **cHttpClient**, such as its headers and its timeout, stay in the object, so every part of the program that uses this instance sees the settings of the others. A program that sends requests with different settings makes its own objects.
 
 ### Json
 {: .no_toc }
@@ -72,6 +81,13 @@ A shared [**cLogs**](cLogs), which writes log lines.
 
 Syntax: **TBMAN.Logs** **As cLogs**
 
+### SysTray
+{: .no_toc }
+
+A shared **cSysTray**. The class has no members; see [Types without members](.#types-without-members).
+
+Syntax: **TBMAN.SysTray** **As cSysTray**
+
 ### TimerUse
 {: .no_toc }
 
@@ -86,9 +102,9 @@ Returns a version number as text.
 
 Syntax: **TBMAN.Version** **As String**
 
-The text is `v`, then `App.Major`, a period, `App.Minor`, a period and `App.Build`. The `App` is that of the program that uses the package, not that of the package: in a program whose version is 2.3.4.7 (major, minor, revision, build), the result is `v2.3.7`. The revision number is not in the text, and the version of the package, 1.0.0.5, is not in it either.
+The text is `v`, then `App.Major`, a period, `App.Minor`, a period and `App.Build`. The `App` is that of the program that uses the package, not that of the package: in a program whose version is 2.3.4.7 (major, minor, revision, build), the result is `v2.3.7`. The revision number is not in the text, and the version of the package, 1.0.0.29, is not in it either.
 
 ## See Also
 
-- [cJson](cJson), [cLogs](cLogs), [cCsv](cCsv), [cLayer](cLayer), [cTimeuse](cTimeuse) classes -- the classes of the instances
+- [cJson](cJson), [cLogs](cLogs), [cCsv](cCsv), [cIni](cIni), [cHttpClient](cHttpClient), [cLayer](cLayer), [cTimeuse](cTimeuse) classes -- the classes of the instances
 - [TBMANLIB](.) package -- overview
