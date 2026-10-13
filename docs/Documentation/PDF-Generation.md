@@ -17,7 +17,7 @@ Internals of the two-stage PDF pipeline: `tbdocs` Phase 8 assembles a sparse `_s
 
 ![A flow chart running top to bottom through two boxed stages. The first, tbdocs writePdf, holds three steps side by side: assembleBook combining the chapter HTML, copyPdfCss copying the two stylesheets, and copyPdfImages copying the referenced images. Together they produce _site-pdf/book.html with its stylesheets and images. That file feeds the second stage, render-book.mjs, whose three phases run in sequence: Phase 1 lays the document out with puppeteer and paged.js into one element per output page, Phase 2 extracts the metadata and outline tree and calls page.pdf for a raw buffer, and Phase 3 reloads that buffer through the fast pdf-lib shims, sets the metadata and outline, and saves. The result is the finished PDF under _pdf.](/assets/images/dot/pdf-render-pipeline.svg)
 
-The book runs to about 3,600 pages. `tbdocs` builds `_site-pdf/` as part of its normal run; `render-book.mjs` runs only when `book.bat` calls it, which keeps `puppeteer` and `pdf-lib` out of the site generator's dependency tree.
+The book runs to about 3,700 pages. `tbdocs` builds `_site-pdf/` as part of its normal run; `render-book.mjs` runs only when `book.bat` calls it, which keeps `puppeteer` and `pdf-lib` out of the site generator's dependency tree.
 
 ## Running the renderer
 
@@ -87,6 +87,8 @@ The renderer relays these in-browser faults, each with its own prefix:
 - **`[request failed] <url> <errorText>`** --- Chromium could not load a resource. A file missing from `_site-pdf/` appears as `net::ERR_FILE_NOT_FOUND` with its path, which points to an incomplete Phase 8 tree.
 - **`[page error] <message>`** --- an uncaught exception inside the page.
 - **`[layout] <report> at <element>: skipped from where it stops fitting`** --- paged.js could not place an element on any page, and reported `Layout repeated` or `Unable to layout item`. The element is named by its tag, the start of its text and the heading before it. The render skips the rest of it and goes on, so the book is complete apart from that part of the element ([Paged.js Patches](Fixes/PagedJS#an-element-no-page-can-hold)); the exit code stays 0. Under GitHub Actions each report is also a `::warning` annotation on the run.
+- **`[code] <n> of <m> lines missing from the code block after the heading "<heading>", first "<line>"`** --- a code block whose pieces on the pages lack lines of its source; a line paged.js left outside a page's content box counts as missing, since it is not printed. A last `[code]` line counts the blocks. The exit code stays 0, and under GitHub Actions the first ten and the count are `::warning` annotations.
+- **`[fonts] not loaded, so laid out in a fallback font: <faces>`** --- a font face that had not loaded when the layout began.
 - **`[page console] <message>`** --- any other error the page writes to its console.
 - **`[render-book] error: <error>`** --- the top-level catch. It closes the browser and sets the exit code to 2.
 
@@ -183,7 +185,7 @@ Code 1 is unambiguous, because the renderer has no 1. For code 2, stderr tells t
 
 ### Phase 1: Render
 
-Opens a headless Chromium instance, loads `book.html` under `file://`, and calls `PagedPolyfill.preview()` to run the CSS Paged Media layout engine. When it returns, the DOM contains one `.pagedjs_page` element per output PDF page.
+Opens a headless Chromium instance, loads `book.html` under `file://`, and runs the CSS Paged Media layout engine in two calls: `PagedPolyfill.prepare()`, then, once every font face has loaded, `PagedPolyfill.flow()`. When it returns, the DOM contains one `.pagedjs_page` element per output PDF page.
 
 **Chromium launch flags:**
 
@@ -204,7 +206,7 @@ This stops paged.js running automatically when its bundle loads. The driver then
 2. `lib/progress-handler.js` --- logs `[render-progress] page=N elapsed=Xs` to the browser console after each page is laid out.
 3. Any `--additional-script` paths (production adds `perf/detach-pages.js`).
 
-`PagedPolyfill.preview()` is then called via `page.evaluate()`. The call is synchronous; the `await` is only the CDP round-trip.
+`PagedPolyfill.prepare()` is then called via `page.evaluate()`. It replaces the stylesheets with paged.js's processed copies, which makes every `@font-face` a font face that loads again, so the driver loads every face in `document.fonts` and waits for `document.fonts.ready` before it calls `PagedPolyfill.flow()`, which lays out the pages ([Fonts before the flow](Fixes/PagedJS#fonts-before-the-flow)); a face that has not loaded by then is reported as `[fonts]`. Both calls are synchronous; each `await` is only the CDP round-trip.
 
 `perf/detach-pages.js` removes each finalised page from the DOM right after layout and restores all pages in order at `afterRendered`. This keeps `getBoundingClientRect` (which paged.js calls per page) at ~0.7 ms/page instead of climbing towards ~8 ms/page by the last chapters. CSS counters break across detached pages, so `print.css` uses `var(--page-num)` (a custom property paged.js writes per page) instead of `counter(page)` for running page numbers.
 
@@ -372,7 +374,9 @@ Two globals control the polyfill:
 
 | Member | Description |
 |---|---|
-| `PagedPolyfill.preview()` | Runs the full layout pipeline. In the vendored bundle this is fully synchronous. |
+| `PagedPolyfill.preview()` | Runs the full layout pipeline: `prepare()` and `flow()` in one call. In the vendored bundle this is fully synchronous. |
+| `PagedPolyfill.prepare()` | The first half: wraps the content and replaces the stylesheets with processed copies. Added by the fork. |
+| `PagedPolyfill.flow()` | The second half: lays out the pages. Added by the fork; `render-book.mjs` calls it once the fonts have loaded. |
 
 ### Handler system
 

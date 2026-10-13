@@ -395,7 +395,11 @@ const VOID_ELEMENTS = new Set(["br", "wbr", "img", "hr", "input"]);
 // The body of a <code> as one `<span class="code-line">` per line, each
 // ending in its newline. A tag still open at a line end is closed before the
 // newline and opened again on the next line, so every line is well formed
-// and the text is unchanged.
+// and the text is unchanged. The newline is in a `<span class="w">` of its
+// own, as step 3 puts the whitespace between tokens: after a page break
+// inside a line, paged.js goes on with nodeAfter(), which passes over a text
+// node that is all whitespace, and a bare newline there was lost, joining
+// the line to the next one.
 function codeLines(body) {
   const lines = [];
   const open = []; // [tag name, opening tag] of each element open here
@@ -405,7 +409,8 @@ function codeLines(body) {
       .map(([name]) => `</${name}>`)
       .reverse()
       .join("");
-    lines.push(`<span class="code-line">${line}${closing}${newline}</span>`);
+    const end = newline ? `<span class="w">${newline}</span>` : "";
+    lines.push(`<span class="code-line">${line}${closing}${end}</span>`);
     line = open.map(([, tag]) => tag).join("");
   };
   const trailing = body.endsWith("\n");

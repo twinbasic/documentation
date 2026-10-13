@@ -32,7 +32,7 @@ In headless Chromium nothing else uses the event loop, so yielding gains nothing
 | `flow()` | All five `await` sites removed; `beforeParsed`/`afterParsed`/`afterRendered` hooks are called synchronously and guarded by `_assertSync`. |
 | `renderOnIdle()` / `renderAsync()` | Removed; both wrapped `renderer.next()` in unnecessary async machinery. |
 | `clonePage()` | `async` removed; only reachable via the `Footnotes` handler, which disables itself when the document has no footnotes. |
-| `loadFonts()` | Rewritten as a synchronous assertion. `waitUntil: "load"` in `render-book.mjs` guarantees every `FontFace` the book uses has settled before paged.js runs. The assertion rejects `loading` and `error`, not `unloaded`: a CSS-connected face is fetched only when the layout needs it, so a face `print.css` declares but this render never uses stays `unloaded`. |
+| `loadFonts()` | Rewritten as a synchronous assertion. `waitUntil: "load"` in `render-book.mjs` settles the font faces of the stylesheets the book loads. The assertion rejects `loading` and `error`, not `unloaded`: a CSS-connected face is fetched only when the layout needs it, so a face `print.css` declares but this render never uses stays `unloaded`. `Polisher.add()` then replaces those stylesheets, and their faces load again: [Fonts before the flow](#fonts-before-the-flow) waits for them. |
 | `parse()` | `async` removed; no registered handler in this pipeline is async for the hooks it fires. |
 | `request()` | Replaced with synchronous XHR (`XMLHttpRequest` with `async=false`), returning `responseText` directly. |
 | `add()` | `async` removed; all inputs are inline `{url: text}` objects that need no fetch. |
@@ -116,6 +116,18 @@ Each call site that receives the sync sentinel also calls `_assertSync(result, h
 
 **Fix.** `[PATCH: tokens-set]` The Array is replaced with a `Set`, so each lookup is O(1) instead of O(n).
 
+### Fonts before the flow
+
+**Problem.** `Polisher.add()` replaces the document's stylesheets with paged.js's processed copies, and every `@font-face` in them becomes a font face that has to load again. Upstream's async `preview()` waited for it; the synchronous chain went straight on to `chunker.flow()`, so the whole book was laid out while every face was still `loading`, in fallback fonts, and then printed in the real ones. Every page break was chosen for text of the wrong width. Where the real text took more room, as Cascadia Mono does against the 6.6 % narrower fallback on Windows, the lines that no longer fitted moved into the overflow column to the right of the page and were never printed: a render of 13 October 2026 left 476 code lines off its pages this way, two of them in the middle of the Interfaces and CoClasses example, and none once the fonts were loaded first. On Linux the fallbacks differ, and so did the faults.
+
+**Fix.** `[PATCH: fonts-before-flow]` `preview()` is split into `prepare()`, everything up to and including `Polisher.add()`, and `flow()`, the layout. `render-book.mjs` calls `prepare()`, loads every face in `document.fonts` and waits for `document.fonts.ready`, then calls `flow()`; a face that still has not loaded is reported as `[fonts]`. `preview()` remains, as the two halves in one call.
+
+### A break that cannot be avoided
+
+**Problem.** `print.css` gives callouts `break-inside: avoid`, and CSS breaks such an element anyway when it fits on no page. paged.js lays a page out a part at a time, so Chromium saw only the part of a long callout that fitted in a column, honoured `avoid` and pushed it whole past the page; on the next page the same happened, and with a heading's `break-after: avoid` before the callout, the break went back to before the heading every time. paged.js gave up ("Unable to layout item"), and the first page's part of the callout was left in the overflow column: tsJson's "Known problems" warning, three pages long, lost its first page this way.
+
+**Fix.** `[PATCH: avoid-when-it-fits]` Where `findBreakToken` finds a break at the point where the page began, before it removes anything, `relaxAvoid()` gives `break-inside: auto` to the first element with `break-inside: avoid` that lies wholly past the page, and the break is looked for again. An element that fits on a page is still moved whole to the next one: Chromium places it there, and the break is then not where the page began.
+
 ### An element no page can hold
 
 **Problem.** When the chunker laid out a page and got back a break token it had seen before, it logged `Layout repeated at:` and *returned* an error rather than throwing it. That ended the flow as if the content were done: the book stopped at that element. `render-book.mjs` relayed only the progress lines from the page's console, so it saved the pages laid out so far and exited 0. From 12 October 2026 the JSON listings on the IDE's Panel Layouts page, whose deepest lines are indented by twelve tabs, did this on the Linux runner, and the published book stopped at page 461.
@@ -124,9 +136,9 @@ Each call site that receives the sync sentinel also calls `_assertSync(result, h
 
 ### Code split across pages
 
-**Problem.** In a code block one text node often holds most of a listing, and paged.js does not split a text node that wraps over many lines reliably. Where it picks the same break twice, the Panel Layouts case above follows. Where it picks a break further on than the content it moves off the page, the lines between are lost without a report: the book of 12 October 2026 lacked 490 of its 8,862 code lines of 25 characters or more, and the Call statement's page stopped in the middle of its example.
+**Problem.** In a code block one text node often holds most of a listing, and paged.js does not split a text node that wraps over many lines reliably: on a page narrow enough, it picks the same break twice, which is the Panel Layouts case above, or a break further on than the content it moves off the page, and the lines between are lost without a report. (Most of the code the book of 12 October 2026 lacked, 490 of its 8,862 code lines of 25 characters or more, among them the end of the Call statement's page, went the way [Fonts before the flow](#fonts-before-the-flow) describes.)
 
-**Fix.** The book build puts each line of a code block, with its newline, in an inline `<span class="code-line">` of its own (`codeLines` in `builder/book.mjs`): every line starts a node, and paged.js breaks code between two nodes. The spans are inline, so the block lays out exactly as before, page breaks included; block spans would break code as well, but a block of one line has no orphans or widows to keep. With them, 168 of those lines are still missing: a break inside a code block can still lose lines, for a cause not yet found. `print.css` also sets `tab-size: 3` on code blocks, which keeps the Panel Layouts listings within the column.
+**Fix.** The book build puts each line of a code block, with its newline, in an inline `<span class="code-line">` of its own (`codeLines` in `builder/book.mjs`): every line starts a node, and paged.js breaks code between two nodes. The spans are inline, so the block lays out exactly as before, page breaks included; block spans would break code as well, but a block of one line has no orphans or widows to keep. Each line's newline is in a `<span class="w">` of its own: after a page break inside a line, paged.js goes on with `nodeAfter()`, which passes over a text node that is all whitespace, and a bare newline there was lost, joining the line to the next one. `render-book.mjs` checks every code block: it numbers each `<pre>` before the render, puts the pieces paged.js split together again after it, and reports as `[code]` each block that lacks a line, counting only the lines that start inside a page's content box. `print.css` also sets `tab-size: 3` on code blocks, which keeps the Panel Layouts listings within the column.
 
 ## Margin group rendering
 
