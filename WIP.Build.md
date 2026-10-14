@@ -784,8 +784,8 @@ The decisions, each with what it rules out:
   commit behind the add-in being edited. `Resources/HELP/` is also refused by name, in
   case it is ever added. A file git does not track is named in the build's output.
 - **The archive in the project is the one this build wrote, handed over in memory.**
-  The `helpArchive` task returns the zip it wrote, and `addinProject` waits for it and
-  packs those bytes as `Resources/HELP/site.zip`. Reading the file back from
+  The `helpArchive` task (a worker task) returns the zip it wrote, as bytes, and
+  `addinProject` waits for it and packs those bytes as `Resources/HELP/site.zip`. Reading the file back from
   `add-in/Resources/HELP/` could pick up the archive of an earlier build whenever this
   one wrote none (`--no-help-archive`, `--serve`, another `--dest`, a fixture): that
   case packs no archive, and the summary line says `without the offline archive`.

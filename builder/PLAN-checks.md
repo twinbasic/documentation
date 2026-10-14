@@ -486,7 +486,8 @@ one per tree index. No headroom concern.
 [builder/check.mjs](check.mjs) (the build-side plumbing) and
 [builder/check-tree.mjs](check-tree.mjs) (the index derivation), with the
 graph shape as designed: extraction folded into `flush()`, then `linkJoin`,
-`checkBook` and `checkReport` on main. Five deviations, the first three
+`checkBook` and `checkReport` on main (`checkBook` has since moved to
+the lane that wrote the book; see PLAN-scheduler.md). Five deviations, the first three
 forced and the last two found by measurement.
 
 **1. `treeIndex` folded into `dispatch` rather than becoming its own task.**
