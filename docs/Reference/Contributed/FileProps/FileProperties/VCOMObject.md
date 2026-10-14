@@ -9,7 +9,7 @@ permalink: /tB/Packages/Contributed/FileProps/FileProperties/VCOMObject
 
 Holds the native-code COM object created internally by the Virtual-COM library. For internal use only.
 
-> [!WARNING] 1.7.1.0
+> [!WARNING] timeless
 >
 > **VCOMObject** is an internal implementation detail of the FileProps Virtual-COM loader, and the package marks it as for internal use only. Do not use it in application code.
 

@@ -88,7 +88,7 @@ Syntax: *object*.**CreateKey** ( *RootKey*, *KeyPath* ) **As BOOL**
 
 Returns **True** on success, **False** if the key could not be created (typically due to insufficient privileges).
 
-> [!IMPORTANT] 1.0.1.1
+> [!IMPORTANT] timeless
 > Creating keys under `HKEY_LOCAL_MACHINE` typically requires the application to run with administrator rights.
 
 ### DeleteKey
@@ -121,7 +121,7 @@ Syntax: *object*.**DeleteKeyEx** ( *RootKey*, *KeyPath* ) **As BOOL**
 
 Returns **True** on success, **False** if the key could not be deleted. The method first enumerates and recursively deletes all sub-keys (calling itself for each one), then deletes all values in the key, closes the handle, and finally removes the key itself with `RegDeleteKey`. Both enumeration loops always request index 0, so each deletion must succeed for the loop to advance; a sub-key or value that cannot be deleted (for example, for lack of permission) leaves the loop repeating on the same entry.
 
-> [!WARNING] 1.0.1.1
+> [!WARNING] timeless
 > This operation cannot be undone. The entire key tree is permanently removed from the registry. Double-check the *KeyPath* argument before calling.
 
 ### DeleteValue

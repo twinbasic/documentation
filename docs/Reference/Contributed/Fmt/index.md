@@ -127,7 +127,7 @@ Debug.Print StringFormat("{0:f}|{0:g}", d)    ' Sunday, October 11, 2026 2:05 PM
 Debug.Print StringFormat("{0:Cyyyy-MM-dd}", d)  ' 2026-10-11
 ```
 
-> [!NOTE] 1.0.0.0
+> [!NOTE] timeless
 > The results come from **Format$**, so the decimal separator, the thousands separator and the layout of dates and times follow the Windows regional settings. The output shown for the currency and date identifiers is for an English (United States) system.
 
 ## Escape sequences

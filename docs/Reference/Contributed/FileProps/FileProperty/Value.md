@@ -31,7 +31,7 @@ Syntax: *object*.**Value** **=** *value*
 *value*
 : A **Variant** containing the new value for the property.
 
-> [!IMPORTANT] 1.7.1.0
+> [!IMPORTANT] timeless
 >
 > Write support requires Windows Vista or newer. Assigning a property that is not writable raises a *Permission denied* error.
 

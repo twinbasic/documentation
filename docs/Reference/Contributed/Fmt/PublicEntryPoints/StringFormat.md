@@ -47,7 +47,7 @@ An item is found again in the text by the text that [**ToString**](../StringForm
 > [!NOTE] 1.0.0.0
 > The function is not .NET's **String.Format**, and it departs from it in several ways. Doubled braces do not escape a brace: `{{0}}` with the value `5` gives `{5}`. An index must be a number, and an item such as `{name}` raises error 13, *Type mismatch*. A value that no item uses is an error. Custom .NET format strings such as `{0:yyyy-MM-dd}` or `{0:#,##0.0}` are not understood, and give *Invalid format string*; the identifier `C` for a date takes a **Format$** string instead. The identifier `N` does not exist. A precision is a number of decimal places, not of significant digits. See the [package overview](../#differences-from-net) for the full list.
 
-> [!NOTE] 1.0.0.0
+> [!NOTE] timeless
 > The results come from **Format$**, so the decimal separator, the thousands separator and the layout of dates and times follow the Windows regional settings. The output shown on this page is for an English (United States) system.
 
 ## Example

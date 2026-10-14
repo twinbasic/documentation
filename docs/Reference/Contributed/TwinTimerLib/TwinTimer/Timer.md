@@ -22,7 +22,7 @@ The **Timer** event fires on every tick of the underlying Win32 timer (`SetTimer
 
 The argument is derived from the `dwTime` parameter of the Win32 timer callback (a **DWORD** tick count, wrapping at approximately 49.7 days). **TwinTimer** handles the 32-bit wrap-around internally and promotes the result to a **LongLong**, so *ElapsedTime* does not wrap during a session regardless of how long the timer has been running.
 
-> [!NOTE] 1.0.7.0
+> [!NOTE] timeless
 > The event is delivered through the Win32 message pump of the thread that created the timer. If that thread's message pump is blocked when a tick is due, Windows delivers a single timer message when the pump resumes rather than one for each missed period. Long-running work inside the handler therefore lengthens the effective interval.
 
 ### Example

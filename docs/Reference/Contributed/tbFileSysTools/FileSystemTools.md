@@ -110,7 +110,7 @@ DeleteFolder work
 A directory junction or symbolic link is a folder that stands for another folder.
 
 <!-- test: JunctionTests.CopyFolder_Junction_LeftOutOfCopy, JunctionTests.DeleteFolder_Junction_KeepsTarget, JunctionTests.GetFilePaths_Recursive_DoesNotEnterJunction, JunctionTests.FindInTextFiles_Recursive_DoesNotEnterJunction, JunctionTests.FolderSize_Junction_CountsEachFileOnce, JunctionTests.FolderSubFolders_Junction_StillListed -->
-> [!NOTE] 1.9.0.0
+> [!NOTE] timeless
 > [**CopyFolder**](#copyfolder), [**DeleteFolder**](#deletefolder), [**GetFilePaths**](#getfilepaths) with *recursive*, [**FindInTextFiles**](#findintextfiles) with *recursive* and [**Folder.Size**](Folder#size) do not enter a link:
 >
 > - **CopyFolder** leaves the link out of the copy.
@@ -504,7 +504,7 @@ Errors:
 - 58 when a file exists and *overwrite* is **False**.
 
 <!-- test: JunctionTests.CopyFolder_Junction_LeftOutOfCopy -->
-> [!NOTE] 1.9.0.0
+> [!NOTE] timeless
 > A directory junction or symbolic link inside the source is left out of the copy: the copy has no folder of that name, and nothing from the folder the link stands for. The Scripting Runtime copies the files of the target into the copy under the name of the link. See [Junctions and symbolic links](#junctions-and-symbolic-links).
 
 ### CreateFolder
@@ -612,7 +612,7 @@ The contents are deleted first, and an item that cannot be deleted is skipped wi
 Errors: 76 when no folder matches or a file is named; 70 when the folder is not empty because something in it could not be deleted, such as a read-only file when *force* is **False**. The folder and that file stay. The Scripting Runtime raises error 70 in that case too.
 
 <!-- test: JunctionTests.DeleteFolder_Junction_KeepsTarget -->
-> [!NOTE] 1.9.0.0
+> [!NOTE] timeless
 > A directory junction or symbolic link inside the folder is removed, and the folder it stands for keeps its files. The Scripting Runtime deletes the files in the target as well, so a tree that holds a link to a folder outside it loses the contents of that folder there. See [Junctions and symbolic links](#junctions-and-symbolic-links).
 
 ### GetFilePaths
@@ -1458,7 +1458,7 @@ Syntax: **CreateTextFile** ( *filePath* [, *overwrite* [, *encoding* [, *lineEnd
 
 The file is written in place, with no swap file, and an existing read-only file raises error 70. The errors are those of [**OpenTextFile**](#opentextfile) for **ForWriting**, and error 52 for a name that has `<`, `>`, `"`, `|`, `?`, `*` or a control character, or is a reserved device name such as `con` (see [**CleanFileName**](#cleanfilename)). A colon in the name is allowed: it addresses an alternate data stream of an NTFS file.
 
-> [!IMPORTANT] 1.9.0.0
+> [!IMPORTANT] timeless
 > The third argument of **Scripting.FileSystemObject.CreateTextFile** is a **Boolean** *Unicode*, and this procedure's third argument is an *encoding*. A **Boolean** converts to a number: **True** is -1, which is **encAutoDetect**, and on writing that means UTF-8, not UTF-16. **False** is 0, **encSystemAnsi**. Code ported from the Scripting Runtime that passes **True** needs **encUtf16** or **encUtf16Bom** here.
 
 ```tb check_build check_run
@@ -1527,7 +1527,7 @@ Errors: 53 when the file does not exist for **ForReading**, or for the other mod
 > [!NOTE] 1.9.0.0
 > A stream in UTF-7 holds the whole file in memory, as [**TextStream**](TextStream#reading-and-writing) describes. For **ForWriting** on a read-only file, the stream opens without an error and the file keeps its text; error 70 comes at the first [**Flush**](TextStream#flush) or [**Close**](TextStream#close). Every other encoding raises error 70 when the stream is opened.
 
-> [!IMPORTANT] 1.9.0.0
+> [!IMPORTANT] timeless
 > The fourth argument of **Scripting.FileSystemObject.OpenTextFile** is a **Tristate** *Format*, and this procedure's is an *encoding*. **TristateTrue** is -1, which is **encAutoDetect**: on writing that means UTF-8, not UTF-16. The default also differs: a file opened for writing here is UTF-8 without a BOM, where the Scripting Runtime writes ANSI.
 
 This sample appends to a file that has a BOM and LF line endings. The new line gets the line ending of the file, and no second BOM is written:

@@ -16,10 +16,10 @@ Syntax: *object*.**UnShow**
 
 **UnShow** calls `RemoveWindowSubclass` (comctl32) to detach the scroll message handler that was installed by **Show**. After this call, the **ListBox** control associated with the instance no longer receives the subclassed `WM_HSCROLL` processing added by the class.
 
-> [!NOTE] 1.0.0.1
+> [!NOTE] timeless
 > **UnShow** does not hide the horizontal scrollbar itself, and does not reset the horizontal extent or release the **ListBox** reference---it removes only the subclass procedure. Call `ShowScrollBar` directly with `SB_HORZ` and `0` if the scrollbar must also be hidden.
 
-> [!IMPORTANT] 1.0.0.1
+> [!IMPORTANT] timeless
 > The class destructor (`Class_Terminate`) calls the internal `RemoveListBoxSubclass` helper automatically, so **UnShow** need only be called explicitly when the subclass must be removed before the **cListboxHScroll** instance goes out of scope.
 
 ### Example
