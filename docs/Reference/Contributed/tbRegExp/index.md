@@ -44,6 +44,8 @@ Debug.Print re.Replace("2026-10", "$<month>/$<year>")     ' 10/2026
 
 ## Searches that give up
 
+This is the one place where **tbRegExp** behaves differently from VBScript's **RegExp** rather than adding to it.
+
 <!-- test: SearchGivesUpTests.Test_CatastrophicPatternRaises, SearchGivesUpTests.Search_LongMatchOfAStarIsNotCut, SearchGivesUpTests.Search_LongMatchOfDotStarIsNotCut -->
 A pattern that backtracks without end, such as `(a+)+b` on a string of thirty `a`, does not hang a search as it does in VBScript's **RegExp**. Every search is given a budget of steps, and when it runs out the search raises an error rather than returning a result it never established. A long match is no problem: `a*` and `^.*$` match a string of 1,000,000 `a` whole.
 <!-- /test -->
