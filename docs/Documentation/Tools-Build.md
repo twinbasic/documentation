@@ -108,9 +108,9 @@ A `.twinproj` is not a publishable type. The [publish allowlist](Tools-Toolchain
 
 Every build writes the zip the IDE help add-in serves the documentation from. The add-in embeds `add-in/Resources/HELP/site.zip` as a resource, and the build writes that file from the offline tree, before the build-time chart is added to `BuildInfo.html`. The step prints one line:
 
-    help archive: add-in/Resources/HELP/site.zip, 2101 entries, 50.2 MB (0.6 s)
+    help archive: add-in/Resources/HELP/site.zip, 2098 entries, 47.6 MB (0.7 s)
 
-The archive leaves out what nobody looks up from the IDE: this Documentation Development section (`BuildInfo.html` and its chart, `assets/images/gantt.svg`, among it), the Videos pages and their poster frames, and the Challenges. `HELP_ARCHIVE_SKIP` in `builder/help-archive-step.mjs` lists them, as patterns in the form `offline_exclude` takes. Every page still links to them, from the navigation, the search and the text; the add-in's server answers a request for a page the archive lacks with a redirect to the same page on the website.
+The archive leaves out what nobody looks up from the IDE: this Documentation Development section (`BuildInfo.html` and its chart, `assets/images/gantt.svg`, among it), the Videos pages and their poster frames, and the Challenges. It also leaves out every file readers download, which stays on the website: each is in a `downloads` folder beside the page that documents it. `HELP_ARCHIVE_SKIP` in `builder/help-archive-step.mjs` lists them, as patterns in the form `offline_exclude` takes. Every page still links to them, from the navigation, the search and the text; the add-in's server answers a request for a file the archive lacks with a redirect to the same file on the website. A file the Downloads page offers that the archive would hold fails the build, which names it.
 
 The zip is too large to commit; `add-in/Resources/HELP/` is in `.gitignore`.
 

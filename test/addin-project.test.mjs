@@ -26,7 +26,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { addinProjectOf, formatAddinProject, packAddinProject, writeAddinProject } from "../builder/addin-project.mjs";
-import { helpArchiveSkips } from "../builder/help-archive-step.mjs";
+import { downloadsKept, helpArchiveSkips } from "../builder/help-archive-step.mjs";
 import { checkHelpArchive, writeHelpArchive } from "../lib/help-archive.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { importProject, packFiles, readProject } from "../scripts/impexp.mjs";
@@ -293,5 +293,18 @@ describe("the help archive checked against the offline tree", () => {
       "Videos/tB.html: in the tree, not in the archive",
       "assets/images/gantt.svg: in the tree, not in the archive",
     ]);
+  });
+
+  test("names a file the Downloads page offers that the archive would hold", async () => {
+    const src = tree("h-downloads", {
+      "Downloads.html": [
+        '<a class="btn" href="Features/downloads/tool.py" download>',
+        '<a href="Features/elsewhere/tool.mjs" download>',
+        '<a href="Features/elsewhere/page.html">',
+        '<a href="https://docs.twinbasic.com/tB/x/downloads/P.twinproj" download>',
+      ].join("\n"),
+    });
+    assert.deepEqual(await downloadsKept(src, helpArchiveSkips), ["Features/elsewhere/tool.mjs"]);
+    assert.deepEqual(await downloadsKept(path.join(tmp, "h-none"), helpArchiveSkips), []);
   });
 });

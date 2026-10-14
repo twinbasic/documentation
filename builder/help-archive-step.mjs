@@ -5,9 +5,10 @@
 // the download, carries the same bytes (addin-project.mjs).
 //
 // The archive is the offline tree less HELP_ARCHIVE_SKIP: what nobody looks up
-// from the IDE. The pages left out are still linked from every page's
-// navigation, from the search and from prose; the add-in's server answers a
-// request for a page the archive lacks with a redirect to the website.
+// from the IDE, and the files readers download, which stay on the website. The
+// pages left out are still linked from every page's navigation, from the
+// search and from prose; the add-in's server answers a request for a file the
+// archive lacks with a redirect to the website.
 //
 // `helpArchiveStep` is the build's `helpArchive` task. It waits for every task
 // that writes into the offline tree, and runs before the Gantt injection, which
@@ -32,6 +33,7 @@
 // download published from CI's build holds the archive. The step does not look
 // at $CI.
 
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { checkHelpArchive, writeHelpArchive } from "../lib/help-archive.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
@@ -58,10 +60,47 @@ export const HELP_ARCHIVE_SKIP = [
   // Contests that are over.
   "Challenges.html",
   "Challenges/**",
+  // The files readers download: they stay on the website. Each is in a
+  // `downloads` folder beside the page that documents it, and the step
+  // refuses an archive that holds a file the Downloads page offers.
+  "**/downloads/**",
 ];
 
 /** True for a file of the offline tree (relative, forward slashes) that the archive leaves out. */
 export const helpArchiveSkips = (name) => offlineExcluded(name, HELP_ARCHIVE_SKIP);
+
+// The page that offers every file the documentation publishes for readers.
+const DOWNLOADS_PAGE = "Downloads.html";
+
+/**
+ * The files of the offline tree that the Downloads page offers (a same-site
+ * link with the `download` attribute) and `skip` keeps in the archive.
+ *
+ * @param {string} offlineRoot  the offline tree
+ * @param {(name: string) => boolean} skip
+ * @returns {Promise<string[]>} relative, forward slashes; empty when the tree has no Downloads page
+ */
+export async function downloadsKept(offlineRoot, skip) {
+  let html;
+  try {
+    html = await readFile(path.join(offlineRoot, DOWNLOADS_PAGE), "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+  const base = new URL(`file:///tree/${DOWNLOADS_PAGE}`);
+  const kept = new Set();
+  for (const [tag] of html.matchAll(/<a\s[^>]*>/g)) {
+    if (!/\sdownload(?:[\s>=]|$)/.test(tag)) continue;
+    const href = /\shref="([^"]*)"/.exec(tag)?.[1];
+    if (!href) continue;
+    const url = new URL(href.replaceAll("&amp;", "&"), base);
+    if (url.protocol !== "file:" || !url.pathname.startsWith("/tree/")) continue;
+    const name = decodeURIComponent(url.pathname.slice("/tree/".length));
+    if (!skip(name)) kept.add(name);
+  }
+  return [...kept].sort();
+}
 
 const mb = (n) => (n / 1048576).toFixed(1);
 
@@ -96,6 +135,17 @@ export async function helpArchiveStep({
   if (src !== GUARDED_SRC || serve || dryRun || disabled || !offlineRoot) return NOT_WRITTEN;
   if (!sameDir(path.resolve(offlineRoot), OFFLINE_TREE)) return NOT_WRITTEN;
   try {
+    const kept = await downloadsKept(path.resolve(offlineRoot), helpArchiveSkips);
+    if (kept.length > 0) {
+      return {
+        ...NOT_WRITTEN,
+        text:
+          `help archive: not written: it would hold ${kept.length} file(s) the Downloads page offers, ` +
+          `which stay on the website; put each in a downloads folder, or add it to HELP_ARCHIVE_SKIP:\n` +
+          kept.map((k) => `  ${k}\n`).join(""),
+        failed: true,
+      };
+    }
     const s = await writeHelpArchive({ src: path.resolve(offlineRoot), out, skip: helpArchiveSkips });
     return {
       text: `help archive: ${HELP_ARCHIVE_REL}, ${s.entries} entries, ${mb(s.zipBytes)} MB (${(s.ms / 1000).toFixed(1)} s)\n`,

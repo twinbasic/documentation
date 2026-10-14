@@ -432,8 +432,8 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     r = await get("/Features/Advanced/");
     assert.ok(Buffer.from(await r.arrayBuffer()).equals(tree("Features/Advanced/index.html")));
 
-    // A page the archive lacks is on the site, the one the lane serves; any
-    // other file is not.
+    // A file the archive lacks, a page or a download, is on the site, the one
+    // the lane serves.
     assert.ok(fs.existsSync(path.join(BUILT_OFFLINE, "Documentation/Development/Building.html")));
     r = await get("/Documentation/Development/Building?pane=1");
     assert.equal(r.status, 302);
@@ -447,7 +447,16 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.equal(r.status, 302);
     assert.equal(r.headers.get("location"), `${origin}/no/such/page.html`);
     await r.body?.cancel();
+    assert.ok(fs.existsSync(path.join(BUILT_OFFLINE, "Features/Packages/downloads/impexp.py")));
+    r = await get("/Features/Packages/downloads/impexp.py");
+    assert.equal(r.status, 302);
+    assert.equal(r.headers.get("location"), `${origin}/Features/Packages/downloads/impexp.py`);
+    await r.body?.cancel();
     r = await get("/no/such/picture.png");
+    assert.equal(r.status, 302);
+    await r.body?.cancel();
+    // A path the server refuses is not sent on.
+    r = await get("/tB%5Cindex.html");
     assert.equal(r.status, 404);
     await r.body?.cancel();
     r = await get("/tB/Modules/Interaction/MsgBox", { method: "HEAD" });
