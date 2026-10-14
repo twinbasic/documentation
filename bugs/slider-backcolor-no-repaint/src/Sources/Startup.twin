@@ -1,0 +1,59 @@
+' Setting a Slider's BackColor at run time does not change what the control shows: it keeps
+' drawing the old colour, even when the window is invalidated, until it is hidden and shown
+' again. Sub Main shows Form1, which holds one Slider (design-time BackColor &H808080), lets
+' it paint, sets BackColor to red, lets the messages run with nothing else touching the
+' control, and reads a pixel of the Slider's window outside its channel and thumb. It then
+' invalidates the window (InvalidateRect and UpdateWindow) and reads the pixel again, and
+' last hides and shows the Slider and reads it a third time. GetPixel on the window's DC
+' reads what is on screen; PrintWindow would make the window paint itself and hide the defect.
+' Run it (F5 in the IDE, and read the DEBUG CONSOLE) or with: node scripts/bug_repro.mjs run slider-backcolor-no-repaint
+Module Startup
+
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hDC As LongPtr, ByVal x As Long, ByVal y As Long) As Long
+    Private Declare PtrSafe Function InvalidateRect Lib "user32" (ByVal hWnd As LongPtr, ByVal lpRect As LongPtr, ByVal bErase As Long) As Long
+    Private Declare PtrSafe Function UpdateWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+
+    ' Lets the messages in the queue run, and the control paint, with nothing else happening.
+    Private Sub Settle()
+        Dim i As Long
+        For i = 1 To 20
+            DoEvents
+            Sleep 25
+        Next
+    End Sub
+
+    ' The colour (a Long, &HBBGGRR) of the pixel at (2, 2) of the Slider's window.
+    Private Function Corner() As Long
+        Dim dc As LongPtr
+        dc = GetDC(Form1.Slider1.hWnd)
+        Corner = GetPixel(dc, 2, 2)
+        ReleaseDC Form1.Slider1.hWnd, dc
+    End Function
+
+    Public Sub Main()
+        Form1.Show vbModeless
+        Settle
+        Debug.Print "painted, BackColor = &H" & Hex$(Form1.Slider1.BackColor) & ", pixel = &H" & Hex$(Corner())
+
+        Form1.Slider1.BackColor = vbRed
+        Settle
+        Debug.Print "BackColor set to &H" & Hex$(Form1.Slider1.BackColor) & ", pixel = &H" & Hex$(Corner())
+
+        InvalidateRect Form1.Slider1.hWnd, 0, 1
+        UpdateWindow Form1.Slider1.hWnd
+        Settle
+        Debug.Print "after InvalidateRect and UpdateWindow, pixel = &H" & Hex$(Corner())
+
+        Form1.Slider1.Visible = False
+        Settle
+        Form1.Slider1.Visible = True
+        Settle
+        Debug.Print "after Visible = False, True, pixel = &H" & Hex$(Corner())
+
+        Unload Form1
+    End Sub
+
+End Module

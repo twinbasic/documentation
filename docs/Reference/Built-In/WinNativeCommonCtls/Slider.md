@@ -54,7 +54,7 @@ Properties
 The background color of the control. **OLE_COLOR**. Default: **vbButtonFace**.
 
 > [!NOTE] BETA 1005
-> A change to **BackColor** does not repaint the control: the new color shows the next time the control is drawn, such as when the thumb moves or the window is restored.
+> A change to **BackColor** does not repaint the control, and neither does invalidating it: the new color shows only when the user drags the thumb, or when the control is hidden and shown again.
 
 ### BorderStyle
 {: .no_toc }
