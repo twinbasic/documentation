@@ -63,7 +63,7 @@ End Module
 - A claim that needs a dialog operated or a form shown goes in the package's `probe/` harness, as
   TBMANLIB_Dialog's and xCalendar's do.
 
-## Tying a callout to its cases
+## Tying the pages to the cases
 
 Every `> [!NOTE]` and `> [!WARNING]` of the section's pages has a marker on the line above it:
 
@@ -72,13 +72,26 @@ Every `> [!NOTE]` and `> [!WARNING]` of the section's pages has a marker on the 
 > [!NOTE]
 ```
 
+A NOTE or WARNING is for a real difference or limit: a defect, a difference from the object the
+package replaces, a limit a program can meet. A statement that only describes how the package
+works stays prose, and the cases that check it are tied to it by a **region**: the same marker on
+a line of its own above the prose, and `<!-- /test -->` after it. A region can hold paragraphs,
+lists, tables and samples; regions do not nest, and a callout inside one needs no marker of its
+own. Both are HTML comments, invisible on the page.
+
+```md
+<!-- test: SearchGivesUpTests.Execute_CatastrophicPatternKeepsMatchesFound -->
+A search that backtracks without end, such as `(a+)+b` on thirty `a`, gives up instead of hanging.
+<!-- /test -->
+```
+
 An item is `Fixture.Sub`, `compile <Name>`, `probe <id>` (a scenario of `probe/`), or
 `none -- <reason>` for a callout no program can check (a statement about the IDE, a licence).
-`node scripts/check_package_tests.mjs`, in `test.bat`, fails when a callout has no marker, an item
-names nothing, a case is named by no callout, a case does not start with `Expect.Begin` and end
-with `Expect.Done`, `expect.json` is for another version, or `RunAll.twin` is out of date. A
-section whose project is not written yet is in the script's `PENDING` set; the package's project
-takes it out.
+`node scripts/check_package_tests.mjs`, in `test.bat`, fails when a callout has neither a marker
+nor a region around it, a region is not closed or opens inside another, an item names nothing, a
+case is named by no marker, a case does not start with `Expect.Begin` and end with `Expect.Done`,
+`expect.json` is for another version, or `RunAll.twin` is out of date. A section whose project is
+not written yet is in the script's `PENDING` set; the package's project takes it out.
 
 ## Running
 

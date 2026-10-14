@@ -884,7 +884,17 @@ Every `> [!NOTE]` and `> [!WARNING]` in a contributed package's section is backe
     <!-- test: FilesTests.Item_MissingName, FilesTests.Item_MissingIndex -->
     > [!NOTE]
 
-An item is a `Fixture.Sub` test case, `compile <Name>` for a compile case, `probe <id>` for a scenario of the package's `probe/` harness, or `none -- <reason>` for a callout no program can check. A case checks what is correct, so a defect of the package is a failing case. The folder's README says how to write one, and [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests), in `test.bat`, fails a callout with no marker and a case no callout names. [`package-tests.bat`](Tools#package-testsbat) runs the cases. The section's landing page ends with a short **Test cases** section that links to the project the build publishes, `<Package>-tests.twinproj`.
+An item is a `Fixture.Sub` test case, `compile <Name>` for a compile case, `probe <id>` for a scenario of the package's `probe/` harness, or `none -- <reason>` for a callout no program can check. A case checks what is correct, so a defect of the package is a failing case.
+
+A callout is for a real difference or limit. A statement that only describes how the package works stays prose, and its cases are tied to it by a region: the same marker on a line of its own above the prose, and `<!-- /test -->` after it.
+
+```md
+<!-- test: SearchGivesUpTests.Execute_CatastrophicPatternKeepsMatchesFound -->
+A search that backtracks without end gives up instead of hanging.
+<!-- /test -->
+```
+
+A region may hold paragraphs, lists, tables and samples, and regions do not nest. The folder's README says how to write a case, and [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests), in `test.bat`, fails a callout with neither a marker nor a region, a region left open, and a case no marker names. [`package-tests.bat`](Tools#package-testsbat) runs the cases. The section's landing page ends with a short **Test cases** section that links to the project the build publishes, `<Package>-tests.twinproj`.
 
 ## Document the product as it is
 

@@ -130,21 +130,31 @@ export function expectFrom({ version, names, outcomes, previous }) {
 
 // A callout: a blockquote line `> [!NOTE]` or `> [!WARNING]`, indented or not.
 const CALLOUT_RE = /^[ \t]*>[ \t]*\[!(NOTE|WARNING)\]/;
-// Its marker: an HTML comment on the line above it, `<!-- test: <item>, <item> -->`.
+// A marker, `<!-- test: <item>, <item> -->`, on a line of its own; and the end of a region.
 const MARKER_RE = /^[ \t]*<!--[ \t]*test:[ \t]*(.*?)[ \t]*-->[ \t]*$/;
+const END_RE = /^[ \t]*<!--[ \t]*\/test[ \t]*-->[ \t]*$/;
 const FENCE_RE = /^[ \t]*(`{3,}|~{3,})/;
 
 /**
- * The callouts of a page and the marker above each.
+ * The markers of a page, outside code fences. A marker on the line directly above a callout
+ * marks that callout. Any other marker opens a region, which `<!-- /test -->` closes: the
+ * paragraphs, lists, tables and samples between them state what the region's cases check.
+ * Regions do not nest, and a callout inside one is marked by it.
  *
- * @returns {{line: number, kind: string, marker: string | null, items: object[]}[]}  `items`
- *   parses the marker: { case: "Fixture.Sub" }, { compile: "Name" }, { probe: "id" } or
- *   { none: "reason" }, and { bad: "text" } for one it cannot read
+ * @returns {{callouts: {line: number, kind: string, marked: boolean}[],
+ *            markers: {line: number, items: object[]}[], problems: string[]}}  `markers` holds
+ *   every marker, a callout's and a region's alike; `items` parses one: { case: "Fixture.Sub" },
+ *   { compile: "Name" }, { probe: "id" } or { none: "reason" }, and { bad: "text" } for one it
+ *   cannot read. `problems` names a region not closed, a region opened inside another and a
+ *   close with no region.
  */
-export function calloutsOf(text) {
+export function markersOf(text) {
   const lines = text.split(/\r?\n/);
-  const out = [];
+  const callouts = [];
+  const markers = [];
+  const problems = [];
   let fence = null;
+  let open = null; // the line of the region's marker
   for (let i = 0; i < lines.length; i++) {
     const f = FENCE_RE.exec(lines[i]);
     if (f) {
@@ -153,12 +163,24 @@ export function calloutsOf(text) {
       continue;
     }
     if (fence) continue;
+    const m = MARKER_RE.exec(lines[i]);
+    if (m) {
+      markers.push({ line: i + 1, items: parseMarker(m[1]) });
+      if (CALLOUT_RE.test(lines[i + 1] ?? "")) continue; // a callout's own marker
+      if (open !== null) problems.push(`line ${i + 1}: a region opens inside the region of line ${open}`);
+      open = i + 1;
+      continue;
+    }
+    if (END_RE.test(lines[i])) {
+      if (open === null) problems.push(`line ${i + 1}: <!-- /test --> closes no region`);
+      open = null;
+      continue;
+    }
     const c = CALLOUT_RE.exec(lines[i]);
-    if (!c) continue;
-    const m = i > 0 ? MARKER_RE.exec(lines[i - 1]) : null;
-    out.push({ line: i + 1, kind: c[1], marker: m ? m[1] : null, items: m ? parseMarker(m[1]) : [] });
+    if (c) callouts.push({ line: i + 1, kind: c[1], marked: open !== null || MARKER_RE.test(lines[i - 1] ?? "") });
   }
-  return out;
+  if (open !== null) problems.push(`line ${open}: the region is not closed with <!-- /test -->`);
+  return { callouts, markers, problems };
 }
 
 /** The items of a marker: Fixture.Sub, compile <Name>, probe <id>, none -- <reason>. */

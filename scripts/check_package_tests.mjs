@@ -49,11 +49,11 @@ import {
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { createProbes } from "./lib/gate-probes.mjs";
 import {
-  calloutsOf,
   expectationFor,
   expectFrom,
   judge,
   malformedCases,
+  markersOf,
   outcomeOf,
   parseMarker,
   projectCases,
@@ -142,20 +142,57 @@ const { check, report } = createProbes("check_package_tests", "see test/package-
     "```",
     "  <!-- test: none -- needs a person at the dialog -->",
     "  > [!NOTE]",
+    "",
+    "<!-- test: B.Two -->",
+    "A paragraph the case checks.",
+    "",
+    "> [!NOTE]",
+    "> Inside the region.",
+    "<!-- /test -->",
   ].join("\n");
-  const c = calloutsOf(page);
-  check("a callout in a fence is not a callout", c.length === 3, JSON.stringify(c));
+  const { callouts: c, markers: mk, problems } = markersOf(page);
+  check("a callout in a fence is not a callout", c.length === 4, JSON.stringify(c));
   check(
-    "a marker on the line above is read, item by item",
+    "a marker on the line above a callout is read, item by item, and marks it",
     c[0]?.kind === "WARNING" &&
-      JSON.stringify(c[0].items) === JSON.stringify([{ case: "A.One" }, { compile: "NoWin64" }]),
-    JSON.stringify(c[0]),
+      c[0].marked &&
+      JSON.stringify(mk[0]?.items) === JSON.stringify([{ case: "A.One" }, { compile: "NoWin64" }]),
+    JSON.stringify([c[0], mk[0]]),
   );
-  check("a callout with no marker above has none", c[1]?.marker === null, JSON.stringify(c[1]));
+  check(
+    "a callout with no marker above and no region around it is not marked",
+    c[1]?.marked === false,
+    JSON.stringify(c[1]),
+  );
   check(
     "an indented callout and its marker are read, and none keeps its reason",
-    c[2]?.items?.[0]?.none === "needs a person at the dialog",
-    JSON.stringify(c[2]),
+    c[2]?.marked && mk[1]?.items?.[0]?.none === "needs a person at the dialog",
+    JSON.stringify([c[2], mk[1]]),
+  );
+  check(
+    "a marker above a paragraph opens a region, which marks a callout inside it and closes cleanly",
+    c[3]?.marked && JSON.stringify(mk[2]?.items) === JSON.stringify([{ case: "B.Two" }]) && problems.length === 0,
+    JSON.stringify({ c3: c[3], mk2: mk[2], problems }),
+  );
+  const bad = markersOf(
+    [
+      "<!-- test: A.B -->",
+      "Text.",
+      "<!-- test: A.C -->",
+      "More.",
+      "<!-- /test -->",
+      "<!-- /test -->",
+      "<!-- test: A.D -->",
+      "Open.",
+    ].join("\n"),
+  ).problems;
+  check(
+    "a region inside a region, a close with no region and a region left open are each reported",
+    bad.length === 3 &&
+      bad.some((p) => p.includes("inside")) &&
+      bad.some((p) => p.includes("closes no")) &&
+      bad.some((p) => p.includes("not closed")),
+    bad.join("\n"),
   );
   check(
     "an item the marker grammar does not know is bad, and none without a reason is bad",
@@ -338,14 +375,18 @@ function checkPackage(pkg) {
   const hasProbe = existsSync(path.join(dir, "probe"));
   for (const rel of sectionPages(pkg)) {
     const text = readFileSync(path.join(SECTIONS, pkg, rel), "utf8");
-    for (const c of calloutsOf(text)) {
-      const where = `${rel} line ${c.line}`;
-      if (c.marker === null) {
-        out.push(`${where}: the ${c.kind} has no <!-- test: ... --> marker on the line above`);
-        continue;
-      }
-      if (!c.items.length) out.push(`${where}: the marker names nothing`);
-      for (const item of c.items) {
+    const { callouts, markers, problems: regionProblems } = markersOf(text);
+    out.push(...regionProblems.map((p) => `${rel} ${p}`));
+    for (const c of callouts) {
+      if (!c.marked)
+        out.push(
+          `${rel} line ${c.line}: the ${c.kind} has no <!-- test: ... --> marker on the line above, nor a region around it`,
+        );
+    }
+    for (const mk of markers) {
+      const where = `${rel} line ${mk.line}`;
+      if (!mk.items.length) out.push(`${where}: the marker names nothing`);
+      for (const item of mk.items) {
         if (item.bad)
           out.push(
             `${where}: the marker's item "${item.bad}" is not Fixture.Sub, compile <Name>, probe <id> or none -- <reason>`,
@@ -361,8 +402,7 @@ function checkPackage(pkg) {
       }
     }
   }
-  for (const name of caseNames)
-    if (!named.has(name)) out.push(`the case ${name} is named by no callout of the section`);
+  for (const name of caseNames) if (!named.has(name)) out.push(`the case ${name} is named by no marker of the section`);
   return out;
 }
 
