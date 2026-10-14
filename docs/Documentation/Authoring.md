@@ -24,6 +24,7 @@ The documentation is grouped by area, each a folder under `docs/`:
 - **Features** --- articles on individual twinBASIC language features.
 - **LLVM** --- compiling with the LLVM back end: turning it on, its options, and its current limitations.
 - **IDE** --- the IDE user guide.
+- **Downloads** --- one page that lists every file this documentation publishes for readers, with a link to each one's documentation.
 - **Documentation** --- this section: the toolchain reference and this authoring guide.
 
 A page's `permalink` fixes its URL independently of the folder the file lives in. With the right permalink (next section) the file can move without breaking a link.
@@ -236,7 +237,7 @@ The repair re-levels the whole page. The plugin raises **every** heading of leve
 
 **The plugin runs only on a page that uses `#` and `###` and no `##` anywhere.** More than four hundred pages are in that state. Adding one `##` section to such a page disarms the normalizer: every `###` already there stops being repaired and becomes a heading-order defect, in the same edit that added a correctly-levelled section.
 
-Nothing warns you. The build succeeds, because it does not check heading order, and `check.bat`'s accessibility scan audits fourteen sample pages out of roughly 1,160.
+Nothing warns you. The build succeeds, because it does not check heading order, and `check.bat`'s accessibility scan audits sixteen sample pages out of roughly 1,160.
 
 When you add a section to a page whose headings start at `###`, pick one of these and finish it:
 
@@ -355,6 +356,16 @@ Two consequences:
 - **Code needs no escaping.** A placeholder inside backticks or a fence is left
   alone. To *show* the syntax, put it in backticks. A placeholder inside a raw
   HTML block fails the build.
+
+Two more placeholders give the [Downloads](../../Downloads) page text rather than a
+number, and work in a raw HTML block and on a table line as well:
+`{{tbdocs:size:<site path>}}` is the size of a file the online tree publishes, such as
+`43 KB` or `1.2 MB`, and `{{tbdocs:packageTestRows}}` is a table row for each
+contributed package's test project. The path is relative to the site root, and may
+name a static file under `docs/`, a `bundle_extra` file or a package test project.
+The build fails, naming the file and the line, on any other path, and on one whose size
+cannot be known before the pages render: a stylesheet or an SVG, and the help add-in's
+project, which contains the page that states its size.
 
 Numbers already written as words stay as words, because a substitution always
 yields digits. [Callouts](#callouts) below opens *Three severities, used
@@ -754,7 +765,7 @@ Images live in an `Images/` folder beside the page that uses them, and are refer
 
 **The text in the square brackets is the image's alt text, and every image needs one.** Write what a reader who cannot see the picture would otherwise miss --- what the screenshot shows and which part of it the surrounding prose is pointing at. A caption-length phrase is usually right; the file name, the word *screenshot*, and the name of the button you happened to be looking for are not.
 
-No gate checks the alt text. The accessibility scan's `image-alt` rule asks only whether an accessible name *exists*. `![image](…)` passes it. So does `![img](…)`. So does an empty `![](…)`, because an empty alt marks an image as decorative, which is right for a spacer and wrong for a screenshot. The scan also samples only fourteen pages. Whether the text describes the picture is for you and your reviewer to judge.
+No gate checks the alt text. The accessibility scan's `image-alt` rule asks only whether an accessible name *exists*. `![image](…)` passes it. So does `![img](…)`. So does an empty `![](…)`, because an empty alt marks an image as decorative, which is right for a spacer and wrong for a screenshot. The scan also samples only sixteen pages. Whether the text describes the picture is for you and your reviewer to judge.
 
 Copy the *shape* of a neighbouring page's image markdown, never its alt text. The example above used to read `![Create Package]`, and that string spread onto ten further images --- a references dialog, a toolbox, a properties window, an animated GIF --- describing none of them.
 

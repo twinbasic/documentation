@@ -32,22 +32,13 @@ gh_edit_branch: "main"
 gh_edit_source: docs
 gh_edit_view_mode: "tree"
 
-# Footer "Download offline copy" link -- points at the offline-site
-# zip attached to the latest GitHub release (cut by the manual
-# `workflow_dispatch` path in .github/workflows/jekyll-gh-pages.yml).
-# Rendered inside the same flex row as the "Edit this page" link,
-# with id="download-offline" on the <a>. Emitted in both the online
-# _site/ and the offline _site-offline/ trees -- online readers use
-# it to fetch the offline copy, offline readers use it to refresh
-# theirs against the latest release.
-gh_offline_link: true
-gh_offline_link_url: "https://github.com/twinbasic/documentation/releases/latest/download/twinbasic-docs-offline.zip"
-# The released asset is "twinBASIC Book.pdf", with a space. GitHub replaces spaces
-# with dots in release download URLs, so the dotted spelling here is correct and the
-# spaced one 404s. Verified against the live release. Do not "fix" this to match the
-# workflow's filename. It also depends on make_latest: 'true' in tbdocs-gh-pages.yml,
-# which is what makes /releases/latest/download/ resolve at all.
-gh_pdf_link_url: "https://github.com/twinbasic/documentation/releases/latest/download/twinBASIC.Book.pdf"
+# Footer "Read Offline" link -- a site path, to the Downloads page's
+# section on the offline copy and the PDF book, which link to the
+# latest GitHub release. Rendered inside the same flex row as the
+# "Edit this page" link, with id="read-offline-link" on the <a>, in both
+# the online _site/ and the offline _site-offline/ trees -- offline
+# readers use it to refresh their copy against the latest release.
+read_offline_link: "/Downloads#read-offline"
 
 # When true, tbdocs's Phase 7 writes a `file://`-browsable mirror of
 # `_site/` to `_site-offline/` with every URL rewritten to a page-

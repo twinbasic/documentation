@@ -95,6 +95,11 @@ const FAMILIES = {
   // in the site reports anything.
   detailsStacked: { re: /<details[\s>]/g, min: 8, why: "target-size between consecutive <summary> elements at the mobile scale" },
   video: { re: /class="[^"]*video-link/g, min: 1, why: "link-name and image-alt on video cards" },
+  downloadCard: {
+    re: /class="[^"]*download-card/g,
+    min: 1,
+    why: "color-contrast on the theme's .btn, target-size between a card's buttons",
+  },
   // One family per admonition variant, not one for all of them.  Each
   // variant has its own tint and its own title colour in each theme, so a
   // page carrying two NOTEs is not coverage of IMPORTANT.  Keying on the

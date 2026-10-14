@@ -113,7 +113,7 @@ The window is open again the next time the IDE starts, if it was open when the I
 
 The add-in is a twinBASIC project, which the IDE builds into two DLLs, one for each bitness.
 
-1. Download the project file, <a href="downloads/tbDocsHelp.twinproj" download>tbDocsHelp.twinproj</a>, about 28 MB. It is made from the add-in's source code each time this documentation is published. It holds the index of the symbols these pages document and a copy of the whole documentation.
+1. Download the project file, <a href="downloads/tbDocsHelp.twinproj" download>tbDocsHelp.twinproj</a>, about 55 MB. It is made from the add-in's source code each time this documentation is published. It holds the index of the symbols these pages document and a copy of the whole documentation.
 2. Open `tbDocsHelp.twinproj` in the twinBASIC IDE and build it. Then set the build target to **win64** and build it again. The two DLLs, `tbDocsHelp_win32.dll` and `tbDocsHelp_win64.dll`, are written to a `Build` folder next to the project file.
 3. Copy each DLL to the matching `win32` or `win64` add-ins folder, as [Add Ins](../AddIns/) describes, and restart the IDE.
 

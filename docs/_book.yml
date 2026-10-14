@@ -713,6 +713,9 @@ left_out:
   - reason: Links to video recordings, with nothing to read in print
     page: /Videos
 
+  - reason: Download links, with nothing to read in print
+    page: /Downloads
+
   - reason: Time-limited community contests
     page: /Challenges
 

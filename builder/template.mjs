@@ -976,9 +976,9 @@ function renderFooterLegal(page, config) {
 // as one item, and that lone odd element out is what let the row's baselines
 // drift: the min-height that makes the links 24px targets applied to the
 // anchors and not to it. The framing sentence was the only reason for the
-// span, so it is gone and the two downloads are ordinary links that say what
-// they do. Their old text ("Offline Copy", "PDF") was ambiguous on its own in
-// a screen reader's links list anyway.
+// span, so it is gone. The two downloads have since become one link to the
+// Downloads page's section on reading offline, which offers both and says what
+// each is.
 //
 // The last-modified stamp is not an action, and moved to the legal row where
 // the prose items live.
@@ -997,7 +997,7 @@ function renderFooterActions(page, config) {
     config.gh_edit_repository &&
     config.gh_edit_branch &&
     config.gh_edit_view_mode;
-  const showOffline = config.gh_offline_link && config.gh_offline_link_url;
+  const readOffline = config.read_offline_link ? String(config.read_offline_link) : "";
 
   let inner = "";
   if (showBackToTop) {
@@ -1007,11 +1007,9 @@ function renderFooterActions(page, config) {
     const href = ghEditHref(page, config);
     inner += `          <a href="${escapeMarkupAndQuotes(href)}" id="edit-this-page">${escapeMarkupAndQuotes(String(config.gh_edit_link_text))}</a>\n`;
   }
-  if (showOffline) {
-    inner += `          <a href="${escapeMarkupAndQuotes(String(config.gh_offline_link_url))}" id="download-offline">Download offline copy</a>\n`;
-    if (config.gh_pdf_link_url) {
-      inner += `          <a href="${escapeMarkupAndQuotes(String(config.gh_pdf_link_url))}" id="download-pdf">Download PDF</a>\n`;
-    }
+  if (readOffline) {
+    const href = relativeUrl(readOffline, String(config.baseurl ?? ""));
+    inner += `          <a href="${escapeMarkupAndQuotes(href)}" id="read-offline-link">Read Offline</a>\n`;
   }
   if (inner === "") return "";
 

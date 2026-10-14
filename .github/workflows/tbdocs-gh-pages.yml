@@ -197,6 +197,39 @@ jobs:
           # Workflow-internal hand-off to the release job; the
           # release itself carries the long-lived copy of the zip.
           retention-days: 7
+      # Every file the Downloads page offers from this site -- each
+      # same-site <a> on it with the `download` attribute -- goes into
+      # the release beside the zip and the PDF, so a download added to
+      # that page reaches the release with no change here.
+      - name: Collect the Downloads page's files
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          OUT: ${{ runner.temp }}/downloads
+        run: |
+          node -e '
+            const fs = require("fs"), path = require("path");
+            const html = fs.readFileSync("docs/_site/Downloads.html", "utf8");
+            const out = process.env.OUT;
+            fs.mkdirSync(out, { recursive: true });
+            let n = 0;
+            for (const [tag] of html.matchAll(/<a\s[^>]*>/g)) {
+              if (!/\sdownload(?=[\s>=])/.test(tag)) continue;
+              const href = /\shref="([^"]+)"/.exec(tag)?.[1];
+              if (!href || /^[a-z]+:/i.test(href)) continue;
+              const rel = decodeURIComponent(new URL(href, "https://site/Downloads").pathname).slice(1);
+              fs.copyFileSync(path.join("docs/_site", rel), path.join(out, path.basename(rel)));
+              console.log(rel);
+              n++;
+            }
+            if (n === 0) throw new Error("no downloads found on docs/_site/Downloads.html");
+          '
+      - name: Upload downloads workflow artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: twinbasic-docs-downloads
+          path: ${{ runner.temp }}/downloads
+          retention-days: 7
       - name: Upload book PDF workflow artifact
         uses: actions/upload-artifact@v7
         with:
@@ -238,6 +271,11 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: twinbasic-docs-book-pdf
+      - name: Download downloads workflow artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: twinbasic-docs-downloads
+          path: downloads
       - name: Compute release tag and name
         id: tag
         env:
@@ -265,9 +303,12 @@ jobs:
 
             **PDF book:** download `twinBASIC Book.pdf` for an offline-readable, printable copy of the full reference.
 
+            **Tools and test projects:** the other files are the ones the [Downloads](https://docs.twinbasic.com/Downloads) page offers, as they were at this snapshot: the help add-in's project, the three editions of impexp, and the contributed packages' test projects.
+
             Source commit: ${{ github.sha }}.
           files: |
             twinbasic-docs-offline.zip
             twinBASIC Book.pdf
+            downloads/*
           fail_on_unmatched_files: true
           make_latest: 'true'

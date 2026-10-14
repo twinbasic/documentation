@@ -35,7 +35,7 @@ centre far enough to intersect a neighbour. The link is sized outright
 clearance.
 
 Two rules follow. **Run the full sweep after any change that moves type
-metrics**: the fourteen-page sample stays clean through such a change and would
+metrics**: the sixteen-page sample stays clean through such a change and would
 ship the regression. And **treat a target that passes only on the spacing
 exception as unfixed**: the result depends on the font, the surrounding layout
 and the viewport at once, and any of the three can move.

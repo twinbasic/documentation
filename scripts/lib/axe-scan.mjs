@@ -104,6 +104,10 @@ export const SAMPLE_PAGES = [
   // bare `span { color }`, which differs between the themes. A label goes when
   // its defect is fixed, so --check names another page when this one loses it.
   "/tB/Packages/Contributed/TBMANLIB/ToolsCN.html",
+  // The site's only download cards and its only theme `.btn` links: the
+  // buttons' colour against the card in each theme, and target-size between
+  // a card's buttons, which wrap onto two rows at the mobile viewport.
+  "/Downloads.html",
 ];
 
 // ---------------------------------------------------------------------------

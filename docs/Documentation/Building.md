@@ -316,7 +316,7 @@ A page in a package folder that gives no entry at all is reported by name after 
 
     check.bat
 
-[`scripts/check_a11y.mjs`](Tools-Site-Checks#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over fourteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. It runs last, after the cheaper gates: a freshness check that refuses a stale tree, the [DOT diagram fit check](#diagram-fonts-and-why-checkbat-measures-them), and the sample-coverage check that says whether the fourteen pages still cover every markup construct the site uses. [Tools and Scripts](Tools#checkbat) has the list in order.
+[`scripts/check_a11y.mjs`](Tools-Site-Checks#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over sixteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. It runs last, after the cheaper gates: a freshness check that refuses a stale tree, the [DOT diagram fit check](#diagram-fonts-and-why-checkbat-measures-them), and the sample-coverage check that says whether the sixteen pages still cover every markup construct the site uses. [Tools and Scripts](Tools#checkbat) has the list in order.
 
 Each page is scanned in **both the light and dark themes**, because dark mode is a separate palette. The scan runs against `_site-offline/`, because the online tree's root-absolute asset URLs do not resolve under `file://` and every page would be unstyled. It needs the Chromium install from the [requirements](#requirements).
 
@@ -498,18 +498,19 @@ Go to Actions → **Build & deploy docs** → **Run workflow**. It takes one inp
 |---|---|
 | `release_tag` | Used verbatim as both the tag and the release name. Leave it blank for `docs-YYYY-MM-DD-HHMM` in UTC. |
 
-The release job runs only after a green deploy, on the dispatched commit. It attaches two assets, and a missing one fails the job rather than publishing half a release:
+The release job runs only after a green deploy, on the dispatched commit. It attaches the assets below, and a missing one fails the job rather than publishing half a release:
 
 | asset | what it is |
 |---|---|
 | `twinbasic-docs-offline.zip` | `_site-offline/` zipped from the inside, so `index.html` sits at the archive root. Extract anywhere and open it --- no server, and search, navigation and dark mode all work. |
-| `twinBASIC Book.pdf` | The PDF book, A4, about 2,250 pages, bookmarked to `h1`--`h4`. |
+| `twinBASIC Book.pdf` | The PDF book, A4, about 2,400 pages, bookmarked to `h1`--`h4`. |
+| the Downloads page's files | Every file the [Downloads](../../Downloads) page offers from this site: each same-site link on it with the `download` attribute, read from the built page. A download added to that page is in the next release with no change to the workflow. |
 
 > [!IMPORTANT]
-> The release is marked *latest*, and the site's two download buttons are
-> `releases/latest/download/` URLs. A custom `release_tag` that is not the latest release
-> therefore breaks both buttons silently. GitHub also replaces the space in the PDF's
-> filename with a dot in those URLs, which is why `_config.yml` spells it
+> The release is marked *latest*, and the Downloads page links to the zip and
+> the PDF with `releases/latest/download/` URLs. A custom `release_tag` that is not the latest
+> release therefore breaks both links silently. GitHub also replaces the space in the PDF's
+> filename with a dot in those URLs, which is why the Downloads page spells it
 > `twinBASIC.Book.pdf` --- that is correct and must not be "fixed".
 
 Afterwards, check the live site:
