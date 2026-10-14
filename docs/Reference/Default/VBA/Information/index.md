@@ -25,12 +25,12 @@ Debug.Print TypeName(v)      ' "String"
 
 [**LBound**](LBound) and [**UBound**](UBound) return the smallest and largest valid subscript for a chosen dimension of an array. With a single argument they report on the first dimension; pass an explicit *Dimension* index to query a multidimensional array.
 
-```tb check_build
+```tb check_build check_run
 Dim Grid(1 To 4, 0 To 9) As Long
-Debug.Print LBound(Grid)        ' 1   — first dimension lower bound
-Debug.Print UBound(Grid)        ' 4   — first dimension upper bound
-Debug.Print LBound(Grid, 2)     ' 0   — second dimension lower bound
-Debug.Print UBound(Grid, 2)     ' 9   — second dimension upper bound
+Debug.Print LBound(Grid)        ' 1   -- first dimension lower bound
+Debug.Print UBound(Grid)        ' 4   -- first dimension upper bound
+Debug.Print LBound(Grid, 2)     ' 0   -- second dimension lower bound
+Debug.Print UBound(Grid, 2)     ' 9   -- second dimension upper bound
 ```
 
 ## Building Variant arrays
@@ -47,11 +47,11 @@ Array(x, y, z) = a              ' destructuring assignment
 
 Three functions return raw addresses for use with API calls or unsafe interop: [**ObjPtr**](ObjPtr) for an object's COM identity, [**StrPtr**](StrPtr) for the underlying buffer of a **String**, and [**VarPtr**](VarPtr) for any variable. The result is a **LongPtr** valid only while the underlying object, string, or variable stays alive --- taking a pointer never holds a reference of its own. To read or write the memory at a known address, pair these with the [**GetMem**](../HiddenModule/GetMem4) / [**PutMem**](../HiddenModule/PutMem4) family from the [(Default)](../HiddenModule/) module.
 
-```tb check_build
+```tb check_build check_run
 Dim n As Long = &H12345678
 Dim Bytes(0 To 3) As Byte
 vbaCopyBytes 4, VarPtr(Bytes(0)), VarPtr(n)
-Debug.Print Hex(Bytes(0))        ' "78" — little-endian
+Debug.Print Hex(Bytes(0))        ' 78 -- little-endian
 ```
 
 ## Working with colour values

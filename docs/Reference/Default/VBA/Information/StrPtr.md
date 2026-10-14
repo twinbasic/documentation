@@ -26,7 +26,7 @@ The pointer is valid only as long as the **String** variable stays alive and is 
 ```tb check_build
 Dim s As String
 s = "Hello"
-Debug.Print StrPtr(s)            ' e.g. 1234567890 — varies per run
+Debug.Print StrPtr(s)            ' e.g. 1234567890 -- varies per run
 
 Dim ch As Integer
 GetMem2 StrPtr(s), ch
