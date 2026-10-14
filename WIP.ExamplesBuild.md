@@ -121,7 +121,7 @@ a fence at all.
 | token | meaning | default |
 |---|---|---|
 | `check_build` | compile this sample | --- |
-| `check_run` | compile it, build it and run it, and compare what it prints with what the fence says it prints (a trailing comment on a `Debug.Print` line, or the comment lines under `' Output:`). Statement samples (`slot=sub`) only; `MsgBox`, `InputBox` and `End` are refused. See the dispatcher design below | --- |
+| `check_run` | compile it, build it and run it, and compare what it prints with what the fence says it prints (a trailing comment on a `Debug.Print` line, up to a ` -- ` that starts a note, or the comment lines under `' Output:`, taken whole). Statement samples (`slot=sub`) only; `MsgBox`, `InputBox` and `End` are refused. See the dispatcher design below | --- |
 | `hidden` | context for the page's samples, compiled with them and rendered to nothing. Implies `check_build` | --- |
 | `slot=` | `file`, `module`, `sub`, `class` or `method` --- what to generate around it | inferred |
 | `inherits=` | the class the sample is code-behind *of*; forces the Class row | --- |

@@ -38,7 +38,7 @@ Dim re As RegExp
 Set re = New RegExp
 re.Pattern = "(\d+"
 Debug.Print re.IsValid                          ' False
-Debug.Print Err.Number                          ' 0
+Debug.Print Err.Number                          ' 0 -- nothing left in Err
 Debug.Print re.LastErrorNumber - vbObjectError  ' 3009
 
 re.Pattern = "(\d+)"

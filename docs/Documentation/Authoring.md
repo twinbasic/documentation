@@ -493,8 +493,10 @@ generated `Sub`. These keys override it when it guesses wrong:
 
 A `check_run` sample states what it prints in one of two ways, read from the
 sample's own text. A trailing comment on a `Debug.Print` line gives that line's
-output. A comment line that is exactly `' Output:` gives the whole output, one
-line per comment line below it. When a sample states anything, it must print
+output. It can go on with a note for the reader after ` -- `, which is not
+compared: `' 0 -- nothing left in Err` states `0`. A comment line that is exactly
+`' Output:` gives the whole output, one line per comment line below it, each taken
+whole; output that itself holds ` -- ` is stated this way. When a sample states anything, it must print
 exactly as many lines as it states. Each line is compared with the spaces at both
 ends removed, because twinBASIC prints a space before a positive number.
 
@@ -506,6 +508,7 @@ error with `On Error Resume Next` and print `Err.Number`.
 ```tb check_run
 Debug.Print InStr(1, "abc", "b")   ' 2
 Debug.Print UCase("tb")            ' TB
+Debug.Print Len("")                ' 0 -- an empty string has no characters
 ```
 ````
 

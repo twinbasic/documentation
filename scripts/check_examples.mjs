@@ -188,7 +188,8 @@ Compiles the documentation's own twinBASIC code samples, every tb fence marked
 \`${MARKER}\`, and reports the ones the compiler refuses. A statement sample
 (slot=sub) marked \`${RUN_MARKER}\` is also built and run, in every mode, and what it prints
 is compared with what the page says it prints: the trailing comment on a Debug.Print
-line, or the comment lines under a \`' Output:\` line. A sample that raises an error,
+line, up to a \` -- \` that starts a note, or the comment lines under a \`' Output:\`
+line. A sample that raises an error,
 does not return, or prints something else is a finding; one that calls MsgBox or
 InputBox, or contains End, or is not slot=sub, is refused without being built.
 
