@@ -1,0 +1,39 @@
+' tbRegExp: a quadratic search finishes. The step budget scales with the SQUARE of the input
+' length, because ordinary backtracking does: '\d+x' over n digits with no x costs about 2.25*n^2
+' steps, since \d+ eats to the end from every start position and backtracks the whole way. A
+' budget linear in n loses to that for large enough n whatever constant is chosen, so only the
+' crossover moves. Only a pattern whose cost grows FASTER than n^2 is stopped - see
+' SearchGivesUpTests.
+'
+' (Renamed from SearchAbortedTests: RegExp.SearchAborted no longer exists. Running out of budget
+' raises, so there is no silently-returned value left for a flag to describe.)
+[TestFixture]
+Module SearchFinishesTests
+
+    [TestCase]
+    Public Sub Search_DigitsWithoutXFinishAt2000()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "\d+x"
+        Err.Clear
+        Expect.IsFalse re.Test(String$(2000, "1")), "Test of \d+x on 2,000 digits and no x"
+        Expect.AreEqual 0, Err.Number, "Err.Number after Test of \d+x on 2,000 digits"
+        Expect.Done
+    End Sub
+
+    ' The case the linear budget failed. It got 5000 * 5000 = 25,000,000 steps against the
+    ' ~56,000,000 this costs, and gave up. The quadratic budget allows 10 * 5000^2, capped at
+    ' 100,000,000, so it now completes - and the old 50,000,000 cap was itself below what this
+    ' needs, which is why raising the per-character constant alone could never have fixed it.
+    [TestCase]
+    Public Sub Search_DigitsWithoutXFinishAt5000()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "\d+x"
+        Err.Clear
+        Expect.IsFalse re.Test(String$(5000, "1")), "Test of \d+x on 5,000 digits and no x"
+        Expect.AreEqual 0, Err.Number, "Err.Number after Test of \d+x on 5,000 digits"
+        Expect.Done
+    End Sub
+
+End Module

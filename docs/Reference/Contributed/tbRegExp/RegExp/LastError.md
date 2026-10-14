@@ -20,7 +20,7 @@ Returns a **String**: the description of the compile error, or an empty string w
 ## Remarks
 
 <!-- test: IsValidTests.LastError_InvalidPatternLeavesNoError -->
-The property compiles the pattern if it has not been compiled since [**Pattern**](Pattern) or [**IgnoreCase**](IgnoreCase) last changed. The compilation traps its error, so **LastError** raises nothing, but the error stays in the **Err** object (see [**IsValid**](IsValid)). The text is a sentence that names the fault, such as *Unterminated character class: a '[' without a matching ']'.* for the pattern `[abc`. [**LastErrorNumber**](LastErrorNumber) is the number of the error and lists the faults.
+The property compiles the pattern if it has not been compiled since [**Pattern**](Pattern) or [**IgnoreCase**](IgnoreCase) last changed. The compilation traps its error, so **LastError** raises nothing and leaves the **Err** object clear. The text is a sentence that names the fault, such as *Unterminated character class: a '[' without a matching ']'.* for the pattern `[abc`. [**LastErrorNumber**](LastErrorNumber) is the number of the error and lists the faults.
 <!-- /test -->
 
 [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) and [**Split**](Split) raise an error with this description when the pattern is invalid.

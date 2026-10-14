@@ -35,13 +35,12 @@ A `$` in *replaceString* starts a substitution item. Any other text is copied as
 | `$'` | The part of *sourceString* after the match. |
 | `$`*n* or `$`*nn* | The text of numbered group *n*, counting from 1. Two digits are read as the number when the pattern has a group with that number, otherwise one. It is an empty string when the group matched nothing. When the pattern has no group *n*, the `$` is copied, and so are the digits: `$0` and `$00` are never items, and `$3` in a pattern of two groups is the text `$3`. |
 | `$<`*name*`>` | The text of the group written `(?<name>...)`. It is an empty string when the group matched nothing or no group has the name. When the pattern has no named group, or the `>` is missing, or the name is empty, the `$` is copied. |
-| `$~` | Nothing. The item is dropped. |
 
 A `$` that starts no item raises no error, so a replacement string can hold a literal `$` as it is, at the end or before any other character. Before a character that would make an item, write `$$`: `$$$&` inserts a `$` and then the matched text, as the last example does.
 
 <!-- test: ReplaceTests.Replace_MatchAndContextItems, ReplaceTests.Replace_NumberedGroupItems, ReplaceTests.Replace_DollarThatStartsNoItemIsCopied, ReplaceTests.Replace_GroupThatTookNoPartIsEmpty, ReplaceTests.Replace_NamedGroupItem, ReplaceTests.Replace_TildeItemIsCopied -->
-> [!NOTE] 1.8.0.0
-> Items are read as in VBScript's **RegExp**, with two differences: `$<`*name*`>` is an addition of this package, and `$~` is dropped, where VBScript copies `$~` into the result.
+> [!NOTE] 1.9.0.0
+> Items are read as in VBScript's **RegExp**, with one difference: `$<`*name*`>` is an addition of this package. A `$~`, which earlier versions dropped, is copied into the result as VBScript copies it.
 
 ## Remarks
 
@@ -57,8 +56,8 @@ re.Pattern = "^"
 Debug.Print Replace(re.Replace("a" & vbLf & "b" & vbLf & "c", "> "), vbLf, "/")  ' > a/> b/> c
 ```
 
-<!-- test: SearchGivesUpTests.Replace_CatastrophicPatternReplacesMatchesFound -->
-A search that backtracks without end, such as `(a+)+b` on thirty `a`, gives up instead of hanging, and **Replace** then replaces only the matches found before it gave up. [**SearchAborted**](SearchAborted) returns **True** in that case.
+<!-- test: SearchGivesUpTests.Replace_CatastrophicPatternKeepsNothing -->
+A search that backtracks without end, such as `(a+)+b` on thirty `a`, gives up instead of hanging, and **Replace** then raises an error. No partly replaced string is returned. See [**SearchStepLimit**](SearchStepLimit).
 <!-- /test -->
 
 An invalid pattern raises the compile error, with the number in [**LastErrorNumber**](LastErrorNumber) and the description in [**LastError**](LastError). Check [**IsValid**](IsValid) first to avoid it.
