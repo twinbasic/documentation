@@ -43,7 +43,9 @@ Debug.Print parts.Count                                          ' 3
 Debug.Print parts(1) & "|" & parts(2) & "|" & parts(3)           ' foo|Bar|Baz
 ```
 
+<!-- test: SearchGivesUpTests.Split_CatastrophicPatternSplitsAtMatchesFound -->
 A search that backtracks without end, such as `(a+)+b` on thirty `a`, gives up instead of hanging, and **Split** then splits only at the matches found before it gave up. [**SearchAborted**](SearchAborted) returns **True** in that case.
+<!-- /test -->
 
 When **Pattern** is not a valid regular expression, **Split** raises the compile error. Its number is [**LastErrorNumber**](LastErrorNumber), its description is [**LastError**](LastError), and its source is `RegExp`. Read [**IsValid**](IsValid) first to avoid the error.
 

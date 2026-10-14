@@ -1,0 +1,109 @@
+' tbRegExp: where the pattern syntax differs from VBScript's RegExp, which the package replaces.
+' The expected results are what VBScript's RegExp gives for the same pattern and text.
+[TestFixture]
+Module PatternSyntaxTests
+
+    [TestCase]
+    Public Sub IsValid_AtomicGroup()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "(?>a)"
+        Expect.IsFalse re.IsValid, "IsValid of the atomic group (?>a)"
+        Err.Clear
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsValid_Conditional()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "(?(1)a|b)"
+        Expect.IsFalse re.IsValid, "IsValid of the conditional (?(1)a|b)"
+        Err.Clear
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Test_NamedBackreferenceIsText()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "\k<n>"
+        Expect.IsTrue re.IsValid, "IsValid of \k<n>"
+        Expect.IsTrue re.Test("k<n>"), "Test of \k<n> on k<n>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Test_CapitalAAndZAreLetters()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "\A"
+        Expect.IsTrue re.Test("A"), "Test of \A on A"
+        Expect.IsFalse re.Test("b"), "Test of \A on b"
+        re.Pattern = "\Z"
+        Expect.IsTrue re.Test("Z"), "Test of \Z on Z"
+        Expect.IsFalse re.Test("b"), "Test of \Z on b"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Test_BackreferenceToLaterGroupMatchesNothing()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "\1(a)"
+        Expect.IsFalse re.Test("a"), "Test of \1(a) on a (VBScript finds no match)"
+        Expect.IsFalse re.Test("aa"), "Test of \1(a) on aa (VBScript finds no match)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsValid_BraceThatStartsNoQuantifier()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "a{"
+        Expect.IsTrue re.IsValid, "IsValid of a{ (VBScript reads the brace as text)"
+        re.Pattern = "a{x}"
+        Expect.IsTrue re.IsValid, "IsValid of a{x} (VBScript reads the braces as text)"
+        re.Pattern = "\p{L}"
+        Expect.IsTrue re.IsValid, "IsValid of \p{L} (VBScript reads it as the text p{L})"
+        Err.Clear
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Test_BraceThatStartsNoQuantifierIsText()
+        Expect.Begin
+        Dim re As New RegExp
+        Dim ok As Boolean
+        re.Pattern = "a{x}"
+        Err.Clear
+        On Error Resume Next
+        ok = re.Test("a{x}")
+        Dim n As Long
+        n = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 0, n, "Err.Number of Test of a{x} on a{x}"
+        Expect.IsTrue ok, "Test of a{x} on a{x} (VBScript reads the braces as text)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Test_CommaAndMaximumOnlyIsText()
+        Expect.Begin
+        Dim re As New RegExp
+        Dim found As String, miss As Boolean
+        re.Pattern = "a{,2}"
+        Err.Clear
+        On Error Resume Next
+        found = re.Execute("a{,2}")(0).Value
+        miss = re.Test("aa")
+        Dim n As Long
+        n = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 0, n, "Err.Number of Execute and Test with the pattern a{,2}"
+        Expect.AreEqual "a{,2}", found, "first match of a{,2} in a{,2} (VBScript reads {,2} as text)"
+        Expect.IsFalse miss, "Test of a{,2} on aa (VBScript reads {,2} as text)"
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,71 @@
+' tbRegExp: RegExp.Replace and the substitution items of its replacement string. The expected
+' texts are what VBScript's RegExp.Replace returns, except for $<name>, which only tbRegExp has.
+[TestFixture]
+Module ReplaceTests
+
+    [TestCase]
+    Public Sub Replace_MatchAndContextItems()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Global = True
+        re.Pattern = "b"
+        Expect.AreEqual "a[b|a|c|$]c", re.Replace("abc", "[$&|$`|$'|$$]"), "Replace(""abc"", ""[$&|$`|$'|$$]"") for the pattern b"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Replace_NumberedGroupItems()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Global = True
+        re.Pattern = "(a)(b)"
+        Expect.AreEqual "[a|b|$3|$0|$00]c", re.Replace("abc", "[$1|$2|$3|$0|$00]"), "Replace(""abc"", ""[$1|$2|$3|$0|$00]"") for the pattern (a)(b)"
+        Expect.AreEqual "[a|b|a0|a1]c", re.Replace("abc", "[$01|$02|$10|$11]"), "Replace(""abc"", ""[$01|$02|$10|$11]"") for the pattern (a)(b)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Replace_DollarThatStartsNoItemIsCopied()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Global = True
+        re.Pattern = "(a)(b)"
+        Expect.AreEqual "a$c", re.Replace("abc", "$1$"), "Replace(""abc"", ""$1$"") for the pattern (a)(b)"
+        Expect.AreEqual "$xc", re.Replace("abc", "$x"), "Replace(""abc"", ""$x"") for the pattern (a)(b)"
+        Expect.AreEqual "$$c", re.Replace("abc", "$$$"), "Replace(""abc"", ""$$$"") for the pattern (a)(b)"
+        Expect.AreEqual "$<c", re.Replace("abc", "$<"), "Replace(""abc"", ""$<"") for the pattern (a)(b)"
+        Expect.AreEqual "$<x>c", re.Replace("abc", "$<x>"), "Replace(""abc"", ""$<x>"") for the pattern (a)(b), which has no named group"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Replace_GroupThatTookNoPartIsEmpty()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Global = True
+        re.Pattern = "(a)|(z)"
+        Expect.AreEqual "[]bc", re.Replace("abc", "[$2]"), "Replace(""abc"", ""[$2]"") for the pattern (a)|(z)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Replace_NamedGroupItem()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "(?<first>\w+) (?<last>\w+)"
+        Expect.AreEqual "Lovelace, Ada", re.Replace("Ada Lovelace", "$<last>, $<first>"), "Replace(""Ada Lovelace"", ""$<last>, $<first>"")"
+        Expect.AreEqual "[]", re.Replace("Ada Lovelace", "[$<none>]"), "Replace(""Ada Lovelace"", ""[$<none>]"") with no group of that name"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Replace_TildeItemIsCopied()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Global = True
+        re.Pattern = "a"
+        Expect.AreEqual "x$~ybc", re.Replace("abc", "x$~y"), "Replace(""abc"", ""x$~y"") for the pattern a (VBScript copies $~)"
+        Expect.Done
+    End Sub
+
+End Module

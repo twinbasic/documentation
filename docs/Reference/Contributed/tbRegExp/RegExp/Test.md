@@ -26,7 +26,9 @@ Returns **True** if [**Pattern**](Pattern) finds a match in *sourceString*, othe
 
 [**IgnoreCase**](IgnoreCase), [**MultiLine**](MultiLine) and [**DotAll**](DotAll) apply to the matching. [**Global**](Global) makes no difference, because one match is enough.
 
+<!-- test: SearchGivesUpTests.Test_CatastrophicPatternGivesUpWithoutError -->
 A search that backtracks without end, such as `(a+)+b` on thirty `a`, gives up instead of hanging, and **Test** then returns **False**. [**SearchAborted**](SearchAborted) tells that **False** from a string that has no match.
+<!-- /test -->
 
 When **Pattern** is not a valid regular expression, **Test** raises the compile error. Its number is [**LastErrorNumber**](LastErrorNumber), its description is [**LastError**](LastError), and its source is `RegExp`. Read [**IsValid**](IsValid) first to avoid the error.
 

@@ -39,6 +39,7 @@ A `$` in *replaceString* starts a substitution item. Any other text is copied as
 
 A `$` that starts no item raises no error, so a replacement string can hold a literal `$` as it is, at the end or before any other character. Before a character that would make an item, write `$$`: `$$$&` inserts a `$` and then the matched text, as the last example does.
 
+<!-- test: ReplaceTests.Replace_MatchAndContextItems, ReplaceTests.Replace_NumberedGroupItems, ReplaceTests.Replace_DollarThatStartsNoItemIsCopied, ReplaceTests.Replace_GroupThatTookNoPartIsEmpty, ReplaceTests.Replace_NamedGroupItem, ReplaceTests.Replace_TildeItemIsCopied -->
 > [!NOTE]
 > Items are read as in VBScript's **RegExp**, with two differences: `$<`*name*`>` is an addition of this package, and `$~` is dropped, where VBScript copies `$~` into the result.
 
@@ -56,7 +57,9 @@ re.Pattern = "^"
 Debug.Print Replace(re.Replace("a" & vbLf & "b" & vbLf & "c", "> "), vbLf, "/")  ' > a/> b/> c
 ```
 
+<!-- test: SearchGivesUpTests.Replace_CatastrophicPatternReplacesMatchesFound -->
 A search that backtracks without end, such as `(a+)+b` on thirty `a`, gives up instead of hanging, and **Replace** then replaces only the matches found before it gave up. [**SearchAborted**](SearchAborted) returns **True** in that case.
+<!-- /test -->
 
 An invalid pattern raises the compile error, with the number in [**LastErrorNumber**](LastErrorNumber) and the description in [**LastError**](LastError). Check [**IsValid**](IsValid) first to avoid it.
 

@@ -23,10 +23,13 @@ The property compiles the pattern if it has not been compiled since [**Pattern**
 
 Check **IsValid** before [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) or [**Split**](Split) when the pattern comes from outside the program, because each of those raises the compile error.
 
-Although nothing is raised, the compile error of an invalid pattern stays in the **Err** object after the call that compiled the pattern returns. A program that tests **Err** for other errors calls **Err.Clear** first.
-
+<!-- test: IsValidTests.IsValid_InvalidPatternLeavesNoError -->
 > [!NOTE]
-> A quantifier whose lower count is above its upper count, such as `a{2,1}`, is not found when the pattern is compiled, so **IsValid** returns **True** for it. [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) and [**Split**](Split) then raise error 3000 when a search reaches the quantifier, with the description that Windows gives that number, *The specified print monitor is unknown.* This is how version 1.8.0.0 behaves.
+> Although nothing is raised, the compile error of an invalid pattern stays in the **Err** object after the call that compiled the pattern returns. A program that tests **Err** for other errors calls **Err.Clear** first.
+
+<!-- test: IsValidTests.IsValid_LowCountAboveHigh, IsValidTests.LastErrorNumber_LowCountAboveHigh, IsValidTests.Test_LowCountAboveHighRaisesCompileError, IsValidTests.Execute_LowCountAboveHighRaisesCompileError, IsValidTests.Replace_LowCountAboveHighRaisesCompileError, IsValidTests.Split_LowCountAboveHighRaisesCompileError -->
+> [!NOTE]
+> A quantifier whose lower count is above its upper count, such as `a{2,1}`, is not found when the pattern is compiled, so **IsValid** returns **True** for it and [**LastErrorNumber**](LastErrorNumber) returns 0. [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) and [**Split**](Split) then raise error 3000 when a search reaches the quantifier, with the description that Windows gives that number, *The specified print monitor is unknown.* This is how version 1.8.0.0 behaves.
 
 ## Example
 

@@ -112,7 +112,6 @@ const PENDING = new Set([
   "WinReg",
   "tbFileSysTools",
   "tbProjPacker",
-  "tbRegExp",
   "tsJson",
   "tsPwGen",
   "xCalendar",

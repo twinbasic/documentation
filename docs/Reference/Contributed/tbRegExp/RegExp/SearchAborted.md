@@ -27,8 +27,9 @@ The budget is 5,000 steps for each character of the string, at least 1,000,000 a
 
 Each call of **Test**, **Execute**, **Replace** or **Split** sets the value again: a call that finishes its search sets it to **False**, and so does a call that raises an error because the pattern is not valid, because no search was made. The value belongs to the object. A search on another **RegExp** does not change it, and a new object returns **False**.
 
+<!-- test: SearchAbortedTests.SearchAborted_DigitsWithoutXFinishAt2000, SearchAbortedTests.SearchAborted_DigitsWithoutXFinishAt5000 -->
 > [!NOTE]
-> A pattern that is not catastrophic can also run out of steps, if it tries again from each start position and the string is long. `\d+x` on a string of 5,000 digits and no `x` takes about 5 seconds and then gives up, with the same result as for a string that has no match, and **SearchAborted** returns **True**. A string of 2,000 digits finishes in about 2 seconds and returns **False**.
+> A pattern that is not catastrophic can also run out of steps, if it tries again from each start position and the string is long. `\d+x` on a string of 5,000 digits and no `x` takes a few seconds and then gives up, with the same result as for a string that has no match, and **SearchAborted** returns **True**. A string of 2,000 digits finishes in a second or two and returns **False**.
 
 ## Example
 
