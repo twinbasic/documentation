@@ -937,7 +937,7 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | Symbol | Signature | Description |
 |---|---|---|
 | `addinProjectOf` | `(config) → { src, dest } \| null` | The download `_config.yml`'s `addin_project` declares, `dest` without a leading slash; `null` unless both ends are given. |
-| `packAddinProject` | `({ dir, symbols }) → Promise<{ bytes, files, untracked }>` | Packs the files `git ls-files` lists in `dir`, as the working folder holds them, less `Resources/HELP/`, with CRLF made LF outside `Resources/`, and `symbols` in place of `Resources/SYMBOLS/symbols.json` when given. Stages them in a temporary folder and packs it with `importProject` from `scripts/impexp.mjs`. `untracked` lists the files git does not track that were left out. Throws when git fails or tracks no `Settings`. |
+| `packAddinProject` | `({ dir, symbols }) → Promise<{ bytes, files, untracked }>` | Packs the files `git ls-files` lists in `dir`, as the working folder holds them, less `Resources/HELP/`, with CRLF made LF outside `Resources/`, and `symbols` in place of `Resources/SYMBOLS/symbols.json` when given. Packs them in memory with `packFiles` from `scripts/impexp.mjs`, which gives the bytes `importProject` would give for the same files in a folder. `untracked` lists the files git does not track that were left out. Throws when git fails or tracks no `Settings`. |
 | `writeAddinProject` | `({ dir, symbols, roots, rel }) → Promise<{ rel, bytes, files, untracked, roots, ms }>` | Packs once and writes the file at `rel` in each of `roots`. |
 | `formatAddinProject` | `(result, dirLabel, indent) → string` | The line `runBuild` prints, and a second naming any untracked file left out. |
 

@@ -831,7 +831,10 @@ The decisions, each with what it rules out:
   `deriveTreeRels` takes (`onlineOnlyRels`), so the link check resolves the page's link to
   it and the publish sweep sees it. If the task stops writing,
   `--check-audit-index` reports the file as indexed but not on disk.
-- **The pack is `impexp.mjs`'s `importProject`, in process.** `builder/` may not import
+- **The pack is `impexp.mjs`'s `packFiles`, in process and in memory.** It packs the
+  files as `importProject` packs them from a folder (`test/addin-project.test.mjs` pins
+  the two to the same bytes), with no copy through `%TEMP%`: staging the 53 MB there
+  took 200 ms to 1.9 s on a busy disk, against about 100 ms in memory. `builder/` may not import
   `scripts/` (`biome.jsonc`), because `check_tree_fresh.mjs` would not see a change to
   what the build imports. `impexp.mjs` is the one exception, by name in the rule: it
   imports nothing, the build already publishes it through `bundle_extra`, and
