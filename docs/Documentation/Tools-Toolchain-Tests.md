@@ -81,6 +81,7 @@ The gate also covers `lib/markdown.mjs` and `lib/frontmatter.mjs`, the modules t
 
 - the rewrite chain leaves alone a fence that only the site's parser finds, and an admonition written inside one;
 - the build's check of `{{tbdocs:<name>}}` count names skips names in code and gives an unknown one's line in its file;
+- the `{{tbdocs:size:<path>}}` and `{{tbdocs:packageTestRows}}` placeholders are expanded outside code, in a raw HTML block and on a table line, and refused, at their line, for a path the build does not publish or cannot size;
 - `discover` names the page and line of `title: Input #`, and says nothing about a quoted value;
 - [`convert_em_dash_separators.mjs`](Tools-Build#convert-em-dash-separators), which rewrites page source by hand, converts prose and nothing else.
 

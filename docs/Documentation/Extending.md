@@ -719,6 +719,8 @@ Two shapes qualify. Most names count things `discover` already found: pages unde
 
 Then read the built page and check the number against the thing it counts. Nothing compares a derivation against reality: a name that returns the wrong number is as green as one that returns the right one.
 
+A value that is text, or that has to appear in a raw HTML block or on a table line, is not a count: `countPlugin` cannot reach it. `{{tbdocs:size:<site path>}}` and `{{tbdocs:packageTestRows}}` are the model for one. `expandDownloadPlaceholders` expands them in the page source, between the code mask and its restore in `applyPreRenderRewrites`; `checkPlaceholders` refuses what cannot be expanded, naming the file and the line; and the values reach the render workers in the shared payload, as `counts` does. A value that depends on a file written after the pages render cannot be known in time, and is refused.
+
 ---
 
 ## What a change obliges in the documentation

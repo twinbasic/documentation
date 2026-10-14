@@ -67,22 +67,37 @@ export async function packPackageTests(cfg, pkg) {
 }
 
 /**
- * Pack every package's test project and write it into the online tree.
+ * Pack every package's test project, in memory. The build does this before any page renders, so
+ * that a page can state a download's size ({{tbdocs:size:...}}, counts.mjs), and the
+ * packageTests task writes these same bytes.
+ *
+ * @returns {Promise<{packed: {pkg: string, rel: string, bytes: Buffer}[], ms: number}>}
+ */
+export async function packAllPackageTests(cfg) {
+  const t0 = Date.now();
+  const packed = [];
+  for (const pkg of packageTestNames(cfg.src)) {
+    const rel = `${cfg.dest}/${pkg}/${downloadName(pkg)}`;
+    packed.push({ pkg, rel, bytes: await packPackageTests(cfg, pkg) });
+  }
+  return { packed, ms: Date.now() - t0 };
+}
+
+/**
+ * Write what packAllPackageTests packed into the online tree.
  *
  * @returns {Promise<{written: {rel: string, bytes: number}[], ms: number}>}
  */
-export async function writePackageTests(cfg, root) {
+export async function writePackageTests({ packed, ms: packMs }, root) {
   const t0 = Date.now();
   const written = [];
-  for (const pkg of packageTestNames(cfg.src)) {
-    const rel = `${cfg.dest}/${pkg}/${downloadName(pkg)}`;
-    const bytes = await packPackageTests(cfg, pkg);
+  for (const { rel, bytes } of packed) {
     const out = path.join(root, ...rel.split("/"));
     await fs.mkdir(path.dirname(out), { recursive: true });
     await fs.writeFile(out, bytes);
     written.push({ rel, bytes: bytes.length });
   }
-  return { written, ms: Date.now() - t0 };
+  return { written, ms: packMs + Date.now() - t0 };
 }
 
 /** The build's line for the task's result. */

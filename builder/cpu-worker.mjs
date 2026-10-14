@@ -78,6 +78,7 @@ const handlers = {
       vendoredImagesObj,
       pictureSizes,
       counts,
+      downloads,
     } = unpackShared(_sharedSAB);
 
     const { initHighlighter } = await import("./highlight.mjs");
@@ -97,6 +98,7 @@ const handlers = {
       vendoredVideos,
       vendoredImages,
       counts,
+      downloads,
     });
     const site = { ...siteData, markdown, buildInfo };
 

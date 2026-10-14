@@ -224,10 +224,12 @@ Calls `buildInitConfig(state.site)` from `template.mjs` to pre-render the config
 ### `markdownInit` (main)
 
 ```js
-markdownInit.expected = ["discover", "vendorAssets", "deriveRedirects"]
+markdownInit.expected = ["discover", "vendorAssets", "deriveRedirects", "packTests"]
 ```
 
 Builds the link tables (`buildLinkTables(state.pages)`) and derives the `{{tbdocs:<name>}}` counts registry (`deriveCounts(state, { redirectStubs: stubs.length })` from `counts.mjs`), throwing if a page names a count that does not exist. The redirect-stub count is why `deriveRedirects` is a predecessor.
+
+It also settles the downloads that `{{tbdocs:size:<site path>}}` and `{{tbdocs:packageTestRows}}` state (`deriveDownloads`, then `checkPlaceholders`, which throws on a path the build does not publish or cannot size). `packTests`, a task of its own that follows `config`, packs the contributed packages' test projects in memory so that their sizes are known; `packageTests` writes those same bytes. Only the sizes the pages ask for travel to the workers, as `state.site.downloads`.
 
 It then instantiates the shared markdown-it (`createMarkdownIt({ highlighter: null, linkTables, baseurl, staticFiles, vendoredVideos, vendoredImages, counts })`), serializes the link tables (`serializeLinkTables(linkTables)`) for the workers, and computes site-level SEO (`computeSiteSeo(state.site.config, state.site.markdown)`). It writes `counts`, `markdown`, `linkTablesSerialized`, `seoSiteTitle` and `seoLogoUrl` to `state.site`. Per-page SEO is **not** computed here; each render worker does it via `computeChunkSeo`.
 
@@ -767,10 +769,14 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `PLACEHOLDER_RE` | `RegExp` | Matches a `{{tbdocs:<name>}}` placeholder and captures the name. Used by the `substitute` helper that `countPlugin` calls, and by `findCountRefs` to locate placeholders in a page's raw markdown. |
+| `PLACEHOLDER_RE` | `RegExp` | Matches a `{{tbdocs:<name>}}` or `{{tbdocs:<name>:<argument>}}` placeholder and captures the name and the argument. Used by the `substitute` helper that `countPlugin` calls, and by `findCountRefs` to locate placeholders in a page's raw markdown. |
 | `deriveCounts` | `(state, extra) → Record<string, number>` | Derives every named count from build state: page, static-file, reference-page and documentation-page totals, folder-style reference indexes and how many of them have a permalink ending in a slash, packages (total, default, built-in), attribute anchors, enumerations, and `extra.redirectStubs`. Called by `markdownInit` to build `state.site.counts`, whose keys are the names a page may use. |
 | `countPlugin` | `(md, ctx) → void` | A markdown-it plugin, the last one `createMarkdownIt` applies. Substitutes each `{{tbdocs:<name>}}` placeholder in prose and image alt text with the value `ctx.counts` holds under that name, and leaves an unknown name as written; code spans and fences are untouched. Its core rule is pushed last, so it runs after `replacements`. Does nothing when `ctx.counts` is absent. |
-| `findCountRefs` | `(rawContent, md) → { name, line }[]` | Finds every `{{tbdocs:...}}` reference outside code in a page's raw source, masking code with `maskCode` from `lib/markdown.mjs` and the site's markdown-it instance `md`, as the pre-render rewrites do. `line` is 1-based in `rawContent`, counted with the code put back (a masked fence is one line). Called by `validateCountNames` for each page. |
+| `findCountRefs` | `(rawContent, md) → { name, arg, line }[]` | Finds every `{{tbdocs:...}}` reference outside code in a page's raw source, masking code with `maskCode` from `lib/markdown.mjs` and the site's markdown-it instance `md`, as the pre-render rewrites do. `line` is 1-based in `rawContent`, counted with the code put back (a masked fence is one line). Called by `validateCountNames` for each page. |
+| `checkPlaceholders` | `(pages, counts, downloads, md) → { problems, sizes }` | `validateCountNames` for all placeholders: also refuses a `size` whose path the build does not publish or cannot size before render (`downloads.refused`, which names the help add-in's project, stylesheets and SVGs), a `size` without a path, an argument on a name that takes none, and either download placeholder when `downloads` is `null`. `sizes` holds the bytes of each file named, which is all the workers are sent. |
+| `deriveDownloads` | `(state, { tests, addinDest }) → { files, refused, tests }` | The sizes known before render: the static files discover found (the `bundle_extra` files among them) and the packed package test projects (`tests`, from `packTests`), and the paths that are published but cannot be sized, each with its reason. |
+| `expandDownloadPlaceholders` | `(src, downloads, permalink) → string` | Expands `{{tbdocs:size:<site path>}}` as `43 KB` or `1.2 MB`, and `{{tbdocs:packageTestRows}}` as one table row for each package test project, with links relative to `permalink`. `applyPreRenderRewrites` calls it on the source with code masked, using the `downloads` the page's `md` carries. |
+| `formatSize` | `(bytes) → string` | Whole KB (1024-based, at least 1) below a mebibyte, MB with one decimal from there. |
 | `validateCountNames` | `(pages, counts, md) → string[]` | Checks every page's count references against the known `counts` names via `findCountRefs`. Returns one message per unknown reference, giving the file and line (the reference's line in `rawContent`, moved down by the page's `contentLine`), the nearest known name when one is within an edit distance of three, and every known name. Empty when every reference is known. `markdownInit` throws when the result is non-empty. |
 | `findSurvivingPlaceholder` | `(html) → string\|null` | Scans rendered HTML, outside `<code>` and `<pre>`, for a `{{tbdocs:...}}` placeholder that survived rendering; returns the first or `null`. `renderPhase` in `render.mjs` calls it after each page renders and throws on a survivor. |
 

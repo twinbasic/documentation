@@ -43,7 +43,7 @@ export const GANTT_SECTION = {
   highlighterInit: "Seeds", loadData: "Seeds",
   discover: "Spine", vendorAssets: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   resolveBookChapters: "Spine",
-  deriveRedirects: "Spine", deriveSitemap: "Spine",
+  deriveRedirects: "Spine", deriveSitemap: "Spine", packTests: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
   renderJoin: "Render", flushJoin: "Write",
   writeAssets: "Write", searchData: "Write", symbolIndex: "Write", helpArchive: "Write", addinProject: "Write", packageTests: "Write", writeAux: "Write",

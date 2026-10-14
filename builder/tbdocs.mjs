@@ -64,7 +64,7 @@ import { Scheduler } from "./scheduler.mjs";
 import { GANTT_SECTION, groupGanttTimings, renderGantt } from "./gantt.mjs";
 
 import { discover } from "./discover.mjs";
-import { deriveCounts, validateCountNames } from "./counts.mjs";
+import { checkPlaceholders, deriveCounts, deriveDownloads } from "./counts.mjs";
 import { computeNav } from "./nav.mjs";
 import { vendorAssets } from "./vendor-assets.mjs";
 import { computeSiteSeo } from "./seo.mjs";
@@ -98,7 +98,13 @@ import { writePdf } from "./pdf.mjs";
 import { deriveTreeRels } from "./check-tree.mjs";
 import { syncAddinIndex } from "./addin-index.mjs";
 import { addinProjectOf, formatAddinProject, writeAddinProject } from "./addin-project.mjs";
-import { formatPackageTests, packageTestRels, packageTestsOf, writePackageTests } from "./package-tests.mjs";
+import {
+  formatPackageTests,
+  packageTestRels,
+  packageTestsOf,
+  packAllPackageTests,
+  writePackageTests,
+} from "./package-tests.mjs";
 import { helpArchiveStep, recheckHelpArchive } from "./help-archive-step.mjs";
 import { baselineWrites } from "./baseline.mjs";
 import { checkPageBaseline } from "./page-baseline.mjs";
@@ -544,9 +550,11 @@ const TASKS = {
   markdownInit: {
     // deriveRedirects is here for the counts registry alone: {{tbdocs:redirectStubs}}
     // is derived from the stub set, and nothing else on this task needs it.
-    expected: ["discover", "vendorAssets", "deriveRedirects"],
+    // packTests is here for {{tbdocs:size:...}} and {{tbdocs:packageTestRows}}, which state the
+    // test projects' sizes before any page renders.
+    expected: ["discover", "vendorAssets", "deriveRedirects", "packTests"],
     runOnMain: true,
-    execute({ deriveRedirects: { stubs } }, _ctx, state) {
+    execute({ deriveRedirects: { stubs }, packTests }, ctx, state) {
       const linkTables = buildLinkTables(state.pages);
       const baseurl = String(state.site.config.baseurl || "");
       const staticFileSet = new Set(state.staticFiles.map((s) => s.srcRel));
@@ -568,12 +576,27 @@ const TASKS = {
         vendoredImages: state.site.vendoredImages,
         counts: state.site.counts,
       });
-      const badNames = validateCountNames(state.pages, state.site.counts, state.site.markdown);
+      // The downloads' sizes, for the placeholders the pre-render rewrites expand
+      // ({{tbdocs:size:...}}, {{tbdocs:packageTestRows}}). The help add-in's project is named
+      // only to refuse it: it embeds the offline tree, which holds the pages that state sizes.
+      if (packTests?.failed) throw new Error(`package tests: not packed: ${packTests.error}`);
+      const testsCfg = packageTestsOf(state.site.config, ctx.srcRoot);
+      const downloads = deriveDownloads(state, {
+        tests: testsCfg && packTests?.packed ? { dest: testsCfg.dest, packed: packTests.packed } : null,
+        addinDest: addinProjectOf(state.site.config)?.dest ?? null,
+      });
+      const { problems: badNames, sizes } = checkPlaceholders(
+        state.pages,
+        state.site.counts,
+        downloads,
+        state.site.markdown,
+      );
       if (badNames.length) {
-        throw new Error(
-          `unknown {{tbdocs:...}} count name in ${badNames.length} place(s):\n\n` + badNames.join("\n\n"),
-        );
+        throw new Error(`bad {{tbdocs:...}} placeholder in ${badNames.length} place(s):\n\n` + badNames.join("\n\n"));
       }
+      // Only what the pages ask for goes to the workers.
+      state.site.downloads = { sizes, tests: downloads.tests };
+      state.site.markdown.downloads = state.site.downloads;
 
       state.site.linkTablesSerialized = serializeLinkTables(linkTables);
       const { seoSiteTitle, seoLogoUrl } = computeSiteSeo(state.site.config, state.site.markdown);
@@ -793,6 +816,7 @@ const TASKS = {
         vendoredImagesObj: Object.fromEntries(state.site.vendoredImages ?? []),
         pictureSizes: state.site.pictureSizes ?? {},
         counts: state.site.counts,
+        downloads: state.site.downloads,
       };
       const sharedSAB = packShared(shared);
       return { chunks, sharedSAB };
@@ -1076,13 +1100,32 @@ const TASKS = {
   // writes nothing, and a tree whose config declares no package_tests (the test fixtures)
   // packs nothing. A failure is reported and fails the build.
   packageTests: {
-    expected: ["prepDest"],
+    expected: ["prepDest", "packTests"],
     runOnMain: true,
-    async execute(_, ctx, state) {
-      const cfg = packageTestsOf(state.site.config, ctx.srcRoot);
-      if (!cfg || ctx.opts.dryRun) return null;
+    async execute({ packTests }, ctx) {
+      if (packTests?.failed) return packTests;
+      if (!packTests?.packed || ctx.opts.dryRun) return null;
       try {
-        return await writePackageTests(cfg, ctx.destRoot);
+        return await writePackageTests(packTests, ctx.destRoot);
+      } catch (err) {
+        return { failed: true, error: err.message };
+      }
+    },
+    submit() {},
+  },
+
+  // Pack the contributed packages' test projects in memory, before any page renders: a page can
+  // state a download's size ({{tbdocs:size:...}}), and the packageTests task writes these bytes.
+  // A tree whose config declares no package_tests (the test fixtures) packs nothing; a failure
+  // is reported by packageTests, which fails the build.
+  packTests: {
+    expected: ["config"],
+    runOnMain: true,
+    async execute({ config: { config } }, ctx) {
+      const cfg = packageTestsOf(config, ctx.srcRoot);
+      if (!cfg) return {};
+      try {
+        return await packAllPackageTests(cfg);
       } catch (err) {
         return { failed: true, error: err.message };
       }

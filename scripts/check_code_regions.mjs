@@ -83,7 +83,7 @@ import path from "node:path";
 
 import MarkdownIt from "markdown-it";
 import deflist from "markdown-it-deflist";
-import { validateCountNames } from "../builder/counts.mjs";
+import { checkPlaceholders, formatSize, validateCountNames } from "../builder/counts.mjs";
 import { discover } from "../builder/discover.mjs";
 import { applyPostRenderRewrites, applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
 import { injectAnchorHeadings } from "../builder/template.mjs";
@@ -509,8 +509,89 @@ async function hashProbe() {
   }
 }
 
+// The download placeholders ({{tbdocs:size:<path>}}, {{tbdocs:packageTestRows}}) are expanded
+// in the page's source between the code mask and its restore: one in a fence, a code span and a
+// definition-list fence stays as written, one in a raw HTML block and one on a table line is
+// expanded, links relative to the page. The validator refuses a path the build does not publish,
+// one it cannot size, the help add-in's project, and an argument where there is none, each at
+// its line of the file.
+function downloadProbe() {
+  const tests = {
+    dest: "tB/Packages/Contributed",
+    packages: [{ pkg: "Fmt", rel: "tB/Packages/Contributed/Fmt/Fmt-tests.twinproj", bytes: 2048 }],
+  };
+  const md = createMarkdownIt({
+    highlighter: null,
+    linkTables: null,
+    baseurl: "",
+    staticFiles: new Set(),
+    downloads: { sizes: { "a/x.bin": 43 * 1024 + 5, "a/y.bin": 1.25 * 1048576 }, tests },
+  });
+  const src = [
+    "```tb",
+    "{{tbdocs:size:a/x.bin}}",
+    "```",
+    "",
+    "x `{{tbdocs:size:a/x.bin}}` y",
+    "",
+    "T",
+    ": ```",
+    "  {{tbdocs:packageTestRows}}",
+    "  ```",
+    "",
+    '<p><a href="a/x.bin">x <span>{{tbdocs:size:a/x.bin}}</span></a> {{tbdocs:size:a/y.bin}}</p>',
+    "",
+    "| P | F | S |",
+    "|---|---|---|",
+    "{{tbdocs:packageTestRows}}",
+    "",
+  ].join("\n");
+  const out = applyPreRenderRewrites(src, md, { permalink: "/Downloads" }).split("\n");
+  assert.deepEqual(out.slice(0, 9), src.split("\n").slice(0, 9));
+  assert.equal(out[11], '<p><a href="a/x.bin">x <span>43 KB</span></a> 1.3 MB</p>');
+  assert.equal(
+    out[15],
+    '| [Fmt](tB/Packages/Contributed/Fmt/) | <a href="tB/Packages/Contributed/Fmt/Fmt-tests.twinproj" download>Fmt-tests.twinproj</a> | 2 KB |',
+  );
+  assert.match(
+    applyPreRenderRewrites("{{tbdocs:packageTestRows}}", md, { permalink: "/tB/Packages/Contributed/" }),
+    /^\| \[Fmt\]\(Fmt\/\) \| <a href="Fmt\/Fmt-tests\.twinproj" download>/,
+  );
+
+  const downloads = {
+    files: new Map([["a/x.bin", 1]]),
+    refused: new Map([
+      ["tB/add-in.twinproj", "the help add-in's project embeds the offline tree"],
+      ["s.css", "rewritten"],
+    ]),
+  };
+  const page = (body) => ({ srcRel: "p.md", contentLine: 4, rawContent: body });
+  const check = (body) =>
+    checkPlaceholders([page(body)], { pages: 1 }, downloads, md).problems.map((p) =>
+      p.split("\n").slice(0, 2).join(" "),
+    );
+  assert.deepEqual(check("a\n\n{{tbdocs:size:a/x.bin}} {{tbdocs:size:a/z.bin}}\n{{tbdocs:size}}\n{{tbdocs:pages:x}}"), [
+    "p.md:6   {{tbdocs:size:a/z.bin}}: the build does not publish a/z.bin; a size is known for the static files under docs/, the bundle_extra files and the package test projects",
+    "p.md:7   {{tbdocs:size}}: a size needs the site path of a file: {{tbdocs:size:<site path>}}",
+    "p.md:8   {{tbdocs:pages:x}}: a count name takes no argument",
+  ]);
+  assert.match(check("{{tbdocs:size:tB/add-in.twinproj}}")[0], /embeds the offline tree/);
+  assert.match(check("{{tbdocs:size:s.css}}")[0], /rewritten/);
+  assert.deepEqual(check("`{{tbdocs:size:nope}}`\n\n```\n{{tbdocs:size:nope}}\n```"), []);
+  assert.deepEqual([1, 1023, 1024, 44000, 1048000, 1048576, 1.25 * 1048576].map(formatSize), [
+    "1 KB",
+    "1 KB",
+    "1 KB",
+    "43 KB",
+    "1023 KB",
+    "1.0 MB",
+    "1.3 MB",
+  ]);
+}
+
 const DISCOVER_PROBES = [
   ["the count validator's references and lines", countProbe],
+  ["the download placeholders' expansion and validation", downloadProbe],
   ["discover's warning about an unquoted value that ends in #", hashProbe],
 ];
 
@@ -636,6 +717,7 @@ async function main(argv) {
     console.log(`ok    ${DASH_PROBES.length} probes: the dash normaliser converts prose and nothing else`);
     console.log(`ok    ${MODULE_PROBES.length} probes: lib/markdown.mjs and lib/frontmatter.mjs`);
     console.log("ok    1 probe: the count validator skips code and names the file's line");
+    console.log("ok    1 probe: the download placeholders are expanded outside code and validated");
     console.log("ok    1 probe: discover warns about an unquoted value that ends in #");
   }
 
