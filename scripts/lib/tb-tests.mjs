@@ -63,7 +63,9 @@ export function findCases(files) {
   for (const { name: file, text } of files) {
     let fixture = null;
     let pending = [];
-    text.split(/\r?\n/).forEach((raw, i) => {
+    // A lone CR ends a line as CRLF and LF do: the compiler counts it, so a file
+    // with one numbered its lines past every case below it (BETA 1005).
+    text.split(/\r\n|\r|\n/).forEach((raw, i) => {
       const line = i + 1;
       const marker = CASE_RE.exec(raw);
       if (marker) {
