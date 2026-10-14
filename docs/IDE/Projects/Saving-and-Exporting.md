@@ -86,7 +86,7 @@ The state is kept in the registry, in a value for each project path, under `Proj
 ## Open a project
 
 - **File → New Project...** (<kbd>Ctrl</kbd>+<kbd>N</kbd>) and **File → Open Recent...** open the **New / Open Project** dialog, which has the tabs **New**, **Samples** and **Recent**. **Open Recent...** starts on the **Recent** tab. A **Recent (VB6)** tab shows too when the machine has a VB6 history. [New Project](../Project/New) describes the dialog.
-- **File → Open Project...** (<kbd>Ctrl</kbd>+<kbd>O</kbd>) opens the Windows **Open** dialog. A `.vbp` file is imported as a VB6 project; the result is unsaved. A project opened with **Import from folder...** is unsaved as well.
+- **File → Open Project...** (<kbd>Ctrl</kbd>+<kbd>O</kbd>) opens the Windows **Open** dialog. A `.vbp` file is imported as a VB6 project; the result is unsaved. The import keeps the `Attribute` lines of the VB6 files as they are, and the [FAQ](../../../FAQ#vb6-import) says what becomes of each file and each line. A project opened with **Import from folder...** is unsaved as well.
 
 The project that is open is closed before the new one loads, and the question above comes at that point. In the **New / Open Project** dialog, it comes when you press **Open**, not before.
 

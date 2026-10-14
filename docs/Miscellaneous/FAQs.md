@@ -248,6 +248,32 @@ You can import individual files, from VB projects or any type, through the Impor
 ![The Import from twinproj dialog: a tick-box tree of everything found in ImportDemo.vbp, with the Resources branch expanded over its ICON and MANIFEST folders and a Sources branch below, where a module from a folder beside the project's sits in a PARENT-FOLDER branch. Form1.frm.tbform and Form1.frm.twin are both ticked.](Images/16833fae-4bd7-418f-bb16-691a611a5b01.png){:width="468" height="397"}
 
 Importing a .vbp also carries over its [startup object](tB/IDE/Project-Settings#startup-object) and its [icon form](tB/IDE/Project-Settings#icon-form). A VB6 project that was linked as a console program --- its `LinkSwitches` line contains `/SUBSYSTEM:CONSOLE`, written in capitals --- becomes a [console application](tB/IDE/Project-Settings#is-console-application). No other linker switch is carried over.
+
+**What happens to the `Attribute` lines.** The import keeps every `Attribute` line as VB6 wrote it, and turns none of them into a twinBASIC attribute such as `[Description]`. twinBASIC reads the lines itself when it compiles. **Import from VBP...** and **File → Open Project...** both import a project this way:
+
+- A `.bas` or `.cls` file is imported unchanged, because twinBASIC compiles these files as they are.
+- A `.frm`, `.ctl` or `.pag` file becomes two files. The designer file (`.tbform`, `.tbcontrol` or `.tbppage`) holds the properties from the file's `Begin` block. The `.twin` file holds a **Class** with the module's code, its `Attribute` lines included. The import puts the attributes `[FormDesignerId]`, `[ClassId]`, `[InterfaceId]` and `[EventInterfaceId]` in front of the class, with new GUIDs, and `[COMControl]` in front of a UserControl. None of them comes from an `Attribute` line: a form keeps its `Attribute VB_PredeclaredId = True` line and gets no `[PredeclaredId]`.
+- A UserControl's **PropertyPages** list, which VB6 keeps in the `.ctx` file, goes into the `PropertyPages` entry of the `.tbcontrol` file. The `VB_ProcData` lines that tie a property to a property page or a category stay in the class as they were.
+
+In a built ActiveX DLL, these lines have the same effect as the twinBASIC attribute beside them:
+
+| VB6 line | Effect in the type library | twinBASIC attribute |
+|---|---|---|
+| `VB_Description`, `VB_VarDescription` | The help string of the class, member, public field or event. | [`[Description]`](tB/Core/Attributes#description) |
+| `VB_UserMemId = 0` | The default member. | [`[DefaultMember]`](tB/Core/Attributes#defaultmember) |
+| `VB_UserMemId = -4` | The enumerator that **For Each** uses. | [`[Enumerator]`](tB/Core/Attributes#enumerator) |
+| `VB_UserMemId` with another value | The member's dispatch ID. | [`[DispId]`](tB/Core/Attributes#dispid) |
+| `VB_VarUserMemId` | The public field's dispatch ID. | None: `[DispId]` is not accepted on a field. |
+| `VB_MemberFlags = "40"` | The member is hidden. | [`[Hidden]`](tB/Core/Attributes#hidden) |
+| `VB_MemberFlags = "400"` | The member is nonbrowsable. | [`[NonBrowsable]`](tB/Core/Attributes#nonbrowsable) |
+| `VB_PredeclaredId = True` | The class has a predeclared instance. | [`[PredeclaredId]`](tB/Core/Attributes#predeclaredid) |
+
+`VB_Name` is the name of the module or class. A class with `VB_Exposed = False` is left out of the type library. A class with `VB_Creatable = False` is not marked creatable there, and a class with `VB_GlobalNameSpace = True` is marked as an application object (`appobject`).
+
+<!-- Checked on BETA 1005 by test/ide/vb6-import.test.mjs (ide-test.bat --only vb6-import): it imports test/ide/probes/vb6-import with Import from VBP..., checks the converted files, then builds the project with project.dllRegisterAfterBuild false and reads the DLL's type library. The twinBASIC-attribute column: a class written with those attributes built into the same DLL gave the same help strings, dispatch IDs and flags (scratch probe, 2026-10-14). The WARNING below is the BUGS-TO-REPORT entry "Some VB6 attribute lines have no effect in a built type library". -->
+
+> [!WARNING] BETA 1005
+> Some `Attribute` lines have no effect, and nothing says so. `VB_HelpID` and `VB_VarHelpID` give no help context ID. `VB_VarMemberFlags` leaves a public field neither hidden nor nonbrowsable. `VB_MemberFlags = "200"` (the user-interface default) and `"14"` (the data-binding flags `bindable` and `displaybind`) set no flag. A component moved from VB6 loses these when it is built again. In a `.twin` file, `[Hidden]` on a public field does hide it.
 </details>
 
 <details>

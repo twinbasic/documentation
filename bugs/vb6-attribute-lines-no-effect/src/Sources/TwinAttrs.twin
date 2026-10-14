@@ -1,0 +1,6 @@
+' The control for VB_VarMemberFlags = "40": the same field marked [Hidden] is
+' hidden in the built type library, FUNCFLAG_FHIDDEN on its property get and let.
+Class TwinAttrs
+    [Hidden]
+    Public HiddenField As Long
+End Class

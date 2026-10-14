@@ -1,0 +1,21 @@
+VERSION 5.00
+Begin VB.PropertyPage pagAttrs
+   Caption         =   "Attrs"
+   ClientHeight    =   1500
+   ClientLeft      =   0
+   ClientTop       =   0
+   ClientWidth     =   2400
+   PaletteMode     =   0  'Halftone
+   ScaleHeight     =   1500
+   ScaleWidth      =   2400
+End
+Attribute VB_Name = "pagAttrs"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = False
+Attribute VB_Exposed = False
+Option Explicit
+
+Private Sub PropertyPage_ApplyChanges()
+    SelectedControls(0).Caption = "applied"
+End Sub
