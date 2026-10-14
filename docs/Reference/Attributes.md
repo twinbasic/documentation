@@ -33,26 +33,45 @@ The available attributes are listed below in alphabetic order. Not every attribu
 
 Syntax: **[AllowUnpopulatedVtableEntry]**
 
-Applicable to: [procedure](../Gloss#procedure) prototype in an [**Interface**](Interface)
+Applicable to: [procedure](../Gloss#procedure) prototype in an [**Interface**](Interface), [procedure](../Gloss#procedure) in a [**Class**](Class)
 
 Marks a prototype that a class implementing the interface is not obliged to supply.
 
 The twinBASIC packages use it to add members to an interface without breaking code written against an earlier revision of it. `ItbHostEventsV2` extends `ItbHostEventsV1` and adds one such prototype; `ItbHostEventsV3` extends that and adds another. An addin that implements only the **V1** members still satisfies **V3**.
 
+On a **Public** procedure of a **Class**, it does the same for a class that [**Implements**](Implements) that class: the member may be left out, where otherwise the build fails with TB65535, *Missing implementation of member ...*. On a property it covers only the accessor it is written on, so a **Property Get** and its **Property Let** each need it.
+
 <!-- Applicability from the package census, BETA 1005: 71 uses in tbIDE and VB,
      every one a Sub prototype inside an Interface. The effect described above is read
-     from that usage, not from a specification. -->
+     from that usage, not from a specification.
+     On a Class member (BETA 1005, tbbuild): a Class B that Implements Class A and
+     supplies only A's unmarked Sub compiles when A's other Sub carries the
+     attribute, and fails with TB65535 "Missing implementation of member Sub
+     OptionalOne()" without it; the same for a Function, an object-returning
+     Function and each property accessor separately (marking the Get alone still
+     reports the Let). A Friend Sub and an Event are never required, with or
+     without it. No trace in the type library. -->
 
 ## AppObject  (optional Bool)
 {: #appobject }
 
 Syntax: **[AppObject** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**CoClass**](CoClass)
+Applicable to: [**CoClass**](CoClass), [**Class**](Class)
 
 Legacy VB attribute: *VB_GlobalNameSpace*
 
 Indicates the class is part of the global namespace. You should not include this attribute without a full understanding of the meaning. The **Global** class is an AppObject.
+
+On a **Class**, the members of the class can be called by their bare names anywhere in the project. Those calls all reach one instance of the class, which is not the same as an instance created with [**New**](New). In an ActiveX build the class is marked `appobject` in the type library, so a client sees its members as global names too.
+
+<!-- Class (BETA 1005, ActiveX DLL dumped with TLI): coclass TYPEFLAGS 0xB
+     (appobject, cancreate, predeclid) against 0x2 without it; in a Standard EXE
+     an [AppObject] class's GlobalOne() resolves unqualified, the control class's
+     GlobalC() is TB5079; tbrun: two bare calls of a counting method print 1, 2,
+     and `New AO_Cls` then prints 1. Also accepted on an Interface and a Private Class, where
+     the bare names resolve as well (an Interface has no object behind it); on a
+     generic Class they do not. Left off the line above. -->
 
 For more details, see [this VBA documentation page](https://learn.microsoft.com/en-us/openspecs/microsoft_general_purpose_programming_languages/ms-vbal/189fb41b-cc3a-4999-a6d2-ba89f72d2870).
 
@@ -70,11 +89,19 @@ Disables or enables array element access bounds checking within the scope of a c
 
 Syntax: **[BindOnlyIfNoArguments** [ **( True** \| **False )** ] **]**
 
-Applicable to: [procedure](../Gloss#procedure)
+Applicable to: [**Declare** (API declaration)](Declare), variable in a [**Module**](Module), variable in a [**Class**](Class), [procedure](../Gloss#procedure)
 
 Only binds this name to a callsite when no arguments are present. Normally false, but see below for an exception.
 
 This attribute resolves the cases where compiler's special treatment of certain procedure names conflicts with a procedure of the same name that shouldn't be treated specially. This currently affects procedures named `Left`. Such procedures get an implicit `[BindOnlyIfNoArguments(True)]` assigned by the compiler. If the user wants to have a procedure of this name, it should include `[BindOnlyIfNoArguments(False)]`.
+
+A **Declare** takes the attribute as a procedure does, and a **Declare** named `Left` gets the implicit one too. On a variable named like a built-in procedure, a call with arguments binds to the built-in procedure, where it would otherwise be error TB5030, *Unexpected call arguments*.
+
+<!-- BETA 1005 (tbrun): a Declare named Right binds a call with arguments
+     without the attribute, and VBA's Right with it; (False) binds the Declare.
+     A module or class variable named Left: Left(0, 2) is TB5030 without it and
+     calls VBA's Left with it. On a Const and an Event it is accepted and
+     changes nothing. -->
 
 ## BindOnlyIfStringSuffix  (optional Bool)
 {: #bindonlyifstringsuffix }
@@ -151,7 +178,17 @@ For an overview of coclasses in tB, see [Defining coclasses](../../Features/Lang
 
 Syntax: **[COMControl** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Interface**](Interface)
+Applicable to: [**Interface**](Interface), [**Class**](Class)
+
+On a **Class**, it marks the class as an ActiveX control (the `control` flag of its coclass in the type library). The compiler then warns, with TB0013, about a class that has no [InterfaceId](#interfaceid) or no [EventInterfaceId](#eventinterfaceid) attribute: a host may cache those identifiers, so they should be fixed rather than generated anew by each build.
+
+<!-- BETA 1005, ActiveX DLL dumped with TLI: coclass TYPEFLAGS 0x22 (cancreate,
+     control) against 0x2. Every [COMControl] Class, Private Class and Interface
+     draws "TB0013 It is strongly recommended to specify an [ InterfaceId() ]
+     attribute for this class. Hosts may cache this information, and so it needs
+     to be a stable ID, especially between bitnesses." and the same for
+     [ EventInterfaceId() ]; (False) draws neither. On an Interface no type
+     library flag changes. -->
 
 ## COMCreatable  (optional Bool)
 {: #comcreatable }
@@ -197,9 +234,13 @@ See also [DllExport](#dllexport).
 
 Syntax: **[COMExtensible** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Interface**](Interface)
+Applicable to: [**Interface**](Interface), [**Class**](Class)
 
-Specifies whether new members added at runtime can be called by name through an interface implementing **IDispatch**. This attribute is set to **False** by default.
+Specifies whether new members added at runtime can be called by name through an interface implementing **IDispatch**. This attribute is set to **False** by default. On a **Class**, it applies to the interface the class exposes through COM.
+
+<!-- BETA 1005, ActiveX DLL dumped with TLI: on a Class the hidden dispinterface
+     _X loses TYPEFLAG_FNONEXTENSIBLE (0x10D0 -> 0x1050); (False) is as without
+     it; the coclass flags do not change. -->
 
 ## ComImport  (optional Bool)
 {: #comimport }
@@ -215,9 +256,16 @@ Specifies that an interface is an import from an external COM library, for insta
 
 Syntax: **[CompileIf(** condition **)]**
 
-Applicable to: [procedure definitions](../Gloss#procedure)
+Applicable to: [**Declare** (API declaration)](Declare), [**Const**](Const), variable in a [**Module**](Module), variable in a [**Class**](Class), [**Event**](Event) declaration in a [**Class**](Class), [procedure definitions](../Gloss#procedure)
 
 Controls the conditional compilation of a procedure definition. Has no default value.
+
+It controls a **Declare**, a **Const**, a variable or an **Event** in the same way: with a **False** condition the declaration is left out, so a use of its name is an error, such as TB5079, *Unrecognized symbol*.
+
+<!-- BETA 1005 (tbbuild): [CompileIf(False)] on a Declare (every form, also in
+     a Class), a Const, a module variable (initialised, Private), a WithEvents
+     variable and an Event: a use is TB5079 "Unrecognized symbol", TB5113 at a
+     RaiseEvent, TB5027 for o.Member; (True) and no attribute find it. -->
 
 ## CompilerOptions  (String)
 {: #compileroptions }
@@ -238,20 +286,40 @@ Sets the LLVM compiler options for one procedure, in place of the **Compiler Opt
 
 Syntax: **[ConstantFoldable** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Function**](Function) in a [**Module**](Module). The compiler rejects it on a method in a [**Class**](Class).
+Applicable to: [**Function**](Function) in a [**Module**](Module), [**Property Get**](Property) in a [**Module**](Module). The compiler rejects it on a method in a [**Class**](Class).
 
 Specify this attribute for functions that, when called with non-variable input, can be computed at compile time rather than at runtime. For example, a function that converts a string literal to ANSI. The result never changes, so the resulting ANSI string is stored rather than recomputed on every run. Such functions are also called *pure functions*, because their output depends only on the arguments and not on the state of the program.
 
 The restriction to modules is not an oversight. Folding a call to a method would require constant propagation through object state, and a notion of a constant object for the propagation to terminate on. twinBASIC's object model is dynamic enough to make both hard, so the compiler rejects the attribute there rather than folding a subset of cases that would be difficult to describe.
+
+Calls are folded only when **Constant Function Folding** is set to **Yes** in [Project Settings](../IDE/Project-Settings#constant-function-folding). A **Property Get** in a module folds as a function does. On a **Sub** the attribute is accepted and has no effect.
+
+> [!WARNING] BETA 1005
+> The compiler also accepts the attribute on a **Declare Function**. With **Constant Function Folding** on, a call to such a function whose arguments are all constants crashes the compiler during the build, though the project compiles without an error.
+
+<!-- BETA 1005 (tbrun --exe, counting calls through a module counter): with
+     the setting on, 3 calls with a constant argument of a [ConstantFoldable]
+     Boolean Function, Property Get or Static Function run 0 times in the exe,
+     3 without the attribute or with (False), 3 with the setting off; a Sub, a
+     generic Function and a Declare Sub run every time. The crash: tbbuild
+     --build exit 5, ACCESS_VIOLATION, for a Declare Function with
+     [ConstantFoldable] or [ConstantFoldableNumericsOnly] called as
+     DSleepFn(5, 0); a variable argument or the setting off builds. -->
+<!-- Bug: constantfoldable-declare-crash in BUGS-TO-REPORT.md. -->
 
 ## ConstantFoldableNumericsOnly  (optional Bool)
 {: #constantfoldablenumericsonly }
 
 Syntax: **[ConstantFoldableNumericsOnly** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Function**](Function) in a [**Module**](Module). The compiler rejects it on a method in a [**Class**](Class).
+Applicable to: [**Function**](Function) in a [**Module**](Module), [**Property Get**](Property) in a [**Module**](Module). The compiler rejects it on a method in a [**Class**](Class).
 
-A limited case of [constant foldable attribute](#constantfoldable), which applies only if the function was called with a numeric parameter. The restriction to modules is the same one [ConstantFoldable](#constantfoldable) carries, and for the same reason.
+A limited case of [constant foldable attribute](#constantfoldable), which applies only if the function was called with a numeric parameter. The restriction to modules is the same one [ConstantFoldable](#constantfoldable) carries, and for the same reason, and so are the Project Settings option it needs and the crash on a **Declare Function**.
+
+<!-- BETA 1005: a [ConstantFoldableNumericsOnly] Function called with a String
+     literal, FnNStr("abc"), also ran 0 times of 3 in the exe with folding on, so
+     the numeric restriction was not seen to apply. Not judged a defect yet: what
+     the compiler counts as numeric is not known. -->
 
 ## CustomControl  (String)
 {: #customcontrol }
@@ -297,18 +365,26 @@ The editor names the twinBASIC packages use, most-used first. The list is not ex
 
 Syntax: **[Debuggable** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Module**](Module), [procedure in a **Class** or **Module**](../Gloss#procedure)
+Applicable to: [**Module**](Module), [**Class**](Class), [procedure in a **Class** or **Module**](../Gloss#procedure)
 
-When false, turns of breakpoints and stepping for the method or module. The default value is **True**.
+When false, turns off breakpoints and stepping for the method, class or module. The default value is **True**. In a class or module marked `[Debuggable(False)]`, a [**Stop**](Stop) statement does not enter break mode.
+
+<!-- BETA 1005 (tbrun): Stop in a method of a [Debuggable(False)] Class (also
+     Private and generic) is passed over; without it the run breaks there. On an
+     Interface it is accepted and a Stop in an implementing class still breaks. -->
 
 ## DebugOnly  (optional Bool)
 {: #debugonly }
 
 Syntax: **[DebugOnly** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Sub**](Sub)
+Applicable to: [**Sub**](Sub), [**Declare Sub**](Declare)
 
-Excludes calls to this procedure from the Build. They are only available when running from the IDE, i.e. debugging.
+Excludes calls to this procedure from the Build. They are only available when running from the IDE, i.e. debugging. On a **Declare Sub** the same holds for calls to the API procedure.
+
+<!-- BETA 1005 (tbrun and --exe): a [DebugOnly] Declare Sub Sleep(150) sleeps in
+     the IDE run and not in the built exe; without it or with (False) both sleep.
+     On an Event it is accepted and the handler still runs in the exe. -->
 
 The attribute is accepted on a **Sub** in a **Module**, a **Class** or an **Interface**, and on a **Declare Sub**. On a **Function**, a **Property** or a **Declare Function** it is error **TB5162**, *[DebugOnly] is only allowed on Sub procedures*.
 
@@ -356,7 +432,7 @@ Marks the event a control nominates as its primary one. Each control of the VB p
 
 Syntax: **[DefaultMember** [ **(** **True** \| **False** **)** ] **]**
 
-Applicable to: [procedure in a **Class**](../Gloss#procedure)
+Applicable to: [procedure in a **Class**](../Gloss#procedure), [procedure](../Gloss#procedure) prototype in an [**Interface**](Interface)
 
 Default members are accessed under the instance of the object itself, without specifying their name. For example, a class that offers indexable elements may have an **Item** property that is the default member:
 
@@ -382,14 +458,29 @@ Module DefaultMemberDemo
 End Module
 ```
 
+On a prototype in an **Interface**, the member gets the dispatch ID 0, so it is the default member of a variable declared as that interface, whichever class is behind it.
+
+<!-- BETA 1005: DISPID 0 in the type library on Sub, Function, object Function
+     and Property Get prototypes; with `Dim x As IDef = New ImplDef`, x(3) calls
+     IDef.Item, and the same on an interface without it raises 438. Also accepted
+     on an Event, which gets DISPID 0 in the class's event interface: left off. -->
+
 ## Description  (String) 
 {: #description }
 
 Syntax: **[Description("** arbitrary text **")]**
 
-Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Const**](Const), [**Declare** (API declaration)](Declare), [**Interface**](Interface), [**Module**](Module), [procedure](../Gloss#procedure), [**Type** (UDT)](Type)
+Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Const**](Const), [**Declare** (API declaration)](Declare), [**Event**](Event) declaration in a [**Class**](Class), variable in a [**Class**](Class), [**Interface**](Interface), [**Module**](Module), [procedure](../Gloss#procedure), [**Type** (UDT)](Type)
 
-Provides a description in information popups in the IDE, and is exported as a `helpstring` attribute in the type library (if applicable).
+Provides a description in information popups in the IDE, and is exported as a `helpstring` attribute in the type library (if applicable). The type library holds one for each public procedure, property, event and variable of a class, and for each prototype of an interface; an **Enum**, a **Type**, a **Type** member and a parameter get none.
+
+<!-- BETA 1005, ActiveX DLL dumped with TLI: helpstrings written on class
+     procedures, properties, events, public variables and interface prototypes.
+     For an Enum, a Type, its fields and parameters the text is nowhere in the DLL.
+     The compiler also accepts the attribute on an Enum, a Type member and a
+     parameter; whether the IDE shows it there is not established, so they are
+     left off the line above. A description on a Property Let or Set is stored on
+     that accessor; a tool asking GetDocumentation by member id gets the Get's. -->
 
 The value is a **String** whose content is Markdown. The IDE renders it when it displays the popup, so headings, code spans and fenced code blocks all work. The attribute takes a single string literal, so a description running to several lines is assembled with `& vbCrLf & _` continuations, one source line per line of Markdown.
 
@@ -428,9 +519,14 @@ Five details of that are easy to get wrong:
 
 Syntax: **[DispId(** 123 **)]**
 
-Applicable to: [procedure in an Interface](../Gloss#procedure)
+Applicable to: [procedure in an Interface](../Gloss#procedure), [procedure in a **Class**](../Gloss#procedure), [**Event**](Event) declaration in a [**Class**](Class)
 
-Defines a dispatch ID associated with the procedure when exposed via **IDispatch**.
+Defines a dispatch ID associated with the procedure when exposed via **IDispatch**. In a **Class**, it sets the dispatch ID of the member in the interface the class exposes through COM, or, on an **Event**, in its event interface; the accessors of a property share one ID.
+
+<!-- BETA 1005, ActiveX DLL dumped with TLI: Sub, Function, object Function,
+     property and Event take the number given; an unmarked sibling keeps the
+     automatic 0x60030000 range (events 1, 2, ...). A Friend Sub and
+     Class_Initialize accept it but are not in the type library. -->
 
 ## DispInterface
 {: #dispinterface }
@@ -476,9 +572,14 @@ The attribute takes no **Boolean**: `[DllExport(True)]` and `[DllExport(False)]`
 
 Syntax: **[DLLStackCheck** [ **( True** \| **False)** ] **]**
 
-Applicable to: [**Declare** (API declaration)](Declare)
+Applicable to: [**Declare** (API declaration)](Declare), [**Delegate**](Delegate)
 
-Gives minor codegen size reduction on 32-bit API calls on the Intel platform. Has no effect on other platforms.
+Gives minor codegen size reduction on 32-bit API calls on the Intel platform. Has no effect on other platforms. On a **Delegate** it changes the code generated for calls through the delegate in the same way; the calls give the same results.
+
+<!-- BETA 1005, win32 exe sizes: 300 calls through a Delegate, 57344 bytes
+     without it or bare, 47616 with (False); a Declare in a Class takes it as a
+     module Declare does (93184 with (False) against 83968). On a procedure that
+     makes the calls, the size does not change. -->
 
 ## DualInterface
 {: #dualinterface }
@@ -500,18 +601,18 @@ See [**LibraryId**](#libraryid) for what a generated **Library** module looks li
 
 Syntax: **[EnforceErrors** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
 
-Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
+Applicable to: [**Class**](Class), [**Interface**](Interface), [**Module**](Module), [procedure](../Gloss#procedure)
 
-Reports the named warnings as errors within the class, module or procedure the attribute is applied to. The codes are written bare, as for [IgnoreWarnings](#ignorewarnings). With `[EnforceErrors(TB0009)]` on a procedure, a call to a procedure marked [Unimplemented](#unimplemented) is an error where it would otherwise be warning TB0009. Written bare it is accepted and has no effect. With **True** or **False** in place of a code it is error TB5169, *Expected an error code in the format of TBxxxx*.
+Reports the named warnings as errors within the class, interface, module or procedure the attribute is applied to. The codes are written bare, as for [IgnoreWarnings](#ignorewarnings). With `[EnforceErrors(TB0009)]` on a procedure, a call to a procedure marked [Unimplemented](#unimplemented) is an error where it would otherwise be warning TB0009. Written bare it is accepted and has no effect. With **True** or **False** in place of a code it is error TB5169, *Expected an error code in the format of TBxxxx*.
 
 ## EnforceWarnings  (Warning code list)
 {: #enforcewarnings }
 
 Syntax: **[EnforceWarnings** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
 
-Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
+Applicable to: [**Class**](Class), [**Interface**](Interface), [**Module**](Module), [procedure](../Gloss#procedure)
 
-Takes warning codes written bare, as [IgnoreWarnings](#ignorewarnings) does. A warning it names is still reported as a warning. With **True** or **False** in place of a code the attribute is TB5169, *Expected an error code in the format of TBxxxx*.
+Takes warning codes written bare, as [IgnoreWarnings](#ignorewarnings) does. A warning it names is reported as a warning, also one the compiler does not report by default: with `[EnforceWarnings(TB0018)]`, assigning a **Long** to an **Integer** gives warning TB0018, *implicit narrowing conversion*, which is otherwise not reported. With **True** or **False** in place of a code the attribute is TB5169, *Expected an error code in the format of TBxxxx*.
 
 ## Enumerator
 {: #enumerator }
@@ -616,9 +717,11 @@ Applicable to: [**Class**](Class)
 
 Syntax: **[Hidden** [ **(** **True** \| **False** **)** ] **]**
 
-Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Interface**](Interface), [**Module**](Module), a [procedure](../Gloss#procedure) in a Class or Module, a procedure in an Interface, and a variable in a Class
+Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Interface**](Interface), [**Module**](Module), a [procedure](../Gloss#procedure) in a Class or Module, a procedure in an Interface, variable in a Class, variable in a Module, [**Const**](Const), [**Event**](Event) declaration in a Class, [**Declare**](Declare)
 
 Hides the declaration from certain IntelliSense and other lists. It applies to a whole type --- a **Class**, **CoClass**, **Interface** or **Module** --- and equally to a single member of one, so a member can be kept out of those lists without hiding the type that declares it. Within a **Class** that covers procedures, variables, constants and events; within an **Interface**, the member prototypes; within a **Module**, procedures, variables, constants and [**Declare**](Declare) statements.
+
+In the type library of an ActiveX build, it sets the `hidden` flag of each public member of a class and each prototype of an interface it is written on; on a property, the flag goes on every accessor, whichever one carries the attribute.
 
 > [!NOTE]
 > A **CoClass** can only be hidden whole. Its body holds nothing but **Interface** lines, and the attribute is refused there with TB5155 --- unlike [**Default**](#default) and [**Source**](#source), which are interface-line attributes. It is likewise refused on an **Enum** or [**Type**](Type) declaration, on a **Type** member, and on a procedure parameter. An **Enum** member cannot be hidden either: written before the member on the same line, the attribute is **TB5182**, and on a line of its own inside the **Enum**, `[Hidden]` declares a member named `Hidden` (see [**Enum**](Enum)).
@@ -640,7 +743,11 @@ Hides the declaration from certain IntelliSense and other lists. It applies to a
      Type, a Delegate, Implements and Inherits. TB5182: a Type member, a
      procedure parameter.
      Note the census finds NO use on a whole Class, though the probe compiles
-     -- absence of a use is not absence of applicability. -->
+     -- absence of a use is not absence of applicability.
+     Type library (BETA 1005, ActiveX DLL dumped with TLI): FUNCFLAG_FHIDDEN
+     (0x40) on class procedures, properties (both accessors), events, public
+     variables and interface prototypes; (False) is as without it. Module and
+     Private members never reach a type library. -->
 
 
 ## IdeButton  (String)
@@ -655,9 +762,9 @@ Applicable to: [procedure](../Gloss#procedure) definition in a module.
 
 Syntax: **[IgnoreWarnings** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
 
-Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
+Applicable to: [**Class**](Class), [**Interface**](Interface), [**Module**](Module), [procedure](../Gloss#procedure)
 
-Suppresses the named warnings within the class, module or procedure the attribute is applied to. The codes are written bare, exactly as the compiler prints them, and are **not** quoted:
+Suppresses the named warnings within the class, interface, module or procedure the attribute is applied to. The codes are written bare, exactly as the compiler prints them, and are **not** quoted:
 
 ```tb check_build
 [IgnoreWarnings(TB0001)]
@@ -734,7 +841,13 @@ Dividing the most negative **Integer**, **Long** or **LongLong** by -1 with [**\
 
 Syntax: **[InterfaceId( "**00000000-0000-0000-0000-000000000000**" )]**
 
-Applicable to: [**Interface**](Interface)
+Applicable to: [**Interface**](Interface), [**Class**](Class)
+
+On a **Class**, it fixes the identifier of the interface the class exposes through COM, which is otherwise generated anew by each build. [EventInterfaceId](#eventinterfaceid) does the same for the class's event interface. A control class ([COMControl](#comcontrol)) should have both, and the compiler warns when it does not.
+
+<!-- BETA 1005, ActiveX DLL dumped with TLI: [InterfaceId("33333333-0000-0000-0000-000000000002")]
+     on a Class becomes the IID of its hidden dispinterface _X; without it the
+     IID changes from build to build. -->
 
 twinBASIC supports defining COM interfaces using BASIC syntax, rather than needing an type library with IDL and C++. These are only supported in .twin files, not in legacy .bas or .cls files. They must appear *before* the [**Class**](Class) or [**Module**](Module) statement, and will always have a project-wide scope. the The generic form for is as follows:
 
@@ -825,16 +938,21 @@ On a class the attribute is error **TB5155**, *This attribute is not supported i
 
 Syntax: **[NonBrowsable** [ **( True** \| **False )** ] **]**
 
-Applicable to: variables and [procedures](../Gloss#procedure) in a [**Class**](Class)
+Applicable to: variable in a [**Class**](Class), [procedure in a **Class**](../Gloss#procedure), [**Event**](Event) declaration in a [**Class**](Class), [procedure](../Gloss#procedure) prototype in an [**Interface**](Interface)
 
 Keeps a member out of the surfaces that list a class's members, while leaving it callable. The twinBASIC packages apply it to members that exist for the framework's own use, such as `InternalSectionId` and `hWndHeader`.
+
+In the type library of an ActiveX build, it sets the `nonbrowsable` flag of a public procedure, property or event of a class and of a prototype of an interface; on a property, the flag goes on every accessor. A public variable of a class gets no flag.
 
 This is distinct from [Hidden](#hidden), which reaches the same member as well as the whole type, and from [Restricted](#restricted).
 
 <!-- Applicability from the package census, BETA 1005: 17 uses in VB and
      WinNativeCommonCtls, on class-level variables (15), a Property Get (1)
      and an Event (1), in both the bare and the (True) form. Exactly which browsing surfaces it
-     affects is not established. -->
+     affects is not established.
+     Type library (BETA 1005, ActiveX DLL dumped with TLI): FUNCFLAG_FNONBROWSABLE
+     (0x400) on class procedures, properties (both accessors), events and
+     interface prototypes; a public class variable's Get/Put pair stays 0x0. -->
 
 ## OleAutomation  (optional Bool)
 {: #oleautomation }
@@ -844,6 +962,13 @@ Syntax:  **[OleAutomation** [ **(True** \| **False )** ] **]**
 Applicable to: [**Interface**](Interface)
 
 Controls whether this attribute is applied in the typelibrary. This attribute is set to **True** by default.
+
+It changes only an interface that extends **IUnknown**. An interface that extends **IDispatch** is a dual interface, which is OLE Automation compatible whatever the attribute says.
+
+<!-- BETA 1005, TLI: `Interface X Extends stdole.IUnknown` has TYPEFLAGS 0x180
+     (nonextensible, oleautomation), 0x80 with [OleAutomation(False)]; on
+     `Extends stdole.IDispatch` no change. Accepted on a Class, where nothing
+     changes: a class's interfaces are dual. -->
 
 ## PackingAlignment  (Integer)
 {: #packingalignment index="packing alignment" }
@@ -930,6 +1055,16 @@ When set, a global instance of the class is created when the application starts.
 
 This attribute is equivalent to the `VB_PredeclaredId` attribute in VBx .cls files.
 
+> [!NOTE] BETA 1005
+> In an ActiveX build, the class is marked `appobject` in the type library as well as `predeclid`, which is what [AppObject](#appobject) gives it, so a client that references the library treats the members of the class as global names.
+
+<!-- BETA 1005, ActiveX DLL dumped with TLI: [PredeclaredId] and [AppObject]
+     on a Class both give coclass TYPEFLAGS 0xB (appobject, cancreate,
+     predeclid); found independently by the vb6-import lane's type library
+     check. The compiler also accepts the attribute on an Interface (the name
+     becomes an object expression with no class behind it) and a CoClass
+     (needs a [Default] Interface line, else TB5044): left off. -->
+
 ## PreserveSig  (optional Bool)
 {: #preservesig }
 
@@ -953,6 +1088,52 @@ can be rewritten as
 [PreserveSig(False)] 
 Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFolder
 ```
+
+## PropertyPage  (String)
+{: #propertypage }
+
+Syntax: **[PropertyPage("** page name **")]**
+
+Applicable to: variables and [procedures](../Gloss#procedure) in a [**Class**](Class)
+
+Legacy VB attribute: *VB_ProcData.VB_Invoke_Property*
+
+Ties a property of a [**UserControl**](../Packages/VB/UserControl/) to one of the project's property pages, so that a host that shows a property page for a single property (the **...** button of a property sheet) opens that one. The argument is the class name of the property page, as **Add Windows PropertyPage** created it, matched exactly, case included. The control reports the page through **IPerPropertyBrowsing.MapPropertyToPage**.
+
+```tb inert=designer
+[PropertyPage("CaptionPage")]
+Public Property Get Caption() As String
+    Return m_Caption
+End Property
+
+Public Property Let Caption(ByVal Value As String)
+    m_Caption = Value
+    PropertyChanged "Caption"
+End Property
+```
+
+A property takes the attribute on its first accessor in the source, normally the **Property Get**; written on a later accessor, it is ignored. The legacy line `Attribute Caption.VB_ProcData.VB_Invoke_Property = "CaptionPage"` inside the **Property Get** means the same. The argument must be a **String**: `[PropertyPage]` with no argument, or with a **Boolean** or a number, is TB5163, *Expected a single String argument*. An empty string ties the property to no page.
+
+> [!NOTE] BETA 1005
+> A name that matches no property page in the project is not reported: the build succeeds, and the property is tied to no page. The same holds for a name that differs only in case.
+
+> [!NOTE] BETA 1005
+> VB6 stores a property's page as `"PageName;Category"` in the legacy attribute, with the category the property sheet groups the property under. twinBASIC reads such a legacy line and drops what follows the semicolon. **[PropertyPage]** takes the whole string as the name, so `[PropertyPage("CaptionPage;Appearance")]` matches no page.
+
+The pages the control offers as a whole are listed in its [**PropertyPages**](../Packages/VB/UserControl/#propertypages) property.
+
+<!-- BETA 1005: an ActiveX Control (OCX) built with the attribute on a Property
+     Get, loaded through DllGetClassObject without registration: MapPropertyToPage
+     for that DISPID returned S_OK and the [ClassId] of the project's PropertyPage
+     class; for a member without it, E_NOTIMPL. "mypage", "MYPAGE", "NoSuchPage", a
+     plain class's name and "" all give E_NOTIMPL with no diagnostic at build or
+     run. The compiler binary holds "Failed to find named PropertyPage '...' for
+     procedure '...'", never drawn. The VB package's UserControl.twin
+     (MapPropertyToPage) names both forms. Accepted by the compiler on every member
+     of a Class or an Interface (TB5163 for a non-String argument); refused with
+     TB5182 on a Module member, a Type field, a Class, an Enum. Only a member with a
+     DISPID can be mapped: an Event, a Const, a Private variable and a Declare
+     accept it to no effect. The type library is the same with or without it. -->
 
 ## RedirectToStaticImplementation  (String)
 {: #redirecttostaticimplementation }
@@ -989,11 +1170,18 @@ End Interface
 
 Syntax: **[Restricted** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Interface**](Interface)
+Applicable to: [**Interface**](Interface), [**Class**](Class), [procedure in a **Class**](../Gloss#procedure), variable in a [**Class**](Class), [**Event**](Event) declaration in a [**Class**](Class), [procedure](../Gloss#procedure) prototype in an [**Interface**](Interface)
 
 Restricts the interface methods from being called in most contexts.
 
-This is attribute has the same function as the [**restricted** MIDL attribute][MIDL restricted].
+This is attribute has the same function as the [**restricted** MIDL attribute][MIDL restricted]. On a **Class**, it marks the class and the interface it exposes through COM as restricted in the type library. On a single member, it marks that member; on a property, only the accessor it is written on.
+
+<!-- BETA 1005, ActiveX DLL dumped with TLI: on a Class, coclass TYPEFLAGS
+     0x202 (cancreate, restricted) against 0x2 and _X 0x12D0 against 0x10D0; on
+     members FUNCFLAG_FRESTRICTED (0x1) on the accessor that carries it only (a
+     public variable marks both of its entries). The compiler also accepts it on
+     a Module, a CoClass and every Module member, none of which reaches a type
+     library: left off. -->
 
 [MIDL restricted]: https://learn.microsoft.com/en-us/windows/win32/midl/restricted
 
@@ -1002,7 +1190,7 @@ This is attribute has the same function as the [**restricted** MIDL attribute][M
 
 Syntax: **[RunAfterBuild** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Function**](Function), [**Sub**](Sub)
+Applicable to: [**Function**](Function), [**Sub**](Sub), [**Property Get**](Property) in a [**Module**](Module)
 
 Specifies a function that runs after your exe is built. There's `App.LastBuildPath` to know where it is if you're e.g. signing the executable.
 
@@ -1013,14 +1201,34 @@ The procedure runs whatever the project's modules and procedures are called: a m
 > [!NOTE]
 > VB6 refuses a module that has the project's name, with *Name conflicts with existing module, project, or object library*. It allows a procedure named like its module.
 
+> [!WARNING] BETA 1005
+> The compiler also accepts the attribute on a generic **Sub**, such as `Sub Signed(Of T)()`, and counts it as the project's one **[RunAfterBuild]**. The build gives no error or warning, and the DEBUG CONSOLE reports the procedure as executed, but its body does not run.
+
+<!-- BETA 1005 (tbbuild --build): a [RunAfterBuild] Boolean Function and a
+     Property Get in a Module ran during the build (each wrote a file); a generic
+     Sub did not, with no diagnostic. Bug: runafterbuild-generic-sub-never-runs
+     in BUGS-TO-REPORT.md. -->
+
 ## RunBeforeStartupObject
 {: #runbeforestartupobject }
 
 Syntax: **[RunBeforeStartupObject]**
 
-Applicable to: [**Function**](Function) in a [**Module**](Module), returning a **Boolean**
+Applicable to: [procedure](../Gloss#procedure) in a [**Module**](Module)
 
 Runs the function before the project's startup object. Returning **True** suppresses the startup object entirely; returning **False** lets startup proceed as normal.
+
+A **Function** is the usual form, returning a **Boolean**. A **Function** of another type, or a **Property Get**, works the same way: a result of 0 or **Nothing** lets startup proceed, and any other result suppresses the startup object. A **Sub** runs too, and then the startup object never runs.
+
+> [!WARNING] BETA 1005
+> On a generic procedure, such as `Sub Pre(Of T)()`, the project compiles without an error, but building it crashes the compiler.
+
+<!-- BETA 1005 (tbrun --exe, TbRun.Out): "pre ran" then "Main ran" when Main
+     runs. Boolean False/True: Main runs/does not; Long 0/1: runs/does not;
+     stdole.IUnknown Nothing/an object: runs/does not; Property Get As Long 1:
+     does not; a Sub, a Static Sub and a Private Sub run and Main does not. The
+     crash: tbbuild --build exit 5, ACCESS_VIOLATION, for `Public Sub Pre(Of T)()`
+     alone. Bug: runbeforestartupobject-generic-crash in BUGS-TO-REPORT.md. -->
 
 The CEF package uses it to intercept the sub-process launches Chromium makes of the host executable, which must not run the application's own `Sub Main`:
 
@@ -1138,9 +1346,17 @@ Allows populating Intellisense with an enum for types other than **Long**.
 
 Syntax: **[Unimplemented** [ **( True** \| **False )** ] **]**
 
-Applicable to: [procedure](../Gloss#procedure) definitions
+Applicable to: [**Declare** (API declaration)](Declare), variable in a [**Class**](Class), [procedure](../Gloss#procedure) definitions
 
 Makes the compiler issue a warning about the procedure being unimplemented wherever it's called. You can upgrade it to an error too.
+
+On a **Declare** the warning, TB0009, comes at each call in the same way. On a **Public** variable of a class it comes at each use of the variable from outside the class; a use inside the class gives none.
+
+<!-- BETA 1005 (tbbuild): "{WARNING} TB0009 [DU] has not yet been implemented"
+     at calls of a Declare Function, Declare Sub, DeclareWide and a Declare in a
+     Class; for a Public class variable at x = o.VU and o.VU = 4 from another
+     module only. Accepted, and no diagnostic at any use, on a Const, a module
+     variable, a Private or WithEvents class variable and an Event. -->
 
 ## UseGetLastError  (optional Bool)
 {: #usegetlasterror }

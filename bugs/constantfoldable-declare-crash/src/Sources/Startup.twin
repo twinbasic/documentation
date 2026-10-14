@@ -1,0 +1,11 @@
+' Project Settings > Constant Function Folding is on. The project compiles clean; the build crashes the compiler.
+Module Startup
+
+    Public Sub Main()
+        GetCurrentProcessId
+    End Sub
+
+    [ConstantFoldable]
+    Declare Function GetCurrentProcessId Lib "kernel32" () As Long
+
+End Module

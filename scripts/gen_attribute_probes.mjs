@@ -856,6 +856,18 @@ function render(target, tag, attr, needsHintEnum, idx) {
         `Public Module ${tag}\n    ${attr}\n    Public Declare Function Probe Lib ` +
         '"kernel32" Alias "GetTickCount" () As Long\nEnd Module\n'
       );
+    case "PROPGET_MODULE":
+      return (
+        `Public Module ${tag}\n${hint}    ${attr}\n` +
+        "    Public Property Get Probe() As Long\n    End Property\nEnd Module\n"
+      );
+    case "DECLARE_SUB":
+      return (
+        `Public Module ${tag}\n    ${attr}\n    Public Declare Sub Probe Lib ` +
+        '"kernel32" Alias "Sleep" (ByVal Milliseconds As Long)\nEnd Module\n'
+      );
+    case "DELEGATE":
+      return `Public Module ${tag}\n    ${attr}\n    Public Delegate Sub ProbeDelegate()\nEnd Module\n`;
     case "TYPE":
       return (
         `Public Module ${tag}\n    ${attr}\n    Public Type ProbeUdt\n` +
@@ -906,7 +918,9 @@ const HUMAN = {
   SUB_MODULE: "on a Sub in a Module", FUNC_MODULE: "on a Function in a Module",
   PROC_CLASS: "on a Sub in a Class",
   PROC_INTERFACE: "on a prototype in an Interface",
-  DECLARE: "on a Declare", TYPE: "on a Type (UDT)", ENUM: "on an Enum",
+  PROPGET_MODULE: "on a Property Get in a Module",
+  DECLARE: "on a Declare", DECLARE_SUB: "on a Declare Sub", DELEGATE: "on a Delegate",
+  TYPE: "on a Type (UDT)", ENUM: "on an Enum",
   CONST: "on a Const", ENUM_MEMBER: "on an Enum member",
   VAR_CLASS: "on a variable in a Class",
   VAR_MODULE: "on a variable in a Module", PARAM: "on a procedure parameter",

@@ -62,6 +62,7 @@
     {"name":"PopulateFrom","package":null,"container":null,"kind":"attribute","url":"/tB/Core/Attributes#populatefrom"},
     {"name":"PredeclaredID","package":null,"container":null,"kind":"attribute","url":"/tB/Core/Attributes#predeclaredid"},
     {"name":"PreserveSig","package":null,"container":null,"kind":"attribute","url":"/tB/Core/Attributes#preservesig"},
+    {"name":"PropertyPage","package":null,"container":null,"kind":"attribute","url":"/tB/Core/Attributes#propertypage"},
     {"name":"RedirectToStaticImplementation","package":null,"container":null,"kind":"attribute","url":"/tB/Core/Attributes#redirecttostaticimplementation"},
     {"name":"Restricted","package":null,"container":null,"kind":"attribute","url":"/tB/Core/Attributes#restricted"},
     {"name":"RunAfterBuild","package":null,"container":null,"kind":"attribute","url":"/tB/Core/Attributes#runafterbuild"},

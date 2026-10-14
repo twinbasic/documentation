@@ -92,16 +92,22 @@ const RULES = [
   [/variable.*\bin\s+a\s+class/i, ["VAR_CLASS"]],
   [/variable.*\bin\s+a\s+module/i, ["VAR_MODULE"]],
   [/variable/i, ["VAR_MODULE"]],
+  // A Declare Sub before the bare Declare: [DebugOnly] takes a Declare Sub and
+  // refuses a Declare Function, so the two are different targets.
+  [/declare\s+sub\b/i, ["DECLARE_SUB"]],
   [/declare|api\s+declaration/i, ["DECLARE"]],
+  [/^delegate\b/i, ["DELEGATE"]],
   [/^type\b/i, ["TYPE"]],
   // An Enum MEMBER is a different target from the Enum, and must win over the
   // bare rule below. It is not ^-anchored because the phrase carries an article
   // where it appears -- "and an Enum member" -- which a ^ rule cannot reach.
   [/enum\s+member/i, ["ENUM_MEMBER"]],
-  [/^enum\b/i, ["ENUM"]],
+  // "Enums in a Module" -- \b after "enum" fails on the plural, as for "const".
+  [/^enums?\b/i, ["ENUM"]],
   // "Const", but also "constants in a module." -- \b after "const" fails on
   // the plural, which would silently drop a target.
   [/^const(ant)?s?\b/i, ["CONST"]],
+  [/^property\s+get\b/i, ["PROPGET_MODULE"]],
   [/^sub\b/i, ["SUB_MODULE"]],
   [/^function\b/i, ["FUNC_MODULE"]],
   [/^coclass\b/i, ["COCLASS"]],

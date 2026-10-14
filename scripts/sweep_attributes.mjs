@@ -696,21 +696,19 @@ function report(agg, dep, meta) {
   if (placed.length) {
     a("Recognised at a site, so **candidates for a new entry** (accepted, or recognised with an error):");
     a();
+    // Each form under the state it drew: a cell's state is its best form's, and
+    // listing every recognised form under it read "ACCEPT via bare/true/str" for
+    // an attribute whose bare and Boolean forms are recognised with an error.
+    const viaByState = (c) => {
+      const by = new Map();
+      for (const [k, st] of Object.entries(c.forms)) if (recognised(st)) by.set(st, [...(by.get(st) ?? []), k]);
+      return [...by]
+        .map(([st, ks]) => `${st}${soft(st) ? ` (${[...c.msgs].slice(0, 1).join("")})` : ""} via ${ks.join("/")}`)
+        .join(", ");
+    };
     for (const n of placed) {
       const cells = [...agg.get(n)].filter(([, c]) => recognised(c.state));
-      a(
-        `- \`[${n}]\`: ` +
-          cells
-            .map(
-              ([s, c]) =>
-                `\`${s}\` ${c.state}${soft(c.state) ? ` (${[...c.msgs].slice(0, 1).join("")})` : ""}` +
-                ` via ${Object.entries(c.forms)
-                  .filter(([, st]) => recognised(st))
-                  .map(([k]) => k)
-                  .join("/")}`,
-            )
-            .join("; "),
-      );
+      a(`- \`[${n}]\`: ${cells.map(([s, c]) => `\`${s}\` ${viaByState(c)}`).join("; ")}`);
     }
   } else a("None was recognised at any site.");
   a();

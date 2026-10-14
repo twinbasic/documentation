@@ -191,7 +191,7 @@ check(
 // A site in no family is one no `Applicable to:` phrase can cover, so accepting it is
 // always reported as undocumented. That is right for these and a decision for a new
 // site, which is what this list is for.
-const NO_FAMILY = ["DELEGATE", "TYPE_FIELD", "TYPE_FIELD_LINE", "CONST_CLASS", "VAR_LOCAL", "INHERITS"];
+const NO_FAMILY = ["TYPE_FIELD", "TYPE_FIELD_LINE", "CONST_CLASS", "VAR_LOCAL", "INHERITS"];
 check(
   "families: the sites in no family are the ones decided",
   same(
@@ -801,6 +801,66 @@ for (const [app, want] of [
     ["Sub", ["SUB_MODULE"]],
     ["procedures and Declare statements in a Module", ["PROC_MODULE", "DECLARE"]],
     ["Class, Module, procedure", ["CLASS", "MODULE", "PROC_ANY"]],
+    ["procedure prototype in an Interface, procedure in a Class", ["PROC_INTERFACE", "PROC_CLASS"]],
+    ["CoClass, Class", ["COCLASS", "CLASS"]],
+    ["Interface, Class", ["INTERFACE", "CLASS"]],
+    ["procedure in a Class, procedure prototype in an Interface", ["PROC_CLASS", "PROC_INTERFACE"]],
+    [
+      "Class, CoClass, Const, Declare (API declaration), Event declaration in a Class, variable in a Class, Interface, Module, procedure, Type (UDT)",
+      ["CLASS", "COCLASS", "CONST", "DECLARE", "EVENT_CLASS", "VAR_CLASS", "INTERFACE", "MODULE", "TYPE", "PROC_ANY"],
+    ],
+    [
+      "procedure in an Interface, procedure in a Class, Event declaration in a Class",
+      ["PROC_INTERFACE", "PROC_CLASS", "EVENT_CLASS"],
+    ],
+    [
+      "Class, CoClass, Interface, Module, a procedure in a Class or Module, a procedure in an Interface, variable in a Class, variable in a Module, Const, Event declaration in a Class, Declare",
+      [
+        "CLASS",
+        "COCLASS",
+        "INTERFACE",
+        "MODULE",
+        "PROC_CLASS",
+        "PROC_MODULE",
+        "PROC_INTERFACE",
+        "VAR_CLASS",
+        "VAR_MODULE",
+        "CONST",
+        "EVENT_CLASS",
+        "DECLARE",
+      ],
+    ],
+    [
+      "Declare (API declaration), variable in a Module, variable in a Class, procedure",
+      ["DECLARE", "VAR_MODULE", "VAR_CLASS", "PROC_ANY"],
+    ],
+    [
+      "Declare (API declaration), Const, variable in a Module, variable in a Class, Event declaration in a Class, procedure definitions",
+      ["DECLARE", "CONST", "VAR_MODULE", "VAR_CLASS", "EVENT_CLASS", "PROC_ANY"],
+    ],
+    [
+      "Function in a Module, Property Get in a Module. The compiler rejects it on a method in a Class.",
+      ["FUNC_MODULE", "PROPGET_MODULE"],
+    ],
+    ["Module, Class, procedure in a Class or Module", ["MODULE", "CLASS", "PROC_CLASS", "PROC_MODULE"]],
+    ["Sub, Declare Sub", ["SUB_MODULE", "DECLARE_SUB"]],
+    ["Declare (API declaration), Delegate", ["DECLARE", "DELEGATE"]],
+    ["Class, Interface, Module, procedure", ["CLASS", "INTERFACE", "MODULE", "PROC_ANY"]],
+    [
+      "Module, and to procedures, Declare statements and Enums in a Module",
+      ["MODULE", "PROC_MODULE", "DECLARE", "ENUM"],
+    ],
+    ["Function, Sub, Property Get in a Module", ["FUNC_MODULE", "SUB_MODULE", "PROPGET_MODULE"]],
+    ["procedure in a Module", ["PROC_MODULE"]],
+    ["Declare (API declaration), variable in a Class, procedure definitions", ["DECLARE", "VAR_CLASS", "PROC_ANY"]],
+    [
+      "variable in a Class, procedure in a Class, Event declaration in a Class, procedure prototype in an Interface",
+      ["VAR_CLASS", "PROC_CLASS", "EVENT_CLASS", "PROC_INTERFACE"],
+    ],
+    [
+      "Interface, Class, procedure in a Class, variable in a Class, Event declaration in a Class, procedure prototype in an Interface",
+      ["INTERFACE", "CLASS", "PROC_CLASS", "VAR_CLASS", "EVENT_CLASS", "PROC_INTERFACE"],
+    ],
   ];
   const wrong = LINES.filter(([app, want]) => !same(targetsOf(app), want)).map(
     ([app]) => `${app} -> ${show(targetsOf(app))}`,

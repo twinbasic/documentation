@@ -190,9 +190,10 @@ about a hundred builds by itself.
 has one 2,514-character run of 263 pipe-separated identifiers, from `On|Off|Explicit` to
 `UserDefinedTypeIsAnAlias`, with `DllExport|ComExport` in the middle of it. It mixes
 keywords, attributes and object members (`Debug`, `Circle`, `PSet`), so a name in it is only a
-candidate. Swept, exactly one name the page does not document is accepted anywhere:
-`[PropertyPage]`, at eighteen sites, all of them members of a Class or an Interface. The
-other 195 are refused at every site.
+candidate. Swept, exactly one name the page did not document was accepted anywhere:
+`[PropertyPage]`, at eighteen sites, all of them members of a Class or an Interface, with a
+String argument only (any other is TB5163). It now has an entry. The other 195 are refused at
+every site.
 
 **Six things the sweep has to get right, each of which gives a wrong report when missed:**
 
@@ -232,6 +233,65 @@ isolated by halving down to one probe beside the canaries.
 they apply nearly everywhere or the compiler tolerates what it does not check. The sweep
 cannot say which, and neither can a clean build, which is also why *accepted but not
 documented* is a list to read and not a list to copy into the page.
+
+### The accepted sites already judged
+
+Every *accepted but not documented* site of the BETA 1005 sweep was judged by asking what
+the attribute does there against a control without it: the type library of an ActiveX DLL
+built with `project.dllRegisterAfterBuild: false` and dumped with TLI
+(`C:\Windows\SysWOW64\cscript.exe` and `TLI.TypeLibInfoFromFile`, since `tlbinf32.dll` is
+32-bit), diagnostics from `tbbuild`, and output from `tbrun` and `tbrun --exe`. Where it did
+something, the page now names the site. **The sites below were accepted and did nothing, or
+nothing anyone could see, so the page leaves them out; a later sweep that lists them again
+is not news.** Read a new sweep's list against this one and judge only what is not here.
+
+- **Nothing reaches a type library from** a Module or its members, a CoClass (even with
+  `[CoClassId]` or `[COMCreatable]`), a generic or Private class, a Friend or Private member,
+  `Class_Initialize`, a WithEvents variable, an Enum, a Type, a Type field or a parameter. So a
+  type-library attribute there is accepted to no effect: `Restricted`, `Hidden` and
+  `Description` at those sites (the Module-member `Hidden` sites stay on the page, from the
+  packages' use, for IntelliSense), `DispId` on a Friend Sub, `COMExtensible`, `ComImport`
+  and `InterfaceId` on a generic or Private class.
+- **On an Interface:** `ClassId`, `COMCreatable`, `CustomControl`, `EventInterfaceId`,
+  `EventsUseDispInterface`, `WindowsControl`, `SetDllDirectory`, `Debuggable`, and the three
+  run-time checks (they do not reach an implementing class). `AppObject` and `PredeclaredId`
+  there make the interface's bare name resolve, with no object behind it, and `PredeclaredId`
+  on a CoClass does the same given a `[Default]` interface line (TB5044 without): left off as
+  meaningless.
+- **On a Class:** `ComImport`, `OleAutomation` (a class's interfaces are dual), and
+  `SetDllDirectory`, which shows nothing even at its documented sites.
+- **On an Event:** `AllowUnpopulatedVtableEntry`, `BindOnlyIfNoArguments`,
+  `BindOnlyIfStringSuffix`, `CompilerOptions`, `Debuggable`, `DebugOnly`, `Enumerator`,
+  `IgnoreWarnings`, `EnforceErrors`, `EnforceWarnings`, the run-time checks, `TypeHint`,
+  `Unimplemented`. `DefaultMember` on an Event gives it DISPID 0 in the event interface,
+  which no client uses: left off.
+- **On a Declare:** the run-time checks, `IgnoreWarnings`, `EnforceErrors`,
+  `EnforceWarnings`, `Debuggable`, `BindOnlyIfStringSuffix`, `SimplerByVals`, `IdeButton`,
+  `TestCase`, `ConstantFoldable` on a Declare Sub. `ConstantFoldable` on a Declare Function
+  crashes the build (the page's WARNING).
+- **On a Const:** `BindOnlyIfNoArguments`, `Unimplemented`. **On a module, Private or
+  WithEvents variable:** `Unimplemented`. **On a public class variable:** `NonBrowsable`
+  sets no type library flag, though it stays on the page from the packages' use.
+- **On a procedure:** `DLLStackCheck` (the exe is the same size), `ConstantFoldable` on a Sub
+  or a generic Function, `RunAfterBuild` on a generic Sub (never runs: the page's WARNING),
+  `RunBeforeStartupObject` on a generic Sub (crashes the build: WARNING), `TypeHint` on a Sub
+  (its argument is not even checked; on a Function or a Property Get it is, and its effect
+  there is IntelliSense, which no tool here reads), `TestCase` anywhere but a Sub of a
+  `[TestFixture]` Module (`tbrun --tests` never asks the compiler about it).
+- **On a Delegate:** `SimplerByVals`.
+- `BindOnlyIfStringSuffix` showed no effect at its documented site either, and
+  `ConstantFoldableNumericsOnly` folded a call with a String argument: both are on the page
+  without a claim the probes could make.
+
+**An `Applicable to:` line is read by `parseTargets`** (`scripts/lib/attributes-doc.mjs`),
+one target per phrase between commas and `and`s, from a short list of phrasings. Before
+committing a changed line, read it back: `targetsOf` from `scripts/lib/attribute-sweep.mjs`
+over `parseAttributes` of the page. The phrasings that misread: a leading article before
+a word the rules anchor (`a Const` reads as nothing, `Const` as a module Const), a place
+named in a later phrase (`procedure, variable in a Class` turns the bare `procedure` into
+one in a Module), and `variables and procedures in a Class` anywhere in a line, which
+returns those two targets and drops the rest. Pin each new line in `check_attribute_sweep.mjs`'s
+`LINES`.
 
 ## Compiling a twinBASIC project without the IDE in front of you
 

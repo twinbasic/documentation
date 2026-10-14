@@ -4879,3 +4879,131 @@ Assigning `-1` to `ListItem.BackColor` is accepted and the row is drawn in the L
 A ListItem's `ForeColor` defaults to a system colour, not to -1, so the same check does no harm there. Severity: low. A program can only give a row a colour that looks like the list's, and the row is not changed by the refused assignment.
 
 <!-- Reproducer: bugs/listitem-backcolor-default-refused/ (mode test; expect is the four PASS lines and the FAIL line of DefaultAssignedAfterColour, verified on BETA 1005 by `bug_repro.mjs verify`). Page: docs/Reference/Built-In/WinNativeCommonCtls/ListView/ListItem.md carries the callout, its BackColor NOTE labelled BETA 1005; remove it when a fix is released. Found 2026-10-14 while documenting WinNativeCommonCtls colours. -->
+
+---
+
+## A call to a `Declare Function` marked `[ConstantFoldable]` crashes the build when Constant Function Folding is on
+
+**Describe the bug**
+With **Constant Function Folding** set to **Yes** in Project Settings (`"optimizer.constantFunctionFolding": true`), a `Declare Function` that carries `[ConstantFoldable]` (or `[ConstantFoldableNumericsOnly]`) and is called with constant arguments crashes the compiler during the build. The project compiles clean (0 errors, 0 warnings); Build then prints `NATIVE EXCEPTION: ACCESS_VIOLATION` in the DEBUG CONSOLE, the IDE restarts the compiler on the project, the same exception follows, and no exe is written.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `constantfoldable-declare-crash.twinproj` (attached as `constantfoldable-declare-crash.zip`). Its project has Constant Function Folding set to Yes, and its one source file, `Startup.twin`, holds the whole bug:
+   ```
+   Module Startup
+
+       Public Sub Main()
+           GetCurrentProcessId
+       End Sub
+
+       [ConstantFoldable]
+       Declare Function GetCurrentProcessId Lib "kernel32" () As Long
+
+   End Module
+   ```
+2. Let the IDE compile it: no diagnostic.
+3. Build the project (**Build**, or `node scripts/tbbuild.mjs <project> --build`). See the DEBUG CONSOLE: `NATIVE EXCEPTION: ACCESS_VIOLATION  {unknown} [$00000000]`, then `restarting from MEMORY [...]` and the same exception again. The build produces no exe.
+
+What it depends on, each tried in a project of its own:
+- it needs the setting on, the attribute and a call: with Constant Function Folding off the project builds; without `[ConstantFoldable]` it builds; with the attribute and no call (`Sub Main` empty) it builds;
+- every argument of the call must be a constant, and a call with none counts: `r = DSleepFn(5, 0)` for `Declare Function DSleepFn Lib "kernel32" Alias "SleepEx" (ByVal ms As Long, ByVal a As Long) As Long` crashes, and so does the zero-argument call above. With a variable for either argument (`v = 5: r = DSleepFn(v, 0)`, or `DSleepFn(5, v)`) it builds;
+- `[ConstantFoldableNumericsOnly]` crashes as `[ConstantFoldable]` does; `Declare`, `Declare PtrSafe`, `Private Declare` and `DeclareWide` all crash; the call may be a statement or the right side of an assignment;
+- a `[ConstantFoldable]` ordinary `Function` in a Module, called with a constant, builds (it is folded, which is what the attribute is for), and so does a `Declare Sub`.
+
+**Expected behavior**
+A built exe. A call to a Declare is not a pure function of its arguments (it calls into a DLL), so it is either not folded, or the attribute is refused on a `Declare Function` with a diagnostic, as it is refused on a method of a class. The compiler does not crash. The attribute does not exist in VB6, and neither does Constant Function Folding.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same in a 32-bit and a 64-bit build. The IDE's compile (what runs when a project is opened or edited) is clean, so the editor shows no sign of the problem; only Build crashes, so a project can hold the line for a long time before it is noticed.
+Severity: medium. The build crashes every time, and the compiler restarts into the same crash, but the project compiles and runs from the IDE, and removing the attribute or the setting fixes it. No wrong code is produced.
+
+<!-- Reproducer: bugs/constantfoldable-declare-crash/ (mode build; expect is tbbuild exit 5 and ACCESS_VIOLATION in the message); verified on BETA 1005 by `bug_repro.mjs verify`, and built with --arch win64 too. Narrowed from the SleepEx form (probe fp1 to fp4 of the attribute sweep): the arguments need not be there, and PtrSafe is not needed. Page: docs/Reference/Attributes.md carries the callout, a `> [!WARNING] BETA 1005`, entry ConstantFoldable (ConstantFoldableNumericsOnly refers to it); remove it when a fix is released. Found 2026-10-15 while probing the attributes at sites the page does not list. -->
+
+---
+
+## `[RunBeforeStartupObject]` on a generic procedure crashes the build
+
+**Describe the bug**
+`[RunBeforeStartupObject]` on a generic procedure of a Module, `Public Sub Pre(Of T)()`, compiles without a diagnostic and then crashes the compiler during the build. The DEBUG CONSOLE shows `NATIVE EXCEPTION: ACCESS_VIOLATION`, the IDE restarts the compiler on the project, the same exception follows, and no exe is written.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `runbeforestartupobject-generic-crash.twinproj` (attached as `runbeforestartupobject-generic-crash.zip`). Its one source file, `Startup.twin`, holds the whole bug:
+   ```
+   Module Startup
+
+       Public Sub Main()
+       End Sub
+
+       [RunBeforeStartupObject]
+       Public Sub Pre(Of T)()
+       End Sub
+
+   End Module
+   ```
+2. Let the IDE compile it: no diagnostic.
+3. Build the project. See the DEBUG CONSOLE: `NATIVE EXCEPTION: ACCESS_VIOLATION  {no-basic-code} [$1EA2AFE8:twinBASIC_win32.dll+0002AFE8]`, then `restarting from MEMORY [...]` and the same exception again. No exe is written.
+
+What it depends on, each tried in a project of its own:
+- the generic procedure with the attribute alone is the cause: `Pre(Of T)` without the attribute builds, and `Pre()` with it, not generic, builds;
+- a generic `Function` crashes too (`Public Function Pre(Of T)() As Boolean`); the body, an empty Sub or Function, does not matter, and nothing calls `Pre`.
+
+**Expected behavior**
+Either a diagnostic that the attribute is not allowed on a generic procedure, or a built exe in which `Pre` runs before `Main` (what it does on a procedure that is not generic). The compiler does not crash. The attribute does not exist in VB6.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same in a 32-bit and a 64-bit build. Only Build crashes: the IDE's compile and the sweep of the attribute's sites find no problem, so the line stays unnoticed until the first build.
+Severity: medium. The build crashes every time, and the compiler restarts into the same crash; removing the attribute from the generic procedure fixes it.
+
+<!-- Reproducer: bugs/runbeforestartupobject-generic-crash/ (mode build; expect is tbbuild exit 5 and ACCESS_VIOLATION in the message); verified on BETA 1005 by `bug_repro.mjs verify`, and built with --arch win64 too. Narrowed from probe rs6b of the attribute sweep, which had the same two procedures: the generic Function crashes as well, a generic Sub with no attribute and a plain Sub with it do not. Page: docs/Reference/Attributes.md carries the callout, a `> [!WARNING] BETA 1005`, entry RunBeforeStartupObject; remove it when a fix is released. Found 2026-10-15 while probing the attributes at sites the page does not list. -->
+
+---
+
+## `[RunAfterBuild]` on a generic Sub is accepted and the Sub never runs
+
+**Describe the bug**
+A Sub marked `[RunAfterBuild]` runs in the IDE once the build has finished. When the Sub is generic (`Public Sub Built(Of T)()`), the attribute is accepted with no diagnostic, the project builds, and the DEBUG CONSOLE says `[BUILD] Executing '...Built'...` as it does for any other such Sub, but the body of the Sub is never run: its `Debug.Print` prints nothing and a file it opens is not written. The compiler does count the Sub as the project's `[RunAfterBuild]`, since a second one is TB5114, *encountered too many [RunAfterBuild] attributes. Only allowed one per-project*.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `runafterbuild-generic-sub-never-runs.twinproj` (attached as `runafterbuild-generic-sub-never-runs.zip`). Its one source file, `Startup.twin`, holds the whole bug:
+   ```
+   Module Startup
+
+       Public Sub Main()
+       End Sub
+
+       [RunAfterBuild]
+       Public Sub Built(Of T)()
+           Debug.Cls
+           Debug.Print "built"
+       End Sub
+
+   End Module
+   ```
+2. Build the project.
+3. See the DEBUG CONSOLE: the build log, ending `[BUILD] Executing 'RunafterbuildGenericSubNeverRuns.Startup.Built'...`, and no line `built` after it. Remove `(Of T)` and build again: `built` is printed (the console is cleared first, so it is the only line).
+
+Tried in a project of its own: a body that opens a file under `Environ("TEMP")` and writes a line to it, in place of the `Debug.Print`; the file is not created. The same in a 32-bit and a 64-bit build.
+
+**Expected behavior**
+The Sub runs after the build, as it does without `(Of T)`, or the attribute is refused on a generic Sub with a diagnostic (as `[RunAfterBuild]` is refused on a second procedure, TB5114). A Sub that the compiler accepts, counts and announces as executing runs. The attribute does not exist in VB6.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`[RunAfterBuild]` on a `Function` and on a `Property Get` in a Module runs as it does on a Sub, in the same project layout.
+Severity: low. Nothing crashes and nothing is lost; the code the author expected to run does not, with no message.
+
+<!-- Reproducer: bugs/runafterbuild-generic-sub-never-runs/ (mode run with exe, so that tbrun reads the DEBUG CONSOLE; expect is the `Executing` line, no `built` line, and the exe exiting 0); verified on BETA 1005 by `bug_repro.mjs verify`, and run with --arch win64 too. Control: the same project with `Built()` not generic prints `built` (scratch variant, not kept). The first reproducer tried was `run` without `exe`, which fails with TB5114 because the harness adds a [RunAfterBuild] Sub of its own, which is how the counting was seen. Page: docs/Reference/Attributes.md carries the callout, a `> [!WARNING] BETA 1005`, entry RunAfterBuild; remove it when a fix is released. Found 2026-10-15 while probing the attributes at sites the page does not list (probe rb3, control rb4). -->
