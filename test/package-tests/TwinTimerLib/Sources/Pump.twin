@@ -1,0 +1,38 @@
+' Pump: waits for a bounded time while the thread's message pump runs, which is what delivers a
+' TwinTimer's Timer events, and a wait with no pump. No wait is longer than the limit it is given.
+Module Pump
+
+    Private Declare PtrSafe Function GetTickCount64 Lib "kernel32" () As LongLong
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
+
+    Public Function Ticks() As LongLong
+        Ticks = GetTickCount64()
+    End Function
+
+    ' Runs the message pump for Milliseconds.
+    Public Sub ForMs(ByVal Milliseconds As Long)
+        Dim limit As LongLong
+        limit = GetTickCount64() + Milliseconds
+        Do While GetTickCount64() < limit
+            DoEvents
+            Sleep 1
+        Loop
+    End Sub
+
+    ' Runs the message pump until the sink has Count events, for at most MaxMs. True when it has.
+    Public Function UntilCount(ByVal Sink As TimerSink, ByVal Count As Long, ByVal MaxMs As Long) As Boolean
+        Dim limit As LongLong
+        limit = GetTickCount64() + MaxMs
+        Do While Sink.Count < Count And GetTickCount64() < limit
+            DoEvents
+            Sleep 1
+        Loop
+        UntilCount = (Sink.Count >= Count)
+    End Function
+
+    ' Holds the thread for Milliseconds without running the message pump.
+    Public Sub BlockMs(ByVal Milliseconds As Long)
+        Sleep Milliseconds
+    End Sub
+
+End Module

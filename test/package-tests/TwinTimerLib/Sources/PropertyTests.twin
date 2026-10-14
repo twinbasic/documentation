@@ -1,0 +1,168 @@
+' TwinTimerLib: the defaults of a new TwinTimer, Enabled and Interval, and what setting each does.
+[TestFixture]
+Module PropertyTests
+
+    [TestCase]
+    Public Sub Enabled_DefaultsToTrue()
+        Expect.Begin
+        Dim t As New TwinTimer
+        Expect.IsTrue t.Enabled, "Enabled of a new TwinTimer"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Interval_DefaultsToZero()
+        Expect.Begin
+        Dim t As New TwinTimer
+        Expect.AreEqual 0, t.Interval, "Interval of a new TwinTimer"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NewTimer_ZeroInterval_RaisesNoEvents()
+        Expect.Begin
+        Dim s As New TimerSink
+        Pump.ForMs 150
+        Expect.AreEqual 0, s.Count, "Timer events from a new TwinTimer whose Interval is 0, after 150 ms"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_IsTheDefaultMember()
+        Expect.Begin
+        Dim t As New TwinTimer
+        Dim b As Boolean
+        t = False
+        Expect.IsFalse t.Enabled, "Enabled after the assignment t = False"
+        t = True
+        b = t
+        Expect.IsTrue b, "the value of t read as a Boolean, after t = True"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_RoundTrip()
+        Expect.Begin
+        Dim t As New TwinTimer
+        t.Enabled = False
+        Expect.IsFalse t.Enabled, "Enabled after it is set to False"
+        t.Enabled = True
+        Expect.IsTrue t.Enabled, "Enabled after it is set to True"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Interval_RoundTrip()
+        Expect.Begin
+        Dim t As New TwinTimer
+        t.Interval = 250
+        Expect.AreEqual 250, t.Interval, "Interval after it is set to 250"
+        t.Interval = 0
+        Expect.AreEqual 0, t.Interval, "Interval after it is set to 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Interval_Negative_Raises380()
+        Expect.Begin
+        Dim t As New TwinTimer
+        t.Interval = 40
+        On Error Resume Next
+        t.Interval = -1
+        Expect.AreEqual 380, Err.Number, "run-time error raised by setting Interval to -1"
+        Err.Clear
+        On Error GoTo 0
+        Expect.AreEqual 40, t.Interval, "Interval after setting it to -1 was refused"
+        t.Interval = 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Interval_Zero_KeepsEnabled()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.Tmr.Interval = 30
+        s.Tmr.Interval = 0
+        Expect.IsTrue s.Tmr.Enabled, "Enabled after Interval is set to 0"
+        s.Clear
+        Pump.ForMs 150
+        Expect.AreEqual 0, s.Count, "Timer events in 150 ms after Interval is set to 0"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Interval_SetWhileDisabled_DoesNotStart()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.Tmr.Enabled = False
+        s.Tmr.Interval = 30
+        Pump.ForMs 200
+        Expect.AreEqual 0, s.Count, "Timer events in 200 ms when Interval is set while Enabled is False"
+        s.Tmr.Enabled = True
+        Expect.IsTrue Pump.UntilCount(s, 1, 1000), "a Timer event after Enabled is set to True"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Interval_SetPositive_StartsTimer()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.Tmr.Interval = 30
+        Expect.IsTrue Pump.UntilCount(s, 3, 1000), "three Timer events after Interval is set to 30"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_False_RaisesNoEvents()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.Tmr.Interval = 30
+        s.Tmr.Enabled = False
+        Pump.ForMs 200
+        Expect.AreEqual 0, s.Count, "Timer events in 200 ms when Enabled is False"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_FalseThenTrue_RestartsTimer()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.Tmr.Interval = 30
+        s.Tmr.Enabled = False
+        s.Tmr.Enabled = True
+        Expect.IsTrue Pump.UntilCount(s, 2, 1000), "two Timer events after Enabled is set to False and back to True"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_True_WithZeroInterval_DoesNotStart()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.Tmr.Enabled = False
+        s.Tmr.Enabled = True
+        Pump.ForMs 150
+        Expect.AreEqual 0, s.Count, "Timer events in 150 ms when Enabled is set to True and Interval is 0"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_FalseInHandler_StopsTimer()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.StopAt = 2
+        s.Tmr.Interval = 30
+        Expect.IsTrue Pump.UntilCount(s, 2, 1000), "two Timer events"
+        Pump.ForMs 200
+        Expect.AreEqual 2, s.Count, "Timer events after the handler of the second sets Enabled to False"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+End Module

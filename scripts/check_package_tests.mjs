@@ -107,7 +107,6 @@ const PENDING = new Set([
   "TBMANLIB_ListBoxHScroll",
   "TBMANLIB_RES",
   "TBMANLIB_Xml",
-  "TwinTimerLib",
   "VBA_JSON",
   "VBComDlg",
   "WinReg",

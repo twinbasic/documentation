@@ -18,7 +18,9 @@ Syntax: *object*.**Enabled**
 *object*
 : *required* An object expression that evaluates to a **TwinTimer** object.
 
+<!-- test: PropertyTests.Enabled_DefaultsToTrue, PropertyTests.Enabled_RoundTrip -->
 The property returns **True** if the timer is enabled, **False** if it is disabled. The default value is **True**.
+<!-- /test -->
 
 ## Let
 
@@ -29,11 +31,15 @@ Syntax: *object*.**Enabled** **=** *value*
 *value*
 : A **Boolean** that turns the timer on or off. **False** turns it off; **True** turns it on.
 
+<!-- test: PropertyTests.Enabled_False_RaisesNoEvents, PropertyTests.Enabled_FalseThenTrue_RestartsTimer, PropertyTests.Enabled_True_WithZeroInterval_DoesNotStart, ElapsedTimeTests.Enabled_Set_RestartsElapsedTime, PropertyTests.Enabled_FalseInHandler_StopsTimer -->
 Setting **Enabled** destroys any running timer and restarts it under the new setting. When **Enabled** is set to **True**, the timer begins firing only if [**Interval**](Interval) is greater than zero. When **Enabled** is set to **False**, no **Timer** events are raised regardless of the **Interval** setting.
+<!-- /test -->
 
 ### Remarks
 
+<!-- test: PropertyTests.Enabled_IsTheDefaultMember -->
 **Enabled** is the default member of **TwinTimer**.
+<!-- /test -->
 
 Changing **Enabled** at run time takes effect immediately: the underlying Win32 timer (`SetTimer` / `KillTimer`) is stopped and conditionally restarted on every assignment.
 

@@ -1,0 +1,114 @@
+' TwinTimerLib: the ElapsedTime argument of the Timer event. The first event passes 0, one Interval
+' after the start; the next pass the milliseconds since the first. A timer is late, never early, so
+' the lower bounds are exact within the clock's step of 16 ms and the upper ones are loose.
+[TestFixture]
+Module ElapsedTimeTests
+
+    [TestCase]
+    Public Sub Timer_FirstEvent_PassesZero()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.Tmr.Interval = 40
+        Expect.IsTrue Pump.UntilCount(s, 1, 1000), "a first Timer event"
+        If s.Count > 0 Then Expect.AreEqual 0, s.Value(0), "ElapsedTime of the first Timer event"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Timer_FirstEvent_ComesAfterOneInterval()
+        Expect.Begin
+        Dim s As New TimerSink
+        Dim started As LongLong
+        started = Pump.Ticks()
+        s.Tmr.Interval = 300
+        Pump.ForMs 150
+        Expect.AreEqual 0, s.Count, "Timer events 150 ms after the start, with Interval 300"
+        Expect.IsTrue Pump.UntilCount(s, 1, 1000), "a first Timer event"
+        If s.Count > 0 Then Expect.IsTrue s.At(0) - started >= 280, "the first Timer event arrives at least 280 ms after the start (arrived after " & (s.At(0) - started) & " ms)"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Timer_ElapsedTime_IsCumulative()
+        Expect.Begin
+        Dim s As New TimerSink
+        Dim k As Long
+        s.Tmr.Interval = 50
+        Expect.IsTrue Pump.UntilCount(s, 5, 2000), "five Timer events"
+        For k = 1 To s.Count - 1
+            Expect.IsTrue s.Value(k) > s.Value(k - 1), "ElapsedTime of event " & k & " is above that of the event before (" & s.Value(k) & " after " & s.Value(k - 1) & ")"
+            Expect.IsTrue s.Value(k) >= k * 50 - 20, "ElapsedTime of event " & k & " is at least " & (k * 50 - 20) & " ms (is " & s.Value(k) & ")"
+            Expect.IsTrue s.Value(k) <= k * 50 + 250, "ElapsedTime of event " & k & " is at most " & (k * 50 + 250) & " ms (is " & s.Value(k) & ")"
+        Next
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Timer_ElapsedTime_IsNotTheLastInterval()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.Tmr.Interval = 50
+        Expect.IsTrue Pump.UntilCount(s, 6, 2000), "six Timer events"
+        If s.Count >= 6 Then Expect.IsTrue s.Value(5) >= 5 * 50 - 20, "ElapsedTime of the sixth event is the total since the first, at least 230 ms (is " & s.Value(5) & ")"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Interval_Set_RestartsElapsedTime()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.Tmr.Interval = 40
+        Expect.IsTrue Pump.UntilCount(s, 3, 1000), "three Timer events"
+        s.Clear
+        s.Tmr.Interval = 60
+        Expect.IsTrue Pump.UntilCount(s, 1, 1000), "a Timer event after Interval is set again"
+        If s.Count > 0 Then Expect.AreEqual 0, s.Value(0), "ElapsedTime of the first event after Interval is set again"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_Set_RestartsElapsedTime()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.Tmr.Interval = 40
+        Expect.IsTrue Pump.UntilCount(s, 3, 1000), "three Timer events"
+        s.Tmr.Enabled = False
+        s.Tmr.Enabled = True
+        s.Clear
+        Expect.IsTrue Pump.UntilCount(s, 1, 1000), "a Timer event after Enabled is set to False and True"
+        If s.Count > 0 Then Expect.AreEqual 0, s.Value(0), "ElapsedTime of the first event after Enabled is set to False and True"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Timer_TwoTimers_KeepSeparateElapsedTimes()
+        Expect.Begin
+        Dim a As New TimerSink
+        Dim b As New TimerSink
+        Dim k As Long
+        a.Tmr.Interval = 40
+        b.Tmr.Interval = 100
+        Pump.ForMs 700
+        Expect.IsTrue a.Count >= 5, "Timer events of the 40 ms timer in 700 ms: at least 5 (got " & a.Count & ")"
+        Expect.IsTrue b.Count >= 3, "Timer events of the 100 ms timer in 700 ms: at least 3 (got " & b.Count & ")"
+        If a.Count > 0 Then Expect.AreEqual 0, a.Value(0), "ElapsedTime of the first event of the 40 ms timer"
+        If b.Count > 0 Then Expect.AreEqual 0, b.Value(0), "ElapsedTime of the first event of the 100 ms timer"
+        For k = 1 To a.Count - 1
+            If k > 20 Then Exit For
+            Expect.IsTrue a.Value(k) >= k * 40 - 20 And a.Value(k) <= k * 40 + 250, "ElapsedTime of event " & k & " of the 40 ms timer, with another timer running, is between " & (k * 40 - 20) & " and " & (k * 40 + 250) & " ms (is " & a.Value(k) & ")"
+        Next
+        For k = 1 To b.Count - 1
+            Expect.IsTrue b.Value(k) >= k * 100 - 20 And b.Value(k) <= k * 100 + 250, "ElapsedTime of event " & k & " of the 100 ms timer, with another timer running, is between " & (k * 100 - 20) & " and " & (k * 100 + 250) & " ms (is " & b.Value(k) & ")"
+        Next
+        a.Shutdown
+        b.Shutdown
+        Expect.Done
+    End Sub
+
+End Module

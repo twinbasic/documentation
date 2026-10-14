@@ -1,0 +1,47 @@
+' TwinTimerLib: how the Timer event is delivered. It comes through the message pump of the thread
+' that created the timer, in the clock's step, and a pump that is blocked gets one message.
+[TestFixture]
+Module DeliveryTests
+
+    [TestCase]
+    Public Sub Timer_ShortInterval_RaisedToTenMilliseconds()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.Tmr.Interval = 1
+        Pump.ForMs 400
+        Expect.IsTrue s.Count >= 1, "Timer events in 400 ms with Interval 1: at least 1 (got " & s.Count & ")"
+        Expect.IsTrue s.Count <= 45, "Timer events in 400 ms with Interval 1: at most 45, as for an interval of 10 ms (got " & s.Count & ")"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Timer_NoMessagePump_RaisesNoEvents()
+        Expect.Begin
+        Dim s As New TimerSink
+        s.Tmr.Interval = 20
+        Pump.BlockMs 200
+        Expect.AreEqual 0, s.Count, "Timer events while the thread does not run its message pump"
+        Pump.ForMs 100
+        Expect.IsTrue s.Count >= 1, "Timer events once the message pump runs: at least 1 (got " & s.Count & ")"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Timer_BlockedPump_DeliversOneMessage()
+        Expect.Begin
+        Dim s As New TimerSink
+        Dim before As Long
+        s.Tmr.Interval = 20
+        Expect.IsTrue Pump.UntilCount(s, 2, 1000), "two Timer events"
+        Pump.BlockMs 300
+        before = s.Count
+        DoEvents
+        Expect.IsTrue s.Count - before >= 1, "Timer events at once after a blocked message pump resumes: at least 1 (got " & (s.Count - before) & ")"
+        Expect.IsTrue s.Count - before <= 2, "Timer events at once after 300 ms of a blocked message pump with Interval 20: one message, not one for each missed period (got " & (s.Count - before) & ")"
+        s.Shutdown
+        Expect.Done
+    End Sub
+
+End Module

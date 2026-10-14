@@ -1,0 +1,60 @@
+' TimerSink: a TwinTimer of TwinTimerLib and the Timer events it raised, for the test cases.
+'
+' Tmr is the timer. Count is the number of events so far, Value(i) the ElapsedTime the i-th event
+' (from 0) passed, and At(i) the tick count at which it arrived. StopAt, when above 0, sets
+' Tmr.Enabled to False inside the handler of that event. Shutdown ends the timer; every case calls
+' it before it ends, so no timer is left running.
+Class TimerSink
+
+    Private WithEvents mTimer As TwinTimer
+    Private mValues(0 To 255) As LongLong
+    Private mAt(0 To 255) As LongLong
+    Private mCount As Long
+    Public StopAt As Long
+
+    Private Declare PtrSafe Function GetTickCount64 Lib "kernel32" () As LongLong
+
+    Private Sub Class_Initialize()
+        Set mTimer = New TwinTimer
+    End Sub
+
+    Public Property Get Tmr() As TwinTimer
+        Set Tmr = mTimer
+    End Property
+
+    Public Property Get Count() As Long
+        Count = mCount
+    End Property
+
+    Public Function Value(ByVal Index As Long) As LongLong
+        Value = mValues(Index)
+    End Function
+
+    Public Function At(ByVal Index As Long) As LongLong
+        At = mAt(Index)
+    End Function
+
+    ' Forgets the events so far.
+    Public Sub Clear()
+        mCount = 0
+    End Sub
+
+    Public Sub Shutdown()
+        If Not mTimer Is Nothing Then
+            mTimer.Enabled = False
+            Set mTimer = Nothing
+        End If
+    End Sub
+
+    Private Sub mTimer_Timer(ByVal ElapsedTime As LongLong)
+        If mCount <= 255 Then
+            mValues(mCount) = ElapsedTime
+            mAt(mCount) = GetTickCount64()
+        End If
+        mCount = mCount + 1
+        If StopAt > 0 Then
+            If mCount >= StopAt Then mTimer.Enabled = False
+        End If
+    End Sub
+
+End Class

@@ -11,17 +11,24 @@ Occurs when the preset interval for a **TwinTimer** has elapsed.
 
 Syntax: *object*\_**Timer**( **ByVal** *ElapsedTime* **As LongLong** )
 
+<!-- test: ElapsedTimeTests.Timer_FirstEvent_PassesZero, ElapsedTimeTests.Timer_ElapsedTime_IsCumulative -->
 *ElapsedTime*
 : A **LongLong** giving the total number of milliseconds that have elapsed since the first event after the timer last started or restarted. That first event passes `0`.
+<!-- /test -->
 
 ## Remarks
 
+<!-- test: PropertyTests.Interval_SetPositive_StartsTimer, PropertyTests.Enabled_False_RaisesNoEvents -->
 The **Timer** event fires on every tick of the underlying Win32 timer (`SetTimer`), provided [**Enabled**](Enabled) is **True** and [**Interval**](Interval) is greater than zero.
+<!-- /test -->
 
+<!-- test: ElapsedTimeTests.Timer_ElapsedTime_IsCumulative, ElapsedTimeTests.Timer_ElapsedTime_IsNotTheLastInterval, ElapsedTimeTests.Timer_FirstEvent_ComesAfterOneInterval, ElapsedTimeTests.Interval_Set_RestartsElapsedTime, ElapsedTimeTests.Enabled_Set_RestartsElapsedTime, ElapsedTimeTests.Timer_TwoTimers_KeepSeparateElapsedTimes -->
 *ElapsedTime* is a cumulative count, not the duration of the most recent interval. It begins at `0` on the first event after the timer starts, which comes one interval after the start, and increases monotonically. The counter restarts at `0` whenever [**Enabled**](Enabled) or [**Interval**](Interval) is set, because both properties destroy and recreate the underlying Win32 timer.
+<!-- /test -->
 
 The argument is derived from the `dwTime` parameter of the Win32 timer callback (a **DWORD** tick count, wrapping at approximately 49.7 days). **TwinTimer** handles the 32-bit wrap-around internally and promotes the result to a **LongLong**, so *ElapsedTime* does not wrap during a session regardless of how long the timer has been running.
 
+<!-- test: DeliveryTests.Timer_NoMessagePump_RaisesNoEvents, DeliveryTests.Timer_BlockedPump_DeliversOneMessage -->
 > [!NOTE] timeless
 > The event is delivered through the Win32 message pump of the thread that created the timer. If that thread's message pump is blocked when a tick is due, Windows delivers a single timer message when the pump resumes rather than one for each missed period. Long-running work inside the handler therefore lengthens the effective interval.
 

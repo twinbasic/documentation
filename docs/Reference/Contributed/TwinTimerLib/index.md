@@ -19,3 +19,7 @@ The **TwinTimerLib** contributed package provides a Win32-backed timer class tha
   - [Enabled](TwinTimer/Enabled) -- returns or sets a value that determines whether the timer responds to elapsed-interval events
   - [Interval](TwinTimer/Interval) -- returns or sets the number of milliseconds between successive Timer events
   - [Timer](TwinTimer/Timer) -- occurs when the preset interval for a TwinTimer has elapsed
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [TwinTimerLib-tests.twinproj](TwinTimerLib-tests.twinproj), a twinBASIC project. It uses TwinTimerLib as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.
