@@ -20,7 +20,7 @@ The result depends on the **TypeName** of the value:
 - A **Double** is first formatted by [**ExponentialSFI**](ExponentialSFI) with the same precision. The exponent of that text is read back with [**ParseExponent**](ExponentialSFI#parseexponent). When the exponent is greater than -5 and its absolute value is less than the precision, the value is formatted again by [**FixedPointSFI**](FixedPointSFI), with the precision as the count of decimal places. Otherwise the exponential text is the result. Without a precision the second test cannot succeed, so a **Double** is always in exponential notation.
 - A value of any other type, such as a **Single**, **Currency**, **Byte**, **Decimal** or a numeric **String**, gives an empty string.
 
-The precision is therefore a count of decimal places and a limit for the exponent. It is not a count of significant digits, as it is in .NET. The case of the identifier is kept: `g` gives a lower-case `e` in exponential notation.
+The precision is therefore a count of decimal places and a limit for the exponent. It is not a count of significant digits, as it is in .NET. The case of the identifier is kept: `g` gives a lower-case `e` in exponential notation. The decimal point follows the Windows regional settings.
 
 ```tb check_build check_run
 Debug.Print StringFormat("{0:G}", 42)               ' 42

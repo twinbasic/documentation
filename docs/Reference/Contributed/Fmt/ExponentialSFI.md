@@ -14,7 +14,7 @@ Formats a number in exponential notation for the **E** identifier, and reads the
 
 ## Output
 
-The value is passed to **Format$** with a format of the form `0.00000#E-#`. The letter in the format is the identifier as written, so `E` gives an upper-case `E` in the result and `e` a lower-case `e`. The exponent has no plus sign and no leading zeros.
+The value is passed to **Format$** with a format of the form `0.00000#E-#`. The letter in the format is the identifier as written, so `E` gives an upper-case `E` in the result and `e` a lower-case `e`. The exponent has no plus sign and no leading zeros. The decimal point follows the Windows regional settings.
 
 - Without a precision the mantissa has six decimal places. The sixth is optional, so a trailing zero there is dropped.
 - With a precision *n* greater than zero the mantissa has *n* decimal places, and the last of them is optional. A precision of `0` is the same as none.

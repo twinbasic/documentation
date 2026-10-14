@@ -133,7 +133,7 @@ for contributors.
 - **`shoot_docs.mjs` and WIP.Screenshots.md** hold the states the screenshots already set up,
   which are often the quickest way to reach a dialog. A new picture is a new shot there, taken
   in both themes; never make a picture by hand.
-- The kit `.claude/tooling-review-scratch/beta995-probes/ide-driving-survey.md` (gitignored)
+- The kit `.claude/tooling-review-scratch/ide-docs/ide-driving-survey.md` (gitignored)
   maps the debugger, Settings and Export internals.
 
 ## Writing a chapter

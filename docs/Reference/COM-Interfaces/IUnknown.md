@@ -76,14 +76,42 @@ twinBASIC issues these calls itself, so the language has no statement for them:
 - **Set** *a* **= Nothing**, and a variable going out of scope, each release one reference.
 - **Set** to a variable of an interface type asks the object for that interface with **QueryInterface**.
 
-The three methods themselves cannot be called by name:
+The three methods cannot be called by name through the types the language provides:
 
 - On a variable declared **As stdole.IUnknown**, `u.AddRef`, `u.Release` and `u.QueryInterface` are compile errors, TB5027 *Unrecognized member*. The same holds for a variable of a project's own interface that extends **stdole.IUnknown**.
 - On an **Object** variable, `o.AddRef` and `CallByName(o, "AddRef", VbMethod)` raise run-time error 438 (*Object doesn't support this property or method*).
-- A project cannot redeclare **IUnknown** under its own name and call it. An **Interface** declared with no **Extends** clause derives from **IDispatch**, not from **IUnknown**, so its first method is at slot 7 and the three declared methods are not the three of **IUnknown**. Declared with **Extends stdole.IUnknown**, the first method is at slot 3. Neither reaches slots 0 to 2.
+
+The first method of an **Interface** declared with no **Extends** clause is at slot 7, because the interface derives from **IDispatch**, and the first method of one declared **Extends stdole.IUnknown** is at slot 3. An interface declared **Extends Nothing** has no base, so its first method is at slot 0. Declared with the identifier of **IUnknown** and its three methods in their order, it calls them by name:
+
+```tb check_build projname=com-iunknown slot=file
+[InterfaceId("00000000-0000-0000-C000-000000000046")]
+[OleAutomation(False)]
+Private Interface IUnknownCallable Extends Nothing
+    [PreserveSig]
+    Function QueryInterface(ByVal riid As LongPtr, ByRef ppvObject As LongPtr) As Long
+    [PreserveSig]
+    Function AddRef() As Long
+    [PreserveSig]
+    Function Release() As Long
+End Interface
+```
+
+**Set** to a variable of this type asks the object for **IUnknown**, which every object supports. With any other identifier, the **Set** fails with `E_NOINTERFACE`, because the object does not know the interface. The counts include the reference that each variable holds:
+
+```tb check_run projname=com-iunknown
+Dim c As New Collection
+Dim u As IUnknownCallable = c
+Debug.Print u.AddRef()
+Debug.Print u.Release()
+' Output:
+' 3
+' 2
+```
+
+The [OLEGuids](../../tB/Packages/Contributed/OLEGuids/IUnknownUnrestricted) package declares this interface as **IUnknownUnrestricted**.
 
 > [!NOTE]
-> Code that has to read or change a reference count goes through the object's method table. The example below does this with **DispCallFunc** from oleaut32.dll. [**vbaObjAddref**](../../tB/Modules/HiddenModule/vbaObjAddref) calls **AddRef** on a raw pointer without reading the result.
+> Without such an interface, code that has to read or change a reference count goes through the object's method table. The example below does this with **DispCallFunc** from oleaut32.dll. [**vbaObjAddref**](../../tB/Modules/HiddenModule/vbaObjAddref) calls **AddRef** on a raw pointer without reading the result.
 
 Calling **IUnknown** methods by hand is a low-level operation. A wrong slot number, or a **Release** with no matching **AddRef**, ends in an access violation or in an object freed while a variable still refers to it.
 
@@ -133,10 +161,10 @@ The class's `Class_Terminate` procedure runs inside the **Release** that brings 
 
 A class never needs to implement **IUnknown**: the compiler gives every class an implementation, and an interface that extends **stdole.IUnknown** is satisfied without a body for those three methods.
 
-`Implements stdole.IUnknown` compiles, and the class works as before. A project's own **Interface** that carries the identifier of **IUnknown** also compiles, and a class can implement it.
+`Implements stdole.IUnknown` compiles, and the class works as before. A project's own **Interface** that carries the identifier of **IUnknown** and extends another interface also compiles, and a class can implement it.
 
 > [!WARNING] BETA 1005
-> That interface is unusable. **Set** to a variable of that type gives the object's ordinary **IUnknown** pointer, which has none of the interface's methods, and calling one ends the program with an access violation, and any unsaved data is lost. The compiler gives no diagnostic. Do not declare an **Interface** with the identifier of **IUnknown**; use `stdole.IUnknown`.
+> That interface is unusable. **Set** to a variable of that type gives the object's ordinary **IUnknown** pointer, which has only the three methods of **IUnknown**. Calling a method the interface declares after them ends the program with an access violation, and any unsaved data is lost. The compiler gives no diagnostic. Give the identifier of **IUnknown** only to an interface declared **Extends Nothing** with the three methods of **IUnknown**, as in [Calling it from twinBASIC](#calling-it-from-twinbasic); otherwise use `stdole.IUnknown`.
 
 ## Example
 
