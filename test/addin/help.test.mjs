@@ -30,6 +30,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { helpArchiveSkips } from "../../builder/help-archive-step.mjs";
 import { createStaticHandler } from "../../builder/static-files.mjs";
 import { writeHelpArchive } from "../../lib/help-archive.mjs";
 import { attach } from "../../scripts/lib/tb-cdp.mjs";
@@ -373,7 +374,11 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       const fresh = spawnSync(process.execPath, [FRESH_GATE, "--tree", BUILT_OFFLINE], { encoding: "utf8" });
       assert.equal(fresh.status, 0, `${BUILT_OFFLINE} is stale or missing; run build.bat first:\n${fresh.stderr}`);
       try {
-        await writeHelpArchive({ src: BUILT_OFFLINE, out: path.join(src, "Resources", "HELP", "site.zip") });
+        await writeHelpArchive({
+          src: BUILT_OFFLINE,
+          out: path.join(src, "Resources", "HELP", "site.zip"),
+          skip: helpArchiveSkips,
+        });
       } catch (err) {
         assert.fail(`writeHelpArchive failed: ${err.message}${err.problems ? `\n${err.problems.join("\n")}` : ""}`);
       }
@@ -427,7 +432,22 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     r = await get("/Features/Advanced/");
     assert.ok(Buffer.from(await r.arrayBuffer()).equals(tree("Features/Advanced/index.html")));
 
-    r = await get("/no/such/page");
+    // A page the archive lacks is on the site, the one the lane serves; any
+    // other file is not.
+    assert.ok(fs.existsSync(path.join(BUILT_OFFLINE, "Documentation/Development/Building.html")));
+    r = await get("/Documentation/Development/Building?pane=1");
+    assert.equal(r.status, 302);
+    assert.equal(r.headers.get("location"), `${origin}/Documentation/Development/Building?pane=1`);
+    await r.body?.cancel();
+    r = await get("/Videos/");
+    assert.equal(r.status, 302);
+    assert.equal(r.headers.get("location"), `${origin}/Videos/`);
+    await r.body?.cancel();
+    r = await get("/no/such/page.html");
+    assert.equal(r.status, 302);
+    assert.equal(r.headers.get("location"), `${origin}/no/such/page.html`);
+    await r.body?.cancel();
+    r = await get("/no/such/picture.png");
     assert.equal(r.status, 404);
     await r.body?.cancel();
     r = await get("/tB/Modules/Interaction/MsgBox", { method: "HEAD" });

@@ -113,7 +113,7 @@ The window is open again the next time the IDE starts, if it was open when the I
 
 The add-in is a twinBASIC project, which the IDE builds into two DLLs, one for each bitness.
 
-1. Download the project file, <a href="downloads/tbDocsHelp.twinproj" download>tbDocsHelp.twinproj</a>, about 55 MB. It is made from the add-in's source code each time this documentation is published. It holds the index of the symbols these pages document and a copy of the whole documentation.
+1. Download the project file, <a href="downloads/tbDocsHelp.twinproj" download>tbDocsHelp.twinproj</a>, about 54 MB. It is made from the add-in's source code each time this documentation is published. It holds the index of the symbols these pages document and a copy of the whole documentation.
 2. Open `tbDocsHelp.twinproj` in the twinBASIC IDE and build it. Then set the build target to **win64** and build it again. The two DLLs, `tbDocsHelp_win32.dll` and `tbDocsHelp_win64.dll`, are written to a `Build` folder next to the project file.
 3. Copy each DLL to the matching `win32` or `win64` add-ins folder, as [Add Ins](../AddIns/) describes, and restart the IDE.
 
@@ -129,7 +129,7 @@ python scripts/impexp.py import tbDocsHelp.twinproj add-in
 
 Then build `tbDocsHelp.twinproj` and copy the DLLs as in steps 2 and 3 above.
 
-**For help that works offline**, build the documentation before packing the folder, as [Building and Deployment](../../../Documentation/Development/Building) describes. The build writes a copy of the whole site into the add-in's source folder, `add-in\Resources\HELP\site.zip`, about 27 MB. A DLL built with that file in place serves the pages itself, without the internet. Without the file, the add-in shows the pages from the website.
+**For help that works offline**, build the documentation before packing the folder, as [Building and Deployment](../../../Documentation/Development/Building) describes. The build writes a copy of the site into the add-in's source folder, `add-in\Resources\HELP\site.zip`, about 53 MB. A DLL built with that file in place serves the pages itself, without the internet. The copy leaves out the pages about developing this documentation, the videos and the challenges, which open from the website. Without the file, the add-in shows all the pages from the website.
 
 ## See Also
 

@@ -1047,7 +1047,8 @@ const TASKS = {
   // (the rest: statics, theme assets, redirect stubs, nav.js, search-data.js).
   // Nothing else writes there before the Gantt injection, which runBuild does
   // after the graph; recheckHelpArchive checks that at the end. The Gantt chart
-  // is injected after this task, so the archive holds BuildInfo.html without it.
+  // is injected after this task; the archive leaves out both files it writes
+  // (HELP_ARCHIVE_SKIP), and would otherwise hold BuildInfo.html without it.
   // It runs on a worker (cpu-worker.mjs), so the main thread writes the book
   // meanwhile; it reads skipOffline from dispatch's broadcast.
   helpArchive: {
@@ -1781,7 +1782,8 @@ export async function runBuild(opts) {
 
   // The help add-in's archive was written before the Gantt injection above, so
   // the offline tree on disk has to differ from it in the two files the
-  // injection writes and in nothing else -- see help-archive-step.mjs.
+  // injection writes and in nothing else -- see help-archive-step.mjs. The
+  // archive leaves both out today, so mayDiffer names files it does not hold.
   const injectedOffline = injected.filter((i) => i.which === "offline").map((i) => i.destPath);
   const stale = await recheckHelpArchive({
     archive,

@@ -17,7 +17,7 @@ Lists the tools, offline copies and test projects this documentation publishes, 
 
 Press F1 on a name in the code editor, and its reference page opens in a tool window beside the code, with or without an internet connection.
 
-<p class="download-meta">twinBASIC project, about 55 MB: open it in the IDE and build it into the add-in's two DLLs.</p>
+<p class="download-meta">twinBASIC project, about 54 MB: open it in the IDE and build it into the add-in's two DLLs.</p>
 
 <p class="download-actions"><a class="btn" href="tB/IDE/AddIns/downloads/tbDocsHelp.twinproj" download>tbDocsHelp.twinproj</a> <a class="download-doc" href="tB/IDE/AddIns/Help">Documentation<span class="sr-only"> for the help add-in</span></a></p>
 

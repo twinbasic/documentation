@@ -797,7 +797,10 @@ has the complete list):
   its own rule. Giving that page a `/tB/` permalink, with the old one in `redirect_from:`,
   would. Deferred.
 - **The offline tree has no copy of the index.** The add-in embeds its own, and the help
-  archive (increment 5) is the offline tree as built.
+  archive (increment 5) is the offline tree as built, less `HELP_ARCHIVE_SKIP` in
+  `builder/help-archive-step.mjs` (the Documentation Development section, Videos,
+  Challenges). `HelpServer` redirects a page the archive lacks to `SiteUrl()`, because
+  every page's navigation links to those sections.
 
 ### Stage 4: the add-in, in increments
 

@@ -4,13 +4,19 @@
 // gitignored, so a local build is what produces it. The add-in's project file,
 // the download, carries the same bytes (addin-project.mjs).
 //
+// The archive is the offline tree less HELP_ARCHIVE_SKIP: what nobody looks up
+// from the IDE. The pages left out are still linked from every page's
+// navigation, from the search and from prose; the add-in's server answers a
+// request for a page the archive lacks with a redirect to the website.
+//
 // `helpArchiveStep` is the build's `helpArchive` task. It waits for every task
 // that writes into the offline tree, and runs before the Gantt injection, which
 // rewrites BuildInfo.html in both trees after the task graph is done and
-// writes assets/images/gantt.svg. So the archive holds BuildInfo.html without
-// the chart, and gantt.svg as the placeholder the offline tree copied from the
-// sources. Two builds of one tree write the same archive, and the same project
-// file with it, which the chart (it holds the build's timings) would prevent.
+// writes assets/images/gantt.svg. Both are left out of the archive; were they
+// not, the archive would hold BuildInfo.html without the chart, and gantt.svg
+// as the placeholder the offline tree copied from the sources. Two builds of
+// one tree write the same archive, and the same project file with it, which
+// the chart (it holds the build's timings) would prevent.
 //
 // `recheckHelpArchive` runs at the end of runBuild, after the Gantt injection,
 // and checks that the offline tree on disk still lists the archive's files and
@@ -30,8 +36,32 @@ import path from "node:path";
 import { checkHelpArchive, writeHelpArchive } from "../lib/help-archive.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { GUARDED_SRC } from "./baseline.mjs";
+import { offlineExcluded } from "./offline-rewrite.mjs";
 
 export const HELP_ARCHIVE_REL = "add-in/Resources/HELP/site.zip";
+
+// What the archive leaves out of the offline tree: fnmatch patterns with
+// PATHNAME semantics, as offline_exclude in _config.yml (`*` stays within one
+// folder, `**` crosses them), against each file's path in the tree.
+export const HELP_ARCHIVE_SKIP = [
+  // The documentation's own development: its tools, build and authoring, and
+  // BuildInfo. Its pictures are in Documentation/Images.
+  "Documentation/**",
+  // BuildInfo's chart.
+  "assets/images/gantt.svg",
+  // Links to videos, which YouTube does not let the help pane show in its
+  // frame, and their poster frames, which only these pages and the
+  // documentation's own show.
+  "Videos.html",
+  "Videos/**",
+  "assets/thumbnails/**",
+  // Contests that are over.
+  "Challenges.html",
+  "Challenges/**",
+];
+
+/** True for a file of the offline tree (relative, forward slashes) that the archive leaves out. */
+export const helpArchiveSkips = (name) => offlineExcluded(name, HELP_ARCHIVE_SKIP);
 
 const mb = (n) => (n / 1048576).toFixed(1);
 
@@ -66,7 +96,7 @@ export async function helpArchiveStep({
   if (src !== GUARDED_SRC || serve || dryRun || disabled || !offlineRoot) return NOT_WRITTEN;
   if (!sameDir(path.resolve(offlineRoot), OFFLINE_TREE)) return NOT_WRITTEN;
   try {
-    const s = await writeHelpArchive({ src: path.resolve(offlineRoot), out });
+    const s = await writeHelpArchive({ src: path.resolve(offlineRoot), out, skip: helpArchiveSkips });
     return {
       text: `help archive: ${HELP_ARCHIVE_REL}, ${s.entries} entries, ${mb(s.zipBytes)} MB (${(s.ms / 1000).toFixed(1)} s)\n`,
       failed: false,
@@ -102,7 +132,12 @@ export async function recheckHelpArchive({ archive, offlineRoot, mayDiffer }) {
   if (!archive?.zip || !archive.out) return { text: "", failed: false };
   let problems;
   try {
-    problems = await checkHelpArchive({ src: path.resolve(offlineRoot), zip: archive.out, mayDiffer });
+    problems = await checkHelpArchive({
+      src: path.resolve(offlineRoot),
+      zip: archive.out,
+      mayDiffer,
+      skip: helpArchiveSkips,
+    });
   } catch (err) {
     return { text: `help archive: the offline tree could not be checked against it: ${err.message}\n`, failed: true };
   }

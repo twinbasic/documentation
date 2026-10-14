@@ -26,6 +26,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { addinProjectOf, formatAddinProject, packAddinProject, writeAddinProject } from "../builder/addin-project.mjs";
+import { helpArchiveSkips } from "../builder/help-archive-step.mjs";
 import { checkHelpArchive, writeHelpArchive } from "../lib/help-archive.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { importProject, packFiles, readProject } from "../scripts/impexp.mjs";
@@ -275,6 +276,22 @@ describe("the help archive checked against the offline tree", () => {
     assert.deepEqual(problems.sort(), [
       "index.html: in the archive, not in the tree",
       "late.html: in the tree, not in the archive",
+    ]);
+  });
+
+  test("leaves out what the build's list skips, and does not compare it", async () => {
+    const src = tree("h-skip", { ...FILES, "Videos/tB.html": "<html>videos</html>" });
+    const zip = path.join(tmp, "h-skip.zip");
+    const stats = await writeHelpArchive({ src, out: zip, skip: helpArchiveSkips });
+    assert.equal(stats.entries, 2);
+    // The chart goes in after the archive, into files the archive does not hold.
+    writeFileSync(path.join(src, ...CHART[0].split("/")), "<svg>the chart</svg>");
+    assert.deepEqual(await checkHelpArchive({ src, zip, skip: helpArchiveSkips }), []);
+    const problems = await checkHelpArchive({ src, zip });
+    assert.deepEqual(problems.sort(), [
+      "Documentation/Development/BuildInfo.html: in the tree, not in the archive",
+      "Videos/tB.html: in the tree, not in the archive",
+      "assets/images/gantt.svg: in the tree, not in the archive",
     ]);
   });
 });
