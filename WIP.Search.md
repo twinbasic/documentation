@@ -1,7 +1,7 @@
 # twinBASIC Documentation — Site search design notes
 
-Why searching for a member such as `PaintPicture` did not find it, what was
-measured, and the design that fixes it. Companion to
+Why a search for a member such as `PaintPicture` needs the design below, what
+was measured, and the design. Companion to
 [builder/PLAN-6.md](builder/PLAN-6.md) §5.3, which describes the search-data
 generator as ported from Jekyll.
 
@@ -11,10 +11,10 @@ Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fin
 
 Everything needed to continue is in this file and in `eval/`.
 
-**Where it stands.** The design below is shipped. No decision is open. The
+**Where it stands.** The design below is in place. No decision is open. The
 candidates for further work are under "Next"; the user picks.
 
-**The eval now** (`node eval/search_quality.mjs`, ground truth `intent-5`,
+**The eval** (`node eval/search_quality.mjs`, ground truth `intent-5`,
 10,327 queries): 98.2% at rank 1, 99.1% in the top 10.
 
 | category | hit@1 | n | what it types |
@@ -28,7 +28,7 @@ candidates for further work are under "Next"; the user picks.
 
 No bare name is out of tier order, and every prose query's `behind` page is
 within the top 3 (22 of 22). Compare categories, not totals, across ground
-truths: adding the name-and-kind set lowered the overall hit@1 from 99.7%.
+truths: the name-and-kind set lowers the overall hit@1 (99.7% without it).
 
 **Known misses (185 at rank 1)**, each recorded where it was diagnosed:
 - 158 name-and-kind queries, mostly properties; not diagnosed yet
@@ -239,30 +239,28 @@ page for words it doesn't contain. So authors mark index entries by hand
   "lunr patches".
 - lunr 2.3.9's `Set#union` copies both sets, and `Index#query` unions once
   per expanded term and field of a REQUIRED clause, so a short wildcard word
-  was quadratic. Patched (`accumulateSetUnions()`); see "lunr patches".
+  is quadratic. Patched (`accumulateSetUnions()`); see "lunr patches".
   Profile before guessing: `node --cpu-prof`.
 
 ## The problem
 
 `PaintPicture` is documented on six classes (Form, PictureBox, Printer,
 PropertyPage, Report, UserControl), each under `### PaintPicture` inside
-`## Methods`. With the original index, a search returned 24 results, but the
-definitions came 13th to 19th, as entries titled just "Methods" that link to
-`#methods`. The same happened to every member documented at `###`: `Line`,
-`Print`, `Cls`, the Assert methods, and about 2,700 others.
-
-Three things combined:
+`## Methods`. Every member documented at `###` (`Line`, `Print`, `Cls`, the
+Assert methods, and about 2,700 others) shares the situation. Three things
+make such a member hard to find, and each shapes the design:
 
 1. **Granularity.** [builder/search.mjs](builder/search.mjs) splits a page into
-   one entry per heading up to `search.heading_level` (2 by default). A `###`
-   member became part of the text of its parent `##` entry, often 5 to 16 KB
-   long.
+   one entry per heading up to `search.heading_level`. At level 2 a `###`
+   member is part of the text of its parent `##` entry, often 5 to 16 KB
+   long, and a search shows it as an entry titled just "Methods" that links
+   to `#methods`.
 2. **Length normalisation.** lunr scores with BM25 (`b` = 0.75). A term found
    in a 10 KB "Methods" entry scores far lower than the same term in a short
    entry that only mentions it, such as the glossary's "graphics method".
-3. **Tokenisation.** The client split on `/[\s\-/]+/`, not on `.`. So
-   `Form.PaintPicture` was the single token `form.paintpicture`, which occurs
-   nowhere. Qualified names found their target 0.4% of the time.
+3. **Tokenisation.** The lunr separator is `/[\s\-/]+/`, not `.`. So
+   `Form.PaintPicture` is the single token `form.paintpicture`, which occurs
+   nowhere. Splitting on `.` is therefore part of query construction (Design §3).
 
 The render step `headingLevelNormalizePlugin` ([builder/render.mjs](builder/render.mjs))
 matters here. On a page with `#` and `###` but no `##` (405 of 912 pages,
@@ -287,7 +285,7 @@ repeat a heading, by adding `-1`, `-2` and so on.
 
 A harness replays the client's search in Node: the same lunr build, boosts,
 query construction and capped fuzzy fallback, against a built
-`search-data.json`. The first ground truth is `tB/symbols.json`, which gives
+`search-data.json`. The base ground truth is `tB/symbols.json`, which gives
 8,012 queries:
 
 - 2,884 bare names (`PaintPicture`). A result counts as correct if it is any
@@ -296,7 +294,7 @@ query construction and capped fuzzy fallback, against a built
 - 5,108 qualified names (`Form.PaintPicture`). Only that class's URL counts.
 - 20 hand-picked prose queries ("late binding", "Option Explicit" and so on).
 
-Later sections add ground truths: reader-intent tiers, page titles, page plus
+Further ground truths: reader-intent tiers, page titles, page plus
 section, name and kind, and a larger prose set. The harness reports hit@1/5/10,
 MRR (capped at rank 20), results by symbol kind, cost (size raw and gzipped,
 index build time in the browser, heap) and the queries that changed rank
@@ -305,48 +303,32 @@ its baseline is [eval/search_baseline.json](eval/search_baseline.json). Run
 `node eval/search_quality.mjs --compare eval/search_baseline.json` to measure
 a change against it.
 
-### Results
+### Why the design is what it is
 
-The table compares the configurations tried against the first ground truth.
-"today (h2)" is the original index.
-
-| configuration | entries | gzip | hit@1 | hit@10 | MRR | bare hit@10 | qualified hit@10 | prose hit@10 / MRR |
-|---|---|---|---|---|---|---|---|---|
-| today (h2) | 3,781 | 1,039 KB | 16.7% | 20.5% | .182 | 55.8% | 0.4% | 80% / .690 |
-| h3 | 7,606 | 1,131 KB | 27.7% | 35.3% | .307 | 84.6% | 7.3% | 80% / .611 |
-| h4 | 7,637 | 1,132 KB | same as h3 | | | | | |
-| V2: h3, generic sections folded | 6,713 | 1,094 KB | 28.3% | 35.7% | .312 | 84.6% | 7.9% | 80% / .621 |
-| V3: h3, generic sections retitled | 7,606 | 1,112 KB | 27.7% | 35.3% | .307 | 84.6% | 7.3% | 80% / .610 |
-| V2 + query split on every `.` | 6,713 | 1,094 KB | 67.9% | 90.5% | .761 | 84.6% | 93.9% | 80% / .621 |
-| V2 + symbols field (boost 50) + split on every `.` | 6,713 | 1,143 KB | 77.9% | 97.5% | .862 | 98.1% | 97.2% | 80% |
-| V2 + symbols (boost 200) + split | | | | 97.7% | .867 | | | **75%** |
-| BM25 `b` 0.5 / 0.25 on V2 + split | | | | 90.4 / 90.3% | .757 / .751 | | | |
-| **recommended**: V2 + symbols (50) + smart dot split | 6,713 | 1,143 KB | **88.7%** | **97.9%** | **.929** | 98.1% | 97.9% | 80% |
-
-### What the numbers showed
+Measured against the base ground truth:
 
 - **h4 adds nothing.** From h3 to h4, no query changes rank.
 - **Splitting creates short competitors.** At h3, `vbSolid` falls from rank 1
-  to about 12. Its page, `DrawStyleConstants`, is 483 characters. The new
+  to about 12. Its page, `DrawStyleConstants`, is 483 characters. The
   per-property entries such as `DrawStyle` (171 characters) mention the
-  constant once and now outscore it. Titles play no part; every hit is on
+  constant once and outscore it. Titles play no part; every hit is on
   content. Tuning `b` down to 0.25 leaves `vbSolid` at 12, and only `b` = 0
   fixes it, so BM25 tuning is not the answer.
-- **Most remaining misses are enum values that live in table rows.** Of the
-  444 bare names still outside the top 10 at h3: 410 have a page whose title
+- **Most misses at h3 are enum values that live in table rows.** Of the
+  444 bare names outside the top 10 at h3: 410 have a page whose title
   is not the symbol's name, mostly enum tables (`KeyCodeConstants` 100,
   `MenuAccelConstants` 75, `ShortcutConstants` 49); 24 are operators; 10 are
   common words (`And`, `Is`, `Not`, `With`). A symbols field fixes the first
   group.
 - **The symbols field generalises.** Built from a random 50% of symbols, it
-  still raises the other 50% from 82.4% to 87.3% in the top 10. At boost 200
-  it starts to beat real prose answers (prose drops to 75%); at 50 prose is
-  unchanged.
+  raises the other 50% from 82.4% to 87.3% in the top 10. At boost 200
+  it starts to beat real prose answers (prose drops from 80% to 75%); at 50
+  prose is unchanged.
 - **Splitting on every `.` has two costs.** `Debug.Print` falls from rank 1 to
   61, because `debug` and `print` are both common words and the exact token
   no longer counts. And `1.0`, `e.g.` and `i.e.` turn into single-character
-  tokens that match letter-index pages. The smart split below fixes both and
-  keeps every qualified-name gain.
+  tokens that match letter-index pages. The smart split (Design §3) avoids
+  both and keeps every qualified-name gain.
 - **Generic sections:** folding them into the entry before them is a small,
   free gain. Retitling them ("PaintPicture — Example") gains nothing.
 
@@ -372,10 +354,10 @@ The table compares the configurations tried against the first ground truth.
 
 ### 2. Two fields built from the symbol index
 
-A single `symbols` field at boost 50 was measured first. BM25 discounts a
-match inside a long field, and `Container.Name` forms are longer than bare
-names, so the two compete inside one field for no reason. Two fields, each
-boosted on its own, rank better than one field at any single boost:
+BM25 discounts a match inside a long field, and `Container.Name` forms are
+longer than bare names, so the two would compete inside one field for no
+reason. Two fields, each boosted on its own, rank better than one field at any
+single boost:
 
 - `names`: the bare name of every symbol in `tB/symbols.json` whose URL is
   the entry's `relUrl` (ignoring a trailing slash or `index`), space-separated
@@ -389,10 +371,9 @@ With the current corpus, 4,084 of 6,713 entries get either field.
 - In the build, `searchData` also waits for `symbolIndex`. Both run on the
   main thread after `renderJoin`. `symbolIndex` returns its symbols, and
   `searchData` joins them by URL before it writes (`joinSymbolsToEntries` in
-  `search.mjs`). Workers keep deriving sections as before; the join is a map
-  lookup per entry.
+  `search.mjs`). Workers derive sections; the join is a map lookup per entry.
 - `renderEntryString` adds `names` / `qualified` only when non-empty, so a
-  page with no symbols produces the same bytes as before.
+  page with no symbols produces the same bytes as without the join.
 - In the client, `this.field('names', { boost: 100 })` and
   `this.field('qualified', { boost: 500 })`. The title keeps 200 and content
   keeps 2.
@@ -408,12 +389,12 @@ In the client's `update()`, for each token the tokenizer produces:
   and trailing wildcard as ordinary tokens. Drop parts of one character. So
   `1.0`, `3.9`, `e.g.` and `i.e.` add nothing, and `Debug.Print` still
   matches its exact entry first. Making the parts required (lunr's
-  `presence.REQUIRED`) was measured and rejected: qualified hit@10 falls from
-  97.9% to 88.6%.
+  `presence.REQUIRED`) is rejected: qualified hit@10 falls from 97.9% to
+  88.6%.
 - **Asterisk guard.** Drop tokens made only of `*`. If nothing is left, show
   no results. A search for `*` or `**` otherwise throws inside lunr's query
-  engine and search stops working. (Trimming query tokens, see "What
-  shipped", subsumes this.)
+  engine and search stops working. (Trimming query tokens, see "Query
+  construction", subsumes this.)
 
 ### 4. Both copies of the client
 
@@ -447,7 +428,7 @@ drift apart silently.
 - **Stop words kept, so short common words crowd.** `VB` is a prefix of many
   `vbXxx` constant names in `names`; `Lock`, `Time$`, `Column`, `Index`
   crowd the same way. Everything is judged by reader intent, not by the
-  rank an earlier index gave; see [Reader intent](#reader-intent-after-the-rollout).
+  rank an earlier index gave; see [Reader intent](#reader-intent).
 - **Operators (24 symbols)** are unsearchable by their text under this design;
   exact names find them. See [Future work](#future-work).
 - **Ground-truth bias.** Most queries are symbol names, so the numbers favour
@@ -457,20 +438,20 @@ drift apart silently.
 
 ## Design §5: stop words, dot runs, and a lazy build
 
-Three independent, measured changes to both client copies and the eval
-replica.
+Three independent changes, in both client copies and the eval replica.
 
 ### A. Keep lunr's stop words in the index
 
 lunr's **index** pipeline runs `lunr.stopWordFilter` by default, dropping
 words like `do`, `for`, `if`, `is`, `on`, `with`, `each` from every field. Its
-**search** pipeline never ran that filter, so a query for `Do` still carried
-the token `do`, which existed nowhere in the index. Many twinBASIC keywords
-are English stop words, so every keyword query missed its own entry (`Do`
-ranked 18th, `For` 17th, `With` 55th, `Is` 177th). The fix is one line inside
-the `lunr(function(){...})` builder: `this.pipeline.remove(lunr.stopWordFilter);`.
-Every keyword query goes to rank 1, and the fix isn't specific to
-twinBASIC's keyword list. The cost: a few short, extremely common tokens
+**search** pipeline never runs that filter, so a query for `Do` still carries
+the token `do`, which would exist nowhere in the index. Many twinBASIC keywords
+are English stop words, so with the filter every keyword query misses its own
+entry (`Do` ranked 18th, `For` 17th, `With` 55th, `Is` 177th). The remedy is
+one line inside the `lunr(function(){...})` builder:
+`this.pipeline.remove(lunr.stopWordFilter);`. Every keyword query is then at
+rank 1, and it isn't specific to twinBASIC's keyword list. The cost: a few
+short, extremely common tokens
 (mostly other `vbXxx` constant name prefixes and `Index`/`Lock`/`Column`/`Time$`)
 crowd into more results; see "Known regressions" above.
 
@@ -487,7 +468,7 @@ match highlighting stay valid), then the original tokenizer runs. Non-string
 input (arrays, `null`) passes through unchanged, since lunr also calls its
 tokenizer with those.
 
-The wrapper is installed once, where the separator used to be set, and has to
+The wrapper is installed once, where the separator is set, and has to
 carry `separator` itself: the original tokenizer reads
 `lunr.tokenizer.separator` at call time, so once `lunr.tokenizer` points at
 the wrapper, that lookup resolves to the *wrapper's* own `.separator`. The
@@ -497,7 +478,7 @@ it applies to the index build and every query alike.
 
 ### C. Build the index lazily, on the first keystroke, with visible feedback
 
-Building the lunr index on every page load costs about 1.3 s and 240 MB of
+Building the lunr index on every page load would cost about 1.3 s and 240 MB of
 heap on a desktop, paid by every reader whether or not they open search. So
 `initSearch()` only defines *how* to build the index (`loadIndex(onSuccess,
 onError)`, which fetches via XHR and installs the stop-word and dot-run
@@ -530,8 +511,8 @@ leaves the index `null`, so the next keystroke retries from scratch.
 
 `update()` keeps its prefix (the dedup check, the `search-active` class, the
 iOS scroll workaround) and its keyboard/focus/blur listeners. The query part
-was split out into `doSearch(input)`, gated behind `if (index === null) {
-loadIndexNow(); return; }`. `searchLoaded()` takes `loadIndex` instead of
+is `doSearch(input)`, gated behind `if (index === null) {
+loadIndexNow(); return; }`. `searchLoaded()` takes `loadIndex`, not
 `(index, docs)`.
 
 `builder/offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` works the same way:
@@ -541,25 +522,20 @@ still waits for the first `loadIndexNow()`, with the same feedback.
 `eval/site_search.mjs` mirrors parts A and B exactly; there is no lazy build
 to mirror, since the CLI always wants an index.
 
-**Cost per page view**, median of 15 interleaved runs on a desktop:
+**Cost per page view**, median of 15 interleaved runs on a desktop: index
+build 1,294 ms, heap 243 MB. With the lazy build these costs are paid once per
+page, and only by readers who type into the search box; a page never searched
+from pays nothing.
 
-| | today (h2) | steps 3-4 | + stop words kept |
-|---|---|---|---|
-| index build | 964 ms | 1,184 ms | 1,294 ms |
-| heap | 157 MB | 204 MB | 243 MB |
+## Step numbers in code comments
 
-With the lazy build these costs are paid once per page, and only by readers
-who type into the search box; a page never searched from pays nothing.
+Code comments cite steps: 1 bug fixes (asterisk guard, tokenizer separator in
+the replica); 2 the harness; 3 h3 entries and folding; 4 the symbols fields
+and smart dot split; 5 stop words, dot runs and lazy build (5A, 5B, 5C are
+"Design §5" A, B, C). A change ships as its own commit recording its numbers
+from the harness.
 
-## Rollout
-
-Step numbers cited in code comments: 1 bug fixes (asterisk guard, tokenizer
-separator in the replica); 2 the harness; 3 h3 entries and folding; 4 the
-symbols fields and smart dot split; 5 stop words, dot runs and lazy build
-(5A, 5B, 5C are "Design §5" A, B, C). Each step is its own change recording
-its numbers from the harness.
-
-## Reader intent (after the rollout)
+## Reader intent
 
 ### The criterion
 
@@ -1029,9 +1005,9 @@ behaves here".
 - **`buildIndexInSlices()`** builds the index in slices (Design §5 C).
 
 **Entities.** The search data keeps the page's HTML entities (`&amp;`,
-`&gt;`, `&lt;`, `&#45;`), so the index held `amp;h80004005` while a query
-trims to `h80004005`, and `&H80004005` found none of the five pages that
-mention it. The data can't decode them: the client inserts `doc.title`,
+`&gt;`, `&lt;`, `&#45;`), so undecoded the index would hold `amp;h80004005`
+while a query trims to `h80004005`, and `&H80004005` would find none of the
+five pages that mention it. The data can't decode them: the client inserts `doc.title`,
 `doc.doc` and slices of `doc.content` with `innerHTML` and highlights by
 lunr's character positions in that text, so a decoded `&lt;Object&gt;` would
 become a tag in the results panel and every highlight after an entity would
@@ -1163,11 +1139,11 @@ decisions behind them, and what the measurements ruled out:
 - **Placing a section can move words between entries.** A section placed
   before a page's folded `Example` takes the Example into its own entry
   instead of the page's top entry, which loses its words (a *Named arguments*
-  section before Call's *Example* took `statement` away: `Call statement` fell
-  1 to 5). New sections go after the Example.
+  section before Call's *Example* takes `statement` away: `Call statement`
+  falls 1 to 5). New sections go after the Example.
 - **A survey's "already fine" list is rechecked** before it is used as
-  guards: one such list was wrong at least once (`optional parameters` landed
-  on Compiler-Options).
+  guards: such a list can be wrong (`optional parameters` lands on
+  Compiler-Options).
 - **A term that is not a symbol reorders no bare name.** `ByRef` and `ByVal`
   are not symbols, so their entries are safe.
 - **Terms with no entry, because the right page is already first or in the
@@ -1197,19 +1173,19 @@ decisions behind them, and what the measurements ruled out:
 ### Rejected: tier-specific exact fields (X1t)
 
 Splitting `exact` into `exact1`/`exact2`/`exact3` by symbol kind, with
-descending boosts, measured no better than flat `exact` (hit@1 90.0% against
-90.1%) and ordered tiers worse (48 violating queries against 42). It would
-also need the build's join to emit each symbol's kind. **This is superseded:**
-it was measured while a lone clause's boost cancelled out, so it never had a
-fair test. Done with field boosts, as the `primary` field, it took tier-order
-violations to zero. Don't rebuild X1t without a new idea.
+descending boosts, is not needed: the `primary` field, which uses field
+boosts, brings tier-order violations to zero. X1t as first measured (no better
+than flat `exact`, 90.0% against 90.1% hit@1, and 48 violating queries against
+42) was not a fair test, because a lone clause's boost cancels out; the tiers
+need field boosts. X1t would also need the build's join to emit each symbol's
+kind. Don't rebuild it without a new idea.
 
-The explanation that CheckBox's `names` field lists too few members was false:
-both entries' `names` are the single word `CheckBox`. The difference is the
-content: the CheckBox page's top entry (`/tB/Packages/VB/CheckBox/`) has 1
-character, since a class's introduction sits under its own heading
-(`#checkbox-class`), while `DTPicker › CheckBox` has 467 characters that
-mention "checkbox" several times.
+CheckBox against `DTPicker › CheckBox` is a content difference, not a `names`
+difference: both entries' `names` are the single word `CheckBox`. The CheckBox
+page's top entry (`/tB/Packages/VB/CheckBox/`) has 1 character, since a
+class's introduction sits under its own heading (`#checkbox-class`), while
+`DTPicker › CheckBox` has 467 characters that mention "checkbox" several
+times.
 
 ### Known misses and limits
 

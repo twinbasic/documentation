@@ -131,12 +131,12 @@ There is a secondary design point for upstream HarfBuzz --- a subsetter that can
 CFF2 instance metrics should refuse rather than emit a font with mismatched outlines and an
 invalid `head` --- but the actionable report is harfbuzzjs's.
 
-**Not yet reported upstream (last checked 2026-09-21).** A full sweep of both trackers
+**Not yet reported upstream.** A full sweep of both trackers
 (every open issue and PR, closed-issue term searches, Discussions, and the `subset-font` /
-`subfont` / `cn-font-split` wrappers) found nothing. Two look-alikes are different bugs: #6068
+`subfont` / `cn-font-split` wrappers) finds nothing. Two look-alikes are different bugs: #6068
 (HVAR advances frozen on partial instancing; fixed) and the open #4029 (glyf `hhea` bounds
 not recomputed when the metrics map is empty --- the same shape, a different table). Both
-repos' `main` still carried the defect when checked.
+repos' `main` carried the defect when last checked.
 
 **Status.** Decided: wait for the harfbuzzjs fix rather than take the Pyodide route or
 leave the script Python for good. harfbuzzjs 1.6.2 is a pure HarfBuzz 14.5.0 bump
@@ -170,7 +170,7 @@ built by fontTools and are correct. When the port happens:
   The only thing that meets all six is fontTools itself under Pyodide (`@web-alchemy/
   fonttools`, ~15 MB, pinned to a stale 4.56.0) --- CPython in WASM, which satisfies "no
   Python" as a technicality and nothing more.
-- One workaround was proposed and **declined**: stop pinning `opsz` on Source Serif, keep
+- One workaround is **declined**: stop pinning `opsz` on Source Serif, keep
   the axis, and have `print.css` ask for `font-variation-settings: "opsz" 11`. It would
   sidestep the bug and cost ~70 KB in a PDF-only face, but it changes what the generator
   produces to suit a tool defect. Do not re-propose it; the pin stays. Switching Source

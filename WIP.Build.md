@@ -112,9 +112,9 @@ Three `.py` files stay, and none is an oversight:
   account of the blocked JavaScript port.
 - **`scripts/subset_font.py`** cuts each font an SVG screenshot embeds down to the
   characters it draws (`shoot_docs --svg`, [WIP.Screenshots.md](WIP.Screenshots.md)). It is
-  fontTools, the subsetter `build_fonts.py` already relies on. harfbuzzjs was tried first and
-  removed (owner: "don't mess with harfbuzz"); it is the library whose CFF2 defect keeps
-  `build_fonts.py` in Python. It loads a font without recalculating glyph bounds, because the
+  fontTools, the subsetter `build_fonts.py` already relies on. It does not use harfbuzzjs
+  (owner: "don't mess with harfbuzz"), the library whose CFF2 defect keeps `build_fonts.py` in
+  Python. It loads a font without recalculating glyph bounds, because the
   IDE's icon font stores loose glyph boxes and recalculating them moved icons a pixel, and it
   keeps the hinting (owner's decision) and the font's timestamp, so a picture's SVG is the same
   bytes from one run to the next.
@@ -141,7 +141,7 @@ a change to `src/` is packed again by hand. See [Tools and
 Scripts](docs/Documentation/Tools-IDE.md#imagestrip).
 
 **Its own unit tests are twinBASIC `[TestFixture]` modules in `src/Sources/Tests/`**, with
-the images they build in `TestImages`, run by `tbrun --tests` (owner, 2026-10-10), which reads
+the images they build in `TestImages`, run by `tbrun --tests` (owner), which reads
 every `.twin` under `Sources/`. `TestImages.Cat` copies each `ParamArray` element through a
 `Variant` before assigning it to an array, around a twinBASIC defect queued in
 BUGS-TO-REPORT.md.
@@ -153,7 +153,7 @@ build without one rule) fails it. The two are kept in step by hand: a change to 
 strips is a change to both. `compactImage` in the same module is what the SVG screenshots
 (`scripts/svgshot/snapshot-svg.mjs`, [Pictures as SVG](#pictures-as-svg)) embed their images
 through, so a change to what it strips reaches their SVGs on the next `shoot_docs --svg` run.
-What both strip was decided by the owner, 2026-10-10:
+What both strip was decided by the owner:
 
 - **An embedded image keeps its pixels and any notice of whose it is, and nothing else.**
   The IDE's icons carry GIMP's EXIF, IPTC and XMP profiles (12 KB around a 28-pixel icon),
@@ -723,8 +723,8 @@ build.
 CI workflows: over a hundred probes on fixtures, no tree, no install. The scanner's probes are
 the traps the packages' `.twin` sources contain, the community packages' included, and what
 a declaration's record says (signature, attributes with their arguments, description, return
-type, accessor, the project name). A block of them holds the forms an audit of `parseTwin`
-found it losing without a word (lists after `Inherits` and `Implements`, a qualified CoClass
+type, accessor, the project name). A block of them holds the forms `parseTwin` could lose
+without a word (lists after `Inherits` and `Implements`, a qualified CoClass
 interface, `[Hidden(False)]`, modifier-named and initialised fields, brackets in a Type, a
 result type before `Overrides`, an unmodified `Declare`, and the `#If` branches as
 alternatives), each with the compiler's answer in its comment, checked with `tbrun --tests`
@@ -1148,7 +1148,7 @@ SVGs: online and book do, offline (and so the help archive) does not. Why:
   and the index audit agree without knowing about pictures. That adds a few hundred literal
   patterns, so `offlineExcluded` (and its copy in `check-tree.mjs`) compares a pattern with no
   wildcard as a string instead of compiling it. The archive is a stored zip, 37 MB without
-  the SVGs, and the 310 of them (2026-10-10) would add 18 MB.
+  the SVGs, and the 310 of them would add 18 MB.
 - **A picture's SVG is never inlined.** `figurePlugin` inlines a diagram's SVG in its figure; a
   picture's (`isPictureSvg`: an `.svg` with its `.png` beside it) stays an `<img>` in the
   figure's container, and `tbdocs.mjs` does not put it in the `svgContentsMap` the workers

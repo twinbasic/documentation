@@ -137,7 +137,7 @@ advances after `Graphviz.load()`. Three facts make that work:
   moves the laid-out box for `AAAA` from 43.00 pt to 80.00 pt.
 - **Inter already routes there.** The name lookup is permissive and falls back
   to Times, so patching Times is what makes `fontname="Inter"` correct. Nothing
-  in the docs asks for Times; a diagram that did would now get Inter's metrics.
+  in the docs asks for Times; a diagram that did would get Inter's metrics.
 
 Widths are in the family's **own em units** (2048 for this table), not AFM
 thousandths, so a search of the WASM for the AFM values finds nothing.
@@ -146,8 +146,9 @@ thousandths, so a search of the WASM for the AFM values finds nothing.
 browser rather than read out of the font binary: the browser's shaped advance
 is the number to match.
 
-Result across the site's diagram labels: **-11.4% mean / -18.0% worst becomes
-+0.5% mean / +2.8% worst**. The residual is kerning, which a per-character
+Across the site's diagram labels the patched table measures **+0.5% mean /
++2.8% worst** against the browser's widths (unpatched Times: -11.4% mean /
+-18.0% worst). The residual is kerning, which a per-character
 table cannot express, and it errs *wide* --- boxes come out slightly generous
 rather than slightly tight, which is the safe direction.
 
@@ -243,7 +244,7 @@ on the web that *is* the 16px body size, but the book sets body text at 10.5pt,
 so that diagram comes out at **1.14x the prose**. The other four are already
 scaled down to fit and land below body size on their own.
 
-`print.css` closes it with `zoom: 0.875`, which is 10.5/12 exactly:
+`print.css` sets `zoom: 0.875`, which is 10.5/12 exactly:
 
 | diagram | no `zoom` | with `zoom` | with `max-width: 87.5%` |
 |---------|----------:|------------:|------------------------:|
@@ -327,8 +328,7 @@ PNG* cannot work on such a diagram at all, and the throw lands inside an
 nothing. Graphviz emits plain `<text>`, which is why all four buttons work on all
 five diagrams. This is a property of the *format*, not of the export code.
 
-Mermaid is the tool this was tested on, and **the obvious workaround does not
-work**: `flowchart: { htmlLabels: false }` moves only the edge labels to `<text>`
+Mermaid emits it, and **the obvious workaround does not work**: `flowchart: { htmlLabels: false }` moves only the edge labels to `<text>`
 and keeps node labels in `foreignObject` regardless (Mermaid 11). Mermaid is not
 wired up --- no dependency, no script emitted, only `code.language-mermaid`
 rules left in the vendored theme CSS --- so a `mermaid` fence renders as a code

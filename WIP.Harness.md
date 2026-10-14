@@ -144,8 +144,8 @@ comment in the file:
   `E.[Hidden]` and `E.Hidden` are 0, `[Description("x")]` is a member of that name, and
   `[NoSuchAttribute]` too. Code after the group (`[Hidden] Red = 5`) is refused, TB5182 at
   `Red`. So the census records no attribute for such a group (`scripts/lib/census-scan.mjs`,
-  probes in `check_twin_parsers.mjs`); it once did for the 35 `[_]` members VBCCR's
-  `LongPtr` Enum declares in the samples.
+  probes in `check_twin_parsers.mjs`), the 35 `[_]` members VBCCR's `LongPtr` Enum declares
+  in the samples included.
 - **A comment can sit anywhere**: inline `/* voffset &H00A8*/ Property Get X()` before a
   declaration (DAO.twin), a trailing `' NOTE: ...` after a `]`, a whole `'` line *between*
   two attribute groups (VBA/Strings.twin; 142 sites), or a `#If` between an attribute and
@@ -352,7 +352,7 @@ is written to stdout or stderr, ever**, it exits 0 with the `.exe` written when 
 in code nothing calls, and for an error the build reaches --- an unknown procedure or type,
 an undeclared variable, no `Sub Main` --- it does not exit at all: it sits on a "Please
 wait…" dialog at 100% forever. It is silent, falsely green, and hangs on the one case worth
-catching. Measured all three ways, on BETA 983 and 995 (the BUGS-TO-REPORT entry on
+catching. All three hold on BETA 983 and 995 (the BUGS-TO-REPORT entry on
 `--buildAndExit32`).
 
 **It runs the IDE on a private Windows desktop, and that is not decoration.** A build tool
@@ -388,7 +388,7 @@ reports. Two rules keep the cause readable. With its streams redirected, PowerSh
 progress records and errors to stderr as CLIXML (`#< CLIXML`, as `tb-registry.mjs` also
 found, below), so the script silences progress and writes a failure itself, as plain UTF-8
 text. And a Win32 error read from PowerShell is not the call's: PowerShell makes calls of its
-own before the next statement runs, and a `CreateProcess` that had set 3 was reported as 203,
+own before the next statement runs, so a `CreateProcess` that set 3 reads as 203,
 "The system could not find the environment option that was entered". Each call is made, and
 its error read, in C#.
 
@@ -449,8 +449,8 @@ Seven rules about the harness, each a comment in the file:
   helper the IDE is not a descendant of anything the harness spawned, so the helper reports
   the pid on stdout and the harness kills that.
 
-**A crashing probe is a real risk.** Four `Debug.ExecuteHostCommand` argument-shape probes in
-one project took the compiler down repeatedly. Keep a question that might crash the compiler
+**A crashing probe is a real risk**: `Debug.ExecuteHostCommand` argument-shape probes take the
+compiler down repeatedly. Keep a question that might crash the compiler
 in a project of its own, so the answer is attributable and one bad probe cannot cost the
 other thirty their run.
 
@@ -548,8 +548,7 @@ Rules it follows:
   failed due to licence error" and builds nothing. `#appOverlay` is a transparent element
   over the whole page, shown while `lockUICount` is above zero: by every modal dialog, the
   "Compiling..." and project-loading progress dialogs among them, and by an open menu. A press
-  then fails with "its centre is covered by #appOverlay" (both were seen once each in a full
-  `bug_repro verify`). A licence still unset after the wait throws; an overlay still up is
+  then fails with "its centre is covered by #appOverlay". A licence still unset after the wait throws; an overlay still up is
   left to `click`, which names it.
 - **A click that fails saves a picture of the page** (`pagePicture` in `tb-click.mjs`, CDP
   `Page.captureScreenshot`, which works on the private desktop) under `%TEMP%\tb-click\`, and
@@ -911,7 +910,7 @@ copy. Put back as found, it would point `.twinproj` files at a folder that has b
 and other sessions run `examples.bat` while add-in tests run copies, so the overlap is
 ordinary. `startTidy` notes whether the association it recorded names the temp folder, and if
 it did, `finishTidy` puts it back with every path to a copy's `twinBASIC.exe` replaced by
-`findIde()`'s, the newest install on the Desktop (owner, 2026-10-10): what that install's IDE
+`findIde()`'s, the newest install on the Desktop (owner): what that install's IDE
 writes when it is next started. With no install outside the temp folder it leaves the
 association as the IDEs set it and says so.
 
@@ -1196,7 +1195,7 @@ Eight rules:
   gone. So a script that edits and then sets a breakpoint calls `waitForEditAnswer` first, as
   `shoot_docs.mjs`'s `breakpointOn` and the `debugging` lane do. It waits until the file is no
   longer `pendingChangeConfirmation`. A person rarely presses F9 that fast, and the defect is
-  not queued (owner, 2026-10-12).
+  not queued (owner).
 - **A click checks where its press lands** (the `assert` lane of
   `ide-test.bat` shows it). The page can change between the call that aims and the press, a few
   milliseconds to a hundred later on a busy page. In an editor the debugger has just
@@ -1382,7 +1381,7 @@ probe lanes:
   list --- a check of a live site has to attach to it separately. The scenario
   turns on `Runtime` to record page exceptions, which is how P12's `TypeError` is seen. Its
   last test is not a numbered probe: a third button opens two tool windows given no id,
-  which turn out to be one window.
+  which are one window.
 - [test/addin/symbols.test.mjs](test/addin/symbols.test.mjs), P5: no add-in. It opens the
   project in [test/addin/probes/symbols](test/addin/probes/symbols), which references tbIDE
   and is never built, and asks the compiler about names in it the way the IDE's own code

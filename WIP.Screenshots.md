@@ -2,8 +2,7 @@
 
 The documentation's IDE screenshots go stale with every beta. `scripts/shoot_docs.mjs` retakes
 them from a live IDE: every picture of the IDE the documentation holds, annotations included,
-and the program windows and web pages that sit beside them. The owner's decisions behind it are
-dated 2026-10-08 onward.
+and the program windows and web pages that sit beside them. The owner's decisions behind it are marked (owner).
 
 ## What there is to retake
 
@@ -18,7 +17,7 @@ Ten images under `docs/`, each for a stated reason:
 
 - **The six GitHub walkthrough pictures** of `Documentation/Building.md` (compare-changes,
   create-pull-request, merge-pull-request, confirm-merge, choose-workflow, run-workflow): the
-  owner's to retake by hand, with a signed-in account (owner, 2026-10-09); no agent touches them
+  owner's to retake by hand, with a signed-in account (owner); no agent touches them
   or their prose. They show base `main` and the old workflow name, and confirm-merge an e-mail
   address, until then.
 - **`packPublishPackage1`**: `packagePublisherPublish` opens the sign-in form when no publisher
@@ -27,7 +26,7 @@ Ten images under `docs/`, each for a stated reason:
 - **`Tutorials/WebView2/Images/tbWebView2InAForm.gif`** is skipped (owner).
 - **`favicon.png`** is never changed by this work (owner).
 
-## Decisions (owner, 2026-10-08)
+## Decisions (owner)
 
 - **One tool.** `shoot_docs.mjs`; the help add-in's pictures are one setup among the others.
 - **2x pictures, shown at half size**: every retaken picture gets `{:width="W" height="H"}` (half
@@ -48,15 +47,14 @@ Measured on BETA 997:
   `body.scale150`, 22.67 px menu rows). `--force-device-scale-factor=1` in the WebView2 browser
   arguments (`Lane`'s `browserArgs`) gives `scale100` and integer sizes;
   `Emulation.setDeviceMetricsOverride` at `deviceScaleFactor: 2` then gives a clean 2x. Menus and
-  dialogs come out at the CSS sizes of the pictures taken before the fix to the pixel (File
-  189x336, Manage Keyboard Shortcuts 1016x736).
+  dialogs come out at their 1x CSS sizes (File 189x336, Manage Keyboard Shortcuts 1016x736).
 - **No-project start.** `Lane.open` always opens a project. `Lane.openNoProject()`
   (`launchOnDesktop` with no argument, then `attachIde`) starts the IDE as it shows its splash and
   then New / Open Project, with every menu in its no-project state. The lane's copy of the
   install leaves out `projects\` (29 MB): New Project then shows 2 templates and no samples, so
   a setup that shows them copies `projects\` into the lane's copy.
-- **Theme** (owner, 2026-10-09). Every picture is taken in the dark theme
-  (`tbTheme_SwitchToDarkMode`) as `X.png`, byte for byte the picture it always was, and in the
+- **Theme** (owner). Every picture is taken in the dark theme
+  (`tbTheme_SwitchToDarkMode`) as `X.png`, and in the
   **Light** theme (`tbTheme_SwitchToLightMode`, not Classic) as `X.light.png` beside it. The
   site shows the light one in its light theme and the dark one in its dark theme, following the
   toggle and, with no choice stored, the OS; pages are not edited, the build pairs the files by
@@ -82,7 +80,7 @@ Measured on BETA 997:
     finished) — the same section;
   - the Windows user name: the visible-text check (text boxes included) covers every picture,
     run before the first capture and again when a capture is chosen, with the SVG under
-    `--svg`: the page can draw again in between, as Project Settings did, putting the real
+    `--svg`: the page can draw again in between, as Project Settings does, putting the real
     build path back over the template a shot had set in the page only (a shot that sets a
     value types it, `input` and `change`, so the page keeps it).
 
@@ -94,10 +92,10 @@ Measured on BETA 997:
 - **Cut-out**: a style sheet sets `html, body, #bodyInner` transparent and `body *` hidden
   except the kept elements (`#rootMenu<Title>`, `#contextMenu`, `#contextMenuSUB`, or an
   annotation layer), plus `Emulation.setDefaultBackgroundColorOverride` to alpha 0; both undone
-  after. Verified: corners alpha 0, interior 255, the rounded bottom corners partial.
-- **Quiet page**: the existing style sheet against carets and animations goes into every shot,
-  opaque ones included (the probe's IDE Options sample showed a caret without it).
-- **Write only on change**: kept from the current tool. The tool prints, for each picture, the
+  after. Corners are alpha 0, the interior 255, the rounded bottom corners partial.
+- **Quiet page**: the style sheet against carets and animations goes into every shot,
+  opaque ones included (IDE Options shows a caret without it).
+- **Write only on change.** The tool prints, for each picture, the
   `{:width height}` its page should have and warns where the page disagrees; it does not edit
   markdown.
 - **A capture is not byte-stable.** `Page.captureScreenshot` of an unchanged screen alternates
@@ -124,8 +122,8 @@ Measured on BETA 997:
   the element allows: the WebView2 download page's Version arrow (`#version
   .px-dropdown__icon`, 8 by 9) changes a pixel by more than the noise between any two
   captures, animations and transitions off. A shot without it compares byte for byte.
-- **Settle by condition, not by sleep.** Fixed sleeps were most of a run (a closed menu leaves a
-  2x8 px empty `#contextMenu`, so a wait for it to vanish always ran out its 2 s; ~3,000 calls).
+- **Settle by condition, not by sleep.** Fixed sleeps would be most of a run (a closed menu leaves a
+  2x8 px empty `#contextMenu`, so a wait for it to vanish always runs out its 2 s).
   A menu is closed when it holds no items; a dialog is still when a MutationObserver has seen no
   change and its images and fonts are loaded; a floated panel when the IDE's `.flashElement` class
   is gone; a help page when its fonts, images and body are settled. The page size is set only once
@@ -224,7 +222,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   light picture is narrower again (1498). Each comes out within the 32-pixel tolerance, so the
   run passes, but the file can be rewritten for the width alone.
 
-## Standing rules for what a picture shows (owner, 2026-10-09)
+## Standing rules for what a picture shows (owner)
 
 - **A state is reproduced as the IDE reaches it, never by editing what it draws.** The tool
   inspects the IDE's page first to see how a state can be reached.
@@ -254,7 +252,7 @@ the page once real ones are shown, as History's times are.
 Setup `code-chapter` (three parts): FeatureTour, the feature map's Inventory project, with
 `test/shots/codechapter/` staged onto it (`Helpers`, `Ev`/`Ev2`, `Watcher`) and the project's
 warnings set so that TB0016 is a hint and TB0012 information. Its 20 pictures are under
-`docs/IDE/Code/Images/`, plus `Menu_Edit` and `Menu_View`, now taken with the code focused.
+`docs/IDE/Code/Images/`, plus `Menu_Edit` and `Menu_View`, taken with the code focused.
 
 - **Each picture starts from the default layout and its own tabs** (`chapterTabs`), and closes
   Monaco's find widget first: the editor is one for every file, so a widget left open shows over
@@ -302,7 +300,7 @@ global object and WinNativeCommonCtls (for the Toolbox's COMMON CONTROLS group).
 Command1, Check1, Frame1 holding Text2, and the control array Command2(0) and (1); `MyReport`
 has a Label in Report Header and a Line and a Label in Report Detail. Its pictures are under
 `docs/IDE/Forms/Images/` and `docs/IDE/Reports/Images/`, plus `Menu_Format_HorizontalSpacing`,
-now taken with Command1, Check1 and Command2(0) selected (the page's own example of **Left** 10,
+taken with Command1, Check1 and Command2(0) selected (the page's own example of **Left** 10,
 140 and 250), so that Make Equal is live. `Designer_PackageNeeded` is taken in setup `settings`,
 whose project does not refer to the VB package.
 
@@ -317,7 +315,7 @@ whose project does not refer to the VB package.
   annotated picture, each label and arrow of the overlay from `layerBoxes`; the overlay's own
   box is too big for it). The form, its menu bar and its readouts are compared only 2 pixels in
   from their edges, a readout only between its rounded ends: the ground shows through their
-  edges and shadows, and a 2-pixel band there failed Designer_Locked now and then. A cut-out
+  edges and shadows, and a 2-pixel band there fails Designer_Locked now and then. A cut-out
   (`keep`) avoids the ground altogether.
 - **The container's red outline is an animation** (`borderBlink`, the outline red half the
   time), which the quiet style sheet stops where the outline is transparent. Controls_Container
@@ -383,7 +381,7 @@ whose project does not refer to the VB package.
   `nameUserAsUserIn(c, ".debugConsoleOuter")` replaces the name there in the page; the console
   is cleared with its button once the compiler is back.
 - **The tooltips** (`Services_Unavailable_Tooltip`, `Services_Operational_Tooltip`) are
-  **replicas** (owner, 2026-10-10). A native
+  **replicas** (owner). A native
   `title` tooltip never appears on a private desktop: neither a CDP mouse move
   over the badge nor a `WM_MOUSEMOVE` posted or sent to any of the page's three windows
   (`Chrome_WidgetWin_0`, `Chrome_WidgetWin_1`, `Chrome_RenderWidgetHostHWND`) made a new
@@ -392,16 +390,16 @@ whose project does not refer to the VB package.
   page, holding the badge's own `title` read live, styled by `TOOLTIP_CSS`, placed as Windows
   places a tooltip by the cursor (cursor taken at the badge's middle; the badge is at the
   window's bottom, so it goes above), captured alone and removed, in the badge's own setups
-  (`project` for OPERATIONAL, `no-project` for UNAVAILABLE). Calibrated against the January
-  pictures (154x73 and 158x73 px) by rendering the same text in puppeteer's Chrome at 1x: Segoe
-  UI 12 px (9 pt), 16 px lines, `#242424` for the 1 px border **and** the text (the January
-  pictures' darkest text pixel is 36 grey levels, not black), 7 px side padding, 3 above and 4
-  below, the width rounded up to whole pixels. Result in a 1x render with the January text: the
-  same size to the pixel and a mean luminance difference of 0.4 grey levels (maximum 9). In the
-  IDE at 2x, shown at half size, OPERATIONAL is 158x73 like the January picture (its text a
+  (`project` for OPERATIONAL, `no-project` for UNAVAILABLE). The style is fitted to a real
+  Windows tooltip (154x73 and 158x73 px) by rendering the same text in puppeteer's Chrome at 1x: Segoe
+  UI 12 px (9 pt), 16 px lines, `#242424` for the 1 px border **and** the text (a real
+  tooltip's darkest text pixel is 36 grey levels, not black), 7 px side padding, 3 above and 4
+  below, the width rounded up to whole pixels. That gives the same size to the pixel and a mean
+  luminance difference of 0.4 grey levels (maximum 9). In the
+  IDE at 2x, shown at half size, OPERATIONAL is 158x73 (its text a
   little softer than a 1x ClearType picture: mean difference 8 after a box-filter to 1x).
   **The text is the IDE's live one**: with no project the badge's title reads each service
-  `Not initialized` (the January picture says `Disconnected`, the state for 0.1 s between
+  `Not initialized` (`Disconnected` is the state for 0.1 s between
   compilers), so the UNAVAILABLE picture is 155x73 and its alt text says Not initialized. The
   replica does not follow the theme, so the Light pass takes the dark pixels and keeps no
   `.light.png` file.
@@ -506,11 +504,10 @@ Taken on BETA 1005, in both themes where the theme shows.
   on load says 1.0.0.10 is available. OLEGuids replaces WinDevLib in the page (WinDevLib
   publishes weekly, so its line would change every run, and it is 23 MB).
 - **`a1331a0e`** is the Enabled Libraries tab with the embedded package's tick ringed: BETA 1005
-  no longer asks "Also remove the imported package ...", and `Updating a package.md` says the copy
-  is deleted at once.
-- **`packPublishPackage1`** kept: `packagePublisherPublish` opens the sign-in form when no
+  deletes the copy at once and asks nothing, and `Updating a package.md` says so.
+- **`packPublishPackage1`** is not retaken: `packagePublisherPublish` opens the sign-in form when no
   publisher is signed in, before the confirmation box.
-- **`e749e10f`**: the gear is the Project Explorer's (the old picture's toolbar gear is gone);
+- **`e749e10f`**: the gear is the Project Explorer's;
   the dialog is shown whole with the gear beside it (2324 px wide; a smaller page does not make
   the dialog narrower, it covers the gear). The full dialog fills Available COM References
   (hidden, its text in the page), whose paths name the user: the shot waits for that list and
@@ -567,7 +564,7 @@ Taken on BETA 1005.
 - `test/addin/help.test.mjs` fetches `/favicon.png` as its sample PNG, so `favicon.png` must stay
   a PNG.
 
-## Machine state in the pictures (owner, 2026-10-08)
+## Machine state in the pictures (owner)
 
 - **The IDE's settings** (View's ticks, IDE Options' values, the debugger options, user panel
   layouts and keyboard groups) are set to their defaults **in the page only** — `liveIDEOptions`
@@ -576,10 +573,9 @@ Taken on BETA 1005.
 - **About's licence line**: the tool waits for `licenceIsSet` before opening About, so it shows
   the edition, never NOT READY.
 - **The language tick** stays on whatever language the IDE runs in.
-- **`llvmdoc2`** shows the default thread count, 1 (the picture's earlier 10 was its author's
-  setting).
+- **`llvmdoc2`** shows the default thread count, 1.
 
-## Project-setup pictures (owner, 2026-10-08)
+## Project-setup pictures (owner)
 
 Project Settings, the panels, Project Explorer, Sample 6, Sample 15 and Global Search. In
 BETA 997 Sample 6's control images are in the CustomControls package's Miscellaneous folder, not
@@ -593,7 +589,7 @@ the project's, and the tutorial says so.
   value is changed to match.
 - **An old-design picture is retaken in today's look**, with alt text and prose rechecked.
 
-## Designers, code and composites (owner, 2026-10-09)
+## Designers, code and composites (owner)
 
 - **Composites** lay their parts out on the IDE's background in the picture's theme, with a gap,
   code on the left and the panel on the right, one red arrow across.
@@ -650,13 +646,13 @@ the project's, and the tutorial says so.
 the PNG was just captured from, and the build shows it in place of the PNG
 ([WIP.Build.md, Pictures as SVG](WIP.Build.md#pictures-as-svg)).
 
-**Owner's decisions (2026-10-09 and 10):**
+**Owner's decisions:**
 
 - Text is real text, in per-picture subsets of the fonts the IDE drew it with, cut by fontTools
-  (`scripts/subset_font.py`), hinting kept. Glyph outlines were rejected (they render poorly);
-  harfbuzzjs was tried and removed ("don't mess with harfbuzz").
-- The PNG and the SVG are both committed. One SVG per theme: a single SVG switching on CSS
-  variables and a `#light` fragment was proposed and dropped.
+  (`scripts/subset_font.py`), hinting kept. Glyph outlines render poorly and are not used;
+  nor is harfbuzzjs ("don't mess with harfbuzz").
+- The PNG and the SVG are both committed. One SVG per theme, not a single SVG switching on CSS
+  variables.
 - Pages name `X.png` and the build substitutes; `png` in the attribute block keeps the PNG.
 - `picture_svg` in `_config.yml` per output: online and book on, offline (and so the help
   archive) off.
@@ -675,12 +671,12 @@ the PNG was just captured from, and the build shows it in place of the PNG
   drawn as replicas of what Chromium paints: a closed `<select>`, a checkbox and a radio button,
   an input's and a textarea's text (scrolled), and scrollbars styled with `::-webkit-scrollbar`.
 - **An embedded image keeps its pixels and any notice of whose it is, and nothing else**
-  (owner, 2026-10-10). `renderSvg` passes each through `compactImage` from
+  (owner). `renderSvg` passes each through `compactImage` from
   `scripts/lib/compact-image.mjs`, which `scripts/imagestrip/` matches; what it keeps and why
   is in [WIP.Build.md](WIP.Build.md) beside `imagestrip`, and `test/compact-image.test.mjs`
   tests it. The icons whose sRGB profile it drops decode to the same pixels in Edge 155 and
   Chromium 148; a `gAMA` 1.0 control does not. The 318 by 346 pixels of a 16-pixel icon such
-  as tB-Red are the IDE's own asset at its own size, and stay so (owner, 2026-10-10).
+  as tB-Red are the IDE's own asset at its own size, and stay so (owner).
 - `fonts.mjs` gives each run's characters to the font files Chromium used for them, and
   `subset_font.py` cuts each file to the characters drawn, as WOFF2.
 - `diff.mjs` renders the SVG as an `<img>` at 2x and compares it with the PNG by luminance and
@@ -691,7 +687,7 @@ the PNG was just captured from, and the build shows it in place of the PNG
   clip shows the half of the edge the PNG cuts off. That column alone put a small picture past
   the bar (a 16-pixel icon at 11%, a menu at 0.5%), so `capture` gives `svgOfPage` the clip
   with the PNG's width and height.
-- **A converter change is tried with `replay.mjs`, not a retake** (owner, 2026-10-10).
+- **A converter change is tried with `replay.mjs`, not a retake** (owner).
   `capture.mjs`'s `collectBundle` reads everything the converter needs from the page into a
   *bundle*: the snapshot, its style names (positional, so a bundle carries its own list), and
   per document the measuring layer's answers, the runs' platform fonts, the web fonts, the
@@ -707,15 +703,14 @@ the PNG was just captured from, and the build shows it in place of the PNG
   `.svgshot-bundles/` (gitignored, never under `docs/`: a bundle holds the user name), **one
   file per picture holding both themes** (`X.bundle.json.br`, `{dark, light}`, the dark one's
   text first), **Brotli** at quality 9 with a 16 MB window: the light bundle is mostly the dark
-  one, which a long window finds and gzip's 32 KB does not, so the 370 bundles went from 57.7
-  MB gzipped to 21.8 MB in 189 files, about 115 KB a picture. A light picture not kept (the
+  one, which a long window finds and gzip's 32 KB does not, so the 370 bundles are 21.8 MB in
+  189 files (gzip: 57.7 MB), about 115 KB a picture. A light picture not kept (the
   same as the dark) has its slot dropped (`dropBundle`). `trimSnapshot` cuts the snapshot to the clip (the layout objects near
   it, every ancestor's, a frame's document only when its `<iframe>` is kept, `<style>` and
   `<script>` text emptied, unused strings dropped; every DOM node kept), 97 MB to 58 MB for
   the 370, and all 370 draw the same SVG trimmed as whole. A trimmed layout object keeps its
   old index in `layout.originalIndex`, which its key is made of: the scrollbar styles
-  measured at the capture are found by it. **A replay takes about 20 s for the 370** (it
-  took 3.4 min at first): an SVG that comes out byte-identical to its file beside the PNG its
+  measured at the capture are found by it. **A replay takes about 20 s for the 370**: an SVG that comes out byte-identical to its file beside the PNG its
   bundle names is not compared again (`--recheck` compares all); the fonts' cuts, about two
   thirds of an SVG's time, are kept in `.svgshot-bundles/subsets/` under a hash of the font
   (file, face, size, time, or a web font's bytes), its weight, the characters, the hinting and
@@ -728,16 +723,16 @@ the PNG was just captured from, and the build shows it in place of the PNG
   misses are new since its capture, whose PNG hash changed, or whose bundle lacks a style now
   read, with the `--only` command that retakes them. **A change to what is read from the page
   that no miss shows raises `BUNDLE_VERSION`**: version 2 (the web font rules, `fontFiles`,
-  `svgs`) does not read a version 1 bundle, and replay lists every one as needing a retake
-  (the 370 of this cache did). Reading version 1 would replay a split font with the one file it
+  `svgs`) does not read a version 1 bundle, and replay lists every one as needing a retake.
+  Reading version 1 would replay a split font with the one file it
   kept, and a picture with an inline `<svg>` without it, and nothing in a version 1 bundle
   says which pictures have either. Answering misses offline in headless
   Chromium, and drawing bundles in `tbdocs`, are later steps, not done: the second needs the
   bundles committed, so cleaned of the user name, and complete, since CI
   has no Windows fonts to measure with.
-- **A filter of colour functions is baked, not drawn** (`colour-filter.mjs`; owner, 2026-10-10).
+- **A filter of colour functions is baked, not drawn** (`colour-filter.mjs`; owner).
   Chromium's PDF backend cannot express an SVG `<filter>` and draws the whole filtered group as a
-  300 dpi bitmap, text included: the book lost the text of 44 of its 110 SVGs that way. Every CSS
+  300 dpi bitmap, text included: the book would lose the text of 44 of its 110 SVGs that way. Every CSS
   filter function but `blur()` and `drop-shadow()` is an affine colour map, which commutes with
   antialiasing, so mapping each fill, stroke, gradient stop and text class under the group paints
   the same picture on screen, to a channel's rounding; `opacity()` becomes the group's opacity.
@@ -745,8 +740,8 @@ the PNG was just captured from, and the build shows it in place of the PNG
   group that blends or already holds a real filter group. A `drop-shadow()` last in the list
   (the IDE's toolbar codicons glow with one) is split the same way: the shadow alone, from a
   copy of the group under a filter that blurs its alpha, then the group over it unfiltered,
-  which is what the filter's own merge paints. One SVG for screen and book; two
-  variants were considered and dropped, since the bake is exact. Blurred shadows stay bitmaps in
+  which is what the filter's own merge paints. One SVG serves screen and book, since the
+  bake is exact. Blurred shadows stay bitmaps in
   the PDF, which loses nothing.
 - **The bar** (`SVG_FAITHFUL` in `shoot_docs.mjs`): an SVG with more than 0.25% of its pixels 96
   grey levels or more off is not written, and an older one is removed. Anything not drawn falls
@@ -801,7 +796,7 @@ the IDE calls a JPEG and a BMP `image/png`. The About dialog's EXCALIBUR logo is
 drawn with `background-size: contain`; read as a PNG, its JFIF header gave 4,718,592 by about 4.3
 billion pixels, and the logo would come out 0.054 px wide.
 
-**Frames** (owner, 2026-10-10: cross-origin frames in general). A frame of the same site (the
+**Frames** (owner: cross-origin frames in general). A frame of the same site (the
 docked help pane: the documentation on another `localhost` port) is in the IDE's process, and
 `DOMSnapshot.captureSnapshot` returns its document beside the page's: the `<iframe>` node's
 `contentDocumentIndex` names it, and its boxes are in its own coordinates. `decodeSnapshot`
@@ -822,7 +817,7 @@ an `<iframe>` on `127.0.0.1` while the page is on `localhost`: another site, so 
 
 **Web fonts** are found by CSS font matching on the run's `font-family` list, style and weight
 (`webFontFiles`, in the page), not by the face's own name: the site's Inter calls itself "Inter
-Variable", and the last rule of a family was its italic file. A family split by
+Variable", and the last rule of a family can be its italic file. A family split by
 `unicode-range` (Microsoft's Segoe UI Variable: five files per weight, Latin, Latin Extended,
 Cyrillic, Greek, symbols) gives a run every rule whose range holds one of its characters
 (`webRulesFor`, the last such rule per character, as CSS does), only those files are read, and
@@ -871,8 +866,7 @@ and compares them with the browser's own picture: in Edge, whose Chromium is the
 (Puppeteer's trails it, and draws the select's arrow otherwise), laid out at 1x and drawn at 2x
 as the IDE is, text without ClearType. Each page is held to the figures recorded in
 `bench/baseline.json` (`--update` records them): no page comes out exact, and a fixed limit
-missed a fault fixed while the bench was written (arrows a quarter too tall moved a page from
-0.025% to 0.064%). `node scripts/svgshot/pixels.mjs <png> x y w h --beside <png>` prints a
+would miss a small fault (arrows a quarter too tall move a page from 0.025% to 0.064%). `node scripts/svgshot/pixels.mjs <png> x y w h --beside <png>` prints a
 rectangle of two pictures as letters, one per colour: how an edge, a stroke or a blend came out.
 A new replica gets a page there.
 
@@ -892,7 +886,7 @@ the baseline to a whole CSS pixel (a device pixel off at most; an underline uses
 one). A canvas is a raster (the editor's minimap is drawn with
 `putImageData`). The run reports each under "not drawn".
 
-**Open, the owner's** (2026-10-11):
+**Open, the owner's:**
 - The SVGs are to be checked in browsers other than Chromium's, with an online tool; leave
   them as they are until then.
 - fontTools' `gvar` subsetting bug, worked round by `patch_gvar_subset`, is to be reported

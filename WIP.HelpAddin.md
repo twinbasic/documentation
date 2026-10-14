@@ -599,7 +599,7 @@ has the harness side of each item.
    under the runner leaves its registry entries to the runner, which sweeps only the lanes'
    folders.
 
-Stage 1's acceptance: both scenarios pass under `addin-test.bat`, and the whole registry,
+Stage 1 holds when both scenarios pass under `addin-test.bat` and the whole registry,
 `IDESettings` included through hashes, is identical around the run.
 
 - **Sample 10:** toolbar button, then its tool window, then a message box (the three-button
@@ -854,8 +854,8 @@ not: a restart saves a harness about a second against opening a new IDE.
      rounds, and rows of 22.75 px overflowed a list of seven by a pixel each, which showed
      its scrollbar. The vertical scrollbar is left on the list view's default, shown only
      when there is something to scroll.
-   - **The line between the list and the page** (Wayne, 2026-10-09: nothing ended the list
-     and began the page) is the top border of `#helpPage` and `#helpSummary` while
+   - **The line between the list and the page** (Wayne: it ends the list and begins the
+     page) is the top border of `#helpPage` and `#helpSummary` while
      `#helpResults` shows (a sibling rule on the list's inline `display`):
      `2px solid color-mix(in srgb, var(--themeToolWindowBodyForeColor) 40%, transparent)`,
      the theme's text colour at 40%, so it follows every theme with no rule of its own. The
@@ -931,7 +931,7 @@ not: a restart saves a harness about a second against opening a new IDE.
    `Page.getFrameTree` reads its URL. The offline tree cannot be used: a page served over
    http cannot frame a `file://` URL. So the lane needs `build.bat` first.
 3. **Context: which `Add`?** Tested by the same lane on BETA 995. **The route is the
-   page's socket** (the owner, 2026-10-04): the add-in's own parser would have to be close
+   page's socket** (owner): the add-in's own parser would have to be close
    to a whole twinBASIC parser, so it waits, and the socket stands until upstream gives the
    API a call for it. For the name under the cursor, F1 asks the compiler's hover about
    the character the name starts from (`Words.NameColumn`); a selection is looked up as it
@@ -967,16 +967,16 @@ not: a restart saves a harness about a second against opening a new IDE.
      the project's `Beep`.
    - The socket code is in files of its own, `CompilerHover.twin` and `hover.js`, without
      comments, so that it can be replaced whole once the API has a call.
-4. **A name with no page**, tested by the same lane on BETA 995, at the owner's
-   request (2026-10-04): a user who documents their own code with `[Description]` sees it,
-   and is not sent to a page for another name. When the hover names a package the index
+4. **A name with no page**, tested by the same lane on BETA 995 (owner): a user who
+   documents their own code with `[Description]` sees it, and is not sent to a page for
+   another name. When the hover names a package the index
    does not document --- the project, another package, a type library --- F1 shows, in
    place of the frame, the declaration, the description and where the name is declared,
    all from the hover (P15), read by `Declared.ReadSummary`; a name with none says
    `No description.`. *Open in browser* is disabled meanwhile, and showing a page puts the
    frame back. The saved page is unchanged, so a restart shows the last page.
    - `ReadHover` also reads `in library <name>`, a class's or module's: a class of the
-     project named as a documented one no longer finds that one's page.
+     project named as a documented one does not find that one's page.
    - On a procedure's name where it is declared, the hover is the code-generation block, so
      F1 says `No help for 'Beep': it is declared here`.
    - **The lane's own race.** F1 on the name whose page shows already sets the same `src`
@@ -984,12 +984,11 @@ not: a restart saves a harness about a second against opening a new IDE.
      `f1Shows` marks the page before pressing F1 and waits for a page without the mark. A
      page showing again after a summary is waited for too, since its `src` can already be
      right.
-5. **Offline help**, tested by the lane `help-offline` on BETA 995, at the owner's
-   choice (2026-10-05): the add-in's own server, written in twinBASIC, serving one archive
-   embedded in the DLL. The owner's other choices: the archive is a resource; the
-   documentation build makes it (owner, 2026-10-06); the pane uses
-   it when the DLL has it, and the live site otherwise; the symbol index stays a resource of
-   its own.
+5. **Offline help**, tested by the lane `help-offline` on BETA 995 (owner's choice): the
+   add-in's own server, written in twinBASIC, serving one archive embedded in the DLL. The
+   owner's other choices: the archive is a resource; the documentation build makes it; the
+   pane uses it when the DLL has it, and the live site otherwise; the symbol index stays a
+   resource of its own.
    - **The archive** is `add-in/Resources/HELP/site.zip`, gitignored, written from
      `docs/_site-offline` by the `helpArchive` task of a build of the documentation, once
      the offline tree is complete and before the Gantt chart goes into `BuildInfo.html`
@@ -997,7 +996,7 @@ not: a restart saves a harness about a second against opening a new IDE.
      skips it, and CI never passes that, since the download carries the archive) (about
      26 MB, 1,475 files; the DLL builds with it for
      win32 and win64). An add-in built without it serves nothing
-     and uses the live site, as before. The offline tree is the one served: its links are
+     and uses the live site. The offline tree is the one served: its links are
      relative, so they work on any origin, and its pages hold only their part of the nav
      tree.
    - **No inflating in twinBASIC.** A deflated entry is sent as it is, between a 10-byte
@@ -1023,15 +1022,15 @@ not: a restart saves a harness about a second against opening a new IDE.
      offline-only case asks the server from Node: a page's gzip body and a stored image
      byte for byte, a folder's 301, a 404 and `HEAD`.
 6. **Hover help**, tested by the `help` and `help-offline` lanes on BETA 997, with
-   the owner's choices (2026-10-06): links in the IDE's hover under the mouse, behind one
+   the owner's choices: links in the IDE's hover under the mouse, behind one
    *Hover help* checkbox in the settings panel (increment 8), off by default and kept with `SaveSetting`
    (`Hover`, `On`). It shows a link per page the name has, at most five, labelled with the
    name, its kind and where it is, as in *Help: MsgBox function (VBA.Interaction)* (the
-   owner's wording, 2026-10-07; `SymbolIndex.Place`); a click shows that page in the pane,
+   owner's wording; `SymbolIndex.Place`); a click shows that page in the pane,
    as F1 does. A name with no page shows nothing, since the IDE's hover already shows its
    declaration and description. `SymbolIndex.Pages` is the lookup F1 and hover help share.
    `HoverHelp` raises `Pick` with the page's path.
-   - **At the cursor there is nothing** (owner, 2026-10-07). A widget above the line, added
+   - **At the cursor there is nothing** (owner). A widget above the line, added
      through the public API once the cursor had rested on a name (P16), is not used: it
      covers the line above whenever typing pauses on a name, does not look like the IDE's own
      hover, and gives nothing the mouse hover and F1 do not. P16 says what it costs, should
@@ -1041,7 +1040,7 @@ not: a restart saves a harness about a second against opening a new IDE.
      an earlier instance of the add-in left in `window.tbDocsHoverHelp`, and registers new
      ones while the box is ticked. The provider is for `"twinbasic"`, so the links are the
      hover's first lines, next to the name, where a long hover shows them without being
-     scrolled (the owner's choice, 2026-10-06; a provider for `"*"` puts them below the
+     scrolled (the owner's choice; a provider for `"*"` puts them below the
      compiler's text). The provider asks the compiler's hover itself, passes the
      line, the column and the hover to the add-in, and waits up to 4 s for the markdown it
      answers with (`window.tbDocsHoverHelp.answer`). The links point at the live site; a
@@ -1059,9 +1058,8 @@ not: a restart saves a harness about a second against opening a new IDE.
      move it against the window's right edge before the mouse rests anywhere; and a hover
      left open covers the toolbar, so each mouse case moves the mouse away at its end.
      `test/addin/hover.mjs` holds the helpers both lanes use.
-7. **A detached window**, tested by the `help` and `help-offline` lanes on BETA 997,
-   at the owner's request (2026-10-07): the pane can be moved to another monitor. The
-   owner's choices: the add-in shows a window of its own, a twinBASIC Form holding the
+7. **A detached window**, tested by the `help` and `help-offline` lanes on BETA 997
+   (owner's request): the pane can be moved to another monitor. The owner's choices: the add-in shows a window of its own, a twinBASIC Form holding the
    WebView2 package's control (P19), rather than a `window.open` from the page, which would
    be page internals and which the host most likely sends to the browser (the host DLL
    names `NewWindowRequested` and imports `ShellExecuteA`; not tried, since it might open
@@ -1070,7 +1068,7 @@ not: a restart saves a harness about a second against opening a new IDE.
      **Attach** in the window's title bar hides the window and shows the pane. The window is
      made once and then hidden and shown, so its page is kept. It has no owner window and
      shows in the taskbar.
-   - **The title bar** (owner, 2026-10-07) is one row drawn by the page, in place of the
+   - **The title bar** (owner) is one row drawn by the page, in place of the
      Windows caption, which is light even in the dark theme. It is the IDE's tool-window
      header: `.sectionHeader`, with `--themePanelHeaderBackColor` and `...TextColor`, the
      theme's `...Border*`, `...Padding` and `...FontSize`, weight 600, the 6-dot grip at the
@@ -1175,8 +1173,8 @@ not: a restart saves a harness about a second against opening a new IDE.
      caption (no read-back of the DWM attribute), Alt+F4, the registry read, maximizing on
      a monitor other than the primary one (the lab machine has one), and the move
      itself, whose loop needs the real mouse, which the harness's desktop has none of.
-8. **Settings**, tested by the `help` and `help-offline` lanes on BETA 997, at the
-   owner's choice (2026-10-07): a gear at the right end of the pane's bar, and on the detached
+8. **Settings**, tested by the `help` and `help-offline` lanes on BETA 997 (owner's
+   choice): a gear at the right end of the pane's bar, and on the detached
    window's title bar (in its bar under the Windows caption), opens a drop-down panel of
    settings, one label row each. A click outside it, Esc, or the gear closes it; changing a
    setting leaves it open. Each view has its own panel; the settings themselves go through
@@ -1186,7 +1184,7 @@ not: a restart saves a harness about a second against opening a new IDE.
    `blur` closes the panel as well. The lanes' pane frame is on the IDE page's site, so one
    case points it at `127.0.0.1` to check the shade with a cross-site frame.
 9. **Only the packages the project references**, tested by the `help` and
-   `help-offline` lanes on BETA 997, at the owner's choice (2026-10-07): F1, the hover links
+   `help-offline` lanes on BETA 997 (owner's choice): F1, the hover links
    and the search offer the language's own entries and the packages the project references;
    an *All packages* row in the settings panel, off by default and kept with `SaveSetting`
    (`Packages`, `All`), offers every package. `LoadPackages` reads the references at
@@ -1198,7 +1196,7 @@ not: a restart saves a harness about a second against opening a new IDE.
    F1 on a name only an unreferenced package documents says *No help for 'X' in the packages
    this project references*.
 10. **How a user gets an add-in with the archive.** The project file is a download, and it
-    is the offline add-in (owner, 2026-10-09). Every docs build, CI's included, packs
+    is the offline add-in (owner). Every docs build, CI's included, packs
     `add-in/` into `tB/IDE/AddIns/downloads/tbDocsHelp.twinproj` in the online tree
     (`builder/addin-project.mjs`, the `addinProject` task), and *Getting the add-in* links
     to it first, the source route second. It holds the files git tracks, the symbol index
@@ -1207,7 +1205,7 @@ not: a restart saves a harness about a second against opening a new IDE.
     serves the pages itself with no internet; CI passes no `--no-help-archive` for that
     reason. A build that wrote no archive packs none. The offline tree holds no copy, and
     its links to the file go to the website. The reader still builds the two DLLs in the
-    IDE. **Not done:** the DLLs themselves, built in CI --- the owner's plan (2026-10-07) is
+    IDE. **Not done:** the DLLs themselves, built in CI --- the owner's plan is
     to build them there with everything else, once the compiler runs on Linux there.
     Why the pack is made the way it is: [WIP.Build.md](WIP.Build.md#the-help-add-ins-project-file).
 
@@ -1283,9 +1281,9 @@ the route once the socket is gone, if the API never gains a call for it:
 Recommended, and not yet confirmed:
 
 - **Page internals are for probes only, with two exceptions the owner made**: increment 3
-  asks the compiler's hover through the page's socket, until the API has a call for it
-  (2026-10-04), and increment 6's mouse route registers a Monaco hover provider through the
-  page (2026-10-06, P17). Otherwise the shipped add-in uses the public API and
+  asks the compiler's hover through the page's socket, until the API has a call for it,
+  and increment 6's mouse route registers a Monaco hover provider through the
+  page (P17). Otherwise the shipped add-in uses the public API and
   `ShellExecuteW`, and whatever the API lacks is requested upstream. P4 showed the route
   exists: any inline handler can reach the page's globals, `openEditors`, the socket to the
   compiler and `hostAppObject` among them. `raiseEvent` in a list view's items is
