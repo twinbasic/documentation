@@ -1,8 +1,13 @@
 // Runs the package test projects, test/package-tests/<Package>/, and judges each case against
 // the package's expect.json.
 //
-//     node scripts/package_tests.mjs [<Package> ...] [options]
+//     node scripts/package_tests.mjs <Package> [<Package> ...] [options]
+//     node scripts/package_tests.mjs --all-packages [options]
 //
+//       <Package>         a package with a test project, matched to its folder without regard
+//                         to case (tbregexp is tbRegExp)
+//       --all-packages    every package with a test project; a run of all of them takes several
+//                         minutes a package, so it is never the default
 //       --arch <a>        win32, win64 or both (default both)
 //       --port <n>        the first DevTools port to try (default 9620); the run claims the first
 //                         free one from there (scripts/lib/tb-ports.mjs)
@@ -76,13 +81,15 @@ const TBRUN = path.join(REPO_ROOT, "scripts", "tbrun.mjs");
 const CACHE = path.join(tmpdir(), "tb-twinserv");
 const WORK = path.join(tmpdir(), "tb-package-tests");
 
-const USAGE = `usage: node scripts/package_tests.mjs [<Package> ...] [--arch win32|win64|both] [--port N] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json] [-h, --help]
+const USAGE = `usage: node scripts/package_tests.mjs (<Package> ... | --all-packages) [--arch win32|win64|both] [--port N] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json] [-h, --help]
 
-Runs the package test projects under test/package-tests/ with tbrun --tests, each
+Runs package test projects under test/package-tests/ with tbrun --tests, each
 with its package embedded, and judges every case against the package's
 expect.json: documented (as it says), fixed (expected to fail or never return,
-and passes) or changed. With no package named, runs every project.
+and passes) or changed. Name one or more packages (in any case), or pass
+--all-packages to run every project.
 
+  --all-packages          run every package's test project
   --arch <a>              win32, win64 or both (default both)
   --port <n>              the first DevTools port to try (default 9620)
   --timeout <secs>        how long one case may take (default 60)
@@ -95,7 +102,8 @@ and passes) or changed. With no package named, runs every project.
 Exit codes:
   0  every case did what expect.json says
   1  a case was fixed or changed
-  2  a refused command line, a package with no test project, or the harness failed`;
+  2  a refused command line (no package named and no --all-packages, a package
+     with no test project), or the harness failed`;
 
 const { values, positionals } = withUsageError(
   () =>
@@ -106,6 +114,7 @@ const { values, positionals } = withUsageError(
         timeout: { type: "string" },
         "hang-timeout": { type: "string" },
         update: { type: "boolean", default: false },
+        "all-packages": { type: "boolean", default: false },
         ide: { type: "string" },
         json: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
@@ -125,17 +134,27 @@ const opts = withUsageError(
         : [values.arch],
     port: numberOption(values.port ?? "9620", { option: "--port", integer: true, min: 1, max: 65535 }),
     timeout: numberOption(values.timeout ?? "60", { option: "--timeout", above: 0 }),
-    hangTimeout: numberOption(values["hang-timeout"] ?? "20", { option: "--hang-timeout", above: 0 }),
+    hangTimeout: numberOption(values.hangTimeout ?? "20", { option: "--hang-timeout", above: 0 }),
   }),
   { format: (err) => `${err.message}\n${USAGE}` },
 );
 
 exitOnCrash();
 
+// The packages to run: those named, each matched to its folder without regard to case, or all
+// of them with --all-packages. Neither is refused, and so are both, before anything starts.
 const known = packageTestNames(ROOT);
-const packages = positionals.length ? positionals : known;
-const missing = packages.filter((p) => !known.includes(p));
-if (missing.length) die(2, `no test project for ${missing.join(", ")} under test/package-tests/\n${USAGE}`);
+const knownList = known.length ? known.join(", ") : "none";
+if (values.allPackages && positionals.length) die(2, `name packages or pass --all-packages, not both\n${USAGE}`);
+if (!values.allPackages && !positionals.length) {
+  die(2, `name a package, or pass --all-packages; packages with a test project: ${knownList}\n${USAGE}`);
+}
+const byLower = new Map(known.map((p) => [p.toLowerCase(), p]));
+const missing = positionals.filter((p) => !byLower.has(p.toLowerCase()));
+if (missing.length) {
+  die(2, `no test project for ${missing.join(", ")}; packages with a test project: ${knownList}\n${USAGE}`);
+}
+const packages = values.allPackages ? known : [...new Set(positionals.map((p) => byLower.get(p.toLowerCase())))];
 if (!packages.length) die(2, "test/package-tests/ holds no test project");
 
 const [port] = await claimPorts(1, { from: opts.port });

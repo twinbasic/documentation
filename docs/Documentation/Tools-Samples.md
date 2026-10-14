@@ -106,7 +106,9 @@ Exit codes: **0** every marked sample compiles, or none is marked (`--report` al
 ## package_tests.mjs
 {: #package-tests }
 
-    node scripts/package_tests.mjs [<Package> ...] [--arch win32|win64|both] [--port N] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json]
+    node scripts/package_tests.mjs (<Package> ... | --all-packages) [--arch win32|win64|both] [--port N] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json]
+
+It runs the packages named, each matched to its folder in any case (`tbregexp` is `tbRegExp`), or with `--all-packages` every package that has a test project; a whole run takes several minutes a package, so it is never the default. With neither, or with both, it refuses and lists the packages that have a test project.
 
 Runs the contributed packages' test projects. Each package the reference documents under `docs/Reference/Contributed/` has one in `test/package-tests/<Package>/`: `[TestCase]` Subs of `[TestFixture]` modules that check every claim the NOTEs and WARNINGs of its section make, a generated `RunAll` module, and `expect.json`. The README in that folder says how a case is written. Each case checks what is correct, so a defect of the package is a failing case, and `expect.json` records how each case fails, or that it never returns, on the version the section documents.
 

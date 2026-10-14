@@ -244,11 +244,12 @@ Exit codes, those of [`check_examples.mjs`](Tools-Samples#check-examples): **0**
 ### package-tests.bat
 {: #package-testsbat }
 
-    package-tests.bat [<Package> ...] [flags]
+    package-tests.bat <Package> [<Package> ...] [flags]
+    package-tests.bat --all-packages [flags]
 
 One invocation of [`package_tests.mjs`](Tools-Samples#package-tests), with every argument passed straight through:
 
-    node scripts/package_tests.mjs [<Package> ...] [flags]
+    node scripts/package_tests.mjs <Package> [<Package> ...] [flags]
 
 Runs the contributed packages' test projects under `test/package-tests/`, which back the NOTEs and WARNINGs of each package's section with test cases, and says which cases no longer do what the package's `expect.json` records: fixed, so the page's callout goes, or changed, so a claim of the page is no longer true.
 

@@ -83,11 +83,14 @@ takes it out.
 ## Running
 
 ```
-package-tests.bat tbRegExp                  both architectures, judged against expect.json
+package-tests.bat tbregexp                  both architectures, judged against expect.json
 package-tests.bat tbRegExp --arch win32
 package-tests.bat tbRegExp --update         write expect.json from the run
-package-tests.bat                           every project
+package-tests.bat --all-packages            every project, several minutes a package
 ```
+
+A package is named in any case. With no package named and no `--all-packages`, the run is
+refused and lists the packages that have a test project.
 
 `scripts/package_tests.mjs` stages the project with the package embedded (downloaded from TWINSERV
 into `%TEMP%\tb-twinserv` once) and runs it with `tbrun --tests`, which runs each case in the
