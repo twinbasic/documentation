@@ -39,6 +39,10 @@ The engine raises its pattern errors with numbers of the form `vbObjectError + 3
 | 13 | A group name with a character that a name cannot hold | `(?<a-b>x)` |
 | 14 | An inline option that is not `i`, `m` or `s`, which includes an atomic group and a conditional | `(?x)`, `(?>a)` |
 
+<!-- test: PatternSyntaxTests.IsValid_AtomicGroup, PatternSyntaxTests.IsValid_Conditional -->
+An atomic group `(?>...)` and a conditional `(?(`*n*`)`*yes*`|`*no*`)` fall under *n* = 14. VBScript's **RegExp** does not accept either construct, so a pattern that uses one is invalid in both.
+<!-- /test -->
+
 [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) and [**Split**](Split) raise an error with this number when the pattern is invalid.
 
 Those four methods can also raise `vbObjectError + 3016`, which is not a compile error and so never appears here: it means a valid pattern ran out of its step budget before the search finished. See [**SearchStepLimit**](SearchStepLimit).

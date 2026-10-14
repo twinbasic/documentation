@@ -34,6 +34,16 @@ Set the property when a pattern of that kind is given a string long enough to re
 
 The value that **SearchStepLimit** returns is the one that was set, not the budget a search would be given: with the property at 0 there is no single number to return, because the budget depends on the string. Setting it does not compile the pattern again.
 
+## The error
+
+The description of the error says what was spent and what to do about it. The search of a thousand digits in the second example below, given 100,000 steps when it needs about 2,250,000, reports:
+
+> The regular expression search was abandoned after 100,000 steps on an input of 1,000 characters, so whether it matches is not known. This pattern backtracks heavily at this length. A pattern like this typically needs about 3,000,000 steps at this length - roughly 30 times the work already done. Set **SearchStepLimit** to 3000000 to allow it. If that still fails, the pattern's cost grows faster than the square of the input and no limit will help.
+
+A pattern that is worse than quadratic is told the opposite, because for it a larger budget is not the answer. `(a+)+b` on thirty `a` is given the floor of 1,000,000 steps, far more than the 2,700 a quadratic pattern of that length would need, so the message does not name this property at all:
+
+> The regular expression search was abandoned after 1,000,000 steps on an input of 30 characters, so whether it matches is not known. This pattern backtracks heavily at this length. It was already allowed more than a quadratic pattern needs here, so its cost grows faster than the square of the input and no step limit will cover it. Simplify the pattern.
+
 ## Example
 
 This example searches a string of thirty `a` for `(a+)+b`, which cannot match and takes a very long time to prove it. The search gives up after about a third of a second and raises. The same pattern against a string it can match finishes.
