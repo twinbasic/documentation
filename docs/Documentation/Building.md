@@ -482,15 +482,15 @@ Self-hosting the body face fixes the *text* at 17px everywhere but does not reti
 
    ![The repository's Actions tab, and the workflow list in the left sidebar where the deploy workflow is chosen](Images/choose-workflow.png){:width="552" height="191"}
 
-8. Manually run the build and deployment workflow if a release snapshot is needed. Pushes to `staging` deploy to Pages automatically; only the manual run also cuts a GitHub release. See [Cutting a release](#cutting-a-release).
+8. Manually run the build and deployment workflow if a release snapshot is needed. Pushes to `staging` deploy to Pages automatically; only the manual run also publishes a GitHub release. See [Publishing a release](#publishing-a-release).
 
    ![The Run workflow dropdown open on its branch selector, with the green Run workflow button that starts the manual deployment](Images/run-workflow.png){:width="368" height="231"}
 
 
-### Cutting a release
-{: #cutting-a-release }
+### Publishing a release
+{: #publishing-a-release }
 
-A release is a downloadable snapshot of the documentation. **Only a manual dispatch cuts one**, so the newest release can lag the live site by any amount; the welcome page tells readers to check the date.
+A release is a downloadable snapshot of the documentation. **Only a manual dispatch publishes one**, together with the deploy of the same commit.
 
 Go to Actions → **Build & deploy docs** → **Run workflow**. It takes one input:
 

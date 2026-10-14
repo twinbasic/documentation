@@ -5,7 +5,7 @@ on:
     branches: ["staging"]
 
   # Allows you to run this workflow manually from the Actions tab.
-  # The manual path additionally cuts a GitHub release with the
+  # The manual path additionally publishes a GitHub release with the
   # offline-browsable site copy attached as a zip; pushes to
   # `staging` only deploy to Pages.
   workflow_dispatch:
@@ -249,7 +249,7 @@ jobs:
         uses: actions/deploy-pages@v5
 
   # Release job -- runs only on manual dispatch, after a successful
-  # Pages deploy.  Each manual deploy cuts a new GitHub release whose
+  # Pages deploy.  Each manual deploy publishes a new GitHub release whose
   # tag tracks a publicly visible documentation snapshot at
   # https://docs.twinbasic.com, with the offline-browsable copy of
   # the site attached as twinbasic-docs-offline.zip.

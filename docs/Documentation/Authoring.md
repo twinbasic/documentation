@@ -856,6 +856,7 @@ Common substitutions:
 | leverage, utilize | use |
 | in order to | to |
 | spin up, kick off | start |
+| cut (a release) | publish, make |
 | surface (as a verb) | expose, raise |
 | wire up | connect |
 | under the hood | internally |

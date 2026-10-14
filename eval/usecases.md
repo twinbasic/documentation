@@ -294,7 +294,7 @@ goal, so do not mix them in a re-run.
 | UC-40 | *(re-run)* A gate refused a regex I added to the builder. Understand it and fix it. | **H** the answering section appeared in none of seven queries, including the gate's own filename |
 | UC-44 | *(re-run)* `serve.bat` never shows a builder change. Diagnose it and give a workflow. | **H** the answer was an un-anchored NOTE; both pages documenting `serve.bat` were silent |
 | UC-45 | *(re-run)* Hand somebody a copy to read on a laptop with no network. | **H** four reader-phrased queries missed; no reader-facing page said the copy existed |
-| UC-52 | Cut a release carrying the offline site copy and the PDF book, and say what a consumer gets. | **H** only a manual dispatch attaches them, and the release can lag the live site arbitrarily |
+| UC-52 | Publish a release carrying the offline site copy, the PDF book and the Downloads page's files, and say what a consumer gets. | **H** only a manual dispatch attaches them, and the release can lag the live site arbitrarily |
 
 ### Persona D: a twinBASIC developer on the published site *(new)*
 

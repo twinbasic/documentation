@@ -249,6 +249,7 @@ The vocabulary tables further down cover word choice. The rules in this subsecti
 | `broker` (as verb) | manages, handles |
 | `carry` / `carries` (figurative) | has, contains, includes |
 | `catches up` | resumes, processes the queue |
+| `cut` / `cuts` / `cutting` (a release, a tag, a version) | publish, make (owner: never "cut a release", anywhere, comments included) |
 | `comes up` (a connection) | is established, becomes ready |
 | `drive` / `driven` (figurative) | controlled by, determined by, powered by |
 | `footgun` / `footguns` | easy mistake to make, hazard, pitfall |
