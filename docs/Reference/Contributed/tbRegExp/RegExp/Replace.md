@@ -56,8 +56,7 @@ re.Pattern = "^"
 Debug.Print Replace(re.Replace("a" & vbLf & "b" & vbLf & "c", "> "), vbLf, "/")  ' > a/> b/> c
 ```
 
-> [!WARNING]
-> A match of more than a few thousand characters is cut short, and nothing is raised, so **Replace** replaces a shorter part of the text than the pattern describes. The [overview of the package](../) describes the limit.
+A search that backtracks without end, such as `(a+)+b` on thirty `a`, gives up instead of hanging, and **Replace** then replaces only the matches found before it gave up. [**SearchAborted**](SearchAborted) returns **True** in that case.
 
 An invalid pattern raises the compile error, with the number in [**LastErrorNumber**](LastErrorNumber) and the description in [**LastError**](LastError). Check [**IsValid**](IsValid) first to avoid it.
 

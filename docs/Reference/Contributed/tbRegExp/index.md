@@ -4,33 +4,20 @@ parent: Contributed Packages
 has_toc: false
 exclude_from_docs:
   - StaticRegex
-indexed_from: 1.7.0.0
+indexed_from: 1.8.0.0
 permalink: /tB/Packages/Contributed/tbRegExp/
 ---
 
 # tbRegExp Package
 {: .no_toc }
 
-**Author:** GCuser99. **Version:** 1.7.0.0. **On GitHub:** [GCuser99/tbRegExp](https://github.com/GCuser99/tbRegExp), in the folder *Package*.
+**Author:** GCuser99. **Version:** 1.8.0.0. **On GitHub:** [GCuser99/tbRegExp](https://github.com/GCuser99/tbRegExp), in the folder *Package*.
 
 The **tbRegExp** contributed package provides regular expressions for twinBASIC projects, as a replacement for the **RegExp** object of VBScript. It follows the same object model. A [**RegExp**](RegExp/) is given a pattern and options, its [**Execute**](RegExp/Execute) method returns a [**MatchCollection**](MatchCollection/) of [**Match**](Match/) objects, and each **Match** holds the text captured by the groups of the pattern as a [**SubMatches**](SubMatches/) object. Positions are zero-based, as in VBScript.
 
-> [!WARNING]
-> A match can be at most about 3,300 characters long. A longer one is reported cut short, later in the string, or not at all, and no error is raised. The engine gives up a search from one starting position after 10,000 steps, where a step is one operation of the compiled pattern, and then starts again one character later. The limit is fixed inside the package, and a program cannot change it. A pattern that repeats one character, such as `a*`, `.*` or `[^,]*`, takes three steps for each character it matches, so its longest match is 3,331 characters, and a pattern with more to do for each character has a shorter longest match. On a string of 5,000 `a`, `a*` finds a match that starts at position 1669 and is 3,331 characters long, where VBScript's **RegExp** finds the whole string from position 0, and `^.*$` finds no match at all, so [**Test**](RegExp/Test) returns **False**. Each starting position that fails costs up to 10,000 steps, so a search over a long run is slow as well: `a*` over a run of 9,500 characters takes several seconds, and returns a match of 3,331 characters from position 6169. This is how version 1.7.0.0 behaves.
-
-```tb check_build check_run
-Dim re As New RegExp
-Dim m As Match
-re.Pattern = "a*"
-Set m = re.Execute(String(5000, "a"))(0)
-Debug.Print m.FirstIndex & ", " & m.Length  ' 1669, 3331
-re.Pattern = "^.*$"
-Debug.Print re.Test(String(5000, "a"))      ' False
-```
-
 The matching is done by the [vba-regex](https://github.com/sihlfall/vba-regex) engine of sihlfall, which the package includes as a private module, **StaticRegex**.
 
-Beyond VBScript's object, **RegExp** has the [**DotAll**](RegExp/DotAll) and [**Flags**](RegExp/Flags) options, the [**Split**](RegExp/Split) method, and [**IsValid**](RegExp/IsValid), [**LastError**](RegExp/LastError) and [**LastErrorNumber**](RegExp/LastErrorNumber), which report an invalid pattern before it is used. [**Replace**](RegExp/Replace) reads a `$` in the replacement string as VBScript does, and adds `$<name>` for a named group.
+Beyond VBScript's object, **RegExp** has the [**DotAll**](RegExp/DotAll) and [**Flags**](RegExp/Flags) options, the [**Split**](RegExp/Split) method, [**IsValid**](RegExp/IsValid), [**LastError**](RegExp/LastError) and [**LastErrorNumber**](RegExp/LastErrorNumber), which report an invalid pattern before it is used, and [**SearchAborted**](RegExp/SearchAborted), which reports a search that gave up. [**Replace**](RegExp/Replace) reads a `$` in the replacement string as VBScript does, and adds `$<name>` for a named group.
 
 ## Pattern syntax
 
@@ -93,6 +80,21 @@ re.Pattern = "a\{x}"
 Debug.Print re.Execute("a{x}")(0).Value  ' a{x}
 ```
 
+## Searches that give up
+
+A pattern that backtracks without end, such as `(a+)+b` on a string of thirty `a`, does not hang a search as it does in VBScript's **RegExp**. Every search has a budget of steps, which a program cannot change, and when it runs out the search stops and raises no error. Its result is then short or empty, and a program that has to tell it from a true result reads [**SearchAborted**](RegExp/SearchAborted) after the call. A long match is no problem: `a*` and `^.*$` match a string of 1,000,000 `a` whole.
+
+```tb check_build check_run
+Dim re As New RegExp
+re.Pattern = "(a+)+b"
+Debug.Print re.Test(String(30, "a"))   ' False
+Debug.Print re.SearchAborted           ' True
+
+re.Pattern = "^.*$"
+Debug.Print re.Test(String(100000, "a"))   ' True
+Debug.Print re.SearchAborted               ' False
+```
+
 ## Classes
 
 - [Match](Match/) -- holds one match that a RegExp found in a string: the matched text, where it starts, how many characters it has, and the text captured by its groups
@@ -116,6 +118,7 @@ Debug.Print re.Execute("a{x}")(0).Value  ' a{x}
   - [MultiLine](RegExp/MultiLine) -- returns or sets whether `^` and `$` match at line boundaries
   - [Pattern](RegExp/Pattern) -- returns or sets the regular expression
   - [Replace](RegExp/Replace) -- replaces the matches in a string
+  - [SearchAborted](RegExp/SearchAborted) -- returns whether the last search gave up before it finished
   - [Split](RegExp/Split) -- splits a string at the matches
   - [Test](RegExp/Test) -- returns whether a string contains a match
 - [SubMatches](SubMatches/) -- holds the strings that the capture groups of a pattern captured in one Match

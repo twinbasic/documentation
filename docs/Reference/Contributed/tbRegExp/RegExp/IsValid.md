@@ -26,7 +26,7 @@ Check **IsValid** before [**Execute**](Execute), [**Test**](Test), [**Replace**]
 Although nothing is raised, the compile error of an invalid pattern stays in the **Err** object after the call that compiled the pattern returns. A program that tests **Err** for other errors calls **Err.Clear** first.
 
 > [!NOTE]
-> A quantifier whose lower count is above its upper count, such as `a{2,1}`, is not found when the pattern is compiled, so **IsValid** returns **True** for it. [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) and [**Split**](Split) then raise error 3000 when a search reaches the quantifier, with the description that Windows gives that number, *The specified print monitor is unknown.* This is how version 1.7.0.0 behaves.
+> A quantifier whose lower count is above its upper count, such as `a{2,1}`, is not found when the pattern is compiled, so **IsValid** returns **True** for it. [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) and [**Split**](Split) then raise error 3000 when a search reaches the quantifier, with the description that Windows gives that number, *The specified print monitor is unknown.* This is how version 1.8.0.0 behaves.
 
 ## Example
 

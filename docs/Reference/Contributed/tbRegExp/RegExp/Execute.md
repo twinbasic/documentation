@@ -36,8 +36,7 @@ Debug.Print re.Execute("fooBarBaz").Count         ' 2
 Debug.Print re.Execute("fooBarBaz")(1).FirstIndex  ' 6
 ```
 
-> [!WARNING]
-> A match of more than a few thousand characters is cut short, and nothing is raised: `a*` on a string of 5,000 `a` returns one match that starts at position 1669 and is 3,331 characters long, not the whole string. The [overview of the package](../) describes the limit.
+A search that backtracks without end, such as `(a+)+b` on thirty `a`, gives up instead of hanging. The collection then holds the matches found before it gave up, and [**SearchAborted**](SearchAborted) returns **True**.
 
 Each **Match** gives the matched text ([**Value**](../Match/Value)), the position where it starts ([**FirstIndex**](../Match/FirstIndex), counted from 0), its length, and the text of each group of the pattern ([**SubMatches**](../Match/SubMatches)). A group written `(?<name>...)` can be read by its name.
 
