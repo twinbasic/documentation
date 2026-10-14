@@ -275,7 +275,7 @@ the CI runners lack. Run it by hand after changing `tb-registry.mjs`.
 
 Exit codes: **0** every assertion held, **1** an assertion failed, **2** the test could not run to its end: a refused command line, PowerShell failing, or a crash.
 
-## impexp.mjs and impexp.py
+## impexp.mjs, impexp.py and impexp
 {: #impexp }
 
     node scripts/impexp.mjs export <project> <folder> [--overwrite]
@@ -283,10 +283,23 @@ Exit codes: **0** every assertion held, **1** an assertion failed, **2** the tes
     node scripts/impexp.mjs settings|licence|changelog|readme <project>
     node scripts/impexp.mjs --self-test
 
-Standalone `.twinproj` / `.twinpack` unpacker and packer, with the compiler executable's own command line: the same six commands, the project file first, and `--overwrite` required to replace anything. `scripts/impexp.py` is the same tool, run as `python scripts/impexp.py ...`. The two editions print the same output and write byte-identical project files, which [`check_impexp_parity.mjs`](Tools-Toolchain-Tests#check-impexp-parity) checks. Neither has dependencies; the Node edition needs Node 18+, the Python edition Python 3.6+. `--self-test` needs only the script, and adds a round trip of `indexer/sample.twinpack` when run from this repository.
+Standalone `.twinproj` / `.twinpack` unpacker and packer, with the compiler executable's own command line: the same six commands, the project file first, and `--overwrite` required to replace anything. `scripts/impexp.py` is the same tool, run as `python scripts/impexp.py ...`, and `scripts/impexp/` is a third edition, a twinBASIC console program that runs as `impexp_win32.exe ...`. The three editions print the same output, give the same exit codes and write byte-identical project files, which [`check_impexp_parity.mjs`](Tools-Toolchain-Tests#check-impexp-parity) checks. The Node edition needs Node 18+ and the Python edition Python 3.6+; the twinBASIC edition needs Windows and nothing else at run time, and reads and writes its paths as Unicode. None has dependencies. `--self-test` needs only the program, runs the same 20 tests in all three, and adds a round trip of `indexer/sample.twinpack` when it can find that file: the Node and Python editions look in `indexer/` beside their own `scripts/` folder, and the twinBASIC edition in each folder above the exe, then in each folder above the current folder.
 
-**Neither is run as a command by the site build.** They are published downloads: `_config.yml`'s `bundle_extra` copies both into `Features/Packages/downloads/` for [Import/Export Tool](../../Features/Packages/Import-Export-Tool). The `bundle_extra` exemption is by exact path, so moving either file breaks the download; see [`check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy).
+The twinBASIC edition exists for readers who have twinBASIC and neither Node nor Python. It is laid out as [`imagestrip`](Tools-IDE#imagestrip) is: `scripts/impexp/src/` is an exported project tree, and `scripts/impexp/impexp.twinproj` is the project file packed from it, which opens in the IDE. Both are checked out byte for byte (`.gitattributes`). After a change to `src/`, pack it again:
+
+    node scripts/impexp.mjs import scripts/impexp/impexp.twinproj scripts/impexp/src --overwrite
+
+Build it in the IDE, which writes `Build\impexp_win32.exe` beside the project file (git ignores it), or with [`tbbuild.mjs`](#tbbuild), which builds in a private folder and prints the path:
+
+    node scripts/tbbuild.mjs scripts/impexp/impexp.twinproj --build
+
+No gate can build it, so `check_impexp_parity.mjs` compares it only when `IMPEXP_EXE` names the built exe, and CI never sets that:
+
+    set IMPEXP_EXE=<path of impexp_win32.exe>
+    node scripts/check_impexp_parity.mjs
+
+**None of them is run as a command by the site build.** They are published downloads: `_config.yml`'s `bundle_extra` copies the Node and Python scripts and the twinBASIC project file into `Features/Packages/downloads/` for [Import/Export Tool](../../Features/Packages/Import-Export-Tool). The `bundle_extra` exemption is by exact path, so moving any of the three files breaks the download; see [`check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy).
 
 The Node edition is also a library. `scripts/lib/tb-project.mjs` imports its `exportProject` and `importProject`, which every tool that unpacks or packs a project calls, among them [`tbbuild.mjs`](#tbbuild), [`tbrun.mjs`](#tbrun), [`check_examples.mjs`](Tools-Samples#check-examples), [`census_attributes.mjs`](Tools-Samples#census-attributes) and [`bug_repro.mjs`](Tools-Defects#bug-repro). The site build imports `importProject` too, to pack the [help add-in's project file](Tools-Build#the-help-add-ins-project-file). `impexp.mjs` is the one module under `scripts/` that `builder/` may import (`biome.jsonc` refuses any other), so [`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) watches it.
 
-Exit codes: the table in [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) gives every code. The two editions share these codes, which differ from those of the other tools here.
+Exit codes: the table in [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) gives every code. The three editions share these codes, which differ from those of the other tools here.

@@ -382,6 +382,9 @@ characters of its own; `launchOnDesktop` refuses a script over 30,000. The scrip
 polls the private desktop every 250 ms for visible `#32770` boxes belonging to the program or
 its job, prints each as `dialog <base64 of JSON {title, text}>` and presses its OK button:
 `bug_repro`'s `cli` mode uses all four for a compiler that opens a modal box on a damaged project.
+`TBBUILD_CWD` is the program's working folder (`launchOnDesktop`'s `cwd`), the program's own
+folder when it is unset; `check_impexp_parity.mjs` sets it so that the built impexp exe runs in
+the scratch folder of its commands.
 
 A launch that fails prints no pid, and its cause as one line on stderr, which `launchIde`
 reports. Two rules keep the cause readable. With its streams redirected, PowerShell writes

@@ -15,6 +15,8 @@
 #
 #   TBBUILD_ARGS     more of the command line, already quoted, added after
 #                    TBBUILD_ARG: for a program that takes several arguments.
+#   TBBUILD_CWD      the process's working folder; the executable's own folder
+#                    when unset.
 #   TBBUILD_STDOUT   a file path: the process's standard output goes to that file.
 #   TBBUILD_STDERR   the same for standard error. When either is set the process
 #                    gets standard handles of its own: stdin is the null device,
@@ -569,13 +571,14 @@ if ($env:TBBUILD_ARGS) { $cmd += ' ' + $env:TBBUILD_ARGS }
 # CREATE_SUSPENDED (0x4): the IDE goes into the job before it runs a single
 # instruction, so there is no moment in which it could start a child outside.
 $flags = if ($useJob) { 0x4 } else { 0 }
+$cwd = if ($env:TBBUILD_CWD) { $env:TBBUILD_CWD } else { [IO.Path]::GetDirectoryName($exe) }
 if ($env:TBBUILD_STDOUT -or $env:TBBUILD_STDERR) {
   $hIn = [TbLaunch]::OpenInheritable("NUL", $false)
   $hOut = [TbLaunch]::OpenInheritable($(if ($env:TBBUILD_STDOUT) { $env:TBBUILD_STDOUT } else { "NUL" }), $true)
   $hErr = [TbLaunch]::OpenInheritable($(if ($env:TBBUILD_STDERR) { $env:TBBUILD_STDERR } else { "NUL" }), $true)
-  $pi = [TbLaunch]::StartWithHandles($exe, $cmd, [IO.Path]::GetDirectoryName($exe), $desktop, $flags, $hIn, $hOut, $hErr)
+  $pi = [TbLaunch]::StartWithHandles($exe, $cmd, $cwd, $desktop, $flags, $hIn, $hOut, $hErr)
 } else {
-  $pi = [TbLaunch]::Start($exe, $cmd, [IO.Path]::GetDirectoryName($exe), $desktop, $flags)
+  $pi = [TbLaunch]::Start($exe, $cmd, $cwd, $desktop, $flags)
 }
 if ($useJob) {
   # An IDE that cannot go into the job is ended, still suspended, rather than

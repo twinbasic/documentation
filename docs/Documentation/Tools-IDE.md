@@ -189,7 +189,7 @@ Exit codes: **0** every picture was drawn again; **1** a picture needs a retake,
 
     imagestrip_win32.exe <input> <output>
 
-A twinBASIC console program, and the one tool under `scripts/` that is not Node. It writes a copy of a CSS file or an SVG file in which every image embedded as a `data:` URI keeps its pixels and any notice of whose it is, and nothing else. An SVG file also loses what only its editor needs, and so does an SVG embedded in either, whose own images are stripped in turn, at any depth. A file whose name ends in `.svg` is read as an SVG, any other as CSS.
+A twinBASIC console program, and one of two under `scripts/` that are not Node or Python (the other is the twinBASIC edition of [`impexp`](Tools-Compiler#impexp)). It writes a copy of a CSS file or an SVG file in which every image embedded as a `data:` URI keeps its pixels and any notice of whose it is, and nothing else. An SVG file also loses what only its editor needs, and so does an SVG embedded in either, whose own images are stripped in turn, at any depth. A file whose name ends in `.svg` is read as an SVG, any other as CSS.
 
 It is for the twinBASIC IDE's own stylesheets, `styles.css`, `formDesigner.css` and the others in an install's `ide` folder, and for the twinBASIC developers to run in their build, which has twinBASIC and need not have Node. The icons in those stylesheets carry their editors' metadata (GIMP's EXIF, IPTC and XMP profiles, CorelDRAW's and Illustrator's comments) around a few hundred bytes of pixels. One icon, a lock from fileformat.info, has a CC BY-NC-SA attribution that must stay with it.
 

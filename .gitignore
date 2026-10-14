@@ -37,8 +37,10 @@ indexer/.packages/
 # BUGS-TO-REPORT.md); the .twinproj beside it is committed.
 /bugs/**/*.zip
 
-# The IDE builds scripts/imagestrip/imagestrip.twinproj into Build\ beside it.
+# The IDE builds scripts/imagestrip/imagestrip.twinproj and scripts/impexp/impexp.twinproj
+# into Build\ beside each.
 /scripts/imagestrip/Build/
+/scripts/impexp/Build/
 
 # shoot_docs.mjs --svg: each picture's bundle (scripts/svgshot/bundle.mjs), what its SVG
 # is drawn from, for scripts/svgshot/replay.mjs. Bundles hold the Windows user name.

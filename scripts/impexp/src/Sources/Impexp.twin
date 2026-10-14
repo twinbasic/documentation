@@ -1,0 +1,452 @@
+' Export, import and the printing commands, as exportProject, importProject and readDocument in
+' scripts/impexp.mjs do them. A refusal raises REFUSED with its reason, message and details in
+' LastReason, LastMessage and LastDetails, and has written nothing.
+Module Impexp
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+
+    Public Const REFUSED As Long = vbObjectError + &H1100
+
+    Public Const EXIT_DONE As Long = 0
+    Public Const EXIT_FAILED As Long = 1
+    Public Const EXIT_USAGE As Long = 2
+    Public Const EXIT_EXISTS As Long = 3
+    Public Const EXIT_MISSING As Long = 4
+    Public Const EXIT_INVALID As Long = 5
+    Public Const EXIT_WARNED As Long = 6
+
+    Public LastReason As String
+    Public LastMessage As String
+    Public LastDetails As New Collection
+
+    ' Extensions of the code files, which the IDE stores with CRLF line endings.
+    Private Const CRLF_EXTENSIONS As String = "|.twin|.bas|.cls|"
+
+    ' The IDE's editor state, which export leaves out as the compiler's export does.
+    Private Const META_NAME As String = ".meta"
+
+    ' Git's own folder, never packed and never written.
+    Private Const GIT_NAME As String = ".git"
+
+    ' The folders the IDE writes into every project and package it exports, even when empty.
+    Private Const STANDARD_FOLDERS As String = "ImportedTypeLibraries|Miscellaneous|Packages|Resources|Sources"
+
+    ' Export's state while it walks the tree.
+    Private mFolders As Collection
+    Private mFileRels As Collection
+    Private mFileEntries As Collection
+    Private mInProject As Object
+    Private mResult As Outcome
+
+    Public Sub Refuse(ByVal reason As String, ByVal message As String, Optional ByVal details As Collection = Nothing)
+        LastReason = reason
+        LastMessage = message
+        If details Is Nothing Then Set LastDetails = New Collection Else Set LastDetails = details
+        Err.Raise REFUSED, , message
+    End Sub
+
+    ' The exit code for an error that ended a command.
+    Public Function ExitCodeForError(ByVal number As Long) As Long
+        If number <> REFUSED Then
+            ExitCodeForError = EXIT_FAILED
+            Exit Function
+        End If
+        Select Case LastReason
+            Case "failed": ExitCodeForError = EXIT_FAILED
+            Case "usage": ExitCodeForError = EXIT_USAGE
+            Case "exists": ExitCodeForError = EXIT_EXISTS
+            Case "missing": ExitCodeForError = EXIT_MISSING
+            Case "invalid": ExitCodeForError = EXIT_INVALID
+            Case Else: ExitCodeForError = EXIT_FAILED
+        End Select
+    End Function
+
+    ' The exit code for a command that did its work: it warned, or it did not.
+    Public Function ExitCodeForOutcome(ByVal r As Outcome) As Long
+        If r.Stale.Count > 0 Or r.Repeated.Count > 0 Then ExitCodeForOutcome = EXIT_WARNED Else ExitCodeForOutcome = EXIT_DONE
+    End Function
+
+    ' At most ten, so a refusal over a whole tree stays readable.
+    Public Function Listed(ByVal paths As Collection) As Collection
+        Dim r As New Collection, i As Long
+        For i = 1 To paths.Count
+            If i > 10 Then
+                r.Add "... and " & (paths.Count - 10) & " more"
+                Exit For
+            End If
+            r.Add paths(i)
+        Next
+        Set Listed = r
+    End Function
+
+    Private Function Lines(ParamArray items() As Variant) As Collection
+        Dim r As New Collection, i As Long
+        For i = LBound(items) To UBound(items)
+            r.Add items(i)
+        Next
+        Set Lines = r
+    End Function
+
+    Private Function HintExport() As Collection
+        Set HintExport = Lines("export writes the project into the folder.", "To write the folder into the project instead, use import.")
+    End Function
+
+    Private Function HintImport() As Collection
+        Set HintImport = Lines("import replaces the project file with the folder.", "To write the project into the folder instead, use export.")
+    End Function
+
+    ' The project file's tree. Refuses a file that is missing, a folder, or not a project.
+    Public Function ReadProject(ByVal file As String) As Entry
+        Dim data() As Byte, n As Long
+        Select Case FileSys.KindOf(file)
+            Case FileSys.KIND_NONE: Refuse "missing", "project file does not exist: " & file
+            Case FileSys.KIND_FOLDER: Refuse "invalid", file & " is a folder, not a project file"
+        End Select
+        n = FileSys.ReadAllBytes(file, data)
+        On Error GoTo Damaged
+        Set ReadProject = ProjectFormat.Parse(data, n)
+        Exit Function
+    Damaged:
+        Dim why As String
+        why = Err.Description
+        On Error GoTo 0
+        Refuse "invalid", file & " is damaged or is not a project file: " & why
+    End Function
+
+    ' Writes the file only once the new one is complete, so a failed write leaves the old one.
+    Private Sub WriteReplacing(ByVal file As String, data() As Byte, ByVal length As Long)
+        Dim tmp As String, number As Long, description As String
+        tmp = file & "." & GetCurrentProcessId() & ".tmp"
+        On Error GoTo Failed
+        FileSys.WriteAllBytes tmp, data, length
+        FileSys.MoveReplacing tmp, file
+        Exit Sub
+    Failed:
+        number = Err.Number
+        description = Err.Description
+        On Error Resume Next
+        FileSys.RemovePath tmp
+        On Error GoTo 0
+        Err.Raise number, , description
+    End Sub
+
+    ' A name the project holds becomes one component of a path on disk, so it has to be exactly
+    ' one: "..", "a/b" or "C:x" would put a file outside the folder, and Windows drops a trailing
+    ' dot or space, which turns ".. " into "..".
+    Public Function IsSafeName(ByVal name As String) As Boolean
+        Dim i As Long, c As Long
+        If Len(name) = 0 Then Exit Function
+        For i = 1 To Len(name)
+            c = AscW(Mid$(name, i, 1)) And &HFFFF&
+            If c < 32 Then Exit Function
+            If InStr("\/:*?""<>|", ChrW$(c)) > 0 Then Exit Function
+        Next
+        If Right$(name, 1) = "." Or Right$(name, 1) = " " Then Exit Function
+        IsSafeName = True
+    End Function
+
+    Public Function ExportProject(ByVal projectPath As String, ByVal folder As String, ByVal overwrite As Boolean) As Outcome
+        Dim root As Entry, i As Long, k As Long, p As String, b() As Byte, n As Long
+        Set root = ReadProject(projectPath)
+
+        ' Everything is checked before anything is written, so a refusal leaves the folder as it was.
+        Set mResult = New Outcome
+        Set mFolders = New Collection
+        Set mFileRels = New Collection
+        Set mFileEntries = New Collection
+        Set mInProject = CreateObject("Scripting.Dictionary")
+        mInProject.CompareMode = 0
+        Collect root, ""
+
+        Dim inTheWay As New Collection, existing As New Collection
+        If FileSys.KindOf(folder) = FileSys.KIND_FILE Then Refuse "failed", folder & " is a file, not a folder"
+        For i = 1 To mFolders.Count
+            p = OnDisk(folder, mFolders(i))
+            If FileSys.KindOf(p) = FileSys.KIND_FILE Then inTheWay.Add p
+        Next
+        For i = 1 To mFileRels.Count
+            p = OnDisk(folder, mFileRels(i))
+            k = FileSys.KindOf(p)
+            If k = FileSys.KIND_FOLDER Then
+                inTheWay.Add p
+            ElseIf k = FileSys.KIND_FILE Then
+                existing.Add p
+            End If
+        Next
+        If inTheWay.Count > 0 Then
+            Refuse "failed", "the folder has a file where the project has a folder, or the reverse:", Listed(inTheWay)
+        End If
+        If existing.Count > 0 And Not overwrite Then
+            Dim details As Collection, line As Variant
+            Set details = Listed(existing)
+            For Each line In HintExport()
+                details.Add line
+            Next
+            Refuse "exists", TextKit.Count(existing.Count, "file") & " already " & IIf(existing.Count = 1, "exists", "exist") & _
+                ", and --overwrite is not set:", details
+        End If
+
+        FileSys.MakeDirs folder
+        For i = 1 To mFolders.Count
+            FileSys.MakeDirs OnDisk(folder, mFolders(i))
+        Next
+        Dim fe As Entry
+        For i = 1 To mFileRels.Count
+            Set fe = mFileEntries(i)
+            n = fe.GetContent(b)
+            FileSys.WriteAllBytes OnDisk(folder, mFileRels(i)), b, n
+        Next
+
+        ' Export never deletes, and the compiler's does not either. A file the project no longer
+        ' has stays in the folder, and the next import packs it straight back in, so say which.
+        ScanStale folder, "", FileSys.PathKey(projectPath)
+
+        mResult.Name = root.Name
+        mResult.Files = mFileRels.Count
+        mResult.Folders = mFolders.Count
+        Set ExportProject = mResult
+        Set mInProject = Nothing
+    End Function
+
+    Private Function OnDisk(ByVal folder As String, ByVal rel As String) As String
+        OnDisk = FileSys.JoinPath(folder, Replace(rel, "/", "\"))
+    End Function
+
+    Private Sub Collect(ByVal dir As Entry, ByVal rel As String)
+        Dim e As Entry, entryRel As String, key As String, first As Variant
+        For Each e In dir.Children
+            If Len(rel) > 0 Then entryRel = rel & "/" & e.Name Else entryRel = e.Name
+            If Not IsSafeName(e.Name) Then
+                Refuse "invalid", "the project holds a name that cannot be written safely: " & TextKit.JsonQuote(entryRel)
+            End If
+            ' A project can hold one name more than once, and a folder cannot. The first entry
+            ' wins, as it does with the compiler's export --overwrite, and a repeated folder
+            ' merges into the first.
+            key = LCase$(entryRel)
+            If mInProject.Exists(key) Then
+                first = mInProject(key)
+                If first(0) <> e.IsFile Then
+                    Refuse "invalid", "the project holds a file and a folder with the same name: " & entryRel
+                End If
+                If Not e.IsFile Then
+                    Collect e, first(1)
+                ElseIf Not Contains(mResult.Repeated, first(1)) Then
+                    mResult.Repeated.Add first(1)
+                End If
+            Else
+                mInProject.Add key, Array(e.IsFile, entryRel)
+                If LCase$(e.Name) = GIT_NAME Then
+                    mResult.Skipped.Add Array(entryRel, "Git's own folder")
+                ElseIf Not e.IsFile Then
+                    mFolders.Add entryRel
+                    Collect e, entryRel
+                ElseIf e.Name <> META_NAME Then
+                    mFileRels.Add entryRel
+                    mFileEntries.Add e
+                End If
+            End If
+        Next
+    End Sub
+
+    Private Function Contains(ByVal c As Collection, ByVal s As String) As Boolean
+        Dim v As Variant
+        For Each v In c
+            If v = s Then
+                Contains = True
+                Exit Function
+            End If
+        Next
+    End Function
+
+    Private Sub ScanStale(ByVal dir As String, ByVal rel As String, ByVal source As String)
+        Dim names() As String, n As Long, i As Long, full As String, entryRel As String
+        n = FileSys.ListNames(dir, names)
+        TextKit.SortOrdinal names, n
+        For i = 0 To n - 1
+            If LCase$(names(i)) <> GIT_NAME Then
+                full = FileSys.JoinPath(dir, names(i))
+                If Len(rel) > 0 Then entryRel = rel & "/" & names(i) Else entryRel = names(i)
+                If FileSys.KindOf(full) = FileSys.KIND_FOLDER Then
+                    ScanStale full, entryRel, source
+                ElseIf Not mInProject.Exists(LCase$(entryRel)) And FileSys.PathKey(full) <> source Then
+                    mResult.Stale.Add full
+                End If
+            End If
+        Next
+    End Sub
+
+    ' LF made CRLF in a code file; any other file as it is.
+    Private Function ToCrlf(ByVal name As String, b() As Byte, ByVal length As Long, out() As Byte) As Long
+        Dim w As ByteBuilder, i As Long
+        If InStr(CRLF_EXTENSIONS, "|" & LCase$(FileSys.ExtName(name)) & "|") = 0 Or Len(FileSys.ExtName(name)) = 0 Then
+            Erase out
+            If length > 0 Then out = b
+            ToCrlf = length
+            Exit Function
+        End If
+        Set w = New ByteBuilder
+        For i = 0 To length - 1
+            If b(i) = 10 Then
+                If i = 0 Then
+                    w.AddU8 13
+                ElseIf b(i - 1) <> 13 Then
+                    w.AddU8 13
+                End If
+            End If
+            w.AddU8 b(i)
+        Next
+        ToCrlf = w.ToArray(out)
+    End Function
+
+    ' The project's name in its Settings, or "" when it names none.
+    Private Function ProjectNameIn(ByVal settingsPath As String) As String
+        Dim b() As Byte, n As Long, settingsText As String
+        On Error GoTo Unreadable
+        n = FileSys.ReadAllBytes(settingsPath, b)
+        settingsText = TextKit.Utf8Decode(b, 0, n)
+        If Len(settingsText) > 0 Then
+            If (AscW(settingsText) And &HFFFF&) = &HFEFF& Then settingsText = Mid$(settingsText, 2)
+        End If
+        ProjectNameIn = Json.TopLevelString(settingsText, "project.name")
+    Unreadable:
+    End Function
+
+    Private Function BuildTree(ByVal dirPath As String, ByVal rel As String, ByVal self As String, ByVal r As Outcome) As Entry
+        Dim names() As String, n As Long, i As Long, total As Long
+        Dim missing As String, have As String, standard As Variant, name As String, entryRel As String
+        Dim all() As String, subdirs As New Collection, files As New Collection, full As String, kind As Long
+        n = FileSys.ListNames(dirPath, names)
+
+        ' The standard folders this tree lacks, if it is the project or a package in it.
+        Dim isPackage As Boolean
+        If rel <> "" Then
+            If LCase$(Left$(rel, 9)) = "packages/" And InStr(10, rel, "/") = 0 And Len(rel) > 9 Then
+                For i = 0 To n - 1
+                    If names(i) = "Settings" Then isPackage = True
+                Next
+            End If
+        End If
+        missing = "|"
+        If rel = "" Or isPackage Then
+            have = "|"
+            For i = 0 To n - 1
+                have = have & LCase$(names(i)) & "|"
+            Next
+            For Each standard In Split(STANDARD_FOLDERS, "|")
+                If InStr(have, "|" & LCase$(standard) & "|") = 0 Then missing = missing & standard & "|"
+            Next
+        End If
+
+        ReDim all(0 To n + 5)
+        For i = 0 To n - 1
+            all(i) = names(i)
+        Next
+        total = n
+        For Each standard In Split(Mid$(missing, 2), "|")
+            If Len(standard) > 0 Then
+                all(total) = standard
+                total = total + 1
+            End If
+        Next
+        TextKit.SortOrdinal all, total
+
+        For i = 0 To total - 1
+            name = all(i)
+            full = FileSys.JoinPath(dirPath, name)
+            If Len(rel) > 0 Then entryRel = rel & "/" & name Else entryRel = name
+            If InStr(missing, "|" & name & "|") > 0 Then
+                subdirs.Add name
+                r.Added.Add entryRel
+            ElseIf LCase$(name) = GIT_NAME Then
+                r.Skipped.Add Array(entryRel, "Git's own folder")
+            Else
+                kind = FileSys.KindOf(full)
+                If kind = FileSys.KIND_FOLDER Then
+                    subdirs.Add name
+                ElseIf kind = FileSys.KIND_FILE Then
+                    If FileSys.PathKey(full) = self Then
+                        r.Skipped.Add Array(entryRel, "the project file itself")
+                    Else
+                        files.Add name
+                    End If
+                End If
+            End If
+        Next
+
+        Dim e As Entry, d As Variant, f As Variant, b() As Byte, crlf() As Byte, length As Long
+        Set e = ProjectFormat.NewFolder(FileSys.BaseName(dirPath))
+        For Each d In subdirs
+            If InStr(missing, "|" & d & "|") > 0 Then
+                e.Children.Add ProjectFormat.NewFolder(d)
+            Else
+                If Len(rel) > 0 Then entryRel = rel & "/" & d Else entryRel = d
+                e.Children.Add BuildTree(FileSys.JoinPath(dirPath, d), entryRel, self, r)
+            End If
+        Next
+        For Each f In files
+            length = FileSys.ReadAllBytes(FileSys.JoinPath(dirPath, f), b)
+            length = ToCrlf(f, b, length, crlf)
+            e.Children.Add ProjectFormat.NewFile(f, crlf, length)
+        Next
+        Set BuildTree = e
+    End Function
+
+    Public Function ImportProject(ByVal projectPath As String, ByVal folder As String, ByVal overwrite As Boolean) As Outcome
+        Dim settings As String, existing As Long, r As New Outcome, root As Entry, name As String
+        Dim b() As Byte, n As Long
+        ' Everything is checked before the tree is read, so a refusal leaves the project file as it was.
+        If FileSys.KindOf(folder) <> FileSys.KIND_FOLDER Then Refuse "missing", "input folder does not exist: " & folder, HintImport()
+        settings = FileSys.JoinPath(folder, "Settings")
+        If FileSys.KindOf(settings) <> FileSys.KIND_FILE Then
+            Refuse "invalid", folder & " has no Settings file, so it is not the top folder of a project", HintImport()
+        End If
+        existing = FileSys.KindOf(projectPath)
+        If existing = FileSys.KIND_FOLDER Then Refuse "failed", projectPath & " is a folder, not a project file"
+        If existing = FileSys.KIND_FILE And Not overwrite Then
+            Refuse "exists", projectPath & " already exists, and --overwrite is not set", HintImport()
+        End If
+
+        Set root = BuildTree(FileSys.FullPath(folder), "", FileSys.PathKey(projectPath), r)
+        ' The IDE names the root after the project; the folder's name is the fallback.
+        name = ProjectNameIn(settings)
+        If Len(name) > 0 Then root.Name = name
+        root.Category = ProjectFormat.CATEGORY_DEFAULT
+        n = ProjectFormat.Serialize(root, b)
+        WriteReplacing projectPath, b, n
+
+        r.Name = root.Name
+        r.Size = n
+        Tally root, r
+        Set ImportProject = r
+    End Function
+
+    Private Sub Tally(ByVal e As Entry, ByVal r As Outcome)
+        Dim c As Entry
+        For Each c In e.Children
+            If c.IsFile Then
+                r.Files = r.Files + 1
+            Else
+                r.Folders = r.Folders + 1
+                Tally c, r
+            End If
+        Next
+    End Sub
+
+    ' The verb's document at the root of the project, matched in any case, into out.
+    Public Function ReadDocument(ByVal projectPath As String, ByVal verb As String, out() As Byte) As Long
+        Dim root As Entry, want As String, e As Entry
+        Set root = ReadProject(projectPath)
+        Select Case verb
+            Case "settings": want = "Settings"
+            Case "licence": want = "LICENCE.md"
+            Case "changelog": want = "CHANGELOG.md"
+            Case "readme": want = "README.md"
+        End Select
+        For Each e In root.Children
+            If e.IsFile And LCase$(e.Name) = LCase$(want) Then
+                ReadDocument = e.GetContent(out)
+                Exit Function
+            End If
+        Next
+        Refuse "missing", projectPath & " has no " & want
+    End Function
+End Module

@@ -261,6 +261,7 @@ const BOOTSTRAP = "$s = $env:TBBUILD_SCRIPT; Remove-Item Env:TBBUILD_SCRIPT; & (
  * @param {object} o.env      its whole environment
  * @param {string[]} [o.args] more arguments, after `arg`, for a program that takes
  *                            several; quoted as the C runtime reads them
+ * @param {string} [o.cwd]    its working folder; the program's own folder when left out
  * @param {string} [o.stdout] a file path: the program's standard output goes there
  * @param {string} [o.stderr] the same for standard error. With either, the program's
  *                            standard input is the null device, and an output left
@@ -275,7 +276,7 @@ const BOOTSTRAP = "$s = $env:TBBUILD_SCRIPT; Remove-Item Env:TBBUILD_SCRIPT; & (
  *   opened (empty without `dialogs`). Throws, with the launcher's error, when
  *   the program did not start.
  */
-export async function launchOnDesktop({ exe, arg = "", args, desktop, job = true, env, stdout, stderr, dialogs }) {
+export async function launchOnDesktop({ exe, arg = "", args, desktop, job = true, env, cwd, stdout, stderr, dialogs }) {
   const script = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
   // -EncodedCommand is UTF-16 in base64, 2.7 characters to each of the script's,
   // and a command line stops at 32,767: the script outgrew that at about 12,000
@@ -302,6 +303,7 @@ export async function launchOnDesktop({ exe, arg = "", args, desktop, job = true
         TBBUILD_ARGS: args?.length ? args.map(quoteArg).join(" ") : undefined,
         TBBUILD_DESKTOP: desktop,
         TBBUILD_JOB: job ? "1" : "0",
+        TBBUILD_CWD: cwd || undefined,
         TBBUILD_STDOUT: stdout || undefined,
         TBBUILD_STDERR: stderr || undefined,
         TBBUILD_DIALOGS: dialogs || undefined,

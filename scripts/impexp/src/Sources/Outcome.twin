@@ -1,0 +1,20 @@
+' What an export or an import did: the counts, and what it skipped, added and warns about.
+Class Outcome
+    Public Name As String
+    Public Files As Long
+    Public Folders As Long
+    ' The project file's size after an import; -1 after an export, which reports none.
+    Public Size As Double
+    ' Each an Array(rel, why).
+    Public Skipped As New Collection
+    ' The empty folders an import added, by path in the project.
+    Public Added As New Collection
+    ' The paths a project holds more than once.
+    Public Repeated As New Collection
+    ' The files in the folder that the project does not hold.
+    Public Stale As New Collection
+
+    Private Sub Class_Initialize()
+        Size = -1
+    End Sub
+End Class

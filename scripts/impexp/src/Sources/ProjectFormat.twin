@@ -1,0 +1,202 @@
+' The project file format: a tree of entries, read from bytes and written to them.
+Module ProjectFormat
+    Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
+    Public Const FORMAT_ERROR As Long = vbObjectError + &H1102
+
+    Public Const MAGIC As Long = &HEA0BA51C
+    Public Const FORMAT_VERSION As Integer = 1
+
+    Public Const FLAG_NONE As Long = 0
+    Public Const FLAG_HIDDEN As Long = 1
+    Public Const FLAG_SUPER_HIDDEN As Long = 2
+    Public Const FLAG_VIRTUAL As Long = 4
+
+    Public Const CATEGORY_DEFAULT As Long = 0
+    Public Const CATEGORY_REFERENCES As Long = 1 ' always virtual; never in a file
+    Public Const CATEGORY_RESOURCES As Long = 2
+    Public Const CATEGORY_SOURCES As Long = 3
+    Public Const CATEGORY_SETTINGS As Long = 4
+    Public Const CATEGORY_IMPORTED_TYPE_LIBRARIES As Long = 5
+    Public Const CATEGORY_MISCELLANEOUS As Long = 6
+    Public Const CATEGORY_PACKAGES As Long = 7
+
+    Private mBuf() As Byte
+    Private mLen As Long
+    Private mPos As Long
+    Private mEntryCount As Long
+
+    ' The category a well-known name gets, at any depth: an embedded package's own Sources and
+    ' Settings carry them too. References is left out: the IDE makes it, and never stores it.
+    Public Function CategoryFor(ByVal name As String) As Long
+        Select Case name
+            Case "Resources": CategoryFor = CATEGORY_RESOURCES
+            Case "Sources": CategoryFor = CATEGORY_SOURCES
+            Case "Settings": CategoryFor = CATEGORY_SETTINGS
+            Case "ImportedTypeLibraries": CategoryFor = CATEGORY_IMPORTED_TYPE_LIBRARIES
+            Case "Miscellaneous": CategoryFor = CATEGORY_MISCELLANEOUS
+            Case "Packages": CategoryFor = CATEGORY_PACKAGES
+            Case Else: CategoryFor = CATEGORY_DEFAULT
+        End Select
+    End Function
+
+    ' The tree in the first length bytes of b; raises FORMAT_ERROR for bytes that are not a project.
+    Public Function Parse(b() As Byte, ByVal length As Long) As Entry
+        Dim magicRead As Long
+        mBuf = b
+        mLen = length
+        mPos = 0
+        mEntryCount = 0
+        magicRead = ReadU32()
+        If magicRead <> MAGIC Then
+            Err.Raise FORMAT_ERROR, , "Bad magic: 0x" & Hex8(magicRead) & ", expected 0x" & Hex8(MAGIC)
+        End If
+        Set Parse = ReadEntry()
+        Erase mBuf
+    End Function
+
+    Private Function ReadEntry() As Entry
+        Dim e As New Entry, kind As Integer, isRoot As Boolean, n As Long, i As Long, length As Long
+        ' At the root this field is the format version; everywhere else it is the entry's
+        ' kind, 1 for a file and 2 for a folder.
+        kind = ReadI16()
+        mEntryCount = mEntryCount + 1
+        isRoot = mEntryCount = 1
+        If isRoot And kind <> FORMAT_VERSION Then
+            Err.Raise FORMAT_ERROR, , "Unsupported file format version: " & kind & ", expected " & FORMAT_VERSION
+        End If
+        e.Name = ReadStr()
+        e.Revision = ReadU64()
+        e.Flags = ReadU32()
+        e.Category = ReadU8()
+        If kind = 1 And Not isRoot Then
+            e.IsFile = True
+            length = ReadU32()
+            Need length
+            e.SetContent mBuf, mPos, length
+            mPos = mPos + length
+            n = ReadU32()
+            For i = 1 To n
+                e.AddRevision ReadU32()
+            Next
+        Else
+            n = ReadU32()
+            For i = 1 To n
+                e.Children.Add ReadEntry()
+            Next
+        End If
+        Set ReadEntry = e
+    End Function
+
+    Private Sub Need(ByVal count As Long)
+        If count < 0 Or mPos + count > mLen Then Err.Raise FORMAT_ERROR, , "the file ends too soon"
+    End Sub
+
+    Private Function ReadU8() As Long
+        Need 1
+        ReadU8 = mBuf(mPos)
+        mPos = mPos + 1
+    End Function
+
+    Private Function ReadI16() As Integer
+        Dim v As Integer
+        Need 2
+        RtlMoveMemory VarPtr(v), VarPtr(mBuf(mPos)), 2
+        ReadI16 = v
+        mPos = mPos + 2
+    End Function
+
+    Private Function ReadU32() As Long
+        Dim v As Long
+        Need 4
+        RtlMoveMemory VarPtr(v), VarPtr(mBuf(mPos)), 4
+        ReadU32 = v
+        mPos = mPos + 4
+    End Function
+
+    Private Function ReadU64() As LongLong
+        Dim v As LongLong
+        Need 8
+        RtlMoveMemory VarPtr(v), VarPtr(mBuf(mPos)), 8
+        ReadU64 = v
+        mPos = mPos + 8
+    End Function
+
+    Private Function ReadStr() As String
+        Dim length As Long
+        length = ReadU32()
+        Need length
+        ReadStr = TextKit.Utf8Decode(mBuf, mPos, length)
+        mPos = mPos + length
+    End Function
+
+    Private Function Hex8(ByVal v As Long) As String
+        Hex8 = Right$("00000000" & Hex$(v), 8)
+    End Function
+
+    ' The tree as the bytes of a project file, and their length.
+    Public Function Serialize(ByVal root As Entry, out() As Byte) As Long
+        Dim w As New ByteBuilder
+        w.AddU32 MAGIC
+        WriteEntry w, root, True
+        Serialize = w.ToArray(out)
+    End Function
+
+    Private Sub WriteEntry(ByVal w As ByteBuilder, ByVal e As Entry, ByVal isRoot As Boolean)
+        Dim b() As Byte, n As Long, i As Long, child As Entry
+        If e.IsFile And Not isRoot Then
+            w.AddI16 1
+            WriteStr w, e.Name
+            w.AddU64 e.Revision
+            w.AddU32 e.Flags
+            w.AddU8 e.Category
+            n = e.GetContent(b)
+            w.AddU32 n
+            w.AddRange b, 0, n
+            w.AddU32 e.RevisionCount
+            For i = 0 To e.RevisionCount - 1
+                w.AddU32 e.RevisionAt(i)
+            Next
+        Else
+            ' The root writes the format version; any other folder its kind, 2.
+            If isRoot Then w.AddI16 FORMAT_VERSION Else w.AddI16 2
+            WriteStr w, e.Name
+            w.AddU64 e.Revision
+            w.AddU32 e.Flags
+            w.AddU8 e.Category
+            w.AddU32 e.Children.Count
+            For Each child In e.Children
+                WriteEntry w, child, False
+            Next
+        End If
+    End Sub
+
+    Private Sub WriteStr(ByVal w As ByteBuilder, ByVal s As String)
+        Dim b() As Byte, n As Long
+        n = TextKit.Utf8Encode(s, b)
+        w.AddU32 n
+        w.AddRange b, 0, n
+    End Sub
+
+    ' A file entry as the IDE writes one: revision 2, no flags, no revision list.
+    Public Function NewFile(ByVal name As String, b() As Byte, ByVal length As Long) As Entry
+        Dim e As New Entry
+        e.IsFile = True
+        e.Name = name
+        e.Revision = 2
+        e.Flags = FLAG_NONE
+        e.Category = CategoryFor(name)
+        e.SetContent b, 0, length
+        Set NewFile = e
+    End Function
+
+    ' A folder entry as the IDE writes one: revision 0, no flags.
+    Public Function NewFolder(ByVal name As String) As Entry
+        Dim e As New Entry
+        e.Name = name
+        e.Revision = 0
+        e.Flags = FLAG_NONE
+        e.Category = CategoryFor(name)
+        Set NewFolder = e
+    End Function
+End Module

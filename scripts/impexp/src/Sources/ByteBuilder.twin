@@ -1,0 +1,58 @@
+' A byte array that grows as it is appended to, with the little-endian writes a project file needs.
+Class ByteBuilder
+    Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
+    Private mData() As Byte
+    Private mLen As Long
+    Private mCap As Long
+
+    Public Sub AddRange(src() As Byte, ByVal start As Long, ByVal count As Long)
+        If count <= 0 Then Exit Sub
+        Reserve count
+        RtlMoveMemory VarPtr(mData(mLen)), VarPtr(src(start)), count
+        mLen = mLen + count
+    End Sub
+
+    Public Sub AddU8(ByVal value As Long)
+        Reserve 1
+        mData(mLen) = value And &HFF
+        mLen = mLen + 1
+    End Sub
+
+    Public Sub AddI16(ByVal value As Integer)
+        Reserve 2
+        RtlMoveMemory VarPtr(mData(mLen)), VarPtr(value), 2
+        mLen = mLen + 2
+    End Sub
+
+    Public Sub AddU32(ByVal value As Long)
+        Reserve 4
+        RtlMoveMemory VarPtr(mData(mLen)), VarPtr(value), 4
+        mLen = mLen + 4
+    End Sub
+
+    Public Sub AddU64(ByVal value As LongLong)
+        Reserve 8
+        RtlMoveMemory VarPtr(mData(mLen)), VarPtr(value), 8
+        mLen = mLen + 8
+    End Sub
+
+    Public Property Get Count() As Long
+        Count = mLen
+    End Property
+
+    Public Function ToArray(out() As Byte) As Long
+        Erase out
+        If mLen > 0 Then
+            ReDim out(0 To mLen - 1)
+            RtlMoveMemory VarPtr(out(0)), VarPtr(mData(0)), mLen
+        End If
+        ToArray = mLen
+    End Function
+
+    Private Sub Reserve(ByVal extra As Long)
+        If mLen + extra <= mCap Then Exit Sub
+        mCap = 2 * (mLen + extra) + 64
+        ReDim Preserve mData(0 To mCap - 1)
+    End Sub
+End Class

@@ -1,0 +1,280 @@
+' impexp -- the twinBASIC edition of scripts/impexp.mjs and scripts/impexp.py: the same commands,
+' the same output and the same exit codes, and byte-identical project files.
+Module MainModule
+    Private Declare PtrSafe Function GetStdHandle Lib "kernel32" (ByVal nStdHandle As Long) As LongPtr
+    Private Declare PtrSafe Function GetConsoleMode Lib "kernel32" (ByVal hConsoleHandle As LongPtr, ByRef lpMode As Long) As Long
+    Private Declare PtrSafe Function WriteConsoleW Lib "kernel32" (ByVal hConsoleOutput As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfCharsToWrite As Long, ByRef lpNumberOfCharsWritten As Long, ByVal lpReserved As LongPtr) As Long
+    Private Declare PtrSafe Function WriteFile Lib "kernel32" (ByVal hFile As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfBytesToWrite As Long, ByRef lpNumberOfBytesWritten As Long, ByVal lpOverlapped As LongPtr) As Long
+    Private Declare PtrSafe Function GetCommandLineW Lib "kernel32" () As LongPtr
+    Private Declare PtrSafe Function CommandLineToArgvW Lib "shell32" (ByVal lpCmdLine As LongPtr, ByRef pNumArgs As Long) As LongPtr
+    Private Declare PtrSafe Function LocalFree Lib "kernel32" (ByVal hMem As LongPtr) As LongPtr
+    Private Declare PtrSafe Function lstrlenW Lib "kernel32" (ByVal lpString As LongPtr) As Long
+    Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+    Private Const STD_OUTPUT_HANDLE As Long = -11
+    Private Const STD_ERROR_HANDLE As Long = -12
+
+    Public Sub Main()
+        Dim code As Long
+        On Error GoTo Crashed
+        code = Run(Arguments())
+        ExitProcess code
+        Exit Sub
+    Crashed:
+        WriteErr "  ERROR: " & Err.Description
+        ExitProcess Impexp.EXIT_FAILED
+    End Sub
+
+    Public Function Usage() As String
+        Usage = Join(Array( _
+            "Usage:", _
+            "  impexp export <project> <folder> [--overwrite]   unpack the project file into the folder", _
+            "  impexp import <project> <folder> [--overwrite]   pack the folder into the project file", _
+            "  impexp settings <project>                        print the project's Settings", _
+            "  impexp licence <project>                         print the project's LICENCE.md", _
+            "  impexp changelog <project>                       print the project's CHANGELOG.md", _
+            "  impexp readme <project>                          print the project's README.md", _
+            "  impexp --self-test                               run the built-in tests", _
+            "  impexp --help                                    print this message", _
+            "", _
+            "<project> is a .twinproj or .twinpack file. It always comes first, and the", _
+            "verb says what happens to it: export takes source out, import puts source in.", _
+            "The commands and their arguments are those of the tB executable,", _
+            "twinBASIC_win32.exe.", _
+            "", _
+            "The exit code says what happened, so the output need not be read:", _
+            "  0  done", _
+            "  1  failed for another reason, such as a file that could not be written", _
+            "  2  a mistake in the command line", _
+            "  3  refused, because a file exists and --overwrite is not set", _
+            "  4  the project file, the folder or the file to print does not exist", _
+            "  5  the project file is damaged or is not one, or the folder has no Settings", _
+            "  6  done, with a warning: the folder holds files the project does not,", _
+            "     or the project holds one name twice"), vbLf)
+    End Function
+
+    ' The arguments after the program's name, as the C runtime splits them.
+    Private Function Arguments() As Collection
+        Dim r As New Collection, argv As LongPtr, argc As Long, i As Long, p As LongPtr, n As Long, s As String
+        argv = CommandLineToArgvW(GetCommandLineW(), argc)
+        For i = 1 To argc - 1
+            RtlMoveMemory VarPtr(p), argv + i * LenB(p), LenB(p)
+            n = lstrlenW(p)
+            s = String$(n, vbNullChar)
+            If n > 0 Then RtlMoveMemory StrPtr(s), p, 2 * n
+            r.Add s
+        Next
+        LocalFree argv
+        Set Arguments = r
+    End Function
+
+    Private Function IsProjectFile(ByVal name As String) As Boolean
+        name = LCase$(name)
+        IsProjectFile = Right$(name, 9) = ".twinproj" Or Right$(name, 9) = ".twinpack"
+    End Function
+
+    ' What is wrong with the command line, or "". words(1) is the verb, and the rest its
+    ' arguments. Strict on purpose: the project file has to be named as one and the folder must
+    ' not be, so arguments given in the wrong order stop here instead of reaching the disk.
+    Public Function CommandLineError(ByVal words As Collection) As String
+        Dim verb As String, want As Long, project As String, folder As String, takes As String
+        If words.Count = 0 Then
+            CommandLineError = "no command given"
+            Exit Function
+        End If
+        verb = words(1)
+        Select Case verb
+            Case "export", "import"
+                want = 2
+                takes = "<project> <folder>"
+            Case "settings", "licence", "changelog", "readme"
+                want = 1
+                takes = "<project>"
+            Case Else
+                CommandLineError = "unknown command: " & verb
+                Exit Function
+        End Select
+        If words.Count - 1 <> want Then
+            CommandLineError = verb & " takes " & takes
+            Exit Function
+        End If
+        project = words(2)
+        If want = 2 Then folder = words(3)
+        If Not IsProjectFile(project) Then
+            CommandLineError = "not a .twinproj or .twinpack file: " & project
+            If want = 2 Then CommandLineError = CommandLineError & " -- the project file comes first"
+            Exit Function
+        End If
+        If want = 2 Then
+            Dim bare As String
+            bare = folder
+            Do While Len(bare) > 0 And (Right$(bare, 1) = "\" Or Right$(bare, 1) = "/")
+                bare = Left$(bare, Len(bare) - 1)
+            Loop
+            If IsProjectFile(bare) Then CommandLineError = folder & " names a project file, not a folder -- the folder comes second"
+        End If
+    End Function
+
+    Private Function UsageError(ByVal message As String) As Long
+        WriteErr "ERROR: " & message & vbLf & vbLf & Usage()
+        UsageError = Impexp.EXIT_USAGE
+    End Function
+
+    Private Sub PrintError(ByVal number As Long, ByVal description As String)
+        Dim line As Variant
+        If number = Impexp.REFUSED Then
+            WriteErr "  ERROR: " & Impexp.LastMessage
+            For Each line In Impexp.LastDetails
+                WriteErr "         " & line
+            Next
+        Else
+            WriteErr "  ERROR: " & description
+        End If
+    End Sub
+
+    Public Function Run(ByVal argv As Collection) As Long
+        Dim overwrite As Boolean, help As Boolean, selfTesting As Boolean, words As New Collection, a As Variant
+        For Each a In argv
+            If a = "--overwrite" Then
+                overwrite = True
+            ElseIf a = "--self-test" Then
+                selfTesting = True
+            ElseIf a = "--help" Or a = "-h" Then
+                help = True
+            ElseIf Len(a) > 1 And Left$(a, 1) = "-" Then
+                Run = UsageError("unknown option: " & a)
+                Exit Function
+            Else
+                words.Add a
+            End If
+        Next
+        If help Then
+            WriteOut Usage()
+            Exit Function
+        End If
+        If selfTesting Then
+            If words.Count > 0 Then
+                Run = UsageError("--self-test takes no other arguments")
+            Else
+                Run = SelfTest.RunAll()
+            End If
+            Exit Function
+        End If
+
+        Dim problem As String
+        problem = CommandLineError(words)
+        If Len(problem) > 0 Then
+            Run = UsageError(problem)
+            Exit Function
+        End If
+        Dim verb As String, project As String, folder As String
+        verb = words(1)
+        project = words(2)
+        If words.Count > 2 Then folder = words(3)
+
+        If verb = "export" Or verb = "import" Then
+            ' The progress lines follow the compiler's, down to the last one: a script that
+            ' tests for "... DONE" works with either.
+            If verb = "export" Then
+                WriteOut "exporting from """ & project & """ to """ & folder & """..."
+            Else
+                WriteOut "importing into """ & project & """ from """ & folder & """..."
+            End If
+            Dim r As Outcome, s As Variant, line As Variant, sizeText As String
+            On Error GoTo Failed
+            If verb = "export" Then
+                Set r = Impexp.ExportProject(project, folder, overwrite)
+            Else
+                Set r = Impexp.ImportProject(project, folder, overwrite)
+            End If
+            On Error GoTo 0
+            For Each s In r.Skipped
+                WriteOut "  skipped " & s(0) & " (" & s(1) & ")"
+            Next
+            For Each s In r.Added
+                WriteOut "  added " & s & " (an empty folder the IDE expects)"
+            Next
+            If r.Size >= 0 Then sizeText = ", " & Format$(r.Size, "0") & " bytes"
+            WriteOut "  " & TextKit.Count(r.Files, "file") & ", " & TextKit.Count(r.Folders, "folder") & sizeText
+            If r.Repeated.Count > 0 Then
+                WriteErr "  WARNING: " & TextKit.Count(r.Repeated.Count, "name") & " " & IIf(r.Repeated.Count = 1, "occurs", "occur") & _
+                    " more than once in the project, and a folder holds one of each, so only the first was written:"
+                For Each line In Impexp.Listed(r.Repeated)
+                    WriteErr "           " & line
+                Next
+            End If
+            If r.Stale.Count > 0 Then
+                WriteErr "  WARNING: " & TextKit.Count(r.Stale.Count, "file") & " in the folder " & IIf(r.Stale.Count = 1, "is", "are") & _
+                    " not in the project, and import would pack " & IIf(r.Stale.Count = 1, "it", "them") & " back in:"
+                For Each line In Impexp.Listed(r.Stale)
+                    WriteErr "           " & line
+                Next
+            End If
+            WriteOut "... DONE"
+            Run = Impexp.ExitCodeForOutcome(r)
+            Exit Function
+        End If
+
+        Dim b() As Byte, n As Long
+        On Error GoTo DocumentFailed
+        n = Impexp.ReadDocument(project, verb, b)
+        On Error GoTo 0
+        WriteBytesOut b, n
+        Exit Function
+
+    Failed:
+        Dim number As Long, description As String
+        number = Err.Number
+        description = Err.Description
+        PrintError number, description
+        WriteOut "... FAILED"
+        Run = Impexp.ExitCodeForError(number)
+        Exit Function
+
+    DocumentFailed:
+        number = Err.Number
+        description = Err.Description
+        PrintError number, description
+        Run = Impexp.ExitCodeForError(number)
+    End Function
+
+    Public Sub WriteOut(ByVal text As String)
+        WriteTo STD_OUTPUT_HANDLE, text & vbLf
+    End Sub
+
+    Public Sub WriteErr(ByVal text As String)
+        WriteTo STD_ERROR_HANDLE, text & vbLf
+    End Sub
+
+    ' WriteConsoleW writes nothing to a file or a pipe, so redirected output goes through
+    ' WriteFile, as UTF-8, as Node writes it.
+    Private Sub WriteTo(ByVal stream As Long, ByVal text As String)
+        Dim handle As LongPtr, mode As Long, written As Long, b() As Byte, n As Long
+        handle = GetStdHandle(stream)
+        If GetConsoleMode(handle, mode) <> 0 Then
+            WriteConsoleW handle, StrPtr(text), Len(text), written, 0
+        Else
+            n = TextKit.Utf8Encode(text, b)
+            If n > 0 Then WriteFile handle, VarPtr(b(0)), n, written, 0
+        End If
+    End Sub
+
+    ' The bytes as they are, to a file or a pipe; read as UTF-8 to the console.
+    Private Sub WriteBytesOut(b() As Byte, ByVal length As Long)
+        Dim handle As LongPtr, mode As Long, written As Long, s As String, done As Long, n As Long
+        If length = 0 Then Exit Sub
+        handle = GetStdHandle(STD_OUTPUT_HANDLE)
+        If GetConsoleMode(handle, mode) <> 0 Then
+            s = TextKit.Utf8Decode(b, 0, length)
+            WriteConsoleW handle, StrPtr(s), Len(s), written, 0
+        Else
+            Do While done < length
+                n = length - done
+                If n > &H100000 Then n = &H100000
+                If WriteFile(handle, VarPtr(b(done)), n, written, 0) = 0 Then Exit Do
+                done = done + written
+            Loop
+        End If
+    End Sub
+End Module

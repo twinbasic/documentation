@@ -1,0 +1,124 @@
+' Text helpers: UTF-8, Latin-1, ordinal order and sorting, and JSON's quoting of a string.
+Module TextKit
+    Private Declare PtrSafe Function MultiByteToWideChar Lib "kernel32" (ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long) As Long
+    Private Declare PtrSafe Function WideCharToMultiByte Lib "kernel32" (ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpDefaultChar As LongPtr, ByVal lpUsedDefaultChar As LongPtr) As Long
+
+    Private Const CP_UTF8 As Long = 65001
+
+    ' b[start, start + length) as UTF-8; an invalid sequence gives U+FFFD, as TextDecoder gives it.
+    Public Function Utf8Decode(b() As Byte, ByVal start As Long, ByVal length As Long) As String
+        Dim n As Long, s As String
+        If length <= 0 Then Exit Function
+        n = MultiByteToWideChar(CP_UTF8, 0, VarPtr(b(start)), length, 0, 0)
+        s = String$(n, vbNullChar)
+        MultiByteToWideChar CP_UTF8, 0, VarPtr(b(start)), length, StrPtr(s), n
+        Utf8Decode = s
+    End Function
+
+    ' The text as UTF-8 into out, and its length.
+    Public Function Utf8Encode(ByVal s As String, out() As Byte) As Long
+        Dim n As Long
+        Erase out
+        If Len(s) = 0 Then Exit Function
+        n = WideCharToMultiByte(CP_UTF8, 0, StrPtr(s), Len(s), 0, 0, 0, 0)
+        ReDim out(0 To n - 1)
+        WideCharToMultiByte CP_UTF8, 0, StrPtr(s), Len(s), VarPtr(out(0)), n, 0, 0
+        Utf8Encode = n
+    End Function
+
+    ' Each byte as the character of that code, as Buffer's toString("latin1") gives it.
+    Public Function Latin1Decode(b() As Byte, ByVal length As Long) As String
+        Dim i As Long, s As String
+        If length <= 0 Then Exit Function
+        s = String$(length, vbNullChar)
+        For i = 0 To length - 1
+            Mid$(s, i + 1, 1) = ChrW$(b(i))
+        Next
+        Latin1Decode = s
+    End Function
+
+    ' The low byte of each character, as Buffer.from(s, "latin1") gives it.
+    Public Function Latin1Encode(ByVal s As String, out() As Byte) As Long
+        Dim i As Long
+        Erase out
+        If Len(s) = 0 Then Exit Function
+        ReDim out(0 To Len(s) - 1)
+        For i = 1 To Len(s)
+            out(i - 1) = AscW(Mid$(s, i, 1)) And &HFF
+        Next
+        Latin1Encode = Len(s)
+    End Function
+
+    ' -1, 0 or 1 by UTF-16 code unit, as JavaScript's < compares two strings.
+    Public Function CompareOrdinal(ByVal a As String, ByVal b As String) As Long
+        Dim i As Long, n As Long, ca As Long, cb As Long
+        n = Len(a)
+        If Len(b) < n Then n = Len(b)
+        For i = 1 To n
+            ca = AscW(Mid$(a, i, 1)) And &HFFFF&
+            cb = AscW(Mid$(b, i, 1)) And &HFFFF&
+            If ca <> cb Then
+                If ca < cb Then CompareOrdinal = -1 Else CompareOrdinal = 1
+                Exit Function
+            End If
+        Next
+        If Len(a) < Len(b) Then
+            CompareOrdinal = -1
+        ElseIf Len(a) > Len(b) Then
+            CompareOrdinal = 1
+        End If
+    End Function
+
+    ' Sorts items(0 To count - 1) by CompareOrdinal; equal items keep their order.
+    Public Sub SortOrdinal(items() As String, ByVal count As Long)
+        Dim i As Long, j As Long, v As String
+        For i = 1 To count - 1
+            v = items(i)
+            j = i - 1
+            Do While j >= 0
+                If CompareOrdinal(items(j), v) <= 0 Then Exit Do
+                items(j + 1) = items(j)
+                j = j - 1
+            Loop
+            items(j + 1) = v
+        Next
+    End Sub
+
+    ' The string as JSON.stringify writes it.
+    Public Function JsonQuote(ByVal s As String) As String
+        Dim i As Long, c As Long, r As String, nextC As Long, prevC As Long
+        r = """"
+        For i = 1 To Len(s)
+            c = AscW(Mid$(s, i, 1)) And &HFFFF&
+            Select Case c
+                Case 34: r = r & "\"""
+                Case 92: r = r & "\\"
+                Case 8: r = r & "\b"
+                Case 9: r = r & "\t"
+                Case 10: r = r & "\n"
+                Case 12: r = r & "\f"
+                Case 13: r = r & "\r"
+                Case Is < 32: r = r & "\u" & LCase$(Right$("000" & Hex$(c), 4))
+                Case &HD800& To &HDBFF&
+                    nextC = 0
+                    If i < Len(s) Then nextC = AscW(Mid$(s, i + 1, 1)) And &HFFFF&
+                    If nextC >= &HDC00& And nextC <= &HDFFF& Then
+                        r = r & Mid$(s, i, 2)
+                        i = i + 1
+                    Else
+                        r = r & "\u" & LCase$(Hex$(c))
+                    End If
+                Case &HDC00& To &HDFFF&
+                    r = r & "\u" & LCase$(Hex$(c))
+                Case Else: r = r & ChrW$(c)
+            End Select
+        Next
+        JsonQuote = r & """"
+    End Function
+
+    ' n and the noun, plural unless n is 1.
+    Public Function Count(ByVal n As Long, ByVal noun As String) As String
+        Count = n & " " & noun
+        If n <> 1 Then Count = Count & "s"
+    End Function
+End Module

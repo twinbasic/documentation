@@ -393,7 +393,7 @@ must never do: [WIP.Typography.md](WIP.Typography.md).
 ### Tooling is JavaScript
 
 Everything under `scripts/`, `builder/`, `lib/`, `book/`, `eval/`, `wisdom/` and `indexer/` is
-Node.js, and a new tool joins them there. Four files and one folder are not, each
+Node.js, and a new tool joins them there. Four files and two folders are not, each
 for a stated reason rather than by oversight: `scripts/impexp.py` is a published download
 offered to readers rather than tooling, `scripts/build_fonts.py` stays Python
 because the JavaScript HarfBuzz build produces wrong CFF2 metrics
@@ -407,6 +407,15 @@ twinBASIC developers run it in their own build, which has twinBASIC and need not
 Node. After a change to its `src/`, pack `imagestrip.twinproj` again with `impexp`, run its own
 `[TestCase]`s with `tbrun --tests`, and run the half of `test/compact-image.test.mjs` that tests
 it with `IMAGESTRIP_EXE` set to its exe: no gate can build it, so nothing else will.
+`scripts/impexp/` is a twinBASIC program too, the third edition of the impexp tool, because
+it is a published download (`impexp.twinproj`, which the reader opens in the IDE and builds)
+for readers who have twinBASIC and neither Node nor Python. It is laid out as imagestrip
+is. After a change to its `src/`, pack `impexp.twinproj` again with `impexp`
+(`node scripts/impexp.mjs import scripts/impexp/impexp.twinproj scripts/impexp/src --overwrite`)
+and run `node scripts/check_impexp_parity.mjs` with `IMPEXP_EXE` set to its exe, whose
+`--self-test` and command sequence are its tests: no gate can build it, so nothing else will.
+**A change to what impexp does, or to its self-test, is made in all three editions** in one
+commit; CI compares only the Node and Python ones.
 The full accounting, and what the two ports gained, is in [WIP.Build.md](WIP.Build.md).
 
 ### The package indexer
@@ -612,7 +621,7 @@ wrapper:
 | `test.bat` | `test/addin-project.test.mjs` | `builder/addin-project.mjs` packs the help add-in's project file from exactly the files git tracks in `add-in/`, as the working folder holds them, never `Resources/HELP/`, with the index it is given, the same bytes from a CRLF and an LF checkout, into every tree it is given. Needs git. Run by `node --test` |
 | `test.bat` | `test/indexer.test.mjs` | the package indexer (`indexer/lib/`) keeps its promise that a snapshot changes only when the API does: VB6 files named by `VB_Name`, else by their file; a package's files in code-unit order with the `Packages` folder left out; `api.json` types sorted by path with `in` for nested ones, members by name, Enum values and Type fields in declaration order, a type character stripped from an unbracketed name only, the same bytes from the same files in any order; `diffApi` and `auditCoverage` on small hand-made inputs. Reads `indexer/sample.twinpack`; no network, git or install. Run by `node --test` |
 | `test.bat` | `check_pdf_shims_equiv` | the book's pdf-lib shims write what stock pdf-lib writes: one document written by the gate and one built with `PDFDocument.create` are each saved both ways in child processes, and each pair of files is compared object by object with streams inflated and their cross-reference entries checked; every shim must run, and the members of pdf-lib the shims patch must be those its `PATCHES` lists, each run in one document or the other unless marked there as not reached; each of them must also be in the target table its shim passes to `checkTargets`, which `book/lib/shim-targets.mjs` records for the side to ask |
-| `test.bat` | `check_impexp_parity` | `impexp.mjs` and `impexp.py` pass the same built-in tests, and one sequence of commands through each gives the exit code each command is there for, the same output and the same files. Without Python it reports itself skipped and passes, but fails when `CI=true` |
+| `test.bat` | `check_impexp_parity` | `impexp.mjs` and `impexp.py` pass the same built-in tests, and one sequence of commands through each gives the exit code each command is there for, the same output and the same files. Without Python it reports itself skipped and passes, but fails when `CI=true`. With `IMPEXP_EXE` naming the built exe of the twinBASIC edition (`scripts/impexp/`, Windows only), it compares that too |
 | `test.bat` | `check_publish_policy`, `check_gate_lists`, `check_page_baseline`, `check_book_coverage`, `check_axe_patch_equiv` | the gates on the gates |
 
 **A gate belongs in `test.bat` rather than `check.bat` if it would still mean

@@ -105,7 +105,8 @@ Three `.py` files stay, and none is an oversight:
 - **`scripts/impexp.py`** is not tooling. It is a published download, declared in
   `_config.yml`'s `bundle_extra` beside `impexp.mjs` and offered to readers on
   [Import/Export Tool](docs/Features/Packages/Import-export%20tool.md) as the Python edition
-  of the same standalone tool. Porting it would delete a deliberate offering.
+  of the same standalone tool. Porting it would delete a deliberate offering. The tool has
+  a third edition, `scripts/impexp/`, in twinBASIC (see the folder paragraph below).
 - **`scripts/build_fonts.py`** stays because the JavaScript build of HarfBuzz it would
   use produces wrong CFF2 metrics --- a one-line build-configuration defect in harfbuzzjs,
   documented with the evidence in [WIP.Fonts.md](WIP.Fonts.md), which also holds the full
@@ -128,8 +129,8 @@ without a native FFI addon. Adding one for a few calls would mean
 execution policy. See [Compiling a twinBASIC project without the IDE in front of
 you](WIP.Harness.md#compiling-a-twinbasic-project-without-the-ide-in-front-of-you).
 
-One folder holds a program written in twinBASIC itself, for a fourth reason.
-**`scripts/imagestrip/`** strips the metadata from an SVG file and from the images a CSS or
+Two folders hold a program written in twinBASIC itself, each for a reason of its own.
+The first, **`scripts/imagestrip/`**, strips the metadata from an SVG file and from the images a CSS or
 SVG file embeds as `data:` URIs, at any depth, for the IDE's own stylesheets. Its users are
 the twinBASIC developers, who run it in their own build, which has twinBASIC and need not
 have Node, so a Node edition of the program would serve nobody. Nothing in this repository
@@ -179,6 +180,22 @@ too: a BMP is only relabelled, not converted to a PNG (that is compaction, and w
 PNG encoder in twinBASIC), and an image keeps its encoding --- base64 rewritten only when its
 image changed, a text SVG cut in place, escapes and all --- where `compactImage` writes every
 SVG as percent-encoded text.
+
+**`scripts/impexp/`** is the third edition of the impexp tool, a twinBASIC console program,
+for a reason of its own: it is a published download for readers who have twinBASIC and
+neither Node nor Python, offered on [Import/Export
+Tool](docs/Features/Packages/Import-export%20tool.md) as `impexp.twinproj`, which the reader
+opens in the IDE and builds (`bundle_extra`, `docs/_config.yml`). It is laid out as
+`scripts/imagestrip/` is, `src/` and `impexp.twinproj` packed from it, both checked out byte
+for byte; nothing checks that they agree, so a change to `src/` is packed again by hand
+(`node scripts/impexp.mjs import scripts/impexp/impexp.twinproj scripts/impexp/src
+--overwrite`). It has the same command line, output, exit codes and `--self-test` (the same
+20 tests) as `impexp.mjs` and `impexp.py`, and writes byte-identical project files. Its tests
+are that `--self-test` and the commands of `check_impexp_parity.mjs`, which compares it
+when `IMPEXP_EXE` names its built exe, because no gate can build it; CI never sets the
+variable. The check runs the exe through `launchOnDesktop` with `cwd` (`TBBUILD_CWD` in
+`tb-launch.ps1`) set to each case's scratch folder, so it never runs on the user's desktop.
+See [Tools and Scripts](docs/Documentation/Tools-Compiler.md#impexp).
 
 Two `.mjs` files also run a little PowerShell inline, for Windows state Node has no API
 for, and neither adds a file: `scripts/tbrun.mjs` takes a process snapshot with
@@ -296,8 +313,8 @@ Four details of the policy are essential:
   the opening `---` --- a blank line is enough --- so keep the message naming
   that and not the BOM.
 - **`bundle_extra` is exempt by *path*, not by extension.** `_config.yml`
-  declares `Features/Packages/downloads/impexp.py` and `impexp.mjs` with both
-  ends spelled out, which is what makes them shippable. The same extension
+  declares `Features/Packages/downloads/impexp.py`, `impexp.mjs` and
+  `impexp.twinproj` with both ends spelled out, which is what makes them shippable. The same extension
   anywhere else still fails; otherwise declaring one entry would bless a whole
   type.
 - **`addin_project` is exempt by path too, and on the tree surface only.** The

@@ -1,29 +1,50 @@
-// Checks that the two editions of the impexp tool behave the same.
+// Checks that the editions of the impexp tool behave the same.
 //
 // scripts/impexp.mjs and scripts/impexp.py are one tool offered to readers in
 // two languages, and Tools-Compiler.md promises that they print the same output and
 // write byte-identical files. Each has the same built-in tests, and nothing ran
-// them. This runs both suites, which must pass with the same test names in the
+// them. This runs every suite, which must pass with the same test names in the
 // same order, and then runs one sequence of commands through each edition, each
 // in a scratch folder of its own holding copies of indexer/sample.twinpack and
 // test/example-projects/console: export, import, the printing commands, and
-// each refusal and failure the exit codes name. After every command the two
-// exit codes, the two outputs and the two folders' files must be the same.
+// each refusal and failure the exit codes name. After every command the
+// exit codes, the outputs and the folders' files must be the same in every
+// edition as in the first, impexp.mjs.
+//
+// A third edition is a twinBASIC console program, scripts/impexp/, built to an
+// exe. No gate can build it, as none can build scripts/imagestrip/, so it is
+// compared only when IMPEXP_EXE names the built exe (Windows only). It is run
+// through launchOnDesktop, on a private desktop of its own, as every program a
+// test starts is; a box it opens is a difference.
 //
 // Python's text streams write CRLF on Windows, so there a CRLF in the printed
-// output is read as LF on both sides; on Linux, as in CI, the output is
+// output is read as LF in every edition; on Linux, as in CI, the output is
 // compared as written. Written files are always compared as bytes.
 //
 // Without Python 3.6 or later this reports the gate skipped, loudly, and exits
 // 0, except in CI (GitHub sets CI=true), where it fails: CI must compare them.
+// With IMPEXP_EXE set and no Python outside CI, impexp.mjs and the exe are still
+// compared, and the report says impexp.py was not.
 //
 //     node scripts/check_impexp_parity.mjs
+//     IMPEXP_EXE=path/to/impexp_win32.exe node scripts/check_impexp_parity.mjs
 //
 // Exit codes: 0 the same, or skipped outside CI; 1 a difference or a failed
-// built-in test; 2 a refused command line, no Python in CI, or a crash.
+// built-in test; 2 a refused command line, an IMPEXP_EXE that cannot be used,
+// no Python in CI, or a crash.
 
 import { spawn, spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,11 +63,18 @@ sequence of commands through each, comparing exit codes, printed output and
 written files. Without Python 3.6 or later it reports the check skipped, or
 fails when CI=true.
 
+Environment:
+  IMPEXP_EXE  the built exe of scripts/impexp/, the twinBASIC edition (Windows
+              only). It joins the comparison as impexp.exe, run on a private
+              desktop. No gate builds it, so without this it is not compared.
+              With it and no Python outside CI, only impexp.mjs and the exe are
+              compared, and the report says impexp.py was not.
+
 Exit codes:
-  0  the two editions agree, or the check was skipped because no Python was found
+  0  the editions agree, or the check was skipped because no Python was found
   1  the editions differ, or a built-in test failed
-  2  the check could not run: a refused command line, no Python when CI=true, or a
-     crash`);
+  2  the check could not run: a refused command line, an IMPEXP_EXE that is not a
+     file or is set off Windows, no Python when CI=true, or a crash`);
 }
 
 const TOOL = "check_impexp_parity";
@@ -124,32 +152,84 @@ function findPython() {
   return null;
 }
 
+// The twinBASIC edition's exe. It is refused, not skipped, when it cannot be
+// used: someone who set the variable meant it to be compared.
+const exePath = process.env.IMPEXP_EXE;
+if (exePath) {
+  if (process.platform !== "win32") {
+    console.error(`${TOOL}: IMPEXP_EXE is set, but the twinBASIC edition runs only on Windows`);
+    process.exit(2);
+  }
+  if (!existsSync(exePath) || !statSync(exePath).isFile()) {
+    console.error(`${TOOL}: IMPEXP_EXE is "${exePath}", which is not a file`);
+    process.exit(2);
+  }
+}
+
 const python = findPython();
 if (!python) {
   const tried = process.platform === "win32" ? "python3, python, py -3" : "python3, python";
   if (IN_CI) {
-    console.error(`${TOOL}: no Python 3.6 or later found (tried ${tried}), and CI must compare the two editions`);
+    console.error(`${TOOL}: no Python 3.6 or later found (tried ${tried}), and CI must compare the editions`);
     process.exit(2);
   }
+  if (!exePath) {
+    console.error(
+      `${TOOL}: SKIPPED -- no Python 3.6 or later found (tried ${tried}).\n` +
+        `${TOOL}: impexp.mjs and impexp.py were NOT compared; CI compares them and fails without Python.`,
+    );
+    process.exit(0);
+  }
   console.error(
-    `${TOOL}: SKIPPED -- no Python 3.6 or later found (tried ${tried}).\n` +
-      `${TOOL}: impexp.mjs and impexp.py were NOT compared; CI compares them and fails without Python.`,
+    `${TOOL}: WARNING -- no Python 3.6 or later found (tried ${tried}).\n` +
+      `${TOOL}: impexp.py was NOT compared; only impexp.mjs and impexp.exe are.`,
   );
-  process.exit(0);
 }
 
-const editions = [
-  { name: "impexp.mjs", cmd: process.execPath, pre: [NODE_EDITION] },
-  { name: "impexp.py", cmd: python.cmd, pre: [...python.pre, PYTHON_EDITION] },
-];
+// impexp.mjs comes first: every other edition is compared with it.
+const editions = [{ name: "impexp.mjs", cmd: process.execPath, pre: [NODE_EDITION] }];
+if (python) editions.push({ name: "impexp.py", cmd: python.cmd, pre: [...python.pre, PYTHON_EDITION] });
+if (exePath) editions.push({ name: "impexp.exe", exe: exePath });
+const first = editions[0].name;
 
-// One command through one edition. The two editions run each command at the
+// Where the exe's output goes, outside every edition's folder so that it is not
+// compared as a written file. Set once the scratch folder exists.
+let outputs;
+let outputCount = 0;
+
+// What a stream's text is: latin1, with CRLF read as LF on Windows.
+function text(buffer) {
+  const s = buffer.toString("latin1");
+  return process.platform === "win32" ? s.replace(/\r\n/g, "\n") : s;
+}
+
+// One command through the exe, on a private desktop. The program's output goes
+// to files, one pair for each run, because the editions run at the same time.
+async function runExe(edition, args, cwd) {
+  const { launchOnDesktop } = await import("./lib/tb-ide.mjs");
+  const n = ++outputCount;
+  const stdout = path.join(outputs, `${n}.out`);
+  const stderr = path.join(outputs, `${n}.err`);
+  const launched = await launchOnDesktop({
+    exe: edition.exe,
+    args,
+    cwd,
+    desktop: "impexp-parity",
+    env: process.env,
+    stdout,
+    stderr,
+    dialogs: "close",
+  });
+  const { code, dialogs } = await launched.finished;
+  if (code === null) throw new Error(`${edition.name} ${args.join(" ")}: ended without an exit code`);
+  const read = (p) => (existsSync(p) ? text(readFileSync(p)) : "");
+  return { status: code, stdout: read(stdout), stderr: read(stderr), dialogs };
+}
+
+// One command through one edition. The editions run each command at the
 // same time, each in its own folder.
 function run(edition, args, cwd) {
-  const text = (chunks) => {
-    const s = Buffer.concat(chunks).toString("latin1");
-    return process.platform === "win32" ? s.replace(/\r\n/g, "\n") : s;
-  };
+  if (edition.exe) return runExe(edition, args, cwd);
   return new Promise((resolve, reject) => {
     const child = spawn(edition.cmd, [...edition.pre, ...args], { cwd, timeout: TIMEOUT_MS });
     const out = [];
@@ -159,9 +239,14 @@ function run(edition, args, cwd) {
     child.on("error", (e) => reject(new Error(`${edition.name} ${args.join(" ")}: ${e.message}`)));
     child.on("close", (status, signal) => {
       if (status === null) reject(new Error(`${edition.name} ${args.join(" ")}: ended by ${signal}`));
-      else resolve({ status, stdout: text(out), stderr: text(err) });
+      else resolve({ status, stdout: text(Buffer.concat(out)), stderr: text(Buffer.concat(err)), dialogs: [] });
     });
   });
+}
+
+// A box an edition opened is reported against its command.
+function dialogProblems(edition, r) {
+  return r.dialogs.map((d) => `${edition.name} opened a box, "${d.title}": ${d.text}`);
 }
 
 // Every file under dir, by path relative to it with forward slashes.
@@ -186,44 +271,54 @@ function firstDifference(a, b) {
   return `line ${i + 1}: ${q(la[i])} and ${q(lb[i])}`;
 }
 
-// The files that differ between the two folders, each named only the first
-// time, so a difference is reported against the command that made it.
+// The files that differ between the first edition's folder and another's, each
+// named only the first time, so a difference is reported against the command
+// that made it.
 const reported = new Set();
-function compareFolders(a, b) {
+function compareFolders(a, b, edition) {
   const fa = files(a);
   const fb = files(b);
   const problems = [];
   const report = (p, what) => {
-    if (!reported.has(p)) problems.push(`${p} ${what}`);
-    reported.add(p);
+    const key = `${edition.name} ${p}`;
+    if (!reported.has(key)) problems.push(`${p} ${what}`);
+    reported.add(key);
   };
-  for (const p of fa.keys()) if (!fb.has(p)) report(p, "written by impexp.mjs only");
-  for (const p of fb.keys()) if (!fa.has(p)) report(p, "written by impexp.py only");
+  for (const p of fa.keys()) if (!fb.has(p)) report(p, `written by ${first} only`);
+  for (const p of fb.keys()) if (!fa.has(p)) report(p, `written by ${edition.name} only`);
   for (const [p, bytes] of fa) {
-    if (fb.has(p) && !bytes.equals(fb.get(p))) report(p, `differs (${bytes.length} and ${fb.get(p).length} bytes)`);
+    if (fb.has(p) && !bytes.equals(fb.get(p))) {
+      report(p, `differs between ${first} and ${edition.name} (${bytes.length} and ${fb.get(p).length} bytes)`);
+    }
   }
   return problems;
 }
 
 const problems = [];
-
-// The built-in tests: both pass, with the same names in the same order. The
-// first line names a temporary folder, which differs.
-const selfTestRuns = await Promise.all(editions.map((e) => run(e, ["--self-test"], ROOT)));
-const selfTests = editions.map((e, i) => {
-  const r = selfTestRuns[i];
-  const lines = r.stdout.split("\n").filter((l) => !l.startsWith("Self-test  workdir:"));
-  const names = lines.filter((l) => /^\s+\[(PASS|FAIL|SKIP)\] /.test(l)).map((l) => l.trim());
-  if (r.status !== 0) problems.push(`${e.name} --self-test exited ${r.status}`);
-  for (const n of names) if (!n.startsWith("[PASS] ")) problems.push(`${e.name} --self-test: ${n}`);
-  if (names.length === 0) problems.push(`${e.name} --self-test ran no test`);
-  return { names, text: `${lines.join("\n")}\n${r.stderr}` };
-});
-const selfTestDifference = firstDifference(selfTests[0].text, selfTests[1].text);
-if (selfTestDifference) problems.push(`--self-test prints differently, ${selfTestDifference}`);
-
 const scratch = mkdtempSync(path.join(tmpdir(), "impexp-parity-"));
+outputs = path.join(scratch, "outputs");
+mkdirSync(outputs);
+let selfTestCount = 0;
 try {
+  // The built-in tests: every one passes, with the same names in the same order.
+  // The first line names a temporary folder, which differs.
+  const selfTestRuns = await Promise.all(editions.map((e) => run(e, ["--self-test"], ROOT)));
+  const selfTests = editions.map((e, i) => {
+    const r = selfTestRuns[i];
+    const lines = r.stdout.split("\n").filter((l) => !l.startsWith("Self-test  workdir:"));
+    const names = lines.filter((l) => /^\s+\[(PASS|FAIL|SKIP)\] /.test(l)).map((l) => l.trim());
+    problems.push(...dialogProblems(e, r).map((p) => `--self-test: ${p}`));
+    if (r.status !== 0) problems.push(`${e.name} --self-test exited ${r.status}`);
+    for (const n of names) if (!n.startsWith("[PASS] ")) problems.push(`${e.name} --self-test: ${n}`);
+    if (names.length === 0) problems.push(`${e.name} --self-test ran no test`);
+    return { names, text: `${lines.join("\n")}\n${r.stderr}` };
+  });
+  selfTestCount = selfTests[0].names.length;
+  for (let i = 1; i < editions.length; i++) {
+    const d = firstDifference(selfTests[0].text, selfTests[i].text);
+    if (d) problems.push(`--self-test of ${editions[i].name} prints differently from ${first}'s, ${d}`);
+  }
+
   const dirs = editions.map((e) => {
     const dir = path.join(scratch, e.name);
     mkdirSync(dir);
@@ -234,26 +329,36 @@ try {
   for (const c of COMMANDS) {
     const label = `impexp ${c.args.join(" ")}${c.why ? ` (${c.why})` : ""}`;
     for (const dir of dirs) c.setup?.(dir);
-    const [a, b] = await Promise.all(editions.map((e, i) => run(e, c.args, dirs[i])));
-    if (a.status !== c.exit || b.status !== c.exit) {
-      problems.push(`${label}: exit ${a.status} from impexp.mjs and ${b.status} from impexp.py, not ${c.exit}`);
+    const results = await Promise.all(editions.map((e, i) => run(e, c.args, dirs[i])));
+    if (results.some((r) => r.status !== c.exit)) {
+      const codes = editions.map((e, i) => `${results[i].status} from ${e.name}`);
+      problems.push(`${label}: exit ${codes.join(", ")}, not ${c.exit}`);
     }
-    for (const stream of ["stdout", "stderr"]) {
-      const d = firstDifference(a[stream], b[stream]);
-      if (d) problems.push(`${label}: ${stream} differs, ${d}`);
+    for (let i = 0; i < editions.length; i++) {
+      for (const p of dialogProblems(editions[i], results[i])) problems.push(`${label}: ${p}`);
     }
-    for (const p of compareFolders(dirs[0], dirs[1])) problems.push(`${label}: ${p}`);
+    for (let i = 1; i < editions.length; i++) {
+      for (const stream of ["stdout", "stderr"]) {
+        const d = firstDifference(results[0][stream], results[i][stream]);
+        if (d) problems.push(`${label}: ${stream} of ${editions[i].name} differs from ${first}'s, ${d}`);
+      }
+      for (const p of compareFolders(dirs[0], dirs[i], editions[i])) problems.push(`${label}: ${p}`);
+    }
   }
 } finally {
   rmSync(scratch, { recursive: true, force: true });
 }
 
+// "impexp.mjs, impexp.py (Python 3.12.1) and impexp.exe"
+const names = editions.map((e) => (e.name === "impexp.py" ? `${e.name} (Python ${python.version})` : e.name));
+const named = `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 if (problems.length) {
-  console.error(`${TOOL}: impexp.mjs and impexp.py (Python ${python.version}) differ:`);
+  console.error(`${TOOL}: ${named} differ:`);
   for (const p of problems) console.error(`  ${p}`);
   process.exit(1);
 }
 console.log(
-  `${TOOL}: impexp.mjs and impexp.py (Python ${python.version}) pass the same ${selfTests[0].names.length} ` +
+  `${TOOL}: ${named} pass the same ${selfTestCount} ` +
     `built-in tests, and ${COMMANDS.length} commands exit, print and write the same`,
 );
+if (!python) console.error(`${TOOL}: WARNING -- impexp.py was NOT compared (no Python 3.6 or later found)`);

@@ -1,0 +1,249 @@
+' Reads one string member of a JSON object's top level, as JSON.parse(text)[key] would find it:
+' the text must be JSON as a whole, and the last of two members with one name wins.
+Module Json
+    Private mText As String
+    Private mPos As Long
+    Private mBad As Boolean
+
+    ' The string value of the top-level member named key, or "" when the text is not JSON, is not
+    ' an object, or has no such member, or the member is not a string.
+    Public Function TopLevelString(ByVal text As String, ByVal key As String) As String
+        Dim found As String, name As String, value As String, isString As Boolean
+        mText = text
+        mPos = 1
+        mBad = False
+        SkipSpace
+        If Peek() <> "{" Then Exit Function
+        mPos = mPos + 1
+        SkipSpace
+        If Peek() = "}" Then
+            mPos = mPos + 1
+        Else
+            Do
+                SkipSpace
+                If Peek() <> """" Then Exit Function
+                name = ReadString()
+                If mBad Then Exit Function
+                SkipSpace
+                If Peek() <> ":" Then Exit Function
+                mPos = mPos + 1
+                SkipSpace
+                isString = Peek() = """"
+                If isString Then value = ReadString() Else SkipValue
+                If mBad Then Exit Function
+                If name = key Then
+                    If isString Then found = value Else found = ""
+                End If
+                SkipSpace
+                If Peek() = "," Then
+                    mPos = mPos + 1
+                ElseIf Peek() = "}" Then
+                    mPos = mPos + 1
+                    Exit Do
+                Else
+                    Exit Function
+                End If
+            Loop
+        End If
+        SkipSpace
+        If mPos <= Len(mText) Then Exit Function
+        TopLevelString = found
+    End Function
+
+    Private Function Peek() As String
+        If mPos <= Len(mText) Then Peek = Mid$(mText, mPos, 1)
+    End Function
+
+    Private Sub SkipSpace()
+        Dim c As String
+        Do While mPos <= Len(mText)
+            c = Mid$(mText, mPos, 1)
+            If c <> " " And c <> vbTab And c <> vbLf And c <> vbCr Then Exit Do
+            mPos = mPos + 1
+        Loop
+    End Sub
+
+    Private Sub SkipValue()
+        Dim c As String
+        If mBad Then Exit Sub
+        c = Peek()
+        Select Case c
+            Case """"
+                ReadString
+            Case "{"
+                mPos = mPos + 1
+                SkipSpace
+                If Peek() = "}" Then
+                    mPos = mPos + 1
+                    Exit Sub
+                End If
+                Do
+                    SkipSpace
+                    If Peek() <> """" Then
+                        mBad = True
+                        Exit Sub
+                    End If
+                    ReadString
+                    SkipSpace
+                    If mBad Or Peek() <> ":" Then
+                        mBad = True
+                        Exit Sub
+                    End If
+                    mPos = mPos + 1
+                    SkipSpace
+                    SkipValue
+                    If mBad Then Exit Sub
+                    SkipSpace
+                    If Peek() = "," Then
+                        mPos = mPos + 1
+                    ElseIf Peek() = "}" Then
+                        mPos = mPos + 1
+                        Exit Sub
+                    Else
+                        mBad = True
+                        Exit Sub
+                    End If
+                Loop
+            Case "["
+                mPos = mPos + 1
+                SkipSpace
+                If Peek() = "]" Then
+                    mPos = mPos + 1
+                    Exit Sub
+                End If
+                Do
+                    SkipSpace
+                    SkipValue
+                    If mBad Then Exit Sub
+                    SkipSpace
+                    If Peek() = "," Then
+                        mPos = mPos + 1
+                    ElseIf Peek() = "]" Then
+                        mPos = mPos + 1
+                        Exit Sub
+                    Else
+                        mBad = True
+                        Exit Sub
+                    End If
+                Loop
+            Case "t"
+                Literal "true"
+            Case "f"
+                Literal "false"
+            Case "n"
+                Literal "null"
+            Case Else
+                SkipNumber
+        End Select
+    End Sub
+
+    Private Sub Literal(ByVal word As String)
+        If Mid$(mText, mPos, Len(word)) = word Then
+            mPos = mPos + Len(word)
+        Else
+            mBad = True
+        End If
+    End Sub
+
+    ' -? (0 | [1-9][0-9]*) (. [0-9]+)? ([eE] [+-]? [0-9]+)?
+    Private Sub SkipNumber()
+        If Peek() = "-" Then mPos = mPos + 1
+        If Peek() = "0" Then
+            mPos = mPos + 1
+        ElseIf IsDigit(Peek()) Then
+            Do While IsDigit(Peek())
+                mPos = mPos + 1
+            Loop
+        Else
+            mBad = True
+            Exit Sub
+        End If
+        If Peek() = "." Then
+            mPos = mPos + 1
+            If Not IsDigit(Peek()) Then
+                mBad = True
+                Exit Sub
+            End If
+            Do While IsDigit(Peek())
+                mPos = mPos + 1
+            Loop
+        End If
+        If Peek() = "e" Or Peek() = "E" Then
+            mPos = mPos + 1
+            If Peek() = "+" Or Peek() = "-" Then mPos = mPos + 1
+            If Not IsDigit(Peek()) Then
+                mBad = True
+                Exit Sub
+            End If
+            Do While IsDigit(Peek())
+                mPos = mPos + 1
+            Loop
+        End If
+    End Sub
+
+    Private Function IsDigit(ByVal c As String) As Boolean
+        If Len(c) = 1 Then IsDigit = c >= "0" And c <= "9"
+    End Function
+
+    ' The string at mPos, its quotes and escapes undone; sets mBad for one JSON refuses.
+    Private Function ReadString() As String
+        Dim r As String, c As String, code As Long, h As String
+        mPos = mPos + 1
+        Do
+            If mPos > Len(mText) Then
+                mBad = True
+                Exit Function
+            End If
+            c = Mid$(mText, mPos, 1)
+            mPos = mPos + 1
+            If c = """" Then Exit Do
+            If (AscW(c) And &HFFFF&) < 32 Then
+                mBad = True
+                Exit Function
+            End If
+            If c = "\" Then
+                c = Mid$(mText, mPos, 1)
+                mPos = mPos + 1
+                Select Case c
+                    Case """", "\", "/": r = r & c
+                    Case "b": r = r & ChrW$(8)
+                    Case "f": r = r & ChrW$(12)
+                    Case "n": r = r & vbLf
+                    Case "r": r = r & vbCr
+                    Case "t": r = r & vbTab
+                    Case "u"
+                        h = Mid$(mText, mPos, 4)
+                        If Len(h) <> 4 Or Not IsHex(h) Then
+                            mBad = True
+                            Exit Function
+                        End If
+                        code = HexValue(h)
+                        r = r & ChrW$(code)
+                        mPos = mPos + 4
+                    Case Else
+                        mBad = True
+                        Exit Function
+                End Select
+            Else
+                r = r & c
+            End If
+        Loop
+        ReadString = r
+    End Function
+
+    Private Function HexValue(ByVal s As String) As Long
+        Dim i As Long
+        For i = 1 To Len(s)
+            HexValue = HexValue * 16 + InStr("0123456789abcdef", LCase$(Mid$(s, i, 1))) - 1
+        Next
+    End Function
+
+    Private Function IsHex(ByVal s As String) As Boolean
+        Dim i As Long, c As String
+        For i = 1 To Len(s)
+            c = LCase$(Mid$(s, i, 1))
+            If Not ((c >= "0" And c <= "9") Or (c >= "a" And c <= "f")) Then Exit Function
+        Next
+        IsHex = True
+    End Function
+End Module

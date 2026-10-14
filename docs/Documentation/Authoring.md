@@ -104,9 +104,9 @@ bundle_extra:
     dest: Features/Packages/downloads/impexp.py
 ```
 
-`src` is resolved against `docs/`, so it may point outside the tree --- the two
-real entries publish the [Import/Export Tool](../../Features/Packages/Import-Export-Tool)
-from `scripts/`, where it is maintained, with no second copy under `docs/`.
+`src` is resolved against `docs/`, so it may point outside the tree --- the real
+entries publish the three editions of the [Import/Export Tool](../../Features/Packages/Import-Export-Tool)
+from `scripts/`, where they are maintained, with no second copy under `docs/`.
 `dest` is the path in the built site, and the page links to it. A `src` that
 does not exist aborts the build.
 
