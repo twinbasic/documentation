@@ -1,0 +1,172 @@
+' File.SetAttribute and Folder.SetAttribute, File.OpenAsTextStream and MoveFile of a folder.
+[TestFixture]
+Module AttributeTests
+
+    [TestCase]
+    Public Sub FileSetAttribute_NoAttributes_SetsHidden()
+        Expect.Begin
+        Dim w As String, f As File
+        w = Sandbox.Fresh("FileSetAttribute_NoAttributes_SetsHidden")
+        On Error GoTo Oops
+        StringToTextFile "x", w & "\a.txt"
+        Set f = GetFile(w & "\a.txt")
+        f.Attributes = faNormal
+        Expect.AreEqual 128, CLng(f.Attributes), "a file whose attributes were cleared reports faNormal"
+        f.SetAttribute faHidden, True
+        Expect.IsTrue f.HasAttribute(faHidden), "File.SetAttribute faHidden, True on a file with no attributes sets Hidden"
+        Expect.AreEqual 2, CLng(f.Attributes), "Attributes of that file after SetAttribute faHidden, True"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileSetAttribute_NoAttributes_SetsReadOnly()
+        Expect.Begin
+        Dim w As String, f As File
+        w = Sandbox.Fresh("FileSetAttribute_NoAttributes_SetsReadOnly")
+        On Error GoTo Oops
+        StringToTextFile "x", w & "\a.txt"
+        Set f = GetFile(w & "\a.txt")
+        f.Attributes = faNormal
+        f.SetAttribute faReadOnly, True
+        Expect.IsTrue f.HasAttribute(faReadOnly), "File.SetAttribute faReadOnly, True on a file with no attributes sets ReadOnly"
+        Expect.AreEqual 1, CLng(f.Attributes), "Attributes of that file after SetAttribute faReadOnly, True"
+        f.Attributes = faNormal
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileSetAttribute_ArchiveFile_SetsHidden()
+        Expect.Begin
+        Dim w As String, f As File
+        w = Sandbox.Fresh("FileSetAttribute_ArchiveFile_SetsHidden")
+        On Error GoTo Oops
+        StringToTextFile "x", w & "\a.txt"
+        Set f = GetFile(w & "\a.txt")
+        Expect.AreEqual 32, CLng(f.Attributes), "a new file has the archive attribute"
+        f.SetAttribute faHidden, True
+        Expect.AreEqual 34, CLng(f.Attributes), "Attributes of a new file after SetAttribute faHidden, True"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileAttributes_Assigned_SetsHidden()
+        Expect.Begin
+        Dim w As String, f As File
+        w = Sandbox.Fresh("FileAttributes_Assigned_SetsHidden")
+        On Error GoTo Oops
+        StringToTextFile "x", w & "\a.txt"
+        Set f = GetFile(w & "\a.txt")
+        f.Attributes = faNormal
+        f.Attributes = faHidden
+        Expect.AreEqual 2, CLng(f.Attributes), "Attributes assigned faHidden on a file with no attributes"
+        f.Attributes = faNormal
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FolderSetAttribute_SetsHidden()
+        Expect.Begin
+        Dim w As String, d As Folder
+        w = Sandbox.Fresh("FolderSetAttribute_SetsHidden")
+        On Error GoTo Oops
+        CreateFolder w & "\d"
+        Set d = GetFolder(w & "\d")
+        d.SetAttribute faHidden, True
+        Expect.IsTrue d.HasAttribute(faHidden), "Folder.SetAttribute faHidden, True sets Hidden"
+        d.SetAttribute faHidden, False
+        Expect.IsFalse d.HasAttribute(faHidden), "Folder.SetAttribute faHidden, False clears Hidden"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenAsTextStream_ForWriting_EmptiesFile()
+        Expect.Begin
+        Dim w As String, ts As TextStream
+        w = Sandbox.Fresh("OpenAsTextStream_ForWriting_EmptiesFile")
+        On Error GoTo Oops
+        StringToTextFile "keep this text", w & "\a.txt"
+        Set ts = GetFile(w & "\a.txt").OpenAsTextStream(ForWriting)
+        ts.Close
+        Expect.AreEqual 0, CLng(GetFile(w & "\a.txt").Size), "File.OpenAsTextStream(ForWriting) leaves a file of this many bytes"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenAsTextStream_ForAppending_KeepsText()
+        Expect.Begin
+        Dim w As String, ts As TextStream
+        w = Sandbox.Fresh("OpenAsTextStream_ForAppending_KeepsText")
+        On Error GoTo Oops
+        StringToTextFile "old", w & "\a.txt"
+        Set ts = GetFile(w & "\a.txt").OpenAsTextStream(ForAppending)
+        ts.Write "new"
+        ts.Close
+        Expect.AreEqual "oldnew", TextFileToString(w & "\a.txt"), "text of a file after File.OpenAsTextStream(ForAppending) and Write"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MoveFile_FolderSource_MovesFolder()
+        Expect.Begin
+        Dim w As String, result As String
+        w = Sandbox.Fresh("MoveFile_FolderSource_MovesFolder")
+        On Error GoTo Oops
+        CreateFolder w & "\old"
+        StringToTextFile "x", w & "\old\f.txt"
+        result = MoveFile(w & "\old", w & "\new")
+        Expect.AreEqual w & "\new", result, "MoveFile of a folder returns the path of the moved folder"
+        Expect.IsTrue FolderExists(w & "\new"), "the folder exists under its new name"
+        Expect.IsFalse FolderExists(w & "\old"), "the folder is gone from its old name"
+        Expect.IsTrue FileExists(w & "\new\f.txt"), "the folder's file moved with it"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+End Module

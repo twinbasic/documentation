@@ -1,0 +1,87 @@
+' Sandbox: the folders the test cases of tbFileSysTools work in, and a few helpers they share.
+'
+' Every file, folder and junction a case makes is under %TEMP%\tbdocs-package-tests\tbFileSysTools\.
+' A case asks for a fresh folder of its own (Fresh), which empties it first in case an earlier run
+' left something, and removes it at its end (Remove). Remove goes through cmd's rmdir, which
+' removes a junction itself and never enters it, and takes a path of more than 260 characters in
+' its \\?\ form. Nothing is linked to a folder outside the sandbox.
+Module Sandbox
+
+    Public Function Root() As String
+        Root = Environ$("TEMP") & "\tbdocs-package-tests\tbFileSysTools"
+    End Function
+
+    ' A new, empty folder for one case.
+    Public Function Fresh(ByVal Tag As String) As String
+        Dim p As String
+        p = Root() & "\" & Tag
+        Remove p
+        CreateFolder p, True
+        Fresh = p
+    End Function
+
+    ' Removes a folder with everything in it, junctions included (not what they lead to), and then
+    ' the sandbox itself when nothing else is in it. Raises no error.
+    Public Sub Remove(ByVal Path As String)
+        On Error Resume Next
+        Shell_ "rmdir /s /q ""\\?\" & Path & """"
+        If FolderExists(Path) Then DeleteFolder Path, True, True
+        RmDir Root()
+        RmDir Environ$("TEMP") & "\tbdocs-package-tests"
+        Err.Clear
+    End Sub
+
+    ' Makes the directory junction LinkPath that leads to Target. False when the volume cannot.
+    Public Function MakeJunction(ByVal LinkPath As String, ByVal Target As String) As Boolean
+        On Error Resume Next
+        Shell_ "mklink /J """ & LinkPath & """ """ & Target & """"
+        MakeJunction = GetFolder(LinkPath).HasAttribute(faReparsePoint)
+        If Err.Number <> 0 Then MakeJunction = False
+        Err.Clear
+    End Function
+
+    ' Removes a junction and nothing it leads to.
+    Public Sub RemoveJunction(ByVal LinkPath As String)
+        On Error Resume Next
+        RmDir LinkPath
+        Err.Clear
+    End Sub
+
+    ' The number of the error that the last statement raised under On Error Resume Next, after
+    ' clearing it.
+    Public Function Caught() As Long
+        Caught = Err.Number
+        Err.Clear
+    End Function
+
+    ' A path that starts with Base and is exactly Length characters long, by adding folder names of
+    ' 100 characters or fewer. Nothing is created.
+    Public Function PathOfLength(ByVal Base As String, ByVal Length As Long) As String
+        Dim p As String, remaining As Long, k As Long
+        p = Base
+        Do While Len(p) < Length
+            remaining = Length - Len(p)
+            If remaining <= 101 Then
+                k = remaining - 1
+            ElseIf remaining - 101 = 1 Then
+                k = 99
+            Else
+                k = 100
+            End If
+            p = p & "\" & String$(k, "d")
+        Loop
+        PathOfLength = p
+    End Function
+
+    ' The 8.3 short name of the file or folder, or its name when Windows made none.
+    Public Function ShortNameOf(ByVal Path As String, ByVal IsFolder As Boolean) As String
+        On Error Resume Next
+        If IsFolder Then ShortNameOf = GetFolder(Path).ShortName Else ShortNameOf = GetFile(Path).ShortName
+        Err.Clear
+    End Function
+
+    Private Sub Shell_(ByVal CommandLine As String)
+        CreateObject("WScript.Shell").Run "cmd /c " & CommandLine & " >nul 2>&1", 0, True
+    End Sub
+
+End Module

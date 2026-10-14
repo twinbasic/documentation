@@ -110,7 +110,6 @@ const PENDING = new Set([
   "VBA_JSON",
   "VBComDlg",
   "WinReg",
-  "tbFileSysTools",
   "tbProjPacker",
   "tsJson",
   "tsPwGen",

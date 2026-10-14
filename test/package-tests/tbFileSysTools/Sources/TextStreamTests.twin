@@ -1,0 +1,149 @@
+' A stream open for writing on a read-only file: the error comes when the stream is opened, except
+' for UTF-7, which holds the whole file in memory and replaces it when it is closed or flushed.
+[TestFixture]
+Module TextStreamTests
+
+    [TestCase]
+    Public Sub OpenTextFile_ReadOnlyFileForWriting_Raises70()
+        Expect.Begin
+        Dim w As String, p As String, ts As TextStream, e As Long, enc As Variant
+        w = Sandbox.Fresh("OpenTextFile_ReadOnlyFileForWriting_Raises70")
+        On Error GoTo Oops
+        p = w & "\ro.txt"
+        StringToTextFile "keep", p
+        SetAttr p, vbReadOnly
+        For Each enc In Array(encUtf8, encUtf16Bom, encLatin1, encSystemAnsi)
+            On Error Resume Next
+            Set ts = OpenTextFile(p, ForWriting, , CLng(enc))
+            e = Sandbox.Caught()
+            On Error GoTo Oops
+            Expect.AreEqual 70, e, "OpenTextFile(ForWriting) of a read-only file raises, for the encoding " & enc
+        Next
+        Expect.AreEqual "keep", TextFileToString(p), "text of the read-only file after the failed opens"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        On Error Resume Next
+        SetAttr p, vbNormal
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenTextFile_Utf7ReadOnlyFileForWriting_Opens()
+        Expect.Begin
+        Dim w As String, p As String, ts As TextStream, e As Long
+        w = Sandbox.Fresh("OpenTextFile_Utf7ReadOnlyFileForWriting_Opens")
+        On Error GoTo Oops
+        p = w & "\ro.txt"
+        StringToTextFile "keep", p
+        SetAttr p, vbReadOnly
+        On Error Resume Next
+        Set ts = OpenTextFile(p, ForWriting, , encUtf7)
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 0, e, "OpenTextFile(ForWriting, UTF-7) of a read-only file raises"
+        Expect.AreEqual "keep", TextFileToString(p), "text of the read-only file while the UTF-7 stream is open"
+        If Not ts Is Nothing Then
+            Expect.IsFalse ts.IsStreaming, "IsStreaming of the UTF-7 stream"
+            On Error Resume Next
+            ts.Close
+            Err.Clear
+            On Error GoTo Oops
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        On Error Resume Next
+        SetAttr p, vbNormal
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextStreamClose_Utf7ReadOnlyFile_Raises70()
+        Expect.Begin
+        Dim w As String, p As String, ts As TextStream, e As Long
+        w = Sandbox.Fresh("TextStreamClose_Utf7ReadOnlyFile_Raises70")
+        On Error GoTo Oops
+        p = w & "\ro.txt"
+        StringToTextFile "keep", p
+        SetAttr p, vbReadOnly
+        Set ts = OpenTextFile(p, ForWriting, , encUtf7)
+        ts.Write "new"
+        On Error Resume Next
+        ts.Close
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 70, e, "Close of a UTF-7 stream open for writing on a read-only file raises"
+        Expect.AreEqual "keep", TextFileToString(p), "text of the read-only file after Close"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        On Error Resume Next
+        SetAttr p, vbNormal
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextStreamFlush_Utf7ReadOnlyFile_Raises70()
+        Expect.Begin
+        Dim w As String, p As String, ts As TextStream, e As Long
+        w = Sandbox.Fresh("TextStreamFlush_Utf7ReadOnlyFile_Raises70")
+        On Error GoTo Oops
+        p = w & "\ro.txt"
+        StringToTextFile "keep", p
+        SetAttr p, vbReadOnly
+        Set ts = OpenTextFile(p, ForWriting, , encUtf7)
+        ts.Write "new"
+        On Error Resume Next
+        ts.Flush
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 70, e, "Flush of a UTF-7 stream open for writing on a read-only file raises"
+        Expect.AreEqual "keep", TextFileToString(p), "text of the read-only file after Flush"
+        On Error Resume Next
+        ts.Close
+        Err.Clear
+        On Error GoTo Oops
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        On Error Resume Next
+        SetAttr p, vbNormal
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenTextFile_Utf7ForWriting_KeepsTextUntilClose()
+        Expect.Begin
+        Dim w As String, p As String, ts As TextStream
+        w = Sandbox.Fresh("OpenTextFile_Utf7ForWriting_KeepsTextUntilClose")
+        On Error GoTo Oops
+        p = w & "\a.txt"
+        StringToTextFile "keep", p
+        Set ts = OpenTextFile(p, ForWriting, , encUtf7)
+        Expect.AreEqual "keep", TextFileToString(p), "text of the file while a UTF-7 stream open for writing is open and nothing is written"
+        ts.Write "new"
+        ts.Close
+        Expect.AreEqual "new", TextFileToString(p, encUtf7), "text of the file after the UTF-7 stream is closed"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+End Module

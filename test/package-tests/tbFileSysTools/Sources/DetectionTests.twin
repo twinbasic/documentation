@@ -1,0 +1,117 @@
+' GetFileEncoding is an estimate: the cases where it is documented to give the wrong answer. Each
+' case checks the answer that the section states; the text of each file is in the encoding named
+' in the case, which GetFileEncoding does not report.
+[TestFixture]
+Module DetectionTests
+
+    [TestCase]
+    Public Sub GetFileEncoding_ShortUtf16WithoutZeroByte_IsSystemAnsi()
+        Expect.Begin
+        Dim w As String, s As String, c As Variant
+        w = Sandbox.Fresh("GetFileEncoding_ShortUtf16WithoutZeroByte_IsSystemAnsi")
+        On Error GoTo Oops
+        ' Eight kanji, 16 bytes with no zero byte and no control character, and not valid UTF-8.
+        For Each c In Array(&H65E5&, &H672C&, &H8A9E&, &H5165&, &H6587&, &H5B57&, &H4EBA&, &H8272&)
+            s = s & ChrW$(CLng(c))
+        Next
+        StringToTextFile s, w & "\a.txt", encUtf16
+        Expect.AreEqual CLng(encSystemAnsi), CLng(GetFileEncoding(w & "\a.txt")), "GetFileEncoding of eight Japanese characters in UTF-16 with no BOM and no zero byte"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFileEncoding_ShortUtf16Hiragana_IsUtf8()
+        Expect.Begin
+        Dim w As String, s As String, i As Long
+        w = Sandbox.Fresh("GetFileEncoding_ShortUtf16Hiragana_IsUtf8")
+        On Error GoTo Oops
+        ' Eight hiragana: every byte is below 128, so the bytes are valid UTF-8.
+        For i = 0 To 7
+            s = s & ChrW$(&H3042& + i)
+        Next
+        StringToTextFile s, w & "\a.txt", encUtf16
+        Expect.AreEqual CLng(encUtf8), CLng(GetFileEncoding(w & "\a.txt")), "GetFileEncoding of eight hiragana in UTF-16 with no BOM"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFileEncoding_Gb18030WithAccent_IsSystemAnsi()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("GetFileEncoding_Gb18030WithAccent_IsSystemAnsi")
+        On Error GoTo Oops
+        StringToTextFile "caf" & ChrW$(233) & " au lait", w & "\a.txt", encGB18030
+        Expect.AreEqual CLng(encSystemAnsi), CLng(GetFileEncoding(w & "\a.txt")), "GetFileEncoding of GB18030 text with an accented letter and no BOM"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFileEncoding_Utf7PureAscii_IsUtf8()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("GetFileEncoding_Utf7PureAscii_IsUtf8")
+        On Error GoTo Oops
+        StringToTextFile "plain text", w & "\a.txt", encUtf7
+        Expect.AreEqual CLng(encUtf8), CLng(GetFileEncoding(w & "\a.txt")), "GetFileEncoding of UTF-7 text that is pure ASCII, with no signature"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFileEncoding_Latin1AccentInLastByte_IsUtf8()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("GetFileEncoding_Latin1AccentInLastByte_IsUtf8")
+        On Error GoTo Oops
+        StringToTextFile "caf" & ChrW$(233), w & "\a.txt", encLatin1
+        Expect.AreEqual CLng(encUtf8), CLng(GetFileEncoding(w & "\a.txt")), "GetFileEncoding of Latin-1 text whose only accented letter is its last byte"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFileEncoding_Latin1AccentPastSample_IsUtf8()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("GetFileEncoding_Latin1AccentPastSample_IsUtf8")
+        On Error GoTo Oops
+        StringToTextFile String$(40000, "a") & ChrW$(233) & "t" & ChrW$(233), w & "\a.txt", encLatin1
+        Expect.AreEqual CLng(encUtf8), CLng(GetFileEncoding(w & "\a.txt")), "GetFileEncoding of Latin-1 text whose accented letters come after the first 32,768 bytes"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,168 @@
+' A pattern is also matched against the 8.3 short name: a.txtx has a short name that ends in .TXT,
+' so *.txt acts on it. GetFilePaths tests the name again and does not list it.
+[TestFixture]
+Module ShortNameTests
+
+    ' A file whose short name differs from its name. False, with a failed check, when the volume
+    ' creates no 8.3 names, so that a case cannot pass without having tested anything.
+    Private Function MakeShortNamedFile(ByVal Folder As String, ByVal Name As String) As Boolean
+        StringToTextFile "x", Folder & "\" & Name
+        MakeShortNamedFile = (Sandbox.ShortNameOf(Folder & "\" & Name, False) <> Name)
+        If Not MakeShortNamedFile Then Expect.Fail "the volume creates no 8.3 short name for the file " & Name
+    End Function
+
+    ' The same for a folder.
+    Private Function MakeShortNamedFolder(ByVal Folder As String, ByVal Name As String) As Boolean
+        CreateFolder Folder & "\" & Name
+        MakeShortNamedFolder = (Sandbox.ShortNameOf(Folder & "\" & Name, True) <> Name)
+        If Not MakeShortNamedFolder Then Expect.Fail "the volume creates no 8.3 short name for the folder " & Name
+    End Function
+
+    [TestCase]
+    Public Sub DeleteFile_Pattern_ActsOnShortNameMatch()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("DeleteFile_Pattern_ActsOnShortNameMatch")
+        On Error GoTo Oops
+        If MakeShortNamedFile(w, "a.txtx") Then
+            StringToTextFile "x", w & "\keep.log"
+            DeleteFile w & "\*.txt"
+            Expect.IsFalse FileExists(w & "\a.txtx"), "DeleteFile of *.txt deletes a.txtx, whose short name ends in .TXT"
+            Expect.IsTrue FileExists(w & "\keep.log"), "DeleteFile of *.txt leaves keep.log"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyFile_Pattern_ActsOnShortNameMatch()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("CopyFile_Pattern_ActsOnShortNameMatch")
+        On Error GoTo Oops
+        CreateFolder w & "\dst"
+        If MakeShortNamedFile(w, "a.txtx") Then
+            CopyFile w & "\*.txt", w & "\dst"
+            Expect.IsTrue FileExists(w & "\dst\a.txtx"), "CopyFile of *.txt copies a.txtx, whose short name ends in .TXT"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MoveFile_Pattern_ActsOnShortNameMatch()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("MoveFile_Pattern_ActsOnShortNameMatch")
+        On Error GoTo Oops
+        CreateFolder w & "\dst"
+        If MakeShortNamedFile(w, "a.txtx") Then
+            MoveFile w & "\*.txt", w & "\dst"
+            Expect.IsTrue FileExists(w & "\dst\a.txtx"), "MoveFile of *.txt moves a.txtx, whose short name ends in .TXT"
+            Expect.IsFalse FileExists(w & "\a.txtx"), "a.txtx is gone from its folder"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyFolder_Pattern_ActsOnShortNameMatch()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("CopyFolder_Pattern_ActsOnShortNameMatch")
+        On Error GoTo Oops
+        CreateFolder w & "\src"
+        CreateFolder w & "\dst"
+        If MakeShortNamedFolder(w & "\src", "d.txtx") Then
+            CopyFolder w & "\src\*.txt", w & "\dst"
+            Expect.IsTrue FolderExists(w & "\dst\d.txtx"), "CopyFolder of *.txt copies the folder d.txtx, whose short name ends in .TXT"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MoveFolder_Pattern_ActsOnShortNameMatch()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("MoveFolder_Pattern_ActsOnShortNameMatch")
+        On Error GoTo Oops
+        CreateFolder w & "\src"
+        CreateFolder w & "\dst"
+        If MakeShortNamedFolder(w & "\src", "d.txtx") Then
+            MoveFolder w & "\src\*.txt", w & "\dst"
+            Expect.IsTrue FolderExists(w & "\dst\d.txtx"), "MoveFolder of *.txt moves the folder d.txtx, whose short name ends in .TXT"
+            Expect.IsFalse FolderExists(w & "\src\d.txtx"), "d.txtx is gone from its folder"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DeleteFolder_Pattern_ActsOnShortNameMatch()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("DeleteFolder_Pattern_ActsOnShortNameMatch")
+        On Error GoTo Oops
+        CreateFolder w & "\src"
+        If MakeShortNamedFolder(w & "\src", "d.txtx") Then
+            CreateFolder w & "\src\keep"
+            DeleteFolder w & "\src\*.txt"
+            Expect.IsFalse FolderExists(w & "\src\d.txtx"), "DeleteFolder of *.txt deletes the folder d.txtx, whose short name ends in .TXT"
+            Expect.IsTrue FolderExists(w & "\src\keep"), "DeleteFolder of *.txt leaves the folder keep"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFilePaths_Pattern_LeavesOutShortNameMatch()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("GetFilePaths_Pattern_LeavesOutShortNameMatch")
+        On Error GoTo Oops
+        If MakeShortNamedFile(w, "a.txtx") Then
+            StringToTextFile "x", w & "\b.txt"
+            Expect.AreEqual 1, GetFilePaths(w, "*.txt").Count, "files that GetFilePaths lists for *.txt when a.txtx and b.txt exist"
+            Expect.AreEqual w & "\b.txt", GetFilePaths(w, "*.txt")(1), "the file that GetFilePaths lists for *.txt"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+End Module
