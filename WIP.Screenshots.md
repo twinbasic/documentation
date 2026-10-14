@@ -186,8 +186,9 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
 - **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE on its own claimed ports and
-  private desktop, and splits the big setups into parts, longest first; a full run is about
-  200 s in both themes (the jobs add up to about 1,250 s per theme, so six IDEs cannot do much better).
+  private desktop, and splits the big setups into parts, longest first; a full run with `--svg` is
+  about 17 minutes in both themes on BETA 1005: the jobs add up to about 5,900 s, and the longest
+  part, `forms-chapter`, takes about 450 s on its own, so six IDEs cannot do much better.
   `--jobs 1` runs one IDE per setup in table order. Per-run
   state lives on the connection (`c.shot`), never in module variables.
 - **Diffs**: `--diffs <dir>` (never under `docs/`) writes, for each picture that differs from the
