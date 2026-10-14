@@ -34,6 +34,9 @@ export const HANDLERS = {
   dot: 5,
   buildInfo: 6,
   render: 7,
+  helpArchive: 8,
+  writePdf: 9,
+  checkBook: 10,
 };
 
 // ── SAB layout ───────────────────────────────────────────────────────────────

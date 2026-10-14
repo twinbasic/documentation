@@ -47,7 +47,7 @@ export const GANTT_SECTION = {
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
   renderJoin: "Render", flushJoin: "Write",
   writeAssets: "Write", searchData: "Write", symbolIndex: "Write", helpArchive: "Write", addinProject: "Write", packageTests: "Write", writeAux: "Write",
-  writeOffline: "Write", writePdf: "Write",
+  writeOffline: "Write", bookPayload: "Write", writePdf: "Write",
   linkJoin: "Check", checkBook: "Check", checkReport: "Check",
 };
 const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write", "Check"];

@@ -68,7 +68,8 @@ import { checkPlaceholders, deriveCounts, deriveDownloads } from "./counts.mjs";
 import { computeNav } from "./nav.mjs";
 import { vendorAssets } from "./vendor-assets.mjs";
 import { computeSiteSeo } from "./seo.mjs";
-import { resolveBookChapters } from "./book.mjs";
+import { prerenderPartText, resolveBookChapters } from "./book.mjs";
+import { packBookPayload } from "./book-payload.mjs";
 import { loadData } from "./data.mjs";
 import { createMarkdownIt, buildLinkTables, diagramIsTall, serializeLinkTables } from "./render.mjs";
 import { assignPackageVersions } from "../lib/callout-labels.mjs";
@@ -89,7 +90,6 @@ import { writeSearchDataFromChunks } from "./search.mjs";
 import { writeOffline, enumerateVendoredThemeAssets } from "./offline.mjs";
 import { buildSitePathsSync, deriveOfflineCss } from "./offline-rewrite.mjs";
 import { normalizeBaseurl } from "./url.mjs";
-import { writePdf } from "./pdf.mjs";
 // Only the index derivation is a static import: it runs inside dispatch,
 // on the render fan-out's critical path, and check-tree.mjs pulls
 // nothing heavier than node:path. The rest of the check -- and with it
@@ -105,7 +105,7 @@ import {
   packAllPackageTests,
   writePackageTests,
 } from "./package-tests.mjs";
-import { helpArchiveStep, recheckHelpArchive } from "./help-archive-step.mjs";
+import { recheckHelpArchive } from "./help-archive-step.mjs";
 import { baselineWrites } from "./baseline.mjs";
 import { checkPageBaseline } from "./page-baseline.mjs";
 import { checkSymbolBaseline } from "./symbol-baseline.mjs";
@@ -1048,20 +1048,16 @@ const TASKS = {
   // Nothing else writes there before the Gantt injection, which runBuild does
   // after the graph; recheckHelpArchive checks that at the end. The Gantt chart
   // is injected after this task, so the archive holds BuildInfo.html without it.
+  // It runs on a worker (cpu-worker.mjs), so the main thread writes the book
+  // meanwhile; it reads skipOffline from dispatch's broadcast.
   helpArchive: {
     expected: ["flushJoin", "scss", "writeOffline"],
-    runOnMain: true,
-    async execute(_, ctx, state) {
-      const skipOffline = skipsOffline(ctx, state);
-      return helpArchiveStep({
-        src: path.relative(REPO_ROOT, ctx.srcRoot).replaceAll(path.sep, "/"),
-        offlineRoot: skipOffline ? null : `${ctx.destRoot}-offline`,
-        serve: !!ctx.opts.serve,
-        dryRun: !!ctx.opts.dryRun,
-        disabled: !!ctx.opts.skipHelpArchive,
-      });
+    handler: "helpArchive",
+    // The zip crosses the thread boundary as a plain Uint8Array; make it a
+    // Buffer again, without copying, for addinProject.
+    submit(out) {
+      if (out.zip) out.zip = Buffer.from(out.zip.buffer, out.zip.byteOffset, out.zip.byteLength);
     },
-    submit() {},
   },
 
   // Write the help add-in's project file, packed from add-in/, into the online
@@ -1133,6 +1129,40 @@ const TASKS = {
     submit() {},
   },
 
+  // Pack what writePdf needs for its worker (book-payload.mjs) and broadcast
+  // it. Depends on flushJoin (pages have renderedContent),
+  // resolveBookChapters (bookData._chapters refs into state.pages), and
+  // dot (SVG descriptors in staticFiles). The parts' subtitles and intros
+  // are rendered here, because markdown-it stays on the main thread.
+  bookPayload: {
+    // renderJoin is listed although execute() ignores it. The payload holds
+    // page.renderedContent, which render:i.submit fills -- and a dep
+    // count reaching zero is not a promise that those submits have run.
+    // It holds transitively today via flush:i being lane-pinned to
+    // render:i, which is not something to rely on in a list whose whole
+    // job is to say what must have merged. renderJoin is DONE by this
+    // point, so it costs nothing.
+    expected: ["flushJoin", "renderJoin", "dot", "resolveBookChapters"],
+    runOnMain: true,
+    execute(_, ctx, state) {
+      const skip = !!ctx.opts.dryRun || skipsPdf(ctx, state);
+      if (!skip) prerenderPartText(state.site.bookData, state.site.markdown);
+      return packBookPayload({
+        pages: state.pages,
+        staticFiles: state.staticFiles,
+        site: state.site,
+        highlightCss: state.site.highlightCss,
+        check: !!state.checkTrees,
+        skip,
+      });
+    },
+    // Before the task is marked done, so the data is queued on every lane
+    // before one can claim writePdf.
+    submit(sab, _state, scheduler) {
+      scheduler.pool.broadcastTaskData("book", sab);
+    },
+  },
+
   // Write redirect stubs + sitemap/robots. Waits for writeAssets (theme on
   // disk), searchData, deriveRedirects, and deriveSitemap.
   // Passes searchStats through to writeOffline (for search-data.js).
@@ -1173,33 +1203,13 @@ const TASKS = {
     },
   },
 
-  // Produce _site-pdf/. Depends on flushJoin (pages have renderedContent),
-  // resolveBookChapters (bookData._chapters refs into state.pages), and
-  // dot (SVG descriptors in staticFiles). Sources CSS directly:
+  // Produce _site-pdf/ on a worker (cpu-worker.mjs), while the main thread
+  // writes the offline tree and checks the links. Sources CSS directly:
   // tb-highlight.css from state.site.highlighter, print.css from staticFiles.
-  // Runs in parallel with writeAssets → searchData → writeAux → writeOffline.
   writePdf: {
-    // renderJoin is listed although execute() ignores it. writePdf reads
-    // page.renderedContent, which render:i.submit fills -- and a dep
-    // count reaching zero is not a promise that those submits have run.
-    // It holds transitively today via flush:i being lane-pinned to
-    // render:i, which is not something to rely on in a list whose whole
-    // job is to say what must have merged. renderJoin is DONE by this
-    // point, so it costs nothing.
-    expected: ["flushJoin", "renderJoin", "dot", "resolveBookChapters"],
-    runOnMain: true,
-    async execute(_, ctx, state) {
-      const skipPdf = skipsPdf(ctx, state);
-      if (ctx.opts.dryRun || skipPdf) return null;
-      return writePdf(state.pages, state.staticFiles, state.site, ctx.destRoot, {
-        tolerateMissingImages: ctx.opts.tolerateMissingImages,
-        highlightCss: state.site.highlightCss,
-        check: !!state.checkTrees,
-      });
-    },
-    submit() {
-      /* terminal */
-    },
+    expected: ["bookPayload"],
+    handler: "writePdf",
+    submit() {},
   },
 
   // ── Checks ────────────────────────────────────────────────────────
@@ -1316,26 +1326,13 @@ const TASKS = {
     submit() {},
   },
 
-  // The book is one 6.5 MB document with almost entirely internal
-  // fragments, written by a different task from a different string.
-  // Keeping it its own pass is cheaper than special-casing the chunk
-  // path for a single file.
+  // Checks the book on the lane that wrote it (cpu-worker.mjs), so the
+  // 6.5 MB string never crosses back to the main thread. Without --check
+  // writePdf keeps no book and this returns null.
   checkBook: {
     expected: ["writePdf"],
-    runOnMain: true,
-    async execute({ writePdf: pdfResult }, ctx, state) {
-      if (!state.checkTrees || !pdfResult?.checkBook) return null;
-      const { checkChunk, joinChunks, treeIndexFor, TREES } = await import("./check.mjs");
-      const root = ctx.destRoot + TREES.pdf.suffix;
-      const env = { root, tree: TREES.pdf, basePath: "", index: treeIndexFor(root, pdfResult.checkBook.rels) };
-      let chunk;
-      try {
-        chunk = checkChunk([{ destPath: "book.html", html: pdfResult.checkBook.html }], env);
-      } catch (err) {
-        chunk = { error: `book check failed: ${err.message}` };
-      }
-      return joinChunks([chunk], { root, tree: TREES.pdf, relFiles: ["book.html"] });
-    },
+    handler: "checkBook",
+    pin_to_predecessor: "writePdf",
     submit() {},
   },
 
