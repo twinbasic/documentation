@@ -424,6 +424,9 @@ describe("callout labels", () => {
     ["two builds", "BETA 1005, since BETA 984", /twice/],
     ["two versions", "1.0.0.1, 1.0.0.2", /twice/],
     ["an empty item", "BETA 1005,", /not a callout label/],
+    ["timeless with a build", "timeless, BETA 1005", /stands alone/],
+    ["timeless with a version", "1.0.0.4, timeless", /stands alone/],
+    ["timeless in capitals", "Timeless", /not a callout label/],
   ]) {
     test(`refused: ${name}`, () => assert.throws(() => title(`> [!NOTE] ${label}\n> body\n`), why));
   }
@@ -437,6 +440,12 @@ describe("callout labels", () => {
     assert.throws(() => title("> [!NOTE]\n> body\n", { packageVersion: "1.0.0.4" }), /has a label: 1\.0\.0\.4/);
     assert.equal(title("> [!NOTE] BETA 1005\n> body\n", { packageVersion: "1.0.0.4" }), `Note ${tag("BETA 1005")}`);
     assert.equal(title("> [!NOTE]\n> body\n", { packageVersion: "" }), "Note");
+    // timeless is a label, drawn as nothing, in a package section or out of one.
+    for (const packageVersion of ["1.0.0.4", "", undefined])
+      assert.equal(
+        applyPreRenderRewrites("> [!WARNING] timeless\n> body\n", md, { packageVersion }),
+        applyPreRenderRewrites("> [!WARNING]\n> body\n", md),
+      );
     // Left out, as the code-region gate's sweep leaves it, it is not checked.
     assert.equal(title(src), `Warning ${tag("1.0.0.4")}`);
   });

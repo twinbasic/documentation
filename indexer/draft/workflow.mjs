@@ -165,7 +165,7 @@ Then settle each doubt below that a run can settle:
 - Where the sources say the package replaces another object, run the same input on that object when this machine can: VBScript's under \`cscript //nologo <file>.vbs\`, printing with \`WScript.Echo\`; VB6 code with \`node scripts/vb6run.mjs\`. Write those files outside the repository, and never call \`MsgBox\` or \`InputBox\`. Where the two differ, the page says what the replaced object does, in a \`> [!NOTE]\`.
 - ${
     /^\d+\.\d+\.\d+\.\d+$/.test(pkg.version)
-      ? `Every callout in the section has a label, the rest of its \`[!TYPE]\` line, and the build refuses one without. One about what the package does names this version: \`> [!WARNING] ${pkg.version}\`. One`
+      ? `Every callout in the section has a label, the rest of its \`[!TYPE]\` line, and the build refuses one without. One about what the package does names this version: \`> [!WARNING] ${pkg.version}\`. The label \`timeless\` is for a callout no version can change, and the owner decides it: do not write it, but name a candidate in your report. One`
       : 'A callout'
   } about what this build of twinBASIC does names the build in its label, the rest of its \`[!TYPE]\` line: \`> [!NOTE] BETA <n>\`. Its text then starts with the fact, never with "In version ..." or "In BETA ...".
 - Correct the pages to what the runs printed, delete ${probe}, and run the section once more.

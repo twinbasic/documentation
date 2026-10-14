@@ -81,8 +81,8 @@ DeleteFolder work
 **Wildcards.** [**CopyFile**](#copyfile), [**CopyFolder**](#copyfolder), [**DeleteFile**](#deletefile), [**DeleteFolder**](#deletefolder), [**MoveFile**](#movefile) and [**MoveFolder**](#movefolder) accept `*` and `?` in the last component of the path that names what to act on. A wildcard in a destination is error 5. A pattern that matches nothing is an error, as described for each procedure. A failure part-way through a wildcard operation leaves the earlier matches changed; the sample under [**DeleteFile**](#deletefile) shows it.
 
 <!-- test: ShortNameTests.DeleteFile_Pattern_ActsOnShortNameMatch, ShortNameTests.CopyFile_Pattern_ActsOnShortNameMatch, ShortNameTests.MoveFile_Pattern_ActsOnShortNameMatch, ShortNameTests.CopyFolder_Pattern_ActsOnShortNameMatch, ShortNameTests.MoveFolder_Pattern_ActsOnShortNameMatch, ShortNameTests.DeleteFolder_Pattern_ActsOnShortNameMatch, ShortNameTests.GetFilePaths_Pattern_LeavesOutShortNameMatch -->
-> [!WARNING] 1.9.0.0
-> Windows matches a pattern against the 8.3 short name of a file as well as against its name. On a volume that creates short names, `*.txt` also matches `a.txtx`, whose short name ends in `.TXT`. [**CopyFile**](#copyfile), [**DeleteFile**](#deletefile) and [**MoveFile**](#movefile) act on such a file, and the procedures for folders match the short names of folders in the same way. The Scripting Runtime does the same. [**GetFilePaths**](#getfilepaths) does not list such a file: it tests each name against the pattern again.
+> [!WARNING] timeless
+> Windows matches a pattern against the 8.3 short name of a file as well as against its name. On a volume that creates short names, `*.txt` also matches `a.txtx`, whose short name ends in `.TXT`. [**CopyFile**](#copyfile), [**DeleteFile**](#deletefile) and [**MoveFile**](#movefile) act on such a file, as those of the Scripting Runtime do, and the procedures for folders match the short names of folders in the same way. [**GetFilePaths**](#getfilepaths), which the Scripting Runtime does not have, does not list such a file: it tests each name against the pattern again.
 
 ```tb check_build check_run
 Dim work As String

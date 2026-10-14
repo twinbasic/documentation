@@ -1829,7 +1829,11 @@ export function rewriteAdmonitions(src, md, { packageVersion } = {}) {
     }
     // One tag per item, a space between them so that the title reads as words
     // to a screen reader; the title is a flex box, which does not draw it.
-    const tags = label.items.map((i) => ` <span class="markdown-alert-label">${escapeMarkup(i.text)}</span>`).join("");
+    // `timeless` is for the tooling only and draws nothing.
+    const tags = label.items
+      .filter((i) => i.kind !== "timeless")
+      .map((i) => ` <span class="markdown-alert-label">${escapeMarkup(i.text)}</span>`)
+      .join("");
     // The body lines all share the same leading indent; strip it plus the
     // `>` marker and AT MOST ONE following space, which is what blockquote
     // unwrapping means.
