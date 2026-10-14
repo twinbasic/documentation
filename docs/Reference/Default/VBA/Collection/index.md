@@ -24,8 +24,8 @@ Sub Demo()
     Cars.Add "Toyota Mirai"               ' Add without a key.
 
     Debug.Print Cars.Count                ' 3
-    Debug.Print Cars("EV")                ' "Polestar 2" — Item is the default member.
-    Debug.Print Cars(3)                   ' "Toyota Mirai" — indexes are 1-based.
+    Debug.Print Cars("EV")                ' "Polestar 2": Item is the default member.
+    Debug.Print Cars(3)                   ' "Toyota Mirai": indexes are 1-based.
 
     Cars.Remove "ICE"                     ' Remove the Volvo XC40 by key.
     Cars.Remove 1                         ' Remove the Polestar 2 by index.
