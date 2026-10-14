@@ -32,7 +32,7 @@ Debug.Print x.XPathAttribute("//book[@id='2']", "cat")
 ' fiction
 ```
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > Several expressions that are valid XPath are read wrongly and raise no error: the parent step `..` selects nothing, `ancestor::a` is read as `child::a`, `//book[1]` selects one node where XPath selects one for each parent, and `and`, `or` and the comparison operators are found by plain searches of the text. [Defects in version 1.0.0.1](#defects) has each case.
 
 * TOC
@@ -255,7 +255,7 @@ Returns a new **Collection** of **cXmlNode** objects, numbered from 1, in the or
 
 The function handles no error. A program that calls it directly meets the errors that the evaluation raises: error 6 (*Overflow*) for a position too large for a **Long**, such as `[99999999999]`. The **XPath** methods of [**cXml**](cXml#xpath) and [**cXmlNode**](cXmlNode#xpath) catch it, write a line that begins `XPath query failed:` to the Debug Console, and return an empty collection.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.1
 > The time grows with the square of the number of nodes the query visits, because each node found is compared with all the ones found before. Finding 2,000 elements with `//item` takes about a second, and each doubling of the count multiplies the time by about four. [**SelectElements**](cXml#selectelements) has no such cost.
 
 ```tb check_build check_run
@@ -320,7 +320,7 @@ Each of these sections describes an expression that the engine reads differently
 ### The parent step
 {: #defect-parent .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > The step `..` selects nothing. The `parent::` axis works, so `parent::*` or `parent::book` takes its place.
 
 ```tb check_build check_run
@@ -339,7 +339,7 @@ Debug.Print x.XPath("/catalog/book/title/parent::book").Count
 ### Axes
 {: #defect-axes .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > An axis other than **child**, **descendant**, **parent**, **self** and **attribute** is not refused. The engine drops the axis and reads the rest of the step as a child step, so `ancestor::a` selects a child named `a`, where XPath selects an ancestor, and `following-sibling::b` selects a child named `b`. `descendant-or-self::` is read as `child::`.
 
 ```tb check_build check_run
@@ -359,7 +359,7 @@ Debug.Print x.XPathAttribute("/r/a/following-sibling::b", "id")
 ### Positions
 {: #defect-positions .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > A position counts the nodes that the step selected from one node of the step before. After `//`, those are all the descendants at any depth, so `//book[1]` is the first book in the whole document, where XPath gives the first book of each parent. A step written with `/` counts the children of each parent, as XPath does. Positions in any form other than `[n]`, `[last()]` and `[position()=n]` select nothing: `[last()-1]`, `[position()>1]`, `[position() = 2]` with spaces, and `[position()=last()]`. A position that is not a whole number is rounded to one, so `[1.5]` is the second node.
 
 ```tb check_build check_run
@@ -389,7 +389,7 @@ Next
 ### Logical operators
 {: #defect-logic .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > `and` and `or` are found by a search for the first ` and ` and the first ` or ` in the text of the predicate, and the search does not skip quoted strings or parentheses. The predicate is cut at the first ` and ` if there is one, and the two halves are read separately, so `or` binds tighter than `and`: `a and b or c` is read as `a and (b or c)`, and `a or b and c` as `(a or b) and c`. XPath binds `and` tighter. A string that holds ` and ` or ` or `, such as `@t='salt and pepper'`, cuts the string in two, and the predicate selects nothing. Parentheses are not read as grouping: `not(@x and @y)` and `(@x='1') and (@y='2')` select nothing.
 
 ```tb check_build check_run
@@ -426,7 +426,7 @@ XPath 1.0 selects `1 2` for the third and fourth queries, `2 3` for the fifth an
 ### Comparing attributes
 {: #defect-attributes .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > An attribute that a node does not have compares as an empty string, so `@p<10`, `@p!='x'` and `@p=''` keep the nodes that lack `p`; in XPath 1.0 a comparison with a missing attribute is false. A comparison operator is found by a search of the whole predicate, quoted strings included. A quoted string that holds `>`, `<` or `!=` therefore moves the split, and the attribute is looked up under a name such as `t='a`, which no node has, so it compares as an empty string: `@t='a<b'` and `@t='a!=b'` keep every node, and `@t='a>b'` keeps none, even a node whose `t` is `a>b`.
 
 ```tb check_build check_run
@@ -462,7 +462,7 @@ Debug.Print x.XPath("//i[@t='a<b']").Count
 ### Text and child comparisons
 {: #defect-text .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > A predicate that starts with `text()` is read as a test of the node's own text. Its operator is taken to be the first `=` in it, whatever comes before, so `text()!='Dune'` selects the nodes whose text equals `Dune`, and an operator without `=` (`text()>'Z'`) is ignored, so the predicate keeps every node that has text. A comparison with a child (`book[title='Dune']`) or with the node (`title[.='Dune']`) selects nothing. In `contains` and `starts-with`, a first argument that is the name of a child is taken as the text of the name: `contains(title, 'i')` asks whether the word `title` has an `i` in it, and is true for every node.
 
 ```tb check_build check_run
@@ -491,7 +491,7 @@ Next
 ### A bracket that is not closed
 {: #defect-brackets .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > A `[` with no `]` after it is dropped together with what follows it, and the step is read without the predicate. `//b[@id='1'` selects every `b`.
 
 ```tb check_build check_run
@@ -509,7 +509,7 @@ Debug.Print x.XPath("//b[").Count
 ### Slashes
 {: #defect-slashes .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > An empty step, as in `///`, ends the path, and the steps after it are not read. `/catalog///book` is read as `/catalog` and selects the root element.
 
 ```tb check_build check_run

@@ -1,6 +1,6 @@
 // Runs a built xCalendar probe exe on a private desktop.
 //
-//   node test/package-probes/xCalendar/run-exe.mjs <exe> <probe-ids> [--timeout S] [--desktop NAME] [--shots DIR]
+//   node test/package-tests/xCalendar/probe/run-exe.mjs <exe> <probe-ids> [--timeout S] [--desktop NAME] [--shots DIR]
 //
 // The exe is started as tbrun --exe starts it (launchOnDesktop: a private desktop, in a
 // kill-on-close job, so nothing appears on the user's desktop), and what it wrote with TbRun.Out
@@ -20,11 +20,11 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os, { tmpdir } from "node:os";
 import path from "node:path";
-import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../../../lib/cli.mjs";
-import { captureWindow, desktopWindows, killTree, launchOnDesktop } from "../../../scripts/lib/tb-ide.mjs";
-import { faultText, recordedFault } from "../../../scripts/lib/win-fault.mjs";
+import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../../../../lib/cli.mjs";
+import { captureWindow, desktopWindows, killTree, launchOnDesktop } from "../../../../scripts/lib/tb-ide.mjs";
+import { faultText, recordedFault } from "../../../../scripts/lib/win-fault.mjs";
 
-const USAGE = `usage: node test/package-probes/xCalendar/run-exe.mjs <exe> <probe-ids> [--timeout S] [--desktop NAME] [--shots DIR] [-h, --help]
+const USAGE = `usage: node test/package-tests/xCalendar/probe/run-exe.mjs <exe> <probe-ids> [--timeout S] [--desktop NAME] [--shots DIR] [-h, --help]
 
 Runs the xCalendar probe exe on a private desktop, with the scenarios <probe-ids> names
 (comma-separated, as listed at the top of src/Probe.twin), and prints what they report.

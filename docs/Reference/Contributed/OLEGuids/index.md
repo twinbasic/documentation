@@ -31,7 +31,7 @@ Private Function InPlaceWindow(ByVal Obj As Object) As LongPtr
 End Function
 ```
 
-> [!NOTE]
+> [!NOTE] 1.0.10.0
 > The package has no declaration named **IDispatch**. In a project that references **stdole**, as every default project does, the name is **stdole**'s declaration. A call through it is late-bound by name, and its four methods are not reached (see [IDispatch](../../../../Reference/COM-Interfaces/IDispatch#the-stdole-declaration)). The package's [IDispatchUnrestricted](IDispatchUnrestricted) declares the four methods, and an object is assigned to a variable of that type like any other interface.
 
 ```tb check_build

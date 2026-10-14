@@ -27,8 +27,8 @@ esc.Execute text
 Debug.Print text  ' aZZb
 ```
 
-> [!NOTE]
-> [**Self**](Self) and the four property setters ([**AsciiBase**](AsciiBase), [**EscapeString**](EscapeString), [**IsAsciiCharacter**](IsAsciiCharacter) and [**ReplacementString**](ReplacementString) with **Let**) are declared **Friend**, for [**Create**](Create) to use. A project that references the package can call them too (checked on BETA 1005), so the properties of an instance can be changed after it is created.
+> [!NOTE] BETA 1005
+> [**Self**](Self) and the four property setters ([**AsciiBase**](AsciiBase), [**EscapeString**](EscapeString), [**IsAsciiCharacter**](IsAsciiCharacter) and [**ReplacementString**](ReplacementString) with **Let**) are declared **Friend**, for [**Create**](Create) to use. A project that references the package can call them too, so the properties of an instance can be changed after it is created.
 
 ## Properties
 

@@ -1,0 +1,50 @@
+{
+  "version": "1.8.0.0",
+  "cases": {
+    "IsValidTests.IsValid_LowCountAboveHigh": {
+      "fails": "1 of 1 checks failed: IsValid of the pattern a{2,1}, whose lower count is above its upper count: expected False, got True"
+    },
+    "IsValidTests.LastErrorNumber_LowCountAboveHigh": {
+      "fails": "1 of 1 checks failed: LastErrorNumber of the pattern a{2,1} (invalid quantifier): expected -2147218496, got 0"
+    },
+    "IsValidTests.Test_LowCountAboveHighRaisesCompileError": {
+      "fails": "2 of 2 checks failed: Err.Number of Test(\"aa\") with the pattern a{2,1}: expected -2147218496, got 3000; Err.Description of Test(\"aa\") with the pattern a{2,1}: expected \"Invalid quantifier: a malformed '{n,m}' count (e.g. '{2,1}', or a number too large).\", got \"The specified print monitor is unknown.\""
+    },
+    "IsValidTests.Execute_LowCountAboveHighRaisesCompileError": {
+      "fails": "1 of 1 checks failed: Err.Number of Execute(\"aa\") with the pattern a{2,1}: expected -2147218496, got 3000"
+    },
+    "IsValidTests.Replace_LowCountAboveHighRaisesCompileError": {
+      "fails": "1 of 1 checks failed: Err.Number of Replace(\"aa\", \"x\") with the pattern a{2,1}: expected -2147218496, got 3000"
+    },
+    "IsValidTests.Split_LowCountAboveHighRaisesCompileError": {
+      "fails": "1 of 1 checks failed: Err.Number of Split(\"aa\") with the pattern a{2,1}: expected -2147218496, got 3000"
+    },
+    "IsValidTests.IsValid_InvalidPatternLeavesNoError": {
+      "fails": "1 of 2 checks failed: Err.Number after IsValid compiled the pattern (\\d+: expected 0, got -2147218495"
+    },
+    "IsValidTests.LastError_InvalidPatternLeavesNoError": {
+      "fails": "1 of 2 checks failed: Err.Number after LastError compiled the pattern (\\d+: expected 0, got -2147218495"
+    },
+    "IsValidTests.LastErrorNumber_InvalidPatternLeavesNoError": {
+      "fails": "1 of 2 checks failed: Err.Number after LastErrorNumber compiled the pattern (\\d+: expected 0, got -2147218495"
+    },
+    "PatternSyntaxTests.Test_BackreferenceToLaterGroupMatchesNothing": {
+      "fails": "2 of 2 checks failed: Test of \\1(a) on a (VBScript finds no match): expected False, got True; Test of \\1(a) on aa (VBScript finds no match): expected False, got True"
+    },
+    "PatternSyntaxTests.IsValid_BraceThatStartsNoQuantifier": {
+      "fails": "3 of 3 checks failed: IsValid of a{ (VBScript reads the brace as text): expected True, got False; IsValid of a{x} (VBScript reads the braces as text): expected True, got False; IsValid of \\p{L} (VBScript reads it as the text p{L}): expected True, got False"
+    },
+    "PatternSyntaxTests.Test_BraceThatStartsNoQuantifierIsText": {
+      "fails": "2 of 2 checks failed: Err.Number of Test of a{x} on a{x}: expected 0, got -2147218496; Test of a{x} on a{x} (VBScript reads the braces as text): expected True, got False"
+    },
+    "PatternSyntaxTests.Test_CommaAndMaximumOnlyIsText": {
+      "fails": "2 of 3 checks failed: first match of a{,2} in a{,2} (VBScript reads {,2} as text): expected \"a{,2}\", got \"a\"; Test of a{,2} on aa (VBScript reads {,2} as text): expected False, got True"
+    },
+    "ReplaceTests.Replace_TildeItemIsCopied": {
+      "fails": "1 of 1 checks failed: Replace(\"abc\", \"x$~y\") for the pattern a (VBScript copies $~): expected \"x$~ybc\", got \"xybc\""
+    },
+    "SearchAbortedTests.SearchAborted_DigitsWithoutXFinishAt5000": {
+      "fails": "1 of 2 checks failed: SearchAborted after Test of \\d+x on 5,000 digits and no x: expected False, got True"
+    }
+  }
+}

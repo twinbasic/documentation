@@ -1,0 +1,142 @@
+' Directory junctions: CopyFolder, DeleteFolder, GetFilePaths, FindInTextFiles and Folder.Size do not
+' enter one. Every junction leads to a folder inside the sandbox, and is removed with RmDir.
+[TestFixture]
+Module JunctionTests
+
+    ' tree\file1.txt (500 bytes), tree\sub\file2.txt (1000 bytes, with the text "needle") and the
+    ' junction tree\link that leads to tree\sub. False, with a failed check, when the volume cannot
+    ' make a junction.
+    Private Function MakeTree(ByVal Folder As String) As Boolean
+        CreateFolder Folder & "\tree\sub", True
+        StringToTextFile String$(500, "x"), Folder & "\tree\file1.txt"
+        StringToTextFile "needle" & String$(994, "y"), Folder & "\tree\sub\file2.txt"
+        MakeTree = Sandbox.MakeJunction(Folder & "\tree\link", Folder & "\tree\sub")
+        If Not MakeTree Then Expect.Fail "the volume could not make the directory junction"
+    End Function
+
+    [TestCase]
+    Public Sub CopyFolder_Junction_LeftOutOfCopy()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("CopyFolder_Junction_LeftOutOfCopy")
+        On Error GoTo Oops
+        If MakeTree(w) Then
+            CopyFolder w & "\tree", w & "\copy"
+            Expect.IsFalse FolderExists(w & "\copy\link"), "CopyFolder copies no folder for the junction"
+            Expect.IsTrue FileExists(w & "\copy\sub\file2.txt"), "CopyFolder copies the folder the junction leads to under its own name"
+            Expect.IsTrue FileExists(w & "\copy\file1.txt"), "CopyFolder copies the other files"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.RemoveJunction w & "\tree\link"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DeleteFolder_Junction_KeepsTarget()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("DeleteFolder_Junction_KeepsTarget")
+        On Error GoTo Oops
+        CreateFolder w & "\target"
+        CreateFolder w & "\tree2"
+        StringToTextFile "keep me", w & "\target\keep.txt"
+        If Sandbox.MakeJunction(w & "\tree2\link", w & "\target") Then
+            DeleteFolder w & "\tree2", True
+            Expect.IsFalse FolderExists(w & "\tree2"), "DeleteFolder removes the folder that holds a junction"
+            Expect.IsTrue FolderExists(w & "\target"), "the folder the junction leads to is still there"
+            Expect.IsTrue FileExists(w & "\target\keep.txt"), "the file in the folder the junction leads to is still there"
+        Else
+            Expect.Fail "the volume could not make the directory junction"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.RemoveJunction w & "\tree2\link"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFilePaths_Recursive_DoesNotEnterJunction()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("GetFilePaths_Recursive_DoesNotEnterJunction")
+        On Error GoTo Oops
+        If MakeTree(w) Then
+            Expect.AreEqual 2, GetFilePaths(w & "\tree", , , , True).Count, "files that a recursive GetFilePaths lists in a tree with a junction"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.RemoveJunction w & "\tree\link"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindInTextFiles_Recursive_DoesNotEnterJunction()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("FindInTextFiles_Recursive_DoesNotEnterJunction")
+        On Error GoTo Oops
+        If MakeTree(w) Then
+            Expect.AreEqual 1, FindInTextFiles(w & "\tree", "needle", , True).Count, "files that a recursive FindInTextFiles finds in a tree with a junction"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.RemoveJunction w & "\tree\link"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FolderSize_Junction_CountsEachFileOnce()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("FolderSize_Junction_CountsEachFileOnce")
+        On Error GoTo Oops
+        If MakeTree(w) Then
+            Expect.AreEqual 1500, CLng(GetFolder(w & "\tree").Size), "Folder.Size of a tree of 1,500 bytes with a junction to one of its folders"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.RemoveJunction w & "\tree\link"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FolderSubFolders_Junction_StillListed()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("FolderSubFolders_Junction_StillListed")
+        On Error GoTo Oops
+        If MakeTree(w) Then
+            Expect.AreEqual 2, GetFolder(w & "\tree").SubFolders.Count, "folders in Folder.SubFolders of a tree with a junction"
+        End If
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.RemoveJunction w & "\tree\link"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,84 @@
+' tbRegExp: a search that backtracks without end, such as (a+)+b on thirty a, gives up when its
+' step budget runs out instead of hanging, as VBScript's RegExp does. It raises nothing, returns
+' what was found before, and RegExp.SearchAborted says so. A long match is not cut short.
+[TestFixture]
+Module SearchGivesUpTests
+
+    [TestCase]
+    Public Sub Test_CatastrophicPatternGivesUpWithoutError()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "(a+)+b"
+        Err.Clear
+        Expect.IsFalse re.SearchAborted, "SearchAborted of an object that has not searched"
+        Expect.IsFalse re.Test(String$(30, "a")), "Test of (a+)+b on thirty a"
+        Expect.AreEqual 0, Err.Number, "Err.Number after the search gave up"
+        Expect.IsTrue re.SearchAborted, "SearchAborted after Test of (a+)+b on thirty a"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Execute_CatastrophicPatternKeepsMatchesFound()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Global = True
+        re.Pattern = "x|(a+)+b"
+        Dim m As MatchCollection
+        Set m = re.Execute("xx" & String$(30, "a"))
+        Expect.AreEqual 2, m.Count, "matches of x|(a+)+b in xx and thirty a"
+        Expect.IsTrue re.SearchAborted, "SearchAborted after that Execute"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Replace_CatastrophicPatternReplacesMatchesFound()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Global = True
+        re.Pattern = "x|(a+)+b"
+        Expect.AreEqual "--" & String$(30, "a"), re.Replace("xx" & String$(30, "a"), "-"), "Replace of x|(a+)+b in xx and thirty a"
+        Expect.IsTrue re.SearchAborted, "SearchAborted after that Replace"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Split_CatastrophicPatternSplitsAtMatchesFound()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Global = True
+        re.Pattern = "x|(?:a+)+b"
+        Dim c As Collection
+        Set c = re.Split("xx" & String$(30, "a"))
+        Expect.AreEqual 3, c.Count, "pieces of xx and thirty a split at x|(?:a+)+b"
+        Expect.AreEqual String$(30, "a"), c(3), "last piece"
+        Expect.IsTrue re.SearchAborted, "SearchAborted after that Split"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Search_LongMatchOfAStarIsNotCut()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "a*"
+        Dim m As MatchCollection
+        Set m = re.Execute(String$(1000000, "a"))
+        Expect.AreEqual 1, m.Count, "matches of a* in 1,000,000 a"
+        Expect.AreEqual 1000000, m(0).Length, "length of the match of a* in 1,000,000 a"
+        Expect.IsFalse re.SearchAborted, "SearchAborted after that Execute"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Search_LongMatchOfDotStarIsNotCut()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "^.*$"
+        Dim m As MatchCollection
+        Set m = re.Execute(String$(1000000, "a"))
+        Expect.AreEqual 1, m.Count, "matches of ^.*$ in 1,000,000 a"
+        Expect.AreEqual 1000000, m(0).Length, "length of the match of ^.*$ in 1,000,000 a"
+        Expect.IsFalse re.SearchAborted, "SearchAborted after that Execute"
+        Expect.Done
+    End Sub
+
+End Module

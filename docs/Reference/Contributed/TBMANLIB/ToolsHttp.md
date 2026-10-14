@@ -226,7 +226,7 @@ Meant to decode a URL written in UTF-8.
 
 Syntax: **ToolsHttp.UrlDecodeUtf8** ( *Url* ) **As String**
 
-> [!NOTE]
+> [!NOTE] 1.0.0.29
 > The function raises error 13, *Type mismatch*, for every text that contains a `%`, and returns the text correctly only when it has none (a `+` becomes a space). The code compares a **Long** with an empty string at its first `%`.
 
 ### UrlEncodUtf8
@@ -238,7 +238,7 @@ Syntax: **ToolsHttp.UrlEncodUtf8** ( *szInput* ) **As String**
 
 *szInput* is a **String** (a **Variant**). A character below hex 80 is copied as it is, so a space, `&` and `=` stay: only the other characters are escaped. A character from hex 1000 up becomes three escapes, `%E4%B8%AD` for the character U+4E2D. The function returns an empty string for an empty text.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > A character from hex 80 to hex FFF, such as `é`, is written with only one `%`: `é` becomes `%C3A9` and U+0080 becomes `%C280`. The second byte has no `%` of its own, so the result is not a valid escape, and no decoder gets the character back. Characters from hex 1000 up, such as the Chinese ones, are right.
 
 ```tb check_build check_run

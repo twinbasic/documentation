@@ -28,7 +28,7 @@ The function returns **True** when both the open and the delete operations retur
 
 Deleting a value entry is permanent. The value cannot be recovered through this API once removed.
 
-> [!IMPORTANT]
+> [!IMPORTANT] timeless
 > The calling process must have write access to the target key. Standard user processes typically have write access under **HKEY_CURRENT_USER** but may require elevation for keys under **HKEY_LOCAL_MACHINE**.
 
 ### Example

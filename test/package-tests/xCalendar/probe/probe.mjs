@@ -2,7 +2,7 @@
 // on a private desktop. What the package's xCalendar control does at run time, for the pages under
 // docs/Reference/Contributed/xCalendar/: see README.md beside this file.
 //
-//   node test/package-probes/xCalendar/probe.mjs [--arch win32|win64] [--port N] [--shots DIR] [--form FILE] [--set K=JSON] <ids> [<ids> ...]
+//   node test/package-tests/xCalendar/probe/probe.mjs [--arch win32|win64] [--port N] [--shots DIR] [--form FILE] [--set K=JSON] <ids> [<ids> ...]
 //
 // 1. stage.mjs writes the source tree to %TEMP%\xcal-probe\tree-<port>.
 // 2. tbrun builds it (its [RunAfterBuild] Sub only prints; no form opens in the IDE), with
@@ -19,10 +19,10 @@ import {
   parseCli,
   printHelpAndExit,
   withUsageError,
-} from "../../../lib/cli.mjs";
+} from "../../../../lib/cli.mjs";
 import { stageTree } from "./stage.mjs";
 
-const USAGE = `usage: node test/package-probes/xCalendar/probe.mjs [--arch win32|win64] [--port N] [--shots DIR] [--form FILE] [--set K=JSON] <ids> [<ids> ...] [-h, --help]
+const USAGE = `usage: node test/package-tests/xCalendar/probe/probe.mjs [--arch win32|win64] [--port N] [--shots DIR] [--form FILE] [--set K=JSON] <ids> [<ids> ...] [-h, --help]
 
 Builds the xCalendar probe (src/) with tbrun, then runs the exe on a private desktop once for each
 <ids>, a comma-separated list of the scenario ids listed at the top of src/Probe.twin.
@@ -69,7 +69,7 @@ const { arch, port } = withUsageError(
 );
 
 const here = import.meta.dirname;
-const repo = path.resolve(here, "..", "..", "..");
+const repo = path.resolve(here, "..", "..", "..", "..");
 
 // 1. The source tree.
 let tree;

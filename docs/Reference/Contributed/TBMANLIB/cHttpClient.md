@@ -54,11 +54,11 @@ Several error texts of the class are written in Chinese. The ones that are not a
 | 53 | the file does not exist | **UploadFile** |
 | 1 | no download path was found, or the file could not be read | **FinishDownloadFile**, **UploadFile** |
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The class ignores every certificate error: an expired certificate, one from an unknown authority and one issued for another name are all accepted. An HTTPS request therefore encrypts the traffic, but does not prove who the server is, and a program that sends a password or a key with it can send it to an impostor.
 
-> [!NOTE]
-> In BETA 1005 the compiler refuses an assignment written through a public dictionary field of an object, such as `Http.RequestHeaders("X-Key") = "1"`, with TB5090. Write the default member out: `Http.RequestHeaders.Item("X-Key") = "1"`. Reading `Http.RequestHeaders("X-Key")` is accepted.
+> [!NOTE] BETA 1005
+> The compiler refuses an assignment written through a public dictionary field of an object, such as `Http.RequestHeaders("X-Key") = "1"`, with TB5090. Write the default member out: `Http.RequestHeaders.Item("X-Key") = "1"`. Reading `Http.RequestHeaders("X-Key")` is accepted.
 
 ## Request settings
 
@@ -67,7 +67,7 @@ Several error texts of the class are written in Chinese. The ones that are not a
 
 A **String**, the media type of the body. It is empty in a new object. [**SetRequestContentType**](#setrequestcontenttype) sets it from a number, and the constants of [**Consts**](Consts) and [**ToolsHttp**](ToolsHttp) are the usual values. [**Fetch**](#fetch) reads it to choose the body and, when the headers have no `Content-Type`, to set that header.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The `Content-Type` header is put into [**RequestHeaders**](#requestheaders) by the first request of an object and stays there. A later change of **RequestContentType** changes the body that is built, but not the header: after a form request, `SetRequestContentType JsonString` sends the JSON text with the header `application/x-www-form-urlencoded`. Set the item as well, `Http.RequestHeaders.Item("Content-Type") = "application/json"`, or use a new object.
 
 [**UploadFile**](#uploadfile) sets this field to its `multipart/form-data` value, with the boundary, and leaves it, so a request after an upload is sent with that content type unless the program sets it again.
@@ -92,7 +92,7 @@ A **Scripting.Dictionary** of the request headers: the keys are the header names
 
 A **Scripting.Dictionary** of the values of a form: the keys are the field names. When the content type is `application/x-www-form-urlencoded` and the call gives no body, [**Fetch**](#fetch) sends `name=value` pairs joined by `&`, in the order they were added. It is emptied after each request.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The names and values are written as they are, without URL encoding. A value with a space, `&`, `=` or `%` produces a body that a server reads as other fields: `Form.Item("city") = "A B&C"` is sent as `city=A B&C`. Such a value has to be escaped by the program before it is added; [**ToolsHttp.UrlEncode**](ToolsHttp#urlencode) does that for text in the ANSI code page.
 
 ### RequestDataJson
@@ -107,7 +107,7 @@ If the document is empty, the request has no body and goes with `Content-Length:
 
 A **Scripting.Dictionary** of query values. When it has items, [**Fetch**](#fetch) adds them to the URL, after a `?` or, if the URL has one, a `&`. It is emptied after each request.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The pairs are written after the fixed name `ver`: the URL gets `?ver=` followed by the pairs joined by `&`. With the items `a` = 1 and `b` = 2, the request goes to `?ver=a=1&b=2`: a server reads a parameter `ver` whose value is `a=1`, and a parameter `b`. The name of the first item is lost, and no item is sent as a parameter of that name. The values are not URL encoded either. Put the query values in the URL text instead, which the call sends as given.
 
 ### RequestDataBody
@@ -231,7 +231,7 @@ Syntax: *object*.**DownloadFile** ( *url* **,** *savePath* [ **,** *Overwrite* ]
 
 Sends the request with [**SendGet**](#sendget) (so a 4xx or 5xx status is raised as in **Fetch**), raises an error for a status other than 200, and writes the body to the file with [**cToolsStream.SaveFileAsBinary**](cToolsStream#savefileasbinary). It returns **True**. The test for **Overwrite** comes after the request, so the answer has been received when error 58 is raised; the file is not changed.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The call returns **True** also when the file could not be written, for example for a folder that does not exist: **SaveFileAsBinary** returns **False** there, and **DownloadFile** does not look at it. Check that the file exists after the call.
 
 ### DownloadFileAsync
@@ -284,8 +284,8 @@ Syntax: *object*.**FollowRedirect** ( [ *RedirectMethod* ] ) **As cHttpClient**
 
 Reads the address with [**GetRedirectUrl**](#getredirecturl) and sends a GET request to it (for 307 and 308, the given method). Each call counts, and error 310 is raised when the count exceeds [**MaxRedirects**](#maxredirects); [**ResetRedirectCount**](#resetredirectcount) sets the count to 0. The method needs [**EnableRedirects**](#enableredirects) set to **False** with [**AllowRedirects**](#allowredirects), or no redirect answer is left to follow. It returns the object itself, and does nothing if the last answer had no `Location` header.
 
-> [!NOTE]
-> The method cannot send a request in BETA 1005. The address comes from [**ResponseHeaders**](#responseheaders), which cuts a value at its first colon, so `http://host/path` is read as `http`, and WinHTTP raises error -2147012890, *the URL does not use a recognized protocol*. A `Location` header with a relative address, such as `/path`, has no colon and is read whole, but WinHTTP refuses it as well. A program that has to follow a redirect leaves **EnableRedirects** at **True**, so that WinHTTP follows it.
+> [!NOTE] 1.0.0.29
+> The method cannot send a request. The address comes from [**ResponseHeaders**](#responseheaders), which cuts a value at its first colon, so `http://host/path` is read as `http`, and WinHTTP raises error -2147012890, *the URL does not use a recognized protocol*. A `Location` header with a relative address, such as `/path`, has no colon and is read whole, but WinHTTP refuses it as well. A program that has to follow a redirect leaves **EnableRedirects** at **True**, so that WinHTTP follows it.
 
 ### GetRedirectUrl
 {: .no_toc }
@@ -482,7 +482,7 @@ The body has a part with the file and a part for each item of *additionalFormDat
 
 The call sends neither the items of **RequestHeaders** nor the extra header of [**Fetch**](#fetch), and it follows redirects as **EnableRedirects** says. It leaves two things behind: **RequestContentType** keeps the multipart value, and **RequestHeaders** gets an item `Content-Length` with the size of the body. A later request therefore has the multipart content type, as the warning at [**RequestContentType**](#requestcontenttype) says. The `Content-Length` item does not reach the server with a later GET request.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.29
 > A call that fails with a status or a timeout raises the right number but a general text: *Application-defined or object-defined error* for a status, *Automation error* for error 900. The real text, such as `上传失败: 404#Not Found` (*the upload failed*), is in [**LastError**](#lasterror).
 
 ```tb check_build

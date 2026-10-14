@@ -32,7 +32,7 @@ Each value's data is converted to a **String** as follows:
 - **REG_BINARY** --- the bytes written in order as two-digit hexadecimal pairs with no separators.
 - Any other type, such as **REG_MULTI_SZ** --- the string `"Unsupported type: "` followed by the numeric type code.
 
-> [!NOTE]
+> [!NOTE] 1.0.1.1
 > The enumeration stops at the first value that cannot be enumerated or read (for example, a value name longer than 259 characters, which does not fit the 260-character name buffer), and the function returns the entries collected up to that point.
 
 ### Example

@@ -27,8 +27,8 @@ Kill Path
 ' True
 ```
 
-> [!WARNING]
-> In version 1.0.0.29, [**LoadFileAsText**](#loadfileastext) and [**SaveFileAsText**](#savefileastext) leave the stream open, and neither closes it first. That breaks the next call of either on the same object, and the shared **ToolsStream** is such an object for the whole run of the program:
+> [!WARNING] 1.0.0.29
+> [**LoadFileAsText**](#loadfileastext) and [**SaveFileAsText**](#savefileastext) leave the stream open, and neither closes it first. That breaks the next call of either on the same object, and the shared **ToolsStream** is such an object for the whole run of the program:
 >
 > - A **LoadFileAsText** that finds the stream open raises error 3705, *Operation is not allowed when the object is open*, before it reads anything. It finds it open after any earlier text call, a failed one included.
 > - A **SaveFileAsText** that finds the stream open writes its text over the text the stream still holds, from the start, and saves the whole stream. When the new text is shorter than the old, the end of the old text stays in the file: after saving `0123456789` and then `abc`, the file holds `abc3456789`. No error is raised.
@@ -216,7 +216,7 @@ Syntax: **ToolsStream.SaveFileAsText** ( *FileName* [ **,** *Data* ] [ **,** *Ch
 
 The function opens the stream if it is closed, sets its character set, writes the text into it and saves the file. It leaves the stream open. The function adds no line break to the text. See the warning at the top of the page for what happens when the stream is already open.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The function always returns **False**. Its result is never set, even when the file was written. A program cannot use the result to see whether the call worked, and has to handle the error that the stream raises.
 
 ```tb check_build check_run
@@ -261,7 +261,7 @@ Syntax: **ToolsStream.WriteLine** ( *Text* [ **,** *Line* ] ) **As Boolean**
 *Line*
 : *optional* A **Long**. When it is greater than 0, it is stored in [**LineNumber**](#linenumber) first.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.29
 > The function raises error 13 every time line mode is on. It adds the line to the collection with `LineData.Add Text, LineNumber`, and a collection takes a **String** as the key of an item, not a **Long**. Items can be added to **LineData** directly with its own **Add**. When line mode is off, the function raises error 1 with a Chinese message that means *line reading and writing is not switched on*.
 
 ## See Also

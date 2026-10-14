@@ -37,7 +37,7 @@ When the user chooses **OK**, [**ShowDialog**](#showdialog) stores the face, the
 
 The face list holds every font that Windows lists for the screen, including the vertical variants, whose names begin with `@`: the class sets no flag that hides them. The list of styles, the script box and the colors depend on the face and on Windows, and the class reads neither the style name nor the script that the user chose, only the weight and the italic bit.
 
-> [!WARNING]
+> [!WARNING] 1.1.0.0
 > **ShowDialog** also returns **False**, without showing a dialog, when the call to Windows fails. A **MinSize** above 0 with **MaxSize** left at 0, or a **MinSize** above **MaxSize**, makes it fail. The class does not read the error code, so the program cannot tell such a failure from a **Cancel**. Set both [**MinSize**](#minsize) and [**MaxSize**](#maxsize), or neither.
 
 ## Properties
@@ -123,7 +123,7 @@ Syntax: *object*.**ForceFontExist** [ **=** *value* ]
 
 A **Boolean**, **True** by default. When it is **True** and the face box holds a name that is not in the list, **OK** shows a message, *There is no font with that name. Choose a font from the list of fonts.*, and the dialog stays open; **Cancel** then returns **False** and keeps [**FaceName**](#facename). When it is **False**, **OK** closes the dialog.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > With **ForceFontExist** **False** and a [**FaceName**](#facename) that is not installed, **OK** returns **True** and sets **FaceName** to an empty string.
 
 ```tb check_build
@@ -185,7 +185,7 @@ Syntax: *object*.**MinSize** [ **=** *value* ]
 
 A **Long**, 0 by default, which means no limit. Above 0, [**ShowDialog**](#showdialog) sets `CF_LIMITSIZE` and passes the value as the smallest size. The size list then starts at the smallest standard size not below it.
 
-> [!WARNING]
+> [!WARNING] 1.1.0.0
 > A **MinSize** above 0 needs a [**MaxSize**](#maxsize) of at least the same value. With **MaxSize** left at 0, [**ShowDialog**](#showdialog) returns **False** at once, without a dialog, as if the user had cancelled.
 
 ```tb check_build

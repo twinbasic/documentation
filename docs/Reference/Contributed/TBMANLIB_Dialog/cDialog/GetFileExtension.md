@@ -22,7 +22,7 @@ Syntax: *object*.**GetFileExtension** ( *strFullPath* ) **As String**
 
 **GetFileExtension** returns the extension with its period: `.txt` for `C:\Docs\summary.txt`. A string with no period gives an empty string. Of `archive.tar.gz` only `.gz` is returned, and a name that ends with a period gives `.`.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The method searches the whole string for the last period, not the file name only. A period in a folder name is taken for the start of an extension when the file name has none: `C:\my.dir\notes` gives `.dir\notes`. [**GetFileNameWithoutExt**](GetFileNameWithoutExt) looks in the file name only, and gives `notes` for the same path.
 
 The method works on text only. It does not check that the file exists, and it reads no property of the object.

@@ -89,8 +89,8 @@ Debug.Print r.Left & " " & r.Top & " " & r.Right & " " & r.Bottom
 
 ## Known problems in version 1.0.0.1
 
-> [!WARNING]
-> In version 1.0.0.1, [**ScrollRegion**](#scrollregion) moves a region by less than the distance asked for when the region starts closer to the top or left edge than that distance, and clears the full distance, so cells are lost without an error. A [**WriteAt**](#writeat), [**FillRect**](#fillrect) or [**CopyRegion**](#copyregion) with a negative column or row makes the next [**Flush**](#flush) draw nothing, and raises no error; see [The dirty rectangle](#the-dirty-rectangle).
+> [!WARNING] 1.0.0.1
+> [**ScrollRegion**](#scrollregion) moves a region by less than the distance asked for when the region starts closer to the top or left edge than that distance, and clears the full distance, so cells are lost without an error. A [**WriteAt**](#writeat), [**FillRect**](#fillrect) or [**CopyRegion**](#copyregion) with a negative column or row makes the next [**Flush**](#flush) draw nothing, and raises no error; see [The dirty rectangle](#the-dirty-rectangle).
 
 ## Constructor
 

@@ -155,7 +155,7 @@ Syntax: *object*.**DeleteColumn** ( [ *ColumnNumber* ] ) **As Boolean**
 
 The function needs line 1 to exist; when it does not, it returns **False** and sets [**LastError**](#lasterror). Otherwise it removes the column from every line, its title and its width, and returns **True**. The other columns keep their numbers.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > Only the last column can be removed without damage. A column in front of others leaves a gap in the column numbers, which the other methods do not expect. [**SaveTo**](#saveto) writes the columns for the numbers 1 to the new count of columns, so it writes an empty field in the place of the missing one and leaves out the last column: after removing column 2 of three, a line `a,b,c` is saved as `a,`. [**value**](#value) with the old numbers still finds the fields that remain.
 
 ```tb check_build check_run
@@ -232,7 +232,7 @@ Returns the object itself. The file is read as described in *The file format*. *
 
 An error, such as a file that does not exist, is not raised. It is caught, [**LastError**](#lasterror) is set to its number, a `#`, the description, a colon and the path, and **Data** is not changed.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.29
 > A blank line in the file leaves a gap in the line numbers of **Data**: for a file of three lines whose second is blank, the keys are 1 and 3, and the count is 2. [**NewLine**](#newline) numbers the new line with the count plus 1, which here is 3, a line that exists, and raises error 457, *This key is already associated with an element of this collection*. Lines can then not be added until the gap is gone.
 
 ```tb check_build check_run
@@ -276,7 +276,7 @@ Syntax: *object*.**NewColumn** ( *Title* [ **,** *Width* ] [ **,** *Content* ] )
 
 The new column gets the number after the last column of each line. A table with no lines gets no column, and no title.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The function always returns **False**, also when it has added the column: the result is never set. A program cannot use it to see whether the call worked.
 
 ```tb check_build check_run
@@ -344,7 +344,7 @@ Syntax: *object*.**SaveTo** ( *FilePath* ) **As Boolean**
 
 Writes the lines of [**Data**](#data) in the order of their keys, each as described in *The file format*, and returns **True**. When an error occurs, such as a folder that does not exist, it returns **False** and [**LastError**](#lasterror) holds its number, a `#` and the description. The titles in [**HeadTitle**](#headtitle) are not written.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The file is created, or emptied if it exists, before the first field is written. When a field holds a character that the code page of the system does not have, such as `ChrW(&H4E2D)` on a system with the Western code page 1252, writing it fails with error 5, the function returns **False**, and the file is left with no content. The previous content of a file is lost.
 
 ```tb check_build check_run
@@ -415,7 +415,7 @@ Syntax: *object*.**SetHeadTitleWidthByDic** ( *Dic* ) **As Boolean**
 
 For each key of *Dic* that has an entry in [**HeadTitleWidth**](#headtitlewidth), the width is stored; other keys are skipped. The widths are not limited by [**HeadTitleWidthMax**](#headtitlewidthmax).
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The function always returns **False**, also when it has stored the widths: the result is never set.
 
 ### SetLine

@@ -46,7 +46,7 @@ Syntax: *object*.**Enabled** [ = *value* ]
 *value*
 : A **Boolean**. **False** suppresses events; **True** allows them.
 
-> [!NOTE]
+> [!NOTE] 1.0.7.0
 > **Enabled** defaults to **True** at construction. A freshly constructed **TwinTimer** with **Interval** = `0` (the initial default) does not fire until **Interval** is set to a positive value.
 
 ### Interval
@@ -61,7 +61,7 @@ Syntax: *object*.**Interval** [ = *milliseconds* ]
 *milliseconds*
 : A non-negative **Long**. A value of `0` stops the timer. A negative value raises run-time error 380 (Invalid property value).
 
-> [!NOTE]
+> [!NOTE] timeless
 > The Win32 `SetTimer` function raises an interval below 10 ms to 10 ms, and delivers its timer messages at the resolution of the system clock, typically 15--16 ms on standard Windows configurations. A short interval therefore does not give sub-15 ms accuracy.
 
 ## Events

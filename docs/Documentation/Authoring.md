@@ -869,11 +869,49 @@ Three severities, used distinctly:
 - `> [!IMPORTANT]` --- requirements that affect correctness, such as admin rights, threading constraints, or ordering.
 - `> [!WARNING]` --- operations that can corrupt state or lose data.
 
-A known defect in twinBASIC follows the same scale. A defect that silently gives a wrong result --- a function that returns the wrong value and raises no error --- is a `> [!WARNING]` until a fixed build is released, because nothing tells the reader their data is wrong. A defect that crashes the program is a `> [!WARNING]` too, because unsaved work is lost. So is a defect whose error hides a silent part, such as a procedure that runs twice before the error is raised. A defect the reader cannot miss and that loses nothing, such as an error raised or a statement the compiler refuses, is a `> [!NOTE]`. Either callout names the build it applies to. Once a fixed build is out, remove the callout and describe the correct behaviour with no mention of the defect: the documentation is not a record of past defects.
+A known defect in twinBASIC follows the same scale. A defect that silently gives a wrong result --- a function that returns the wrong value and raises no error --- is a `> [!WARNING]` until a fixed build is released, because nothing tells the reader their data is wrong. A defect that crashes the program is a `> [!WARNING]` too, because unsaved work is lost. So is a defect whose error hides a silent part, such as a procedure that runs twice before the error is raised. A defect the reader cannot miss and that loses nothing, such as an error raised or a statement the compiler refuses, is a `> [!NOTE]`. Either callout names the build it applies to, in its label. Once a fixed build is out, remove the callout and describe the correct behaviour with no mention of the defect: the documentation is not a record of past defects.
 
 Where twinBASIC and VB6 behave differently, say what VB6 does. Check it in VB6 --- [`vb6run.mjs`](Tools-Defects#vb6run) builds and runs a sample there --- rather than writing it from memory. Where twinBASIC's behaviour is the intended one, the VB6 behaviour goes in a `> [!NOTE]`. Inside a defect's `> [!WARNING]` it is one sentence, such as "VB6 raises error 6, *Overflow*."
 
 Use one callout per concern, and only for genuine notes: plain "why this is useful" prose stays a plain paragraph.
+
+### What a callout applies to
+
+A callout that is true of one twinBASIC build, or of one version of a package, says so in its label: the rest of the `[!TYPE]` line. The page shows each item of the label as a tag after the callout's title.
+
+```md
+> [!WARNING] BETA 1005
+> **DateAdd** with the "m", "q" or "yyyy" interval does not stop at the end of a shorter month.
+```
+
+- `BETA 1005` --- true of that build, the usual label of a defect.
+- `since BETA 984` --- true from that build on.
+- `1.0.0.4` --- true of that version of the package whose section the page is in, written with all four parts.
+- `1.6.151.1, BETA 1005` --- both, separated by a comma.
+- `timeless` --- true of every build and every version: a fact of Windows or COM, behaviour the package exists to reproduce, such as the Scripting Runtime's for a replacement of it, or a design decision the package's sources state. It stands alone, and the page shows no tag for it.
+
+The text then starts with the fact itself, not with "In twinBASIC BETA 1005, ..." or "In version 1.0.0.4, ...". If only part of a callout depends on the build, split it into two callouts. In a contributed package's section every callout has a label: the section's version for what the package does, `BETA <n>` for a fact of twinBASIC alone, or `timeless`. The build fails on a callout there without one, on any other label, and on a package version other than the one the section documents, its landing page's `indexed_from`. So when a section moves to a new version of its package, each callout labelled with the old one is checked again before the build passes. [`twin-index analyze`](Tools-Build#twin-index) lists those callouts, and after a new twinBASIC build, the callouts labelled with an older one.
+
+A page states what the product does, never what the documentation's own checking could or could not do. "The samples harness cannot capture a console" is a fact about this repository's tools, not about the package, and has no place in a published page. A claim nobody has been able to check is written as the source supports it, or left out.
+
+### Callouts in a contributed package's section
+
+Every `> [!NOTE]` and `> [!WARNING]` in a contributed package's section is backed by test cases in the package's test project, `test/package-tests/<Package>/`, and names them in an HTML comment on the line above it:
+
+    <!-- test: FilesTests.Item_MissingName, FilesTests.Item_MissingIndex -->
+    > [!NOTE]
+
+An item is a `Fixture.Sub` test case, `compile <Name>` for a compile case, `probe <id>` for a scenario of the package's `probe/` harness, or `none -- <reason>` for a callout no program can check. A case checks what is correct, so a defect of the package is a failing case.
+
+A callout is for a real difference or limit. A statement that only describes how the package works stays prose, and its cases are tied to it by a region: the same marker on a line of its own above the prose, and `<!-- /test -->` after it.
+
+```md
+<!-- test: SearchGivesUpTests.Execute_CatastrophicPatternKeepsMatchesFound -->
+A search that backtracks without end gives up instead of hanging.
+<!-- /test -->
+```
+
+A region may hold paragraphs, lists, tables and samples, and regions do not nest. The folder's README says how to write a case, and [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests), in `test.bat`, fails a callout with neither a marker nor a region, a region left open, and a case no marker names. [`package-tests.bat`](Tools#package-testsbat) runs the cases. The section's landing page ends with a short **Test cases** section that links to the project the build publishes, `<Package>-tests.twinproj`.
 
 ## Document the product as it is
 

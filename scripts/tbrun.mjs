@@ -34,6 +34,10 @@
 //       --tests           do not build: judge the project's compile cases and
 //                         run its [TestCase] Subs, printing PASS or FAIL for
 //                         each (lib/tb-tests.mjs)
+//       --only <names>    with --tests, judge and run only these cases: a
+//                         comma-separated list of Fixture.Sub names and compile
+//                         case names; a case that never returns is run alone
+//                         this way (scripts/package_tests.mjs)
 //
 // Exit: 0 captured output, 1 the project has compile errors, 2 the harness
 // could not run (a refused command line included), a compile never settled, or
@@ -135,6 +139,7 @@ import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync, wri
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
+  CliError,
   choiceOption,
   die,
   exitOnCrash,
@@ -171,7 +176,7 @@ import { faultText, recordedFault } from "./lib/win-fault.mjs";
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe | --tests] [--allow-name-clash] [-h, --help]
+const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe | --tests [--only <names>]] [--allow-name-clash] [-h, --help]
 
 Builds an exported twinBASIC source tree in the IDE, runs it, and prints what it
 writes to the DEBUG CONSOLE. With --tests it builds nothing, and runs the
@@ -210,6 +215,8 @@ project's own test cases instead.
                       those diagnostic codes on that line, any error, or
                       nothing on it) and for each [TestCase] Sub of each
                       [TestFixture] Module, run in the compiler's test mode
+  --only <names>      with --tests, only these cases: a comma-separated list of
+                      Fixture.Sub names and compile case names
   -h, --help          print this text and exit
 
 Exit codes:
@@ -249,6 +256,7 @@ const { values, positionals } = withUsageError(
         exe: { type: "boolean", default: false },
         "allow-name-clash": { type: "boolean", default: false },
         tests: { type: "boolean", default: false },
+        only: { type: "string" },
         json: { type: "boolean", default: false },
         raw: { type: "boolean", default: false },
         keep: { type: "boolean", default: false },
@@ -270,6 +278,7 @@ const { port, arch, timeoutMs, quietMs } = withUsageError(
     refuseTogether(values, ["show", "hide"]);
     refuseTogether(values, ["llvm", "compiler-options"]);
     refuseTogether(values, ["exe", "tests"]);
+    if (values.only !== undefined && !values.tests) throw new CliError("needs-option", "--only needs --tests");
     return {
       port: numberOption(values.port ?? "9346", { option: "--port", integer: true, min: 1, max: 65535 }),
       arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
@@ -354,6 +363,14 @@ const hasCls = /Debug\s*\.\s*Cls/i.test(sourceText);
 const cases = values.tests ? findCases(sourceFiles) : null;
 if (cases) {
   if (cases.problems.length) die(2, `tbrun --tests:\n${cases.problems.map((p) => `  ${p}`).join("\n")}`);
+  if (values.only !== undefined) {
+    const wanted = new Set(values.only.split(",").map((n) => n.trim()));
+    const known = new Set([...cases.tests.map((t) => `${t.fixture}.${t.name}`), ...cases.compiles.map((c) => c.name)]);
+    const unknown = [...wanted].filter((n) => !known.has(n));
+    if (unknown.length) die(2, `tbrun --tests --only: no such case: ${unknown.join(", ")}`);
+    cases.tests = cases.tests.filter((t) => wanted.has(`${t.fixture}.${t.name}`));
+    cases.compiles = cases.compiles.filter((c) => wanted.has(c.name));
+  }
   if (!cases.tests.length && !cases.compiles.length) {
     die(
       2,

@@ -41,8 +41,8 @@ Debug.Print aes.DecryptString(cipherText)                ' Hello, AES!
 
 The text that **EncryptString** returns is Base64 of the ciphertext alone. The program keeps the IV, and in GCM mode the tag, and sets them in the object that decrypts.
 
-> [!WARNING]
-> In version 1.0.0.4 the name of a cipher mode is not always the mode that runs: **ECB** runs CBC, **CBC** runs ECB, and **OFB** and **CTR** run CFB. Neither **ECB** nor **CBC** uses the IV, so the same key and plaintext always give the same ciphertext, and the default mode, **CBC**, gives equal ciphertext blocks for equal plaintext blocks. A test that decrypts what it has encrypted does not show this. [Known problems in version 1.0.0.4](#known-problems-in-version-1004) lists this and the other defects.
+> [!WARNING] 1.0.0.4
+> The name of a cipher mode is not always the mode that runs: **ECB** runs CBC, **CBC** runs ECB, and **OFB** and **CTR** run CFB. Neither **ECB** nor **CBC** uses the IV, so the same key and plaintext always give the same ciphertext, and the default mode, **CBC**, gives equal ciphertext blocks for equal plaintext blocks. A test that decrypts what it has encrypted does not show this. [Known problems in version 1.0.0.4](#known-problems-in-version-1004) lists this and the other defects.
 
 * TOC
 {:toc}

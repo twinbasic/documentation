@@ -40,7 +40,7 @@ The **BigNumberLib** contributed package provides arbitrary-precision signed int
 
 A number is set and read as a string in decimal, hexadecimal, octal or binary, or is set from a **Long**. The class adds, subtracts, multiplies, divides and squares; takes a remainder, also of a sum, a difference, a product or a square; finds a modular inverse, a greatest common divisor and a least common multiple; shifts; and compares.
 
-> [!WARNING]
+> [!WARNING] 1.0.2.0
 > Some members give wrong results, or do not return. Each is described under its member on the [**BigNumber**](BigNumber) page:
 >
 > - Setting [**IsNegative**](BigNumber#isnegative) to **True** does not make a number negative. [**AssignGreatestCommonDivisor**](BigNumber#assigngreatestcommondivisor) and [**AssignLeastCommonMultiple**](BigNumber#assignleastcommonmultiple) leave a negative operand in the same state, with its minus sign gone.

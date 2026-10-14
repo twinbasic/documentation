@@ -45,7 +45,7 @@ A change made through one range adds to the version number of the list, so every
 
 A range reads the items from the address they had when the range was made. A change made through the range that makes the list enlarge its array, such as [**Add**](#add), [**AddRange**](#addrange), [**Insert**](#insert) or [**InsertRange**](#insertrange) on a list with no room, can move the array. The range then goes on reading the old array, which has been released, and does not notice: the range and the list keep the same version number.
 
-> [!WARNING]
+> [!WARNING] 1.6.151.1
 > After such a change the items that the range shows can be the old ones, or whatever now occupies that memory. A range of two items of a list with room for five, after three calls of **Add** through the range, showed `a b c d` and an empty item, where the list held `a b X Y Z c d`. Make the list large enough first, by giving [**New**](ArrayList#new) a capacity or assigning [**Capacity**](ArrayList#capacity), or make a new range with **GetRange** after the change.
 
 ## Properties

@@ -12,7 +12,7 @@
 // The clusters side by side in one row must have the same number of node rows.
 // dot spaces its ranks for the whole graph, so where a shorter cluster ends,
 // the gap its border needs opens inside its taller neighbour too. The
-// invisible nodes (wp, cp1, cp2, ep, dp) pad the shorter ones.
+// invisible nodes (cp1, cp2, dp) pad the shorter ones.
 //
 // Every node and cluster label is a link, set in the block at the end so the
 // layout above stays readable: a node to its tool's entry, by the id its
@@ -67,8 +67,8 @@ digraph tools_groups {
         w1 [label="build.bat"]      w2 [label="serve.bat"]          w3 [label="check.bat"]
         w4 [label="test.bat"]       w5 [label="book.bat"]           w6 [label="examples.bat"]
         w7 [label="addin-test.bat"] w8 [label="ide-test.bat"]       w9 [label="try-help-addin.bat"]
-        wp [style=invis label=""]
-        w1 -> w4 -> w7 -> wp
+        w10 [label="package-tests.bat"]
+        w1 -> w4 -> w7 -> w10
         w2 -> w5 -> w8
         w3 -> w6 -> w9
         { rank=same; w4 w5 w6 }
@@ -133,9 +133,9 @@ digraph tools_groups {
         t19 [label="check_twin_parsers"]   t20 [label="check_attribute_sweep"]
         t21 [label="check_cli"]            t22 [label="check_pdf_shims_equiv"]
         t23 [label="check_impexp_parity"]  t24 [label="check_axe_patch_equiv"]
-        t25 [label="indexer.test"]
+        t25 [label="indexer.test"]          t26 [label="check_package_tests"]
         t1 -> t5 -> t9  -> t13 -> t17 -> t21 -> t25
-        t2 -> t6 -> t10 -> t14 -> t18 -> t22
+        t2 -> t6 -> t10 -> t14 -> t18 -> t22 -> t26
         t3 -> t7 -> t11 -> t15 -> t19 -> t23
         t4 -> t8 -> t12 -> t16 -> t20 -> t24
         { rank=same; t5  t6  t7  t8  }
@@ -143,6 +143,7 @@ digraph tools_groups {
         { rank=same; t13 t14 t15 t16 }
         { rank=same; t17 t18 t19 t20 }
         { rank=same; t21 t22 t23 t24 }
+        { rank=same; t25 t26 }
     }
 
     // ---- row 4 ----
@@ -151,8 +152,8 @@ digraph tools_groups {
         label="Code Samples and Attributes"
         e1 [label="check_examples"]     e2 [label="gen_attribute_probes"]
         e3 [label="census_attributes"]  e4 [label="sweep_attributes"]
-        ep [style=invis label=""]
-        e1 -> e3 -> ep
+        e5 [label="package_tests"]
+        e1 -> e3 -> e5
         e2 -> e4
         { rank=same; e3 e4 }
     }
@@ -184,7 +185,7 @@ digraph tools_groups {
     { rank=same; t1 t2 t3 t4 }
     { rank=same; e1 e2 i1 i2 d1 }
     edge [weight=1]
-    wp -> s1    b7 -> c1
+    w10 -> s1    b7 -> c1
     s9 -> t1    s10 -> t2   cp2 -> t3   c6 -> t4
     t25 -> e1   t22 -> i1   t24 -> d1
 
@@ -242,6 +243,8 @@ digraph tools_groups {
         tooltip="Tests the twinBASIC IDE itself by machine: opens a project, operates the IDE and checks what the IDE did."]
     w9 [URL="#try-help-addinbat"
         tooltip="Opens an IDE with the help add-in built and loaded, to try by hand, and restores the registry when the IDE is closed. It is not a gate."]
+    w10 [URL="#package-testsbat"
+        tooltip="Runs the test projects of the contributed packages and reports each case that no longer does what its expect.json records. It is not a gate."]
 
     b1 [URL="Tools-Build#tbdocs"
         tooltip="The static site generator. Builds the online, offline and PDF trees from docs/ and runs the link and integrity checks."]
@@ -344,6 +347,8 @@ digraph tools_groups {
          tooltip="Checks that the patched axe source computes the same colour values as the stock source, for the color-contrast rule."]
     t25 [URL="Tools-Toolchain-Tests#indexer-test"
          tooltip="Runs unit tests for the package indexer: VB6 preprocessing, package files, the api.json model and the differ."]
+    t26 [URL="Tools-Toolchain-Tests#check-package-tests"
+         tooltip="Verifies that every NOTE and WARNING of a contributed package's section names the test cases behind it, and that each package test project is in order."]
 
     e1 [URL="Tools-Samples#check-examples"
         tooltip="Compiles the code samples marked check_build and reports each diagnostic against the page line it came from. Samples marked check_run are also run."]
@@ -353,6 +358,8 @@ digraph tools_groups {
         tooltip="Reports which enclosing construct and which kind of declaration each attribute decorates in the .twin sources of the shipped packages."]
     e4 [URL="Tools-Samples#sweep-attributes"
         tooltip="Writes each attribute at each declaration site, asks the compiler where it is legal, and compares the answers with the Applicable to lines."]
+    e5 [URL="Tools-Samples#package-tests"
+        tooltip="Runs the test projects of the contributed packages with tbrun and judges each case against the package's expect.json: documented, fixed or changed."]
 
     i1 [URL="Tools-IDE#addin-test"
         tooltip="Runs the add-in scenarios under test/addin/, each lane in its own process with a private copy of the twinBASIC install."]

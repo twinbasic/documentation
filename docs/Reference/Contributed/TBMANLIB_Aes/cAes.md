@@ -61,8 +61,8 @@ Every call of an encrypt or a decrypt method starts again from **Key** and **IV*
 
 ## Which mode runs
 
-> [!WARNING]
-> In version 1.0.0.4 the name of a mode is not always the mode that runs. **ECB** runs CBC with an IV of zero bytes, **CBC** runs ECB, and **OFB** and **CTR** run CFB. Neither **ECB** nor **CBC** uses the IV that the program sets, so the same key and plaintext always give the same ciphertext, and in the default mode **CBC** equal plaintext blocks give equal ciphertext blocks. A round trip succeeds in every case, because encryption and decryption use the same mode, so a test that only decrypts what it has encrypted shows nothing.
+> [!WARNING] 1.0.0.4
+> The name of a mode is not always the mode that runs. **ECB** runs CBC with an IV of zero bytes, **CBC** runs ECB, and **OFB** and **CTR** run CFB. Neither **ECB** nor **CBC** uses the IV that the program sets, so the same key and plaintext always give the same ciphertext, and in the default mode **CBC** equal plaintext blocks give equal ciphertext blocks. A round trip succeeds in every case, because encryption and decryption use the same mode, so a test that only decrypts what it has encrypted shows nothing.
 
 | Mode | Windows interface | What runs | The IV |
 |---|---|---|---|
@@ -352,8 +352,8 @@ Debug.Print Err.Number
 
 A decryption with no tag set fails in the same way, after the line `DoDecryptCNG_GCM failed: GCM tag not set for decryption`. A tag of 16 bytes is the length that the encryption makes. The class passes the length of **GcmTag** to Windows as it is: a tag cut to its first 12 bytes is accepted and the decryption returns the plaintext, and one cut to 4 bytes makes Windows fail with an invalid parameter.
 
-> [!WARNING]
-> In version 1.0.0.4, a GCM encryption with no IV set makes a random 12-byte nonce, uses it, and keeps it nowhere. [**IV**](#iv) stays empty. A decryption with no IV uses a nonce of 12 zero bytes, so its tag check fails and the data cannot be decrypted. The encryption raises no error. Set **IV** before every GCM encryption, and keep it with the ciphertext.
+> [!WARNING] 1.0.0.4
+> A GCM encryption with no IV set makes a random 12-byte nonce, uses it, and keeps it nowhere. [**IV**](#iv) stays empty. A decryption with no IV uses a nonce of 12 zero bytes, so its tag check fails and the data cannot be decrypted. The encryption raises no error. Set **IV** before every GCM encryption, and keep it with the ciphertext.
 
 ```tb check_build check_run projname=aes-class
 Dim aes As cAes = New cAes(AesKeySize.KeySize_128, AesCipherMode.GCM, AesPaddingMode.NoPadding)
@@ -385,11 +385,11 @@ A failed call does not tell why, and what the caller gets depends on the member.
 - [**SetKeyFromString**](#setkeyfromstring) raises an error of its own, `vbObjectError + 2`.
 - [**GenerateRandomIV**](#generaterandomiv) and [**Cleanup**](#cleanup) cannot fail, and the properties raise nothing.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.4
 > A program that calls **EncryptBytes** or **DecryptBytes** needs an `On Error` statement, and cannot tell a missing key from a wrong tag or a damaged ciphertext by the error. The Debug Console of the IDE shows more: the package prints lines with `Debug.Print`, such as `DecryptBytes error: Key not set` and `BCryptEncrypt failed: 0xC0000206` followed by a message, and a built program writes none of them.
 
-> [!WARNING]
-> In version 1.0.0.4 the string members hide a failure in an empty string. **DecryptString** of a GCM message whose tag does not match, of a message with a wrong key in a mode with padding, and of Base64 text that is not valid, all give the same empty string as an empty plaintext would, and **EncryptString** gives an empty string for a missing key. A program must test the result with `Len`.
+> [!WARNING] 1.0.0.4
+> The string members hide a failure in an empty string. **DecryptString** of a GCM message whose tag does not match, of a message with a wrong key in a mode with padding, and of Base64 text that is not valid, all give the same empty string as an empty plaintext would, and **EncryptString** gives an empty string for a missing key. A program must test the result with `Len`.
 
 These are the causes of a failure in the source:
 
@@ -644,8 +644,8 @@ With **NoPadding** in the modes **CFB**, **OFB**, **CTR** and **GCM**, the outpu
 
 **ISO10126** gives the output of **NoPadding**, and no padding is added. With **ZeroPadding** the decryption removes every zero byte at the end of the data, and with the data `41 42 00 00` it returns the two bytes `41 42`.
 
-> [!WARNING]
-> With **ZeroPadding**, version 1.0.0.4 gives back less than it was given when the data ends in zero bytes. The decryption removes every zero byte at the end of the data, and not only the ones that the encryption added, and raises no error. Data that is all zero bytes fails the decryption. Use **PKCS7** for data that can end in zero bytes.
+> [!WARNING] 1.0.0.4
+> With **ZeroPadding**, the class gives back less than it was given when the data ends in zero bytes. The decryption removes every zero byte at the end of the data, and not only the ones that the encryption added, and raises no error. Data that is all zero bytes fails the decryption. Use **PKCS7** for data that can end in zero bytes.
 
 ## Methods
 
@@ -768,8 +768,8 @@ Syntax: *object*.**GenerateRandomIV** ( ) **As Byte()**
 
 Returns a **Byte** array of 16 bytes, which is also the new value of **IV**. The method calls `Randomize`, which mixes the system timer into the state of `Rnd` for the whole program, and then takes 16 values of `Rnd`.
 
-> [!WARNING]
-> In version 1.0.0.4 the bytes come from `Rnd`, a pseudo-random generator, and not from a cryptographic one; the comment in the source says that the Crypto API would give better randomness. The state of `Rnd` has 24 bits: its sequence repeats after 16,777,216 values, so the method can return at most 16,777,216 different IVs, and two calls that start from the same state of `Rnd` return the same IV. A program that needs an IV that cannot be predicted can set [**IV**](#iv) from a source of its own.
+> [!WARNING] 1.0.0.4
+> The bytes come from `Rnd`, a pseudo-random generator, and not from a cryptographic one; the comment in the source says that the Crypto API would give better randomness. The state of `Rnd` has 24 bits: its sequence repeats after 16,777,216 values, so the method can return at most 16,777,216 different IVs, and two calls that start from the same state of `Rnd` return the same IV. A program that needs an IV that cannot be predicted can set [**IV**](#iv) from a source of its own.
 
 The first sample counts the calls of `Rnd` between a value and its next appearance. The second puts `Rnd` into the same state before each of two calls, with `Rnd -1` and `Randomize 7`, and finds two calls that return the same IV.
 
@@ -838,8 +838,8 @@ Syntax: *object*.**SetGcmAADFromString** ( *aadString* [, *encoding*] )
 
 The method does not raise an error. When the conversion fails, it prints `SetGcmAADFromString failed: ` and the description with `Debug.Print`, which a built program does not show, and leaves **GcmAAD** as it was. The program that decrypts has to convert the string in the same way, since the bytes with another encoding are other bytes. [**EncryptString**](#encryptstring) uses UTF-8 for its text, and this method does not.
 
-> [!WARNING]
-> In version 1.0.0.4 an empty string does not remove the additional data. The method fails for an empty string and keeps the data that was set before, and only the Debug Console shows the message `SetGcmAADFromString failed: Unspecified error`. The next GCM encryption then authenticates the old data. To remove the data, assign an array that was never sized to [**GcmAAD**](#gcmaad).
+> [!WARNING] 1.0.0.4
+> An empty string does not remove the additional data. The method fails for an empty string and keeps the data that was set before, and only the Debug Console shows the message `SetGcmAADFromString failed: Unspecified error`. The next GCM encryption then authenticates the old data. To remove the data, assign an array that was never sized to [**GcmAAD**](#gcmaad).
 
 ```tb check_build check_run projname=aes-class
 Dim aes As New cAes
@@ -872,8 +872,8 @@ Syntax: *object*.**SetKeyFromString** ( *keyString* [, *encoding*] )
 
 The method converts *keyString* to bytes with **StrConv** and makes an array of the length that [**KeySize**](#keysize) names, 16, 24 or 32 bytes: the first bytes of the conversion when it is longer, and the bytes followed by zero bytes when it is shorter. The array is the new value of **Key**. The method does not use the string in any other way.
 
-> [!WARNING]
-> In version 1.0.0.4 there is no key derivation. The key is the bytes of the text, cut or extended with zero bytes: a string longer than the key is cut without a message, so that two strings that begin with the same 32 bytes give the same key (with **KeySize_256**), and a short string is a short key followed by zeros. The modes **ECB** and **CBC** then hash the bytes once with SHA-256, without a salt; the modes **CFB**, **OFB**, **CTR** and **GCM** use them as the key. With the default encoding, a character that is not in the ANSI code page of the system is converted to another character, and the same text gives different bytes on systems with another code page.
+> [!WARNING] 1.0.0.4
+> There is no key derivation. The key is the bytes of the text, cut or extended with zero bytes: a string longer than the key is cut without a message, so that two strings that begin with the same 32 bytes give the same key (with **KeySize_256**), and a short string is a short key followed by zeros. The modes **ECB** and **CBC** then hash the bytes once with SHA-256, without a salt; the modes **CFB**, **OFB**, **CTR** and **GCM** use them as the key. With the default encoding, a character that is not in the ANSI code page of the system is converted to another character, and the same text gives different bytes on systems with another code page.
 
 The method raises an error when *keyString* is empty: **Err.Number** is `vbObjectError + 2`, **Err.Source** is `cAes.SetKeyFromString` and **Err.Description** is `Key cannot be empty`. **Key** is not changed, and [**IsInitialized**](#isinitialized) is set to **False**. When **KeySize** has a value that is not a member of the enumeration, the key is left as it was and no error is raised.
 

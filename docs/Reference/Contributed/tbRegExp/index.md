@@ -4,33 +4,20 @@ parent: Contributed Packages
 has_toc: false
 exclude_from_docs:
   - StaticRegex
-indexed_from: 1.7.0.0
+indexed_from: 1.8.0.0
 permalink: /tB/Packages/Contributed/tbRegExp/
 ---
 
 # tbRegExp Package
 {: .no_toc }
 
-**Author:** GCuser99. **Version:** 1.7.0.0. **On GitHub:** [GCuser99/tbRegExp](https://github.com/GCuser99/tbRegExp), in the folder *Package*.
+**Author:** GCuser99. **Version:** 1.8.0.0. **On GitHub:** [GCuser99/tbRegExp](https://github.com/GCuser99/tbRegExp), in the folder *Package*.
 
 The **tbRegExp** contributed package provides regular expressions for twinBASIC projects, as a replacement for the **RegExp** object of VBScript. It follows the same object model. A [**RegExp**](RegExp/) is given a pattern and options, its [**Execute**](RegExp/Execute) method returns a [**MatchCollection**](MatchCollection/) of [**Match**](Match/) objects, and each **Match** holds the text captured by the groups of the pattern as a [**SubMatches**](SubMatches/) object. Positions are zero-based, as in VBScript.
 
-> [!WARNING]
-> A match can be at most about 3,300 characters long. A longer one is reported cut short, later in the string, or not at all, and no error is raised. The engine gives up a search from one starting position after 10,000 steps, where a step is one operation of the compiled pattern, and then starts again one character later. The limit is fixed inside the package, and a program cannot change it. A pattern that repeats one character, such as `a*`, `.*` or `[^,]*`, takes three steps for each character it matches, so its longest match is 3,331 characters, and a pattern with more to do for each character has a shorter longest match. On a string of 5,000 `a`, `a*` finds a match that starts at position 1669 and is 3,331 characters long, where VBScript's **RegExp** finds the whole string from position 0, and `^.*$` finds no match at all, so [**Test**](RegExp/Test) returns **False**. Each starting position that fails costs up to 10,000 steps, so a search over a long run is slow as well: `a*` over a run of 9,500 characters takes several seconds, and returns a match of 3,331 characters from position 6169. This is how version 1.7.0.0 behaves.
-
-```tb check_build check_run
-Dim re As New RegExp
-Dim m As Match
-re.Pattern = "a*"
-Set m = re.Execute(String(5000, "a"))(0)
-Debug.Print m.FirstIndex & ", " & m.Length  ' 1669, 3331
-re.Pattern = "^.*$"
-Debug.Print re.Test(String(5000, "a"))      ' False
-```
-
 The matching is done by the [vba-regex](https://github.com/sihlfall/vba-regex) engine of sihlfall, which the package includes as a private module, **StaticRegex**.
 
-Beyond VBScript's object, **RegExp** has the [**DotAll**](RegExp/DotAll) and [**Flags**](RegExp/Flags) options, the [**Split**](RegExp/Split) method, and [**IsValid**](RegExp/IsValid), [**LastError**](RegExp/LastError) and [**LastErrorNumber**](RegExp/LastErrorNumber), which report an invalid pattern before it is used. [**Replace**](RegExp/Replace) reads a `$` in the replacement string as VBScript does, and adds `$<name>` for a named group.
+Beyond VBScript's object, **RegExp** has the [**DotAll**](RegExp/DotAll) and [**Flags**](RegExp/Flags) options, the [**Split**](RegExp/Split) method, [**IsValid**](RegExp/IsValid), [**LastError**](RegExp/LastError) and [**LastErrorNumber**](RegExp/LastErrorNumber), which report an invalid pattern before it is used, and [**SearchAborted**](RegExp/SearchAborted), which reports a search that gave up. [**Replace**](RegExp/Replace) reads a `$` in the replacement string as VBScript does, and adds `$<name>` for a named group.
 
 ## Pattern syntax
 
@@ -54,13 +41,15 @@ Debug.Print re.Test("ABCDEF")                            ' True
 Debug.Print re.Test("ABCdef")                            ' False
 ```
 
-A pattern that holds an atomic group `(?>...)` or a conditional is not valid: [**IsValid**](RegExp/IsValid) returns **False**. A named backreference `\k<name>`, `\A`, `\Z` and `\p{...}` are not supported either, but they do not make the pattern invalid, because a backslash before a letter that names no escape stands for the letter itself, as in VBScript: `\k<name>` matches the text `k<name>`, and `\A` matches `A`. The pattern `\p{L}` is invalid for another reason: `{L}` does not start a quantifier (see below).
+<!-- test: PatternSyntaxTests.IsValid_AtomicGroup, PatternSyntaxTests.IsValid_Conditional, PatternSyntaxTests.Test_NamedBackreferenceIsText, PatternSyntaxTests.Test_CapitalAAndZAreLetters -->
+> [!NOTE] 1.8.0.0
+> A pattern that holds an atomic group `(?>...)` or a conditional is not valid: [**IsValid**](RegExp/IsValid) returns **False**. A named backreference `\k<name>`, `\A`, `\Z` and `\p{...}` are not supported either, but they do not make the pattern invalid, because a backslash before a letter that names no escape stands for the letter itself, as in VBScript: `\k<name>` matches the text `k<name>`, and `\A` matches `A`. The pattern `\p{L}` is invalid for another reason: `{L}` does not start a quantifier (see below).
 
 The escapes that name a control character or a character code are read as in VBScript:
 
 - `\c` followed by a letter, in either case, is a control character: `\cJ` and `\CJ` are the line feed. A `\c` followed by anything else makes the pattern invalid;
 - `\0` is the character with code 0, `\0` followed by octal digits, such as `\012`, is that code, and `\8` and `\9` are the digits themselves;
-- `\1` to `\9` and longer numbers are backreferences when the pattern has that many groups. Otherwise the digits are read as an octal character code, so `\101` is `A` and `(a)\2` is `a` followed by the character with code 2; [**IsValid**](RegExp/IsValid) returns **True** for both. A backreference to a group that has not yet taken part in the match, such as `\1(a)`, matches no characters; VBScript's **RegExp** finds no match for such a pattern;
+- `\1` to `\9` and longer numbers are backreferences when the pattern has that many groups. Otherwise the digits are read as an octal character code, so `\101` is `A` and `(a)\2` is `a` followed by the character with code 2; [**IsValid**](RegExp/IsValid) returns **True** for both;
 - `\f`, `\n`, `\r` and `\t`, inside a character class as well, are the form feed, line feed, carriage return and tab.
 
 ```tb check_build check_run
@@ -76,9 +65,17 @@ re.Pattern = "(a)\2"
 Debug.Print re.Test("a" & ChrW(2))      ' True
 ```
 
+<!-- test: PatternSyntaxTests.Test_BackreferenceToLaterGroupMatchesNothing -->
+> [!NOTE] 1.8.0.0
+> A backreference to a group that has not yet taken part in the match, such as `\1(a)`, matches no characters, so the pattern finds `a` in the string `a`. VBScript's **RegExp** finds no match for such a pattern.
+
 `\w` matches only the ASCII letters and digits and `_`, as in VBScript, so `\w+` finds `caf` in `café`.
 
-A `{` has to start a quantifier: `{n}`, `{n,}`, `{n,m}` or `{,m}`, which means `{0,m}`. A pattern in which a `{` starts none, such as `a{` or `a{x}`, is not valid; write `\{` for the character. VBScript reads a `{` that starts no quantifier, and `{,m}`, as ordinary text. A `]` or `}` that closes nothing is an ordinary character, as in VBScript.
+A `{` has to start a quantifier: `{n}`, `{n,}`, `{n,m}` or `{,m}`, which means `{0,m}`. A pattern in which a `{` starts none, such as `a{` or `a{x}`, is not valid; write `\{` for the character. A `]` or `}` that closes nothing is an ordinary character, as in VBScript.
+
+<!-- test: PatternSyntaxTests.IsValid_BraceThatStartsNoQuantifier, PatternSyntaxTests.Test_BraceThatStartsNoQuantifierIsText, PatternSyntaxTests.Test_CommaAndMaximumOnlyIsText -->
+> [!NOTE] 1.8.0.0
+> VBScript's **RegExp** reads a `{` that starts no quantifier, and `{,m}`, as ordinary text: `a{x}` is a valid pattern there that finds the text `a{x}`, and `a{,2}` finds the text `a{,2}` and not `aa`. In **tbRegExp** the first is not valid, so a search with it raises the compile error, and `a{,2}` finds up to two `a`.
 
 ```tb check_build check_run
 Dim re As New RegExp
@@ -91,6 +88,23 @@ re.Pattern = "a{x}"
 Debug.Print re.IsValid                   ' False
 re.Pattern = "a\{x}"
 Debug.Print re.Execute("a{x}")(0).Value  ' a{x}
+```
+
+## Searches that give up
+
+<!-- test: SearchGivesUpTests.Test_CatastrophicPatternGivesUpWithoutError, SearchGivesUpTests.Search_LongMatchOfAStarIsNotCut, SearchGivesUpTests.Search_LongMatchOfDotStarIsNotCut -->
+A pattern that backtracks without end, such as `(a+)+b` on a string of thirty `a`, does not hang a search as it does in VBScript's **RegExp**. Every search has a budget of steps, which a program cannot change, and when it runs out the search stops and raises no error. Its result is then short or empty, and a program that has to tell it from a true result reads [**SearchAborted**](RegExp/SearchAborted) after the call. A long match is no problem: `a*` and `^.*$` match a string of 1,000,000 `a` whole.
+<!-- /test -->
+
+```tb check_build check_run
+Dim re As New RegExp
+re.Pattern = "(a+)+b"
+Debug.Print re.Test(String(30, "a"))   ' False
+Debug.Print re.SearchAborted           ' True
+
+re.Pattern = "^.*$"
+Debug.Print re.Test(String(100000, "a"))   ' True
+Debug.Print re.SearchAborted               ' False
 ```
 
 ## Classes
@@ -116,9 +130,14 @@ Debug.Print re.Execute("a{x}")(0).Value  ' a{x}
   - [MultiLine](RegExp/MultiLine) -- returns or sets whether `^` and `$` match at line boundaries
   - [Pattern](RegExp/Pattern) -- returns or sets the regular expression
   - [Replace](RegExp/Replace) -- replaces the matches in a string
+  - [SearchAborted](RegExp/SearchAborted) -- returns whether the last search gave up before it finished
   - [Split](RegExp/Split) -- splits a string at the matches
   - [Test](RegExp/Test) -- returns whether a string contains a match
 - [SubMatches](SubMatches/) -- holds the strings that the capture groups of a pattern captured in one Match
   - [Count](SubMatches/Count) -- returns the number of strings
   - [Item](SubMatches/Item) -- returns one string by position or by group name (the default member)
   - [NewEnum](SubMatches/NewEnum) -- returns the enumerator that For Each uses (hidden)
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [tbRegExp-tests.twinproj](tbRegExp-tests.twinproj), a twinBASIC project. It uses tbRegExp as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

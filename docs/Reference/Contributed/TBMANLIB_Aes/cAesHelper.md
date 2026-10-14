@@ -38,7 +38,7 @@ A member that fails does not tell why, and what the caller gets depends on the t
 - **Base64Encode** and **Utf8BytesToString**, the members that return a **String**, return an empty string and raise no error. They leave the error in `Err`, which is not cleared: after an array that was never sized, `Err.Number` is 9.
 - **IsArrayEmpty** raises no error, and leaves `Err.Number` at 9 when it tests an array that was never sized.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.4
 > The members that raise **Unspecified error** do so for the failures that [**cAes**](cAes) cannot recover from as well. A program that calls one of them with an input that can be empty or damaged needs an `On Error` statement, and cannot tell the causes apart by the error.
 
 Every member that reads an array reads its first element as the element with index 0. An array with another lower bound fails: **Base64Encode** returns an empty string with the [**LastError**](#lasterror) text `Base64 encoding exception: Subscript out of range`, and **ApplyPKCS7Padding** raises **Unspecified error**, after it has set the text `PKCS7 padding exception: Subscript out of range`.

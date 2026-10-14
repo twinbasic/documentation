@@ -194,6 +194,17 @@ Two modes, chosen automatically per package:
 A current `api.json` is needed: `analyze` stops (exit 2) at a package
 whose file is in an older format, and `sync` writes it again.
 
+**Callouts to check again.** A callout's label (`> [!WARNING] 1.0.0.4`,
+`> [!NOTE] BETA 1005`; `lib/callout-labels.mjs`) says what it is true of.
+When the store holds a version of a package other than its section's
+`indexed_from`, the package's report has a `recheck_callout` task for each
+callout of the section labelled with another version (`file`, `line`,
+`label`, `from`, `to`): the build refuses the new `indexed_from` until each
+label is moved. `draft` ignores these tasks. An `analyze` with no package
+named also lists every callout labelled `BETA <n>` below the build in
+`.packages/manifests/built-in.json`, and writes them to
+`.packages/callouts.json`.
+
 **What a symbol is.** One for each type, and one for each name a type
 declares: a property's Get, Let and Set, and overloads of a name, are one
 symbol, the way the documentation has one page for each. A symbol is

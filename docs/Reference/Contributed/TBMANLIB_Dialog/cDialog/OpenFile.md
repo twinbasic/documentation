@@ -41,7 +41,7 @@ The Windows documentation of `ShellExecute` lists the other values.
 
 For a program, the verb `open` starts the program. For a document, it starts the program that Windows associates with the document. For a folder, it opens the folder in File Explorer.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > An empty *strFilePath* is not an error. `OpenFile("")` returns 42, which is above 32 and looks like success, and opens a File Explorer window on the current folder of the program.
 
 ## Example

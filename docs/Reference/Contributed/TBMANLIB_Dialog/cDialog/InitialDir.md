@@ -24,7 +24,7 @@ Syntax: *object*.**InitialDir** [ = *string* ]
 
 [**ShowBrowseForFolder**](ShowBrowseForFolder) does not use **InitialDir**. Its dialog opens with the folder of the user's profile selected, whatever **InitialDir** holds.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > A **ShowBrowseForFolder** that the user confirms replaces **InitialDir** with the folder it returns, a path typed into the edit box of the dialog included. A **ShowOpen** or **ShowSave** after it is given that folder as its starting folder. Set **InitialDir** again if that is not wanted.
 
 VB6's **CommonDialog** control calls this property **InitDir**.

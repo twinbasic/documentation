@@ -52,8 +52,8 @@ The magnifier in the title bar opens a search box under it. Typing a printable c
 
 ![The Toolbox with its search box holding Command, Text, beside three tool icons, the pointer, a text box and a command button, and More components below them. The menu of the ... button is open at the right, holding Show Control Names.](Images/Toolbox_Search.png){:width="377" height="129"}
 
-> [!NOTE]
-> In twinBASIC BETA 1005, a **floating** Toolbox lists every tool when a report is open, 24 controls and **More components**, where the docked Toolbox lists seven. A tool that a report does not allow is refused when you use it, so nothing is lost. Dock the Toolbox, or choose only the seven tools that a report allows.
+> [!NOTE] BETA 1005
+> A **floating** Toolbox lists every tool when a report is open, 24 controls and **More components**, where the docked Toolbox lists seven. A tool that a report does not allow is refused when you use it, so nothing is lost. Dock the Toolbox, or choose only the seven tools that a report allows.
 
 ## Add ActiveX controls and components
 

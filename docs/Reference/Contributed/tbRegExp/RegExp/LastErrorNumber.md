@@ -21,7 +21,9 @@ Returns a **Long**: the number of the compile error, or 0 when the pattern is va
 
 The property compiles the pattern if it has not been compiled since [**Pattern**](Pattern) or [**IgnoreCase**](IgnoreCase) last changed. The compilation traps its error, so **LastErrorNumber** raises nothing. The value is the `Number` of the error that the compilation raised; [**LastError**](LastError) is its description.
 
+<!-- test: IsValidTests.LastErrorNumber_InvalidPatternLeavesNoError -->
 The engine raises its pattern errors with numbers of the form `vbObjectError + 3000 + n`, where *n* identifies the fault, as in the example. The compilation traps the error, so **LastErrorNumber** raises nothing, but the error stays in the **Err** object (see [**IsValid**](IsValid)).
+<!-- /test -->
 
 | *n* | Fault | Example |
 |-----|-------|---------|

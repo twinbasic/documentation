@@ -1,0 +1,48 @@
+' GetRelativePath of a base path of 260 characters or more, and the paths just below it.
+[TestFixture]
+Module PathTests
+
+    ' GetRelativePath(base, base & "\x\y.txt") is the relative path "x\y.txt" whatever the length
+    ' of base is. Nothing is created: the paths name nothing that exists.
+    Private Function RelativeBelow(ByVal Length As Long) As String
+        Dim base As String
+        base = Sandbox.PathOfLength(Sandbox.Root() & "\GetRelativePath", Length)
+        RelativeBelow = GetRelativePath(base, base & "\x\y.txt")
+    End Function
+
+    [TestCase]
+    Public Sub GetRelativePath_Base258()
+        Expect.Begin
+        Expect.AreEqual "x\y.txt", RelativeBelow(258), "GetRelativePath of a target below a base of 258 characters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetRelativePath_Base259()
+        Expect.Begin
+        Expect.AreEqual "x\y.txt", RelativeBelow(259), "GetRelativePath of a target below a base of 259 characters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetRelativePath_Base260()
+        Expect.Begin
+        Expect.AreEqual "x\y.txt", RelativeBelow(260), "GetRelativePath of a target below a base of 260 characters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetRelativePath_Base264()
+        Expect.Begin
+        Expect.AreEqual "x\y.txt", RelativeBelow(264), "GetRelativePath of a target below a base of 264 characters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetRelativePath_Base300()
+        Expect.Begin
+        Expect.AreEqual "x\y.txt", RelativeBelow(300), "GetRelativePath of a target below a base of 300 characters"
+        Expect.Done
+    End Sub
+
+End Module

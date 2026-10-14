@@ -39,7 +39,7 @@ Syntax: **ToolsHttpMimeType.MapMimeType** ( *FilePath* ) **As String**
 
 Returns the media type of the extension in the table below. For an extension that is not in the table it returns `application/octet-stream`. An empty string raises error 9, *Subscript out of range*.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.29
 > The extension `woff` is in the table with no media type, so it returns an empty string, not `application/x-font-woff`; `woff2` returns `application/x-font-woff`. The table also lacks `htm`, `mp3`, `ogg` and `wasm`, which return `application/octet-stream`, and `java` returns the text `text/x-java-source,java`.
 
 | Extension | Media type |

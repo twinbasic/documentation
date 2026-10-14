@@ -33,7 +33,7 @@ Syntax: *object*.**Interval** **=** *milliseconds*
 
 Changing **Interval** at run time takes effect immediately: the underlying Win32 timer (`SetTimer` / `KillTimer`) is stopped and conditionally restarted on every assignment. The timer starts only when both **Interval** is greater than `0` and [**Enabled**](Enabled) is **True**.
 
-> [!NOTE]
+> [!NOTE] timeless
 > The Win32 `SetTimer` function raises an interval below 10 ms to 10 ms, and delivers its timer messages at the resolution of the system clock, typically 15--16 ms on standard Windows configurations. A short interval therefore does not give sub-15 ms accuracy.
 
 ### Example

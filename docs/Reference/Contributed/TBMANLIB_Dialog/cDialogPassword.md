@@ -38,10 +38,10 @@ The class masks the edit box with the character of [**PasswordChar**](#passwordc
 
 [**ShowDialog**](#showdialog) repeats the question until it has a password that passes or [**MaxAttempts**](#maxattempts) attempts have failed. A failure shows a message box with the reason and `Attempts remaining: N`, and the last failure shows the reason and `Maximum attempts reached.`. If [**RequireConfirm**](#requireconfirm) is **True**, a password that passes is asked for again in a second box, `Please confirm your password:` under the title `Title - Confirm`, and a difference counts as a failed attempt (`Passwords do not match!`). Cancelling any box ends the call.
 
-> [!WARNING]
-> In version 1.1.0.0 only the first box of [**ShowDialog**](#showdialog) is masked. The confirmation box of [**RequireConfirm**](#requireconfirm) and the three boxes of [**ShowChangeDialog**](#showchangedialog) (`Title - Current Password`, `Title - New Password` and `Title - Confirm New Password`) show what the user types in clear text, because the timer looks for a window with exactly the title [**Title**](#title). A program that asks for a confirmation or a change of password shows the passwords on the screen. To keep the entry masked, ask with [**ShowDialog**](#showdialog) alone and compare the two entries in the program, or use another control.
+> [!WARNING] 1.1.0.0
+> Only the first box of [**ShowDialog**](#showdialog) is masked. The confirmation box of [**RequireConfirm**](#requireconfirm) and the three boxes of [**ShowChangeDialog**](#showchangedialog) (`Title - Current Password`, `Title - New Password` and `Title - Confirm New Password`) show what the user types in clear text, because the timer looks for a window with exactly the title [**Title**](#title). A program that asks for a confirmation or a change of password shows the passwords on the screen. To keep the entry masked, ask with [**ShowDialog**](#showdialog) alone and compare the two entries in the program, or use another control.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The properties [**ShowStrength**](#showstrength), [**AllowShowPassword**](#allowshowpassword) and [**OwnerHwnd**](#ownerhwnd) are stored but not used: the box has no strength indicator, no control that shows the password and no owner window. The password stays in [**Password**](#password), an ordinary string, until [**Reset**](#reset) empties it or the object ends.
 
 ## Properties
@@ -371,7 +371,7 @@ Syntax: *object*.**GetStrength** ( *password* ) **As** [**PasswordStrength**](#p
 
 The class adds points: 1 for 8 or more characters, 1 more for 12 or more, 1 more for 16 or more, 1 each for an uppercase letter, a lowercase letter and a digit, and 2 for a special character (the list under [**RequireSpecial**](#requirespecial)). A score of 0 to 2 is **VeryWeak**, 3 or 4 **Weak**, 5 or 6 **Fair**, and 7 or 8 **Strong**. The rules of the object (minimum, maximum and the required kinds) play no part.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The highest score is 8, so the result is never **VeryStrong**.
 
 ```tb check_build check_run

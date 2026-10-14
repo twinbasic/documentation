@@ -26,8 +26,8 @@ The return value depends on the file access mode:
 | **Sequential** | Current byte position in the file divided by 128.           |
 | **Binary**     | Position of the last byte read or written.                  |
 
-> [!NOTE]
-> In BETA 1005, **Loc** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
+> [!NOTE] BETA 1005
+> **Loc** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
 
 ### Example
 

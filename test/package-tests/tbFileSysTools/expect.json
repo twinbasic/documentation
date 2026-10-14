@@ -1,0 +1,77 @@
+{
+  "version": "1.9.0.0",
+  "cases": {
+    "AttributeTests.FileSetAttribute_NoAttributes_SetsHidden": {
+      "fails": "2 of 3 checks failed: File.SetAttribute faHidden, True on a file with no attributes sets Hidden: expected True, got False; Attributes of that file after SetAttribute faHidden, True: expected 2, got 128"
+    },
+    "AttributeTests.FileSetAttribute_NoAttributes_SetsReadOnly": {
+      "fails": "2 of 2 checks failed: File.SetAttribute faReadOnly, True on a file with no attributes sets ReadOnly: expected True, got False; Attributes of that file after SetAttribute faReadOnly, True: expected 1, got 128"
+    },
+    "ErrorNumberTests.TextFileToString_ExclusiveFile_Raises70": {
+      "fails": "1 of 1 checks failed: TextFileToString of a file held open with exclusive access raises: expected 70, got -2147467259"
+    },
+    "ErrorNumberTests.GetFileEncoding_ExclusiveFile_Raises70": {
+      "fails": "1 of 1 checks failed: GetFileEncoding of a file held open with exclusive access raises: expected 70, got -2147467259"
+    },
+    "ErrorNumberTests.GetFileLineEnding_ExclusiveFile_Raises70": {
+      "fails": "1 of 1 checks failed: GetFileLineEnding of a file held open with exclusive access raises: expected 70, got -2147467259"
+    },
+    "ErrorNumberTests.ReadStream_ExclusiveFile_Raises70": {
+      "fails": "1 of 1 checks failed: ReadStream of a file held open with exclusive access raises: expected 70, got -2147467259"
+    },
+    "ErrorNumberTests.TextFileToArray_ExclusiveFile_Raises70": {
+      "fails": "1 of 1 checks failed: TextFileToArray of a file held open with exclusive access raises: expected 70, got -2147467259"
+    },
+    "ErrorNumberTests.FileContainsText_ExclusiveFile_Raises70": {
+      "fails": "1 of 1 checks failed: FileContainsText of a file held open with exclusive access raises: expected 70, got -2147467259"
+    },
+    "ErrorNumberTests.CreateFolder_ReservedName_Raises52": {
+      "fails": "2 of 2 checks failed: CreateFolder of the folder name con raises: expected 52, got 75; CreateFolder of the folder name nul raises: expected 52, got 76"
+    },
+    "ErrorNumberTests.MoveFile_ReservedName_Raises52": {
+      "fails": "2 of 2 checks failed: MoveFile to the file name con raises: expected 52, got 75; MoveFile to the file name nul raises: expected 52, got 0"
+    },
+    "ErrorNumberTests.MoveFolder_ReservedName_Raises52": {
+      "fails": "2 of 3 checks failed: MoveFolder to the folder name con raises: expected 52, got 75; MoveFolder to the folder name nul raises: expected 52, got 70"
+    },
+    "ErrorNumberTests.MoveFile_NulDevice_KeepsSourceFile": {
+      "fails": "6 of 6 checks failed: MoveFile to the file name nul raises: expected 52, got 0; the source file is still there after MoveFile to the file name nul: expected True, got False; MoveFile to the file name NUL raises: expected 52, got 0; the source file is still there after MoveFile to the file name NUL: expected True, got False; MoveFile to the file name nul.txt raises: expected 52, got 0; the source file is still there after MoveFile to the file name nul.txt: expected True, got False"
+    },
+    "ErrorNumberTests.FileMove_NulDevice_KeepsSourceFile": {
+      "fails": "2 of 2 checks failed: File.Move to the file name nul raises: expected 52, got 53; the source file is still there after File.Move to the file name nul: expected True, got False"
+    },
+    "ErrorNumberTests.FileSystemObjectMoveFile_NulDevice_KeepsSourceFile": {
+      "fails": "2 of 2 checks failed: FileSystemObject.MoveFile to the file name nul raises: expected 52, got 0; the source file is still there after FileSystemObject.MoveFile to the file name nul: expected True, got False"
+    },
+    "ErrorNumberTests.Rename_ReservedName_Raises52": {
+      "fails": "2 of 3 checks failed: Rename of a file to the name con raises: expected 52, got 5; Rename of a file to the name nul raises: expected 52, got 5"
+    },
+    "LongPathTests.FolderFiles_Path258_ListsFiles": {
+      "fails": "2 of 2 checks failed: Folder.Files of a folder whose path has 258 characters raises error: expected 0, got 76; files in Folder.Files of that folder: expected 1, got 0"
+    },
+    "LongPathTests.FolderFiles_Path270_ListsFiles": {
+      "fails": "2 of 2 checks failed: Folder.Files of a folder whose path has 270 characters raises error: expected 0, got 76; files in Folder.Files of that folder: expected 1, got 0"
+    },
+    "LongPathTests.FolderSubFolders_Path258_ListsFolders": {
+      "fails": "2 of 2 checks failed: Folder.SubFolders of a folder whose path has 258 characters raises error: expected 0, got 76; folders in Folder.SubFolders of that folder: expected 1, got 0"
+    },
+    "LongPathTests.FolderSize_Path258_AddsFiles": {
+      "fails": "2 of 2 checks failed: Folder.Size of a folder whose path has 258 characters raises error: expected 0, got 76; Folder.Size of that folder: expected 5, got 0"
+    },
+    "LongPathTests.FolderSize_SubfolderPath258_AddsFiles": {
+      "fails": "2 of 2 checks failed: Folder.Size of a folder with a subfolder whose path has 258 characters raises error: expected 0, got 76; Folder.Size of that folder: expected 5, got 0"
+    },
+    "PathTests.GetRelativePath_Base259": {
+      "fails": "1 of 1 checks failed: GetRelativePath of a target below a base of 259 characters: expected \"x\\y.txt\", got \"..\\dddddddddddddddddddddddddddddddddddddddddddddddddddddddd\\x\\y.txt\""
+    },
+    "PathTests.GetRelativePath_Base260": {
+      "fails": "1 of 1 checks failed: GetRelativePath of a target below a base of 260 characters: expected \"x\\y.txt\", got \"..\\ddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\\x\\y.txt\""
+    },
+    "PathTests.GetRelativePath_Base264": {
+      "fails": "1 of 1 checks failed: GetRelativePath of a target below a base of 264 characters: expected \"x\\y.txt\", got \"..\\ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\\x\\y.txt\""
+    },
+    "PathTests.GetRelativePath_Base300": {
+      "fails": "1 of 1 checks failed: GetRelativePath of a target below a base of 300 characters: expected \"x\\y.txt\", got \"..\\ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\\x\\y.txt\""
+    }
+  }
+}

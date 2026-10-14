@@ -24,7 +24,7 @@ IComparer
 
 [**ArrayList**](ArrayList) and [**ListRange**](ListRange) implement **IArrayList** and **ICloneable**, so a variable of any of these types can hold a list. A function that only reads items can take an **IList**; a function that sorts or takes parts can take an **IListRange**. [**Enumerator**](Enumerator) implements **IEnumerator**, and [**Comparer**](Comparer) implements **IComparer**.
 
-> [!WARNING]
+> [!WARNING] 1.6.151.1
 > A **For Each** over a variable declared as **IList**, **ICollection**, **IEnumerable**, **IListRange** or **IArrayList** raises error -2147352567, *Exception occurred.* A call of **GetEnumerator** through such a variable with fewer than all four arguments does not compile. A variable declared as **ArrayList**, **ListRange**, **Object** or **Variant** can be used in a **For Each**; a function that takes an interface can loop over the items with an index. See [Known problems](./#known-problems).
 
 ```tb check_build

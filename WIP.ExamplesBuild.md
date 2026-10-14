@@ -96,7 +96,7 @@ const lang = tok.info ? tok.info.trim().split(/\s+/)[0] : "";
 ```
 
 The first whitespace-separated token is the language and the rest is discarded, so anything
-after `tb` is invisible. This was verified against the real pipeline (`createMarkdownIt`
+after `tb` is invisible. This holds in the real pipeline (`createMarkdownIt`
 plus `initHighlighter`, not a bare markdown-it; see WIP.md's [Source
 dashes](WIP.md#source-dashes)). Four properties are probes that ride along on every run:
 
@@ -158,7 +158,7 @@ judgement rather than with a silence. An unknown reason is refused the way a bad
 and `inert` beside `check_build` is refused as a contradiction.
 
 The census prints three numbers: marked, inert by reason, and **undecided**. Only the last
-is a backlog, and it is the one to drive to zero. The inert count should sit still.
+is a backlog, and it is the one to keep at zero. The inert count should sit still.
 
 **`blocked` is the one reason that is not about the fence**, and **nothing carries it
 today**. It marks correct code that a *product* defect stops compiling. It exists so that
@@ -330,9 +330,8 @@ the repository's to commit: four of the nine ship no licence file, and WinReg em
   one project, VBA_JSON's `Dictionary` class hid the `Scripting.Dictionary` that WinReg's
   samples name.
 - **A project does not see the names a package's own references declare.** WinReg embeds
-  WinDevLib, and its samples' `REGTYPES`, `BOOL` and `RegOpenKeyEx` (and, before 1.0.1.1,
-  `HKEY_CURRENT_USER`, which WinReg's own `RegKeyspace` now supplies) were unresolved
-  until `contributed-WinReg` referenced WinDevLib (at the version WinReg embeds, 8.8.0.507)
+  WinDevLib, and its samples' `REGTYPES`, `BOOL` and `RegOpenKeyEx` are unresolved unless
+  `contributed-WinReg` references WinDevLib (at the version WinReg embeds, 8.8.0.507)
   and the Scripting Runtime itself. The WinReg landing page tells the reader the same.
 - **An error inside an embedded package is the package's, and fails nothing**
   (`splitPackageFaults`). WinReg 1.0.1.1 and ArrayListLib 1.6.151.1 do not compile on BETA
@@ -412,18 +411,15 @@ form with a `TextBox` on it, and impossible to compile alone, because the design
 than the code declares `Text1`. Declaring those instances lets the compiler check what the
 sample asserts: that the member exists, that it takes those arguments, that the types line up.
 
-Against a bare template 99% of the 263 `Reference/Built-In` fences fail; with every
-package referenced 78%; with the stage set 67%.
-
 **The list is written out rather than inferred, and that is the point.** A rule over "an
 identifier ending in a digit" would also declare `Var1`, `Arg1`, `Line2`, `SQLITE3`, `VBA7`,
 `MySub1` and `IShellView2`, none of which is a control. The stage set is the tool's one
 deliberate fiction, so it stays explicit and greppable.
 
 **Stage entries are the biggest lever.** A flat tail of undeclared *names* is not a flat
-tail of *work*: 45 undeclared VB control instances (`lblName`, `mnuFileSaveAs`, `optPlain`,
-`dlgOptions`, `fraLeft`), each on one or two pages, cost one file edit and fixed 22 samples
-in `Default/VB`.
+tail of *work*: a VB control instance (`lblName`, `mnuFileSaveAs`, `optPlain`,
+`dlgOptions`, `fraLeft`) used on one or two pages costs one file edit and fixes every
+sample that names it.
 
 ## Batching, which is the whole cost question
 
@@ -431,8 +427,8 @@ One project per fence is unaffordable. What makes it tractable is that **IDE cos
 project size**: what is paid for is startup, not compilation.
 
 **Fill the lanes, not the batches.** Filling each batch to `--batch` before opening another
-put 120, 55, 4 and 3 samples on four lanes, and a run takes as long as its biggest batch. The
-batcher sizes to `ceil(total / jobs)` instead.
+would put 120, 55, 4 and 3 samples on four lanes, and a run takes as long as its biggest
+batch. The batcher sizes to `ceil(total / jobs)` instead.
 
 ### A sample can pass on its neighbour's declarations
 
@@ -440,9 +436,9 @@ Several samples share a generated project, and a `module`-slot sample's declarat
 **visible to every other sample in it**. So a sample can compile because an unrelated one
 defined what it referenced. Which samples share a project depends on the selection, so the
 same page can pass one run and fail the next. `Tutorials/Testing-with-Assert.md` defines
-`PadLeft` in one fence and tests it in three others: a `--propose` survey compiled all 30 of
-its fences together and passed, while the gate (marked fences only) put the definition in a
-different project and the tests failed on `Unrecognized symbol 'PadLeft'`.
+`PadLeft` in one fence and tests it in three others: a `--propose` survey compiles all 30 of
+its fences together and passes, while the gate (marked fences only) can put the definition in a
+different project, where the tests fail on `Unrecognized symbol 'PadLeft'`.
 
 `projname=` is the answer. It is markup rather than a heuristic because the grouping is a
 fact about the page that no scan recovers:
@@ -619,8 +615,8 @@ the Form page's `True`).
   both. No template changes `project.warnings` today (the defaults leave every warning on),
   so the attribute is insurance. An error canary puts an error in every batch, so `tbbuild`
   never exits 0. An undefined-symbol canary is only the warning TB0002 under **Option
-  Explicit off**, where the name is declared implicitly, and stopped a full run on
-  `Core/Deftype.md:56`, a sample that compiles, in the `[implicit]` template. A batch that
+  Explicit off**, where the name is declared implicitly (a sample that compiles, such as
+  `Core/Deftype.md:56` in the `[implicit]` template, would fail it). A batch that
   crashes the compiler returns no rows at all, canary included; `runBatch` hands a crash to
   `isolateCrash` before it reads the canary, so that case never reaches it.
 
@@ -824,8 +820,7 @@ that fails only the second is one LLVM cannot generate code for.
 **Count diagnostics, then try the fix.** A guess from counting diagnostics is not a result.
 "`[Me]` wants a fourth slot" (27 samples, TB5025): a bare `Class`
 wrapper fixes **5**, because `Me` becoming legal does not make `Me.Caption` resolve: the
-wrapper has no `Caption` (`TB5027 [tbx_…] does not contain 'Caption'`). The largest win was
-the stage set.
+wrapper has no `Caption` (`TB5027 [tbx_…] does not contain 'Caption'`).
 
 ### The Class row, and why it needs a base
 
@@ -933,7 +928,7 @@ Language rules:
 
 ### What cannot be marked
 
-The 52 `inert` fences are not programs: syntax skeletons with
+The `inert` fences are not programs: syntax skeletons with
 `<placeholder>` names (`Interfaces-CoClasses.md` writes `Inherits base_interface`),
 property-assignment lines shown outside their `With` (`WinServicesLib/ServiceManager.md`
 documents each property as `.Name = "..."`), continuation fences that deliberately reuse the
@@ -958,6 +953,6 @@ a reader writes.
   one line each, because its purpose is "the control instances the samples assume". The
   invented *classes* go in `hidden` fences, because a class is not a control instance and a
   page is where it belongs. The line between the two is a judgement, not a rule.
-- Which pages should carry `check_run` (33 samples do)? A sample states its output in its own
+- Which pages should carry `check_run` (88 samples do)? A sample states its output in its own
   text, as a trailing comment on a `Debug.Print` line or as the comment lines under
   `' Output:`; its comparison is only as useful as the pages that state a printed value.

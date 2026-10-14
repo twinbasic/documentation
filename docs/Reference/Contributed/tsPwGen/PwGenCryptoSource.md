@@ -55,8 +55,8 @@ Debug.Print PwGenError.Code           ' InvalidRange
 Debug.Print PwGenError.Origin = ""    ' True
 ```
 
-> [!WARNING]
-> In version 1.0.8.0, **NextInRange** does not clear the last error before it starts, and it returns 0 whenever the last error is already set. It raises no error and sets no error of its own, so a direct call made after any earlier failure of the package returns 0 even when the bounds do not include 0, and the last error still belongs to the earlier failure. Call [**PwGenError.Clear**](PwGenError#clear) first. The functions of [**PwGen**](PwGen) do this themselves, so a recipe is not affected.
+> [!WARNING] 1.0.8.0
+> **NextInRange** does not clear the last error before it starts, and it returns 0 whenever the last error is already set. It raises no error and sets no error of its own, so a direct call made after any earlier failure of the package returns 0 even when the bounds do not include 0, and the last error still belongs to the earlier failure. Call [**PwGenError.Clear**](PwGenError#clear) first. The functions of [**PwGen**](PwGen) do this themselves, so a recipe is not affected.
 >
 > ```tb check_build check_run
 > Dim src As PwGenRandom = New PwGenCryptoSource

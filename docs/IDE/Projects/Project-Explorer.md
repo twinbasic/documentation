@@ -100,8 +100,8 @@ These keys work while the tree has the focus.
 
 The tree scrolls to keep the selected row in view. <kbd>Page Up</kbd>, <kbd>Page Down</kbd>, <kbd>Home</kbd> and <kbd>End</kbd> do not move the selection.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, several keys of the tree do not work as they should.
+> [!NOTE] BETA 1005
+> Several keys of the tree do not work as they should.
 >
 > - <kbd>Space</kbd> does not open or close a folder. Click the folder's plus or minus box.
 > - Typing the start of a name does not filter the tree, although the IDE has code for it. To find a file, open the folders, or switch to the [object view](#the-object-view) and search for the object by name. To find text, use [Find In Project](../Code/Finding#search-the-whole-project).
@@ -147,8 +147,8 @@ The **Search** button, or the first letter you type with a row selected, opens a
 
 <!-- SHOT projects-object-search: the object view with the search bar open over the list, holding "Util" (typed after selecting a row), the filtered list below it -->
 
-> [!NOTE]
-> In twinBASIC BETA 1005, the object view has some defects.
+> [!NOTE] BETA 1005
+> The object view has some defects.
 >
 > - A right click on a row opens no menu, so the menu's **View Object**, **View Code**, **Add**, **Rename** and **Delete** cannot be reached. To rename or delete an object's file, press <kbd>Ctrl</kbd>+<kbd>R</kbd> to return to the file view.
 > - <kbd>Shift</kbd>+double-click on a form opens its designer, like a plain double-click, and not its code. To open the code, switch to the file view and open the form's `.twin` file.

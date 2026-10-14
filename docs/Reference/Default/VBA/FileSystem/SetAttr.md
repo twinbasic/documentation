@@ -33,11 +33,11 @@ The *attributes* settings are:
 
 **SetAttr** sets the attributes of a file that is open, whatever mode it is open in, without an error.
 
-> [!WARNING]
-> In BETA 1005 this differs from VB6, which raises run-time error 55 (*File already open*) for a file open for **Output**, **Append**, **Binary** or **Random**, and leaves its attributes unchanged. VB6 sets them only for a file open for **Input**. So twinBASIC can make a file read-only while the program still has it open for writing.
+> [!WARNING] BETA 1005
+> This differs from VB6, which raises run-time error 55 (*File already open*) for a file open for **Output**, **Append**, **Binary** or **Random**, and leaves its attributes unchanged. VB6 sets them only for a file open for **Input**. So twinBASIC can make a file read-only while the program still has it open for writing.
 
-> [!NOTE]
-> In BETA 1005, **SetAttr** raises run-time error -2147467259 (`&H80004005`) for a file that does not exist, where VB6 raises 53 (*File not found*).
+> [!NOTE] BETA 1005
+> **SetAttr** raises run-time error -2147467259 (`&H80004005`) for a file that does not exist, where VB6 raises 53 (*File not found*).
 
 ### Example
 

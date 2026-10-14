@@ -1,0 +1,445 @@
+' The error numbers that differ from the one the same failure raises elsewhere in the package:
+' a file held open with exclusive access (access refused is error 70) and a reserved device name
+' (an invalid name is error 52).
+[TestFixture]
+Module ErrorNumberTests
+
+    ' The error that the named procedure raises for a file that this program holds open with
+    ' exclusive access. -1 when the file could not be made.
+    Private Function ReadHeld(ByVal Folder As String, ByVal Which As String) As Long
+        Dim p As String, fn As Long, e As Long, s As String, b() As Byte, a() As String
+        p = Folder & "\held.txt"
+        StringToTextFile "some text", p
+        fn = FreeFile()
+        Open p For Binary Access Read Write Lock Read Write As #fn
+        On Error Resume Next
+        Select Case Which
+            Case "TextFileToString": s = TextFileToString(p)
+            Case "GetFileEncoding": s = CStr(GetFileEncoding(p))
+            Case "GetFileLineEnding": s = CStr(GetFileLineEnding(p))
+            Case "ReadStream": ReadStream p, b
+            Case "TextFileToArray": a = TextFileToArray(p)
+            Case "FileContainsText": s = CStr(FileContainsText(p, "text"))
+            Case "StringToTextFile": StringToTextFile "new", p
+            Case "OpenTextFile": s = CStr(OpenTextFile(p).AtEndOfStream)
+        End Select
+        e = Err.Number
+        Err.Clear
+        On Error GoTo 0
+        Close #fn
+        ReadHeld = e
+    End Function
+
+    [TestCase]
+    Public Sub TextFileToString_ExclusiveFile_Raises70()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("TextFileToString_ExclusiveFile_Raises70")
+        On Error GoTo Oops
+        Expect.AreEqual 70, ReadHeld(w, "TextFileToString"), "TextFileToString of a file held open with exclusive access raises"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFileEncoding_ExclusiveFile_Raises70()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("GetFileEncoding_ExclusiveFile_Raises70")
+        On Error GoTo Oops
+        Expect.AreEqual 70, ReadHeld(w, "GetFileEncoding"), "GetFileEncoding of a file held open with exclusive access raises"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFileLineEnding_ExclusiveFile_Raises70()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("GetFileLineEnding_ExclusiveFile_Raises70")
+        On Error GoTo Oops
+        Expect.AreEqual 70, ReadHeld(w, "GetFileLineEnding"), "GetFileLineEnding of a file held open with exclusive access raises"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadStream_ExclusiveFile_Raises70()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("ReadStream_ExclusiveFile_Raises70")
+        On Error GoTo Oops
+        Expect.AreEqual 70, ReadHeld(w, "ReadStream"), "ReadStream of a file held open with exclusive access raises"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextFileToArray_ExclusiveFile_Raises70()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("TextFileToArray_ExclusiveFile_Raises70")
+        On Error GoTo Oops
+        Expect.AreEqual 70, ReadHeld(w, "TextFileToArray"), "TextFileToArray of a file held open with exclusive access raises"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileContainsText_ExclusiveFile_Raises70()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("FileContainsText_ExclusiveFile_Raises70")
+        On Error GoTo Oops
+        Expect.AreEqual 70, ReadHeld(w, "FileContainsText"), "FileContainsText of a file held open with exclusive access raises"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringToTextFile_ExclusiveFile_Raises70()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("StringToTextFile_ExclusiveFile_Raises70")
+        On Error GoTo Oops
+        Expect.AreEqual 70, ReadHeld(w, "StringToTextFile"), "StringToTextFile to a file held open with exclusive access raises"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    ' ---- reserved device names
+
+    [TestCase]
+    Public Sub StringToTextFile_ReservedName_Raises52()
+        Expect.Begin
+        Dim w As String, name As Variant, e As Long
+        w = Sandbox.Fresh("StringToTextFile_ReservedName_Raises52")
+        On Error GoTo Oops
+        For Each name In Array("con", "nul")
+            On Error Resume Next
+            StringToTextFile "x", w & "\" & name
+            e = Sandbox.Caught()
+            On Error GoTo Oops
+            Expect.AreEqual 52, e, "StringToTextFile to the file name " & name & " raises"
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ArrayToTextFile_ReservedName_Raises52()
+        Expect.Begin
+        Dim w As String, name As Variant, e As Long, lines() As String
+        w = Sandbox.Fresh("ArrayToTextFile_ReservedName_Raises52")
+        On Error GoTo Oops
+        lines = Split("a,b", ",")
+        For Each name In Array("con", "nul")
+            On Error Resume Next
+            ArrayToTextFile lines, w & "\" & name
+            e = Sandbox.Caught()
+            On Error GoTo Oops
+            Expect.AreEqual 52, e, "ArrayToTextFile to the file name " & name & " raises"
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateTextFile_ReservedName_Raises52()
+        Expect.Begin
+        Dim w As String, name As Variant, e As Long, ts As TextStream
+        w = Sandbox.Fresh("CreateTextFile_ReservedName_Raises52")
+        On Error GoTo Oops
+        For Each name In Array("con", "nul")
+            On Error Resume Next
+            Set ts = CreateTextFile(w & "\" & name)
+            e = Sandbox.Caught()
+            On Error GoTo Oops
+            Expect.AreEqual 52, e, "CreateTextFile of the file name " & name & " raises"
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenTextFile_ReservedName_Raises52()
+        Expect.Begin
+        Dim w As String, name As Variant, e As Long, ts As TextStream
+        w = Sandbox.Fresh("OpenTextFile_ReservedName_Raises52")
+        On Error GoTo Oops
+        For Each name In Array("con", "nul")
+            On Error Resume Next
+            Set ts = OpenTextFile(w & "\" & name, ForWriting, True)
+            e = Sandbox.Caught()
+            On Error GoTo Oops
+            Expect.AreEqual 52, e, "OpenTextFile(ForWriting, create) of the file name " & name & " raises"
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FolderCreateTextFile_ReservedName_Raises52()
+        Expect.Begin
+        Dim w As String, name As Variant, e As Long, ts As TextStream
+        w = Sandbox.Fresh("FolderCreateTextFile_ReservedName_Raises52")
+        On Error GoTo Oops
+        For Each name In Array("con", "nul")
+            On Error Resume Next
+            Set ts = GetFolder(w).CreateTextFile(CStr(name))
+            e = Sandbox.Caught()
+            On Error GoTo Oops
+            Expect.AreEqual 52, e, "Folder.CreateTextFile of the file name " & name & " raises"
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyFile_ReservedName_Raises52()
+        Expect.Begin
+        Dim w As String, name As Variant, e As Long
+        w = Sandbox.Fresh("CopyFile_ReservedName_Raises52")
+        On Error GoTo Oops
+        StringToTextFile "x", w & "\a.txt"
+        For Each name In Array("con", "nul")
+            On Error Resume Next
+            CopyFile w & "\a.txt", w & "\" & name
+            e = Sandbox.Caught()
+            On Error GoTo Oops
+            Expect.AreEqual 52, e, "CopyFile to the file name " & name & " raises"
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateFolder_ReservedName_Raises52()
+        Expect.Begin
+        Dim w As String, name As Variant, e As Long
+        w = Sandbox.Fresh("CreateFolder_ReservedName_Raises52")
+        On Error GoTo Oops
+        For Each name In Array("con", "nul")
+            On Error Resume Next
+            CreateFolder w & "\" & name
+            e = Sandbox.Caught()
+            On Error GoTo Oops
+            Expect.AreEqual 52, e, "CreateFolder of the folder name " & name & " raises"
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MoveFile_ReservedName_Raises52()
+        Expect.Begin
+        Dim w As String, name As Variant, e As Long
+        w = Sandbox.Fresh("MoveFile_ReservedName_Raises52")
+        On Error GoTo Oops
+        StringToTextFile "x", w & "\a.txt"
+        For Each name In Array("con", "nul")
+            On Error Resume Next
+            MoveFile w & "\a.txt", w & "\" & name
+            e = Sandbox.Caught()
+            On Error GoTo Oops
+            Expect.AreEqual 52, e, "MoveFile to the file name " & name & " raises"
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MoveFolder_ReservedName_Raises52()
+        Expect.Begin
+        Dim w As String, name As Variant, e As Long
+        w = Sandbox.Fresh("MoveFolder_ReservedName_Raises52")
+        On Error GoTo Oops
+        CreateFolder w & "\f"
+        For Each name In Array("con", "nul")
+            On Error Resume Next
+            MoveFolder w & "\f", w & "\" & name
+            e = Sandbox.Caught()
+            On Error GoTo Oops
+            Expect.AreEqual 52, e, "MoveFolder to the folder name " & name & " raises"
+        Next
+        Expect.IsTrue FolderExists(w & "\f"), "the source folder is still there"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    ' ---- the NUL device as the destination of a move: the file must not be lost
+
+    [TestCase]
+    Public Sub MoveFile_NulDevice_KeepsSourceFile()
+        Expect.Begin
+        Dim w As String, name As Variant, e As Long
+        w = Sandbox.Fresh("MoveFile_NulDevice_KeepsSourceFile")
+        On Error GoTo Oops
+        For Each name In Array("nul", "NUL", "nul.txt")
+            StringToTextFile "payload", w & "\a.txt"
+            On Error Resume Next
+            MoveFile w & "\a.txt", w & "\" & name
+            e = Sandbox.Caught()
+            On Error GoTo Oops
+            Expect.AreEqual 52, e, "MoveFile to the file name " & name & " raises"
+            Expect.IsTrue FileExists(w & "\a.txt"), "the source file is still there after MoveFile to the file name " & name
+            DeleteFile w & "\a.txt", True, True
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileMove_NulDevice_KeepsSourceFile()
+        Expect.Begin
+        Dim w As String, e As Long
+        w = Sandbox.Fresh("FileMove_NulDevice_KeepsSourceFile")
+        On Error GoTo Oops
+        StringToTextFile "payload", w & "\a.txt"
+        On Error Resume Next
+        GetFile(w & "\a.txt").Move w & "\nul"
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 52, e, "File.Move to the file name nul raises"
+        Expect.IsTrue FileExists(w & "\a.txt"), "the source file is still there after File.Move to the file name nul"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileSystemObjectMoveFile_NulDevice_KeepsSourceFile()
+        Expect.Begin
+        Dim w As String, e As Long, fso As New FileSystemObject
+        w = Sandbox.Fresh("FileSystemObjectMoveFile_NulDevice_KeepsSourceFile")
+        On Error GoTo Oops
+        StringToTextFile "payload", w & "\a.txt"
+        On Error Resume Next
+        fso.MoveFile w & "\a.txt", w & "\nul"
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 52, e, "FileSystemObject.MoveFile to the file name nul raises"
+        Expect.IsTrue FileExists(w & "\a.txt"), "the source file is still there after FileSystemObject.MoveFile to the file name nul"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Rename_ReservedName_Raises52()
+        Expect.Begin
+        Dim w As String, name As Variant, e As Long
+        w = Sandbox.Fresh("Rename_ReservedName_Raises52")
+        On Error GoTo Oops
+        StringToTextFile "x", w & "\a.txt"
+        For Each name In Array("con", "nul")
+            On Error Resume Next
+            Rename w & "\a.txt", CStr(name)
+            e = Sandbox.Caught()
+            On Error GoTo Oops
+            Expect.AreEqual 52, e, "Rename of a file to the name " & name & " raises"
+        Next
+        Expect.IsTrue FileExists(w & "\a.txt"), "the file is still there under its name"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+End Module

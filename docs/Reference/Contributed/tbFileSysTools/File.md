@@ -323,7 +323,8 @@ Syntax: *object*.**OpenAsTextStream** ( [ *ioMode* [, *encoding* [, *writeModeLi
 
 Returns a [**TextStream**](TextStream); the rules are those of [**OpenTextFile**](FileSystemTools#opentextfile) with *create* **False**.
 
-> [!WARNING]
+<!-- test: AttributeTests.OpenAsTextStream_ForWriting_EmptiesFile, AttributeTests.OpenAsTextStream_ForAppending_KeepsText -->
+> [!WARNING] 1.9.0.0
 > **ForWriting** empties the file when the stream is opened. Use **ForAppending** to add to it.
 
 ### Refresh
@@ -360,8 +361,9 @@ Syntax: *object*.**SetAttribute** ( *attr*, *state* )
 *state*
 : *required* A **Boolean**. **True** sets the attribute and **False** clears it. The other attributes stay as they are.
 
-> [!WARNING]
-> In version 1.8.0.0, **SetAttribute** sets nothing, and raises no error, on a file that has no attribute at all, because [**Attributes**](#attributes) then reports **faNormal**, and **faNormal** wins over the attribute being set. A new file has the archive attribute, so it is a file from which the program cleared every attribute that this applies to. To give such a file an attribute, assign [**Attributes**](#attributes). The same method of a [**Folder**](Folder#setattribute) is not affected.
+<!-- test: AttributeTests.FileSetAttribute_NoAttributes_SetsHidden, AttributeTests.FileSetAttribute_NoAttributes_SetsReadOnly, AttributeTests.FileSetAttribute_ArchiveFile_SetsHidden, AttributeTests.FileAttributes_Assigned_SetsHidden, AttributeTests.FolderSetAttribute_SetsHidden -->
+> [!WARNING] 1.9.0.0
+> **SetAttribute** sets nothing, and raises no error, on a file that has no attribute at all, because [**Attributes**](#attributes) then reports **faNormal**, and **faNormal** wins over the attribute being set. A new file has the archive attribute, so it is a file from which the program cleared every attribute that this applies to. To give such a file an attribute, assign [**Attributes**](#attributes). The same method of a [**Folder**](Folder#setattribute) is not affected.
 
 ```tb check_build check_run
 Dim work As String, f As File

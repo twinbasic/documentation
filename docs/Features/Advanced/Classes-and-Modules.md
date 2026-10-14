@@ -18,8 +18,8 @@ A class can have a `Sub New` constructor, and the constructor can take arguments
 - A class that has both a `Class_Initialize` and a `Sub New` with no parameters cannot be created with a plain `New`. The call matches both, and fails with TB5073.
 - A class whose only `Sub New` has required arguments, with no `Class_Initialize`, cannot be declared [`As New`](../../tB/Core/New), which creates the object without arguments. The declaration fails with TB5121. If every argument of the `Sub New` is `Optional`, the class can be declared `As New`: the object is created by calling `Sub New` with the default values.
 
-> [!NOTE]
-> A `Sub New` declared `Private` is meant to make construction private, so that only code inside the class creates objects with it. In BETA 1005 this is not enforced: `New MyClass` in another module of the project, or in a project that references a package with the class, compiles and runs the private constructor.
+> [!NOTE] BETA 1005
+> A `Sub New` declared `Private` is meant to make construction private, so that only code inside the class creates objects with it. This is not enforced: `New MyClass` in another module of the project, or in a project that references a package with the class, compiles and runs the private constructor.
 
 ### Example
 

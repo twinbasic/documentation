@@ -103,6 +103,29 @@ Four files under `scripts/lib/` belong to the tool:
 
 Exit codes: **0** every marked sample compiles, or none is marked (`--report` always, and `--propose` when it found only unmarked samples that fail, which is advisory); **1** a marked sample does not compile, a marker is misused, a template does not compile, the compiler crashed on a project, `--build` or `--llvm` found a sample that fails the build, or a `check_run` sample raised an error, did not return or printed something other than the page says (the report names each); **2** the harness could not run: a refused command line, a failed self-test probe, no IDE, an unreadable `--report` file, a work folder it could not clear, an `--llvm` run on a Community or Personal licence, or a crash.
 
+## package_tests.mjs
+{: #package-tests }
+
+    node scripts/package_tests.mjs (<Package> ... | --all-packages) [--arch win32|win64|both] [--port N] [--timeout S] [--hang-timeout S] [--update] [--ide <path>] [--json]
+
+It runs the packages named, each matched to its folder in any case (`tbregexp` is `tbRegExp`), or with `--all-packages` every package that has a test project; a whole run takes several minutes a package, so it is never the default. With neither, or with both, it refuses and lists the packages that have a test project.
+
+Runs the contributed packages' test projects. Each package the reference documents under `docs/Reference/Contributed/` has one in `test/package-tests/<Package>/`: `[TestCase]` Subs of `[TestFixture]` modules that check every claim the NOTEs and WARNINGs of its section make, a generated `RunAll` module, and `expect.json`. The README in that folder says how a case is written. Each case checks what is correct, so a defect of the package is a failing case, and `expect.json` records how each case fails, or that it never returns, on the version the section documents.
+
+For each package and architecture (both by default), the tool stages the project with the package embedded, downloading it from TWINSERV into `%TEMP%\tb-twinserv` the first time, and runs it with [`tbrun --tests`](Tools-Compiler#tbrun). Each case is then judged:
+
+- **documented** --- as `expect.json` says;
+- **fixed** --- `expect.json` says it fails or never returns, and it passes: the page's callout and the entry go;
+- **changed** --- anything else: a claim of the page is no longer true, or the case is wrong.
+
+A case that never returns stops the compiler. The tool catches it, runs the cases after it again in a new IDE, and from then on, once `expect.json` says so, runs it alone with `--hang-timeout`. `--update` writes `expect.json` from the run, for the architectures run. The run also writes `RunAll.twin` again whenever the cases or `expect.json` change; [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests) fails while it is out of date.
+
+The build publishes each project as `<Package>-tests.twinproj` beside the package's section, and the section's landing page links to it. It carries none of the package's code: it references the package as a [linked package](../../Features/Packages/Linked), which the IDE loads from `%APPDATA%\twinBASIC\packages`. With the package's file there, the project's `Sub Main` runs every case and prints `PASS`, `FAIL` or `SKIP` for each in the DEBUG CONSOLE.
+
+It is outside every gate and CI: it needs Windows and a twinBASIC install. [`package-tests.bat`](Tools#package-testsbat) runs it.
+
+Exit codes: **0** every case did what `expect.json` says; **1** a case was fixed or changed; **2** a refused command line, a package with no test project, or the harness failed.
+
 ## gen_attribute_probes.mjs
 {: #gen-attribute-probes }
 

@@ -200,8 +200,8 @@ Debug.Print Tests.Run()    ' mine
 
 ## Known problems in version 1.0.15.0
 
-> [!WARNING]
-> In version 1.0.15.0 these problems give a wrong result with no error.
+> [!WARNING] 1.0.15.0
+> These problems give a wrong result with no error.
 >
 > - **A choice in a regular expression is not tried again.** When one alternative matches and the rest of the pattern then fails, the matcher does not try the other alternatives, so `a|ab` does not match `ab`, and `(Mr|Mrs) Smith` does not match `Mrs Smith`, although `(Mrs|Mr) Smith` matches both. RFC 9485 defines the match of the whole pattern. A choice whose alternatives start the same way works when the longer alternative comes first. The matcher serves [**IsMatchPattern**](Json#ismatchpattern), [**IsSearchPattern**](Json#issearchpattern), the JSONPath functions `match` and `search`, and the schema keywords `pattern` and `patternProperties`.
 > - **`\n`, `\r` and `\t` are not understood.** RFC 9485 has these escapes. Outside a character set the pattern is invalid, and inside a set `[\n]` means the letter `n`. Write the control character itself in the pattern string, for example `ChrW(9)`, which is an ordinary character in the dialect. The escapes `\-` and `\^`, which the RFC also has, are invalid outside a set, and `[a-]` is invalid, although the RFC allows a last hyphen; put the hyphen first, as in `[-a]`.
@@ -284,7 +284,7 @@ Debug.Print Tests.Run()    ' mine
 > Debug.Print JsonError.HasError                            ' False
 > ```
 
-> [!NOTE]
+> [!NOTE] 1.0.15.0
 > The package has three more problems, each of which is an error that the reader cannot miss.
 >
 > - **Numbers must fit a Decimal.** [**Parse**](Json#parse) rejects a valid JSON number with the error `InvalidNumber` when its digits make a whole number above 79228162514264337593543950335, or its scale is outside -28 to 28, so `1e29`, `1e-29`, a number of 36 digits such as pi, and the largest **Double**, `1.7976931348623157e308`, are errors. [**Serialize**](Json#serialize) fails the same way for a **Double** above that range. RFC 8259 allows an implementation to limit the range of numbers.

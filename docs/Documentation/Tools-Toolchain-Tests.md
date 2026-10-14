@@ -288,6 +288,8 @@ Unit tests for `scripts/lib/tb-ports.mjs`, which claims the DevTools ports that 
 
 Four child processes claim three ports each at the same time. The range holds one port in use, one with the lock of a process that has ended and one with the lock of a live process, and each child holds its ports until all have claimed. The test checks that the claims are disjoint, that they are exactly the free ports with the stale lock taken over, and that each lock is gone once its process exits. Two more tests ask for more free ports than the range holds, which is refused with the port found unlocked again, and claim past the unfinished claim of a run that ended.
 
+The same file tests what an IDE leaves under the system temp directory. `launchIde` gives each IDE a temp folder and a WebView2 profile named for its port, and `shutdownIde` and `shutdownIdeAsync` remove both once the IDE's process has gone. The tests give them a handle for a process that cannot exist, and check that its two folders are removed and a third is not, and that a folder already gone, a handle with no folders and no handle are no error.
+
 Starts no IDE. No browser, no built tree, about 2 s.
 
 Exit codes: **0** every test passed, **1** a test failed.
@@ -352,6 +354,26 @@ The warnings say nothing when every page has an entry --- in a part, or in `left
 Eight probes give each of the five findings a fault to report: a page with no entry, a page in the book and in `left_out:`, an entry of each kind that selects no page, and a landing or foreword URL that names none. The other four hold the opposite: a consistent manifest reports nothing, and the three pages the book carries without a selector naming them --- a chaptered part's landing, a foreword, and the book page itself --- are never reported. Dropping any one emission site from `bookCoverage()` fails most of the twelve probes, and the probe named after that site says which.
 
 Exit codes: **0** every probe passed, **1** a probe failed, **2** the gate could not run: a refused command line, or a crash.
+
+## check_package_tests.mjs
+{: #check-package-tests }
+
+    node scripts/check_package_tests.mjs
+
+Verifies that every NOTE and WARNING of a contributed package's section names the test cases behind it, and that each [package test project](Tools-Samples#package-tests) is in order. It reads only the sources --- the section's pages, the project's files and the sample template that names the package's version --- so it needs no install, no browser and no built tree, and takes well under a second.
+
+A callout names its cases in an HTML comment on the line above it:
+
+    <!-- test: FileSystemTools.GetRelativePath_LongBase, compile NoWin64 -->
+    > [!WARNING]
+
+The same comment anywhere else opens a region, which `<!-- /test -->` closes: it ties the paragraphs, lists, tables and samples between them, which describe how the package works, to the cases that check them. Regions do not nest, and a callout inside one is marked by it.
+
+Each item is a `Fixture.Sub` for a `[TestCase]`, `compile <Name>` for a compile case, `probe <id>` for a scenario of the package's `probe/` harness, or `none -- <reason>` for a callout no program can check. For a package with a test project, the gate fails when a callout has neither a marker nor a region around it, when a region is not closed or opens inside another, when an item names nothing that exists, when a case is named by no marker, when a `[TestCase]` does not start with `Expect.Begin` and end with `Expect.Done`, when `expect.json` is for another version than the section's `indexed_from` or names a case that does not exist, and when the generated `RunAll.twin` is out of date. A section with no test project yet is listed in the script's `PENDING` set; the gate fails on a name there with a project, and on a section neither there nor with one, so the list only shrinks.
+
+Thirteen probes run first, on pages, sources and an `expect.json` built in memory: how a marker, a region and their items are read, the RunAll module, how `expect.json` is read and written, and how a case's result is judged.
+
+Exit codes: **0** every probe passed and every test project is in order, **1** a probe failed, or a section or test project is not in order, **2** the gate could not run: a refused command line, or a crash.
 
 ## check_symbol_index.mjs
 {: #check-symbol-index }

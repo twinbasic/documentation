@@ -79,7 +79,7 @@ Set Prop = Props.Item("System.Media.Duration")
 
 Holds the native-code COM object created internally by the Virtual-COM library. **Object**. For internal use only.
 
-> [!WARNING]
+> [!WARNING] timeless
 > Do not read, assign, or pass **VCOMObject** to any function. The package marks it as for internal use only, and **Count**, **FilePath** and **Item** forward their calls to it.
 
 ## Example

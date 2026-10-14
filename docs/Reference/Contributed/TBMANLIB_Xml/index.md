@@ -41,10 +41,10 @@ Debug.Print y.ToXmlString(False)
 ' <library city="Oslo"><book id="1">Dune</book></library>
 ```
 
-> [!WARNING]
-> The parser of version 1.0.0.1 reads some valid XML wrongly and raises no error, and for some text it never returns. [Defects in version 1.0.0.1](cXml#defects) lists the cases: self-closing elements, entities in text, tags with both kinds of quote or with line breaks, processing instructions, and comments, CDATA sections and DOCTYPE declarations in some positions.
+> [!WARNING] 1.0.0.1
+> The parser reads some valid XML wrongly and raises no error, and for some text it never returns. [Defects in version 1.0.0.1](cXml#defects) lists the cases: self-closing elements, entities in text, tags with both kinds of quote or with line breaks, processing instructions, and comments, CDATA sections and DOCTYPE declarations in some positions.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > The XPath engine reads some valid expressions wrongly and raises no error: the step `..`, axes such as `ancestor::`, positions after `//`, and the operators `and` and `or`. [Defects in version 1.0.0.1](mXPath#defects) lists the cases.
 
 ## What the package reads and writes

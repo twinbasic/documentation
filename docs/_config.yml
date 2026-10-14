@@ -125,6 +125,16 @@ addin_project:
   src: ../add-in
   dest: tB/IDE/AddIns/downloads/tbDocsHelp.twinproj
 
+# The contributed packages' test projects, which the build packs from src (one folder per
+# package, relative to docs/) with the Settings of the package's sample template in templates,
+# and writes into the online tree as <dest>/<Package>/<Package>-tests.twinproj, beside the
+# package's section. The publish allowlist exempts those paths, as it does addin_project's. See
+# builder/package-tests.mjs and test/package-tests/README.md.
+package_tests:
+  src: ../test/package-tests
+  templates: ../test/example-projects
+  dest: tB/Packages/Contributed
+
 # Search index granularity and generic-section folding. See WIP.Search.md's
 # "Design" §1 for why: splitting at h3 instead of h2 finds API members
 # (`### PaintPicture`) as their own entries, and folding boilerplate

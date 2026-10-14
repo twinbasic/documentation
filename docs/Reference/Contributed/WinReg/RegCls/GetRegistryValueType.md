@@ -24,10 +24,10 @@ Syntax: *object*.**GetRegistryValueType**( *hKey*, *subKey*, *valueName* ) **As 
 
 If the key cannot be opened or the value query fails, the function returns `REGTYPES.REG_NONE`.
 
-> [!WARNING]
+> [!WARNING] 1.0.1.1
 > The function returns `REG_NONE` for every value that holds data. It asks `RegQueryValueEx` for the type with a data pointer and a size of zero, and the call fails with error 234 (*more data*) when the value has any data. Only a value of zero length, such as an empty `REG_BINARY`, gets its type. A program that needs the type of a value calls `RegQueryValueEx` itself.
 
-> [!NOTE]
+> [!NOTE] 1.0.1.1
 > *hKey* is declared as **Long**, not as **RegKeyspace**. The two types are assignment-compatible in twinBASIC, so passing a `RegKeyspace` constant works without an explicit cast.
 
 ### Example

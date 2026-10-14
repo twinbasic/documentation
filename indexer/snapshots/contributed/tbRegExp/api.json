@@ -2,7 +2,7 @@
   "format": 3,
   "package": "tbRegExp",
   "project": "tbRegExp",
-  "version": "1.7.0.0",
+  "version": "1.8.0.0",
   "types": [
     {
       "name": "IEnumVARIANT",
@@ -115,6 +115,7 @@
         {"name":"Pattern","kind":"property","vis":"public","signature":"Public Property Let Pattern(ByVal pPattern As String)","accessor":"Let","description":"The regular expression pattern."},
         {"name":"Pattern","kind":"property","vis":"public","signature":"Public Property Get Pattern() As String","returnType":"String","accessor":"Get"},
         {"name":"Replace","kind":"function","vis":"public","signature":"Public Function Replace(ByVal sourceString As String, ByVal replaceString As String) As String","returnType":"String","description":"Replaces matches with replaceString and returns the String with replacements made."},
+        {"name":"SearchAborted","kind":"property","vis":"public","signature":"Public Property Get SearchAborted() As Boolean","returnType":"Boolean","accessor":"Get","description":"True if the most recent Test, Execute, Replace or Split on this object gave up before finishing its search. Results may be truncated or missing, and nothing is raised. In practice only a catastrophically backtracking pattern - nested quantifiers such as '(a+)+b' - can reach this."},
         {"name":"Split","kind":"function","vis":"public","signature":"Public Function Split(ByVal sourceString As String) As Collection","returnType":"Collection","description":"Splits an input string into an array of substrings at the positions defined by a regular expression match. Needs Global Property set to 'True'."},
         {"name":"Test","kind":"function","vis":"public","signature":"Public Function Test(ByVal sourceString As String) As Boolean","returnType":"Boolean","description":"Returns 'True' if Pattern finds a match in sourceString, otherwise returns 'False'."},
         {"name":"mCapEntryPoints","kind":"field","vis":"private","signature":"Private mCapEntryPoints() As Long"},
@@ -130,6 +131,7 @@
         {"name":"mNamedCount","kind":"field","vis":"private","signature":"Private mNamedCount As Long"},
         {"name":"mNumCaptures","kind":"field","vis":"private","signature":"Private mNumCaptures As Long"},
         {"name":"mPattern","kind":"field","vis":"private","signature":"Private mPattern As String"},
+        {"name":"mSearchAborted","kind":"field","vis":"private","signature":"Private mSearchAborted As Boolean"},
         {"name":"regex","kind":"field","vis":"private","signature":"Private regex As StaticRegex.RegexTy"}
       ]
     },
@@ -157,6 +159,7 @@
         {"name":"AstTableInitialize","kind":"sub","vis":"private","signature":"Private Sub AstTableInitialize()"},
         {"name":"AstToBytecode","kind":"sub","vis":"private","signature":"Private Sub AstToBytecode(ByRef ast() As Long, ByRef identifierTree As IdentifierTreeTy, ByVal caseInsensitive As Boolean, ByRef bytecode() As Long)"},
         {"name":"Clear","kind":"sub","vis":"private","signature":"Private Sub Clear(ByRef sb As StaticStringBuilder)"},
+        {"name":"ClearStepsLimitHit","kind":"sub","vis":"public","signature":"Public Sub ClearStepsLimitHit()"},
         {"name":"CloseGroups","kind":"function","vis":"private","signature":"Private Function CloseGroups( ByRef ast As ArrayBuffer, ByRef parseStack As ArrayBuffer, ByRef pendingDisjunction As Long, ByRef currentDisjunction As Long, ByRef potentialConcat2 As Long, ByRef potentialConcat1 As Long, ByRef modifierMask As Long, ByRef spilloverWriteMask As Long, ByVal whatToHandle As Long ) As Long","returnType":"Long"},
         {"name":"Compile","kind":"sub","vis":"private","signature":"Private Sub Compile(ByRef outBytecode() As Long, ByRef s As String, Optional ByVal caseInsensitive As Boolean = False)"},
         {"name":"ComputeFirstChar","kind":"function","vis":"private","signature":"Private Function ComputeFirstChar( ByRef bytecode() As Long, ByRef outChar As Long, ByRef outRangesPc As Long, ByRef outIFlag As Long ) As Long","returnType":"Long"},
@@ -164,7 +167,7 @@
         {"name":"CopyMemory","kind":"sub","vis":"private","declare":true,"signature":"Private Declare PtrSafe Sub CopyMemory Lib \"kernel32\" Alias \"RtlMoveMemory\" (Destination As Any, Source As Any, ByVal Length As LongPtr)"},
         {"name":"DfsMatch","kind":"function","vis":"private","signature":"Private Function DfsMatch( ByRef outCaptures As CapturesTy, ByRef bytecode() As Long, ByRef inputStr As String, Optional ByVal stepsLimit As Long = DEFAULT_STEPS_LIMIT, Optional ByVal multiline As Boolean = False, Optional ByVal dotAll As Boolean = False ) As Long","returnType":"Long"},
         {"name":"DfsMatchFrom","kind":"function","vis":"private","signature":"Private Function DfsMatchFrom( ByRef context As DfsMatcherContext, ByRef outCaptures As CapturesTy, ByRef bytecode() As Long, ByRef inputStr As String, ByVal sp As Long, Optional ByVal stepsLimit As Long = DEFAULT_STEPS_LIMIT, Optional ByVal multiline As Boolean = False, Optional ByVal dotAll As Boolean = False ) As Long","returnType":"Long"},
-        {"name":"DfsRunThreads","kind":"function","vis":"private","signature":"Private Function DfsRunThreads( ByRef outCaptures As CapturesTy, ByRef context As DfsMatcherContext, ByRef bytecode() As Long, ByRef inputStr As String, ByVal sp As Long, ByVal stepsLimit As Long, ByVal multiline As Boolean, ByVal dotAll As Boolean ) As Long","returnType":"Long"},
+        {"name":"DfsRunThreads","kind":"function","vis":"private","signature":"Private Function DfsRunThreads( ByRef outCaptures As CapturesTy, ByRef context As DfsMatcherContext, ByRef bytecode() As Long, ByRef inputStr As String, ByVal sp As Long, ByVal multiline As Boolean, ByVal dotAll As Boolean ) As Long","returnType":"Long"},
         {"name":"EmitPredefinedRange","kind":"sub","vis":"private","signature":"Private Sub EmitPredefinedRange( ByRef outBuffer As ArrayBuffer, ByRef source() As Long, ByVal sourceStart As Long, ByVal sourceLength As Long )"},
         {"name":"GetBc","kind":"function","vis":"private","signature":"Private Function GetBc(ByRef bytecode() As Long, ByRef pc As Long) As Long","returnType":"Long"},
         {"name":"GetCapture","kind":"function","vis":"public","signature":"Public Function GetCapture(ByRef matcherState As MatcherStateTy, ByRef haystack As String, Optional ByVal num As Long = 0) As String","returnType":"String"},
@@ -226,6 +229,7 @@
         {"name":"SetMinimumCapacity","kind":"sub","vis":"private","signature":"Private Sub SetMinimumCapacity(ByRef sb As StaticStringBuilder, ByVal MinimumCapacity As Long)"},
         {"name":"SplitByRegex","kind":"function","vis":"public","signature":"Public Function SplitByRegex( ByRef regex As RegexTy, ByRef haystack As String, Optional ByVal localMatch As Boolean = False, Optional ByVal multiline As Boolean = False, Optional ByVal dotAll As Boolean = False ) As Collection","returnType":"Collection"},
         {"name":"StaticData","kind":"field","vis":"private","signature":"Private StaticData(0 To STATIC_DATA_LENGTH - 1) As Long"},
+        {"name":"StepsLimitHit","kind":"function","vis":"public","signature":"Public Function StepsLimitHit() As Boolean","returnType":"Boolean"},
         {"name":"SwitchToLargerBuffer","kind":"sub","vis":"private","signature":"Private Sub SwitchToLargerBuffer(ByRef sb As StaticStringBuilder, ByVal nRequired As Long)"},
         {"name":"Test","kind":"function","vis":"public","signature":"Public Function Test( ByRef regex As RegexTy, ByRef str As String, Optional ByVal multiline As Boolean = False, Optional ByVal dotAll As Boolean = False ) As Boolean","returnType":"Boolean"},
         {"name":"TryInitializeRegex","kind":"function","vis":"public","signature":"Public Function TryInitializeRegex( ByRef regex As RegexTy, ByRef pattern As String, Optional ByVal caseInsensitive As Boolean = False ) As Boolean","returnType":"Boolean"},
@@ -238,7 +242,10 @@
         {"name":"astTableInitialized","kind":"field","vis":"private","signature":"Private astTableInitialized As Boolean"},
         {"name":"isCaseInsensitive","kind":"function","vis":"private","signature":"Private Function isCaseInsensitive(ByRef bytecode() As Long) As Boolean","returnType":"Boolean"},
         {"name":"mInputChars","kind":"field","vis":"private","signature":"Private mInputChars() As Integer"},
-        {"name":"mInputLen","kind":"field","vis":"private","signature":"Private mInputLen As Long"}
+        {"name":"mInputLen","kind":"field","vis":"private","signature":"Private mInputLen As Long"},
+        {"name":"mStepsBudget","kind":"field","vis":"private","signature":"Private mStepsBudget As Long"},
+        {"name":"mStepsLimitHit","kind":"field","vis":"private","signature":"Private mStepsLimitHit As Boolean"},
+        {"name":"mStepsUsed","kind":"field","vis":"private","signature":"Private mStepsUsed As Long"}
       ]
     },
     {
@@ -372,7 +379,9 @@
         {"name":"nNamedCaptures","vis":"public","signature":"nNamedCaptures As Long"},
         {"name":"entireMatch","vis":"public","signature":"entireMatch As StartLengthPair"},
         {"name":"numberedCaptures","vis":"public","signature":"numberedCaptures() As StartLengthPair"},
-        {"name":"namedCaptures","vis":"public","signature":"namedCaptures() As Long"}
+        {"name":"namedCaptures","vis":"public","signature":"namedCaptures() As Long"},
+        {"name":"allocNumbered","vis":"public","signature":"allocNumbered As Long"},
+        {"name":"allocNamed","vis":"public","signature":"allocNamed As Long"}
       ],
       "members": []
     },
@@ -420,7 +429,10 @@
       "file": "StaticRegex.twin",
       "signature": "Private Enum DfsMatcherSharedConstant",
       "values": [
-        {"name":"DEFAULT_STEPS_LIMIT","value":"10000"}
+        {"name":"DEFAULT_STEPS_LIMIT","value":"0"},
+        {"name":"STEPS_BUDGET_PER_CHAR","value":"5000"},
+        {"name":"STEPS_BUDGET_FLOOR","value":"1000000"},
+        {"name":"STEPS_BUDGET_CAP","value":"50000000"}
       ]
     },
     {
@@ -531,7 +543,6 @@
         {"name":"UNICODE_0","value":"48"},
         {"name":"UNICODE_1","value":"49"},
         {"name":"UNICODE_7","value":"55"},
-        {"name":"UNICODE_8","value":"56"},
         {"name":"UNICODE_9","value":"57"},
         {"name":"UNICODE_COLON","value":"58"},
         {"name":"UNICODE_LT","value":"60"},

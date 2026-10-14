@@ -28,7 +28,7 @@ End If
 
 The options are the members and flags of the Win32 structures that the dialogs take: [OPENFILENAME](https://learn.microsoft.com/en-us/windows/win32/api/commdlg/ns-commdlg-openfilenamew) for **ShowOpen** (`GetOpenFileNameW`) and **ShowSave** (`GetSaveFileNameW`), and [BROWSEINFO](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/ns-shlobj_core-browseinfow) for **ShowBrowseForFolder** (`SHBrowseForFolder`). Each property page names the flag it sets and the dialogs in which it takes effect, and the table [below](#which-dialog-uses-which-property) lists them all.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The property names follow VB6's **CommonDialog** control, but **cDialog** is a class with a smaller set of members. It has no **Flags** property (each option is a **Boolean** property of its own), no **FilterIndex** (the first filter is always selected, and the filter that the user chose is not reported), no **CancelError** (a cancelled dialog returns an empty string), no **FileTitle** or **MaxFileSize**, and no owner window. **InitialDir** is the control's **InitDir**. **ShowOpen** returns the file name, as well as storing it in **FileName**, and there is no Color, Font or Print dialog in this class (the package has a class for each of them, listed on its [landing page](../)). The [**cDialogEx**](../cDialogEx) class of this package has a **FilterIndex** and an owner window. The [**CommonDialog**](../../VBComDlg/CommonDialog) class of the VBComDlg package has **Flags**, **FilterIndex**, **CancelError**, **FileTitle**, **MaxFileSize** and those dialogs.
 
 ## Defaults

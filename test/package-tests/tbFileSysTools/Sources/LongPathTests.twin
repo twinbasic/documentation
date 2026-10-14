@@ -1,0 +1,395 @@
+' Paths of more than 260 characters: what works, what stops at the limit, and the folders of 258
+' characters or more whose Files, SubFolders and Size raise error 76.
+[TestFixture]
+Module LongPathTests
+
+    ' ---- Folder.Files, SubFolders and Size
+
+    [TestCase]
+    Public Sub FolderFiles_Path258_ListsFiles()
+        Expect.Begin
+        Dim w As String, deep As String, n As Long, e As Long
+        w = Sandbox.Fresh("FolderFiles_Path258_ListsFiles")
+        On Error GoTo Oops
+        deep = Sandbox.PathOfLength(w, 258)
+        CreateFolder deep, True
+        StringToTextFile "hello", deep & "\f.txt"
+        On Error Resume Next
+        n = GetFolder(deep).Files.Count
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 0, e, "Folder.Files of a folder whose path has 258 characters raises error"
+        Expect.AreEqual 1, n, "files in Folder.Files of that folder"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FolderFiles_Path270_ListsFiles()
+        Expect.Begin
+        Dim w As String, deep As String, n As Long, e As Long
+        w = Sandbox.Fresh("FolderFiles_Path270_ListsFiles")
+        On Error GoTo Oops
+        deep = Sandbox.PathOfLength(w, 270)
+        CreateFolder deep, True
+        StringToTextFile "hello", deep & "\f.txt"
+        On Error Resume Next
+        n = GetFolder(deep).Files.Count
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 0, e, "Folder.Files of a folder whose path has 270 characters raises error"
+        Expect.AreEqual 1, n, "files in Folder.Files of that folder"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FolderSubFolders_Path258_ListsFolders()
+        Expect.Begin
+        Dim w As String, deep As String, n As Long, e As Long
+        w = Sandbox.Fresh("FolderSubFolders_Path258_ListsFolders")
+        On Error GoTo Oops
+        deep = Sandbox.PathOfLength(w, 258)
+        CreateFolder deep & "\s", True
+        On Error Resume Next
+        n = GetFolder(deep).SubFolders.Count
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 0, e, "Folder.SubFolders of a folder whose path has 258 characters raises error"
+        Expect.AreEqual 1, n, "folders in Folder.SubFolders of that folder"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FolderSize_Path258_AddsFiles()
+        Expect.Begin
+        Dim w As String, deep As String, n As LongLong, e As Long
+        w = Sandbox.Fresh("FolderSize_Path258_AddsFiles")
+        On Error GoTo Oops
+        deep = Sandbox.PathOfLength(w, 258)
+        CreateFolder deep, True
+        StringToTextFile "hello", deep & "\f.txt"
+        On Error Resume Next
+        n = GetFolder(deep).Size
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 0, e, "Folder.Size of a folder whose path has 258 characters raises error"
+        Expect.AreEqual 5, CLng(n), "Folder.Size of that folder"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FolderSize_SubfolderPath258_AddsFiles()
+        Expect.Begin
+        Dim w As String, deep As String, n As LongLong, e As Long
+        w = Sandbox.Fresh("FolderSize_SubfolderPath258_AddsFiles")
+        On Error GoTo Oops
+        deep = Sandbox.PathOfLength(w & "\top", 258)
+        CreateFolder deep, True
+        StringToTextFile "hello", deep & "\f.txt"
+        On Error Resume Next
+        n = GetFolder(w & "\top").Size
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 0, e, "Folder.Size of a folder with a subfolder whose path has 258 characters raises error"
+        Expect.AreEqual 5, CLng(n), "Folder.Size of that folder"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    ' A folder of this path length with a file, and a subfolder when Sub is True.
+    Private Function MakeFolderOfLength(ByVal W As String, ByVal Length As Long, ByVal WithSubfolder As Boolean) As String
+        Dim deep As String
+        deep = Sandbox.PathOfLength(W, Length)
+        CreateFolder deep, True
+        StringToTextFile "hello", deep & "\f.txt"
+        If WithSubfolder Then CreateFolder deep & "\s"
+        MakeFolderOfLength = deep
+    End Function
+
+    [TestCase]
+    Public Sub FolderFilesAndSubFolders_Path256_Work()
+        Expect.Begin
+        Dim w As String, deep As String, n As Long, e As Long
+        w = Sandbox.Fresh("FolderFilesAndSubFolders_Path256_Work")
+        On Error GoTo Oops
+        deep = MakeFolderOfLength(w, 256, True)
+        On Error Resume Next
+        n = GetFolder(deep).Files.Count
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 0, e, "Folder.Files of a folder whose path has 256 characters raises error"
+        Expect.AreEqual 1, n, "files in Folder.Files of that folder"
+        On Error Resume Next
+        n = GetFolder(deep).SubFolders.Count
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 0, e, "Folder.SubFolders of that folder raises error"
+        Expect.AreEqual 1, n, "folders in Folder.SubFolders of that folder"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FolderSize_Path256_Works()
+        Expect.Begin
+        Dim w As String, deep As String, n As LongLong, e As Long
+        w = Sandbox.Fresh("FolderSize_Path256_Works")
+        On Error GoTo Oops
+        deep = MakeFolderOfLength(w, 256, False)
+        On Error Resume Next
+        n = GetFolder(deep).Size
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 0, e, "Folder.Size of a folder whose path has 256 characters raises error"
+        Expect.AreEqual 5, CLng(n), "Folder.Size of that folder"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FolderFilesAndSubFolders_Path257_Work()
+        Expect.Begin
+        Dim w As String, deep As String, n As Long, e As Long
+        w = Sandbox.Fresh("FolderFilesAndSubFolders_Path257_Work")
+        On Error GoTo Oops
+        deep = MakeFolderOfLength(w, 257, True)
+        On Error Resume Next
+        n = GetFolder(deep).Files.Count
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 0, e, "Folder.Files of a folder whose path has 257 characters raises error"
+        Expect.AreEqual 1, n, "files in Folder.Files of that folder"
+        On Error Resume Next
+        n = GetFolder(deep).SubFolders.Count
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 0, e, "Folder.SubFolders of that folder raises error"
+        Expect.AreEqual 1, n, "folders in Folder.SubFolders of that folder"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FolderSize_Path257_Works()
+        Expect.Begin
+        Dim w As String, deep As String, n As LongLong, e As Long
+        w = Sandbox.Fresh("FolderSize_Path257_Works")
+        On Error GoTo Oops
+        deep = MakeFolderOfLength(w, 257, False)
+        On Error Resume Next
+        n = GetFolder(deep).Size
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 0, e, "Folder.Size of a folder whose path has 257 characters raises error"
+        Expect.AreEqual 5, CLng(n), "Folder.Size of that folder"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    ' ---- what works in a path of more than 260 characters
+
+    [TestCase]
+    Public Sub LongPath_Procedures_Work()
+        Expect.Begin
+        Dim w As String, deep As String, top As String, p As String, q As String, c As Collection
+        w = Sandbox.Fresh("LongPath_Procedures_Work")
+        On Error GoTo Oops
+        deep = Sandbox.PathOfLength(w, 300)
+        CreateFolder deep, True
+        Expect.IsTrue FolderExists(deep), "FolderExists of a folder whose path has 300 characters"
+        p = deep & "\note.txt"
+        StringToTextFile "hello", p
+        Expect.IsTrue FileExists(p), "FileExists of a file in it"
+        Expect.AreEqual "hello", TextFileToString(p), "TextFileToString of that file"
+        Expect.AreEqual p, GetFile(p).Path, "File.Path of GetFile of that file"
+        Set c = GetFilePaths(deep)
+        Expect.AreEqual 1, c.Count, "files that GetFilePaths lists in it"
+        q = deep & "\copy.txt"
+        CopyFile p, q
+        Expect.IsTrue FileExists(q), "CopyFile to a path of more than 260 characters"
+        MoveFile q, deep & "\moved.txt"
+        Expect.IsTrue FileExists(deep & "\moved.txt"), "MoveFile to a path of more than 260 characters"
+        Rename deep & "\moved.txt", "renamed.txt"
+        Expect.IsTrue FileExists(deep & "\renamed.txt"), "Rename of a file with a path of more than 260 characters"
+        DeleteFile deep & "\renamed.txt"
+        Expect.IsFalse FileExists(deep & "\renamed.txt"), "DeleteFile of a file with a path of more than 260 characters"
+        top = w & "\" & String$(100, "d")
+        DeleteFolder top
+        Expect.IsFalse FolderExists(top), "DeleteFolder of a tree whose paths have more than 260 characters"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    ' ---- what stops at the limit
+
+    [TestCase]
+    Public Sub GetFileVersion_PathOver260_ReturnsEmpty()
+        Expect.Begin
+        Dim w As String, deep As String, kernel As String
+        w = Sandbox.Fresh("GetFileVersion_PathOver260_ReturnsEmpty")
+        On Error GoTo Oops
+        kernel = GetSpecialFolderPath(sfSystemFolder) & "\kernel32.dll"
+        CopyFile kernel, w & "\k.dll"
+        Expect.IsTrue Len(GetFileVersion(w & "\k.dll")) > 0, "GetFileVersion of a copy of kernel32.dll under a short path is not empty"
+        deep = Sandbox.PathOfLength(w, 300)
+        CreateFolder deep, True
+        CopyFile kernel, deep & "\k.dll"
+        Expect.IsTrue FileExists(deep & "\k.dll"), "the copy of kernel32.dll under a path of 300 characters exists"
+        Expect.AreEqual "", GetFileVersion(deep & "\k.dll"), "GetFileVersion of a file whose path has more than 260 characters"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileShortPath_PathOver260_ReturnsPath()
+        Expect.Begin
+        Dim w As String, deep As String, p As String
+        w = Sandbox.Fresh("FileShortPath_PathOver260_ReturnsPath")
+        On Error GoTo Oops
+        deep = Sandbox.PathOfLength(w, 300)
+        CreateFolder deep, True
+        p = deep & "\note.txt"
+        StringToTextFile "hello", p
+        Expect.AreEqual p, GetFile(p).ShortPath, "File.ShortPath of a file whose path has more than 260 characters"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetCurrentDir_PathOver260_Raises75()
+        Expect.Begin
+        Dim w As String, deep As String, here As String, e As Long
+        here = GetCurrentDir()
+        w = Sandbox.Fresh("SetCurrentDir_PathOver260_Raises75")
+        On Error GoTo Oops
+        deep = Sandbox.PathOfLength(w, 300)
+        CreateFolder deep, True
+        On Error Resume Next
+        SetCurrentDir deep
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 75, e, "SetCurrentDir of a folder whose path has 300 characters raises"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        On Error Resume Next
+        SetCurrentDir here
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DeleteFile_WildcardInLongFolder_Raises53()
+        Expect.Begin
+        Dim w As String, deep As String, e As Long
+        w = Sandbox.Fresh("DeleteFile_WildcardInLongFolder_Raises53")
+        On Error GoTo Oops
+        deep = Sandbox.PathOfLength(w, 300)
+        CreateFolder deep, True
+        StringToTextFile "x", deep & "\a.dll"
+        On Error Resume Next
+        DeleteFile deep & "\*.dll"
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 53, e, "DeleteFile of a pattern in a folder whose path has 300 characters raises"
+        Expect.IsTrue FileExists(deep & "\a.dll"), "the file is still there"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyFile_WildcardInLongFolder_Raises53()
+        Expect.Begin
+        Dim w As String, deep As String, e As Long
+        w = Sandbox.Fresh("CopyFile_WildcardInLongFolder_Raises53")
+        On Error GoTo Oops
+        deep = Sandbox.PathOfLength(w, 300)
+        CreateFolder deep, True
+        CreateFolder w & "\dst"
+        StringToTextFile "x", deep & "\a.dll"
+        On Error Resume Next
+        CopyFile deep & "\*.dll", w & "\dst"
+        e = Sandbox.Caught()
+        On Error GoTo Oops
+        Expect.AreEqual 53, e, "CopyFile of a pattern in a folder whose path has 300 characters raises"
+        Expect.IsFalse FileExists(w & "\dst\a.dll"), "no file was copied"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+End Module

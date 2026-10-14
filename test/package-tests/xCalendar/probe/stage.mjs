@@ -10,12 +10,12 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { downloadPackage } from "../../../indexer/lib/twinserv-client.mjs";
-import { embeddedPackages } from "../../../scripts/lib/example-batches.mjs";
-import { unpackProject } from "../../../scripts/lib/tb-project.mjs";
+import { downloadPackage } from "../../../../indexer/lib/twinserv-client.mjs";
+import { embeddedPackages } from "../../../../scripts/lib/example-batches.mjs";
+import { unpackProject } from "../../../../scripts/lib/tb-project.mjs";
 
 const here = import.meta.dirname;
-const template = path.join(here, "..", "..", "example-projects", "contributed-xCalendar");
+const template = path.join(here, "..", "..", "..", "example-projects", "contributed-xCalendar");
 
 /** The text with CRLF line ends, as the IDE writes a source file. */
 export const crlf = (text) => text.replace(/\r?\n/g, "\r\n");

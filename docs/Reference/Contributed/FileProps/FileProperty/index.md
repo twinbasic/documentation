@@ -66,7 +66,7 @@ Reading this property returns the value of the property as exposed by the operat
 
 Assigning a value writes the property. Write support requires Windows Vista or newer. Assigning a property that is not writable raises a *Permission denied* error.
 
-> [!NOTE]
+> [!NOTE] timeless
 > Multi-value properties can return a **Variant** array. Check `IsArray(Prop.Value)` before using the result as a scalar.
 
 For a string representation of the value in localized form, use [**ValueDesc**](#valuedesc).
@@ -89,7 +89,7 @@ Holds the native-code COM object created internally by the Virtual-COM library.
 
 Syntax: *object*.**VCOMObject** **As Object**
 
-> [!WARNING]
+> [!WARNING] timeless
 > This member is for internal use only. Do not read or assign **VCOMObject** from application code. All public members of **FileProperty** forward their calls to it.
 
 ## Example

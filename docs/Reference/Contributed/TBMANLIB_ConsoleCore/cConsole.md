@@ -82,8 +82,8 @@ With the input read from the null device or from a file, [**ReadLine**](#readlin
 
 ## Known problems in version 1.0.0.1
 
-> [!WARNING]
-> In version 1.0.0.1, [**ReadKey**](#readkey) and [**ReadPassword**](#readpassword) never return when the program has no console input: `ReadKey` loops until `ReadConsoleInputW` delivers a key-down event, and the call fails at once when the program has no console or its input is not a console. A comparison of a key with a member of the [**ConsoleKey**](Types#consolekey) enumeration is true for the wrong key and raises no error: [**KeyCode**](Types#consolekeyinfo) holds Windows virtual-key codes, but the arrow, navigation and function keys of **ConsoleKey** have other values, so `keyInfo.KeyCode = ConsoleKey.KeyUp` is false for the Up Arrow key (38) and true for the H key (72).
+> [!WARNING] 1.0.0.1
+> [**ReadKey**](#readkey) and [**ReadPassword**](#readpassword) never return when the program has no console input: `ReadKey` loops until `ReadConsoleInputW` delivers a key-down event, and the call fails at once when the program has no console or its input is not a console. A comparison of a key with a member of the [**ConsoleKey**](Types#consolekey) enumeration is true for the wrong key and raises no error: [**KeyCode**](Types#consolekeyinfo) holds Windows virtual-key codes, but the arrow, navigation and function keys of **ConsoleKey** have other values, so `keyInfo.KeyCode = ConsoleKey.KeyUp` is false for the Up Arrow key (38) and true for the H key (72).
 
 - **KeyAvailable and the key-up events.** [**KeyAvailable**](#keyavailable) is true while the input queue holds any event, including the event for a key that was released, so a loop that tests it and then calls [**ReadKey**](#readkey) can block in **ReadKey** until the next key press.
 - **The colours of the Write members.** [**WriteColored**](#writecolored), [**WriteLineColored**](#writelinecolored) and [**WriteAtColored**](#writeatcolored) use a black background unless one is given, and put back the colours that the object tracks, which are Gray on Black until a property sets others, and not the colours that the console had.

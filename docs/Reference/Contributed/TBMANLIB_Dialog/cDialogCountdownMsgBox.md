@@ -26,8 +26,8 @@ Select Case answer
 End Select
 ```
 
-> [!WARNING]
-> In version 1.1.0.0 a box with only an OK button that closes because its time ran out reports [**drOK**](#dialogresult), not [**drTimeout**](#dialogresult), and [**IsTimedOut**](#istimedout) is **False**. This affects the default box and [**ShowInfo**](#showinfo), [**ShowWarning**](#showwarning) and [**ShowError**](#showerror). A box with any other set of buttons reports **drTimeout** when it times out. No error is raised, so a program cannot tell a press of OK from the end of the time with these members alone.
+> [!WARNING] 1.1.0.0
+> A box with only an OK button that closes because its time ran out reports [**drOK**](#dialogresult), not [**drTimeout**](#dialogresult), and [**IsTimedOut**](#istimedout) is **False**. This affects the default box and [**ShowInfo**](#showinfo), [**ShowWarning**](#showwarning) and [**ShowError**](#showerror). A box with any other set of buttons reports **drTimeout** when it times out. No error is raised, so a program cannot tell a press of OK from the end of the time with these members alone.
 
 ```tb check_build
 Dim box As New cDialogCountdownMsgBox
@@ -100,7 +100,7 @@ Setting it also sets [**RemainingSeconds**](#remainingseconds). The shortened fo
 
 The countdown text that the box shows (see [**ShowProgress**](#showprogress)) names this value in whole seconds, also for 1 and 0: `in 1 seconds...`. A value of 0 or less does not close the box: it stays open until a button is pressed, and its text says `in 0 seconds...`.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The class multiplies the value by 1000 to get milliseconds. A value above 2,147,483 (about 24.8 days) overflows, and [**ShowDialog**](#showdialog) handles the error 6 itself: it shows a plain message box with the message and an OK button, with no icon, countdown text or other buttons, and returns **drOK**. The call raises nothing, but **Err.Number** is 6 afterwards.
 
 ```tb check_build check_run

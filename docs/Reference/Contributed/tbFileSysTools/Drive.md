@@ -14,8 +14,8 @@ A **Drive** is not created with **New**. [**GetDrive**](FileSystemTools#getdrive
 
 ```tb check_build check_run
 Dim d As Drive
-Set d = GetDrive(Left$(GetSpecialFolder(sfWindowsFolder), 2))
-Debug.Print d.Path = Left$(GetSpecialFolder(sfWindowsFolder), 2)   ' True
+Set d = GetDrive(Left$(GetSpecialFolderPath(sfWindowsFolder), 2))
+Debug.Print d.Path = Left$(GetSpecialFolderPath(sfWindowsFolder), 2)   ' True
 Debug.Print d.IsReady                                              ' True
 Debug.Print d.DriveType = DriveTypeConst.Fixed                     ' True
 Debug.Print d.TotalSize > d.FreeSpace                              ' True

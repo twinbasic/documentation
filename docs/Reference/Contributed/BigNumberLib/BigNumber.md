@@ -21,10 +21,13 @@ result.AssignAddition a, b
 Debug.Print result.ValueString   ' 1111111110111111111011111111100
 ```
 
-> [!NOTE]
-> This class requires twinBASIC BETA 434 or newer. String-to-value conversions silently stop at the first invalid character --- for example, setting `ValueHex = "ABC123he"` stores `&HABC123` without raising an error.
+> [!NOTE] since BETA 434
+> The class needs this build of twinBASIC or a later one.
 
-> [!WARNING]
+> [!NOTE] 1.0.2.0
+> String-to-value conversions silently stop at the first invalid character --- for example, setting `ValueHex = "ABC123he"` stores `&HABC123` without raising an error.
+
+> [!WARNING] 1.0.2.0
 > Overflow is not trapped. A result that needs more bits than the library holds loses its high bits, and a string with more digits than fit gives a wrong value. No error is raised in either case. The library holds a little more than the 4096 bits the class supports, 4352 bits in a 32-bit program and 4608 in a 64-bit one, so a result a few bits over 4096 may still be right.
 
 * TOC
@@ -104,7 +107,7 @@ Syntax: *object*.**IsNegative** [ = *value* ]
 
 The getter returns **True** for a negative number, and **False** for a positive number and for zero, except the negative zero that [**AssignFromLong**](#assignfromlong) describes.
 
-> [!WARNING]
+> [!WARNING] 1.0.2.0
 > Setting **IsNegative** to **True** does not make the number negative. The property stores -1, the value of **True**, where the library expects 1, so the number is in a state that the library does not handle: [**ValueString**](#valuestring) and the other conversions show no minus sign, **IsNegative** still returns **True**, and arithmetic with the number gives wrong results. To make a number negative, set **ValueString** to a string that starts with a minus sign, or use [**AssignNegation**](#assignnegation). [**AssignGreatestCommonDivisor**](#assigngreatestcommondivisor) and [**AssignLeastCommonMultiple**](#assignleastcommonmultiple) set this state in a negative operand.
 
 ```tb check_build check_run
@@ -200,7 +203,7 @@ Syntax: *object*.**AssignModulus** *a*, *b*
 *b*
 : *required* A **BigNumber** holding the divisor. Must not be zero.
 
-> [!WARNING]
+> [!WARNING] 1.0.2.0
 > When *b* is negative and the result is zero, the result is a negative zero: [**IsNegative**](#isnegative) returns **True** and [**IsEqualTo**](#isequalto) does not find it equal to a zero read from a string. [**AssignFromLong**](#assignfromlong) describes it.
 
 ```tb check_build check_run
@@ -228,7 +231,7 @@ Syntax: *object*.**AssignSquared** *a*
 *a*
 : *required* A **BigNumber** holding the value to square.
 
-> [!WARNING]
+> [!WARNING] 1.0.2.0
 > The square of zero is a negative zero, as [**AssignFromLong**](#assignfromlong) describes.
 
 ### AssignAdditionModulus
@@ -323,7 +326,7 @@ Syntax: *object*.**AssignModularMultiplicativeInverse** *a*, *mod_b*
 *mod_b*
 : *required* A **BigNumber** holding the modulus. It must be positive.
 
-> [!WARNING]
+> [!WARNING] 1.0.2.0
 > The call does not return, and the program stops responding, when *mod_b* is odd and either *a* is zero or *mod_b* is negative. A zero *a* with an even *mod_b*, and any *a* with a negative even *mod_b*, raise error 5.
 
 ```tb check_build check_run
@@ -355,7 +358,7 @@ Syntax: *object*.**AssignGreatestCommonDivisor** *a*, *b*
 *b*
 : *required* A **BigNumber** holding the second value.
 
-> [!WARNING]
+> [!WARNING] 1.0.2.0
 > A negative *a* or *b* is changed by the call. The method clears the sign of each operand and puts it back with [**IsNegative**](#isnegative), which leaves the operand in the state that the warning there describes: it shows no minus sign, and arithmetic with it gives wrong results.
 
 ```tb check_build check_run
@@ -382,7 +385,7 @@ Syntax: *object*.**AssignLeastCommonMultiple** *a*, *b*
 *b*
 : *required* A **BigNumber** holding the second value.
 
-> [!WARNING]
+> [!WARNING] 1.0.2.0
 > A negative *a* or *b* is changed by the call, as [**AssignGreatestCommonDivisor**](#assigngreatestcommondivisor) describes.
 
 ### AssignShiftRight
@@ -464,7 +467,7 @@ Syntax: *object*.**AssignFromLong** *a*
 *a*
 : *required* A **Long** holding the value to assign. Negative values (including `&H80000000`) are handled correctly.
 
-> [!WARNING]
+> [!WARNING] 1.0.2.0
 > Assigning 0 gives a negative zero: [**IsNegative**](#isnegative) returns **True**, [**IsLessThan**](#islessthan) finds the number less than a zero read from the string `"0"`, and [**IsEqualTo**](#isequalto) does not find it equal. Its text is still `0`, and adding it to another number or subtracting it gives the right result. The same negative zero comes from [**AssignSquared**](#assignsquared) with a zero argument, and from [**AssignModulus**](#assignmodulus) when the divisor is negative and the result is zero. To get a true zero, set [**ValueString**](#valuestring) to `"0"`, or set **IsNegative** to **False** after the assignment.
 
 ```tb check_build check_run

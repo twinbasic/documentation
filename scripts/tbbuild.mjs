@@ -64,7 +64,7 @@
 // scripts/gen_attribute_probes.mjs -- but it does not know anything about
 // them. See WIP.Harness.md, "Compiling a twinBASIC project without the IDE in
 // front of you".
-import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -80,6 +80,7 @@ import {
 import { findIde } from "./lib/tb-install.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { COMPILE_TIMEOUT, keptIdeLines, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
+import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { checkProject, laneProjectId, stageProject, unpackProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
@@ -254,6 +255,7 @@ if (build) {
   try {
     unpackProject(path.resolve(proj), src);
   } catch (e) {
+    removeWork(work, null);
     die(2, `exporting ${proj} failed:\n${e.message}`);
   }
   // Under --llvm the options are the run's and the exe's alike, as tbrun's are.
@@ -269,10 +271,29 @@ if (build) {
       },
     });
   } catch (e) {
+    removeWork(work, null);
     die(2, e.message);
   }
 }
 if (!keep) tidy = startTidy(work ? { prefixes: [work] } : { paths: [target] });
+
+// The staged copy is of no use once the run is over, and neither is anything in
+// the work folder after a run that built nothing. A build that succeeded keeps
+// its out\ folder, which holds the exe that "built:" names; the next run on this
+// port replaces it. One that cannot be removed is reported and left.
+function removeWork(dir, built) {
+  try {
+    if (!built) {
+      removeTree(dir);
+      return;
+    }
+    for (const name of readdirSync(dir)) {
+      if (name !== "out") removeTree(path.join(dir, name));
+    }
+  } catch (e) {
+    console.error(`could not remove ${dir}: ${e.code ?? e.message}`);
+  }
+}
 
 // compileProject ends its IDE before it returns, unless --keep, so the tidy comes
 // after the IDE has gone. Tidies whether or not an IDE was started, as tbrun
@@ -284,6 +305,9 @@ try {
   r = await compileProject({ project: work ? target : proj, ide: IDE, port, arch, timeout, show, keep, build, llvm });
 } finally {
   finishTidy(tidy);
+  // After the tidy, which names paths under the work folder, and with the IDE
+  // gone. Not under --keep: that IDE still has the staged project open.
+  if (work && !keep) removeWork(work, r?.built);
 }
 
 if (r.code >= 2) {

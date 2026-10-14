@@ -36,14 +36,14 @@ opens from a deeply nested clone otherwise.
 from the working tree. A `sync` against a newer build rewrites the working-tree snapshots, and
 the baseline has to stay what the pages say until the pages and the new snapshots are
 committed together. It reads with a buffer of 1 GB because VB's snapshot is larger than the
-1 MB `execFile` default, which once made VB fall back to an audit.
+1 MB `execFile` default, and VB falls back to an audit with the smaller buffer.
 
-**The manifests live in the store, not in the repository.** They were committed once, and two
-things went wrong. After a pull, the manifest said the new build had been read while the store,
-which is not committed, held old sources or none, so `sync` printed "Up to date" over stale
-data. And a `sync` limited to some packages (`--package`) moved the whole manifest to the new
-build, so the packages it skipped looked current and were not. Now the manifest says only what
-was last fetched, a clone has none, and its first `sync` reads every package. Whether a package
+**The manifests live in the store, not in the repository.** A committed manifest goes wrong
+two ways. After a pull it says the new build has been read while the store, which is not
+committed, holds old sources or none, so `sync` prints "Up to date" over stale data. And a
+`sync` limited to some packages (`--package`) moves the whole manifest to the new build, so
+the packages it skipped look current and are not. So the manifest says only what was last
+fetched, a clone has none, and its first `sync` reads every package. Whether a package
 is current is judged from what the store holds: its sources, an `api.json` in the format this
 indexer writes, of the version the source has now, written by the scanner this checkout has.
 
@@ -51,8 +51,8 @@ indexer writes, of the version the source has now, written by the scanner this c
 them*. The store records, beside each `api.json`, a SHA-256 over `scripts/lib/twin-api.mjs`,
 `scripts/lib/twin-declarations.mjs`, `indexer/lib/api-model.mjs` and
 `indexer/lib/vb6-preprocess.mjs` (line ends made alike, so a CRLF and an LF checkout agree).
-Without it a scanner fix left every store's `api.json` "current" and `analyze` compared output
-of the old scanner. With it, `sync` indexes the package again from the stored sources, with no
+Without it a scanner fix would leave every store's `api.json` "current" and `analyze` would
+compare output of the old scanner. With it, `sync` indexes the package again from the stored sources, with no
 download and under the version it had. That is why the store keeps each package's `Settings`
 file (the project name). The list is every module `api-model.mjs` imports, and the unit test
 fails when an import is added and the list is not; `package-files.mjs` is not on it, because
@@ -65,11 +65,10 @@ paths are relative to `Sources/`.
 ## One scanner
 
 **`parseTwin` in `scripts/lib/twin-api.mjs` is the only scanner**; the indexer has no lexer or
-extractor of its own. It had them once, and they misread what the shared scanner reads right:
-a field named for a keyword opened a container nothing closed, a `Public CoClass` was missed,
-so were Delegates and a `/*Private*/ Module`, and the values of a nested Enum and the fields of
-a nested Type were dropped. On the same input `parseTwin` found a superset. Two scanners also
-drift: the symbol index (`builder/package-api.json`) and the indexer would disagree about
+extractor of its own, which would misread what the shared scanner reads right: a field named
+for a keyword opening a container nothing closes, a `Public CoClass`, Delegates and a
+`/*Private*/ Module` missed, and the values of a nested Enum and the fields of a nested Type
+dropped. Two scanners also drift: the symbol index (`builder/package-api.json`) and the indexer would disagree about
 one package, and each fix would be made twice. The scanner is pinned by
 `scripts/check_symbol_index.mjs`, `scripts/check_twin_parsers.mjs` and
 `test/indexer.test.mjs`; its header comment lists the ways to misread this corpus.
@@ -114,8 +113,8 @@ Branches of an `#If` are read as alternatives that each start from the block str
 `format` changes whenever the shape does, and `sync` indexes a package again when the store
 holds another number. Format 3 merges the declarations in the branches of an `#If`
 (`#If VBA7 Then ... As LongPtr #Else ... As Long`) into **one member with a `signatures` list**,
-a condition on each. Before, the branches were separate members with no condition, so an
-`#If` pair looked like overloads and a changed condition changed nothing the differ could see.
+a condition on each. Separate members with no condition would make an `#If` pair look like
+overloads and hide a changed condition from the differ.
 The differ reads the merged form, with the condition in front of each signature, so that a
 changed condition, a new branch or an edited signature each modifies the one symbol of that
 name and kind. The rules for what counts as an alternative (same block, name, kind, accessor
@@ -125,14 +124,13 @@ overloads) are in the README.
 **A change to the fingerprinted code or to `format` means regenerating the committed snapshots
 from the build they record (`indexed_from`), in the same commit as the change.** If it does
 not, `analyze` compares the new scanner's output with the old scanner's and reports the
-scanner's changes as changes to the API. The BETA 997 snapshots were regenerated this way when
-the scanner changed. It needs that build's install, `sync --ide <folder>`:
+scanner's changes as changes to the API. It needs that build's install, `sync --ide <folder>`:
 `--release` downloads only the newest release, and a plain `sync` reads the newest install,
 which would write the snapshots of another build.
 
 ## Decisions of the owner
 
-- **Snapshots are committed only for the documented packages, to start with**: 14 files, 3.2 MB
+- **Snapshots are committed only for the documented packages**: 14 files, 3.2 MB
   (about 350 KB compressed). The contributed packages and the extra CEF builds are indexed into
   the store and left out of the repository. A package joins when its section does; `sync`
   copies a snapshot for a documented package it indexed in that run, and gives a documented
@@ -174,12 +172,10 @@ which would write the snapshots of another build.
 
 `builder/package-api.json` is the input of the help add-in's symbol index
 ([WIP.HelpAddin.md](WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build)).
-`twin-index derive` writes it (`lib/package-api.mjs`), and `scripts/build_package_api.mjs`,
-which wrote it before, is gone. That tool exported every package through the compiler
-harness's impexp into a cache and read the exported folders; `derive` reads the `.twinproj`
+`twin-index derive` writes it (`lib/package-api.mjs`). It reads the `.twinproj`
 files with the reader `sync` uses and parses them with `parsePackageFiles`, the parse
-`buildApi` makes, so the two outputs come from one reading. Its output was byte-identical to
-the old tool's at BETA 997, and it takes half a second with no cache.
+`buildApi` makes, so the two outputs come from one reading. It takes half a second with no
+cache.
 
 - **It reads the packages, not the snapshots or the store.** An `api.json` sorts types and
   members by name and drops line numbers, and `apiSnapshot` needs declaration order: the
@@ -193,9 +189,8 @@ the old tool's at BETA 997, and it takes half a second with no cache.
 - **It stays committed.** It is a build input `check_tree_fresh.mjs` watches, and CI has no
   packages to derive it from. `derive --check` is outside every gate for the same reason.
 - **A scanner change can change it**, as it can the snapshots. The `[ ]` Enum member (a
-  bracket group alone on a line is a member) gave VB's `ReportBaseCtl.ReportSizeConstants`
-  its 17 values at BETA 997, the first named `" "`, which the committed file lacked until it
-  was derived again.
+  bracket group alone on a line is a member) gives VB's `ReportBaseCtl.ReportSizeConstants`
+  its 17 values at BETA 997, the first named `" "`.
 
 ## `draft` and the doc-draft workflow
 
@@ -205,8 +200,8 @@ the old tool's at BETA 997, and it takes half a second with no cache.
 - **Placement is read from each section, not from a convention**, because the sections do not
   share one: the built-in packages keep enumerations in `Enumerations/`, the contributed ones
   beside the classes; a class is `X/index.md` with member pages, `X.md` with its members
-  inline, or `_App/_App.md`. The draft workflow this replaced derived every path from one rule
-  (`<module>/<symbol>.md`, `<symbol>.md`), which matched no section exactly. Every rule in
+  inline, or `_App/_App.md`. One rule for every path (`<module>/<symbol>.md`, `<symbol>.md`) matches no
+  section exactly. Every rule in
   `draft-plan.mjs` is a majority over the section's own pages.
 - **How well it places, checked by leaving each symbol out** of every section with a store
   package (the thirteen built-in and default ones at BETA 997, and the nine contributed ones of
@@ -221,12 +216,12 @@ the old tool's at BETA 997, and it takes half a second with no cache.
   folder the check had itself taken away. The four members that miss are documented unlike
   the others of their kind in their type, or not at all. The rule that places a type in the
   folder of the type returning it is limited to folders that already keep a type, because
-  without that limit it moved Printer under Printers, Dictionary under JsonConverter and
+  without that limit it would move Printer under Printers, Dictionary under JsonConverter and
   eight others that the sections keep at their roots.
 - **A new section borrows its model pages from its group.** Its pages have no sibling of
-  their kind to follow, so the plan of the first package drafted into a new section
-  (tbRegExp) gave every task `model: null`, and the agents would have invented a page
-  layout. A page of a kind its section lacks now takes a model from the group's largest
+  their kind to follow, so the plan of the first package drafted into a new section would
+  give every task `model: null`, and the agents would invent a page
+  layout. A page of a kind its section lacks takes a model from the group's largest
   section that has one, of the same shape: a folder's `index.md` for a class that gets a
   folder, never a one-page class.
 - **A permalink is computed only where the rule holds for every existing page** of the
@@ -257,12 +252,12 @@ the old tool's at BETA 997, and it takes half a second with no cache.
 - **The agents are Sonnet**, as the content agents of the contributed packages were; the
   drafts are read against the sources before they are committed, which no model choice
   replaces.
-- **The first run, tbRegExp 1.0.5.0 (28 pages, 5 batches), took 7 agents, 7 minutes and
-  0.96 M subagent tokens**, and its 30 samples compiled and ran on the first Check. The
-  review still found what no compile finds: the drafts state only what the code says, so
+- **A batch of 28 pages in 5 batches takes about 7 agents, 7 minutes and 0.96 M subagent
+  tokens** (tbRegExp 1.0.5.0), and its samples compile and run on the first Check. The
+  review still finds what no compile finds: the drafts state only what the code says, so
   where the package differs from the object it replaces (VBScript's **RegExp**, run under
-  `cscript`) nothing said so, and claims read from the code but never run (`$0`, a lone `$`)
-  needed a probe page. Running the doubts is now the Check agent's (above); the review
+  `cscript`) nothing says so, and claims read from the code but never run (`$0`, a lone `$`)
+  need a probe page. Running the doubts is the Check agent's (above); the review
   still reads the pages against the sources.
 - **It is not in the published docs.** `draft` is (Tools-Build), because its plans serve a
   person writing pages by hand; the workflow is described here and in `WIP.md`, because
@@ -287,6 +282,6 @@ the old tool's at BETA 997, and it takes half a second with no cache.
   describes a third party's HTTP API, which is neither a reason nor a decision, and folding 239
   lines of it into this note would bury both. Its one reader is `lib/twinserv-client.mjs`, which
   calls only `query` and `download`; the rest (login, publish, version check, the IDE-to-compiler
-  commands) is there for whoever writes a publisher tool. It was reverse-engineered from
-  BETA 983 (June 2026) and keeps no copy of the IDE files it came from. Check it against the
+  commands) is there for whoever writes a publisher tool. It is reverse-engineered from
+  BETA 983 and keeps no copy of the IDE files it came from. Check it against the
   current IDE before relying on anything but those two endpoints.

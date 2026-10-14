@@ -108,7 +108,7 @@ Next
 
 The enumerator reads the array of the list in place, and nothing checks that the list is unchanged while **For Each** runs. The documentation of the .NET class says that its enumerator is invalidated by a change to the list and raises an **InvalidOperationException**. A program should not add or remove items inside the loop.
 
-> [!WARNING]
+> [!WARNING] 1.6.151.1
 > A **For Each** over a list with no items raises error -2147467259, *Unspecified error*, and one that runs under `On Error Resume Next` never ends. A program has to test **Count** first. A second call of **GetEnumerator** on the same unchanged list, after the first loop ran to the end, ignores its *Index*, *GetCount* and *GetStep* arguments and gives the first loop's part again; a **For Each** with no arguments then gives that part too. See [Known problems](./#known-problems).
 
 ## Ranges
@@ -353,7 +353,7 @@ Debug.Print a.Count
 Debug.Print b.Count
 ```
 
-> [!NOTE]
+> [!NOTE] 1.6.151.1
 > **Clone** of a list with no items raises error -2147467259, *Unspecified error*.
 
 ### Contains
@@ -417,7 +417,7 @@ The method does not check *GetCount* against the number of items.
 
 The list keeps two enumerators and returns the first one whenever it is not in use, binding it again only when the list has changed.
 
-> [!WARNING]
+> [!WARNING] 1.6.151.1
 > After a **For Each** over the list ran to the end, and while the list is unchanged, a call with other values of *Index*, *GetCount* and *GetStep* gives the enumerator of the first call. A **For Each** over the list with no arguments then goes through the part of the first loop, not through all the items. A loop that was left with **Exit For** does not do this, as it leaves the first enumerator in use. A third loop nested inside two others, over the same list, gives wrong items. Assigning to [**Capacity**](#capacity) does not count as a change of the list, so the next loop can read memory that the items have left. The loops in the example below are over lists of their own for this reason.
 
 ```tb check_build
@@ -501,7 +501,7 @@ Syntax: *object*.**Insert** ( *Index*, *Value* )
 
 *Index* is not checked against the list. The method moves **Count** + **BaseIndex** - *Index* items up to make room, so the number is negative for a value above the end, and the program can crash. See [Known problems](./#known-problems).
 
-> [!WARNING]
+> [!WARNING] 1.6.151.1
 > **Insert** at **BaseIndex**, the first position of a list that has items, raises error 9 unless the list has room for 31 more items than it holds (its [**Capacity**](#capacity) is at least **Count** + 31). Give [**New**](#new) a capacity, or assign **Capacity**, to avoid the error.
 
 ```tb check_build
@@ -584,7 +584,7 @@ Syntax: *object*.**Remove** ( *Value* )
 
 Nothing happens, and no error is raised, when no item matches.
 
-> [!WARNING]
+> [!WARNING] 1.6.151.1
 > With a [**BaseIndex**](#baseindex) below 0, **Remove** of a value that is not in the list removes the item at index -1, or raises error 9 when the list has no such item. The method takes the -1 that [**IndexOf**](#indexof) returns for a missing value as the index of an item.
 
 ### RemoveAt
@@ -629,7 +629,7 @@ Error 9 is raised when the run does not lie in the list.
 
 The loop runs for *i* from 0 up to and including half of *GetCount*, rounded down, and swaps item *Index* + *i* with item *Index* + *GetCount* - 1 - *i*. For an even *GetCount* the last pass swaps the middle pair a second time, so those two items keep their order; for a *GetCount* of 0 the loop still runs once.
 
-> [!WARNING]
+> [!WARNING] 1.6.151.1
 > A run with an even number of items is not reversed correctly: its two middle items stay where they are, so `a b c d` becomes `d b c a` and a run of two items does not change at all. A run of an odd number of items is reversed correctly. With a *GetCount* of 0, and so for a list with no items, the single pass swaps the item at *Index* with the one before it; for a list with no items that writes outside the array that holds the items and damages the memory, and a later growth of the list failed. See [Known problems](./#known-problems).
 
 ```tb check_build
@@ -764,7 +764,7 @@ Debug.Print list.ToString()
 Debug.Print list.ToString("'")
 ```
 
-> [!WARNING]
+> [!WARNING] 1.6.151.1
 > **ToString** never returns for a list with no items, for a nested list with no items, and for an item that is an object that **For Each** cannot go through, such as an instance of a class of the program. See [Known problems](./#known-problems).
 
 ## Hidden members
@@ -843,7 +843,7 @@ Syntax: *object*.**LastIndexOf_2** ( *Value*, *Index* ) **As Long**
 
 Searches from *Index* back to the first item. It calls **LastIndexOf** with a *GetCount* of *Index* + 1, which is the number of items only when [**BaseIndex**](#baseindex) is 0.
 
-> [!NOTE]
+> [!NOTE] 1.6.151.1
 > With a **BaseIndex** above 0, **LastIndexOf_2** raises error 9, and with a **BaseIndex** below 0 it searches only *Index* + 1 items, counted back from *Index*, and so can miss an item.
 
 ### LastIndexOf_3

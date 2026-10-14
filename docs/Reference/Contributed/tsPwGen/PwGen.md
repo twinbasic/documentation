@@ -21,8 +21,8 @@ Debug.Print token Like "*[!0-9a-f]*"  ' False
 
 The module has no settings. Its only state is the last error, which [**PwGenError**](PwGenError) reports. A recipe that cannot be used does not raise a run-time error: the function returns an empty string, or 0, and sets the last error. Every function of the module clears the last error when it starts, so after a call the last error belongs to that call.
 
-> [!NOTE]
-> Write the module name in every call, as in `PwGen.Generate`. In version 1.0.8.0 the package's internal module **PwGenEngine** also declares public functions named **Generate** and **Entropy**, so a call written without the module name fails with TB5073, *'Entropy' is ambiguous*, or *'Generate' is ambiguous*.
+> [!NOTE] 1.0.8.0
+> Write the module name in every call, as in `PwGen.Generate`. The package's internal module **PwGenEngine** also declares public functions named **Generate** and **Entropy**, so a call written without the module name fails with TB5073, *'Entropy' is ambiguous*, or *'Generate' is ambiguous*.
 >
 > ```tb check_build expect-error=TB5073
 > Debug.Print CLng(Entropy())

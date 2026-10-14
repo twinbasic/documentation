@@ -60,6 +60,7 @@ A pattern that does not compile does not raise an error at once. [**IsValid**](I
 - [LastErrorNumber](LastErrorNumber) -- returns the number of the compile error
 - [MultiLine](MultiLine) -- returns or sets whether `^` and `$` match at line boundaries
 - [Pattern](Pattern) -- returns or sets the regular expression
+- [SearchAborted](SearchAborted) -- returns whether the last search gave up before it finished
 
 ## Methods
 

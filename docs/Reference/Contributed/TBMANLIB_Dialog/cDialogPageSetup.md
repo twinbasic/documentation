@@ -10,8 +10,8 @@ has_toc: false
 
 A **cDialogPageSetup** shows the Windows Page Setup dialog, in which the user picks the paper, its orientation and the four margins of a page. It holds the page as properties, in inches, with ready-made sizes and margins, and works out the printable area.
 
-> [!WARNING]
-> Three things in version 1.1.0.0 give a wrong result without an error. [**PaperWidth**](#paperwidth) and [**PaperHeight**](#paperheight) are not passed to the dialog, so it opens with the paper of the default printer whatever they hold. [**Orientation**](#orientation) is neither passed to the dialog nor read from it: a user who chooses *Landscape* leaves **Orientation** at **Portrait** and swaps the paper width and height instead. With [**Unit**](#unit) set to **Millimeters**, [**ToDescription**](#todescription) writes the values in inches and labels them `mm`.
+> [!WARNING] 1.1.0.0
+> Three things give a wrong result without an error. [**PaperWidth**](#paperwidth) and [**PaperHeight**](#paperheight) are not passed to the dialog, so it opens with the paper of the default printer whatever they hold. [**Orientation**](#orientation) is neither passed to the dialog nor read from it: a user who chooses *Landscape* leaves **Orientation** at **Portrait** and swaps the paper width and height instead. With [**Unit**](#unit) set to **Millimeters**, [**ToDescription**](#todescription) writes the values in inches and labels them `mm`.
 
 **Properties:** [**AllowMargins**](#allowmargins), [**AllowOrientation**](#alloworientation), [**AllowPaper**](#allowpaper), [**DefaultMinMargins**](#defaultminmargins), [**MarginBottom**](#marginbottom), [**MarginLeft**](#marginleft), [**MarginRight**](#marginright), [**MarginTop**](#margintop), [**Orientation**](#orientation), [**OwnerHwnd**](#ownerhwnd), [**PaperHeight**](#paperheight), [**PaperWidth**](#paperwidth), [**Unit**](#unit).
 **Methods:** [**GetPrintableHeight**](#getprintableheight), [**GetPrintableWidth**](#getprintablewidth), [**Reset**](#reset), [**SetA4Size**](#seta4size), [**SetDefaultMargins**](#setdefaultmargins), [**SetLegalSize**](#setlegalsize), [**SetLetterSize**](#setlettersize), [**SetNarrowMargins**](#setnarrowmargins), [**ShowDialog**](#showdialog), [**ToDescription**](#todescription).
@@ -182,7 +182,7 @@ Syntax: *object*.**Orientation** [ **=** *value* ]
 
 A [**PaperOrientation**](#paperorientation), **Portrait** by default.
 
-> [!WARNING]
+> [!WARNING] 1.1.0.0
 > The property is only stored. [**ShowDialog**](#showdialog) does not pass it to the dialog, so a **Landscape** set before the call does not select *Landscape* in the dialog, and it does not read the orientation back. After a user chose *Landscape*, **Orientation** is as it was and [**PaperWidth**](#paperwidth) and [**PaperHeight**](#paperheight) have changed places. To find the orientation after the dialog, compare the two: the page is landscape when **PaperWidth** is the larger. [**ToDescription**](#todescription) names the stored value.
 
 ```tb check_build
@@ -238,7 +238,7 @@ Syntax: *object*.**PaperWidth** [ **=** *value* ]
 
 A **Double**, 8.5 by default, handled as [**PaperHeight**](#paperheight) is.
 
-> [!WARNING]
+> [!WARNING] 1.1.0.0
 > Setting **PaperWidth** and **PaperHeight**, or calling [**SetA4Size**](#seta4size) or [**SetLegalSize**](#setlegalsize), does not make the dialog open with that paper. The margins are passed, and the paper is the one of the default printer. After **OK** the two properties hold what the dialog returned, not what was set.
 
 ```tb check_build
@@ -257,7 +257,7 @@ Syntax: *object*.**Unit** [ **=** *value* ]
 
 A [**MeasurementUnit**](#measurementunit), **Inches** by default. It selects the unit of the dialog; the properties of the class stay in inches. See [How the dialog is shown](#how-the-dialog-is-shown).
 
-> [!WARNING]
+> [!WARNING] 1.1.0.0
 > With **Millimeters**, [**ToDescription**](#todescription) still writes inches and labels them `mm`: a 1 inch margin is described as `1.00 mm`.
 
 ```tb check_build check_run

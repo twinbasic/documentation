@@ -27,7 +27,7 @@ Setting [**CancelError**](#cancelerror) to **True** causes the class to raise ru
 
 Assigning a value outside the documented range or set of constants to a property raises run-time error 380 (*Invalid property value*). A failure that the sections below do not list raises an error whose number is the code the Windows common-dialog library reports and whose description is "Unexpected error."
 
-> [!NOTE]
+> [!NOTE] timeless
 > Events such as [**InitDialog**](#initdialog), [**FileValidate**](#filevalidate), and [**ColorValidate**](#colorvalidate) require setting [**HookEvents**](#hookevents) to **True** before calling the `Show*` method. Without the hook, these events are not raised. The Folder Browser dialog always raises its events, and the Help, Find and Replace events do not use the hook.
 
 * TOC
@@ -319,7 +319,7 @@ Syntax: *object*.**HookEvents** [ = *value* ]
 *value*
 : **Boolean**. When **True**, the dialog's hook procedure is installed, enabling the [**InitDialog**](#initdialog), [**FileValidate**](#filevalidate), [**FileShareViolation**](#fileshareviolation), [**ColorValidate**](#colorvalidate), and [**FontApply**](#fontapply) events. Default **False**. The Folder Browser dialog raises [**InitDialog**](#initdialog) and [**FolderBrowserValidateFailed**](#folderbrowservalidatefailed) whatever the value.
 
-> [!IMPORTANT]
+> [!IMPORTANT] timeless
 > **HookEvents** must be set to **True** before calling the corresponding `Show*` method. Setting it after the call has no effect on the current invocation.
 
 ### InitDir
@@ -562,7 +562,7 @@ Syntax: *object*.**ShowHelp**
 
 If [**HelpCommand**](#helpcommand) is 0, the method returns immediately without doing anything. On failure, error `CdlHelp` (32751) is raised.
 
-> [!NOTE]
+> [!NOTE] timeless
 > WinHelp (`.hlp`) is a deprecated help format. This method calls the `WinHelpW` API, which fails on a system that has no WinHelp viewer.
 
 ### ShowOpen
@@ -756,8 +756,8 @@ Declared for the **Replace All** button of the Replace dialog.
 
 Syntax: *object*\_**ReplaceAll**( )
 
-> [!NOTE]
-> In version 1.0.13.0 of the package the class never raises this event. Its test for the **Replace All** button compares the masked flags with **CdlFRFindNext** instead of **CdlFRReplaceAll**, so the comparison is never true. Clicking **Replace All** raises none of the events.
+> [!NOTE] 1.0.13.0
+> Of the package the class never raises this event. Its test for the **Replace All** button compares the masked flags with **CdlFRFindNext** instead of **CdlFRReplaceAll**, so the comparison is never true. Clicking **Replace All** raises none of the events.
 
 ## Example
 

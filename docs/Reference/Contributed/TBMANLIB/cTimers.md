@@ -100,7 +100,7 @@ Private Sub Group_Timer(ByVal Index As Integer)
 End Sub
 ```
 
-> [!NOTE]
+> [!NOTE] 1.0.0.29
 > A **cTimers** registers itself in a collection of the package's internal module **mTimer**, which keeps a reference to it. The group is therefore not destroyed when the program releases its last reference, and its enabled timers go on running. Set [**Enabled**](cTimer#enabled) of each timer to **False** first.
 
 ## See Also

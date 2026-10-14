@@ -65,7 +65,7 @@ Next
 
 The other members of [**XmlNodeType**](mXml#xmlnodetype), **Attribute**, **DocumentFragment**, **Notation** and **None**, are never given to a parsed node. A node made with `New` has the **NodeType** **None**. Attributes are not nodes: they are held in the **Attributes** field of their element.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.1
 > Names are compared without regard to letter case, in the attribute methods here and in the path members of [**cXml**](cXml#paths). XML itself distinguishes `Item` from `item`, and this package does not.
 
 ## Fields
@@ -498,7 +498,7 @@ Syntax: *node*.**XPathText** ( *xpath* ) **As String**
 
 Returns the [**Text**](#text) of the first node that [**XPath**](#xpath) selects: the text directly inside it, and not the text inside its child elements. A text node and a CDATA section have no children, so when the expression selects one, the result is an empty string; its **Value** holds the text. Returns an empty string too when the expression selects nothing. The expression is evaluated by [**XPathSingle**](#xpathsingle).
 
-> [!NOTE]
+> [!NOTE] 1.0.0.1
 > The [**XPathText**](cXml#xpathtext) of a **cXml** returns the text at any depth, and returns the value of a text node. For `<a>x<b>y</b>z</a>`, the **cXml** gives `xyz` for `/a`, and the root element gives `xz` for `.`.
 
 ```tb check_build check_run

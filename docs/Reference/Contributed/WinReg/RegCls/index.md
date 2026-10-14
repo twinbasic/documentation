@@ -52,10 +52,10 @@ Syntax: *object*.**ConvertValueToString** ( *hKey*, *subkey*, *lType* ) **As Str
 
 Returns an empty string when the call fails. For `REG_SZ` / `REG_EXPAND_SZ` values, returns the raw string. For `REG_DWORD` / `REG_DWORD_LITTLE_ENDIAN` / `REG_DWORD_BIG_ENDIAN` values, returns an 8-character zero-padded hexadecimal string in the form `0x00000000`. For `REG_BINARY` values, returns a space-separated hex dump prefixed with `"Binary (N bytes): "`. Unsupported types return `"Unsupported type: "` followed by the numeric type code.
 
-> [!NOTE]
+> [!NOTE] 1.0.1.1
 > This overload queries the value through the provided key handle. The caller must keep the handle open for the duration of the call and close it with `RegCloseKey` afterwards. The source comments mark this overload as not yet tested.
 
-> [!WARNING]
+> [!WARNING] 1.0.1.1
 > This overload does not find the value. It passes `StrPtr(subkey)` to a parameter that `RegQueryValueEx` declares `ByVal` **String**, so the name that reaches the function is not *subkey*, the query fails with error 2 (file not found), and the overload returns an empty string for `REG_SZ`, `REG_EXPAND_SZ`, the DWORD types and `REG_BINARY`. Any other type code returns `"Unsupported type: "` followed by the code. Overload 2 and [**EnumValues**](#enumvalues) are not affected.
 
 ### ConvertValueToString (overload 2)
@@ -88,7 +88,7 @@ Syntax: *object*.**CreateKey** ( *RootKey*, *KeyPath* ) **As BOOL**
 
 Returns **True** on success, **False** if the key could not be created (typically due to insufficient privileges).
 
-> [!IMPORTANT]
+> [!IMPORTANT] timeless
 > Creating keys under `HKEY_LOCAL_MACHINE` typically requires the application to run with administrator rights.
 
 ### DeleteKey
@@ -121,7 +121,7 @@ Syntax: *object*.**DeleteKeyEx** ( *RootKey*, *KeyPath* ) **As BOOL**
 
 Returns **True** on success, **False** if the key could not be deleted. The method first enumerates and recursively deletes all sub-keys (calling itself for each one), then deletes all values in the key, closes the handle, and finally removes the key itself with `RegDeleteKey`. Both enumeration loops always request index 0, so each deletion must succeed for the loop to advance; a sub-key or value that cannot be deleted (for example, for lack of permission) leaves the loop repeating on the same entry.
 
-> [!WARNING]
+> [!WARNING] timeless
 > This operation cannot be undone. The entire key tree is permanently removed from the registry. Double-check the *KeyPath* argument before calling.
 
 ### DeleteValue
@@ -177,7 +177,7 @@ Syntax: *object*.**GetRegistryValueType** ( *hKey*, *subKey*, *valueName* ) **As
 
 Returns a member of the `REGTYPES` enumeration (from **WinDevLib**), such as `REG_SZ`, `REG_DWORD`, or `REG_BINARY`. Returns `REG_NONE` if the sub-key cannot be opened or the value does not exist.
 
-> [!WARNING]
+> [!WARNING] 1.0.1.1
 > The method returns `REG_NONE` for every value that holds data. It asks `RegQueryValueEx` for the type with a data pointer and a size of zero, and the call fails with error 234 (*more data*) when the value has any data. Only a value of zero length, such as an empty `REG_BINARY`, gets its type.
 
 ### KeyExists
@@ -233,7 +233,7 @@ Syntax: *object*.**ReadString** ( *RootKey*, *KeyPath*, *ValueName* [, *DefaultV
 *DefaultValue*
 : *optional* A **String** returned when the key or value does not exist, or when the stored type is not `REG_SZ`. Default: `""` (empty string).
 
-> [!WARNING]
+> [!WARNING] 1.0.1.1
 > The string that **ReadString** returns is longer than the stored text. For a text of *n* characters the result has 2*n* + 1: the text, then *n* + 1 NUL characters (`Chr(0)`). The method cuts its buffer to the size that `RegQueryValueEx` reports, less one, and that size counts bytes while a character of the buffer is two bytes. `ReadString(...) = "Alice"` is therefore **False** for a stored `Alice`. A *DefaultValue* is returned as it is, with no NUL characters. To get the text, cut the result at the first NUL: `Split(ReadString(...), vbNullChar)(0)`.
 
 ### ValueExists
@@ -296,7 +296,7 @@ Syntax: *object*.**WriteString** ( *RootKey*, *KeyPath*, *ValueName*, *ValueData
 
 Returns **True** on success, **False** if the key could not be created or the value could not be written.
 
-> [!NOTE]
+> [!NOTE] 1.0.1.1
 > The byte count passed to `RegSetValueEx` is `LenB(ValueData) + 2`: the byte length of the string plus the two-byte null terminator.
 
 ## Remarks

@@ -25,7 +25,7 @@ Syntax: *object*.**ReadString** ( *RootKey*, *KeyPath*, *ValueName* [, *DefaultV
 
 Returns a **String** containing the data stored in the registry value, or *DefaultValue* if the value cannot be read.
 
-> [!WARNING]
+> [!WARNING] 1.0.1.1
 > The string that **ReadString** returns is longer than the stored text. For a text of *n* characters the result has 2*n* + 1: the text, then *n* + 1 NUL characters (`Chr(0)`). The method cuts its buffer to the size that `RegQueryValueEx` reports, less one, and that size counts bytes while a character of the buffer is two bytes. `ReadString(...) = "Alice"` is therefore **False** for a stored `Alice`, and a stored empty string comes back as one NUL character. A *DefaultValue* is returned as it is, with no NUL characters. To get the text, cut the result at the first NUL, as the second example does.
 
 ### Remarks

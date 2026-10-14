@@ -37,10 +37,10 @@ Debug.Print ds("C:\").Path             ' C:
 
 On Error Resume Next
 Set d = ds("1")
-Debug.Print Err.Number                 ' 5
+Debug.Print Err.Number                 ' 68
 Err.Clear
 Set d = ds(0)
-Debug.Print Err.Number                 ' 5
+Debug.Print Err.Number                 ' 68
 Err.Clear
 On Error GoTo 0
 ```
@@ -64,9 +64,9 @@ Syntax: *object*.**Item** ( *letterOrIndex* ) **As Drive**
 *letterOrIndex*
 : *required* A **Variant**: a drive letter such as `"C"`, or the position of the drive, counted from 1. A string is read by its first character, so `"C"`, `"c"`, `"C:"` and `"C:\"` all name the drive C.
 
-The drives are in the order of their letters, and the letter is not case-sensitive. A letter that is not in the collection, and a position below 1 or above [**Count**](#count), raise error 5 (*Invalid procedure call or argument*), with the message *No drive 'x' in the collection*.
+The drives are in the order of their letters, and the letter is not case-sensitive. A letter that is not in the collection, and a position below 1 or above [**Count**](#count), raise error 68 (*Device unavailable*), with the message *No drive 'x' in the collection*. It is the number that [**GetDrive**](FileSystemTools#getdrive) raises for a drive that does not exist.
 
-The Scripting Runtime raises error 68 (*Device unavailable*) for a letter that is not in use, and error 5 for a position.
+The Scripting Runtime raises error 68 for a letter that is not in use, and error 5 for a position.
 
 ### NewEnum
 {: .no_toc }

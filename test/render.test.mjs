@@ -5,7 +5,8 @@
 // X.light.png beside it (themePairPlugin, and the book's lightOnly from
 // builder/theme-pictures.mjs); and for a diagram's SVG as it is inlined, its
 // boxes linking or not (builder/inline-diagram.mjs), on what Graphviz itself
-// writes.
+// writes; and for a callout's label, `> [!WARNING] BETA 1005`
+// (lib/callout-labels.mjs).
 //
 // The build compares whole pages, so a plugin that goes wrong only on input
 // the corpus does not hold passes it: kramdownEllipsisPlugin shortened every
@@ -23,7 +24,8 @@ import { Graphviz } from "@hpcc-js/wasm-graphviz";
 import { stripXmlPrologue } from "../builder/dot.mjs";
 import { inlineDiagram } from "../builder/inline-diagram.mjs";
 import { isWebsiteOnlyLink, rewriteHtml, websiteOf } from "../builder/offline-rewrite.mjs";
-import { createMarkdownIt } from "../builder/render.mjs";
+import { assignPackageVersions, calloutLabelsOf, parseCalloutLabel } from "../lib/callout-labels.mjs";
+import { applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
 import {
   lightOnly,
   pairSizes,
@@ -382,6 +384,127 @@ describe("themePairPlugin with pictures drawn as SVG", () => {
       offline: false,
       book: true,
     });
+  });
+});
+
+describe("callout labels", () => {
+  const title = (src, options) => {
+    const out = applyPreRenderRewrites(src, md, options);
+    return /<p class="markdown-alert-title">.*?<\/svg> (.*?)<\/p>/.exec(out)?.[1];
+  };
+  const tag = (t) => `<span class="markdown-alert-label">${t}</span>`;
+
+  test("no label is the title alone", () => {
+    assert.equal(title("> [!NOTE]\n> body\n"), "Note");
+    assert.equal(title("> [!NOTE]   \n> body\n"), "Note");
+  });
+
+  test("each item is a tag, the package version first", () => {
+    assert.equal(title("> [!WARNING] BETA 1005\n> body\n"), `Warning ${tag("BETA 1005")}`);
+    assert.equal(title("> [!NOTE] since BETA 984\n> body\n"), `Note ${tag("since BETA 984")}`);
+    assert.equal(
+      title("> [!WARNING] BETA 1005, 1.6.151.1\n> body\n", { packageVersion: "1.6.151.1" }),
+      `Warning ${tag("1.6.151.1")} ${tag("BETA 1005")}`,
+    );
+  });
+
+  test("an indented callout keeps its label", () => {
+    assert.equal(title("- item\n\n  > [!NOTE] BETA 1005\n  > body\n"), `Note ${tag("BETA 1005")}`);
+  });
+
+  test("a label in a code sample is left as written", () => {
+    const src = "```md\n> [!NOTE] whatever\n> body\n```\n";
+    assert.equal(applyPreRenderRewrites(src, md), src);
+  });
+
+  for (const [name, label, why] of [
+    ["lower-case beta", "beta 1005", /not a callout label/],
+    ["free text", "fixed soon", /not a callout label/],
+    ["a three-part version", "1.0.4", /not a callout label/],
+    ["two builds", "BETA 1005, since BETA 984", /twice/],
+    ["two versions", "1.0.0.1, 1.0.0.2", /twice/],
+    ["an empty item", "BETA 1005,", /not a callout label/],
+    ["timeless with a build", "timeless, BETA 1005", /stands alone/],
+    ["timeless with a version", "1.0.0.4, timeless", /stands alone/],
+    ["timeless in capitals", "Timeless", /not a callout label/],
+  ]) {
+    test(`refused: ${name}`, () => assert.throws(() => title(`> [!NOTE] ${label}\n> body\n`), why));
+  }
+
+  test("a package version must be the section's", () => {
+    const src = "> [!WARNING] 1.0.0.4\n> body\n";
+    assert.equal(title(src, { packageVersion: "1.0.0.4" }), `Warning ${tag("1.0.0.4")}`);
+    assert.throws(() => title(src, { packageVersion: "1.0.0.5" }), /section documents 1\.0\.0\.5/);
+    assert.throws(() => title(src, { packageVersion: "" }), /no section/);
+    // In a package section a callout has a label, and a build alone is one.
+    assert.throws(() => title("> [!NOTE]\n> body\n", { packageVersion: "1.0.0.4" }), /has a label: 1\.0\.0\.4/);
+    assert.equal(title("> [!NOTE] BETA 1005\n> body\n", { packageVersion: "1.0.0.4" }), `Note ${tag("BETA 1005")}`);
+    assert.equal(title("> [!NOTE]\n> body\n", { packageVersion: "" }), "Note");
+    // timeless is a label, drawn as nothing, in a package section or out of one.
+    for (const packageVersion of ["1.0.0.4", "", undefined])
+      assert.equal(
+        applyPreRenderRewrites("> [!WARNING] timeless\n> body\n", md, { packageVersion }),
+        applyPreRenderRewrites("> [!WARNING]\n> body\n", md),
+      );
+    // Left out, as the code-region gate's sweep leaves it, it is not checked.
+    assert.equal(title(src), `Warning ${tag("1.0.0.4")}`);
+  });
+
+  test("parseCalloutLabel reads each kind", () => {
+    assert.deepEqual(
+      parseCalloutLabel(" BETA  1005 , 2.3.1.1 ").items.map((i) => [i.kind, i.value]),
+      [
+        ["version", "2.3.1.1"],
+        ["beta", "1005"],
+      ],
+    );
+    assert.equal(parseCalloutLabel("since BETA 984").items[0].kind, "since");
+  });
+
+  test("calloutLabelsOf finds labelled callouts outside code samples, by line", () => {
+    const src = [
+      "---",
+      "title: X",
+      "---",
+      "> [!NOTE]",
+      "> no label",
+      "",
+      "> [!WARNING] BETA 1005",
+      "> body",
+      "",
+      "```md",
+      "> [!NOTE] BETA 1",
+      "```",
+      "",
+      "  > [!NOTE] 1.2.3.4, BETA 1005",
+      "  > body",
+      "",
+      "> [!TIP] whatever",
+    ].join("\r\n");
+    assert.deepEqual(
+      calloutLabelsOf(src).map((c) => [c.line, c.type, c.label, c.items.map((i) => i.kind).join("+"), !!c.error]),
+      [
+        [7, "WARNING", "BETA 1005", "beta", false],
+        [14, "NOTE", "1.2.3.4, BETA 1005", "version+beta", false],
+        [17, "TIP", "whatever", "", true],
+      ],
+    );
+  });
+
+  test("assignPackageVersions takes the nearest section with a four-part indexed_from", () => {
+    const pages = [
+      { srcRel: "Reference/Contributed/Pkg/index.md", frontmatter: { indexed_from: "1.2.3.4" } },
+      { srcRel: "Reference/Contributed/Pkg/Cls/index.md", frontmatter: {} },
+      { srcRel: "Reference/Contributed/Pkg/Cls/Member.md", frontmatter: {} },
+      { srcRel: "Reference/Default/VBA/index.md", frontmatter: { indexed_from: "beta-x-0997" } },
+      { srcRel: "Reference/Default/VBA/Strings/Left.md", frontmatter: {} },
+      { srcRel: "Reference/Contributed.md", frontmatter: {} },
+    ];
+    assignPackageVersions(pages);
+    assert.deepEqual(
+      pages.map((p) => p.packageVersion),
+      ["1.2.3.4", "1.2.3.4", "1.2.3.4", undefined, undefined, undefined],
+    );
   });
 });
 

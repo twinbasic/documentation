@@ -22,7 +22,7 @@ Returns **True** when the first characters of *source* are exactly *startingSequ
 
 ## Remarks
 
-> [!IMPORTANT]
+> [!IMPORTANT] timeless
 > The arguments are in the order *startingSequence*, *source*. This is the reverse of [**StringContains**](StringContains), which takes the string to search first. `StringStartsWith("Hello", "He")` asks whether `"He"` starts with `"Hello"` and returns **False**.
 
 The comparison is binary, so `"he"` does not start `"Hello"`. An empty *startingSequence* returns **True**. A *source* shorter than *startingSequence* returns **False**.

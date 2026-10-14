@@ -19,10 +19,10 @@ Syntax: *object*.**Read**( *id*, *Type* ) **As cRes**
 
 **Read** calls the **LoadResData** function with the supplied *id* and *Type* arguments and stores the resulting byte array internally. The method returns the **cRes** instance itself, so calls to the retrieval methods ([**ReturnBytes**](ReturnBytes), [**ReturnString**](ReturnString), [**ReturnHex**](ReturnHex), [**ReturnBase64**](ReturnBase64), [**ReturnPicture**](ReturnPicture)) can be chained directly onto the **Read** call.
 
-> [!IMPORTANT]
+> [!IMPORTANT] timeless
 > **Read** must be called before any retrieval method. The resource data is not populated at construction time; a retrieval method called without a prior **Read** will operate on an empty byte array and may raise a runtime error.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.4
 > **Read** can load only a resource that is part of the project. *Type* names a folder under **Resources** in the Project Explorer (or is the number of a standard resource type), and *id* identifies a resource in it. If no resource matches, **LoadResData** raises a run-time error.
 
 ### Example

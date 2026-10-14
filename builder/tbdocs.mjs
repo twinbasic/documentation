@@ -71,6 +71,7 @@ import { computeSiteSeo } from "./seo.mjs";
 import { resolveBookChapters } from "./book.mjs";
 import { loadData } from "./data.mjs";
 import { createMarkdownIt, buildLinkTables, diagramIsTall, serializeLinkTables } from "./render.mjs";
+import { assignPackageVersions } from "../lib/callout-labels.mjs";
 import { isPictureSvg, pairSizes, pictureSvgOutputs, unpairedLightPictures } from "./theme-pictures.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 import { NAV_SCRIPT_REL, buildInitConfig, renderSidebar } from "./template.mjs";
@@ -97,6 +98,7 @@ import { writePdf } from "./pdf.mjs";
 import { deriveTreeRels } from "./check-tree.mjs";
 import { syncAddinIndex } from "./addin-index.mjs";
 import { addinProjectOf, formatAddinProject, writeAddinProject } from "./addin-project.mjs";
+import { formatPackageTests, packageTestRels, packageTestsOf, writePackageTests } from "./package-tests.mjs";
 import { helpArchiveStep, recheckHelpArchive } from "./help-archive-step.mjs";
 import { baselineWrites } from "./baseline.mjs";
 import { checkPageBaseline } from "./page-baseline.mjs";
@@ -659,6 +661,9 @@ const TASKS = {
     ) {
       void _dotSignal; // dependency signal only -- static files already appended in dot.submit
       void _markdownInitSignal; // dependency signal only -- markdown + linkTablesSerialized + seoSiteTitle/seoLogoUrl already on state.site
+      // A callout label's package version is checked against its section's
+      // indexed_from, which a worker's chunk may not hold: stamp it here.
+      assignPackageVersions(state.pages);
       const chunks = chunkPages(state.pages, ctx.workerCount);
       // An offline tree that shows the pictures' PNGs (picture_svg.offline false) holds no
       // picture SVG either: each is added to offline_exclude, on the config every consumer of
@@ -681,6 +686,8 @@ const TASKS = {
       // tree holds no copy -- the project carries the offline tree's archive --
       // so a link to the file there goes to the website (computeWebsiteUrl).
       const addin = addinProjectOf(state.site.config);
+      // The package test projects, which the packageTests task writes, likewise.
+      const packageTestFiles = packageTestRels(packageTestsOf(state.site.config, ctx.srcRoot));
       const themeAssetRels = [
         ...enumerateVendoredThemeAssets(),
         "assets/css/tb-highlight.css",
@@ -704,7 +711,7 @@ const TASKS = {
         stubs,
         themeAssetRels,
         excludePatterns,
-        onlineOnlyRels: addin ? [addin.dest] : [],
+        onlineOnlyRels: [...(addin ? [addin.dest] : []), ...packageTestFiles],
       };
       const treeNames = skipOffline ? ["online"] : ["online", "offline"];
       const treeRels = new Map(treeNames.map((w) => [w, deriveTreeRels(w, common)]));
@@ -720,7 +727,7 @@ const TASKS = {
       // search-data.json) are all minted by the build, not found in docs/.
       // Runs unconditionally, not under --check: a build with checks off
       // is exactly when nothing else is watching.
-      const policy = publishPolicyFor(state.site.config);
+      const policy = publishPolicyFor(state.site.config, { generated: packageTestFiles });
       for (const [which, rels] of treeRels) {
         const strays = unpublishableTreePaths(rels, policy);
         if (strays.length) {
@@ -1063,6 +1070,26 @@ const TASKS = {
     submit() {},
   },
 
+  // Write the contributed packages' test projects, packed from test/package-tests/, into the
+  // online tree beside each package's section -- see builder/package-tests.mjs. dispatch put
+  // their paths in the online tree's index, so checkReport waits for this task. --dry-run
+  // writes nothing, and a tree whose config declares no package_tests (the test fixtures)
+  // packs nothing. A failure is reported and fails the build.
+  packageTests: {
+    expected: ["prepDest"],
+    runOnMain: true,
+    async execute(_, ctx, state) {
+      const cfg = packageTestsOf(state.site.config, ctx.srcRoot);
+      if (!cfg || ctx.opts.dryRun) return null;
+      try {
+        return await writePackageTests(cfg, ctx.destRoot);
+      } catch (err) {
+        return { failed: true, error: err.message };
+      }
+    },
+    submit() {},
+  },
+
   // Write redirect stubs + sitemap/robots. Waits for writeAssets (theme on
   // disk), searchData, deriveRedirects, and deriveSitemap.
   // Passes searchStats through to writeOffline (for search-data.js).
@@ -1281,8 +1308,9 @@ const TASKS = {
     // the audit failed the build over nothing.
     // symbolIndex for the same reason: tB/symbols.json is in the online tree's
     // index, and the audit must not look for it before it is written. And
-    // addinProject: the add-in's project file is in both trees' indexes.
-    expected: ["linkJoin", "checkBook", "scss", "symbolIndex", "addinProject"],
+    // addinProject: the add-in's project file is in both trees' indexes. And
+    // packageTests: the package test projects are in the online tree's.
+    expected: ["linkJoin", "checkBook", "scss", "symbolIndex", "addinProject", "packageTests"],
     runOnMain: true,
     async execute({ linkJoin: trees, checkBook: book }, ctx, state) {
       if (!state.checkTrees) return null;
@@ -1590,6 +1618,11 @@ export async function runBuild(opts) {
     const label = `${path.relative(REPO_ROOT, addinDir).replaceAll(path.sep, "/")}/`;
     process.stdout.write(formatAddinProject(addinResult, label, "  "));
     if (addinResult.failed) failBuild();
+  }
+  const packageTestsResult = results.get("packageTests");
+  if (packageTestsResult) {
+    process.stdout.write(formatPackageTests(packageTestsResult, "  "));
+    if (packageTestsResult.failed) failBuild();
   }
   if (offlineResult) {
     console.log(`  ${pc.bold("offline:")} -> ${pc.cyan(`${destRoot}-offline`)}`);

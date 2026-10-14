@@ -19,8 +19,8 @@ Syntax: **LOF(** *filenumber* **)**
 > [!NOTE]
 > Use the **FileLen** function to obtain the length of a file that is not open.
 
-> [!NOTE]
-> In BETA 1005, **LOF** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
+> [!NOTE] BETA 1005
+> **LOF** raises run-time error -2147467259 (`&H80004005`) for a *filenumber* that is not open, where VB6 raises 52 (*Bad file name or number*).
 
 ### Example
 

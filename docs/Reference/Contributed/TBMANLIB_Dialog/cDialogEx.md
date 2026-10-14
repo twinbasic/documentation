@@ -29,14 +29,14 @@ result = dlg.ShowOpen()
 If Len(result) > 0 Then Debug.Print "Chosen: " & result
 ```
 
-> [!WARNING]
-> In version 1.1.0.0 the three dialogs return the **name** of the chosen file or folder, not its full path: [**ShowOpen**](#showopen), [**ShowSave**](#showsave), [**ShowBrowseForFolder**](#showbrowseforfolder) and [**SelectFiles**](#selectfiles) give `a.txt` for `C:\Reports\a.txt`, and `other` for the folder `C:\Reports\other`. A program that opens or saves the result opens or saves a file in its own current folder, and no error is raised. [**FileName**](#filename) holds the same short name afterwards. The class asks Windows for the name that is relative to the parent folder, because the constant `SIGDN_FILESYSPATH` of the source has the value `&H80058001` and the file-system path is `&H80058000`. The folder in which the user chose is not reported, so the result cannot be used to open or save the file. Use [**cDialog**](cDialog/), which returns full paths.
+> [!WARNING] 1.1.0.0
+> The three dialogs return the **name** of the chosen file or folder, not its full path: [**ShowOpen**](#showopen), [**ShowSave**](#showsave), [**ShowBrowseForFolder**](#showbrowseforfolder) and [**SelectFiles**](#selectfiles) give `a.txt` for `C:\Reports\a.txt`, and `other` for the folder `C:\Reports\other`. A program that opens or saves the result opens or saves a file in its own current folder, and no error is raised. [**FileName**](#filename) holds the same short name afterwards. The class asks Windows for the name that is relative to the parent folder, because the constant `SIGDN_FILESYSPATH` of the source has the value `&H80058001` and the file-system path is `&H80058000`. The folder in which the user chose is not reported, so the result cannot be used to open or save the file. Use [**cDialog**](cDialog/), which returns full paths.
 
-> [!WARNING]
-> In version 1.1.0.0 [**InitialDir**](#initialdir) has no effect: the dialogs always open in the *Documents* folder, and no error is raised. The class makes the folder item with `SHCreateItemFromParsingName` and a GUID for `IShellItem` that has a wrong byte (`&H37` where the interface identifier has `&H7B`), so Windows answers that it has no such interface and the class skips `SetDefaultFolder`.
+> [!WARNING] 1.1.0.0
+> [**InitialDir**](#initialdir) has no effect: the dialogs always open in the *Documents* folder, and no error is raised. The class makes the folder item with `SHCreateItemFromParsingName` and a GUID for `IShellItem` that has a wrong byte (`&H37` where the interface identifier has `&H7B`), so Windows answers that it has no such interface and the class skips `SetDefaultFolder`.
 
-> [!WARNING]
-> In version 1.1.0.0 a [**Filter**](#filter) is ignored unless it holds an even number of pipe characters (`|`). A filter of N pairs written `Name|Pattern|Name|Pattern` holds 2N minus 1, an odd number, so the dialog shows no file-type list and accepts every file, and no error is raised. A pipe after the last pattern makes the count even: `Text (*.txt)|*.txt|All (*.*)|*.*|` shows two entries. [**AddFilter**](#addfilter) and the four **Set...Filters** methods build a filter without the closing pipe, and so does the text of [**GetPresetFilter**](#getpresetfilter), so none of them shows a list until the text gets its pipe: add `dlg.Filter = dlg.Filter & "|"` after them.
+> [!WARNING] 1.1.0.0
+> A [**Filter**](#filter) is ignored unless it holds an even number of pipe characters (`|`). A filter of N pairs written `Name|Pattern|Name|Pattern` holds 2N minus 1, an odd number, so the dialog shows no file-type list and accepts every file, and no error is raised. A pipe after the last pattern makes the count even: `Text (*.txt)|*.txt|All (*.*)|*.*|` shows two entries. [**AddFilter**](#addfilter) and the four **Set...Filters** methods build a filter without the closing pipe, and so does the text of [**GetPresetFilter**](#getpresetfilter), so none of them shows a list until the text gets its pipe: add `dlg.Filter = dlg.Filter & "|"` after them.
 
 ## Which dialog uses which property
 

@@ -3,14 +3,14 @@
 The IDE section (`docs/IDE/`, `/tB/IDE`) is being rewritten so that every page is fit for
 the book. The goal is that `docs/_book.yml` holds no IDE entry under `left_out:`. This file
 covers the structure, the conventions, where each fact comes from, and how a chapter is
-written. Owner decisions, 2026-10-11:
+written. Owner decisions:
 
 - task chapters plus a reference part;
 - permalinks flattened, with redirects;
 - the how-to material in `Features/Compiler-IDE` moved here;
 - `docs/IDE/_Images/*.af` deleted.
 
-The section is not bound to the structure it had. The existing pages are raw material.
+The section is not bound to its current structure. The existing pages are raw material.
 
 ## What "book-ready" means for a page
 
@@ -45,7 +45,7 @@ children. Second person ("you") is allowed here, as in tutorials.
 and the keyboard shortcuts, under `/tB/IDE/Reference/…`. Each entry gives the item, its
 shortcut, one or two sentences, and a link to the chapter that explains it.
 
-- The keymap is shown as a table, not the JSON dump `Menu/Window.md` holds now. The table can be
+- The keymap is shown as a table, not the JSON dump `Menu/Window.md` holds. The table can be
   generated from `main.js` if keeping it by hand proves error-prone. Decide that when the page is
   written.
 - Webpage and the other panes that are not in a chapter get a reference entry.
@@ -98,7 +98,8 @@ for contributors.
   repeats the picture. A reference entry says what the item does. An item with nothing to say
   beyond its label is left to the picture.
 - **Headings** in sentence case, with no icon and no shortcut inside them.
-- **The section names no build**, except in a defect callout (owner's standing rule). Lines such
+- **The section names no build**, except in a defect callout's label, `> [!NOTE] BETA 1005`
+  (owner's standing rule; WIP.md rule 6). Lines such
   as "Components list coming soon" go, unless the IDE itself shows that text and the page says
   so.
 - **Defects the twinBASIC developers already know of** (owner) are not queued, but a page that

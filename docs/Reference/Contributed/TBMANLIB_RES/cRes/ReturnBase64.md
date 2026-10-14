@@ -34,10 +34,10 @@ The following **Base64Prefix** values are defined:
 | **Base64Prefix_AudioWAV** | `data:audio/wav;base64,` |
 | **Base64Prefix_AudioOGG** | `data:audio/ogg;base64,` |
 
-> [!IMPORTANT]
+> [!IMPORTANT] 1.0.0.4
 > **ReturnBase64** requires that MSXML2 is registered on the machine. It creates an `MSXML2.DOMDocument` COM object internally. This call will fail at run time on systems where MSXML2 is not available.
 
-> [!NOTE]
+> [!NOTE] timeless
 > Call [**Read**](Read) before **ReturnBase64**. The method encodes whatever bytes are currently stored in the instance, and an instance on which **Read** has not been called holds none.
 
 ### Example

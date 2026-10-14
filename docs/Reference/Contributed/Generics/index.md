@@ -96,8 +96,8 @@ Module GenericsMinMaxDemo
 End Module
 ```
 
-> [!NOTE]
-> In BETA 1005, **New** with a generic class from a package compiles only when some declaration in the project or the package names the same class with the same type arguments. A variable declared with the tuple's type is such a declaration. Without one, `Dim t As Any = New TupleOf2(Of String, Long)("a", 2)` fails with TB5074, *Could not bind to parameterized constructor of class 'TupleOf2'*, and so does **New** assigned to an **Object** or **Variant** variable or passed as an argument. A generic class declared in the project's own code is not affected. Assign the tuple to a variable of its own type first; that variable can then be assigned to an **Object** or **Variant** variable, through which the items are read late-bound:
+> [!NOTE] BETA 1005
+> **New** with a generic class from a package compiles only when some declaration in the project or the package names the same class with the same type arguments. A variable declared with the tuple's type is such a declaration. Without one, `Dim t As Any = New TupleOf2(Of String, Long)("a", 2)` fails with TB5074, *Could not bind to parameterized constructor of class 'TupleOf2'*, and so does **New** assigned to an **Object** or **Variant** variable or passed as an argument. A generic class declared in the project's own code is not affected. Assign the tuple to a variable of its own type first; that variable can then be assigned to an **Object** or **Variant** variable, through which the items are read late-bound:
 >
 > ```tb check_build check_run
 > Dim t As TupleOf2(Of String, Long) = New TupleOf2(Of String, Long)("width", 640)
@@ -137,13 +137,13 @@ An item can have any numeric type, **String**, **Boolean**, **Date**, **Currency
 - **Object types.** The constructor stores each item with `=`, not with **Set**. A class whose default member takes an argument, such as **Collection**, fails to compile, with TB5092 *Missing argument 'Index'* reported in the package's source. **Object** compiles, but creating the tuple raises run-time error 91, *Object variable or With block variable not set*, even when the item passed is **Nothing**. So a tuple cannot hold another tuple either.
 - **Arrays**, such as **Long()**.
 
-> [!WARNING]
-> In BETA 1005, a tuple type with an array as a type argument, such as `TupleOf1(Of Long())`, crashes the compiler wherever it is written: in a declaration, a parameter, a function's result type or after **New**. The compiler restarts and crashes again, so nothing in the project compiles until the line is removed. The same happens with a generic class declared in a project's own code.
+> [!WARNING] BETA 1005
+> A tuple type with an array as a type argument, such as `TupleOf1(Of Long())`, crashes the compiler wherever it is written: in a declaration, a parameter, a function's result type or after **New**. The compiler restarts and crashes again, so nothing in the project compiles until the line is removed. The same happens with a generic class declared in a project's own code.
 
 ## TupleOf4
 
-> [!NOTE]
-> **TupleOf4** cannot be used in version 1.0.0.0. The package declares it with three type parameters, `TupleOf4(Of T1, T2, T3)`, but its fourth item uses a fourth, *T4*, which is not declared. With four type arguments, a declaration fails with TB5124, *Too many generic specifiers*. With three, the package's source fails with TB5079, *Unrecognized datatype symbol 'T4'*. A project that does not use **TupleOf4** is not affected. For four values, use **TupleOf5** and leave its last item unused.
+> [!NOTE] 1.0.0.0
+> **TupleOf4** cannot be used. The package declares it with three type parameters, `TupleOf4(Of T1, T2, T3)`, but its fourth item uses a fourth, *T4*, which is not declared. With four type arguments, a declaration fails with TB5124, *Too many generic specifiers*. With three, the package's source fails with TB5079, *Unrecognized datatype symbol 'T4'*. A project that does not use **TupleOf4** is not affected. For four values, use **TupleOf5** and leave its last item unused.
 
 ## See Also
 

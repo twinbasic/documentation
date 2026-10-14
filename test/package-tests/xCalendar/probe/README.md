@@ -20,14 +20,14 @@ declared in the package's `xCalendar.tbcontrol`.
 ## Running it
 
 ```sh
-node test/package-probes/xCalendar/probe.mjs 1 2,3 4,5 6,7,8 9 10 11,12 13 14
-node test/package-probes/xCalendar/probe.mjs --arch win64 --port 9911 1 2,3 4,5 6,7,8 9 10 11,12 13 14
-node test/package-probes/xCalendar/probe.mjs --shots <dir> 15 15b
-node test/package-probes/xCalendar/probe.mjs p2,p3 p5,p7 p9 p10 p11 p12 p13 p14 p18 p19 p20,p21 p24,p25 p29 p33 p22x
-node test/package-probes/xCalendar/probe.mjs 16 17
-node test/package-probes/xCalendar/probe.mjs 12x 12y 12z 12w   # each opens the run-time error box, except 12w: see below
-node test/package-probes/xCalendar/designer.mjs --edit Enabled=False --out <file>.tbform
-node test/package-probes/xCalendar/probe.mjs --form <file>.tbform 1     # a control that loads disabled
+node test/package-tests/xCalendar/probe/probe.mjs 1 2,3 4,5 6,7,8 9 10 11,12 13 14
+node test/package-tests/xCalendar/probe/probe.mjs --arch win64 --port 9911 1 2,3 4,5 6,7,8 9 10 11,12 13 14
+node test/package-tests/xCalendar/probe/probe.mjs --shots <dir> 15 15b
+node test/package-tests/xCalendar/probe/probe.mjs p2,p3 p5,p7 p9 p10 p11 p12 p13 p14 p18 p19 p20,p21 p24,p25 p29 p33 p22x
+node test/package-tests/xCalendar/probe/probe.mjs 16 17
+node test/package-tests/xCalendar/probe/probe.mjs 12x 12y 12z 12w   # each opens the run-time error box, except 12w: see below
+node test/package-tests/xCalendar/probe/designer.mjs --edit Enabled=False --out <file>.tbform
+node test/package-tests/xCalendar/probe/probe.mjs --form <file>.tbform 1     # a control that loads disabled
 ```
 
 Each argument is one run of the exe; the scenario ids are listed at the top of

@@ -743,6 +743,17 @@ blockquote {
   flex-shrink: 0;
 }
 
+.markdown-alert-label {
+  margin-left: 0.2em;
+  padding: 0.05em 0.35em;
+  border: 0.5pt solid currentColor;
+  border-radius: 0.7em;
+  font-size: 0.8em;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .markdown-alert > :last-child { margin-bottom: 0; }
 
 .markdown-alert-note         { border-left-color: #0969da; }

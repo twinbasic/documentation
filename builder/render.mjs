@@ -22,6 +22,7 @@ import { replaceOutsideCode } from "./code-guard.mjs";
 import { splitFragment } from "./url.mjs";
 import { escapeMarkup, escapeMarkupAndQuotes, escapeRegExp } from "./escape.mjs";
 import { inlineDiagram } from "./inline-diagram.mjs";
+import { checkCalloutLabel, parseCalloutLabel } from "../lib/callout-labels.mjs";
 import {
   isLightPicture,
   isPictureSvg,
@@ -74,7 +75,12 @@ function renderPage(page, md) {
     // consumed by Phase 8. Either way, no markdown rendering happens here.
     return page.rawContent;
   }
-  const source = applyPreRenderRewrites(page.rawContent, md);
+  let source;
+  try {
+    source = applyPreRenderRewrites(page.rawContent, md, { packageVersion: page.packageVersion ?? "" });
+  } catch (e) {
+    throw new Error(`${page.srcRel}: ${e.message}`);
+  }
   const env = { page };
   const html = md.render(source, env);
   // Lifted off the headings by searchIndexMarksPlugin; search.mjs reads
@@ -110,7 +116,10 @@ function padEmptyCells(html) {
 // the definition-list plugin, for one, makes a fence after `: ` that a bare
 // parser reads as a paragraph. Without it the mask would silently differ from
 // the build's, so a call without one throws.
-export function applyPreRenderRewrites(rawContent, md) {
+//
+// `options.packageVersion` is the version the page's package section
+// documents, which a callout label's package version must be.
+export function applyPreRenderRewrites(rawContent, md, options = {}) {
   if (!md) throw new TypeError("applyPreRenderRewrites: pass the site's markdown-it instance");
   // CommonMark normalises CRLF/CR to LF before block parsing. The rewrites
   // below all rely on LF-only input -- do the normalisation up front so they
@@ -141,7 +150,7 @@ export function applyPreRenderRewrites(rawContent, md) {
   // admonition's lines by their `> ` markers and strips them, and a masked
   // fence inside an admonition has taken its markers with it into the stash.
   // It asks lib/markdown where the code is itself, with the same parser.
-  return rewriteAdmonitions(code.restore(work), md);
+  return rewriteAdmonitions(code.restore(work), md, options);
 }
 
 // kramdown accepts unescaped spaces inside `![alt](url)` and `[text](url)`
@@ -1767,8 +1776,9 @@ const ADMONITION_TYPES = {
 // admonitions inside a list item or blockquote share the parent's
 // indentation; the gem's regex captures that into \1 and uses it as a
 // per-line anchor on the body lines.
+// The rest of the `[!TYPE]` line is the callout's label (lib/callout-labels.mjs).
 const ADMONITION_RE =
-  /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][^\n]*\n((?:\2[ \t]*>[ \t]*[^\n]*(?:\n|$))(?:(?![ \t]*>[ \t]*\[!)\2[ \t]*>[ \t]*[^\n]*(?:\n|$))*)?/g;
+  /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]([^\n]*)\n((?:\2[ \t]*>[ \t]*[^\n]*(?:\n|$))(?:(?![ \t]*>[ \t]*\[!)\2[ \t]*>[ \t]*[^\n]*(?:\n|$))*)?/g;
 // An admonition written inside a code region is a sample of the syntax, and is
 // left as it is. This rewrite runs outside the mask, so it asks lib/markdown
 // where the regions are, with the site's parser for the reason
@@ -1782,7 +1792,13 @@ const ADMONITION_RE =
 // leaves admonitions as the literal text "[!NOTE]". WIP.Build.md tells both.
 // A private scan can also disagree with the parser without anyone noticing;
 // check_code_regions.mjs probes each shape through the whole chain.
-export function rewriteAdmonitions(src, md) {
+//
+// A label that does not parse, or names a package version other than the one
+// the page's section documents (`packageVersion`), throws: the build stops and
+// names the callout. So does a callout with no label in such a section.
+// `packageVersion` is "" for a page in no package section;
+// left out, as the code-region gate's sweep leaves it, versions go unchecked.
+export function rewriteAdmonitions(src, md, { packageVersion } = {}) {
   if (!md) throw new TypeError("rewriteAdmonitions: pass the site's markdown-it instance");
   // CommonMark's normalisation pass converts CRLF/CR to LF before block
   // parsing. We do it up-front so our regexes operate on LF-only input.
@@ -1794,13 +1810,30 @@ export function rewriteAdmonitions(src, md) {
   let line = 0;
   let counted = 0;
 
-  return src.replace(ADMONITION_RE, (match, leading, indent, typeRaw, bodyRaw, offset) => {
+  return src.replace(ADMONITION_RE, (match, leading, indent, typeRaw, labelRaw, bodyRaw, offset) => {
     const at = offset + leading.length;
     for (; counted < at; counted++) if (src.charCodeAt(counted) === 10) line++;
     if (inCode[line]) return match;
 
     const type = typeRaw.toLowerCase();
     const meta = ADMONITION_TYPES[type];
+    const label = parseCalloutLabel(labelRaw);
+    const problem =
+      label.error ?? (packageVersion === undefined ? undefined : checkCalloutLabel(label.items, packageVersion));
+    if (problem) {
+      const opening = (bodyRaw ?? "")
+        .split("\n")[0]
+        .replace(/^[ \t]*>[ \t]?/, "")
+        .slice(0, 60);
+      throw new Error(`callout "[!${typeRaw}]${labelRaw}" (${opening}...): ${problem}`);
+    }
+    // One tag per item, a space between them so that the title reads as words
+    // to a screen reader; the title is a flex box, which does not draw it.
+    // `timeless` is for the tooling only and draws nothing.
+    const tags = label.items
+      .filter((i) => i.kind !== "timeless")
+      .map((i) => ` <span class="markdown-alert-label">${escapeMarkup(i.text)}</span>`)
+      .join("");
     // The body lines all share the same leading indent; strip it plus the
     // `>` marker and AT MOST ONE following space, which is what blockquote
     // unwrapping means.
@@ -1822,7 +1855,7 @@ export function rewriteAdmonitions(src, md) {
     // blockHtmlRecursionPlugin) parses it as an independent block.
     // The trailing blank line ensures any following text is parsed as
     // a separate markdown block rather than absorbed into the html_block.
-    return `${leading}<div class="markdown-alert markdown-alert-${type}" role="${meta.role}" markdown="1">\n<p class="markdown-alert-title">${meta.icon} ${meta.title}</p>\n\n${body}\n</div>\n\n`;
+    return `${leading}<div class="markdown-alert markdown-alert-${type}" role="${meta.role}" markdown="1">\n<p class="markdown-alert-title">${meta.icon} ${meta.title}${tags}</p>\n\n${body}\n</div>\n\n`;
   });
 }
 

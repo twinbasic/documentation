@@ -1,0 +1,127 @@
+' tbRegExp: RegExp.IsValid, LastError and LastErrorNumber, and what a pattern that does not compile does.
+' The pattern a{2,1} has a lower count above its upper count. VBScript's RegExp refuses it with
+' error 5017; tbRegExp names the fault "Invalid quantifier", error vbObjectError + 3008.
+[TestFixture]
+Module IsValidTests
+
+    [TestCase]
+    Public Sub IsValid_LowCountAboveHigh()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "a{2,1}"
+        Expect.IsFalse re.IsValid, "IsValid of the pattern a{2,1}, whose lower count is above its upper count"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LastErrorNumber_LowCountAboveHigh()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "a{2,1}"
+        Expect.AreEqual vbObjectError + 3008, re.LastErrorNumber, "LastErrorNumber of the pattern a{2,1} (invalid quantifier)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Test_LowCountAboveHighRaisesCompileError()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "a{2,1}"
+        Dim ok As Boolean
+        Err.Clear
+        On Error Resume Next
+        ok = re.Test("aa")
+        Dim n As Long, d As String
+        n = Err.Number
+        d = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual vbObjectError + 3008, n, "Err.Number of Test(""aa"") with the pattern a{2,1}"
+        Expect.AreEqual "Invalid quantifier: a malformed '{n,m}' count (e.g. '{2,1}', or a number too large).", d, "Err.Description of Test(""aa"") with the pattern a{2,1}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Execute_LowCountAboveHighRaisesCompileError()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "a{2,1}"
+        Dim m As MatchCollection
+        Err.Clear
+        On Error Resume Next
+        Set m = re.Execute("aa")
+        Dim n As Long
+        n = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual vbObjectError + 3008, n, "Err.Number of Execute(""aa"") with the pattern a{2,1}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Replace_LowCountAboveHighRaisesCompileError()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "a{2,1}"
+        Dim s As String
+        Err.Clear
+        On Error Resume Next
+        s = re.Replace("aa", "x")
+        Dim n As Long
+        n = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual vbObjectError + 3008, n, "Err.Number of Replace(""aa"", ""x"") with the pattern a{2,1}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Split_LowCountAboveHighRaisesCompileError()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "a{2,1}"
+        Dim c As Collection
+        Err.Clear
+        On Error Resume Next
+        Set c = re.Split("aa")
+        Dim n As Long
+        n = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual vbObjectError + 3008, n, "Err.Number of Split(""aa"") with the pattern a{2,1}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsValid_InvalidPatternLeavesNoError()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "(\d+"
+        Err.Clear
+        Expect.IsFalse re.IsValid, "IsValid of the pattern (\d+"
+        Expect.AreEqual 0, Err.Number, "Err.Number after IsValid compiled the pattern (\d+"
+        Err.Clear
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LastError_InvalidPatternLeavesNoError()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "(\d+"
+        Err.Clear
+        Expect.AreEqual "Unexpected end of pattern", Left$(re.LastError, 25), "first 25 characters of LastError for the pattern (\d+"
+        Expect.AreEqual 0, Err.Number, "Err.Number after LastError compiled the pattern (\d+"
+        Err.Clear
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LastErrorNumber_InvalidPatternLeavesNoError()
+        Expect.Begin
+        Dim re As New RegExp
+        re.Pattern = "(\d+"
+        Err.Clear
+        Expect.AreEqual vbObjectError + 3009, re.LastErrorNumber, "LastErrorNumber of the pattern (\d+"
+        Expect.AreEqual 0, Err.Number, "Err.Number after LastErrorNumber compiled the pattern (\d+"
+        Err.Clear
+        Expect.Done
+    End Sub
+
+End Module

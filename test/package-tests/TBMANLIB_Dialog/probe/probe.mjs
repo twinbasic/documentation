@@ -2,7 +2,7 @@
 // ids, on a private desktop. What the package's dialogs do at run time, for the pages under
 // docs/Reference/Contributed/TBMANLIB_Dialog/: see README.md beside this file.
 //
-//   node test/package-probes/TBMANLIB_Dialog/probe.mjs [--arch win32|win64] [--port N] <ids> [<ids> ...]
+//   node test/package-tests/TBMANLIB_Dialog/probe/probe.mjs [--arch win32|win64] [--port N] <ids> [<ids> ...]
 //
 // 1. The source tree is written to %TEMP%\dialog-probe\tree-<port>: the contributed template's
 //    Settings (test/example-projects/contributed-TBMANLIB_Dialog), the package embedded under
@@ -22,9 +22,9 @@ import {
   parseCli,
   printHelpAndExit,
   withUsageError,
-} from "../../../lib/cli.mjs";
+} from "../../../../lib/cli.mjs";
 
-const USAGE = `usage: node test/package-probes/TBMANLIB_Dialog/probe.mjs [--arch win32|win64] [--port N] [--timeout S] [--overlay D] <ids> [<ids> ...] [-h, --help]
+const USAGE = `usage: node test/package-tests/TBMANLIB_Dialog/probe/probe.mjs [--arch win32|win64] [--port N] [--timeout S] [--overlay D] <ids> [<ids> ...] [-h, --help]
 
 Builds the TBMANLIB_Dialog probe (src/) with tbrun, then runs the exe on a private desktop once
 for each <ids>, a comma-separated list of the scenario ids listed at the top of src/Probe.twin.
@@ -72,7 +72,7 @@ const { arch, port, timeout } = withUsageError(
 );
 
 const here = import.meta.dirname;
-const repo = path.resolve(here, "..", "..", "..");
+const repo = path.resolve(here, "..", "..", "..", "..");
 const pkg = path.join(repo, "indexer", ".packages", "contributed", "TBMANLIB_Dialog");
 if (!existsSync(path.join(pkg, "sources"))) {
   console.error(`probe: no package sources in ${pkg}; run \`node indexer/twin-index.mjs sync\` first`);

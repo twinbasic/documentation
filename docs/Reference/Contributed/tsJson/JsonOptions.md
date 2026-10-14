@@ -22,7 +22,7 @@ Debug.Print JsonOptions.Rfc.Indent                        ' 4
 
 A property of an options object checks nothing when it is set. The value is used by the call that receives the object, and a call does not change the object.
 
-> [!IMPORTANT]
+> [!IMPORTANT] timeless
 > Assigning a property on the predeclared object itself raises run-time error 5, *Invalid procedure call or argument*, with the source `JsonOptions` and the message *JsonOptions (default instance) is a factory. Use Rfc, Jsonc, Minified, or Pretty.* Create an options object first and assign the properties of that.
 >
 > ```tb check_build check_run
@@ -41,8 +41,8 @@ A property of an options object checks nothing when it is set. The value is used
 > ' 0|0|False||0|0
 > ```
 
-> [!NOTE]
-> The class declares a **Private** constructor and the attribute `[COMCreatable(False)]`, so that only its presets create options objects. In BETA 1005 twinBASIC does not enforce a **Private** constructor, and a project that references the package can still create an object with **New**. Every property of such an object has the empty value of its type: **Indent** 0, an empty **Newline**, **Syntax** **jsRfc8259**, and a limit of 0, which means no limit. The text it writes has no line breaks and no indentation, but still a space after each colon. The presets are the way to get the defaults.
+> [!NOTE] BETA 1005
+> The class declares a **Private** constructor and the attribute `[COMCreatable(False)]`, so that only its presets create options objects. twinBASIC does not enforce a **Private** constructor, and a project that references the package can still create an object with **New**. Every property of such an object has the empty value of its type: **Indent** 0, an empty **Newline**, **Syntax** **jsRfc8259**, and a limit of 0, which means no limit. The text it writes has no line breaks and no indentation, but still a space after each colon. The presets are the way to get the defaults.
 >
 > ```tb check_build check_run
 > Dim jo As JsonOptions = New JsonOptions

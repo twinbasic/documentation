@@ -98,7 +98,8 @@ node --test test/example-batches.test.mjs
 @if errorlevel 1 goto :fail
 @rem Unit tests for scripts/lib/tb-ports.mjs, which claims the DevTools
 @rem ports the harness's IDEs use: two claims at once are disjoint, a port
-@rem in use and a live lock are passed over, a stale lock is taken over.
+@rem in use and a live lock are passed over, a stale lock is taken over;
+@rem and for what ending an IDE removes of its temp folder and profile.
 @rem Starts no IDE. No tree, no browser, about 2 s.
 node --test test/ports.test.mjs
 @if errorlevel 1 goto :fail
@@ -155,6 +156,14 @@ node scripts/check_page_baseline.mjs
 @rem manifest and pages built in memory, so they mean the same against an
 @rem empty docs\. No tree, no browser, well under a second.
 node scripts/check_book_coverage.mjs
+@if errorlevel 1 goto :fail
+@rem Every NOTE and WARNING of a contributed package's section names the
+@rem test cases behind it in a marker, and each package test project under
+@rem test\package-tests is in order: its cases named, well formed, in
+@rem expect.json for the documented version and in its generated RunAll
+@rem module. Its probes run on inputs built in memory first. Sources only:
+@rem no tree, no install, well under a second.
+node scripts/check_package_tests.mjs
 @if errorlevel 1 goto :fail
 @rem The symbol index (tB/symbols.json) is read by the IDE help add-in,
 @rem and a build that indexes the reference cleanly says nothing about the
