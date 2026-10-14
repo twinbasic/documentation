@@ -112,6 +112,9 @@ const FAMILIES = {
   calloutWarning: { re: /class="markdown-alert markdown-alert-warning/g, min: 1, why: "color-contrast on the WARNING tint and title" },
   calloutTip: { re: /class="markdown-alert markdown-alert-tip/g, min: 1, why: "color-contrast on the TIP tint and title" },
   calloutCaution: { re: /class="markdown-alert markdown-alert-caution/g, min: 1, why: "color-contrast on the CAUTION tint and title" },
+  // A label is a smaller tag in its title's colour, which only stays so while
+  // it out-ranks the stylesheets' bare `span { color }` in both themes.
+  calloutLabel: { re: /class="markdown-alert-label"/g, min: 1, why: "color-contrast on a callout's label tag" },
   blockquote: { re: /<blockquote[\s>]/g, min: 1, why: "color-contrast on quoted text" },
   kbd: { re: /<kbd[\s>]/g, min: 2, why: "color-contrast on inline key caps" },
   footnote: { re: /class="footnote/g, min: 1, why: "footnote back-reference link names" },

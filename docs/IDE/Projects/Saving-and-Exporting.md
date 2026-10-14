@@ -52,8 +52,8 @@ The compiler can also ask the IDE for another path: a box, **Failed to save the 
 
 Some commands save the project besides **Save Project**: **Save Project As** saves after it chooses the path, and **Apply Changes** in [Project Settings](References-and-Packages#apply-changes-and-closing-the-dialog) saves when the compiler restarts. With the setting [Export After Save](../Project-Settings#export-after-save), a save runs **Export Project** first.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, several actions save the project although you did not ask. They are [**Import...**](Adding-Files#the-project-is-saved) of ordinary files; the **Import** and **Cancel** buttons of the **Import from twinproj...** dialog; [renaming the project](Files-and-Folders#the-project); and the button of a [Package needed](References-and-Packages#package-needed) box in a project that has a file. Importing ordinary files, **Cancel** in the import dialog and renaming the project write the unsaved changes of the open editors into the file as well.
+> [!NOTE] BETA 1005
+> Several actions save the project although you did not ask. They are [**Import...**](Adding-Files#the-project-is-saved) of ordinary files; the **Import** and **Cancel** buttons of the **Import from twinproj...** dialog; [renaming the project](Files-and-Folders#the-project); and the button of a [Package needed](References-and-Packages#package-needed) box in a project that has a file. Importing ordinary files, **Cancel** in the import dialog and renaming the project write the unsaved changes of the open editors into the file as well.
 
 ## Save Project As
 
@@ -120,8 +120,8 @@ To write only some of the files, use [**Export...**](Files-and-Folders#export-a-
 
 With [*Export After Save*](../Project-Settings#export-after-save) set, every save runs the export again before it writes the project, into *Export Path*, and empties that folder again.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, when the `Settings` file has an *Export Path* but no `project.exportPathIsV2` entry, the project's name is joined to the path with no separator: `${SourcePath}\exp2` exports into `exp2ProjTry\` for a project named `ProjTry`.
+> [!NOTE] BETA 1005
+> When the `Settings` file has an *Export Path* but no `project.exportPathIsV2` entry, the project's name is joined to the path with no separator: `${SourcePath}\exp2` exports into `exp2ProjTry\` for a project named `ProjTry`.
 
 ### When a file cannot be deleted
 

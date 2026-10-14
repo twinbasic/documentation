@@ -42,11 +42,11 @@ The class reads the text like this:
 
 The result of [**ShowDialog**](#showdialog) is **False** when the user cancelled or typed a value that fails these rules, which also shows a second box, `Invalid date/time format. Please use:` followed by the text that the edit box offered. The result is **True** when the user pressed OK, and that includes an empty entry and text without a recognisable part (`hello` or `1/2`): such text changes nothing.
 
-> [!WARNING]
-> In version 1.1.0.0, when the text fails the check, the parts that the class has already read stay in the object. After `13/45/2026`, [**Month**](#month) is 13 and [**Day**](#day) is 45; after `02/30/2026`, **Day** is 30 in February; after `25:61`, [**Hour**](#hour) is 25 and [**Minute**](#minute) is 61; after `04/05/2027 25:00` the date is 5 April 2027 and the hour is 25. [**ShowDialog**](#showdialog) returns **False** and [**Cancelled**](#cancelled) is **True**, yet the object does not hold the value it held before. The setters of the parts, which refuse such values, are bypassed. A program that carries on with the object after a **False** result reads wrong values. Copy [**DateTimeValue**](#datetimevalue) before the call and restore it when the call returns **False**.
+> [!WARNING] 1.1.0.0
+> When the text fails the check, the parts that the class has already read stay in the object. After `13/45/2026`, [**Month**](#month) is 13 and [**Day**](#day) is 45; after `02/30/2026`, **Day** is 30 in February; after `25:61`, [**Hour**](#hour) is 25 and [**Minute**](#minute) is 61; after `04/05/2027 25:00` the date is 5 April 2027 and the hour is 25. [**ShowDialog**](#showdialog) returns **False** and [**Cancelled**](#cancelled) is **True**, yet the object does not hold the value it held before. The setters of the parts, which refuse such values, are bypassed. A program that carries on with the object after a **False** result reads wrong values. Copy [**DateTimeValue**](#datetimevalue) before the call and restore it when the call returns **False**.
 
-> [!WARNING]
-> In version 1.1.0.0 a time with `AM` or `PM` and no date in front of it is not read correctly. `9:30 PM` is cut at its space into the date `9:30` and the time `PM` and rejected, so the offered text of the time mode with [**Is24HourFormat**](#is24hourformat) **False** (`02:05 PM`) is rejected when the user presses OK without changing it. `9:30pm`, with no space, is accepted and read as 21:03, because the class removes three characters from the end of the text and the third is a digit of the minutes. With a date in front, `03/15/2026 9:30 PM` is read correctly. Typing the time with a 24-hour clock (`21:30`) works in every mode.
+> [!WARNING] 1.1.0.0
+> A time with `AM` or `PM` and no date in front of it is not read correctly. `9:30 PM` is cut at its space into the date `9:30` and the time `PM` and rejected, so the offered text of the time mode with [**Is24HourFormat**](#is24hourformat) **False** (`02:05 PM`) is rejected when the user presses OK without changing it. `9:30pm`, with no space, is accepted and read as 21:03, because the class removes three characters from the end of the text and the third is a digit of the minutes. With a date in front, `03/15/2026 9:30 PM` is read correctly. Typing the time with a 24-hour clock (`21:30`) works in every mode.
 
 ```tb check_build
 Dim picker As New cDialogDateTime
@@ -495,8 +495,8 @@ Syntax: *object*.**FormatDate** ( [ *formatType* ] ) **As String**
 
 **ShortDate** gives `03/15/2026`, with month, day and year in that order. **LongDate** gives `Sunday, March 15, 2026`, in English whatever the language of Windows is. **Custom** gives the text of [**CustomFormat**](#customformat) in which these patterns are replaced, in this order: `YYYY` (four digits), `YY` (two digits), `MMMM` (the month's name), `MMM` (its first three letters), `MM` (two digits), `M`, `DD` (two digits) and `D`. With an empty [**CustomFormat**](#customformat), **Custom** gives the short date.
 
-> [!WARNING]
-> In version 1.1.0.0 the patterns are replaced one after the other in the text that is being built, so the letters `M` and `D` of a month's name, which `MMMM` and `MMM` have just put in, are replaced as well. **March** and **May** lose their first letter to the number of the month (`3arch`, `5ay`) and **December** its first letter to the number of the day (`15ecember`). No error is raised. The same happens to any other `Y`, `M` or `D` in the format, which is not kept as a literal character. Formats with `MMMM` or `MMM` are right only for the other months.
+> [!WARNING] 1.1.0.0
+> The patterns are replaced one after the other in the text that is being built, so the letters `M` and `D` of a month's name, which `MMMM` and `MMM` have just put in, are replaced as well. **March** and **May** lose their first letter to the number of the month (`3arch`, `5ay`) and **December** its first letter to the number of the day (`15ecember`). No error is raised. The same happens to any other `Y`, `M` or `D` in the format, which is not kept as a literal character. Formats with `MMMM` or `MMM` are right only for the other months.
 
 ```tb check_build check_run
 Dim picker As New cDialogDateTime

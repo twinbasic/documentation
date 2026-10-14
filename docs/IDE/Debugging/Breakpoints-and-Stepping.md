@@ -87,8 +87,8 @@ A procedure in another file opens in the editor when you step into it, as a prev
 
 At the `End Sub` of a procedure whose local variables hold objects, a step goes into a frame named `{class_final_destruction}` and then into the `Class_Terminate` procedures of those objects. A step off the `End Sub` of the `Click` procedure of a form lets the program run on, and the form waits for input again.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, once the program has stopped at a breakpoint, no step stops in a caller of the procedure it stopped in. Step Out, <kbd>F8</kbd> at the `End Sub` and Step Over all run the caller on until the next breakpoint or the end of the program. Steps inside the procedure, and into the procedures it calls and back out to it, work. To stop in the caller, put a breakpoint there, or stop on the line of the call and step into the procedure.
+> [!NOTE] BETA 1005
+> Once the program has stopped at a breakpoint, no step stops in a caller of the procedure it stopped in. Step Out, <kbd>F8</kbd> at the `End Sub` and Step Over all run the caller on until the next breakpoint or the end of the program. Steps inside the procedure, and into the procedures it calls and back out to it, work. To stop in the caller, put a breakpoint there, or stop on the line of the call and step into the procedure.
 
 ## Set Next Statement
 
@@ -168,8 +168,8 @@ Running any line in the console removes the error panel. The failing line stays 
 - **Stop** does not end the program at an error. See [Traps](#traps).
 - **Search Online** opens a Google search in the default browser. The search text is `twinBASIC VB6`, the header and the description of the error.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, **Search Online** puts the error text into the address as it is, without encoding it. An `&` in the description ends the search text at that point, so the search loses the rest, and a `"` ends the address. Copy the description from the panel and search for it in your browser instead.
+> [!NOTE] BETA 1005
+> **Search Online** puts the error text into the address as it is, without encoding it. An `&` in the description ends the search text at that point, so the search loses the rest, and a `"` ends the address. Copy the description from the panel and search for it in your browser instead.
 
 ### Stepping on through the rest of the loop
 
@@ -184,18 +184,18 @@ To run on to the end instead, correct the value and press <kbd>F5</kbd>, or pres
 
 Edit and Continue is not supported at the error panel either: when you change the code, the console writes `[EDIT & CONTINUE] not yet supported.  Aborting.`. After you change the failing line, <kbd>F5</kbd> starts a new run that runs the changed line.
 
-> [!WARNING]
-> In twinBASIC BETA 1005, an edit at the error panel does not abort the program, although the console says `Aborting`. The rest of the failing procedure is skipped, and the code after its call runs: its output appears in the console, and the run then ends. At a breakpoint the same edit does abort the program. Do not edit the code while the error panel is showing. End the run first, as the **Stop** warning under [Traps](#traps) describes, and then edit.
+> [!WARNING] BETA 1005
+> An edit at the error panel does not abort the program, although the console says `Aborting`. The rest of the failing procedure is skipped, and the code after its call runs: its output appears in the console, and the run then ends. At a breakpoint the same edit does abort the program. Do not edit the code while the error panel is showing. End the run first, as the **Stop** warning under [Traps](#traps) describes, and then edit.
 
 ### Traps
 
 - **The panel disappears, and Ignore with it.** Running a line in the Debug Console, or clicking another procedure in the Call Stack, removes the panel. <kbd>F5</kbd> brings it back only by running the failing line again. Set Next Statement onto the next line, then <kbd>F5</kbd>, does what **Ignore (Resume Next)** would have done.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, a step key pressed on the failing line leaves a step waiting. After <kbd>F8</kbd> on the failing line, **Ignore (Resume Next)** stops again on the next line instead of going on, and the next <kbd>F5</kbd> is used up as well. Press <kbd>F5</kbd> to go on, or use Set Next Statement as above instead of a step key.
+> [!NOTE] BETA 1005
+> A step key pressed on the failing line leaves a step waiting. After <kbd>F8</kbd> on the failing line, **Ignore (Resume Next)** stops again on the next line instead of going on, and the next <kbd>F5</kbd> is used up as well. Press <kbd>F5</kbd> to go on, or use Set Next Statement as above instead of a step key.
 
-> [!WARNING]
-> In twinBASIC BETA 1005, **Stop** at an error ends only the procedure that failed. The procedure that called it goes on from its next line: if `Sub Main` called `FillTable`, the rest of `Sub Main` still runs. The panel's **Stop**, the toolbar's **Stop** and **Run → End** all do this. At a failed `Debug.Assert`, **Stop** ends only the check, and the test goes on past it as if the check had passed. To end the whole run, first move the arrow to a later line with <kbd>Ctrl</kbd>+<kbd>F9</kbd>, then press **Stop**. Away from an error --- at a breakpoint, after a step, or after Set Next Statement --- **Stop** ends the run.
+> [!WARNING] BETA 1005
+> **Stop** at an error ends only the procedure that failed. The procedure that called it goes on from its next line: if `Sub Main` called `FillTable`, the rest of `Sub Main` still runs. The panel's **Stop**, the toolbar's **Stop** and **Run → End** all do this. At a failed `Debug.Assert`, **Stop** ends only the check, and the test goes on past it as if the check had passed. To end the whole run, first move the arrow to a later line with <kbd>Ctrl</kbd>+<kbd>F9</kbd>, then press **Stop**. Away from an error --- at a breakpoint, after a step, or after Set Next Statement --- **Stop** ends the run.
 
 ## See Also
 

@@ -71,6 +71,7 @@ import { computeSiteSeo } from "./seo.mjs";
 import { resolveBookChapters } from "./book.mjs";
 import { loadData } from "./data.mjs";
 import { createMarkdownIt, buildLinkTables, diagramIsTall, serializeLinkTables } from "./render.mjs";
+import { assignPackageVersions } from "../lib/callout-labels.mjs";
 import { isPictureSvg, pairSizes, pictureSvgOutputs, unpairedLightPictures } from "./theme-pictures.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 import { NAV_SCRIPT_REL, buildInitConfig, renderSidebar } from "./template.mjs";
@@ -660,6 +661,9 @@ const TASKS = {
     ) {
       void _dotSignal; // dependency signal only -- static files already appended in dot.submit
       void _markdownInitSignal; // dependency signal only -- markdown + linkTablesSerialized + seoSiteTitle/seoLogoUrl already on state.site
+      // A callout label's package version is checked against its section's
+      // indexed_from, which a worker's chunk may not hold: stamp it here.
+      assignPackageVersions(state.pages);
       const chunks = chunkPages(state.pages, ctx.workerCount);
       // An offline tree that shows the pictures' PNGs (picture_svg.offline false) holds no
       // picture SVG either: each is added to offline_exclude, on the config every consumer of

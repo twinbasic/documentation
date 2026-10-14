@@ -228,7 +228,9 @@ The vocabulary tables further down cover word choice. The rules in this subsecti
 
    **Where twinBASIC and VB6 behave differently, say what VB6 does** (owner's rule), checked with `scripts/vb6run.mjs` or a reproducer's `vb6/` side, never from memory. Where twinBASIC's behaviour is the nominal one, the VB6 behaviour goes in a `> [!NOTE]`; inside a defect's WARNING it is one sentence, such as "VB6 raises error 6, *Overflow*."
 
-   **A known twinBASIC defect that silently gives a wrong result is a `> [!WARNING]` until a fixed build is released** (owner's rule): a wrong value with no error raised is data corruption the reader cannot see. A crash is a WARNING too (unsaved data is lost), and so is an error that hides a silent part (a procedure run twice before the error). A defect the reader cannot miss and that loses nothing --- an error raised, a statement refused --- is a `> [!NOTE]`. Name the build in either. **Once a fixed build is released, the callout goes** (owner's rule): the documentation is not a record of past defects, so the page then states the correct behaviour with no mention of the defect. The defect's BUGS-TO-REPORT entry says in its HTML comment which page carries the callout, so the callout is removed when the entry is retired.
+   **A known twinBASIC defect that silently gives a wrong result is a `> [!WARNING]` until a fixed build is released** (owner's rule): a wrong value with no error raised is data corruption the reader cannot see. A crash is a WARNING too (unsaved data is lost), and so is an error that hides a silent part (a procedure run twice before the error). A defect the reader cannot miss and that loses nothing --- an error raised, a statement refused --- is a `> [!NOTE]`. Name the build in either, in its label (next paragraph). **Once a fixed build is released, the callout goes** (owner's rule): the documentation is not a record of past defects, so the page then states the correct behaviour with no mention of the defect. The defect's BUGS-TO-REPORT entry says in its HTML comment which page carries the callout, so the callout is removed when the entry is retired.
+
+   **A callout says what it applies to in its label, the rest of its `[!TYPE]` line, and never in its text** (owner's rule): `> [!WARNING] BETA 1005` for a fact of that twinBASIC build, `> [!NOTE] since BETA 984` for one true from that build on, `> [!WARNING] 1.0.0.4` for one of that version of the page's own package, and `> [!NOTE] 1.6.151.1, BETA 1005` for both. `BETA` is upper case and a package version is bare, all four parts. The text then starts with the fact: never "In twinBASIC BETA 1005, ...", "BETA 1005 has a defect: ..." or "In version 1.0.0.4, ...". The build draws each item as a tag after the title and fails on anything else after `[!TYPE]`, and on a package version other than the section's `indexed_from` (`lib/callout-labels.mjs`). A label belongs on what is true of one build or one version, a defect above all; a callout that holds as well as that something true of every build is split in two.
 
 7. **See Also.** Last section on the page, after `Example`; only a contributed package's landing page has one after it, `## Test cases`. Format: `- [Symbol](Symbol) <noun>` where `<noun>` is the kind: statement, function, property, method, class, module, package. Pages with annotations use `- [Symbol](Symbol) -- short description` — the `--` source renders as a typographic dash via markdown-it's typographer (en-dash for `--`, em-dash for `---`). Don't write literal `—` in source; keep `--` for consistency across the docs. Order by conceptual proximity, not strict alphabetical.
 
@@ -435,7 +437,14 @@ as it is. The rules:
   `analyze` compares with the snapshot at `HEAD` and only when its `version` is the
   `indexed_from` tag; a `sync` against a newer build rewrites the working-tree snapshots, and
   committing them on their own, or the bump without them, drops the next `analyze` into audit
-  mode.
+  mode. The bump fails the build until each callout labelled with the old version is checked
+  against the new one and its label moved, or the callout removed: `analyze` lists them as the
+  package's `recheck_callout` tasks.
+- **After a new twinBASIC build, check again every callout labelled with an older one.** An
+  `analyze` of the whole reference (no `--package`) lists the callouts labelled `BETA <n>` below
+  the build the store's built-in packages come from, and writes them to
+  `indexer/.packages/callouts.json`. Each is checked on the new build: its label moves to it, or
+  the callout goes (rule 6 under *Plain-English prose*).
 - **A change to `scripts/lib/twin-api.mjs`, `scripts/lib/twin-declarations.mjs`,
   `indexer/lib/api-model.mjs` or `indexer/lib/vb6-preprocess.mjs`, or to `format` in
   `api.json`, regenerates the committed snapshots in the same commit**, with `sync --ide`

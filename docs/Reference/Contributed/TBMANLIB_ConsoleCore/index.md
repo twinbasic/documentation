@@ -32,8 +32,8 @@ con.WriteLine
 con.Restore
 ```
 
-> [!WARNING]
-> Several members of version 1.0.0.1 do not do what their names suggest. [**ReadKey**](cConsole#readkey) never returns in a program that has no console input, and a comparison of a key with a member of [**ConsoleKey**](Types#consolekey) is true for the wrong key. [Defects in version 1.0.0.1](#defects-in-version-1001) lists them with the pages that describe them.
+> [!WARNING] 1.0.0.1
+> Several members do not do what their names suggest. [**ReadKey**](cConsole#readkey) never returns in a program that has no console input, and a comparison of a key with a member of [**ConsoleKey**](Types#consolekey) is true for the wrong key. [Defects in version 1.0.0.1](#defects-in-version-1001) lists them with the pages that describe them.
 
 * TOC
 {:toc}

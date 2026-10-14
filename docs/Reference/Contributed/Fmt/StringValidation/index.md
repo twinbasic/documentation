@@ -12,8 +12,8 @@ Holds the small string tests and the case helper that the package's formatter is
 
 **StringValidation** is a standard module of five public functions. [**StringContains**](StringContains), [**StringContainsAny**](StringContainsAny), [**StringMatchesAny**](StringMatchesAny) and [**StringStartsWith**](StringStartsWith) return a **Boolean** about the text of a string, and [**CopyCapitalisation**](CopyCapitalisation) returns a string in the letter case of another. The formatter calls them to look for backslashes and escape sequences, to test whether a format string begins with `@` and to follow the case of an identifier. A project that references the package can call them too, by name or as `StringValidation.StringContains`.
 
-> [!NOTE]
-> The package declares the module with `Option Private Module`, which marks it as internal to the package. A project that references the package can still call its functions (checked on BETA 1005).
+> [!NOTE] BETA 1005
+> The package declares the module with `Option Private Module`, which marks it as internal to the package. A project that references the package can still call its functions.
 
 ```tb check_build check_run
 Debug.Print StringContains("Hello", "ELL")               ' True

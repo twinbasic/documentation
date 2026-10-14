@@ -41,8 +41,8 @@ Syntax: *object*.**QueryInterface** *riid*, *ppvObject*
 
 Returns `S_OK` and a pointer with one reference added for the caller, or `E_NOINTERFACE` (`&H80004002`) and a null pointer.
 
-> [!NOTE]
-> In BETA 1005, an object of a class that the project compiles --- a class, a form, a control --- returns `E_NOINTERFACE` for an interface it does not support but leaves *ppvObject* as it was, instead of setting it to a null pointer. The runtime's own objects, such as a **Collection**, set it to a null pointer, as every object of VB6 does. A caller tests the result, not the pointer.
+> [!NOTE] BETA 1005
+> An object of a class that the project compiles --- a class, a form, a control --- returns `E_NOINTERFACE` for an interface it does not support but leaves *ppvObject* as it was, instead of setting it to a null pointer. The runtime's own objects, such as a **Collection**, set it to a null pointer, as every object of VB6 does. A caller tests the result, not the pointer.
 
 Three rules govern the answer:
 
@@ -135,8 +135,8 @@ A class never needs to implement **IUnknown**: the compiler gives every class an
 
 `Implements stdole.IUnknown` compiles, and the class works as before. A project's own **Interface** that carries the identifier of **IUnknown** also compiles, and a class can implement it.
 
-> [!WARNING]
-> BETA 1005 has a defect: that interface is unusable. **Set** to a variable of that type gives the object's ordinary **IUnknown** pointer, which has none of the interface's methods, and calling one ends the program with an access violation, and any unsaved data is lost. The compiler gives no diagnostic. Do not declare an **Interface** with the identifier of **IUnknown**; use `stdole.IUnknown`.
+> [!WARNING] BETA 1005
+> That interface is unusable. **Set** to a variable of that type gives the object's ordinary **IUnknown** pointer, which has none of the interface's methods, and calling one ends the program with an access violation, and any unsaved data is lost. The compiler gives no diagnostic. Do not declare an **Interface** with the identifier of **IUnknown**; use `stdole.IUnknown`.
 
 ## Example
 

@@ -163,6 +163,11 @@ For each finding, fix the page it names: the sample, or what the page says it pr
 Then settle each doubt below that a run can settle:
 - Write a scratch page, ${probe}, with frontmatter \`title: zz probe\` and \`nav_exclude: true\` and one \`tb check_build check_run\` sample that prints each fact in doubt, every \`Debug.Print\` line ending in the expected output \`' ?\`, and run it with \`--only "^${only}/zz-probe"\` at the same port: the report shows what each line printed. Under \`On Error Resume Next\`, a \`Debug.Print\` whose expression raises an error prints nothing, so assign the value first and print \`Err.Number\` after it.
 - Where the sources say the package replaces another object, run the same input on that object when this machine can: VBScript's under \`cscript //nologo <file>.vbs\`, printing with \`WScript.Echo\`; VB6 code with \`node scripts/vb6run.mjs\`. Write those files outside the repository, and never call \`MsgBox\` or \`InputBox\`. Where the two differ, the page says what the replaced object does, in a \`> [!NOTE]\`.
+- ${
+    /^\d+\.\d+\.\d+\.\d+$/.test(pkg.version)
+      ? `A callout about what this version of the package does, a defect above all, names the version in its label, the rest of its \`[!TYPE]\` line: \`> [!WARNING] ${pkg.version}\`. One`
+      : 'A callout'
+  } about what this build of twinBASIC does names the build in its label, the rest of its \`[!TYPE]\` line: \`> [!NOTE] BETA <n>\`. Its text then starts with the fact, never with "In version ..." or "In BETA ...".
 - Correct the pages to what the runs printed, delete ${probe}, and run the section once more.
 
 Doubts:

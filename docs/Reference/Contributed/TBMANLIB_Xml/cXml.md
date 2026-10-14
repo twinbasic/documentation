@@ -30,8 +30,8 @@ Debug.Print x.ToXmlString(False)
 ' <library><book id="1">Dune</book><book id="2">Emma</book><note>checked</note></library>
 ```
 
-> [!WARNING]
-> In version 1.0.0.1, the parser reads some valid XML wrongly and raises no error: a self-closing element, `&amp;` and other entities in text, a tag that uses both kinds of quote or has a line break between its attributes, and a processing instruction. A comment, a CDATA section or a DOCTYPE declaration in the wrong place makes **Parse** loop forever. [Defects in version 1.0.0.1](#defects) lists each case.
+> [!WARNING] 1.0.0.1
+> The parser reads some valid XML wrongly and raises no error: a self-closing element, `&amp;` and other entities in text, a tag that uses both kinds of quote or has a line break between its attributes, and a processing instruction. A comment, a CDATA section or a DOCTYPE declaration in the wrong place makes **Parse** loop forever. [Defects in version 1.0.0.1](#defects) lists each case.
 
 * TOC
 {:toc}

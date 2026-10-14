@@ -57,8 +57,8 @@ Several error texts of the class are written in Chinese. The ones that are not a
 > [!WARNING]
 > The class ignores every certificate error: an expired certificate, one from an unknown authority and one issued for another name are all accepted. An HTTPS request therefore encrypts the traffic, but does not prove who the server is, and a program that sends a password or a key with it can send it to an impostor.
 
-> [!NOTE]
-> In BETA 1005 the compiler refuses an assignment written through a public dictionary field of an object, such as `Http.RequestHeaders("X-Key") = "1"`, with TB5090. Write the default member out: `Http.RequestHeaders.Item("X-Key") = "1"`. Reading `Http.RequestHeaders("X-Key")` is accepted.
+> [!NOTE] BETA 1005
+> The compiler refuses an assignment written through a public dictionary field of an object, such as `Http.RequestHeaders("X-Key") = "1"`, with TB5090. Write the default member out: `Http.RequestHeaders.Item("X-Key") = "1"`. Reading `Http.RequestHeaders("X-Key")` is accepted.
 
 ## Request settings
 
@@ -284,8 +284,8 @@ Syntax: *object*.**FollowRedirect** ( [ *RedirectMethod* ] ) **As cHttpClient**
 
 Reads the address with [**GetRedirectUrl**](#getredirecturl) and sends a GET request to it (for 307 and 308, the given method). Each call counts, and error 310 is raised when the count exceeds [**MaxRedirects**](#maxredirects); [**ResetRedirectCount**](#resetredirectcount) sets the count to 0. The method needs [**EnableRedirects**](#enableredirects) set to **False** with [**AllowRedirects**](#allowredirects), or no redirect answer is left to follow. It returns the object itself, and does nothing if the last answer had no `Location` header.
 
-> [!NOTE]
-> The method cannot send a request in BETA 1005. The address comes from [**ResponseHeaders**](#responseheaders), which cuts a value at its first colon, so `http://host/path` is read as `http`, and WinHTTP raises error -2147012890, *the URL does not use a recognized protocol*. A `Location` header with a relative address, such as `/path`, has no colon and is read whole, but WinHTTP refuses it as well. A program that has to follow a redirect leaves **EnableRedirects** at **True**, so that WinHTTP follows it.
+> [!NOTE] 1.0.0.29
+> The method cannot send a request. The address comes from [**ResponseHeaders**](#responseheaders), which cuts a value at its first colon, so `http://host/path` is read as `http`, and WinHTTP raises error -2147012890, *the URL does not use a recognized protocol*. A `Location` header with a relative address, such as `/path`, has no colon and is read whole, but WinHTTP refuses it as well. A program that has to follow a redirect leaves **EnableRedirects** at **True**, so that WinHTTP follows it.
 
 ### GetRedirectUrl
 {: .no_toc }

@@ -98,7 +98,8 @@ for contributors.
   repeats the picture. A reference entry says what the item does. An item with nothing to say
   beyond its label is left to the picture.
 - **Headings** in sentence case, with no icon and no shortcut inside them.
-- **The section names no build**, except in a defect callout (owner's standing rule). Lines such
+- **The section names no build**, except in a defect callout's label, `> [!NOTE] BETA 1005`
+  (owner's standing rule; WIP.md rule 6). Lines such
   as "Components list coming soon" go, unless the IDE itself shows that text and the page says
   so.
 - **Defects the twinBASIC developers already know of** (owner) are not queued, but a page that

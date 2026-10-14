@@ -756,8 +756,8 @@ Declared for the **Replace All** button of the Replace dialog.
 
 Syntax: *object*\_**ReplaceAll**( )
 
-> [!NOTE]
-> In version 1.0.13.0 of the package the class never raises this event. Its test for the **Replace All** button compares the masked flags with **CdlFRFindNext** instead of **CdlFRReplaceAll**, so the comparison is never true. Clicking **Replace All** raises none of the events.
+> [!NOTE] 1.0.13.0
+> Of the package the class never raises this event. Its test for the **Replace All** button compares the masked flags with **CdlFRFindNext** instead of **CdlFRReplaceAll**, so the comparison is never true. Clicking **Replace All** raises none of the events.
 
 ## Example
 

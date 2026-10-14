@@ -354,8 +354,8 @@ Both paths are first made absolute with [**GetAbsolutePathName**](#getabsolutepa
 Returns the absolute *targetPath* when there is no relative path, for example when the two paths are on different drives, and when only *targetPath* is longer than 260 characters.
 
 <!-- test: PathTests.GetRelativePath_Base258, PathTests.GetRelativePath_Base259, PathTests.GetRelativePath_Base260, PathTests.GetRelativePath_Base264, PathTests.GetRelativePath_Base300 -->
-> [!WARNING]
-> In version 1.9.0.0, when *basePath* is 259 characters or longer, the result can be a relative path that leads to the wrong place, and no error is raised. For a target `x\y.txt` below such a base, the result starts with `..\` and the last name of the base, instead of being `x\y.txt`. A base path of 258 characters or fewer gives the right result.
+> [!WARNING] 1.9.0.0
+> When *basePath* is 259 characters or longer, the result can be a relative path that leads to the wrong place, and no error is raised. For a target `x\y.txt` below such a base, the result starts with `..\` and the last name of the base, instead of being `x\y.txt`. A base path of 258 characters or fewer gives the right result.
 
 ```tb check_build check_run
 Debug.Print GetRelativePath("C:\Projects\App", "C:\Projects\Lib\core.txt")   ' ..\Lib\core.txt
@@ -689,8 +689,8 @@ Errors: 53 when a wildcard matches no file, or matches only folders; 76 when the
 > A *source* without a wildcard that names a folder is moved too, with no error: `MoveFile "C:\old", "C:\new"` renames the folder. The Scripting Runtime raises error 53.
 
 <!-- test: ErrorNumberTests.MoveFile_NulDevice_KeepsSourceFile, ErrorNumberTests.FileMove_NulDevice_KeepsSourceFile, ErrorNumberTests.FileSystemObjectMoveFile_NulDevice_KeepsSourceFile -->
-> [!WARNING]
-> In version 1.9.0.0, a *destination* that is the reserved device name `nul`, in any letter case and with or without an extension (`nul`, `NUL`, `nul.txt`), is not refused. **MoveFile** raises no error, and the file is gone: its contents were moved to the NUL device and cannot be recovered. The Scripting Runtime raises error 58 and leaves the file. [**File.Move**](File#move) and the **MoveFile** of [**FileSystemObject**](FileSystemObject#movefile) do the same; **File.Move** then raises error 53.
+> [!WARNING] 1.9.0.0
+> A *destination* that is the reserved device name `nul`, in any letter case and with or without an extension (`nul`, `NUL`, `nul.txt`), is not refused. **MoveFile** raises no error, and the file is gone: its contents were moved to the NUL device and cannot be recovered. The Scripting Runtime raises error 58 and leaves the file. [**File.Move**](File#move) and the **MoveFile** of [**FileSystemObject**](FileSystemObject#movefile) do the same; **File.Move** then raises error 53.
 
 ### MoveFolder
 {: .no_toc }

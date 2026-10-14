@@ -48,8 +48,8 @@ Set cal = xCalendar1
 Debug.Print cal.Year
 ```
 
-> [!NOTE]
-> `Dim cal As xCalendar` fails in BETA 1005 with TB5139, *[xCalendar] is a project or library, not a datatype*.
+> [!NOTE] BETA 1005
+> `Dim cal As xCalendar` fails with TB5139, *[xCalendar] is a project or library, not a datatype*.
 >
 > ```tb check_build expect-error=TB5139
 > Dim cal As xCalendar
@@ -63,8 +63,8 @@ Dim m As MonthLengthEnum = MonthLengthEnum.LongLength
 Debug.Print d, m   ' 2 1
 ```
 
-> [!NOTE]
-> In BETA 1005, `ShortLength` and `LongLength` written alone fail with TB5073, *'ShortLength' is ambiguous*.
+> [!NOTE] BETA 1005
+> `ShortLength` and `LongLength` written alone fail with TB5073, *'ShortLength' is ambiguous*.
 >
 > ```tb check_build expect-error=TB5073
 > Dim d As DayLengthEnum = ShortLength
@@ -155,8 +155,8 @@ Setting **Value**, **Day**, **Month** or **Year**, and calling the methods that 
 
 ## Known problems in version 1.0.17.0
 
-> [!WARNING]
-> Version 1.0.17.0 of the package gives a wrong result without an error in these cases.
+> [!WARNING] 1.0.17.0
+> The package gives a wrong result without an error in these cases.
 >
 > - **The colour properties of the text have no effect.** **DayFontColor**, **GridFontColor** and **TitleFontColor** are stored and returned, but the day names, the day numbers and the title are always drawn in the same near-black (`&H4`), and so are the days of the month before and the month after, which the control means to draw in grey. The disabled state has no effect on the text colour either.
 > - **Setting Value to a date in another month, or setting FirstDay, does not place the dates of the grid again.** After **Value** is set, the title and the two lists show the new month, but the grid still shows the dates of the month before, with no cell selected. After **FirstDay** is set, the day names move to the new order and the dates do not, so the names and the dates disagree. **Refresh** does not correct either. The dates are placed again when the selection is next moved, by a click on a cell, by **Today** or by one of the **Next** and **Previous** methods.
@@ -165,8 +165,8 @@ Setting **Value**, **Day**, **Month** or **Year**, and calling the methods that 
 > - **Year, Month and Day can disagree with Value.** See [Adding the control to a form](#adding-the-control-to-a-form).
 > - **A year outside 1900 to 2100 is not shown in the year list.** Setting **Year** or **Value** to 1899 or earlier leaves the year list blank, and to 2101 or later leaves it as it was. No error is raised, and **Value** and the title show the year.
 
-> [!NOTE]
-> Version 1.0.17.0 of the package has these other problems. Each raises an error, or concerns how the control looks or is reached.
+> [!NOTE] 1.0.17.0
+> The package has these other problems. Each raises an error, or concerns how the control looks or is reached.
 >
 > - **A month or a year chosen from a list can open the run-time error box.** Choosing a month in which the selected day does not exist, such as February when the selected day is the 31st, or the year 2025 when the selected date is February 29, 2024, raises run-time error 13, *Type mismatch*, in the control's own code, where the program cannot handle it: the program shows its error box, and goes on when the box is closed. The list then shows the new month or year, and **Month** or **Year** returns it, but **Value** and **Day** keep the old date, the grid is not drawn again, and **NewMonth** or **NewYear** is not raised. The same dates set from code raise run-time error 13 to the caller.
 > - **Setting ValueIsNull raises run-time error 438**, *Object doesn't support this property or method*, to **True** or to **False**. The value is stored all the same, and nothing else in the control uses it.
@@ -345,8 +345,8 @@ Setting **Year** selects the same day and month in that year, shows the year, an
 
 A method is called as *object*.**Name**. None takes an argument or returns a value. The methods that move the selection show the month of the new date, update the two lists, and raise no event. They do not check that the new date is in the range of the year list, 1900 to 2100: past either end, **Value** and the title follow, and the year list is blank before 1900 and unchanged after 2100.
 
-> [!WARNING]
-> In BETA 1005, [**DateAdd**](../../../Modules/DateTime/DateAdd) with the interval `"m"`, `"q"` or `"yyyy"` does not stop at the end of a shorter month: the date overflows into the next month. **NextMonth**, **PreviousMonth**, **NextYear** and **PreviousYear** call **DateAdd**, so in BETA 1005 **NextMonth** from January 31, 2026 selects March 3, 2026, **PreviousMonth** from March 31, 2026 selects March 3, 2026, and **NextYear** from February 29, 2024 selects March 1, 2025. VB6 gives the last day of the shorter month in every such case: February 28, 2026 for the first one.
+> [!WARNING] BETA 1005
+> [**DateAdd**](../../../Modules/DateTime/DateAdd) with the interval `"m"`, `"q"` or `"yyyy"` does not stop at the end of a shorter month: the date overflows into the next month. **NextMonth**, **PreviousMonth**, **NextYear** and **PreviousYear** call **DateAdd**, so **NextMonth** from January 31, 2026 selects March 3, 2026, **PreviousMonth** from March 31, 2026 selects March 3, 2026, and **NextYear** from February 29, 2024 selects March 1, 2025. VB6 gives the last day of the shorter month in every such case: February 28, 2026 for the first one.
 
 ### NextDay
 {: .no_toc }

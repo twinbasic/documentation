@@ -29,8 +29,8 @@ Asks the object for another interface. *priid* is the address of the interface i
 
 A pointer that **QueryInterface** returns comes with a reference, which the caller gives back with **Release**.
 
-> [!NOTE]
-> When the interface is not supported, the COM contract sets *ppvObject* to 0. In BETA 1005, an object of a class that the project compiles --- a class, a form, a control --- returns `E_NOINTERFACE` and leaves the variable as it was. The runtime's own objects, such as a **Collection**, set it to 0, as every object of VB6 does. Set the variable to 0 before the call, and test the result rather than the pointer.
+> [!NOTE] BETA 1005
+> When the interface is not supported, the COM contract sets *ppvObject* to 0. An object of a class that the project compiles --- a class, a form, a control --- returns `E_NOINTERFACE` and leaves the variable as it was. The runtime's own objects, such as a **Collection**, set it to 0, as every object of VB6 does. Set the variable to 0 before the call, and test the result rather than the pointer.
 
 ```tb check_run
 Dim u As IUnknownUnrestricted = New Collection

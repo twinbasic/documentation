@@ -106,8 +106,8 @@ Syntax: *object*.**Files** **As Files**
 Returns a [**Files**](Files) collection of the files directly in the folder. Hidden and system files are in it, which differs from [**GetFilePaths**](FileSystemTools#getfilepaths). The folder is read when the property is read, and the collection does not change afterwards. Raises error 70 when the folder cannot be read, as the Scripting Runtime does.
 
 <!-- test: LongPathTests.FolderFiles_Path258_ListsFiles, LongPathTests.FolderFiles_Path270_ListsFiles, LongPathTests.FolderSubFolders_Path258_ListsFolders, LongPathTests.FolderSize_Path258_AddsFiles, LongPathTests.FolderSize_SubfolderPath258_AddsFiles, LongPathTests.FolderFilesAndSubFolders_Path256_Work, LongPathTests.FolderSize_Path256_Works, LongPathTests.FolderFilesAndSubFolders_Path257_Work, LongPathTests.FolderSize_Path257_Works -->
-> [!NOTE]
-> In version 1.9.0.0, **Files**, [**SubFolders**](#subfolders) and [**Size**](#size) raise error 76 (*Path not found*) for a folder whose path has 258 characters or more, although the folder exists and its [**Name**](#name) can be read. The same members work for a folder with 256 characters.
+> [!NOTE] 1.9.0.0
+> **Files**, [**SubFolders**](#subfolders) and [**Size**](#size) raise error 76 (*Path not found*) for a folder whose path has 258 characters or more, although the folder exists and its [**Name**](#name) can be read. The same members work for a folder with 256 characters.
 
 ```tb check_build check_run
 Dim work As String, deep As String, n As Long

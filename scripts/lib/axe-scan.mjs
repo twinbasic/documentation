@@ -99,6 +99,11 @@ export const SAMPLE_PAGES = [
   // rather than an image (builder/inline-diagram.mjs). Inlined as
   // role="img", as every other diagram is, it reports nested-interactive.
   "/Documentation/Development/Tools.html",
+  // A callout with a label, `> [!NOTE] 1.0.0.29`: the cheapest page with one.
+  // The tag keeps its title's colour only while it out-ranks the stylesheets'
+  // bare `span { color }`, which differs between the themes. A label goes when
+  // its defect is fixed, so --check names another page when this one loses it.
+  "/tB/Packages/Contributed/TBMANLIB/ToolsCN.html",
 ];
 
 // ---------------------------------------------------------------------------

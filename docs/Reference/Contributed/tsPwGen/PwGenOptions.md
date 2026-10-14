@@ -42,8 +42,8 @@ A property of a recipe checks nothing when it is set. A value that cannot be use
 > Debug.Print "[" & PwGenOptions.WordSeparator & "]"   ' []
 > ```
 
-> [!NOTE]
-> The class declares a **Private** constructor and the attribute `[COMCreatable(False)]`, so that only its presets create recipes. In BETA 1005 twinBASIC does not enforce a **Private** constructor, and a project that references the package can still create an object with **New**. It is a recipe in which every property has the empty value of its type: **Length** 0, no class enabled, empty strings, **MinPerClass** 0, **Mode** **pgmRandom** and **RandomSource** **Nothing**. **Generate** returns an empty string for it, with the error `InvalidLength`, until the properties are set. The presets are the way to get the defaults.
+> [!NOTE] BETA 1005
+> The class declares a **Private** constructor and the attribute `[COMCreatable(False)]`, so that only its presets create recipes. twinBASIC does not enforce a **Private** constructor, and a project that references the package can still create an object with **New**. It is a recipe in which every property has the empty value of its type: **Length** 0, no class enabled, empty strings, **MinPerClass** 0, **Mode** **pgmRandom** and **RandomSource** **Nothing**. **Generate** returns an empty string for it, with the error `InvalidLength`, until the properties are set. The presets are the way to get the defaults.
 >
 > ```tb check_build check_run
 > Dim o As PwGenOptions = New PwGenOptions
@@ -250,8 +250,8 @@ Debug.Print PwGen.Generate(o) = ""   ' True
 Debug.Print PwGenError.Code          ' CannotAvoidRepeats
 ```
 
-> [!NOTE]
-> In version 1.0.8.0 the shuffle only rearranges the characters that were drawn, and the property never draws them again. When the drawn characters cannot be arranged without a repeat, **Generate** returns an empty string and sets `CannotAvoidRepeats`, although other passwords of the same pool would be valid. With a small pool this happens often. From the pool `AB` and a **Length** of 3, the draws `AAA` and `BBB` cannot be arranged, and together they are one draw in four. With a **Length** of 4 the failures are about three calls in five. With [**StartsWithLetter**](#startswithletter) the first character is not moved either, which makes the failures more frequent. A call that fails can be repeated, because the next call draws again.
+> [!NOTE] 1.0.8.0
+> The shuffle only rearranges the characters that were drawn, and the property never draws them again. When the drawn characters cannot be arranged without a repeat, **Generate** returns an empty string and sets `CannotAvoidRepeats`, although other passwords of the same pool would be valid. With a small pool this happens often. From the pool `AB` and a **Length** of 3, the draws `AAA` and `BBB` cannot be arranged, and together they are one draw in four. With a **Length** of 4 the failures are about three calls in five. With [**StartsWithLetter**](#startswithletter) the first character is not moved either, which makes the failures more frequent. A call that fails can be repeated, because the next call draws again.
 >
 > ```tb check_build check_run
 > Dim o As PwGenOptions = PwGenOptions.Alphanumeric

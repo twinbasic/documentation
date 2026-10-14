@@ -40,8 +40,8 @@ The cipher mode that a [**cAes**](cAes) uses. Default: **CBC**.
 | **CTR** | 5 | CNG | CFB with an 8-bit feedback |
 | **GCM** | 6 | CNG | GCM, with a 12-byte nonce and a 16-byte tag |
 
-> [!WARNING]
-> In version 1.0.0.4 the name of a mode is not always the mode that runs. **ECB** runs CBC with an IV of zero bytes, **CBC** runs ECB, and **OFB** and **CTR** run CFB. Neither **ECB** nor **CBC** uses the IV that the program sets, so the same key and plaintext always give the same ciphertext, and the default mode, **CBC**, gives equal ciphertext blocks for equal plaintext blocks. Encryption and decryption agree with each other, so a round trip succeeds and shows nothing. [**cAes**](cAes#which-mode-runs) describes each mode in detail.
+> [!WARNING] 1.0.0.4
+> The name of a mode is not always the mode that runs. **ECB** runs CBC with an IV of zero bytes, **CBC** runs ECB, and **OFB** and **CTR** run CFB. Neither **ECB** nor **CBC** uses the IV that the program sets, so the same key and plaintext always give the same ciphertext, and the default mode, **CBC**, gives equal ciphertext blocks for equal plaintext blocks. Encryption and decryption agree with each other, so a round trip succeeds and shows nothing. [**cAes**](cAes#which-mode-runs) describes each mode in detail.
 
 The Crypto API is the older interface of Windows (`advapi32.dll`), and CNG, Cryptography API: Next Generation, the newer one (`bcrypt.dll`). **cAes** uses the Crypto API for **ECB** and **CBC**, and CNG for the other four modes.
 
@@ -70,8 +70,8 @@ How [**cAes**](cAes) fills the last block of the data before it encrypts, and ho
 | **NoPadding** | 3 | Adds nothing. | Takes nothing off. |
 | **ISO10126** | 4 | Adds nothing, as **NoPadding**. | Takes nothing off, as **NoPadding**. |
 
-> [!WARNING]
-> **ISO10126** is not implemented in version 1.0.0.4. It behaves as **NoPadding**, and no error says so. The comment in the source calls the member "ISO/IEC 7816-4 padding", a scheme that differs from ISO 10126, and neither is applied.
+> [!WARNING] 1.0.0.4
+> **ISO10126** is not implemented. It behaves as **NoPadding**, and no error says so. The comment in the source calls the member "ISO/IEC 7816-4 padding", a scheme that differs from ISO 10126, and neither is applied.
 
 The functions that add and take off **PKCS7** and **ZeroPadding** padding are public members of [**cAesHelper**](cAesHelper). The padding of the data is only part of what the Crypto API modes do: Windows adds its own padding to the output of **ECB** and **CBC**, whatever the padding mode is. See [**PaddingMode**](cAes#paddingmode).
 

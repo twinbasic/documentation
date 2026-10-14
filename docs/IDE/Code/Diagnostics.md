@@ -72,8 +72,8 @@ Right-click in the list for a menu of five items. The menu is in English whateve
 
 A copied row reads `{ERROR}` or `{WARNING}`, the path of the file, the position, and the code and message. **Copy All** and **Copy All Errors** begin with a line that names the IDE: `twinBASIC (` and the version, then `) compilation error report:`.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, each copied message contains the HTML tag `<span>TBnnnn</span>` around the code, and **Copy All** labels hints and information messages `{WARNING}`. Remove the tags from the pasted text by hand.
+> [!NOTE] BETA 1005
+> Each copied message contains the HTML tag `<span>TBnnnn</span>` around the code, and **Copy All** labels hints and information messages `{WARNING}`. Remove the tags from the pasted text by hand.
 
 ## In the code
 

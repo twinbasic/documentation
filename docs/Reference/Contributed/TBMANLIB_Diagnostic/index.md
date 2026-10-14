@@ -126,8 +126,8 @@ The package has four modules whose contents a program has no need for:
 
 ## Known problems in version 1.0.0.1
 
-> [!WARNING]
-> Version 1.0.0.1 of the package gives a wrong result without an error, or loses data, in these cases.
+> [!WARNING] 1.0.0.1
+> The package gives a wrong result without an error, or loses data, in these cases.
 >
 > - **[List.Insert](List#insert) puts the new item one place too late**, and **[List.SetItem](List#setitem) with the index 0 puts it in the second place.** `SetItem` with the index 0 on a list of one item removes the item and then raises error 5, so the list is empty afterwards.
 > - **[FileHelper.WriteFile](FileHelper#writefile) does not shorten an existing file.** The bytes after the new content stay: writing `ab` over a file of 13 bytes leaves a file of 13 bytes.
@@ -139,8 +139,8 @@ The package has four modules whose contents a program has no need for:
 > - **[LocaleCollector](Collectors#localecollector) reports the offset of standard time as `Timezone` all year.** In summer time the item is behind the clock by the daylight saving offset: `UTC+1` where the clock is at UTC+2, as in Central European Summer Time.
 > - **[NetworkInfoCollector](Collectors#networkinfocollector) lists the first adapter only in a 64-bit program.** It reads the adapters in steps of 640 bytes, and the records are 704 bytes apart in a 64-bit program. The summary may then have no `Primary IP`. A 32-bit program lists every adapter.
 
-> [!NOTE]
-> Version 1.0.0.1 has these other problems. Each raises an error.
+> [!NOTE] 1.0.0.1
+> The package has these other problems. Each raises an error.
 >
 > - **A [Dictionary](Dictionary) cannot be created.** `New Dictionary(Of TKey, TValue)` raises run-time error 91, *Object variable or With block variable not set*.
 > - **[List.Contains](List#contains), [IndexOf](List#indexof) and [Remove](List#remove) raise error 438**, *Object doesn't support this property or method*, for a list of objects of a class that has no default member.

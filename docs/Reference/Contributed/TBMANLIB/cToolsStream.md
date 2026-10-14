@@ -27,8 +27,8 @@ Kill Path
 ' True
 ```
 
-> [!WARNING]
-> In version 1.0.0.29, [**LoadFileAsText**](#loadfileastext) and [**SaveFileAsText**](#savefileastext) leave the stream open, and neither closes it first. That breaks the next call of either on the same object, and the shared **ToolsStream** is such an object for the whole run of the program:
+> [!WARNING] 1.0.0.29
+> [**LoadFileAsText**](#loadfileastext) and [**SaveFileAsText**](#savefileastext) leave the stream open, and neither closes it first. That breaks the next call of either on the same object, and the shared **ToolsStream** is such an object for the whole run of the program:
 >
 > - A **LoadFileAsText** that finds the stream open raises error 3705, *Operation is not allowed when the object is open*, before it reads anything. It finds it open after any earlier text call, a failed one included.
 > - A **SaveFileAsText** that finds the stream open writes its text over the text the stream still holds, from the start, and saves the whole stream. When the new text is shorter than the old, the end of the old text stays in the file: after saving `0123456789` and then `abc`, the file holds `abc3456789`. No error is raised.

@@ -21,8 +21,11 @@ result.AssignAddition a, b
 Debug.Print result.ValueString   ' 1111111110111111111011111111100
 ```
 
+> [!NOTE] since BETA 434
+> The class needs this build of twinBASIC or a later one.
+
 > [!NOTE]
-> This class requires twinBASIC BETA 434 or newer. String-to-value conversions silently stop at the first invalid character --- for example, setting `ValueHex = "ABC123he"` stores `&HABC123` without raising an error.
+> String-to-value conversions silently stop at the first invalid character --- for example, setting `ValueHex = "ABC123he"` stores `&HABC123` without raising an error.
 
 > [!WARNING]
 > Overflow is not trapped. A result that needs more bits than the library holds loses its high bits, and a string with more digits than fit gives a wrong value. No error is raised in either case. The library holds a little more than the 4096 bits the class supports, 4352 bits in a 32-bit program and 4608 in a 64-bit one, so a result a few bits over 4096 may still be right.

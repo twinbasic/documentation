@@ -105,14 +105,14 @@ The **Import from file...** button under the lists opens the Windows **Open** di
 - On **Available COM References**, and on **Enabled Libraries**, it asks for a type library. The IDE copies the file into the project as `ImportedTypeLibraries/<file name>`, and adds it to the references at once, ticked.
 - On **Available Packages**, it asks for a `.twinpack` file. The package is added to the **Available Packages** list. [Importing a Package from a TWINPACK File](../../../Features/Packages/Importing-TWINPACK) gives the steps.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, a package imported with **Import from file...** is listed but not ticked, so the project does not use it. Tick it yourself after the import.
+> [!NOTE] BETA 1005
+> A package imported with **Import from file...** is listed but not ticked, so the project does not use it. Tick it yourself after the import.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, **Import from file...** puts a copy of the package under the project's `Packages` folder. Closing the dialog with **Cancel** leaves the copy there, and the project is not marked as changed.
+> [!NOTE] BETA 1005
+> **Import from file...** puts a copy of the package under the project's `Packages` folder. Closing the dialog with **Cancel** leaves the copy there, and the project is not marked as changed.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, a type library added with **Import from file...** is drawn on the **Enabled Libraries** list as `[LINKED-PACKAGE]`, and on **Available COM References** it is listed twice, once from the project and once from the registered library, both ticked. Clearing the tick of either row removes the reference.
+> [!NOTE] BETA 1005
+> A type library added with **Import from file...** is drawn on the **Enabled Libraries** list as `[LINKED-PACKAGE]`, and on **Available COM References** it is listed twice, once from the project and once from the registered library, both ticked. Clearing the tick of either row removes the reference.
 
 ## Package needed
 
@@ -120,8 +120,8 @@ Choosing an **Add** item for a Windows form without the **WinNativeForms** packa
 
 The reference is listed under the package's own name, `WinNativeForms` or `CustomControlsPackage`, until the compiler has answered, and then under the name of the library, such as `twinBASIC - VB Compatibility Package (Forms)`.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, in a project that has a file, the button also saves the project, although the box speaks only of restarting the compiler. A project with no file yet is not saved, and restarts from memory.
+> [!NOTE] BETA 1005
+> In a project that has a file, the button also saves the project, although the box speaks only of restarting the compiler. A project with no file yet is not saved, and restarts from memory.
 
 ## Apply Changes and closing the dialog
 
@@ -131,8 +131,8 @@ The dialog has a filter box, **Apply Changes** and **Cancel**. **Apply Changes**
 
 <!-- SHOT projects-settings-close: Project Settings after a change to the description, the title bar's close button pressed, the box "WARNING: you made changes but haven't saved them. Close without saving?" with Yes, close and No, keep editing; Apply Changes is enabled behind it -->
 
-> [!WARNING]
-> In twinBASIC BETA 1005, the close button of the title bar does not ask when the only change is to the references. The dialog closes, the change is dropped, and nothing says so. The code that compares the settings leaves out the compiler warnings as well. Press **Apply Changes** before you close the dialog.
+> [!WARNING] BETA 1005
+> The close button of the title bar does not ask when the only change is to the references. The dialog closes, the change is dropped, and nothing says so. The code that compares the settings leaves out the compiler warnings as well. Press **Apply Changes** before you close the dialog.
 
 ## The References folder
 
@@ -140,8 +140,8 @@ The `References` folder of the Project Explorer has one entry for each library t
 
 **Cut**, **Rename** and **Delete Permanently** are greyed out on the right-click menu for these entries.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, the <kbd>Delete</kbd> key removes a `References` entry from the tree, although its menu item is greyed out. The reference itself stays in the project. To remove a reference, untick it in the **Enabled Libraries** list.
+> [!NOTE] BETA 1005
+> The <kbd>Delete</kbd> key removes a `References` entry from the tree, although its menu item is greyed out. The reference itself stays in the project. To remove a reference, untick it in the **Enabled Libraries** list.
 
 ## Where the project keeps them
 

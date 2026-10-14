@@ -5,6 +5,8 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { CliError, die, exitOnCrash, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
+import { calloutLabelsOf } from "../lib/callout-labels.mjs";
+import { markdownFiles } from "../lib/markdown-files.mjs";
 import { findIde } from "../scripts/lib/tb-install.mjs";
 import { compareWithManifest, fetchPackage, versionString } from "./lib/sync.mjs";
 import {
@@ -140,6 +142,47 @@ async function walkDir(dir) {
     }
   }
   return results;
+}
+
+// The labelled callouts of the markdown under `dir` (lib/callout-labels.mjs), each
+// `{ file, line, label, items }`, `file` relative to the repository with `/`.
+async function labelledCallouts(dir) {
+  const found = [];
+  let rels;
+  try {
+    rels = await markdownFiles(dir);
+  } catch {
+    return found; /* no such folder */
+  }
+  for (const rel of rels) {
+    const file = path.join(dir, rel);
+    const repoRel = path.relative(REPO_ROOT, file).replaceAll("\\", "/");
+    for (const c of calloutLabelsOf(await fs.readFile(file, "utf-8"))) {
+      found.push({ file: repoRel, line: c.line, label: c.label, items: c.items });
+    }
+  }
+  return found;
+}
+
+// A package section's callouts labelled with a version other than `version`, the one the
+// store now holds: each is checked against it, and its label moved, before the section's
+// indexed_from is, or the build refuses the section.
+async function versionCalloutTasks(docsDir, version) {
+  const tasks = [];
+  for (const c of await labelledCallouts(docsDir)) {
+    const v = c.items.find((i) => i.kind === "version")?.value;
+    if (!v || v === version) continue;
+    tasks.push({ action: "recheck_callout", file: c.file, line: c.line, label: c.label, from: v, to: version });
+  }
+  return tasks;
+}
+
+// The documentation's callouts labelled `BETA <n>` with n below `beta`, the build the store
+// holds the built-in packages of. A `since BETA <n>` label is left out: it stays true.
+async function staleBetaCallouts(beta) {
+  return (await labelledCallouts(DOCS_DIR)).filter((c) =>
+    c.items.some((i) => i.kind === "beta" && Number(i.value) < Number(beta)),
+  );
 }
 
 // --- CLI ---
@@ -612,6 +655,11 @@ async function runAnalyze(filter, all = false) {
     } else {
       report = await analyzeAudit(name, group, current, docsDir, exclusions);
     }
+    if (indexedFrom && docsDir && current.version !== indexedFrom) {
+      const rechecks = await versionCalloutTasks(docsDir, current.version);
+      report.tasks.push(...rechecks);
+      report.summary.to_recheck = rechecks.length;
+    }
 
     allReports.push(report);
     printReport(report);
@@ -620,6 +668,25 @@ async function runAnalyze(filter, all = false) {
   const reportPath = path.join(STORE_PATH, "report.json");
   await fs.writeFile(reportPath, JSON.stringify(allReports, null, 2) + "\n");
   console.log(`\nReport written to ${reportPath}`);
+
+  // The whole reference is analyzed: the callouts a newer build leaves to check again.
+  const beta = filter ? null : (await readManifest("built-in"))?.beta;
+  if (beta) {
+    const stale = await staleBetaCallouts(beta);
+    const calloutsPath = path.join(STORE_PATH, "callouts.json");
+    await fs.writeFile(calloutsPath, JSON.stringify({ beta, callouts: stale }, null, 2) + "\n");
+    if (stale.length) {
+      const one = stale.length === 1;
+      console.log(
+        `\n${stale.length} ${one ? "callout is" : "callouts are"} labelled with a build before BETA ${beta}. ` +
+          `Check ${one ? "it" : "each"} on BETA ${beta}: move the label to that build, or remove the callout if the defect is fixed.`,
+      );
+      for (const c of stale) console.log(`  ${c.file}:${c.line}  ${c.label}`);
+    } else {
+      console.log(`\nNo callout is labelled with a build before BETA ${beta}.`);
+    }
+    console.log(`Written to ${calloutsPath}`);
+  }
 
   const analyzed = new Set(packageList.map((p) => p.name));
   const missing = (filter ?? []).filter((name) => !analyzed.has(name));
@@ -970,4 +1037,9 @@ function printReport(report) {
   if (s.to_update) console.log(`  To update: ${s.to_update}`);
   if (s.flagged) console.log(`  Flagged for removal: ${s.flagged}`);
   if (s.excluded) console.log(`  Excluded: ${s.excluded}`);
+  if (s.to_recheck) {
+    console.log(`  Callouts to check against ${report.to}: ${s.to_recheck}`);
+    for (const t of report.tasks.filter((t) => t.action === "recheck_callout"))
+      console.log(`    ${t.file}:${t.line}  ${t.label}`);
+  }
 }

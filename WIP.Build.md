@@ -413,6 +413,15 @@ admonition's lines by their `>` markers and strips them, and a masked fence
 inside an admonition takes its markers with it into the stash. It asks
 `blockRegions`, with the same parser, which lines are code instead.
 
+It also reads the label, the rest of the `[!TYPE]` line (`lib/callout-labels.mjs`),
+and throws on one it cannot parse: it used to drop that text silently, which is
+how a typo in a label would vanish. A package version in a label is checked against
+`page.packageVersion`, the section's `indexed_from`, which the main thread stamps
+on every page before the render chunks go to the workers, since a chunk need not
+hold the section's landing page. The code-region gate calls the chain with no
+`packageVersion` at all, which skips that check rather than failing every
+labelled page: "" means a page in no section.
+
 ### Whitespace inside inline code is content
 
 A documented value can be a padded string: [Partition](docs/Reference/Default/VBA/Interaction/Partition.md)

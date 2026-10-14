@@ -43,8 +43,8 @@ The text of the box is [**Prompt**](#prompt), followed by a blank line and `(Hin
 
 An empty string passes when [**AllowEmpty**](#allowempty) is **True** (the default) and no [**MinLength**](#minlength) is set. The result of the call does not tell the user's cancelling apart from a refusal; both give **False** and [**Cancelled**](#cancelled) **True**. The two differ only in [**Value**](#value).
 
-> [!WARNING]
-> In version 1.1.0.0 the properties [**Multiline**](#multiline), [**PasswordChar**](#passwordchar), [**OwnerHwnd**](#ownerhwnd) and [**CustomPattern**](#custompattern) are stored but not used. The box is always a single line, it shows what is typed without masking it, it has no owner window and the owner stays usable while it is open, and the value **Custom** of [**Validation**](#validation) accepts any text that is not empty. A program that sets [**PasswordChar**](#passwordchar) to hide a secret shows the secret on the screen. [**cDialogPassword**](cDialogPassword) masks its entry.
+> [!WARNING] 1.1.0.0
+> The properties [**Multiline**](#multiline), [**PasswordChar**](#passwordchar), [**OwnerHwnd**](#ownerhwnd) and [**CustomPattern**](#custompattern) are stored but not used. The box is always a single line, it shows what is typed without masking it, it has no owner window and the owner stays usable while it is open, and the value **Custom** of [**Validation**](#validation) accepts any text that is not empty. A program that sets [**PasswordChar**](#passwordchar) to hide a secret shows the secret on the screen. [**cDialogPassword**](cDialogPassword) masks its entry.
 
 ## Properties
 

@@ -78,11 +78,11 @@ Debug.Print UBound(Primes)      ' 4
 Debug.Print Total               ' 28
 ```
 
-> [!WARNING]
-> In twinBASIC BETA 1005, a module-level **Single** array constant whose element is too large for a **Single**, such as `Const Big() As Single = Array(1E+39)`, compiles without an error, and the element holds infinity. An array constant declared after it whose element calls **Sqr**, **Timer** or **Rnd** is then compile error **TB5001**, although it is correct.
+> [!WARNING] BETA 1005
+> A module-level **Single** array constant whose element is too large for a **Single**, such as `Const Big() As Single = Array(1E+39)`, compiles without an error, and the element holds infinity. An array constant declared after it whose element calls **Sqr**, **Timer** or **Rnd** is then compile error **TB5001**, although it is correct.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, in a module, an array constant declared after a procedure is compile error **TB5079**, *Unrecognized symbol*, in the procedures that follow it. The procedures before it see an empty array: reading an element raises error 9. Declare array constants above the module's first procedure.
+> [!NOTE] BETA 1005
+> In a module, an array constant declared after a procedure is compile error **TB5079**, *Unrecognized symbol*, in the procedures that follow it. The procedures before it see an empty array: reading an element raises error 9. Declare array constants above the module's first procedure.
 
 > [!NOTE]
 > Array constants are a twinBASIC extension. In VBA and VB6, `Const Primes() As Long = Array(2, 3)` is a syntax error.

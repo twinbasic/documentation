@@ -200,8 +200,8 @@ Debug.Print Tests.Run()    ' mine
 
 ## Known problems in version 1.0.15.0
 
-> [!WARNING]
-> In version 1.0.15.0 these problems give a wrong result with no error.
+> [!WARNING] 1.0.15.0
+> These problems give a wrong result with no error.
 >
 > - **A choice in a regular expression is not tried again.** When one alternative matches and the rest of the pattern then fails, the matcher does not try the other alternatives, so `a|ab` does not match `ab`, and `(Mr|Mrs) Smith` does not match `Mrs Smith`, although `(Mrs|Mr) Smith` matches both. RFC 9485 defines the match of the whole pattern. A choice whose alternatives start the same way works when the longer alternative comes first. The matcher serves [**IsMatchPattern**](Json#ismatchpattern), [**IsSearchPattern**](Json#issearchpattern), the JSONPath functions `match` and `search`, and the schema keywords `pattern` and `patternProperties`.
 > - **`\n`, `\r` and `\t` are not understood.** RFC 9485 has these escapes. Outside a character set the pattern is invalid, and inside a set `[\n]` means the letter `n`. Write the control character itself in the pattern string, for example `ChrW(9)`, which is an ordinary character in the dialect. The escapes `\-` and `\^`, which the RFC also has, are invalid outside a set, and `[a-]` is invalid, although the RFC allows a last hyphen; put the hyphen first, as in `[-a]`.

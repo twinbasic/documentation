@@ -40,8 +40,8 @@ The new files go into the folder that the Project Explorer has selected. The Pro
 
 <kbd>Enter</kbd> creates both files at once and opens the designer in a normal tab, not a preview tab. <kbd>Esc</kbd>, or an empty name, creates nothing. A name with a space is written in square brackets, such as `Class [My Form]`, both in the class and in the form's **Name** property. A Windows form, an MDI form and a report are bracketed for a punctuation mark too, such as the dot in `a.b`. A user control, a property page and a CustomControls form are bracketed for a space only.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, the name box accepts a name that is not an identifier, such as `1bad`, and creates the files without a message. The class is then `Class 1bad`.
+> [!NOTE] BETA 1005
+> The name box accepts a name that is not an identifier, such as `1bad`, and creates the files without a message. The class is then `Class 1bad`.
 
 What the new files hold depends on the kind:
 
@@ -82,11 +82,11 @@ A file that the designer cannot use opens in one of three ways:
 - A file with a JSON error shows the notification *ERROR: bad JSON encountered when parsing tbform*.
 - A file without a `FormDesignerId` opens normally. The designer makes a new id for the session and does not write it to the file.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, a read-only designer file still gets a tab, which is empty and selected. Close it.
+> [!NOTE] BETA 1005
+> A read-only designer file still gets a tab, which is empty and selected. Close it.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, a form file with a JSON error opens an empty designer with no controls, and PROPERTIES is empty. An edit there is refused, and <kbd>Ctrl</kbd>+<kbd>S</kbd> leaves the file as it was, so nothing is lost. Correct the JSON in a text editor outside the IDE, and open the form again.
+> [!NOTE] BETA 1005
+> A form file with a JSON error opens an empty designer with no controls, and PROPERTIES is empty. An edit there is refused, and <kbd>Ctrl</kbd>+<kbd>S</kbd> leaves the file as it was, so nothing is lost. Correct the JSON in a text editor outside the IDE, and open the form again.
 
 ### The two files of a form
 
@@ -110,8 +110,8 @@ From the code file, **View → Object Designer** and <kbd>Shift</kbd>+<kbd>F7</k
 
 Both switches find the partner file by replacing `.twin` or `.tbform` in the path. If the file has no partner, a notification says *Unable to switch form design mode: this document is not part of a form*.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, a folder whose name contains `.twin`, such as `v1.twin.forms`, breaks the switch from the code to the designer, and the notification above appears. The switch from the designer to the code still works. Open the designer from the Project Explorer, or rename the folder.
+> [!NOTE] BETA 1005
+> A folder whose name contains `.twin`, such as `v1.twin.forms`, breaks the switch from the code to the designer, and the notification above appears. The switch from the designer to the code still works. Open the designer from the Project Explorer, or rename the folder.
 
 ## The parts of the window
 
@@ -177,11 +177,11 @@ With a designer focused, the **View** menu shows **Zoom In** and **Zoom Out** in
 <!-- SHOT forms-zoom: a second picture, the same form at 50 % so the half-size surface shows -->
 
 
-> [!NOTE]
-> In twinBASIC BETA 1005, **Zoom Out** stops at 50 %, although the box offers 25 %. Choose 25 % in the box.
+> [!NOTE] BETA 1005
+> **Zoom Out** stops at 50 %, although the box offers 25 %. Choose 25 % in the box.
 
-> [!WARNING]
-> In twinBASIC BETA 1005, the arrow keys also move the selected controls while the zoom box has the focus. With a control selected, <kbd>Up</kbd> pressed twice there changes the zoom by two steps and moves the control up by two steps. The form is marked changed, each press is an undo step, and a save keeps the new position. Nothing on the screen says the control moved. Check the positions of the controls before you save.
+> [!WARNING] BETA 1005
+> The arrow keys also move the selected controls while the zoom box has the focus. With a control selected, <kbd>Up</kbd> pressed twice there changes the zoom by two steps and moves the control up by two steps. The form is marked changed, each press is an undo step, and a save keeps the new position. Nothing on the screen says the control moved. Check the positions of the controls before you save.
 
 ## Lock controls
 
@@ -193,8 +193,8 @@ The lock is stored under the control's name, so it follows a rename, and it cove
 
 ![A form with Show Outlines on, so that a dashed outline surrounds every control. The command button Command1 is selected and locked: a grey lock icon shows on it and its grabbers are grey. The other buttons are unlocked.](Images/Designer_Locked.png){:width="386" height="333"}
 
-> [!WARNING]
-> In twinBASIC BETA 1005, locking or unlocking controls does not mark the form changed. If you lock a control and close the tab, the IDE asks no question, and the lock is gone when you open the form again. The lock is saved only with the next real change. After you lock a control, make another change to the form, such as moving a control, before you save.
+> [!WARNING] BETA 1005
+> Locking or unlocking controls does not mark the form changed. If you lock a control and close the tab, the IDE asks no question, and the lock is gone when you open the form again. The lock is saved only with the next real change. After you lock a control, make another change to the form, such as moving a control, before you save.
 
 ## Tab order
 
@@ -216,11 +216,11 @@ A designer tab shows the dot for unsaved changes as soon as the form changes. <k
 
 Every real change also writes an entry to the **HISTORY** panel, named for the form. Double-click it to open the form's designer. See [History](../Code/Navigating#history).
 
-> [!NOTE]
-> In twinBASIC BETA 1005, the tooltip of a form's entry in **HISTORY** ends with `[line: undefined]`, because a form change has no line. Nothing is lost.
+> [!NOTE] BETA 1005
+> The tooltip of a form's entry in **HISTORY** ends with `[line: undefined]`, because a form change has no line. Nothing is lost.
 
-> [!NOTE]
-> In twinBASIC BETA 1005, a designer can be marked changed with no edit. Click a control, press <kbd>Esc</kbd> to select the form, and then click another control or only move the pointer over the form: the tab gets the dot, and closing asks to save. It does not happen every time. Every control is where it was, so saving or discarding gives the same form. <kbd>Ctrl</kbd>+<kbd>Z</kbd> then steps through two empty steps before it reaches your last real change.
+> [!NOTE] BETA 1005
+> A designer can be marked changed with no edit. Click a control, press <kbd>Esc</kbd> to select the form, and then click another control or only move the pointer over the form: the tab gets the dot, and closing asks to save. It does not happen every time. Every control is where it was, so saving or discarding gives the same form. <kbd>Ctrl</kbd>+<kbd>Z</kbd> then steps through two empty steps before it reaches your last real change.
 
 ## See Also
 

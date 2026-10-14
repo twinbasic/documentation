@@ -26,8 +26,8 @@ Select Case answer
 End Select
 ```
 
-> [!WARNING]
-> In version 1.1.0.0 a box with only an OK button that closes because its time ran out reports [**drOK**](#dialogresult), not [**drTimeout**](#dialogresult), and [**IsTimedOut**](#istimedout) is **False**. This affects the default box and [**ShowInfo**](#showinfo), [**ShowWarning**](#showwarning) and [**ShowError**](#showerror). A box with any other set of buttons reports **drTimeout** when it times out. No error is raised, so a program cannot tell a press of OK from the end of the time with these members alone.
+> [!WARNING] 1.1.0.0
+> A box with only an OK button that closes because its time ran out reports [**drOK**](#dialogresult), not [**drTimeout**](#dialogresult), and [**IsTimedOut**](#istimedout) is **False**. This affects the default box and [**ShowInfo**](#showinfo), [**ShowWarning**](#showwarning) and [**ShowError**](#showerror). A box with any other set of buttons reports **drTimeout** when it times out. No error is raised, so a program cannot tell a press of OK from the end of the time with these members alone.
 
 ```tb check_build
 Dim box As New cDialogCountdownMsgBox
