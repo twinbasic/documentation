@@ -24,12 +24,12 @@ The property compiles the pattern if it has not been compiled since [**Pattern**
 Check **IsValid** before [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) or [**Split**](Split) when the pattern comes from outside the program, because each of those raises the compile error.
 
 <!-- test: IsValidTests.IsValid_InvalidPatternLeavesNoError -->
-> [!NOTE] 1.8.0.0
-> Although nothing is raised, the compile error of an invalid pattern stays in the **Err** object after the call that compiled the pattern returns. A program that tests **Err** for other errors calls **Err.Clear** first.
+Nothing is raised and nothing is left behind. The **Err** object is clear when the property returns, even for a pattern that failed to compile, so a program that runs `On Error Resume Next` and tests **Err** for its own errors does not have to call **Err.Clear** first. The number and the message are kept in [**LastErrorNumber**](LastErrorNumber) and [**LastError**](LastError).
+<!-- /test -->
 
 <!-- test: IsValidTests.IsValid_LowCountAboveHigh, IsValidTests.LastErrorNumber_LowCountAboveHigh, IsValidTests.Test_LowCountAboveHighRaisesCompileError, IsValidTests.Execute_LowCountAboveHighRaisesCompileError, IsValidTests.Replace_LowCountAboveHighRaisesCompileError, IsValidTests.Split_LowCountAboveHighRaisesCompileError -->
-> [!NOTE] 1.8.0.0
-> A quantifier whose lower count is above its upper count, such as `a{2,1}`, is not found when the pattern is compiled, so **IsValid** returns **True** for it and [**LastErrorNumber**](LastErrorNumber) returns 0. [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) and [**Split**](Split) then raise error 3000 when a search reaches the quantifier, with the description that Windows gives that number, *The specified print monitor is unknown.*
+A quantifier whose lower count is above its upper count, such as `a{2,1}`, is found when the pattern is compiled, like any other fault: **IsValid** returns **False**, [**LastErrorNumber**](LastErrorNumber) gives the invalid-quantifier number, and [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) and [**Split**](Split) raise it. A `{` that starts no quantifier at all, such as the one in `a{x}`, is not a fault but an ordinary character.
+<!-- /test -->
 
 ## Example
 
@@ -37,9 +37,9 @@ Check **IsValid** before [**Execute**](Execute), [**Test**](Test), [**Replace**]
 Dim re As RegExp
 Set re = New RegExp
 re.Pattern = "(\d+"
-Debug.Print re.IsValid                       ' False
-Debug.Print Err.Number = re.LastErrorNumber  ' True
-Err.Clear
+Debug.Print re.IsValid                          ' False
+Debug.Print Err.Number                          ' 0 -- nothing left in Err
+Debug.Print re.LastErrorNumber - vbObjectError  ' 3009
 
 re.Pattern = "(\d+)"
 Debug.Print re.IsValid  ' True
