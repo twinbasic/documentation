@@ -157,6 +157,14 @@ node scripts/check_page_baseline.mjs
 @rem empty docs\. No tree, no browser, well under a second.
 node scripts/check_book_coverage.mjs
 @if errorlevel 1 goto :fail
+@rem Every NOTE and WARNING of a contributed package's section names the
+@rem test cases behind it in a marker, and each package test project under
+@rem test\package-tests is in order: its cases named, well formed, in
+@rem expect.json for the documented version and in its generated RunAll
+@rem module. Its probes run on inputs built in memory first. Sources only:
+@rem no tree, no install, well under a second.
+node scripts/check_package_tests.mjs
+@if errorlevel 1 goto :fail
 @rem The symbol index (tB/symbols.json) is read by the IDE help add-in,
 @rem and a build that indexes the reference cleanly says nothing about the
 @rem rules that did not fire on it. These probes assert each one against

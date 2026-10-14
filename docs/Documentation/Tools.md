@@ -46,9 +46,9 @@ A tool that reads its command line through `lib/cli.mjs` and takes search terms,
 ## Batch wrappers at the repository root
 {: #batch-wrappers }
 
-All nine sit at the repository root, beside `package.json`. Each uses `@pushd "%~dp0"` to run from that root wherever it is invoked, and each entry below gives the POSIX equivalent of what it runs. The equivalents have no `pushd`, so **run them from the repository root**: `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy)'s default source root and every path given to [`render-book.mjs`](Tools-Build#bookrender-bookmjs) resolve against the working directory.
+All ten sit at the repository root, beside `package.json`. Each uses `@pushd "%~dp0"` to run from that root wherever it is invoked, and each entry below gives the POSIX equivalent of what it runs. The equivalents have no `pushd`, so **run them from the repository root**: `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy)'s default source root and every path given to [`render-book.mjs`](Tools-Build#bookrender-bookmjs) resolve against the working directory.
 
-`examples.bat`, `addin-test.bat`, `ide-test.bat` and `try-help-addin.bat` have no POSIX equivalent. They need a twinBASIC install and drive the IDE, so they run only on Windows and are not part of the site build. Four other tools are Windows-specific for the same reason and are not part of the build either:
+`examples.bat`, `package-tests.bat`, `addin-test.bat`, `ide-test.bat` and `try-help-addin.bat` have no POSIX equivalent. They need a twinBASIC install and drive the IDE, so they run only on Windows and are not part of the site build. Four other tools are Windows-specific for the same reason and are not part of the build either:
 
 - [`scripts/tbbuild.mjs`](Tools-Compiler#tbbuild) and [`scripts/tbrun.mjs`](Tools-Compiler#tbrun) drive the twinBASIC IDE.
 - [`census_attributes.mjs`](Tools-Samples#census-attributes) unpacks the packages of a twinBASIC install. It is cross-platform when given an already-exported tree with `--exported`.
@@ -110,7 +110,7 @@ A local pass of [`check_a11y.mjs`](Tools-Site-Checks#check-a11y) does not predic
 
     test.bat
 
-The tests the toolchain has to pass. Twenty-five steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Twenty-six steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy) --- verifies the publish allowlist still refuses the types it should. Needs neither a browser nor a built tree.
 2. [`scripts/check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
@@ -130,13 +130,14 @@ The tests the toolchain has to pass. Twenty-five steps, each stopping the run if
 16. [`scripts/check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
 17. [`scripts/check_page_baseline.mjs`](Tools-Toolchain-Tests#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
 18. [`scripts/check_book_coverage.mjs`](Tools-Toolchain-Tests#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
-19. [`scripts/check_symbol_index.mjs`](Tools-Toolchain-Tests#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-20. [`scripts/check_twin_parsers.mjs`](Tools-Toolchain-Tests#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
-21. [`scripts/check_attribute_sweep.mjs`](Tools-Toolchain-Tests#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
-22. [`scripts/check_cli.mjs`](Tools-Toolchain-Tests#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-23. [`scripts/check_pdf_shims_equiv.mjs`](Tools-Toolchain-Tests#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, have each of them in their shim's table of targets, and run.
-24. [`scripts/check_impexp_parity.mjs`](Tools-Toolchain-Tests#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
-25. [`scripts/check_axe_patch_equiv.mjs`](Tools-Toolchain-Tests#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+19. [`scripts/check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests) --- verifies every NOTE and WARNING of a contributed package's section names the test cases behind it, and that each package test project is in order.
+20. [`scripts/check_symbol_index.mjs`](Tools-Toolchain-Tests#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
+21. [`scripts/check_twin_parsers.mjs`](Tools-Toolchain-Tests#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
+22. [`scripts/check_attribute_sweep.mjs`](Tools-Toolchain-Tests#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
+23. [`scripts/check_cli.mjs`](Tools-Toolchain-Tests#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+24. [`scripts/check_pdf_shims_equiv.mjs`](Tools-Toolchain-Tests#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, have each of them in their shim's table of targets, and run.
+25. [`scripts/check_impexp_parity.mjs`](Tools-Toolchain-Tests#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
+26. [`scripts/check_axe_patch_equiv.mjs`](Tools-Toolchain-Tests#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -158,6 +159,7 @@ POSIX:
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_book_coverage.mjs \
+      && node scripts/check_package_tests.mjs \
       && node scripts/check_symbol_index.mjs \
       && node scripts/check_twin_parsers.mjs \
       && node scripts/check_attribute_sweep.mjs \
@@ -168,9 +170,9 @@ POSIX:
 
 Exit codes: **0** every step passed; otherwise the code of the step that stopped the run, as that step's entry gives it.
 
-**Twenty-two of the twenty-five cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `indexer/` or `test/`, the site's scripts in `docs/assets/js/`, the help add-in's source in `add-in/`, a wrapper, or a workflow. Both CI workflows run all twenty-five unconditionally.
+**Twenty-two of the twenty-six cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `indexer/` or `test/`, the site's scripts in `docs/assets/js/`, the help add-in's source in `add-in/`, a contributed package's section, a wrapper, or a workflow. Both CI workflows run all twenty-six unconditionally.
 
-The three exceptions are [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions), [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists), which reads this page, and [`check_lint.mjs`](Tools-Toolchain-Tests#check-lint), which lints the site's scripts in `docs/assets/js/`.
+The four exceptions are [`check_code_regions.mjs`](Tools-Toolchain-Tests#check-code-regions), [`check_gate_lists.mjs`](Tools-Toolchain-Tests#check-gate-lists), which reads this page, [`check_lint.mjs`](Tools-Toolchain-Tests#check-lint), which lints the site's scripts in `docs/assets/js/`, and [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests), which reads the callouts of the contributed packages' sections.
 
 `check_code_regions.mjs` has two halves. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes run against their own sources whatever the tree holds, and cover the *mirror* fault, where a rewrite silently stops firing; the sweep cannot see that one. After adding a page with an unusual code construct, run `test.bat` and read the built page too.
 
@@ -238,6 +240,21 @@ Compiles the documentation's own twinBASIC code samples --- every ` ```tb ` fenc
 **It is not one of the gates, and must not become one.** It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows, because it needs a twinBASIC install (`npm install` alone must suffice to build the docs) and Windows with a private desktop and a CDP-reachable WebView2 (the CI box has neither). An IDE cold start also takes 6 to 8 seconds, against four for a whole site build. A person runs it, as with [`sweep_a11y.mjs`](Tools-Site-Checks#sweep-a11y).
 
 Exit codes, those of [`check_examples.mjs`](Tools-Samples#check-examples): **0** clean, **1** a sample does not compile, or does not run as its page says, **2** the harness failed.
+
+### package-tests.bat
+{: #package-testsbat }
+
+    package-tests.bat [<Package> ...] [flags]
+
+One invocation of [`package_tests.mjs`](Tools-Samples#package-tests), with every argument passed straight through:
+
+    node scripts/package_tests.mjs [<Package> ...] [flags]
+
+Runs the contributed packages' test projects under `test/package-tests/`, which back the NOTEs and WARNINGs of each package's section with test cases, and says which cases no longer do what the package's `expect.json` records: fixed, so the page's callout goes, or changed, so a claim of the page is no longer true.
+
+**It is not one of the gates**, for the reasons `examples.bat` is not, and is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows. The gate that ties each callout to its cases, [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests), needs no install and is in `test.bat`.
+
+Exit codes, those of [`package_tests.mjs`](Tools-Samples#package-tests): **0** every case as documented, **1** a case fixed or changed, **2** the harness failed.
 
 ### addin-test.bat
 {: #addin-testbat }

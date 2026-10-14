@@ -1,6 +1,6 @@
 // Makes the designer data of a control that was saved on another day.
 //
-//   node test/package-probes/xCalendar/patch-stream.mjs <in.tbform> <out.tbform> Year=2020 Month=5 Day=17
+//   node test/package-tests/xCalendar/probe/patch-stream.mjs <in.tbform> <out.tbform> Year=2020 Month=5 Day=17
 //
 // designer.mjs gets the IDE to write xCalendar1's entry in a Form1.tbform: the properties as plain
 // keys, and `_IPersistStreamData`, the property bag the control's ReadProperties reads at run time

@@ -93,7 +93,8 @@ const NUMBER_WORDS = [
   "zero", "one", "two", "three", "four", "five",
   "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
   "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
-  "twenty-one", "twenty-two", "twenty-three", "twenty-four", "twenty-five",
+  "twenty-one", "twenty-two", "twenty-three", "twenty-four", "twenty-five", "twenty-six",
+  "twenty-seven", "twenty-eight", "twenty-nine", "thirty",
 ];
 // Longest first, so that "twenty-one" is not read as "twenty" where a word
 // boundary follows the number, as in "of the twenty-one".

@@ -14,10 +14,12 @@ is input for three tools:
 - `ide/` for [`scripts/ide_test.mjs`](../scripts/ide_test.mjs), which `ide-test.bat` runs:
   the scenarios that operate the IDE itself. It is the add-in runner over its own
   `lanes.mjs`, and its scenario files use `scenario` from `addin/scenario.mjs`.
-- `package-probes/` for a person documenting a contributed package: a probe of what a
-  package does at run time that only a built program can show, run by hand and outside every
-  gate, with a README of its own. `TBMANLIB_Dialog/` operates the package's dialogs, and
-  `xCalendar/` the package's calendar control on a form.
+- `package-tests/` holds the contributed packages' test projects, one folder per package,
+  each backing the NOTEs and WARNINGs of the package's section with test cases; its own
+  README says how they are written and run. A package whose claims only a built program can
+  show has a `probe/` harness in its folder, run by hand and outside every gate, with a
+  README of its own: `TBMANLIB_Dialog/probe/` operates the package's dialogs, and
+  `xCalendar/probe/` the package's calendar control on a form.
 
 If a fixture case has just gone red, start at [The invariant, and how it
 breaks](#the-invariant-and-how-it-breaks) --- the commit that broke it need not have touched

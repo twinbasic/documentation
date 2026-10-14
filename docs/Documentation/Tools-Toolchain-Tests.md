@@ -355,6 +355,24 @@ Eight probes give each of the five findings a fault to report: a page with no en
 
 Exit codes: **0** every probe passed, **1** a probe failed, **2** the gate could not run: a refused command line, or a crash.
 
+## check_package_tests.mjs
+{: #check-package-tests }
+
+    node scripts/check_package_tests.mjs
+
+Verifies that every NOTE and WARNING of a contributed package's section names the test cases behind it, and that each [package test project](Tools-Samples#package-tests) is in order. It reads only the sources --- the section's pages, the project's files and the sample template that names the package's version --- so it needs no install, no browser and no built tree, and takes well under a second.
+
+A callout names its cases in an HTML comment on the line above it:
+
+    <!-- test: FileSystemTools.GetRelativePath_LongBase, compile NoWin64 -->
+    > [!WARNING]
+
+Each item is a `Fixture.Sub` for a `[TestCase]`, `compile <Name>` for a compile case, `probe <id>` for a scenario of the package's `probe/` harness, or `none -- <reason>` for a callout no program can check. For a package with a test project, the gate fails when a callout has no marker, when an item names nothing that exists, when a case is named by no callout, when a `[TestCase]` does not start with `Expect.Begin` and end with `Expect.Done`, when `expect.json` is for another version than the section's `indexed_from` or names a case that does not exist, and when the generated `RunAll.twin` is out of date. A section with no test project yet is listed in the script's `PENDING` set; the gate fails on a name there with a project, and on a section neither there nor with one, so the list only shrinks.
+
+Eleven probes run first, on pages, sources and an `expect.json` built in memory: how a marker and its items are read, the RunAll module, how `expect.json` is read and written, and how a case's result is judged.
+
+Exit codes: **0** every probe passed and every test project is in order, **1** a probe failed, or a section or test project is not in order, **2** the gate could not run: a refused command line, or a crash.
+
 ## check_symbol_index.mjs
 {: #check-symbol-index }
 

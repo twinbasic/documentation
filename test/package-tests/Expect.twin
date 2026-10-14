@@ -1,0 +1,155 @@
+' Expect: the checks every test case of the twinBASIC documentation's package tests makes.
+' Part of each test project; https://docs.twinbasic.com. MIT licence.
+'
+' A case is a [TestCase] Sub of a [TestFixture] Module. It starts with Expect.Begin, checks with
+' Expect.AreEqual, Expect.IsTrue, Expect.IsFalse and Expect.Fail, and ends with Expect.Done. Each
+' check states what is correct, so a case that fails names a defect of the package. A failed check
+' does not stop the case: Expect.Done reports every failed check of the case at once.
+'
+' Run the project (Sub Main in the module RunAll) to run every case: each one prints PASS, FAIL or
+' SKIP in the DEBUG CONSOLE. A test runner that runs one case at a time sees a failed case as a
+' failed assertion, which the case's own On Error statement cannot hide.
+Module Expect
+
+    Private mChecks As Long
+    Private mFailures As Long
+    Private mText As String
+    Private mCollecting As Boolean
+    Private mReachedDone As Boolean
+    Private mPassed As Long
+    Private mFailed As Long
+    Private mSkipped As Long
+
+    ' Starts a case: forgets the checks of the case before it.
+    Public Sub Begin()
+        mChecks = 0
+        mFailures = 0
+        mText = ""
+    End Sub
+
+    ' Checks that actual is expected. A string equals only a string, Empty only Empty, Null only
+    ' Null and an object only the same object; numbers, dates and Booleans compare by value.
+    Public Sub AreEqual(ByVal Expected As Variant, ByVal Actual As Variant, ByVal What As String)
+        mChecks = mChecks + 1
+        If Not Same(Expected, Actual) Then Record What & ": expected " & Show(Expected) & ", got " & Show(Actual)
+    End Sub
+
+    Public Sub IsTrue(ByVal Condition As Boolean, ByVal What As String)
+        mChecks = mChecks + 1
+        If Not Condition Then Record What & ": expected True, got False"
+    End Sub
+
+    Public Sub IsFalse(ByVal Condition As Boolean, ByVal What As String)
+        mChecks = mChecks + 1
+        If Condition Then Record What & ": expected False, got True"
+    End Sub
+
+    ' A failed check with no values, for a place the case must not reach.
+    Public Sub Fail(ByVal What As String)
+        mChecks = mChecks + 1
+        Record What
+    End Sub
+
+    ' Ends a case: reports the failed checks, if any.
+    Public Sub Done()
+        Dim text As String
+        If mFailures > 0 Then text = mFailures & " of " & mChecks & " checks failed: " & mText
+        Begin
+        If mCollecting Then
+            mReachedDone = True
+            mText = text
+        ElseIf Len(text) > 0 Then
+            Assert.Strict.Fail text
+        End If
+    End Sub
+
+    ' ---- used by RunAll
+
+    Public Sub StartRun(ByVal Title As String)
+        mCollecting = True
+        mPassed = 0
+        mFailed = 0
+        mSkipped = 0
+        Debug.Print Title
+    End Sub
+
+    Public Sub StartCase()
+        Begin
+        mReachedDone = False
+    End Sub
+
+    ' What the case's call left: Done's report, or the error that ended it before Done.
+    Public Sub EndCase(ByVal Name As String, ByVal ErrNumber As Long, ByVal ErrDescription As String)
+        Dim outcome As String
+        If mReachedDone Then
+            outcome = mText
+        ElseIf ErrNumber <> 0 Then
+            outcome = "run-time error " & ErrNumber & ": " & ErrDescription
+        Else
+            outcome = "the case ended before Expect.Done"
+        End If
+        If Len(outcome) = 0 Then
+            mPassed = mPassed + 1
+            Debug.Print "PASS " & Name
+        Else
+            mFailed = mFailed + 1
+            Debug.Print "FAIL " & Name & ": " & outcome
+        End If
+        Begin
+    End Sub
+
+    Public Sub Skip(ByVal Name As String, ByVal Reason As String)
+        mSkipped = mSkipped + 1
+        Debug.Print "SKIP " & Name & ": " & Reason
+    End Sub
+
+    Public Sub EndRun()
+        Debug.Print mPassed & " passed, " & mFailed & " failed, " & mSkipped & " skipped"
+        mCollecting = False
+    End Sub
+
+    ' ---- inside
+
+    Private Sub Record(ByVal Text As String)
+        mFailures = mFailures + 1
+        If Len(mText) > 0 Then mText = mText & "; "
+        mText = mText & Text
+    End Sub
+
+    Private Function Same(ByVal A As Variant, ByVal B As Variant) As Boolean
+        If IsObject(A) Or IsObject(B) Then
+            If IsObject(A) And IsObject(B) Then Same = (A Is B)
+        ElseIf IsArray(A) Or IsArray(B) Then
+            Same = False
+        ElseIf IsNull(A) Or IsNull(B) Then
+            Same = IsNull(A) And IsNull(B)
+        ElseIf IsEmpty(A) Or IsEmpty(B) Then
+            Same = IsEmpty(A) And IsEmpty(B)
+        ElseIf VarType(A) = vbString Or VarType(B) = vbString Then
+            If VarType(A) = vbString And VarType(B) = vbString Then Same = (StrComp(A, B, vbBinaryCompare) = 0)
+        Else
+            Same = (A = B)
+        End If
+    End Function
+
+    Private Function Show(ByVal V As Variant) As String
+        If IsObject(V) Then
+            If V Is Nothing Then Show = "Nothing" Else Show = "an object of type " & TypeName(V)
+        ElseIf IsArray(V) Then
+            Show = "an array of type " & TypeName(V)
+        ElseIf IsNull(V) Then
+            Show = "Null"
+        ElseIf IsEmpty(V) Then
+            Show = "Empty"
+        ElseIf VarType(V) = vbString Then
+            If Len(V) > 120 Then
+                Show = """" & Left$(V, 100) & """... (" & Len(V) & " characters)"
+            Else
+                Show = """" & V & """"
+            End If
+        Else
+            Show = CStr(V)
+        End If
+    End Function
+
+End Module

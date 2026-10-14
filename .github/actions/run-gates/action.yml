@@ -216,6 +216,14 @@ runs:
     - name: Verify the book-coverage warnings (check_book_coverage.mjs)
       shell: bash
       run: node scripts/check_book_coverage.mjs
+    # Every NOTE and WARNING of a contributed package's section names the test
+    # cases behind it, and each package test project under test/package-tests/
+    # is in order: its cases named, well formed, in expect.json for the
+    # documented version and in its generated RunAll module. Sources only: no
+    # browser, no built tree, no install.
+    - name: Verify the package test markers and projects (check_package_tests.mjs)
+      shell: bash
+      run: node scripts/check_package_tests.mjs
     # The symbol index (tB/symbols.json) is read by the IDE help add-in. A
     # build that indexes the reference cleanly says nothing about the rules
     # that did not fire on it, so these probes assert each against the case

@@ -875,6 +875,17 @@ Where twinBASIC and VB6 behave differently, say what VB6 does. Check it in VB6 -
 
 Use one callout per concern, and only for genuine notes: plain "why this is useful" prose stays a plain paragraph.
 
+A page states what the product does, never what the documentation's own checking could or could not do. "The samples harness cannot capture a console" is a fact about this repository's tools, not about the package, and has no place in a published page. A claim nobody has been able to check is written as the source supports it, or left out.
+
+### Callouts in a contributed package's section
+
+Every `> [!NOTE]` and `> [!WARNING]` in a contributed package's section is backed by test cases in the package's test project, `test/package-tests/<Package>/`, and names them in an HTML comment on the line above it:
+
+    <!-- test: FilesTests.Item_MissingName, FilesTests.Item_MissingIndex -->
+    > [!NOTE]
+
+An item is a `Fixture.Sub` test case, `compile <Name>` for a compile case, `probe <id>` for a scenario of the package's `probe/` harness, or `none -- <reason>` for a callout no program can check. A case checks what is correct, so a defect of the package is a failing case. The folder's README says how to write one, and [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests), in `test.bat`, fails a callout with no marker and a case no callout names. [`package-tests.bat`](Tools#package-testsbat) runs the cases. The section's landing page ends with a short **Test cases** section that links to the project the build publishes, `<Package>-tests.twinproj`.
+
 ## Document the product as it is
 
 twinBASIC is in a long beta, and names still move. **When one does, document the current

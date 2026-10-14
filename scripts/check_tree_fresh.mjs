@@ -70,8 +70,17 @@ const IGNORED_PATHS = new Set(["add-in/Resources/HELP", "add-in/Resources/SYMBOL
 // the other tools, so an edit there can change the build too. add-in/ is
 // packed into the help add-in's project file, which the build publishes, and
 // scripts/impexp.mjs is both the module that packs it and a download the
-// build copies.
-const DEFAULT_SOURCES = ["docs", "builder", "lib", "add-in", "scripts/impexp.mjs"];
+// build copies. test/package-tests/ and the sample templates in
+// test/example-projects/ make the package test projects the build publishes.
+const DEFAULT_SOURCES = [
+  "docs",
+  "builder",
+  "lib",
+  "add-in",
+  "scripts/impexp.mjs",
+  "test/package-tests",
+  "test/example-projects",
+];
 const DEFAULT_TREE = "docs/_site-offline";
 const DEFAULT_MARKER = "index.html";
 

@@ -103,6 +103,7 @@ const CASES = [
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--help"], exit: 0, stdout: /^usage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", "win99"], exit: 2, stderr: /^--arch expects win32 or win64, got: win99\nusage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["--port", "no-such-dir"], exit: 2, stderr: /^--port expects a whole number from 1 to 65535, got: no-such-dir\nusage: node scripts\/tbrun\.mjs / },
+  { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--only", "A.B"], exit: 2, stderr: /^--only needs --tests\nusage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch"], exit: 2, stderr: /^--arch needs a value\nusage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", ""], exit: 2, stderr: /^--arch needs a non-empty value\nusage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["--bogus", "no-such-dir"], exit: 2, stderr: /^unknown option: --bogus\nusage: node scripts\/tbrun\.mjs / },

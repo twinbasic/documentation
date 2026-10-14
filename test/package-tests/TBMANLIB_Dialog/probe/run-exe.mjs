@@ -1,6 +1,6 @@
 // Runs a built probe exe on a private desktop, WITHOUT tbrun --exe's dialog closer.
 //
-//   node test/package-probes/TBMANLIB_Dialog/run-exe.mjs <exe> <probe-ids> [--timeout S] [--desktop NAME]
+//   node test/package-tests/TBMANLIB_Dialog/probe/run-exe.mjs <exe> <probe-ids> [--timeout S] [--desktop NAME]
 //
 // tbrun --exe closes every dialog the exe opens within 250 ms by pressing its OK button, which
 // would race the probe's own automation (src/Auto.twin) and answer the Yes/No boxes itself. This
@@ -20,11 +20,11 @@
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../../../lib/cli.mjs";
-import { captureWindow, desktopWindows, killTree, launchOnDesktop } from "../../../scripts/lib/tb-ide.mjs";
-import { faultText, recordedFault } from "../../../scripts/lib/win-fault.mjs";
+import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../../../../lib/cli.mjs";
+import { captureWindow, desktopWindows, killTree, launchOnDesktop } from "../../../../scripts/lib/tb-ide.mjs";
+import { faultText, recordedFault } from "../../../../scripts/lib/win-fault.mjs";
 
-const USAGE = `usage: node test/package-probes/TBMANLIB_Dialog/run-exe.mjs <exe> <probe-ids> [--timeout S] [--desktop NAME] [-h, --help]
+const USAGE = `usage: node test/package-tests/TBMANLIB_Dialog/probe/run-exe.mjs <exe> <probe-ids> [--timeout S] [--desktop NAME] [-h, --help]
 
 Runs the TBMANLIB_Dialog probe exe on a private desktop, with the scenarios <probe-ids> names
 (comma-separated, as listed at the top of src/Probe.twin), and prints what they report.

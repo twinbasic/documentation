@@ -2,7 +2,7 @@
 // properties in the form designer's Properties panel as a person does, saves, and prints what the
 // IDE wrote for the control into Form1.tbform.
 //
-//   node test/package-probes/xCalendar/designer.mjs [--port N] [--edit Name=text ...] [--out FILE]
+//   node test/package-tests/xCalendar/probe/designer.mjs [--port N] [--edit Name=text ...] [--out FILE]
 //
 // Why: the control keeps its design-time values in a property bag (its ReadProperties and
 // WriteProperties), and what the IDE stores in the form's designer file for it cannot be written by
@@ -16,16 +16,16 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../../../lib/cli.mjs";
-import { sleep } from "../../../scripts/lib/tb-ide.mjs";
-import { findIde } from "../../../scripts/lib/tb-install.mjs";
-import { Lane } from "../../../scripts/lib/tb-lane.mjs";
-import { openFile, pressKey, typeText, waitFor } from "../../../scripts/lib/tb-operate.mjs";
-import { wrapProbe } from "../../../scripts/lib/tb-probe.mjs";
-import { unpackProject } from "../../../scripts/lib/tb-project.mjs";
+import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../../../../lib/cli.mjs";
+import { sleep } from "../../../../scripts/lib/tb-ide.mjs";
+import { findIde } from "../../../../scripts/lib/tb-install.mjs";
+import { Lane } from "../../../../scripts/lib/tb-lane.mjs";
+import { openFile, pressKey, typeText, waitFor } from "../../../../scripts/lib/tb-operate.mjs";
+import { wrapProbe } from "../../../../scripts/lib/tb-probe.mjs";
+import { unpackProject } from "../../../../scripts/lib/tb-project.mjs";
 import { stageTree } from "./stage.mjs";
 
-const USAGE = `usage: node test/package-probes/xCalendar/designer.mjs [--port N] [--edit Name=text ...] [--out FILE] [-h, --help]
+const USAGE = `usage: node test/package-tests/xCalendar/probe/designer.mjs [--port N] [--edit Name=text ...] [--out FILE] [-h, --help]
 
 Opens the probe's project in an IDE, selects xCalendar1 in Form1's designer, types each --edit
 value into the Properties panel's cell for that property (Name=text), saves the project and prints

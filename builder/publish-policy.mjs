@@ -79,7 +79,11 @@ export const EXTENSIONLESS_FILENAMES = new Set(["CNAME"]);
 // the tree surface only: a .twinproj is not a publishable type, and one found
 // in docs/ is refused even at that path, because the build writes the file
 // there and a copy in the source tree could only be a stale one.
-export function publishPolicyFor(config) {
+//
+// `generated` adds the other files the build writes itself: the contributed
+// packages' test projects (package-tests.mjs), whose paths the build works out
+// from test/package-tests/, so a config alone cannot name them.
+export function publishPolicyFor(config, { generated: more = [] } = {}) {
   const declared = new Set();
   for (const entry of config?.bundle_extra ?? []) {
     if (entry?.dest) declared.add(posix(String(entry.dest)));
@@ -87,6 +91,7 @@ export function publishPolicyFor(config) {
   const generated = new Set();
   const addin = config?.addin_project;
   if (addin?.dest) generated.add(posix(String(addin.dest)).replace(/^\/+/, ""));
+  for (const rel of more) generated.add(posix(String(rel)).replace(/^\/+/, ""));
   return { declared, generated };
 }
 
