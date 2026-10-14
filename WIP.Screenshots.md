@@ -23,7 +23,10 @@ Ten images under `docs/`, each for a stated reason:
 - **`packPublishPackage1`**: `packagePublisherPublish` opens the sign-in form when no publisher
   is signed in, before the confirmation box, and a package is never actually published, so the
   old file stays. **`packPublishComplete1`** is the result of a real publish, so it stays too.
-- **`Tutorials/WebView2/Images/tbWebView2InAForm.gif`** is skipped (owner).
+- **`Tutorials/WebView2/Images/tbWebView2InAForm.webp`** is skipped (owner). It is the
+  former GIF as an animated WebP (Pillow, `quality=80, method=4, allow_mixed=True,
+  minimize_size=True`: 1.08 MB against the GIF's 3.74 MB, the same 12,260 ms); a lossless
+  WebP of it is larger than the GIF, because the GIF's dithering changes every frame.
 - **`favicon.png`** is never changed by this work (owner).
 
 ## Decisions (owner)

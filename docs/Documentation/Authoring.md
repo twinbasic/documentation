@@ -46,7 +46,8 @@ the file, and stops before writing:
 ```
 
 The types a source file may use: `.html`, `.png`, `.jpg`, `.jpeg`, `.gif`,
-`.svg`, `.woff2`, `.css`, `.js`, `.txt`, and `CNAME` at the site root. Pages
+`.webp`, `.svg`, `.woff2`, `.css`, `.js`, `.txt`, and `CNAME` at the site root.
+An animation is an animated `.webp`, a fraction of the size of the same `.gif`. Pages
 (`.md` with frontmatter) are rendered rather than copied.
 
 **A file you do not want published does not belong under `docs/`,** unless a
