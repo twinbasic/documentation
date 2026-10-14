@@ -182,7 +182,7 @@ Syntax: *object*.**Orientation** [ **=** *value* ]
 
 A [**PaperOrientation**](#paperorientation), **Portrait** by default.
 
-> [!WARNING]
+> [!WARNING] 1.1.0.0
 > The property is only stored. [**ShowDialog**](#showdialog) does not pass it to the dialog, so a **Landscape** set before the call does not select *Landscape* in the dialog, and it does not read the orientation back. After a user chose *Landscape*, **Orientation** is as it was and [**PaperWidth**](#paperwidth) and [**PaperHeight**](#paperheight) have changed places. To find the orientation after the dialog, compare the two: the page is landscape when **PaperWidth** is the larger. [**ToDescription**](#todescription) names the stored value.
 
 ```tb check_build
@@ -238,7 +238,7 @@ Syntax: *object*.**PaperWidth** [ **=** *value* ]
 
 A **Double**, 8.5 by default, handled as [**PaperHeight**](#paperheight) is.
 
-> [!WARNING]
+> [!WARNING] 1.1.0.0
 > Setting **PaperWidth** and **PaperHeight**, or calling [**SetA4Size**](#seta4size) or [**SetLegalSize**](#setlegalsize), does not make the dialog open with that paper. The margins are passed, and the paper is the one of the default printer. After **OK** the two properties hold what the dialog returned, not what was set.
 
 ```tb check_build
@@ -257,7 +257,7 @@ Syntax: *object*.**Unit** [ **=** *value* ]
 
 A [**MeasurementUnit**](#measurementunit), **Inches** by default. It selects the unit of the dialog; the properties of the class stay in inches. See [How the dialog is shown](#how-the-dialog-is-shown).
 
-> [!WARNING]
+> [!WARNING] 1.1.0.0
 > With **Millimeters**, [**ToDescription**](#todescription) still writes inches and labels them `mm`: a 1 inch margin is described as `1.00 mm`.
 
 ```tb check_build check_run

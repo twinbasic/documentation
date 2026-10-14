@@ -21,7 +21,7 @@ Each byte is formatted as exactly two uppercase hex digits, left-padded with `0`
 
 When *LineBreak* is greater than `0`, it takes precedence over *Separator*: the *Separator* string is not inserted between bytes that fall on a line-break boundary. If both *Separator* is non-empty and *LineBreak* is greater than `0`, *Separator* is inserted between bytes within each line while `vbCrLf` is inserted at the end of each complete *LineBreak*-sized group.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.4
 > **ReturnHex** raises a run-time error if no resource has been loaded. Call [**Read**](Read) before calling **ReturnHex**.
 
 ### Example

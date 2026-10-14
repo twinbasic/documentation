@@ -127,7 +127,7 @@ Debug.Print StringFormat("{0:f}|{0:g}", d)    ' Sunday, October 11, 2026 2:05 PM
 Debug.Print StringFormat("{0:Cyyyy-MM-dd}", d)  ' 2026-10-11
 ```
 
-> [!NOTE]
+> [!NOTE] 1.0.0.0
 > The results come from **Format$**, so the decimal separator, the thousands separator and the layout of dates and times follow the Windows regional settings. The output shown for the currency and date identifiers is for an English (United States) system.
 
 ## Escape sequences
@@ -148,7 +148,7 @@ The formatter replaces these sequences in the finished string, values included. 
 | `\ooo` | The character whose code is the three octal digits *ooo*: `\101` gives `A` |
 | `\\` | A backslash |
 
-> [!NOTE]
+> [!NOTE] 1.0.0.0
 > The package maps `\v`, `\f` and `\r` to the codes 13, 14 and 15. In C they are the vertical tab (11), the form feed (12) and the carriage return (13). Use `\n` for a line break, and `\x0B`, `\x0C` or `\x0D` for the C characters.
 
 A format string that starts with `@` is literal: the `@` is dropped and no sequence is expanded, `\\` included. This suits a file path.

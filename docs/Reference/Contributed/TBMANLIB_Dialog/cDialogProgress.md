@@ -34,10 +34,10 @@ If Not progress.Cancelled Then progress.Complete
 Debug.Print progress.Percentage & "%"
 ```
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > [**GetRemainingTime**](#getremainingtime), and with it [**GetRemainingTimeString**](#getremainingtimestring) and [**GetDescription**](#getdescription), raise error 11 (*Division by zero*) when they are called before the clock has ticked after [**Start**](#start) (the clock of Windows ticks about every 16 milliseconds) and [**Progress**](#progress) is above [**Min**](#min). A program that reports progress as it begins reads the description too early. Call them later, or handle the error.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > [**Percentage**](#percentage) and [**SetPercentage**](#setpercentage) multiply in a **Long**, so a range wider than about 21 million units can raise error 6 (*Overflow*): [**Percentage**](#percentage) with **Max** 100,000,000 and a position of 50,000,000 does, and so does [**SetPercentage**](#setpercentage) with 50. Use a smaller range, such as the number of items instead of the number of bytes.
 
 ## Properties

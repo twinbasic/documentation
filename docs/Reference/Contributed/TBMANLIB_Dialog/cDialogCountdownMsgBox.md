@@ -100,7 +100,7 @@ Setting it also sets [**RemainingSeconds**](#remainingseconds). The shortened fo
 
 The countdown text that the box shows (see [**ShowProgress**](#showprogress)) names this value in whole seconds, also for 1 and 0: `in 1 seconds...`. A value of 0 or less does not close the box: it stays open until a button is pressed, and its text says `in 0 seconds...`.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The class multiplies the value by 1000 to get milliseconds. A value above 2,147,483 (about 24.8 days) overflows, and [**ShowDialog**](#showdialog) handles the error 6 itself: it shows a plain message box with the message and an OK button, with no icon, countdown text or other buttons, and returns **drOK**. The call raises nothing, but **Err.Number** is 6 afterwards.
 
 ```tb check_build check_run

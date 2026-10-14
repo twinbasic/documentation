@@ -29,7 +29,7 @@ Syntax: *object*.**WriteString**( *RootKey*, *KeyPath*, *ValueName*, *ValueData*
 
 The return value is a **BOOL**: **True** if the value was written successfully, **False** if any step failed. If the key was created but the value could not be written, the new key remains.
 
-> [!NOTE]
+> [!NOTE] 1.0.1.1
 > The data size passed to `RegSetValueEx` is `LenB(ValueData) + 2`, which accounts for the string's byte count plus the two-byte null terminator.
 
 ### Example

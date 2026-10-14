@@ -49,10 +49,10 @@ Syntax: *object*.**Show** *ListBoxInst*
 
 The scroll range is calculated from the widest item's pixel width measured with the font that the control reports through `WM_GETFONT`, so a **ListBox** that uses a non-default font is measured with that font.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.1
 > **Show** measures item widths at the moment it is called. If items are added or removed after **Show**, the scroll range is not updated automatically. Call **Show** again after bulk changes to refresh the extent.
 
-> [!IMPORTANT]
+> [!IMPORTANT] 1.0.0.1
 > The control's **hWnd** must be valid (the form must be loaded and the control fully created) before calling **Show**. Calling **Show** before the control's window exists returns silently without installing any scrolling behavior.
 
 ### UnShow

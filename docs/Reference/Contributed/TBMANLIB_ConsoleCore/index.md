@@ -17,7 +17,7 @@ The **TBMANLIB_ConsoleCore** contributed package is a library for the console of
 
 The library is built on the Windows console functions of `kernel32.dll`. The package [TBMANLIB_ConsoleComponents](../TBMANLIB_ConsoleComponents/), by the same author, is a set of text-interface components that draw into the buffer of this package.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.1
 > The tools that check this documentation's samples run a sample and compare what it prints with **Debug.Print**. They cannot yet read what a program writes to a console, or send it keys and mouse events. So the samples on these pages are compiled, and what they show on the console has not been checked by running them. Statements about console output, keys and the mouse follow the package's source, and will be checked once the tools can capture a console.
 
 ```tb check_build

@@ -58,7 +58,7 @@ The code is a **String** that names the error. It is case-sensitive. These are t
 
 A recipe with several faults sets one error, the first fault that the package finds. In random mode the properties of wordlist mode are not checked, and the other way round.
 
-> [!NOTE]
+> [!NOTE] 1.0.8.0
 > The package declares two more codes, `EmptyCharset` and `EmptyWordlist`. No recipe sets them: the package's own tests list them as having no trigger, together with `InvalidRange`, which only a direct call of the default random source can set.
 
 ```tb check_build check_run

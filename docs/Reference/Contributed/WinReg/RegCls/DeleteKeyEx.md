@@ -27,7 +27,7 @@ This function is necessary because the Win32 `RegDeleteKey` API fails if the tar
 
 Both enumeration loops always request index 0 and rely on each deletion to expose the next entry. A subkey or value that cannot be deleted (for example, for lack of permission) therefore leaves the loop repeating on the same entry.
 
-> [!IMPORTANT]
+> [!IMPORTANT] 1.0.1.1
 > Deleting a registry key is irreversible. Verify that *RootKey* and *KeyPath* are correct before calling this function, as all subkeys and values under the specified path will be permanently removed.
 
 ### Example

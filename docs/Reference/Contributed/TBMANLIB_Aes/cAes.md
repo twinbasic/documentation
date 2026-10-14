@@ -385,7 +385,7 @@ A failed call does not tell why, and what the caller gets depends on the member.
 - [**SetKeyFromString**](#setkeyfromstring) raises an error of its own, `vbObjectError + 2`.
 - [**GenerateRandomIV**](#generaterandomiv) and [**Cleanup**](#cleanup) cannot fail, and the properties raise nothing.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.4
 > A program that calls **EncryptBytes** or **DecryptBytes** needs an `On Error` statement, and cannot tell a missing key from a wrong tag or a damaged ciphertext by the error. The Debug Console of the IDE shows more: the package prints lines with `Debug.Print`, such as `DecryptBytes error: Key not set` and `BCryptEncrypt failed: 0xC0000206` followed by a message, and a built program writes none of them.
 
 > [!WARNING] 1.0.0.4

@@ -216,7 +216,7 @@ Syntax: **ToolsStream.SaveFileAsText** ( *FileName* [ **,** *Data* ] [ **,** *Ch
 
 The function opens the stream if it is closed, sets its character set, writes the text into it and saves the file. It leaves the stream open. The function adds no line break to the text. See the warning at the top of the page for what happens when the stream is already open.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The function always returns **False**. Its result is never set, even when the file was written. A program cannot use the result to see whether the call worked, and has to handle the error that the stream raises.
 
 ```tb check_build check_run
@@ -261,7 +261,7 @@ Syntax: **ToolsStream.WriteLine** ( *Text* [ **,** *Line* ] ) **As Boolean**
 *Line*
 : *optional* A **Long**. When it is greater than 0, it is stored in [**LineNumber**](#linenumber) first.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.29
 > The function raises error 13 every time line mode is on. It adds the line to the collection with `LineData.Add Text, LineNumber`, and a collection takes a **String** as the key of an item, not a **Long**. Items can be added to **LineData** directly with its own **Add**. When line mode is off, the function raises error 1 with a Chinese message that means *line reading and writing is not switched on*.
 
 ## See Also

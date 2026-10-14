@@ -48,7 +48,7 @@ The project file is read and checked before anything is deleted or written. If t
 
 A refusal returns **False** and leaves the folder as it was.
 
-> [!WARNING]
+> [!WARNING] 1.1.0.0
 > A folder that passes the checks is deleted with everything in it, including files that are not part of any project. Point *cleanFirst* only at a folder that holds nothing but an earlier unpack.
 
 ## Output
@@ -74,7 +74,7 @@ When the call fails, it prints `Unpack failed: ` and one of these reasons:
 | `Refusing to clean ` and the path in quotes, then `it is not empty and has no top-level 'Settings' file` | *cleanFirst* is **True** and *outputDir* fails the fourth check. |
 | `Cannot create directory: ` and the path | *outputDir* or a folder in it could not be created. |
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The summary line of **Unpack** begins `Imported`, and that of [**Pack**](Pack) begins `Exported`. The Import/export tool names the two directions the other way round: its `export` command unpacks a project and its `import` command packs a folder.
 
 ## Example

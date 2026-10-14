@@ -18,7 +18,7 @@ The root keys, such as `HKEY_CURRENT_USER`, are members of **RegKeyspace**, so a
 > [!NOTE] 1.0.1.1, BETA 1005
 > The package does not compile, so a project that references it does not build. **RegCls** declares `RegCreateKeyEx` and `RegEnumKeyEx` with a `ByRef` structure parameter, *lpSecurityAttributes* (`SECURITY_ATTRIBUTES`) and *lpftLastWriteTime* (`FILETIME`), and passes `VarPtr(0&)` for it in [**WriteString**](RegCls/WriteString), [**WriteDWORD**](RegCls/WriteDWORD), [**CreateKey**](RegCls/CreateKey) and [**DeleteKeyEx**](RegCls/DeleteKeyEx). A pointer passed for a structure has to be passed `ByVal` (error TB5001). `VarPtr(0&)` is also the address of a temporary **Long**, not a null pointer; `ByVal vbNullPtr` passes a null pointer. The behaviour described on these pages is that of the package with those four calls passed `ByVal`.
 
-> [!WARNING]
+> [!WARNING] 1.0.1.1
 > Three methods give wrong results. [**ReadString**](RegCls/ReadString) returns the text followed by NUL characters. [**GetRegistryValueType**](RegCls/GetRegistryValueType) returns **REG_NONE** for every value that holds data. The first overload of [**ConvertValueToString**](RegCls/ConvertValueToString) returns an empty string for the types it supports.
 
 ## Classes

@@ -84,7 +84,7 @@ End If
 
 The shell property handler infrastructure requires Windows 2000 or later. If the memory for the native code cannot be allocated when the class is created, the class raises error 7 (*Out of memory*).
 
-> [!NOTE]
+> [!NOTE] 1.7.1.0
 > Write support for [**FileProperty.Value**](../FileProperty/Value) requires Windows Vista or newer.
 
 ## Example

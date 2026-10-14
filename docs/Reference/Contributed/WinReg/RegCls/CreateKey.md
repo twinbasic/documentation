@@ -21,7 +21,7 @@ Returns **True** if the key was created or already existed, **False** if the ope
 
 **CreateKey** calls the Win32 `RegCreateKeyEx` function with `KEY_CREATE_SUB_KEY` access and does not write any values. If the key already exists, the function succeeds and the existing key and its values are left unchanged.
 
-> [!NOTE]
+> [!NOTE] 1.0.1.1
 > Writing values to the new key requires a subsequent call to [**WriteString**](WriteString) or [**WriteDWORD**](WriteDWORD), which open the key with write access internally.
 
 ### Example

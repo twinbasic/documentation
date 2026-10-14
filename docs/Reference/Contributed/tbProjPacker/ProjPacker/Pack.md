@@ -53,7 +53,7 @@ Every other file is stored as it is on disk, a text file in `Sources` and a code
 
 The conversion removes every CR and then turns every LF into CR LF. A file that already has CR LF line endings comes out unchanged. The files on disk are never changed; only the copy in the project file is.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > A CR that is not followed by LF is removed, and no line break replaces it. A code file whose lines end in a CR alone, as old Macintosh text files do, is packed as one line. The Import/export tool leaves such a CR in place.
 
 After the summary line, **Pack** prints the number of files that the conversion changed. A file that already had CR LF line endings is not counted, and when no file changed, the line is not printed:
@@ -88,7 +88,7 @@ Exported "MyApp-src" -> C:\Temp\MyApp.twinproj  (170594 bytes, 18 files, 6 direc
 
 The name is the root's name, the last folder of *inputDir*. The byte count is the size of the new file, and the file and folder counts do not include the root.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The summary line of **Pack** begins `Exported`, and that of [**Unpack**](Unpack) begins `Imported`. The Import/export tool names the two directions the other way round: its `import` command packs a folder and its `export` command unpacks a project.
 
 ## Example

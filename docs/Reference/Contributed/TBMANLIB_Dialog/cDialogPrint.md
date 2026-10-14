@@ -46,10 +46,10 @@ When the user chooses **OK**, [**ShowDialog**](#showdialog) stores the page rang
 
 The class frees the printer data that Windows allocates for the dialog. The printer that the user chose, its paper, its orientation and the other settings of its driver are therefore not returned as such. They are in the device context, which is set up for the chosen printer with its settings, so a program that needs to know them asks the context with the API function `GetDeviceCaps`.
 
-> [!IMPORTANT]
+> [!IMPORTANT] 1.1.0.0
 > With [**ReturnDC**](#returndc) **True**, which is the default, every **OK** creates a device context that the class never deletes. The program must delete it with the API function `DeleteDC` when it has finished with it, as the sample at the head of the page does, or set **ReturnDC** to **False** when it does not need the context. [**Reset**](#reset), and a later [**ShowDialog**](#showdialog) that returns **True**, replace the handle without deleting the old context.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The page numbers and the number of copies are passed to Windows as 16-bit integers. A [**FromPage**](#frompage), [**ToPage**](#topage), [**MinPage**](#minpage), [**MaxPage**](#maxpage) or [**Copies**](#copies) that does not fit, one above 32,767 or one below -32,768, makes [**ShowDialog**](#showdialog) raise error 6, *Overflow*, before the dialog opens.
 
 ## Properties

@@ -52,7 +52,7 @@ These rules apply to every procedure on the page. Each entry states only what de
 - A path longer than 260 characters works in most procedures, among them [**CreateFolder**](#createfolder), [**FileExists**](#fileexists), [**StringToTextFile**](#stringtotextfile), [**TextFileToString**](#textfiletostring), [**CopyFile**](#copyfile), [**MoveFile**](#movefile), [**Rename**](#rename), [**DeleteFile**](#deletefile), [**DeleteFolder**](#deletefolder), [**GetFile**](#getfile) and [**GetFilePaths**](#getfilepaths). The Scripting Runtime does not accept such a path: its **FileExists** and **FolderExists** return **False** for it, **GetFile** raises error 53 and **OpenTextFile** raises error 76.
 
 <!-- test: LongPathTests.LongPath_Procedures_Work, LongPathTests.GetFileVersion_PathOver260_ReturnsEmpty, LongPathTests.FileShortPath_PathOver260_ReturnsPath, LongPathTests.SetCurrentDir_PathOver260_Raises75, LongPathTests.DeleteFile_WildcardInLongFolder_Raises53, LongPathTests.CopyFile_WildcardInLongFolder_Raises53 -->
-> [!NOTE]
+> [!NOTE] 1.9.0.0
 > These stop at the limit. [**GetFileVersion**](#getfileversion) returns an empty string, and [**File.ShortPath**](File#shortpath) returns the path as it is. [**SetCurrentDir**](#setcurrentdir) raises error 75. A path with a wildcard in it is not found: [**DeleteFile**](#deletefile) and [**CopyFile**](#copyfile) raise error 53 for `deep\*.dll`, where `deep` is a folder with a long path. [**Folder.Files**](Folder#files), [**Folder.SubFolders**](Folder#subfolders) and [**Folder.Size**](Folder#size) raise error 76 for a folder whose own path has 258 characters or more (see the note under [**Folder.Files**](Folder#files)), and [**GetRelativePath**](#getrelativepath) can return a wrong path (see its warning).
 
 ```tb check_build check_run
@@ -81,7 +81,7 @@ DeleteFolder work
 **Wildcards.** [**CopyFile**](#copyfile), [**CopyFolder**](#copyfolder), [**DeleteFile**](#deletefile), [**DeleteFolder**](#deletefolder), [**MoveFile**](#movefile) and [**MoveFolder**](#movefolder) accept `*` and `?` in the last component of the path that names what to act on. A wildcard in a destination is error 5. A pattern that matches nothing is an error, as described for each procedure. A failure part-way through a wildcard operation leaves the earlier matches changed; the sample under [**DeleteFile**](#deletefile) shows it.
 
 <!-- test: ShortNameTests.DeleteFile_Pattern_ActsOnShortNameMatch, ShortNameTests.CopyFile_Pattern_ActsOnShortNameMatch, ShortNameTests.MoveFile_Pattern_ActsOnShortNameMatch, ShortNameTests.CopyFolder_Pattern_ActsOnShortNameMatch, ShortNameTests.MoveFolder_Pattern_ActsOnShortNameMatch, ShortNameTests.DeleteFolder_Pattern_ActsOnShortNameMatch, ShortNameTests.GetFilePaths_Pattern_LeavesOutShortNameMatch -->
-> [!WARNING]
+> [!WARNING] 1.9.0.0
 > Windows matches a pattern against the 8.3 short name of a file as well as against its name. On a volume that creates short names, `*.txt` also matches `a.txtx`, whose short name ends in `.TXT`. [**CopyFile**](#copyfile), [**DeleteFile**](#deletefile) and [**MoveFile**](#movefile) act on such a file, and the procedures for folders match the short names of folders in the same way. The Scripting Runtime does the same. [**GetFilePaths**](#getfilepaths) does not list such a file: it tests each name against the pattern again.
 
 ```tb check_build check_run
@@ -110,7 +110,7 @@ DeleteFolder work
 A directory junction or symbolic link is a folder that stands for another folder.
 
 <!-- test: JunctionTests.CopyFolder_Junction_LeftOutOfCopy, JunctionTests.DeleteFolder_Junction_KeepsTarget, JunctionTests.GetFilePaths_Recursive_DoesNotEnterJunction, JunctionTests.FindInTextFiles_Recursive_DoesNotEnterJunction, JunctionTests.FolderSize_Junction_CountsEachFileOnce, JunctionTests.FolderSubFolders_Junction_StillListed -->
-> [!NOTE]
+> [!NOTE] 1.9.0.0
 > [**CopyFolder**](#copyfolder), [**DeleteFolder**](#deletefolder), [**GetFilePaths**](#getfilepaths) with *recursive*, [**FindInTextFiles**](#findintextfiles) with *recursive* and [**Folder.Size**](Folder#size) do not enter a link:
 >
 > - **CopyFolder** leaves the link out of the copy.
@@ -504,7 +504,7 @@ Errors:
 - 58 when a file exists and *overwrite* is **False**.
 
 <!-- test: JunctionTests.CopyFolder_Junction_LeftOutOfCopy -->
-> [!NOTE]
+> [!NOTE] 1.9.0.0
 > A directory junction or symbolic link inside the source is left out of the copy: the copy has no folder of that name, and nothing from the folder the link stands for. The Scripting Runtime copies the files of the target into the copy under the name of the link. See [Junctions and symbolic links](#junctions-and-symbolic-links).
 
 ### CreateFolder
@@ -612,7 +612,7 @@ The contents are deleted first, and an item that cannot be deleted is skipped wi
 Errors: 76 when no folder matches or a file is named; 70 when the folder is not empty because something in it could not be deleted, such as a read-only file when *force* is **False**. The folder and that file stay. The Scripting Runtime raises error 70 in that case too.
 
 <!-- test: JunctionTests.DeleteFolder_Junction_KeepsTarget -->
-> [!NOTE]
+> [!NOTE] 1.9.0.0
 > A directory junction or symbolic link inside the folder is removed, and the folder it stands for keeps its files. The Scripting Runtime deletes the files in the target as well, so a tree that holds a link to a folder outside it loses the contents of that folder there. See [Junctions and symbolic links](#junctions-and-symbolic-links).
 
 ### GetFilePaths
@@ -685,7 +685,7 @@ Moving a file onto itself does nothing and returns its path, except that error 7
 Errors: 53 when a wildcard matches no file, or matches only folders; 76 when the destination folder of a wildcard move does not exist; 58 when the destination file exists; 52 when the name of the destination holds a character that Windows does not allow; 75 when it is the reserved device name `con` (the message ends with the Windows code 87).
 
 <!-- test: AttributeTests.MoveFile_FolderSource_MovesFolder -->
-> [!NOTE]
+> [!NOTE] 1.9.0.0
 > A *source* without a wildcard that names a folder is moved too, with no error: `MoveFile "C:\old", "C:\new"` renames the folder. The Scripting Runtime raises error 53.
 
 <!-- test: ErrorNumberTests.MoveFile_NulDevice_KeepsSourceFile, ErrorNumberTests.FileMove_NulDevice_KeepsSourceFile, ErrorNumberTests.FileSystemObjectMoveFile_NulDevice_KeepsSourceFile -->
@@ -838,7 +838,7 @@ A sample looks like binary data when it holds a zero byte, or more than 2% contr
 The result is an estimate, as every guess about the encoding of a text file is. A file in UTF-16, UTF-32 or UTF-8, with or without a BOM, is found right, except in the cases of the note below; so is a Latin-1 file when the system code page is Latin-1. Pass the encoding to the procedure that reads the file when it is known.
 
 <!-- test: DetectionTests.GetFileEncoding_ShortUtf16WithoutZeroByte_IsSystemAnsi, DetectionTests.GetFileEncoding_ShortUtf16Hiragana_IsUtf8, DetectionTests.GetFileEncoding_Gb18030WithAccent_IsSystemAnsi, DetectionTests.GetFileEncoding_Utf7PureAscii_IsUtf8, DetectionTests.GetFileEncoding_Latin1AccentInLastByte_IsUtf8, DetectionTests.GetFileEncoding_Latin1AccentPastSample_IsUtf8 -->
-> [!NOTE]
+> [!NOTE] 1.9.0.0
 > A short file gives little evidence. UTF-16 text with no zero byte, such as eight kanji with no line ending, is reported as **encSystemAnsi**, or as **encUtf8** when its bytes are also valid UTF-8, as for eight hiragana. A few bytes of binary data can be reported as UTF-16. Text in another code page without a BOM is not found: GB18030 text with an accented letter is reported as **encSystemAnsi**, and UTF-7 or Big5 text that is pure ASCII as **encUtf8**. A sample that ends in the first byte of a multi-byte sequence is judged without that byte, so a Latin-1 file whose only accented letter is its last byte is reported as **encUtf8**, and so is a Latin-1 file whose accented letter comes after the first 32,768 bytes.
 
 Raises error 53 when the file does not exist; see [Errors](./#errors).
@@ -1458,7 +1458,7 @@ Syntax: **CreateTextFile** ( *filePath* [, *overwrite* [, *encoding* [, *lineEnd
 
 The file is written in place, with no swap file, and an existing read-only file raises error 70. The errors are those of [**OpenTextFile**](#opentextfile) for **ForWriting**, and error 52 for a name that has `<`, `>`, `"`, `|`, `?`, `*` or a control character, or is a reserved device name such as `con` (see [**CleanFileName**](#cleanfilename)). A colon in the name is allowed: it addresses an alternate data stream of an NTFS file.
 
-> [!IMPORTANT]
+> [!IMPORTANT] 1.9.0.0
 > The third argument of **Scripting.FileSystemObject.CreateTextFile** is a **Boolean** *Unicode*, and this procedure's third argument is an *encoding*. A **Boolean** converts to a number: **True** is -1, which is **encAutoDetect**, and on writing that means UTF-8, not UTF-16. **False** is 0, **encSystemAnsi**. Code ported from the Scripting Runtime that passes **True** needs **encUtf16** or **encUtf16Bom** here.
 
 ```tb check_build check_run
@@ -1524,10 +1524,10 @@ What the mode does:
 Errors: 53 when the file does not exist for **ForReading**, or for the other modes with *create* **False**; 76 when the folder does not exist; 52 for a name that is not valid when *create* is **True**; 5 for an unknown *ioMode*, and for a binary file as above; 70 when another stream has the file open for writing. The error has an empty **Err.Source** and the standard text of its number, `File not found` for 53, without the path.
 
 <!-- test: TextStreamTests.OpenTextFile_ReadOnlyFileForWriting_Raises70, TextStreamTests.OpenTextFile_Utf7ReadOnlyFileForWriting_Opens, TextStreamTests.TextStreamClose_Utf7ReadOnlyFile_Raises70, TextStreamTests.TextStreamFlush_Utf7ReadOnlyFile_Raises70, TextStreamTests.OpenTextFile_Utf7ForWriting_KeepsTextUntilClose -->
-> [!NOTE]
+> [!NOTE] 1.9.0.0
 > A stream in UTF-7 holds the whole file in memory, as [**TextStream**](TextStream#reading-and-writing) describes. For **ForWriting** on a read-only file, the stream opens without an error and the file keeps its text; error 70 comes at the first [**Flush**](TextStream#flush) or [**Close**](TextStream#close). Every other encoding raises error 70 when the stream is opened.
 
-> [!IMPORTANT]
+> [!IMPORTANT] 1.9.0.0
 > The fourth argument of **Scripting.FileSystemObject.OpenTextFile** is a **Tristate** *Format*, and this procedure's is an *encoding*. **TristateTrue** is -1, which is **encAutoDetect**: on writing that means UTF-8, not UTF-16. The default also differs: a file opened for writing here is UTF-8 without a BOM, where the Scripting Runtime writes ANSI.
 
 This sample appends to a file that has a BOM and LF line endings. The new line gets the line ending of the file, and no second BOM is written:

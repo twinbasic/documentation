@@ -41,7 +41,7 @@ An empty string also results when Windows reports a failure, such as a path that
 
 With [**OverwritePrompt**](OverwritePrompt) **True** and a file that exists, the box *Confirm Save As* asks whether to replace it. *Yes* returns the path, and *No* leaves the dialog open. With **False** there is no box and the path is returned. With [**DefaultExt**](DefaultExt) set, a name typed without an extension gets it.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The class pads the buffer with spaces to 260 characters, and the dialog does not show the padding. A [**FileName**](FileName) of 260 characters shows no dialog and returns an empty string at once, as a cancel does. A **FileName** of 261 characters or more makes **ShowSave** raise run-time error 5, *Invalid procedure call or argument*, before any dialog opens.
 
 ## Example

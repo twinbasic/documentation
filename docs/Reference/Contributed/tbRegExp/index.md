@@ -42,7 +42,7 @@ Debug.Print re.Test("ABCdef")                            ' False
 ```
 
 <!-- test: PatternSyntaxTests.IsValid_AtomicGroup, PatternSyntaxTests.IsValid_Conditional, PatternSyntaxTests.Test_NamedBackreferenceIsText, PatternSyntaxTests.Test_CapitalAAndZAreLetters -->
-> [!NOTE]
+> [!NOTE] 1.8.0.0
 > A pattern that holds an atomic group `(?>...)` or a conditional is not valid: [**IsValid**](RegExp/IsValid) returns **False**. A named backreference `\k<name>`, `\A`, `\Z` and `\p{...}` are not supported either, but they do not make the pattern invalid, because a backslash before a letter that names no escape stands for the letter itself, as in VBScript: `\k<name>` matches the text `k<name>`, and `\A` matches `A`. The pattern `\p{L}` is invalid for another reason: `{L}` does not start a quantifier (see below).
 
 The escapes that name a control character or a character code are read as in VBScript:
@@ -66,7 +66,7 @@ Debug.Print re.Test("a" & ChrW(2))      ' True
 ```
 
 <!-- test: PatternSyntaxTests.Test_BackreferenceToLaterGroupMatchesNothing -->
-> [!NOTE]
+> [!NOTE] 1.8.0.0
 > A backreference to a group that has not yet taken part in the match, such as `\1(a)`, matches no characters, so the pattern finds `a` in the string `a`. VBScript's **RegExp** finds no match for such a pattern.
 
 `\w` matches only the ASCII letters and digits and `_`, as in VBScript, so `\w+` finds `caf` in `café`.
@@ -74,7 +74,7 @@ Debug.Print re.Test("a" & ChrW(2))      ' True
 A `{` has to start a quantifier: `{n}`, `{n,}`, `{n,m}` or `{,m}`, which means `{0,m}`. A pattern in which a `{` starts none, such as `a{` or `a{x}`, is not valid; write `\{` for the character. A `]` or `}` that closes nothing is an ordinary character, as in VBScript.
 
 <!-- test: PatternSyntaxTests.IsValid_BraceThatStartsNoQuantifier, PatternSyntaxTests.Test_BraceThatStartsNoQuantifierIsText, PatternSyntaxTests.Test_CommaAndMaximumOnlyIsText -->
-> [!NOTE]
+> [!NOTE] 1.8.0.0
 > VBScript's **RegExp** reads a `{` that starts no quantifier, and `{,m}`, as ordinary text: `a{x}` is a valid pattern there that finds the text `a{x}`, and `a{,2}` finds the text `a{,2}` and not `aa`. In **tbRegExp** the first is not valid, so a search with it raises the compile error, and `a{,2}` finds up to two `a`.
 
 ```tb check_build check_run

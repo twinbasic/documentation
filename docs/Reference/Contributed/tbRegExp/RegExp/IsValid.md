@@ -24,7 +24,7 @@ The property compiles the pattern if it has not been compiled since [**Pattern**
 Check **IsValid** before [**Execute**](Execute), [**Test**](Test), [**Replace**](Replace) or [**Split**](Split) when the pattern comes from outside the program, because each of those raises the compile error.
 
 <!-- test: IsValidTests.IsValid_InvalidPatternLeavesNoError -->
-> [!NOTE]
+> [!NOTE] 1.8.0.0
 > Although nothing is raised, the compile error of an invalid pattern stays in the **Err** object after the call that compiled the pattern returns. A program that tests **Err** for other errors calls **Err.Clear** first.
 
 <!-- test: IsValidTests.IsValid_LowCountAboveHigh, IsValidTests.LastErrorNumber_LowCountAboveHigh, IsValidTests.Test_LowCountAboveHighRaisesCompileError, IsValidTests.Execute_LowCountAboveHighRaisesCompileError, IsValidTests.Replace_LowCountAboveHighRaisesCompileError, IsValidTests.Split_LowCountAboveHighRaisesCompileError -->

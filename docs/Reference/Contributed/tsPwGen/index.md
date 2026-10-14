@@ -129,10 +129,10 @@ The names are visible to the whole project: the **Generate** and **Entropy** fun
 
 ## Known problems in version 1.0.8.0
 
-> [!WARNING]
+> [!WARNING] 1.0.8.0
 > Called directly, the **NextInRange** method of [**PwGenCryptoSource**](PwGenCryptoSource#errors) returns 0, with no error of its own, while an earlier failure of the package is still the last error. Clear the last error first. The functions of [**PwGen**](PwGen) are not affected.
 
-> [!NOTE]
+> [!NOTE] 1.0.8.0
 > The package has four more problems. None of them returns a wrong password.
 >
 > - **`HasNoConsecutiveRepeats` fails for small pools.** A recipe with [**HasNoConsecutiveRepeats**](PwGenOptions#hasnoconsecutiverepeats) returns an empty string with the error `CannotAvoidRepeats` in about one call of four for the pool `AB` and a **Length** of 3, although valid passwords exist.

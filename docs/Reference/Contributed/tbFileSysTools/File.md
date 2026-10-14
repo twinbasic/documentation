@@ -324,7 +324,7 @@ Syntax: *object*.**OpenAsTextStream** ( [ *ioMode* [, *encoding* [, *writeModeLi
 Returns a [**TextStream**](TextStream); the rules are those of [**OpenTextFile**](FileSystemTools#opentextfile) with *create* **False**.
 
 <!-- test: AttributeTests.OpenAsTextStream_ForWriting_EmptiesFile, AttributeTests.OpenAsTextStream_ForAppending_KeepsText -->
-> [!WARNING]
+> [!WARNING] 1.9.0.0
 > **ForWriting** empties the file when the stream is opened. Use **ForAppending** to add to it.
 
 ### Refresh

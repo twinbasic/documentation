@@ -178,7 +178,7 @@ Syntax: **ToolsArray.SliceByteArray** ( *Arr* **,** *StartPos* [ **,** *EndPos* 
 
 Returns a new **Byte** array, from 0, with the bytes from *StartPos* to *EndPos*. The positions are not checked against the array. The function copies with **RtlMoveMemory**, so a position outside the array makes it read memory that does not belong to the array.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > When *EndPos* is equal to *StartPos*, the function does not return the one byte. It returns an array with one element, holding 0, as it does when *EndPos* is less than *StartPos*; the test in the source is a strict "less than". [**SliceLongArray**](#slicelongarray) does not have this error.
 
 ```tb check_build check_run

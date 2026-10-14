@@ -40,7 +40,7 @@ The color is a plain number. A system color constant such as `vbButtonFace` (`&H
 
 The object keeps 16 custom colors, numbered 0 to 15, for the 16 custom boxes of the dialog. They start as the colors of **QBColor**(0) to **QBColor**(15) and last as long as the object does, so a second dialog of the same object shows the custom colors that the first one left. Nothing is saved to the registry or to a file.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The **Add to Custom Colors** button of the expanded dialog writes into the custom colors of the object at once. Choosing **Cancel** afterwards leaves [**Color**](#color) unchanged but keeps the added custom color. [**Reset**](#reset) restores the 16 starting colors.
 
 ## Properties

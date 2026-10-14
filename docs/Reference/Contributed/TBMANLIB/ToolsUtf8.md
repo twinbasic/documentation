@@ -56,7 +56,7 @@ Syntax: **ToolsUtf8.DecodeToByteArray** ( *Utf* ) **As Byte()**
 
 The conversion produces two bytes for each character of the text, but the array that the function returns is resized to a length in bytes equal to the number of characters, so it holds the first half of the converted bytes only.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The result is cut off without an error. For the five UTF-8 bytes of the text `caf` followed by the letter e with an acute accent, which is four characters and eight UTF-16 bytes, the array has four bytes. To get the whole text as UTF-16 bytes, convert with [**Decode**](#decode) and assign the string to a **Byte** array.
 
 ```tb check_build check_run

@@ -33,7 +33,7 @@ If `RegCreateKeyEx` fails (for example, due to insufficient permissions), the fu
 
 The value is stored as a little-endian 32-bit integer, which is the standard **REG_DWORD** format on Windows. To read the value back, use [**ReadDWORD**](ReadDWORD).
 
-> [!IMPORTANT]
+> [!IMPORTANT] 1.0.1.1
 > Writing to keys under `HKEY_LOCAL_MACHINE` typically requires the process to be running with elevated (administrator) privileges. Attempting to write without the necessary rights causes `RegCreateKeyEx` to fail and **WriteDWORD** to return **False**.
 
 ### Example

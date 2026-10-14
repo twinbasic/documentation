@@ -16,7 +16,7 @@ Syntax: *object*.**ReturnString** ( [ *Conversion* ] ) **As String**
 
 **ReturnString** passes the internal byte array held by the **cRes** instance to the **StrConv** function and returns the result. The byte array is the raw data loaded by a prior call to [**Read**](Read).
 
-> [!NOTE]
+> [!NOTE] 1.0.0.4
 > The right value for *Conversion* depends on the encoding of the resource data. For ANSI text, use the default **vbUnicode**. For UTF-8 text, pass **vbFromUTF8**. **vbFromUnicode** converts in the opposite direction (a **String** to the ANSI code page), so it does not suit a byte array. **ReturnString** has no option for UTF-16 LE text: assign the array from [**ReturnBytes**](ReturnBytes) to a **String** variable instead. A constant that does not match the encoding of the resource gives the wrong characters.
 
 ### Example

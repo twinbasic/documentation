@@ -16,7 +16,7 @@ Finds and calls the members of an automation object by name or by dispatch ident
 
 The declaration is complete: it has all four methods of the Windows interface. Each is a **Sub** that hides the HRESULT: a failure code raises a run-time error, and a success code other than `S_OK` is read with [**Err.LastHresult**](../../../Modules/ErrObject/LastHresult). The interface identifiers are the package's [OLECLSID](OLECLSID). **Invoke** takes its three structure parameters as pointers (**LongPtr**): the address of an [OLEDISPPARAMS](OLEDISPPARAMS), of a **Variant** and of an `EXCEPINFO` structure, from [**VarPtr**](../../../Modules/Information/VarPtr), or 0 where the parameter is optional.
 
-> [!NOTE]
+> [!NOTE] 1.0.10.0
 > The package has no declaration named **IDispatch**. A variable declared `As IDispatch` has the type of **stdole**, and a call through it is late-bound by name, so the four methods are not reached. To reach them, assign the object to an **IDispatchUnrestricted** variable. The assignment asks the object for the **IDispatch** interface, and it accepts an **Object** variable and a **stdole.IDispatch** variable alike. [IOleControlSite.GetExtendedControl](IOleControlSite#getextendedcontrol) returns a **stdole.IDispatch**.
 
 ```tb check_build

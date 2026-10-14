@@ -284,7 +284,7 @@ Debug.Print Tests.Run()    ' mine
 > Debug.Print JsonError.HasError                            ' False
 > ```
 
-> [!NOTE]
+> [!NOTE] 1.0.15.0
 > The package has three more problems, each of which is an error that the reader cannot miss.
 >
 > - **Numbers must fit a Decimal.** [**Parse**](Json#parse) rejects a valid JSON number with the error `InvalidNumber` when its digits make a whole number above 79228162514264337593543950335, or its scale is outside -28 to 28, so `1e29`, `1e-29`, a number of 36 digits such as pi, and the largest **Double**, `1.7976931348623157e308`, are errors. [**Serialize**](Json#serialize) fails the same way for a **Double** above that range. RFC 8259 allows an implementation to limit the range of numbers.

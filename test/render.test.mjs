@@ -433,6 +433,10 @@ describe("callout labels", () => {
     assert.equal(title(src, { packageVersion: "1.0.0.4" }), `Warning ${tag("1.0.0.4")}`);
     assert.throws(() => title(src, { packageVersion: "1.0.0.5" }), /section documents 1\.0\.0\.5/);
     assert.throws(() => title(src, { packageVersion: "" }), /no section/);
+    // In a package section a callout has a label, and a build alone is one.
+    assert.throws(() => title("> [!NOTE]\n> body\n", { packageVersion: "1.0.0.4" }), /has a label: 1\.0\.0\.4/);
+    assert.equal(title("> [!NOTE] BETA 1005\n> body\n", { packageVersion: "1.0.0.4" }), `Note ${tag("BETA 1005")}`);
+    assert.equal(title("> [!NOTE]\n> body\n", { packageVersion: "" }), "Note");
     // Left out, as the code-region gate's sweep leaves it, it is not checked.
     assert.equal(title(src), `Warning ${tag("1.0.0.4")}`);
   });

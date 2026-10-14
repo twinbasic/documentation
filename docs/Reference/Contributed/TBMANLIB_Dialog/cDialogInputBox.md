@@ -423,7 +423,7 @@ Syntax: *object*.**ShowInteger** ( *prompt* [ , *title* [ , *defaultValue* ] ] )
 
 Sets the three properties that correspond to the arguments, [**Validation**](#validation) (**Integer**) and [**AllowEmpty**](#allowempty) (**False**), calls [**ShowDialog**](#showdialog) and returns [**Value**](#value) as a **Long**. A cancelled box returns 0, which is also a possible entry, so test [**Cancelled**](#cancelled). The text `1e3` passes and returns 1000.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > A text that passes the check but that a **Long** cannot hold, such as `99999999999`, raises error 6 after the box has closed. [**Value**](#value) then holds the text.
 
 ```tb check_build

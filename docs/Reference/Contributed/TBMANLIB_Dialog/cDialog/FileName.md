@@ -24,7 +24,7 @@ Syntax: *object*.**FileName** [ = *string* ]
 
 **After a dialog.** A **ShowSave** or **ShowOpen** that the user confirms stores the path it returns in **FileName**. For a [**MultiSelect**](MultiSelect) selection of several files, which **ShowOpen** returns as an array, **FileName** becomes an empty string. A cancelled dialog leaves **FileName** as it was, and [**ShowBrowseForFolder**](ShowBrowseForFolder) neither reads nor changes it.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > Because a confirmed dialog stores the full path, the next **ShowOpen** or **ShowSave** passes that path as the initial file name. Set **FileName** to an empty string, or call [**Reset**](Reset), to start without it.
 
 **Length.** The buffer of **ShowSave** holds 260 characters. A **FileName** of up to 259 characters opens the dialog normally. A **FileName** of exactly 260 characters shows no dialog and returns an empty string at once, without an error, as a cancel does. A **FileName** of 261 characters or more raises run-time error 5, *Invalid procedure call or argument*, before any dialog. The buffer of **ShowOpen** holds 260 characters, or 32,768 when **FileName** is not empty or [**MultiSelect**](MultiSelect) is **True**. A **FileName** of 32,768 characters or more is not used by **ShowOpen**.

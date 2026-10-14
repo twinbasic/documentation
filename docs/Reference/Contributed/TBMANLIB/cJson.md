@@ -177,7 +177,7 @@ Returns the object itself, so a call can be followed by a member: `J.Decode(Text
 
 A text that begins with `{` replaces [**RootItem**](#rootitem), and a text that begins with `[` replaces [**RootItems**](#rootitems). An empty text changes nothing in the document.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.29
 > Only spaces are removed from the start of the text before it is checked for `[`. A text that has a line break or a tab in front of its `[` is taken for an object, and the array that it holds cannot be stored in **RootItem**: the call raises the error *No such interface supported* (-2147467262), with the source `DECODE`.
 
 ```tb check_build check_run
@@ -224,7 +224,7 @@ The text is built by [ConvertToJson](../VBA_JSON/JsonConverter/ConvertToJson) an
 
 If the value written has no items, nothing is converted and the function returns [**RootText**](#roottext) as it was: the text of the last call, or an empty string for a new or cleared object. It does not return `{}` or `[]`.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > With *FromUnicode* set to **True**, the conversion looks for the two characters `\u` anywhere in the text, without regard for the escape that comes before them. A value that holds a backslash followed by the letter `u`, such as `C:\users`, is written by the converter as `C:\\users`, and the conversion meets `\u` in it and tries to read `sers` as four hexadecimal digits. That raises error 13.
 >
 > Control characters other than tab, line feed, carriage return, backspace and form feed also come back as the raw characters, which are not valid in JSON text.
@@ -277,7 +277,7 @@ Syntax: *object*.**LoadFrom** ( *Path* [ **,** *CharSet* ] ) **As cJson**
 
 The file is read by [**ToolsStream.LoadFileAsText**](cToolsStream#loadfileastext) and the text goes to [**Decode**](#decode), so its rules and errors apply. Returns the object itself.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > **ToolsStream.LoadFileAsText** leaves the shared stream open, and raises error 3705, *Operation is not allowed when the object is open*, when it finds it open. A **LoadFrom** therefore fails after any earlier **LoadFrom** or [**SaveTo**](#saveto) of the program, and after a file that could not be opened. See [**cToolsStream**](cToolsStream). `ToolsStream.Inst.Close` after each call makes the next one work.
 
 ### NewItem
@@ -356,7 +356,7 @@ Syntax: *object*.**SaveTo** ( *FileName* [ **,** *CharSet* ] [ **,** *Whitespace
 
 The text is made by [**Encode**](#encode) of the object's [**Root**](#root), so the rules of that method apply, among them that an empty document writes the text of an earlier call. The function returns the text that it wrote to the file. A file written with the character set `UTF-8` begins with the byte order mark EF BB BF.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > **ToolsStream.SaveFileAsText** leaves the shared stream open and, when it finds it open, writes over the text that is still in it. After a first **SaveTo**, a second one with a shorter document, in the same or another file, writes the new text with the end of the old text after it, which is not valid JSON: saving `{"a":"long long"}` and then `{"b":1}` leaves `{"b":1}ong long"}` in the second file. No error is raised. See [**cToolsStream**](cToolsStream). `ToolsStream.Inst.Close` after each call avoids it.
 
 ```tb check_build check_run

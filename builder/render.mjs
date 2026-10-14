@@ -1795,7 +1795,8 @@ const ADMONITION_RE =
 //
 // A label that does not parse, or names a package version other than the one
 // the page's section documents (`packageVersion`), throws: the build stops and
-// names the callout. `packageVersion` is "" for a page in no package section;
+// names the callout. So does a callout with no label in such a section.
+// `packageVersion` is "" for a page in no package section;
 // left out, as the code-region gate's sweep leaves it, versions go unchecked.
 export function rewriteAdmonitions(src, md, { packageVersion } = {}) {
   if (!md) throw new TypeError("rewriteAdmonitions: pass the site's markdown-it instance");

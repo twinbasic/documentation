@@ -24,7 +24,7 @@ Debug.Print Left$(pw, 1) Like "[A-Za-z]"     ' True
 
 A property of a recipe checks nothing when it is set. A value that cannot be used, such as a **Length** of 0, is found when the recipe is passed to **Generate** or **Entropy**, and is reported there as an error code.
 
-> [!IMPORTANT]
+> [!IMPORTANT] 1.0.8.0
 > Assigning a property on the predeclared object itself raises run-time error 5, *Invalid procedure call or argument*, with the source `PwGenOptions` and the message *PwGenOptions (default instance) is a factory. Use Alphanumeric, Complex, Passphrase, Pin, or Hex.* Create a recipe first and assign the properties of that.
 >
 > ```tb check_build check_run

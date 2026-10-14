@@ -68,7 +68,7 @@ Without a sample, the four sample tests print `[SKIP]` and the summary ends with
 
 A *samplePath* that does not exist prints `Sample not found: ` and the path. No test runs.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > An empty *samplePath* does not make the method fail. With 20 of the 20 tests that run passed and 4 skipped, it returns **True**. Pass a project file to run all 24.
 
 ## Example

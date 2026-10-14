@@ -45,7 +45,7 @@ Syntax: **ToolsStr.IsEmptyEx** ( *Text* ) **As Boolean**
 
 Returns **True** when *Text* has no characters left after [**TrimEx**](#trimex) removes the spaces, tabs, line breaks and other control characters at both ends.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The parameter is passed by reference and the function assigns the trimmed text to it, so a variable that is passed is changed: after `IsEmptyEx(t)`, **t** holds the trimmed text. Pass an expression, such as `(t)`, to keep the variable as it is.
 
 ```tb check_build check_run
@@ -152,7 +152,7 @@ Syntax: **ToolsStr.GetLastChar** ( *Txt* [ **,** *Length* ] ) **As String**
 *Length*
 : *optional* A **Long**, 1 by default.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The code of this function is a copy of the code of [**GetFirstChar**](#getfirstchar): it searches from the start of the text, and returns the first visible character, not the last. `GetLastChar("abc")` returns `a`.
 
 ```tb check_build check_run
@@ -377,7 +377,7 @@ Syntax: **ToolsStr.UniVbCrLf** ( *Text* ) **As String**
 
 An empty string is returned as it is. A string that has only carriage returns, or only the pairs carriage return and line feed, is converted as expected.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > A line feed that is not part of a pair becomes a carriage return and **two** line feeds. The function turns each line feed into a pair, and then turns the carriage return of that pair into a pair again. `"a" & vbLf & "b"` comes out as `"a" & vbCr & vbLf & vbLf & "b"`, five characters.
 >
 > The function also uses the three characters `@@@` as a marker while it works, so a text that holds `@@@` has it replaced by a line break.
@@ -473,7 +473,7 @@ Syntax: **ToolsStr.SplitLinesToCollection** ( *Text* ) **As Collection**
 
 Returns a new **Collection** that holds one string for each line, numbered from 1. Lines end at a carriage return and line feed (**vbCrLf**) only. A line feed or a carriage return alone does not end a line: the lines of a text from another system stay in one item. An empty text gives an empty collection. A text that ends with **vbCrLf** gives an empty last item.
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The loop stops when its position is equal to the length of the text, which is the position of the last character. When the last line has exactly one character, the loop stops before it and the line is lost: `"a" & vbCrLf & "b"` gives one item, `a`, and the text `"a"` gives none. A last line of two or more characters is kept.
 
 ```tb check_build check_run

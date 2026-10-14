@@ -121,7 +121,7 @@ A handler is written for a variable declared with **WithEvents**. A timer that b
 
 The class keeps every running timer in a collection of the module **mTimer**, by the number that Windows gives the timer, and the callback that Windows calls, **mTimer.TimerProc**, finds the object there and raises its event. The module belongs to the package's internal code and has no page; a program does not call it.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.29
 > The collection holds a reference to each running timer. A **cTimer** that is enabled is therefore not destroyed when the program releases its last reference: it stays registered and goes on running until [**Enabled**](#enabled) is set to **False**. A timer that was never enabled is destroyed as usual, and the timer of a destroyed object is stopped.
 
 ## See Also

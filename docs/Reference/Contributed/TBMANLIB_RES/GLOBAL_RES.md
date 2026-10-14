@@ -22,7 +22,7 @@ Public Res As New cRes
 
 Because of **As New**, the instance is created automatically the first time **Res** is referenced. It provides the same interface as a manually constructed **cRes** instance: [**Read**](cRes/Read), [**ReturnBytes**](cRes/ReturnBytes), [**ReturnString**](cRes/ReturnString), [**ReturnHex**](cRes/ReturnHex), [**ReturnBase64**](cRes/ReturnBase64), and [**ReturnPicture**](cRes/ReturnPicture).
 
-> [!NOTE]
+> [!NOTE] 1.0.0.4
 > **GLOBAL_RES.Res** is a single shared instance for the entire project. Calling **Res.Read** replaces its internal byte buffer. If multiple callers read different resources in the same execution path, use separate **cRes** instances rather than sharing **GLOBAL_RES.Res**.
 
 ## Example

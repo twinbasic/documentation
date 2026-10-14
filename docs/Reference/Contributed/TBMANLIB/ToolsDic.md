@@ -83,7 +83,7 @@ Syntax: **ToolsDic.OverWrite** ( *DistDic* **,** *srcDic* [ **,** *OnlyKey* ] )
 
 Where a value of *srcDic* is an object, the method calls itself for that key with the two objects, so the nested dictionary of *DistDic* is updated in place and not replaced. A value that is not an object is assigned.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.29
 > With *OnlyKey* set to **False**, a nested dictionary of *srcDic* whose key *DistDic* does not have makes the recursive call receive an empty value for the missing key, where it needs a dictionary. The call raises error 424, *Object required*, and *DistDic* keeps the key that was looked up, with the value **Empty**.
 
 ```tb check_build check_run

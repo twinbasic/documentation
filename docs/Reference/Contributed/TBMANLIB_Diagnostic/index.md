@@ -69,7 +69,7 @@ A result can also be read directly, without a formatter. Each [item](KeyValuePai
 ## What a report contains
 {: #what-a-report-contains }
 
-> [!NOTE]
+> [!NOTE] 1.0.0.1
 > A full report names the user and the computer, the folders in the environment variables such as `USERPROFILE` and `PATH`, every running program, the drives, and the names and IPv4 addresses of the network adapters. Read a report before it goes to someone else.
 
 ## Failures

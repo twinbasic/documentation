@@ -262,7 +262,7 @@ A **String**. Assigning to it reads the text as [**Parse**](#parse) does and rep
 
 Assigning an empty string is not an error, unlike **Parse** with an empty string: it gives an initialised document with no nodes.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.1
 > Assigning text that the parser cannot read raises an error, where **Parse** returns **False** for the same text. Assigning `<` raises error 5, *Invalid procedure call or argument*. The text is kept, so reading the property returns it.
 
 ```tb check_build check_run
@@ -508,7 +508,7 @@ When this object holds no document, it becomes a copy of the whole of *otherXml*
 
 The copies have no **Parent**; see [Clone, Merge and the root element](#defect-clone).
 
-> [!NOTE]
+> [!NOTE] 1.0.0.1
 > **Merge** with **Nothing** as *otherXml* raises error 91, *Object variable or With block variable not set*, because the code tests the object and its property in one expression.
 
 ```tb check_build check_run
@@ -1100,7 +1100,7 @@ Each of these sections describes a case in which the package gives a wrong resul
 ### Self-closing elements
 {: #defect-self-closing .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > A self-closing tag is read wrongly. `<a/>`, a name and nothing else, makes an element named `/a`. A tag with attributes, or with a space before the slash, such as `<a x="1"/>` or `<a />`, is read as a start tag, so the elements that follow it become its children, and the end tag of the parent closes it. [**ToXmlString**](#toxmlstring) writes an empty element as `<a/>`, so text that a **cXml** wrote is read wrongly by a **cXml**.
 
 ```tb check_build check_run
@@ -1128,7 +1128,7 @@ Debug.Print y.RootElement.ChildNodes(1).Name
 ### Entities and character references
 {: #defect-entities .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > Entities in text are not decoded. [**GetElementText**](#getelementtext) and the **Value** of a text node return `&amp;`, `&lt;` and `&#65;` as they stand in the XML, and [**ToXmlString**](#toxmlstring) escapes the `&` again, so each read and write adds `amp;`. In the value of an attribute the five predefined entities `&lt;`, `&gt;`, `&amp;`, `&quot;` and `&apos;` are decoded, in that order, so `&amp;quot;` becomes a quotation mark. Numeric character references such as `&#65;` and `&#x41;` are not decoded anywhere.
 
 ```tb check_build check_run
@@ -1149,7 +1149,7 @@ Text set with [**SetElementText**](#setelementtext) or [**SetAttribute**](#setat
 ### Tags
 {: #defect-tags .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > A tag is cut apart with plain searches, so these valid forms give wrong attributes and no error. A tag that uses both kinds of quote loses an attribute: the first double quote is taken as the start of the first value, even when a single-quoted value comes before it. A `>` inside an attribute value ends the tag at that point, and the rest of the value becomes text. A line break between two attributes becomes the name of an attribute, and the real name is lost. A line break between the element name and the first attribute becomes part of the element's name. An attribute with no value takes the value of the next one.
 
 ```tb check_build check_run
@@ -1181,7 +1181,7 @@ A tab between the attributes is read correctly, and so is a space around the `=`
 ### Comments, CDATA sections and declarations
 {: #defect-declarations .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > **Parse** never returns for text that holds a comment with no `-->`, a CDATA section with no `]]>`, or a `<!` declaration such as `<!DOCTYPE`, unless the declaration comes first in the text. A `<!` item that is not a comment or a CDATA section is skipped up to the next `?>` anywhere later in the text, which discards everything between, or, when there is none, up to the first `>` of the whole text, which is the end of the item itself only when the item is the first thing in the text. In every other position the search goes back to an earlier `>`, and the parser reads the item again, without end. A processing instruction `<?target data?>` is skipped, but the `>` that ends it stays behind as a text node.
 
 These calls return, and show how a processing instruction and a DOCTYPE declaration are read:
@@ -1216,7 +1216,7 @@ x.Parse "<root><!DOCTYPE x><a>1</a></root>"
 ### Malformed text and failed parses
 {: #defect-malformed .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > A **Parse** that returns **False** has already thrown away the previous document. The document is replaced before the text is read, so it holds what was read before the failure, which is nothing when the failure is at the start. [**Initialized**](#initialized) is not changed, so after a failed **Parse** into an object that held a document, the path members work on the part that was read.
 
 ```tb check_build check_run
@@ -1236,7 +1236,7 @@ Debug.Print "[" & x.GetElementText("a") & "]"
 ### White space
 {: #defect-whitespace .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > **Parse** leaves out a text node that holds only spaces, and keeps one that has a line break or a tab in it. A space between two elements is lost: `<p><b>a</b> <i>b</i></p>` is read as `<p><b>a</b><i>b</i></p>`, and its text is `ab`. An element that holds only spaces is read as an empty element. The white space of an indented document is kept, because it holds line breaks.
 
 ```tb check_build check_run
@@ -1266,7 +1266,7 @@ Text set with [**SetElementText**](#setelementtext) is kept whatever it holds, s
 ### Pretty printing
 {: #defect-pretty .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > A document written with *prettyPrint* **True** does not read back as the document that was written. The line breaks and the indentation around the text of an element are text to the parser, which keeps white space that has a line break in it. [**GetElementText**](#getelementtext) of the element returns them, and writing the document again with *prettyPrint* puts them on lines of their own, so the text changes each time the document is written and read.
 
 ```tb check_build check_run
@@ -1294,7 +1294,7 @@ Debug.Print Replace(Replace(s, " ", "."), vbCrLf, "|")
 ### Clone, Merge and the root element
 {: #defect-clone .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > The nodes that **Clone** copies and **Merge** adds have no **Parent**, so [**RemoveElement**](#removeelement) returns **False** for them and removes nothing. [**RootElement**](#rootelement) is set only when a document is read, created or cloned, so it keeps naming the old root after **RemoveElement** removes the root element and after **Parse** reads text that has no element. A **Merge** into an object that holds no document sets [**Initialized**](#initialized) and leaves **RootElement** **Nothing**, so later merges into it do nothing.
 
 ```tb check_build check_run
@@ -1327,7 +1327,7 @@ Debug.Print c.Initialized & " " & (c.RootElement Is Nothing)
 ### A byte order mark in a string
 {: #defect-bom .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > [**Parse**](#parse) and the [**XmlString**](#xmlstring) property cut three characters from the start of a string that begins with the character U+FEFF, the character that a byte order mark decodes to. Only the first of the three is the mark: the next two are the start of the document. [**LoadFromFile**](#loadfromfile) removes the mark from the bytes of the file first, so a file is not affected.
 
 ```tb check_build check_run
@@ -1341,7 +1341,7 @@ Debug.Print x.RootElement.Name
 ### Files
 {: #defect-files .no_toc }
 
-> [!WARNING]
+> [!WARNING] 1.0.0.1
 > **LoadFromFile** creates an empty file when the path names a file that does not exist, before it returns **False**. It returns **True** after the text of an existing file fails to parse, since the result of **Parse** is not tested. **SaveToFile** writes UTF-8 whatever [**Encoding**](#encoding) says, so a document labelled with another encoding is mislabelled in the file.
 
 ```tb check_build check_run

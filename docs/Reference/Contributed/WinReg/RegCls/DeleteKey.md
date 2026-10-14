@@ -19,7 +19,7 @@ Syntax: *object*.**DeleteKey** ( *RootKey*, *KeyPath* )
 
 Returns **True** if the key was deleted successfully, or **False** if the call failed.
 
-> [!IMPORTANT]
+> [!IMPORTANT] 1.0.1.1
 > The underlying Win32 `RegDeleteKey` call succeeds only when the target key has no subkeys. If the key contains subkeys, the call returns **False**. Use [DeleteKeyEx](DeleteKeyEx) to remove a key together with all its subkeys and values.
 
 ### Example

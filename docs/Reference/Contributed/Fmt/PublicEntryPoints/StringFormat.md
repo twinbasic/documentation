@@ -44,10 +44,10 @@ The syntax of a format item, the identifiers and the escape sequences are in the
 
 An item is found again in the text by the text that [**ToString**](../StringFormatSpecifier/ToString) rebuilds from its parts. An item written with a leading zero in its index or alignment (`{00}`, `{0,08}`) or with an alignment of zero (`{0,0}`) is found by the pattern but not by the rebuilt text, and stays in the result unchanged.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.0
 > The function is not .NET's **String.Format**, and it departs from it in several ways. Doubled braces do not escape a brace: `{{0}}` with the value `5` gives `{5}`. An index must be a number, and an item such as `{name}` raises error 13, *Type mismatch*. A value that no item uses is an error. Custom .NET format strings such as `{0:yyyy-MM-dd}` or `{0:#,##0.0}` are not understood, and give *Invalid format string*; the identifier `C` for a date takes a **Format$** string instead. The identifier `N` does not exist. A precision is a number of decimal places, not of significant digits. See the [package overview](../#differences-from-net) for the full list.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.0
 > The results come from **Format$**, so the decimal separator, the thousands separator and the layout of dates and times follow the Windows regional settings. The output shown on this page is for an English (United States) system.
 
 ## Example

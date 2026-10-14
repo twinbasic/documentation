@@ -470,7 +470,7 @@ Syntax: *object*.**AddHours** ( *hours* )
 
 Adds the hours to the time of day, and moves the date forward or back by the days that this passes.
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The class works in seconds in a **Long**, so a value of about 596,000 hours (68 years) or more, in either direction, raises error 6 (*Overflow*). The date and time are left as they were.
 
 ```tb check_build check_run

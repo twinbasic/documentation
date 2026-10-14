@@ -22,7 +22,7 @@ Debug.Print JsonOptions.Rfc.Indent                        ' 4
 
 A property of an options object checks nothing when it is set. The value is used by the call that receives the object, and a call does not change the object.
 
-> [!IMPORTANT]
+> [!IMPORTANT] 1.0.15.0
 > Assigning a property on the predeclared object itself raises run-time error 5, *Invalid procedure call or argument*, with the source `JsonOptions` and the message *JsonOptions (default instance) is a factory. Use Rfc, Jsonc, Minified, or Pretty.* Create an options object first and assign the properties of that.
 >
 > ```tb check_build check_run

@@ -214,7 +214,7 @@ The method first sets [**LogSubDir**](#logsubdir), [**LogFileNameByUer**](#logfi
 
 Returns the line, or an empty string if its level is below [**LogLevelControl**](#loglevelcontrol).
 
-> [!WARNING]
+> [!WARNING] 1.0.0.29
 > The calls to the three other members do not pass the level of the line. They make the line again at the level **Info**. A line sent to a list box, a debugging tool or a web page is therefore labelled `INFO` whatever level **Save** was given, and when **LogLevelControl** is above **Info** it is not sent at all. The result of **Save** is the text that was made last: the `INFO` line, when one of the outputs sent it.
 
 ```tb check_build check_run
@@ -250,7 +250,7 @@ Syntax: *object*.**WebView** ( *LogStr* [ **,** *LogLevel* ] ) **As String**
 
 If [**WebUserCode**](#webusercode) is empty, nothing happens and the result is an empty string. Otherwise the line is sent in an asynchronous HTTP POST request, made with the late-bound object `WinHttp.WinHttpRequest.5.1`, to `http://log.vb6.pro/submit?code=` followed by **WebUserCode**, with the body `log=` followed by the line. The call does not wait for the answer and does not report whether the request worked. The result is the line, or an empty string if its level is below [**LogLevelControl**](#loglevelcontrol).
 
-> [!IMPORTANT]
+> [!IMPORTANT] 1.0.0.29
 > The request uses `http`, not `https`, and goes to a web site that is not part of the package: the code and the text of every line can be read by any computer on the way. Neither the code nor the line is URL-encoded, so a `&`, an `=`, a `%` or a `+` in the line changes what the site receives. Do not send lines that hold private data.
 
 ```tb check_build

@@ -28,7 +28,7 @@ Syntax: *object*.**ConvertValueToString**( *hKey*, *subkey*, *lType* )
 
 Returns a **String**. For string types the null terminator is stripped. For DWORD types the value is returned as an eight-digit hexadecimal string prefixed with `0x`. For binary data the return value is formatted as `Binary (N bytes): XX XX ...` where each byte is a two-digit uppercase hex pair separated by spaces. For any other type code the return value is `Unsupported type: N`.
 
-> [!WARNING]
+> [!WARNING] 1.0.1.1
 > This overload does not find the value. It passes `StrPtr(subkey)` to a parameter that `RegQueryValueEx` declares `ByVal` **String**, so the name that reaches the function is not *subkey*, the query fails with error 2 (file not found), and the overload returns an empty string for `REG_SZ`, `REG_EXPAND_SZ`, the DWORD types and `REG_BINARY`. Only the `Unsupported type: N` result for any other type code is as described. Overload 2 and [**EnumValues**](EnumValues) are not affected.
 
 ## Overload 2 -- convert from byte array
@@ -51,7 +51,7 @@ The two overloads cover different calling patterns. Overload 1 is meant for the 
 
 Overload 1 neither closes nor otherwise modifies *hKey*. When using Overload 1, open the key with at least `KEY_QUERY_VALUE` access and close it after all reads are complete.
 
-> [!NOTE]
+> [!NOTE] 1.0.1.1
 > Both overloads include `On Error Resume Next`, so a run-time error inside them is not raised to the caller. Overload 1 returns an empty string when the query fails. The source comments mark Overload 1 as not yet tested.
 
 ### Example

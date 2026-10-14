@@ -80,7 +80,7 @@ DeleteFolder work
 **Two modes.** Most encodings, UTF-8 among them, are read and written in pieces of 64 KB, and [**IsStreaming**](#isstreaming) is **True**. UTF-7 cannot be cut into pieces. A stream in UTF-7 holds the whole file in memory and [**IsStreaming**](#isstreaming) is **False**. Every member works in both modes.
 
 <!-- test: TextStreamTests.OpenTextFile_Utf7ReadOnlyFileForWriting_Opens, TextStreamTests.TextStreamClose_Utf7ReadOnlyFile_Raises70, TextStreamTests.TextStreamFlush_Utf7ReadOnlyFile_Raises70, TextStreamTests.OpenTextFile_Utf7ForWriting_KeepsTextUntilClose -->
-> [!NOTE]
+> [!NOTE] 1.9.0.0
 > A stream of this kind that is open for writing does not empty the file when it is opened: the file is replaced when the stream is closed or flushed. When the file is read-only, the stream opens without an error, the file keeps its text, and the first [**Flush**](#flush) or [**Close**](#close) fails with error 70.
 
 **Position.** [**Line**](#line) and [**Column**](#column) follow the characters that are read or written. Reading a line moves past its line ending.

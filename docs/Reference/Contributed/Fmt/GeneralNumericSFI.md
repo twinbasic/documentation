@@ -34,7 +34,7 @@ Debug.Print StringFormat("{0:g}", 12345.678)        ' 1.234568e4
 Debug.Print "[" & StringFormat("{0:G}", 3.14!) & "]"  ' []
 ```
 
-> [!NOTE]
+> [!NOTE] 1.0.0.0
 > **FormerStringFormat** treats a missing precision differently: it derives one from the count of digits after the decimal point in the value. `{0:G}` of `123.456` gives `123.46` there and `1.23456E2` here. See [FormerStringFormat](FormerEntryPoint/FormerStringFormat).
 
 ## Members

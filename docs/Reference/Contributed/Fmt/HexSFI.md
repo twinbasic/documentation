@@ -30,7 +30,7 @@ Debug.Print StringFormat("{0:X}", -1)      ' &HFFFF
 Debug.Print StringFormat("{0:X}", -1&)     ' &HFFFFFFFF
 ```
 
-> [!NOTE]
+> [!NOTE] 1.0.0.0
 > **FormerStringFormat** writes the `&H` prefix in upper case for both `X` and `x`, so `{0:x4}` of `255` gives `&H00ff` there and `&h00ff` here.
 
 ## Members

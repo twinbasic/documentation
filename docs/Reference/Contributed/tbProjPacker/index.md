@@ -36,7 +36,7 @@ Else
 End If
 ```
 
-> [!NOTE]
+> [!NOTE] 1.1.0.0
 > The package reads and writes the binary [file format](../../../../Features/Packages/File-Format) itself, as the Import/export tool's script does, and the format is an internal detail of the IDE that can change. [**Test**](ProjPacker/Test) with a project file as its argument parses that file, writes it again and compares the result, so it shows whether the package still understands the files of a given twinBASIC build.
 
 ## Output and errors

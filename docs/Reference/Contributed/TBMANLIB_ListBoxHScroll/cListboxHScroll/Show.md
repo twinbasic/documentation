@@ -22,10 +22,10 @@ Syntax: *object*.**Show** *ListBoxInst*
 
 After **Show** returns, the **ListBox** scrolls horizontally when any item is wider than the visible area.
 
-> [!IMPORTANT]
+> [!IMPORTANT] 1.0.0.1
 > **Show** must be called after the **ListBox** has been populated. If items are added or removed after the call, the horizontal extent is not updated automatically. Call **Show** again on the same control to recalculate the extent for the updated item list.
 
-> [!NOTE]
+> [!NOTE] 1.0.0.1
 > The subclass installed by **Show** is removed automatically when the class instance is destroyed (`Class_Terminate`). It can also be removed explicitly by calling [**UnShow**](UnShow).
 
 ### Example
