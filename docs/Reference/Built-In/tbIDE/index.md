@@ -4,7 +4,7 @@ parent: Built-In Packages
 nav_order: 11
 permalink: /tB/Packages/tbIDE/
 has_toc: false
-indexed_from: beta-x-0997
+indexed_from: beta-x-1005
 ---
 
 # tbIDE Package

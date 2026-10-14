@@ -20,11 +20,11 @@ The address is read directly with no bounds or alignment check. Reading from an 
 
 ### Example
 
-```tb check_build
+```tb check_build check_run
 Dim s As String = "ABC"
 Dim b As Byte
 GetMem1 StrPtr(s), b
-Debug.Print b              ' 65 — the low byte of the UTF-16 code unit for "A".
+Debug.Print b              ' 65 -- the low byte of the UTF-16 code unit for "A".
 ```
 
 ### See Also

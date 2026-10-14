@@ -21,13 +21,13 @@ If *varname* is not an array, **IsArrayInitialized** returns **False**.
 
 This example tests an array before and after **ReDim**, and again after **Erase** releases its storage.
 
-```tb check_build
+```tb check_build check_run
 Dim a() As Long
-Debug.Print IsArrayInitialized(a)     ' False — declared but unsized.
+Debug.Print IsArrayInitialized(a)     ' False -- declared but unsized.
 ReDim a(0 To 9)
-Debug.Print IsArrayInitialized(a)     ' True — dimensions allocated.
+Debug.Print IsArrayInitialized(a)     ' True -- dimensions allocated.
 Erase a
-Debug.Print IsArrayInitialized(a)     ' False — Erase released the storage.
+Debug.Print IsArrayInitialized(a)     ' False -- Erase released the storage.
 ```
 
 ### See Also

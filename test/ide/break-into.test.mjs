@@ -11,7 +11,7 @@
 // line (tb-lane.mjs), so a test that has asserted the crash clears the console,
 // and then restarts the compiler, which is what puts the IDE right again.
 //
-// Each test states what BETA 995 does. If one fails after an IDE update, the IDE
+// Each test states what BETA 1005 does. If one fails after an IDE update, the IDE
 // has changed: update the entry "After Break Into Code stops in DoEvents,
 // evaluating anything ends the program with an access violation" in
 // BUGS-TO-REPORT.md, or its report in bugs/filed/, and then this file.

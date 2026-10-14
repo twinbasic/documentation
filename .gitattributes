@@ -31,9 +31,11 @@ add-in/Resources/** -text
 bugs/** -text
 *.twinproj binary
 
-# The twinBASIC program in scripts/imagestrip/ is laid out as a reproducer is, and is
-# checked out byte for byte for the same reason: its .twinproj is packed from its src/.
+# The twinBASIC programs in scripts/imagestrip/ and scripts/impexp/ are laid out as a
+# reproducer is, and are checked out byte for byte for the same reason: each .twinproj is
+# packed from its src/.
 scripts/imagestrip/** -text
+scripts/impexp/** -text
 
 # The VB6 template `bug_repro.mjs new --with-vb6` copies into a reproducer's vb6/
 # is CRLF in every checkout, as the bugs/** files it becomes are, and VB6 needs it.

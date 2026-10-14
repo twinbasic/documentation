@@ -12,9 +12,7 @@
 // that nobody sees. OpenPackage puts the real hostAppObject back as it answers,
 // and every other read goes to the real HostReadFileDataBase64.
 //
-// Each test states what BETA 995 and 997 do; BETA 983 differs only in the
-// last, where twinbasic/twinbasic#2442 puts its compiler in a crash loop and
-// the IDE in Safe Mode. If a test fails after an IDE update,
+// Each test states what BETA 1005 does. If a test fails after an IDE update,
 // the IDE has changed: update the matching entry in BUGS-TO-REPORT.md or bugs/filed/ and the
 // two Packages pages under docs/Features/Packages, and then this file.
 //
@@ -44,8 +42,8 @@ const ALL_ROWS_JS = `[...document.querySelectorAll(".referencesListRow")].map((r
 // The compiler's requests still waiting for an answer.
 // The sequence numbers of the compiler socket's requests still awaiting an
 // answer. Loading the References page is waited for by the requests sent after
-// it was opened: a request older than that may never be answered (BETA 983
-// leaves one from the IDE's start), and the page loads regardless.
+// it was opened: a request older than that may never be answered,
+// and the page loads regardless.
 const WAITING_JS = `JSON.stringify(Object.keys(debugSocket.requestsAwaitingResponse))`;
 // The IDE keeps only the callback of a request awaiting its answer, so the
 // command of each request is recorded by sequence number as it is sent: a page
@@ -403,8 +401,7 @@ scenario("Replacing an embedded package", (lane) => {
     assert.equal(r.second, 2, "v2 does not run after the second Apply");
   });
 
-  // BETA 995, as BETA 983 by hand: the one Apply writes only the line "Project
-  // settings updated". The compiler is not restarted and nothing is saved, and
+  // The one Apply writes only the line "Project settings updated". The compiler is not restarted and nothing is saved, and
   // the run still prints v1. The control above is what shows that the probe can
   // tell the two versions apart.
   test("one Apply after the untick, the import and the tick: no restart, no save, and v1 still runs", async () => {

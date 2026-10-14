@@ -41,7 +41,7 @@ Ten images under `docs/`, each for a stated reason:
 
 ## The IDE the tool drives
 
-Measured on BETA 997:
+Measured:
 
 - **Fixed device scale.** The IDE page otherwise takes the host's scaling (1.5 on the dev box:
   `body.scale150`, 22.67 px menu rows). `--force-device-scale-factor=1` in the WebView2 browser
@@ -186,8 +186,9 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
   Every add-in a setup loads has its `SaveSetting` key snapshotted, emptied and restored
   (`tbDocsHelp`, `GlobalSearchAddIn`).
 - **Jobs**: `--jobs N` (default 6) runs setups at once, each IDE on its own claimed ports and
-  private desktop, and splits the big setups into parts, longest first; a full run is about
-  200 s in both themes (the jobs add up to about 1,250 s per theme, so six IDEs cannot do much better).
+  private desktop, and splits the big setups into parts, longest first; a full run with `--svg` is
+  about 17 minutes in both themes on BETA 1005: the jobs add up to about 5,900 s, and the longest
+  part, `forms-chapter`, takes about 450 s on its own, so six IDEs cannot do much better.
   `--jobs 1` runs one IDE per setup in table order. Per-run
   state lives on the connection (`c.shot`), never in module variables.
 - **Diffs**: `--diffs <dir>` (never under `docs/`) writes, for each picture that differs from the
@@ -242,7 +243,7 @@ Exit codes: 0 every picture written or unchanged, 1 a picture failed, 2 the tool
 
 `Features/Images/IDE-FeatureMap.png` (2880x1800, setup `featuremap`, fixture
 `test/shots/featuremap/` FeatureTour) is a project-made full-IDE feature map. Twelve labels, each
-anchored to an element or code span; Problems is labelled Diagnostics, its 997 title. Sticky
+anchored to an element or code span; Problems is labelled Diagnostics, the panel's title. Sticky
 scroll, advanced hover info, inline hints, folding always shown and the debugger's memory figures
 are switched on in the page only; the memory figures, which change from run to run, are fixed in
 the page once real ones are shown, as History's times are.
@@ -577,8 +578,8 @@ Taken on BETA 1005.
 
 ## Project-setup pictures (owner)
 
-Project Settings, the panels, Project Explorer, Sample 6, Sample 15 and Global Search. In
-BETA 997 Sample 6's control images are in the CustomControls package's Miscellaneous folder, not
+Project Settings, the panels, Project Explorer, Sample 6, Sample 15 and Global Search.
+Sample 6's control images are in the CustomControls package's Miscellaneous folder, not
 the project's, and the tutorial says so.
 
 - **History's times are fixed in the page**, as the recent lists are, and its project is a
@@ -613,7 +614,7 @@ the project's, and the tutorial says so.
   package. `MyOwnIcon.ico` is the template's icon copied at run time. 8611d12a's panels are put
   in place by `restorePanelLayout` in the page and the default layout put back after; the crop
   stops at History's title bar (its entries carry the real time) and left of the IDE's title.
-  In 997 PROPERTIES is grouped by category only (Anchors in LAYOUT, WebView2's own properties in
+  PROPERTIES is grouped by category only (Anchors in LAYOUT, WebView2's own properties in
   GENERAL), and **a property's description is never shown at the panel's foot**: it goes to the
   designer's own `.proprtiesBoxFooter` inside the code panel, not the tool window -- a possible
   IDE defect, not reproduced or queued. The WebView2 tutorial points to the class reference

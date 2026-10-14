@@ -98,7 +98,7 @@ How items are arranged in icon / small-icon view. A member of [**ListArrangeCons
 ### BackColor
 {: .no_toc }
 
-The background color of the list area. **OLE_COLOR**. Default: **vbWindowBackground**.
+The background color of the list area. **OLE_COLOR**. Default: **vbWindowBackground**. Takes effect when the control is created and each time the property changes. When [**TextBackground**](#textbackground) is **lvwOpaque**, item text is drawn on this color too. A value that is not a color, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its color.
 
 ### BorderStyle
 {: .no_toc }
@@ -203,7 +203,7 @@ The [**ImageList**](../ImageList/) used for small icons in **lvwSmallIcon**, **l
 ### TextBackground
 {: .no_toc }
 
-Whether item-label text has an opaque background. A member of [**ListTextBackgroundConstants**](#listtextbackgroundconstants). Default: **lvwTransparent**.
+Whether item-label text has an opaque background. A member of [**ListTextBackgroundConstants**](#listtextbackgroundconstants). Default: **lvwTransparent**. Changing it repaints the list at once.
 
 ### View
 {: .no_toc }

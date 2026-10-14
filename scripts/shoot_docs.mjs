@@ -3244,10 +3244,12 @@ const lastReferenceBottom = (c) =>
 const settingsShots = [
   // the two compiler option sections at the end of the list
   settingsShot("LLVM/Images/llvmdoc1.png", {
-    prepare: (c) =>
-      c.evaluate(
+    async prepare(c) {
+      await templateBuildPath(c);
+      await c.evaluate(
         `(() => { const l = document.querySelector(${JSON.stringify(SETTINGS_LIST)}); l.scrollTop = l.scrollHeight; })()`,
-      ),
+      );
+    },
   }),
   settingsShot("Features/Images/4fc2bf99-2bec-4943-837d-21038d791574.png", {
     prepare: (c) => scrollToSetting(c, "compiler.traceFlags"),
@@ -4416,12 +4418,13 @@ const formShots = [
         }
         const history = await dockedRect(c, "HISTORY", ".sectionHeader");
         if (!history) throw new Error("the layout has no History panel");
-        return await capture(
-          c,
-          "8611d12a",
-          snapOut({ x: 0, y: 0, width: EXPLORER_CROP_WIDTH, height: history.y + history.height }),
-          { away: () => parkMouse(c) },
-        );
+        const clip = snapOut({ x: 0, y: 0, width: EXPLORER_CROP_WIDTH, height: history.y + history.height });
+        // the striped ground under the form, at the foot of the crop, differs by a grey level
+        // in a pixel or two from one capture to the next
+        return await capture(c, "8611d12a", clip, {
+          away: () => parkMouse(c),
+          unsteady: await groundUnsteady(c, clip),
+        });
       } finally {
         await defaultLayout(c);
       }
@@ -4445,7 +4448,7 @@ const formShots = [
     // Web1 in PROPERTIES, floating, with its GENERAL group, where the WebView2 control's own
     // properties are, from the top of the list to its end. The control draws nothing in the
     // designer: it has no DocumentURL, so no page is loaded. (The old picture had a property's
-    // description at the foot of the panel: in BETA 997 the panel shows none, and the
+    // description at the foot of the panel: the panel shows none, and the
     // description is only the native tooltip of the property's name, which no capture holds.)
     out: "Tutorials/WebView2/Images/tbWebView2Properties.png",
     setup: "settings-webview2",
@@ -9265,7 +9268,7 @@ async function startFusion(run) {
 }
 
 // The DEBUG CONSOLE as the project's load leaves it, the line that says the host was built its
-// only one in BETA 997, floated on its own. A line before it would name the lane's folder: the
+// only one, floated on its own. A line before it would name the lane's folder: the
 // user's name is replaced in the console's text in the page, as for the LIMITED picture's
 // restart line, and the panel is sized to show the last line, which the console scrolls to.
 const fusionShot = {

@@ -4,7 +4,7 @@
 // exports into, and every folder a junction in one points to, is inside the
 // lane's work folder: one of the behaviours tested deletes through a junction.
 //
-// Each test states what BETA 983 and 995 do. If one fails after an IDE update,
+// Each test states what BETA 1005 does. If one fails after an IDE update,
 // the IDE has changed: update the matching entry in BUGS-TO-REPORT.md or
 // bugs/filed/, and then this file.
 //
@@ -74,7 +74,6 @@ scenario("Export Project", (lane) => {
   });
 
   test("a junction in the export folder is not followed, and its target is kept", async () => {
-    // BETA 995 and earlier emptied the target (twinbasic/twinbasic#2456, fixed in 997).
     const out = path.join(root, "junction");
     const outside = path.join(root, "outside");
     mkdirSync(out);

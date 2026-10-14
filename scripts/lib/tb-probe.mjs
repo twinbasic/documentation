@@ -6,14 +6,11 @@
 //   * A wrapper. The attribute moves from the probe's Sub to a Sub appended to
 //     the same module, which calls the probe's Sub and then prints SENTINEL. A
 //     probe that stops before it returns -- End, or an error that ends the run
-//     without a word, as an unhandled one raised in LLVM-compiled code does on
-//     BETA 995 -- leaves no SENTINEL, which is how tbrun tells it from one that
+//     without a word, as an unhandled one does on BETA 1005 in LLVM-compiled
+//     and in plain code alike -- leaves no SENTINEL, which is how tbrun tells it from one that
 //     finished. Appended to the same module, so a Private probe Sub can be
 //     called. The attribute is blanked to spaces rather than deleted, so every
-//     line and column a diagnostic names is still the caller's. The wrapper
-//     does not help a module that also holds a procedure named like the
-//     module: twinBASIC does not run the hook then, and wrapProbe reports the
-//     procedure as `clash` so that tbrun can refuse the probe.
+//     line and column a diagnostic names is still the caller's.
 //   * The TbRun module, whose Out writes a line where the run can read it: the
 //     DEBUG CONSOLE in the IDE, and standard output in a built exe, where
 //     Debug.Print writes nothing. The wrapper tells it which: it sets IDE_FLAG
@@ -27,7 +24,7 @@ export const TBRUN_FILE = "TbRun.twin";
 export const IDE_FLAG = "tbrun_InIDE";
 
 // Lines the IDE prints after the probe's own run has returned. A probe that
-// leaves a form loaded gets this one after SENTINEL (measured, BETA 983 and 995).
+// leaves a form loaded gets this one after SENTINEL (BETA 1005).
 const AFTER_RETURN_RE = /^\[DEBUGGER\] Waiting for remaining forms to close\.\.\.$/;
 
 /**
@@ -47,7 +44,6 @@ const SUB_RE = new RegExp(
   `^[ \\t]*(?:(?:${MODIFIERS})[ \\t]+)*Sub[ \\t]+(\\w+)[ \\t]*(?:\\([ \\t]*\\))?[ \\t]*(?:'.*)?$`,
   "i",
 );
-const PROCEDURE_RE = new RegExp(`^[ \\t]*(?:(?:${MODIFIERS})[ \\t]+)*(?:Sub|Function)[ \\t]+(\\w+)`, "gim");
 const SKIPPED_RE = /^[ \t]*(?:'.*|\[[^\]]*\][ \t]*)?$/;
 const CONTAINER_RE = new RegExp(
   `^[ \\t]*(?:(?:${MODIFIERS})[ \\t]+)*(Module|Class|CoClass|Interface)[ \\t]+(\\w+)`,
@@ -61,10 +57,8 @@ const TBRUN_MODULE_RE = /^[ \t]*(?:(?:Public|Private)[ \t]+)?Module[ \t]+TbRun\b
  *
  * @param {{name: string, text: string}[]} files  the .twin files under the tree's Sources/, each named by its
  *   path there
- * @returns {{files: {name: string, text: string}[], wrapped: {file: string, module: string, sub: string, clash?: string} | null, why?: string}}
- *   the files to write (changed or new), what was wrapped, and why nothing was.
- *   `clash` names a Sub or Function of the hook's module that has the module's
- *   own name, which stops the hook from running in twinBASIC (BETA 997)
+ * @returns {{files: {name: string, text: string}[], wrapped: {file: string, module: string, sub: string} | null, why?: string}}
+ *   the files to write (changed or new), what was wrapped, and why nothing was
  */
 export function wrapProbe(files) {
   const out = [];
@@ -110,12 +104,6 @@ export function wrapProbe(files) {
   if (!closing) return none(`no End Module after ${sub}`);
   const insertAt = afterSub + closing.index;
 
-  // A Sub or Function named like its module (any case, any modifiers) in the
-  // module that holds the hook: the hook does not run (BETA 997).
-  const clash = [...f.text.slice(container.index, insertAt).matchAll(PROCEDURE_RE)].find(
-    (m) => m[1].toLowerCase() === container[2].toLowerCase(),
-  )?.[1];
-
   const eol = f.text.includes("\r\n") ? "\r\n" : "\n";
   const wrapper = [
     `${indent}[RunAfterBuild]`,
@@ -130,7 +118,7 @@ export function wrapProbe(files) {
   const text =
     f.text.slice(0, at) + " ".repeat(end - at) + f.text.slice(end, insertAt) + wrapper + f.text.slice(insertAt);
   out.push({ name: f.name, text });
-  return { files: out, wrapped: { file: f.name, module: container[2], sub, clash } };
+  return { files: out, wrapped: { file: f.name, module: container[2], sub } };
 }
 
 // Debug.Print writes nothing in a built exe (docs/Features/Project-Configuration/

@@ -131,14 +131,14 @@ which would write the snapshots of another build.
 ## Decisions of the owner
 
 - **Snapshots are committed only for the documented packages**: 14 files, 3.2 MB
-  (about 350 KB compressed). The contributed packages and the extra CEF builds are indexed into
+  (about 360 KB compressed). The contributed packages and the extra CEF builds are indexed into
   the store and left out of the repository. A package joins when its section does; `sync`
   copies a snapshot for a documented package it indexed in that run, and gives a documented
   package with none the store's `api.json` when that is of its `indexed_from` version
   (`adoptSnapshots`): a package is usually synced before its section exists, and a later
   sync finds its store current and indexes nothing.
-- **They are taken from the build the reference was last indexed against, BETA 997**
-  (`beta-x-0997`), not from a newer one, so that the pages and the baseline agree and
+- **They are taken from the build the reference was last indexed against, BETA 1005**
+  (`beta-x-1005`), not from a newer one, so that the pages and the baseline agree and
   `analyze` of a newer build shows the real distance.
 - **The twinBASIC "install" is the release zip unzipped.** Its `packages/<folder>/package.twinproj`
   files are the zip's, so either gives the same sources and the same `api.json`, byte for byte.
@@ -155,7 +155,7 @@ which would write the snapshots of another build.
   decides the store folder, the snapshot folder and the folder of the reference.
 - **CEF is one snapshot, `cefPackage145`.** `cefPackage49`, `cefPackage109` and `cefPackage145`
   are one source tree compiled against three CEF runtimes, and their `api.json` files differ
-  only in the `package` key (checked on BETA 997 and 1005). `analyze` compares a package with
+  only in the `package` key (checked on BETA 1005). `analyze` compares a package with
   its own snapshot, so naming all three would triple every CEF task and keep two copies of
   460 KB. If a build ever declares an API of its own, it needs its name in `package_name:` and
   a snapshot.
@@ -190,7 +190,7 @@ cache.
   packages to derive it from. `derive --check` is outside every gate for the same reason.
 - **A scanner change can change it**, as it can the snapshots. The `[ ]` Enum member (a
   bracket group alone on a line is a member) gives VB's `ReportBaseCtl.ReportSizeConstants`
-  its 17 values at BETA 997, the first named `" "`.
+  its 17 values at BETA 1005, the first named `" "`.
 
 ## `draft` and the doc-draft workflow
 
@@ -204,8 +204,8 @@ cache.
   section exactly. Every rule in
   `draft-plan.mjs` is a majority over the section's own pages.
 - **How well it places, checked by leaving each symbol out** of every section with a store
-  package (the thirteen built-in and default ones at BETA 997, and the nine contributed ones of
-  the `contributed-packages` branch) and planning it again: 994 of 998 members land on the file
+  package (the thirteen built-in and default ones, and the nine contributed ones of the
+  `contributed-packages` branch) and planning it again: 994 of 998 members land on the file
   the section has them on, with its parent and permalink; 138 of 156 types; and the landing
   page of each contributed section, planned from the other eight, matches in all nine. The 18
   types that miss are layout choices no API shows: six that are the only type of their kind
@@ -225,7 +225,7 @@ cache.
   section that has one, of the same shape: a folder's `index.md` for a class that gets a
   folder, never a one-page class.
 - **A permalink is computed only where the rule holds for every existing page** of the
-  section (`followsFolders`). On staging at BETA 997 that is every section but VBA's, whose
+  section (`followsFolders`). At BETA 1005 that is every section but VBA's, whose
   pages live under `/tB/Modules/`. A section that breaks the rule once gets no computed
   permalinks at all, rather than a guess that a sibling page would contradict.
 - **The prep is Node and the workflow is thin**, as Wisdom's extract is
@@ -283,5 +283,5 @@ cache.
   lines of it into this note would bury both. Its one reader is `lib/twinserv-client.mjs`, which
   calls only `query` and `download`; the rest (login, publish, version check, the IDE-to-compiler
   commands) is there for whoever writes a publisher tool. It is reverse-engineered from
-  BETA 983 and keeps no copy of the IDE files it came from. Check it against the
-  current IDE before relying on anything but those two endpoints.
+  the IDE's own files, of which it keeps no copy, and describes BETA 1005. Check it against
+  the current IDE before relying on anything but those two endpoints.

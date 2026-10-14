@@ -66,7 +66,7 @@ const SITES = [
   // its own line, because packages write it either way and both are legal.
   //
   // The Enum member is written ONLY on its own line, and that site is voided by
-  // the sweep. Measured on BETA 987: inline, the compiler refuses every
+  // the sweep. On BETA 1005: inline, the compiler refuses every
   // attribute, [Hidden] included (TB5182), though Attributes.md documents
   // [Hidden] on an Enum member; on its own line it accepts ANY `[...]`,
   // `[ClassId("guid")]` and `[Hidden(True)]` among them, because an Enum body

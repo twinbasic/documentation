@@ -6,8 +6,8 @@
 '
 ' Compiling is all check_examples asks. A BUILD is different: binding the startup
 ' object fails with "'Main' is ambiguous", so tbrun never runs the probe. A tree
-' for tbrun whose own module declares Sub Main leaves this file out. Measured on
-' BETA 983, when two of round 10's executed cases failed that way.
+' for tbrun whose own module declares Sub Main leaves this file out. On BETA 1005
+' tbrun on such a tree with this file in it stops at that error (exit 2).
 '
 ' It is deliberately empty. The HelloWorld template's Main is a MsgBox, and a
 ' MsgBox hangs a run-mode probe invisibly -- the IDE waits on a modal nobody can

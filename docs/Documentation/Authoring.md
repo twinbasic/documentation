@@ -104,9 +104,9 @@ bundle_extra:
     dest: Features/Packages/downloads/impexp.py
 ```
 
-`src` is resolved against `docs/`, so it may point outside the tree --- the two
-real entries publish the [Import/Export Tool](../../Features/Packages/Import-Export-Tool)
-from `scripts/`, where it is maintained, with no second copy under `docs/`.
+`src` is resolved against `docs/`, so it may point outside the tree --- the real
+entries publish the three editions of the [Import/Export Tool](../../Features/Packages/Import-Export-Tool)
+from `scripts/`, where they are maintained, with no second copy under `docs/`.
 `dest` is the path in the built site, and the page links to it. A `src` that
 does not exist aborts the build.
 
@@ -134,7 +134,7 @@ Every page opens with a YAML frontmatter block. The keys that matter:
 - **`symbols`** --- optional, and rare. The names a page documents, when its title and first heading cannot say; see [Naming what a page documents](#symbols).
 - **`index`**, **`index_also`** --- optional. Terms a reader searches for that should find this page, as a book's index lists them; see [Index entries for the site search](#index-entries-for-the-site-search).
 
-A package's `index.md` may also carry **`package_name`**, **`indexed_from`**, **`exclude_from_docs`** and **`exclude_kinds`**. They record which packages the section documents, which twinBASIC build the package download was indexed against and what was excluded from the docs, so a later re-index can tell a gap from an exclusion. `package_name` names the packages as the [package indexer](Tools-Build#twin-index) names them, and is needed only where the section's folder is named otherwise. The build uses `exclude_from_docs` only to leave those names out of the [symbol index](Building#the-symbol-index)'s count of undocumented symbols; none of the four reaches the HTML. **Leave them in place**, and bump `indexed_from` in the same commit if you re-index a package against a newer build.
+A package's `index.md` may also have **`package_name`**, **`indexed_from`**, **`exclude_from_docs`** and **`exclude_kinds`**. They record which packages the section documents, which twinBASIC build the package download was indexed against and what was excluded from the docs, so a later re-index can tell a gap from an exclusion. `package_name` names the packages as the [package indexer](Tools-Build#twin-index) names them, and is needed only where the section's folder is named otherwise. The build uses `exclude_from_docs` only to leave those names out of the [symbol index](Building#the-symbol-index)'s count of undocumented symbols; none of the four reaches the HTML. **Leave them in place**, and bump `indexed_from` in the same commit if you re-index a package against a newer build.
 
 An unrecognised key is inert and never emitted into the page. A key whose *value* is not valid YAML aborts the build with `Failed to parse frontmatter in <file>`, quoting the parser's own line and column.
 
@@ -493,8 +493,10 @@ generated `Sub`. These keys override it when it guesses wrong:
 
 A `check_run` sample states what it prints in one of two ways, read from the
 sample's own text. A trailing comment on a `Debug.Print` line gives that line's
-output. A comment line that is exactly `' Output:` gives the whole output, one
-line per comment line below it. When a sample states anything, it must print
+output. It can go on with a note for the reader after ` -- `, which is not
+compared: `' 0 -- nothing left in Err` states `0`. A comment line that is exactly
+`' Output:` gives the whole output, one line per comment line below it, each taken
+whole; output that itself holds ` -- ` is stated this way. When a sample states anything, it must print
 exactly as many lines as it states. Each line is compared with the spaces at both
 ends removed, because twinBASIC prints a space before a positive number.
 
@@ -506,6 +508,7 @@ error with `On Error Resume Next` and print `Err.Number`.
 ```tb check_run
 Debug.Print InStr(1, "abc", "b")   ' 2
 Debug.Print UCase("tb")            ' TB
+Debug.Print Len("")                ' 0 -- an empty string has no characters
 ```
 ````
 
@@ -911,7 +914,7 @@ A search that backtracks without end gives up instead of hanging.
 <!-- /test -->
 ```
 
-A region may hold paragraphs, lists, tables and samples, and regions do not nest. The folder's README says how to write a case, and [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests), in `test.bat`, fails a callout with neither a marker nor a region, a region left open, and a case no marker names. [`package-tests.bat`](Tools#package-testsbat) runs the cases. The section's landing page ends with a short **Test cases** section that links to the project the build publishes, `<Package>-tests.twinproj`.
+A region may hold paragraphs, lists, tables and samples, and regions do not nest. The folder's README says how to write a case, and [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests), in `test.bat`, fails a callout with neither a marker nor a region, a region left open, and a case no marker names. [`package-tests.bat`](Tools#package-testsbat) runs the cases. The section's landing page ends with a short **Test cases** section that links to the project the build publishes, `<Package>-tests.twinproj`. [Updating a Contributed Package](Contributed-Packages) lists the steps that move a section to a new version of its package.
 
 ## Document the product as it is
 

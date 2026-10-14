@@ -50,19 +50,18 @@
 // 36.6 s wall including packing. One project per sample would be over three
 // hours.
 //
-// Three collision rules fall out of putting unrelated samples in one
+// Two collision rules fall out of putting unrelated samples in one
 // compilation unit, and each is a real hazard rather than a precaution:
 //
 //   * one generated `Module tbx_<hash>` per fence, hashed from its id;
-//   * everything generated is Private -- eleven pages declare a `MyString`;
-//   * a generated module must not be named like the project, in any letter
-//     case: up to BETA 997 the IDE then skips the [RunAfterBuild] Sub, even one
-//     in another module, and reports nothing, so the build is green and nothing
-//     runs (twinbasic/twinbasic#2494; BETA 1005 runs it).
+//   * everything generated is Private -- eleven pages declare a `MyString`.
+//
+// The projects are named `DocSamples<n>` and every generated module `tbx...`, so a
+// module is never named like its project; that is only the naming scheme.
 //
 // `Sub Main` is not one of them, though it was once listed as one. The template
 // brings a Main, and a sample may bring its own beside it: two `Public Sub
-// Main`s in different modules compile (measured, BETA 983), which is how the
+// Main`s in different modules compile (BETA 1005), which is how the
 // WinServicesLib `Module Startup` samples build as written. That holds for a
 // compile; a build refuses two Mains, and two [DllExport]s of one name, and a
 // project with an error at all, so --build and --llvm batch around those three.
@@ -189,7 +188,8 @@ Compiles the documentation's own twinBASIC code samples, every tb fence marked
 \`${MARKER}\`, and reports the ones the compiler refuses. A statement sample
 (slot=sub) marked \`${RUN_MARKER}\` is also built and run, in every mode, and what it prints
 is compared with what the page says it prints: the trailing comment on a Debug.Print
-line, or the comment lines under a \`' Output:\` line. A sample that raises an error,
+line, up to a \` -- \` that starts a note, or the comment lines under a \`' Output:\`
+line. A sample that raises an error,
 does not return, or prints something else is a finding; one that calls MsgBox or
 InputBox, or contains End, or is not slot=sub, is refused without being built.
 

@@ -42,7 +42,7 @@ export const FIXED_ARGS = {
   //
   // The image and .json those two point at are written into the tree beside the
   // probes (writeProbeResources), and the factory into `_ProbeFactory.twin`.
-  // All five probes build clean on BETA 983.
+  // All five probes build clean on BETA 1005.
   //
   // Qualified, because the documented shape is "fully qualified path to factory
   // method" and that is the claim under test. VBRUN uses the bare form too.

@@ -12,10 +12,10 @@ compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
 ## State
 
-Of 1,530 `tb` fences in 749 pages, **1,370 are marked `check_build`** and compile, and 159
-are `inert` with a recorded reason (111 of them OLEGuids' method signatures).
-**None is undecided**, so the backlog the census measures is empty. No fence is an
-`excerpt`. The run takes about 110 s. 88 of the marked samples are also `check_run`.
+Of 2,465 `tb` fences in 933 pages, **2,297 are marked `check_build`** and compile (BETA 1005,
+a full run with no finding), and 163 are `inert` with a recorded reason (114 of them
+signatures, most OLEGuids' methods). 4 are undecided, in three pages under `IDE/`. No fence is an `excerpt`. The run takes about 220 s on four lanes.
+776 of the marked samples are also `check_run`.
 
 New marked samples should come from editing pages, not from marking: the unmarked fences
 that are left are not programs (see [What cannot be marked](#what-cannot-be-marked)).
@@ -121,7 +121,7 @@ a fence at all.
 | token | meaning | default |
 |---|---|---|
 | `check_build` | compile this sample | --- |
-| `check_run` | compile it, build it and run it, and compare what it prints with what the fence says it prints (a trailing comment on a `Debug.Print` line, or the comment lines under `' Output:`). Statement samples (`slot=sub`) only; `MsgBox`, `InputBox` and `End` are refused. See the dispatcher design below | --- |
+| `check_run` | compile it, build it and run it, and compare what it prints with what the fence says it prints (a trailing comment on a `Debug.Print` line, up to a ` -- ` that starts a note, or the comment lines under `' Output:`, taken whole). Statement samples (`slot=sub`) only; `MsgBox`, `InputBox` and `End` are refused. See the dispatcher design below | --- |
 | `hidden` | context for the page's samples, compiled with them and rendered to nothing. Implies `check_build` | --- |
 | `slot=` | `file`, `module`, `sub`, `class` or `method` --- what to generate around it | inferred |
 | `inherits=` | the class the sample is code-behind *of*; forces the Class row | --- |
@@ -378,8 +378,8 @@ templates each have their own `tbxStageBrowser.twin`, routed by path in `default
 `FormDesignerId` attribute) and `Sources/Form1.tbform` (its designer file), and its own
 `tbxStage.twin`, which is console's less the line `Public Form1 As Form`. A form made with
 `New Form` in code has no designer file and cannot be drawn on (`Load` raises 361, `AutoRedraw`
-raises -2147467259), so the form has to be a file of the project. Four facts, all measured on
-BETA 995:
+raises -2147467259), so the form has to be a file of the project. Four facts, all checked on
+BETA 1005:
 
 - **An empty form has no `_children` key.** `"_children": []` in `Form1.tbform` fails the build with
   `TB5247 unable to find matching form designer JSON via FormDesignerId`, and `Form1` is then
@@ -480,14 +480,9 @@ All are forced by putting unrelated samples in one compilation unit:
 - **`Sub Main` comes from the template, and a fence may bring its own as well.** Two
   `Public Sub Main`s in different modules compile, so the WinServicesLib `Module Startup`
   samples build as written. (A *build* adds a rule; see [`--build` and `--llvm`](#--build-and---llvm-what-a-compile-does-not-ask).)
-- **No generated module may be named like the project, in any letter case.** With
-  `project.name = "ProbeWS"`, a `Module ProbeWS` or a `Module probews` stops the
-  `[RunAfterBuild]` Sub from running, even when it is empty and the Sub is in another module.
-  Nothing reports it: the build is green, and the DEBUG CONSOLE ends at `[BUILD] Executing
-  '<project>.<module>.<Sub>'...` (BETA 995 and 997, twinbasic/twinbasic#2494). BETA 1005 runs
-  the Sub, so the rule matters only to an older build. The tool names each project `DocSamples<n>`
-  and every module it generates `tbx...`, so the two cannot meet; a sample that declared
-  `Module DocSamples3` would.
+- **A generated module is not named like the project.** On BETA 1005 a module named like its
+  project, in any letter case, does no harm. The tool names each project `DocSamples<n>` and
+  every module it generates `tbx...`, so the two never meet; that is only the naming scheme.
 
 **What collides is narrower than it looks, and guessing it wide is expensive.** Two
 generated modules may each declare `Public Function Foo`, `Public Type Rec` and `Public Const
@@ -525,7 +520,7 @@ swallow the rest.
 **Each call has an `On Error GoTo` handler of its own, not `On Error Resume Next` and a test
 of `Err.Number` after the call.** A procedure that handles an error with `On Error Resume
 Next` and returns, by `End Sub` or `Exit Sub`, leaves `Err` set for its caller, in VB6 and in
-twinBASIC alike (VB6 against BETA 995, identical; kit `s69/errpersist/`). Only a `Resume`
+twinBASIC alike (VB6 against BETA 1005, identical). Only a `Resume`
 from an `On Error GoTo` handler, or any `On Error` statement, clears it. With a test after
 the call, InStr.md's sample that demonstrates error 5 under its own `On Error Resume Next`
 was reported as raising it. The caller's handler is reached only by an error the callee did
@@ -575,7 +570,7 @@ one that waits on a box. A `projname=` group takes the form when any of its fenc
 sample's forms before the end marker, as the twinBASIC dispatcher does, because a loaded form keeps a
 VB6 exe running after `Main` returns. `Declare PtrSafe` is not VB6: `declaresForVb6` drops `PtrSafe`
 and reads `LongPtr` as `Long` on a Declare statement's lines (and its continuations) and touches
-nothing else, which is what lets the documentation's `GetPixel` module build. Checked on BETA 995
+nothing else, which is what lets the documentation's `GetPixel` module build. Checked on BETA 1005
 and in VB6: both form samples print what the pages say (`Graphics-Methods.md`'s three lines, and
 the Form page's `True`).
 
@@ -607,7 +602,7 @@ the Form page's `True`).
   before anything else reads them.
 
   **It is a warning, and enforced, because that is robust and leaves a clean batch clean**
-  (BETA 987, `canary-warn.mjs`, ten cases). TB0005 appeared beside an unterminated `Sub`, an
+  (BETA 1005, in four projects that held every case below at once). TB0005 appeared beside an unterminated `Sub`, an
   `If` with no `End If`, a stray `End Sub` with garbage after it, a class inheriting itself
   with an unknown type, ten undefined names, under Option Explicit off, and beside a module
   with `[IgnoreWarnings(TB0005)]`. A plain `#Warning` vanished in a project that ignores
@@ -713,7 +708,7 @@ that fails only the second is one LLVM cannot generate code for.
   compiler's fault. The lane's `llvm` field chooses the wording.
 - **The canary does not stop a build.** `[EnforceWarnings(TB0005)]` keeps its `#Warning` a
   warning whatever the project's settings say, and a warning does not stop the IDE building:
-  a probe with the canary module beside it builds and runs (tbrun, exit 0, BETA 995).
+  a probe with the canary module beside it builds and runs (tbrun, exit 0, BETA 1005).
 - **A project with compile errors is compiled and not built.** `not built: b<n>.twinproj has
   errors, the first ...` prints, and the run ends by counting the samples that only ever sat
   in such a project: "N sample(s) in batches with errors were compiled but not built". A
@@ -732,15 +727,11 @@ that fails only the second is one LLVM cannot generate code for.
 - **A failed build is believed when it repeats.** `buildTwiceOnFailure` builds a failed
   batch again before halving, and every part the halving builds the same way: a build can
   fail once and pass when repeated, as one that reported nothing for 120 s did in a full
-  `--llvm` run (BETA 995).
+  `--llvm` run.
 - **Each IDE has a temp folder of its own**, `%TEMP%\tbbuild-tmp-<port>`, set as its `TEMP`
-  and `TMP` by `launchIde`. IDEs building at once in one temp folder fail now and then with
-  `[TYPELIB] failed to finalize typelibrary.  Disk error?` and `[LINKER] FAILED to create
-  type library`, on samples that build clean alone: 8 of 192 builds, eight at once, against
-  0 of 192 with a folder each (BETA 995). The compiler imports `GetTempFileNameW`, and
-  writes the type library to a file it then reads back; a name two processes both take fits
-  the counts, but is not proved.
-- **A build adds three collision rules a compile does not have**, each measured on BETA 995:
+  and `TMP` by `launchIde`, emptied at each launch on the port and removed when the IDE
+  ends, so that concurrent runs share nothing and a run leaves nothing behind.
+- **A build adds three collision rules a compile does not have**, each checked on BETA 1005 (`--build --only` over the pages that hold such samples builds clean):
   - **`expect-error` samples are batched apart.** One such sample (Option.md, TB5079) left
     the 129 samples beside it unbuilt, since a project with an error is not built.
   - **A unit declaring its own `Sub Main` gets a project of its own, without `tbxMain`.**
@@ -757,7 +748,7 @@ that fails only the second is one LLVM cannot generate code for.
   build fails with no startup object, so `select` refuses it before batching. Split it, with
   the startup Main in a fence of its own. The class slot may come from `inherits=` or from
   the inference: a top-level `WithEvents` field is TB5182 in a module, whether `Private`,
-  `Dim` or `Public` (BETA 995).
+  `Dim` or `Public` (BETA 1005).
 
 ## Traps
 
@@ -953,6 +944,6 @@ a reader writes.
   one line each, because its purpose is "the control instances the samples assume". The
   invented *classes* go in `hidden` fences, because a class is not a control instance and a
   page is where it belongs. The line between the two is a judgement, not a rule.
-- Which pages should carry `check_run` (88 samples do)? A sample states its output in its own
+- Which pages should carry `check_run` (776 samples do)? A sample states its output in its own
   text, as a trailing comment on a `Debug.Print` line or as the comment lines under
   `' Output:`; its comparison is only as useful as the pages that state a printed value.

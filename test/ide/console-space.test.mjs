@@ -17,7 +17,7 @@
 // loses the focus, so the focus moves to the console before the first line, and
 // each test checks that the console has it before and after.
 //
-// Each test states what BETA 995 does. If one fails after an IDE update, the IDE
+// Each test states what BETA 1005 does. If one fails after an IDE update, the IDE
 // has changed: update the entry "A space typed in the Debug Console accepts the
 // IntelliSense list's selection, so `Print x` becomes `Printerx`" in
 // BUGS-TO-REPORT.md, or its report in bugs/filed/, and then this file.

@@ -113,6 +113,9 @@ export function partitionRun(selected) {
 
 // --------------------------------------------------------------------- output
 
+/** Where a note starts in a `Debug.Print` line's trailing comment: ` -- ` or ` --- `. */
+const NOTE = /\s---?\s/;
+
 /** The `'` that starts a comment: the first one outside a string literal (`""` escapes). */
 function splitComment(line) {
   let inString = false;
@@ -132,6 +135,11 @@ function splitComment(line) {
  * `Debug.Print` line, each of which states one line. A `Debug.Print` with no
  * trailing comment states nothing. When anything is stated, the output has
  * exactly that many lines.
+ *
+ * A trailing comment may go on after its value with a note for the reader:
+ * the value ends at the first ` -- ` or ` --- `, and the note is not compared
+ * (`' 0 -- nothing left in Err`). The lines of an `' Output:` block are taken
+ * whole, so output that holds such a dash is stated there.
  *
  * @returns {{stated: boolean, lines: {text: string, line: number}[]}}
  *   `line` is where the expected line is on the page
@@ -156,7 +164,8 @@ export function expectedOutput(fence) {
   rows.forEach((row, i) => {
     const { code, comment } = splitComment(row);
     if (comment === null || !/^\s*Debug\s*\.\s*Print\b/i.test(code)) return;
-    if (comment.trim()) lines.push({ text: comment.trim(), line: pageLine(i) });
+    const value = comment.split(NOTE)[0].trim();
+    if (value) lines.push({ text: value, line: pageLine(i) });
   });
   return { stated: lines.length > 0, lines };
 }
@@ -206,7 +215,7 @@ export function judgeOutput(expected, output) {
  * raised it. The handler is reached only by an error the sample did not handle.
  * Testing `Err.Number` after the call would not do: a procedure that handles an
  * error with `On Error Resume Next` returns with `Err` still set, in VB6 and in
- * twinBASIC alike (measured, BETA 995), so a sample that demonstrates an error
+ * twinBASIC alike (BETA 1005), so a sample that demonstrates an error
  * would be reported as raising it. The first statement is `Debug.Cls`, which
  * erases the IDE's own build log from the console, so what is left is the
  * dispatcher's.

@@ -14,7 +14,7 @@
 // ones that stopped working unnoticed. So each rule is asserted here against
 // the case that made it necessary:
 //
-//   - the scanner's traps, each met in the BETA 983 packages -- a Type whose
+//   - the scanner's traps, each met in the shipped packages -- a Type whose
 //     Subs have bodies, an Interface line inside a CoClass, `[Hidden]` on a
 //     module whose members are global, a `$` name escaped in brackets, an
 //     attribute on the declaration's own line, an attribute run spread over
@@ -678,7 +678,7 @@ const show = (x) => JSON.stringify(x);
 }
 
 {
-  // The compiler (BETA 983, 995 and 1005) reads a line that is only `[Name]` in an
+  // The compiler (BETA 1005) reads a line that is only `[Name]` in an
   // Enum body as a value of that name, with the next number, whatever is in the
   // brackets; the scanner used to take it for the attributes of the next line, and
   // an Enum made of such lines came out with no values at all.

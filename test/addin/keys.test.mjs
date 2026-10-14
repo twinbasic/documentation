@@ -3,11 +3,10 @@
 // editor. The KeysProbe add-in (probes/keys) registers eight key strings and
 // prints "[KeysProbe] fired <key string>" to the DEBUG CONSOLE when one fires.
 //
-// Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
+// Each test states what BETA 1005 does. If one fails after an IDE update, the
 // IDE has changed: update P1 and P2 in WIP.HelpAddin.md, the NOTE on
 // docs/Reference/Built-In/tbIDE/KeyboardShortcuts.md and the filed report in
-// bugs/filed/ (twinbasic/twinbasic#2445), and then this file. P2's last test
-// states what BETA 997 does: earlier builds report the toggle failing.
+// bugs/filed/ (twinbasic/twinbasic#2445), and then this file.
 //
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 

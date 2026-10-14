@@ -45,7 +45,7 @@ Sub UseCustomObject()
     Service.AddCustomBinderObject "Report", Me, IsAppObject
 
     Debug.Print Service.Compile("Report.Title").Evaluate()  ' qualified
-    Debug.Print Service.Compile("Title").Evaluate()         ' unqualified — IsAppObject in effect
+    Debug.Print Service.Compile("Title").Evaluate()         ' unqualified -- IsAppObject in effect
 End Sub
 ```
 

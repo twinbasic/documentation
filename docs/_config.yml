@@ -114,6 +114,8 @@ bundle_extra:
     dest: Features/Packages/downloads/impexp.mjs
   - src: ../scripts/impexp.py
     dest: Features/Packages/downloads/impexp.py
+  - src: ../scripts/impexp/impexp.twinproj
+    dest: Features/Packages/downloads/impexp.twinproj
 
 # The IDE help add-in's project file, which the build packs from the add-in's
 # source folder (src, relative to docs/) and writes into the online and offline

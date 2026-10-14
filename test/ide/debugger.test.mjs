@@ -5,7 +5,7 @@
 // calls, and prints a line before and after each step, so the DEBUG CONSOLE
 // shows how far it got.
 //
-// Each test states what BETA 983 and 995 do. If one fails after an IDE update,
+// Each test states what BETA 1005 does. If one fails after an IDE update,
 // the IDE has changed: update the Traps on docs/IDE/Menu/Debug.md and the
 // debugger entry in BUGS-TO-REPORT.md and twinbasic/twinbasic#2441's report in
 // bugs/filed/, and then this file.

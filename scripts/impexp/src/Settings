@@ -1,12 +1,13 @@
 {
 	"configuration.inherits": "Defaults",
-	"project.appTitle": "ConcurrentBuildsSharedTemp",
+	"project.appTitle": "impexp",
 	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
 	"project.buildType": "Standard EXE",
-	"project.description": "Reproduces: Builds running at the same time in one TEMP folder sometimes fail to write the type library",
+	"project.description": "Unpacks a .twinproj or .twinpack file into a folder, and packs a folder back into a project file: the twinBASIC edition of impexp.mjs and impexp.py.",
 	"project.exportPathIsV2": true,
-	"project.id": "{F3F2C6A4-A713-4F53-9B49-830560B557F9}",
-	"project.name": "ConcurrentBuildsSharedTemp",
+	"project.id": "{312DB30E-7896-4595-8E6F-A633FA7D33E5}",
+	"project.isConsoleApplication": true,
+	"project.name": "impexp",
 	"project.optionExplicit": true,
 	"project.references": [
 		{

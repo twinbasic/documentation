@@ -66,7 +66,7 @@ Syntax: *object*.**Draw** *hDC* [, *x* [, *y* [, *Style* ] ] ]
 *Style*
 : *optional* A combination of [**ImlDrawConstants**](../Enumerations/ImlDrawConstants) flags controlling the draw mode (normal, transparent, masked, selected, focused). Multiple flags can be **Or**-combined.
 
-```tb check_build project=wnc-private
+```tb check_build project=packages
 Private Sub PictureBox1_Paint()
     ImageList1.ListImages("doc").Draw _
         PictureBox1.hDC, 0, 0, _
@@ -75,11 +75,11 @@ End Sub
 ```
 
 > [!IMPORTANT]
-> These members live in a **Private** part of the WinNativeCommonCtls package, so a project that
-> references it the ordinary way cannot name them --- `ImlDrawTransparent` on its own is
-> *TB5079 Unrecognized symbol*. Set the package's [library symbol](../../../../Features/Packages/Library-Symbols) to
-> `*WinNativeCommonCtls` and qualify the member, as the sample does. The asterisk is stripped
-> from the name: the library is still written `WinNativeCommonCtls` in code.
+> **ImlDrawConstants** lives in a **Private** part of the WinNativeCommonCtls package, so its
+> members have no bare names: `ImlDrawTransparent` on its own is *TB5079 Unrecognized symbol*.
+> Qualify each member with the library name, as the sample does. Naming the enumeration itself
+> as a type needs the package's [library symbol](../../../../Features/Packages/Library-Symbols)
+> set to `*WinNativeCommonCtls`; see [**ImlDrawConstants**](../Enumerations/ImlDrawConstants).
 
 
 ### ExtractIcon

@@ -208,7 +208,7 @@ The slots that held nothing stay empty, as they do when the key does not exist a
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Severity: cosmetic, but it shows on a new installation, which is exactly when the list has empty slots.
@@ -223,7 +223,7 @@ What does not reproduce it:
 
 So it takes at least one existing entry and at least one slot with nothing in it, which looks like each slot being read with the previous slot's value as its default. Once a duplicate is there, the next opened project keeps it: 18 copies of one project became 20 after one more open, with the new project on top. Both variants of step 2 (deleted slots, empty strings) were measured on BETA 995, ending with 21 values and 3 distinct projects.
 
-<!-- Lane mode in bugs/recent-projects-copies/repro.json: asserted by `ide-test.bat --only recent-projects-copies` (test/ide/recent-projects-copies.test.mjs), which passes on BETA 997; the test records the user's own list value by value and puts it back afterwards. Stated in WIP.Harness.md (the recent-list tidy, which exists because of it) and scripts/lib/tb-registry.mjs; when fixed, the note there that a short list trips it can go. Measured 2026-09-23 on BETA 983 by reading the registry after tbbuild --keep opened a fixture project on a private desktop and the IDE was ended by its pid, and again on BETA 995 on 2026-10-01 (cli995/rec-995-*.txt). The harness trips it because every IDE a run starts opens a project: a run that began on a list of one entry once ended with seventeen copies of it. -->
+<!-- Lane mode in bugs/recent-projects-copies/repro.json: asserted by `ide-test.bat --only recent-projects-copies` (test/ide/recent-projects-copies.test.mjs), which passes on BETA 1005; the test records the user's own list value by value and puts it back afterwards. Stated in WIP.Harness.md (the recent-list tidy, which exists because of it) and scripts/lib/tb-registry.mjs; when fixed, the note there that a short list trips it can go. Measured 2026-09-23 on BETA 983 by reading the registry after tbbuild --keep opened a fixture project on a private desktop and the IDE was ended by its pid, and again on BETA 995 on 2026-10-01 (cli995/rec-995-*.txt). The harness trips it because every IDE a run starts opens a project: a run that began on a list of one entry once ended with seventeen copies of it. -->
 
 ---
 
@@ -260,7 +260,7 @@ A build switch for unattended use should report the diagnostics on stdout or std
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Severity: it makes the switch unusable for the one job it exists for, because it is silent, falsely green and hangs on the case worth catching.
@@ -271,7 +271,7 @@ So exit 0 on a project with errors happens only for an error in code nothing cal
 
 Silence on stdout and stderr: measured on BETA 983 first, and on BETA 995 by redirecting the standard handles of the process to a file. The same redirection captures the compiler executable's own output (`twinBASIC_win32.exe settings <project>` wrote the whole `Settings` file), so the capture works.
 
-<!-- Lane mode in bugs/build-and-exit-silent/repro.json: asserted by `ide-test.bat --only build-and-exit-silent` (test/ide/build-and-exit-silent.test.mjs, both cases, the IDE executable on a private desktop through launchOnDesktop), which passes on BETA 997. First measured with a scratch copy of scripts/lib/tb-launch.ps1 (private desktop, kill-on-close job, TBBUILD_CMD replacing the command line, standard handles redirected to a file), with scripts/lib/tb-registry.mjs startTidy and finishTidy around the run. Stated in scripts/tbbuild.mjs (header comment) and WIP.Harness.md, "Do not reach for --buildAndExit32 instead": when fixed, those two say the switch is unusable. So do docs/Documentation/Tools.md (the tbbuild section) and docs/Features/Packages/Import-export tool.md ("Compiling from the command line"). All four say exit 0 only for an error in code nothing calls, and a hang for an error the build reaches. -->
+<!-- Lane mode in bugs/build-and-exit-silent/repro.json: asserted by `ide-test.bat --only build-and-exit-silent` (test/ide/build-and-exit-silent.test.mjs, both cases, the IDE executable on a private desktop through launchOnDesktop), which passes on BETA 1005. First measured with a scratch copy of scripts/lib/tb-launch.ps1 (private desktop, kill-on-close job, TBBUILD_CMD replacing the command line, standard handles redirected to a file), with scripts/lib/tb-registry.mjs startTidy and finishTidy around the run. Stated in scripts/tbbuild.mjs (header comment) and WIP.Harness.md, "Do not reach for --buildAndExit32 instead": when fixed, those two say the switch is unusable. So do docs/Documentation/Tools.md (the tbbuild section) and docs/Features/Packages/Import-export tool.md ("Compiling from the command line"). All four say exit 0 only for an error in code nothing calls, and a hang for an error the build reaches. -->
 
 ---
 
@@ -315,7 +315,7 @@ The implementation is accepted, as it is without the attribute. If `[PreserveSig
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 BETA 983 gives the second message as TB5000 instead of TB65535 (the reproducer, checked there, does not report TB65535). Severity: an interface the language lets you declare cannot be implemented at all, and the diagnostic asks for the signature that is already written.
@@ -343,7 +343,7 @@ Every file and folder is written, however long its path, as `export` already rea
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Severity: an `export` to a deep folder writes part of the tree and exits 0, and the errors it prints blame permissions and storage space. `LongPathsEnabled` is 1 on the machine this was measured on, so the Windows setting does not rescue it.
@@ -386,7 +386,7 @@ No window opens from a command-line verb. The command prints the problem (`ERROR
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Severity: an unattended `export`, `settings` or `readme` never finishes, and once the box is closed every one of them exits 0 and `export` reports success, so a script that tests the exit code or `... DONE` is fooled as well.
@@ -425,7 +425,7 @@ The files that would be overwritten are found first, as `import` does, and a ref
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Severity: a refused export leaves the folder a mixture of the old tree and the project.
@@ -461,7 +461,7 @@ Relative paths and paths with forward slashes work for `export` and for the outp
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Severity: ordinary relative and forward-slashed paths fail, with messages that say the file or folder does not exist.
@@ -511,7 +511,7 @@ Either the export deletes nothing when it cannot empty the whole folder, or it r
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Severity: a partly emptied folder, with the only record in the Debug Console. On a Git working copy it breaks the repository, because Git makes its object files read-only.
@@ -554,7 +554,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Also on BETA 983, identically. Moving past the failing line with **Set Next Statement** (Ctrl+F9) instead, each F5 then advances one line. An earlier run by hand, followed to the end, saw the pending step last until the procedure returned; what differed there is not known, and in the lane the step is used up by the one stop, as above.
@@ -583,7 +583,7 @@ The imported package is ticked, as after the online import, so that **Apply** is
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Also on BETA 983, by hand. Severity: the package is imported but not referenced, and nothing says so.
@@ -621,7 +621,7 @@ After the **Apply**, builds and runs use v2, as they do when the same replacemen
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Severity: the project builds and runs the old package after the user has replaced it.
@@ -668,7 +668,7 @@ A diagnostic that names the type argument and the call that supplied it. The `>`
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Also on BETA 983, with the same TB5092. Severity: a diagnostic that points at correct code. `Max` uses `>` on a type parameter with nothing to say which types it accepts, which is how the problem arises.
@@ -703,12 +703,63 @@ The run ends, as it does without the attribute, with no restart of the compiler.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Severity: low; the IDE recovers, but the project is compiled again, and LLVM-compiled code run in the IDE is not recommended anyway. Without the attribute the run ends with no restart. In a built exe, with or without LLVM, `End` ends the program with exit code 0 (this project run with `tbrun --exe` on 995 exits 0). BETA 983 ignored the `End` and went on (fixed in 985 for built programs); this project's LLVM procedure is refused by 983 ("Unable to compile due to use of datatype that is not yet supported for LLVM compilation"), so that was not re-measured with it.
 
 <!-- No docs page states this (docs/LLVM/Getting-Started.md does not mention End); when fixed, nothing to update. Measured with scripts/bug_repro.mjs (run mode: tbrun exit 5, output "before End" then "restarting from MEMORY"; verify) on 995, and the exe with `run --exe` on 995; the 983 behaviour from tbrun and tbrun --exe on 2026-10-01. -->
+
+---
+
+## With LLVM on for the whole project, a `[CompilerOptions("")]` procedure that `Sub Main` reaches ends the IDE run with an access violation when it calls an LLVM procedure
+
+**Describe the bug**
+With LLVM turned on for the debug run of the whole project (Project Settings, Compiler Options (DEBUG), Enable LLVM Compilation), a procedure marked `[CompilerOptions("")]` that `Sub Main` calls, directly or through other procedures, ends the run in the IDE with `NATIVE EXCEPTION: ACCESS_VIOLATION` at the call it makes to a procedure compiled with LLVM. The DEBUG CONSOLE shows the exception, then the IDE's `auto-activated TRACE-MODE` lines, and nothing after the call is written. A built exe of the same sources, compiled with LLVM as well, runs correctly.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm-plain-calls-llvm-from-main.twinproj` (attached as `llvm-plain-calls-llvm-from-main.zip`). It needs an LLVM licence (Ultimate): its setting `compiler.debugOptions` is `+llvm`, which is Enable LLVM Compilation under Compiler Options (DEBUG). Its only module is:
+   ```
+   Module Startup
+
+       Public Sub Callee()
+           Debug.Print "Callee"
+       End Sub
+
+       [CompilerOptions("")]
+       Public Sub Plain()
+           Debug.Print "Plain: before Callee"
+           Callee
+           Debug.Print "Plain: after Callee"
+       End Sub
+
+       Public Sub Main()
+           Plain
+       End Sub
+
+   End Module
+   ```
+2. Run the project in the IDE (F5).
+3. See `Plain: before Callee` in the DEBUG CONSOLE and then `NATIVE EXCEPTION: ACCESS_VIOLATION /Startup.twin; Startup.Plain LINE 000013`. `Callee` and `Plain: after Callee` are not written, and the run is over.
+
+**Expected behavior**
+`Plain` calls `Callee` and the run goes on: `Callee`, then `Plain: after Callee`. A procedure compiled without LLVM can call one compiled with it, as it does when `Plain` is not reached from `Sub Main` (see below), and as it does in a built exe.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Severity: medium. It applies to a debug run compiled with LLVM, which Project Settings itself does not recommend, and it ends the run; nothing wrong is computed. Turning LLVM off for the debug run avoids it.
+
+What it needs, each checked by removing or changing one thing at a time: LLVM on for the whole project's debug run; a procedure marked `[CompilerOptions("")]`; a call in that procedure to a procedure compiled with LLVM (`Callee` can have an empty body); and `Sub Main` reaching the marked procedure: `Main` calling it directly, through an LLVM procedure (`Main` calls `Helper`, which calls `Plain`) or when `Plain` and `Callee` are in another module all end the run, and so does `Main` calling `Plain` when the run itself calls `Plain` from another procedure, so `Main` need not run it. It happens in a 32-bit and a 64-bit run.
+
+What does not reproduce it: `Main` empty, with `Plain` reached from another procedure (a `Helper` or the run's own entry procedure) and not from `Main`; `Main` calling `Callee` itself, not through `Plain`; LLVM on for no procedure but `Main` and `Callee`, by their `[CompilerOptions("+llvm")]` attributes, with `Plain` unmarked; `Plain` without the attribute, so that everything is compiled with LLVM; the exe built from the same sources with LLVM on for the build as well (`tbrun --llvm --exe`, 32-bit), which exits with code 0 and no fault. The startup object has to be `Sub Main`: the IDE refuses a project whose startup object is another procedure ("unable to locate form 'Sub Entry'").
+
+The crash is a race that one IDE on its own always loses: run on its own, the project ends in the exception every time (8 of 8 runs of a reduced copy, 3 of 3 of this one), and with eight IDEs started at once about four of them do. The address in the exception varies (`ntdll.dll`, `twinBASIC_win32.dll`), and so does where the exception is reported: always the line of the call in `Plain`.
+
+<!-- Reproducer: bugs/llvm-plain-calls-llvm-from-main/ (mode run: the project's `compiler.debugOptions` is `+llvm`, tbrun exit 5, output `Plain: before Callee` and the access violation; verify reproduces on BETA 1005, one IDE at a time). No VB6 side: VB6 has no LLVM. Narrowed from an LLVM probe whose `[CompilerOptions("")]` procedure held a Variant array, a loop and about a dozen `TbRun.Out` calls: none of that matters, and neither do the types of its locals (a Double or an Integer local seemed to matter at first, because the crash is intermittent when several IDEs run at once). Stated in a WARNING naming BETA 1005 in docs/LLVM/Getting-Started.md, after the `[CompilerOptions("")]` sample: when fixed, the WARNING goes. -->
 
 ---
 
@@ -750,7 +801,7 @@ The compiler refuses the declaration, because an interface cannot have the ident
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Severity: low; it takes a deliberate copy of `IUnknown`'s identifier, but the compiler accepts it silently and the failure is a crash.
@@ -910,7 +961,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Also on BETA 987, identically.
@@ -953,7 +1004,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Also on BETA 987, identically.
@@ -998,7 +1049,7 @@ Each line stays as it is typed, as it does in the code editor. The code editor's
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Also on BETA 987, identically.
@@ -1039,7 +1090,7 @@ Nothing from the compiler's own memory ends up in the exe, and the padding after
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 997
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 The values are addresses in the compiler process. After a build with the IDE left open, a read-only query of the memory map of the IDE's child processes (`VirtualQueryEx`; nothing was read from their memory) found both values of that build's exe in committed, private, read-write memory of the compiler process: `twinBASIC_win64_noDEP.exe` for a win64 build, and `twinBASIC_win32_noDEP.exe` for a win32 build. In the IDE's other child processes, both values fell in free address space. For win64 this is conclusive: only 3 of 200,000 random values below 2^47 fell in that process's committed memory. For win32 it is weaker, since 20,497 of 200,000 random 32-bit values did too.
@@ -1082,7 +1133,7 @@ Steps to reproduce the behavior:
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 997
+ - twinBASIC compiler version: BETA 1005
 
 **Additional context**
 Also on BETA 983 and 995, identically.

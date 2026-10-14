@@ -2,7 +2,7 @@
   "format": 3,
   "package": "tbRegExp",
   "project": "tbRegExp",
-  "version": "1.8.0.0",
+  "version": "1.9.0.0",
   "types": [
     {
       "name": "IEnumVARIANT",
@@ -93,6 +93,7 @@
       "attrs": [{"name":"PredeclaredId","args":"False"},{"name":"Hidden","args":"False"}],
       "description": "This class exposes a drop-in replacement for VBSript's regular expressions object model.",
       "members": [
+        {"name":"ApplySearchStepLimit","kind":"sub","vis":"private","signature":"Private Sub ApplySearchStepLimit()"},
         {"name":"CacheCaptureInfo","kind":"sub","vis":"private","signature":"Private Sub CacheCaptureInfo()"},
         {"name":"Class_Initialize","kind":"sub","vis":"private","signature":"Private Sub Class_Initialize()"},
         {"name":"DescribeRegexError","kind":"function","vis":"private","signature":"Private Function DescribeRegexError(ByVal errNum As Long) As String","returnType":"String"},
@@ -115,7 +116,8 @@
         {"name":"Pattern","kind":"property","vis":"public","signature":"Public Property Let Pattern(ByVal pPattern As String)","accessor":"Let","description":"The regular expression pattern."},
         {"name":"Pattern","kind":"property","vis":"public","signature":"Public Property Get Pattern() As String","returnType":"String","accessor":"Get"},
         {"name":"Replace","kind":"function","vis":"public","signature":"Public Function Replace(ByVal sourceString As String, ByVal replaceString As String) As String","returnType":"String","description":"Replaces matches with replaceString and returns the String with replacements made."},
-        {"name":"SearchAborted","kind":"property","vis":"public","signature":"Public Property Get SearchAborted() As Boolean","returnType":"Boolean","accessor":"Get","description":"True if the most recent Test, Execute, Replace or Split on this object gave up before finishing its search. Results may be truncated or missing, and nothing is raised. In practice only a catastrophically backtracking pattern - nested quantifiers such as '(a+)+b' - can reach this."},
+        {"name":"SearchStepLimit","kind":"property","vis":"public","signature":"Public Property Let SearchStepLimit(ByVal pSearchStepLimit As Long)","accessor":"Let","description":"Maximum matcher steps allowed for one Test, Execute, Replace or Split. 0 (the default) scales the budget automatically as min(100000000, max(1000000, 10 * length^2)), which no ordinary pattern reaches. Raise it only if a search was abandoned - the error message suggests a value. 'Steps' are an internal unit and approximate."},
+        {"name":"SearchStepLimit","kind":"property","vis":"public","signature":"Public Property Get SearchStepLimit() As Long","returnType":"Long","accessor":"Get"},
         {"name":"Split","kind":"function","vis":"public","signature":"Public Function Split(ByVal sourceString As String) As Collection","returnType":"Collection","description":"Splits an input string into an array of substrings at the positions defined by a regular expression match. Needs Global Property set to 'True'."},
         {"name":"Test","kind":"function","vis":"public","signature":"Public Function Test(ByVal sourceString As String) As Boolean","returnType":"Boolean","description":"Returns 'True' if Pattern finds a match in sourceString, otherwise returns 'False'."},
         {"name":"mCapEntryPoints","kind":"field","vis":"private","signature":"Private mCapEntryPoints() As Long"},
@@ -131,7 +133,7 @@
         {"name":"mNamedCount","kind":"field","vis":"private","signature":"Private mNamedCount As Long"},
         {"name":"mNumCaptures","kind":"field","vis":"private","signature":"Private mNumCaptures As Long"},
         {"name":"mPattern","kind":"field","vis":"private","signature":"Private mPattern As String"},
-        {"name":"mSearchAborted","kind":"field","vis":"private","signature":"Private mSearchAborted As Boolean"},
+        {"name":"mSearchStepLimit","kind":"field","vis":"private","signature":"Private mSearchStepLimit As Long"},
         {"name":"regex","kind":"field","vis":"private","signature":"Private regex As StaticRegex.RegexTy"}
       ]
     },
@@ -159,7 +161,6 @@
         {"name":"AstTableInitialize","kind":"sub","vis":"private","signature":"Private Sub AstTableInitialize()"},
         {"name":"AstToBytecode","kind":"sub","vis":"private","signature":"Private Sub AstToBytecode(ByRef ast() As Long, ByRef identifierTree As IdentifierTreeTy, ByVal caseInsensitive As Boolean, ByRef bytecode() As Long)"},
         {"name":"Clear","kind":"sub","vis":"private","signature":"Private Sub Clear(ByRef sb As StaticStringBuilder)"},
-        {"name":"ClearStepsLimitHit","kind":"sub","vis":"public","signature":"Public Sub ClearStepsLimitHit()"},
         {"name":"CloseGroups","kind":"function","vis":"private","signature":"Private Function CloseGroups( ByRef ast As ArrayBuffer, ByRef parseStack As ArrayBuffer, ByRef pendingDisjunction As Long, ByRef currentDisjunction As Long, ByRef potentialConcat2 As Long, ByRef potentialConcat1 As Long, ByRef modifierMask As Long, ByRef spilloverWriteMask As Long, ByVal whatToHandle As Long ) As Long","returnType":"Long"},
         {"name":"Compile","kind":"sub","vis":"private","signature":"Private Sub Compile(ByRef outBytecode() As Long, ByRef s As String, Optional ByVal caseInsensitive As Boolean = False)"},
         {"name":"ComputeFirstChar","kind":"function","vis":"private","signature":"Private Function ComputeFirstChar( ByRef bytecode() As Long, ByRef outChar As Long, ByRef outRangesPc As Long, ByRef outIFlag As Long ) As Long","returnType":"Long"},
@@ -196,6 +197,7 @@
         {"name":"LexerParseEscapeU","kind":"function","vis":"private","signature":"Private Function LexerParseEscapeU(ByRef lexCtx As LexerContext) As Long","returnType":"Long"},
         {"name":"LexerParseEscapeX","kind":"function","vis":"private","signature":"Private Function LexerParseEscapeX(ByRef lexCtx As LexerContext) As Long","returnType":"Long"},
         {"name":"LexerParseLegacyOctal","kind":"function","vis":"private","signature":"Private Function LexerParseLegacyOctal(ByRef lexCtx As LexerContext, ByVal x As Long) As Long","returnType":"Long"},
+        {"name":"LexerTryParseQuantifier","kind":"function","vis":"private","signature":"Private Function LexerTryParseQuantifier(ByRef lexCtx As LexerContext, ByRef outToken As ReToken) As Boolean","returnType":"Boolean"},
         {"name":"Match","kind":"function","vis":"public","signature":"Public Function Match( ByRef matcherState As MatcherStateTy, ByRef regex As RegexTy, ByRef haystack As String, Optional ByVal multiline As Boolean = False, Optional ByVal dotAll As Boolean = False, Optional ByVal matchFrom As Long = 1 ) As Boolean","returnType":"Boolean"},
         {"name":"MatchNext","kind":"function","vis":"public","signature":"Public Function MatchNext( ByRef matcherState As MatcherStateTy, ByRef regex As RegexTy, ByRef haystack As String ) As Boolean","returnType":"Boolean"},
         {"name":"MatchThenJoin","kind":"function","vis":"public","signature":"Public Function MatchThenJoin( ByRef regex As RegexTy, ByRef haystack As String, Optional ByRef format As String = \"$&\", Optional ByRef delimiter As String = vbNullString, Optional ByVal localMatch As Boolean = False, Optional ByVal multiline As Boolean = False, Optional ByVal dotAll As Boolean = False ) As String","returnType":"String"},
@@ -211,6 +213,7 @@
         {"name":"PushMatcherStackFrame","kind":"sub","vis":"private","signature":"Private Sub PushMatcherStackFrame( ByRef context As DfsMatcherContext, ByVal pc As Long, ByVal sp As Long, ByVal pcLandmark As Long, ByVal spDelta As Long, ByVal q As Long )"},
         {"name":"QStackPop","kind":"function","vis":"private","signature":"Private Function QStackPop(ByRef context As DfsMatcherContext) As Long","returnType":"Long"},
         {"name":"QStackPush","kind":"sub","vis":"private","signature":"Private Sub QStackPush(ByRef context As DfsMatcherContext, ByVal q As Long)"},
+        {"name":"RaiseSearchAbandoned","kind":"sub","vis":"private","signature":"Private Sub RaiseSearchAbandoned()"},
         {"name":"RangeTablesInitialize","kind":"sub","vis":"private","signature":"Private Sub RangeTablesInitialize()"},
         {"name":"RangeTablesInitialized","kind":"field","vis":"private","signature":"Private RangeTablesInitialized As Boolean"},
         {"name":"ReCanonicalizeChar","kind":"function","vis":"private","signature":"Private Function ReCanonicalizeChar(ByVal codepoint As Long) As Long","returnType":"Long"},
@@ -229,7 +232,6 @@
         {"name":"SetMinimumCapacity","kind":"sub","vis":"private","signature":"Private Sub SetMinimumCapacity(ByRef sb As StaticStringBuilder, ByVal MinimumCapacity As Long)"},
         {"name":"SplitByRegex","kind":"function","vis":"public","signature":"Public Function SplitByRegex( ByRef regex As RegexTy, ByRef haystack As String, Optional ByVal localMatch As Boolean = False, Optional ByVal multiline As Boolean = False, Optional ByVal dotAll As Boolean = False ) As Collection","returnType":"Collection"},
         {"name":"StaticData","kind":"field","vis":"private","signature":"Private StaticData(0 To STATIC_DATA_LENGTH - 1) As Long"},
-        {"name":"StepsLimitHit","kind":"function","vis":"public","signature":"Public Function StepsLimitHit() As Boolean","returnType":"Boolean"},
         {"name":"SwitchToLargerBuffer","kind":"sub","vis":"private","signature":"Private Sub SwitchToLargerBuffer(ByRef sb As StaticStringBuilder, ByVal nRequired As Long)"},
         {"name":"Test","kind":"function","vis":"public","signature":"Public Function Test( ByRef regex As RegexTy, ByRef str As String, Optional ByVal multiline As Boolean = False, Optional ByVal dotAll As Boolean = False ) As Boolean","returnType":"Boolean"},
         {"name":"TryInitializeRegex","kind":"function","vis":"public","signature":"Public Function TryInitializeRegex( ByRef regex As RegexTy, ByRef pattern As String, Optional ByVal caseInsensitive As Boolean = False ) As Boolean","returnType":"Boolean"},
@@ -244,7 +246,7 @@
         {"name":"mInputChars","kind":"field","vis":"private","signature":"Private mInputChars() As Integer"},
         {"name":"mInputLen","kind":"field","vis":"private","signature":"Private mInputLen As Long"},
         {"name":"mStepsBudget","kind":"field","vis":"private","signature":"Private mStepsBudget As Long"},
-        {"name":"mStepsLimitHit","kind":"field","vis":"private","signature":"Private mStepsLimitHit As Boolean"},
+        {"name":"mStepsInputLen","kind":"field","vis":"private","signature":"Private mStepsInputLen As Long"},
         {"name":"mStepsUsed","kind":"field","vis":"private","signature":"Private mStepsUsed As Long"}
       ]
     },
@@ -430,9 +432,9 @@
       "signature": "Private Enum DfsMatcherSharedConstant",
       "values": [
         {"name":"DEFAULT_STEPS_LIMIT","value":"0"},
-        {"name":"STEPS_BUDGET_PER_CHAR","value":"5000"},
+        {"name":"STEPS_BUDGET_PER_CHAR_SQ","value":"10"},
         {"name":"STEPS_BUDGET_FLOOR","value":"1000000"},
-        {"name":"STEPS_BUDGET_CAP","value":"50000000"}
+        {"name":"STEPS_BUDGET_CAP","value":"100000000"}
       ]
     },
     {
@@ -518,7 +520,8 @@
         {"name":"inputStr","vis":"public","signature":"inputStr As String"},
         {"name":"currentCharacter","vis":"public","signature":"currentCharacter As Long"},
         {"name":"identifierTree","vis":"public","signature":"identifierTree As IdentifierTreeTy"},
-        {"name":"nCapturesKnown","vis":"public","signature":"nCapturesKnown As Long"}
+        {"name":"nCapturesKnown","vis":"public","signature":"nCapturesKnown As Long"},
+        {"name":"nCapturesOpened","vis":"public","signature":"nCapturesOpened As Long"}
       ],
       "members": []
     },
@@ -746,6 +749,7 @@
         {"name":"REGEX_ERR_INVALID_IDENTIFIER","value":"REGEX_ERR + 13"},
         {"name":"REGEX_ERR_INVALID_MODIFIER","value":"REGEX_ERR + 14"},
         {"name":"REGEX_ERR_INVALID_BACKREFERENCE","value":"REGEX_ERR + 15"},
+        {"name":"REGEX_ERR_SEARCH_ABANDONED","value":"REGEX_ERR + 16"},
         {"name":"REGEX_ERR_INTERNAL_LOGIC_ERR","value":"REGEX_ERR + 20"},
         {"name":"REGEX_ERR_INVALID_FLAG_ERR","value":"REGEX_ERR + 30"},
         {"name":"REGEX_ERR_INVALID_REPLACEMENT_STRING","value":"REGEX_ERR + 31"},

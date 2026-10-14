@@ -26,7 +26,7 @@ in this repository. They are inside the `.twinproj` files an IDE install ships, 
 node scripts/impexp.mjs export <some>.twinproj <out-dir>
 ```
 
-On BETA 983 and 995 alike that yields **820 `.twin` files**: 661 from the sixteen
+On BETA 1005 that yields **820 `.twin` files**: 661 from the sixteen
 packages under `packages/`, and 159 from the thirty-two sample and template projects under
 `projects/` (`addins/` holds no `.twinproj`). The compiler accepts all of this code, which
 makes it the strongest available evidence for what is legal syntax.
@@ -35,7 +35,7 @@ The tooling unpacks and packs in process, through `unpackProject` and `packTree`
 [scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs), which call impexp's
 `exportProject` and `importProject`: the census, `tbbuild --build`,
 `tbrun`, `check_examples`, `sweep_attributes`, `bug_repro`'s `pack`, and the add-in and IDE
-lanes. The compiler executable's `export` verb writes the same tree: on BETA 995 the two
+lanes. The compiler executable's `export` verb writes the same tree: the two
 unpack the install's sixteen packages and thirty-two samples to identical trees, 1,633 files
 byte for byte.
 
@@ -59,7 +59,7 @@ because:
 Anything that runs the executable follows two rules. **Use backslashes.** A folder named with forward slashes fails with
 `output folder does not exist and could not be created` whether it exists or not, creates
 nothing, and still exits 0. Given backslashes, `export` creates every missing level (tested
-three deep, BETA 983 and 995). The project path must be a full one, because `export`
+three deep). The project path must be a full one, because `export`
 prefixes it with `\\?\`. And **redirect stdin** when looping (`</dev/null`), or the
 executable consumes the loop's input and the second iteration never runs.
 
@@ -107,7 +107,7 @@ node scripts/census_attributes.mjs --attr Hidden          # one attribute
 node scripts/census_attributes.mjs --attr Hidden --dump-sites sites.json
 ```
 
-Against BETA 995: **661 files, 9,713 attribute sites, 55 distinct attributes**, and every
+Against BETA 1005: **661 files, 9,744 attribute sites, 55 distinct attributes**, and every
 one of the 55 is already in `Attributes.md` --- the "used but undocumented" section comes
 back empty. Sixteen documented attributes are used by no package. That is not a defect, but
 the census offers no evidence for their `Applicable to:` lines, and a probe is the only
@@ -180,19 +180,19 @@ and lays the answers against the page. Its reader-facing description is
 [Tools and Scripts](docs/Documentation/Tools-Samples.md#sweep-attributes); this is why it is built as
 it is.
 
-**Against BETA 987: 34,526 probes in 134 builds, 8 to 16 minutes on four lanes.** That is
-the whole matrix; nothing in it is slow enough to need sampling. **A run of one name is a
+**Against BETA 1005: 34,648 probes in 126 builds, 221 s on four lanes, with no crash and no
+interference.** That is the whole matrix; nothing in it is slow enough to need sampling. **A run of one name is a
 minute or a few, not always one:** an attribute the compiler allows once per project
 (`[RunAfterBuild]`, `[RunBeforeStartupObject]`) goes in one probe per batch, so it needs
 about a hundred builds by itself.
 
 **The token table is a string, and it holds the names you cannot guess.** The compiler binary
-has one 2,496-character run of 261 pipe-separated identifiers, from `On|Off|Explicit` to
+has one 2,514-character run of 263 pipe-separated identifiers, from `On|Off|Explicit` to
 `UserDefinedTypeIsAnAlias`, with `DllExport|ComExport` in the middle of it. It mixes
 keywords, attributes and object members (`Debug`, `Circle`, `PSet`), so a name in it is only a
 candidate. Swept, exactly one name the page does not document is accepted anywhere:
 `[PropertyPage]`, at eighteen sites, all of them members of a Class or an Interface. The
-other 193 are refused at every site.
+other 195 are refused at every site.
 
 **Six things the sweep has to get right, each of which gives a wrong report when missed:**
 
@@ -258,7 +258,7 @@ are 0 clean, 1 the project has errors, 2 the harness failed or the project file 
 **A project file the IDE cannot read is refused before an IDE starts.** `tbbuild` reads the
 container with impexp's reader (`checkProject`, in
 [scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs)) and exits 2 within a moment,
-naming the file and the fault. Without that, BETA 995 gives exit 0, a clean compile with no
+naming the file and the fault. Without that, the IDE gives exit 0, a clean compile with no
 rows, after the whole `--timeout` (66 s at `--timeout 60`) for an empty file, a file cut off
 halfway and a file with its first byte changed, and exit 3 for a text file. The IDE answers
 such a file with a message box, which nobody can see or answer on the private desktop. The
@@ -300,8 +300,8 @@ A project whose traffic never shows a compile ending falls back to waiting for t
 read OPERATIONAL and stand still for five seconds, and so does a page that a dialog has
 blocked. The reproducer `interface-extends-itself` is one such project: its compiler never
 reports a result at all. The traffic wait takes about five seconds less per project than the
-fallback: `tbbuild` on a one-file template takes 6 s, and a full `examples.bat` about 80 s
-(BETA 995).
+fallback: `tbbuild` on a one-file template takes 6 s, and a full `examples.bat` about 220 s
+(2,297 samples on four lanes, BETA 1005).
 
 Known: **`--llvm`, four projects at a time, can leave a build hanging** (4 of 52 builds in
 one run): the build starts and then reports nothing for 120 s. One at a time, the same
@@ -352,7 +352,7 @@ is written to stdout or stderr, ever**, it exits 0 with the `.exe` written when 
 in code nothing calls, and for an error the build reaches --- an unknown procedure or type,
 an undeclared variable, no `Sub Main` --- it does not exit at all: it sits on a "Please
 wait…" dialog at 100% forever. It is silent, falsely green, and hangs on the one case worth
-catching. All three hold on BETA 983 and 995 (the BUGS-TO-REPORT entry on
+catching. All three hold (the BUGS-TO-REPORT entry on
 `--buildAndExit32`).
 
 **It runs the IDE on a private Windows desktop, and that is not decoration.** A build tool
@@ -382,6 +382,9 @@ characters of its own; `launchOnDesktop` refuses a script over 30,000. The scrip
 polls the private desktop every 250 ms for visible `#32770` boxes belonging to the program or
 its job, prints each as `dialog <base64 of JSON {title, text}>` and presses its OK button:
 `bug_repro`'s `cli` mode uses all four for a compiler that opens a modal box on a damaged project.
+`TBBUILD_CWD` is the program's working folder (`launchOnDesktop`'s `cwd`), the program's own
+folder when it is unset; `check_impexp_parity.mjs` sets it so that the built impexp exe runs in
+the scratch folder of its commands.
 
 A launch that fails prints no pid, and its cause as one line on stderr, which `launchIde`
 reports. Two rules keep the cause readable. With its streams redirected, PowerShell writes
@@ -433,7 +436,7 @@ Seven rules about the harness, each a comment in the file:
   TRACE-MODE writes the thread dump that names the file, and the IDE switches that on in
   answer to the first `NATIVE EXCEPTION` and passes it to a compiler as it starts, so the
   restarted compiler's crash is the first to name one. A single re-read of the console after
-  the crash misses the name 31% of the time (BETA 983: the second crash comes 1.6 to 1.9 s
+  the crash misses the name 31% of the time (measured: the second crash comes 1.6 to 1.9 s
   after the first on an idle machine, 1.8 to 3.0 s with four IDEs compiling at once).
   `awaitCrashName` polls instead, every 250 ms for up to 5 s: it misses none and needs
   at most 3.25 s; the add-in lanes' `closeProject` uses it too. If a run ever has a second
@@ -449,8 +452,7 @@ Seven rules about the harness, each a comment in the file:
   helper the IDE is not a descendant of anything the harness spawned, so the helper reports
   the pid on stdout and the harness kills that.
 
-**A crashing probe is a real risk**: `Debug.ExecuteHostCommand` argument-shape probes take the
-compiler down repeatedly. Keep a question that might crash the compiler
+**A crashing probe is a real risk.** Keep a question that might crash the compiler
 in a project of its own, so the answer is attributable and one bad probe cannot cost the
 other thirty their run.
 
@@ -472,7 +474,7 @@ their counts included.
 
 **The compiler chooses its own address and key, and tells the process that started it.** So
 a program that starts a compiler itself can connect to it, and `--compiler=` need not name a
-real window for a compile or a build (BETA 995).
+real window for a compile or a build.
 
 What stands in the way is the work the page does over those connections. It loads the
 project, gives the compiler every package the project needs, answers what the compiler asks,
@@ -570,19 +572,16 @@ Rules it follows:
   yours.
 - **A failed build is not output.** A build that fails after a clean compile never runs the
   probe, and the IDE's own log stays in the console: `[BUILD] Starting...`,
-  `[TYPELIB] failed to finalize typelibrary.  Disk error?`, `[LINKER] FAILED to create type
-  library`, `[BUILD] failed`. `tbrun` exits 2 on any line `buildProject`'s `BUILD_FAILED`
+  `[LINKER] FAILED`, `[BUILD] failed`. `tbrun` exits 2 on any line `buildProject`'s `BUILD_FAILED`
   matches: `[BUILD] failed`, `[LINKER] FAILED`, `[BUILD] ERROR` and `[LINKER] compilation
   (codegen) error`. The codegen case builds with `[LINKER] SUCCESS`: a `[RunAfterBuild]` Sub
   that shifts a `Single` (BUGS-TO-REPORT.md) adds `[BUILD] Executing 'DocSamples.Probe.Run'...`
-  and the codegen line to the console, and nothing in the Sub runs. The type-library failure
-  comes from IDEs sharing one temp folder; `launchIde` gives each its own (see
-  WIP.ExamplesBuild.md).
+  and the codegen line to the console, and nothing in the Sub runs.
 - **A callee's code-generation failure is erased by the probe's own `Debug.Cls`.** When the
   failing shift is in a procedure the probe calls, the codegen line naming that procedure
   comes straight after the `[BUILD] Executing` line, before the probe's first statement runs.
   The probe's `Debug.Cls` erases it, and the probe prints what comes before the call and stops
-  there. (BETA 983 and 995: with `Debug.Cls` the probe prints exactly its lines; without it
+  there. (BETA 1005: with `Debug.Cls` the probe prints exactly its lines; without it
   `tbrun` warns and the build log lines precede them; exit 0 either way, without the guard
   below.) So `tbrun` wraps the page's global `clearDebugConsole()` before it presses Build,
   and keeps what each clear erases (`keepClears` in `tb-ide-console.mjs`). A `BUILD_FAILED`
@@ -599,15 +598,15 @@ Rules it follows:
   `tbbuild`'s 4. `tbrun` exits 3 for no output at all, and 2 for a compile that never
   settled, which `tbbuild` reports as 3.
 - **`tbrun` exits 5 when the probe ended before it returned.** The quiet period cannot see
-  it: on BETA 995, `Err.Raise` with no handler in a `+llvm` procedure ends the run with
+  it: on BETA 1005, `Err.Raise` with no handler in a `+llvm` procedure ends the run with
   nothing in the console. `End` does the same, and so does an unhandled error in plain code,
-  in the same time as a probe that returns (20.7-21.9 s over three runs on BETA 995, against
-  18.6-20.4 s). `lib/tb-probe.mjs`'s `wrapProbe` moves the attribute, blanked to spaces so
+  in about the time of a probe that returns (12.8 s against 10.4 s, one run each on BETA
+  1005, other IDEs running). `lib/tb-probe.mjs`'s `wrapProbe` moves the attribute, blanked to spaces so
   diagnostics keep their positions, to a Sub appended to the same module, so a Private probe
   Sub can still be called; that Sub prints a sentinel after the call. A probe that leaves a
   form loaded returns too: the IDE then prints `[DEBUGGER] Waiting for remaining forms to
-  close...` after the sentinel, which `sentinelIndex` allows and `tbrun` prints (BETA 983
-  and 995). `check_twin_parsers` has fixtures for both.
+  close...` after the sentinel, which `sentinelIndex` allows and `tbrun` prints (BETA
+  1005). `check_twin_parsers` has fixtures for both.
 - **`tbrun --exe` exits 6 when the exe exited with a code other than 0**, when the event
   log records that it faulted, when it opened a box, or when it was still running at
   `--timeout` and was ended. A run that would exit 5 exits 5 first, since the
@@ -693,16 +692,18 @@ cannot predict. A project with compile errors runs none of its `[TestCase]`s.
 ### Measuring LLVM
 
 `tbrun --llvm` sets `compiler.debugOptions` and `compiler.buildOptions` to `+llvm` in the
-staged Settings; `--compiler-options` sets any other string. Measured on BETA 995 with no
+staged Settings; `--compiler-options` sets any other string. Measured on BETA 1005 with no
 per-procedure attributes, one probe in four variants of Settings: **`debugOptions` is what
 the `[RunAfterBuild]` run is compiled with.** With `+llvm` there, `Debug.Assert`'s condition
-was evaluated 0 times and a 200-million-step loop took 516 ms; with it only in
-`buildOptions`, 1 time and 672 ms, as with neither. (`+llvm` alone is not
-`+llvm +optimize`, which took the same loop to 62 ms as a procedure attribute.)
+was evaluated 0 times; with it only in `buildOptions`, 1 time, as with neither. A
+200-million-step loop took 465 ms with neither, 387 ms with `buildOptions` only, 430 ms with
+`debugOptions` only and 398 ms with both, so on this build the speed of a plain loop does not
+tell the variants apart. (`+llvm` alone is not `+llvm +optimize`, which took the same loop to
+0 ms.)
 
 **The licence is in the status bar's `compilerLicence`:** one of `COMMUNITY EDITION`,
 `PERSONAL EDITION`, `PROFESSIONAL EDITION`, `ULTIMATE EDITION`, and `tB Licence: ...`
-until the IDE knows (`ide/main.js`, BETA 995). The licence key is in HKCU, so a lane IDE
+until the IDE knows (`ide/main.js`, BETA 1005). The licence key is in HKCU, so a lane IDE
 sees the user's. `tbrun` refuses an LLVM run on the first two, which compile no user code
 with LLVM; it cannot be tested with a real Community licence here, only through a fault.
 
@@ -710,26 +711,27 @@ with LLVM; it cannot be tested with a real Community licence here, only through 
 `launchIde` that calls `tb-launch.ps1`, which reports the program's exit code on a
 second line (`exit <n>`) once it ends. Nothing reaches the exe's standard output: the
 launcher creates it with no inherited handles. So `TbRun.Out` writes UTF-8 to the file
-`TBRUN_OUT` names, and to standard output only when there is none. Measured on BETA 995:
+`TBRUN_OUT` names, and to standard output only when there is none. Measured on BETA 1005:
 the exit code from `ExitProcess 7` comes back as 7, a hung exe is ended at `--timeout`
 with nothing left running, and **the exe never evaluates `Debug.Assert`, with or without
 LLVM**, as VB6 drops `Debug` statements from a compiled program.
 
 **An unhandled error in the exe opens a box and waits for it**, so `--exe` passes
 `dialogs: "close"`: the launcher records each box and presses OK. Without that the exe
-sat until `--timeout`. The box is the only sign of the error. In BETA 997 a plain exe
-shows *shutdown*, `Run-time error '5' <description>`, and exits with code 0 once the box
-is closed; an LLVM-compiled one shows *_TB_ERROR_HANDLER*, `unhandled error in
-Probe.Main`, with no number or description, and then dies of an access violation at
-address 0 (`0xC0000005`). `tbrun` also reads the Application log for a fault the exe
+sat until `--timeout`. The box is the only sign of the error. In BETA 1005 a plain exe
+shows a box titled with the project's application title, `Run-time error '11' <description>`,
+and exits with code 0 once the box is closed; an LLVM-compiled one shows *_TB_ERROR_HANDLER*,
+`unhandled error in ProbeMod.Oops` (the module and procedure), with no number or
+description, and then dies of an access violation at address 0 (`0xC0000005`). `tbrun` also reads the Application log for a fault the exe
 ended on (`lib/win-fault.mjs`), since an exit code need not say it; the record is written
 because the launcher, not Node, starts the exe.
 
 **`TbRun.Out` knows it is in the IDE because the wrapper says so.** The wrapper sets
 `TbRun.tbrun_InIDE` before it calls the probe; the exe runs `Sub Main`, never the wrapper.
 `App.IsInIDE` would say the same, but `App` exists only in a project that references the
-VB package: in any other, `TbRun` fails to compile (TB5079, `Unrecognized symbol 'App'`)
-and `tbrun` exits 1 on a probe that is fine (BETA 995, the install's Samples 6 and 8).
+VB package or the AppGlobalClassObject package: in any other, `TbRun` fails to compile
+(TB5079, `Unrecognized symbol 'App'`) and `tbrun` exits 1 on a probe that is fine (BETA 1005;
+either package alone is enough, and the install's Samples 6 and 8 had neither).
 Adding that reference to the staged copy would change what the probe's own names resolve
 to, and the VB6 idiom, a `Debug.Assert` whose condition sets a variable, fails under
 `--llvm`, because LLVM-compiled code skips `Debug.Assert` in the IDE too. A tree with a
@@ -756,7 +758,7 @@ target's own compiler, `twinBASIC_win64_noDEP.exe` for win64, and the project co
 again. A project opening with a remembered target goes through the same switch before it
 loads.
 
-**Wait for the restart by the compiler's pid, not by the clock.** Measured on BETA 983, at
+**Wait for the restart by the compiler's pid, not by the clock.** Measured at
 50 ms: the status bar stays OPERATIONAL for about 250 ms after the switch, reads UNAVAILABLE
 until the new compiler's pid appears in `g_CurrentCompilerProcessId` at about 510 ms, and
 LIMITED until OPERATIONAL at 1.4 s. A `waitForCompile` started straight after the switch can
@@ -951,12 +953,14 @@ exactly what the lane puts there. The compiler loads the DLLs in
 `%APPDATA%\twinBASIC\addins\<arch>` as well (P6), and the `APPDATA` each lane gives its
 IDEs keeps the user's out ([The add-in test runner](#the-add-in-test-runner)).
 
-**Measured, against BETA 983 (and 995 where stated):**
+**Measured:**
 
 - **An IDE session writes nothing into its install.** A compile, a compiler crash and a
-  `tbrun` build-and-run each left all 233 files byte-identical, down to the mtimes; on
-  BETA 995 the install (235 files) was byte-identical after exports, a `tbbuild` and two
-  `tbrun` runs. A compile also left the per-user `%APPDATA%\twinBASIC` unchanged; that folder
+  `tbrun` build-and-run each left every file byte-identical, down to the mtimes; on
+  BETA 1005 the install's 232 files outside the default WebView2 profile folder
+  (`bin\twinBASIC_win32_noDEP.exe.WebView2`, which the user's own IDE writes and the harness's
+  IDEs, started with their own `WEBVIEW2_USER_DATA_FOLDER`, do not) were byte-identical
+  after a `tbbuild` and a `tbrun`. A compile also left the per-user `%APPDATA%\twinBASIC` unchanged; that folder
   holds the user's downloaded packages and empty `addins`, `locale` and `themes` folders, and
   is shared by every install. So a compile's whole footprint outside its temp folders is the
   registry, which [the tidy](#what-a-run-leaves-in-the-registry-and-putting-it-back)
@@ -968,9 +972,10 @@ IDEs keeps the user's out ([The add-in test runner](#the-add-in-test-runner)).
 - **Starting the copy re-points the `.twinproj` association at it.** The real install's IDE
   leaves the keys alone. The tidy restores them with three writes.
 
-**A copy, not hardlinks.** The install is 233 files and 87 MB; leaving out `projects\` (the
-samples and New Project templates, 29 MB, which a test that opens its project on the command
-line never shows) and `addins\` (recreated), it copies in **380 ms**. Hardlinks would save
+**A copy, not hardlinks.** The install is 232 files and 106 MB (BETA 1005, leaving out the
+default WebView2 profile folder); leaving out `projects\` (the
+samples and New Project templates, 30 MB, which a test that opens its project on the command
+line never shows) and `addins\` (recreated), it copies in **348 ms**, that folder included. Hardlinks would save
 that at the price of sharing every file with the user's install, so that any write the IDE
 made into its own folder would land in the real one. A copy makes the question irrelevant
 instead of merely answered.
@@ -1078,7 +1083,7 @@ output file '<path>'` or one of about twenty failure lines --- `[LINKER] FAILED 
 error ...`. An output file another process holds open gives `[LINKER] FAILED to create output
 file '...' (error code 32)`, then `LOCKED BY:` and a line naming the process, then `[BUILD]
 failed`. A package writes `[BUILD] Creating TWINPACK file '<path>'` and then `[BUILD]
-successful.` (BETA 995), and its failures are `[BUILD] FAILED ...` and `[BUILD] failed` lines
+successful.` (BETA 1005), and its failures are `[BUILD] FAILED ...` and `[BUILD] failed` lines
 like a binary's. `buildProject` matches the success line whole, because `[BUILD] successfully
 built Fusion server file` is another line, and only after the TWINPACK line. Two details:
 
@@ -1249,7 +1254,7 @@ anybody watches. A caller can still set the variable otherwise, or leave it out 
 `undefined` as its value: Node leaves such a variable out of a child's environment even
 when its own environment has it (measured).
 
-**Measured on BETA 983 and 995 (P10 in WIP.HelpAddin.md), and held by
+**Measured (P10 in WIP.HelpAddin.md), and held by
 [test/addin/env.test.mjs](test/addin/env.test.mjs):** the EnvProbe add-in
 ([probes/env](test/addin/probes/env)) prints the variable from `Host_OnProjectLoaded`.
 Through `launchIde` it reads `1`, from `Environ$` and from
@@ -1436,7 +1441,7 @@ probe lanes:
   lane need no change to the runner, and the second takes the same port once the first has
   been ended.
 
-**Timing, BETA 995:** the thirteen lanes other than widgets (24 s alone on BETA 997) take about two minutes at the default two at a time
+**Timing:** the thirteen lanes other than widgets (24 s alone) take about two minutes at the default two at a time
 (the env lane is 16 s alone, the help lane 15 to 18 s, of which its sixteen cases are about 6 s). Typical lane costs: an add-in build about 10 s, a host IDE
 about 9 s, a scenario 2 s; the slowest lanes are arch (56 s: two builds and two switches of
 target) and reload (47 s: two builds and two restarts).

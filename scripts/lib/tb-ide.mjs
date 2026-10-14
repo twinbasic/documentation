@@ -33,7 +33,7 @@ export const normPath = (p) => p.split("\\").join("/").toLowerCase();
  *
  * launchIde sets it to "1" for every IDE the harness starts, tbbuild's and
  * tbrun's included: any of them can load an add-in the user has installed,
- * and none has anybody watching it. Measured on BETA 983 (P10): it reaches the
+ * and none has anybody watching it. Measured (P10): it reaches the
  * compiler, twinBASIC_win32_noDEP.exe, which the IDE starts as its own child,
  * and every add-in that compiler loads, including after the compiler restarts.
  */
@@ -146,10 +146,8 @@ export async function launchIde({ exe, project, port, show = false, keep = false
   }
   const exeWin = exe.split("/").join("\\");
   const target = project ? path.resolve(project).split("/").join("\\") : "";
-  // Each IDE has a temp folder of its own, emptied at each launch on its port.
-  // Builds sharing one fail now and then with `[TYPELIB] failed to finalize
-  // typelibrary.  Disk error?`: 0 in 192 with a folder per IDE, 8 in 192 with
-  // one for all eight at once (BETA 995).
+  // Each IDE has a temp folder of its own, emptied at each launch on its port
+  // and removed when the IDE ends (shutdownIde).
   const ideTemp = path.join(process.env.TEMP, `tbbuild-tmp-${port}`);
   // The WebView2 profile, 28 MB once the IDE has run. Emptied here as well, for
   // what a run that was killed left behind, and removed when the IDE ends
@@ -263,6 +261,7 @@ const BOOTSTRAP = "$s = $env:TBBUILD_SCRIPT; Remove-Item Env:TBBUILD_SCRIPT; & (
  * @param {object} o.env      its whole environment
  * @param {string[]} [o.args] more arguments, after `arg`, for a program that takes
  *                            several; quoted as the C runtime reads them
+ * @param {string} [o.cwd]    its working folder; the program's own folder when left out
  * @param {string} [o.stdout] a file path: the program's standard output goes there
  * @param {string} [o.stderr] the same for standard error. With either, the program's
  *                            standard input is the null device, and an output left
@@ -277,7 +276,7 @@ const BOOTSTRAP = "$s = $env:TBBUILD_SCRIPT; Remove-Item Env:TBBUILD_SCRIPT; & (
  *   opened (empty without `dialogs`). Throws, with the launcher's error, when
  *   the program did not start.
  */
-export async function launchOnDesktop({ exe, arg = "", args, desktop, job = true, env, stdout, stderr, dialogs }) {
+export async function launchOnDesktop({ exe, arg = "", args, desktop, job = true, env, cwd, stdout, stderr, dialogs }) {
   const script = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
   // -EncodedCommand is UTF-16 in base64, 2.7 characters to each of the script's,
   // and a command line stops at 32,767: the script outgrew that at about 12,000
@@ -304,6 +303,7 @@ export async function launchOnDesktop({ exe, arg = "", args, desktop, job = true
         TBBUILD_ARGS: args?.length ? args.map(quoteArg).join(" ") : undefined,
         TBBUILD_DESKTOP: desktop,
         TBBUILD_JOB: job ? "1" : "0",
+        TBBUILD_CWD: cwd || undefined,
         TBBUILD_STDOUT: stdout || undefined,
         TBBUILD_STDERR: stderr || undefined,
         TBBUILD_DIALOGS: dialogs || undefined,
@@ -548,7 +548,7 @@ export function waitForExit(pid, timeoutMs) {
  *
  * The connection records and dismisses every javascript dialog the page opens,
  * in `c.dialogs` as `{type, message, at}`. The IDE calls `alert()` from 37
- * places in BETA 983, and never `confirm()` or `prompt()`. An alert blocks the
+ * places in BETA 1005 (main.js and main2.js), and never `confirm()` or `prompt()`. An alert blocks the
  * page until it is answered, which on a private desktop nobody can do: every
  * later call on the connection would time out. An alert is accepted, since it has only the
  * one button; a confirm or a prompt, which only an add-in could open, is
@@ -1056,7 +1056,7 @@ const TARGET_JS = `(() => {
  * changedActiveBuildConfig, saves the target for the project's path and calls
  * restartCompilerSafely, which kills the compiler; the new one is the target's
  * own, twinBASIC_win64_noDEP.exe for win64, and it compiles the project again.
- * Measured on BETA 983: the status bar stays OPERATIONAL for about 250 ms
+ * Measured: the status bar stays OPERATIONAL for about 250 ms
  * after the switch, and is down for about a second after that until the new
  * compiler's pid appears. waitForCompile started straight away can count that
  * as the compiler going down twice and report a crash, so the restart is waited
@@ -1121,13 +1121,13 @@ export async function awaitNewCompiler(c, before, { why = "restarting it", timeo
   }
 }
 
-// The build log, in the compiler's own words (its strings, BETA 983). A build
+// The build log, in the compiler's own words (its strings, BETA 1005). A build
 // writes "[BUILD] Starting..." to the DEBUG CONSOLE, and a binary ends with
 // "[LINKER] SUCCESS created output file '<path>'" or with one of some twenty
 // failure lines: "[LINKER] FAILED ...", "[BUILD] FAILED ...", "[BUILD] ERROR
 // ...", "[BUILD] failed" and "[LINKER] compilation (codegen) error ...".
 // A package writes "[BUILD] Creating TWINPACK file '<path>'" and then
-// "[BUILD] successful." (BETA 995); it fails with "[BUILD] FAILED to create
+// "[BUILD] successful."; it fails with "[BUILD] FAILED to create
 // output file", "[BUILD] FAILED to write to output file" or "[BUILD] failed".
 // The success line is matched whole: "[BUILD] successfully built Fusion server
 // file" is another line.
@@ -1137,10 +1137,10 @@ const PACKAGE_FILE = /^\[BUILD\] Creating TWINPACK file '(.+)'$/;
 const PACKAGE_OK = "[BUILD] successful.";
 // The last is LLVM's refusal of a procedure, which has no bracketed prefix:
 // "LLVM compilation error in 'Probe.Stopper': Unable to compile due to use of
-// datatype that is not yet supported for LLVM compilation" (BETA 983).
+// datatype that is not yet supported for LLVM compilation" (BETA 1005).
 export const BUILD_FAILED =
   /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error|^LLVM compilation error in /;
-// A compiler that crashes while building -- measured under LLVM, BETA 995 --
+// A compiler that crashes while building -- as one did under LLVM --
 // writes "<n> <time> NATIVE EXCEPTION: ..." and then restarts, and the build
 // never reports again. The line carries the console's own prefix, so it is not
 // anchored.
@@ -1153,7 +1153,7 @@ const BUILD_CRASHED = /\bNATIVE EXCEPTION:/;
  * only to the built-in packages (docs/LLVM/Getting-Started.md), so on either an
  * LLVM run measures the default compiler and says nothing. The status bar's
  * compilerLicence holds one of four "<NAME> EDITION" strings once the IDE knows
- * (ide/main.js, BETA 995), and "tB Licence: ..." until then, so it is polled.
+ * (ide/main.js, BETA 1005), and "tB Licence: ..." until then, so it is polled.
  *
  * @param {object} c                  a tb-cdp connection
  * @param {object} [o]

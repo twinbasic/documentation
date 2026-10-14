@@ -19,7 +19,7 @@
 //   e  Dim f As Folder = RootFolder.Parent, then "read"
 //   f  the control: the project folder's Parent, printed by its Path
 //
-// Each test states what BETA 983, 995 and 997 do, which is the same: the
+// Each test states what BETA 1005 does: the
 // compiler crashes in cases a to e, at the read of the root's Parent, before
 // anything is done with the value, and not in the control, f, where the
 // parent is the root. So the lane passes while the bug is there. If a test
@@ -69,7 +69,7 @@ scenario("P21: what reading the Parent of the file system's root does", (lane) =
   // are expected here, and any other failure is not.
   //
   // An IDE now and then starts and prints nothing, and the lane waits out its
-  // timeout (2 of 28 runs on BETA 983 to 997, never twice running): that run
+  // timeout (never twice running): that run
   // says nothing about the case, so it is repeated once.
   async function observe(which) {
     const first = await observeOnce(which);

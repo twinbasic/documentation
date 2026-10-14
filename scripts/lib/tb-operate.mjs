@@ -371,7 +371,7 @@ export async function waitForEditAnswer(c, { timeout = 5 * 1000 } = {}) {
 // and whenever the compiler's decorations for the document arrive less than
 // 700 ms after the last such call, parseDocumentDecorations calls it again:
 // the cursor goes back to that place, and the 700 ms start over (main.js,
-// BETA 983). Every edit brings new decorations. Measured: with Haystack.twin
+// BETA 1005). Every edit brings new decorations. Measured: with Haystack.twin
 // opened at 4:9, the cursor moved to 3:1 and "xyz" typed a key every 150 ms,
 // "x" went in at 3:1 and "y" and "z" both at 4:9, as "zy". A time the IDE has
 // cleared (undefined) never matches, and neither does its starting 0.

@@ -473,13 +473,18 @@ Exit codes: **0** the shims write what stock pdf-lib writes, and every shim and 
 
     node scripts/check_impexp_parity.mjs
 
-Verifies that the two editions of the [impexp tool](Tools-Compiler#impexp), `scripts/impexp.mjs` and `scripts/impexp.py`, behave the same, as that section promises. Both `--self-test` suites must pass, with the same test names in the same order. Then one sequence of commands runs through each edition, each in a scratch folder of its own holding copies of `indexer/sample.twinpack` and `test/example-projects/console`: export and import, the printing commands, and each refusal, failure and warning the exit codes name.
+Verifies that the editions of the [impexp tool](Tools-Compiler#impexp) behave the same, as that section promises: `scripts/impexp.mjs`, `scripts/impexp.py` and, when it is named, the built exe of the twinBASIC edition, `scripts/impexp/`. Every `--self-test` suite must pass, with the same test names in the same order. Then one sequence of commands runs through each edition, each in a scratch folder of its own holding copies of `indexer/sample.twinpack` and `test/example-projects/console`: export and import, the printing commands, and each refusal, failure and warning the exit codes name.
 
-After every command, both editions must give the exit code the command is there for, print the same on each stream, and leave the same files, compared as bytes. On Windows, Python writes CRLF to the console, so a CRLF in the printed output is read as LF on both sides; on Linux, as in CI, the output is compared as written. About four seconds, most of it Python starting once per command.
+After every command, every edition must give the exit code the command is there for, print the same on each stream, and leave the same files, compared as bytes. On Windows, Python writes CRLF to the console, so a CRLF in the printed output is read as LF in every edition; on Linux, as in CI, the output is compared as written. About four seconds for the two scripts, most of it Python starting once per command.
 
-Without Python 3.6 or later on the `PATH` (it tries `python3`, then `python`, then `py -3` on Windows), the gate prints `SKIPPED` and exits 0, so `test.bat` passes on a machine without Python. When `CI` is `true`, as GitHub sets it, the same case fails instead: CI must compare the two.
+**The twinBASIC edition is compared only when `IMPEXP_EXE` names its built exe**, on Windows, because no gate can build it, as none can build [`imagestrip`](Tools-IDE#imagestrip). The exe runs in the scratch folder of each command, on a private desktop of its own through `launchOnDesktop`, so it cannot open anything on the desktop in use; a message box it opens counts as a difference. CI never sets the variable. With it, a run takes about 30 seconds.
 
-Exit codes: **0** the two editions agree, or the check was skipped because no Python was found; **1** the editions differ, or a built-in test failed; **2** the check could not run: a refused command line, no Python when `CI=true`, or a crash.
+    set IMPEXP_EXE=<path of impexp_win32.exe>
+    node scripts/check_impexp_parity.mjs
+
+Without Python 3.6 or later on the `PATH` (it tries `python3`, then `python`, then `py -3` on Windows), the gate prints `SKIPPED` and exits 0, so `test.bat` passes on a machine without Python. When `CI` is `true`, as GitHub sets it, the same case fails instead: CI must compare the two scripts. With `IMPEXP_EXE` set and no Python outside CI, the gate compares `impexp.mjs` with the exe and reports that `impexp.py` was not compared.
+
+Exit codes: **0** the editions agree, or the check was skipped because no Python was found; **1** the editions differ, or a built-in test failed; **2** the check could not run: a refused command line, no Python when `CI=true`, an `IMPEXP_EXE` that is not a file or is set off Windows, or a crash.
 
 ## check_axe_patch_equiv.mjs
 {: #check-axe-patch-equiv }

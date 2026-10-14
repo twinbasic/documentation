@@ -119,7 +119,7 @@ export async function captureRun(c, { done = () => false, quietMs, timeoutMs }) 
  * calls that fails code generation is reported straight after the "[BUILD]
  * Executing '<project>.<module>.<Sub>'..." line, before the Sub's first
  * statement, so its Debug.Cls erases the report and the Sub stops where it calls
- * that procedure (measured, BETA 983). A failure line among what the clears
+ * that procedure (measured). A failure line among what the clears
  * erased counts only after the last Executing line: before it is the build's own
  * log, which ended in success or the Sub would not have run.
  *

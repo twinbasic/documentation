@@ -1,0 +1,728 @@
+' The built-in tests: a port of selfTest in scripts/impexp.mjs, with the same tests in the same
+' order, printing the same lines. Each test is a Sub; RunOne runs one, and reports a PASS, or a
+' FAIL with the message of the error that ended it. A test leaves no error handler active, so a
+' failed check ends it.
+Module SelfTest
+    Private Const CHECK_FAILED As Long = vbObjectError + &H1200
+
+    Private mWork As String
+    Private mProj As String
+    Private mTree As String
+    Private mSample As String
+    Private mPassed As Long
+    Private mFailed As Long
+
+    ' Runs every test, prints each result and the count, and returns 1 if one failed, else 0.
+    Public Function RunAll() As Long
+        Dim number As Long, description As String
+        mWork = FileSys.MakeTempFolder(FileSys.TempFolder() & "\impexp-test-")
+        MainModule.WriteOut "Self-test  workdir: " & mWork
+        MainModule.WriteOut ""
+        mPassed = 0
+        mFailed = 0
+
+        On Error Resume Next
+        RunSuite
+        number = Err.Number
+        description = Err.Description
+        On Error Resume Next
+        FileSys.RemovePath mWork
+        On Error GoTo 0
+        If number <> 0 Then Err.Raise number, , description
+
+        MainModule.WriteOut ""
+        MainModule.WriteOut mPassed & "/" & (mPassed + mFailed) & " tests passed."
+        If mFailed > 0 Then RunAll = 1 Else RunAll = 0
+    End Function
+
+    Private Sub RunSuite()
+        RunOne "Parse and serialize round-trip in memory", 1
+        RunOne "Serializing is idempotent", 2
+        RunOne "A damaged file is refused", 3
+
+        mProj = WriteTree(At("Probe.twinproj"), Probe())
+        mTree = At("tree")
+
+        RunOne "Export writes every file but .meta", 4
+        RunOne "Import packs the folder, naming the root from Settings", 5
+        RunOne "Import names the root after the folder when Settings has no name", 6
+        RunOne "Import adds the empty folders the IDE expects, to the project and each package in it", 7
+        RunOne "Export without --overwrite refuses, and writes nothing", 8
+        RunOne "Export --overwrite replaces files and names the ones the project lacks", 9
+        RunOne "Import without --overwrite refuses, and leaves the project alone", 10
+        RunOne "Import refuses a folder with no Settings file", 11
+        RunOne "Import skips .git and the project file itself", 12
+        RunOne "Export refuses a name that would leave the folder", 13
+        RunOne "Export writes the first of two entries with one name, and says so", 14
+        RunOne "Import converts LF to CRLF in code files only", 15
+        RunOne "The printing commands read the documents at the root", 16
+        RunOne "A command line in the wrong shape is refused before anything is read", 17
+        RunOne "The exit code says why a command failed, and that it warned", 18
+
+        ' The documentation repository's own sample, when run from a checkout.
+        mSample = FindSample()
+        If Len(mSample) = 0 Then
+            MainModule.WriteOut "  [SKIP] sample.twinpack -- only in a checkout of the documentation repository"
+        Else
+            RunOne "Parse sample.twinpack", 19
+            RunOne "sample.twinpack survives export, import and export again", 20
+        End If
+    End Sub
+
+    Private Sub RunOne(ByVal name As String, ByVal index As Long)
+        Dim message As String
+        On Error GoTo Failed
+        Select Case index
+            Case 1: RoundTripInMemory
+            Case 2: SerializingIsIdempotent
+            Case 3: DamagedFileIsRefused
+            Case 4: ExportWritesEveryFileButMeta
+            Case 5: ImportPacksTheFolder
+            Case 6: ImportNamesRootAfterFolder
+            Case 7: ImportAddsEmptyFolders
+            Case 8: ExportWithoutOverwriteRefuses
+            Case 9: ExportOverwriteReplaces
+            Case 10: ImportWithoutOverwriteRefuses
+            Case 11: ImportRefusesNoSettings
+            Case 12: ImportSkipsGitAndSelf
+            Case 13: ExportRefusesUnsafeNames
+            Case 14: ExportWritesFirstOfTwo
+            Case 15: ImportConvertsLineEndings
+            Case 16: PrintingCommandsReadDocuments
+            Case 17: CommandLineWrongShape
+            Case 18: ExitCodes
+            Case 19: ParseSample
+            Case 20: SampleSurvivesRoundTrip
+        End Select
+        MainModule.WriteOut "  [PASS] " & name
+        mPassed = mPassed + 1
+        Exit Sub
+    Failed:
+        message = Err.Description
+        MainModule.WriteOut "  [FAIL] " & name
+        MainModule.WriteOut "         " & message
+        mFailed = mFailed + 1
+    End Sub
+
+    ' ---------------------------------------------------------------- the tests
+
+    Private Sub RoundTripInMemory()
+        Dim tree As Entry, back As Entry, b() As Byte, n As Long, hidden As Entry, backHidden As Entry
+        Dim i As Long, revs As String
+        Set tree = Probe()
+        Set hidden = tree.Children(1)
+        hidden.Flags = ProjectFormat.FLAG_HIDDEN Or ProjectFormat.FLAG_VIRTUAL
+        hidden.AddRevision 1
+        hidden.AddRevision 2
+        hidden.AddRevision 3
+        n = ProjectFormat.Serialize(tree, b)
+        Set back = ProjectFormat.Parse(b, n)
+        EqS back.Name, "Probe", "root name"
+        EqS Listing(back), Listing(tree), "contents"
+        Set backHidden = back.Children(1)
+        EqN backHidden.Flags, ProjectFormat.FLAG_HIDDEN Or ProjectFormat.FLAG_VIRTUAL, "flags"
+        For i = 0 To backHidden.RevisionCount - 1
+            If i > 0 Then revs = revs & ","
+            revs = revs & backHidden.RevisionAt(i)
+        Next
+        EqS revs, "1,2,3", "revision list"
+    End Sub
+
+    Private Sub SerializingIsIdempotent()
+        Dim first() As Byte, second() As Byte, third() As Byte, n1 As Long, n2 As Long, n3 As Long
+        n1 = ProjectFormat.Serialize(Probe(), first)
+        n2 = ProjectFormat.Serialize(ProjectFormat.Parse(first, n1), second)
+        n3 = ProjectFormat.Serialize(ProjectFormat.Parse(second, n2), third)
+        EqN CompareBytes(second, n2, third, n3), 0, "second pass differs"
+    End Sub
+
+    Private Sub DamagedFileIsRefused()
+        Dim good() As Byte, n As Long, junk() As Byte, nj As Long, none() As Byte
+        n = ProjectFormat.Serialize(Probe(), good)
+        nj = TextKit.Latin1Encode("not a project file", junk)
+        CheckDamaged "magic", junk, nj
+        CheckDamaged "short", good, n - 7
+        CheckDamaged "empty", none, 0
+    End Sub
+
+    Private Sub CheckDamaged(ByVal name As String, data() As Byte, ByVal length As Long)
+        Dim p As String, number As Long, description As String
+        p = At("damaged", name & ".twinproj")
+        FileSys.MakeDirs FileSys.ParentOf(p)
+        FileSys.WriteAllBytes p, data, length
+        Err.Clear
+        On Error Resume Next
+        Impexp.ReadProject p
+        number = Err.Number
+        description = Err.Description
+        On Error GoTo 0
+        ExpectRefused number, description, "damaged or is not a project file", "invalid"
+    End Sub
+
+    Private Sub ExportWritesEveryFileButMeta()
+        Dim r As Outcome
+        Set r = Impexp.ExportProject(mProj, mTree, False)
+        EqS Text(FileSys.JoinPath(mTree, "Settings")), SettingsText(), "Settings"
+        EqS Text(FileSys.JoinPath(mTree, "Sources", "Module1.twin")), "Module Module1" & vbCrLf & "End Module" & vbCrLf, "Module1.twin"
+        EqB Exists(FileSys.JoinPath(mTree, "Packages")), True, "empty folder"
+        EqB Exists(FileSys.JoinPath(mTree, ".meta")), False, ".meta"
+        EqS r.Files & " " & r.Folders & " " & r.Stale.Count, "5 6 0", "files, folders, stale"
+    End Sub
+
+    Private Sub ImportPacksTheFolder()
+        Dim out As String, back As Entry, expected As Entry
+        out = At("Repacked.twinproj")
+        Impexp.ImportProject out, mTree, False
+        Set back = ParseFile(out)
+        EqS back.Name, "Probe", "root name"
+        EqN back.Category, ProjectFormat.CATEGORY_DEFAULT, "root category"
+        Set expected = Probe()
+        expected.Children.Remove 1 ' .meta
+        EqS Listing(back), Listing(expected), "contents"
+        EqN ChildNamed(back, "Sources").Category, ProjectFormat.CATEGORY_SOURCES, "Sources category"
+    End Sub
+
+    Private Sub ImportNamesRootAfterFolder()
+        Dim bare As String, out As String
+        bare = At("bare", "MyTree")
+        FileSys.MakeDirs bare
+        WriteText FileSys.JoinPath(bare, "Settings"), "{}"
+        out = At("bare", "Bare.twinproj")
+        Impexp.ImportProject out, bare, False
+        EqS ParseFile(out).Name, "MyTree", "root name"
+    End Sub
+
+    Private Sub ImportAddsEmptyFolders()
+        Dim src As String, d As Variant, r As Outcome, back As Entry, names() As String, n As Long
+        Dim keys As New Collection, vals As New Collection
+        src = At("bare", "Git")
+        For Each d In Array("resources", "Packages/Pkg", "Packages/Pkg/Sources", "Packages/NotPkg")
+            FileSys.MakeDirs FileSys.JoinPath(src, CStr(d))
+        Next
+        WriteText FileSys.JoinPath(src, "Settings"), "{}"
+        WriteText FileSys.JoinPath(src, "Packages", "Pkg", "Settings"), "{}"
+        Set r = Impexp.ImportProject(At("bare", "Git.twinproj"), src, False)
+        EqS JoinC(r.Added), "ImportedTypeLibraries,Miscellaneous,Sources,Packages/Pkg/ImportedTypeLibraries,Packages/Pkg/Miscellaneous," & _
+            "Packages/Pkg/Packages,Packages/Pkg/Resources", "added"
+        Set back = ParseFile(At("bare", "Git.twinproj"))
+        Walk back, "", keys, vals
+        EqS JoinC(keys), "ImportedTypeLibraries/,Miscellaneous/,Packages/,Packages/NotPkg/,Packages/Pkg/," & _
+            "Packages/Pkg/ImportedTypeLibraries/,Packages/Pkg/Miscellaneous/,Packages/Pkg/Packages/," & _
+            "Packages/Pkg/Resources/,Packages/Pkg/Sources/,Packages/Pkg/Settings,Sources/,resources/,Settings", "contents"
+        EqN ChildNamed(back, "Miscellaneous").Category, ProjectFormat.CATEGORY_MISCELLANEOUS, "category"
+        n = FileSys.ListNames(src, names)
+        TextKit.SortOrdinal names, n
+        EqS JoinA(names, n), "Packages,Settings,resources", "the tree on disk changed"
+    End Sub
+
+    Private Sub ExportWithoutOverwriteRefuses()
+        Dim number As Long, description As String
+        FileSys.RemovePath FileSys.JoinPath(mTree, "Settings")
+        WriteText FileSys.JoinPath(mTree, "Sources", "Module1.twin"), "CHANGED"
+        Err.Clear
+        On Error Resume Next
+        Impexp.ExportProject mProj, mTree, False
+        number = Err.Number
+        description = Err.Description
+        On Error GoTo 0
+        ExpectRefused number, description, "already exist", "exists"
+        EqB Exists(FileSys.JoinPath(mTree, "Settings")), False, "Settings written anyway"
+        EqS Text(FileSys.JoinPath(mTree, "Sources", "Module1.twin")), "CHANGED", "Module1.twin"
+    End Sub
+
+    Private Sub ExportOverwriteReplaces()
+        Dim r As Outcome
+        WriteText FileSys.JoinPath(mTree, "Sources", "Stale.twin"), "Module Stale" & vbCrLf & "End Module" & vbCrLf
+        Set r = Impexp.ExportProject(mProj, mTree, True)
+        EqS Text(FileSys.JoinPath(mTree, "Sources", "Module1.twin")), "Module Module1" & vbCrLf & "End Module" & vbCrLf, "Module1.twin"
+        EqB Exists(FileSys.JoinPath(mTree, "Settings")), True, "Settings"
+        EqS JoinC(r.Stale), FileSys.JoinPath(mTree, "Sources", "Stale.twin"), "files the project lacks"
+        FileSys.RemovePath FileSys.JoinPath(mTree, "Sources", "Stale.twin")
+    End Sub
+
+    Private Sub ImportWithoutOverwriteRefuses()
+        Dim before() As Byte, after() As Byte, nb As Long, na As Long, number As Long, description As String
+        nb = FileSys.ReadAllBytes(mProj, before)
+        Err.Clear
+        On Error Resume Next
+        Impexp.ImportProject mProj, mTree, False
+        number = Err.Number
+        description = Err.Description
+        On Error GoTo 0
+        ExpectRefused number, description, "already exists", "exists"
+        na = FileSys.ReadAllBytes(mProj, after)
+        EqN CompareBytes(after, na, before, nb), 0, "project file changed"
+    End Sub
+
+    Private Sub ImportRefusesNoSettings()
+        Dim noSettings As String, number As Long, description As String
+        noSettings = At("nosettings")
+        FileSys.MakeDirs noSettings
+        WriteText FileSys.JoinPath(noSettings, "Module1.twin"), "x"
+
+        Err.Clear
+        On Error Resume Next
+        Impexp.ImportProject At("NoSettings.twinproj"), noSettings, False
+        number = Err.Number
+        description = Err.Description
+        On Error GoTo 0
+        ExpectRefused number, description, "no Settings file", "invalid"
+
+        Err.Clear
+        On Error Resume Next
+        Impexp.ImportProject At("Missing.twinproj"), At("missing"), False
+        number = Err.Number
+        description = Err.Description
+        On Error GoTo 0
+        ExpectRefused number, description, "does not exist", "missing"
+
+        EqB Exists(At("NoSettings.twinproj")), False, "a project file was written"
+    End Sub
+
+    Private Sub ImportSkipsGitAndSelf()
+        Dim inside As String, r As Outcome, s As Variant, skipped As String, listed As String
+        FileSys.MakeDirs FileSys.JoinPath(mTree, ".git")
+        WriteText FileSys.JoinPath(mTree, ".git", "HEAD"), "ref: refs/heads/main" & vbLf
+        inside = FileSys.JoinPath(mTree, "Inside.twinproj")
+        Impexp.ImportProject inside, mTree, False
+        Set r = Impexp.ImportProject(inside, mTree, True)
+        listed = Listing(ParseFile(inside))
+        EqB InStr(listed, ".git") > 0 Or InStr(listed, "Inside") > 0, False, "packed anyway"
+        For Each s In r.Skipped
+            If Len(skipped) > 0 Then skipped = skipped & ","
+            skipped = skipped & s(0)
+        Next
+        EqS skipped, ".git,Inside.twinproj", "skipped"
+        FileSys.RemovePath inside
+        FileSys.RemovePath FileSys.JoinPath(mTree, ".git")
+    End Sub
+
+    Private Sub ExportRefusesUnsafeNames()
+        Dim bad As Variant, p As String, number As Long, description As String
+        For Each bad In Array("..", "a/b", "a\b", "C:x", "x.", "x ", "")
+            p = WriteTree(At("unsafe", "Unsafe.twinproj"), _
+                D("Unsafe", F("Settings", "{}"), D("Sources", F(CStr(bad), "x"))))
+            Err.Clear
+            On Error Resume Next
+            Impexp.ExportProject p, At("unsafe", "out"), False
+            number = Err.Number
+            description = Err.Description
+            On Error GoTo 0
+            ExpectRefused number, description, "cannot be written safely", "invalid"
+        Next
+        EqB Exists(At("unsafe", "out")), False, "something was written"
+    End Sub
+
+    Private Sub ExportWritesFirstOfTwo()
+        Dim p As String, out As String, r As Outcome, clash As String, number As Long, description As String
+        p = WriteTree(At("twice", "Twice.twinproj"), _
+            D("Twice", _
+                F("Settings", "{}"), _
+                D("Sources", F("A.twin", "first"), F("a.twin", "second"), F("B.twin", "first")), _
+                D("Sources", F("B.twin", "second"), F("C.twin", "merged"))))
+        out = At("twice", "out")
+        Set r = Impexp.ExportProject(p, out, False)
+        EqS Text(FileSys.JoinPath(out, "Sources", "A.twin")), "first", "A.twin"
+        EqS Text(FileSys.JoinPath(out, "Sources", "B.twin")), "first", "B.twin"
+        EqS Text(FileSys.JoinPath(out, "Sources", "C.twin")), "merged", "C.twin"
+        EqS JoinC(r.Repeated), "Sources/A.twin,Sources/B.twin", "names reported"
+        clash = WriteTree(At("twice", "Clash.twinproj"), _
+            D("Clash", F("Settings", "{}"), F("Sources", "x"), D("Sources")))
+        Err.Clear
+        On Error Resume Next
+        Impexp.ExportProject clash, At("twice", "clash"), False
+        number = Err.Number
+        description = Err.Description
+        On Error GoTo 0
+        ExpectRefused number, description, "a file and a folder with the same name", "invalid"
+    End Sub
+
+    Private Sub ImportConvertsLineEndings()
+        Dim rels As Variant, befores As Variant, afters As Variant, i As Long, src As String, p As String
+        Dim out As String, keys As New Collection, vals As New Collection
+        rels = Array("Settings", "Sources/Lf.twin", "Sources/Mixed.BAS", "Sources/Crlf.cls", "Sources/Form.tbform", "Resources/RCDATA/data.txt")
+        befores = Array("{" & vbLf & "}" & vbLf, "A" & vbLf & "B" & vbLf, "A" & vbCrLf & "B" & vbLf & "C", _
+            "A" & vbCrLf & "B" & vbCrLf, "{" & vbLf & "}" & vbLf, "A" & vbLf & "B" & vbLf)
+        afters = Array("{" & vbLf & "}" & vbLf, "A" & vbCrLf & "B" & vbCrLf, "A" & vbCrLf & "B" & vbCrLf & "C", _
+            "A" & vbCrLf & "B" & vbCrLf, "{" & vbLf & "}" & vbLf, "A" & vbLf & "B" & vbLf)
+        src = At("eol", "Eol")
+        For i = 0 To UBound(rels)
+            p = FileSys.JoinPath(src, CStr(rels(i)))
+            FileSys.MakeDirs FileSys.ParentOf(p)
+            WriteText p, CStr(befores(i))
+        Next
+        out = At("eol", "Eol.twinproj")
+        Impexp.ImportProject out, src, False
+        Walk ParseFile(out), "", keys, vals
+        For i = 0 To UBound(rels)
+            EqS TextKit.JsonQuote(Lookup(keys, vals, CStr(rels(i)))), TextKit.JsonQuote(CStr(afters(i))), CStr(rels(i))
+        Next
+    End Sub
+
+    Private Sub PrintingCommandsReadDocuments()
+        Dim b() As Byte, n As Long, lower As String, number As Long, description As String
+        n = Impexp.ReadDocument(mProj, "readme", b)
+        EqS TextKit.Latin1Decode(b, n), "# Probe" & vbCrLf, "readme"
+        n = Impexp.ReadDocument(mProj, "settings", b)
+        EqS TextKit.Latin1Decode(b, n), SettingsText(), "settings"
+
+        Err.Clear
+        On Error Resume Next
+        Impexp.ReadDocument mProj, "licence", b
+        number = Err.Number
+        description = Err.Description
+        On Error GoTo 0
+        ExpectRefused number, description, "has no LICENCE.md", "missing"
+
+        lower = WriteTree(At("docs", "Lower.twinproj"), _
+            D("Lower", F("changelog.MD", "log"), D("Sources", F("README.md", "not at the root"))))
+        n = Impexp.ReadDocument(lower, "changelog", b)
+        EqS TextKit.Latin1Decode(b, n), "log", "changelog, lower case"
+
+        Err.Clear
+        On Error Resume Next
+        Impexp.ReadDocument lower, "readme", b
+        number = Err.Number
+        description = Err.Description
+        On Error GoTo 0
+        ExpectRefused number, description, "has no README.md", "missing"
+    End Sub
+
+    Private Sub CommandLineWrongShape()
+        ' Each bad line is the verb and its arguments, in one list.
+        Dim bad As Variant, line As Variant
+        For Each bad In Array( _
+                Array("export", "tree/", "P.twinproj"), _
+                Array("import", "P.twinproj", "Q.twinpack"), _
+                Array("import", "P.twinproj"), _
+                Array("EXPORT", "P.twinproj", "tree"), _
+                Array("license", "P.twinproj"), _
+                Array("settings", "P.twinproj", "extra"), _
+                Array())
+            line = bad
+            EqB Len(MainModule.CommandLineError(WordsOf(line))) = 0, False, JoinV(line)
+        Next
+        EqS MainModule.CommandLineError(WordsOf(Array("export", "P.TWINPACK", "tree/"))), "", "export P.TWINPACK tree/"
+        EqS MainModule.CommandLineError(WordsOf(Array("readme", "P.twinproj"))), "", "readme P.twinproj"
+    End Sub
+
+    Private Sub ExitCodes()
+        Dim number As Long, description As String, r As Outcome
+        EqS Impexp.EXIT_DONE & "," & Impexp.EXIT_FAILED & "," & Impexp.EXIT_USAGE & "," & Impexp.EXIT_EXISTS & "," & _
+            Impexp.EXIT_MISSING & "," & Impexp.EXIT_INVALID & "," & Impexp.EXIT_WARNED, "0,1,2,3,4,5,6", "the documented codes"
+
+        Err.Clear
+        On Error Resume Next
+        Impexp.ReadProject At("nowhere.twinproj")
+        number = Err.Number
+        description = Err.Description
+        On Error GoTo 0
+        ExpectRefused number, description, "does not exist", "missing"
+
+        Impexp.LastReason = "exists"
+        EqN Impexp.ExitCodeForError(Impexp.REFUSED), Impexp.EXIT_EXISTS, "a refusal"
+        EqN Impexp.ExitCodeForError(70001), Impexp.EXIT_FAILED, "any other error"
+
+        Set r = New Outcome
+        r.Stale.Add "Sources/Old.twin"
+        EqN Impexp.ExitCodeForOutcome(r), Impexp.EXIT_WARNED, "a file the project lacks"
+        Set r = New Outcome
+        r.Repeated.Add "Sources/A.twin"
+        EqN Impexp.ExitCodeForOutcome(r), Impexp.EXIT_WARNED, "a repeated name"
+        Set r = New Outcome
+        r.Skipped.Add Array(".git", "Git's own folder")
+        EqN Impexp.ExitCodeForOutcome(r), Impexp.EXIT_DONE, "a skipped .git"
+    End Sub
+
+    Private Sub ParseSample()
+        Dim b() As Byte, n As Long, root As Entry, fc As Long, dc As Long
+        n = FileSys.ReadAllBytes(mSample, b)
+        Set root = ProjectFormat.Parse(b, n)
+        EqS root.Name, "CustomControlsPackage", "root name"
+        CountTree root, fc, dc
+        EqN fc, 22, "file count"
+        EqN dc, 7, "dir count"
+    End Sub
+
+    Private Sub SampleSurvivesRoundTrip()
+        Dim a As String, b As String, rt As String
+        a = At("sample", "a")
+        b = At("sample", "b")
+        rt = At("sample", "rt.twinpack")
+        Impexp.ExportProject mSample, a, False
+        Impexp.ImportProject rt, a, False
+        Impexp.ExportProject rt, b, False
+        EqB DiskListing(b) = DiskListing(a), True, "the two trees differ"
+        EqS ParseFile(rt).Name, "CustomControlsPackage", "root name"
+    End Sub
+
+    ' ---------------------------------------------------------------- checks
+
+    Private Sub Fail(ByVal message As String)
+        Err.Raise CHECK_FAILED, , message
+    End Sub
+
+    Private Sub EqS(ByVal actual As String, ByVal expected As String, ByVal message As String)
+        If actual <> expected Then
+            Fail message & ": expected " & TextKit.JsonQuote(expected) & ", got " & TextKit.JsonQuote(actual)
+        End If
+    End Sub
+
+    Private Sub EqN(ByVal actual As Double, ByVal expected As Double, ByVal message As String)
+        If actual <> expected Then Fail message & ": expected " & CStr(expected) & ", got " & CStr(actual)
+    End Sub
+
+    Private Sub EqB(ByVal actual As Boolean, ByVal expected As Boolean, ByVal message As String)
+        If actual <> expected Then Fail message & ": expected " & JsonBool(expected) & ", got " & JsonBool(actual)
+    End Sub
+
+    Private Function JsonBool(ByVal b As Boolean) As String
+        If b Then JsonBool = "true" Else JsonBool = "false"
+    End Function
+
+    ' The call raised a refusal whose message holds the text and whose reason is the one given.
+    Private Sub ExpectRefused(ByVal number As Long, ByVal description As String, ByVal pattern As String, ByVal reason As String)
+        If number = 0 Then Fail "was not refused"
+        If number <> Impexp.REFUSED Then Fail "refused for the wrong reason: " & description
+        If InStr(description, pattern) = 0 Then Fail "refused for the wrong reason: " & description
+        If Impexp.LastReason <> reason Then
+            Fail "refused as " & TextKit.JsonQuote(Impexp.LastReason) & ", expected " & TextKit.JsonQuote(reason) & ": " & description
+        End If
+    End Sub
+
+    ' ---------------------------------------------------------------- trees and files
+
+    Private Function SettingsText() As String
+        SettingsText = "{" & vbCrLf & vbTab & """project.name"": ""Probe""" & vbCrLf & "}" & vbCrLf
+    End Function
+
+    ' A file entry whose content is the text, one byte for each character.
+    Private Function F(ByVal name As String, ByVal content As String) As Entry
+        Dim none(0 To 0) As Byte, e As Entry
+        Set e = ProjectFormat.NewFile(name, none, 0)
+        e.SetContentLatin1 content
+        Set F = e
+    End Function
+
+    ' A folder entry holding the entries given.
+    Private Function D(ByVal name As String, ParamArray children() As Variant) As Entry
+        Dim e As Entry, i As Long
+        Set e = ProjectFormat.NewFolder(name)
+        For i = LBound(children) To UBound(children)
+            e.Children.Add children(i)
+        Next
+        Set D = e
+    End Function
+
+    ' A small project in the shape the IDE writes.
+    Private Function Probe() As Entry
+        Set Probe = D("Probe", _
+            F(".meta", "{""rootFolder"": ""/Probe""}"), _
+            D("ImportedTypeLibraries"), _
+            D("Miscellaneous"), _
+            D("Packages"), _
+            F("README.md", "# Probe" & vbCrLf), _
+            D("Resources", D("ICON", F("app.ico", ChrW$(0) & ChrW$(1) & vbCrLf & ChrW$(2) & vbLf))), _
+            F("Settings", SettingsText()), _
+            D("Sources", F("Form1.tbform", "{" & vbLf & "}" & vbLf), F("Module1.twin", "Module Module1" & vbCrLf & "End Module" & vbCrLf)))
+    End Function
+
+    ' A path in the work folder.
+    Private Function At(ByVal a As String, Optional ByVal b As String = "", Optional ByVal c As String = "") As String
+        At = FileSys.JoinPath(mWork, a, b, c)
+    End Function
+
+    ' Writes the tree as a project file at p, and returns p.
+    Private Function WriteTree(ByVal p As String, ByVal tree As Entry) As String
+        Dim b() As Byte, n As Long
+        FileSys.MakeDirs FileSys.ParentOf(p)
+        n = ProjectFormat.Serialize(tree, b)
+        FileSys.WriteAllBytes p, b, n
+        WriteTree = p
+    End Function
+
+    Private Function ParseFile(ByVal p As String) As Entry
+        Dim b() As Byte, n As Long
+        n = FileSys.ReadAllBytes(p, b)
+        Set ParseFile = ProjectFormat.Parse(b, n)
+    End Function
+
+    Private Function Text(ByVal p As String) As String
+        Dim b() As Byte, n As Long
+        n = FileSys.ReadAllBytes(p, b)
+        Text = TextKit.Latin1Decode(b, n)
+    End Function
+
+    Private Sub WriteText(ByVal p As String, ByVal s As String)
+        Dim b() As Byte, n As Long
+        n = TextKit.Latin1Encode(s, b)
+        FileSys.WriteAllBytes p, b, n
+    End Sub
+
+    Private Function Exists(ByVal p As String) As Boolean
+        Exists = FileSys.KindOf(p) <> FileSys.KIND_NONE
+    End Function
+
+    Private Function ChildNamed(ByVal e As Entry, ByVal name As String) As Entry
+        Dim c As Entry
+        For Each c In e.Children
+            If c.Name = name Then
+                Set ChildNamed = c
+                Exit Function
+            End If
+        Next
+        Fail "no entry named " & name
+    End Function
+
+    ' 0 when the first na bytes of a are the first nb bytes of b, else -1 or 1.
+    Private Function CompareBytes(a() As Byte, ByVal na As Long, b() As Byte, ByVal nb As Long) As Long
+        Dim i As Long, n As Long
+        n = na
+        If nb < n Then n = nb
+        For i = 0 To n - 1
+            If a(i) <> b(i) Then
+                If a(i) < b(i) Then CompareBytes = -1 Else CompareBytes = 1
+                Exit Function
+            End If
+        Next
+        If na < nb Then
+            CompareBytes = -1
+        ElseIf na > nb Then
+            CompareBytes = 1
+        End If
+    End Function
+
+    ' Every entry of the tree by its path, the root's name left out, in walk order: a folder as
+    ' its path and a slash, with an empty value, and a file with its content as text.
+    Private Sub Walk(ByVal e As Entry, ByVal rel As String, ByVal keys As Collection, ByVal vals As Collection)
+        Dim c As Entry, r As String
+        For Each c In e.Children
+            If Len(rel) > 0 Then r = rel & "/" & c.Name Else r = c.Name
+            If c.IsFile Then
+                keys.Add r
+                vals.Add c.ContentLatin1()
+            Else
+                keys.Add r & "/"
+                vals.Add ""
+                Walk c, r, keys, vals
+            End If
+        Next
+    End Sub
+
+    Private Function Lookup(ByVal keys As Collection, ByVal vals As Collection, ByVal key As String) As String
+        Dim i As Long
+        For i = 1 To keys.Count
+            If keys(i) = key Then
+                Lookup = vals(i)
+                Exit Function
+            End If
+        Next
+    End Function
+
+    ' The tree's contents as one string that does not depend on the order of the entries.
+    Private Function Listing(ByVal tree As Entry) As String
+        Dim keys As New Collection, vals As New Collection, items() As String, i As Long, n As Long
+        Walk tree, "", keys, vals
+        n = keys.Count
+        If n = 0 Then Exit Function
+        ReDim items(0 To n - 1)
+        For i = 1 To n
+            items(i - 1) = TextKit.JsonQuote(keys(i)) & ":" & TextKit.JsonQuote(vals(i))
+        Next
+        TextKit.SortOrdinal items, n
+        Listing = JoinA(items, n)
+    End Function
+
+    ' Every folder and file under d in name order, a file with its content.
+    Private Function DiskListing(ByVal d As String) As String
+        Dim lines As New Collection
+        DiskWalk d, "", lines
+        DiskListing = JoinC(lines, vbLf)
+    End Function
+
+    Private Sub DiskWalk(ByVal p As String, ByVal rel As String, ByVal lines As Collection)
+        Dim names() As String, n As Long, i As Long, full As String, r As String
+        n = FileSys.ListNames(p, names)
+        TextKit.SortOrdinal names, n
+        For i = 0 To n - 1
+            full = FileSys.JoinPath(p, names(i))
+            If Len(rel) > 0 Then r = rel & "/" & names(i) Else r = names(i)
+            If FileSys.KindOf(full) = FileSys.KIND_FOLDER Then
+                lines.Add r & "/"
+                DiskWalk full, r, lines
+            Else
+                lines.Add r & "=" & Text(full)
+            End If
+        Next
+    End Sub
+
+    Private Sub CountTree(ByVal e As Entry, ByRef files As Long, ByRef folders As Long)
+        Dim c As Entry
+        For Each c In e.Children
+            If c.IsFile Then
+                files = files + 1
+            Else
+                folders = folders + 1
+                CountTree c, files, folders
+            End If
+        Next
+    End Sub
+
+    ' The first folder up from where the program is, or from where it was started, that holds
+    ' indexer\sample.twinpack; "" when none does.
+    Private Function FindSample() As String
+        FindSample = SearchUp(App.Path)
+        If Len(FindSample) = 0 Then FindSample = SearchUp(FileSys.CurrentDirectory())
+    End Function
+
+    Private Function SearchUp(ByVal start As String) As String
+        Dim d As String, candidate As String, parent As String
+        If Len(start) = 0 Then Exit Function
+        d = FileSys.FullPath(start)
+        Do While Len(d) > 0
+            candidate = FileSys.JoinPath(d, "indexer", "sample.twinpack")
+            If FileSys.KindOf(candidate) = FileSys.KIND_FILE Then
+                SearchUp = candidate
+                Exit Function
+            End If
+            parent = FileSys.ParentOf(d)
+            If Len(parent) = 0 Or parent = d Then Exit Do
+            d = parent
+        Loop
+    End Function
+
+    ' ---------------------------------------------------------------- lists as text
+
+    Private Function JoinC(ByVal c As Collection, Optional ByVal separator As String = ",") As String
+        Dim i As Long
+        For i = 1 To c.Count
+            If i > 1 Then JoinC = JoinC & separator
+            JoinC = JoinC & c(i)
+        Next
+    End Function
+
+    Private Function JoinA(items() As String, ByVal count As Long, Optional ByVal separator As String = ",") As String
+        Dim i As Long
+        For i = 0 To count - 1
+            If i > 0 Then JoinA = JoinA & separator
+            JoinA = JoinA & items(i)
+        Next
+    End Function
+
+    Private Function JoinV(ByVal items As Variant) As String
+        Dim i As Long
+        For i = LBound(items) To UBound(items)
+            If i > LBound(items) Then JoinV = JoinV & " "
+            JoinV = JoinV & items(i)
+        Next
+    End Function
+
+    ' The command line's words, the verb first, as a Collection.
+    Private Function WordsOf(ByVal items As Variant) As Collection
+        Dim r As New Collection, i As Long
+        For i = LBound(items) To UBound(items)
+            r.Add CStr(items(i))
+        Next
+        Set WordsOf = r
+    End Function
+End Module

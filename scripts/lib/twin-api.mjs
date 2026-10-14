@@ -14,7 +14,7 @@
 // is read, each as an alternative that starts from the block structure the #If
 // found (`branch`, below), and what it cannot place goes to `problems` rather than
 // being guessed at. Eighteen ways to misread this corpus, the first seven met in the
-// BETA 983 packages (scripts/census_attributes.mjs lists six more, about
+// shipped packages (scripts/census_attributes.mjs lists six more, about
 // attributes):
 //
 //   1. A Type is not a record only. `Type HDC` in the VB package declares
@@ -51,7 +51,7 @@
 //      value has no `= n`: the `[_]` of the LongPtr shim the VB6-derived
 //      community packages carry (92 enums), xCalendar's `[Flat]`, VB's `[A4
 //      Portrait]`.
-//      BETA 983, 995 and 1005 agree on it, whatever the brackets hold:
+//      BETA 1005 reads it so, whatever the brackets hold:
 //      `[Hidden]`, `[Hidden, Restricted]` and `[Description("x")]` on a line of
 //      their own each declare a value of that name and take the next number, and
 //      an attribute in front of a value on the same line (`[Hidden] Red = 5`)

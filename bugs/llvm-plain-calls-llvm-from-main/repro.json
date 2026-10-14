@@ -1,0 +1,10 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 5,
+    "output": [
+      "^Plain: before Callee$",
+      "NATIVE EXCEPTION: ACCESS_VIOLATION"
+    ]
+  }
+}

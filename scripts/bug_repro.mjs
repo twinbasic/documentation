@@ -480,7 +480,7 @@ const STARTUP = crlf(["Module Startup", "", "    Public Sub Main()", "    End Su
 // (tb-ide.mjs), so that it can be driven over DevTools, and code run in the IDE
 // inherits them. WebView2 lets them override what a WebView2 control asks for,
 // so a reproducer's control would join the IDE's own browser with other options
-// and fail to start (8007139F, ERROR_INVALID_STATE; measured, BETA 995). The
+// and fail to start (8007139F, ERROR_INVALID_STATE; measured). The
 // probe clears both for the length of Main, and an IDE started by hand has
 // neither.
 const PROBE = crlf([
@@ -953,10 +953,7 @@ async function runProbe(slug, o) {
     cpSync(p.src, stage, { recursive: true });
     mkdirSync(path.join(stage, "Sources"), { recursive: true });
     if (!o.exe) writeFileSync(path.join(stage, "Sources", "TbRunProbe.twin"), PROBE);
-    // Always --allow-name-clash: on a build before 1005 tbrun refuses a probe whose module holds a
-    // procedure named like the module, because those builds then do not run the [RunAfterBuild]
-    // Sub, and a reproducer exists to show a defect such as that one, so it must still run.
-    const flags = [...ideFlags(o), "--allow-name-clash", ...(o.llvm ? ["--llvm"] : []), ...(o.exe ? ["--exe"] : [])];
+    const flags = [...ideFlags(o), ...(o.llvm ? ["--llvm"] : []), ...(o.exe ? ["--exe"] : [])];
     const env = imagesDir ? { [IMAGES_ENV]: imagesDir } : {};
     const r = await runNode([TBRUN, stage, ...flags], limitFor(o.timeout, 120), env);
     return { ...r, json: null, message: r.stderr.trim(), output: r.stdout, imagesDir };

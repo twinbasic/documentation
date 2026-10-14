@@ -1,0 +1,366 @@
+' The file system, through the wide Win32 calls, so that every path is Unicode. A call that
+' fails raises IO_FAILED with the path and the system's own message.
+Module FileSys
+    Private Type FILETIME
+        Low As Long
+        High As Long
+    End Type
+
+    Private Type WIN32_FIND_DATAW
+        dwFileAttributes As Long
+        ftCreationTime As FILETIME
+        ftLastAccessTime As FILETIME
+        ftLastWriteTime As FILETIME
+        nFileSizeHigh As Long
+        nFileSizeLow As Long
+        dwReserved0 As Long
+        dwReserved1 As Long
+        cFileName(0 To 259) As Integer
+        cAlternateFileName(0 To 13) As Integer
+    End Type
+
+    Private Declare PtrSafe Function CreateFileW Lib "kernel32" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, ByVal lpSecurityAttributes As LongPtr, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReadFile Lib "kernel32" (ByVal hFile As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfBytesToRead As Long, ByRef lpNumberOfBytesRead As Long, ByVal lpOverlapped As LongPtr) As Long
+    Private Declare PtrSafe Function WriteFile Lib "kernel32" (ByVal hFile As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfBytesToWrite As Long, ByRef lpNumberOfBytesWritten As Long, ByVal lpOverlapped As LongPtr) As Long
+    Private Declare PtrSafe Function GetFileSizeEx Lib "kernel32" (ByVal hFile As LongPtr, ByRef lpFileSize As LongLong) As Long
+    Private Declare PtrSafe Function CloseHandle Lib "kernel32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function GetFileAttributesW Lib "kernel32" (ByVal lpFileName As LongPtr) As Long
+    Private Declare PtrSafe Function SetFileAttributesW Lib "kernel32" (ByVal lpFileName As LongPtr, ByVal dwFileAttributes As Long) As Long
+    Private Declare PtrSafe Function CreateDirectoryW Lib "kernel32" (ByVal lpPathName As LongPtr, ByVal lpSecurityAttributes As LongPtr) As Long
+    Private Declare PtrSafe Function RemoveDirectoryW Lib "kernel32" (ByVal lpPathName As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteFileW Lib "kernel32" (ByVal lpFileName As LongPtr) As Long
+    Private Declare PtrSafe Function MoveFileExW Lib "kernel32" (ByVal lpExistingFileName As LongPtr, ByVal lpNewFileName As LongPtr, ByVal dwFlags As Long) As Long
+    Private Declare PtrSafe Function FindFirstFileW Lib "kernel32" (ByVal lpFileName As LongPtr, ByRef lpFindFileData As WIN32_FIND_DATAW) As LongPtr
+    Private Declare PtrSafe Function FindNextFileW Lib "kernel32" (ByVal hFindFile As LongPtr, ByRef lpFindFileData As WIN32_FIND_DATAW) As Long
+    Private Declare PtrSafe Function FindClose Lib "kernel32" (ByVal hFindFile As LongPtr) As Long
+    Private Declare PtrSafe Function GetFullPathNameW Lib "kernel32" (ByVal lpFileName As LongPtr, ByVal nBufferLength As Long, ByVal lpBuffer As LongPtr, ByVal lpFilePart As LongPtr) As Long
+    Private Declare PtrSafe Function GetTempPathW Lib "kernel32" (ByVal nBufferLength As Long, ByVal lpBuffer As LongPtr) As Long
+    Private Declare PtrSafe Function GetCurrentDirectoryW Lib "kernel32" (ByVal nBufferLength As Long, ByVal lpBuffer As LongPtr) As Long
+    Private Declare PtrSafe Function FormatMessageW Lib "kernel32" (ByVal dwFlags As Long, ByVal lpSource As LongPtr, ByVal dwMessageId As Long, ByVal dwLanguageId As Long, ByVal lpBuffer As LongPtr, ByVal nSize As Long, ByVal Arguments As LongPtr) As Long
+
+    Public Const IO_FAILED As Long = vbObjectError + &H1101
+
+    Public Const KIND_NONE As Long = 0
+    Public Const KIND_FILE As Long = 1
+    Public Const KIND_FOLDER As Long = 2
+
+    Private Const GENERIC_READ As Long = &H80000000
+    Private Const GENERIC_WRITE As Long = &H40000000
+    Private Const FILE_SHARE_ALL As Long = 7
+    Private Const OPEN_EXISTING As Long = 3
+    Private Const CREATE_ALWAYS As Long = 2
+    Private Const FILE_ATTRIBUTE_READONLY As Long = 1
+    Private Const FILE_ATTRIBUTE_DIRECTORY As Long = &H10
+    Private Const FILE_ATTRIBUTE_NORMAL As Long = &H80
+    Private Const INVALID_FILE_ATTRIBUTES As Long = -1
+    Private Const MOVEFILE_REPLACE_EXISTING As Long = 1
+    Private Const CHUNK As Long = &H100000
+
+    ' KIND_NONE when nothing is there, as Node's statSync throws.
+    Public Function KindOf(ByVal path As String) As Long
+        Dim attrs As Long
+        If Len(path) = 0 Then Exit Function
+        attrs = GetFileAttributesW(StrPtr(path))
+        If attrs = INVALID_FILE_ATTRIBUTES Then Exit Function
+        If (attrs And FILE_ATTRIBUTE_DIRECTORY) <> 0 Then KindOf = KIND_FOLDER Else KindOf = KIND_FILE
+    End Function
+
+    ' The whole file into data, and its length.
+    Public Function ReadAllBytes(ByVal path As String, data() As Byte) As Long
+        Dim h As LongPtr, size As LongLong, done As Long, n As Long, got As Long
+        Erase data
+        h = CreateFileW(StrPtr(path), GENERIC_READ, FILE_SHARE_ALL, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
+        If h = -1 Then Fail "cannot read " & path
+        If GetFileSizeEx(h, size) = 0 Then
+            CloseHandle h
+            Fail "cannot read " & path
+        End If
+        If size > &H7FFFFFFF Then
+            CloseHandle h
+            Err.Raise IO_FAILED, , "cannot read " & path & ": the file is larger than 2 GB"
+        End If
+        If size > 0 Then
+            ReDim data(0 To CLng(size) - 1)
+            Do While done < size
+                n = CLng(size) - done
+                If n > CHUNK Then n = CHUNK
+                If ReadFile(h, VarPtr(data(done)), n, got, 0) = 0 Then
+                    CloseHandle h
+                    Fail "cannot read " & path
+                End If
+                If got = 0 Then Exit Do
+                done = done + got
+            Loop
+        End If
+        CloseHandle h
+        ReadAllBytes = done
+    End Function
+
+    ' Creates or empties the file, and writes the first length bytes of data into it.
+    Public Sub WriteAllBytes(ByVal path As String, data() As Byte, ByVal length As Long)
+        Dim h As LongPtr, done As Long, n As Long, wrote As Long
+        h = CreateFileW(StrPtr(path), GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0)
+        If h = -1 Then Fail "cannot write " & path
+        Do While done < length
+            n = length - done
+            If n > CHUNK Then n = CHUNK
+            If WriteFile(h, VarPtr(data(done)), n, wrote, 0) = 0 Then
+                CloseHandle h
+                Fail "cannot write " & path
+            End If
+            done = done + wrote
+        Loop
+        CloseHandle h
+    End Sub
+
+    ' The names in a folder, "." and ".." left out, in the order the file system gives them.
+    Public Function ListNames(ByVal folder As String, names() As String) As Long
+        Dim d As WIN32_FIND_DATAW, h As LongPtr, name As String, n As Long
+        Erase names
+        h = FindFirstFileW(StrPtr(Normalize(folder & "\*")), d)
+        If h = -1 Then Fail "cannot read the folder " & folder
+        Do
+            name = FindName(d)
+            If name <> "." And name <> ".." Then
+                If n = 0 Then
+                    ReDim names(0 To 15)
+                ElseIf n > UBound(names) Then
+                    ReDim Preserve names(0 To 2 * n - 1)
+                End If
+                names(n) = name
+                n = n + 1
+            End If
+        Loop While FindNextFileW(h, d) <> 0
+        FindClose h
+        ListNames = n
+    End Function
+
+    Private Function FindName(d As WIN32_FIND_DATAW) As String
+        Dim i As Long, s As String
+        Do While i <= 259
+            If d.cFileName(i) = 0 Then Exit Do
+            s = s & ChrW$(d.cFileName(i) And &HFFFF&)
+            i = i + 1
+        Loop
+        FindName = s
+    End Function
+
+    ' Creates the folder and every folder above it that is missing, as mkdirSync's recursive does.
+    Public Sub MakeDirs(ByVal path As String)
+        Dim full As String, parent As String
+        full = FullPath(path)
+        If KindOf(full) = KIND_FOLDER Then Exit Sub
+        parent = ParentOf(full)
+        If Len(parent) > 0 And parent <> full Then
+            If KindOf(parent) <> KIND_FOLDER Then MakeDirs parent
+        End If
+        If CreateDirectoryW(StrPtr(full), 0) = 0 Then
+            If KindOf(full) <> KIND_FOLDER Then Fail "cannot create the folder " & path
+        End If
+    End Sub
+
+    ' Replaces target with source, as renameSync does.
+    Public Sub MoveReplacing(ByVal source As String, ByVal target As String)
+        If MoveFileExW(StrPtr(source), StrPtr(target), MOVEFILE_REPLACE_EXISTING) = 0 Then Fail "cannot write " & target
+    End Sub
+
+    ' Deletes a file, or a folder and everything in it; nothing there is no error, as rmSync's force.
+    Public Sub RemovePath(ByVal path As String)
+        Dim names() As String, n As Long, i As Long
+        Select Case KindOf(path)
+            Case KIND_FILE
+                SetFileAttributesW StrPtr(path), FILE_ATTRIBUTE_NORMAL
+                If DeleteFileW(StrPtr(path)) = 0 Then Fail "cannot delete " & path
+            Case KIND_FOLDER
+                n = ListNames(path, names)
+                For i = 0 To n - 1
+                    RemovePath path & "\" & names(i)
+                Next
+                If RemoveDirectoryW(StrPtr(path)) = 0 Then Fail "cannot delete " & path
+        End Select
+    End Sub
+
+    ' The absolute path, as path.resolve gives it: no trailing separator but a root's.
+    Public Function FullPath(ByVal path As String) As String
+        Dim buf As String, n As Long
+        If Len(path) = 0 Then path = "."
+        n = GetFullPathNameW(StrPtr(path), 0, 0, 0)
+        If n = 0 Then
+            FullPath = path
+            Exit Function
+        End If
+        buf = String$(n, vbNullChar)
+        n = GetFullPathNameW(StrPtr(path), n, StrPtr(buf), 0)
+        FullPath = Left$(buf, n)
+        Do While Len(FullPath) > 3 And Right$(FullPath, 1) = "\"
+            FullPath = Left$(FullPath, Len(FullPath) - 1)
+        Loop
+    End Function
+
+    ' The key two paths to one file share: Windows compares paths without regard to case.
+    Public Function PathKey(ByVal path As String) As String
+        PathKey = LCase$(FullPath(path))
+    End Function
+
+    Public Function CurrentDirectory() As String
+        Dim buf As String, n As Long
+        n = GetCurrentDirectoryW(0, 0)
+        buf = String$(n, vbNullChar)
+        n = GetCurrentDirectoryW(n, StrPtr(buf))
+        CurrentDirectory = Left$(buf, n)
+    End Function
+
+    ' The temporary folder, without a trailing separator, as os.tmpdir gives it.
+    Public Function TempFolder() As String
+        Dim buf As String, n As Long
+        buf = String$(1024, vbNullChar)
+        n = GetTempPathW(1024, StrPtr(buf))
+        TempFolder = Left$(buf, n)
+        Do While Len(TempFolder) > 3 And Right$(TempFolder, 1) = "\"
+            TempFolder = Left$(TempFolder, Len(TempFolder) - 1)
+        Loop
+    End Function
+
+    ' A new, empty folder whose name is prefix and six random characters, as mkdtempSync makes.
+    Public Function MakeTempFolder(ByVal prefix As String) As String
+        Const LETTERS As String = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        Dim attempt As Long, i As Long, candidate As String
+        Randomize
+        For attempt = 1 To 100
+            candidate = prefix
+            For i = 1 To 6
+                candidate = candidate & Mid$(LETTERS, Int(Rnd * Len(LETTERS)) + 1, 1)
+            Next
+            If CreateDirectoryW(StrPtr(candidate), 0) <> 0 Then
+                MakeTempFolder = candidate
+                Exit Function
+            End If
+        Next
+        Fail "cannot create a temporary folder " & prefix & "XXXXXX"
+    End Function
+
+    ' The folder that holds path, or "" for a root.
+    Public Function ParentOf(ByVal path As String) As String
+        Dim i As Long
+        For i = Len(path) To 1 Step -1
+            If Mid$(path, i, 1) = "\" Or Mid$(path, i, 1) = "/" Then Exit For
+        Next
+        If i <= 0 Then Exit Function
+        If i = 3 And Mid$(path, 2, 1) = ":" Then
+            ParentOf = Left$(path, 3)
+        ElseIf i = 1 Then
+            ParentOf = "\"
+        Else
+            ParentOf = Left$(path, i - 1)
+        End If
+    End Function
+
+    ' The last component of a path, as path.basename gives it.
+    Public Function BaseName(ByVal path As String) As String
+        Dim i As Long
+        path = Replace(path, "/", "\")
+        Do While Len(path) > 1 And Right$(path, 1) = "\"
+            path = Left$(path, Len(path) - 1)
+        Loop
+        i = InStrRev(path, "\")
+        BaseName = Mid$(path, i + 1)
+        If Len(BaseName) = 2 And Right$(BaseName, 1) = ":" Then BaseName = ""
+        If BaseName = "\" Then BaseName = ""
+    End Function
+
+    ' The extension of a name, from its last dot, as path.extname gives it: none for a name
+    ' that is only a leading dot and what follows.
+    Public Function ExtName(ByVal name As String) As String
+        Dim i As Long
+        i = InStrRev(name, ".")
+        If i <= 1 Then Exit Function
+        ExtName = Mid$(name, i)
+    End Function
+
+    ' The parts joined with separators and normalised, as path.join does on Windows.
+    Public Function JoinPath(ParamArray parts() As Variant) As String
+        Dim i As Long, s As String
+        For i = LBound(parts) To UBound(parts)
+            If Len(parts(i)) > 0 Then
+                If Len(s) > 0 Then s = s & "\"
+                s = s & CStr(parts(i))
+            End If
+        Next
+        JoinPath = Normalize(s)
+    End Function
+
+    ' Forward slashes made backslashes, repeated separators collapsed, and "." and ".." resolved,
+    ' as path.normalize does on Windows. A trailing separator stays.
+    Public Function Normalize(ByVal path As String) As String
+        Dim root As String, rest As String, absolute As Boolean, trailing As Boolean
+        Dim segs() As String, kept() As String, n As Long, i As Long, s As String
+        path = Replace(path, "/", "\")
+        If Len(path) = 0 Then
+            Normalize = "."
+            Exit Function
+        End If
+        If Left$(path, 2) = "\\" Then
+            root = "\\"
+            rest = Mid$(path, 3)
+            absolute = True
+        Else
+            If Len(path) >= 2 And Mid$(path, 2, 1) = ":" Then
+                root = Left$(path, 2)
+                path = Mid$(path, 3)
+            End If
+            If Left$(path, 1) = "\" Then
+                root = root & "\"
+                absolute = True
+            End If
+            rest = path
+        End If
+        trailing = Right$(rest, 1) = "\"
+        segs = Split(rest, "\")
+        ReDim kept(0 To UBound(segs) + 1)
+        For i = 0 To UBound(segs)
+            s = segs(i)
+            If s = "" Or s = "." Then
+                ' nothing
+            ElseIf s = ".." Then
+                If n > 0 And kept(n - 1) <> ".." Then
+                    n = n - 1
+                ElseIf Not absolute Then
+                    kept(n) = ".."
+                    n = n + 1
+                End If
+            Else
+                kept(n) = s
+                n = n + 1
+            End If
+        Next
+        s = ""
+        For i = 0 To n - 1
+            If i > 0 Then s = s & "\"
+            s = s & kept(i)
+        Next
+        If Len(s) = 0 And Not absolute Then s = "."
+        If trailing And n > 0 Then s = s & "\"
+        Normalize = root & s
+    End Function
+
+    ' Raises IO_FAILED with the system's message for the last error.
+    Private Sub Fail(ByVal what As String)
+        Dim code As Long
+        code = Err.LastDllError
+        Err.Raise IO_FAILED, , what & ": " & SystemMessage(code)
+    End Sub
+
+    Private Function SystemMessage(ByVal code As Long) As String
+        Const FORMAT_MESSAGE_FROM_SYSTEM As Long = &H1000
+        Const FORMAT_MESSAGE_IGNORE_INSERTS As Long = &H200
+        Dim buf As String, n As Long
+        buf = String$(512, vbNullChar)
+        n = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM Or FORMAT_MESSAGE_IGNORE_INSERTS, 0, code, 0, StrPtr(buf), 512, 0)
+        buf = Left$(buf, n)
+        Do While Len(buf) > 0 And (Right$(buf, 1) = vbCr Or Right$(buf, 1) = vbLf Or Right$(buf, 1) = " " Or Right$(buf, 1) = ".")
+            buf = Left$(buf, Len(buf) - 1)
+        Loop
+        If Len(buf) = 0 Then buf = "error " & code
+        SystemMessage = buf
+    End Function
+End Module

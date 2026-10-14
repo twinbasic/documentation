@@ -28,7 +28,7 @@ twinBASIC has no command-line build. None of the compiler executable's verbs ---
 | Flag | Effect |
 |---|---|
 | `--ide <path>` | Path to `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` folder on `%USERPROFILE%\Desktop`. **No install path is hardcoded in this tooling**, because one contains a username, so an install kept elsewhere needs one of those two. |
-| `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder, the IDE's temp folder (`%TEMP%\tbbuild-tmp-<n>`, its `TEMP` and `TMP`) and the private desktop, so runs on distinct ports can go at once; IDEs sharing one temp folder now and then fail to write the type library. Both folders (`%TEMP%\tbbuild-tmp-<n>` and the user-data folder, `%TEMP%\tbbuild-wv2-<n>`, about 28 MB) are emptied when the IDE starts and removed once it has ended. A port another IDE already holds is refused after ten seconds. |
+| `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder, the IDE's temp folder (`%TEMP%\tbbuild-tmp-<n>`, its `TEMP` and `TMP`) and the private desktop, so runs on distinct ports can go at once. Both folders (`%TEMP%\tbbuild-tmp-<n>` and the user-data folder, `%TEMP%\tbbuild-wv2-<n>`, about 28 MB) are emptied when the IDE starts and removed once it has ended. A port another IDE already holds is refused after ten seconds. |
 | `--arch <target>` | `win32` or `win64`. Default `win32`. Diagnostics can differ, because `#If Win64` and the size of `LongPtr` change what compiles. The target is set on every run, whatever the IDE last used for the project; a switch restarts the compiler and adds a few seconds. When the target is not `win32`, or the IDE remembered another, the report starts with a `target:` line. |
 | `--timeout <secs>` | Give up waiting for the compile to settle. Default 180. |
 | `--build` | After a compile with no errors, build the project as the toolbar's Build button does, and print `built: <file>` after the summary line. The given file is never changed (see below). |
@@ -71,7 +71,7 @@ Exit codes: **0** the project compiled without errors; **1** the project has err
     node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64] [--timeout S]
                            [--quiet MS] [--json] [--raw] [--keep] [--no-reap]
                            [--reap-images a,b] [--show|--hide]
-                           [--llvm | --compiler-options S] [--exe | --tests] [--allow-name-clash]
+                           [--llvm | --compiler-options S] [--exe | --tests]
 
 Builds a probe project and captures what it writes to the IDE's
 [Debug Console](../../tB/IDE/Debugging/Debug-Console). Where [`tbbuild.mjs`](#tbbuild) answers
@@ -102,8 +102,7 @@ with `[LINKER]` lines. The script warns when a probe omits it, and when there is
 `[RunAfterBuild]` at all.
 
 **A build that fails after a clean compile is a failed run**, with the IDE's build log printed
-as the reason: `[BUILD] failed`, often after `[TYPELIB] failed to finalize typelibrary`. The
-probe never runs. Run it again: such a failure can pass on a second run.
+as the reason: `[BUILD] failed`. The probe never runs.
 
 Code generation failures are failed runs too:
 
@@ -128,11 +127,6 @@ file. A probe that leaves a form loaded has returned too, and `tbrun` prints the
 `tbrun` warns when it cannot add the wrapper --- the Sub is in a class, takes parameters, or
 is one of several marked --- and the check is then off. A probe that stays silent for longer
 than `--quiet` also ends the wait without the marker, so raise `--quiet` for a slow one.
-
-**On a build before BETA 1005, a probe whose module holds a procedure named like the module is
-refused, exit 2**, before an IDE starts. Those builds silently skip the `[RunAfterBuild]` Sub of
-such a module, whatever the letter case or modifiers of the procedure. Rename the module or the
-procedure, or use BETA 1005 or later. `--allow-name-clash` runs the probe anyway.
 
 **The capture is complete however much a probe prints.** `tbrun` reads the console's backing
 array, not the pane, which is a virtualised list holding only the rows that fit. `Debug.Cls`
@@ -186,7 +180,6 @@ A defect that is a compile-time diagnostic is a **compile case** instead: a line
 | `--compiler-options <s>` | The project's compiler options, for the run and the exe. |
 | `--exe` | Also run the built exe; print what it writes with `TbRun.Out`, its exit code, the fault the event log records for it, and the boxes it opened, each closed with OK. |
 | `--tests` | Build nothing: judge the compile cases and run each `[TestCase]` Sub in the compiler's test mode, printing `PASS` or `FAIL` for each. `--timeout` is the limit on each case. Not with `--exe`. |
-| `--allow-name-clash` | On a build before BETA 1005, run a probe whose module holds a procedure named like the module. Those builds skip its `[RunAfterBuild]` Sub, so the run exits 5. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
 | `--json` | One object with the path of the built file, the target, the captured lines, whether the probe returned, the licence an LLVM run checked, the exe's run, the IDE pid and anything reaped. |
 | `--keep` | Leave the IDE running and print its pid as `ide-pid: <n>` (with `--json`, `idePid`) and the `taskkill` commands, as for `tbbuild`. Implies `--no-reap`, and leaves the IDE's registry entries for the probe as they are. |
@@ -217,32 +210,6 @@ target `--arch` names**, whatever the IDE remembers, so a kept IDE switched to `
 not make later runs on the same port build 64-bit.
 
 Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, an LLVM run on a Community or Personal licence, an `--exe` run with no exe built, `--tests` on a project with no case or with a `[TestCase]` it cannot call (one with parameters, a **Function**, or one outside a `[TestFixture]` module), or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project; **5** the probe ended before it returned, its output printed all the same; **6** under `--exe`, the exe exited with a code other than 0, the Application event log records that it faulted, it opened a box (which `tbrun` closed), or it was still running after `--timeout` and was ended, its output, exit code, fault and boxes printed all the same; **7** under `--tests`, a case failed, every case's line printed all the same. A run that would exit 5 exits 5 whatever the exe did.
-
-## probe_shared_temp.mjs
-{: #probe-shared-temp }
-
-    node scripts/probe_shared_temp.mjs [--ides N] [--rounds R] [--control] [--all]
-                                       [--ide <twinBASIC.exe>] [--port N] [--timeout S]
-
-Counts the builds that fail to write the type library when several IDEs build at once in one `TEMP` folder. It is the measurement behind the entry of `BUGS-TO-REPORT.md` whose reproducer is `bugs/concurrent-builds-shared-temp/`. Such a build ends with `[TYPELIB] failed to finalize typelibrary.  Disk error?`, then `[LINKER] FAILED to create type library` and `[BUILD] failed`. Like [`tbbuild.mjs`](#tbbuild), it needs a twinBASIC install and Windows, and it is outside every gate and outside CI.
-
-Each round starts `--ides` IDEs at once, each on its own port with its own copy of the reproducer's project under `%TEMP%\tbprobe-shared-temp\`. Each compiles, waits for the others, and then builds, so Build is pressed in all of them at about the same moment. A build whose log holds a `[TYPELIB] failed` line or `FAILED to create type library` counts as a failure. Any other failed build ends the probe with exit 2.
-
-All the IDEs share one `TEMP` folder, made for the run and deleted afterwards, set through the `env` option of `launchIde`; [`tbbuild.mjs`](#tbbuild) gives each IDE its own. With `--control` the probe keeps those per-IDE folders, which is the reproducer's control.
-
-| Flag | Effect |
-|---|---|
-| `--ides <n>` | IDEs at once. Default 8. |
-| `--rounds <r>` | Rounds, one build in each IDE. Default 24. |
-| `--control` | Give each IDE a `TEMP` folder of its own. No build is expected to fail. |
-| `--all` | Run every round. By default the probe stops after the first round in which a type library fails. |
-| `--ide <path>` | Path to `twinBASIC.exe`, found as for `tbbuild`. |
-| `--port <n>` | The first DevTools port to try. Default 9760. The IDEs take the first free ports from it. |
-| `--timeout <secs>` | The wait for a compile to settle, and again for a build. Default 180. |
-
-The output is one `round <k>: <n> failed` line for each round, the last console lines of every build that failed, and a last line of the form `<f> of <n> builds failed to write the type library (TEMP shared)`, or `(TEMP per IDE)` under `--control`. Other work on the machine, such as lanes of [`addin_test.mjs`](Tools-IDE#addin-test) or [`ide_test.mjs`](Tools-IDE#ide-test), loads the same processor, so a run on a busy machine is not comparable with one on a quiet machine.
-
-Exit codes: **0** no build failed to write the type library; **1** at least one did, so the defect is there; **2** a refused command line, no IDE, no free ports, an IDE that did not start, a project that did not compile, a build that failed in some other way, or a crash.
 
 ## probe_build_twice.mjs
 {: #probe-build-twice }
@@ -308,7 +275,7 @@ the CI runners lack. Run it by hand after changing `tb-registry.mjs`.
 
 Exit codes: **0** every assertion held, **1** an assertion failed, **2** the test could not run to its end: a refused command line, PowerShell failing, or a crash.
 
-## impexp.mjs and impexp.py
+## impexp.mjs, impexp.py and impexp
 {: #impexp }
 
     node scripts/impexp.mjs export <project> <folder> [--overwrite]
@@ -316,10 +283,23 @@ Exit codes: **0** every assertion held, **1** an assertion failed, **2** the tes
     node scripts/impexp.mjs settings|licence|changelog|readme <project>
     node scripts/impexp.mjs --self-test
 
-Standalone `.twinproj` / `.twinpack` unpacker and packer, with the compiler executable's own command line: the same six commands, the project file first, and `--overwrite` required to replace anything. `scripts/impexp.py` is the same tool, run as `python scripts/impexp.py ...`. The two editions print the same output and write byte-identical project files, which [`check_impexp_parity.mjs`](Tools-Toolchain-Tests#check-impexp-parity) checks. Neither has dependencies; the Node edition needs Node 18+, the Python edition Python 3.6+. `--self-test` needs only the script, and adds a round trip of `indexer/sample.twinpack` when run from this repository.
+Standalone `.twinproj` / `.twinpack` unpacker and packer, with the compiler executable's own command line: the same six commands, the project file first, and `--overwrite` required to replace anything. `scripts/impexp.py` is the same tool, run as `python scripts/impexp.py ...`, and `scripts/impexp/` is a third edition, a twinBASIC console program that runs as `impexp_win32.exe ...`. The three editions print the same output, give the same exit codes and write byte-identical project files, which [`check_impexp_parity.mjs`](Tools-Toolchain-Tests#check-impexp-parity) checks. The Node edition needs Node 18+ and the Python edition Python 3.6+; the twinBASIC edition needs Windows and nothing else at run time, and reads and writes its paths as Unicode. None has dependencies. `--self-test` needs only the program, runs the same 20 tests in all three, and adds a round trip of `indexer/sample.twinpack` when it can find that file: the Node and Python editions look in `indexer/` beside their own `scripts/` folder, and the twinBASIC edition in each folder above the exe, then in each folder above the current folder.
 
-**Neither is run as a command by the site build.** They are published downloads: `_config.yml`'s `bundle_extra` copies both into `Features/Packages/downloads/` for [Import/Export Tool](../../Features/Packages/Import-Export-Tool). The `bundle_extra` exemption is by exact path, so moving either file breaks the download; see [`check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy).
+The twinBASIC edition exists for readers who have twinBASIC and neither Node nor Python. It is laid out as [`imagestrip`](Tools-IDE#imagestrip) is: `scripts/impexp/src/` is an exported project tree, and `scripts/impexp/impexp.twinproj` is the project file packed from it, which opens in the IDE. Both are checked out byte for byte (`.gitattributes`). After a change to `src/`, pack it again:
+
+    node scripts/impexp.mjs import scripts/impexp/impexp.twinproj scripts/impexp/src --overwrite
+
+Build it in the IDE, which writes `Build\impexp_win32.exe` beside the project file (git ignores it), or with [`tbbuild.mjs`](#tbbuild), which builds in a private folder and prints the path:
+
+    node scripts/tbbuild.mjs scripts/impexp/impexp.twinproj --build
+
+No gate can build it, so `check_impexp_parity.mjs` compares it only when `IMPEXP_EXE` names the built exe, and CI never sets that:
+
+    set IMPEXP_EXE=<path of impexp_win32.exe>
+    node scripts/check_impexp_parity.mjs
+
+**None of them is run as a command by the site build.** They are published downloads: `_config.yml`'s `bundle_extra` copies the Node and Python scripts and the twinBASIC project file into `Features/Packages/downloads/` for [Import/Export Tool](../../Features/Packages/Import-Export-Tool). The `bundle_extra` exemption is by exact path, so moving any of the three files breaks the download; see [`check_publish_policy.mjs`](Tools-Toolchain-Tests#check-publish-policy).
 
 The Node edition is also a library. `scripts/lib/tb-project.mjs` imports its `exportProject` and `importProject`, which every tool that unpacks or packs a project calls, among them [`tbbuild.mjs`](#tbbuild), [`tbrun.mjs`](#tbrun), [`check_examples.mjs`](Tools-Samples#check-examples), [`census_attributes.mjs`](Tools-Samples#census-attributes) and [`bug_repro.mjs`](Tools-Defects#bug-repro). The site build imports `importProject` too, to pack the [help add-in's project file](Tools-Build#the-help-add-ins-project-file). `impexp.mjs` is the one module under `scripts/` that `builder/` may import (`biome.jsonc` refuses any other), so [`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh) watches it.
 
-Exit codes: the table in [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) gives every code. The two editions share these codes, which differ from those of the other tools here.
+Exit codes: the table in [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) gives every code. The three editions share these codes, which differ from those of the other tools here.

@@ -11,7 +11,7 @@
 // add-in is loaded and removes it again, on the References page, as a person
 // does.
 //
-// Each test states what BETA 995 and 997 do, which is the same. If one fails after an IDE update, the
+// Each test states what BETA 1005 does. If one fails after an IDE update, the
 // IDE has changed: update P20 in WIP.HelpAddin.md, and the Folder page
 // (docs/Reference/Built-In/tbIDE/Folder.md), and then this file.
 //

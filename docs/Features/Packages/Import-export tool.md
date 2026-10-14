@@ -12,20 +12,28 @@ Unpacks a `.twinproj` or `.twinpack` file into a folder of source files, and pac
 back into a project file.
 
 Use it to put a project under version control, to edit source outside the IDE, or to see
-what a package contains. Two programs do it, and they take the same commands:
+what a package contains. Two kinds of program do it, and they take the same commands:
 
 - **The tB executable**, `twinBASIC_win32.exe` or `twinBASIC_win64.exe` in the `bin\` folder
   of a twinBASIC installation. This is the officially supported way to read or write a
   project file outside the IDE.
-- **The standalone script**, in a Node.js edition and a Python edition, which runs on any
-  platform and needs no twinBASIC installation. It reads and writes the file format itself,
-  so an IDE update can break it; in return it removes several of the tB executable's
-  limitations.
+- **The standalone tool**, in a Node.js edition, a Python edition and a twinBASIC edition.
+  The Node.js and Python editions run on any platform and need no twinBASIC installation.
+  The twinBASIC edition is a project that you build in the IDE into a Windows program, for
+  a machine that has twinBASIC but neither Node.js nor Python. All three read and write the
+  file format themselves, so an IDE update can break them; in return they remove several
+  of the tB executable's limitations.
 
-| Runtime | Download |
+| Edition | Download |
 |---------|----------|
 | Node.js 18+ | <a href="downloads/impexp.mjs" download>impexp.mjs</a> |
 | Python 3.6+ | <a href="downloads/impexp.py" download>impexp.py</a> |
+| twinBASIC | <a href="downloads/impexp.twinproj" download>impexp.twinproj</a>: open it in the twinBASIC IDE and build it; the program is `impexp_win32.exe` |
+
+The twinBASIC edition builds into the `Build` folder beside `impexp.twinproj` (see
+[**Build**](../../tB/IDE/Reference/Menu/File#build)). It is a console program, and needs
+Windows and nothing else when it runs. Where this page says "the script", it means any of the
+three editions.
 
 > [!WARNING]
 >
@@ -47,9 +55,10 @@ what a package contains. Two programs do it, and they take the same commands:
 <program> --help
 ```
 
-`<program>` is the tB executable, `node impexp.mjs` or `python impexp.py`. `<project>` is a
-`.twinproj` or `.twinpack` file, and it always comes first. The verb says what happens to it:
-`export` takes source out of the project, and `import` puts source into it.
+`<program>` is the tB executable, `node impexp.mjs`, `python impexp.py` or the twinBASIC
+edition's `impexp_win32.exe`. `<project>` is a `.twinproj` or `.twinpack` file, and it always
+comes first. The verb says what happens to it: `export` takes source out of the project, and
+`import` puts source into it.
 
 | Command or option | What it does | tB executable | Script |
 |-------------------|--------------|---------------|--------|
@@ -66,6 +75,7 @@ what a package contains. Two programs do it, and they take the same commands:
 ```batch
 twinBASIC_win32.exe export "C:\Projects\MyProject.twinproj" "C:\Projects\MyProject\"
 node impexp.mjs import MyProject.twinproj MyProject --overwrite
+impexp_win32.exe import MyProject.twinproj MyProject --overwrite
 ```
 
 A package is a project file too: every folder under the installation's `packages\` holds one,
@@ -103,7 +113,7 @@ message that names only `export` and `import`; given no arguments at all, it doe
 
 | | tB executable | Script |
 |---|---|---|
-| Runs on | Windows, with twinBASIC installed | any system with Node.js or Python |
+| Runs on | Windows, with twinBASIC installed | any system with Node.js or Python; the twinBASIC edition, Windows |
 | A `.twinpack` file for `export` or `import` | not accepted, see below | accepted |
 | A project that embeds a package | `import` fails, see below | packed |
 | Paths | folders need backslashes, and `export` needs a full path, with backslashes, to the project | any form |

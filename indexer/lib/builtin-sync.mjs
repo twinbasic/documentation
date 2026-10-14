@@ -23,7 +23,7 @@ async function loadManifest(manifestPath) {
 // What a manifest written before it recorded its source was read from.
 const sourceOf = (manifest) => manifest.source ?? "release";
 
-/** The tag a build is released under: BETA 983 is `beta-x-0983`, BETA 999a `beta-x-0999a`. */
+/** The tag a build is released under: BETA 1005 is `beta-x-1005`, BETA 999a `beta-x-0999a`. */
 function tagForBeta(beta) {
   const m = BETA_RE.exec(beta);
   return m ? `beta-x-${m[1].padStart(4, "0")}${m[2]}` : null;

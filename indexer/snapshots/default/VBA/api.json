@@ -2,7 +2,7 @@
   "format": 3,
   "package": "VBA",
   "project": "VBA",
-  "version": "beta-x-0997",
+  "version": "beta-x-1005",
   "types": [
     {
       "name": "Collection",
@@ -973,6 +973,7 @@
         {"name":"InterlockedIncrement32","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function InterlockedIncrement32 Lib \"<hiddenmodule>\" Alias \"#144\" (ByRef Target As Long) As Long","returnType":"Long","attrs":[{"name":"UseGetLastError","args":"False"},{"name":"DLLStackCheck","args":"False"}],"description":""},
         {"name":"InterlockedIncrement64","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function InterlockedIncrement64 Lib \"<hiddenmodule>\" Alias \"#188\" (ByRef Target As LongLong) As LongLong","returnType":"LongLong","attrs":[{"name":"UseGetLastError","args":"False"},{"name":"DLLStackCheck","args":"False"}],"description":""},
         {"name":"InternalDebugHoverEval","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function InternalDebugHoverEval Lib \"<hiddenmodule>\" Alias \"#-14\" (ByVal Expression As Any) As String","returnType":"String","hidden":true,"attrs":[{"name":"PreserveSig","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"DLLStackCheck","args":"False"},{"name":"Hidden"},{"name":"Restricted"}],"description":""},
+        {"name":"InternalDebugWatchEval","kind":"function","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Function InternalDebugWatchEval Lib \"<hiddenmodule>\" Alias \"#-81\" (ByVal Expression As Any) As String","returnType":"String","hidden":true,"attrs":[{"name":"PreserveSig","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"DLLStackCheck","args":"False"},{"name":"Hidden"},{"name":"Restricted"}],"description":""},
         {"name":"LetErrDescription","kind":"sub","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Sub LetErrDescription Lib \"<hiddenmodule>\" Alias \"#-44\" (ByVal Value As String)","hidden":true,"attrs":[{"name":"PreserveSig","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"DLLStackCheck","args":"False"},{"name":"Hidden"},{"name":"Restricted"}],"description":""},
         {"name":"LetErrHelpContext","kind":"sub","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Sub LetErrHelpContext Lib \"<hiddenmodule>\" Alias \"#-48\" (ByVal Value As Long)","hidden":true,"attrs":[{"name":"PreserveSig","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"DLLStackCheck","args":"False"},{"name":"Hidden"},{"name":"Restricted"}],"description":""},
         {"name":"LetErrHelpFile","kind":"sub","vis":"public","declare":true,"signature":"Public DeclareWide PtrSafe Sub LetErrHelpFile Lib \"<hiddenmodule>\" Alias \"#-46\" (ByVal Value As String)","hidden":true,"attrs":[{"name":"PreserveSig","args":"False"},{"name":"UseGetLastError","args":"False"},{"name":"DLLStackCheck","args":"False"},{"name":"Hidden"},{"name":"Restricted"}],"description":""},

@@ -114,7 +114,7 @@ const EXTRA_PROBES = [];
 // Kept in its own project so the "every probe compiles" contract on
 // AttributeProbes stays true and a red build there stays meaningful.
 //
-// `got` records what BETA 983 answered, so re-running the generator does not
+// `got` records what BETA 1005 answers, so re-running the generator does not
 // lose the result and a later build can be compared against it. A probe whose
 // `got` is out of date is worse than one with none, so update it in the same
 // commit as any change to the probe.
@@ -130,15 +130,15 @@ const EXTRA_PROBES = [];
 // And **the token table does not settle existence either**, which an earlier
 // draft of this comment claimed. The table interns keywords, attributes and
 // object members together -- `Debug`, `Print` and `Assert` sit in it beside
-// `Description` and `DllExport`. `ExecuteHostCommand` is in it and is a member
-// of `Debug`, not an attribute, which is why it was rejected in every
-// attribute position tried across two rounds. A name in the table is a name
-// the compiler knows; what kind of name it is has to be probed.
+// `Description` and `DllExport`. `ExecuteHostCommand` was in it and is not an
+// attribute, which is why it was rejected in every attribute position tried
+// across two rounds. A name in the table is a name the compiler knows; what
+// kind of name it is has to be probed.
 const EXPLORATORY = [
   {
     tag: "X01_ConstantFoldableNumericsOnly_Module",
     asks: "Is [ConstantFoldableNumericsOnly] accepted on a Function in a Module?",
-    got: "BETA 983: clean. The documented applicability holds.",
+    got: "BETA 1005: clean. The documented applicability holds.",
     clean: "the documented applicability holds",
     rejected: "`Applicable to: Function` is wrong even for a module function",
     body:
@@ -153,7 +153,7 @@ const EXPLORATORY = [
     tag: "X02_ConstantFoldableNumericsOnly_Class",
     asks: "Is it accepted on a method in a Class? Its sibling [ConstantFoldable] is not.",
     got:
-      "BETA 983: TB5182 on the attribute. REJECTED -- `Applicable to: " +
+      "BETA 1005: TB5182 on the attribute. REJECTED -- `Applicable to: " +
       "Function` was unqualified and wrong; the entry now carries the `in " +
       "a Module` qualification its sibling always had.",
     clean: "the two siblings differ, and the unqualified `Applicable to: Function` is right",
@@ -170,7 +170,7 @@ const EXPLORATORY = [
     tag: "X03_ConstantFoldable_Class_control",
     asks: "Control: [ConstantFoldable] on a Class method, already known to be rejected.",
     got:
-      "BETA 983: TB5182 on the attribute, as expected -- the same code " +
+      "BETA 1005: TB5182 on the attribute, as expected -- the same code " +
       "X02 drew, which is what makes X02's result readable.",
     clean: "the earlier finding has regressed or was wrong -- re-check it before trusting X02",
     rejected: "expected; this is what the X02 diagnostic should be compared against",
@@ -188,7 +188,7 @@ const EXPLORATORY = [
   {
     tag: "X04_CompilerOptions_Module",
     asks: 'Is [CompilerOptions("")] accepted on a procedure, and is an empty string a legal option set?',
-    got: "BETA 983: clean. The documented applicability holds and an empty " + "option string is accepted.",
+    got: "BETA 1005: clean. The documented applicability holds and an empty " + "option string is accepted.",
     clean: "the documented applicability holds and the argument may be empty",
     rejected:
       "read the diagnostic: a complaint about where the attribute sits " +
@@ -207,7 +207,7 @@ const EXPLORATORY = [
     asks:
       "Does [ComExport] exist as an attribute? It sits beside DllExport in the " +
       "compiler's token table and appears nowhere in docs/ or in any shipped package.",
-    got: "BETA 983: TB5155 on the attribute. REJECTED on a procedure.",
+    got: "BETA 1005: TB5155 on the attribute. REJECTED on a procedure.",
     clean: "it exists and is accepted on a procedure in a Module",
     rejected: "either it is not an attribute, or not one for a procedure",
     body:
@@ -220,7 +220,7 @@ const EXPLORATORY = [
   {
     tag: "X06_ComExport_Const",
     asks: "[ComExport] on a Const -- the target [DllExport] turned out to mean.",
-    got: "BETA 983: clean. [ComExport] mirrors [DllExport] exactly -- " + "constants, not procedures. Now documented.",
+    got: "BETA 1005: clean. [ComExport] mirrors [DllExport] exactly -- " + "constants, not procedures. Now documented.",
     clean: "it mirrors DllExport, which documents constants",
     rejected: "it does not mirror DllExport on this target",
     body:
@@ -236,7 +236,7 @@ const EXPLORATORY = [
       "WithDispatchForwarding in the token table, which is used 44 times on an " +
       "Implements statement.",
     got:
-      "BETA 983: TB5155 on the attribute. REJECTED -- it does NOT take " +
+      "BETA 1005: TB5155 on the attribute. REJECTED -- it does NOT take " +
       "its neighbour's position. Settled later by X25: it belongs on the " +
       "`Implements ... Via` form of the statement, not the plain one.",
     clean: "it exists and takes the same position as its neighbour",
@@ -258,9 +258,8 @@ const EXPLORATORY = [
       "and the binary also carries a `custom/executeHostCommand` JSON-RPC method, " +
       "so it is probably an IDE-addin hook rather than a compiler directive.",
     got:
-      "BETA 983: TB5182 on the attribute. REJECTED on a procedure in a " +
-      "Module. Settled later by X19: it is not an attribute at all, but a " +
-      "member of Debug.",
+      "BETA 1005: TB5182 on the attribute. REJECTED on a procedure in a " +
+      "Module. Settled later by X19: it is not an attribute at all.",
     clean: "it is accepted on a procedure in a Module, like IdeButton",
     rejected: "it needs an argument, a different target, or is not an attribute",
     body:
@@ -280,7 +279,7 @@ const EXPLORATORY = [
       "library:`, which suggests the construct is emitted when a COM type " +
       "library is imported rather than written by hand.",
     got:
-      "BETA 983: TB5182 on lines 10, 11, 12 and 16 -- `[LibraryId(...)]`, " +
+      "BETA 1005: TB5182 on lines 10, 11, 12 and 16 -- `[LibraryId(...)]`, " +
       "`Library`, `[DispInterface]` and `End Library`. Lines 13-15, the " +
       "nested Interface, parsed cleanly, so the failure is the Library " +
       "scaffolding and not this reconstruction of the Interface. That " +
@@ -306,7 +305,7 @@ const EXPLORATORY = [
   {
     tag: "X10_Library_DualInterface",
     asks: "Same question for [DualInterface].",
-    got: "BETA 983: TB5182 on lines 6, 7, 8 and 12 -- the same shape as X09.",
+    got: "BETA 1005: TB5182 on lines 6, 7, 8 and 12 -- the same shape as X09.",
     clean: "the documented applicability holds",
     rejected: "as X09 -- distinguish a syntax complaint from an applicability one",
     body:
@@ -324,7 +323,7 @@ const EXPLORATORY = [
       "Is [DispInterface] accepted on an ordinary Interface, outside a Library? " +
       "If it is, the `in a Library` qualification on its line is wrong.",
     got:
-      "BETA 983: TB5182 on the attribute. REJECTED, so the `in a Library` " +
+      "BETA 1005: TB5182 on the attribute. REJECTED, so the `in a Library` " +
       "qualification is real rather than incidental.",
     clean: "the qualification is wrong, or at least not required",
     rejected: "the qualification is real, and X09 is the only way to reach the attribute",
@@ -343,7 +342,7 @@ const EXPLORATORY = [
       "statement. The name reads as a policy for how a class implements its interfaces, " +
       "which would be a whole-class setting.",
     got:
-      "BETA 983: TB5182 on the attribute. REJECTED on the Class too. " +
+      "BETA 1005: TB5182 on the attribute. REJECTED on the Class too. " +
       "Settled later by X25, on the Implements ... Via statement.",
     clean: "it is a class-level attribute, and X07 tried the wrong target",
     rejected: "not the class either; try the interface side",
@@ -364,7 +363,7 @@ const EXPLORATORY = [
       "Same attribute on the Interface being implemented, which would make it the " +
       "interface author's choice rather than the implementor's.",
     got:
-      "BETA 983: TB5182 on the attribute. REJECTED on the Interface too. " +
+      "BETA 1005: TB5182 on the attribute. REJECTED on the Interface too. " +
       "Three targets exhausted -- and all three were the wrong question: " +
       "X25 found it on the Implements ... Via statement.",
     clean: "it belongs on the Interface",
@@ -378,7 +377,7 @@ const EXPLORATORY = [
       "[ExecuteHostCommand] on a method in a Class. The binary pairs the name with a " +
       "`custom/executeHostCommand` JSON-RPC method, so it is likely an addin hook, and an " +
       "addin's entry points are class methods rather than module procedures.",
-    got: "BETA 983: TB5182 on the attribute. REJECTED on a class method. " + "Not an attribute anywhere; see X19.",
+    got: "BETA 1005: TB5182 on the attribute. REJECTED on a class method. " + "Not an attribute anywhere; see X19.",
     clean: "it is a class-method attribute",
     rejected: "not a bare attribute on a class method; it may need an argument",
     body:
@@ -395,9 +394,9 @@ const EXPLORATORY = [
       "the same target as [IdeButton], whose entry it sits beside in the token table and " +
       "which takes a caption.",
     got:
-      "BETA 983: TB5182 on the attribute, at the same column as the bare " +
+      "BETA 1005: TB5182 on the attribute, at the same column as the bare " +
       "form in X08, so the argument is not what X08 was missing. Not an " +
-      "attribute in any position: X19 shows it is a member of Debug.",
+      "attribute in any position, and X19 finds no Debug member of the name.",
     clean: "it takes a String argument, and the bare form in X08 failed for want of one",
     rejected:
       "read the diagnostic: complaining about the argument rather than the " +
@@ -416,7 +415,7 @@ const EXPLORATORY = [
       "uses in the packages is `[Default, Source]`, so the entry written for it cannot " +
       "say whether the pairing is required or merely universal.",
     got:
-      "BETA 983: clean. [Source] works without [Default], so the " +
+      "BETA 1005: clean. [Source] works without [Default], so the " +
       "universal pairing in the packages is a convention rather than a " +
       "requirement. The entry now says so instead of recording it as " +
       "unknown.",
@@ -440,7 +439,7 @@ const EXPLORATORY = [
       "Does [ComExport] take the optional Boolean its sibling [DllExport] does? The " +
       "entry written for it claims no argument, because only the bare form was probed.",
     got:
-      "BETA 983: clean. [ComExport] DOES take the optional Boolean, and " +
+      "BETA 1005: clean. [ComExport] DOES take the optional Boolean, and " +
       "the entry written from X06 alone was wrong to give it no argument. " +
       "Corrected.",
     clean: "the entry should read `[ComExport [ ( True | False ) ]]`, like DllExport's",
@@ -457,9 +456,10 @@ const EXPLORATORY = [
   // asking a different question rather than trying another target:
   //
   //   [ExecuteHostCommand] is not an attribute at all. The token table mixes
-  //   keywords, attributes and object members, and this one is a member of
-  //   `Debug` -- X18 to X21 below. The maintainer confirmed it afterwards: a
-  //   leftover from the VS Code IDE, never wired to this one, to be removed.
+  //   keywords, attributes and object members, and this one was a member of
+  //   `Debug` -- X18 to X21 below. The maintainer confirmed it: a leftover
+  //   from the VS Code IDE, never wired to this one, to be removed. It is
+  //   removed: BETA 1005 rejects `Debug.ExecuteHostCommand` (X19, X20).
   //
   //   [ImplementsViaPrivateFriendlies] belongs on `Implements ... Via`, the
   //   composition-delegation form, not on the plain `Implements` that X07 and
@@ -478,7 +478,7 @@ const EXPLORATORY = [
       "Does the Debug object have members beyond Print and Assert? The compiler " +
       "binary carries ANSI identifiers DebugClsCommand and DebugExecuteHostCommand " +
       "side by side.",
-    got: "BETA 983: clean. Debug.Cls compiles, so the pairing is real -- which " + "is what makes X19 readable.",
+    got: "BETA 1005: clean. Debug.Cls compiles, so the pairing is real -- which " + "is what makes X19 readable.",
     clean: "Debug has a wider member set, and X19's premise is worth testing",
     rejected: "the DebugXxxCommand identifiers are not Debug members, and X19 is a guess",
     body:
@@ -494,8 +494,9 @@ const EXPLORATORY = [
       "Is ExecuteHostCommand a member of Debug rather than an attribute? X08, X14 " +
       "and X15 rejected it in every attribute position tried.",
     got:
-      "BETA 983: clean. It is a Debug member, so the token table entry was " +
-      "never an attribute and Attributes.md was right not to have one.",
+      "BETA 1005: TB5182 on the member name. REJECTED: Debug has no such " +
+      "member, and the name is not an attribute either, so Attributes.md is " +
+      "right not to have an entry for it.",
     clean: "it is a Debug member; no attribute entry is owed for the name",
     rejected: "it is neither an attribute nor a Debug member",
     body:
@@ -511,9 +512,8 @@ const EXPLORATORY = [
       "What is the parameter called? The compiler's string pool has " +
       '"Expected argument: command" immediately after DebugExecuteHostCommand.',
     got:
-      "BETA 983: TB5023 `Expected argument: command` -- the string from the " +
-      "binary, produced by the compiler, naming the parameter. This is the " +
-      "probe that identifies the binding outright.",
+      "BETA 1005: TB5182 on the member name, as X19: there is no such Debug " +
+      "member, so there is no argument to name.",
     clean: "the argument is optional",
     rejected: "read the message: naming the parameter identifies the binding",
     body:
@@ -526,7 +526,7 @@ const EXPLORATORY = [
   {
     tag: "X21_ExecuteHostCommand_bare_statement",
     asks: "Is it also a statement in its own right, without the Debug prefix?",
-    got: "BETA 983: TB5079 `Unrecognized symbol 'ExecuteHostCommand'`. It must " + "be qualified.",
+    got: "BETA 1005: TB5079 `Unrecognized symbol 'ExecuteHostCommand'`. It must " + "be qualified.",
     clean: "it is a statement as well as a Debug member",
     rejected: "it is reachable only through Debug",
     body:
@@ -543,7 +543,7 @@ const EXPLORATORY = [
       "plain Implements the unprefixed private member the attribute's name suggests, " +
       "instead of the usual IFoo_Ping stub.",
     got:
-      "BETA 983: TB5155 on the attribute, plus TB5000 `Missing implementation " +
+      "BETA 1005: TB5155 on the attribute, plus TB65535 `Missing implementation " +
       "of member Sub Ping()`. Two answers: the attribute is rejected on a plain " +
       "Implements whatever the body looks like, and an unprefixed private member " +
       "does not satisfy an interface on its own.",
@@ -563,7 +563,7 @@ const EXPLORATORY = [
     tag: "X23_IVPF_with_boolean",
     asks: "Does it take the optional Boolean many twinBASIC attributes take? Only the " + "bare form had been tried.",
     got:
-      "BETA 983: TB5155 on the attribute, at the same place as the bare form " +
+      "BETA 1005: TB5155 on the attribute, at the same place as the bare form " +
       "in X07 -- so a missing argument was not what X07 was short of either.",
     clean: "it takes a Boolean, and the bare form failed for want of one",
     rejected: "the argument is not what the plain Implements was refusing",
@@ -582,7 +582,7 @@ const EXPLORATORY = [
     asks:
       "On an Interface line inside a CoClass -- the target [Default] and [Source] " +
       "take, and one the earlier rounds did not try.",
-    got: "BETA 983: TB5182 on the attribute. Not this target either.",
+    got: "BETA 1005: TB5182 on the attribute. Not this target either.",
     clean: "it is a CoClass interface-line attribute",
     rejected: "not a CoClass interface line",
     body:
@@ -600,7 +600,7 @@ const EXPLORATORY = [
       "composition-delegation form, which every earlier probe had skipped in favour " +
       "of the plain Implements.",
     got:
-      "BETA 983: CLEAN. This is the answer. The attribute belongs on the " +
+      "BETA 1005: CLEAN. This is the answer. The attribute belongs on the " +
       "Via form of the statement, which is what its name says and what five " +
       "rejections had not suggested. Documented.",
     clean: "this is its target, and every earlier probe was on the wrong statement",
@@ -623,7 +623,7 @@ const EXPLORATORY = [
     asks:
       "The same attribute on the class-to-class form the Inheritance page shows, " +
       "`Implements <Interface> Via <ClassName>`.",
-    got: "BETA 983: clean. Both spellings of the Via statement take it.",
+    got: "BETA 1005: clean. Both spellings of the Via statement take it.",
     clean: "both spellings of the Via statement take it",
     rejected: "only the field-and-constructor spelling takes it",
     body:
@@ -642,7 +642,7 @@ const EXPLORATORY = [
   {
     tag: "X27_IVPF_on_Inherits",
     asks: "On an Inherits statement -- twinBASIC's other inheritance mechanism.",
-    got: "BETA 983: TB5155 on the attribute. Delegation only, not Inherits.",
+    got: "BETA 1005: TB5155 on the attribute. Delegation only, not Inherits.",
     clean: "it applies to both inheritance mechanisms",
     rejected: "it is specific to Implements ... Via",
     body:
@@ -660,7 +660,7 @@ const EXPLORATORY = [
       "Control for X25. [WithDispatchForwarding] is a known-good " +
       "Implements-statement attribute. Does the Via form simply accept any attribute?",
     got:
-      "BETA 983: TB5155 on the attribute. REJECTED -- so the Via form does " +
+      "BETA 1005: TB5155 on the attribute. REJECTED -- so the Via form does " +
       "NOT accept attributes indiscriminately, and X25's clean build is about " +
       "that attribute rather than about that statement. This control is what " +
       "makes X25 evidence instead of a coincidence.",
@@ -691,7 +691,7 @@ const EXPLORATORY = [
     asks:
       "Baseline. Without the attribute, is a Friend member of the delegate callable " +
       "on the delegating class from elsewhere in the project?",
-    got: "BETA 983: clean. A plain Via forwards Friend members as Friend, so " + "they are reachable project-wide.",
+    got: "BETA 1005: clean. A plain Via forwards Friend members as Friend, so " + "they are reachable project-wide.",
     clean: "a plain Via re-exposes the delegate's Friend members",
     rejected: "it does not, and X30 has nothing to remove",
     body:
@@ -715,8 +715,8 @@ const EXPLORATORY = [
     tag: "X30_Via_Friend_outside_attr",
     asks: "The same call with the attribute added, and nothing else changed.",
     got:
-      "BETA 983: TB5027 `Unrecognized member 'FriendPing' on type " +
-      "'_CX30Derived'`. Against X29's clean build this is the effect: the " +
+      "BETA 1005: TB5027 `Unrecognized member 'FriendPing' on type " +
+      "'_CX30Derived' [non-extensible object]`. Against X29's clean build this is the effect: the " +
       "attribute stops the delegate's Friend members being re-exposed.",
     clean: "the attribute does not affect Friend visibility",
     rejected: "this is the effect -- read it against X29",
@@ -741,7 +741,7 @@ const EXPLORATORY = [
     tag: "X31_Via_Friend_inside_attr",
     asks: "Is that member gone, or merely private? Calling it from inside the class " + "separates the two.",
     got:
-      "BETA 983: clean, both through Me and unqualified. The member is still " +
+      "BETA 1005: clean, both through Me and unqualified. The member is still " +
       "there and still forwarded -- it is private to the class. `Private " +
       "friendlies` is literal.",
     clean: "private rather than absent, which is what the attribute's name claims",
@@ -765,7 +765,7 @@ const EXPLORATORY = [
     tag: "X32_Via_Public_outside_attr",
     asks: "Does the attribute touch Public members too, or only Friend ones?",
     got:
-      "BETA 983: clean. Public members forward exactly as they do without " +
+      "BETA 1005: clean. Public members forward exactly as they do without " +
       "the attribute, so the effect is confined to Friend members.",
     clean: "the effect is confined to Friend members",
     rejected: "the attribute makes every forwarded member private",

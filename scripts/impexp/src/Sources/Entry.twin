@@ -1,0 +1,68 @@
+' One entry of a project file's tree: a file with its content, or a folder with its children.
+Class Entry
+    Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
+    Public IsFile As Boolean
+    Public Name As String
+    Public Revision As LongLong
+    Public Flags As Long
+    Public Category As Long
+    Public Children As New Collection
+
+    Private mContent() As Byte
+    Private mContentLength As Long
+    Private mRevisions() As Long
+    Private mRevisionCount As Long
+
+    Public Property Get ContentLength() As Long
+        ContentLength = mContentLength
+    End Property
+
+    ' The first length bytes of b from start, copied.
+    Public Sub SetContent(b() As Byte, ByVal start As Long, ByVal length As Long)
+        Erase mContent
+        mContentLength = length
+        If length > 0 Then
+            ReDim mContent(0 To length - 1)
+            RtlMoveMemory VarPtr(mContent(0)), VarPtr(b(start)), length
+        End If
+    End Sub
+
+    ' The content copied into out, and its length.
+    Public Function GetContent(out() As Byte) As Long
+        Erase out
+        If mContentLength > 0 Then
+            ReDim out(0 To mContentLength - 1)
+            RtlMoveMemory VarPtr(out(0)), VarPtr(mContent(0)), mContentLength
+        End If
+        GetContent = mContentLength
+    End Function
+
+    Public Sub SetContentLatin1(ByVal s As String)
+        Dim b() As Byte, n As Long
+        n = TextKit.Latin1Encode(s, b)
+        SetContent b, 0, n
+    End Sub
+
+    Public Function ContentLatin1() As String
+        ContentLatin1 = TextKit.Latin1Decode(mContent, mContentLength)
+    End Function
+
+    Public Property Get RevisionCount() As Long
+        RevisionCount = mRevisionCount
+    End Property
+
+    Public Function RevisionAt(ByVal i As Long) As Long
+        RevisionAt = mRevisions(i)
+    End Function
+
+    Public Sub AddRevision(ByVal value As Long)
+        If mRevisionCount = 0 Then
+            ReDim mRevisions(0 To 3)
+        ElseIf mRevisionCount > UBound(mRevisions) Then
+            ReDim Preserve mRevisions(0 To 2 * mRevisionCount - 1)
+        End If
+        mRevisions(mRevisionCount) = value
+        mRevisionCount = mRevisionCount + 1
+    End Sub
+End Class

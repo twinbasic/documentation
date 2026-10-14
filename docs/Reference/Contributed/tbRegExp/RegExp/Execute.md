@@ -36,8 +36,8 @@ Debug.Print re.Execute("fooBarBaz").Count         ' 2
 Debug.Print re.Execute("fooBarBaz")(1).FirstIndex  ' 6
 ```
 
-<!-- test: SearchGivesUpTests.Execute_CatastrophicPatternKeepsMatchesFound -->
-A search that backtracks without end, such as `(a+)+b` on thirty `a`, gives up instead of hanging. The collection then holds the matches found before it gave up, and [**SearchAborted**](SearchAborted) returns **True**.
+<!-- test: SearchGivesUpTests.Execute_CatastrophicPatternKeepsNothing -->
+A search that backtracks without end, such as `(a+)+b` on thirty `a`, gives up instead of hanging, and **Execute** then raises an error. The matches found before it gave up are not returned: a part of the matches, handed back as though it were all of them, is worse than no answer. See [**SearchStepLimit**](SearchStepLimit).
 <!-- /test -->
 
 Each **Match** gives the matched text ([**Value**](../Match/Value)), the position where it starts ([**FirstIndex**](../Match/FirstIndex), counted from 0), its length, and the text of each group of the pattern ([**SubMatches**](../Match/SubMatches)). A group written `(?<name>...)` can be read by its name.

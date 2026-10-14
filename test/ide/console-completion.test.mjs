@@ -15,7 +15,7 @@
 // first Ctrl+Space, and each test checks that the console has it before and
 // after: a list closed by a change of focus never reads as no list.
 //
-// Each test states what BETA 995 does. If one fails after an IDE update, the IDE
+// Each test states what BETA 1005 does. If one fails after an IDE update, the IDE
 // has changed: update the entry "The Debug Console offers no completion for a name
 // typed after `?` and a space" in BUGS-TO-REPORT.md, or its report in bugs/filed/,
 // and then this file.

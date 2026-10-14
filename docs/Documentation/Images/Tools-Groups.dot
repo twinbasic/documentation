@@ -108,13 +108,13 @@ digraph tools_groups {
         margin=12
         label="Compiler Harness"
         c1 [label="tbbuild"]            c2 [label="tbrun"]
-        c3 [label="impexp.mjs, impexp.py"] c4 [label="check_tb_registry"]
-        c5 [label="probe_shared_temp"]  c6 [label="probe_build_twice"]
+        c3 [label="impexp"] c4 [label="check_tb_registry"]
+        c6 [label="probe_build_twice"]
         cp1 [style=invis label=""]  cp2 [style=invis label=""]
-        c1 -> c3 -> c5 -> cp1 -> cp2
+        c1 -> c3 -> cp1 -> cp2
         c2 -> c4 -> c6
         { rank=same; c3 c4 }
-        { rank=same; c5 c6 }
+        { rank=same; cp1 c6 }
     }
 
     // ---- row 3 ----
@@ -289,11 +289,9 @@ digraph tools_groups {
     c2 [URL="Tools-Compiler#tbrun"
         tooltip="Builds a probe project and captures what it writes to the Debug Console of the IDE, to show what code prints rather than whether it compiles."]
     c3 [URL="Tools-Compiler#impexp"
-        tooltip="Unpacks a .twinproj or .twinpack into source files and packs them back, with the same commands as the compiler's own command line. A Node edition and a Python edition behave the same."]
+        tooltip="Unpacks a .twinproj or .twinpack into source files and packs them back, with the same commands as the compiler's own command line. A Node edition, a Python edition and a twinBASIC edition behave the same."]
     c4 [URL="Tools-Compiler#check-tb-registry"
         tooltip="Tests the code that restores the registry entries of the IDE after a harness run, on a scratch copy of the keys."]
-    c5 [URL="Tools-Compiler#probe-shared-temp"
-        tooltip="Counts the builds that fail to write the type library when several IDEs build at once in one TEMP folder."]
     c6 [URL="Tools-Compiler#probe-build-twice"
         tooltip="Builds one project twice in fresh IDEs and compares the two exes, to show what differs between builds of an unchanged project."]
 
@@ -342,7 +340,7 @@ digraph tools_groups {
     t22 [URL="Tools-Toolchain-Tests#check-pdf-shims-equiv"
          tooltip="Verifies that the pdf-lib patches of the book write the same PDF objects as stock pdf-lib does."]
     t23 [URL="Tools-Toolchain-Tests#check-impexp-parity"
-         tooltip="Verifies that the Node and Python editions of impexp behave the same: same tests, exit codes, output and files."]
+         tooltip="Verifies that the Node, Python and (when named) twinBASIC editions of impexp behave the same: same tests, exit codes, output and files."]
     t24 [URL="Tools-Toolchain-Tests#check-axe-patch-equiv"
          tooltip="Checks that the patched axe source computes the same colour values as the stock source, for the color-contrast rule."]
     t25 [URL="Tools-Toolchain-Tests#indexer-test"

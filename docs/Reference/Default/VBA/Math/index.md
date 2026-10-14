@@ -22,10 +22,10 @@ Debug.Print Sgn(-7.5)            ' -1
 
 [**Sin**](Sin), [**Cos**](Cos), and [**Tan**](Tan) take an angle in radians and return its sine, cosine, and tangent. [**Atn**](Atn) goes the other way --- given a tangent, it returns the angle whose tangent that is, in the range `-pi/2` to `pi/2`. All four work exclusively in radians; multiply degrees by `pi / 180` to convert to radians, or radians by `180 / pi` to convert back.
 
-```tb check_build
+```tb check_build check_run
 Const Pi As Double = 3.14159265358979
 Debug.Print Sin(Pi / 2)          ' 1
-Debug.Print Atn(1) * 4           ' 3.14159265358979 — pi
+Debug.Print Atn(1) * 4           ' 3.14159265358979 -- pi
 ```
 
 The other inverse trigonometric functions (arcsine, arccosine) and the hyperbolic functions are not provided directly, but each can be derived from **Atn**, **Log**, **Exp**, and **Sqr** in a couple of lines --- see the worked examples on [**Atn**](Atn), [**Log**](Log), and [**Cos**](Cos).
@@ -34,9 +34,9 @@ The other inverse trigonometric functions (arcsine, arccosine) and the hyperboli
 
 [**Exp**](Exp) raises *e* (≈ 2.71828) to a chosen power, and [**Log**](Log) is its inverse, returning the natural (base-*e*) logarithm. To compute a logarithm in another base, divide by **Log** of that base: `Log(x) / Log(10)` for base 10, `Log(x) / Log(2)` for base 2, and so on.
 
-```tb check_build
-Debug.Print Exp(1)               ' 2.71828182845905 — e
-Debug.Print Log(100) / Log(10)   ' 2 — base-10 log of 100
+```tb check_build check_run
+Debug.Print Exp(1)               ' 2.71828182845905 -- e
+Debug.Print Log(100) / Log(10)   ' 2 -- base-10 log of 100
 ```
 
 ## Square root

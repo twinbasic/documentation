@@ -10,7 +10,7 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-Reference for every executable in the documentation repository. This page covers the nine Windows batch wrappers at the repository root, the conventions every command-line tool shares, and the configuration files the tools read. The tools themselves --- the Node and Python scripts under `scripts/`, the twinBASIC program [`imagestrip`](Tools-IDE#imagestrip), `tbdocs` and its flags, and the PDF render driver --- are on seven pages, grouped by what they work on. For the day-to-day workflow, see [Building and Deployment](Building). To modify the build pipeline, see [tbdocs Internals](Builder).
+Reference for every executable in the documentation repository. This page covers the nine Windows batch wrappers at the repository root, the conventions every command-line tool shares, and the configuration files the tools read. The tools themselves --- the Node and Python scripts under `scripts/`, the twinBASIC programs [`imagestrip`](Tools-IDE#imagestrip) and [`impexp`](Tools-Compiler#impexp), `tbdocs` and its flags, and the PDF render driver --- are on seven pages, grouped by what they work on. For the day-to-day workflow, see [Building and Deployment](Building). To modify the build pipeline, see [tbdocs Internals](Builder).
 
 * TOC goes here
 {:toc}
@@ -53,6 +53,8 @@ All ten sit at the repository root, beside `package.json`. Each uses `@pushd "%~
 - [`scripts/tbbuild.mjs`](Tools-Compiler#tbbuild) and [`scripts/tbrun.mjs`](Tools-Compiler#tbrun) drive the twinBASIC IDE.
 - [`census_attributes.mjs`](Tools-Samples#census-attributes) unpacks the packages of a twinBASIC install. It is cross-platform when given an already-exported tree with `--exported`.
 - [`imagestrip`](Tools-IDE#imagestrip) is a twinBASIC program.
+
+The twinBASIC edition of [`impexp`](Tools-Compiler#impexp) is a Windows program too. Built, it needs no twinBASIC install, Node or Python to run.
 
 `tbdocs` and every gate in both wrappers is a Node script. CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](Tools-Site-Checks#check-tree-fresh), which guards against a failure CI cannot have.
 
@@ -136,7 +138,7 @@ The tests the toolchain has to pass. Twenty-six steps, each stopping the run if 
 22. [`scripts/check_attribute_sweep.mjs`](Tools-Toolchain-Tests#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
 23. [`scripts/check_cli.mjs`](Tools-Toolchain-Tests#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
 24. [`scripts/check_pdf_shims_equiv.mjs`](Tools-Toolchain-Tests#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, have each of them in their shim's table of targets, and run.
-25. [`scripts/check_impexp_parity.mjs`](Tools-Toolchain-Tests#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
+25. [`scripts/check_impexp_parity.mjs`](Tools-Toolchain-Tests#check-impexp-parity) --- verifies the editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI. It compares the twinBASIC edition too, when `IMPEXP_EXE` names its built exe.
 26. [`scripts/check_axe_patch_equiv.mjs`](Tools-Toolchain-Tests#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:

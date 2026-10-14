@@ -21,13 +21,13 @@ Pass the result to an API function that needs a raw address, or pass it to one o
 
 ### Example
 
-```tb check_build
+```tb check_build check_run
 Dim n As Long
 n = &H12345678
 
 Dim Bytes(0 To 3) As Byte
 vbaCopyBytes 4, VarPtr(Bytes(0)), VarPtr(n)
-Debug.Print Hex(Bytes(0))        ' "78" — little-endian
+Debug.Print Hex(Bytes(0))        ' 78 -- little-endian
 ```
 
 ### See Also

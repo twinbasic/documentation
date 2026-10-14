@@ -72,7 +72,7 @@ A build refuses three things a compile accepts, so batches are arranged around t
 - a sample or group that declares its own `Sub Main` gets a project of its own without the template's `Main`, because two make the startup object ambiguous;
 - two samples that export one `[DllExport]` name are kept in different projects.
 
-**A sample can be run.** A statement sample marked `check_run` is built and run in every mode, and what it prints is compared with what the page says it prints: a trailing comment on a `Debug.Print` line, or the comment lines under an `' Output:` line ([Authoring Pages](Authoring#checking-that-a-sample-compiles) has the markup). A project may have only one `[RunAfterBuild]` Sub (TB5114), so run samples are batched apart from the rest. Each run batch gets one generated `Module tbxRun` whose `[RunAfterBuild]` Sub calls each sample's body in turn. It prints a marker line before and after each call, and an `On Error GoTo` handler around each call keeps one sample's error from ending the rest.
+**A sample can be run.** A statement sample marked `check_run` is built and run in every mode, and what it prints is compared with what the page says it prints: a trailing comment on a `Debug.Print` line, up to a ` -- ` that starts a note, or the comment lines under an `' Output:` line ([Authoring Pages](Authoring#checking-that-a-sample-compiles) has the markup). A project may have only one `[RunAfterBuild]` Sub (TB5114), so run samples are batched apart from the rest. Each run batch gets one generated `Module tbxRun` whose `[RunAfterBuild]` Sub calls each sample's body in turn. It prints a marker line before and after each call, and an `On Error GoTo` handler around each call keeps one sample's error from ending the rest.
 
 The handler is reached only by an error the sample does not handle itself, so a sample can demonstrate an error under its own `On Error Resume Next` and print `Err.Number`. (Checking `Err.Number` after the call could not tell the two apart: a procedure that handles an error with `On Error Resume Next` returns with `Err` still set, in VB6 and in twinBASIC alike.)
 
@@ -162,7 +162,7 @@ Exit codes: **0** the probe project and the key were written, **2** a refused co
 
 Reports, for every attribute the twinBASIC packages use, **which enclosing construct and which kind of declaration it decorates**. It unpacks each package of an IDE install with [`impexp.mjs`](Tools-Compiler#impexp), scans the `.twin` sources, and writes a Markdown or JSON report. No arguments are needed: it finds the newest `twinBASIC_IDE_BETA_*` as [`tbbuild.mjs`](Tools-Compiler#tbbuild) does and caches the export under the build number. It is not part of the site build.
 
-Against BETA 995 that is 661 files, 9,713 attribute sites and 55 distinct attributes.
+Against BETA 1005 that is 661 files, 9,744 attribute sites and 55 distinct attributes.
 
 **A census is evidence, not applicability.** It says where an attribute *is* used, never where it *may* be used, and the two differ in both directions. The packages contain no use of `[Hidden]` on a whole **Class**, yet the compiler accepts one. They contain many on **Class** and **Interface** members, yet the compiler refuses the same attribute on the **Interface** lines inside a **CoClass**. To find out what the compiler accepts, use [`gen_attribute_probes.mjs`](#gen-attribute-probes) and [`tbbuild.mjs`](Tools-Compiler#tbbuild), which ask it directly.
 
@@ -197,7 +197,7 @@ Asks the compiler where every attribute is legal. It writes each attribute name 
 
 It exists because the older tools leave a gap. [`census_attributes.mjs`](#census-attributes) says where the shipped packages *use* an attribute, and [`gen_attribute_probes.mjs`](#gen-attribute-probes) probes only the targets the page already *claims*: a line checked against only a Sub and a Const says nothing about an API `Declare`. This tool asks every question, so a missing target shows up as a row of the report.
 
-The names come from every entry in `Attributes.md`, every name in the compiler's own token table (a pipe-separated string in the compiler binary, holding keywords, attributes and object members together), and `--names`. A token-table name is a *candidate*: it is an attribute only if some site accepts it. `Debug` and `ExecuteHostCommand` are in the table and neither is one.
+The names come from every entry in `Attributes.md`, every name in the compiler's own token table (a pipe-separated string in the compiler binary, holding keywords, attributes and object members together), and `--names`. A token-table name is a *candidate*: it is an attribute only if some site accepts it. `Debug` is in the table and is not one.
 
 **How an answer is made readable.** A clean build is not proof by itself, so the tool guards against the ways one goes wrong:
 

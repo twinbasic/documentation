@@ -1,0 +1,21 @@
+' With LLVM turned on for the whole project (Settings: compiler.debugOptions is +llvm),
+' a procedure marked [CompilerOptions("")] that Sub Main calls ends the run in the IDE
+' with an access violation when it calls a procedure compiled with LLVM.
+Module Startup
+
+    Public Sub Callee()
+        Debug.Print "Callee"
+    End Sub
+
+    [CompilerOptions("")]
+    Public Sub Plain()
+        Debug.Print "Plain: before Callee"
+        Callee
+        Debug.Print "Plain: after Callee"
+    End Sub
+
+    Public Sub Main()
+        Plain
+    End Sub
+
+End Module

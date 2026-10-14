@@ -352,7 +352,7 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
 // diagnostics at all.
 //
 // The canary is a #Warning directive, TB0005, on a module that enforces it.
-// Measured on BETA 987, it was reported beside samples with an unterminated
+// On BETA 1005 it is reported beside samples with an unterminated
 // Sub, an If with no End If, a stray End Sub and garbage, a class that inherits
 // itself, and ten undefined names; under Option Explicit off; in a project that
 // ignores TB0005 or makes it an error, where [EnforceWarnings(TB0005)] keeps it
@@ -639,9 +639,7 @@ async function isolateCrash(batch, named, lane, failed = false, detail = "") {
  * compile.
  *
  * A build can fail once and pass when repeated: one that reported nothing for
- * 120 s, once in a full --llvm run (BETA 995). Lanes whose IDEs shared a temp
- * folder failed with "[LINKER] FAILED to create type library" too, which
- * launchIde's folder per IDE prevents. A failure is believed only if the same
+ * 120 s, once in a full --llvm run. A failure is believed only if the same
  * batch fails twice running, and so is each part the halving that follows builds.
  */
 async function buildTwiceOnFailure(batch, lane) {
@@ -1520,6 +1518,11 @@ export async function runProbes(say) {
     ["an empty Output block", "Debug.Print 1\n' Output:\n", "true:"],
     ["no expectations", "Dim x As Long\nx = 1\nDebug.Print x\n", "false:"],
     ["a comment that says Output but is not a header", "' Output: 5\nDebug.Print 5\n", "false:"],
+    ["a note after the value", "Debug.Print Err.Number   ' 0 -- nothing left in Err\n", "true:11=0"],
+    ["a note after ---, and only the first dash ends the value", "Debug.Print 4 ' 4 --- a -- b\n", "true:11=4"],
+    ["a dash with no space after it is part of the value", 'Debug.Print "a --b" \' a --b\n', "true:11=a --b"],
+    ["a comment that is only a note states nothing", "Debug.Print 1 ' -- the count\n", "false:"],
+    ["an Output block keeps a dash", "Debug.Print \"a -- b\"\n' Output:\n' a -- b\n", "true:13=a -- b"],
   ]) {
     const got = shape(said(content));
     expect(got === want, `expected output: ${name} -> ${got}, want ${want}`);
@@ -1538,6 +1541,7 @@ export async function runProbes(say) {
     ["too many lines", "Debug.Print 1 ' 1\n", [" 1", " 2"], "null:prints 2 line(s), the page states 1"],
     ["nothing stated, anything printed", "Debug.Print 1\n", [" 1", " 2"], ""],
     ["an Output block that is not met", "Debug.Print 7\n' Output:\n' 8\n", [" 7"], '13:prints "7", the page says "8"'],
+    ["a note is not compared", "Debug.Print 0 ' 0 -- nothing left\n", [" 0"], ""],
   ]) {
     const got = sayOf(content, output).join(";");
     expect(got === want, `judged output: ${name} -> ${got}, want ${want}`);

@@ -38,7 +38,7 @@ Service.AddStdLibraryBinder()
 Service.AddCustomBinderObject "Report", Me, IsAppObject
 
 Debug.Print Service.Compile("Report.Title").Evaluate()    ' "Sales Q4"
-Debug.Print Service.Compile("Title").Evaluate()           ' "Sales Q4" — IsAppObject in effect
+Debug.Print Service.Compile("Title").Evaluate()           ' "Sales Q4" -- IsAppObject in effect
 ```
 
 ### See Also
