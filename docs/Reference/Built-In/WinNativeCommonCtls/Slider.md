@@ -51,7 +51,10 @@ Properties
 ### BackColor
 {: .no_toc }
 
-The background color of the channel. **OLE_COLOR**. Default: **vbButtonFace**.
+The background color of the control. **OLE_COLOR**. Default: **vbButtonFace**.
+
+> [!NOTE] BETA 1005
+> A change to **BackColor** does not repaint the control: the new color shows the next time the control is drawn, such as when the thumb moves or the window is restored.
 
 ### BorderStyle
 {: .no_toc }
