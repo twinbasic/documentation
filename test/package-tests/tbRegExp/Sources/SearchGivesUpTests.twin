@@ -1,57 +1,125 @@
-' tbRegExp: a search that backtracks without end, such as (a+)+b on thirty a, gives up when its
-' step budget runs out instead of hanging, as VBScript's RegExp does. It raises nothing, returns
-' what was found before, and RegExp.SearchAborted says so. A long match is not cut short.
+' tbRegExp: a search whose cost grows faster than the square of the input - (a+)+b on thirty a -
+' is stopped by its step budget instead of hanging, as VBScript's RegExp does. It RAISES. Running
+' out of budget means the answer is not known, so nothing is returned and no partial result is
+' kept: reporting "no match" would assert something the search never established. The error says
+' what to try, and names SearchStepLimit when raising the limit could plausibly help. A long match
+' is not cut short.
 [TestFixture]
 Module SearchGivesUpTests
 
+    ' The engine's error enum is private to the package, so this is spelled out here.
+    Private Const ERR_SEARCH_ABANDONED As Long = vbObjectError + 3016
+
     [TestCase]
-    Public Sub Test_CatastrophicPatternGivesUpWithoutError()
+    Public Sub Test_CatastrophicPatternRaises()
         Expect.Begin
         Dim re As New RegExp
+        Dim num As Long, desc As String
         re.Pattern = "(a+)+b"
+        On Error Resume Next
         Err.Clear
-        Expect.IsFalse re.SearchAborted, "SearchAborted of an object that has not searched"
-        Expect.IsFalse re.Test(String$(30, "a")), "Test of (a+)+b on thirty a"
-        Expect.AreEqual 0, Err.Number, "Err.Number after the search gave up"
-        Expect.IsTrue re.SearchAborted, "SearchAborted after Test of (a+)+b on thirty a"
+        re.Test String$(30, "a")
+        num = Err.Number: desc = Err.Description
+        On Error GoTo 0
+        Err.Clear
+        Expect.AreEqual ERR_SEARCH_ABANDONED, num, "Err.Number of Test of (a+)+b on thirty a"
+        Expect.IsTrue InStr(desc, "abandoned") > 0, "the message says the search was abandoned"
+        ' At thirty characters the budget is the 1,000,000 floor, which already far exceeds the
+        ' 2,700 a merely quadratic pattern would need - so this one is worse than quadratic, no
+        ' limit could cover it, and the message says to simplify rather than naming SearchStepLimit.
+        Expect.IsTrue InStr(desc, "Simplify the pattern") > 0, "the message says to simplify the pattern"
         Expect.Done
     End Sub
 
     [TestCase]
-    Public Sub Execute_CatastrophicPatternKeepsMatchesFound()
+    Public Sub Execute_CatastrophicPatternKeepsNothing()
         Expect.Begin
         Dim re As New RegExp
-        re.Global = True
-        re.Pattern = "x|(a+)+b"
         Dim m As MatchCollection
-        Set m = re.Execute("xx" & String$(30, "a"))
-        Expect.AreEqual 2, m.Count, "matches of x|(a+)+b in xx and thirty a"
-        Expect.IsTrue re.SearchAborted, "SearchAborted after that Execute"
-        Expect.Done
-    End Sub
-
-    [TestCase]
-    Public Sub Replace_CatastrophicPatternReplacesMatchesFound()
-        Expect.Begin
-        Dim re As New RegExp
+        Dim num As Long
         re.Global = True
         re.Pattern = "x|(a+)+b"
-        Expect.AreEqual "--" & String$(30, "a"), re.Replace("xx" & String$(30, "a"), "-"), "Replace of x|(a+)+b in xx and thirty a"
-        Expect.IsTrue re.SearchAborted, "SearchAborted after that Replace"
+        On Error Resume Next
+        Err.Clear
+        Set m = re.Execute("xx" & String$(30, "a"))
+        num = Err.Number
+        On Error GoTo 0
+        Err.Clear
+        Expect.AreEqual ERR_SEARCH_ABANDONED, num, "Err.Number of Execute of x|(a+)+b in xx and thirty a"
+        ' The two x matches found before the budget ran out are discarded. Handing them back would
+        ' be a correct prefix presented as a complete answer, which is the silent wrong result this
+        ' whole design exists to avoid.
+        Expect.IsTrue m Is Nothing, "no partial MatchCollection is returned"
         Expect.Done
     End Sub
 
     [TestCase]
-    Public Sub Split_CatastrophicPatternSplitsAtMatchesFound()
+    Public Sub Replace_CatastrophicPatternKeepsNothing()
         Expect.Begin
         Dim re As New RegExp
+        Dim s As String
+        Dim num As Long
+        re.Global = True
+        re.Pattern = "x|(a+)+b"
+        On Error Resume Next
+        Err.Clear
+        s = re.Replace("xx" & String$(30, "a"), "-")
+        num = Err.Number
+        On Error GoTo 0
+        Err.Clear
+        Expect.AreEqual ERR_SEARCH_ABANDONED, num, "Err.Number of Replace of x|(a+)+b in xx and thirty a"
+        Expect.AreEqual "", s, "no partially replaced string is returned"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Split_CatastrophicPatternKeepsNothing()
+        Expect.Begin
+        Dim re As New RegExp
+        Dim c As Collection
+        Dim num As Long
         re.Global = True
         re.Pattern = "x|(?:a+)+b"
-        Dim c As Collection
+        On Error Resume Next
+        Err.Clear
         Set c = re.Split("xx" & String$(30, "a"))
-        Expect.AreEqual 3, c.Count, "pieces of xx and thirty a split at x|(?:a+)+b"
-        Expect.AreEqual String$(30, "a"), c(3), "last piece"
-        Expect.IsTrue re.SearchAborted, "SearchAborted after that Split"
+        num = Err.Number
+        On Error GoTo 0
+        Err.Clear
+        Expect.AreEqual ERR_SEARCH_ABANDONED, num, "Err.Number of Split of xx and thirty a at x|(?:a+)+b"
+        Expect.IsTrue c Is Nothing, "no partial split is returned"
+        Expect.Done
+    End Sub
+
+    ' SearchStepLimit is the recourse when a genuinely quadratic pattern exceeds the cap. Tested
+    ' here with an explicit low limit rather than by driving the automatic cap, which would mean
+    ' waiting out two ~25-second searches to prove the same mechanism.
+    [TestCase]
+    Public Sub SearchStepLimit_RaisesTheCeiling()
+        Expect.Begin
+        Dim re As New RegExp
+        Dim num As Long, desc As String
+        re.Pattern = "\d+x"
+        Expect.AreEqual 0, re.SearchStepLimit, "SearchStepLimit defaults to 0, meaning automatic"
+
+        ' far too few for the ~2,250,000 steps this costs
+        re.SearchStepLimit = 100000
+        On Error Resume Next
+        Err.Clear
+        re.Test String$(1000, "1")
+        num = Err.Number: desc = Err.Description
+        On Error GoTo 0
+        Err.Clear
+        Expect.AreEqual ERR_SEARCH_ABANDONED, num, "Err.Number with SearchStepLimit set far too low"
+        ' Here raising the limit genuinely would help, so the message names the property and a
+        ' figure - the opposite of the (a+)+b case above.
+        Expect.IsTrue InStr(desc, "SearchStepLimit") > 0, "the message names the property to raise"
+
+        ' raised high enough, the same search completes
+        re.SearchStepLimit = 3000000
+        Err.Clear
+        Expect.IsFalse re.Test(String$(1000, "1")), "Test of \d+x on 1,000 digits once the limit is raised"
+        Expect.AreEqual 0, Err.Number, "Err.Number once the limit is raised"
         Expect.Done
     End Sub
 
@@ -64,7 +132,6 @@ Module SearchGivesUpTests
         Set m = re.Execute(String$(1000000, "a"))
         Expect.AreEqual 1, m.Count, "matches of a* in 1,000,000 a"
         Expect.AreEqual 1000000, m(0).Length, "length of the match of a* in 1,000,000 a"
-        Expect.IsFalse re.SearchAborted, "SearchAborted after that Execute"
         Expect.Done
     End Sub
 
@@ -77,7 +144,6 @@ Module SearchGivesUpTests
         Set m = re.Execute(String$(1000000, "a"))
         Expect.AreEqual 1, m.Count, "matches of ^.*$ in 1,000,000 a"
         Expect.AreEqual 1000000, m(0).Length, "length of the match of ^.*$ in 1,000,000 a"
-        Expect.IsFalse re.SearchAborted, "SearchAborted after that Execute"
         Expect.Done
     End Sub
 
