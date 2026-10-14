@@ -39,8 +39,8 @@ Marks a prototype that a class implementing the interface is not obliged to supp
 
 The twinBASIC packages use it to add members to an interface without breaking code written against an earlier revision of it. `ItbHostEventsV2` extends `ItbHostEventsV1` and adds one such prototype; `ItbHostEventsV3` extends that and adds another. An addin that implements only the **V1** members still satisfies **V3**.
 
-<!-- Applicability from the package census: ~100 uses in tbIDE and VB, always
-     on a prototype inside an Interface. The effect described above is read
+<!-- Applicability from the package census, BETA 1005: 71 uses in tbIDE and VB,
+     every one a Sub prototype inside an Interface. The effect described above is read
      from that usage, not from a specification. -->
 
 ## AppObject  (optional Bool)
@@ -179,7 +179,7 @@ Public Declare Function GetTickCount Lib "kernel32" () As Long
 ```
 
 <!-- Applicability from the attribute sweep (scripts/sweep_attributes.mjs) against
-     BETA 995, each of the bare form, (True) and (False): accepted on a Public
+     BETA 1005, each of the bare form, (True) and (False): accepted on a Public
      Declare Function, a Public Declare Sub, a Private Declare Function, a
      Declare PtrSafe Function and a DeclareWide Function in a module, and on a
      Public and a Private Const in a module; refused with TB5155 on a Sub,
@@ -285,8 +285,8 @@ The editor names the twinBASIC packages use, most-used first. The list is not ex
 | `designer_PropertyPages` | a property-pages reference |
 | `BINARY` | **InternalImages_INIT** |
 
-<!-- Table is a census of ~100 uses in VB, WebView2, WinNativeCommonCtls and
-     CustomControls, ordered by frequency. What each editor does is inferred
+<!-- Table is a census of 154 uses, BETA 1005, in VB, WebView2,
+     WinNativeCommonCtls and CustomControls, ordered by frequency. What each editor does is inferred
      from the properties it is applied to, not from a specification. Not
      probed: the designer name has to suit the property type, so a rejection
      could mean the applicability or the pairing and the probe could not say
@@ -306,9 +306,11 @@ When false, turns of breakpoints and stepping for the method or module. The defa
 
 Syntax: **[DebugOnly** [ **( True** \| **False )** ] **]**
 
-Applicable to: [procedure definitions](../Gloss#procedure)
+Applicable to: [**Sub**](Sub)
 
 Excludes calls to this procedure from the Build. They are only available when running from the IDE, i.e. debugging.
+
+The attribute is accepted on a **Sub** in a **Module**, a **Class** or an **Interface**, and on a **Declare Sub**. On a **Function**, a **Property** or a **Declare Function** it is error **TB5162**, *[DebugOnly] is only allowed on Sub procedures*.
 
 ## Default
 {: #default }
@@ -329,9 +331,9 @@ CoClass CustomControlTimer
 End CoClass
 ```
 
-<!-- Applicability from the package census: ~100 uses across VB, VBA, VBRUN,
-     tbIDE, AppGlobalClassObject and CustomControls, always on an Interface
-     line inside a CoClass. -->
+<!-- Applicability from the package census, BETA 1005: 50 uses across VB, VBA,
+     VBRUN, tbIDE, AppGlobalClassObject and CustomControls, always on an
+     Interface line inside a CoClass. -->
 
 ## DefaultDesignerEvent
 {: #defaultdesignerevent }
@@ -340,11 +342,12 @@ Syntax: **[DefaultDesignerEvent]**
 
 Applicable to: [**Event**](Event) declaration in a [**Class**](Class)
 
-Marks the one event a control nominates as its primary one. Each control that declares it declares exactly one: **Click** for **CheckBox** and **CommandButton**, **Change** for **ComboBox**, **Validate** for **Data**.
+Marks the event a control nominates as its primary one. Each control of the VB package that declares it declares exactly one: **Click** for **CheckBox** and **CommandButton**, **Change** for **ComboBox**, **Validate** for **Data**. The **ListView** and **TreeView** controls of WinNativeCommonCtls mark two, **Click** and **BeforeLabelEdit**.
 
-<!-- Applicability from the package census: ~100 uses in VB and
-     WinNativeCommonCtls, always on an Event in a control class and never
-     twice in one class. Which designer action selects it is not
+<!-- Applicability from the package census, BETA 1005: 37 uses in VB (28) and
+     WinNativeCommonCtls (9), always on an Event in a control class. One per
+     class except ListViewBaseCtl and TreeViewBaseCtl, which mark Click and
+     BeforeLabelEdit. Which designer action selects it is not
      established. -->
 
 ## DefaultMember (optional Bool)
@@ -443,10 +446,10 @@ Indicates that the interface exposes methods via **IDispatch** late-binding. Thi
 
 It is usually written combined with the other attributes on the interface rather than alone --- `[Hidden, DispInterface, COMExtensible]`. See [**LibraryId**](#libraryid) for what a generated **Library** module looks like.
 
-## DllExport  (optional Bool)
+## DllExport  (optional String)
 {: #dllexport }
 
-Syntax: **[DllExport** [ **( True** \| **False )** ] **]**
+Syntax: **[DllExport** [ **("** export name **")** ] **]**
 
 Applicable to: [procedures](../Gloss#procedure) and constants in a module.
 
@@ -456,6 +459,17 @@ It's possible to export a function or constant from standard modules. The compil
 [DllExport]
 Public Const MyExportedSymbol As Long = &H00000001
 ```
+
+Without an argument the DLL exports the procedure or constant under its own name. A **String** argument sets the name the DLL exports it under:
+
+```tb check_build
+[DllExport("Add_Numbers")]
+Public Function AddNumbers(ByVal a As Long, ByVal b As Long) As Long
+    Return a + b
+End Function
+```
+
+The attribute takes no **Boolean**: `[DllExport(True)]` and `[DllExport(False)]` are error **TB5163**, *Expected a single String argument*.
 
 ## DLLStackCheck  (optional Bool)
 {: #dllstackcheck }
@@ -481,19 +495,23 @@ Indicates that the interface exposes methods through the OLE VTable binding. The
 
 See [**LibraryId**](#libraryid) for what a generated **Library** module looks like.
 
-## EnforceErrors  (optional Bool)
+## EnforceErrors  (Warning code list)
 {: #enforceerrors }
 
-Syntax: **[EnforceErrors** [ **( True** \| **False )** ] **]**
+Syntax: **[EnforceErrors** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
 
-Applicable to: [procedures](../Gloss#procedure).
+Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
-## EnforceWarnings  (optional Bool)
+Reports the named warnings as errors within the class, module or procedure the attribute is applied to. The codes are written bare, as for [IgnoreWarnings](#ignorewarnings). With `[EnforceErrors(TB0009)]` on a procedure, a call to a procedure marked [Unimplemented](#unimplemented) is an error where it would otherwise be warning TB0009. Written bare it is accepted and has no effect. With **True** or **False** in place of a code it is error TB5169, *Expected an error code in the format of TBxxxx*.
+
+## EnforceWarnings  (Warning code list)
 {: #enforcewarnings }
 
-Syntax: **[EnforceWarnings** [ **( True** \| **False )** ] **]**
+Syntax: **[EnforceWarnings** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
 
-Applicable to: [procedures](../Gloss#procedure).
+Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
+
+Takes warning codes written bare, as [IgnoreWarnings](#ignorewarnings) does. A warning it names is still reported as a warning. With **True** or **False** in place of a code the attribute is TB5169, *Expected an error code in the format of TBxxxx*.
 
 ## Enumerator
 {: #enumerator }
@@ -515,8 +533,9 @@ End Property
 
 This replaces VB6's hidden `VB_UserMemId = -4` procedure attribute, which twinBASIC still accepts for compatibility. [Custom Enumerators](../../Features/Language/Custom-Enumerators) describes the member's rules, and how a class can implement the enumerator itself.
 
-<!-- Applicability from the package census: ~10 uses in VB, VBRUN, WebView2,
-     WinNativeCommonCtls and WinServicesLib, on a Function or a Property Get.
+<!-- Applicability from the package census, BETA 1005: 23 uses in VB, VBRUN,
+     WebView2, WinNativeCommonCtls and WinServicesLib, on a Function (20) or
+     a Property Get (3), in a Class (19) or an Interface (4).
      WinServicesLib/Services carries a [Description] calling it "For-Each
      support for the services collection", which is where the wording above
      comes from. Not probed: the member must return stdole.IUnknown or a
@@ -543,7 +562,8 @@ Assigns a fixed COM IID to the event interface twinBASIC generates for a class f
 
 A host may cache the IID, so a generated one that changes between builds or between bitnesses breaks clients that have already stored it. That is what the TB0013 recommendation on a [COMControl](#comcontrol) interface is asking for.
 
-<!-- Applicability from the package census: ~10 uses in CEF, all on a Class.
+<!-- Applicability from the package census, BETA 1005: 19 uses in tbIDE, CEF,
+     WinNamedPipesLib, WinNativeCommonCtls and VB, all on a Class.
      This entry stated no applicability at all until then. -->
 
 ## EventsUseDispInterface  (optional Bool)
@@ -555,7 +575,7 @@ Applicable to: [**Class**](Class)
 
 Makes the event interface generated for the class a dispinterface, so events are raised through **IDispatch** by member id rather than through a vtable. VB6 and VBA event sinks expect a dispinterface, so a control meant to be consumed from either sets this.
 
-<!-- Applicability from the package census: ~100 uses in VB, WebView2,
+<!-- Applicability from the package census, BETA 1005: 88 uses in VB,
      WinNativeCommonCtls and CEF, every one on a Class and every one bare.
      This entry stated no applicability at all until then. -->
 
@@ -603,9 +623,9 @@ Hides the declaration from certain IntelliSense and other lists. It applies to a
 > [!NOTE]
 > A **CoClass** can only be hidden whole. Its body holds nothing but **Interface** lines, and the attribute is refused there with TB5155 --- unlike [**Default**](#default) and [**Source**](#source), which are interface-line attributes. It is likewise refused on an **Enum** or [**Type**](Type) declaration, on a **Type** member, and on a procedure parameter. An **Enum** member cannot be hidden either: written before the member on the same line, the attribute is **TB5182**, and on a line of its own inside the **Enum**, `[Hidden]` declares a member named `Hidden` (see [**Enum**](Enum)).
 
-<!-- Applicability from scripts/census_attributes.mjs over BETA 995 (270 sites)
-     plus the attribute sweep (scripts/sweep_attributes.mjs), BETA 995.
-     Census: Module DeclareWide 159, Module Const 50, Class Property 18 / Sub 9
+<!-- Applicability from scripts/census_attributes.mjs over BETA 1005 (271 sites)
+     plus the attribute sweep (scripts/sweep_attributes.mjs), BETA 1005.
+     Census: Module DeclareWide 160, Module Const 50, Class Property 18 / Sub 9
      / variable 7 / Event 1, Interface Property 10 / Function 6 / Sub 3, whole
      CoClass 3, whole Module 2, whole Interface 2.
      Swept clean: all four whole types, every procedure, variable, Const,
@@ -646,9 +666,11 @@ Module MD5
 End Module
 ```
 
-<!-- Applicability two ways: ~100 uses in VB, CEF, WinNativeCommonCtls and
-     Sample 22 on a Class, a Module and a Sub; plus one probe per target, all
-     clean. The codes seen in use are TB0001, TB0020, TB0024 and TB0026. This
+<!-- Applicability two ways, BETA 1005: the package census has 113 uses in VB,
+     CEF and WinNativeCommonCtls, on a Sub (109), a Class (2), a Module (1)
+     and a Property (1), and Sample 22 has one on a Module; the sweep has one
+     probe per target, all clean. The codes seen in use are TB0001, TB0020,
+     TB0024 and TB0026. This
      entry stated no applicability at all until then, and called the arguments
      a list of strings. -->
 
@@ -680,9 +702,9 @@ Elsewhere in the project, `Honk` is callable on a **CCar** and `Diagnostics` is 
 
 For an overview of the `Implements ... Via` mechanism itself, see [Implements Via for basic inheritance](../../Features/Language/Inheritance#implements-via-for-basic-inheritance).
 
-<!-- Applicability by probe, BETA 983, and by the attribute sweep, BETA 995,
-     which gives the same answers; no package or sample uses this
-     attribute. The control and the effect below were tested on 983. Accepted on `Implements <Class> Via <field> = <expr>` and on
+<!-- Applicability by probe and by the attribute sweep, both BETA 1005; no
+     package or sample uses this attribute. The control and the effect below
+     were tested on BETA 1005. Accepted on `Implements <Class> Via <field> = <expr>` and on
      `Implements <Interface> Via <Class>`; rejected on a plain Implements
      statement (TB5155), on the Class (TB5182), on the Interface (TB5182), on
      an Inherits statement (TB5155) and on an Interface line in a CoClass
@@ -692,7 +714,9 @@ For an overview of the `Implements ... Via` mechanism itself, see [Implements Vi
      the attribute: a Friend member of the delegate called from a Module
      draws TB5027 with it and compiles without it, while the same member
      called from inside the class compiles either way, qualified with Me or
-     bare, and a Public member is unaffected. -->
+     bare, and a Public member is unaffected. With (True) the module's call
+     draws TB5027 as the bare form does; with (False) it compiles as it does
+     without the attribute. -->
 
 ## IntegerOverflowChecks  (optional Bool)
 {: #integeroverflowchecks }
@@ -794,7 +818,7 @@ Public Sub Draw()
 End Sub
 ```
 
-On a class, a member of a class, or an **Enum** in a class, the attribute is error **TB5155**, *This attribute is not supported in this context*.
+On a class the attribute is error **TB5155**, *This attribute is not supported in this context*. On a member of a class, or on an **Enum** in a class, it is error **TB5182**, *Syntax error. No handler for this symbol*.
 
 ## NonBrowsable  (optional Bool)
 {: #nonbrowsable }
@@ -807,9 +831,9 @@ Keeps a member out of the surfaces that list a class's members, while leaving it
 
 This is distinct from [Hidden](#hidden), which reaches the same member as well as the whole type, and from [Restricted](#restricted).
 
-<!-- Applicability from the package census: ~10 uses in VB and
-     WinNativeCommonCtls, on class-level variables and on a Property Get, in
-     both the bare and the (True) form. Exactly which browsing surfaces it
+<!-- Applicability from the package census, BETA 1005: 17 uses in VB and
+     WinNativeCommonCtls, on class-level variables (15), a Property Get (1)
+     and an Event (1), in both the bare and the (True) form. Exactly which browsing surfaces it
      affects is not established. -->
 
 ## OleAutomation  (optional Bool)
@@ -951,11 +975,13 @@ End Interface
 ```
 
 <!-- This entry first went out saying "procedure in a Class", and the probe
-     project rejected that with TB5155. The census behind it had grouped uses
+     project rejected that with TB5155 (the sweep, BETA 1005, still does on
+     every kind of procedure in a Class). The census behind it had grouped uses
      by DECLARATION KEYWORD ("a Property Get, a Function, a Sub"), which says
-     nothing about applicability; regrouped by ENCLOSING CONSTRUCT, all ~100
-     uses in AppGlobalClassObject and VB are inside an Interface -- _App,
-     _Clipboard, _Screen, _Forms, VBGlobal -- and none inside a Class. Worth
+     nothing about applicability; regrouped by ENCLOSING CONSTRUCT, all 99
+     uses in the BETA 1005 census, in VBA, AppGlobalClassObject and VB, are
+     inside an Interface -- _ErrObject, _App, _Clipboard, _Screen, _Forms,
+     VBGlobal -- and none inside a Class. Worth
      remembering before writing an Applicable to: line from a census. -->
 
 ## Restricted  (optional Bool)
@@ -1035,7 +1061,9 @@ Allows an explicitly loaded DLL to load its own dependencies from it's load path
 
 Syntax: **[SimplerByVals** [ **( True** \| **False )** ] **]**
 
-Applicable to: [procedure](../Gloss#procedure)
+Applicable to: [procedures](../Gloss#procedure) and [**Declare**](Declare) statements in a [**Module**](Module)
+
+On a procedure in a **Class** or an **Interface**, and on a **Declare** in a class, the attribute is error **TB5182**, *Syntax error. No handler for this symbol*.
 
 ## Source
 {: #source }
@@ -1057,10 +1085,10 @@ End CoClass
 
 The pairing is a convention rather than a requirement -- `[Source]` on its own compiles, and marks the interface as a source of events without making it the default one.
 
-<!-- Applicability from the package census: a few uses, in VB, tbIDE and
-     CustomControls, every one of them [Default, Source]. The effect described
-     above therefore rests on thin evidence. That [Source] compiles without
-     [Default] is from probe X17. -->
+<!-- Applicability from the package census, BETA 1005: 6 uses, in VB (2), tbIDE
+     (3) and CustomControls (1), every one of them [Default, Source]. The
+     effect described above therefore rests on thin evidence. That [Source]
+     compiles without [Default] was checked on BETA 1005. -->
 
 ## SpecialCompilerBinding  (Integer)
 {: #specialcompilerbinding }
@@ -1077,7 +1105,8 @@ Binds the member to one of the compiler's own internal implementations, selected
 The numbers the VB package uses, should you meet one while reading its source: `(1)` and `(2)` on the `GlobalLoad` and `GlobalUnload` declares, `(3)` on a generic `Item` property, `(4)` on `IdleMessageLoopBreakpoint`, and `(254)` on **Form**'s `Show`, where a comment in the source says it "prevents ClassBeforeFirstMemberAccessFunc for this member".
 
 <!-- This entry gave the syntax as an optional Bool and stated no
-     applicability. Every use passes an integer. Not probed: the argument
+     applicability. Every one of the 6 uses in the BETA 1005 census passes an
+     integer. Not probed: the argument
      indexes the compiler's own internal implementations, so no value a probe
      could pass would test the applicability rather than the number. -->
 
@@ -1163,8 +1192,9 @@ The VB package supplies that one as `Miscellaneous/ICONS24/Checkbox24.png` and a
 Compare [CustomControl](#customcontrol), which takes one image path and no size placeholder.
 
 <!-- This entry gave the syntax as an optional Boolean and stated no
-     applicability. All ~100 uses in VB, WinNativeCommonCtls and CEF are on a
-     Class and all pass a String; not one uses the bare form. The ??
+     applicability. All 44 uses in the BETA 1005 census, in VB, WebView2,
+     WinNativeCommonCtls and CEF, are on a Class and all pass a String; not
+     one uses the bare form. The ??
      substitution is read from those paths and the icon files beside them, not
      from a specification. -->
 
@@ -1184,7 +1214,7 @@ The **MyCOMAddin** sample states the consequence directly: the attribute "is nee
 Implements IRibbonExtensibility
 ```
 
-<!-- Applicability from the package census: ~100 uses in VB, WebView2,
-     WinNativeCommonCtls and CEF plus the MyCOMAddin sample, always on an
-     Implements statement. The quoted sentence above is that sample's own
+<!-- Applicability from the package census, BETA 1005: 43 uses in VB,
+     WebView2, WinNativeCommonCtls and CEF plus the MyCOMAddin sample, always
+     on an Implements statement. The quoted sentence above is that sample's own
      comment. -->

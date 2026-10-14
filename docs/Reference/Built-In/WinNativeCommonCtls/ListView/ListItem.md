@@ -30,7 +30,10 @@ Properties
 ### BackColor
 {: .no_toc }
 
-The background color used to render this row. **OLE_COLOR**. Default: `-1` (transparent --- defer to [**ListView.BackColor**](#backcolor)).
+The background color used to render this row. **OLE_COLOR**. Default: `-1` (transparent --- defer to [**ListView.BackColor**](.#backcolor)). A change repaints the list at once. A value that is not a color raises error 380, *Invalid property value*, and the property keeps its color.
+
+> [!NOTE] BETA 1005
+> Once a color is assigned, assigning the default, `-1`, raises error 380, so the row cannot be made transparent again.
 
 ### Bold
 {: .no_toc }
@@ -50,7 +53,7 @@ Scrolls the listview so this row is visible. Available as a method (not a proper
 ### ForeColor
 {: .no_toc }
 
-The text color used to render this row. **OLE_COLOR**. Default: **vbWindowText**.
+The text color used to render this row. **OLE_COLOR**. Default: **vbWindowText**. A change repaints the list at once. A value that is not a color, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its color.
 
 ### Ghosted
 {: .no_toc }

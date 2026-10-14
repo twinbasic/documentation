@@ -128,7 +128,7 @@ those files, makes the next `sync` index every package again; the store also
 keeps each package's `Settings` file for this, beside its `sources/`. `analyze`
 warns when the fingerprint of a package is not the checkout's. The version in
 `api.json` is the release tag in both cases:
-BETA 983 is `beta-x-0983`, as `indexed_from` in the package pages has it. The
+BETA 1005 is `beta-x-1005`, as `indexed_from` in the package pages has it. The
 BETA number is read from the install's `ide/build.js`, else from the name of
 its folder.
 
@@ -463,31 +463,31 @@ reads it; the site's builder ignores these keys):
 | Key | Means |
 |-----|-------|
 | `package_name:` | The packages the section documents, by the names the store has, comma-separated: `CustomControls, CustomControlsPackage`. Without it the section documents the package named like its folder. It replaces that name, so the folder's own is listed too when it is a package. |
-| `indexed_from:` | The release tag the section was brought up to date with, `beta-x-0997`: the `version` of the committed snapshots. Bump it in the commit that updates the pages, and write the new snapshots in it. |
+| `indexed_from:` | The release tag the section was brought up to date with, `beta-x-1005`: the `version` of the committed snapshots. Bump it in the commit that updates the pages, and write the new snapshots in it. |
 | `exclude_from_docs:`, `exclude_kinds:` | Types, and kinds of symbol, that are deliberately not documented, so `analyze` does not list them. |
 
 The group is the folder's: a package in `Built-In/` is a built-in one.
 
-The 13 sections and the 14 snapshots they have, all of BETA 997 (`beta-x-0997`),
+The 13 sections and the 14 snapshots they have, all of BETA 1005 (`beta-x-1005`),
 the build the reference was last indexed against:
 
 | Section | Packages (`package_name:`) | Snapshots | Size |
 |---------|----------------------------|-----------|------|
-| `Default/VB` | `VB` (no key) | `default/VB` | 1,424 KB |
-| `Default/VBA` | `VBA` (no key) | `default/VBA` | 411 KB |
-| `Default/VBRUN` | `VBRUN` (no key) | `default/VBRUN` | 104 KB |
+| `Default/VB` | `VB` (no key) | `default/VB` | 1,427 KB |
+| `Default/VBA` | `VBA` (no key) | `default/VBA` | 407 KB |
+| `Default/VBRUN` | `VBRUN` (no key) | `default/VBRUN` | 106 KB |
 | `Built-In/AppGlobalClassObject` | `AppGlobalClassObject` (no key) | `built-in/AppGlobalClassObject` | 22 KB |
-| `Built-In/CEF` | `cefPackage145` | `built-in/cefPackage145` | 466 KB |
+| `Built-In/CEF` | `cefPackage145` | `built-in/cefPackage145` | 468 KB |
 | `Built-In/CustomControls` | `CustomControls, CustomControlsPackage` | `built-in/CustomControls`, `built-in/CustomControlsPackage` | 20 KB, 87 KB |
 | `Built-In/TwinBasicAssertions` (the `Assert` package) | `TwinBasicAssertions` (no key) | `built-in/TwinBasicAssertions` | 21 KB |
 | `Built-In/WebView2` | `WebView2Package` | `built-in/WebView2Package` | 189 KB |
 | `Built-In/WinEventLogLib` | `WinEventLogLib` (no key) | `built-in/WinEventLogLib` | 7 KB |
 | `Built-In/WinNamedPipesLib` | `WinNamedPipesLib` (no key) | `built-in/WinNamedPipesLib` | 56 KB |
-| `Built-In/WinNativeCommonCtls` | `WinNativeCommonCtls` (no key) | `built-in/WinNativeCommonCtls` | 313 KB |
+| `Built-In/WinNativeCommonCtls` | `WinNativeCommonCtls` (no key) | `built-in/WinNativeCommonCtls` | 314 KB |
 | `Built-In/WinServicesLib` | `WinServicesLib` (no key) | `built-in/WinServicesLib` | 41 KB |
 | `Built-In/tbIDE` | `tbIDE` (no key) | `built-in/tbIDE` | 48 KB |
 
-That is 3.2 MB as the files are, about 350 KB compressed. The project name inside
+That is 3.2 MB as the files are, about 360 KB compressed. The project name inside
 the files (`project` in `api.json`) is not always the package's:
 `TwinBasicAssertions` is the project `Assert`, `AppGlobalClassObject` is
 `AppGlobalClassProject` and the three CEF packages are `cefPackage`. The
@@ -497,7 +497,7 @@ project name.
 **One API, several builds.** The three CEF packages in an install,
 `cefPackage49`, `cefPackage109` and `cefPackage145`, are one source tree
 compiled against three CEF runtimes. Their `api.json` files differ only in
-the `package` key (checked on BETA 997 and 1005), and the reference has one
+the `package` key (checked on BETA 1005), and the reference has one
 section for them, so the section names one and the repository keeps one
 snapshot, of the newest, `cefPackage145`. `analyze` compares each package with
 its own snapshot, so naming all three would triple every CEF task and keep two
@@ -601,7 +601,7 @@ so it won't interfere with your global git config.
 
 | File | Description |
 |------|-------------|
-| `TWINSERV-protocol.md` | TWINSERV HTTP API specification, reverse-engineered from BETA 983. The indexer calls only `query` and `download`. |
+| `TWINSERV-protocol.md` | TWINSERV HTTP API specification, reverse-engineered from the IDE and describing BETA 1005. The indexer calls only `query` and `download`. |
 | `sample.twinpack` | Sample `.twinpack` binary (CustomControlsPackage v0.0.3.0). |
 | [`WIP.Indexer.md`](../WIP.Indexer.md) | Why the indexer is built as it is: decisions and open items. |
 

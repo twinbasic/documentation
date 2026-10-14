@@ -6,7 +6,7 @@ permalink: /tB/Packages/VBA
 redirect_from:
   - /tB/Modules
 has_toc: false
-indexed_from: beta-x-0997
+indexed_from: beta-x-1005
 ---
 
 # VBA Package

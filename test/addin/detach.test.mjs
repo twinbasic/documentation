@@ -14,7 +14,7 @@
 // The tests also count the msedgewebview2.exe processes under that folder
 // before the IDE starts and after it ends.
 //
-// Each test states what BETA 997 does. If one fails after an IDE update, the
+// Each test states what BETA 1005 does. If one fails after an IDE update, the
 // IDE has changed: update the plan for detaching the help pane in
 // WIP.HelpAddin.md, and then this file.
 //

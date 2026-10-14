@@ -43,7 +43,7 @@ scenario("breakpoints across a compiler restart", (lane) => {
   // F9 on the BREAK line; the margin changes at once. Each change is given a
   // second before the next key, as a person's pace gives it: F9 twice and Ctrl+S
   // within a few milliseconds now and then leave the breakpoint set after a
-  // restart, on BETA 997 and 1005 alike, which is not what these tests are about.
+  // restart, on BETA 1005, which is not what these tests are about.
   async function toggle() {
     const was = (await glyphs()).includes(BREAK);
     await setCursor(c, BREAK, 9);

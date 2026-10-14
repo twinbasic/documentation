@@ -205,6 +205,9 @@ scenario("running and debugging", (lane) => {
     await clickAt(c, r.x, r.y);
     await clickAt(c, r.x, r.y, { clickCount: 2 });
     assert.ok(await waitFor(c, async () => (await c.evaluate(EDIT_BOX_JS)) !== null), `no edit box for ${name}`);
+    // A key pressed before the box has the focus is lost.
+    const focused = () => c.evaluate(`document.activeElement?.id === "renameInput"`);
+    assert.ok(await waitFor(c, focused), `the edit box for ${name} never takes the focus`);
   }
   // Paused at the breakpoint on the @LOCALSEND line, in Locals.
   async function pausedInLocals() {
@@ -380,8 +383,15 @@ scenario("running and debugging", (lane) => {
   async function editValue(name, text) {
     await pausedInLocals();
     await doubleClickRow(name);
-    await c.evaluate(`document.getElementById("renameInput").select()`);
-    await typeText(c, text);
+    // The box can lose the first keys typed while it takes the focus, so the text is typed until
+    // the box holds it: what is under test is what Enter does with it.
+    let typed = false;
+    for (let attempt = 0; attempt < 3 && !typed; attempt++) {
+      await c.evaluate(`document.getElementById("renameInput").select()`);
+      await typeText(c, text);
+      typed = await waitFor(c, async () => (await c.evaluate(EDIT_BOX_JS)) === text, { timeout: 1000 });
+    }
+    assert.ok(typed, `the edit box for ${name} does not hold ${text}`);
     await pressKey(c, "Enter");
     await sleep(2000);
     const shown = (await row(name)).value;

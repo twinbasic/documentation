@@ -33,7 +33,7 @@
 //     costs a comparison and removes a silent-corruption mode.
 //
 // An entry's text is stored escaped: an add-in's PrintText of "<b>&copy=1"
-// is stored as "&lt;b&gt;&amp;copy=1" (measured, BETA 983), so decoding gives
+// is stored as "&lt;b&gt;&amp;copy=1" (measured), so decoding gives
 // back exactly what was printed, markup and ampersands included. Except for
 // the IDE's own bug (twinbasic/twinbasic#2444): text that continues a line left open
 // by `Debug.Print ...;` is escaped twice, so the console shows "&amp;" for
@@ -133,7 +133,7 @@ export async function linesSince(c, mark = null, { prefix } = {}) {
 }
 
 // What each clear erased. The page's global clearDebugConsole() empties the
-// console, and BETA 983's main.js calls it by name from the compiler's
+// console, and BETA 1005's main.js calls it by name from the compiler's
 // event_clearDebugConsole, which a program's Debug.Cls raises, from the pane's
 // Clear command, and on closing the project. So a wrapper assigned to that
 // global sees each of those clears, and reads the console as readConsole does,

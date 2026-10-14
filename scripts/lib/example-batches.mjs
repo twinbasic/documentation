@@ -352,7 +352,7 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
 // diagnostics at all.
 //
 // The canary is a #Warning directive, TB0005, on a module that enforces it.
-// Measured on BETA 987, it was reported beside samples with an unterminated
+// On BETA 1005 it is reported beside samples with an unterminated
 // Sub, an If with no End If, a stray End Sub and garbage, a class that inherits
 // itself, and ten undefined names; under Option Explicit off; in a project that
 // ignores TB0005 or makes it an error, where [EnforceWarnings(TB0005)] keeps it
@@ -639,9 +639,7 @@ async function isolateCrash(batch, named, lane, failed = false, detail = "") {
  * compile.
  *
  * A build can fail once and pass when repeated: one that reported nothing for
- * 120 s, once in a full --llvm run (BETA 995). Lanes whose IDEs shared a temp
- * folder failed with "[LINKER] FAILED to create type library" too, which
- * launchIde's folder per IDE prevents. A failure is believed only if the same
+ * 120 s, once in a full --llvm run. A failure is believed only if the same
  * batch fails twice running, and so is each part the halving that follows builds.
  */
 async function buildTwiceOnFailure(batch, lane) {

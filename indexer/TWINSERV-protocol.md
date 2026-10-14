@@ -1,6 +1,8 @@
 # TWINSERV Protocol Specification
 
-Reverse-engineered from twinBASIC IDE Beta 983 (June 2026).
+Describes twinBASIC IDE BETA 1005 (October 2026): the endpoints, their parameters and
+headers, the error codes, the credential rotation and the compiler commands below are the
+ones its `ide/main.js` uses.
 
 Source material: `ide/main.js`, `ide/toolWindow.js` (the IDE's own files; this
 repository keeps no copy of them), plus direct API probing. The indexer calls
@@ -210,7 +212,7 @@ The server uses custom HTTP status codes beyond the standard range:
 | 200  | Success |
 | 551  | Package version already exists (duplicate publish) |
 | 552  | Authentication required / session expired |
-| 553  | Conflict: username already taken (registration), or package owned by another publisher (publish) |
+| 553  | Conflict: username already taken (registration), or package owned by another publisher (publish); username not found (login) |
 | 555  | Incorrect password (login) |
 
 ## Other Endpoints

@@ -84,7 +84,7 @@ Properties
 ### BackColor
 {: .no_toc }
 
-The background color drawn behind the progress bar segments. **OLE_COLOR**. Default: **vbButtonFace**. Applied via `PBM_SETBKCOLOR`.
+The background color drawn behind the progress bar segments. **OLE_COLOR**. Default: **vbButtonFace**. Applied via `PBM_SETBKCOLOR`, when the control is created and each time the property changes. A value that is not a color, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its color.
 
 ### BorderStyle
 {: .no_toc }
@@ -94,7 +94,7 @@ The control's border style. A [**ControlBorderStyleConstants**](../VBRUN/Constan
 ### ForeColor
 {: .no_toc }
 
-The color of the progress bar segments themselves. **OLE_COLOR**. Default: **vbHighlight**. Applied via `PBM_SETBARCOLOR`.
+The color of the progress bar segments themselves. **OLE_COLOR**. Default: **vbHighlight**. Applied via `PBM_SETBARCOLOR`, when the control is created and each time the property changes. A value that is not a color, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its color.
 
 > [!NOTE]
 > The OS visual styles theme typically overrides this value in standard rendering. To see the assigned **ForeColor** at run time, disable visual styles by setting [**VisualStyles**](../VB/CheckBox#visualstyles) to **False**.

@@ -94,7 +94,7 @@ four in place.
 | Key | Means |
 |-----|-------|
 | `package_name` | The packages in the indexer's store that the section documents, by their names there, when the folder's name is not theirs: `WebView2Package` for `WebView2`, `CustomControls, CustomControlsPackage` for `CustomControls`, `cefPackage145` for `CEF`. Absent, the folder's name is the package's. `indexer/lib/doc-pages.mjs` reads it. |
-| `indexed_from` | The twinBASIC build whose package download the documentation was indexed against, as its release tag. Currently `beta-x-0997` on all thirteen, the build whose `indexer/snapshots/` the pages are compared with. |
+| `indexed_from` | The twinBASIC build whose package download the documentation was indexed against, as its release tag. Currently `beta-x-1005` on all thirteen, the build whose `indexer/snapshots/` the pages are compared with. |
 | `exclude_from_docs` | Modules or classes in that package deliberately left undocumented --- internals, private helpers, API shims. |
 | `exclude_kinds` | Member *kinds* deliberately left undocumented. Only `WinEventLogLib` uses it, for `Declare`. |
 

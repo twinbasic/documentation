@@ -21,7 +21,7 @@
 // counts is not known, so the lane leaves SPACING between one restart or switch and the next, and checks
 // the box before each build.
 //
-// Each test states what BETA 997 does. If one fails after an IDE update, the IDE has changed: update the
+// Each test states what BETA 1005 does. If one fails after an IDE update, the IDE has changed: update the
 // entry "The IDE reverses the order of a project's files at each compiler restart, target switch and
 // Save, and the code of a build follows that order" in BUGS-TO-REPORT.md, or its report in bugs/filed/,
 // and then this file.

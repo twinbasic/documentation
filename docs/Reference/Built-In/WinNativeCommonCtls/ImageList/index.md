@@ -53,7 +53,7 @@ Properties
 ### BackColor
 {: .no_toc }
 
-The background color used to render the image list into a target DC via [**ListImage.Draw**](ListImage#draw) when [**UseBackColor**](#usebackcolor) is **True**. **OLE_COLOR**. Default: **vbWindowBackground**.
+The background color used to render the image list into a target DC via [**ListImage.Draw**](ListImage#draw) when [**UseBackColor**](#usebackcolor) is **True**. **OLE_COLOR**. Default: **vbWindowBackground**. Changing it while [**UseBackColor**](#usebackcolor) is **True** updates the image list at once. A value that is not a color, such as `-1`, raises error 380, *Invalid property value*, and the property keeps its color.
 
 ### ColorDepth
 {: .no_toc }

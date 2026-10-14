@@ -109,12 +109,12 @@ digraph tools_groups {
         label="Compiler Harness"
         c1 [label="tbbuild"]            c2 [label="tbrun"]
         c3 [label="impexp.mjs, impexp.py"] c4 [label="check_tb_registry"]
-        c5 [label="probe_shared_temp"]  c6 [label="probe_build_twice"]
+        c6 [label="probe_build_twice"]
         cp1 [style=invis label=""]  cp2 [style=invis label=""]
-        c1 -> c3 -> c5 -> cp1 -> cp2
+        c1 -> c3 -> cp1 -> cp2
         c2 -> c4 -> c6
         { rank=same; c3 c4 }
-        { rank=same; c5 c6 }
+        { rank=same; cp1 c6 }
     }
 
     // ---- row 3 ----
@@ -292,8 +292,6 @@ digraph tools_groups {
         tooltip="Unpacks a .twinproj or .twinpack into source files and packs them back, with the same commands as the compiler's own command line. A Node edition and a Python edition behave the same."]
     c4 [URL="Tools-Compiler#check-tb-registry"
         tooltip="Tests the code that restores the registry entries of the IDE after a harness run, on a scratch copy of the keys."]
-    c5 [URL="Tools-Compiler#probe-shared-temp"
-        tooltip="Counts the builds that fail to write the type library when several IDEs build at once in one TEMP folder."]
     c6 [URL="Tools-Compiler#probe-build-twice"
         tooltip="Builds one project twice in fresh IDEs and compares the two exes, to show what differs between builds of an unchanged project."]
 

@@ -798,6 +798,9 @@ for (const [app, want] of [
     ["procedure, Declare (API declaration)", ["DECLARE", "PROC_ANY"]],
     ["Module", ["MODULE"]],
     ["an Implements statement in a Class", ["IMPLEMENTS"]],
+    ["Sub", ["SUB_MODULE"]],
+    ["procedures and Declare statements in a Module", ["PROC_MODULE", "DECLARE"]],
+    ["Class, Module, procedure", ["CLASS", "MODULE", "PROC_ANY"]],
   ];
   const wrong = LINES.filter(([app, want]) => !same(targetsOf(app), want)).map(
     ([app]) => `${app} -> ${show(targetsOf(app))}`,

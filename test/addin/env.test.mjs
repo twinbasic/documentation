@@ -12,7 +12,7 @@
 // variable left out reports it unset, so the first two read what the harness set
 // and not something the machine had.
 //
-// Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
+// Each test states what BETA 1005 does. If one fails after an IDE update, the
 // IDE has changed: update P10 in WIP.HelpAddin.md, the paragraph under "An
 // add-in under test opens nothing" in WIP.Harness.md, and every add-in that
 // checks the variable (they would open a real browser), and then this file.

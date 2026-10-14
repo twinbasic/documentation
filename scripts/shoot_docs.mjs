@@ -4445,7 +4445,7 @@ const formShots = [
     // Web1 in PROPERTIES, floating, with its GENERAL group, where the WebView2 control's own
     // properties are, from the top of the list to its end. The control draws nothing in the
     // designer: it has no DocumentURL, so no page is loaded. (The old picture had a property's
-    // description at the foot of the panel: in BETA 997 the panel shows none, and the
+    // description at the foot of the panel: the panel shows none, and the
     // description is only the native tooltip of the property's name, which no capture holds.)
     out: "Tutorials/WebView2/Images/tbWebView2Properties.png",
     setup: "settings-webview2",
@@ -9265,7 +9265,7 @@ async function startFusion(run) {
 }
 
 // The DEBUG CONSOLE as the project's load leaves it, the line that says the host was built its
-// only one in BETA 997, floated on its own. A line before it would name the lane's folder: the
+// only one, floated on its own. A line before it would name the lane's folder: the
 // user's name is replaced in the console's text in the page, as for the LIMITED picture's
 // restart line, and the panel is sized to show the last line, which the console scrolls to.
 const fusionShot = {

@@ -27,10 +27,6 @@
 //                         capture what it writes with TbRun.Out, its exit code,
 //                         the fault the event log records for it, and the boxes
 //                         it opens, each closed with OK
-//       --allow-name-clash  run a probe whose module holds a procedure named
-//                         like the module on a build before 1005, which does
-//                         not run its [RunAfterBuild] Sub, so tbrun refuses
-//                         it there otherwise
 //       --tests           do not build: judge the project's compile cases and
 //                         run its [TestCase] Subs, printing PASS or FAIL for
 //                         each (lib/tb-tests.mjs)
@@ -43,8 +39,6 @@
 // could not run (a refused command line included), a compile never settled, or
 // it crashed -- a build that fails after a clean compile included, and a
 // [RunAfterBuild] Sub that fails code generation, since the probe never runs,
-// and, before BETA 1005, a probe whose module holds a procedure named like the
-// module, which does not run either (unless --allow-name-clash),
 // and a procedure the probe calls that fails it, since the probe stops at the
 // call -- 3 no output: the build produced none in the console before the
 // timeout, or the probe ran and printed none after its last Debug.Cls -- 4 the
@@ -88,9 +82,9 @@
 //     its own out folder before importing, which makes the trap unreachable
 //     (lib/tb-project.mjs, shared with the add-in harness). The file name is
 //     the IDE's own `${ProjectName}_${Architecture}.${FileExtension}`, so it
-//     says what was built: measured on BETA 983, those variables in an
-//     explicit folder open no dialog, and give ArchProbe_win32.exe and
-//     ArchProbe_win64.exe.
+//     says what was built: on BETA 1005 those variables in an explicit
+//     folder open no dialog, and a win32 build of the staged project gives
+//     DocSamples_win32.exe.
 //  2. A JAVASCRIPT .click() ON THE BUILD BUTTON DOES NOTHING. `#buildIcon` is
 //     a plain DIV wired through the IDE's own pointer handling; it needs real
 //     CDP Input.dispatchMouseEvent presses at its centre (tb-click's click,
@@ -113,7 +107,7 @@
 //     the console stops changing, which works for any probe. But a probe that
 //     stops early also stops changing the console: End does, and so does an
 //     error raised in LLVM-compiled code with no handler, which ends the run
-//     without a word (measured, BETA 995). So the staged copy calls the
+//     without a word (BETA 1005, plain code too). So the staged copy calls the
 //     probe's Sub from a wrapper that prints a sentinel once it returns
 //     (lib/tb-probe.mjs). Its absence is exit 5; its arrival ends the wait
 //     without the quiet period. Only the IDE's line about forms still loaded
@@ -149,7 +143,7 @@ import {
   refuseTogether,
   withUsageError,
 } from "../lib/cli.mjs";
-import { buildNumber, findIde } from "./lib/tb-install.mjs";
+import { findIde } from "./lib/tb-install.mjs";
 import {
   COMPILE_TIMEOUT,
   TARGETS,
@@ -176,7 +170,7 @@ import { faultText, recordedFault } from "./lib/win-fault.mjs";
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe | --tests [--only <names>]] [--allow-name-clash] [-h, --help]
+const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe | --tests [--only <names>]] [-h, --help]
 
 Builds an exported twinBASIC source tree in the IDE, runs it, and prints what it
 writes to the DEBUG CONSOLE. With --tests it builds nothing, and runs the
@@ -205,9 +199,6 @@ project's own test cases instead.
                       what it writes with TbRun.Out, its exit code, the fault
                       the event log records for it, and the boxes it opens,
                       each closed with OK
-  --allow-name-clash  run a probe whose module holds a procedure named like the
-                      module on a build before 1005, which does not run it (it
-                      is refused there without this option)
   --tests             compile the project and do not build it: print PASS or
                       FAIL for each compile case (a line ending in the comment
                       ' CASE <Name>: <codes>, ' CASE <Name>: error or
@@ -225,9 +216,7 @@ Exit codes:
   2  a refused command line (a source folder that is missing or has no Settings file
      included), no IDE, an IDE that did not start, a compile that never
      settled, a build that failed after a clean compile, a probe that never ran or
-     stopped at a procedure that failed code generation, a probe whose module holds
-     a procedure named like the module on a build before 1005 (unless
-     --allow-name-clash), an --llvm run on a
+     stopped at a procedure that failed code generation, an --llvm run on a
      Community or Personal licence, an --exe run with no exe built, --tests on a
      project with no case or with a [TestCase] it cannot call, or a crash
   3  no output: the console held none before the timeout, or the probe printed none
@@ -254,7 +243,6 @@ const { values, positionals } = withUsageError(
         "compiler-options": { type: "string" },
         llvm: { type: "boolean", default: false },
         exe: { type: "boolean", default: false },
-        "allow-name-clash": { type: "boolean", default: false },
         tests: { type: "boolean", default: false },
         only: { type: "string" },
         json: { type: "boolean", default: false },
@@ -402,8 +390,8 @@ if (values.tests) {
 // A packing failure is the harness's, exit 2.
 // The project's compiler options: compiler.debugOptions are what the
 // [RunAfterBuild] run is compiled with, and compiler.buildOptions what the exe
-// is -- measured on BETA 995, where +llvm in the build options alone left the
-// run's Debug.Assert evaluated and its loop at the speed of the default.
+// is -- on BETA 1005, +llvm in the build options alone leaves the run's
+// Debug.Assert evaluated.
 const compilerOptions = values.llvm ? "+llvm" : values.compilerOptions;
 let wasTemplate = false,
   projectName = "",
@@ -441,20 +429,6 @@ try {
 if (hasHook && !wrap.wrapped && !values.tests) {
   console.error(
     `warning: ${wrap.why} -- so a probe that ends before it returns cannot be told from one that finished.`,
-  );
-}
-// Refused before an IDE starts, which is the first thing after this that costs anything. Only
-// on a build before 1005, which fixed it (twinbasic/twinbasic#2481, #2494); an install whose
-// folder names no build is taken to be a newer one.
-const clashBuild = buildNumber(ide);
-if (wrap.wrapped?.clash && clashBuild !== null && clashBuild < 1005 && !values.allowNameClash && !values.tests) {
-  die(
-    2,
-    `tbrun: module ${wrap.wrapped.module} holds the [RunAfterBuild] Sub ${wrap.wrapped.sub} and also a procedure named ` +
-      `${wrap.wrapped.clash}, like the module. In twinBASIC before BETA 1005 (this is BETA ${clashBuild}) a ` +
-      `[RunAfterBuild] Sub does not run, and nothing says so, when its module holds a procedure named like the ` +
-      `module (twinbasic/twinbasic#2481, #2494). Rename one of them, use BETA 1005 or later, or pass ` +
-      `--allow-name-clash to run it anyway.`,
   );
 }
 
@@ -521,8 +495,7 @@ if (!outcome.ok) failBuild(outcome.code === 4 ? 4 : 2, outcome.message);
 // The target, set on every run, win32 included (setBuildTarget says why). The
 // probe runs in the compiler that builds it, so under win64 it runs in the
 // IDE's 64-bit compiler, twinBASIC_win64_noDEP.exe, as a 64-bit process:
-// measured on BETA 983 with LenB of a LongPtr, ProcessorArchitecture(),
-// PROCESSOR_ARCHITECTURE, IsWow64Process and the module path of the process.
+// on BETA 1005 LenB of a LongPtr is 8 and PROCESSOR_ARCHITECTURE reads AMD64.
 try {
   const target = await setBuildTarget(cdp, arch, { project: projPath, timeout: COMPILE_TIMEOUT });
   // Only a target the IDE remembered is worth a word: a new path opens in win32.
@@ -584,8 +557,8 @@ if (failure) die(2, `tbrun: ${failure}`);
 // A build that fails after a clean compile never runs the probe, and leaves the
 // IDE's own build log in the console. The probe's first statement is Debug.Cls,
 // which would have erased that log, so its survival means the capture is not the
-// probe's output. Returned as output, a `[TYPELIB] failed to finalize
-// typelibrary` build would exit 0. A [RunAfterBuild] Sub
+// probe's output. Returned as output, a failed build's log would exit 0.
+// A [RunAfterBuild] Sub
 // that fails code generation leaves the log too: the build succeeds, and then
 // nothing in the Sub runs, Debug.Cls included. BUILD_FAILED is buildProject's
 // list of failure lines, the code-generation one among them.
@@ -602,8 +575,7 @@ if (buildFailed !== undefined) {
 // after the "[BUILD] Executing '<project>.<module>.<Sub>'..." line, before the
 // probe's first statement runs. So Debug.Cls erases the report, the probe stops
 // where it calls that procedure, and the console holds only what it printed
-// before then -- which tbrun returned as the whole output, exit 0 (measured,
-// BETA 983). A failure line among what the clears erased counts only after the
+// before then -- which tbrun once returned as the whole output, exit 0. A failure line among what the clears erased counts only after the
 // last Executing line: before it is the build's own log, which ended in success
 // or the probe would not have run (checkCapture).
 if (lost) {
@@ -733,9 +705,9 @@ async function runCases() {
 //
 // An unhandled error opens a box and waits for it, so the launcher closes every
 // box the exe opens and records it; without that the exe sat until --timeout.
-// The box is the only sign of the error: in BETA 997 a plain exe exits with
-// code 0 once it is closed ("shutdown", "Run-time error '5' ..."), and an
-// LLVM-compiled one ("_TB_ERROR_HANDLER", "unhandled error in Probe.Main")
+// The box is the only sign of the error: in BETA 1005 a plain exe exits with
+// code 0 once it is closed ("Run-time error '11' Division by zero"), and an
+// LLVM-compiled one ("_TB_ERROR_HANDLER", "unhandled error in ProbeMod.Oops")
 // then dies of an access violation. The event log's record of a fault is read
 // for the same reason: an exit code need not say it (lib/win-fault.mjs).
 async function runExe() {

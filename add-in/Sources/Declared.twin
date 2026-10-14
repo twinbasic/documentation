@@ -1,5 +1,5 @@
 ' Where the compiler says a name is declared, read from the markdown its hover
-' gives (P5 in WIP.HelpAddin.md). The forms, as BETA 995 writes them:
+' gives (P5 in WIP.HelpAddin.md). The forms, as BETA 1005 writes them:
 '
 '   a procedure or member:  <declaration> ___ ## **MsgBox** ... `in VBA.Interaction`
 '                           ## **Add** ... `in VBA._Collection`

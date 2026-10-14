@@ -1,14 +1,13 @@
 // P5 in WIP.HelpAddin.md, measured rather than read off the IDE's code: what
 // the compiler's language service says about the name under the cursor. The
 // project in probes/symbols is opened, never built, and each question is put
-// the way the IDE's own code puts it (main.js, BETA 983): hover and Go To
+// the way the IDE's own code puts it (main.js): hover and Go To
 // Definition as its Monaco providers ask, over lspSocket, and signature help
 // as the code editor's intellisense does (getLiveDebugIntellisenseMonaco).
 // Only page script can ask any of them; the add-in API has no such call.
 //
-// Each test states what BETA 983, 987 and 995 do. If one fails after an IDE update, the
-// IDE has changed: update P5 in WIP.HelpAddin.md, and the filed report
-// that the last hover test rests on (bugs/filed/, twinbasic/twinbasic#2448), and then this file.
+// Each test states what BETA 1005 does. If one fails after an IDE update, the
+// IDE has changed: update P5 in WIP.HelpAddin.md, and then this file.
 //
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 
@@ -158,14 +157,14 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
     }
   });
 
-  test("hover can name the procedure behind a member, or an interface the class's default one inherits", async () => {
+  test("hover can name the procedure behind a member", async () => {
     // Err.Number is VBA's hidden GetErrNumber (and, in the help lane's host,
     // App.Path VB's GetAppPath); a PropertyBag's ReadProperty is on the
-    // interface PropertyBag_VB5, which the index's interfaces map lacks. A
-    // member inside With names its interface as c2.Add would.
+    // class's default interface, VBRUN._PropertyBag. A member inside With
+    // names its interface as c2.Add would.
     const cases = [
       ["Err.Number", "Number", "Function GetErrNumber (", "VBA._HiddenModule"],
-      ["pb.ReadProperty", "ReadProperty", "Function ReadProperty (", "VBRUN.PropertyBag_VB5"],
+      ["pb.ReadProperty", "ReadProperty", "Function ReadProperty (", "VBRUN._PropertyBag"],
       [".Add 2", "Add", "Sub Add (", "VBA._Collection"],
       ['Left$("abc"', "Left", "Function Left$ (", "VBA.Strings"],
     ];
@@ -179,7 +178,7 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
   test("hover on a variable gives its declaration, and on Debug.Print and a statement nothing", async () => {
     assert.equal(await hover(c, "c.Add", "c"), "*local variable* Dim c As Collection");
     assert.equal(await hover(c, "Nothing, count", "count"), "*parameter* ByVal count As Long");
-    // BETA 983 gives no hover here, and BETA 987 and 995 one whose text is empty.
+    // The hover here is empty.
     const nothing = [
       ["Debug.Print FindTheNeedle", "Debug"],
       ["Debug.Print FindTheNeedle", "Print"],
@@ -193,9 +192,8 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
   });
 
   test("hover on a declared parameter or variable says nothing about Option Explicit", async () => {
-    // The project has project.optionExplicit true. BETA 995 and earlier said a
-    // ByVal parameter of String, Variant, Object or a class was auto-generated
-    // because Option Explicit is off (twinbasic/twinbasic#2448, fixed in 997).
+    // The project has project.optionExplicit true. The hover on a ByVal
+    // parameter of String, Variant, Object or a class does not mention it.
     const byVal = {
       "Debug.Print h Is": "h",
       "count, col Is": "col",

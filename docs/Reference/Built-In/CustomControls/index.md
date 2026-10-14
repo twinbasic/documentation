@@ -5,7 +5,7 @@ parent: Built-In Packages
 nav_order: 5
 permalink: /tB/Packages/CustomControls/
 has_toc: false
-indexed_from: beta-x-0997
+indexed_from: beta-x-1005
 ---
 
 # CustomControls Package

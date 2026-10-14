@@ -15,7 +15,7 @@
 // setCursor in scripts/lib/tb-operate.mjs wait out the 700 ms (afterReveal) and
 // so hide the defect from every other lane.
 //
-// The first test states what BETA 997 does. If it fails after an IDE update and
+// The first test states what BETA 1005 does. If it fails after an IDE update and
 // line 3 reads "xyz" in order, the defect is fixed: retire the entry, remove the
 // wait from afterReveal and this file, as the comment in
 // bugs/filed/typing-after-open-reversed/REPORT.md says. The control must hold

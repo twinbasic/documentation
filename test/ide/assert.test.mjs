@@ -4,7 +4,7 @@
 // line before and after the assertion and after the call, as the runner in
 // docs/Tutorials/Testing-with-Assert.md does.
 //
-// Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
+// Each test states what BETA 1005 does. If one fails after an IDE update, the
 // IDE has changed: update the NOTE under "Running the tests" in
 // Testing-with-Assert.md and the filed report of
 // twinbasic/twinbasic#2441 in bugs/filed/, and then this file.
@@ -49,8 +49,8 @@ scenario("the debugger at a failed assertion", (lane) => {
   // In an editor the stop has just opened, the panel goes on moving after it
   // is drawn: the file's decorations bring code lenses above the failing line,
   // which push the panel down 48 px, and when they come within 700 ms of the
-  // IDE's last reveal of the line, it reveals the line again (main.js, BETA
-  // 995). A click aimed before then lands on the panel's header and stops
+  // IDE's last reveal of the line, it reveals the line again (main.js).
+  // A click aimed before then lands on the panel's header and stops
   // nothing. So wait for the decorations, then for the reveals to end, then two
   // frames, since the editor draws what they changed a frame or more later.
   async function panelStill() {

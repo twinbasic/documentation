@@ -26,7 +26,7 @@ export const loadedAddins = (c) =>
  * from, besides the install's own: the page's commonFolderRootPath, with its
  * trailing backslash. Null when the page has none.
  *
- * Measured on BETA 983 (P6 in WIP.HelpAddin.md). The page makes it at startup
+ * Measured (P6 in WIP.HelpAddin.md). The page makes it at startup
  * by expanding "%APPDATA%\twinBASIC" in the IDE's own environment, and sends it
  * with RequestLoadAddins; the compiler loads from what it is sent, not from its
  * own %APPDATA%. So an IDE started with APPDATA naming another folder loads

@@ -2,7 +2,7 @@
   "format": 3,
   "package": "WinServicesLib",
   "project": "WinServicesLib",
-  "version": "beta-x-0997",
+  "version": "beta-x-1005",
   "types": [
     {
       "name": "IServiceCreator",
