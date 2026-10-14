@@ -361,7 +361,7 @@ Syntax: *object*.**SetAttribute** ( *attr*, *state* )
 : *required* A **Boolean**. **True** sets the attribute and **False** clears it. The other attributes stay as they are.
 
 > [!WARNING]
-> In version 1.8.0.0, **SetAttribute** sets nothing, and raises no error, on a file that has no attribute at all, because [**Attributes**](#attributes) then reports **faNormal**, and **faNormal** wins over the attribute being set. A new file has the archive attribute, so it is a file from which the program cleared every attribute that this applies to. To give such a file an attribute, assign [**Attributes**](#attributes). The same method of a [**Folder**](Folder#setattribute) is not affected.
+> In version 1.9.0.0, **SetAttribute** sets nothing, and raises no error, on a file that has no attribute at all, because [**Attributes**](#attributes) then reports **faNormal**, and **faNormal** wins over the attribute being set. A new file has the archive attribute, so it is a file from which the program cleared every attribute that this applies to. To give such a file an attribute, assign [**Attributes**](#attributes). The same method of a [**Folder**](Folder#setattribute) is not affected.
 
 ```tb check_build check_run
 Dim work As String, f As File

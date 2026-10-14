@@ -41,15 +41,9 @@ fso.DeleteFolder work
 
 Replace `CreateObject("Scripting.FileSystemObject")` with `New FileSystemObject`, and check these calls. The package differs from the Scripting Runtime in them, and a program compiles with the old code but does not do the same:
 
-- [**GetSpecialFolder**](#getspecialfolder) returns the path as a **String**, not a **Folder**. Code that reads `.Path` from the result does not compile (the sample after this list).
 - The third argument of [**CreateTextFile**](#createtextfile) and of [**Folder.CreateTextFile**](Folder#createtextfile) is an encoding. The Scripting Runtime's *Unicode* **Boolean** **True** is -1 here, which writes UTF-8, and not UTF-16. The default is UTF-8 without a BOM, where the Scripting Runtime writes ANSI.
 - The fourth argument of [**OpenTextFile**](#opentextfile) and the second of [**File.OpenAsTextStream**](File#openastextstream) are an encoding, not a **Tristate**. **TristateTrue** is -1, which is **encAutoDetect**.
 - The other differences, such as the added members and the changed defaults, are listed under [Differences from the Scripting Runtime](./#differences-from-the-scripting-runtime).
-
-```tb check_build expect-error=TB5027
-Dim fso As New FileSystemObject
-Debug.Print fso.GetSpecialFolder(sfTemporaryFolder).Path
-```
 
 ## Files and folders
 
@@ -223,9 +217,16 @@ See [**GetCurrentDir**](FileSystemTools#getcurrentdir).
 ### GetSpecialFolder
 {: .no_toc }
 
-Syntax: *object*.**GetSpecialFolder** ( *specialFolder* ) **As String**
+Syntax: *object*.**GetSpecialFolder** ( *specialFolder* ) **As Folder**
 
-Returns a path, not a **Folder** object as the Scripting Runtime does. See [**GetSpecialFolder**](FileSystemTools#getspecialfolder).
+Returns a [**Folder**](Folder) object, as the Scripting Runtime does. See [**GetSpecialFolder**](FileSystemTools#getspecialfolder).
+
+### GetSpecialFolderPath
+{: .no_toc }
+
+Syntax: *object*.**GetSpecialFolderPath** ( *specialFolder* ) **As String**
+
+Returns the path as a **String**, for a folder that may not exist. The Scripting Runtime has no such member. See [**GetSpecialFolderPath**](FileSystemTools#getspecialfolderpath).
 
 ### SetCurrentDir
 {: .no_toc }

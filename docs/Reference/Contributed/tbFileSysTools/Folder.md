@@ -43,7 +43,7 @@ A **Folder** keeps only the path of the folder. Each member that reads a propert
 
 The price is that every read costs a call to Windows. Read a value once and keep it. [**Size**](#size) costs the most: it goes through the whole tree on every read.
 
-[**Files**](#files) and [**SubFolders**](#subfolders) return the members of the folder at the moment of the call. The collection does not follow later changes, so the property is read again to see them. The objects in it are live, as every **File** and **Folder** is.
+[**Files**](#files) and [**SubFolders**](#subfolders) return the members of the folder at the moment of the call. The collection does not follow later changes, so the property is read again to see them. The one change a collection follows is a folder that [**Folders.Add**](Folders#add) creates through it. The objects in it are live, as every **File** and **Folder** is.
 
 The members that change the folder ([**Move**](#move), [**Rename**](#rename), [**Name**](#name) and [**Delete**](#delete)) are those of [**FileSystemTools**](FileSystemTools), with the object's path as the source: their errors are described there. **Move** and **Rename** point the object at the new path, so it stays usable. [**Copy**](#copy) leaves the object as it is and does not return the copy. After **Delete**, every member that reads raises error 76.
 
@@ -106,7 +106,7 @@ Syntax: *object*.**Files** **As Files**
 Returns a [**Files**](Files) collection of the files directly in the folder. Hidden and system files are in it, which differs from [**GetFilePaths**](FileSystemTools#getfilepaths). The folder is read when the property is read, and the collection does not change afterwards. Raises error 70 when the folder cannot be read, as the Scripting Runtime does.
 
 > [!NOTE]
-> In version 1.8.0.0, **Files**, [**SubFolders**](#subfolders) and [**Size**](#size) raise error 76 (*Path not found*) for a folder whose path has 258 characters or more, although the folder exists and its [**Name**](#name) can be read. The same members work for a folder with 256 characters.
+> In version 1.9.0.0, **Files**, [**SubFolders**](#subfolders) and [**Size**](#size) raise error 76 (*Path not found*) for a folder whose path has 258 characters or more, although the folder exists and its [**Name**](#name) can be read. The same members work for a folder with 256 characters.
 
 ```tb check_build check_run
 Dim work As String, deep As String, n As Long
@@ -211,7 +211,7 @@ The folders directly in the folder.
 
 Syntax: *object*.**SubFolders** **As Folders**
 
-Returns a [**Folders**](Folders) collection of the folders directly below this one. Hidden and system folders are in it. The folder is read when the property is read, and the collection does not change afterwards. Raises error 70 when the folder cannot be read.
+Returns a [**Folders**](Folders) collection of the folders directly below this one. Hidden and system folders are in it. The folder is read when the property is read, and the collection does not change afterwards, except that [**Folders.Add**](Folders#add) puts the folder it creates into it. Raises error 70 when the folder cannot be read.
 
 ### Type
 {: .no_toc }

@@ -32,7 +32,7 @@ The procedures, by purpose:
 - Paths: [BuildPath](#buildpath), [CleanFileName](#cleanfilename), [GetAbsolutePathName](#getabsolutepathname), [GetBaseName](#getbasename), [GetDriveName](#getdrivename), [GetExtensionName](#getextensionname), [GetFileName](#getfilename), [GetParentFolderName](#getparentfoldername), [GetRelativePath](#getrelativepath), [GetTempName](#gettempname)
 - Existence: [DriveExists](#driveexists), [FileExists](#fileexists), [FolderExists](#folderexists)
 - Files and folders: [CopyFile](#copyfile), [CopyFolder](#copyfolder), [CreateFolder](#createfolder), [DeleteFile](#deletefile), [DeleteFolder](#deletefolder), [GetFilePaths](#getfilepaths), [MoveFile](#movefile), [MoveFolder](#movefolder), [Rename](#rename)
-- Current directory and special folders: [GetCurrentDir](#getcurrentdir), [GetSpecialFolder](#getspecialfolder), [SetCurrentDir](#setcurrentdir)
+- Current directory and special folders: [GetCurrentDir](#getcurrentdir), [GetSpecialFolder](#getspecialfolder), [GetSpecialFolderPath](#getspecialfolderpath), [SetCurrentDir](#setcurrentdir)
 - File information: [GetFileEncoding](#getfileencoding), [GetFileLineEnding](#getfilelineending), [GetFileType](#getfiletype), [GetFileVersion](#getfileversion), [IsFileLocked](#isfilelocked)
 - Objects: [GetDrive](#getdrive), [GetDrives](#getdrives), [GetFile](#getfile), [GetFolder](#getfolder)
 - Whole files: [ArrayToTextFile](#arraytotextfile), [MergeTextFiles](#mergetextfiles), [NormalizeTextFile](#normalizetextfile), [ReadStream](#readstream), [StringToTextFile](#stringtotextfile), [TextFileToArray](#textfiletoarray), [TextFileToString](#textfiletostring), [WriteStream](#writestream)
@@ -346,7 +346,7 @@ Both paths are first made absolute with [**GetAbsolutePathName**](#getabsolutepa
 Returns the absolute *targetPath* when there is no relative path, for example when the two paths are on different drives, and when only *targetPath* is longer than 260 characters.
 
 > [!WARNING]
-> In version 1.8.0.0, when *basePath* is 260 characters or longer, the result can be a relative path that leads to the wrong place, and no error is raised. For a target `x\y.txt` below such a base, the result starts with `..\` and the last name of the base, instead of being `x\y.txt`. A base path of 258 characters or fewer gives the right result.
+> In version 1.9.0.0, when *basePath* is 260 characters or longer, the result can be a relative path that leads to the wrong place, and no error is raised. For a target `x\y.txt` below such a base, the result starts with `..\` and the last name of the base, instead of being `x\y.txt`. A base path of 258 characters or fewer gives the right result.
 
 ```tb check_build check_run
 Debug.Print GetRelativePath("C:\Projects\App", "C:\Projects\Lib\core.txt")   ' ..\Lib\core.txt
@@ -599,7 +599,7 @@ Syntax: **DeleteFolder** ( *folderPath* [, *force* [, *ignoreMissing* ] ] )
 
 The contents are deleted first, and an item that cannot be deleted is skipped without an error. The folder itself is removed last; when it is not empty by then, the failure is reported.
 
-Errors: 76 when no folder matches or a file is named; 75 when the folder is not empty because something in it could not be deleted, such as a read-only file when *force* is **False** (the message ends with the Windows code 145). The folder and the file stay. The Scripting Runtime raises error 70 in that case.
+Errors: 76 when no folder matches or a file is named; 70 when the folder is not empty because something in it could not be deleted, such as a read-only file when *force* is **False**. The folder and that file stay. The Scripting Runtime raises error 70 in that case too.
 
 > [!NOTE]
 > A directory junction or symbolic link inside the folder is removed, and the folder it stands for keeps its files. The Scripting Runtime deletes the files in the target as well, so a tree that holds a link to a folder outside it loses the contents of that folder there. See [Junctions and symbolic links](#junctions-and-symbolic-links).
@@ -742,22 +742,43 @@ Returns the path without a trailing backslash, except for a drive root (`C:\`). 
 ### GetSpecialFolder
 {: .no_toc }
 
-Returns the path of a well-known Windows folder.
+Returns a [**Folder**](Folder) object for a well-known Windows folder.
 
-Syntax: **GetSpecialFolder** ( *specialFolder* ) **As String**
+Syntax: **GetSpecialFolder** ( *specialFolder* ) **As Folder**
 
 *specialFolder*
 : *required* A [**SpecialFolderConst**](#specialfolderconst) member.
 
-Returns the path without a trailing backslash. **sfTemporaryFolder** (and its FSO name **TemporaryFolder**) returns the value of the `TEMP` environment variable; every other member is asked from Windows by its known-folder identifier. On Windows XP, which has no such identifiers, the older CSIDL numbers are used, and **sfDownloads** and **sfPublicDownloads**, which have none, raise error 5. Raises error 5 for a value that is not a member. A program built for 32 bits gets the `Program Files (x86)` folder for both **sfProgramFiles** and **sfProgramFilesX86**, and the `System32` path for **sfSystemFolder**; **sfSystemX86Folder** is `SysWOW64`. The letter case of the result can differ from that of the Scripting Runtime: `C:\WINDOWS` against `C:\Windows`.
+Returns the object for the folder that [**GetSpecialFolderPath**](#getspecialfolderpath) names, as the Scripting Runtime does. The default member of a **Folder** is [**Path**](Folder#path), so the result can stand where a path is wanted: `s = GetSpecialFolder(sfDesktop)` and `BuildPath(GetSpecialFolder(sfDesktop), "list.txt")` both use the path. To get the path as a **String** explicitly, or the path of a folder that does not exist, call [**GetSpecialFolderPath**](#getspecialfolderpath). The **Path** of the object has the letter case that the file system stores for the last name of the folder, so it can differ from the result of **GetSpecialFolderPath**: `C:\Windows` against `C:\WINDOWS`.
 
-> [!NOTE]
-> Scripting.FileSystemObject returns a **Folder** object from **GetSpecialFolder**. This procedure returns the path as a **String**. Use [**GetFolder**](#getfolder) on the result to get the object.
+Errors: 76 when the folder does not exist on this system, and for **sfTemporaryFolder** when the `TEMP` environment variable is empty or not set; 5 for a value that is not a member, and the others of [**GetSpecialFolderPath**](#getspecialfolderpath).
 
 ```tb check_build check_run
-Debug.Print StrComp(GetSpecialFolder(sfWindowsFolder), Environ$("windir"), vbTextCompare)   ' 0
-Debug.Print GetSpecialFolder(TemporaryFolder) = Environ$("TEMP")                           ' True
-Debug.Print FolderExists(GetSpecialFolder(sfLocalAppData))                                 ' True
+Dim f As Folder
+Set f = GetSpecialFolder(sfLocalAppData)
+Debug.Print f.Name                                                                         ' Local
+Debug.Print f.ParentFolder.Name                                                            ' AppData
+Debug.Print StrComp(GetSpecialFolder(sfWindowsFolder), Environ$("windir"), vbTextCompare) ' 0
+Debug.Print GetSpecialFolder(TemporaryFolder).Name = GetFolder(Environ$("TEMP")).Name      ' True
+```
+
+### GetSpecialFolderPath
+{: .no_toc }
+
+Returns the path of a well-known Windows folder as a **String**.
+
+Syntax: **GetSpecialFolderPath** ( *specialFolder* ) **As String**
+
+*specialFolder*
+: *required* A [**SpecialFolderConst**](#specialfolderconst) member.
+
+Returns the path without a trailing backslash. The folder does not have to exist: the procedure does not look at the disk. **sfTemporaryFolder** (and its FSO name **TemporaryFolder**) returns the value of the `TEMP` environment variable; every other member is asked from Windows by its known-folder identifier. On Windows XP, which has no such identifiers, the older CSIDL numbers are used, and **sfDownloads** and **sfPublicDownloads**, which have none, raise error 5. Raises error 5 for a value that is not a member. A program built for 32 bits gets the `Program Files (x86)` folder for both **sfProgramFiles** and **sfProgramFilesX86**, and the `System32` path for **sfSystemFolder**; **sfSystemX86Folder** is `SysWOW64`. The letter case of the result is that of Windows, and can differ from that of the Scripting Runtime: `C:\WINDOWS` against `C:\Windows`.
+
+```tb check_build check_run
+Debug.Print StrComp(GetSpecialFolderPath(sfWindowsFolder), Environ$("windir"), vbTextCompare)   ' 0
+Debug.Print GetSpecialFolderPath(TemporaryFolder) = Environ$("TEMP")                           ' True
+Debug.Print FolderExists(GetSpecialFolderPath(sfLocalAppData))                                 ' True
+Debug.Print Right$(GetSpecialFolderPath(sfLocalAppData), 1) <> "\"                             ' True
 ```
 
 ### SetCurrentDir
@@ -876,13 +897,24 @@ Syntax: **GetFileVersion** ( *filePath* [, *source* ] ) **As String**
 *source*
 : *optional* A [**FileVersionSource**](#fileversionsource) member. Default: **fvFixed**.
 
-Returns the binary version as four numbers separated by dots, such as `10.0.19041.7725`, with **fvFixed**, the same string as the Scripting Runtime. **fvFileString** returns the `FileVersion` text that the author of the file wrote into it, and **fvProductString** the `ProductVersion` text; both return the binary version when the file has no such text. Returns an empty string when the file has no version resource, and when the file does not exist. The Scripting Runtime raises an error for a file that does not exist (the Windows code `0x80070002`, as the number -2147024894).
+Returns the binary version as four numbers separated by dots, such as `10.0.19041.7725`, with **fvFixed**, the same string as the Scripting Runtime. **fvFileString** returns the `FileVersion` text that the author of the file wrote into it, and **fvProductString** the `ProductVersion` text; both return the binary version when the file has no such text. Returns an empty string when the file has no version resource, such as a `.txt` file. Raises error 53 when the file does not exist, and for a folder or an empty path. The Scripting Runtime raises an error in that case too, with the Windows code `0x80070002` as its number (-2147024894) and not 53.
 
 ```tb check_build check_run
 Dim kernel As String
-kernel = BuildPath(GetSpecialFolder(sfSystemFolder), "kernel32.dll")
+kernel = BuildPath(GetSpecialFolderPath(sfSystemFolder), "kernel32.dll")
 Debug.Print Len(GetFileVersion(kernel)) > 0                  ' True
 Debug.Print Len(GetFileVersion(kernel, fvFileString)) > 0    ' True
+
+Dim work As String, v As String
+work = BuildPath(Environ$("TEMP"), GetTempName("fst", ""))
+CreateFolder work
+StringToTextFile "text", BuildPath(work, "a.txt")
+Debug.Print GetFileVersion(BuildPath(work, "a.txt")) = ""    ' True
+On Error Resume Next
+v = GetFileVersion(BuildPath(work, "missing.exe"))
+Debug.Print Err.Number                                       ' 53
+On Error GoTo 0
+DeleteFolder work
 ```
 
 ### IsFileLocked
@@ -993,7 +1025,7 @@ Syntax: **ArrayToTextFile** ( *lines*(), *filePath* [, *encoding* [, *lineEnding
 *lineEnding*
 : *optional* A [**NewlineType**](#newlinetype) member. Default: **nlWindows**. **nlNoChange** is read as **nlWindows**, because a line ending is needed to join the lines.
 
-The file is written as [**WriteStream**](#writestream) writes it, read-only files included; see the warning there. [**TextFileToArray**](#textfiletoarray) reads the result back into the same array. An array that is not dimensioned writes an empty file.
+The file is written as [**WriteStream**](#writestream) writes it, so an existing read-only file raises error 70. [**TextFileToArray**](#textfiletoarray) reads the result back into the same array. An array that is not dimensioned writes an empty file.
 
 Errors: 52 when the last component of *filePath* holds `<`, `>`, `:`, `"`, `|`, `?`, `*` or a control character, or is a reserved device name such as `con` (see [**CleanFileName**](#cleanfilename)); the errors of [**WriteStream**](#writestream).
 
@@ -1072,7 +1104,7 @@ Syntax: **NormalizeTextFile** ( *filePath* [, *toEncoding* [, *toNewLine* [, *fr
 
 The file is left alone when the text would be written back with exactly the bytes it has. Returns **True** when the file was changed, a change of attributes alone included, and **False** when it was left as it was. A second call with the same arguments returns **False**.
 
-A binary file is refused with error 5; this includes a file that *fromEncoding* names when it is not UTF-16 or UTF-32 and holds binary data. An empty file stays empty, or becomes a BOM alone when *toEncoding* has one. The new file is written beside the old one and swapped in, as [**WriteStream**](#writestream) does. Raises error 53 when the file does not exist.
+A binary file is refused with error 5; this includes a file that *fromEncoding* names when it is not UTF-16 or UTF-32 and holds binary data. An empty file stays empty, or becomes a BOM alone when *toEncoding* has one. The new file is written beside the old one and swapped in, as [**WriteStream**](#writestream) does. Unlike **WriteStream**, it rewrites a read-only file, because the call names the file and asks for the change; the file is read-only again afterwards, unless *toAttributes* says otherwise, and also when the rewrite fails. Raises error 53 when the file does not exist.
 
 ```tb check_build check_run
 Dim work As String
@@ -1092,6 +1124,10 @@ SetAttr path, vbHidden
 Debug.Print NormalizeTextFile(path, , nlUnix)                ' True
 Debug.Print GetAttr(path)                                    ' 2
 Debug.Print NormalizeTextFile(path, , nlUnix, , faReadOnly)  ' True
+Debug.Print GetAttr(path)                                    ' 1
+
+' A read-only file is rewritten and stays read-only.
+Debug.Print NormalizeTextFile(path, , nlWindows)             ' True
 Debug.Print GetAttr(path)                                    ' 1
 SetAttr path, vbNormal
 
@@ -1147,7 +1183,7 @@ Syntax: **StringToTextFile** ( *text*, *filePath* [, *encoding* [, *outLineEndin
 *outLineEnding*
 : *optional* A [**NewlineType**](#newlinetype) member. A style other than **nlNoChange** converts every line ending in *text*, CR LF, LF or CR, to it. Default: **nlNoChange**, which writes *text* as it is.
 
-An empty *text* creates an empty file, or one that holds only the BOM. The file is written as [**WriteStream**](#writestream) writes it, and an existing read-only file is replaced without an error; see the warning there.
+An empty *text* creates an empty file, or one that holds only the BOM. The file is written as [**WriteStream**](#writestream) writes it, so an existing read-only file raises error 70.
 
 For a code page with a limited character set, a character that the code page does not have is replaced by the substitute character of that code page, without an error: the Greek letter pi written with **encLatin1** becomes the byte 63, a question mark. An unpaired surrogate in *text* raises error 5 when the encoding is UTF-8.
 
@@ -1241,14 +1277,13 @@ Syntax: **WriteStream** ( *stream*(), *filePath* )
 : *required* A **Byte** array. An empty array, or one that is not dimensioned, creates an empty file.
 
 *filePath*
-: *required* A **String** naming the file. An existing file is replaced.
+: *required* A **String** naming the file. An existing file is replaced, unless it is read-only.
 
 The bytes are first written to a new file in the same folder, `<name>.~XXXXXXXX.tmp`, which is then swapped in for the target. A failure part-way therefore leaves the old file whole. The folder must allow a new file to be created in it.
 
-> [!WARNING]
-> In version 1.8.0.0, **WriteStream**, [**StringToTextFile**](#stringtotextfile) and [**ArrayToTextFile**](#arraytotextfile) replace a read-only file without an error, and the new file is not read-only. The attributes of the old file are lost. [**CreateTextFile**](#createtextfile) and the Scripting Runtime's **CreateTextFile** raise error 70 for the same file.
+A read-only file is not replaced, and nothing is written. [**StringToTextFile**](#stringtotextfile) and [**ArrayToTextFile**](#arraytotextfile) write through **WriteStream** and refuse such a file in the same way, as [**CreateTextFile**](#createtextfile) and the Scripting Runtime's **CreateTextFile** do. To replace such a file on purpose, clear its attribute first with [**File.SetAttribute**](File#setattribute), or delete it with *force* **True**. [**NormalizeTextFile**](#normalizetextfile) is the exception: it rewrites a read-only file and keeps it read-only.
 
-Errors: 76 when the folder does not exist, and 70 when Windows refuses, such as for a file that is in use. A failure to write the new file raises the error of the runtime, such as 61 for a full disk; see [Errors](./#errors) for the other Windows failures.
+Errors: 76 when the folder does not exist, and 70 when the file is read-only or when Windows refuses, such as for a file that is in use. A failure to write the new file raises the error of the runtime, such as 61 for a full disk; see [Errors](./#errors) for the other Windows failures.
 
 ```tb check_build check_run
 Dim work As String, path As String, ts As TextStream, b() As Byte, lines() As String
@@ -1261,23 +1296,31 @@ lines = Split("a,b", ",")
 
 StringToTextFile "old", path
 SetAttr path, vbReadOnly
-StringToTextFile "new", path                 ' no error
-Debug.Print TextFileToString(path)           ' new
-Debug.Print GetAttr(path) And vbReadOnly     ' 0
 
-SetAttr path, vbReadOnly
-ArrayToTextFile lines, path
-Debug.Print GetAttr(path) And vbReadOnly     ' 0
-
-SetAttr path, vbReadOnly
-WriteStream b, path
-Debug.Print GetAttr(path) And vbReadOnly     ' 0
-
-SetAttr path, vbReadOnly
+' A read-only file is refused by all four, and keeps its text and its attribute.
 On Error Resume Next
+StringToTextFile "new", path
+Debug.Print Err.Number                       ' 70
+Err.Clear
+ArrayToTextFile lines, path
+Debug.Print Err.Number                       ' 70
+Err.Clear
+WriteStream b, path
+Debug.Print Err.Number                       ' 70
+Err.Clear
 Set ts = CreateTextFile(path)
 Debug.Print Err.Number                       ' 70
 Err.Clear
+On Error GoTo 0
+Debug.Print TextFileToString(path)           ' old
+Debug.Print GetAttr(path) And vbReadOnly     ' 1
+
+' With the attribute cleared, the file is replaced.
+GetFile(path).SetAttribute faReadOnly, False
+WriteStream b, path
+Debug.Print TextFileToString(path)           ' A
+
+On Error Resume Next
 WriteStream b, BuildPath(work, "missing\x.bin")
 Debug.Print Err.Number                       ' 76
 Err.Clear
@@ -1455,7 +1498,7 @@ Syntax: **OpenTextFile** ( *filePath* [, *ioMode* [, *create* [, *encoding* [, *
 What the mode does:
 
 - **ForReading** requires the file. The encoding is found from the start of the file: a BOM first, then *encoding* when it names one, then the same guess as [**GetFileEncoding**](#getfileencoding). A file that looks binary is refused with error 5 when the encoding is detected. An empty file is reported as UTF-8.
-- **ForWriting** empties the file when it is opened, for an encoding that is written in pieces; a stream that holds the whole file (UTF-7) replaces the file when it is closed or flushed. *encoding* gives the encoding, and **encAutoDetect** means UTF-8. A BOM is written for a member with **Bom** in its name. While the stream is open, other streams can read the file, and cannot open it for writing or appending (error 70). A stream open for reading does not stop another from opening the file for writing.
+- **ForWriting** empties the file when it is opened, for an encoding that is written in pieces; a stream that holds the whole file (UTF-7) replaces the file when it is closed or flushed. An existing read-only file raises error 70 when the stream is opened, except for UTF-7, where the error comes at the first flush or close and the file keeps its text. *encoding* gives the encoding, and **encAutoDetect** means UTF-8. A BOM is written for a member with **Bom** in its name. While the stream is open, other streams can read the file, and cannot open it for writing or appending (error 70). A stream open for reading does not stop another from opening the file for writing.
 - **ForAppending** adds to the end. A file that exists keeps its encoding and BOM, found as for reading: *encoding* is used only when the file has no BOM, and is not checked against the text in the file, so a wrong one mixes encodings in the file. A BOM is not written again, and none is written to an existing file that is empty. The line ending for **WriteLine** is the one the first 64 KB of the file use, and *writeModeLineEnding* is used only for an empty file, a file without a line ending and a file with mixed ones. A file that does not exist is created like a new file under **ForWriting**, with the BOM of the encoding.
 
 Errors: 53 when the file does not exist for **ForReading**, or for the other modes with *create* **False**; 76 when the folder does not exist; 52 for a name that is not valid when *create* is **True**; 5 for an unknown *ioMode*, and for a binary file as above; 70 when another stream has the file open for writing. The error has an empty **Err.Source** and the standard text of its number, `File not found` for 53, without the path.
@@ -1562,7 +1605,7 @@ How [**OpenTextFile**](#opentextfile) opens a file. The values are those of the 
 ### SpecialFolderConst
 {: .no_toc }
 
-A well-known folder, for [**GetSpecialFolder**](#getspecialfolder). The first three members have the values of the Scripting Runtime, and **WindowsFolder**, **SystemFolder** and **TemporaryFolder** are names for them that match it. The rest are known folders of Windows.
+A well-known folder, for [**GetSpecialFolder**](#getspecialfolder) and [**GetSpecialFolderPath**](#getspecialfolderpath). The first three members have the values of the Scripting Runtime, and **WindowsFolder**, **SystemFolder** and **TemporaryFolder** are names for them that match it. The rest are known folders of Windows.
 
 | Member | Value | Folder |
 |---|---|---|

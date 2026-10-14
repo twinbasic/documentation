@@ -47,10 +47,10 @@ Set fs = GetFolder(work).Files
 
 On Error Resume Next
 Set f = fs("missing.txt")
-Debug.Print Err.Number                 ' 5
+Debug.Print Err.Number                 ' 53
 Err.Clear
 Set f = fs(2)
-Debug.Print Err.Number                 ' 5
+Debug.Print Err.Number                 ' 53
 Err.Clear
 On Error GoTo 0
 
@@ -76,9 +76,9 @@ Syntax: *object*.**Item** ( *nameOrIndex* ) **As File**
 *nameOrIndex*
 : *required* A **Variant**: the name of the file with its extension, such as `"readme.txt"`, in any letter case, or the position of the file, counted from 1.
 
-The files are in the order in which Windows lists the folder. A name that is not in the collection, and a position below 1 or above [**Count**](#count), raise error 5 (*Invalid procedure call or argument*), with the message *No item 'x' in the collection*.
+The files are in the order in which Windows lists the folder. A name that is not in the collection, and a position below 1 or above [**Count**](#count), raise error 53 (*File not found*), with the message *No file 'x' in the collection*.
 
-The Scripting Runtime takes a name only: it raises error 53 (*File not found*) for a name that is not in the collection, and error 5 for a position.
+The Scripting Runtime takes a name only: it raises error 53 for a name that is not in the collection, and error 5 for a position.
 
 ### NewEnum
 {: .no_toc }

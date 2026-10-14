@@ -77,7 +77,7 @@ Debug.Print UBound(b) + 1                     ' 10
 DeleteFolder work
 ```
 
-**Two modes.** Most encodings, UTF-8 among them, are read and written in pieces of 64 KB, and [**IsStreaming**](#isstreaming) is **True**. UTF-7 cannot be cut into pieces. A stream in UTF-7 holds the whole file in memory and [**IsStreaming**](#isstreaming) is **False**. A stream of this kind that is open for writing does not empty the file when it is opened: the file is replaced when the stream is closed or flushed. Every member works in both modes.
+**Two modes.** Most encodings, UTF-8 among them, are read and written in pieces of 64 KB, and [**IsStreaming**](#isstreaming) is **True**. UTF-7 cannot be cut into pieces. A stream in UTF-7 holds the whole file in memory and [**IsStreaming**](#isstreaming) is **False**. A stream of this kind that is open for writing does not empty the file when it is opened: the file is replaced when the stream is closed or flushed, and when the file is read-only that fails with error 70. Every member works in both modes.
 
 **Position.** [**Line**](#line) and [**Column**](#column) follow the characters that are read or written. Reading a line moves past its line ending.
 
