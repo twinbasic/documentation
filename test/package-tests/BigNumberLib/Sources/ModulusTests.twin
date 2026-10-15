@@ -1,0 +1,390 @@
+' BigNumber: AssignModulus and the four methods that take a remainder of a result, checked
+' against Decimal arithmetic (operands of up to 12 digits, so every product fits in Decimal).
+[TestFixture]
+Module ModulusTests
+
+    Private Function Operands() As Variant
+        Operands = Array("0", "1", "-3", "4", "-7", "123456789012", "-987654321098")
+    End Function
+
+    Private Function PositiveModuli() As Variant
+        PositiveModuli = Array("1", "7", "13", "1000000007", "123456789012")
+    End Function
+
+    Private Function NegativeModuli() As Variant
+        NegativeModuli = Array("-1", "-7", "-13", "-1000000007")
+    End Function
+
+    ' The expected result for a negative modulus: the sign of the modulus, and the modulus itself for zero.
+    Private Function ForNegativeModulus(ByVal Remainder As String, ByVal Modulus As String) As String
+        If Remainder = "0" Then ForNegativeModulus = Modulus Else ForNegativeModulus = Remainder
+    End Function
+
+    [TestCase]
+    Public Sub AssignModulus_PositiveDivisor()
+        Expect.Begin
+        Dim v As Variant
+        Dim m As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        v = Operands()
+        m = PositiveModuli()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(m) To UBound(m)
+                a.ValueString = v(i)
+                b.ValueString = m(j)
+                r.AssignModulus a, b
+                Expect.AreEqual DecMod(v(i), m(j)), r.ValueString, v(i) & " Mod " & m(j)
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignModulus_NegativeDivisor()
+        Expect.Begin
+        Dim v As Variant
+        Dim m As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        v = Operands()
+        m = NegativeModuli()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(m) To UBound(m)
+                a.ValueString = v(i)
+                b.ValueString = m(j)
+                r.AssignModulus a, b
+                Expect.AreEqual DecMod(v(i), m(j)), r.ValueString, v(i) & " Mod " & m(j)
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignModulus_ManualExamples()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "-7"
+        b.ValueString = "2"
+        r.AssignModulus a, b
+        Expect.AreEqual "1", r.ValueString, "-7 Mod 2"
+        a.ValueString = "7"
+        b.ValueString = "-2"
+        r.AssignModulus a, b
+        Expect.AreEqual "-1", r.ValueString, "7 Mod -2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignModulus_LargeNumbers()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        Dim q As New BigNumber
+        a.ValueString = Pattern(600, 2)
+        b.ValueString = Pattern(250, 9)
+        r.AssignModulus a, b
+        q.AssignDivision a, b
+        Expect.AreEqual -1, StrCmp(r.ValueString, Pattern(250, 9)), "a 600-digit number Mod a 250-digit one is less than the divisor"
+        Expect.AreEqual Pattern(600, 2), StrAdd(StrMul(q.ValueString, Pattern(250, 9)), r.ValueString), "(a \ b) * b + (a Mod b) for a 600-digit a and a 250-digit b"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignModulus_NegativeDivisor_ZeroResultIsNotNegative()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "6"
+        b.ValueString = "-3"
+        r.AssignModulus a, b
+        Expect.AreEqual "0", r.ValueString, "6 Mod -3"
+        Expect.IsFalse r.IsNegative, "IsNegative of 6 Mod -3"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignModulus_NegativeDivisor_ZeroResultEqualsZero()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        Dim zero As New BigNumber
+        a.ValueString = "6"
+        b.ValueString = "-3"
+        zero.ValueString = "0"
+        r.AssignModulus a, b
+        Expect.IsTrue r.IsEqualTo(zero), "6 Mod -3 IsEqualTo a zero read from ""0"""
+        Expect.IsFalse r.IsLessThan(zero), "6 Mod -3 IsLessThan a zero read from ""0"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignAdditionModulus_PositiveModulus()
+        Expect.Begin
+        Dim v As Variant
+        Dim m As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        Dim k As Long
+        v = Operands()
+        m = PositiveModuli()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                For k = LBound(m) To UBound(m)
+                    a.ValueString = v(i)
+                    b.ValueString = v(j)
+                    c.ValueString = m(k)
+                    r.AssignAdditionModulus a, b, c
+                    Expect.AreEqual DecMod(DecAdd(v(i), v(j)), m(k)), r.ValueString, "(" & v(i) & " + " & v(j) & ") Mod " & m(k)
+                Next k
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignAdditionModulus_NegativeModulus()
+        Expect.Begin
+        Dim v As Variant
+        Dim m As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        Dim k As Long
+        v = Operands()
+        m = NegativeModuli()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                For k = LBound(m) To UBound(m)
+                    a.ValueString = v(i)
+                    b.ValueString = v(j)
+                    c.ValueString = m(k)
+                    r.AssignAdditionModulus a, b, c
+                    Expect.AreEqual ForNegativeModulus(DecMod(DecAdd(v(i), v(j)), m(k)), m(k)), r.ValueString, "(" & v(i) & " + " & v(j) & ") Mod " & m(k)
+                Next k
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSubtractionModulus_PositiveModulus()
+        Expect.Begin
+        Dim v As Variant
+        Dim m As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        Dim k As Long
+        v = Operands()
+        m = PositiveModuli()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                For k = LBound(m) To UBound(m)
+                    a.ValueString = v(i)
+                    b.ValueString = v(j)
+                    c.ValueString = m(k)
+                    r.AssignSubtractionModulus a, b, c
+                    Expect.AreEqual DecMod(DecSub(v(i), v(j)), m(k)), r.ValueString, "(" & v(i) & " - " & v(j) & ") Mod " & m(k)
+                Next k
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSubtractionModulus_NegativeModulus()
+        Expect.Begin
+        Dim v As Variant
+        Dim m As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        Dim k As Long
+        v = Operands()
+        m = NegativeModuli()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                For k = LBound(m) To UBound(m)
+                    a.ValueString = v(i)
+                    b.ValueString = v(j)
+                    c.ValueString = m(k)
+                    r.AssignSubtractionModulus a, b, c
+                    Expect.AreEqual ForNegativeModulus(DecMod(DecSub(v(i), v(j)), m(k)), m(k)), r.ValueString, "(" & v(i) & " - " & v(j) & ") Mod " & m(k)
+                Next k
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignMultiplicationModulus_PositiveModulus()
+        Expect.Begin
+        Dim v As Variant
+        Dim m As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        Dim k As Long
+        v = Operands()
+        m = PositiveModuli()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                For k = LBound(m) To UBound(m)
+                    a.ValueString = v(i)
+                    b.ValueString = v(j)
+                    c.ValueString = m(k)
+                    r.AssignMultiplicationModulus a, b, c
+                    Expect.AreEqual DecMod(DecMul(v(i), v(j)), m(k)), r.ValueString, "(" & v(i) & " * " & v(j) & ") Mod " & m(k)
+                Next k
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignMultiplicationModulus_NegativeModulus()
+        Expect.Begin
+        Dim v As Variant
+        Dim m As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        Dim k As Long
+        v = Operands()
+        m = NegativeModuli()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                For k = LBound(m) To UBound(m)
+                    a.ValueString = v(i)
+                    b.ValueString = v(j)
+                    c.ValueString = m(k)
+                    r.AssignMultiplicationModulus a, b, c
+                    Expect.AreEqual ForNegativeModulus(DecMod(DecMul(v(i), v(j)), m(k)), m(k)), r.ValueString, "(" & v(i) & " * " & v(j) & ") Mod " & m(k)
+                Next k
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSquaredModulus_PositiveModulus()
+        Expect.Begin
+        Dim v As Variant
+        Dim m As Variant
+        Dim a As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim k As Long
+        v = Operands()
+        m = PositiveModuli()
+        For i = LBound(v) To UBound(v)
+            For k = LBound(m) To UBound(m)
+                a.ValueString = v(i)
+                c.ValueString = m(k)
+                r.AssignSquaredModulus a, c
+                Expect.AreEqual DecMod(DecMul(v(i), v(i)), m(k)), r.ValueString, "(" & v(i) & " * " & v(i) & ") Mod " & m(k)
+            Next k
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSquaredModulus_NegativeModulus()
+        Expect.Begin
+        Dim v As Variant
+        Dim m As Variant
+        Dim a As New BigNumber
+        Dim c As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim k As Long
+        v = Operands()
+        m = NegativeModuli()
+        For i = LBound(v) To UBound(v)
+            For k = LBound(m) To UBound(m)
+                a.ValueString = v(i)
+                c.ValueString = m(k)
+                r.AssignSquaredModulus a, c
+                Expect.AreEqual ForNegativeModulus(DecMod(DecMul(v(i), v(i)), m(k)), m(k)), r.ValueString, "(" & v(i) & " * " & v(i) & ") Mod " & m(k)
+            Next k
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignAdditionModulus_ManualExamples()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim m As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "-3"
+        b.ValueString = "4"
+        m.ValueString = "7"
+        r.AssignAdditionModulus a, b, m
+        Expect.AreEqual "1", r.ValueString, "(-3 + 4) Mod 7"
+        r.AssignSubtractionModulus a, b, m
+        Expect.AreEqual "0", r.ValueString, "(-3 - 4) Mod 7"
+        r.AssignMultiplicationModulus a, b, m
+        Expect.AreEqual "2", r.ValueString, "(-3 * 4) Mod 7"
+        a.ValueString = "3"
+        m.ValueString = "-7"
+        r.AssignAdditionModulus a, b, m
+        Expect.AreEqual "-7", r.ValueString, "(3 + 4) Mod -7"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignMultiplicationModulus_LargeNumbers()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim m As New BigNumber
+        Dim r As New BigNumber
+        Dim q As New BigNumber
+        Dim p As New BigNumber
+        a.ValueString = Pattern(300, 1)
+        b.ValueString = Pattern(280, 2)
+        m.ValueString = Pattern(200, 3)
+        r.AssignMultiplicationModulus a, b, m
+        p.AssignMultiplication a, b
+        q.AssignDivision p, m
+        ' a * b = q * m + r, with 0 <= r < m
+        Expect.AreEqual StrMul(Pattern(300, 1), Pattern(280, 2)), StrAdd(StrMul(q.ValueString, Pattern(200, 3)), r.ValueString), "q * m + r for q = (a * b) \ m and r = (a * b) Mod m"
+        Expect.AreEqual -1, StrCmp(r.ValueString, Pattern(200, 3)), "(a * b) Mod m is less than m"
+        Expect.Done
+    End Sub
+
+End Module

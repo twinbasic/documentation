@@ -1,0 +1,171 @@
+' Reference arithmetic the cases check BigNumber against: numbers in Decimal range, and decimal
+' strings added and multiplied digit by digit. Nothing here calls BigNumber except Big.
+Module RefMath
+
+    ' A new BigNumber holding the decimal integer Text.
+    Public Function Big(ByVal Text As String) As BigNumber
+        Set Big = New BigNumber
+        Big.ValueString = Text
+    End Function
+
+    ' A decimal string of Digits digits that does not start with 0, made from Seed.
+    Public Function Pattern(ByVal Digits As Long, ByVal Seed As Long) As String
+        Dim s As String
+        Dim i As Long
+        Dim d As Long
+        s = Space$(Digits)
+        For i = 1 To Digits
+            d = (i * 7 + Seed * 3 + (i \ 5)) Mod 10
+            If i = 1 And d = 0 Then d = 1
+            Mid$(s, i, 1) = Chr$(48 + d)
+        Next i
+        Pattern = s
+    End Function
+
+    Public Function StripZeros(ByVal A As String) As String
+        Dim i As Long
+        i = 1
+        Do While i < Len(A)
+            If Mid$(A, i, 1) <> "0" Then Exit Do
+            i = i + 1
+        Loop
+        StripZeros = Mid$(A, i)
+    End Function
+
+    ' The sum of two non-negative decimal strings.
+    Public Function StrAdd(ByVal A As String, ByVal B As String) As String
+        Dim n As Long
+        Dim i As Long
+        Dim carry As Long
+        Dim s As Long
+        Dim da As Long
+        Dim db As Long
+        Dim res As String
+        n = Len(A)
+        If Len(B) > n Then n = Len(B)
+        res = Space$(n + 1)
+        For i = 1 To n
+            da = 0
+            db = 0
+            If i <= Len(A) Then da = Asc(Mid$(A, Len(A) - i + 1, 1)) - 48
+            If i <= Len(B) Then db = Asc(Mid$(B, Len(B) - i + 1, 1)) - 48
+            s = da + db + carry
+            carry = s \ 10
+            Mid$(res, n + 2 - i, 1) = Chr$(48 + (s Mod 10))
+        Next i
+        Mid$(res, 1, 1) = Chr$(48 + carry)
+        StrAdd = StripZeros(res)
+    End Function
+
+    ' The product of two non-negative decimal strings.
+    Public Function StrMul(ByVal A As String, ByVal B As String) As String
+        Dim la As Long
+        Dim lb As Long
+        Dim i As Long
+        Dim j As Long
+        Dim k As Long
+        Dim da As Long
+        Dim acc() As Long
+        Dim res As String
+        la = Len(A)
+        lb = Len(B)
+        ReDim acc(0 To la + lb)
+        For i = 0 To la - 1
+            da = Asc(Mid$(A, la - i, 1)) - 48
+            For j = 0 To lb - 1
+                acc(i + j) = acc(i + j) + da * (Asc(Mid$(B, lb - j, 1)) - 48)
+            Next j
+        Next i
+        For k = 0 To la + lb - 1
+            acc(k + 1) = acc(k + 1) + acc(k) \ 10
+            acc(k) = acc(k) Mod 10
+        Next k
+        res = Space$(la + lb)
+        For k = 0 To la + lb - 1
+            Mid$(res, la + lb - k, 1) = Chr$(48 + acc(k))
+        Next k
+        StrMul = StripZeros(res)
+    End Function
+
+    ' -1, 0 or 1: how the non-negative decimal strings A and B compare.
+    Public Function StrCmp(ByVal A As String, ByVal B As String) As Long
+        A = StripZeros(A)
+        B = StripZeros(B)
+        If Len(A) < Len(B) Then
+            StrCmp = -1
+        ElseIf Len(A) > Len(B) Then
+            StrCmp = 1
+        Else
+            StrCmp = StrComp(A, B, vbBinaryCompare)
+        End If
+    End Function
+
+    ' Fibonacci number N as a decimal string (Fib(1) = Fib(2) = 1).
+    Public Function Fib(ByVal N As Long) As String
+        Dim a As String
+        Dim b As String
+        Dim t As String
+        Dim i As Long
+        a = "1"
+        b = "1"
+        For i = 3 To N
+            t = StrAdd(a, b)
+            a = b
+            b = t
+        Next i
+        If N < 2 Then Fib = a Else Fib = b
+    End Function
+
+    Private Function Plain(ByVal X As Variant) As String
+        If X = 0 Then Plain = "0" Else Plain = CStr(X)
+    End Function
+
+    ' The sum of two integers given as decimal strings of at most 27 digits, as text.
+    Public Function DecAdd(ByVal A As String, ByVal B As String) As String
+        DecAdd = Plain(CDec(A) + CDec(B))
+    End Function
+
+    Public Function DecSub(ByVal A As String, ByVal B As String) As String
+        DecSub = Plain(CDec(A) - CDec(B))
+    End Function
+
+    Public Function DecMul(ByVal A As String, ByVal B As String) As String
+        DecMul = Plain(CDec(A) * CDec(B))
+    End Function
+
+    ' The quotient of A and B truncated toward zero.
+    Public Function DecQuot(ByVal A As String, ByVal B As String) As String
+        DecQuot = Plain(Fix(CDec(A) / CDec(B)))
+    End Function
+
+    ' The remainder of A and B that is zero or has the sign of B (the floored remainder).
+    Public Function DecMod(ByVal A As Variant, ByVal B As Variant) As String
+        Dim q As Variant
+        Dim r As Variant
+        A = CDec(A)
+        B = CDec(B)
+        q = Fix(A / B)
+        r = A - q * B
+        If r <> 0 Then
+            If (r < 0) <> (B < 0) Then r = r + B
+        End If
+        DecMod = Plain(r)
+    End Function
+
+    ' 2 to the power K, as Decimal, for K up to 90.
+    Public Function Pow2(ByVal K As Long) As Variant
+        Dim r As Variant
+        Dim i As Long
+        r = CDec(1)
+        For i = 1 To K
+            r = r * 2
+        Next i
+        Pow2 = r
+    End Function
+
+    ' Ch repeated Count times.
+    Public Function Rep(ByVal Ch As String, ByVal Count As Long) As String
+        Rep = String$(Count, Ch)
+    End Function
+
+End Module

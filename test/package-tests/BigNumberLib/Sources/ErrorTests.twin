@@ -1,0 +1,177 @@
+' BigNumber: the errors of division and the modular methods, and HandleError.
+[TestFixture]
+Module ErrorTests
+
+    Private Function Describe(ByVal Number As Long, ByVal Description As String) As String
+        Describe = Number & " " & Description
+    End Function
+
+    [TestCase]
+    Public Sub AssignDivision_ByZero_RaisesError5()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim q As New BigNumber
+        a.ValueString = "-7"
+        b.ValueString = "0"
+        On Error Resume Next
+        q.AssignDivision a, b
+        Expect.AreEqual "5 invalid operation", Describe(Err.Number, Err.Description), "error of -7 \ 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignDivision_ByZero_KeepsTheValue()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim q As New BigNumber
+        a.ValueString = "-7"
+        b.ValueString = "2"
+        q.AssignDivision a, b
+        b.ValueString = "0"
+        On Error Resume Next
+        q.AssignDivision a, b
+        Err.Clear
+        Expect.AreEqual "-3", q.ValueString, "ValueString of the result after -7 \ 0 raised an error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignModulus_ByZero_RaisesError5()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "7"
+        b.ValueString = "0"
+        On Error Resume Next
+        r.AssignModulus a, b
+        Expect.AreEqual "5 invalid operation", Describe(Err.Number, Err.Description), "error of 7 Mod 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignAdditionModulus_ByZero_RaisesError5()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim m As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "3"
+        b.ValueString = "4"
+        m.ValueString = "0"
+        On Error Resume Next
+        r.AssignAdditionModulus a, b, m
+        Expect.AreEqual "5 invalid operation", Describe(Err.Number, Err.Description), "error of (3 + 4) Mod 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSubtractionModulus_ByZero_RaisesError5()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim m As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "3"
+        b.ValueString = "4"
+        m.ValueString = "0"
+        On Error Resume Next
+        r.AssignSubtractionModulus a, b, m
+        Expect.AreEqual "5 invalid operation", Describe(Err.Number, Err.Description), "error of (3 - 4) Mod 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignMultiplicationModulus_ByZero_RaisesError5()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim m As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "3"
+        b.ValueString = "4"
+        m.ValueString = "0"
+        On Error Resume Next
+        r.AssignMultiplicationModulus a, b, m
+        Expect.AreEqual "5 invalid operation", Describe(Err.Number, Err.Description), "error of (3 * 4) Mod 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSquaredModulus_ByZero_RaisesError5()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim m As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "3"
+        m.ValueString = "0"
+        On Error Resume Next
+        r.AssignSquaredModulus a, m
+        Expect.AreEqual "5 invalid operation", Describe(Err.Number, Err.Description), "error of (3 * 3) Mod 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HandleError_NewNumberRaisesNothing()
+        Expect.Begin
+        Dim n As New BigNumber
+        On Error Resume Next
+        n.HandleError
+        Expect.AreEqual 0, Err.Number, "error of HandleError on a new BigNumber"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HandleError_AfterAFailureRaisesAgain()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim q As New BigNumber
+        a.ValueString = "7"
+        b.ValueString = "0"
+        On Error Resume Next
+        q.AssignDivision a, b
+        Err.Clear
+        q.HandleError
+        Expect.AreEqual "5 invalid operation", Describe(Err.Number, Err.Description), "error of HandleError called after 7 \ 0 failed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HandleError_StaysAfterAMethodThatStoresNoStatus()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim q As New BigNumber
+        a.ValueString = "7"
+        b.ValueString = "0"
+        On Error Resume Next
+        q.AssignDivision a, b
+        Err.Clear
+        b.ValueString = "2"
+        q.AssignAddition a, b
+        q.HandleError
+        Expect.AreEqual "5 invalid operation", Describe(Err.Number, Err.Description), "error of HandleError called after 7 \ 0 failed and then AssignAddition ran"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HandleError_ClearedByAMemberThatStoresStatus()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim q As New BigNumber
+        a.ValueString = "7"
+        b.ValueString = "0"
+        On Error Resume Next
+        q.AssignDivision a, b
+        Err.Clear
+        q.ValueString = "5"
+        q.HandleError
+        Expect.AreEqual 0, Err.Number, "error of HandleError called after a failed division and then ValueString was set"
+        Expect.Done
+    End Sub
+
+End Module

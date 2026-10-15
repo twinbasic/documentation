@@ -1,0 +1,156 @@
+' BigNumber: IsEqualTo, IsLessThan, IsLessThanOrEqualTo, IsGreaterThan and IsGreaterThanOrEqualTo,
+' checked against the comparison of Decimal values.
+[TestFixture]
+Module ComparisonTests
+
+    Private Function Values() As Variant
+        Values = Array("-123456789012345678901234", "-5", "-1", "0", "1", "5", "99999999999999999999", "123456789012345678901234")
+    End Function
+
+    ' -1, 0 or 1: how the integers A and B compare.
+    Private Function Cmp(ByVal A As String, ByVal B As String) As Long
+        Dim x As Variant
+        Dim y As Variant
+        x = CDec(A)
+        y = CDec(B)
+        If x < y Then
+            Cmp = -1
+        ElseIf x > y Then
+            Cmp = 1
+        Else
+            Cmp = 0
+        End If
+    End Function
+
+    [TestCase]
+    Public Sub IsEqualTo_AllPairs()
+        Expect.Begin
+        Dim v As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        v = Values()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                a.ValueString = v(i)
+                b.ValueString = v(j)
+                Expect.AreEqual Cmp(v(i), v(j)) = 0, a.IsEqualTo(b), v(i) & " = " & v(j)
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsLessThan_AllPairs()
+        Expect.Begin
+        Dim v As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        v = Values()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                a.ValueString = v(i)
+                b.ValueString = v(j)
+                Expect.AreEqual Cmp(v(i), v(j)) < 0, a.IsLessThan(b), v(i) & " < " & v(j)
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsLessThanOrEqualTo_AllPairs()
+        Expect.Begin
+        Dim v As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        v = Values()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                a.ValueString = v(i)
+                b.ValueString = v(j)
+                Expect.AreEqual Cmp(v(i), v(j)) <= 0, a.IsLessThanOrEqualTo(b), v(i) & " <= " & v(j)
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsGreaterThan_AllPairs()
+        Expect.Begin
+        Dim v As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        v = Values()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                a.ValueString = v(i)
+                b.ValueString = v(j)
+                Expect.AreEqual Cmp(v(i), v(j)) > 0, a.IsGreaterThan(b), v(i) & " > " & v(j)
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsGreaterThanOrEqualTo_AllPairs()
+        Expect.Begin
+        Dim v As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        v = Values()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                a.ValueString = v(i)
+                b.ValueString = v(j)
+                Expect.AreEqual Cmp(v(i), v(j)) >= 0, a.IsGreaterThanOrEqualTo(b), v(i) & " >= " & v(j)
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Comparisons_LargeNumbers()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim s As String
+        Dim t As String
+        s = Pattern(500, 1)
+        t = Left$(s, 499) & Chr$(48 + ((Asc(Right$(s, 1)) - 48 + 1) Mod 10))
+        a.ValueString = s
+        b.ValueString = t
+        Expect.AreEqual StrCmp(s, t) < 0, a.IsLessThan(b), "a 500-digit number against one that differs in the last digit"
+        Expect.AreEqual StrCmp(s, t) > 0, a.IsGreaterThan(b), "the same, IsGreaterThan"
+        b.ValueString = Pattern(499, 1)
+        Expect.IsTrue a.IsGreaterThan(b), "a 500-digit number IsGreaterThan a 499-digit one"
+        Expect.IsFalse a.IsLessThanOrEqualTo(b), "a 500-digit number IsLessThanOrEqualTo a 499-digit one"
+        a.ValueString = "-" & Pattern(500, 1)
+        b.ValueString = "-" & Pattern(499, 1)
+        Expect.IsTrue a.IsLessThan(b), "a negative 500-digit number IsLessThan a negative 499-digit one"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsEqualTo_SameValueFromDifferentBases()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        a.ValueString = "255"
+        b.ValueHex = "FF"
+        Expect.IsTrue a.IsEqualTo(b), "255 from ValueString IsEqualTo FF from ValueHex"
+        b.ValueBinary = "-11111111"
+        a.ValueString = "-255"
+        Expect.IsTrue a.IsEqualTo(b), "-255 from ValueString IsEqualTo -11111111 from ValueBinary"
+        Expect.Done
+    End Sub
+
+End Module

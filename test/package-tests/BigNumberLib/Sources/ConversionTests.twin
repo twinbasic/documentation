@@ -1,0 +1,193 @@
+' BigNumber: ValueString, ValueHex, ValueOctal and ValueBinary, what they accept and what they return.
+[TestFixture]
+Module ConversionTests
+
+    [TestCase]
+    Public Sub ValueString_NewNumberIsZero()
+        Expect.Begin
+        Dim n As New BigNumber
+        Expect.AreEqual "0", n.ValueString, "ValueString of a new BigNumber"
+        Expect.AreEqual "0", n.ValueHex, "ValueHex of a new BigNumber"
+        Expect.AreEqual "0", n.ValueOctal, "ValueOctal of a new BigNumber"
+        Expect.AreEqual "0", n.ValueBinary, "ValueBinary of a new BigNumber"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueString_RoundTrip()
+        Expect.Begin
+        Dim n As New BigNumber
+        Dim s As String
+        s = Pattern(300, 1)
+        n.ValueString = s
+        Expect.AreEqual s, n.ValueString, "ValueString of a 300-digit number, read back"
+        n.ValueString = "-" & s
+        Expect.AreEqual "-" & s, n.ValueString, "ValueString of the same number made negative, read back"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueString_IsTheDefaultMember()
+        Expect.Begin
+        Dim n As New BigNumber
+        Dim s As String
+        n = "123456789012345678901234567890"
+        s = n
+        Expect.AreEqual "123456789012345678901234567890", n.ValueString, "ValueString after n = ""123456789012345678901234567890"""
+        Expect.AreEqual "123456789012345678901234567890", s, "the value of n read into a String"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueString_StopsAtFirstInvalidCharacter()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueString = "123abc456"
+        Expect.AreEqual "123", n.ValueString, "ValueString after setting ""123abc456"""
+        n.ValueString = "12 34"
+        Expect.AreEqual "12", n.ValueString, "ValueString after setting ""12 34"""
+        n.ValueString = "-45.67"
+        Expect.AreEqual "-45", n.ValueString, "ValueString after setting ""-45.67"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueString_LeadingPlusOrSpaceGivesZero()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueString = "99"
+        n.ValueString = "+5"
+        Expect.AreEqual "0", n.ValueString, "ValueString after setting ""+5"" to a number that held 99"
+        n.ValueString = "99"
+        n.ValueString = " 5"
+        Expect.AreEqual "0", n.ValueString, "ValueString after setting "" 5"" to a number that held 99"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueString_NoDigitsGivesZero()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueString = "99"
+        n.ValueString = "abc"
+        Expect.AreEqual "0", n.ValueString, "ValueString after setting ""abc"" to a number that held 99"
+        n.ValueString = "99"
+        n.ValueString = ""
+        Expect.AreEqual "0", n.ValueString, "ValueString after setting an empty string to a number that held 99"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueHex_UpperCaseWithoutLeadingZeros()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueHex = "00abc123"
+        Expect.AreEqual "ABC123", n.ValueHex, "ValueHex after setting ""00abc123"""
+        n.ValueHex = "ABC123"
+        Expect.AreEqual "11256099", n.ValueString, "ValueString after setting ValueHex to ""ABC123"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueHex_StopsAtFirstInvalidCharacter()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueHex = "ABC123he"
+        Expect.AreEqual "ABC123", n.ValueHex, "ValueHex after setting ""ABC123he"""
+        Expect.AreEqual "11256099", n.ValueString, "ValueString after setting ValueHex to ""ABC123he"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueHex_PrefixIsNotAccepted()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueString = "99"
+        n.ValueHex = "0xFF"
+        Expect.AreEqual "0", n.ValueString, "ValueString after setting ValueHex to ""0xFF"""
+        n.ValueString = "99"
+        n.ValueHex = "&HFF"
+        Expect.AreEqual "0", n.ValueString, "ValueString after setting ValueHex to ""&HFF"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueHex_Negative()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueHex = "-FF"
+        Expect.AreEqual "-255", n.ValueString, "ValueString after setting ValueHex to ""-FF"""
+        Expect.AreEqual "-FF", n.ValueHex, "ValueHex after setting it to ""-FF"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueOctal_RoundTripAndStop()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueOctal = "377"
+        Expect.AreEqual "255", n.ValueString, "ValueString after setting ValueOctal to ""377"""
+        n.ValueOctal = "-377"
+        Expect.AreEqual "-255", n.ValueString, "ValueString after setting ValueOctal to ""-377"""
+        Expect.AreEqual "-377", n.ValueOctal, "ValueOctal after setting it to ""-377"""
+        n.ValueOctal = "389"
+        Expect.AreEqual "3", n.ValueString, "ValueString after setting ValueOctal to ""389"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueBinary_RoundTripAndStop()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueBinary = "11111111"
+        Expect.AreEqual "255", n.ValueString, "ValueString after setting ValueBinary to ""11111111"""
+        n.ValueBinary = "-11111111"
+        Expect.AreEqual "-255", n.ValueString, "ValueString after setting ValueBinary to ""-11111111"""
+        Expect.AreEqual "-11111111", n.ValueBinary, "ValueBinary after setting it to ""-11111111"""
+        n.ValueBinary = "1012"
+        Expect.AreEqual "5", n.ValueString, "ValueString after setting ValueBinary to ""1012"""
+        n.ValueBinary = "0001"
+        Expect.AreEqual "1", n.ValueBinary, "ValueBinary after setting it to ""0001"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Conversions_NegativeNumberInEveryBase()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueString = "-255"
+        Expect.AreEqual "-FF", n.ValueHex, "ValueHex of -255"
+        Expect.AreEqual "-377", n.ValueOctal, "ValueOctal of -255"
+        Expect.AreEqual "-11111111", n.ValueBinary, "ValueBinary of -255"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Conversions_PowerOfTwoInEveryBase()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueString = "1267650600228229401496703205376"
+        Expect.AreEqual "1" & Rep("0", 25), n.ValueHex, "ValueHex of 2^100"
+        Expect.AreEqual "2" & Rep("0", 33), n.ValueOctal, "ValueOctal of 2^100"
+        Expect.AreEqual "1" & Rep("0", 100), n.ValueBinary, "ValueBinary of 2^100"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Conversions_LargeNumberSameInEveryBase()
+        Expect.Begin
+        Dim d As New BigNumber
+        Dim h As New BigNumber
+        Dim o As New BigNumber
+        Dim b As New BigNumber
+        d.ValueString = Pattern(400, 4)
+        h.ValueHex = d.ValueHex
+        o.ValueOctal = d.ValueOctal
+        b.ValueBinary = d.ValueBinary
+        Expect.AreEqual d.ValueString, h.ValueString, "a 400-digit number carried through ValueHex"
+        Expect.AreEqual d.ValueString, o.ValueString, "a 400-digit number carried through ValueOctal"
+        Expect.AreEqual d.ValueString, b.ValueString, "a 400-digit number carried through ValueBinary"
+        Expect.Done
+    End Sub
+
+End Module

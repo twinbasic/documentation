@@ -1,0 +1,121 @@
+' BigNumber: AssignShiftRight and AssignShiftLeft, checked against Decimal arithmetic.
+[TestFixture]
+Module ShiftTests
+
+    [TestCase]
+    Public Sub ShiftLeft_MultipliesByPowerOfTwo()
+        Expect.Begin
+        Dim v As Variant
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim k As Variant
+        Dim j As Long
+        v = Array("1", "5", "-7", "123456789012", "-123456789012")
+        k = Array(0, 1, 5, 13, 40)
+        For i = LBound(v) To UBound(v)
+            For j = LBound(k) To UBound(k)
+                a.ValueString = v(i)
+                r.AssignShiftLeft a, k(j)
+                Expect.AreEqual DecMul(v(i), CStr(Pow2(k(j)))), r.ValueString, v(i) & " << " & k(j)
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShiftLeft_ManualExample()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "5"
+        r.AssignShiftLeft a, 100
+        Expect.AreEqual "6338253001141147007483516026880", r.ValueString, "5 << 100"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShiftLeft_ByThousandsOfBits()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "1"
+        r.AssignShiftLeft a, 4000
+        Expect.AreEqual "1" & Rep("0", 4000), r.ValueBinary, "1 << 4000, as binary"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShiftLeft_NegativeAmountDoesNotShiftRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "1000"
+        r.AssignShiftLeft a, -1
+        Expect.IsTrue r.ValueString <> "500", "1000 << -1 is not 1000 >> 1, but it gave " & r.ValueString
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShiftRight_DividesByPowerOfTwoTruncatingTowardZero()
+        Expect.Begin
+        Dim v As Variant
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim k As Variant
+        Dim j As Long
+        v = Array("1", "5", "-7", "123456789012", "-123456789012", "-1")
+        k = Array(0, 1, 5, 13, 40)
+        For i = LBound(v) To UBound(v)
+            For j = LBound(k) To UBound(k)
+                a.ValueString = v(i)
+                r.AssignShiftRight a, k(j)
+                Expect.AreEqual DecQuot(v(i), CStr(Pow2(k(j)))), r.ValueString, v(i) & " >> " & k(j)
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShiftRight_ManualExamples()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "-7"
+        r.AssignShiftRight a, 1
+        Expect.AreEqual "-3", r.ValueString, "-7 >> 1"
+        a.ValueString = "-1"
+        r.AssignShiftRight a, 1
+        Expect.AreEqual "0", r.ValueString, "-1 >> 1"
+        r.AssignShiftRight a, 100
+        Expect.AreEqual "0", r.ValueString, "-1 >> 100"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShiftRight_LargeNumber()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueBinary = "1" & Rep("0", 2999) & "1"
+        r.AssignShiftRight a, 2999
+        Expect.AreEqual "10", r.ValueBinary, "(2^3000 + 1) >> 2999, as binary"
+        a.ValueBinary = "1" & Rep("0", 2999) & "1"
+        r.AssignShiftRight a, 3000
+        Expect.AreEqual "1", r.ValueBinary, "(2^3000 + 1) >> 3000, as binary"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShiftRight_NegativeAmountLeavesValueUnchanged()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "1000"
+        r.AssignShiftRight a, -1
+        Expect.AreEqual "1000", r.ValueString, "1000 >> -1"
+        Expect.Done
+    End Sub
+
+End Module
