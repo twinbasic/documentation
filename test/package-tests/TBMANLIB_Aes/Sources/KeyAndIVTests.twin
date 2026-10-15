@@ -1,0 +1,218 @@
+' TBMANLIB_Aes, cAes: Key, KeySize, IV, SetKeyFromString and GenerateRandomIV.
+[TestFixture]
+Module KeyAndIVTests
+
+    ' ---- SetKeyFromString
+
+    [TestCase]
+    Public Sub SetKeyFromString_DifferentTextsGiveDifferentKeys()
+        Expect.Begin
+        Dim a As New cAes
+        Dim b As New cAes
+        Dim ka() As Byte
+        Dim kb() As Byte
+        a.SetKeyFromString "0123456789ABCDEF0123456789ABCDEF-first"
+        b.SetKeyFromString "0123456789ABCDEF0123456789ABCDEF-second"
+        ka = a.Key
+        kb = b.Key
+        Expect.IsTrue AesVec.HexOf(ka) <> AesVec.HexOf(kb), "keys made from two texts that differ after the 32nd character"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetKeyFromString_ShortTextIsNotExtendedWithZeroBytes()
+        Expect.Begin
+        Dim a As New cAes
+        Dim k() As Byte
+        Dim i As Long
+        Dim zeros As Boolean
+        a.SetKeyFromString "abc"
+        k = a.Key
+        zeros = True
+        For i = 3 To UBound(k)
+            If k(i) <> 0 Then zeros = False
+        Next
+        Expect.IsFalse zeros, "bytes 4 to 32 of the key made from the text abc are all zero"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetKeyFromString_KeyHasTheLengthOfKeySize()
+        Expect.Begin
+        Dim a As New cAes
+        Dim k() As Byte
+        a.KeySize = AesKeySize.KeySize_128
+        a.SetKeyFromString "abc"
+        k = a.Key
+        Expect.AreEqual 16, AesVec.Count(k), "key length for KeySize_128"
+        a.KeySize = AesKeySize.KeySize_192
+        a.SetKeyFromString "abc"
+        k = a.Key
+        Expect.AreEqual 24, AesVec.Count(k), "key length for KeySize_192"
+        a.KeySize = AesKeySize.KeySize_256
+        a.SetKeyFromString "abc"
+        k = a.Key
+        Expect.AreEqual 32, AesVec.Count(k), "key length for KeySize_256"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetKeyFromString_TextLongerThanTheKeyIsCutAndShorterIsFollowedByZeros()
+        Expect.Begin
+        Dim a As New cAes
+        Dim k() As Byte
+        a.SetKeyFromString "abc"
+        k = a.Key
+        Expect.AreEqual "6162630000000000000000000000000000000000000000000000000000000000", AesVec.HexOf(k), "key made from the text abc (KeySize_256)"
+        a.SetKeyFromString "0123456789ABCDEF0123456789ABCDEF-extra"
+        k = a.Key
+        Expect.AreEqual "3031323334353637383941424344454630313233343536373839414243444546", AesVec.HexOf(k), "key made from a text of 38 characters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetKeyFromString_Utf8EncodingGivesTheBytesOfUtf8()
+        Expect.Begin
+        Dim a As New cAes
+        Dim k() As Byte
+        a.KeySize = AesKeySize.KeySize_128
+        a.SetKeyFromString "e" & ChrW(233), vbUTF8
+        k = a.Key
+        Expect.AreEqual "65c3a900000000000000000000000000", AesVec.HexOf(k), "key made from e and e-acute with vbUTF8"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetKeyFromString_EmptyTextRaisesAndKeepsTheKey()
+        Expect.Begin
+        Dim a As New cAes
+        Dim k() As Byte
+        a.SetKeyFromString "abc"
+        On Error Resume Next
+        a.SetKeyFromString ""
+        Expect.AreEqual 2, Err.Number - vbObjectError, "Err.Number - vbObjectError after SetKeyFromString with an empty text"
+        Expect.AreEqual "cAes.SetKeyFromString", Err.Source, "Err.Source after SetKeyFromString with an empty text"
+        Expect.AreEqual "Key cannot be empty", Err.Description, "Err.Description after SetKeyFromString with an empty text"
+        On Error GoTo 0
+        k = a.Key
+        Expect.AreEqual "6162630000000000000000000000000000000000000000000000000000000000", AesVec.HexOf(k), "the key after the refused call"
+        Expect.Done
+    End Sub
+
+    ' ---- GenerateRandomIV
+
+    [TestCase]
+    Public Sub GenerateRandomIV_Returns16BytesAndSetsTheIV()
+        Expect.Begin
+        Dim a As New cAes
+        Dim v() As Byte
+        Dim s() As Byte
+        v = a.GenerateRandomIV()
+        s = a.IV
+        Expect.AreEqual 16, AesVec.Count(v), "length of the IV that GenerateRandomIV returns"
+        Expect.AreEqual AesVec.HexOf(v), AesVec.HexOf(s), "the IV property after GenerateRandomIV"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GenerateRandomIV_TwoCallsFromTheSameRndStateGiveDifferentIVs()
+        Expect.Begin
+        ' A cryptographic generator has no state a program can put back. Rnd -1 and Randomize 7
+        ' put the state of Rnd back; the IVs of two calls from the same state should still differ.
+        Dim a As New cAes
+        Dim v1() As Byte
+        Dim v2() As Byte
+        Dim attempt As Long
+        Dim same As Long
+        For attempt = 1 To 200
+            Rnd -1
+            Randomize 7
+            v1 = a.GenerateRandomIV()
+            Rnd -1
+            Randomize 7
+            v2 = a.GenerateRandomIV()
+            If AesVec.HexOf(v1) = AesVec.HexOf(v2) Then same = same + 1
+        Next
+        Expect.AreEqual 0, same, "pairs of equal IVs among 200 pairs made from the same state of Rnd"
+        Expect.Done
+    End Sub
+
+    ' ---- IV and key length in the CNG modes
+
+    [TestCase]
+    Public Sub EncryptBytes_Cfb_NoIVGivesTheOutputOfAnIVOfZeroBytes()
+        Expect.Begin
+        Dim a As cAes
+        Dim b As cAes
+        Dim p() As Byte
+        Dim ca() As Byte
+        Dim cb() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key128, "")
+        Set b = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key128, "00000000000000000000000000000000")
+        p = AesVec.Ascii("Hello, AES!")
+        ca = AesVec.Enc(a, p)
+        cb = AesVec.Enc(b, p)
+        Expect.IsTrue AesVec.Count(ca) > 0, "CFB with no IV returns bytes"
+        Expect.AreEqual AesVec.HexOf(cb), AesVec.HexOf(ca), "CFB output with no IV and with an IV of 16 zero bytes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cfb_RefusesAnIVOf12Bytes()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key128, "000102030405060708090a0b")
+        p = AesVec.Ascii("Hello, AES!")
+        c = AesVec.Enc(a, p)
+        Expect.AreEqual 0, AesVec.Count(c), "bytes returned by CFB for an IV of 12 bytes (AES needs 16)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cfb_RefusesAKeyOf20Bytes()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, "000102030405060708090a0b0c0d0e0f10111213", AesVec.Iv16)
+        p = AesVec.Ascii("Hello, AES!")
+        c = AesVec.Enc(a, p)
+        Expect.AreEqual 0, AesVec.Count(c), "bytes returned by CFB for a key of 20 bytes (an AES key has 16, 24 or 32 bytes)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cfb_KeySizeDoesNotChangeTheKeyLengthThatRuns()
+        Expect.Begin
+        ' A key of 32 bytes is an AES-256 key in the CNG modes whatever KeySize says.
+        Dim a As cAes
+        Dim b As cAes
+        Dim p() As Byte
+        Dim ca() As Byte
+        Dim cb() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key256, AesVec.Iv16)
+        Set b = AesVec.MakeAes(AesCipherMode.CFB, 256, AesPaddingMode.PKCS7, AesVec.Key256, AesVec.Iv16)
+        p = AesVec.Ascii("Hello, AES!")
+        ca = AesVec.Enc(a, p)
+        cb = AesVec.Enc(b, p)
+        Expect.IsTrue AesVec.Count(ca) > 0, "CFB with a key of 32 bytes and KeySize_128 returns bytes"
+        Expect.AreEqual AesVec.HexOf(cb), AesVec.HexOf(ca), "CFB output for a key of 32 bytes with KeySize_128 and with KeySize_256"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cfb_IVOf16BytesIsAccepted()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.Ascii("Hello, AES!")
+        c = AesVec.Enc(a, p)
+        Expect.AreEqual 16, AesVec.Count(c), "length of the CFB output for 11 bytes"
+        Expect.Done
+    End Sub
+
+End Module

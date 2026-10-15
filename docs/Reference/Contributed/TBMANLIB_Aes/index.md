@@ -41,8 +41,9 @@ Debug.Print aes.DecryptString(cipherText)                ' Hello, AES!
 
 The text that **EncryptString** returns is Base64 of the ciphertext alone. The program keeps the IV, and in GCM mode the tag, and sets them in the object that decrypts.
 
+<!-- test: ModeTests.EncryptBytes_Ecb_EqualPlainBlocksGiveEqualCipherBlocks, ModeTests.EncryptBytes_Cbc_EqualPlainBlocksGiveDifferentCipherBlocks, ModeTests.EncryptBytes_Cbc_DefaultModeGivesDifferentCipherBlocksForEqualPlainBlocks, ModeTests.EncryptBytes_Cbc_IVChangesTheCiphertext, ModeTests.EncryptBytes_Ecb_IVDoesNotChangeTheCiphertext, ModeTests.EncryptBytes_Ofb_DiffersFromCfbAfterTheFirstBlock, ModeTests.EncryptBytes_Ctr_DiffersFromCfb, ModeTests.EncryptBytes_Ctr_DiffersFromOfb, ModeTests.EncryptBytes_Cfb_IVChangesTheCiphertext, ModeTests.EncryptBytes_Ecb_RoundTrips, ModeTests.EncryptBytes_Cbc_RoundTrips, ModeTests.EncryptBytes_Cfb_RoundTrips, ModeTests.EncryptBytes_Ofb_RoundTrips, ModeTests.EncryptBytes_Ctr_RoundTrips, ModeTests.EncryptBytes_Gcm_RoundTrips, StandardVectorTests.EncryptBytes_Cfb_Aes128_GivesTheVectorOfSp80038aF313, StandardVectorTests.EncryptBytes_Ofb_Aes128_GivesTheVectorOfSp80038aF41, StandardVectorTests.EncryptBytes_Ctr_Aes128_GivesTheVectorOfSp80038aF51 -->
 > [!WARNING] 1.0.0.4
-> The name of a cipher mode is not always the mode that runs: **ECB** runs CBC, **CBC** runs ECB, and **OFB** and **CTR** run CFB. Neither **ECB** nor **CBC** uses the IV, so the same key and plaintext always give the same ciphertext, and the default mode, **CBC**, gives equal ciphertext blocks for equal plaintext blocks. A test that decrypts what it has encrypted does not show this. [Known problems in version 1.0.0.4](#known-problems-in-version-1004) lists this and the other defects.
+> The name of a cipher mode is not always the mode that runs: **ECB** runs CBC, **CBC** runs ECB, and **OFB** and **CTR** run CFB, whose feedback has 8 bits where the standard CFB has 128. Neither **ECB** nor **CBC** uses the IV, so the same key and plaintext always give the same ciphertext, and the default mode, **CBC**, gives equal ciphertext blocks for equal plaintext blocks. A test that decrypts what it has encrypted does not show this. [Known problems in version 1.0.0.4](#known-problems-in-version-1004) lists this and the other defects.
 
 * TOC
 {:toc}
@@ -146,3 +147,7 @@ The module **mAesUsage** holds ten `Public Sub` procedures that show the package
 - [cAesHelper](cAesHelper) class -- the Base64, UTF-8 and padding functions
 - [mAesConstants](mAesConstants) module -- the enumerations and constants
 - [Importing a package from TWINSERV](../../../../Features/Packages/Importing-TWINSERV) -- adding a published package to a project
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [TBMANLIB_Aes-tests.twinproj](TBMANLIB_Aes-tests.twinproj), a twinBASIC project. It uses TBMANLIB_Aes as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

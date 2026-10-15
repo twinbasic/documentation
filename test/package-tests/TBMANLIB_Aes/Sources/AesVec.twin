@@ -1,0 +1,180 @@
+' AesVec: the byte helpers and the published test vectors the cases of TBMANLIB_Aes use.
+'
+' The vectors are not the package's output. Their sources:
+'   FIPS 197, Appendix C: the example vectors of AES-128, AES-192 and AES-256 (one block).
+'   NIST SP 800-38A, Appendix F: the four-block examples of ECB, CBC, CFB128, OFB and CTR, with the
+'   keys, the IV and the plaintext of Appendix F (Plain4 here), and the initial counter block of CTR.
+'   McGrew and Viega, "The Galois/Counter Mode of Operation", test cases 4, 10 and 16: the GCM
+'   vectors NIST SP 800-38D is based on (60-byte plaintext, 20 bytes of additional data).
+' Every vector was also computed with OpenSSL's AES, which gave the same bytes.
+Module AesVec
+
+    Public Const Key128 As String = "2b7e151628aed2a6abf7158809cf4f3c"
+    Public Const Key192 As String = "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b"
+    Public Const Key256 As String = "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4"
+    Public Const Iv16 As String = "000102030405060708090a0b0c0d0e0f"
+    Public Const CtrIv As String = "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+    Public Const Plain4 As String = "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710"
+
+    ' The run-time error number of "Unspecified error" (&H80004005).
+    Public Const Unspecified As Long = -2147467259
+
+    ' The error that the last Encrypt or Decrypt call of this module raised: 0 when it raised none.
+    Public LastNumber As Long
+    Public LastText As String
+
+    Public Function FromHex(ByVal Text As String) As Byte()
+        Dim b() As Byte
+        Dim i As Long
+        If Len(Text) = 0 Then
+            FromHex = b
+            Exit Function
+        End If
+        ReDim b(Len(Text) \ 2 - 1)
+        For i = 0 To UBound(b)
+            b(i) = CByte("&H" & Mid$(Text, i * 2 + 1, 2))
+        Next
+        FromHex = b
+    End Function
+
+    Public Function Ascii(ByVal Text As String) As Byte()
+        Dim b() As Byte
+        b = StrConv(Text, vbFromUnicode)
+        Ascii = b
+    End Function
+
+    ' The number of elements; 0 for an array that was never sized.
+    Public Function Count(ByRef Bytes() As Byte) As Long
+        On Error Resume Next
+        Count = UBound(Bytes) - LBound(Bytes) + 1
+        If Err.Number <> 0 Then
+            Count = 0
+            Err.Clear
+        End If
+    End Function
+
+    Public Function HexOf(ByRef Bytes() As Byte) As String
+        Dim i As Long
+        Dim s As String
+        If Count(Bytes) = 0 Then Exit Function
+        For i = LBound(Bytes) To UBound(Bytes)
+            s = s & Right$("0" & LCase$(Hex$(Bytes(i))), 2)
+        Next
+        HexOf = s
+    End Function
+
+    ' A cAes with the given mode, key size, padding, key and IV (empty text sets none).
+    Public Function MakeAes(ByVal Mode As AesCipherMode, ByVal KeyBits As Long, ByVal Padding As AesPaddingMode, ByVal KeyHex As String, ByVal IvHex As String) As cAes
+        Dim a As New cAes
+        Dim k() As Byte
+        Dim v() As Byte
+        a.CipherMode = Mode
+        a.KeySize = KeyBits
+        a.PaddingMode = Padding
+        If Len(KeyHex) > 0 Then
+            k = FromHex(KeyHex)
+            a.Key = k
+        End If
+        If Len(IvHex) > 0 Then
+            v = FromHex(IvHex)
+            a.IV = v
+        End If
+        Set MakeAes = a
+    End Function
+
+    ' EncryptBytes with the error kept in LastNumber and LastText; an unsized array when it raised.
+    Public Function Enc(ByVal Aes As cAes, ByRef Plain() As Byte) As Byte()
+        Dim r() As Byte
+        Dim n As Long
+        Dim d As String
+        Err.Clear
+        On Error Resume Next
+        r = Aes.EncryptBytes(Plain)
+        ' The package leaves error 9 in Err after some calls that succeed (its IsArrayEmpty
+        ' does), so a call failed only when it returned nothing.
+        n = Err.Number
+        d = Err.Description
+        If Count(r) = 0 Then
+            LastNumber = n
+            LastText = d
+        Else
+            LastNumber = 0
+            LastText = ""
+        End If
+        On Error GoTo 0
+        Err.Clear
+        Enc = r
+    End Function
+
+    Public Function Dec(ByVal Aes As cAes, ByRef Cipher() As Byte) As Byte()
+        Dim r() As Byte
+        Dim n As Long
+        Dim d As String
+        Err.Clear
+        On Error Resume Next
+        r = Aes.DecryptBytes(Cipher)
+        n = Err.Number
+        d = Err.Description
+        If Count(r) = 0 Then
+            LastNumber = n
+            LastText = d
+        Else
+            LastNumber = 0
+            LastText = ""
+        End If
+        On Error GoTo 0
+        Err.Clear
+        Dec = r
+    End Function
+
+    ' Checks the length of Actual and then each block of 16 bytes against the expected hexadecimal text.
+    Public Sub CheckBlocks(ByVal What As String, ByVal ExpectedHex As String, ByRef Actual() As Byte)
+        Dim i As Long
+        Dim got As String
+        got = HexOf(Actual)
+        Expect.AreEqual Len(ExpectedHex) \ 2, Count(Actual), What & ": length of the output in bytes"
+        For i = 0 To (Len(ExpectedHex) + 31) \ 32 - 1
+            Expect.AreEqual Mid$(ExpectedHex, i * 32 + 1, 32), Mid$(got, i * 32 + 1, 32), What & ": block " & (i + 1)
+        Next
+    End Sub
+
+    Public Sub EncryptAndCheck(ByVal What As String, ByVal Mode As AesCipherMode, ByVal KeyBits As Long, ByVal KeyHex As String, ByVal IvHex As String, ByVal PlainHex As String, ByVal ExpectedHex As String)
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Set a = MakeAes(Mode, KeyBits, AesPaddingMode.NoPadding, KeyHex, IvHex)
+        p = FromHex(PlainHex)
+        c = Enc(a, p)
+        If LastNumber <> 0 Then Expect.Fail What & ": EncryptBytes raised error " & LastNumber & ", " & LastText
+        CheckBlocks What, ExpectedHex, c
+    End Sub
+
+    Public Sub DecryptAndCheck(ByVal What As String, ByVal Mode As AesCipherMode, ByVal KeyBits As Long, ByVal KeyHex As String, ByVal IvHex As String, ByVal CipherHex As String, ByVal ExpectedHex As String)
+        Dim a As cAes
+        Dim c() As Byte
+        Dim p() As Byte
+        Set a = MakeAes(Mode, KeyBits, AesPaddingMode.NoPadding, KeyHex, IvHex)
+        c = FromHex(CipherHex)
+        p = Dec(a, c)
+        If LastNumber <> 0 Then Expect.Fail What & ": DecryptBytes raised error " & LastNumber & ", " & LastText
+        CheckBlocks What, ExpectedHex, p
+    End Sub
+
+    ' Encrypts Plain with the object, decrypts the result with the same object, and checks the round trip.
+    Public Sub CheckRoundTrip(ByVal What As String, ByVal Aes As cAes, ByRef Plain() As Byte)
+        Dim c() As Byte
+        Dim p() As Byte
+        c = Enc(Aes, Plain)
+        If LastNumber <> 0 Then
+            Expect.Fail What & ": EncryptBytes raised error " & LastNumber & ", " & LastText
+            Exit Sub
+        End If
+        p = Dec(Aes, c)
+        If LastNumber <> 0 Then
+            Expect.Fail What & ": DecryptBytes raised error " & LastNumber & ", " & LastText
+            Exit Sub
+        End If
+        Expect.AreEqual HexOf(Plain), HexOf(p), What & ": the decrypted bytes"
+    End Sub
+
+End Module

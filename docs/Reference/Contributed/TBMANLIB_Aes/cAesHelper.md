@@ -38,8 +38,9 @@ A member that fails does not tell why, and what the caller gets depends on the t
 - **Base64Encode** and **Utf8BytesToString**, the members that return a **String**, return an empty string and raise no error. They leave the error in `Err`, which is not cleared: after an array that was never sized, `Err.Number` is 9.
 - **IsArrayEmpty** raises no error, and leaves `Err.Number` at 9 when it tests an array that was never sized.
 
+<!-- test: HelperTests.Base64Decode_EmptyTextRaisesUnspecifiedError, HelperTests.Base64Decode_InvalidTextRaisesUnspecifiedError, HelperTests.Base64Decode_InvalidText_LastErrorNamesTheCause, HelperTests.StringToUtf8Bytes_EmptyTextRaisesUnspecifiedError, HelperTests.ApplyPKCS7Padding_UnsizedArrayRaisesUnspecifiedError, HelperTests.RemovePKCS7Padding_RefusesALastByteOfZero, HelperTests.RemovePKCS7Padding_RefusesACountAbove16, HelperTests.RemovePKCS7Padding_RefusesACountLargerThanTheData, HelperTests.RemovePKCS7Padding_RefusesPaddingBytesThatDiffer, HelperTests.RemovePKCS7Padding_RefusesDataThatIsAllPadding, HelperTests.RemovePKCS7Padding_InvalidPadding_LastErrorNamesTheCause, HelperTests.RemoveZeroPadding_ArrayOfZeroBytesRaisesUnspecifiedError -->
 > [!NOTE] 1.0.0.4
-> The members that raise **Unspecified error** do so for the failures that [**cAes**](cAes) cannot recover from as well. A program that calls one of them with an input that can be empty or damaged needs an `On Error` statement, and cannot tell the causes apart by the error.
+> The members that raise **Unspecified error** do so for the failures that [**cAes**](cAes) cannot recover from as well. A program that calls one of them with an input that can be empty or damaged needs an `On Error` statement, and cannot tell the causes apart by the error or by [**LastError**](#lasterror), which holds a general text and not the cause.
 
 Every member that reads an array reads its first element as the element with index 0. An array with another lower bound fails: **Base64Encode** returns an empty string with the [**LastError**](#lasterror) text `Base64 encoding exception: Subscript out of range`, and **ApplyPKCS7Padding** raises **Unspecified error**, after it has set the text `PKCS7 padding exception: Subscript out of range`.
 
@@ -98,7 +99,9 @@ Syntax: *object*.**ApplyPKCS7Padding** ( *data*, *blockSize* ) **As Byte()**
 *blockSize*
 : *required* A **Long**, the block size in bytes. [**cAes**](cAes) passes 16. The padding bytes hold their own count, so the value must be at most 255.
 
+<!-- test: HelperTests.ApplyPKCS7Padding_AddsTheCountOfTheBytesAdded -->
 The function adds from 1 to *blockSize* bytes, to make the length a multiple of *blockSize*. Each added byte holds the number of bytes added. Data whose length is already a multiple of *blockSize* gets a whole block, *blockSize* bytes holding the value *blockSize*. The result is a new array with index 0 as its first element.
+<!-- /test -->
 
 An array that was never sized raises **Unspecified error**, as [Failures](#failures) describes.
 
@@ -132,7 +135,9 @@ Syntax: *object*.**ApplyZeroPadding** ( *data*, *blockSize* ) **As Byte()**
 *blockSize*
 : *required* A **Long**, the block size in bytes. [**cAes**](cAes) passes 16.
 
+<!-- test: HelperTests.ApplyZeroPadding_AddsZeroBytesToAWholeBlock, HelperTests.ApplyZeroPadding_UnsizedArrayGivesOneBlockOfZeroBytes -->
 The function adds from 1 to *blockSize* zero bytes, to make the length a multiple of *blockSize*. Data whose length is already a multiple of *blockSize* gets a whole block of zero bytes. An array that was never sized gives one block of *blockSize* zero bytes, and no error.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim helper As New cAesHelper
@@ -158,7 +163,9 @@ Syntax: *object*.**Base64Decode** ( *base64* ) **As Byte()**
 *base64*
 : *required* A **String** of Base64 text.
 
+<!-- test: HelperTests.Base64Decode_GivesTheVectorsOfRfc4648, HelperTests.Base64Decode_SkipsLineBreaksAndSpaces -->
 The function calls the Windows function `CryptStringToBinaryW` with the format `CRYPT_STRING_BASE64`, Base64 without a header. Line breaks and spaces in the text are skipped. The result is a new array with index 0 as its first element.
+<!-- /test -->
 
 An empty string and text that Windows cannot decode both raise **Unspecified error**, and [**LastError**](#lasterror) holds `Base64 decoding exception: Unspecified error`.
 
@@ -172,7 +179,9 @@ Syntax: *object*.**Base64Encode** ( *data* ) **As String**
 *data*
 : *required* A **Byte** array, passed by reference.
 
+<!-- test: HelperTests.Base64Encode_GivesTheVectorsOfRfc4648, HelperTests.Base64Encode_WritesOneLineWithTheStandardAlphabet, HelperTests.Base64Encode_UnsizedArrayGivesAnEmptyString -->
 The function calls the Windows function `CryptBinaryToStringW` with the format `CRYPT_STRING_BASE64` and the flag `CRYPT_STRING_NOCRLF`. The result is Base64 text of the usual alphabet (`A`-`Z`, `a`-`z`, `0`-`9`, `+` and `/`) with `=` at the end when the last group is short, on one line, with no header and no line break. An array that was never sized gives an empty string, with no text in [**LastError**](#lasterror).
+<!-- /test -->
 
 ```tb check_build check_run
 Dim helper As New cAesHelper
@@ -192,7 +201,9 @@ Syntax: *object*.**IsArrayEmpty** ( *arr* ) **As Boolean**
 *arr*
 : *required* A **Byte** array variable, passed by reference.
 
+<!-- test: HelperTests.IsArrayEmpty_TellsASizedArrayFromAnUnsizedOne -->
 Returns **True** when the array has no elements, because its upper bound is lower than its lower bound or because it was never given a size. Returns **False** otherwise. The function does not raise an error and does not use [**LastError**](#lasterror). It leaves `Err.Number` at 9 when the array was never sized, because it tests the array with `UBound` under `On Error Resume Next` and does not clear the error.
+<!-- /test -->
 
 A program uses it to test the arrays that [**cAes**](cAes) keeps in its properties, such as [**Key**](cAes#key) and [**GcmTag**](cAes#gcmtag), when they may not be set.
 
@@ -216,9 +227,11 @@ Syntax: *object*.**RemovePKCS7Padding** ( *data* ) **As Byte()**
 *data*
 : *required* A **Byte** array, passed by reference. The function does not change it.
 
+<!-- test: HelperTests.RemovePKCS7Padding_TakesOffTheCountedBytes -->
 The function reads the last byte as the count of padding bytes. It checks that the count is from 1 to 16, that it is not greater than the length of the array, and that the last *count* bytes are all equal to it. The largest count is the constant **BLOCK_SIZE_128**, whatever block size the data was padded with; the function does not check that the length of the array is a multiple of 16.
 
 When a check fails, and when the padding is the whole array, the function raises **Unspecified error**, and [**LastError**](#lasterror) holds `PKCS7 unpadding exception: Unspecified error`. The check cannot tell padded data from other data that happens to end in valid padding bytes, so it does not prove that the data is intact.
+<!-- /test -->
 
 ### RemoveZeroPadding
 {: .no_toc }
@@ -230,7 +243,9 @@ Syntax: *object*.**RemoveZeroPadding** ( *data* ) **As Byte()**
 *data*
 : *required* A **Byte** array, passed by reference. The function does not change it.
 
+<!-- test: HelperTests.RemoveZeroPadding_TakesOffTheTrailingZeroBytes -->
 The function finds the last byte that is not zero and returns the array up to and including that byte. It does not know how many bytes were added, so it also removes zero bytes that belong to the data. An array that holds only zero bytes raises **Unspecified error**, and [**LastError**](#lasterror) holds `Zero unpadding exception: Unspecified error`.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim helper As New cAesHelper
@@ -256,7 +271,9 @@ Syntax: *object*.**StringToUtf8Bytes** ( *text* ) **As Byte()**
 *text*
 : *required* A **String**.
 
+<!-- test: HelperTests.StringToUtf8Bytes_GivesTheBytesOfUtf8 -->
 The function calls the Windows function `WideCharToMultiByte` with the UTF-8 code page. The result is a new array with index 0 as its first element, without a byte order mark and without a terminating zero byte. An empty string raises **Unspecified error**, and [**LastError**](#lasterror) holds `String conversion exception: Unspecified error`.
+<!-- /test -->
 
 [**EncryptString**](cAes#encryptstring) encodes its text with this function.
 
@@ -280,7 +297,9 @@ Syntax: *object*.**Utf8BytesToString** ( *bytes* ) **As String**
 *bytes*
 : *required* A **Byte** array, passed by reference.
 
+<!-- test: HelperTests.Utf8BytesToString_ReadsUtf8, HelperTests.Utf8BytesToString_InvalidBytesBecomeTheReplacementCharacter, HelperTests.Utf8BytesToString_UnsizedArrayGivesAnEmptyStringAndSetsLastError -->
 The function calls the Windows function `MultiByteToWideChar` with the UTF-8 code page. A byte sequence that is not valid UTF-8 becomes the character U+FFFD. An array with no elements gives an empty string. An array that was never sized also gives an empty string, with `Err.Number` left at 9 and the [**LastError**](#lasterror) text `Byte conversion exception: Subscript out of range`.
+<!-- /test -->
 
 [**DecryptString**](cAes#decryptstring) decodes its result with this function.
 

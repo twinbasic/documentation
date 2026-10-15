@@ -98,7 +98,6 @@ const PENDING = new Set([
   "AutoCompleteLib",
   "BigNumberLib",
   "TBMANLIB",
-  "TBMANLIB_Aes",
   "TBMANLIB_ConsoleComponents",
   "TBMANLIB_Dialog",
   "TBMANLIB_Xml",

@@ -1,0 +1,214 @@
+' TBMANLIB_Aes, cAes: what a failed call gives the caller.
+'
+' EncryptBytes and DecryptBytes raise "Unspecified error" (&H80004005, -2147467259) for every
+' cause. EncryptString and DecryptString return an empty string and raise nothing. A call that
+' fails should say why: the error names the cause, or LastError holds it.
+[TestFixture]
+Module FailureTests
+
+    Private Function GcmWithADamagedTag(ByRef Cipher() As Byte) As cAes
+        Dim a As cAes
+        Dim p() As Byte
+        Dim t() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.GCM, 128, AesPaddingMode.NoPadding, AesVec.Key128, "cafebabefacedbaddecaf888")
+        p = AesVec.Ascii("Hello, AES!")
+        Cipher = AesVec.Enc(a, p)
+        t = a.GcmTag
+        t(0) = t(0) Xor 1
+        a.GcmTag = t
+        Set GcmWithADamagedTag = a
+    End Function
+
+    ' ---- EncryptBytes and DecryptBytes
+
+    [TestCase]
+    Public Sub EncryptBytes_NoKey_RaisesUnspecifiedError()
+        Expect.Begin
+        Dim a As New cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        p = AesVec.Ascii("text")
+        c = AesVec.Enc(a, p)
+        Expect.AreEqual AesVec.Unspecified, AesVec.LastNumber, "error number of EncryptBytes with no key"
+        Expect.AreEqual "Unspecified error", AesVec.LastText, "error description of EncryptBytes with no key"
+        Expect.AreEqual 0, AesVec.Count(c), "bytes returned"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_NoKey_ErrorNamesTheCause()
+        Expect.Begin
+        Dim a As New cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        p = AesVec.Ascii("text")
+        c = AesVec.Enc(a, p)
+        Expect.AreEqual "Key not set", AesVec.LastText, "error description of EncryptBytes with no key"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_EmptyInput_RaisesUnspecifiedError()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key128, AesVec.Iv16)
+        c = AesVec.Enc(a, p)
+        Expect.AreEqual AesVec.Unspecified, AesVec.LastNumber, "error number of EncryptBytes with an array that was never sized"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_NoKey_RaisesUnspecifiedError()
+        Expect.Begin
+        Dim a As New cAes
+        Dim c() As Byte
+        Dim d() As Byte
+        c = AesVec.FromHex("000102030405060708090a0b0c0d0e0f")
+        d = AesVec.Dec(a, c)
+        Expect.AreEqual AesVec.Unspecified, AesVec.LastNumber, "error number of DecryptBytes with no key"
+        Expect.AreEqual "Unspecified error", AesVec.LastText, "error description of DecryptBytes with no key"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_NoKey_ErrorNamesTheCause()
+        Expect.Begin
+        Dim a As New cAes
+        Dim c() As Byte
+        Dim d() As Byte
+        c = AesVec.FromHex("000102030405060708090a0b0c0d0e0f")
+        d = AesVec.Dec(a, c)
+        Expect.AreEqual "Key not set", AesVec.LastText, "error description of DecryptBytes with no key"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_GcmDamagedTag_ErrorNamesTheCause()
+        Expect.Begin
+        Dim a As cAes
+        Dim c() As Byte
+        Dim d() As Byte
+        Set a = GcmWithADamagedTag(c)
+        d = AesVec.Dec(a, c)
+        Expect.IsTrue AesVec.LastNumber <> 0 And AesVec.LastText <> "Unspecified error", "error description of DecryptBytes with a damaged GCM tag names the cause (got " & AesVec.LastText & ")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_Cfb_InvalidPadding_RaisesUnspecifiedError()
+        Expect.Begin
+        Dim a As cAes
+        Dim b As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim d() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.NoPadding, AesVec.Key128, AesVec.Iv16)
+        Set b = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.Ascii("0123456789abcdef")
+        c = AesVec.Enc(a, p)
+        d = AesVec.Dec(b, c)
+        Expect.AreEqual AesVec.Unspecified, AesVec.LastNumber, "error number of DecryptBytes with a padding that is not valid"
+        Expect.AreEqual "PKCS7 unpadding exception: Unspecified error", b.LastError, "LastError after the failure"
+        Expect.Done
+    End Sub
+
+    ' ---- EncryptString and DecryptString
+
+    [TestCase]
+    Public Sub EncryptString_NoKey_ReturnsAnEmptyString()
+        Expect.Begin
+        Dim a As New cAes
+        Dim s As String
+        s = a.EncryptString("text")
+        Expect.AreEqual "", s, "EncryptString with no key"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptString_NoKey_ReportsTheFailure()
+        Expect.Begin
+        Dim a As New cAes
+        Dim s As String
+        s = a.EncryptString("text")
+        Expect.IsTrue Len(a.LastError) > 0, "LastError after EncryptString with no key"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptString_EmptyText_ReturnsAnEmptyString()
+        Expect.Begin
+        Dim a As cAes
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key128, AesVec.Iv16)
+        Expect.AreEqual "", a.EncryptString(""), "EncryptString of an empty text"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptString_GcmDamagedTag_ReturnsAnEmptyString()
+        Expect.Begin
+        Dim a As cAes
+        Dim c() As Byte
+        Dim h As New cAesHelper
+        Set a = GcmWithADamagedTag(c)
+        Expect.AreEqual "", a.DecryptString(h.Base64Encode(c)), "DecryptString of a GCM message with a damaged tag"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptString_GcmDamagedTag_ReportsTheFailure()
+        Expect.Begin
+        Dim a As cAes
+        Dim c() As Byte
+        Dim h As New cAesHelper
+        Dim s As String
+        Set a = GcmWithADamagedTag(c)
+        s = a.DecryptString(h.Base64Encode(c))
+        Expect.IsTrue Len(a.LastError) > 0, "LastError after DecryptString of a GCM message with a damaged tag"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptString_InvalidBase64_ReturnsAnEmptyStringAndSetsLastError()
+        Expect.Begin
+        Dim a As cAes
+        Dim s As String
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key128, AesVec.Iv16)
+        s = a.DecryptString("!!! not base64")
+        Expect.AreEqual "", s, "DecryptString of text that is not Base64"
+        Expect.AreEqual "Base64 decoding exception: Unspecified error", a.LastError, "LastError after the failure"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LastError_IsNotClearedByALaterSuccess()
+        Expect.Begin
+        Dim a As cAes
+        Dim s As String
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key128, AesVec.Iv16)
+        Expect.AreEqual "", a.LastError, "LastError of a new object"
+        s = a.DecryptString("!!! not base64")
+        s = a.DecryptString(a.EncryptString("Hello, AES!"))
+        Expect.AreEqual "Hello, AES!", s, "a round trip after the failure"
+        Expect.AreEqual "Base64 decoding exception: Unspecified error", a.LastError, "LastError after the successful round trip"
+        Expect.Done
+    End Sub
+
+    ' ---- a wrong key in a mode that does not verify
+
+    [TestCase]
+    Public Sub DecryptString_WrongKeyWithNoPadding_ReturnsOtherText()
+        Expect.Begin
+        Dim writer As cAes
+        Dim reader As cAes
+        Dim s As String
+        Set writer = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.NoPadding, "30313233343536373839616263646566", AesVec.Iv16)
+        Set reader = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.NoPadding, "30313233343536373839616263646567", AesVec.Iv16)
+        s = reader.DecryptString(writer.EncryptString("Hello, AES!"))
+        Expect.IsTrue Len(s) > 0, "DecryptString with a wrong key and NoPadding returns text"
+        Expect.IsTrue s <> "Hello, AES!", "the text that a wrong key gives is not the plaintext"
+        Expect.Done
+    End Sub
+
+End Module

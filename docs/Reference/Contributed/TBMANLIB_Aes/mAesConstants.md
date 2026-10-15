@@ -12,6 +12,7 @@ Holds the three enumerations of the package, the sizes of AES keys and blocks, t
 
 The enumerations are the types of the [**CipherMode**](cAes#ciphermode), [**KeySize**](cAes#keysize) and [**PaddingMode**](cAes#paddingmode) properties of **cAes** and of the parameters of its constructor. A member is written with its enumeration, as in `AesCipherMode.GCM`. The constants are written with the module, as in `mAesConstants.KEY_SIZE_256`.
 
+<!-- test: DefaultsAndConstantsTests.Enumerations_HaveTheDocumentedValues, DefaultsAndConstantsTests.PackageConstants_HaveTheDocumentedValues -->
 ```tb check_build check_run
 Debug.Print AesCipherMode.GCM              ' 6
 Debug.Print AesPaddingMode.NoPadding       ' 3
@@ -20,6 +21,7 @@ Debug.Print mAesConstants.KEY_SIZE_192     ' 24
 Debug.Print mAesConstants.BLOCK_SIZE_128   ' 16
 Debug.Print mAesConstants.VERSION          ' 1.0.0
 ```
+<!-- /test -->
 
 * TOC
 {:toc}
@@ -40,8 +42,9 @@ The cipher mode that a [**cAes**](cAes) uses. Default: **CBC**.
 | **CTR** | 5 | CNG | CFB with an 8-bit feedback |
 | **GCM** | 6 | CNG | GCM, with a 12-byte nonce and a 16-byte tag |
 
+<!-- test: ModeTests.EncryptBytes_Ecb_EqualPlainBlocksGiveEqualCipherBlocks, ModeTests.EncryptBytes_Cbc_EqualPlainBlocksGiveDifferentCipherBlocks, ModeTests.EncryptBytes_Cbc_DefaultModeGivesDifferentCipherBlocksForEqualPlainBlocks, ModeTests.EncryptBytes_Cbc_IVChangesTheCiphertext, ModeTests.EncryptBytes_Ecb_IVDoesNotChangeTheCiphertext, ModeTests.EncryptBytes_Ofb_DiffersFromCfbAfterTheFirstBlock, ModeTests.EncryptBytes_Ctr_DiffersFromCfb, ModeTests.EncryptBytes_Ctr_DiffersFromOfb, ModeTests.EncryptBytes_Cfb_IVChangesTheCiphertext, ModeTests.EncryptBytes_Ecb_RoundTrips, ModeTests.EncryptBytes_Cbc_RoundTrips, ModeTests.EncryptBytes_Cfb_RoundTrips, ModeTests.EncryptBytes_Ofb_RoundTrips, ModeTests.EncryptBytes_Ctr_RoundTrips, ModeTests.EncryptBytes_Gcm_RoundTrips, StandardVectorTests.EncryptBytes_Cfb_Aes128_GivesTheVectorOfSp80038aF313, StandardVectorTests.EncryptBytes_Ofb_Aes128_GivesTheVectorOfSp80038aF41, StandardVectorTests.EncryptBytes_Ctr_Aes128_GivesTheVectorOfSp80038aF51 -->
 > [!WARNING] 1.0.0.4
-> The name of a mode is not always the mode that runs. **ECB** runs CBC with an IV of zero bytes, **CBC** runs ECB, and **OFB** and **CTR** run CFB. Neither **ECB** nor **CBC** uses the IV that the program sets, so the same key and plaintext always give the same ciphertext, and the default mode, **CBC**, gives equal ciphertext blocks for equal plaintext blocks. Encryption and decryption agree with each other, so a round trip succeeds and shows nothing. [**cAes**](cAes#which-mode-runs) describes each mode in detail.
+> The name of a mode is not always the mode that runs. **ECB** runs CBC with an IV of zero bytes, **CBC** runs ECB, and **OFB** and **CTR** run CFB, whose feedback has 8 bits where the standard CFB has 128. Neither **ECB** nor **CBC** uses the IV that the program sets, so the same key and plaintext always give the same ciphertext, and the default mode, **CBC**, gives equal ciphertext blocks for equal plaintext blocks. Encryption and decryption agree with each other, so a round trip succeeds and shows nothing. [**cAes**](cAes#which-mode-runs) describes each mode in detail.
 
 The Crypto API is the older interface of Windows (`advapi32.dll`), and CNG, Cryptography API: Next Generation, the newer one (`bcrypt.dll`). **cAes** uses the Crypto API for **ECB** and **CBC**, and CNG for the other four modes.
 
@@ -70,6 +73,7 @@ How [**cAes**](cAes) fills the last block of the data before it encrypts, and ho
 | **NoPadding** | 3 | Adds nothing. | Takes nothing off. |
 | **ISO10126** | 4 | Adds nothing, as **NoPadding**. | Takes nothing off, as **NoPadding**. |
 
+<!-- test: PaddingTests.EncryptBytes_Iso10126_PadsToTheNextWholeBlock -->
 > [!WARNING] 1.0.0.4
 > **ISO10126** is not implemented. It behaves as **NoPadding**, and no error says so. The comment in the source calls the member "ISO/IEC 7816-4 padding", a scheme that differs from ISO 10126, and neither is applied.
 
@@ -100,10 +104,11 @@ The length in bytes of a 256-bit key: 32, a **Long**.
 ### VERSION
 {: .no_toc }
 
-The text `1.0.0`, a **String**. It is the version in the headers of the source files. The version of the package is 1.0.0.2, and **VERSION** is not used by any code of the package.
+The text `1.0.0`, a **String**. It is the version in the headers of the source files. The version of the package is 1.0.0.4, and **VERSION** is not used by any code of the package.
 
 ## Windows constants
 
+<!-- test: DefaultsAndConstantsTests.WindowsConstants_MatchWincryptHExceptTheFive -->
 These constants have the names and, with five exceptions, the values of the constants that the Windows header `wincrypt.h` defines. **cAes** and **cAesHelper** pass them to the Crypto API functions. A program does not need them.
 
 | Constant | Value | Names | Used by the package |
@@ -135,6 +140,7 @@ These constants have the names and, with five exceptions, the values of the cons
 | **CRYPT_STRING_NOCRLF** | &H40000000 | The `CryptBinaryToString` flag: no line breaks | yes |
 
 All are **Long** constants. They are meant for the Crypto API functions that the module **mWin32CryptoAPI** wraps, described on the [landing page](.#declaration-modules).
+<!-- /test -->
 
 Five values differ from `wincrypt.h`:
 
@@ -146,7 +152,9 @@ Five values differ from `wincrypt.h`:
 | **CRYPT_MODE_OFB** | 4 | 3 |
 | **ZERO_PADDING** | 2 | 3 |
 
+<!-- test: DefaultsAndConstantsTests.CryptModeConstants_EcbAndCbcMatchWincryptH -->
 **cAes** gives the value of **CRYPT_MODE_ECB** to the Crypto API when the mode is **ECB**, and the Crypto API reads 1 as CBC. That is why the modes **ECB** and **CBC** are swapped, as the warning under [AesCipherMode](#aesciphermode) says. Nothing in the package reads **ZERO_PADDING**.
+<!-- /test -->
 
 ## See Also
 
