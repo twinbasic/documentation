@@ -1,0 +1,130 @@
+' DialogDriver: operates the modeless Find and Replace dialogs of a CommonDialog from inside the
+' test, with the messages the user's mouse and keyboard make, so no case waits for a person.
+'
+' ShowFind and ShowReplace create their dialog and return at once, and the dialog sends the
+' dialog's owner a registered message when one of its buttons is pressed. A button is pressed
+' here with BM_CLICK, which makes the dialog send that message exactly as a click does, text is
+' typed with WM_SETTEXT, and a dialog is closed with WM_CLOSE. Nothing is modal, so nothing can
+' hold the test. The dialogs are on the desktop the test runs on.
+Module DialogDriver
+
+    Private Declare PtrSafe Function GetDlgItem Lib "user32" (ByVal hDlg As LongPtr, ByVal nID As Long) As LongPtr
+    Private Declare PtrSafe Function GetWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal uCmd As Long) As LongPtr
+    Private Declare PtrSafe Function IsWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function IsWindowEnabled Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function RegisterWindowMessageW Lib "user32" (ByVal lpString As LongPtr) As Long
+
+    Private Const WM_CLOSE As Long = &H10
+    Private Const WM_SETTEXT As Long = &HC
+    Private Const BM_CLICK As Long = &HF5
+    Private Const GW_OWNER As Long = 4
+
+    ' The control IDs of the Find and Replace dialogs of comdlg32 (dlgs.h).
+    Public Const IDC_FIND_NEXT As Long = 1          ' IDOK
+    Public Const IDC_REPLACE As Long = &H400        ' psh1
+    Public Const IDC_REPLACE_ALL As Long = &H401    ' psh2
+    Public Const IDC_HELP As Long = &H40E           ' pshHelp
+    Public Const IDC_FIND_WHAT As Long = &H480      ' edt1
+    Public Const IDC_REPLACE_WITH As Long = &H481   ' edt2
+
+    ' The FINDREPLACE structure a dialog sends its owner with the registered message.
+    Private Type FINDREPLACE
+        lStructSize As Long
+        hWndOwner As LongPtr
+        hInstance As LongPtr
+        Flags As Long
+        lpstrFindWhat As LongPtr
+        lpstrReplaceWith As LongPtr
+        wFindWhatLen As Integer
+        wReplaceWithLen As Integer
+        lCustData As LongPtr
+        lpfnHook As LongPtr
+        lpTemplateName As LongPtr
+    End Type
+
+    ' Presses the button with the given ID. False when the dialog has no such button or the button is disabled.
+    Public Function Press(ByVal hDlg As LongPtr, ByVal ControlId As Long) As Boolean
+        Dim hBtn As LongPtr
+        hBtn = GetDlgItem(hDlg, ControlId)
+        If hBtn = 0 Then Exit Function
+        If IsWindowEnabled(hBtn) = 0 Then Exit Function
+        SendMessageW hBtn, BM_CLICK, 0, 0
+        Press = True
+    End Function
+
+    ' Types Text into the edit box with the given ID.
+    Public Function TypeText(ByVal hDlg As LongPtr, ByVal ControlId As Long, ByVal Text As String) As Boolean
+        Dim hEdit As LongPtr
+        hEdit = GetDlgItem(hDlg, ControlId)
+        If hEdit = 0 Then Exit Function
+        SendMessageW hEdit, WM_SETTEXT, 0, StrPtr(Text)
+        TypeText = True
+    End Function
+
+    ' Sends the owner of the dialog the message the dialog sends it when a button with these
+    ' FR_ flags is pressed. The edit boxes are not read (the strings are Null).
+    Public Sub SendToOwner(ByVal hDlg As LongPtr, ByVal FrFlags As Long)
+        Dim fr As FINDREPLACE
+        fr.lStructSize = LenB(fr)
+        fr.Flags = FrFlags
+        fr.lCustData = hDlg
+        SendMessageW GetWindow(hDlg, GW_OWNER), RegisterWindowMessageW(StrPtr("commdlg_FindReplace")), 0, VarPtr(fr)
+    End Sub
+
+    ' ---- a box a modal call opens
+
+    Private Declare PtrSafe Function SetTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr
+    Private Declare PtrSafe Function KillTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal uIDEvent As LongPtr) As Long
+    Private Declare PtrSafe Function EnumThreadWindows Lib "user32" (ByVal dwThreadId As Long, ByVal lpfn As LongPtr, ByVal lParam As LongPtr) As Long
+    Private Declare PtrSafe Function GetCurrentThreadId Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetClassNameW Lib "user32" (ByVal hWnd As LongPtr, ByVal lpClassName As LongPtr, ByVal nMaxCount As Long) As Long
+    Private Declare PtrSafe Function IsWindowVisible Lib "user32" (ByVal hWnd As LongPtr) As Long
+
+    Private mTimer As LongPtr
+    Private mDismissed As Long
+
+    ' Arms a timer which, while the next modal call runs, closes any dialog box that call opens
+    ' (class #32770: a message box, or a common dialog). The modal call's own message loop
+    ' delivers the timer. Call StopDismissing after the call; it returns how many boxes were closed.
+    Public Sub StartDismissing()
+        mDismissed = 0
+        mTimer = SetTimer(0, 0, 250, AddressOf DismissTick)
+    End Sub
+
+    Public Function StopDismissing() As Long
+        If mTimer <> 0 Then KillTimer 0, mTimer
+        mTimer = 0
+        StopDismissing = mDismissed
+    End Function
+
+    Private Sub DismissTick(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal idEvent As LongPtr, ByVal dwTime As Long)
+        EnumThreadWindows GetCurrentThreadId(), AddressOf DismissWindow, 0
+    End Sub
+
+    Private Function DismissWindow(ByVal hWnd As LongPtr, ByVal lParam As LongPtr) As Long
+        Dim cls As String
+        cls = Space$(64)
+        Dim n As Long
+        n = GetClassNameW(hWnd, StrPtr(cls), 64)
+        If Left$(cls, n) = "#32770" Then
+            If IsWindowVisible(hWnd) <> 0 Then
+                mDismissed = mDismissed + 1
+                SendMessageW hWnd, WM_CLOSE, 0, 0
+            End If
+        End If
+        DismissWindow = 1
+    End Function
+
+    ' Closes the dialog, as its close button does; the dialog then tells its owner it is ending.
+    Public Sub CloseDialog(ByVal hDlg As LongPtr)
+        If hDlg = 0 Then Exit Sub
+        If IsWindow(hDlg) <> 0 Then SendMessageW hDlg, WM_CLOSE, 0, 0
+    End Sub
+
+    Public Function Exists(ByVal hDlg As LongPtr) As Boolean
+        If hDlg = 0 Then Exit Function
+        Exists = (IsWindow(hDlg) <> 0)
+    End Function
+
+End Module

@@ -1,0 +1,258 @@
+' CommonDialog: the Find and Replace dialogs, and the events that need the hook and the ones that do not.
+'
+' Both dialogs are modeless, so a case opens one, presses its buttons with DialogDriver and closes
+' it. A dialog the case opened is closed before the case ends.
+[TestFixture]
+Module FindReplaceTests
+
+    [TestCase]
+    Public Sub InitDialog_FindWithoutHook_NotRaised()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        dlg.HookEvents = False
+        Dim h As LongPtr
+        h = dlg.ShowFind
+        Expect.IsTrue DialogDriver.Exists(h), "ShowFind with HookEvents False opens the Find dialog"
+        Expect.AreEqual 0, snk.InitDialogs, "InitDialog events raised by ShowFind with HookEvents False"
+        DialogDriver.CloseDialog h
+        snk.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InitDialog_FindWithHook_Raised()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        dlg.HookEvents = True
+        Dim h As LongPtr
+        h = dlg.ShowFind
+        Expect.AreEqual 1, snk.InitDialogs, "InitDialog events raised by ShowFind with HookEvents True"
+        Expect.AreEqual 9, snk.LastInitAction, "Action argument of that InitDialog event (9 = Find)"
+        DialogDriver.CloseDialog h
+        snk.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InitDialog_ReplaceWithHook_Raised()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        dlg.HookEvents = True
+        Dim h As LongPtr
+        h = dlg.ShowReplace
+        Expect.AreEqual 1, snk.InitDialogs, "InitDialog events raised by ShowReplace with HookEvents True"
+        Expect.AreEqual 10, snk.LastInitAction, "Action argument of that InitDialog event (10 = Replace)"
+        DialogDriver.CloseDialog h
+        snk.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InitDialog_HookEventsSetAfterShow_NotRaised()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        Dim h As LongPtr
+        h = dlg.ShowFind
+        dlg.HookEvents = True
+        Expect.AreEqual 0, snk.InitDialogs, "InitDialog events raised by a ShowFind call that began with HookEvents False and set it to True after"
+        DialogDriver.CloseDialog h
+        snk.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindNext_WithoutHook_Raised()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        dlg.HookEvents = False
+        dlg.FindWhat = "start"
+        Dim h As LongPtr
+        h = dlg.ShowFind
+        Expect.IsTrue DialogDriver.TypeText(h, DialogDriver.IDC_FIND_WHAT, "typed"), "typing into the Find what box"
+        Expect.IsTrue DialogDriver.Press(h, DialogDriver.IDC_FIND_NEXT), "pressing Find Next"
+        Expect.AreEqual 1, snk.FindNexts, "FindNext events raised with HookEvents False"
+        Expect.AreEqual "typed", snk.FindWhatAtEvent, "FindWhat inside the FindNext event"
+        Expect.AreEqual "typed", dlg.FindWhat, "FindWhat after the FindNext event"
+        DialogDriver.CloseDialog h
+        snk.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindNext_FlagsUpdatedBeforeEvent()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        dlg.HookEvents = True
+        dlg.FindWhat = "x"
+        Dim h As LongPtr
+        h = dlg.ShowFind
+        Expect.IsTrue DialogDriver.Press(h, DialogDriver.IDC_FIND_NEXT), "pressing Find Next"
+        Expect.AreEqual CdlFRFindNext, snk.FlagsAtEvent And CdlFRFindNext, "the CdlFRFindNext bit of Flags inside the FindNext event"
+        Expect.AreEqual 0, snk.FlagsAtEvent And &H100&, "the hook bit (&H100) of Flags inside the FindNext event, with HookEvents True"
+        DialogDriver.CloseDialog h
+        snk.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Replace_WithoutHook_Raised()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        dlg.HookEvents = False
+        dlg.FindWhat = "start"
+        dlg.ReplaceWith = "begin"
+        Dim h As LongPtr
+        h = dlg.ShowReplace
+        Expect.IsTrue DialogDriver.TypeText(h, DialogDriver.IDC_FIND_WHAT, "typed"), "typing into the Find what box"
+        Expect.IsTrue DialogDriver.TypeText(h, DialogDriver.IDC_REPLACE_WITH, "other"), "typing into the Replace with box"
+        Expect.IsTrue DialogDriver.Press(h, DialogDriver.IDC_REPLACE), "pressing Replace"
+        Expect.AreEqual 1, snk.Replaces, "Replace events raised with HookEvents False"
+        Expect.AreEqual "typed", snk.FindWhatAtEvent, "FindWhat inside the Replace event"
+        Expect.AreEqual "other", snk.ReplaceWithAtEvent, "ReplaceWith inside the Replace event"
+        DialogDriver.CloseDialog h
+        snk.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Help_FindWithoutHook_Raised()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        dlg.HookEvents = False
+        dlg.Flags = CdlFRHelpButton
+        Dim h As LongPtr
+        h = dlg.ShowFind
+        Expect.IsTrue DialogDriver.Press(h, DialogDriver.IDC_HELP), "pressing Help in the Find dialog"
+        Expect.AreEqual 1, snk.Helps, "Help events raised with HookEvents False"
+        Expect.AreEqual 9, snk.LastHelpAction, "Action argument of that Help event (9 = Find)"
+        DialogDriver.CloseDialog h
+        snk.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowFind_WhileOpen_ReturnsZero()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim h As LongPtr, h2 As LongPtr
+        h = dlg.ShowFind
+        Expect.IsTrue h <> 0, "ShowFind returns the handle of the dialog it opened"
+        h2 = dlg.ShowFind
+        Expect.AreEqual 0, CLng(h2), "second ShowFind while the first dialog is open"
+        DialogDriver.CloseDialog h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowReplace_WhileFindOpen_ReturnsZero()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim h As LongPtr, h2 As LongPtr
+        h = dlg.ShowFind
+        h2 = dlg.ShowReplace
+        Expect.AreEqual 0, CLng(h2), "ShowReplace while a Find dialog of the same object is open"
+        DialogDriver.CloseDialog h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowFind_AfterClose_OpensAgain()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim h As LongPtr, h2 As LongPtr
+        h = dlg.ShowFind
+        DialogDriver.CloseDialog h
+        Expect.IsFalse DialogDriver.Exists(h), "the first dialog after it is closed"
+        h2 = dlg.ShowFind
+        Expect.IsTrue h2 <> 0, "ShowFind after the first dialog is closed"
+        DialogDriver.CloseDialog h2
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReplaceAll_ButtonRaisesEvent()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        dlg.FindWhat = "x"
+        dlg.ReplaceWith = "y"
+        Dim h As LongPtr
+        h = dlg.ShowReplace
+        Expect.IsTrue DialogDriver.Press(h, DialogDriver.IDC_REPLACE_ALL), "pressing Replace All"
+        Expect.AreEqual 1, snk.ReplaceAlls, "ReplaceAll events raised by pressing Replace All"
+        DialogDriver.CloseDialog h
+        snk.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReplaceAll_MessageRaisesEvent()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        dlg.FindWhat = "x"
+        dlg.ReplaceWith = "y"
+        Dim h As LongPtr
+        h = dlg.ShowReplace
+        DialogDriver.SendToOwner h, CdlFRReplaceAll
+        Expect.AreEqual 1, snk.ReplaceAlls, "ReplaceAll events raised by the message a Replace All press sends (FR_REPLACEALL)"
+        DialogDriver.CloseDialog h
+        snk.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReplaceAll_MessageForReplaceRaisesReplace()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        dlg.FindWhat = "x"
+        dlg.ReplaceWith = "y"
+        Dim h As LongPtr
+        h = dlg.ShowReplace
+        DialogDriver.SendToOwner h, CdlFRReplace
+        Expect.AreEqual 1, snk.Replaces, "Replace events raised by the message a Replace press sends (FR_REPLACE), the control for the ReplaceAll cases"
+        Expect.AreEqual 0, snk.ReplaceAlls, "ReplaceAll events raised by that message"
+        DialogDriver.CloseDialog h
+        snk.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReplaceAll_ButtonRaisesNoOtherEvent()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        dlg.FindWhat = "x"
+        dlg.ReplaceWith = "y"
+        Dim h As LongPtr
+        h = dlg.ShowReplace
+        Expect.IsTrue DialogDriver.Press(h, DialogDriver.IDC_REPLACE_ALL), "pressing Replace All"
+        Expect.AreEqual 0, snk.FindNexts, "FindNext events raised by pressing Replace All"
+        Expect.AreEqual 0, snk.Replaces, "Replace events raised by pressing Replace All"
+        DialogDriver.CloseDialog h
+        snk.Detach
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,467 @@
+' CommonDialog: the properties, their defaults, the values they refuse and the ones that cannot be written.
+'
+' No case here shows a dialog.
+[TestFixture]
+Module PropertyTests
+
+    Private Declare PtrSafe Function GetLocaleInfoW Lib "kernel32" (ByVal Locale As Long, ByVal LCType As Long, ByVal lpLCData As LongPtr, ByVal cchData As Long) As Long
+
+    ' ---- Action
+
+    [TestCase]
+    Public Sub Action_Read_Raises394()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim v As Integer
+        On Error Resume Next
+        v = dlg.Action
+        Expect.AreEqual 394, Err.Number, "Err.Number reading Action"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Action_OutOfRange_Raises380()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.Action = 0
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning 0 to Action"
+        Err.Clear
+        dlg.Action = 11
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning 11 to Action"
+        Err.Clear
+        dlg.Action = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to Action"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Action_Nine_OpensFindDialog()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim snk As New FindSink
+        snk.Attach dlg
+        dlg.HookEvents = True
+        dlg.Action = 9
+        Expect.AreEqual 1, snk.InitDialogs, "InitDialog events raised by assigning 9 to Action"
+        Expect.AreEqual 9, snk.LastInitAction, "Action argument of that InitDialog event (9 = Find)"
+        DialogDriver.CloseDialog snk.LastInitHandle
+        snk.Detach
+        Expect.Done
+    End Sub
+
+    ' ---- read-only properties
+
+    [TestCase]
+    Public Sub HDC_Write_Raises383()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.hDC = 1
+        Expect.AreEqual 383, Err.Number, "Err.Number writing hDC"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileTitle_Write_Raises383()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.FileTitle = "x.txt"
+        Expect.AreEqual 383, Err.Number, "Err.Number writing FileTitle"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileOffset_Write_Raises383()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.FileOffset = 1
+        Expect.AreEqual 383, Err.Number, "Err.Number writing FileOffset"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Object_ReturnsTheInstance()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Expect.IsTrue dlg.Object Is dlg, "Object is the instance itself"
+        Expect.Done
+    End Sub
+
+    ' ---- values that raise error 380
+
+    [TestCase]
+    Public Sub MaxFileSize_Zero_Raises380()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.MaxFileSize = 0
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning 0 to MaxFileSize"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FilterIndex_Negative_Raises380()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.FilterIndex = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to FilterIndex"
+        Err.Clear
+        dlg.FilterIndex = 0
+        Expect.AreEqual 0, Err.Number, "Err.Number assigning 0 to FilterIndex"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinMaxFromPageToPage_Negative_Raises380()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.Min = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to Min"
+        Err.Clear
+        dlg.Max = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to Max"
+        Err.Clear
+        dlg.FromPage = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to FromPage"
+        Err.Clear
+        dlg.ToPage = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to ToPage"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Copies_Zero_Raises380()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.Copies = 0
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning 0 to Copies"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Margins_Negative_Raises380()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.PageLeftMargin = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to PageLeftMargin"
+        Err.Clear
+        dlg.PageTopMargin = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to PageTopMargin"
+        Err.Clear
+        dlg.PageRightMargin = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to PageRightMargin"
+        Err.Clear
+        dlg.PageBottomMargin = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to PageBottomMargin"
+        Err.Clear
+        dlg.PageLeftMinMargin = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to PageLeftMinMargin"
+        Err.Clear
+        dlg.PageTopMinMargin = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to PageTopMinMargin"
+        Err.Clear
+        dlg.PageRightMinMargin = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to PageRightMinMargin"
+        Err.Clear
+        dlg.PageBottomMinMargin = -1
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -1 to PageBottomMinMargin"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PrinterEnumerations_OutOfSet_Raise380()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.Orientation = 5
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning 5 to Orientation"
+        Err.Clear
+        dlg.ColorMode = 3
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning 3 to ColorMode"
+        Err.Clear
+        dlg.Duplex = 4
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning 4 to Duplex"
+        Err.Clear
+        dlg.PaperSize = 0
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning 0 to PaperSize"
+        Err.Clear
+        dlg.PaperBin = 0
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning 0 to PaperBin"
+        Err.Clear
+        dlg.PrintQuality = -5
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -5 to PrintQuality"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PrintQuality_DotsPerInch_Accepted()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.PrintQuality = 600
+        Expect.AreEqual 0, Err.Number, "Err.Number assigning 600 to PrintQuality"
+        Expect.AreEqual 600, CLng(dlg.PrintQuality), "PrintQuality after assigning 600"
+        Err.Clear
+        dlg.PrintQuality = 32767
+        Expect.AreEqual 0, Err.Number, "Err.Number assigning 32767 to PrintQuality"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HelpCommand_NotAConstant_Raises380()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.HelpCommand = 999
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning 999 to HelpCommand"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowHelp_CommandZero_DoesNothing()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        dlg.HelpFile = "no such file.hlp"
+        Expect.AreEqual 0, CLng(dlg.HelpCommand), "HelpCommand by default"
+        On Error Resume Next
+        dlg.ShowHelp
+        Expect.AreEqual 0, Err.Number, "Err.Number calling ShowHelp with HelpCommand 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RootFolder_Types()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        Expect.IsTrue IsEmpty(dlg.RootFolder), "RootFolder by default is Empty"
+        dlg.RootFolder = &H11&
+        Expect.AreEqual 0, Err.Number, "Err.Number assigning a Long CSIDL to RootFolder"
+        Err.Clear
+        dlg.RootFolder = "C:\Windows"
+        Expect.AreEqual 0, Err.Number, "Err.Number assigning a path to RootFolder"
+        Err.Clear
+        dlg.RootFolder = 17.0
+        Expect.AreEqual 0, Err.Number, "Err.Number assigning a Double to RootFolder"
+        Err.Clear
+        dlg.RootFolder = True
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning a Boolean to RootFolder"
+        Err.Clear
+        dlg.RootFolder = Now
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning a Date to RootFolder"
+        Expect.Done
+    End Sub
+
+    ' ---- fonts
+
+    [TestCase]
+    Public Sub FontBold_True_SetsWeight700()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        dlg.FontBold = True
+        Expect.AreEqual 700, CLng(dlg.FontWeight), "FontWeight after FontBold = True"
+        dlg.FontBold = False
+        Expect.AreEqual 400, CLng(dlg.FontWeight), "FontWeight after FontBold = False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FontBold_Get_IsWeight600OrHigher()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        dlg.FontWeight = 500
+        Expect.IsFalse dlg.FontBold, "FontBold at FontWeight 500"
+        dlg.FontWeight = 600
+        Expect.IsTrue dlg.FontBold, "FontBold at FontWeight 600"
+        dlg.FontWeight = 900
+        Expect.IsTrue dlg.FontBold, "FontBold at FontWeight 900"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FontWeight_StandardValues_Accepted()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim w As Long
+        On Error Resume Next
+        For w = 0 To 900 Step 100
+            Err.Clear
+            dlg.FontWeight = w
+            Expect.AreEqual 0, Err.Number, "Err.Number assigning " & w & " to FontWeight"
+            Expect.AreEqual w, CLng(dlg.FontWeight), "FontWeight after assigning " & w
+        Next w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FontWeight_OtherValue_Raises380()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        On Error Resume Next
+        dlg.FontWeight = 450
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning 450 to FontWeight"
+        Err.Clear
+        dlg.FontWeight = 1000
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning 1000 to FontWeight"
+        Err.Clear
+        dlg.FontWeight = -100
+        Expect.AreEqual 380, Err.Number, "Err.Number assigning -100 to FontWeight"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowFont_NoFontFlags_ShowsTheDialog()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        dlg.Flags = 0
+        Dim shown As Boolean, n As Long, closed As Long
+        On Error Resume Next
+        DialogDriver.StartDismissing
+        shown = dlg.ShowFont
+        n = Err.Number
+        closed = DialogDriver.StopDismissing()
+        Expect.AreEqual 1, closed, "dialogs ShowFont opened with neither CdlCFScreenFonts nor CdlCFPrinterFonts in Flags (closed by the test)"
+        Expect.IsFalse shown, "ShowFont returns False when the test closes the dialog"
+        Expect.AreEqual 0, n, "Err.Number from ShowFont with neither CdlCFScreenFonts nor CdlCFPrinterFonts in Flags, the dialog closed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CancelError_True_ClosedDialogRaisesCdlCancel()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        dlg.Flags = CdlCFScreenFonts
+        dlg.CancelError = True
+        Dim n As Long, closed As Long
+        On Error Resume Next
+        DialogDriver.StartDismissing
+        dlg.ShowFont
+        n = Err.Number
+        closed = DialogDriver.StopDismissing()
+        Expect.AreEqual 1, closed, "dialogs ShowFont opened (closed by the test)"
+        Expect.AreEqual CdlCancel, n, "Err.Number from ShowFont with CancelError True and the dialog closed with its X button"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CancelError_False_ClosedDialogRaisesNothing()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        dlg.Flags = CdlCFScreenFonts
+        Dim shown As Boolean, n As Long, closed As Long
+        On Error Resume Next
+        DialogDriver.StartDismissing
+        shown = dlg.ShowFont
+        n = Err.Number
+        closed = DialogDriver.StopDismissing()
+        Expect.AreEqual 1, closed, "dialogs ShowFont opened (closed by the test)"
+        Expect.IsFalse shown, "ShowFont returns False when the dialog is closed with its X button"
+        Expect.AreEqual 0, n, "Err.Number from ShowFont with CancelError False and the dialog closed with its X button"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowFont_MaxLessThanMin_RaisesMaxLessThanMin()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        dlg.Flags = CdlCFScreenFonts Or CdlCFLimitSize
+        dlg.Min = 20
+        dlg.Max = 10
+        On Error Resume Next
+        dlg.ShowFont
+        Expect.AreEqual CdlMaxLessThanMin, Err.Number, "Err.Number from ShowFont with Max (10) below Min (20)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowFont_MaxLessThanMinWithoutLimitSize_RaisesNothing()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        dlg.Flags = CdlCFScreenFonts
+        dlg.Min = 20
+        dlg.Max = 10
+        Dim n As Long, closed As Long
+        On Error Resume Next
+        DialogDriver.StartDismissing
+        dlg.ShowFont
+        n = Err.Number
+        closed = DialogDriver.StopDismissing()
+        Expect.AreEqual 1, closed, "dialogs ShowFont opened with Max (10) below Min (20) and CdlCFLimitSize not set (closed by the test)"
+        Expect.AreEqual 0, n, "Err.Number from ShowFont with Max (10) below Min (20) and CdlCFLimitSize not set, the dialog closed"
+        Expect.Done
+    End Sub
+
+    ' ---- defaults
+
+    [TestCase]
+    Public Sub Defaults_Font()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Expect.AreEqual "", dlg.FontName, "default FontName"
+        Expect.AreEqual 8!, dlg.FontSize, "default FontSize"
+        Expect.AreEqual 400, CLng(dlg.FontWeight), "default FontWeight"
+        Expect.AreEqual 0, CLng(dlg.FontCharset), "default FontCharset"
+        Expect.IsFalse dlg.FontBold, "default FontBold"
+        Expect.IsFalse dlg.FontItalic, "default FontItalic"
+        Expect.IsFalse dlg.FontStrikethru, "default FontStrikethru"
+        Expect.IsFalse dlg.FontUnderline, "default FontUnderline"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Defaults_Print()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Expect.AreEqual 1, CLng(dlg.Copies), "default Copies"
+        Expect.AreEqual CdlPRORPortrait, dlg.Orientation, "default Orientation"
+        Expect.AreEqual CdlPRBNAuto, dlg.PaperBin, "default PaperBin"
+        Expect.AreEqual CdlPRPQHigh, dlg.PrintQuality, "default PrintQuality"
+        Expect.AreEqual CdlPRCMColor, dlg.ColorMode, "default ColorMode"
+        Expect.AreEqual CdlPRDPSimplex, dlg.Duplex, "default Duplex"
+        Expect.IsTrue dlg.PrinterDefault, "default PrinterDefault"
+        Expect.IsTrue dlg.PrinterDefaultInit, "default PrinterDefaultInit"
+        Expect.AreEqual 0, dlg.FromPage, "default FromPage"
+        Expect.AreEqual 0, dlg.ToPage, "default ToPage"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Defaults_PaperSizeFollowsTheMeasurementSystem()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Const LOCALE_USER_DEFAULT As Long = &H400
+        Const LOCALE_IMEASURE As Long = &HD
+        Const LOCALE_RETURN_NUMBER As Long = &H20000000
+        Dim measure As Long
+        GetLocaleInfoW LOCALE_USER_DEFAULT, LOCALE_IMEASURE Or LOCALE_RETURN_NUMBER, VarPtr(measure), 2
+        If measure = 0 Then
+            Expect.AreEqual CdlPRPSA4, dlg.PaperSize, "default PaperSize when the user's locale is metric"
+        Else
+            Expect.AreEqual CdlPRPSLetter, dlg.PaperSize, "default PaperSize when the user's locale is not metric"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Defaults_Files()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Expect.AreEqual 260, dlg.MaxFileSize, "default MaxFileSize"
+        Expect.AreEqual 0, dlg.FilterIndex, "default FilterIndex"
+        Expect.AreEqual "", dlg.InitDir, "default InitDir"
+        Expect.AreEqual "", dlg.DialogTitle, "default DialogTitle"
+        Expect.IsFalse dlg.CancelError, "default CancelError"
+        Expect.IsFalse dlg.HookEvents, "default HookEvents"
+        Expect.AreEqual 0, CLng(dlg.FileOffset), "default FileOffset"
+        Expect.AreEqual "", dlg.FileTitle, "default FileTitle"
+        Expect.Done
+    End Sub
+
+End Module
