@@ -1,0 +1,15 @@
+{
+  "mode": "run",
+  "arch": "win64",
+  "llvm": true,
+  "exe": true,
+  "expect": {
+    "exit": 6,
+    "output": [
+      "^CountSteps\\(3, flag\\) = 1$",
+      "^CountSteps\\(1, flag\\) = 1$",
+      "^--- exe: exit 1$"
+    ],
+    "absent": ["^CountSteps\\(3, flag\\) = 3$", "^--- exe: exit 3$"]
+  }
+}

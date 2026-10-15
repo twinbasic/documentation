@@ -3867,3 +3867,80 @@ Severity: low. A wrong text for the right error number, in the 32-bit IDE run on
 Not tried: LLVM. With LLVM on (`bug_repro.mjs run --llvm`, 32-bit and 64-bit) the IDE run of this reproducer ends before it returns and prints nothing, so the text could not be read; `On Error Resume Next` around a failing call in LLVM-compiled code is a known problem of its own.
 
 <!-- Reproducer: bugs/list-error5-automation-text/ (mode run, arch win32: expect is tbrun exit 0, the line `Dim a As New: 5: Automation error` and the line `Set a = New:  5: Invalid procedure call or argument`, and absent `Dim a As New: 5: Invalid procedure call or argument`); verified on BETA 1005 by `bug_repro.mjs verify`. Controls, all printing the right text: `run --arch win64`, `run --exe` (exit 0) and `run --exe --arch win64` (exit 0), and `bug_repro.mjs vb6` (`Dim a As New: 5: Invalid procedure call or argument`). `run --llvm` ends before it returns, in both architectures. Pages: docs/Reference/Contributed/TBMANLIB_Diagnostic/List.md carries the NOTE labelled BETA 1005 after its SetItem sample, and that sample prints Err.Number only; remove the NOTE when a fix is released, and let the sample print Err.Description again with the output `5: Invalid procedure call or argument`. Its test case is ListTests.SetItem_AtZeroOnOneItemList_ErrorHasTheRuntimeText (expect.json: win32 fails, win64 passes). Found 2026-10-15 by an exe check of the documentation's samples. -->
+
+---
+
+## LLVM: `For ... Step x` runs with a wrong step when the procedure has a `ByRef Boolean` or `ByRef Integer` parameter after `x`
+
+**Describe the bug**
+In a project compiled with LLVM, in a 32-bit and in a 64-bit build, a `For i = 1 To 7 Step x` loop whose step `x` is a `ByVal Long` (or `ByVal Single`) parameter, in a procedure that also has a `ByRef` parameter declared `As Boolean` or `As Integer` after `x`, runs with a wrong step instead of `x`. The wrong value depends on where the caller's argument for the `ByRef` parameter is stored: it is 20 in a 64-bit build and 25 in a 32-bit build when that argument is a local variable of the caller, which is what the reproducer passes. `CountSteps(3, flag)` (the function in the reproducer, which counts the iterations) returns 1 where 3 is right, and `CountSteps(1, flag)` returns 1 where 7 is right. `For i = 100 To 1 Step -x` stops at 80 (64-bit) instead of 97. No error is raised. The same code is right without LLVM, in the exe and in the IDE run. It was found through TBMANLIB 1.0.0.29: its `cToolsStr.InsertSpan` (`Optional HeadFoot As Boolean` after the `ByVal SetpNum As Long` that becomes the step) returns `abcdefg` for `("abcdefg", "-", 3)` in a 64-bit LLVM exe, where `abc-def-g` is right. A procedure that uses the variables more can hide the defect: the same `InsertSpan` is right in a 32-bit LLVM build, while the plain counting loops are wrong in both.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm-for-step-constant.twinproj` (attached as `llvm-for-step-constant.zip`). It needs an LLVM licence (Ultimate). Its module `Startup` is:
+   ```
+   Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+   Private Function CountSteps(ByVal x As Long, ByRef flag As Boolean) As Long
+       Dim i As Long
+       Dim n As Long
+       For i = 1 To 7 Step x
+           n = n + 1
+           If n > 10 Then Exit For
+       Next i
+       CountSteps = n
+   End Function
+
+   Private Function CountStepsLong(ByVal x As Long, ByRef flag As Long) As Long
+       ' the same loop
+   End Function
+
+   Public Sub Main()
+       Dim flag As Boolean
+       Dim flagL As Long
+       If App.IsInIDE Then
+           Debug.Print "CountSteps(3, flag) = " & CountSteps(3, flag)
+           Debug.Print "CountSteps(1, flag) = " & CountSteps(1, flag)
+           Debug.Print "CountStepsLong(3, flagL) = " & CountStepsLong(3, flagL)
+       Else
+           ExitProcess CountSteps(3, flag)
+       End If
+   End Sub
+   ```
+2. In Project Settings, turn **Enable LLVM Compilation** on under **Compiler Options (BUILD)** and under **Compiler Options (DEBUG)**. The architecture can be 32-bit or 64-bit.
+3. Run the project in the IDE (F5), and build the exe and run it from a command prompt, reading its exit code (`echo %errorlevel%`).
+4. The DEBUG CONSOLE shows `CountSteps(3, flag) = 1` and `CountSteps(1, flag) = 1`, and the exe exits with code 1. Turn LLVM off and run again: the lines are `= 3` and `= 7`, and the exe exits with code 3. `CountStepsLong` prints 3 in every build.
+
+**Expected behavior**
+`CountSteps(3, flag)` returns 3 (the loop runs with i = 1, 4, 7) and `CountSteps(1, flag)` returns 7, as without LLVM.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+These are right in the same LLVM builds: the second parameter `ByRef ... As Long`, `Byte`, `Single`, `Currency`, `Date`, `Object`, `Double`, `String`, `Variant` or `LongPtr`; `ByVal ... As Boolean` or `As Integer`; the `ByRef Boolean` placed before `x`; no such parameter; a `Do` loop with `i = i + x`; a `For` without `Step`; and a literal `Step`. These are wrong too: `Step x * 1`, `Step y` for a second `ByVal` parameter, a local copied from `x`, the `ByRef` parameter `Optional` or required, and the argument passed or left out. A `Sub` and a class method are wrong in the same way, and so are a `ByVal Single` step and a `Long` step with an `Integer` loop variable. A `ByVal Integer`, `Double` or `Currency` step is right, and so is a `ByRef` Enum, a `ByRef` UDT holding a Boolean, a `ByRef Variant` or a `ByRef` Boolean array in the position of the 16-bit parameter.
+
+The wrong value does not change with the value of `x` or of the `ByRef` argument, with the loop's bounds or direction, with other literals in the procedure, with what the stack held before the call, or with the number of locals or parameters. It changes only with where the caller's argument for the `ByRef` parameter is stored. In every case tried it is that argument's address shifted right by 16 bits; this is an inference, and the generated code was not read:
+
+| argument passed for the `ByRef Boolean` | address | step |
+|---|---|---|
+| a local of the caller, 64-bit exe | `14F73E` | 20 |
+| a module-level variable, 64-bit exe | `14001D38A` | 81921 |
+| an array element, 64-bit exe | `4DCD70` | 77 |
+| a local of the caller, 32-bit exe | `19F912` | 25 |
+| a module-level variable, 32-bit exe | `41CE9E` | 65 |
+| an array element, 32-bit exe | `5EA7A0` | 94 |
+| a module-level variable, 64-bit IDE run | `18068DCE0` | 98408 |
+
+When the loop's start or end is a parameter as well, that bound is read wrong too. `For i = lo To hi Step x`, called with `(1, 7, 3)`, starts at 20 (64-bit) or 25 (32-bit) and does not run. With `For i = lo To 100000 Step x`, the 64-bit build also uses a step of 0, so the loop does not advance.
+
+A second read of `x` anywhere in a small procedure hides the defect. These are right: `t = x` before or after the loop, `If x <= 0 Then Exit Function` before it, passing `x` to a Sub, and an unused `y = x` beside `Step x`. These are still wrong: `Step (x)`, `Step CLng(x)`, and `y = x` followed by `Step y`. This is likely why `InsertSpan` is right in the 32-bit build. Passing the second parameter `ByVal`, declaring it `ByRef ... As Long`, or placing it before `x` avoids the defect.
+
+A related symptom appears in the 32-bit LLVM exe only. `Function P(ByVal s As String, ByVal x As Long, ByRef flag As Boolean)` with `For i = 1 To 100 Step x` ends the exe with an access violation in `ucrtbase.dll`, in three runs out of three. It does not crash with `ByRef flag As Long`, with `x` before `s`, with no loop, with a loop that does not use `x`, in the 64-bit build (which gives the wrong step) or without LLVM. Its cause was not found.
+
+Severity: high for a program built with LLVM that has such a loop: a wrong result with no error, in either architecture, in the IDE and in the exe.
+
+Not tried: `For Each`, and the generated code. Not understood: a `Double` loop variable with a `Long` step is wrong in the 64-bit build and right in the 32-bit one; a `Single` step is about 0 in the 64-bit build and 0.5000014 in place of 0.5 in the 32-bit one; and the cause of the 32-bit crash.
+
+<!-- Reproducer: bugs/llvm-for-step-constant/ (mode run with arch win64, llvm and exe: the DEBUG CONSOLE of the IDE run with LLVM has `CountSteps(3, flag) = 1` and `CountSteps(1, flag) = 1`, and tbrun --exe --llvm --arch win64 shows the exe exiting 1; expect is tbrun exit 6, those lines, and absent `CountSteps(3, flag) = 3` and `exit 3`); verified on BETA 1005 by `bug_repro.mjs verify`. Controls: `run --exe --arch win64` (no LLVM) prints 3, 7, 3 and the exe exits 3; `run --exe --llvm --arch win32` prints 1, 1, 3 and exits 1; an IDE run with LLVM (the probe without the exe) prints 1, 1, 3 in win64 and in win32. Pages: docs/LLVM/Getting-Started.md, "Language support", and docs/Reference/Core/For-Next.md carry the WARNING labelled BETA 1005; remove both when a fix is released. Found 2026-10-16 through TBMANLIB 1.0.0.29's cToolsStr.InsertSpan in a win64 LLVM exe; the cases in the additional context and the InsertSpan shape were run in the two narrowing sessions of that day (exe builds and, for the address table's last row and the bounds, IDE runs with LLVM) and are not in the reproducer. -->
