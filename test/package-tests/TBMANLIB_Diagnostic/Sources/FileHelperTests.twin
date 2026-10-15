@@ -1,0 +1,375 @@
+' FileHelper: WriteFile, AppendFile, ReadFile, GetFileSize and DeleteFile on files in the sandbox.
+[TestFixture]
+Module FileHelperTests
+
+    ' What WriteFile or AppendFile returned: "True", or the error text without the path it names.
+    Private Function Outcome(ByVal R As Variant) As String
+        If VarType(R) = vbBoolean Then
+            Outcome = CStr(R)
+        Else
+            Dim at As Long
+            at = InStr(R, " (File: ")
+            If at > 0 Then Outcome = Left$(R, at - 1) Else Outcome = CStr(R)
+        End If
+    End Function
+
+    ' ---- WriteFile
+
+    [TestCase]
+    Public Sub WriteFile_OverExistingLongerFile_ShortensIt()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("WriteFile_OverExistingLongerFile_ShortensIt")
+        p = w & "\a.txt"
+        FileHelper.WriteFile "0123456789", p
+        Expect.AreEqual 13, FileLen(p), "size of a file written with ""0123456789"""
+        FileHelper.WriteFile "ab", p
+        Expect.AreEqual 5, FileLen(p), "size of that file after WriteFile ""ab"" over it (3 bytes of byte-order mark and 2 of text)"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteFile_Text_WritesByteOrderMarkAndUtf8()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("WriteFile_Text_WritesByteOrderMarkAndUtf8")
+        p = w & "\a.txt"
+        Dim r As Variant
+        r = FileHelper.WriteFile("caf" & ChrW$(233), p)
+        Expect.AreEqual True, r, "what WriteFile returns"
+        Expect.AreEqual "EF BB BF 63 61 66 C3 A9", Sandbox.HexOf(p), "bytes written for ""caf"" and e acute"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteFile_EmptyString_WritesByteOrderMarkOnly()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("WriteFile_EmptyString_WritesByteOrderMarkOnly")
+        p = w & "\a.txt"
+        Dim r As Variant
+        r = FileHelper.WriteFile("", p)
+        Expect.AreEqual True, r, "what WriteFile of an empty string returns"
+        Expect.AreEqual "EF BB BF", Sandbox.HexOf(p), "bytes written for an empty string"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteFile_MissingLastFolder_CreatesIt()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("WriteFile_MissingLastFolder_CreatesIt")
+        p = w & "\sub\a.txt"
+        Dim r As Variant
+        r = FileHelper.WriteFile("x", p)
+        Expect.AreEqual True, r, "what WriteFile into a folder whose parent exists returns"
+        Expect.IsTrue FileHelper.FileExists(p), "the file exists"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteFile_MissingParentFolders_CreatesThem()
+        Expect.Begin
+        Dim w As String, p As String, r As Variant
+        w = Sandbox.Fresh("WriteFile_MissingParentFolders_CreatesThem")
+        p = w & "\one\two\a.txt"
+        r = FileHelper.WriteFile("x", p)
+        Expect.AreEqual "True", Outcome(r), "what WriteFile into a path whose two top folders are missing returns"
+        Expect.IsTrue FileHelper.FileExists(p), "the file exists"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteFile_Failure_ReturnsTextAndRaisesNoError()
+        Expect.Begin
+        Dim w As String, r As Variant
+        w = Sandbox.Fresh("WriteFile_Failure_ReturnsTextAndRaisesNoError")
+        ' a folder named like the file cannot be opened as a file
+        MkDir w & "\isfolder.txt"
+        On Error GoTo Raised
+        r = FileHelper.WriteFile("x", w & "\isfolder.txt")
+        On Error GoTo 0
+        Expect.AreEqual vbString, VarType(r), "VarType of what WriteFile returns on a path that is a folder"
+        Expect.AreEqual "Error ", Left$(r, 6), "the start of that text"
+        Expect.IsTrue InStr(r, "(File: " & w & "\isfolder.txt)") > 0, "that text names the path"
+        GoTo Finish
+Raised:
+        Expect.Fail "WriteFile on a path that is a folder raised run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    ' ---- AppendFile
+
+    [TestCase]
+    Public Sub AppendFile_NewFile_WritesByteOrderMarkOnce()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("AppendFile_NewFile_WritesByteOrderMarkOnce")
+        p = w & "\a.txt"
+        Dim r As Variant
+        r = FileHelper.AppendFile("ab", p)
+        Expect.AreEqual True, r, "what AppendFile to a new file returns"
+        r = FileHelper.AppendFile("cd", p)
+        Expect.AreEqual True, r, "what AppendFile to that file returns"
+        Expect.AreEqual "EF BB BF 61 62 63 64", Sandbox.HexOf(p), "bytes after AppendFile ""ab"" and AppendFile ""cd"""
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AppendFile_AfterWriteFile_AddsAfterTheContent()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("AppendFile_AfterWriteFile_AddsAfterTheContent")
+        p = w & "\a.txt"
+        FileHelper.WriteFile "Hello", p
+        FileHelper.AppendFile " world", p
+        Expect.AreEqual 14, FileLen(p), "size after WriteFile ""Hello"" and AppendFile "" world"""
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AppendFile_MissingParentFolders_CreatesThem()
+        Expect.Begin
+        Dim w As String, p As String, r As Variant
+        w = Sandbox.Fresh("AppendFile_MissingParentFolders_CreatesThem")
+        p = w & "\one\two\a.txt"
+        r = FileHelper.AppendFile("x", p)
+        Expect.AreEqual "True", Outcome(r), "what AppendFile into a path whose two top folders are missing returns"
+        Expect.IsTrue FileHelper.FileExists(p), "the file exists"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    ' ---- ReadFile
+
+    [TestCase]
+    Public Sub ReadFile_WrittenText_IsReadBackAsWritten()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("ReadFile_WrittenText_IsReadBackAsWritten")
+        p = w & "\a.txt"
+        FileHelper.WriteFile "caf" & ChrW$(233), p
+        Dim text As Variant
+        text = FileHelper.ReadFile(p)
+        Expect.AreEqual "caf" & ChrW$(233), text, "ReadFile of a file written with WriteFile ""caf"" and e acute"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadFile_WrittenText_HasNoByteOrderMark()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("ReadFile_WrittenText_HasNoByteOrderMark")
+        p = w & "\a.txt"
+        FileHelper.WriteFile "abc", p
+        Dim text As Variant
+        text = FileHelper.ReadFile(p)
+        Expect.AreEqual "abc", text, "ReadFile of a file written with WriteFile ""abc"""
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadFile_EmptyFile_ReturnsEmptyString()
+        Expect.Begin
+        Dim w As String, p As String, f As Long
+        w = Sandbox.Fresh("ReadFile_EmptyFile_ReturnsEmptyString")
+        p = w & "\empty.txt"
+        f = FreeFile
+        Open p For Output As #f
+        Close #f
+        Dim text As Variant
+        text = FileHelper.ReadFile(p)
+        Expect.AreEqual vbString, VarType(text), "VarType of ReadFile of an empty file"
+        Expect.AreEqual 0, Len(text), "Len of ReadFile of an empty file"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadFile_MissingFile_DoesNotCreateIt()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("ReadFile_MissingFile_DoesNotCreateIt")
+        p = w & "\missing.txt"
+        Dim text As Variant
+        text = FileHelper.ReadFile(p)
+        Expect.IsFalse FileHelper.FileExists(p), "the file exists after ReadFile of a file that was not there"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadFile_MissingFile_ReturnsErrorText()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("ReadFile_MissingFile_ReturnsErrorText")
+        p = w & "\missing.txt"
+        Dim text As Variant
+        text = FileHelper.ReadFile(p)
+        Expect.AreEqual "Error ", Left$(text, 6), "the start of what ReadFile returns for a file that is not there"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadFile_MissingFolder_ReturnsErrorText()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("ReadFile_MissingFolder_ReturnsErrorText")
+        p = w & "\no-folder\a.txt"
+        Dim text As Variant
+        text = FileHelper.ReadFile(p)
+        Expect.AreEqual vbString, VarType(text), "VarType of ReadFile in a folder that is not there"
+        Expect.AreEqual "Error ", Left$(text, 6), "the start of that text"
+        Expect.IsTrue InStr(text, "(File: " & p & ")") > 0, "that text names the path"
+        Expect.IsFalse FileHelper.DirectoryExists(w & "\no-folder"), "the folder exists after ReadFile in it"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    ' ---- GetFileSize
+
+    [TestCase]
+    Public Sub GetFileSize_ExistingFile_ReturnsItsSize()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("GetFileSize_ExistingFile_ReturnsItsSize")
+        p = w & "\a.txt"
+        FileHelper.WriteFile "Hello", p
+        Expect.AreEqual 8, FileHelper.GetFileSize(p), "GetFileSize of a file written with WriteFile ""Hello"""
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFileSize_MissingFile_ReturnsMinusOne()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("GetFileSize_MissingFile_ReturnsMinusOne")
+        p = w & "\missing.bin"
+        Expect.AreEqual -1, FileHelper.GetFileSize(p), "GetFileSize of a file that is not there"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFileSize_MissingFile_DoesNotCreateIt()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("GetFileSize_MissingFile_DoesNotCreateIt")
+        p = w & "\missing.bin"
+        Dim size As LongLong
+        size = FileHelper.GetFileSize(p)
+        Expect.IsFalse FileHelper.FileExists(p), "the file exists after GetFileSize of a file that was not there"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFileSize_MissingFolder_ReturnsMinusOne()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("GetFileSize_MissingFolder_ReturnsMinusOne")
+        Expect.AreEqual -1, FileHelper.GetFileSize(w & "\no-folder\x.bin"), "GetFileSize of a file in a folder that is not there"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    ' ---- DeleteFile, FileExists, DirectoryExists
+
+    [TestCase]
+    Public Sub DeleteFile_ExistingFile_RemovesIt()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("DeleteFile_ExistingFile_RemovesIt")
+        p = w & "\a.txt"
+        FileHelper.WriteFile "x", p
+        Expect.IsTrue FileHelper.DeleteFile(p), "DeleteFile of a file that is there"
+        Expect.IsFalse FileHelper.FileExists(p), "FileExists after DeleteFile"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DeleteFile_MissingFile_ReturnsFalse()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("DeleteFile_MissingFile_ReturnsFalse")
+        Expect.IsFalse FileHelper.DeleteFile(w & "\missing.txt"), "DeleteFile of a file that is not there"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DeleteFile_Wildcard_DeletesEveryMatch()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("DeleteFile_Wildcard_DeletesEveryMatch")
+        FileHelper.WriteFile "a", w & "\a.tmpd"
+        FileHelper.WriteFile "b", w & "\b.tmpd"
+        FileHelper.WriteFile "c", w & "\c.keep"
+        Expect.IsTrue FileHelper.DeleteFile(w & "\*.tmpd"), "DeleteFile of a pattern that matches two files"
+        Expect.IsFalse FileHelper.FileExists(w & "\a.tmpd"), "FileExists of the first match after DeleteFile"
+        Expect.IsFalse FileHelper.FileExists(w & "\b.tmpd"), "FileExists of the second match after DeleteFile"
+        Expect.IsTrue FileHelper.FileExists(w & "\c.keep"), "FileExists of the file the pattern does not match"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileExists_Folder_ReturnsFalse()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("FileExists_Folder_ReturnsFalse")
+        Expect.IsFalse FileHelper.FileExists(w), "FileExists of a folder"
+        Expect.IsTrue FileHelper.DirectoryExists(w), "DirectoryExists of a folder"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DirectoryExists_File_ReturnsFalse()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("DirectoryExists_File_ReturnsFalse")
+        p = w & "\a.txt"
+        FileHelper.WriteFile "x", p
+        Expect.IsFalse FileHelper.DirectoryExists(p), "DirectoryExists of a file"
+        Expect.IsTrue FileHelper.FileExists(p), "FileExists of a file"
+        Expect.IsFalse FileHelper.FileExists(w & "\missing.txt"), "FileExists of a path that is not there"
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EnsureDirectoryExists_ExistingFolder_RaisesNoError()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("EnsureDirectoryExists_ExistingFolder_RaisesNoError")
+        On Error GoTo Raised
+        FileHelper.EnsureDirectoryExists w & "\"
+        FileHelper.EnsureDirectoryExists w & "\new"
+        On Error GoTo 0
+        Expect.IsTrue FileHelper.DirectoryExists(w & "\new"), "DirectoryExists after EnsureDirectoryExists of a new last folder"
+        GoTo Finish
+Raised:
+        Expect.Fail "EnsureDirectoryExists raised run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+End Module

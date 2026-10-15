@@ -1,0 +1,217 @@
+' The three formatters, FormatterFactory, and what JsonFormatter does with control characters.
+[TestFixture]
+Module FormatterTests
+
+    ' ---- JsonFormatter
+
+    [TestCase]
+    Public Sub JsonFormatter_ControlCharacterInValue_IsEscaped()
+        Expect.Begin
+        Dim f As IOutputFormatter
+        Set f = New JsonFormatter
+        f.BeginFormat
+        f.FormatCategory "Test"
+        f.FormatItem "Key", "a" & Chr$(1) & "b"
+        f.EndCategory
+        Dim json As String
+        json = f.EndFormat()
+        Expect.IsFalse InStr(json, Chr$(1)) > 0, "the JSON for a value that holds Chr$(1) holds the raw character, which JSON does not allow in a string"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub JsonFormatter_ControlCharacterInKey_IsEscaped()
+        Expect.Begin
+        Dim f As IOutputFormatter
+        Set f = New JsonFormatter
+        f.BeginFormat
+        f.FormatCategory "Test"
+        f.FormatItem "K" & Chr$(2) & "y", "v"
+        f.EndCategory
+        Dim json As String
+        json = f.EndFormat()
+        Expect.IsFalse InStr(json, Chr$(2)) > 0, "the JSON for a key that holds Chr$(2) holds the raw character, which JSON does not allow in a string"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub JsonFormatter_Layout_NamesGroupsAndItemsInCamelCase()
+        Expect.Begin
+        Dim f As IOutputFormatter
+        Set f = New JsonFormatter
+        f.BeginFormat
+        f.FormatCategory "CPU Info"
+        f.FormatItem "Processor Count", "8"
+        f.FormatItem "Path", "C:\Tools ""x"""
+        f.EndCategory
+        Dim lines() As String
+        lines = Split(f.EndFormat(), vbCrLf)
+        Expect.AreEqual "{", lines(0), "the first line of the JSON"
+        Expect.AreEqual "    ""toolVersion"": ""1.0"",", lines(3), "the fourth line of the JSON"
+        Expect.AreEqual "      ""cPUInfo"": {", lines(5), "the line of the group CPU Info"
+        Expect.AreEqual "        ""processorCount"": ""8"",", lines(6), "the line of the item Processor Count"
+        Expect.AreEqual "        ""path"": ""C:\\Tools \""x\""""", lines(7), "the line of the item Path"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub JsonFormatter_EveryValue_IsAString()
+        Expect.Begin
+        Dim f As IOutputFormatter
+        Set f = New JsonFormatter
+        f.BeginFormat
+        f.FormatCategory "Memory"
+        f.FormatItem "Total Days", "3"
+        f.EndCategory
+        Dim json As String
+        json = f.EndFormat()
+        Expect.IsTrue InStr(json, """totalDays"": ""3""") > 0, "the JSON writes the number 3 as the string ""3"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub JsonFormatter_NamesInCapitals_KeepTheirCapitals()
+        Expect.Begin
+        Dim f As IOutputFormatter
+        Set f = New JsonFormatter
+        f.BeginFormat
+        f.FormatCategory "Environment"
+        f.FormatItem "PATH", "x"
+        f.FormatItem "PROGRAMFILES(X86)", "y"
+        f.FormatItem "PID 4120", "z"
+        f.EndCategory
+        Dim json As String
+        json = f.EndFormat()
+        Expect.IsTrue InStr(json, """pATH"": ""x""") > 0, "the item PATH is named pATH"
+        Expect.IsTrue InStr(json, """pROGRAMFILES(X86)"": ""y""") > 0, "the item PROGRAMFILES(X86) is named pROGRAMFILES(X86)"
+        Expect.IsTrue InStr(json, """pID4120"": ""z""") > 0, "the item PID 4120 is named pID4120"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub JsonFormatter_FailedResult_HasOneErrorMember()
+        Expect.Begin
+        Dim results As New List(Of DiagnosticResult(Of KeyValuePair(Of String, String)))
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = New DiagnosticResult(Of KeyValuePair(Of String, String))("Memory")
+        r.SetError "Failed to get memory status"
+        results.Add r
+        Dim json As String
+        json = FormatterFactory.FormatResults(results, New JsonFormatter)
+        Expect.IsTrue InStr(json, """memory"": {" & vbCrLf & "        ""error"": ""Failed to get memory status""") > 0, "the JSON for a failed result"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub JsonFormatter_BeginFormat_StartsANewReport()
+        Expect.Begin
+        Dim f As IOutputFormatter
+        Set f = New JsonFormatter
+        f.BeginFormat
+        f.FormatCategory "First"
+        f.EndCategory
+        f.EndFormat
+        f.BeginFormat
+        f.FormatCategory "Second"
+        f.EndCategory
+        Dim json As String
+        json = f.EndFormat()
+        Expect.IsFalse InStr(json, "first") > 0, "the second report holds the group of the first"
+        Expect.IsTrue InStr(json, """second"": {") > 0, "the second report holds its own group"
+        Expect.Done
+    End Sub
+
+    ' ---- TextFormatter
+
+    [TestCase]
+    Public Sub TextFormatter_Layout_IsAnIniFile()
+        Expect.Begin
+        Dim f As IOutputFormatter
+        Set f = New TextFormatter
+        f.BeginFormat
+        f.FormatCategory "CPU Info"
+        f.FormatItem "Processor Count", "8"
+        f.FormatItem "Path", "C:\Tools ""x"""
+        f.EndCategory
+        f.FormatCategory "Empty"
+        f.EndCategory
+        f.FormatCategory "Memory"
+        f.FormatItem "Memory Load", "54%"
+        f.EndCategory
+        Expect.AreEqual "# Twinbasic Diagnostic Tool v1.0|" & "|[CPU Info]|Processor Count = 8|Path = C:\Tools ""x""|" & "|[Empty]|[Memory]|Memory Load = 54%||", Replace(f.EndFormat(), vbCrLf, "|"), "the text report"
+        Expect.AreEqual "Text", f.FormatterName, "FormatterName"
+        Expect.AreEqual ".txt", f.FileExtension, "FileExtension"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FormatResults_FailedResult_IsOneErrorItem()
+        Expect.Begin
+        Dim results As New List(Of DiagnosticResult(Of KeyValuePair(Of String, String)))
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = New DiagnosticResult(Of KeyValuePair(Of String, String))("Uptime")
+        r.AddItem New KeyValuePair(Of String, String)("Total Days", "3")
+        results.Add r
+        Set r = New DiagnosticResult(Of KeyValuePair(Of String, String))("Memory")
+        r.AddItem New KeyValuePair(Of String, String)("Answer", "42")
+        r.SetError "Failed to get memory status"
+        results.Add r
+        Dim text As String
+        text = FormatterFactory.FormatResults(results, FormatterFactory.CreateFormatter("text"))
+        Expect.AreEqual "# Twinbasic Diagnostic Tool v1.0||[Uptime]|Total Days = 3||[Memory]|Error = Failed to get memory status||", Replace(text, vbCrLf, "|"), "the text report of a result and a failed result"
+        Expect.Done
+    End Sub
+
+    ' ---- HtmlFormatter
+
+    [TestCase]
+    Public Sub HtmlFormatter_Document_IsEscapedAndComplete()
+        Expect.Begin
+        Dim f As IOutputFormatter
+        Set f = New HtmlFormatter
+        f.BeginFormat
+        f.FormatCategory "Environment"
+        f.FormatItem "PATH", "C:\Tools & <x>"
+        f.EndCategory
+        Dim html As String
+        html = f.EndFormat()
+        Expect.AreEqual "<!DOCTYPE html>", Left$(html, 15), "the start of the HTML"
+        Expect.IsTrue InStr(html, "<h2>Environment</h2>") > 0, "the heading of the group"
+        Expect.IsTrue InStr(html, "<td class=""value"">C:\Tools &amp; &lt;x&gt;</td>") > 0, "the escaped value"
+        Expect.AreEqual "HTML", f.FormatterName, "FormatterName"
+        Expect.AreEqual ".html", f.FileExtension, "FileExtension"
+        Expect.Done
+    End Sub
+
+    ' ---- FormatterFactory
+
+    [TestCase]
+    Public Sub CreateFormatter_KnownAndUnknownNames_GiveTheDocumentedFormatter()
+        Expect.Begin
+        Expect.AreEqual "Text", FormatterFactory.CreateFormatter("text").FormatterName, "CreateFormatter(""text"")"
+        Expect.AreEqual "Text", FormatterFactory.CreateFormatter("txt").FormatterName, "CreateFormatter(""txt"")"
+        Expect.AreEqual "JSON", FormatterFactory.CreateFormatter("JSON").FormatterName, "CreateFormatter(""JSON"")"
+        Expect.AreEqual "HTML", FormatterFactory.CreateFormatter("html").FormatterName, "CreateFormatter(""html"")"
+        Expect.AreEqual "HTML", FormatterFactory.CreateFormatter("htm").FormatterName, "CreateFormatter(""htm"")"
+        Expect.AreEqual "Text", FormatterFactory.CreateFormatter("xml").FormatterName, "CreateFormatter(""xml"")"
+        Expect.AreEqual "Text", FormatterFactory.CreateFormatter("").FormatterName, "CreateFormatter("""")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateFormatterFromArg_RemovesOneLeadingSlashOrHyphen()
+        Expect.Begin
+        Expect.AreEqual "JSON", FormatterFactory.CreateFormatterFromArg("/JSON").FormatterName, "CreateFormatterFromArg(""/JSON"")"
+        Expect.AreEqual "HTML", FormatterFactory.CreateFormatterFromArg("-html").FormatterName, "CreateFormatterFromArg(""-html"")"
+        Expect.AreEqual "Text", FormatterFactory.CreateFormatterFromArg("--json").FormatterName, "CreateFormatterFromArg(""--json"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetSupportedFormats_ReturnsTheFixedText()
+        Expect.Begin
+        Expect.AreEqual "text, json, html", FormatterFactory.GetSupportedFormats(), "GetSupportedFormats"
+        Expect.Done
+    End Sub
+
+End Module

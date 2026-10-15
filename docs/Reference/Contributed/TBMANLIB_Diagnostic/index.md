@@ -69,6 +69,7 @@ A result can also be read directly, without a formatter. Each [item](KeyValuePai
 ## What a report contains
 {: #what-a-report-contains }
 
+<!-- test: ReportContentTests.FullReport_OperatingSystem_NamesTheUserAndTheComputer, ReportContentTests.FullReport_Environment_NamesTheProfileFolderAndThePath, ReportContentTests.FullReport_Processes_ListsEveryRunningProgram, ReportContentTests.FullReport_Disks_ListsTheSystemDrive, ReportContentTests.FullReport_Network_NamesTheHostAndTheFirstAdapterWithItsAddress, ReportContentTests.FullReport_RunAll_HasOneResultForEachCollector -->
 > [!NOTE] timeless
 > A full report names the user and the computer, the folders in the environment variables such as `USERPROFILE` and `PATH`, every running program, the drives, and the names and IPv4 addresses of the network adapters. Read a report before it goes to someone else.
 
@@ -126,6 +127,7 @@ The package has four modules whose contents a program has no need for:
 
 ## Known problems in version 1.0.0.1
 
+<!-- test: ListTests.Insert_InMiddle_PutsItemAtIndex, ListTests.Insert_AtZero_PutsItemFirst, ListTests.SetItem_AtZero_ReplacesFirstItem, ListTests.SetItem_AtZeroOnOneItemList_ReplacesTheItem, FileHelperTests.WriteFile_OverExistingLongerFile_ShortensIt, FileHelperTests.ReadFile_MissingFile_DoesNotCreateIt, FileHelperTests.ReadFile_MissingFile_ReturnsErrorText, FileHelperTests.GetFileSize_MissingFile_ReturnsMinusOne, FileHelperTests.GetFileSize_MissingFile_DoesNotCreateIt, FileHelperTests.ReadFile_WrittenText_IsReadBackAsWritten, FileHelperTests.ReadFile_WrittenText_HasNoByteOrderMark, FilePathTests.NormalizePath_UncPath_KeepsItsTwoBackslashes, FilePathTests.GetFullPath_UncPath_StaysAUncPath, FormatHelperTests.EscapeJson_ControlCharacters_AreEscaped, FormatterTests.JsonFormatter_ControlCharacterInValue_IsEscaped, FormatterTests.JsonFormatter_ControlCharacterInKey_IsEscaped, FormatHelperTests.FormatBytes_NoDecimals_LeavesNoDecimalSeparator, CollectorTests.CPUInfoCollector_PageSize_HasNoDecimalSeparator, CollectorTests.NetworkInfoCollector_FullReport_ListsEveryAdapter -->
 > [!WARNING] 1.0.0.1
 > The package gives a wrong result without an error, or loses data, in these cases.
 >
@@ -136,9 +138,13 @@ The package has four modules whose contents a program has no need for:
 > - **[NormalizePath](FileHelper#normalizepath) and [GetFullPath](FileHelper#getfullpath) turn a UNC path into a relative one.** `\\server\share\f.txt` becomes `server\share\f.txt`, and the file functions then open a file of that relative name.
 > - **[EscapeJson](FormatHelper#escapejson) leaves the control characters 1 to 31, other than line feed, carriage return and tab, unescaped**, so [**JsonFormatter**](Formatters#jsonformatter) can write JSON that a parser rejects.
 > - **[FormatBytes](FormatHelper#formatbytes) with no decimals leaves the decimal separator in the text**, as in `4. KB`. The `Page Size` item of [**CPUInfoCollector**](Collectors#cpuinfocollector) is written this way.
-> - **[LocaleCollector](Collectors#localecollector) reports the offset of standard time as `Timezone` all year.** In summer time the item is behind the clock by the daylight saving offset: `UTC+1` where the clock is at UTC+2, as in Central European Summer Time.
 > - **[NetworkInfoCollector](Collectors#networkinfocollector) lists the first adapter only in a 64-bit program.** It reads the adapters in steps of 640 bytes, and the records are 704 bytes apart in a 64-bit program. The summary may then have no `Primary IP`. A 32-bit program lists every adapter.
 
+<!-- test: none -- the defect shows only while daylight saving time is in effect, so no case gives the same verdict all year -->
+> [!WARNING] 1.0.0.1
+> **[LocaleCollector](Collectors#localecollector) reports the offset of standard time as `Timezone` all year.** In summer time the item is behind the clock by the daylight saving offset: `UTC+1` where the clock is at UTC+2, as in Central European Summer Time.
+
+<!-- test: DictionaryTests.New_CreatesAnEmptyDictionary, ListTests.Contains_Object_FindsIt, ListTests.IndexOf_Object_ReturnsItsPosition, ListTests.Remove_Object_RemovesIt, ListTests.Insert_AtZeroOnEmptyList_AddsItem, FileHelperTests.WriteFile_MissingParentFolders_CreatesThem, FileHelperTests.AppendFile_MissingParentFolders_CreatesThem -->
 > [!NOTE] 1.0.0.1
 > The package has these other problems. Each raises an error.
 >
@@ -147,7 +153,9 @@ The package has four modules whose contents a program has no need for:
 > - **[List.Insert](List#insert) with the index 0 raises error 5 on an empty list.**
 > - **[WriteFile](FileHelper#writefile) and [AppendFile](FileHelper#appendfile) make only the last folder of a path.** For a path whose parent folder is missing they return the error text `Error -2147467259: Unspecified error` and the path. The **Open** statement raises error 76, *Path not found*, for it in VB6.
 
+<!-- test: CollectorTests.CPULoadCollector_FirstReading_IsZero, FormatterTests.JsonFormatter_EveryValue_IsAString, FormatterTests.JsonFormatter_NamesInCapitals_KeepTheirCapitals -->
 Two behaviours follow from the code and can look like defects. [**CPULoadCollector**](Collectors#cpuloadcollector) reports 0 for its first reading, because it measures between two calls. [**JsonFormatter**](Formatters#jsonformatter) writes every value as a string and turns `PATH` into `pATH`.
+<!-- /test -->
 
 ## Pages
 
@@ -182,3 +190,7 @@ Two behaviours follow from the code and can look like defects. [**CPULoadCollect
 - [TBMANLIB](../TBMANLIB/) package -- the toolkit of the same author
 - [VBA_JSON](../VBA_JSON/) package -- reads JSON, such as the report that **JsonFormatter** writes
 - [Importing a package from TWINSERV](../../../../Features/Packages/Importing-TWINSERV) -- adding a published package to a project
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [TBMANLIB_Diagnostic-tests.twinproj](TBMANLIB_Diagnostic-tests.twinproj), a twinBASIC project. It uses TBMANLIB_Diagnostic as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

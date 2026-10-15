@@ -1,0 +1,119 @@
+{
+  "version": "1.0.0.1",
+  "cases": {
+    "CollectorTests.CPUInfoCollector_PageSize_HasNoDecimalSeparator": {
+      "fails": "1 of 1 checks failed: Page Size item: expected \"4 KB\", got \"4. KB\""
+    },
+    "CollectorTests.NetworkInfoCollector_FullReport_ListsEveryAdapter": {
+      "win32": "pass",
+      "win64": {
+        "fails": "1 of 2 checks failed: number of Adapter items in the full report, for 8 adapters that GetAdaptersInfo returns: expected 8, got 1"
+      }
+    },
+    "DictionaryTests.New_CreatesAnEmptyDictionary": {
+      "fails": "1 of 1 checks failed: New Dictionary(Of String, Long) raised run-time error 91: Object variable or With block variable not set"
+    },
+    "DictionaryTests.Add_ThenItem_ReturnsTheValue": {
+      "fails": "1 of 1 checks failed: New Dictionary(Of String, Long) raised run-time error 91: Object variable or With block variable not set"
+    },
+    "DictionaryTests.Add_ExistingKey_Raises457": {
+      "fails": "1 of 1 checks failed: New Dictionary(Of String, Long) raised run-time error 91: Object variable or With block variable not set"
+    },
+    "DictionaryTests.Item_MissingKey_Raises5": {
+      "fails": "1 of 1 checks failed: New Dictionary(Of String, Long) raised run-time error 91: Object variable or With block variable not set"
+    },
+    "DictionaryTests.SetItem_NewKey_AddsItAtTheEnd": {
+      "fails": "1 of 1 checks failed: New Dictionary(Of String, Long) raised run-time error 91: Object variable or With block variable not set"
+    },
+    "DictionaryTests.SetItem_ExistingKey_ReplacesTheValueInPlace": {
+      "fails": "1 of 1 checks failed: New Dictionary(Of String, Long) raised run-time error 91: Object variable or With block variable not set"
+    },
+    "DictionaryTests.ContainsKey_TellsPresentFromMissing": {
+      "fails": "1 of 1 checks failed: New Dictionary(Of String, Long) raised run-time error 91: Object variable or With block variable not set"
+    },
+    "DictionaryTests.TryGetValue_Present_ReturnsTrueAndTheValue": {
+      "fails": "1 of 1 checks failed: New Dictionary(Of String, Long) raised run-time error 91: Object variable or With block variable not set"
+    },
+    "DictionaryTests.TryGetValue_Missing_ReturnsFalseAndKeepsTheVariable": {
+      "fails": "1 of 1 checks failed: New Dictionary(Of String, Long) raised run-time error 91: Object variable or With block variable not set"
+    },
+    "DictionaryTests.Remove_ExistingKey_RemovesKeyAndValue": {
+      "fails": "1 of 1 checks failed: New Dictionary(Of String, Long) raised run-time error 91: Object variable or With block variable not set"
+    },
+    "DictionaryTests.Clear_RemovesEveryKey": {
+      "fails": "1 of 1 checks failed: New Dictionary(Of String, Long) raised run-time error 91: Object variable or With block variable not set"
+    },
+    "DictionaryTests.KeysAndValues_ReturnTheListsInOrderOfAdding": {
+      "fails": "1 of 1 checks failed: New Dictionary(Of String, Long) raised run-time error 91: Object variable or With block variable not set"
+    },
+    "FileHelperTests.WriteFile_OverExistingLongerFile_ShortensIt": {
+      "fails": "1 of 2 checks failed: size of that file after WriteFile \"ab\" over it (3 bytes of byte-order mark and 2 of text): expected 5, got 13"
+    },
+    "FileHelperTests.WriteFile_MissingParentFolders_CreatesThem": {
+      "fails": "2 of 2 checks failed: what WriteFile into a path whose two top folders are missing returns: expected \"True\", got \"Error -2147467259: Unspecified error\"; the file exists: expected True, got False"
+    },
+    "FileHelperTests.AppendFile_MissingParentFolders_CreatesThem": {
+      "fails": "2 of 2 checks failed: what AppendFile into a path whose two top folders are missing returns: expected \"True\", got \"Error -2147467259: Unspecified error\"; the file exists: expected True, got False"
+    },
+    "FileHelperTests.ReadFile_WrittenText_IsReadBackAsWritten": {
+      "fails": "1 of 1 checks failed: ReadFile of a file written with WriteFile \"caf\" and e acute: expected \"café\", got \"ï»¿cafÃ©\""
+    },
+    "FileHelperTests.ReadFile_WrittenText_HasNoByteOrderMark": {
+      "fails": "1 of 1 checks failed: ReadFile of a file written with WriteFile \"abc\": expected \"abc\", got \"ï»¿abc\""
+    },
+    "FileHelperTests.ReadFile_MissingFile_DoesNotCreateIt": {
+      "fails": "1 of 1 checks failed: the file exists after ReadFile of a file that was not there: expected False, got True"
+    },
+    "FileHelperTests.ReadFile_MissingFile_ReturnsErrorText": {
+      "fails": "1 of 1 checks failed: the start of what ReadFile returns for a file that is not there: expected \"Error \", got \"\""
+    },
+    "FileHelperTests.GetFileSize_MissingFile_ReturnsMinusOne": {
+      "fails": "1 of 1 checks failed: GetFileSize of a file that is not there: expected -1, got 0"
+    },
+    "FileHelperTests.GetFileSize_MissingFile_DoesNotCreateIt": {
+      "fails": "1 of 1 checks failed: the file exists after GetFileSize of a file that was not there: expected False, got True"
+    },
+    "FilePathTests.NormalizePath_UncPath_KeepsItsTwoBackslashes": {
+      "fails": "1 of 1 checks failed: NormalizePath of a UNC path: expected \"\\\\server\\share\\f.txt\", got \"server\\share\\f.txt\""
+    },
+    "FilePathTests.GetFullPath_UncPath_StaysAUncPath": {
+      "fails": "1 of 1 checks failed: GetFullPath of a UNC path: expected \"\\\\server\\share\\f.txt\", got \"server\\share\\f.txt\""
+    },
+    "FormatHelperTests.FormatBytes_NoDecimals_LeavesNoDecimalSeparator": {
+      "fails": "2 of 2 checks failed: FormatBytes(4096, 0): expected \"4 KB\", got \"4. KB\"; FormatBytes(1048576, 0): expected \"1 MB\", got \"1. MB\""
+    },
+    "FormatHelperTests.EscapeJson_ControlCharacters_AreEscaped": {
+      "fails": "1 of 1 checks failed: codes from 1 to 31 that EscapeJson returns as the raw character, which JSON does not allow in a string: expected \"\", got \"1,2,3,4,5,6,7,8,11,12,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31\""
+    },
+    "FormatterTests.JsonFormatter_ControlCharacterInValue_IsEscaped": {
+      "fails": "1 of 1 checks failed: the JSON for a value that holds Chr$(1) holds the raw character, which JSON does not allow in a string: expected False, got True"
+    },
+    "FormatterTests.JsonFormatter_ControlCharacterInKey_IsEscaped": {
+      "fails": "1 of 1 checks failed: the JSON for a key that holds Chr$(2) holds the raw character, which JSON does not allow in a string: expected False, got True"
+    },
+    "ListTests.Insert_InMiddle_PutsItemAtIndex": {
+      "fails": "1 of 1 checks failed: items of a, b, c after Insert 1, \"X\": expected \"aXbc\", got \"abXc\""
+    },
+    "ListTests.Insert_AtZero_PutsItemFirst": {
+      "fails": "1 of 1 checks failed: items of a, b, c after Insert 0, \"Y\": expected \"Yabc\", got \"aYbc\""
+    },
+    "ListTests.Insert_AtZeroOnEmptyList_AddsItem": {
+      "fails": "2 of 2 checks failed: run-time error raised by Insert 0, \"Y\" on an empty list: expected 0, got 5; Count of an empty list after Insert 0, \"Y\": expected 1, got 0"
+    },
+    "ListTests.SetItem_AtZero_ReplacesFirstItem": {
+      "fails": "1 of 1 checks failed: items of a, b, c after SetItem 0, \"Z\": expected \"Zbc\", got \"bZc\""
+    },
+    "ListTests.SetItem_AtZeroOnOneItemList_ReplacesTheItem": {
+      "fails": "3 of 3 checks failed: run-time error raised by SetItem 0, \"Z\" on a list of one item: expected 0, got 5; Count of a list of one item after SetItem 0, \"Z\": expected 1, got 0; items of a list of one item after SetItem 0, \"Z\": expected \"Z\", got \"\""
+    },
+    "ListTests.Contains_Object_FindsIt": {
+      "fails": "2 of 2 checks failed: run-time error raised by Contains of an object that is in the list: expected 0, got 438; Contains of an object that is in the list: expected True, got False"
+    },
+    "ListTests.IndexOf_Object_ReturnsItsPosition": {
+      "fails": "2 of 2 checks failed: run-time error raised by IndexOf of an object that is in the list: expected 0, got 438; IndexOf of the second of two objects: expected 1, got -2"
+    },
+    "ListTests.Remove_Object_RemovesIt": {
+      "fails": "3 of 3 checks failed: run-time error raised by Remove of an object that is in the list: expected 0, got 438; Remove of an object that is in the list: expected True, got False; Count after Remove of the only object: expected 0, got 1"
+    }
+  }
+}

@@ -1,0 +1,71 @@
+' Adapters: the network adapters that Windows reports, read with GetAdaptersInfo and followed
+' through the pointer that links the records, for the cases that check NetworkInfoCollector.
+'
+' Count is the number of records, Description(i) the text of the record and Address(i) its first
+' IPv4 address ("0.0.0.0" when it has none). In an IP_ADAPTER_INFO record, for a pointer of P bytes,
+' Next is at 0, the description (132 bytes of ANSI) at P+264 and the first IP address (16 bytes) at
+' 432 in a 32-bit program and 448 in a 64-bit one.
+Module Adapters
+
+    Private Declare PtrSafe Function GetAdaptersInfo Lib "iphlpapi" (ByVal pAdapterInfo As LongPtr, ByRef pOutBufLen As Long) As Long
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
+    Private mCount As Long
+    Private mDescription(0 To 63) As String
+    Private mAddress(0 To 63) As String
+
+    Public Property Get Count() As Long
+        Count = mCount
+    End Property
+
+    Public Function Description(ByVal Index As Long) As String
+        Description = mDescription(Index)
+    End Function
+
+    Public Function Address(ByVal Index As Long) As String
+        Address = mAddress(Index)
+    End Function
+
+    ' Reads the adapters again. False when GetAdaptersInfo fails.
+    Public Function Load() As Boolean
+        Dim size As Long, buf() As Byte, node As LongPtr, ptrSize As Long, descOff As Long, ipOff As Long
+#If Win64 Then
+        ptrSize = 8
+        ipOff = 448
+#Else
+        ptrSize = 4
+        ipOff = 432
+#End If
+        descOff = ptrSize + 264
+        mCount = 0
+        GetAdaptersInfo 0, size
+        If size <= 0 Then Exit Function
+        ReDim buf(0 To size - 1)
+        If GetAdaptersInfo(VarPtr(buf(0)), size) <> 0 Then Exit Function
+        node = VarPtr(buf(0))
+        Do While node <> 0 And mCount <= 63
+            mDescription(mCount) = AnsiAt(node + descOff, 132)
+            mAddress(mCount) = AnsiAt(node + ipOff, 16)
+            mCount = mCount + 1
+            Dim nextNode As LongPtr
+            nextNode = 0
+            CopyMemory VarPtr(nextNode), node, ptrSize
+            node = nextNode
+        Loop
+        Load = True
+    End Function
+
+    ' The ANSI text that starts at an address, to its zero or to MaxLen bytes.
+    Private Function AnsiAt(ByVal Address As LongPtr, ByVal MaxLen As Long) As String
+        Dim b() As Byte, n As Long
+        ReDim b(0 To MaxLen - 1)
+        CopyMemory VarPtr(b(0)), Address, MaxLen
+        For n = 0 To MaxLen - 1
+            If b(n) = 0 Then Exit For
+        Next n
+        If n = 0 Then Exit Function
+        ReDim Preserve b(0 To n - 1)
+        AnsiAt = Trim$(StrConv(b, vbUnicode))
+    End Function
+
+End Module

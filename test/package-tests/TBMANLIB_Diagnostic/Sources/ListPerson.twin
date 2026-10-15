@@ -1,0 +1,6 @@
+' ListPerson: a class with no default member, for the cases that put objects in a List.
+Class ListPerson
+
+    Public Name As String
+
+End Class

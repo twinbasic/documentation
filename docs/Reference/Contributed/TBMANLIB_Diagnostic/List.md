@@ -135,6 +135,10 @@ Removes all items.
 
 Syntax: *list*.**Clear**
 
+<!-- test: ListTests.Clear_RemovesEveryItem -->
+Count and Capacity are 0 afterwards.
+<!-- /test -->
+
 ### Contains
 {: .no_toc }
 
@@ -145,7 +149,9 @@ Syntax: *list*.**Contains** ( *item* ) **As Boolean**
 *item*
 : *required* A value of type *T*.
 
+<!-- test: ListTests.Contains_Text_ComparesByValue, ListTests.Contains_Object_FindsIt, ListTests.IndexOf_Object_ReturnsItsPosition, ListTests.Remove_Object_RemovesIt, ListTests.Add_Object_ItemReturnsIt, ListTests.RemoveAt_Object_RemovesIt -->
 Returns **True** when an item is equal to *item*. The items are compared with the `=` operator, so the comparison is by value for text and numbers. For objects the operator compares what an object offers by default, and a class that has no default member makes it raise run-time error 438, *Object doesn't support this property or method*, as soon as the list holds an item to compare. **IndexOf** and **Remove**, which calls **IndexOf**, raise the same error. **Item**, **Add** and **RemoveAt** work with objects.
+<!-- /test -->
 
 ```tb check_build slot=file projname=diag-list
 Class Person
@@ -186,7 +192,9 @@ Syntax: *list*.**IndexOf** ( *item* ) **As Long**
 *item*
 : *required* A value of type *T*.
 
+<!-- test: ListTests.IndexOf_Text_ReturnsZeroBasedIndex -->
 Returns the index of the first item that is equal to *item*, compared as in [**Contains**](#contains), or -1 when there is none.
+<!-- /test -->
 
 ### Insert
 {: .no_toc }
@@ -195,6 +203,7 @@ Inserts an item at a position.
 
 Syntax: *list*.**Insert** ( *index*, *item* )
 
+<!-- test: ListTests.Insert_AtCount_PutsItemLast, ListTests.Insert_OutOfRange_Raises9 -->
 *index*
 : *required* A **Long**, the position of the new item, from 0 to [**Count**](#count). With **Count** the item goes at the end.
 
@@ -202,6 +211,7 @@ Syntax: *list*.**Insert** ( *index*, *item* )
 : *required* A value of type *T*.
 
 Raises error 9 with the source `List(Of T).Insert` and the text `Index out of range: ` and the index, when *index* is below 0 or above **Count**. See the start of the page for the position of the new item and for the empty list.
+<!-- /test -->
 
 ### Item
 {: .no_toc }
@@ -213,7 +223,9 @@ Syntax: *list*.**Item** ( *index* ) **As T**
 *index*
 : *required* A **Long**, from 0 to [**Count**](#count) - 1.
 
+<!-- test: ListTests.Item_OutOfRange_Raises9 -->
 Raises error 9 with the source `List(Of T).Item` and the text `Index out of range: ` and the index, when *index* is outside the list.
+<!-- /test -->
 
 ### New
 {: .no_toc }
@@ -235,7 +247,9 @@ Syntax: *list*.**Remove** ( *item* ) **As Boolean**
 *item*
 : *required* A value of type *T*.
 
+<!-- test: ListTests.Remove_Text_RemovesFirstMatch -->
 Returns **True** when an item was found, with [**IndexOf**](#indexof), and removed. Returns **False** when none is equal to *item*.
+<!-- /test -->
 
 ### RemoveAt
 {: .no_toc }
@@ -247,7 +261,9 @@ Syntax: *list*.**RemoveAt** ( *index* )
 *index*
 : *required* A **Long**, from 0 to [**Count**](#count) - 1.
 
+<!-- test: ListTests.RemoveAt_Text_MovesLaterItemsDown, ListTests.RemoveAt_OutOfRange_Raises9 -->
 The items after it move down by one place. Raises error 9 with the source `List(Of T).RemoveAt` and the text `Index out of range: ` and the index, when *index* is outside the list.
+<!-- /test -->
 
 ### SetItem
 {: .no_toc }
@@ -262,7 +278,9 @@ Syntax: *list*.**SetItem** ( *index*, *item* )
 *item*
 : *required* A value of type *T*.
 
+<!-- test: ListTests.SetItem_InMiddle_ReplacesItem, ListTests.SetItem_AtLastIndex_ReplacesLastItem, ListTests.SetItem_OutOfRange_Raises9 -->
 Removes the item at *index* and adds *item* in its place. Raises error 9 with the source `List(Of T).SetItem` and the text `Index out of range: ` and the index, when *index* is outside the list. See the start of the page for the case of index 0.
+<!-- /test -->
 
 ### ToArray
 {: .no_toc }
@@ -271,7 +289,9 @@ Returns the items as an array.
 
 Syntax: *list*.**ToArray** **As Variant()**
 
+<!-- test: ListTests.ToArray_ReturnsZeroBasedVariantArray, ListTests.ToArray_EmptyList_HasNoBounds -->
 Returns a **Variant** array whose first element has the index 0. For an empty list it returns an array that has no bounds, and **UBound** and **LBound** raise error 9 for it.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim names As New List(Of String)

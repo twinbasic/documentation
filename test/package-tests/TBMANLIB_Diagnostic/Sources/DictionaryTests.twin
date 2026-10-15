@@ -1,0 +1,187 @@
+' Dictionary(Of TKey, TValue): creating one, and what its members do once it exists.
+[TestFixture]
+Module DictionaryTests
+
+    ' Creates a dictionary of text keys and Long values. Records a failed check, and returns False,
+    ' when New raises an error or leaves Nothing, so that a case ends at once with that one defect.
+    Private Function Make(ByRef D As Dictionary(Of String, Long)) As Boolean
+        On Error Resume Next
+        Set D = New Dictionary(Of String, Long)
+        If Err.Number <> 0 Then
+            Expect.Fail "New Dictionary(Of String, Long) raised run-time error " & Err.Number & ": " & Err.Description
+            Err.Clear
+        End If
+        On Error GoTo 0
+        Make = Not (D Is Nothing)
+    End Function
+
+    [TestCase]
+    Public Sub New_CreatesAnEmptyDictionary()
+        Expect.Begin
+        Dim d As Dictionary(Of String, Long)
+        If Make(d) Then
+            Expect.AreEqual 0, d.Count, "Count of a new dictionary"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_ThenItem_ReturnsTheValue()
+        Expect.Begin
+        Dim d As Dictionary(Of String, Long)
+        If Make(d) Then
+            d.Add "Ann", 31
+            d.Add "Bob", 42
+            Expect.AreEqual 2, d.Count, "Count after two Add calls"
+            Expect.AreEqual 31, d.Item("Ann"), "Item(""Ann"")"
+            Expect.AreEqual 42, d.Item("Bob"), "Item(""Bob"")"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_ExistingKey_Raises457()
+        Expect.Begin
+        Dim d As Dictionary(Of String, Long)
+        If Make(d) Then
+            d.Add "Ann", 31
+            On Error Resume Next
+            d.Add "Ann", 32
+            Expect.AreEqual 457, Err.Number, "run-time error raised by Add of a key that is there"
+            Err.Clear
+            On Error GoTo 0
+            Expect.AreEqual 31, d.Item("Ann"), "Item(""Ann"") after that error"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_MissingKey_Raises5()
+        Expect.Begin
+        Dim d As Dictionary(Of String, Long)
+        If Make(d) Then
+            Dim v As Long
+            On Error Resume Next
+            v = d.Item("Zed")
+            Expect.AreEqual 5, Err.Number, "run-time error raised by Item of a key that is not there"
+            Err.Clear
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetItem_NewKey_AddsItAtTheEnd()
+        Expect.Begin
+        Dim d As Dictionary(Of String, Long)
+        If Make(d) Then
+            d.SetItem "Ann", 1
+            d.SetItem "Bob", 2
+            Expect.AreEqual 2, d.Count, "Count after SetItem of two new keys"
+            Expect.AreEqual "Bob", d.Keys.Item(1), "the second key"
+            Expect.AreEqual 2, d.Values.Item(1), "the second value"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetItem_ExistingKey_ReplacesTheValueInPlace()
+        Expect.Begin
+        Dim d As Dictionary(Of String, Long)
+        If Make(d) Then
+            d.Add "Ann", 1
+            d.Add "Bob", 2
+            d.SetItem "Ann", 10
+            Expect.AreEqual 2, d.Count, "Count after SetItem of a key that is there"
+            Expect.AreEqual 10, d.Item("Ann"), "Item(""Ann"") after SetItem ""Ann"", 10"
+            Expect.AreEqual "Ann", d.Keys.Item(0), "the first key after SetItem ""Ann"", 10"
+            Expect.AreEqual 2, d.Item("Bob"), "Item(""Bob"") after SetItem ""Ann"", 10"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ContainsKey_TellsPresentFromMissing()
+        Expect.Begin
+        Dim d As Dictionary(Of String, Long)
+        If Make(d) Then
+            d.Add "Ann", 1
+            Expect.IsTrue d.ContainsKey("Ann"), "ContainsKey(""Ann"")"
+            Expect.IsFalse d.ContainsKey("Zed"), "ContainsKey(""Zed"")"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TryGetValue_Present_ReturnsTrueAndTheValue()
+        Expect.Begin
+        Dim d As Dictionary(Of String, Long)
+        If Make(d) Then
+            d.Add "Ann", 31
+            Dim v As Long
+            v = -1
+            Expect.IsTrue d.TryGetValue("Ann", v), "TryGetValue of a key that is there"
+            Expect.AreEqual 31, v, "the value TryGetValue returned"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TryGetValue_Missing_ReturnsFalseAndKeepsTheVariable()
+        Expect.Begin
+        Dim d As Dictionary(Of String, Long)
+        If Make(d) Then
+            Dim v As Long
+            v = -1
+            Expect.IsFalse d.TryGetValue("Zed", v), "TryGetValue of a key that is not there"
+            Expect.AreEqual -1, v, "the variable after TryGetValue of a key that is not there"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_ExistingKey_RemovesKeyAndValue()
+        Expect.Begin
+        Dim d As Dictionary(Of String, Long)
+        If Make(d) Then
+            d.Add "Ann", 1
+            d.Add "Bob", 2
+            d.Add "Cy", 3
+            Expect.IsTrue d.Remove("Bob"), "Remove of a key that is there"
+            Expect.AreEqual 2, d.Count, "Count after Remove"
+            Expect.AreEqual "Cy", d.Keys.Item(1), "the second key after Remove(""Bob"")"
+            Expect.AreEqual 3, d.Values.Item(1), "the second value after Remove(""Bob"")"
+            Expect.IsFalse d.Remove("Bob"), "Remove of a key that is not there"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_RemovesEveryKey()
+        Expect.Begin
+        Dim d As Dictionary(Of String, Long)
+        If Make(d) Then
+            d.Add "Ann", 1
+            d.Clear
+            Expect.AreEqual 0, d.Count, "Count after Clear"
+            Expect.AreEqual 0, d.Keys.Count, "Keys.Count after Clear"
+            Expect.AreEqual 0, d.Values.Count, "Values.Count after Clear"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub KeysAndValues_ReturnTheListsInOrderOfAdding()
+        Expect.Begin
+        Dim d As Dictionary(Of String, Long)
+        If Make(d) Then
+            d.Add "Ann", 1
+            d.Add "Bob", 2
+            Expect.AreEqual "Ann", d.Keys.Item(0), "Keys.Item(0)"
+            Expect.AreEqual "Bob", d.Keys.Item(1), "Keys.Item(1)"
+            Expect.AreEqual 1, d.Values.Item(0), "Values.Item(0)"
+            Expect.AreEqual 2, d.Values.Item(1), "Values.Item(1)"
+        End If
+        Expect.Done
+    End Sub
+
+End Module
