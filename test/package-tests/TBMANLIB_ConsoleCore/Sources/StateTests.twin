@@ -1,0 +1,715 @@
+' TBMANLIB_ConsoleCore: creating a cConsole and the state of the console: modes, colours, code pages,
+' cursor, size and title. Each case works on a screen buffer of its own (see Rig).
+[TestFixture]
+Module StateTests
+
+    ' ---- creating a cConsole and Restore
+
+    [TestCase]
+    Public Sub New_NegativeInputBufferSize_Raises5()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As cConsole
+        On Error Resume Next
+        Set c = New cConsole(-1)
+        Expect.AreEqual 5, Err.Number, "Err.Number of New cConsole(-1)"
+        On Error GoTo 0
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_TracksGrayOnBlack_WhateverColoursTheConsoleHas()
+        Expect.Begin
+        Rig.Acquire
+        Rig.SetAttr Rig.OutHandle, &H1E
+        Dim c As New cConsole
+        Expect.AreEqual CLng(ConsoleColor.Gray), CLng(c.ForeColor), "ForeColor of a new cConsole whose console is Yellow on DarkBlue"
+        Expect.AreEqual CLng(ConsoleColor.Black), CLng(c.BackColor), "BackColor of a new cConsole whose console is Yellow on DarkBlue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Predeclared_TheClassNameIsAnObject()
+        Expect.Begin
+        Rig.Acquire
+        cConsole.WriteLine "Predeclared"
+        Expect.AreEqual "Predeclared", Rig.RowText(0), "row 0 after cConsole.WriteLine ""Predeclared"""
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Restore_PutsBackTheInputAndOutputModes()
+        Expect.Begin
+        Rig.Acquire
+        Dim inMode As Long = Rig.InMode()
+        Dim outMode As Long = Rig.OutMode()
+        Dim c As New cConsole
+        c.EnableVirtualTerminal
+        Rig.SetInMode &H80
+        c.Restore
+        Expect.AreEqual inMode, Rig.InMode(), "input mode after Restore"
+        Expect.AreEqual outMode, Rig.OutMode(), "output mode after Restore"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Restore_PutsBackTheColourAttributes()
+        Expect.Begin
+        Rig.Acquire
+        Rig.SetAttr Rig.OutHandle, &H1E
+        Dim c As New cConsole
+        c.SetColors ConsoleColor.Red, ConsoleColor.Green
+        c.Restore
+        Expect.AreEqual &H1E&, Rig.CurrentAttr(Rig.OutHandle), "colour attribute of the console after Restore"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Restore_PutsBackTheCodePages()
+        Expect.Begin
+        Rig.Acquire
+        mConsoleAPI.SetConsoleCP 437
+        mConsoleAPI.SetConsoleOutputCP 850
+        Dim c As New cConsole
+        c.EnableUTF8
+        c.Restore
+        Expect.AreEqual 437, mConsoleAPI.GetConsoleCP(), "input code page after Restore"
+        Expect.AreEqual 850, mConsoleAPI.GetConsoleOutputCP(), "output code page after Restore"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Restore_LeavesTheFullScreenMode()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        c.Restore
+        Expect.IsFalse c.FullScreenMode, "FullScreenMode after Restore"
+        Expect.IsTrue c.Buffer Is Nothing, "Buffer after Restore"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Restore_DoesNotClearTheScreenOrPutBackTheCursorSize()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteTo "kept"
+        c.CursorSize = 80
+        c.Restore
+        Expect.AreEqual "kept", Rig.RowText(0), "row 0 after Restore"
+        Expect.AreEqual 80, c.CursorSize, "CursorSize after Restore"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Restore_ObjectStaysUsable_AndRestoreCanBeCalledAgain()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.Restore
+        c.Restore
+        c.WriteTo "still"
+        Expect.AreEqual "still", Rig.RowText(0), "row 0 after Restore, Restore and WriteTo"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Terminate_RestoresTheConsole()
+        Expect.Begin
+        Rig.Acquire
+        mConsoleAPI.SetConsoleCP 437
+        mConsoleAPI.SetConsoleOutputCP 850
+        Dim inMode As Long = Rig.InMode()
+        Dim c As New cConsole
+        c.EnableUTF8
+        c.EnableVirtualTerminal
+        Set c = Nothing
+        Expect.AreEqual 437, mConsoleAPI.GetConsoleCP(), "input code page after the object is destroyed"
+        Expect.AreEqual 850, mConsoleAPI.GetConsoleOutputCP(), "output code page after the object is destroyed"
+        Expect.AreEqual inMode, Rig.InMode(), "input mode after the object is destroyed"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SecondObject_RecordsTheChangedModesAsTheOriginalOnes()
+        Expect.Begin
+        Rig.Acquire
+        Dim outMode As Long = Rig.OutMode()
+        Dim first As New cConsole
+        first.EnableVirtualTerminal
+        Dim second As New cConsole
+        second.Restore
+        Expect.AreEqual outMode Or &H4&, Rig.OutMode(), "output mode after Restore of an object created after EnableVirtualTerminal"
+        first.Restore
+        Expect.AreEqual outMode, Rig.OutMode(), "output mode after Restore of the first object"
+        Set second = Nothing
+        Set first = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- colours
+
+    [TestCase]
+    Public Sub ForeColor_Let_AppliesTheColoursToTheConsole()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.ForeColor = ConsoleColor.Red
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(c.ForeColor), "ForeColor after it is set"
+        Expect.AreEqual 12, Rig.CurrentAttr(Rig.OutHandle), "attribute of the console after ForeColor = Red"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BackColor_Let_AppliesTheColoursToTheConsole()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.ForeColor = ConsoleColor.Red
+        c.BackColor = ConsoleColor.Blue
+        Expect.AreEqual CLng(ConsoleColor.Blue), CLng(c.BackColor), "BackColor after it is set"
+        Expect.AreEqual 12 + 9 * 16, Rig.CurrentAttr(Rig.OutHandle), "attribute of the console after BackColor = Blue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ForeColor_Get_ReturnsTheStoredValue_NotTheConsolesColour()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.SetAttr Rig.OutHandle, &H4F
+        Expect.AreEqual CLng(ConsoleColor.Gray), CLng(c.ForeColor), "ForeColor after the console's attribute was changed behind the object"
+        Expect.AreEqual CLng(ConsoleColor.Black), CLng(c.BackColor), "BackColor after the console's attribute was changed behind the object"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetColors_BackgroundDefaultsToBlackNotTheCurrentBackground()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.BackColor = ConsoleColor.Blue
+        c.SetColors ConsoleColor.Red
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(c.ForeColor), "ForeColor after SetColors Red"
+        Expect.AreEqual CLng(ConsoleColor.Black), CLng(c.BackColor), "BackColor after SetColors Red"
+        Expect.AreEqual 12, Rig.CurrentAttr(Rig.OutHandle), "attribute of the console after SetColors Red"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ResetColors_PutsBackTheColoursTheConsoleHad()
+        Expect.Begin
+        Rig.Acquire
+        Rig.SetAttr Rig.OutHandle, &H1E
+        Dim c As New cConsole
+        c.SetColors ConsoleColor.Red, ConsoleColor.Green
+        c.ResetColors
+        Expect.AreEqual &H1E&, Rig.CurrentAttr(Rig.OutHandle), "attribute of the console after ResetColors"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(c.ForeColor), "ForeColor after ResetColors"
+        Expect.AreEqual CLng(ConsoleColor.DarkBlue), CLng(c.BackColor), "BackColor after ResetColors"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- code pages
+
+    [TestCase]
+    Public Sub CodePages_Get_ReturnTheCodePagesOfTheConsole()
+        Expect.Begin
+        Rig.Acquire
+        mConsoleAPI.SetConsoleCP 437
+        mConsoleAPI.SetConsoleOutputCP 850
+        Dim c As New cConsole
+        Expect.AreEqual 437, c.InputCodePage, "InputCodePage"
+        Expect.AreEqual 850, c.OutputCodePage, "OutputCodePage"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CodePages_Let_SetTheCodePagesOfTheConsole()
+        Expect.Begin
+        Rig.Acquire
+        mConsoleAPI.SetConsoleCP 437
+        mConsoleAPI.SetConsoleOutputCP 437
+        Dim c As New cConsole
+        c.InputCodePage = 1252
+        c.OutputCodePage = 850
+        Expect.AreEqual 1252, mConsoleAPI.GetConsoleCP(), "input code page after InputCodePage = 1252"
+        Expect.AreEqual 850, mConsoleAPI.GetConsoleOutputCP(), "output code page after OutputCodePage = 850"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CodePages_Let_ValueWindowsRefusesIsIgnoredWithoutError()
+        Expect.Begin
+        Rig.Acquire
+        mConsoleAPI.SetConsoleOutputCP 850
+        Dim c As New cConsole
+        On Error Resume Next
+        c.OutputCodePage = 99999
+        Expect.AreEqual 0, Err.Number, "Err.Number of OutputCodePage = 99999"
+        Expect.AreEqual 850, c.OutputCodePage, "OutputCodePage after OutputCodePage = 99999"
+        On Error GoTo 0
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EnableUTF8_SetsBothCodePagesToUTF8()
+        Expect.Begin
+        Rig.Acquire
+        mConsoleAPI.SetConsoleCP 437
+        mConsoleAPI.SetConsoleOutputCP 850
+        Dim c As New cConsole
+        c.EnableUTF8
+        Expect.AreEqual 65001, mConsoleAPI.GetConsoleCP(), "input code page after EnableUTF8"
+        Expect.AreEqual 65001, mConsoleAPI.GetConsoleOutputCP(), "output code page after EnableUTF8"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DisableUTF8_PutsBackTheCodePagesTheConsoleHad()
+        Expect.Begin
+        Rig.Acquire
+        mConsoleAPI.SetConsoleCP 437
+        mConsoleAPI.SetConsoleOutputCP 850
+        Dim c As New cConsole
+        c.EnableUTF8
+        c.DisableUTF8
+        Expect.AreEqual 437, mConsoleAPI.GetConsoleCP(), "input code page after DisableUTF8"
+        Expect.AreEqual 850, mConsoleAPI.GetConsoleOutputCP(), "output code page after DisableUTF8"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DisableUTF8_SetsTheSavedCodePagesWhateverTheyAreNow()
+        Expect.Begin
+        Rig.Acquire
+        mConsoleAPI.SetConsoleCP 437
+        mConsoleAPI.SetConsoleOutputCP 850
+        Dim c As New cConsole
+        c.OutputCodePage = 1252
+        c.DisableUTF8
+        Expect.AreEqual 850, mConsoleAPI.GetConsoleOutputCP(), "output code page after DisableUTF8 when UTF-8 was never enabled"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteTo_Euro_IsStoredAsU20ACWhateverTheOutputCodePage()
+        Expect.Begin
+        Rig.Acquire
+        mConsoleAPI.SetConsoleOutputCP 437
+        Dim c As New cConsole
+        c.WriteTo ChrW$(&H20AC)
+        Expect.AreEqual &H20AC&, AscW(Rig.TextAt(Rig.OutHandle, 0, 0, 1)) And &HFFFF&, "cell 0 after writing a euro sign with the output code page 437"
+        c.EnableUTF8
+        c.WriteTo ChrW$(&H20AC)
+        Expect.AreEqual &H20AC&, AscW(Rig.TextAt(Rig.OutHandle, 1, 0, 1)) And &HFFFF&, "cell 1 after writing a euro sign with the output code page 65001"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- virtual terminal mode
+
+    [TestCase]
+    Public Sub EnableVirtualTerminal_ReturnsTrueAndAddsTheModeFlags()
+        Expect.Begin
+        Rig.Acquire
+        Dim inMode As Long = Rig.InMode()
+        Dim outMode As Long = Rig.OutMode()
+        Dim c As New cConsole
+        Expect.IsTrue c.EnableVirtualTerminal(), "EnableVirtualTerminal"
+        Expect.AreEqual outMode Or &H4&, Rig.OutMode(), "output mode (ENABLE_VIRTUAL_TERMINAL_PROCESSING added)"
+        Expect.AreEqual inMode Or &H200&, Rig.InMode(), "input mode (ENABLE_VIRTUAL_TERMINAL_INPUT added)"
+        Expect.IsTrue c.VirtualTerminalEnabled, "VirtualTerminalEnabled after EnableVirtualTerminal"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EnableVirtualTerminal_SequencesOfMConsoleStyleChangeColours()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnableVirtualTerminal
+        c.WriteTo mConsoleStyle.FgRed & "x"
+        Expect.AreEqual "x", Rig.TextAt(Rig.OutHandle, 0, 0, 1), "cell 0 after FgRed and ""x"" with the mode on"
+        Expect.AreEqual 4, Rig.AttrAt(Rig.OutHandle, 0, 0), "attribute of cell 0 (ANSI red is the Windows red bit, 4)"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteTo_EscapeSequenceWithoutTheMode_AppearsAsText()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteTo mConsoleStyle.FgRed & "x"
+        Expect.AreEqual 27, AscW(Rig.TextAt(Rig.OutHandle, 0, 0, 1)), "cell 0 holds the escape character when the mode is off"
+        Expect.AreEqual "[31mx", Rig.TextAt(Rig.OutHandle, 1, 0, 5), "the rest of the sequence is shown as text"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EnableVirtualTerminal_Refused_ReturnsFalseAndChangesNothing()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoHandles
+        Dim c As New cConsole
+        Expect.IsFalse c.EnableVirtualTerminal(), "EnableVirtualTerminal on a handle that is not a console"
+        Expect.IsFalse c.VirtualTerminalEnabled, "VirtualTerminalEnabled"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DisableVirtualTerminal_PutsBackBothModesAndClearsTheFlag()
+        Expect.Begin
+        Rig.Acquire
+        Dim inMode As Long = Rig.InMode()
+        Dim outMode As Long = Rig.OutMode()
+        Dim c As New cConsole
+        c.EnableVirtualTerminal
+        c.DisableVirtualTerminal
+        Expect.AreEqual outMode, Rig.OutMode(), "output mode after DisableVirtualTerminal"
+        Expect.AreEqual inMode, Rig.InMode(), "input mode after DisableVirtualTerminal"
+        Expect.IsFalse c.VirtualTerminalEnabled, "VirtualTerminalEnabled after DisableVirtualTerminal"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DisableVirtualTerminal_AlsoUndoesOtherChangesOfTheInputMode()
+        Expect.Begin
+        Rig.Acquire
+        Dim inMode As Long = Rig.InMode()
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        c.OnMouseClick = AddressOf Sink.OnMouse
+        Expect.IsTrue Rig.InMode() <> inMode, "input mode after EnterFullScreenMode and OnMouseClick differs from the original"
+        c.DisableVirtualTerminal
+        Expect.AreEqual inMode, Rig.InMode(), "input mode after DisableVirtualTerminal"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub VirtualTerminalEnabled_IsFalseWhenTheConsoleHadTheModeOnAlready()
+        Expect.Begin
+        Rig.Acquire
+        Rig.SetOutMode Rig.OutMode() Or &H4&
+        Dim c As New cConsole
+        Expect.IsFalse c.VirtualTerminalEnabled, "VirtualTerminalEnabled before EnableVirtualTerminal"
+        c.EnableVirtualTerminal
+        Expect.IsTrue c.VirtualTerminalEnabled, "VirtualTerminalEnabled after EnableVirtualTerminal"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- the cursor
+
+    [TestCase]
+    Public Sub SetCursorPosition_MovesTheCursorCountedFromTheTopLeftOfTheScreenBuffer()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim p As ConsolePosition
+        c.SetCursorPosition 5, 3
+        p = c.GetCursorPosition()
+        Expect.AreEqual 5, p.Col, "Col of GetCursorPosition after SetCursorPosition 5, 3"
+        Expect.AreEqual 3, p.Row, "Row of GetCursorPosition after SetCursorPosition 5, 3"
+        Expect.AreEqual 5, Rig.CursorCol(Rig.OutHandle), "column of the console's cursor"
+        Expect.AreEqual 3, Rig.CursorRow(Rig.OutHandle), "row of the console's cursor"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetCursorPosition_ValueOutsideAnInteger_Raises6()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        On Error Resume Next
+        c.SetCursorPosition 70000, 0
+        Expect.AreEqual 6, Err.Number, "Err.Number of SetCursorPosition 70000, 0"
+        Err.Clear
+        c.SetCursorPosition 0, -70000
+        Expect.AreEqual 6, Err.Number, "Err.Number of SetCursorPosition 0, -70000"
+        On Error GoTo 0
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetCursorPosition_OutsideTheScreenBuffer_IsRefusedWithoutAnError()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.SetCursorPosition 4, 2
+        On Error Resume Next
+        c.SetCursorPosition 5000, 5000
+        Expect.AreEqual 0, Err.Number, "Err.Number of SetCursorPosition 5000, 5000"
+        Expect.AreEqual 4, c.GetCursorPosition().Col, "Col after the refused call"
+        Expect.AreEqual 2, c.GetCursorPosition().Row, "Row after the refused call"
+        On Error GoTo 0
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CursorVisible_ReadsTheConsoleEachTime()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim cci As mConsoleAPI.CONSOLE_CURSOR_INFO
+        Expect.IsTrue c.CursorVisible, "CursorVisible of a new screen buffer"
+        c.CursorVisible = False
+        Expect.IsFalse c.CursorVisible, "CursorVisible after it is set to False"
+        mConsoleAPI.GetConsoleCursorInfo Rig.OutHandle, cci
+        Expect.AreEqual 0, cci.bVisible, "bVisible of the console after CursorVisible = False"
+        cci.bVisible = 1
+        mConsoleAPI.SetConsoleCursorInfo Rig.OutHandle, cci
+        Expect.IsTrue c.CursorVisible, "CursorVisible after the console was changed behind the object"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CursorSize_IsKeptBetween1And100()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.CursorSize = 50
+        Expect.AreEqual 50, c.CursorSize, "CursorSize after it is set to 50"
+        c.CursorSize = 0
+        Expect.AreEqual 1, c.CursorSize, "CursorSize after it is set to 0"
+        c.CursorSize = -7
+        Expect.AreEqual 1, c.CursorSize, "CursorSize after it is set to -7"
+        c.CursorSize = 150
+        Expect.AreEqual 100, c.CursorSize, "CursorSize after it is set to 150"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- the size, Clear and ClearLine
+
+    [TestCase]
+    Public Sub GetSize_Width_Height_AreTheWindowNotTheScreenBuffer()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.SetBufferSize Rig.BufferWidth(), 300
+        Dim s As ConsoleSize
+        s = c.GetSize()
+        Expect.AreEqual Rig.WindowWidth(), s.Width, "Width of GetSize"
+        Expect.AreEqual Rig.WindowHeight(), s.Height, "Height of GetSize"
+        Expect.AreEqual s.Width, c.Width, "Width"
+        Expect.AreEqual s.Height, c.Height, "Height"
+        Expect.IsTrue c.Height <> 300, "Height is not the height of the screen buffer"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetBufferSize_IsTheWholeScreenBuffer()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.SetBufferSize Rig.BufferWidth(), 300
+        Dim s As ConsoleSize
+        s = c.GetBufferSize()
+        Expect.AreEqual Rig.BufferWidth(), s.Width, "Width of GetBufferSize"
+        Expect.AreEqual 300, s.Height, "Height of GetBufferSize after SetBufferSize"
+        Expect.AreEqual 300, Rig.BufferHeight(), "height of the console's screen buffer"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetBufferSize_ValueOutsideAnInteger_Raises6()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        On Error Resume Next
+        c.SetBufferSize 70000, 30
+        Expect.AreEqual 6, Err.Number, "Err.Number of SetBufferSize 70000, 30"
+        On Error GoTo 0
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetBufferSize_SmallerThanTheWindow_IsRefusedWithoutAnError()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim w As Long = Rig.BufferWidth()
+        Dim h As Long = Rig.BufferHeight()
+        On Error Resume Next
+        c.SetBufferSize 10, 5
+        Expect.AreEqual 0, Err.Number, "Err.Number of SetBufferSize 10, 5"
+        Expect.AreEqual w, Rig.BufferWidth(), "width of the screen buffer after the refused call"
+        Expect.AreEqual h, Rig.BufferHeight(), "height of the screen buffer after the refused call"
+        On Error GoTo 0
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_FillsTheWholeScreenBufferInTheTrackedColoursAndHomesTheCursor()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PutText Rig.OutHandle, 3, 0, "text"
+        Rig.PutText Rig.OutHandle, 0, Rig.BufferHeight() - 1, "last row"
+        c.SetColors ConsoleColor.Yellow, ConsoleColor.DarkBlue
+        c.SetCursorPosition 9, 9
+        c.Clear
+        Expect.AreEqual "", Rig.RowText(0), "row 0 after Clear"
+        Expect.AreEqual "", Rig.RowText(Rig.BufferHeight() - 1), "last row of the screen buffer after Clear"
+        Expect.AreEqual &H1E&, Rig.AttrAt(Rig.OutHandle, 3, 0), "attribute of a cell in row 0 after Clear"
+        Expect.AreEqual &H1E&, Rig.AttrAt(Rig.OutHandle, Rig.BufferWidth() - 1, Rig.BufferHeight() - 1), "attribute of the last cell after Clear"
+        Expect.AreEqual 0, Rig.CursorCol(Rig.OutHandle), "column of the cursor after Clear"
+        Expect.AreEqual 0, Rig.CursorRow(Rig.OutHandle), "row of the cursor after Clear"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_InFullScreenMode_DoesNotClearTheBuffer()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        c.Buffer.WriteAt 0, 0, "keep"
+        c.Clear
+        Expect.AreEqual "keep", c.Buffer.GetChar(0, 0).Char & c.Buffer.GetChar(1, 0).Char & c.Buffer.GetChar(2, 0).Char & c.Buffer.GetChar(3, 0).Char, "cells of the buffer after Clear of the console"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClearLine_FillsFromTheCursorToTheEndOfTheLine_AndDoesNotMoveTheCursor()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PutText Rig.OutHandle, 0, 2, "abcdefgh"
+        c.SetColors ConsoleColor.Yellow, ConsoleColor.DarkBlue
+        c.SetCursorPosition 3, 2
+        c.ClearLine
+        Expect.AreEqual "abc", Rig.RowText(2), "row 2 after ClearLine from column 3"
+        Expect.AreEqual &H1E&, Rig.AttrAt(Rig.OutHandle, 5, 2), "attribute of a cleared cell"
+        Expect.AreEqual &H7&, Rig.AttrAt(Rig.OutHandle, 1, 2), "attribute of a cell left of the cursor"
+        Expect.AreEqual 3, Rig.CursorCol(Rig.OutHandle), "column of the cursor"
+        Expect.AreEqual 2, Rig.CursorRow(Rig.OutHandle), "row of the cursor"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- the title and the window handle
+
+    [TestCase]
+    Public Sub Title_RoundTrip()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim old As String = c.Title
+        c.Title = "tbdocs package test"
+        Expect.AreEqual "tbdocs package test", c.Title, "Title after it is set"
+        c.Title = old
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Title_LongTitle_IsReturnedWithAtMost259Characters()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim old As String = c.Title
+        Dim t As String
+        c.Title = String$(300, "t")
+        t = c.Title
+        Expect.IsTrue Len(t) <= 259, "length of Title after a title of 300 characters is set (got " & Len(t) & ")"
+        Expect.AreEqual 0, InStr(t, vbNullChar), "position of a character with code 0 in that Title"
+        c.Title = old
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WindowHandle_IsTheConsoleWindowAtCreation()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Expect.AreEqual mConsoleAPI.GetConsoleWindow(), c.WindowHandle, "WindowHandle"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+End Module

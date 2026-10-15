@@ -1,0 +1,227 @@
+' TBMANLIB_ConsoleCore: cConsoleBuffer written to a console screen buffer by Flush and FlushRegion.
+[TestFixture]
+Module FlushTests
+
+    Private Function Dirty(ByVal Buf As cConsoleBuffer) As String
+        Dim r As ConsoleRect
+        r = Buf.GetDirtyRect()
+        Dirty = r.Left & " " & r.Top & " " & r.Right & " " & r.Bottom
+    End Function
+
+    [TestCase]
+    Public Sub Flush_WritesEachCellToTheSamePositionWithItsColours()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.WriteAt 2, 1, "Hi", ConsoleColor.Yellow, ConsoleColor.DarkBlue
+        buf.Flush Rig.OutHandle
+        Expect.AreEqual "Hi", Rig.TextAt(Rig.OutHandle, 2, 1, 2), "screen text at column 2, row 1 after Flush"
+        Expect.AreEqual &H1E&, Rig.AttrAt(Rig.OutHandle, 2, 1), "screen attribute of the cell (Yellow on DarkBlue)"
+        Expect.AreEqual &H1E&, Rig.AttrAt(Rig.OutHandle, 3, 1), "screen attribute of the next cell"
+        Expect.AreEqual &H7&, Rig.AttrAt(Rig.OutHandle, 0, 0), "screen attribute of an untouched cell (Gray on Black)"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Flush_WritesOnlyTheDirtyRectangle()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.Flush Rig.OutHandle
+        Rig.PutText Rig.OutHandle, 7, 2, "Z"
+        buf.WriteAt 0, 0, "a"
+        buf.Flush Rig.OutHandle
+        Expect.AreEqual "a", Rig.TextAt(Rig.OutHandle, 0, 0, 1), "screen text at the changed cell"
+        Expect.AreEqual "Z", Rig.TextAt(Rig.OutHandle, 7, 2, 1), "screen text at a cell outside the dirty rectangle"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Flush_NothingDirty_WritesNothing()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.Flush Rig.OutHandle
+        Rig.PutText Rig.OutHandle, 5, 1, "Z"
+        buf.Flush Rig.OutHandle
+        Expect.AreEqual "Z", Rig.TextAt(Rig.OutHandle, 5, 1, 1), "screen text after a Flush with nothing dirty"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Flush_ForceAll_WritesEveryCell()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.Flush Rig.OutHandle
+        Rig.PutText Rig.OutHandle, 5, 1, "Z"
+        buf.Flush Rig.OutHandle, True
+        Expect.AreEqual " ", Rig.TextAt(Rig.OutHandle, 5, 1, 1), "screen text after Flush with forceAll"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Flush_EmptiesTheDirtyRectangle()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.Flush Rig.OutHandle
+        Expect.IsFalse buf.IsDirty, "IsDirty after Flush"
+        Expect.AreEqual "10 3 0 0", Dirty(buf), "dirty rectangle after Flush"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Flush_ToAHandleThatIsNotAConsole_EmptiesTheDirtyRectangleAllTheSame()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.WriteAt 0, 0, "a"
+        On Error Resume Next
+        buf.Flush 0
+        Expect.AreEqual 0, Err.Number, "Err.Number of Flush to an invalid handle"
+        Expect.IsFalse buf.IsDirty, "IsDirty after Flush to an invalid handle"
+        Expect.AreEqual " ", Rig.TextAt(Rig.OutHandle, 0, 0, 1), "nothing is shown on the real screen buffer"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FlushRegion_WritesTheRectangleWhetherOrNotItIsDirty()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.WriteAt 0, 0, "abcdef"
+        buf.ClearDirty
+        buf.FlushRegion Rig.OutHandle, 1, 0, 3, 0
+        Expect.AreEqual "bcd", Rig.TextAt(Rig.OutHandle, 1, 0, 3), "screen text of the region"
+        Expect.AreEqual " ", Rig.TextAt(Rig.OutHandle, 0, 0, 1), "screen text left of the region"
+        Expect.AreEqual " ", Rig.TextAt(Rig.OutHandle, 4, 0, 1), "screen text right of the region"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FlushRegion_LeavesTheDirtyRectangleAsItIs()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.ClearDirty
+        buf.SetChar 6, 2, "x"
+        buf.FlushRegion Rig.OutHandle, 0, 0, 9, 2
+        Expect.IsTrue buf.IsDirty, "IsDirty after FlushRegion"
+        Expect.AreEqual "6 2 6 2", Dirty(buf), "dirty rectangle after FlushRegion"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FlushRegion_IsCutToTheGrid()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.WriteAt 0, 0, "start"
+        buf.WriteAt 9, 2, "e"
+        buf.FlushRegion Rig.OutHandle, -5, -5, 100, 100
+        Expect.AreEqual "start", Rig.TextAt(Rig.OutHandle, 0, 0, 5), "screen text at the top left after a region larger than the grid"
+        Expect.AreEqual "e", Rig.TextAt(Rig.OutHandle, 9, 2, 1), "screen text at the bottom right"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- a negative position in the dirty rectangle
+
+    [TestCase]
+    Public Sub WriteAt_BeyondTheGrid_NextFlushStillDrawsTheChangedCells()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.Flush Rig.OutHandle
+        buf.SetChar 5, 2, "x"
+        buf.WriteAt 8, 5, "zz"
+        buf.Flush Rig.OutHandle
+        Expect.AreEqual "x", Rig.TextAt(Rig.OutHandle, 5, 2, 1), "screen text of the cell changed before the WriteAt below the grid"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteAt_NegativeColumn_NextFlushStillDrawsTheChangedCells()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.Flush Rig.OutHandle
+        buf.SetChar 5, 2, "x"
+        buf.WriteAt -2, 0, "abcd"
+        buf.Flush Rig.OutHandle
+        Expect.AreEqual "cd", Rig.TextAt(Rig.OutHandle, 0, 0, 2), "screen text at column 0, row 0 after Flush"
+        Expect.AreEqual "x", Rig.TextAt(Rig.OutHandle, 5, 2, 1), "screen text of the cell changed before the WriteAt"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteAt_NegativeRow_NextFlushStillDrawsTheChangedCells()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.Flush Rig.OutHandle
+        buf.SetChar 5, 2, "x"
+        buf.WriteAt 0, -1, "abc"
+        buf.Flush Rig.OutHandle
+        Expect.AreEqual "x", Rig.TextAt(Rig.OutHandle, 5, 2, 1), "screen text of the cell changed before the WriteAt"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FillRect_RectangleAboveAndLeftOfTheGrid_NextFlushStillDrawsTheChangedCells()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.Flush Rig.OutHandle
+        buf.SetChar 5, 2, "x"
+        buf.FillRect -5, -5, -1, -1, "#"
+        buf.Flush Rig.OutHandle
+        Expect.AreEqual "x", Rig.TextAt(Rig.OutHandle, 5, 2, 1), "screen text of the cell changed before the FillRect"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyRegion_NegativeDestination_NextFlushStillDrawsTheCopiedCells()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.WriteAt 0, 0, "abc"
+        buf.Flush Rig.OutHandle
+        buf.CopyRegion 0, 0, 2, 0, -1, 0
+        buf.Flush Rig.OutHandle
+        Expect.AreEqual "bcc", Rig.TextAt(Rig.OutHandle, 0, 0, 3), "screen text of row 0 after the copy and Flush"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Flush_AfterANegativePosition_EmptiesTheRectangleAndForceAllDrawsTheCells()
+        Expect.Begin
+        Rig.Acquire
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.Flush Rig.OutHandle
+        buf.WriteAt -2, 0, "abcd"
+        buf.Flush Rig.OutHandle
+        Expect.IsFalse buf.IsDirty, "IsDirty after the Flush"
+        buf.Flush Rig.OutHandle
+        Expect.AreEqual " ", Rig.TextAt(Rig.OutHandle, 0, 0, 1), "screen text after a second Flush: the cells are off the screen until they change again"
+        buf.Flush Rig.OutHandle, True
+        Expect.AreEqual "cd", Rig.TextAt(Rig.OutHandle, 0, 0, 2), "screen text after Flush with forceAll"
+        Rig.Release
+        Expect.Done
+    End Sub
+
+End Module

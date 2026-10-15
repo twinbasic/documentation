@@ -1,0 +1,38 @@
+' TBMANLIB_ConsoleCore: what the compiler does with the handler properties of cConsole.
+' A handler should be removable by assigning 0 or Nothing. Each line ends in a comment
+' ' CASE <Name>: <code>, and none means the line compiles.
+Module CompileTests
+
+    Public Sub Clear_KeyHandlerWithZero(ByVal con As cConsole)
+        con.OnKeyPress = 0 ' CASE KeyHandlerZero: none
+    End Sub
+
+    Public Sub Clear_KeyHandlerWithNothing(ByVal con As cConsole)
+        con.OnKeyPress = Nothing ' CASE KeyHandlerNothing: none
+    End Sub
+
+    Public Sub Clear_MouseHandlerWithZero(ByVal con As cConsole)
+        con.OnMouseClick = 0 ' CASE MouseHandlerZero: none
+    End Sub
+
+    Public Sub Clear_MouseHandlerWithNothing(ByVal con As cConsole)
+        con.OnMouseClick = Nothing ' CASE MouseHandlerNothing: none
+    End Sub
+
+    Public Sub Clear_ResizeHandlerWithZero(ByVal con As cConsole)
+        con.OnResize = 0 ' CASE ResizeHandlerZero: none
+    End Sub
+
+    Public Sub Clear_ResizeHandlerWithNothing(ByVal con As cConsole)
+        con.OnResize = Nothing ' CASE ResizeHandlerNothing: none
+    End Sub
+
+    Public Sub Clear_CtrlHandlerWithZero(ByVal con As cConsole)
+        con.OnCtrlEvent = 0 ' CASE CtrlHandlerZero: none
+    End Sub
+
+    Public Sub Clear_CtrlHandlerWithNothing(ByVal con As cConsole)
+        con.OnCtrlEvent = Nothing ' CASE CtrlHandlerNothing: none
+    End Sub
+
+End Module

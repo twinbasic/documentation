@@ -1,0 +1,272 @@
+' TBMANLIB_ConsoleCore: the full-screen mode of cConsole: the buffer it makes, Refresh and RefreshAll.
+[TestFixture]
+Module FullScreenTests
+
+    [TestCase]
+    Public Sub EnterFullScreenMode_MakesABufferOfTheWindowSize_HidesTheCursor_AndTurnsOnWindowInput()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Expect.IsTrue c.Buffer Is Nothing, "Buffer before EnterFullScreenMode"
+        c.EnterFullScreenMode
+        Expect.IsTrue c.FullScreenMode, "FullScreenMode after EnterFullScreenMode"
+        Expect.AreEqual Rig.WindowWidth(), c.Buffer.Width, "Width of the buffer"
+        Expect.AreEqual Rig.WindowHeight(), c.Buffer.Height, "Height of the buffer"
+        Expect.IsFalse c.CursorVisible, "CursorVisible"
+        Expect.AreEqual 8, Rig.InMode() And 8, "ENABLE_WINDOW_INPUT in the input mode"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EnterFullScreenMode_AlreadyOn_DoesNothing()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        c.Buffer.WriteAt 0, 0, "keep"
+        c.EnterFullScreenMode
+        Expect.AreEqual "k", c.Buffer.GetChar(0, 0).Char, "first cell of the buffer after a second EnterFullScreenMode"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EnterFullScreenMode_DoesNotClearTheScreenOrChangeTheWindow()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PutText Rig.OutHandle, 0, 0, "on screen"
+        Dim w As Long = Rig.WindowWidth()
+        Dim h As Long = Rig.WindowHeight()
+        c.EnterFullScreenMode
+        Expect.AreEqual "on screen", Rig.RowText(0), "row 0 after EnterFullScreenMode"
+        Expect.AreEqual w, Rig.WindowWidth(), "window width after EnterFullScreenMode"
+        Expect.AreEqual h, Rig.WindowHeight(), "window height after EnterFullScreenMode"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ExitFullScreenMode_ReleasesTheBuffer_ShowsTheCursor_AndPutsBackTheInputMode()
+        Expect.Begin
+        Rig.Acquire
+        Dim inMode As Long = Rig.InMode()
+        Dim c As New cConsole
+        c.CursorVisible = False
+        c.EnterFullScreenMode
+        c.OnMouseClick = AddressOf Sink.OnMouse
+        c.ExitFullScreenMode
+        Expect.IsFalse c.FullScreenMode, "FullScreenMode after ExitFullScreenMode"
+        Expect.IsTrue c.Buffer Is Nothing, "Buffer after ExitFullScreenMode"
+        Expect.IsTrue c.CursorVisible, "CursorVisible after ExitFullScreenMode, whatever it was before"
+        Expect.AreEqual inMode, Rig.InMode(), "input mode after ExitFullScreenMode"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ExitFullScreenMode_LeavesTheLastPictureOnTheScreen()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        c.Buffer.WriteAt 2, 1, "picture"
+        c.Refresh
+        c.ExitFullScreenMode
+        Expect.AreEqual "picture", Rig.TextAt(Rig.OutHandle, 2, 1, 7), "screen text after ExitFullScreenMode"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ExitFullScreenMode_WhenOff_DoesNothing()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.CursorVisible = False
+        c.ExitFullScreenMode
+        Expect.IsFalse c.CursorVisible, "CursorVisible after ExitFullScreenMode when the mode was off"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetBufferSize_DoesNotResizeTheFullScreenBuffer()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        c.SetBufferSize Rig.BufferWidth(), 300
+        Expect.AreEqual Rig.WindowHeight(), c.Buffer.Height, "Height of the buffer after SetBufferSize"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- Refresh and RefreshAll
+
+    [TestCase]
+    Public Sub Refresh_WritesTheBufferAtTheTopLeftOfTheScreenBuffer()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        c.Buffer.WriteAt 2, 1, "Hi", ConsoleColor.Yellow, ConsoleColor.DarkBlue
+        c.Refresh
+        Expect.AreEqual "Hi", Rig.TextAt(Rig.OutHandle, 2, 1, 2), "screen text at column 2, row 1 after Refresh"
+        Expect.AreEqual &H1E&, Rig.AttrAt(Rig.OutHandle, 2, 1), "screen attribute of that cell"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Refresh_WritesOnlyTheChangedRectangle()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        c.Refresh
+        Rig.PutText Rig.OutHandle, 5, 5, "ZZ"
+        c.Buffer.WriteAt 0, 0, "a"
+        c.Refresh
+        Expect.AreEqual "a", Rig.TextAt(Rig.OutHandle, 0, 0, 1), "screen text at the changed cell"
+        Expect.AreEqual "ZZ", Rig.TextAt(Rig.OutHandle, 5, 5, 2), "screen text outside the changed rectangle"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RefreshAll_WritesTheWholeBuffer()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        c.Refresh
+        Rig.PutText Rig.OutHandle, 5, 5, "ZZ"
+        c.RefreshAll
+        Expect.AreEqual "  ", Rig.TextAt(Rig.OutHandle, 5, 5, 2), "screen text after RefreshAll"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Refresh_And_RefreshAll_OutsideFullScreenMode_DoNothing()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PutText Rig.OutHandle, 5, 5, "ZZ"
+        c.Refresh
+        c.RefreshAll
+        Expect.AreEqual "ZZ", Rig.TextAt(Rig.OutHandle, 5, 5, 2), "screen text after Refresh and RefreshAll outside full-screen mode"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Refresh_WindowShowsAnotherPartOfTheScreenBuffer_DrawsInTheWindow()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.SetBufferSize Rig.BufferWidth(), 300
+        Rig.ScrollWindowTo 100
+        c.EnterFullScreenMode
+        c.Buffer.WriteAt 0, 0, "A"
+        c.Refresh
+        Expect.AreEqual "A", Rig.TextAt(Rig.OutHandle, 0, 100, 1), "screen text at the top row of the window (row 100 of the screen buffer)"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Refresh_AfterAWriteAtWithANegativeColumn_DrawsTheChangedCells()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        c.Refresh
+        c.Buffer.SetChar 5, 2, "x"
+        c.Buffer.WriteAt -2, 0, "abcd"
+        c.Refresh
+        Expect.AreEqual "x", Rig.TextAt(Rig.OutHandle, 5, 2, 1), "screen text of the cell changed before the WriteAt with a negative column"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Refresh_WindowShowsAnotherPartOfTheScreenBuffer_DrawsAtRowZero()
+        ' What Refresh does today, kept as a case of its own: the cells are written to the rows
+        ' 0 to Height - 1 of the screen buffer.
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.SetBufferSize Rig.BufferWidth(), 300
+        Rig.ScrollWindowTo 100
+        c.EnterFullScreenMode
+        c.Buffer.WriteAt 0, 0, "A"
+        c.Refresh
+        Expect.AreEqual "A", Rig.TextAt(Rig.OutHandle, 0, 0, 1), "screen text at row 0 of the screen buffer"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- FPS and LastRenderTime
+
+    [TestCase]
+    Public Sub FPS_And_LastRenderTime_AreZeroBeforeTheFirstDraw()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        Expect.AreEqual 0#, c.FPS, "FPS before the first draw"
+        Expect.AreEqual 0, c.LastRenderTime, "LastRenderTime before the first draw"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FPS_AfterDrawing_IsPositiveAndFallsWhileNothingIsDrawn()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        c.Refresh
+        mConsoleAPI.Sleep 60
+        c.Refresh
+        Dim first As Double = c.FPS
+        Expect.IsTrue first > 0, "FPS after two Refresh calls 60 ms apart (got " & first & ")"
+        mConsoleAPI.Sleep 200
+        Expect.IsTrue c.FPS < first, "FPS falls while the program draws nothing (was " & first & ", now " & c.FPS & ")"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LastRenderTime_IsTheTimeOfTheLastDrawInMilliseconds()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        c.Refresh
+        Expect.IsTrue c.LastRenderTime >= 0 And c.LastRenderTime < 1000, "LastRenderTime after Refresh of a small buffer (got " & c.LastRenderTime & ")"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+End Module

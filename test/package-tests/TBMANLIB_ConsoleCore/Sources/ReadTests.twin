@@ -1,0 +1,656 @@
+' TBMANLIB_ConsoleCore: what cConsole reads: keys, lines and passwords. The cases put the events in the
+' console's input buffer themselves (see Rig), so that no case waits for a person.
+[TestFixture]
+Module ReadTests
+
+    ' ---- ReadKey
+
+    [TestCase]
+    Public Sub ReadKey_ReturnsTheVirtualKeyCodeAndTheCharacter()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Rig.PushPress 65, 97
+        k = c.ReadKey(True)
+        Expect.AreEqual 65, k.KeyCode, "KeyCode of the A key"
+        Expect.AreEqual "a", k.KeyChar, "KeyChar of the A key"
+        Expect.IsFalse k.IsAltPressed, "IsAltPressed"
+        Expect.IsFalse k.IsCtrlPressed, "IsCtrlPressed"
+        Expect.IsFalse k.IsShiftPressed, "IsShiftPressed"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_ReportsTheLeftModifierKeys()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Rig.PushPress 65, 1, 2 + 8 + &H10&
+        k = c.ReadKey(True)
+        Expect.IsTrue k.IsAltPressed, "IsAltPressed with the left Alt flag"
+        Expect.IsTrue k.IsCtrlPressed, "IsCtrlPressed with the left Ctrl flag"
+        Expect.IsTrue k.IsShiftPressed, "IsShiftPressed with the Shift flag"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_ReportsTheRightModifierKeys()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Rig.PushPress 65, 1, 1 + 4
+        k = c.ReadKey(True)
+        Expect.IsTrue k.IsAltPressed, "IsAltPressed with the right Alt flag"
+        Expect.IsTrue k.IsCtrlPressed, "IsCtrlPressed with the right Ctrl flag"
+        Expect.IsFalse k.IsShiftPressed, "IsShiftPressed without the Shift flag"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_KeyWithoutACharacter_GivesTheCharacterWithCodeZero()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Rig.PushPress 38, 0
+        k = c.ReadKey(True)
+        Expect.AreEqual 38, k.KeyCode, "KeyCode of the Up Arrow key"
+        Expect.AreEqual 1, Len(k.KeyChar), "length of KeyChar of the Up Arrow key"
+        Expect.AreEqual 0, AscW(k.KeyChar), "code of KeyChar of the Up Arrow key"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_ShiftAlone_IsReturnedAsKeyCode16()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Rig.PushKey 16, 0, True, &H10&
+        k = c.ReadKey(True)
+        Expect.AreEqual 16, k.KeyCode, "KeyCode of a press of Shift"
+        Expect.IsTrue k.IsShiftPressed, "IsShiftPressed"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_IgnoresKeyReleasesAndOtherEvents()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Rig.PushMouse 1, 1, 0, 1
+        Rig.PushFocus
+        Rig.PushKey 65, 97, False
+        Rig.PushKey 66, 98, True
+        k = c.ReadKey(True)
+        Expect.AreEqual 66, k.KeyCode, "KeyCode returned after a mouse event, a focus event and a key release"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_RepeatCount_IsNotRead_OneResultForEachKeyDownEvent()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushKey 65, 97, True, 0, 3
+        Expect.AreEqual 65, c.ReadKey(True).KeyCode, "ReadKey for a key-down event with a repeat count of 3"
+        Expect.AreEqual 0, Rig.PendingEvents(), "events left in the queue: the event is used up by one ReadKey"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_InterceptFalse_WritesTheCharacterToTheConsole()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushPress 65, 97
+        c.ReadKey
+        Expect.AreEqual "a", Rig.RowText(0), "row 0 after ReadKey with the default"
+        Expect.AreEqual 1, Rig.CursorCol(Rig.OutHandle), "column of the cursor"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_InterceptTrue_WritesNothing()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushPress 65, 97
+        c.ReadKey True
+        Expect.AreEqual "", Rig.RowText(0), "row 0 after ReadKey(True)"
+        Expect.AreEqual 0, Rig.CursorCol(Rig.OutHandle), "column of the cursor"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_InterceptFalse_KeyWithoutACharacter_WritesTheCharacterWithCodeZero()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushPress 38, 0
+        c.ReadKey
+        Expect.AreEqual 1, Rig.CursorCol(Rig.OutHandle), "column of the cursor after ReadKey of the Up Arrow key"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_PutsBackTheInputMode_AndLeavesTheReleaseInTheQueue()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim before As Long = Rig.InMode()
+        Rig.PushPress 65, 97
+        c.ReadKey True
+        Expect.AreEqual before, Rig.InMode(), "input mode after ReadKey"
+        Expect.AreEqual 1, Rig.PendingEvents(), "events left in the queue after ReadKey (the key release)"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- KeyAvailable, PeekEvent, FlushInput
+
+    [TestCase]
+    Public Sub KeyAvailable_EmptyQueue_IsFalse()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Expect.IsFalse c.KeyAvailable(), "KeyAvailable with an empty queue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub KeyAvailable_KeyPress_IsTrue()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushKey 65, 97, True
+        Expect.IsTrue c.KeyAvailable(), "KeyAvailable with a key press in the queue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub KeyAvailable_KeyReleaseOnly_IsFalse()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushKey 65, 97, False
+        Expect.IsFalse c.KeyAvailable(), "KeyAvailable with only a key release in the queue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub KeyAvailable_AfterReadKey_IsFalse()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushPress 65, 97
+        c.ReadKey True
+        Expect.IsFalse c.KeyAvailable(), "KeyAvailable after ReadKey, with the key release still in the queue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub KeyAvailable_MouseEventOnly_IsFalse()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushMouse 3, 2, 0, 1
+        Expect.IsFalse c.KeyAvailable(), "KeyAvailable with only a mouse event in the queue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub KeyAvailable_FocusEventOnly_IsFalse()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushFocus
+        Expect.IsFalse c.KeyAvailable(), "KeyAvailable with only a focus event in the queue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PeekEvent_KeyPress_ReturnsTheKeyWithoutRemovingIt()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Rig.PushKey 65, 97, True, &H10&
+        k = c.PeekEvent()
+        Expect.AreEqual 65, k.KeyCode, "KeyCode of PeekEvent"
+        Expect.AreEqual "a", k.KeyChar, "KeyChar of PeekEvent"
+        Expect.IsTrue k.IsShiftPressed, "IsShiftPressed of PeekEvent"
+        Expect.AreEqual 1, Rig.PendingEvents(), "events in the queue after PeekEvent"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PeekEvent_FirstEventIsNotAKeyPress_ReturnsTheEmptyStructure()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Expect.AreEqual 0, c.PeekEvent().KeyCode, "KeyCode of PeekEvent with an empty queue"
+        Rig.PushKey 65, 97, False
+        Rig.PushKey 66, 98, True
+        k = c.PeekEvent()
+        Expect.AreEqual 0, k.KeyCode, "KeyCode of PeekEvent when a key release comes first"
+        Expect.AreEqual "", k.KeyChar, "KeyChar of PeekEvent when a key release comes first"
+        Rig.Flush
+        Rig.PushMouse 1, 1, 0, 1
+        Rig.PushKey 66, 98, True
+        Expect.AreEqual 0, c.PeekEvent().KeyCode, "KeyCode of PeekEvent when a mouse event comes first"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FlushInput_DiscardsEveryEvent()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushPress 65, 97
+        Rig.PushMouse 1, 1, 0, 1
+        Rig.PushSize 100, 30
+        Rig.PushFocus
+        Expect.IsTrue Rig.PendingEvents() >= 5, "events in the queue before FlushInput"
+        c.FlushInput
+        Expect.AreEqual 0, Rig.PendingEvents(), "events in the queue after FlushInput"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKeyTimeout_NothingPressed_ReturnsTheEmptyStructureWhenTheTimeIsOver()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Dim t As Single = Timer
+        k = c.ReadKeyTimeout(200)
+        Expect.AreEqual 0, k.KeyCode, "KeyCode of ReadKeyTimeout(200) with nothing pressed"
+        Expect.AreEqual "", k.KeyChar, "KeyChar of ReadKeyTimeout(200) with nothing pressed"
+        Expect.IsTrue Timer - t >= 0.15, "ReadKeyTimeout(200) waited about 200 ms (waited " & Format$((Timer - t) * 1000, "0") & " ms)"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKeyTimeout_KeyPressed_ReturnsItAtOnce()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Dim t As Single = Timer
+        Rig.PushPress 66, 98
+        k = c.ReadKeyTimeout(5000, True)
+        Expect.AreEqual 66, k.KeyCode, "KeyCode of ReadKeyTimeout with a key in the queue"
+        Expect.IsTrue Timer - t < 2, "ReadKeyTimeout(5000) with a key in the queue returned at once"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsKeyPressed_KeyNotDown_IsFalse()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Expect.IsFalse c.IsKeyPressed(7), "IsKeyPressed for a virtual-key code that no key has"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- ReadLine
+
+    [TestCase]
+    Public Sub ReadLine_ReturnsTheLineWithoutTheLineBreak()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushText "abc"
+        Rig.PushPress 13, 13
+        Expect.AreEqual "abc", c.ReadLine(), "ReadLine after ""abc"" and Enter"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadLine_Prompt_IsWrittenBeforeTheConsoleReads()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushText "abc"
+        Rig.PushPress 13, 13
+        c.ReadLine "Name: "
+        Expect.AreEqual "Name: ", Left$(Rig.RowText(0) & "      ", 6), "start of row 0 after ReadLine(""Name: "")"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadLine_OnlyEnter_ReturnsAnEmptyString()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushPress 13, 13
+        Expect.AreEqual "", c.ReadLine(), "ReadLine after Enter alone"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadLine_ReadsAtMostTheCharactersOfTheReadBuffer()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As cConsole = New cConsole(3)
+        Rig.PushText "abcdef"
+        Rig.PushPress 13, 13
+        Expect.AreEqual "abc", c.ReadLine(), "first ReadLine with a read buffer of 3 characters"
+        Expect.AreEqual "def", c.ReadLine(), "second ReadLine"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- ReadPassword
+
+    [TestCase]
+    Public Sub ReadPassword_ReturnsTheTextAndShowsOneMaskCharacterForEachKey()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim s As String
+        Rig.PushText "abc"
+        Rig.PushPress 13, 13
+        s = c.ReadPassword("Password: ")
+        Expect.AreEqual "abc", s, "ReadPassword after ""abc"" and Enter"
+        Expect.AreEqual "Password: ***", Rig.RowText(0), "row 0 after ReadPassword"
+        Expect.AreEqual 1, Rig.CursorRow(Rig.OutHandle), "row of the cursor: Enter writes a line break"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadPassword_MaskCharacterIsTheOneGiven_AndEmptyShowsNothing()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushText "ab"
+        Rig.PushPress 13, 13
+        c.ReadPassword "", "#"
+        Expect.AreEqual "##", Rig.RowText(0), "row 0 with a mask character of ""#"""
+        Rig.PushText "ab"
+        Rig.PushPress 13, 13
+        c.ReadPassword "> ", ""
+        Expect.AreEqual ">", Rig.RowText(1), "row 1 with an empty mask character"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadPassword_Backspace_RemovesTheLastCharacterAndErasesOneCell()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim s As String
+        Rig.PushText "ab"
+        Rig.PushPress 8, 8
+        Rig.PushText "c"
+        Rig.PushPress 13, 13
+        s = c.ReadPassword()
+        Expect.AreEqual "ac", s, "ReadPassword after ""ab"", Backspace, ""c"" and Enter"
+        Expect.AreEqual "**", Rig.RowText(0), "row 0: the erased cell shows the mask of the next key"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadPassword_BackspaceWithNothingTyped_DoesNothing()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim s As String
+        Rig.PushPress 8, 8
+        Rig.PushText "a"
+        Rig.PushPress 13, 13
+        s = c.ReadPassword()
+        Expect.AreEqual "a", s, "ReadPassword after Backspace, ""a"" and Enter"
+        Expect.AreEqual "*", Rig.RowText(0), "row 0"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadPassword_BackspaceWithALongMask_ErasesOnlyOneCell()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim s As String
+        Rig.PushText "ab"
+        Rig.PushPress 8, 8
+        Rig.PushPress 13, 13
+        s = c.ReadPassword("", "##")
+        Expect.AreEqual "a", s, "ReadPassword after ""ab"", Backspace and Enter"
+        Expect.AreEqual "###", Rig.RowText(0), "row 0: two cells of the second mask are left"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadPassword_Escape_ReturnsAnEmptyString()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim s As String
+        Rig.PushText "abc"
+        Rig.PushPress 27, 27
+        s = c.ReadPassword()
+        Expect.AreEqual "", s, "ReadPassword after ""abc"" and Escape"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadPassword_TabAndKeysWithoutACharacter_AreIgnored()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim s As String
+        Rig.PushText "a"
+        Rig.PushPress 9, 9
+        Rig.PushPress 38, 0
+        Rig.PushText "b"
+        Rig.PushPress 13, 13
+        s = c.ReadPassword()
+        Expect.AreEqual "ab", s, "ReadPassword after ""a"", Tab, Up Arrow, ""b"" and Enter"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- the key codes that ReadKey returns
+
+    [TestCase]
+    Public Sub ReadKey_EnterEscapeSpaceBackspaceTab_EqualTheConsoleKeyMembers()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushPress 13, 13
+        Expect.AreEqual CLng(ConsoleKey.KeyEnter), c.ReadKey(True).KeyCode, "KeyCode of Enter against ConsoleKey.KeyEnter"
+        Rig.PushPress 27, 27
+        Expect.AreEqual CLng(ConsoleKey.KeyEscape), c.ReadKey(True).KeyCode, "KeyCode of Escape against ConsoleKey.KeyEscape"
+        Rig.PushPress 32, 32
+        Expect.AreEqual CLng(ConsoleKey.KeySpace), c.ReadKey(True).KeyCode, "KeyCode of Space against ConsoleKey.KeySpace"
+        Rig.PushPress 8, 8
+        Expect.AreEqual CLng(ConsoleKey.KeyBackspace), c.ReadKey(True).KeyCode, "KeyCode of Backspace against ConsoleKey.KeyBackspace"
+        Rig.PushPress 9, 9
+        Expect.AreEqual CLng(ConsoleKey.KeyTab), c.ReadKey(True).KeyCode, "KeyCode of Tab against ConsoleKey.KeyTab"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_ArrowKeys_EqualTheConsoleKeyMembers()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushPress 38, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyUp), c.ReadKey(True).KeyCode, "KeyCode of the Up Arrow key against ConsoleKey.KeyUp"
+        Rig.PushPress 40, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyDown), c.ReadKey(True).KeyCode, "KeyCode of the Down Arrow key against ConsoleKey.KeyDown"
+        Rig.PushPress 37, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyLeft), c.ReadKey(True).KeyCode, "KeyCode of the Left Arrow key against ConsoleKey.KeyLeft"
+        Rig.PushPress 39, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyRight), c.ReadKey(True).KeyCode, "KeyCode of the Right Arrow key against ConsoleKey.KeyRight"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_NavigationKeys_EqualTheConsoleKeyMembers()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushPress 36, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyHome), c.ReadKey(True).KeyCode, "KeyCode of the Home key against ConsoleKey.KeyHome"
+        Rig.PushPress 35, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyEnd), c.ReadKey(True).KeyCode, "KeyCode of the End key against ConsoleKey.KeyEnd"
+        Rig.PushPress 33, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyPageUp), c.ReadKey(True).KeyCode, "KeyCode of the Page Up key against ConsoleKey.KeyPageUp"
+        Rig.PushPress 34, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyPageDown), c.ReadKey(True).KeyCode, "KeyCode of the Page Down key against ConsoleKey.KeyPageDown"
+        Rig.PushPress 45, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyInsert), c.ReadKey(True).KeyCode, "KeyCode of the Insert key against ConsoleKey.KeyInsert"
+        Rig.PushPress 46, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyDelete), c.ReadKey(True).KeyCode, "KeyCode of the Delete key against ConsoleKey.KeyDelete"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_FunctionKeys_EqualTheConsoleKeyMembers()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushPress 112, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyF1), c.ReadKey(True).KeyCode, "KeyCode of F1 against ConsoleKey.KeyF1"
+        Rig.PushPress 121, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyF10), c.ReadKey(True).KeyCode, "KeyCode of F10 against ConsoleKey.KeyF10"
+        Rig.PushPress 122, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyF11), c.ReadKey(True).KeyCode, "KeyCode of F11 against ConsoleKey.KeyF11"
+        Rig.PushPress 123, 0
+        Expect.AreEqual CLng(ConsoleKey.KeyF12), c.ReadKey(True).KeyCode, "KeyCode of F12 against ConsoleKey.KeyF12"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKey_LetterH_IsNotTheKeyCodeOfConsoleKeyKeyUp()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Rig.PushPress 72, 104
+        k = c.ReadKey(True)
+        Expect.IsFalse k.KeyCode = ConsoleKey.KeyUp, "KeyCode of the H key (" & k.KeyCode & ") equals ConsoleKey.KeyUp"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- ReadKey, ReadPassword and ReadKeyTimeout that never return
+
+    [TestCase]
+    Public Sub ReadKey_WithoutConsoleInput_Returns()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoInput
+        Dim c As New cConsole
+        c.ReadKey True
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadPassword_WithoutConsoleInput_Returns()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoInput
+        Dim c As New cConsole
+        c.ReadPassword
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKeyTimeout_OnlyAKeyReleaseInTheQueue_ReturnsWhenTheTimeIsOver()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushKey 65, 97, False
+        c.ReadKeyTimeout 200, True
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+End Module

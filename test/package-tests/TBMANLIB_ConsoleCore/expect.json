@@ -1,0 +1,125 @@
+{
+  "version": "1.0.0.1",
+  "cases": {
+    "KeyHandlerZero": {
+      "fails": "expected none on CompileTests.twin line 7, got TB5001"
+    },
+    "KeyHandlerNothing": {
+      "fails": "expected none on CompileTests.twin line 11, got TB5001"
+    },
+    "MouseHandlerZero": {
+      "fails": "expected none on CompileTests.twin line 15, got TB5001"
+    },
+    "MouseHandlerNothing": {
+      "fails": "expected none on CompileTests.twin line 19, got TB5001"
+    },
+    "ResizeHandlerZero": {
+      "fails": "expected none on CompileTests.twin line 23, got TB5001"
+    },
+    "ResizeHandlerNothing": {
+      "fails": "expected none on CompileTests.twin line 27, got TB5001"
+    },
+    "CtrlHandlerZero": {
+      "fails": "expected none on CompileTests.twin line 31, got TB5001"
+    },
+    "CtrlHandlerNothing": {
+      "fails": "expected none on CompileTests.twin line 35, got TB5001"
+    },
+    "BufferTests.ScrollRegion_Down_AtTheTopEdge_MovesTheRowsByTheDistanceAsked": {
+      "fails": "3 of 4 checks failed: row 1: expected \"A\", got \"B\"; row 2: expected \"B\", got \"C\"; row 3: expected \"C\", got \"D\""
+    },
+    "BufferTests.ScrollRegion_Right_AtTheLeftEdge_MovesTheColumnsByTheDistanceAsked": {
+      "fails": "1 of 1 checks failed: row 0 after scrolling right by one column: expected \" ABCD\", got \" BCDE\""
+    },
+    "EventTests.OnResize_IsGivenTheSizeOfTheWindow": {
+      "fails": "1 of 1 checks failed: sizes the handler was given after the screen buffer was made 300 rows tall (the window is not): expected \"100x30;\", got \"100x300;\""
+    },
+    "EventTests.OnCtrlEvent_Restore_RemovesTheRegistration": {
+      "fails": "1 of 1 checks failed: removing the procedure from Windows' list after Restore (0 means it was no longer registered): expected 0, got 1"
+    },
+    "EventTests.OnCtrlEvent_AnotherProcedure_ReplacesTheFirst": {
+      "fails": "1 of 1 checks failed: removing the first procedure from Windows' list after a second was set (0 means it was no longer registered): expected 0, got 1"
+    },
+    "FlushTests.WriteAt_NegativeColumn_NextFlushStillDrawsTheChangedCells": {
+      "fails": "2 of 2 checks failed: screen text at column 0, row 0 after Flush: expected \"cd\", got \" \"; screen text of the cell changed before the WriteAt: expected \"x\", got \" \""
+    },
+    "FlushTests.WriteAt_NegativeRow_NextFlushStillDrawsTheChangedCells": {
+      "fails": "1 of 1 checks failed: screen text of the cell changed before the WriteAt: expected \"x\", got \" \""
+    },
+    "FlushTests.FillRect_RectangleAboveAndLeftOfTheGrid_NextFlushStillDrawsTheChangedCells": {
+      "fails": "1 of 1 checks failed: screen text of the cell changed before the FillRect: expected \"x\", got \" \""
+    },
+    "FlushTests.CopyRegion_NegativeDestination_NextFlushStillDrawsTheCopiedCells": {
+      "fails": "1 of 1 checks failed: screen text of row 0 after the copy and Flush: expected \"bcc\", got \"abc\""
+    },
+    "FullScreenTests.Refresh_WindowShowsAnotherPartOfTheScreenBuffer_DrawsInTheWindow": {
+      "fails": "1 of 1 checks failed: screen text at the top row of the window (row 100 of the screen buffer): expected \"A\", got \" \""
+    },
+    "FullScreenTests.Refresh_AfterAWriteAtWithANegativeColumn_DrawsTheChangedCells": {
+      "fails": "1 of 1 checks failed: screen text of the cell changed before the WriteAt with a negative column: expected \"x\", got \" \""
+    },
+    "OutputTests.WriteColored_NoBackground_KeepsTheCurrentBackground": {
+      "fails": "1 of 1 checks failed: attribute of the cell written with Red and no background, on a DarkBlue console: expected 28, got 12"
+    },
+    "OutputTests.WriteLineColored_NoBackground_KeepsTheCurrentBackground": {
+      "fails": "1 of 1 checks failed: attribute of the cell written with Red and no background, on a DarkBlue console: expected 28, got 12"
+    },
+    "OutputTests.WriteAtColored_NoBackground_KeepsTheCurrentBackground": {
+      "fails": "1 of 1 checks failed: attribute of the cell written with Red and no background, on a DarkBlue console: expected 28, got 12"
+    },
+    "OutputTests.WriteColored_LeavesTheConsoleInTheColoursItHad": {
+      "fails": "1 of 1 checks failed: attribute of the console after WriteColored, which began as Yellow on DarkBlue: expected 30, got 7"
+    },
+    "OutputTests.WriteLineColored_LeavesTheConsoleInTheColoursItHad": {
+      "fails": "1 of 1 checks failed: attribute of the console after WriteLineColored, which began as Yellow on DarkBlue: expected 30, got 7"
+    },
+    "OutputTests.WriteAtColored_LeavesTheConsoleInTheColoursItHad": {
+      "fails": "1 of 1 checks failed: attribute of the console after WriteAtColored, which began as Yellow on DarkBlue: expected 30, got 7"
+    },
+    "ReadTests.KeyAvailable_KeyReleaseOnly_IsFalse": {
+      "fails": "1 of 1 checks failed: KeyAvailable with only a key release in the queue: expected False, got True"
+    },
+    "ReadTests.KeyAvailable_AfterReadKey_IsFalse": {
+      "fails": "1 of 1 checks failed: KeyAvailable after ReadKey, with the key release still in the queue: expected False, got True"
+    },
+    "ReadTests.KeyAvailable_MouseEventOnly_IsFalse": {
+      "fails": "1 of 1 checks failed: KeyAvailable with only a mouse event in the queue: expected False, got True"
+    },
+    "ReadTests.KeyAvailable_FocusEventOnly_IsFalse": {
+      "fails": "1 of 1 checks failed: KeyAvailable with only a focus event in the queue: expected False, got True"
+    },
+    "ReadTests.ReadKey_ArrowKeys_EqualTheConsoleKeyMembers": {
+      "fails": "4 of 4 checks failed: KeyCode of the Up Arrow key against ConsoleKey.KeyUp: expected 72, got 38; KeyCode of the Down Arrow key against ConsoleKey.KeyDown: expected 80, got 40; KeyCode of the Left Arrow key against ConsoleKey.KeyLeft: expected 75, got 37; KeyCode of the Right Arrow key against ConsoleKey.KeyRight: expected 77, got 39"
+    },
+    "ReadTests.ReadKey_NavigationKeys_EqualTheConsoleKeyMembers": {
+      "fails": "6 of 6 checks failed: KeyCode of the Home key against ConsoleKey.KeyHome: expected 71, got 36; KeyCode of the End key against ConsoleKey.KeyEnd: expected 79, got 35; KeyCode of the Page Up key against ConsoleKey.KeyPageUp: expected 73, got 33; KeyCode of the Page Down key against ConsoleKey.KeyPageDown: expected 81, got 34; KeyCode of the Insert key against ConsoleKey.KeyInsert: expected 82, got 45; KeyCode of the Delete key against ConsoleKey.KeyDelete: expected 83, got 46"
+    },
+    "ReadTests.ReadKey_FunctionKeys_EqualTheConsoleKeyMembers": {
+      "fails": "4 of 4 checks failed: KeyCode of F1 against ConsoleKey.KeyF1: expected 59, got 112; KeyCode of F10 against ConsoleKey.KeyF10: expected 68, got 121; KeyCode of F11 against ConsoleKey.KeyF11: expected 133, got 122; KeyCode of F12 against ConsoleKey.KeyF12: expected 134, got 123"
+    },
+    "ReadTests.ReadKey_LetterH_IsNotTheKeyCodeOfConsoleKeyKeyUp": {
+      "fails": "1 of 1 checks failed: KeyCode of the H key (72) equals ConsoleKey.KeyUp: expected False, got True"
+    },
+    "ReadTests.ReadKey_WithoutConsoleInput_Returns": {
+      "hangs": true
+    },
+    "ReadTests.ReadPassword_WithoutConsoleInput_Returns": {
+      "hangs": true
+    },
+    "ReadTests.ReadKeyTimeout_OnlyAKeyReleaseInTheQueue_ReturnsWhenTheTimeIsOver": {
+      "hangs": true
+    },
+    "StateTests.Title_LongTitle_IsReturnedWithAtMost259Characters": {
+      "fails": "2 of 2 checks failed: length of Title after a title of 300 characters is set (got 260): expected True, got False; position of a character with code 0 in that Title: expected 0, got 260"
+    },
+    "StyleTests.StripAnsi_SequenceEndingInAnotherLetter_KeepsTheTextAfterIt": {
+      "fails": "4 of 4 checks failed: StripAnsi of CursorHide & \"Hello\": expected \"Hello\", got \"ello\"; StripAnsi of CursorSave & \"xyz\": expected \"xyz\", got \"\"; StripAnsi of SetTitle(\"t\") & \"ok text\": expected \"ok text\", got \"\"; StripAnsi of CursorNextLine & \"line two\": expected \"line two\", got \"\""
+    },
+    "StyleTests.RepeatStr_LongerStringIsRepeatedWhole": {
+      "fails": "1 of 1 checks failed: RepeatStr(\"ab\", 3): expected \"ababab\", got \"aaa\""
+    },
+    "TypesTests.ConsoleKey_NavigationAndFunctionMembersAreVirtualKeyCodes": {
+      "fails": "15 of 15 checks failed: ConsoleKey.KeyUp against vbKeyUp: expected 38, got 72; ConsoleKey.KeyDown against vbKeyDown: expected 40, got 80; ConsoleKey.KeyLeft against vbKeyLeft: expected 37, got 75; ConsoleKey.KeyRight against vbKeyRight: expected 39, got 77; ConsoleKey.KeyHome against vbKeyHome: expected 36, got 71; ConsoleKey.KeyEnd against vbKeyEnd: expected 35, got 79; ConsoleKey.KeyPageUp against vbKeyPageUp: expected 33, got 73; ConsoleKey.KeyPageDown against vbKeyPageDown: expected 34, got 81; ConsoleKey.KeyInsert against vbKeyInsert: expected 45, got 82; ConsoleKey.KeyDelete against vbKeyDelete: expected 46, got 83; ConsoleKey.KeyF1 against vbKeyF1: expected 112, got 59; ConsoleKey.KeyF5 against vbKeyF5: expected 116, got 63; ConsoleKey.KeyF10 against vbKeyF10: expected 121, got 68; ConsoleKey.KeyF11 against vbKeyF11: expected 122, got 133; ConsoleKey.KeyF12 against vbKeyF12: expected 123, got 134"
+    }
+  }
+}

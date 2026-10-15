@@ -1,0 +1,292 @@
+' TBMANLIB_ConsoleCore: ProcessEvents and the four handler properties of cConsole.
+[TestFixture]
+Module EventTests
+
+    ' Takes a registration of a control handler away until Windows says there is none.
+    Private Sub RemoveCtrl(ByVal Which As Long)
+        Dim n As Long
+        Do
+            If Which = 1 Then
+                If mConsoleAPI.SetConsoleCtrlHandler(AddressOf Sink.OnCtrlOne, 0) = 0 Then Exit Do
+            Else
+                If mConsoleAPI.SetConsoleCtrlHandler(AddressOf Sink.OnCtrlTwo, 0) = 0 Then Exit Do
+            End If
+            n = n + 1
+        Loop While n < 10
+    End Sub
+
+    ' ---- OnKeyPress
+
+    [TestCase]
+    Public Sub OnKeyPress_ProcessEvents_CallsTheHandlerForEachKeyDownAndNotForKeyUp()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Sink.Reset
+        c.OnKeyPress = AddressOf Sink.OnKey
+        Rig.PushPress 65, 97
+        Rig.PushKey 16, 0, True, &H10&
+        c.ProcessEvents
+        Expect.AreEqual 2, Sink.KeyCalls, "calls of the key handler for a press of A and a press of Shift"
+        Expect.AreEqual "65;16;", Sink.KeyLog, "key codes the handler was given"
+        Expect.AreEqual 0, Rig.PendingEvents(), "events left in the queue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OnKeyPress_HandlerGetsVirtualKeyCodes()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Sink.Reset
+        c.OnKeyPress = AddressOf Sink.OnKey
+        Rig.PushPress 38, 0
+        c.ProcessEvents
+        Expect.AreEqual "38;", Sink.KeyLog, "key code the handler was given for the Up Arrow key"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ProcessEvents_NoKeyHandler_LeavesKeyEventsInTheQueue()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushPress 65, 97
+        c.ProcessEvents
+        Expect.AreEqual 2, Rig.PendingEvents(), "events in the queue after ProcessEvents with no key handler"
+        Expect.AreEqual 65, c.ReadKey(True).KeyCode, "ReadKey after ProcessEvents"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ProcessEvents_KeyEventWithNoHandler_StopsBeforeTheEventsBehindIt()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Sink.Reset
+        c.OnMouseClick = AddressOf Sink.OnMouse
+        Rig.PushPress 65, 97
+        Rig.PushMouse 3, 2, 1, 0
+        c.ProcessEvents
+        Expect.AreEqual 3, Rig.PendingEvents(), "events in the queue after ProcessEvents"
+        Expect.AreEqual 0, Sink.MouseCalls, "calls of the mouse handler for the mouse event behind the key"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- OnMouseClick
+
+    [TestCase]
+    Public Sub OnMouseClick_HandlerIsCalledForEveryMouseEvent()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Sink.Reset
+        c.OnMouseClick = AddressOf Sink.OnMouse
+        Rig.PushMouse 3, 2, 0, 1
+        Rig.PushMouse 3, 2, 1, 0
+        Rig.PushMouse 3, 2, 0, 0
+        Rig.PushMouse 4, 2, 2, 2
+        Rig.PushMouse 5, 6, &H780000, 4
+        c.ProcessEvents
+        Expect.AreEqual 5, Sink.MouseCalls, "calls of the mouse handler"
+        Expect.AreEqual "3,2,0,False;3,2,1,False;3,2,0,False;4,2,2,True;5,6,7864320,False;", Sink.MouseLog, "what the handler was given for a move, a left press, a release, a double click of the right button and a wheel turn"
+        Expect.AreEqual 0, Rig.PendingEvents(), "events left in the queue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OnMouseClick_Set_TurnsOnMouseInputAndExtendedFlagsAndTurnsOffQuickEdit()
+        Expect.Begin
+        Rig.Acquire
+        Rig.SetInMode &H7& Or &H40&
+        Dim before As Long = Rig.InMode()
+        Dim c As New cConsole
+        c.OnMouseClick = AddressOf Sink.OnMouse
+        Expect.AreEqual &H10& Or &H80&, Rig.InMode() And (&H10& Or &H40& Or &H80&), "mouse, quick-edit and extended flags of the input mode"
+        c.Restore
+        Expect.AreEqual before, Rig.InMode(), "input mode after Restore"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ProcessEvents_MouseEventWithNoHandler_IsTakenAndDropped()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushMouse 3, 2, 1, 0
+        c.ProcessEvents
+        Expect.AreEqual 0, Rig.PendingEvents(), "events in the queue after ProcessEvents with no mouse handler"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ProcessEvents_OtherEvents_AreTakenAndDropped()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PushFocus
+        Rig.PushFocus
+        c.ProcessEvents
+        Expect.AreEqual 0, Rig.PendingEvents(), "events in the queue after ProcessEvents of two focus events"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- OnResize
+
+    [TestCase]
+    Public Sub OnResize_SizeEventWithTheSizeLastSeen_DoesNotCallTheHandler()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Sink.Reset
+        c.OnResize = AddressOf Sink.OnSize
+        Rig.PushSize Rig.BufferWidth(), Rig.WindowHeight()
+        c.ProcessEvents
+        Expect.AreEqual 0, Sink.SizeCalls, "calls of the resize handler for an event with the size the object saw first"
+        Expect.AreEqual 0, Rig.PendingEvents(), "events left in the queue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OnResize_NewSize_CallsTheHandlerAndGivesTheBufferANewSize()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Sink.Reset
+        c.OnResize = AddressOf Sink.OnSize
+        c.EnterFullScreenMode
+        c.Buffer.WriteAt 0, 0, "x"
+        Rig.PushSize 90, 20
+        c.ProcessEvents
+        Expect.AreEqual "90x20;", Sink.SizeLog, "sizes the resize handler was given"
+        Expect.AreEqual 90, c.Buffer.Width, "Width of the buffer after the size event"
+        Expect.AreEqual 20, c.Buffer.Height, "Height of the buffer after the size event"
+        Expect.AreEqual " ", c.Buffer.GetChar(0, 0).Char, "first cell of the buffer: its contents are discarded"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OnResize_OutsideFullScreenMode_ASizeEventInTheQueueCallsTheHandler()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Sink.Reset
+        c.OnResize = AddressOf Sink.OnSize
+        Rig.MakeActive
+        Rig.Flush
+        Expect.AreEqual 0, Rig.InMode() And 8, "ENABLE_WINDOW_INPUT in the input mode outside full-screen mode"
+        c.SetBufferSize Rig.BufferWidth(), 300
+        c.ProcessEvents
+        Expect.AreEqual 1, Sink.SizeCalls, "calls of the resize handler for the event that SetBufferSize caused outside full-screen mode"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OnResize_InFullScreenMode_WindowsReportsAChangeOfSize()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Sink.Reset
+        c.OnResize = AddressOf Sink.OnSize
+        c.EnterFullScreenMode
+        Rig.MakeActive
+        Rig.Flush
+        c.SetBufferSize Rig.BufferWidth(), 300
+        c.ProcessEvents
+        Expect.AreEqual 1, Sink.SizeCalls, "calls of the resize handler after the screen buffer was resized in full-screen mode"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OnResize_IsGivenTheSizeOfTheWindow()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Sink.Reset
+        c.OnResize = AddressOf Sink.OnSize
+        c.EnterFullScreenMode
+        Rig.MakeActive
+        Rig.Flush
+        c.SetBufferSize Rig.BufferWidth(), 300
+        c.ProcessEvents
+        Expect.AreEqual Rig.WindowWidth() & "x" & Rig.WindowHeight() & ";", Sink.SizeLog, "sizes the handler was given after the screen buffer was made 300 rows tall (the window is not)"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- OnCtrlEvent
+
+    [TestCase]
+    Public Sub OnCtrlEvent_RegistersTheProcedureWithWindows()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.OnCtrlEvent = AddressOf Sink.OnCtrlOne
+        Dim removed As Long
+        removed = mConsoleAPI.SetConsoleCtrlHandler(AddressOf Sink.OnCtrlOne, 0)
+        Expect.IsTrue removed <> 0, "removing the procedure from Windows' list afterwards works, so it was registered"
+        RemoveCtrl 1
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OnCtrlEvent_Restore_RemovesTheRegistration()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.OnCtrlEvent = AddressOf Sink.OnCtrlOne
+        c.Restore
+        Dim removed As Long
+        removed = mConsoleAPI.SetConsoleCtrlHandler(AddressOf Sink.OnCtrlOne, 0)
+        Expect.AreEqual 0, removed, "removing the procedure from Windows' list after Restore (0 means it was no longer registered)"
+        RemoveCtrl 1
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OnCtrlEvent_AnotherProcedure_ReplacesTheFirst()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.OnCtrlEvent = AddressOf Sink.OnCtrlOne
+        c.OnCtrlEvent = AddressOf Sink.OnCtrlTwo
+        Dim removed As Long
+        removed = mConsoleAPI.SetConsoleCtrlHandler(AddressOf Sink.OnCtrlOne, 0)
+        Expect.AreEqual 0, removed, "removing the first procedure from Windows' list after a second was set (0 means it was no longer registered)"
+        RemoveCtrl 1
+        RemoveCtrl 2
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+End Module

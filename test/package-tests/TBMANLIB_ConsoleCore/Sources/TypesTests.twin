@@ -1,0 +1,205 @@
+' TBMANLIB_ConsoleCore: the enumerations, structures and helper functions of the Types page.
+[TestFixture]
+Module TypesTests
+
+    [TestCase]
+    Public Sub ConsoleColor_Values()
+        Expect.Begin
+        Expect.AreEqual 0, CLng(ConsoleColor.Black), "ConsoleColor.Black"
+        Expect.AreEqual 1, CLng(ConsoleColor.DarkBlue), "ConsoleColor.DarkBlue"
+        Expect.AreEqual 2, CLng(ConsoleColor.DarkGreen), "ConsoleColor.DarkGreen"
+        Expect.AreEqual 3, CLng(ConsoleColor.DarkCyan), "ConsoleColor.DarkCyan"
+        Expect.AreEqual 4, CLng(ConsoleColor.DarkRed), "ConsoleColor.DarkRed"
+        Expect.AreEqual 5, CLng(ConsoleColor.DarkMagenta), "ConsoleColor.DarkMagenta"
+        Expect.AreEqual 6, CLng(ConsoleColor.DarkYellow), "ConsoleColor.DarkYellow"
+        Expect.AreEqual 7, CLng(ConsoleColor.Gray), "ConsoleColor.Gray"
+        Expect.AreEqual 8, CLng(ConsoleColor.DarkGray), "ConsoleColor.DarkGray"
+        Expect.AreEqual 9, CLng(ConsoleColor.Blue), "ConsoleColor.Blue"
+        Expect.AreEqual 10, CLng(ConsoleColor.Green), "ConsoleColor.Green"
+        Expect.AreEqual 11, CLng(ConsoleColor.Cyan), "ConsoleColor.Cyan"
+        Expect.AreEqual 12, CLng(ConsoleColor.Red), "ConsoleColor.Red"
+        Expect.AreEqual 13, CLng(ConsoleColor.Magenta), "ConsoleColor.Magenta"
+        Expect.AreEqual 14, CLng(ConsoleColor.Yellow), "ConsoleColor.Yellow"
+        Expect.AreEqual 15, CLng(ConsoleColor.White), "ConsoleColor.White"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsoleColorAttribute_ForegroundInTheLowFourBitsBackgroundInTheNext()
+        Expect.Begin
+        Expect.AreEqual &H1E&, CLng(mConsoleAPI.ColorAttribute(ConsoleColor.Yellow, ConsoleColor.DarkBlue)), "ColorAttribute(Yellow, DarkBlue)"
+        Expect.AreEqual &H7&, CLng(mConsoleAPI.ColorAttribute(ConsoleColor.Gray, ConsoleColor.Black)), "ColorAttribute(Gray, Black)"
+        Expect.AreEqual &HF0&, CLng(mConsoleAPI.ColorAttribute(ConsoleColor.Black, ConsoleColor.White)), "ColorAttribute(Black, White)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsoleKey_Values()
+        Expect.Begin
+        Expect.AreEqual 13, CLng(ConsoleKey.KeyEnter), "ConsoleKey.KeyEnter"
+        Expect.AreEqual 27, CLng(ConsoleKey.KeyEscape), "ConsoleKey.KeyEscape"
+        Expect.AreEqual 32, CLng(ConsoleKey.KeySpace), "ConsoleKey.KeySpace"
+        Expect.AreEqual 8, CLng(ConsoleKey.KeyBackspace), "ConsoleKey.KeyBackspace"
+        Expect.AreEqual 9, CLng(ConsoleKey.KeyTab), "ConsoleKey.KeyTab"
+        Expect.AreEqual 72, CLng(ConsoleKey.KeyUp), "ConsoleKey.KeyUp"
+        Expect.AreEqual 80, CLng(ConsoleKey.KeyDown), "ConsoleKey.KeyDown"
+        Expect.AreEqual 75, CLng(ConsoleKey.KeyLeft), "ConsoleKey.KeyLeft"
+        Expect.AreEqual 77, CLng(ConsoleKey.KeyRight), "ConsoleKey.KeyRight"
+        Expect.AreEqual 71, CLng(ConsoleKey.KeyHome), "ConsoleKey.KeyHome"
+        Expect.AreEqual 79, CLng(ConsoleKey.KeyEnd), "ConsoleKey.KeyEnd"
+        Expect.AreEqual 73, CLng(ConsoleKey.KeyPageUp), "ConsoleKey.KeyPageUp"
+        Expect.AreEqual 81, CLng(ConsoleKey.KeyPageDown), "ConsoleKey.KeyPageDown"
+        Expect.AreEqual 82, CLng(ConsoleKey.KeyInsert), "ConsoleKey.KeyInsert"
+        Expect.AreEqual 83, CLng(ConsoleKey.KeyDelete), "ConsoleKey.KeyDelete"
+        Expect.AreEqual 59, CLng(ConsoleKey.KeyF1), "ConsoleKey.KeyF1"
+        Expect.AreEqual 60, CLng(ConsoleKey.KeyF2), "ConsoleKey.KeyF2"
+        Expect.AreEqual 61, CLng(ConsoleKey.KeyF3), "ConsoleKey.KeyF3"
+        Expect.AreEqual 62, CLng(ConsoleKey.KeyF4), "ConsoleKey.KeyF4"
+        Expect.AreEqual 63, CLng(ConsoleKey.KeyF5), "ConsoleKey.KeyF5"
+        Expect.AreEqual 64, CLng(ConsoleKey.KeyF6), "ConsoleKey.KeyF6"
+        Expect.AreEqual 65, CLng(ConsoleKey.KeyF7), "ConsoleKey.KeyF7"
+        Expect.AreEqual 66, CLng(ConsoleKey.KeyF8), "ConsoleKey.KeyF8"
+        Expect.AreEqual 67, CLng(ConsoleKey.KeyF9), "ConsoleKey.KeyF9"
+        Expect.AreEqual 68, CLng(ConsoleKey.KeyF10), "ConsoleKey.KeyF10"
+        Expect.AreEqual 133, CLng(ConsoleKey.KeyF11), "ConsoleKey.KeyF11"
+        Expect.AreEqual 134, CLng(ConsoleKey.KeyF12), "ConsoleKey.KeyF12"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsoleKey_FirstFiveMembersAreVirtualKeyCodes()
+        Expect.Begin
+        Expect.AreEqual CLng(vbKeyReturn), CLng(ConsoleKey.KeyEnter), "ConsoleKey.KeyEnter against vbKeyReturn"
+        Expect.AreEqual CLng(vbKeyEscape), CLng(ConsoleKey.KeyEscape), "ConsoleKey.KeyEscape against vbKeyEscape"
+        Expect.AreEqual CLng(vbKeySpace), CLng(ConsoleKey.KeySpace), "ConsoleKey.KeySpace against vbKeySpace"
+        Expect.AreEqual CLng(vbKeyBack), CLng(ConsoleKey.KeyBackspace), "ConsoleKey.KeyBackspace against vbKeyBack"
+        Expect.AreEqual CLng(vbKeyTab), CLng(ConsoleKey.KeyTab), "ConsoleKey.KeyTab against vbKeyTab"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsoleKey_NavigationAndFunctionMembersAreVirtualKeyCodes()
+        ' The members of the other keys should be the codes ReadKey returns for them.
+        Expect.Begin
+        Expect.AreEqual CLng(vbKeyUp), CLng(ConsoleKey.KeyUp), "ConsoleKey.KeyUp against vbKeyUp"
+        Expect.AreEqual CLng(vbKeyDown), CLng(ConsoleKey.KeyDown), "ConsoleKey.KeyDown against vbKeyDown"
+        Expect.AreEqual CLng(vbKeyLeft), CLng(ConsoleKey.KeyLeft), "ConsoleKey.KeyLeft against vbKeyLeft"
+        Expect.AreEqual CLng(vbKeyRight), CLng(ConsoleKey.KeyRight), "ConsoleKey.KeyRight against vbKeyRight"
+        Expect.AreEqual CLng(vbKeyHome), CLng(ConsoleKey.KeyHome), "ConsoleKey.KeyHome against vbKeyHome"
+        Expect.AreEqual CLng(vbKeyEnd), CLng(ConsoleKey.KeyEnd), "ConsoleKey.KeyEnd against vbKeyEnd"
+        Expect.AreEqual CLng(vbKeyPageUp), CLng(ConsoleKey.KeyPageUp), "ConsoleKey.KeyPageUp against vbKeyPageUp"
+        Expect.AreEqual CLng(vbKeyPageDown), CLng(ConsoleKey.KeyPageDown), "ConsoleKey.KeyPageDown against vbKeyPageDown"
+        Expect.AreEqual CLng(vbKeyInsert), CLng(ConsoleKey.KeyInsert), "ConsoleKey.KeyInsert against vbKeyInsert"
+        Expect.AreEqual CLng(vbKeyDelete), CLng(ConsoleKey.KeyDelete), "ConsoleKey.KeyDelete against vbKeyDelete"
+        Expect.AreEqual CLng(vbKeyF1), CLng(ConsoleKey.KeyF1), "ConsoleKey.KeyF1 against vbKeyF1"
+        Expect.AreEqual CLng(vbKeyF5), CLng(ConsoleKey.KeyF5), "ConsoleKey.KeyF5 against vbKeyF5"
+        Expect.AreEqual CLng(vbKeyF10), CLng(ConsoleKey.KeyF10), "ConsoleKey.KeyF10 against vbKeyF10"
+        Expect.AreEqual CLng(vbKeyF11), CLng(ConsoleKey.KeyF11), "ConsoleKey.KeyF11 against vbKeyF11"
+        Expect.AreEqual CLng(vbKeyF12), CLng(ConsoleKey.KeyF12), "ConsoleKey.KeyF12 against vbKeyF12"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsoleEventType_Values()
+        Expect.Begin
+        Expect.AreEqual 0, CLng(ConsoleEventType.EventNone), "ConsoleEventType.EventNone"
+        Expect.AreEqual 1, CLng(ConsoleEventType.EventResize), "ConsoleEventType.EventResize"
+        Expect.AreEqual 2, CLng(ConsoleEventType.EventKeyPress), "ConsoleEventType.EventKeyPress"
+        Expect.AreEqual 3, CLng(ConsoleEventType.EventMouseClick), "ConsoleEventType.EventMouseClick"
+        Expect.AreEqual 4, CLng(ConsoleEventType.EventFocus), "ConsoleEventType.EventFocus"
+        Expect.AreEqual 5, CLng(ConsoleEventType.EventCtrlC), "ConsoleEventType.EventCtrlC"
+        Expect.AreEqual 6, CLng(ConsoleEventType.EventCtrlBreak), "ConsoleEventType.EventCtrlBreak"
+        Expect.AreEqual 7, CLng(ConsoleEventType.EventClose), "ConsoleEventType.EventClose"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsoleMode_And_ConsoleTextStyle_Values()
+        Expect.Begin
+        Expect.AreEqual 0, CLng(ConsoleMode.ModeNormal), "ConsoleMode.ModeNormal"
+        Expect.AreEqual 1, CLng(ConsoleMode.ModeVirtualTerminal), "ConsoleMode.ModeVirtualTerminal"
+        Expect.AreEqual 2, CLng(ConsoleMode.ModeFullScreen), "ConsoleMode.ModeFullScreen"
+        Expect.AreEqual 4, CLng(ConsoleMode.ModeRaw), "ConsoleMode.ModeRaw"
+        Expect.AreEqual 0, CLng(ConsoleTextStyle.StyleNone), "ConsoleTextStyle.StyleNone"
+        Expect.AreEqual 1, CLng(ConsoleTextStyle.StyleBold), "ConsoleTextStyle.StyleBold"
+        Expect.AreEqual 2, CLng(ConsoleTextStyle.StyleUnderline), "ConsoleTextStyle.StyleUnderline"
+        Expect.AreEqual 4, CLng(ConsoleTextStyle.StyleReverse), "ConsoleTextStyle.StyleReverse"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ThemeColorType_Values()
+        Expect.Begin
+        Expect.AreEqual 1, CLng(ThemeColorType.tcPrimary), "ThemeColorType.tcPrimary"
+        Expect.AreEqual 2, CLng(ThemeColorType.tcSecondary), "ThemeColorType.tcSecondary"
+        Expect.AreEqual 3, CLng(ThemeColorType.tcSuccess), "ThemeColorType.tcSuccess"
+        Expect.AreEqual 4, CLng(ThemeColorType.tcWarning), "ThemeColorType.tcWarning"
+        Expect.AreEqual 5, CLng(ThemeColorType.tcError), "ThemeColorType.tcError"
+        Expect.AreEqual 6, CLng(ThemeColorType.tcInfo), "ThemeColorType.tcInfo"
+        Expect.AreEqual 7, CLng(ThemeColorType.tcMuted), "ThemeColorType.tcMuted"
+        Expect.AreEqual 8, CLng(ThemeColorType.tcBackground), "ThemeColorType.tcBackground"
+        Expect.AreEqual 9, CLng(ThemeColorType.tcForeground), "ThemeColorType.tcForeground"
+        Expect.AreEqual 10, CLng(ThemeColorType.tcBorder), "ThemeColorType.tcBorder"
+        Expect.AreEqual 11, CLng(ThemeColorType.tcHeaderBackground), "ThemeColorType.tcHeaderBackground"
+        Expect.AreEqual 12, CLng(ThemeColorType.tcHeaderForeground), "ThemeColorType.tcHeaderForeground"
+        Expect.AreEqual 13, CLng(ThemeColorType.tcSelectedBackground), "ThemeColorType.tcSelectedBackground"
+        Expect.AreEqual 14, CLng(ThemeColorType.tcSelectedForeground), "ThemeColorType.tcSelectedForeground"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsoleRect_Create_ReturnsTheFourEdgesAsGiven()
+        Expect.Begin
+        Dim r As ConsoleRect
+        r = ConsoleRect_Create(2, 1, 11, 4)
+        Expect.AreEqual 2, r.Left, "Left of ConsoleRect_Create(2, 1, 11, 4)"
+        Expect.AreEqual 1, r.Top, "Top"
+        Expect.AreEqual 11, r.Right, "Right"
+        Expect.AreEqual 4, r.Bottom, "Bottom"
+        r = ConsoleRect_Create(9, 9, 3, 3)
+        Expect.AreEqual 9, r.Left, "Left of ConsoleRect_Create(9, 9, 3, 3), whose right is less than its left"
+        Expect.AreEqual 3, r.Right, "Right of ConsoleRect_Create(9, 9, 3, 3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsoleRect_Width_And_Height_CountBothEdges()
+        Expect.Begin
+        Dim r As ConsoleRect
+        r = ConsoleRect_Create(2, 1, 11, 4)
+        Expect.AreEqual 10, ConsoleRect_Width(r), "ConsoleRect_Width of columns 2 to 11"
+        Expect.AreEqual 4, ConsoleRect_Height(r), "ConsoleRect_Height of rows 1 to 4"
+        r = ConsoleRect_Create(5, 5, 5, 5)
+        Expect.AreEqual 1, ConsoleRect_Width(r), "ConsoleRect_Width of one column"
+        Expect.AreEqual 1, ConsoleRect_Height(r), "ConsoleRect_Height of one row"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsoleRect_Contains_EdgesBelongToTheRectangle()
+        Expect.Begin
+        Dim r As ConsoleRect
+        r = ConsoleRect_Create(2, 1, 11, 4)
+        Expect.IsTrue ConsoleRect_Contains(r, 2, 1), "the upper left corner is in the rectangle"
+        Expect.IsTrue ConsoleRect_Contains(r, 11, 4), "the lower right corner is in the rectangle"
+        Expect.IsTrue ConsoleRect_Contains(r, 5, 2), "a point inside is in the rectangle"
+        Expect.IsFalse ConsoleRect_Contains(r, 1, 1), "a point left of the rectangle is not in it"
+        Expect.IsFalse ConsoleRect_Contains(r, 12, 4), "a point right of the rectangle is not in it"
+        Expect.IsFalse ConsoleRect_Contains(r, 5, 0), "a point above the rectangle is not in it"
+        Expect.IsFalse ConsoleRect_Contains(r, 5, 5), "a point below the rectangle is not in it"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsoleKeyInfo_EmptyStructure_HasNoKeyAndNoCharacter()
+        Expect.Begin
+        Dim k As ConsoleKeyInfo
+        Expect.AreEqual 0, k.KeyCode, "KeyCode of an empty ConsoleKeyInfo"
+        Expect.AreEqual "", k.KeyChar, "KeyChar of an empty ConsoleKeyInfo"
+        Expect.IsFalse k.IsAltPressed, "IsAltPressed of an empty ConsoleKeyInfo"
+        Expect.IsFalse k.IsCtrlPressed, "IsCtrlPressed of an empty ConsoleKeyInfo"
+        Expect.IsFalse k.IsShiftPressed, "IsShiftPressed of an empty ConsoleKeyInfo"
+        Expect.Done
+    End Sub
+
+End Module

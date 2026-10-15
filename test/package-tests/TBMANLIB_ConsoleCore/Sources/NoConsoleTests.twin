@@ -1,0 +1,212 @@
+' TBMANLIB_ConsoleCore: a cConsole made when the standard handles are not console handles: a program
+' without a console (the handles are 0), or one whose output is redirected to a file.
+[TestFixture]
+Module NoConsoleTests
+
+    [TestCase]
+    Public Sub New_WithoutHandles_Succeeds_AndSizeIs80By25()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoHandles
+        Dim c As cConsole
+        On Error Resume Next
+        Set c = New cConsole
+        Expect.AreEqual 0, Err.Number, "Err.Number of New cConsole without handles"
+        On Error GoTo 0
+        Expect.AreEqual 80, c.Width, "Width without a console"
+        Expect.AreEqual 25, c.Height, "Height without a console"
+        Expect.AreEqual 80, c.GetSize().Width, "Width of GetSize"
+        Expect.AreEqual 25, c.GetSize().Height, "Height of GetSize"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetBufferSize_WithoutHandles_Is80By300()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoHandles
+        Dim c As New cConsole
+        Expect.AreEqual 80, c.GetBufferSize().Width, "Width of GetBufferSize without a console"
+        Expect.AreEqual 300, c.GetBufferSize().Height, "Height of GetBufferSize without a console"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetCursorPosition_CursorProperties_WithoutHandles_AreZeroOrFalse()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoHandles
+        Dim c As New cConsole
+        Expect.AreEqual 0, c.GetCursorPosition().Col, "Col without a console"
+        Expect.AreEqual 0, c.GetCursorPosition().Row, "Row without a console"
+        Expect.IsFalse c.CursorVisible, "CursorVisible without a console"
+        Expect.AreEqual 0, c.CursorSize, "CursorSize without a console"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteMembers_WithoutHandles_WriteNothingAndRaiseNoError()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoHandles
+        Dim c As New cConsole
+        On Error Resume Next
+        c.WriteTo "abc"
+        c.WriteLine "abc"
+        c.WriteF "{0}", "abc"
+        c.WriteColored "abc", ConsoleColor.Red
+        c.WriteAt 2, 2, "abc"
+        c.WriteError "abc"
+        c.Clear
+        c.ClearLine
+        c.DrawBox 0, 0, 5, 3
+        Expect.AreEqual 0, Err.Number, "Err.Number after the write members without a console"
+        On Error GoTo 0
+        Expect.AreEqual "", Rig.RowText(0), "row 0 of the real screen buffer"
+        Expect.AreEqual "", Rig.RowText(2), "row 2 of the real screen buffer"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EnableVirtualTerminal_WithoutHandles_ReturnsFalse()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoHandles
+        Dim c As New cConsole
+        Expect.IsFalse c.EnableVirtualTerminal(), "EnableVirtualTerminal without a console"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadLine_WithoutHandles_ReturnsAnEmptyStringAtOnce()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoHandles
+        Dim c As New cConsole
+        Dim s As String
+        s = c.ReadLine()
+        Expect.AreEqual "", s, "ReadLine without a console"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub KeyAvailable_PeekEvent_WithoutHandles_AreFalseAndEmpty()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoHandles
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Expect.IsFalse c.KeyAvailable(), "KeyAvailable without a console"
+        k = c.PeekEvent()
+        Expect.AreEqual 0, k.KeyCode, "KeyCode of PeekEvent without a console"
+        Expect.AreEqual "", k.KeyChar, "KeyChar of PeekEvent without a console"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadKeyTimeout_WithoutHandles_ReturnsTheEmptyStructureWhenTheTimeIsOver()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoHandles
+        Dim c As New cConsole
+        Dim k As ConsoleKeyInfo
+        Dim t As Single = Timer
+        k = c.ReadKeyTimeout(200)
+        Expect.AreEqual 0, k.KeyCode, "KeyCode of ReadKeyTimeout(200) without a console"
+        Expect.AreEqual "", k.KeyChar, "KeyChar of ReadKeyTimeout(200) without a console"
+        Expect.IsTrue Timer - t >= 0.15, "ReadKeyTimeout(200) waited about 200 ms (waited " & Format$((Timer - t) * 1000, "0") & " ms)"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EnterFullScreenMode_WithoutHandles_MakesAnInMemoryBufferOf80By25()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoHandles
+        Dim c As New cConsole
+        c.EnterFullScreenMode
+        Expect.IsTrue c.FullScreenMode, "FullScreenMode"
+        Expect.AreEqual 80, c.Buffer.Width, "Width of the buffer"
+        Expect.AreEqual 25, c.Buffer.Height, "Height of the buffer"
+        c.Buffer.WriteAt 0, 0, "ok"
+        c.Refresh
+        Expect.AreEqual "o", c.Buffer.GetChar(0, 0).Char, "a cell of the buffer after Refresh without a console"
+        Expect.AreEqual "", Rig.RowText(0), "row 0 of the real screen buffer: Refresh shows nothing"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsKeyPressed_WorksWithoutAConsole()
+        Expect.Begin
+        Rig.Acquire
+        Rig.NoHandles
+        Dim c As New cConsole
+        Dim r As Boolean
+        On Error Resume Next
+        r = c.IsKeyPressed(7)
+        Expect.AreEqual 0, Err.Number, "Err.Number of IsKeyPressed without a console"
+        Expect.IsFalse r, "IsKeyPressed for a virtual-key code that no key has"
+        On Error GoTo 0
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- output redirected to a file
+
+    [TestCase]
+    Public Sub RedirectedOutput_WriteMembersWriteNothingToTheFile()
+        Expect.Begin
+        Rig.Acquire
+        Dim path As String = Rig.TempPath("out.txt")
+        Rig.Redirect path
+        Dim c As New cConsole
+        On Error Resume Next
+        c.WriteLine "to the file"
+        c.WriteErrorLine "to the error file"
+        c.WriteTo "more"
+        Expect.AreEqual 0, Err.Number, "Err.Number of the write members with the output redirected"
+        On Error GoTo 0
+        Set c = Nothing
+        Rig.EndRedirect
+        Expect.AreEqual 0, FileLen(path), "length of the file the output was redirected to"
+        Rig.RemoveTemp
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RedirectedOutput_SizeIs80By25_AndVirtualTerminalIsRefused()
+        Expect.Begin
+        Rig.Acquire
+        Rig.Redirect Rig.TempPath("out2.txt")
+        Dim c As New cConsole
+        Expect.AreEqual 80, c.GetSize().Width, "Width of GetSize with the output redirected"
+        Expect.AreEqual 25, c.GetSize().Height, "Height of GetSize with the output redirected"
+        Expect.IsFalse c.EnableVirtualTerminal(), "EnableVirtualTerminal with the output redirected"
+        Set c = Nothing
+        Rig.EndRedirect
+        Rig.RemoveTemp
+        Rig.Release
+        Expect.Done
+    End Sub
+
+End Module
