@@ -8,6 +8,8 @@ has_toc: false
 # AsciiEscapeBase enumeration
 {: .no_toc }
 
+<!-- test: EscapeSequenceTests.AsciiEscapeBase_Values -->
+
 Selects the number base of the digits in an ASCII escape sequence.
 
 **AsciiEscapeBase** is used by the *base* parameter of [**EscapeSequence.Create**](EscapeSequence/Create) and by the [**AsciiBase**](EscapeSequence/AsciiBase) property. It matters only for an escape sequence created with *isAsciiReplacement* set to **True**. The enumeration is declared in the [**EscapeSequence**](EscapeSequence/) class module, and its members are used without a qualifier or with the name `AsciiEscapeBase`.
@@ -24,6 +26,8 @@ Debug.Print Hexadecimal                  ' 1
 ```
 
 [**StringHelper**](StringHelper) registers `\xHH` as a **Hexadecimal** escape and `\ooo` as an **Octal** one.
+
+<!-- /test -->
 
 ## See Also
 

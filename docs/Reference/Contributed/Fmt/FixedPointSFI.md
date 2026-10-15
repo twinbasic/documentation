@@ -8,6 +8,8 @@ has_toc: false
 # FixedPointSFI class
 {: .no_toc }
 
+<!-- test: FixedPointTests.Default_TwoDecimalPlaces, FixedPointTests.Precision_SetsTheDecimalPlaces, FixedPointTests.PrecisionZero_IsTwoDecimalPlaces, FixedPointTests.NoThousandsSeparator, FixedPointTests.Class_MatchesFAndOnlyF, FixedPointTests.Class_GetFormattedValue_ReadsThePrecision -->
+
 Formats a number with a fixed count of decimal places for the **F** identifier.
 
 **FixedPointSFI** is a format identifier class. It implements [**IStringFormatIdentifier**](IStringFormatIdentifier) and matches the identifier **F** or **f** in any case. [**StringHelper**](StringHelper) registers it, so `{0:F}` in a call to [**StringFormat**](PublicEntryPoints/StringFormat) uses it for a numeric value. The class is predeclared, and its two members are reached through the interface.
@@ -30,6 +32,8 @@ Debug.Print StringFormat("{0:F2}", 12345.678) ' 12345.68
 - **GetFormattedValue** returns the value formatted as described above. It reads the specifier's [**Precision**](StringFormatSpecifier/Precision).
 
 Both are implemented as private members of the interface. [**GeneralNumericSFI**](GeneralNumericSFI) calls this class when it chooses fixed-point notation.
+
+<!-- /test -->
 
 ## See Also
 

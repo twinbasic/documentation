@@ -1,0 +1,95 @@
+' Fmt: helpers shared by the fixtures. Fmt builds its numbers and dates with Format$, so the decimal
+' point, the thousands separator and the layout of dates follow the regional settings of the
+' machine. A case states what the package should give in terms of the separators this module reports
+' or of Format$ itself, never in terms of one locale's literal text. A character the package writes
+' whatever the locale (the dollar sign after a currency amount, the &H of a hexadecimal number) is
+' checked literally.
+Module Loc
+
+    ' What the last Try call raised.
+    Public LastNumber As Long
+    Public LastDescription As String
+    Public LastSource As String
+
+    ' The error number of StringFormat for a bad format string or a wrong count of values.
+    Public Const FormatError As Long = -2147212503
+
+    ' The decimal separator of the regional settings.
+    Public Function Dec() As String
+        Dec = Mid$(Format$(1.5, "0.0"), 2, 1)
+    End Function
+
+    ' The time separator of the regional settings.
+    Public Function TimeSep() As String
+        TimeSep = Mid$(Format$(TimeSerial(14, 5, 9), "hh:mm"), 3, 1)
+    End Function
+
+    ' A fixed date and time, Sunday 11 October 2026, 14:05:09.
+    Public Function Dt() As Date
+        Dt = DateSerial(2026, 10, 11) + TimeSerial(14, 5, 9)
+    End Function
+
+    Private Sub Keep()
+        LastNumber = Err.Number
+        LastDescription = Err.Description
+        LastSource = Err.Source
+        Err.Clear
+    End Sub
+
+    ' StringFormat with no value. A call that raises returns an empty string, and LastNumber says why.
+    Public Function Try0(ByVal Pattern As String) As String
+        On Error Resume Next
+        Err.Clear
+        Try0 = StringFormat(Pattern)
+        Keep
+    End Function
+
+    Public Function Try1(ByVal Pattern As String, ByVal A As Variant) As String
+        On Error Resume Next
+        Err.Clear
+        Try1 = StringFormat(Pattern, A)
+        Keep
+    End Function
+
+    Public Function Try2(ByVal Pattern As String, ByVal A As Variant, ByVal B As Variant) As String
+        On Error Resume Next
+        Err.Clear
+        Try2 = StringFormat(Pattern, A, B)
+        Keep
+    End Function
+
+    Public Function TryFormer1(ByVal Pattern As String, ByVal A As Variant) As String
+        On Error Resume Next
+        Err.Clear
+        TryFormer1 = FormerStringFormat(Pattern, A)
+        Keep
+    End Function
+
+    Public Function TryFormer2(ByVal Pattern As String, ByVal A As Variant, ByVal B As Variant) As String
+        On Error Resume Next
+        Err.Clear
+        TryFormer2 = FormerStringFormat(Pattern, A, B)
+        Keep
+    End Function
+
+    ' A format specifier with an identifier and the text after it.
+    Public Function Spec(ByVal Identifier As String, Optional ByVal Custom As String = "") As StringFormatSpecifier
+        Dim s As New StringFormatSpecifier
+        s.identifier = Identifier
+        If Len(Custom) > 0 Then s.CustomSpecifier = Custom
+        Set Spec = s
+    End Function
+
+    ' The letters among A-Z, in both cases, that an identifier class matches, in the order A a B b ...
+    Public Function MatchedLetters(ByVal Sfi As IStringFormatIdentifier) As String
+        Dim i As Long
+        Dim c As String
+        For i = 65 To 90
+            c = Chr$(i)
+            If Sfi.IsIdentifierMatch(Spec(c)) Then MatchedLetters = MatchedLetters & c
+            c = LCase$(c)
+            If Sfi.IsIdentifierMatch(Spec(c)) Then MatchedLetters = MatchedLetters & c
+        Next
+    End Function
+
+End Module

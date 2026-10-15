@@ -31,6 +31,7 @@ The functions are public, so **StringFormat** is called by name, as the samples 
 
 ## Format items
 
+<!-- test: ItemTests.Index_SelectsValueByPosition, ItemTests.Index_RepeatedIndexUsesTheValueEachTime, ItemTests.Index_Word_RaisesTypeMismatch, ItemTests.Alignment_Positive_RightJustifies, ItemTests.Alignment_Negative_LeftJustifies, ItemTests.Alignment_WiderValue_IsNotShortened, ItemTests.Alignment_IsAppliedAfterTheIdentifier, ItemTests.NoIdentifier_ConvertsTheValueToString, ItemTests.Item_WithSpaces_StaysText, ItemTests.Item_WithoutClosingBrace_StaysText, ItemTests.Item_LeadingZeroIndex_IsNotReplaced, ItemTests.Item_LeadingZeroAlignment_IsNotReplaced, ItemTests.Item_ZeroAlignment_IsNotReplaced, ItemTests.Precision_Zero_IsTheSameAsNone, ItemTests.DoubledBrace_IsNotAnEscape, ItemTests.Values_UnusedValue_RaisesFormatError, ItemTests.Values_MissingValue_RaisesFormatError, ItemTests.Values_IndexGap_RaisesFormatError, ItemTests.Values_NoValuesButAnItem_RaisesFormatError, ItemTests.Values_NoItems_IgnoresTheValues -->
 A format item is written
 
 ```
@@ -57,10 +58,13 @@ Debug.Print StringFormat("[{0, 8}]", 5)    ' [{0, 8}]
 Debug.Print StringFormat("[{00}]", 5)      ' [{00}]
 ```
 
+<!-- /test -->
+
 [**StringFormat**](PublicEntryPoints/StringFormat) describes how the items are processed. The properties of one item are held by a [**StringFormatSpecifier**](StringFormatSpecifier/).
 
 ## Format identifiers
 
+<!-- test: ItemTests.Identifier_TextValue_IsRefused, ItemTests.Identifier_NumericText_UsesTheNumericIdentifiers, ItemTests.Identifier_Boolean_UsesTheNumericIdentifiers, ItemTests.Error_NullValue_RaisesInvalidUseOfNull, ItemTests.Error_UnknownIdentifier_NumberSourceAndDescription, ItemTests.DotNet_NumberIdentifierN_DoesNotExist, CurrencyTests.Default_TwoDecimalPlacesAndATrailingDollar, CurrencyTests.Precision_SetsTheDecimalPlaces, DecimalTests.Default_IsTheWholeNumber, DecimalTests.Precision_PadsWithZeros, ExponentialTests.Default_SixDecimalPlaces, ExponentialTests.Precision_SetsTheDecimalPlaces, FixedPointTests.Default_TwoDecimalPlaces, FixedPointTests.Precision_SetsTheDecimalPlaces, GeneralTests.Integer_IsFormattedAsD, GeneralTests.Double_WithoutPrecision_IsExponential, GeneralTests.Double_ExponentAtOrAbovePrecision_IsExponential, GeneralTests.Double_ExponentBelowPrecision_IsFixedPoint, GeneralTests.Single_GivesTheValue, PercentRoundTripTests.Percent_Default_IsAWholeNumberOfPercent, PercentRoundTripTests.Percent_Precision_SetsTheDecimalPlaces, PercentRoundTripTests.RoundTrip_ConvertsTheValueToText, HexTests.Default_IsThePrefixAndTheDigits, HexTests.Precision_PadsWithZeros, HexTests.Precision_CutsFromTheLeft, HexTests.NumericPadding_NeverMatches -->
 The type of the value decides which identifiers an item can use. A value for which **IsNumeric** is **True** (a number, a **Boolean**, a **String** that looks like a number) uses the numeric identifiers. A value of type **Date** uses the date identifiers. A value of any other type takes no identifier. An identifier that does not suit the value raises error `-2147212503`, *Invalid format string*. A **Null** value raises error 94.
 
 ### Numeric values
@@ -98,8 +102,11 @@ Debug.Print StringFormat("{0:C}", 1234567.891)             ' 1,234,567.89$
 Debug.Print StringFormat("{0:C}", -5)                      ' -5.00$
 ```
 
+<!-- /test -->
+
 ### Dates
 
+<!-- test: DateTests.ShortDate_d, DateTests.LongDate_D, DateTests.LongDateShortTime_f, DateTests.LongDateLongTime_F, DateTests.ShortDateShortTime_g, DateTests.ShortDateLongTime_G, DateTests.Sortable_s, DateTests.ShortTime_t, DateTests.LongTime_T, DateTests.Custom_C_PassesTheTextToFormat, DateTests.Letters_AreCaseSensitiveExceptC, DateTests.TextAfterTheLetter_IsIgnoredExceptForC, DateTests.UnknownLetter_RaisesFormatError, DateTests.NumericIdentifier_ForADate_RaisesFormatError, ItemTests.DotNet_CustomDateFormat_IsRefused, ItemTests.Results_NumericResultsComeFromFormat, ItemTests.Results_DateResultsComeFromFormat -->
 The date identifiers are the letters of [**GenericDateTimeSFI**](GenericDateTimeSFI). They are case-sensitive, except `C`.
 
 | Identifier | Result | Example for 11 October 2026, 14:05:09 |
@@ -130,8 +137,11 @@ Debug.Print StringFormat("{0:Cyyyy-MM-dd}", d)  ' 2026-10-11
 > [!NOTE] timeless
 > The results come from **Format$**, so the decimal separator, the thousands separator and the layout of dates and times follow the Windows regional settings. The output shown for the currency and date identifiers is for an English (United States) system.
 
+<!-- /test -->
+
 ## Escape sequences
 
+<!-- test: EscapeTests.Newline_IsVbNewLine, EscapeTests.Quote_IsADoubleQuote, EscapeTests.Tab_IsVbTab, EscapeTests.Alert_And_Backspace_AreCodes7And8, EscapeTests.VerticalTab_FormFeed_CarriageReturn_AreCodes13_14_15, EscapeTests.HexEscape_GivesTheCharactersOfC, EscapeTests.HexEscape_TwoDigits, EscapeTests.OctalEscape_ThreeDigits, EscapeTests.HexEscape_InvalidDigits_RaisesTypeMismatch, EscapeTests.OctalEscape_InvalidDigits_RaisesTypeMismatch, EscapeTests.DoubledBackslash_IsOneBackslash, EscapeTests.UnknownEscape_StaysAsWritten, EscapeTests.Literal_AtSign_TurnsEscapesOff, EscapeTests.Values_EscapesInAValue_AreExpanded, EscapeTests.Literal_EscapesInAValue_AreNotExpanded -->
 The formatter replaces these sequences in the finished string, values included. A backslash that starts none of them stays as it is.
 
 | Sequence | Result |
@@ -163,8 +173,11 @@ Debug.Print StringFormat("@a\nb")       ' a\nb
 
 An `\xHH` or `\ooo` sequence with digits that are not valid in its base, such as `\xzz` or `\189`, raises error 13.
 
+<!-- /test -->
+
 ## Errors
 
+<!-- test: ItemTests.Error_WrongCount_NumberSourceAndDescription, ItemTests.Error_UnknownIdentifier_NumberSourceAndDescription, ItemTests.Error_NullValue_RaisesInvalidUseOfNull, ItemTests.Index_Word_RaisesTypeMismatch, EscapeTests.HexEscape_InvalidDigits_RaisesTypeMismatch, ItemTests.Values_NoValuesButAnItem_RaisesFormatError, FormerStringFormatTests.NonNumericValue_WithNumericIdentifier_RaisesInvalidNumberArgument, FormerStringFormatTests.WrongCount_HasTheSameNumberAndTextWithItsOwnSource -->
 | Number | Description | Raised when |
 |--------|-------------|-------------|
 | `-2147212503` (`vbObjectError Or 9001`) | *The number indicating an argument to format is less than zero, or greater than or equal to the length of the args array.* | The format string has items, and the distinct indexes do not number exactly the values, or the highest index is not below that number, or no values were given. |
@@ -174,8 +187,11 @@ An `\xHH` or `\ooo` sequence with digits that are not valid in its base, such as
 
 The first two have the source `StringHelper`. [**FormerStringFormat**](FormerEntryPoint/FormerStringFormat) raises the same numbers from the source `FormerStringFormat`, and adds `-2147212501` (`vbObjectError Or 9003`), *Invalid number argument*.
 
+<!-- /test -->
+
 ## Differences from .NET
 
+<!-- test: ItemTests.DoubledBrace_IsNotAnEscape, ItemTests.Index_Word_RaisesTypeMismatch, ItemTests.Values_UnusedValue_RaisesFormatError, ItemTests.DotNet_NumberIdentifierN_DoesNotExist, ItemTests.DotNet_CustomNumericFormat_IsRefused, ItemTests.DotNet_Precision_IsDecimalPlacesNotSignificantDigits, ItemTests.DotNet_CustomDateFormat_IsRefused, DateTests.Letters_AreCaseSensitiveExceptC, CurrencyTests.DollarSign_IsAfterTheNumber, HexTests.LowerCaseIdentifier_GivesALowerCaseResult, PercentRoundTripTests.RoundTrip_KeepsAtMost15SignificantDigits -->
 The function follows the notation of .NET's **String.Format** and departs from it in these ways:
 
 - Doubled braces do not escape a brace.
@@ -186,6 +202,7 @@ The function follows the notation of .NET's **String.Format** and departs from i
 - `C` writes a `$` after the number whatever the regional settings, `X` writes an `&H` prefix, and `R` keeps 15 significant digits.
 - Only the identifiers of the date table exist for dates, and they are case-sensitive. The custom format of a date is the `C` identifier with a **Format$** string, whose letters are VBA's.
 - Escape sequences are expanded by the function itself and use the C-style letters of the table above.
+<!-- /test -->
 
 ## Modules
 
@@ -250,3 +267,7 @@ Each of these implements [**IStringFormatIdentifier**](IStringFormatIdentifier) 
 ## Other public names
 
 The package also exposes `HelloWorldClass`, `HelloWorldModule` and `Pootle`. They are test code that was left in the package, and they are not part of its formatting API. `HelloWorldClass.Show` and `HelloWorldModule.Show` each display a message box that says *Hello world!*, and `Pootle.SimpleTest` prints the results of four sample calls to **StringFormat** to the Immediate window. These three names have no pages.
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [Fmt-tests.twinproj](Fmt-tests.twinproj), a twinBASIC project. It uses Fmt as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

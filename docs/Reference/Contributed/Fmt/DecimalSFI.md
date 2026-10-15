@@ -8,6 +8,8 @@ has_toc: false
 # DecimalSFI class
 {: .no_toc }
 
+<!-- test: DecimalTests.Default_IsTheWholeNumber, DecimalTests.Precision_PadsWithZeros, DecimalTests.FractionalValue_IsRounded, DecimalTests.Negative_KeepsTheSignInFrontOfThePadding, DecimalTests.LongerNumber_IsNotShortened, DecimalTests.Class_MatchesDAndOnlyD, DecimalTests.Class_GetFormattedValue_ReadsThePrecision -->
+
 Formats a number as whole-number digits for the **D** identifier.
 
 **DecimalSFI** is a format identifier class. It implements [**IStringFormatIdentifier**](IStringFormatIdentifier) and matches the identifier **D** or **d** in any case. [**StringHelper**](StringHelper) registers it, so `{0:D}` in a call to [**StringFormat**](PublicEntryPoints/StringFormat) uses it for a numeric value. The class is predeclared, and its two members are reached through the interface.
@@ -31,6 +33,8 @@ Debug.Print StringFormat("{0:D2}:{1:D2}", 7, 5)  ' 07:05
 - **GetFormattedValue** returns the value formatted as described above. It reads the specifier's [**Precision**](StringFormatSpecifier/Precision).
 
 Both are implemented as private members of the interface. [**GeneralNumericSFI**](GeneralNumericSFI) calls this class for **Integer** and **Long** values.
+
+<!-- /test -->
 
 ## See Also
 

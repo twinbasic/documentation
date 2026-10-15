@@ -8,6 +8,8 @@ has_toc: false
 # EscapeSequence class
 {: .no_toc }
 
+<!-- test: EscapeSequenceTests.Create_Plain_HoldsTheArguments, EscapeSequenceTests.Create_Ascii_HoldsTheArguments, EscapeSequenceTests.Execute_Plain_ReplacesEveryOccurrence, EscapeSequenceTests.Execute_Ascii_Hexadecimal, EscapeSequenceTests.Friend_Setters_CanBeCalledByAProject, EscapeSequenceTests.Self_ReturnsTheSameObject -->
+
 Describes one escape sequence of a format string, the text to look for and what replaces it, and applies it to a string.
 
 An escape sequence is either plain or ASCII:
@@ -29,6 +31,8 @@ Debug.Print text  ' aZZb
 
 > [!NOTE] BETA 1005
 > [**Self**](Self) and the four property setters ([**AsciiBase**](AsciiBase), [**EscapeString**](EscapeString), [**IsAsciiCharacter**](IsAsciiCharacter) and [**ReplacementString**](ReplacementString) with **Let**) are declared **Friend**, for [**Create**](Create) to use. A project that references the package can call them too, so the properties of an instance can be changed after it is created.
+
+<!-- /test -->
 
 ## Properties
 

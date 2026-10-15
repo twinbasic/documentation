@@ -8,6 +8,8 @@ has_toc: false
 # ReplacementString
 {: .no_toc }
 
+<!-- test: EscapeSequenceTests.Former_Create_ReturnsANewObjectWithTheArguments, EscapeSequenceTests.Former_Friend_Setters_CanBeCalledByAProject -->
+
 Returns or sets the text that replaces the escape sequence.
 
 ## Get
@@ -33,6 +35,8 @@ Syntax: *object*.**ReplacementString** **=** *value*
 ## Remarks
 
 [**Create**](Create) sets the property on the instance that it returns.
+
+<!-- /test -->
 
 ## Example
 

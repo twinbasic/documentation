@@ -1,0 +1,146 @@
+' Fmt: the date identifiers (GenericDateTimeSFI, and DateTimeSFI, which has the same code but is not
+' registered). The date used is Sunday 11 October 2026, 14:05:09. The expected text is built from
+' Format$, because the layout of dates follows the regional settings.
+[TestFixture]
+Module DateTests
+
+    [TestCase]
+    Public Sub ShortDate_d()
+        Expect.Begin
+        Expect.AreEqual Format$(Loc.Dt(), "Short Date"), Try1("{0:d}", Loc.Dt()), "StringFormat(""{0:d}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LongDate_D()
+        Expect.Begin
+        Expect.AreEqual Format$(Loc.Dt(), "Long Date"), Try1("{0:D}", Loc.Dt()), "StringFormat(""{0:D}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LongDateShortTime_f()
+        Expect.Begin
+        Expect.AreEqual Format$(Loc.Dt(), "Long Date") & " " & Format$(Loc.Dt(), "h:mm AM/PM"), Try1("{0:f}", Loc.Dt()), "StringFormat(""{0:f}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LongDateLongTime_F()
+        Expect.Begin
+        Expect.AreEqual Format$(Loc.Dt(), "Long Date") & " " & Format$(Loc.Dt(), "Long Time"), Try1("{0:F}", Loc.Dt()), "StringFormat(""{0:F}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShortDateShortTime_g()
+        Expect.Begin
+        Expect.AreEqual Format$(Loc.Dt(), "Short Date") & " " & Format$(Loc.Dt(), "hh:mm AM/PM"), Try1("{0:g}", Loc.Dt()), "StringFormat(""{0:g}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShortDateLongTime_G()
+        Expect.Begin
+        Expect.AreEqual Format$(Loc.Dt(), "Short Date") & " " & Format$(Loc.Dt(), "Long Time"), Try1("{0:G}", Loc.Dt()), "StringFormat(""{0:G}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sortable_s()
+        Expect.Begin
+        Dim t As String = Loc.TimeSep()
+        Expect.AreEqual "2026-10-11T14" & t & "05" & t & "09", Try1("{0:s}", Loc.Dt()), "StringFormat(""{0:s}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShortTime_t()
+        Expect.Begin
+        Expect.AreEqual Format$(Loc.Dt(), "hh:mm AM/PM"), Try1("{0:t}", Loc.Dt()), "StringFormat(""{0:t}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LongTime_T()
+        Expect.Begin
+        Expect.AreEqual Format$(Loc.Dt(), "Long Time"), Try1("{0:T}", Loc.Dt()), "StringFormat(""{0:T}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Custom_C_PassesTheTextToFormat()
+        Expect.Begin
+        Expect.AreEqual "2026-10-11", Try1("{0:Cyyyy-MM-dd}", Loc.Dt()), "StringFormat(""{0:Cyyyy-MM-dd}"", a date)"
+        Expect.AreEqual Format$(Loc.Dt(), "dddd"), Try1("{0:cdddd}", Loc.Dt()), "StringFormat(""{0:cdddd}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Custom_C_Empty_IsTheGeneralDate()
+        Expect.Begin
+        Expect.AreEqual Format$(Loc.Dt(), "General Date"), Try1("{0:C}", Loc.Dt()), "StringFormat(""{0:C}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Letters_AreCaseSensitiveExceptC()
+        Expect.Begin
+        Dim r As String = Try1("{0:S}", Loc.Dt())
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0:S}"", a date)"
+        Expect.IsTrue Try1("{0:d}", Loc.Dt()) <> Try1("{0:D}", Loc.Dt()), "{0:d} and {0:D} give different results"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextAfterTheLetter_IsIgnoredExceptForC()
+        Expect.Begin
+        Expect.AreEqual Try1("{0:d}", Loc.Dt()), Try1("{0:dxyz}", Loc.Dt()), "StringFormat(""{0:dxyz}"", a date) against {0:d}"
+        Expect.AreEqual Try1("{0:T}", Loc.Dt()), Try1("{0:T7}", Loc.Dt()), "StringFormat(""{0:T7}"", a date) against {0:T}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnknownLetter_RaisesFormatError()
+        Expect.Begin
+        Dim r As String = Try1("{0:q}", Loc.Dt())
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0:q}"", a date)"
+        Expect.AreEqual "Invalid format string.", Loc.LastDescription, "Err.Description of StringFormat(""{0:q}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NumericIdentifier_ForADate_RaisesFormatError()
+        Expect.Begin
+        Dim r As String = Try1("{0:X}", Loc.Dt())
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0:X}"", a date)"
+        r = Try1("{0:E}", Loc.Dt())
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0:E}"", a date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Generic_Class_MatchesTheTenLetters()
+        Expect.Begin
+        Expect.AreEqual "CcDdFfGgsTt", Loc.MatchedLetters(GenericDateTimeSFI), "letters GenericDateTimeSFI.IsIdentifierMatch is True for"
+        Dim f As IStringFormatIdentifier = GenericDateTimeSFI
+        Expect.AreEqual "2026-10-11", f.GetFormattedValue(Loc.Dt(), Loc.Spec("C", "yyyy-MM-dd")), "GenericDateTimeSFI.GetFormattedValue(date, Cyyyy-MM-dd)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DateTimeSFI_GivesTheSameResultsAsGeneric()
+        Expect.Begin
+        Expect.AreEqual "CcDdFfGgsTt", Loc.MatchedLetters(DateTimeSFI), "letters DateTimeSFI.IsIdentifierMatch is True for"
+        Dim a As IStringFormatIdentifier = DateTimeSFI
+        Dim b As IStringFormatIdentifier = GenericDateTimeSFI
+        Dim letters As Variant = Array("d", "D", "f", "F", "g", "G", "s", "t", "T")
+        Dim i As Long
+        For i = LBound(letters) To UBound(letters)
+            Expect.AreEqual b.GetFormattedValue(Loc.Dt(), Loc.Spec(CStr(letters(i)))), a.GetFormattedValue(Loc.Dt(), Loc.Spec(CStr(letters(i)))), "DateTimeSFI against GenericDateTimeSFI for " & letters(i)
+        Next
+        Expect.AreEqual "2026-10-11", a.GetFormattedValue(Loc.Dt(), Loc.Spec("C", "yyyy-MM-dd")), "DateTimeSFI.GetFormattedValue(date, Cyyyy-MM-dd)"
+        Expect.Done
+    End Sub
+
+End Module

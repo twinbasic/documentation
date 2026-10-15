@@ -8,6 +8,8 @@ has_toc: false
 # RoundTripSFI class
 {: .no_toc }
 
+<!-- test: PercentRoundTripTests.RoundTrip_ConvertsTheValueToText, PercentRoundTripTests.RoundTrip_NumericString_IsReturnedAsANumber, PercentRoundTripTests.RoundTrip_KeepsAtMost15SignificantDigits, PercentRoundTripTests.RoundTrip_IgnoresThePrecision, PercentRoundTripTests.RoundTrip_Class_MatchesRAndOnlyR -->
+
 Converts a number to a **Double** and returns its text for the **R** identifier.
 
 **RoundTripSFI** is a format identifier class. It implements [**IStringFormatIdentifier**](IStringFormatIdentifier) and matches the identifier **R** or **r** in any case. [**StringHelper**](StringHelper) registers it, so `{0:R}` in a call to [**StringFormat**](PublicEntryPoints/StringFormat) uses it for a numeric value. The class is predeclared, and its two members are reached through the interface.
@@ -28,6 +30,8 @@ Debug.Print StringFormat("{0:R}", "1.50")  ' 1.5
 - **GetFormattedValue** returns the value converted as described above.
 
 Both are implemented as private members of the interface.
+
+<!-- /test -->
 
 ## See Also
 

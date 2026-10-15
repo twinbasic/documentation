@@ -8,6 +8,8 @@ has_toc: false
 # StringMatchesAny
 {: .no_toc }
 
+<!-- test: StringValidationTests.StringMatchesAny_ComparesWholeStringsExactly -->
+
 Returns whether a string is equal to at least one of several values.
 
 Syntax: **StringMatchesAny** ( *searchString* [, *possibleMatches* ] ) **As Boolean**
@@ -23,6 +25,8 @@ Returns **True** when *searchString* is equal to at least one of *possibleMatche
 ## Remarks
 
 The comparison is an equality test of whole strings, not a search for a substring. It takes letter case into account, because the module has no `Option Compare` statement and the default comparison is binary. A number among the values is compared as its text, so `1` matches `"1"`. With no values the result is **False**.
+
+<!-- /test -->
 
 ## Example
 

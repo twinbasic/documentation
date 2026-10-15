@@ -8,6 +8,8 @@ has_toc: false
 # Execute
 {: .no_toc }
 
+<!-- test: EscapeSequenceTests.Execute_Plain_ReplacesEveryOccurrence, EscapeSequenceTests.Execute_Plain_TakesLetterCaseIntoAccount, EscapeSequenceTests.Execute_Plain_LeavesAStringWithoutTheTextAlone, EscapeSequenceTests.Execute_Ascii_Hexadecimal, EscapeSequenceTests.Execute_Ascii_Octal, EscapeSequenceTests.Execute_Ascii_PatternIgnoresLetterCase, EscapeSequenceTests.Execute_Ascii_PatternWithoutABackslash_HasNoEffectOnAStringWithoutOne, EscapeSequenceTests.Execute_Ascii_InvalidDigits_RaisesTypeMismatch -->
+
 Applies the escape sequence to a string, replacing it in place.
 
 Syntax: *object*.**Execute** ( *string_value* )
@@ -26,6 +28,8 @@ An ASCII sequence reads [**EscapeString**](EscapeString) as a regular expression
 
 - The expression is applied only when the string contains a backslash. A pattern that does not match a backslash, such as `#(\d{3})`, has no effect on a string that has none.
 - Digits that are not valid in the base, as in `\189` read as octal, raise run-time error 13, *Type mismatch*.
+
+<!-- /test -->
 
 ## Example
 

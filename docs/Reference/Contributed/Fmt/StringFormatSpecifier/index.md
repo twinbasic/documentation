@@ -8,6 +8,8 @@ has_toc: false
 # StringFormatSpecifier class
 {: .no_toc }
 
+<!-- test: SpecifierTests.Defaults, SpecifierTests.ToString_RebuildsTheItem -->
+
 Describes one format item of a format string: its index, alignment, identifier and the text that follows the identifier.
 
 [**StringHelper**](../StringHelper) creates one **StringFormatSpecifier** for every format item it finds in a format string, and passes it to the [format identifier classes](../IStringFormatIdentifier), which read the identifier and the precision from it. For the item `{2,-8:G3}` the index is `2`, the alignment is `-8`, the identifier is `G` and the custom specifier is `3`, which is also the precision.
@@ -24,6 +26,8 @@ spec.CustomSpecifier = "3"
 Debug.Print spec.ToString()  ' {2,-8:G3}
 Debug.Print spec.Precision   ' 3
 ```
+
+<!-- /test -->
 
 ## Properties
 

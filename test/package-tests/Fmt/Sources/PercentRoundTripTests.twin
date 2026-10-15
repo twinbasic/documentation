@@ -1,0 +1,77 @@
+' Fmt: the P identifier (PercentSFI) and the R identifier (RoundTripSFI).
+[TestFixture]
+Module PercentRoundTripTests
+
+    [TestCase]
+    Public Sub Percent_Default_IsAWholeNumberOfPercent()
+        Expect.Begin
+        Expect.AreEqual "12%", Try1("{0:P}", 0.12345), "StringFormat(""{0:P}"", 0.12345)"
+        Expect.AreEqual "100%", Try1("{0:P}", 1), "StringFormat(""{0:P}"", 1)"
+        Expect.AreEqual "1%", Try1("{0:p}", 0.005), "StringFormat(""{0:p}"", 0.005)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Percent_Precision_SetsTheDecimalPlaces()
+        Expect.Begin
+        Expect.AreEqual "12" & Loc.Dec() & "3%", Try1("{0:P1}", 0.12345), "StringFormat(""{0:P1}"", 0.12345)"
+        Expect.AreEqual "50" & Loc.Dec() & "00%", Try1("{0:P2}", 0.5), "StringFormat(""{0:P2}"", 0.5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Percent_HasThousandsSeparators()
+        Expect.Begin
+        Expect.AreEqual Format$(12.5, "#,##0%"), Try1("{0:P}", 12.5), "StringFormat(""{0:P}"", 12.5) against Format$ ""#,##0%"""
+        Expect.AreEqual Format$(123.5, "#,##0%"), Try1("{0:P}", 123.5), "StringFormat(""{0:P}"", 123.5) against Format$ ""#,##0%"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Percent_Class_MatchesPAndOnlyP()
+        Expect.Begin
+        Expect.AreEqual "Pp", Loc.MatchedLetters(PercentSFI), "letters PercentSFI.IsIdentifierMatch is True for"
+        Dim f As IStringFormatIdentifier = PercentSFI
+        Expect.AreEqual "12" & Loc.Dec() & "3%", f.GetFormattedValue(0.12345, Loc.Spec("P", "1")), "PercentSFI.GetFormattedValue(0.12345, P1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RoundTrip_ConvertsTheValueToText()
+        Expect.Begin
+        Expect.AreEqual CStr(0.1), Try1("{0:R}", 0.1), "StringFormat(""{0:R}"", 0.1)"
+        Expect.AreEqual "0" & Loc.Dec() & "333333333333333", Try1("{0:r}", 1 / 3), "StringFormat(""{0:r}"", 1 / 3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RoundTrip_NumericString_IsReturnedAsANumber()
+        Expect.Begin
+        Expect.AreEqual "1" & Loc.Dec() & "5", Try1("{0:R}", "1" & Loc.Dec() & "50"), "StringFormat(""{0:R}"", a numeric String with a trailing zero)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RoundTrip_KeepsAtMost15SignificantDigits()
+        Expect.Begin
+        Expect.AreEqual "0" & Loc.Dec() & "123456789012347", Try1("{0:R}", 0.123456789012346789#), "StringFormat(""{0:R}"", 0.123456789012346789#)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RoundTrip_IgnoresThePrecision()
+        Expect.Begin
+        Expect.AreEqual Try1("{0:R}", 0.1), Try1("{0:R5}", 0.1), "StringFormat(""{0:R5}"", 0.1) against {0:R}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RoundTrip_Class_MatchesRAndOnlyR()
+        Expect.Begin
+        Expect.AreEqual "Rr", Loc.MatchedLetters(RoundTripSFI), "letters RoundTripSFI.IsIdentifierMatch is True for"
+        Dim f As IStringFormatIdentifier = RoundTripSFI
+        Expect.AreEqual CStr(0.1), f.GetFormattedValue(0.1, Loc.Spec("R")), "RoundTripSFI.GetFormattedValue(0.1, R)"
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,58 @@
+' Fmt: the D identifier (DecimalSFI): whole-number digits, padded with zeros to the precision.
+[TestFixture]
+Module DecimalTests
+
+    [TestCase]
+    Public Sub Default_IsTheWholeNumber()
+        Expect.Begin
+        Expect.AreEqual "42", Try1("{0:D}", 42), "StringFormat(""{0:D}"", 42)"
+        Expect.AreEqual "42", Try1("{0:d}", 42), "StringFormat(""{0:d}"", 42)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Precision_PadsWithZeros()
+        Expect.Begin
+        Expect.AreEqual "00042", Try1("{0:D5}", 42), "StringFormat(""{0:D5}"", 42)"
+        Expect.AreEqual "07:05", Try2("{0:D2}:{1:D2}", 7, 5), "StringFormat(""{0:D2}:{1:D2}"", 7, 5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FractionalValue_IsRounded()
+        Expect.Begin
+        Expect.AreEqual "4", Try1("{0:D}", 3.7), "StringFormat(""{0:D}"", 3.7)"
+        Expect.AreEqual "3", Try1("{0:D}", 3.2), "StringFormat(""{0:D}"", 3.2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Negative_KeepsTheSignInFrontOfThePadding()
+        Expect.Begin
+        Expect.AreEqual "-005", Try1("{0:D3}", -5), "StringFormat(""{0:D3}"", -5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LongerNumber_IsNotShortened()
+        Expect.Begin
+        Expect.AreEqual "1234", Try1("{0:D2}", 1234), "StringFormat(""{0:D2}"", 1234)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Class_MatchesDAndOnlyD()
+        Expect.Begin
+        Expect.AreEqual "Dd", Loc.MatchedLetters(DecimalSFI), "letters DecimalSFI.IsIdentifierMatch is True for"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Class_GetFormattedValue_ReadsThePrecision()
+        Expect.Begin
+        Dim f As IStringFormatIdentifier = DecimalSFI
+        Expect.AreEqual "00042", f.GetFormattedValue(42, Loc.Spec("D", "5")), "DecimalSFI.GetFormattedValue(42, D5)"
+        Expect.Done
+    End Sub
+
+End Module

@@ -8,6 +8,8 @@ has_toc: false
 # AsciiBase
 {: .no_toc }
 
+<!-- test: EscapeSequenceTests.Create_Plain_HoldsTheArguments, EscapeSequenceTests.Create_Ascii_HoldsTheArguments, EscapeSequenceTests.Friend_Setters_CanBeCalledByAProject -->
+
 Returns or sets the number base of the digits that an ASCII escape sequence captures.
 
 ## Get
@@ -33,6 +35,8 @@ Syntax: *object*.**AsciiBase** **=** *value*
 ## Remarks
 
 [**Create**](Create) sets the property from its *base* argument. [**Execute**](Execute) reads the captured digits with the prefix `&O` for **Octal** and `&H` for **Hexadecimal**.
+
+<!-- /test -->
 
 ## Example
 

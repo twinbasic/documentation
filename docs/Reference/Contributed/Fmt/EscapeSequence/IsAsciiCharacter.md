@@ -8,6 +8,8 @@ has_toc: false
 # IsAsciiCharacter
 {: .no_toc }
 
+<!-- test: EscapeSequenceTests.Create_Plain_HoldsTheArguments, EscapeSequenceTests.Create_Ascii_HoldsTheArguments, EscapeSequenceTests.Friend_Setters_CanBeCalledByAProject -->
+
 Returns or sets whether the escape sequence stands for a character code instead of fixed text.
 
 ## Get
@@ -33,6 +35,8 @@ Syntax: *object*.**IsAsciiCharacter** **=** *value*
 ## Remarks
 
 [**Create**](Create) sets the property from its *isAsciiReplacement* argument. [**Execute**](Execute) takes the ASCII path when the value is **True**, reading the digits in the base given by [**AsciiBase**](AsciiBase).
+
+<!-- /test -->
 
 ## Example
 

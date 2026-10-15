@@ -97,7 +97,6 @@ const PENDING = new Set([
   "ArrayListLib",
   "AutoCompleteLib",
   "BigNumberLib",
-  "Fmt",
   "TBMANLIB",
   "TBMANLIB_Aes",
   "TBMANLIB_ConsoleComponents",

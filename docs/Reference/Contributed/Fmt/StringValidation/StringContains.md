@@ -8,6 +8,8 @@ has_toc: false
 # StringContains
 {: .no_toc }
 
+<!-- test: StringValidationTests.StringContains_IgnoresCaseUnlessAsked, StringValidationTests.StringContains_EmptyNeedle_IsTrue, StringValidationTests.StringContains_Null_RaisesInvalidUseOfNull -->
+
 Returns whether a string contains another string, ignoring letter case unless asked not to.
 
 Syntax: **StringContains** ( *haystack*, *needle* [, *caseSensitive* ] ) **As Boolean**
@@ -28,6 +30,8 @@ Returns **True** when *needle* occurs in *haystack*, and **False** otherwise.
 The function calls **InStr** with the text-comparison mode, or the binary mode when *caseSensitive* is **True**. An empty *needle* is found at the first position, so the result is **True**. A **Null** argument raises run-time error 94, *Invalid use of Null*.
 
 [**StringContainsAny**](StringContainsAny) takes *caseSensitive* as a required argument before its list of strings. Here it is the last argument and is optional.
+
+<!-- /test -->
 
 ## Example
 

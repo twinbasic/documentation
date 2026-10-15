@@ -8,6 +8,8 @@ has_toc: false
 # Index
 {: .no_toc }
 
+<!-- test: SpecifierTests.Index_IsNotCheckedWhenAssigned, ItemTests.Index_RepeatedIndexUsesTheValueEachTime -->
+
 Returns or sets the position of the value that a format item refers to.
 
 ## Get
@@ -33,6 +35,8 @@ Syntax: *object*.**Index** **=** *value*
 ## Remarks
 
 [**StringHelper**](../StringHelper) sets the property from the number at the start of a format item, so `{2}` gives `2`. The same index can occur in several items. The property is not checked when it is assigned; [**StringHelper**](../StringHelper) checks the indexes of a whole format string against the number of values.
+
+<!-- /test -->
 
 ## Example
 

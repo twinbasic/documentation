@@ -8,6 +8,8 @@ has_toc: false
 # identifier
 {: .no_toc }
 
+<!-- test: SpecifierTests.Identifier_KeepsTheCaseAsWritten, HexTests.LowerCaseIdentifier_GivesALowerCaseResult, GeneralTests.LowerCaseIdentifier_GivesALowerCaseE -->
+
 Returns or sets the letter that selects the format of a format item.
 
 ## Get
@@ -35,6 +37,8 @@ Syntax: *object*.**identifier** **=** *value*
 [**StringHelper**](../StringHelper) sets the property from the first character after the colon of a format item, so `{0:F2}` gives `F`. The rest of the text after the colon goes to [**CustomSpecifier**](CustomSpecifier).
 
 The property keeps the letter as written, including its case. The format identifier classes compare it with their own letter, and [**HexSFI**](../HexSFI) and [**GeneralNumericSFI**](../GeneralNumericSFI) copy its case into their results.
+
+<!-- /test -->
 
 ## Example
 

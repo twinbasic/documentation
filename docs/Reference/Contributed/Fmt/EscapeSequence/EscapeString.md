@@ -8,6 +8,8 @@ has_toc: false
 # EscapeString
 {: .no_toc }
 
+<!-- test: EscapeSequenceTests.Create_Plain_HoldsTheArguments, EscapeSequenceTests.Friend_Setters_CanBeCalledByAProject -->
+
 Returns or sets the text, or the regular expression, that the escape sequence looks for.
 
 ## Get
@@ -33,6 +35,8 @@ Syntax: *object*.**EscapeString** **=** *value*
 ## Remarks
 
 [**Create**](Create) sets the property from its *escape* argument.
+
+<!-- /test -->
 
 ## Example
 

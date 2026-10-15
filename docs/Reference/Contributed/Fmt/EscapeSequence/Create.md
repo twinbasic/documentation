@@ -8,6 +8,8 @@ has_toc: false
 # Create
 {: .no_toc }
 
+<!-- test: EscapeSequenceTests.Create_Plain_HoldsTheArguments, EscapeSequenceTests.Create_Ascii_HoldsTheArguments, EscapeSequenceTests.Create_ReturnsANewObjectEachTime, EscapeSequenceTests.Execute_Ascii_Hexadecimal -->
+
 Creates an escape sequence, plain or ASCII.
 
 Syntax: *object*.**Create** ( *escape*, *replacement* [, *isAsciiReplacement* [, *base* ]] ) **As EscapeSequence**
@@ -32,6 +34,8 @@ Returns a new **EscapeSequence** whose [**EscapeString**](EscapeString), [**Repl
 ## Remarks
 
 **Create** is the intended way to make an escape sequence. It fills in a new instance through the **Friend** setters of the properties and returns it through [**Self**](Self).
+
+<!-- /test -->
 
 ## Example
 

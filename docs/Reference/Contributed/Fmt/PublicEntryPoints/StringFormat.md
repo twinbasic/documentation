@@ -24,6 +24,7 @@ The syntax of a format item, the identifiers and the escape sequences are in the
 
 ## Remarks
 
+<!-- test: ItemTests.Values_UnusedValue_RaisesFormatError, ItemTests.Values_MissingValue_RaisesFormatError, ItemTests.Values_IndexGap_RaisesFormatError, ItemTests.Values_NoValuesButAnItem_RaisesFormatError, ItemTests.Values_NoItems_IgnoresTheValues, ItemTests.Index_RepeatedIndexUsesTheValueEachTime, ItemTests.Identifier_TextValue_IsRefused, ItemTests.Identifier_NumericText_UsesTheNumericIdentifiers, ItemTests.Identifier_Boolean_UsesTheNumericIdentifiers, ItemTests.NoIdentifier_ConvertsTheValueToString, ItemTests.Error_NullValue_RaisesInvalidUseOfNull, ItemTests.Alignment_Positive_RightJustifies, ItemTests.Alignment_Negative_LeftJustifies, ItemTests.Alignment_WiderValue_IsNotShortened, ItemTests.Alignment_IsAppliedAfterTheIdentifier, EscapeTests.Values_EscapesInAValue_AreExpanded, EscapeTests.Literal_EscapesInAValue_AreNotExpanded, EscapeTests.Values_ALaterItemInAValue_IsReplacedToo, EscapeTests.Escape_Chr27_BecomesABackslash, ItemTests.Item_LeadingZeroIndex_IsNotReplaced, ItemTests.Item_LeadingZeroAlignment_IsNotReplaced, ItemTests.Item_ZeroAlignment_IsNotReplaced, ItemTests.DoubledBrace_IsNotAnEscape, ItemTests.Index_Word_RaisesTypeMismatch, ItemTests.DotNet_CustomNumericFormat_IsRefused, ItemTests.DotNet_CustomDateFormat_IsRefused, ItemTests.DotNet_NumberIdentifierN_DoesNotExist, ItemTests.DotNet_Precision_IsDecimalPlacesNotSignificantDigits, ItemTests.Results_NumericResultsComeFromFormat, ItemTests.Results_DateResultsComeFromFormat, DateTests.Custom_C_PassesTheTextToFormat -->
 **Which values are needed.** The function finds the format items first. When there are any, the number of distinct indexes must equal the number of values, and the highest index must be below that number. In practice every value must be used, and the indexes must run from `0` to one less than the number of values without a gap; the same index can occur any number of times. Anything else raises error `-2147212503`. A format string with no items accepts any number of values and ignores them.
 
 **How a value is formatted.** The type of the value decides which identifiers an item may use:
@@ -49,6 +50,8 @@ An item is found again in the text by the text that [**ToString**](../StringForm
 
 > [!NOTE] timeless
 > The results come from **Format$**, so the decimal separator, the thousands separator and the layout of dates and times follow the Windows regional settings. The output shown on this page is for an English (United States) system.
+
+<!-- /test -->
 
 ## Example
 

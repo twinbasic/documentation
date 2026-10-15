@@ -1,0 +1,180 @@
+' Fmt: the EscapeSequence class (a plain sequence or an ASCII one made with Create and applied with
+' Execute), its Friend members that a project that references the package can still call, the
+' AsciiEscapeBase enumeration, and FormerEscapeSequence.
+[TestFixture]
+Module EscapeSequenceTests
+
+    [TestCase]
+    Public Sub Create_Plain_HoldsTheArguments()
+        Expect.Begin
+        Dim esc As EscapeSequence = EscapeSequence.Create("\z", "ZZ")
+        Expect.AreEqual "\z", esc.EscapeString, "EscapeString"
+        Expect.AreEqual "ZZ", esc.ReplacementString, "ReplacementString"
+        Expect.IsFalse esc.IsAsciiCharacter, "IsAsciiCharacter"
+        Expect.AreEqual 0, esc.AsciiBase, "AsciiBase is Octal by default"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Create_Ascii_HoldsTheArguments()
+        Expect.Begin
+        Dim esc As EscapeSequence = EscapeSequence.Create("\\#(\d{2})", vbNullString, True, Hexadecimal)
+        Expect.IsTrue esc.IsAsciiCharacter, "IsAsciiCharacter"
+        Expect.AreEqual 1, esc.AsciiBase, "AsciiBase"
+        Expect.AreEqual "\\#(\d{2})", esc.EscapeString, "EscapeString"
+        Dim octal As EscapeSequence = EscapeSequence.Create("\\(\d{3})", vbNullString, True)
+        Expect.AreEqual 0, octal.AsciiBase, "AsciiBase of a sequence created without a base"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Create_ReturnsANewObjectEachTime()
+        Expect.Begin
+        Dim a As EscapeSequence = EscapeSequence.Create("\z", "ZZ")
+        Dim b As EscapeSequence = EscapeSequence.Create("\z", "ZZ")
+        Expect.IsFalse a Is b, "two calls of EscapeSequence.Create return the same object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Execute_Plain_ReplacesEveryOccurrence()
+        Expect.Begin
+        Dim esc As EscapeSequence = EscapeSequence.Create("\z", "ZZ")
+        Dim text As String = "a\zb\z"
+        esc.Execute text
+        Expect.AreEqual "aZZbZZ", text, "Execute of a\zb\z"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Execute_Plain_TakesLetterCaseIntoAccount()
+        Expect.Begin
+        Dim esc As EscapeSequence = EscapeSequence.Create("\z", "ZZ")
+        Dim text As String = "a\Zb"
+        esc.Execute text
+        Expect.AreEqual "a\Zb", text, "Execute of a\Zb with the sequence \z"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Execute_Plain_LeavesAStringWithoutTheTextAlone()
+        Expect.Begin
+        Dim esc As EscapeSequence = EscapeSequence.Create("\z", "ZZ")
+        Dim text As String = "abc"
+        esc.Execute text
+        Expect.AreEqual "abc", text, "Execute of abc"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Execute_Ascii_Hexadecimal()
+        Expect.Begin
+        Dim esc As EscapeSequence = EscapeSequence.Create("\\#(\d{2})", vbNullString, True, Hexadecimal)
+        Dim text As String = "a\#41b\#42"
+        esc.Execute text
+        Expect.AreEqual "aAbB", text, "Execute of a\#41b\#42"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Execute_Ascii_Octal()
+        Expect.Begin
+        Dim esc As EscapeSequence = EscapeSequence.Create("\\(\d{3})", vbNullString, True)
+        Dim text As String = "x\101y"
+        esc.Execute text
+        Expect.AreEqual "xAy", text, "Execute of x\101y read as octal"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Execute_Ascii_PatternIgnoresLetterCase()
+        Expect.Begin
+        Dim esc As EscapeSequence = EscapeSequence.Create("\\x(\w{2})", vbNullString, True, Hexadecimal)
+        Dim text As String = "\X41"
+        esc.Execute text
+        Expect.AreEqual "A", text, "Execute of \X41 with the pattern \\x(\w{2})"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Execute_Ascii_PatternWithoutABackslash_HasNoEffectOnAStringWithoutOne()
+        Expect.Begin
+        Dim esc As EscapeSequence = EscapeSequence.Create("#(\d{3})", vbNullString, True)
+        Dim text As String = "a#101b"
+        esc.Execute text
+        Expect.AreEqual "a#101b", text, "Execute of a#101b with the pattern #(\d{3})"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Execute_Ascii_InvalidDigits_RaisesTypeMismatch()
+        Expect.Begin
+        Dim esc As EscapeSequence = EscapeSequence.Create("\\(\d{3})", vbNullString, True)
+        Dim text As String = "\189"
+        On Error Resume Next
+        esc.Execute text
+        Expect.AreEqual 13, Err.Number, "Err.Number of Execute on \189 read as octal"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Friend_Setters_CanBeCalledByAProject()
+        Expect.Begin
+        Dim esc As EscapeSequence = EscapeSequence.Create("\z", "ZZ")
+        esc.EscapeString = "\y"
+        esc.ReplacementString = "YY"
+        Dim text As String = "a\yb"
+        esc.Execute text
+        Expect.AreEqual "aYYb", text, "Execute after EscapeString and ReplacementString were set"
+        esc.IsAsciiCharacter = True
+        esc.AsciiBase = Hexadecimal
+        esc.EscapeString = "\\x(\w{2})"
+        text = "\x41"
+        esc.Execute text
+        Expect.AreEqual "A", text, "Execute after IsAsciiCharacter and AsciiBase were set"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Self_ReturnsTheSameObject()
+        Expect.Begin
+        Dim esc As EscapeSequence = EscapeSequence.Create("\z", "ZZ")
+        Expect.IsTrue esc.Self Is esc, "esc.Self Is esc"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AsciiEscapeBase_Values()
+        Expect.Begin
+        Expect.AreEqual 0, AsciiEscapeBase.Octal, "AsciiEscapeBase.Octal"
+        Expect.AreEqual 1, AsciiEscapeBase.Hexadecimal, "AsciiEscapeBase.Hexadecimal"
+        Expect.AreEqual 1, Hexadecimal, "Hexadecimal without a qualifier"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Former_Create_ReturnsANewObjectWithTheArguments()
+        Expect.Begin
+        Dim factory As New FormerEscapeSequence
+        Dim esc As FormerEscapeSequence = factory.Create("\n", vbNewLine)
+        Expect.AreEqual "\n", esc.EscapeString, "EscapeString"
+        Expect.AreEqual 2, Len(esc.ReplacementString), "Len of ReplacementString"
+        Expect.IsFalse esc Is factory, "Create returns the object it is called on"
+        Expect.AreEqual "", factory.EscapeString, "EscapeString of the object Create is called on"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Former_Friend_Setters_CanBeCalledByAProject()
+        Expect.Begin
+        Dim factory As New FormerEscapeSequence
+        Dim esc As FormerEscapeSequence = factory.Create("\z", "ZZ")
+        esc.EscapeString = "\y"
+        esc.ReplacementString = "YY"
+        Expect.AreEqual "\y", esc.EscapeString, "EscapeString after it was set"
+        Expect.AreEqual "YY", esc.ReplacementString, "ReplacementString after it was set"
+        Expect.Done
+    End Sub
+
+End Module

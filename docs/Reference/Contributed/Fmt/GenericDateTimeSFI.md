@@ -8,6 +8,8 @@ has_toc: false
 # GenericDateTimeSFI class
 {: .no_toc }
 
+<!-- test: DateTests.ShortDate_d, DateTests.LongDate_D, DateTests.LongDateShortTime_f, DateTests.LongDateLongTime_F, DateTests.ShortDateShortTime_g, DateTests.ShortDateLongTime_G, DateTests.Sortable_s, DateTests.ShortTime_t, DateTests.LongTime_T, DateTests.Custom_C_PassesTheTextToFormat, DateTests.Custom_C_Empty_IsTheGeneralDate, DateTests.Letters_AreCaseSensitiveExceptC, DateTests.TextAfterTheLetter_IsIgnoredExceptForC, DateTests.UnknownLetter_RaisesFormatError, DateTests.Generic_Class_MatchesTheTenLetters -->
+
 Formats a **Date** for the date and time identifiers **d**, **D**, **f**, **F**, **g**, **G**, **s**, **t**, **T** and **C**.
 
 **GenericDateTimeSFI** is a format identifier class. It implements [**IStringFormatIdentifier**](IStringFormatIdentifier). [**StringHelper**](StringHelper) registers it as the only date and time identifier, so every date item in a call to [**StringFormat**](PublicEntryPoints/StringFormat) uses it. A value is treated as a date when its **TypeName** is `Date`. The class is predeclared, and its two members are reached through the interface.
@@ -54,6 +56,8 @@ The output shown is for an English (United States) system.
 - **GetFormattedValue** returns the value formatted as the table says. With `C` it uses the specifier's [**CustomSpecifier**](StringFormatSpecifier/CustomSpecifier).
 
 Both are implemented as private members of the interface.
+
+<!-- /test -->
 
 ## See Also
 

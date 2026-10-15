@@ -1,0 +1,82 @@
+' Fmt: the X identifier (HexSFI): the digits of Hex$ with an &H prefix, padded or cut to the precision.
+' The prefix is written as &H and &h whatever the regional settings.
+[TestFixture]
+Module HexTests
+
+    [TestCase]
+    Public Sub Default_IsThePrefixAndTheDigits()
+        Expect.Begin
+        Expect.AreEqual "&HFF", Try1("{0:X}", 255), "StringFormat(""{0:X}"", 255)"
+        Expect.AreEqual "&H4D3", Try1("{0:X}", 1235), "StringFormat(""{0:X}"", 1235)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LowerCaseIdentifier_GivesALowerCaseResult()
+        Expect.Begin
+        Expect.AreEqual "&hff", Try1("{0:x}", 255), "StringFormat(""{0:x}"", 255)"
+        Expect.AreEqual "&h00ff", Try1("{0:x4}", 255), "StringFormat(""{0:x4}"", 255)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Precision_PadsWithZeros()
+        Expect.Begin
+        Expect.AreEqual "&H000000FF", Try1("{0:X8}", 255), "StringFormat(""{0:X8}"", 255)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Precision_CutsFromTheLeft()
+        Expect.Begin
+        Expect.AreEqual "&HFF", Try1("{0:X2}", 4095), "StringFormat(""{0:X2}"", 4095)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Negative_IntegerIs16Bits_LongIs32Bits()
+        Expect.Begin
+        Expect.AreEqual "&HFFFF", Try1("{0:X}", -1), "StringFormat(""{0:X}"", -1)"
+        Expect.AreEqual "&HFFFFFFFF", Try1("{0:X}", -1&), "StringFormat(""{0:X}"", -1&)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FractionalValue_IsRounded()
+        Expect.Begin
+        Expect.AreEqual "&H100", Try1("{0:X}", 255.6), "StringFormat(""{0:X}"", 255.6)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Class_MatchesXAndOnlyX()
+        Expect.Begin
+        Expect.AreEqual "Xx", Loc.MatchedLetters(HexSFI), "letters HexSFI.IsIdentifierMatch is True for"
+        Dim f As IStringFormatIdentifier = HexSFI
+        Expect.AreEqual "&hff", f.GetFormattedValue(255, Loc.Spec("x")), "HexSFI.GetFormattedValue(255, x)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NumericPadding_NeverMatches()
+        Expect.Begin
+        Expect.AreEqual "", Loc.MatchedLetters(NumericPaddingSFI), "letters NumericPaddingSFI.IsIdentifierMatch is True for"
+        Dim f As IStringFormatIdentifier = NumericPaddingSFI
+        Expect.IsFalse f.IsIdentifierMatch(Loc.Spec("N")), "NumericPaddingSFI.IsIdentifierMatch of N"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NumericPadding_GetFormattedValue_RaisesError5()
+        Expect.Begin
+        Dim f As IStringFormatIdentifier = NumericPaddingSFI
+        Dim r As String
+        On Error Resume Next
+        r = f.GetFormattedValue(1, Loc.Spec("N"))
+        Expect.AreEqual 5, Err.Number, "Err.Number of NumericPaddingSFI.GetFormattedValue"
+        Expect.AreEqual "Invalid procedure call or argument", Err.Description, "Err.Description of NumericPaddingSFI.GetFormattedValue"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+End Module

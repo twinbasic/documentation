@@ -8,6 +8,8 @@ has_toc: false
 # PercentSFI class
 {: .no_toc }
 
+<!-- test: PercentRoundTripTests.Percent_Default_IsAWholeNumberOfPercent, PercentRoundTripTests.Percent_Precision_SetsTheDecimalPlaces, PercentRoundTripTests.Percent_HasThousandsSeparators, PercentRoundTripTests.Percent_Class_MatchesPAndOnlyP -->
+
 Formats a number as a percentage for the **P** identifier.
 
 **PercentSFI** is a format identifier class. It implements [**IStringFormatIdentifier**](IStringFormatIdentifier) and matches the identifier **P** or **p** in any case. [**StringHelper**](StringHelper) registers it, so `{0:P}` in a call to [**StringFormat**](PublicEntryPoints/StringFormat) uses it for a numeric value. The class is predeclared, and its two members are reached through the interface.
@@ -30,6 +32,8 @@ Debug.Print StringFormat("{0:P}", 0.005)     ' 1%
 - **GetFormattedValue** returns the value formatted as described above. It reads the specifier's [**Precision**](StringFormatSpecifier/Precision).
 
 Both are implemented as private members of the interface.
+
+<!-- /test -->
 
 ## See Also
 

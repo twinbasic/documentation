@@ -1,0 +1,272 @@
+' Fmt: StringFormat and its format items: the index, the alignment, which values must be used, the
+' four rules that decide what is an item, the errors, and the departures from .NET's String.Format.
+[TestFixture]
+Module ItemTests
+
+    [TestCase]
+    Public Sub Index_SelectsValueByPosition()
+        Expect.Begin
+        Expect.AreEqual "b a b", Try2("{1} {0} {1}", "a", "b"), "StringFormat(""{1} {0} {1}"", ""a"", ""b"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Index_RepeatedIndexUsesTheValueEachTime()
+        Expect.Begin
+        Expect.AreEqual "77", Try1("{0}{0}", 7), "StringFormat(""{0}{0}"", 7)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Index_Word_RaisesTypeMismatch()
+        Expect.Begin
+        Dim r As String = Try1("{name}", 1)
+        Expect.AreEqual 13, Loc.LastNumber, "Err.Number of StringFormat(""{name}"", 1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alignment_Positive_RightJustifies()
+        Expect.Begin
+        Expect.AreEqual "[      ab]", Try1("[{0,8}]", "ab"), "StringFormat(""[{0,8}]"", ""ab"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alignment_Negative_LeftJustifies()
+        Expect.Begin
+        Expect.AreEqual "[ab      ]", Try1("[{0,-8}]", "ab"), "StringFormat(""[{0,-8}]"", ""ab"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alignment_WiderValue_IsNotShortened()
+        Expect.Begin
+        Expect.AreEqual "[abcdef]", Try1("[{0,3}]", "abcdef"), "StringFormat(""[{0,3}]"", ""abcdef"")"
+        Expect.AreEqual "[abcdef]", Try1("[{0,-3}]", "abcdef"), "StringFormat(""[{0,-3}]"", ""abcdef"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alignment_IsAppliedAfterTheIdentifier()
+        Expect.Begin
+        Expect.AreEqual "[    3" & Loc.Dec() & "14]", Try1("[{0,8:F2}]", 3.14159), "StringFormat(""[{0,8:F2}]"", 3.14159)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NoIdentifier_ConvertsTheValueToString()
+        Expect.Begin
+        Expect.AreEqual CStr(3.142), Try1("{0}", 3.142), "StringFormat(""{0}"", 3.142)"
+        Expect.AreEqual "True", Try1("{0}", True), "StringFormat(""{0}"", True)"
+        Expect.AreEqual "abc", Try1("{0}", "abc"), "StringFormat(""{0}"", ""abc"")"
+        Expect.AreEqual CStr(Loc.Dt()), Try1("{0}", Loc.Dt()), "StringFormat(""{0}"", a Date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_WithSpaces_StaysText()
+        Expect.Begin
+        Expect.AreEqual "[{0, 8}]", Try1("[{0, 8}]", 5), "StringFormat(""[{0, 8}]"", 5)"
+        Expect.AreEqual "[{0 ,8}]", Try1("[{0 ,8}]", 5), "StringFormat(""[{0 ,8}]"", 5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_WithoutClosingBrace_StaysText()
+        Expect.Begin
+        Expect.AreEqual "{0", Try1("{0", 5), "StringFormat(""{0"", 5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_LeadingZeroIndex_IsNotReplaced()
+        Expect.Begin
+        Expect.AreEqual "[{00}]", Try1("[{00}]", 5), "StringFormat(""[{00}]"", 5)"
+        Expect.AreEqual 0, Loc.LastNumber, "Err.Number of StringFormat(""[{00}]"", 5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_LeadingZeroAlignment_IsNotReplaced()
+        Expect.Begin
+        Expect.AreEqual "[{0,08}]", Try1("[{0,08}]", 5), "StringFormat(""[{0,08}]"", 5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_ZeroAlignment_IsNotReplaced()
+        Expect.Begin
+        Expect.AreEqual "[{0,0}]", Try1("[{0,0}]", 5), "StringFormat(""[{0,0}]"", 5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Precision_Zero_IsTheSameAsNone()
+        Expect.Begin
+        Dim letters As Variant = Array("C", "D", "E", "F", "G", "P", "X")
+        Dim i As Long
+        For i = LBound(letters) To UBound(letters)
+            Expect.AreEqual Try1("{0:" & letters(i) & "}", 1234.5678), Try1("{0:" & letters(i) & "0}", 1234.5678), _
+                "StringFormat of 1234.5678 with {0:" & letters(i) & "0} against {0:" & letters(i) & "}"
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DoubledBrace_IsNotAnEscape()
+        Expect.Begin
+        Expect.AreEqual "{5}", Try1("{{0}}", 5), "StringFormat(""{{0}}"", 5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Values_UnusedValue_RaisesFormatError()
+        Expect.Begin
+        Dim r As String = Try2("{0}", 1, 2)
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0}"", 1, 2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Values_MissingValue_RaisesFormatError()
+        Expect.Begin
+        Dim r As String = Try1("{0} {1}", 1)
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0} {1}"", 1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Values_IndexGap_RaisesFormatError()
+        Expect.Begin
+        Dim r As String = Try2("{0} {2}", 1, 2)
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0} {2}"", 1, 2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Values_NoValuesButAnItem_RaisesFormatError()
+        Expect.Begin
+        Dim r As String = Try0("{0}")
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0}"") with no value"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Values_NoItems_IgnoresTheValues()
+        Expect.Begin
+        Expect.AreEqual "No items.", Try2("No items.", 1, 2), "StringFormat(""No items."", 1, 2)"
+        Expect.AreEqual 0, Loc.LastNumber, "Err.Number of StringFormat(""No items."", 1, 2)"
+        Expect.AreEqual "No items.", Try0("No items."), "StringFormat(""No items."")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Error_WrongCount_NumberSourceAndDescription()
+        Expect.Begin
+        Dim r As String = Try1("{0} {1}", "only one")
+        Expect.AreEqual vbObjectError Or 9001, Loc.LastNumber, "Err.Number for a missing value"
+        Expect.AreEqual "StringHelper", Loc.LastSource, "Err.Source for a missing value"
+        Expect.AreEqual "The number indicating an argument to format is less than zero, or greater than or equal to the length of the args array.", Loc.LastDescription, "Err.Description for a missing value"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Error_UnknownIdentifier_NumberSourceAndDescription()
+        Expect.Begin
+        Dim r As String = Try1("{0:Z}", 5)
+        Expect.AreEqual vbObjectError Or 9001, Loc.LastNumber, "Err.Number for the identifier Z"
+        Expect.AreEqual "StringHelper", Loc.LastSource, "Err.Source for the identifier Z"
+        Expect.AreEqual "Invalid format string.", Loc.LastDescription, "Err.Description for the identifier Z"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Error_NullValue_RaisesInvalidUseOfNull()
+        Expect.Begin
+        Dim r As String = Try1("{0}", Null)
+        Expect.AreEqual 94, Loc.LastNumber, "Err.Number of StringFormat(""{0}"", Null)"
+        Expect.AreEqual "Invalid use of Null", Loc.LastDescription, "Err.Description of StringFormat(""{0}"", Null)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Identifier_TextValue_IsRefused()
+        Expect.Begin
+        Dim r As String = Try1("{0:F}", "abc")
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0:F}"", ""abc"")"
+        Expect.AreEqual "Invalid format string.", Loc.LastDescription, "Err.Description of StringFormat(""{0:F}"", ""abc"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Identifier_NumericText_UsesTheNumericIdentifiers()
+        Expect.Begin
+        Expect.AreEqual "12" & Loc.Dec() & "00", Try1("{0:F}", "12"), "StringFormat(""{0:F}"", ""12"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Identifier_Boolean_UsesTheNumericIdentifiers()
+        Expect.Begin
+        Expect.AreEqual "-1", Try1("{0:D}", True), "StringFormat(""{0:D}"", True)"
+        Expect.AreEqual "0", Try1("{0:D}", False), "StringFormat(""{0:D}"", False)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DotNet_CustomNumericFormat_IsRefused()
+        Expect.Begin
+        Dim r As String = Try1("{0:#,##0.0}", 1234.5)
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0:#,##0.0}"", 1234.5)"
+        Expect.AreEqual "Invalid format string.", Loc.LastDescription, "Err.Description of StringFormat(""{0:#,##0.0}"", 1234.5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DotNet_CustomDateFormat_IsRefused()
+        Expect.Begin
+        Dim r As String = Try1("{0:yyyy-MM-dd}", Loc.Dt())
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0:yyyy-MM-dd}"", a Date)"
+        Expect.AreEqual "Invalid format string.", Loc.LastDescription, "Err.Description of StringFormat(""{0:yyyy-MM-dd}"", a Date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DotNet_NumberIdentifierN_DoesNotExist()
+        Expect.Begin
+        Dim r As String = Try1("{0:N}", 1234.5)
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0:N}"", 1234.5)"
+        r = Try1("{0:N2}", 1234.5)
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0:N2}"", 1234.5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DotNet_Precision_IsDecimalPlacesNotSignificantDigits()
+        Expect.Begin
+        Expect.AreEqual "1" & Loc.Dec() & "23E4", Try1("{0:E2}", 12345.678), "StringFormat(""{0:E2}"", 12345.678) has two decimal places"
+        Expect.AreEqual "1" & Loc.Dec() & "235E4", Try1("{0:G3}", 12345.678), "StringFormat(""{0:G3}"", 12345.678) has three decimal places"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Results_NumericResultsComeFromFormat()
+        Expect.Begin
+        Expect.AreEqual Format$(1234567.891, "0.00"), Try1("{0:F}", 1234567.891), "StringFormat of 1234567.891 with F against Format$ ""0.00"""
+        Expect.AreEqual Format$(1234567.891, "#,##0.00") & "$", Try1("{0:C}", 1234567.891), "StringFormat of 1234567.891 with C against Format$ ""#,##0.00"" and a $"
+        Expect.AreEqual Format$(0.12345, "#,##0.0%"), Try1("{0:P1}", 0.12345), "StringFormat of 0.12345 with P1 against Format$ ""#,##0.0%"""
+        Expect.AreEqual Format$(12345.678, "0.0#E-#"), Try1("{0:E2}", 12345.678), "StringFormat of 12345.678 with E2 against Format$ ""0.0#E-#"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Results_DateResultsComeFromFormat()
+        Expect.Begin
+        Expect.AreEqual Format$(Loc.Dt(), "ddddd"), Try1("{0:d}", Loc.Dt()), "StringFormat of a date with d against Format$ ""ddddd"""
+        Expect.AreEqual Format$(Loc.Dt(), "dddddd"), Try1("{0:D}", Loc.Dt()), "StringFormat of a date with D against Format$ ""dddddd"""
+        Expect.AreEqual Format$(Loc.Dt(), "ttttt"), Try1("{0:T}", Loc.Dt()), "StringFormat of a date with T against Format$ ""ttttt"""
+        Expect.Done
+    End Sub
+
+End Module
