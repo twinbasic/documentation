@@ -1,0 +1,53 @@
+' Rig: what the test cases of TBMANLIB_ListBoxHScroll set up. A case works on the list boxes of a
+' HostForm, which is loaded and never shown, so no window appears on the desktop.
+Module Rig
+
+    ' An item much wider than the list box (about 1,000 pixels against about 220).
+    Public Const WideItem As String = "a much longer item than the first one, which goes on and on and on and on and on and on and on, 1234567890 abcdefghijklmnopqrstuvwxyz"
+
+    ' A loaded form, not shown.
+    Public Function NewForm() As HostForm
+        Dim f As New HostForm
+        Load f
+        Set NewForm = f
+    End Function
+
+    ' The wide item first and three short ones below it, so that what the list draws near its left
+    ' edge keeps changing as it scrolls.
+    Public Sub FillWide(ByVal Box As Object)
+        Box.AddItem WideItem
+        Box.AddItem "short"
+        Box.AddItem "short"
+        Box.AddItem "short"
+    End Sub
+
+    ' The width in pixels of the widest item of the list, in the list's own font.
+    Public Function WidestItem(ByVal Box As Object) As Long
+        Dim i As Long
+        Dim w As Long
+        For i = 0 To Box.ListCount - 1
+            w = Win.TextWidth(Box.hWnd, Box.List(i))
+            If w > WidestItem Then WidestItem = w
+        Next
+    End Function
+
+    ' Whether the list draws its contents where its scroll bar thumb says they are: the picture of
+    ' the list as it is must equal the picture after scrolling to the start and then to the
+    ' thumb's position. Returns "" when it does, else a description.
+    Public Function ContentsFollowThumb(ByVal Box As Object) As String
+        Dim thumb As Long
+        thumb = Win.HPos(Box.hWnd)
+        Dim now() As Byte
+        now = Win.Capture(Box.hWnd)
+        Win.HScroll Box.hWnd, Win.SB_LEFT
+        Win.HScroll Box.hWnd, Win.SB_THUMBPOSITION, thumb
+        Dim there() As Byte
+        there = Win.Capture(Box.hWnd)
+        If Win.HPos(Box.hWnd) <> thumb Then
+            ContentsFollowThumb = "scrolling to " & thumb & " left the thumb at " & Win.HPos(Box.hWnd)
+        ElseIf Not Win.SameBits(now, there) Then
+            ContentsFollowThumb = "the thumb is at " & thumb & " but the contents are not scrolled to " & thumb
+        End If
+    End Function
+
+End Module

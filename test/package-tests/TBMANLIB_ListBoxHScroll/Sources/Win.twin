@@ -1,0 +1,258 @@
+' Win: the Win32 calls the test cases of TBMANLIB_ListBoxHScroll make on a list box's window, and
+' a few helpers they share. Every window a case makes is a control on a form that is loaded and
+' never shown (HostForm), so nothing appears on the desktop.
+Module Win
+
+    Private Declare PtrSafe Function SendMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal hObject As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetTextExtentPoint32 Lib "gdi32" Alias "GetTextExtentPoint32W" (ByVal hDC As LongPtr, ByVal lpString As LongPtr, ByVal cbString As Long, ByRef lpSize As POINTAPI) As Long
+    Private Declare PtrSafe Function GetScrollInfo Lib "user32" (ByVal hWnd As LongPtr, ByVal nBar As Long, ByRef lpScrollInfo As SCROLLINFO) As Long
+    Private Declare PtrSafe Function GetClientRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT) As Long
+    Private Declare PtrSafe Function GetWindowLongW Lib "user32" (ByVal hWnd As LongPtr, ByVal nIndex As Long) As Long
+
+    Private Type POINTAPI
+        x As Long
+        y As Long
+    End Type
+
+    Private Type RECT
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+
+    Private Type SCROLLINFO
+        cbSize As Long
+        fMask As Long
+        nMin As Long
+        nMax As Long
+        nPage As Long
+        nPos As Long
+        nTrackPos As Long
+    End Type
+
+    Public Const WM_HSCROLL As Long = &H114
+    Public Const SB_LINELEFT As Long = 0
+    Public Const SB_LINERIGHT As Long = 1
+    Public Const SB_PAGELEFT As Long = 2
+    Public Const SB_PAGERIGHT As Long = 3
+    Public Const SB_THUMBPOSITION As Long = 4
+    Public Const SB_THUMBTRACK As Long = 5
+    Public Const SB_LEFT As Long = 6
+    Public Const SB_RIGHT As Long = 7
+    Public Const SB_ENDSCROLL As Long = 8
+
+    Private Const WM_GETFONT As Long = &H31
+    Private Const LB_GETHORIZONTALEXTENT As Long = &H193
+    Private Const LB_SETHORIZONTALEXTENT As Long = &H194
+    Private Const LB_GETITEMRECT As Long = &H198
+    Private Const GWL_STYLE As Long = -16
+    Private Const WS_HSCROLL As Long = &H100000
+
+    Private Declare PtrSafe Function CreateWindowExW Lib "user32" (ByVal dwExStyle As Long, ByVal lpClassName As LongPtr, ByVal lpWindowName As LongPtr, ByVal dwStyle As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As LongPtr, ByVal hMenu As LongPtr, ByVal hInstance As LongPtr, ByVal lpParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DestroyWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+
+    ' A system list box (not a twinBASIC one) with a horizontal scroll bar, child of Parent.
+    Public Function MakeNative(ByVal Parent As LongPtr) As LongPtr
+        ' WS_CHILD Or WS_VISIBLE Or WS_BORDER Or WS_HSCROLL Or LBS_NOINTEGRALHEIGHT
+        MakeNative = CreateWindowExW(0, StrPtr("LISTBOX"), 0, &H40000000 Or &H10000000 Or &H800000 Or &H100000 Or &H100&, 0, 0, 200, 100, Parent, 0, 0, 0)
+    End Function
+
+    Public Sub DestroyNative(ByVal hWnd As LongPtr)
+        DestroyWindow hWnd
+    End Sub
+
+    Public Sub AddText(ByVal hWnd As LongPtr, ByVal Text As String)
+        SendMessage hWnd, &H180, 0, StrPtr(Text)
+    End Sub
+
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal nWidth As Long, ByVal nHeight As Long) As LongPtr
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function GetDIBits Lib "gdi32" (ByVal hDC As LongPtr, ByVal hBitmap As LongPtr, ByVal nStartScan As Long, ByVal nNumScans As Long, ByVal lpBits As LongPtr, ByRef lpBI As BITMAPINFOHEADER, ByVal wUsage As Long) As Long
+
+    Private Type BITMAPINFOHEADER
+        biSize As Long
+        biWidth As Long
+        biHeight As Long
+        biPlanes As Integer
+        biBitCount As Integer
+        biCompression As Long
+        biSizeImage As Long
+        biXPelsPerMeter As Long
+        biYPelsPerMeter As Long
+        biClrUsed As Long
+        biClrImportant As Long
+    End Type
+
+    ' What the window draws in its client area, as 32-bit pixels (the window is asked to paint
+    ' itself into a memory bitmap, so it need not be shown).
+    Public Function Capture(ByVal hWnd As LongPtr) As Byte()
+        Dim w As Long, h As Long
+        w = ClientWidth(hWnd)
+        h = ClientHeight(hWnd)
+        Dim screenDC As LongPtr
+        screenDC = GetDC(0)
+        Dim dc As LongPtr
+        dc = CreateCompatibleDC(screenDC)
+        Dim bmp As LongPtr
+        bmp = CreateCompatibleBitmap(screenDC, w, h)
+        Dim oldBmp As LongPtr
+        oldBmp = SelectObject(dc, bmp)
+        ' WM_PRINTCLIENT with PRF_CLIENT Or PRF_ERASEBKGND
+        SendMessage hWnd, &H318, dc, &H4 Or &H8
+        SelectObject dc, oldBmp
+        Dim bi As BITMAPINFOHEADER
+        bi.biSize = LenB(bi)
+        bi.biWidth = w
+        bi.biHeight = -h
+        bi.biPlanes = 1
+        bi.biBitCount = 32
+        Dim bits() As Byte
+        ReDim bits(0 To w * h * 4 - 1)
+        GetDIBits dc, bmp, 0, h, VarPtr(bits(0)), bi, 0
+        DeleteObject bmp
+        DeleteDC dc
+        ReleaseDC 0, screenDC
+        Capture = bits
+    End Function
+
+    ' True when two captures hold the same pixels.
+    Public Function SameBits(ByRef A() As Byte, ByRef B() As Byte) As Boolean
+        Dim i As Long
+        If UBound(A) <> UBound(B) Then Exit Function
+        For i = 0 To UBound(A)
+            If A(i) <> B(i) Then Exit Function
+        Next
+        SameBits = True
+    End Function
+
+    ' The number of bytes in which two captures of the same size differ.
+    Public Function DiffBytes(ByRef A() As Byte, ByRef B() As Byte) As Long
+        Dim i As Long
+        For i = 0 To UBound(A)
+            If A(i) <> B(i) Then DiffBytes = DiffBytes + 1
+        Next
+    End Function
+
+    Public Function ClientHeight(ByVal hWnd As LongPtr) As Long
+        Dim rc As RECT
+        GetClientRect hWnd, rc
+        ClientHeight = rc.Bottom - rc.Top
+    End Function
+
+    Private Declare PtrSafe Function DispCallFunc Lib "oleaut32" (ByVal pvInstance As LongPtr, ByVal oVft As LongPtr, ByVal cc As Long, ByVal vtReturn As Integer, ByVal cActuals As Long, ByVal prgvt As LongPtr, ByVal prgpvarg As LongPtr, ByRef pvargResult As Variant) As Long
+
+    ' The number of references to the object: IUnknown::AddRef returns the new count, and the
+    ' reference it took is released at once. The count includes the one the caller holds.
+    Public Function RefCount(ByVal Obj As Object) As Long
+        Dim result As Variant
+        Dim unk As LongPtr
+        unk = ObjPtr(Obj)
+        #If Win64 Then
+            Const SLOT As Long = 8
+        #Else
+            Const SLOT As Long = 4
+        #End If
+        DispCallFunc unk, SLOT, 4, 19, 0, 0, 0, result
+        RefCount = CLng(result) - 1
+        DispCallFunc unk, 2 * SLOT, 4, 19, 0, 0, 0, result
+    End Function
+
+    Private Declare PtrSafe Function ShowScrollBar Lib "user32" (ByVal hWnd As LongPtr, ByVal wBar As Long, ByVal bShow As Long) As Long
+
+    Public Sub ShowBar(ByVal hWnd As LongPtr)
+        ShowScrollBar hWnd, 0, 1
+    End Sub
+
+    Public Sub HideBar(ByVal hWnd As LongPtr)
+        ShowScrollBar hWnd, 0, 0
+    End Sub
+
+    ' The horizontal extent of the list box, as LB_GETHORIZONTALEXTENT reports it.
+    Public Function Extent(ByVal hWnd As LongPtr) As Long
+        Extent = CLng(SendMessage(hWnd, LB_GETHORIZONTALEXTENT, 0, 0))
+    End Function
+
+    Public Sub SetExtent(ByVal hWnd As LongPtr, ByVal Value As Long)
+        SendMessage hWnd, LB_SETHORIZONTALEXTENT, Value, 0
+    End Sub
+
+    ' The pixel width of Text in the font the window reports through WM_GETFONT.
+    Public Function TextWidth(ByVal hWnd As LongPtr, ByVal Text As String) As Long
+        Dim dc As LongPtr
+        Dim oldFont As LongPtr
+        Dim font As LongPtr
+        Dim sz As POINTAPI
+        dc = GetDC(hWnd)
+        font = SendMessage(hWnd, WM_GETFONT, 0, 0)
+        If font <> 0 Then oldFont = SelectObject(dc, font)
+        If Len(Text) > 0 Then GetTextExtentPoint32 dc, StrPtr(Text), Len(Text), sz
+        If oldFont <> 0 Then SelectObject dc, oldFont
+        ReleaseDC hWnd, dc
+        TextWidth = sz.x
+    End Function
+
+    ' The width of the window's client area.
+    Public Function ClientWidth(ByVal hWnd As LongPtr) As Long
+        Dim rc As RECT
+        GetClientRect hWnd, rc
+        ClientWidth = rc.Right - rc.Left
+    End Function
+
+    ' The horizontal scroll bar's range, page and position, as one text: "min..max page=p pos=n".
+    Public Function HRange(ByVal hWnd As LongPtr) As String
+        Dim si As SCROLLINFO
+        si.cbSize = LenB(si)
+        si.fMask = &H17
+        GetScrollInfo hWnd, 0, si
+        HRange = si.nMin & ".." & si.nMax & " page=" & si.nPage & " pos=" & si.nPos
+    End Function
+
+    Public Function HMax(ByVal hWnd As LongPtr) As Long
+        Dim si As SCROLLINFO
+        si.cbSize = LenB(si)
+        si.fMask = &H17
+        GetScrollInfo hWnd, 0, si
+        HMax = si.nMax
+    End Function
+
+    Public Function HPage(ByVal hWnd As LongPtr) As Long
+        Dim si As SCROLLINFO
+        si.cbSize = LenB(si)
+        si.fMask = &H17
+        GetScrollInfo hWnd, 0, si
+        HPage = si.nPage
+    End Function
+
+    Public Function HPos(ByVal hWnd As LongPtr) As Long
+        Dim si As SCROLLINFO
+        si.cbSize = LenB(si)
+        si.fMask = &H17
+        GetScrollInfo hWnd, 0, si
+        HPos = si.nPos
+    End Function
+
+    ' True when the window has the WS_HSCROLL style: a horizontal scroll bar is shown.
+    Public Function HasHScrollBar(ByVal hWnd As LongPtr) As Boolean
+        HasHScrollBar = (GetWindowLongW(hWnd, GWL_STYLE) And WS_HSCROLL) <> 0
+    End Function
+
+    ' How far the list's contents are scrolled to the left: the item's left edge in client
+    ' coordinates is minus this.
+    Public Function ContentOffset(ByVal hWnd As LongPtr) As Long
+        Dim rc As RECT
+        SendMessage hWnd, LB_GETITEMRECT, 0, VarPtr(rc)
+        ContentOffset = -rc.Left
+    End Function
+
+    ' Sends WM_HSCROLL with a scroll code and, for a thumb code, a position.
+    Public Sub HScroll(ByVal hWnd As LongPtr, ByVal Code As Long, Optional ByVal Position As Long = 0)
+        SendMessage hWnd, WM_HSCROLL, CLngPtr(Code) Or (CLngPtr(Position) * &H10000), 0
+    End Sub
+
+End Module

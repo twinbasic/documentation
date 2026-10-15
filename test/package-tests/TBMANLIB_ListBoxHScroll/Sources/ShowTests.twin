@@ -1,0 +1,193 @@
+[TestFixture]
+Module ShowTests
+
+    [TestCase]
+    Public Sub Show_ExtentIsWidestItemPlus10()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.List1.AddItem "short"
+        f.List1.AddItem "an item that is wider than the others"
+        f.List1.AddItem "a middle item"
+        Dim h As New cListboxHScroll
+        h.Show f.List1
+        Expect.AreEqual Rig.WidestItem(f.List1) + 10, Win.Extent(f.List1.hWnd), "the horizontal extent after Show of three items"
+        h.UnShow
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_ExtentUsesControlFont()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.List1.FontSize = 20
+        f.List1.AddItem "an item in a large font"
+        f.List2.AddItem "an item in a large font"
+        Dim big As New cListboxHScroll
+        Dim small As New cListboxHScroll
+        big.Show f.List1
+        small.Show f.List2
+        Expect.AreEqual Rig.WidestItem(f.List1) + 10, Win.Extent(f.List1.hWnd), "the horizontal extent of a list box with a 20-point font"
+        Expect.IsTrue Win.Extent(f.List1.hWnd) > Win.Extent(f.List2.hWnd), "the extent of the 20-point list is larger than that of the same item in the default font"
+        big.UnShow
+        small.UnShow
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_SetsScrollRange()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.FillWide f.List1
+        Dim h As New cListboxHScroll
+        h.Show f.List1
+        Dim hw As LongPtr
+        hw = f.List1.hWnd
+        Expect.AreEqual Win.Extent(hw), Win.HMax(hw), "the scroll range's maximum equals the horizontal extent"
+        Expect.AreEqual Win.ClientWidth(hw), Win.HPage(hw), "the scroll page equals the width of the list's client area"
+        Expect.AreEqual 0, Win.HPos(hw), "the scroll position after Show"
+        h.UnShow
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_ListScrollsHorizontally()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.FillWide f.List1
+        Dim h As New cListboxHScroll
+        h.Show f.List1
+        Dim before() As Byte
+        before = Win.Capture(f.List1.hWnd)
+        Win.HScroll f.List1.hWnd, Win.SB_RIGHT
+        Dim after() As Byte
+        after = Win.Capture(f.List1.hWnd)
+        Expect.IsFalse Win.SameBits(before, after), "the list box draws something else after SB_RIGHT when an item is wider than the list"
+        h.UnShow
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_ShowsHorizontalScrollBar()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.FillWide f.List1
+        Expect.IsFalse Win.HasHScrollBar(f.List1.hWnd), "the list box has no horizontal scroll bar before Show"
+        Dim h As New cListboxHScroll
+        h.Show f.List1
+        Expect.IsTrue Win.HasHScrollBar(f.List1.hWnd), "the list box has a horizontal scroll bar after Show"
+        h.UnShow
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_EmptyListSetsNoExtent()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim before As Long
+        before = Win.HMax(f.List1.hWnd)
+        Dim h As New cListboxHScroll
+        h.Show f.List1
+        Expect.AreEqual 0, Win.Extent(f.List1.hWnd), "the horizontal extent after Show of an empty list"
+        Expect.AreEqual before, Win.HMax(f.List1.hWnd), "the scroll range's maximum after Show of an empty list"
+        h.UnShow
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_EmptyItemsSetNoExtent()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.List1.AddItem ""
+        f.List1.AddItem ""
+        Dim before As Long
+        before = Win.HMax(f.List1.hWnd)
+        Dim h As New cListboxHScroll
+        h.Show f.List1
+        Expect.AreEqual 0, Win.Extent(f.List1.hWnd), "the horizontal extent after Show of a list of empty items"
+        Expect.AreEqual before, Win.HMax(f.List1.hWnd), "the scroll range's maximum after Show of a list of empty items"
+        h.UnShow
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_ItemAddedLaterIsNotMeasured()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.List1.AddItem "short"
+        Dim h As New cListboxHScroll
+        h.Show f.List1
+        Dim measured As Long
+        measured = Win.Extent(f.List1.hWnd)
+        f.List1.AddItem Rig.WideItem
+        Expect.AreEqual measured, Win.Extent(f.List1.hWnd), "the horizontal extent after a wide item is added"
+        Expect.AreEqual measured, Win.HMax(f.List1.hWnd), "the scroll range's maximum after a wide item is added"
+        h.UnShow
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_AgainMeasuresTheNewItems()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.List1.AddItem "short"
+        Dim h As New cListboxHScroll
+        h.Show f.List1
+        f.List1.AddItem Rig.WideItem
+        h.Show f.List1
+        Expect.AreEqual Rig.WidestItem(f.List1) + 10, Win.Extent(f.List1.hWnd), "the horizontal extent after a second Show"
+        Expect.AreEqual Win.Extent(f.List1.hWnd), Win.HMax(f.List1.hWnd), "the scroll range's maximum after a second Show"
+        h.UnShow
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_ObjectOfAnotherTypeRaisesError()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim h As New cListboxHScroll
+        On Error Resume Next
+        h.Show f.Text1
+        Expect.IsTrue Err.Number <> 0, "Show of a text box raises a run-time error"
+        On Error GoTo 0
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_ControlWithoutWindowRaisesNoError()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim box As ListBox
+        Set box = f.List1
+        Rig.FillWide box
+        Unload f
+        Set f = Nothing
+        Dim h As New cListboxHScroll
+        On Error Resume Next
+        h.Show box
+        Expect.AreEqual 0, Err.Number, "Show of a list box whose form is unloaded raises no error"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+End Module

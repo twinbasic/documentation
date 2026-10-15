@@ -1,0 +1,175 @@
+' UnShow, the destructor, and an instance used on more than one list box. Whether the subclass
+' Show installs is still in place shows in the scroll bar's position: while it is, SB_LINERIGHT
+' moves the thumb 20 pixels; once it is gone the thumb stays where it is.
+[TestFixture]
+Module UnShowTests
+
+    ' True when SB_LINERIGHT moves the thumb of the list box: the subclass is in place.
+    Private Function Hooked(ByVal Box As Object) As Boolean
+        Dim before As Long
+        before = Win.HPos(Box.hWnd)
+        Win.HScroll Box.hWnd, Win.SB_LINERIGHT
+        Hooked = Win.HPos(Box.hWnd) <> before
+    End Function
+
+    [TestCase]
+    Public Sub UnShow_RemovesTheSubclass()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.FillWide f.List1
+        Dim h As New cListboxHScroll
+        h.Show f.List1
+        Expect.IsTrue Hooked(f.List1), "SB_LINERIGHT moves the thumb while Show is in effect"
+        h.UnShow
+        Expect.IsFalse Hooked(f.List1), "SB_LINERIGHT moves the thumb after UnShow"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnShow_KeepsScrollBarAndExtent()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.FillWide f.List1
+        Dim h As New cListboxHScroll
+        h.Show f.List1
+        Dim extent As Long
+        extent = Win.Extent(f.List1.hWnd)
+        h.UnShow
+        Expect.IsTrue Win.HasHScrollBar(f.List1.hWnd), "the horizontal scroll bar after UnShow"
+        Expect.AreEqual extent, Win.Extent(f.List1.hWnd), "the horizontal extent after UnShow"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnShow_KeepsListBoxReference()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.FillWide f.List1
+        Dim box As ListBox
+        Set box = f.List1
+        Dim before As Long
+        before = Win.RefCount(box)
+        Dim h As New cListboxHScroll
+        h.Show box
+        Expect.AreEqual before + 1, Win.RefCount(box), "the references to the list box while Show is in effect"
+        h.UnShow
+        Expect.AreEqual before + 1, Win.RefCount(box), "the references to the list box after UnShow"
+        Set h = Nothing
+        Expect.AreEqual before, Win.RefCount(box), "the references to the list box after the instance is destroyed"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Terminate_RemovesTheSubclass()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.FillWide f.List1
+        Dim h As cListboxHScroll
+        Set h = New cListboxHScroll
+        h.Show f.List1
+        Expect.IsTrue Hooked(f.List1), "SB_LINERIGHT moves the thumb while the instance exists"
+        Set h = Nothing
+        Expect.IsFalse Hooked(f.List1), "SB_LINERIGHT moves the thumb after the instance is destroyed"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_TwoInstancesOneList_EachHandlesEveryMessage()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.FillWide f.List1
+        Dim a As New cListboxHScroll
+        Dim b As New cListboxHScroll
+        a.Show f.List1
+        b.Show f.List1
+        Win.HScroll f.List1.hWnd, Win.SB_LINERIGHT
+        Expect.AreEqual 40, Win.HPos(f.List1.hWnd), "the thumb position after one SB_LINERIGHT with two instances on one list box"
+        a.UnShow
+        b.UnShow
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnShow_TwoInstancesOneList_LeavesTheOtherInPlace()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.FillWide f.List1
+        Dim a As New cListboxHScroll
+        Dim b As New cListboxHScroll
+        a.Show f.List1
+        b.Show f.List1
+        a.UnShow
+        Dim before As Long
+        before = Win.HPos(f.List1.hWnd)
+        Win.HScroll f.List1.hWnd, Win.SB_LINERIGHT
+        Expect.AreEqual before + 20, Win.HPos(f.List1.hWnd), "the thumb moves 20 pixels for SB_LINERIGHT after the first of two instances calls UnShow"
+        b.UnShow
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnShow_ExtentAndBarCanBeClearedByHand()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.FillWide f.List1
+        Dim h As New cListboxHScroll
+        h.Show f.List1
+        h.UnShow
+        Win.SetExtent f.List1.hWnd, 0
+        Win.HideBar f.List1.hWnd
+        Expect.AreEqual 0, Win.Extent(f.List1.hWnd), "the horizontal extent after LB_SETHORIZONTALEXTENT 0"
+        Expect.IsFalse Win.HasHScrollBar(f.List1.hWnd), "the horizontal scroll bar after ShowScrollBar with SB_HORZ and 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_OtherListBoxLeavesFirstSubclassed()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.FillWide f.List1
+        Rig.FillWide f.List2
+        Dim h As New cListboxHScroll
+        h.Show f.List1
+        h.Show f.List2
+        h.UnShow
+        Expect.IsFalse Hooked(f.List2), "SB_LINERIGHT moves the thumb of the second list box after UnShow"
+        Expect.IsTrue Hooked(f.List1), "SB_LINERIGHT moves the thumb of the first list box after UnShow"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Show_TwoInstancesTwoLists()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.FillWide f.List1
+        Rig.FillWide f.List2
+        Dim a As New cListboxHScroll
+        Dim b As New cListboxHScroll
+        a.Show f.List1
+        b.Show f.List2
+        a.UnShow
+        Expect.IsFalse Hooked(f.List1), "SB_LINERIGHT moves the thumb of the first list box after its instance's UnShow"
+        Expect.IsTrue Hooked(f.List2), "SB_LINERIGHT moves the thumb of the second list box after the other instance's UnShow"
+        b.UnShow
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

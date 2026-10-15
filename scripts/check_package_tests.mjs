@@ -104,7 +104,6 @@ const PENDING = new Set([
   "TBMANLIB_ConsoleCore",
   "TBMANLIB_Diagnostic",
   "TBMANLIB_Dialog",
-  "TBMANLIB_ListBoxHScroll",
   "TBMANLIB_RES",
   "TBMANLIB_Xml",
   "VBA_JSON",

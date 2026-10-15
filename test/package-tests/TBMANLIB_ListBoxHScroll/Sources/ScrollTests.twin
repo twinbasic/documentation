@@ -1,0 +1,250 @@
+' What the subclass Show installs does with each WM_HSCROLL scroll code. The tests send the
+' message to the list box's window, as its scroll bar does, and read the scroll bar's position.
+[TestFixture]
+Module ScrollTests
+
+    ' A list box with the wide item, Show called, the thumb at the start.
+    Private Function Attach(ByRef Form As HostForm, ByRef Hook As cListboxHScroll) As LongPtr
+        Set Form = Rig.NewForm()
+        Rig.FillWide Form.List1
+        Set Hook = New cListboxHScroll
+        Hook.Show Form.List1
+        Attach = Form.List1.hWnd
+    End Function
+
+    Private Sub Detach(ByRef Form As HostForm, ByRef Hook As cListboxHScroll)
+        Hook.UnShow
+        Unload Form
+    End Sub
+
+    [TestCase]
+    Public Sub LineRight_MovesThumb20()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_LINERIGHT
+        Expect.AreEqual 20, Win.HPos(hw), "the thumb position after one SB_LINERIGHT"
+        Win.HScroll hw, Win.SB_LINERIGHT
+        Expect.AreEqual 40, Win.HPos(hw), "the thumb position after two SB_LINERIGHT"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LineLeft_MovesThumb20()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_THUMBPOSITION, 100
+        Win.HScroll hw, Win.SB_LINELEFT
+        Expect.AreEqual 80, Win.HPos(hw), "the thumb position after SB_LINELEFT from 100"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LineLeft_StopsAtStart()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_LINELEFT
+        Expect.AreEqual 0, Win.HPos(hw), "the thumb position after SB_LINELEFT at the start"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PageRight_MovesThumbOnePage()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_PAGERIGHT
+        Expect.AreEqual Win.HPage(hw), Win.HPos(hw), "the thumb position after one SB_PAGERIGHT equals the page size"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PageRight_StopsAtEnd()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Dim i As Long
+        For i = 1 To 10
+            Win.HScroll hw, Win.SB_PAGERIGHT
+        Next
+        Expect.AreEqual Win.HMax(hw) - Win.HPage(hw), Win.HPos(hw), "the thumb position after ten SB_PAGERIGHT is the maximum less the page"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PageLeft_MovesThumbOnePage()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_THUMBPOSITION, 300
+        Win.HScroll hw, Win.SB_PAGELEFT
+        Expect.AreEqual 300 - Win.HPage(hw), Win.HPos(hw), "the thumb position after SB_PAGELEFT from 300"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Right_MovesThumbToEnd()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_RIGHT
+        Expect.AreEqual Win.HMax(hw) - Win.HPage(hw), Win.HPos(hw), "the thumb position after SB_RIGHT is the maximum less the page"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Left_MovesThumbToStart()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_RIGHT
+        Win.HScroll hw, Win.SB_LEFT
+        Expect.AreEqual 0, Win.HPos(hw), "the thumb position after SB_RIGHT and SB_LEFT"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ThumbPosition_MovesThumbToPosition()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_THUMBPOSITION, 50
+        Expect.AreEqual 50, Win.HPos(hw), "the thumb position after SB_THUMBPOSITION 50"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ThumbTrack_MovesThumbToPosition()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_THUMBTRACK, 70
+        Expect.AreEqual 70, Win.HPos(hw), "the thumb position after SB_THUMBTRACK 70"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ThumbPosition_StopsAtEnd()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_THUMBPOSITION, 30000
+        Expect.AreEqual Win.HMax(hw) - Win.HPage(hw), Win.HPos(hw), "the thumb position after SB_THUMBPOSITION beyond the end"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EndScroll_LeavesThumb()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_THUMBPOSITION, 50
+        Win.HScroll hw, Win.SB_ENDSCROLL
+        Expect.AreEqual 50, Win.HPos(hw), "the thumb position after SB_ENDSCROLL"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    ' ---- the contents of the list follow the thumb
+
+    [TestCase]
+    Public Sub LineRight_ContentsFollowThumb()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_LINERIGHT
+        Win.HScroll hw, Win.SB_LINERIGHT
+        Expect.AreEqual "", Rig.ContentsFollowThumb(f.List1), "after two SB_LINERIGHT the list's contents are where the thumb says"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LineLeft_ContentsFollowThumb()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_THUMBPOSITION, 100
+        Win.HScroll hw, Win.SB_LINELEFT
+        Expect.AreEqual "", Rig.ContentsFollowThumb(f.List1), "after SB_LINELEFT from 100 the list's contents are where the thumb says"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PageRight_ContentsFollowThumb()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_PAGERIGHT
+        Expect.AreEqual "", Rig.ContentsFollowThumb(f.List1), "after SB_PAGERIGHT the list's contents are where the thumb says"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PageLeft_ContentsFollowThumb()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_THUMBPOSITION, 400
+        Win.HScroll hw, Win.SB_PAGELEFT
+        Expect.AreEqual "", Rig.ContentsFollowThumb(f.List1), "after SB_PAGELEFT from 400 the list's contents are where the thumb says"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Right_ContentsFollowThumb()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_RIGHT
+        Expect.AreEqual "", Rig.ContentsFollowThumb(f.List1), "after SB_RIGHT the list's contents are where the thumb says"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ThumbTrack_ContentsFollowThumb()
+        Expect.Begin
+        Dim f As HostForm, h As cListboxHScroll
+        Dim hw As LongPtr
+        hw = Attach(f, h)
+        Win.HScroll hw, Win.SB_THUMBTRACK, 123
+        Expect.AreEqual "", Rig.ContentsFollowThumb(f.List1), "after SB_THUMBTRACK 123 the list's contents are where the thumb says"
+        Detach f, h
+        Expect.Done
+    End Sub
+
+End Module
