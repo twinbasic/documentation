@@ -66,7 +66,7 @@ Every page of this site, to read from disk in any browser with no network. Navig
 
 ## Package test projects
 
-Each contributed package that has test cases publishes them as a twinBASIC project. The project holds only the tests: it references the package, which goes in `%APPDATA%\twinBASIC\packages`. The package's landing page says what the cases check.
+For each contributed package it has test cases for, the documentation project publishes those cases as a twinBASIC project. The project holds only the tests: it references the package, which goes in `%APPDATA%\twinBASIC\packages`. The package's landing page says what the cases check.
 
 | Package | Test project | Size |
 |---------|--------------|------|
