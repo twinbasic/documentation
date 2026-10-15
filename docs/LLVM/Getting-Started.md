@@ -72,6 +72,9 @@ The main feature not yet supported is passing an error up to the calling procedu
 > [!WARNING] BETA 1005
 > A program built with LLVM ends with an access violation (0xC0000005) and no message box at the first [**GoSub**](../tB/Core/GoSub-Return) it runs, in a 32-bit and in a 64-bit build. A run in the IDE is not affected, and neither is a program built without LLVM. Replace the **GoSub** with a call to a **Private Sub**.
 
+> [!WARNING] BETA 1005
+> In a 64-bit build with LLVM, a call to a [**Declare**](../tB/Core/Declare)d procedure that passes `ByVal 0&` for its eighth parameter, declared `ByRef` with a 32-bit type such as **Long**, to give the procedure a NULL pointer, can end with an access violation (0xC0000005) and no message box, in the procedure. The eighth parameter of **WideCharToMultiByte** is one such case. Whether the call fails depends on what the stack held before it. The same override for the first to seventh parameters is right. Declare the parameter `ByVal ... As LongPtr` instead. It affects a built exe and a run in the IDE with LLVM turned on, and not a 32-bit build or a build without LLVM.
+
 Code compiled with LLVM ignores [**Debug.Assert**](../tB/Modules/Debug#assert): the statement does not stop, and its condition is not evaluated.
 
 All other language features should work, in both 32-bit and 64-bit builds. Please [report](../FAQ#bug-reporting) any crash that LLVM causes, and any message saying "a feature used in your code is not yet supported with the LLVM compiler".
