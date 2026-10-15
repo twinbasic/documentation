@@ -129,8 +129,9 @@ export function judgeCompiles(compiles, rows) {
  * @param {object} c  a tb-cdp connection to an IDE whose project compiled clean
  * @param {{fixture: string, name: string}} test
  * @param {number} timeoutMs
- * @returns {Promise<{pass: boolean, detail: string}>}  `detail` is the failure,
- *   on one line, with the line the case stopped on when the compiler gives it
+ * @returns {Promise<{pass: boolean, detail: string, timedOut?: true}>}  `detail` is the failure,
+ *   on one line, with the line the case stopped on when the compiler gives it; `timedOut` when the
+ *   case was still running after `timeoutMs`, which leaves the compiler busy with it
  */
 export async function runTest(c, { fixture, name }, timeoutMs) {
   const expression = JSON.stringify(`${fixture}.${name}`);
@@ -148,7 +149,11 @@ export async function runTest(c, { fixture, name }, timeoutMs) {
     String(s)
       .replace(/\s*\r?\n\s*/g, " ")
       .trim();
-  if (r.timedOut) return { pass: false, detail: `no answer from the compiler after ${timeoutMs / 1000} s` };
+  // The case is still running: the compiler cannot cancel an evaluate, so its main thread stays busy
+  // until the case ends, and the caller must not send it another (it would be refused at once with
+  // "main thread is busy").
+  if (r.timedOut)
+    return { pass: false, detail: `no answer from the compiler after ${timeoutMs / 1000} s`, timedOut: true };
   // success false: the expression did not compile, as for a Sub that is not there.
   if (!r.success) return { pass: false, detail: oneLine(r.message || "the compiler refused to run it") };
   if (r.body?.error) {

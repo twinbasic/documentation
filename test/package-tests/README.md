@@ -125,7 +125,10 @@ compiler's test mode, so a crash or an access violation ends only its case. Each
 - **changed**: anything else. A claim of the page is no longer true, or the case is wrong.
 
 A case that never returns stops the compiler, so it is caught, recorded as `{ "hangs": true }` by
-`--update`, run alone from then on, and skipped by `RunAll`. The run writes `RunAll.twin` again
+`--update`, run alone from then on, and skipped by `RunAll`. A case still running at `--timeout`
+(60 s) counts as one that never returns: the compiler cannot stop it, and refuses everything else
+until it ends, so `tbrun` reports the cases after it `not run` and the run sends those again in a
+new IDE. A slow case that is meant to return is kept well under the limit. The run writes `RunAll.twin` again
 whenever the cases or `expect.json` change.
 
 `expect.json`:

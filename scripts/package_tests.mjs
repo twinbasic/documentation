@@ -221,19 +221,26 @@ async function runPackage(pkg) {
     const own = names.filter((n) => !compileNames.includes(n));
     const hangs = own.filter((n) => expectationFor(expect, n, arch).kind === "hang");
     let rest = own.filter((n) => !hangs.includes(n));
-    // A case that does not return stops the compiler, so the cases after it are run again.
+    // A case that does not return keeps the compiler busy, so tbrun reports the cases it did not
+    // send as "not run", and those are run again in a new IDE: by name, whatever order tbrun ran
+    // the files in.
     while (rest.length) {
       const results = tbrunCases(tree, arch, rest, opts.timeout);
-      let next = [];
+      const next = [];
+      let stalled = null;
       for (const r of results) {
+        if (/^not run: /.test(r.detail ?? "") && !r.pass) {
+          next.push(r.name);
+          continue;
+        }
         const o = outcomeOf(r);
         outcomes.get(r.name)[arch] = o;
-        if (o.kind === "hang") {
-          next = rest.slice(rest.indexOf(r.name) + 1);
-          if (next.length) say(`  ${arch}: ${r.name} did not return; running the ${next.length} after it again`);
-          break;
-        }
+        if (o.kind === "hang") stalled = r.name;
       }
+      if (next.length)
+        say(`  ${arch}: ${stalled ?? "a case"} did not return; running the ${next.length} not run again`);
+      if (next.length && !stalled)
+        throw new Error(`tbrun left ${next.length} cases not run, and no case that did not return`);
       rest = next;
     }
     for (const name of hangs) {
