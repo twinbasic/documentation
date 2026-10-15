@@ -144,6 +144,11 @@ whenever the cases or `expect.json` change.
 A case not named passes on both architectures. Write it with `--update`, then read every entry: an
 entry is a claim that the package is defective, and each one must match a callout.
 
+A package that compiles for one architecture only is tested on that one: `"arches": ["win32"]`
+after `version`, written by hand once (owner: TBMANLIB 1.0.0.29, which does not compile for
+win64). The run then skips the other architecture and `--update` keeps the field; the section
+states the compile failure in a callout.
+
 ## In the IDE
 
 `RunAll`'s `Sub Main` is the project's startup object: run the project and each case prints

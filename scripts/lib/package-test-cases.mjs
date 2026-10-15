@@ -129,18 +129,28 @@ export function judge(expected, outcome) {
  */
 export function expectFrom({ version, names, outcomes, previous }) {
   const one = (o) => (o.kind === "pass" ? "pass" : o.kind === "hang" ? { hangs: true } : { fails: o.detail });
+  const arches = archesOf(previous);
   const cases = {};
   for (const name of names) {
     const per = {};
-    for (const a of ARCHES) {
+    for (const a of arches) {
       const o = outcomes.get(name)?.[a] ?? expectationFor(previous, name, a);
       per[a] = one(o);
     }
-    const same = JSON.stringify(per.win32) === JSON.stringify(per.win64);
-    if (same && per.win32 === "pass") continue;
-    cases[name] = same ? per.win32 : per;
+    const [first, ...rest] = arches.map((a) => per[a]);
+    const same = rest.every((p) => JSON.stringify(p) === JSON.stringify(first));
+    if (same && first === "pass") continue;
+    cases[name] = same ? first : per;
   }
-  return { version, cases };
+  return Array.isArray(previous?.arches) ? { version, arches: previous.arches, cases } : { version, cases };
+}
+
+/**
+ * The architectures a package is tested on: expect.json's `arches` when it has one (TBMANLIB
+ * 1.0.0.29 does not compile for win64, so its project runs as win32 only), else both.
+ */
+export function archesOf(expect) {
+  return Array.isArray(expect?.arches) ? ARCHES.filter((a) => expect.arches.includes(a)) : ARCHES;
 }
 
 // ---------------------------------------------------------------- markers

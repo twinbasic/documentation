@@ -73,6 +73,7 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { embeddedPackages } from "./lib/example-batches.mjs";
 import {
   ARCHES,
+  archesOf,
   expectationFor,
   expectFrom,
   judge,
@@ -207,7 +208,10 @@ async function runPackage(pkg) {
   if (twice.length) die(2, `${pkg}: two cases are named ${[...new Set(twice)].join(", ")}`);
   say(`${pkg} ${version}: ${names.length} case${names.length === 1 ? "" : "s"}`);
   const outcomes = new Map(names.map((n) => [n, {}]));
-  for (const arch of opts.arches) {
+  // A package tested on one architecture only (expect.json's arches) is run on that one.
+  const arches = opts.arches.filter((a) => archesOf(expect).includes(a));
+  if (arches.length < opts.arches.length) say(`  tested on ${archesOf(expect).join(", ")} only`);
+  for (const arch of arches) {
     if (compileNames.length) {
       const compileTree = stageTree(`${pkg}-${COMPILE_DIR}`, pkg, arch, template, compileFiles);
       for (const r of tbrunCases(compileTree, arch, compileNames, opts.timeout))
@@ -240,7 +244,7 @@ async function runPackage(pkg) {
 
   const cases = [];
   for (const name of names) {
-    for (const arch of opts.arches) {
+    for (const arch of arches) {
       const expected = expectationFor(expect, name, arch);
       const got = outcomes.get(name)[arch] ?? { kind: "fail", detail: "no result" };
       const verdict = judge(expected, got);
@@ -253,7 +257,7 @@ async function runPackage(pkg) {
     }
   }
   const documented = cases.filter((c) => c.verdict === "documented").length;
-  say(`  ${documented} of ${cases.length} as documented (${opts.arches.join(", ")})`);
+  say(`  ${documented} of ${cases.length} as documented (${arches.join(", ")})`);
 
   if (values.update) {
     const next = expectFrom({ version, names, outcomes, previous: expect });
