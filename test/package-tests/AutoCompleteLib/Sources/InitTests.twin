@@ -1,0 +1,197 @@
+' AutoComplete.Init: the sources it attaches, the errors it raises, and what an attached edit does.
+[TestFixture]
+Module InitTests
+
+    [TestCase]
+    Public Sub CustomSource_CompletesTheTypedText()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("Apple", "Apricot", "Banana")
+        ac.Options = AutoCompleteOptionAppend
+        ac.Init h, AutoCompleteSourceCustomSource
+        Expect.AreEqual "Banana", Rig.TypeInto(h, "B", Rig.WaitList), "the text after typing B with the list Apple, Apricot, Banana"
+        Expect.AreEqual "1,6", Win.GetSel(h), "the appended part is selected"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomSource_NoMatch_LeavesTheText()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("Apple", "Apricot", "Banana")
+        ac.Options = AutoCompleteOptionAppend
+        ac.Init h, AutoCompleteSourceCustomSource
+        Expect.AreEqual "Q", Rig.TypeInto(h, "Q", Rig.WaitList), "the text after typing Q with the list Apple, Apricot, Banana"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomSource_EmptyList_LeavesTheText()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.Options = AutoCompleteOptionAppend
+        ac.Init h, AutoCompleteSourceCustomSource
+        Expect.AreEqual "B", Rig.TypeInto(h, "B", Rig.WaitList), "the text after typing B with no list"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomSource_ReplacedAfterInit_CompletesFromTheNewList()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("Apple", "Banana")
+        ac.Options = AutoCompleteOptionAppend
+        ac.Init h, AutoCompleteSourceCustomSource
+        ac.CustomSource = Array("Cherry")
+        Expect.AreEqual "Cherry", Rig.TypeInto(h, "C", Rig.WaitList), "the text after typing C once the list was replaced by Cherry"
+        Expect.AreEqual "B", Rig.TypeInto(h, "B", Rig.WaitList), "the text after typing B once the list was replaced by Cherry"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomSource_ClearedAfterInit_CompletesNothing()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("Apple", "Banana")
+        ac.Options = AutoCompleteOptionAppend
+        ac.Init h, AutoCompleteSourceCustomSource
+        ac.CustomSource = Empty
+        Expect.AreEqual "B", Rig.TypeInto(h, "B", Rig.WaitList), "the text after typing B once the list was cleared"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileSystem_CompletesAPath()
+        Expect.Begin
+        Rig.MakeFolder
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.Options = AutoCompleteOptionAppend
+        ac.Init h, AutoCompleteSourceFileSystem
+        Expect.AreEqual Rig.Folder() & "\ffile.txt", Rig.TypeInto(h, Rig.Folder() & "\f", Rig.WaitFiles), "the text after typing the first letter of a file name in a folder that holds ffile.txt"
+        Win.Destroy h
+        Rig.CleanFolder
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub All_CompletesAPath()
+        Expect.Begin
+        Rig.MakeFolder
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.Options = AutoCompleteOptionAppend
+        ac.Init h, AutoCompleteSourceAll
+        Expect.AreEqual Rig.Folder() & "\ffile.txt", Rig.TypeInto(h, Rig.Folder() & "\f", Rig.WaitFiles), "the text after typing the first letter of a file name in a folder that holds ffile.txt"
+        Win.Destroy h
+        Rig.CleanFolder
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HistoryMruAndAll_RaiseNothing()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim a As New AutoComplete
+        Dim b As New AutoComplete
+        Dim c As New AutoComplete
+        Expect.AreEqual "0", Rig.InitError(a, h, AutoCompleteSourceHistory), "Init with AutoCompleteSourceHistory"
+        Expect.AreEqual "0", Rig.InitError(b, h, AutoCompleteSourceMRU), "Init with AutoCompleteSourceMRU"
+        Expect.AreEqual "0", Rig.InitError(c, h, AutoCompleteSourceAll), "Init with AutoCompleteSourceAll"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SourceNone_Raises380()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        Expect.AreEqual "380 Invalid property value", Rig.InitError(ac, h, AutoCompleteSourceNone), "Init with AutoCompleteSourceNone"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SourceOutsideTheTable_Raises380()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        Expect.AreEqual "380 Invalid property value", Rig.InitError(ac, h, 6), "Init with a source of 6"
+        Expect.AreEqual "380 Invalid property value", Rig.InitError(ac, h, -1), "Init with a source of -1"
+        Expect.AreEqual "380 Invalid property value", Rig.InitError(ac, h, 100), "Init with a source of 100"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WindowHandleZero_Raises5()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        Expect.AreEqual "5 Automation error", Rig.InitError(ac, 0, AutoCompleteSourceHistory), "Init with a window handle of 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SecondCall_OnTheSameObject_Raises()
+        Expect.Begin
+        Dim h1 As LongPtr
+        Dim h2 As LongPtr
+        h1 = Win.Make()
+        h2 = Win.Make()
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("Banana")
+        ac.Options = AutoCompleteOptionAppend
+        Expect.AreEqual "0", Rig.InitError(ac, h1, AutoCompleteSourceCustomSource), "the first Init"
+        Expect.AreEqual "-2147467259 Automation error", Rig.InitError(ac, h2, AutoCompleteSourceCustomSource), "a second Init, for another window, on the same object"
+        Expect.AreEqual "-2147467259 Automation error", Rig.InitError(ac, h1, AutoCompleteSourceCustomSource), "a second Init, for the same window, on the same object"
+        Expect.AreEqual "Banana", Rig.TypeInto(h1, "B", Rig.WaitList), "the text of the first window after typing B"
+        Expect.AreEqual "B", Rig.TypeInto(h2, "B", Rig.WaitList), "the text of the second window after typing B"
+        Win.Destroy h1
+        Win.Destroy h2
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OneObjectForEachWindow_RaiseNothing()
+        Expect.Begin
+        Dim h1 As LongPtr
+        Dim h2 As LongPtr
+        h1 = Win.Make()
+        h2 = Win.Make()
+        Dim a As New AutoComplete
+        Dim b As New AutoComplete
+        a.CustomSource = Array("Apple")
+        b.CustomSource = Array("Banana")
+        a.Options = AutoCompleteOptionAppend
+        b.Options = AutoCompleteOptionAppend
+        Expect.AreEqual "0", Rig.InitError(a, h1, AutoCompleteSourceCustomSource), "Init of the first object"
+        Expect.AreEqual "0", Rig.InitError(b, h2, AutoCompleteSourceCustomSource), "Init of the second object"
+        Expect.AreEqual "Apple", Rig.TypeInto(h1, "A", Rig.WaitList), "the text of the first window after typing A"
+        Expect.AreEqual "Banana", Rig.TypeInto(h2, "B", Rig.WaitList), "the text of the second window after typing B"
+        Win.Destroy h1
+        Win.Destroy h2
+        Expect.Done
+    End Sub
+
+End Module

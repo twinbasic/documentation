@@ -1,0 +1,99 @@
+' AutoComplete.Options: the flags it keeps and the append behaviour they switch on.
+[TestFixture]
+Module OptionsTests
+
+    [TestCase]
+    Public Sub EachConstant_IsKept()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        Dim values As Variant
+        values = Array(AutoCompleteOptionNone, AutoCompleteOptionAppend, AutoCompleteOptionSuggest, AutoCompleteOptionSuggestAppend, AutoCompleteOptionSearch, AutoCompleteOptionFilterPrefixes, AutoCompleteOptionUseTab, AutoCompleteOptionUpDownKeyDropsList, AutoCompleteOptionRightToLeft)
+        Dim i As Long
+        For i = 0 To UBound(values)
+            ac.Options = values(i)
+            Expect.AreEqual CLng(values(i)), CLng(ac.Options), "Options read back after setting " & values(i)
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Constants_HaveTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual 0, CLng(AutoCompleteOptionNone), "AutoCompleteOptionNone"
+        Expect.AreEqual 2, CLng(AutoCompleteOptionAppend), "AutoCompleteOptionAppend"
+        Expect.AreEqual 1, CLng(AutoCompleteOptionSuggest), "AutoCompleteOptionSuggest"
+        Expect.AreEqual 3, CLng(AutoCompleteOptionSuggestAppend), "AutoCompleteOptionSuggestAppend"
+        Expect.AreEqual 4, CLng(AutoCompleteOptionSearch), "AutoCompleteOptionSearch"
+        Expect.AreEqual 8, CLng(AutoCompleteOptionFilterPrefixes), "AutoCompleteOptionFilterPrefixes"
+        Expect.AreEqual &H10, CLng(AutoCompleteOptionUseTab), "AutoCompleteOptionUseTab"
+        Expect.AreEqual &H20, CLng(AutoCompleteOptionUpDownKeyDropsList), "AutoCompleteOptionUpDownKeyDropsList"
+        Expect.AreEqual &H40, CLng(AutoCompleteOptionRightToLeft), "AutoCompleteOptionRightToLeft"
+        Expect.AreEqual 0, CLng(AutoCompleteSourceNone), "AutoCompleteSourceNone"
+        Expect.AreEqual 1, CLng(AutoCompleteSourceHistory), "AutoCompleteSourceHistory"
+        Expect.AreEqual 2, CLng(AutoCompleteSourceFileSystem), "AutoCompleteSourceFileSystem"
+        Expect.AreEqual 3, CLng(AutoCompleteSourceMRU), "AutoCompleteSourceMRU"
+        Expect.AreEqual 4, CLng(AutoCompleteSourceAll), "AutoCompleteSourceAll"
+        Expect.AreEqual 5, CLng(AutoCompleteSourceCustomSource), "AutoCompleteSourceCustomSource"
+        Expect.AreEqual 0, CLng(AutoCompleteFileSystemOptionNone), "AutoCompleteFileSystemOptionNone"
+        Expect.AreEqual 1, CLng(AutoCompleteFileSystemOptionCurrentDir), "AutoCompleteFileSystemOptionCurrentDir"
+        Expect.AreEqual 2, CLng(AutoCompleteFileSystemOptionMyComputer), "AutoCompleteFileSystemOptionMyComputer"
+        Expect.AreEqual 4, CLng(AutoCompleteFileSystemOptionDesktop), "AutoCompleteFileSystemOptionDesktop"
+        Expect.AreEqual 8, CLng(AutoCompleteFileSystemOptionFavorites), "AutoCompleteFileSystemOptionFavorites"
+        Expect.AreEqual 16, CLng(AutoCompleteFileSystemOptionFileSysOnly), "AutoCompleteFileSystemOptionFileSysOnly"
+        Expect.AreEqual 32, CLng(AutoCompleteFileSystemOptionFileSysDirs), "AutoCompleteFileSystemOptionFileSysDirs"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Combination_IsKept()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        ac.Options = AutoCompleteOptionSuggestAppend Or AutoCompleteOptionUseTab Or AutoCompleteOptionSearch
+        Expect.AreEqual &H17, CLng(ac.Options), "Options read back after setting SuggestAppend Or UseTab Or Search"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Append_AppendsTheBestMatch()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("Apple", "Banana")
+        ac.Options = AutoCompleteOptionAppend
+        ac.Init h, AutoCompleteSourceCustomSource
+        Expect.AreEqual "Banana", Rig.TypeInto(h, "B", Rig.WaitList), "the text after typing B with Append"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub None_AppendsNothing()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("Apple", "Banana")
+        ac.Options = AutoCompleteOptionNone
+        ac.Init h, AutoCompleteSourceCustomSource
+        Expect.AreEqual "B", Rig.TypeInto(h, "B", Rig.WaitList), "the text after typing B with no option"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetAfterInit_Applies()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("Apple", "Banana")
+        ac.Options = AutoCompleteOptionNone
+        ac.Init h, AutoCompleteSourceCustomSource
+        ac.Options = AutoCompleteOptionAppend
+        Expect.AreEqual "Banana", Rig.TypeInto(h, "B", Rig.WaitList), "the text after typing B, with Append set after Init"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+End Module

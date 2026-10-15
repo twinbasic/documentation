@@ -1,0 +1,68 @@
+' AutoComplete.Disable, Enable and DroppedDown: switching auto-complete off and on, and the drop-down's state.
+[TestFixture]
+Module SwitchTests
+
+    [TestCase]
+    Public Sub Disable_StopsTheSuggestions()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("Apple", "Banana")
+        ac.Options = AutoCompleteOptionAppend
+        ac.Init h, AutoCompleteSourceCustomSource
+        ac.Disable
+        Expect.AreEqual "B", Rig.TypeInto(h, "B", Rig.WaitList), "the text after typing B once auto-complete was disabled"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enable_ResumesTheSuggestions()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("Apple", "Banana")
+        ac.Options = AutoCompleteOptionAppend
+        ac.Init h, AutoCompleteSourceCustomSource
+        ac.Disable
+        ac.Enable
+        Expect.AreEqual "Banana", Rig.TypeInto(h, "B", Rig.WaitList), "the text after typing B once auto-complete was disabled and enabled"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Disable_KeepsTheSourceAndTheList()
+        Expect.Begin
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("Apple", "Banana")
+        ac.Options = AutoCompleteOptionAppend
+        ac.Init h, AutoCompleteSourceCustomSource
+        ac.Disable
+        Expect.AreEqual "[Apple][Banana]", Rig.Items(ac), "the list after Disable"
+        ac.Enable
+        Expect.AreEqual "Apple", Rig.TypeInto(h, "A", Rig.WaitList), "the text after typing A once auto-complete was disabled and enabled, with no second Init"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DroppedDown_BeforeAnyList_IsFalse()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        Expect.IsFalse ac.DroppedDown, "DroppedDown of an object that was not initialised"
+        Dim h As LongPtr
+        h = Win.Make()
+        ac.CustomSource = Array("Apple", "Banana")
+        ac.Options = AutoCompleteOptionAppend
+        ac.Init h, AutoCompleteSourceCustomSource
+        Expect.IsFalse ac.DroppedDown, "DroppedDown of an object that was initialised and has not opened its list"
+        Win.Destroy h
+        Expect.Done
+    End Sub
+
+End Module

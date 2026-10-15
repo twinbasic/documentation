@@ -1,0 +1,94 @@
+' Win: the Win32 calls the test cases of AutoCompleteLib make on an edit window, and a few helpers
+' they share. A case makes its edit window with Make as a top-level window that is never shown, so
+' nothing appears on the desktop, and removes it with Destroy.
+Module Win
+
+    Private Declare PtrSafe Function CreateWindowExW Lib "user32" (ByVal dwExStyle As Long, ByVal lpClassName As LongPtr, ByVal lpWindowName As LongPtr, ByVal dwStyle As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As LongPtr, ByVal hMenu As LongPtr, ByVal hInstance As LongPtr, ByVal lpParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DestroyWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function PeekMessageW Lib "user32" (ByRef lpMsg As MSG, ByVal hWnd As LongPtr, ByVal wMsgFilterMin As Long, ByVal wMsgFilterMax As Long, ByVal wRemoveMsg As Long) As Long
+    Private Declare PtrSafe Function TranslateMessage Lib "user32" (ByRef lpMsg As MSG) As Long
+    Private Declare PtrSafe Function DispatchMessageW Lib "user32" (ByRef lpMsg As MSG) As LongPtr
+    Private Declare PtrSafe Function GetTickCount Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetForegroundWindow Lib "user32" () As LongPtr
+    Private Declare PtrSafe Function IsWindowVisible Lib "user32" (ByVal hWnd As LongPtr) As Long
+
+    Private Type POINTAPI
+        x As Long
+        y As Long
+    End Type
+
+    Private Type MSG
+        hWnd As LongPtr
+        message As Long
+        wParam As LongPtr
+        lParam As LongPtr
+        time As Long
+        pt As POINTAPI
+    End Type
+
+    Private Const WM_GETTEXT As Long = &HD
+    Private Const WM_GETTEXTLENGTH As Long = &HE
+    Private Const WM_SETTEXT As Long = &HC
+    Private Const WM_CHAR As Long = &H102
+    Private Const EM_GETSEL As Long = &HB0
+    Private Const EM_SETSEL As Long = &HB1
+    Private Const PM_REMOVE As Long = 1
+
+    ' An edit control: a popup window that is never shown (no WS_VISIBLE).
+    Public Function Make() As LongPtr
+        ' WS_POPUP Or WS_BORDER, ES_AUTOHSCROLL
+        Make = CreateWindowExW(0, StrPtr("EDIT"), 0, &H80000000 Or &H800000 Or &H80&, 0, 0, 200, 24, 0, 0, 0, 0)
+    End Function
+
+    Public Sub Destroy(ByVal hWnd As LongPtr)
+        If hWnd <> 0 Then DestroyWindow hWnd
+    End Sub
+
+    Public Function IsShown(ByVal hWnd As LongPtr) As Boolean
+        IsShown = IsWindowVisible(hWnd) <> 0
+    End Function
+
+    Public Function GetText(ByVal hWnd As LongPtr) As String
+        Dim n As Long
+        n = CLng(SendMessageW(hWnd, WM_GETTEXTLENGTH, 0, 0))
+        Dim buf As String
+        buf = String$(n + 1, vbNullChar)
+        SendMessageW hWnd, WM_GETTEXT, n + 1, StrPtr(buf)
+        GetText = Left$(buf, n)
+    End Function
+
+    Public Sub SetText(ByVal hWnd As LongPtr, ByVal Text As String)
+        SendMessageW hWnd, WM_SETTEXT, 0, StrPtr(Text)
+    End Sub
+
+    ' The selection start and end, as "start,end".
+    Public Function GetSel(ByVal hWnd As LongPtr) As String
+        Dim s As Long, e As Long
+        SendMessageW hWnd, EM_GETSEL, VarPtr(s), VarPtr(e)
+        GetSel = s & "," & e
+    End Function
+
+    Public Sub SetSel(ByVal hWnd As LongPtr, ByVal Start As Long, ByVal Finish As Long)
+        SendMessageW hWnd, EM_SETSEL, Start, Finish
+    End Sub
+
+    ' Types one character into the edit control, as the keyboard does.
+    Public Sub TypeChar(ByVal hWnd As LongPtr, ByVal Ch As String)
+        SendMessageW hWnd, WM_CHAR, AscW(Ch), 1
+    End Sub
+
+    ' Dispatches the thread's messages for Millis milliseconds: auto-complete works through them.
+    Public Sub Pump(ByVal Millis As Long)
+        Dim m As MSG
+        Dim t0 As Long
+        t0 = GetTickCount()
+        Do While GetTickCount() - t0 < Millis
+            Do While PeekMessageW(m, 0, 0, 0, PM_REMOVE) <> 0
+                TranslateMessage m
+                DispatchMessageW m
+            Loop
+        Loop
+    End Sub
+
+End Module

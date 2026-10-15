@@ -95,7 +95,6 @@ if (
 // with one.
 const PENDING = new Set([
   "ArrayListLib",
-  "AutoCompleteLib",
   "TBMANLIB",
   "TBMANLIB_ConsoleComponents",
   "TBMANLIB_Dialog",

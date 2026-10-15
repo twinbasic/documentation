@@ -1,0 +1,156 @@
+' AutoComplete.CustomSource: what the list keeps, what it ignores and the errors it raises.
+[TestFixture]
+Module CustomSourceTests
+
+    [TestCase]
+    Public Sub Set_Strings_AreKeptInOrder()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        Expect.AreEqual "0", Rig.Assign(ac, Array("Apple", "Apricot", "Banana")), "assigning three strings"
+        Expect.AreEqual "[Apple][Apricot][Banana]", Rig.Items(ac), "the list after assigning three strings"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Get_ReturnsAZeroBasedStringArray()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("Apple", "Banana")
+        Dim v As Variant
+        v = ac.CustomSource
+        Expect.IsTrue IsArray(v), "CustomSource returns an array"
+        Expect.AreEqual "String()", TypeName(v), "the type of the array CustomSource returns"
+        Expect.AreEqual 0, LBound(v), "the lower bound of the array CustomSource returns"
+        Expect.AreEqual 1, UBound(v), "the upper bound of the array CustomSource returns for two strings"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Set_EmptyStrings_AreIgnored()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("a", "", "b", vbNullString)
+        Expect.AreEqual "[a][b]", Rig.Items(ac), "the list after assigning two strings and two empty strings"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Set_NonStringElements_AreIgnored()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("a", 5, Null, Empty, 2.5, #1/1/2000#, True, "b")
+        Expect.AreEqual "[a][b]", Rig.Items(ac), "the list after assigning two strings among numbers, a Null, an Empty, a date and a Boolean"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Set_ArrayOfNumbers_GivesAnEmptyList()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("old")
+        Dim n(0 To 1) As Long
+        n(0) = 1
+        n(1) = 2
+        Expect.AreEqual "0", Rig.Assign(ac, n), "assigning an array of Long"
+        Expect.AreEqual "", Rig.Items(ac), "the list after assigning an array of Long"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Set_TypedStringArray_WithALowerBound_IsKept()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        Dim s(2 To 4) As String
+        s(2) = "x"
+        s(3) = ""
+        s(4) = "z"
+        Expect.AreEqual "0", Rig.Assign(ac, s), "assigning a String array with bounds 2 To 4"
+        Expect.AreEqual "[x][z]", Rig.Items(ac), "the list after assigning a String array with bounds 2 To 4"
+        Dim v As Variant
+        v = ac.CustomSource
+        Expect.AreEqual 0, LBound(v), "the lower bound of the array CustomSource returns"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Set_NewArray_ReplacesThePreviousListInFull()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("p", "q", "r")
+        ac.CustomSource = Array("s")
+        Expect.AreEqual "[s]", Rig.Items(ac), "the list after a second assignment"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Set_ZeroLengthArray_ClearsTheList()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("p", "q")
+        Expect.AreEqual "0", Rig.Assign(ac, Array()), "assigning Array()"
+        Expect.AreEqual "", Rig.Items(ac), "the list after assigning Array()"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Set_Empty_ClearsTheList()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("p", "q")
+        Expect.AreEqual "0", Rig.Assign(ac, Empty), "assigning Empty"
+        Expect.AreEqual "", Rig.Items(ac), "the list after assigning Empty"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Set_TwoDimensionalArray_Raises5_AndKeepsTheList()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("p", "q")
+        Dim two(1, 1) As String
+        two(0, 0) = "x"
+        Expect.AreEqual "5 Array must be single dimensioned", Rig.Assign(ac, two), "assigning a two-dimensional array"
+        Expect.AreEqual "[p][q]", Rig.Items(ac), "the list after the failed assignment"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Set_UnallocatedArray_Raises91_AndKeepsTheList()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("p", "q")
+        Dim un() As String
+        Expect.AreEqual "91 Array is not allocated", Rig.Assign(ac, un), "assigning an array that is not allocated"
+        Expect.AreEqual "[p][q]", Rig.Items(ac), "the list after the failed assignment"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Set_AValueThatIsNotAnArray_Raises380()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        ac.CustomSource = Array("p", "q")
+        Expect.AreEqual "380 Invalid property value", Rig.Assign(ac, "text"), "assigning a String"
+        Expect.AreEqual "380 Invalid property value", Rig.Assign(ac, 5), "assigning a number"
+        Expect.AreEqual "380 Invalid property value", Rig.Assign(ac, Null), "assigning Null"
+        Expect.AreEqual "[p][q]", Rig.Items(ac), "the list after the failed assignments"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Get_EmptyList_IsAnArrayThatIsNotAllocated()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        Dim v As Variant
+        v = ac.CustomSource
+        Expect.IsTrue IsArray(v), "CustomSource of an object that was given no list is an array"
+        Dim n As Long
+        n = -99
+        On Error Resume Next
+        n = UBound(v)
+        Expect.AreEqual 9, Err.Number, "UBound of the array of an object that was given no list raises"
+        Err.Clear
+        Expect.Done
+    End Sub
+
+End Module

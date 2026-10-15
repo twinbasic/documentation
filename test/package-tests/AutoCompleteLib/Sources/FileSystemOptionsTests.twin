@@ -1,0 +1,104 @@
+' AutoComplete.FileSystemOptions: the flags it keeps and the file-system objects they select.
+[TestFixture]
+Module FileSystemOptionsTests
+
+    [TestCase]
+    Public Sub EachConstant_IsKept()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        Dim values As Variant
+        values = Array(AutoCompleteFileSystemOptionNone, AutoCompleteFileSystemOptionCurrentDir, AutoCompleteFileSystemOptionMyComputer, AutoCompleteFileSystemOptionDesktop, AutoCompleteFileSystemOptionFavorites, AutoCompleteFileSystemOptionFileSysOnly, AutoCompleteFileSystemOptionFileSysDirs)
+        Dim i As Long
+        For i = 0 To UBound(values)
+            ac.FileSystemOptions = values(i)
+            Expect.AreEqual CLng(values(i)), CLng(ac.FileSystemOptions), "FileSystemOptions read back after setting " & values(i)
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Combination_IsKept()
+        Expect.Begin
+        Dim ac As New AutoComplete
+        ac.FileSystemOptions = AutoCompleteFileSystemOptionDesktop Or AutoCompleteFileSystemOptionFileSysOnly Or AutoCompleteFileSystemOptionFileSysDirs
+        Expect.AreEqual 52, CLng(ac.FileSystemOptions), "FileSystemOptions read back after setting Desktop Or FileSysOnly Or FileSysDirs"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileSysDirs_OffersADirectory()
+        Expect.Begin
+        Rig.MakeFolder
+        Expect.AreEqual Rig.Folder() & "\zdir", Rig.FilesFor(Rig.Folder() & "\z", AutoCompleteFileSystemOptionFileSysDirs), "the text after typing z in a folder that holds the folder zdir, with FileSysDirs"
+        Rig.CleanFolder
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileSysDirs_DoesNotOfferAFile()
+        Expect.Begin
+        Rig.MakeFolder
+        Expect.AreEqual Rig.Folder() & "\f", Rig.FilesFor(Rig.Folder() & "\f", AutoCompleteFileSystemOptionFileSysDirs), "the text after typing f in a folder that holds the file ffile.txt, with FileSysDirs"
+        Rig.CleanFolder
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileSysOnly_OffersAFile()
+        Expect.Begin
+        Rig.MakeFolder
+        Expect.AreEqual Rig.Folder() & "\ffile.txt", Rig.FilesFor(Rig.Folder() & "\f", AutoCompleteFileSystemOptionFileSysOnly), "the text after typing f in a folder that holds the file ffile.txt, with FileSysOnly"
+        Rig.CleanFolder
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetBeforeInit_Applies()
+        Expect.Begin
+        Rig.MakeFolder
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.Options = AutoCompleteOptionAppend
+        ac.FileSystemOptions = AutoCompleteFileSystemOptionFileSysDirs
+        ac.Init h, AutoCompleteSourceFileSystem
+        Expect.AreEqual Rig.Folder() & "\f", Rig.TypeInto(h, Rig.Folder() & "\f", Rig.WaitFiles), "the text after typing f, with FileSysDirs set before Init"
+        Win.Destroy h
+        Rig.CleanFolder
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetAfterInit_Applies()
+        Expect.Begin
+        Rig.MakeFolder
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.Options = AutoCompleteOptionAppend
+        ac.FileSystemOptions = AutoCompleteFileSystemOptionFileSysOnly
+        ac.Init h, AutoCompleteSourceFileSystem
+        ac.FileSystemOptions = AutoCompleteFileSystemOptionFileSysDirs
+        Expect.AreEqual Rig.Folder() & "\f", Rig.TypeInto(h, Rig.Folder() & "\f", Rig.WaitFiles), "the text after typing f, with FileSysDirs set after Init"
+        Win.Destroy h
+        Rig.CleanFolder
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AllSource_FollowsTheSetting()
+        Expect.Begin
+        Rig.MakeFolder
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.Options = AutoCompleteOptionAppend
+        ac.FileSystemOptions = AutoCompleteFileSystemOptionFileSysDirs
+        ac.Init h, AutoCompleteSourceAll
+        Expect.AreEqual Rig.Folder() & "\f", Rig.TypeInto(h, Rig.Folder() & "\f", Rig.WaitFiles), "the text after typing f with the source All and FileSysDirs"
+        Win.Destroy h
+        Rig.CleanFolder
+        Expect.Done
+    End Sub
+
+End Module
