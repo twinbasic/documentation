@@ -27,18 +27,23 @@ Syntax: *object*.**Unpack** ( *inputFile*, *outputDir* [, *cleanFirst* [, *logFi
 *logFile*
 : *optional* A **String**, the path of a [log file](.#the-log-file) for the lines the call prints. The default is an empty string, which writes no log.
 
+<!-- test: UnpackTests.Unpack_NeverChangesTheProjectFile, UnpackTests.Unpack_ExtensionOfInputFile_IsNotChecked, UnpackTests.Unpack_CreatesOutputDirWithItsMissingParents, UnpackTests.Unpack_EmptyOutputDir_CreatesAFolderNamedAfterTheProjectInTheCurrentDirectory, ProjPackerTests.Methods_RaiseNoError_WhenTheyFail -->
 Returns **True** when every file was written, and **False** when it was not. The method raises no error; [Results and errors](.#results-and-errors) describes how the reason is reported. The project file is never changed.
+<!-- /test -->
 
 ## What is written
 
+<!-- test: UnpackTests.Unpack_FileOfTheImportExportTool_WritesEveryFile, UnpackTests.Unpack_PutsTheTopLevelEntriesDirectlyIntoOutputDir, UnpackTests.Unpack_ReplacesFilesOfTheSameNameAndKeepsTheOthers, UnpackTests.Unpack_FileThatIsNotAProject_ChangesNothingInOutputDir, CleanFirstTests.Unpack_WithoutCleanFirst_DeletesNothing -->
 The files and folders of the project go directly into *outputDir*: its contents are the project's top-level entries, such as `Settings`, `Sources` and `Resources`. The project's name does not become a folder. It appears only in the summary line.
 
 With *cleanFirst* **False**, a file already in *outputDir* is replaced by the file of the same name from the project, without asking. Files and folders that the project does not hold stay where they are. A later [**Pack**](Pack) of the folder packs them too. To get exactly the project's files, unpack into an empty folder or use *cleanFirst*.
 
 The project file is read and checked before anything is deleted or written. If the file is missing, is a folder, or is not a project file, nothing in *outputDir* changes. A failure while the files are being written, a full disk for example, leaves the files written so far.
+<!-- /test -->
 
 ## Emptying the folder first
 
+<!-- test: CleanFirstTests.CleanFirst_FolderThatDoesNotExist_Proceeds, CleanFirstTests.CleanFirst_EmptyFolder_Proceeds, CleanFirstTests.CleanFirst_EmptyFolderDirectlyUnderADriveRoot_Proceeds, CleanFirstTests.CleanFirst_DriveRoot_IsRefused, CleanFirstTests.CleanFirst_FolderDirectlyUnderADriveRoot_IsRefusedEvenWithASettingsFile, CleanFirstTests.CleanFirst_FolderTwoLevelsBelowADriveRoot_IsEmptied, CleanFirstTests.CleanFirst_ShallowCheckComesBeforeTheSettingsCheck, CleanFirstTests.CleanFirst_FolderWithFilesAndNoSettings_IsRefused, CleanFirstTests.CleanFirst_FolderWhoseSettingsIsAFolder_IsRefused -->
 *cleanFirst* deletes files and folders, so **Unpack** makes four checks on *outputDir*, in this order, and deletes nothing unless it passes them:
 
 1. *outputDir* does not exist, or is not a folder. There is nothing to empty, and the unpack goes on.
@@ -47,12 +52,15 @@ The project file is read and checked before anything is deleted or written. If t
 4. *outputDir* is not empty and has no file named `Settings` directly in it. The call is refused, because the folder does not look like an unpacked project. A folder named `Settings` does not count.
 
 A refusal returns **False** and leaves the folder as it was.
+<!-- /test -->
 
+<!-- test: CleanFirstTests.CleanFirst_FolderThatLooksLikeAProject_IsEmptiedOfEverything -->
 > [!WARNING] 1.1.0.0
 > A folder that passes the checks is deleted with everything in it, including files that are not part of any project. Point *cleanFirst* only at a folder that holds nothing but an earlier unpack.
 
 ## Output
 
+<!-- test: UnpackTests.Unpack_SummaryLine_NamesTheProjectTheFolderAndTheCounts -->
 On success **Unpack** prints one summary line:
 
 ```
@@ -60,7 +68,9 @@ Imported "MyApp" -> C:\Temp\MyApp-src\  (18 files, 6 directories)
 ```
 
 The name is the project's name as stored in the file. The counts do not include *outputDir*.
+<!-- /test -->
 
+<!-- test: UnpackTests.Unpack_FileThatDoesNotExist_Fails, UnpackTests.Unpack_InputThatIsAFolder_Fails, UnpackTests.Unpack_FileThatIsNotAProject_FailsWithBadMagic, UnpackTests.Unpack_FileOfAnotherFormatVersion_FailsWithUnsupportedVersion, UnpackTests.Unpack_FileThatEndsTooSoon_FailsAsTruncated, UnpackTests.Unpack_OutputDirThatCannotBeCreated_Fails, CleanFirstTests.CleanFirst_DriveRoot_IsRefused, CleanFirstTests.CleanFirst_FolderWithFilesAndNoSettings_IsRefused -->
 When the call fails, it prints `Unpack failed: ` and one of these reasons:
 
 | Reason | Cause |
@@ -73,7 +83,9 @@ When the call fails, it prints `Unpack failed: ` and one of these reasons:
 | `Refusing to clean a shallow path: ` and the path | *cleanFirst* is **True** and *outputDir* fails the third check. |
 | `Refusing to clean ` and the path in quotes, then `it is not empty and has no top-level 'Settings' file` | *cleanFirst* is **True** and *outputDir* fails the fourth check. |
 | `Cannot create directory: ` and the path | *outputDir* or a folder in it could not be created. |
+<!-- /test -->
 
+<!-- test: UnpackTests.Unpack_SummaryLine_BeginsWithImported -->
 > [!NOTE] 1.1.0.0
 > The summary line of **Unpack** begins `Imported`, and that of [**Pack**](Pack) begins `Exported`. The Import/export tool names the two directions the other way round: its `export` command unpacks a project and its `import` command packs a folder.
 

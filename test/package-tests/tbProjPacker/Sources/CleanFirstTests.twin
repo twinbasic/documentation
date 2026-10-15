@@ -1,0 +1,230 @@
+' tbProjPacker, ProjPacker.Unpack with cleanFirst: when it empties the folder, and when it refuses.
+'
+' A path directly under a drive root is a drive letter made of a sandbox folder (Sandbox.MapDrive),
+' so what Unpack deletes, or should refuse to, is only the sandbox.
+[TestFixture]
+Module CleanFirstTests
+
+    Private Sub WriteReference(ByVal Path As String)
+        Files.WriteBytes Path, Sample.ReferenceBytes()
+    End Sub
+
+    ' A folder that holds Settings and files that belong to no project.
+    Private Sub FillLikeAProject(ByVal Folder As String)
+        Files.MakeFolder Folder & "\Stale\Deeper"
+        Files.WriteText Folder & "\Settings", "old settings"
+        Files.WriteText Folder & "\Precious.txt", "precious"
+        Files.WriteText Folder & "\Stale\Deeper\old.txt", "old"
+        Files.WriteText Folder & "\Hidden.txt", "hidden"
+        SetAttr Folder & "\Hidden.txt", vbHidden
+    End Sub
+
+    [TestCase]
+    Public Sub CleanFirst_FolderThatLooksLikeAProject_IsEmptiedOfEverything()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, out As String
+        base = Sandbox.Fresh("Clean_Everything")
+        WriteReference base & "\Sample.twinproj"
+        out = base & "\Level1\Level2"
+        FillLikeAProject out
+        Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", out, True), "Unpack with cleanFirst into a folder with a Settings file returns True"
+        Sample.ExpectTree out, "the folder after Unpack with cleanFirst"
+        Expect.IsFalse Files.Exists(out & "\Precious.txt"), "a file that belongs to no project"
+        Expect.IsFalse Files.Exists(out & "\Hidden.txt"), "a hidden file that belongs to no project"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CleanFirst_FolderThatDoesNotExist_Proceeds()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String
+        base = Sandbox.Fresh("Clean_NoFolder")
+        WriteReference base & "\Sample.twinproj"
+        Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", base & "\a\b\Out", True), "Unpack with cleanFirst to a folder that does not exist returns True"
+        Sample.ExpectTree base & "\a\b\Out", "the folder after Unpack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CleanFirst_EmptyFolder_Proceeds()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String
+        base = Sandbox.Fresh("Clean_Empty")
+        WriteReference base & "\Sample.twinproj"
+        Files.MakeFolder base & "\a\b\Out"
+        Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", base & "\a\b\Out", True), "Unpack with cleanFirst into an empty folder returns True"
+        Sample.ExpectTree base & "\a\b\Out", "the folder after Unpack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CleanFirst_FolderWithFilesAndNoSettings_IsRefused()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, out As String, logFile As String, before As String
+        base = Sandbox.Fresh("Clean_NoSettings")
+        WriteReference base & "\Sample.twinproj"
+        out = base & "\a\b\Out"
+        Files.MakeFolder out & "\Sub"
+        Files.WriteText out & "\mine.txt", "mine"
+        Files.WriteText out & "\Sub\more.txt", "more"
+        before = Files.ListTree(out)
+        logFile = base & "\unpack.log"
+        Expect.IsFalse pp.Unpack(base & "\Sample.twinproj", out, True, logFile), "Unpack with cleanFirst into a folder with files and no Settings returns False"
+        Expect.AreEqual before, Files.ListTree(out), "the folders and files after the refused Unpack"
+        Expect.AreEqual "mine", Files.ReadText(out & "\mine.txt"), "mine.txt"
+        Dim expected As String
+        expected = "Unpack failed: Refusing to clean """ & out & """: it is not empty and has no top-level 'Settings' file"
+        Expect.AreEqual expected, Files.Head(Files.ReadText(logFile), expected), "the log"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CleanFirst_FolderWhoseSettingsIsAFolder_IsRefused()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, out As String, before As String
+        base = Sandbox.Fresh("Clean_SettingsFolder")
+        WriteReference base & "\Sample.twinproj"
+        out = base & "\a\b\Out"
+        Files.MakeFolder out & "\Settings"
+        Files.WriteText out & "\Settings\inner.txt", "inner"
+        Files.WriteText out & "\mine.txt", "mine"
+        before = Files.ListTree(out)
+        Expect.IsFalse pp.Unpack(base & "\Sample.twinproj", out, True), "Unpack with cleanFirst into a folder whose Settings is a folder returns False"
+        Expect.AreEqual before, Files.ListTree(out), "the folders and files after the refused Unpack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CleanFirst_DriveRoot_IsRefused()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, drive As String, logFile As String, before As String
+        base = Sandbox.Fresh("Clean_DriveRoot")
+        WriteReference base & "\Sample.twinproj"
+        Files.MakeFolder base & "\Root"
+        Files.WriteText base & "\Root\Settings", "s"
+        Files.WriteText base & "\Root\mine.txt", "mine"
+        before = Files.ListTree(base & "\Root")
+        drive = Sandbox.MapDrive(base & "\Root")
+        If Len(drive) = 0 Then
+            Expect.Fail "no drive letter could be made of a folder of the sandbox"
+        Else
+            logFile = base & "\unpack.log"
+            Expect.IsFalse pp.Unpack(base & "\Sample.twinproj", drive & "\", True, logFile), "Unpack with cleanFirst into the root of a drive returns False"
+            Expect.AreEqual before, Files.ListTree(base & "\Root"), "the folders and files of the drive after the refused Unpack"
+            Expect.AreEqual "Unpack failed: Refusing to clean a shallow path: """, Files.Head(Files.ReadText(logFile), "Unpack failed: Refusing to clean a shallow path: """), "the log"
+        End If
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CleanFirst_FolderDirectlyUnderADriveRoot_IsRefusedEvenWithASettingsFile()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, drive As String, logFile As String, before As String
+        base = Sandbox.Fresh("Clean_UnderRoot")
+        WriteReference base & "\Sample.twinproj"
+        FillLikeAProject base & "\Root\Projects"
+        before = Files.ListTree(base & "\Root")
+        drive = Sandbox.MapDrive(base & "\Root")
+        If Len(drive) = 0 Then
+            Expect.Fail "no drive letter could be made of a folder of the sandbox"
+        Else
+            logFile = base & "\unpack.log"
+            Expect.IsFalse pp.Unpack(base & "\Sample.twinproj", drive & "\Projects", True, logFile), "Unpack with cleanFirst into a folder directly under a drive root, which holds a Settings file, returns False"
+            Expect.AreEqual before, Files.ListTree(base & "\Root"), "the folders and files of the drive after the refused Unpack"
+            Dim expected As String
+            expected = "Unpack failed: Refusing to clean a shallow path: """ & drive & "\Projects"""
+            Expect.AreEqual expected, Files.Head(Files.ReadText(logFile), expected), "the log"
+        End If
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CleanFirst_FolderTwoLevelsBelowADriveRoot_IsEmptied()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, drive As String
+        base = Sandbox.Fresh("Clean_TwoLevels")
+        WriteReference base & "\Sample.twinproj"
+        FillLikeAProject base & "\Root\Projects\MyApp"
+        drive = Sandbox.MapDrive(base & "\Root")
+        If Len(drive) = 0 Then
+            Expect.Fail "no drive letter could be made of a folder of the sandbox"
+        Else
+            Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", drive & "\Projects\MyApp", True), "Unpack with cleanFirst into a folder two levels below a drive root returns True"
+            Sample.ExpectTree base & "\Root\Projects\MyApp", "the folder after Unpack"
+        End If
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CleanFirst_EmptyFolderDirectlyUnderADriveRoot_Proceeds()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, drive As String
+        base = Sandbox.Fresh("Clean_EmptyUnderRoot")
+        WriteReference base & "\Sample.twinproj"
+        Files.MakeFolder base & "\Root\Projects"
+        drive = Sandbox.MapDrive(base & "\Root")
+        If Len(drive) = 0 Then
+            Expect.Fail "no drive letter could be made of a folder of the sandbox"
+        Else
+            Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", drive & "\Projects", True), "Unpack with cleanFirst into an empty folder directly under a drive root returns True"
+            Sample.ExpectTree base & "\Root\Projects", "the folder after Unpack"
+        End If
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CleanFirst_ShallowCheckComesBeforeTheSettingsCheck()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, drive As String, logFile As String
+        base = Sandbox.Fresh("Clean_Order")
+        WriteReference base & "\Sample.twinproj"
+        Files.MakeFolder base & "\Root\Projects"
+        Files.WriteText base & "\Root\Projects\mine.txt", "mine"
+        drive = Sandbox.MapDrive(base & "\Root")
+        If Len(drive) = 0 Then
+            Expect.Fail "no drive letter could be made of a folder of the sandbox"
+        Else
+            logFile = base & "\unpack.log"
+            Expect.IsFalse pp.Unpack(base & "\Sample.twinproj", drive & "\Projects", True, logFile), "Unpack with cleanFirst into a non-empty folder with no Settings, directly under a drive root, returns False"
+            Expect.AreEqual "Unpack failed: Refusing to clean a shallow path: """, Files.Head(Files.ReadText(logFile), "Unpack failed: Refusing to clean a shallow path: """), "the reason is the shallow path, not the missing Settings"
+        End If
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_WithoutCleanFirst_DeletesNothing()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, out As String
+        base = Sandbox.Fresh("Clean_Off")
+        WriteReference base & "\Sample.twinproj"
+        out = base & "\a\b\Out"
+        FillLikeAProject out
+        Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", out), "Unpack with cleanFirst left out returns True"
+        Expect.AreEqual "precious", Files.ReadText(out & "\Precious.txt"), "Precious.txt"
+        Expect.AreEqual "old", Files.ReadText(out & "\Stale\Deeper\old.txt"), "Stale\Deeper\old.txt"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+End Module

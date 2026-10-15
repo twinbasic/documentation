@@ -1,0 +1,112 @@
+' Sample: the project the test cases of tbProjPacker pack and unpack, written out in code, and the
+' same project as the Import/export tool (scripts/impexp.mjs) packs it.
+'
+' The tree is a folder named PackSample:
+'   Settings                         {"project.name": "PackSample"} and a line feed
+'   Sources\Module1.twin             CR LF line endings
+'   Sources\Forms\Form1.cls          CR LF line endings
+'   Resources\BINARY\#101            00 01 0A 0D 0A FF 0D 7F
+'   Miscellaneous\notes.txt          LF line endings
+'   Miscellaneous\caf<e acute>.txt   "x"
+'   ImportedTypeLibraries\, Packages\  empty
+'
+' The resource BINARY/#201 of this project (Resources/BINARY/#201) is that tree packed by the
+' Import/export tool: 621 bytes, 6 files and 7 directories. It is the reference for the file the
+' package should write, and for a file the package should read.
+Module Sample
+
+    Public Function SettingsBytes() As Byte()
+        SettingsBytes = Files.BytesOf("{""project.name"": ""PackSample""}" & vbLf)
+    End Function
+
+    Public Function ModuleBytes() As Byte()
+        ModuleBytes = Files.BytesOf("Module Module1" & vbCrLf & vbCrLf & "    Public Sub Hello()" & vbCrLf & "    End Sub" & vbCrLf & vbCrLf & "End Module" & vbCrLf)
+    End Function
+
+    Public Function FormBytes() As Byte()
+        FormBytes = Files.BytesOf("Class Form1" & vbCrLf & "End Class" & vbCrLf)
+    End Function
+
+    Public Function BinaryBytes() As Byte()
+        Dim b(0 To 7) As Byte
+        b(0) = &H0
+        b(1) = &H1
+        b(2) = &HA
+        b(3) = &HD
+        b(4) = &HA
+        b(5) = &HFF
+        b(6) = &HD
+        b(7) = &H7F
+        BinaryBytes = b
+    End Function
+
+    Public Function NotesBytes() As Byte()
+        NotesBytes = Files.BytesOf("one" & vbLf & "two" & vbLf)
+    End Function
+
+    Public Function CafeName() As String
+        CafeName = "caf" & ChrW$(233) & ".txt"
+    End Function
+
+    ' The file of the Import/export tool.
+    Public Function ReferenceBytes() As Byte()
+        ReferenceBytes = LoadResData(201, "BINARY")
+    End Function
+
+    ' Writes the tree as a folder named FolderName in Parent and returns its path.
+    Public Function Build(ByVal Parent As String, Optional ByVal FolderName As String = "PackSample") As String
+        Dim root As String
+        root = Parent & "\" & FolderName
+        Files.MakeFolder root & "\Sources\Forms"
+        Files.MakeFolder root & "\Resources\BINARY"
+        Files.MakeFolder root & "\Miscellaneous"
+        Files.MakeFolder root & "\ImportedTypeLibraries"
+        Files.MakeFolder root & "\Packages"
+        Files.WriteBytes root & "\Settings", SettingsBytes()
+        Files.WriteBytes root & "\Sources\Module1.twin", ModuleBytes()
+        Files.WriteBytes root & "\Sources\Forms\Form1.cls", FormBytes()
+        Files.WriteBytes root & "\Resources\BINARY\#101", BinaryBytes()
+        Files.WriteBytes root & "\Miscellaneous\notes.txt", NotesBytes()
+        Files.WriteText root & "\Miscellaneous\" & CafeName(), "x"
+        Build = root
+    End Function
+
+    ' The listing (Files.ListTree) of the tree.
+    Public Function Listing() As String
+        Listing = Files.SortedJoin( _
+            "ImportedTypeLibraries\" & vbLf & "Miscellaneous\" & vbLf & "Miscellaneous\" & CafeName() & vbLf & _
+            "Miscellaneous\notes.txt" & vbLf & "Packages\" & vbLf & "Resources\" & vbLf & "Resources\BINARY\" & vbLf & _
+            "Resources\BINARY\#101" & vbLf & "Settings" & vbLf & "Sources\" & vbLf & "Sources\Forms\" & vbLf & _
+            "Sources\Forms\Form1.cls" & vbLf & "Sources\Module1.twin" & vbLf)
+    End Function
+
+    ' Checks that Folder holds the tree: the same folders and files, the same bytes in each.
+    Public Sub ExpectTree(ByVal Folder As String, ByVal What As String)
+        Dim b() As Byte
+        Expect.AreEqual Listing(), Files.ListTree(Folder), What & ": the folders and files"
+        If Files.Exists(Folder & "\Settings") Then
+            b = SettingsBytes()
+            Expect.AreEqual "", Files.Difference(Files.ReadBytes(Folder & "\Settings"), b), What & ": Settings"
+        End If
+        If Files.Exists(Folder & "\Sources\Module1.twin") Then
+            b = ModuleBytes()
+            Expect.AreEqual "", Files.Difference(Files.ReadBytes(Folder & "\Sources\Module1.twin"), b), What & ": Sources\Module1.twin"
+        End If
+        If Files.Exists(Folder & "\Sources\Forms\Form1.cls") Then
+            b = FormBytes()
+            Expect.AreEqual "", Files.Difference(Files.ReadBytes(Folder & "\Sources\Forms\Form1.cls"), b), What & ": Sources\Forms\Form1.cls"
+        End If
+        If Files.Exists(Folder & "\Resources\BINARY\#101") Then
+            b = BinaryBytes()
+            Expect.AreEqual "", Files.Difference(Files.ReadBytes(Folder & "\Resources\BINARY\#101"), b), What & ": Resources\BINARY\#101"
+        End If
+        If Files.Exists(Folder & "\Miscellaneous\notes.txt") Then
+            b = NotesBytes()
+            Expect.AreEqual "", Files.Difference(Files.ReadBytes(Folder & "\Miscellaneous\notes.txt"), b), What & ": Miscellaneous\notes.txt"
+        End If
+        If Files.Exists(Folder & "\Miscellaneous\" & CafeName()) Then
+            Expect.AreEqual "x", Files.ReadText(Folder & "\Miscellaneous\" & CafeName()), What & ": Miscellaneous\caf" & "(e acute).txt"
+        End If
+    End Sub
+
+End Module

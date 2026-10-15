@@ -1,0 +1,341 @@
+' tbProjPacker, ProjPacker.Pack: what is packed, what is refused, what replaces a file and what is printed.
+[TestFixture]
+Module PackTests
+
+    [TestCase]
+    Public Sub Pack_WritesTheFileTheImportExportToolWrites()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String
+        base = Sandbox.Fresh("Pack_ReferenceBytes")
+        tree = Sample.Build(base)
+        out = base & "\Sample.twinproj"
+        Expect.IsTrue pp.Pack(tree, out), "Pack of the sample tree returns True"
+        If Files.Exists(out) Then
+            Expect.AreEqual "", Files.Difference(Files.ReadBytes(out), Sample.ReferenceBytes()), "the file Pack wrote and the file the Import/export tool writes from the same tree"
+        Else
+            Expect.Fail "Pack wrote no file"
+        End If
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_SummaryLine_NamesTheRootTheBytesTheFilesAndTheFolders()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String, logFile As String
+        base = Sandbox.Fresh("Pack_SummaryLine")
+        tree = Sample.Build(base)
+        out = base & "\Sample.twinproj"
+        logFile = base & "\pack.log"
+        Expect.IsTrue pp.Pack(tree, out, False, logFile), "Pack of the sample tree returns True"
+        Expect.AreEqual "Exported ""PackSample"" -> " & out & "  (" & Files.SizeOf(out) & " bytes, 6 files, 7 directories)" & vbCrLf, Files.ReadText(logFile), "the log of a Pack that needs no note"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_SummaryLine_BeginsWithExported()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, logFile As String
+        base = Sandbox.Fresh("Pack_Exported")
+        Sample.Build base
+        logFile = base & "\pack.log"
+        pp.Pack base & "\PackSample", base & "\Sample.twinproj", False, logFile
+        Expect.AreEqual "Exported ", Files.Head(Files.ReadText(logFile), "Exported "), "the first characters of the summary line of Pack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_RootIsNamedAfterTheLastFolderOfInputDir()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, logFile As String
+        base = Sandbox.Fresh("Pack_RootName")
+        tree = Sample.Build(base, "MyApp-src")
+        logFile = base & "\pack.log"
+        Expect.IsTrue pp.Pack(tree, base & "\One.twinproj", False, logFile), "Pack of a folder named MyApp-src returns True"
+        Expect.AreEqual "Exported ""MyApp-src"" -> ", Files.Head(Files.ReadText(logFile), "Exported ""MyApp-src"" -> "), "the root named in the summary line"
+        Expect.IsTrue pp.Pack(tree & "\", base & "\Two.twinproj", False, logFile), "Pack of the same folder given with a backslash at its end returns True"
+        Expect.AreEqual "Exported ""MyApp-src"" -> ", Files.Head(Files.ReadText(logFile), "Exported ""MyApp-src"" -> "), "the root named in the summary line when inputDir ends with a backslash"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_StoresHiddenFilesEmptyFoldersAndAGitFolder()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, back As String
+        base = Sandbox.Fresh("Pack_Everything")
+        tree = Sample.Build(base)
+        Files.MakeFolder tree & "\.git\refs"
+        Files.WriteText tree & "\.git\config", "[core]"
+        Files.MakeFolder tree & "\Empty"
+        Files.WriteText tree & "\Hidden.txt", "h"
+        SetAttr tree & "\Hidden.txt", vbHidden
+        Expect.IsTrue pp.Pack(tree, base & "\Sample.twinproj"), "Pack of a tree with a .git folder, an empty folder and a hidden file returns True"
+        back = base & "\Back"
+        Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", back), "Unpack of the packed file returns True"
+        Expect.AreEqual Files.ListTree(tree), Files.ListTree(back), "the folders and files after Pack and Unpack"
+        Expect.IsTrue Files.IsFolder(back & "\.git\refs"), "the .git folder with its subfolder"
+        Expect.IsTrue Files.Exists(back & "\.git\config"), "a file in the .git folder"
+        Expect.IsTrue Files.IsFolder(back & "\Empty"), "the empty folder"
+        Expect.IsTrue Files.Exists(back & "\Hidden.txt"), "the hidden file"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_ThenUnpack_GivesBackEveryFileOfTheSample()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, back As String
+        base = Sandbox.Fresh("Pack_AsItIs")
+        tree = Sample.Build(base)
+        Expect.IsTrue pp.Pack(tree, base & "\Sample.twinproj"), "Pack of the sample tree returns True"
+        back = base & "\Back"
+        Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", back), "Unpack of the packed file returns True"
+        Sample.ExpectTree back, "the tree after Pack and Unpack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_ExpectedFoldersThatAreMissing_AreNotAddedButNamed()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, back As String, logFile As String, lines() As String
+        base = Sandbox.Fresh("Pack_MissingFolders")
+        tree = base & "\Bare"
+        Files.MakeFolder tree
+        Files.WriteBytes tree & "\Settings", Sample.SettingsBytes()
+        logFile = base & "\pack.log"
+        Expect.IsTrue pp.Pack(tree, base & "\Bare.twinproj", False, logFile), "Pack of a folder that holds only Settings returns True"
+        lines = Files.LinesOf(Files.ReadText(logFile))
+        Expect.AreEqual 2, UBound(lines), "the last index of the lines Pack printed (the summary line and two note lines)"
+        If UBound(lines) >= 2 Then
+            Expect.AreEqual "  note: expected folders not present on disk: Resources, Sources, ImportedTypeLibraries, Miscellaneous, Packages.", lines(1), "the first note line"
+            Expect.AreEqual "  twinBASIC should rebuild them on Open Project.", lines(2), "the second note line"
+        End If
+        back = base & "\Back"
+        pp.Unpack base & "\Bare.twinproj", back
+        Expect.AreEqual "Settings", Files.ListTree(back), "the folders and files of the unpacked file: no folder was added"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_FileThatExists_IsNotReplacedWithoutOverwrite()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String, logFile As String
+        base = Sandbox.Fresh("Pack_NoOverwrite")
+        tree = Sample.Build(base)
+        out = base & "\Sample.twinproj"
+        logFile = base & "\pack.log"
+        Files.WriteText out, "keep"
+        Expect.IsFalse pp.Pack(tree, out, , logFile), "Pack to an existing file with overwrite left out returns False"
+        Expect.AreEqual "keep", Files.ReadText(out), "the existing file"
+        Expect.AreEqual "Pack failed: Output already exists: """ & out & """. Refusing to overwrite it. Use the overwrite option (CLI: --force) to replace it." & vbCrLf, Files.ReadText(logFile), "the log"
+        Expect.IsFalse pp.Pack(tree, out, False), "Pack to an existing file with overwrite False returns False"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_FolderThatExistsAtOutputFile_IsNotReplacedWithoutOverwrite()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String
+        base = Sandbox.Fresh("Pack_OutputIsAFolder")
+        tree = Sample.Build(base)
+        out = base & "\Sample.twinproj"
+        Files.MakeFolder out
+        Expect.IsFalse pp.Pack(tree, out), "Pack with a folder at outputFile and overwrite left out returns False"
+        Expect.IsTrue Files.IsFolder(out), "the folder at outputFile is still a folder"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_Overwrite_ReplacesTheFile()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String
+        base = Sandbox.Fresh("Pack_Overwrite")
+        tree = Sample.Build(base)
+        out = base & "\Sample.twinproj"
+        Files.WriteText out, "keep"
+        Expect.IsTrue pp.Pack(tree, out, True), "Pack to an existing file with overwrite True returns True"
+        If Files.SizeOf(out) > 4 Then
+            Expect.AreEqual "", Files.Difference(Files.ReadBytes(out), Sample.ReferenceBytes()), "the file after Pack with overwrite"
+        Else
+            Expect.Fail "the file is still the old one"
+        End If
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_OutputFileThatExists_IsCheckedBeforeTheFolderIsRead()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String, logFile As String
+        base = Sandbox.Fresh("Pack_OutputFirst")
+        tree = base & "\NoSettings"
+        Files.MakeFolder tree
+        out = base & "\Sample.twinproj"
+        logFile = base & "\pack.log"
+        Files.WriteText out, "keep"
+        Expect.IsFalse pp.Pack(tree, out, False, logFile), "Pack of a folder with no Settings to an existing file returns False"
+        Expect.AreEqual "Pack failed: Output already exists: ", Files.Head(Files.ReadText(logFile), "Pack failed: Output already exists: "), "the reason: the existing file, not the missing Settings"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_InputDirThatIsNotAFolder_IsRefused()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, out As String, logFile As String
+        base = Sandbox.Fresh("Pack_NotAFolder")
+        out = base & "\Sample.twinproj"
+        logFile = base & "\pack.log"
+        Expect.IsFalse pp.Pack(base & "\Missing", out, False, logFile), "Pack of a folder that does not exist returns False"
+        Expect.AreEqual "Pack failed: Not a directory: " & base & "\Missing" & vbCrLf, Files.ReadText(logFile), "the log for a folder that does not exist"
+        Files.WriteText base & "\afile", "x"
+        Expect.IsFalse pp.Pack(base & "\afile", out, False, logFile), "Pack of a file returns False"
+        Expect.AreEqual "Pack failed: Not a directory: " & base & "\afile" & vbCrLf, Files.ReadText(logFile), "the log for a file"
+        Expect.IsFalse Files.Exists(out), "a project file was written"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_FolderWithoutASettingsFile_IsRefused()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String, logFile As String
+        base = Sandbox.Fresh("Pack_NoSettings")
+        tree = Sample.Build(base)
+        Kill tree & "\Settings"
+        out = base & "\Sample.twinproj"
+        logFile = base & "\pack.log"
+        Expect.IsFalse pp.Pack(tree, out, False, logFile), "Pack of a folder with no Settings file returns False"
+        Expect.AreEqual "Pack failed: Refusing to pack: no 'Settings' file at the top level of", Files.Head(Files.ReadText(logFile), "Pack failed: Refusing to pack: no 'Settings' file at the top level of"), "the log"
+        Expect.IsFalse Files.Exists(out), "a project file was written"
+        Files.WriteText out, "keep"
+        Expect.IsFalse pp.Pack(tree, out, True), "Pack with overwrite of a folder with no Settings file returns False"
+        Expect.AreEqual "keep", Files.ReadText(out), "the existing file after the refused Pack with overwrite"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_SettingsThatIsAFolder_IsRefused()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String
+        base = Sandbox.Fresh("Pack_SettingsFolder")
+        tree = Sample.Build(base)
+        Kill tree & "\Settings"
+        MkDir tree & "\Settings"
+        out = base & "\Sample.twinproj"
+        Expect.IsFalse pp.Pack(tree, out), "Pack of a folder whose Settings is a folder returns False"
+        Expect.IsFalse Files.Exists(out), "a project file was written"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_SettingsSpelledInLowerCase_IsRefused()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String
+        base = Sandbox.Fresh("Pack_SettingsCase")
+        tree = Sample.Build(base)
+        Kill tree & "\Settings"
+        Files.WriteBytes tree & "\settings", Sample.SettingsBytes()
+        out = base & "\Sample.twinproj"
+        Expect.IsFalse pp.Pack(tree, out), "Pack of a folder whose file is named settings returns False"
+        Expect.IsFalse Files.Exists(out), "a project file was written"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_SettingsInASubfolder_IsRefused()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String
+        base = Sandbox.Fresh("Pack_SettingsDeep")
+        tree = Sample.Build(base)
+        Kill tree & "\Settings"
+        Files.WriteBytes tree & "\Miscellaneous\Settings", Sample.SettingsBytes()
+        out = base & "\Sample.twinproj"
+        Expect.IsFalse pp.Pack(tree, out), "Pack of a folder whose Settings file is in a subfolder returns False"
+        Expect.IsFalse Files.Exists(out), "a project file was written"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_Overwrite_DeletesTheOldFileAfterReadingTheFolder_SoAFileInsideIsPackedAgain()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String
+        Dim s1 As Long, s2 As Long, s3 As Long
+        base = Sandbox.Fresh("Pack_Inside")
+        tree = Sample.Build(base)
+        out = tree & "\Inside.twinproj"
+        Expect.IsTrue pp.Pack(tree, out, True), "the first Pack to a file inside inputDir returns True"
+        s1 = Files.SizeOf(out)
+        Expect.IsTrue pp.Pack(tree, out, True), "the second Pack returns True"
+        s2 = Files.SizeOf(out)
+        Expect.IsTrue pp.Pack(tree, out, True), "the third Pack returns True"
+        s3 = Files.SizeOf(out)
+        Expect.IsTrue s2 > s1, "the file after the second Pack (" & s2 & " bytes) is larger than after the first (" & s1 & ")"
+        Expect.IsTrue s3 > s2, "the file after the third Pack (" & s3 & " bytes) is larger than after the second (" & s2 & ")"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_AddsNoExtensionAndChecksNone()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String
+        base = Sandbox.Fresh("Pack_Extension")
+        tree = Sample.Build(base)
+        Expect.IsTrue pp.Pack(tree, base & "\Packed", False), "Pack to a name with no extension returns True"
+        Expect.IsTrue Files.Exists(base & "\Packed"), "the file named as given"
+        Expect.IsFalse Files.Exists(base & "\Packed.twinproj"), "a file with the extension .twinproj"
+        Expect.IsTrue pp.Pack(tree, base & "\Packed.txt", False), "Pack to a .txt name returns True"
+        Expect.IsTrue Files.Exists(base & "\Packed.txt"), "the file named as given: .txt"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_DoesNotChangeTheFolder()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, before As String
+        base = Sandbox.Fresh("Pack_FolderUnchanged")
+        tree = Sample.Build(base)
+        Files.WriteText tree & "\Sources\Lf.twin", "a" & vbLf & "b" & vbLf
+        before = Files.ListTree(tree)
+        pp.Pack tree, base & "\Sample.twinproj"
+        Expect.AreEqual before, Files.ListTree(tree), "the folders and files of inputDir after Pack"
+        Expect.AreEqual "a" & vbLf & "b" & vbLf, Files.ReadText(tree & "\Sources\Lf.twin"), "a code file with LF line endings after Pack"
+        Kill tree & "\Sources\Lf.twin"
+        Sample.ExpectTree tree, "inputDir after Pack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,91 @@
+' Sandbox: the folders the test cases of tbProjPacker work in, and the few things they do to the
+' process around a call.
+'
+' Every file and folder a case makes is under %TEMP%\tbdocs-package-tests\tbProjPacker\. A case asks
+' for a fresh folder of its own (Fresh), which empties it first in case an earlier run left
+' something, and removes it at its end (Remove). Remove goes through cmd's rmdir, which takes a path
+' of more than 260 characters in its \\?\ form.
+'
+' MapDrive makes a drive letter of a sandbox folder for the length of a case (the cases that use
+' it remove it), so that a path directly under a drive root can be given to Unpack without naming
+' a folder of the user's.
+Module Sandbox
+
+    Private Declare PtrSafe Function GetLogicalDrives Lib "kernel32" () As Long
+
+    Private mMappedDrive As String
+
+    Public Function Root() As String
+        Root = Environ$("TEMP") & "\tbdocs-package-tests\tbProjPacker"
+    End Function
+
+    ' A new, empty folder for one case.
+    Public Function Fresh(ByVal Tag As String) As String
+        Dim p As String
+        p = Root() & "\" & Tag
+        Remove p
+        Files.MakeFolder p
+        Fresh = p
+    End Function
+
+    ' Removes a folder with everything in it, and then the sandbox itself when nothing else is in it.
+    ' Raises no error.
+    Public Sub Remove(ByVal Path As String)
+        On Error Resume Next
+        UnmapDrive
+        Run "rmdir /s /q ""\\?\" & Path & """"
+        RmDir Root()
+        RmDir Environ$("TEMP") & "\tbdocs-package-tests"
+        Err.Clear
+    End Sub
+
+    ' Makes a drive letter (from Z downwards, one not in use) of Folder, and returns it as "Z:", or ""
+    ' when it could not be made. A drive is made only by a case that removes it, UnmapDrive or Remove.
+    Public Function MapDrive(ByVal Folder As String) As String
+        Dim i As Long, used As Long, letter As String
+        UnmapDrive
+        used = GetLogicalDrives()
+        For i = 25 To 3 Step -1
+            If (used And CLng(2 ^ i)) = 0 Then
+                letter = Chr$(65 + i) & ":"
+                Run "subst " & letter & " """ & Folder & """"
+                If (GetLogicalDrives() And CLng(2 ^ i)) <> 0 Then
+                    mMappedDrive = letter
+                    MapDrive = letter
+                End If
+                Exit Function
+            End If
+        Next
+    End Function
+
+    Public Sub UnmapDrive()
+        If Len(mMappedDrive) > 0 Then
+            Run "subst " & mMappedDrive & " /d"
+            mMappedDrive = ""
+        End If
+    End Sub
+
+    ' A path that starts with Base and is exactly Length characters long, by adding folder names of
+    ' 100 characters or fewer. Nothing is created.
+    Public Function PathOfLength(ByVal Base As String, ByVal Length As Long) As String
+        Dim p As String, remaining As Long, k As Long
+        p = Base
+        Do While Len(p) < Length
+            remaining = Length - Len(p)
+            If remaining <= 101 Then
+                k = remaining - 1
+            ElseIf remaining - 101 = 1 Then
+                k = 99
+            Else
+                k = 100
+            End If
+            p = p & "\" & String$(k, "d")
+        Loop
+        PathOfLength = p
+    End Function
+
+    Private Sub Run(ByVal CommandLine As String)
+        CreateObject("WScript.Shell").Run "cmd /c " & CommandLine & " >nul 2>&1", 0, True
+    End Sub
+
+End Module

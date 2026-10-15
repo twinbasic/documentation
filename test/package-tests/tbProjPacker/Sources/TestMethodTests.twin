@@ -1,0 +1,131 @@
+' tbProjPacker, ProjPacker.Test: the package's own tests, what they print and what they return.
+'
+' Test makes its work folder, impexp-test- and a number, in the folder TEMP names and deletes it at
+' its end. That folder is the package's own, not a file of a case; the cases check that none is left.
+[TestFixture]
+Module TestMethodTests
+
+    ' Calls Test with the sample path and the log, and returns the result.
+    Private Function RunWithTemp(ByVal Base As String, ByVal SamplePath As String, ByVal LogFile As String) As Boolean
+        Dim pp As New ProjPacker
+        RunWithTemp = pp.Test(SamplePath, LogFile)
+    End Function
+
+    ' The number of folders named impexp-test- and something in the TEMP folder.
+    Private Function WorkFolders() As Long
+        Dim nm As String
+        nm = Dir$(Environ$("TEMP") & "\impexp-test-*", vbDirectory)
+        Do While Len(nm) > 0
+            WorkFolders = WorkFolders + 1
+            nm = Dir$
+        Loop
+    End Function
+
+    [TestCase]
+    Public Sub Test_WithTheSampleProject_PassesAll24Tests()
+        Expect.Begin
+        Dim base As String, logFile As String, text As String
+        base = Sandbox.Fresh("Test_Sample")
+        Files.WriteBytes base & "\Sample.twinproj", Sample.ReferenceBytes()
+        logFile = base & "\test.log"
+        Expect.IsTrue RunWithTemp(base, base & "\Sample.twinproj", logFile), "Test with the sample project returns True"
+        text = Files.ReadText(logFile)
+        Expect.AreEqual 24, Files.CountLines(text, "  [PASS] "), "the [PASS] lines"
+        Expect.AreEqual 0, Files.CountLines(text, "  [FAIL] "), "the [FAIL] lines"
+        Expect.AreEqual 0, Files.CountLines(text, "  [SKIP] "), "the [SKIP] lines"
+        Expect.AreEqual 1, Files.CountLines(text, "24/24 tests passed."), "the summary line"
+        Expect.AreEqual 1, Files.CountLines(text, "  [PASS] Parse sample (invariants + re-parse consistency)"), "the line of the first test"
+        Expect.AreEqual 1, Files.CountLines(text, "  [PASS] In-memory round-trip (parse -> serialize -> re-parse)"), "the line of the second test"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Test_PrintsAHeadingAndAnInfoLineForTheSample()
+        Expect.Begin
+        Dim base As String, logFile As String, text As String, lines() As String
+        base = Sandbox.Fresh("Test_Heading")
+        Files.WriteBytes base & "\Sample.twinproj", Sample.ReferenceBytes()
+        logFile = base & "\test.log"
+        RunWithTemp base, base & "\Sample.twinproj", logFile
+        text = Files.ReadText(logFile)
+        lines = Files.LinesOf(text)
+        Expect.AreEqual "Self-test  workdir: " & Environ$("TEMP") & "\impexp-test-", Files.Head(lines(0), "Self-test  workdir: " & Environ$("TEMP") & "\impexp-test-"), "the heading: the work folder is made in the folder TEMP names"
+        Expect.AreEqual "Sample:            " & base & "\Sample.twinproj", lines(1), "the second line"
+        Expect.AreEqual 1, Files.CountLines(text, "  [INFO] root ""PackSample"", 6 files, 7 directories, "), "the [INFO] line with the project's name and counts"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Test_WithoutASample_RunsTwentyTestsAndSkipsFour()
+        Expect.Begin
+        Dim base As String, logFile As String, text As String
+        base = Sandbox.Fresh("Test_NoSample")
+        logFile = base & "\test.log"
+        Expect.IsTrue RunWithTemp(base, "", logFile), "Test with an empty samplePath returns True"
+        text = Files.ReadText(logFile)
+        Expect.AreEqual 20, Files.CountLines(text, "  [PASS] "), "the [PASS] lines"
+        Expect.AreEqual 0, Files.CountLines(text, "  [FAIL] "), "the [FAIL] lines"
+        Expect.AreEqual 4, Files.CountLines(text, "  [SKIP] "), "the [SKIP] lines"
+        Expect.AreEqual 1, Files.CountLines(text, "20/20 tests passed (4 skipped -- pass a .twinproj or .twinpack path to run them)."), "the summary line"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Test_WithASampleThatDoesNotExist_FailsAndRunsNoTest()
+        Expect.Begin
+        Dim base As String, logFile As String
+        base = Sandbox.Fresh("Test_Missing")
+        logFile = base & "\test.log"
+        Expect.IsFalse RunWithTemp(base, base & "\Missing.twinproj", logFile), "Test with a samplePath that does not exist returns False"
+        Expect.AreEqual "Sample not found: " & base & "\Missing.twinproj" & vbCrLf, Files.ReadText(logFile), "the log"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Test_WithASampleThatIsNotAProject_FailsTheFourSampleTests()
+        Expect.Begin
+        Dim base As String, logFile As String, text As String
+        base = Sandbox.Fresh("Test_NotAProject")
+        Files.WriteText base & "\notes.txt", "this is not a project file"
+        logFile = base & "\test.log"
+        Expect.IsFalse RunWithTemp(base, base & "\notes.txt", logFile), "Test with a text file as the sample returns False"
+        text = Files.ReadText(logFile)
+        Expect.AreEqual 4, Files.CountLines(text, "  [FAIL] "), "the [FAIL] lines"
+        Expect.AreEqual 20, Files.CountLines(text, "  [PASS] "), "the [PASS] lines"
+        Expect.AreEqual 4, Files.CountLines(text, "         "), "the lines with the reason of a failed test"
+        Expect.AreEqual 1, Files.CountLines(text, "20/24 tests passed."), "the summary line"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Test_NeverChangesTheSampleFile()
+        Expect.Begin
+        Dim base As String, before() As Byte
+        base = Sandbox.Fresh("Test_SampleUnchanged")
+        Files.WriteBytes base & "\Sample.twinproj", Sample.ReferenceBytes()
+        before = Files.ReadBytes(base & "\Sample.twinproj")
+        RunWithTemp base, base & "\Sample.twinproj", ""
+        Expect.AreEqual "", Files.Difference(Files.ReadBytes(base & "\Sample.twinproj"), before), "the sample file after Test"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Test_DeletesItsWorkFolder()
+        Expect.Begin
+        Dim base As String, before As Long
+        base = Sandbox.Fresh("Test_WorkFolder")
+        Files.WriteBytes base & "\Sample.twinproj", Sample.ReferenceBytes()
+        before = WorkFolders()
+        RunWithTemp base, base & "\Sample.twinproj", ""
+        Expect.AreEqual before, WorkFolders(), "the folders named impexp-test- in the TEMP folder after Test, against before"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+End Module
