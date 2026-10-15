@@ -1,0 +1,63 @@
+' FontTests: DayFont, GridFont and TitleFont keep the object that is assigned to them.
+[TestFixture]
+Module FontTests
+
+    Private Function NewFont(ByVal Size As Double) As StdFont
+        Dim fnt As New StdFont
+        fnt.Name = "Arial"
+        fnt.Size = Size
+        Set NewFont = fnt
+    End Function
+
+    [TestCase]
+    Public Sub DayFont_KeepsTheObjectThatIsAssigned()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim fnt As StdFont = NewFont(12)
+        Set f.Cal.DayFont = fnt
+        Expect.IsTrue f.Cal.DayFont Is fnt, "DayFont is the object that was assigned to it"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GridFont_KeepsTheObjectThatIsAssigned()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim fnt As StdFont = NewFont(12)
+        Set f.Cal.GridFont = fnt
+        Expect.IsTrue f.Cal.GridFont Is fnt, "GridFont is the object that was assigned to it"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TitleFont_KeepsTheObjectThatIsAssigned()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim fnt As StdFont = NewFont(12)
+        Set f.Cal.TitleFont = fnt
+        Expect.IsTrue f.Cal.TitleFont Is fnt, "TitleFont is the object that was assigned to it"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TwoPropertiesAssignedTheSameFontShareIt()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim fnt As StdFont = NewFont(12)
+        Set f.Cal.DayFont = fnt
+        Set f.Cal.GridFont = fnt
+        f.Cal.DayFont.Size = 14
+        Expect.AreEqual 14, CLng(f.Cal.GridFont.Size), "GridFont.Size after DayFont.Size is changed, both assigned the same object"
+        Expect.AreEqual 14, CLng(fnt.Size), "the size of the object that was assigned"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

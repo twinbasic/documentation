@@ -1,0 +1,159 @@
+' KeyTests: the keys the control handles. A key is the window message WM_KEYDOWN sent to the
+' control's small picture box, the window that takes the keys; the modifier keys are set in the
+' thread's key table, which the control reads for the Shift argument.
+[TestFixture]
+Module KeyTests
+
+    Private Function Pressed(ByVal VKey As Long, Optional ByVal Mods As Long = 0) As HostForm
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        Win.KeyDown Rig.KeyWindow(f), VKey, Mods
+        Set Pressed = f
+    End Function
+
+    [TestCase]
+    Public Sub Key_Left_SelectsTheDayBefore()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_LEFT)
+        Expect.AreEqual #6/14/2026#, f.Cal.Value, "Value after the Left arrow with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_Right_SelectsTheDayAfter()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_RIGHT)
+        Expect.AreEqual #6/16/2026#, f.Cal.Value, "Value after the Right arrow with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_Up_SelectsTheDayOneWeekBefore()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_UP)
+        Expect.AreEqual #6/8/2026#, f.Cal.Value, "Value after the Up arrow with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_Down_SelectsTheDayOneWeekAfter()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_DOWN)
+        Expect.AreEqual #6/22/2026#, f.Cal.Value, "Value after the Down arrow with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_PageUp_SelectsTheSameDayOneMonthBefore()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_PRIOR)
+        Expect.AreEqual #5/15/2026#, f.Cal.Value, "Value after Page Up with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_PageDown_SelectsTheSameDayOneMonthAfter()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_NEXT)
+        Expect.AreEqual #7/15/2026#, f.Cal.Value, "Value after Page Down with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_ShiftPageUp_SelectsTheSameDayOneYearBefore()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_PRIOR, 1)
+        Expect.AreEqual #6/15/2025#, f.Cal.Value, "Value after Shift with Page Up with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_ShiftPageDown_SelectsTheSameDayOneYearAfter()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_NEXT, 1)
+        Expect.AreEqual #6/15/2027#, f.Cal.Value, "Value after Shift with Page Down with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_CtrlPageUp_SelectsTheSameDayOneYearBefore()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_PRIOR, 2)
+        Expect.AreEqual #6/15/2025#, f.Cal.Value, "Value after Ctrl with Page Up with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_AltPageDown_SelectsTheSameDayOneYearAfter()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_NEXT, 4)
+        Expect.AreEqual #6/15/2027#, f.Cal.Value, "Value after Alt with Page Down with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_Home_SelectsToday()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_HOME)
+        Expect.AreEqual Date, f.Cal.Value, "Value after Home"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_End_ChangesNothing()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_END)
+        Expect.AreEqual #6/15/2026#, f.Cal.Value, "Value after End with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_RaisesKeyDownOnceAfterTheSelectionMoved()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_RIGHT)
+        Expect.AreEqual "KeyDown 39/0 2026-06-16" & vbLf, Rig.Log, "the events raised by the Right arrow, with the Value that KeyDown sees"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_ThatIsNotHandledRaisesKeyDown()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_END)
+        Expect.AreEqual "KeyDown 35/0 2026-06-15" & vbLf, Rig.Log, "the events raised by End"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_ReportsTheShiftStateInKeyDown()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_PRIOR, 1 Or 2 Or 4)
+        Expect.AreEqual "KeyDown 33/7 2025-06-15" & vbLf, Rig.Log, "the events raised by Shift, Ctrl and Alt with Page Up"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Key_MovesTheSelectionWithoutOtherEvents()
+        Expect.Begin
+        Dim f As HostForm = Pressed(Win.VK_NEXT)
+        Expect.AreEqual "KeyDown", Rig.Events(), "the events raised by Page Down (no NewMonth, BeforeUpdate or AfterUpdate)"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

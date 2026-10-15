@@ -103,7 +103,6 @@ const PENDING = new Set([
   "TBMANLIB_Xml",
   "VBA_JSON",
   "WinReg",
-  "xCalendar",
 ]);
 
 const DOCS = path.join(REPO_ROOT, "docs");

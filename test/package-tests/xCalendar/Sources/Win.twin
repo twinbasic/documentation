@@ -1,0 +1,275 @@
+' Win: the Win32 calls the test cases of xCalendar make on the control's windows. Every window a
+' case makes belongs to a form that is loaded and never seen (HostForm; see Rig.ShowHidden): the
+' cases send window messages to the control and read what it has drawn.
+Module Win
+
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal uCmd As Long) As LongPtr
+    Private Declare PtrSafe Function GetClassNameW Lib "user32" (ByVal hWnd As LongPtr, ByVal lpClassName As LongPtr, ByVal nMaxCount As Long) As Long
+    Private Declare PtrSafe Function GetClientRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT) As Long
+    Private Declare PtrSafe Function GetWindowRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT) As Long
+    Private Declare PtrSafe Function ScreenToClient Lib "user32" (ByVal hWnd As LongPtr, ByRef lpPoint As POINT) As Long
+    Private Declare PtrSafe Function MoveWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal bRepaint As Long) As Long
+    Private Declare PtrSafe Function IsWindowVisible Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function IsWindowEnabled Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function ShowWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal nCmdShow As Long) As Long
+    Private Declare PtrSafe Function RedrawWindow Lib "user32" (ByVal hWnd As LongPtr, ByVal lprcUpdate As LongPtr, ByVal hrgnUpdate As LongPtr, ByVal flags As Long) As Long
+    Private Declare PtrSafe Function GetLayeredWindowAttributes Lib "user32" (ByVal hWnd As LongPtr, ByRef pcrKey As Long, ByRef pbAlpha As Byte, ByRef pdwFlags As Long) As Long
+    Private Declare PtrSafe Function GetDpiForWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function GetSysColor Lib "user32" (ByVal nIndex As Long) As Long
+    Private Declare PtrSafe Function GetKeyboardState Lib "user32" (ByRef lpKeyState As Byte) As Long
+    Private Declare PtrSafe Function SetKeyboardState Lib "user32" (ByRef lpKeyState As Byte) As Long
+    Private Declare PtrSafe Function MapVirtualKeyW Lib "user32" (ByVal uCode As Long, ByVal uMapType As Long) As Long
+    Private Declare PtrSafe Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As LongPtr) As LongPtr
+    Private Declare PtrSafe Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As LongPtr, ByVal nWidth As Long, ByVal nHeight As Long) As LongPtr
+    Private Declare PtrSafe Function CreateSolidBrush Lib "gdi32" (ByVal crColor As Long) As LongPtr
+    Private Declare PtrSafe Function SelectObject Lib "gdi32" (ByVal hDC As LongPtr, ByVal hObject As LongPtr) As LongPtr
+    Private Declare PtrSafe Function PatBlt Lib "gdi32" (ByVal hDC As LongPtr, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal dwRop As Long) As Long
+    Private Declare PtrSafe Function BitBlt Lib "gdi32" (ByVal hDestDC As LongPtr, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hSrcDC As LongPtr, ByVal xSrc As Long, ByVal ySrc As Long, ByVal dwRop As Long) As Long
+    Private Declare PtrSafe Function DeleteDC Lib "gdi32" (ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function DeleteObject Lib "gdi32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function GetDIBits Lib "gdi32" (ByVal hDC As LongPtr, ByVal hBitmap As LongPtr, ByVal nStartScan As Long, ByVal nNumScans As Long, ByVal lpBits As LongPtr, ByRef lpBI As BITMAPINFOHEADER, ByVal wUsage As Long) As Long
+
+    Public Type RECT
+        Left As Long
+        Top As Long
+        Right As Long
+        Bottom As Long
+    End Type
+
+    Private Type POINT
+        x As Long
+        y As Long
+    End Type
+
+    Private Type BITMAPINFOHEADER
+        biSize As Long
+        biWidth As Long
+        biHeight As Long
+        biPlanes As Integer
+        biBitCount As Integer
+        biCompression As Long
+        biSizeImage As Long
+        biXPelsPerMeter As Long
+        biYPelsPerMeter As Long
+        biClrUsed As Long
+        biClrImportant As Long
+    End Type
+
+    Public Const WM_COMMAND As Long = &H111
+    Public Const WM_MOUSEMOVE As Long = &H200
+    Public Const WM_LBUTTONDOWN As Long = &H201
+    Public Const WM_LBUTTONUP As Long = &H202
+    Public Const WM_LBUTTONDBLCLK As Long = &H203
+    Public Const WM_RBUTTONDOWN As Long = &H204
+    Public Const WM_RBUTTONUP As Long = &H205
+    Public Const WM_KEYDOWN As Long = &H100
+    Public Const WM_KEYUP As Long = &H101
+    Public Const MK_LBUTTON As Long = 1
+    Public Const MK_RBUTTON As Long = 2
+    Public Const VK_PRIOR As Long = &H21
+    Public Const VK_NEXT As Long = &H22
+    Public Const VK_END As Long = &H23
+    Public Const VK_HOME As Long = &H24
+    Public Const VK_LEFT As Long = &H25
+    Public Const VK_UP As Long = &H26
+    Public Const VK_RIGHT As Long = &H27
+    Public Const VK_DOWN As Long = &H28
+    Public Const CB_GETCOUNT As Long = &H146
+    Public Const CB_GETCURSEL As Long = &H147
+    Public Const CB_GETLBTEXT As Long = &H148
+    Public Const CB_GETLBTEXTLEN As Long = &H149
+    Public Const COLOR_BTNSHADOW As Long = 16
+
+    Public Function Send(ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+        Send = SendMessageW(hWnd, Msg, wParam, lParam)
+    End Function
+
+    Public Function MakeLParam(ByVal x As Long, ByVal y As Long) As LongPtr
+        MakeLParam = CLngPtr(((y And &HFFFF&) * &H10000) Or (x And &HFFFF&))
+    End Function
+
+    Public Function FirstChild(ByVal hWnd As LongPtr) As LongPtr
+        FirstChild = GetWindow(hWnd, 5)
+    End Function
+
+    Public Function NextSibling(ByVal hWnd As LongPtr) As LongPtr
+        NextSibling = GetWindow(hWnd, 2)
+    End Function
+
+    Public Function ClassOf(ByVal hWnd As LongPtr) As String
+        Dim s As String = String$(256, 0)
+        Dim n As Long = GetClassNameW(hWnd, StrPtr(s), 256)
+        ClassOf = Left$(s, n)
+    End Function
+
+    ' The window's text (WM_GETTEXT), which for a combo box is what its edit part shows.
+    Public Function TextOf(ByVal hWnd As LongPtr) As String
+        Dim n As Long = CLng(SendMessageW(hWnd, &HE, 0, 0))
+        Dim s As String = String$(n + 2, 0)
+        n = CLng(SendMessageW(hWnd, &HD, n + 1, StrPtr(s)))
+        TextOf = Left$(s, n)
+    End Function
+
+    ' The text of item Index of a list or combo box.
+    Public Function ItemText(ByVal hWnd As LongPtr, ByVal Index As Long) As String
+        Dim n As Long = CLng(SendMessageW(hWnd, CB_GETLBTEXTLEN, Index, 0))
+        If n <= 0 Then Exit Function
+        Dim s As String = String$(n + 2, 0)
+        n = CLng(SendMessageW(hWnd, CB_GETLBTEXT, Index, StrPtr(s)))
+        ItemText = Left$(s, n)
+    End Function
+
+    Public Function Visible(ByVal hWnd As LongPtr) As Boolean
+        Visible = IsWindowVisible(hWnd) <> 0
+    End Function
+
+    Public Function Enabled(ByVal hWnd As LongPtr) As Boolean
+        Enabled = IsWindowEnabled(hWnd) <> 0
+    End Function
+
+    Public Function ClientWidth(ByVal hWnd As LongPtr) As Long
+        Dim rc As RECT
+        GetClientRect hWnd, rc
+        ClientWidth = rc.Right - rc.Left
+    End Function
+
+    Public Function ClientHeight(ByVal hWnd As LongPtr) As Long
+        Dim rc As RECT
+        GetClientRect hWnd, rc
+        ClientHeight = rc.Bottom - rc.Top
+    End Function
+
+    ' The window's rectangle in the client coordinates of Parent.
+    Public Function RectIn(ByVal hWnd As LongPtr, ByVal Parent As LongPtr) As RECT
+        Dim rc As RECT
+        Dim p As POINT
+        GetWindowRect hWnd, rc
+        p.x = rc.Left
+        p.y = rc.Top
+        ScreenToClient Parent, p
+        RectIn.Left = p.x
+        RectIn.Top = p.y
+        RectIn.Right = p.x + (rc.Right - rc.Left)
+        RectIn.Bottom = p.y + (rc.Bottom - rc.Top)
+    End Function
+
+    ' Gives the window the client size Width x Height, keeping its place in the parent.
+    Public Sub Resize(ByVal hWnd As LongPtr, ByVal Parent As LongPtr, ByVal Width As Long, ByVal Height As Long)
+        Dim rc As RECT = RectIn(hWnd, Parent)
+        MoveWindow hWnd, rc.Left, rc.Top, Width, Height, 1
+    End Sub
+
+    Public Function Dpi(ByVal hWnd As LongPtr) As Long
+        Dpi = GetDpiForWindow(hWnd)
+    End Function
+
+    Public Function SystemColour(ByVal Index As Long) As Long
+        SystemColour = GetSysColor(Index)
+    End Function
+
+    ' True when the window is layered and wholly transparent (alpha 0).
+    Public Function IsFullyTransparent(ByVal hWnd As LongPtr) As Boolean
+        Dim key As Long
+        Dim alpha As Byte = 255
+        Dim flags As Long
+        If GetLayeredWindowAttributes(hWnd, key, alpha, flags) <> 0 Then
+            IsFullyTransparent = ((flags And 2) <> 0) And alpha = 0
+        End If
+    End Function
+
+    ' Shows the window without activating it.
+    Public Sub ShowNoActivate(ByVal hWnd As LongPtr)
+        ShowWindow hWnd, 4
+    End Sub
+
+    ' Paints the window and its children now (RDW_INVALIDATE Or RDW_UPDATENOW Or RDW_ALLCHILDREN).
+    Public Sub PaintNow(ByVal hWnd As LongPtr)
+        RedrawWindow hWnd, 0, 0, &H1 Or &H100 Or &H80
+    End Sub
+
+    ' What the window's client area looks like now, as the window's own device context has it:
+    ' 32-bit pixels, top row first, blue first. A pixel the window cannot draw (under a child
+    ' window) is &HFF00FF.
+    Public Function Snapshot(ByVal hWnd As LongPtr) As Byte()
+        Dim w As Long = ClientWidth(hWnd)
+        Dim h As Long = ClientHeight(hWnd)
+        Dim wdc As LongPtr = GetDC(hWnd)
+        Dim dc As LongPtr = CreateCompatibleDC(wdc)
+        Dim bmp As LongPtr = CreateCompatibleBitmap(wdc, w, h)
+        Dim oldBmp As LongPtr = SelectObject(dc, bmp)
+        Dim brush As LongPtr = CreateSolidBrush(&HFF00FF)
+        Dim oldBrush As LongPtr = SelectObject(dc, brush)
+        PatBlt dc, 0, 0, w, h, &HF00021
+        SelectObject dc, oldBrush
+        DeleteObject brush
+        BitBlt dc, 0, 0, w, h, wdc, 0, 0, &HCC0020
+        SelectObject dc, oldBmp
+        Dim bi As BITMAPINFOHEADER
+        bi.biSize = LenB(bi)
+        bi.biWidth = w
+        bi.biHeight = -h
+        bi.biPlanes = 1
+        bi.biBitCount = 32
+        Dim bits() As Byte
+        ReDim bits(0 To w * h * 4 - 1)
+        GetDIBits dc, bmp, 0, h, VarPtr(bits(0)), bi, 0
+        DeleteObject bmp
+        DeleteDC dc
+        ReleaseDC hWnd, wdc
+        Snapshot = bits
+    End Function
+
+    ' The colour of pixel (x, y) of a snapshot Width pixels wide, as a COLORREF (red in the low byte,
+    ' as RGB makes it); -1 outside the snapshot.
+    Public Function Px(ByRef Bits() As Byte, ByVal Width As Long, ByVal x As Long, ByVal y As Long) As Long
+        Dim i As Long = (y * Width + x) * 4
+        If x < 0 Or x >= Width Or y < 0 Or i + 3 > UBound(Bits) Then
+            Px = -1
+        Else
+            Px = CLng(Bits(i + 2)) Or (CLng(Bits(i + 1)) * &H100&) Or (CLng(Bits(i)) * &H10000)
+        End If
+    End Function
+
+    ' The number of pixels of the rectangle that are colour Colour.
+    Public Function CountColour(ByRef Bits() As Byte, ByVal Width As Long, ByVal Colour As Long, ByVal x0 As Long, ByVal y0 As Long, ByVal x1 As Long, ByVal y1 As Long) As Long
+        Dim x As Long, y As Long
+        For y = y0 To y1
+            For x = x0 To x1
+                If Px(Bits, Width, x, y) = Colour Then CountColour = CountColour + 1
+            Next
+        Next
+    End Function
+
+    ' Sets the modifier keys that GetKeyState reports for this thread: bit 0 Shift, bit 1 Ctrl,
+    ' bit 2 Alt.
+    Public Sub SetMods(ByVal Mods As Long)
+        Dim ks(0 To 255) As Byte
+        GetKeyboardState ks(0)
+        ks(&H10) = IIf((Mods And 1) <> 0, &H80, 0)
+        ks(&HA0) = ks(&H10)
+        ks(&H11) = IIf((Mods And 2) <> 0, &H80, 0)
+        ks(&HA2) = ks(&H11)
+        ks(&H12) = IIf((Mods And 4) <> 0, &H80, 0)
+        ks(&HA4) = ks(&H12)
+        SetKeyboardState ks(0)
+    End Sub
+
+    ' WM_KEYDOWN for a virtual key, sent to the window, with the modifiers Mods held.
+    Public Sub KeyDown(ByVal hWnd As LongPtr, ByVal VKey As Long, Optional ByVal Mods As Long = 0)
+        Dim scan As Long = MapVirtualKeyW(VKey, 0)
+        Dim lp As Long = 1 Or (scan * &H10000)
+        If VKey >= VK_PRIOR And VKey <= VK_DOWN Then lp = lp Or &H1000000
+        Dim msg As Long = WM_KEYDOWN
+        If (Mods And 4) <> 0 Then
+            msg = &H104
+            lp = lp Or &H20000000
+        End If
+        If Mods <> 0 Then SetMods Mods
+        SendMessageW hWnd, msg, VKey, CLngPtr(lp)
+        If Mods <> 0 Then SetMods 0
+    End Sub
+
+End Module

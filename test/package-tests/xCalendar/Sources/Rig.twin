@@ -1,0 +1,263 @@
+' Rig: what the test cases of xCalendar set up. A case works on the control of a HostForm, which is
+' loaded and never seen: a case that needs the control's pixels shows the form with ShowHidden,
+' which makes it wholly transparent first.
+'
+' The control is on a form that has its default properties and today's date. A case that needs a
+' known month calls Rebase, because setting Value to a date in another month leaves the grid
+' with the dates of the old month (see the Known problems of the page).
+Module Rig
+
+    ' The events the control raised since the last call of ClearLog, one per line.
+    Public Log As String
+
+    Public Sub Ev(ByVal Text As String)
+        Log = Log & Text & vbLf
+    End Sub
+
+    Public Sub ClearLog()
+        Log = ""
+    End Sub
+
+    ' The events as one line, such as "BeforeUpdate AfterUpdate MouseUp Click": only each event's name.
+    Public Function Events() As String
+        Dim lines() As String = Split(Log, vbLf)
+        Dim i As Long
+        For i = 0 To UBound(lines)
+            If Len(lines(i)) > 0 Then Events = Events & IIf(Len(Events) > 0, " ", "") & Split(lines(i), " ")(0)
+        Next
+    End Function
+
+    ' The events of the log that carry the name Name.
+    Public Function CountOf(ByVal Name As String) As Long
+        Dim lines() As String = Split(Log, vbLf)
+        Dim i As Long
+        For i = 0 To UBound(lines)
+            If Split(lines(i) & " ", " ")(0) = Name Then CountOf = CountOf + 1
+        Next
+    End Function
+
+    ' A loaded form, not shown, with the control on its default properties.
+    Public Function NewForm() As HostForm
+        Dim f As New HostForm
+        Load f
+        Set NewForm = f
+        ClearLog
+    End Function
+
+    ' Shows the form so that the control can paint, and so that its pixels can be read. The form
+    ' is made wholly transparent first and shown without being activated, so that nothing appears
+    ' on the desktop; False when it could not be made transparent (the form is then not shown).
+    Public Function ShowHidden(ByVal f As HostForm) As Boolean
+        On Error Resume Next
+        f.Opacity = 0
+        On Error GoTo 0
+        If Not Win.IsFullyTransparent(f.hWnd) Then Exit Function
+        Win.ShowNoActivate f.hWnd
+        Win.PaintNow f.hWnd
+        ShowHidden = True
+    End Function
+
+    ' A form as NewForm makes it, shown as ShowHidden shows it; Nothing when it could not be made
+    ' transparent.
+    Public Function NewShown() As HostForm
+        Dim f As HostForm
+        Set f = NewForm()
+        If ShowHidden(f) Then
+            Set NewShown = f
+        Else
+            Unload f
+        End If
+    End Function
+
+    ' What the control has drawn now, after it has been asked to paint: a snapshot of its window,
+    ' and its width in Width.
+    Public Function Pixels(ByVal f As HostForm, ByRef Width As Long) As Byte()
+        Win.PaintNow f.hWnd
+        Dim h As LongPtr = CalWindow(f)
+        Width = Win.ClientWidth(h)
+        Pixels = Win.Snapshot(h)
+    End Function
+
+    ' The number of pixels of colour Colour in the whole control.
+    Public Function CountAll(ByVal f As HostForm, ByVal Colour As Long) As Long
+        Dim w As Long
+        Dim b() As Byte = Pixels(f, w)
+        CountAll = Win.CountColour(b, w, Colour, 0, 0, w - 1, UBound(b) \ (w * 4))
+    End Function
+
+    ' The window of the control: the form's child of the class the runtime gives a user control.
+    Public Function CalWindow(ByVal f As HostForm) As LongPtr
+        Dim c As LongPtr = Win.FirstChild(f.hWnd)
+        Do While c <> 0
+            If Win.ClassOf(c) Like "Thunder*UserControlDC" Then
+                CalWindow = c
+                Exit Function
+            End If
+            c = Win.NextSibling(c)
+        Loop
+    End Function
+
+    ' The control's small picture box, the window that takes the keys.
+    Public Function KeyWindow(ByVal f As HostForm) As LongPtr
+        Dim h As LongPtr = CalWindow(f)
+        Dim w As Long = Win.ClientWidth(h)
+        Dim c As LongPtr = Win.FirstChild(h)
+        Do While c <> 0
+            If Win.ClassOf(c) Like "Thunder*PictureBoxDC" And Win.ClientWidth(c) <> w Then KeyWindow = c
+            c = Win.NextSibling(c)
+        Loop
+    End Function
+
+    ' The year list (Which = 0) or the month list (Which = 1): the control's two combo boxes, in
+    ' that order.
+    Public Function SelectorWindow(ByVal f As HostForm, ByVal Which As Long) As LongPtr
+        Dim c As LongPtr = Win.FirstChild(CalWindow(f))
+        Dim n As Long
+        Do While c <> 0
+            If Win.ClassOf(c) Like "Thunder*ComboBox" Then
+                If n = Which Then
+                    SelectorWindow = c
+                    Exit Function
+                End If
+                n = n + 1
+            End If
+            c = Win.NextSibling(c)
+        Loop
+    End Function
+
+    Public Function YearList(ByVal f As HostForm) As LongPtr
+        YearList = SelectorWindow(f, 0)
+    End Function
+
+    Public Function MonthList(ByVal f As HostForm) As LongPtr
+        MonthList = SelectorWindow(f, 1)
+    End Function
+
+    ' Makes the grid show the month of d, with d selected: setting Value alone does not place the
+    ' dates of the grid again, and a move of the selection does.
+    Public Sub Rebase(ByVal f As HostForm, ByVal d As Date)
+        f.Cal.Value = d
+        f.Cal.PreviousDay
+        f.Cal.NextDay
+        ClearLog
+    End Sub
+
+    ' A press of a mouse button at (x, y) of the control: the button down and the button up.
+    ' Button 1 is the left button, 2 the right.
+    Public Sub Click(ByVal f As HostForm, ByVal x As Long, ByVal y As Long, Optional ByVal Button As Long = 1)
+        Dim h As LongPtr = CalWindow(f)
+        If Button = 1 Then
+            Win.Send h, Win.WM_LBUTTONDOWN, Win.MK_LBUTTON, Win.MakeLParam(x, y)
+            Win.Send h, Win.WM_LBUTTONUP, 0, Win.MakeLParam(x, y)
+        Else
+            Win.Send h, Win.WM_RBUTTONDOWN, Win.MK_RBUTTON, Win.MakeLParam(x, y)
+            Win.Send h, Win.WM_RBUTTONUP, 0, Win.MakeLParam(x, y)
+        End If
+    End Sub
+
+    ' The height of the title area and the row of day names together: the largest y at which a
+    ' left press does not select (it raises no BeforeUpdate). Found by pressing with the
+    ' selection cancelled.
+    Public Function Header(ByVal f As HostForm) As Long
+        Dim h As LongPtr = CalWindow(f)
+        Dim lo As Long = 0
+        Dim hi As Long = Win.ClientHeight(h)
+        Dim mid As Long
+        ' The control works out the heights of its areas when it draws, which a form that was never
+        ' shown has not done yet: setting Value to what it is makes it draw.
+        f.Cal.Value = f.Cal.Value
+        f.CancelValue = -1
+        Do While hi - lo > 1
+            mid = (lo + hi) \ 2
+            ClearLog
+            Win.Send h, Win.WM_LBUTTONDOWN, Win.MK_LBUTTON, Win.MakeLParam(10, mid)
+            Win.Send h, Win.WM_LBUTTONUP, 0, Win.MakeLParam(10, mid)
+            If CountOf("BeforeUpdate") > 0 Then hi = mid Else lo = mid
+        Loop
+        f.CancelValue = 0
+        ClearLog
+        Header = lo
+    End Function
+
+    ' The date of the cell at row Row (0 to 5) and column Col (0 to 6) of the grid, as the control
+    ' takes it: a press in the middle of the cell selects it, and the selected date is read.
+    ' Header is the value of Header(f). The press changes the selection.
+    Public Function CellDate(ByVal f As HostForm, ByVal Header As Long, ByVal Row As Long, ByVal Col As Long) As Date
+        Dim h As LongPtr = CalWindow(f)
+        Dim rowH As Double = (Win.ClientHeight(h) - Header) / 6
+        Dim colW As Double = Win.ClientWidth(h) / 7
+        Click f, CLng((Col + 0.5) * colW), Header + CLng((Row + 0.5) * rowH)
+        CellDate = f.Cal.Value
+        ClearLog
+    End Function
+
+    ' The date of a cell of the grid as it is placed after Value is set to Base: the grid is placed
+    ' again around Base first.
+    Public Function GridDate(ByVal f As HostForm, ByVal Base As Date, ByVal Header As Long, ByVal Row As Long, ByVal Col As Long) As Date
+        Rebase f, Base
+        GridDate = CellDate(f, Header, Row, Col)
+    End Function
+
+    ' The colour of the vertical line between the columns K - 1 and K of the grid (K from 1 to 6), read in
+    ' the lower part of a cell in row 4 where no day number is; -2 when there is none. The form must be
+    ' shown (ShowHidden).
+    Public Function LineColour(ByVal f As HostForm, ByVal K As Long) As Long
+        Dim hd As Long = Header(f)
+        Dim w As Long
+        Dim b() As Byte = Pixels(f, w)
+        Dim ht As Long = UBound(b) \ (w * 4) + 1
+        Dim y As Long = hd + CLng(4.8 * (ht - hd) / 6)
+        Dim x0 As Long = CLng(K * w / 7)
+        Dim x As Long
+        LineColour = -2
+        For x = x0 - 1 To x0 + 1
+            If Win.Px(b, w, x, y) <> f.Cal.BackColor Then
+                LineColour = Win.Px(b, w, x, y)
+                Exit Function
+            End If
+        Next
+    End Function
+
+    ' The number of pixels in the rows Y0 to Y1, from column 2 to column X1, that are not the colour
+    ' Background: the ink of what is drawn there.
+    Public Function Ink(ByRef Bits() As Byte, ByVal Width As Long, ByVal X1 As Long, ByVal Y0 As Long, ByVal Y1 As Long, ByVal Background As Long) As Long
+        Dim x As Long, y As Long
+        For y = Y0 To Y1
+            For x = 2 To X1
+                If Win.Px(Bits, Width, x, y) <> Background Then Ink = Ink + 1
+            Next
+        Next
+    End Function
+
+    ' The error number the statement last raised, 0 for none; Err is cleared.
+    Public Function ErrNum() As Long
+        ErrNum = Err.Number
+        Err.Clear
+    End Function
+
+    ' The height in pixels of the title area: the first row of the right edge that is the black
+    ' frame of the day names and the grid. Bits is a snapshot of the control, Width its width.
+    Public Function TitleHeight(ByRef Bits() As Byte, ByVal Width As Long) As Long
+        Dim y As Long
+        For y = 0 To UBound(Bits) \ (Width * 4)
+            If Win.Px(Bits, Width, Width - 1, y) = 0 Then
+                TitleHeight = y
+                Exit Function
+            End If
+        Next
+        TitleHeight = -1
+    End Function
+
+    ' The y of the first row of column 3 that is the colour Colour; -1 when there is none.
+    Public Function FirstRowOf(ByRef Bits() As Byte, ByVal Width As Long, ByVal Colour As Long) As Long
+        Dim y As Long
+        For y = 0 To UBound(Bits) \ (Width * 4)
+            If Win.Px(Bits, Width, 3, y) = Colour Then
+                FirstRowOf = y
+                Exit Function
+            End If
+        Next
+        FirstRowOf = -1
+    End Function
+
+End Module

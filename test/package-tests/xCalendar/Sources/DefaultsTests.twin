@@ -1,0 +1,98 @@
+' DefaultsTests: the start values of a control that is placed on a form, and of one that is not.
+[TestFixture]
+Module DefaultsTests
+
+    [TestCase]
+    Public Sub Defaults_Colours()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual &HE0E0E0, f.Cal.BackColor, "BackColor of a control placed on a form"
+        Expect.AreEqual &HDCA86F, f.Cal.DayBackColor, "DayBackColor of a control placed on a form"
+        Expect.AreEqual 0, f.Cal.DayFontColor, "DayFontColor of a control placed on a form"
+        Expect.AreEqual &HA00000, f.Cal.GridFontColor, "GridFontColor of a control placed on a form"
+        Expect.AreEqual &H80000010, f.Cal.GridLinesColor, "GridLinesColor of a control placed on a form"
+        Expect.AreEqual &H80FF&, f.Cal.TitleFontColor, "TitleFontColor of a control placed on a form"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Defaults_Fonts()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual "Arial", f.Cal.DayFont.Name, "DayFont name of a control placed on a form"
+        Expect.AreEqual 8, CLng(f.Cal.DayFont.Size), "DayFont size of a control placed on a form"
+        Expect.AreEqual "Arial", f.Cal.GridFont.Name, "GridFont name of a control placed on a form"
+        Expect.AreEqual 8, CLng(f.Cal.GridFont.Size), "GridFont size of a control placed on a form"
+        Expect.AreEqual "Arial", f.Cal.TitleFont.Name, "TitleFont name of a control placed on a form"
+        Expect.AreEqual 16, CLng(f.Cal.TitleFont.Size), "TitleFont size of a control placed on a form"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Defaults_Enumerations()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual DayLengthEnum.MediumLength, f.Cal.DayLength, "DayLength of a control placed on a form"
+        Expect.AreEqual MonthLengthEnum.LongLength, f.Cal.MonthLength, "MonthLength of a control placed on a form"
+        Expect.AreEqual WeekDaysEnum.Monday, f.Cal.FirstDay, "FirstDay of a control placed on a form"
+        Expect.AreEqual GridCellEffectEnum.Raised, f.Cal.GridCellEffect, "GridCellEffect of a control placed on a form"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Defaults_Margins()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual 5, f.Cal.DaysMargin, "DaysMargin of a control placed on a form"
+        Expect.AreEqual 5, f.Cal.TitleMargin, "TitleMargin of a control placed on a form"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Defaults_Flags()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsTrue f.Cal.Enabled, "Enabled of a control placed on a form"
+        Expect.IsTrue f.Cal.ShowDateSelectors, "ShowDateSelectors of a control placed on a form"
+        Expect.IsTrue f.Cal.ShowDays, "ShowDays of a control placed on a form"
+        Expect.IsTrue f.Cal.ShowHorizontalGrid, "ShowHorizontalGrid of a control placed on a form"
+        Expect.IsTrue f.Cal.ShowTitle, "ShowTitle of a control placed on a form"
+        Expect.IsTrue f.Cal.ShowVerticalGrid, "ShowVerticalGrid of a control placed on a form"
+        Expect.IsFalse f.Cal.ValueIsNull, "ValueIsNull of a control placed on a form"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Defaults_DateIsToday()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.AreEqual Date, f.Cal.Value, "Value of a control placed on a form"
+        Expect.AreEqual Year(Date), f.Cal.Year, "Year of a control placed on a form"
+        Expect.AreEqual Month(Date), f.Cal.Month, "Month of a control placed on a form"
+        Expect.AreEqual Day(Date), f.Cal.Day, "Day of a control placed on a form"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_WithoutForm_HasNoDefaults()
+        Expect.Begin
+        Dim c As xCalendar.xCalendar
+        Set c = New xCalendar.xCalendar
+        Expect.AreEqual 0, c.Year, "Year of a control made with New and not placed on a form"
+        Expect.AreEqual 0, CDbl(c.Value), "Value of a control made with New and not placed on a form"
+        Expect.Done
+    End Sub
+
+End Module

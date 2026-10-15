@@ -1,0 +1,22 @@
+[
+	{
+		"Caption": "HostForm",
+		"FormDesignerId": "{7B247400-0000-4000-9000-7B2474000F40}",
+		"Height": 300,
+		"Name": "HostForm",
+		"Width": 300,
+		"_children": [
+			{
+				"Height": 192,
+				"Left": 20,
+				"Name": "Cal",
+				"Top": 10,
+				"Width": 256,
+				"_className": "xCalendar",
+				"_clsid": "{F178D13A-5115-463B-9A49-775B7D3B1A9D}"
+			}
+		],
+		"_className": "Form",
+		"_clsid": "{33AD4F38-6699-11CF-B70C-00AA0060D393}"
+	}
+]

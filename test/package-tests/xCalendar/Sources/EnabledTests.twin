@@ -1,0 +1,122 @@
+' EnabledTests: a control whose Enabled is set to False by the program.
+[TestFixture]
+Module EnabledTests
+
+    Private Const NoForm As String = "the form could not be made transparent, so the control cannot paint"
+
+    [TestCase]
+    Public Sub Enabled_False_DisablesTheControlAndTheTwoLists()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Expect.IsTrue Win.Enabled(Rig.CalWindow(f)) And Win.Enabled(Rig.YearList(f)) And Win.Enabled(Rig.MonthList(f)), "the windows of the control, enabled"
+        f.Cal.Enabled = False
+        Expect.IsFalse f.Cal.Enabled, "Enabled after it is set to False"
+        Expect.IsFalse Win.Enabled(Rig.CalWindow(f)), "the control's window after Enabled is set to False"
+        Expect.IsFalse Win.Enabled(Rig.YearList(f)), "the year list after Enabled is set to False"
+        Expect.IsFalse Win.Enabled(Rig.MonthList(f)), "the month list after Enabled is set to False"
+        f.Cal.Enabled = True
+        Expect.IsTrue Win.Enabled(Rig.CalWindow(f)) And Win.Enabled(Rig.YearList(f)) And Win.Enabled(Rig.MonthList(f)), "the windows of the control after Enabled is set to True again"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_False_CodeCanStillChangeTheDate()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        f.Cal.Enabled = False
+        f.Cal.NextDay
+        Expect.AreEqual #6/16/2026#, f.Cal.Value, "Value after NextDay on a disabled control"
+        f.Cal.Value = #3/15/2026#
+        Expect.AreEqual #3/15/2026#, f.Cal.Value, "Value after it is set on a disabled control"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_False_DrawsTheRowOfDayNamesOnALightGrey()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim w As Long
+            f.Cal.Enabled = False
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Dim y As Long = Rig.TitleHeight(b, w) + 3
+            Expect.AreEqual &HEEEEEE, Win.Px(b, w, 3, y), "the colour of the row of day names after Enabled is set to False"
+            f.Cal.Enabled = True
+            b = Rig.Pixels(f, w)
+            Expect.AreEqual f.Cal.DayBackColor, Win.Px(b, w, 3, y), "the colour of the row of day names after Enabled is set to True again"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_False_DrawsFlatGridLinesInDarkGrey()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.GridCellEffect = GridCellEffectEnum.Flat
+            f.Cal.GridLinesColor = RGB(255, 0, 0)
+            f.Cal.Enabled = False
+            Expect.AreEqual &H5B5B5B, Rig.LineColour(f, 3), "the colour of a vertical line with GridCellEffect Flat on a disabled control"
+            Expect.AreEqual 0, Rig.CountAll(f, RGB(255, 0, 0)), "the pixels of GridLinesColor with GridCellEffect Flat on a disabled control"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_False_LeavesBackColorAsItIs()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim w As Long
+            f.Cal.Enabled = False
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Expect.AreEqual f.Cal.BackColor, Win.Px(b, w, 2, 2), "the colour of the title area on a disabled control"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_False_DrawsTheTitleInGrey()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.Enabled = False
+            Expect.IsTrue Rig.CountAll(f, &HBCBCBC) > 0, "the pixels of the grey (&HBCBCBC) of a disabled title"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enabled_False_DrawsTheDayNamesAndNumbersInGrey()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.DayFont.Size = 18
+            f.Cal.GridFont.Size = 18
+            f.Cal.Enabled = False
+            Expect.IsTrue Rig.CountAll(f, &H999999) > 0, "the pixels of the grey (&H999999) of disabled day names and day numbers"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,16 @@
+' xCalendar: what the compiler refuses. Each line ends in a comment ' CASE <Name>: <code>.
+Module CompileTests
+
+    Public Sub TypeName_ProjectAndClassShareTheName()
+        Dim a As xCalendar ' CASE ProjectNameIsNotAType: TB5139
+        Dim b As xCalendar.xCalendar ' CASE QualifiedClassNameIsAType: none
+    End Sub
+
+    Public Sub EnumMembers_ShortLengthAndLongLengthAreAmbiguous()
+        Dim a As DayLengthEnum = ShortLength ' CASE BareShortLengthIsAmbiguous: TB5073
+        Dim b As MonthLengthEnum = LongLength ' CASE BareLongLengthIsAmbiguous: TB5073
+        Dim c As DayLengthEnum = DayLengthEnum.LongLength ' CASE QualifiedDayLengthMemberIsAccepted: none
+        Dim d As MonthLengthEnum = MonthLengthEnum.ShortLength ' CASE QualifiedMonthLengthMemberIsAccepted: none
+    End Sub
+
+End Module

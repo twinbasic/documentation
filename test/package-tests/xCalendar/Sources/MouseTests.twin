@@ -1,0 +1,176 @@
+' MouseTests: the events that a press of a mouse button raises, and what it selects. A press is
+' the window messages a mouse sends: the button down and the button up, sent to the control.
+[TestFixture]
+Module MouseTests
+
+    [TestCase]
+    Public Sub Press_LeftOnADay_RaisesTheEventsInOrder()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #6/15/2026#
+        Rig.Click f, 120, hd + 40
+        Expect.AreEqual "BeforeUpdate AfterUpdate MouseUp Click", Rig.Events(), "the events raised by a left press on a day"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Press_LeftOnADay_SelectsThatDay()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #6/15/2026#
+        Expect.AreEqual #6/17/2026#, Rig.CellDate(f, hd, 2, 2), "the date selected by a press on row 2, column 2 of the grid for June 2026"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Press_LeftOnADay_BeforeUpdateSeesTheOldValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #6/15/2026#
+        Rig.Click f, 120, hd + 40
+        Expect.IsTrue InStr(Rig.Log, "BeforeUpdate 0 2026-06-15") > 0, "BeforeUpdate is raised with Cancel 0 and Value still June 15, 2026"
+        Expect.IsTrue InStr(Rig.Log, "AfterUpdate 2026-06-15") = 0, "AfterUpdate sees the new Value"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Press_RightButton_RaisesMouseUpAndClickOnly()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #6/15/2026#
+        Rig.Click f, 120, hd + 40, 2
+        Expect.AreEqual "MouseUp Click", Rig.Events(), "the events raised by a right press on a day"
+        Expect.AreEqual #6/15/2026#, f.Cal.Value, "Value after a right press on a day"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Press_OnTheTitle_RaisesMouseUpAndClickOnly()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        Rig.Click f, 120, 5
+        Expect.AreEqual "MouseUp Click", Rig.Events(), "the events raised by a left press on the title area"
+        Expect.AreEqual #6/15/2026#, f.Cal.Value, "Value after a left press on the title area"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Press_OnADayName_RaisesMouseUpAndClickOnly()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #6/15/2026#
+        Rig.Click f, 120, hd - 5
+        Expect.AreEqual "MouseUp Click", Rig.Events(), "the events raised by a left press on the row of day names"
+        Expect.AreEqual #6/15/2026#, f.Cal.Value, "Value after a left press on the row of day names"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DoubleClick_RaisesTheEventsInOrder()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #6/15/2026#
+        Dim h As LongPtr = Rig.CalWindow(f)
+        Dim lp As LongPtr = Win.MakeLParam(120, hd + 40)
+        Win.Send h, Win.WM_LBUTTONDOWN, Win.MK_LBUTTON, lp
+        Win.Send h, Win.WM_LBUTTONUP, 0, lp
+        Win.Send h, Win.WM_LBUTTONDBLCLK, Win.MK_LBUTTON, lp
+        Win.Send h, Win.WM_LBUTTONUP, 0, lp
+        Expect.AreEqual "BeforeUpdate AfterUpdate MouseUp Click DblClick MouseUp", Rig.Events(), "the events raised by a double-click on a day"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BeforeUpdate_CancelKeepsTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #6/15/2026#
+        f.CancelValue = -1
+        Rig.Click f, 120, hd + 40
+        Expect.AreEqual #6/15/2026#, f.Cal.Value, "Value after a press on a day when BeforeUpdate sets Cancel to True"
+        Expect.AreEqual "BeforeUpdate MouseUp Click", Rig.Events(), "the events raised by a press on a day when BeforeUpdate sets Cancel to True"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BeforeUpdate_CancelOfOneKeepsTheSelection()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #6/15/2026#
+        f.CancelValue = 1
+        Rig.Click f, 120, hd + 40
+        Expect.AreEqual #6/15/2026#, f.Cal.Value, "Value after a press on a day when BeforeUpdate sets Cancel to 1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseDown_IsRaisedByAPress()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #6/15/2026#
+        Rig.Click f, 120, hd + 40
+        Expect.AreEqual 1, Rig.CountOf("MouseDown"), "the MouseDown events raised by a left press on a day"
+        Rig.ClearLog
+        Rig.Click f, 120, 5, 2
+        Expect.AreEqual 1, Rig.CountOf("MouseDown"), "the MouseDown events raised by a right press on the title area"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseMove_IsRaisedWhenThePointerMoves()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Win.Send Rig.CalWindow(f), Win.WM_MOUSEMOVE, 0, Win.MakeLParam(120, 100)
+        Expect.AreEqual "MouseMove", Rig.Events(), "the events raised by a move of the pointer over the control"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MouseEvents_ReportThePositionInDevicePixels()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim h As LongPtr = Rig.CalWindow(f)
+        Win.Send h, Win.WM_MOUSEMOVE, 0, Win.MakeLParam(192, 100)
+        Expect.IsTrue InStr(Rig.Log, "MouseMove 0 192,100") > 0, "the position MouseMove reports for a pointer at 192, 100 of the control's window"
+        Rig.ClearLog
+        Win.Send h, Win.WM_LBUTTONDOWN, Win.MK_LBUTTON, Win.MakeLParam(192, 5)
+        Win.Send h, Win.WM_LBUTTONUP, 0, Win.MakeLParam(192, 5)
+        Expect.IsTrue InStr(Rig.Log, "MouseUp 1 192,5") > 0, "the position MouseUp reports for a press at 192, 5 of the control's window"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module
