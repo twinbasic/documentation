@@ -544,13 +544,6 @@ parts:
         landing_is_target: true
         outline_closed: true
 
-      - title: TBMANLIB_ListBoxHScroll Package
-        subtitle: A horizontal scroll bar for a ListBox
-        landing_page: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
-        page: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
-        landing_is_target: true
-        outline_closed: true
-
       - title: TBMANLIB_RES Package
         subtitle: Resources embedded in an executable, as bytes, strings, hex, Base64 or pictures
         landing_page: /tB/Packages/Contributed/TBMANLIB_RES/
@@ -666,6 +659,13 @@ parts:
         subtitle: Open, Save, folder, Color, Font, Print and other dialogs in classes, with file filters and path helpers
         landing_page: /tB/Packages/Contributed/TBMANLIB_Dialog/
         page: /tB/Packages/Contributed/TBMANLIB_Dialog/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: TBMANLIB_ListBoxHScroll Package
+        subtitle: A horizontal scroll bar for a ListBox
+        landing_page: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
+        page: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
         landing_is_target: true
         outline_closed: true
 
