@@ -11,6 +11,7 @@ Returns the loaded resource bytes as an uppercase hex string, with an optional s
 
 Syntax: *object*.**ReturnHex** ( [ *Separator* ] [ **,** *LineBreak* ] )
 
+<!-- test: ReturnHexTests.ReturnHex_Default_TwoUppercaseDigitsForEachByte, ReturnHexTests.ReturnHex_Separator_IsBetweenBytesNotAfterTheLast, ReturnHexTests.ReturnHex_LineBreak_AddsCrLfAfterEveryGroup, ReturnHexTests.ReturnHex_LineBreak_NoBreakAfterTheLastByte, ReturnHexTests.ReturnHex_LineBreakAndSeparator_SeparatorInsideEachLine -->
 *Separator*
 : *optional* A **String** inserted between each pair of adjacent byte values. Pass an empty string (default) for a compact, unseparated hex string.
 
@@ -20,7 +21,9 @@ Syntax: *object*.**ReturnHex** ( [ *Separator* ] [ **,** *LineBreak* ] )
 Each byte is formatted as exactly two uppercase hex digits, left-padded with `0` where necessary, so single-digit values such as `0A` or `0F` always occupy two characters. *Separator* is not appended after the final byte.
 
 When *LineBreak* is greater than `0`, it takes precedence over *Separator*: the *Separator* string is not inserted between bytes that fall on a line-break boundary. If both *Separator* is non-empty and *LineBreak* is greater than `0`, *Separator* is inserted between bytes within each line while `vbCrLf` is inserted at the end of each complete *LineBreak*-sized group.
+<!-- /test -->
 
+<!-- test: ReturnHexTests.ReturnHex_BeforeRead_RaisesError -->
 > [!NOTE] timeless
 > **ReturnHex** raises a run-time error if no resource has been loaded. Call [**Read**](Read) before calling **ReturnHex**.
 

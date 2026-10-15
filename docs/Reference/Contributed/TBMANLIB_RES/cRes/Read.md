@@ -11,17 +11,24 @@ Loads a resource from the compiled executable into the **cRes** instance.
 
 Syntax: *object*.**Read**( *id*, *Type* ) **As cRes**
 
+<!-- test: ReadTests.Read_ByNumericId_LoadsTheResource, ReadTests.Read_ByName_LoadsTheResource, ReadTests.Read_NumericType_LoadsTheResource -->
 *id*
 : *required* A **Variant** identifying the resource to load. Pass a numeric **Long** to identify the resource by its integer ID, or a **String** to identify it by name.
 
 *Type*
 : *required* A **Variant** identifying the resource type. Pass a numeric **Long** for a predefined resource type (for example, `2` for `RT_BITMAP`), or a **String** for a named custom resource type (for example, `"CUSTOM"`).
+<!-- /test -->
 
+<!-- test: ReadTests.Read_ReturnsTheInstanceItself, ReadTests.Read_SecondRead_ReplacesTheBytes -->
 **Read** calls the **LoadResData** function with the supplied *id* and *Type* arguments and stores the resulting byte array internally. The method returns the **cRes** instance itself, so calls to the retrieval methods ([**ReturnBytes**](ReturnBytes), [**ReturnString**](ReturnString), [**ReturnHex**](ReturnHex), [**ReturnBase64**](ReturnBase64), [**ReturnPicture**](ReturnPicture)) can be chained directly onto the **Read** call.
+<!-- /test -->
 
+<!-- test: ReturnBytesTests.ReturnBytes_BeforeRead_HasNoElements, ReturnStringTests.ReturnString_BeforeRead_IsEmpty, ReturnHexTests.ReturnHex_BeforeRead_RaisesError, ReturnBase64Tests.ReturnBase64_BeforeRead_RaisesError, ReturnPictureTests.ReturnPicture_BeforeRead_RaisesError -->
 > [!IMPORTANT] timeless
 > **Read** must be called before any retrieval method. The resource data is not populated at construction time; a retrieval method called without a prior **Read** will operate on an empty byte array and may raise a runtime error.
+<!-- /test -->
 
+<!-- test: ReadTests.Read_NoMatchingResource_RaisesError, ReadTests.Read_IdOfAnotherType_RaisesError, ReadTests.Read_FileOnDisk_RaisesError -->
 > [!NOTE] 1.0.0.4
 > **Read** can load only a resource that is part of the project. *Type* names a folder under **Resources** in the Project Explorer (or is the number of a standard resource type), and *id* identifies a resource in it. If no resource matches, **LoadResData** raises a run-time error.
 

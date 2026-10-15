@@ -11,10 +11,17 @@ Returns the resource bytes as a Base64-encoded string, with an optional MIME-typ
 
 Syntax: *object*.**ReturnBase64** ( [ *Prefix* ] ) **As String**
 
+<!-- test: ReturnBase64Tests.ReturnBase64_Default_HasNoPrefix -->
 *Prefix*
 : *optional* A **Base64Prefix** enumeration value that selects a data-URI prefix to prepend to the encoded string. Defaults to **Base64Prefix_None**, which returns the raw Base64 string with no prefix.
+<!-- /test -->
 
-**ReturnBase64** encodes the byte array held by the **cRes** instance using MSXML2's `bin.base64` data type and returns the result as a **String**. MSXML puts a line feed (`vbLf`) after every 72 characters of Base64, and **ReturnBase64** does not remove them. When *Prefix* is any value other than **Base64Prefix_None**, the corresponding `data:<type>;base64,` header is prepended, producing a data URI that can be used in an `<img src>`, `<video src>`, or `<audio src>` attribute in an HTML context.
+<!-- test: ReturnBase64Tests.ReturnBase64_ShortResource_IsTheBase64OfTheBytes, ReturnBase64Tests.ReturnBase64_LongResource_LineFeedAfterEvery72Characters -->
+**ReturnBase64** encodes the byte array held by the **cRes** instance using MSXML2's `bin.base64` data type and returns the result as a **String**. MSXML puts a line feed (`vbLf`) after every 72 characters of Base64, and **ReturnBase64** does not remove them.
+<!-- /test -->
+
+<!-- test: ReturnBase64Tests.ReturnBase64_Prefix_AddsTheDataUriHeader -->
+When *Prefix* is any value other than **Base64Prefix_None**, the corresponding `data:<type>;base64,` header is prepended, producing a data URI that can be used in an `<img src>`, `<video src>`, or `<audio src>` attribute in an HTML context.
 
 The following **Base64Prefix** values are defined:
 
@@ -33,12 +40,16 @@ The following **Base64Prefix** values are defined:
 | **Base64Prefix_AudioMP3** | `data:audio/mpeg;base64,` |
 | **Base64Prefix_AudioWAV** | `data:audio/wav;base64,` |
 | **Base64Prefix_AudioOGG** | `data:audio/ogg;base64,` |
+<!-- /test -->
 
+<!-- test: ReturnBase64Tests.ReturnBase64_Msxml2DomDocument_IsCreatedAndEncodes -->
 > [!IMPORTANT] 1.0.0.4
 > **ReturnBase64** requires that MSXML2 is registered on the machine. It creates an `MSXML2.DOMDocument` COM object internally. This call will fail at run time on systems where MSXML2 is not available.
+<!-- /test -->
 
+<!-- test: ReturnBase64Tests.ReturnBase64_BeforeRead_RaisesError -->
 > [!NOTE] timeless
-> Call [**Read**](Read) before **ReturnBase64**. The method encodes whatever bytes are currently stored in the instance, and an instance on which **Read** has not been called holds none.
+> Call [**Read**](Read) before **ReturnBase64**. The method encodes whatever bytes are currently stored in the instance, and an instance on which **Read** has not been called holds none, so the call raises a run-time error.
 
 ### Example
 

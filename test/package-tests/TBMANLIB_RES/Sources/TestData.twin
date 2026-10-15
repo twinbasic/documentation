@@ -1,0 +1,78 @@
+' TBMANLIB_RES: the bytes of the project's resources (Resources/ of this project), and the helpers
+' that work out what the package should return from them without using the package.
+'
+' Resources:  BINARY/#101  the 8 bytes 00 01 0A 0F 10 7F 80 FF
+'             BINARY/#102  the 100 bytes 0 to 99
+'             CUSTOM/CONFIG_DATA  DE AD BE EF
+'             RCDATA/#7  07 08 09
+'             TEXT/#101  "Hello, world" as ANSI text
+'             TEXT/#102  "Caf" and the UTF-8 bytes C3 A9 (the letter e with an acute accent)
+'             TEXT/#103  "Hi" as UTF-16 LE text
+'             BMP/#101, PNG/#101  a 2 x 3 pixel image; GIF/#101  a 1 x 1 pixel image
+Module TestData
+
+    Public Function Binary101() As Byte()
+        Dim b(0 To 7) As Byte
+        b(0) = &H0
+        b(1) = &H1
+        b(2) = &HA
+        b(3) = &HF
+        b(4) = &H10
+        b(5) = &H7F
+        b(6) = &H80
+        b(7) = &HFF
+        Binary101 = b
+    End Function
+
+    Public Function Binary102() As Byte()
+        Dim b(0 To 99) As Byte
+        Dim i As Long
+        For i = 0 To 99
+            b(i) = i
+        Next
+        Binary102 = b
+    End Function
+
+    ' The bytes as 2-digit upper-case hex, with no separator.
+    Public Function HexOf(ByRef b() As Byte) As String
+        Dim i As Long
+        Dim s As String
+        For i = LBound(b) To UBound(b)
+            s = s & Right$("0" & Hex$(b(i)), 2)
+        Next
+        HexOf = s
+    End Function
+
+    Public Function SameBytes(ByRef a() As Byte, ByRef b() As Byte) As Boolean
+        Dim i As Long
+        If UBound(a) <> UBound(b) Then Exit Function
+        For i = LBound(a) To UBound(a)
+            If a(i) <> b(i) Then Exit Function
+        Next
+        SameBytes = True
+    End Function
+
+    ' Base64 as RFC 4648 writes it: no line feeds.
+    Public Function Base64Of(ByRef b() As Byte) As String
+        Const Digits As String = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+        Dim n As Long
+        Dim i As Long
+        Dim v As Long
+        Dim k As Long
+        Dim s As String
+        n = UBound(b) - LBound(b) + 1
+        For i = 0 To n - 1 Step 3
+            k = n - i
+            If k > 3 Then k = 3
+            v = CLng(b(LBound(b) + i)) * 65536
+            If k > 1 Then v = v + CLng(b(LBound(b) + i + 1)) * 256
+            If k > 2 Then v = v + b(LBound(b) + i + 2)
+            s = s & Mid$(Digits, (v \ 262144) + 1, 1)
+            s = s & Mid$(Digits, ((v \ 4096) And 63) + 1, 1)
+            If k > 1 Then s = s & Mid$(Digits, ((v \ 64) And 63) + 1, 1) Else s = s & "="
+            If k > 2 Then s = s & Mid$(Digits, (v And 63) + 1, 1) Else s = s & "="
+        Next
+        Base64Of = s
+    End Function
+
+End Module

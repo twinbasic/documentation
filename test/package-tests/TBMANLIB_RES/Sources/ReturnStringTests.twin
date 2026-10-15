@@ -1,0 +1,78 @@
+' TBMANLIB_RES, cRes.ReturnString: the default conversion, UTF-8, and the encodings it has no option for.
+[TestFixture]
+Module ReturnStringTests
+
+    [TestCase]
+    Public Sub ReturnString_Default_ReadsAnsiText()
+        Expect.Begin
+        Dim r As New cRes
+        Expect.AreEqual "Hello, world", r.Read(101, "TEXT").ReturnString(), "ReturnString of the ANSI text resource"
+        Expect.AreEqual "Hello, world", r.ReturnString(vbUnicode), "ReturnString(vbUnicode) of the same resource"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnString_FromUtf8_ReadsUtf8Text()
+        Expect.Begin
+        Dim r As New cRes
+        Expect.AreEqual "Caf" & ChrW$(233), r.Read(102, "TEXT").ReturnString(vbFromUTF8), "ReturnString(vbFromUTF8) of the UTF-8 resource"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnString_WrongConversion_GivesOtherCharacters()
+        Expect.Begin
+        Dim r As New cRes
+        Dim s As String
+        s = r.Read(102, "TEXT").ReturnString()
+        Expect.IsTrue s <> "Caf" & ChrW$(233), "ReturnString() of a UTF-8 resource does not give the text it holds"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnString_FromUnicode_DoesNotConvertBytesToText()
+        Expect.Begin
+        Dim r As New cRes
+        Dim s As String
+        s = r.Read(101, "TEXT").ReturnString(vbFromUnicode)
+        Expect.IsTrue s <> "Hello, world", "ReturnString(vbFromUnicode) of an ANSI text resource does not give the text"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnString_Utf16Resource_NoOptionGivesTheText()
+        Expect.Begin
+        Dim r As New cRes
+        r.Read 103, "TEXT"
+        Expect.IsTrue r.ReturnString(vbUnicode) <> "Hi", "ReturnString(vbUnicode) of a UTF-16 LE resource gives ""Hi"""
+        Expect.IsTrue r.ReturnString(vbFromUTF8) <> "Hi", "ReturnString(vbFromUTF8) of a UTF-16 LE resource gives ""Hi"""
+        Expect.IsTrue r.ReturnString(vbFromUnicode) <> "Hi", "ReturnString(vbFromUnicode) of a UTF-16 LE resource gives ""Hi"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnBytes_Utf16Resource_AssignedToAStringGivesTheText()
+        Expect.Begin
+        Dim r As New cRes
+        Dim b() As Byte
+        Dim s As String
+        r.Read 103, "TEXT"
+        b = r.ReturnBytes()
+        s = b
+        Expect.AreEqual "Hi", s, "the array from ReturnBytes for a UTF-16 LE resource, assigned to a String"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnString_BeforeRead_IsEmpty()
+        Expect.Begin
+        Dim r As New cRes
+        Dim s As String
+        On Error Resume Next
+        s = r.ReturnString()
+        Expect.AreEqual 0, Err.Number, "ReturnString before any Read raises no error"
+        Expect.AreEqual "", s, "ReturnString before any Read"
+        Expect.Done
+    End Sub
+
+End Module

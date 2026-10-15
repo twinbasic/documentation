@@ -1,0 +1,108 @@
+' TBMANLIB_RES, cRes.Read: which resource it loads, what it returns and what it does when none matches.
+[TestFixture]
+Module ReadTests
+
+    [TestCase]
+    Public Sub Read_ByNumericId_LoadsTheResource()
+        Expect.Begin
+        Dim r As New cRes
+        r.Read 101, "BINARY"
+        Dim b() As Byte
+        b = r.ReturnBytes()
+        Expect.AreEqual "00010A0F107F80FF", TestData.HexOf(b), "the bytes after Read 101, ""BINARY"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Read_ByName_LoadsTheResource()
+        Expect.Begin
+        Dim r As New cRes
+        r.Read "CONFIG_DATA", "CUSTOM"
+        Dim b() As Byte
+        b = r.ReturnBytes()
+        Expect.AreEqual "DEADBEEF", TestData.HexOf(b), "the bytes after Read ""CONFIG_DATA"", ""CUSTOM"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Read_NumericType_LoadsTheResource()
+        Expect.Begin
+        Dim r As New cRes
+        Dim b() As Byte
+        r.Read 7, 10
+        b = r.ReturnBytes()
+        Expect.AreEqual "070809", TestData.HexOf(b), "the bytes after Read 7, 10 (RT_RCDATA)"
+        r.Read 7, "RCDATA"
+        b = r.ReturnBytes()
+        Expect.AreEqual "070809", TestData.HexOf(b), "the bytes after Read 7, ""RCDATA"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Read_ReturnsTheInstanceItself()
+        Expect.Begin
+        Dim r As New cRes
+        Dim x As cRes
+        Set x = r.Read(101, "BINARY")
+        Expect.IsTrue x Is r, "Read returns the cRes it was called on"
+        Expect.AreEqual "00010A0F107F80FF", r.Read(101, "BINARY").ReturnHex(), "ReturnHex chained onto Read"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Read_SecondRead_ReplacesTheBytes()
+        Expect.Begin
+        Dim r As New cRes
+        Dim b() As Byte
+        r.Read 101, "BINARY"
+        r.Read "CONFIG_DATA", "CUSTOM"
+        b = r.ReturnBytes()
+        Expect.AreEqual "DEADBEEF", TestData.HexOf(b), "the bytes after a second Read"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Read_NoMatchingResource_RaisesError()
+        Expect.Begin
+        Dim r As New cRes
+        Dim e As Long
+        On Error Resume Next
+        r.Read 999, "BINARY"
+        e = Err.Number
+        Expect.IsTrue e <> 0, "Read of an id no resource has raises an error"
+        Err.Clear
+        r.Read "NO_SUCH_NAME", "CUSTOM"
+        e = Err.Number
+        Expect.IsTrue e <> 0, "Read of a name no resource has raises an error"
+        Err.Clear
+        r.Read 101, "NO_SUCH_TYPE"
+        e = Err.Number
+        Expect.IsTrue e <> 0, "Read of a type no resource has raises an error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Read_IdOfAnotherType_RaisesError()
+        Expect.Begin
+        Dim r As New cRes
+        Dim e As Long
+        On Error Resume Next
+        r.Read 101, "CUSTOM"
+        e = Err.Number
+        Expect.IsTrue e <> 0, "Read 101, ""CUSTOM"", when the resource 101 is of type BINARY, raises an error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Read_FileOnDisk_RaisesError()
+        Expect.Begin
+        Dim r As New cRes
+        Dim e As Long
+        On Error Resume Next
+        r.Read Environ$("windir") & "\notepad.exe", "BINARY"
+        e = Err.Number
+        Expect.IsTrue e <> 0, "Read of the path of a file on disk raises an error"
+        Expect.Done
+    End Sub
+
+End Module

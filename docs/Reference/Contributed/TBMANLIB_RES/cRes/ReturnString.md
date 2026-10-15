@@ -11,11 +11,15 @@ Returns the loaded resource bytes as a **String**, with an optional character-se
 
 Syntax: *object*.**ReturnString** ( [ *Conversion* ] ) **As String**
 
+<!-- test: ReturnStringTests.ReturnString_Default_ReadsAnsiText -->
 *Conversion*
 : *optional* A **VbStrConv** constant passed to **StrConv** together with the byte array. Defaults to **vbUnicode**, which reads the bytes as text in the default ANSI code page of the system and converts it to a **String**.
+<!-- /test -->
+
 
 **ReturnString** passes the internal byte array held by the **cRes** instance to the **StrConv** function and returns the result. The byte array is the raw data loaded by a prior call to [**Read**](Read).
 
+<!-- test: ReturnStringTests.ReturnString_FromUtf8_ReadsUtf8Text, ReturnStringTests.ReturnString_WrongConversion_GivesOtherCharacters, ReturnStringTests.ReturnString_FromUnicode_DoesNotConvertBytesToText, ReturnStringTests.ReturnString_Utf16Resource_NoOptionGivesTheText, ReturnStringTests.ReturnBytes_Utf16Resource_AssignedToAStringGivesTheText -->
 > [!NOTE] timeless
 > The right value for *Conversion* depends on the encoding of the resource data. For ANSI text, use the default **vbUnicode**. For UTF-8 text, pass **vbFromUTF8**. **vbFromUnicode** converts in the opposite direction (a **String** to the ANSI code page), so it does not suit a byte array. **ReturnString** has no option for UTF-16 LE text: assign the array from [**ReturnBytes**](ReturnBytes) to a **String** variable instead. A constant that does not match the encoding of the resource gives the wrong characters.
 
