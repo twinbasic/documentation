@@ -8,9 +8,11 @@ has_toc: false
 # OLEINPLACEFRAMEINFO type
 {: .no_toc }
 
+<!-- test: TypeLayoutTests.OLEINPLACEFRAMEINFO_HasTheLayoutOfOleinplaceframeinfo -->
 The accelerator information of a container's frame window in in-place activation, with the layout of the Windows `OLEINPLACEFRAMEINFO` structure.
 
 **OLEINPLACEFRAMEINFO** is a user-defined type declared in the package's `OLEGuids` module, so both `OLEINPLACEFRAMEINFO` and `OLEGuids.OLEINPLACEFRAMEINFO` name it. It mirrors the Windows structure [OLEINPLACEFRAMEINFO](https://learn.microsoft.com/en-us/windows/win32/api/oleidl/ns-oleidl-oleinplaceframeinfo).
+<!-- /test -->
 
 ```tb inert=signature
 Public Type OLEINPLACEFRAMEINFO

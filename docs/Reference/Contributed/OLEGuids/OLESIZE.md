@@ -8,9 +8,11 @@ has_toc: false
 # OLESIZE type
 {: .no_toc }
 
+<!-- test: TypeLayoutTests.OLESIZE_HasTheLayoutOfSize -->
 A width and a height, with the layout of the Windows `SIZE` structure.
 
 **OLESIZE** is a user-defined type declared in the package's `OLEGuids` module, so both `OLESIZE` and `OLEGuids.OLESIZE` name it. It mirrors the Windows structure [SIZE](https://learn.microsoft.com/en-us/windows/win32/api/windef/ns-windef-size).
+<!-- /test -->
 
 ```tb inert=signature
 Public Type OLESIZE

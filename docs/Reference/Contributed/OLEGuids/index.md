@@ -22,6 +22,7 @@ Add the package in Project → References (Ctrl-T) → Available Packages. The i
 - **Call it.** Declare a variable of the interface type and assign an object to it. The assignment asks the object for that interface, and a call through the variable runs the object's method.
 - **Implement it.** Name it in an [**Implements**](../../../Core/Implements) statement in a class, and write each method. A class cannot implement an interface that has a `[PreserveSig]` member (see [How the declarations differ from Windows](#how-the-declarations-differ-from-windows)).
 
+<!-- test: TypeLayoutTests.QualifiedName_NamesTheTypeThroughTheModule, ImplementTests.Function_ResultTakesThePlaceOfTheOutputParameter -->
 A name can be written bare (`IOleWindow`, `OLERECT`) or qualified with the package name (`OLEGuids.IOleWindow`, `OLEGuids.OLERECT`). The eleven structures are declared in a module named `OLEGuids`, which is why the qualified form works for them; the module has no page of its own.
 
 ```tb check_build
@@ -30,7 +31,9 @@ Private Function InPlaceWindow(ByVal Obj As Object) As LongPtr
     Return w.GetWindow()
 End Function
 ```
+<!-- /test -->
 
+<!-- test: DispatchTests.StdoleIDispatch_CallIsLateBoundAndDoesNotReachTheMethods, DispatchTests.Assign_ObjectVariableToIDispatchUnrestricted, DispatchTests.Assign_StdoleIDispatchVariableToIDispatchUnrestricted, compile NoIDispatchInThePackage -->
 > [!NOTE] 1.0.10.0
 > The package has no declaration named **IDispatch**. In a project that references **stdole**, as every default project does, the name is **stdole**'s declaration. A call through it is late-bound by name, and its four methods are not reached (see [IDispatch](../../../../Reference/COM-Interfaces/IDispatch#the-stdole-declaration)). The package's [IDispatchUnrestricted](IDispatchUnrestricted) declares the four methods, and an object is assigned to a variable of that type like any other interface.
 
@@ -47,11 +50,14 @@ End Function
 
 The interfaces that exist in Windows have their original interface identifiers, so an object written in another language can be called through them. The declarations differ from the C headers in these ways:
 
+<!-- test: ImplementTests.Sub_SuccessCodeRaisesNoErrorAndIsReadWithLastHresult, ImplementTests.Sub_FailureCodeRaisesAnError, ImplementTests.Function_ResultTakesThePlaceOfTheOutputParameter, ImplementTests.VBInterface_ClassCanBeCalledThroughIt, compile ImplementIUnknownUnrestricted, compile ImplementIOleObject, compile ImplementIOleInPlaceObjectWindowless, compile ImplementIOleControl, compile ImplementIOleControlSite, compile ImplementIOleInPlaceActiveObject, compile ImplementIOleInPlaceSite, compile ImplementIPerPropertyBrowsing, compile ImplementIRichEditOle -->
 - **The HRESULT is hidden.** A **Sub**, and a **Function** that is not marked `[PreserveSig]`, returns nothing of the Windows method's HRESULT. A failure code raises a run-time error, and a success code other than `S_OK` is read with [**Err.LastHresult**](../../../Modules/ErrObject/LastHresult). Where the Windows method has an output parameter for its result, the **Function**'s result takes its place.
 - **`[PreserveSig]` members return the raw HRESULT** as a **Long**. A twinBASIC class cannot implement a member marked [**[PreserveSig]**](../../../Core/Attributes#preservesig): the compiler reports TB5004, *unable to match this implementation to its interface member*. The interfaces with such a member are for calling, not for implementing: [IUnknownUnrestricted](IUnknownUnrestricted), [IOleObject](IOleObject), [IOleInPlaceObjectWindowless](IOleInPlaceObjectWindowless), [IOleControl](IOleControl), [IOleControlSite](IOleControlSite), [IOleInPlaceActiveObject](IOleInPlaceActiveObject), [IOleInPlaceSite](IOleInPlaceSite), [IPerPropertyBrowsing](IPerPropertyBrowsing) and [IRichEditOle](IRichEditOle). A class sets [**Err.ReturnHResult**](../../../Modules/ErrObject/ReturnHResult) to return a specific HRESULT from a **Sub** it implements.
 - **Pointers are `LongPtr`.** A parameter that is a pointer to a structure or to an interface the package does not declare (a `RECT*`, a `MSG*`, an `IMoniker*`) is a **LongPtr**. Pass the address of a variable with [**VarPtr**](../../../Modules/Information/VarPtr), or `StrPtr` for a string.
 - **Some declarations are partial.** [IOleObject](IOleObject) declares the first nine of the 21 methods of the Windows interface. The four stub interfaces --- [IOleClientSite](IOleClientSite), [IOleInPlaceFrame](IOleInPlaceFrame), [IStorage](IStorage) and [IDataObject](IDataObject) --- declare no methods; their description says to use the tbShellLib package for the full version. A stub is useful for naming the type of a parameter or a variable, not for calling.
 - **Seven declarations are variants of a Windows interface.** [IUnknownUnrestricted](IUnknownUnrestricted) has no base interface, which makes the three methods of **IUnknown** callable. [IDispatchUnrestricted](IDispatchUnrestricted) declares the four methods of **IDispatch**, which the **stdole** declaration does not reach. [IEnumVARIANTUnrestricted](IEnumVARIANTUnrestricted) declares the **IEnumVARIANT** enumerator with **Long** counts. [IOleInPlaceActiveObjectVB](IOleInPlaceActiveObjectVB), [IOleControlVB](IOleControlVB), [IPerPropertyBrowsingVB](IPerPropertyBrowsingVB) and [IOleInPlaceObjectWindowlessVB](IOleInPlaceObjectWindowlessVB) are not Windows interfaces: they have Visual Basic-style signatures that a class can implement.
+
+<!-- /test -->
 
 Every interface except the four `VB` variants is declared `[OleAutomation(False)]`, so it is not marked as an Automation interface. The contract of each method is that of the Windows interface, which Microsoft Learn documents; each interface page links to it.
 
@@ -96,3 +102,7 @@ Every interface except the four `VB` variants is declared `[OleAutomation(False)
 - [OLEPOINT](OLEPOINT) -- a point, with the layout of the Windows **POINT** structure
 - [OLERECT](OLERECT) -- a rectangle, with the layout of the Windows **RECT** structure
 - [OLESIZE](OLESIZE) -- a width and a height, with the layout of the Windows **SIZE** structure
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [OLEGuids-tests.twinproj](OLEGuids-tests.twinproj), a twinBASIC project. It uses OLEGuids as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

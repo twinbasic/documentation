@@ -99,7 +99,6 @@ const PENDING = new Set([
   "BigNumberLib",
   "FileProps",
   "Fmt",
-  "OLEGuids",
   "TBMANLIB",
   "TBMANLIB_Aes",
   "TBMANLIB_ConsoleComponents",

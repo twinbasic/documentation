@@ -1,0 +1,260 @@
+' IDispatchUnrestricted: the four methods of IDispatch called on an object, and the stdole declaration
+' of IDispatch, which does not reach them.
+[TestFixture]
+Module DispatchTests
+
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+    Private Declare PtrSafe Function SysStringLen Lib "oleaut32" (ByVal bstr As LongPtr) As Long
+    Private Declare PtrSafe Sub SysFreeString Lib "oleaut32" (ByVal bstr As LongPtr)
+
+    Private Const DISP_E_MEMBERNOTFOUND As Long = &H80020003
+    Private Const DISP_E_UNKNOWNNAME As Long = &H80020006
+    Private Const DISP_E_BADINDEX As Long = &H8002000B
+    Private Const DISP_E_EXCEPTION As Long = &H80020009
+
+    ' The EXCEPINFO structure, with signed members.
+    Private Type EXCEPINFO
+        wCode As Integer
+        wReserved As Integer
+        bstrSource As LongPtr
+        bstrDescription As LongPtr
+        bstrHelpFile As LongPtr
+        dwHelpContext As Long
+        pvReserved As LongPtr
+        pfnDeferredFillIn As LongPtr
+        scode As Long
+    End Type
+
+    ' The dispatch identifier of a member, or the value GetIDsOfNames left for a name it does not know.
+    Private Function IdOf(ByVal d As IDispatchUnrestricted, ByVal MemberName As String) As Long
+        Dim iid As OLECLSID
+        Dim namePtr As LongPtr = StrPtr(MemberName)
+        Dim id As Long = 0
+        d.GetIDsOfNames iid, namePtr, 1, 0, id
+        Return id
+    End Function
+
+    Private Function TextOf(ByVal Bstr As LongPtr) As String
+        If Bstr = 0 Then Exit Function
+        Dim n As Long = SysStringLen(Bstr)
+        Dim s As String = Space$(n)
+        CopyMemory StrPtr(s), Bstr, n * 2
+        Return s
+    End Function
+
+    [TestCase]
+    Public Sub GetTypeInfoCount_ClassObjectHasTypeInformation()
+        Expect.Begin
+        Dim d As IDispatchUnrestricted = New Calculator
+        Dim count As Long = -1
+        d.GetTypeInfoCount count
+        Expect.AreEqual 1, count, "GetTypeInfoCount of an object of a twinBASIC class"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetTypeInfo_IndexZeroReturnsTypeInformation()
+        Expect.Begin
+        Dim d As IDispatchUnrestricted = New Calculator
+        Dim p As LongPtr = 0
+        d.GetTypeInfo 0, 0, p
+        Expect.IsTrue p <> 0, "ITypeInfo pointer GetTypeInfo returned for index 0"
+        If p <> 0 Then
+            Dim v As IUnknownUnrestricted
+            CopyMemory VarPtr(v), VarPtr(p), Len(p)
+            Set v = Nothing
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetTypeInfo_OtherIndexRaisesBadIndex()
+        Expect.Begin
+        Dim d As IDispatchUnrestricted = New Calculator
+        Dim p As LongPtr = 0
+        On Error Resume Next
+        d.GetTypeInfo 1, 0, p
+        Dim errNum As Long = Err.Number
+        Dim hr As Long = Err.LastHresult
+        On Error GoTo 0
+        Expect.AreEqual DISP_E_BADINDEX, errNum, "Err.Number of GetTypeInfo with index 1"
+        Expect.AreEqual DISP_E_BADINDEX, hr, "Err.LastHresult of GetTypeInfo with index 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetIDsOfNames_KnownNameReturnsAnIdentifier()
+        Expect.Begin
+        Dim d As IDispatchUnrestricted = New Calculator
+        Dim id As Long = IdOf(d, "Subtract")
+        Expect.IsTrue id <> -1, "dispatch identifier GetIDsOfNames returned for Subtract (-1 is DISPID_UNKNOWN)"
+        Expect.AreEqual IdOf(d, "subtract"), id, "identifier for subtract in lower case, as the identifier for Subtract"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetIDsOfNames_UnknownNameRaisesError438()
+        Expect.Begin
+        Dim d As IDispatchUnrestricted = New Calculator
+        Dim iid As OLECLSID
+        Dim namePtr As LongPtr = StrPtr("Add")
+        Dim id As Long = 0
+        On Error Resume Next
+        d.GetIDsOfNames iid, namePtr, 1, 0, id
+        Dim errNum As Long = Err.Number
+        Dim hr As Long = Err.LastHresult
+        On Error GoTo 0
+        Expect.AreEqual 438, errNum, "Err.Number of GetIDsOfNames for a name the object does not have"
+        Expect.AreEqual DISP_E_UNKNOWNNAME, hr, "Err.LastHresult of GetIDsOfNames for a name the object does not have"
+        Expect.AreEqual -1, id, "identifier left by GetIDsOfNames for a name the object does not have"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Invoke_CallsAMethodWithTheArgumentsInReverseOrder()
+        Expect.Begin
+        Dim d As IDispatchUnrestricted = New Calculator
+        Dim iid As OLECLSID
+        Dim id As Long = IdOf(d, "Subtract")
+        Dim args(0 To 1) As Variant
+        args(0) = 3
+        args(1) = 10
+        Dim params As OLEDISPPARAMS
+        params.rgvarg = VarPtr(args(0))
+        params.cArgs = 2
+        Dim result As Variant
+        Dim argErr As Long
+        d.Invoke id, iid, 0, 1, VarPtr(params), VarPtr(result), 0, argErr
+        Expect.AreEqual 7, result, "Subtract(10, 3) called with element 0 holding 3 and element 1 holding 10"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Invoke_AssignsAPropertyWithPropertyPut()
+        Expect.Begin
+        Dim g As New Calculator
+        Dim d As IDispatchUnrestricted = g
+        Dim iid As OLECLSID
+        Dim id As Long = IdOf(d, "Level")
+        Dim newValue(0 To 0) As Variant
+        newValue(0) = 25
+        Dim putId As Long = -3
+        Dim params As OLEDISPPARAMS
+        params.rgvarg = VarPtr(newValue(0))
+        params.rgdispidNamedArgs = VarPtr(putId)
+        params.cArgs = 1
+        params.cNamedArgs = 1
+        Dim argErr As Long
+        d.Invoke id, iid, 0, 4, VarPtr(params), 0, 0, argErr
+        Expect.AreEqual 25, g.Level, "Level after Invoke with DISPATCH_PROPERTYPUT and the value 25"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Invoke_MemberErrorWithoutExcepinfoIsRaisedAsItIs()
+        Expect.Begin
+        Dim d As IDispatchUnrestricted = New Calculator
+        Dim iid As OLECLSID
+        Dim id As Long = IdOf(d, "Boom")
+        Dim params As OLEDISPPARAMS
+        Dim argErr As Long
+        On Error Resume Next
+        d.Invoke id, iid, 0, 1, VarPtr(params), 0, 0, argErr
+        Dim errNum As Long = Err.Number
+        Dim errText As String = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 5, errNum, "Err.Number of Invoke of a member that raises error 5, with lpexcepinfo 0"
+        Expect.AreEqual "boom", errText, "Err.Description of Invoke of a member that raises error 5, with lpexcepinfo 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Invoke_MemberErrorWithExcepinfoRaisesDispEException()
+        Expect.Begin
+        Dim d As IDispatchUnrestricted = New Calculator
+        Dim iid As OLECLSID
+        Dim id As Long = IdOf(d, "Boom")
+        Dim params As OLEDISPPARAMS
+        Dim ex As EXCEPINFO
+        Dim argErr As Long
+        On Error Resume Next
+        d.Invoke id, iid, 0, 1, VarPtr(params), 0, VarPtr(ex), argErr
+        Dim errNum As Long = Err.Number
+        On Error GoTo 0
+        Dim description As String = TextOf(ex.bstrDescription)
+        Dim source As String = TextOf(ex.bstrSource)
+        If ex.bstrDescription <> 0 Then SysFreeString ex.bstrDescription
+        If ex.bstrSource <> 0 Then SysFreeString ex.bstrSource
+        Expect.AreEqual DISP_E_EXCEPTION, errNum, "Err.Number of Invoke of a member that raises error 5, with lpexcepinfo set"
+        Expect.AreEqual &H800A0005, ex.scode, "scode in EXCEPINFO for error 5"
+        Expect.AreEqual "boom", description, "bstrDescription in EXCEPINFO"
+        Expect.AreEqual "Calculator", source, "bstrSource in EXCEPINFO"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Invoke_UnknownIdentifierRaisesError438()
+        Expect.Begin
+        Dim d As IDispatchUnrestricted = New Calculator
+        Dim iid As OLECLSID
+        Dim params As OLEDISPPARAMS
+        Dim argErr As Long
+        On Error Resume Next
+        d.Invoke 987654, iid, 0, 1, VarPtr(params), 0, 0, argErr
+        Dim errNum As Long = Err.Number
+        Dim hr As Long = Err.LastHresult
+        On Error GoTo 0
+        Expect.AreEqual 438, errNum, "Err.Number of Invoke with an identifier the object has no member for"
+        Expect.AreEqual DISP_E_MEMBERNOTFOUND, hr, "Err.LastHresult of Invoke with an identifier the object has no member for"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StdoleIDispatch_CallIsLateBoundAndDoesNotReachTheMethods()
+        Expect.Begin
+        Dim c As New Collection
+        Dim d As IDispatch = c
+        Dim count As Long = -1
+        On Error Resume Next
+        d.GetTypeInfoCount count
+        Dim errNum As Long = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 438, errNum, "Err.Number of GetTypeInfoCount called through a variable declared As IDispatch (a late-bound call by name)"
+        Expect.AreEqual -1, count, "argument of GetTypeInfoCount called through a variable declared As IDispatch"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Assign_ObjectVariableToIDispatchUnrestricted()
+        Expect.Begin
+        Dim o As Object = New Calculator
+        Dim d As IDispatchUnrestricted = o
+        Dim count As Long = -1
+        d.GetTypeInfoCount count
+        Expect.AreEqual 1, count, "GetTypeInfoCount through IDispatchUnrestricted assigned from an Object variable"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Assign_StdoleIDispatchVariableToIDispatchUnrestricted()
+        Expect.Begin
+        Dim s As stdole.IDispatch = New Calculator
+        Dim d As IDispatchUnrestricted = s
+        Dim count As Long = -1
+        d.GetTypeInfoCount count
+        Expect.AreEqual 1, count, "GetTypeInfoCount through IDispatchUnrestricted assigned from a stdole.IDispatch variable"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Assign_CollectionAsksForIDispatch()
+        Expect.Begin
+        Dim d As IDispatchUnrestricted = New Collection
+        Dim count As Long = -1
+        d.GetTypeInfoCount count
+        Expect.AreEqual 1, count, "GetTypeInfoCount of a Collection through IDispatchUnrestricted"
+        Expect.IsTrue Guids.Supports(New Collection, "{00020400-0000-0000-C000-000000000046}"), "a Collection answers QueryInterface for the identifier of IDispatch"
+        Expect.Done
+    End Sub
+
+End Module

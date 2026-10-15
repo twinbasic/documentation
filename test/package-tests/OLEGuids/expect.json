@@ -1,0 +1,20 @@
+{
+  "version": "1.0.10.0",
+  "cases": {
+    "EnumVariantTests.Next_CallsTheSlotAfterIUnknown": {
+      "fails": "1 of 1 checks failed: slot of the method table that Next uses (3 in IEnumVARIANT, after the three of IUnknown): expected 3, got 7"
+    },
+    "EnumVariantTests.Skip_CallsTheSlotAfterNext": {
+      "fails": "1 of 1 checks failed: slot of the method table that Skip uses (4 in IEnumVARIANT): expected 4, got 8"
+    },
+    "EnumVariantTests.Reset_CallsTheSlotAfterSkip": {
+      "fails": "1 of 1 checks failed: slot of the method table that Reset uses (5 in IEnumVARIANT): expected 5, got 9"
+    },
+    "EnumVariantTests.Clone_CallsTheLastSlot": {
+      "fails": "1 of 1 checks failed: slot of the method table that Clone uses (6 in IEnumVARIANT): expected 6, got 10"
+    },
+    "UnknownTests.QueryInterface_UnsupportedInterfaceOfClassObjectSetsPointerToZero": {
+      "fails": "1 of 1 checks failed: result pointer after QueryInterface for an interface an object of a project's class does not have: expected 0, got 12345"
+    }
+  }
+}

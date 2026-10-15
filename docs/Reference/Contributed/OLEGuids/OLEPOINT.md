@@ -8,9 +8,11 @@ has_toc: false
 # OLEPOINT type
 {: .no_toc }
 
+<!-- test: TypeLayoutTests.OLEPOINT_HasTheLayoutOfPoint -->
 A point, with the layout of the Windows `POINT` structure.
 
 **OLEPOINT** is a user-defined type declared in the package's `OLEGuids` module, so both `OLEPOINT` and `OLEGuids.OLEPOINT` name it. It mirrors the Windows structure [POINT](https://learn.microsoft.com/en-us/windows/win32/api/windef/ns-windef-point).
+<!-- /test -->
 
 ```tb inert=signature
 Public Type OLEPOINT

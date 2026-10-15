@@ -1,0 +1,179 @@
+' The eleven structures of the package: each has the size and the field offsets of the Windows
+' structure it mirrors, in a 32-bit and a 64-bit program. Where a Windows function fills or reads the
+' structure, the case calls it.
+[TestFixture]
+Module TypeLayoutTests
+
+    Private Declare PtrSafe Function CLSIDFromString Lib "ole32" (ByVal lpsz As LongPtr, ByRef pclsid As OLECLSID) As Long
+    Private Declare PtrSafe Function SetRect Lib "user32" (ByRef lprc As OLERECT, ByVal xLeft As Long, ByVal yTop As Long, ByVal xRight As Long, ByVal yBottom As Long) As Long
+    Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
+    Private Declare PtrSafe Function GetTextExtentPoint32W Lib "gdi32" (ByVal hDC As LongPtr, ByVal lpString As LongPtr, ByVal c As Long, ByRef lpSize As OLESIZE) As Long
+    Private Declare PtrSafe Function GetCursorPos Lib "user32" (ByRef lpPoint As OLEPOINT) As Long
+    Private Declare PtrSafe Function GetCursorPosRaw Lib "user32" Alias "GetCursorPos" (ByRef lpPoint As Long) As Long
+
+
+    ' The size of a pointer in this program: 4 or 8.
+    Private Function PtrBytes() As Long
+        Dim p As LongPtr
+        Return Len(p)
+    End Function
+
+    [TestCase]
+    Public Sub OLECLSID_HasTheLayoutOfGuid()
+        Expect.Begin
+        Dim g As OLECLSID
+        Expect.AreEqual 16, LenB(g), "size of OLECLSID"
+        Expect.AreEqual 0, VarPtr(g.Data1) - VarPtr(g), "offset of Data1"
+        Expect.AreEqual 4, VarPtr(g.Data2) - VarPtr(g), "offset of Data2"
+        Expect.AreEqual 6, VarPtr(g.Data3) - VarPtr(g), "offset of Data3"
+        Expect.AreEqual 8, VarPtr(g.Data4(0)) - VarPtr(g), "offset of Data4"
+        Dim text As String = "{00020400-0000-0000-C000-000000000046}"
+        Dim hr As Long = CLSIDFromString(StrPtr(text), g)
+        Expect.AreEqual 0, hr, "HRESULT of CLSIDFromString"
+        Expect.AreEqual &H20400, g.Data1, "Data1 of " & text & " parsed by Windows into an OLECLSID"
+        Expect.AreEqual 0, g.Data2, "Data2 of " & text
+        Expect.AreEqual 0, g.Data3, "Data3 of " & text
+        Expect.AreEqual &HC0, g.Data4(0), "Data4(0) of " & text
+        Expect.AreEqual 0, g.Data4(6), "Data4(6) of " & text
+        Expect.AreEqual &H46, g.Data4(7), "Data4(7) of " & text
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLERECT_HasTheLayoutOfRect()
+        Expect.Begin
+        Dim r As OLERECT
+        Expect.AreEqual 16, LenB(r), "size of OLERECT"
+        SetRect r, 1, 2, 3, 4
+        Expect.AreEqual 1, r.Left, "Left after SetRect(1, 2, 3, 4)"
+        Expect.AreEqual 2, r.Top, "Top after SetRect(1, 2, 3, 4)"
+        Expect.AreEqual 3, r.Right, "Right after SetRect(1, 2, 3, 4)"
+        Expect.AreEqual 4, r.Bottom, "Bottom after SetRect(1, 2, 3, 4)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEPOINT_HasTheLayoutOfPoint()
+        Expect.Begin
+        Dim p As OLEPOINT
+        Expect.AreEqual 8, LenB(p), "size of OLEPOINT"
+        Expect.AreEqual 4, VarPtr(p.Y) - VarPtr(p.X), "offset of Y after X"
+        Dim raw(0 To 1) As Long
+        GetCursorPos p
+        GetCursorPosRaw raw(0)
+        Expect.AreEqual raw(0), p.X, "X from GetCursorPos into an OLEPOINT, against the first Long of a second call"
+        Expect.AreEqual raw(1), p.Y, "Y from GetCursorPos into an OLEPOINT, against the second Long of a second call"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLESIZE_HasTheLayoutOfSize()
+        Expect.Begin
+        Dim s As OLESIZE
+        Expect.AreEqual 8, LenB(s), "size of OLESIZE"
+        Expect.AreEqual 4, VarPtr(s.CY) - VarPtr(s.CX), "offset of CY after CX"
+        Dim dc As LongPtr = GetDC(0)
+        Dim text As String = "WWWWWWWWWW"
+        GetTextExtentPoint32W dc, StrPtr(text), Len(text), s
+        ReleaseDC 0, dc
+        Expect.IsTrue s.CX > s.CY And s.CY > 0, "ten capital W measured by GetTextExtentPoint32W: CX (" & s.CX & ") is wider than CY (" & s.CY & ")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEACCELMSG_HasTheLayoutOfMsg()
+        Expect.Begin
+        Dim m As OLEACCELMSG
+        Dim ptr As Long = PtrBytes()
+        Dim expectedSize As Long = IIf(ptr = 8, 48, 28)
+        Expect.AreEqual expectedSize, LenB(m), "size of OLEACCELMSG (the size of MSG)"
+        Expect.AreEqual ptr, VarPtr(m.Message) - VarPtr(m), "offset of Message"
+        Expect.AreEqual 2 * ptr, VarPtr(m.wParam) - VarPtr(m), "offset of wParam"
+        Expect.AreEqual 3 * ptr, VarPtr(m.lParam) - VarPtr(m), "offset of lParam"
+        Expect.AreEqual 4 * ptr, VarPtr(m.Time) - VarPtr(m), "offset of Time"
+        Expect.AreEqual 4 * ptr + 4, VarPtr(m.PT) - VarPtr(m), "offset of PT"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLECONTROLINFO_HasTheLayoutOfControlinfo()
+        Expect.Begin
+        Dim c As OLECONTROLINFO
+        Dim ptr As Long = PtrBytes()
+        Expect.AreEqual IIf(ptr = 8, 24, 16), LenB(c), "size of OLECONTROLINFO (the size of CONTROLINFO)"
+        Expect.AreEqual ptr, VarPtr(c.hAccel) - VarPtr(c), "offset of hAccel"
+        Expect.AreEqual 2 * ptr, VarPtr(c.cAccel) - VarPtr(c), "offset of cAccel"
+        Expect.AreEqual 2 * ptr + 4, VarPtr(c.dwFlags) - VarPtr(c), "offset of dwFlags"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEINPLACEFRAMEINFO_HasTheLayoutOfOleinplaceframeinfo()
+        Expect.Begin
+        Dim f As OLEINPLACEFRAMEINFO
+        Dim ptr As Long = PtrBytes()
+        Expect.AreEqual IIf(ptr = 8, 32, 20), LenB(f), "size of OLEINPLACEFRAMEINFO"
+        Expect.AreEqual 4, VarPtr(f.fMDIApp) - VarPtr(f), "offset of fMDIApp"
+        Expect.AreEqual 8, VarPtr(f.hWndFrame) - VarPtr(f), "offset of hWndFrame"
+        Expect.AreEqual 8 + ptr, VarPtr(f.hAccel) - VarPtr(f), "offset of hAccel"
+        Expect.AreEqual 8 + 2 * ptr, VarPtr(f.cAccelEntries) - VarPtr(f), "offset of cAccelEntries"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLEDISPPARAMS_HasTheLayoutOfDispparams()
+        Expect.Begin
+        Dim d As OLEDISPPARAMS
+        Dim ptr As Long = PtrBytes()
+        Expect.AreEqual 2 * ptr + 8, LenB(d), "size of OLEDISPPARAMS (the size of DISPPARAMS)"
+        Expect.AreEqual ptr, VarPtr(d.rgdispidNamedArgs) - VarPtr(d), "offset of rgdispidNamedArgs"
+        Expect.AreEqual 2 * ptr, VarPtr(d.cArgs) - VarPtr(d), "offset of cArgs"
+        Expect.AreEqual 2 * ptr + 4, VarPtr(d.cNamedArgs) - VarPtr(d), "offset of cNamedArgs"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLECAUUID_HasTheLayoutOfCauuid()
+        Expect.Begin
+        Dim c As OLECAUUID
+        Dim ptr As Long = PtrBytes()
+        Expect.AreEqual 2 * ptr, LenB(c), "size of OLECAUUID (the size of CAUUID)"
+        Expect.AreEqual ptr, VarPtr(c.pElems) - VarPtr(c), "offset of pElems"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLECADWORD_HasTheLayoutOfCadword()
+        Expect.Begin
+        Dim c As OLECADWORD
+        Dim ptr As Long = PtrBytes()
+        Expect.AreEqual 2 * ptr, LenB(c), "size of OLECADWORD (the size of CADWORD)"
+        Expect.AreEqual ptr, VarPtr(c.pElems) - VarPtr(c), "offset of pElems"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OLECALPOLESTR_HasTheLayoutOfCalpolestr()
+        Expect.Begin
+        Dim c As OLECALPOLESTR
+        Dim ptr As Long = PtrBytes()
+        Expect.AreEqual 2 * ptr, LenB(c), "size of OLECALPOLESTR (the size of CALPOLESTR)"
+        Expect.AreEqual ptr, VarPtr(c.pElems) - VarPtr(c), "offset of pElems"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub QualifiedName_NamesTheTypeThroughTheModule()
+        Expect.Begin
+        Dim r As OLEGuids.OLERECT
+        Dim g As OLEGuids.OLECLSID
+        r.Right = 9
+        g.Data1 = 7
+        Dim plain As OLERECT = r
+        Expect.AreEqual 9, plain.Right, "an OLEGuids.OLERECT assigned to an OLERECT"
+        Expect.AreEqual 16, LenB(g), "size of an OLEGuids.OLECLSID"
+        Expect.Done
+    End Sub
+
+End Module

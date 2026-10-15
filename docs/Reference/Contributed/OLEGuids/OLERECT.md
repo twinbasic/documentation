@@ -8,9 +8,11 @@ has_toc: false
 # OLERECT type
 {: .no_toc }
 
+<!-- test: TypeLayoutTests.OLERECT_HasTheLayoutOfRect -->
 A rectangle, with the layout of the Windows `RECT` structure.
 
 **OLERECT** is a user-defined type declared in the package's `OLEGuids` module, so both `OLERECT` and `OLEGuids.OLERECT` name it. It mirrors the Windows structure [RECT](https://learn.microsoft.com/en-us/windows/win32/api/windef/ns-windef-rect), which holds the coordinates of the upper-left and lower-right corners of a rectangle.
+<!-- /test -->
 
 ```tb inert=signature
 Public Type OLERECT

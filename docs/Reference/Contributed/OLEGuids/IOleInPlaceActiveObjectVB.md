@@ -10,7 +10,9 @@ has_toc: false
 
 A Visual Basic-style version of **IOleInPlaceActiveObject.TranslateAccelerator**, which a class can implement.
 
+<!-- test: ImplementTests.IOleInPlaceActiveObjectVB_AnswersToItsIdentifier -->
 **IOleInPlaceActiveObjectVB** is not a Windows interface. It has the interface identifier `38584260-0CFB-45E7-8FBB-5D20B311F5B8` and extends **stdole.IDispatch**. It is not declared `[OleAutomation(False)]`, as the package's Windows interfaces are.
+<!-- /test -->
 
 It exists because [**IOleInPlaceActiveObject**](IOleInPlaceActiveObject) has `[PreserveSig]` members, which a twinBASIC class cannot implement. This interface has one **Sub** that corresponds to the **TranslateAccelerator** method of that interface, with signature types that Visual Basic code uses.
 

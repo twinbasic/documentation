@@ -10,7 +10,9 @@ has_toc: false
 
 Visual Basic-style versions of the **IOleControl** methods **GetControlInfo** and **OnMnemonic**, which a class can implement.
 
+<!-- test: ImplementTests.IOleControlVB_AnswersToItsIdentifier -->
 **IOleControlVB** is not a Windows interface. It has the interface identifier `C895C8F9-6564-4123-8760-529F72AB9322` and extends **stdole.IDispatch**. It is not declared `[OleAutomation(False)]`, as the package's Windows interfaces are. Its two methods have the dispatch identifiers 1 and 2 (`[DispId(1)]` and `[DispId(2)]`).
+<!-- /test -->
 
 It exists because [**IOleControl**](IOleControl) has `[PreserveSig]` members, which a twinBASIC class cannot implement. Each method here is a **Sub** that corresponds to one of those two methods, with signature types that Visual Basic code uses. The other two methods of **IOleControl**, **OnAmbientPropertyChange** and **FreezeEvents**, have no counterpart.
 

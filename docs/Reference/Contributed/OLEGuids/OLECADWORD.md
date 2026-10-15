@@ -8,9 +8,11 @@ has_toc: false
 # OLECADWORD type
 {: .no_toc }
 
+<!-- test: TypeLayoutTests.OLECADWORD_HasTheLayoutOfCadword -->
 A counted array of 32-bit values, with the layout of the Windows `CADWORD` structure.
 
 **OLECADWORD** is a user-defined type declared in the package's `OLEGuids` module, so both `OLECADWORD` and `OLEGuids.OLECADWORD` name it. It mirrors the Windows structure [CADWORD](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/ns-ocidl-cadword), which holds the number of elements of an array and the address of the array.
+<!-- /test -->
 
 ```tb inert=signature
 Public Type OLECADWORD

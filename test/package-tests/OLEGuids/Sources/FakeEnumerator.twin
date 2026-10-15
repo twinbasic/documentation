@@ -1,0 +1,215 @@
+' OLEGuids, IEnumVARIANTUnrestricted: a COM object built by hand, to see which slot of its method
+' table a call through the interface uses. Its table has eleven entries and every entry is a
+' function that records its own number in Landed. Nothing is called on a real enumerator, because a
+' call through the wrong slot of a real one ends the program.
+'
+' A function is called with the stdcall convention, so in a 32-bit program it takes off the
+' stack as many arguments as it declares: a call to a slot must find a function that declares as
+' many arguments as the call passes. There is a family of functions for each count of arguments (the
+' object pointer included): A for Reset, B for Skip and Clone, C for Next.
+Module FakeEnumerator
+
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
+    Public Landed As Long
+
+    ' The slot of the method table that a call to Reset used. -1 if no function of the table ran.
+    Public Function SlotOfReset() As Long
+        Dim vtbl(0 To 10) As LongPtr
+        FillWith vtbl, 1
+        vtbl(3) = AddressOf A3
+        vtbl(4) = AddressOf A4
+        vtbl(5) = AddressOf A5
+        vtbl(6) = AddressOf A6
+        vtbl(7) = AddressOf A7
+        vtbl(8) = AddressOf A8
+        vtbl(9) = AddressOf A9
+        vtbl(10) = AddressOf A10
+        Dim obj As LongPtr = VarPtr(vtbl(0))
+        Dim iface As LongPtr = VarPtr(obj)
+        Dim e As IEnumVARIANTUnrestricted
+        CopyMemory VarPtr(e), VarPtr(iface), Len(iface)
+        Landed = -1
+        e.Reset
+        Detach VarPtr(e)
+        Return Landed
+    End Function
+
+    ' The slot that a call to Skip used.
+    Public Function SlotOfSkip() As Long
+        Dim vtbl(0 To 10) As LongPtr
+        FillWith vtbl, 2
+        vtbl(3) = AddressOf B3
+        vtbl(4) = AddressOf B4
+        vtbl(5) = AddressOf B5
+        vtbl(6) = AddressOf B6
+        vtbl(7) = AddressOf B7
+        vtbl(8) = AddressOf B8
+        vtbl(9) = AddressOf B9
+        vtbl(10) = AddressOf B10
+        Dim obj As LongPtr = VarPtr(vtbl(0))
+        Dim iface As LongPtr = VarPtr(obj)
+        Dim e As IEnumVARIANTUnrestricted
+        CopyMemory VarPtr(e), VarPtr(iface), Len(iface)
+        Landed = -1
+        e.Skip 1
+        Detach VarPtr(e)
+        Return Landed
+    End Function
+
+    ' The slot that a call to Clone used.
+    Public Function SlotOfClone() As Long
+        Dim vtbl(0 To 10) As LongPtr
+        FillWith vtbl, 2
+        vtbl(3) = AddressOf B3
+        vtbl(4) = AddressOf B4
+        vtbl(5) = AddressOf B5
+        vtbl(6) = AddressOf B6
+        vtbl(7) = AddressOf B7
+        vtbl(8) = AddressOf B8
+        vtbl(9) = AddressOf B9
+        vtbl(10) = AddressOf B10
+        Dim obj As LongPtr = VarPtr(vtbl(0))
+        Dim iface As LongPtr = VarPtr(obj)
+        Dim e As IEnumVARIANTUnrestricted
+        CopyMemory VarPtr(e), VarPtr(iface), Len(iface)
+        Dim copy As stdole.IEnumVARIANT
+        Landed = -1
+        e.Clone copy
+        Detach VarPtr(e)
+        Detach VarPtr(copy)
+        Return Landed
+    End Function
+
+    ' The slot that a call to Next used.
+    Public Function SlotOfNext() As Long
+        Dim vtbl(0 To 10) As LongPtr
+        FillWith vtbl, 3
+        vtbl(3) = AddressOf C3
+        vtbl(4) = AddressOf C4
+        vtbl(5) = AddressOf C5
+        vtbl(6) = AddressOf C6
+        vtbl(7) = AddressOf C7
+        vtbl(8) = AddressOf C8
+        vtbl(9) = AddressOf C9
+        vtbl(10) = AddressOf C10
+        Dim obj As LongPtr = VarPtr(vtbl(0))
+        Dim iface As LongPtr = VarPtr(obj)
+        Dim e As IEnumVARIANTUnrestricted
+        CopyMemory VarPtr(e), VarPtr(iface), Len(iface)
+        Dim item As Variant
+        Dim fetched As Long
+        Landed = -1
+        e.Next 1, item, VarPtr(fetched)
+        Detach VarPtr(e)
+        Return Landed
+    End Function
+
+    ' Writes null into a variable that holds a pointer the program does not own.
+    Private Sub Detach(ByVal VariablePtr As LongPtr)
+        Dim zero As LongPtr = 0
+        CopyMemory VariablePtr, VarPtr(zero), Len(zero)
+    End Sub
+
+    Private Sub FillWith(ByRef Table() As LongPtr, ByVal Family As Long)
+        Dim i As Long
+        For i = LBound(Table) To UBound(Table)
+            Select Case Family
+                Case 1: Table(i) = AddressOf A0
+                Case 2: Table(i) = AddressOf B0
+                Case Else: Table(i) = AddressOf C0
+            End Select
+        Next
+    End Sub
+
+    ' ---- family A: the object pointer alone
+
+    Public Function A0(ByVal pThis As LongPtr) As Long
+        Landed = -2
+    End Function
+    Public Function A3(ByVal pThis As LongPtr) As Long
+        Landed = 3
+    End Function
+    Public Function A4(ByVal pThis As LongPtr) As Long
+        Landed = 4
+    End Function
+    Public Function A5(ByVal pThis As LongPtr) As Long
+        Landed = 5
+    End Function
+    Public Function A6(ByVal pThis As LongPtr) As Long
+        Landed = 6
+    End Function
+    Public Function A7(ByVal pThis As LongPtr) As Long
+        Landed = 7
+    End Function
+    Public Function A8(ByVal pThis As LongPtr) As Long
+        Landed = 8
+    End Function
+    Public Function A9(ByVal pThis As LongPtr) As Long
+        Landed = 9
+    End Function
+    Public Function A10(ByVal pThis As LongPtr) As Long
+        Landed = 10
+    End Function
+
+    ' ---- family B: the object pointer and one argument
+
+    Public Function B0(ByVal pThis As LongPtr, ByVal Arg As LongPtr) As Long
+        Landed = -2
+    End Function
+    Public Function B3(ByVal pThis As LongPtr, ByVal Arg As LongPtr) As Long
+        Landed = 3
+    End Function
+    Public Function B4(ByVal pThis As LongPtr, ByVal Arg As LongPtr) As Long
+        Landed = 4
+    End Function
+    Public Function B5(ByVal pThis As LongPtr, ByVal Arg As LongPtr) As Long
+        Landed = 5
+    End Function
+    Public Function B6(ByVal pThis As LongPtr, ByVal Arg As LongPtr) As Long
+        Landed = 6
+    End Function
+    Public Function B7(ByVal pThis As LongPtr, ByVal Arg As LongPtr) As Long
+        Landed = 7
+    End Function
+    Public Function B8(ByVal pThis As LongPtr, ByVal Arg As LongPtr) As Long
+        Landed = 8
+    End Function
+    Public Function B9(ByVal pThis As LongPtr, ByVal Arg As LongPtr) As Long
+        Landed = 9
+    End Function
+    Public Function B10(ByVal pThis As LongPtr, ByVal Arg As LongPtr) As Long
+        Landed = 10
+    End Function
+
+    ' ---- family C: the object pointer and three arguments
+
+    Public Function C0(ByVal pThis As LongPtr, ByVal Arg1 As LongPtr, ByVal Arg2 As LongPtr, ByVal Arg3 As LongPtr) As Long
+        Landed = -2
+    End Function
+    Public Function C3(ByVal pThis As LongPtr, ByVal Arg1 As LongPtr, ByVal Arg2 As LongPtr, ByVal Arg3 As LongPtr) As Long
+        Landed = 3
+    End Function
+    Public Function C4(ByVal pThis As LongPtr, ByVal Arg1 As LongPtr, ByVal Arg2 As LongPtr, ByVal Arg3 As LongPtr) As Long
+        Landed = 4
+    End Function
+    Public Function C5(ByVal pThis As LongPtr, ByVal Arg1 As LongPtr, ByVal Arg2 As LongPtr, ByVal Arg3 As LongPtr) As Long
+        Landed = 5
+    End Function
+    Public Function C6(ByVal pThis As LongPtr, ByVal Arg1 As LongPtr, ByVal Arg2 As LongPtr, ByVal Arg3 As LongPtr) As Long
+        Landed = 6
+    End Function
+    Public Function C7(ByVal pThis As LongPtr, ByVal Arg1 As LongPtr, ByVal Arg2 As LongPtr, ByVal Arg3 As LongPtr) As Long
+        Landed = 7
+    End Function
+    Public Function C8(ByVal pThis As LongPtr, ByVal Arg1 As LongPtr, ByVal Arg2 As LongPtr, ByVal Arg3 As LongPtr) As Long
+        Landed = 8
+    End Function
+    Public Function C9(ByVal pThis As LongPtr, ByVal Arg1 As LongPtr, ByVal Arg2 As LongPtr, ByVal Arg3 As LongPtr) As Long
+        Landed = 9
+    End Function
+    Public Function C10(ByVal pThis As LongPtr, ByVal Arg1 As LongPtr, ByVal Arg2 As LongPtr, ByVal Arg3 As LongPtr) As Long
+        Landed = 10
+    End Function
+
+End Module

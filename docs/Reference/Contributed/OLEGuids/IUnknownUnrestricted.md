@@ -25,10 +25,13 @@ See [IUnknown](../../../../Reference/COM-Interfaces/IUnknown) for the contract o
 Function QueryInterface(ByVal priid As LongPtr, ByRef ppvObject As LongPtr) As Long
 ```
 
+<!-- test: UnknownTests.QueryInterface_SupportedInterfaceReturnsSOk, UnknownTests.QueryInterface_UnsupportedInterfaceOfCollectionReturnsENoInterface, UnknownTests.QueryInterface_UnsupportedInterfaceOfClassObjectReturnsENoInterface, UnknownTests.QueryInterface_ReturnedPointerHoldsAReference -->
 Asks the object for another interface. *priid* is the address of the interface identifier requested, such as the address of an [OLECLSID](OLECLSID) variable. *ppvObject* is passed by reference and receives the interface pointer. The result is the HRESULT: 0 (`S_OK`) on success, `&H80004002` (`E_NOINTERFACE`) when the interface is not supported.
 
 A pointer that **QueryInterface** returns comes with a reference, which the caller gives back with **Release**.
+<!-- /test -->
 
+<!-- test: UnknownTests.QueryInterface_UnsupportedInterfaceOfClassObjectSetsPointerToZero, UnknownTests.QueryInterface_UnsupportedInterfaceOfCollectionSetsPointerToZero -->
 > [!NOTE] BETA 1005
 > When the interface is not supported, the COM contract sets *ppvObject* to 0. An object of a class that the project compiles --- a class, a form, a control --- returns `E_NOINTERFACE` and leaves the variable as it was. The runtime's own objects, such as a **Collection**, set it to 0, as every object of VB6 does. Set the variable to 0 before the call, and test the result rather than the pointer.
 
@@ -51,6 +54,7 @@ Debug.Print p        ' 0
 Function AddRef() As Long
 ```
 
+<!-- test: UnknownTests.AddRef_Release_ReturnTheNewCount -->
 Adds a reference to the object and returns the new reference count.
 
 ### Release
@@ -61,9 +65,11 @@ Function Release() As Long
 ```
 
 Removes a reference from the object and returns the new reference count. An object whose count reaches 0 may free itself.
+<!-- /test -->
 
 ## Example
 
+<!-- test: UnknownTests.Example_ReferenceCountIncludesTheProcedureVariables -->
 This function adds a reference and removes it again, and returns the object's reference count at that moment. The count includes the references that the procedure's own variables hold.
 
 ```tb check_build
@@ -73,6 +79,7 @@ Private Function ReferenceCount(ByVal Obj As Object) As Long
     Return u.Release()
 End Function
 ```
+<!-- /test -->
 
 ## See Also
 

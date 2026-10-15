@@ -8,9 +8,11 @@ has_toc: false
 # OLECAUUID type
 {: .no_toc }
 
+<!-- test: TypeLayoutTests.OLECAUUID_HasTheLayoutOfCauuid -->
 A counted array of GUIDs, with the layout of the Windows `CAUUID` structure.
 
 **OLECAUUID** is a user-defined type declared in the package's `OLEGuids` module, so both `OLECAUUID` and `OLEGuids.OLECAUUID` name it. It mirrors the Windows structure [CAUUID](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/ns-ocidl-cauuid), which holds the number of elements of an array and the address of the array.
+<!-- /test -->
 
 ```tb inert=signature
 Public Type OLECAUUID

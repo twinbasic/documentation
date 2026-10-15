@@ -8,9 +8,11 @@ has_toc: false
 # OLECONTROLINFO type
 {: .no_toc }
 
+<!-- test: TypeLayoutTests.OLECONTROLINFO_HasTheLayoutOfControlinfo -->
 The keyboard mnemonic table of an OLE control, with the layout of the Windows `CONTROLINFO` structure.
 
 **OLECONTROLINFO** is a user-defined type declared in the package's `OLEGuids` module, so both `OLECONTROLINFO` and `OLEGuids.OLECONTROLINFO` name it. It mirrors the Windows structure [CONTROLINFO](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/ns-ocidl-controlinfo).
+<!-- /test -->
 
 ```tb inert=signature
 Public Type OLECONTROLINFO
