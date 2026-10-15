@@ -336,6 +336,15 @@ function tbrunCases(tree, arch, names, timeoutSecs) {
   if (!json || (r.status !== 0 && r.status !== 7)) {
     throw new Error(`tbrun exited ${r.status} on ${tree} (${arch}):\n${r.stderr || r.stdout}`);
   }
+  // A run-time project that does not compile ran nothing: that is the project's fault, never a
+  // verdict on a case, so it is not judged (nor written to expect.json by --update).
+  if (json.cases.some((c) => /^not run: the project has compile errors/.test(c.detail ?? ""))) {
+    const errors = (json.diagnostics ?? []).filter((d) => String(d).startsWith("{ERROR}"));
+    throw new Error(
+      `${tree} (${arch}) does not compile, so no case ran; a compile case that expects an error goes in ` +
+        `${COMPILE_DIR}/:\n${errors.map((d) => `  ${d}`).join("\n")}`,
+    );
+  }
   const byName = new Map(json.cases.map((c) => [c.name, c]));
   return names.map((n) => ({ name: n, ...(byName.get(n) ?? { pass: false, detail: "tbrun gave no result" }) }));
 }
