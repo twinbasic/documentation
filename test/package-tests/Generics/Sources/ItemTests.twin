@@ -1,0 +1,104 @@
+' Generics: the Item properties of TupleOf1 and TupleOf2 to TupleOf7. A tuple holds the values it was
+' created with, in order, each with its declared type. TupleOf4 has no case: it cannot be declared.
+[TestFixture]
+Module ItemTests
+
+    [TestCase]
+    Public Sub TupleOf1_ReturnsItem()
+        Expect.Begin
+        Dim t As TupleOf1(Of Long) = New TupleOf1(Of Long)(640)
+        Expect.AreEqual 640, t.Item1, "TupleOf1(Of Long)(640).Item1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TupleOf2_ReturnsItemsInOrder()
+        Expect.Begin
+        Dim t As TupleOf2(Of String, Long) = New TupleOf2(Of String, Long)("width", 640)
+        Expect.AreEqual "width", t.Item1, "TupleOf2(Of String, Long)(""width"", 640).Item1"
+        Expect.AreEqual 640, t.Item2, "TupleOf2(Of String, Long)(""width"", 640).Item2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TupleOf3_ReturnsItemsInOrder()
+        Expect.Begin
+        Dim t As TupleOf3(Of String, Long, Date) = New TupleOf3(Of String, Long, Date)("Ada", 36, #12/10/1815#)
+        Expect.AreEqual "Ada", t.Item1, "TupleOf3(Of String, Long, Date)(""Ada"", 36, #12/10/1815#).Item1"
+        Expect.AreEqual 36, t.Item2, "TupleOf3(Of String, Long, Date)(""Ada"", 36, #12/10/1815#).Item2"
+        Expect.AreEqual 1815, Year(t.Item3), "Year of TupleOf3(Of String, Long, Date)(""Ada"", 36, #12/10/1815#).Item3"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TupleOf5_ReturnsItemsInOrder()
+        Expect.Begin
+        Dim t As TupleOf5(Of Long, Long, Long, Long, Long) = New TupleOf5(Of Long, Long, Long, Long, Long)(1, 2, 3, 4, 5)
+        Expect.AreEqual 1, t.Item1, "TupleOf5(Of Long x 5)(1, 2, 3, 4, 5).Item1"
+        Expect.AreEqual 2, t.Item2, "TupleOf5(Of Long x 5)(1, 2, 3, 4, 5).Item2"
+        Expect.AreEqual 3, t.Item3, "TupleOf5(Of Long x 5)(1, 2, 3, 4, 5).Item3"
+        Expect.AreEqual 4, t.Item4, "TupleOf5(Of Long x 5)(1, 2, 3, 4, 5).Item4"
+        Expect.AreEqual 5, t.Item5, "TupleOf5(Of Long x 5)(1, 2, 3, 4, 5).Item5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TupleOf6_ReturnsItemsInOrder()
+        Expect.Begin
+        Dim t As TupleOf6(Of Long, Long, Long, Long, Long, Long) = New TupleOf6(Of Long, Long, Long, Long, Long, Long)(1, 2, 3, 4, 5, 6)
+        Expect.AreEqual 1, t.Item1, "TupleOf6(Of Long x 6)(1 to 6).Item1"
+        Expect.AreEqual 2, t.Item2, "TupleOf6(Of Long x 6)(1 to 6).Item2"
+        Expect.AreEqual 3, t.Item3, "TupleOf6(Of Long x 6)(1 to 6).Item3"
+        Expect.AreEqual 4, t.Item4, "TupleOf6(Of Long x 6)(1 to 6).Item4"
+        Expect.AreEqual 5, t.Item5, "TupleOf6(Of Long x 6)(1 to 6).Item5"
+        Expect.AreEqual 6, t.Item6, "TupleOf6(Of Long x 6)(1 to 6).Item6"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TupleOf7_ReturnsItemsInOrder()
+        Expect.Begin
+        Dim t As TupleOf7(Of Long, Long, Long, Long, Long, Long, Long) = New TupleOf7(Of Long, Long, Long, Long, Long, Long, Long)(1, 2, 3, 4, 5, 6, 7)
+        Expect.AreEqual 1, t.Item1, "TupleOf7(Of Long x 7)(1 to 7).Item1"
+        Expect.AreEqual 2, t.Item2, "TupleOf7(Of Long x 7)(1 to 7).Item2"
+        Expect.AreEqual 3, t.Item3, "TupleOf7(Of Long x 7)(1 to 7).Item3"
+        Expect.AreEqual 4, t.Item4, "TupleOf7(Of Long x 7)(1 to 7).Item4"
+        Expect.AreEqual 5, t.Item5, "TupleOf7(Of Long x 7)(1 to 7).Item5"
+        Expect.AreEqual 6, t.Item6, "TupleOf7(Of Long x 7)(1 to 7).Item6"
+        Expect.AreEqual 7, t.Item7, "TupleOf7(Of Long x 7)(1 to 7).Item7"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Items_KeepTheirDeclaredTypes()
+        Expect.Begin
+        Dim t As TupleOf5(Of Byte, Currency, Boolean, Double, String) = New TupleOf5(Of Byte, Currency, Boolean, Double, String)(200, 19.99@, True, 2.5, "x")
+        Expect.AreEqual "Byte", TypeName(t.Item1), "TypeName of Item1 of a tuple declared with Byte"
+        Expect.AreEqual "Currency", TypeName(t.Item2), "TypeName of Item2 of a tuple declared with Currency"
+        Expect.AreEqual "Boolean", TypeName(t.Item3), "TypeName of Item3 of a tuple declared with Boolean"
+        Expect.AreEqual "Double", TypeName(t.Item4), "TypeName of Item4 of a tuple declared with Double"
+        Expect.AreEqual "String", TypeName(t.Item5), "TypeName of Item5 of a tuple declared with String"
+        Expect.AreEqual 19.99@, t.Item2, "Currency item 19.99"
+        Expect.IsTrue t.Item3, "Boolean item True"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Items_LongPtr()
+        Expect.Begin
+        Dim t As TupleOf1(Of LongPtr) = New TupleOf1(Of LongPtr)(12345)
+        Expect.AreEqual 12345, CLng(t.Item1), "TupleOf1(Of LongPtr)(12345).Item1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Items_DateKeepsTimeOfDay()
+        Expect.Begin
+        Dim t As TupleOf1(Of Date) = New TupleOf1(Of Date)(#3/4/2020 5:06:07 PM#)
+        Expect.AreEqual 17, Hour(t.Item1), "Hour of a Date item 5:06:07 PM"
+        Expect.AreEqual 6, Minute(t.Item1), "Minute of a Date item 5:06:07 PM"
+        Expect.AreEqual 7, Second(t.Item1), "Second of a Date item 5:06:07 PM"
+        Expect.Done
+    End Sub
+
+End Module

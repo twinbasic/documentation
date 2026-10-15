@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0.0",
+  "cases": {
+    "ObjectItemTests.New_ObjectItemHoldsAnObject": {
+      "fails": "2 of 2 checks failed: Err.Number of New TupleOf1(Of Object) given a Collection (Object variable or With block variable not set): expected 0, got 91; New TupleOf1(Of Object) given a Collection returned no tuple"
+    },
+    "ObjectItemTests.New_ObjectItemHoldsNothing": {
+      "fails": "1 of 1 checks failed: Err.Number of New TupleOf1(Of Object) given Nothing (Object variable or With block variable not set): expected 0, got 91"
+    }
+  }
+}

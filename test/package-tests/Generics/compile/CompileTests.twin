@@ -1,0 +1,22 @@
+' Generics: what the compiler refuses. Each line ends in a comment ' CASE <Name>: <code>.
+' A tuple type that no declaration of the project names is not declared anywhere else in this folder.
+Module CompileTests
+
+    Public Sub New_WithoutADeclaration()
+        Dim a As Any = New TupleOf2(Of Date, Currency)(#1/1/2000#, 1@) ' CASE NewWithoutDeclaration: TB5074
+    End Sub
+
+    Public Sub New_ByteVariableForLongItem()
+        Dim b As Byte = 1
+        Dim t As TupleOf1(Of Long) = New TupleOf1(Of Long)(b) ' CASE ByteVariableForLongItem: TB5001
+    End Sub
+
+    Public Sub Declare_VariantTypeArgument()
+        Dim v As TupleOf1(Of Variant) ' CASE VariantTypeArgument: TB5124
+    End Sub
+
+    Public Sub Declare_TupleOf4WithFourTypeArguments()
+        Dim q As TupleOf4(Of Long, Long, Long, Long) ' CASE TupleOf4FourTypeArguments: TB5124
+    End Sub
+
+End Module
