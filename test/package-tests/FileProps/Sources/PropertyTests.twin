@@ -1,0 +1,218 @@
+' FileProperty: Name, NameDesc, ID, Value and ValueDesc.
+[TestFixture]
+Module PropertyTests
+
+    [TestCase]
+    Public Sub Name_IsTheSystemName()
+        Expect.Begin
+        Dim w As String, fp As FileProperties
+        w = Sandbox.Fresh("Name_IsTheSystemName")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Expect.AreEqual "System.ItemFolderNameDisplay", fp.Item("System.ItemFolderNameDisplay").Name, "Name of Item(""System.ItemFolderNameDisplay"")"
+        Expect.AreEqual "System.Size", fp.Item("system.size").Name, "Name of Item(""system.size"") is the system name in its own case"
+        Expect.AreEqual vbString, VarType(fp.Item("System.Size").Name), "VarType of Name"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Name_PropertyWithoutSystemName_IsEmpty()
+        Expect.Begin
+        Dim w As String, fp As FileProperties, i As Long, p As FileProperty
+        w = Sandbox.Fresh("Name_PropertyWithoutSystemName_IsEmpty")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        For i = 0 To fp.Count - 1
+            Set p = fp.Item(i)
+            If Len(p.Name) = 0 Then
+                Expect.IsTrue Len(p.ID) > 0, "ID of the property at index " & i & ", which has no Name, is not empty"
+                Expect.AreEqual p.ID, fp.Item(p.ID).ID, "Item with the ID of the property at index " & i & ", which has no Name"
+            End If
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set p = Nothing
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NameDesc_IsAStringAndNotAlwaysAvailable()
+        Expect.Begin
+        Dim w As String, fp As FileProperties, i As Long, p As FileProperty
+        w = Sandbox.Fresh("NameDesc_IsAStringAndNotAlwaysAvailable")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Expect.IsTrue Len(fp.Item("System.Size").NameDesc) > 0, "NameDesc of System.Size is not empty"
+        For i = 0 To fp.Count - 1
+            Set p = fp.Item(i)
+            If Len(p.NameDesc) = 0 Then
+                Expect.IsTrue Len(p.ID) > 0, "ID of the property at index " & i & ", whose NameDesc is empty"
+            End If
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set p = Nothing
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ID_IsAGuidAndAnIndex()
+        Expect.Begin
+        Dim w As String, fp As FileProperties, i As Long, id As String, seen As New Collection
+        w = Sandbox.Fresh("ID_IsAGuidAndAnIndex")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Expect.AreEqual "{B725F130-47EF-101A-A5F1-02608C9EEBAC}/12", fp.Item("System.Size").ID, "ID of System.Size"
+        For i = 0 To fp.Count - 1
+            id = fp.Item(i).ID
+            If Not (id Like "{????????-????-????-????-????????????}/#*") Then
+                Expect.Fail "ID of the property at index " & i & " is a GUID in braces, a slash and an integer: got """ & id & """"
+            ElseIf Not IsNumeric(Mid$(id, 40)) Then
+                Expect.Fail "ID of the property at index " & i & " ends in an integer: got """ & id & """"
+            End If
+            Err.Clear
+            seen.Add True, UCase$(id)
+            If Err.Number <> 0 Then Expect.Fail "ID of the property at index " & i & " is the ID of an earlier property: " & id
+            Err.Clear
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_TypeDependsOnTheProperty()
+        Expect.Begin
+        Dim w As String, fp As FileProperties
+        w = Sandbox.Fresh("Value_TypeDependsOnTheProperty")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Expect.AreEqual vbString, VarType(fp.Item("System.ItemNameDisplay").Value), "VarType of the Value of System.ItemNameDisplay"
+        Expect.AreEqual "a.txt", fp.Item("System.ItemNameDisplay").Value, "Value of System.ItemNameDisplay"
+        Expect.AreEqual vbDate, VarType(fp.Item("System.DateModified").Value), "VarType of the Value of System.DateModified"
+        Expect.AreEqual vbBoolean, VarType(fp.Item("System.IsShared").Value), "VarType of the Value of System.IsShared"
+        Expect.IsFalse fp.Item("System.IsShared").Value, "Value of System.IsShared of a new file"
+        Expect.AreEqual 7, CLng(fp.Item("System.Size").Value), "Value of System.Size of a file of seven bytes"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_PropertyWithNoValue_IsEmpty()
+        Expect.Begin
+        Dim w As String, fp As FileProperties
+        w = Sandbox.Fresh("Value_PropertyWithNoValue_IsEmpty")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Expect.IsTrue IsEmpty(fp.Item("System.Title").Value), "Value of System.Title of a text file, which has none, is Empty"
+        Expect.AreEqual "", fp.Item("System.Title").ValueDesc, "ValueDesc of System.Title of a text file"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_MultiValueProperty_IsAnArray()
+        Expect.Begin
+        Dim w As String, fp As FileProperties, v As Variant
+        w = Sandbox.Fresh("Value_MultiValueProperty_IsAnArray")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        v = fp.Item("System.Kind").Value
+        Expect.IsTrue IsArray(v), "Value of System.Kind of a text file is an array"
+        If IsArray(v) Then
+            Expect.AreEqual 1, UBound(v) - LBound(v) + 1, "number of elements of the Value of System.Kind of a text file"
+            Expect.AreEqual "document", LCase$(CStr(v(LBound(v)))), "the element of the Value of System.Kind of a text file"
+        End If
+        Expect.IsFalse IsArray(fp.Item("System.ItemNameDisplay").Value), "Value of System.ItemNameDisplay is not an array"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueDesc_IsAString()
+        Expect.Begin
+        Dim w As String, fp As FileProperties, i As Long
+        w = Sandbox.Fresh("ValueDesc_IsAString")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Expect.AreEqual "a.txt", fp.Item("System.ItemNameDisplay").ValueDesc, "ValueDesc of System.ItemNameDisplay"
+        For i = 0 To fp.Count - 1
+            If VarType(fp.Item(i).ValueDesc) <> vbString Then Expect.Fail "ValueDesc of the property at index " & i & " is a String"
+        Next
+        Expect.AreEqual "document", LCase$(fp.Item("System.Kind").ValueDesc), "ValueDesc of System.Kind, a multi-value property"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueDesc_MultiValueProperty_IsOneString()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties, d As String
+        w = Sandbox.Fresh("ValueDesc_MultiValueProperty_IsOneString")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set fp = FilePropertyExplorer.OpenFile(p, True)
+        Expect.AreEqual 0, Sandbox.ValueError(fp.Item("System.Keywords"), Array("alpha", "beta")), "Err.Number of assigning two keywords to System.Keywords"
+        Set fp = Nothing
+        Set fp = FilePropertyExplorer.OpenFile(p)
+        Expect.IsTrue IsArray(fp.Item("System.Keywords").Value), "Value of System.Keywords with two keywords is an array"
+        d = fp.Item("System.Keywords").ValueDesc
+        Expect.AreEqual vbString, VarType(fp.Item("System.Keywords").ValueDesc), "VarType of ValueDesc of System.Keywords with two keywords"
+        Expect.IsTrue InStr(d, "alpha") > 0 And InStr(d, "beta") > 0, "ValueDesc of System.Keywords holds both keywords: got """ & d & """"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+End Module

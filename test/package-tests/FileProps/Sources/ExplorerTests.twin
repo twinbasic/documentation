@@ -1,0 +1,265 @@
+' FilePropertyExplorer: OpenFile, the paths it takes and the errors it raises, and WriteSupport.
+[TestFixture]
+Module ExplorerTests
+
+    [TestCase]
+    Public Sub OpenFile_FullPath_ReturnsCollection()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties
+        w = Sandbox.Fresh("OpenFile_FullPath_ReturnsCollection")
+        On Error GoTo Oops
+        p = Sandbox.MakeText(w, "a.txt")
+        Set fp = FilePropertyExplorer.OpenFile(p)
+        Expect.IsFalse fp Is Nothing, "OpenFile of an existing text file returns a collection"
+        Expect.AreEqual "FileProperties", TypeName(fp), "TypeName of what OpenFile returns"
+        Expect.IsTrue fp.Count > 0, "Count of the collection OpenFile returns for a text file"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenFile_NewInstance_ReturnsCollection()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties, ex As FilePropertyExplorer
+        w = Sandbox.Fresh("OpenFile_NewInstance_ReturnsCollection")
+        On Error GoTo Oops
+        p = Sandbox.MakeText(w, "a.txt")
+        Set ex = New FilePropertyExplorer
+        Set fp = ex.OpenFile(p)
+        Expect.IsTrue fp.Count > 0, "Count of the collection OpenFile returns on a FilePropertyExplorer made with New"
+        Expect.AreEqual p, fp.FilePath, "FilePath of that collection"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Set ex = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenFile_MissingFile_RaisesFileNotFound()
+        Expect.Begin
+        Dim w As String
+        w = Sandbox.Fresh("OpenFile_MissingFile_RaisesFileNotFound")
+        On Error GoTo Oops
+        Expect.AreEqual Sandbox.E_FileNotFound, Sandbox.OpenError(w & "\none.txt"), "Err.Number of OpenFile of a file that does not exist"
+        Expect.AreEqual Sandbox.E_FileNotFound, Sandbox.OpenError(w & "\no\such\folder\none.txt"), "Err.Number of OpenFile of a file in a folder that does not exist"
+        Expect.AreEqual Sandbox.E_FileNotFound, Sandbox.OpenError(w & "\none.txt", True), "Err.Number of OpenFile of a file that does not exist, with write support"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenFile_RelativePath_RaisesFileNotFound()
+        Expect.Begin
+        Dim w As String, p As String, oldDrive As String, oldDir As String, n As Long
+        w = Sandbox.Fresh("OpenFile_RelativePath_RaisesFileNotFound")
+        oldDir = CurDir$
+        oldDrive = Left$(oldDir, 2)
+        On Error GoTo Oops
+        p = Sandbox.MakeText(w, "a.txt")
+        Expect.AreEqual 0, Sandbox.OpenError(p), "Err.Number of OpenFile of the full path of the file"
+        ChDrive Left$(w, 2)
+        ChDir w
+        n = Sandbox.OpenError("a.txt")
+        ChDrive oldDrive
+        ChDir oldDir
+        Expect.AreEqual Sandbox.E_FileNotFound, n, "Err.Number of OpenFile of ""a.txt"", a file of the current folder"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        On Error Resume Next
+        ChDrive oldDrive
+        ChDir oldDir
+        On Error GoTo 0
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenFile_DotDotSegment_RaisesFileNotFound()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("OpenFile_DotDotSegment_RaisesFileNotFound")
+        On Error GoTo Oops
+        p = Sandbox.MakeText(w, "a.txt")
+        Expect.AreEqual Sandbox.E_FileNotFound, Sandbox.OpenError(w & "\..\OpenFile_DotDotSegment_RaisesFileNotFound\a.txt"), "Err.Number of OpenFile of the existing file a.txt given with a "".."" segment in its path"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenFile_ForwardSlashes_RaisesFileNotFound()
+        Expect.Begin
+        Dim w As String, p As String
+        w = Sandbox.Fresh("OpenFile_ForwardSlashes_RaisesFileNotFound")
+        On Error GoTo Oops
+        p = Sandbox.MakeText(w, "a.txt")
+        Expect.AreEqual Sandbox.E_FileNotFound, Sandbox.OpenError(Replace(p, "\", "/")), "Err.Number of OpenFile of the existing file a.txt given with forward slashes"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenFile_WriteSupport_JpegListsTheHandlersProperties()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties, plainCount As Long
+        w = Sandbox.Fresh("OpenFile_WriteSupport_JpegListsTheHandlersProperties")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set fp = FilePropertyExplorer.OpenFile(p)
+        plainCount = fp.Count
+        Expect.AreEqual 631, CLng(fp.Item("System.Size").Value), "System.Size of the JPEG file, opened without write support"
+        Set fp = Nothing
+        Set fp = FilePropertyExplorer.OpenFile(p, True)
+        Expect.IsTrue fp.Count > 0, "Count of a JPEG file opened with write support"
+        Expect.IsTrue fp.Count < plainCount, "Count of a JPEG file opened with write support is lower than without it (" & fp.Count & " and " & plainCount & ")"
+        Expect.IsTrue IsEmpty(fp.Item("System.Size").Value), "System.Size of the JPEG file, opened with write support, is Empty"
+        Expect.AreEqual "System.Size", fp.Item("System.Size").Name, "Name of System.Size, opened with write support"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenFile_WriteSupport_TextFileListsTheSameProperties()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties, plainCount As Long
+        w = Sandbox.Fresh("OpenFile_WriteSupport_TextFileListsTheSameProperties")
+        On Error GoTo Oops
+        p = Sandbox.MakeText(w, "a.txt")
+        Set fp = FilePropertyExplorer.OpenFile(p)
+        plainCount = fp.Count
+        Set fp = Nothing
+        Set fp = FilePropertyExplorer.OpenFile(p, True)
+        Expect.AreEqual plainCount, fp.Count, "Count of a text file opened with write support and without it"
+        Expect.AreEqual 7, CLng(fp.Item("System.Size").Value), "System.Size of the text file, opened with write support"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenFile_TwoReadOnlyCollections_BothHoldTheProperties()
+        Expect.Begin
+        Dim w As String, p As String, a As FileProperties, b As FileProperties
+        w = Sandbox.Fresh("OpenFile_TwoReadOnlyCollections_BothHoldTheProperties")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set a = FilePropertyExplorer.OpenFile(p)
+        Set b = FilePropertyExplorer.OpenFile(p)
+        Expect.IsTrue a.Count > 0, "Count of the first collection of a JPEG file, while the second is open"
+        Expect.AreEqual a.Count, b.Count, "Count of the second collection of the JPEG file, opened while the first is open"
+        Expect.AreEqual 631, CLng(b.Item("System.Size").Value), "System.Size read through the second collection"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set a = Nothing
+        Set b = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenFile_WhileWriteSupportCollectionIsOpen_ListsTheProperties()
+        Expect.Begin
+        Dim w As String, p As String, writable As FileProperties, plain As FileProperties
+        w = Sandbox.Fresh("OpenFile_WhileWriteSupportCollectionIsOpen_ListsTheProperties")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set writable = FilePropertyExplorer.OpenFile(p, True)
+        Set plain = FilePropertyExplorer.OpenFile(p)
+        Expect.IsTrue plain.Count > 0, "Count of a collection of a JPEG file opened while a collection with write support of the same file is open"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set writable = Nothing
+        Set plain = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenFile_WriteSupportWhileWriteSupportCollectionIsOpen_ListsTheProperties()
+        Expect.Begin
+        Dim w As String, p As String, first As FileProperties, second As FileProperties
+        w = Sandbox.Fresh("OpenFile_WriteSupportWhileWriteSupportCollectionIsOpen_ListsTheProperties")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set first = FilePropertyExplorer.OpenFile(p, True)
+        Set second = FilePropertyExplorer.OpenFile(p, True)
+        Expect.IsTrue first.Count > 0, "Count of the first collection of a JPEG file opened with write support"
+        Expect.IsTrue second.Count > 0, "Count of a second collection of the same file opened with write support while the first is open"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set first = Nothing
+        Set second = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenFile_WriteSupportWhileACollectionIsOpen_Returns()
+        Expect.Begin
+        Dim w As String, p As String, plain As FileProperties, writable As FileProperties
+        w = Sandbox.Fresh("OpenFile_WriteSupportWhileACollectionIsOpen_Returns")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set plain = FilePropertyExplorer.OpenFile(p)
+        Set writable = FilePropertyExplorer.OpenFile(p, True)
+        Expect.IsTrue writable.Count > 0, "Count of a collection with write support of a JPEG file, opened while a collection of the same file is open"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set plain = Nothing
+        Set writable = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+End Module

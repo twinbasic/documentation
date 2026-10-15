@@ -14,9 +14,13 @@ Syntax: *object*.**ID**
 *object*
 : *required* An object expression that evaluates to a **FileProperty** object.
 
-The **ID** property returns a **String** that is a unique identity for the property and can always be used to refer to it. It consists of a GUID identifying the property schema, followed by an integer identifying the property's index within that schema.
+<!-- test: PropertyTests.ID_IsAGuidAndAnIndex -->
+The **ID** property returns a **String** that is a unique identity for the property. It consists of a GUID identifying the property schema, a slash, and an integer identifying the property's index within that schema, as in `{B725F130-47EF-101A-A5F1-02608C9EEBAC}/12`. No two properties of a file have the same ID.
+<!-- /test -->
 
-Unlike [**Name**](Name), which is a dotted system name such as `System.ItemFolderNameDisplay`, the **ID** string is made of the schema GUID and the index.
+Unlike [**Name**](Name), which is a dotted system name such as `System.ItemFolderNameDisplay`, the **ID** string is made of the schema GUID and the index. A property that has no system name still has an ID.
+
+Pass the ID to [**FileProperties.Item**](../FileProperties/Item) to get the property back. That call raises an error for some properties; see the note on **Item**.
 
 ### Example
 

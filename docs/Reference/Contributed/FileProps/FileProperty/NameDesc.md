@@ -16,7 +16,11 @@ Syntax: *object*.**NameDesc**
 
 Returns a **String** containing a localized version of the property's name. This name is suitable for display to the user.
 
-The localized name is not always available. Use [**Name**](Name) instead when a locale-independent identifier is needed --- for example, when storing or comparing property names across systems.
+<!-- test: PropertyTests.NameDesc_IsAStringAndNotAlwaysAvailable -->
+The localized name is not always available: for some properties **NameDesc** is an empty string.
+<!-- /test -->
+
+Use [**Name**](Name) instead when a locale-independent identifier is needed --- for example, when storing or comparing property names across systems.
 
 ### See Also
 

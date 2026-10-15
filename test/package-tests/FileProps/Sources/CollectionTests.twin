@@ -1,0 +1,286 @@
+' FileProperties: Count, FilePath, Item by index, name and ID, the errors Item raises, and For Each.
+[TestFixture]
+Module CollectionTests
+
+    [TestCase]
+    Public Sub Count_DiffersByFileType()
+        Expect.Begin
+        Dim w As String, t As FileProperties, j As FileProperties
+        w = Sandbox.Fresh("Count_DiffersByFileType")
+        On Error GoTo Oops
+        Set t = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Set j = FilePropertyExplorer.OpenFile(Sandbox.MakeJpeg(w, "a.jpg"))
+        Expect.IsTrue t.Count > 0, "Count of a text file"
+        Expect.IsTrue j.Count > 0, "Count of a JPEG file"
+        Expect.IsTrue t.Count <> j.Count, "Count of a text file and of a JPEG file differ (" & t.Count & " and " & j.Count & ")"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set t = Nothing
+        Set j = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Count_IsOneMoreThanTheLastIndex()
+        Expect.Begin
+        Dim w As String, fp As FileProperties
+        w = Sandbox.Fresh("Count_IsOneMoreThanTheLastIndex")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Expect.AreEqual 0, Sandbox.ItemError(fp, 0&), "Err.Number of Item(0)"
+        Expect.AreEqual 0, Sandbox.ItemError(fp, fp.Count - 1), "Err.Number of Item(Count - 1)"
+        Expect.AreEqual Sandbox.E_OutOfBounds, Sandbox.ItemError(fp, fp.Count), "Err.Number of Item(Count)"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FilePath_IsThePathPassedToOpenFile()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties
+        w = Sandbox.Fresh("FilePath_IsThePathPassedToOpenFile")
+        On Error GoTo Oops
+        p = Sandbox.MakeText(w, "a.txt")
+        Set fp = FilePropertyExplorer.OpenFile(p)
+        Expect.AreEqual p, fp.FilePath, "FilePath of the collection OpenFile returned for the full path"
+        Set fp = FilePropertyExplorer.OpenFile(p, True)
+        Expect.AreEqual p, fp.FilePath, "FilePath of the collection OpenFile returned for the full path, with write support"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_ByIndex_ReturnsThePropertyAtThatPosition()
+        Expect.Begin
+        Dim w As String, fp As FileProperties, a As String, b As String, i As Long
+        w = Sandbox.Fresh("Item_ByIndex_ReturnsThePropertyAtThatPosition")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Expect.AreEqual "FileProperty", TypeName(fp.Item(0)), "TypeName of Item(0)"
+        For i = 0 To fp.Count - 1
+            a = fp.Item(i).ID
+            b = fp.Item(i).ID
+            If a <> b Then Expect.Fail "ID of Item(" & i & ") read twice gives " & a & " and " & b
+            If Len(a) = 0 Then Expect.Fail "ID of Item(" & i & ") is empty"
+        Next
+        Expect.AreEqual "FileProperty", TypeName(fp.Item(fp.Count - 1)), "TypeName of Item(Count - 1)"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_ByName_ReturnsThePropertyOfThatName()
+        Expect.Begin
+        Dim w As String, fp As FileProperties, i As Long, p As FileProperty
+        w = Sandbox.Fresh("Item_ByName_ReturnsThePropertyOfThatName")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        For i = 0 To fp.Count - 1
+            Set p = fp.Item(i)
+            If Len(p.Name) > 0 Then
+                If fp.Item(p.Name).ID <> p.ID Then Expect.Fail "Item(""" & p.Name & """) is not the property at index " & i
+            End If
+        Next
+        Expect.AreEqual "a.txt", fp.Item("System.ItemNameDisplay").Value, "Value of Item(""System.ItemNameDisplay"")"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set p = Nothing
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_ByID_ReturnsThePropertyWithThatID()
+        Expect.Begin
+        Dim w As String, fp As FileProperties, names As Variant, n As Variant, id As String
+        w = Sandbox.Fresh("Item_ByID_ReturnsThePropertyWithThatID")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        names = Array("System.Size", "System.ItemNameDisplay", "System.DateModified", "System.ContentType", "System.FileExtension")
+        For Each n In names
+            id = fp.Item(CStr(n)).ID
+            Expect.AreEqual 0, Sandbox.ItemError(fp, id), "Err.Number of Item with the ID of " & n
+            If Sandbox.ItemError(fp, id) = 0 Then Expect.AreEqual CStr(n), fp.Item(id).Name, "Name of the property Item returns for the ID of " & n
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_ByID_ComputedProperty_ReturnsThePropertyWithThatID()
+        Expect.Begin
+        Dim w As String, fp As FileProperties, names As Variant, n As Variant, id As String
+        w = Sandbox.Fresh("Item_ByID_ComputedProperty_ReturnsThePropertyWithThatID")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        names = Array("System.ItemTypeText", "System.ItemFolderNameDisplay", "System.ItemPathDisplay", "System.Kind")
+        For Each n In names
+            id = fp.Item(CStr(n)).ID
+            Expect.AreEqual 0, Sandbox.ItemError(fp, id), "Err.Number of Item with the ID of " & n
+        Next
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_ByID_UnknownID_RaisesElementNotFound()
+        Expect.Begin
+        Dim w As String, fp As FileProperties
+        w = Sandbox.Fresh("Item_ByID_UnknownID_RaisesElementNotFound")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Expect.AreEqual Sandbox.E_ElementNotFound, Sandbox.ItemError(fp, "{00000000-0000-0000-0000-000000000000}/1"), "Err.Number of Item with an ID of a GUID that no property has"
+        Expect.AreEqual Sandbox.E_ElementNotFound, Sandbox.ItemError(fp, "{B725F130-47EF-101A-A5F1-02608C9EEBAC}/9999"), "Err.Number of Item with an ID of a known GUID and an index that no property has"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_ByID_UnknownID_ReturnsAPropertyWithNoValue()
+        Expect.Begin
+        Dim w As String, fp As FileProperties, p As FileProperty
+        w = Sandbox.Fresh("Item_ByID_UnknownID_ReturnsAPropertyWithNoValue")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Set p = fp.Item("{00000000-0000-0000-0000-000000000000}/1")
+        Expect.AreEqual "{00000000-0000-0000-0000-000000000000}/1", p.ID, "ID of the property Item returns for an ID that no property has"
+        Expect.AreEqual "", p.Name, "Name of that property"
+        Expect.IsTrue IsEmpty(p.Value), "Value of that property is Empty"
+        Expect.AreEqual "", p.ValueDesc, "ValueDesc of that property"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set p = Nothing
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_NameAndID_IgnoreCase()
+        Expect.Begin
+        Dim w As String, fp As FileProperties, p As FileProperty
+        w = Sandbox.Fresh("Item_NameAndID_IgnoreCase")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Set p = fp.Item("System.Size")
+        Expect.AreEqual p.ID, fp.Item("system.size").ID, "ID of Item(""system.size"")"
+        Expect.AreEqual p.ID, fp.Item(LCase$(p.ID)).ID, "ID of Item with the ID of System.Size in lower case"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set p = Nothing
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_UnknownName_RaisesElementNotFound()
+        Expect.Begin
+        Dim w As String, fp As FileProperties
+        w = Sandbox.Fresh("Item_UnknownName_RaisesElementNotFound")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Expect.AreEqual Sandbox.E_ElementNotFound, Sandbox.ItemError(fp, "No.Such.Property"), "Err.Number of Item(""No.Such.Property"")"
+        Expect.AreEqual Sandbox.E_ElementNotFound, Sandbox.ItemError(fp, "3"), "Err.Number of Item(""3""), a String of digits"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_NegativeIndex_RaisesFail()
+        Expect.Begin
+        Dim w As String, fp As FileProperties
+        w = Sandbox.Fresh("Item_NegativeIndex_RaisesFail")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        Expect.AreEqual Sandbox.E_Fail, Sandbox.ItemError(fp, -1&), "Err.Number of Item(-1)"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ForEach_VisitsEveryProperty()
+        Expect.Begin
+        Dim w As String, fp As FileProperties, p As FileProperty, n As Long, i As Long
+        w = Sandbox.Fresh("ForEach_VisitsEveryProperty")
+        On Error GoTo Oops
+        Set fp = FilePropertyExplorer.OpenFile(Sandbox.MakeText(w, "a.txt"))
+        For Each p In fp
+            If p.ID <> fp.Item(n).ID Then Expect.Fail "the property visited as number " & n & " is not Item(" & n & ")"
+            n = n + 1
+        Next
+        Expect.AreEqual fp.Count, n, "number of properties a For Each over the collection visits"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set p = Nothing
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+End Module

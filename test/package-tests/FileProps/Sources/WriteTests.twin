@@ -1,0 +1,166 @@
+' FileProperty.Value assignment: what is stored, and what happens for a property that cannot be
+' written and for a collection opened without write support. The file is a JPEG, whose Windows
+' property handler can write properties; a text file has none.
+[TestFixture]
+Module WriteTests
+
+    [TestCase]
+    Public Sub Value_Let_Title_IsStored()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties
+        w = Sandbox.Fresh("Value_Let_Title_IsStored")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set fp = FilePropertyExplorer.OpenFile(p, True)
+        Expect.IsTrue IsEmpty(fp.Item("System.Title").Value), "Value of System.Title of a new JPEG file is Empty"
+        Expect.AreEqual 0, Sandbox.ValueError(fp.Item("System.Title"), "Annual Report"), "Err.Number of assigning System.Title, with write support"
+        Expect.AreEqual "Annual Report", fp.Item("System.Title").Value, "Value of System.Title just after the assignment"
+        Set fp = Nothing
+        Expect.AreEqual "Annual Report", Sandbox.ValueOf(p, "System.Title"), "Value of System.Title after the file is opened again"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_Let_Rating_IsStored()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties
+        w = Sandbox.Fresh("Value_Let_Rating_IsStored")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set fp = FilePropertyExplorer.OpenFile(p, True)
+        Expect.AreEqual 0, Sandbox.ValueError(fp.Item("System.Rating"), 50&), "Err.Number of assigning 50 to System.Rating, with write support"
+        Set fp = Nothing
+        Expect.AreEqual 50, CLng(Sandbox.ValueOf(p, "System.Rating")), "Value of System.Rating after the file is opened again"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_Let_Array_IsStoredAsMultiValue()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties, v As Variant
+        w = Sandbox.Fresh("Value_Let_Array_IsStoredAsMultiValue")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set fp = FilePropertyExplorer.OpenFile(p, True)
+        Expect.AreEqual 0, Sandbox.ValueError(fp.Item("System.Keywords"), Array("alpha", "beta")), "Err.Number of assigning an array of two strings to System.Keywords, with write support"
+        Set fp = Nothing
+        v = Sandbox.ValueOf(p, "System.Keywords")
+        Expect.IsTrue IsArray(v), "Value of System.Keywords after the file is opened again is an array"
+        If IsArray(v) Then Expect.AreEqual "{alpha, beta}", Sandbox.Show(v), "Value of System.Keywords after the file is opened again"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_Let_WithoutWriteSupport_Raises()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties
+        w = Sandbox.Fresh("Value_Let_WithoutWriteSupport_Raises")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set fp = FilePropertyExplorer.OpenFile(p)
+        Expect.IsTrue Sandbox.ValueError(fp.Item("System.Title"), "Annual Report") <> 0, "assigning System.Title raises an error when the file was opened without write support"
+        Set fp = Nothing
+        Expect.IsTrue IsEmpty(Sandbox.ValueOf(p, "System.Title")), "Value of System.Title after that assignment is still Empty"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_Let_NotWritableProperty_Raises()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties
+        w = Sandbox.Fresh("Value_Let_NotWritableProperty_Raises")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set fp = FilePropertyExplorer.OpenFile(p, True)
+        Expect.IsTrue Sandbox.ValueError(fp.Item("System.ItemNameDisplay"), "renamed.jpg") <> 0, "assigning System.ItemNameDisplay raises an error"
+        Expect.IsTrue Sandbox.ValueError(fp.Item("System.Size"), 1&) <> 0, "assigning System.Size raises an error"
+        Set fp = Nothing
+        Expect.AreEqual 631, CLng(Sandbox.ValueOf(p, "System.Size")), "System.Size of the file after those assignments"
+        Expect.AreEqual "a.jpg", Sandbox.ValueOf(p, "System.ItemNameDisplay"), "System.ItemNameDisplay of the file after those assignments"
+        Set fp = FilePropertyExplorer.OpenFile(p, True)
+        Expect.IsTrue Sandbox.ValueError(fp.Item("System.ItemNameDisplay"), "renamed.jpg") <> 0, "assigning System.ItemNameDisplay raises an error"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_Let_NotWritableProperty_RaisesPermissionDenied()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties, n As Long
+        w = Sandbox.Fresh("Value_Let_NotWritableProperty_RaisesPermissionDenied")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set fp = FilePropertyExplorer.OpenFile(p, True)
+        n = Sandbox.ValueError(fp.Item("System.ItemNameDisplay"), "renamed.jpg")
+        Expect.IsTrue n = 70 Or n = &H80070005, "assigning System.ItemNameDisplay raises Permission denied (70, or E_ACCESSDENIED, 0x80070005), got error " & n
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_Let_NotWritableProperty_RaisesTheSameErrorEverywhere()
+        Expect.Begin
+        Dim w As String, p As String, fp As FileProperties, a As Long, b As Long, c As Long
+        w = Sandbox.Fresh("Value_Let_NotWritableProperty_RaisesTheSameErrorEverywhere")
+        On Error GoTo Oops
+        p = Sandbox.MakeJpeg(w, "a.jpg")
+        Set fp = FilePropertyExplorer.OpenFile(p, True)
+        a = Sandbox.ValueError(fp.Item("System.ItemNameDisplay"), "renamed.jpg")
+        b = Sandbox.ValueError(fp.Item("System.Size"), 1&)
+        Set fp = Nothing
+        Set fp = FilePropertyExplorer.OpenFile(p)
+        c = Sandbox.ValueError(fp.Item("System.Title"), "Annual Report")
+        Expect.AreEqual -2147352567, a, "Err.Number of assigning System.ItemNameDisplay, with write support"
+        Expect.AreEqual a, b, "Err.Number of assigning System.Size, with write support, as for System.ItemNameDisplay"
+        Expect.AreEqual a, c, "Err.Number of assigning System.Title without write support, as for System.ItemNameDisplay"
+        GoTo Finish
+Oops:
+        Expect.Fail "unexpected run-time error " & Err.Number & ": " & Err.Description
+        Resume Finish
+Finish:
+        Set fp = Nothing
+        Sandbox.Remove w
+        Expect.Done
+    End Sub
+
+End Module

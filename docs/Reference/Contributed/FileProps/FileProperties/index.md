@@ -38,7 +38,9 @@ Returns the number of shell properties in the collection. **Long**. Read-only.
 
 Syntax: *object*.**Count**
 
+<!-- test: CollectionTests.Count_DiffersByFileType, CollectionTests.Count_IsOneMoreThanTheLastIndex -->
 The count is the number of properties the shell exposes for the opened file. Different file types expose different property sets.
+<!-- /test -->
 
 ### FilePath
 {: .no_toc }
@@ -47,7 +49,9 @@ Returns the full file path of the file that was opened. **String**. Read-only.
 
 Syntax: *object*.**FilePath**
 
+<!-- test: CollectionTests.FilePath_IsThePathPassedToOpenFile -->
 The value is the full path of the file passed to [**FilePropertyExplorer.OpenFile**](../FilePropertyExplorer/OpenFile). When a collection is obtained through [**FilePropertyExplorer.BrowseAndOpenFile**](../FilePropertyExplorer/BrowseAndOpenFile), it is the path of the file the user selected in the dialog.
+<!-- /test -->
 
 ### Item
 {: .no_toc }
@@ -74,11 +78,24 @@ Set Prop = Props.Item(0)
 Set Prop = Props.Item("System.Media.Duration")
 ```
 
+<!-- test: CollectionTests.Item_ByIndex_ReturnsThePropertyAtThatPosition, CollectionTests.Item_ByName_ReturnsThePropertyOfThatName, CollectionTests.Item_ByID_ReturnsThePropertyWithThatID, CollectionTests.Item_NameAndID_IgnoreCase, CollectionTests.Count_IsOneMoreThanTheLastIndex, CollectionTests.Item_UnknownName_RaisesElementNotFound, CollectionTests.Item_NegativeIndex_RaisesFail, CollectionTests.ForEach_VisitsEveryProperty -->
+A name or an ID matches without regard to case. A **String** of digits is a name, not an index. **Item** raises run-time error -2147211517 (*Requested index is out of bounds*) for an index of **Count** or more, -2147467259 (*Generic failure code*) for a negative index, and -2147211518 (*The requested element was not found in the collection*) for a name that is not the name of a shell property. A **For Each** loop over a **FileProperties** object visits the properties in the order of their indexes.
+<!-- /test -->
+
+<!-- test: CollectionTests.Item_ByID_ComputedProperty_ReturnsThePropertyWithThatID -->
+> [!NOTE] 1.7.1.0
+> **Item** raises run-time error 13 (*Generic failure code*) when it is given the ID of some properties, among them `System.ItemTypeText`, `System.ItemFolderNameDisplay`, `System.ItemPathDisplay` and `System.Kind`. Look such a property up by its name or its index.
+
+<!-- test: CollectionTests.Item_ByID_UnknownID_RaisesElementNotFound, CollectionTests.Item_ByID_UnknownID_ReturnsAPropertyWithNoValue -->
+> [!NOTE] 1.7.1.0
+> An ID that no property of the file has raises no error. **Item** returns a property that has that ID, an empty **Name** and an empty **Value**.
+
 ### VCOMObject
 {: .no_toc }
 
 Holds the native-code COM object created internally by the Virtual-COM library. **Object**. For internal use only.
 
+<!-- test: none -- a rule of use for an internal member, with nothing a program can observe -->
 > [!WARNING] timeless
 > Do not read, assign, or pass **VCOMObject** to any function. The package marks it as for internal use only, and **Count**, **FilePath** and **Item** forward their calls to it.
 

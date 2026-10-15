@@ -14,7 +14,9 @@ Syntax: *object*.**Count**
 *object*
 : *required* An object expression that evaluates to a **FileProperties** object.
 
-**Count** returns a **Long** equal to the total number of shell properties available for the file. Valid index values for [**Item**](Item) range from `0` to `Count - 1`.
+<!-- test: CollectionTests.Count_DiffersByFileType, CollectionTests.Count_IsOneMoreThanTheLastIndex -->
+**Count** returns a **Long** equal to the total number of shell properties available for the file. Different file types have different numbers of properties. Valid index values for [**Item**](Item) range from `0` to `Count - 1`.
+<!-- /test -->
 
 ### Example
 

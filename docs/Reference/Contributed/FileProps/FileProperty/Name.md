@@ -14,7 +14,13 @@ Syntax: *object*.**Name**
 *object*
 : *required* An object expression that evaluates to a **FileProperty** object.
 
+<!-- test: PropertyTests.Name_IsTheSystemName -->
 Returns a **String** containing the system identity name of the property, such as `"System.ItemFolderNameDisplay"`. This name is safe to use as an identity field even on non-English systems.
+<!-- /test -->
+
+<!-- test: PropertyTests.Name_PropertyWithoutSystemName_IsEmpty -->
+A property that has no system name returns an empty string. Use [**ID**](ID) to identify such a property.
+<!-- /test -->
 
 ### Remarks
 

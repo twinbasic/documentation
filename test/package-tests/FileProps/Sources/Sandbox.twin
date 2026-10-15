@@ -1,0 +1,132 @@
+' Sandbox: the folders the test cases of FileProps work in, and a few helpers they share.
+'
+' Every file a case makes is under %TEMP%\tbdocs-package-tests\FileProps\. A case asks for a fresh
+' folder of its own (Fresh), which empties it first in case an earlier run left something, and
+' removes it at its end (Remove). The cases only read or write the properties of the files they
+' made there, and never a file of the system, the profile or the repository.
+'
+' The JPEG is a file of 631 bytes (8 by 8 pixels), made once with System.Drawing. Windows has a
+' property handler for JPEG files that can write properties, which a text file does not have.
+Module Sandbox
+
+    Private Const JpegHex As String = "FFD8FFE000104A46494600010101006000600000FFDB004300080606070605080707070909080A0C140D0C0B0B0C1912130F141D1A1F1E1D1A1C1C20242E2720222C231C1C2837292C30313434341F27393D38323C2E333432FFDB0043010909090C0B0C180D0D1832211C213232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232FFC00011080008000803012200021101031101FFC4001F0000010501010101010100000000000000000102030405060708090A0BFFC400B5100002010303020403050504040000017D01020300041105122131410613516107227114328191A1082342B1C11552D1F02433627282090A161718191A25262728292A3435363738393A434445464748494A535455565758595A636465666768696A737475767778797A838485868788898A92939495969798999AA2A3A4A5A6A7A8A9AAB2B3B4B5B6B7B8B9BAC2C3C4C5C6C7C8C9CAD2D3D4D5D6D7D8D9DAE1E2E3E4E5E6E7E8E9EAF1F2F3F4F5F6F7F8F9FAFFC4001F0100030101010101010101010000000000000102030405060708090A0BFFC400B51100020102040403040705040400010277000102031104052131061241510761711322328108144291A1B1C109233352F0156272D10A162434E125F11718191A262728292A35363738393A434445464748494A535455565758595A636465666768696A737475767778797A82838485868788898A92939495969798999AA2A3A4A5A6A7A8A9AAB2B3B4B5B6B7B8B9BAC2C3C4C5C6C7C8C9CAD2D3D4D5D6D7D8D9DAE2E3E4E5E6E7E8E9EAF2F3F4F5F6F7F8F9FAFFDA000C03010002110311003F00F9FE8A28A00FFFD9"
+
+    ' HRESULTs of the package's own errors.
+    Public Const E_FileNotFound As Long = &H8004220A
+    Public Const E_ElementNotFound As Long = &H80042702
+    Public Const E_OutOfBounds As Long = &H80042703
+    Public Const E_Fail As Long = &H80004005
+
+    Public Function Root() As String
+        Root = Environ$("TEMP") & "\tbdocs-package-tests\FileProps"
+    End Function
+
+    ' A new, empty folder for one case.
+    Public Function Fresh(ByVal Tag As String) As String
+        Dim p As String
+        p = Root() & "\" & Tag
+        Remove p
+        On Error Resume Next
+        MkDir Environ$("TEMP") & "\tbdocs-package-tests"
+        MkDir Root()
+        MkDir p
+        Err.Clear
+        Fresh = p
+    End Function
+
+    ' Removes a folder with the files in it (none has a folder inside), and then the sandbox itself
+    ' when nothing else is in it. Raises no error.
+    Public Sub Remove(ByVal Path As String)
+        Dim names As New Collection, f As String, n As Variant
+        On Error Resume Next
+        f = Dir$(Path & "\*", vbHidden Or vbSystem Or vbReadOnly)
+        Do While Len(f) > 0
+            names.Add f
+            f = Dir$()
+        Loop
+        For Each n In names
+            SetAttr Path & "\" & n, vbNormal
+            Kill Path & "\" & n
+        Next
+        RmDir Path
+        RmDir Root()
+        RmDir Environ$("TEMP") & "\tbdocs-package-tests"
+        Err.Clear
+    End Sub
+
+    ' A text file of one line, in the folder. Returns its full path.
+    Public Function MakeText(ByVal Folder As String, ByVal Name As String) As String
+        Dim p As String, f As Integer
+        p = Folder & "\" & Name
+        f = FreeFile
+        Open p For Output As #f
+        Print #f, "hello"
+        Close #f
+        MakeText = p
+    End Function
+
+    ' A JPEG file, in the folder. Returns its full path.
+    Public Function MakeJpeg(ByVal Folder As String, ByVal Name As String) As String
+        Dim p As String, f As Integer, b() As Byte, i As Long
+        p = Folder & "\" & Name
+        ReDim b(0 To Len(JpegHex) \ 2 - 1)
+        For i = 0 To UBound(b)
+            b(i) = CByte("&H" & Mid$(JpegHex, i * 2 + 1, 2))
+        Next
+        f = FreeFile
+        Open p For Binary Access Write As #f
+        Put #f, , b
+        Close #f
+        MakeJpeg = p
+    End Function
+
+    ' The number of the error that FilePropertyExplorer.OpenFile raises for the path (0 for none).
+    Public Function OpenError(ByVal Path As String, Optional ByVal WriteSupport As Boolean) As Long
+        Dim fp As FileProperties
+        On Error Resume Next
+        Set fp = FilePropertyExplorer.OpenFile(Path, WriteSupport)
+        OpenError = Err.Number
+        Err.Clear
+    End Function
+
+    ' The number of the error that Item raises for the key (0 for none).
+    Public Function ItemError(ByVal Props As FileProperties, ByVal Key As Variant) As Long
+        Dim p As FileProperty
+        On Error Resume Next
+        Set p = Props.Item(Key)
+        ItemError = Err.Number
+        Err.Clear
+    End Function
+
+    ' The number of the error that assigning Value raises (0 for none).
+    Public Function ValueError(ByVal Prop As FileProperty, ByVal NewValue As Variant) As Long
+        On Error Resume Next
+        Prop.Value = NewValue
+        ValueError = Err.Number
+        Err.Clear
+    End Function
+
+    ' The Value of the named property of the file, opened without write support.
+    Public Function ValueOf(ByVal Path As String, ByVal Name As String) As Variant
+        Dim fp As FileProperties
+        Set fp = FilePropertyExplorer.OpenFile(Path)
+        ValueOf = fp.Item(Name).Value
+    End Function
+
+    ' Text for a failure message: the array or the scalar in a Variant.
+    Public Function Show(ByVal V As Variant) As String
+        Dim i As Long, s As String
+        If IsArray(V) Then
+            For i = LBound(V) To UBound(V)
+                If Len(s) > 0 Then s = s & ", "
+                s = s & V(i)
+            Next
+            Show = "{" & s & "}"
+        ElseIf IsEmpty(V) Then
+            Show = "Empty"
+        Else
+            Show = CStr(V)
+        End If
+    End Function
+
+End Module
