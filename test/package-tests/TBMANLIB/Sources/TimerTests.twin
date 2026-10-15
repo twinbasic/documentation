@@ -1,0 +1,205 @@
+' cTimeuse, cTimer and cTimers: the stopwatch and the timers. A case that starts a timer stops it
+' before it ends, and runs the message pump for a bounded time only.
+[TestFixture]
+Module TimerTests
+
+    ' ---- cTimeuse
+
+    [TestCase]
+    Public Sub cTimeuse_Show_ReplacesEveryPlaceholderWithTheMilliseconds()
+        Expect.Begin
+        Dim W As New cTimeuse, t As String, parts() As String
+        W.Start
+        t = W.Show("{*}-{*}")
+        parts = Split(t, "-")
+        Expect.AreEqual 1, UBound(parts), "number of parts of Show(""{*}-{*}"")"
+        Expect.AreEqual parts(0), parts(1), "the two numbers Show writes"
+        Expect.IsTrue Val(parts(0)) >= 0 And Val(parts(0)) < 5000, "the number " & parts(0) & " is a short time in milliseconds"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub cTimeuse_Show_WithoutStart_IsTheTickCount()
+        Expect.Begin
+        Dim W As New cTimeuse
+        Expect.IsTrue Val(W.Show("{*}")) > 0, "Show without Start is the tick count of the computer"
+        Expect.Done
+    End Sub
+
+    ' ---- cTimer
+
+    [TestCase]
+    Public Sub cTimer_Enabled_FollowsTheInterval()
+        Expect.Begin
+        TimerState.StopAllTimers
+        Dim T As New cTimer
+        Expect.AreEqual 2000, T.Interval, "Interval of a new timer"
+        Expect.IsFalse T.Enabled, "Enabled of a new timer"
+        T.Interval = 0
+        T.Enabled = True
+        Expect.IsFalse T.Enabled, "Enabled after the start of a timer with Interval 0"
+        T.Interval = 1000
+        T.Enabled = True
+        Expect.IsTrue T.Enabled, "Enabled after the start of a timer with Interval 1000"
+        T.Enabled = False
+        Expect.IsFalse T.Enabled, "Enabled after it was set to False"
+        TimerState.StopAllTimers
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub cTimer_Enabled_RaisesTheTimerEventAtTheInterval()
+        Expect.Begin
+        TimerState.StopAllTimers
+        Dim T As New cTimer, S As New TickSink
+        S.Attach T
+        T.Interval = 30
+        T.Enabled = True
+        Expect.IsTrue Pump.UntilCount(S, 3, 1500), "three Timer events within 1.5 seconds (got " & S.Count & ")"
+        T.Enabled = False
+        Dim n As Long
+        n = S.Count
+        Pump.ForMs 150
+        Expect.AreEqual n, S.Count, "Timer events after Enabled was set to False"
+        S.Detach
+        TimerState.StopAllTimers
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub cTimer_EnableTimer_Reset_Disable_StartAndStopTheTimer()
+        Expect.Begin
+        TimerState.StopAllTimers
+        Dim T As New cTimer
+        T.EnableTimer 500
+        Expect.AreEqual 500, T.Interval, "Interval after EnableTimer(500)"
+        Expect.IsTrue T.Enabled, "Enabled after EnableTimer"
+        T.Disable
+        Expect.IsFalse T.Enabled, "Enabled after Disable"
+        T.Reset
+        Expect.IsTrue T.Enabled, "Enabled after Reset of a timer that was off"
+        T.Enable
+        Expect.IsTrue T.Enabled, "Enabled after Enable of a timer that was on"
+        Expect.AreEqual 1, mTimer.timers.Count, "number of registered timers after Reset and Enable"
+        T.Disable
+        TimerState.StopAllTimers
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub cTimer_EnabledTimerReleased_IsDestroyed()
+        Expect.Begin
+        TimerState.StopAllTimers
+        Dim T As New cTimer, before As Long
+        before = mTimer.timers.Count
+        T.Interval = 1000
+        T.Enabled = True
+        Expect.AreEqual before + 1, mTimer.timers.Count, "registered timers while the timer runs"
+        Set T = Nothing
+        Expect.AreEqual before, mTimer.timers.Count, "registered timers after the last reference to the timer was released"
+        TimerState.StopAllTimers
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub cTimer_NeverEnabledTimerReleased_IsDestroyed()
+        Expect.Begin
+        TimerState.StopAllTimers
+        Dim T As New cTimer, before As Long
+        before = mTimer.timers.Count
+        Set T = Nothing
+        Expect.AreEqual before, mTimer.timers.Count, "registered timers after a timer that never ran was released"
+        Expect.Done
+    End Sub
+
+    ' ---- cTimers
+
+    [TestCase]
+    Public Sub cTimers_Add_Count_Item_BulkLoad()
+        Expect.Begin
+        Dim G As New cTimers
+        Expect.AreEqual 1, G.Add(), "first Add"
+        Expect.AreEqual 2, G.Add(), "second Add"
+        Expect.AreEqual 2, G.Count, "Count"
+        G(2).Interval = 250
+        Expect.AreEqual 250, G(2).Interval, "Interval of timer 2"
+        Expect.AreEqual 2000, G(1).Interval, "Interval of timer 1"
+        Expect.IsFalse G(1).Enabled, "timer 1 is off"
+        G.BulkLoad 3
+        Expect.AreEqual 6, G.Count, "Count after BulkLoad 3"
+        TimerState.StopAllTimers
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub cTimers_ItemAndBulkLoad_RaiseTheirErrors()
+        Expect.Begin
+        Dim G As New cTimers, t As cTimer
+        G.Add
+        On Error Resume Next
+        Set t = G.Item(5)
+        Expect.AreEqual vbObjectError, Err.Number, "Item(5) of a group of one raises"
+        Expect.AreEqual "Index does not Exist", Err.Description, "description of that error"
+        Err.Clear
+        Set t = G.Item(0)
+        Expect.AreEqual 9, Err.Number, "Item(0) raises"
+        Err.Clear
+        G.BulkLoad 0
+        Expect.AreEqual vbObjectError, Err.Number, "BulkLoad 0 raises"
+        Err.Clear
+        G.BulkLoad 200
+        Expect.AreEqual vbObjectError, Err.Number, "BulkLoad 200 raises"
+        Expect.AreEqual "No more than 200 times allowed per class", Err.Description, "description of that error"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub cTimers_Timer_IsRaisedByTheGroupWithTheNumberOfTheTimer()
+        Expect.Begin
+        TimerState.StopAllTimers
+        Dim G As New cTimers, S As New GroupSink, i As Long, limit As Long
+        S.Attach G
+        G.BulkLoad 1
+        G(2).Interval = 30
+        G(2).Enabled = True
+        Pump.ForMs 200
+        G(2).Enabled = False
+        Expect.IsTrue S.Count >= 2, "events of the group within 200 ms (got " & S.Count & ")"
+        Expect.AreEqual 2, S.Last, "number of the timer that raised the event"
+        S.Detach
+        TimerState.StopAllTimers
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub cTimers_EnabledTimerOfAReleasedGroup_IsDestroyed()
+        Expect.Begin
+        TimerState.StopAllTimers
+        Dim G As cTimers, before As Long
+        before = mTimer.timers.Count
+        Set G = New cTimers
+        G.Add
+        G(1).Interval = 1000
+        G(1).Enabled = True
+        Expect.AreEqual before + 1, mTimer.timers.Count, "registered timers while the timer of the group runs"
+        Set G = Nothing
+        Expect.AreEqual before, mTimer.timers.Count, "registered timers after the last reference to the group was released"
+        TimerState.StopAllTimers
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub cTimers_GroupReleased_IsDestroyed()
+        Expect.Begin
+        TimerState.StopAllTimers
+        Dim G As cTimers, before As Long
+        before = mTimer.CTimersCol.Count
+        Set G = New cTimers
+        Expect.IsTrue mTimer.CTimersCol.Count = before + 1, "the group is registered while it exists"
+        Set G = Nothing
+        Expect.IsTrue mTimer.CTimersCol.Count = before, "the group is no longer registered after the last reference to it was released"
+        Expect.Done
+    End Sub
+
+End Module

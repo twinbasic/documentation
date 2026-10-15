@@ -1,0 +1,275 @@
+{
+  "version": "1.0.0.29",
+  "arches": [
+    "win32"
+  ],
+  "cases": {
+    "ArrayTests.SliceByteArray_StartEqualsEnd_ReturnsTheOneByte": {
+      "fails": "1 of 2 checks failed: the byte of SliceByteArray(Hello-World, 2, 2), the letter l: expected 108, got 0"
+    },
+    "ArrayTests.Extend_AssignsTheElementsToTheVariables": {
+      "fails": "2 of 3 checks failed: first variable after the assignment to Extend: expected \"one\", got \"A\"; second variable after the assignment to Extend: expected \"two\", got \"C\""
+    },
+    "ArrayTests.SplitByteArrayByKeyword_KeywordAtStart_GivesAnEmptyFirstPart": {
+      "fails": "1 of 1 checks failed: split of ,a at a comma raised error -2147467259 Unspecified error: expected 0, got -2147467259"
+    },
+    "ArrayTests.SplitByteArrayByKeyword_KeywordAtEnd_GivesAnEmptyLastPart": {
+      "fails": "1 of 3 checks failed: the last part of a, split at a comma has no elements: expected True, got False"
+    },
+    "CsvTests.NewColumn_ReturnsTrueWhenTheColumnIsAdded": {
+      "fails": "1 of 2 checks failed: result of NewColumn after it added a column: expected True, got False"
+    },
+    "CsvTests.DeleteColumn_MiddleColumn_SavesTheRemainingColumns": {
+      "fails": "1 of 3 checks failed: file after deleting column 2 of three: expected \"a,c d,f \", got \"a, d, \""
+    },
+    "CsvTests.value_Assignment_ChangesTheField": {
+      "fails": "2 of 2 checks failed: assignment to value(2, 2) raised error -2147467259 Unspecified error: expected 0, got -2147467259; value(2, 2) after the assignment: expected \"Zed\", got \"Ann\""
+    },
+    "CsvTests.SetHeadTitleWidthByDic_ReturnsTrueWhenTheWidthsAreStored": {
+      "fails": "1 of 2 checks failed: result of SetHeadTitleWidthByDic after it stored a width: expected True, got False"
+    },
+    "CsvTests.LoadFrom_SpacesAtTheEndsOfAField_AreKept": {
+      "fails": "2 of 2 checks failed: field with a space at each end: expected \" Ann \", got \"Ann\"; quoted field with a space at each end: expected \" x \", got \"x\""
+    },
+    "CsvTests.NewLine_AfterABlankLineInTheFile_AddsALine": {
+      "fails": "2 of 2 checks failed: NewLine after loading a file with a blank line raised error 457 Automation error: expected 0, got 457; number of lines after NewLine: expected 3, got 2"
+    },
+    "CsvTests.SaveTo_FieldWithALineBreak_ReadsBackAsOneField": {
+      "fails": "2 of 2 checks failed: number of lines read back from a table of one line: expected 1, got 2; second field read back: expected \"x y\", got \"x\""
+    },
+    "CsvTests.SaveTo_CharacterOutsideTheCodePage_KeepsThePreviousFile": {
+      "fails": "2 of 2 checks failed: the file after SaveTo with a field of ChrW(&H4E2D) is not empty: expected True, got False; the file after the failed SaveTo: expected \"old,data \", got \"\""
+    },
+    "DicTests.FromWwwFormUrlencoded_ValueWithEqualsSign_KeepsTheRest": {
+      "fails": "1 of 1 checks failed: value of a in a=b=c: expected \"b=c\", got \"b\""
+    },
+    "DicTests.FromWwwFormUrlencoded_PercentEscapes_AreDecoded": {
+      "fails": "3 of 3 checks failed: value of a in a=x%20y: expected \"x y\", got \"x%20y\"; value of b in b=1%2B1: expected \"1+1\", got \"1%2B1\"; value of c in c=p+q: expected \"p q\", got \"p+q\""
+    },
+    "DicTests.OverWrite_OnlyKeyFalse_NestedDictionaryMissingInTarget_IsAdded": {
+      "fails": "1 of 2 checks failed: OverWrite with OnlyKey False of a nested dictionary the target lacks raised error 424 Object required: expected 0, got 424"
+    },
+    "DicTests.DeepCopy_NestedDictionary_IsCopied": {
+      "fails": "1 of 1 checks failed: n of the source's nested dictionary after the copy's was changed: expected 1, got 2"
+    },
+    "FsoTests.AutoCompleteFullPath_DriveWithForwardSlashes_IsComplete": {
+      "fails": "1 of 1 checks failed: AutoCompleteFullPath of C:/data/a.json: expected \"C:\\data\\a.json\", got \"<App.Path>\\C:\\data\\a.json\""
+    },
+    "FsoTests.AutoCompleteFullPath_NetworkPath_IsComplete": {
+      "fails": "1 of 1 checks failed: AutoCompleteFullPath of \\\\server\\share\\a.json: expected \"\\\\server\\share\\a.json\", got \"<App.Path>\\\\server\\share\\a.json\""
+    },
+    "FsoTests.ClearSpan_NetworkPath_KeepsItsTwoLeadingBackslashes": {
+      "fails": "1 of 1 checks failed: ClearSpan of \\\\server\\share\\a.json: expected \"\\\\server\\share\\a.json\", got \"\\server\\share\\a.json\""
+    },
+    "FsoTests.MakeNewFileFulPath_ReturnsTheNewNameWithTheFolder": {
+      "fails": "1 of 1 checks failed: MakeNewFileFulPath of C:\\data\\a.json: expected \"C:\\data\\a_old.json\", got \"a_old.json\""
+    },
+    "FsoTests.MakeNewFileFulPath_NoExtension_HasNoTrailingPeriod": {
+      "fails": "1 of 1 checks failed: MakeNewFileFulPath of readme: expected \"readme_old\", got \"readme_old.\""
+    },
+    "HttpRequestTests.RequestDataQuery_Pairs_AreSentAsParametersOfTheirOwnNames": {
+      "fails": "1 of 1 checks failed: request line of a GET with the query values a = 1 and b = 2: expected \"GET /p?a=1&b=2 HTTP/1.1\", got \"GET /p?ver=a=1&b=2 HTTP/1.1\""
+    },
+    "HttpRequestTests.RequestDataQuery_UrlWithAQuery_GetsTheValuesAfterAnAmpersand": {
+      "fails": "1 of 1 checks failed: request line of a GET to a URL that has a query: expected \"GET /p?x=0&a=1 HTTP/1.1\", got \"GET /p?x=0&ver=a=1 HTTP/1.1\""
+    },
+    "HttpRequestTests.RequestDataForm_Values_AreUrlEncoded": {
+      "fails": "1 of 1 checks failed: body of a form with city = A B&C: city=A B&C: expected True, got False"
+    },
+    "HttpRequestTests.RequestContentType_ChangedAfterAFirstRequest_ChangesTheHeader": {
+      "fails": "1 of 2 checks failed: Content-Type of the second request: expected \"application/json\", got \"application/x-www-form-urlencoded\""
+    },
+    "HttpRequestTests.RequestDataJson_ValueWithBackslashU_IsSent": {
+      "fails": "2 of 2 checks failed: SendPost of a document that holds C:\\users raised error 13 Automation error: expected 0, got 13; body: expected \"{\"p\":\"C:\\\\users\"}\", got \"\""
+    },
+    "HttpResponseTests.ResponseHeaders_ValueWithColons_IsKeptWhole": {
+      "fails": "1 of 1 checks failed: ResponseHeaders(Date): expected \"Tue, 13 Oct 2026 18:00:00 GMT\", got \"Tue, 13 Oct 2026 18\""
+    },
+    "HttpResponseTests.OnResponseFinished_AsyncRequest_IsRaisedWhenTheAnswerArrives": {
+      "fails": "1 of 2 checks failed: OnResponseFinished events after the answer arrived (got 0): expected True, got False"
+    },
+    "HttpResponseTests.GetRedirectUrl_AbsoluteLocation_IsReturnedWhole": {
+      "fails": "1 of 1 checks failed: GetRedirectUrl of a 302 answer with the Location http://127.0.0.1:<port>/next: expected \"http://127.0.0.1:<port>/next\", got \"http\""
+    },
+    "HttpResponseTests.FollowRedirect_Status302_SendsARequestToTheLocation": {
+      "fails": "2 of 2 checks failed: FollowRedirect raised error -2147012890 The URL does not use a recognized protocol : expected 0, got -2147012890; number of connections the server served: expected 2, got 1"
+    },
+    "HttpResponseTests.DownloadFile_FolderThatDoesNotExist_IsNotReportedAsDone": {
+      "fails": "1 of 2 checks failed: DownloadFile returned True and raised no error though the file was not written: expected True, got False"
+    },
+    "HttpResponseTests.FinishDownloadFile_FolderThatDoesNotExist_IsNotReportedAsDone": {
+      "fails": "1 of 3 checks failed: FinishDownloadFile returned True and raised no error though the file was not written: expected True, got False"
+    },
+    "HttpResponseTests.UploadFile_ErrorStatus_RaisesWithTheTextOfTheFailure": {
+      "fails": "1 of 3 checks failed: the description of the error raised: expected \"上传失败: 404#Not Found\", got \"Application-defined or object-defined error\""
+    },
+    "HttpResponseTests.UploadFile_NoAnswerWithinTheTimeOut_RaisesWithTheTextOfTheFailure": {
+      "fails": "1 of 2 checks failed: the description of the error raised: expected \"上传超时: 5\", got \"Automation error\""
+    },
+    "HttpResponseTests.UploadFileSimple_Failure_LastErrorHoldsTheTextOfTheFailure": {
+      "fails": "1 of 3 checks failed: LastError ends with 404#Not Found: Application-defined or object-defined error: expected True, got False"
+    },
+    "HttpToolsTests.ParseContent_ReturnsTrueWhenThePairsAreRead": {
+      "fails": "1 of 2 checks failed: result of ParseContent after it read a pair: expected True, got False"
+    },
+    "HttpToolsTests.ParseKeyValue_ValueWithColons_IsKeptWhole": {
+      "fails": "2 of 2 checks failed: value of Date: expected \"Tue, 13 Oct 2026 18:00:00 GMT\", got \"Tue, 13 Oct 2026 18\"; value of Location: expected \"http://host/path\", got \"http\""
+    },
+    "HttpToolsTests.ParseKeyValue_ReturnsTrueWhenTheLinesAreRead": {
+      "fails": "1 of 2 checks failed: result of ParseKeyValue after it read a line: expected True, got False"
+    },
+    "HttpToolsTests.UrlDecodeUtf8_PercentEscapes_AreDecoded": {
+      "fails": "4 of 4 checks failed: UrlDecodeUtf8 of a text with %20 raised error 13 Type mismatch: expected 0, got 13; UrlDecodeUtf8 of a%20b: expected \"a b\", got \"\"; UrlDecodeUtf8 of the escapes of U+4E2D raised error 13 Type mismatch: expected 0, got 13; UrlDecodeUtf8 of %E4%B8%AD: expected \"中\", got \"\""
+    },
+    "HttpToolsTests.UrlEncodUtf8_CharactersAbove7F_AreWrittenAsPercentEscapes": {
+      "fails": "2 of 5 checks failed: UrlEncodUtf8 of cafe acute: expected \"caf%C3%A9\", got \"caf%C3A9\"; UrlEncodUtf8 of U+0080: expected \"%C2%80\", got \"%C280\""
+    },
+    "JsonTests.Decode_WhiteSpaceBeforeArray_ReadsTheArray": {
+      "fails": "6 of 8 checks failed: Decode of white space code 13 and [1,2] raised error -2147467262 No such interface supported# [1,2]: expected 0, got -2147467262; number of items after Decode of white space code 13 and [1,2]: expected 2, got 0; Decode of white space code 10 and [1,2] raised error -2147467262 No such interface supported# [1,2]: expected 0, got -2147467262; number of items after Decode of white space code 10 and [1,2]: expected 2, got 0; Decode of white space code 9 and [1,2] raised error -2147467262 No such interface supported# [1,2]: expected 0, got -2147467262; number of items after Decode of white space code 9 and [1,2]: expected 2, got 0"
+    },
+    "JsonTests.Encode_FromUnicode_BackslashThenU_IsNotAnEscape": {
+      "fails": "2 of 3 checks failed: Encode with FromUnicode of C:\\users raised error 13 Type mismatch: expected 0, got 13; Encode with FromUnicode of a value that holds C:\\users: expected \"{\"p\":\"C:\\\\users\"}\", got \"\""
+    },
+    "JsonTests.Encode_FromUnicode_ControlCharacter_StaysEscaped": {
+      "fails": "1 of 1 checks failed: Encode with FromUnicode of Chr(1) holds a raw control character: expected False, got True"
+    },
+    "JsonTests.LoadFrom_AfterLoadFrom_ReadsTheFile": {
+      "fails": "2 of 3 checks failed: second LoadFrom raised error 3705 Operation is not allowed when the object is open.: expected 0, got 3705; value read by the second LoadFrom: expected 1, got Empty"
+    },
+    "JsonTests.LoadFrom_AfterSaveTo_ReadsTheFile": {
+      "fails": "2 of 3 checks failed: LoadFrom after SaveTo raised error 3705 Operation is not allowed when the object is open.: expected 0, got 3705; value read by LoadFrom after SaveTo: expected 1, got Empty"
+    },
+    "JsonTests.LoadFrom_AfterFailedLoadFrom_ReadsTheFile": {
+      "fails": "2 of 3 checks failed: LoadFrom after a failed LoadFrom raised error 3705 Operation is not allowed when the object is open.: expected 0, got 3705; value read after a failed LoadFrom: expected 1, got Empty"
+    },
+    "JsonTests.SaveTo_SecondShorterDocument_WritesValidJson": {
+      "fails": "1 of 2 checks failed: bytes of the second file, which should hold {\"b\":1}: expected \"EF BB BF 7B 22 62 22 3A 31 7D\", got \"EF BB BF 7B 22 62 22 3A 31 7D 6F 6E 67 20 6C 6F 6E 67 22 7D\""
+    },
+    "JsonTests.Decode_ObjectAfterArray_ReplacesTheDocument": {
+      "fails": "1 of 1 checks failed: RootIsArray after decoding an array and then an object: expected False, got True"
+    },
+    "JsonTests.Decode_ArrayAfterObject_EncodeWritesTheArray": {
+      "fails": "1 of 1 checks failed: Encode after decoding an object and then an array: expected \"[1,2]\", got \"{\"a\":1}\""
+    },
+    "JsonTests.Decode_MissingComma_Raises": {
+      "fails": "2 of 2 checks failed: Decode of an object with no comma between its members raises: expected 10001, got 0; Decode of an array with no comma between its items raises: expected 10001, got 0"
+    },
+    "JsonTests.Decode_TextAfterTheDocument_Raises": {
+      "fails": "1 of 1 checks failed: Decode of an object followed by other text raises: expected 10001, got 0"
+    },
+    "JsonTests.Items_Assignment_ReplacesTheItemAtTheIndex": {
+      "fails": "1 of 1 checks failed: Encode after Items(1) = 5 on [1,2]: expected \"[5,2]\", got \"[1,2,5]\""
+    },
+    "JsonTests.Encode_EmptyDocument_IsWrittenAsEmptyBraces": {
+      "fails": "1 of 1 checks failed: Encode of a new document: expected \"{}\", got \"\""
+    },
+    "JsonTests.Encode_DocumentEmptiedAfterAnEncode_IsNotTheOldText": {
+      "fails": "1 of 2 checks failed: Encode after the member was removed: expected \"{}\", got \"{\"a\":1}\""
+    },
+    "LogsTests.Save_DebuggerLevel_WritesALine": {
+      "fails": "2 of 2 checks failed: Save at level Debugger raised error 9 Subscript out of range: expected 0, got 9; Save at level Debugger returns a line: expected True, got False"
+    },
+    "LogsTests.Save_CustomLevel_WritesALine": {
+      "fails": "2 of 2 checks failed: Save at level Custom raised error 9 Subscript out of range: expected 0, got 9; Save at level Custom returns a line: expected True, got False"
+    },
+    "LogsTests.Save_OtherOutputs_KeepTheLevelOfTheLine": {
+      "fails": "1 of 1 checks failed: level and text of the line returned by Save at level Warn with the debugging tool switched on: expected \"[WARN] x\", got \"[INFO] x\""
+    },
+    "MathCnTests.Ceil_ExactDecimalNumber_IsNotRoundedUp": {
+      "fails": "1 of 3 checks failed: Ceil(0.07, 2): expected 0.07, got 0.08"
+    },
+    "MathCnTests.GetPinYin_EnglishLetterDigitAndSpace_AreCopied": {
+      "fails": "2 of 2 checks failed: GetPinYin of ab 1 raised error -2147467259 Unspecified error: expected 0, got -2147467259; GetPinYin of ab 1: expected \"ab 1\", got \"\""
+    },
+    "MathCnTests.GetPinYin_ChineseCharacter_ReturnsItsPinyin": {
+      "fails": "2 of 2 checks failed: GetPinYin of the character zhong raised error -2147467259 Unspecified error: expected 0, got -2147467259; GetPinYin of the character zhong: expected \"Zhong\", got \"\""
+    },
+    "MimeTests.MapMimeType_UpperCaseExtension_IsFound": {
+      "fails": "2 of 2 checks failed: MapMimeType(report.PDF): expected \"application/pdf\", got \"application/octet-stream\"; MapMimeType(Photo.JPG): expected \"image/jpeg\", got \"application/octet-stream\""
+    },
+    "MimeTests.MapMimeType_WoffAndWoff2_HaveFontTypes": {
+      "fails": "2 of 2 checks failed: MapMimeType(a.woff): expected \"font/woff\", got \"\"; MapMimeType(a.woff2): expected \"font/woff2\", got \"application/x-font-woff\""
+    },
+    "MimeTests.MapMimeType_CommonExtensionsMissingFromTheTable_HaveTheirTypes": {
+      "fails": "4 of 4 checks failed: MapMimeType(a.htm): expected \"text/html\", got \"application/octet-stream\"; MapMimeType(a.mp3): expected \"audio/mpeg\", got \"application/octet-stream\"; MapMimeType(a.ogg): expected \"audio/ogg\", got \"application/octet-stream\"; MapMimeType(a.wasm): expected \"application/wasm\", got \"application/octet-stream\""
+    },
+    "MimeTests.MapMimeType_Java_IsTheMediaTypeOfJavaSource": {
+      "fails": "1 of 1 checks failed: MapMimeType(A.java): expected \"text/x-java-source\", got \"text/x-java-source,java\""
+    },
+    "StrTests.IsEmptyEx_DoesNotChangeTheVariableItIsGiven": {
+      "fails": "1 of 2 checks failed: the variable after IsEmptyEx(t): expected \" x \", got \"x\""
+    },
+    "StrTests.TrimEx_TextOver32767Characters_IsTrimmed": {
+      "fails": "2 of 2 checks failed: TrimEx of 40002 characters raised error 6 Overflow: expected 0, got 6; length of TrimEx of 40002 characters: expected 40000, got 0"
+    },
+    "StrTests.InsertSpan_TextOver32767Characters_IsSplit": {
+      "fails": "2 of 2 checks failed: InsertSpan of 40000 characters raised error 6 Overflow: expected 0, got 6; length of InsertSpan of 40000 characters in groups of 10: expected 43999, got 0"
+    },
+    "StrTests.PercentEncode_TextOver32767Characters_IsEncoded": {
+      "fails": "2 of 2 checks failed: PercentEncode of 40000 characters raised error 6 Overflow: expected 0, got 6; length of PercentEncode of 40000 letters: expected 40000, got 0"
+    },
+    "StrTests.PercentDecode_TextOver32767Characters_IsDecoded": {
+      "fails": "2 of 2 checks failed: PercentDecode of 40000 characters raised error 6 Overflow: expected 0, got 6; length of PercentDecode of 40000 letters: expected 40000, got 0"
+    },
+    "StrTests.UnicodeEncode_TextOver32767Characters_IsEncoded": {
+      "fails": "2 of 2 checks failed: UnicodeEncode of 40000 characters raised error 6 Overflow: expected 0, got 6; length of UnicodeEncode of 40000 letters: expected 40000, got 0"
+    },
+    "StrTests.UnicodeDecode_TextOver32767Characters_IsDecoded": {
+      "fails": "2 of 2 checks failed: UnicodeDecode of 40000 characters raised error 6 Overflow: expected 0, got 6; length of UnicodeDecode of 40000 letters: expected 40000, got 0"
+    },
+    "StrTests.GetLastChar_ReturnsTheLastVisibleCharacter": {
+      "fails": "2 of 2 checks failed: GetLastChar of abc: expected \"c\", got \"a\"; GetLastChar of abc and two spaces: expected \"c\", got \"a\""
+    },
+    "StrTests.PercentEncode_SpaceSlashAndPercent_AreEncoded": {
+      "fails": "1 of 1 checks failed: PercentEncode of a space, a slash and a percent sign: expected \"a%20b%2Fc%25\", got \"a b/c%\""
+    },
+    "StrTests.UniVbCrLf_LoneLineFeed_BecomesOneCrLf": {
+      "fails": "1 of 1 checks failed: UniVbCrLf of a, a line feed and b: expected \"a b\", got \"a b\""
+    },
+    "StrTests.UniVbCrLf_ThreeAtSigns_AreKept": {
+      "fails": "1 of 1 checks failed: UniVbCrLf of x@@@y: expected \"x@@@y\", got \"x y\""
+    },
+    "StrTests.UnicodeDecode_EscapedBackslashBeforeU_IsNotAnEscape": {
+      "fails": "1 of 1 checks failed: UnicodeDecode of two backslashes and u0041: expected \"\\\\u0041\", got \"\\A\""
+    },
+    "StrTests.SplitLinesToCollection_LastLineOfOneCharacter_IsKept": {
+      "fails": "2 of 2 checks failed: number of lines of a, a line break and b: expected 2, got 1; number of lines of the text a: expected 1, got 0"
+    },
+    "StrTests.ToHex_WritesTwoDigitsForEachByte": {
+      "fails": "2 of 3 checks failed: ToHex of the byte 10: expected \"0A\", got \"A\"; ToHex of the bytes 10 and 11: expected \"0A0B\", got \"AB\""
+    },
+    "StreamTests.LoadFileAsText_AfterLoadFileAsText_ReadsTheFile": {
+      "fails": "1 of 3 checks failed: second LoadFileAsText on the same object raised error 3705 Operation is not allowed when the object is open.: expected 0, got 3705"
+    },
+    "StreamTests.LoadFileAsText_AfterSaveFileAsText_ReadsTheFile": {
+      "fails": "2 of 3 checks failed: LoadFileAsText after SaveFileAsText raised error 3705 Operation is not allowed when the object is open.: expected 0, got 3705; text from LoadFileAsText after SaveFileAsText: expected \"saved text\", got \"\""
+    },
+    "StreamTests.LoadFileAsText_AfterFailedLoad_ReadsTheFile": {
+      "fails": "2 of 3 checks failed: LoadFileAsText after a failed load raised error 3705 Operation is not allowed when the object is open.: expected 0, got 3705; text from LoadFileAsText after a failed load: expected \"present\", got \"\""
+    },
+    "StreamTests.SaveFileAsText_AfterSaveFileAsText_ReplacesTheFile": {
+      "fails": "1 of 2 checks failed: bytes of the file after saving 0123456789 and then abc with one object: expected \"EF BB BF 61 62 63\", got \"EF BB BF 61 62 63 33 34 35 36 37 38 39\""
+    },
+    "StreamTests.SaveFileAsText_ReturnsTrueWhenTheFileIsWritten": {
+      "fails": "1 of 3 checks failed: result of SaveFileAsText after it wrote the file: expected True, got False"
+    },
+    "StreamTests.WriteLine_InLineMode_StoresTheLine": {
+      "fails": "3 of 3 checks failed: WriteLine in line mode raised error 13 Automation error: expected 0, got 13; number of lines held after one WriteLine: expected 1, got 0; result of WriteLine: expected True, got False"
+    },
+    "StreamTests.SaveFileAsText_DataOmittedInLineMode_WritesTheLines": {
+      "fails": "2 of 2 checks failed: SaveFileAsText with the text left out raised error 3001 Arguments are of the wrong type, are out of acceptable range, or are in conflict with one another.: expected 0, got 3001; the file holds the lines, not only a byte order mark: expected True, got False"
+    },
+    "TimerTests.cTimer_EnabledTimerReleased_IsDestroyed": {
+      "fails": "1 of 2 checks failed: registered timers after the last reference to the timer was released: expected 0, got 1"
+    },
+    "TimerTests.cTimers_EnabledTimerOfAReleasedGroup_IsDestroyed": {
+      "fails": "1 of 2 checks failed: registered timers after the last reference to the group was released: expected 0, got 1"
+    },
+    "TimerTests.cTimers_GroupReleased_IsDestroyed": {
+      "fails": "1 of 2 checks failed: the group is no longer registered after the last reference to it was released: expected True, got False"
+    },
+    "Utf8Tests.DecodeToByteArray_ReturnsAllTheUtf16Bytes": {
+      "fails": "2 of 2 checks failed: number of bytes of DecodeToByteArray for four characters: expected 8, got 4; bytes of DecodeToByteArray for cafe acute: expected \"63 00 61 00 66 00 E9 00\", got \"63 00 61 00\""
+    }
+  }
+}

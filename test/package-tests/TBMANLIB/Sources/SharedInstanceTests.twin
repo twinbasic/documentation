@@ -1,0 +1,67 @@
+' The ready-made instances of the modules TBMAN and Tools, the constants of Consts and ToolsHttp,
+' and the small modules that have no member of their own to test.
+[TestFixture]
+Module SharedInstanceTests
+
+    [TestCase]
+    Public Sub Tools_HoldsTheSharedInstancesOfCToolsStrAndCToolsStream()
+        Expect.Begin
+        Expect.AreEqual "cToolsStr", TypeName(ToolsStr), "TypeName(ToolsStr)"
+        Expect.AreEqual "cToolsStr", TypeName(Tools.ToolsStr), "TypeName(Tools.ToolsStr)"
+        Expect.IsTrue ToolsStr Is Tools.ToolsStr, "ToolsStr Is Tools.ToolsStr"
+        Expect.AreEqual "cToolsStream", TypeName(ToolsStream), "TypeName(ToolsStream)"
+        Expect.AreEqual "cToolsStr", TypeName(TBMANLIB.ToolsStr), "TypeName(TBMANLIB.ToolsStr)"
+        Expect.AreEqual "cToolsStr", TypeName(TBMANLIB.Tools.ToolsStr), "TypeName(TBMANLIB.Tools.ToolsStr)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TBMAN_HoldsOneSharedInstanceOfEachMainClass()
+        Expect.Begin
+        Expect.AreEqual "cJson", TypeName(TBMAN.Json), "TypeName(TBMAN.Json)"
+        Expect.AreEqual "cJson", TypeName(TBMANLIB.TBMAN.Json), "TypeName(TBMANLIB.TBMAN.Json)"
+        Expect.AreEqual "cCsv", TypeName(TBMAN.Csv), "TypeName(TBMAN.Csv)"
+        Expect.AreEqual "cIni", TypeName(TBMAN.Ini), "TypeName(TBMAN.Ini)"
+        Expect.AreEqual "cLogs", TypeName(TBMAN.Logs), "TypeName(TBMAN.Logs)"
+        Expect.AreEqual "cHttpClient", TypeName(TBMAN.HttpClient), "TypeName(TBMAN.HttpClient)"
+        Expect.AreEqual "cLayer", TypeName(TBMAN.Layer), "TypeName(TBMAN.Layer)"
+        Expect.AreEqual "cTimeuse", TypeName(TBMAN.TimerUse), "TypeName(TBMAN.TimerUse)"
+        Expect.AreEqual "cSysTray", TypeName(TBMAN.SysTray), "TypeName(TBMAN.SysTray)"
+        Expect.IsTrue TBMAN.Json Is TBMAN.Json, "TBMAN.Json Is TBMAN.Json"
+        TBMAN.Json.Clear
+        TBMAN.Json.Decode "{""name"":""Ann""}"
+        Expect.AreEqual "Ann", TBMAN.Json.Item("name"), "TBMAN.Json.Item(name)"
+        TBMAN.Json.Clear
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TBMAN_Version_IsMadeFromTheAppOfTheProgram()
+        Expect.Begin
+        Expect.AreEqual "v" & App.Major & "." & App.Minor & "." & App.Build, TBMAN.Version, "TBMAN.Version"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Consts_HoldsTheMediaTypesAndHeaderNames()
+        Expect.Begin
+        Expect.AreEqual "multipart/form-data", Consts.TOOLS_HTTP_CONTENT_TYPE_FORM_MULTIPART, "TOOLS_HTTP_CONTENT_TYPE_FORM_MULTIPART"
+        Expect.AreEqual "application/x-www-form-urlencoded", Consts.TOOLS_HTTP_CONTENT_TYPE_FORM_URLENCODED, "TOOLS_HTTP_CONTENT_TYPE_FORM_URLENCODED"
+        Expect.AreEqual "application/json", Consts.TOOLS_HTTP_CONTENT_TYPE_JSON, "TOOLS_HTTP_CONTENT_TYPE_JSON"
+        Expect.AreEqual "application/octet-stream", Consts.TOOLS_HTTP_CONTENT_TYPE_STREAM, "TOOLS_HTTP_CONTENT_TYPE_STREAM"
+        Expect.AreEqual "text/html", Consts.TOOLS_HTTP_CONTENT_TYPE_TEXT_HTML, "TOOLS_HTTP_CONTENT_TYPE_TEXT_HTML"
+        Expect.AreEqual "text/plain", Consts.TOOLS_HTTP_CONTENT_TYPE_TEXT_PLAIN, "TOOLS_HTTP_CONTENT_TYPE_TEXT_PLAIN"
+        Expect.AreEqual "Content-Lenght", Consts.TOOLS_HTTP_HEADER_FIELD_CONTENT_LENGHT, "TOOLS_HTTP_HEADER_FIELD_CONTENT_LENGHT"
+        Expect.AreEqual "Content-Type", Consts.TOOLS_HTTP_HEADER_FIELD_CONTENT_TYPE, "TOOLS_HTTP_HEADER_FIELD_CONTENT_TYPE"
+        Expect.AreEqual Consts.TOOLS_HTTP_CONTENT_TYPE_JSON, ToolsHttp.C_CONTENT_TYPE_JSON, "ToolsHttp.C_CONTENT_TYPE_JSON"
+        Expect.AreEqual Consts.TOOLS_HTTP_CONTENT_TYPE_FORM_MULTIPART, ToolsHttp.C_CONTENT_TYPE_FORM_MULTIPART, "ToolsHttp.C_CONTENT_TYPE_FORM_MULTIPART"
+        Expect.AreEqual Consts.TOOLS_HTTP_CONTENT_TYPE_FORM_URLENCODED, ToolsHttp.C_CONTENT_TYPE_FORM_URLENCODED, "ToolsHttp.C_CONTENT_TYPE_FORM_URLENCODED"
+        Expect.AreEqual Consts.TOOLS_HTTP_CONTENT_TYPE_STREAM, ToolsHttp.C_CONTENT_TYPE_STREAM, "ToolsHttp.C_CONTENT_TYPE_STREAM"
+        Expect.AreEqual Consts.TOOLS_HTTP_CONTENT_TYPE_TEXT_HTML, ToolsHttp.C_CONTENT_TYPE_TEXT_HTML, "ToolsHttp.C_CONTENT_TYPE_TEXT_HTML"
+        Expect.AreEqual Consts.TOOLS_HTTP_CONTENT_TYPE_TEXT_PLAIN, ToolsHttp.C_CONTENT_TYPE_TEXT_PLAIN, "ToolsHttp.C_CONTENT_TYPE_TEXT_PLAIN"
+        Expect.AreEqual Consts.TOOLS_HTTP_HEADER_FIELD_CONTENT_LENGHT, ToolsHttp.C_HEADER_FIELD_CONTENT_LENGHT, "ToolsHttp.C_HEADER_FIELD_CONTENT_LENGHT"
+        Expect.AreEqual Consts.TOOLS_HTTP_HEADER_FIELD_CONTENT_TYPE, ToolsHttp.C_HEADER_FIELD_CONTENT_TYPE, "ToolsHttp.C_HEADER_FIELD_CONTENT_TYPE"
+        Expect.Done
+    End Sub
+
+End Module

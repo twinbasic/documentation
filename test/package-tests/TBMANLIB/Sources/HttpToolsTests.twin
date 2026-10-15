@@ -1,0 +1,164 @@
+' ToolsHttp: the method names, form and header text, and URL escapes.
+[TestFixture]
+Module HttpToolsTests
+
+    ' A percent sign, written by name so that the escapes read as the pairs of hexadecimal digits.
+    Private Const PCT As String = "%"
+
+    ' ---- methods and enumerations
+
+    [TestCase]
+    Public Sub MapMethod_MapMethodName_UseTheListOfMethodNames()
+        Expect.Begin
+        Dim r As String
+        Expect.AreEqual 2, ToolsHttp.MapMethod("GET"), "MapMethod(GET)"
+        Expect.AreEqual 1, ToolsHttp.MapMethod("POST"), "MapMethod(POST)"
+        Expect.AreEqual 0, ToolsHttp.MapMethod("ANY"), "MapMethod(ANY)"
+        Expect.AreEqual -1, ToolsHttp.MapMethod("get"), "MapMethod(get)"
+        Expect.AreEqual -1, ToolsHttp.MapMethod("PATCH"), "MapMethod(PATCH)"
+        Expect.AreEqual "PUT", ToolsHttp.MapMethodName(ReqPut), "MapMethodName(ReqPut)"
+        Expect.AreEqual "ANY", ToolsHttp.MapMethodName(0), "MapMethodName(0)"
+        Expect.AreEqual "OPTIONS", ToolsHttp.MapMethodName(5), "MapMethodName(5)"
+        On Error Resume Next
+        r = ToolsHttp.MapMethodName(6)
+        Expect.AreEqual 9, Err.Number, "MapMethodName(6) raises"
+        Err.Clear
+        r = ToolsHttp.MapMethodName(-1)
+        Expect.AreEqual 9, Err.Number, "MapMethodName(-1) raises"
+        On Error GoTo 0
+        Expect.AreEqual 1, ReqPost, "ReqPost"
+        Expect.AreEqual 5, ReqOptions, "ReqOptions"
+        Expect.AreEqual 1, JsonString, "JsonString"
+        Expect.AreEqual 5, TextHtml, "TextHtml"
+        Expect.Done
+    End Sub
+
+    ' ---- form and header text
+
+    [TestCase]
+    Public Sub AddToQueryString_PutsTheTextAfterTheNameVer()
+        Expect.Begin
+        Expect.AreEqual "http://host/p?ver=a=1", ToolsHttp.AddToQueryString("http://host/p", "a=1"), "AddToQueryString of a URL with no query"
+        Expect.AreEqual "http://host/p?x=1&ver=a=1", ToolsHttp.AddToQueryString("http://host/p?x=1", "a=1"), "AddToQueryString of a URL with a query"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MakeContent_JoinsPairsWithoutEncodingThem()
+        Expect.Begin
+        Dim D As New Scripting.Dictionary
+        Expect.AreEqual "", ToolsHttp.MakeContent(D), "MakeContent of an empty dictionary"
+        D.Add "user", "ann"
+        D.Add "city", "New York"
+        Expect.AreEqual "user=ann&city=New York", ToolsHttp.MakeContent(D), "MakeContent"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseContent_ReadsPairsIntoTheDictionary()
+        Expect.Begin
+        Dim D As New Scripting.Dictionary, r As Boolean
+        r = ToolsHttp.ParseContent("a=1&b= two &c&=x&d=1=2", D)
+        Expect.AreEqual 4, D.Count, "number of pairs read"
+        Expect.AreEqual "two", D("b"), "value of b"
+        Expect.AreEqual "", D("c"), "value of c"
+        Expect.AreEqual "1", D("d"), "value of d, which is cut at its second ="
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseContent_ReturnsTrueWhenThePairsAreRead()
+        Expect.Begin
+        Dim D As New Scripting.Dictionary, r As Boolean
+        r = ToolsHttp.ParseContent("a=1", D)
+        Expect.AreEqual "1", D("a"), "value of a"
+        Expect.IsTrue r, "result of ParseContent after it read a pair"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseKeyValue_ReadsHeaderLines()
+        Expect.Begin
+        Dim D As New Scripting.Dictionary, r As Boolean
+        r = ToolsHttp.ParseKeyValue("Host: example.com" & vbCrLf & "X-Flag" & vbCrLf & vbCrLf, D)
+        Expect.AreEqual "example.com", D("Host"), "value of Host"
+        Expect.AreEqual "", D("X-Flag"), "value of a line with no colon"
+        Expect.IsTrue D.Exists(""), "the empty line becomes the item with the empty key"
+        Expect.AreEqual 3, D.Count, "number of items"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseKeyValue_ValueWithColons_IsKeptWhole()
+        Expect.Begin
+        Dim D As New Scripting.Dictionary, r As Boolean
+        r = ToolsHttp.ParseKeyValue("Date: Tue, 13 Oct 2026 18:00:00 GMT" & vbCrLf & "Location: http://host/path" & vbCrLf, D)
+        Expect.AreEqual "Tue, 13 Oct 2026 18:00:00 GMT", D("Date"), "value of Date"
+        Expect.AreEqual "http://host/path", D("Location"), "value of Location"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseKeyValue_ReturnsTrueWhenTheLinesAreRead()
+        Expect.Begin
+        Dim D As New Scripting.Dictionary, r As Boolean
+        r = ToolsHttp.ParseKeyValue("Host: example.com", D)
+        Expect.AreEqual "example.com", D("Host"), "value of Host"
+        Expect.IsTrue r, "result of ParseKeyValue after it read a line"
+        Expect.Done
+    End Sub
+
+    ' ---- URL escapes
+
+    [TestCase]
+    Public Sub UrlEncode_EscapesWhatIsNotALetterADigitOrOneOfTheKeptMarks()
+        Expect.Begin
+        Expect.AreEqual "New%20York/a%26b", ToolsHttp.UrlEncode("New York/a&b"), "UrlEncode(New York/a&b)"
+        Expect.AreEqual "a%5Fb", ToolsHttp.UrlEncode("a_b"), "UrlEncode(a_b)"
+        Expect.AreEqual "x-1,2.3/4", ToolsHttp.UrlEncode("x-1,2.3/4"), "UrlEncode of the kept marks"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UrlDecode_LowEscapes_AreDecoded()
+        Expect.Begin
+        Expect.AreEqual "New York/a&b", ToolsHttp.UrlDecode("New%20York/a%26b"), "UrlDecode(New%20York/a%26b)"
+        Expect.AreEqual "a+b", ToolsHttp.UrlDecode("a+b"), "UrlDecode of a plus sign"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UrlDecodeUtf8_PercentEscapes_AreDecoded()
+        Expect.Begin
+        Dim r As String
+        On Error Resume Next
+        r = ToolsHttp.UrlDecodeUtf8("a" & PCT & "20b")
+        Expect.AreEqual 0, Err.Number, "UrlDecodeUtf8 of a text with %20 raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        Expect.AreEqual "a b", r, "UrlDecodeUtf8 of a%20b"
+        r = ToolsHttp.UrlDecodeUtf8(PCT & "E4" & PCT & "B8" & PCT & "AD")
+        Expect.AreEqual 0, Err.Number, "UrlDecodeUtf8 of the escapes of U+4E2D raised error " & Err.Number & " " & Err.Description
+        Expect.AreEqual ChrW(&H4E2D), r, "UrlDecodeUtf8 of %E4%B8%AD"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UrlDecodeUtf8_TextWithoutPercent_IsReturnedWithPlusAsSpace()
+        Expect.Begin
+        Expect.AreEqual "a b c", ToolsHttp.UrlDecodeUtf8("a+b c"), "UrlDecodeUtf8 of a+b c"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UrlEncodUtf8_CharactersAbove7F_AreWrittenAsPercentEscapes()
+        Expect.Begin
+        Expect.AreEqual "a b", ToolsHttp.UrlEncodUtf8("a b"), "UrlEncodUtf8(a b)"
+        Expect.AreEqual "", ToolsHttp.UrlEncodUtf8(""), "UrlEncodUtf8 of an empty text"
+        Expect.AreEqual PCT & "E4" & PCT & "B8" & PCT & "AD", ToolsHttp.UrlEncodUtf8(ChrW(&H4E2D)), "UrlEncodUtf8 of U+4E2D"
+        Expect.AreEqual "caf" & PCT & "C3" & PCT & "A9", ToolsHttp.UrlEncodUtf8("caf" & ChrW(233)), "UrlEncodUtf8 of cafe acute"
+        Expect.AreEqual PCT & "C2" & PCT & "80", ToolsHttp.UrlEncodUtf8(ChrW(&H80)), "UrlEncodUtf8 of U+0080"
+        Expect.Done
+    End Sub
+
+End Module

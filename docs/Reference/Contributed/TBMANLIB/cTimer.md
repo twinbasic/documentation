@@ -38,7 +38,9 @@ The event is raised from the message loop of the program, so it is not raised wh
 
 A **Boolean**: whether the timer is running. It is **False** for a new object.
 
+<!-- test: TimerTests.cTimer_Enabled_FollowsTheInterval, TimerTests.cTimer_Enabled_RaisesTheTimerEventAtTheInterval -->
 Setting it to **True** starts the timer, or starts it again from zero when it is running. Setting it to **False** stops it. A start with [**Interval**](#interval) of 0 or less does nothing: **Enabled** stays **False**.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim T As New cTimer
@@ -83,7 +85,9 @@ The same as setting [**Enabled**](#enabled) to **False**.
 ### Enable
 {: .no_toc }
 
+<!-- test: TimerTests.cTimer_EnableTimer_Reset_Disable_StartAndStopTheTimer -->
 Starts the timer, with the current [**Interval**](#interval). A running timer is stopped and started again.
+<!-- /test -->
 
 Syntax: *object*.**Enable**
 
@@ -121,6 +125,7 @@ A handler is written for a variable declared with **WithEvents**. A timer that b
 
 The class keeps every running timer in a collection of the module **mTimer**, by the number that Windows gives the timer, and the callback that Windows calls, **mTimer.TimerProc**, finds the object there and raises its event. The module belongs to the package's internal code and has no page; a program does not call it.
 
+<!-- test: TimerTests.cTimer_EnabledTimerReleased_IsDestroyed, TimerTests.cTimer_NeverEnabledTimerReleased_IsDestroyed -->
 > [!NOTE] 1.0.0.29
 > The collection holds a reference to each running timer. A **cTimer** that is enabled is therefore not destroyed when the program releases its last reference: it stays registered and goes on running until [**Enabled**](#enabled) is set to **False**. A timer that was never enabled is destroyed as usual, and the timer of a destroyed object is stopped.
 

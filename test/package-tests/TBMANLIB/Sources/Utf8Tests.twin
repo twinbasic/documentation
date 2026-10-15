@@ -1,0 +1,79 @@
+' ToolsUtf8: UTF-8 bytes and strings.
+[TestFixture]
+Module Utf8Tests
+
+    [TestCase]
+    Public Sub Encode_ReturnsUtf8BytesWithNoByteOrderMark()
+        Expect.Begin
+        Dim b() As Byte
+        b = ToolsUtf8.Encode("caf" & ChrW(233))
+        Expect.AreEqual 4, UBound(b), "upper bound of Encode(cafe acute)"
+        Expect.AreEqual "63 61 66 C3 A9", Sandbox.HexOfBytes(b), "bytes of Encode(cafe acute)"
+        b = ToolsUtf8.Encode(ChrW(&H20AC))
+        Expect.AreEqual "E2 82 AC", Sandbox.HexOfBytes(b), "bytes of Encode(euro sign)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Encode_EmptyString_ReturnsAnArrayThatIsNotDimensioned()
+        Expect.Begin
+        Dim b() As Byte, n As Long
+        b = ToolsUtf8.Encode("")
+        On Error Resume Next
+        n = UBound(b)
+        Expect.AreEqual 9, Err.Number, "UBound of Encode of an empty string raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Decode_Utf8Bytes_ReturnsTheText()
+        Expect.Begin
+        Dim b() As Byte
+        b = ToolsUtf8.Encode("caf" & ChrW(233) & ChrW(&H20AC))
+        Expect.AreEqual "caf" & ChrW(233) & ChrW(&H20AC), ToolsUtf8.Decode(b), "Decode of the bytes of cafe acute and the euro sign"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Decode_ByteOrderMark_BecomesTheCharacterFeff()
+        Expect.Begin
+        Dim b(0 To 3) As Byte, s As String
+        b(0) = &HEF: b(1) = &HBB: b(2) = &HBF: b(3) = &H61
+        s = ToolsUtf8.Decode(b)
+        Expect.AreEqual 2, Len(s), "length of the text decoded from a byte order mark and a"
+        Expect.AreEqual &HFEFF&, AscW(Left$(s, 1)) And &HFFFF&, "first character"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Decode_ArrayNotDimensioned_ReturnsAnEmptyString()
+        Expect.Begin
+        Dim b() As Byte
+        Expect.AreEqual "", ToolsUtf8.Decode(b), "Decode of an array that is not dimensioned"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecodeToByteArray_ReturnsAllTheUtf16Bytes()
+        Expect.Begin
+        Dim u() As Byte, w() As Byte
+        u = ToolsUtf8.Encode("caf" & ChrW(233))
+        w = ToolsUtf8.DecodeToByteArray(u)
+        Expect.AreEqual 8, UBound(w) + 1, "number of bytes of DecodeToByteArray for four characters"
+        Expect.AreEqual "63 00 61 00 66 00 E9 00", Sandbox.HexOfBytes(w), "bytes of DecodeToByteArray for cafe acute"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecodeToByteArray_ArrayNotDimensioned_Raises9()
+        Expect.Begin
+        Dim u() As Byte, w() As Byte
+        On Error Resume Next
+        w = ToolsUtf8.DecodeToByteArray(u)
+        Expect.AreEqual 9, Err.Number, "DecodeToByteArray of an array that is not dimensioned raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+End Module

@@ -8,7 +8,9 @@ has_toc: false
 # Consts module
 {: .no_toc }
 
+<!-- test: SharedInstanceTests.Consts_HoldsTheMediaTypesAndHeaderNames -->
 Constants for HTTP requests: media types for the `Content-Type` header and the names of two header fields. [**cHttpClient**](cHttpClient) uses them; a program can use them to set the headers of a request. Eight constants, all **String**.
+<!-- /test -->
 
 ```tb check_build check_run
 Debug.Print Consts.TOOLS_HTTP_CONTENT_TYPE_JSON
@@ -58,7 +60,9 @@ The same media types are also declared in [**ToolsHttp**](ToolsHttp) with other 
 ### TOOLS_HTTP_HEADER_FIELD_CONTENT_LENGHT
 {: .no_toc }
 
+<!-- test: HttpRequestTests.Fetch_Body_IsSentAsItIsWithTheTwoLengthHeaders -->
 The text `Content-Lenght`. The name of the constant and its text both misspell `Content-Length`. [**cHttpClient**](cHttpClient) sends a header with this name, with the size of the body, on every request that has a body. Servers do not read it: WinHTTP adds the correct `Content-Length` header by itself, so a request carries both.
+<!-- /test -->
 
 ### TOOLS_HTTP_HEADER_FIELD_CONTENT_TYPE
 {: .no_toc }

@@ -1,0 +1,93 @@
+' ToolsMath and ToolsCN: rounding up, random numbers and pinyin.
+[TestFixture]
+Module MathCnTests
+
+    ' ---- ToolsMath
+
+    [TestCase]
+    Public Sub Ceil_RoundsUpToDecimalPlaces()
+        Expect.Begin
+        Expect.AreEqual 1.24, ToolsMath.Ceil(1.231, 2), "Ceil(1.231, 2)"
+        Expect.AreEqual -1, ToolsMath.Ceil(-1.5), "Ceil(-1.5)"
+        Expect.AreEqual 1300, ToolsMath.Ceil(1234, -2), "Ceil(1234, -2)"
+        Expect.AreEqual 2, ToolsMath.Ceil(1.2), "Ceil(1.2)"
+        Expect.AreEqual 5, ToolsMath.Ceil(5), "Ceil(5)"
+        Expect.AreEqual 0, ToolsMath.Ceil(0), "Ceil(0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Ceil_ExactDecimalNumber_IsNotRoundedUp()
+        Expect.Begin
+        Expect.AreEqual 0.07, ToolsMath.Ceil(0.07, 2), "Ceil(0.07, 2)"
+        Expect.AreEqual 1.1, ToolsMath.Ceil(1.1, 1), "Ceil(1.1, 1)"
+        Expect.AreEqual 0.29, ToolsMath.Ceil(0.29, 2), "Ceil(0.29, 2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetRandRange_StaysInTheRangeAndReachesBothEnds()
+        Expect.Begin
+        Dim i As Long, v As Long, lo As Long, hi As Long, outside As Long, a As Long, b As Long
+        a = 3
+        b = 5
+        lo = 99
+        hi = -99
+        For i = 1 To 300
+            v = ToolsMath.GetRandRange(a, b)
+            If v < a Or v > b Then outside = outside + 1
+            If v < lo Then lo = v
+            If v > hi Then hi = v
+        Next i
+        Expect.AreEqual 0, outside, "number of values outside 3 to 5 in 300 calls"
+        Expect.AreEqual 3, lo, "smallest value in 300 calls"
+        Expect.AreEqual 5, hi, "largest value in 300 calls"
+        a = 7
+        b = 7
+        Expect.AreEqual 7, ToolsMath.GetRandRange(a, b), "GetRandRange(7, 7)"
+        Expect.Done
+    End Sub
+
+    ' ---- ToolsCN
+
+    [TestCase]
+    Public Sub GetPinYin_EnglishLetterDigitAndSpace_AreCopied()
+        Expect.Begin
+        Dim r As String
+        On Error Resume Next
+        r = ToolsCN.GetPinYin("ab 1")
+        Expect.AreEqual 0, Err.Number, "GetPinYin of ab 1 raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        Expect.AreEqual "ab 1", r, "GetPinYin of ab 1"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetPinYin_ChineseCharacter_ReturnsItsPinyin()
+        Expect.Begin
+        Dim r As String
+        On Error Resume Next
+        r = ToolsCN.GetPinYin(ChrW(&H4E2D))
+        Expect.AreEqual 0, Err.Number, "GetPinYin of the character zhong raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        Expect.AreEqual "Zhong", r, "GetPinYin of the character zhong"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetPinYin_EmptyString_ReturnsAnEmptyString()
+        Expect.Begin
+        Expect.AreEqual "", ToolsCN.GetPinYin(""), "GetPinYin of an empty string"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetPinYin_OtherCharacter_IsDropped()
+        Expect.Begin
+        Expect.AreEqual "", ToolsCN.GetPinYin(ChrW(233)), "GetPinYin of e acute"
+        Expect.Done
+    End Sub
+
+End Module

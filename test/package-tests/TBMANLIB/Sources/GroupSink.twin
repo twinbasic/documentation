@@ -1,0 +1,22 @@
+' GroupSink: a cTimers and the numbers of the timers that raised its Timer event, in order, for the
+' test cases.
+Class GroupSink
+
+    Private WithEvents Grp As cTimers
+    Public Count As Long
+    Public Last As Long
+
+    Public Sub Attach(ByVal G As cTimers)
+        Set Grp = G
+    End Sub
+
+    Public Sub Detach()
+        Set Grp = Nothing
+    End Sub
+
+    Private Sub Grp_Timer(ByVal Index As Integer)
+        Count = Count + 1
+        Last = Index
+    End Sub
+
+End Class

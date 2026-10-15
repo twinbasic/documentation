@@ -34,6 +34,7 @@ Debug.Print J.Encode()
 
 ## How the document is held
 
+<!-- test: JsonTests.Decode_ObjectAndArray_AreHeldInTheirOwnFields, JsonTests.Decode_NumberOf16Characters_IsReturnedAsText -->
 The top level of a JSON text is an object or an array, and a **cJson** keeps each in a field of its own:
 
 - [**RootItem**](#rootitem) is a **Scripting.Dictionary**, which holds a JSON object. Its keys are the names of the object, in the order they were added, and letter case matters.
@@ -42,6 +43,7 @@ The top level of a JSON text is an object or an array, and a **cJson** keeps eac
 Inside the document, a nested object is another **Scripting.Dictionary** and a nested array is another **Collection**. A JSON string is a **String**, a number is a **Double**, `true` and `false` are **Boolean** values and `null` is **Null**. A number whose text is 16 or more characters long (17 or more with a decimal point) is returned as a **String** instead, so that no digits are lost; [`ToolsJsonVba.JsonOptions`](ToolsJsonVba#jsonoptions) changes that. The parsing and writing are done by [**ToolsJsonVba**](ToolsJsonVba), the VBA-JSON code.
 
 A new **cJson** holds an empty object. Only one of the two fields is meant to hold data at a time. [**Root**](#root) returns **RootItems** when it has items and **RootItem** when it has none, and [**Encode**](#encode) with no argument writes **RootItem** when it has entries and **RootItems** only when it has none.
+<!-- /test -->
 
 ## Properties
 
@@ -85,7 +87,11 @@ Syntax: *object*.**Items** ( *Index* ) [ **=** *value* ]
 
 Reading returns a **Variant**, an object for a nested object or array. If *Index* is greater than the number of items, the result is **Empty**. A position of 0 or less is not checked, and the **Collection** raises its own error.
 
-Assigning a value, with or without **Set**, adds it as a new last item of **RootItems**, whatever *Index* is: the item at *Index* is not replaced, and an *Index* beyond the end does not leave a gap. A value that is an object, such as a **Scripting.Dictionary** or another **Collection**, is added as a nested object or array.
+Assigning a value, with or without **Set**, adds it as a new item at the end of **RootItems**; see the warning below.
+
+<!-- test: JsonTests.Items_Assignment_ReplacesTheItemAtTheIndex -->
+> [!WARNING] 1.0.0.29
+> An assignment to **Items** does not replace the item at *Index*. It adds the value as a new last item, whatever *Index* is, and an *Index* beyond the end does not leave a gap: `J.Items(1) = 5` on `[1,2]` gives `[1,2,5]`. A value that is an object, such as a **Scripting.Dictionary** or another **Collection**, is added as a nested object or array.
 
 ```tb check_build check_run
 Dim J As New cJson
@@ -105,12 +111,14 @@ Debug.Print J.Items(2)
 ### LastError
 {: .no_toc }
 
+<!-- test: JsonTests.LastError_IsNeverSet -->
 A **String** that is meant to hold the text of the last error. [**Clear**](#clear), [**Decode**](#decode) and [**Encode**](#encode) set it to an empty string, and no member of the class stores a message in it: [**Decode**](#decode) raises its errors instead. The field stays empty unless a program assigns to it.
 
 ### LastSuccess
 {: .no_toc }
 
 Returns **True** when [**LastError**](#lasterror) is empty. Because nothing stores a message in **LastError**, it is always **True**.
+<!-- /test -->
 
 ### Root
 {: .no_toc }
@@ -159,9 +167,11 @@ Empties the document.
 
 Syntax: *object*.**Clear**
 
+<!-- test: JsonTests.Clear_EmptiesTheDocumentAndTheFieldsWorkAgain -->
 Sets [**RootText**](#roottext) and [**LastError**](#lasterror) to empty strings, and releases [**RootItem**](#rootitem) and [**RootItems**](#rootitems).
+<!-- /test -->
 
-Call **Clear** before [**Decode**](#decode) when the object held another document. **Decode** replaces only the field that matches the text it reads, so the array that an earlier call stored stays in **RootItems** after an object is decoded, and [**Root**](#root) keeps returning the array.
+Call **Clear** before [**Decode**](#decode) when the object held another document; see the note at **Decode**.
 
 ### Decode
 {: .no_toc }
@@ -175,8 +185,17 @@ Syntax: *object*.**Decode** ( *Text* ) **As cJson**
 
 Returns the object itself, so a call can be followed by a member: `J.Decode(Text).Item("name")`.
 
-A text that begins with `{` replaces [**RootItem**](#rootitem), and a text that begins with `[` replaces [**RootItems**](#rootitems). An empty text changes nothing in the document.
+A text that begins with `{` replaces [**RootItem**](#rootitem), and a text that begins with `[` replaces [**RootItems**](#rootitems).
 
+<!-- test: JsonTests.Decode_EmptyText_ChangesNothing -->
+An empty text changes nothing in the document.
+<!-- /test -->
+
+<!-- test: JsonTests.Decode_ObjectAfterArray_ReplacesTheDocument, JsonTests.Decode_ArrayAfterObject_EncodeWritesTheArray -->
+> [!NOTE] 1.0.0.29
+> Only the field that matches the text is replaced, and the other one keeps what it held. After an array and then an object, [**Root**](#root) still returns the array, and after an object and then an array, [**Encode**](#encode) with no argument still writes the object. Call [**Clear**](#clear) before decoding a document into an object that held another.
+
+<!-- test: JsonTests.Decode_WhiteSpaceBeforeArray_ReadsTheArray -->
 > [!NOTE] 1.0.0.29
 > Only spaces are removed from the start of the text before it is checked for `[`. A text that has a line break or a tab in front of its `[` is taken for an object, and the array that it holds cannot be stored in **RootItem**: the call raises the error *No such interface supported* (-2147467262), with the source `DECODE`.
 
@@ -193,7 +212,8 @@ Debug.Print Err.Number & " " & J.Items(2)
 ' 0 2
 ```
 
-If the text cannot be read, **Decode** raises the error again with the same number (10001 for a syntax error), the source `DECODE`, and the description of the parser followed by `#` and the whole text. The parser is that of [ParseJson](../VBA_JSON/JsonConverter/ParseJson): it carries out no check for commas between items, and it ignores text after the closing bracket of the value.
+<!-- test: JsonTests.Decode_SyntaxError_RaisesWithTheSourceDecode -->
+If the text cannot be read, **Decode** raises the error again with the same number (10001 for a syntax error), the source `DECODE`, and the description of the parser followed by `#` and the whole text. The parser is that of [ParseJson](../VBA_JSON/JsonConverter/ParseJson).
 
 ```tb check_build check_run
 Dim J As New cJson
@@ -203,6 +223,11 @@ Debug.Print Err.Number & " " & Err.Source
 ' Output:
 ' 10001 DECODE
 ```
+<!-- /test -->
+
+<!-- test: JsonTests.Decode_MissingComma_Raises, JsonTests.Decode_TextAfterTheDocument_Raises -->
+> [!NOTE] 1.0.0.29
+> The parser accepts text that is not JSON. It does not check for a comma between the items of an object or an array, and it ignores text after the closing bracket of the value: `{"a":1 "b":2}`, `[1 2]` and `{"a":1} garbage` are all read without an error.
 
 ### Encode
 {: .no_toc }
@@ -222,8 +247,11 @@ Syntax: *object*.**Encode** ( [ *Obj* ] [ **,** *Whitespace* ] [ **,** *FromUnic
 
 The text is built by [ConvertToJson](../VBA_JSON/JsonConverter/ConvertToJson) and also stored in [**RootText**](#roottext). Non-ASCII characters and control characters are written as `\uXXXX` escapes, so the text is ASCII. With *FromUnicode* set to **True**, every `\uXXXX` in the text is turned back into the character it names, and the result holds the characters themselves.
 
-If the value written has no items, nothing is converted and the function returns [**RootText**](#roottext) as it was: the text of the last call, or an empty string for a new or cleared object. It does not return `{}` or `[]`.
+<!-- test: JsonTests.Encode_EmptyDocument_IsWrittenAsEmptyBraces, JsonTests.Encode_DocumentEmptiedAfterAnEncode_IsNotTheOldText -->
+> [!WARNING] 1.0.0.29
+> A value that has no items is not written as `{}` or `[]`. Nothing is converted, and the function returns [**RootText**](#roottext) as it was: an empty string for a new or cleared object, and, for a document whose items were removed after an earlier call, the text of that call, which no longer matches the document.
 
+<!-- test: JsonTests.Encode_FromUnicode_BackslashThenU_IsNotAnEscape, JsonTests.Encode_FromUnicode_ControlCharacter_StaysEscaped, HttpRequestTests.RequestDataJson_ValueWithBackslashU_IsSent -->
 > [!WARNING] 1.0.0.29
 > With *FromUnicode* set to **True**, the conversion looks for the two characters `\u` anywhere in the text, without regard for the escape that comes before them. A value that holds a backslash followed by the letter `u`, such as `C:\users`, is written by the converter as `C:\\users`, and the conversion meets `\u` in it and tries to read `sers` as four hexadecimal digits. That raises error 13.
 >
@@ -247,6 +275,7 @@ Debug.Print AscW(Mid$(J.Encode(, , True), 7, 1))
 ' 1
 ```
 
+<!-- test: JsonTests.Encode_Whitespace_IndentsByLevel, JsonTests.Encode_NonAscii_IsWrittenAsEscapeAndFromUnicodeReadsItBack, JsonTests.Encode_NonObjectValue_IsStoredAsText -->
 ```tb check_build check_run
 Dim J As New cJson
 J.Decode "{""a"":[1,2]}"
@@ -261,6 +290,7 @@ Debug.Print J.Encode(, , True) = "{""word"":""caf" & ChrW(233) & """}"
 ' {"word":"caf\u00E9"}
 ' True
 ```
+<!-- /test -->
 
 ### LoadFrom
 {: .no_toc }
@@ -277,6 +307,7 @@ Syntax: *object*.**LoadFrom** ( *Path* [ **,** *CharSet* ] ) **As cJson**
 
 The file is read by [**ToolsStream.LoadFileAsText**](cToolsStream#loadfileastext) and the text goes to [**Decode**](#decode), so its rules and errors apply. Returns the object itself.
 
+<!-- test: JsonTests.LoadFrom_AfterLoadFrom_ReadsTheFile, JsonTests.LoadFrom_AfterSaveTo_ReadsTheFile, JsonTests.LoadFrom_AfterFailedLoadFrom_ReadsTheFile -->
 > [!WARNING] 1.0.0.29
 > **ToolsStream.LoadFileAsText** leaves the shared stream open, and raises error 3705, *Operation is not allowed when the object is open*, when it finds it open. A **LoadFrom** therefore fails after any earlier **LoadFrom** or [**SaveTo**](#saveto) of the program, and after a file that could not be opened. See [**cToolsStream**](cToolsStream). `ToolsStream.Inst.Close` after each call makes the next one work.
 
@@ -290,6 +321,7 @@ Syntax: *object*.**NewItem** ( [ *ParentKey* ] ) **As cJson**
 *ParentKey*
 : *optional* A **String**. If it is left out, the new object becomes the next item of [**RootItems**](#rootitems), an element of the array. If it is given, the new object is stored in [**RootItem**](#rootitem) under that name.
 
+<!-- test: JsonTests.NewItem_NewItems_BuildNestedObjectsAndArrays -->
 Returns a new **cJson**. The object that it holds in its **RootItem** is the one that was added, so setting values on the returned object changes the document it was made for.
 
 ```tb check_build check_run
@@ -311,6 +343,7 @@ Debug.Print List.Encode()
 ' {"name":"Ann","home":{"city":"Oslo"}}
 ' [{"id":1},{"id":2}]
 ```
+<!-- /test -->
 
 ### NewItems
 {: .no_toc }
@@ -356,9 +389,11 @@ Syntax: *object*.**SaveTo** ( *FileName* [ **,** *CharSet* ] [ **,** *Whitespace
 
 The text is made by [**Encode**](#encode) of the object's [**Root**](#root), so the rules of that method apply, among them that an empty document writes the text of an earlier call. The function returns the text that it wrote to the file. A file written with the character set `UTF-8` begins with the byte order mark EF BB BF.
 
+<!-- test: JsonTests.SaveTo_SecondShorterDocument_WritesValidJson -->
 > [!WARNING] 1.0.0.29
 > **ToolsStream.SaveFileAsText** leaves the shared stream open and, when it finds it open, writes over the text that is still in it. After a first **SaveTo**, a second one with a shorter document, in the same or another file, writes the new text with the end of the old text after it, which is not valid JSON: saving `{"a":"long long"}` and then `{"b":1}` leaves `{"b":1}ong long"}` in the second file. No error is raised. See [**cToolsStream**](cToolsStream). `ToolsStream.Inst.Close` after each call avoids it.
 
+<!-- test: JsonTests.SaveTo_ThenLoadFrom_RoundTripsNonAscii -->
 ```tb check_build check_run
 Dim Path As String
 Path = Environ$("TEMP") & "\tbmanlib-docs\sample.json"
@@ -379,6 +414,7 @@ RmDir Environ$("TEMP") & "\tbmanlib-docs"
 ' {"word":"caf\u00E9"}
 ' 233
 ```
+<!-- /test -->
 
 ### ToArray
 {: .no_toc }
@@ -387,7 +423,9 @@ Returns the object of the document in an array.
 
 Syntax: *object*.**ToArray** ( ) **As Variant**
 
+<!-- test: JsonTests.ToArray_ObjectDocument_ReturnsOneElementArray -->
 If [**RootItem**](#rootitem) has entries, the result is an array of one element that holds that **Scripting.Dictionary**. In every other case, including a document held in [**RootItems**](#rootitems), the result is **Empty**.
+<!-- /test -->
 
 ## See Also
 

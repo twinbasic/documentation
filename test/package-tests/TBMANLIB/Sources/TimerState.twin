@@ -1,0 +1,15 @@
+' TimerState: a way to stop every timer the package still has registered, so that no case leaves
+' one running.
+Module TimerState
+
+    Public Sub StopAllTimers()
+        Dim n As Long
+        On Error Resume Next
+        Do While mTimer.timers.Count > 0 And n < 200
+            mTimer.timers(1).Enabled = False
+            n = n + 1
+        Loop
+        Err.Clear
+    End Sub
+
+End Module

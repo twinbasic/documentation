@@ -35,7 +35,9 @@ Syntax: *object*.**Show** ( [ *Txt* ] ) **As Variant**
 *Txt*
 : *optional* A **String**, the message. Every `{*}` in it is replaced by the number of milliseconds. The default is a Chinese message: the words for *time used*, a colon, `{*}` and the word for *milliseconds*.
 
+<!-- test: TimerTests.cTimeuse_Show_ReplacesEveryPlaceholderWithTheMilliseconds, TimerTests.cTimeuse_Show_WithoutStart_IsTheTickCount -->
 Returns a **String** in a **Variant**. The number is the tick count at the call less the tick count at **Start**. If **Start** has not been called, the number is the tick count itself: the milliseconds since the computer started.
+<!-- /test -->
 
 ### Start
 {: .no_toc }

@@ -1,0 +1,127 @@
+' cSubClass: the messages of a window of the program, seen and stopped. Each case makes a window
+' that has no parent on the screen (a message-only window), hooks it, and destroys it.
+[TestFixture]
+Module SubClassTests
+
+    Private Declare PtrSafe Function CreateWindowExW Lib "user32" (ByVal dwExStyle As Long, ByVal lpClassName As LongPtr, ByVal lpWindowName As LongPtr, ByVal dwStyle As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As LongPtr, ByVal hMenu As LongPtr, ByVal hInstance As LongPtr, ByVal lpParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DestroyWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function SendMessageW Lib "user32" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function GetWindowLongW Lib "user32" (ByVal hWnd As LongPtr, ByVal nIndex As Long) As Long
+
+    Private Const HWND_MESSAGE As Long = -3
+    Private Const GWL_WNDPROC As Long = -4
+    Private Const WM_USER As Long = &H400
+    Private Const WM_SETTEXT As Long = &HC
+    Private Const WM_GETTEXT As Long = &HD
+    Private Const WM_GETTEXTLENGTH As Long = &HE
+
+    ' A message-only window of the STATIC class.
+    Private Function NewWindow() As Long
+        NewWindow = CLng(CreateWindowExW(0, StrPtr("STATIC"), StrPtr("start"), 0, 0, 0, 0, 0, HWND_MESSAGE, 0, 0, 0))
+    End Function
+
+    ' The text of a window, read with WM_GETTEXT.
+    Private Function TextOf(ByVal hWnd As Long) As String
+        Dim n As Long, buf As String
+        n = CLng(SendMessageW(hWnd, WM_GETTEXTLENGTH, 0, 0))
+        buf = String$(n + 1, vbNullChar)
+        SendMessageW hWnd, WM_GETTEXT, n + 1, StrPtr(buf)
+        TextOf = Left$(buf, n)
+    End Function
+
+    [TestCase]
+    Public Sub Hook_RaisesWindowProcForEachMessageOfTheWindow()
+        Expect.Begin
+        Dim h As Long, S As New WindowSink
+        h = NewWindow()
+        Expect.IsTrue h <> 0, "a window was created"
+        S.Create
+        S.Hooker.Hook h
+        Expect.AreEqual h, S.Hooker.mHWnd, "mHWnd after Hook"
+        SendMessageW h, WM_USER + 1, 5, 6
+        Expect.AreEqual WM_USER + 1, S.LastMsg, "Msg of the event"
+        Expect.AreEqual 5, S.LastWParam, "wParam of the event"
+        Expect.AreEqual 6, S.LastLParam, "lParam of the event"
+        Expect.IsTrue S.Count >= 1, "number of events"
+        S.Hooker.UnHook
+        S.Release
+        DestroyWindow h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Hook_CancelNextCall_StopsTheMessageAndReturnsZero()
+        Expect.Begin
+        Dim h As Long, S As New WindowSink, r As LongPtr
+        h = NewWindow()
+        S.Create
+        S.Hooker.Hook h
+        SendMessageW h, WM_SETTEXT, 0, StrPtr("first")
+        Expect.AreEqual "first", TextOf(h), "text after WM_SETTEXT that was not cancelled"
+        S.CancelMsg = WM_SETTEXT
+        r = SendMessageW(h, WM_SETTEXT, 0, StrPtr("second"))
+        Expect.AreEqual "first", TextOf(h), "text after WM_SETTEXT that was cancelled"
+        Expect.AreEqual 0, CLng(r), "result of the cancelled message"
+        S.Hooker.UnHook
+        S.Release
+        DestroyWindow h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnHook_RestoresTheWindowProcedureAndStopsTheEvents()
+        Expect.Begin
+        Dim h As Long, S As New WindowSink, before As Long, hooked As Long, n As Long
+        h = NewWindow()
+        before = GetWindowLongW(h, GWL_WNDPROC)
+        S.Create
+        S.Hooker.Hook h
+        hooked = GetWindowLongW(h, GWL_WNDPROC)
+        Expect.IsTrue hooked <> before, "the window procedure while the window is hooked is the package's"
+        S.Hooker.UnHook
+        Expect.AreEqual before, GetWindowLongW(h, GWL_WNDPROC), "the window procedure after UnHook"
+        n = S.Count
+        SendMessageW h, WM_USER + 2, 0, 0
+        Expect.AreEqual n, S.Count, "events after UnHook"
+        S.Release
+        DestroyWindow h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Hook_AnotherObjectOnTheSameWindow_Raises457()
+        Expect.Begin
+        Dim h As Long, S As New WindowSink, T As New WindowSink
+        h = NewWindow()
+        S.Create
+        T.Create
+        S.Hooker.Hook h
+        On Error Resume Next
+        T.Hooker.Hook h
+        Expect.AreEqual 457, Err.Number, "Hook of a window another cSubClass has hooked raises"
+        On Error GoTo 0
+        S.Hooker.UnHook
+        S.Release
+        T.Release
+        DestroyWindow h
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnHook_WithNoHookInPlace_Raises5()
+        Expect.Begin
+        Dim h As Long, S As New WindowSink
+        h = NewWindow()
+        S.Create
+        S.Hooker.Hook h
+        S.Hooker.UnHook
+        On Error Resume Next
+        S.Hooker.UnHook
+        Expect.AreEqual 5, Err.Number, "a second UnHook raises"
+        On Error GoTo 0
+        S.Release
+        DestroyWindow h
+        Expect.Done
+    End Sub
+
+End Module

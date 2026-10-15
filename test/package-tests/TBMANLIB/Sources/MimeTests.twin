@@ -1,0 +1,86 @@
+' ToolsHttpMimeType: the media type of a file name.
+[TestFixture]
+Module MimeTests
+
+    [TestCase]
+    Public Sub MapMimeType_TableOfThePage_GivesTheMediaTypeOfEachExtension()
+        Expect.Begin
+        Dim rows As Variant, i As Long, parts() As String
+        rows = Array( _
+            "7z|application/x-7z-compressed", "aac|audio/x-aac", "avi|video/x-msvideo", "bmp|image/bmp", "css|text/css", "csv|text/csv", _
+            "doc|application/msword", "docx|application/vnd.openxmlformats-officedocument.wordprocessingml.document", "dwf|model/vnd.dwf", "dwg|image/vnd.dwg", "dxf|image/vnd.dxf", "eml|message/rfc822", _
+            "exe|application/x-msdownload", "f4v|video/x-f4v", "flv|video/x-flv", "gif|image/gif", "html|text/html", "ico|image/x-icon", _
+            "ics|text/calendar", "jar|application/java-archive", "jpeg|image/jpeg", "jpg|image/jpeg", "jpgv|video/jpeg", "jpm|video/jpm", _
+            "js|application/javascript", "json|application/json", "kml|application/vnd.google-earth.kml+xml", "kmz|application/vnd.google-earth.kmz", "m3u|audio/x-mpegurl", "m3u8|application/vnd.apple.mpegurl", _
+            "mdb|application/x-msaccess", "mid|audio/midi", "mov|video/quicktime", "mp4|video/mp4", "mp4a|audio/mp4", "mpeg|video/mpeg", _
+            "mpg|video/mpeg", "mpga|audio/mpeg", "mpp|application/vnd.ms-project", "odb|application/vnd.oasis.opendocument.database", "odc|application/vnd.oasis.opendocument.chart", "odf|application/vnd.oasis.opendocument.formula", _
+            "odft|application/vnd.oasis.opendocument.formula-template", "odg|application/vnd.oasis.opendocument.graphics", "odi|application/vnd.oasis.opendocument.image", "odm|application/vnd.oasis.opendocument.text-master", "odp|application/vnd.oasis.opendocument.presentation", "ods|application/vnd.oasis.opendocument.spreadsheet", _
+            "odt|application/vnd.oasis.opendocument.text", "oga|audio/ogg", "ogv|video/ogg", "ogx|application/ogg", "onetoc|application/onenote", "otf|application/x-font-otf", _
+            "pdf|application/pdf", "png|image/png", "ppsx|application/vnd.openxmlformats-officedocument.presentationml.slideshow", "ppt|application/vnd.ms-powerpoint", "pptx|application/vnd.openxmlformats-officedocument.presentationml.presentation", "psd|image/vnd.adobe.photoshop", _
+            "pub|application/x-mspublisher", "qt|video/quicktime", "ram|audio/x-pn-realaudio", "rar|application/x-rar-compressed", "rm|application/vnd.rn-realmedia", "rss|application/rss+xml", _
+            "svg|image/svg+xml", "swf|application/x-shockwave-flash", "tar|application/x-tar", "tif|image/tiff", "tiff|image/tiff", "torrent|application/x-bittorrent", _
+            "tsv|text/tab-separated-values", "ttf|application/x-font-ttf", "txt|text/plain", "vbml|text/html", "vcf|text/x-vcard", "vcs|text/x-vcalendar", _
+            "vsd|application/vnd.visio", "vsdx|application/vnd.visio2013", "wav|audio/x-wav", "weba|audio/webm", "webm|video/webm", "webp|image/webp", _
+            "wm|video/x-ms-wm", "wma|audio/x-ms-wma", "wmf|application/x-msmetafile", "wmv|video/x-ms-wmv", "xhtml|application/xhtml+xml", "xls|application/vnd.ms-excel", _
+            "xlsx|application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xml|application/xml", "xps|application/vnd.ms-xpsdocument", "xslt|application/xslt+xml", "xul|application/vnd.mozilla.xul+xml", "zip|application/zip" _
+        )
+        For i = 0 To UBound(rows)
+            parts = Split(rows(i), "|")
+            Expect.AreEqual parts(1), ToolsHttpMimeType.MapMimeType("file." & parts(0)), "MapMimeType of file." & parts(0)
+        Next i
+        Expect.AreEqual 96, UBound(rows) + 1, "number of extensions checked"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MapMimeType_PathsAndOtherExtensions()
+        Expect.Begin
+        Dim r As String
+        Expect.AreEqual "application/pdf", ToolsHttpMimeType.MapMimeType("report.pdf"), "MapMimeType(report.pdf)"
+        Expect.AreEqual "text/html", ToolsHttpMimeType.MapMimeType("C:\site\index.html"), "MapMimeType of a path"
+        Expect.AreEqual "application/zip", ToolsHttpMimeType.MapMimeType("archive.tar.zip"), "MapMimeType(archive.tar.zip)"
+        Expect.AreEqual "application/octet-stream", ToolsHttpMimeType.MapMimeType("notes.unknown"), "MapMimeType(notes.unknown)"
+        Expect.AreEqual "text/html", ToolsHttpMimeType.MapMimeType(".html"), "MapMimeType(.html)"
+        Expect.AreEqual "text/html", ToolsHttpMimeType.MapMimeType("html"), "MapMimeType(html)"
+        Expect.AreEqual "application/octet-stream", ToolsHttpMimeType.MapMimeType("noextension"), "MapMimeType of a name with no dot"
+        On Error Resume Next
+        r = ToolsHttpMimeType.MapMimeType("")
+        Expect.AreEqual 9, Err.Number, "MapMimeType of an empty string raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MapMimeType_UpperCaseExtension_IsFound()
+        Expect.Begin
+        Expect.AreEqual "application/pdf", ToolsHttpMimeType.MapMimeType("report.PDF"), "MapMimeType(report.PDF)"
+        Expect.AreEqual "image/jpeg", ToolsHttpMimeType.MapMimeType("Photo.JPG"), "MapMimeType(Photo.JPG)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MapMimeType_WoffAndWoff2_HaveFontTypes()
+        Expect.Begin
+        Expect.AreEqual "font/woff", ToolsHttpMimeType.MapMimeType("a.woff"), "MapMimeType(a.woff)"
+        Expect.AreEqual "font/woff2", ToolsHttpMimeType.MapMimeType("a.woff2"), "MapMimeType(a.woff2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MapMimeType_CommonExtensionsMissingFromTheTable_HaveTheirTypes()
+        Expect.Begin
+        Expect.AreEqual "text/html", ToolsHttpMimeType.MapMimeType("a.htm"), "MapMimeType(a.htm)"
+        Expect.AreEqual "audio/mpeg", ToolsHttpMimeType.MapMimeType("a.mp3"), "MapMimeType(a.mp3)"
+        Expect.AreEqual "audio/ogg", ToolsHttpMimeType.MapMimeType("a.ogg"), "MapMimeType(a.ogg)"
+        Expect.AreEqual "application/wasm", ToolsHttpMimeType.MapMimeType("a.wasm"), "MapMimeType(a.wasm)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MapMimeType_Java_IsTheMediaTypeOfJavaSource()
+        Expect.Begin
+        Expect.AreEqual "text/x-java-source", ToolsHttpMimeType.MapMimeType("A.java"), "MapMimeType(A.java)"
+        Expect.Done
+    End Sub
+
+End Module

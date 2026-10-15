@@ -1,0 +1,417 @@
+' cCsv: a table of text, and reading and writing it as a file of comma-separated values.
+[TestFixture]
+Module CsvTests
+
+    ' True when LoadFrom raises an error. Err.Number alone cannot tell: an error that the class
+    ' handled itself stays in Err.
+    Private Function LoadRaises(ByVal T As cCsv, ByVal Path As String) As Boolean
+        On Error GoTo Caught
+        T.LoadFrom Path
+        Exit Function
+Caught:
+        LoadRaises = True
+    End Function
+
+    ' ---- building the table
+
+    [TestCase]
+    Public Sub NewLine_FillsAndCutsLinesToTheWidthOfTheFirstLine()
+        Expect.Begin
+        Dim T As New cCsv
+        Expect.IsTrue T.NewLine("id", "name", "note"), "NewLine of the first line"
+        T.NewLine 1, "Ann", "x,y", "dropped"
+        T.NewLine 2
+        Expect.AreEqual 3, T.Data.Count, "number of lines"
+        Expect.AreEqual 3, T.Data(2).Count, "number of fields of line 2, which was given four"
+        Expect.AreEqual 3, T.Data(3).Count, "number of fields of line 3, which was given one"
+        Expect.AreEqual "", T.value(3, 2), "second field of line 3"
+        Expect.AreEqual 3, T.CurrentLineNumber, "CurrentLineNumber after the third NewLine"
+        Expect.AreEqual 3, T.HeadTitle.Count, "number of titles"
+        Expect.AreEqual 3, T.HeadTitleWidth.Count, "number of widths"
+        Expect.AreEqual 1500, T.HeadTitleWidth(1), "width of column 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NewLine_Dictionary_IsCopiedIntoTheTable()
+        Expect.Begin
+        Dim T As New cCsv, D As New Scripting.Dictionary
+        T.NewLine "a", "b"
+        D(1) = "x"
+        D(2) = "y"
+        T.NewLine D
+        D(1) = "changed"
+        Expect.AreEqual "x", T.value(2, 1), "first field of the line made from a dictionary"
+        Expect.AreEqual "y", T.value(2, 2), "second field of the line made from a dictionary"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NewColumn_AddsTheColumnToEveryLine()
+        Expect.Begin
+        Dim T As New cCsv, r As Boolean
+        T.NewLine "id", "name"
+        T.NewLine 1, "Ann"
+        r = T.NewColumn("age", 700, "0")
+        Expect.AreEqual "age", T.value(1, 3), "title in the first line of the new column"
+        Expect.AreEqual "0", T.value(2, 3), "field of line 2 in the new column"
+        Expect.AreEqual "age", T.HeadTitle(3), "HeadTitle(3)"
+        Expect.AreEqual 700, T.HeadTitleWidth(3), "HeadTitleWidth(3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NewColumn_ReturnsTrueWhenTheColumnIsAdded()
+        Expect.Begin
+        Dim T As New cCsv, r As Boolean
+        T.NewLine "id", "name"
+        T.NewLine 1, "Ann"
+        r = T.NewColumn("age", 700, "0")
+        Expect.AreEqual 3, T.Data(1).Count, "number of fields of line 1 after NewColumn"
+        Expect.IsTrue r, "result of NewColumn after it added a column"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NewColumn_TableWithNoLines_AddsNothing()
+        Expect.Begin
+        Dim T As New cCsv, r As Boolean
+        r = T.NewColumn("age")
+        Expect.AreEqual 0, T.Data.Count, "number of lines"
+        Expect.AreEqual 0, T.HeadTitle.Count, "number of titles"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DeleteColumn_LastColumn_RemovesIt()
+        Expect.Begin
+        Dim T As New cCsv
+        T.NewLine "a", "b", "c"
+        T.NewLine "d", "e", "f"
+        Expect.IsTrue T.DeleteColumn(), "DeleteColumn with no argument"
+        Expect.AreEqual 2, T.Data(1).Count, "number of fields of line 1"
+        Expect.AreEqual 2, T.Data(2).Count, "number of fields of line 2"
+        Expect.AreEqual 2, T.HeadTitleWidth.Count, "number of widths"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DeleteColumn_NoFirstLine_ReturnsFalse()
+        Expect.Begin
+        Dim T As New cCsv
+        Expect.IsFalse T.DeleteColumn(1), "DeleteColumn of an empty table"
+        Expect.IsTrue Len(T.LastError) > 0, "LastError after the failed DeleteColumn"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DeleteColumn_MiddleColumn_SavesTheRemainingColumns()
+        Expect.Begin
+        Dim T As New cCsv, dir As String, p As String
+        dir = Sandbox.Fresh("csv1")
+        p = dir & "\a.csv"
+        T.NewLine "a", "b", "c"
+        T.NewLine "d", "e", "f"
+        Expect.IsTrue T.DeleteColumn(2), "DeleteColumn(2)"
+        Expect.IsTrue T.SaveTo(p), "SaveTo"
+        Expect.AreEqual "a,c" & vbCrLf & "d,f" & vbCrLf, Sandbox.AsciiOf(p), "file after deleting column 2 of three"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    ' ---- reading and writing fields of the table
+
+    [TestCase]
+    Public Sub GetLine_MakesTheLineCurrent()
+        Expect.Begin
+        Dim T As New cCsv, D As Scripting.Dictionary
+        T.NewLine "id", "name"
+        T.NewLine 1, "Ann"
+        T.NewLine 2, "Bob"
+        Expect.IsTrue T.GetLine(2), "GetLine(2)"
+        Expect.AreEqual 2, T.CurrentLineNumber, "CurrentLineNumber"
+        Expect.AreEqual "Ann", T.CurrentLineDic(2), "second field of the current line"
+        Expect.IsFalse T.GetLine(9), "GetLine(9)"
+        Expect.AreEqual 2, T.CurrentLineNumber, "CurrentLineNumber after the failed GetLine"
+        Expect.IsTrue Len(T.LastError) > 0, "LastError after the failed GetLine"
+        Expect.IsTrue T.GetLine(3, D), "GetLine(3, D)"
+        Expect.IsTrue D Is T.CurrentLineDic, "the dictionary variable passed to GetLine is the current line"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetCurrentLineData_ChangesAFieldOfTheCurrentLine()
+        Expect.Begin
+        Dim T As New cCsv
+        Expect.IsFalse T.SetCurrentLineData(1, "x"), "SetCurrentLineData on an empty table"
+        T.NewLine "id", "name"
+        T.NewLine 1, "Ann"
+        Expect.IsTrue T.SetCurrentLineData(2, "Zed"), "SetCurrentLineData(2, Zed)"
+        Expect.AreEqual "Zed", T.value(2, 2), "field after SetCurrentLineData"
+        Expect.IsFalse T.SetCurrentLineData(9, "x"), "SetCurrentLineData(9, x)"
+        Expect.IsTrue Len(T.LastError) > 0, "LastError after the failed SetCurrentLineData"
+        Dim D As Scripting.Dictionary
+        Expect.IsTrue T.SetCurrentLineData(1, "y", D), "SetCurrentLineData(1, y, D)"
+        Expect.IsTrue D Is Nothing, "the dictionary variable passed to SetCurrentLineData is not changed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetLine_ReplacesALineAndClearsTheCurrentLine()
+        Expect.Begin
+        Dim T As New cCsv, D As New Scripting.Dictionary
+        T.NewLine "id", "name"
+        T.NewLine 1, "Ann"
+        D(1) = "7"
+        Expect.IsTrue T.SetLine(2, D), "SetLine(2, D)"
+        Expect.AreEqual "7", T.value(2, 1), "first field of the replaced line"
+        Expect.AreEqual "", T.value(2, 2), "second field of the replaced line, filled up"
+        Expect.IsFalse T.SetCurrentLineData(1, "x"), "SetCurrentLineData after SetLine"
+        Expect.IsFalse T.SetLine(9, D), "SetLine(9, D)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub value_MissingLineOrColumn_ReturnsOneAndSetsLastError()
+        Expect.Begin
+        Dim T As New cCsv
+        T.NewLine "id", "name"
+        Expect.AreEqual 1, T.value(9, 1), "value of a line that does not exist"
+        Expect.AreEqual 1, T.value(1, 9), "value of a column that does not exist"
+        Expect.IsTrue Len(T.LastError) > 0, "LastError after reading a missing field"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub value_Assignment_ChangesTheField()
+        Expect.Begin
+        Dim T As New cCsv
+        T.NewLine "id", "name"
+        T.NewLine 1, "Ann"
+        On Error Resume Next
+        T.value(2, 2) = "Zed"
+        Expect.AreEqual 0, Err.Number, "assignment to value(2, 2) raised error " & Err.Number & " " & Err.Description
+        On Error GoTo 0
+        Expect.AreEqual "Zed", T.value(2, 2), "value(2, 2) after the assignment"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetHeadTitleWidth_StoresTheWidthUpToTheMaximum()
+        Expect.Begin
+        Dim T As New cCsv
+        T.NewLine "a", "b"
+        Expect.IsTrue T.SetHeadTitleWidth(1, 900), "SetHeadTitleWidth(1, 900)"
+        Expect.AreEqual 900, T.HeadTitleWidth(1), "width of column 1"
+        Expect.IsTrue T.SetHeadTitleWidth(2, 99999), "SetHeadTitleWidth(2, 99999)"
+        Expect.AreEqual 8000, T.HeadTitleWidth(2), "width of column 2, given more than the maximum"
+        Expect.IsFalse T.SetHeadTitleWidth(5, 100), "SetHeadTitleWidth of a column that has no entry"
+        Expect.IsTrue Len(T.LastError) > 0, "LastError after the failed SetHeadTitleWidth"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetHeadTitleWidthByDic_StoresTheWidthsOfTheColumnsItHas()
+        Expect.Begin
+        Dim T As New cCsv, D As New Scripting.Dictionary, r As Boolean
+        T.NewLine "a", "b"
+        D(1) = 20000
+        D(2) = 300
+        D(7) = 5
+        r = T.SetHeadTitleWidthByDic(D)
+        Expect.AreEqual 20000, T.HeadTitleWidth(1), "width of column 1, which is not limited by the maximum"
+        Expect.AreEqual 300, T.HeadTitleWidth(2), "width of column 2"
+        Expect.IsFalse T.HeadTitleWidth.Exists(7), "an entry for a column the table lacks"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetHeadTitleWidthByDic_ReturnsTrueWhenTheWidthsAreStored()
+        Expect.Begin
+        Dim T As New cCsv, D As New Scripting.Dictionary, r As Boolean
+        T.NewLine "a", "b"
+        D(1) = 300
+        r = T.SetHeadTitleWidthByDic(D)
+        Expect.AreEqual 300, T.HeadTitleWidth(1), "width of column 1"
+        Expect.IsTrue r, "result of SetHeadTitleWidthByDic after it stored a width"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_EmptiesTheTableAndRestoresTheSettings()
+        Expect.Begin
+        Dim T As New cCsv
+        T.NewLine "a", "b"
+        T.Delimiter = ";"
+        T.HeadTitleWidthDefault = 10
+        T.IsFirstLineToHead = False
+        T.Reset True
+        Expect.AreEqual 0, T.Data.Count, "number of lines after Reset(True)"
+        Expect.AreEqual ";", T.Delimiter, "Delimiter after Reset(True)"
+        Expect.AreEqual 10, T.HeadTitleWidthDefault, "HeadTitleWidthDefault after Reset(True)"
+        T.Reset
+        Expect.AreEqual ",", T.Delimiter, "Delimiter after Reset"
+        Expect.AreEqual 1500, T.HeadTitleWidthDefault, "HeadTitleWidthDefault after Reset"
+        Expect.AreEqual 8000, T.HeadTitleWidthMax, "HeadTitleWidthMax after Reset"
+        Expect.IsTrue T.IsFirstLineToHead, "IsFirstLineToHead after Reset"
+        Expect.IsTrue T.HasHeadTitle, "HasHeadTitle after Reset"
+        Expect.Done
+    End Sub
+
+    ' ---- LoadFrom
+
+    [TestCase]
+    Public Sub LoadFrom_QuotedFields_AreParsed()
+        Expect.Begin
+        Dim T As New cCsv, dir As String, p As String
+        dir = Sandbox.Fresh("csv2")
+        p = dir & "\a.csv"
+        Sandbox.WriteAscii p, "id,name,note" & vbCrLf & "1,Ann,""x,y""" & vbCrLf & "2,""say """"hi"""""",z" & vbCrLf
+        T.LoadFrom p
+        Expect.AreEqual 3, T.Data.Count, "number of lines"
+        Expect.AreEqual "x,y", T.value(2, 3), "quoted field that holds the delimiter"
+        Expect.AreEqual "say ""hi""", T.value(3, 2), "quoted field that holds quotation marks"
+        Expect.AreEqual "z", T.value(3, 3), "field after a quoted one"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFrom_SpacesAtTheEndsOfAField_AreKept()
+        Expect.Begin
+        Dim T As New cCsv, dir As String, p As String
+        dir = Sandbox.Fresh("csv3")
+        p = dir & "\a.csv"
+        Sandbox.WriteAscii p, "a,b" & vbCrLf & " Ann ,"" x """ & vbCrLf
+        T.LoadFrom p
+        Expect.AreEqual " Ann ", T.value(2, 1), "field with a space at each end"
+        Expect.AreEqual " x ", T.value(2, 2), "quoted field with a space at each end"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFrom_BlankLine_IsSkippedAndItsNumberCounted()
+        Expect.Begin
+        Dim T As New cCsv, dir As String, p As String
+        dir = Sandbox.Fresh("csv4")
+        p = dir & "\a.csv"
+        Sandbox.WriteAscii p, "a,b" & vbCrLf & vbCrLf & "c,d" & vbCrLf
+        T.LoadFrom p
+        Expect.AreEqual 2, T.Data.Count, "number of lines"
+        Expect.IsTrue T.Data.Exists(1), "line 1 exists"
+        Expect.IsFalse T.Data.Exists(2), "line 2, the blank one, exists"
+        Expect.IsTrue T.Data.Exists(3), "line 3 exists"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NewLine_AfterABlankLineInTheFile_AddsALine()
+        Expect.Begin
+        Dim T As New cCsv, dir As String, p As String
+        dir = Sandbox.Fresh("csv5")
+        p = dir & "\a.csv"
+        Sandbox.WriteAscii p, "a,b" & vbCrLf & vbCrLf & "c,d" & vbCrLf
+        T.LoadFrom p
+        On Error Resume Next
+        T.NewLine "e", "f"
+        Expect.AreEqual 0, Err.Number, "NewLine after loading a file with a blank line raised error " & Err.Number & " " & Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 3, T.Data.Count, "number of lines after NewLine"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFrom_LinesOfOtherLength_AreCutOrFilledToTheFirstLine()
+        Expect.Begin
+        Dim T As New cCsv, dir As String, p As String
+        dir = Sandbox.Fresh("csv6")
+        p = dir & "\a.csv"
+        Sandbox.WriteAscii p, "a,b,c" & vbCrLf & "1,2,3,4,5" & vbCrLf & "x" & vbCrLf
+        T.LoadFrom p
+        Expect.AreEqual 3, T.Data(2).Count, "number of fields of the long line"
+        Expect.AreEqual "3", T.value(2, 3), "last field of the long line"
+        Expect.AreEqual 3, T.Data(3).Count, "number of fields of the short line"
+        Expect.AreEqual "", T.value(3, 3), "last field of the short line"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFrom_MissingFile_RaisesNothingAndSetsLastError()
+        Expect.Begin
+        Dim T As New cCsv, dir As String, p As String, raised As Boolean
+        dir = Sandbox.Fresh("csv7")
+        p = dir & "\missing.csv"
+        T.NewLine "keep"
+        raised = LoadRaises(T, p)
+        Expect.IsFalse raised, "LoadFrom of a missing file raised an error"
+        Expect.AreEqual "53#", Left$(T.LastError, 3), "start of LastError"
+        Expect.AreEqual p, Right$(T.LastError, Len(p)), "end of LastError"
+        Expect.AreEqual 1, T.Data.Count, "number of lines, which the failed LoadFrom leaves"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    ' ---- SaveTo
+
+    [TestCase]
+    Public Sub SaveTo_QuotesFieldsThatHoldTheDelimiterOrAQuote()
+        Expect.Begin
+        Dim T As New cCsv, dir As String, p As String
+        dir = Sandbox.Fresh("csv8")
+        p = dir & "\a.csv"
+        T.NewLine "plain", "a,b", "say ""hi"""
+        T.Delimiter = ";"
+        T.NewLine "x;y", "a,b", " pad"
+        Expect.IsTrue T.SaveTo(p), "SaveTo"
+        Expect.AreEqual "plain;a,b;""say """"hi""""""" & vbCrLf & """x;y"";a,b; pad" & vbCrLf, Sandbox.AsciiOf(p), "file written with the delimiter ;"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveTo_MissingFolder_ReturnsFalseAndSetsLastError()
+        Expect.Begin
+        Dim T As New cCsv, dir As String
+        dir = Sandbox.Fresh("csv9")
+        T.NewLine "a"
+        Expect.IsFalse T.SaveTo(dir & "\nosuch\a.csv"), "SaveTo into a folder that does not exist"
+        Expect.IsTrue Len(T.LastError) > 0, "LastError after the failed SaveTo"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveTo_FieldWithALineBreak_ReadsBackAsOneField()
+        Expect.Begin
+        Dim T As New cCsv, R As New cCsv, dir As String, p As String
+        dir = Sandbox.Fresh("csv10")
+        p = dir & "\a.csv"
+        T.NewLine "a", "x" & vbCrLf & "y"
+        T.SaveTo p
+        R.LoadFrom p
+        Expect.AreEqual 1, R.Data.Count, "number of lines read back from a table of one line"
+        Expect.AreEqual "x" & vbCrLf & "y", R.value(1, 2), "second field read back"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveTo_CharacterOutsideTheCodePage_KeepsThePreviousFile()
+        Expect.Begin
+        Dim T As New cCsv, dir As String, p As String, r As Boolean
+        dir = Sandbox.Fresh("csv11")
+        p = dir & "\a.csv"
+        Sandbox.WriteAscii p, "old,data" & vbCrLf
+        T.NewLine "a", ChrW(&H4E2D)
+        r = T.SaveTo(p)
+        Expect.IsTrue FileLen(p) > 0, "the file after SaveTo with a field of ChrW(&H4E2D) is not empty"
+        If Not r Then Expect.AreEqual "old,data" & vbCrLf, Sandbox.AsciiOf(p), "the file after the failed SaveTo"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+End Module

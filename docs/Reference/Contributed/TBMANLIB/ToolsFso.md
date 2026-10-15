@@ -20,7 +20,7 @@ Debug.Print ToolsFso.MakeNewFileFulPath("C:\data\a.json", "old")
 ' a_old.json
 ```
 
-[**cJson**](cJson) uses **AutoCompleteFullPath** and **AutoMakeDir** to find and prepare the file for its [**SaveTo**](cJson#saveto), and [**cCsv**](cCsv) uses **AutoMakeDir**.
+[**cJson**](cJson) uses **AutoCompleteFullPath** and **AutoMakeDir** to find and prepare the file for its [**SaveTo**](cJson#saveto), and [**cIni**](cIni) uses **AutoMakeDir** for its [**SaveTo**](cIni#saveto).
 
 * TOC
 {:toc}
@@ -40,10 +40,13 @@ Syntax: **ToolsFso.AutoCompleteFullPath** ( *Path* [ **,** *IsFile* ] ) **As Str
 *IsFile*
 : *optional* A **Boolean**, **False** by default. Set it to **True** when *Path* names a file. When it is **False**, the result ends with a backslash, as the path of a folder does.
 
+<!-- test: FsoTests.AutoCompleteFullPath_RelativePath_StartsAtAppPath -->
 If *Path* does not contain the two characters `:\` anywhere, it is taken to be relative: `App.Path`, a backslash and *Path* are joined, and the result goes through [**ClearSpan**](#clearspan). A path that contains `:\` goes through **ClearSpan** alone. In a debug run, `App.Path` is the folder of the project.
+<!-- /test -->
 
+<!-- test: FsoTests.AutoCompleteFullPath_DriveWithForwardSlashes_IsComplete, FsoTests.AutoCompleteFullPath_NetworkPath_IsComplete, FsoTests.ClearSpan_NetworkPath_KeepsItsTwoLeadingBackslashes -->
 > [!NOTE] 1.0.0.29
-> Only `:\` marks a path as complete. A path with a drive letter written with forward slashes, such as `C:/data/a.json`, and a network path such as `\\server\share\a.json` do not contain it, so they are given the folder of the program in front of them and come out wrong.
+> Only `:\` marks a path as complete. A path with a drive letter written with forward slashes, such as `C:/data/a.json`, and a network path such as `\\server\share\a.json` do not contain it, so they are given the folder of the program in front of them and come out wrong. [**ClearSpan**](#clearspan) also turns the two backslashes at the start of a network path into one.
 
 ### AutoMakeDir
 {: .no_toc }
@@ -58,10 +61,10 @@ Syntax: **ToolsFso.AutoMakeDir** ( *Path* [ **,** *IsFile* ] ) **As String**
 *IsFile*
 : *optional* A **Boolean**, **False** by default. When it is **True**, *Path* names a file, and the folders that are created are those of its parent folder. When it is **False**, the whole of *Path* is taken to be a folder.
 
+<!-- test: FsoTests.AutoMakeDir_IsFileTrue_CreatesTheFoldersOfTheFile, FsoTests.AutoMakeDir_IsFileFalse_MakesTheLastNameAFolder -->
 All the folders of the path that do not exist are created, by the Windows function **MakeSureDirectoryPathExists**. The function returns the path of the folder after [**ClearSpan**](#clearspan), so it ends with a backslash. The result of the Windows function is not tested: if a folder cannot be created, no error is raised. That function takes ANSI text, so a folder name that has characters outside the system code page is not created as written.
 
-> [!WARNING] 1.0.0.29
-> With *IsFile* left at **False**, the last name of the path becomes a folder: `AutoMakeDir("C:\data\log.txt")` creates a folder named `log.txt`. Pass **True** for a file. [**cCsv.SaveTo**](cCsv#saveto) calls the function without it.
+With *IsFile* left at **False**, the whole path is a folder, so the last name of the path becomes one: `AutoMakeDir("C:\data\log.txt")` creates a folder named `log.txt`. Pass **True** for a file.
 
 ```tb check_build check_run
 Dim Base As String
@@ -77,6 +80,7 @@ RmDir Base
 ' True
 ' True
 ```
+<!-- /test -->
 
 ### ClearSpan
 {: .no_toc }
@@ -91,7 +95,9 @@ Syntax: **ToolsFso.ClearSpan** ( *Path* [ **,** *IsFile* ] ) **As String**
 *IsFile*
 : *optional* A **Boolean**, **False** by default. When it is **False**, a backslash is added at the end of *Path* first.
 
+<!-- test: FsoTests.ClearSpan_ReplacesSlashesOneStepAtATime -->
 The function makes four replacements, one after the other, on the whole string: each pair of backslashes becomes one, each pair of forward slashes becomes one backslash, each backslash followed by a forward slash becomes one backslash, and each remaining forward slash becomes a backslash. Each replacement is made once, from left to right, so a run of four backslashes becomes two, not one. A network path loses one of the two backslashes at its start.
+<!-- /test -->
 
 ### Inst
 {: .no_toc }
@@ -114,8 +120,11 @@ Syntax: **ToolsFso.MakeNewFileFulPath** ( *FileSrc* **,** *AppendFix* [ **,** *J
 *JoinStr*
 : *optional* A **String**, `_` by default. It is placed between the base name and *AppendFix*.
 
+<!-- test: FsoTests.MakeNewFileFulPath_NoFolder_ReturnsTheNewName -->
 Returns the base name of *FileSrc*, then *JoinStr*, then *AppendFix*, a period and the extension of *FileSrc*: `MakeNewFileFulPath("C:\data\a.json", "old")` returns `a_old.json`.
+<!-- /test -->
 
+<!-- test: FsoTests.MakeNewFileFulPath_ReturnsTheNewNameWithTheFolder, FsoTests.MakeNewFileFulPath_NoExtension_HasNoTrailingPeriod -->
 > [!NOTE] 1.0.0.29
 > Despite the word *FulPath* in the name, the result holds no folder. The function reads the folder of *FileSrc* and does not use it. Join the result to the folder with `&`. A file name with no extension gives a result that ends with a period.
 

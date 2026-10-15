@@ -58,9 +58,11 @@ Syntax: *object*.**Hook** ( *hWnd* )
 *hWnd*
 : *required* A **Long**, the handle of a window of the program.
 
+<!-- test: SubClassTests.Hook_RaisesWindowProcForEachMessageOfTheWindow, SubClassTests.Hook_AnotherObjectOnTheSameWindow_Raises457 -->
 Stores the handle, saves the address of the window's procedure, installs the package's procedure, and adds the object to a collection of the internal module **mCallBackSubClass** under the handle. A call on an object that already hooks a window does nothing. Hooking a window that another **cSubClass** object has hooked raises error 457, *this key is already associated with an element of this collection*. In the IDE, the call writes a line to the Debug Console.
 
 The collection holds a reference to the object, so the object is not destroyed while the window is hooked, and the window keeps its replacement procedure until [**UnHook**](#unhook) is called. A program calls **UnHook** before the window is destroyed and before it ends.
+<!-- /test -->
 
 ### UnHook
 {: .no_toc }
@@ -69,7 +71,9 @@ Restores the window's own procedure.
 
 Syntax: *object*.**UnHook**
 
+<!-- test: SubClassTests.UnHook_RestoresTheWindowProcedureAndStopsTheEvents, SubClassTests.UnHook_WithNoHookInPlace_Raises5 -->
 Puts back the procedure that **Hook** saved and removes the object from the collection. A second call, with no hook in place, raises error 5.
+<!-- /test -->
 
 ## Events
 
@@ -83,8 +87,10 @@ Syntax: **Event** *object*_**WindowProc** ( *Msg* **,** *wParam* **,** *lParam* 
 *Msg*, *wParam*, *lParam*
 : **Long** values passed by reference: the message number and its two arguments.
 
+<!-- test: SubClassTests.Hook_CancelNextCall_StopsTheMessageAndReturnsZero -->
 *CancelNextCall*
 : A **Boolean**, passed by reference, **False** on entry. When the handler sets it to **True**, the message does not reach the window's own procedure, and the window procedure returns 0. Otherwise the window handles the message after the event.
+<!-- /test -->
 
 A handler is written for a variable declared with **WithEvents**. The event is raised synchronously, in the thread that sends the message, before the window sees it. A handler cannot change the value that the window procedure returns, or the arguments that the window procedure receives (the arguments are passed by reference but the original procedure is called with the originals).
 

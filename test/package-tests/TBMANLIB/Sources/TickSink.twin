@@ -1,0 +1,19 @@
+' TickSink: a cTimer and the number of Timer events it raised, for the test cases.
+Class TickSink
+
+    Private WithEvents Tmr As cTimer
+    Public Count As Long
+
+    Public Sub Attach(ByVal T As cTimer)
+        Set Tmr = T
+    End Sub
+
+    Public Sub Detach()
+        Set Tmr = Nothing
+    End Sub
+
+    Private Sub Tmr_Timer()
+        Count = Count + 1
+    End Sub
+
+End Class

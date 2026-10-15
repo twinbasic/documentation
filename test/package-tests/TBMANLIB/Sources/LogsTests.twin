@@ -1,0 +1,173 @@
+' cLogs: the log line, the file a line goes to, the level, and the other outputs.
+[TestFixture]
+Module LogsTests
+
+    ' A cLogs that writes under a folder of the sandbox.
+    Private Function NewLogs(ByVal Folder As String) As cLogs
+        Dim L As New cLogs
+        L.LogDir = Folder
+        Set NewLogs = L
+    End Function
+
+    ' True when a file exists. Dir cannot be used for a path with doubled backslashes.
+    Private Function FileExists(ByVal Path As String) As Boolean
+        FileExists = CreateObject("Scripting.FileSystemObject").FileExists(Path)
+    End Function
+
+    ' ---- the line and the file
+
+    [TestCase]
+    Public Sub Save_ByDay_AppendsTheLineToTheFileOfTheDay()
+        Expect.Begin
+        Dim root As String, L As cLogs, line As String, p As String
+        root = Sandbox.Fresh("logs1")
+        Set L = NewLogs(root)
+        line = L.Save("disk is almost full", EnumLogLevel.Warn)
+        Expect.IsTrue line Like "[[]*] [[]WARN] disk is almost full", "line returned by Save: " & line
+        p = root & "\logs\system\" & Format$(Now, "yyyy") & "\" & Format$(Now, "MM") & "\" & Format$(Now, "yyyyMMdd") & ".txt"
+        Expect.IsTrue FileExists(p), "the file of the day exists"
+        L.Save "second", EnumLogLevel.Info
+        Expect.AreEqual line & vbCrLf, Left$(Sandbox.AsciiOf(p), Len(line) + 2), "first line of the file"
+        Expect.AreEqual 2, UBound(Split(Sandbox.AsciiOf(p), vbCrLf)), "number of lines in the file, with the empty text after the last line break"
+        Expect.AreEqual EnumLogFileNameRule.ByDay, L.LogFileNameRule, "LogFileNameRule after the first Save"
+        Expect.AreEqual "system", L.LogSubDir, "LogSubDir after the first Save"
+        Expect.AreEqual "vb.txt", L.LogFileNameByUer, "LogFileNameByUer after the first Save"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Save_ByMonth_AppendsTheLineToTheFileOfTheMonth()
+        Expect.Begin
+        Dim root As String, L As cLogs, p As String
+        root = Sandbox.Fresh("logs2")
+        Set L = NewLogs(root)
+        L.LogFileNameRule = EnumLogFileNameRule.ByMonth
+        L.LogSubDir = "app"
+        L.Save "hello"
+        p = root & "\logs\app\" & Format$(Now, "yyyy") & "\" & Format$(Now, "yyyyMM") & ".txt"
+        Expect.IsTrue FileExists(p), "the file of the month exists"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Save_ByUser_UsesTheNameTheProgramGives()
+        Expect.Begin
+        Dim root As String, L As cLogs
+        root = Sandbox.Fresh("logs3")
+        Set L = NewLogs(root)
+        L.LogFileNameRule = EnumLogFileNameRule.byUser
+        L.LogSubDir = "app"
+        L.LogFileNameByUer = "demo.log"
+        L.Save "started"
+        Expect.IsTrue FileExists(root & "\app\demo.log"), "the file app\demo.log exists"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Save_ByUser_MissingFolderInTheFileName_FailsWithUnspecifiedError()
+        Expect.Begin
+        Dim root As String, L As cLogs
+        root = Sandbox.Fresh("logs4")
+        Set L = NewLogs(root)
+        L.LogFileNameRule = EnumLogFileNameRule.byUser
+        L.LogSubDir = "app"
+        L.LogFileNameByUer = "deep\demo.log"
+        On Error Resume Next
+        L.Save "started"
+        Expect.AreEqual -2147467259, Err.Number, "Save with a folder in LogFileNameByUer that does not exist raises"
+        On Error GoTo 0
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Save_BelowLogLevelControl_DoesNothingButSetTheDefaults()
+        Expect.Begin
+        Dim root As String, L As cLogs, line As String
+        root = Sandbox.Fresh("logs5")
+        Set L = NewLogs(root)
+        L.LogLevelControl = EnumLogLevel.Warn
+        line = L.Save("quiet", EnumLogLevel.Info)
+        Expect.AreEqual "", line, "Save of a line below LogLevelControl"
+        Expect.AreEqual "", Dir(root & "\logs", vbDirectory), "no folder of logs is made"
+        Expect.AreEqual "system", L.LogSubDir, "LogSubDir after the dropped line"
+        line = L.Save("loud", EnumLogLevel.Danger)
+        Expect.IsTrue line Like "*[[]DANGER] loud", "line returned by Save at level Danger: " & line
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Save_DebuggerLevel_WritesALine()
+        Expect.Begin
+        Dim root As String, L As cLogs, line As String
+        root = Sandbox.Fresh("logs6")
+        Set L = NewLogs(root)
+        On Error Resume Next
+        line = L.Save("x", EnumLogLevel.Debugger)
+        Expect.AreEqual 0, Err.Number, "Save at level Debugger raised error " & Err.Number & " " & Err.Description
+        Expect.IsTrue Len(line) > 0, "Save at level Debugger returns a line"
+        On Error GoTo 0
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Save_CustomLevel_WritesALine()
+        Expect.Begin
+        Dim root As String, L As cLogs, line As String
+        root = Sandbox.Fresh("logs7")
+        Set L = NewLogs(root)
+        On Error Resume Next
+        line = L.Save("x", EnumLogLevel.Custom)
+        Expect.AreEqual 0, Err.Number, "Save at level Custom raised error " & Err.Number & " " & Err.Description
+        Expect.IsTrue Len(line) > 0, "Save at level Custom returns a line"
+        On Error GoTo 0
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    ' ---- the other outputs
+
+    [TestCase]
+    Public Sub Save_OtherOutputs_KeepTheLevelOfTheLine()
+        Expect.Begin
+        Dim root As String, L As cLogs, line As String
+        root = Sandbox.Fresh("logs8")
+        Set L = NewLogs(root)
+        line = L.Save("x", EnumLogLevel.Warn, , True)
+        Expect.AreEqual "[WARN] x", Mid$(line, InStr(line, "] [") + 2), "level and text of the line returned by Save at level Warn with the debugging tool switched on"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DbgView_ReturnsTheLineOrAnEmptyStringBelowTheLevel()
+        Expect.Begin
+        Dim L As New cLogs
+        Expect.IsTrue L.DbgView("probe line", EnumLogLevel.Warn) Like "*[[]WARN] probe line", "DbgView at level Warn"
+        L.LogLevelControl = EnumLogLevel.Danger
+        Expect.AreEqual "", L.DbgView("probe line", EnumLogLevel.Warn), "DbgView below LogLevelControl"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FormView_NoListBox_ReturnsAnEmptyString()
+        Expect.Begin
+        Dim L As New cLogs
+        Expect.AreEqual "", L.FormView("x"), "FormView with FormListBox set to Nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WebView_NoUserCode_SendsNothingAndReturnsAnEmptyString()
+        Expect.Begin
+        Dim L As New cLogs
+        Expect.AreEqual "", L.WebView("x"), "WebView with WebUserCode empty"
+        Expect.Done
+    End Sub
+
+End Module

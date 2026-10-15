@@ -1,0 +1,258 @@
+' ToolsArray: searching, slicing and splitting arrays.
+[TestFixture]
+Module ArrayTests
+
+    ' The bytes of a string of single-byte characters, with no help from the package.
+    Private Function Bytes(ByVal Text As String) As Byte()
+        Bytes = StrConv(Text, vbFromUnicode)
+    End Function
+
+    ' The text of a byte array of single-byte characters.
+    Private Function Text(ByRef B() As Byte) As String
+        Text = StrConv(B, vbUnicode)
+    End Function
+
+    ' True when a byte array has no elements, or has not been dimensioned.
+    Private Function HasNoElements(ByRef B() As Byte) As Boolean
+        On Error Resume Next
+        HasNoElements = (UBound(B) < LBound(B))
+        If Err.Number <> 0 Then HasNoElements = True
+        Err.Clear
+    End Function
+
+    ' ---- SliceByteArray and SliceLongArray
+
+    [TestCase]
+    Public Sub SliceByteArray_StartEqualsEnd_ReturnsTheOneByte()
+        Expect.Begin
+        Dim src() As Byte, part() As Byte
+        src = Bytes("Hello-World")
+        part = ToolsArray.SliceByteArray(src, 2, 2)
+        Expect.AreEqual 0, UBound(part), "upper bound of SliceByteArray(Hello-World, 2, 2)"
+        Expect.AreEqual 108, part(0), "the byte of SliceByteArray(Hello-World, 2, 2), the letter l"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SliceByteArray_Range_ReturnsTheBytesFromStartToEnd()
+        Expect.Begin
+        Dim src() As Byte, part() As Byte
+        src = Bytes("Hello-World")
+        part = ToolsArray.SliceByteArray(src, 0, 4)
+        Expect.AreEqual "Hello", Text(part), "SliceByteArray(Hello-World, 0, 4)"
+        part = ToolsArray.SliceByteArray(src, 6)
+        Expect.AreEqual "World", Text(part), "SliceByteArray(Hello-World, 6)"
+        part = ToolsArray.SliceByteArray(src, 3, 5)
+        Expect.AreEqual "lo-", Text(part), "SliceByteArray(Hello-World, 3, 5)"
+        Expect.AreEqual 0, LBound(part), "lower bound of the slice"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SliceByteArray_EndBeforeStart_ReturnsOneZeroElement()
+        Expect.Begin
+        Dim src() As Byte, part() As Byte
+        src = Bytes("Hello-World")
+        part = ToolsArray.SliceByteArray(src, 5, 2)
+        Expect.AreEqual 0, UBound(part), "upper bound of SliceByteArray(Hello-World, 5, 2)"
+        Expect.AreEqual 0, part(0), "the element of SliceByteArray(Hello-World, 5, 2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SliceLongArray_Range_ReturnsTheElementsFromStartToEnd()
+        Expect.Begin
+        Dim src() As Long, part() As Long, i As Long
+        ReDim src(0 To 6)
+        For i = 0 To 6
+            src(i) = (i + 1) * 10
+        Next i
+        part = ToolsArray.SliceLongArray(src, 2, 5)
+        Expect.AreEqual 3, UBound(part), "upper bound of SliceLongArray(.., 2, 5)"
+        Expect.AreEqual 30, part(0), "first element"
+        Expect.AreEqual 60, part(3), "last element"
+        part = ToolsArray.SliceLongArray(src, 3, 3)
+        Expect.AreEqual 0, UBound(part), "upper bound of SliceLongArray(.., 3, 3)"
+        Expect.AreEqual 40, part(0), "the element of SliceLongArray(.., 3, 3)"
+        part = ToolsArray.SliceLongArray(src, 5)
+        Expect.AreEqual 1, UBound(part), "upper bound of SliceLongArray(.., 5)"
+        Expect.AreEqual 70, part(1), "last element of SliceLongArray(.., 5)"
+        part = ToolsArray.SliceLongArray(src, 5, 2)
+        Expect.AreEqual 0, UBound(part), "upper bound of SliceLongArray(.., 5, 2)"
+        Expect.AreEqual 0, part(0), "the element of SliceLongArray(.., 5, 2)"
+        Expect.Done
+    End Sub
+
+    ' ---- the small functions
+
+    [TestCase]
+    Public Sub DeArray_AssignsElementsToVariablesAndSkipsOmittedOnes()
+        Expect.Begin
+        Dim a As String, b As String, c As String
+        b = "kept"
+        ToolsArray.DeArray Split("x/y/z", "/"), a, , c
+        Expect.AreEqual "x", a, "first variable"
+        Expect.AreEqual "kept", b, "the variable that was left out of the call"
+        Expect.AreEqual "z", c, "third variable"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Extend_AssignsTheElementsToTheVariables()
+        Expect.Begin
+        Dim a As String, c As String
+        a = "A"
+        c = "C"
+        On Error Resume Next
+        ToolsArray.Extend(Array(a, c)) = Split("one/two", "/")
+        Expect.AreEqual 0, Err.Number, "assignment to Extend raised error " & Err.Number & " " & Err.Description
+        On Error GoTo 0
+        Expect.AreEqual "one", a, "first variable after the assignment to Extend"
+        Expect.AreEqual "two", c, "second variable after the assignment to Extend"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FindByteArray_ReturnsThePositionOrMinusOne()
+        Expect.Begin
+        Dim hay() As Byte, n() As Byte
+        hay = Bytes("Hello-World")
+        n = Bytes("World")
+        Expect.AreEqual 6, ToolsArray.FindByteArray(hay, n), "position of World in Hello-World"
+        n = Bytes("xyz")
+        Expect.AreEqual -1, ToolsArray.FindByteArray(hay, n), "position of xyz in Hello-World"
+        n = Bytes("H")
+        Expect.AreEqual 0, ToolsArray.FindByteArray(hay, n), "position of H in Hello-World"
+        n = Bytes("d")
+        Expect.AreEqual 10, ToolsArray.FindByteArray(hay, n), "position of d in Hello-World"
+        n = Bytes("o")
+        Expect.AreEqual 4, ToolsArray.FindByteArray(hay, n), "position of the first o in Hello-World"
+        n = Bytes("world")
+        Expect.AreEqual -1, ToolsArray.FindByteArray(hay, n), "position of world, in another letter case"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetArrayLength_ReturnsTheNumberOfElements()
+        Expect.Begin
+        Expect.AreEqual 3, ToolsArray.GetArrayLength(Array(10, 20, 30)), "GetArrayLength of Array(10, 20, 30)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetIndexByValue_ReturnsTheIndexOrMinusOne()
+        Expect.Begin
+        Expect.AreEqual 1, ToolsArray.GetIndexByValue(Array("a", "b", "c"), "b"), "index of b"
+        Expect.AreEqual -1, ToolsArray.GetIndexByValue(Array("a", "b", "c"), "z"), "index of z"
+        Expect.AreEqual 0, ToolsArray.GetIndexByValue(Array("a", "b", "c"), "a"), "index of a"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsArrayEmpty_TellsEmptyFromFilled()
+        Expect.Begin
+        Dim none() As Long
+        Expect.IsTrue ToolsArray.IsArrayEmpty(none), "IsArrayEmpty of an array that is not dimensioned"
+        Expect.IsTrue ToolsArray.IsArrayEmpty(Array()), "IsArrayEmpty of Array()"
+        Expect.IsFalse ToolsArray.IsArrayEmpty(Array(1, 2)), "IsArrayEmpty of Array(1, 2)"
+        Expect.Done
+    End Sub
+
+    ' ---- the splits
+
+    [TestCase]
+    Public Sub SplitByteArray_SplitsAtAPositionWithAnOffset()
+        Expect.Begin
+        Dim src() As Byte, parts As Variant, p() As Byte
+        src = Bytes("one,two")
+        parts = ToolsArray.SplitByteArray(src, 3, 1)
+        p = parts(0)
+        Expect.AreEqual "one", Text(p), "first part of SplitByteArray(one,two, 3, 1)"
+        p = parts(1)
+        Expect.AreEqual "two", Text(p), "second part of SplitByteArray(one,two, 3, 1)"
+        parts = ToolsArray.SplitByteArray(src, 7)
+        p = parts(0)
+        Expect.AreEqual "one,two", Text(p), "first part of SplitByteArray(one,two, 7)"
+        p = parts(1)
+        Expect.AreEqual 0, UBound(p), "upper bound of the second part of SplitByteArray(one,two, 7)"
+        Expect.AreEqual 0, p(0), "the element of the second part of SplitByteArray(one,two, 7)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SplitByteArray_PositionZero_RaisesUnspecifiedError()
+        Expect.Begin
+        Dim src() As Byte, parts As Variant
+        src = Bytes("one,two")
+        On Error Resume Next
+        parts = ToolsArray.SplitByteArray(src, 0)
+        Expect.AreEqual -2147467259, Err.Number, "SplitByteArray with position 0 raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SplitByteArrayByKeyword_SplitsAtEachKeyword()
+        Expect.Begin
+        Dim src() As Byte, parts As Variant, p() As Byte
+        src = Bytes("a,b,c")
+        parts = ToolsArray.SplitByteArrayByKeyword(src, ",")
+        Expect.AreEqual 2, UBound(parts), "upper bound of the parts of a,b,c split at a comma"
+        p = parts(1)
+        Expect.AreEqual "b", Text(p), "second part"
+        parts = ToolsArray.SplitByteArrayByKeyword(src, ",", 1)
+        p = parts(1)
+        Expect.AreEqual "b,c", Text(p), "second part of a split with SplitCount 1"
+        parts = ToolsArray.SplitByteArrayByKeyword(src, ";")
+        Expect.AreEqual 0, UBound(parts), "upper bound of the parts when the keyword does not occur"
+        p = parts(0)
+        Expect.AreEqual "a,b,c", Text(p), "the one part when the keyword does not occur"
+        parts = ToolsArray.SplitByteArrayByKeyword(Bytes("a--b--c"), "--")
+        Expect.AreEqual 2, UBound(parts), "upper bound of the parts of a--b--c split at --"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SplitByteArrayByKeyword_KeywordAtStart_GivesAnEmptyFirstPart()
+        Expect.Begin
+        Dim src() As Byte, parts As Variant, p() As Byte
+        src = Bytes(",a")
+        On Error Resume Next
+        parts = ToolsArray.SplitByteArrayByKeyword(src, ",")
+        Expect.AreEqual 0, Err.Number, "split of ,a at a comma raised error " & Err.Number & " " & Err.Description
+        If Err.Number = 0 Then
+            Expect.AreEqual 1, UBound(parts), "upper bound of the parts of ,a split at a comma"
+            p = parts(0)
+            Expect.IsTrue HasNoElements(p), "the first part of ,a split at a comma has no elements"
+            p = parts(1)
+            Expect.AreEqual "a", Text(p), "the second part of ,a split at a comma"
+        End If
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SplitByteArrayByKeyword_KeywordAtEnd_GivesAnEmptyLastPart()
+        Expect.Begin
+        Dim src() As Byte, parts As Variant, p() As Byte
+        src = Bytes("a,")
+        parts = ToolsArray.SplitByteArrayByKeyword(src, ",")
+        Expect.AreEqual 1, UBound(parts), "upper bound of the parts of a, split at a comma"
+        p = parts(0)
+        Expect.AreEqual "a", Text(p), "the first part of a, split at a comma"
+        p = parts(1)
+        Expect.IsTrue HasNoElements(p), "the last part of a, split at a comma has no elements"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringToByteArray_ReturnsTheAnsiBytes()
+        Expect.Begin
+        Dim b() As Byte
+        b = ToolsArray.StringToByteArray("abc")
+        Expect.AreEqual 2, UBound(b), "upper bound of StringToByteArray(abc)"
+        Expect.AreEqual 99, b(2), "last byte of StringToByteArray(abc)"
+        Expect.Done
+    End Sub
+
+End Module

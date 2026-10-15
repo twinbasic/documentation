@@ -50,8 +50,8 @@ Kill Path
 
 - **LoadFrom** reads a line at a time and splits it at the character in [**Delimiter**](#delimiter), `,` by default. **SaveTo** joins the fields with the same character and ends each line with a carriage return and line feed.
 - A field may be enclosed in double quotes. Inside quotes the delimiter is part of the field, and a pair of double quotes stands for one. **LoadFrom** removes the enclosing quotes. **SaveTo** adds them to a field that holds the delimiter or a double quote, and to no other.
-- **LoadFrom** removes the spaces at both ends of every field, also of a quoted one. **SaveTo** does not add or remove any.
-- A field cannot hold a line break. **LoadFrom** reads one line at a time, so a quoted field that continues on the next line is read as two lines. **SaveTo** writes a line break inside a field as it is, and the file then has more lines than the table.
+- **LoadFrom** removes the spaces at both ends of every field, also of a quoted one; see the note at **LoadFrom**. **SaveTo** does not add or remove any.
+- A field cannot hold a line break; see the warning at **SaveTo**.
 - The files are opened as ANSI text, in the code page of the system, not as Unicode or UTF-8, and **SaveTo** cannot write a character that the code page does not have (see the warning at **SaveTo**).
 - A line that is empty or holds only spaces is skipped. Its number is still counted, so the numbers of the lines in **Data** have a gap there.
 
@@ -137,9 +137,13 @@ Syntax: *object*.**value** ( *LineNumber* **,** *ColumnNumber* )
 *ColumnNumber*
 : *required* A **Long**, the number of the column.
 
+<!-- test: CsvTests.value_MissingLineOrColumn_ReturnsOneAndSetsLastError -->
 Returns the field as a **Variant**. When the line or the column does not exist, the result is the integer 1 (the value of **vbNull**, which the source uses where it means a null) and [**LastError**](#lasterror) holds a Chinese text that says which of the two is missing.
+<!-- /test -->
 
-The class declares a **Set** accessor for the property and no **Let** accessor, and neither works. `T.value(2, 3) = "x"` and `Set T.value(2, 3) = Nothing` each compile and raise an error (-2147467259 and -2147352567), and the field is not changed. To change a field, use [**SetCurrentLineData**](#setcurrentlinedata) or write into the dictionary of the line.
+<!-- test: CsvTests.value_Assignment_ChangesTheField -->
+> [!NOTE] 1.0.0.29
+> The class declares a **Set** accessor for the property and no **Let** accessor, and neither works. `T.value(2, 3) = "x"` and `Set T.value(2, 3) = Nothing` each compile and raise an error (-2147467259 and -2147352567), and the field is not changed. To change a field, use [**SetCurrentLineData**](#setcurrentlinedata) or write into the dictionary of the line.
 
 ## Methods
 
@@ -153,8 +157,11 @@ Syntax: *object*.**DeleteColumn** ( [ *ColumnNumber* ] ) **As Boolean**
 *ColumnNumber*
 : *optional* A **Long**, the column to remove. If it is left out, or 0, the last column of the current line is removed.
 
+<!-- test: CsvTests.DeleteColumn_LastColumn_RemovesIt, CsvTests.DeleteColumn_NoFirstLine_ReturnsFalse -->
 The function needs line 1 to exist; when it does not, it returns **False** and sets [**LastError**](#lasterror). Otherwise it removes the column from every line, its title and its width, and returns **True**. The other columns keep their numbers.
+<!-- /test -->
 
+<!-- test: CsvTests.DeleteColumn_MiddleColumn_SavesTheRemainingColumns -->
 > [!WARNING] 1.0.0.29
 > Only the last column can be removed without damage. A column in front of others leaves a gap in the column numbers, which the other methods do not expect. [**SaveTo**](#saveto) writes the columns for the numbers 1 to the new count of columns, so it writes an empty field in the place of the missing one and leaves out the last column: after removing column 2 of three, a line `a,b,c` is saved as `a,`. [**value**](#value) with the old numbers still finds the fields that remain.
 
@@ -194,8 +201,9 @@ Syntax: *object*.**GetLine** ( *LineNumber* [ **,** *LineDic* ] ) **As Boolean**
 : *required* A **Long**, the key of the line in [**Data**](#data).
 
 *LineDic*
-: *optional* A **Scripting.Dictionary** variable that is meant to receive the line. The variable that is passed is not changed, whether it is **Nothing** or holds a dictionary. Use [**CurrentLineDic**](#currentlinedic).
+: *optional* A **Scripting.Dictionary** variable that receives the line. It is set to the same dictionary as [**CurrentLineDic**](#currentlinedic), whether it was **Nothing** or held a dictionary.
 
+<!-- test: CsvTests.GetLine_MakesTheLineCurrent -->
 Sets [**CurrentLineDic**](#currentlinedic) and [**CurrentLineNumber**](#currentlinenumber) and returns **True**. When the line does not exist, returns **False** and sets [**LastError**](#lasterror).
 
 ```tb check_build check_run
@@ -214,6 +222,7 @@ Debug.Print T.CurrentLineNumber
 ' False
 ' 2
 ```
+<!-- /test -->
 
 ### LoadFrom
 {: .no_toc }
@@ -228,10 +237,19 @@ Syntax: *object*.**LoadFrom** ( *FilePath* [ **,** *IsFirstHead* ] ) **As cCsv**
 *IsFirstHead*
 : *optional* A **Boolean**, **True** by default. It is meant to say that the first line holds the titles. The function does not use it: the titles are never taken from the file.
 
+<!-- test: CsvTests.LoadFrom_LinesOfOtherLength_AreCutOrFilledToTheFirstLine, CsvTests.LoadFrom_QuotedFields_AreParsed -->
 Returns the object itself. The file is read as described in *The file format*. **Data** is replaced when the file has been opened, with one line for each line of the file that is not blank, numbered by its place in the file. Lines with more fields than the first line are cut to its count, and shorter ones are filled with empty strings. [**HeadTitle**](#headtitle) and [**HeadTitleWidth**](#headtitlewidth) get an entry for each column that has none.
+<!-- /test -->
 
+<!-- test: CsvTests.LoadFrom_MissingFile_RaisesNothingAndSetsLastError -->
 An error, such as a file that does not exist, is not raised. It is caught, [**LastError**](#lasterror) is set to its number, a `#`, the description, a colon and the path, and **Data** is not changed.
+<!-- /test -->
 
+<!-- test: CsvTests.LoadFrom_SpacesAtTheEndsOfAField_AreKept -->
+> [!NOTE] 1.0.0.29
+> **LoadFrom** removes the spaces at both ends of every field, also of a quoted one. In RFC 4180 a space is part of a field, so a field that begins or ends with a space does not come back as it was written.
+
+<!-- test: CsvTests.NewLine_AfterABlankLineInTheFile_AddsALine, CsvTests.LoadFrom_BlankLine_IsSkippedAndItsNumberCounted -->
 > [!NOTE] 1.0.0.29
 > A blank line in the file leaves a gap in the line numbers of **Data**: for a file of three lines whose second is blank, the keys are 1 and 3, and the count is 2. [**NewLine**](#newline) numbers the new line with the count plus 1, which here is 3, a line that exists, and raises error 457, *This key is already associated with an element of this collection*. Lines can then not be added until the gap is gone.
 
@@ -274,8 +292,11 @@ Syntax: *object*.**NewColumn** ( *Title* [ **,** *Width* ] [ **,** *Content* ] )
 *Content*
 : *optional* A **String**, the field for every other line, an empty string by default. With **IsFirstLineToHead** set to **False**, it is the field of the first line as well.
 
+<!-- test: CsvTests.NewColumn_AddsTheColumnToEveryLine, CsvTests.NewColumn_TableWithNoLines_AddsNothing -->
 The new column gets the number after the last column of each line. A table with no lines gets no column, and no title.
+<!-- /test -->
 
+<!-- test: CsvTests.NewColumn_ReturnsTrueWhenTheColumnIsAdded -->
 > [!WARNING] 1.0.0.29
 > The function always returns **False**, also when it has added the column: the result is never set. A program cannot use it to see whether the call worked.
 
@@ -302,9 +323,11 @@ Syntax: *object*.**NewLine** ( [ *FieldsData* ] ) **As Boolean**
 *FieldsData*
 : *optional* Any number of values, in a **ParamArray**: the fields of the line. A **Null** or **Empty** value becomes an empty string. As the only argument, a **Scripting.Dictionary** with the column numbers as keys is copied, with its items, and the copy becomes the line; later changes to the dictionary do not reach the table.
 
+<!-- test: CsvTests.NewLine_FillsAndCutsLinesToTheWidthOfTheFirstLine, CsvTests.NewLine_Dictionary_IsCopiedIntoTheTable -->
 The line gets the number after the count of the lines in [**Data**](#data). It is filled to the number of columns of the first line, or cut to it, and becomes the current line ([**CurrentLineDic**](#currentlinedic), [**CurrentLineNumber**](#currentlinenumber)). **HeadTitle** and **HeadTitleWidth** get an entry for each column that has none. Without arguments the line has one empty field, filled up to the width of the table. The first line of a table fixes the number of columns for all the others.
 
 Returns **True**. An error is raised when the number is taken; see the note at [**LoadFrom**](#loadfrom).
+<!-- /test -->
 
 ```tb check_build check_run
 Dim T As New cCsv
@@ -330,7 +353,9 @@ Syntax: *object*.**Reset** ( [ *OnlyData* ] )
 *OnlyData*
 : *optional* A **Boolean**, **False** by default. With **True**, only the table is emptied; the settings stay as they are.
 
+<!-- test: CsvTests.Reset_EmptiesTheTableAndRestoresTheSettings -->
 Empties [**Data**](#data), [**HeadTitle**](#headtitle), [**HeadTitleWidth**](#headtitlewidth) and [**CurrentLineDic**](#currentlinedic), and sets [**CurrentLineNumber**](#currentlinenumber) to 0. Without *OnlyData*, it also sets [**Delimiter**](#delimiter), [**HasHeadTitle**](#hasheadtitle), [**HeadTitleWidthDefault**](#headtitlewidthdefault), [**HeadTitleWidthMax**](#headtitlewidthmax) and [**IsFirstLineToHead**](#isfirstlinetohead) to their values at the start. [**LastError**](#lasterror) is not cleared.
+<!-- /test -->
 
 ### SaveTo
 {: .no_toc }
@@ -342,11 +367,19 @@ Syntax: *object*.**SaveTo** ( *FilePath* ) **As Boolean**
 *FilePath*
 : *required* A **String**, the file to write. A file that exists is replaced. The folder must exist: the function does not create it.
 
+<!-- test: CsvTests.SaveTo_MissingFolder_ReturnsFalseAndSetsLastError -->
 Writes the lines of [**Data**](#data) in the order of their keys, each as described in *The file format*, and returns **True**. When an error occurs, such as a folder that does not exist, it returns **False** and [**LastError**](#lasterror) holds its number, a `#` and the description. The titles in [**HeadTitle**](#headtitle) are not written.
+<!-- /test -->
 
+<!-- test: CsvTests.SaveTo_FieldWithALineBreak_ReadsBackAsOneField -->
+> [!WARNING] 1.0.0.29
+> A field that holds a line break is written as it is, and the file then has more lines than the table. **LoadFrom** reads one line at a time, so it reads a line break inside a field, quoted or not, as the end of the line. A table with such a field does not come back as it was written, and no error is raised. RFC 4180 allows a line break in a quoted field.
+
+<!-- test: CsvTests.SaveTo_CharacterOutsideTheCodePage_KeepsThePreviousFile -->
 > [!WARNING] 1.0.0.29
 > The file is created, or emptied if it exists, before the first field is written. When a field holds a character that the code page of the system does not have, such as `ChrW(&H4E2D)` on a system with the Western code page 1252, writing it fails with error 5, the function returns **False**, and the file is left with no content. The previous content of a file is lost.
 
+<!-- test: CsvTests.SaveTo_QuotesFieldsThatHoldTheDelimiterOrAQuote -->
 ```tb check_build check_run
 Dim T As New cCsv
 Dim Path As String
@@ -369,6 +402,7 @@ Kill Path
 ' plain;a,b;"say ""hi"""
 ' "x;y";a,b; pad
 ```
+<!-- /test -->
 
 ### SetCurrentLineData
 {: .no_toc }
@@ -386,7 +420,9 @@ Syntax: *object*.**SetCurrentLineData** ( *ColumnNumber* **,** *Dat* [ **,** *Li
 *LineDic*
 : *optional* A **Scripting.Dictionary** variable. The parameter has no effect: the function works on [**CurrentLineDic**](#currentlinedic), and the variable that is passed is not changed.
 
+<!-- test: CsvTests.SetCurrentLineData_ChangesAFieldOfTheCurrentLine -->
 Returns **True** when the field was changed. It returns **False** and sets [**LastError**](#lasterror) when the current line has no such column, which includes the case that the table has no current line.
+<!-- /test -->
 
 ### SetHeadTitleWidth
 {: .no_toc }
@@ -401,7 +437,9 @@ Syntax: *object*.**SetHeadTitleWidth** ( *ColumnNumber* **,** *ColumnWidth* ) **
 *ColumnWidth*
 : *required* A **Long**, the width. A value above [**HeadTitleWidthMax**](#headtitlewidthmax) is replaced by it.
 
+<!-- test: CsvTests.SetHeadTitleWidth_StoresTheWidthUpToTheMaximum -->
 Returns **True** when the width was stored. Returns **False** and sets [**LastError**](#lasterror) when the column has no entry.
+<!-- /test -->
 
 ### SetHeadTitleWidthByDic
 {: .no_toc }
@@ -413,8 +451,11 @@ Syntax: *object*.**SetHeadTitleWidthByDic** ( *Dic* ) **As Boolean**
 *Dic*
 : *required* A **Scripting.Dictionary** with column numbers as keys and widths as items.
 
+<!-- test: CsvTests.SetHeadTitleWidthByDic_StoresTheWidthsOfTheColumnsItHas -->
 For each key of *Dic* that has an entry in [**HeadTitleWidth**](#headtitlewidth), the width is stored; other keys are skipped. The widths are not limited by [**HeadTitleWidthMax**](#headtitlewidthmax).
+<!-- /test -->
 
+<!-- test: CsvTests.SetHeadTitleWidthByDic_ReturnsTrueWhenTheWidthsAreStored -->
 > [!WARNING] 1.0.0.29
 > The function always returns **False**, also when it has stored the widths: the result is never set.
 
@@ -431,7 +472,9 @@ Syntax: *object*.**SetLine** ( *LineNumber* **,** *LineDic* ) **As Boolean**
 *LineDic*
 : *required* A **Scripting.Dictionary** with the column numbers as keys.
 
+<!-- test: CsvTests.SetLine_ReplacesALineAndClearsTheCurrentLine -->
 Fills *LineDic* or cuts it to the number of columns of the first line, stores it in **Data** under *LineNumber* in place of the old line, and returns **True**. The dictionary itself is stored, not a copy, so later changes to it change the table. When the line does not exist, the function returns **False** and sets [**LastError**](#lasterror). [**CurrentLineDic**](#currentlinedic) is **Nothing** afterwards, and until the next [**GetLine**](#getline) or [**NewLine**](#newline) [**SetCurrentLineData**](#setcurrentlinedata) returns **False**.
+<!-- /test -->
 
 ## See Also
 

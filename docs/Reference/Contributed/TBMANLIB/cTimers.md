@@ -44,7 +44,9 @@ Syntax: *object*.**Item** ( *Index* ) **As cTimer**
 *Index*
 : *required* An **Integer**, from 1 to [**Count**](#count).
 
+<!-- test: TimerTests.cTimers_ItemAndBulkLoad_RaiseTheirErrors -->
 It is the default member, so `Group(2)` is `Group.Item(2)`. A number above **Count** raises error -2147221504 (`vbObjectError`), with the text *Index does not Exist*, and 0 or a negative number raises error 9.
+<!-- /test -->
 
 ## Methods
 
@@ -55,7 +57,9 @@ Adds a timer to the group.
 
 Syntax: *object*.**Add** ( ) **As Integer**
 
+<!-- test: TimerTests.cTimers_Add_Count_Item_BulkLoad -->
 Returns the number of the new timer, counted from 1. The timer is off, with an [**Interval**](cTimer#interval) of 2000; start it with `Group(n).Enabled = True`.
+<!-- /test -->
 
 ### BulkLoad
 {: .no_toc }
@@ -74,7 +78,9 @@ Adds *num* + 1 timers, not *num*: a call with 3 adds 4. Any other value raises e
 ### Timer
 {: .no_toc }
 
+<!-- test: TimerTests.cTimers_Timer_IsRaisedByTheGroupWithTheNumberOfTheTimer -->
 Raised when the interval of one of the enabled timers has passed.
+<!-- /test -->
 
 Syntax: **Event** *object*_**Timer** ( *Index* )
 
@@ -100,6 +106,7 @@ Private Sub Group_Timer(ByVal Index As Integer)
 End Sub
 ```
 
+<!-- test: TimerTests.cTimers_GroupReleased_IsDestroyed, TimerTests.cTimers_EnabledTimerOfAReleasedGroup_IsDestroyed -->
 > [!NOTE] 1.0.0.29
 > A **cTimers** registers itself in a collection of the package's internal module **mTimer**, which keeps a reference to it. The group is therefore not destroyed when the program releases its last reference, and its enabled timers go on running. Set [**Enabled**](cTimer#enabled) of each timer to **False** first.
 

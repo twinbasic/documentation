@@ -79,6 +79,7 @@ The references of a package are not visible to the project that uses it. A progr
 
 The package is built for 32-bit programs. The window procedure that **cSubClass** installs is passed to **SetWindowLong** as a **Long**, which a 64-bit program cannot hold.
 
+<!-- test: none -- the compiler refuses the package as a whole in a 64-bit build, which no case of a project can state -->
 > [!WARNING] BETA 1005
 > A project that embeds TBMANLIB and is built for 64-bit programs (**Win64**) does not compile. The compiler reports TB5001 in `cSubClass.twin`, *Validation of call to 'SetWindowLong' failed. Argument for 'dwNewLong': cannot coerce type 'Callback' to 'Long'*, even when the program uses nothing of the package. The package can be used in 32-bit programs only.
 
@@ -90,12 +91,13 @@ Part of the code is unfinished, and the source holds test code and notes to the 
 
 - [**cToolsStream**](cToolsStream), and with it [**cJson.LoadFrom**](cJson#loadfrom) and [**cJson.SaveTo**](cJson#saveto), leave the shared stream open after a text call, so that the next text call fails or writes over the old text. [**SaveFileAsText**](cToolsStream#savefileastext) always returns **False**, and [**WriteLine**](cToolsStream#writeline) always raises error 13.
 - [**cCsv**](cCsv): the functions that add columns and widths return **False** always, the `value` property cannot be set, removing a column other than the last one corrupts the saved file, and a character that the system code page lacks leaves an empty file.
-- [**cHttpClient**](cHttpClient) accepts every certificate, [**RequestDataQuery**](cHttpClient#requestdataquery) loses the name of its first item, header values are cut at their first colon, so [**FollowRedirect**](cHttpClient#followredirect) cannot work, and its content type header does not follow a later change of the content type.
+- [**cHttpClient**](cHttpClient) accepts every certificate, [**RequestDataQuery**](cHttpClient#requestdataquery) loses the name of its first item, [**RequestDataForm**](cHttpClient#requestdataform) values are not URL encoded, header values are cut at their first colon, so [**FollowRedirect**](cHttpClient#followredirect) cannot work, and its content type header does not follow a later change of the content type.
 - [**ToolsHttp.UrlDecodeUtf8**](ToolsHttp#urldecodeutf8) raises error 13 for any text with a `%`, [**UrlEncodUtf8**](ToolsHttp#urlencodutf8) writes the characters from hex 80 to hex FFF wrongly, and [**ToolsCN.GetPinYin**](ToolsCN#getpinyin) raises an error for any text with an English letter, a digit or a space in it.
-- [**cJson.Decode**](cJson#decode) rejects an array that follows a line break.
-- [**cToolsStr.GetLastChar**](cToolsStr#getlastchar) returns the first character, [**UniVbCrLf**](cToolsStr#univbcrlf) doubles a line feed, [**IsEmptyEx**](cToolsStr#isemptyex) trims the variable it is given, and [**SplitLinesToCollection**](cToolsStr#splitlinestocollection) loses a last line of one character.
+- [**cJson.Decode**](cJson#decode) rejects an array that follows a line break, accepts text that is not JSON, and keeps the old array or object when it reads the other kind; [**Items**](cJson#items) adds a value instead of replacing one, and [**Encode**](cJson#encode) does not write `{}` for an empty document.
+- [**cToolsStr.GetLastChar**](cToolsStr#getlastchar) returns the first character, [**UniVbCrLf**](cToolsStr#univbcrlf) doubles a line feed, [**IsEmptyEx**](cToolsStr#isemptyex) trims the variable it is given, [**SplitLinesToCollection**](cToolsStr#splitlinestocollection) loses a last line of one character, [**ToHex**](cToolsStr#tohex) writes one digit for a byte below 16, [**PercentEncode**](cToolsStr#percentencode) encodes the digits only, and the functions that keep a position in an **Integer** raise error 6 for a string of more than 32,767 characters.
 - [**ToolsUtf8.DecodeToByteArray**](ToolsUtf8#decodetobytearray) returns half of the bytes.
-- [**ToolsArray.SliceByteArray**](ToolsArray#slicebytearray) returns a wrong result when the start and the end are the same.
+- [**ToolsArray.SliceByteArray**](ToolsArray#slicebytearray) returns a wrong result when the start and the end are the same, and [**SplitByteArrayByKeyword**](ToolsArray#splitbytearraybykeyword) raises an error for a keyword at the start.
+- [**ToolsFso.AutoCompleteFullPath**](ToolsFso#autocompletefullpath) and [**ClearSpan**](ToolsFso#clearspan) spoil a network path and a drive path written with forward slashes, [**MakeNewFileFulPath**](ToolsFso#makenewfilefulpath) leaves out the folder, [**ToolsDic.DeepCopy**](ToolsDic#deepcopy) copies the first level only, [**ToolsHttp.ParseKeyValue**](ToolsHttp#parsekeyvalue) cuts a value at its colon, and [**ToolsMath.Ceil**](ToolsMath#ceil) rounds `0.07` up to 0.08.
 - [**cLogs.Save**](cLogs#save) sends the other outputs at the level **Info**, and the levels **Debugger** and **Custom** raise an error.
 - [**cTimer**](cTimer) and [**cTimers**](cTimers) objects that are enabled are not destroyed when the program releases them, and go on running.
 
@@ -148,3 +150,7 @@ Some types of the package have no members, or none that a program is meant to us
 - [TBMANLIB_RES](../TBMANLIB_RES/) package -- resources embedded in an executable, by the same author
 - [TBMANLIB_Xml](../TBMANLIB_Xml/) package -- XML documents, by the same author
 - [Importing a package from TWINSERV](../../../../Features/Packages/Importing-TWINSERV) -- adding a published package to a project
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [TBMANLIB-tests.twinproj](TBMANLIB-tests.twinproj), a twinBASIC project. It uses TBMANLIB as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

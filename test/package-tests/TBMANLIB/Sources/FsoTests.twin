@@ -1,0 +1,99 @@
+' ToolsFso: completing a path, tidying its slashes, creating folders and naming a new file.
+[TestFixture]
+Module FsoTests
+
+    ' ---- AutoCompleteFullPath and ClearSpan
+
+    [TestCase]
+    Public Sub AutoCompleteFullPath_RelativePath_StartsAtAppPath()
+        Expect.Begin
+        Expect.AreEqual App.Path & "\sub\a.txt", ToolsFso.AutoCompleteFullPath("sub/a.txt", True), "AutoCompleteFullPath of sub/a.txt as a file"
+        Expect.AreEqual App.Path & "\sub\", ToolsFso.AutoCompleteFullPath("sub", False), "AutoCompleteFullPath of sub as a folder"
+        Expect.AreEqual "C:\data\a.json", ToolsFso.AutoCompleteFullPath("C:\data\\a.json", True), "AutoCompleteFullPath of C:\data\\a.json as a file"
+        Expect.AreEqual "C:\data\", ToolsFso.AutoCompleteFullPath("C:\data", False), "AutoCompleteFullPath of C:\data as a folder"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AutoCompleteFullPath_DriveWithForwardSlashes_IsComplete()
+        Expect.Begin
+        Expect.AreEqual "C:\data\a.json", Replace(ToolsFso.AutoCompleteFullPath("C:/data/a.json", True), App.Path, "<App.Path>"), "AutoCompleteFullPath of C:/data/a.json"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AutoCompleteFullPath_NetworkPath_IsComplete()
+        Expect.Begin
+        Expect.AreEqual "\\server\share\a.json", Replace(ToolsFso.AutoCompleteFullPath("\\server\share\a.json", True), App.Path, "<App.Path>"), "AutoCompleteFullPath of \\server\share\a.json"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClearSpan_NetworkPath_KeepsItsTwoLeadingBackslashes()
+        Expect.Begin
+        Expect.AreEqual "\\server\share\a.json", ToolsFso.ClearSpan("\\server\share\a.json", True), "ClearSpan of \\server\share\a.json"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClearSpan_ReplacesSlashesOneStepAtATime()
+        Expect.Begin
+        Expect.AreEqual "C:\data\a", ToolsFso.ClearSpan("C:/data//a", True), "ClearSpan of C:/data//a as a file"
+        Expect.AreEqual "C:\data\a\", ToolsFso.ClearSpan("C:\data\a", False), "ClearSpan of C:\data\a as a folder"
+        Expect.AreEqual "a\b", ToolsFso.ClearSpan("a\/b", True), "ClearSpan of a\/b"
+        Expect.AreEqual "a\\b", ToolsFso.ClearSpan("a\\\\b", True), "ClearSpan of four backslashes between a and b"
+        Expect.Done
+    End Sub
+
+    ' ---- AutoMakeDir
+
+    [TestCase]
+    Public Sub AutoMakeDir_IsFileTrue_CreatesTheFoldersOfTheFile()
+        Expect.Begin
+        Dim root As String, r As String
+        root = Sandbox.Fresh("fso1")
+        r = ToolsFso.AutoMakeDir(root & "\a\b\file.txt", True)
+        Expect.AreEqual root & "\a\b\", r, "AutoMakeDir result"
+        Expect.AreEqual "b", Dir(root & "\a\b", vbDirectory), "folder a\b exists"
+        Expect.AreEqual "", Dir(root & "\a\b\file.txt", vbDirectory), "no folder is made for the file name"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AutoMakeDir_IsFileFalse_MakesTheLastNameAFolder()
+        Expect.Begin
+        Dim root As String, r As String
+        root = Sandbox.Fresh("fso2")
+        r = ToolsFso.AutoMakeDir(root & "\a\log.txt")
+        Expect.AreEqual root & "\a\log.txt\", r, "AutoMakeDir result with IsFile left out"
+        Expect.AreEqual "log.txt", Dir(root & "\a\log.txt", vbDirectory), "a folder named log.txt exists"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    ' ---- MakeNewFileFulPath
+
+    [TestCase]
+    Public Sub MakeNewFileFulPath_ReturnsTheNewNameWithTheFolder()
+        Expect.Begin
+        Expect.AreEqual "C:\data\a_old.json", ToolsFso.MakeNewFileFulPath("C:\data\a.json", "old"), "MakeNewFileFulPath of C:\data\a.json"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MakeNewFileFulPath_NoFolder_ReturnsTheNewName()
+        Expect.Begin
+        Expect.AreEqual "a_old.json", ToolsFso.MakeNewFileFulPath("a.json", "old"), "MakeNewFileFulPath of a.json"
+        Expect.AreEqual "a-old.json", ToolsFso.MakeNewFileFulPath("a.json", "old", "-"), "MakeNewFileFulPath of a.json with the join text -"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MakeNewFileFulPath_NoExtension_HasNoTrailingPeriod()
+        Expect.Begin
+        Expect.AreEqual "readme_old", ToolsFso.MakeNewFileFulPath("readme", "old"), "MakeNewFileFulPath of readme"
+        Expect.Done
+    End Sub
+
+End Module
