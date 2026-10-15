@@ -1,0 +1,496 @@
+' TBMANLIB_ConsoleComponents: cSparkline, on the compiled copy of its code (see TwoPackagesTests).
+[TestFixture]
+Module SparklineTests
+
+    Private Const BRAILLE As Long = 0
+    Private Const ASCII As Long = 1
+    Private Const BLOCK As Long = 2
+
+    ' The numbers of a series, as an array that starts at 0.
+    Private Function Series(ParamArray Values() As Variant) As Variant
+        Dim a() As Double
+        Dim i As Long
+        ReDim a(0 To UBound(Values))
+        For i = 0 To UBound(Values)
+            a(i) = CDbl(Values(i))
+        Next
+        Series = a
+    End Function
+
+    ' ---- the series
+
+    [TestCase]
+    Public Sub Render_SeriesStartingAtOne_DrawsTheChart()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim v(1 To 4) As Double
+        v(1) = 10: v(2) = 20: v(3) = 30: v(4) = 40
+        On Error Resume Next
+        chart.Render 0, 0, 4, 4, v, 0, 100, , , BRAILLE
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render of a Braille chart of an array with the lower bound 1"
+        Err.Clear
+        chart.Render 0, 0, 4, 4, v, 0, 100, , , ASCII
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render of a ASCII chart of an array with the lower bound 1"
+        Err.Clear
+        chart.Render 0, 0, 4, 4, v, 0, 100, , , BLOCK
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render of a Block chart of an array with the lower bound 1"
+        On Error GoTo 0
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_SeriesOfFewerThanTwoValues_DrawsNothing()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim one(0 To 0) As Double
+        one(0) = 50
+        Dim none() As Double
+        none = Cells.EmptyArray(5)
+        con.Buffer.WriteAt 0, 0, "xxxxxxxx"
+        On Error Resume Next
+        chart.Render 0, 0, 8, 4, one, 0, 100, , , BRAILLE
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render of one value"
+        chart.Render 0, 0, 8, 4, none, 0, 100, , , BLOCK
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render of an array with no element"
+        On Error GoTo 0
+        Expect.AreEqual "xxxxxxxx", Cells.Text(con.Buffer, 0, 0, 8), "row 0 after the two calls"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_SeriesNeverAllocated_RaisesError9()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim v() As Double
+        On Error Resume Next
+        chart.Render 0, 0, 4, 4, v
+        Expect.AreEqual 9, Err.Number, "Err.Number of Render of an array that was never allocated"
+        On Error GoTo 0
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_MinValueEqualToMaxValue_RaisesError11()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(1, 2, 3)
+        On Error Resume Next
+        chart.Render 0, 0, 4, 4, d, 5, 5
+        Expect.AreEqual 11, Err.Number, "Err.Number of Render with minValue equal to maxValue"
+        On Error GoTo 0
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_WidthOfZero_RaisesError11()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(1, 2, 3)
+        On Error Resume Next
+        chart.Render 0, 0, 0, 4, d, 0, 100, , , BRAILLE
+        Expect.AreEqual 11, Err.Number, "Err.Number of Render of a Braille chart with a width of 0"
+        Err.Clear
+        chart.Render 0, 0, 0, 4, d, 0, 100, , , ASCII
+        Expect.AreEqual 11, Err.Number, "Err.Number of Render of an ASCII chart with a width of 0"
+        Err.Clear
+        chart.Render 0, 0, 0, 4, d, 0, 100, , , BLOCK
+        Expect.AreEqual 11, Err.Number, "Err.Number of Render of a Block chart with a width of 0"
+        On Error GoTo 0
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- Braille
+
+    [TestCase]
+    Public Sub Render_Braille_PositionsOneToThreeSetTheDotsOneToThree()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(100, 75, 50)
+        chart.Render 0, 0, 3, 4, d, 0, 100
+        Expect.AreEqual "2801 2802 2804", Cells.Codes(con.Buffer, 0, 0, 3), "cells for 100, 75 and 50 percent at a height of 4"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Braille_LowestPositionOfACell_SetsTheBottomLeftDot()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(25, 25)
+        chart.Render 0, 0, 2, 4, d, 0, 100
+        Expect.AreEqual "2840 2840", Cells.Codes(con.Buffer, 0, 0, 2), "cells for 25 percent at a height of 4 (the lowest of the four positions: dot 7)"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Braille_ValueEqualToTheMinimum_SetsADot()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(0, 0, 100)
+        chart.Render 0, 0, 3, 4, d, 0, 100
+        Expect.IsTrue Cells.Code(con.Buffer, 0, 0) <> &H2800&, "the cell of a value equal to the minimum at a height of 4 (" & Hex$(Cells.Code(con.Buffer, 0, 0)) & ") has a dot"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Braille_TallChart_HoldsTheUpperHalfOfTheRangeInTheUpperRow()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(0, 25, 50, 75, 100)
+        chart.Render 0, 0, 5, 8, d, 0, 100
+        Expect.AreEqual "2800 2800 2800 2804 2801", Cells.Codes(con.Buffer, 0, 0, 5), "the upper row of a chart 8 dots high of a rising series (75 and 100 percent)"
+        Expect.AreEqual "2800 2804 2801 2800 2800", Cells.Codes(con.Buffer, 1, 0, 5), "the lower row (25 and 50 percent)"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Braille_ChartIsWidthByHeightPlusThreeQuotientFourCells_AndWritesEveryCellOfItsArea()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(50, 50)
+        Dim y As Long
+        For y = 0 To 3
+            con.Buffer.WriteAt 0, y, "xxxxxxxxxx"
+        Next
+        chart.Render 1, 1, 4, 5, d, 0, 100
+        ' a chart 5 dots high is 2 cells high: rows 1 and 2, columns 1 to 4
+        Expect.AreEqual "xxxxxxxxxx", Cells.Text(con.Buffer, 0, 0, 10), "row 0, above the chart"
+        Expect.AreEqual "2800 2800 2800 2800", Cells.Codes(con.Buffer, 1, 1, 4), "columns 1 to 4 of row 1 (every cell of the chart is written)"
+        Expect.AreEqual "2800 2804 2804 2800", Cells.Codes(con.Buffer, 2, 1, 4), "columns 1 to 4 of row 2"
+        Expect.AreEqual "xxxxxxxxxx", Cells.Text(con.Buffer, 3, 0, 10), "row 3, under the chart"
+        Expect.AreEqual "x", Cells.Text(con.Buffer, 1, 0, 1) & "", "column 0 of row 1"
+        Expect.AreEqual "xxxxx", Cells.Text(con.Buffer, 2, 5, 5), "columns 5 to 9 of row 2"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Braille_MoreValuesThanColumns_EachColumnTakesAllTheValuesUpToTheNextColumn()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(100, 75, 50, 100)
+        chart.Render 0, 0, 2, 4, d, 0, 100
+        Expect.AreEqual "2803 2805", Cells.Codes(con.Buffer, 0, 0, 2), "two columns for the values 100, 75, 50 and 100 (dots 1 and 2, then dots 3 and 1)"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Braille_FewerValuesThanColumns_LeavesSomeColumnsEmpty()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(100, 100)
+        chart.Render 0, 0, 4, 4, d, 0, 100
+        Expect.AreEqual "2800 2801 2801 2800", Cells.Codes(con.Buffer, 0, 0, 4), "four columns for two values"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Braille_ValuesOutsideMinAndMax_AreLimited()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(500, -500)
+        chart.Render 0, 0, 2, 4, d, 0, 100
+        Expect.AreEqual "2801", Cells.Codes(con.Buffer, 0, 0, 1), "the cell of a value far above the maximum"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Braille_UsesTheColoursGiven()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(100, 100)
+        chart.Render 0, 0, 2, 4, d, 0, 100, ConsoleColor.Red, ConsoleColor.Blue
+        Expect.AreEqual CLng(ConsoleColor.Red), Cells.Fore(con.Buffer, 1, 0), "colour of a cell"
+        Expect.AreEqual CLng(ConsoleColor.Blue), Cells.Back(con.Buffer, 1, 0), "background of a cell"
+        chart.Render 0, 1, 2, 4, d, 0, 100
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 1, 1), "default colour"
+        Expect.AreEqual CLng(ConsoleColor.Black), Cells.Back(con.Buffer, 1, 1), "default background"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- ASCII
+
+    [TestCase]
+    Public Sub Render_ASCII_DrawsAnAsteriskPerColumnAndBarsBetweenFarPoints()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(0, 50, 100)
+        chart.Render 0, 0, 3, 5, d, 0, 100, , , ASCII
+        Expect.AreEqual "..*|.{2502}.|.*.|{2502}..|*..", Cells.Picture(con.Buffer, 0, 0, 3, 5), "cells of an ASCII chart of 0, 50 and 100 percent, 3 columns by 5 rows"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_ASCII_DoesNotClearTheOtherCellsOfItsArea()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(100, 100, 100)
+        Dim y As Long
+        For y = 0 To 2
+            con.Buffer.WriteAt 0, y, "xxx"
+        Next
+        chart.Render 0, 0, 3, 3, d, 0, 100, , , ASCII
+        Expect.AreEqual "***|xxx|xxx", Cells.Picture(con.Buffer, 0, 0, 3, 3), "cells of a chart of 100 percent over x"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_ASCIIAndBlock_MoreValuesThanColumns_TakeTheValueAtTheColumnPosition()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(10, 90, 20, 80, 30, 70)
+        chart.Render 0, 0, 3, 10, d, 0, 100, , , BLOCK
+        Dim n(0 To 2) As Long
+        Dim x As Long
+        Dim y As Long
+        For x = 0 To 2
+            For y = 0 To 9
+                If Cells.Code(con.Buffer, x, y) = &H2588& Then n(x) = n(x) + 1
+            Next
+        Next
+        Expect.AreEqual "1 2 3", n(0) & " " & n(1) & " " & n(2), "block cells of the columns for the values at positions 0, 2 and 4 (10, 20 and 30 percent)"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_ASCIIAndBlock_FewerValuesThanColumns_RepeatValues()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(0, 100)
+        chart.Render 0, 0, 4, 2, d, 0, 100, , , BLOCK
+        Expect.AreEqual "..##|..##", Cells.Picture(con.Buffer, 0, 0, 4, 2), "cells of a Block chart of 0 and 100 in 4 columns"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- Block
+
+    [TestCase]
+    Public Sub Render_Block_ColumnsAreBarsFromTheBottom()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(0, 25, 50, 75, 100)
+        chart.Render 0, 0, 5, 4, d, 0, 100, , , BLOCK
+        Expect.AreEqual "....#|...##|..###|.####", Cells.Picture(con.Buffer, 0, 0, 5, 4), "cells of a Block chart of a rising series, 5 columns by 4 rows"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Block_ValueAboveTheMinimumHasAtLeastOneCell_AndTheAreaIsCleared()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(1, 0)
+        Dim y As Long
+        For y = 0 To 3
+            con.Buffer.WriteAt 0, y, "xx"
+        Next
+        chart.Render 0, 0, 2, 4, d, 0, 100, , , BLOCK
+        Expect.AreEqual "..|..|..|#.", Cells.Picture(con.Buffer, 0, 0, 2, 4), "cells of a Block chart of 1 and 0 percent over x"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Block_UsesTheColoursGiven()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(100, 100)
+        chart.Render 0, 0, 2, 2, d, 0, 100, ConsoleColor.Red, ConsoleColor.Blue, BLOCK
+        Expect.AreEqual CLng(ConsoleColor.Red), Cells.Fore(con.Buffer, 0, 1), "colour of a block"
+        Expect.AreEqual CLng(ConsoleColor.Blue), Cells.Back(con.Buffer, 0, 1), "background of a block"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- RenderWithStats
+
+    [TestCase]
+    Public Sub RenderWithStats_WritesMinAvgAndMaxOfAllTheValuesBelowTheChart()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(10, 18, 26, 34, 42, 50, 58, 66, 74, 82)
+        Dim sep As String = Mid$(Format$(1.5, "0.0"), 2, 1)
+        chart.RenderWithStats 2, 1, 10, 4, d, 0, 100, ConsoleColor.Green, ConsoleColor.Black, BRAILLE, ConsoleColor.Yellow
+        Dim want As String = "Min:10" & sep & "0 Avg:46" & sep & "0 Max:82" & sep & "0"
+        Expect.AreEqual want, Cells.Text(con.Buffer, 6, 2, Len(want)), "the text line at row 1 + 4 + 1"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), Cells.Fore(con.Buffer, 2, 6), "colour of the text line"
+        Expect.AreEqual 32, Cells.Code(con.Buffer, 2, 5), "the row between the Braille chart (1 row) and the text line"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderWithStats_TextLineIsInTheSameRowForTheThreeCharacterSets()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(0, 100)
+        chart.RenderWithStats 0, 0, 4, 3, d, 0, 100, , , ASCII
+        chart.RenderWithStats 10, 0, 4, 3, d, 0, 100, , , BLOCK
+        chart.RenderWithStats 20, 0, 4, 3, d, 0, 100, , , BRAILLE
+        Expect.AreEqual "Min:", Cells.Text(con.Buffer, 4, 0, 4), "text line of the ASCII chart at row 0 + 3 + 1"
+        Expect.AreEqual "Min:", Cells.Text(con.Buffer, 4, 10, 4), "text line of the Block chart"
+        Expect.AreEqual "Min:", Cells.Text(con.Buffer, 4, 20, 4), "text line of the Braille chart"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderWithStats_ArrayWithNoElement_RaisesError9()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Cells.EmptyArray(5)
+        On Error Resume Next
+        chart.RenderWithStats 0, 0, 4, 3, d
+        Expect.AreEqual 9, Err.Number, "Err.Number of RenderWithStats of an array with no element"
+        On Error GoTo 0
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- the buffer
+
+    [TestCase]
+    Public Sub Render_SparklineMadeBeforeFullScreenMode_RaisesError91()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(100, 30, False)
+        Dim chart As cSparkline = New cSparkline(con)
+        con.EnterFullScreenMode
+        Dim d() As Double
+        d = Series(1, 2)
+        On Error Resume Next
+        chart.Render 0, 0, 2, 4, d
+        Expect.AreEqual 91, Err.Number, "Err.Number of Render of a chart made before EnterFullScreenMode"
+        On Error GoTo 0
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_ThenRefresh_ShowsTheChartOnTheScreenBuffer()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cSparkline = New cSparkline(con)
+        Dim d() As Double
+        d = Series(0, 50, 100)
+        chart.Render 0, 0, 3, 2, d, 0, 100, , , BLOCK
+        con.Refresh
+        Expect.AreEqual " " & ChrW$(&H2588) & ChrW$(&H2588), Rig.TextAt(Rig.OutHandle, 0, 1, 3), "screen text of the lower row after Refresh"
+        Expect.AreEqual "  " & ChrW$(&H2588), Rig.TextAt(Rig.OutHandle, 0, 0, 3), "screen text of the upper row after Refresh"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+End Module

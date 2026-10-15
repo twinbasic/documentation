@@ -1,0 +1,279 @@
+' cLayoutHelper.twin of TBMANLIB_ConsoleComponents 1.0.0.1 (woeoio, MIT licence), compiled into this project.
+' The package cannot take the cConsole of TBMANLIB_ConsoleCore (see the notes of its landing page), so the
+' cases that draw run this copy of the code, which is the code of the package below the line of dashes.
+' The package's own classes are reached as TBMANLIB_ConsoleComponents.<name>.
+' ----------------------------------------------------------------------------
+' =====================================================
+' cLayoutHelper.twin - Layout Helper Component
+' Modern Console Library for TwinBASIC - Components
+' =====================================================
+
+[COMCreatable(False)]
+Public Class cLayoutHelper
+
+    Private m_Console As cConsole
+
+    ' Constructor
+    Public Sub New(ByVal console As cConsole)
+        Set m_Console = console
+    End Sub
+
+    ' Calculate center position
+    Public Function Center(ByVal width As Long, ByVal height As Long) As ConsolePosition
+        Dim result As ConsolePosition
+        result.Col = (m_Console.Width - width) \ 2
+        result.Row = (m_Console.Height - height) \ 2
+        Return result
+    End Function
+
+    ' Calculate centered rect
+    Public Function CenterRect(ByVal width As Long, ByVal height As Long) As ConsoleRect
+        Dim pos As ConsolePosition = Center(width, height)
+        Return ConsoleRect_Create(pos.Col, pos.Row, pos.Col + width - 1, pos.Row + height - 1)
+    End Function
+
+    ' Calculate position by percentage
+    Public Function Percent(ByVal percentX As Double, ByVal percentY As Double) As ConsolePosition
+        Dim result As ConsolePosition
+        result.Col = CLng((m_Console.Width * percentX) / 100)
+        result.Row = CLng((m_Console.Height * percentY) / 100)
+        Return result
+    End Function
+
+    ' Calculate rect by percentage
+    Public Function PercentRect(ByVal leftPercent As Double, ByVal topPercent As Double, _
+                                 ByVal widthPercent As Double, ByVal heightPercent As Double) As ConsoleRect
+        Dim result As ConsoleRect
+        result.Left = CLng((m_Console.Width * leftPercent) / 100)
+        result.Top = CLng((m_Console.Height * topPercent) / 100)
+        result.Right = CLng((m_Console.Width * (leftPercent + widthPercent)) / 100) - 1
+        result.Bottom = CLng((m_Console.Height * (topPercent + heightPercent)) / 100) - 1
+        Return result
+    End Function
+
+    ' Calculate centered x position
+    Public Function CenterX(ByVal width As Long) As Long
+        Return (m_Console.Width - width) \ 2
+    End Function
+
+    ' Calculate centered y position
+    Public Function CenterY(ByVal height As Long) As Long
+        Return (m_Console.Height - height) \ 2
+    End Function
+
+    ' Calculate x position by percentage
+    Public Function PercentX(ByVal percent As Double) As Long
+        Return CLng((m_Console.Width * percent) / 100)
+    End Function
+
+    ' Calculate y position by percentage
+    Public Function PercentY(ByVal percent As Double) As Long
+        Return CLng((m_Console.Height * percent) / 100)
+    End Function
+
+    ' Calculate a horizontal split (top and bottom rects)
+    Public Function SplitHorizontal(ByVal topPercent As Double) As Variant
+        Dim rects(0 To 1) As ConsoleRect
+
+        ' Top rect
+        rects(0).Left = 0
+        rects(0).Top = 0
+        rects(0).Right = m_Console.Width - 1
+        rects(0).Bottom = PercentY(topPercent) - 1
+
+        ' Bottom rect
+        rects(1).Left = 0
+        rects(1).Top = PercentY(topPercent)
+        rects(1).Right = m_Console.Width - 1
+        rects(1).Bottom = m_Console.Height - 1
+
+        SplitHorizontal = rects
+    End Function
+
+    ' Calculate a vertical split (left and right rects)
+    Public Function SplitVertical(ByVal leftPercent As Double) As Variant
+        Dim rects(0 To 1) As ConsoleRect
+
+        ' Left rect
+        rects(0).Left = 0
+        rects(0).Top = 0
+        rects(0).Right = PercentX(leftPercent) - 1
+        rects(0).Bottom = m_Console.Height - 1
+
+        ' Right rect
+        rects(1).Left = PercentX(leftPercent)
+        rects(1).Top = 0
+        rects(1).Right = m_Console.Width - 1
+        rects(1).Bottom = m_Console.Height - 1
+
+        SplitVertical = rects
+    End Function
+
+    ' Calculate a grid layout
+    Public Function Grid(ByVal cols As Long, ByVal rows As Long) As Variant
+        Dim colWidth As Long = m_Console.Width \ cols
+        Dim rowHeight As Long = m_Console.Height \ rows
+
+        Dim gridRects() As ConsoleRect
+        ReDim gridRects(0 To cols * rows - 1)
+
+        Dim cellIndex As Long = 0
+        Dim r As Long, c As Long
+
+        For r = 0 To rows - 1
+            For c = 0 To cols - 1
+                gridRects(cellIndex).Left = c * colWidth
+                gridRects(cellIndex).Top = r * rowHeight
+                gridRects(cellIndex).Right = (c + 1) * colWidth - 1
+                gridRects(cellIndex).Bottom = (r + 1) * rowHeight - 1
+                cellIndex += 1
+            Next c
+        Next r
+
+        Grid = gridRects
+    End Function
+
+    ' Calculate a sidebar layout (left sidebar, right content)
+    Public Function Sidebar(ByVal sidebarWidth As Long) As Variant
+        Dim rects(0 To 1) As ConsoleRect
+
+        ' Sidebar
+        rects(0).Left = 0
+        rects(0).Top = 0
+        rects(0).Right = sidebarWidth - 1
+        rects(0).Bottom = m_Console.Height - 1
+
+        ' Content
+        rects(1).Left = sidebarWidth
+        rects(1).Top = 0
+        rects(1).Right = m_Console.Width - 1
+        rects(1).Bottom = m_Console.Height - 1
+
+        Sidebar = rects
+    End Function
+
+    ' Calculate a header/footer layout
+    Public Function HeaderFooter(ByVal headerHeight As Long, ByVal footerHeight As Long) As Variant
+        Dim rects(0 To 2) As ConsoleRect
+
+        ' Header
+        rects(0).Left = 0
+        rects(0).Top = 0
+        rects(0).Right = m_Console.Width - 1
+        rects(0).Bottom = headerHeight - 1
+
+        ' Content
+        rects(1).Left = 0
+        rects(1).Top = headerHeight
+        rects(1).Right = m_Console.Width - 1
+        rects(1).Bottom = m_Console.Height - footerHeight - 1
+
+        ' Footer
+        rects(2).Left = 0
+        rects(2).Top = m_Console.Height - footerHeight
+        rects(2).Right = m_Console.Width - 1
+        rects(2).Bottom = m_Console.Height - 1
+
+        HeaderFooter = rects
+    End Function
+
+    ' Calculate margins
+    Public Function WithMargins(ByVal left As Long, ByVal top As Long, _
+                                 ByVal right As Long, ByVal bottom As Long) As ConsoleRect
+        Dim result As ConsoleRect
+        result.Left = left
+        result.Top = top
+        result.Right = m_Console.Width - 1 - right
+        result.Bottom = m_Console.Height - 1 - bottom
+        Return result
+    End Function
+
+    ' Clamp rect to console bounds
+    Public Function ClampRect(ByVal rect As ConsoleRect) As ConsoleRect
+        Dim result As ConsoleRect
+
+        If rect.Left < 0 Then result.Left = 0 Else result.Left = rect.Left
+        If rect.Top < 0 Then result.Top = 0 Else result.Top = rect.Top
+        If rect.Right >= m_Console.Width Then result.Right = m_Console.Width - 1 Else result.Right = rect.Right
+        If rect.Bottom >= m_Console.Height Then result.Bottom = m_Console.Height - 1 Else result.Bottom = rect.Bottom
+
+        Return result
+    End Function
+
+    ' Check if rect is valid
+    Public Function IsValidRect(ByVal rect As ConsoleRect) As Boolean
+        Return rect.Left <= rect.Right AndAlso rect.Top <= rect.Bottom
+    End Function
+
+    ' Get rect width
+    Public Function GetRectWidth(ByVal rect As ConsoleRect) As Long
+        Return rect.Right - rect.Left + 1
+    End Function
+
+    ' Get rect height
+    Public Function GetRectHeight(ByVal rect As ConsoleRect) As Long
+        Return rect.Bottom - rect.Top + 1
+    End Function
+
+    ' Calculate spacing between items
+    Public Function SpacedPositions(ByVal count As Long, ByVal itemWidth As Long, _
+                                     ByVal spacing As Long, ByVal startX As Long) As Variant
+        Dim positions() As Long
+        ReDim positions(0 To count - 1)
+
+        Dim i As Long
+        Dim currentX As Long = startX
+
+        For i = 0 To count - 1
+            positions(i) = currentX
+            currentX += itemWidth + spacing
+        Next i
+
+        SpacedPositions = positions
+    End Function
+
+    ' Calculate evenly distributed columns
+    Public Function EvenColumns(ByVal count As Long, ByVal margin As Long) As Variant
+        Dim availableWidth As Long = m_Console.Width - (margin * 2)
+        Dim columnWidth As Long = availableWidth \ count
+
+        Dim rects() As ConsoleRect
+        ReDim rects(0 To count - 1)
+
+        Dim i As Long
+        For i = 0 To count - 1
+            rects(i).Left = margin + i * columnWidth
+            rects(i).Top = margin
+            rects(i).Right = rects(i).Left + columnWidth - 1
+            rects(i).Bottom = m_Console.Height - 1 - margin
+        Next i
+
+        ' Adjust last column to fill remaining space
+        rects(count - 1).Right = m_Console.Width - 1 - margin
+
+        EvenColumns = rects
+    End Function
+
+    ' Calculate evenly distributed rows
+    Public Function EvenRows(ByVal count As Long, ByVal margin As Long) As Variant
+        Dim availableHeight As Long = m_Console.Height - (margin * 2)
+        Dim rowHeight As Long = availableHeight \ count
+
+        Dim rects() As ConsoleRect
+        ReDim rects(0 To count - 1)
+
+        Dim i As Long
+        For i = 0 To count - 1
+            rects(i).Left = margin
+            rects(i).Top = margin + i * rowHeight
+            rects(i).Right = m_Console.Width - 1 - margin
+            rects(i).Bottom = rects(i).Top + rowHeight - 1
+        Next i
+
+        ' Adjust last row to fill remaining space
+        rects(count - 1).Bottom = m_Console.Height - 1 - margin
+
+        EvenRows = rects
+    End Function
+
+End Class

@@ -10,6 +10,7 @@ has_toc: false
 
 Keeps a set of named [**cConsolePanel**](cConsolePanel) objects, creates them in common arrangements (a split, a grid, a sidebar, a header and footer), and draws their borders.
 
+<!-- test: LayoutTests.SplitHorizontal_DividesTheWidthOfTheContentAreaIntoALeftAndARightPanel, compile PanelRectMember -->
 A **cConsoleLayout** is made with a [**cConsole**](../TBMANLIB_ConsoleCore/cConsole). It does not place content: it works out the rectangles of panels and draws the borders and titles of all of them in one call. The program writes the content of each panel into the area that the panel's [**ContentRect**](cConsolePanel#contentrect) returns.
 
 ```tb check_build
@@ -32,12 +33,14 @@ Debug.Print layout.PanelCount
 ```
 
 The root panel covers columns 0 to 39 and rows 0 to 11, so its content area is columns 2 to 37 and rows 2 to 9. **list** takes columns 2 to 10 and **detail** columns 12 to 37, both in rows 2 to 9; the sample prints the size of the content area inside the border and padding of each. A program that references the packages TBMANLIB_ConsoleCore and TBMANLIB_ConsoleComponents cannot read the **Rect** of a panel; see [The two packages](./#the-two-packages).
+<!-- /test -->
 
 * TOC
 {:toc}
 
 In the syntax lines of this page, *object* is a **cConsoleLayout**. Columns and rows are counted from 0 in the buffer.
 
+<!-- test: LayoutTests.GetPanel_NameIsCaseSensitive_AndAnUnknownNameGivesNothing, LayoutTests.GetPanelNames_AndGetAllPanels_FollowTheOrderOfCreation, LayoutTests.RootPanel_IsTheFirstPanel_AndTheFirstRemainingOneAfterItIsRemoved, LayoutTests.CreateHeaderFooter_OnAnEmptyLayout_UsesTheWholeConsole_AndTheHeaderIsTheRoot, LayoutTests.CreateSidebar_AfterAnArrangementOnAnEmptyLayout_StillUsesTheWholeConsole, LayoutTests.SplitHorizontal_DividesTheWidthOfTheContentAreaIntoALeftAndARightPanel, LayoutTests.Render_LaterPanelIsDrawnOverAnEarlierOne, LayoutTests.AddPanel_ReturnsAPanelWithTheDefaultStyleAndTheTitle, LayoutTests.CreateGrid_DividesTheContentAreaOfTheRootPanel_AndTheLastColumnAndRowTakeTheRemainder -->
 ## Panels, names and the root panel
 
 Each panel has a name, which is unique in the layout and case-sensitive. [**GetPanel**](#getpanel) finds a panel by it. The layout keeps the panels in the order of creation, which is the order in which [**Render**](#render) draws them, so a later panel is drawn over an earlier one.
@@ -64,9 +67,11 @@ Set rightPanel = parts(1)
 leftPanel.Title = "Files"
 rightPanel.BorderStyle = PanelBorderStyle.Double
 ```
+<!-- /test -->
 
 ## Constructor
 
+<!-- test: LayoutTests.New_ConsoleNotInFullScreenMode_IsAccepted_AndTheSizeIsReadWhenTheLayoutIsMade, LayoutTests.Render_WhenTheConsoleIsNotInFullScreenMode_RaisesError91 -->
 ### New
 {: .no_toc }
 
@@ -78,18 +83,22 @@ Syntax: **New cConsoleLayout** ( *console* )
 : *required* A [**cConsole**](../TBMANLIB_ConsoleCore/cConsole).
 
 Keeps the console, reads its [**Width**](../TBMANLIB_ConsoleCore/cConsole#width) and [**Height**](../TBMANLIB_ConsoleCore/cConsole#height) as the size of the layout, and creates the empty list and the `Scripting.Dictionary` object in which the panels are kept by name. The console does not have to be in full-screen mode yet: the layout reads the console's [**Buffer**](../TBMANLIB_ConsoleCore/cConsole#buffer) each time it draws, not when it is made.
+<!-- /test -->
 
 ## Properties
 
+<!-- test: LayoutTests.AddPanel_ReturnsAPanelWithTheDefaultStyleAndTheTitle, LayoutTests.AddPanel_NameInUse_AddsNoPanelToTheList -->
 ### PanelCount
 {: .no_toc }
 
 The number of panels in the layout. **Long**, read-only.
 
 Syntax: *object*.**PanelCount**
+<!-- /test -->
 
 ## Methods
 
+<!-- test: LayoutTests.AddPanel_ReturnsAPanelWithTheDefaultStyleAndTheTitle, LayoutTests.AddPanel_NameInUse_RaisesError457, LayoutTests.AddPanel_NameInUse_AddsNoPanelToTheList, LayoutTests.GetPanel_RenamingAPanel_DoesNotChangeTheNameItIsFoundBy -->
 ### AddPanel
 {: .no_toc }
 
@@ -110,7 +119,9 @@ Syntax: *object*.**AddPanel** ( *name* , *left* , *top* , *width* , *height* [ ,
 : *optional* A **String**, the title on the top border. The default is an empty string, which draws no title.
 
 Returns the new [**cConsolePanel**](cConsolePanel), with its default style. The first panel of a layout is its root panel. A name that is in use raises error 457, *This key is already associated with an element of this collection*, from the dictionary, but the panel has been added to the list by then, so [**PanelCount**](#panelcount) counts it, [**Render**](#render) draws it, and no name leads to it.
+<!-- /test -->
 
+<!-- test: LayoutTests.AddPanelByRect_UsesTheInclusiveEdgesOfTheRectangle -->
 ### AddPanelByRect
 {: .no_toc }
 
@@ -128,7 +139,9 @@ Syntax: *object*.**AddPanelByRect** ( *name* , *rect* [ , *title* ] ) **As cCons
 : *optional* A **String**.
 
 Calls [**AddPanel**](#addpanel) with the left and top edges of *rect* and a width and height of `Right - Left + 1` and `Bottom - Top + 1`.
+<!-- /test -->
 
+<!-- test: LayoutTests.AutoResize_TakesTheSizeOfTheConsole -->
 ### AutoResize
 {: .no_toc }
 
@@ -137,7 +150,9 @@ Sets the size of the layout to the current size of the console.
 Syntax: *object*.**AutoResize**
 
 Calls [**Resize**](#resize) with the console's [**Width**](../TBMANLIB_ConsoleCore/cConsole#width) and [**Height**](../TBMANLIB_ConsoleCore/cConsole#height).
+<!-- /test -->
 
+<!-- test: LayoutTests.Clear_RemovesEveryPanel -->
 ### Clear
 {: .no_toc }
 
@@ -146,7 +161,9 @@ Removes every panel.
 Syntax: *object*.**Clear**
 
 Replaces the list and the dictionary with empty ones, and leaves the layout with no root panel. Nothing is erased from the buffer.
+<!-- /test -->
 
+<!-- test: LayoutTests.ClearAllContent_FillsTheContentAreasWithTheForegroundAndBackgroundOfTheTheme, LayoutTests.Render_WhenTheConsoleIsNotInFullScreenMode_RaisesError91 -->
 ### ClearAllContent
 {: .no_toc }
 
@@ -158,7 +175,9 @@ Syntax: *object*.**ClearAllContent** [ ( *theme* ) ]
 : *optional* A [**cConsoleTheme**](cConsoleTheme). The default is **Nothing**.
 
 Calls [**ClearContent**](cConsolePanel#clearcontent) of each panel with the buffer of the console, using the theme's **Foreground** and **Background** colours, or **Gray** on **Black** when no theme is given. Raises error 91 when the console has no buffer.
+<!-- /test -->
 
+<!-- test: LayoutTests.ClearPanelContent_FillsOnePanel_AndAnUnknownNameDoesNothing -->
 ### ClearPanelContent
 {: .no_toc }
 
@@ -171,7 +190,9 @@ Syntax: *object*.**ClearPanelContent** ( *name* [ , *theme* ] )
 
 *theme*
 : *optional* A **cConsoleTheme**, as for [**ClearAllContent**](#clearallcontent).
+<!-- /test -->
 
+<!-- test: LayoutTests.CreateGrid_DividesTheContentAreaOfTheRootPanel_AndTheLastColumnAndRowTakeTheRemainder, LayoutTests.CreateGrid_WithoutAPanel_DividesTheWholeConsole, LayoutTests.CreateGrid_ZeroColumnsOrRows_RaisesError -->
 ### CreateGrid
 {: .no_toc }
 
@@ -207,7 +228,9 @@ Next
 ```
 
 The content area of the root panel has 56 columns and 16 rows, so *colStep* is 28 and *rowStep* is 8. The cells are columns 2 to 28 and 30 to 57, and rows 2 to 8 and 10 to 17; the sample prints the size of the content area inside the border and padding of each cell.
+<!-- /test -->
 
+<!-- test: LayoutTests.CreateHeaderFooter_DividesTheContentAreaIntoThreeWithNoRowBetween, LayoutTests.CreateHeaderFooter_OnAnEmptyLayout_UsesTheWholeConsole_AndTheHeaderIsTheRoot -->
 ### CreateHeaderFooter
 {: .no_toc }
 
@@ -222,7 +245,9 @@ Syntax: *object*.**CreateHeaderFooter** ( *headerHeight* , *footerHeight* , *hea
 : *required* **String** values, the names of the three panels.
 
 Returns the header, the body and the footer, in that order, as an array of three panels. The header takes the first *headerHeight* rows of the area, the footer the last *footerHeight* rows, and the body the rows between them, with no blank row between the panels. Each panel is as wide as the area. See [Panels, names and the root panel](#panels-names-and-the-root-panel) for the area.
+<!-- /test -->
 
+<!-- test: LayoutTests.CreateSidebar_TakesTheLeftColumnsOfTheContentArea_WithNoColumnBetween -->
 ### CreateSidebar
 {: .no_toc }
 
@@ -237,7 +262,9 @@ Syntax: *object*.**CreateSidebar** ( *sidebarWidth* , *sidebarName* , *contentNa
 : *required* **String** values, the names of the two panels.
 
 Returns the sidebar and the content panel, in that order, as an array of two panels. The sidebar takes the first *sidebarWidth* columns of the area and the content panel the rest, with no blank column between them. Both are as high as the area.
+<!-- /test -->
 
+<!-- test: LayoutTests.GetPanelNames_AndGetAllPanels_FollowTheOrderOfCreation -->
 ### GetAllPanels
 {: .no_toc }
 
@@ -246,7 +273,9 @@ Returns every panel.
 Syntax: *object*.**GetAllPanels** ( ) **As Variant**
 
 Returns a **Variant** that holds an array of **cConsolePanel** in the order of creation, with indexes from 0.
+<!-- /test -->
 
+<!-- test: LayoutTests.GetPanel_NameIsCaseSensitive_AndAnUnknownNameGivesNothing -->
 ### GetPanel
 {: .no_toc }
 
@@ -258,7 +287,9 @@ Syntax: *object*.**GetPanel** ( *name* ) **As cConsolePanel**
 : *required* A **String**. The comparison is case-sensitive.
 
 Returns the panel, or **Nothing** when the layout has no panel of that name.
+<!-- /test -->
 
+<!-- test: LayoutTests.GetPanelNames_AndGetAllPanels_FollowTheOrderOfCreation -->
 ### GetPanelNames
 {: .no_toc }
 
@@ -267,6 +298,7 @@ Returns the names of the panels.
 Syntax: *object*.**GetPanelNames** ( ) **As Variant**
 
 Returns a **Variant** that holds an array of **String**, with indexes from 0, in the order of the dictionary, which is the order in which the names were added.
+<!-- /test -->
 
 ### HasPanel
 {: .no_toc }
@@ -278,6 +310,7 @@ Syntax: *object*.**HasPanel** ( *name* ) **As Boolean**
 *name*
 : *required* A **String**.
 
+<!-- test: LayoutTests.RemovePanel_RemovesFromTheNamesAndTheList_AndAnUnknownNameDoesNothing, LayoutTests.RootPanel_IsTheFirstPanel_AndTheFirstRemainingOneAfterItIsRemoved -->
 ### RemovePanel
 {: .no_toc }
 
@@ -289,7 +322,9 @@ Syntax: *object*.**RemovePanel** ( *name* )
 : *required* A **String**. A name that is not in the layout does nothing.
 
 Removes the panel from the dictionary and the list. When it was the root panel, the first panel that is left becomes the root, or the layout has none. Nothing is erased from the buffer.
+<!-- /test -->
 
+<!-- test: LayoutTests.Render_DrawsTheBordersAndTitlesOfEveryPanelInTheColoursOfTheTheme, LayoutTests.Render_WithoutATheme_UsesGrayOnBlack_AndLeavesTheInsideAlone, LayoutTests.Render_LaterPanelIsDrawnOverAnEarlierOne, LayoutTests.Render_WhenTheConsoleIsNotInFullScreenMode_RaisesError91, LayoutTests.Render_ThenRefresh_ShowsTheBordersOnTheScreenBuffer -->
 ### Render
 {: .no_toc }
 
@@ -316,7 +351,9 @@ layout.ClearAllContent theme
 layout.Render theme
 con.Refresh
 ```
+<!-- /test -->
 
+<!-- test: LayoutTests.RenderPanel_DrawsOnePanel_AndAnUnknownNameDoesNothing -->
 ### RenderPanel
 {: .no_toc }
 
@@ -329,7 +366,9 @@ Syntax: *object*.**RenderPanel** ( *name* [ , *theme* ] )
 
 *theme*
 : *optional* A **cConsoleTheme**, as for [**Render**](#render).
+<!-- /test -->
 
+<!-- test: LayoutTests.Resize_ScalesThePanelsToTheNewSize, LayoutTests.Resize_StoresTheNewSize_ForTheArrangementsOfALayoutWithNoPanel, LayoutTests.Resize_ZeroWidthOrHeight_RaisesError6 -->
 ### Resize
 {: .no_toc }
 
@@ -343,7 +382,9 @@ Syntax: *object*.**Resize** ( *newWidth* , *newHeight* )
 The method stores the new size, then computes the factors `newWidth / stored width` and `newHeight / stored height` and moves and resizes every panel by them. The stored size is replaced before the factors are computed, so both are 1, and no panel changes. The only effect is the new size, which [**CreateGrid**](#creategrid), [**CreateSidebar**](#createsidebar) and [**CreateHeaderFooter**](#createheaderfooter) use when the layout has no panel. A *newWidth* or *newHeight* of 0 raises error 6, *Overflow*, since the factor is 0 divided by 0.
 
 A program that has to follow the size of the window ([**OnResize**](../TBMANLIB_ConsoleCore/cConsole#onresize) of the console reports it) calls [**Clear**](#clear) and makes the panels again.
+<!-- /test -->
 
+<!-- test: LayoutTests.SplitHorizontal_DividesTheWidthOfTheContentAreaIntoALeftAndARightPanel, LayoutTests.Split_ParentNotInTheLayout_CreatesNothing, LayoutTests.SplitHorizontal_AndLayoutHelperSplitHorizontal_DivideInTheSameDirection -->
 ### SplitHorizontal
 {: .no_toc }
 
@@ -363,7 +404,9 @@ Syntax: *object*.**SplitHorizontal** ( *parentName* , *ratio* , *leftName* , *ri
 Returns an array of two panels, the left one first, in a **Variant**. When the parent is not in the layout, the method creates nothing and returns **Nothing** in the **Variant**.
 
 The left panel is `CLng(ContentWidth * ratio)` columns wide, starting at the left edge of the parent's content area, and the right panel starts one column after it and reaches the right edge. Both are as high as the content area. The method divides the width, so the line between the panels is vertical. The member of the same name in [**cLayoutHelper**](Helpers#splithorizontal) divides the height instead.
+<!-- /test -->
 
+<!-- test: LayoutTests.SplitVertical_DividesTheHeightOfTheContentAreaIntoATopAndABottomPanel, LayoutTests.Split_ParentNotInTheLayout_CreatesNothing -->
 ### SplitVertical
 {: .no_toc }
 
@@ -381,6 +424,7 @@ Syntax: *object*.**SplitVertical** ( *parentName* , *ratio* , *topName* , *botto
 : *required* **String** values, the names of the new panels.
 
 Returns an array of two panels, the top one first, or **Nothing** when the parent is not in the layout. The top panel is `CLng(ContentHeight * ratio)` rows high, from the top edge of the parent's content area, and the bottom panel starts one row after it and reaches the bottom edge. The line between them is horizontal. The member of the same name in [**cLayoutHelper**](Helpers#splitvertical) divides the width instead.
+<!-- /test -->
 
 ## See Also
 

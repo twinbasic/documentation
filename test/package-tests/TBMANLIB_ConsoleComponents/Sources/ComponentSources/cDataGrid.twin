@@ -1,0 +1,302 @@
+' cDataGrid.twin of TBMANLIB_ConsoleComponents 1.0.0.1 (woeoio, MIT licence), compiled into this project.
+' The package cannot take the cConsole of TBMANLIB_ConsoleCore (see the notes of its landing page), so the
+' cases that draw run this copy of the code, which is the code of the package below the line of dashes.
+' The package's own classes are reached as TBMANLIB_ConsoleComponents.<name>.
+' ----------------------------------------------------------------------------
+' =====================================================
+' cDataGrid.twin - Data Grid Component
+' Modern Console Library for TwinBASIC - Components
+' =====================================================
+
+[COMCreatable(False)]
+Public Class cDataGrid
+
+    ' Column alignment enum
+    Public Enum ColumnAlignment
+        Left = 0
+        Center = 1
+        Right = 2
+    End Enum
+
+    Private m_Console As cConsole
+    Private m_Buffer As cConsoleBuffer
+    Private m_Rows() As String
+    Private m_ColWidths() As Long
+    Private m_ColAlignments() As ColumnAlignment
+    Private m_RowColors() As ConsoleColor
+    Private m_HeaderColor As ConsoleColor
+    Private m_SelectionColor As ConsoleColor
+    Private m_SelectedRow As Long
+    Private m_HeaderRow As Boolean
+    Private m_ShowBorders As Boolean
+
+    ' Constructor
+    Public Sub New(ByVal console As cConsole)
+        Set m_Console = console
+        Set m_Buffer = console.Buffer
+        m_HeaderColor = ConsoleColor.Cyan
+        m_SelectionColor = ConsoleColor.DarkBlue
+        m_SelectedRow = -1
+        m_HeaderRow = True
+        m_ShowBorders = True
+    End Sub
+
+    ' Set the data rows
+    Public Sub SetRows(ByRef rows() As String)
+        m_Rows = rows
+    End Sub
+
+    ' Set column widths
+    Public Sub SetColumnWidths(ByRef widths() As Long)
+        m_ColWidths = widths
+    End Sub
+
+    ' Set column alignments
+    Public Sub SetColumnAlignments(ByRef alignments() As ColumnAlignment)
+        m_ColAlignments = alignments
+    End Sub
+
+    ' Set row colors
+    Public Sub SetRowColors(ByRef colors() As ConsoleColor)
+        m_RowColors = colors
+    End Sub
+
+    ' Set header color
+    Public Property Let HeaderColor(ByVal value As ConsoleColor)
+        m_HeaderColor = value
+    End Property
+
+    ' Set selection color
+    Public Property Let SelectionColor(ByVal value As ConsoleColor)
+        m_SelectionColor = value
+    End Property
+
+    ' Set selected row
+    Public Property Let SelectedRow(ByVal value As Long)
+        m_SelectedRow = value
+    End Property
+
+    ' Show/hide header row
+    Public Property Let ShowHeader(ByVal value As Boolean)
+        m_HeaderRow = value
+    End Property
+
+    ' Show/hide borders
+    Public Property Let ShowBorders(ByVal value As Boolean)
+        m_ShowBorders = value
+    End Property
+
+    ' Render the data grid
+    Public Sub Render(ByVal col As Long, ByVal row As Long, _
+                      Optional ByVal fore As ConsoleColor = ConsoleColor.Gray, _
+                      Optional ByVal back As ConsoleColor = ConsoleColor.Black)
+        If UBound(m_Rows) < LBound(m_Rows) Then Exit Sub
+
+        Dim rowCount As Long = UBound(m_Rows) - LBound(m_Rows) + 1
+        Dim displayRow As Long = row
+
+        ' Draw header if enabled
+        If m_HeaderRow AndAlso rowCount > 0 Then
+            Dim headerText As String = m_Rows(LBound(m_Rows))
+            DrawRow col, displayRow, headerText, m_HeaderColor, ConsoleColor.Black, True
+            displayRow += 1
+
+            ' Draw separator if borders are enabled
+            If m_ShowBorders Then
+                DrawSeparator col, displayRow, fore, back
+                displayRow += 1
+            End If
+        End If
+
+        ' Draw data rows
+        Dim i As Long
+        Dim startIdx As Long
+        If m_HeaderRow Then startIdx = LBound(m_Rows) + 1 Else startIdx = LBound(m_Rows)
+
+        For i = startIdx To UBound(m_Rows)
+            ' Check if this row is selected
+            Dim isSelected As Boolean = (i - startIdx = m_SelectedRow)
+
+            ' Get row color if available
+            Dim rowFore As ConsoleColor = fore
+            If isSelected Then
+                rowFore = ConsoleColor.White
+            ElseIf Not IsEmpty(m_RowColors) Then
+                Dim colorIdx As Long = i - LBound(m_RowColors)
+                If colorIdx >= 0 AndAlso colorIdx <= UBound(m_RowColors) Then
+                    rowFore = m_RowColors(colorIdx)
+                End If
+            End If
+
+            Dim rowBack As ConsoleColor
+            If isSelected Then
+                rowBack = m_SelectionColor
+            Else
+                rowBack = back
+            End If
+
+            DrawRow col, displayRow, m_Rows(i), rowFore, rowBack, False
+            displayRow += 1
+        Next i
+    End Sub
+
+    ' Draw a single row
+    Private Sub DrawRow(ByVal col As Long, ByVal row As Long, _
+                         ByVal text As String, _
+                         ByVal fore As ConsoleColor, _
+                         ByVal back As ConsoleColor, _
+                         ByVal isHeader As Boolean)
+        Dim maxCols As Long
+        If UBound(m_ColWidths) < LBound(m_ColWidths) Then
+            maxCols = 1
+        Else
+            maxCols = UBound(m_ColWidths) - LBound(m_ColWidths) + 1
+        End If
+
+        ' Parse text into columns (assuming tab or space delimiter)
+        Dim columns() As String
+        SplitText text, columns, maxCols
+
+        Dim currentCol As Long = col
+        Dim i As Long
+
+        For i = 0 To maxCols - 1
+            Dim colWidth As Long
+            If UBound(m_ColWidths) < LBound(m_ColWidths) Then
+                colWidth = Len(text)
+            Else
+                Dim widthIdx As Long = i + LBound(m_ColWidths)
+                If widthIdx > UBound(m_ColWidths) Then
+                    colWidth = 20
+                Else
+                    colWidth = m_ColWidths(widthIdx)
+                End If
+            End If
+
+            Dim cellText As String
+            If i <= UBound(columns) Then
+                cellText = columns(i)
+            Else
+                cellText = ""
+            End If
+
+            ' Truncate or pad text
+            If Len(cellText) > colWidth Then
+                cellText = Left$(cellText, colWidth)
+            End If
+
+            ' Apply alignment
+            Dim alignment As ColumnAlignment = ColumnAlignment.Left
+            If UBound(m_ColAlignments) >= LBound(m_ColAlignments) Then
+                Dim alignIdx As Long = i + LBound(m_ColAlignments)
+                If alignIdx <= UBound(m_ColAlignments) Then
+                    alignment = m_ColAlignments(alignIdx)
+                End If
+            End If
+
+            Select Case alignment
+                Case ColumnAlignment.Left
+                    cellText = Left$(cellText & Space$(colWidth), colWidth)
+                Case ColumnAlignment.Center
+                    Dim padding As Long = (colWidth - Len(cellText)) \ 2
+                    cellText = Space$(padding) & cellText & Space$(colWidth - padding - Len(cellText))
+                    cellText = Left$(cellText, colWidth)
+                Case ColumnAlignment.Right
+                    cellText = Right$(Space$(colWidth) & cellText, colWidth)
+            End Select
+
+            ' Draw cell
+            m_Buffer.WriteAt currentCol, row, cellText, fore, back
+            currentCol += colWidth
+
+            ' Draw separator if enabled
+            If m_ShowBorders AndAlso i < maxCols - 1 Then
+                m_Buffer.SetChar currentCol, row, "│", fore, back
+                currentCol += 1
+            End If
+        Next i
+    End Sub
+
+    ' Draw a separator line
+    Private Sub DrawSeparator(ByVal col As Long, ByVal row As Long, _
+                              ByVal fore As ConsoleColor, _
+                              ByVal back As ConsoleColor)
+        Dim maxWidth As Long = 0
+        Dim i As Long
+
+        If UBound(m_ColWidths) < LBound(m_ColWidths) Then
+            maxWidth = 80
+        Else
+            For i = LBound(m_ColWidths) To UBound(m_ColWidths)
+                maxWidth += m_ColWidths(i)
+            Next i
+            maxWidth += UBound(m_ColWidths) - LBound(m_ColWidths)  ' Add separators
+        End If
+
+        ' Draw horizontal line with column separators
+        Dim currentCol As Long = col
+        Dim totalWidth As Long = 0
+
+        If UBound(m_ColWidths) < LBound(m_ColWidths) Then
+            m_Buffer.DrawHLine col, row, maxWidth, fore, back, False
+        Else
+            For i = LBound(m_ColWidths) To UBound(m_ColWidths)
+                m_Buffer.DrawHLine currentCol, row, m_ColWidths(i), fore, back, False
+                currentCol += m_ColWidths(i)
+                If i < UBound(m_ColWidths) Then
+                    m_Buffer.SetChar currentCol, row, "┼", fore, back
+                    currentCol += 1
+                End If
+            Next i
+        End If
+    End Sub
+
+    ' Split text into columns
+    Private Sub SplitText(ByVal text As String, ByRef columns() As String, ByVal maxCols As Long)
+        Dim parts() As String
+        ReDim parts(0 To maxCols - 1)
+        Dim i As Long
+
+        ' Simple split by tab character
+        Dim pos As Long = InStr(text, vbTab)
+        Dim startIdx As Long = 1
+        Dim partIdx As Long = 0
+
+        For i = 0 To maxCols - 1
+            If pos > 0 Then
+                parts(i) = Mid$(text, startIdx, pos - startIdx)
+                startIdx = pos + 1
+                pos = InStr(startIdx, text, vbTab)
+            Else
+                parts(i) = Mid$(text, startIdx)
+                Exit For
+            End If
+        Next i
+
+        columns = parts
+    End Sub
+
+    ' Get the number of rows (excluding header)
+    Public Function GetRowCount() As Long
+        If UBound(m_Rows) < LBound(m_Rows) Then Return 0
+        Dim count As Long = UBound(m_Rows) - LBound(m_Rows) + 1
+        If m_HeaderRow Then count = count - 1
+        Return count
+    End Function
+
+    ' Scroll to a specific row
+    Public Sub ScrollTo(ByVal row As Long)
+        m_SelectedRow = row
+    End Sub
+
+    ' Move selection up
+    Public Sub MoveUp()
+        If m_SelectedRow > 0 Then m_SelectedRow -= 1
+    End Sub
+
+    ' Move selection down
+    Public Sub MoveDown(ByVal maxRow As Long)
+        If m_SelectedRow < maxRow - 1 Then m_SelectedRow += 1
+    End Sub
+
+End Class

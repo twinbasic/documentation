@@ -10,6 +10,7 @@ has_toc: false
 
 A set of 14 named colours, which a program uses to draw all its parts in one style, with three ready-made sets in the module **mConsoleThemeFactory**.
 
+<!-- test: ThemeTests.Clone_ReturnsACopyThatChangesOnItsOwn, ThemeTests.GetColor_ReturnsTheFieldOfTheSameName, ThemeTests.New_EveryFieldIsBlack, ThemeTests.CreateHTOP_FieldsAreAsDocumented -->
 A **cConsoleTheme** has no behaviour of its own besides two methods. Its fields are [**ConsoleColor**](../TBMANLIB_ConsoleCore/Types#consolecolor) values that a program reads when it draws. The package reads only three of them: [**cConsoleLayout**](cConsoleLayout) uses **Border** and **Background** to draw the borders of its panels, and **Foreground** and **Background** to clear their content areas. The other fields are for the program's own drawing, for example with [**cDataGrid**](cDataGrid) and [**cProgressBar**](cProgressBar).
 
 ```tb check_build check_run
@@ -26,12 +27,14 @@ Debug.Print blank.Background & " " & blank.Foreground
 ' 10
 ' 0 0
 ```
+<!-- /test -->
 
 * TOC
 {:toc}
 
 In the syntax lines of this page, *object* is a **cConsoleTheme**.
 
+<!-- test: ThemeTests.New_EveryFieldIsBlack, LayoutTests.Render_DrawsTheBordersAndTitlesOfEveryPanelInTheColoursOfTheTheme, LayoutTests.ClearAllContent_FillsTheContentAreasWithTheForegroundAndBackgroundOfTheTheme -->
 ## Fields
 
 The class has 14 public fields, all of the type [**ConsoleColor**](../TBMANLIB_ConsoleCore/Types#consolecolor). A theme that is made with `New cConsoleTheme` has every field at 0, **Black**, until the program sets it; the functions of [mConsoleThemeFactory](#mconsolethemefactory-module) return themes with all fields set.
@@ -54,9 +57,11 @@ The class has 14 public fields, all of the type [**ConsoleColor**](../TBMANLIB_C
 | **SelectedForeground** | the text of a selected item | no |
 
 The class has no comment on the use of the fields, so the second column describes each from its name. [**cDataGrid**](cDataGrid) has its own colour properties and does not read a theme.
+<!-- /test -->
 
 ## Methods
 
+<!-- test: ThemeTests.Clone_ReturnsACopyThatChangesOnItsOwn -->
 ### Clone
 {: .no_toc }
 
@@ -65,7 +70,9 @@ Returns a copy of the theme.
 Syntax: *object*.**Clone** ( ) **As cConsoleTheme**
 
 Returns a new **cConsoleTheme** with the 14 fields of the object. Changing the copy does not change the original.
+<!-- /test -->
 
+<!-- test: ThemeTests.GetColor_ReturnsTheFieldOfTheSameName, ThemeTests.GetColor_ValueOfNoMember_ReturnsForeground -->
 ### GetColor
 {: .no_toc }
 
@@ -77,7 +84,9 @@ Syntax: *object*.**GetColor** ( *colorType* ) **As ConsoleColor**
 : *required* A [**ThemeColorType**](../TBMANLIB_ConsoleCore/Types#themecolortype): **tcPrimary**, **tcSecondary**, **tcSuccess**, **tcWarning**, **tcError**, **tcInfo**, **tcMuted**, **tcBackground**, **tcForeground**, **tcBorder**, **tcHeaderBackground**, **tcHeaderForeground**, **tcSelectedBackground** or **tcSelectedForeground**.
 
 Returns the field of the same name. For a value that is not one of the 14 members, it returns **Foreground**. The enumeration is declared in the package [TBMANLIB_ConsoleCore](../TBMANLIB_ConsoleCore/Types#themecolortype).
+<!-- /test -->
 
+<!-- test: ThemeTests.CreateDefault_FieldsAreAsDocumented, ThemeTests.CreateHTOP_FieldsAreAsDocumented, ThemeTests.CreateLight_FieldsAreAsDocumented, ThemeTests.Factory_EachCallReturnsANewTheme -->
 ## mConsoleThemeFactory module
 
 The module has three functions that return a new, complete theme each time they are called. They have no parameters, and are written with the name of the module, as in `mConsoleThemeFactory.CreateLight()`.
@@ -121,6 +130,7 @@ Returns the light theme: black text on white, with the darker colours for succes
 Syntax: **CreateLight** ( ) **As cConsoleTheme**
 
 A console shows the colours of its own colour table, so the "white" of the light theme is the white of that table, and a console whose table is dark can show it differently.
+<!-- /test -->
 
 ## See Also
 

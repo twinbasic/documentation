@@ -1,0 +1,206 @@
+' cConsolePanel.twin of TBMANLIB_ConsoleComponents 1.0.0.1 (woeoio, MIT licence), compiled into this project.
+' The package cannot take the cConsole of TBMANLIB_ConsoleCore (see the notes of its landing page), so the
+' cases that draw run this copy of the code, which is the code of the package below the line of dashes.
+' The package's own classes are reached as TBMANLIB_ConsoleComponents.<name>.
+' ----------------------------------------------------------------------------
+' =====================================================
+' cConsolePanel.twin - Console Panel Component
+' Modern Console Library for TwinBASIC - Components
+' =====================================================
+
+[COMCreatable(False)]
+Public Class cConsolePanel
+
+    ' Panel border style enum
+    Public Enum PanelBorderStyle
+        None = 0
+        Single = 1
+        Double = 2
+        Rounded = 3
+        Bold = 4
+    End Enum
+
+    ' Panel properties
+    Public Name As String
+    Public Rect As ConsoleRect
+    Public Title As String
+
+    ' Style properties
+    Public BorderStyle As PanelBorderStyle
+    Public BorderColor As ConsoleColor
+    Public TitleColor As ConsoleColor
+    Public Padding As Long
+
+    ' Constructor
+    Public Sub New(Optional ByVal name As String = "", _
+                   Optional ByVal left As Long = 0, _
+                   Optional ByVal top As Long = 0, _
+                   Optional ByVal width As Long = 10, _
+                   Optional ByVal height As Long = 5)
+        Me.Name = name
+        Me.Rect.Left = left
+        Me.Rect.Top = top
+        Me.Rect.Right = left + width - 1
+        Me.Rect.Bottom = top + height - 1
+        Me.BorderStyle = PanelBorderStyle.Single
+        Me.BorderColor = ConsoleColor.Gray
+        Me.TitleColor = ConsoleColor.White
+        Me.Padding = 1
+    End Sub
+
+    ' Render the panel
+    Public Sub Render(ByVal buffer As cConsoleBuffer, _
+                      Optional ByVal fore As ConsoleColor = ConsoleColor.Gray, _
+                      Optional ByVal back As ConsoleColor = ConsoleColor.Black)
+        If Me.BorderStyle = PanelBorderStyle.None Then Exit Sub
+
+        Select Case Me.BorderStyle
+            Case PanelBorderStyle.Single
+                DrawSingleBorder buffer, fore, back
+            Case PanelBorderStyle.Double
+                DrawDoubleBorder buffer, fore, back
+            Case PanelBorderStyle.Rounded
+                DrawRoundedBorder buffer, fore, back
+            Case PanelBorderStyle.Bold
+                DrawBoldBorder buffer, fore, back
+        End Select
+
+        ' Draw title if exists
+        If Len(Title) > 0 Then
+            DrawTitle buffer
+        End If
+    End Sub
+
+    ' Draw single-line border
+    Private Sub DrawSingleBorder(ByVal buffer As cConsoleBuffer, _
+                                  ByVal fore As ConsoleColor, _
+                                  ByVal back As ConsoleColor)
+        buffer.DrawBox Rect.Left, Rect.Top, Rect.Right, Rect.Bottom, fore, back, False
+    End Sub
+
+    ' Draw double-line border
+    Private Sub DrawDoubleBorder(ByVal buffer As cConsoleBuffer, _
+                                  ByVal fore As ConsoleColor, _
+                                  ByVal back As ConsoleColor)
+        buffer.DrawBox Rect.Left, Rect.Top, Rect.Right, Rect.Bottom, fore, back, True
+    End Sub
+
+    ' Draw rounded border
+    Private Sub DrawRoundedBorder(ByVal buffer As cConsoleBuffer, _
+                                   ByVal fore As ConsoleColor, _
+                                   ByVal back As ConsoleColor)
+        ' Corners
+        buffer.SetChar Rect.Left, Rect.Top, "╭", fore, back
+        buffer.SetChar Rect.Right, Rect.Top, "╮", fore, back
+        buffer.SetChar Rect.Left, Rect.Bottom, "╰", fore, back
+        buffer.SetChar Rect.Right, Rect.Bottom, "╯", fore, back
+
+        ' Horizontal lines
+        Dim col As Long
+        For col = Rect.Left + 1 To Rect.Right - 1
+            buffer.SetChar col, Rect.Top, "─", fore, back
+            buffer.SetChar col, Rect.Bottom, "─", fore, back
+        Next col
+
+        ' Vertical lines
+        Dim row As Long
+        For row = Rect.Top + 1 To Rect.Bottom - 1
+            buffer.SetChar Rect.Left, row, "│", fore, back
+            buffer.SetChar Rect.Right, row, "│", fore, back
+        Next row
+    End Sub
+
+    ' Draw bold border
+    Private Sub DrawBoldBorder(ByVal buffer As cConsoleBuffer, _
+                                ByVal fore As ConsoleColor, _
+                                ByVal back As ConsoleColor)
+        ' Corners
+        buffer.SetChar Rect.Left, Rect.Top, "┏", fore, back
+        buffer.SetChar Rect.Right, Rect.Top, "┓", fore, back
+        buffer.SetChar Rect.Left, Rect.Bottom, "┗", fore, back
+        buffer.SetChar Rect.Right, Rect.Bottom, "┛", fore, back
+
+        ' Horizontal lines
+        Dim col As Long
+        For col = Rect.Left + 1 To Rect.Right - 1
+            buffer.SetChar col, Rect.Top, "━", fore, back
+            buffer.SetChar col, Rect.Bottom, "━", fore, back
+        Next col
+
+        ' Vertical lines
+        Dim row As Long
+        For row = Rect.Top + 1 To Rect.Bottom - 1
+            buffer.SetChar Rect.Left, row, "┃", fore, back
+            buffer.SetChar Rect.Right, row, "┃", fore, back
+        Next row
+    End Sub
+
+    ' Draw panel title
+    Private Sub DrawTitle(ByVal buffer As cConsoleBuffer)
+        Dim maxWidth As Long = Rect.Right - Rect.Left - 3
+        If maxWidth < 1 Then Exit Sub
+
+        Dim displayTitle As String
+        If Len(Title) > maxWidth Then
+            displayTitle = Left$(Title, maxWidth)
+        Else
+            displayTitle = Title
+        End If
+
+        Dim titlePos As Long = Rect.Left + 2
+
+        ' Draw space, title, space
+        buffer.SetChar Rect.Left + 1, Rect.Top, " ", BorderColor, ConsoleColor.Black
+        buffer.WriteAt titlePos, Rect.Top, displayTitle, TitleColor, ConsoleColor.Black
+        buffer.SetChar titlePos + Len(displayTitle), Rect.Top, " ", BorderColor, ConsoleColor.Black
+    End Sub
+
+    ' Get content area (excluding border and padding)
+    Public Function ContentRect() As ConsoleRect
+        Dim result As ConsoleRect
+        result.Left = Rect.Left + IIf(BorderStyle <> PanelBorderStyle.None, 1, 0) + Padding
+        result.Top = Rect.Top + IIf(BorderStyle <> PanelBorderStyle.None, 1, 0) + Padding
+        result.Right = Rect.Right - IIf(BorderStyle <> PanelBorderStyle.None, 1, 0) - Padding
+        result.Bottom = Rect.Bottom - IIf(BorderStyle <> PanelBorderStyle.None, 1, 0) - Padding
+        Return result
+    End Function
+
+    ' Get content width
+    Public Function ContentWidth() As Long
+        Dim cr As ConsoleRect = ContentRect()
+        Return cr.Right - cr.Left + 1
+    End Function
+
+    ' Get content height
+    Public Function ContentHeight() As Long
+        Dim cr As ConsoleRect = ContentRect()
+        Return cr.Bottom - cr.Top + 1
+    End Function
+
+    ' Clear panel content area
+    Public Sub ClearContent(ByVal buffer As cConsoleBuffer, _
+                            Optional ByVal fore As ConsoleColor = ConsoleColor.Gray, _
+                            Optional ByVal back As ConsoleColor = ConsoleColor.Black)
+        Dim cr As ConsoleRect = ContentRect()
+        If cr.Left < cr.Right AndAlso cr.Top < cr.Bottom Then
+            buffer.FillRect cr.Left, cr.Top, cr.Right, cr.Bottom, " ", fore, back
+        End If
+    End Sub
+
+    ' Move panel
+    Public Sub Move(ByVal left As Long, ByVal top As Long)
+        Dim w As Long = Rect.Right - Rect.Left
+        Dim h As Long = Rect.Bottom - Rect.Top
+        Rect.Left = left
+        Rect.Top = top
+        Rect.Right = left + w
+        Rect.Bottom = top + h
+    End Sub
+
+    ' Resize panel
+    Public Sub Resize(ByVal width As Long, ByVal height As Long)
+        Rect.Right = Rect.Left + width - 1
+        Rect.Bottom = Rect.Top + height - 1
+    End Sub
+
+End Class

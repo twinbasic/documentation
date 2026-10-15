@@ -1,0 +1,408 @@
+' TBMANLIB_ConsoleComponents: cVBar, on the compiled copy of its code (see TwoPackagesTests).
+[TestFixture]
+Module VBarTests
+
+    ' The cells of one column, from a row, as a picture: "#" for U+2588, "-" for U+2591, "." for a space.
+    Private Function Column(ByVal Buf As cConsoleBuffer, ByVal Col As Long, ByVal Row As Long, ByVal Height As Long) As String
+        Column = Cells.Picture(Buf, Col, Row, 1, Height)
+    End Function
+
+    ' ---- Render
+
+    [TestCase]
+    Public Sub Render_BarGrowsFromTheBottom_AndTheRowsAboveAreSpaces()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        chart.Render 3, 0, 4, 50
+        Expect.AreEqual ".|.|#|#", Column(con.Buffer, 3, 0, 4), "cells of a bar 4 rows high at 50 percent"
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 3, 3), "colour of a filled cell"
+        Expect.AreEqual CLng(ConsoleColor.Black), Cells.Back(con.Buffer, 3, 3), "background of a filled cell"
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 3, 0), "colour of a space of the bar"
+        Expect.AreEqual 32, Cells.Code(con.Buffer, 3, 4), "the cell under the bar"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_FilledRowsAreRoundedHalfToEven_AndAnyPercentAboveZeroFillsOneRow()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        chart.Render 0, 0, 4, 12.5
+        chart.Render 1, 0, 4, 37.5
+        chart.Render 2, 0, 4, 62.5
+        chart.Render 3, 0, 4, 0.1
+        chart.Render 4, 0, 4, 0
+        Expect.AreEqual ".|.|.|#", Column(con.Buffer, 0, 0, 4), "12.5 percent of 4 rows (0.5, but a percent above 0 fills one)"
+        Expect.AreEqual ".|.|#|#", Column(con.Buffer, 1, 0, 4), "37.5 percent of 4 rows (1.5)"
+        Expect.AreEqual ".|.|#|#", Column(con.Buffer, 2, 0, 4), "62.5 percent of 4 rows (2.5)"
+        Expect.AreEqual ".|.|.|#", Column(con.Buffer, 3, 0, 4), "0.1 percent"
+        Expect.AreEqual ".|.|.|.", Column(con.Buffer, 4, 0, 4), "0 percent"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_PercentOutsideTheRange_IsLimited()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        chart.Render 0, 0, 4, -50
+        chart.Render 1, 0, 4, 250
+        Expect.AreEqual ".|.|.|.", Column(con.Buffer, 0, 0, 4), "-50 percent"
+        Expect.AreEqual "#|#|#|#", Column(con.Buffer, 1, 0, 4), "250 percent"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_DrawnAgainOverATallerBar_ClearsIt()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        chart.Render 0, 0, 4, 100
+        chart.Render 0, 0, 4, 25
+        Expect.AreEqual ".|.|.|#", Column(con.Buffer, 0, 0, 4), "cells after a bar of 100 percent was drawn again at 25"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_GivenColours_AreUsed()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        chart.Render 0, 0, 4, 50, ConsoleColor.Red, ConsoleColor.Blue
+        Expect.AreEqual CLng(ConsoleColor.Red), Cells.Fore(con.Buffer, 0, 3), "colour of a filled cell"
+        Expect.AreEqual CLng(ConsoleColor.Blue), Cells.Back(con.Buffer, 0, 3), "background of a filled cell"
+        Expect.AreEqual CLng(ConsoleColor.Blue), Cells.Back(con.Buffer, 0, 0), "background of a space"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- BarCharStyle
+
+    [TestCase]
+    Public Sub Render_CharStyles_UseTheirCharacters()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        chart.Render 0, 0, 1, 100, , , 0
+        chart.Render 1, 0, 1, 100, , , 1
+        chart.Render 2, 0, 1, 100, , , 2
+        chart.Render 3, 0, 1, 100, , , 3
+        Expect.AreEqual "2588 2591 2592 2593", Cells.Codes(con.Buffer, 0, 0, 4), "characters of the styles Block, Light, Medium and Dark"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_CustomStyle_DrawsACharacterOfItsOwn()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        chart.Render 0, 0, 1, 100, , , 0
+        chart.Render 1, 0, 1, 100, , , 4
+        Expect.IsTrue Cells.Code(con.Buffer, 0, 0) <> Cells.Code(con.Buffer, 1, 0), "the character of Custom (" & Hex$(Cells.Code(con.Buffer, 1, 0)) & ") differs from that of Block (" & Hex$(Cells.Code(con.Buffer, 0, 0)) & ")"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_StyleOutsideTheEnumeration_RaisesError5WhenARowIsFilled()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        On Error Resume Next
+        chart.Render 0, 0, 4, 50, , , 9
+        Expect.AreEqual 5, Err.Number, "Err.Number of Render with the style 9 and a filled row"
+        Err.Clear
+        chart.Render 1, 0, 4, 0, , , 9
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render with the style 9 and no filled row"
+        On Error GoTo 0
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- RenderBars
+
+    [TestCase]
+    Public Sub RenderBars_DrawsABarForEachValue_ApartBySpacingPlusOne()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        Dim v(0 To 2) As Double
+        v(0) = 100: v(1) = 50: v(2) = 0
+        con.Buffer.WriteAt 0, 0, "xxxxxxxxxx"
+        con.Buffer.WriteAt 0, 1, "xxxxxxxxxx"
+        chart.RenderBars 1, 0, 2, v, 2
+        Expect.AreEqual "x" & ChrW$(&H2588) & "xx xx xx", Cells.Text(con.Buffer, 0, 0, 10), "row 0: bars of 100, 50 and 0 percent at columns 1, 4 and 7 with spacing 2 (the upper row of the last two is a space)"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderBars_ArrayStartingAtOne_DrawsEveryBar()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        Dim v(1 To 3) As Double
+        v(1) = 100: v(2) = 100: v(3) = 100
+        On Error Resume Next
+        chart.RenderBars 0, 0, 1, v
+        Expect.AreEqual 0, Err.Number, "Err.Number of RenderBars of an array with the lower bound 1"
+        On Error GoTo 0
+        Expect.AreEqual "#.#.#", Cells.Picture(con.Buffer, 0, 0, 5, 1), "row 0"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderBars_DoesNotWriteTheBlankColumns_AndUsesOneSpacingByDefault()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        Dim v(0 To 2) As Double
+        v(0) = 100: v(1) = 100: v(2) = 100
+        con.Buffer.WriteAt 0, 0, "xxxxxxxxxx"
+        chart.RenderBars 0, 0, 1, v
+        Expect.AreEqual ChrW$(&H2588) & "x" & ChrW$(&H2588) & "x" & ChrW$(&H2588) & "xxxxx", Cells.Text(con.Buffer, 0, 0, 10), "row 0: bars at columns 0, 2 and 4 with the default spacing"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderBars_MinAndMax_GiveTheEmptyAndTheFullBar()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        Dim v(0 To 2) As Double
+        v(0) = 10: v(1) = 20: v(2) = 30
+        chart.RenderBars 0, 0, 4, v, 0, 10, 30
+        Expect.AreEqual ".|.|.|.", Column(con.Buffer, 0, 0, 4), "the bar of the minimum"
+        Expect.AreEqual ".|.|#|#", Column(con.Buffer, 1, 0, 4), "the bar of the middle value"
+        Expect.AreEqual "#|#|#|#", Column(con.Buffer, 2, 0, 4), "the bar of the maximum"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderBars_MaxEqualToMin_RaisesError11()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        Dim v(0 To 1) As Double
+        v(0) = 10: v(1) = 20
+        On Error Resume Next
+        chart.RenderBars 0, 0, 4, v, 1, 5, 5
+        Expect.AreEqual 11, Err.Number, "Err.Number of RenderBars with minValue equal to maxValue"
+        On Error GoTo 0
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- RenderWithGradient
+
+    [TestCase]
+    Public Sub RenderWithGradient_ColourOfABarIsOneOfThree()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        Dim v(0 To 3) As Double
+        v(0) = 49: v(1) = 50: v(2) = 79: v(3) = 80
+        chart.RenderWithGradient 0, 0, 4, v, 0
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 0, 3), "colour of the bar of 49 percent"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), Cells.Fore(con.Buffer, 1, 3), "colour of the bar of 50 percent"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), Cells.Fore(con.Buffer, 2, 3), "colour of the bar of 79 percent"
+        Expect.AreEqual CLng(ConsoleColor.Red), Cells.Fore(con.Buffer, 3, 3), "colour of the bar of 80 percent"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderWithGradient_GivenColoursAndBackground_AreInTheDocumentedOrder()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        Dim v(0 To 2) As Double
+        v(0) = 10: v(1) = 60: v(2) = 90
+        chart.RenderWithGradient 0, 0, 4, v, 0, 0, 100, ConsoleColor.Cyan, ConsoleColor.Magenta, ConsoleColor.White, ConsoleColor.DarkBlue
+        Expect.AreEqual CLng(ConsoleColor.Cyan), Cells.Fore(con.Buffer, 0, 3), "low colour"
+        Expect.AreEqual CLng(ConsoleColor.Magenta), Cells.Fore(con.Buffer, 1, 3), "mid colour"
+        Expect.AreEqual CLng(ConsoleColor.White), Cells.Fore(con.Buffer, 2, 3), "high colour"
+        Expect.AreEqual CLng(ConsoleColor.DarkBlue), Cells.Back(con.Buffer, 1, 3), "background given as the 11th argument"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- RenderHistory
+
+    [TestCase]
+    Public Sub RenderHistory_LastValueIsAtTheGivenColumn_TheOthersGoToItsLeft()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        Dim h(0 To 2) As Double
+        h(0) = 100: h(1) = 50: h(2) = 0
+        chart.RenderHistory 10, 0, 2, h
+        Expect.AreEqual "#|#", Column(con.Buffer, 8, 0, 2), "the oldest value, at column 8"
+        Expect.AreEqual ".|#", Column(con.Buffer, 9, 0, 2), "the middle value, at column 9"
+        Expect.AreEqual ".|.", Column(con.Buffer, 10, 0, 2), "the newest value, at column 10"
+        Expect.AreEqual ".|.", Column(con.Buffer, 11, 0, 2), "the column right of the chart"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderHistory_ColumnsLeftOfTheBuffer_AreDropped()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        Dim h(0 To 3) As Double
+        h(0) = 100: h(1) = 100: h(2) = 100: h(3) = 100
+        On Error Resume Next
+        chart.RenderHistory 1, 0, 1, h
+        Expect.AreEqual 0, Err.Number, "Err.Number of RenderHistory with columns left of the buffer"
+        On Error GoTo 0
+        Expect.AreEqual "##", Cells.Picture(con.Buffer, 0, 0, 2, 1), "cells of columns 0 and 1"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderHistory_ArrayWithNoElement_DrawsNothing()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        Dim h() As Double
+        h = Cells.EmptyArray(5)
+        On Error Resume Next
+        chart.RenderHistory 10, 0, 2, h
+        Expect.AreEqual 0, Err.Number, "Err.Number of RenderHistory of an array with no element"
+        On Error GoTo 0
+        Expect.AreEqual "....................", Cells.Picture(con.Buffer, 0, 0, 20, 1), "row 0"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderHistory_ArrayStartingAtOne_DrawsTheChart()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        Dim h(1 To 3) As Double
+        h(1) = 100: h(2) = 50: h(3) = 0
+        On Error Resume Next
+        chart.RenderHistory 10, 0, 2, h
+        Expect.AreEqual 0, Err.Number, "Err.Number of RenderHistory of an array with the lower bound 1"
+        On Error GoTo 0
+        Expect.AreEqual "#|#", Column(con.Buffer, 8, 0, 2), "the oldest value, at column 8"
+        Expect.AreEqual ".|#", Column(con.Buffer, 9, 0, 2), "the middle value, at column 9"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- RenderWithLabel
+
+    [TestCase]
+    Public Sub RenderWithLabel_LabelIsWrittenOneRowBelowTheBlankRowUnderTheBar()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        chart.RenderWithLabel 10, 0, 3, 100, "CPU"
+        Expect.AreEqual "#|#|#|.|C", Cells.Picture(con.Buffer, 10, 0, 1, 5), "bar of 3 rows, a blank row and the first label character in column 10"
+        Expect.AreEqual "CPU", Cells.Text(con.Buffer, 4, 10, 3), "the label in row 4"
+        Expect.AreEqual CLng(ConsoleColor.Gray), Cells.Fore(con.Buffer, 10, 4), "colour of the label"
+        chart.RenderWithLabel 20, 0, 3, 100, "CPU", ConsoleColor.Red, ConsoleColor.Blue, 0, ConsoleColor.Yellow
+        Expect.AreEqual CLng(ConsoleColor.Yellow), Cells.Fore(con.Buffer, 20, 4), "label colour given"
+        Expect.AreEqual CLng(ConsoleColor.Blue), Cells.Back(con.Buffer, 20, 4), "label background"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderWithLabel_LabelIsCentredUnderTheBar()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        chart.RenderWithLabel 10, 0, 3, 100, "CPU"
+        Expect.AreEqual "CPU", Cells.Text(con.Buffer, 4, 9, 3), "the cells 9 to 11 of the label row, centred under the bar in column 10"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderWithLabel_LabelWouldStartLeftOfTheBuffer_StartsInColumn0()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim chart As cVBar = New cVBar(con)
+        chart.RenderWithLabel 0, 0, 3, 100, "LONGLABEL"
+        Expect.AreEqual "LONGLABEL", Cells.Text(con.Buffer, 4, 0, 9), "the label of a bar in column 0"
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- the buffer
+
+    [TestCase]
+    Public Sub Render_BarMadeBeforeFullScreenMode_RaisesError91()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(100, 30, False)
+        Dim chart As cVBar = New cVBar(con)
+        con.EnterFullScreenMode
+        On Error Resume Next
+        chart.Render 0, 0, 4, 50
+        Expect.AreEqual 91, Err.Number, "Err.Number of Render of a chart made before EnterFullScreenMode"
+        On Error GoTo 0
+        Set chart = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,393 @@
+' cConsoleLayout.twin of TBMANLIB_ConsoleComponents 1.0.0.1 (woeoio, MIT licence), compiled into this project.
+' The package cannot take the cConsole of TBMANLIB_ConsoleCore (see the notes of its landing page), so the
+' cases that draw run this copy of the code, which is the code of the package below the line of dashes.
+' The package's own classes are reached as TBMANLIB_ConsoleComponents.<name>.
+' ----------------------------------------------------------------------------
+' =====================================================
+' cConsoleLayout.twin - Layout Manager Component
+' Modern Console Library for TwinBASIC - Components
+' =====================================================
+
+[COMCreatable(False)]
+Public Class cConsoleLayout
+
+    Private m_Console As cConsole
+    Private m_ConsoleWidth As Long
+    Private m_ConsoleHeight As Long
+    Private m_Panels As Collection
+    Private m_PanelsDict As Object  ' Dictionary for fast lookup by name
+    Private m_RootPanel As cConsolePanel
+    Private m_Initialized As Boolean
+
+    ' Constructor
+    Public Sub New(ByVal console As cConsole)
+        Set m_Console = console
+        Set m_Panels = New Collection
+        Set m_PanelsDict = CreateObject("Scripting.Dictionary")
+        m_ConsoleWidth = console.Width
+        m_ConsoleHeight = console.Height
+        m_Initialized = True
+    End Sub
+
+    ' Add a panel to the layout
+    Public Function AddPanel(ByVal name As String, _
+                            ByVal left As Long, ByVal top As Long, _
+                            ByVal width As Long, ByVal height As Long, _
+                            Optional ByVal title As String = "") As cConsolePanel
+        Dim panel As cConsolePanel
+        Set panel = New cConsolePanel(name, left, top, width, height)
+        If Len(title) > 0 Then panel.Title = title
+
+        m_Panels.Add panel
+        m_PanelsDict.Add name, panel
+
+        ' Set as root if first panel
+        If m_Panels.Count = 1 Then
+            Set m_RootPanel = panel
+        End If
+
+        Set AddPanel = panel
+    End Function
+
+    ' Add a panel using ConsoleRect
+    Public Function AddPanelByRect(ByVal name As String, _
+                                    ByVal rect As ConsoleRect, _
+                                    Optional ByVal title As String = "") As cConsolePanel
+        Dim width As Long = rect.Right - rect.Left + 1
+        Dim height As Long = rect.Bottom - rect.Top + 1
+        Return AddPanel(name, rect.Left, rect.Top, width, height, title)
+    End Function
+
+    ' Get a panel by name
+    Public Function GetPanel(ByVal name As String) As cConsolePanel
+        If m_PanelsDict.Exists(name) Then
+            Return m_PanelsDict(name)
+        End If
+        Return Nothing
+    End Function
+
+    ' Remove a panel
+    Public Sub RemovePanel(ByVal name As String)
+        If m_PanelsDict.Exists(name) Then
+            Dim panel As cConsolePanel = m_PanelsDict(name)
+            m_PanelsDict.Remove name
+
+            ' Remove from collection
+            Dim i As Long
+            For i = 1 To m_Panels.Count
+                If m_Panels(i) Is panel Then
+                    m_Panels.Remove i
+                    Exit For
+                End If
+            Next i
+
+            ' Update root if needed
+            If m_RootPanel Is panel Then
+                If m_Panels.Count > 0 Then
+                    Set m_RootPanel = m_Panels(1)
+                Else
+                    Set m_RootPanel = Nothing
+                End If
+            End If
+        End If
+    End Sub
+
+    ' Clear all panels
+    Public Sub Clear()
+        Set m_Panels = New Collection
+        Set m_PanelsDict = CreateObject("Scripting.Dictionary")
+        Set m_RootPanel = Nothing
+    End Sub
+
+    ' Get count of panels
+    Public Property Get PanelCount() As Long
+        Return m_Panels.Count
+    End Property
+
+    ' ========== Layout Methods ==========
+
+    ' Create a horizontal split (left and right)
+    Public Function SplitHorizontal(ByVal parentName As String, _
+                                    ByVal ratio As Double, _
+                                    ByVal leftName As String, _
+                                    ByVal rightName As String) As Variant
+        Dim parent As cConsolePanel = GetPanel(parentName)
+        If parent Is Nothing Then Return Nothing
+
+        Dim leftWidth As Long = CLng(parent.ContentWidth() * ratio)
+        Dim rightWidth As Long = parent.ContentWidth() - leftWidth - 1  ' -1 for separator
+        Dim contentHeight As Long = parent.ContentHeight()
+
+        Dim contentRect As ConsoleRect = parent.ContentRect()
+
+        Dim leftPanel As cConsolePanel = AddPanelByRect(leftName, _
+            ConsoleRect_Create(contentRect.Left, contentRect.Top, _
+                             contentRect.Left + leftWidth - 1, contentRect.Bottom))
+
+        Dim rightPanel As cConsolePanel = AddPanelByRect(rightName, _
+            ConsoleRect_Create(contentRect.Left + leftWidth + 1, contentRect.Top, _
+                             contentRect.Right, contentRect.Bottom))
+
+        Dim result(0 To 1) As cConsolePanel
+        Set result(0) = leftPanel
+        Set result(1) = rightPanel
+        SplitHorizontal = result
+    End Function
+
+    ' Create a vertical split (top and bottom)
+    Public Function SplitVertical(ByVal parentName As String, _
+                                  ByVal ratio As Double, _
+                                  ByVal topName As String, _
+                                  ByVal bottomName As String) As Variant
+        Dim parent As cConsolePanel = GetPanel(parentName)
+        If parent Is Nothing Then Return Nothing
+
+        Dim topHeight As Long = CLng(parent.ContentHeight() * ratio)
+        Dim bottomHeight As Long = parent.ContentHeight() - topHeight - 1  ' -1 for separator
+        Dim contentWidth As Long = parent.ContentWidth()
+
+        Dim contentRect As ConsoleRect = parent.ContentRect()
+
+        Dim topPanel As cConsolePanel = AddPanelByRect(topName, _
+            ConsoleRect_Create(contentRect.Left, contentRect.Top, _
+                             contentRect.Right, contentRect.Top + topHeight - 1))
+
+        Dim bottomPanel As cConsolePanel = AddPanelByRect(bottomName, _
+            ConsoleRect_Create(contentRect.Left, contentRect.Top + topHeight + 1, _
+                             contentRect.Right, contentRect.Bottom))
+
+        Dim result(0 To 1) As cConsolePanel
+        Set result(0) = topPanel
+        Set result(1) = bottomPanel
+        SplitVertical = result
+    End Function
+
+    ' Create a grid layout
+    Public Function CreateGrid(ByVal cols As Long, ByVal rows As Long, _
+                              ByVal namePrefix As String) As Variant
+        Dim gridPanels() As cConsolePanel
+        ReDim gridPanels(0 To cols * rows - 1)
+
+        Dim contentRect As ConsoleRect
+        If m_RootPanel Is Nothing Then
+            contentRect = ConsoleRect_Create(0, 0, m_ConsoleWidth - 1, m_ConsoleHeight - 1)
+        Else
+            contentRect = m_RootPanel.ContentRect()
+        End If
+
+        Dim cellWidth As Long = contentRect.Right - contentRect.Left + 1
+        Dim colStep As Long = cellWidth \ cols
+
+        Dim cellHeight As Long = contentRect.Bottom - contentRect.Top + 1
+        Dim rowStep As Long = cellHeight \ rows
+
+        Dim cellIndex As Long = 0
+        Dim r As Long, c As Long
+
+        For r = 0 To rows - 1
+            For c = 0 To cols - 1
+                Dim panelName As String = namePrefix & "_" & cellIndex
+
+                Dim panelRect As ConsoleRect
+                panelRect.Left = contentRect.Left + c * colStep
+                panelRect.Top = contentRect.Top + r * rowStep
+
+                If c = cols - 1 Then
+                    panelRect.Right = contentRect.Right
+                Else
+                    panelRect.Right = panelRect.Left + colStep - 2  ' -2 for separator
+                End If
+
+                If r = rows - 1 Then
+                    panelRect.Bottom = contentRect.Bottom
+                Else
+                    panelRect.Bottom = panelRect.Top + rowStep - 2  ' -2 for separator
+                End If
+
+                Dim panel As cConsolePanel = AddPanelByRect(panelName, panelRect)
+                Set gridPanels(cellIndex) = panel
+                cellIndex += 1
+            Next c
+        Next r
+
+        CreateGrid = gridPanels
+    End Function
+
+    ' Create a sidebar layout
+    Public Function CreateSidebar(ByVal sidebarWidth As Long, _
+                                  ByVal sidebarName As String, _
+                                  ByVal contentName As String) As Variant
+        Dim contentRect As ConsoleRect
+        If m_RootPanel Is Nothing Then
+            contentRect = ConsoleRect_Create(0, 0, m_ConsoleWidth - 1, m_ConsoleHeight - 1)
+        Else
+            contentRect = m_RootPanel.ContentRect()
+        End If
+
+        Dim sidebarPanel As cConsolePanel = AddPanelByRect(sidebarName, _
+            ConsoleRect_Create(contentRect.Left, contentRect.Top, _
+                             contentRect.Left + sidebarWidth - 1, contentRect.Bottom))
+
+        Dim contentPanel As cConsolePanel = AddPanelByRect(contentName, _
+            ConsoleRect_Create(contentRect.Left + sidebarWidth, contentRect.Top, _
+                             contentRect.Right, contentRect.Bottom))
+
+        Dim result(0 To 1) As cConsolePanel
+        Set result(0) = sidebarPanel
+        Set result(1) = contentPanel
+        CreateSidebar = result
+    End Function
+
+    ' Create header/footer layout
+    Public Function CreateHeaderFooter(ByVal headerHeight As Long, _
+                                       ByVal footerHeight As Long, _
+                                       ByVal headerName As String, _
+                                       ByVal contentName As String, _
+                                       ByVal footerName As String) As Variant
+        Dim contentRect As ConsoleRect
+        If m_RootPanel Is Nothing Then
+            contentRect = ConsoleRect_Create(0, 0, m_ConsoleWidth - 1, m_ConsoleHeight - 1)
+        Else
+            contentRect = m_RootPanel.ContentRect()
+        End If
+
+        Dim headerPanel As cConsolePanel = AddPanelByRect(headerName, _
+            ConsoleRect_Create(contentRect.Left, contentRect.Top, _
+                             contentRect.Right, contentRect.Top + headerHeight - 1))
+
+        Dim mainContentPanel As cConsolePanel = AddPanelByRect(contentName, _
+            ConsoleRect_Create(contentRect.Left, contentRect.Top + headerHeight, _
+                             contentRect.Right, contentRect.Bottom - footerHeight))
+
+        Dim footerPanel As cConsolePanel = AddPanelByRect(footerName, _
+            ConsoleRect_Create(contentRect.Left, contentRect.Bottom - footerHeight + 1, _
+                             contentRect.Right, contentRect.Bottom))
+
+        Dim result(0 To 2) As cConsolePanel
+        Set result(0) = headerPanel
+        Set result(1) = mainContentPanel
+        Set result(2) = footerPanel
+        CreateHeaderFooter = result
+    End Function
+
+    ' ========== Render Methods ==========
+
+    ' Render all panels
+    Public Sub Render(Optional ByVal theme As cConsoleTheme = Nothing)
+        Dim panel As Variant
+        For Each panel In m_Panels
+            Dim p As cConsolePanel = panel
+            If theme IsNot Nothing Then
+                p.Render m_Console.Buffer, theme.Border, theme.Background
+            Else
+                p.Render m_Console.Buffer, ConsoleColor.Gray, ConsoleColor.Black
+            End If
+        Next panel
+    End Sub
+
+    ' Render a specific panel
+    Public Sub RenderPanel(ByVal name As String, _
+                           Optional ByVal theme As cConsoleTheme = Nothing)
+        Dim panel As cConsolePanel = GetPanel(name)
+        If panel IsNot Nothing Then
+            If theme IsNot Nothing Then
+                panel.Render m_Console.Buffer, theme.Border, theme.Background
+            Else
+                panel.Render m_Console.Buffer, ConsoleColor.Gray, ConsoleColor.Black
+            End If
+        End If
+    End Sub
+
+    ' Clear all panels' content areas
+    Public Sub ClearAllContent(Optional ByVal theme As cConsoleTheme = Nothing)
+        Dim panel As Variant
+        For Each panel In m_Panels
+            Dim p As cConsolePanel = panel
+            If theme IsNot Nothing Then
+                p.ClearContent m_Console.Buffer, theme.Foreground, theme.Background
+            Else
+                p.ClearContent m_Console.Buffer, ConsoleColor.Gray, ConsoleColor.Black
+            End If
+        Next panel
+    End Sub
+
+    ' Clear a specific panel's content
+    Public Sub ClearPanelContent(ByVal name As String, _
+                                 Optional ByVal theme As cConsoleTheme = Nothing)
+        Dim panel As cConsolePanel = GetPanel(name)
+        If panel IsNot Nothing Then
+            If theme IsNot Nothing Then
+                panel.ClearContent m_Console.Buffer, theme.Foreground, theme.Background
+            Else
+                panel.ClearContent m_Console.Buffer, ConsoleColor.Gray, ConsoleColor.Black
+            End If
+        End If
+    End Sub
+
+    ' ========== Responsive Methods ==========
+
+    ' Resize layout (called when console size changes)
+    Public Sub Resize(ByVal newWidth As Long, ByVal newHeight As Long)
+        m_ConsoleWidth = newWidth
+        m_ConsoleHeight = newHeight
+
+        ' Simple approach: scale all panels proportionally
+        Dim scaleX As Double = newWidth / m_ConsoleWidth
+        Dim scaleY As Double = newHeight / m_ConsoleHeight
+
+        Dim panel As Variant
+        For Each panel In m_Panels
+            Dim p As cConsolePanel = panel
+            Dim pnlNewLeft As Long = CLng(p.Rect.Left * scaleX)
+            Dim pnlNewTop As Long = CLng(p.Rect.Top * scaleY)
+            Dim pnlNewWidth As Long = CLng((p.Rect.Right - p.Rect.Left + 1) * scaleX)
+            Dim pnlNewHeight As Long = CLng((p.Rect.Bottom - p.Rect.Top + 1) * scaleY)
+
+            p.Move pnlNewLeft, pnlNewTop
+            p.Resize pnlNewWidth, pnlNewHeight
+        Next panel
+    End Sub
+
+    ' Auto-resize layout from console
+    Public Sub AutoResize()
+        Resize m_Console.Width, m_Console.Height
+    End Sub
+
+    ' ========== Utility Methods ==========
+
+    ' Get all panel names
+    Public Function GetPanelNames() As Variant
+        Dim names() As String
+        ReDim names(0 To m_Panels.Count - 1)
+
+        Dim i As Long = 0
+        Dim key As Variant
+        For Each key In m_PanelsDict.Keys
+            names(i) = key
+            i += 1
+        Next key
+
+        GetPanelNames = names
+    End Function
+
+    ' Check if panel exists
+    Public Function HasPanel(ByVal name As String) As Boolean
+        Return m_PanelsDict.Exists(name)
+    End Function
+
+    ' Get all panels
+    Public Function GetAllPanels() As Variant
+        Dim panels() As cConsolePanel
+        ReDim panels(0 To m_Panels.Count - 1)
+
+        Dim i As Long = 1
+        Dim panel As Variant
+        For Each panel In m_Panels
+            Set panels(i - 1) = panel
+            i += 1
+        Next panel
+
+        GetAllPanels = panels
+    End Function
+
+End Class

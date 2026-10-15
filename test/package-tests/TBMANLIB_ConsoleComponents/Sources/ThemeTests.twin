@@ -1,0 +1,125 @@
+' TBMANLIB_ConsoleComponents: cConsoleTheme and mConsoleThemeFactory. They need no console and no
+' buffer, so they work with the package as it is.
+[TestFixture]
+Module ThemeTests
+
+    Private Function ColourName(ByVal c As Long) As String
+        Select Case c
+            Case 0: ColourName = "Black"
+            Case 1: ColourName = "DarkBlue"
+            Case 2: ColourName = "DarkGreen"
+            Case 3: ColourName = "DarkCyan"
+            Case 4: ColourName = "DarkRed"
+            Case 5: ColourName = "DarkMagenta"
+            Case 6: ColourName = "DarkYellow"
+            Case 7: ColourName = "Gray"
+            Case 8: ColourName = "DarkGray"
+            Case 9: ColourName = "Blue"
+            Case 10: ColourName = "Green"
+            Case 11: ColourName = "Cyan"
+            Case 12: ColourName = "Red"
+            Case 13: ColourName = "Magenta"
+            Case 14: ColourName = "Yellow"
+            Case 15: ColourName = "White"
+            Case Else: ColourName = CStr(c)
+        End Select
+    End Function
+
+    ' The 14 fields in the order of the documentation's table.
+    Private Function Fields(ByVal t As cConsoleTheme) As String
+        Fields = ColourName(t.Background) & " " & ColourName(t.Foreground) & " " & ColourName(t.Primary) & " " & _
+                 ColourName(t.Secondary) & " " & ColourName(t.Success) & " " & ColourName(t.Warning) & " " & _
+                 ColourName(t.Error) & " " & ColourName(t.Info) & " " & ColourName(t.Muted) & " " & _
+                 ColourName(t.Border) & " " & ColourName(t.HeaderBackground) & " " & _
+                 ColourName(t.HeaderForeground) & " " & ColourName(t.SelectedBackground) & " " & _
+                 ColourName(t.SelectedForeground)
+    End Function
+
+    [TestCase]
+    Public Sub CreateDefault_FieldsAreAsDocumented()
+        Expect.Begin
+        Dim t As cConsoleTheme = mConsoleThemeFactory.CreateDefault()
+        Expect.AreEqual "Black Gray Blue DarkGray Green Yellow Red Cyan DarkGray DarkGray DarkBlue White DarkBlue White", Fields(t), "fields of CreateDefault"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateHTOP_FieldsAreAsDocumented()
+        Expect.Begin
+        Dim t As cConsoleTheme = mConsoleThemeFactory.CreateHTOP()
+        Expect.AreEqual "Black Gray Cyan DarkBlue Green Yellow Red Cyan DarkGray Gray DarkBlue White Blue White", Fields(t), "fields of CreateHTOP"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateLight_FieldsAreAsDocumented()
+        Expect.Begin
+        Dim t As cConsoleTheme = mConsoleThemeFactory.CreateLight()
+        Expect.AreEqual "White Black Blue Gray DarkGreen DarkYellow DarkRed DarkCyan Gray Gray DarkGray White Gray Black", Fields(t), "fields of CreateLight"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Factory_EachCallReturnsANewTheme()
+        Expect.Begin
+        Dim a As cConsoleTheme = mConsoleThemeFactory.CreateDefault()
+        Dim b As cConsoleTheme = mConsoleThemeFactory.CreateDefault()
+        a.Border = ConsoleColor.Red
+        Expect.AreEqual CLng(ConsoleColor.DarkGray), CLng(b.Border), "Border of a second theme after the first one was changed"
+        Expect.IsFalse a Is b, "two calls return the same object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_EveryFieldIsBlack()
+        Expect.Begin
+        Dim t As New cConsoleTheme
+        Expect.AreEqual "Black Black Black Black Black Black Black Black Black Black Black Black Black Black", Fields(t), "fields of New cConsoleTheme"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_ReturnsACopyThatChangesOnItsOwn()
+        Expect.Begin
+        Dim t As cConsoleTheme = mConsoleThemeFactory.CreateHTOP()
+        Dim c As cConsoleTheme = t.Clone()
+        Expect.AreEqual Fields(t), Fields(c), "fields of the clone"
+        c.Border = ConsoleColor.Red
+        c.SelectedForeground = ConsoleColor.Magenta
+        Expect.AreEqual CLng(ConsoleColor.Gray), CLng(t.Border), "Border of the original after the clone was changed"
+        Expect.AreEqual CLng(ConsoleColor.White), CLng(t.SelectedForeground), "SelectedForeground of the original after the clone was changed"
+        Expect.IsFalse t Is c, "the clone is the same object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetColor_ReturnsTheFieldOfTheSameName()
+        Expect.Begin
+        Dim t As cConsoleTheme = mConsoleThemeFactory.CreateLight()
+        Expect.AreEqual CLng(t.Primary), CLng(t.GetColor(ThemeColorType.tcPrimary)), "GetColor tcPrimary"
+        Expect.AreEqual CLng(t.Secondary), CLng(t.GetColor(ThemeColorType.tcSecondary)), "GetColor tcSecondary"
+        Expect.AreEqual CLng(t.Success), CLng(t.GetColor(ThemeColorType.tcSuccess)), "GetColor tcSuccess"
+        Expect.AreEqual CLng(t.Warning), CLng(t.GetColor(ThemeColorType.tcWarning)), "GetColor tcWarning"
+        Expect.AreEqual CLng(t.Error), CLng(t.GetColor(ThemeColorType.tcError)), "GetColor tcError"
+        Expect.AreEqual CLng(t.Info), CLng(t.GetColor(ThemeColorType.tcInfo)), "GetColor tcInfo"
+        Expect.AreEqual CLng(t.Muted), CLng(t.GetColor(ThemeColorType.tcMuted)), "GetColor tcMuted"
+        Expect.AreEqual CLng(t.Background), CLng(t.GetColor(ThemeColorType.tcBackground)), "GetColor tcBackground"
+        Expect.AreEqual CLng(t.Foreground), CLng(t.GetColor(ThemeColorType.tcForeground)), "GetColor tcForeground"
+        Expect.AreEqual CLng(t.Border), CLng(t.GetColor(ThemeColorType.tcBorder)), "GetColor tcBorder"
+        Expect.AreEqual CLng(t.HeaderBackground), CLng(t.GetColor(ThemeColorType.tcHeaderBackground)), "GetColor tcHeaderBackground"
+        Expect.AreEqual CLng(t.HeaderForeground), CLng(t.GetColor(ThemeColorType.tcHeaderForeground)), "GetColor tcHeaderForeground"
+        Expect.AreEqual CLng(t.SelectedBackground), CLng(t.GetColor(ThemeColorType.tcSelectedBackground)), "GetColor tcSelectedBackground"
+        Expect.AreEqual CLng(t.SelectedForeground), CLng(t.GetColor(ThemeColorType.tcSelectedForeground)), "GetColor tcSelectedForeground"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetColor_ValueOfNoMember_ReturnsForeground()
+        Expect.Begin
+        Dim t As cConsoleTheme = mConsoleThemeFactory.CreateLight()
+        Expect.AreEqual CLng(t.Foreground), CLng(t.GetColor(99)), "GetColor of 99"
+        Expect.AreEqual CLng(t.Foreground), CLng(t.GetColor(-1)), "GetColor of -1"
+        Expect.Done
+    End Sub
+
+End Module

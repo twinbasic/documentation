@@ -1,0 +1,314 @@
+' TBMANLIB_ConsoleComponents: cConsolePanel, on the compiled copy of its code (see TwoPackagesTests).
+' A panel draws into a cConsoleBuffer it is given, so these cases need no console.
+[TestFixture]
+Module PanelTests
+
+    Private Const NONE As Long = 0
+    Private Const SINGLE As Long = 1
+    Private Const DOUBLE_ As Long = 2
+    Private Const ROUNDED As Long = 3
+    Private Const BOLD As Long = 4
+
+    ' The corners, then the horizontal and vertical line of a border, as hexadecimal numbers.
+    Private Function BorderCodes(ByVal Buf As cConsoleBuffer, ByVal L As Long, ByVal T As Long, ByVal R As Long, ByVal B As Long) As String
+        BorderCodes = Hex$(Cells.Code(Buf, L, T)) & " " & Hex$(Cells.Code(Buf, R, T)) & " " & Hex$(Cells.Code(Buf, L, B)) & " " & Hex$(Cells.Code(Buf, R, B)) & " " & _
+                      Hex$(Cells.Code(Buf, L + 1, T)) & " " & Hex$(Cells.Code(Buf, L, T + 1))
+    End Function
+
+    ' ---- the rectangle
+
+    [TestCase]
+    Public Sub New_RectHasInclusiveEdges()
+        Expect.Begin
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 20, 6)
+        Expect.AreEqual "2 1 21 6", panel.Rect.Left & " " & panel.Rect.Top & " " & panel.Rect.Right & " " & panel.Rect.Bottom, "Left, Top, Right and Bottom of a panel at 2, 1 of 20 by 6 cells"
+        Expect.AreEqual "main", panel.Name, "Name"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_WithoutArguments_IsAPanelOf10By5CellsAtTheOrigin()
+        Expect.Begin
+        Dim panel As cConsolePanel = New cConsolePanel
+        Expect.AreEqual "0 0 9 4", panel.Rect.Left & " " & panel.Rect.Top & " " & panel.Rect.Right & " " & panel.Rect.Bottom, "Left, Top, Right and Bottom of a default panel"
+        Expect.AreEqual "", panel.Name, "Name"
+        Expect.AreEqual SINGLE, CLng(panel.BorderStyle), "BorderStyle"
+        Expect.AreEqual CLng(ConsoleColor.Gray), CLng(panel.BorderColor), "BorderColor"
+        Expect.AreEqual CLng(ConsoleColor.White), CLng(panel.TitleColor), "TitleColor"
+        Expect.AreEqual 1, panel.Padding, "Padding"
+        Expect.AreEqual "", panel.Title, "Title"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ContentRect_TakesOneCellForTheBorderAndThePadding()
+        Expect.Begin
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 20, 6)
+        Dim cr As ConsoleRect = panel.ContentRect()
+        Expect.AreEqual "4 3 19 4", cr.Left & " " & cr.Top & " " & cr.Right & " " & cr.Bottom, "content area of a panel at 2, 1 of 20 by 6 cells"
+        Expect.AreEqual 16, panel.ContentWidth(), "ContentWidth"
+        Expect.AreEqual 2, panel.ContentHeight(), "ContentHeight"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ContentRect_BorderStyleNone_TakesOnlyThePadding()
+        Expect.Begin
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 20, 6)
+        panel.BorderStyle = NONE
+        Dim cr As ConsoleRect = panel.ContentRect()
+        Expect.AreEqual "3 2 20 5", cr.Left & " " & cr.Top & " " & cr.Right & " " & cr.Bottom, "content area with no border and a padding of 1"
+        panel.Padding = 0
+        cr = panel.ContentRect()
+        Expect.AreEqual "2 1 21 6", cr.Left & " " & cr.Top & " " & cr.Right & " " & cr.Bottom, "content area with no border and no padding"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ContentRect_SmallPanel_IsEmptyOrNegative()
+        Expect.Begin
+        Dim panel As cConsolePanel = New cConsolePanel("tiny", 0, 0, 3, 3)
+        Expect.AreEqual -1, panel.ContentWidth(), "ContentWidth of a panel of 3 by 3 cells"
+        Expect.AreEqual -1, panel.ContentHeight(), "ContentHeight of a panel of 3 by 3 cells"
+        panel.Resize 5, 5
+        Expect.AreEqual 1, panel.ContentWidth(), "ContentWidth of a panel of 5 by 5 cells"
+        Expect.AreEqual 1, panel.ContentHeight(), "ContentHeight of a panel of 5 by 5 cells"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Move_KeepsTheSize()
+        Expect.Begin
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 20, 6)
+        panel.Move 10, 7
+        Expect.AreEqual "10 7 29 12", panel.Rect.Left & " " & panel.Rect.Top & " " & panel.Rect.Right & " " & panel.Rect.Bottom, "Rect after Move 10, 7"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Resize_KeepsThePosition()
+        Expect.Begin
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 20, 6)
+        panel.Resize 8, 4
+        Expect.AreEqual "2 1 9 4", panel.Rect.Left & " " & panel.Rect.Top & " " & panel.Rect.Right & " " & panel.Rect.Bottom, "Rect after Resize 8, 4"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Move_AndResize_DrawNothing()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 20, 6)
+        panel.Render buf
+        panel.Move 0, 0
+        panel.Resize 5, 5
+        Expect.AreEqual &H250C&, Cells.Code(buf, 2, 1), "the old upper left corner"
+        Expect.AreEqual 32, Cells.Code(buf, 0, 0), "the new upper left corner"
+        Expect.Done
+    End Sub
+
+    ' ---- Render
+
+    [TestCase]
+    Public Sub Render_Single_DrawsThe250CBorder()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 10, 5)
+        panel.Render buf
+        Expect.AreEqual "250C 2510 2514 2518 2500 2502", BorderCodes(buf, 2, 1, 11, 5), "corners, horizontal and vertical line"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Double_DrawsThe2554Border()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 10, 5)
+        panel.BorderStyle = DOUBLE_
+        panel.Render buf
+        Expect.AreEqual "2554 2557 255A 255D 2550 2551", BorderCodes(buf, 2, 1, 11, 5), "corners, horizontal and vertical line"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Rounded_DrawsTheRoundedCornersAndSingleLines()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 10, 5)
+        panel.BorderStyle = ROUNDED
+        panel.Render buf
+        Expect.AreEqual "256D 256E 2570 256F 2500 2502", BorderCodes(buf, 2, 1, 11, 5), "corners, horizontal and vertical line"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Bold_DrawsTheHeavyBorder()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 10, 5)
+        panel.BorderStyle = BOLD
+        panel.Render buf
+        Expect.AreEqual "250F 2513 2517 251B 2501 2503", BorderCodes(buf, 2, 1, 11, 5), "corners, horizontal and vertical line"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_BorderUsesTheColoursOfTheCall_NotBorderColor()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 10, 5)
+        panel.BorderColor = ConsoleColor.Red
+        panel.Render buf, ConsoleColor.Cyan, ConsoleColor.DarkBlue
+        Expect.AreEqual CLng(ConsoleColor.Cyan), Cells.Fore(buf, 2, 1), "colour of the upper left corner"
+        Expect.AreEqual CLng(ConsoleColor.DarkBlue), Cells.Back(buf, 2, 1), "background of the upper left corner"
+        Expect.AreEqual CLng(ConsoleColor.Cyan), Cells.Fore(buf, 5, 5), "colour of the bottom line"
+        panel.Render buf
+        Expect.AreEqual CLng(ConsoleColor.Gray), Cells.Fore(buf, 2, 1), "colour of the corner with the default colours"
+        Expect.AreEqual CLng(ConsoleColor.Black), Cells.Back(buf, 2, 1), "background of the corner with the default colours"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_DoesNotChangeTheInsideOfThePanel()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 10, 5)
+        buf.WriteAt 3, 2, "inside"
+        panel.Render buf
+        Expect.AreEqual "inside", Cells.Text(buf, 2, 3, 6), "the text inside the border"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_StyleNone_DrawsNothingNotEvenTheTitle()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 10, 5)
+        panel.BorderStyle = NONE
+        panel.Title = "Log"
+        panel.Render buf
+        Expect.AreEqual String$(30, " "), Cells.Text(buf, 1), "row 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_CellsOutsideTheBuffer_AreDropped()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 4)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 6, 1, 10, 6)
+        panel.Title = "Log"
+        On Error Resume Next
+        panel.Render buf
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render of a panel that reaches beyond the buffer"
+        panel.BorderStyle = ROUNDED
+        panel.Render buf
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render of a rounded panel that reaches beyond the buffer"
+        On Error GoTo 0
+        Expect.AreEqual &H256D&, Cells.Code(buf, 6, 1), "the upper left corner, which lies in the buffer, as the second Render drew it"
+        Expect.Done
+    End Sub
+
+    ' ---- the title
+
+    [TestCase]
+    Public Sub Render_Title_IsWrittenBetweenTwoSpacesOnTheTopBorder()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 20, 6)
+        panel.Title = "Log"
+        panel.BorderStyle = DOUBLE_
+        panel.BorderColor = ConsoleColor.Red
+        panel.TitleColor = ConsoleColor.Yellow
+        panel.Render buf, ConsoleColor.Cyan, ConsoleColor.DarkBlue
+        Expect.AreEqual " Log ", Cells.Text(buf, 1, 3, 5), "cells 3 to 7 of the top border"
+        Expect.AreEqual CLng(ConsoleColor.Red), Cells.Fore(buf, 3, 1), "colour of the space before the title (BorderColor)"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), Cells.Fore(buf, 4, 1), "colour of the title (TitleColor)"
+        Expect.AreEqual CLng(ConsoleColor.Red), Cells.Fore(buf, 7, 1), "colour of the space after the title"
+        Expect.AreEqual CLng(ConsoleColor.Black), Cells.Back(buf, 4, 1), "background of the title"
+        Expect.AreEqual CLng(ConsoleColor.Black), Cells.Back(buf, 3, 1), "background of the space before the title"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Title_SampleOfThePage()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 20, 6)
+        panel.Title = "Log"
+        panel.BorderStyle = DOUBLE_
+        panel.Render buf, ConsoleColor.Cyan, ConsoleColor.Black
+        Expect.AreEqual "2554 11", Hex$(Cells.Code(buf, 2, 1)) & " " & Cells.Fore(buf, 2, 1), "the upper left corner and its colour"
+        Expect.AreEqual "L 15", Cells.Text(buf, 1, 4, 1) & " " & Cells.Fore(buf, 4, 1), "the first character of the title and its colour"
+        Expect.AreEqual "16 2", panel.ContentWidth() & " " & panel.ContentHeight(), "content size"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_LongTitle_IsCutWithoutAnEllipsis()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 10, 5)
+        panel.Title = "ABCDEFGHIJ"
+        panel.Render buf
+        Expect.AreEqual " ABCDEF " & ChrW$(&H2510), Cells.Text(buf, 1, 3, 9), "cells 3 to 11 of the top border of a panel 10 cells wide"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_PanelTooNarrowForOneCharacterOfTheTitle_DrawsNoTitle()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 4, 5)
+        panel.Title = "Log"
+        panel.Render buf
+        Expect.AreEqual ChrW$(&H250C) & ChrW$(&H2500) & ChrW$(&H2500) & ChrW$(&H2510), Cells.Text(buf, 1, 2, 4), "the top border of a panel 4 cells wide"
+        Expect.Done
+    End Sub
+
+    ' ---- ClearContent
+
+    [TestCase]
+    Public Sub ClearContent_FillsTheContentAreaWithSpaces_AndLeavesTheBorderAndThePadding()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 10, 6)
+        Dim y As Long
+        For y = 0 To 8
+            buf.WriteAt 0, y, String$(30, "x")
+        Next
+        panel.Render buf
+        panel.ClearContent buf
+        ' the content area is columns 4 to 9, rows 3 to 4
+        Expect.AreEqual "xx" & ChrW$(&H2502) & "xxxxxxxx", Cells.Text(buf, 2, 0, 11), "row 2, the padding row"
+        Expect.AreEqual "xx" & ChrW$(&H2502) & "x      x" & ChrW$(&H2502) & "xx", Cells.Text(buf, 3, 0, 14), "row 3: border, padding, content, padding, border"
+        Expect.AreEqual "xx" & ChrW$(&H2502) & "x      x" & ChrW$(&H2502) & "xx", Cells.Text(buf, 4, 0, 14), "row 4"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClearContent_UsesTheColoursGiven()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 2, 1, 10, 6)
+        panel.ClearContent buf, ConsoleColor.Red, ConsoleColor.DarkBlue
+        Expect.AreEqual CLng(ConsoleColor.Red), Cells.Fore(buf, 4, 3), "colour of a cleared cell"
+        Expect.AreEqual CLng(ConsoleColor.DarkBlue), Cells.Back(buf, 4, 3), "background of a cleared cell"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClearContent_ContentAreaOfLessThanTwoCells_DoesNothing()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(30, 10)
+        Dim panel As cConsolePanel = New cConsolePanel("main", 0, 0, 5, 5)
+        buf.WriteAt 2, 2, "x"
+        panel.ClearContent buf
+        Expect.AreEqual "x", Cells.Text(buf, 2, 2, 1), "the one cell of the content area of a panel of 5 by 5 cells"
+        Set panel = New cConsolePanel("wide", 0, 0, 8, 5)
+        buf.WriteAt 2, 2, "xxxx"
+        panel.ClearContent buf
+        Expect.AreEqual "xxxx", Cells.Text(buf, 2, 2, 4), "a content area of 4 by 1 cells"
+        Expect.Done
+    End Sub
+
+End Module

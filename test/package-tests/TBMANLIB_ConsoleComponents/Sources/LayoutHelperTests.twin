@@ -1,0 +1,349 @@
+' TBMANLIB_ConsoleComponents: cLayoutHelper, on the compiled copy of its code (see TwoPackagesTests).
+' The cases run in a console window of 80 by 25 cells, the size the page's samples use.
+[TestFixture]
+Module LayoutHelperTests
+
+    Private Function R(ByRef Rect As ConsoleRect) As String
+        R = Rect.Left & " " & Rect.Top & " " & Rect.Right & " " & Rect.Bottom
+    End Function
+
+    Private Function Rects(ByRef Parts() As ConsoleRect) As String
+        Dim i As Long
+        For i = LBound(Parts) To UBound(Parts)
+            If i > LBound(Parts) Then Rects = Rects & " | "
+            Rects = Rects & R(Parts(i))
+        Next
+    End Function
+
+    ' ---- positions
+
+    [TestCase]
+    Public Sub Center_CenterX_CenterY_UseTheSizeOfTheWindow()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim pos As ConsolePosition = helper.Center(20, 5)
+        Expect.AreEqual "30 10", pos.Col & " " & pos.Row, "Center of an area of 20 by 5 in a window of 80 by 25"
+        Expect.AreEqual 30, helper.CenterX(20), "CenterX of 20"
+        Expect.AreEqual 10, helper.CenterY(5), "CenterY of 5"
+        pos = helper.Center(100, 31)
+        Expect.AreEqual "-10 -3", pos.Col & " " & pos.Row, "Center of an area larger than the window"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CenterRect_StartsAtCenter_AndIsTheRectangleOfTheConsoleMember()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim a As ConsoleRect = helper.CenterRect(20, 5)
+        Dim b As ConsoleRect = con.CenterRect(20, 5)
+        Expect.AreEqual "30 10 49 14", R(a), "CenterRect of 20 by 5"
+        Expect.AreEqual R(b), R(a), "the rectangle of cConsole.CenterRect"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Percent_PercentX_PercentY_AreNotLimitedTo0To100()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim pos As ConsolePosition = helper.Percent(25, 50)
+        Expect.AreEqual "20 12", pos.Col & " " & pos.Row, "Percent of 25 and 50"
+        Expect.AreEqual 20, helper.PercentX(25), "PercentX of 25"
+        Expect.AreEqual 12, helper.PercentY(50), "PercentY of 50 (12.5 rounds to 12)"
+        Expect.AreEqual 160, helper.PercentX(200), "PercentX of 200"
+        Expect.AreEqual -8, helper.PercentX(-10), "PercentX of -10"
+        pos = helper.Percent(150, 200)
+        Expect.AreEqual "120 50", pos.Col & " " & pos.Row, "Percent of 150 and 200"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PercentRect_LeftTopWidthHeightAreShares()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim a As ConsoleRect = helper.PercentRect(25, 20, 50, 40)
+        Expect.AreEqual "20 5 59 14", R(a), "PercentRect of 25, 20, 50 and 40"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SpacedPositions_DoNotUseTheWindow()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim cols As Variant = helper.SpacedPositions(3, 10, 2, 5)
+        Expect.AreEqual "5 17 29", cols(0) & " " & cols(1) & " " & cols(2), "SpacedPositions of 3 items of 10 columns, 2 apart, from column 5"
+        Expect.AreEqual 0, LBound(cols), "lower bound of the result"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- rectangles
+
+    [TestCase]
+    Public Sub WithMargins_LeavesTheMarginsFree()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim a As ConsoleRect = helper.WithMargins(2, 1, 3, 4)
+        Expect.AreEqual "2 1 76 20", R(a), "WithMargins of 2, 1, 3 and 4"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClampRect_CutsTheRectangleToTheWindow()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim a As ConsoleRect = ConsoleRect_Create(-5, -2, 100, 40)
+        Dim b As ConsoleRect = helper.ClampRect(a)
+        Expect.AreEqual "0 0 79 24", R(b), "ClampRect of a rectangle larger than the window"
+        a = ConsoleRect_Create(10, 20, 30, 24)
+        b = helper.ClampRect(a)
+        Expect.AreEqual "10 20 30 24", R(b), "ClampRect of a rectangle inside the window"
+        a = ConsoleRect_Create(90, 30, 95, 35)
+        b = helper.ClampRect(a)
+        Expect.IsFalse helper.IsValidRect(b), "IsValidRect of a rectangle that lay wholly outside the window, after ClampRect (" & R(b) & ")"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsValidRect_GetRectWidth_GetRectHeight()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim a As ConsoleRect = ConsoleRect_Create(2, 3, 11, 7)
+        Expect.IsTrue helper.IsValidRect(a), "IsValidRect of 2, 3, 11, 7"
+        Expect.AreEqual 10, helper.GetRectWidth(a), "GetRectWidth"
+        Expect.AreEqual 5, helper.GetRectHeight(a), "GetRectHeight"
+        Expect.AreEqual ConsoleRect_Width(a), helper.GetRectWidth(a), "ConsoleRect_Width"
+        Expect.AreEqual ConsoleRect_Height(a), helper.GetRectHeight(a), "ConsoleRect_Height"
+        a = ConsoleRect_Create(5, 5, 4, 9)
+        Expect.IsFalse helper.IsValidRect(a), "IsValidRect of a rectangle with Right below Left"
+        a = ConsoleRect_Create(5, 5, 5, 5)
+        Expect.IsTrue helper.IsValidRect(a), "IsValidRect of a rectangle of one cell"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- the arrangements
+
+    [TestCase]
+    Public Sub SplitHorizontal_GivesATopAndABottomRectangle()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim parts() As ConsoleRect
+        parts = helper.SplitHorizontal(40)
+        Expect.AreEqual "0 0 79 9 | 0 10 79 24", Rects(parts), "SplitHorizontal of 40 percent"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SplitVertical_GivesALeftAndARightRectangle()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim parts() As ConsoleRect
+        parts = helper.SplitVertical(25)
+        Expect.AreEqual "0 0 19 24 | 20 0 79 24", Rects(parts), "SplitVertical of 25 percent"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Grid_CellsAreWidthDivColsByHeightDivRows_AndTheRemainderIsNotCovered()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim cells() As ConsoleRect
+        cells = helper.Grid(2, 2)
+        Expect.AreEqual "0 0 39 11 | 40 0 79 11 | 0 12 39 23 | 40 12 79 23", Rects(cells), "Grid of 2 by 2"
+        cells = helper.Grid(3, 1)
+        Expect.AreEqual "0 0 25 24 | 26 0 51 24 | 52 0 77 24", Rects(cells), "Grid of 3 by 1 (columns of 26, the last 2 columns of the window are not covered)"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sidebar_GivesASidebarAndTheRestOfTheWindow()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim parts() As ConsoleRect
+        parts = helper.Sidebar(20)
+        Expect.AreEqual "0 0 19 24 | 20 0 79 24", Rects(parts), "Sidebar of 20 columns"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HeaderFooter_GivesAHeaderABodyAndAFooter()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim parts() As ConsoleRect
+        parts = helper.HeaderFooter(3, 2)
+        Expect.AreEqual "0 0 79 2 | 0 3 79 22 | 0 23 79 24", Rects(parts), "HeaderFooter of 3 and 2 rows"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EvenColumns_LastColumnTakesTheRemainder()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim parts() As ConsoleRect
+        parts = helper.EvenColumns(3, 2)
+        Expect.AreEqual "2 2 26 22 | 27 2 51 22 | 52 2 77 22", Rects(parts), "EvenColumns of 3 with a margin of 2 (76 columns, 25 each)"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EvenRows_LastRowTakesTheRemainder()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim parts() As ConsoleRect
+        parts = helper.EvenRows(3, 1)
+        Expect.AreEqual "1 1 78 7 | 1 8 78 14 | 1 15 78 23", Rects(parts), "EvenRows of 3 with a margin of 1 (23 rows, 7 each)"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ArrangementsWithACountOfZero_RaiseError11()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        On Error Resume Next
+        helper.Grid 0, 2
+        Expect.AreEqual 11, Err.Number, "Err.Number of Grid with 0 columns"
+        Err.Clear
+        helper.Grid 2, 0
+        Expect.AreEqual 11, Err.Number, "Err.Number of Grid with 0 rows"
+        Err.Clear
+        helper.EvenColumns 0, 0
+        Expect.AreEqual 11, Err.Number, "Err.Number of EvenColumns of 0"
+        Err.Clear
+        helper.EvenRows 0, 0
+        Expect.AreEqual 11, Err.Number, "Err.Number of EvenRows of 0"
+        On Error GoTo 0
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- the window
+
+    [TestCase]
+    Public Sub Members_FollowTheWindowWhenItIsResized()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Expect.AreEqual 30, helper.CenterX(20), "CenterX before the window changed"
+        Rig.ResizeWindow 100, 30
+        Expect.AreEqual 40, helper.CenterX(20), "CenterX after the window became 100 columns wide"
+        Expect.AreEqual 12, helper.CenterY(5), "CenterY after the window became 30 rows high"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Members_ProgramWithoutAConsole_ComputeFor80By25Cells()
+        Expect.Begin
+        Rig.Acquire 100, 30
+        Rig.NoHandles
+        Dim con As cConsole = New cConsole
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Expect.AreEqual 30, helper.CenterX(20), "CenterX without a console"
+        Expect.AreEqual 10, helper.CenterY(5), "CenterY without a console"
+        Expect.AreEqual 20, helper.PercentX(25), "PercentX without a console"
+        Expect.AreEqual 12, helper.PercentY(50), "PercentY without a console"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- Variants
+
+    [TestCase]
+    Public Sub Grid_ElementOfTheVariant_CannotBeReadMemberByMember()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim parts As Variant = helper.Grid(2, 2)
+        Dim n As Long
+        On Error Resume Next
+        n = parts(0).Left
+        Expect.AreEqual -2147467259, Err.Number, "Err.Number of parts(0).Left on the Variant"
+        On Error GoTo 0
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Grid_Variant_IsAssignedToAnArrayOfRectangles()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25, False)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        Dim rects() As ConsoleRect
+        rects = helper.Grid(2, 2)
+        Expect.AreEqual 0, LBound(rects), "lower bound of rects"
+        Expect.AreEqual 3, UBound(rects), "upper bound of rects"
+        Expect.AreEqual "40 12 79 23", R(rects(3)), "rects(3)"
+        Set helper = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,19 @@
+' TBMANLIB_ConsoleComponents: the console a drawing case works on. Open gives the process a screen
+' buffer of its own (Rig), makes a cConsole of TBMANLIB_ConsoleCore on it and, unless asked not to,
+' enters its full-screen mode. A case sets every component and the console to Nothing and then calls
+' Close, which puts the process's console handles and modes back (a cConsole put back
+' what it changed when it is destroyed, so it must be destroyed first).
+Module Screen
+
+    Public Function Open(Optional ByVal Cols As Long = 100, Optional ByVal Rows As Long = 30, Optional ByVal FullScreen As Boolean = True) As cConsole
+        Rig.Acquire Cols, Rows
+        Dim c As New cConsole
+        If FullScreen Then c.EnterFullScreenMode
+        Set Open = c
+    End Function
+
+    Public Sub Close()
+        Rig.Release
+    End Sub
+
+End Module
