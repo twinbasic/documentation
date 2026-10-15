@@ -58,6 +58,8 @@ import {
 import {
   COMPILE_DIR,
   compileSources,
+  RESOURCES_DIR,
+  resourceFiles,
   EXPECT_JSON,
   packageTestNames,
   packageVersion,
@@ -211,7 +213,7 @@ async function runPackage(pkg) {
       for (const r of tbrunCases(compileTree, arch, compileNames, opts.timeout))
         outcomes.get(r.name)[arch] = outcomeOf(r);
     }
-    const tree = stageTree(pkg, pkg, arch, template, files);
+    const tree = stageTree(pkg, pkg, arch, template, files, resourceFiles(ROOT, pkg));
     const own = names.filter((n) => !compileNames.includes(n));
     const hangs = own.filter((n) => expectationFor(expect, n, arch).kind === "hang");
     let rest = own.filter((n) => !hangs.includes(n));
@@ -293,8 +295,9 @@ async function ensurePackage(settings) {
   }
 }
 
-// The project staged as WORK/<label>-<arch>-<port>, with the package embedded.
-function stageTree(label, pkg, arch, template, files) {
+// The project staged as WORK/<label>-<arch>-<port>, with the package embedded, and with the
+// resources given (the run-time project's Resources/, byte for byte).
+function stageTree(label, pkg, arch, template, files, resources = []) {
   const settings = testSettings(template, pkg);
   const tree = path.join(WORK, `${label}-${arch}-${port}`);
   rmSync(tree, { recursive: true, force: true });
@@ -309,6 +312,11 @@ function stageTree(label, pkg, arch, template, files) {
     const out = path.join(tree, "Sources", ...f.name.split("/"));
     mkdirSync(path.dirname(out), { recursive: true });
     writeFileSync(out, f.text.replace(/\n/g, "\r\n"), "utf8");
+  }
+  for (const r of resources) {
+    const out = path.join(tree, RESOURCES_DIR, ...r.name.split("/"));
+    mkdirSync(path.dirname(out), { recursive: true });
+    writeFileSync(out, r.bytes);
   }
   return tree;
 }

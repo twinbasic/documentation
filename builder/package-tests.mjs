@@ -18,7 +18,14 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { downloadName, packageTestNames, templateSettings, testSettings, testSources } from "../lib/package-tests.mjs";
+import {
+  downloadName,
+  packageTestNames,
+  resourceFiles,
+  templateSettings,
+  testSettings,
+  testSources,
+} from "../lib/package-tests.mjs";
 import { packFiles } from "../scripts/impexp.mjs";
 import { posix } from "./paths.mjs";
 
@@ -50,6 +57,7 @@ export async function packPackageTests(cfg, pkg) {
   const files = [{ rel: "Settings", bytes: Buffer.from(`${JSON.stringify(settings, null, "\t")}\n`, "utf8") }];
   for (const f of testSources(cfg.src, pkg))
     files.push({ rel: `Sources/${f.name}`, bytes: Buffer.from(f.text, "utf8") });
+  for (const r of resourceFiles(cfg.src, pkg)) files.push({ rel: `Resources/${r.name}`, bytes: r.bytes });
   return packFiles(files, `${pkg}Tests`).bytes;
 }
 

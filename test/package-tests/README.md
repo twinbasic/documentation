@@ -66,6 +66,9 @@ End Module
   every other case. `package_tests.mjs` stages `compile/` with the package embedded and judges
   its cases with the rest; a marker names them as `compile <Name>`, as any compile case. It is
   not published: the published project is `Sources/` only, and compiles.
+- **Resources** a case reads go in the package folder's `Resources/`, laid out as an exported
+  project keeps them (`<TYPE>/<NAME>`, such as `BINARY/#101`). The runner stages them and the
+  published project carries them, byte for byte.
 - A claim that needs a dialog operated or a form shown goes in the package's `probe/` harness, as
   TBMANLIB_Dialog's and xCalendar's do.
 
