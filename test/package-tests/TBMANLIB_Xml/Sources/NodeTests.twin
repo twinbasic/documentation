@@ -1,0 +1,163 @@
+' cXmlNode: how it compares names (XML 1.0 compares them exactly), what Text and XPathText return,
+' and the node kinds the parser makes.
+[TestFixture]
+Module NodeTests
+
+    ' ---- names are compared exactly in XML
+
+    [TestCase]
+    Public Sub ElementNames_DifferingInCase_AreDifferentElements()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a id=""1"">x</a><A id=""2"">y</A></r>")
+        Expect.AreEqual 1, x.SelectElements("a").Count, "the nodes of SelectElements(a) in <r><a/><A/></r>"
+        Expect.AreEqual "2", x.RootElement.GetChildNode("A").GetAttribute("id"), "the id of GetChildNode(A)"
+        Expect.AreEqual 1, x.RootElement.GetChildNodesByName("a").Count, "the nodes of GetChildNodesByName(a)"
+        Expect.AreEqual "y", x.GetElementText("r/A"), "GetElementText of r/A"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AttributeNames_DifferingInCase_AreDifferentAttributes()
+        Expect.Begin
+        Dim n As New cXmlNode
+        n.SetAttribute "a", "1"
+        n.SetAttribute "A", "2"
+        Expect.AreEqual 4, n.Attributes.Count, "the entries of Attributes after a and A are set"
+        Expect.AreEqual "1", n.GetAttribute("a"), "GetAttribute of a"
+        Expect.AreEqual "2", n.GetAttribute("A"), "GetAttribute of A"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetAttribute_NameInAnotherCase_FindsNothing()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a id=""7""></a>")
+        Expect.AreEqual "7", x.RootElement.GetAttribute("id"), "GetAttribute of id"
+        Expect.AreEqual "", x.RootElement.GetAttribute("ID"), "GetAttribute of ID"
+        Expect.AreEqual "", x.GetAttribute("a", "Id"), "cXml.GetAttribute of Id"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveAttribute_NameInAnotherCase_RemovesNothing()
+        Expect.Begin
+        Dim n As New cXmlNode
+        n.SetAttribute "a", "1"
+        n.RemoveAttribute "A"
+        Expect.AreEqual 2, n.Attributes.Count, "the entries of Attributes after RemoveAttribute of A"
+        Expect.Done
+    End Sub
+
+    ' ---- text
+
+    [TestCase]
+    Public Sub XPathText_OfCXml_ReturnsTheTextAtAnyDepth()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a>x<b>y</b>z</a>")
+        Expect.AreEqual "xyz", x.XPathText("/a"), "XPathText of /a"
+        Expect.AreEqual "y", x.XPathText("/a/b"), "XPathText of /a/b"
+        Expect.AreEqual "y", x.XPathText("//b/text()"), "XPathText of //b/text()"
+        Expect.AreEqual "", x.XPathText("/zzz"), "XPathText of /zzz"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub XPathText_OfCXmlNode_ReturnsTheTextDirectlyInsideTheNode()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a>x<b>y</b>z</a>")
+        Expect.AreEqual "xz", x.RootElement.XPathText("."), "XPathText of ."
+        Expect.AreEqual "y", x.RootElement.XPathText("b"), "XPathText of b"
+        Expect.AreEqual "", x.RootElement.XPathText("b/text()"), "XPathText of b/text()"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Text_ReturnsTheTextAndCDataOfTheChildren()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a>x<![CDATA[c]]><!--k--><b>y</b>z</a>")
+        Expect.AreEqual "xcz", x.RootElement.Text, "Text of the root element"
+        Expect.AreEqual "xcyz", x.GetElementText("a"), "GetElementText of a"
+        Expect.AreEqual "y", x.RootElement.GetChildNode("b").Text, "Text of b"
+        Expect.AreEqual "", x.RootElement.ChildNodes(1).Text, "Text of a text node"
+        Expect.Done
+    End Sub
+
+    ' ---- the kinds of node
+
+    [TestCase]
+    Public Sub Parse_NodeKinds_HaveTheirFixedNames()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r>text<!--note--><![CDATA[data]]></r>")
+        Expect.AreEqual "#document", x.Document.Name, "the name of the document node"
+        Expect.AreEqual XmlNodeType.Document, x.Document.NodeType, "the kind of the document node"
+        Expect.AreEqual "#text", x.RootElement.ChildNodes(1).Name, "the name of the text node"
+        Expect.AreEqual "#comment", x.RootElement.ChildNodes(2).Name, "the name of the comment"
+        Expect.AreEqual "#cdata-section", x.RootElement.ChildNodes(3).Name, "the name of the CDATA section"
+        Expect.AreEqual "r", Helpers.NameOf(x.RootElement.ChildNodes(1).Parent), "the parent of the text node"
+        Expect.AreEqual "#document", Helpers.NameOf(x.RootElement.Parent), "the parent of the root element"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_Node_IsEmpty()
+        Expect.Begin
+        Dim n As New cXmlNode
+        Expect.AreEqual "", n.Name, "Name of a new node"
+        Expect.AreEqual XmlNodeType.None, n.NodeType, "NodeType of a new node"
+        Expect.AreEqual 0, n.Attributes.Count, "Attributes of a new node"
+        Expect.AreEqual 0, n.ChildNodes.Count, "ChildNodes of a new node"
+        Expect.IsTrue (n.Parent Is Nothing), "Parent of a new node is Nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Attributes_AreAFlatListOfNamesAndValues()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<item id=""7"" kind=""tool""></item>")
+        Dim a As Collection
+        Set a = x.RootElement.Attributes
+        Expect.AreEqual 4, a.Count, "the entries of Attributes"
+        Expect.AreEqual "id", a(1), "entry 1"
+        Expect.AreEqual "7", a(2), "entry 2"
+        Expect.AreEqual "kind", a(3), "entry 3"
+        Expect.AreEqual "tool", a(4), "entry 4"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetAttribute_ReplacedAttribute_KeepsTheLastValueAndMovesToTheEnd()
+        Expect.Begin
+        Dim n As New cXmlNode
+        n.SetAttribute "a", "1"
+        n.SetAttribute "b", "2"
+        n.SetAttribute "a", "3"
+        Expect.AreEqual 4, n.Attributes.Count, "the entries of Attributes"
+        Expect.AreEqual "b", n.Attributes(1), "entry 1"
+        Expect.AreEqual "a", n.Attributes(3), "entry 3"
+        Expect.AreEqual "3", n.Attributes(4), "entry 4"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ChildNodes_NodeAddedByHand_IsWrittenByItsKind()
+        Expect.Begin
+        Dim x As New cXml
+        x.CreateNew "r"
+        Dim t As New cXmlNode
+        t.NodeType = XmlNodeType.Text
+        t.Name = "#text"
+        t.Value = "hello"
+        Set t.Parent = x.RootElement
+        x.RootElement.ChildNodes.Add t
+        Expect.AreEqual "<r>hello</r>", x.ToXmlString(False), "ToXmlString after a text node is added by hand"
+        Expect.Done
+    End Sub
+
+End Module

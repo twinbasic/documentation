@@ -1,0 +1,171 @@
+' cXml.LoadFromFile and cXml.SaveToFile. Every file is under %TEMP%\tbdocs-package-tests\TBMANLIB_Xml\.
+[TestFixture]
+Module FileTests
+
+    [TestCase]
+    Public Sub LoadFromFile_MissingFile_ReturnsFalseAndCreatesNoFile()
+        Expect.Begin
+        Dim w As String = Helpers.FreshFolder("LoadFromFile_MissingFile")
+        Dim p As String = w & "\missing.xml"
+        Dim x As New cXml
+        Expect.IsFalse x.LoadFromFile(p), "LoadFromFile of a file that does not exist"
+        Expect.AreEqual "", Dir$(p), "the file after LoadFromFile of a file that does not exist"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFromFile_FileThatCannotBeParsed_ReturnsFalse()
+        Expect.Begin
+        Dim w As String = Helpers.FreshFolder("LoadFromFile_Unparsable")
+        Dim p As String = w & "\cut.xml"
+        Helpers.WriteUtf8 p, "<r><a"
+        Dim x As New cXml
+        Expect.IsFalse x.LoadFromFile(p), "LoadFromFile of a file that holds <r><a (a tag cut off by the end of the file)"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFromFile_EmptyFile_ReturnsFalse()
+        Expect.Begin
+        Dim w As String = Helpers.FreshFolder("LoadFromFile_EmptyFile")
+        Dim p As String = w & "\empty.xml"
+        Helpers.WriteEmpty p
+        Dim x As New cXml
+        Expect.IsFalse x.LoadFromFile(p), "LoadFromFile of an empty file"
+        Expect.IsFalse x.Initialized, "Initialized after LoadFromFile of an empty file"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFromFile_Utf8FileWithAndWithoutBom_IsRead()
+        Expect.Begin
+        Dim w As String = Helpers.FreshFolder("LoadFromFile_Bom")
+        Dim text As String = "<?xml version=""1.0"" encoding=""UTF-8""?><config><name>caf" & ChrW(233) & ChrW(&H20AC) & "</name></config>"
+        Dim plain As String = w & "\plain.xml"
+        Dim marked As String = w & "\marked.xml"
+        Helpers.WriteUtf8 plain, text
+        Dim b() As Byte
+        b = StringToUTF8Bytes(text)
+        Dim m() As Byte
+        ReDim m(0 To UBound(b) + 3)
+        m(0) = &HEF
+        m(1) = &HBB
+        m(2) = &HBF
+        Dim i As Long
+        For i = 0 To UBound(b)
+            m(i + 3) = b(i)
+        Next
+        Helpers.WriteBytes marked, m
+        Dim x As New cXml
+        Expect.IsTrue x.LoadFromFile(plain), "LoadFromFile of a UTF-8 file with no byte order mark"
+        Expect.AreEqual "caf" & ChrW(233) & ChrW(&H20AC), x.GetElementText("config/name"), "the text of config/name read from the file with no byte order mark"
+        Expect.IsTrue x.LoadFromFile(marked), "LoadFromFile of a UTF-8 file with a byte order mark"
+        Expect.AreEqual "caf" & ChrW(233) & ChrW(&H20AC), x.GetElementText("config/name"), "the text of config/name read from the file with a byte order mark"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveToFile_WritesByteOrderMarkThenUtf8()
+        Expect.Begin
+        Dim w As String = Helpers.FreshFolder("SaveToFile_Utf8")
+        Dim p As String = w & "\note.xml"
+        Dim x As New cXml
+        x.CreateNew "note"
+        x.AddElement "note", "to"
+        x.SetElementText "note/to", "Ada " & ChrW(233) & ChrW(&H20AC)
+        Expect.IsTrue x.SaveToFile(p), "SaveToFile of a document"
+        Dim b() As Byte
+        b = Helpers.ReadBytes(p)
+        Expect.AreEqual &HEF, CLng(b(0)), "the first byte of the file"
+        Expect.AreEqual &HBB, CLng(b(1)), "the second byte of the file"
+        Expect.AreEqual &HBF, CLng(b(2)), "the third byte of the file"
+        Dim y As New cXml
+        Expect.IsTrue y.LoadFromFile(p), "LoadFromFile of the file that SaveToFile wrote"
+        Expect.AreEqual "Ada " & ChrW(233) & ChrW(&H20AC), y.GetElementText("note/to"), "the text of note/to read back"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveToFile_MissingFolder_ReturnsFalse()
+        Expect.Begin
+        Dim w As String = Helpers.FreshFolder("SaveToFile_MissingFolder")
+        Dim x As New cXml
+        x.CreateNew "r"
+        Expect.IsFalse x.SaveToFile(w & "\no such folder\r.xml"), "SaveToFile into a folder that does not exist"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveToFile_ExistingFile_IsReplaced()
+        Expect.Begin
+        Dim w As String = Helpers.FreshFolder("SaveToFile_Replace")
+        Dim p As String = w & "\r.xml"
+        Dim x As New cXml
+        x.CreateNew "long_root_name_that_makes_the_first_file_longer"
+        x.SetElementText "long_root_name_that_makes_the_first_file_longer", "t"
+        x.SaveToFile p
+        Dim size1 As Long = FileLen(p)
+        x.CreateNew "r"
+        x.SetElementText "r", "t"
+        x.SaveToFile p
+        Dim y As New cXml
+        Expect.IsTrue y.LoadFromFile(p), "LoadFromFile of the file after it is written twice"
+        Expect.AreEqual "r", Helpers.NameOf(y.RootElement), "the root element after it is written twice"
+        Expect.IsTrue FileLen(p) < size1, "the file is shorter after the shorter document replaces the longer"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveToFile_PrettyPrintAndIndent_ChangeTheSizeOfTheFile()
+        Expect.Begin
+        Dim w As String = Helpers.FreshFolder("SaveToFile_Pretty")
+        Dim p As String = w & "\r.xml"
+        Dim x As New cXml
+        x.CreateNew "r"
+        x.AddElement "r", "a"
+        x.SetElementText "r/a", "t"
+        x.SaveToFile p, False
+        Expect.AreEqual 18, FileLen(p), "the size of the compact file"
+        x.SaveToFile p, False, True
+        Expect.AreEqual 36, FileLen(p), "the size of the pretty-printed file"
+        x.SaveToFile p, False, True, vbTab
+        Expect.AreEqual 32, FileLen(p), "the size of the pretty-printed file indented with tabs"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveToFile_DeclaredEncoding_MatchesTheBytesWritten()
+        Expect.Begin
+        Dim w As String = Helpers.FreshFolder("SaveToFile_Encoding")
+        Dim p As String = w & "\latin.xml"
+        Dim x As New cXml
+        x.CreateNew "r"
+        x.Encoding = "ISO-8859-1"
+        x.AddElement "r", "t"
+        x.SetElementText "r/t", ChrW(233)
+        x.SaveToFile p
+        Dim b() As Byte
+        b = Helpers.ReadBytes(p)
+        Dim head As String
+        Dim i As Long
+        Dim utf8E As Boolean
+        For i = 0 To UBound(b)
+            If i < 60 Then head = head & Chr$(b(i) And &H7F)
+            If i < UBound(b) Then
+                If b(i) = &HC3 And b(i + 1) = &HA9 Then utf8E = True
+            End If
+        Next
+        Expect.IsFalse (InStr(head, "ISO-8859-1") > 0 And utf8E), "the file declares ISO-8859-1 and writes the letter e with an acute accent as the two UTF-8 bytes C3 A9"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+End Module

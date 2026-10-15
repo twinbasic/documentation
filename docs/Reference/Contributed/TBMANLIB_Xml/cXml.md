@@ -30,6 +30,7 @@ Debug.Print x.ToXmlString(False)
 ' <library><book id="1">Dune</book><book id="2">Emma</book><note>checked</note></library>
 ```
 
+<!-- test: SelfClosingTests.Parse_BareSelfClosingElement_IsAnElementNamedLikeTheTag, SelfClosingTests.Parse_SelfClosingElementWithAttributes_HasNoChildren, EntityTests.Parse_PredefinedEntitiesInText_AreDecoded, TagTests.Parse_BothKindsOfQuote_KeepEveryAttribute, DeclarationTests.Parse_ProcessingInstructionInsideAnElement_LeavesNoText, DeclarationTests.Parse_UnclosedComment_Returns, DeclarationTests.Parse_UnclosedCDataSection_Returns, DeclarationTests.Parse_DoctypeAfterTheDeclaration_Returns, DeclarationTests.Parse_DoctypeInsideAnElement_Returns -->
 > [!WARNING] 1.0.0.1
 > The parser reads some valid XML wrongly and raises no error: a self-closing element, `&amp;` and other entities in text, a tag that uses both kinds of quote or has a line break between its attributes, and a processing instruction. A comment, a CDATA section or a DOCTYPE declaration in the wrong place makes **Parse** loop forever. [Defects in version 1.0.0.1](#defects) lists each case.
 
@@ -41,6 +42,7 @@ Debug.Print x.ToXmlString(False)
 
 The members that take an *xpath* parameter find an element by a path: [**SelectElement**](#selectelement), [**GetElementText**](#getelementtext), [**SetElementText**](#setelementtext), [**GetAttribute**](#getattribute), [**SetAttribute**](#setattribute), [**RemoveAttribute**](#removeattribute) and [**RemoveElement**](#removeelement), and [**AddElement**](#addelement) for its *parentXPath*. The name of the parameter is misleading: the syntax is a small one of the package's own and is not XPath. The [**XPath**](#xpath) methods read XPath expressions.
 
+<!-- test: PathTests.Path_FirstNameIsTheRootElement, PathTests.Path_ManyMatches_TakesTheFirstDirectChild, PathTests.Path_WhiteSpaceAndEmptyNames_AreRemoved, PathTests.Path_NamespacePrefix_IsPartOfTheName, PathTests.Path_PositionsAttributesAndWildcards_AreNamesNoElementHas, PathTests.Path_NodesThatAreNotElements_AreSelectedByTheirNames, PathTests.Path_WithNoName_SelectsNothing, NodeTests.ElementNames_DifferingInCase_AreDifferentElements -->
 - A path is a list of names separated by `/`, such as `library/book`. The search starts at the document node, so the first name is the name of the root element: `library/book` finds a book, and `book` finds nothing.
 - Each name selects the first child, of the node found so far, whose name equals it. Letter case is ignored. Only direct children count, and when several children have the name, the first one is taken.
 - White space around a name is removed, and an empty name is ignored. `/library//book` and ` library / book ` both mean `library/book`.
@@ -48,6 +50,7 @@ The members that take an *xpath* parameter find an element by a path: [**SelectE
 - Nothing else has a meaning. A position (`book[2]`), an attribute (`@id`), `*`, `.` and `..` are names that no element has, so the path selects nothing. `//book` does not search at any depth: the empty name is ignored, and the path means `book`. [**SelectElements**](#selectelements) searches at any depth, and the **ChildNodes** of a node reach the other children. The [**XPath**](#xpath) methods read positions, attribute tests, `*`, `.` and `//`.
 - The nodes that are not elements have names too, `#text`, `#comment` and `#cdata-section`, and a path can select them: `library/#comment` is the first comment directly inside the root element.
 - A path with no name, an empty string or `/`, selects nothing, and the Debug Console shows `SelectElement failed: Subscript out of range`.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -87,6 +90,7 @@ Debug.Print children(2).GetAttribute("id")
 ## Reporting failures
 {: #reporting-failures }
 
+<!-- test: PathTests.MembersThatFindNothing_ReturnEmptyValues, PathTests.Parse_EmptyString_ReturnsFalseAndLeavesErrEmptyDocument, PathTests.SelectElement_DocumentNotInitialised_ReturnsNothingAndLeavesErrEmptyDocument, PathTests.SelectElement_PathWithNoName_LeavesError9, PathTests.RemoveElement_PathThatSelectsNothing_ReturnsFalseAndLeavesError91, PathTests.Parse_TagCutOffByTheEndOfTheText_ReturnsFalseAndLeavesError5, XPathEngineTests.XPath_PositionTooLargeForALong_ReturnsAnEmptyCollectionAndLeavesTheError -->
 A member that cannot do its work returns a value that says so, and does not stop the program. [**Parse**](#parse), [**LoadFromFile**](#loadfromfile), [**SaveToFile**](#savetofile), [**Validate**](#validate) and [**RemoveElement**](#removeelement) return **False**. [**SelectElement**](#selectelement), [**AddElement**](#addelement) and [**XPathSingle**](#xpathsingle) return **Nothing**. [**GetElementText**](#getelementtext), [**GetAttribute**](#getattribute), [**XPathText**](#xpathtext) and [**XPathAttribute**](#xpathattribute) return an empty string, and [**SelectElements**](#selectelements), [**XPath**](#xpath) and [**XPathFromRoot**](#xpathfromroot) an empty collection. A method that returns nothing, such as [**SetAttribute**](#setattribute), does nothing.
 
 When an error causes the failure, the member also:
@@ -97,6 +101,7 @@ When an error causes the failure, the member also:
 The errors that occur are [**ERR_EMPTY_DOCUMENT**](mXml#err_empty_document), which [**Parse**](#parse) raises for an empty string and [**SelectElement**](#selectelement) for a document that has not been read or created, and the errors of the Visual Basic runtime that the code meets while it works: 5 (*Invalid procedure call or argument*) for a tag cut off by the end of the text, 9 (*Subscript out of range*) for a path with no name, and 91 (*Object variable or With block variable not set*) in [**RemoveElement**](#removeelement) for a path that selects nothing. The XPath members meet error 6 (*Overflow*) for a position too large for a **Long**, and write `XPath query failed:`, `XPathSingle query failed:` or `XPathFromRoot query failed:` and the description. The other error constants of [**mXml**](mXml#constants) are not used.
 
 The members that let an error reach the program are [**XmlString**](#xmlstring), [**ToXmlString**](#toxmlstring) and [**Merge**](#merge).
+<!-- /test -->
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -160,7 +165,9 @@ Syntax: *object*.**Encoding** [ **=** *value* ]
 
 A **String**. The default is `UTF-8`, the value of [**DEFAULT_ENCODING**](mXml#default_encoding). [**ToXmlString**](#toxmlstring) and [**SaveToFile**](#savetofile) write it into the declaration. [**Parse**](#parse) and [**LoadFromFile**](#loadfromfile) set it from the `encoding` of the declaration of the text they read, when the declaration has one written with double quotes. Without one, the property keeps the value it had, which is the value of an earlier document if the object read one. [**CreateNew**](#createnew) leaves it as it is.
 
+<!-- test: DocumentTests.Encoding_AndVersion_AreWrittenIntoTheDeclaration, FileTests.SaveToFile_DeclaredEncoding_MatchesTheBytesWritten -->
 The property is a label. [**SaveToFile**](#savetofile) always writes UTF-8 and [**LoadFromFile**](#loadfromfile) always reads UTF-8, whatever the label says.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -258,10 +265,13 @@ Syntax: *object*.**XmlString** [ **=** *value* ]
 *object*
 : *required* An object expression that evaluates to a **cXml**.
 
+<!-- test: DocumentTests.XmlString_ReadsTheTextLastParsed_NotTheDocument, DocumentTests.XmlString_EmptyString_GivesAnInitialisedDocumentWithNoNodes, DocumentTests.Clone_ChangesToTheCloneDoNotReachTheOriginal -->
 A **String**. Assigning to it reads the text as [**Parse**](#parse) does and replaces the document. Reading it returns the text that [**Parse**](#parse), [**LoadFromFile**](#loadfromfile) or an assignment last read. It is not made again from the document, so it does not show later changes: [**ToXmlString**](#toxmlstring) does. [**Clone**](#clone) does not copy it.
 
 Assigning an empty string is not an error, unlike **Parse** with an empty string: it gives an initialised document with no nodes.
+<!-- /test -->
 
+<!-- test: DocumentTests.XmlString_TextThatCannotBeRead_RaisesNoError, DocumentTests.XmlString_TextThatCannotBeRead_IsStillKept -->
 > [!NOTE] 1.0.0.1
 > Assigning text that the parser cannot read raises an error, where **Parse** returns **False** for the same text. Assigning `<` raises error 5, *Invalid procedure call or argument*. The text is kept, so reading the property returns it.
 
@@ -465,9 +475,11 @@ Syntax: *object*.**LoadFromFile** ( *filePath* ) **As Boolean**
 *filePath*
 : *required* A **String**, the path of the file.
 
+<!-- test: FileTests.LoadFromFile_Utf8FileWithAndWithoutBom_IsRead, FileTests.LoadFromFile_EmptyFile_ReturnsFalse, FileTests.LoadFromFile_FileThatCannotBeParsed_ReturnsFalse -->
 Reads the whole file, removes a UTF-8 byte order mark if the file starts with one, converts the bytes as UTF-8 with [**UTF8BytesToString**](mXml#utf8bytestostring) and reads the text as [**Parse**](#parse) does. Returns **True** when the file was read.
 
 Returns **False**, and writes `LoadFromFile failed:` and the description to the Debug Console, when the file cannot be opened, is empty, or has fewer than three bytes. It returns **True** when the file was read but the text then fails to parse, because it ignores the result of **Parse**; see [Files](#defect-files). The file is read as UTF-8 whatever its declaration says, and the declaration's encoding only sets [**Encoding**](#encoding).
+<!-- /test -->
 
 ```tb check_build check_run
 Dim path As String
@@ -502,12 +514,15 @@ Syntax: *object*.**Merge** ( *otherXml* )
 *otherXml*
 : *required* A **cXml**, the document to copy from. It is not changed.
 
+<!-- test: DocumentTests.Merge_AddedNodes_CanBeRemoved, DocumentTests.Merge_ObjectWithNoDocument_AsTheOtherDocument_DoesNothing -->
 Appends a copy of every child of the root element of *otherXml*, text and comments included, to the end of the root element of this document. The names and attributes of the two root elements are not compared or merged, and this document keeps its own. Nothing happens when *otherXml* holds no document.
+<!-- /test -->
 
 When this object holds no document, it becomes a copy of the whole of *otherXml*, and [**Initialized**](#initialized) becomes **True**. Its [**RootElement**](#rootelement) stays **Nothing**, so a second **Merge** into it does nothing.
 
 The copies have no **Parent**; see [Clone, Merge and the root element](#defect-clone).
 
+<!-- test: DocumentTests.Merge_NothingAsTheOtherDocument_DoesNothing -->
 > [!NOTE] 1.0.0.1
 > **Merge** with **Nothing** as *otherXml* raises error 91, *Object variable or With block variable not set*, because the code tests the object and its property in one expression.
 
@@ -538,7 +553,9 @@ Syntax: *object*.**Parse** ( *xml* ) **As Boolean**
 *xml*
 : *required* A **String**, the text to read.
 
+<!-- test: DeclarationTests.Parse_XmlDeclaration_SetsVersionAndEncoding -->
 Replaces the document with the one in the text, sets [**RootElement**](#rootelement) and [**XmlString**](#xmlstring), and returns **True**. The `version` and `encoding` of an XML declaration, written with double quotes, set [**Version**](#version) and [**Encoding**](#encoding).
+<!-- /test -->
 
 The parser builds these nodes: elements with their attributes, text, comments and CDATA sections. Text that is only spaces is left out, in the document and inside elements; text that has a line break or a tab in it is kept ([White space](#defect-whitespace)). An end tag closes the innermost open element whatever its name is, and an element still open at the end of the text is closed by it. Processing instructions and the declaration are not kept.
 
@@ -609,9 +626,11 @@ Syntax: *object*.**RemoveElement** ( *xpath* ) **As Boolean**
 *xpath*
 : *required* A **String**, the [path](#paths) of the element.
 
+<!-- test: DocumentTests.RemoveElement_FirstOfSeveralElements_RemovesOnlyThatOne, DocumentTests.Clone_CopiedNodes_CanBeRemoved, DocumentTests.RemoveElement_RootElement_LeavesNoRootElement, PathTests.RemoveElement_PathThatSelectsNothing_ReturnsFalseAndLeavesError91 -->
 Takes the first element that the path selects out of the **ChildNodes** of its parent, and returns **True**. Returns **False** when the path selects nothing, and for a node that has no **Parent**, which includes the nodes that [**Clone**](#clone) and [**Merge**](#merge) copy. In the first case the Debug Console shows `RemoveElement failed: Object variable or With block variable not set`.
 
 Removing the root element leaves [**RootElement**](#rootelement) as it was; see [Clone, Merge and the root element](#defect-clone).
+<!-- /test -->
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -649,7 +668,9 @@ Syntax: *object*.**SaveToFile** ( *filePath* [ , *withDeclaration* [ , *prettyPr
 *indent*
 : *optional* A **String**, the indentation for each level of nesting when *prettyPrint* is **True**. The default is two spaces.
 
+<!-- test: FileTests.SaveToFile_WritesByteOrderMarkThenUtf8, FileTests.SaveToFile_MissingFolder_ReturnsFalse, FileTests.SaveToFile_ExistingFile_IsReplaced -->
 Writes the three bytes of a UTF-8 byte order mark, then the document as [**ToXmlString**](#toxmlstring) returns it for the same three options, converted with [**StringToUTF8Bytes**](mXml#stringtoutf8bytes). Returns **True** when the file was written, and **False**, with `SaveToFile failed:` and the description in the Debug Console, when it could not be, for example because the folder does not exist.
+<!-- /test -->
 
 The file is UTF-8 whatever [**Encoding**](#encoding) says, and the declaration states that value. A document with no content written without a declaration is the byte order mark followed by one zero byte.
 
@@ -682,7 +703,9 @@ Kill path
 ' Ada
 ```
 
+<!-- test: FileTests.SaveToFile_PrettyPrintAndIndent_ChangeTheSizeOfTheFile -->
 The *prettyPrint* and *indent* parameters change the size of the file. The text for each level of nesting is *indent*, and every line ends with a carriage return and a line feed:
+<!-- /test -->
 
 ```tb check_build check_run
 Dim path As String
@@ -749,9 +772,11 @@ Syntax: *object*.**SelectElements** ( *tagName* ) **As Collection**
 *tagName*
 : *required* A **String**, one name and not a path. Letter case is ignored.
 
+<!-- test: PathTests.SelectElements_ReturnsEveryNodeOfTheNameAtAnyDepth -->
 Returns a new **Collection** of the [**cXmlNode**](cXmlNode) objects, at any depth in the document, whose **Name** matches, in document order. An element inside another element of the same name is returned too. The collection is empty when nothing matches and when [**Initialized**](#initialized) is **False**; the method never returns **Nothing**.
 
 The names of the nodes that are not elements match, so `#text` returns every text node. The method does not read paths: `r/a` matches nothing.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -793,7 +818,9 @@ Syntax: *object*.**SetAttribute** ( *xpath* , *attrName* , *attrValue* )
 *attrValue*
 : *required* A **String**, the value.
 
+<!-- test: PathTests.SetAttribute_ReplacedAttribute_MovesToTheEnd -->
 Adds the attribute, or replaces the one with the same name, as [**SetAttribute**](cXmlNode#setattribute) of the element's node does: a replaced attribute moves to the end of the element's attributes. Nothing happens, and no error is raised, when the path selects nothing.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -824,7 +851,9 @@ Syntax: *object*.**SetElementText** ( *xpath* , *text* )
 *text*
 : *required* A **String**, the new text, as plain text: [**ToXmlString**](#toxmlstring) escapes it when it writes it.
 
+<!-- test: PathTests.SetElementText_ElementWithMixedContent_MovesTheTextToTheEnd, WriteTests.ToXmlString_ElementWithAnEmptyTextNode_WritesStartAndEndTag -->
 Removes the text nodes directly inside the element and adds one text node that holds *text*, after the element's other children. The child elements, comments and CDATA sections stay, so the text moves to the end of an element with mixed content. Setting an empty string leaves an empty text node, which makes [**ToXmlString**](#toxmlstring) write `<c></c>` and not `<c/>`. Nothing happens, and no error is raised, when the path selects nothing.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -856,9 +885,11 @@ Syntax: *object*.**ToXmlString** ( [ *withDeclaration* [ , *prettyPrint* [ , *in
 *indent*
 : *optional* A **String**, the indentation for each level of nesting, written once for each level. The default is two spaces. An empty string writes no indentation.
 
+<!-- test: WriteTests.ToXmlString_Compact_WritesDeclarationElementsAndEscapes, WriteTests.ToXmlString_ModelTree_WritesTheNodeKindsAndLeavesOutTheOthers, EntityTests.SetElementText_PlainText_IsWrittenOnce -->
 The text holds elements, text, comments and CDATA sections. An element with no child is written as `<name/>`, and an element with children as `<name>...</name>`. The characters `&`, `<`, `>`, `"` and `'` are replaced by `&amp;`, `&lt;`, `&gt;`, `&quot;` and `&apos;` in text and in the values of attributes. Comments and CDATA sections are written as they are. The attributes of an element are written in the order of its attribute list.
 
 A document that holds nothing gives the declaration alone, or an empty string without one.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -875,7 +906,9 @@ Debug.Print x.ToXmlString(False)
 ' <r id="1"><a>x &lt; y</a><empty/></r>
 ```
 
+<!-- test: WriteTests.PrettyPrint_PutsEachNodeOnALineAndIndentsEachLevel -->
 With *prettyPrint*, the nodes are on lines of their own. The sample shows the spaces as dots and the line breaks as bars:
+<!-- /test -->
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -908,7 +941,9 @@ Syntax: *object*.**Validate** ( ) **As Boolean**
 *object*
 : *required* An object expression that evaluates to a **cXml**.
 
+<!-- test: PathTests.Validate_NamelessElementOrAttribute_IsFalse -->
 Returns **True** when the object holds a document and every element in it has a name that is not empty and does not begin with `/`, and every attribute has a name that is not empty. Returns **False** otherwise, and for an object that holds no document.
+<!-- /test -->
 
 That is all it checks. It does not test that the text was well formed, that the names are legal XML names, or anything about a schema or a DTD. In practice it detects an element added with an empty name, an attribute set with an empty name, and the element named `/a` that the parser makes from the self-closing tag `<a/>` (see [Self-closing elements](#defect-self-closing)).
 
@@ -1100,6 +1135,7 @@ Each of these sections describes a case in which the package gives a wrong resul
 ### Self-closing elements
 {: #defect-self-closing .no_toc }
 
+<!-- test: SelfClosingTests.Parse_BareSelfClosingElement_IsAnElementNamedLikeTheTag, SelfClosingTests.Parse_SelfClosingElementWithAttributes_HasNoChildren, SelfClosingTests.Parse_SelfClosingElementWithSpaceBeforeTheSlash_HasNoChildren, SelfClosingTests.ToXmlString_EmptyElement_ReadsBackAsAnEmptyElement, SelfClosingTests.Validate_DocumentWithSelfClosingElements_IsTrue -->
 > [!WARNING] 1.0.0.1
 > A self-closing tag is read wrongly. `<a/>`, a name and nothing else, makes an element named `/a`. A tag with attributes, or with a space before the slash, such as `<a x="1"/>` or `<a />`, is read as a start tag, so the elements that follow it become its children, and the end tag of the parent closes it. [**ToXmlString**](#toxmlstring) writes an empty element as `<a/>`, so text that a **cXml** wrote is read wrongly by a **cXml**.
 
@@ -1128,6 +1164,7 @@ Debug.Print y.RootElement.ChildNodes(1).Name
 ### Entities and character references
 {: #defect-entities .no_toc }
 
+<!-- test: EntityTests.Parse_PredefinedEntitiesInText_AreDecoded, EntityTests.Parse_NumericReferencesInText_AreDecoded, EntityTests.Parse_NumericReferencesInAttribute_AreDecoded, EntityTests.Parse_PredefinedEntitiesInAttribute_AreDecoded, EntityTests.Parse_AmpersandEntityBeforeText_IsNotDecodedTwice, EntityTests.ToXmlString_TextReadFromXml_IsEscapedOnce, EntityTests.ToXmlString_AttributeReadFromXml_IsEscapedOnce -->
 > [!WARNING] 1.0.0.1
 > Entities in text are not decoded. [**GetElementText**](#getelementtext) and the **Value** of a text node return `&amp;`, `&lt;` and `&#65;` as they stand in the XML, and [**ToXmlString**](#toxmlstring) escapes the `&` again, so each read and write adds `amp;`. In the value of an attribute the five predefined entities `&lt;`, `&gt;`, `&amp;`, `&quot;` and `&apos;` are decoded, in that order, so `&amp;quot;` becomes a quotation mark. Numeric character references such as `&#65;` and `&#x41;` are not decoded anywhere.
 
@@ -1149,6 +1186,7 @@ Text set with [**SetElementText**](#setelementtext) or [**SetAttribute**](#setat
 ### Tags
 {: #defect-tags .no_toc }
 
+<!-- test: TagTests.Parse_BothKindsOfQuote_KeepEveryAttribute, TagTests.Parse_DoubleQuoteThenSingleQuote_KeepEveryAttribute, TagTests.Parse_GreaterThanInAttributeValue_IsPartOfTheValue, TagTests.Parse_LineBreakBetweenAttributes_KeepsBothAttributes, TagTests.Parse_LineFeedBetweenAttributes_KeepsBothAttributes, TagTests.Parse_LineBreakAfterTheElementName_IsNotPartOfTheName, TagTests.Parse_AttributeWithoutValue_DoesNotChangeTheNextAttribute -->
 > [!WARNING] 1.0.0.1
 > A tag is cut apart with plain searches, so these valid forms give wrong attributes and no error. A tag that uses both kinds of quote loses an attribute: the first double quote is taken as the start of the first value, even when a single-quoted value comes before it. A `>` inside an attribute value ends the tag at that point, and the rest of the value becomes text. A line break between two attributes becomes the name of an attribute, and the real name is lost. A line break between the element name and the first attribute becomes part of the element's name. An attribute with no value takes the value of the next one.
 
@@ -1176,11 +1214,14 @@ Debug.Print x.GetAttribute("a", "disabled") & "|" & x.GetAttribute("a", "c")
 ' 2|
 ```
 
+<!-- test: TagTests.Parse_TabBetweenAttributes_KeepsBothAttributes, TagTests.Parse_SpacesAroundTheEqualsSign_AreAllowed -->
 A tab between the attributes is read correctly, and so is a space around the `=`.
+<!-- /test -->
 
 ### Comments, CDATA sections and declarations
 {: #defect-declarations .no_toc }
 
+<!-- test: DeclarationTests.Parse_UnclosedComment_Returns, DeclarationTests.Parse_UnclosedCDataSection_Returns, DeclarationTests.Parse_DoctypeAfterTheDeclaration_Returns, DeclarationTests.Parse_DoctypeInsideAnElement_Returns, DeclarationTests.Parse_DoctypeAtTheStart_IsSkipped, DeclarationTests.Parse_DoctypeFollowedByAnInstruction_KeepsTheRootElement, DeclarationTests.Parse_ProcessingInstructionInsideAnElement_LeavesNoText -->
 > [!WARNING] 1.0.0.1
 > **Parse** never returns for text that holds a comment with no `-->`, a CDATA section with no `]]>`, or a `<!` declaration such as `<!DOCTYPE`, unless the declaration comes first in the text. A `<!` item that is not a comment or a CDATA section is skipped up to the next `?>` anywhere later in the text, which discards everything between, or, when there is none, up to the first `>` of the whole text, which is the end of the item itself only when the item is the first thing in the text. In every other position the search goes back to an earlier `>`, and the parser reads the item again, without end. A processing instruction `<?target data?>` is skipped, but the `>` that ends it stays behind as a text node.
 
@@ -1216,6 +1257,7 @@ x.Parse "<root><!DOCTYPE x><a>1</a></root>"
 ### Malformed text and failed parses
 {: #defect-malformed .no_toc }
 
+<!-- test: ParseResultTests.Parse_Failure_KeepsThePreviousDocument, ParseResultTests.Parse_TextCutOffInATag_KeepsThePreviousDocument, ParseResultTests.Parse_EmptyString_KeepsThePreviousDocument -->
 > [!WARNING] 1.0.0.1
 > A **Parse** that returns **False** has already thrown away the previous document. The document is replaced before the text is read, so it holds what was read before the failure, which is nothing when the failure is at the start. [**Initialized**](#initialized) is not changed, so after a failed **Parse** into an object that held a document, the path members work on the part that was read.
 
@@ -1236,6 +1278,7 @@ Debug.Print "[" & x.GetElementText("a") & "]"
 ### White space
 {: #defect-whitespace .no_toc }
 
+<!-- test: ParseResultTests.Parse_WhiteSpaceBetweenInlineElements_IsKept, ParseResultTests.Parse_ElementWithOnlySpaces_KeepsTheSpaces, ParseResultTests.Parse_SpacesAroundChildElements_AreChildNodes, ParseResultTests.Parse_LineBreaksAroundChildElements_AreChildNodes -->
 > [!WARNING] 1.0.0.1
 > **Parse** leaves out a text node that holds only spaces, and keeps one that has a line break or a tab in it. A space between two elements is lost: `<p><b>a</b> <i>b</i></p>` is read as `<p><b>a</b><i>b</i></p>`, and its text is `ab`. An element that holds only spaces is read as an empty element. The white space of an indented document is kept, because it holds line breaks.
 
@@ -1261,11 +1304,14 @@ Debug.Print x.RootElement.ChildNodes.Count
 ' 3
 ```
 
+<!-- test: ParseResultTests.SetElementText_SpacesOnly_AreKept -->
 Text set with [**SetElementText**](#setelementtext) is kept whatever it holds, spaces only included.
+<!-- /test -->
 
 ### Pretty printing
 {: #defect-pretty .no_toc }
 
+<!-- test: WriteTests.PrettyPrint_TextReadBack_HasTheTextThatWasWritten, WriteTests.PrettyPrint_WrittenAgainAfterReading_IsTheSameText, WriteTests.PrettyPrint_ElementsWithOnlyElementChildren_ReadBackWithTheSameChildren -->
 > [!WARNING] 1.0.0.1
 > A document written with *prettyPrint* **True** does not read back as the document that was written. The line breaks and the indentation around the text of an element are text to the parser, which keeps white space that has a line break in it. [**GetElementText**](#getelementtext) of the element returns them, and writing the document again with *prettyPrint* puts them on lines of their own, so the text changes each time the document is written and read.
 
@@ -1294,6 +1340,7 @@ Debug.Print Replace(Replace(s, " ", "."), vbCrLf, "|")
 ### Clone, Merge and the root element
 {: #defect-clone .no_toc }
 
+<!-- test: DocumentTests.Clone_CopiedNodes_CanBeRemoved, DocumentTests.Clone_NodesOfTheClone_HaveAParent, DocumentTests.Merge_AddedNodes_CanBeRemoved, DocumentTests.RemoveElement_RootElement_LeavesNoRootElement, ParseResultTests.Parse_TextWithNoElement_LeavesNoRootElement, DocumentTests.Merge_IntoAnObjectWithNoDocument_SetsTheRootElement, DocumentTests.Merge_SecondMergeIntoAnObjectWithNoDocument_AppendsTheChildren -->
 > [!WARNING] 1.0.0.1
 > The nodes that **Clone** copies and **Merge** adds have no **Parent**, so [**RemoveElement**](#removeelement) returns **False** for them and removes nothing. [**RootElement**](#rootelement) is set only when a document is read, created or cloned, so it keeps naming the old root after **RemoveElement** removes the root element and after **Parse** reads text that has no element. A **Merge** into an object that holds no document sets [**Initialized**](#initialized) and leaves **RootElement** **Nothing**, so later merges into it do nothing.
 
@@ -1327,6 +1374,7 @@ Debug.Print c.Initialized & " " & (c.RootElement Is Nothing)
 ### A byte order mark in a string
 {: #defect-bom .no_toc }
 
+<!-- test: ParseResultTests.Parse_LeadingByteOrderMarkCharacter_IsDropped, ParseResultTests.XmlString_LeadingByteOrderMarkCharacter_IsDropped -->
 > [!WARNING] 1.0.0.1
 > [**Parse**](#parse) and the [**XmlString**](#xmlstring) property cut three characters from the start of a string that begins with the character U+FEFF, the character that a byte order mark decodes to. Only the first of the three is the mark: the next two are the start of the document. [**LoadFromFile**](#loadfromfile) removes the mark from the bytes of the file first, so a file is not affected.
 
@@ -1341,6 +1389,7 @@ Debug.Print x.RootElement.Name
 ### Files
 {: #defect-files .no_toc }
 
+<!-- test: FileTests.LoadFromFile_MissingFile_ReturnsFalseAndCreatesNoFile, FileTests.LoadFromFile_FileThatCannotBeParsed_ReturnsFalse, FileTests.SaveToFile_DeclaredEncoding_MatchesTheBytesWritten -->
 > [!WARNING] 1.0.0.1
 > **LoadFromFile** creates an empty file when the path names a file that does not exist, before it returns **False**. It returns **True** after the text of an existing file fails to parse, since the result of **Parse** is not tested. **SaveToFile** writes UTF-8 whatever [**Encoding**](#encoding) says, so a document labelled with another encoding is mislabelled in the file.
 
@@ -1381,7 +1430,9 @@ Kill path
 ' True
 ```
 
+<!-- test: FileTests.LoadFromFile_EmptyFile_ReturnsFalse -->
 A file with fewer than three bytes cannot be loaded, and an empty file gives **False**: the code reads three bytes before it tests the length.
+<!-- /test -->
 
 ## See Also
 

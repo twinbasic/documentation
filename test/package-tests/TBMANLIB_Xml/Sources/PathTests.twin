@@ -1,0 +1,209 @@
+' The paths of cXml (SelectElement, GetElementText and the members built on them), the way a member
+' reports a failure, and the helpers of cXml that read elements by name.
+[TestFixture]
+Module PathTests
+
+    Private Const LIBRARY As String = "<library><book id=""1"">Dune</book><book id=""2"">Emma</book></library>"
+
+    ' ---- the syntax of a path
+
+    [TestCase]
+    Public Sub Path_FirstNameIsTheRootElement()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(LIBRARY)
+        Expect.AreEqual "", x.GetElementText("book"), "GetElementText of book"
+        Expect.AreEqual "Dune", x.GetElementText("library/book"), "GetElementText of library/book"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_ManyMatches_TakesTheFirstDirectChild()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a><b>deep</b></a><b>1</b><b>2</b></r>")
+        Expect.AreEqual "1", x.GetElementText("r/b"), "GetElementText of r/b"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_WhiteSpaceAndEmptyNames_AreRemoved()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(LIBRARY)
+        Expect.AreEqual "Dune", x.GetElementText("/library//book"), "GetElementText of /library//book"
+        Expect.AreEqual "Dune", x.GetElementText(" library / book "), "GetElementText of ' library / book '"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_NamespacePrefix_IsPartOfTheName()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<ns:r><ns:item>v</ns:item></ns:r>")
+        Expect.AreEqual "v", x.GetElementText("ns:r/ns:item"), "GetElementText of ns:r/ns:item"
+        Expect.AreEqual "", x.GetElementText("r/item"), "GetElementText of r/item"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_PositionsAttributesAndWildcards_AreNamesNoElementHas()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(LIBRARY)
+        Dim p As Variant
+        For Each p In Array("library/book[2]", "library/@id", "library/*", "library/.", "library/book/..")
+            Expect.AreEqual "", x.GetElementText(CStr(p)), "GetElementText of " & p
+        Next
+        Expect.AreEqual "DuneEmma", x.GetElementText("//library"), "GetElementText of //library (read as library)"
+        Expect.AreEqual x.GetElementText("book"), x.GetElementText("//book"), "GetElementText of //book against that of book"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_NodesThatAreNotElements_AreSelectedByTheirNames()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<library><!--c--><book>x</book></library>")
+        Expect.AreEqual "c", x.SelectElement("library/#comment").Value, "the Value of library/#comment"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Path_WithNoName_SelectsNothing()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(LIBRARY)
+        Expect.IsTrue (x.SelectElement("") Is Nothing), "SelectElement of an empty path is Nothing"
+        Expect.IsTrue (x.SelectElement("/") Is Nothing), "SelectElement of / is Nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectElements_ReturnsEveryNodeOfTheNameAtAnyDepth()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a>1</a><b><a>2</a></b><c><a>3</a></c></r>")
+        Dim found As Collection
+        Set found = x.SelectElements("a")
+        Expect.AreEqual 3, found.Count, "the nodes of SelectElements(a)"
+        Expect.AreEqual "1", found(1).ChildNodes(1).Value, "the text of the first a"
+        Expect.AreEqual "3", found(3).ChildNodes(1).Value, "the text of the third a"
+        Expect.AreEqual 0, x.SelectElements("r/a").Count, "the nodes of SelectElements(r/a)"
+        Expect.AreEqual 0, x.SelectElements("missing").Count, "the nodes of SelectElements(missing)"
+        Expect.Done
+    End Sub
+
+    ' ---- failures
+
+    [TestCase]
+    Public Sub Parse_EmptyString_ReturnsFalseAndLeavesErrEmptyDocument()
+        Expect.Begin
+        Dim x As New cXml
+        Err.Clear
+        Expect.IsFalse x.Parse(""), "Parse of an empty string"
+        Expect.AreEqual ERR_EMPTY_DOCUMENT, Err.Number, "Err.Number after Parse of an empty string"
+        Expect.AreEqual "cXml.Parse", Err.Source, "Err.Source after Parse of an empty string"
+        Expect.AreEqual "XML string cannot be empty", Err.Description, "Err.Description after Parse of an empty string"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectElement_DocumentNotInitialised_ReturnsNothingAndLeavesErrEmptyDocument()
+        Expect.Begin
+        Dim x As New cXml
+        Err.Clear
+        Expect.IsTrue (x.SelectElement("library") Is Nothing), "SelectElement before a document is read"
+        Expect.AreEqual ERR_EMPTY_DOCUMENT, Err.Number, "Err.Number after SelectElement before a document is read"
+        Expect.AreEqual "Document not initialized", Err.Description, "Err.Description after SelectElement before a document is read"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectElement_PathWithNoName_LeavesError9()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(LIBRARY)
+        Err.Clear
+        Expect.IsTrue (x.SelectElement("") Is Nothing), "SelectElement of an empty path"
+        Expect.AreEqual 9, Err.Number, "Err.Number after SelectElement of an empty path"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveElement_PathThatSelectsNothing_ReturnsFalseAndLeavesError91()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(LIBRARY)
+        Err.Clear
+        Expect.IsFalse x.RemoveElement("library/magazine"), "RemoveElement of a path that selects nothing"
+        Expect.AreEqual 91, Err.Number, "Err.Number after RemoveElement of a path that selects nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_TagCutOffByTheEndOfTheText_ReturnsFalseAndLeavesError5()
+        Expect.Begin
+        Dim x As New cXml
+        Err.Clear
+        Expect.IsFalse x.Parse("<r"), "Parse of <r"
+        Expect.AreEqual 5, Err.Number, "Err.Number after Parse of <r"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MembersThatFindNothing_ReturnEmptyValues()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a id=""7"" empty=""""></a></r>")
+        Expect.AreEqual "7", x.GetAttribute("r/a", "id"), "GetAttribute of id"
+        Expect.AreEqual "", x.GetAttribute("r/a", "empty"), "GetAttribute of an empty attribute"
+        Expect.AreEqual "", x.GetAttribute("r/a", "missing"), "GetAttribute of a missing attribute"
+        Expect.AreEqual "", x.GetAttribute("r/nothing", "id"), "GetAttribute of a missing element"
+        Expect.IsTrue (x.AddElement("r/shelf", "book") Is Nothing), "AddElement below a missing element is Nothing"
+        x.SetAttribute "r/missing", "z", "1"
+        x.RemoveAttribute "r/missing", "z"
+        x.SetElementText "r/missing", "lost"
+        Expect.AreEqual "<r><a id=""7"" empty=""""/></r>", x.ToXmlString(False), "ToXmlString after calls that find nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetAttribute_ReplacedAttribute_MovesToTheEnd()
+        Expect.Begin
+        Dim x As New cXml
+        x.CreateNew "r"
+        x.SetAttribute "r", "a", "1"
+        x.SetAttribute "r", "b", "2"
+        x.SetAttribute "r", "a", "3"
+        Expect.AreEqual "<r b=""2"" a=""3""/>", x.ToXmlString(False), "ToXmlString after a is set twice"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetElementText_ElementWithMixedContent_MovesTheTextToTheEnd()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a>one<b>bee</b>two</a></r>")
+        x.SetElementText "r/a", "NEW"
+        Expect.AreEqual "<r><a><b>bee</b>NEW</a></r>", x.ToXmlString(False), "ToXmlString after SetElementText on an element with mixed content"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Validate_NamelessElementOrAttribute_IsFalse()
+        Expect.Begin
+        Dim x As New cXml
+        Expect.IsFalse x.Validate(), "Validate of an object with no document"
+        x.CreateNew "r"
+        Expect.IsTrue x.Validate(), "Validate of r"
+        x.AddElement "r", ""
+        Expect.IsFalse x.Validate(), "Validate after an element with an empty name is added"
+        Dim y As New cXml
+        y.CreateNew "r"
+        y.SetAttribute "r", "", "v"
+        Expect.IsFalse y.Validate(), "Validate after an attribute with an empty name is set"
+        Expect.Done
+    End Sub
+
+End Module

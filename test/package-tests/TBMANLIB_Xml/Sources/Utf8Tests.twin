@@ -1,0 +1,133 @@
+' mXml: the error numbers, the defaults and the two UTF-8 conversion functions.
+[TestFixture]
+Module Utf8Tests
+
+    Private Function Hex2(ByRef B() As Byte) As String
+        Dim i As Long
+        Dim s As String
+        For i = 0 To UBound(B)
+            s = s & Right$("0" & Hex$(B(i)), 2) & " "
+        Next
+        Hex2 = Trim$(s)
+    End Function
+
+    [TestCase]
+    Public Sub Constants_ErrorNumbers_AreCountedFromTheBase()
+        Expect.Begin
+        Expect.AreEqual vbObjectError + 5000, ERR_BASE, "ERR_BASE"
+        Expect.AreEqual -2147216504, ERR_BASE, "ERR_BASE as a number"
+        Expect.AreEqual ERR_BASE + 1, ERR_INVALID_XML, "ERR_INVALID_XML"
+        Expect.AreEqual ERR_BASE + 2, ERR_INVALID_NODE, "ERR_INVALID_NODE"
+        Expect.AreEqual ERR_BASE + 3, ERR_NODE_NOT_FOUND, "ERR_NODE_NOT_FOUND"
+        Expect.AreEqual ERR_BASE + 4, ERR_ATTRIBUTE_NOT_FOUND, "ERR_ATTRIBUTE_NOT_FOUND"
+        Expect.AreEqual ERR_BASE + 5, ERR_EMPTY_DOCUMENT, "ERR_EMPTY_DOCUMENT"
+        Expect.AreEqual ERR_BASE + 6, ERR_INVALID_OPERATION, "ERR_INVALID_OPERATION"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Constants_Defaults_AreTheOnesThePageNames()
+        Expect.Begin
+        Expect.AreEqual "1.0", DEFAULT_XML_VERSION, "DEFAULT_XML_VERSION"
+        Expect.AreEqual "UTF-8", DEFAULT_ENCODING, "DEFAULT_ENCODING"
+        Expect.AreEqual "  ", DEFAULT_INDENT, "DEFAULT_INDENT"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enumerations_HaveTheValuesOfTheDocumentObjectModel()
+        Expect.Begin
+        Expect.AreEqual 0, XmlNodeType.None, "None"
+        Expect.AreEqual 1, XmlNodeType.Element, "Element"
+        Expect.AreEqual 2, XmlNodeType.Attribute, "Attribute"
+        Expect.AreEqual 3, XmlNodeType.Text, "Text"
+        Expect.AreEqual 4, XmlNodeType.CData, "CData"
+        Expect.AreEqual 8, XmlNodeType.Comment, "Comment"
+        Expect.AreEqual 9, XmlNodeType.Document, "Document"
+        Expect.AreEqual 11, XmlNodeType.DocumentFragment, "DocumentFragment"
+        Expect.AreEqual 12, XmlNodeType.Notation, "Notation"
+        Expect.AreEqual 1, ParseOption.PreserveWhitespace, "PreserveWhitespace"
+        Expect.AreEqual 2, ParseOption.IgnoreComments, "IgnoreComments"
+        Expect.AreEqual 4, ParseOption.IgnoreProcessingInstructions, "IgnoreProcessingInstructions"
+        Expect.AreEqual 8, ParseOption.ValidateOnParse, "ValidateOnParse"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringToUTF8Bytes_EncodesTheCharacters()
+        Expect.Begin
+        Dim b() As Byte
+        b = StringToUTF8Bytes("A" & ChrW(233) & ChrW(&H20AC))
+        Expect.AreEqual "41 C3 A9 E2 82 AC", Hex2(b), "the bytes of A, e with acute accent and the euro sign"
+        b = StringToUTF8Bytes(ChrW(&HD83D&) & ChrW(&HDE00&))
+        Expect.AreEqual "F0 9F 98 80", Hex2(b), "the bytes of a surrogate pair (U+1F600)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringToUTF8Bytes_EmptyString_IsOneZeroByte()
+        Expect.Begin
+        Dim e() As Byte
+        e = StringToUTF8Bytes("")
+        Expect.AreEqual 0, UBound(e), "the upper bound of the bytes of an empty string"
+        Expect.AreEqual 0, CLng(e(0)), "the only byte of an empty string"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UTF8BytesToString_DecodesTheBytes()
+        Expect.Begin
+        Dim b() As Byte
+        b = StringToUTF8Bytes("caf" & ChrW(233))
+        Expect.AreEqual "caf" & ChrW(233), UTF8BytesToString(b), "the string of the bytes of cafe with an acute accent"
+        Dim unsized() As Byte
+        Expect.AreEqual 0, Len(UTF8BytesToString(unsized)), "the length of the string of an array with no elements"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UTF8BytesToString_InvalidSequence_BecomesTheReplacementCharacter()
+        Expect.Begin
+        Dim b() As Byte
+        ReDim b(0 To 1)
+        b(0) = &HC3
+        b(1) = &H28
+        Dim s As String
+        s = UTF8BytesToString(b)
+        Expect.AreEqual &HFFFD&, AscW(s) And &HFFFF&, "the first character of the string of the bytes C3 28"
+        Expect.AreEqual "(", Mid$(s, 2), "the rest of the string of the bytes C3 28"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UTF8BytesToString_ZeroByteAndByteOrderMark_AreKept()
+        Expect.Begin
+        Dim e() As Byte
+        e = StringToUTF8Bytes("")
+        Expect.AreEqual 1, Len(UTF8BytesToString(e)), "the length of the string of the one zero byte"
+        Dim m() As Byte
+        ReDim m(0 To 3)
+        m(0) = &HEF
+        m(1) = &HBB
+        m(2) = &HBF
+        m(3) = 65
+        Dim s As String
+        s = UTF8BytesToString(m)
+        Expect.AreEqual &HFEFF&, AscW(s) And &HFFFF&, "the first character of the string of EF BB BF 41"
+        Expect.AreEqual "A", Mid$(s, 2), "the rest of the string of EF BB BF 41"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UTF8BytesToString_ArrayNotStartingAtZero_IsRead()
+        Expect.Begin
+        Dim b() As Byte
+        ReDim b(5 To 7)
+        b(5) = 97
+        b(6) = 98
+        b(7) = 99
+        Expect.AreEqual "abc", UTF8BytesToString(b), "the string of an array whose indexes are 5 to 7"
+        Expect.Done
+    End Sub
+
+End Module

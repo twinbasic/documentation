@@ -93,7 +93,7 @@ if (
 // The contributed sections that have no test project yet. Each package's project removes it
 // from here; the gate fails on a name here with a project, and on a section neither here nor
 // with one.
-const PENDING = new Set(["ArrayListLib", "TBMANLIB_Dialog", "TBMANLIB_Xml", "WinReg"]);
+const PENDING = new Set(["ArrayListLib", "TBMANLIB_Dialog", "WinReg"]);
 
 const DOCS = path.join(REPO_ROOT, "docs");
 const SECTIONS = path.join(DOCS, "Reference", "Contributed");

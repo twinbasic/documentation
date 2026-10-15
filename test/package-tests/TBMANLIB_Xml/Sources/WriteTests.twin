@@ -1,0 +1,110 @@
+' cXml.ToXmlString: the text it writes, and whether a text it wrote with prettyPrint reads back as the
+' document that was written.
+[TestFixture]
+Module WriteTests
+
+    Private Function SampleDocument() As cXml
+        Dim x As New cXml
+        x.CreateNew "r"
+        x.AddElement "r", "a"
+        x.SetElementText "r/a", "t"
+        Set SampleDocument = x
+    End Function
+
+    ' ---- pretty printing
+
+    [TestCase]
+    Public Sub PrettyPrint_TextReadBack_HasTheTextThatWasWritten()
+        Expect.Begin
+        Dim x As cXml
+        Set x = SampleDocument()
+        Dim y As cXml
+        Set y = Helpers.Doc(x.ToXmlString(False, True))
+        Expect.AreEqual "t", y.GetElementText("r/a"), "GetElementText of r/a after the pretty-printed text is read"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PrettyPrint_WrittenAgainAfterReading_IsTheSameText()
+        Expect.Begin
+        Dim x As cXml
+        Set x = SampleDocument()
+        Dim first As String
+        first = x.ToXmlString(False, True)
+        Dim y As cXml
+        Set y = Helpers.Doc(first)
+        Expect.AreEqual Helpers.Shown(first), Helpers.Shown(y.ToXmlString(False, True)), "the pretty-printed text after it is read and written again"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PrettyPrint_ElementsWithOnlyElementChildren_ReadBackWithTheSameChildren()
+        Expect.Begin
+        Dim x As New cXml
+        x.CreateNew "r"
+        x.AddElement "r", "a"
+        x.AddElement "r/a", "b"
+        Dim y As cXml
+        Set y = Helpers.Doc(x.ToXmlString(False, True))
+        Expect.AreEqual "<r><a><b/></a></r>", y.ToXmlString(False), "the compact text after a pretty-printed text with no character data is read"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PrettyPrint_PutsEachNodeOnALineAndIndentsEachLevel()
+        Expect.Begin
+        Dim x As New cXml
+        x.CreateNew "r"
+        x.AddElement "r", "a"
+        x.SetElementText "r/a", "t"
+        x.AddElement "r", "b"
+        x.AddElement "r/b", "c"
+        Expect.AreEqual "<?xml.version=""1.0"".encoding=""UTF-8""?>|<r>|..<a>|....t|..</a>|..<b>|....<c/>|..</b>|</r>|", Replace(Replace(x.ToXmlString(True, True), " ", "."), vbCrLf, "|"), "ToXmlString(True, True)"
+        Expect.AreEqual "<r>|--<a>|----t|--</a>|--<b>|----<c/>|--</b>|</r>|", Replace(Replace(x.ToXmlString(False, True, "--"), " ", "."), vbCrLf, "|"), "ToXmlString(False, True, ""--"")"
+        Expect.AreEqual "<r>|<a>|t|</a>|<b>|<c/>|</b>|</r>|", Replace(Replace(x.ToXmlString(False, True, ""), " ", "."), vbCrLf, "|"), "ToXmlString(False, True, """")"
+        Expect.Done
+    End Sub
+
+    ' ---- the compact text
+
+    [TestCase]
+    Public Sub ToXmlString_Compact_WritesDeclarationElementsAndEscapes()
+        Expect.Begin
+        Dim x As New cXml
+        x.CreateNew "r"
+        x.SetAttribute "r", "id", "1"
+        x.AddElement "r", "a"
+        x.SetElementText "r/a", "x < y"
+        x.AddElement "r", "empty"
+        Expect.AreEqual "<?xml version=""1.0"" encoding=""UTF-8""?><r id=""1""><a>x &lt; y</a><empty/></r>", x.ToXmlString(), "ToXmlString()"
+        Expect.AreEqual "<r id=""1""><a>x &lt; y</a><empty/></r>", x.ToXmlString(False), "ToXmlString(False)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToXmlString_ElementWithAnEmptyTextNode_WritesStartAndEndTag()
+        Expect.Begin
+        Dim x As New cXml
+        x.CreateNew "r"
+        x.AddElement "r", "c"
+        x.SetElementText "r/c", ""
+        Expect.AreEqual "<r><c></c></r>", x.ToXmlString(False), "ToXmlString after SetElementText of an empty string"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToXmlString_ModelTree_WritesTheNodeKindsAndLeavesOutTheOthers()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r>text<!--note--><![CDATA[data]]></r>")
+        Expect.AreEqual "<r>text<!--note--><![CDATA[data]]></r>", x.ToXmlString(False), "ToXmlString of text, a comment and a CDATA section"
+        Dim odd As New cXmlNode
+        odd.NodeType = XmlNodeType.Notation
+        odd.Name = "n"
+        Set odd.Parent = x.RootElement
+        x.RootElement.ChildNodes.Add odd
+        Expect.AreEqual "<r>text<!--note--><![CDATA[data]]></r>", x.ToXmlString(False), "ToXmlString after a node of the kind Notation is added"
+        Expect.Done
+    End Sub
+
+End Module

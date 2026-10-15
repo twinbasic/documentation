@@ -1,0 +1,199 @@
+' mXPath: where a path starts, the steps and predicates it reads, the parts of XPath 1.0 it does not
+' read (a limit of the package, which these cases check as the page states it), the errors of the
+' two functions, and the time a query takes.
+[TestFixture]
+Module XPathEngineTests
+
+    Private Const CATALOG As String = "<catalog><book id='1'><title>Dune</title></book><book id='2'><title>Emma</title></book></catalog>"
+    Private Const BOOKS As String = "<catalog><book id='1' cat='fiction' price='12.5'><title id='t1'>Dune</title><author id='a1'>Herbert</author></book><book id='2' cat='fiction' price='8'><title id='t2'>Emma</title><author id='a2'>Austen</author></book><book id='3' cat='science' price='30'><title id='t3'>Cosmos</title><author id='a3'>Sagan</author></book></catalog>"
+    Private Const LIBRARY As String = "<lib id='l'><shelf id='s1'><book id='a'></book><!--c--><book id='b'>text</book></shelf><shelf id='s2'><book id='c'></book></shelf></lib>"
+
+    ' ---- where a path starts
+
+    [TestCase]
+    Public Sub Context_FromTheDocumentNode_ALeadingSlashChangesNothing()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(CATALOG)
+        Expect.AreEqual 2, x.XPath("catalog/book").Count, "the nodes of XPath(catalog/book)"
+        Expect.AreEqual 2, x.XPath("/catalog/book").Count, "the nodes of XPath(/catalog/book)"
+        Expect.AreEqual 2, x.XPath("//title").Count, "the nodes of XPath(//title)"
+        Expect.AreEqual "catalog#", Helpers.Listed(x.XPath("/catalog")), "the nodes of XPath(/catalog)"
+        Expect.AreEqual Helpers.Listed(x.XPath("catalog")), Helpers.Listed(x.XPath("/catalog")), "XPath(catalog) against XPath(/catalog)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Context_FromAnElement_ASlashAtTheStartIsIgnoredAndTheSearchStaysBelow()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(CATALOG)
+        Dim book As cXmlNode
+        Set book = x.XPathSingle("/catalog/book[@id='2']")
+        Expect.AreEqual 1, book.XPath("//title").Count, "the nodes of book.XPath(//title)"
+        Expect.AreEqual 1, book.XPath("/title").Count, "the nodes of book.XPath(/title)"
+        Expect.AreEqual 0, book.XPath("/catalog/book").Count, "the nodes of book.XPath(/catalog/book)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Context_XPathFromRoot_StartsAtTheRootElement()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(CATALOG)
+        Expect.AreEqual 2, x.XPathFromRoot("book").Count, "the nodes of XPathFromRoot(book)"
+        Expect.AreEqual 0, x.XPathFromRoot("/catalog/book").Count, "the nodes of XPathFromRoot(/catalog/book)"
+        Expect.AreEqual "catalog", x.XPathFromRoot(".").Item(1).Name, "the first node of XPathFromRoot(.)"
+        Expect.Done
+    End Sub
+
+    ' ---- steps and predicates
+
+    [TestCase]
+    Public Sub Steps_NamesAndNodeTests_SelectAsMsxml()
+        Expect.Begin
+        Dim q As Variant
+        For Each q In Array("/lib/shelf", "//book", "/lib//book", "/lib/shelf/*", "/lib/shelf/node()", "/lib/shelf/comment()", "//book/text()", "/lib/shelf/book/parent::shelf", "//book/parent::*", "/lib/./shelf/self::shelf", "//shelf/child::book", "/lib/descendant::book", "/lib/self::shelf")
+            Helpers.SelectsAsMsxml LIBRARY, CStr(q)
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Steps_NodesThatAreNotElements_ArePickedByTheirNames()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(LIBRARY)
+        Expect.AreEqual "#comment=c", Helpers.Listed(x.XPath("/lib/shelf/#comment")), "the nodes of XPath(/lib/shelf/#comment)"
+        Expect.AreEqual "#text=text", Helpers.Listed(x.XPath("//book/#text")), "the nodes of XPath(//book/#text)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Predicates_StandardForms_SelectAsMsxml()
+        Expect.Begin
+        Dim q As Variant
+        For Each q In Array("//book[2]", "//book[last()]", "//book[position()=1]", "//book[@id]", "//book[@id=3]", "//book[@cat!='fiction']", "//book[@price>10]", "//book[@price<=8]", "//book[@price>'10']", "//book[@cat='fiction'][2]", "//book[title]", "//title[text()='Dune']", "//author[contains(text(), 'ag')]", "//book[starts-with(@cat, 'sci')]", "//book[not(@cat='fiction')]", "//book[@cat='fiction' and @price>10]", "//book[@id='1' or @id='3']", "//book[ @id = '2' ]")
+            Helpers.SelectsAsMsxml BOOKS, CStr(q)
+        Next
+        Expect.Done
+    End Sub
+
+    ' ---- what the engine does not read
+
+    [TestCase]
+    Public Sub Limits_AttributeSteps_SelectNothing()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(CATALOG)
+        Expect.AreEqual 0, x.XPath("/catalog/book/@id").Count, "the nodes of /catalog/book/@id"
+        Expect.AreEqual 0, x.XPath("//@id").Count, "the nodes of //@id"
+        Expect.AreEqual 0, x.XPath("/catalog/book/attribute::id").Count, "the nodes of /catalog/book/attribute::id"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Limits_UnionGroupingAndTwoAttributes_SelectNothing()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(CATALOG)
+        Expect.AreEqual 0, x.XPath("//title | //book").Count, "the nodes of //title | //book"
+        Expect.AreEqual 0, x.XPath("//book[(@id='1')]").Count, "the nodes of //book[(@id='1')]"
+        Expect.AreEqual 0, x.XPath("//book[@id=@id]").Count, "the nodes of //book[@id=@id]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Limits_OtherFunctions_SelectNothing()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc(CATALOG)
+        Dim q As Variant
+        For Each q In Array("//book[count(title)=1]", "//book[string-length(@id)=1]", "//book[normalize-space(@id)='1']", "//book[name()='book']", "//book[local-name()='book']")
+            Expect.AreEqual 0, x.XPath(CStr(q)).Count, "the nodes of " & q
+        Next
+        Expect.Done
+    End Sub
+
+    ' ---- the two functions
+
+    [TestCase]
+    Public Sub SelectNodes_ContextNodeAndExpression_ReturnTheNodes()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a><b id='1'></b><b id='2'></b></a>")
+        Dim found As Collection
+        Set found = mXPath.SelectNodes(x.RootElement, "b")
+        Expect.AreEqual 2, found.Count, "the nodes of SelectNodes(a, b)"
+        Expect.AreEqual "2", found(2).GetAttribute("id"), "the id of the second node"
+        Expect.AreEqual 0, mXPath.SelectNodes(Nothing, "b").Count, "the nodes of SelectNodes(Nothing, b)"
+        Expect.AreEqual 0, mXPath.SelectNodes(x.Document, "").Count, "the nodes of SelectNodes with an empty expression"
+        Expect.AreEqual 0, mXPath.SelectNodes(x.Document, "/").Count, "the nodes of SelectNodes with the expression /"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectNodes_PositionTooLargeForALong_RaisesOverflow()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a><b id='1'></b><b id='2'></b></a>")
+        Dim found As Collection
+        On Error Resume Next
+        Set found = mXPath.SelectNodes(x.Document, "//b[99999999999]")
+        Expect.AreEqual 6, Err.Number, "the error number of SelectNodes with the position 99999999999"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub XPath_PositionTooLargeForALong_ReturnsAnEmptyCollectionAndLeavesTheError()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a><b id='1'></b><b id='2'></b></a>")
+        Err.Clear
+        Expect.AreEqual 0, x.XPath("//b[99999999999]").Count, "the nodes of XPath with the position 99999999999"
+        Expect.AreEqual 6, Err.Number, "Err.Number after XPath with the position 99999999999"
+        Expect.AreEqual 0, x.RootElement.XPath("//b[99999999999]").Count, "the nodes of cXmlNode.XPath with the position 99999999999"
+        Expect.IsTrue (x.XPathSingle("//b[99999999999]") Is Nothing), "XPathSingle with the position 99999999999 returns Nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectSingleNode_ReturnsTheFirstNodeOrNothing()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a><b id='1'></b><b id='2'></b></a>")
+        Expect.AreEqual "2", mXPath.SelectSingleNode(x.Document, "//b[@id='2']").GetAttribute("id"), "the node of SelectSingleNode(//b[@id='2'])"
+        Expect.IsTrue (mXPath.SelectSingleNode(x.Document, "/zzz") Is Nothing), "SelectSingleNode of an expression that selects nothing is Nothing"
+        Expect.IsTrue (mXPath.SelectSingleNode(Nothing, "/a") Is Nothing), "SelectSingleNode with Nothing as the context is Nothing"
+        Expect.Done
+    End Sub
+
+    ' ---- the time a query takes
+
+    [TestCase]
+    Public Sub SelectNodes_ManyNodes_TimeGrowsInStepWithTheirNumber()
+        Expect.Begin
+        Dim small As Double = TimeOfQuery(500)
+        Dim large As Double = TimeOfQuery(2000)
+        If small < 0.02 Then small = 0.02
+        Expect.IsTrue large < 8 * small, "the time of //item over 2000 elements is less than 8 times that over 500 (linear growth gives 4, quadratic growth 16)"
+        Expect.Done
+    End Sub
+
+    Private Function TimeOfQuery(ByVal Count As Long) As Double
+        Dim parts() As String
+        ReDim parts(0 To Count - 1)
+        Dim i As Long
+        For i = 0 To Count - 1
+            parts(i) = "<item id='" & i & "'></item>"
+        Next
+        Dim x As New cXml
+        x.Parse "<list>" & Join(parts, "") & "</list>"
+        Dim t As Double = Timer
+        Dim n As Long = x.XPath("//item").Count
+        TimeOfQuery = Timer - t
+        If TimeOfQuery < 0 Then TimeOfQuery = TimeOfQuery + 86400
+    End Function
+
+End Module

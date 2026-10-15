@@ -31,6 +31,7 @@ Debug.Print mXml.DEFAULT_ENCODING
 
 The kind of a [**cXmlNode**](cXmlNode). The numbers are those of the node types of the W3C Document Object Model.
 
+<!-- test: Utf8Tests.Enumerations_HaveTheValuesOfTheDocumentObjectModel -->
 | Member | Value | Used for |
 |:-------|------:|:---------|
 | **None** | 0 | a node made with `New cXmlNode`, before its kind is set |
@@ -43,7 +44,11 @@ The kind of a [**cXmlNode**](cXmlNode). The numbers are those of the node types 
 | **DocumentFragment** | 11 | nothing |
 | **Notation** | 12 | nothing |
 
+<!-- /test -->
+
+<!-- test: NodeTests.Parse_NodeKinds_HaveTheirFixedNames, WriteTests.ToXmlString_ModelTree_WritesTheNodeKindsAndLeavesOutTheOthers -->
 The parser creates nodes of the kinds **Document**, **Element**, **Text**, **CData** and **Comment**. [**ToXmlString**](cXml#toxmlstring) writes those five kinds and leaves out a node of any other kind.
+<!-- /test -->
 
 ### ParseOption
 {: .no_toc }
@@ -69,7 +74,9 @@ The base of the package's error numbers.
 
 Syntax: **ERR_BASE** **As Long**
 
+<!-- test: Utf8Tests.Constants_ErrorNumbers_AreCountedFromTheBase -->
 `vbObjectError + 5000`, which is -2147216504. The other error numbers are **ERR_BASE** plus 1 to 6. See [Reporting failures](cXml#reporting-failures) for how the numbers reach a program.
+<!-- /test -->
 
 ### ERR_INVALID_XML
 {: .no_toc }
@@ -134,21 +141,27 @@ Syntax: **ERR_INVALID_OPERATION** **As Long**
 
 Syntax: **DEFAULT_XML_VERSION** **As String**
 
+<!-- test: Utf8Tests.Constants_Defaults_AreTheOnesThePageNames -->
 The string `1.0`. A new [**cXml**](cXml) object has it as its [**Version**](cXml#version).
+<!-- /test -->
 
 ### DEFAULT_ENCODING
 {: .no_toc }
 
 Syntax: **DEFAULT_ENCODING** **As String**
 
+<!-- test: Utf8Tests.Constants_Defaults_AreTheOnesThePageNames -->
 The string `UTF-8`. A new [**cXml**](cXml) object has it as its [**Encoding**](cXml#encoding).
+<!-- /test -->
 
 ### DEFAULT_INDENT
 {: .no_toc }
 
 Syntax: **DEFAULT_INDENT** **As String**
 
+<!-- test: Utf8Tests.Constants_Defaults_AreTheOnesThePageNames -->
 Two space characters. No member reads it: the default of the *indent* parameter of [**ToXmlString**](cXml#toxmlstring) is the same two spaces, written there as a literal.
+<!-- /test -->
 
 ## Functions
 
@@ -162,9 +175,11 @@ Syntax: **StringToUTF8Bytes** ( *str* ) **As Byte()**
 *str*
 : *required* A **String**.
 
+<!-- test: Utf8Tests.StringToUTF8Bytes_EncodesTheCharacters, Utf8Tests.StringToUTF8Bytes_EmptyString_IsOneZeroByte -->
 Returns a **Byte** array that starts at index 0 and holds the UTF-8 encoding of *str*, with no byte order mark and no terminating zero byte. A character outside the Basic Multilingual Plane, held in *str* as a surrogate pair, becomes one four-byte sequence.
 
 For an empty string the array has one element, which holds 0, so a program cannot tell the result from the encoding of a single `ChrW(0)`.
+<!-- /test -->
 
 [**SaveToFile**](cXml#savetofile) uses the function to write a file.
 
@@ -197,7 +212,9 @@ Syntax: **UTF8BytesToString** ( *utf8Bytes* ) **As String**
 *utf8Bytes*
 : *required* A **Byte** array, passed by reference, so the argument is an array variable and not an expression. The array may start at any index.
 
+<!-- test: Utf8Tests.UTF8BytesToString_DecodesTheBytes, Utf8Tests.UTF8BytesToString_InvalidSequence_BecomesTheReplacementCharacter, Utf8Tests.UTF8BytesToString_ZeroByteAndByteOrderMark_AreKept, Utf8Tests.UTF8BytesToString_ArrayNotStartingAtZero_IsRead -->
 Returns the characters that the bytes encode. An array that has never been given elements gives an empty string. A byte sequence that is not valid UTF-8 becomes the character U+FFFD, and a zero byte becomes `ChrW(0)`, so the one-element array that [**StringToUTF8Bytes**](#stringtoutf8bytes) returns for an empty string gives a string of length 1. A byte order mark, the bytes `EF BB BF`, becomes the character U+FEFF and is kept.
+<!-- /test -->
 
 [**LoadFromFile**](cXml#loadfromfile) uses the function to read a file.
 

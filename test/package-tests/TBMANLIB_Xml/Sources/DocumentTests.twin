@@ -1,0 +1,199 @@
+' cXml as a whole document: Clone, Merge, removing the root element, XmlString, and the Version and
+' Encoding it keeps.
+[TestFixture]
+Module DocumentTests
+
+    ' ---- Clone and Merge
+
+    [TestCase]
+    Public Sub Clone_CopiedNodes_CanBeRemoved()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a>1</a></r>")
+        Dim y As cXml
+        Set y = x.Clone()
+        Expect.IsTrue y.RemoveElement("r/a"), "RemoveElement of r/a in the clone"
+        Expect.AreEqual "<r/>", y.ToXmlString(False), "ToXmlString of the clone after RemoveElement of r/a"
+        Expect.AreEqual "1", x.GetElementText("r/a"), "GetElementText of r/a in the original"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_ChangesToTheCloneDoNotReachTheOriginal()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a>1</a></r>")
+        Dim y As cXml
+        Set y = x.Clone()
+        y.SetElementText "r/a", "2"
+        Expect.AreEqual "1", x.GetElementText("r/a"), "GetElementText of r/a in the original"
+        Expect.AreEqual "2", y.GetElementText("r/a"), "GetElementText of r/a in the clone"
+        Expect.AreEqual "", y.XmlString, "XmlString of the clone"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_NodesOfTheClone_HaveAParent()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a>1</a></r>")
+        Dim y As cXml
+        Set y = x.Clone()
+        Expect.AreEqual "#document", Helpers.NameOf(y.RootElement.Parent), "the Parent of the root element of the clone"
+        Expect.AreEqual "r", Helpers.NameOf(y.RootElement.ChildNodes(1).Parent), "the Parent of the first child of the root element of the clone"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Merge_AddedNodes_CanBeRemoved()
+        Expect.Begin
+        Dim a As cXml
+        Set a = Helpers.Doc("<list a=""1""><x>1</x></list>")
+        Dim b As cXml
+        Set b = Helpers.Doc("<other b=""2""><y>2</y></other>")
+        a.Merge b
+        Expect.AreEqual "<list a=""1""><x>1</x><y>2</y></list>", a.ToXmlString(False), "ToXmlString after Merge"
+        Expect.IsTrue a.RemoveElement("list/y"), "RemoveElement of list/y, an element that Merge added"
+        Expect.AreEqual "<list a=""1""><x>1</x></list>", a.ToXmlString(False), "ToXmlString after RemoveElement of list/y"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Merge_IntoAnObjectWithNoDocument_SetsTheRootElement()
+        Expect.Begin
+        Dim y As cXml
+        Set y = Helpers.Doc("<r><a>1</a></r>")
+        Dim c As New cXml
+        c.Merge y
+        Expect.IsTrue c.Initialized, "Initialized after Merge into an object with no document"
+        Expect.AreEqual "r", Helpers.NameOf(c.RootElement), "RootElement after Merge into an object with no document"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Merge_SecondMergeIntoAnObjectWithNoDocument_AppendsTheChildren()
+        Expect.Begin
+        Dim y As cXml
+        Set y = Helpers.Doc("<r><a>1</a></r>")
+        Dim z As cXml
+        Set z = Helpers.Doc("<q><z>3</z></q>")
+        Dim c As New cXml
+        c.Merge y
+        c.Merge z
+        Expect.AreEqual "<r><a>1</a><z>3</z></r>", c.ToXmlString(False), "ToXmlString after two Merge calls into an object with no document"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Merge_NothingAsTheOtherDocument_DoesNothing()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a>1</a></r>")
+        Dim none As cXml
+        Err.Clear
+        On Error Resume Next
+        x.Merge none
+        Expect.AreEqual 0, Err.Number, "the error number of Merge with Nothing"
+        On Error GoTo 0
+        Expect.AreEqual "<r><a>1</a></r>", x.ToXmlString(False), "ToXmlString after Merge with Nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Merge_ObjectWithNoDocument_AsTheOtherDocument_DoesNothing()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a>1</a></r>")
+        Dim blank As New cXml
+        x.Merge blank
+        Expect.AreEqual "<r><a>1</a></r>", x.ToXmlString(False), "ToXmlString after Merge of an object with no document"
+        Expect.Done
+    End Sub
+
+    ' ---- the root element
+
+    [TestCase]
+    Public Sub RemoveElement_RootElement_LeavesNoRootElement()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a>1</a></r>")
+        Expect.IsTrue x.RemoveElement("r"), "RemoveElement of r"
+        Expect.AreEqual "Nothing", Helpers.NameOf(x.RootElement), "RootElement after RemoveElement of r"
+        Expect.AreEqual "", x.ToXmlString(False), "ToXmlString after RemoveElement of r"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveElement_FirstOfSeveralElements_RemovesOnlyThatOne()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a>1</a><a>2</a><b></b></r>")
+        Expect.IsTrue x.RemoveElement("r/a"), "RemoveElement of r/a"
+        Expect.AreEqual "2", x.GetElementText("r/a"), "GetElementText of r/a after the first a is removed"
+        Expect.IsFalse x.RemoveElement("r/missing"), "RemoveElement of r/missing"
+        Expect.Done
+    End Sub
+
+    ' ---- XmlString
+
+    [TestCase]
+    Public Sub XmlString_TextThatCannotBeRead_RaisesNoError()
+        Expect.Begin
+        Dim x As New cXml
+        Err.Clear
+        On Error Resume Next
+        x.XmlString = "<"
+        Expect.AreEqual 0, Err.Number, "the error number of setting XmlString to <"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub XmlString_TextThatCannotBeRead_IsStillKept()
+        Expect.Begin
+        Dim x As New cXml
+        On Error Resume Next
+        x.XmlString = "<"
+        On Error GoTo 0
+        Expect.AreEqual "<", x.XmlString, "XmlString after it is set to <"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub XmlString_ReadsTheTextLastParsed_NotTheDocument()
+        Expect.Begin
+        Dim x As New cXml
+        x.XmlString = "<r><a>1</a></r>"
+        Expect.AreEqual "1", x.GetElementText("r/a"), "GetElementText of r/a after XmlString is set"
+        x.SetElementText "r/a", "2"
+        Expect.AreEqual "<r><a>1</a></r>", x.XmlString, "XmlString after SetElementText"
+        Expect.AreEqual "<r><a>2</a></r>", x.ToXmlString(False), "ToXmlString after SetElementText"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub XmlString_EmptyString_GivesAnInitialisedDocumentWithNoNodes()
+        Expect.Begin
+        Dim x As New cXml
+        x.XmlString = ""
+        Expect.IsTrue x.Initialized, "Initialized after XmlString is set to an empty string"
+        Expect.AreEqual 0, x.Document.ChildNodes.Count, "the children of the document node"
+        Expect.Done
+    End Sub
+
+    ' ---- Version and Encoding
+
+    [TestCase]
+    Public Sub Encoding_AndVersion_AreWrittenIntoTheDeclaration()
+        Expect.Begin
+        Dim x As New cXml
+        Expect.AreEqual "UTF-8", x.Encoding, "Encoding of a new object"
+        Expect.AreEqual "1.0", x.Version, "Version of a new object"
+        x.CreateNew "r"
+        x.Encoding = "UTF-16"
+        x.Version = "1.1"
+        Expect.AreEqual "<?xml version=""1.1"" encoding=""UTF-16""?><r/>", x.ToXmlString(), "ToXmlString after Encoding and Version are set"
+        Expect.Done
+    End Sub
+
+End Module

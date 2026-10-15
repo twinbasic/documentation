@@ -1,0 +1,120 @@
+' What cXml.Parse leaves behind: after a call that fails, for white space, for a byte order mark and
+' for the root element. The expected values are those of XML 1.0, where MSXML6 is the reference.
+[TestFixture]
+Module ParseResultTests
+
+    [TestCase]
+    Public Sub Parse_Failure_KeepsThePreviousDocument()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a>x</a>")
+        Dim ok As Boolean
+        ok = x.Parse("<")
+        Expect.IsFalse ok, "Parse of < returns False"
+        Expect.AreEqual "x", x.GetElementText("a"), "GetElementText of a after a failed Parse"
+        Expect.AreEqual 1, x.Document.ChildNodes.Count, "the children of the document node after a failed Parse"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_EmptyString_KeepsThePreviousDocument()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a>x</a>")
+        Expect.IsFalse x.Parse(""), "Parse of an empty string returns False"
+        Expect.AreEqual "x", x.GetElementText("a"), "GetElementText of a after Parse of an empty string"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_TextCutOffInATag_KeepsThePreviousDocument()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a>x</a>")
+        Dim ok As Boolean
+        ok = x.Parse("<b><c")
+        Expect.IsFalse ok, "Parse of <b><c returns False"
+        Expect.AreEqual "x", x.GetElementText("a"), "GetElementText of a after Parse of <b><c"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_WhiteSpaceBetweenInlineElements_IsKept()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<p><b>a</b> <i>b</i></p>")
+        Expect.AreEqual "<p><b>a</b> <i>b</i></p>", x.ToXmlString(False), "ToXmlString of <p><b>a</b> <i>b</i></p>"
+        Expect.AreEqual "a b", x.GetElementText("p"), "GetElementText of p in <p><b>a</b> <i>b</i></p>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_ElementWithOnlySpaces_KeepsTheSpaces()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<b> </b>")
+        Expect.AreEqual " ", x.GetElementText("b"), "GetElementText of <b> </b>"
+        Expect.AreEqual "<b> </b>", x.ToXmlString(False), "ToXmlString of <b> </b>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_SpacesAroundChildElements_AreChildNodes()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r> <a>1</a> </r>")
+        Expect.AreEqual 3, x.RootElement.ChildNodes.Count, "the children of r in <r> <a>1</a> </r> (MSXML6 with white space kept: 3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_LineBreaksAroundChildElements_AreChildNodes()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r>" & vbCrLf & "<a>1</a>" & vbCrLf & "</r>")
+        Expect.AreEqual 3, x.RootElement.ChildNodes.Count, "the children of r when line breaks surround a"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetElementText_SpacesOnly_AreKept()
+        Expect.Begin
+        Dim x As New cXml
+        x.CreateNew "r"
+        x.AddElement "r", "a"
+        x.SetElementText "r/a", "   "
+        Expect.AreEqual "   ", x.GetElementText("r/a"), "GetElementText after SetElementText of three spaces"
+        Expect.AreEqual "<r><a>   </a></r>", x.ToXmlString(False), "ToXmlString after SetElementText of three spaces"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_LeadingByteOrderMarkCharacter_IsDropped()
+        Expect.Begin
+        Dim x As New cXml
+        Expect.IsTrue x.Parse(ChrW(&HFEFF&) &"<root><a>t</a></root>"), "Parse of a text that starts with U+FEFF"
+        Expect.AreEqual "root", Helpers.NameOf(x.RootElement), "the root element of a text that starts with U+FEFF"
+        Expect.AreEqual "t", x.GetElementText("root/a"), "the text of root/a"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub XmlString_LeadingByteOrderMarkCharacter_IsDropped()
+        Expect.Begin
+        Dim x As New cXml
+        x.XmlString = ChrW(&HFEFF&) &"<root><a>t</a></root>"
+        Expect.AreEqual "root", Helpers.NameOf(x.RootElement), "the root element after XmlString is set to a text that starts with U+FEFF"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_TextWithNoElement_LeavesNoRootElement()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a>1</a></r>")
+        x.Parse "just text"
+        Expect.AreEqual "Nothing", Helpers.NameOf(x.RootElement), "RootElement after Parse of a text with no element"
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,97 @@
+' cXml.Parse and the shapes a start tag may take (XML 1.0, section 3.1): either kind of quote around
+' a value, a > inside a value, any white space between attributes, and a name that ends at white space.
+[TestFixture]
+Module TagTests
+
+    [TestCase]
+    Public Sub Parse_BothKindsOfQuote_KeepEveryAttribute()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a b='1' c=""2""></a>")
+        Expect.AreEqual "1", x.GetAttribute("a", "b"), "attribute b of <a b='1' c=""2"">"
+        Expect.AreEqual "2", x.GetAttribute("a", "c"), "attribute c of <a b='1' c=""2"">"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_DoubleQuoteThenSingleQuote_KeepEveryAttribute()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a c=""2"" b='1'></a>")
+        Expect.AreEqual "2", x.GetAttribute("a", "c"), "attribute c of <a c=""2"" b='1'>"
+        Expect.AreEqual "1", x.GetAttribute("a", "b"), "attribute b of <a c=""2"" b='1'>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_GreaterThanInAttributeValue_IsPartOfTheValue()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a b=""x>y"">t</a>")
+        Expect.AreEqual "x>y", x.GetAttribute("a", "b"), "attribute b of <a b=""x>y"">t</a>"
+        Expect.AreEqual "t", x.GetElementText("a"), "the text of <a b=""x>y"">t</a>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_LineBreakBetweenAttributes_KeepsBothAttributes()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a b=""1""" & vbCrLf & "   c=""2""></a>")
+        Expect.AreEqual "1", x.GetAttribute("a", "b"), "attribute b of a tag with a line break between its attributes"
+        Expect.AreEqual "2", x.GetAttribute("a", "c"), "attribute c of a tag with a line break between its attributes"
+        Expect.AreEqual 4, x.RootElement.Attributes.Count, "the entries of Attributes (a name and a value for each of two attributes)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_LineFeedBetweenAttributes_KeepsBothAttributes()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a b=""1""" & vbLf & "c=""2""></a>")
+        Expect.AreEqual "1", x.GetAttribute("a", "b"), "attribute b of a tag with a line feed between its attributes"
+        Expect.AreEqual "2", x.GetAttribute("a", "c"), "attribute c of a tag with a line feed between its attributes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_LineBreakAfterTheElementName_IsNotPartOfTheName()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a" & vbLf & "b=""1""></a>")
+        Expect.AreEqual "a", Helpers.Shown(x.RootElement.Name), "the name of an element whose first attribute follows a line feed"
+        Expect.AreEqual "1", x.GetAttribute("a", "b"), "attribute b of an element whose first attribute follows a line feed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_TabBetweenAttributes_KeepsBothAttributes()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a b=""1""" & vbTab & "c=""2""></a>")
+        Expect.AreEqual "1", x.GetAttribute("a", "b"), "attribute b of a tag with a tab between its attributes"
+        Expect.AreEqual "2", x.GetAttribute("a", "c"), "attribute c of a tag with a tab between its attributes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_SpacesAroundTheEqualsSign_AreAllowed()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a b = ""1"" c= '2'></a>")
+        Expect.AreEqual "1", x.GetAttribute("a", "b"), "attribute b of <a b = ""1"" c= '2'>"
+        Expect.AreEqual "2", x.GetAttribute("a", "c"), "attribute c of <a b = ""1"" c= '2'>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_AttributeWithoutValue_DoesNotChangeTheNextAttribute()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a disabled c=""2""></a>")
+        Expect.AreEqual "2", x.GetAttribute("a", "c"), "attribute c of <a disabled c=""2"">"
+        Expect.AreEqual "", x.GetAttribute("a", "disabled"), "attribute disabled of <a disabled c=""2"">"
+        Expect.Done
+    End Sub
+
+End Module

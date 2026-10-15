@@ -39,6 +39,7 @@ Next
 
 ## Kinds of node
 
+<!-- test: NodeTests.Parse_NodeKinds_HaveTheirFixedNames, DeclarationTests.Parse_CommentAndCDataSection_AreKeptAsNodes -->
 The parser creates five kinds of node. The text of an element is not in the element's **Value**: it is in the **Text** nodes among the element's **ChildNodes**.
 
 | Kind | **NodeType** | **Name** | **Value** |
@@ -48,6 +49,8 @@ The parser creates five kinds of node. The text of an element is not in the elem
 | Text | **Text** (3) | `#text` | the text, with entities as written |
 | CDATA section | **CData** (4) | `#cdata-section` | the characters between `<![CDATA[` and `]]>` |
 | Comment | **Comment** (8) | `#comment` | the characters between `<!--` and `-->` |
+
+<!-- /test -->
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -65,6 +68,7 @@ Next
 
 The other members of [**XmlNodeType**](mXml#xmlnodetype), **Attribute**, **DocumentFragment**, **Notation** and **None**, are never given to a parsed node. A node made with `New` has the **NodeType** **None**. Attributes are not nodes: they are held in the **Attributes** field of their element.
 
+<!-- test: NodeTests.ElementNames_DifferingInCase_AreDifferentElements, NodeTests.AttributeNames_DifferingInCase_AreDifferentAttributes, NodeTests.GetAttribute_NameInAnotherCase_FindsNothing, NodeTests.RemoveAttribute_NameInAnotherCase_RemovesNothing -->
 > [!NOTE] 1.0.0.1
 > Names are compared without regard to letter case, in the attribute methods here and in the path members of [**cXml**](cXml#paths). XML itself distinguishes `Item` from `item`, and this package does not.
 
@@ -80,7 +84,9 @@ Syntax: *node*.**Attributes** **As Collection**
 *node*
 : *required* An object expression that evaluates to a **cXmlNode**.
 
+<!-- test: NodeTests.Attributes_AreAFlatListOfNamesAndValues -->
 A **Collection** of strings, numbered from 1. Item 1 is the name of the first attribute, item 2 its value, item 3 the name of the second attribute, and so on, in the order the attributes were set or read. A loop with `Step 2` visits the attributes. A new node holds an empty collection, and so does every node that is not an element.
+<!-- /test -->
 
 [**GetAttribute**](#getattribute), [**SetAttribute**](#setattribute) and [**RemoveAttribute**](#removeattribute) keep the names and values in pairs. A program that adds to or removes from the collection itself must keep them in pairs too.
 
@@ -114,7 +120,9 @@ Syntax: *node*.**ChildNodes** **As Collection**
 
 A **Collection** of **cXmlNode** objects, numbered from 1. It holds elements, text, CDATA sections and comments. The parser adds no text node for text that is only spaces; see [White space](cXml#defect-whitespace). The collection is empty for a text node, a CDATA section and a comment. [**GetChildNode**](#getchildnode) and [**GetChildNodesByName**](#getchildnodesbyname) search the collection by name.
 
+<!-- test: NodeTests.ChildNodes_NodeAddedByHand_IsWrittenByItsKind -->
 To add a node by hand, set its **NodeType**, **Name** and **Value**, set its [**Parent**](#parent), and add it to the collection. The writer chooses what to write by **NodeType**, not by **Name**.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -196,7 +204,9 @@ Syntax: *node*.**Text** **As String**
 *node*
 : *required* An object expression that evaluates to a **cXmlNode**.
 
+<!-- test: NodeTests.Text_ReturnsTheTextAndCDataOfTheChildren -->
 Read-only. Returns the values of the text nodes and CDATA sections among the node's [**ChildNodes**](#childnodes), one after the other, with nothing between them. Child elements and comments add nothing, and neither does the text inside a child element, which [**GetElementText**](cXml#getelementtext) of a **cXml** includes. A node that has no text node or CDATA section among its children, a text node itself among them, gives an empty string.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim x As New cXml
@@ -222,7 +232,9 @@ Creates a node.
 
 Syntax: **New cXmlNode**
 
+<!-- test: NodeTests.New_Node_IsEmpty -->
 The constructor takes no arguments. It gives the node an empty **Attributes** collection and an empty **ChildNodes** collection. **Name** and **Value** are empty, **NodeType** is **None** and **Parent** is **Nothing**.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim n As New cXmlNode
@@ -366,7 +378,9 @@ Syntax: *node*.**SetAttribute** ( *attrName* , *attrValue* )
 *attrValue*
 : *required* A **String**, the new value. [**ToXmlString**](cXml#toxmlstring) escapes it when it writes the attribute.
 
+<!-- test: NodeTests.SetAttribute_ReplacedAttribute_KeepsTheLastValueAndMovesToTheEnd -->
 Adds the attribute, or replaces the value of the first attribute with that name. A replaced attribute does not stay where it was: the old name and value are removed and the new ones are added at the end of **Attributes**, and the name takes the spelling given to **SetAttribute**. The parser uses the same method, so an attribute that occurs twice in a tag keeps the last value.
+<!-- /test -->
 
 Neither the name nor the value is checked. An empty name is accepted, and [**Validate**](cXml#validate) then returns **False**.
 
@@ -498,6 +512,7 @@ Syntax: *node*.**XPathText** ( *xpath* ) **As String**
 
 Returns the [**Text**](#text) of the first node that [**XPath**](#xpath) selects: the text directly inside it, and not the text inside its child elements. A text node and a CDATA section have no children, so when the expression selects one, the result is an empty string; its **Value** holds the text. Returns an empty string too when the expression selects nothing. The expression is evaluated by [**XPathSingle**](#xpathsingle).
 
+<!-- test: NodeTests.XPathText_OfCXml_ReturnsTheTextAtAnyDepth, NodeTests.XPathText_OfCXmlNode_ReturnsTheTextDirectlyInsideTheNode -->
 > [!NOTE] 1.0.0.1
 > The [**XPathText**](cXml#xpathtext) of a **cXml** returns the text at any depth, and returns the value of a text node. For `<a>x<b>y</b>z</a>`, the **cXml** gives `xyz` for `/a`, and the root element gives `xz` for `.`.
 

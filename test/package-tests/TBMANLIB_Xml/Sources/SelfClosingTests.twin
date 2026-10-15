@@ -1,0 +1,64 @@
+' cXml.Parse and a self-closing element: <a/> is an empty element in XML 1.0, whatever spaces and
+' attributes its tag holds.
+[TestFixture]
+Module SelfClosingTests
+
+    [TestCase]
+    Public Sub Parse_BareSelfClosingElement_IsAnElementNamedLikeTheTag()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a/><b>t</b></r>")
+        Expect.AreEqual 2, x.RootElement.ChildNodes.Count, "the children of r in <r><a/><b>t</b></r>"
+        Expect.AreEqual "a", Helpers.ChildName(x.RootElement, 1), "the name of the first child of r in <r><a/><b>t</b></r>"
+        Expect.AreEqual "b", Helpers.ChildName(x.RootElement, 2), "the name of the second child of r in <r><a/><b>t</b></r>"
+        Expect.AreEqual "t", x.GetElementText("r/b"), "the text of r/b in <r><a/><b>t</b></r>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_SelfClosingElementWithAttributes_HasNoChildren()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><b x=""1""/><c>t</c></r>")
+        Expect.AreEqual 2, x.RootElement.ChildNodes.Count, "the children of r in <r><b x=""1""/><c>t</c></r>"
+        Expect.AreEqual "t", x.GetElementText("r/c"), "the text of r/c in <r><b x=""1""/><c>t</c></r>"
+        Expect.AreEqual "1", x.GetAttribute("r/b", "x"), "the attribute x of r/b in <r><b x=""1""/><c>t</c></r>"
+        Expect.AreEqual "", x.GetElementText("r/b/c"), "the text of r/b/c in <r><b x=""1""/><c>t</c></r>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_SelfClosingElementWithSpaceBeforeTheSlash_HasNoChildren()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a /><c>t</c></r>")
+        Expect.AreEqual 2, x.RootElement.ChildNodes.Count, "the children of r in <r><a /><c>t</c></r>"
+        Expect.AreEqual "a", Helpers.ChildName(x.RootElement, 1), "the name of the first child of r in <r><a /><c>t</c></r>"
+        Expect.AreEqual "t", x.GetElementText("r/c"), "the text of r/c in <r><a /><c>t</c></r>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToXmlString_EmptyElement_ReadsBackAsAnEmptyElement()
+        Expect.Begin
+        Dim x As New cXml
+        x.CreateNew "r"
+        x.AddElement "r", "empty"
+        Dim y As cXml
+        Set y = Helpers.Doc(x.ToXmlString(False))
+        Expect.AreEqual "<r><empty/></r>", x.ToXmlString(False), "the text ToXmlString writes"
+        Expect.AreEqual "empty", Helpers.ChildName(y.RootElement, 1), "the name of the first child of r after the text is read again"
+        Expect.AreEqual "<r><empty/></r>", y.ToXmlString(False), "the text written after it is read again"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Validate_DocumentWithSelfClosingElements_IsTrue()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r><a/><b x=""1""/></r>")
+        Expect.IsTrue x.Validate(), "Validate of <r><a/><b x=""1""/></r>"
+        Expect.Done
+    End Sub
+
+End Module

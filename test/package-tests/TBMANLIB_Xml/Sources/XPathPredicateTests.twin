@@ -1,0 +1,302 @@
+' mXPath and the predicates of a step: positions, and and or, comparisons of attributes, text and
+' children, and a bracket with no end. Each case selects with the package and with MSXML6 (XPath
+' 1.0) and compares, except where the expression is not XPath.
+[TestFixture]
+Module XPathPredicateTests
+
+    Private Const SHELVES As String = "<lib><shelf id='s1'><book id='a'></book><book id='b'></book></shelf><shelf id='s2'><book id='c'></book><book id='d'></book></shelf></lib>"
+    Private Const ITEMS As String = "<s><i id='1' x='1' y='2'></i><i id='2' z='3'></i><i id='3' x='1'></i></s>"
+    Private Const PRICES As String = "<s><i id='1' p='5'></i><i id='2'></i><i id='3' p='abc'></i><i id='4' p=''></i></s>"
+    Private Const TITLES As String = "<catalog><book id='1'><title id='t1'>Dune</title></book><book id='2'><title id='t2'>Emma</title></book></catalog>"
+
+    ' ---- positions
+
+    [TestCase]
+    Public Sub Positions_ChildStep_CountsTheChildrenOfEachParent()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SHELVES, "/lib/shelf/book[1]"
+        Helpers.SelectsAsMsxml SHELVES, "//shelf/book[last()]"
+        Helpers.SelectsAsMsxml SHELVES, "/lib/shelf/book[2]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Positions_AfterDoubleSlash_CountPerParent()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SHELVES, "//book[1]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Positions_AfterDoubleSlash_LastIsThatOfEachParent()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SHELVES, "//book[last()]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Positions_AfterDescendantStepInThePath_CountPerParent()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SHELVES, "/lib//book[1]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Positions_LastMinusOne_SelectsTheNextToLast()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SHELVES, "//shelf/book[last()-1]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Positions_PositionWithSpacesAroundTheEqualsSign_SelectsThePosition()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SHELVES, "//shelf/book[position() = 1]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Positions_PositionEqualsLast_SelectsTheLast()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SHELVES, "//shelf/book[position()=last()]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Positions_PositionGreaterThan_SelectsTheLaterOnes()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SHELVES, "//shelf/book[position()>1]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Positions_FractionalNumber_SelectsNothing()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SHELVES, "//shelf/book[1.5]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Positions_ShortForms_WorkAsTheLongForms()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SHELVES, "//shelf[2]/book[position()=1]"
+        Helpers.SelectsAsMsxml SHELVES, "/lib/shelf[last()]"
+        Helpers.SelectsAsMsxml SHELVES, "/lib/shelf/book[3]"
+        Expect.Done
+    End Sub
+
+    ' ---- and and or
+
+    [TestCase]
+    Public Sub Logic_AndOfTwoComparisons_KeepsTheNodesThatSatisfyBoth()
+        Expect.Begin
+        Helpers.SelectsAsMsxml ITEMS, "//i[@x='1' and @y='2']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Logic_OrOfTwoComparisons_KeepsTheNodesThatSatisfyOne()
+        Expect.Begin
+        Helpers.SelectsAsMsxml ITEMS, "//i[@x='1' or @z='3']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Logic_AndBeforeOr_BindsAndTighter()
+        Expect.Begin
+        Helpers.SelectsAsMsxml ITEMS, "//i[@x='1' and @y='2' or @z='3']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Logic_OrBeforeAnd_BindsAndTighter()
+        Expect.Begin
+        Helpers.SelectsAsMsxml ITEMS, "//i[@z='3' or @x='1' and @y='2']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Logic_AndInsideAQuotedString_IsNotAnOperator()
+        Expect.Begin
+        Dim xmlText As String
+        xmlText = "<s><i id='1' t='salt and pepper'></i><i id='2' t='salt'></i></s>"
+        Helpers.SelectsAsMsxml xmlText, "//i[@t='salt and pepper']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Logic_OrInsideAQuotedString_IsNotAnOperator()
+        Expect.Begin
+        Dim xmlText As String
+        xmlText = "<s><i id='1' t='salt or pepper'></i><i id='2' t='salt'></i></s>"
+        Helpers.SelectsAsMsxml xmlText, "//i[@t='salt or pepper']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Logic_NotOfAnd_KeepsTheNodesThatLackOne()
+        Expect.Begin
+        Helpers.SelectsAsMsxml ITEMS, "//i[not(@x and @y)]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Logic_ParenthesesAroundComparisons_GroupThem()
+        Expect.Begin
+        Helpers.SelectsAsMsxml ITEMS, "//i[(@x='1') and (@y='2')]"
+        Expect.Done
+    End Sub
+
+    ' ---- comparing attributes
+
+    [TestCase]
+    Public Sub Compare_LessThanOnAMissingAttribute_IsFalse()
+        Expect.Begin
+        Helpers.SelectsAsMsxml PRICES, "//i[@p<10]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Compare_NotEqualOnAMissingAttribute_IsFalse()
+        Expect.Begin
+        Helpers.SelectsAsMsxml PRICES, "//i[@p!='x']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Compare_EqualToEmptyStringOnAMissingAttribute_IsFalse()
+        Expect.Begin
+        Helpers.SelectsAsMsxml PRICES, "//i[@p='']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Compare_AttributeExists_KeepsTheNodesThatHaveIt()
+        Expect.Begin
+        Helpers.SelectsAsMsxml PRICES, "//i[@p]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Compare_QuotedStringWithEqualsSign_IsOneValue()
+        Expect.Begin
+        Helpers.SelectsAsMsxml QuotedOperators(), "//i[@t='a=b']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Compare_QuotedStringWithGreaterThan_IsOneValue()
+        Expect.Begin
+        Helpers.SelectsAsMsxml QuotedOperators(), "//i[@t='a>b']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Compare_QuotedStringWithLessThan_IsOneValue()
+        Expect.Begin
+        Helpers.SelectsAsMsxml QuotedOperators(), "//i[@t='a<b']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Compare_QuotedStringWithNotEquals_IsOneValue()
+        Expect.Begin
+        Helpers.SelectsAsMsxml QuotedOperators(), "//i[@t='a!=b']"
+        Expect.Done
+    End Sub
+
+    Private Function QuotedOperators() As String
+        QuotedOperators = "<r><i id='1' t='a&gt;b'></i><i id='2' t='a=b'></i><i id='3' t='a&lt;b'></i><i id='4' t='a!=b'></i></r>"
+    End Function
+
+    ' ---- comparing text and children
+
+    [TestCase]
+    Public Sub TextCompare_Equals_KeepsTheNodesWithThatText()
+        Expect.Begin
+        Helpers.SelectsAsMsxml TITLES, "//title[text()='Dune']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextCompare_NotEquals_KeepsTheNodesWithOtherText()
+        Expect.Begin
+        Helpers.SelectsAsMsxml TITLES, "//title[text()!='Dune']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextCompare_GreaterThanText_IsAComparisonOfNumbers()
+        Expect.Begin
+        Helpers.SelectsAsMsxml TITLES, "//title[text()>'Z']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ChildCompare_ChildEqualsText_KeepsTheNodesWhoseChildHasThatText()
+        Expect.Begin
+        Helpers.SelectsAsMsxml TITLES, "//book[title='Dune']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelfCompare_DotEqualsText_KeepsTheNodesWithThatText()
+        Expect.Begin
+        Helpers.SelectsAsMsxml TITLES, "//title[.='Dune']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Contains_FirstArgumentIsAChildName_TestsTheChildsText()
+        Expect.Begin
+        Helpers.SelectsAsMsxml TITLES, "//book[contains(title, 'i')]"
+        Expect.Done
+    End Sub
+
+    ' ---- letter case
+
+    Private Const AUTHORS As String = "<catalog><book id='1' cat='fiction'><author id='a1'>Herbert</author></book><book id='2' cat='fiction'><author id='a2'>Austen</author></book><book id='3' cat='science'><author id='a3'>Sagan</author></book></catalog>"
+
+    [TestCase]
+    Public Sub Compare_AttributeValueLetterCase_IsSignificant()
+        Expect.Begin
+        Helpers.SelectsAsMsxml AUTHORS, "//book[@cat='FICTION']"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Contains_LetterCase_IsSignificant()
+        Expect.Begin
+        Helpers.SelectsAsMsxml AUTHORS, "//author[contains(text(), 'a')]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StartsWith_LetterCase_IsSignificant()
+        Expect.Begin
+        Helpers.SelectsAsMsxml AUTHORS, "//author[starts-with(text(), 'h')]"
+        Expect.Done
+    End Sub
+
+    ' ---- a bracket with no end
+
+    [TestCase]
+    Public Sub Brackets_PredicateWithoutClosingBracket_SelectsNothing()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a><b id='1'></b><b id='2'></b></a>")
+        Expect.AreEqual "b#1", Helpers.Listed(x.XPath("//b[@id='1']")), "the nodes selected by //b[@id='1']"
+        Expect.AreEqual "", Helpers.Listed(x.XPath("//b[@id='1'")), "the nodes selected by //b[@id='1' (not an XPath expression)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Brackets_OpeningBracketAlone_SelectsNothing()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a><b id='1'></b><b id='2'></b></a>")
+        Expect.AreEqual "", Helpers.Listed(x.XPath("//b[")), "the nodes selected by //b[ (not an XPath expression)"
+        Expect.Done
+    End Sub
+
+End Module
