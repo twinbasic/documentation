@@ -1,0 +1,205 @@
+' cDialogPageSetup: the page as properties and text, and the Page Setup dialog. The dialog offers the
+' paper of the default printer; no case prints, or changes a printer or its settings.
+[TestFixture]
+Module CDialogPageSetupTests
+
+    [TestCase]
+    Public Sub Defaults_AreThoseOfThePage()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        Expect.AreEqual 8.5, dlg.PaperWidth, "PaperWidth of a new cDialogPageSetup"
+        Expect.AreEqual 11, dlg.PaperHeight, "PaperHeight of a new cDialogPageSetup"
+        Expect.AreEqual 1, dlg.MarginLeft + dlg.MarginRight + dlg.MarginTop + dlg.MarginBottom - 3, "the four margins of a new cDialogPageSetup (sum less 3)"
+        Expect.AreEqual PaperOrientation.Portrait, dlg.Orientation, "Orientation of a new cDialogPageSetup"
+        Expect.AreEqual MeasurementUnit.Inches, dlg.Unit, "Unit of a new cDialogPageSetup"
+        Expect.IsTrue dlg.AllowMargins And dlg.AllowOrientation And dlg.AllowPaper And dlg.DefaultMinMargins, "the Allow properties and DefaultMinMargins of a new cDialogPageSetup"
+        Expect.AreEqual 0, dlg.OwnerHwnd, "OwnerHwnd of a new cDialogPageSetup"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enumerations_HaveTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual 0, MeasurementUnit.Inches, "Inches"
+        Expect.AreEqual 1, MeasurementUnit.Millimeters, "Millimeters"
+        Expect.AreEqual 1, PaperOrientation.Portrait, "Portrait"
+        Expect.AreEqual 2, PaperOrientation.Landscape, "Landscape"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Margins_AreStoredWithoutACheck()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        dlg.MarginLeft = 1.25
+        dlg.MarginRight = 0.75
+        dlg.MarginTop = -2
+        dlg.MarginBottom = 100
+        Expect.AreEqual 1.25, dlg.MarginLeft, "MarginLeft"
+        Expect.AreEqual 0.75, dlg.MarginRight, "MarginRight"
+        Expect.AreEqual -2, dlg.MarginTop, "MarginTop"
+        Expect.AreEqual 100, dlg.MarginBottom, "MarginBottom"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unit_Millimeters_KeepsThePropertiesInInches()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        dlg.Unit = MeasurementUnit.Millimeters
+        dlg.MarginLeft = 2
+        Expect.AreEqual 2, dlg.MarginLeft, "MarginLeft with Unit Millimeters"
+        Expect.AreEqual 1, dlg.Unit, "Unit after Millimeters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetPrintableHeight_And_Width_SubtractTheMargins()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        dlg.PaperHeight = 12
+        dlg.MarginTop = 2
+        dlg.MarginBottom = 1
+        Expect.AreEqual 9, dlg.GetPrintableHeight(), "GetPrintableHeight"
+        dlg.SetNarrowMargins
+        Expect.AreEqual 7.5, dlg.GetPrintableWidth(), "GetPrintableWidth with narrow margins on Letter"
+        dlg.MarginTop = 8
+        dlg.MarginBottom = 8
+        Expect.IsTrue dlg.GetPrintableHeight() < 0, "GetPrintableHeight with margins larger than the paper"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetPaperSizes_SetWidthAndHeight()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        dlg.SetA4Size
+        Expect.AreEqual 826, Int(dlg.PaperWidth * 100), "PaperWidth of A4 (hundredths, rounded down)"
+        Expect.AreEqual 1169, Int(dlg.PaperHeight * 100), "PaperHeight of A4 (hundredths, rounded down)"
+        dlg.SetLegalSize
+        Expect.AreEqual 8.5, dlg.PaperWidth, "PaperWidth of Legal"
+        Expect.AreEqual 14, dlg.PaperHeight, "PaperHeight of Legal"
+        dlg.SetA4Size
+        dlg.SetLetterSize
+        Expect.AreEqual 8.5, dlg.PaperWidth, "PaperWidth of Letter"
+        Expect.AreEqual 11, dlg.PaperHeight, "PaperHeight of Letter"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetMargins_SetAllFour()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        dlg.SetNarrowMargins
+        Expect.AreEqual 0.5, dlg.MarginLeft, "MarginLeft after SetNarrowMargins"
+        Expect.AreEqual 0.5, dlg.MarginTop + dlg.MarginRight + dlg.MarginBottom - 1, "the other margins after SetNarrowMargins (sum less 1)"
+        dlg.SetDefaultMargins
+        Expect.AreEqual 2, dlg.MarginTop + dlg.MarginBottom, "MarginTop and MarginBottom after SetDefaultMargins"
+        Expect.AreEqual 2, dlg.MarginLeft + dlg.MarginRight, "MarginLeft and MarginRight after SetDefaultMargins"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_RestoresTheStartingValuesButNotTheOwner()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        dlg.SetLegalSize
+        dlg.SetNarrowMargins
+        dlg.Orientation = PaperOrientation.Landscape
+        dlg.Unit = MeasurementUnit.Millimeters
+        dlg.AllowMargins = False
+        dlg.AllowOrientation = False
+        dlg.AllowPaper = False
+        dlg.DefaultMinMargins = False
+        dlg.OwnerHwnd = 88
+        dlg.Reset
+        Expect.AreEqual 11, dlg.PaperHeight, "PaperHeight after Reset"
+        Expect.AreEqual 1, dlg.MarginLeft, "MarginLeft after Reset"
+        Expect.AreEqual PaperOrientation.Portrait, dlg.Orientation, "Orientation after Reset"
+        Expect.AreEqual MeasurementUnit.Inches, dlg.Unit, "Unit after Reset"
+        Expect.IsTrue dlg.AllowMargins And dlg.AllowOrientation And dlg.AllowPaper And dlg.DefaultMinMargins, "the Allow properties and DefaultMinMargins after Reset"
+        Expect.AreEqual 88, dlg.OwnerHwnd, "OwnerHwnd after Reset"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToDescription_HasTheDocumentedForm()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        Expect.AreEqual Fx.Dec("Paper: 8.50 x 11.00 in, Portrait, Margins: 1.00/1.00/1.00/1.00 in"), dlg.ToDescription(), "ToDescription of a new cDialogPageSetup"
+        dlg.SetLegalSize
+        dlg.Orientation = PaperOrientation.Landscape
+        dlg.MarginLeft = 0.5
+        dlg.MarginRight = 0.75
+        dlg.MarginTop = 1.25
+        dlg.MarginBottom = 0.3
+        Expect.AreEqual Fx.Dec("Paper: 8.50 x 14.00 in, Landscape, Margins: 0.50/0.75/1.25/0.30 in"), dlg.ToDescription(), "ToDescription of a Legal page"
+        Expect.Done
+    End Sub
+
+    ' ---- the defects the page states
+
+    [TestCase]
+    Public Sub ToDescription_WithMillimetersWritesMillimeters()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        dlg.Unit = MeasurementUnit.Millimeters
+        Expect.AreEqual Fx.Dec("Paper: 215.90 x 279.40 mm, Portrait, Margins: 25.40/25.40/25.40/25.40 mm"), dlg.ToDescription(), "ToDescription of a new page with Unit Millimeters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_PaperSizeSetBeforeTheCallIsTheOneTheDialogOpensWith()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        dlg.SetLegalSize
+        Pilot.Arm "id=1"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "dialogs ShowDialog opened"
+        Expect.AreEqual "Page Setup", Pilot.Title(0), "caption of the Page Setup dialog"
+        Expect.IsTrue r, "ShowDialog after OK"
+        Expect.AreEqual 14, dlg.PaperHeight, "PaperHeight after OK on a dialog that was opened with SetLegalSize"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_OrientationSetBeforeTheCallSelectsLandscape()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        dlg.Orientation = PaperOrientation.Landscape
+        Pilot.Arm "id=1"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.IsTrue r, "ShowDialog after OK"
+        Expect.IsTrue dlg.PaperWidth > dlg.PaperHeight, "paper after OK on a dialog that was opened with Orientation Landscape: " & dlg.PaperWidth & " x " & dlg.PaperHeight
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_OrientationChosenInTheDialogIsReadBack()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        Pilot.Arm "id=1057|wait=2|id=1"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.IsTrue r, "ShowDialog after Landscape and OK"
+        Expect.IsTrue dlg.PaperWidth > dlg.PaperHeight, "paper after Landscape was chosen in the dialog: " & dlg.PaperWidth & " x " & dlg.PaperHeight
+        Expect.AreEqual PaperOrientation.Landscape, dlg.Orientation, "Orientation after Landscape was chosen in the dialog"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_CancelReturnsFalseAndKeepsTheProperties()
+        Expect.Begin
+        Dim dlg As New cDialogPageSetup
+        dlg.SetNarrowMargins
+        Pilot.Arm "id=2"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.IsFalse r, "ShowDialog after Cancel"
+        Expect.AreEqual Fx.Dec("Paper: 8.50 x 11.00 in, Portrait, Margins: 0.50/0.50/0.50/0.50 in"), dlg.ToDescription(), "ToDescription after Cancel"
+        Expect.Done
+    End Sub
+
+End Module

@@ -16,6 +16,7 @@ Holds the constants, the four structure types and the eight conversion functions
 
 **Types:** [COMDLG_FILTERSPEC](#types), [GUID](#types), [POINT](#types), [RECT](#types).
 
+<!-- test: MDialogTests.InchesToMM_MultipliesBy25Point4, MDialogTests.MMToInches_DividesBy25Point4, MDialogTests.InchesToPoints_And_PointsToInches, MDialogTests.InchesToTwips_RoundsToTheNearestWholeNumber, MDialogTests.TwipsToInches_DividesBy1440, MDialogTests.Constants_HaveTheDocumentedValues, MDialogTests.RGBToHtml_WritesSixUpperCaseDigits, MDialogTests.RGBToHtml_WrapsAValueOutsideZeroTo255, MDialogTests.HtmlToRGB_ReadsSixDigitsWithOrWithoutAHash, MDialogTests.HtmlToRGB_AnyOtherTextGivesBlack, MDialogTests.HtmlToRGB_ASpaceInsideSixCharactersIsNotAlwaysRejected, MDialogTests.Types_HaveTheDocumentedSizes, MDialogTests.MembersAreGlobalAndCanBeQualifiedWithTheModuleName -->
 The members of **mDialog** are global: a program writes `InchesToMM(1)` and also `mDialog.InchesToMM(1)`.
 
 ```tb check_build check_run
@@ -139,7 +140,11 @@ The structures are those of the Windows API, written for the dialog classes of t
 | **POINT** | **X** and **Y**, both **Long** | 8 bytes |
 | **RECT** | **Left**, **Top**, **Right** and **Bottom**, all **Long** | 16 bytes |
 
+<!-- /test -->
+
+<!-- test: compile GuidWithoutTheModuleName -->
 Declare **GUID** as `mDialog.GUID`: the name **GUID** alone refers to another type, and `Dim g As GUID` is refused with error TB5106 in a project that references the package. Writing the module name before **RECT**, **POINT** and **COMDLG_FILTERSPEC** as well makes sure that the type of the package is the one used.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim g As mDialog.GUID

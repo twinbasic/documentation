@@ -17,7 +17,9 @@ Syntax: *object*.**ClearFilter**
 
 ## Remarks
 
+<!-- test: CDialogPropertyTests.ClearFilter_EmptiesTheFilter -->
 **ClearFilter** sets **Filter** to an empty string, as `dlg.Filter = ""` does. The four `Set...Filters` methods call it first, so each of them replaces the filter.
+<!-- /test -->
 
 ## Example
 

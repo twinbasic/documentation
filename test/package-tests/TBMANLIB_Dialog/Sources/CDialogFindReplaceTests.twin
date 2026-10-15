@@ -1,0 +1,204 @@
+' cDialogFindReplace: the search settings as properties and text, and the modeless Find and Replace
+' dialogs. A case that opens a dialog owns it with a window of FindHost, presses its buttons with
+' BM_CLICK (which sends the owner exactly the message a click sends), and closes it.
+[TestFixture]
+Module CDialogFindReplaceTests
+
+    [TestCase]
+    Public Sub Defaults_AreThoseOfThePage()
+        Expect.Begin
+        Dim dlg As New cDialogFindReplace
+        Expect.AreEqual "", dlg.FindWhat & dlg.ReplaceWith, "FindWhat and ReplaceWith of a new cDialogFindReplace"
+        Expect.IsFalse dlg.MatchCase Or dlg.WholeWord, "MatchCase and WholeWord of a new cDialogFindReplace"
+        Expect.AreEqual SearchDirection.Down, dlg.Direction, "Direction of a new cDialogFindReplace"
+        Expect.AreEqual DialogMode.FindMode, dlg.Mode, "Mode of a new cDialogFindReplace"
+        Expect.IsTrue dlg.AllowMatchCase And dlg.AllowUpDown And dlg.AllowWholeWord, "the three Allow properties of a new cDialogFindReplace"
+        Expect.AreEqual 0, dlg.hWnd + dlg.OwnerHwnd + dlg.LastError, "hWnd, OwnerHwnd and LastError of a new cDialogFindReplace"
+        Expect.AreEqual FindAction.None, dlg.LastAction, "LastAction of a new cDialogFindReplace"
+        Expect.IsFalse dlg.IsVisible(), "IsVisible of a new cDialogFindReplace"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enumerations_HaveTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual 0, DialogMode.FindMode, "FindMode"
+        Expect.AreEqual 1, DialogMode.ReplaceMode, "ReplaceMode"
+        Expect.AreEqual 0, FindAction.None, "None"
+        Expect.AreEqual 1, FindAction.FindNext, "FindNext"
+        Expect.AreEqual 2, FindAction.Replace, "Replace"
+        Expect.AreEqual 3, FindAction.ReplaceAll, "ReplaceAll"
+        Expect.AreEqual 4, FindAction.DialogClosed, "DialogClosed"
+        Expect.AreEqual 0, SearchDirection.Up, "Up"
+        Expect.AreEqual 1, SearchDirection.Down, "Down"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MessageId_IsTheRegisteredMessageOfTheDialogs()
+        Expect.Begin
+        Dim a As New cDialogFindReplace
+        Dim b As New cDialogFindReplace
+        Dim id As Long = FindHostMessageId()
+        Expect.AreEqual id, a.MessageId, "MessageId against RegisterWindowMessage(commdlg_FindReplace)"
+        Expect.AreEqual a.MessageId, b.MessageId, "MessageId of a second object"
+        Expect.IsTrue a.MessageId >= &HC000&, "MessageId is a registered message number"
+        Expect.Done
+    End Sub
+
+    Private Declare PtrSafe Function T_RegisterWindowMessageW Lib "user32" Alias "RegisterWindowMessageW" (ByVal lpString As LongPtr) As Long
+
+    Private Function FindHostMessageId() As Long
+        FindHostMessageId = T_RegisterWindowMessageW(StrPtr("commdlg_FindReplace"))
+    End Function
+
+    [TestCase]
+    Public Sub ToDescription_NamesTheSearch()
+        Expect.Begin
+        Dim dlg As New cDialogFindReplace
+        Expect.AreEqual "Find: """", Down", dlg.ToDescription(), "ToDescription of a new cDialogFindReplace"
+        dlg.FindWhat = "alpha"
+        dlg.MatchCase = True
+        dlg.Direction = SearchDirection.Up
+        Expect.AreEqual "Find: ""alpha"", Match Case, Up", dlg.ToDescription(), "ToDescription with MatchCase and Up"
+        dlg.Mode = DialogMode.ReplaceMode
+        dlg.ReplaceWith = "beta"
+        dlg.WholeWord = True
+        Expect.AreEqual "Find: ""alpha"", Replace: ""beta"", Match Case, Whole Word, Up", dlg.ToDescription(), "ToDescription in ReplaceMode"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_RestoresTheSearchSettings()
+        Expect.Begin
+        Dim dlg As New cDialogFindReplace
+        dlg.FindWhat = "alpha"
+        dlg.ReplaceWith = "beta"
+        dlg.MatchCase = True
+        dlg.WholeWord = True
+        dlg.Direction = SearchDirection.Up
+        dlg.Mode = DialogMode.ReplaceMode
+        dlg.AllowMatchCase = False
+        dlg.AllowUpDown = False
+        dlg.AllowWholeWord = False
+        dlg.OwnerHwnd = 55
+        dlg.Reset
+        Expect.AreEqual "Find: """", Down", dlg.ToDescription(), "ToDescription after Reset"
+        Expect.IsTrue dlg.AllowMatchCase And dlg.AllowUpDown And dlg.AllowWholeWord, "the Allow properties after Reset"
+        Expect.AreEqual 55, dlg.OwnerHwnd, "OwnerHwnd after Reset"
+        Expect.Done
+    End Sub
+
+    ' ---- UpdateFromFlags
+
+    [TestCase]
+    Public Sub UpdateFromFlags_SetsTheOptionsAndTheAction()
+        Expect.Begin
+        Dim dlg As New cDialogFindReplace
+        dlg.UpdateFromFlags &H8 Or &H1 Or &H4
+        Expect.AreEqual FindAction.FindNext, dlg.LastAction, "LastAction after FR_FINDNEXT"
+        Expect.IsTrue dlg.MatchCase, "MatchCase after FR_MATCHCASE"
+        Expect.IsFalse dlg.WholeWord, "WholeWord with no FR_WHOLEWORD"
+        Expect.AreEqual SearchDirection.Down, dlg.Direction, "Direction after FR_DOWN"
+        dlg.UpdateFromFlags &H2 Or &H10
+        Expect.AreEqual FindAction.Replace, dlg.LastAction, "LastAction after FR_REPLACE"
+        Expect.IsTrue dlg.WholeWord, "WholeWord after FR_WHOLEWORD"
+        Expect.AreEqual SearchDirection.Up, dlg.Direction, "Direction with no FR_DOWN"
+        dlg.UpdateFromFlags &H20
+        Expect.AreEqual FindAction.ReplaceAll, dlg.LastAction, "LastAction after FR_REPLACEALL"
+        dlg.UpdateFromFlags &H40
+        Expect.AreEqual FindAction.DialogClosed, dlg.LastAction, "LastAction after FR_DIALOGTERM"
+        dlg.UpdateFromFlags 0
+        Expect.AreEqual FindAction.None, dlg.LastAction, "LastAction after no action flag"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UpdateFromFlags_DialogTermWinsOverTheOtherActions()
+        Expect.Begin
+        Dim dlg As New cDialogFindReplace
+        dlg.UpdateFromFlags &H40 Or &H8 Or &H10 Or &H20
+        Expect.AreEqual FindAction.DialogClosed, dlg.LastAction, "LastAction after FR_DIALOGTERM with the other action flags"
+        dlg.UpdateFromFlags &H8 Or &H10 Or &H20
+        Expect.AreEqual FindAction.FindNext, dlg.LastAction, "LastAction after FR_FINDNEXT with FR_REPLACE and FR_REPLACEALL"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UpdateFromFlags_EmptiesBothTextsWhenNoDialogHasFilledTheBuffers()
+        Expect.Begin
+        Dim dlg As New cDialogFindReplace
+        dlg.FindWhat = "alpha"
+        dlg.ReplaceWith = "beta"
+        dlg.UpdateFromFlags &H8
+        Expect.AreEqual "", dlg.FindWhat, "FindWhat after UpdateFromFlags with no dialog"
+        Expect.AreEqual "", dlg.ReplaceWith, "ReplaceWith after UpdateFromFlags with no dialog"
+        Expect.Done
+    End Sub
+
+    ' ---- ShowFind and ShowReplace that Windows refuses or that fail early
+
+    [TestCase]
+    Public Sub ShowFind_WithoutAnOwnerReturnsFalseWithLastErrorFFFF()
+        Expect.Begin
+        Dim dlg As New cDialogFindReplace
+        Expect.IsFalse dlg.ShowFind(), "ShowFind with no OwnerHwnd"
+        Expect.AreEqual &HFFFF&, dlg.LastError, "LastError after that ShowFind"
+        Expect.AreEqual DialogMode.FindMode, dlg.Mode, "Mode after ShowFind"
+        Expect.IsFalse dlg.ShowReplace(), "ShowReplace with no OwnerHwnd"
+        Expect.AreEqual DialogMode.ReplaceMode, dlg.Mode, "Mode after ShowReplace"
+        Expect.IsFalse dlg.IsVisible(), "IsVisible after a refused ShowReplace"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowFind_FindWhatOf300CharactersRaisesError5()
+        Expect.Begin
+        Dim dlg As New cDialogFindReplace
+        dlg.FindWhat = String$(300, "a")
+        On Error Resume Next
+        dlg.ShowFind
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 5, n, "error ShowFind raised with a FindWhat of 300 characters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowReplace_ReplaceWithOf300CharactersRaisesError5()
+        Expect.Begin
+        Dim dlg As New cDialogFindReplace
+        dlg.ReplaceWith = String$(300, "a")
+        On Error Resume Next
+        dlg.ShowReplace
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 5, n, "error ShowReplace raised with a ReplaceWith of 300 characters"
+        Expect.Done
+    End Sub
+
+    ' ---- the dialogs
+    ' The cases that open a dialog with ShowFind or ShowReplace and press a button or close it are not here:
+    ' Windows keeps the address of the structure that the class leaves in a local variable, and reads and writes
+    ' it again when a button is pressed or the dialog closes, which in the compiler's test mode ends the case with
+    ' an access violation or a run-time error, or never returns, and can disturb the cases after it. The probe
+    ' harness (scenarios c43 and c44) runs them in a built program. The control below uses the structure
+    ' in a module-level variable, and runs.
+
+    ' ---- the structure in a module-level variable (the way a program is told to call FindTextW)
+
+    [TestCase]
+    Public Sub FindTextW_WithAModuleLevelStructureDeliversTheMessages()
+        Expect.Begin
+        Dim owner As LongPtr = FindHost.Create()
+        Dim h As LongPtr = FindHost.FindWithModuleLevelStructure(owner)
+        Expect.IsTrue h <> 0, "FindTextW opened a dialog"
+        FindHost.Press h, FindHost.IDC_FIND_NEXT
+        Expect.AreEqual 1, FindHost.Messages, "messages the owner received for Find Next from a dialog made with a module-level structure"
+        FindHost.CloseDialog h
+        Expect.AreEqual 2, FindHost.Messages, "messages the owner received after the dialog was closed"
+        FindHost.Destroy owner
+        Expect.Done
+    End Sub
+
+End Module

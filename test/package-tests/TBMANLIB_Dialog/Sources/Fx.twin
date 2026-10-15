@@ -1,0 +1,104 @@
+' Fx: what the cases of TBMANLIB_Dialog share: the folder they work in, files, and windows that own dialogs.
+Module Fx
+
+    Private Declare PtrSafe Function F_CreateWindowExW Lib "user32" Alias "CreateWindowExW" (ByVal dwExStyle As Long, ByVal lpClassName As LongPtr, ByVal lpWindowName As LongPtr, ByVal dwStyle As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As LongPtr, ByVal hMenu As LongPtr, ByVal hInstance As LongPtr, ByVal lpParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function F_DestroyWindow Lib "user32" Alias "DestroyWindow" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function F_IsWindow Lib "user32" Alias "IsWindow" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function F_GetCurrentDirectoryW Lib "kernel32" Alias "GetCurrentDirectoryW" (ByVal nBufferLength As Long, ByVal lpBuffer As LongPtr) As Long
+    Private Declare PtrSafe Function F_SetCurrentDirectoryW Lib "kernel32" Alias "SetCurrentDirectoryW" (ByVal lpPathName As LongPtr) As Long
+
+    Private Const WS_POPUP As Long = &H80000000
+
+    Private mWork As String
+
+    ' The folder the cases work in, made if it is missing.
+    Public Function Work() As String
+        If Len(mWork) = 0 Then mWork = Environ$("TEMP") & "\tbdocs-package-tests\TBMANLIB_Dialog"
+        MakeTree mWork
+        Work = mWork
+    End Function
+
+    ' Empties the work folder.
+    Public Sub Clean()
+        Dim d As String = Work()
+        On Error Resume Next
+        Dim f As String
+        f = Dir$(d & "\*.*")
+        Do While Len(f) > 0
+            SetAttr d & "\" & f, vbNormal
+            Kill d & "\" & f
+            f = Dir$(d & "\*.*")
+        Loop
+        Dim subs As New Collection
+        Dim s As String = Dir$(d & "\*", vbDirectory)
+        Do While Len(s) > 0
+            If s <> "." And s <> ".." Then
+                If (GetAttr(d & "\" & s) And vbDirectory) <> 0 Then subs.Add s
+            End If
+            s = Dir$()
+        Loop
+        Dim v As Variant
+        For Each v In subs
+            Kill d & "\" & CStr(v) & "\*.*"
+            RmDir d & "\" & CStr(v)
+        Next
+    End Sub
+
+    Private Sub MakeTree(ByVal path As String)
+        Dim parts() As String = Split(path, "\")
+        Dim i As Long
+        Dim cur As String = parts(0)
+        For i = 1 To UBound(parts)
+            cur = cur & "\" & parts(i)
+            If Len(Dir$(cur, vbDirectory)) = 0 Then MkDir cur
+        Next
+    End Sub
+
+    ' A file with this text in the work folder; returns its full path.
+    Public Function MakeFile(ByVal name As String, ByVal text As String) As String
+        Dim p As String = Work() & "\" & name
+        Dim n As Integer = FreeFile
+        Open p For Output As #n
+        Print #n, text
+        Close #n
+        MakeFile = p
+    End Function
+
+    Public Sub MakeSub(ByVal name As String)
+        MkDir Work() & "\" & name
+    End Sub
+
+    Public Function Exists(ByVal path As String) As Boolean
+        Exists = (Len(Dir$(path)) > 0)
+    End Function
+
+    ' A text written with periods as decimal separators, as the regional settings of the computer
+    ' write it (the classes format numbers with CStr and Format).
+    Public Function Dec(ByVal text As String) As String
+        Dim sep As String = Mid$(CStr(1.5), 2, 1)
+        Dec = Replace(text, ".", sep)
+    End Function
+
+    ' The current directory of the process, from the API.
+    Public Function CurDirApi() As String
+        Dim s As String = String$(520, 0)
+        Dim n As Long = F_GetCurrentDirectoryW(520, StrPtr(s))
+        CurDirApi = Left$(s, n)
+    End Function
+
+    Public Sub SetCurDirApi(ByVal path As String)
+        F_SetCurrentDirectoryW StrPtr(path)
+    End Sub
+
+    ' An invisible window to own a dialog.
+    Public Function MakeOwner() As LongPtr
+        MakeOwner = F_CreateWindowExW(0, StrPtr("Static"), StrPtr("tbdocs owner"), WS_POPUP, 0, 0, 10, 10, 0, 0, 0, 0)
+    End Function
+
+    Public Sub DestroyOwner(ByVal h As LongPtr)
+        If h <> 0 Then
+            If F_IsWindow(h) <> 0 Then F_DestroyWindow h
+        End If
+    End Sub
+
+End Module

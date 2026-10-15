@@ -20,9 +20,11 @@ Syntax: *object*.**PathMustExist** [ = *boolean* ]
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.ShowOpen_PathMustExistRefusesAMissingFolder -->
 [**ShowOpen**](ShowOpen) and [**ShowSave**](ShowSave) use the property. With **True**, a path that the user types and that does not exist makes Windows show a warning in a message box, and the dialog stays open. [**ShowBrowseForFolder**](ShowBrowseForFolder) ignores the property.
 
 In an Open dialog, [**FileMustExist**](FileMustExist) **True** sets `OFN_FILEMUSTEXIST`, which Windows documents as implying `OFN_PATHMUSTEXIST`. **ShowOpen** with **FileMustExist** **True** therefore checks the path whatever **PathMustExist** holds.
+<!-- /test -->
 
 ## Example
 

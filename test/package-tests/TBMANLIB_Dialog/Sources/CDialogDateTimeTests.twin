@@ -1,0 +1,672 @@
+' cDialogDateTime: the date and the time as parts, the text forms, the calculations, and the box
+' that asks for a new value (the InputBox of the run-time library), operated with Pilot.
+[TestFixture]
+Module CDialogDateTimeTests
+
+    Private Function Ymd(ByVal d As Date) As String
+        Ymd = Format$(d, "yyyy-mm-dd")
+    End Function
+
+    Private Function Stamp(ByVal d As Date) As String
+        Stamp = Format$(d, "yyyy-mm-dd hh:nn:ss")
+    End Function
+
+    Private Function Sample() As cDialogDateTime
+        Dim p As New cDialogDateTime
+        p.DateTimeValue = DateSerial(2026, 3, 15) + TimeSerial(14, 5, 9)
+        Set Sample = p
+    End Function
+
+    ' ---- the starting values
+
+    [TestCase]
+    Public Sub Defaults_AreThoseOfThePage()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        Expect.AreEqual "Select Date and Time", p.Title, "Title of a new cDialogDateTime"
+        Expect.AreEqual "Please select a date and time:", p.Prompt, "Prompt of a new cDialogDateTime"
+        Expect.AreEqual PickerMode.DateTime, p.Mode, "Mode of a new cDialogDateTime"
+        Expect.AreEqual 1900, p.MinYear, "MinYear of a new cDialogDateTime"
+        Expect.AreEqual 2100, p.MaxYear, "MaxYear of a new cDialogDateTime"
+        Expect.IsTrue p.Is24HourFormat, "Is24HourFormat of a new cDialogDateTime"
+        Expect.IsFalse p.ShowSeconds, "ShowSeconds of a new cDialogDateTime"
+        Expect.AreEqual "", p.CustomFormat, "CustomFormat of a new cDialogDateTime"
+        Expect.IsFalse p.Cancelled, "Cancelled of a new cDialogDateTime"
+        Expect.AreEqual 0, p.OwnerHwnd, "OwnerHwnd of a new cDialogDateTime"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NewObject_HoldsTheClockOfTheComputer()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        Dim d As Date = p.DateTimeValue
+        Expect.IsTrue Abs(d - Now) < 2 / 1440, "DateTimeValue of a new cDialogDateTime is within two minutes of Now: " & Stamp(d)
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enumerations_HaveTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual 0, PickerMode.DateTime, "DateTime"
+        Expect.AreEqual 1, PickerMode.DateOnly, "DateOnly"
+        Expect.AreEqual 2, PickerMode.TimeOnly, "TimeOnly"
+        Expect.AreEqual 0, DateFormat.ShortDate, "ShortDate"
+        Expect.AreEqual 1, DateFormat.LongDate, "LongDate"
+        Expect.AreEqual 2, DateFormat.Custom, "Custom"
+        Expect.Done
+    End Sub
+
+    ' ---- the parts
+
+    [TestCase]
+    Public Sub DateTimeValue_SetsAllSixParts()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Expect.AreEqual "2026-03-15 14:05:09", Stamp(p.DateTimeValue), "DateTimeValue"
+        Expect.AreEqual 2026, p.Year, "Year"
+        Expect.AreEqual 3, p.Month, "Month"
+        Expect.AreEqual 15, p.Day, "Day"
+        Expect.AreEqual 14, p.Hour, "Hour"
+        Expect.AreEqual 5, p.Minute, "Minute"
+        Expect.AreEqual 9, p.Second, "Second"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DateValue_And_TimeValue_SetTheirParts()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        p.DateValue = DateSerial(2027, 7, 4)
+        p.TimeValue = TimeSerial(8, 30, 15)
+        Expect.AreEqual 7, p.Month, "Month after DateValue"
+        Expect.AreEqual "2027-07-04", Ymd(p.DateValue), "DateValue"
+        Expect.AreEqual 8, p.Hour, "Hour after TimeValue"
+        Expect.AreEqual "08:30:15", Format$(p.TimeValue, "hh:nn:ss"), "TimeValue"
+        Expect.AreEqual 0, Int(p.DateValue) - p.DateValue, "DateValue is at midnight"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DateTimeValue_IsNotCheckedAgainstTheYearRange()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        p.MinYear = 1990
+        p.MaxYear = 2000
+        p.DateTimeValue = DateSerial(2050, 1, 1)
+        Expect.AreEqual 2050, p.Year, "Year after DateTimeValue 2050 with MaxYear 2000"
+        p.DateValue = DateSerial(1800, 1, 1)
+        Expect.AreEqual 1800, p.Year, "Year after DateValue 1800 with MinYear 1990"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Day_IgnoresADayThatDoesNotExistInTheMonth()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        p.DateValue = DateSerial(2026, 2, 10)
+        p.Day = 30
+        Expect.AreEqual 10, p.Day, "Day after 30 in February 2026"
+        p.Day = 28
+        Expect.AreEqual 28, p.Day, "Day after 28"
+        p.Day = 0
+        Expect.AreEqual 28, p.Day, "Day after 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Hour_Minute_Second_IgnoreValuesOutOfRange()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        p.Hour = 18
+        p.Hour = 24
+        Expect.AreEqual 18, p.Hour, "Hour after 18 and 24"
+        p.Hour = -1
+        Expect.AreEqual 18, p.Hour, "Hour after -1"
+        p.Minute = 45
+        p.Minute = 60
+        Expect.AreEqual 45, p.Minute, "Minute after 45 and 60"
+        p.Second = 30
+        p.Second = 75
+        Expect.AreEqual 30, p.Second, "Second after 30 and 75"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Month_LowersTheDayToTheLastDayOfTheNewMonth()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        p.DateValue = DateSerial(2026, 1, 31)
+        p.Month = 2
+        Expect.AreEqual 28, p.Day, "Day after Month 2 from 31 January 2026"
+        p.Month = 13
+        Expect.AreEqual 2, p.Month, "Month after 13"
+        p.Month = 0
+        Expect.AreEqual 2, p.Month, "Month after 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Year_IsLimitedToMinYearAndMaxYear()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        p.Year = 2030
+        p.Year = 2200
+        Expect.AreEqual 2030, p.Year, "Year after 2030 and 2200"
+        p.Year = 1850
+        Expect.AreEqual 2030, p.Year, "Year after 1850"
+        p.MaxYear = 2050
+        p.Year = 2060
+        Expect.AreEqual 2030, p.Year, "Year after 2060 with MaxYear 2050"
+        p.MinYear = 2000
+        p.Year = 1999
+        Expect.AreEqual 2030, p.Year, "Year after 1999 with MinYear 2000"
+        p.Year = 2000
+        Expect.AreEqual 2000, p.Year, "Year after 2000 with MinYear 2000"
+        Expect.Done
+    End Sub
+
+    ' ---- the text forms
+
+    [TestCase]
+    Public Sub FormatDate_ShortAndLong()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Expect.AreEqual "03/15/2026", p.FormatDate(), "FormatDate"
+        Expect.AreEqual "03/15/2026", p.FormatDate(DateFormat.ShortDate), "FormatDate(ShortDate)"
+        Expect.AreEqual "Sunday, March 15, 2026", p.FormatDate(DateFormat.LongDate), "FormatDate(LongDate)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FormatDate_CustomReplacesThePatterns()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        p.CustomFormat = "YYYY-MM-DD"
+        Expect.AreEqual "2026-03-15", p.FormatDate(DateFormat.Custom), "FormatDate(Custom) of YYYY-MM-DD"
+        p.CustomFormat = "D.M.YY"
+        Expect.AreEqual "15.3.26", p.FormatDate(DateFormat.Custom), "FormatDate(Custom) of D.M.YY"
+        p.CustomFormat = ""
+        Expect.AreEqual "03/15/2026", p.FormatDate(DateFormat.Custom), "FormatDate(Custom) of an empty CustomFormat"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FormatDate_CustomWithAMonthNameOfMarchKeepsTheName()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        p.CustomFormat = "MMMM D, YYYY"
+        Expect.AreEqual "March 15, 2026", p.FormatDate(DateFormat.Custom), "FormatDate(Custom) of MMMM D, YYYY for March"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FormatDate_CustomWithAMonthNameOfMayKeepsTheName()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        p.DateValue = DateSerial(2026, 5, 15)
+        p.CustomFormat = "MMMM D, YYYY"
+        Expect.AreEqual "May 15, 2026", p.FormatDate(DateFormat.Custom), "FormatDate(Custom) of MMMM D, YYYY for May"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FormatDate_CustomWithAMonthNameOfDecemberKeepsTheName()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        p.DateValue = DateSerial(2026, 12, 15)
+        p.CustomFormat = "MMMM D, YYYY"
+        Expect.AreEqual "December 15, 2026", p.FormatDate(DateFormat.Custom), "FormatDate(Custom) of MMMM D, YYYY for December"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FormatDate_CustomWithAShortMonthNameOfMarchKeepsTheName()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        p.CustomFormat = "MMM D"
+        Expect.AreEqual "Mar 15", p.FormatDate(DateFormat.Custom), "FormatDate(Custom) of MMM D for March"
+        Dim q As New cDialogDateTime
+        q.DateValue = DateSerial(2026, 2, 9)
+        q.CustomFormat = "MMMM"
+        Expect.AreEqual "February", q.FormatDate(DateFormat.Custom), "FormatDate(Custom) of MMMM for February"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FormatTime_24HourAndAmPm()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Expect.AreEqual "14:05", p.FormatTime(), "FormatTime in the 24-hour clock"
+        p.ShowSeconds = True
+        Expect.AreEqual "14:05:09", p.FormatTime(), "FormatTime with seconds"
+        p.Is24HourFormat = False
+        Expect.AreEqual "02:05:09 PM", p.FormatTime(), "FormatTime with seconds in the 12-hour clock"
+        p.TimeValue = TimeSerial(0, 30, 0)
+        Expect.AreEqual "12:30:00 AM", p.FormatTime(), "FormatTime of half past midnight"
+        p.ShowSeconds = False
+        p.TimeValue = TimeSerial(12, 0, 0)
+        Expect.AreEqual "12:00 PM", p.FormatTime(), "FormatTime of noon"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FormatDateTime_FollowsMode()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Expect.AreEqual "03/15/2026 14:05", p.FormatDateTime(), "FormatDateTime in DateTime mode"
+        p.Mode = PickerMode.DateOnly
+        Expect.AreEqual "03/15/2026", p.FormatDateTime(), "FormatDateTime in DateOnly mode"
+        p.Mode = PickerMode.TimeOnly
+        Expect.AreEqual "14:05", p.FormatDateTime(), "FormatDateTime in TimeOnly mode"
+        Expect.Done
+    End Sub
+
+    ' ---- the calculations
+
+    [TestCase]
+    Public Sub AddDays_MovesTheDateAndKeepsTheTime()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        p.AddDays 20
+        Expect.AreEqual "2026-04-04 14:05:09", Stamp(p.DateTimeValue), "DateTimeValue after AddDays 20"
+        p.AddDays -35
+        Expect.AreEqual "2026-02-28 14:05:09", Stamp(p.DateTimeValue), "DateTimeValue after AddDays -35"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AddDays_PastTheEndOfYear9999RaisesTypeMismatch()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        p.DateValue = DateSerial(9999, 12, 30)
+        On Error Resume Next
+        p.AddDays 5
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 13, n, "error AddDays raised past 31 December 9999"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AddHours_CarriesIntoTheDate()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        p.AddHours 10
+        Expect.AreEqual "2026-03-16 00:05:09", Stamp(p.DateTimeValue), "DateTimeValue after AddHours 10"
+        p.AddHours -15
+        Expect.AreEqual "2026-03-15 09:05:09", Stamp(p.DateTimeValue), "DateTimeValue after AddHours -15"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AddHours_OfAboutSixHundredThousandRaisesOverflowAndKeepsTheValue()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        On Error Resume Next
+        p.AddHours 600000
+        Dim n As Long = Err.Number
+        Err.Clear
+        p.AddHours -600000
+        Dim m As Long = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 6, n, "error AddHours raised for 600000 hours"
+        Expect.AreEqual 6, m, "error AddHours raised for -600000 hours"
+        Expect.AreEqual "2026-03-15 14:05:09", Stamp(p.DateTimeValue), "DateTimeValue after the failed AddHours calls"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetNow_And_SetToday_UseTheClock()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        p.Year = 2000
+        p.SetNow
+        Expect.AreEqual Year(Date), p.Year, "Year after SetNow"
+        p.SetToday
+        Expect.AreEqual 0, p.Hour + p.Minute + p.Second, "Hour, Minute and Second after SetToday"
+        Expect.AreEqual Day(Date), p.Day, "Day after SetToday"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetDayOfWeek_And_Name_AreEnglishFromSunday()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Expect.AreEqual 0, p.GetDayOfWeek(), "GetDayOfWeek of Sunday 15 March 2026"
+        Expect.AreEqual "Sunday", p.GetDayOfWeekName(), "GetDayOfWeekName of that date"
+        p.DateValue = DateSerial(2026, 3, 16)
+        Expect.AreEqual 1, p.GetDayOfWeek(), "GetDayOfWeek of Monday"
+        Expect.AreEqual "Monday", p.GetDayOfWeekName(), "GetDayOfWeekName of Monday"
+        p.DateValue = DateSerial(2026, 3, 21)
+        Expect.AreEqual 6, p.GetDayOfWeek(), "GetDayOfWeek of Saturday"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetDaysInMonth_KnowsLeapYears()
+        Expect.Begin
+        Dim p As New cDialogDateTime
+        Expect.AreEqual 29, p.GetDaysInMonth(2024, 2), "days in February 2024"
+        Expect.AreEqual 28, p.GetDaysInMonth(1900, 2), "days in February 1900"
+        Expect.AreEqual 29, p.GetDaysInMonth(2000, 2), "days in February 2000"
+        Expect.AreEqual 30, p.GetDaysInMonth(2026, 4), "days in April 2026"
+        Expect.AreEqual 31, p.GetDaysInMonth(2026, 12), "days in December 2026"
+        Expect.AreEqual 0, p.GetDaysInMonth(2026, 13), "days in month 13"
+        Expect.AreEqual 0, p.GetDaysInMonth(2026, 0), "days in month 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetMonthName_IsEnglish()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Expect.AreEqual "March", p.GetMonthName(), "GetMonthName of the month of the object"
+        Expect.AreEqual "December", p.GetMonthName(12), "GetMonthName(12)"
+        Expect.AreEqual "March", p.GetMonthName(0), "GetMonthName(0)"
+        Expect.AreEqual "", p.GetMonthName(13), "GetMonthName(13)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_RestoresTheStartingValuesButNotTheOwner()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        p.Title = "Meeting"
+        p.Prompt = "x"
+        p.Mode = PickerMode.DateOnly
+        p.MinYear = 1990
+        p.MaxYear = 2000
+        p.ShowSeconds = True
+        p.Is24HourFormat = False
+        p.CustomFormat = "YY"
+        p.OwnerHwnd = 66
+        p.Reset
+        Expect.AreEqual "Select Date and Time", p.Title, "Title after Reset"
+        Expect.AreEqual "Please select a date and time:", p.Prompt, "Prompt after Reset"
+        Expect.AreEqual PickerMode.DateTime, p.Mode, "Mode after Reset"
+        Expect.AreEqual 1900, p.MinYear, "MinYear after Reset"
+        Expect.AreEqual 2100, p.MaxYear, "MaxYear after Reset"
+        Expect.IsFalse p.ShowSeconds, "ShowSeconds after Reset"
+        Expect.IsTrue p.Is24HourFormat, "Is24HourFormat after Reset"
+        Expect.AreEqual "", p.CustomFormat, "CustomFormat after Reset"
+        Expect.AreEqual 66, p.OwnerHwnd, "OwnerHwnd after Reset"
+        Expect.AreEqual Year(Date), p.Year, "Year after Reset"
+        Expect.Done
+    End Sub
+
+    ' ---- the box
+
+    [TestCase]
+    Public Sub ShowDialog_ShowsThePromptTheFormatLineAndTheYearRange()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        p.Title = "Appointment"
+        p.Prompt = "When should the meeting start?"
+        Pilot.Arm "id=2"
+        Dim r As Boolean = p.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "boxes ShowDialog opened"
+        Expect.AreEqual "Appointment", Pilot.Title(0), "title of the box"
+        Expect.AreEqual "When should the meeting start?" & vbCrLf & vbCrLf & "Enter date and time:" & vbCrLf & vbCrLf & "Year range: 1900 - 2100", Pilot.Statics(0), "text of the box"
+        Expect.AreEqual "03/15/2026 14:05", Pilot.EditText(0), "text in the edit box"
+        Expect.IsFalse r, "ShowDialog after Cancel"
+        Expect.IsTrue p.Cancelled, "Cancelled after Cancel"
+        Expect.AreEqual "2026-03-15 14:05:09", Stamp(p.DateTimeValue), "DateTimeValue after Cancel"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_NamesTheFormatOfTheModes()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        p.Mode = PickerMode.DateOnly
+        Pilot.Arm "id=2"
+        p.ShowDialog
+        Pilot.Disarm
+        Expect.IsTrue InStr(Pilot.Statics(0), "Enter date (MM/DD/YYYY):") > 0, "text of the date box: " & Pilot.Statics(0)
+        Expect.AreEqual "03/15/2026", Pilot.EditText(0), "text in the edit box of the date box"
+        p.Mode = PickerMode.TimeOnly
+        Pilot.Arm "id=2"
+        p.ShowDialog
+        Pilot.Disarm
+        Expect.IsTrue InStr(Pilot.Statics(0), "Enter time (HH:MM):") > 0, "text of the time box: " & Pilot.Statics(0)
+        p.Is24HourFormat = False
+        Pilot.Arm "id=2"
+        p.ShowDialog
+        Pilot.Disarm
+        Expect.IsTrue InStr(Pilot.Statics(0), "Enter time (HH:MM AM/PM):") > 0, "text of the 12-hour time box: " & Pilot.Statics(0)
+        Expect.AreEqual "02:05 PM", Pilot.EditText(0), "text in the edit box of the 12-hour time box"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_OKOnTheOfferedTextKeepsTheValue()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "id=1"
+        Dim r As Boolean = p.ShowDialog()
+        Pilot.Disarm
+        Expect.IsTrue r, "ShowDialog after OK on the offered text"
+        Expect.IsFalse p.Cancelled, "Cancelled after OK"
+        Expect.AreEqual "2026-03-15 14:05:09", Stamp(p.DateTimeValue), "DateTimeValue after OK on the offered text"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_ADateChangesOnlyTheDate()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=11/12/2028|id=1"
+        Dim r As Boolean = p.ShowDialog()
+        Pilot.Disarm
+        Expect.IsTrue r, "ShowDialog after a date"
+        Expect.AreEqual "2028-11-12 14:05:09", Stamp(p.DateTimeValue), "DateTimeValue after the date 11/12/2028"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_ATimeChangesOnlyTheHourAndMinute()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=23:59|id=1"
+        Dim r As Boolean = p.ShowDialog()
+        Pilot.Disarm
+        Expect.IsTrue r, "ShowDialog after a time"
+        Expect.AreEqual "2026-03-15 23:59:09", Stamp(p.DateTimeValue), "DateTimeValue after the time 23:59"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_ADateWithDashesAndATimeWithSeconds()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=01-02-2030 03:04:05|id=1"
+        Dim r As Boolean = p.ShowDialog()
+        Pilot.Disarm
+        Expect.IsTrue r, "ShowDialog after a date with dashes and a time with seconds"
+        Expect.AreEqual "2030-01-02 03:04:05", Stamp(p.DateTimeValue), "DateTimeValue after 01-02-2030 03:04:05"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_AnEmptyEntryAndTextWithoutAPartChangeNothing()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=|id=1"
+        Expect.IsTrue p.ShowDialog(), "ShowDialog after an empty entry"
+        Pilot.Disarm
+        Pilot.Arm "t=hello|id=1"
+        Expect.IsTrue p.ShowDialog(), "ShowDialog after the text hello"
+        Pilot.Disarm
+        Expect.AreEqual "2026-03-15 14:05:09", Stamp(p.DateTimeValue), "DateTimeValue after those entries"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_ARefusedEntryShowsASecondBoxAndReturnsFalse()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=13/45/2026|id=1;close"
+        Dim r As Boolean = p.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual 2, Pilot.WindowsSeen, "boxes ShowDialog opened for a refused entry"
+        Expect.AreEqual "Select Date and Time", Pilot.Title(1), "title of the second box"
+        Expect.IsTrue InStr(Pilot.Statics(1), "Invalid date/time format. Please use: 03/15/2026 14:05") > 0, "text of the second box: " & Pilot.Statics(1)
+        Expect.IsFalse r, "ShowDialog after a refused entry"
+        Expect.IsTrue p.Cancelled, "Cancelled after a refused entry"
+        Expect.Done
+    End Sub
+
+    ' ---- the parts of a refused entry
+
+    [TestCase]
+    Public Sub ShowDialog_ARefusedMonthAndDayLeaveTheObjectAsItWas()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=13/45/2026|id=1;close"
+        p.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual "2026-03-15 14:05:09", Stamp(p.DateTimeValue), "DateTimeValue after the refused entry 13/45/2026 (Month is " & p.Month & ", Day is " & p.Day & ")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_AFebruary30LeavesTheObjectAsItWas()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=02/30/2026|id=1;close"
+        p.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual 15, p.Day, "Day after the refused entry 02/30/2026 (the month is " & p.Month & ")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_ARefusedTimeLeavesTheObjectAsItWas()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=25:61|id=1;close"
+        p.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual "14:05", Format$(p.TimeValue, "hh:nn"), "time after the refused entry 25:61 (Hour is " & p.Hour & ", Minute is " & p.Minute & ")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_ARefusedTimeAfterAGoodDateLeavesTheObjectAsItWas()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=04/05/2027 25:00|id=1;close"
+        p.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual "2026-03-15 14:05:09", Stamp(p.DateTimeValue), "DateTimeValue after the refused entry 04/05/2027 25:00 (Hour is " & p.Hour & ")"
+        Expect.Done
+    End Sub
+
+    ' ---- AM and PM
+
+    [TestCase]
+    Public Sub ShowTimePicker_ATimeWithPmAndNoDateIsRead()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=9:30 PM|id=1;close"
+        Dim r As Boolean = p.ShowTimePicker()
+        Pilot.Disarm
+        Expect.IsTrue r, "ShowTimePicker after the entry 9:30 PM"
+        Expect.AreEqual "21:30", Format$(p.TimeValue, "hh:nn"), "time after the entry 9:30 PM"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowTimePicker_TheOfferedTextOfThe12HourClockIsAccepted()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        p.Is24HourFormat = False
+        Pilot.Arm "id=1"
+        Dim r As Boolean = p.ShowTimePicker()
+        Pilot.Disarm
+        Expect.IsTrue r, "ShowTimePicker after OK on the offered text 02:05 PM"
+        Expect.AreEqual 14, p.Hour, "Hour after OK on the offered text 02:05 PM"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowTimePicker_ATimeWithPmAndNoSpaceIsReadAsTheMinutesTyped()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=9:30pm|id=1;close"
+        p.ShowTimePicker
+        Pilot.Disarm
+        Expect.AreEqual "21:30", Format$(p.TimeValue, "hh:nn"), "time after the entry 9:30pm"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_ADateAndATimeWithPmIsRead()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=03/15/2026 9:30 PM|id=1"
+        Dim r As Boolean = p.ShowDialog()
+        Pilot.Disarm
+        Expect.IsTrue r, "ShowDialog after the entry 03/15/2026 9:30 PM"
+        Expect.AreEqual "2026-03-15 21:30:09", Stamp(p.DateTimeValue), "DateTimeValue after the entry 03/15/2026 9:30 PM"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_12AmIsHourZeroAnd1To11PmAre13To23()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "t=03/15/2026 12:10 AM|id=1"
+        p.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual 0, p.Hour, "Hour after 12:10 AM"
+        Pilot.Arm "t=03/15/2026 1:10 PM|id=1"
+        p.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual 13, p.Hour, "Hour after 1:10 PM"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDatePicker_And_ShowTimePicker_SetTitleAndMode()
+        Expect.Begin
+        Dim p As cDialogDateTime = Sample()
+        Pilot.Arm "id=2"
+        p.ShowDatePicker "Birthday"
+        Pilot.Disarm
+        Expect.AreEqual "Birthday", p.Title, "Title after ShowDatePicker"
+        Expect.AreEqual PickerMode.DateOnly, p.Mode, "Mode after ShowDatePicker"
+        Expect.AreEqual "Birthday", Pilot.Title(0), "title of the box of ShowDatePicker"
+        Pilot.Arm "id=2"
+        p.ShowTimePicker "Alarm"
+        Pilot.Disarm
+        Expect.AreEqual "Alarm", p.Title, "Title after ShowTimePicker"
+        Expect.AreEqual PickerMode.TimeOnly, p.Mode, "Mode after ShowTimePicker"
+        Pilot.Arm "id=2"
+        p.ShowDatePicker
+        Pilot.Disarm
+        Expect.AreEqual "Select Date", p.Title, "Title after ShowDatePicker with no title"
+        Pilot.Arm "id=2"
+        p.ShowTimePicker
+        Pilot.Disarm
+        Expect.AreEqual "Select Time", p.Title, "Title after ShowTimePicker with no title"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OwnerHwnd_HasNoEffect()
+        Expect.Begin
+        Dim owner As LongPtr = Fx.MakeOwner()
+        Dim p As cDialogDateTime = Sample()
+        p.OwnerHwnd = owner
+        Pilot.Arm "id=2"
+        p.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual 0, Pilot.OwnerOf(0), "owner of the box of a cDialogDateTime whose OwnerHwnd is a window"
+        Fx.DestroyOwner owner
+        Expect.Done
+    End Sub
+
+End Module

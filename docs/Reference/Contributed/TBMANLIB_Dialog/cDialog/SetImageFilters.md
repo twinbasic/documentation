@@ -17,6 +17,7 @@ Syntax: *object*.**SetImageFilters**
 
 ## Remarks
 
+<!-- test: CDialogPropertyTests.SetImageFilters_HasSixPairs -->
 **SetImageFilters** calls [**ClearFilter**](ClearFilter), so any earlier filter is lost, and then [**AddFilter**](AddFilter) for each pair:
 
 | Description | Pattern |
@@ -29,6 +30,7 @@ Syntax: *object*.**SetImageFilters**
 | `All Files (*.*)` | `*.*` |
 
 The descriptions are fixed English text. To show other text, build the filter with [**AddFilter**](AddFilter). The file-type list of the dialog holds the six descriptions in this order. The first, Bitmap Files, is the one that is selected when the dialog opens, not All Image Files, which is the fifth.
+<!-- /test -->
 
 ## Example
 

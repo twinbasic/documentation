@@ -1,0 +1,31 @@
+' ProgressSink: receives the events of a cDialogProgress and keeps what they carried.
+Class ProgressSink
+
+    Private WithEvents mProgress As cDialogProgress
+
+    Public Changes As Long
+    Public Cancels As Long
+    Public LastValue As Long
+    Public Values As String
+    Public CancelledInHandler As Boolean
+
+    Public Sub Attach(ByVal source As cDialogProgress)
+        Set mProgress = source
+    End Sub
+
+    Public Sub Detach()
+        Set mProgress = Nothing
+    End Sub
+
+    Private Sub mProgress_ProgressChanged(ByVal value As Long)
+        Changes = Changes + 1
+        LastValue = value
+        Values = Values & value & ","
+    End Sub
+
+    Private Sub mProgress_CancelClicked()
+        Cancels = Cancels + 1
+        CancelledInHandler = mProgress.Cancelled
+    End Sub
+
+End Class

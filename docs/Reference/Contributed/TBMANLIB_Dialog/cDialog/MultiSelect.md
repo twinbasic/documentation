@@ -20,6 +20,7 @@ Syntax: *object*.**MultiSelect** [ = *boolean* ]
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.ShowOpen_MultiSelectOfTwoFilesReturnsAnArray, CDialogDialogTests.ShowOpen_MultiSelectOfOneFileReturnsAString -->
 Only [**ShowOpen**](ShowOpen) uses the property. [**ShowSave**](ShowSave) and [**ShowBrowseForFolder**](ShowBrowseForFolder) ignore it.
 
 With **MultiSelect** **True**, **ShowOpen** gives Windows a buffer of 32,768 characters, in place of 260. The class also always sets `OFN_EXPLORER`, so Windows fills the buffer with the folder, then the name of each selected file, each ended by a null character, and one more null character at the end. When the user selects one file, the buffer holds its full path, with no separator.
@@ -27,6 +28,7 @@ With **MultiSelect** **True**, **ShowOpen** gives Windows a buffer of 32,768 cha
 When the user selects one file, **ShowOpen** returns its full path as a **String**. When the user selects two or more, it returns an array of **String** values, one full path for each file, in the order in which the names stand in the File name box. The array is 0-based. [**FileName**](FileName) is an empty string after a selection of several files. A program can tell the two results apart with **IsArray**, and [**SelectFiles**](SelectFiles) hides the difference by returning a **Collection** in both cases.
 
 [**SelectAndOpenFile**](SelectAndOpenFile) opens each file of an array.
+<!-- /test -->
 
 ## Example
 

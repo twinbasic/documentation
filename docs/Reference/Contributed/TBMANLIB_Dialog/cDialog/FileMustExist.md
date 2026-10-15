@@ -20,11 +20,13 @@ Syntax: *object*.**FileMustExist** [ = *boolean* ]
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.ShowOpen_FileMustExistRefusesAMissingName, CDialogDialogTests.ShowOpen_WithoutFileMustExistReturnsAMissingName -->
 Only [**ShowOpen**](ShowOpen) uses the property. [**ShowSave**](ShowSave) never sets `OFN_FILEMUSTEXIST`, and Windows documents the flag for Open dialogs only, so **FileMustExist** has no effect on a Save As dialog. [**ShowBrowseForFolder**](ShowBrowseForFolder) ignores it too.
 
 With **True**, a name that the user types and that does not exist, such as `nosuch.txt`, makes Windows show the box *File not found. Check the file name and try again.*, and the Open dialog stays open. Windows documents that the flag also applies `OFN_PATHMUSTEXIST`. With **False**, **ShowOpen** returns the path of a file that does not exist, and does not create the file, so the caller has to be ready to meet a missing file.
 
 With [**CreatePrompt**](CreatePrompt) **True**, the question of that property is asked in place of the box, whether **FileMustExist** is **True** or **False**.
+<!-- /test -->
 
 ## Example
 

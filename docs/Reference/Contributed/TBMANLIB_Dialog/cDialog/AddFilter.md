@@ -23,11 +23,13 @@ Syntax: *object*.**AddFilter** ( *strDescription*, *strExtension* )
 
 ## Remarks
 
+<!-- test: CDialogPropertyTests.AddFilter_JoinsPairsWithPipes, CDialogPropertyTests.AddFilter_PipeInArgumentAddsAnElement -->
 **AddFilter** appends `description|pattern` to the text of **Filter**, with a `|` in front of it when **Filter** is not empty. The first pair added is the one that the dialog selects when it opens.
 
 A filter with one pair gives a file-type list with one item. Despite its name, *strExtension* is a pattern, and the class uses the text as it is: it adds no `*.` in front. Write the pattern in the form that the Windows documentation of `OPENFILENAME` gives, such as `*.txt`.
 
 The class does not check the arguments. A `|` in either one adds an element, so the later elements are no longer paired correctly.
+<!-- /test -->
 
 ## Example
 

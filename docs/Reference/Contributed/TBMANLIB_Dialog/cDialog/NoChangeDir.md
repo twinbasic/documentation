@@ -20,9 +20,11 @@ Syntax: *object*.**NoChangeDir** [ = *boolean* ]
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.ShowOpen_NoChangeDirKeepsTheCurrentFolder -->
 [**ShowOpen**](ShowOpen) and [**ShowSave**](ShowSave) use the property. [**ShowBrowseForFolder**](ShowBrowseForFolder) ignores it.
 
 The current folder is the one that **CurDir** returns, and that relative paths are resolved against. With **False**, the current folder is the folder of the chosen file after **ShowOpen** or **ShowSave**. With **True** it stays as it was. The flag works for both dialogs. The Windows documentation of `OFN_NOCHANGEDIR` calls it ineffective for `GetOpenFileName`, but it is effective for **ShowOpen**.
+<!-- /test -->
 
 ## Example
 

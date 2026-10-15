@@ -1,0 +1,32 @@
+' TBMANLIB_Dialog: what the compiler refuses. Each line ends in a comment ' CASE <Name>: <code>.
+Module CompileTests
+
+    Public Sub Types_GuidAloneIsAnotherType()
+        Dim g As GUID ' CASE GuidWithoutTheModuleName: TB5106
+    End Sub
+
+    Public Sub Enums_QualifiedByTheClass()
+        Dim a As Long = cDialogFont.FontStyle.StyleBold ' CASE FontStyleQualifiedByTheClass: TB5079
+        Dim b As Long = cDialogFindReplace.FindAction.FindNext ' CASE FindActionQualifiedByTheClass: TB5079
+        Dim c As Long = cDialogPrint.PrintRange.Selection ' CASE PrintRangeQualifiedByTheClass: TB5079
+        Dim d As Long = cDialogPageSetup.PaperOrientation.Landscape ' CASE PaperOrientationQualifiedByTheClass: TB5079
+    End Sub
+
+    Public Sub CDialog_HasNoFlagsFilterIndexCancelErrorFileTitleOrMaxFileSize()
+        Dim dlg As New cDialog
+        dlg.Flags = 1 ' CASE CDialogHasNoFlags: error
+        dlg.FilterIndex = 1 ' CASE CDialogHasNoFilterIndex: error
+        dlg.CancelError = True ' CASE CDialogHasNoCancelError: error
+        Dim t As String = dlg.FileTitle ' CASE CDialogHasNoFileTitle: error
+        dlg.MaxFileSize = 100 ' CASE CDialogHasNoMaxFileSize: error
+        dlg.OwnerHwnd = 0 ' CASE CDialogHasNoOwnerWindow: error
+    End Sub
+
+    Public Sub CDialogEx_HasNoNewDialogStyleHideReadOnlyOrReadOnly()
+        Dim dlg As New cDialogEx
+        dlg.NewDialogStyle = True ' CASE CDialogExHasNoNewDialogStyle: error
+        dlg.HideReadOnly = True ' CASE CDialogExHasNoHideReadOnly: error
+        dlg.ReadOnly = True ' CASE CDialogExHasNoReadOnly: error
+    End Sub
+
+End Module

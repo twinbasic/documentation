@@ -1,0 +1,406 @@
+' cDialogCountdownMsgBox: the properties, and the message box of MessageBoxTimeoutW. A box that is
+' left alone closes after one second; a box that is answered is answered with Pilot.
+[TestFixture]
+Module CDialogCountdownMsgBoxTests
+
+    [TestCase]
+    Public Sub Defaults_AreThoseOfThePage()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        Expect.AreEqual "Message", box.Title, "Title of a new cDialogCountdownMsgBox"
+        Expect.AreEqual "", box.Message, "Message of a new cDialogCountdownMsgBox"
+        Expect.AreEqual 10, box.CountdownSeconds, "CountdownSeconds of a new cDialogCountdownMsgBox"
+        Expect.AreEqual 10, box.RemainingSeconds, "RemainingSeconds of a new cDialogCountdownMsgBox"
+        Expect.AreEqual MB_OK, box.Buttons, "Buttons of a new cDialogCountdownMsgBox"
+        Expect.AreEqual MB_ICONINFORMATION, box.Icon, "Icon of a new cDialogCountdownMsgBox"
+        Expect.AreEqual MB_DEFBUTTON1, box.DefaultButton, "DefaultButton of a new cDialogCountdownMsgBox"
+        Expect.IsTrue box.ShowProgress And box.AutoClose, "ShowProgress and AutoClose of a new cDialogCountdownMsgBox"
+        Expect.AreEqual 0, box.OwnerHwnd, "OwnerHwnd of a new cDialogCountdownMsgBox"
+        Expect.AreEqual DialogResult.drTimeout, box.Result, "Result of a new cDialogCountdownMsgBox"
+        Expect.AreEqual "Timeout (Auto-close)", box.GetResultDescription(), "GetResultDescription of a new cDialogCountdownMsgBox"
+        Expect.IsTrue box.IsTimedOut(), "IsTimedOut of a new cDialogCountdownMsgBox"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enumerations_HaveTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual 1, DialogResult.drOK, "drOK"
+        Expect.AreEqual 2, DialogResult.drCancel, "drCancel"
+        Expect.AreEqual 3, DialogResult.drAbort, "drAbort"
+        Expect.AreEqual 4, DialogResult.drRetry, "drRetry"
+        Expect.AreEqual 5, DialogResult.drIgnore, "drIgnore"
+        Expect.AreEqual 6, DialogResult.drYes, "drYes"
+        Expect.AreEqual 7, DialogResult.drNo, "drNo"
+        Expect.AreEqual 32000, DialogResult.drTimeout, "drTimeout"
+        Expect.AreEqual 0, MB_OK, "MB_OK"
+        Expect.AreEqual 1, MB_OKCANCEL, "MB_OKCANCEL"
+        Expect.AreEqual 2, MB_ABORTRETRYIGNORE, "MB_ABORTRETRYIGNORE"
+        Expect.AreEqual 3, MB_YESNOCANCEL, "MB_YESNOCANCEL"
+        Expect.AreEqual 4, MB_YESNO, "MB_YESNO"
+        Expect.AreEqual 5, MB_RETRYCANCEL, "MB_RETRYCANCEL"
+        Expect.AreEqual 16, MB_ICONSTOP, "MB_ICONSTOP"
+        Expect.AreEqual 32, MB_ICONQUESTION, "MB_ICONQUESTION"
+        Expect.AreEqual 48, MB_ICONEXCLAMATION, "MB_ICONEXCLAMATION"
+        Expect.AreEqual 64, MB_ICONINFORMATION, "MB_ICONINFORMATION"
+        Expect.AreEqual 0, MB_DEFBUTTON1, "MB_DEFBUTTON1"
+        Expect.AreEqual 256, MB_DEFBUTTON2, "MB_DEFBUTTON2"
+        Expect.AreEqual 512, MB_DEFBUTTON3, "MB_DEFBUTTON3"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Properties_StoreWhatIsSet()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.Title = "Backup"
+        box.Message = "Do you want to continue?"
+        box.Buttons = MB_YESNOCANCEL
+        box.Icon = MB_ICONSTOP
+        box.DefaultButton = MB_DEFBUTTON2
+        box.ShowProgress = False
+        box.AutoClose = False
+        box.OwnerHwnd = 4321
+        Expect.AreEqual "Backup", box.Title, "Title"
+        Expect.AreEqual "Do you want to continue?", box.Message, "Message"
+        Expect.AreEqual 3, box.Buttons, "Buttons"
+        Expect.AreEqual 16, box.Icon, "Icon"
+        Expect.AreEqual 256, box.DefaultButton, "DefaultButton"
+        Expect.IsFalse box.ShowProgress Or box.AutoClose, "ShowProgress and AutoClose"
+        Expect.AreEqual 4321, box.OwnerHwnd, "OwnerHwnd"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CountdownSeconds_AlsoSetsRemainingSeconds()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.CountdownSeconds = 45
+        Expect.AreEqual 45, box.CountdownSeconds, "CountdownSeconds"
+        Expect.AreEqual 45, box.RemainingSeconds, "RemainingSeconds after CountdownSeconds 45"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_RestoresTheStartingValues()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.Title = "Backup"
+        box.Message = "x"
+        box.CountdownSeconds = 3
+        box.Buttons = MB_YESNO
+        box.Icon = MB_ICONSTOP
+        box.DefaultButton = MB_DEFBUTTON2
+        box.ShowProgress = False
+        box.AutoClose = False
+        box.OwnerHwnd = 4321
+        box.Reset
+        Expect.AreEqual "Message", box.Title, "Title after Reset"
+        Expect.AreEqual "", box.Message, "Message after Reset"
+        Expect.AreEqual 10, box.CountdownSeconds, "CountdownSeconds after Reset"
+        Expect.AreEqual 10, box.RemainingSeconds, "RemainingSeconds after Reset"
+        Expect.AreEqual MB_OK, box.Buttons, "Buttons after Reset"
+        Expect.AreEqual MB_ICONINFORMATION, box.Icon, "Icon after Reset"
+        Expect.AreEqual MB_DEFBUTTON1, box.DefaultButton, "DefaultButton after Reset"
+        Expect.IsTrue box.ShowProgress And box.AutoClose, "ShowProgress and AutoClose after Reset"
+        Expect.AreEqual 0, box.OwnerHwnd, "OwnerHwnd after Reset"
+        Expect.AreEqual DialogResult.drTimeout, box.Result, "Result after Reset"
+        Expect.Done
+    End Sub
+
+    ' ---- the box after it closes by itself
+
+    [TestCase]
+    Public Sub ShowQuestion_TimeoutReportsTimeout()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        Dim r As DialogResult = box.ShowQuestion("Restart now?", "Update", 1)
+        Expect.AreEqual DialogResult.drTimeout, r, "ShowQuestion that ran out of time"
+        Expect.IsTrue box.IsTimedOut(), "IsTimedOut after that ShowQuestion"
+        Expect.AreEqual DialogResult.drTimeout, box.Result, "Result after that ShowQuestion"
+        Expect.AreEqual 1, box.CountdownSeconds, "CountdownSeconds after ShowQuestion with 1 second"
+        Expect.AreEqual 10, box.RemainingSeconds, "RemainingSeconds after ShowQuestion (it is not touched)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowConfirm_TimeoutReportsTimeout()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        Expect.AreEqual DialogResult.drTimeout, box.ShowConfirm("Overwrite the file?", "Save", 1), "ShowConfirm that ran out of time"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowCustom_TimeoutOfABoxWithTwoButtonsReportsTimeout()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        Expect.AreEqual DialogResult.drTimeout, box.ShowCustom("Try again?", "Upload", MB_RETRYCANCEL, MB_ICONEXCLAMATION, 1), "ShowCustom with Retry and Cancel that ran out of time"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowInfo_TimeoutReportsTimeout()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        Dim r As DialogResult = box.ShowInfo("Backup finished.", "Backup", 1)
+        Expect.AreEqual DialogResult.drTimeout, r, "ShowInfo that ran out of time"
+        Expect.IsTrue box.IsTimedOut(), "IsTimedOut after that ShowInfo"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowWarning_TimeoutReportsTimeout()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        Expect.AreEqual DialogResult.drTimeout, box.ShowWarning("The disk is almost full.", "Disk", 1), "ShowWarning that ran out of time"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowError_TimeoutReportsTimeout()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        Expect.AreEqual DialogResult.drTimeout, box.ShowError("The file could not be saved.", "Save", 1), "ShowError that ran out of time"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_TimeoutOfTheDefaultBoxReportsTimeout()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.Message = "Done"
+        box.CountdownSeconds = 1
+        Expect.AreEqual DialogResult.drTimeout, box.ShowDialog(), "ShowDialog of the default box that ran out of time"
+        Expect.Done
+    End Sub
+
+    ' ---- what the box shows
+
+    [TestCase]
+    Public Sub ShowDialog_ShowsTheTitleTheMessageAndTheCountdownText()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.Title = "Backup"
+        box.Message = "Backup finished."
+        box.CountdownSeconds = 2
+        Pilot.Arm "wait=2|id=1"
+        box.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "boxes ShowDialog opened"
+        Expect.AreEqual "Backup", Pilot.Title(0), "title of the box"
+        Expect.AreEqual "Backup finished." & vbCrLf & vbCrLf & "This message will close automatically in 2 seconds...", Pilot.Statics(0), "text of the box"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_CountdownTextNamesOneSecondInThePlural()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.Message = "x"
+        box.CountdownSeconds = 1
+        Pilot.Arm "wait=1|id=1"
+        box.ShowDialog
+        Pilot.Disarm
+        Expect.IsTrue InStr(Pilot.Statics(0), "in 1 seconds...") > 0, "text of a box with CountdownSeconds 1: " & Pilot.Statics(0)
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_ShowProgressFalseShowsOnlyTheMessage()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.Message = "Only this."
+        box.CountdownSeconds = 2
+        box.ShowProgress = False
+        Pilot.Arm "wait=1|id=1"
+        box.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual "Only this.", Pilot.Statics(0), "text of a box with ShowProgress False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_AutoCloseFalseKeepsTheBoxOpenWithoutCountdownText()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.Message = "Stay."
+        box.CountdownSeconds = 1
+        box.AutoClose = False
+        Pilot.Arm "wait=25|id=1"
+        Dim r As DialogResult = box.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual "Stay.", Pilot.Statics(0), "text of a box with AutoClose False"
+        Expect.AreEqual DialogResult.drOK, r, "ShowDialog of a box with AutoClose False that was answered after 2.5 seconds, longer than CountdownSeconds"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_CountdownSecondsOfZeroDoesNotCloseTheBox()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.Message = "Stay."
+        box.CountdownSeconds = 0
+        Pilot.Arm "wait=15|id=1"
+        Dim r As DialogResult = box.ShowDialog()
+        Pilot.Disarm
+        Expect.IsTrue InStr(Pilot.Statics(0), "in 0 seconds...") > 0, "text of a box with CountdownSeconds 0: " & Pilot.Statics(0)
+        Expect.AreEqual DialogResult.drOK, r, "ShowDialog of a box with CountdownSeconds 0 that was answered after 1.5 seconds"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_TheButtonPressedIsTheResult()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        Pilot.Arm "id=6"
+        Expect.AreEqual DialogResult.drYes, box.ShowQuestion("Yes?", "Q", 20), "ShowQuestion answered with Yes"
+        Pilot.Disarm
+        Expect.AreEqual "Yes", box.GetResultDescription(), "GetResultDescription after Yes"
+        Pilot.Arm "id=7"
+        Expect.AreEqual DialogResult.drNo, box.ShowQuestion("No?", "Q", 20), "ShowQuestion answered with No"
+        Pilot.Disarm
+        Expect.AreEqual "No", box.GetResultDescription(), "GetResultDescription after No"
+        Pilot.Arm "id=2"
+        Expect.AreEqual DialogResult.drCancel, box.ShowConfirm("Cancel?", "Q", 20), "ShowConfirm answered with Cancel"
+        Pilot.Disarm
+        Expect.AreEqual "Cancel", box.GetResultDescription(), "GetResultDescription after Cancel"
+        Pilot.Arm "id=1"
+        Expect.AreEqual DialogResult.drOK, box.ShowInfo("OK?", "Q", 20), "ShowInfo answered with OK"
+        Pilot.Disarm
+        Expect.AreEqual "OK", box.GetResultDescription(), "GetResultDescription after OK"
+        Expect.IsFalse box.IsTimedOut(), "IsTimedOut after OK"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowCustom_AbortRetryIgnoreReportsEachButton()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        Pilot.Arm "id=3"
+        Expect.AreEqual DialogResult.drAbort, box.ShowCustom("m", "t", MB_ABORTRETRYIGNORE, MB_ICONSTOP, 20), "Abort"
+        Pilot.Disarm
+        Pilot.Arm "id=4"
+        Expect.AreEqual DialogResult.drRetry, box.ShowCustom("m", "t", MB_ABORTRETRYIGNORE, MB_ICONSTOP, 20), "Retry"
+        Pilot.Disarm
+        Pilot.Arm "id=5"
+        Expect.AreEqual DialogResult.drIgnore, box.ShowCustom("m", "t", MB_ABORTRETRYIGNORE, MB_ICONSTOP, 20), "Ignore"
+        Pilot.Disarm
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DefaultButton_EnterPressesTheSecondButton()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.Buttons = MB_YESNO
+        box.DefaultButton = MB_DEFBUTTON2
+        box.Message = "m"
+        Pilot.Arm "wait=2|key=13"
+        Dim r As DialogResult = box.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual DialogResult.drNo, r, "ShowDialog with Yes and No and MB_DEFBUTTON2 after Enter"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_ShortFormsDoNotChangeDefaultButton()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.DefaultButton = MB_DEFBUTTON2
+        box.ShowQuestion "m", "t", 1
+        Expect.AreEqual MB_DEFBUTTON2, box.DefaultButton, "DefaultButton after ShowQuestion"
+        Expect.Done
+    End Sub
+
+    ' ---- closing a box
+
+    [TestCase]
+    Public Sub ShowDialog_CloseButtonEndsABoxWithOnlyOKAsOK()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.Message = "m"
+        Pilot.Arm "close"
+        Expect.AreEqual DialogResult.drOK, box.ShowDialog(), "ShowDialog of a box with only OK, closed with the close button"
+        Pilot.Disarm
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowConfirm_CloseButtonEndsTheBoxAsCancel()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        Pilot.Arm "close"
+        Expect.AreEqual DialogResult.drCancel, box.ShowConfirm("m", "t", 20), "ShowConfirm closed with the close button"
+        Pilot.Disarm
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowQuestion_CloseButtonIsIgnored()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        Pilot.Arm "close|wait=8|id=7"
+        Dim r As DialogResult = box.ShowQuestion("m", "t", 20)
+        Pilot.Disarm
+        Expect.AreEqual DialogResult.drNo, r, "ShowQuestion closed with the close button and then answered No"
+        Expect.Done
+    End Sub
+
+    ' ---- the buttons the enumeration has no member for
+
+    [TestCase]
+    Public Sub Buttons_ACancelTryAgainContinueBoxIsNotMapped()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.Buttons = 6
+        box.Message = "m"
+        Pilot.Arm "id=11"
+        Dim r As DialogResult = box.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual DialogResult.drTimeout, r, "ShowDialog of a Cancel, Try Again, Continue box answered with Continue"
+        Expect.Done
+    End Sub
+
+    ' ---- a time that is too long
+
+    [TestCase]
+    Public Sub CountdownSeconds_AboveTwoMillionOverflowsAndShowsAPlainBox()
+        Expect.Begin
+        Dim box As New cDialogCountdownMsgBox
+        box.Buttons = MB_YESNO
+        box.Icon = MB_ICONSTOP
+        box.Title = "Long"
+        box.Message = "Too long."
+        box.CountdownSeconds = 2147484
+        Pilot.Arm "id=1"
+        Err.Clear
+        Dim r As DialogResult = box.ShowDialog()
+        Dim n As Long = Err.Number
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "boxes ShowDialog opened"
+        Expect.AreEqual "OK", Pilot.Buttons(0), "buttons of the box that CountdownSeconds 2147484 shows"
+        Expect.AreEqual "Too long.", Pilot.Statics(0), "text of that box"
+        Expect.AreEqual DialogResult.drOK, r, "ShowDialog with CountdownSeconds 2147484"
+        Expect.AreEqual 6, n, "Err.Number after that ShowDialog"
+        Expect.Done
+    End Sub
+
+    ' ---- the owner
+
+    [TestCase]
+    Public Sub OwnerHwnd_OwnsTheBox()
+        Expect.Begin
+        Dim owner As LongPtr = Fx.MakeOwner()
+        Dim box As New cDialogCountdownMsgBox
+        box.OwnerHwnd = owner
+        box.Message = "m"
+        Pilot.Arm "id=1"
+        box.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual owner, Pilot.OwnerOf(0), "owner of the box"
+        Fx.DestroyOwner owner
+        Expect.Done
+    End Sub
+
+End Module

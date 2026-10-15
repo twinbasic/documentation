@@ -30,6 +30,7 @@ The method always sets `BIF_RETURNONLYFSDIRS`, so only a folder of the file syst
 
 The dialog does not start in the folder that [**InitialDir**](InitialDir) holds. In the new style it opens with the folder of the user's profile selected, and in the old style with *This PC* selected, with *OK* disabled until the user selects a folder of the file system.
 
+<!-- test: CDialogDialogTests.ShowBrowseForFolder_ReturnsTheTypedFolderAndStoresItInInitialDir, CDialogDialogTests.ShowBrowseForFolder_CancelReturnsAnEmptyStringAndKeepsInitialDir -->
 > [!NOTE] 1.1.0.0
 > When the user confirms a folder, **ShowBrowseForFolder** stores the path in [**InitialDir**](InitialDir). A [**ShowOpen**](ShowOpen) or [**ShowSave**](ShowSave) after it passes that folder to Windows as its starting folder. A path typed into the edit box of the new-style dialog and confirmed is returned and stored in the same way. A cancelled dialog returns an empty string and leaves **InitialDir** as it was. [**FileName**](FileName) is not used or changed.
 

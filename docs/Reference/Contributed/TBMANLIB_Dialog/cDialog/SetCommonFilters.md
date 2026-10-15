@@ -17,6 +17,7 @@ Syntax: *object*.**SetCommonFilters**
 
 ## Remarks
 
+<!-- test: CDialogPropertyTests.SetCommonFilters_ReplacesTheFilter -->
 **SetCommonFilters** calls [**ClearFilter**](ClearFilter), so any earlier filter is lost, and then [**AddFilter**](AddFilter) for each pair:
 
 | Description | Pattern |
@@ -25,6 +26,7 @@ Syntax: *object*.**SetCommonFilters**
 | `All Files (*.*)` | `*.*` |
 
 The descriptions are fixed English text. To show other text, build the filter with **AddFilter**. The first pair, Text Files, is the one that the dialog selects when it opens. A call of **AddFilter** after **SetCommonFilters** appends a pair at the end.
+<!-- /test -->
 
 ## Example
 

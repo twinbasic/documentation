@@ -28,6 +28,7 @@ Else
 End If
 ```
 
+<!-- test: CDialogColorTests.ShowDialog_OKReturnsTrueAndKeepsTheColorItWasGiven, CDialogColorTests.ShowDialog_CancelReturnsFalseAndKeepsTheColor, CDialogColorTests.GetCustomColor_StartsWithTheQBColors, CDialogColorTests.SetCustomColor_StoresAndIgnoresAnIndexOutOfRange, CDialogColorTests.Reset_RestoresTheColorTheFlagsAndTheCustomColors -->
 ## How the dialog is shown
 
 [**ShowDialog**](#showdialog) calls `ChooseColorW` with the current [**Color**](#color) as the starting color (flag `CC_RGBINIT`, always set) and the 16 custom colors of the object. The properties [**FullOpen**](#fullopen), [**PreventFullOpen**](#preventfullopen), [**SolidColor**](#solidcolor) and [**AnyColor**](#anycolor) set the flags `CC_FULLOPEN`, `CC_PREVENTFULLOPEN`, `CC_SOLIDCOLOR` and `CC_ANYCOLOR` when they are **True**. The class sets no hook or template, no help button and no owner other than [**OwnerHwnd**](#ownerhwnd). The dialog is modal and has the title *Color*.
@@ -40,9 +41,13 @@ The color is a plain number. A system color constant such as `vbButtonFace` (`&H
 
 The object keeps 16 custom colors, numbered 0 to 15, for the 16 custom boxes of the dialog. They start as the colors of **QBColor**(0) to **QBColor**(15) and last as long as the object does, so a second dialog of the same object shows the custom colors that the first one left. Nothing is saved to the registry or to a file.
 
+<!-- /test -->
+
+<!-- test: probe c4 -->
 > [!NOTE] timeless
 > The **Add to Custom Colors** button of the expanded dialog writes into the custom colors of the object at once. Choosing **Cancel** afterwards leaves [**Color**](#color) unchanged but keeps the added custom color. [**Reset**](#reset) restores the 16 starting colors.
 
+<!-- test: CDialogColorTests.Defaults_AreThoseOfThePage, CDialogColorTests.Red_Green_Blue_ReadTheBytesOfColor, CDialogColorTests.Red_Green_Blue_SetOnePartAndKeepTheOthers, CDialogColorTests.Red_Green_Blue_ClampToZeroAndAHundredAndFiftyFive, CDialogColorTests.Color_NegativeValueReadsOtherBytes, CDialogColorTests.SetRgb_SetsThePartsAndClamps, CDialogColorTests.ToHtmlColor_AndToRgbString_FormatTheColor, CDialogColorTests.FromHtmlColor_ReadsSixDigitsWithOrWithoutAHash, CDialogColorTests.FromHtmlColor_IgnoresTextOfAnotherLength, CDialogColorTests.FromHtmlColor_StopsAtAPairThatIsNotHexadecimal -->
 ## Properties
 
 ### AnyColor
@@ -399,6 +404,8 @@ Debug.Print dlg.ToRgbString()
 ' Output:
 ' RGB(160, 176, 192)
 ```
+
+<!-- /test -->
 
 ## See Also
 

@@ -20,6 +20,7 @@ Syntax: *object*.**DefaultExt** [ = *string* ]
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.ShowSave_DefaultExtIsAddedToANameTypedWithoutOne, CDialogDialogTests.ShowSave_DefaultExtWithAPeriodGivesTwoPeriods, CDialogDialogTests.ShowSave_NoDefaultExtAddsNothing -->
 [**ShowOpen**](ShowOpen) and [**ShowSave**](ShowSave) pass the text as the `lpstrDefExt` member of `OPENFILENAME`. [**ShowBrowseForFolder**](ShowBrowseForFolder) ignores it.
 
 Windows appends the extension to a name that the user types without one. Write the extension without a period. The class does not change the text, and does not take an extension from the selected pair of [**Filter**](Filter).
@@ -33,6 +34,7 @@ In the Save As dialog, with the user typing `out`:
 | An empty string | `<dir>\out` |
 
 `<dir>` is the folder of the dialog. A period in **DefaultExt** is kept, and gives a name with two periods. An empty **DefaultExt** appends nothing.
+<!-- /test -->
 
 ## Example
 
