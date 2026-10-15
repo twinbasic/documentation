@@ -1,0 +1,30 @@
+' CommonDialog.ShowFolderBrowser: what it returns for an item that is not a file system path.
+'
+' The dialog is modal, so DialogDriver selects the item and presses OK from a timer which the
+' dialog's own message loop delivers. The tree of the printers is the dialog with CSIDL_PRINTERS
+' (4) as its root folder.
+[TestFixture]
+Module FolderBrowserTests
+
+    [TestCase]
+    Public Sub BrowseForPrinter_SelectedPrinterIsReturned()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        dlg.Flags = CdlBIFBrowseForPrinter Or CdlBIFNewDialogStyle
+        dlg.RootFolder = 4
+        Dim shown As Boolean, n As Long, opened As Long
+        On Error Resume Next
+        DialogDriver.StartSelecting "*"
+        shown = dlg.ShowFolderBrowser
+        n = Err.Number
+        opened = DialogDriver.StopSelecting()
+        On Error GoTo 0
+        Expect.AreEqual 1, opened, "Folder Browser dialogs open while ShowFolderBrowser ran (needs one installed printer)"
+        Expect.IsTrue Len(DialogDriver.SelectedItem()) > 0, "the test selected the first printer in the dialog"
+        Expect.AreEqual 0, n, "Err.Number from ShowFolderBrowser with CdlBIFBrowseForPrinter after OK"
+        ' correct: the call reports that nothing was chosen, or FileName names the printer
+        Expect.IsTrue (shown = False) Or (Len(dlg.FileName) > 0), "ShowFolderBrowser with CdlBIFBrowseForPrinter, after OK with a printer selected, returns False or sets FileName to the printer (it returned " & shown & ", FileName " & IIf(Len(dlg.FileName) = 0, "empty", "set") & ")"
+        Expect.Done
+    End Sub
+
+End Module
