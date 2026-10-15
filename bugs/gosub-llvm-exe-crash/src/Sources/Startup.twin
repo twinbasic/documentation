@@ -1,0 +1,32 @@
+' A GoSub in a program compiled with LLVM. G returns 7. Without LLVM the exe exits with code 7. With
+' LLVM on for the build the exe faults at the GoSub (exit code 0xC0000005, win32 and win64), with no
+' message box. The IDE's own run with LLVM on is correct: it prints "G = 7".
+Module Startup
+
+    Private Declare Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+    Private Function G() As Long
+        Dim n As Long
+        GoSub L
+        G = n
+        Exit Function
+    L:
+        n = 7
+        Return
+    End Function
+
+    Public Sub Main()
+        If App.IsInIDE Then
+            Debug.Print "G = " & G()
+        Else
+            ExitProcess G()
+        End If
+    End Sub
+
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Main
+    End Sub
+
+End Module
