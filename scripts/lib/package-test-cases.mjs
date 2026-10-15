@@ -24,7 +24,8 @@ const caseName = (t) => `${t.fixture}.${t.name}`;
 
 /**
  * The text of RunAll.twin: Sub Main runs every [TestCase] Sub under Expect's collecting mode and
- * prints PASS, FAIL or SKIP for each. A case expect.json says never returns is skipped.
+ * prints PASS, FAIL or SKIP for each. A case expect.json says never returns, or ends in a native
+ * exception, is skipped on the architecture where it does (skipReason).
  *
  * @param {object} o
  * @param {string} o.pkg
@@ -44,18 +45,34 @@ export function runAllText({ pkg, version, tests, expect }) {
     `        Expect.StartRun "${pkg} ${version}: ${tests.length} test case${tests.length === 1 ? "" : "s"}"`,
     "        On Error Resume Next",
   ];
+  const run = (name) => [
+    "        Expect.StartCase",
+    "        Err.Clear",
+    `        ${name}`,
+    `        Expect.EndCase "${name}", Err.Number, Err.Description`,
+  ];
   for (const t of tests) {
     const name = caseName(t);
-    const never = ARCHES.every((a) => expectationFor(expect, name, a).kind === "hang");
-    if (never) {
-      lines.push(`        Expect.Skip "${name}", "it does not return in version ${version}"`);
-      continue;
-    }
-    lines.push("        Expect.StartCase", "        Err.Clear", `        ${name}`);
-    lines.push(`        Expect.EndCase "${name}", Err.Number, Err.Description`);
+    const why = Object.fromEntries(ARCHES.map((a) => [a, skipReason(expectationFor(expect, name, a), version)]));
+    if (why.win32 && why.win64 && why.win32 === why.win64) {
+      lines.push(`        Expect.Skip "${name}", "${why.win32}"`);
+    } else if (why.win32 || why.win64) {
+      const branch = (a) => (why[a] ? [`        Expect.Skip "${name}", "${why[a]}"`] : run(name));
+      lines.push("#If Win64 Then", ...branch("win64"), "#Else", ...branch("win32"), "#End If");
+    } else lines.push(...run(name));
   }
   lines.push("        On Error GoTo 0", "        Expect.EndRun", "    End Sub", "", "End Module", "");
   return lines.join("\n");
+}
+
+// Why RunAll skips a case on one architecture, or "": one that never returns would stop the run,
+// and one that ends in a native exception (a stack overflow, an access violation) may take the
+// reader's IDE or exe down with it, as it does a built exe. package_tests.mjs still runs both.
+function skipReason(expected, version) {
+  if (expected.kind === "hang") return `it does not return in version ${version}`;
+  if (expected.kind === "fail" && /NATIVE EXCEPTION/.test(expected.detail))
+    return `it ends in a native exception in version ${version}`;
+  return "";
 }
 
 /**
