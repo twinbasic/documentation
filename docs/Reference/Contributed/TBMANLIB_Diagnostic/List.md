@@ -78,7 +78,7 @@ Dim one As New List(Of String)
 one.Add "a"
 On Error Resume Next
 one.SetItem 0, "Z"
-Debug.Print Err.Number & ": " & Err.Description
+Debug.Print Err.Number
 Err.Clear
 Debug.Print one.Count
 
@@ -87,11 +87,15 @@ blank.Insert 0, "Y"
 Debug.Print Err.Number & ": " & Err.Description
 Debug.Print blank.Count
 ' Output:
-' 5: Automation error
+' 5
 ' 0
 ' 5: Invalid procedure call or argument
 ' 0
 ```
+
+<!-- test: ListTests.SetItem_AtZeroOnOneItemList_ErrorHasTheRuntimeText -->
+> [!NOTE] BETA 1005
+> In a 32-bit run in the IDE, **Err.Description** of the error that **SetItem** raises here is *Automation error*, not *Invalid procedure call or argument*, when the list is declared with `Dim one As New List(Of String)`. **Err.Number** is 5 in every run. A built program, 32-bit or 64-bit, and a 64-bit run in the IDE give the text *Invalid procedure call or argument*, as VB6 does for the same call of **Collection.Add**. A program that tests the number is not affected.
 
 * TOC
 {:toc}

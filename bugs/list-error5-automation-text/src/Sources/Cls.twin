@@ -1,0 +1,22 @@
+[COMCreatable(False)]
+Public Class Cls(Of T)
+
+    Private m_Items As New Collection
+
+    Public Sub Add(ByVal item As T)
+        m_Items.Add item
+    End Sub
+
+    ' Removes the only item and adds the new one before position 1.
+    Public Sub Replace(ByVal item As T)
+        Dim itemVar As Variant
+        On Error Resume Next
+        Set itemVar = item
+        Err.Clear
+        itemVar = item
+        On Error GoTo 0
+        m_Items.Remove 1
+        m_Items.Add itemVar, , , 1
+    End Sub
+
+End Class

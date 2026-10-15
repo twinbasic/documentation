@@ -3808,3 +3808,62 @@ Severity: medium. The failure is at build time, with a message that names the pr
 Not tried: `Me` passed to a `ByRef` parameter, `Me` in a `Type_Assignment` member, and the generated code.
 
 <!-- Reproducer: bugs/udt-method-assign-me-codegen/ (mode build: tbbuild --build exits 5 and the output names the codegen error in 'Startup.Copy'); verified on BETA 1005 by `bug_repro.mjs verify`. The variants, win64 and LLVM are from a scratch probe (one #If scenario per form), not kept. Pages: docs/Reference/Core/Type.md (after "Member procedures") and docs/Features/Language/UDTs.md (end of "Procedures, Constructors, Destructors, and Operators") carry a NOTE labelled BETA 1005: the error cannot be missed and loses nothing; remove it when a fix is released. Found 2026-10-16 while documenting GdiPlus (GpPointF.Normalized; OffsetBy, OffsetByPt, InflatedBy, InflatedByPt on GpRect and GpRectF). -->
+
+---
+
+## 32-bit IDE run: Err.Description is "Automation error" for error 5 raised by Collection.Add, in a method of a generic class called on a `Dim x As New` local
+
+**Describe the bug**
+In the IDE's run (the debug run, and a `[RunAfterBuild]` Sub), in a 32-bit project, error 5 raised by `Collection.Add item, , , 1` on an emptied `Collection` has `Err.Description` = `Automation error` when three things hold: the failing call is inside a method of a generic class, the method has an `On Error Resume Next` block before it (`Set v = <String>`, `Err.Clear`, `v = <String>`, `On Error GoTo 0`), and the method is called on a local declared `Dim a As New Cls(Of String)`. `Err.Number` is 5. With `Dim a As Cls(Of String)` and `Set a = New Cls(Of String)` the text is `Invalid procedure call or argument`, which is the right text. The built exe (32-bit and 64-bit), the 64-bit IDE run and VB6 give `Invalid procedure call or argument` in every variant. Observed with `bug_repro.mjs run` (which uses `tbrun`), on an exe too, and with VB6 through `bug_repro.mjs vb6`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `list-error5-automation-text.twinproj` (attached as `list-error5-automation-text.zip`, architecture 32-bit). Its class `Cls(Of T)` is:
+   ```
+   [COMCreatable(False)]
+   Public Class Cls(Of T)
+       Private m_Items As New Collection
+
+       Public Sub Add(ByVal item As T)
+           m_Items.Add item
+       End Sub
+
+       Public Sub Replace(ByVal item As T)
+           Dim itemVar As Variant
+           On Error Resume Next
+           Set itemVar = item
+           Err.Clear
+           itemVar = item
+           On Error GoTo 0
+           m_Items.Remove 1
+           m_Items.Add itemVar, , , 1
+       End Sub
+   End Class
+   ```
+   and `Startup.Main` runs, in the IDE:
+   ```
+   Dim a As New Cls(Of String)
+   a.Add "a"
+   On Error Resume Next
+   a.Replace "Z"
+   Debug.Print "Dim a As New: " & Err.Number & ": " & Err.Description
+   ```
+   and the same with `Dim b As Cls(Of String)`, `Set b = New Cls(Of String)`.
+2. Run the project in the IDE (F5) in the 32-bit architecture.
+3. The DEBUG CONSOLE shows `Dim a As New: 5: Automation error` and `Set a = New:  5: Invalid procedure call or argument`. Build the exe and run it: the project exits with code 0 when the text is `Invalid procedure call or argument` (1 for `Automation error`), and the exe exits 0. Switch to 64-bit and run in the IDE: both lines give `Invalid procedure call or argument`.
+
+**Expected behavior**
+`5: Invalid procedure call or argument` in every variant, as in the built exe, in the 64-bit IDE run and in VB6 (`vb6/` of the reproducer: `Collection.Add` with Before = 1 on an emptied Collection gives `5: Invalid procedure call or argument`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Found by the documentation's `List.md` sample for TBMANLIB_Diagnostic 1.0.0.1, whose `List(Of T).SetItem` has this shape (the package's own defect is the `Before = 1` that raises the error). The number is right and only the text differs, so a program that tests `Err.Number` is not affected. A plain `Collection` Add and Remove, `Err.Raise 5` and an `Insert 0` on an empty list (the same Add) give the right text in the same run. The trigger was not narrowed further than the three conditions: the `Collection` alone in a module, with six forms of the `On Error Resume Next` block, gives the right text, and so does a copy of the package's `SetItem` with its `If Err.Number <> 0` form. A second `Dim b As New Cls(Of String)` local fails the same way.
+
+Severity: low. A wrong text for the right error number, in the 32-bit IDE run only.
+
+Not tried: LLVM. With LLVM on (`bug_repro.mjs run --llvm`, 32-bit and 64-bit) the IDE run of this reproducer ends before it returns and prints nothing, so the text could not be read; `On Error Resume Next` around a failing call in LLVM-compiled code is a known problem of its own.
+
+<!-- Reproducer: bugs/list-error5-automation-text/ (mode run, arch win32: expect is tbrun exit 0, the line `Dim a As New: 5: Automation error` and the line `Set a = New:  5: Invalid procedure call or argument`, and absent `Dim a As New: 5: Invalid procedure call or argument`); verified on BETA 1005 by `bug_repro.mjs verify`. Controls, all printing the right text: `run --arch win64`, `run --exe` (exit 0) and `run --exe --arch win64` (exit 0), and `bug_repro.mjs vb6` (`Dim a As New: 5: Invalid procedure call or argument`). `run --llvm` ends before it returns, in both architectures. Pages: docs/Reference/Contributed/TBMANLIB_Diagnostic/List.md carries the NOTE labelled BETA 1005 after its SetItem sample, and that sample prints Err.Number only; remove the NOTE when a fix is released, and let the sample print Err.Description again with the output `5: Invalid procedure call or argument`. Its test case is ListTests.SetItem_AtZeroOnOneItemList_ErrorHasTheRuntimeText (expect.json: win32 fails, win64 passes). Found 2026-10-15 by an exe check of the documentation's samples. -->

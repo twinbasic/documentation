@@ -90,6 +90,23 @@ Module ListTests
         Expect.Done
     End Sub
 
+    ' The text of the error that SetItem 0 raises in 1.0.0.1 is the runtime library's. It is checked
+    ' only while an error is raised: once the package is fixed the sample has none to describe.
+    [TestCase]
+    Public Sub SetItem_AtZeroOnOneItemList_ErrorHasTheRuntimeText()
+        Expect.Begin
+        Dim l As New List(Of String)
+        l.Add "a"
+        On Error Resume Next
+        l.SetItem 0, "Z"
+        If Err.Number <> 0 Then
+            Expect.AreEqual "Invalid procedure call or argument", Err.Description, "Err.Description of the error raised by SetItem 0, ""Z"" on a list of one item"
+        End If
+        Err.Clear
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
     [TestCase]
     Public Sub SetItem_InMiddle_ReplacesItem()
         Expect.Begin

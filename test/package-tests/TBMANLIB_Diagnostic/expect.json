@@ -106,6 +106,12 @@
     "ListTests.SetItem_AtZeroOnOneItemList_ReplacesTheItem": {
       "fails": "3 of 3 checks failed: run-time error raised by SetItem 0, \"Z\" on a list of one item: expected 0, got 5; Count of a list of one item after SetItem 0, \"Z\": expected 1, got 0; items of a list of one item after SetItem 0, \"Z\": expected \"Z\", got \"\""
     },
+    "ListTests.SetItem_AtZeroOnOneItemList_ErrorHasTheRuntimeText": {
+      "win32": {
+        "fails": "1 of 1 checks failed: Err.Description of the error raised by SetItem 0, \"Z\" on a list of one item: expected \"Invalid procedure call or argument\", got \"Automation error\""
+      },
+      "win64": "pass"
+    },
     "ListTests.Contains_Object_FindsIt": {
       "fails": "2 of 2 checks failed: run-time error raised by Contains of an object that is in the list: expected 0, got 438; Contains of an object that is in the list: expected True, got False"
     },
