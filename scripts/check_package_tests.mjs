@@ -362,6 +362,13 @@ function checkPackage(pkg) {
     }
     if (expect.version !== version)
       out.push(`${EXPECT_JSON} is for version ${expect.version}, the section documents ${version}`);
+    if (
+      expect.arches !== undefined &&
+      (!Array.isArray(expect.arches) ||
+        !expect.arches.length ||
+        expect.arches.some((a) => !["win32", "win64"].includes(a)))
+    )
+      out.push(`${EXPECT_JSON}: arches is a non-empty list of win32 and win64, or absent for both`);
   }
   const caseNames = new Set([...tests.map((t) => `${t.fixture}.${t.name}`), ...compiles.map((c) => c.name)]);
   for (const name of Object.keys(expect.cases ?? {})) {
