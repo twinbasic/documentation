@@ -1,0 +1,24 @@
+' RecordingRandom: a random source of the test cases that returns the lower bound and records each call:
+' Calls is how many, and Reversed, Lowest and Equal say what the bounds were.
+Class RecordingRandom
+    Implements PwGenRandom
+
+    Public Calls As Long
+    Public Reversed As Long
+    Public LowestLower As Long
+    Public HighestLower As Long
+    Public EqualBounds As Long
+
+    Private Function NextInRange(ByVal lowerBound As Long, ByVal upperBound As Long) As Long Implements PwGenRandom.NextInRange
+        If Calls = 0 Then
+            LowestLower = lowerBound
+            HighestLower = lowerBound
+        End If
+        Calls = Calls + 1
+        If lowerBound > upperBound Then Reversed = Reversed + 1
+        If lowerBound = upperBound Then EqualBounds = EqualBounds + 1
+        If lowerBound < LowestLower Then LowestLower = lowerBound
+        If lowerBound > HighestLower Then HighestLower = lowerBound
+        Return lowerBound
+    End Function
+End Class

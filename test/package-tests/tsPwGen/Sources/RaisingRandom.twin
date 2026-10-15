@@ -1,0 +1,8 @@
+' RaisingRandom: a random source of the test cases that raises run-time error 5 on every call.
+Class RaisingRandom
+    Implements PwGenRandom
+
+    Private Function NextInRange(ByVal lowerBound As Long, ByVal upperBound As Long) As Long Implements PwGenRandom.NextInRange
+        Err.Raise 5, "RaisingRandom", "no random numbers"
+    End Function
+End Class

@@ -1,0 +1,206 @@
+' tsPwGen: the five presets of PwGenOptions and a recipe of Nothing. Each preset is checked by the
+' values it starts with, by what its results look like over Draws results, and by its entropy.
+[TestFixture]
+Module PresetTests
+
+    [TestCase]
+    Public Sub Alphanumeric_Properties()
+        Expect.Begin
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        Expect.AreEqual 0, CLng(o.Mode), "Alphanumeric.Mode (pgmRandom)"
+        Expect.AreEqual 16, o.Length, "Alphanumeric.Length"
+        Expect.IsTrue o.HasUpperCase, "Alphanumeric.HasUpperCase"
+        Expect.IsTrue o.HasLowerCase, "Alphanumeric.HasLowerCase"
+        Expect.IsTrue o.HasDigits, "Alphanumeric.HasDigits"
+        Expect.IsFalse o.HasSpecialChars, "Alphanumeric.HasSpecialChars"
+        Expect.AreEqual "!#$%&()+,-.;=@[]_{}~", o.SpecialChars, "Alphanumeric.SpecialChars"
+        Expect.AreEqual "", o.IncludeChars, "Alphanumeric.IncludeChars"
+        Expect.AreEqual "", o.ExcludeChars, "Alphanumeric.ExcludeChars"
+        Expect.IsTrue o.IsAmbiguousExcluded, "Alphanumeric.IsAmbiguousExcluded"
+        Expect.AreEqual "0O1lI", o.AmbiguousChars, "Alphanumeric.AmbiguousChars"
+        Expect.AreEqual "", o.Alphabet, "Alphanumeric.Alphabet"
+        Expect.AreEqual 1, o.MinPerClass, "Alphanumeric.MinPerClass"
+        Expect.IsFalse o.HasNoConsecutiveRepeats, "Alphanumeric.HasNoConsecutiveRepeats"
+        Expect.IsFalse o.StartsWithLetter, "Alphanumeric.StartsWithLetter"
+        Expect.AreEqual 5, o.WordCount, "Alphanumeric.WordCount"
+        Expect.AreEqual "-", o.WordSeparator, "Alphanumeric.WordSeparator"
+        Expect.AreEqual 0, CLng(o.Wordlist), "Alphanumeric.Wordlist (pgwEnglish)"
+        Dim words() As String = o.CustomWords
+        Expect.AreEqual 0, Helpers.CountOfArray(words), "Alphanumeric.CustomWords element count"
+        Expect.IsFalse o.HasUniqueWords, "Alphanumeric.HasUniqueWords"
+        Expect.IsFalse o.Capitalize, "Alphanumeric.Capitalize"
+        Expect.IsTrue o.RandomSource Is Nothing, "Alphanumeric.RandomSource is Nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alphanumeric_Results_SixteenCharsFromFiftySevenWithAllThreeClasses()
+        Expect.Begin
+        Helpers.Reset
+        Dim pool As String = Helpers.Without(Helpers.UpperChars & Helpers.LowerChars & Helpers.DigitChars, Helpers.AmbiguousChars)
+        Expect.AreEqual 57, Len(pool), "the pool of the look-alike-free letters and digits"
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        Dim i As Long
+        Dim bad As Long
+        For i = 1 To Helpers.Draws
+            Dim pw As String = PwGen.Generate(o)
+            If Len(pw) <> 16 Or Not Helpers.AllFrom(pw, pool) Then bad = bad + 1
+            If Not (Helpers.HasAnyOf(pw, Helpers.UpperChars) And Helpers.HasAnyOf(pw, Helpers.LowerChars) And Helpers.HasAnyOf(pw, Helpers.DigitChars)) Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "results of Alphanumeric out of " & Helpers.Draws & " that are not 16 characters from the 57, or lack an uppercase letter, a lowercase letter or a digit"
+        Expect.AreEqual 933, CLng(PwGen.Entropy(o) * 10), "Alphanumeric entropy in tenths of a bit (93.3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Complex_Properties()
+        Expect.Begin
+        Dim o As PwGenOptions = PwGenOptions.Complex
+        Expect.AreEqual 0, CLng(o.Mode), "Complex.Mode (pgmRandom)"
+        Expect.AreEqual 16, o.Length, "Complex.Length"
+        Expect.IsTrue o.HasUpperCase, "Complex.HasUpperCase"
+        Expect.IsTrue o.HasLowerCase, "Complex.HasLowerCase"
+        Expect.IsTrue o.HasDigits, "Complex.HasDigits"
+        Expect.IsTrue o.HasSpecialChars, "Complex.HasSpecialChars"
+        Expect.AreEqual 1, o.MinPerClass, "Complex.MinPerClass"
+        Expect.IsTrue o.IsAmbiguousExcluded, "Complex.IsAmbiguousExcluded"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Complex_Results_SixteenCharsFromSeventySevenWithAllFourClasses()
+        Expect.Begin
+        Helpers.Reset
+        Dim pool As String = Helpers.Without(Helpers.UpperChars & Helpers.LowerChars & Helpers.DigitChars, Helpers.AmbiguousChars) & Helpers.SpecialChars
+        Expect.AreEqual 77, Len(pool), "the pool of the look-alike-free letters and digits and the 20 special characters"
+        Dim o As PwGenOptions = PwGenOptions.Complex
+        Dim i As Long
+        Dim bad As Long
+        For i = 1 To Helpers.Draws
+            Dim pw As String = PwGen.Generate(o)
+            If Len(pw) <> 16 Or Not Helpers.AllFrom(pw, pool) Then bad = bad + 1
+            If Not (Helpers.HasAnyOf(pw, Helpers.UpperChars) And Helpers.HasAnyOf(pw, Helpers.LowerChars) And Helpers.HasAnyOf(pw, Helpers.DigitChars) And Helpers.HasAnyOf(pw, Helpers.SpecialChars)) Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "results of Complex out of " & Helpers.Draws & " that are not 16 characters from the 77, or lack a class"
+        Expect.AreEqual 1003, CLng(PwGen.Entropy(o) * 10), "Complex entropy in tenths of a bit (100.3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Passphrase_Properties()
+        Expect.Begin
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        Expect.AreEqual 1, CLng(o.Mode), "Passphrase.Mode (pgmWordlist)"
+        Expect.AreEqual 5, o.WordCount, "Passphrase.WordCount"
+        Expect.AreEqual "-", o.WordSeparator, "Passphrase.WordSeparator"
+        Expect.AreEqual 0, CLng(o.Wordlist), "Passphrase.Wordlist (pgwEnglish)"
+        Expect.IsFalse o.HasUniqueWords, "Passphrase.HasUniqueWords"
+        Expect.IsFalse o.Capitalize, "Passphrase.Capitalize"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Passphrase_Results_FiveEnglishWordsJoinedByHyphens()
+        Expect.Begin
+        Helpers.Reset
+        Dim english As Collection = Helpers.WordSet(pgwEnglish)
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        Dim i As Long
+        Dim j As Long
+        Dim bad As Long
+        For i = 1 To 40
+            Dim parts() As String = Split(PwGen.Generate(o), "-")
+            If UBound(parts) <> 4 Then
+                bad = bad + 1
+            Else
+                For j = 0 To 4
+                    If Not Helpers.IsMember(english, parts(j)) Then bad = bad + 1
+                Next
+            End If
+        Next
+        Expect.AreEqual 0, bad, "passphrases of Passphrase out of 40 that are not five English words joined by hyphens"
+        Helpers.ExpectNear 65, PwGen.Entropy(o), "Passphrase entropy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pin_Properties()
+        Expect.Begin
+        Dim o As PwGenOptions = PwGenOptions.Pin
+        Expect.AreEqual 0, CLng(o.Mode), "Pin.Mode (pgmRandom)"
+        Expect.AreEqual 6, o.Length, "Pin.Length"
+        Expect.IsFalse o.HasUpperCase, "Pin.HasUpperCase"
+        Expect.IsFalse o.HasLowerCase, "Pin.HasLowerCase"
+        Expect.IsTrue o.HasDigits, "Pin.HasDigits"
+        Expect.IsFalse o.HasSpecialChars, "Pin.HasSpecialChars"
+        Expect.IsFalse o.IsAmbiguousExcluded, "Pin.IsAmbiguousExcluded"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pin_Results_SixDigitsWithTheLookAlikesKept()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Pin
+        Dim i As Long
+        Dim bad As Long
+        Dim seen As String
+        For i = 1 To Helpers.Draws
+            Dim pw As String = PwGen.Generate(o)
+            If Len(pw) <> 6 Or Not Helpers.AllFrom(pw, Helpers.DigitChars) Then bad = bad + 1
+            seen = seen & pw
+        Next
+        Expect.AreEqual 0, bad, "results of Pin out of " & Helpers.Draws & " that are not 6 digits"
+        Expect.AreEqual 10, Len(Helpers.Without(Helpers.DigitChars, Helpers.Without(Helpers.DigitChars, seen))), "different digits seen in " & Helpers.Draws & " PINs (0 and 1 included)"
+        Expect.AreEqual 199, CLng(PwGen.Entropy(o) * 10), "Pin entropy in tenths of a bit (19.9)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Hex_Results_ThirtyTwoLowercaseHexDigits()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Hex
+        Expect.AreEqual 32, o.Length, "Hex.Length"
+        Expect.AreEqual "0123456789abcdef", o.Alphabet, "Hex.Alphabet"
+        Dim i As Long
+        Dim bad As Long
+        For i = 1 To Helpers.Draws
+            Dim pw As String = PwGen.Generate(o)
+            If Len(pw) <> 32 Or Not Helpers.AllFrom(pw, "0123456789abcdef") Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "results of Hex out of " & Helpers.Draws & " that are not 32 lowercase hexadecimal digits"
+        Helpers.ExpectNear 128, PwGen.Entropy(o), "Hex entropy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Presets_ReturnANewRecipeEachTime()
+        Expect.Begin
+        Dim a As PwGenOptions = PwGenOptions.Alphanumeric
+        a.Length = 3
+        a.HasSpecialChars = True
+        Dim b As PwGenOptions = PwGenOptions.Alphanumeric
+        Expect.AreEqual 16, b.Length, "Length of an Alphanumeric after the Length of an earlier one was changed"
+        Expect.IsFalse b.HasSpecialChars, "HasSpecialChars of an Alphanumeric after the one of an earlier one was changed"
+        Expect.IsFalse a Is b, "two calls of Alphanumeric return the same object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Nothing_MeansANewAlphanumericRecipe()
+        Expect.Begin
+        Helpers.Reset
+        Dim none As PwGenOptions
+        Dim pw As String = PwGen.Generate(none)
+        Expect.AreEqual 16, Len(pw), "Len of Generate(Nothing)"
+        Expect.IsTrue Helpers.AllFrom(pw, Helpers.Without(Helpers.UpperChars & Helpers.LowerChars & Helpers.DigitChars, Helpers.AmbiguousChars)), "Generate(Nothing) draws from the look-alike-free letters and digits"
+        Helpers.ExpectNear PwGen.Entropy(PwGenOptions.Alphanumeric), PwGen.Entropy(none), "Entropy(Nothing) against Entropy(Alphanumeric)"
+        Dim pw2 As String
+        Expect.IsTrue PwGen.TryGenerate(pw2, none), "TryGenerate with Nothing"
+        Expect.AreEqual 16, Len(pw2), "Len of TryGenerate(pw, Nothing)"
+        Expect.AreEqual 16, Len(PwGen.Generate()), "Len of Generate() with no argument"
+        Expect.Done
+    End Sub
+
+End Module

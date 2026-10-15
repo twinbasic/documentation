@@ -22,6 +22,7 @@ Class LowestRandom
 End Class
 ```
 
+<!-- test: RandomSourceTests.LowestRandom_RandomMode_DrawsTheFirstCharacterOfThePool, RandomSourceTests.LowestRandom_WordlistMode_DrawsTheFirstWordLeft -->
 Every draw then picks the first character of the pool, or the first word that is left:
 
 ```tb check_run projname=pwgenrandom-lowest
@@ -47,9 +48,11 @@ Debug.Print PwGen.Generate(p)          ' alpha-delta-charlie-bravo
 ```
 
 With **HasUniqueWords**, the word that was drawn is replaced by the last word that is left, so the second draw returns `delta`, the third `charlie`, and the fourth is the only word left, `bravo`.
+<!-- /test -->
 
 ## The contract of a source
 
+<!-- test: RandomSourceTests.Draws_LowerBoundIsZeroOrOneAndNeverAboveTheUpperBound, RandomSourceTests.OutOfRangeSource_RngFailed, RandomSourceTests.RaisingSource_TheErrorReachesTheCaller, RandomSourceTests.Entropy_DoesNotUseTheSource -->
 - **The bounds.** [**NextInRange**](#nextinrange) must return a **Long** that is not below the lower bound and not above the upper bound. The package passes a lower bound of 0 or 1, never a lower bound that is above the upper bound, and equal bounds when there is only one choice, as for a pool of one character.
 - **A number outside the bounds is an error.** [**Generate**](PwGen#generate) then returns an empty string and sets the error `RngFailed`, with the message *random source returned a value outside the requested interval*.
 - **Evenness.** The package takes each call as an independent, even choice among the whole numbers of the interval. The entropy that [**PwGen.Entropy**](PwGen#entropy) reports is correct only for a source that is even and independent. For any other source the figure is too high.
@@ -98,6 +101,7 @@ On Error GoTo 0
 
 Debug.Print PwGenError.HasError     ' False
 ```
+<!-- /test -->
 
 ## Methods
 

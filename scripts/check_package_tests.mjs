@@ -110,7 +110,6 @@ const PENDING = new Set([
   "WinReg",
   "tbProjPacker",
   "tsJson",
-  "tsPwGen",
   "xCalendar",
 ]);
 

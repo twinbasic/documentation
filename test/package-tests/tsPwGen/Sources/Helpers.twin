@@ -1,0 +1,136 @@
+' Helpers: what the test cases of tsPwGen share.
+'
+' The output of a generator is random, so a case never compares a result with one exact string. It
+' checks a property that every result must have (its length, the classes that are present or
+' absent, a character that never appears) over Draws results, so that a chance pass is not
+' possible. The cases write no file.
+Module Helpers
+
+    ' How many results a case draws to check a property of every result.
+    Public Const Draws As Long = 200
+
+    Public Const UpperChars As String = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    Public Const LowerChars As String = "abcdefghijklmnopqrstuvwxyz"
+    Public Const DigitChars As String = "0123456789"
+    Public Const SpecialChars As String = "!#$%&()+,-.;=@[]_{}~"
+    Public Const AmbiguousChars As String = "0O1lI"
+
+    ' Empties the last error, so that one case cannot hand an error to the next.
+    Public Sub Reset()
+        PwGenError.Clear
+    End Sub
+
+    ' The characters of Chars that are not in Remove.
+    Public Function Without(ByVal Chars As String, ByVal Remove As String) As String
+        Dim i As Long
+        Dim result As String
+        For i = 1 To Len(Chars)
+            If InStr(1, Remove, Mid$(Chars, i, 1), vbBinaryCompare) = 0 Then result = result & Mid$(Chars, i, 1)
+        Next
+        Return result
+    End Function
+
+    ' True when every character of Text is in Allowed.
+    Public Function AllFrom(ByVal Text As String, ByVal Allowed As String) As Boolean
+        Dim i As Long
+        For i = 1 To Len(Text)
+            If InStr(1, Allowed, Mid$(Text, i, 1), vbBinaryCompare) = 0 Then Return False
+        Next
+        Return True
+    End Function
+
+    ' True when some character of Text is in Chars.
+    Public Function HasAnyOf(ByVal Text As String, ByVal Chars As String) As Boolean
+        Dim i As Long
+        For i = 1 To Len(Text)
+            If InStr(1, Chars, Mid$(Text, i, 1), vbBinaryCompare) > 0 Then Return True
+        Next
+        Return False
+    End Function
+
+    ' How many characters of Text are in Chars.
+    Public Function CountOf(ByVal Text As String, ByVal Chars As String) As Long
+        Dim i As Long
+        Dim n As Long
+        For i = 1 To Len(Text)
+            If InStr(1, Chars, Mid$(Text, i, 1), vbBinaryCompare) > 0 Then n = n + 1
+        Next
+        Return n
+    End Function
+
+    ' True when two equal characters are next to each other.
+    Public Function HasRepeat(ByVal Text As String) As Boolean
+        Dim i As Long
+        For i = 2 To Len(Text)
+            If Mid$(Text, i, 1) = Mid$(Text, i - 1, 1) Then Return True
+        Next
+        Return False
+    End Function
+
+    ' True when the first character of Text is an ASCII letter.
+    Public Function StartsWithAsciiLetter(ByVal Text As String) As Boolean
+        If Len(Text) = 0 Then Return False
+        Return InStr(1, UpperChars & LowerChars, Left$(Text, 1), vbBinaryCompare) > 0
+    End Function
+
+    ' The words of a built-in list as a Collection keyed by the word.
+    Public Function WordSet(ByVal List As PwGen.ePwGenWordlist) As Collection
+        Dim words() As String = PwGenWords.List(List, "test")
+        Dim c As New Collection
+        Dim i As Long
+        On Error Resume Next
+        For i = LBound(words) To UBound(words)
+            c.Add words(i), words(i)
+        Next
+        Return c
+    End Function
+
+    ' True when Words is a key of the Collection.
+    Public Function IsMember(ByVal Words As Collection, ByVal Word As String) As Boolean
+        Dim v As Variant
+        On Error Resume Next
+        v = Words.Item(Word)
+        IsMember = (Err.Number = 0)
+    End Function
+
+    ' Checks that the last error is the one given. Origin is not checked when it is "*".
+    Public Sub ExpectError(ByVal What As String, ByVal Code As String, ByVal Message As String, ByVal Origin As String)
+        Expect.IsTrue PwGenError.HasError, What & ": PwGenError.HasError"
+        Expect.AreEqual Code, PwGenError.Code, What & ": PwGenError.Code"
+        Expect.AreEqual Message, PwGenError.Message, What & ": PwGenError.Message"
+        If Origin <> "*" Then Expect.AreEqual Origin, PwGenError.Origin, What & ": PwGenError.Origin"
+    End Sub
+
+    ' Checks that the last error is empty.
+    Public Sub ExpectNoError(ByVal What As String)
+        Expect.IsFalse PwGenError.HasError, What & ": PwGenError.HasError"
+        Expect.AreEqual "", PwGenError.Code, What & ": PwGenError.Code"
+    End Sub
+
+    ' Checks that two figures agree to 9 decimal places.
+    Public Sub ExpectNear(ByVal Expected As Double, ByVal Actual As Double, ByVal What As String)
+        Expect.IsTrue Abs(Expected - Actual) < 0.000000001, What & ": expected " & Expected & ", got " & Actual
+    End Sub
+
+    ' The number of elements of an array; 0 for an array that was never allocated.
+    Public Function CountOfArray(ByRef Items() As String) As Long
+        On Error Resume Next
+        CountOfArray = UBound(Items) - LBound(Items) + 1
+        If Err.Number <> 0 Then
+            Err.Clear
+            CountOfArray = 0
+        End If
+    End Function
+
+    ' A custom word list of Count different words, "w1" to "w<Count>", from index 0.
+    Public Function WordList(ByVal Count As Long) As String()
+        Dim w() As String
+        ReDim w(0 To Count - 1)
+        Dim i As Long
+        For i = 0 To Count - 1
+            w(i) = "w" & (i + 1)
+        Next
+        Return w
+    End Function
+
+End Module
