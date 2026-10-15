@@ -75,6 +75,9 @@ The main feature not yet supported is passing an error up to the calling procedu
 > [!WARNING] BETA 1005
 > In a 64-bit build with LLVM, a call to a [**Declare**](../tB/Core/Declare)d procedure that passes `ByVal 0&` for its eighth parameter, declared `ByRef` with a 32-bit type such as **Long**, to give the procedure a NULL pointer, can end with an access violation (0xC0000005) and no message box, in the procedure. The eighth parameter of **WideCharToMultiByte** is one such case. Whether the call fails depends on what the stack held before it. The same override for the first to seventh parameters is right. Declare the parameter `ByVal ... As LongPtr` instead. It affects a built exe and a run in the IDE with LLVM turned on, and not a 32-bit build or a build without LLVM.
 
+> [!WARNING] BETA 1005
+> A call that passes an argument with `ByVal` for a `ByRef` parameter of a twinBASIC [**Sub**](../tB/Core/Sub) or [**Function**](../tB/Core/Function), such as `Take ByVal 0&` for `Sub Take(ByRef h As Long)`, does not compile with LLVM, in a 32-bit and in a 64-bit build. The build prints `[LLVM] codegen error occurred when compiling '<procedure>': Call parameter type does not match function signature!`, still makes the program, and the procedure that contains the call does not run: a 64-bit program ends with an access violation (0xC0000005) when it enters that procedure, and a 32-bit program skips the procedure and can fault later. Without LLVM the call passes a NULL pointer. VB6 refuses the call with the error *Type mismatch*. Pass a variable for the parameter instead.
+
 Code compiled with LLVM ignores [**Debug.Assert**](../tB/Modules/Debug#assert): the statement does not stop, and its condition is not evaluated.
 
 All other language features should work, in both 32-bit and 64-bit builds. Please [report](../FAQ#bug-reporting) any crash that LLVM causes, and any message saying "a feature used in your code is not yet supported with the LLVM compiler".

@@ -32,6 +32,9 @@ To pass a whole array to a procedure, use the array name followed by empty paren
 
 Enclosing a single argument in its own parentheses, as in `MyProc (x)`, makes it an expression: the procedure receives a copy, even for a **ByRef** parameter. See [Passing arguments ByRef and ByVal](Sub#passing-arguments-byref-and-byval).
 
+> [!WARNING] BETA 1005
+> With [LLVM](../../LLVM/Getting-Started), a call that passes an argument with `ByVal` for a `ByRef` parameter of a twinBASIC procedure, such as `Take ByVal 0&` for `Sub Take(ByRef h As Long)`, does not compile: the build prints an `[LLVM] codegen error`, and the procedure that contains the call does not run. Without LLVM the call passes a NULL pointer. VB6 refuses the call with the error *Type mismatch*. Pass a variable for the parameter instead.
+
 ### Example
 
 This example illustrates how the **Call** statement is used to transfer control to a **Sub** procedure, an intrinsic function, and a dynamic-link library (DLL) procedure.
