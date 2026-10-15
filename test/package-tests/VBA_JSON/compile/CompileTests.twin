@@ -1,0 +1,20 @@
+' VBA_JSON: what the compiler refuses. Each line ends in a comment ' CASE <Name>: <code>.
+' The Dictionary class has two members, Item and Keys; the Scripting.Dictionary members below are not there.
+Module CompileTests
+
+    Public Sub Dictionary_MembersOfScriptingDictionary()
+        Dim d As New Dictionary
+        Dim n As Long
+        Dim b As Boolean
+        Dim v As Variant
+        n = d.Count ' CASE Count: error
+        d.Add "a", 1 ' CASE Add: error
+        d.Remove "a" ' CASE Remove: error
+        b = d.Exists("a") ' CASE Exists: error
+        v = d.Items ' CASE Items: error
+        d.RemoveAll ' CASE RemoveAll: error
+        d.CompareMode = 1 ' CASE CompareMode: error
+        d.Key("a") = "b" ' CASE Key: error
+    End Sub
+
+End Module

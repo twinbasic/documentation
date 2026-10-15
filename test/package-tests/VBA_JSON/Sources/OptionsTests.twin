@@ -1,0 +1,102 @@
+' VBA_JSON: JsonOptions. JsonOptions is one variable for the whole program, so each case puts the three
+' options back to their defaults before it ends.
+[TestFixture]
+Module OptionsTests
+
+    [TestCase]
+    Public Sub Defaults_AreAllFalse()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.IsFalse JsonOptions.UseDoubleForLargeNumbers, "UseDoubleForLargeNumbers by default"
+        Expect.IsFalse JsonOptions.AllowUnquotedKeys, "AllowUnquotedKeys by default"
+        Expect.IsFalse JsonOptions.EscapeSolidus, "EscapeSolidus by default"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UseDoubleForLargeNumbers_True_ParseGivesDoubles()
+        Expect.Begin
+        Helpers.ResetOptions
+        JsonOptions.UseDoubleForLargeNumbers = True
+        Dim r As Object
+        Set r = Helpers.TryParse("[123456789012345678, 1234567890123456, 0.12345678901234567]")
+        Helpers.ResetOptions
+        Expect.AreEqual 0, Helpers.LastNumber, "run-time error of ParseJson with UseDoubleForLargeNumbers"
+        Expect.AreEqual vbDouble, VarType(r(1)), "VarType of an 18-digit number"
+        Expect.AreEqual vbDouble, VarType(r(2)), "VarType of a 16-digit number"
+        Expect.AreEqual vbDouble, VarType(r(3)), "VarType of 0.12345678901234567"
+        Expect.AreEqual 0.12345678901234567, r(3), "0.12345678901234567 as a Double"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UseDoubleForLargeNumbers_True_ConvertQuotesEveryString()
+        Expect.Begin
+        Helpers.ResetOptions
+        JsonOptions.UseDoubleForLargeNumbers = True
+        Dim s As String
+        s = Helpers.TryConvert("1234567890123456")
+        Helpers.ResetOptions
+        Expect.AreEqual """1234567890123456""", s, "ConvertToJson of a 16-digit string"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AllowUnquotedKeys_True_ParseAcceptsThem()
+        Expect.Begin
+        Helpers.ResetOptions
+        JsonOptions.AllowUnquotedKeys = True
+        Dim r As Object
+        Set r = Helpers.TryParse("{a:1, b : 2, ""c"":3, d:""x""}")
+        Helpers.ResetOptions
+        Expect.AreEqual 0, Helpers.LastNumber, "run-time error of ParseJson with AllowUnquotedKeys"
+        Expect.AreEqual "a,b,c,d", Helpers.KeyList(r), "keys"
+        Expect.AreEqual 2, r("b"), "r(""b"")"
+        Expect.AreEqual "x", r("d"), "r(""d"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AllowUnquotedKeys_False_ParseRefusesThem()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{a:1}")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on {a:1} by default"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EscapeSolidus_True_ConvertEscapesTheSolidus()
+        Expect.Begin
+        Helpers.ResetOptions
+        JsonOptions.EscapeSolidus = True
+        Dim s As String
+        s = Helpers.TryConvert("a/b/c")
+        Helpers.ResetOptions
+        Expect.AreEqual """a\/b\/c""", s, "ConvertToJson(""a/b/c"") with EscapeSolidus"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EscapeSolidus_ParseReadsAnEscapedSolidusWhateverTheOption()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[""a\/b""]")
+        Expect.AreEqual "a/b", r(1), "ParseJson of a\/b by default"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Options_AreIndependent()
+        Expect.Begin
+        Helpers.ResetOptions
+        JsonOptions.EscapeSolidus = True
+        Expect.IsFalse JsonOptions.UseDoubleForLargeNumbers, "UseDoubleForLargeNumbers after EscapeSolidus was set"
+        Expect.IsFalse JsonOptions.AllowUnquotedKeys, "AllowUnquotedKeys after EscapeSolidus was set"
+        Helpers.ResetOptions
+        Expect.Done
+    End Sub
+
+End Module

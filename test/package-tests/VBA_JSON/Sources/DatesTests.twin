@@ -1,0 +1,321 @@
+' VBA_JSON: ParseUtc, ConvertToUtc, ParseIso, ConvertToIso and the dates of ConvertToJson. What a case
+' expects comes from Windows itself (Helpers.UtcOf and Helpers.LocalOf), so no case depends on the
+' machine's time zone or regional settings. The dates are in June and January, away from a change of
+' the clocks.
+[TestFixture]
+Module DatesTests
+
+    ' ---- ConvertToUtc and ParseUtc
+
+    [TestCase]
+    Public Sub ConvertToUtc_AppliesTheZoneRulesInForceOnThatDate()
+        Expect.Begin
+        Helpers.SameSecond Helpers.UtcOf(Helpers.Summer), ConvertToUtc(Helpers.Summer), "ConvertToUtc of a June morning"
+        Helpers.SameSecond Helpers.UtcOf(Helpers.Winter), ConvertToUtc(Helpers.Winter), "ConvertToUtc of a January morning"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseUtc_AppliesTheZoneRulesInForceOnThatDate()
+        Expect.Begin
+        Helpers.SameSecond Helpers.LocalOf(Helpers.Summer), ParseUtc(Helpers.Summer), "ParseUtc of a June morning"
+        Helpers.SameSecond Helpers.LocalOf(Helpers.Winter), ParseUtc(Helpers.Winter), "ParseUtc of a January morning"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertToUtc_AndParseUtc_AreInverses()
+        Expect.Begin
+        Helpers.SameSecond Helpers.Summer, ParseUtc(ConvertToUtc(Helpers.Summer)), "ParseUtc(ConvertToUtc(June morning))"
+        Helpers.SameSecond Helpers.Winter, ParseUtc(ConvertToUtc(Helpers.Winter)), "ParseUtc(ConvertToUtc(January morning))"
+        Helpers.SameSecond Helpers.Summer, ConvertToUtc(ParseUtc(Helpers.Summer)), "ConvertToUtc(ParseUtc(June morning))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertToUtc_FractionOfASecond_IsRoundedToTheNearestSecond()
+        Expect.Begin
+        Dim down As Date = Helpers.Summer + 0.4 / 86400
+        Dim up As Date = Helpers.Summer + 0.7 / 86400
+        Helpers.SameSecond Helpers.UtcOf(Helpers.Summer), ConvertToUtc(down), "ConvertToUtc of 09:00:00.4"
+        Helpers.SameSecond Helpers.UtcOf(Helpers.Summer + TimeSerial(0, 0, 1)), ConvertToUtc(up), "ConvertToUtc of 09:00:00.7"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseUtc_FractionOfASecond_IsRoundedToTheNearestSecond()
+        Expect.Begin
+        Dim down As Date = Helpers.Summer + 0.4 / 86400
+        Dim up As Date = Helpers.Summer + 0.7 / 86400
+        Helpers.SameSecond Helpers.LocalOf(Helpers.Summer), ParseUtc(down), "ParseUtc of 09:00:00.4"
+        Helpers.SameSecond Helpers.LocalOf(Helpers.Summer + TimeSerial(0, 0, 1)), ParseUtc(up), "ParseUtc of 09:00:00.7"
+        Expect.Done
+    End Sub
+
+    ' The offset from UTC that Windows applies in June and in January. A date of 1850 or 1899 gets the
+    ' offset of the same month in 1900, the rules Windows applies being those of the current year.
+    Private Function OffsetToUtc(ByVal Ref As Date) As Long
+        OffsetToUtc = DateDiff("s", Ref, Helpers.UtcOf(Ref))
+    End Function
+
+    Private Function OffsetToLocal(ByVal Ref As Date) As Long
+        OffsetToLocal = DateDiff("s", Ref, Helpers.LocalOf(Ref))
+    End Function
+
+    [TestCase]
+    Public Sub ConvertToUtc_DateBefore30December1899_AppliesTheZoneRules()
+        Expect.Begin
+        Dim old As Date = CDate("1850-06-03 12:00:00")
+        Dim ref As Date = CDate("1900-06-03 12:00:00")
+        Helpers.SameSecond DateAdd("s", OffsetToUtc(ref), old), ConvertToUtc(old), "ConvertToUtc of 3 June 1850 12:00"
+        Dim old2 As Date = CDate("1899-12-29 12:00:00")
+        Dim ref2 As Date = CDate("1900-01-02 12:00:00")
+        Helpers.SameSecond DateAdd("s", OffsetToUtc(ref2), old2), ConvertToUtc(old2), "ConvertToUtc of 29 December 1899 12:00"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseUtc_DateBefore30December1899_AppliesTheZoneRules()
+        Expect.Begin
+        Dim old As Date = CDate("1850-06-03 12:00:00")
+        Dim ref As Date = CDate("1900-06-03 12:00:00")
+        Helpers.SameSecond DateAdd("s", OffsetToLocal(ref), old), ParseUtc(old), "ParseUtc of 3 June 1850 12:00"
+        Dim old2 As Date = CDate("1899-12-29 12:00:00")
+        Dim ref2 As Date = CDate("1900-01-02 12:00:00")
+        Helpers.SameSecond DateAdd("s", OffsetToLocal(ref2), old2), ParseUtc(old2), "ParseUtc of 29 December 1899 12:00"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertToIso_DateBefore30December1899_AppliesTheZoneRules()
+        Expect.Begin
+        Dim old As Date = CDate("1850-06-03 12:00:00")
+        Dim ref As Date = CDate("1900-06-03 12:00:00")
+        Expect.AreEqual Helpers.IsoOfUtc(DateAdd("s", OffsetToUtc(ref), old)), ConvertToIso(old), "ConvertToIso of 3 June 1850 12:00"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_DateBefore30December1899_AppliesTheZoneRules()
+        Expect.Begin
+        Dim old As Date = CDate("1850-06-03 12:00:00")
+        Dim ref As Date = CDate("1900-06-03 12:00:00")
+        Helpers.SameSecond DateAdd("s", OffsetToLocal(ref), old), ParseIso("1850-06-03T12:00:00Z"), "ParseIso of 1850-06-03T12:00:00Z"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertToUtc_DateBefore1601_Raises10012()
+        Expect.Begin
+        Dim x As Date
+        On Error Resume Next
+        x = ConvertToUtc(DateSerial(1500, 1, 1))
+        Expect.AreEqual 10012, Err.Number, "run-time error of ConvertToUtc(1 January 1500)"
+        Expect.AreEqual "UtcConverter.ConvertToUtc", Err.Source, "source of that error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseUtc_DateBefore1601_Raises10011()
+        Expect.Begin
+        Dim x As Date
+        On Error Resume Next
+        x = ParseUtc(DateSerial(1500, 1, 1))
+        Expect.AreEqual 10011, Err.Number, "run-time error of ParseUtc(1 January 1500)"
+        Expect.AreEqual "UtcConverter.ParseUtc", Err.Source, "source of that error"
+        Expect.Done
+    End Sub
+
+    ' ---- ConvertToIso
+
+    [TestCase]
+    Public Sub ConvertToIso_WritesTheUtcTimeAsIso8601()
+        Expect.Begin
+        Expect.AreEqual Helpers.IsoOfUtc(Helpers.UtcOf(Helpers.Summer)), ConvertToIso(Helpers.Summer), "ConvertToIso of a June morning"
+        Expect.AreEqual Helpers.IsoOfUtc(Helpers.UtcOf(Helpers.Winter)), ConvertToIso(Helpers.Winter), "ConvertToIso of a January morning"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertToIso_Milliseconds_AreAlwaysZero()
+        Expect.Begin
+        Dim withFraction As Date = Helpers.Summer + 0.4 / 86400
+        Expect.AreEqual Helpers.IsoOfUtc(Helpers.UtcOf(Helpers.Summer)), ConvertToIso(withFraction), "ConvertToIso of 09:00:00.4"
+        Expect.AreEqual ".000Z", Right$(ConvertToIso(Helpers.Winter), 5), "last five characters of ConvertToIso"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertToIso_DateBefore1601_Raises10014()
+        Expect.Begin
+        Dim s As String
+        On Error Resume Next
+        s = ConvertToIso(DateSerial(1500, 1, 1))
+        Expect.AreEqual 10014, Err.Number, "run-time error of ConvertToIso(1 January 1500)"
+        Expect.AreEqual "UtcConverter.ConvertToIso", Err.Source, "source of that error"
+        Expect.Done
+    End Sub
+
+    ' ---- ParseIso
+
+    [TestCase]
+    Public Sub ParseIso_Z_IsUtc()
+        Expect.Begin
+        Helpers.SameSecond Helpers.LocalOf(DateSerial(2024, 6, 3) + TimeSerial(14, 30, 0)), ParseIso("2024-06-03T14:30:00Z"), "ParseIso(""2024-06-03T14:30:00Z"")"
+        Helpers.SameSecond Helpers.LocalOf(Helpers.Winter), ParseIso("2024-01-15T09:00:00Z"), "ParseIso(""2024-01-15T09:00:00Z"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_PositiveOffset_IsSubtracted()
+        Expect.Begin
+        Helpers.SameSecond Helpers.LocalOf(DateSerial(2024, 6, 3) + TimeSerial(9, 0, 0)), ParseIso("2024-06-03T14:30:00+05:30"), "ParseIso(""2024-06-03T14:30:00+05:30"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_NegativeOffset_IsAdded()
+        Expect.Begin
+        Helpers.SameSecond Helpers.LocalOf(DateSerial(2024, 6, 3) + TimeSerial(14, 0, 0)), ParseIso("2024-06-03T09:00:00-05:00"), "ParseIso(""2024-06-03T09:00:00-05:00"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_OffsetWithoutMinutes()
+        Expect.Begin
+        Helpers.SameSecond Helpers.LocalOf(DateSerial(2024, 6, 3) + TimeSerial(9, 0, 0)), ParseIso("2024-06-03T14:00:00+05"), "ParseIso(""2024-06-03T14:00:00+05"")"
+        Helpers.SameSecond Helpers.LocalOf(DateSerial(2024, 6, 3) + TimeSerial(14, 0, 0)), ParseIso("2024-06-03T09:00:00-05"), "ParseIso(""2024-06-03T09:00:00-05"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_OffsetWithoutAColon_IsHoursAndMinutes()
+        Expect.Begin
+        Helpers.SameSecond ParseIso("2024-06-03T14:30:00+05:30"), ParseIso("2024-06-03T14:30:00+0530"), "ParseIso with +0530 against +05:30"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_NoOffset_IsUtc()
+        Expect.Begin
+        Helpers.SameSecond Helpers.LocalOf(Helpers.Summer), ParseIso("2024-06-03T09:00:00"), "ParseIso(""2024-06-03T09:00:00"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_DateOnly_IsLocalMidnight()
+        Expect.Begin
+        Helpers.SameSecond DateSerial(2024, 6, 3), ParseIso("2024-06-03"), "ParseIso(""2024-06-03"")"
+        Helpers.SameSecond DateSerial(2024, 1, 15), ParseIso("2024-01-15"), "ParseIso(""2024-01-15"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_TimeMayOmitSecondsOrMinutes()
+        Expect.Begin
+        Helpers.SameSecond Helpers.LocalOf(DateSerial(2024, 6, 3) + TimeSerial(9, 15, 0)), ParseIso("2024-06-03T09:15Z"), "ParseIso(""2024-06-03T09:15Z"")"
+        Helpers.SameSecond Helpers.LocalOf(DateSerial(2024, 6, 3) + TimeSerial(9, 0, 0)), ParseIso("2024-06-03T09Z"), "ParseIso(""2024-06-03T09Z"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_FractionOfASecond_IsTruncated()
+        Expect.Begin
+        Helpers.SameSecond Helpers.LocalOf(Helpers.Summer), ParseIso("2024-06-03T09:00:00.987Z"), "ParseIso(""2024-06-03T09:00:00.987Z"")"
+        Helpers.SameSecond Helpers.LocalOf(Helpers.Summer), ParseIso("2024-06-03T09:00:00.5"), "ParseIso(""2024-06-03T09:00:00.5"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_IsTheInverseOfConvertToIso()
+        Expect.Begin
+        Helpers.SameSecond Helpers.Summer, ParseIso(ConvertToIso(Helpers.Summer)), "ParseIso(ConvertToIso(June morning))"
+        Helpers.SameSecond Helpers.Winter, ParseIso(ConvertToIso(Helpers.Winter)), "ParseIso(ConvertToIso(January morning))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_TextThatIsNotIso8601_Raises10013()
+        Expect.Begin
+        Dim x As Date
+        On Error Resume Next
+        x = ParseIso("junk")
+        Expect.AreEqual 10013, Err.Number, "run-time error of ParseIso(""junk"")"
+        Expect.AreEqual "UtcConverter.ParseIso", Err.Source, "source of that error"
+        Expect.IsTrue InStr(Err.Description, "junk") > 0, "the message holds the string: " & Err.Description
+        Err.Clear
+        x = ParseIso("")
+        Expect.AreEqual 10013, Err.Number, "run-time error of ParseIso("""")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_BasicFormat_Raises10013()
+        Expect.Begin
+        Dim x As Date
+        On Error Resume Next
+        x = ParseIso("20240603T090000Z")
+        Expect.AreEqual 10013, Err.Number, "run-time error of ParseIso(""20240603T090000Z"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso_DateBefore1601_Raises10013()
+        Expect.Begin
+        Dim x As Date
+        On Error Resume Next
+        x = ParseIso("1500-01-01T00:00:00Z")
+        Expect.AreEqual 10013, Err.Number, "run-time error of ParseIso(""1500-01-01T00:00:00Z"")"
+        Expect.Done
+    End Sub
+
+    ' ---- dates in ConvertToJson
+
+    [TestCase]
+    Public Sub ConvertToJson_Date_IsAQuotedIsoString()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual """" & ConvertToIso(Helpers.Summer) & """", Helpers.TryConvert(Helpers.Summer), "ConvertToJson of a June morning"
+        Expect.AreEqual """" & Helpers.IsoOfUtc(Helpers.UtcOf(Helpers.Winter)) & """", Helpers.TryConvert(Helpers.Winter), "ConvertToJson of a January morning"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertToJson_Date_InsideADictionaryACollectionAndAnArray()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim iso As String
+        iso = """" & Helpers.IsoOfUtc(Helpers.UtcOf(Helpers.Summer)) & """"
+        Dim d As New Dictionary
+        d("id") = 1001
+        d("placed") = Helpers.Summer
+        Expect.AreEqual "{""id"":1001,""placed"":" & iso & "}", Helpers.TryConvert(d), "a Date in a Dictionary"
+        Dim c As New Collection
+        c.Add Helpers.Summer
+        Expect.AreEqual "[" & iso & "]", Helpers.TryConvert(c), "a Date in a Collection"
+        Expect.AreEqual "[" & iso & "]", Helpers.TryConvert(Array(Helpers.Summer)), "a Date in an array"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConvertToJson_DateBefore1601_Raises10014()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim s As String
+        s = Helpers.TryConvert(DateSerial(1500, 1, 1))
+        Expect.AreEqual 10014, Helpers.LastNumber, "run-time error of ConvertToJson(1 January 1500)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseJson_DateInTheText_StaysAString()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{""created_at"":""2024-06-03T09:00:00Z""}")
+        Expect.AreEqual vbString, VarType(r("created_at")), "VarType of a date in the text"
+        Helpers.SameSecond Helpers.LocalOf(Helpers.Summer), ParseIso(r("created_at")), "ParseIso of that string"
+        Expect.Done
+    End Sub
+
+End Module

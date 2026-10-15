@@ -18,6 +18,7 @@ Returns a **Date** value in the local time zone corresponding to the instant des
 
 ### Remarks
 
+<!-- test: DatesTests.ParseIso_Z_IsUtc, DatesTests.ParseIso_PositiveOffset_IsSubtracted, DatesTests.ParseIso_NegativeOffset_IsAdded, DatesTests.ParseIso_OffsetWithoutMinutes, DatesTests.ParseIso_NoOffset_IsUtc, DatesTests.ParseIso_DateOnly_IsLocalMidnight, DatesTests.ParseIso_TimeMayOmitSecondsOrMinutes, DatesTests.ParseIso_FractionOfASecond_IsTruncated, DatesTests.ParseIso_IsTheInverseOfConvertToIso -->
 **ParseIso** accepts the following ISO 8601 forms:
 
 - Date only: `YYYY-MM-DD` (no time component; midnight is assumed and no time-zone conversion is applied).
@@ -29,9 +30,20 @@ The time component may omit the seconds, or the minutes and seconds (`THH:MM` or
 
 When the string has a time component, **ParseIso** reads the time as UTC and converts it to local time by calling [**ParseUtc**](ParseUtc) internally. On Windows, that conversion uses the `SystemTimeToTzSpecificLocalTime` Win32 API and honours daylight saving time rules for the local machine. When an explicit numeric offset is present, the offset is then subtracted from the converted local time so that the returned value reflects local wall-clock time.
 
-On parse failure the function raises run-time error 10013 with the source `"UtcConverter.ParseIso"` and a message that includes the original string.
-
 **ParseIso** is the inverse of [**ConvertToIso**](ConvertToIso).
+<!-- /test -->
+
+<!-- test: DatesTests.ParseIso_TextThatIsNotIso8601_Raises10013, DatesTests.ParseIso_BasicFormat_Raises10013 -->
+On parse failure the function raises run-time error 10013 with the source `"UtcConverter.ParseIso"` and a message that includes the original string. A form that is not listed above, such as the basic format `20240603T090000Z` with no hyphens or colons, is a parse failure.
+<!-- /test -->
+
+<!-- test: DatesTests.ParseIso_OffsetWithoutAColon_IsHoursAndMinutes -->
+> [!WARNING] 2.3.1.1
+> An offset written without a colon, such as `+0530`, is read as a number of hours: `+0530` is 530 hours, and `2024-06-03T14:30:00+0530` gives 12 May 2024, with no error. Write the offset as `+05:30`.
+
+<!-- test: DatesTests.ParseIso_DateBefore30December1899_AppliesTheZoneRules, DatesTests.ParseIso_DateBefore1601_Raises10013 -->
+> [!WARNING] 2.3.1.1
+> A string with a time on a date before 30 December 1899 gives the wrong day and time, and one before 1 January 1601 gives a meaningless date, with no error: [**ParseUtc**](ParseUtc) cannot convert it.
 
 ### Example
 

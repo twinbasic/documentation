@@ -14,7 +14,13 @@ Syntax: *object*.**Keys**
 *object*
 : *required* An object expression that evaluates to a **Dictionary** object.
 
+<!-- test: DictionaryTests.Keys_AreInTheOrderTheyWereAdded, DictionaryTests.Keys_WithNoEntries_IsAnEmptyArray, DictionaryTests.Item_Replace_MovesTheKeyToTheEnd -->
 The property returns a **Variant** containing an array of **String** values, one entry per key. The order of the entries is the order in which the key-value pairs were added; assigning to an existing key moves it to the end. If the dictionary is empty, an empty array is returned.
+<!-- /test -->
+
+<!-- test: DictionaryTests.Item_Replace_MovesTheKeyToTheEnd, DictionaryTests.Item_Replace_ScriptingDictionaryKeepsThePosition -->
+> [!NOTE] 2.3.1.1
+> Assigning to an existing key moves the entry to the end of the order. A **Scripting.Dictionary** keeps the entry where it was.
 
 ### Example
 

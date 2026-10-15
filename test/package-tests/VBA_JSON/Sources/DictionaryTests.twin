@@ -1,0 +1,234 @@
+' VBA_JSON: the Dictionary class.
+[TestFixture]
+Module DictionaryTests
+
+    [TestCase]
+    Public Sub Item_StoresAndReadsAValue()
+        Expect.Begin
+        Dim d As New Dictionary
+        d("name") = "Alice"
+        d("age") = 30
+        Expect.AreEqual "Alice", d("name"), "d(""name"") after d(""name"") = ""Alice"""
+        Expect.AreEqual 30, d("age"), "d(""age"") after d(""age"") = 30"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_IsTheDefaultMember()
+        Expect.Begin
+        Dim d As New Dictionary
+        d("k") = 5
+        Expect.AreEqual d.Item("k"), d("k"), "d.Item(""k"") against d(""k"")"
+        d.Item("j") = 6
+        Expect.AreEqual 6, d("j"), "d(""j"") after d.Item(""j"") = 6"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_HoldsAnyVariant()
+        Expect.Begin
+        Dim d As New Dictionary
+        d("n") = 1.5
+        d("s") = "text"
+        d("b") = True
+        d("z") = Null
+        Expect.AreEqual vbDouble, VarType(d("n")), "VarType of a stored Double"
+        Expect.AreEqual vbString, VarType(d("s")), "VarType of a stored String"
+        Expect.AreEqual vbBoolean, VarType(d("b")), "VarType of a stored Boolean"
+        Expect.AreEqual vbNull, VarType(d("z")), "VarType of a stored Null"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Set_StoresAnObjectReference()
+        Expect.Begin
+        Dim d As New Dictionary
+        Dim child As New Dictionary
+        Set d("child") = child
+        child("x") = 7
+        Expect.AreEqual "Dictionary", TypeName(d("child")), "TypeName(d(""child""))"
+        Expect.IsTrue d("child") Is child, "d(""child"") is the object that was stored"
+        Expect.AreEqual 7, d("child")("x"), "d(""child"")(""x"") after the child changed"
+        Dim c As New Collection
+        c.Add 1
+        Set d("list") = c
+        Expect.AreEqual "Collection", TypeName(d("list")), "TypeName of a stored Collection"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_MissingKey_RaisesError5()
+        Expect.Begin
+        Dim d As New Dictionary
+        Dim v As Variant
+        On Error Resume Next
+        v = d("nothing here")
+        Expect.AreEqual 5, Err.Number, "run-time error number of reading a key that is not there"
+        Expect.AreEqual 0, UBound(d.Keys) - LBound(d.Keys) + 1, "number of keys after the failed read"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Replace_KeepsOneEntryWithTheNewValue()
+        Expect.Begin
+        Dim d As New Dictionary
+        d("score") = 42
+        d("score") = 100
+        Expect.AreEqual 100, d.Item("score"), "d(""score"") after it was set to 42 and then 100"
+        Expect.AreEqual "score", KeyList(d), "keys after the key was set twice"
+        Dim o1 As New Dictionary
+        Dim o2 As New Dictionary
+        o2("who") = "second"
+        Set d("obj") = o1
+        Set d("obj") = o2
+        Expect.AreEqual "second", d("obj")("who"), "d(""obj"") after two Set assignments"
+        Expect.AreEqual "score,obj", KeyList(d), "keys after an object key was set twice"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Replace_MovesTheKeyToTheEnd()
+        Expect.Begin
+        Dim d As New Dictionary
+        d("a") = 1
+        d("b") = 2
+        d("c") = 3
+        d("a") = 10
+        Expect.AreEqual "b,c,a", KeyList(d), "key order after d(""a"") was set again"
+        Expect.AreEqual "2,3,10", ValueList(d), "For Each order after d(""a"") was set again"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_Replace_ScriptingDictionaryKeepsThePosition()
+        Expect.Begin
+        Dim sd As Object
+        Set sd = CreateObject("Scripting.Dictionary")
+        sd("a") = 1
+        sd("b") = 2
+        sd("a") = 10
+        Dim k As Variant
+        Dim r As String
+        For Each k In sd.Keys
+            r = r & k & ","
+        Next
+        Expect.AreEqual "a,b,", r, "key order of a Scripting.Dictionary after a key was set again"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_MissingKey_ScriptingDictionaryAddsTheKey()
+        Expect.Begin
+        Dim sd As Object
+        Set sd = CreateObject("Scripting.Dictionary")
+        Dim v As Variant
+        v = sd("nothing here")
+        Expect.AreEqual 1, sd.Count, "entries of a Scripting.Dictionary after a read of a key that is not there"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_KeysThatDifferInCase_AreSeparateKeys()
+        Expect.Begin
+        Dim d As New Dictionary
+        d("a") = 1
+        d("A") = 2
+        Expect.AreEqual 2, UBound(d.Keys) - LBound(d.Keys) + 1, "number of keys after d(""a"") = 1 and d(""A"") = 2"
+        Expect.AreEqual 1, d("a"), "d(""a"") after d(""A"") = 2"
+        Expect.AreEqual 2, d("A"), "d(""A"") after d(""A"") = 2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_NumericKey_IsConvertedToAString()
+        Expect.Begin
+        Dim d As New Dictionary
+        d(5) = "five"
+        Expect.AreEqual "five", d("5"), "d(""5"") after d(5) = ""five"""
+        Expect.AreEqual "5", KeyList(d), "keys after d(5) = ""five"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Keys_AreInTheOrderTheyWereAdded()
+        Expect.Begin
+        Dim d As New Dictionary
+        d("x") = 1
+        d("y") = 2
+        d("z") = 3
+        Dim k As Variant
+        k = d.Keys
+        Expect.IsTrue IsArray(k), "Keys is an array"
+        Expect.AreEqual 3, UBound(k) - LBound(k) + 1, "number of elements of Keys"
+        Expect.AreEqual "x,y,z", KeyList(d), "keys in the order added"
+        Expect.AreEqual vbString, VarType(k(LBound(k))), "VarType of a key"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Keys_WithNoEntries_IsAnEmptyArray()
+        Expect.Begin
+        Dim d As New Dictionary
+        Dim k As Variant
+        k = d.Keys
+        Expect.IsTrue IsArray(k), "Keys of an empty dictionary is an array"
+        Expect.IsTrue UBound(k) < LBound(k), "Keys of an empty dictionary has no elements"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Keys_CountedByTheBoundsOfTheArray()
+        Expect.Begin
+        Dim d As New Dictionary
+        d("x") = 1
+        d("y") = 2
+        Dim keyCount As Long
+        keyCount = UBound(d.Keys) - LBound(d.Keys) + 1
+        Expect.AreEqual 2, keyCount, "UBound - LBound + 1 of Keys of a dictionary with two entries"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Keys_VariantKey_ReadsTheEntry()
+        Expect.Begin
+        Dim d As New Dictionary
+        d("x") = 1
+        d("y") = 2
+        Dim k As Variant
+        Dim sum As Long
+        For Each k In d.Keys
+            sum = sum + d(k)
+        Next
+        Expect.AreEqual 3, sum, "sum of d(k) over the keys of a dictionary holding 1 and 2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ForEach_YieldsTheValuesInOrder()
+        Expect.Begin
+        Dim d As New Dictionary
+        d("a") = 10
+        d("b") = 20
+        Expect.AreEqual "10,20", ValueList(d), "values given by For Each"
+        Dim v As Variant
+        Dim n As Long
+        For Each v In d
+            n = n + 1
+        Next
+        Expect.AreEqual 2, n, "number of passes of For Each over two entries"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseJsonResult_IsAPackageDictionary()
+        Expect.Begin
+        Dim parsed As Dictionary
+        Set parsed = ParseJson("{""name"":""Bob"",""score"":95}")
+        Expect.AreEqual "Dictionary", TypeName(parsed), "TypeName of the result of ParseJson on an object"
+        Expect.AreEqual "Bob", parsed("name"), "parsed(""name"")"
+        Expect.AreEqual 95, parsed("score"), "parsed(""score"")"
+        Expect.AreEqual "name,score", KeyList(parsed), "keys of the parsed object"
+        Expect.Done
+    End Sub
+
+End Module
