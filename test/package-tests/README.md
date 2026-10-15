@@ -60,6 +60,12 @@ End Module
   `Files.Item of a missing name raises: expected 53, got 5` is a bug report.
 - A claim about what does not compile is a **compile case**: a line ending in
   `' CASE <Name>: TB5001` (or `: error`, `: none`), as `scripts/lib/tb-tests.mjs` describes.
+  **A compile case that expects an error goes in the package folder's `compile/`**, a second
+  project that holds compile cases only (`.twin` files directly in it, no `Sources/`): the
+  compiler runs no `[TestCase]` in a project with errors, so one such line in `Sources/` stops
+  every other case. `package_tests.mjs` stages `compile/` with the package embedded and judges
+  its cases with the rest; a marker names them as `compile <Name>`, as any compile case. It is
+  not published: the published project is `Sources/` only, and compiles.
 - A claim that needs a dialog operated or a form shown goes in the package's `probe/` harness, as
   TBMANLIB_Dialog's and xCalendar's do.
 
