@@ -374,6 +374,13 @@ noted it is missing for checks too.
 - **Scope beyond counts.** Nothing in the mechanism is specific to integers;
   `{{tbdocs:defaultBranch}}` would work identically. Resist for now — a value
   that is not a count has no obvious derivation and reopens the constants trap.
+  The one exception is the Downloads page's `{{tbdocs:size:<site path>}}` and
+  `{{tbdocs:packageTestRows}}`: text derived from the files the build publishes,
+  and needed in a raw HTML block and on a table line, which the inline rule
+  cannot reach. They are expanded in the page source instead, between
+  `maskCode` and its `restore` (see the header of counts.mjs), so code is
+  still untouched, and `checkPlaceholders` and `findSurvivingPlaceholder`
+  guard them as they guard a count.
 - **Whether the a11y sample size belongs here.** `check_a11y.mjs`'s thirteen
   pages are named in prose in several places, but that list lives in
   `scripts/lib/axe-scan.mjs`, outside the build. It would need the same

@@ -122,6 +122,7 @@ export const HANDLERS = {
   warmInit: 0, renderEnvInit: 1, flush: 2,
   scssLight: 3, scssDark: 4, dot: 5,
   buildInfo: 6, render: 7,
+  helpArchive: 8, writePdf: 9, checkBook: 10,
 };
 ```
 
@@ -224,10 +225,12 @@ Calls `buildInitConfig(state.site)` from `template.mjs` to pre-render the config
 ### `markdownInit` (main)
 
 ```js
-markdownInit.expected = ["discover", "vendorAssets", "deriveRedirects"]
+markdownInit.expected = ["discover", "vendorAssets", "deriveRedirects", "packTests"]
 ```
 
 Builds the link tables (`buildLinkTables(state.pages)`) and derives the `{{tbdocs:<name>}}` counts registry (`deriveCounts(state, { redirectStubs: stubs.length })` from `counts.mjs`), throwing if a page names a count that does not exist. The redirect-stub count is why `deriveRedirects` is a predecessor.
+
+It also settles the downloads that `{{tbdocs:size:<site path>}}` and `{{tbdocs:packageTestRows}}` state (`deriveDownloads`, then `checkPlaceholders`, which throws on a path the build does not publish or cannot size). `packTests`, a task of its own that follows `config`, packs the contributed packages' test projects in memory so that their sizes are known; `packageTests` writes those same bytes. Only the sizes the pages ask for travel to the workers, as `state.site.downloads`.
 
 It then instantiates the shared markdown-it (`createMarkdownIt({ highlighter: null, linkTables, baseurl, staticFiles, vendoredVideos, vendoredImages, counts })`), serializes the link tables (`serializeLinkTables(linkTables)`) for the workers, and computes site-level SEO (`computeSiteSeo(state.site.config, state.site.markdown)`). It writes `counts`, `markdown`, `linkTablesSerialized`, `seoSiteTitle` and `seoLogoUrl` to `state.site`. Per-page SEO is **not** computed here; each render worker does it via `computeChunkSeo`.
 
@@ -255,7 +258,7 @@ deriveSitemap.execute() → { urls }
 resolveBookChapters.expected = ["deriveSitemap"]
 ```
 
-Calls `resolveBookChapters(state.site.bookData, state.pages)` from `book.mjs`, which sets `bookData._chapters` to `Page[]` references. These must be the same `Page` objects `writePdf` sees after the render fan-out fills in `renderedContent`.
+Calls `resolveBookChapters(state.site.bookData, state.pages)` from `book.mjs`, which sets `bookData._chapters` to `Page[]` references. These must be the same `Page` objects `bookPayload` sees after the render fan-out fills in `renderedContent`: it packs each reference as the page's index in `state.pages`, and the worker resolves the index back to the same object.
 
 ---
 
@@ -348,7 +351,7 @@ renderJoin.expected = ["render:0", …, "render:N-1"]   // and depCount set to N
 renderJoin.execute() → {}
 ```
 
-Barrier over every `render:i`. Unblocks `searchData`, `symbolIndex` and `writePdf`.
+Barrier over every `render:i`. Unblocks `searchData`, `symbolIndex` and `bookPayload`.
 
 > [!IMPORTANT]
 > **A dependency count of zero does not mean the submits have run**, so the `expected`
@@ -370,7 +373,7 @@ Barrier over every `render:i`. Unblocks `searchData`, `symbolIndex` and `writePd
 
 ## Section 4 --- Write and post-write
 
-The tasks that write the output. `scss` joins the two stylesheets after `prepDest`; each `flush:i` writes its chunk's pages after its `render:i` and `prepPageDirs`; the main-thread writers produce the rest, all but `writeAssets` behind `renderJoin` or `flushJoin`.
+The tasks that write the output. `scss` joins the two stylesheets after `prepDest`; each `flush:i` writes its chunk's pages after its `render:i` and `prepPageDirs`; the rest are produced by the main-thread writers, which run one at a time in the order `TASKS` declares them, and by two worker tasks, `helpArchive` and `writePdf`. All but `writeAssets` wait behind `renderJoin` or `flushJoin`.
 
 ### `scss` (main)
 
@@ -402,7 +405,7 @@ flushJoin.expected = []    // populated by dispatch.submit with ["flush:0", ...,
 flushJoin.execute(inputs) → { written, offlineWritten, offlineMisses }
 ```
 
-Aggregates per-chunk write stats. Unblocks `writeAux`, `writePdf` and `linkJoin`.
+Aggregates per-chunk write stats. Unblocks `writeAux`, `helpArchive`, `bookPayload` and `linkJoin`.
 
 ### `writeAssets` (main)
 
@@ -468,21 +471,46 @@ writeOffline.expected = ["writeAux", "writeAssets"]
 
 Calls `writeOffline(state.staticFiles, state.site, destRoot, { auxStats, sitePaths, profileOffline })` from `offline.mjs`. `render:i` / `flush:i` have already rewritten and written the per-page HTML. This task does the rest: CSS `url()` rewriting, the `just-the-docs.js` AST patch (`deriveOfflineJtdJs`), the `search-data.js` wrapper (`deriveOfflineSearchDataJs`), the offline `nav.js` (the whole nav tree with its links relative to the site's root), theme assets and redirect stubs. `sitePaths` comes from `state.sitePaths`.
 
-### `writePdf` (main)
+### `helpArchive` (worker)
 
 ```js
-writePdf.expected = ["flushJoin", "renderJoin", "dot", "resolveBookChapters"]
+helpArchive.expected = ["flushJoin", "scss", "writeOffline"]
+helpArchive.handler  = "helpArchive"
 ```
 
-Calls `writePdf(state.pages, state.staticFiles, state.site, destRoot, { tolerateMissingImages, highlightCss })` from `pdf.mjs`. It calls `assembleBook(site, pages)` from `book.mjs` for the `book.html` string, writes `tb-highlight.css`, copies `print.css` via the `staticFiles` inventory, and copies every image referenced in `book.html`. Missing images throw; `--tolerate-missing-images` downgrades that to a warning. It also runs `bookCoverage` and returns its `formatBookCoverage` lines as `coverage`, which the build prints under a `book:` heading --- warnings about pages `_book.yml` does not mention, never a failure.
+Writes `add-in/Resources/HELP/site.zip`, the archive of the offline tree, less the sections in `HELP_ARCHIVE_SKIP`, that the IDE help add-in embeds (see [Build and Generation Tools](Tools-Build#the-help-archive)). The three predecessors between them write the whole offline tree. The handler calls `helpArchiveStep` from `help-archive-step.mjs`, with the `skipOffline` flag it reads from `dispatch`'s shared broadcast (`sharedData()` in `cpu-worker.mjs`), and reads the offline tree from disk. It runs on a worker because it needs nothing that `dispatch` has not broadcast, and the main thread meanwhile does the work that follows `writeOffline`.
 
-`renderJoin` is listed although `execute()` ignores it: `expected` says what must have *merged*, and the book is assembled from `page.renderedContent`.
+The zip comes back as a plain byte array. `submit` wraps it again as a `Buffer` over the same memory, which `addinProject` packs into the add-in's project file and `runBuild` checks the offline tree against once the Gantt chart is injected (`recheckHelpArchive`). The step writes nothing for a source root other than `docs`, a `--dest` other than `docs/_site`, and under `--serve`, `--dry-run` or `--no-help-archive`.
+
+### `bookPayload` (main)
+
+```js
+bookPayload.expected = ["flushJoin", "renderJoin", "dot", "resolveBookChapters"]
+bookPayload.execute() → SharedArrayBuffer
+```
+
+Packs what `writePdf` needs and broadcasts it to every worker. `execute` first calls `prerenderPartText(bookData, site.markdown)` from `book.mjs`, which renders each part's subtitle and intro into `part._rendered`, because the markdown-it instance cannot cross to a worker. It then calls `packBookPayload` from `book-payload.mjs`. The payload holds a projection of each page (`permalink`, `canonicalPermalink`, `navPath`, `srcRel`, `destPath`, `frontmatter` and `renderedContent`), `bookData` with every page reference replaced by `{ $page: i }`, the static-file inventory, the config, the build information, `highlightCss` and the `--check` flag. The index `i` is the page's place in `state.pages`, so the worker resolves each reference back to the same object and `bookCoverage`'s identity comparisons still hold. Under `--dry-run`, or when the build writes no PDF tree, the payload is `{ skip: true }`. Takes ~95 ms.
+
+`submit` calls `pool.broadcastTaskData("book", sab)`. It runs before the task is marked done, so the message is queued on every lane before any lane can claim `writePdf`. `bookPayload` is declared before `writeAux` in `TASKS`: the main thread claims its ready tasks in declaration order, so it packs the book first and `writePdf` starts on a worker while the main thread writes the rest.
+
+`renderJoin` is listed although `execute()` ignores it: `expected` says what must have *merged*, and the payload holds `page.renderedContent`.
+
+### `writePdf` (worker)
+
+```js
+writePdf.expected = ["bookPayload"]
+writePdf.handler  = "writePdf"
+```
+
+Waits on its lane for the `"book"` broadcast (`taskData("book")` in `cpu-worker.mjs`), unpacks it with `unpackBookPayload`, and returns `null` when the payload says to skip. Otherwise it calls `writePdf(pages, staticFiles, site, destRoot, { tolerateMissingImages, highlightCss, check })` from `pdf.mjs`. That calls `assembleBook(site, pages)` from `book.mjs` for the `book.html` string, writes `tb-highlight.css`, copies `print.css` via the `staticFiles` inventory, and copies every image referenced in `book.html`. Missing images throw; `--tolerate-missing-images` downgrades that to a warning. It also runs `bookCoverage` and returns its `formatBookCoverage` lines as `coverage`, which the build prints under a `book:` heading --- warnings about pages `_book.yml` does not mention, never a failure.
+
+With `--check`, the book HTML and the list of files in the PDF tree stay on the lane, for `checkBook`; the result returned to main holds only the counters.
 
 ---
 
 ## Section 5 --- Check and report
 
-Three main-thread tasks that run only when `--check` is on. The per-chunk findings came back with each `flush:i`, so these tasks join, audit and report without parsing anything again.
+Three tasks that run only when `--check` is on: `linkJoin` and `checkReport` on the main thread, `checkBook` on the worker that wrote the book. The per-chunk findings came back with each `flush:i`, so these tasks join, audit and report without parsing anything again.
 
 Two invariants hold for all three. **A failing check never aborts the build**: failures are returned as data and become an exit code at the end. And **a check that examined less than the whole site is reported as a failure**: a short chunk list, a missing per-tree result or an errored chunk is never skipped silently.
 
@@ -502,14 +530,16 @@ Four things happen here that a worker cannot do:
 - **Chunk completeness is asserted.** A count mismatch against `state.checkChunkCount` becomes an error on every tree. A chunk with no entry for a tree is named, since every lane builds the same tree keys.
 - **`book-combined` pages are excluded** from the page list; `writePdf` owns them and `checkBook` covers them.
 
-### `checkBook` (main)
+### `checkBook` (worker, `pin_to_predecessor`)
 
 ```js
 checkBook.expected = ["writePdf"]
-checkBook.execute({ writePdf }) → joinedResult | null
+checkBook.handler  = "checkBook"
+checkBook.pinnedTo = writePdf        // F_PIN_TO_PRED
+→ joinedResult | null
 ```
 
-Checks `_site-pdf/book.html` as a one-document chunk against a tree index built from the sparse PDF tree. **Informational**: the book's cross-page links legitimately do not resolve within that tree, so its findings are printed but do not set the exit code. The `_site` pass enforces every page the book contains.
+Runs on the lane that wrote the book, so the 6.5--16 MB string never crosses back to the main thread. Returns `null` without `--check`. Otherwise it checks `_site-pdf/book.html` as a one-document chunk against a tree index built from the sparse PDF tree. **Informational**: the book's cross-page links legitimately do not resolve within that tree, so its findings are printed but do not set the exit code. The `_site` pass enforces every page the book contains.
 
 ### `checkReport` (main, terminal)
 
@@ -534,7 +564,7 @@ The same modules as above, with the exports of each file.
 
 ### `check.mjs`
 
-The link and integrity check over rendered pages, which the standalone [`scripts/check_links.mjs`](Tools-Site-Checks#check-links) also runs, over a tree it reads from disk. The build imports it dynamically --- on the workers in `renderEnvInit`, on main in `linkJoin` / `checkBook` / `checkReport` --- because `htmlparser2` costs ~23 ms to import and a build without `--check` should not pay it on sixteen lanes.
+The link and integrity check over rendered pages, which the standalone [`scripts/check_links.mjs`](Tools-Site-Checks#check-links) also runs, over a tree it reads from disk. The build imports it dynamically --- on the workers in `renderEnvInit`, on main in `linkJoin` / `checkReport`, on the book's lane in `checkBook` --- because `htmlparser2` costs ~23 ms to import and a build without `--check` should not pay it on sixteen lanes.
 
 | Symbol | Signature | Description |
 |---|---|---|
@@ -668,6 +698,14 @@ Both HTML escapers convert a value that is not a string with `String` first.
 | `rewriteBookHrefs` | `(html, site, pages) → string` | Rewrites a link to a page in the book to that page's `href="#ch-X"` anchor, and a link to any other site page to its absolute URL under `site.config.url` (a site path is dead in a PDF). |
 | `bookCoverage` | `(bookData, pages) → { unlisted, both, emptyEntries, emptyLeftOut, missingUrls }` | Runs after `resolveBookChapters`. Reports pages in no book entry and no `left_out:` entry, pages in both, entries that match no page, and landing or foreword URLs that name no page. Every list is empty on a consistent manifest. |
 | `formatBookCoverage` | `(coverage) → string[]` | The `book:` warning lines for a `bookCoverage` result; `[]` when there is nothing to report. |
+| `prerenderPartText` | `(bookData, md) → void` | Renders each part's subtitle and intro into `part._rendered`, because markdown-it cannot cross to a worker. `assembleBook` uses `_rendered` when it is present and renders through `site.markdown` otherwise. Called by `bookPayload`. |
+
+### `book-payload.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `packBookPayload` | `({ pages, staticFiles, site, highlightCss, check, skip }) → SharedArrayBuffer` | Packs what `writePdf` reads into one buffer: a projection of each page, `bookData` with every page reference replaced by `{ $page: i }` (the page's index in `pages`), the static-file inventory, the config, the build information, `highlightCss` and `check`. With `skip` it packs `{ skip: true }`. |
+| `unpackBookPayload` | `(sab) → { pages, staticFiles, site, highlightCss, check } \| null` | The arguments `writePdf` takes, with each `{ $page: i }` resolved to the object `pages[i]`, or `null` when the payload says to write no PDF tree. Runs on the worker. |
 
 ### `build-info.mjs`
 
@@ -767,10 +805,14 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `PLACEHOLDER_RE` | `RegExp` | Matches a `{{tbdocs:<name>}}` placeholder and captures the name. Used by the `substitute` helper that `countPlugin` calls, and by `findCountRefs` to locate placeholders in a page's raw markdown. |
+| `PLACEHOLDER_RE` | `RegExp` | Matches a `{{tbdocs:<name>}}` or `{{tbdocs:<name>:<argument>}}` placeholder and captures the name and the argument. Used by the `substitute` helper that `countPlugin` calls, and by `findCountRefs` to locate placeholders in a page's raw markdown. |
 | `deriveCounts` | `(state, extra) → Record<string, number>` | Derives every named count from build state: page, static-file, reference-page and documentation-page totals, folder-style reference indexes and how many of them have a permalink ending in a slash, packages (total, default, built-in), attribute anchors, enumerations, and `extra.redirectStubs`. Called by `markdownInit` to build `state.site.counts`, whose keys are the names a page may use. |
 | `countPlugin` | `(md, ctx) → void` | A markdown-it plugin, the last one `createMarkdownIt` applies. Substitutes each `{{tbdocs:<name>}}` placeholder in prose and image alt text with the value `ctx.counts` holds under that name, and leaves an unknown name as written; code spans and fences are untouched. Its core rule is pushed last, so it runs after `replacements`. Does nothing when `ctx.counts` is absent. |
-| `findCountRefs` | `(rawContent, md) → { name, line }[]` | Finds every `{{tbdocs:...}}` reference outside code in a page's raw source, masking code with `maskCode` from `lib/markdown.mjs` and the site's markdown-it instance `md`, as the pre-render rewrites do. `line` is 1-based in `rawContent`, counted with the code put back (a masked fence is one line). Called by `validateCountNames` for each page. |
+| `findCountRefs` | `(rawContent, md) → { name, arg, line }[]` | Finds every `{{tbdocs:...}}` reference outside code in a page's raw source, masking code with `maskCode` from `lib/markdown.mjs` and the site's markdown-it instance `md`, as the pre-render rewrites do. `line` is 1-based in `rawContent`, counted with the code put back (a masked fence is one line). Called by `validateCountNames` for each page. |
+| `checkPlaceholders` | `(pages, counts, downloads, md) → { problems, sizes }` | `validateCountNames` for all placeholders: also refuses a `size` whose path the build does not publish or cannot size before render (`downloads.refused`, which names the help add-in's project, stylesheets and SVGs), a `size` without a path, an argument on a name that takes none, and either download placeholder when `downloads` is `null`. `sizes` holds the bytes of each file named, which is all the workers are sent. |
+| `deriveDownloads` | `(state, { tests, addinDest }) → { files, refused, tests }` | The sizes known before render: the static files discover found (the `bundle_extra` files among them) and the packed package test projects (`tests`, from `packTests`), and the paths that are published but cannot be sized, each with its reason. |
+| `expandDownloadPlaceholders` | `(src, downloads, permalink) → string` | Expands `{{tbdocs:size:<site path>}}` as `43 KB` or `1.2 MB`, and `{{tbdocs:packageTestRows}}` as one table row for each package test project, with links relative to `permalink`. `applyPreRenderRewrites` calls it on the source with code masked, using the `downloads` the page's `md` carries. |
+| `formatSize` | `(bytes) → string` | Whole KB (1024-based, at least 1) below a mebibyte, MB with one decimal from there. |
 | `validateCountNames` | `(pages, counts, md) → string[]` | Checks every page's count references against the known `counts` names via `findCountRefs`. Returns one message per unknown reference, giving the file and line (the reference's line in `rawContent`, moved down by the page's `contentLine`), the nearest known name when one is within an edit distance of three, and every known name. Empty when every reference is known. `markdownInit` throws when the result is non-empty. |
 | `findSurvivingPlaceholder` | `(html) → string\|null` | Scans rendered HTML, outside `<code>` and `<pre>`, for a `{{tbdocs:...}}` placeholder that survived rendering; returns the first or `null`. `renderPhase` in `render.mjs` calls it after each page renders and throws on a survivor. |
 
@@ -895,7 +937,7 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | Symbol | Signature | Description |
 |---|---|---|
 | `addinProjectOf` | `(config) → { src, dest } \| null` | The download `_config.yml`'s `addin_project` declares, `dest` without a leading slash; `null` unless both ends are given. |
-| `packAddinProject` | `({ dir, symbols }) → Promise<{ bytes, files, untracked }>` | Packs the files `git ls-files` lists in `dir`, as the working folder holds them, less `Resources/HELP/`, with CRLF made LF outside `Resources/`, and `symbols` in place of `Resources/SYMBOLS/symbols.json` when given. Stages them in a temporary folder and packs it with `importProject` from `scripts/impexp.mjs`. `untracked` lists the files git does not track that were left out. Throws when git fails or tracks no `Settings`. |
+| `packAddinProject` | `({ dir, symbols }) → Promise<{ bytes, files, untracked }>` | Packs the files `git ls-files` lists in `dir`, as the working folder holds them, less `Resources/HELP/`, with CRLF made LF outside `Resources/`, and `symbols` in place of `Resources/SYMBOLS/symbols.json` when given. Packs them in memory with `packFiles` from `scripts/impexp.mjs`, which gives the bytes `importProject` would give for the same files in a folder. `untracked` lists the files git does not track that were left out. Throws when git fails or tracks no `Settings`. |
 | `writeAddinProject` | `({ dir, symbols, roots, rel }) → Promise<{ rel, bytes, files, untracked, roots, ms }>` | Packs once and writes the file at `rel` in each of `roots`. |
 | `formatAddinProject` | `(result, dirLabel, indent) → string` | The line `runBuild` prints, and a second naming any untracked file left out. |
 
@@ -937,7 +979,7 @@ Pure-compute rewrite helpers, split from `offline.mjs` so `cpu-worker.mjs` can i
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `writePdf` | `(pages, staticFiles, site, destRoot, { tolerateMissingImages?, highlightCss }) → Promise<stats>` | Writes the `_site-pdf/` source tree: `book.html` + `tb-highlight.css` + `print.css` + referenced images. |
+| `writePdf` | `(pages, staticFiles, site, destRoot, { tolerateMissingImages?, highlightCss, check? }) → Promise<stats>` | Writes the `_site-pdf/` source tree: `book.html` + `tb-highlight.css` + `print.css` + referenced images. Runs on a worker, on the arguments `unpackBookPayload` returns. With `check` the stats also hold the book HTML and the tree's file list, which the worker keeps for `checkBook`. |
 
 ### `scheduler.mjs`
 
@@ -950,7 +992,7 @@ Pure-compute rewrite helpers, split from `offline.mjs` so `cpu-worker.mjs` can i
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `WorkerPool` | class | Constructor: `(size, workerUrl)`. Methods: `sendInit(sab, ctx)` (broadcasts the init message; increments `_buildCount`), `broadcastDynamicData(payloadSAB, sharedSAB)`, `destroy()`. Public fields: `bootTimings[]`, `_buildCount` (read by `runBuild` to detect serve-mode rebuilds). The caller sets the callbacks (`onWorkerDone`, `onWorkerError`, `onPerWorkerTiming`, `onMainTaskReady`). |
+| `WorkerPool` | class | Constructor: `(size, workerUrl)`. Methods: `sendInit(sab, ctx)` (broadcasts the init message; increments `_buildCount`), `broadcastDynamicData(payloadSAB, sharedSAB)`, `broadcastTaskData(key, sab)` (posts one main-thread task's output to every lane, for the worker task that follows it; the handler reads it with `taskData(key)`), `destroy()`. Public fields: `bootTimings[]`, `_buildCount` (read by `runBuild` to detect serve-mode rebuilds). The caller sets the callbacks (`onWorkerDone`, `onWorkerError`, `onPerWorkerTiming`, `onMainTaskReady`). |
 
 ### `cpu-worker.mjs`
 
@@ -967,6 +1009,9 @@ The handler table is built from the imported `HANDLERS` constant:
 | `dot` | `dot.mjs` | `regenerateDot` over `srcRoot`. |
 | `buildInfo` | `build-info.mjs` | `captureBuildInfo`. |
 | `render` | inline | Five-stage chunk render: `renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`. |
+| `helpArchive` | `help-archive-step.mjs` | `helpArchiveStep` over the offline tree; reads `skipOffline` from the shared payload through `sharedData()`. |
+| `writePdf` | `pdf.mjs` | Waits for the `"book"` task data, unpacks it with `unpackBookPayload`, writes the PDF tree and keeps the book for `checkBook`. |
+| `checkBook` | inline | `checkChunk` over the book `writePdf` kept on this lane; `null` without `--check`. |
 
 ### `sab-scheduler.mjs`
 

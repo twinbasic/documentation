@@ -68,6 +68,16 @@ export class WorkerPool {
     }
   }
 
+  // One main-thread task's data for a worker task that follows it. Posted
+  // before the main task is marked done, so it is queued on every lane
+  // before any lane can claim the successor; the handler waits for it
+  // (cpu-worker.mjs's taskData).
+  broadcastTaskData(key, sab) {
+    for (const w of this._workers) {
+      w.postMessage({ taskData: key, sab });
+    }
+  }
+
   destroy() {
     return Promise.all(this._workers.map((w) => w.terminate()));
   }

@@ -12,15 +12,14 @@
 // landing page say how). So the download holds only the documentation's own code, the shared
 // Expect.twin and the package's cases and RunAll module, under the repository's licence.
 //
-// The pack is impexp's own importProject, in process, as for the add-in's project
-// (addin-project.mjs). Line ends are LF in the staged files, which impexp packs with CRLF, so a
+// The pack is impexp's own packFiles, in memory, as for the add-in's project
+// (addin-project.mjs). Line ends are LF in the files, which impexp packs with CRLF, so a
 // Windows and a Linux checkout write the same bytes.
 
 import { promises as fs } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { downloadName, packageTestNames, templateSettings, testSettings, testSources } from "../lib/package-tests.mjs";
-import { importProject } from "../scripts/impexp.mjs";
+import { packFiles } from "../scripts/impexp.mjs";
 import { posix } from "./paths.mjs";
 
 /**
@@ -47,42 +46,45 @@ export function packageTestRels(cfg) {
 
 /** One package's project file, in memory. */
 export async function packPackageTests(cfg, pkg) {
-  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "package-tests-"));
-  try {
-    const stage = path.join(tmp, `${pkg}Tests`);
-    await fs.mkdir(path.join(stage, "Sources"), { recursive: true });
-    const settings = testSettings(templateSettings(cfg.templates, pkg), pkg);
-    await fs.writeFile(path.join(stage, "Settings"), `${JSON.stringify(settings, null, "\t")}\n`, "utf8");
-    for (const f of testSources(cfg.src, pkg)) {
-      const out = path.join(stage, "Sources", ...f.name.split("/"));
-      await fs.mkdir(path.dirname(out), { recursive: true });
-      await fs.writeFile(out, f.text, "utf8");
-    }
-    const out = path.join(tmp, "project.twinproj");
-    importProject(out, stage);
-    return await fs.readFile(out);
-  } finally {
-    await fs.rm(tmp, { recursive: true, force: true });
-  }
+  const settings = testSettings(templateSettings(cfg.templates, pkg), pkg);
+  const files = [{ rel: "Settings", bytes: Buffer.from(`${JSON.stringify(settings, null, "\t")}\n`, "utf8") }];
+  for (const f of testSources(cfg.src, pkg))
+    files.push({ rel: `Sources/${f.name}`, bytes: Buffer.from(f.text, "utf8") });
+  return packFiles(files, `${pkg}Tests`).bytes;
 }
 
 /**
- * Pack every package's test project and write it into the online tree.
+ * Pack every package's test project, in memory. The build does this before any page renders, so
+ * that a page can state a download's size ({{tbdocs:size:...}}, counts.mjs), and the
+ * packageTests task writes these same bytes.
+ *
+ * @returns {Promise<{packed: {pkg: string, rel: string, bytes: Buffer}[], ms: number}>}
+ */
+export async function packAllPackageTests(cfg) {
+  const t0 = Date.now();
+  const packed = [];
+  for (const pkg of packageTestNames(cfg.src)) {
+    const rel = `${cfg.dest}/${pkg}/${downloadName(pkg)}`;
+    packed.push({ pkg, rel, bytes: await packPackageTests(cfg, pkg) });
+  }
+  return { packed, ms: Date.now() - t0 };
+}
+
+/**
+ * Write what packAllPackageTests packed into the online tree.
  *
  * @returns {Promise<{written: {rel: string, bytes: number}[], ms: number}>}
  */
-export async function writePackageTests(cfg, root) {
+export async function writePackageTests({ packed, ms: packMs }, root) {
   const t0 = Date.now();
   const written = [];
-  for (const pkg of packageTestNames(cfg.src)) {
-    const rel = `${cfg.dest}/${pkg}/${downloadName(pkg)}`;
-    const bytes = await packPackageTests(cfg, pkg);
+  for (const { rel, bytes } of packed) {
     const out = path.join(root, ...rel.split("/"));
     await fs.mkdir(path.dirname(out), { recursive: true });
     await fs.writeFile(out, bytes);
     written.push({ rel, bytes: bytes.length });
   }
-  return { written, ms: Date.now() - t0 };
+  return { written, ms: packMs + Date.now() - t0 };
 }
 
 /** The build's line for the task's result. */

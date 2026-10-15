@@ -756,26 +756,34 @@ function renderPartDivider(part, partNum, site) {
     const closedAttr = part.outline_closed ? ` data-pdf-bookmark-closed` : ``;
     out += `  <h1 id="pt-${partNum}-title"${closedAttr}>${part.title}</h1>`;
   }
-  if (part.subtitle) {
-    // book.html line 111-112: subtitle | markdownify | remove '<p>'
-    // | remove '</p>' | strip. Inline render via the markdown-it
-    // instance Phase 3 stashed on site.markdown.
-    const md = site.markdown;
-    if (!md) {
-      throw new Error("Phase 8: site.markdown is unset; Phase 3 didn't run before assembleBook.");
-    }
-    const renderedSubtitle = md.render(String(part.subtitle)).replaceAll("<p>", "").replaceAll("</p>", "").trim();
-    out += `\n  <p class="part-subtitle">${renderedSubtitle}</p>`;
-  }
-  if (part.intro) {
-    const md = site.markdown;
-    if (!md) {
-      throw new Error("Phase 8: site.markdown is unset; Phase 3 didn't run before assembleBook.");
-    }
-    out += `\n  <div class="part-intro">${md.render(String(part.intro))}</div>`;
-  }
+  const { subtitleHtml, introHtml } = part._rendered ?? renderPartText(part, site.markdown);
+  if (subtitleHtml !== undefined) out += `\n  <p class="part-subtitle">${subtitleHtml}</p>`;
+  if (introHtml !== undefined) out += `\n  <div class="part-intro">${introHtml}</div>`;
   out += `\n</article>`;
   return out;
+}
+
+// A part's subtitle and intro as HTML. book.html line 111-112: subtitle |
+// markdownify | remove '<p>' | remove '</p>' | strip; the intro is rendered
+// whole. Through the markdown-it instance Phase 3 stashed on site.markdown.
+function renderPartText(part, md) {
+  const out = {};
+  if (!part.subtitle && !part.intro) return out;
+  if (!md) {
+    throw new Error("Phase 8: site.markdown is unset; Phase 3 didn't run before assembleBook.");
+  }
+  if (part.subtitle) {
+    out.subtitleHtml = md.render(String(part.subtitle)).replaceAll("<p>", "").replaceAll("</p>", "").trim();
+  }
+  if (part.intro) out.introHtml = md.render(String(part.intro));
+  return out;
+}
+
+// Renders every part's subtitle and intro into `part._rendered`, for an
+// assembly that has no markdown-it instance: the book is assembled on a
+// worker, and markdown-it cannot cross the thread boundary.
+export function prerenderPartText(bookData, md) {
+  for (const part of bookData?.parts ?? []) part._rendered = renderPartText(part, md);
 }
 
 // PLAN-8 §6.9: chapter divider matches book.html lines 218-227.

@@ -26,7 +26,7 @@ Once you've added the package references, you should find that the WebView2 cont
 
 We use the WebView2 control just like any ordinary control:
 
-![Animation of a WebView2 control being drawn onto a blank form in the designer](Images/tbWebView2InAForm.gif){:width="1000" height="530"}
+![Animation of a WebView2 control being drawn onto a blank form in the designer](Images/tbWebView2InAForm.webp){:width="1000" height="530"}
 
 ## WebView2 control properties
 

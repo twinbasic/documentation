@@ -1,0 +1,15 @@
+' [RunAfterBuild] on a generic Sub is accepted and builds with no diagnostic. The DEBUG CONSOLE says
+' it is executing the Sub, but its body never runs: "built" is not printed. (The compiler does count
+' the Sub: a second [RunAfterBuild] in the project is TB5114.) Without (Of T), "built" is printed.
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+    [RunAfterBuild]
+    Public Sub Built(Of T)()
+        Debug.Cls
+        Debug.Print "built"
+    End Sub
+
+End Module

@@ -35,4 +35,5 @@ export default [
   { file: "memory.test.mjs" },
   { file: "debugging.test.mjs" },
   { file: "forms.test.mjs" },
+  { file: "vb6-import.test.mjs" },
 ];

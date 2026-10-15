@@ -203,7 +203,7 @@ compared before and after:
 | harness | The `examples.bat` summary unchanged (1,129 samples as of 2026-09-25) and `addin-test.bat` green, against the local BETA 983. Never two harness runs at once. |
 | book | Page count, outline and extracted text unchanged; the PDF's bytes include timestamps. From C66, `check_pdf_shims_equiv.mjs`, which compares the shimmed pdf-lib with stock, is the oracle for the shims. |
 | command lines | From C47, `check_cli.mjs`'s recorded cases: each migrated tool's exit code, stream and message for the invocations that stop during argument parsing. |
-| CI | For a commit that changes a workflow or the composite action: a dispatch of `checks.yml` on `origin`, and the deploy workflow's own run on the next push of `staging`. A dispatch of the deploy workflow cuts a GitHub release, so it is not a test. Pushing is the owner's call, so these commits wait for it. |
+| CI | For a commit that changes a workflow or the composite action: a dispatch of `checks.yml` on `origin`, and the deploy workflow's own run on the next push of `staging`. A dispatch of the deploy workflow publishes a GitHub release, so it is not a test. Pushing is the owner's call, so these commits wait for it. |
 
 ## Execution
 
@@ -303,7 +303,7 @@ is implemented.
    include the case a review-worded pin would miss: exact also where a new version would
    change a gate's verdict on unchanged code, which is why Biome is pinned exact though it
    patches nothing.
-6. **A dispatch of the deploy workflow is not a test.** It cuts a GitHub release; folded into
+6. **A dispatch of the deploy workflow is not a test.** It publishes a GitHub release; folded into
    the Oracles table's CI row.
 7. **The command-line defects are fixed before `cli.mjs` exists (L1-2, L1-3, A7-5).** The
    review's fix for each is the shared module, but decision (e) makes Phase 2 change no

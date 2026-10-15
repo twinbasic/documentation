@@ -77,7 +77,7 @@ End Property
 
 [**Ambient**](#ambient) exposes the host's ambient properties (the colours, font, locale, and design/run-mode flags the host wants child controls to honour). Changes to any of those raise the [**AmbientChanged**](#ambientchanged) event with the name of the affected property.
 
-[**Verbs**](#verbs) and [**VerbInvoked**](#verbinvoked) let the control register host-invokable commands (entries that appear on the host's context menu for the control). [**PropertyPages**](#propertypages) registers the **CLSID**s of additional [**PropertyPage**](../PropertyPage) classes that the host should offer through the property browser.
+[**Verbs**](#verbs) and [**VerbInvoked**](#verbinvoked) let the control register host-invokable commands (entries that appear on the host's context menu for the control). [**PropertyPages**](#propertypages) names the [**PropertyPage**](../PropertyPage) classes that the host should offer through the property browser.
 
 ## Drawing surface
 
@@ -464,15 +464,22 @@ Whether the [**PreKeyDown**](#prekeydown) and [**PreKeyUp**](#prekeyup) events a
 ### PropertyPages
 {: .no_toc }
 
-An array of **String** **CLSID**s identifying the [**PropertyPage**](../PropertyPage) classes the host should offer through the **(Custom)** entry on the property browser. Read at the host's `ISpecifyPropertyPages::GetPages` call. Order matters --- the array order is the tab order in the property-sheet dialog.
+An array of **String**s naming the [**PropertyPage**](../PropertyPage) classes of the project that the host should offer through the **(Custom)** entry on the property browser. Each element is a class name, as **Add Windows PropertyPage** created it; a name that matches no property page is skipped. Read at the host's `ISpecifyPropertyPages::GetPages` call. Order matters --- the array order is the tab order in the property-sheet dialog.
 
 ```tb check_build
 Private Sub UserControl_Initialize()
     ReDim PropertyPages(0 To 1)
-    PropertyPages(0) = "{<clsid-of-the-general-page>}"
-    PropertyPages(1) = "{<clsid-of-the-colour-page>}"
+    PropertyPages(0) = "GeneralPage"
+    PropertyPages(1) = "ColourPage"
 End Sub
 ```
+
+To tie a single property to a page, use the [**PropertyPage**](../../../Core/Attributes#propertypage) attribute.
+
+<!-- The VB package's ISpecifyPropertyPages_GetPages (BETA 1005) passes each
+     element to RuntimeGetPropertyPageClsidByName and skips one it cannot find;
+     an OCX built with PropertyPages = Array("MyPage", "NoSuchPage") returned one
+     page, MyPage's [ClassId]. -->
 
 ### Public
 {: .no_toc }

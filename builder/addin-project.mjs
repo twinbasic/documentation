@@ -34,18 +34,18 @@
 // same bytes, and impexp writes no time and sorts every folder, so two builds
 // of one tree do too.
 //
-// The pack is impexp's own importProject, in process, as the harness packs
-// (scripts/lib/tb-project.mjs): never the compiler executable, never Python.
+// The pack is impexp's own packFiles, in memory: the files never touch the
+// disk, as importProject would need them to (the harness packs with it,
+// scripts/lib/tb-project.mjs). Never the compiler executable, never Python.
 // impexp.mjs is the one module under scripts/ the builder may import
 // (biome.jsonc): it depends on nothing, it is a build input already, published
 // through bundle_extra, and check_tree_fresh.mjs watches it.
 
 import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { importProject } from "../scripts/impexp.mjs";
+import { packFiles } from "../scripts/impexp.mjs";
 import { posix } from "./paths.mjs";
 
 const exec = promisify(execFile);
@@ -123,24 +123,11 @@ export async function packAddinProject({ dir, symbols, archive = null }) {
   }
   if (archive) files.push({ rel: ARCHIVE_IN_PROJECT, bytes: archive });
 
-  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "addin-project-"));
-  try {
-    const stage = path.join(tmp, path.basename(dir));
-    for (const f of files) {
-      const p = path.join(stage, ...f.rel.split("/"));
-      await fs.mkdir(path.dirname(p), { recursive: true });
-      await fs.writeFile(p, f.bytes);
-    }
-    const out = path.join(tmp, "project.twinproj");
-    importProject(out, stage);
-    return {
-      bytes: await fs.readFile(out),
-      files: files.map((f) => f.rel),
-      untracked: untracked.filter((rel) => !isHelp(rel)),
-    };
-  } finally {
-    await fs.rm(tmp, { recursive: true, force: true });
-  }
+  return {
+    bytes: packFiles(files, path.basename(dir)).bytes,
+    files: files.map((f) => f.rel),
+    untracked: untracked.filter((rel) => !isHelp(rel)),
+  };
 }
 
 /**

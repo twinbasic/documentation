@@ -90,22 +90,10 @@ The [**IDE section**](tB/IDE) documents the [code editor and the panels beside i
   - [Create a Custom ActiveX Control with twinBASIC](https://nolongerset.com/create-activex-control-with-twinbasic/)
   - [Create a Tool Window in the VBIDE with twinBASIC](https://nolongerset.com/create-a-vbe-addin-with-twinbasic/)
 
-## Reading offline, and the PDF book
+## Reading offline
 
-Everything on this site is also published in two forms you can keep, both attached to the
-[documentation releases](https://github.com/twinbasic/documentation/releases) on GitHub:
-
-- **`twinbasic-docs-offline.zip`** --- the whole site, browsable with no server and no
-  network. Extract it anywhere and open `index.html` in any browser; links, navigation,
-  dark mode and the search box all work.
-- **`twinBASIC Book.pdf`** --- the complete reference as one PDF with bookmarks for every
-  section. It is A4 and runs to a little under 2,000 pages, so it suits a tablet or a
-  printer better than a small e-reader.
-
-Releases are cut on demand rather than on every change, so check the date against what
-you need; this site is always current. If the newest release is older than you want,
-you can build both yourself from the repository --- see
-[Building and Deployment](Documentation/Development/Building).
+This whole site is also available as a PDF book and as an offline copy that opens in any
+browser: see [**Read offline**](Downloads#read-offline) on the Downloads page.
 
 ## Contributing to the documentation
 

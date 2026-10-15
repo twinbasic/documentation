@@ -4,7 +4,9 @@
 ' a local build of the documentation. A path is found as GitHub Pages finds it:
 ' /a/b is a/b.html, or a redirect to /a/b/ when a/b/index.html exists, and the
 ' query string is ignored. An entry the zip deflated is sent as it is, in a
-' gzip wrapper (Content-Encoding: gzip), so nothing is inflated here.
+' gzip wrapper (Content-Encoding: gzip), so nothing is inflated here. A file
+' the archive lacks is a redirect to the same path on the site (Fallback): the
+' archive leaves some sections and every download out, and pages link to them.
 '
 ' It listens on 127.0.0.1 and names itself http://localhost:<port>: a frame
 ' on 127.0.0.1 is missing from the IDE page's frame tree, where the help lane
@@ -91,6 +93,9 @@ Private Class HelpServer
     ' "http://127.0.0.1:<port>" while serving, else "".
     Public Origin As String
     Public FileCount As Long
+    ' The site a file the archive lacks is redirected to, with no trailing
+    ' slash; "" answers it with the archive's 404 page.
+    Public Fallback As String
 
     ' Starts serving and returns what it serves, for the DEBUG CONSOLE, or ""
     ' when the add-in has no archive. Origin stays "" unless it is serving.
@@ -350,8 +355,11 @@ Private Class HelpServer
                 Return Reply("301 Moved Permanently", -1, headOnly, target & "/" & query)
             End If
         End If
-        If i < 0 Then Return Reply("404 Not Found", Lookup("404.html"), headOnly)
-        Return Reply("200 OK", i, headOnly)
+        If i >= 0 Then Return Reply("200 OK", i, headOnly)
+        ' A page or a download the archive leaves out (the build's
+        ' HELP_ARCHIVE_SKIP), or a file newer than it, is on the site.
+        If Len(Fallback) > 0 Then Return Reply("302 Found", -1, headOnly, Fallback & target & query)
+        Return Reply("404 Not Found", Lookup("404.html"), headOnly)
     BadRequest:
         Return Reply("400 Bad Request", -1, False)
     End Function

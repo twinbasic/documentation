@@ -62,11 +62,39 @@
 //
 // A name with no uses is fine and is not reported. Names are cheap; the
 // registry is allowed to offer more than the prose currently asks for.
+//
+// ------------------------------------------------------ the download pages
+//
+// Two placeholders are not numbers from `deriveCounts` but text the Downloads
+// page needs, and both sit where the inline rule cannot reach: in a raw HTML
+// block, and as a line of a markdown table.
+//
+//   {{tbdocs:size:<site path>}}   the size of a file the online tree
+//                                 publishes, as `43 KB` or `1.2 MB`
+//   {{tbdocs:packageTestRows}}    one table row for each contributed package's
+//                                 test project: name, download, size
+//
+// So `expandDownloadPlaceholders` expands them in the page's source, between
+// `maskCode` and its `restore` (render.mjs, applyPreRenderRewrites), where code
+// is already hidden. Their values are settled before any page renders, because
+// the test projects are packed first (tbdocs.mjs, packTests) and the packageTests
+// task writes those same bytes. `checkPlaceholders` is `validateCountNames` for
+// them: it rejects, naming the file and the line, a path the build does not
+// publish or whose size cannot be known before render. The help add-in's
+// project is the deliberate case: it embeds the offline tree, which holds every
+// page that states a size, so its size would depend on itself.
 
+import path from "node:path";
 import { blockRegions, maskCode } from "../lib/markdown.mjs";
 import { CODE_OR_PRE } from "./code-guard.mjs";
 
-export const PLACEHOLDER_RE = /\{\{tbdocs:([A-Za-z][A-Za-z0-9]*)\}\}/g;
+// The optional `:<argument>` is a site path for `size`; a count name takes none.
+export const PLACEHOLDER_RE = /\{\{tbdocs:([A-Za-z][A-Za-z0-9]*)(?::([^\s{}]+))?\}\}/g;
+
+const SIZE_NAME = "size";
+const ROWS_NAME = "packageTestRows";
+// What a placeholder may name besides a count, for the "available" line of the error.
+const DOWNLOAD_NAMES = [`${SIZE_NAME}:<site path>`, ROWS_NAME];
 
 // ---------------------------------------------------------------- registry
 //
@@ -233,7 +261,9 @@ export function countPlugin(md, ctx) {
 }
 
 function substitute(text, counts) {
-  return text.replace(PLACEHOLDER_RE, (whole, name) => (Object.hasOwn(counts, name) ? String(counts[name]) : whole));
+  return text.replace(PLACEHOLDER_RE, (whole, name, arg) =>
+    arg === undefined && Object.hasOwn(counts, name) ? String(counts[name]) : whole,
+  );
 }
 
 // -------------------------------------------------------------- validation
@@ -249,13 +279,16 @@ function substitute(text, counts) {
  * `line` is 1-based in `rawContent`. It is counted with the code put back,
  * because a masked fence is one line however many it holds.
  *
- * @returns {{name: string, line: number}[]}
+ * `arg` is the text after the name's colon, or undefined.
+ *
+ * @returns {{name: string, arg: string|undefined, line: number}[]}
  */
 export function findCountRefs(rawContent, md) {
+  if (!rawContent.includes("{{tbdocs:")) return [];
   const { masked, restore } = maskCode(rawContent.replace(/\r\n?/g, "\n"), { md });
   const out = [];
   for (const m of masked.matchAll(PLACEHOLDER_RE)) {
-    out.push({ name: m[1], line: restore(masked.slice(0, m.index)).split("\n").length });
+    out.push({ name: m[1], arg: m[2], line: restore(masked.slice(0, m.index)).split("\n").length });
   }
   return out;
 }
@@ -297,31 +330,167 @@ function editDistance(a, b) {
  * A message names the line of the file, not of `rawContent`: the page's
  * `contentLine`, from `discover`, says where its content starts.
  *
- * @returns {string[]} one message per bad reference; empty means clean
+ * It also checks the two download placeholders against `downloads` (from
+ * `deriveDownloads`; null when the caller has none, which makes them errors) and
+ * returns the size of each file a `size` placeholder names, for the render
+ * workers.
+ *
+ * @returns {{problems: string[], sizes: Record<string, number>}} one message per
+ *   bad reference, empty meaning clean; and the bytes of each file named
  */
-export function validateCountNames(pages, counts, md) {
-  const names = Object.keys(counts).sort();
+export function checkPlaceholders(pages, counts, downloads, md) {
+  const names = [...Object.keys(counts), ...DOWNLOAD_NAMES].sort();
   const problems = [];
+  const sizes = {};
   for (const p of pages) {
-    for (const { name, line } of findCountRefs(p.rawContent ?? "", md)) {
-      if (Object.hasOwn(counts, name)) continue;
-      const guess = nearest(name, names);
-      problems.push(
-        `${p.srcRel}:${line + (p.contentLine ?? 1) - 1}\n` +
-          `  unknown count name {{tbdocs:${name}}}\n` +
-          (guess ? `  did you mean: ${guess}?\n` : "") +
-          `  available: ${names.join(", ")}`,
-      );
+    for (const { name, arg, line } of findCountRefs(p.rawContent ?? "", md)) {
+      const where = `${p.srcRel}:${line + (p.contentLine ?? 1) - 1}`;
+      const refuse = (reason) => problems.push(`${where}\n  {{tbdocs:${name}${arg ? `:${arg}` : ""}}}: ${reason}`);
+      if (name === SIZE_NAME) {
+        if (!arg) refuse("a size needs the site path of a file: {{tbdocs:size:<site path>}}");
+        else if (!downloads) refuse("this build has no downloads to state sizes of");
+        else {
+          const rel = arg.replace(/^\/+/, "");
+          const bytes = downloads.files.get(rel);
+          if (bytes !== undefined) sizes[arg] = bytes;
+          else refuse(downloads.refused.get(rel) ?? notPublished(rel, downloads));
+        }
+      } else if (name === ROWS_NAME) {
+        if (arg) refuse("takes no argument");
+        else if (!downloads) refuse("this build has no downloads to list");
+      } else if (Object.hasOwn(counts, name)) {
+        if (arg) refuse("a count name takes no argument");
+      } else {
+        const guess = nearest(name, names);
+        problems.push(
+          `${where}\n` +
+            `  unknown count name {{tbdocs:${name}}}\n` +
+            (guess ? `  did you mean: ${guess}?\n` : "") +
+            `  available: ${names.join(", ")}`,
+        );
+      }
     }
   }
-  return problems;
+  return { problems, sizes };
+}
+
+/** `checkPlaceholders` for a caller with no downloads: the problems alone. */
+export function validateCountNames(pages, counts, md) {
+  return checkPlaceholders(pages, counts, null, md).problems;
+}
+
+// A path no file answers to: say what the build does publish, and name a file of that name
+// elsewhere, the usual slip.
+function notPublished(rel, downloads) {
+  const base = path.posix.basename(rel);
+  const same = [...downloads.files.keys()].filter((k) => path.posix.basename(k) === base);
+  return (
+    `the build does not publish ${rel}; a size is known for the static files under docs/, the ` +
+    "bundle_extra files and the package test projects" +
+    (same.length ? `\n  did you mean: ${same.slice(0, 3).join(", ")}?` : "")
+  );
+}
+
+// -------------------------------------------------------------- downloads
+
+const HELP_ADDIN_REFUSAL =
+  "the help add-in's project embeds the offline tree, which holds this page, so its size depends " +
+  "on the size stated and cannot be known before render";
+const REGENERATED_REFUSAL =
+  "the build rewrites this file when it copies it or generates it after the pages are rendered, " +
+  "so its size cannot be known before render";
+
+/**
+ * What the download placeholders know, from build state.
+ *
+ * `files` holds the bytes of every file whose size is settled before any page renders: the
+ * static files discover found (the `bundle_extra` files among them), and the package test
+ * projects. `refused` holds the paths that are published but cannot be sized, with the reason.
+ *
+ * @param {object} state  scheduler state: needs `staticFiles`
+ * @param {object} extra
+ * @param {{dest: string, packed: {pkg: string, rel: string, bytes: Buffer}[]}|null} extra.tests
+ *   the packed test projects, and where the online tree has them
+ * @param {string|null} extra.addinDest  the help add-in's project file, which is refused
+ * @returns {{files: Map<string, number>, refused: Map<string, string>,
+ *   tests: {dest: string, packages: {pkg: string, rel: string, bytes: number}[]}}}
+ */
+export function deriveDownloads(state, { tests = null, addinDest = null }) {
+  const files = new Map();
+  const refused = new Map();
+  for (const f of state.staticFiles ?? []) {
+    const rel = f.destRel.replaceAll("\\", "/");
+    // A stylesheet has its url() paths rewritten for a base path as it is copied; an SVG may be
+    // one the dot task regenerates, which runs beside this.
+    if (/\.(css|svg)$/i.test(rel)) refused.set(rel, REGENERATED_REFUSAL);
+    else files.set(rel, f.size);
+  }
+  if (addinDest) refused.set(addinDest, HELP_ADDIN_REFUSAL);
+  const packages = (tests?.packed ?? []).map(({ pkg, rel, bytes }) => ({ pkg, rel, bytes: bytes.length }));
+  for (const t of packages) files.set(t.rel, t.bytes);
+  return { files, refused, tests: { dest: tests?.dest ?? "", packages } };
+}
+
+/** `43 KB` below a mebibyte (never less than 1 KB), `1.2 MB` from there. */
+export function formatSize(bytes) {
+  const kb = Math.max(1, Math.round(bytes / 1024));
+  return kb < 1024 ? `${kb} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+// `target`, a path under the site root, relative to the folder the page `permalink` is served
+// from -- which is how a relative link in the page resolves (WIP.Authoring.md, cross-section
+// linking). A trailing slash on `target` is kept.
+function linkFrom(permalink, target) {
+  const dir = String(permalink ?? "/").replace(/[^/]*$/, "");
+  const from = dir.split("/").filter(Boolean);
+  const to = target.split("/").filter(Boolean);
+  let common = 0;
+  while (common < from.length && common < to.length && from[common] === to[common]) common++;
+  const rel = [...from.slice(common).map(() => ".."), ...to.slice(common)].join("/");
+  return target.endsWith("/") ? `${rel}/` : rel;
+}
+
+/**
+ * Expand `{{tbdocs:size:<path>}}` and `{{tbdocs:packageTestRows}}` in a page's source, which
+ * the caller has already masked of code.
+ *
+ * `downloads` is the object the build hands the render workers: `sizes`, the bytes of each
+ * path the pages name, and `tests`, as `deriveDownloads` returns it. `checkPlaceholders` has
+ * rejected what cannot be expanded, so a miss here is a bug in the build and throws.
+ *
+ * @param {string} src
+ * @param {{sizes: Record<string, number>, tests: {dest: string, packages: object[]}}} downloads
+ * @param {string} permalink  the page's URL; the table rows' links are relative to it
+ */
+export function expandDownloadPlaceholders(src, downloads, permalink) {
+  if (!src.includes("{{tbdocs:")) return src;
+  return src.replace(PLACEHOLDER_RE, (whole, name, arg) => {
+    if (name === SIZE_NAME && arg !== undefined) {
+      const bytes = downloads.sizes[arg];
+      if (bytes === undefined)
+        throw new Error(`{{tbdocs:size:${arg}}} has no size; checkPlaceholders should have refused it`);
+      return formatSize(bytes);
+    }
+    if (name === ROWS_NAME && arg === undefined) {
+      const { dest, packages } = downloads.tests;
+      return packages
+        .map(({ pkg, rel, bytes }) => {
+          const file = path.posix.basename(rel);
+          const section = linkFrom(permalink, `${dest}/${pkg}/`);
+          const download = linkFrom(permalink, rel);
+          return `| [${pkg}](${section}) | <a href="${download}" download>${file}</a> | ${formatSize(bytes)} |`;
+        })
+        .join("\n");
+    }
+    return whole;
+  });
 }
 
 // Consumes <code>...</code> and <pre>...</pre> atomically in the leading
 // alternation (code-guard.mjs), so a placeholder the documentation is
 // deliberately SHOWING does not trip the assertion.
 const SURVIVING_PLACEHOLDER_RE = new RegExp(
-  String.raw`${CODE_OR_PRE.source}|(\{\{tbdocs:[A-Za-z][A-Za-z0-9]*\}\})`,
+  String.raw`${CODE_OR_PRE.source}|(\{\{tbdocs:[A-Za-z][A-Za-z0-9]*(?::[^\s{}]+)?\}\})`,
   "g",
 );
 

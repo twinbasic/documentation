@@ -48,6 +48,7 @@ import {
 } from "../lib/package-tests.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { createProbes } from "./lib/gate-probes.mjs";
+import { findCases, judgeCompiles } from "./lib/tb-tests.mjs";
 import {
   expectationFor,
   expectFrom,
@@ -124,6 +125,21 @@ const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
 const { check, report } = createProbes("check_package_tests", "see test/package-tests/README.md");
 
 // ---------------------------------------------------------------- probes
+
+{
+  // The compiler counts a lone CR as a line end (BETA 1005), so a compile case
+  // is numbered the same whichever of the three ends the lines above it.
+  const body = ["Module M", "    Sub S()", "        x = 1 ' CASE C1: TB5079", "    End Sub", "End Module"];
+  const lines = (eol) => findCases([{ name: "M.twin", text: body.join(eol) }]).compiles.map((c) => c.line);
+  const mixed = findCases([{ name: "M.twin", text: `${body[0]}\r${body[1]}\r\n${body.slice(2).join("\n")}` }]);
+  check(
+    "a compile case is on the same line after CRLF, LF, a lone CR or a mix of them",
+    [lines("\r\n"), lines("\n"), lines("\r"), mixed.compiles.map((c) => c.line)].every((l) => l.join() === "3"),
+    JSON.stringify([lines("\r\n"), lines("\n"), lines("\r"), mixed.compiles]),
+  );
+  const [judged] = judgeCompiles(mixed.compiles, ["{ERROR} /P/Sources/M.twin [3,9]: TB5079 Unrecognized symbol 'x'"]);
+  check("a compile case is judged by the diagnostic on its line", judged?.pass === true, JSON.stringify(judged));
+}
 
 {
   const page = [

@@ -9,6 +9,10 @@ import { parentPort, workerData } from "node:worker_threads";
 import { compileLightScss, compileDarkScss } from "./scss.mjs";
 import { regenerateDot } from "./dot.mjs";
 import { captureBuildInfo } from "./build-info.mjs";
+import { helpArchiveStep } from "./help-archive-step.mjs";
+import { writePdf } from "./pdf.mjs";
+import { unpackBookPayload } from "./book-payload.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 import { createMarkdownIt, renderPhase } from "./render.mjs";
 import { renderFullNav, templatePhase, withPartialNav } from "./template.mjs";
@@ -47,6 +51,16 @@ let ctx = null; // { srcRoot, destRoot, opts, workerCount }
 
 let _payloadSAB = null; // SharedArrayBuffer with packed per-task payloads
 let _sharedSAB = null; // SharedArrayBuffer with packed shared payload
+let _shared = null; // _sharedSAB decoded, once per lane
+
+// What dispatch broadcast. A task that reads it runs after dispatch, so the
+// SAB is here by then; renderEnvInit, which can be claimed earlier, waits
+// for it first.
+function sharedData() {
+  if (!_sharedSAB) throw new Error("the shared payload was read before dispatch broadcast it");
+  _shared ??= unpackShared(_sharedSAB);
+  return _shared;
+}
 
 // ── Handler table ───────────────────────────────────────────────────────────
 
@@ -78,7 +92,8 @@ const handlers = {
       vendoredImagesObj,
       pictureSizes,
       counts,
-    } = unpackShared(_sharedSAB);
+      downloads,
+    } = sharedData();
 
     const { initHighlighter } = await import("./highlight.mjs");
     const highlighter = await initHighlighter();
@@ -97,6 +112,7 @@ const handlers = {
       vendoredVideos,
       vendoredImages,
       counts,
+      downloads,
     });
     const site = { ...siteData, markdown, buildInfo };
 
@@ -199,6 +215,55 @@ const handlers = {
     return { buildInfo };
   },
 
+  // On a worker because it is the main thread's longest task after the
+  // pages are written, and it needs nothing from the main thread that
+  // dispatch has not already broadcast: it reads the offline tree from disk.
+  async helpArchive() {
+    const { skipOffline } = sharedData();
+    return helpArchiveStep({
+      src: path.relative(REPO_ROOT, ctx.srcRoot).replaceAll(path.sep, "/"),
+      offlineRoot: skipOffline ? null : `${ctx.destRoot}-offline`,
+      serve: !!ctx.opts.serve,
+      dryRun: !!ctx.opts.dryRun,
+      disabled: !!ctx.opts.skipHelpArchive,
+    });
+  },
+
+  // The PDF tree, from what bookPayload packed on the main thread. The book
+  // itself stays on this lane for checkBook rather than crossing back.
+  async writePdf() {
+    const book = unpackBookPayload(await taskData("book"));
+    _bookCheck = null;
+    if (!book) return null;
+    const { checkBook, ...counters } = await writePdf(book.pages, book.staticFiles, book.site, ctx.destRoot, {
+      tolerateMissingImages: ctx.opts.tolerateMissingImages,
+      highlightCss: book.highlightCss,
+      check: book.check,
+    });
+    _bookCheck = checkBook ?? null;
+    return counters;
+  },
+
+  // The book is one 6.5 MB document with almost entirely internal
+  // fragments, written by a different task from a different string.
+  // Keeping it its own pass is cheaper than special-casing the chunk
+  // path for a single file.
+  async checkBook() {
+    if (!_bookCheck) return null;
+    const { html, rels } = _bookCheck;
+    _bookCheck = null;
+    const { checkChunk, joinChunks, treeIndexFor, TREES } = await import("./check.mjs");
+    const root = ctx.destRoot + TREES.pdf.suffix;
+    const env = { root, tree: TREES.pdf, basePath: "", index: treeIndexFor(root, rels) };
+    let chunk;
+    try {
+      chunk = checkChunk([{ destPath: "book.html", html }], env);
+    } catch (err) {
+      chunk = { error: `book check failed: ${err.message}` };
+    }
+    return joinChunks([chunk], { root, tree: TREES.pdf, relFiles: ["book.html"] });
+  },
+
   async render(taskIdx) {
     const offset = Atomics.load(views.payloadOffset, taskIdx);
     const length = Atomics.load(views.payloadLength, taskIdx);
@@ -278,6 +343,16 @@ for (const [name, id] of Object.entries(HANDLERS)) handlerById[id] = handlers[na
 
 let _renderEnv = null;
 let _pendingFlush = [];
+let _taskData = new Map(); // key → SAB a main-thread task broadcast (broadcastTaskData)
+let _bookCheck = null; // writePdf's book for checkBook, which is pinned to the same lane
+
+// The data a main-thread predecessor broadcast for this task. The message
+// is queued before the predecessor is marked done, but this lane may still
+// be inside the pull loop that claimed the task, so yield until it lands.
+async function taskData(key) {
+  while (!_taskData.has(key)) await new Promise((resolve) => setImmediate(resolve));
+  return _taskData.get(key);
+}
 let _checkEnv = null; // set by renderEnvInit when --check is on
 let _checkChunk = null; // builder/check.mjs's checkChunk, imported with it
 
@@ -315,7 +390,7 @@ async function runChunkCheck(items) {
   return out;
 }
 
-// ── Message handler (init + dynamicData only) ───────────────────────────────
+// ── Message handler (init, dynamicData, taskData) ───────────────────────────
 
 parentPort.on("message", (msg) => {
   if (msg.init) {
@@ -323,15 +398,23 @@ parentPort.on("message", (msg) => {
     ctx = msg.ctx;
     _payloadSAB = null;
     _sharedSAB = null;
+    _shared = null;
     _renderEnv = null;
     _checkEnv = null;
     _pendingFlush = [];
+    _taskData = new Map();
+    _bookCheck = null;
     pullLoop();
     return;
   }
   if (msg.dynamicData) {
     _payloadSAB = msg.payloadSAB;
     _sharedSAB = msg.sharedSAB;
+    _shared = null;
+    return;
+  }
+  if (msg.taskData) {
+    _taskData.set(msg.taskData, msg.sab);
     return;
   }
 });

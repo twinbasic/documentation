@@ -59,6 +59,7 @@
     "/tB/Core/Attributes#populatefrom",
     "/tB/Core/Attributes#predeclaredid",
     "/tB/Core/Attributes#preservesig",
+    "/tB/Core/Attributes#propertypage",
     "/tB/Core/Attributes#redirecttostaticimplementation",
     "/tB/Core/Attributes#restricted",
     "/tB/Core/Attributes#runafterbuild",

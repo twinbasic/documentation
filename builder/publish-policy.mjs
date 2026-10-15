@@ -51,6 +51,7 @@ export const SOURCE_EXTENSIONS = new Set([
   ".png",
   ".svg",
   ".txt", // the three font licences under assets/fonts/
+  ".webp", // animations: a fraction of a GIF's size
   ".woff2",
 ]);
 

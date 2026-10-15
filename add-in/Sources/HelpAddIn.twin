@@ -193,9 +193,10 @@ Private Class HelpAddIn
 
     ' Serves the pages from the archive, when the add-in was built with one
     ' (HelpServer). The line it prints names the origin, which the scenarios
-    ' read.
+    ' read. A file the archive lacks is on the site.
     Private Sub StartServer()
         Set Server = New HelpServer
+        Server.Fallback = SiteUrl()
         Dim serving As String = Server.Start()
         If Len(serving) > 0 Then Host.DebugConsole.PrintText TAG & serving
         If Len(Server.Origin) = 0 Then Set Server = Nothing

@@ -1,0 +1,6 @@
+' A form holding one ListView, ListView1. The test cases load it and never show it.
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F01")]
+[PredeclaredId]
+Class Form1
+
+End Class

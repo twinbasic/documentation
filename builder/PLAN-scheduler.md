@@ -97,7 +97,10 @@ Visible idle time on the main thread:
   `markdown-init` → `seo` → `book` is the only true dependency edge.
 - `writeOffline` and `writePdf` are independent of each other; both
   read `_site/` (already written by `writePhase`) and write into
-  independent output trees. They run sequentially today.
+  independent output trees. They run sequentially today. (They still
+  do not overlap on the main thread, which awaits each main task before
+  it claims the next; the overlap comes from moving `writePdf` to a
+  worker. See §Phase 14 of PLAN-sab-pull-scheduler.md.)
 - `renderPhase` and `templatePhase` are CPU-bound and block the main
   thread completely. `Promise.all(pages.map(...))` is cooperative
   concurrency only -- it interleaves on a single thread.
@@ -212,7 +215,7 @@ The split:
 | `searchData` | M | ~40 ms; owns pages read |
 | `writeAux` | M | Owns pages + bookData reads |
 | `writeOffline` | M | I/O dominated (~1.1 s); see §Post-write tasks for the workerize-or-not call |
-| `writePdf` | M | I/O dominated (~240 ms); ditto |
+| `writePdf` | M | I/O dominated (~240 ms); ditto. Now **W**, behind a main `bookPayload` task (see §Tail of the graph) |
 | `buildInfo` | **W** | Free overlap with the main spine |
 | `scss` | **W** | ~700 ms -- the biggest seed-task parallelism win |
 | `mermaid` | **W** | ~2 ms idle, ~150 ms when SVGs regen; runs concurrently with discover |
@@ -310,11 +313,12 @@ Three structural wins over the serial baseline:
    Across N workers this compresses to ~`3500 / N + dispatch overhead`.
    On a 4-core box, ~875 ms wall-clock (saving ~2.6 s). On an 8-core
    box, ~440 ms (saving ~3 s). Dispatch overhead is ~50 ms.
-3. **`writeOffline` and `writePdf` overlap on async I/O.** Both stay
-   `runOnMain` initially -- they share the main thread for their CPU
-   sections but `await fs.writeFile`-style I/O windows interleave. The
-   gain is the shorter of their two CPU sections (~240 ms). See
-   §Post-write tasks for the case to workerize one of them later.
+3. **`writeOffline` and `writePdf` overlap.** The first design kept
+   both `runOnMain` and expected their I/O windows to interleave. They
+   do not: `Scheduler._mainScan` awaits each main task before it claims
+   the next, so main tasks run one at a time, in declaration order.
+   The overlap exists only since `writePdf` moved to a worker. See
+   §Tail of the graph.
 
 **Mermaid → staticFiles ordering.** Under the scheduler `mermaid` and
 `discover` run in parallel, so freshly-emitted SVGs aren't in
@@ -1254,7 +1258,8 @@ writeOffline: {
 },
 
 // writePdf depends on renderJoin + mermaid (CSS sourced directly).
-// It runs in parallel with write → searchData → writeAux → writeOffline.
+// It was meant to run in parallel with write → searchData → writeAux →
+// writeOffline; as a main task it could not (see §Tail of the graph).
 ```
 
 **Restoring the derive-time exports.** `redirects.mjs` /
@@ -1270,16 +1275,15 @@ to `p.frontmatter.layout !== "book-combined"` (the property that
 determines whether `html` will be set; known after discover) so the
 derive can run at any point after discover.
 
-**Workerizing writeOffline or writePdf (measured, declined).** Both
-phases have non-trivial CPU sections: writeOffline rewrites URLs
-across all 856 HTML files; writePdf assembles `book.html` via
-`assembleBook`. `writePdf` now depends only on `renderJoin` + `mermaid`
-(CSS is sourced directly, not from `_site/`), so it runs in parallel
-with the entire `write → searchData → writeAux → writeOffline` chain.
-Cooperative async concurrency on the main thread interleaves their I/O
-gaps. The structured-clone cost of shipping `pages[]` across the worker
-boundary (~37–65 ms) would be pure overhead. See §Phase 3-follow-up
-for the full measurement.
+**Workerizing writeOffline or writePdf (declined at the time; writePdf
+since done).** Both phases have non-trivial CPU sections: writeOffline
+rewrites URLs across all 856 HTML files; writePdf assembles `book.html`
+via `assembleBook`. `writePdf` now depends only on `renderJoin` +
+`mermaid` (CSS is sourced directly, not from `_site/`). The decision
+below rested on the belief that cooperative async concurrency on the
+main thread interleaves the two tasks' I/O gaps; it does not, because
+main tasks never overlap. `writePdf` is a worker task now; see
+§Tail of the graph.
 
 ## Timing / profiling
 
@@ -1363,7 +1367,7 @@ data lifetime across the worker boundary, or low-level serialisation.
 | 1. Seeds + main-thread spine | Sonnet | Each task body is a thin wrapper around an existing phase function. The scheduler core is copy-from-plan. All mutation is on the main thread (no cross-worker identity yet). |
 | 2. Render fan-out | Opus | Cross-thread structured-clone semantics, module-scope initialisation order, dynamic task registration, per-page delta-merge identity. Debugging concurrency bugs needs depth. |
 | 3. Post-write tasks | Sonnet | All `runOnMain`; thin wrappers around existing write functions. No new concurrency surface beyond the already-built scheduler. |
-| 3-follow-up. Workerize writeOffline | Opus (decided) | Profiled: zero CPU contention; cooperative async overlap is already optimal. Declined — no implementation needed. |
+| 3-follow-up. Workerize writeOffline | Opus (decided) | Declined at the time (see the section); `writePdf` was workerized later, see §Tail of the graph. |
 | 4. SAB broadcast | Opus | JSON + SAB approach; measured ~55% fan-out reduction (~8 ms saving). |
 
 Escalate to Opus mid-phase if a Sonnet session hits a debugging block
@@ -1501,29 +1505,35 @@ expected savings above within ±20%.
 **Suggested model:** Sonnet.
 
 Port `write`, `searchData`, `writeAux`, `writeOffline`, `writePdf` as
-`runOnMain` tasks. `writeOffline` and `writePdf` run in parallel on
-the main thread; the gain is the shorter of their two CPU sections
-(~240 ms) plus interleaved I/O.
+`runOnMain` tasks. The plan expected `writeOffline` and `writePdf` to
+run in parallel on the main thread, for a gain of the shorter of their
+two CPU sections (~240 ms) plus interleaved I/O. They run one after
+the other (see §Tail of the graph).
 
 `runBuild()` shrinks to: pool construction + `scheduler.start(ctx)` +
 summary output + `pool.destroy()`.
 
 **Expected savings:** ~240 ms (4.0 s → ~3.75 s on 4 cores).
 
-**Verification.** `build.bat && check.bat` clean. `writeOffline` and
-`writePdf` should overlap in the timing summary -- their `start`
-timestamps should be within a few ms of each other.
+**Verification.** `build.bat && check.bat` clean. (The plan said
+`writeOffline` and `writePdf` should overlap in the timing summary,
+with `start` timestamps within a few ms of each other; as main tasks
+they cannot. See §Tail of the graph.)
 
 ### Phase 3-follow-up: workerize writeOffline (optional) — DECLINED
 
-**Decision:** do not workerize. Profiling shows zero CPU contention.
+**Decision at the time:** do not workerize. The record below is kept
+as written. It no longer holds for the current scheduler, whatever the
+scheduler of the time did: `Scheduler._mainScan` awaits each main task
+before it claims the next, so two main tasks never run at the same
+time. `writePdf` was workerized afterwards; see §Tail of the graph.
 
-Two independent measurement runs confirmed that `writeOffline` and
-`writePdf` already achieve perfect overlap via cooperative async
-concurrency on the main thread. In both runs the combined wall-clock
-equalled `max(writeOffline, writePdf)` — the "wasted (CPU contention)"
-metric was 0 ms. `writePdf`'s `assembleBook` synchronous section
-(~150 ms) runs entirely inside `writeOffline`'s I/O await gaps.
+Two independent measurement runs found the combined wall-clock of
+`writeOffline` and `writePdf` equal to `max(writeOffline, writePdf)`
+and the "wasted (CPU contention)" metric 0 ms, and read that as
+perfect overlap via cooperative async concurrency on the main thread.
+`writePdf`'s `assembleBook` synchronous section (~150 ms) was thought
+to run entirely inside `writeOffline`'s I/O await gaps.
 
 Structured-clone cost for shipping `pages[]` across the worker
 boundary was measured at ~37–65 ms (depending on per-page HTML size),
@@ -1532,8 +1542,58 @@ Adding the `offline` handler to `cpu-worker.mjs` would also increase
 worker spawn time (acorn import), complicate the worker's module
 surface, and add a result-merge path — all for no measurable gain.
 
-The overlap already saves ~260 ms vs. sequential execution (the full
-duration of `writePdf`). No further action needed.
+The current scheduler has no such overlap; see §Tail of the graph.
+
+### Tail of the graph: what the main thread does after `flushJoin`
+
+`Scheduler._mainScan` awaits each main task before it claims the next,
+so main tasks never overlap: they run one at a time, lowest declaration
+index first. After `flushJoin` the main thread ran, in milliseconds:
+
+```
+writeAux 30 → writeOffline 200 → helpArchive 600 → addinProject 220
+  → writePdf 600 → linkJoin 110 → checkBook 300 → checkReport 80
+```
+
+An experiment that let main tasks overlap (not awaiting them) gained
+nothing: the tail took 2.17–2.23 s against 2.03–2.41 s serial. The
+tail is CPU-bound on the main thread (`writePdf`'s ~600 ms is mostly
+the synchronous `assembleBook`), so overlapping only stretched the
+others: `writeOffline` 200 → 530 ms, `helpArchive` 600 → 1,700 ms.
+
+The gain had to come from moving work to workers, which are idle by
+then:
+
+- `helpArchive` is a worker task (`handler: "helpArchive"`). It reads
+  the offline tree from disk and `skipOffline` from `dispatch`'s
+  broadcast, through `sharedData()` in `cpu-worker.mjs`. Its zip
+  crosses the thread boundary as a `Uint8Array`; its `submit` wraps it
+  as a `Buffer` again without copying, for `addinProject`.
+- `writePdf` is a worker task behind a new main task, `bookPayload`
+  (`expected` is the old `writePdf` list). `markdown-it` cannot cross
+  to a worker, so `bookPayload` first renders each part's subtitle
+  and intro (`prerenderPartText`). It then packs (`book-payload.mjs`) a
+  projection of the pages, `bookData` with every page reference
+  replaced by `{$page: i}`, the static files, the config, the build
+  information, the highlight CSS and the check flag, and its `submit`
+  broadcasts the buffer with `WorkerPool.broadcastTaskData`, before the
+  task is marked done, so the message is queued on every lane before
+  any lane can claim `writePdf`. The index references are unpacked
+  into the same objects, so `bookCoverage`'s identity comparisons hold.
+  `bookPayload` is declared before `writeAux`, so the main thread
+  claims it first. It costs ~95 ms.
+- `checkBook` is a worker task pinned to `writePdf`'s lane, so the
+  6.5–16 MB book string never crosses back.
+
+Tail (the end of `flushJoin` to the end of the last task), alternating
+builds of the old and the new code, five of each, on a busy 16-lane
+machine: 2,095–2,292 ms (median 2,235) before, 1,339–1,513 ms (median
+1,478) after, about 0.75 s off each build. The online, offline and PDF
+trees are byte-identical (`scripts/compare_trees.mjs`). The critical
+paths that remain are `writeOffline` → `helpArchive` (worker) →
+`addinProject` (main; 200–1,900 ms, because it round-trips 53 MB
+through `%TEMP%`, which varies with a busy disk), and `bookPayload` →
+`writePdf` → `checkBook`, both on workers.
 
 ### Phase 4: SharedArrayBuffer broadcast
 

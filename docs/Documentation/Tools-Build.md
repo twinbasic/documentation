@@ -106,15 +106,17 @@ A `.twinproj` is not a publishable type. The [publish allowlist](Tools-Toolchain
 ### The help archive
 {: #the-help-archive }
 
-Every build writes the zip the IDE help add-in serves the documentation from. The add-in embeds `add-in/Resources/HELP/site.zip` as a resource, and the build writes that file from the offline tree, before the build-time chart is added to `BuildInfo.html`. The archive therefore holds `BuildInfo.html` without the chart, and `assets/images/gantt.svg` as the placeholder the sources hold. The step prints one line:
+Every build writes the zip the IDE help add-in serves the documentation from. The add-in embeds `add-in/Resources/HELP/site.zip` as a resource, and the build writes that file from the offline tree, before the build-time chart is added to `BuildInfo.html`. The step prints one line:
 
-    help archive: add-in/Resources/HELP/site.zip, 1475 entries, 26.0 MB (0.3 s)
+    help archive: add-in/Resources/HELP/site.zip, 2098 entries, 47.6 MB (0.7 s)
+
+The archive leaves out what nobody looks up from the IDE: this Documentation Development section (`BuildInfo.html` and its chart, `assets/images/gantt.svg`, among it), the Videos pages and their poster frames, and the Challenges. It also leaves out every file readers download, which stays on the website: each is in a `downloads` folder beside the page that documents it. `HELP_ARCHIVE_SKIP` in `builder/help-archive-step.mjs` lists them, as patterns in the form `offline_exclude` takes. Every page still links to them, from the navigation, the search and the text; the add-in's server answers a request for a file the archive lacks with a redirect to the same file on the website. A file the Downloads page offers that the archive would hold fails the build, which names it.
 
 The zip is too large to commit; `add-in/Resources/HELP/` is in `.gitignore`.
 
 Only a build of the documentation tree into `docs/_site-offline` writes the archive. Builds of another source tree or `--dest`, `--serve`, `--dry-run` and builds without an offline tree skip it, and so does `--no-help-archive`. CI must not pass `--no-help-archive`, or the project file it publishes would hold no archive; `check_ci_workflows.mjs` fails when one does.
 
-A file the build cannot write, or an archive that does not match the tree, fails the build with exit code 1. The build ends by checking the offline tree on disk against the archive again, now that the chart is in: the same files must be listed, and only `BuildInfo.html` and `assets/images/gantt.svg` may differ in content.
+A file the build cannot write, or an archive that does not match the tree, fails the build with exit code 1. The build ends by checking the offline tree on disk against the archive again, now that the chart is in: the same files must be listed, less the ones the archive leaves out, and only `BuildInfo.html` and `assets/images/gantt.svg` may differ in content.
 
 The reader on the twinBASIC side does no inflating of its own, so the zip format is fixed:
 

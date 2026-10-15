@@ -26,9 +26,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { addinProjectOf, formatAddinProject, packAddinProject, writeAddinProject } from "../builder/addin-project.mjs";
+import { downloadsKept, helpArchiveSkips } from "../builder/help-archive-step.mjs";
 import { checkHelpArchive, writeHelpArchive } from "../lib/help-archive.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
-import { readProject } from "../scripts/impexp.mjs";
+import { importProject, packFiles, readProject } from "../scripts/impexp.mjs";
 
 const ADDIN = path.join(REPO_ROOT, "add-in");
 const tmp = mkdtempSync(path.join(tmpdir(), "addin-project-test-"));
@@ -135,6 +136,23 @@ describe("the help add-in's project file", () => {
     assert.equal(got.get("Sources/Module1.twin").toString(), "Module Module1\r\nEnd Module\r\n");
     assert.equal(got.get("Settings").toString(), SETTINGS);
     assert.equal(got.get("Resources/SHELL/shell.js").toString(), "a\r\nb\n", "a resource was changed");
+  });
+
+  test("is the same bytes as impexp's importProject of the files in a folder", async () => {
+    const dir = fixture("disk", { ...TRACKED, "Packages/Lib/Settings": "{}\n", "Packages/Lib/Sources/A.twin": "x\n" });
+    const files = Object.keys(TRACKED).map((rel) => ({ rel, bytes: readFileSync(path.join(dir, ...rel.split("/"))) }));
+    files.push({ rel: "Packages/Lib/Settings", bytes: Buffer.from("{}\n") });
+    files.push({ rel: "Packages/Lib/Sources/A.twin", bytes: Buffer.from("x\n") });
+    const fromDisk = path.join(tmp, "from-disk.twinproj");
+    rmSync(path.join(dir, ".git"), { recursive: true, force: true });
+    importProject(fromDisk, dir);
+    assert.ok(packFiles(files, path.basename(dir)).bytes.equals(readFileSync(fromDisk)), "the two packs differ");
+    // Without a project name in Settings, both name the project after the folder.
+    const unnamed = files.map((f) => (f.rel === "Settings" ? { rel: "Settings", bytes: Buffer.from("{}\n") } : f));
+    writeFileSync(path.join(dir, "Settings"), "{}\n");
+    importProject(fromDisk, dir, { overwrite: true });
+    assert.ok(packFiles(unnamed, path.basename(dir)).bytes.equals(readFileSync(fromDisk)), "unnamed packs differ");
+    assert.equal(readProject(fromDisk).name, "disk");
   });
 
   test("packs the archive it is given as Resources/HELP/site.zip, byte for byte", async () => {
@@ -259,5 +277,34 @@ describe("the help archive checked against the offline tree", () => {
       "index.html: in the archive, not in the tree",
       "late.html: in the tree, not in the archive",
     ]);
+  });
+
+  test("leaves out what the build's list skips, and does not compare it", async () => {
+    const src = tree("h-skip", { ...FILES, "Videos/tB.html": "<html>videos</html>" });
+    const zip = path.join(tmp, "h-skip.zip");
+    const stats = await writeHelpArchive({ src, out: zip, skip: helpArchiveSkips });
+    assert.equal(stats.entries, 2);
+    // The chart goes in after the archive, into files the archive does not hold.
+    writeFileSync(path.join(src, ...CHART[0].split("/")), "<svg>the chart</svg>");
+    assert.deepEqual(await checkHelpArchive({ src, zip, skip: helpArchiveSkips }), []);
+    const problems = await checkHelpArchive({ src, zip });
+    assert.deepEqual(problems.sort(), [
+      "Documentation/Development/BuildInfo.html: in the tree, not in the archive",
+      "Videos/tB.html: in the tree, not in the archive",
+      "assets/images/gantt.svg: in the tree, not in the archive",
+    ]);
+  });
+
+  test("names a file the Downloads page offers that the archive would hold", async () => {
+    const src = tree("h-downloads", {
+      "Downloads.html": [
+        '<a class="btn" href="Features/downloads/tool.py" download>',
+        '<a href="Features/elsewhere/tool.mjs" download>',
+        '<a href="Features/elsewhere/page.html">',
+        '<a href="https://docs.twinbasic.com/tB/x/downloads/P.twinproj" download>',
+      ].join("\n"),
+    });
+    assert.deepEqual(await downloadsKept(src, helpArchiveSkips), ["Features/elsewhere/tool.mjs"]);
+    assert.deepEqual(await downloadsKept(path.join(tmp, "h-none"), helpArchiveSkips), []);
   });
 });

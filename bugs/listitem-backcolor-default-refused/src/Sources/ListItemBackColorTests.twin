@@ -1,0 +1,74 @@
+' Regression tests for ListItem.BackColor. Its default is -1, which means "use the
+' ListView's BackColor", so assigning -1 is how a row that has been given a colour
+' returns to the list's colour. Form1 holds one ListView; it is loaded, never shown.
+' Each case adds an item and works with its BackColor under On Error Resume Next.
+[TestFixture]
+Module ListItemBackColorTests
+
+    Private Const UseListColour As Long = -1
+
+    ' The default is the one the property documents.
+    [TestCase]
+    Public Sub DefaultIsUseListColour()
+        Dim item As ListItem, value As Long
+        Load Form1
+        Set item = Form1.ListView1.ListItems.Add(, , "row")
+        value = item.BackColor
+        Unload Form1
+        Assert.Strict.AreEqual UseListColour, value, "the default"
+    End Sub
+
+    ' A colour that is a colour is accepted and read back.
+    [TestCase]
+    Public Sub ColourIsAccepted()
+        Dim item As ListItem, number As Long, value As Long
+        Load Form1
+        Set item = Form1.ListView1.ListItems.Add(, , "row")
+        On Error Resume Next: item.BackColor = vbYellow: number = Err.Number: On Error GoTo 0
+        value = item.BackColor
+        Unload Form1
+        Assert.Strict.AreEqual 0, number, "the error"
+        Assert.Strict.AreEqual CLng(vbYellow), value, "the colour"
+    End Sub
+
+    ' The default assigned to a new item changes nothing and raises nothing.
+    [TestCase]
+    Public Sub DefaultAssignedToNewItem()
+        Dim item As ListItem, number As Long, value As Long
+        Load Form1
+        Set item = Form1.ListView1.ListItems.Add(, , "row")
+        On Error Resume Next: item.BackColor = UseListColour: number = Err.Number: On Error GoTo 0
+        value = item.BackColor
+        Unload Form1
+        Assert.Strict.AreEqual 0, number, "the error"
+        Assert.Strict.AreEqual UseListColour, value, "the colour"
+    End Sub
+
+    ' Whatever happens to -1, the colour the row had is not lost.
+    [TestCase]
+    Public Sub ColourIsKeptWhenDefaultIsAssigned()
+        Dim item As ListItem, value As Long
+        Load Form1
+        Set item = Form1.ListView1.ListItems.Add(, , "row")
+        item.BackColor = vbYellow
+        On Error Resume Next: item.BackColor = UseListColour: On Error GoTo 0
+        value = item.BackColor
+        Unload Form1
+        Assert.Strict.AreEqual True, (value = CLng(vbYellow) Or value = UseListColour), "yellow or the list's colour"
+    End Sub
+
+    ' A row that has been given a colour returns to the list's colour with -1.
+    [TestCase]
+    Public Sub DefaultAssignedAfterColour()
+        Dim item As ListItem, number As Long, value As Long
+        Load Form1
+        Set item = Form1.ListView1.ListItems.Add(, , "row")
+        item.BackColor = vbYellow
+        On Error Resume Next: item.BackColor = UseListColour: number = Err.Number: On Error GoTo 0
+        value = item.BackColor
+        Unload Form1
+        Assert.Strict.AreEqual 0, number, "the error"
+        Assert.Strict.AreEqual UseListColour, value, "the colour"
+    End Sub
+
+End Module

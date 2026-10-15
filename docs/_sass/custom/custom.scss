@@ -905,3 +905,67 @@ div.highlight:focus-visible,
     margin-left: auto;
   }
 }
+
+// ── Download cards (the Downloads page) ──────────────────────────────────
+//
+// `<div class="download-grid">` holds `<div class="download-card">`s, each a
+// heading, a paragraph, a `.download-meta` line and a `.download-actions` row
+// of `.btn` links (the theme's, styled in both themes) and one
+// `.download-doc` link. The grid takes as many 18rem columns as fit, and one
+// at phone width. The actions row follows the text directly.
+//
+// The heading's top margin is the theme's `.main-content h3`, which the dark
+// re-emission raises to (0,2,2); `> :first-child` here is (0,3,0) and wins in
+// both themes (see "The specificity trap" in Builder.md).
+.download-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.download-card {
+  padding: 1rem 1.25rem;
+  border: 1px solid #e6e1e8; // $grey-lt-300
+  border-radius: 6px;
+
+  > p {
+    margin: 0 0 0.75rem;
+  }
+}
+
+.main-content .download-card > :first-child {
+  margin-top: 0;
+}
+
+@include dark-theme {
+  .download-card {
+    border-color: #44434d; // dark $border-color
+  }
+}
+
+.download-card > .download-meta {
+  font-size: 0.875em;
+}
+
+.download-card > .download-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0;
+}
+
+.download-size {
+  font-weight: 400;
+  font-size: 0.875em;
+}
+
+// Pushed to the right end of the row, after the buttons.
+.download-doc {
+  margin-left: auto;
+
+  &::after {
+    content: " \2192" / "";
+  }
+}

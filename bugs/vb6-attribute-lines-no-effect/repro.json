@@ -1,0 +1,8 @@
+{
+  "mode": "lane",
+  "lane": "ide:vb6-import",
+  "tests": [
+    "VB_HelpID, VB_VarHelpID, VB_VarMemberFlags and VB_MemberFlags other than hidden and nonbrowsable have no effect"
+  ],
+  "steps": "1. Pack the project (node scripts/bug_repro.mjs pack vb6-attribute-lines-no-effect) or unzip vb6-attribute-lines-no-effect.zip. 2. Open it in the IDE: an ActiveX DLL with Register DLL after build off, so building it registers nothing. 3. Build it. 4. Open the DLL's type library in OLE/COM Object Viewer (File > View TypeLib...): the class Attrs has no helpcontext, its members HiddenField and UnbrowsedField are neither hidden nor nonbrowsable, HelpField and WithHelp have no helpcontext, UiDefault is not uidefault and Bound is neither bindable nor displaybind. HiddenMethod is hidden, and so is TwinAttrs.HiddenField, the control written with [Hidden]."
+}

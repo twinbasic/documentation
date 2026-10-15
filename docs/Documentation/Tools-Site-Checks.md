@@ -65,7 +65,7 @@ Exit codes: **0** every link is reachable and every anchor exists, **1** a link 
     node scripts/check_a11y.mjs [--root-dir <path>] [--theme light|dark|both] [--viewport desktop|mobile|both]
                                 [--stock-axe] [--minified]
 
-Automated accessibility scan of the built site, and the second of `check.bat`'s four steps (right after [`check_tree_fresh.mjs`](#check-tree-fresh)). It loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against fourteen sample pages in both themes at two viewports, plus two state audits that open a disclosure first --- 64 audits in all. The page list is derived, and [`scripts/pick_a11y_sample.mjs`](#pick-a11y-sample) keeps it representative.
+Automated accessibility scan of the built site, and the second of `check.bat`'s four steps (right after [`check_tree_fresh.mjs`](#check-tree-fresh)). It loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against sixteen sample pages in both themes at two viewports, plus two state audits that open a disclosure first --- 72 audits in all. The page list is derived, and [`scripts/pick_a11y_sample.mjs`](#pick-a11y-sample) keeps it representative.
 
 This script only reports. The scan itself --- page list, themes and viewports, blocked requests, axe run options, source patches and state audits --- lives in [`scripts/lib/axe-scan.mjs`](#axe-scan), shared with `sweep_a11y.mjs` and `check_a11y_fingerprint.mjs`. Change the scan there, not here.
 
@@ -94,7 +94,7 @@ Exit codes: **0** no page has a violation (incomplete checks are reported but do
 
     node scripts/pick_a11y_sample.mjs [--check|--propose|--census] [--fresh]
 
-Derives the accessibility scan's page list, and checks that it still covers every construct the site uses. The scan reads fourteen pages out of ~1,160. If the list stops being representative, nothing fails: the rule for a construct no sample page carries never runs.
+Derives the accessibility scan's page list, and checks that it still covers every construct the site uses. The scan reads sixteen pages out of ~1,160. If the list stops being representative, nothing fails: the rule for a construct no sample page carries never runs.
 
 The script holds a list of **construct families**: markup shapes some axe rule keys on, each recording that rule. The modes:
 
@@ -248,7 +248,7 @@ Each substitution inside a patch also asserts its target was found, so a bump th
                                 [--limit N] [--resume] [--report] [--out FILE]
                                 [--root-dir DIR] [--stock-axe] [--recycle-every N]
 
-The full-site accessibility sweep: every page, both themes, both viewports --- 3,476 audits, roughly 20 minutes. That is too slow for a commit gate, so the fourteen-page sample runs instead; but the sample reports only on constructs it carries.
+The full-site accessibility sweep: every page, both themes, both viewports --- 3,476 audits, roughly 20 minutes. That is too slow for a commit gate, so the sixteen-page sample runs instead; but the sample reports only on constructs it carries.
 
 Run the sweep after any change that moves type metrics or page structure, and when adding a construct family to [`pick_a11y_sample.mjs`](#pick-a11y-sample). It audits disclosures **closed** only; open-state coverage is the sample scan's `STATE_AUDITS`.
 

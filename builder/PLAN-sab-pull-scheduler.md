@@ -2116,7 +2116,48 @@ thread sets the task to DONE and notifies the slot. Before waiting,
 the worker checks if other non-dependent work is available (one scan);
 if so, it does that work instead of sleeping.
 
-### Phase 14: Move `writePdf` to a worker --- DEFERRED
+### Phase 14: Move `writePdf` to a worker --- DONE
+
+**Outcome.** Done by the "full worker migration" below, with the two
+blockers removed differently from the "paths forward" listed. The text
+under Motivation, Investigation and Consequence is the original
+investigation and is kept as written.
+
+1. **Index-based references at the boundary, not in
+   `resolveBookChapters`.** A new main task, `bookPayload`
+   (`builder/book-payload.mjs`), packs a projection of the pages
+   (`permalink`, `canonicalPermalink`, `navPath`, `srcRel`, `destPath`,
+   `frontmatter`, `renderedContent`), `bookData` with every page
+   reference replaced by `{$page: i}` (the page's index in the page
+   list), the static files, the config, the build information, the
+   highlight CSS and the check flag, into one SAB. The worker resolves
+   each index back to the same object, so `bookCoverage`'s identity
+   comparisons hold. `resolveBookChapters` is unchanged.
+2. **Pre-rendered part text, at `bookPayload`.** `prerenderPartText`
+   (`book.mjs`) renders each part's subtitle and intro into
+   `part._rendered`; `renderPartDivider` reads it when present and
+   renders as before otherwise.
+3. **`writePdf` and `checkBook` are worker tasks.** `writePdf` waits for
+   the new `"book"` task data (`WorkerPool.broadcastTaskData`, posted in
+   `bookPayload`'s `submit` before the task is marked done, so it is
+   queued on every lane before any lane can claim `writePdf`), keeps
+   the book HTML on its lane, and returns the counters only.
+   `checkBook` is pinned to that lane, so the 6.5--16 MB string never
+   crosses back. `helpArchive` moved to a worker in the same change
+   (reading `skipOffline` through the memoised `sharedData()`), which
+   is where most of the gain is.
+4. **Handler ids** `helpArchive` 8, `writePdf` 9, `checkBook` 10.
+
+The tail (the end of `flushJoin` to the end of the last task) took
+2,095--2,292 ms (median 2,235) before and 1,339--1,513 ms (median
+1,478) after, five interleaved builds of each on a busy 16-lane machine:
+about 0.75 s off each build. `bookPayload` costs ~95 ms on the main
+thread. The three trees are byte-identical to the previous code's
+(`scripts/compare_trees.mjs`). The remaining critical paths are
+`writeOffline` → `helpArchive` → `addinProject` (main) and
+`bookPayload` → `writePdf` → `checkBook`. The reasoning and the
+experiment that showed overlapping main tasks gains nothing are in
+PLAN-scheduler.md, §Tail of the graph.
 
 **Motivation.** `writePdf` depends on `flushJoin` + `mermaid` +
 `resolveBookChapters` --- no data dependency on the offline pipeline
@@ -2171,9 +2212,8 @@ that:
   `renderedContent`, `frontmatter` subset).  Packing cost ~30--50 ms;
   net main-thread savings ~100--120 ms.
 
-Deferred: the refactoring cost is significant for a ~120 ms saving on
-a 4 s build.  Revisit if the build wall-clock shrinks enough that the
-PDF task becomes a larger fraction.
+Deferred at the time: the refactoring cost looked significant for a
+~120 ms saving on a 4 s build.  (Done later; see Outcome above.)
 
 ### Phase 15: Generic dynamic tasks and per-chunk flush --- DONE
 

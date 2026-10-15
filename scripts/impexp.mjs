@@ -26,7 +26,10 @@
 // the two verbs do, with the same arguments and { overwrite }. Each returns
 // what the command line prints -- the counts, the skipped and added entries,
 // the warnings -- and throws where it reports an error: a Refusal, whose
-// reason names its exit code, has written nothing. readProject(file) reads a
+// reason names its exit code, has written nothing. packFiles(files, name)
+// packs a list of { rel, bytes } held in memory as importProject packs the
+// same files in a folder of that name, and returns the project file's bytes
+// without touching the disk. readProject(file) reads a
 // project file into its tree and writes nothing; it throws the Refusal the
 // verbs report for a file that is missing, is a folder, or is damaged or is
 // not a project at all. parseProject(bytes) is the same reading for a project
@@ -463,9 +466,9 @@ function toCrlf(name, content) {
 // The IDE names the root entry after the project; every project and package
 // an installation ships agrees with its own Settings on that. The folder's
 // name is the fallback, for a Settings file without one.
-function projectNameIn(settingsPath) {
+function projectNameIn(settings) {
   try {
-    let json = fs.readFileSync(settingsPath, "utf8");
+    let json = settings.toString("utf8");
     if (json.charCodeAt(0) === 0xfeff) json = json.slice(1); // a byte order mark
     const name = JSON.parse(json)["project.name"];
     return typeof name === "string" && name ? name : null;
@@ -474,10 +477,54 @@ function projectNameIn(settingsPath) {
   }
 }
 
-function buildTree(dirPath, rel, self, skipped, added) {
+// What buildTree reads a tree through, so that a folder on disk and a list of
+// files in memory pack the same way. `names(rel)` lists a folder, `kind(rel)`
+// says what an entry is ("folder", "file", "self" for the project file being
+// written, or null for anything else), and `read(rel)` returns a file's bytes.
+// rel is "" for the top folder, else a path with forward slashes.
+function diskSource(folder, self) {
+  const full = (rel) => (rel ? path.join(folder, ...rel.split("/")) : folder);
+  return {
+    names: (rel) => fs.readdirSync(full(rel)),
+    kind(rel) {
+      const st = fs.statSync(full(rel));
+      if (st.isDirectory()) return "folder";
+      if (!st.isFile()) return null;
+      return pathKey(full(rel)) === self ? "self" : "file";
+    },
+    read: (rel) => fs.readFileSync(full(rel)),
+  };
+}
+
+function memorySource(files) {
+  const folders = new Map([["", new Set()]]);
+  const contents = new Map();
+  for (const { rel, bytes } of files) {
+    const parts = rel.split("/");
+    for (let i = 0; i < parts.length; i++) {
+      const parent = parts.slice(0, i).join("/");
+      const here = parts.slice(0, i + 1).join("/");
+      folders.get(parent).add(parts[i]);
+      if (i < parts.length - 1) {
+        if (contents.has(here)) throw new Refusal("invalid", `${here} is both a file and a folder`);
+        if (!folders.has(here)) folders.set(here, new Set());
+      } else {
+        if (folders.has(here)) throw new Refusal("invalid", `${here} is both a file and a folder`);
+        contents.set(here, Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes));
+      }
+    }
+  }
+  return {
+    names: (rel) => [...folders.get(rel)],
+    kind: (rel) => (folders.has(rel) ? "folder" : "file"),
+    read: (rel) => contents.get(rel),
+  };
+}
+
+function buildTree(src, name, rel, skipped, added) {
   const subdirs = [],
     files = [];
-  const names = fs.readdirSync(dirPath);
+  const names = src.names(rel);
   // The standard folders this tree lacks, if it is the project or a package
   // embedded in it.
   const missing = new Set();
@@ -485,23 +532,21 @@ function buildTree(dirPath, rel, self, skipped, added) {
     const have = new Set(names.map((n) => n.toLowerCase()));
     for (const folder of STANDARD_FOLDERS) if (!have.has(folder.toLowerCase())) missing.add(folder);
   }
-  for (const name of [...names, ...missing].sort(byCodePoint)) {
-    const full = path.join(dirPath, name);
-    const entryRel = rel ? `${rel}/${name}` : name;
-    if (missing.has(name)) {
-      subdirs.push(name);
+  for (const entry of [...names, ...missing].sort(byCodePoint)) {
+    const entryRel = rel ? `${rel}/${entry}` : entry;
+    if (missing.has(entry)) {
+      subdirs.push(entry);
       added.push(entryRel);
       continue;
     }
-    if (name.toLowerCase() === GIT_NAME) {
+    if (entry.toLowerCase() === GIT_NAME) {
       skipped.push({ rel: entryRel, why: "Git's own folder" });
       continue;
     }
-    const st = fs.statSync(full);
-    if (st.isDirectory()) subdirs.push(name);
-    else if (!st.isFile()) continue;
-    else if (pathKey(full) === self) skipped.push({ rel: entryRel, why: "the project file itself" });
-    else files.push(name);
+    const kind = src.kind(entryRel);
+    if (kind === "folder") subdirs.push(entry);
+    else if (kind === "self") skipped.push({ rel: entryRel, why: "the project file itself" });
+    else if (kind === "file") files.push(entry);
   }
 
   const children = [];
@@ -509,7 +554,7 @@ function buildTree(dirPath, rel, self, skipped, added) {
     children.push(
       missing.has(d)
         ? { kind: "directory", name: d, revision: 0x0000, flags: FLAGS.None, category: categoryFor(d), children: [] }
-        : buildTree(path.join(dirPath, d), rel ? `${rel}/${d}` : d, self, skipped, added),
+        : buildTree(src, d, rel ? `${rel}/${d}` : d, skipped, added),
     );
   }
   for (const f of files) {
@@ -519,11 +564,10 @@ function buildTree(dirPath, rel, self, skipped, added) {
       revision: 0x0002,
       flags: FLAGS.None,
       category: categoryFor(f),
-      content: toCrlf(f, fs.readFileSync(path.join(dirPath, f))),
+      content: toCrlf(f, src.read(rel ? `${rel}/${f}` : f)),
       revisions: [],
     });
   }
-  const name = path.basename(dirPath);
   return {
     kind: "directory",
     name,
@@ -532,6 +576,30 @@ function buildTree(dirPath, rel, self, skipped, added) {
     category: categoryFor(name),
     children,
   };
+}
+
+// The project's root entry, named after the project. The top folder's name is
+// the fallback, for a Settings file without one.
+function projectRoot(src, folderName, skipped, added) {
+  const root = buildTree(src, folderName, "", skipped, added);
+  root.name = projectNameIn(src.read("Settings")) ?? root.name;
+  root.category = CATEGORY.Default;
+  return root;
+}
+
+function tally(root) {
+  let files = 0,
+    folders = 0;
+  (function walk(e) {
+    for (const c of e.children) {
+      if (c.kind === "file") files++;
+      else {
+        folders++;
+        walk(c);
+      }
+    }
+  })(root);
+  return { files, folders };
 }
 
 export function importProject(projectPath, folder, { overwrite = false } = {}) {
@@ -552,24 +620,32 @@ export function importProject(projectPath, folder, { overwrite = false } = {}) {
 
   const skipped = [],
     added = [];
-  const root = buildTree(path.resolve(folder), "", pathKey(projectPath), skipped, added);
-  root.name = projectNameIn(settings) ?? root.name;
-  root.category = CATEGORY.Default;
+  const top = path.resolve(folder);
+  const root = projectRoot(diskSource(top, pathKey(projectPath)), path.basename(top), skipped, added);
   const buf = serialize(root);
   writeReplacing(projectPath, buf);
+  return { name: root.name, size: buf.length, ...tally(root), skipped, added };
+}
 
-  let fileCount = 0,
-    dirCount = 0;
-  (function tally(e) {
-    for (const c of e.children) {
-      if (c.kind === "file") fileCount++;
-      else {
-        dirCount++;
-        tally(c);
-      }
-    }
-  })(root);
-  return { name: root.name, size: buf.length, files: fileCount, folders: dirCount, skipped, added };
+/**
+ * Pack a project from files in memory, as importProject packs the same files
+ * from a folder named `folderName`, and return the project file's bytes.
+ * Nothing is read from or written to disk.
+ *
+ * @param {{rel: string, bytes: Buffer | Uint8Array}[]} files  each file's path
+ *   in the project, with forward slashes, and its bytes; Settings among them
+ * @param {string} folderName  the top folder's name, which names the project
+ *   when Settings does not
+ * @returns {{bytes: Buffer, name: string, files: number, folders: number, added: string[]}}
+ */
+export function packFiles(files, folderName) {
+  const src = memorySource(files);
+  if (src.read("Settings") === undefined)
+    throw new Refusal("invalid", "the files have no Settings file at the top, so they are not a project", HINT_IMPORT);
+  const skipped = [],
+    added = [];
+  const root = projectRoot(src, folderName, skipped, added);
+  return { bytes: serialize(root), name: root.name, ...tally(root), added };
 }
 
 // -------------------------- Printing a root document -------------------------

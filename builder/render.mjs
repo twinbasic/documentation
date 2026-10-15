@@ -17,7 +17,7 @@ import footnote from "markdown-it-footnote";
 
 import { blockRegions, maskCode } from "../lib/markdown.mjs";
 import { initHighlighter } from "./highlight.mjs";
-import { countPlugin, findSurvivingPlaceholder } from "./counts.mjs";
+import { countPlugin, expandDownloadPlaceholders, findSurvivingPlaceholder } from "./counts.mjs";
 import { replaceOutsideCode } from "./code-guard.mjs";
 import { splitFragment } from "./url.mjs";
 import { escapeMarkup, escapeMarkupAndQuotes, escapeRegExp } from "./escape.mjs";
@@ -77,7 +77,10 @@ function renderPage(page, md) {
   }
   let source;
   try {
-    source = applyPreRenderRewrites(page.rawContent, md, { packageVersion: page.packageVersion ?? "" });
+    source = applyPreRenderRewrites(page.rawContent, md, {
+      packageVersion: page.packageVersion ?? "",
+      permalink: page.permalink,
+    });
   } catch (e) {
     throw new Error(`${page.srcRel}: ${e.message}`);
   }
@@ -118,7 +121,8 @@ function padEmptyCells(html) {
 // the build's, so a call without one throws.
 //
 // `options.packageVersion` is the version the page's package section
-// documents, which a callout label's package version must be.
+// documents, which a callout label's package version must be. `options.permalink`
+// is the page's URL, which the links in {{tbdocs:packageTestRows}} are relative to.
 export function applyPreRenderRewrites(rawContent, md, options = {}) {
   if (!md) throw new TypeError("applyPreRenderRewrites: pass the site's markdown-it instance");
   // CommonMark normalises CRLF/CR to LF before block parsing. The rewrites
@@ -141,6 +145,10 @@ export function applyPreRenderRewrites(rawContent, md, options = {}) {
   // starts with one, never joins a comment to a fence.
   const code = maskCode(source, { md });
   let work = code.masked;
+  // The download placeholders expand first, so the rewrites below see the page as it will be
+  // read. They are in prose or in a raw HTML block, where the inline substitution (counts.mjs)
+  // cannot reach them; a placeholder in code is masked and stays as written.
+  if (md.downloads) work = expandDownloadPlaceholders(work, md.downloads, options.permalink);
   work = rewriteTripleAsteriskEmphasis(work);
   work = encodeSpacesInMediaUrls(work);
   work = rewriteListItemSetextHeadings(work);
@@ -476,6 +484,9 @@ export function createMarkdownIt(ctx) {
   // `replacements` has done the dash and quote transforms -- see counts.mjs
   // for why the layer matters and what it deliberately cannot reach.
   md.use(countPlugin, ctx);
+  // What the pre-render rewrites expand {{tbdocs:size:...}} and {{tbdocs:packageTestRows}}
+  // from (counts.mjs); none in a caller that has no downloads, which leaves them unexpanded.
+  md.downloads = ctx.downloads ?? null;
 
   return md;
 }

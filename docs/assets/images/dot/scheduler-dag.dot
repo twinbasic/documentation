@@ -64,10 +64,12 @@ digraph scheduler {
     AP   [label=<addinProject<BR/><FONT POINT-SIZE="10">[M]</FONT>>,      fillcolor="#fef7e0", color="#f9ab00"]
     WX  [label=<writeAux<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
     WO   [label=<writeOffline<BR/><FONT POINT-SIZE="10">[M]</FONT>>,      fillcolor="#fef7e0", color="#f9ab00"]
-    WP   [label=<writePdf<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
+    HA   [label=<helpArchive<BR/><FONT POINT-SIZE="10">[W]</FONT>>,       fillcolor="#e8f0fe", color="#4285f4"]
+    BP   [label=<bookPayload<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    WP   [label=<writePdf<BR/><FONT POINT-SIZE="10">[W]</FONT>>,          fillcolor="#e8f0fe", color="#4285f4"]
 
     LJ   [label=<linkJoin<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
-    CB   [label=<checkBook<BR/><FONT POINT-SIZE="10">[M]</FONT>>,         fillcolor="#fef7e0", color="#f9ab00"]
+    CB   [label=<checkBook<BR/><FONT POINT-SIZE="10">[W] pinned</FONT>>,  fillcolor="#e8f0fe", color="#4285f4"]
     CR   [label=<checkReport<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
 
     // ── Edges ───────────────────────────────────────────────────────────
@@ -124,6 +126,7 @@ digraph scheduler {
 
     SYM -> AP
     PD  -> AP
+    HA  -> AP
 
     WA  -> WX
     SDt -> WX
@@ -134,11 +137,16 @@ digraph scheduler {
     WX -> WO
     WA -> WO
 
-    FJ  -> WP
-    RJ  -> WP
-    DT  -> WP
-    RBC -> WP
-    HI  -> WP [style=dashed]
+    FJ  -> HA
+    SCSS -> HA
+    WO  -> HA
+
+    FJ  -> BP
+    RJ  -> BP
+    DT  -> BP
+    RBC -> BP
+    HI  -> BP [style=dashed]
+    BP  -> WP
 
     FJ -> LJ
     WX -> LJ

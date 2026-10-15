@@ -141,8 +141,8 @@ Find the row for what changed. The middle column is the step that explains the m
 |---|---|---|
 | A task's `expected` list | [Pick the right flags](#2-pick-the-right-flags) | Nothing. The scheduler derives successor edges from `expected`. The exception is the dynamic edges: `render:i` and `flush:i` are wired in `dispatch.submit`, not in `TASKS`. |
 | A task's `execute()` or handler return shape | [Define the task in `TASKS`](#4-define-the-task-in-tasks) | The task's own `submit()`, and every downstream task that reads the field back off `state`. |
-| Which thread a task runs on | [Decide where the work runs](#1-decide-where-the-work-runs) | Swap `runOnMain: true` + `execute` for `handler:` plus a `cpu-worker.mjs` entry, and add the name to `HANDLERS` in `sab-scheduler.mjs`. A task moved onto a worker loses direct access to `state`: everything it reads must arrive through the payload SAB, and everything it produces must come back through its return value. |
-| Which Gantt section a task charts under | --- | **`GANTT_SECTION` in `gantt.mjs`**, not the task definition. A `ganttSection` on the definition wins where it is set, which is why the walkthroughs below set one, but only the `render:i` and `flush:i` tasks that `dispatch` registers carry one. Of the 33 static tasks, 31 are in the map; the other two, `warmInit` and `renderEnvInit`, are `unique_per_worker` tasks, whose per-lane timings chart as `Boot`. Any other task with no section, or with a section the chart does not draw, fails the build. |
+| Which thread a task runs on | [Decide where the work runs](#1-decide-where-the-work-runs) | Swap `runOnMain: true` + `execute` for `handler:` plus a `cpu-worker.mjs` entry, and add the name to `HANDLERS` in `sab-scheduler.mjs`. A task moved onto a worker loses direct access to `state`: everything it reads must arrive through the payload SAB or, for the output of a main-thread predecessor, through a broadcast (see [Write the worker handler](#3-write-the-worker-handler-if-worker-resident)), and everything it produces must come back through its return value. |
+| Which Gantt section a task charts under | --- | **`GANTT_SECTION` in `gantt.mjs`**, not the task definition. A `ganttSection` on the definition wins where it is set, which is why the walkthroughs below set one, but only the `render:i` and `flush:i` tasks that `dispatch` registers carry one. Of the 37 static tasks, 35 are in the map; the other two, `warmInit` and `renderEnvInit`, are `unique_per_worker` tasks, whose per-lane timings chart as `Boot`. Any other task with no section, or with a section the chart does not draw, fails the build. |
 | A field on the per-page render delta | [Worked example B](#6-worked-example-b-distributed-compute) | The `pages.map(…)` projection at the end of the render handler **and** the merge in `dispatch.submit`'s `render:i` callback. Without both, the field never reaches main. |
 | What a markdown-it rule emits | [Write the plugin](#1-write-the-plugin) | Nothing in the chain, if the rule is self-contained. But changing the emitted HTML changes what the accessibility scan sees --- read the construct-family note at the end of [Verify](#3-verify). |
 
@@ -219,7 +219,8 @@ export const HANDLERS = {
   warmInit: 0, renderEnvInit: 1, flush: 2,
   scssLight: 3, scssDark: 4, dot: 5,
   buildInfo: 6, render: 7,
-  myHandler: 8,                          // ← new
+  helpArchive: 8, writePdf: 9, checkBook: 10,
+  myHandler: 11,                         // ← new
 };
 ```
 
@@ -246,6 +247,8 @@ const handlers = {
 ```
 
 The handler's return value comes back to main as `{ done: taskIdx, output, timing, lane }`. The scheduler stores `output` in `results` and passes it to your task's `submit()`.
+
+A worker cannot read `state`, so it cannot see what a main-thread task produced. Work that follows one takes one of two forms. A worker that needs only what `dispatch` broadcast reads it with `sharedData()`, as `helpArchive` does. A worker that needs a main-thread task's output gets a main task in front of it that packs the output into a `SharedArrayBuffer` and broadcasts it from its `submit`, with `scheduler.pool.broadcastTaskData("<key>", sab)`; the handler reads it with `await taskData("<key>")`. The `bookPayload` task and the `writePdf` handler are the model. Broadcast in `submit`, which runs before the task is marked done, so that the message is queued on every lane before any lane can claim the worker task. Whatever the output holds must survive structured cloning: a markdown-it instance does not, so `bookPayload` renders the parts' subtitles and intros before it packs, and replaces each page reference with the page's index in the list.
 
 ### 4. Define the task in `TASKS`
 
@@ -545,7 +548,7 @@ Then run `test.bat`, which judges a `render.mjs` edit. Two of its gates read thi
 
 **A pattern assembled from string constants is still checked by the regex gate,** when the source decides what the constants are. If it does not (a function parameter, a `let` built in a loop), `node scripts/check_regex_safety.mjs --census` names the pattern and you must reason about it yourself. See [`check_regex_safety.mjs`](Tools-Toolchain-Tests#check-regex-safety) for the shapes it resolves.
 
-**If the plugin emits markup the site has not carried before --- a new wrapper element, a widget, a figure, a control --- register a construct family for it in [`scripts/pick_a11y_sample.mjs`](Tools-Site-Checks#pick-a11y-sample) in the same change.** The accessibility scan audits fourteen sample pages out of ~1,160, and no axe rule keyed on a construct runs unless a sample page carries it. Without a family the gate keeps reporting a clean pass while covering less. `node scripts/pick_a11y_sample.mjs --census` shows the existing families and their pages; `--check` names the gaps and the cheapest page that closes each. A new task or sub-stage that changes the emitted HTML, or a template change, carries the same obligation.
+**If the plugin emits markup the site has not carried before --- a new wrapper element, a widget, a figure, a control --- register a construct family for it in [`scripts/pick_a11y_sample.mjs`](Tools-Site-Checks#pick-a11y-sample) in the same change.** The accessibility scan audits sixteen sample pages out of ~1,160, and no axe rule keyed on a construct runs unless a sample page carries it. Without a family the gate keeps reporting a clean pass while covering less. `node scripts/pick_a11y_sample.mjs --census` shows the existing families and their pages; `--check` names the gaps and the cheapest page that closes each. A new task or sub-stage that changes the emitted HTML, or a template change, carries the same obligation.
 
 ---
 
@@ -719,6 +722,8 @@ Two shapes qualify. Most names count things `discover` already found: pages unde
 
 Then read the built page and check the number against the thing it counts. Nothing compares a derivation against reality: a name that returns the wrong number is as green as one that returns the right one.
 
+A value that is text, or that has to appear in a raw HTML block or on a table line, is not a count: `countPlugin` cannot reach it. `{{tbdocs:size:<site path>}}` and `{{tbdocs:packageTestRows}}` are the model for one. `expandDownloadPlaceholders` expands them in the page source, between the code mask and its restore in `applyPreRenderRewrites`; `checkPlaceholders` refuses what cannot be expanded, naming the file and the line; and the values reach the render workers in the shared payload, as `counts` does. A value that depends on a file written after the pages render cannot be known in time, and is refused.
+
 ---
 
 ## What a change obliges in the documentation
@@ -733,7 +738,7 @@ Three surfaces, and the second is the one that gets missed.
 
 **The task's own section.** One `###` heading per task, under the numbered section matching its Gantt section. It opens with a fenced block giving its `expected` array --- and its `execute()` return shape where that matters --- followed by prose for what `submit()` merges into `SharedState`. A per-lane start-up task, which the chart draws in the worker rows rather than in a section, goes under Render, as `warmInit` and `renderEnvInit` do. A new predecessor, a new field on the returned delta, a new key written to `state`: each is an edit here.
 
-**The reverse edges.** A task's position in the graph is stated in its own section and again in the `expected` line of every task that depends on it. Add `myTask` to `writeAux.expected` in the code and `writeAux`'s section goes on printing the old list. `Pipeline-Stages.md` names `renderJoin` on many lines; three of them are the `expected` declarations of `searchData`, `symbolIndex` and `writePdf`. Grep the task name across the whole file rather than editing only its own section.
+**The reverse edges.** A task's position in the graph is stated in its own section and again in the `expected` line of every task that depends on it. Add `myTask` to `writeAux.expected` in the code and `writeAux`'s section goes on printing the old list. `Pipeline-Stages.md` names `renderJoin` on many lines; three of them are the `expected` declarations of `searchData`, `symbolIndex` and `bookPayload`. Grep the task name across the whole file rather than editing only its own section.
 
 **The module export table.** [Module export tables](Pipeline-Stages#module-export-tables) gives the signature of the function each task calls, return shape included. A return shape is thus documented twice on one page, and the two copies go stale independently.
 

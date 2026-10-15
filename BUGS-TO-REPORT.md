@@ -4737,4 +4737,300 @@ Severity: high for a project that has the line. The compiler crashes on every at
 
 <!-- Reproducer: bugs/class-array-field-element-assignment-crash/ (mode compile; expect is tbbuild exit 4, the compiler crashing); verified on BETA 1005 by `bug_repro.mjs verify`, and compiled with --arch win64 too. The exception text above is from the IDE's DEBUG CONSOLE (tbbuild --keep, then the console read over CDP); the address is build-specific. VB6 side in vb6/ (VB6 6.0): `bug_repro.mjs vb6`; the refusal message was got from a build with the line uncommented, since a refused build prints nothing to out.txt. The variants were scratch projects, not kept. Pages: none. Found 2026-10-13 while documenting the TBMANLIB package: the probe project of that session crashed the compiler on `L.A(1) = 5` among nine other, harmless, lines. -->
 
+---
 
+## Setting a Slider's `BackColor` at run time does not change what the control shows, even after the window is invalidated
+
+**Describe the bug**
+The Slider of the WinNativeCommonCtls package keeps drawing its old background after `BackColor` is set at run time. The new colour appears only after the control is hidden and shown again. Invalidating the window (`InvalidateRect` and `UpdateWindow`) does not make it appear. Observed by reading a pixel of the control's window with `GetPixel`, and by eye.
+The Slider hands out its `BackColor` only in its handler of the `WM_CTLCOLORSTATIC` message (`HandleGetColors`, in `CONTROLS/Slider.twin`), and has no handler for the property being set. The ProgressBar and the ListView of the same package have one (`BackColorChanged`, `Handles BackColor.OnPropertyLet`), which validates the colour and repaints.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `slider-backcolor-no-repaint.twinproj` (attached as `slider-backcolor-no-repaint.zip`). `Form1` holds one Slider, `Slider1`, with a design-time `BackColor` of `&H808080`.
+2. Run the project (F5). `Sub Main` shows `Form1`, lets it paint, and then does:
+   ```
+   Form1.Slider1.BackColor = vbRed
+   Settle                  ' DoEvents and Sleep 25, twenty times
+   Debug.Print "BackColor set to &H" & Hex$(Form1.Slider1.BackColor) & ", pixel = &H" & Hex$(Corner())
+   ```
+   where `Corner` is `GetPixel` on `GetDC(Form1.Slider1.hWnd)` at (2, 2), a point outside the channel and the thumb. It then calls `InvalidateRect` and `UpdateWindow` on the Slider's window and reads the pixel again, and last sets `Visible` to `False` and back to `True` and reads it a third time.
+3. See in the DEBUG CONSOLE:
+   ```
+   painted, BackColor = &H808080, pixel = &H808080
+   BackColor set to &HFF, pixel = &H808080
+   after InvalidateRect and UpdateWindow, pixel = &H808080
+   after Visible = False, True, pixel = &HFF
+   ```
+
+**Expected behavior**
+The Slider shows `BackColor` as soon as it is set: the second line ends `pixel = &HFF`. A control that is invalidated draws its current `BackColor`, so the third line does too. The ProgressBar and ListView of the same package repaint when their `BackColor` is set.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`GetPixel` reads what is on screen. `PrintWindow` is not used because it makes the window paint itself, which would show the new colour and hide the defect.
+Tried in a scratch variant, not kept: `RedrawWindow` with `RDW_INVALIDATE Or RDW_ERASE Or RDW_UPDATENOW Or RDW_ALLCHILDREN`, and a change of `Slider1.Value`, left the pixel at `&H808080` too. Minimising and restoring the form, and resizing it, were tried only after the hide and show, so they show nothing about this.
+Severity: low. The colour is wrong until the control is hidden and shown, and nothing is lost.
+VB6 was not tried.
+
+<!-- Reproducer: bugs/slider-backcolor-no-repaint/ (mode run; expect is the four DEBUG CONSOLE lines above, verified on BETA 1005 by `bug_repro.mjs verify`; the form is shown on the IDE's private desktop). Page: docs/Reference/Built-In/WinNativeCommonCtls/Slider.md carries the callout, its BackColor NOTE labelled BETA 1005; remove it when a fix is released. Found 2026-10-14 while documenting WinNativeCommonCtls colours; the owner saw it by eye. -->
+
+---
+
+## `ListItem.BackColor` raises error 380 when it is assigned its own default, -1, so a row that has a colour cannot return to the list's colour
+
+**Describe the bug**
+The `BackColor` of a ListItem (WinNativeCommonCtls) defaults to `-1`, which means "use the ListView's `BackColor`" (`SUPPORT/ListItem.twin`: `Public BackColor As OLE_COLOR = -1`, with the comment `CLR_NONE`). Assigning `-1` to a row that has been given a colour raises error 380, *Invalid property value*. The row keeps its colour, so once a row has a colour of its own there is no way back to the list's colour.
+The cause is `BackColorChanged`, which calls `VB.CommonValidateColorOrRevert`. In BETA 1005 that function refuses `-1` (the change that made every colour property of the VB controls refuse a value that is not a colour); `-1` is the one value this property uses on purpose. Assigning `-1` to a new item, which already holds `-1`, raises nothing, because nothing changes.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `listitem-backcolor-default-refused.twinproj` (attached as `listitem-backcolor-default-refused.zip`). `Form1` holds one ListView, `ListView1`, and the module `ListItemBackColorTests` holds the test cases.
+2. Run, with `On Error Resume Next`:
+   ```
+   Load Form1
+   Set item = Form1.ListView1.ListItems.Add(, , "row")
+   item.BackColor = vbYellow
+   item.BackColor = -1
+   Debug.Print Err.Number, item.BackColor
+   ```
+3. See `380` and `65535`. Expected `0` and `-1`.
+
+The module below is the reproducer's, and is meant to be adapted as a regression test. On BETA 1005 the first four cases pass and the last fails with `Expected: 0, Actual: 380`.
+```vb
+[TestFixture]
+Module ListItemBackColorTests
+
+    Private Const UseListColour As Long = -1
+
+    [TestCase]
+    Public Sub DefaultIsUseListColour()
+        Dim item As ListItem, value As Long
+        Load Form1
+        Set item = Form1.ListView1.ListItems.Add(, , "row")
+        value = item.BackColor
+        Unload Form1
+        Assert.Strict.AreEqual UseListColour, value, "the default"
+    End Sub
+
+    [TestCase]
+    Public Sub ColourIsAccepted()
+        Dim item As ListItem, number As Long, value As Long
+        Load Form1
+        Set item = Form1.ListView1.ListItems.Add(, , "row")
+        On Error Resume Next: item.BackColor = vbYellow: number = Err.Number: On Error GoTo 0
+        value = item.BackColor
+        Unload Form1
+        Assert.Strict.AreEqual 0, number, "the error"
+        Assert.Strict.AreEqual CLng(vbYellow), value, "the colour"
+    End Sub
+
+    [TestCase]
+    Public Sub DefaultAssignedToNewItem()
+        Dim item As ListItem, number As Long, value As Long
+        Load Form1
+        Set item = Form1.ListView1.ListItems.Add(, , "row")
+        On Error Resume Next: item.BackColor = UseListColour: number = Err.Number: On Error GoTo 0
+        value = item.BackColor
+        Unload Form1
+        Assert.Strict.AreEqual 0, number, "the error"
+        Assert.Strict.AreEqual UseListColour, value, "the colour"
+    End Sub
+
+    [TestCase]
+    Public Sub ColourIsKeptWhenDefaultIsAssigned()
+        Dim item As ListItem, value As Long
+        Load Form1
+        Set item = Form1.ListView1.ListItems.Add(, , "row")
+        item.BackColor = vbYellow
+        On Error Resume Next: item.BackColor = UseListColour: On Error GoTo 0
+        value = item.BackColor
+        Unload Form1
+        Assert.Strict.AreEqual True, (value = CLng(vbYellow) Or value = UseListColour), "yellow or the list's colour"
+    End Sub
+
+    [TestCase]
+    Public Sub DefaultAssignedAfterColour()
+        Dim item As ListItem, number As Long, value As Long
+        Load Form1
+        Set item = Form1.ListView1.ListItems.Add(, , "row")
+        item.BackColor = vbYellow
+        On Error Resume Next: item.BackColor = UseListColour: number = Err.Number: On Error GoTo 0
+        value = item.BackColor
+        Unload Form1
+        Assert.Strict.AreEqual 0, number, "the error"
+        Assert.Strict.AreEqual UseListColour, value, "the colour"
+    End Sub
+
+End Module
+```
+
+**Expected behavior**
+Assigning `-1` to `ListItem.BackColor` is accepted and the row is drawn in the ListView's `BackColor` again, as for a new row. `-1` is the property's default and its documented meaning, so the colour check has to let it through for this property (the controls of the VB package have no such value, and refusing it there is right). MSCOMCTL's ListItem has no `BackColor`, so VB6 has nothing to compare.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+A ListItem's `ForeColor` defaults to a system colour, not to -1, so the same check does no harm there. Severity: low. A program can only give a row a colour that looks like the list's, and the row is not changed by the refused assignment.
+
+<!-- Reproducer: bugs/listitem-backcolor-default-refused/ (mode test; expect is the four PASS lines and the FAIL line of DefaultAssignedAfterColour, verified on BETA 1005 by `bug_repro.mjs verify`). Page: docs/Reference/Built-In/WinNativeCommonCtls/ListView/ListItem.md carries the callout, its BackColor NOTE labelled BETA 1005; remove it when a fix is released. Found 2026-10-14 while documenting WinNativeCommonCtls colours. -->
+
+---
+
+## A call to a `Declare Function` marked `[ConstantFoldable]` crashes the build when Constant Function Folding is on
+
+**Describe the bug**
+With **Constant Function Folding** set to **Yes** in Project Settings (`"optimizer.constantFunctionFolding": true`), a `Declare Function` that carries `[ConstantFoldable]` (or `[ConstantFoldableNumericsOnly]`) and is called with constant arguments crashes the compiler during the build. The project compiles clean (0 errors, 0 warnings); Build then prints `NATIVE EXCEPTION: ACCESS_VIOLATION` in the DEBUG CONSOLE, the IDE restarts the compiler on the project, the same exception follows, and no exe is written.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `constantfoldable-declare-crash.twinproj` (attached as `constantfoldable-declare-crash.zip`). Its project has Constant Function Folding set to Yes, and its one source file, `Startup.twin`, holds the whole bug:
+   ```
+   Module Startup
+
+       Public Sub Main()
+           GetCurrentProcessId
+       End Sub
+
+       [ConstantFoldable]
+       Declare Function GetCurrentProcessId Lib "kernel32" () As Long
+
+   End Module
+   ```
+2. Let the IDE compile it: no diagnostic.
+3. Build the project (**Build**, or `node scripts/tbbuild.mjs <project> --build`). See the DEBUG CONSOLE: `NATIVE EXCEPTION: ACCESS_VIOLATION  {unknown} [$00000000]`, then `restarting from MEMORY [...]` and the same exception again. The build produces no exe.
+
+What it depends on, each tried in a project of its own:
+- it needs the setting on, the attribute and a call: with Constant Function Folding off the project builds; without `[ConstantFoldable]` it builds; with the attribute and no call (`Sub Main` empty) it builds;
+- every argument of the call must be a constant, and a call with none counts: `r = DSleepFn(5, 0)` for `Declare Function DSleepFn Lib "kernel32" Alias "SleepEx" (ByVal ms As Long, ByVal a As Long) As Long` crashes, and so does the zero-argument call above. With a variable for either argument (`v = 5: r = DSleepFn(v, 0)`, or `DSleepFn(5, v)`) it builds;
+- `[ConstantFoldableNumericsOnly]` crashes as `[ConstantFoldable]` does; `Declare`, `Declare PtrSafe`, `Private Declare` and `DeclareWide` all crash; the call may be a statement or the right side of an assignment;
+- a `[ConstantFoldable]` ordinary `Function` in a Module, called with a constant, builds (it is folded, which is what the attribute is for), and so does a `Declare Sub`.
+
+**Expected behavior**
+A built exe. A call to a Declare is not a pure function of its arguments (it calls into a DLL), so it is either not folded, or the attribute is refused on a `Declare Function` with a diagnostic, as it is refused on a method of a class. The compiler does not crash. The attribute does not exist in VB6, and neither does Constant Function Folding.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same in a 32-bit and a 64-bit build. The IDE's compile (what runs when a project is opened or edited) is clean, so the editor shows no sign of the problem; only Build crashes, so a project can hold the line for a long time before it is noticed.
+Severity: medium. The build crashes every time, and the compiler restarts into the same crash, but the project compiles and runs from the IDE, and removing the attribute or the setting fixes it. No wrong code is produced.
+
+<!-- Reproducer: bugs/constantfoldable-declare-crash/ (mode build; expect is tbbuild exit 5 and ACCESS_VIOLATION in the message); verified on BETA 1005 by `bug_repro.mjs verify`, and built with --arch win64 too. Narrowed from the SleepEx form (probe fp1 to fp4 of the attribute sweep): the arguments need not be there, and PtrSafe is not needed. Page: docs/Reference/Attributes.md carries the callout, a `> [!WARNING] BETA 1005`, entry ConstantFoldable (ConstantFoldableNumericsOnly refers to it); remove it when a fix is released. Found 2026-10-15 while probing the attributes at sites the page does not list. -->
+
+---
+
+## `[RunBeforeStartupObject]` on a generic procedure crashes the build
+
+**Describe the bug**
+`[RunBeforeStartupObject]` on a generic procedure of a Module, `Public Sub Pre(Of T)()`, compiles without a diagnostic and then crashes the compiler during the build. The DEBUG CONSOLE shows `NATIVE EXCEPTION: ACCESS_VIOLATION`, the IDE restarts the compiler on the project, the same exception follows, and no exe is written.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `runbeforestartupobject-generic-crash.twinproj` (attached as `runbeforestartupobject-generic-crash.zip`). Its one source file, `Startup.twin`, holds the whole bug:
+   ```
+   Module Startup
+
+       Public Sub Main()
+       End Sub
+
+       [RunBeforeStartupObject]
+       Public Sub Pre(Of T)()
+       End Sub
+
+   End Module
+   ```
+2. Let the IDE compile it: no diagnostic.
+3. Build the project. See the DEBUG CONSOLE: `NATIVE EXCEPTION: ACCESS_VIOLATION  {no-basic-code} [$1EA2AFE8:twinBASIC_win32.dll+0002AFE8]`, then `restarting from MEMORY [...]` and the same exception again. No exe is written.
+
+What it depends on, each tried in a project of its own:
+- the generic procedure with the attribute alone is the cause: `Pre(Of T)` without the attribute builds, and `Pre()` with it, not generic, builds;
+- a generic `Function` crashes too (`Public Function Pre(Of T)() As Boolean`); the body, an empty Sub or Function, does not matter, and nothing calls `Pre`.
+
+**Expected behavior**
+Either a diagnostic that the attribute is not allowed on a generic procedure, or a built exe in which `Pre` runs before `Main` (what it does on a procedure that is not generic). The compiler does not crash. The attribute does not exist in VB6.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same in a 32-bit and a 64-bit build. Only Build crashes: the IDE's compile and the sweep of the attribute's sites find no problem, so the line stays unnoticed until the first build.
+Severity: medium. The build crashes every time, and the compiler restarts into the same crash; removing the attribute from the generic procedure fixes it.
+
+<!-- Reproducer: bugs/runbeforestartupobject-generic-crash/ (mode build; expect is tbbuild exit 5 and ACCESS_VIOLATION in the message); verified on BETA 1005 by `bug_repro.mjs verify`, and built with --arch win64 too. Narrowed from probe rs6b of the attribute sweep, which had the same two procedures: the generic Function crashes as well, a generic Sub with no attribute and a plain Sub with it do not. Page: docs/Reference/Attributes.md carries the callout, a `> [!WARNING] BETA 1005`, entry RunBeforeStartupObject; remove it when a fix is released. Found 2026-10-15 while probing the attributes at sites the page does not list. -->
+
+---
+
+## `[RunAfterBuild]` on a generic Sub is accepted and the Sub never runs
+
+**Describe the bug**
+A Sub marked `[RunAfterBuild]` runs in the IDE once the build has finished. When the Sub is generic (`Public Sub Built(Of T)()`), the attribute is accepted with no diagnostic, the project builds, and the DEBUG CONSOLE says `[BUILD] Executing '...Built'...` as it does for any other such Sub, but the body of the Sub is never run: its `Debug.Print` prints nothing and a file it opens is not written. The compiler does count the Sub as the project's `[RunAfterBuild]`, since a second one is TB5114, *encountered too many [RunAfterBuild] attributes. Only allowed one per-project*.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `runafterbuild-generic-sub-never-runs.twinproj` (attached as `runafterbuild-generic-sub-never-runs.zip`). Its one source file, `Startup.twin`, holds the whole bug:
+   ```
+   Module Startup
+
+       Public Sub Main()
+       End Sub
+
+       [RunAfterBuild]
+       Public Sub Built(Of T)()
+           Debug.Cls
+           Debug.Print "built"
+       End Sub
+
+   End Module
+   ```
+2. Build the project.
+3. See the DEBUG CONSOLE: the build log, ending `[BUILD] Executing 'RunafterbuildGenericSubNeverRuns.Startup.Built'...`, and no line `built` after it. Remove `(Of T)` and build again: `built` is printed (the console is cleared first, so it is the only line).
+
+Tried in a project of its own: a body that opens a file under `Environ("TEMP")` and writes a line to it, in place of the `Debug.Print`; the file is not created. The same in a 32-bit and a 64-bit build.
+
+**Expected behavior**
+The Sub runs after the build, as it does without `(Of T)`, or the attribute is refused on a generic Sub with a diagnostic (as `[RunAfterBuild]` is refused on a second procedure, TB5114). A Sub that the compiler accepts, counts and announces as executing runs. The attribute does not exist in VB6.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+`[RunAfterBuild]` on a `Function` and on a `Property Get` in a Module runs as it does on a Sub, in the same project layout.
+Severity: low. Nothing crashes and nothing is lost; the code the author expected to run does not, with no message.
+
+<!-- Reproducer: bugs/runafterbuild-generic-sub-never-runs/ (mode run with exe, so that tbrun reads the DEBUG CONSOLE; expect is the `Executing` line, no `built` line, and the exe exiting 0); verified on BETA 1005 by `bug_repro.mjs verify`, and run with --arch win64 too. Control: the same project with `Built()` not generic prints `built` (scratch variant, not kept). The first reproducer tried was `run` without `exe`, which fails with TB5114 because the harness adds a [RunAfterBuild] Sub of its own, which is how the counting was seen. Page: docs/Reference/Attributes.md carries the callout, a `> [!WARNING] BETA 1005`, entry RunAfterBuild; remove it when a fix is released. Found 2026-10-15 while probing the attributes at sites the page does not list (probe rb3, control rb4). -->
+
+---
+
+## Some VB6 attribute lines have no effect in a built type library
+
+**Describe the bug**
+twinBASIC reads the `Attribute` lines of a `.cls` file, and the IDE's VB6 import keeps them as VB6 wrote them, but some of them do not reach the type library of the built DLL. `VB_HelpID` and `VB_VarHelpID` leave the class and its members with help context 0. `VB_VarMemberFlags = "40"` and `"400"` leave a public field neither hidden nor nonbrowsable. `VB_MemberFlags = "200"` (user-interface default) and `"14"` (bindable and displaybind) leave the member with no flags. No diagnostic says so. The other attribute lines do take effect in the same build: `VB_Description`, `VB_VarDescription`, `VB_UserMemId`, `VB_VarUserMemId`, `VB_MemberFlags = "40"`, `"400"` and `"440"`, `VB_Creatable`, `VB_GlobalNameSpace`, `VB_PredeclaredId` and `VB_Exposed`. Seen by reading the built DLL's type library with `LoadTypeLibEx`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Unzip `vb6-attribute-lines-no-effect.zip` and open `vb6-attribute-lines-no-effect.twinproj`: an ActiveX DLL with **Register DLL after build** off, so building it registers nothing. `Attrs.cls` holds the lines; `TwinAttrs.twin` is the control.
+2. Build it.
+3. Open the DLL's type library in OLE/COM Object Viewer (**File → View TypeLib...**).
+4. See the coclass `Attrs` with no `helpcontext`, and in `_Attrs`: `HiddenField` and `UnbrowsedField` with neither `hidden` nor `nonbrowsable`, `HelpField` and `WithHelp` with no `helpcontext`, `UiDefault` without `uidefault`, and `Bound` without `bindable` or `displaybind`.
+5. See `HiddenMethod`, whose line is `VB_MemberFlags = "40"`, marked `hidden`, and `TwinAttrs.HiddenField`, written with `[Hidden]`, marked `hidden` too.
+
+**Expected behavior**
+Each line gives what it asks for, as its neighbours do: a help context of 2000, 2001 and 2002, a hidden field as `[Hidden]` gives on a field and as `VB_MemberFlags = "40"` gives on a method, a nonbrowsable field, and `FUNCFLAG_FUIDEFAULT`, `FUNCFLAG_FBINDABLE` and `FUNCFLAG_FDISPLAYBIND`. VB6 writes these lines from its Procedure Attributes dialog, so a VB6 component imported into twinBASIC and built again loses its help context IDs, its hidden fields and its data-binding flags without a word. twinBASIC has no attribute of its own for a help context ID, a user-interface default or data binding, so these lines are the only way to ask for them.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The import is not the cause: it keeps every `Attribute` line of a `.bas` and a `.cls` byte for byte, and those of a `.frm`, `.ctl` and `.pag` inside the class it writes. The type information a class has at run time in the IDE carries no flags and no descriptions for any member, whichever way they are written, so the built DLL is where to look. `[NonBrowsable]` on a public field leaves it without `nonbrowsable` as well. A VB6 build of the same class was not made: VB6 registers an ActiveX DLL as it builds it. Severity: medium for anyone moving a VB6 component to twinBASIC under binary compatibility; nothing fails, and the loss shows only to the component's users, in their object browsers and data-binding dialogs.
+
+<!-- Lane mode in bugs/vb6-attribute-lines-no-effect/repro.json: asserted by `ide-test.bat --only vb6-import` (test/ide/vb6-import.test.mjs), whose test of the same name passes on BETA 1005; the lane imports test/ide/probes/vb6-import with the IDE's own Import from VBP..., builds it with project.dllRegisterAfterBuild false and reads the type library with LoadTypeLibEx (REGKIND_NONE). Page: docs/Miscellaneous/FAQs.md, #vb6-import, carries the WARNING labelled BETA 1005; remove it when a fix is released, and move the lines it names into the list of lines that take effect. Found 2026-10-14 while testing what the VB6 import makes of Attribute lines. -->
