@@ -1,0 +1,39 @@
+' The package's own test runner, the module Tests, which the package leaves public. Its comment says
+' that SetContinueOnFail decides whether a run goes on after a failed check ("True = all checks").
+' The runner prints its lines with Debug.Print.
+[TestFixture]
+Module RunnerTests
+
+    [TestCase]
+    Public Sub SetContinueOnFail_False_StopsAtTheFirstFailedCheck()
+        Expect.Begin
+        Helpers.Reset
+        Tests.SetQuiet True
+        Tests.BeginRun
+        Tests.SetContinueOnFail False
+        Tests.CheckTrue "first check, fails on purpose", False
+        Tests.CheckTrue "second check, fails on purpose", False
+        Dim n As Long = Tests.FailCount()
+        Tests.EndRun
+        Tests.SetQuiet False
+        Expect.AreEqual 1, n, "the failed checks counted after two failing checks with SetContinueOnFail False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetContinueOnFail_True_RunsEveryCheck()
+        Expect.Begin
+        Helpers.Reset
+        Tests.SetQuiet True
+        Tests.BeginRun
+        Tests.SetContinueOnFail True
+        Tests.CheckTrue "first check, fails on purpose", False
+        Tests.CheckTrue "second check, fails on purpose", False
+        Dim n As Long = Tests.FailCount()
+        Tests.EndRun
+        Tests.SetQuiet False
+        Expect.AreEqual 2, n, "the failed checks counted after two failing checks with SetContinueOnFail True"
+        Expect.Done
+    End Sub
+
+End Module

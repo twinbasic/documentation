@@ -1,0 +1,365 @@
+' JSONPath queries. RFC 9535 defines the syntax and what a filter selects; the cases that name a defect
+' check what the RFC says, and the ones that name a departure the page states check the behaviour it
+' states.
+[TestFixture]
+Module PathTests
+
+    ' ---- a comparison with a missing value
+
+    [TestCase]
+    Public Sub Filter_NotEqual_SelectsElementWithoutMember()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""a"":1},{""a"":2},{""b"":3}]")
+        Expect.AreEqual "[{""a"":2},{""b"":3}]", Helpers.QueryText(doc, "$[?@.a != 1]"), "$[?@.a != 1] on [{""a"":1},{""a"":2},{""b"":3}]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Filter_NegatedEqual_SelectsElementWithoutMember()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""a"":1},{""a"":2},{""b"":3}]")
+        Expect.AreEqual "[{""a"":2},{""b"":3}]", Helpers.QueryText(doc, "$[?!(@.a == 1)]"), "$[?!(@.a == 1)] on [{""a"":1},{""a"":2},{""b"":3}]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Filter_EqualOfTwoMissingValues_Selects()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""c"":1}]")
+        Expect.AreEqual "[{""c"":1}]", Helpers.QueryText(doc, "$[?@.a == @.b]"), "$[?@.a == @.b] on an element that has neither a nor b"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Filter_MissingValueEqualsNothingElse()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""a"":1,""b"":1},{""a"":1},{""b"":1}]")
+        Expect.AreEqual "[{""a"":1,""b"":1}]", Helpers.QueryText(doc, "$[?@.a == @.b]"), "$[?@.a == @.b] on elements with both, only a and only b"
+        Expect.Done
+    End Sub
+
+    ' ---- <= and >= for equal values that are not numbers or strings
+
+    [TestCase]
+    Public Sub Filter_LessOrEqual_EqualBooleans_Selects()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""a"":true,""b"":true}]")
+        Expect.AreEqual "[{""a"":true,""b"":true}]", Helpers.QueryText(doc, "$[?@.a <= @.b]"), "$[?@.a <= @.b] on two equal Booleans"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Filter_LessOrEqual_EqualNulls_Selects()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""a"":null,""b"":null}]")
+        Expect.AreEqual "[{""a"":null,""b"":null}]", Helpers.QueryText(doc, "$[?@.a <= @.b]"), "$[?@.a <= @.b] on two nulls"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Filter_LessOrEqual_EqualArrays_Selects()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""a"":[1,2],""b"":[1,2]}]")
+        Expect.AreEqual "[{""a"":[1,2],""b"":[1,2]}]", Helpers.QueryText(doc, "$[?@.a <= @.b]"), "$[?@.a <= @.b] on two equal arrays"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Filter_GreaterOrEqual_EqualBooleans_Selects()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""a"":false,""b"":false}]")
+        Expect.AreEqual "[{""a"":false,""b"":false}]", Helpers.QueryText(doc, "$[?@.a >= @.b]"), "$[?@.a >= @.b] on two equal Booleans"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Filter_LessOrEqual_NumbersAndStrings_Compare()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""a"":1,""b"":1},{""a"":1,""b"":2},{""a"":3,""b"":2},{""a"":""x"",""b"":""x""},{""a"":""x"",""b"":""y""},{""a"":""y"",""b"":""x""}]")
+        Expect.AreEqual "[{""a"":1,""b"":1},{""a"":1,""b"":2},{""a"":""x"",""b"":""x""},{""a"":""x"",""b"":""y""}]", Helpers.QueryText(doc, "$[?@.a <= @.b]"), "$[?@.a <= @.b] on numbers and strings"
+        Expect.Done
+    End Sub
+
+    ' ---- a function call that is not valid
+
+    [TestCase]
+    Public Sub CompilePath_UnknownFunction_IsAnError()
+        Expect.Begin
+        Helpers.Reset
+        Dim q As JsonPathQuery = Json.CompilePath("$[?unknown(@.a)]")
+        Expect.IsTrue q Is Nothing, "CompilePath of $[?unknown(@.a)] returns Nothing"
+        Expect.AreEqual "InvalidPath", JsonError.Code, "the error code of an unknown function"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CompilePath_WrongNumberOfArguments_IsAnError()
+        Expect.Begin
+        Helpers.Reset
+        Dim q As JsonPathQuery = Json.CompilePath("$[?length(@.a, @.b) > 1]")
+        Expect.IsTrue q Is Nothing, "CompilePath of $[?length(@.a, @.b) > 1] returns Nothing"
+        Expect.AreEqual "InvalidPath", JsonError.Code, "the error code of a call with two arguments to length"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CompilePath_QueryThatSelectsManyValuesInComparison_IsAnError()
+        Expect.Begin
+        Helpers.Reset
+        Dim q As JsonPathQuery = Json.CompilePath("$[?@.* == 1]")
+        Expect.IsTrue q Is Nothing, "CompilePath of $[?@.* == 1] returns Nothing"
+        Expect.AreEqual "InvalidPath", JsonError.Code, "the error code of a comparison with a query that selects many values"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Query_UnknownFunction_SetsTheError()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""a"":1},{""a"":2}]")
+        Expect.AreEqual "(error InvalidPath)", Helpers.QueryText(doc, "$[?unknown(@.a)]"), "Query of $[?unknown(@.a)]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CompilePath_FunctionNameStartingWithF_IsInvalidPath()
+        Expect.Begin
+        Helpers.Reset
+        Dim q As JsonPathQuery = Json.CompilePath("$[?foo(@.a)]")
+        Expect.IsTrue q Is Nothing, "CompilePath of $[?foo(@.a)] returns Nothing"
+        Expect.AreEqual "InvalidPath", JsonError.Code, "the error code"
+        Expect.AreEqual "Unknown literal 'foo'.", JsonError.Message, "the message of a function name that starts with f"
+        Expect.Done
+    End Sub
+
+    ' ---- number literals in a filter
+
+    [TestCase]
+    Public Sub Filter_FractionLiteral_Compiles()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""price"":10},{""price"":11}]")
+        Expect.AreEqual "[{""price"":10}]", Helpers.QueryText(doc, "$[?@.price < 10.5]"), "$[?@.price < 10.5] on prices 10 and 11"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Filter_ExponentLiteral_Compiles()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""n"":1000},{""n"":1}]")
+        Expect.AreEqual "[{""n"":1000}]", Helpers.QueryText(doc, "$[?@.n == 1e3]"), "$[?@.n == 1e3] on 1000 and 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Filter_NegativeFractionLiteral_Compiles()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[-1, -0.5, 0]")
+        Expect.AreEqual "[-1]", Helpers.QueryText(doc, "$[?@ < -0.75]"), "$[?@ < -0.75] on -1, -0.5 and 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Filter_IntegerLiteral_Compares()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""price"":8.95},{""price"":12.99}]")
+        Expect.AreEqual "[{""price"":8.95}]", Helpers.QueryText(doc, "$[?@.price < 10]"), "$[?@.price < 10] on prices 8.95 and 12.99"
+        Expect.Done
+    End Sub
+
+    ' ---- the other departures the page states
+
+    [TestCase]
+    Public Sub Length_CountsUtf16CodeUnits()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Json.Arr(Json.Map("s", "bc", "n", 1), Json.Map("s", ChrW(&HD83D) & ChrW(&HDE00), "n", 2), Json.Map("s", "d", "n", 3))
+        Expect.AreEqual "[1,2]", Helpers.QueryText(doc, "$[?length(@.s) == 2].n"), "$[?length(@.s) == 2].n on bc, U+1F600 and d"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Query_LeadingZeroIndex_IsAccepted()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[10,20,30]")
+        Expect.AreEqual "[20]", Helpers.QueryText(doc, "$[01]"), "$[01] on [10,20,30]"
+        Expect.AreEqual "[10]", Helpers.QueryText(doc, "$[-0]"), "$[-0] on [10,20,30]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Query_MemberNameStartingWithDigit_IsRefused()
+        Expect.Begin
+        Helpers.Reset
+        Dim q As JsonPathQuery = Json.CompilePath("$.0")
+        Expect.IsTrue q Is Nothing, "CompilePath of $.0 returns Nothing"
+        Expect.AreEqual "Expected member name.", JsonError.Message, "the message"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub QueryHits_ReturnsValueAndPointer()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":[{""b"":1},{""b"":2}]}")
+        Dim hits() As JsonHit = Json.QueryHits(doc, "$.a[*].b")
+        Expect.AreEqual 2, UBound(hits) - LBound(hits) + 1, "the number of hits"
+        Expect.AreEqual "/a/1/b", hits(LBound(hits) + 1).Pointer, "the pointer of the second hit"
+        Expect.AreEqual 2, hits(LBound(hits) + 1).Value, "the value of the second hit"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CompilePath_FilterNestedMoreThan1000Levels_IsDepthLimitExceeded()
+        Expect.Begin
+        Helpers.Reset
+        Dim deep As JsonPathQuery = Json.CompilePath("$[?" & String$(1001, "(") & "@.a" & String$(1001, ")") & "]")
+        Expect.IsTrue deep Is Nothing, "CompilePath of a filter nested 1001 levels returns Nothing"
+        Expect.AreEqual "DepthLimitExceeded", JsonError.Code, "JsonError.Code"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CompilePath_FilterNested100Levels_Compiles()
+        Expect.Begin
+        Helpers.Reset
+        Dim ok As JsonPathQuery = Json.CompilePath("$[?" & String$(100, "(") & "@.a" & String$(100, ")") & "]")
+        Expect.IsFalse ok Is Nothing, "CompilePath of a filter nested 100 levels returns a query"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CompilePath_FilterNested500Levels_Compiles()
+        Expect.Begin
+        Helpers.Reset
+        Dim ok As JsonPathQuery = Json.CompilePath("$[?" & String$(500, "(") & "@.a" & String$(500, ")") & "]")
+        Expect.IsFalse ok Is Nothing, "CompilePath of a filter nested 500 levels returns a query"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CompilePath_FilterNested999Levels_Compiles()
+        Expect.Begin
+        Helpers.Reset
+        Dim ok As JsonPathQuery = Json.CompilePath("$[?" & String$(999, "(") & "@.a" & String$(999, ")") & "]")
+        Expect.IsFalse ok Is Nothing, "CompilePath of a filter nested 999 levels returns a query"
+        Expect.Done
+    End Sub
+
+    ' ---- the compiled query
+
+    [TestCase]
+    Public Sub CompiledQuery_RunsOnManyDocuments()
+        Expect.Begin
+        Helpers.Reset
+        Dim q As JsonPathQuery = Json.CompilePath("$.items[*].id")
+        Dim a As Variant = Helpers.Doc("{""items"":[{""id"":1},{""id"":2}]}")
+        Dim b As Variant = Helpers.Doc("{""items"":[{""id"":7}]}")
+        Expect.AreEqual "$.items[*].id", q.Source, "Source"
+        Expect.AreEqual "[1,2]", Helpers.Min(q.Query(a)), "Query on the first document"
+        Expect.AreEqual "[7]", Helpers.Min(q.Query(b)), "Query on the second document"
+        Expect.AreEqual 7, q.QueryOne(b), "QueryOne on the second document"
+        Dim v As Variant
+        Expect.IsFalse q.TryQueryOne(Helpers.Doc("{}"), v), "TryQueryOne on an empty object"
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after a query that matches nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CompiledQuery_Verbs_ClearTheLastErrorAndSetNone()
+        Expect.Begin
+        Helpers.Reset
+        Dim q As JsonPathQuery = Json.CompilePath("$.a")
+        Dim bad As Variant = Json.Parse("{")
+        Expect.IsTrue JsonError.HasError, "JsonError.HasError after Parse of {"
+        Dim r() As Variant = q.Query(Helpers.Doc("{""a"":1}"))
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after Query"
+        bad = Json.Parse("{")
+        Dim x As Variant = q.QueryOne(Helpers.Doc("{}"))
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after QueryOne that matches nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CompilePath_InvalidPath_SetsTheErrorOfCompilePath()
+        Expect.Begin
+        Helpers.Reset
+        Dim q As JsonPathQuery = Json.CompilePath("store.book")
+        Expect.IsTrue q Is Nothing, "CompilePath of a path that does not start with $"
+        Expect.AreEqual "InvalidPath", JsonError.Code, "JsonError.Code"
+        Expect.AreEqual "JSONPath must start with '$'.", JsonError.Message, "JsonError.Message"
+        Expect.AreEqual "Json.CompilePath", JsonError.Origin, "JsonError.Origin"
+        Expect.Done
+    End Sub
+
+    ' ---- the syntax table
+
+    [TestCase]
+    Public Sub Query_Selectors_SelectWhatTheTableSays()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""o"":{""a"":1,""b"":[10,20,30,40,50],""c d"":""sp"",""" & ChrW(233) & """:""u""},""list"":[{""k"":1,""t"":""x""},{""k"":2,""t"":""y""},{""k"":3}]}")
+        Expect.AreEqual "[1]", Helpers.QueryText(doc, "$.o.a"), "$.o.a"
+        Expect.AreEqual "[""sp""]", Helpers.QueryText(doc, "$.o['c d']"), "$.o['c d']"
+        Expect.AreEqual "[""sp""]", Helpers.QueryText(doc, "$[""o""][""c d""]"), "$[""o""][""c d""]"
+        Expect.AreEqual "[""u""]", Helpers.QueryText(doc, "$.o." & ChrW(233)), "a member name that starts with a non-ASCII character"
+        Expect.AreEqual "[50]", Helpers.QueryText(doc, "$.o.b[-1]"), "$.o.b[-1]"
+        Expect.AreEqual "[20,40]", Helpers.QueryText(doc, "$.o.b[1:4:2]"), "$.o.b[1:4:2]"
+        Expect.AreEqual "[]", Helpers.QueryText(doc, "$.o.b[::0]"), "$.o.b[::0], a step of 0"
+        Expect.AreEqual "[10,10]", Helpers.QueryText(doc, "$.o.b[0,0]"), "$.o.b[0,0], a value that two selectors select"
+        Expect.AreEqual "[40,20]", Helpers.QueryText(doc, "$.o.b[3,1]"), "$.o.b[3,1], the union in the order written"
+        Expect.AreEqual "[1,2,3]", Helpers.QueryText(doc, "$..k"), "$..k"
+        Expect.AreEqual "[10,20,30,40,50]", Helpers.QueryText(doc, "$.o.b.*"), "$.o.b.*"
+        Expect.AreEqual "[" & Helpers.Min(doc) & "]", Helpers.QueryText(doc, "$"), "$ alone"
+        Expect.AreEqual "[1]", Helpers.QueryText(doc, "$ .o .a"), "$.o.a with a space before each segment"
+        Expect.AreEqual "[20,30]", Helpers.QueryText(doc, "$.o.b[ 1 , 2 ]"), "$.o.b[1,2] with spaces inside the brackets"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Query_FilterExpressions_BehaveAsTheTableSays()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""list"":[{""k"":1,""t"":""x""},{""k"":2,""t"":""y""},{""k"":3}]}")
+        Expect.AreEqual "[1,2]", Helpers.QueryText(doc, "$.list[?count(@.t) == 1].k"), "a filter with count"
+        Expect.AreEqual "[{""k"":2,""t"":""y""},{""k"":3}]", Helpers.QueryText(doc, "$.list[?@.k > 1]"), "a filter with >"
+        Expect.AreEqual "[{""k"":1,""t"":""x""},{""k"":2,""t"":""y""}]", Helpers.QueryText(doc, "$.list[?@.t]"), "a filter that is a query, true when it selects a value"
+        Expect.AreEqual "[{""k"":2,""t"":""y""}]", Helpers.QueryText(doc, "$.list[?@.k > 1 && @.t]"), "a filter with &&"
+        Expect.AreEqual "[1,3]", Helpers.QueryText(doc, "$.list[?@.k == 1 || @.k == 3].k"), "a filter with ||"
+        Expect.AreEqual "[{""k"":2,""t"":""y""}]", Helpers.QueryText(doc, "$.list[?value(@.k) == 2]"), "a filter with value"
+        Expect.AreEqual "[1,2]", Helpers.QueryText(doc, "$.list[?length(@.t) == 1].k"), "a filter with length"
+        Expect.AreEqual "[{""k"":1,""t"":""x""}]", Helpers.QueryText(doc, "$.list[?@.t == 'x']"), "a filter that compares with a string in single quotes"
+        Expect.AreEqual "[{""k"":1,""t"":""x""}]", Helpers.QueryText(doc, "$.list[?@.t == ""x""]"), "a filter that compares with a string in double quotes"
+        Expect.AreEqual "[{""k"":3}]", Helpers.QueryText(doc, "$.list[?!@.t]"), "a filter with !"
+        Expect.Done
+    End Sub
+
+    ' ---- the syntax that follows the RFC
+
+    [TestCase]
+    Public Sub Query_SlicesDescendantsAndWildcards_FollowTheRfc()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":[""a"",""b"",""c"",""d""],""o"":{""j"":1,""k"":{""j"":2}}}")
+        Expect.AreEqual "[""b"",""c""]", Helpers.QueryText(doc, "$.a[1:3]"), "$.a[1:3]"
+        Expect.AreEqual "[""d"",""c"",""b"",""a""]", Helpers.QueryText(doc, "$.a[::-1]"), "$.a[::-1]"
+        Expect.AreEqual "[""a"",""d""]", Helpers.QueryText(doc, "$.a[0, -1]"), "$.a[0, -1]"
+        Expect.AreEqual "[1,2]", Helpers.QueryText(doc, "$..j"), "$..j"
+        Expect.AreEqual "[1,{""j"":2}]", Helpers.QueryText(doc, "$.o.*"), "$.o.*"
+        Expect.Done
+    End Sub
+
+End Module

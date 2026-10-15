@@ -1,0 +1,119 @@
+' ParseIso8601 and FormatIso8601: the forms of ISO 8601 that the package reads, and the ones it refuses.
+[TestFixture]
+Module DatesTests
+
+    ' "yyyy-mm-ddThh:nn:ss(.fff)" of the date read from the text, or "InvalidDate: <message>".
+    Private Function Read(ByVal Text As String) As String
+        Helpers.Reset
+        Dim d As Date = Json.ParseIso8601(Text)
+        If JsonError.HasError Then
+            Read = JsonError.Code & ": " & JsonError.Message
+        Else
+            Read = Json.FormatIso8601(d)
+        End If
+    End Function
+
+    [TestCase]
+    Public Sub ParseIso8601_DateAndTime_AreRead()
+        Expect.Begin
+        Expect.AreEqual "2026-08-19T09:15:30.250", Read("2026-08-19T09:15:30.250"), "a date with a time and a fraction"
+        Expect.AreEqual "2026-08-19T00:00:00", Read("2026-08-19"), "a date alone"
+        Expect.AreEqual "2026-08-19T09:15:30", Read("2026-08-19 09:15:30"), "a space for the T"
+        Expect.AreEqual "2026-08-19T00:00:00", Read("  2026-08-19  "), "white space around the text"
+        Expect.AreEqual "0100-01-01T00:00:00", Read("0100-01-01"), "the first year"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso8601_Fraction_IsCutToMilliseconds()
+        Expect.Begin
+        Expect.AreEqual "2026-08-19T09:15:30.123", Read("2026-08-19T09:15:30.123456"), "a fraction of six digits"
+        Expect.AreEqual "2026-08-19T09:15:30.123", Read("2026-08-19T09:15:30.1239"), "a fraction of four digits that would round up"
+        Expect.AreEqual "2026-08-19T09:15:30.100", Read("2026-08-19T09:15:30.1"), "a fraction of one digit"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso8601_FormsOutsideTheSubset_AreInvalidDate()
+        Expect.Begin
+        Expect.AreEqual "InvalidDate: Date is out of range.", Read("0099-01-01"), "a year below 0100"
+        Expect.AreEqual "InvalidDate: Expected yyyy-mm-ddThh:nn:ss.", Read("2026-08-19T09:15"), "a time without seconds"
+        Expect.AreEqual "InvalidDate: Expected 'T' between date and time.", Read("2026-08-19t09:15:30"), "a lower-case t"
+        Expect.AreEqual "InvalidDate: Invalid timezone.", Read("2026-08-19T09:15:30+0100"), "an offset without a colon"
+        Expect.AreEqual "InvalidDate: Time is out of range.", Read("2026-08-19T09:15:60"), "seconds of 60"
+        Expect.AreEqual "InvalidDate: Date is out of range.", Read("2026-02-30"), "a day that does not exist"
+        Expect.AreEqual "InvalidDate: ISO-8601 date is too short.", Read("2026-8-19"), "a month of one digit"
+        Expect.AreEqual "InvalidDate: Expected yyyy-mm-dd.", Read("19.08.2026"), "a date in the German form"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso8601_Failure_ReturnsDateZero()
+        Expect.Begin
+        Helpers.Reset
+        Dim d As Date = Json.ParseIso8601("19.08.2026")
+        Expect.IsTrue d = 0, "the Date returned for text that is not a date"
+        Expect.AreEqual "InvalidDate", JsonError.Code, "JsonError.Code"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseIso8601_TwoSpellingsOfOneInstant_GiveTheSameDate()
+        Expect.Begin
+        Helpers.Reset
+        Dim utc As Date = Json.ParseIso8601("2026-08-19T12:00:00Z")
+        Dim berlin As Date = Json.ParseIso8601("2026-08-19T14:00:00+02:00")
+        Dim ny As Date = Json.ParseIso8601("2026-08-19T08:00:00-04:00")
+        Expect.IsTrue utc = berlin, "12:00Z and 14:00+02:00"
+        Expect.IsTrue utc = ny, "12:00Z and 08:00-04:00"
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FormatIso8601_WritesMillisecondsOnlyWhenTheyAreNotZero()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual "2026-08-19T09:15:30", Json.FormatIso8601(#8/19/2026 9:15:30 AM#), "a date with whole seconds"
+        Expect.AreEqual "2026-08-19T00:00:00", Json.FormatIso8601(#8/19/2026#), "a date with no time"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FormatIso8601_MillisecondsAboveHalfASecond_KeepTheSecondAndTheFraction()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual "2026-08-19T09:15:30.500", Json.FormatIso8601(Json.ParseIso8601("2026-08-19T09:15:30.500")), "FormatIso8601 of 09:15:30.500"
+        Expect.AreEqual "2026-08-19T09:15:30.501", Json.FormatIso8601(Json.ParseIso8601("2026-08-19T09:15:30.501")), "FormatIso8601 of 09:15:30.501"
+        Expect.AreEqual "2026-08-19T09:15:30.750", Json.FormatIso8601(Json.ParseIso8601("2026-08-19T09:15:30.750")), "FormatIso8601 of 09:15:30.750"
+        Expect.AreEqual "2026-08-19T09:15:30.999", Json.FormatIso8601(Json.ParseIso8601("2026-08-19T09:15:30.999")), "FormatIso8601 of 09:15:30.999"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_DateWithMillisecondsAboveHalfASecond_KeepsTheFraction()
+        Expect.Begin
+        Helpers.Reset
+        Dim d As Date = Json.ParseIso8601("2026-08-19T23:59:59.750")
+        Expect.AreEqual """2026-08-19T23:59:59.750""", Helpers.Min(d), "Serialize of 23:59:59.750"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_Date_IsAnIsoString()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual """2026-08-19T09:15:30""", Helpers.Min(#8/19/2026 9:15:30 AM#), "Serialize of a Date"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Json_Date_IsNotAJsonValue()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.TypeOfValue(#8/18/2026#) = jtUnknown, "TypeOfValue of a Date"
+        Expect.IsFalse Json.Equals(#8/18/2026#, #8/18/2026#), "Equals of two equal Dates"
+        Expect.Done
+    End Sub
+
+End Module

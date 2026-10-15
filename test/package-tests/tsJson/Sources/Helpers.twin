@@ -1,0 +1,75 @@
+' Helpers: what the test cases of tsJson share.
+'
+' Every case starts with Reset, which empties the last error and ends the "nested call" mark that
+' a run-time error inside Json.Serialize leaves behind, so that one case cannot hand a stuck last
+' error to the next. The cases write no file except under %TEMP%\tbdocs-package-tests\tsJson\.
+Module Helpers
+
+    ' Clears the last error and ends any "nested call" mark of the package (JsonErrorStore.LeaveNested
+    ' is public although the package does not document it).
+    Public Sub Reset()
+        Dim i As Long
+        For i = 1 To 20
+            JsonErrorStore.LeaveNested
+        Next
+        JsonError.Clear
+    End Sub
+
+    ' The value as JSON text without white space.
+    Public Function Min(ByVal Value As Variant) As String
+        Min = Json.Serialize(Value, JsonOptions.Minified)
+    End Function
+
+    ' The document in JSON text; the case fails when the text does not parse.
+    Public Function Doc(ByVal Text As String) As Variant
+        Dim v As Variant
+        v = Json.Parse(Text)
+        If JsonError.HasError Then Expect.Fail "the document " & Text & " did not parse: " & JsonError.ToString()
+        If IsObject(v) Then Set Doc = v Else Doc = v
+    End Function
+
+    ' The result of Query as JSON text, "(error <code>)" for a path that is refused.
+    Public Function QueryText(ByVal Root As Variant, ByVal Path As String) As String
+        Dim r() As Variant
+        JsonError.Clear
+        r = Json.Query(Root, Path)
+        If JsonError.HasError Then
+            QueryText = "(error " & JsonError.Code & ")"
+        Else
+            QueryText = Min(r)
+        End If
+    End Function
+
+    ' The folder of the cases that write files.
+    Public Function Folder() As String
+        Folder = Environ$("TEMP") & "\tbdocs-package-tests\tsJson"
+    End Function
+
+    Public Function FreshFolder(ByVal Tag As String) As String
+        Dim p As String
+        p = Folder() & "\" & Tag
+        RemoveFolder p
+        On Error Resume Next
+        MkDir Environ$("TEMP") & "\tbdocs-package-tests"
+        MkDir Folder()
+        MkDir p
+        Err.Clear
+        On Error GoTo 0
+        FreshFolder = p
+    End Function
+
+    Public Sub RemoveFolder(ByVal Path As String)
+        On Error Resume Next
+        Dim f As String
+        f = Dir$(Path & "\*.*")
+        Do While Len(f) > 0
+            Kill Path & "\" & f
+            f = Dir$(Path & "\*.*")
+        Loop
+        RmDir Path
+        RmDir Folder()
+        RmDir Environ$("TEMP") & "\tbdocs-package-tests"
+        Err.Clear
+    End Sub
+
+End Module

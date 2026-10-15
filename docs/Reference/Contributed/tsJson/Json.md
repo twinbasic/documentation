@@ -22,8 +22,11 @@ Debug.Print Json.Serialize(doc, JsonOptions.Minified)               ' {"name":"A
 
 The module has no state and no settings. Options for one call are a [**JsonOptions**](JsonOptions) object that is passed as the last argument. **Nothing**, the default, means the RFC 8259 defaults of [**JsonOptions.Rfc**](JsonOptions#rfc), except where a function below says otherwise.
 
+<!-- test: ErrorStateTests.Parse_Failure_ReturnsEmptyAndSetsTheError, ErrorStateTests.Parse_AfterAFailure_ClearsTheError, ErrorStateTests.TryParse_Failure_ReportsTheOriginOfParse, ErrorStateTests.PureFunctions_LeaveTheLastErrorAlone, ModelTests.Map_OddNumberOfArguments_IsInvalidArgument -->
 **Errors.** The functions of the module do not raise run-time errors for bad data or bad arguments. A function that fails returns an empty result (**Empty**, **Nothing**, an empty string, **False** or an unbound array) and sets the last error, which the predeclared object [**JsonError**](JsonError) reports. A function that can fail clears the last error when it starts, so the last error always belongs to the latest such call. The members that cannot fail neither clear nor set it: [**TypeOfValue**](#typeofvalue), [**IsObject**](#isobject), [**IsArray**](#isarray), [**Equals**](#equals), [**PointerEscape**](#pointerescape), [**PointerUnescape**](#pointerunescape), [**IsValidPattern**](#isvalidpattern), [**IsMatchPattern**](#ismatchpattern), [**IsSearchPattern**](#issearchpattern) and [**FormatIso8601**](#formatiso8601). The origin of an error is the name of the function that was called, such as `Json.Parse`. The functions [**TryParse**](#tryparse), [**TryParseFile**](#tryparsefile), [**TryParseLines**](#tryparselines) and [**TryParseLinesFile**](#tryparselinesfile) report the origin of the function they call: an error of **TryParse** has the origin `Json.Parse`.
+<!-- /test -->
 
+<!-- test: ErrorStateTests.PointerExists_MissingPlace_IsFalseWithNoError, ErrorStateTests.PointerTryGet_MissingPlace_IsFalseWithNoError, ErrorStateTests.Query_NothingMatches_IsEmptyWithNoError, ErrorStateTests.QueryOne_NothingMatches_IsEmptyWithNoError, ErrorStateTests.TryQueryOne_NothingMatches_IsFalseWithNoError, ErrorStateTests.Parse_Null_ReturnsNullAndNoError, ErrorStateTests.Parse_Failure_ReturnsEmptyAndSetsTheError -->
 > [!NOTE] timeless
 > A function that finds nothing is not an error when its name says so (**PointerExists**, **PointerTryGet**, the `Try` functions and the JSONPath queries). The `Try` functions return **False**, and a JSONPath query that matches nothing returns an empty result with no error. Check [**JsonError.HasError**](JsonError#haserror), not **IsEmpty**, after a function that can return a JSON null: [**Parse**](#parse) returns **Null** for the text `null`, and **Empty** only for a failure.
 
@@ -37,6 +40,7 @@ The module has no state and no settings. Options for one call are a [**JsonOptio
 
 The JSON type of a value, as [**TypeOfValue**](#typeofvalue) and [**JsonObject.ValueType**](JsonObject#valuetype) report it.
 
+<!-- test: ModelTests.TypeOfValue_ClassifiesTheValuesOfTheModel -->
 | Member | Value | Meaning |
 |:-------|------:|:--------|
 | **jtUnknown** | 0 | Not a JSON value: **Empty**, **Nothing**, a **Date**, any object other than a **JsonObject** or a **JsonArray**, and a **Variant** array. |
@@ -46,6 +50,8 @@ The JSON type of a value, as [**TypeOfValue**](#typeofvalue) and [**JsonObject.V
 | **jtString** | 4 | A **String**. |
 | **jtArray** | 5 | A [**JsonArray**](JsonArray). |
 | **jtObject** | 6 | A [**JsonObject**](JsonObject). |
+
+<!-- /test -->
 
 ## Building values
 
@@ -62,6 +68,7 @@ Syntax: **Json.Map** ( [ *key1*, *value1* [ , *key2*, *value2* ... ] ] ) **As** 
 *value1*, *value2* ...
 : *optional* The value of the member before it: a **String**, a number, a **Boolean**, **Null**, a [**JsonObject**](JsonObject) or a [**JsonArray**](JsonArray). The value is stored as it is; it is not checked and, for an object, not copied.
 
+<!-- test: ModelTests.Map_RepeatedKey_ReplacesTheValueInTheFirstPlace, ModelTests.Map_OddNumberOfArguments_IsInvalidArgument, ModelTests.Map_KeyThatIsNotAString_IsInvalidArgument -->
 With no arguments the result is an empty object. The members are in the order of the arguments. If a key appears twice, the second value replaces the first, and the member keeps the place of the first. The function returns **Nothing** and sets the error `InvalidArgument` when the number of arguments is odd or a key is not a **String**.
 
 ```tb check_build check_run
@@ -74,6 +81,7 @@ Debug.Print bad Is Nothing                                ' True
 Debug.Print JsonError.Code                                ' InvalidArgument
 Debug.Print JsonError.Origin                              ' Json.Map
 ```
+<!-- /test -->
 
 ### Arr
 {: .no_toc }
@@ -85,11 +93,13 @@ Syntax: **Json.Arr** ( [ *value1* [ , *value2* ... ] ] ) **As** [**JsonArray**](
 *value1*, *value2* ...
 : *optional* The elements, in order. Each is stored as it is, as [**JsonArray.Add**](JsonArray#add) stores it.
 
+<!-- test: ModelTests.Arr_KeepsTheValuesAsTheyAre -->
 ```tb check_build check_run
 Dim a As JsonArray = Json.Arr(1, "two", True, Null, Json.Arr(), Json.Map())
 Debug.Print a.Count                                       ' 6
 Debug.Print Json.Serialize(a, JsonOptions.Minified)       ' [1,"two",true,null,[],{}]
 ```
+<!-- /test -->
 
 ### TypeOfValue
 {: .no_toc }
@@ -156,9 +166,11 @@ Syntax: **Json.Clone** ( *value* ) **As Variant**
 *value*
 : *required* The value to copy.
 
+<!-- test: ModelTests.Clone_CopiesEveryContainer, ModelTests.Assignment_SharesTheContainer, PatchTests.Patch_DoesNotChangeTheDocument, PatchTests.MergePatch_DoesNotChangeTheDocument, PointerTests.PointerGet_ReturnsTheContainerInsideTheDocument, ModelTests.Query_ReturnsTheContainersInsideTheDocument -->
 Every [**JsonObject**](JsonObject) and [**JsonArray**](JsonArray) inside the value is copied, so the copy shares no container with the original. Other values are copied by value, and an object that is not part of the model is copied by reference.
 
 A read does not copy: [**JsonObject.Item**](JsonObject#item), [**PointerGet**](#pointerget) and [**Query**](#query) return the container that is inside the document, and a change made through it changes the document. The functions that return a new document, [**PointerSet**](#pointerset), [**PointerRemove**](#pointerremove), [**Patch**](#patch), [**MergePatch**](#mergepatch) and [**JsonObject.Merge**](JsonObject#merge), leave their argument unchanged.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim a As JsonObject = Json.Map("list", Json.Arr(1, 2))
@@ -182,7 +194,9 @@ Syntax: **Json.Equals** ( *a*, *b* ) **As Boolean**
 *a*, *b*
 : *required* The values to compare.
 
+<!-- test: ModelTests.Equals_ComparesJsonValues, DatesTests.Json_Date_IsNotAJsonValue -->
 Two values are equal when they have the same JSON type and the same content. Numbers are compared by value, so `1` and `1.0` are equal whatever their types are. Strings are compared by character code, so `a` and `A` differ. Arrays are equal when they have the same length and equal elements in the same order. Objects are equal when they have the same keys and equal values; the order of the keys does not matter. Two values that are not JSON values are equal only when both are **Empty** or both are **Nothing**; in particular, two **Date** values are never equal, even when they hold the same date.
+<!-- /test -->
 
 The function does not change the last error. The patch functions use it to compare values: [**Patch**](#patch) for the `test` operation, and [**Diff**](#diff).
 
@@ -213,6 +227,7 @@ Syntax: **Json.Parse** ( *json* [ , *options* ] ) **As Variant**
 
 Returns the root value of the document: a [**JsonObject**](JsonObject), a [**JsonArray**](JsonArray), a **String**, a **Decimal**, a **Boolean** or **Null**. Returns **Empty** and sets the last error when the text is not valid, the input exceeds a limit, or the bytes cannot be decoded.
 
+<!-- test: ParseTests.Parse_ControlCharacterInString_IsInvalidSyntax, ParseTests.Parse_Escapes_AreRead, ParseTests.Parse_LoneSurrogateEscape_IsInvalidEscape, ParseTests.Parse_DateText_StaysAString, ParseTests.Parse_WhiteSpaceAroundTheValue_IsAllowed, ParseTests.Parse_TextAfterTheValue_IsAnError, ParseTests.Parse_TrailingCommaAndComment_AreErrorsByDefault, ParseTests.Parse_Jsonc_AcceptsCommentsAndOneTrailingComma, ParseTests.Parse_DuplicateKey_IsAnErrorByDefault, ParseTests.Parse_DuplicateKeyLastWins_KeepsTheLastValueInTheFirstPlace, ParseTests.Parse_DepthBeyondMaxDepth_IsDepthLimitExceeded, ParseTests.Parse_DefaultMaxDepth_Is1000, ParseTests.Parse_LimitsOnStringsArraysAndObjects_AreLimitExceeded, ParseTests.Parse_MaxBytes_RefusesALongerString, ParseTests.Parse_MaxBytes_CountsUtf8BytesOfAString, ParseTests.Parse_Bytes_AreDecodedByTheByteOrderMark, ParseTests.Parse_BytesWithEncodingOption_IgnoreAMatchingByteOrderMark, ParseTests.Parse_InvalidUtf8Bytes_AreInvalidEncoding, ParseTests.Parse_OtherType_IsWrongType, ErrorStateTests.Parse_ByteOrderMarkInString_IsInvalidSyntax, NumberTests.Parse_ExponentAboveTheDecimalRange_IsInvalidNumber, NumberTests.Parse_ScaleBelowTheDecimalRange_IsInvalidNumber, NumberTests.Parse_ThirtySixDigitNumber_IsInvalidNumber, NumberTests.Parse_LargestDouble_IsInvalidNumber, NumberTests.Parse_NumbersInsideTheDecimalRange_KeepEveryDigit, NumberTests.Parse_FractionsAndExponents_ApplyThem, NumberTests.Parse_Number_IsADecimal, ParseTests.Parse_JsoncCommentNotClosed_IsInvalidComment -->
 The text must be one JSON value as RFC 8259 defines it, with only the white space characters space, tab, line feed and carriage return around it. With [**Syntax**](JsonOptions#syntax) set to **jsJsonc**, comments and a comma after the last element are also accepted. Details of the reading:
 
 - **Numbers** become **Decimal** values, with no loss of digits and independent of the regional settings. A number that a **Decimal** cannot hold is an `InvalidNumber` error: one whose digits, read as a whole number, are above 79228162514264337593543950335, or whose scale is outside the range of **Decimal**. The scale is the exponent written, less the number of digits after the decimal point, and it must be from -28 to 28. The documents `1e29`, `1e-29`, `79228162514264337593543950336`, and `3.14159265358979323846264338327950288` (36 digits) are rejected, and so is `1.7976931348623157e308`, the largest **Double**. The documents `1e28`, `1e-28`, `79228162514264337593543950335`, `12345678901234567890123456789` and `0.0000000000000000000000000001` are read in full. The package's own tests treat this as a rule of the package, and RFC 8259 lets an implementation limit the range and precision of numbers; but a document that other JSON software writes can hold a number that this package rejects (see [Known problems](.#known-problems-in-version-10150)). A number is read with its exponent and fraction applied, so `1.5E3` is `1500`, `1.0` is `1`, `0.10` is `0.1` and `-0` is `0`.
@@ -221,6 +236,8 @@ The text must be one JSON value as RFC 8259 defines it, with only the white spac
 - **Duplicate keys** in an object are the error `DuplicateKey` unless [**DuplicateKeys**](JsonOptions#duplicatekeys) is **jdkLastWins**. With **jdkLastWins** the last value is kept, in the position of the first.
 - **Nesting** is limited by [**MaxDepth**](JsonOptions#maxdepth): the root is at depth 0, each value inside a container is one level deeper than the container, and a value deeper than **MaxDepth**, a scalar as well as a container, is a `DepthLimitExceeded` error. The other limits are [**MaxBytes**](JsonOptions#maxbytes), [**MaxStringLength**](JsonOptions#maxstringlength), [**MaxArrayItems**](JsonOptions#maxarrayitems) and [**MaxObjectMembers**](JsonOptions#maxobjectmembers); exceeding one is a `LimitExceeded` error.
 - **A byte array** is decoded as [**Encoding**](JsonOptions#encoding) says: by default a byte order mark selects UTF-8, UTF-16 little endian or UTF-16 big endian, and UTF-8 is the choice without one. Bytes that are not valid in the encoding are an `InvalidEncoding` error. A **String** is not decoded, and a byte order mark at its start is not skipped: it is an `InvalidSyntax` error.
+
+<!-- /test -->
 
 ```tb check_build check_run
 Dim t As Variant
@@ -246,7 +263,9 @@ Next
 ' 3.14159265358979323846264338327950288 -> InvalidNumber
 ```
 
+<!-- test: ParseTests.Parse_SyntaxError_ReportsPositionLineAndColumn, ParseTests.Parse_SyntaxError_ToStringNamesOriginCodeAndPlace -->
 The position of a syntax error is in `JsonError.Position`, `JsonError.Line` and `JsonError.Column`, counted from 1 in UTF-16 code units, with a line feed, a carriage return or a carriage return and a line feed each ending a line. `JsonError.Snippet` holds up to 24 characters on each side of the position.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim v As Variant = Json.Parse("{""a"":[1,2.5,""x"",true,null]}")
@@ -263,7 +282,9 @@ Debug.Print JsonError.Code                                ' InvalidSyntax
 Debug.Print JsonError.ToString()  ' Json.Parse: InvalidSyntax - Expected object key. (line 1, column 8, position 8) | {"a":1,}
 ```
 
+<!-- test: ErrorStateTests.Parse_FailedResultAssignedToObjectVariable_RaisesError424 -->
 The result of **Parse** is a **Variant**, so a variable of a class type can take it directly when the parse succeeds: `Dim o As JsonObject = Json.Parse(text)`. After a failed parse the result is **Empty**, which such a variable does not accept: the assignment raises run-time error 424, *Object required*. Check the last error first, or use [**TryParse**](#tryparse).
+<!-- /test -->
 
 ```tb check_build check_run
 On Error Resume Next
@@ -313,6 +334,7 @@ Syntax: **Json.Serialize** ( *value* [ , *options* ] ) **As String**
 *options*
 : *optional* A [**JsonOptions**](JsonOptions) object. **Nothing**, the default, writes the text pretty-printed with 4 spaces of indentation and a line feed (`vbLf`) after each line, as [**JsonOptions.Pretty**](JsonOptions#pretty) does. The format properties and [**MaxDepth**](JsonOptions#maxdepth) are used.
 
+<!-- test: SerializeTests.Serialize_Strings_EscapeQuoteBackslashAndControlCharacters, SerializeTests.Serialize_Solidus_IsWrittenAsItIsUnlessAsked, SerializeTests.Serialize_EnsuresAscii_EscapesEveryCodeUnitAbove7F, SerializeTests.Serialize_SortsKeys_OrdersMembersByCodeUnit, SerializeTests.Serialize_Default_IsPrettyWithFourSpacesAndLineFeeds, SerializeTests.Serialize_Newline_EndsTheLines, SerializeTests.Serialize_IndentZero_HasLineBreaksAndNoIndentation, SerializeTests.Serialize_EmptyContainers_AreWrittenAlike, SerializeTests.Serialize_VariantArray_IsAJsonArray, SerializeTests.Serialize_ValuesThatAreNotJson_AreUnsupportedType, SerializeTests.Serialize_ContainerThatContainsItself_IsCircularReference, SerializeTests.Serialize_DepthBeyondMaxDepth_IsDepthLimitExceeded, NumberTests.Serialize_DoubleAboveTheDecimalRange_IsInvalidNumber, NumberTests.Serialize_DoubleJustAboveTheDecimalRange_IsInvalidNumber, NumberTests.Serialize_Doubles_KeepFifteenSignificantDigits, DatesTests.Serialize_Date_IsAnIsoString, ErrorStateTests.Serialize_TwoDimensionalArray_RaisesNoRunTimeError, ErrorStateTests.Serialize_TwoDimensionalArray_SetsTheLastError, DatesTests.Serialize_DateWithMillisecondsAboveHalfASecond_KeepsTheFraction -->
 Returns the text, or an empty string and the last error when the value cannot be written. The errors are `UnsupportedType` for a value that is not a JSON value (an **Empty**, a **Nothing**, or an object of another class), `InvalidNumber` for a number that a **Decimal** cannot hold, such as an infinity or a **Double** above about 7.9E+28, `CircularReference` for a container that contains itself, and `DepthLimitExceeded`.
 
 - **Numbers** of every numeric type are converted to **Decimal** and written as the text of that value, with a decimal point whatever the regional settings are and without an exponent. A **Double** is converted to **Decimal** first, so it keeps 15 significant digits: `1 / 3` is written as `0.333333333333333`, and `0.1 + 0.2` as `0.3`. A **Double** of 1E+20 is written as `100000000000000000000`.
@@ -321,6 +343,8 @@ Returns the text, or an empty string and the last error when the value cannot be
 - **A Variant array** is written as a JSON array. An empty or unbound array is `[]`. Only one-dimensional arrays are supported: a two-dimensional array raises run-time error -2147467259, *Unspecified error*, and leaves the last error of the package stuck (see [Known problems](.#known-problems-in-version-10150)).
 - **Objects** keep their order, unless [**SortsKeys**](JsonOptions#sortskeys) is **True**, which orders the keys by UTF-16 code unit.
 - **Layout.** With [**Indent**](JsonOptions#indent) of 0 or more, each member and element is on its own line, indented by that many spaces for each level, with a space after each colon; [**Newline**](JsonOptions#newline) ends the lines. With **Indent** below 0 the text has no white space. An empty object or array is `{}` or `[]` in both layouts.
+
+<!-- /test -->
 
 ```tb check_build check_run
 Dim o As JsonObject = Json.Map("a", 1, "b", Json.Arr(1, 2), "c", Json.Map())
@@ -350,6 +374,7 @@ Debug.Print Json.Serialize(CSng(0.1), JsonOptions.Minified)     ' 0.1
 Debug.Print Json.Serialize(CDec("1.50"), JsonOptions.Minified)  ' 1.5
 ```
 
+<!-- test: SerializeTests.Serialize_LoneSurrogate_IsWrittenAndNotEncodedToUtf8 -->
 A character that is not a valid UTF-16 sequence, a lone surrogate, is written unchanged by **Serialize**. [**SerializeToUtf8**](#serializetoutf8) and [**WriteFile**](#writefile) cannot encode it and report `InvalidEncoding`.
 
 ```tb check_build check_run
@@ -358,6 +383,7 @@ Dim bytes() As Byte = Json.SerializeToUtf8(ChrW(&HD83D), Nothing)
 Debug.Print JsonError.Code                                ' InvalidEncoding
 Debug.Print JsonError.Message                             ' Text cannot be encoded as UTF-8.
 ```
+<!-- /test -->
 
 ### SerializeToUtf8
 {: .no_toc }
@@ -372,7 +398,9 @@ Syntax: **Json.SerializeToUtf8** ( *value* [ , *options* ] ) **As Byte()**
 *options*
 : *optional* A [**JsonOptions**](JsonOptions) object, as for [**Serialize**](#serialize). When [**IncludesBom**](JsonOptions#includesbom) is **True**, the bytes start with the UTF-8 byte order mark `EF BB BF`.
 
+<!-- test: SerializeTests.SerializeToUtf8_IncludesBom_StartsWithTheByteOrderMark, SerializeTests.SerializeToUtf8_WithoutBom_StartsWithTheQuote -->
 Returns the bytes. Returns an unbound array and sets the last error when [**Serialize**](#serialize) fails or the text cannot be encoded (`InvalidEncoding`).
+<!-- /test -->
 
 ```tb check_build check_run
 Dim o As JsonOptions = JsonOptions.Minified
@@ -398,7 +426,9 @@ Syntax: **Json.ParseFile** ( *path* [ , *options* ] ) **As Variant**
 *options*
 : *optional* A [**JsonOptions**](JsonOptions) object. [**Encoding**](JsonOptions#encoding) selects the encoding of the file, with a byte order mark deciding by default, and [**MaxBytes**](JsonOptions#maxbytes) limits the size of the file. The other properties apply as they do to [**Parse**](#parse).
 
+<!-- test: FileTests.ParseFile_MissingFile_IsIoError, FileTests.ParseFile_EmptyFile_IsUnexpectedEnd, FileTests.ParseFile_FileLargerThanMaxBytes_IsLimitExceeded, FileTests.ParseFile_UsesTheByteOrderMark_OrTheEncodingOption -->
 Returns the root value, or **Empty** and the last error. A file that does not exist or cannot be opened or read is an `IoError`; a file larger than **MaxBytes** is a `LimitExceeded` error; the other errors are those of [**Parse**](#parse). An empty file is the error `UnexpectedEnd`.
+<!-- /test -->
 
 ### TryParseFile
 {: .no_toc }
@@ -434,7 +464,9 @@ Syntax: **Json.WriteFile** ( *path*, *value* [ , *options* ] )
 *options*
 : *optional* A [**JsonOptions**](JsonOptions) object. The format properties and [**IncludesBom**](JsonOptions#includesbom) are used. **Nothing** writes pretty-printed text without a byte order mark.
 
+<!-- test: FileTests.WriteFile_ThenParseFile_RoundTrips, FileTests.WriteFile_ReplacesAnExistingFile, FileTests.WriteFile_WritesUtf8_WithABomOnlyWhenAsked, FileTests.WriteFile_ValueThatCannotBeSerialized_LeavesTheFileAlone -->
 The file always has UTF-8 encoding. If the value cannot be serialized, the file is not touched and the last error is that of [**Serialize**](#serialize). If the file cannot be opened or written, the error is `IoError`. The file is opened for writing, and so emptied, before the bytes are written, so a write that fails part-way leaves a short file.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim path As String = Environ$("TEMP") & "\tsJson-sample-file.json"
@@ -450,7 +482,9 @@ Debug.Print JsonError.Code                                               ' IoErr
 
 ## Lines of JSON
 
+<!-- test: ParseTests.ParseLines_LinesEndWithLfCrOrBoth_AndEmptyLinesAreIgnored -->
 NDJSON, also called JSON Lines, is a text with one JSON value on each line. The functions of this section read and write it. Lines end with a line feed, a carriage return, or both; a line that is empty or holds only spaces is ignored.
+<!-- /test -->
 
 ### ParseLines
 {: .no_toc }
@@ -465,7 +499,9 @@ Syntax: **Json.ParseLines** ( *text* [ , *options* ] ) **As** [**JsonArray**](Js
 *options*
 : *optional* A [**JsonOptions**](JsonOptions) object. It applies to each line as it applies to [**Parse**](#parse), except that [**MaxBytes**](JsonOptions#maxbytes) is not checked.
 
+<!-- test: ParseTests.ParseLines_BadLine_ReportsLineOneOfThatLine -->
 Returns an array that holds the value of each line, in order, or **Nothing** and the last error when a line is not valid. The error is that of [**Parse**](#parse). Its position, line and column are counted in the line that failed, not in the whole text, so `JsonError.Line` is always 1.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim lines As JsonArray = Json.ParseLines("{""id"":1}" & vbLf & vbLf & "{""id"":2}" & vbLf)
@@ -508,7 +544,9 @@ Syntax: **Json.SerializeLines** ( *values* [ , *options* ] ) **As String**
 *options*
 : *optional* A [**JsonOptions**](JsonOptions) object. [**Indent**](JsonOptions#indent) is ignored, because each value is written without white space. The other format properties apply as they do to [**Serialize**](#serialize). **Nothing** uses [**JsonOptions.Minified**](JsonOptions#minified).
 
+<!-- test: SerializeTests.SerializeLines_IgnoresIndent, SerializeTests.SerializeLines_OtherType_IsWrongType, ParseTests.SerializeLines_WritesALineFeedAfterEveryValue -->
 Returns the text, with a line feed after every value including the last, or an empty string when there are no values or a value cannot be written. Any other type of *values* is the error `WrongType`; the other errors are those of [**Serialize**](#serialize).
+<!-- /test -->
 
 ```tb check_build check_run
 Dim lines As JsonArray = Json.Arr(Json.Map("id", 1), Json.Map("id", 2))
@@ -569,7 +607,9 @@ Syntax: **Json.WriteLinesFile** ( *path*, *values* [ , *options* ] )
 *options*
 : *optional* A [**JsonOptions**](JsonOptions) object. [**IncludesBom**](JsonOptions#includesbom) adds a byte order mark; the other properties apply as they do to [**SerializeLines**](#serializelines).
 
+<!-- test: FileTests.WriteLinesFile_ThenParseLinesFile_RoundTrips, FileTests.WriteLinesFile_NoValues_CreatesAnEmptyFile -->
 The errors are those of [**SerializeLines**](#serializelines) and [**WriteFile**](#writefile). When there are no values the file is created empty.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim path As String = Environ$("TEMP") & "\tsJson-sample-lines.ndjson"
@@ -584,6 +624,7 @@ Kill path
 
 A JSON Pointer is a string that names one place in a document, as RFC 6901 defines it. The empty string names the document itself. Any other pointer is a series of tokens, each introduced by `/`. A token selects a member of an object by its key, or an element of an array by its index. The index is written in decimal digits, without a leading zero (`0` is the first element). In an array, the token `-` names the position after the last element. In a token, `~1` stands for `/` and `~0` for `~`. The pointer `/` names the member with the empty key.
 
+<!-- test: PointerTests.PointerGet_UriFragmentForm_IsInvalidPointer, PointerTests.PointerGet_ArrayTokenThatIsNotAnIndex_IsInvalidPointer, PointerTests.PointerGet_DashToken_IsPointerNotFound, PointerTests.PointerSet_DashToken_AppendsToTheArray, PointerTests.PointerGet_ZeroInObject_SelectsMemberZero, PointerTests.PointerGet_SlashAlone_NamesTheEmptyKeyOfTheDocument, PointerTests.PointerGet_EmptyTokenAfterToken_NamesTheEmptyKey, PointerTests.PointerGet_ReturnsTheContainerInsideTheDocument, PointerTests.PointerGet_RfcExamples_ReadTheNamedValues -->
 The functions follow RFC 6901, except for these points:
 
 - The pointer must be a plain string. The form of a pointer as a URI fragment, `#/a/b`, is not accepted: it is the error `InvalidPointer`.
@@ -592,6 +633,8 @@ The functions follow RFC 6901, except for these points:
 - An object member is found by its exact key, and a token such as `0` selects the member `"0"` of an object.
 - An empty token selects the member with the empty key, and the pointer `/` names the member `""` of the document. An empty token that comes after another token is a defect of version 1.0.15.0: it is read as a copy of the token before it, so `/a/` is read as `/a/a`. [Known problems](.#known-problems-in-version-10150) shows it.
 - The value that [**PointerGet**](#pointerget) returns is the container inside the document, not a copy.
+
+<!-- /test -->
 
 ### PointerGet
 {: .no_toc }
@@ -606,7 +649,9 @@ Syntax: **Json.PointerGet** ( *root*, *pointer* ) **As Variant**
 *pointer*
 : *required* A **String** that holds a JSON Pointer. The empty string returns *root*.
 
+<!-- test: PointerTests.PointerGet_MissingPlace_SetsPathUpToTheFailingToken, PointerTests.PointerGet_EmptyPointer_ReturnsTheDocument, PointerTests.PointerGet_RfcExamples_ReadTheNamedValues -->
 Returns the value, which can be **Null** for a JSON null. Returns **Empty** and sets the last error when the pointer is not valid (`InvalidPointer`) or names no place (`PointerNotFound`). The error's `JsonError.Path` is the pointer up to and including the token that failed.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim doc As JsonObject = Json.Map("foo", Json.Arr("bar", "baz"), "", 0, "a/b", 1, "m~n", 8, "k""l", 6, "i\j", 5)
@@ -637,7 +682,9 @@ Syntax: **Json.PointerExists** ( *root*, *pointer* ) **As Boolean**
 *pointer*
 : *required* A **String** that holds a JSON Pointer.
 
+<!-- test: PointerTests.PointerExists_PlaceHoldingNull_IsTrue, ErrorStateTests.PointerExists_MissingPlace_IsFalseWithNoError, PointerTests.PointerExists_TokenThatIsNotAnIndex_IsFalseWithInvalidPointer, PointerTests.PointerTryGet_InvalidPointer_IsFalseWithInvalidPointer -->
 Returns **True** when the place exists, including a place that holds a JSON null. A pointer that names no place is not an error. A pointer with invalid syntax, or one whose token is not an index where the document has an array, returns **False** and sets the error `InvalidPointer`.
+<!-- /test -->
 
 ### PointerTryGet
 {: .no_toc }
@@ -687,7 +734,9 @@ Syntax: **Json.PointerSet** ( *root*, *pointer*, *value* ) **As Variant**
 *value*
 : *required* The value to store. A copy of it is stored.
 
+<!-- test: PointerTests.PointerSet_DashToken_AppendsToTheArray, PointerTests.PointerSet_IndexAboveLength_IsPointerNotFound -->
 Returns the new document. All the places on the way to the last token must exist, otherwise the error is `PointerNotFound`. In an object, the last token adds the member or replaces it. In an array, the last token replaces the element at that index; an index equal to the length, or `-`, appends the value. An index above the length is the error `PointerNotFound`. The function does not insert: [**Patch**](#patch) with an `add` operation inserts into an array.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim doc As Variant = Json.Parse("{""a"":{""b"":[1,2]}}")
@@ -716,7 +765,9 @@ Syntax: **Json.PointerRemove** ( *root*, *pointer* ) **As Variant**
 *pointer*
 : *required* A **String** that holds a JSON Pointer. The empty string, which names the whole document, is the error `InvalidPointer`, and so is a pointer that ends in `-`.
 
+<!-- test: PointerTests.PointerRemove_ArrayElement_MovesTheLaterOnesDown, PointerTests.PointerRemove_EmptyPointerOrDash_IsInvalidPointer -->
 Returns the new document. A member of an object is removed; an element of an array is removed and the later elements move down by one. A place that does not exist is the error `PointerNotFound`.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim doc As Variant = Json.Parse("{""a"":{""b"":[1,2,3],""c"":true}}")
@@ -772,7 +823,13 @@ Syntax: **Json.CompilePath** ( *path* ) **As** [**JsonPathQuery**](JsonPathQuery
 *path*
 : *required* A **String** that holds a JSONPath. It must start with `$`.
 
+<!-- test: PathTests.CompilePath_FilterNestedMoreThan1000Levels_IsDepthLimitExceeded, PathTests.CompilePath_FilterNested100Levels_Compiles, PathTests.CompilePath_FilterNested500Levels_Compiles, PathTests.CompilePath_FilterNested999Levels_Compiles, PathTests.Query_MemberNameStartingWithDigit_IsRefused -->
 Returns a [**JsonPathQuery**](JsonPathQuery), or **Nothing** and the error `InvalidPath` when the path is not valid. The error's position, line, column and snippet locate the fault in the path text. An expression in a filter that nests more than 1000 levels is the error `DepthLimitExceeded`.
+<!-- /test -->
+
+<!-- test: PathTests.CompilePath_FilterNestedMoreThan1000Levels_IsDepthLimitExceeded, PathTests.CompilePath_FilterNested999Levels_Compiles -->
+> [!WARNING] 1.0.15.0
+> In a 64-bit program, a filter that nests parentheses more than about 800 levels deep overflows the stack and ends the program, before the limit of 1000 levels is reached. A 32-bit program reaches the limit and gets the error. Limit the length of a path that comes from outside before it is compiled.
 
 ```tb check_build check_run
 Dim q As JsonPathQuery = Json.CompilePath("$.store.book[0]")
@@ -797,7 +854,9 @@ Syntax: **Json.Query** ( *root*, *path* ) **As Variant()**
 *path*
 : *required* A **String** that holds a JSONPath.
 
+<!-- test: ErrorStateTests.Query_NothingMatches_IsEmptyWithNoError, ErrorStateTests.EmptyList_UBoundRaisesError9, ErrorStateTests.QueryHits_InvalidPath_SetsInvalidPath, ModelTests.Query_ReturnsTheContainersInsideTheDocument -->
 Returns an array of the selected values, in document order, with a lower bound of 0. The values are the containers inside the document, not copies. An array that results from a path that matches nothing is unbound, so `UBound` raises run-time error 9 for it. A path with invalid syntax also returns an unbound array and sets the error `InvalidPath`. [**Serialize**](#serialize) writes the array as a JSON array, `[]` when it is unbound.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim store As Variant = Json.Parse( _
@@ -841,7 +900,9 @@ Syntax: **Json.QueryOne** ( *root*, *path* ) **As Variant**
 *path*
 : *required* A **String** that holds a JSONPath.
 
+<!-- test: ErrorStateTests.QueryOne_NothingMatches_IsEmptyWithNoError -->
 Returns the first selected value in document order, or **Empty** when nothing is selected, with no error. A selected JSON null is **Null**, so it can be told from a miss. A path with invalid syntax returns **Empty** and sets the error `InvalidPath`.
+<!-- /test -->
 
 ### TryQueryOne
 {: .no_toc }
@@ -859,7 +920,9 @@ Syntax: **Json.TryQueryOne** ( *root*, *path*, *value* ) **As Boolean**
 *value*
 : *required* A **Variant** variable that receives the value. It is passed **ByRef**. When nothing is selected it is **Empty**.
 
+<!-- test: ErrorStateTests.TryQueryOne_NothingMatches_IsFalseWithNoError -->
 Returns **True** when at least one value is selected. Nothing selected is not an error; a path with invalid syntax returns **False** and sets the error `InvalidPath`.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim doc As Variant = Json.Parse("{""a"":[10,20,30],""n"":null}")
@@ -886,7 +949,9 @@ Syntax: **Json.QueryHits** ( *root*, *path* ) **As** [**JsonHit**](JsonHit)**()*
 *path*
 : *required* A **String** that holds a JSONPath.
 
+<!-- test: PathTests.QueryHits_ReturnsValueAndPointer, ErrorStateTests.EmptyList_QueryHitsAndErrors_AreUnbound -->
 Returns an array of [**JsonHit**](JsonHit) objects, in document order, with a lower bound of 0. Each hit has the value and the RFC 6901 pointer of the place where it was found, which [**PointerSet**](#pointerset) and the other pointer functions accept. A path that matches nothing, or is not valid, returns an unbound array, as [**Query**](#query) does.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim doc As Variant = Json.Parse("{""store"":{""book"":[{""title"":""A""},{""title"":""B"",""isbn"":""x""}]}}")
@@ -902,6 +967,7 @@ Debug.Print Json.PointerGet(doc, "/store/book/1/title")       ' B
 
 ## Patterns
 
+<!-- test: PatternTests.IsMatchPattern_ClassEscapes_AreAccepted, PatternTests.IsValidPattern_Lookaround_IsInvalid, PatternTests.IsValidPattern_BackReference_IsInvalid, PatternTests.IsValidPattern_LazyQuantifier_IsInvalid, PatternTests.IsMatchPattern_InvalidPattern_IsFalseWithNoError, PatternTests.IsMatchPattern_AnchorsAreOrdinaryCharacters, PatternTests.IsMatchPattern_UnicodeCategories_AreMatched, PatternTests.IsMatchPattern_SurrogatePair_IsOneCharacter, PatternTests.IsMatchPattern_LongerAlternativeSecond_Matches, PatternTests.IsMatchPattern_ChoiceInGroup_TriesTheOtherAlternative, PatternTests.IsMatchPattern_LongerAlternativeFirst_Matches, PatternTests.IsValidPattern_EscapeTab_IsValid, PatternTests.IsValidPattern_EscapeLineFeed_IsValid, PatternTests.IsValidPattern_EscapeCarriageReturn_IsValid, PatternTests.IsMatchPattern_SetWithLineFeedEscape_MatchesLineFeed, PatternTests.IsMatchPattern_SetWithTabEscape_MatchesTab, PatternTests.IsValidPattern_EscapeHyphen_IsValid, PatternTests.IsValidPattern_EscapeCaret_IsValid, PatternTests.IsValidPattern_SetEndingInHyphen_IsValid, PatternTests.IsMatchPattern_SetStartingWithHyphen_MatchesHyphen -->
 The JSONPath functions `match` and `search`, and the keywords `pattern` and `patternProperties` of a JSON Schema, use regular expressions in the I-Regexp dialect of RFC 9485. The functions of this section use the same matcher directly. I-Regexp is a small interoperable subset of regular expressions: the characters are compared by code point, so a surrogate pair is one character; a group does not capture; and there are no anchors, so `^` and `$` are ordinary characters.
 
 The supported syntax is:
@@ -918,6 +984,7 @@ The supported syntax is:
 | `(...)`, `x\|y` | A group, and a choice between alternatives. |
 
 Anything else, such as a lookaround, a back reference or a lazy quantifier, makes the pattern invalid. A pattern that is not valid is never an error for these functions: they return **False**, and the last error is not set. The matcher departs from RFC 9485 in these ways: it accepts `\d`, `\D`, `\s`, `\S`, `\w` and `\W`, which the RFC leaves out; it does not accept the escapes `\n`, `\r`, `\t`, `\-` and `\^` that the RFC has, and reads `\n`, `\r` and `\t` inside a set as the letters `n`, `r` and `t`; it rejects a hyphen that comes after a single character at the end of a set, such as `[a-]`, which the RFC allows; and it does not try the other alternatives of a choice once one alternative has matched and the rest of the pattern then fails. The last difference, and the one before it, give wrong results with no error; [Known problems](.#known-problems-in-version-10150) shows them.
+<!-- /test -->
 
 ### IsValidPattern
 {: .no_toc }
@@ -990,6 +1057,7 @@ Syntax: **Json.Patch** ( *root*, *ops* ) **As Variant**
 *ops*
 : *required* A [**JsonArray**](JsonArray) of operation objects. A single operation object is also accepted, as a patch of one operation, which RFC 6902 does not allow. Any other value is the error `InvalidPatch`.
 
+<!-- test: PatchTests.Patch_Add_FollowsRfc6902, PatchTests.Patch_AddToMissingParent_Fails, PatchTests.Patch_Remove_FollowsRfc6902, PatchTests.Patch_RemoveMissingPlace_Fails, PatchTests.Patch_Replace_FollowsRfc6902, PatchTests.Patch_ReplaceMissingPlace_Fails, PatchTests.Patch_Move_FollowsRfc6902, PatchTests.Patch_MoveFromParentOfPath_Fails, PatchTests.Patch_Copy_FollowsRfc6902, PatchTests.Patch_Test_FollowsRfc6902, PatchTests.Patch_TestThatFails_IsPatchTestFailed, PatchTests.Patch_FailedOperation_AppliesNothing, PatchTests.Patch_DoesNotChangeTheDocument, PatchTests.Patch_MalformedOperations_AreInvalidPatch, PatchTests.Patch_InvalidPatch_PathIsThePositionOfTheOperation, PatchTests.Patch_SingleOperationObject_IsAccepted -->
 Returns the patched document. The operations are applied one after the other to a copy. If one fails, the function returns **Empty** and sets the last error, and nothing is applied. The operations follow RFC 6902:
 
 - `add` stores a copy of `value` at `path`. In an object it adds the member or replaces it. In an array the index inserts the value before the element at that index; an index equal to the length, or `-`, appends. The parent of the place must exist. A path of `""` replaces the whole document.
@@ -1000,6 +1068,7 @@ Returns the patched document. The operations are applied one after the other to 
 - `test` compares the value at `path` with `value`, as [**Equals**](#equals) compares: numbers by value, and objects without regard to the order of keys. A difference is the error `PatchTestFailed`.
 
 The errors are `InvalidPatch` for a patch that is malformed (an operation that is not an object, a missing or non-string `path` or `from`, a missing `value`, an unknown `op`), `PatchFailed` for an operation that cannot be applied to the document (an `add` into a scalar, an array index that is out of range), `PatchTestFailed`, and `PointerNotFound` or `InvalidPointer` for a pointer. For `InvalidPatch`, `JsonError.Path` is the position of the operation in the patch, such as `/0`; for the others it is the pointer in the document.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim doc As Variant = Json.Parse("{""foo"":""bar""}")
@@ -1026,7 +1095,9 @@ Syntax: **Json.MergePatch** ( *root*, *patch* ) **As Variant**
 *patch*
 : *required* The merge patch. A patch that is not an object replaces the whole document. In an object, a member with a value replaces or adds the member, a member that is an object is merged into the target member, and a member that is **Null** removes the target member.
 
+<!-- test: PatchTests.MergePatch_FollowsRfc7396, PatchTests.MergePatch_PatchThatIsNotAnObject_ReplacesTheDocument, PatchTests.MergePatch_DoesNotChangeTheDocument -->
 Returns the new document. The rules are those of RFC 7396, and the function sets no error. A patch cannot set a member to null, because null means removal. An array in a patch replaces the target array whole.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim target As Variant = Json.Parse("{""a"":""b"",""c"":{""d"":""e"",""f"":""g""}}")
@@ -1047,7 +1118,9 @@ Syntax: **Json.Diff** ( *fromValue*, *toValue* ) **As** [**JsonArray**](JsonArra
 *toValue*
 : *required* The document to end with.
 
+<!-- test: PatchTests.Diff_PatchOfTheDiff_GivesTheTarget -->
 Returns a JSON Patch, an array of operations, such that `Json.Patch(fromValue, Json.Diff(fromValue, toValue))` equals *toValue*. The patch uses only `add`, `remove` and `replace`. Objects are compared member by member, with the removals first, then the changes in the order of the first document, then the additions. Arrays are compared element by element: the common length is compared position by position, the extra elements of the first array are removed from the end, and the extra elements of the second are added. A value that differs in type is replaced whole. Equal documents give an empty array.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim a As Variant = Json.Parse("{""x"":1,""list"":[1,2,3],""gone"":true}")
@@ -1084,7 +1157,9 @@ Syntax: **Json.Validate** ( *instance*, *schema* [ , *options* ] ) **As** [**Jso
 
 Returns the report. It lists every failure, not only the first. The function compiles the schema each time it is called and has no catalogue, so a `$ref` can refer only to the schema itself. To use a catalogue, or to check many values, call [**CompileSchema**](#compileschema) once.
 
+<!-- test: SchemaTests.Validate_RefOutsideTheCatalogue_IsRemoteRef -->
 A schema that cannot be used sets the last error, as well as being reported: `InvalidSchema` for a schema that is neither an object nor a Boolean, `RemoteRef` for a `$ref` that is not in the schema or the catalogue, and `DepthLimitExceeded`.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim schema As Variant = Json.Parse("{""type"":""object"",""required"":[""name""],""properties"":{""name"":{""type"":""string""},""age"":{""type"":""integer"",""minimum"":0}}}")
@@ -1126,6 +1201,7 @@ Syntax: **Json.ParseIso8601** ( *text* ) **As Date**
 *text*
 : *required* A date, or a date with a time, in one of these forms: `yyyy-mm-dd` or `yyyy-mm-ddThh:nn:ss`, then optionally a fraction `.f` of one or more digits, then optionally a zone `Z`, `+hh:mm` or `-hh:mm`. A space can stand for the `T`. The text is trimmed first. The year must have four digits and be from 0100 to 9999.
 
+<!-- test: DatesTests.ParseIso8601_DateAndTime_AreRead, DatesTests.ParseIso8601_Fraction_IsCutToMilliseconds, DatesTests.ParseIso8601_FormsOutsideTheSubset_AreInvalidDate, DatesTests.ParseIso8601_Failure_ReturnsDateZero -->
 Returns the **Date**. Text with no zone is read as the local time. Text with `Z` or an offset names an instant, which Windows converts to the local time of the computer (the Windows function **SystemTimeToTzSpecificLocalTime**). The fraction is cut to milliseconds (it is not rounded). Seconds of 60, the form without seconds, `T` in lowercase, and an offset without a colon are not accepted. On failure the result is a **Date** of 0 and the last error is `InvalidDate`; because a **Date** of 0 is a valid date (30 December 1899), check the last error.
 
 ```tb check_build check_run
@@ -1165,6 +1241,9 @@ Next
 ' [2026-8-19] -> InvalidDate: ISO-8601 date is too short.
 ```
 
+<!-- /test -->
+
+<!-- test: DatesTests.ParseIso8601_TwoSpellingsOfOneInstant_GiveTheSameDate -->
 A zone is converted with the settings of the computer, so the **Date** that results depends on where the code runs. Two spellings of one instant give the same **Date** on every computer:
 
 ```tb check_build check_run
@@ -1172,6 +1251,7 @@ Dim utc As Date = Json.ParseIso8601("2026-08-19T12:00:00Z")
 Dim berlin As Date = Json.ParseIso8601("2026-08-19T14:00:00+02:00")
 Debug.Print utc = berlin    ' True
 ```
+<!-- /test -->
 
 ### FormatIso8601
 {: .no_toc }
@@ -1183,7 +1263,19 @@ Syntax: **Json.FormatIso8601** ( *value* ) **As String**
 *value*
 : *required* The **Date**.
 
+<!-- test: DatesTests.FormatIso8601_WritesMillisecondsOnlyWhenTheyAreNotZero, ErrorStateTests.PureFunctions_LeaveTheLastErrorAlone -->
 Returns `yyyy-mm-ddThh:nn:ss`, with `.fff` added when the date has a non-zero number of milliseconds. The text has no zone, so it is not an instant until the reader knows the zone. The function does not change the last error.
+<!-- /test -->
+
+<!-- test: DatesTests.FormatIso8601_MillisecondsAboveHalfASecond_KeepTheSecondAndTheFraction, DatesTests.Serialize_DateWithMillisecondsAboveHalfASecond_KeepsTheFraction -->
+> [!WARNING] 1.0.15.0
+> A time with more than 500 milliseconds is written a second late, with no fraction: 09:15:30.750 becomes `09:15:31`, and 23:59:59.750 becomes midnight of the next day. [**Serialize**](#serialize) writes a **Date** the same way. A time of 500 milliseconds or less is written correctly.
+>
+> ```tb check_build check_run
+> Debug.Print Json.FormatIso8601(Json.ParseIso8601("2026-08-19T09:15:30.500"))   ' 2026-08-19T09:15:30.500
+> Debug.Print Json.FormatIso8601(Json.ParseIso8601("2026-08-19T09:15:30.750"))   ' 2026-08-19T09:15:31
+> Debug.Print Json.FormatIso8601(Json.ParseIso8601("2026-08-19T23:59:59.750"))   ' 2026-08-20T00:00:00
+> ```
 
 ## See Also
 

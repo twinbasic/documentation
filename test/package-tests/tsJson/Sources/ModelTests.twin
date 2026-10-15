@@ -1,0 +1,129 @@
+' The JSON model: JsonObject, JsonArray and the plain values; Map, Arr, Clone, Equals and TypeOfValue.
+[TestFixture]
+Module ModelTests
+
+    [TestCase]
+    Public Sub Map_RepeatedKey_ReplacesTheValueInTheFirstPlace()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonObject = Json.Map("a", 1, "b", 2, "a", 3)
+        Expect.AreEqual "{""a"":3,""b"":2}", Helpers.Min(o), "Map with a repeated key"
+        Expect.AreEqual 2, o.Count, "the number of members"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Map_OddNumberOfArguments_IsInvalidArgument()
+        Expect.Begin
+        Helpers.Reset
+        Dim bad As JsonObject = Json.Map("key")
+        Expect.IsTrue bad Is Nothing, "Map with one argument returns Nothing"
+        Expect.AreEqual "InvalidArgument", JsonError.Code, "JsonError.Code"
+        Expect.AreEqual "Json.Map", JsonError.Origin, "JsonError.Origin"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Map_KeyThatIsNotAString_IsInvalidArgument()
+        Expect.Begin
+        Helpers.Reset
+        Dim bad As JsonObject = Json.Map(1, 2)
+        Expect.IsTrue bad Is Nothing, "Map with a numeric key returns Nothing"
+        Expect.AreEqual "InvalidArgument", JsonError.Code, "JsonError.Code"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Keys_AreComparedByCharacterCode()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonObject = Json.Map("a", 1, "A", 2)
+        Expect.AreEqual 2, o.Count, "the number of members for the keys a and A"
+        Expect.AreEqual 1, o.Item("a"), "the member a"
+        Expect.AreEqual 2, o.Item("A"), "the member A"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Arr_KeepsTheValuesAsTheyAre()
+        Expect.Begin
+        Helpers.Reset
+        Dim a As JsonArray = Json.Arr(1, "two", True, Null, Json.Arr(), Json.Map())
+        Expect.AreEqual 6, a.Count, "the number of elements"
+        Expect.AreEqual "[1,""two"",true,null,[],{}]", Helpers.Min(a), "the elements"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TypeOfValue_ClassifiesTheValuesOfTheModel()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.TypeOfValue(Null) = jtNull, "Null"
+        Expect.IsTrue Json.TypeOfValue(True) = jtBoolean, "a Boolean"
+        Expect.IsTrue Json.TypeOfValue(3.5) = jtNumber, "a Double"
+        Expect.IsTrue Json.TypeOfValue(CByte(3)) = jtNumber, "a Byte"
+        Expect.IsTrue Json.TypeOfValue(CCur(3)) = jtNumber, "a Currency"
+        Expect.IsTrue Json.TypeOfValue(CDec(3)) = jtNumber, "a Decimal"
+        Expect.IsTrue Json.TypeOfValue("x") = jtString, "a String"
+        Expect.IsTrue Json.TypeOfValue(Json.Arr()) = jtArray, "a JsonArray"
+        Expect.IsTrue Json.TypeOfValue(Json.Map()) = jtObject, "a JsonObject"
+        Expect.IsTrue Json.TypeOfValue(Empty) = jtUnknown, "Empty"
+        Expect.IsTrue Json.TypeOfValue(#8/18/2026#) = jtUnknown, "a Date"
+        Dim plain(0 To 1) As Variant
+        Expect.IsTrue Json.TypeOfValue(plain) = jtUnknown, "a Variant array"
+        Expect.IsFalse Json.IsArray(plain), "IsArray of a Variant array"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_CopiesEveryContainer()
+        Expect.Begin
+        Helpers.Reset
+        Dim a As JsonObject = Json.Map("list", Json.Arr(1, 2))
+        Dim b As JsonObject = Json.Clone(a)
+        b.Arr("list").Add 3
+        Expect.AreEqual 2, a.Arr("list").Count, "the original after the copy was changed"
+        Expect.AreEqual 3, b.Arr("list").Count, "the copy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Assignment_SharesTheContainer()
+        Expect.Begin
+        Helpers.Reset
+        Dim a As JsonObject = Json.Map("list", Json.Arr(1, 2))
+        Dim c As JsonObject = a
+        c.Arr("list").Add 9
+        Expect.AreEqual 3, a.Arr("list").Count, "the original after the other reference was changed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Equals_ComparesJsonValues()
+        Expect.Begin
+        Helpers.Reset
+        Dim a As Variant = Helpers.Doc("{""x"":1.0,""y"":[true,null]}")
+        Dim b As Variant = Helpers.Doc("{""y"":[true,null],""x"":1}")
+        Expect.IsTrue Json.Equals(a, b), "two objects whose keys come in another order"
+        Expect.IsTrue Json.Equals(1, 1.0), "1 and 1.0"
+        Expect.IsFalse Json.Equals("1", 1), "the string 1 and the number 1"
+        Expect.IsFalse Json.Equals(Json.Arr(1, 2), Json.Arr(2, 1)), "two arrays whose elements come in another order"
+        Expect.IsFalse Json.Equals("a", "A"), "a and A"
+        Expect.IsTrue Json.Equals(Empty, Empty), "Empty and Empty"
+        Expect.IsFalse Json.Equals(#8/18/2026#, #8/18/2026#), "two equal Dates"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Query_ReturnsTheContainersInsideTheDocument()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":{""n"":1}}")
+        Dim r() As Variant = Json.Query(doc, "$.a")
+        Dim inner As JsonObject = r(0)
+        inner.Item("n") = 2
+        Expect.AreEqual "{""a"":{""n"":2}}", Helpers.Min(doc), "the document after the container Query returned was changed"
+        Expect.Done
+    End Sub
+
+End Module

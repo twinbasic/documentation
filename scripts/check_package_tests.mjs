@@ -108,7 +108,6 @@ const PENDING = new Set([
   "VBA_JSON",
   "WinReg",
   "tbProjPacker",
-  "tsJson",
   "xCalendar",
 ]);
 

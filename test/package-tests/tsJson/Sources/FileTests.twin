@@ -1,0 +1,194 @@
+' ParseFile, WriteFile and the NDJSON file functions. Every file is under
+' %TEMP%\tbdocs-package-tests\tsJson\.
+[TestFixture]
+Module FileTests
+
+    Private Sub WriteBytes(ByVal Path As String, ByRef Bytes() As Byte)
+        Dim n As Long = FreeFile()
+        On Error Resume Next
+        Kill Path
+        Err.Clear
+        On Error GoTo 0
+        Open Path For Binary Access Write As #n
+        Put #n, , Bytes
+        Close #n
+    End Sub
+
+    Private Sub WriteEmptyFile(ByVal Path As String)
+        Dim n As Long = FreeFile()
+        Open Path For Output As #n
+        Close #n
+    End Sub
+
+    Private Function ReadBytes(ByVal Path As String) As Byte()
+        Dim n As Long = FreeFile()
+        Dim b() As Byte
+        Open Path For Binary Access Read As #n
+        If LOF(n) > 0 Then
+            ReDim b(0 To LOF(n) - 1)
+            Get #n, , b
+        End If
+        Close #n
+        ReadBytes = b
+    End Function
+
+    [TestCase]
+    Public Sub WriteFile_ThenParseFile_RoundTrips()
+        Expect.Begin
+        Helpers.Reset
+        Dim w As String = Helpers.FreshFolder("WriteFile_ThenParseFile_RoundTrips")
+        Dim p As String = w & "\a.json"
+        Json.WriteFile p, Json.Map("n", 1, "s", "x"), JsonOptions.Minified
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after WriteFile"
+        Expect.AreEqual "{""n"":1,""s"":""x""}", Helpers.Min(Json.ParseFile(p)), "the document read back"
+        Dim ok As Boolean = False
+        Dim v As Variant
+        Expect.IsTrue Json.TryParseFile(p, v), "TryParseFile of the file"
+        Expect.AreEqual "{""n"":1,""s"":""x""}", Helpers.Min(v), "the document TryParseFile returned"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteFile_ReplacesAnExistingFile()
+        Expect.Begin
+        Helpers.Reset
+        Dim w As String = Helpers.FreshFolder("WriteFile_ReplacesAnExistingFile")
+        Dim p As String = w & "\a.json"
+        Json.WriteFile p, Json.Arr(1, 2, 3, 4, 5, 6, 7, 8, 9, 10), JsonOptions.Minified
+        Json.WriteFile p, Json.Arr(1), JsonOptions.Minified
+        Expect.AreEqual "[1]", Helpers.Min(Json.ParseFile(p)), "the document after the second WriteFile"
+        Dim b() As Byte = ReadBytes(p)
+        Expect.AreEqual 3, UBound(b) - LBound(b) + 1, "the size of the file after the second WriteFile"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteFile_WritesUtf8_WithABomOnlyWhenAsked()
+        Expect.Begin
+        Helpers.Reset
+        Dim w As String = Helpers.FreshFolder("WriteFile_WritesUtf8_WithABomOnlyWhenAsked")
+        Dim p As String = w & "\a.json"
+        Json.WriteFile p, ChrW(233), JsonOptions.Minified
+        Dim b() As Byte = ReadBytes(p)
+        Expect.AreEqual 4, UBound(b) - LBound(b) + 1, "the size of the file with no byte order mark"
+        Expect.AreEqual &HC3, b(1), "the first byte of e acute"
+        Dim o As JsonOptions = JsonOptions.Minified
+        o.IncludesBom = True
+        Json.WriteFile p, ChrW(233), o
+        b = ReadBytes(p)
+        Expect.AreEqual 7, UBound(b) - LBound(b) + 1, "the size of the file with a byte order mark"
+        Expect.AreEqual &HEF, b(0), "the first byte"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteFile_ValueThatCannotBeSerialized_LeavesTheFileAlone()
+        Expect.Begin
+        Helpers.Reset
+        Dim w As String = Helpers.FreshFolder("WriteFile_ValueThatCannotBeSerialized_LeavesTheFileAlone")
+        Dim p As String = w & "\a.json"
+        Json.WriteFile p, Json.Arr(1), JsonOptions.Minified
+        Json.WriteFile p, Empty, JsonOptions.Minified
+        Expect.AreEqual "UnsupportedType", JsonError.Code, "JsonError.Code of WriteFile of Empty"
+        Expect.AreEqual "[1]", Helpers.Min(Json.ParseFile(p)), "the file after the failed WriteFile"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseFile_MissingFile_IsIoError()
+        Expect.Begin
+        Helpers.Reset
+        Dim w As String = Helpers.FreshFolder("ParseFile_MissingFile_IsIoError")
+        Dim v As Variant = Json.ParseFile(w & "\missing.json")
+        Expect.IsTrue IsEmpty(v), "ParseFile of a file that does not exist returns Empty"
+        Expect.AreEqual "IoError", JsonError.Code, "JsonError.Code"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseFile_EmptyFile_IsUnexpectedEnd()
+        Expect.Begin
+        Helpers.Reset
+        Dim w As String = Helpers.FreshFolder("ParseFile_EmptyFile_IsUnexpectedEnd")
+        Dim p As String = w & "\empty.json"
+        WriteEmptyFile p
+        Dim v As Variant = Json.ParseFile(p)
+        Expect.IsTrue IsEmpty(v), "ParseFile of an empty file returns Empty"
+        Expect.AreEqual "UnexpectedEnd", JsonError.Code, "JsonError.Code"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseFile_FileLargerThanMaxBytes_IsLimitExceeded()
+        Expect.Begin
+        Helpers.Reset
+        Dim w As String = Helpers.FreshFolder("ParseFile_FileLargerThanMaxBytes_IsLimitExceeded")
+        Dim p As String = w & "\a.json"
+        Json.WriteFile p, Json.Arr(1, 2, 3), JsonOptions.Minified
+        Dim o As JsonOptions = JsonOptions.Rfc
+        o.MaxBytes = 4
+        Dim v As Variant = Json.ParseFile(p, o)
+        Expect.AreEqual "LimitExceeded", JsonError.Code, "JsonError.Code"
+        Expect.AreEqual "Json.ParseFile", JsonError.Origin, "JsonError.Origin"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseFile_UsesTheByteOrderMark_OrTheEncodingOption()
+        Expect.Begin
+        Helpers.Reset
+        Dim w As String = Helpers.FreshFolder("ParseFile_UsesTheByteOrderMark_OrTheEncodingOption")
+        Dim p As String = w & "\a.json"
+        Dim b(0 To 7) As Byte
+        ' "[1]" in UTF-16 little endian with a byte order mark
+        b(0) = &HFF: b(1) = &HFE: b(2) = 91: b(3) = 0: b(4) = 49: b(5) = 0: b(6) = 93: b(7) = 0
+        WriteBytes p, b
+        Expect.AreEqual "[1]", Helpers.Min(Json.ParseFile(p)), "ParseFile of a UTF-16 little endian file with a byte order mark"
+        Dim c(0 To 5) As Byte
+        c(0) = 0: c(1) = 91: c(2) = 0: c(3) = 49: c(4) = 0: c(5) = 93
+        WriteBytes p, c
+        Dim o As JsonOptions = JsonOptions.Rfc
+        o.Encoding = jekUtf16Be
+        Expect.AreEqual "[1]", Helpers.Min(Json.ParseFile(p, o)), "ParseFile of a UTF-16 big endian file with Encoding jekUtf16Be"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteLinesFile_ThenParseLinesFile_RoundTrips()
+        Expect.Begin
+        Helpers.Reset
+        Dim w As String = Helpers.FreshFolder("WriteLinesFile_ThenParseLinesFile_RoundTrips")
+        Dim p As String = w & "\a.ndjson"
+        Json.WriteLinesFile p, Json.Arr(Json.Map("id", 1), Json.Map("id", 2))
+        Dim back As JsonArray = Json.ParseLinesFile(p)
+        Expect.AreEqual 2, back.Count, "the number of lines read back"
+        Expect.IsTrue Json.Equals(back.Map(0), Json.Map("id", 1)), "the first line"
+        Dim list As JsonArray
+        Expect.IsTrue Json.TryParseLinesFile(p, list), "TryParseLinesFile of the file"
+        Expect.AreEqual 2, list.Count, "the number of lines TryParseLinesFile returned"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteLinesFile_NoValues_CreatesAnEmptyFile()
+        Expect.Begin
+        Helpers.Reset
+        Dim w As String = Helpers.FreshFolder("WriteLinesFile_NoValues_CreatesAnEmptyFile")
+        Dim p As String = w & "\a.ndjson"
+        Json.WriteLinesFile p, Json.Arr()
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after WriteLinesFile of no values"
+        Expect.AreEqual 0, FileLen(p), "the size of the file"
+        Helpers.RemoveFolder w
+        Expect.Done
+    End Sub
+
+End Module

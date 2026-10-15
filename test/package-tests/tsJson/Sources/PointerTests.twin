@@ -1,0 +1,251 @@
+' JSON Pointer (RFC 6901): PointerGet, PointerExists, PointerTryGet, PointerSet, PointerRemove, and
+' the pointers that Patch and QueryHits use.
+[TestFixture]
+Module PointerTests
+
+    ' ---- an empty token after another token (a defect)
+
+    [TestCase]
+    Public Sub PointerGet_EmptyTokenAfterToken_NamesTheEmptyKey()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":{""a"":1,"""":2}}")
+        Expect.AreEqual 2, Json.PointerGet(doc, "/a/"), "PointerGet of /a/ in {""a"":{""a"":1,"""":2}}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerSet_EmptyTokenAfterToken_ChangesTheEmptyKey()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":{""a"":1,"""":2}}")
+        Expect.AreEqual "{""a"":{""a"":1,"""":9}}", Helpers.Min(Json.PointerSet(doc, "/a/", 9)), "PointerSet of /a/ to 9"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerRemove_EmptyTokenAfterToken_RemovesTheEmptyKey()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":{""a"":1,"""":2}}")
+        Expect.AreEqual "{""a"":{""a"":1}}", Helpers.Min(Json.PointerRemove(doc, "/a/")), "PointerRemove of /a/"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerExists_EmptyTokenAfterToken_IsFalseWhereTheKeyIsMissing()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":{""a"":1}}")
+        Expect.IsFalse Json.PointerExists(doc, "/a/"), "PointerExists of /a/ in {""a"":{""a"":1}}, which has no empty key"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_ReplaceAtEmptyTokenAfterToken_ChangesTheEmptyKey()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":{""a"":1,"""":2}}")
+        Dim ops As Variant = Helpers.Doc("[{""op"":""replace"",""path"":""/a/"",""value"":9}]")
+        Expect.AreEqual "{""a"":{""a"":1,"""":9}}", Helpers.Min(Json.Patch(doc, ops)), "Patch with a replace at /a/"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub QueryHits_EmptyKey_PointerReadsTheSameValue()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":{""a"":1,"""":2}}")
+        Dim hits() As JsonHit = Json.QueryHits(doc, "$.a['']")
+        Expect.AreEqual "/a/", hits(LBound(hits)).Pointer, "the pointer of the hit for $.a['']"
+        Expect.AreEqual 2, hits(LBound(hits)).Value, "the value of the hit"
+        Expect.AreEqual 2, Json.PointerGet(doc, hits(LBound(hits)).Pointer), "PointerGet with the pointer of the hit"
+        Expect.Done
+    End Sub
+
+    ' ---- the empty token at the start of a pointer, which works
+
+    [TestCase]
+    Public Sub PointerGet_SlashAlone_NamesTheEmptyKeyOfTheDocument()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{"""":0,""a"":1}")
+        Expect.AreEqual 0, Json.PointerGet(doc, "/"), "PointerGet of / in {"""":0,""a"":1}"
+        Expect.Done
+    End Sub
+
+    ' ---- where the functions follow RFC 6901 and where the page says they do not
+
+    [TestCase]
+    Public Sub PointerGet_RfcExamples_ReadTheNamedValues()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As JsonObject = Json.Map("foo", Json.Arr("bar", "baz"), "", 0, "a/b", 1, "m~n", 8, "k""l", 6, "i\j", 5)
+        Expect.AreEqual "[""bar"",""baz""]", Helpers.Min(Json.PointerGet(doc, "/foo")), "/foo"
+        Expect.AreEqual "bar", Json.PointerGet(doc, "/foo/0"), "/foo/0"
+        Expect.AreEqual 1, Json.PointerGet(doc, "/a~1b"), "/a~1b"
+        Expect.AreEqual 8, Json.PointerGet(doc, "/m~0n"), "/m~0n"
+        Expect.AreEqual 6, Json.PointerGet(doc, "/k""l"), "/k""l"
+        Expect.AreEqual 5, Json.PointerGet(doc, "/i\j"), "/i\j"
+        Expect.IsFalse JsonError.HasError, "the last error after the reads"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerGet_EmptyPointer_ReturnsTheDocument()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":1}")
+        Expect.AreEqual "{""a"":1}", Helpers.Min(Json.PointerGet(doc, "")), "PointerGet of the empty pointer"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerGet_UriFragmentForm_IsInvalidPointer()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":{""b"":1}}")
+        Dim v As Variant = Json.PointerGet(doc, "#/a/b")
+        Expect.IsTrue IsEmpty(v), "PointerGet of #/a/b returns Empty"
+        Expect.AreEqual "InvalidPointer", JsonError.Code, "the error code"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerGet_ArrayTokenThatIsNotAnIndex_IsInvalidPointer()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":[10,20,30]}")
+        Dim v As Variant
+        v = Json.PointerGet(doc, "/a/x")
+        Expect.AreEqual "InvalidPointer", JsonError.Code, "the error code of the token x in an array"
+        v = Json.PointerGet(doc, "/a/01")
+        Expect.AreEqual "InvalidPointer", JsonError.Code, "the error code of the token 01 in an array"
+        v = Json.PointerGet(doc, "/a/+1")
+        Expect.AreEqual "InvalidPointer", JsonError.Code, "the error code of the token +1 in an array"
+        v = Json.PointerGet(doc, "/a/99999999999")
+        Expect.AreEqual "InvalidPointer", JsonError.Code, "the error code of an index above the largest Long"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerExists_TokenThatIsNotAnIndex_IsFalseWithInvalidPointer()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""tags"":[""a""]}")
+        Expect.IsFalse Json.PointerExists(doc, "/tags/x"), "PointerExists of /tags/x"
+        Expect.AreEqual "InvalidPointer", JsonError.Code, "JsonError.Code after PointerExists of /tags/x"
+        Expect.IsFalse Json.PointerExists(doc, "tags"), "PointerExists of tags"
+        Expect.AreEqual "InvalidPointer", JsonError.Code, "JsonError.Code after PointerExists of tags"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerTryGet_InvalidPointer_IsFalseWithInvalidPointer()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":1}")
+        Dim v As Variant
+        Expect.IsFalse Json.PointerTryGet(doc, "a", v), "PointerTryGet of a"
+        Expect.AreEqual "InvalidPointer", JsonError.Code, "JsonError.Code"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerGet_DashToken_IsPointerNotFound()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":[10,20]}")
+        Dim v As Variant = Json.PointerGet(doc, "/a/-")
+        Expect.IsTrue IsEmpty(v), "PointerGet of /a/- returns Empty"
+        Expect.AreEqual "PointerNotFound", JsonError.Code, "the error code"
+        Expect.IsFalse Json.PointerExists(doc, "/a/-"), "PointerExists of /a/-"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerSet_DashToken_AppendsToTheArray()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":[10,20]}")
+        Expect.AreEqual "{""a"":[10,20,30]}", Helpers.Min(Json.PointerSet(doc, "/a/-", 30)), "PointerSet of /a/- to 30"
+        Expect.AreEqual "{""a"":[10,20,30]}", Helpers.Min(Json.PointerSet(doc, "/a/2", 30)), "PointerSet of /a/2 (the length) to 30"
+        Expect.AreEqual "{""a"":[10,20]}", Helpers.Min(doc), "the document after the two calls"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerSet_IndexAboveLength_IsPointerNotFound()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":[10,20]}")
+        Dim v As Variant = Json.PointerSet(doc, "/a/5", 30)
+        Expect.IsTrue IsEmpty(v), "PointerSet of /a/5 returns Empty"
+        Expect.AreEqual "PointerNotFound", JsonError.Code, "the error code"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerGet_ZeroInObject_SelectsMemberZero()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""0"":""zero"",""a"":[""first""]}")
+        Expect.AreEqual "zero", Json.PointerGet(doc, "/0"), "PointerGet of /0 in an object"
+        Expect.AreEqual "first", Json.PointerGet(doc, "/a/0"), "PointerGet of /a/0 in an array"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerGet_ReturnsTheContainerInsideTheDocument()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""list"":[1]}")
+        Dim list As JsonArray = Json.PointerGet(doc, "/list")
+        list.Add 2
+        Expect.AreEqual "{""list"":[1,2]}", Helpers.Min(doc), "the document after an element was added to the array PointerGet returned"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerGet_MissingPlace_SetsPathUpToTheFailingToken()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""foo"":[""bar"",""baz""]}")
+        Dim v As Variant = Json.PointerGet(doc, "/foo/2")
+        Expect.AreEqual "PointerNotFound", JsonError.Code, "the error code"
+        Expect.AreEqual "/foo/2", JsonError.Path, "JsonError.Path"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerExists_PlaceHoldingNull_IsTrue()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""none"":null}")
+        Expect.IsTrue Json.PointerExists(doc, "/none"), "PointerExists of a place that holds null"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerRemove_EmptyPointerOrDash_IsInvalidPointer()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":[1,2]}")
+        Dim v As Variant = Json.PointerRemove(doc, "")
+        Expect.AreEqual "InvalidPointer", JsonError.Code, "the error code of PointerRemove with the empty pointer"
+        v = Json.PointerRemove(doc, "/a/-")
+        Expect.AreEqual "InvalidPointer", JsonError.Code, "the error code of PointerRemove with a pointer that ends in -"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerRemove_ArrayElement_MovesTheLaterOnesDown()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":{""b"":[1,2,3],""c"":true}}")
+        Expect.AreEqual "{""a"":{""b"":[2,3],""c"":true}}", Helpers.Min(Json.PointerRemove(doc, "/a/b/0")), "PointerRemove of /a/b/0"
+        Expect.AreEqual "{""a"":{""b"":[1,2,3]}}", Helpers.Min(Json.PointerRemove(doc, "/a/c")), "PointerRemove of /a/c"
+        Expect.Done
+    End Sub
+
+End Module

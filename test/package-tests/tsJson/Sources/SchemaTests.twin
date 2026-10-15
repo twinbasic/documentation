@@ -1,0 +1,209 @@
+' JSON Schema, draft 2020-12: the keywords pattern and format, and the points where the page says the
+' package departs from the draft.
+[TestFixture]
+Module SchemaTests
+
+    Private Function Accepts(ByVal Instance As Variant, ByVal Schema As String, Optional ByVal Options As JsonOptions = Nothing) As Boolean
+        Dim s As Variant = Helpers.Doc(Schema)
+        Dim r As JsonValidationResult = Json.Validate(Instance, s, Options)
+        Accepts = r.IsValid
+    End Function
+
+    Private Function FormatOptions() As JsonOptions
+        Dim o As JsonOptions = JsonOptions.Rfc
+        o.IsFormatAssertion = True
+        Return o
+    End Function
+
+    ' ---- the ipv4 format (a defect)
+
+    [TestCase]
+    Public Sub Format_Ipv4_AcceptsValidAddresses()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = FormatOptions()
+        Expect.IsTrue Accepts("1.2.3.4", "{""format"":""ipv4""}", o), "ipv4 of 1.2.3.4"
+        Expect.IsTrue Accepts("10.0.0.1", "{""format"":""ipv4""}", o), "ipv4 of 10.0.0.1"
+        Expect.IsTrue Accepts("192.168.1.1", "{""format"":""ipv4""}", o), "ipv4 of 192.168.1.1"
+        Expect.IsTrue Accepts("255.255.255.255", "{""format"":""ipv4""}", o), "ipv4 of 255.255.255.255"
+        Expect.IsTrue Accepts("0.0.0.0", "{""format"":""ipv4""}", o), "ipv4 of 0.0.0.0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Format_Ipv4_RejectsWrongAddresses()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = FormatOptions()
+        Expect.IsFalse Accepts("256.1.1.1", "{""format"":""ipv4""}", o), "ipv4 of 256.1.1.1"
+        Expect.IsFalse Accepts("1.2.3", "{""format"":""ipv4""}", o), "ipv4 of 1.2.3"
+        Expect.IsFalse Accepts("1.2.3.4.5", "{""format"":""ipv4""}", o), "ipv4 of 1.2.3.4.5"
+        Expect.IsFalse Accepts("01.2.3.4", "{""format"":""ipv4""}", o), "ipv4 of 01.2.3.4"
+        Expect.IsFalse Accepts("a.b.c.d", "{""format"":""ipv4""}", o), "ipv4 of a.b.c.d"
+        Expect.IsFalse Accepts("", "{""format"":""ipv4""}", o), "ipv4 of the empty string"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Format_Ipv4_FailureNamesTheFormatKeyword()
+        Expect.Begin
+        Helpers.Reset
+        Dim s As Variant = Helpers.Doc("{""format"":""ipv4""}")
+        Dim r As JsonValidationResult = Json.Validate("256.1.1.1", s, FormatOptions())
+        Expect.AreEqual 1, r.ErrorCount, "the failures for 256.1.1.1"
+        Dim e() As JsonValidationError = r.Errors
+        Expect.AreEqual "format", e(LBound(e)).Keyword, "the keyword of the failure"
+        Expect.Done
+    End Sub
+
+    ' ---- pattern cannot be anchored (a defect)
+
+    [TestCase]
+    Public Sub Pattern_Anchored_AcceptsAStringThatMatchesWhole()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Accepts("abc", "{""pattern"":""^[a-z]+$""}"), "the string abc against the pattern ^[a-z]+$"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pattern_Anchored_RejectsAStringThatDoesNotMatchWhole()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsFalse Accepts("abc1", "{""pattern"":""^[a-z]+$""}"), "the string abc1 against the pattern ^[a-z]+$"
+        Expect.IsFalse Accepts("^abc$", "{""pattern"":""^[a-z]+$""}"), "the string ^abc$ against the pattern ^[a-z]+$"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pattern_Unanchored_FindsThePatternAnywhere()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Accepts("xxabcxx", "{""pattern"":""[a-c]{3}""}"), "the string xxabcxx against the pattern [a-c]{3}"
+        Expect.IsFalse Accepts("xxabxx", "{""pattern"":""[a-c]{3}""}"), "the string xxabxx against the pattern [a-c]{3}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pattern_ChoiceInGroup_TriesTheOtherAlternative()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Accepts("abc", "{""pattern"":""(a|ab)c""}"), "the string abc against the pattern (a|ab)c"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PatternProperties_ChoiceInGroup_TriesTheOtherAlternative()
+        Expect.Begin
+        Helpers.Reset
+        Dim sch As String = "{""patternProperties"":{""(a|ab)c"":{""type"":""integer""}},""additionalProperties"":false}"
+        Expect.IsTrue Accepts(Helpers.Doc("{""abc"":1}"), sch), "the property abc against patternProperties (a|ab)c"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pattern_InvalidPattern_NeverMatches()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsFalse Accepts("a", "{""pattern"":""(""}"), "the string a against the invalid pattern ("
+        Expect.Done
+    End Sub
+
+    ' ---- the other points the page states
+
+    [TestCase]
+    Public Sub MaxLength_CountsUtf16CodeUnits()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsFalse Accepts(ChrW(&HD83D) & ChrW(&HDE00), "{""maxLength"":1}"), "U+1F600 against maxLength 1"
+        Expect.IsTrue Accepts(ChrW(&HD83D) & ChrW(&HDE00), "{""maxLength"":2}"), "U+1F600 against maxLength 2"
+        Expect.IsFalse Accepts(ChrW(&HD83D) & ChrW(&HDE00), "{""minLength"":3}"), "U+1F600 against minLength 3"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Format_IsAnAnnotationUnlessAssertionIsAsked()
+        Expect.Begin
+        Helpers.Reset
+        Dim sch As String = "{""type"":""string"",""format"":""date""}"
+        Expect.IsTrue Accepts("19.08.2026", sch), "19.08.2026 against format date, with no options"
+        Expect.IsFalse Accepts("19.08.2026", sch, FormatOptions()), "19.08.2026 against format date, with IsFormatAssertion"
+        Expect.IsTrue Accepts("2026-08-19", sch, FormatOptions()), "2026-08-19 against format date, with IsFormatAssertion"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Format_DateTime_AcceptsATimeWithoutZone()
+        Expect.Begin
+        Helpers.Reset
+        Dim sch As String = "{""format"":""date-time""}"
+        Expect.IsTrue Accepts("2026-08-19T09:15:00", sch, FormatOptions()), "date-time of 2026-08-19T09:15:00"
+        Expect.IsTrue Accepts("2026-08-19T09:15:00+01:00", sch, FormatOptions()), "date-time of 2026-08-19T09:15:00+01:00"
+        Expect.IsFalse Accepts("2026-08-19", sch, FormatOptions()), "date-time of 2026-08-19"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Format_Approximations_AcceptWhatThePageSays()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = FormatOptions()
+        Expect.IsTrue Accepts("a@", "{""format"":""email""}", o), "email of a@"
+        Expect.IsTrue Accepts("-bad-", "{""format"":""hostname""}", o), "hostname of -bad-"
+        Expect.IsTrue Accepts("/a~2", "{""format"":""json-pointer""}", o), "json-pointer of /a~2"
+        Expect.IsTrue Accepts("x", "{""format"":""uri""}", o), "uri of x"
+        Expect.IsTrue Accepts("x", "{""format"":""ipv6""}", o), "ipv6 of x"
+        Expect.IsFalse Accepts("", "{""format"":""uri""}", o), "uri of the empty string"
+        Expect.IsTrue Accepts("anything", "{""format"":""no-such-format""}", o), "an unknown format"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Type_Integer_AcceptsANumberWithNoFractionalPart()
+        Expect.Begin
+        Helpers.Reset
+        Dim sch As String = "{""type"":""integer""}"
+        Expect.IsTrue Accepts(Json.Parse("1.0"), sch), "1.0 against type integer"
+        Expect.IsFalse Accepts(Json.Parse("1.5"), sch), "1.5 against type integer"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MultipleOf_DividesAsDecimal()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Accepts(Json.Parse("0.3"), "{""multipleOf"":0.1}"), "0.3 against multipleOf 0.1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Validate_UnusableKeyword_StopsEvaluationAndSetsTheError()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Accepts(1, "{""minimum"":""x""}"), "1 against a schema whose minimum is the string x"
+        Expect.AreEqual "WrongType", JsonError.Code, "the last error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Validate_RefOutsideTheCatalogue_IsRemoteRef()
+        Expect.Begin
+        Helpers.Reset
+        Dim r As JsonValidationResult = Json.Validate(1, Helpers.Doc("{""$ref"":""https://example.com/other""}"))
+        Expect.IsFalse r.IsValid, "the result for a $ref that no document answers"
+        Expect.AreEqual "RemoteRef", JsonError.Code, "the last error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Validate_Keywords_FollowTheDraft()
+        Expect.Begin
+        Helpers.Reset
+        Dim sch As Variant = Helpers.Doc("{""if"":{""properties"":{""kind"":{""const"":""car""}},""required"":[""kind""]},""then"":{""required"":[""wheels""]},""else"":{""required"":[""legs""]}}")
+        Expect.IsTrue Json.Validate(Helpers.Doc("{""kind"":""car"",""wheels"":4}"), sch).IsValid, "a car with wheels"
+        Expect.AreEqual "required / - Missing required property 'wheels'.", Json.Validate(Helpers.Doc("{""kind"":""car""}"), sch).ToString(), "the report for a car without wheels"
+        Expect.IsTrue Json.Validate(Helpers.Doc("{""kind"":""dog"",""legs"":4}"), sch).IsValid, "a dog with legs"
+        Expect.Done
+    End Sub
+
+End Module

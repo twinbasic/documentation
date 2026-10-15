@@ -1,0 +1,335 @@
+' Parse as RFC 8259 defines the text: strings and escapes, the syntax options, duplicate keys, the
+' limits, and the encoding of bytes.
+[TestFixture]
+Module ParseTests
+
+    Private Function ParseCode(ByVal Text As String, Optional ByVal Options As JsonOptions = Nothing) As String
+        Helpers.Reset
+        Dim v As Variant = Json.Parse(Text, Options)
+        If JsonError.HasError Then ParseCode = JsonError.Code Else ParseCode = ""
+    End Function
+
+    Private Function Refused(ByVal Text As String, Optional ByVal Options As JsonOptions = Nothing) As Boolean
+        Refused = Len(ParseCode(Text, Options)) > 0
+    End Function
+
+    [TestCase]
+    Public Sub Parse_ControlCharacterInString_IsInvalidSyntax()
+        Expect.Begin
+        Expect.AreEqual "InvalidSyntax", ParseCode("""a" & vbTab & "b"""), "Parse of a string that holds a tab"
+        Expect.AreEqual "InvalidSyntax", ParseCode("""a" & vbLf & "b"""), "Parse of a string that holds a line feed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_Escapes_AreRead()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual "a""b\c/d" & vbBack & vbFormFeed & vbLf & vbCr & vbTab, Json.Parse("""a\""b\\c\/d\b\f\n\r\t"""), "Parse of the short escapes"
+        Expect.AreEqual ChrW(233) & ChrW(&HD83D) & ChrW(&HDE00), Json.Parse("""\" & "u00e9\" & "ud83d\" & "ude00"""), "Parse of a \u escape and a surrogate pair"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_LoneSurrogateEscape_IsInvalidEscape()
+        Expect.Begin
+        Expect.AreEqual "InvalidEscape", ParseCode("""\ud83d"""), "Parse of a high surrogate with no low surrogate"
+        Expect.AreEqual "InvalidEscape", ParseCode("""\ud83dx"""), "Parse of a high surrogate followed by a letter"
+        Expect.AreEqual "InvalidEscape", ParseCode("""\ude00"""), "Parse of a lone low surrogate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_DateText_StaysAString()
+        Expect.Begin
+        Helpers.Reset
+        Dim v As Variant = Json.Parse("""2026-08-19T09:15:00""")
+        Expect.AreEqual "String", TypeName(v), "the type of a JSON string that holds a date"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_WhiteSpaceAroundTheValue_IsAllowed()
+        Expect.Begin
+        Expect.AreEqual "", ParseCode(" " & vbTab & vbLf & vbCr & "[1]" & " " & vbTab & vbLf & vbCr), "Parse of an array with the four white space characters around it"
+        Expect.AreEqual "InvalidSyntax", ParseCode(ChrW(&HA0) & "[1]"), "Parse of an array after a no-break space"
+        Expect.AreEqual "InvalidSyntax", ParseCode(Chr$(12) & "[1]"), "Parse of an array after a form feed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_TextAfterTheValue_IsAnError()
+        Expect.Begin
+        Expect.IsTrue Refused("[1] x"), "Parse of [1] x is refused"
+        Expect.IsTrue Refused("[1][2]"), "Parse of [1][2] is refused"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_TrailingCommaAndComment_AreErrorsByDefault()
+        Expect.Begin
+        Expect.AreEqual "InvalidSyntax", ParseCode("[1,2,]"), "Parse of [1,2,]"
+        Expect.AreEqual "InvalidSyntax", ParseCode("{""a"":1,}"), "Parse of {""a"":1,}"
+        Expect.IsTrue Refused("[1 // c" & vbLf & "]"), "Parse of an array with a line comment is refused"
+        Expect.IsTrue Refused("[1 /* c */]"), "Parse of an array with a block comment is refused"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_Jsonc_AcceptsCommentsAndOneTrailingComma()
+        Expect.Begin
+        Helpers.Reset
+        Dim text As String = "{""a"": 1, // first" & vbLf & """b"": [1, 2,], /* last */ }"
+        Dim v As Variant = Json.Parse(text, JsonOptions.Jsonc)
+        Expect.AreEqual "{""a"":1,""b"":[1,2]}", Helpers.Min(v), "Parse with JsonOptions.Jsonc"
+        Expect.AreEqual "", ParseCode("[1,2,]", JsonOptions.Jsonc), "Parse of [1,2,] with JsonOptions.Jsonc"
+        Expect.IsTrue Refused("[1,2,,]", JsonOptions.Jsonc), "Parse of [1,2,,] with JsonOptions.Jsonc is refused"
+        Expect.IsTrue Refused("[,]", JsonOptions.Jsonc), "Parse of [,] with JsonOptions.Jsonc is refused"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_JsoncCommentNotClosed_IsInvalidComment()
+        Expect.Begin
+        Expect.AreEqual "InvalidComment", ParseCode("[1 /* never closed", JsonOptions.Jsonc), "Parse of an array with a comment that is not closed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_DuplicateKey_IsAnErrorByDefault()
+        Expect.Begin
+        Expect.AreEqual "DuplicateKey", ParseCode("{""a"":1,""b"":2,""a"":3}"), "Parse of an object with a repeated key"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_DuplicateKeyLastWins_KeepsTheLastValueInTheFirstPlace()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = JsonOptions.Rfc
+        o.DuplicateKeys = jdkLastWins
+        Dim v As Variant = Json.Parse("{""a"":1,""b"":2,""a"":3}", o)
+        Expect.AreEqual "{""a"":3,""b"":2}", Helpers.Min(v), "Parse with jdkLastWins"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_DepthBeyondMaxDepth_IsDepthLimitExceeded()
+        Expect.Begin
+        Dim o As JsonOptions = JsonOptions.Rfc
+        o.MaxDepth = 2
+        Expect.AreEqual "", ParseCode("[[1]]", o), "Parse of [[1]] with MaxDepth 2"
+        Expect.AreEqual "DepthLimitExceeded", ParseCode("[[[1]]]", o), "Parse of [[[1]]] with MaxDepth 2"
+        o.MaxDepth = 0
+        Expect.AreEqual "", ParseCode("1", o), "Parse of 1 with MaxDepth 0, which is no limit"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_DefaultMaxDepth_Is1000()
+        Expect.Begin
+        Expect.AreEqual "", ParseCode(String$(1000, "[") & String$(1000, "]")), "Parse of 1000 nested arrays"
+        Expect.AreEqual "DepthLimitExceeded", ParseCode(String$(1002, "[") & String$(1002, "]")), "Parse of 1002 nested arrays"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_LimitsOnStringsArraysAndObjects_AreLimitExceeded()
+        Expect.Begin
+        Dim o As JsonOptions = JsonOptions.Rfc
+        o.MaxStringLength = 3
+        Expect.AreEqual "", ParseCode("""abc""", o), "Parse of a string of 3 characters with MaxStringLength 3"
+        Expect.AreEqual "LimitExceeded", ParseCode("""abcd""", o), "Parse of a string of 4 characters with MaxStringLength 3"
+        Expect.AreEqual "LimitExceeded", ParseCode("{""abcd"":1}", o), "Parse of a key of 4 characters with MaxStringLength 3"
+        Set o = JsonOptions.Rfc
+        o.MaxArrayItems = 2
+        Expect.AreEqual "", ParseCode("[1,2]", o), "Parse of 2 elements with MaxArrayItems 2"
+        Expect.AreEqual "LimitExceeded", ParseCode("[1,2,3]", o), "Parse of 3 elements with MaxArrayItems 2"
+        Set o = JsonOptions.Rfc
+        o.MaxObjectMembers = 1
+        Expect.AreEqual "", ParseCode("{""a"":1}", o), "Parse of 1 member with MaxObjectMembers 1"
+        Expect.AreEqual "LimitExceeded", ParseCode("{""a"":1,""b"":2}", o), "Parse of 2 members with MaxObjectMembers 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_MaxBytes_RefusesALongerString()
+        Expect.Begin
+        Dim o As JsonOptions = JsonOptions.Rfc
+        o.MaxBytes = 7
+        Expect.AreEqual "", ParseCode("[1,2,3]", o), "Parse of 7 bytes with MaxBytes 7"
+        o.MaxBytes = 6
+        Expect.AreEqual "LimitExceeded", ParseCode("[1,2,3]", o), "Parse of 7 bytes with MaxBytes 6"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_MaxBytes_CountsUtf8BytesOfAString()
+        Expect.Begin
+        Dim o As JsonOptions = JsonOptions.Rfc
+        Dim twoChars As String = """" & ChrW(233) & ChrW(233) & """"
+        o.MaxBytes = 6
+        Expect.AreEqual "", ParseCode(twoChars, o), "Parse of a string of 2 characters of 2 UTF-8 bytes each, 6 bytes with the quotes, with MaxBytes 6"
+        o.MaxBytes = 5
+        Expect.AreEqual "LimitExceeded", ParseCode(twoChars, o), "the same with MaxBytes 5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_Bytes_AreDecodedByTheByteOrderMark()
+        Expect.Begin
+        Helpers.Reset
+        Dim b() As Byte
+        b = Utf8("[""" & ChrW(233) & """]", True)
+        Expect.AreEqual "[""" & ChrW(233) & """]", Helpers.Min(Json.Parse(b)), "Parse of UTF-8 bytes with a byte order mark"
+        b = Utf8("[""" & ChrW(233) & """]", False)
+        Expect.AreEqual "[""" & ChrW(233) & """]", Helpers.Min(Json.Parse(b)), "Parse of UTF-8 bytes with no byte order mark"
+        b = Utf16("[""" & ChrW(233) & """]", False, True)
+        Expect.AreEqual "[""" & ChrW(233) & """]", Helpers.Min(Json.Parse(b)), "Parse of UTF-16 little endian bytes with a byte order mark"
+        b = Utf16("[""" & ChrW(233) & """]", True, True)
+        Expect.AreEqual "[""" & ChrW(233) & """]", Helpers.Min(Json.Parse(b)), "Parse of UTF-16 big endian bytes with a byte order mark"
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after the four calls"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_BytesWithEncodingOption_IgnoreAMatchingByteOrderMark()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = JsonOptions.Rfc
+        o.Encoding = jekUtf16Be
+        Dim b() As Byte = Utf16("[1]", True, True)
+        Expect.AreEqual "[1]", Helpers.Min(Json.Parse(b, o)), "Parse of UTF-16 big endian bytes with a byte order mark and Encoding jekUtf16Be"
+        Set o = JsonOptions.Rfc
+        o.Encoding = jekUtf8
+        b = Utf8("[1]", False)
+        Expect.AreEqual "[1]", Helpers.Min(Json.Parse(b, o)), "Parse of UTF-8 bytes with Encoding jekUtf8"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_InvalidUtf8Bytes_AreInvalidEncoding()
+        Expect.Begin
+        Helpers.Reset
+        Dim b(0 To 4) As Byte
+        b(0) = Asc("[") : b(1) = Asc("""") : b(2) = &HFF : b(3) = Asc("""") : b(4) = Asc("]")
+        Dim v As Variant = Json.Parse(b)
+        Expect.IsTrue IsEmpty(v), "Parse of bytes that hold &HFF in a string returns Empty"
+        Expect.AreEqual "InvalidEncoding", JsonError.Code, "JsonError.Code"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_OtherType_IsWrongType()
+        Expect.Begin
+        Helpers.Reset
+        Dim v As Variant = Json.Parse(5)
+        Expect.IsTrue IsEmpty(v), "Parse of a number returns Empty"
+        Expect.AreEqual "WrongType", JsonError.Code, "JsonError.Code"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_SyntaxError_ReportsPositionLineAndColumn()
+        Expect.Begin
+        Helpers.Reset
+        Dim v As Variant = Json.Parse("{""a"":1," & vbLf & "  ""b"":x}")
+        Expect.AreEqual "InvalidSyntax", JsonError.Code, "JsonError.Code"
+        Expect.AreEqual 2, JsonError.Line, "JsonError.Line"
+        Expect.AreEqual 7, JsonError.Column, "JsonError.Column of the x"
+        Expect.AreEqual 15, JsonError.Position, "JsonError.Position of the x"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_SyntaxError_ToStringNamesOriginCodeAndPlace()
+        Expect.Begin
+        Helpers.Reset
+        Dim v As Variant = Json.Parse("{""a"":1,}")
+        Expect.AreEqual "Json.Parse: InvalidSyntax - Expected object key. (line 1, column 8, position 8) | {""a"":1,}", JsonError.ToString(), "JsonError.ToString"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseLines_LinesEndWithLfCrOrBoth_AndEmptyLinesAreIgnored()
+        Expect.Begin
+        Helpers.Reset
+        Dim lines As JsonArray = Json.ParseLines("{""id"":1}" & vbLf & vbLf & "{""id"":2}" & vbCr & "3" & vbCrLf & "   " & vbLf & "4" & vbLf)
+        Expect.AreEqual 4, lines.Count, "the number of values"
+        Expect.AreEqual "[{""id"":1},{""id"":2},3,4]", Helpers.Min(lines), "the values"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseLines_BadLine_ReportsLineOneOfThatLine()
+        Expect.Begin
+        Helpers.Reset
+        Dim bad As JsonArray = Json.ParseLines("{""a"":1}" & vbLf & "{bad}")
+        Expect.IsTrue bad Is Nothing, "ParseLines of text with a bad line returns Nothing"
+        Expect.AreEqual "Json.ParseLines: InvalidSyntax - Expected object key. (line 1, column 2, position 2) | {bad}", JsonError.ToString(), "JsonError.ToString"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SerializeLines_WritesALineFeedAfterEveryValue()
+        Expect.Begin
+        Helpers.Reset
+        Dim lines As JsonArray = Json.Arr(Json.Map("id", 1), Json.Map("id", 2))
+        Expect.AreEqual "{""id"":1}|{""id"":2}|", Replace(Json.SerializeLines(lines), vbLf, "|"), "SerializeLines of two objects"
+        Dim plain(0 To 1) As Variant
+        plain(0) = 1
+        plain(1) = "x"
+        Expect.AreEqual "1|""x""|", Replace(Json.SerializeLines(plain), vbLf, "|"), "SerializeLines of a Variant array"
+        Expect.AreEqual "", Json.SerializeLines(Json.Arr()), "SerializeLines of an empty array"
+        Expect.Done
+    End Sub
+
+    ' ---- the bytes of a text
+
+    Private Function Utf8(ByVal Text As String, ByVal WithBom As Boolean) As Byte()
+        Dim i As Long, n As Long, b() As Byte
+        ReDim b(0 To 3 * Len(Text) + 3)
+        If WithBom Then
+            b(0) = &HEF: b(1) = &HBB: b(2) = &HBF: n = 3
+        End If
+        For i = 1 To Len(Text)
+            Dim c As Long = AscW(Mid$(Text, i, 1)) And &HFFFF&
+            If c < &H80 Then
+                b(n) = c: n = n + 1
+            ElseIf c < &H800 Then
+                b(n) = &HC0 Or (c \ 64): b(n + 1) = &H80 Or (c And 63): n = n + 2
+            Else
+                b(n) = &HE0 Or (c \ 4096): b(n + 1) = &H80 Or ((c \ 64) And 63): b(n + 2) = &H80 Or (c And 63): n = n + 3
+            End If
+        Next
+        ReDim Preserve b(0 To n - 1)
+        Utf8 = b
+    End Function
+
+    Private Function Utf16(ByVal Text As String, ByVal BigEndian As Boolean, ByVal WithBom As Boolean) As Byte()
+        Dim b() As Byte
+        Dim n As Long = 0
+        Dim i As Long
+        ReDim b(0 To 2 * Len(Text) + 2)
+        If WithBom Then
+            If BigEndian Then
+                b(0) = &HFE: b(1) = &HFF
+            Else
+                b(0) = &HFF: b(1) = &HFE
+            End If
+            n = 2
+        End If
+        For i = 1 To Len(Text)
+            Dim c As Long = AscW(Mid$(Text, i, 1)) And &HFFFF&
+            If BigEndian Then
+                b(n) = c \ 256: b(n + 1) = c And 255
+            Else
+                b(n) = c And 255: b(n + 1) = c \ 256
+            End If
+            n = n + 2
+        Next
+        ReDim Preserve b(0 To n - 1)
+        Utf16 = b
+    End Function
+
+End Module

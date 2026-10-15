@@ -1,0 +1,226 @@
+' The I-Regexp matcher behind IsValidPattern, IsMatchPattern, IsSearchPattern, the JSONPath functions
+' match and search, and the schema keyword pattern. RFC 9485 defines the dialect, and the cases that
+' name a defect check what the RFC says.
+[TestFixture]
+Module PatternTests
+
+    ' ---- the choice is not tried again (a defect)
+
+    [TestCase]
+    Public Sub IsMatchPattern_LongerAlternativeSecond_Matches()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsMatchPattern("ab", "a|ab"), "IsMatchPattern(""ab"", ""a|ab"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsMatchPattern_ChoiceInGroup_TriesTheOtherAlternative()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsMatchPattern("Mrs Smith", "(Mr|Mrs) Smith"), "IsMatchPattern(""Mrs Smith"", ""(Mr|Mrs) Smith"")"
+        Expect.IsTrue Json.IsMatchPattern("Mr Smith", "(Mr|Mrs) Smith"), "IsMatchPattern(""Mr Smith"", ""(Mr|Mrs) Smith"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsMatchPattern_LongerAlternativeFirst_Matches()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsMatchPattern("Mrs Smith", "(Mrs|Mr) Smith"), "IsMatchPattern(""Mrs Smith"", ""(Mrs|Mr) Smith"")"
+        Expect.IsTrue Json.IsMatchPattern("Mr Smith", "(Mrs|Mr) Smith"), "IsMatchPattern(""Mr Smith"", ""(Mrs|Mr) Smith"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsSearchPattern_ChoiceInGroup_TriesTheOtherAlternative()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsSearchPattern("abc", "(a|ab)c"), "IsSearchPattern(""abc"", ""(a|ab)c"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Match_JsonPathFunction_TriesTheOtherAlternative()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""v"":""ab""},{""v"":""a""},{""v"":""b""}]")
+        Expect.AreEqual "[{""v"":""ab""},{""v"":""a""}]", Helpers.QueryText(doc, "$[?match(@.v, ""a|ab"")]"), "$[?match(@.v, ""a|ab"")] on the values ab, a and b"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Search_JsonPathFunction_TriesTheOtherAlternative()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("[{""v"":""abc""},{""v"":""xyz""}]")
+        Expect.AreEqual "[{""v"":""abc""}]", Helpers.QueryText(doc, "$[?search(@.v, ""(a|ab)c"")]"), "$[?search(@.v, ""(a|ab)c"")] on the values abc and xyz"
+        Expect.Done
+    End Sub
+
+    ' ---- \n, \r, \t, \- and \^ are not understood (a defect)
+
+    [TestCase]
+    Public Sub IsValidPattern_EscapeTab_IsValid()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsValidPattern("a\tb"), "IsValidPattern(""a\tb"")"
+        Expect.IsTrue Json.IsMatchPattern("a" & vbTab & "b", "a\tb"), "IsMatchPattern of a, a tab and b against ""a\tb"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsValidPattern_EscapeLineFeed_IsValid()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsValidPattern("a\nb"), "IsValidPattern(""a\nb"")"
+        Expect.IsTrue Json.IsMatchPattern("a" & vbLf & "b", "a\nb"), "IsMatchPattern of a, a line feed and b against ""a\nb"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsValidPattern_EscapeCarriageReturn_IsValid()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsValidPattern("a\rb"), "IsValidPattern(""a\rb"")"
+        Expect.IsTrue Json.IsMatchPattern("a" & vbCr & "b", "a\rb"), "IsMatchPattern of a, a carriage return and b against ""a\rb"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsMatchPattern_SetWithLineFeedEscape_MatchesLineFeed()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsMatchPattern(vbLf, "[\n]"), "IsMatchPattern of a line feed against ""[\n]"""
+        Expect.IsFalse Json.IsMatchPattern("n", "[\n]"), "IsMatchPattern(""n"", ""[\n]"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsMatchPattern_SetWithTabEscape_MatchesTab()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsMatchPattern(vbTab, "[\t]"), "IsMatchPattern of a tab against ""[\t]"""
+        Expect.IsFalse Json.IsMatchPattern("t", "[\t]"), "IsMatchPattern(""t"", ""[\t]"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsValidPattern_EscapeHyphen_IsValid()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsValidPattern("a\-b"), "IsValidPattern(""a\-b"")"
+        Expect.IsTrue Json.IsMatchPattern("a-b", "a\-b"), "IsMatchPattern(""a-b"", ""a\-b"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsValidPattern_EscapeCaret_IsValid()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsValidPattern("a\^b"), "IsValidPattern(""a\^b"")"
+        Expect.IsTrue Json.IsMatchPattern("a^b", "a\^b"), "IsMatchPattern(""a^b"", ""a\^b"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsValidPattern_SetEndingInHyphen_IsValid()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsValidPattern("[a-]"), "IsValidPattern(""[a-]"")"
+        Expect.IsTrue Json.IsMatchPattern("-", "[a-]"), "IsMatchPattern(""-"", ""[a-]"")"
+        Expect.IsTrue Json.IsMatchPattern("a", "[a-]"), "IsMatchPattern(""a"", ""[a-]"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsMatchPattern_SetStartingWithHyphen_MatchesHyphen()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsValidPattern("[-a]"), "IsValidPattern(""[-a]"")"
+        Expect.IsTrue Json.IsMatchPattern("-", "[-a]"), "IsMatchPattern(""-"", ""[-a]"")"
+        Expect.Done
+    End Sub
+
+    ' ---- what the matcher accepts and refuses, as the page describes it
+
+    [TestCase]
+    Public Sub IsMatchPattern_ClassEscapes_AreAccepted()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsMatchPattern("2026", "\d{4}"), "IsMatchPattern(""2026"", ""\d{4}"")"
+        Expect.IsFalse Json.IsMatchPattern("20x6", "\d{4}"), "IsMatchPattern(""20x6"", ""\d{4}"")"
+        Expect.IsTrue Json.IsMatchPattern("ab", "\D\D"), "IsMatchPattern(""ab"", ""\D\D"")"
+        Expect.IsTrue Json.IsMatchPattern("a" & vbTab & "b", "a\sb"), "IsMatchPattern of a, a tab and b against ""a\sb"""
+        Expect.IsTrue Json.IsMatchPattern("a-b", "a\Sb"), "IsMatchPattern(""a-b"", ""a\Sb"")"
+        Expect.IsTrue Json.IsMatchPattern("a_9", "\w\w\w"), "IsMatchPattern(""a_9"", ""\w\w\w"")"
+        Expect.IsTrue Json.IsMatchPattern("-", "\W"), "IsMatchPattern(""-"", ""\W"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsValidPattern_Lookaround_IsInvalid()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsFalse Json.IsValidPattern("a(?=b)"), "IsValidPattern of a lookahead"
+        Expect.IsFalse Json.IsValidPattern("a(?!b)"), "IsValidPattern of a negative lookahead"
+        Expect.IsFalse Json.IsValidPattern("(?<=a)b"), "IsValidPattern of a lookbehind"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsValidPattern_BackReference_IsInvalid()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsFalse Json.IsValidPattern("(a)\1"), "IsValidPattern(""(a)\1"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsValidPattern_LazyQuantifier_IsInvalid()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsFalse Json.IsValidPattern("a+?"), "IsValidPattern(""a+?"")"
+        Expect.IsFalse Json.IsValidPattern("a*?"), "IsValidPattern(""a*?"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsMatchPattern_InvalidPattern_IsFalseWithNoError()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsFalse Json.IsMatchPattern("a", "("), "IsMatchPattern(""a"", ""("")"
+        Expect.IsFalse Json.IsSearchPattern("a", "("), "IsSearchPattern(""a"", ""("")"
+        Expect.IsFalse Json.IsValidPattern("("), "IsValidPattern(""("")"
+        Expect.IsFalse JsonError.HasError, "the last error after three calls with an invalid pattern"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsMatchPattern_AnchorsAreOrdinaryCharacters()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsMatchPattern("^a$", "^a$"), "IsMatchPattern(""^a$"", ""^a$"")"
+        Expect.IsFalse Json.IsMatchPattern("a", "^a$"), "IsMatchPattern(""a"", ""^a$"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsMatchPattern_UnicodeCategories_AreMatched()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsMatchPattern("Ada", "\p{Lu}\p{Ll}+"), "IsMatchPattern(""Ada"", ""\p{Lu}\p{Ll}+"")"
+        Expect.IsFalse Json.IsMatchPattern("ada", "\p{Lu}\p{Ll}+"), "IsMatchPattern(""ada"", ""\p{Lu}\p{Ll}+"")"
+        Expect.IsTrue Json.IsMatchPattern("a1", "\P{N}\p{N}"), "IsMatchPattern(""a1"", ""\P{N}\p{N}"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsMatchPattern_SurrogatePair_IsOneCharacter()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue Json.IsMatchPattern(ChrW(&HD83D) & ChrW(&HDE00), "."), "IsMatchPattern of U+1F600 against ""."""
+        Expect.Done
+    End Sub
+
+End Module

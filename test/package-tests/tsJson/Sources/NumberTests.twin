@@ -1,0 +1,120 @@
+' The numbers that Parse reads and Serialize writes. Every JSON number becomes a Decimal, so a number
+' outside the range of a Decimal is an error. RFC 8259 lets an implementation limit the range and
+' precision of numbers, so these cases check the limit the page states.
+[TestFixture]
+Module NumberTests
+
+    Private Function ParseError(ByVal Text As String) As String
+        Helpers.Reset
+        Dim v As Variant = Json.Parse(Text)
+        If JsonError.HasError Then ParseError = JsonError.Code Else ParseError = ""
+    End Function
+
+    Private Function ParseBack(ByVal Text As String) As String
+        Helpers.Reset
+        Dim v As Variant = Json.Parse(Text)
+        If JsonError.HasError Then ParseBack = "(error " & JsonError.Code & ")" Else ParseBack = Helpers.Min(v)
+    End Function
+
+    ' ---- numbers a Decimal cannot hold
+
+    [TestCase]
+    Public Sub Parse_ExponentAboveTheDecimalRange_IsInvalidNumber()
+        Expect.Begin
+        Expect.AreEqual "InvalidNumber", ParseError("1e29"), "Parse of 1e29"
+        Expect.AreEqual "InvalidNumber", ParseError("79228162514264337593543950336"), "Parse of 79228162514264337593543950336"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_ScaleBelowTheDecimalRange_IsInvalidNumber()
+        Expect.Begin
+        Expect.AreEqual "InvalidNumber", ParseError("1e-29"), "Parse of 1e-29"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_ThirtySixDigitNumber_IsInvalidNumber()
+        Expect.Begin
+        Expect.AreEqual "InvalidNumber", ParseError("3.14159265358979323846264338327950288"), "Parse of pi to 35 places"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_LargestDouble_IsInvalidNumber()
+        Expect.Begin
+        Expect.AreEqual "InvalidNumber", ParseError("1.7976931348623157e308"), "Parse of the largest Double"
+        Expect.Done
+    End Sub
+
+    ' ---- numbers it holds in full
+
+    [TestCase]
+    Public Sub Parse_NumbersInsideTheDecimalRange_KeepEveryDigit()
+        Expect.Begin
+        Expect.AreEqual "10000000000000000000000000000", ParseBack("1e28"), "Parse of 1e28"
+        Expect.AreEqual "79228162514264337593543950335", ParseBack("79228162514264337593543950335"), "Parse of the largest Decimal"
+        Expect.AreEqual "12345678901234567890123456789", ParseBack("12345678901234567890123456789"), "Parse of 29 digits"
+        Expect.AreEqual "0.0000000000000000000000000001", ParseBack("0.0000000000000000000000000001"), "Parse of 1e-28 written out"
+        Expect.AreEqual "0.0000000000000000000000000001", ParseBack("1e-28"), "Parse of 1e-28"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_FractionsAndExponents_ApplyThem()
+        Expect.Begin
+        Expect.AreEqual "1500", ParseBack("1.5E3"), "Parse of 1.5E3"
+        Expect.AreEqual "1", ParseBack("1.0"), "Parse of 1.0"
+        Expect.AreEqual "0.1", ParseBack("0.10"), "Parse of 0.10"
+        Expect.AreEqual "0", ParseBack("-0"), "Parse of -0"
+        Expect.AreEqual "-0.0125", ParseBack("-1.25e-2"), "Parse of -1.25e-2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_Number_IsADecimal()
+        Expect.Begin
+        Helpers.Reset
+        Dim v As Variant = Json.Parse("[1,2.5]")
+        Dim a As JsonArray = v
+        Expect.AreEqual "Decimal", TypeName(a.Item(0)), "the type of the number 1"
+        Expect.AreEqual "Decimal", TypeName(a.Item(1)), "the type of the number 2.5"
+        Expect.Done
+    End Sub
+
+    ' ---- Serialize of a number a Decimal cannot hold
+
+    [TestCase]
+    Public Sub Serialize_DoubleAboveTheDecimalRange_IsInvalidNumber()
+        Expect.Begin
+        Helpers.Reset
+        Dim text As String = Json.Serialize(1E+300, JsonOptions.Minified)
+        Expect.AreEqual "", text, "Serialize of 1E+300 returns the empty string"
+        Expect.AreEqual "InvalidNumber", JsonError.Code, "JsonError.Code"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_DoubleJustAboveTheDecimalRange_IsInvalidNumber()
+        Expect.Begin
+        Helpers.Reset
+        Dim text As String = Json.Serialize(8E+28, JsonOptions.Minified)
+        Expect.AreEqual "", text, "Serialize of 8E+28 returns the empty string"
+        Expect.AreEqual "InvalidNumber", JsonError.Code, "JsonError.Code"
+        Expect.AreEqual "70000000000000000000000000000", Helpers.Min(7E+28), "Serialize of 7E+28, which a Decimal holds"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_Doubles_KeepFifteenSignificantDigits()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual "0.333333333333333", Helpers.Min(1 / 3), "Serialize of 1 / 3"
+        Expect.AreEqual "0.3", Helpers.Min(0.1 + 0.2), "Serialize of 0.1 + 0.2"
+        Expect.AreEqual "100000000000000000000", Helpers.Min(1E+20), "Serialize of 1E+20"
+        Expect.AreEqual "0.1", Helpers.Min(CSng(0.1)), "Serialize of CSng(0.1)"
+        Expect.AreEqual "1.5", Helpers.Min(CDec("1.50")), "Serialize of CDec(""1.50"")"
+        Expect.Done
+    End Sub
+
+End Module
