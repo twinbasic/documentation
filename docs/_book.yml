@@ -642,6 +642,7 @@ left_out:
     pages:
       - /tB/Packages/Contributed/ArrayListLib/
       - /tB/Packages/Contributed/BigNumberLib/
+      - /tB/Packages/Contributed/GdiPlus/
       - /tB/Packages/Contributed/TBMANLIB/
       - /tB/Packages/Contributed/TBMANLIB_Aes/
       - /tB/Packages/Contributed/TBMANLIB_ConsoleComponents/

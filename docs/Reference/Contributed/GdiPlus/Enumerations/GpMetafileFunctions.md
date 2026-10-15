@@ -1,0 +1,102 @@
+---
+title: GpMetafileFunctions
+parent: Enumerations
+grand_parent: GdiPlus Package
+permalink: /tB/Packages/Contributed/GdiPlus/Enumerations/GpMetafileFunctions
+---
+
+# GpMetafileFunctions enumeration
+{: .no_toc }
+
+Gives the function numbers of the records of a Windows metafile (WMF), the **META_** constants of the Windows header files.
+
+Each record of a Windows metafile begins with a function number. Most records store one GDI call, and the name of the member says which: **META_ELLIPSE** stores an **Ellipse** call. The upper byte of a number is the size of the parameters in words, so the numbers are not consecutive. The members after **META_SETLAYOUT** and **META_DELETEOBJECT** are in a separate group in the source; the ones from **META_DRAWTEXT** on are missing from the current Windows SDK, and **META_UNKNOWN** is a number the package keeps for a record it does not know. [GpEmfPlusRecordType](GpEmfPlusRecordType) combines these numbers with `&H10000` in its **WmfRecordType** members.
+
+| Member | Value |
+|:-------|:------|
+| **META_SETBKCOLOR**{: #META_SETBKCOLOR } | `&H0201` |
+| **META_SETBKMODE**{: #META_SETBKMODE } | `&H0102` |
+| **META_SETMAPMODE**{: #META_SETMAPMODE } | `&H0103` |
+| **META_SETROP2**{: #META_SETROP2 } | `&H0104` |
+| **META_SETRELABS**{: #META_SETRELABS } | `&H0105` |
+| **META_SETPOLYFILLMODE**{: #META_SETPOLYFILLMODE } | `&H0106` |
+| **META_SETSTRETCHBLTMODE**{: #META_SETSTRETCHBLTMODE } | `&H0107` |
+| **META_SETTEXTCHAREXTRA**{: #META_SETTEXTCHAREXTRA } | `&H0108` |
+| **META_SETTEXTCOLOR**{: #META_SETTEXTCOLOR } | `&H0209` |
+| **META_SETTEXTJUSTIFICATION**{: #META_SETTEXTJUSTIFICATION } | `&H020A` |
+| **META_SETWINDOWORG**{: #META_SETWINDOWORG } | `&H020B` |
+| **META_SETWINDOWEXT**{: #META_SETWINDOWEXT } | `&H020C` |
+| **META_SETVIEWPORTORG**{: #META_SETVIEWPORTORG } | `&H020D` |
+| **META_SETVIEWPORTEXT**{: #META_SETVIEWPORTEXT } | `&H020E` |
+| **META_OFFSETWINDOWORG**{: #META_OFFSETWINDOWORG } | `&H020F` |
+| **META_SCALEWINDOWEXT**{: #META_SCALEWINDOWEXT } | `&H0410` |
+| **META_OFFSETVIEWPORTORG**{: #META_OFFSETVIEWPORTORG } | `&H0211` |
+| **META_SCALEVIEWPORTEXT**{: #META_SCALEVIEWPORTEXT } | `&H0412` |
+| **META_LINETO**{: #META_LINETO } | `&H0213` |
+| **META_MOVETO**{: #META_MOVETO } | `&H0214` |
+| **META_EXCLUDECLIPRECT**{: #META_EXCLUDECLIPRECT } | `&H0415` |
+| **META_INTERSECTCLIPRECT**{: #META_INTERSECTCLIPRECT } | `&H0416` |
+| **META_ARC**{: #META_ARC } | `&H0817` |
+| **META_ELLIPSE**{: #META_ELLIPSE } | `&H0418` |
+| **META_FLOODFILL**{: #META_FLOODFILL } | `&H0419` |
+| **META_PIE**{: #META_PIE } | `&H081A` |
+| **META_RECTANGLE**{: #META_RECTANGLE } | `&H041B` |
+| **META_ROUNDRECT**{: #META_ROUNDRECT } | `&H061C` |
+| **META_PATBLT**{: #META_PATBLT } | `&H061D` |
+| **META_SAVEDC**{: #META_SAVEDC } | `&H001E` |
+| **META_SETPIXEL**{: #META_SETPIXEL } | `&H041F` |
+| **META_OFFSETCLIPRGN**{: #META_OFFSETCLIPRGN } | `&H0220` |
+| **META_TEXTOUT**{: #META_TEXTOUT } | `&H0521` |
+| **META_BITBLT**{: #META_BITBLT } | `&H0922` |
+| **META_STRETCHBLT**{: #META_STRETCHBLT } | `&H0B23` |
+| **META_POLYGON**{: #META_POLYGON } | `&H0324` |
+| **META_POLYLINE**{: #META_POLYLINE } | `&H0325` |
+| **META_ESCAPE**{: #META_ESCAPE } | `&H0626` |
+| **META_RESTOREDC**{: #META_RESTOREDC } | `&H0127` |
+| **META_FILLREGION**{: #META_FILLREGION } | `&H0228` |
+| **META_FRAMEREGION**{: #META_FRAMEREGION } | `&H0429` |
+| **META_INVERTREGION**{: #META_INVERTREGION } | `&H012A` |
+| **META_PAINTREGION**{: #META_PAINTREGION } | `&H012B` |
+| **META_SELECTCLIPREGION**{: #META_SELECTCLIPREGION } | `&H012C` |
+| **META_SELECTOBJECT**{: #META_SELECTOBJECT } | `&H012D` |
+| **META_SETTEXTALIGN**{: #META_SETTEXTALIGN } | `&H012E` |
+| **META_CHORD**{: #META_CHORD } | `&H0830` |
+| **META_SETMAPPERFLAGS**{: #META_SETMAPPERFLAGS } | `&H0231` |
+| **META_EXTTEXTOUT**{: #META_EXTTEXTOUT } | `&H0A32` |
+| **META_SETDIBTODEV**{: #META_SETDIBTODEV } | `&H0D33` |
+| **META_SELECTPALETTE**{: #META_SELECTPALETTE } | `&H0234` |
+| **META_REALIZEPALETTE**{: #META_REALIZEPALETTE } | `&H0035` |
+| **META_ANIMATEPALETTE**{: #META_ANIMATEPALETTE } | `&H0436` |
+| **META_SETPALENTRIES**{: #META_SETPALENTRIES } | `&H0037` |
+| **META_POLYPOLYGON**{: #META_POLYPOLYGON } | `&H0538` |
+| **META_RESIZEPALETTE**{: #META_RESIZEPALETTE } | `&H0139` |
+| **META_DIBBITBLT**{: #META_DIBBITBLT } | `&H0940` |
+| **META_DIBSTRETCHBLT**{: #META_DIBSTRETCHBLT } | `&H0B41` |
+| **META_DIBCREATEPATTERNBRUSH**{: #META_DIBCREATEPATTERNBRUSH } | `&H0142` |
+| **META_STRETCHDIB**{: #META_STRETCHDIB } | `&H0F43` |
+| **META_EXTFLOODFILL**{: #META_EXTFLOODFILL } | `&H0548` |
+| **META_SETLAYOUT**{: #META_SETLAYOUT } | `&H0149` |
+| **META_DELETEOBJECT**{: #META_DELETEOBJECT } | `&H01F0` |
+| **META_CREATEPALETTE**{: #META_CREATEPALETTE } | `&H00F7` |
+| **META_CREATEPATTERNBRUSH**{: #META_CREATEPATTERNBRUSH } | `&H01F9` |
+| **META_CREATEPENINDIRECT**{: #META_CREATEPENINDIRECT } | `&H02FA` |
+| **META_CREATEFONTINDIRECT**{: #META_CREATEFONTINDIRECT } | `&H02FB` |
+| **META_CREATEBRUSHINDIRECT**{: #META_CREATEBRUSHINDIRECT } | `&H02FC` |
+| **META_CREATEREGION**{: #META_CREATEREGION } | `&H06FF` |
+| **META_DRAWTEXT**{: #META_DRAWTEXT } | `&H062F` |
+| **META_RESETDC**{: #META_RESETDC } | `&H014C` |
+| **META_STARTDOC**{: #META_STARTDOC } | `&H014D` |
+| **META_STARTPAGE**{: #META_STARTPAGE } | `&H004F` |
+| **META_ENDPAGE**{: #META_ENDPAGE } | `&H0050` |
+| **META_ABORTDOC**{: #META_ABORTDOC } | `&H0052` |
+| **META_ENDDOC**{: #META_ENDDOC } | `&H005E` |
+| **META_CREATEBRUSH**{: #META_CREATEBRUSH } | `&H00F8` |
+| **META_CREATEBITMAPINDIRECT**{: #META_CREATEBITMAPINDIRECT } | `&H02FD` |
+| **META_CREATEBITMAP**{: #META_CREATEBITMAP } | `&H06FE` |
+| **META_UNKNOWN**{: #META_UNKNOWN } | `&H0529` |
+
+No public member of the package takes or returns this enumeration.
+
+## See Also
+
+- [Enumerations](.) -- all the enumerations of the package
