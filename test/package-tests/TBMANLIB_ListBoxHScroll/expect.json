@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0.1",
+  "cases": {
+    "ScrollTests.LineRight_ContentsFollowThumb": {
+      "fails": "1 of 1 checks failed: after two SB_LINERIGHT the list's contents are where the thumb says: expected \"\", got \"the thumb is at 40 but the contents are not scrolled to 40\""
+    },
+    "ScrollTests.LineLeft_ContentsFollowThumb": {
+      "fails": "1 of 1 checks failed: after SB_LINELEFT from 100 the list's contents are where the thumb says: expected \"\", got \"the thumb is at 80 but the contents are not scrolled to 80\""
+    },
+    "ScrollTests.PageRight_ContentsFollowThumb": {
+      "fails": "1 of 1 checks failed: after SB_PAGERIGHT the list's contents are where the thumb says: expected \"\", got \"the thumb is at 221 but the contents are not scrolled to 221\""
+    },
+    "ScrollTests.PageLeft_ContentsFollowThumb": {
+      "fails": "1 of 1 checks failed: after SB_PAGELEFT from 400 the list's contents are where the thumb says: expected \"\", got \"the thumb is at 179 but the contents are not scrolled to 179\""
+    }
+  }
+}

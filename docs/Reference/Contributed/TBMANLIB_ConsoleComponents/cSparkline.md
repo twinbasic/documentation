@@ -10,6 +10,7 @@ has_toc: false
 
 Draws a small chart of a series of numbers into the screen buffer, as Braille dots, as asterisks joined by vertical bars, or as columns of blocks.
 
+<!-- test: SparklineTests.RenderWithStats_WritesMinAvgAndMaxOfAllTheValuesBelowTheChart, SparklineTests.Render_ThenRefresh_ShowsTheChartOnTheScreenBuffer -->
 A **cSparkline** keeps the [**Buffer**](../TBMANLIB_ConsoleCore/cConsole#buffer) of the console it was made with. [**Render**](#render) takes a series of **Double** values, scales them between a minimum and a maximum, and draws one column of the chart for each of *width* columns of the buffer. [**RenderWithStats**](#renderwithstats) also writes the smallest, the average and the largest value under the chart. The class draws into the buffer only; [**Refresh**](../TBMANLIB_ConsoleCore/cConsole#refresh) of the console shows it.
 
 ```tb check_build
@@ -27,12 +28,14 @@ Next
 chart.RenderWithStats 2, 1, 10, 4, cpu, 0, 100, ConsoleColor.Green, ConsoleColor.Black, SparklineCharSet.Braille
 con.Refresh
 ```
+<!-- /test -->
 
 * TOC
 {:toc}
 
 In the syntax lines of this page, *object* is a **cSparkline**. Columns and rows are counted from 0 in the buffer.
 
+<!-- test: SparklineTests.Render_SeriesStartingAtOne_DrawsTheChart, SparklineTests.Render_SeriesOfFewerThanTwoValues_DrawsNothing, SparklineTests.Render_SeriesNeverAllocated_RaisesError9, SparklineTests.Render_MinValueEqualToMaxValue_RaisesError11, SparklineTests.Render_WidthOfZero_RaisesError11, SparklineTests.Render_Braille_ValuesOutsideMinAndMax_AreLimited, SparklineTests.Render_Braille_MoreValuesThanColumns_EachColumnTakesAllTheValuesUpToTheNextColumn, SparklineTests.Render_Braille_FewerValuesThanColumns_LeavesSomeColumnsEmpty, SparklineTests.Render_ASCIIAndBlock_MoreValuesThanColumns_TakeTheValueAtTheColumnPosition, SparklineTests.Render_ASCIIAndBlock_FewerValuesThanColumns_RepeatValues -->
 ## The series
 
 The series is an array of **Double** values that has to start at index 0: the drawing code addresses the values by position from 0, so an array with a lower bound of 1 raises error 9, *Subscript out of range*.
@@ -40,9 +43,11 @@ The series is an array of **Double** values that has to start at index 0: the dr
 A series of fewer than 2 values draws nothing, and an array that was never allocated raises error 9. Each value is scaled to `(value - minValue) / (maxValue - minValue)` and limited to 0 to 1. A *minValue* equal to *maxValue* raises error 11, *Division by zero*. A *width* of 0 raises error 11 too.
 
 The chart has *width* columns. When the series has more values than columns, each column takes the value at position `CLng(x * count / width)`, where *x* is the column counted from 0; the Braille set takes all the values from that position up to the position of the next column. When the series has fewer values than columns, the ASCII and Block sets repeat values, and the Braille set leaves some columns empty. The series is not averaged or smoothed.
+<!-- /test -->
 
 ## Character sets
 
+<!-- test: SparklineTests.Render_Braille_ChartIsWidthByHeightPlusThreeQuotientFourCells_AndWritesEveryCellOfItsArea, SparklineTests.Render_Braille_PositionsOneToThreeSetTheDotsOneToThree, SparklineTests.Render_Braille_LowestPositionOfACell_SetsTheBottomLeftDot, SparklineTests.Render_Braille_ValueEqualToTheMinimum_SetsADot, SparklineTests.Render_Braille_TallChart_HoldsTheUpperHalfOfTheRangeInTheUpperRow, SparklineTests.Render_Braille_UsesTheColoursGiven -->
 ### Braille
 {: .no_toc }
 
@@ -110,12 +115,16 @@ con.ExitFullScreenMode
 ```
 
 The series rises, and the first row (the top one) holds the dots of the values 25 and 50, while the second row holds those of 75 and 100.
+<!-- /test -->
 
+<!-- test: SparklineTests.Render_ASCII_DrawsAnAsteriskPerColumnAndBarsBetweenFarPoints, SparklineTests.Render_ASCII_DoesNotClearTheOtherCellsOfItsArea -->
 ### ASCII
 {: .no_toc }
 
 The chart is *width* columns wide and *height* rows high. A value is drawn as `*` in the row `CLng((1 - scaled) * (height - 1))` counted from the top, so the maximum is in the top row and the minimum in the bottom row. When the point of a column lies more than one row above or below the point of the column on its left, the cells of that left column strictly between the two rows are filled with U+2502 (a vertical bar). The set writes only the points and the bars; it does not clear the other cells of its area.
+<!-- /test -->
 
+<!-- test: SparklineTests.Render_Block_ColumnsAreBarsFromTheBottom, SparklineTests.Render_Block_ValueAboveTheMinimumHasAtLeastOneCell_AndTheAreaIsCleared, SparklineTests.Render_Block_UsesTheColoursGiven -->
 ### Block
 {: .no_toc }
 
@@ -150,6 +159,7 @@ con.ExitFullScreenMode
 ' [  ###]
 ' [ ####]
 ```
+<!-- /test -->
 
 ## Enumeration
 
@@ -178,10 +188,13 @@ Syntax: **New cSparkline** ( *console* )
 *console*
 : *required* A [**cConsole**](../TBMANLIB_ConsoleCore/cConsole) that is in full-screen mode.
 
+<!-- test: SparklineTests.Render_SparklineMadeBeforeFullScreenMode_RaisesError91 -->
 Keeps the console and its current [**Buffer**](../TBMANLIB_ConsoleCore/cConsole#buffer). When the console is not in full-screen mode, the buffer is **Nothing** and [**Render**](#render) raises error 91. See [How a component works](./#how-a-component-works).
+<!-- /test -->
 
 ## Methods
 
+<!-- test: SparklineTests.Render_SeriesOfFewerThanTwoValues_DrawsNothing, SparklineTests.Render_ThenRefresh_ShowsTheChartOnTheScreenBuffer -->
 ### Render
 {: .no_toc }
 
@@ -217,7 +230,9 @@ Syntax: *object*.**Render** ( *col* , *row* , *width* , *height* , *values* [ , 
 : *optional* A [**SparklineCharSet**](#sparklinecharset). The default is **Braille**.
 
 Returns without drawing when the array has fewer than 2 values.
+<!-- /test -->
 
+<!-- test: SparklineTests.RenderWithStats_WritesMinAvgAndMaxOfAllTheValuesBelowTheChart, SparklineTests.RenderWithStats_TextLineIsInTheSameRowForTheThreeCharacterSets, SparklineTests.RenderWithStats_ArrayWithNoElement_RaisesError9 -->
 ### RenderWithStats
 {: .no_toc }
 
@@ -232,6 +247,7 @@ Syntax: *object*.**RenderWithStats** ( *col* , *row* , *width* , *height* , *val
 : *optional* A **ConsoleColor**, the colour of the text line. The default is **Gray**.
 
 Draws the chart with **Render**, then writes `Min:`, `Avg:` and `Max:` with the three numbers, each formatted with one decimal, in one line at the row `row + height + 1`, starting at *col*, on the background *back*. The numbers are taken from all the values, and not from *minValue* and *maxValue*. The row is the same for all three character sets, so a Braille chart, which is `(height + 3) \ 4` rows high, has a gap before the line. The decimal separator is that of the regional settings of the user. An array with no element raises error 9.
+<!-- /test -->
 
 ## See Also
 

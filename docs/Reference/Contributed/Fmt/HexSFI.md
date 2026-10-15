@@ -8,6 +8,8 @@ has_toc: false
 # HexSFI class
 {: .no_toc }
 
+<!-- test: HexTests.Default_IsThePrefixAndTheDigits, HexTests.LowerCaseIdentifier_GivesALowerCaseResult, HexTests.Precision_PadsWithZeros, HexTests.Precision_CutsFromTheLeft, HexTests.Negative_IntegerIs16Bits_LongIs32Bits, HexTests.FractionalValue_IsRounded, HexTests.Class_MatchesXAndOnlyX, FormerStringFormatTests.X_PrefixIsUpperCaseForBothCases -->
+
 Formats a number as hexadecimal digits with an `&H` prefix for the **X** identifier.
 
 **HexSFI** is a format identifier class. It implements [**IStringFormatIdentifier**](IStringFormatIdentifier) and matches the identifier **X** or **x** in any case. [**StringHelper**](StringHelper) registers it, so `{0:X}` in a call to [**StringFormat**](PublicEntryPoints/StringFormat) uses it for a numeric value. The class is predeclared, and its two members are reached through the interface.
@@ -39,6 +41,8 @@ Debug.Print StringFormat("{0:X}", -1&)     ' &HFFFFFFFF
 - **GetFormattedValue** returns the value formatted as described above. It reads the specifier's [**Precision**](StringFormatSpecifier/Precision) and [**identifier**](StringFormatSpecifier/identifier).
 
 Both are implemented as private members of the interface.
+
+<!-- /test -->
 
 ## See Also
 

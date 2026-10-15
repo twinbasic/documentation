@@ -1,0 +1,125 @@
+{
+  "version": "1.1.0.0",
+  "cases": {
+    "CDialogCountdownMsgBoxTests.ShowInfo_TimeoutReportsTimeout": {
+      "fails": "2 of 2 checks failed: ShowInfo that ran out of time: expected 32000, got 1; IsTimedOut after that ShowInfo: expected True, got False"
+    },
+    "CDialogCountdownMsgBoxTests.ShowWarning_TimeoutReportsTimeout": {
+      "fails": "1 of 1 checks failed: ShowWarning that ran out of time: expected 32000, got 1"
+    },
+    "CDialogCountdownMsgBoxTests.ShowError_TimeoutReportsTimeout": {
+      "fails": "1 of 1 checks failed: ShowError that ran out of time: expected 32000, got 1"
+    },
+    "CDialogCountdownMsgBoxTests.ShowDialog_TimeoutOfTheDefaultBoxReportsTimeout": {
+      "fails": "1 of 1 checks failed: ShowDialog of the default box that ran out of time: expected 32000, got 1"
+    },
+    "CDialogDateTimeTests.FormatDate_CustomWithAMonthNameOfMarchKeepsTheName": {
+      "fails": "1 of 1 checks failed: FormatDate(Custom) of MMMM D, YYYY for March: expected \"March 15, 2026\", got \"3arch 15, 2026\""
+    },
+    "CDialogDateTimeTests.FormatDate_CustomWithAMonthNameOfMayKeepsTheName": {
+      "fails": "1 of 1 checks failed: FormatDate(Custom) of MMMM D, YYYY for May: expected \"May 15, 2026\", got \"5ay 15, 2026\""
+    },
+    "CDialogDateTimeTests.FormatDate_CustomWithAMonthNameOfDecemberKeepsTheName": {
+      "fails": "1 of 1 checks failed: FormatDate(Custom) of MMMM D, YYYY for December: expected \"December 15, 2026\", got \"15ecember 15, 2026\""
+    },
+    "CDialogDateTimeTests.FormatDate_CustomWithAShortMonthNameOfMarchKeepsTheName": {
+      "fails": "1 of 2 checks failed: FormatDate(Custom) of MMM D for March: expected \"Mar 15\", got \"3ar 15\""
+    },
+    "CDialogDateTimeTests.ShowDialog_ARefusedMonthAndDayLeaveTheObjectAsItWas": {
+      "fails": "1 of 1 checks failed: DateTimeValue after the refused entry 13/45/2026 (Month is 13, Day is 45): expected \"2026-03-15 14:05:09\", got \"2027-02-14 14:05:09\""
+    },
+    "CDialogDateTimeTests.ShowDialog_AFebruary30LeavesTheObjectAsItWas": {
+      "fails": "1 of 1 checks failed: Day after the refused entry 02/30/2026 (the month is 2): expected 15, got 30"
+    },
+    "CDialogDateTimeTests.ShowDialog_ARefusedTimeLeavesTheObjectAsItWas": {
+      "fails": "1 of 1 checks failed: time after the refused entry 25:61 (Hour is 25, Minute is 61): expected \"14:05\", got \"02:01\""
+    },
+    "CDialogDateTimeTests.ShowDialog_ARefusedTimeAfterAGoodDateLeavesTheObjectAsItWas": {
+      "fails": "1 of 1 checks failed: DateTimeValue after the refused entry 04/05/2027 25:00 (Hour is 25): expected \"2026-03-15 14:05:09\", got \"2027-04-06 01:00:09\""
+    },
+    "CDialogDateTimeTests.ShowTimePicker_ATimeWithPmAndNoDateIsRead": {
+      "fails": "2 of 2 checks failed: ShowTimePicker after the entry 9:30 PM: expected True, got False; time after the entry 9:30 PM: expected \"21:30\", got \"14:05\""
+    },
+    "CDialogDateTimeTests.ShowTimePicker_TheOfferedTextOfThe12HourClockIsAccepted": {
+      "fails": "1 of 2 checks failed: ShowTimePicker after OK on the offered text 02:05 PM: expected True, got False"
+    },
+    "CDialogDateTimeTests.ShowTimePicker_ATimeWithPmAndNoSpaceIsReadAsTheMinutesTyped": {
+      "fails": "1 of 1 checks failed: time after the entry 9:30pm: expected \"21:30\", got \"21:03\""
+    },
+    "CDialogExTests.AddFilter_BuildsAFilterTheDialogAccepts": {
+      "fails": "1 of 1 checks failed: pipes in the filter of two pairs built with AddFilter (the dialog needs an even number): Text (*.txt)|*.txt|All (*.*)|*.*: expected 0, got 1"
+    },
+    "CDialogExTests.SetFilters_BuildAFilterTheDialogAccepts": {
+      "fails": "4 of 4 checks failed: pipes in the filter after SetCommonFilters (the dialog needs an even number): Text Files (*.txt)|*.txt|All Files (*.*)|*.*: expected 0, got 1; pipes in the filter after SetCodeFilters: expected 0, got 1; pipes in the filter after SetDocumentFilters: expected 0, got 1; pipes in the filter after SetImageFilters: expected 0, got 1"
+    },
+    "CDialogExTests.GetPresetFilter_GivesATextTheDialogAccepts": {
+      "fails": "1 of 1 checks failed: pipes in a Filter set to the text of GetPresetFilter (the dialog needs an even number): Text Files|*.txt: expected 0, got 1"
+    },
+    "CDialogFontTests.ToCssFont_EscapesASingleQuoteInTheFaceName": {
+      "fails": "1 of 1 checks failed: ToCssFont of a face name with a single quote: expected \"font-family: 'O\\'Brien'; font-size: 9pt; font-weight: normal; font-style: normal; text-decoration: none;\", got \"font-family: 'O'Brien'; font-size: 9pt; font-weight: normal; font-style: normal; text-decoration: none;\""
+    },
+    "CDialogFontTests.ShowDialog_MinSizeAloneOpensTheDialog": {
+      "fails": "1 of 1 checks failed: dialogs ShowDialog opened with MinSize 8 and MaxSize 0: expected 1, got 0"
+    },
+    "CDialogFontTests.ShowDialog_MinSizeAboveMaxSizeOpensTheDialogOrRaisesAnError": {
+      "fails": "1 of 1 checks failed: a MinSize of 20 above a MaxSize of 10 opens the dialog or raises an error, not a silent False: expected True, got False"
+    },
+    "CDialogInputBoxTests.ValidateInput_CustomChecksTheTextAgainstThePattern": {
+      "fails": "1 of 2 checks failed: ValidateInput of letters only against the pattern [0-9]+: expected \"Input does not match required format\", got \"\""
+    },
+    "CDialogInputBoxTests.PasswordChar_MasksTheEntry": {
+      "fails": "1 of 1 checks failed: password character of the edit box with PasswordChar *: expected True, got False"
+    },
+    "CDialogInputBoxTests.Multiline_GivesAMultilineEditBox": {
+      "fails": "1 of 1 checks failed: edit box of a box with Multiline True is multiline: expected True, got False"
+    },
+    "CDialogInputBoxTests.OwnerHwnd_OwnsTheBox": {
+      "fails": "1 of 1 checks failed: the box is owned by the window set in OwnerHwnd: expected True, got False"
+    },
+    "CDialogPageSetupTests.ToDescription_WithMillimetersWritesMillimeters": {
+      "fails": "1 of 1 checks failed: ToDescription of a new page with Unit Millimeters: expected \"Paper: 215.90 x 279.40 mm, Portrait, Margins: 25.40/25.40/25.40/25.40 mm\", got \"Paper: 8.50 x 11.00 mm, Portrait, Margins: 1.00/1.00/1.00/1.00 mm\""
+    },
+    "CDialogPageSetupTests.ShowDialog_PaperSizeSetBeforeTheCallIsTheOneTheDialogOpensWith": {
+      "fails": "1 of 4 checks failed: PaperHeight after OK on a dialog that was opened with SetLegalSize: expected 14, got 11"
+    },
+    "CDialogPageSetupTests.ShowDialog_OrientationSetBeforeTheCallSelectsLandscape": {
+      "fails": "1 of 2 checks failed: paper after OK on a dialog that was opened with Orientation Landscape: 8.5 x 11: expected True, got False"
+    },
+    "CDialogPageSetupTests.ShowDialog_OrientationChosenInTheDialogIsReadBack": {
+      "fails": "1 of 3 checks failed: Orientation after Landscape was chosen in the dialog: expected 2, got 1"
+    },
+    "CDialogPasswordTests.GetStrength_TheBestPasswordIsVeryStrong": {
+      "fails": "1 of 1 checks failed: strength of a password of 21 characters with every kind of character: expected 4, got 3"
+    },
+    "CDialogPasswordTests.ShowDialog_TheConfirmationBoxIsMasked": {
+      "fails": "1 of 3 checks failed: password character of the confirmation box: expected 42, got 0"
+    },
+    "CDialogPasswordTests.ShowChangeDialog_TheThreeBoxesAreMasked": {
+      "fails": "3 of 4 checks failed: password character of the box for the current password: expected 42, got 0; password character of the box for the new password: expected 42, got 0; password character of the box for the confirmation: expected 42, got 0"
+    },
+    "CDialogPasswordTests.OwnerHwnd_OwnsTheBoxes": {
+      "fails": "1 of 1 checks failed: the box is owned by the window set in OwnerHwnd: expected True, got False"
+    },
+    "CDialogPasswordTests.ShowStrength_ShowsAStrengthIndicator": {
+      "fails": "1 of 1 checks failed: the box has a strength indicator: |Static|Edit|Button|Button|: expected True, got False"
+    },
+    "CDialogPasswordTests.AllowShowPassword_ShowsAControlThatRevealsThePassword": {
+      "fails": "1 of 1 checks failed: the box has a control that shows the password; its buttons are: OK/Cancel: expected True, got False"
+    },
+    "CDialogProgressTests.GetRemainingTime_JustAfterStartDoesNotDivideByZero": {
+      "fails": "1 of 1 checks failed: GetRemainingTime calls out of 20 made at once after Start that raised an error: expected 0, got 20"
+    },
+    "CDialogProgressTests.GetDescription_JustAfterStartDoesNotDivideByZero": {
+      "fails": "1 of 1 checks failed: GetDescription calls out of 20 made at once after Start that raised an error: expected 0, got 20"
+    },
+    "CDialogProgressTests.SimulateProgress_WithADelayOfZeroDoesNotDivideByZero": {
+      "fails": "1 of 1 checks failed: error SimulateProgress raised with a delay of 0: expected 0, got 11"
+    },
+    "CDialogProgressTests.Percentage_OfAWideRangeDoesNotOverflow": {
+      "fails": "2 of 2 checks failed: error Percentage raised for a position of 50,000,000 in 0 to 100,000,000: expected 0, got 6; Percentage of a position of 50,000,000 in 0 to 100,000,000: expected 50, got 0"
+    },
+    "CDialogProgressTests.SetPercentage_OnAWideRangeDoesNotOverflow": {
+      "fails": "2 of 2 checks failed: error SetPercentage 50 raised for a range of 0 to 100,000,000: expected 0, got 6; Progress after SetPercentage 50 in 0 to 100,000,000: expected 50000000, got 0"
+    }
+  }
+}

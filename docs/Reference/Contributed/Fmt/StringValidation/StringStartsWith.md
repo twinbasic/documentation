@@ -8,6 +8,8 @@ has_toc: false
 # StringStartsWith
 {: .no_toc }
 
+<!-- test: StringValidationTests.StringStartsWith_ArgumentOrder_IsStartThenSource, StringValidationTests.StringStartsWith_IsBinary_EmptyStartIsTrue, EscapeTests.Literal_AtSign_TurnsEscapesOff -->
+
 Returns whether a string begins with another string, taking letter case into account.
 
 Syntax: **StringStartsWith** ( *startingSequence*, *source* ) **As Boolean**
@@ -28,6 +30,8 @@ Returns **True** when the first characters of *source* are exactly *startingSequ
 The comparison is binary, so `"he"` does not start `"Hello"`. An empty *startingSequence* returns **True**. A *source* shorter than *startingSequence* returns **False**.
 
 [**StringFormat**](../PublicEntryPoints/StringFormat) uses the function to test whether a format string begins with `@`.
+
+<!-- /test -->
 
 ## Example
 

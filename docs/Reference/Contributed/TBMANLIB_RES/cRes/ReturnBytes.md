@@ -11,13 +11,19 @@ Returns the raw byte array loaded from the resource file.
 
 Syntax: *object*.**ReturnBytes**() **As Byte()**
 
+<!-- test: ReturnBytesTests.ReturnBytes_ReturnsEveryByte, ReturnBytesTests.ReturnBytes_BeforeRead_HasNoElements -->
 Returns a **Byte()** containing every byte of the resource data loaded by the preceding [**Read**](Read) call. If **Read** has not been called, the returned array is unallocated and has no elements.
+<!-- /test -->
+
 
 ### Remarks
 
 **ReturnBytes** is the lowest-level retrieval method on **cRes**. The other retrieval methods---[**ReturnString**](ReturnString), [**ReturnHex**](ReturnHex), [**ReturnBase64**](ReturnBase64), and [**ReturnPicture**](ReturnPicture)---all derive their output from the same internal byte array that **ReturnBytes** exposes directly.
 
+<!-- test: ReturnBytesTests.ReturnBytes_IsACopy -->
 The returned array is a copy of the internal storage; modifying it does not affect the **cRes** instance.
+<!-- /test -->
+
 
 ### Example
 

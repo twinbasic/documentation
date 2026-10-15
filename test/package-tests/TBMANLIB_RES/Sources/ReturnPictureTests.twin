@@ -1,0 +1,63 @@
+' TBMANLIB_RES, cRes.ReturnPicture: the pictures the resources give, and the cases with no picture.
+[TestFixture]
+Module ReturnPictureTests
+
+    [TestCase]
+    Public Sub ReturnPicture_Bmp_ReturnsABitmapPicture()
+        Expect.Begin
+        Dim r As New cRes
+        Dim p As IPictureDisp
+        Set p = r.Read(101, "BMP").ReturnPicture()
+        Expect.IsFalse p Is Nothing, "ReturnPicture of a BMP resource returns a picture"
+        Expect.AreEqual vbPicTypeBitmap, p.Type, "Type of the picture from the BMP resource"
+        Expect.IsTrue p.Width > 0 And p.Height > p.Width, "Width and Height of a picture from a 2 x 3 pixel image are positive and taller than wide (got " & p.Width & " x " & p.Height & ")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnPicture_Png_ReturnsABitmapPicture()
+        Expect.Begin
+        Dim r As New cRes
+        Dim p As IPictureDisp
+        Set p = r.Read(101, "PNG").ReturnPicture()
+        Expect.IsFalse p Is Nothing, "ReturnPicture of a PNG resource returns a picture"
+        Expect.AreEqual vbPicTypeBitmap, p.Type, "Type of the picture from the PNG resource"
+        Expect.IsTrue p.Width > 0 And p.Height > p.Width, "Width and Height of a picture from a 2 x 3 pixel image are positive and taller than wide (got " & p.Width & " x " & p.Height & ")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnPicture_Gif_ReturnsABitmapPicture()
+        Expect.Begin
+        Dim r As New cRes
+        Dim p As IPictureDisp
+        Set p = r.Read(101, "GIF").ReturnPicture()
+        Expect.IsFalse p Is Nothing, "ReturnPicture of a GIF resource returns a picture"
+        Expect.AreEqual vbPicTypeBitmap, p.Type, "Type of the picture from the GIF resource"
+        Expect.IsTrue p.Width > 0 And p.Height > 0, "Width and Height of a picture from a 1 x 1 pixel image are positive (got " & p.Width & " x " & p.Height & ")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnPicture_NotAnImage_RaisesError()
+        Expect.Begin
+        Dim r As New cRes
+        Dim p As IPictureDisp
+        On Error Resume Next
+        Set p = r.Read(101, "BINARY").ReturnPicture()
+        Expect.IsTrue Err.Number <> 0, "ReturnPicture of a resource that holds no image raises an error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnPicture_BeforeRead_RaisesError()
+        Expect.Begin
+        Dim r As New cRes
+        Dim p As IPictureDisp
+        On Error Resume Next
+        Set p = r.ReturnPicture()
+        Expect.IsTrue Err.Number <> 0, "ReturnPicture before any Read raises an error"
+        Expect.Done
+    End Sub
+
+End Module

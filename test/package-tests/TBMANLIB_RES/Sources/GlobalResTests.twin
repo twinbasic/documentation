@@ -1,0 +1,46 @@
+' TBMANLIB_RES, GLOBAL_RES.Res: the one shared cRes.
+[TestFixture]
+Module GlobalResTests
+
+    [TestCase]
+    Public Sub Res_IsOneSharedInstance()
+        Expect.Begin
+        Dim a As cRes
+        Dim b As cRes
+        Set a = GLOBAL_RES.Res
+        Set b = GLOBAL_RES.Res
+        Expect.IsFalse a Is Nothing, "GLOBAL_RES.Res is created on first use"
+        Expect.IsTrue a Is b, "two references to GLOBAL_RES.Res are the same object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Res_Read_ReplacesTheBytesForEveryCaller()
+        Expect.Begin
+        Dim a As cRes
+        Set a = GLOBAL_RES.Res
+        a.Read 101, "BINARY"
+        GLOBAL_RES.Res.Read "CONFIG_DATA", "CUSTOM"
+        Expect.AreEqual "DEADBEEF", a.ReturnHex(), "ReturnHex through the first reference after a second Read through GLOBAL_RES.Res"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Res_Read_CanBeChained()
+        Expect.Begin
+        Expect.AreEqual "00010A0F107F80FF", GLOBAL_RES.Res.Read(101, "BINARY").ReturnHex(), "ReturnHex chained onto GLOBAL_RES.Res.Read"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Res_DoesNotShareBytesWithANewCRes()
+        Expect.Begin
+        Dim mine As New cRes
+        GLOBAL_RES.Res.Read 101, "BINARY"
+        mine.Read "CONFIG_DATA", "CUSTOM"
+        Expect.AreEqual "00010A0F107F80FF", GLOBAL_RES.Res.ReturnHex(), "ReturnHex of GLOBAL_RES.Res after a separate cRes read another resource"
+        Expect.AreEqual "DEADBEEF", mine.ReturnHex(), "ReturnHex of the separate cRes"
+        Expect.Done
+    End Sub
+
+End Module

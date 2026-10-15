@@ -1,0 +1,167 @@
+' cProgressBar.twin of TBMANLIB_ConsoleComponents 1.0.0.1 (woeoio, MIT licence), compiled into this project.
+' The package cannot take the cConsole of TBMANLIB_ConsoleCore (see the notes of its landing page), so the
+' cases that draw run this copy of the code, which is the code of the package below the line of dashes.
+' The package's own classes are reached as TBMANLIB_ConsoleComponents.<name>.
+' ----------------------------------------------------------------------------
+' =====================================================
+' cProgressBar.twin - Progress Bar Component
+' Modern Console Library for TwinBASIC - Components
+' =====================================================
+
+[COMCreatable(False)]
+Public Class cProgressBar
+
+    Private m_Console As cConsole
+    Private m_Buffer As cConsoleBuffer
+
+    ' Constructor
+    Public Sub New(ByVal console As cConsole)
+        Set m_Console = console
+        Set m_Buffer = console.Buffer
+    End Sub
+
+    ' Draw a horizontal progress bar
+    Public Sub Render(ByVal col As Long, ByVal row As Long, _
+                      ByVal width As Long, ByVal percent As Double, _
+                      Optional ByVal filledChar As String = "█", _
+                      Optional ByVal emptyChar As String = "░", _
+                      Optional ByVal filledColor As ConsoleColor = ConsoleColor.Green, _
+                      Optional ByVal emptyColor As ConsoleColor = ConsoleColor.DarkGray)
+        If percent < 0 Then percent = 0
+        If percent > 100 Then percent = 100
+
+        Dim filledWidth As Long = CLng((percent / 100) * width)
+        Dim emptyWidth As Long = width - filledWidth
+
+        Dim currentCol As Long = col
+
+        ' Draw filled portion
+        If filledWidth > 0 Then
+            m_Buffer.WriteAt currentCol, row, String$(filledWidth, filledChar), filledColor
+            currentCol += filledWidth
+        End If
+
+        ' Draw empty portion
+        If emptyWidth > 0 Then
+            m_Buffer.WriteAt currentCol, row, String$(emptyWidth, emptyChar), emptyColor
+        End If
+    End Sub
+
+    ' Draw a progress bar with brackets and percentage
+    Public Sub RenderWithBrackets(ByVal col As Long, ByVal row As Long, _
+                                  ByVal width As Long, ByVal percent As Double, _
+                                  Optional ByVal filledChar As String = "█", _
+                                  Optional ByVal emptyChar As String = "░", _
+                                  Optional ByVal filledColor As ConsoleColor = ConsoleColor.Green, _
+                                  Optional ByVal emptyColor As ConsoleColor = ConsoleColor.DarkGray, _
+                                  Optional ByVal bracketColor As ConsoleColor = ConsoleColor.Gray)
+        If percent < 0 Then percent = 0
+        If percent > 100 Then percent = 100
+
+        ' Adjust width to account for brackets
+        Dim barWidth As Long = width - 2  ' Subtract brackets
+
+        ' Draw opening bracket
+        m_Buffer.SetChar col, row, "[", bracketColor, ConsoleColor.Black
+
+        ' Draw progress bar
+        Render col + 1, row, barWidth, percent, filledChar, emptyChar, filledColor, emptyColor
+
+        ' Draw closing bracket
+        m_Buffer.SetChar col + width - 1, row, "]", bracketColor, ConsoleColor.Black
+    End Sub
+
+    ' Draw a progress bar with label and percentage
+    Public Sub RenderWithLabel(ByVal col As Long, ByVal row As Long, _
+                               ByVal width As Long, ByVal percent As Double, _
+                               ByVal label As String, _
+                               Optional ByVal filledChar As String = "█", _
+                               Optional ByVal emptyChar As String = "░", _
+                               Optional ByVal filledColor As ConsoleColor = ConsoleColor.Green, _
+                               Optional ByVal emptyColor As ConsoleColor = ConsoleColor.DarkGray, _
+                               Optional ByVal labelColor As ConsoleColor = ConsoleColor.Gray)
+        If percent < 0 Then percent = 0
+        If percent > 100 Then percent = 100
+
+        Dim percentText As String = Format$(percent, "0") & "%"
+
+        ' Calculate widths
+        Dim labelWidth As Long = Len(label) + 1  ' label + space
+        Dim percentWidth As Long = Len(percentText) + 1  ' space + percent
+        Dim barWidth As Long = width - labelWidth - percentWidth
+
+        If barWidth < 3 Then
+            ' Not enough space, just show percentage
+            m_Buffer.WriteAt col, row, label & " " & percentText, labelColor
+            Exit Sub
+        End If
+
+        Dim currentCol As Long = col
+
+        ' Draw label
+        m_Buffer.WriteAt currentCol, row, label & " ", labelColor
+        currentCol += labelWidth
+
+        ' Draw progress bar
+        Render currentCol, row, barWidth, percent, filledChar, emptyChar, filledColor, emptyColor
+        currentCol += barWidth
+
+        ' Draw percentage
+        m_Buffer.WriteAt currentCol, row, " " & percentText, labelColor
+    End Sub
+
+    ' Draw a vertical progress bar
+    Public Sub RenderVertical(ByVal col As Long, ByVal row As Long, _
+                               ByVal height As Long, ByVal percent As Double, _
+                               Optional ByVal filledChar As String = "█", _
+                               Optional ByVal emptyChar As String = "░", _
+                               Optional ByVal filledColor As ConsoleColor = ConsoleColor.Green, _
+                               Optional ByVal emptyColor As ConsoleColor = ConsoleColor.DarkGray)
+        If percent < 0 Then percent = 0
+        If percent > 100 Then percent = 100
+
+        Dim filledHeight As Long = CLng((percent / 100) * height)
+        Dim emptyHeight As Long = height - filledHeight
+
+        Dim currentRow As Long = row
+
+        ' Draw filled portion (from bottom)
+        Dim i As Long
+        For i = 1 To filledHeight
+            m_Buffer.SetChar col, row + height - i, filledChar, filledColor
+        Next i
+
+        ' Draw empty portion (from top)
+        For i = 0 To emptyHeight - 1
+            m_Buffer.SetChar col, row + i, emptyChar, emptyColor
+        Next i
+    End Sub
+
+    ' Get color based on progress (heat map style)
+    Public Function GetProgressColor(ByVal percent As Double, _
+                                      Optional ByVal lowColor As ConsoleColor = ConsoleColor.Green, _
+                                      Optional ByVal midColor As ConsoleColor = ConsoleColor.Yellow, _
+                                      Optional ByVal highColor As ConsoleColor = ConsoleColor.Red) As ConsoleColor
+        If percent < 50 Then
+            Return lowColor
+        ElseIf percent < 80 Then
+            Return midColor
+        Else
+            Return highColor
+        End If
+    End Function
+
+    ' Draw a progress bar with automatic color based on percent
+    Public Sub RenderWithAutoColor(ByVal col As Long, ByVal row As Long, _
+                                    ByVal width As Long, ByVal percent As Double, _
+                                    Optional ByVal filledChar As String = "█", _
+                                    Optional ByVal emptyChar As String = "░", _
+                                    Optional ByVal emptyColor As ConsoleColor = ConsoleColor.DarkGray, _
+                                    Optional ByVal lowColor As ConsoleColor = ConsoleColor.Green, _
+                                    Optional ByVal midColor As ConsoleColor = ConsoleColor.Yellow, _
+                                    Optional ByVal highColor As ConsoleColor = ConsoleColor.Red)
+        Dim filledColor As ConsoleColor = GetProgressColor(percent, lowColor, midColor, highColor)
+        Render col, row, width, percent, filledChar, emptyChar, filledColor, emptyColor
+    End Sub
+
+End Class

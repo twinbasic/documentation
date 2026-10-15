@@ -30,6 +30,7 @@ Else
 End If
 ```
 
+<!-- test: CDialogPasswordTests.ShowDialog_TheFirstBoxIsMaskedAndNamesTheRequirements, CDialogPasswordTests.ShowDialog_PasswordCharIsUsedForTheMask, CDialogPasswordTests.ShowDialog_AGoodPasswordIsStored, CDialogPasswordTests.ShowDialog_ARefusedPasswordShowsTheReasonAndTheAttemptsLeft, CDialogPasswordTests.ShowDialog_ThreeRefusedPasswordsEndTheCallAndKeepThePassword, CDialogPasswordTests.ShowDialog_MaxAttemptsOfZeroShowsNothing, CDialogPasswordTests.ShowDialog_RequireConfirmAsksAgainInASecondBox, CDialogPasswordTests.ShowDialog_ADifferentConfirmationCountsAsAFailedAttempt, CDialogPasswordTests.ShowChangeDialog_AsksForTheCurrentTheNewAndTheConfirmation, CDialogPasswordTests.ShowChangeDialog_AWrongCurrentPasswordStopsTheCall, CDialogPasswordTests.ShowChangeDialog_ANewPasswordEqualToTheCurrentOneStopsTheCall, CDialogPasswordTests.ShowChangeDialog_ADifferentConfirmationStopsTheCall, CDialogPasswordTests.ShowChangeDialog_CancellingABoxSetsCancelled -->
 ## How the box works
 
 The box has the title [**Title**](#title). Its text is [**Prompt**](#prompt), a blank line, `Requirements:`, and one line for each rule that is on: `- Minimum N characters` always, then `- At least one uppercase letter`, `- At least one lowercase letter`, `- At least one number` and `- At least one special character`. The maximum length is not named.
@@ -38,12 +39,17 @@ The class masks the edit box with the character of [**PasswordChar**](#passwordc
 
 [**ShowDialog**](#showdialog) repeats the question until it has a password that passes or [**MaxAttempts**](#maxattempts) attempts have failed. A failure shows a message box with the reason and `Attempts remaining: N`, and the last failure shows the reason and `Maximum attempts reached.`. If [**RequireConfirm**](#requireconfirm) is **True**, a password that passes is asked for again in a second box, `Please confirm your password:` under the title `Title - Confirm`, and a difference counts as a failed attempt (`Passwords do not match!`). Cancelling any box ends the call.
 
+<!-- /test -->
+
+<!-- test: CDialogPasswordTests.ShowDialog_TheConfirmationBoxIsMasked, CDialogPasswordTests.ShowChangeDialog_TheThreeBoxesAreMasked -->
 > [!WARNING] 1.1.0.0
 > Only the first box of [**ShowDialog**](#showdialog) is masked. The confirmation box of [**RequireConfirm**](#requireconfirm) and the three boxes of [**ShowChangeDialog**](#showchangedialog) (`Title - Current Password`, `Title - New Password` and `Title - Confirm New Password`) show what the user types in clear text, because the timer looks for a window with exactly the title [**Title**](#title). A program that asks for a confirmation or a change of password shows the passwords on the screen. To keep the entry masked, ask with [**ShowDialog**](#showdialog) alone and compare the two entries in the program, or use another control.
 
+<!-- test: CDialogPasswordTests.OwnerHwnd_OwnsTheBoxes, CDialogPasswordTests.ShowStrength_ShowsAStrengthIndicator, CDialogPasswordTests.AllowShowPassword_ShowsAControlThatRevealsThePassword -->
 > [!NOTE] 1.1.0.0
 > The properties [**ShowStrength**](#showstrength), [**AllowShowPassword**](#allowshowpassword) and [**OwnerHwnd**](#ownerhwnd) are stored but not used: the box has no strength indicator, no control that shows the password and no owner window. The password stays in [**Password**](#password), an ordinary string, until [**Reset**](#reset) empties it or the object ends.
 
+<!-- test: CDialogPasswordTests.Defaults_AreThoseOfThePage, CDialogPasswordTests.PasswordChar_KeepsTheFirstCharacterAndAnEmptyTextGivesTheDefault, CDialogPasswordTests.Reset_RestoresTheStartingValuesButNotTheOwner, CDialogPasswordTests.Password_StaysInTheObjectUntilReset, CDialogPasswordTests.Validate_ChecksInTheDocumentedOrder, CDialogPasswordTests.Validate_RequireSpecialAcceptsThePunctuationOfTheList, CDialogPasswordTests.Validate_ARuleSwitchedOffIsNotChecked, CDialogPasswordTests.GetStrength_AddsPointsForLengthAndKinds, CDialogPasswordTests.GetStrength_IgnoresTheRulesOfTheObject, CDialogPasswordTests.GetRequirementsDescription_ListsTheRules -->
 ## Properties
 
 ### AllowShowPassword
@@ -371,6 +377,9 @@ Syntax: *object*.**GetStrength** ( *password* ) **As** [**PasswordStrength**](#p
 
 The class adds points: 1 for 8 or more characters, 1 more for 12 or more, 1 more for 16 or more, 1 each for an uppercase letter, a lowercase letter and a digit, and 2 for a special character (the list under [**RequireSpecial**](#requirespecial)). A score of 0 to 2 is **VeryWeak**, 3 or 4 **Weak**, 5 or 6 **Fair**, and 7 or 8 **Strong**. The rules of the object (minimum, maximum and the required kinds) play no part.
 
+<!-- /test -->
+
+<!-- test: CDialogPasswordTests.GetStrength_TheBestPasswordIsVeryStrong -->
 > [!NOTE] 1.1.0.0
 > The highest score is 8, so the result is never **VeryStrong**.
 
@@ -384,6 +393,7 @@ Debug.Print box.GetStrengthDescription(box.GetStrength("Zq7-demo-xxxx"))   ' Str
 Debug.Print box.GetStrengthDescription(box.GetStrength("Zq7-demo-xxxxxxxxxxxx"))   ' Strong
 ```
 
+<!-- test: CDialogPasswordTests.GetStrengthDescription_NamesEachStrength -->
 ### GetStrengthDescription
 {: .no_toc }
 
@@ -545,6 +555,8 @@ If box.ShowChangeDialog(current) Then
     Debug.Print "New password is " & box.GetStrengthDescription(box.GetStrength(current))
 End If
 ```
+
+<!-- /test -->
 
 ## See Also
 

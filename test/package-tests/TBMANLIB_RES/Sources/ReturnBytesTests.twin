@@ -1,0 +1,48 @@
+' TBMANLIB_RES, cRes.ReturnBytes: every byte, a copy, and an instance that holds none.
+[TestFixture]
+Module ReturnBytesTests
+
+    [TestCase]
+    Public Sub ReturnBytes_ReturnsEveryByte()
+        Expect.Begin
+        Dim r As New cRes
+        Dim b() As Byte
+        r.Read 101, "BINARY"
+        b = r.ReturnBytes()
+        Expect.AreEqual 7, UBound(b), "UBound of the 8 bytes of BINARY 101"
+        Expect.AreEqual "00010A0F107F80FF", TestData.HexOf(b), "the bytes of BINARY 101"
+        r.Read 102, "BINARY"
+        b = r.ReturnBytes()
+        Expect.IsTrue TestData.SameBytes(b, TestData.Binary102()), "the 100 bytes of BINARY 102 come back unchanged"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnBytes_IsACopy()
+        Expect.Begin
+        Dim r As New cRes
+        Dim b() As Byte
+        Dim c() As Byte
+        r.Read 101, "BINARY"
+        b = r.ReturnBytes()
+        b(0) = 99
+        b(7) = 99
+        c = r.ReturnBytes()
+        Expect.AreEqual "00010A0F107F80FF", TestData.HexOf(c), "the bytes of a second ReturnBytes after the first array was changed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnBytes_BeforeRead_HasNoElements()
+        Expect.Begin
+        Dim r As New cRes
+        Dim b() As Byte
+        Dim n As Long
+        b = r.ReturnBytes()
+        On Error Resume Next
+        n = UBound(b)
+        Expect.AreEqual 9, Err.Number, "UBound of the array ReturnBytes returns before any Read raises Subscript out of range"
+        Expect.Done
+    End Sub
+
+End Module

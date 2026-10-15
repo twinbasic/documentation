@@ -1,0 +1,66 @@
+' Sandbox: the folder the test cases of TBMANLIB_Diagnostic write files in.
+'
+' Every file and folder a case makes is under %TEMP%\tbdocs-package-tests\TBMANLIB_Diagnostic\.
+' A case asks for a fresh folder of its own (Fresh), which empties it first in case an earlier run
+' left something, and removes it at its end (Remove).
+Module Sandbox
+
+    Public Function Root() As String
+        Root = Environ$("TEMP") & "\tbdocs-package-tests\TBMANLIB_Diagnostic"
+    End Function
+
+    ' A new, empty folder for one case.
+    Public Function Fresh(ByVal Tag As String) As String
+        Dim p As String
+        p = Root() & "\" & Tag
+        Remove p
+        On Error Resume Next
+        MkDir Environ$("TEMP") & "\tbdocs-package-tests"
+        MkDir Root()
+        MkDir p
+        Err.Clear
+        Fresh = p
+    End Function
+
+    ' Removes a folder with everything in it, and then the sandbox itself when nothing else is in
+    ' it. Raises no error.
+    Public Sub Remove(ByVal Path As String)
+        On Error Resume Next
+        CreateObject("Scripting.FileSystemObject").DeleteFolder Path, True
+        RmDir Root()
+        RmDir Environ$("TEMP") & "\tbdocs-package-tests"
+        Err.Clear
+    End Sub
+
+    ' The bytes of a file, or an empty array when it cannot be read.
+    Public Function BytesOf(ByVal Path As String) As Byte()
+        Dim b() As Byte, n As Long
+        On Error Resume Next
+        n = FileLen(Path)
+        If Err.Number = 0 And n > 0 Then
+            ReDim b(0 To n - 1)
+            Dim f As Long
+            f = FreeFile
+            Open Path For Binary Access Read As #f
+            Get #f, , b
+            Close #f
+        End If
+        Err.Clear
+        BytesOf = b
+    End Function
+
+    ' The bytes of a file as hexadecimal pairs separated by spaces, "" for an empty file.
+    Public Function HexOf(ByVal Path As String) As String
+        Dim b() As Byte, i As Long, s As String
+        b = BytesOf(Path)
+        On Error Resume Next
+        For i = 0 To UBound(b)
+            If Err.Number <> 0 Then Exit For
+            If Len(s) > 0 Then s = s & " "
+            s = s & Right$("0" & Hex$(b(i)), 2)
+        Next i
+        Err.Clear
+        HexOf = s
+    End Function
+
+End Module

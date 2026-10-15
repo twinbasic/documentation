@@ -16,6 +16,7 @@ Finds and calls the members of an automation object by name or by dispatch ident
 
 The declaration is complete: it has all four methods of the Windows interface. Each is a **Sub** that hides the HRESULT: a failure code raises a run-time error, and a success code other than `S_OK` is read with [**Err.LastHresult**](../../../Modules/ErrObject/LastHresult). The interface identifiers are the package's [OLECLSID](OLECLSID). **Invoke** takes its three structure parameters as pointers (**LongPtr**): the address of an [OLEDISPPARAMS](OLEDISPPARAMS), of a **Variant** and of an `EXCEPINFO` structure, from [**VarPtr**](../../../Modules/Information/VarPtr), or 0 where the parameter is optional.
 
+<!-- test: DispatchTests.StdoleIDispatch_CallIsLateBoundAndDoesNotReachTheMethods, DispatchTests.Assign_ObjectVariableToIDispatchUnrestricted, DispatchTests.Assign_StdoleIDispatchVariableToIDispatchUnrestricted, compile NoIDispatchInThePackage -->
 > [!NOTE] 1.0.10.0
 > The package has no declaration named **IDispatch**. A variable declared `As IDispatch` has the type of **stdole**, and a call through it is late-bound by name, so the four methods are not reached. To reach them, assign the object to an **IDispatchUnrestricted** variable. The assignment asks the object for the **IDispatch** interface, and it accepts an **Object** variable and a **stdole.IDispatch** variable alike. [IOleControlSite.GetExtendedControl](IOleControlSite#getextendedcontrol) returns a **stdole.IDispatch**.
 
@@ -38,7 +39,9 @@ The [IDispatch](../../../../Reference/COM-Interfaces/IDispatch) page in the COM 
 Sub GetTypeInfoCount(ByRef pctInfo As Long)
 ```
 
+<!-- test: DispatchTests.GetTypeInfoCount_ClassObjectHasTypeInformation, DispatchTests.Assign_CollectionAsksForIDispatch -->
 Says whether the object can describe itself with type information. *pctInfo* receives 1 when the object has type information and 0 when it has none. An object of a twinBASIC class has it.
+<!-- /test -->
 
 ### GetTypeInfo
 
@@ -46,7 +49,9 @@ Says whether the object can describe itself with type information. *pctInfo* rec
 Sub GetTypeInfo(ByVal itinfo As Long, ByVal lcid As Long, ByRef pptinfo As LongPtr)
 ```
 
+<!-- test: DispatchTests.GetTypeInfo_IndexZeroReturnsTypeInformation, DispatchTests.GetTypeInfo_OtherIndexRaisesBadIndex -->
 Returns the object's type information, as an `ITypeInfo*` in *pptinfo*. *itinfo* is the index of the type information: 0 selects the type information of the object's own implementation of **IDispatch**. *lcid* is the locale of the information. An object of a twinBASIC class has the one description, and any other index raises run-time error -2147352565, which is `DISP_E_BADINDEX` (`&H8002000B`).
+<!-- /test -->
 
 ### GetIDsOfNames
 
@@ -56,6 +61,7 @@ Sub GetIDsOfNames(ByRef riid As OLEGuids.OLECLSID, ByRef rgszNames As LongPtr, B
 
 Converts the names of a member and its parameters into dispatch identifiers. *riid* is reserved: pass an [OLECLSID](OLECLSID) holding only zeros. *rgszNames* is the first element of an array of *cNames* pointers to Unicode strings, such as `StrPtr(name)` in a **LongPtr** variable, and *rgDispId* receives one identifier for each name.
 
+<!-- test: DispatchTests.GetIDsOfNames_KnownNameReturnsAnIdentifier, DispatchTests.GetIDsOfNames_UnknownNameRaisesError438 -->
 A name that the object does not have raises run-time error 438, *Object doesn't support this property or method*. **Err.LastHresult** then holds `DISP_E_UNKNOWNNAME` (`&H80020006`), and *rgDispId* holds -1 (`DISPID_UNKNOWN`).
 
 ```tb check_run
@@ -70,6 +76,7 @@ Debug.Print Err.Number            ' 438
 Debug.Print Hex(Err.LastHresult)  ' 80020006
 Debug.Print id                    ' -1
 ```
+<!-- /test -->
 
 ### Invoke
 
@@ -83,9 +90,13 @@ Calls the member with the dispatch identifier *DispId*. *riid* is reserved and h
 
 The package declares no `EXCEPINFO` type, and the **stdole** type cannot be used: some of its members are of unsigned types, which twinBASIC does not support, as VB6 does not, so a variable of it does not compile (TB5106). A project that wants the details declares a structure of the same layout with signed members, as the [IDispatch](../../../../Reference/COM-Interfaces/IDispatch) page does.
 
+<!-- test: DispatchTests.Invoke_MemberErrorWithoutExcepinfoIsRaisedAsItIs, DispatchTests.Invoke_MemberErrorWithExcepinfoRaisesDispEException -->
 A member that raises an error is reported in one of two ways. With *lpexcepinfo* set to 0, the member's own error is raised: an `Err.Raise 5, , "boom"` in the member raises error 5 with the description *boom*. With *lpexcepinfo* the address of a structure, the call raises error -2147352567, which is `DISP_E_EXCEPTION` (`&H80020009`), and the structure holds the error: *scode* is the Windows code of the member's error (`&H800A0005` for error 5), and *bstrSource* and *bstrDescription* are its source and description.
+<!-- /test -->
 
+<!-- test: DispatchTests.Invoke_UnknownIdentifierRaisesError438 -->
 An identifier that the object has no member for raises error 438. **Err.LastHresult** holds `DISP_E_MEMBERNOTFOUND` (`&H80020003`).
+<!-- /test -->
 
 ## Example
 
@@ -112,6 +123,7 @@ Class Calculator
 End Class
 ```
 
+<!-- test: DispatchTests.Invoke_CallsAMethodWithTheArgumentsInReverseOrder -->
 The arguments are an array of **Variant** values in **reverse** order: the last argument of the call is element 0. The call `Subtract(10, 3)` puts 3 in element 0 and 10 in element 1.
 
 ```tb check_run
@@ -134,6 +146,7 @@ Dim argErr As Long
 d.Invoke id, iid, 0, 1, VarPtr(params), VarPtr(result), 0, argErr
 Debug.Print result  ' 7
 ```
+<!-- /test -->
 
 ## See Also
 

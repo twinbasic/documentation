@@ -49,7 +49,9 @@ Each notification exists twice, as an event and as a callback that a program set
 
 ### A collector that raises an error
 
+<!-- test: EngineTests.RunAll_CollectorRaisesError_RunGoesOnWithTheMessage -->
 A collector that raises a run-time error does not stop the run. The engine takes the text of the error (**Err.Description**), replaces the collector's result with a new, empty result for the same category that holds the text as its [**ErrorMessage**](DiagnosticResult#errormessage), and goes on with the next collector. The number and the source of the error are not kept. The engine raises [**Error**](#error) for it before **CollectorCompleted**, which then reports `success` as **False** and an `itemCount` of 0. [**RunCategory**](#runcategory) and [**RunByRefreshMode**](#runbyrefreshmode) handle an error in the same way.
+<!-- /test -->
 
 A collector that fails without raising an error, such as one whose Windows call returns an error code, returns its own result with **Success** set to **False**. The engine does not call **Error** for it.
 
@@ -189,7 +191,9 @@ Whether a run is in progress.
 
 Syntax: *engine*.**IsRunning** **As Boolean**
 
+<!-- test: EngineTests.IsRunning_BeforeAndAfterARun_IsFalse -->
 Read-only. [**RunAll**](#runall) and [**RunByRefreshMode**](#runbyrefreshmode) set it to **True** when they start and to **False** when their loop over the collectors ends. It is therefore **True** in the handlers of **CollectorStarted**, **Error**, **CollectorCompleted** and the **Progress** events that come before a collector, and **False** in the last **Progress** event (100, `Complete`) and in **AllCompleted**. [**RunCategory**](#runcategory) sets it to **False** before it raises **CollectorCompleted**. A run that a handler starts sets it to **False** when that run ends, while the outer run goes on.
+<!-- /test -->
 
 ### OnCollectorCompleted
 {: .no_toc }
@@ -275,7 +279,9 @@ The results of the last [**RunAll**](#runall).
 
 Syntax: *engine*.**Results** **As List(Of DiagnosticResult(Of KeyValuePair(Of String, String)))**
 
+<!-- test: EngineTests.RunAll_NextRun_EmptiesTheEarlierList, EngineTests.RunAll_ResultsAreInOrderOfRegistration -->
 Read-only. It is the list that **RunAll** fills and returns, not a copy of it. **RunAll** empties it when it starts, so a variable that holds the result of an earlier run is empty or refilled once the next run has started. [**RunCategory**](#runcategory) and [**RunByRefreshMode**](#runbyrefreshmode) do not add to it. Copy the items to a list of the program to keep them.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim engine As New DiagnosticEngine
@@ -334,12 +340,14 @@ Syntax: *engine*.**RegisterCollector** ( *collector* )
 *collector*
 : *required* An object that implements [**IDiagnosticCollector**](IDiagnosticCollector).
 
+<!-- test: EngineTests.RegisterCollector_SameCategory_Raises5, EngineTests.RegisterCollector_Nothing_Raises5, EngineTests.RegisterCollector_CategoryNames_AreCaseSensitive -->
 The collector goes to the end of the list. Registering the same collector twice, or two collectors with the same [**CategoryName**](IDiagnosticCollector#categoryname), is an error.
 
 The method raises error 5 (*Invalid procedure call or argument*) in these cases, with the source `DiagnosticEngine.RegisterCollector`:
 
 - *collector* is **Nothing**. The text is `Collector cannot be Nothing`.
 - A registered collector has the same category name. The text is `Collector already exists: ` and the name. The names are compared with the `=` operator, and the package has no **Option Compare** statement, so the comparison is binary and the letter case matters: `Alpha` and `ALPHA` are two names.
+<!-- /test -->
 
 ```tb check_build check_run projname=diag-engine
 Dim engine As New DiagnosticEngine
@@ -372,7 +380,9 @@ Syntax: *engine*.**RunAll** [ ( *useSummary* ) ] **As List(Of DiagnosticResult(O
 
 Returns the list [**Results**](#results), which holds one result for each collector, in the order of registration. [How a run proceeds](#how-a-run-proceeds) describes the steps and the events. A run with no collector raises **Progress** with 100 and `Complete` and then **AllCompleted** with an empty list.
 
+<!-- test: EngineTests.RunAll_Summary_AsksSummaryCollectorsForTheirSummary -->
 A summary result has [**IsSummary**](DiagnosticResult#issummary) set to **True** when the collector sets it, as the built-in collectors that support a summary do.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim engine As New DiagnosticEngine
@@ -401,7 +411,9 @@ Syntax: *engine*.**RunByRefreshMode** ( *mode* [ , *useSummary* ] ) **As List(Of
 *useSummary*
 : *optional* A **Boolean**, as for [**RunAll**](#runall). Default: **False**.
 
+<!-- test: EngineTests.RunByRefreshMode_RunsOnlyTheCollectorsOfThatMode -->
 Returns a new list with one result for each collector that ran, in the order of registration. The list is not [**Results**](#results), which this method does not change. The method raises **CollectorStarted**, **CollectorCompleted** and **Error** for each collector, and neither **Progress** nor **AllCompleted**. It clears the flag of [**Cancel**](#cancel) when it starts and reads it before each collector, as **RunAll** does.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim engine As New DiagnosticEngine
@@ -437,9 +449,11 @@ Syntax: *engine*.**RunCategory** ( *categoryName* [ , *useSummary* ] ) **As Diag
 *useSummary*
 : *optional* A **Boolean**, as for [**RunAll**](#runall). Default: **False**.
 
+<!-- test: EngineTests.RunCategory_Known_RunsThatCollectorOnly, EngineTests.RunCategory_Unknown_ReturnsAFailedResult -->
 Returns the result of the collector. The result is not added to [**Results**](#results). The method raises **CollectorStarted**, **CollectorCompleted** and **Error**, and neither **Progress** nor **AllCompleted**.
 
 When no collector has the name, the method raises no error and no event. It returns a result for *categoryName* with **Success** set to **False** and the message `Collector not found: ` and the name.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim engine As New DiagnosticEngine
@@ -466,7 +480,9 @@ Syntax: *engine*.**UnregisterCollector** ( *categoryName* )
 *categoryName*
 : *required* A **String**, the category name of the collector to remove.
 
+<!-- test: EngineTests.UnregisterCollector_RemovesTheFirstWithThatName -->
 Removes the first collector with that name. A name that no collector has is ignored without an error. The names are compared as in [**RegisterCollector**](#registercollector), so the letter case matters.
+<!-- /test -->
 
 ## Events
 

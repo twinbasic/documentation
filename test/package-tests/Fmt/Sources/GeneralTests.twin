@@ -1,0 +1,97 @@
+' Fmt: the G identifier (GeneralNumericSFI): an Integer or Long as D, a Double in fixed-point or
+' exponential notation. The package gives an empty string for any other numeric type.
+[TestFixture]
+Module GeneralTests
+
+    [TestCase]
+    Public Sub Integer_IsFormattedAsD()
+        Expect.Begin
+        Expect.AreEqual "42", Try1("{0:G}", 42), "StringFormat(""{0:G}"", 42)"
+        Expect.AreEqual "00042", Try1("{0:G5}", 42), "StringFormat(""{0:G5}"", 42)"
+        Expect.AreEqual "42", Try1("{0:g}", 42&), "StringFormat(""{0:g}"", 42&)"
+        Expect.AreEqual "00042", Try1("{0:G5}", 42&), "StringFormat(""{0:G5}"", 42&)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Double_WithoutPrecision_IsExponential()
+        Expect.Begin
+        Expect.AreEqual "1" & Loc.Dec() & "234568E4", Try1("{0:G}", 12345.678), "StringFormat(""{0:G}"", 12345.678)"
+        Expect.AreEqual "1" & Loc.Dec() & "23456E2", Try1("{0:G}", 123.456), "StringFormat(""{0:G}"", 123.456)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Double_ExponentAtOrAbovePrecision_IsExponential()
+        Expect.Begin
+        Expect.AreEqual "1" & Loc.Dec() & "235E4", Try1("{0:G3}", 12345.678), "StringFormat(""{0:G3}"", 12345.678)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Double_ExponentBelowPrecision_IsFixedPoint()
+        Expect.Begin
+        Expect.AreEqual "12345" & Loc.Dec() & "678000", Try1("{0:G6}", 12345.678), "StringFormat(""{0:G6}"", 12345.678)"
+        Expect.AreEqual "123" & Loc.Dec() & "456", Try1("{0:G3}", 123.456), "StringFormat(""{0:G3}"", 123.456)"
+        Expect.AreEqual "0" & Loc.Dec() & "500", Try1("{0:G3}", 0.5), "StringFormat(""{0:G3}"", 0.5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LowerCaseIdentifier_GivesALowerCaseE()
+        Expect.Begin
+        Expect.AreEqual "1" & Loc.Dec() & "234568e4", Try1("{0:g}", 12345.678), "StringFormat(""{0:g}"", 12345.678)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Single_GivesTheValue()
+        Expect.Begin
+        Expect.AreEqual Try1("{0:G}", 1.5#), Try1("{0:G}", 1.5!), "StringFormat(""{0:G}"", 1.5!) against the same value as a Double"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Currency_GivesTheValue()
+        Expect.Begin
+        Expect.AreEqual Try1("{0:G}", 1.5#), Try1("{0:G}", 1.5@), "StringFormat(""{0:G}"", 1.5@) against the same value as a Double"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Byte_GivesTheValue()
+        Expect.Begin
+        Expect.AreEqual "7", Try1("{0:G}", CByte(7)), "StringFormat(""{0:G}"", CByte(7))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Decimal_GivesTheValue()
+        Expect.Begin
+        Expect.AreEqual Try1("{0:G}", 1.5#), Try1("{0:G}", CDec(1.5)), "StringFormat(""{0:G}"", CDec(1.5)) against the same value as a Double"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NumericString_GivesTheValue()
+        Expect.Begin
+        Expect.AreEqual "12", Try1("{0:G}", "12"), "StringFormat(""{0:G}"", ""12"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Class_MatchesGAndOnlyG()
+        Expect.Begin
+        Expect.AreEqual "Gg", Loc.MatchedLetters(GeneralNumericSFI), "letters GeneralNumericSFI.IsIdentifierMatch is True for"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Class_GetFormattedValue_IsPublic()
+        Expect.Begin
+        Expect.AreEqual "1" & Loc.Dec() & "235E4", GeneralNumericSFI.GetFormattedValue(12345.678, Loc.Spec("G", "3")), "GeneralNumericSFI.GetFormattedValue(12345.678, G3)"
+        Expect.AreEqual "00042", GeneralNumericSFI.GetFormattedValue(42, Loc.Spec("G", "5")), "GeneralNumericSFI.GetFormattedValue(42, G5)"
+        Expect.Done
+    End Sub
+
+End Module

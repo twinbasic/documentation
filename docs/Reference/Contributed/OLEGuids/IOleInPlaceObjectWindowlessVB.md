@@ -10,7 +10,9 @@ has_toc: false
 
 A Visual Basic-style version of **IOleInPlaceObjectWindowless.OnWindowMessage**, which a class can implement.
 
+<!-- test: ImplementTests.IOleInPlaceObjectWindowlessVB_AnswersToItsIdentifier -->
 **IOleInPlaceObjectWindowlessVB** is not a Windows interface. It has the interface identifier `061D3A2F-A213-4016-9756-B89140604819` and extends **stdole.IDispatch**. It is not declared `[OleAutomation(False)]`, as the package's Windows interfaces are. Its one method has the dispatch identifier 1 (`[DispId(1)]`).
+<!-- /test -->
 
 It exists because [**IOleInPlaceObjectWindowless**](IOleInPlaceObjectWindowless) has `[PreserveSig]` members, which a twinBASIC class cannot implement. This interface has one **Sub** that corresponds to the **OnWindowMessage** method of that interface, with signature types that Visual Basic code uses. **GetDropTarget** has no counterpart.
 

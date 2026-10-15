@@ -22,8 +22,11 @@ Debug.Print Len(pw)                          ' 20
 Debug.Print Left$(pw, 1) Like "[A-Za-z]"     ' True
 ```
 
+<!-- test: FactoryTests.Setters_CheckNothingWhenAValueIsSet, RandomModeTests.Length_IsNotCheckedWhenItIsSet -->
 A property of a recipe checks nothing when it is set. A value that cannot be used, such as a **Length** of 0, is found when the recipe is passed to **Generate** or **Entropy**, and is reported there as an error code.
+<!-- /test -->
 
+<!-- test: FactoryTests.PredeclaredObject_AssigningAProperty_Raises5, FactoryTests.PredeclaredObject_ReadingAProperty_ReturnsTheEmptyValueOfTheType -->
 > [!IMPORTANT] timeless
 > Assigning a property on the predeclared object itself raises run-time error 5, *Invalid procedure call or argument*, with the source `PwGenOptions` and the message *PwGenOptions (default instance) is a factory. Use Alphanumeric, Complex, Passphrase, Pin, or Hex.* Create a recipe first and assign the properties of that.
 >
@@ -42,6 +45,9 @@ A property of a recipe checks nothing when it is set. A value that cannot be use
 > Debug.Print "[" & PwGenOptions.WordSeparator & "]"   ' []
 > ```
 
+<!-- /test -->
+
+<!-- test: FactoryTests.New_CreatesARecipeWithEveryPropertyEmpty -->
 > [!NOTE] BETA 1005
 > The class declares a **Private** constructor and the attribute `[COMCreatable(False)]`, so that only its presets create recipes. twinBASIC does not enforce a **Private** constructor, and a project that references the package can still create an object with **New**. It is a recipe in which every property has the empty value of its type: **Length** 0, no class enabled, empty strings, **MinPerClass** 0, **Mode** **pgmRandom** and **RandomSource** **Nothing**. **Generate** returns an empty string for it, with the error `InvalidLength`, until the properties are set. The presets are the way to get the defaults.
 >
@@ -61,6 +67,7 @@ A property of a recipe checks nothing when it is set. A value that cannot be use
 
 ## Random mode
 
+<!-- test: RandomModeTests.Alphabet_IsTheWholePool, RandomModeTests.Alphabet_IgnoresTheClassSettingsIncludeAndExclude, RandomModeTests.Alphabet_IgnoresTheLookAlikes, RandomModeTests.Alphabet_RepeatedCharactersAreOneCharacter, RandomModeTests.Alphabet_CharactersAreComparedByCode, RandomModeTests.Alphabet_SurrogatePairIsTwoCharacters, RandomModeTests.Classes_UppercaseOnly, RandomModeTests.Classes_LowercaseOnly, RandomModeTests.Classes_DigitsOnly, RandomModeTests.Classes_SpecialCharactersOnly, RandomModeTests.Classes_CustomSpecialCharsReplaceTheDefault, RandomModeTests.Classes_AllFourTogether, RandomModeTests.IsAmbiguousExcluded_False_KeepsTheLookAlikes, RandomModeTests.AmbiguousChars_CustomSetIsRemoved, RandomModeTests.ExcludeChars_AreRemovedFromTheClasses, RandomModeTests.ExcludeChars_AClassWithNoCharacterLeft_EmptyClass, RandomModeTests.IncludeChars_AddCharactersToThePool, RandomModeTests.IncludeChars_AreFilteredByExcludeChars, RandomModeTests.IncludeChars_AreFilteredByTheLookAlikes, RandomModeTests.IncludeChars_AlreadyInThePoolAreNotAddedTwice, RandomModeTests.NoCharset_NoClassAndNoAlphabet, RandomModeTests.MinPerClass_Default_EveryClassIsInEveryResult, RandomModeTests.MinPerClass_Three_ThreeOfEachClass, RandomModeTests.MinPerClass_Zero_NoGuarantee, RandomModeTests.MinPerClass_Negative_InvalidMinPerClass, RandomModeTests.MinPerClass_LengthBelowMinPerClassTimesClasses_LengthTooShort, RandomModeTests.MinPerClass_IncludeCharsBelongToNoClass, RandomModeTests.StartsWithLetter_TheFirstCharacterIsAnAsciiLetter, RandomModeTests.StartsWithLetter_ClassGuaranteesStillHold, RandomModeTests.StartsWithLetter_AppliesToTheAlphabet, RandomModeTests.StartsWithLetter_PoolWithoutALetter_CannotStartWithLetter, RandomModeTests.Length_Limits, RandomModeTests.Mode_NotAMember_InvalidMode, RandomModeTests.RandomMode_DoesNotReadTheWordlistProperties, RandomModeTests.SeveralFaults_TheFirstFoundIsReported -->
 In random mode ([**Mode**](#mode) is **pgmRandom**, the default) the result is a string of [**Length**](#length) characters, each drawn from a pool. The properties of this section apply only in this mode. In wordlist mode they are not read.
 
 **The pool.** If [**Alphabet**](#alphabet) is not empty, the pool is the different characters of the **Alphabet**, and the settings for classes below have no effect. Otherwise the pool is built from classes:
@@ -105,9 +112,11 @@ o.ExcludeChars = ""
 o.IncludeChars = "0"             ' 0 is one of the ambiguous characters, so it is removed
 Debug.Print CLng(2 ^ (PwGen.Entropy(o) / o.Length))   ' 57
 ```
+<!-- /test -->
 
 ## Wordlist mode
 
+<!-- test: WordlistTests.Passphrase_GermanList, WordlistTests.WordCount_Limits, WordlistTests.Wordlist_NotAMember_InvalidWordlist, WordlistTests.Separator_AnyStringIncludingAnEmptyOne, WordlistTests.Capitalize_TheFirstCharacterOfEachWordIsUppercase, WordlistTests.UniqueWords_NoWordTwice, WordlistTests.UniqueWords_False_WordsCanRepeat, WordlistTests.UniqueWords_MoreWordsThanTheList_NotEnoughWords, WordlistTests.CustomWords_ReplaceTheBuiltInList, WordlistTests.CustomWords_OneWordRepeats, WordlistTests.CustomWords_AnyLowerBound, WordlistTests.CustomWords_AreCopiedWhenAssignedAndWhenRead, WordlistTests.CustomWords_EmptyArray_BuiltInListAgain, WordlistTests.CustomWords_EmptyWord_EmptyWord, WordlistTests.CustomWords_EqualWords_DuplicateWord, WordlistTests.CustomWords_WordsThatDifferInCaseAreDifferent, WordlistTests.WordlistMode_DoesNotReadTheRandomModeProperties, WordlistTests.Draws_BoundsAreZeroToTheWordsLeftMinusOne -->
 In wordlist mode ([**Mode**](#mode) is **pgmWordlist**) the result is a passphrase of [**WordCount**](#wordcount) words, each drawn from a list and joined with [**WordSeparator**](#wordseparator). The properties of random mode are not read.
 
 The list is the array in [**CustomWords**](#customwords) when it has words, otherwise the built-in list that [**Wordlist**](#wordlist) names. When [**HasUniqueWords**](#hasuniquewords) is **False**, each word is drawn from the whole list, so a word can appear more than once. When it is **True**, a word that was drawn is taken out of the list before the next draw. When [**Capitalize**](#capitalize) is **True**, the first character of each word is changed to uppercase.
@@ -127,6 +136,7 @@ Debug.Print PwGen.Entropy(o)       ' 0
 ```
 
 The list has one word, so every draw returns it and the entropy is 0.
+<!-- /test -->
 
 ## Properties
 
@@ -228,6 +238,7 @@ Whether two equal characters may not be next to each other. A **Boolean**, read/
 
 Syntax: *options*.**HasNoConsecutiveRepeats** [ **=** *value* ]
 
+<!-- test: ConsecutiveRepeatTests.DefaultPool_NoTwoEqualCharactersAreNeighbours, ConsecutiveRepeatTests.SmallPool_ResultsHaveNoRepeats, ConsecutiveRepeatTests.OneCharacterPool_CannotAvoidRepeats -->
 Random mode only. The property applies to the pool that [**Alphabet**](#alphabet) gives, too. With a **Length** above 1 and a pool of one character, the error is `CannotAvoidRepeats`, in [**Entropy**](PwGen#entropy) as well as in [**Generate**](PwGen#generate).
 
 The characters are drawn first, and then shuffled again, up to 48 times, until no two equal ones are neighbours. With the default pool this succeeds every time in practice.
@@ -249,7 +260,9 @@ o.Length = 4
 Debug.Print PwGen.Generate(o) = ""   ' True
 Debug.Print PwGenError.Code          ' CannotAvoidRepeats
 ```
+<!-- /test -->
 
+<!-- test: ConsecutiveRepeatTests.SmallPool_LengthThree_AlwaysGeneratesWhenAPasswordExists, ConsecutiveRepeatTests.SmallPool_LengthFour_AlwaysGeneratesWhenAPasswordExists, ConsecutiveRepeatTests.SmallPool_WithStartsWithLetter_AlwaysGeneratesWhenAPasswordExists, ConsecutiveRepeatTests.FixedSource_DrawsThatCannotBeArranged_CannotAvoidRepeats -->
 > [!NOTE] 1.0.8.0
 > The shuffle only rearranges the characters that were drawn, and the property never draws them again. When the drawn characters cannot be arranged without a repeat, **Generate** returns an empty string and sets `CannotAvoidRepeats`, although other passwords of the same pool would be valid. With a small pool this happens often. From the pool `AB` and a **Length** of 3, the draws `AAA` and `BBB` cannot be arranged, and together they are one draw in four. With a **Length** of 4 the failures are about three calls in five. With [**StartsWithLetter**](#startswithletter) the first character is not moved either, which makes the failures more frequent. A call that fails can be repeated, because the next call draws again.
 >
@@ -477,7 +490,9 @@ Returns an independent copy of a recipe.
 
 Syntax: *options*.**Clone** ( ) **As PwGenOptions**
 
+<!-- test: FactoryTests.Clone_CopiesEveryProperty, FactoryTests.Clone_IsIndependentOfTheOriginal, RandomSourceTests.Clone_SharesTheRandomSource -->
 Returns a new **PwGenOptions** with the same value in each property. Changing the copy does not change the original. The [**CustomWords**](#customwords) array is copied, and the [**RandomSource**](#randomsource) is not: the copy refers to the same object.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim a As PwGenOptions = PwGenOptions.Alphanumeric

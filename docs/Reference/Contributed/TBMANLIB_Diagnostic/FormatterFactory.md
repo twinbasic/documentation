@@ -41,7 +41,9 @@ Syntax: **FormatterFactory.CreateFormatter** ( *formatName* ) **As** [**IOutputF
 *formatName*
 : *required* A **String**. The letter case does not matter. `text` and `txt` give a [**TextFormatter**](Formatters#textformatter), `json` a [**JsonFormatter**](Formatters#jsonformatter), and `html` and `htm` an [**HtmlFormatter**](Formatters#htmlformatter).
 
+<!-- test: FormatterTests.CreateFormatter_KnownAndUnknownNames_GiveTheDocumentedFormatter -->
 Returns a new formatter each time. Any other name, including an empty string, gives a **TextFormatter** without an error.
+<!-- /test -->
 
 ### CreateFormatterFromArg
 {: .no_toc }
@@ -53,7 +55,9 @@ Syntax: **FormatterFactory.CreateFormatterFromArg** ( *arg* ) **As** [**IOutputF
 *arg*
 : *required* A **String** such as `/json` or `-html`. The function converts it to lower case, removes one leading slash or hyphen, and passes the rest to [**CreateFormatter**](#createformatter).
 
+<!-- test: FormatterTests.CreateFormatterFromArg_RemovesOneLeadingSlashOrHyphen -->
 The arguments `json` and `/JSON` give a **JsonFormatter**. The argument `--json` has two hyphens and only one is removed, so the function returns a **TextFormatter** for it.
+<!-- /test -->
 
 ```tb check_build check_run
 Debug.Print FormatterFactory.CreateFormatterFromArg("/JSON").FormatterName
@@ -113,7 +117,9 @@ Returns the names of the formats.
 
 Syntax: **FormatterFactory.GetSupportedFormats** **As String**
 
+<!-- test: FormatterTests.GetSupportedFormats_ReturnsTheFixedText -->
 Returns the fixed text `text, json, html`. The short names `txt` and `htm` that [**CreateFormatter**](#createformatter) accepts are not in it.
+<!-- /test -->
 
 ## Delegates
 

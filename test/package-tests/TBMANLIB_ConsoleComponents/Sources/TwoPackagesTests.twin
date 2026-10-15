@@ -1,0 +1,180 @@
+' TBMANLIB_ConsoleComponents: the package used with the published TBMANLIB_ConsoleCore.
+'
+' The package carries a copy of ConsoleCore of its own, whose types the compiler treats as different
+' from those of the published package. A component of the package is reached here by its library name
+' (TBMANLIB_ConsoleComponents.cProgressBar), because the project compiles a copy of the code of seven
+' components under their own names for the cases that draw (see ComponentSources). The cases that
+' make a component with a cConsole are correct when they raise no error.
+[TestFixture]
+Module TwoPackagesTests
+
+    [TestCase]
+    Public Sub ProgressBar_New_AcceptsTheConsoleOfConsoleCore()
+        Expect.Begin
+        Rig.Acquire
+        Dim con As New cConsole
+        con.EnterFullScreenMode
+        Dim obj As TBMANLIB_ConsoleComponents.cProgressBar
+        On Error Resume Next
+        Set obj = New TBMANLIB_ConsoleComponents.cProgressBar(con)
+        Expect.AreEqual 0, Err.Number, "Err.Number of New cProgressBar given the cConsole of TBMANLIB_ConsoleCore"
+        On Error GoTo 0
+        Set obj = Nothing
+        Set con = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sparkline_New_AcceptsTheConsoleOfConsoleCore()
+        Expect.Begin
+        Rig.Acquire
+        Dim con As New cConsole
+        con.EnterFullScreenMode
+        Dim obj As TBMANLIB_ConsoleComponents.cSparkline
+        On Error Resume Next
+        Set obj = New TBMANLIB_ConsoleComponents.cSparkline(con)
+        Expect.AreEqual 0, Err.Number, "Err.Number of New cSparkline given the cConsole of TBMANLIB_ConsoleCore"
+        On Error GoTo 0
+        Set obj = Nothing
+        Set con = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub VBar_New_AcceptsTheConsoleOfConsoleCore()
+        Expect.Begin
+        Rig.Acquire
+        Dim con As New cConsole
+        con.EnterFullScreenMode
+        Dim obj As TBMANLIB_ConsoleComponents.cVBar
+        On Error Resume Next
+        Set obj = New TBMANLIB_ConsoleComponents.cVBar(con)
+        Expect.AreEqual 0, Err.Number, "Err.Number of New cVBar given the cConsole of TBMANLIB_ConsoleCore"
+        On Error GoTo 0
+        Set obj = Nothing
+        Set con = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DataGrid_New_AcceptsTheConsoleOfConsoleCore()
+        Expect.Begin
+        Rig.Acquire
+        Dim con As New cConsole
+        con.EnterFullScreenMode
+        Dim obj As TBMANLIB_ConsoleComponents.cDataGrid
+        On Error Resume Next
+        Set obj = New TBMANLIB_ConsoleComponents.cDataGrid(con)
+        Expect.AreEqual 0, Err.Number, "Err.Number of New cDataGrid given the cConsole of TBMANLIB_ConsoleCore"
+        On Error GoTo 0
+        Set obj = Nothing
+        Set con = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsoleLayout_New_AcceptsTheConsoleOfConsoleCore()
+        Expect.Begin
+        Rig.Acquire
+        Dim con As New cConsole
+        Dim obj As TBMANLIB_ConsoleComponents.cConsoleLayout
+        On Error Resume Next
+        Set obj = New TBMANLIB_ConsoleComponents.cConsoleLayout(con)
+        Expect.AreEqual 0, Err.Number, "Err.Number of New cConsoleLayout given the cConsole of TBMANLIB_ConsoleCore"
+        On Error GoTo 0
+        Set obj = Nothing
+        Set con = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LayoutHelper_New_AcceptsTheConsoleOfConsoleCore()
+        Expect.Begin
+        Rig.Acquire
+        Dim con As New cConsole
+        Dim obj As TBMANLIB_ConsoleComponents.cLayoutHelper
+        On Error Resume Next
+        Set obj = New TBMANLIB_ConsoleComponents.cLayoutHelper(con)
+        Expect.AreEqual 0, Err.Number, "Err.Number of New cLayoutHelper given the cConsole of TBMANLIB_ConsoleCore"
+        On Error GoTo 0
+        Set obj = Nothing
+        Set con = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsolePanel_Render_AcceptsTheBufferOfConsoleCore()
+        Expect.Begin
+        Dim panel As TBMANLIB_ConsoleComponents.cConsolePanel = New TBMANLIB_ConsoleComponents.cConsolePanel("p", 0, 0, 10, 5)
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(20, 10)
+        On Error Resume Next
+        panel.Render buf
+        Expect.AreEqual 0, Err.Number, "Err.Number of cConsolePanel.Render given the cConsoleBuffer of TBMANLIB_ConsoleCore"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsolePanel_ClearContent_AcceptsTheBufferOfConsoleCore()
+        Expect.Begin
+        Dim panel As TBMANLIB_ConsoleComponents.cConsolePanel = New TBMANLIB_ConsoleComponents.cConsolePanel("p", 0, 0, 10, 5)
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(20, 10)
+        On Error Resume Next
+        panel.ClearContent buf
+        Expect.AreEqual 0, Err.Number, "Err.Number of cConsolePanel.ClearContent given the cConsoleBuffer of TBMANLIB_ConsoleCore"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    ' ---- what works with the package as it is
+
+    [TestCase]
+    Public Sub ConsolePanel_ContentSize_WorksWithThePackage()
+        Expect.Begin
+        Dim panel As TBMANLIB_ConsoleComponents.cConsolePanel = New TBMANLIB_ConsoleComponents.cConsolePanel("p", 1, 2, 10, 5)
+        Expect.AreEqual 6, panel.ContentWidth(), "ContentWidth of a panel of 10 by 5 cells with a single border and a padding of 1"
+        Expect.AreEqual 1, panel.ContentHeight(), "ContentHeight of that panel"
+        panel.BorderStyle = 0
+        Expect.AreEqual 8, panel.ContentWidth(), "ContentWidth with no border"
+        Expect.AreEqual 3, panel.ContentHeight(), "ContentHeight with no border"
+        panel.Padding = 0
+        Expect.AreEqual 10, panel.ContentWidth(), "ContentWidth with no border and no padding"
+        Expect.AreEqual 5, panel.ContentHeight(), "ContentHeight with no border and no padding"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsolePanel_ContentRect_CanBeReadThroughItsMemory()
+        Expect.Begin
+        Dim panel As TBMANLIB_ConsoleComponents.cConsolePanel = New TBMANLIB_ConsoleComponents.cConsolePanel("p", 1, 2, 10, 5)
+        Dim cr = panel.ContentRect()
+        Dim v(0 To 3) As Long
+        Rig.ReadMemory VarPtr(cr), VarPtr(v(0)), 16
+        Expect.AreEqual "3 4 8 4", v(0) & " " & v(1) & " " & v(2) & " " & v(3), "Left, Top, Right and Bottom of the content area of a panel at 1, 2 of 10 by 5 cells"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ConsolePanel_Constructor_SetsTheStyleFields()
+        Expect.Begin
+        Dim panel As TBMANLIB_ConsoleComponents.cConsolePanel = New TBMANLIB_ConsoleComponents.cConsolePanel("main", 3, 4, 20, 8)
+        Expect.AreEqual "main", panel.Name, "Name"
+        Expect.AreEqual 1, CLng(panel.BorderStyle), "BorderStyle"
+        Expect.AreEqual CLng(ConsoleColor.Gray), CLng(panel.BorderColor), "BorderColor"
+        Expect.AreEqual CLng(ConsoleColor.White), CLng(panel.TitleColor), "TitleColor"
+        Expect.AreEqual 1, panel.Padding, "Padding"
+        Expect.AreEqual "", panel.Title, "Title"
+        Dim r = panel.Rect
+        Dim v(0 To 3) As Long
+        Rig.ReadMemory VarPtr(r), VarPtr(v(0)), 16
+        Expect.AreEqual "3 4 22 11", v(0) & " " & v(1) & " " & v(2) & " " & v(3), "Left, Top, Right and Bottom of Rect"
+        Expect.Done
+    End Sub
+
+End Module

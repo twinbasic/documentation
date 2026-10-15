@@ -1,0 +1,454 @@
+' cToolsStr: trimming, searching, escapes, lines, bytes and random text.
+[TestFixture]
+Module StrTests
+
+    ' A backslash. Cases write it by name so that no escape sequence is typed in the source.
+    Private Const BS As String = "\"
+
+    ' A string of n copies of one character.
+    Private Function Repeated(ByVal Ch As String, ByVal N As Long) As String
+        Repeated = String$(N, Ch)
+    End Function
+
+    ' ---- testing and trimming
+
+    [TestCase]
+    Public Sub IsEmptyEx_DoesNotChangeTheVariableItIsGiven()
+        Expect.Begin
+        Dim t As String, r As Boolean
+        t = "  x  "
+        r = ToolsStr.IsEmptyEx(t)
+        Expect.IsFalse r, "IsEmptyEx of two spaces, x and two spaces"
+        Expect.AreEqual "  x  ", t, "the variable after IsEmptyEx(t)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsEmptyEx_WhiteSpaceOnly_IsTrue()
+        Expect.Begin
+        Expect.IsTrue ToolsStr.IsEmptyEx(vbTab & " " & vbCrLf), "IsEmptyEx of a tab, a space and a line break"
+        Expect.IsTrue ToolsStr.IsEmptyEx(""), "IsEmptyEx of an empty string"
+        Expect.IsFalse ToolsStr.IsEmptyEx(" a "), "IsEmptyEx of a letter between spaces"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsString_TellsStringsFromNumbers()
+        Expect.Begin
+        Expect.IsTrue ToolsStr.IsString("12"), "IsString of the text 12"
+        Expect.IsFalse ToolsStr.IsString(12), "IsString of the number 12"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LeftEx_RightEx_TrimOnlySpaces()
+        Expect.Begin
+        Expect.AreEqual "ab", ToolsStr.LeftEx("  abc  ", 2), "LeftEx of abc between spaces, 2"
+        Expect.AreEqual "bc", ToolsStr.RightEx("  abc  ", 2), "RightEx of abc between spaces, 2"
+        Expect.AreEqual vbTab, ToolsStr.LeftEx(vbTab & "ab", 1), "LeftEx of a tab and ab, 1"
+        Expect.AreEqual "12", ToolsStr.LeftEx(12345, 2), "LeftEx of the number 12345, 2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TrimEx_RemovesWhiteSpaceAndControlCharactersAtBothEnds()
+        Expect.Begin
+        Expect.AreEqual "a b", ToolsStr.TrimEx(vbTab & "  a b " & vbCrLf), "TrimEx of a b with a tab, spaces and a line break around it"
+        Expect.AreEqual "a", ToolsStr.TrimEx(Chr$(1) & Chr$(31) & "a" & Chr$(0)), "TrimEx of a between control characters"
+        Expect.AreEqual ChrW(160) & "a" & ChrW(160), ToolsStr.TrimEx(ChrW(160) & "a" & ChrW(160)), "TrimEx of a between non-breaking spaces"
+        Expect.AreEqual "", ToolsStr.TrimEx("   "), "TrimEx of spaces"
+        Expect.AreEqual "", ToolsStr.TrimEx(""), "TrimEx of an empty string"
+        Expect.Done
+    End Sub
+
+    ' ---- text over 32,767 characters
+
+    [TestCase]
+    Public Sub TrimEx_TextOver32767Characters_IsTrimmed()
+        Expect.Begin
+        Dim s As String, r As String
+        s = " " & Repeated("a", 40000) & " "
+        On Error Resume Next
+        r = ToolsStr.TrimEx(s)
+        Expect.AreEqual 0, Err.Number, "TrimEx of 40002 characters raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        Expect.AreEqual 40000, Len(r), "length of TrimEx of 40002 characters"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InsertSpan_TextOver32767Characters_IsSplit()
+        Expect.Begin
+        Dim s As String, r As String
+        s = Repeated("a", 40000)
+        On Error Resume Next
+        r = ToolsStr.InsertSpan(s, "-", 10)
+        Expect.AreEqual 0, Err.Number, "InsertSpan of 40000 characters raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        Expect.AreEqual 40000 + 3999, Len(r), "length of InsertSpan of 40000 characters in groups of 10"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PercentEncode_TextOver32767Characters_IsEncoded()
+        Expect.Begin
+        Dim s As String, r As String
+        s = Repeated("a", 40000)
+        On Error Resume Next
+        r = ToolsStr.PercentEncode(s)
+        Expect.AreEqual 0, Err.Number, "PercentEncode of 40000 characters raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        Expect.AreEqual 40000, Len(r), "length of PercentEncode of 40000 letters"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PercentDecode_TextOver32767Characters_IsDecoded()
+        Expect.Begin
+        Dim s As String, r As String
+        s = Repeated("a", 40000)
+        On Error Resume Next
+        r = ToolsStr.PercentDecode(s)
+        Expect.AreEqual 0, Err.Number, "PercentDecode of 40000 characters raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        Expect.AreEqual 40000, Len(r), "length of PercentDecode of 40000 letters"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnicodeEncode_TextOver32767Characters_IsEncoded()
+        Expect.Begin
+        Dim s As String, r As String
+        s = Repeated("a", 40000)
+        On Error Resume Next
+        r = ToolsStr.UnicodeEncode(s)
+        Expect.AreEqual 0, Err.Number, "UnicodeEncode of 40000 characters raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        Expect.AreEqual 40000, Len(r), "length of UnicodeEncode of 40000 letters"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnicodeDecode_TextOver32767Characters_IsDecoded()
+        Expect.Begin
+        Dim s As String, r As String
+        s = Repeated("a", 40000)
+        On Error Resume Next
+        r = ToolsStr.UnicodeDecode(s)
+        Expect.AreEqual 0, Err.Number, "UnicodeDecode of 40000 characters raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        Expect.AreEqual 40000, Len(r), "length of UnicodeDecode of 40000 letters"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    ' ---- searching and cutting
+
+    [TestCase]
+    Public Sub GetFirstChar_SkipsSpacesAndReturnsTheCharacters()
+        Expect.Begin
+        Expect.AreEqual "-", ToolsStr.GetFirstChar("  - abc"), "GetFirstChar of two spaces and - abc"
+        Expect.AreEqual "- a", ToolsStr.GetFirstChar("  - abc", 3), "GetFirstChar of two spaces and - abc, 3"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFirstChar_NoVisibleCharacter_Raises5()
+        Expect.Begin
+        Dim r As String
+        On Error Resume Next
+        r = ToolsStr.GetFirstChar("   ")
+        Expect.AreEqual 5, Err.Number, "GetFirstChar of spaces raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetLastChar_ReturnsTheLastVisibleCharacter()
+        Expect.Begin
+        Expect.AreEqual "c", ToolsStr.GetLastChar("abc"), "GetLastChar of abc"
+        Expect.AreEqual "c", ToolsStr.GetLastChar("abc  "), "GetLastChar of abc and two spaces"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HasStr_FindsTheTextIgnoringCaseByDefault()
+        Expect.Begin
+        Expect.AreEqual 4, ToolsStr.HasStr("lo", "Hello"), "HasStr(lo, Hello)"
+        Expect.AreEqual 4, ToolsStr.HasStr("LO", "Hello"), "HasStr(LO, Hello)"
+        Expect.AreEqual 0, ToolsStr.HasStr("LO", "Hello", 1, vbBinaryCompare), "HasStr(LO, Hello) with a binary comparison"
+        Expect.AreEqual 0, ToolsStr.HasStr("xyz", "Hello"), "HasStr(xyz, Hello)"
+        Expect.AreEqual 4, ToolsStr.HasStr("l", "Hello", 4), "HasStr(l, Hello) from position 4"
+        Expect.AreEqual 0, ToolsStr.HasStr("l", "Hello", 5), "HasStr(l, Hello) from position 5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MidEx_ReturnsTheTextBetweenTheMarkersWithoutItsEnds()
+        Expect.Begin
+        Dim start As Long
+        Expect.AreEqual "abc", ToolsStr.MidEx("id=[""abc""]", "[", "]"), "MidEx of id=[""abc""]"
+        Expect.AreEqual "", ToolsStr.MidEx("abc", "[", "]"), "MidEx when the markers are missing"
+        Expect.AreEqual "a", ToolsStr.MidEx("[""a""][""bc""]", "[", "]", start), "first MidEx of two bracketed values"
+        Expect.AreEqual 6, start, "starindex after the first MidEx"
+        Expect.AreEqual "bc", ToolsStr.MidEx("[""a""][""bc""]", "[", "]", start), "second MidEx of two bracketed values"
+        Expect.AreEqual 12, start, "starindex after the second MidEx"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MidEx_FewerThanTwoCharactersBetween_Raises5()
+        Expect.Begin
+        Dim r As String
+        On Error Resume Next
+        r = ToolsStr.MidEx("x[]y", "[", "]")
+        Expect.AreEqual 5, Err.Number, "MidEx with nothing between the markers raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SliceString_CountsFromZeroAndIncludesTheEnd()
+        Expect.Begin
+        Expect.AreEqual "Hello", ToolsStr.SliceString("Hello World", 0, 4), "SliceString(Hello World, 0, 4)"
+        Expect.AreEqual "World", ToolsStr.SliceString("Hello World", 6), "SliceString(Hello World, 6)"
+        Expect.AreEqual "o", ToolsStr.SliceString("Hello World", 4, 4), "SliceString(Hello World, 4, 4)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SubStr_ReturnsTheTrimmedTextBetweenTheMarkers()
+        Expect.Begin
+        Expect.AreEqual "value", ToolsStr.SubStr("key = value ;", "=", ";"), "SubStr(key = value ;, =, ;)"
+        Expect.AreEqual "value", ToolsStr.SubStr("key = value", "="), "SubStr(key = value, =)"
+        Expect.AreEqual "", ToolsStr.SubStr("abc", "x"), "SubStr(abc, x)"
+        Expect.AreEqual "0", ToolsStr.SubStr("abc", "x", , True), "SubStr(abc, x) with RetInt"
+        Expect.AreEqual "", ToolsStr.SubStr("a=;", "=", ";"), "SubStr of an empty value"
+        Expect.AreEqual "", ToolsStr.SubStr("key = value", "KEY"), "SubStr with a marker in another letter case"
+        Expect.Done
+    End Sub
+
+    ' ---- changing text
+
+    [TestCase]
+    Public Sub InsertSpan_PutsTheSeparatorBetweenGroups()
+        Expect.Begin
+        Expect.AreEqual "abc-def-g", ToolsStr.InsertSpan("abcdefg", "-", 3), "InsertSpan(abcdefg, -, 3)"
+        Expect.AreEqual "-abc-def-g-", ToolsStr.InsertSpan("abcdefg", "-", 3, True), "InsertSpan(abcdefg, -, 3) with HeadFoot"
+        Expect.AreEqual "abc-def", ToolsStr.InsertSpan("abcdef", "-", 3), "InsertSpan(abcdef, -, 3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub JoinStr_JoinsWithTheSeparator()
+        Expect.Begin
+        Expect.AreEqual "a-b-c", ToolsStr.JoinStr("-", "a", "b", "c"), "JoinStr(-, a, b, c)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PercentDecode_ReadsHexPairsAsAnsiCharacters()
+        Expect.Begin
+        Dim r As String
+        Expect.AreEqual "A1b2", ToolsStr.PercentDecode("A%31b%32"), "PercentDecode(A%31b%32)"
+        Expect.AreEqual 2, Len(ToolsStr.PercentDecode("%C3%A9")), "length of PercentDecode of the two UTF-8 bytes of e acute"
+        On Error Resume Next
+        r = ToolsStr.PercentDecode("50%")
+        Expect.AreEqual 13, Err.Number, "PercentDecode of a % with no digits raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PercentEncode_EncodesTheDigits()
+        Expect.Begin
+        Expect.AreEqual "A%31b%32", ToolsStr.PercentEncode("A1b2"), "PercentEncode(A1b2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PercentEncode_SpaceSlashAndPercent_AreEncoded()
+        Expect.Begin
+        Expect.AreEqual "a%20b%2Fc%25", ToolsStr.PercentEncode("a b/c%"), "PercentEncode of a space, a slash and a percent sign"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UniVbCrLf_CrAndCrLf_BecomeCrLf()
+        Expect.Begin
+        Expect.AreEqual "a" & vbCrLf & "b", ToolsStr.UniVbCrLf("a" & vbCr & "b"), "UniVbCrLf of a, a carriage return and b"
+        Expect.AreEqual "a" & vbCrLf & "b", ToolsStr.UniVbCrLf("a" & vbCrLf & "b"), "UniVbCrLf of a, a CRLF pair and b"
+        Expect.AreEqual "", ToolsStr.UniVbCrLf(""), "UniVbCrLf of an empty string"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UniVbCrLf_LoneLineFeed_BecomesOneCrLf()
+        Expect.Begin
+        Expect.AreEqual "a" & vbCrLf & "b", ToolsStr.UniVbCrLf("a" & vbLf & "b"), "UniVbCrLf of a, a line feed and b"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UniVbCrLf_ThreeAtSigns_AreKept()
+        Expect.Begin
+        Expect.AreEqual "x@@@y", ToolsStr.UniVbCrLf("x@@@y"), "UniVbCrLf of x@@@y"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnicodeDecode_ReplacesEscapesWithCharacters()
+        Expect.Begin
+        Dim r As String
+        Expect.AreEqual "AB", ToolsStr.UnicodeDecode(BS & "u0041" & BS & "u0042"), "UnicodeDecode of two escapes, 0041 and 0042"
+        Expect.AreEqual "caf" & ChrW(233), ToolsStr.UnicodeDecode("caf" & BS & "u00e9"), "UnicodeDecode of an escape with lower-case hex digits"
+        Expect.AreEqual "caf" & ChrW(233), ToolsStr.UnicodeDecode("caf" & BS & "u00E9"), "UnicodeDecode of an escape with upper-case hex digits"
+        On Error Resume Next
+        r = ToolsStr.UnicodeDecode(BS & "uZZZZ")
+        Expect.AreEqual 13, Err.Number, "UnicodeDecode of a backslash, u and ZZZZ raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnicodeDecode_EscapedBackslashBeforeU_IsNotAnEscape()
+        Expect.Begin
+        Expect.AreEqual BS & BS & "u0041", ToolsStr.UnicodeDecode(BS & BS & "u0041"), "UnicodeDecode of two backslashes and u0041"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnicodeEncode_EscapesNonAsciiCharacters()
+        Expect.Begin
+        Expect.AreEqual "caf" & BS & "u00E9", ToolsStr.UnicodeEncode("caf" & ChrW(233)), "UnicodeEncode of cafe acute"
+        Expect.AreEqual Chr$(1) & "a", ToolsStr.UnicodeEncode(Chr$(1) & "a"), "UnicodeEncode of a control character and a"
+        Expect.AreEqual BS & "u20AC", ToolsStr.UnicodeEncode(ChrW(&H20AC)), "UnicodeEncode of the euro sign"
+        Expect.AreEqual BS & "uD83D" & BS & "uDE00", ToolsStr.UnicodeEncode(ChrW(&HD83D) & ChrW(&HDE00)), "UnicodeEncode of a surrogate pair"
+        Expect.AreEqual "x@@00E9", ToolsStr.UnicodeEncode("x" & ChrW(233), "@@"), "UnicodeEncode of x and e acute with the prefix @@"
+        Expect.Done
+    End Sub
+
+    ' ---- lines
+
+    [TestCase]
+    Public Sub JoinLinesFromCollection_JoinsWithCrLf()
+        Expect.Begin
+        Dim c As New Collection
+        c.Add "one"
+        c.Add "two"
+        c.Add 3
+        Expect.AreEqual "one" & vbCrLf & "two" & vbCrLf & "3", ToolsStr.JoinLinesFromCollection(c), "JoinLinesFromCollection of one, two and 3"
+        Expect.AreEqual "", ToolsStr.JoinLinesFromCollection(New Collection), "JoinLinesFromCollection of an empty collection"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SplitLinesToCollection_SplitsAtCrLf()
+        Expect.Begin
+        Dim c As Collection
+        Set c = ToolsStr.SplitLinesToCollection("one" & vbCrLf & "two" & vbCrLf & "three")
+        Expect.AreEqual 3, c.Count, "number of lines of one, two, three"
+        Expect.AreEqual "three", c(3), "third line"
+        Set c = ToolsStr.SplitLinesToCollection("a" & vbCrLf & "bc" & vbCrLf)
+        Expect.AreEqual 3, c.Count, "number of lines of a, bc and a final line break"
+        Expect.AreEqual "", c(3), "last line of a text that ends with a line break"
+        Set c = ToolsStr.SplitLinesToCollection("")
+        Expect.AreEqual 0, c.Count, "number of lines of an empty text"
+        Set c = ToolsStr.SplitLinesToCollection("one" & vbLf & "two")
+        Expect.AreEqual 1, c.Count, "number of lines of two words with a lone line feed between them"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SplitLinesToCollection_LastLineOfOneCharacter_IsKept()
+        Expect.Begin
+        Dim c As Collection
+        Set c = ToolsStr.SplitLinesToCollection("a" & vbCrLf & "b")
+        Expect.AreEqual 2, c.Count, "number of lines of a, a line break and b"
+        Set c = ToolsStr.SplitLinesToCollection("a")
+        Expect.AreEqual 1, c.Count, "number of lines of the text a"
+        Expect.Done
+    End Sub
+
+    ' ---- bytes
+
+    [TestCase]
+    Public Sub LenBytes_CountsTheElements()
+        Expect.Begin
+        Dim b() As Byte
+        b = StrConv("abcd", vbFromUnicode)
+        Expect.AreEqual 4, ToolsStr.LenBytes(b), "LenBytes of four bytes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToBytes_ToString_ConvertWithTheAnsiCodePage()
+        Expect.Begin
+        Dim b() As Byte
+        b = ToolsStr.ToBytes("AB")
+        Expect.AreEqual "41 42", Sandbox.HexOfBytes(b), "bytes of ToBytes(AB)"
+        Expect.AreEqual "AB", ToolsStr.ToString(b), "ToString of the bytes of AB"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToHex_WritesTwoDigitsForEachByte()
+        Expect.Begin
+        Dim b() As Byte
+        b = ToolsStr.ToBytes("AB")
+        Expect.AreEqual "4142", ToolsStr.ToHex(b), "ToHex of the bytes of AB"
+        b = ToolsStr.ToBytes(Chr$(10))
+        Expect.AreEqual "0A", ToolsStr.ToHex(b), "ToHex of the byte 10"
+        b = ToolsStr.ToBytes(Chr$(10) & Chr$(11))
+        Expect.AreEqual "0A0B", ToolsStr.ToHex(b), "ToHex of the bytes 10 and 11"
+        Expect.Done
+    End Sub
+
+    ' ---- random text and identifiers
+
+    [TestCase]
+    Public Sub GetGUID_HasThe36CharacterForm()
+        Expect.Begin
+        Dim g As String, h As String
+        g = ToolsStr.GetGUID()
+        h = ToolsStr.GetGUID(True)
+        Expect.AreEqual 36, Len(g), "length of GetGUID()"
+        Expect.AreEqual 38, Len(h), "length of GetGUID(True)"
+        Expect.IsTrue g Like "[0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F]-[0-9A-F][0-9A-F][0-9A-F][0-9A-F]-[0-9A-F][0-9A-F][0-9A-F][0-9A-F]-[0-9A-F][0-9A-F][0-9A-F][0-9A-F]-[0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F]", "GetGUID() " & g & " is upper-case hexadecimal groups of 8-4-4-4-12"
+        Expect.AreEqual "{", Left$(h, 1), "first character of GetGUID(True)"
+        Expect.AreEqual "}", Right$(h, 1), "last character of GetGUID(True)"
+        Expect.IsTrue g <> ToolsStr.GetGUID(), "two calls of GetGUID give different values"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetRandByte_ReturnsTenBytes()
+        Expect.Begin
+        Dim b() As Byte
+        b = ToolsStr.GetRandByte()
+        Expect.AreEqual 0, LBound(b), "lower bound of GetRandByte"
+        Expect.AreEqual 9, UBound(b), "upper bound of GetRandByte"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetRandStr_UsesTheNamedGroupsOfCharacters()
+        Expect.Begin
+        Dim s As String
+        s = ToolsStr.GetRandStr(10, "1")
+        Expect.AreEqual 10, Len(s), "length of GetRandStr(10, 1)"
+        Expect.IsTrue s Like "##########", "GetRandStr(10, 1) " & s & " holds digits only"
+        s = ToolsStr.GetRandStr(40, "a")
+        Expect.IsTrue s Like Replace(Space$(40), " ", "[a-z]"), "GetRandStr(40, a) " & s & " holds lower-case letters only"
+        Expect.AreEqual 32, Len(ToolsStr.GetRandStr()), "length of GetRandStr()"
+        Expect.AreEqual 8, Len(ToolsStr.GetRandStr(0)), "length of GetRandStr(0)"
+        Expect.AreEqual "", ToolsStr.GetRandStr(5, "x"), "GetRandStr(5, x), which names no group"
+        Expect.Done
+    End Sub
+
+End Module

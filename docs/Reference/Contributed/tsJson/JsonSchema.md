@@ -41,6 +41,7 @@ These keywords are evaluated. Any other keyword, such as `title`, `description`,
 
 A schema is an object or a Boolean. **True** accepts every value. **False** rejects every value with a failure whose keyword is `false`. The keywords of a schema object are all applied, `$ref` included: a `$ref` is evaluated as an applicator next to its siblings, as draft 2020-12 says.
 
+<!-- test: SchemaTests.Validate_Keywords_FollowTheDraft, SchemaTests.Type_Integer_AcceptsANumberWithNoFractionalPart, SchemaTests.MultipleOf_DividesAsDecimal, SchemaTests.MaxLength_CountsUtf16CodeUnits, SchemaTests.Pattern_Unanchored_FindsThePatternAnywhere, SchemaTests.Pattern_Anchored_AcceptsAStringThatMatchesWhole, SchemaTests.Pattern_Anchored_RejectsAStringThatDoesNotMatchWhole, SchemaTests.Pattern_ChoiceInGroup_TriesTheOtherAlternative, SchemaTests.PatternProperties_ChoiceInGroup_TriesTheOtherAlternative, SchemaTests.Pattern_InvalidPattern_NeverMatches -->
 Points that decide what is accepted:
 
 - **Types.** The `type` keyword takes one name or an array of names: `null`, `boolean`, `object`, `array`, `string`, `number` and `integer`. A number is an `integer` when it has no fractional part, whatever its written form is, so `1.0` is an integer.
@@ -64,6 +65,7 @@ Debug.Print Json.Validate(Json.Parse("0.3"), Json.Parse("{""multipleOf"":0.1}"))
 Debug.Print Json.Validate(Json.Parse("1.0"), Json.Parse("{""type"":""integer""}")).IsValid  ' True
 Debug.Print Json.Validate(Json.Parse("1.5"), Json.Parse("{""type"":""integer""}")).IsValid  ' False
 ```
+<!-- /test -->
 
 The failures that a value can have, with the keyword and the message of each, are on the page of [**JsonValidationError**](JsonValidationError#messages).
 
@@ -85,6 +87,7 @@ There is no network access. A reference to a document that is neither the curren
 
 ## Formats
 
+<!-- test: SchemaTests.Format_IsAnAnnotationUnlessAssertionIsAsked, SchemaTests.Format_DateTime_AcceptsATimeWithoutZone, SchemaTests.Format_Approximations_AcceptWhatThePageSays, SchemaTests.Format_Ipv4_AcceptsValidAddresses, SchemaTests.Format_Ipv4_RejectsWrongAddresses, SchemaTests.Format_Ipv4_FailureNamesTheFormatKeyword -->
 The `format` keyword is an annotation that rejects nothing, unless [**IsFormatAssertion**](JsonOptions#isformatassertion) is **True** in the options passed to [**Json.CompileSchema**](Json#compileschema) or [**Json.Validate**](Json#validate). Then it applies to strings, with these checks:
 
 | Format | A string is accepted when |
@@ -123,9 +126,11 @@ Debug.Print Json.Validate("1.2.3.4", ip, o).IsValid                    ' False
 Debug.Print Json.Validate("192.168.1.1", ip, o).IsValid                ' False
 Debug.Print Json.Validate("256.1.1.1", ip, o).IsValid                  ' False
 ```
+<!-- /test -->
 
 ## Where the package departs from JSON Schema 2020-12
 
+<!-- test: SchemaTests.Pattern_Anchored_AcceptsAStringThatMatchesWhole, SchemaTests.Pattern_Anchored_RejectsAStringThatDoesNotMatchWhole, SchemaTests.MaxLength_CountsUtf16CodeUnits, SchemaTests.Format_Approximations_AcceptWhatThePageSays, SchemaTests.Validate_UnusableKeyword_StopsEvaluationAndSetsTheError, SchemaTests.Validate_RefOutsideTheCatalogue_IsRemoteRef -->
 - **`pattern` and `patternProperties` use I-Regexp**, not the ECMA-262 regular expressions that the draft names. There are no anchors, and the matcher has the defects of [Known problems](.#known-problems-in-version-10150).
 - **`minLength` and `maxLength` count UTF-16 code units**, not characters.
 - **`format` is checked loosely**, as the table above shows, and `ipv4` is wrong for nearly every address.
@@ -145,6 +150,7 @@ JsonError.Clear
 Debug.Print Json.Validate(1, Json.Parse("{""minimum"":""x""}")).IsValid   ' True
 Debug.Print JsonError.Code                                ' WrongType
 ```
+<!-- /test -->
 
 ## Methods
 

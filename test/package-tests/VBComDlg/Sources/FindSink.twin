@@ -1,0 +1,55 @@
+' FindSink: receives the events of a CommonDialog and counts them, for the Find and Replace cases.
+Class FindSink
+
+    Private WithEvents mDlg As CommonDialog
+
+    Public InitDialogs As Long      ' InitDialog events received
+    Public LastInitAction As Long   ' the Action argument of the last one
+    Public LastInitHandle As Long   ' the hDlg argument of the last one
+    Public Helps As Long           ' Help events received
+    Public LastHelpAction As Long   ' the Action argument of the last one
+    Public FindNexts As Long        ' FindNext events received
+    Public Replaces As Long         ' Replace events received
+    Public ReplaceAlls As Long      ' ReplaceAll events received
+    Public FindWhatAtEvent As String        ' FindWhat inside the last FindNext or Replace event
+    Public ReplaceWithAtEvent As String     ' ReplaceWith inside the last Replace event
+    Public FlagsAtEvent As Long             ' Flags inside the last FindNext or Replace event
+
+    Public Sub Attach(ByVal Dlg As CommonDialog)
+        Set mDlg = Dlg
+    End Sub
+
+    Public Sub Detach()
+        Set mDlg = Nothing
+    End Sub
+
+    Private Sub mDlg_InitDialog(ByVal Action As Integer, ByVal hDlg As Long)
+        InitDialogs = InitDialogs + 1
+        LastInitAction = Action
+        LastInitHandle = hDlg
+    End Sub
+
+    Private Sub mDlg_Help(Handled As Boolean, ByVal Action As Integer, ByVal hDlg As Long)
+        Helps = Helps + 1
+        LastHelpAction = Action
+        Handled = True
+    End Sub
+
+    Private Sub mDlg_FindNext()
+        FindNexts = FindNexts + 1
+        FindWhatAtEvent = mDlg.FindWhat
+        FlagsAtEvent = mDlg.Flags
+    End Sub
+
+    Private Sub mDlg_Replace()
+        Replaces = Replaces + 1
+        FindWhatAtEvent = mDlg.FindWhat
+        ReplaceWithAtEvent = mDlg.ReplaceWith
+        FlagsAtEvent = mDlg.Flags
+    End Sub
+
+    Private Sub mDlg_ReplaceAll()
+        ReplaceAlls = ReplaceAlls + 1
+    End Sub
+
+End Class

@@ -17,7 +17,7 @@ Syntax: *object*.**BrowseAndOpenFile** [ (*WriteSupport*) ]
 *WriteSupport*
 : *optional* A **Boolean** that controls whether the returned **FileProperties** collection is opened with write support for property values. **False** (default) opens it without write support. Pass **True** to allow setting [**FileProperty.Value**](../FileProperty/Value). Write support requires Windows Vista or newer.
 
-**BrowseAndOpenFile** opens a file dialog for the user to select a file, and returns a [**FileProperties**](../FileProperties/) collection for the selected file, as [**OpenFile**](OpenFile) does for a path. The returned collection contains the [**FileProperty**](../FileProperty/) entries for the properties the operating system exposes for the selected file.
+**BrowseAndOpenFile** opens a file dialog for the user to select a file, and returns a [**FileProperties**](../FileProperties/) collection for the selected file, as [**OpenFile**](OpenFile) does for a path. The returned collection contains the [**FileProperty**](../FileProperty/) entries for the properties the operating system exposes for the selected file. The notes and the warning on [**OpenFile**](OpenFile) about write support and about opening a file again apply to the collection this function returns.
 
 ### Example
 

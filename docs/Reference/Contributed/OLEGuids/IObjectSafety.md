@@ -10,7 +10,9 @@ has_toc: false
 
 Lets a host ask an object which safety options it supports for an interface, and set them.
 
+<!-- test: ImplementTests.IObjectSafety_AnswersToItsIdentifier -->
 **IObjectSafety** has the interface identifier `CB5BDC81-93C1-11CF-8F20-00805F2CD064` and extends **stdole.IUnknown**. It is declared `[OleAutomation(False)]`. Microsoft Learn describes the Windows interface: [IObjectSafety](https://learn.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/platform-apis/aa768224(v=vs.85)).
+<!-- /test -->
 
 A host, such as a web browser that runs scripts, asks an object that may be called by untrusted code whether it agrees to be. An object implements the interface to say that it does. The declaration is complete: it has both methods of the Windows interface. They are **Sub** members, so the HRESULT is hidden: a failure code raises a run-time error, and a class that implements the interface sets [**Err.ReturnHResult**](../../../Modules/ErrObject/ReturnHResult) to return one. Neither method is marked `[PreserveSig]`, so a class can implement the interface.
 

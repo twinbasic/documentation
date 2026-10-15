@@ -40,9 +40,11 @@ Syntax: **ToolsUtf8.Decode** ( *Utf* ) **As String**
 *Utf*
 : *required* A **Byte** array that holds UTF-8 text. It is passed by reference and is not changed.
 
+<!-- test: Utf8Tests.Decode_Utf8Bytes_ReturnsTheText, Utf8Tests.Decode_ByteOrderMark_BecomesTheCharacterFeff, Utf8Tests.Decode_ArrayNotDimensioned_ReturnsAnEmptyString -->
 Returns the text as a **String**. A byte order mark (EF BB BF) at the start of the bytes is not removed: it becomes the character U+FEFF at the start of the string.
 
 If *Utf* has not been dimensioned, the function returns an empty string.
+<!-- /test -->
 
 ### DecodeToByteArray
 {: .no_toc }
@@ -56,6 +58,7 @@ Syntax: **ToolsUtf8.DecodeToByteArray** ( *Utf* ) **As Byte()**
 
 The conversion produces two bytes for each character of the text, but the array that the function returns is resized to a length in bytes equal to the number of characters, so it holds the first half of the converted bytes only.
 
+<!-- test: Utf8Tests.DecodeToByteArray_ReturnsAllTheUtf16Bytes -->
 > [!WARNING] 1.0.0.29
 > The result is cut off without an error. For the five UTF-8 bytes of the text `caf` followed by the letter e with an acute accent, which is four characters and eight UTF-16 bytes, the array has four bytes. To get the whole text as UTF-16 bytes, convert with [**Decode**](#decode) and assign the string to a **Byte** array.
 
@@ -69,7 +72,9 @@ Debug.Print UBound(Half) + 1
 ' 4
 ```
 
+<!-- test: Utf8Tests.DecodeToByteArray_ArrayNotDimensioned_Raises9 -->
 If *Utf* has not been dimensioned, the call raises error 9.
+<!-- /test -->
 
 ### Encode
 {: .no_toc }
@@ -81,6 +86,7 @@ Syntax: **ToolsUtf8.Encode** ( *UCS* ) **As Byte()**
 *UCS*
 : *required* A **String**.
 
+<!-- test: Utf8Tests.Encode_ReturnsUtf8BytesWithNoByteOrderMark, Utf8Tests.Encode_EmptyString_ReturnsAnArrayThatIsNotDimensioned -->
 Returns a **Byte** array that starts at index 0 and holds the text in UTF-8, with no byte order mark and no terminating zero byte.
 
 For an empty string the function returns an array that has not been dimensioned, so `UBound` of the result raises error 9.
@@ -94,6 +100,7 @@ Debug.Print Err.Number
 ' Output:
 ' 9
 ```
+<!-- /test -->
 
 ## See Also
 

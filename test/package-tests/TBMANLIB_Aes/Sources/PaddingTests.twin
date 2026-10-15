@@ -1,0 +1,138 @@
+' TBMANLIB_Aes, cAes.PaddingMode: what each padding mode adds and takes off.
+'
+' The cases use the mode CFB, where the package adds no padding of Windows, so that the length of
+' the output is the length that the padding mode alone gives. PKCS #7 (RFC 5652) adds 1 to 16 bytes
+' that each hold their count; ISO 10126 adds random bytes and a last byte that holds the count.
+[TestFixture]
+Module PaddingTests
+
+    Private Function CfbLength(ByVal Padding As AesPaddingMode, ByVal DataLength As Long) As Long
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, Padding, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.Ascii(String$(DataLength, "x"))
+        c = AesVec.Enc(a, p)
+        If AesVec.LastNumber <> 0 Then Expect.Fail "EncryptBytes raised error " & AesVec.LastNumber & ", " & AesVec.LastText
+        CfbLength = AesVec.Count(c)
+    End Function
+
+    [TestCase]
+    Public Sub EncryptBytes_Pkcs7_PadsToTheNextWholeBlock()
+        Expect.Begin
+        Expect.AreEqual 16, CfbLength(AesPaddingMode.PKCS7, 5), "PKCS7: output length for 5 bytes"
+        Expect.AreEqual 16, CfbLength(AesPaddingMode.PKCS7, 15), "PKCS7: output length for 15 bytes"
+        Expect.AreEqual 32, CfbLength(AesPaddingMode.PKCS7, 16), "PKCS7: output length for 16 bytes"
+        Expect.AreEqual 48, CfbLength(AesPaddingMode.PKCS7, 33), "PKCS7: output length for 33 bytes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_ZeroPadding_PadsToTheNextWholeBlock()
+        Expect.Begin
+        Expect.AreEqual 16, CfbLength(AesPaddingMode.ZeroPadding, 5), "ZeroPadding: output length for 5 bytes"
+        Expect.AreEqual 32, CfbLength(AesPaddingMode.ZeroPadding, 16), "ZeroPadding: output length for 16 bytes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_NoPadding_KeepsTheLengthOfTheInput()
+        Expect.Begin
+        Expect.AreEqual 5, CfbLength(AesPaddingMode.NoPadding, 5), "NoPadding: output length for 5 bytes"
+        Expect.AreEqual 16, CfbLength(AesPaddingMode.NoPadding, 16), "NoPadding: output length for 16 bytes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Iso10126_PadsToTheNextWholeBlock()
+        Expect.Begin
+        Expect.AreEqual 16, CfbLength(AesPaddingMode.ISO10126, 5), "ISO10126: output length for 5 bytes"
+        Expect.AreEqual 32, CfbLength(AesPaddingMode.ISO10126, 16), "ISO10126: output length for 16 bytes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_Iso10126_RoundTrips()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.ISO10126, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.Ascii("Hello")
+        AesVec.CheckRoundTrip "ISO10126, 5 bytes", a, p
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Pkcs7_RoundTripsEveryLengthFrom1To40()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim d() As Byte
+        Dim n As Long
+        Dim bad As String
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key128, AesVec.Iv16)
+        For n = 1 To 40
+            p = AesVec.Ascii(String$(n, Chr$(1 + (n Mod 7))))
+            c = AesVec.Enc(a, p)
+            d = AesVec.Dec(a, c)
+            If AesVec.HexOf(d) <> AesVec.HexOf(p) Then bad = bad & n & " "
+        Next
+        Expect.AreEqual "", bad, "lengths whose PKCS7 round trip gives other bytes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_Pkcs7_RejectsInvalidPadding()
+        Expect.Begin
+        ' Encrypt 16 bytes whose last byte is 102 with NoPadding, then decrypt with PKCS7: the last
+        ' byte is not a count from 1 to 16, so the decryption fails.
+        Dim a As cAes
+        Dim b As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim d() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.NoPadding, AesVec.Key128, AesVec.Iv16)
+        Set b = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.Ascii("0123456789abcdef")
+        c = AesVec.Enc(a, p)
+        d = AesVec.Dec(b, c)
+        Expect.AreEqual AesVec.Unspecified, AesVec.LastNumber, "error number of a PKCS7 decryption whose last byte is 102"
+        Expect.AreEqual 0, AesVec.Count(d), "bytes returned for the invalid padding"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_ZeroPadding_KeepsTheTrailingZeroBytesOfTheData()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.ZeroPadding, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.FromHex("41420000")
+        AesVec.CheckRoundTrip "ZeroPadding, data 41 42 00 00", a, p
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_ZeroPadding_DataOfZeroBytesRoundTrips()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.ZeroPadding, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.FromHex("00000000")
+        AesVec.CheckRoundTrip "ZeroPadding, data 00 00 00 00", a, p
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_ZeroPadding_TakesOffTheZeroBytesTheEncryptionAdded()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.ZeroPadding, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.Ascii("Hello, zero padding")
+        AesVec.CheckRoundTrip "ZeroPadding, data that does not end in a zero byte", a, p
+        Expect.Done
+    End Sub
+
+End Module

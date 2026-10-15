@@ -1,0 +1,139 @@
+' TBMANLIB_ConsoleComponents: what the compiler does with the package used beside the published
+' TBMANLIB_ConsoleCore. Each line ends in a comment ' CASE <Name>: <code>, and none means the line
+' compiles. The package carries a copy of ConsoleCore of its own, whose types the compiler treats
+' as different from those of the published package, so the values that a component returns (a
+' ConsoleRect, a ConsolePosition) are of the other type. This project holds no copy of the
+' components' code.
+Module CompileTests
+
+    ' ---- objects of the published package are accepted by the compiler
+
+    Public Sub Pass_ConsoleToTheConstructors(ByVal con As cConsole)
+        Dim bar As cProgressBar = New cProgressBar(con) ' CASE ConsoleToProgressBar: none
+        Dim layout As cConsoleLayout = New cConsoleLayout(con) ' CASE ConsoleToLayout: none
+        Dim helper As cLayoutHelper = New cLayoutHelper(con) ' CASE ConsoleToLayoutHelper: none
+    End Sub
+
+    Public Sub Pass_BufferToThePanel(ByVal buf As cConsoleBuffer)
+        Dim panel As cConsolePanel = New cConsolePanel("p")
+        panel.Render buf ' CASE BufferToPanelRender: none
+        panel.ClearContent buf ' CASE BufferToPanelClearContent: none
+    End Sub
+
+    ' ---- the values that the components return
+
+    Public Sub Read_PanelContentRect(ByVal panel As cConsolePanel)
+        Dim n As Long
+        n = panel.ContentRect().Left ' CASE ContentRectMember: none
+    End Sub
+
+    Public Sub Assign_PanelContentRect(ByVal panel As cConsolePanel)
+        Dim r As ConsoleRect
+        r = panel.ContentRect() ' CASE ContentRectAssign: none
+    End Sub
+
+    Public Sub Pass_PanelContentRect(ByVal panel As cConsolePanel)
+        Dim inside As Boolean
+        inside = ConsoleRect_Contains(panel.ContentRect(), 1, 1) ' CASE ContentRectToContains: none
+    End Sub
+
+    Public Sub Read_PanelRect(ByVal panel As cConsolePanel)
+        Dim n As Long
+        n = panel.Rect.Left ' CASE PanelRectMember: none
+    End Sub
+
+    Public Sub Read_HelperPosition(ByVal helper As cLayoutHelper)
+        Dim n As Long
+        n = helper.Center(10, 5).Col ' CASE CenterMember: none
+    End Sub
+
+    Public Sub Assign_HelperPosition(ByVal helper As cLayoutHelper)
+        Dim pos As ConsolePosition
+        pos = helper.Center(10, 5) ' CASE CenterAssign: none
+    End Sub
+
+    Public Sub Assign_HelperRect(ByVal helper As cLayoutHelper)
+        Dim r As ConsoleRect
+        r = helper.CenterRect(10, 5) ' CASE CenterRectAssign: none
+    End Sub
+
+    Public Sub Assign_HelperPercentRect(ByVal helper As cLayoutHelper)
+        Dim r As ConsoleRect
+        r = helper.PercentRect(10, 10, 50, 50) ' CASE PercentRectAssign: none
+    End Sub
+
+    Public Sub Assign_HelperPercent(ByVal helper As cLayoutHelper)
+        Dim pos As ConsolePosition
+        pos = helper.Percent(50, 50) ' CASE PercentAssign: none
+    End Sub
+
+    Public Sub Assign_HelperWithMargins(ByVal helper As cLayoutHelper)
+        Dim r As ConsoleRect
+        r = helper.WithMargins(1, 1, 1, 1) ' CASE WithMarginsAssign: none
+    End Sub
+
+    Public Sub Assign_HelperClampRect(ByVal helper As cLayoutHelper, ByVal r As ConsoleRect)
+        Dim c As ConsoleRect
+        c = helper.ClampRect(r) ' CASE ClampRectAssign: none
+    End Sub
+
+    Public Sub Assign_HelperGrid(ByVal helper As cLayoutHelper)
+        Dim rects() As ConsoleRect
+        rects = helper.Grid(2, 2) ' CASE GridToRectArray: none
+    End Sub
+
+    Public Sub Read_HelperSpacedPositions(ByVal helper As cLayoutHelper)
+        Dim v As Variant
+        v = helper.SpacedPositions(3, 10, 2, 5) ' CASE SpacedPositionsToVariant: none
+    End Sub
+
+    Public Sub Read_HelperCenterX(ByVal helper As cLayoutHelper)
+        Dim n As Long
+        n = helper.CenterX(10) ' CASE CenterXToLong: none
+    End Sub
+
+    ' ---- the Variant of an array of rectangles
+
+    Public Sub Take_ElementOfVariant(ByVal parts As Variant)
+        Dim r As ConsoleRect
+        r = parts(0) ' CASE VariantElementToRect: TB5028
+    End Sub
+
+    ' ---- the enumerations of the components
+
+    Public Sub Use_NestedEnumeration(ByVal panel As cConsolePanel)
+        panel.BorderStyle = PanelBorderStyle.Double ' CASE NestedEnumerationWithoutClass: none
+    End Sub
+
+    Public Sub Use_NestedEnumerationWithClass(ByVal panel As cConsolePanel)
+        panel.BorderStyle = cConsolePanel.PanelBorderStyle.Double ' CASE NestedEnumerationWithClass: none
+    End Sub
+
+    ' ---- cDataGrid: properties that can be set and not read
+
+    Public Sub Read_GridHeaderColor(ByVal grid As cDataGrid)
+        Dim c As ConsoleColor
+        c = grid.HeaderColor ' CASE GridHeaderColorRead: none
+    End Sub
+
+    Public Sub Read_GridSelectionColor(ByVal grid As cDataGrid)
+        Dim c As ConsoleColor
+        c = grid.SelectionColor ' CASE GridSelectionColorRead: none
+    End Sub
+
+    Public Sub Read_GridSelectedRow(ByVal grid As cDataGrid)
+        Dim n As Long
+        n = grid.SelectedRow ' CASE GridSelectedRowRead: none
+    End Sub
+
+    Public Sub Read_GridShowHeader(ByVal grid As cDataGrid)
+        Dim b As Boolean
+        b = grid.ShowHeader ' CASE GridShowHeaderRead: none
+    End Sub
+
+    Public Sub Read_GridShowBorders(ByVal grid As cDataGrid)
+        Dim b As Boolean
+        b = grid.ShowBorders ' CASE GridShowBordersRead: none
+    End Sub
+
+End Module

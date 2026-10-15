@@ -1,0 +1,458 @@
+' VBA_JSON: ConvertToJson. The text it should write is JSON as RFC 8259 defines it. JsonOptions are
+' at their defaults in every case. Dates are checked in DatesTests.
+[TestFixture]
+Module ConvertToJsonTests
+
+    Private Function Q(ByVal s As String) As String
+        Q = """" & s & """"
+    End Function
+
+    [TestCase]
+    Public Sub Scalars_NullAndBooleans()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual "null", Helpers.TryConvert(Null), "ConvertToJson(Null)"
+        Expect.AreEqual "true", Helpers.TryConvert(True), "ConvertToJson(True)"
+        Expect.AreEqual "false", Helpers.TryConvert(False), "ConvertToJson(False)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Scalars_Numbers()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual "5", Helpers.TryConvert(CInt(5)), "ConvertToJson of an Integer"
+        Expect.AreEqual "-70000", Helpers.TryConvert(CLng(-70000)), "ConvertToJson of a Long"
+        Expect.AreEqual "1.5", Helpers.TryConvert(CSng(1.5)), "ConvertToJson of a Single"
+        Expect.AreEqual "2.5", Helpers.TryConvert(2.5), "ConvertToJson of a Double"
+        Expect.AreEqual "19.99", Helpers.TryConvert(CCur(19.99)), "ConvertToJson of a Currency"
+        Expect.AreEqual "3.25", Helpers.TryConvert(CDec(3.25)), "ConvertToJson of a Decimal"
+        Expect.AreEqual "-0.5", Helpers.TryConvert(-0.5), "ConvertToJson of a negative Double"
+        Expect.AreEqual "0", Helpers.TryConvert(0), "ConvertToJson of 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Scalars_DoubleOfLargeMagnitude_IsAJsonNumber()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual "1E+20", Helpers.TryConvert(1E+20), "ConvertToJson(1E+20)"
+        Expect.AreEqual "1.5E-20", Helpers.TryConvert(1.5E-20), "ConvertToJson(1.5E-20)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Scalars_Double_IsWrittenWith15SignificantDigits()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual "0.333333333333333", Helpers.TryConvert(1 / 3), "ConvertToJson(1 / 3)"
+        Expect.AreEqual "0.666666666666667", Helpers.TryConvert(2 / 3), "ConvertToJson(2 / 3)"
+        Expect.AreEqual "0.3", Helpers.TryConvert(0.1 + 0.2), "ConvertToJson(0.1 + 0.2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Scalars_EmptyAndNothing_GiveAnEmptyString()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual "", Helpers.TryConvert(Empty), "ConvertToJson(Empty)"
+        Expect.AreEqual 0, Helpers.LastNumber, "run-time error of ConvertToJson(Empty)"
+        Expect.AreEqual "", Helpers.TryConvert(Nothing), "ConvertToJson(Nothing)"
+        Expect.AreEqual 0, Helpers.LastNumber, "run-time error of ConvertToJson(Nothing)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Scalars_String_IsQuoted()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual Q("hello"), Helpers.TryConvert("hello"), "ConvertToJson(""hello"")"
+        Expect.AreEqual Q(""), Helpers.TryConvert(""), "ConvertToJson of an empty string"
+        Expect.AreEqual Q("it's a space"), Helpers.TryConvert("it's a space"), "ConvertToJson of a string with a quote and a space"
+        Expect.Done
+    End Sub
+
+    ' ---- strings
+
+    [TestCase]
+    Public Sub String_QuoteBackslashAndControlCharacters_AreEscaped()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual Q("a\""b"), Helpers.TryConvert("a""b"), "quote"
+        Expect.AreEqual Q("a\\b"), Helpers.TryConvert("a\b"), "backslash"
+        Expect.AreEqual Q("\r\n\t\b\f"), Helpers.TryConvert(vbCr & vbLf & vbTab & vbBack & vbFormFeed), "CR, LF, tab, backspace and form feed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub String_OtherControlCharacters_AreEscapedAsUnicode()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual Q(Helpers.U("0001") & Helpers.U("001F")), Helpers.TryConvert(Chr$(1) & Chr$(31)), "characters 1 and 31"
+        Expect.AreEqual Q(Helpers.U("0000")), Helpers.TryConvert(ChrW(0)), "character 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub String_NonAsciiCharacters_AreEscapedAsUnicode()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual Q(Helpers.U("00E9")), Helpers.TryConvert(ChrW(233)), "e acute"
+        Expect.AreEqual Q(Helpers.U("20AC")), Helpers.TryConvert(ChrW(&H20AC)), "euro sign"
+        Expect.AreEqual Q(Helpers.U("D83D") & Helpers.U("DE00")), Helpers.TryConvert(ChrW(&HD83D) & ChrW(&HDE00)), "a character outside the BMP, as a surrogate pair"
+        Expect.AreEqual Q(Helpers.U("007F")), Helpers.TryConvert(Chr$(127)), "character 127"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub String_Solidus_IsNotEscapedByDefault()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual Q("a/b"), Helpers.TryConvert("a/b"), "ConvertToJson(""a/b"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub String_OfDigitsOnly_16To100Characters_IsWrittenWithoutQuotes()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual "1234567890123456", Helpers.TryConvert("1234567890123456"), "16 digits"
+        Expect.AreEqual "12345678901234.56", Helpers.TryConvert("12345678901234.56"), "16 digits and a period"
+        Expect.AreEqual "123456789012e456", Helpers.TryConvert("123456789012e456"), "digits and a lower case e"
+        Expect.AreEqual String$(100, "7"), Helpers.TryConvert(String$(100, "7")), "100 digits"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub String_ThatIsShorterLongerOrHoldsOtherCharacters_IsQuoted()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual Q("123456789012345"), Helpers.TryConvert("123456789012345"), "15 digits"
+        Expect.AreEqual Q(String$(101, "7")), Helpers.TryConvert(String$(101, "7")), "101 digits"
+        Expect.AreEqual Q("1234567890123456x"), Helpers.TryConvert("1234567890123456x"), "16 digits and a letter"
+        Expect.AreEqual Q("-1234567890123456"), Helpers.TryConvert("-1234567890123456"), "16 digits and a minus sign"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub String_ThatIsNotANumber_IsQuoted()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual Q("EEEEEEEEEEEEEEEE"), Helpers.TryConvert("EEEEEEEEEEEEEEEE"), "16 letters E"
+        Expect.AreEqual Q("................"), Helpers.TryConvert("................"), "16 periods"
+        Expect.AreEqual Q("0000123456789012"), Helpers.TryConvert("0000123456789012"), "16 digits with leading zeros (not a JSON number)"
+        Expect.Done
+    End Sub
+
+    ' ---- objects
+
+    [TestCase]
+    Public Sub Dictionary_IsAnObject()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim d As New Dictionary
+        d("name") = "Alice"
+        d("age") = 30
+        d("active") = True
+        Expect.AreEqual "{""name"":""Alice"",""age"":30,""active"":true}", Helpers.TryConvert(d), "ConvertToJson of a Dictionary"
+        Expect.AreEqual "{}", Helpers.TryConvert(New Dictionary), "ConvertToJson of an empty Dictionary"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Dictionary_Key_IsWrittenExactlyAsStored()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim d As New Dictionary
+        d(ChrW(233) & " /x") = 1
+        Expect.AreEqual "{""" & ChrW(233) & " /x"":1}", Helpers.TryConvert(d), "a key with a non-ASCII character, a space and a solidus"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Dictionary_KeyWithAQuote_IsEscaped()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim d As New Dictionary
+        d("a""b") = 1
+        Expect.AreEqual "{""a\""b"":1}", Helpers.TryConvert(d), "ConvertToJson of a key a""b"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Dictionary_KeyWithABackslash_IsEscaped()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim d As New Dictionary
+        d("a\b") = 1
+        Expect.AreEqual "{""a\\b"":1}", Helpers.TryConvert(d), "ConvertToJson of a key a\b"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Dictionary_KeyWithALineFeed_IsEscaped()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim d As New Dictionary
+        d("a" & vbLf & "b") = 1
+        Expect.AreEqual "{""a\nb"":1}", Helpers.TryConvert(d), "ConvertToJson of a key with a line feed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Dictionary_ValueThatIsEmptyOrNothing_OmitsTheKey()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim d As New Dictionary
+        d("a") = 1
+        d("e") = Empty
+        Set d("n") = Nothing
+        d("z") = Null
+        Expect.AreEqual "{""a"":1,""z"":null}", Helpers.TryConvert(d), "ConvertToJson of a Dictionary with Empty and Nothing values"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Dictionary_NestedObjectsAndCollections()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim tags As New Collection
+        tags.Add "twinBASIC"
+        tags.Add "JSON"
+        Dim inner As New Dictionary
+        inner("x") = 1
+        Dim d As New Dictionary
+        Set d("tags") = tags
+        Set d("inner") = inner
+        d("revision") = Null
+        Expect.AreEqual "{""tags"":[""twinBASIC"",""JSON""],""inner"":{""x"":1},""revision"":null}", Helpers.TryConvert(d), "ConvertToJson of nested values"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OtherObjects_GiveAnEmptyString()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim fso As Object
+        Set fso = CreateObject("Scripting.FileSystemObject")
+        Expect.AreEqual "", Helpers.TryConvert(fso), "ConvertToJson of a FileSystemObject"
+        Expect.AreEqual 0, Helpers.LastNumber, "run-time error of ConvertToJson on a FileSystemObject"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ObjectNamedDictionary_IsAnObject()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim sd As Object
+        Set sd = CreateObject("Scripting.Dictionary")
+        sd("a") = 1
+        sd("b") = "x"
+        Expect.AreEqual "{""a"":1,""b"":""x""}", Helpers.TryConvert(sd), "ConvertToJson of a Scripting.Dictionary (TypeName Dictionary)"
+        Expect.Done
+    End Sub
+
+    ' ---- arrays and collections
+
+    [TestCase]
+    Public Sub Collection_IsAnArray()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim c As New Collection
+        c.Add 1
+        c.Add "two"
+        c.Add True
+        c.Add Null
+        Expect.AreEqual "[1,""two"",true,null]", Helpers.TryConvert(c), "ConvertToJson of a Collection"
+        Expect.AreEqual "[]", Helpers.TryConvert(New Collection), "ConvertToJson of an empty Collection"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Collection_ItemThatIsEmptyOrNothing_IsNull()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim c As New Collection
+        c.Add 1
+        c.Add Empty
+        c.Add Nothing
+        Expect.AreEqual "[1,null,null]", Helpers.TryConvert(c), "ConvertToJson of a Collection holding Empty and Nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Array_OneDimension()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual "[1,""x"",true]", Helpers.TryConvert(Array(1, "x", True)), "ConvertToJson(Array(1, ""x"", True))"
+        Expect.AreEqual "[]", Helpers.TryConvert(Array()), "ConvertToJson(Array())"
+        Dim a(1 To 2) As Long
+        a(1) = 7
+        a(2) = 8
+        Expect.AreEqual "[7,8]", Helpers.TryConvert(a), "ConvertToJson of an array whose lower bound is 1"
+        Dim s(0 To 1) As String
+        s(0) = "p"
+        s(1) = "q"
+        Expect.AreEqual "[""p"",""q""]", Helpers.TryConvert(s), "ConvertToJson of a String array"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Array_ElementThatIsEmptyOrNothing_IsNull()
+        Expect.Begin
+        Helpers.ResetOptions
+        Expect.AreEqual "[1,null,null]", Helpers.TryConvert(Array(1, Empty, Nothing)), "ConvertToJson(Array(1, Empty, Nothing))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Array_TwoDimensions_IsAnArrayOfArrays()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim a(0 To 1, 0 To 2) As Long
+        a(0, 0) = 1: a(0, 1) = 2: a(0, 2) = 3
+        a(1, 0) = 4: a(1, 1) = 5: a(1, 2) = 6
+        Expect.AreEqual "[[1,2,3],[4,5,6]]", Helpers.TryConvert(a), "ConvertToJson of a 2 x 3 array"
+        Dim b(1 To 2, 1 To 2) As String
+        b(1, 1) = "a": b(1, 2) = "b": b(2, 1) = "c": b(2, 2) = "d"
+        Expect.AreEqual "[[""a"",""b""],[""c"",""d""]]", Helpers.TryConvert(b), "ConvertToJson of a 2 x 2 array whose bounds start at 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Array_LowerBoundBelowZero_IsWritten()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim a(-1 To 1) As Long
+        a(-1) = 4: a(0) = 5: a(1) = 6
+        Expect.AreEqual "[4,5,6]", Helpers.TryConvert(a), "ConvertToJson of an array from -1 to 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Array_TwoDimensions_SecondLowerBoundBelowZero_IsWritten()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim a(0 To 1, -1 To 0) As Long
+        a(0, -1) = 1: a(0, 0) = 2: a(1, -1) = 3: a(1, 0) = 4
+        Expect.AreEqual "[[1,2],[3,4]]", Helpers.TryConvert(a), "ConvertToJson of an array (0 To 1, -1 To 0)"
+        Expect.Done
+    End Sub
+
+    ' ---- pretty-printing
+
+    [TestCase]
+    Public Sub Whitespace_Omitted_IsCompact()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim d As New Dictionary
+        d("a") = 1
+        Dim c As New Collection
+        c.Add 1
+        c.Add 2
+        Set d("b") = c
+        Expect.AreEqual "{""a"":1,""b"":[1,2]}", ConvertToJson(d), "ConvertToJson with no Whitespace"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Whitespace_Integer_IndentsEachLevelByThatManySpaces()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim person As New Dictionary
+        person("name") = "Alice"
+        person("age") = 30
+        person("active") = True
+        Dim want As String
+        want = "{" & vbNewLine & "  ""name"": ""Alice""," & vbNewLine & "  ""age"": 30," & vbNewLine & "  ""active"": true" & vbNewLine & "}"
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(ConvertToJson(person, 2)), "ConvertToJson(person, 2)"
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(ConvertToJson(person, Whitespace:=2)), "ConvertToJson(person, Whitespace:=2)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Whitespace_Integer_NestedCollectionAndNull()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim tags As New Collection
+        tags.Add "twinBASIC"
+        tags.Add "JSON"
+        Dim doc As New Dictionary
+        doc("title") = "Getting Started"
+        Set doc("tags") = tags
+        doc("revision") = Null
+        Dim want As String
+        want = "{" & vbNewLine & _
+               "    ""title"": ""Getting Started""," & vbNewLine & _
+               "    ""tags"": [" & vbNewLine & _
+               "        ""twinBASIC""," & vbNewLine & _
+               "        ""JSON""" & vbNewLine & _
+               "    ]," & vbNewLine & _
+               "    ""revision"": null" & vbNewLine & _
+               "}"
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(ConvertToJson(doc, 4)), "ConvertToJson(doc, 4)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Whitespace_String_RepeatsItsFirstCharacterOncePerLevel()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim inner As New Dictionary
+        inner("x") = 1
+        Dim d As New Dictionary
+        Set d("o") = inner
+        Dim want As String
+        want = "{" & vbNewLine & vbTab & """o"": {" & vbNewLine & vbTab & vbTab & """x"": 1" & vbNewLine & vbTab & "}" & vbNewLine & "}"
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(ConvertToJson(d, vbTab)), "ConvertToJson(d, vbTab)"
+        want = "{" & vbNewLine & " ""o"": {" & vbNewLine & "  ""x"": 1" & vbNewLine & " }" & vbNewLine & "}"
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(ConvertToJson(d, "  ")), "ConvertToJson(d, two spaces): one space per level"
+        want = "{" & vbNewLine & "a""o"": {" & vbNewLine & "aa""x"": 1" & vbNewLine & "a}" & vbNewLine & "}"
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(ConvertToJson(d, "ab")), "ConvertToJson(d, ""ab""): only the first character"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Whitespace_Arrays_AreIndentedLikeCollections()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim d As New Dictionary
+        d("a") = Array(1, 2)
+        Dim want As String
+        want = "{" & vbNewLine & "  ""a"": [" & vbNewLine & "    1," & vbNewLine & "    2" & vbNewLine & "  ]" & vbNewLine & "}"
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(ConvertToJson(d, 2)), "ConvertToJson of a Dictionary holding an array, 2 spaces"
+        Dim a(0 To 1, 0 To 1) As Long
+        a(0, 0) = 1: a(0, 1) = 2: a(1, 0) = 3: a(1, 1) = 4
+        want = "[" & vbNewLine & "  [" & vbNewLine & "    1," & vbNewLine & "    2" & vbNewLine & "  ]," & vbNewLine & "  [" & vbNewLine & "    3," & vbNewLine & "    4" & vbNewLine & "  ]" & vbNewLine & "]"
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(ConvertToJson(a, 2)), "ConvertToJson of a 2 x 2 array, 2 spaces"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Whitespace_AfterUpdatingAKey_ShowsTheKeyLast()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim data As Object
+        Set data = ParseJson("{""product"":""Widget"",""price"":9.99,""tags"":[""new"",""sale""]}")
+        data("price") = 12.5
+        Dim want As String
+        want = "{" & vbNewLine & "  ""product"": ""Widget""," & vbNewLine & "  ""tags"": [" & vbNewLine & "    ""new""," & vbNewLine & "    ""sale""" & vbNewLine & "  ]," & vbNewLine & "  ""price"": 12.5" & vbNewLine & "}"
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(ConvertToJson(data, 2)), "ConvertToJson of the parsed product after its price was set"
+        Expect.Done
+    End Sub
+
+    ' ---- the pair
+
+    [TestCase]
+    Public Sub RoundTrip_ParseThenConvert_GivesTheSameText()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim text As String
+        text = "{""a"":1.5,""b"":[true,false,null,""x\ty"",{""c"":""" & Helpers.U("00E9") & """}],""d"":{}}"
+        Dim r As Object
+        Set r = Helpers.TryParse(text)
+        Expect.AreEqual text, Helpers.TryConvert(r), "ConvertToJson(ParseJson(text))"
+        Expect.Done
+    End Sub
+
+End Module

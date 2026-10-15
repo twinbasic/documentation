@@ -1,0 +1,362 @@
+' cHttpClient: what the client sends. Each case starts the small server of TestServer on 127.0.0.1,
+' sends one request to it and reads what the server received. Nothing leaves the computer.
+[TestFixture]
+Module HttpRequestTests
+
+    ' The first line of the request on connection Index.
+    Private Function RequestLine(ByVal Index As Long) As String
+        RequestLine = Split(TestServer.RequestHead(Index), vbCrLf)(0)
+    End Function
+
+    ' The body of the request on connection Index as text, one character for each byte.
+    Private Function BodyText(ByVal Index As Long) As String
+        Dim b() As Byte
+        b = TestServer.RequestBody(Index)
+        On Error Resume Next
+        If UBound(b) >= 0 Then BodyText = StrConv(b, vbUnicode)
+        Err.Clear
+    End Function
+
+    ' ---- the settings that become the request
+
+    [TestCase]
+    Public Sub RequestDataQuery_Pairs_AreSentAsParametersOfTheirOwnNames()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Run 1
+        H.RequestDataQuery.Item("a") = "1"
+        H.RequestDataQuery.Item("b") = "2"
+        H.SendGet TestServer.Url("/p")
+        TestServer.ServerDown
+        Expect.AreEqual "GET /p?a=1&b=2 HTTP/1.1", RequestLine(0), "request line of a GET with the query values a = 1 and b = 2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RequestDataQuery_UrlWithAQuery_GetsTheValuesAfterAnAmpersand()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Run 1
+        H.RequestDataQuery.Item("a") = "1"
+        H.SendGet TestServer.Url("/p?x=0")
+        TestServer.ServerDown
+        Expect.AreEqual "GET /p?x=0&a=1 HTTP/1.1", RequestLine(0), "request line of a GET to a URL that has a query"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RequestDataQuery_IsEmptiedAfterTheRequest()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Run 1
+        H.RequestDataQuery.Item("a") = "1"
+        H.SendGet TestServer.Url("/p")
+        TestServer.ServerDown
+        Expect.AreEqual 0, H.RequestDataQuery.Count, "number of query values after the request"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RequestDataForm_Values_AreUrlEncoded()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, body As String
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Run 1
+        H.RequestDataForm.Item("city") = "A B&C"
+        H.SendPost TestServer.Url("/f")
+        TestServer.ServerDown
+        body = BodyText(0)
+        Expect.IsTrue body = "city=A%20B%26C" Or body = "city=A+B%26C", "body of a form with city = A B&C: " & body
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RequestDataForm_Values_AreSentAsNamePairsAndThenEmptied()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Run 1
+        H.RequestDataForm.Item("user") = "ann"
+        H.RequestDataForm.Item("language") = "en"
+        H.SendPost TestServer.Url("/f")
+        TestServer.ServerDown
+        Expect.AreEqual "POST /f HTTP/1.1", RequestLine(0), "request line"
+        Expect.AreEqual "user=ann&language=en", BodyText(0), "body"
+        Expect.AreEqual "application/x-www-form-urlencoded", TestServer.RequestHeader(0, "Content-Type"), "Content-Type of the request"
+        Expect.AreEqual 0, H.RequestDataForm.Count, "number of form values after the request"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RequestContentType_ChangedAfterAFirstRequest_ChangesTheHeader()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Respond 1, TestServer.Ok("ok")
+        TestServer.Run 2
+        H.RequestDataForm.Item("a") = "1"
+        H.SendPost TestServer.Url("/one")
+        H.SetRequestContentType JsonString
+        H.RequestDataJson.Item("name") = "Ann"
+        H.SendPost TestServer.Url("/two")
+        TestServer.ServerDown
+        Expect.AreEqual "{""name"":""Ann""}", BodyText(1), "body of the second request"
+        Expect.AreEqual "application/json", TestServer.RequestHeader(1, "Content-Type"), "Content-Type of the second request"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RequestDataJson_Document_IsSentAsTheBody()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Run 1
+        H.SetRequestContentType JsonString
+        H.RequestDataJson.Item("name") = "Ann"
+        H.RequestDataJson.Item("n") = 3
+        H.SendPost TestServer.Url("/j")
+        TestServer.ServerDown
+        Expect.AreEqual "{""name"":""Ann"",""n"":3}", BodyText(0), "body"
+        Expect.AreEqual "application/json", TestServer.RequestHeader(0, "Content-Type"), "Content-Type"
+        Expect.AreEqual 0, H.RequestDataJson.RootItem.Count, "number of members of the document after the request"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RequestDataJson_NonAsciiText_IsSentAsUtf8Characters()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, b() As Byte
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Run 1
+        H.SetRequestContentType JsonString
+        H.RequestDataJson.Item("w") = "caf" & ChrW(233)
+        H.SendPost TestServer.Url("/j")
+        TestServer.ServerDown
+        b = TestServer.RequestBody(0)
+        Expect.AreEqual "7B 22 77 22 3A 22 63 61 66 C3 A9 22 7D", Sandbox.HexOfBytes(b), "bytes of the body"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RequestDataJson_ValueWithBackslashU_IsSent()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Run 1
+        H.SetRequestContentType JsonString
+        H.RequestDataJson.Item("p") = "C:\users"
+        On Error Resume Next
+        H.SendPost TestServer.Url("/j")
+        Expect.AreEqual 0, Err.Number, "SendPost of a document that holds C:\users raised error " & Err.Number & " " & Err.Description
+        On Error GoTo 0
+        TestServer.ServerDown
+        Expect.AreEqual "{""p"":""C:\\users""}", BodyText(0), "body"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RequestDataJson_EmptyDocument_SendsNoBody()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Run 1
+        H.SetRequestContentType JsonString
+        H.SendPost TestServer.Url("/j")
+        TestServer.ServerDown
+        Expect.AreEqual "", BodyText(0), "body"
+        Expect.AreEqual "0", TestServer.RequestHeader(0, "Content-Length"), "Content-Length"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Fetch_Body_IsSentAsItIsWithTheTwoLengthHeaders()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Run 1
+        H.SetRequestContentType TextPlain
+        H.RequestDataForm.Item("ignored") = "1"
+        H.SendPost TestServer.Url("/t"), "abc"
+        TestServer.ServerDown
+        Expect.AreEqual "abc", BodyText(0), "body"
+        Expect.AreEqual "text/plain", TestServer.RequestHeader(0, "Content-Type"), "Content-Type"
+        Expect.AreEqual "3", TestServer.RequestHeader(0, "Content-Lenght"), "the misspelled Content-Lenght header"
+        Expect.AreEqual "3", TestServer.RequestHeader(0, "Content-Length"), "the Content-Length header that WinHTTP adds"
+        Expect.AreEqual 0, H.RequestDataForm.Count, "number of form values after the request"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RequestChartSet_Utf8Name_EncodesTheBodyAsUtf8AndAnyOtherAsAnsi()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, b() As Byte, ansi() As Byte
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Respond 1, TestServer.Ok("ok")
+        TestServer.Run 2
+        H.SetRequestContentType TextPlain
+        Expect.AreEqual "utf-8", H.RequestChartSet, "RequestChartSet of a new object"
+        H.SendPost TestServer.Url("/t"), ChrW(233)
+        H.RequestChartSet = "gbk"
+        H.SendPost TestServer.Url("/t"), ChrW(233)
+        TestServer.ServerDown
+        b = TestServer.RequestBody(0)
+        Expect.AreEqual "C3 A9", Sandbox.HexOfBytes(b), "bytes of the body with the character set utf-8"
+        ansi = StrConv(ChrW(233), vbFromUnicode)
+        b = TestServer.RequestBody(1)
+        Expect.AreEqual Sandbox.HexOfBytes(ansi), Sandbox.HexOfBytes(b), "bytes of the body with the character set gbk, which is encoded in the ANSI code page"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RequestHeaders_AreSentOnEveryRequestAndEmptyOnesAreNot()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Respond 1, TestServer.Ok("ok")
+        TestServer.Run 2
+        H.RequestHeaders.Item("X-Api-Key") = "secret"
+        H.RequestHeaders.Item("X-Empty") = ""
+        H.SetCookies "a=1; b=2"
+        H.SendGet TestServer.Url("/h")
+        H.SendGet TestServer.Url("/h")
+        TestServer.ServerDown
+        Expect.AreEqual "secret", TestServer.RequestHeader(0, "X-Api-Key"), "X-Api-Key of the first request"
+        Expect.AreEqual "secret", TestServer.RequestHeader(1, "X-Api-Key"), "X-Api-Key of the second request"
+        Expect.AreEqual "", TestServer.RequestHeader(0, "X-Empty"), "X-Empty of the first request"
+        Expect.AreEqual "a=1; b=2", TestServer.RequestHeader(0, "Cookie"), "Cookie of the first request"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Fetch_Methods_UseTheirOwnVerbs()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        Dim i As Long
+        For i = 0 To 3
+            TestServer.Respond i, TestServer.Ok("ok")
+        Next i
+        TestServer.Run 4
+        H.SendPut TestServer.Url("/m")
+        H.SendDelete TestServer.Url("/m")
+        H.SendOptions TestServer.Url("/m")
+        H.Send ReqGet, TestServer.Url("/m")
+        TestServer.ServerDown
+        Expect.AreEqual "PUT /m HTTP/1.1", RequestLine(0), "request line of SendPut"
+        Expect.AreEqual "DELETE /m HTTP/1.1", RequestLine(1), "request line of SendDelete"
+        Expect.AreEqual "OPTIONS /m HTTP/1.1", RequestLine(2), "request line of SendOptions"
+        Expect.AreEqual "GET /m HTTP/1.1", RequestLine(3), "request line of Send ReqGet"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Fetch_EmptyUrl_Raises500()
+        Expect.Begin
+        Dim H As New cHttpClient
+        On Error Resume Next
+        H.SendGet ""
+        Expect.AreEqual 500, Err.Number, "SendGet of an empty address raises"
+        On Error GoTo 0
+        Expect.IsTrue Len(H.LastError) > 0, "LastError after the failed request"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetRequestContentType_ChoosesTheMediaTypeByNumber()
+        Expect.Begin
+        Dim H As New cHttpClient, r As String
+        Expect.AreEqual "application/json", H.SetRequestContentType(JsonString), "SetRequestContentType(JsonString)"
+        Expect.AreEqual "application/x-www-form-urlencoded", H.SetRequestContentType(FormEncode), "SetRequestContentType(FormEncode)"
+        Expect.AreEqual "multipart/form-data", H.MapRequestContentType(FormMultiPart), "MapRequestContentType(FormMultiPart)"
+        Expect.AreEqual "text/plain", H.SetRequestContentType(TextPlain), "SetRequestContentType(TextPlain)"
+        Expect.AreEqual "text/html", H.SetRequestContentType(TextHtml), "SetRequestContentType(TextHtml)"
+        Expect.AreEqual "text/html", H.RequestContentType, "RequestContentType"
+        Expect.AreEqual "", H.SetRequestContentType(0), "SetRequestContentType(0)"
+        On Error Resume Next
+        r = H.SetRequestContentType(6)
+        Expect.AreEqual 9, Err.Number, "SetRequestContentType(6) raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Settings_HaveTheirDefaults()
+        Expect.Begin
+        Dim H As New cHttpClient
+        Expect.AreEqual "", H.RequestContentType, "RequestContentType of a new object"
+        Expect.AreEqual "utf-8", H.RequestChartSet, "RequestChartSet of a new object"
+        Expect.AreEqual 5, H.RequestTimeOut, "RequestTimeOut of a new object"
+        Expect.IsTrue H.EnableRedirects, "EnableRedirects of a new object"
+        Expect.AreEqual 10, H.MaxRedirects, "MaxRedirects of a new object"
+        Expect.IsTrue H.AllowRedirects(False) Is H, "AllowRedirects returns the object"
+        Expect.IsFalse H.EnableRedirects, "EnableRedirects after AllowRedirects(False)"
+        Expect.IsTrue H.Async(True) Is H, "Async returns the object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RequestTimeOut_UnderFive_IsRaisedToFive()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Run 1
+        H.RequestTimeOut = 1
+        H.SendGet TestServer.Url("/t")
+        TestServer.ServerDown
+        Expect.AreEqual 5, H.RequestTimeOut, "RequestTimeOut after a request"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Fetch_NoAnswerWithinTheTimeOut_Raises900()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, t As Single
+        port = TestServer.ServerUp()
+        TestServer.RespondSilently 0
+        TestServer.Run 1
+        t = Timer
+        On Error Resume Next
+        H.SendGet TestServer.Url("/slow")
+        Expect.AreEqual 900, Err.Number, "SendGet to a server that does not answer raises"
+        On Error GoTo 0
+        Expect.IsTrue Timer - t >= 4 And Timer - t < 15, "seconds the request waited: " & (Timer - t)
+        TestServer.ServerDown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DebugInfo_DescribesTheRequestAndTheAnswer()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, TestServer.Ok("ok")
+        TestServer.Run 1
+        H.DebugStart = True
+        H.SendGet TestServer.Url("/d")
+        TestServer.ServerDown
+        Expect.IsFalse H.DebugStart, "DebugStart after the request"
+        Expect.AreEqual "GET", H.DebugInfo.Item("Request")("Method"), "Request.Method"
+        Expect.AreEqual TestServer.Url("/d"), H.DebugInfo.Item("Request")("Url"), "Request.Url"
+        Expect.AreEqual 200, H.DebugInfo.Item("Response")("Status"), "Response.Status"
+        Expect.AreEqual "ok", H.DebugInfo.Item("Response")("Content"), "Response.Content"
+        Expect.Done
+    End Sub
+
+End Module

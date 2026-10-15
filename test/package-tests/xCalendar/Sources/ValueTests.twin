@@ -1,0 +1,212 @@
+' ValueTests: Value, ValueStr and ValueIsNull.
+[TestFixture]
+Module ValueTests
+
+    [TestCase]
+    Public Sub Value_SetsYearMonthAndDay()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Cal.Value = #3/15/2026#
+        Expect.AreEqual #3/15/2026#, f.Cal.Value, "Value after it is set to March 15, 2026"
+        Expect.AreEqual 2026, f.Cal.Year, "Year after Value is set to March 15, 2026"
+        Expect.AreEqual 3, f.Cal.Month, "Month after Value is set to March 15, 2026"
+        Expect.AreEqual 15, f.Cal.Day, "Day after Value is set to March 15, 2026"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_KeepsTheTimeOfDay()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Cal.Value = #3/15/2026 2:30:00 PM#
+        Expect.AreEqual #3/15/2026 2:30:00 PM#, f.Cal.Value, "Value after it is set to March 15, 2026 2:30 PM"
+        Expect.AreEqual 15, f.Cal.Day, "Day after Value is set to March 15, 2026 2:30 PM"
+        Expect.AreEqual 3, f.Cal.Month, "Month after Value is set to March 15, 2026 2:30 PM"
+        Expect.AreEqual 2026, f.Cal.Year, "Year after Value is set to March 15, 2026 2:30 PM"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_RaisesNoEvent()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Cal.Value = #3/15/2026#
+        f.Cal.Value = #3/16/2026#
+        f.Cal.Value = #4/16/2027#
+        Expect.AreEqual "", Rig.Events(), "the events raised by setting Value to dates in the same month, another month and another year"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_UpdatesTheTwoLists()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Cal.Value = #3/15/2024#
+        Expect.AreEqual "2024", Win.TextOf(Rig.YearList(f)), "the year list after Value is set to March 15, 2024"
+        Expect.AreEqual MonthName(3), Win.TextOf(Rig.MonthList(f)), "the month list after Value is set to March 15, 2024"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_StringThatIsADateIsConverted()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim s As String = "2026-03-15"
+        f.Cal.Value = s
+        Expect.AreEqual #3/15/2026#, f.Cal.Value, "Value after it is set to the String 2026-03-15"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_StringThatIsNotADateRaises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim s As String = "not a date"
+        On Error Resume Next
+        f.Cal.Value = s
+        Expect.AreEqual 13, Rig.ErrNum(), "the error raised by setting Value to the String ""not a date"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_NullRaises94()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim v As Variant = Null
+        On Error Resume Next
+        f.Cal.Value = v
+        Expect.AreEqual 94, Rig.ErrNum(), "the error raised by setting Value to Null"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_WithTimeOfDayDoesNotChangeTheDate()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Cal.Value = #3/15/2026 11:59:59 PM#
+        Expect.AreEqual 15, f.Cal.Day, "Day after Value is set to 11:59:59 PM on March 15, 2026"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueStr_ReadsValueAsCStrDoes()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Cal.Value = #3/15/2026#
+        Expect.AreEqual CStr(#3/15/2026#), f.Cal.ValueStr, "ValueStr for a Value with no time of day"
+        f.Cal.Value = #3/15/2026 2:30:00 PM#
+        Expect.AreEqual CStr(#3/15/2026 2:30:00 PM#), f.Cal.ValueStr, "ValueStr for a Value with a time of day"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueStr_SetsValueAsCDateDoes()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Cal.ValueStr = "2026-03-15"
+        Expect.AreEqual CDate("2026-03-15"), f.Cal.Value, "Value after ValueStr is set to 2026-03-15"
+        f.Cal.ValueStr = "2026-04-16 14:30:00"
+        Expect.AreEqual CDate("2026-04-16 14:30:00"), f.Cal.Value, "Value after ValueStr is set to 2026-04-16 14:30:00"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueStr_StringThatIsNotADateRaises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        f.Cal.ValueStr = "not a date"
+        Expect.AreEqual 13, Rig.ErrNum(), "the error raised by setting ValueStr to ""not a date"""
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueStr_EmptyStringRaises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        f.Cal.ValueStr = ""
+        Expect.AreEqual 13, Rig.ErrNum(), "the error raised by setting ValueStr to an empty string"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueIsNull_SetToTrueRaisesNoError()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        f.Cal.ValueIsNull = True
+        Expect.AreEqual 0, Rig.ErrNum(), "the error raised by setting ValueIsNull to True"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueIsNull_SetToFalseRaisesNoError()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        f.Cal.ValueIsNull = False
+        Expect.AreEqual 0, Rig.ErrNum(), "the error raised by setting ValueIsNull to False"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueIsNull_IsStoredAllTheSame()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        f.Cal.ValueIsNull = True
+        Rig.ErrNum
+        Expect.IsTrue f.Cal.ValueIsNull, "ValueIsNull after it is set to True"
+        f.Cal.ValueIsNull = False
+        Rig.ErrNum
+        Expect.IsFalse f.Cal.ValueIsNull, "ValueIsNull after it is set to False"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValueIsNull_HasNoEffectOnValue()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Cal.Value = #3/15/2026#
+        On Error Resume Next
+        f.Cal.ValueIsNull = True
+        Rig.ErrNum
+        Expect.AreEqual #3/15/2026#, f.Cal.Value, "Value after ValueIsNull is set to True"
+        Expect.AreEqual "", Rig.Events(), "the events raised by setting ValueIsNull"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

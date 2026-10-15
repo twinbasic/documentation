@@ -86,6 +86,17 @@ Available Packages with Embedded cleared) and restarts the compiler; an author p
 their own build. The runner embeds the package from `%TEMP%\tb-twinserv` instead, as
 `check_examples` does, so it never touches a packages folder.
 
+## Compile cases that expect an error are a project of their own (owner)
+
+A compile case that expects an error is, by design, a compile error of the project it is in, and
+the compiler's test mode runs nothing in a project with errors: `tbrun --tests` reports every
+`[TestCase]` *not run*. The first package with such claims (Generics: TB5074 on `New` of a package
+generic, TB5124 on its unusable tuples) lost all its run-time cases to one line. So those cases
+go in the package folder's `compile/`, a second project that `package_tests.mjs` stages with the
+package embedded and judges with the rest. The published project stays `Sources/` alone, which
+compiles, so the author's Sub Main still runs every run-time case; the compile cases are the
+documentation's own re-check on each new build and version.
+
 ## Markers, and a gate that only tightens
 
 A callout names its cases in an HTML comment on the line above it. The marker lives with the

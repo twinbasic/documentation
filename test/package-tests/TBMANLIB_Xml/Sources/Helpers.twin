@@ -1,0 +1,185 @@
+' Helpers: what the test cases of TBMANLIB_Xml share.
+'
+' Document reads a text into a cXml. Listed shows a collection of nodes as one line, Describe one
+' node: an element as name#id (its id attribute), a text node, a CDATA section or a comment as
+' name=value. MsListed does the same for the nodes that MSXML6 (the Microsoft XML parser, which
+' follows XML 1.0 and XPath 1.0) selects, so a case can compare the package with it. Every file the
+' cases write is under %TEMP%\tbdocs-package-tests\TBMANLIB_Xml\.
+Module Helpers
+
+    ' A cXml that holds the text; the case fails when the text does not parse.
+    Public Function Doc(ByVal Text As String) As cXml
+        Dim x As New cXml
+        If Not x.Parse(Text) Then Expect.Fail "the document " & Text & " did not parse"
+        Set Doc = x
+    End Function
+
+    ' One node of the package: an element as name#id, any other node as name=value.
+    Public Function Describe(ByVal N As cXmlNode) As String
+        If N Is Nothing Then
+            Describe = "Nothing"
+        ElseIf N.NodeType = XmlNodeType.Element Then
+            Describe = N.Name & "#" & N.GetAttribute("id")
+        ElseIf N.NodeType = XmlNodeType.Document Then
+            Describe = "#document"
+        Else
+            Describe = N.Name & "=" & N.Value
+        End If
+    End Function
+
+    ' The nodes of a collection, in order, separated by spaces.
+    Public Function Listed(ByVal Nodes As Collection) As String
+        Dim n As cXmlNode
+        Dim s As String
+        For Each n In Nodes
+            If Len(s) > 0 Then s = s & " "
+            s = s & Describe(n)
+        Next
+        Listed = s
+    End Function
+
+    ' The nodes that an XPath 1.0 expression selects in the text, as MSXML6 finds them.
+    Public Function MsListed(ByVal XmlText As String, ByVal Query As String) As String
+        Dim d As Object
+        Set d = CreateObject("MSXML2.DOMDocument.6.0")
+        d.async = False
+        d.preserveWhiteSpace = True
+        d.setProperty "SelectionLanguage", "XPath"
+        If Not d.loadXML(XmlText) Then
+            MsListed = "(MSXML6 cannot read the document: " & d.parseError.reason & ")"
+            Exit Function
+        End If
+        Dim nodes As Object
+        On Error Resume Next
+        Set nodes = d.selectNodes(Query)
+        If Err.Number <> 0 Then
+            MsListed = "(MSXML6 refuses the expression)"
+            On Error GoTo 0
+            Exit Function
+        End If
+        On Error GoTo 0
+        Dim i As Long
+        Dim n As Object
+        Dim s As String
+        Dim id As Variant
+        For i = 0 To nodes.length - 1
+            Set n = nodes.Item(i)
+            If Len(s) > 0 Then s = s & " "
+            If n.nodeType = 1 Then
+                id = n.getAttribute("id")
+                s = s & n.nodeName & "#" & ("" & id)
+            ElseIf n.nodeType = 9 Then
+                s = s & "#document"
+            Else
+                s = s & n.nodeName & "=" & n.nodeValue
+            End If
+        Next
+        MsListed = s
+    End Function
+
+    ' Checks that the package's XPath selects what MSXML6 selects for the same document and expression.
+    Public Sub SelectsAsMsxml(ByVal XmlText As String, ByVal Query As String)
+        Dim x As cXml
+        Set x = Doc(XmlText)
+        Expect.AreEqual MsListed(XmlText, Query), Listed(x.XPath(Query)), "XPath " & Query & " on " & XmlText
+    End Sub
+
+    ' A string with its control characters written out, for a check that must show them.
+    Public Function Shown(ByVal S As String) As String
+        Shown = Replace(Replace(Replace(S, vbCr, "\r"), vbLf, "\n"), vbTab, "\t")
+    End Function
+
+    ' The name of a node, or Nothing written out.
+    Public Function NameOf(ByVal N As cXmlNode) As String
+        If N Is Nothing Then NameOf = "Nothing" Else NameOf = N.Name
+    End Function
+
+    ' The name of the Index-th child of a node, or a note that there is none.
+    Public Function ChildName(ByVal N As cXmlNode, ByVal Index As Long) As String
+        If N Is Nothing Then
+            ChildName = "(no node)"
+        ElseIf Index > N.ChildNodes.Count Then
+            ChildName = "(no child " & Index & ")"
+        Else
+            ChildName = N.ChildNodes(Index).Name
+        End If
+    End Function
+
+    ' ---- files
+
+    Public Function Folder() As String
+        Folder = Environ$("TEMP") & "\tbdocs-package-tests\TBMANLIB_Xml"
+    End Function
+
+    ' A new, empty folder for one case.
+    Public Function FreshFolder(ByVal Tag As String) As String
+        Dim p As String
+        p = Folder() & "\" & Tag
+        RemoveFolder p
+        On Error Resume Next
+        MkDir Environ$("TEMP") & "\tbdocs-package-tests"
+        MkDir Folder()
+        MkDir p
+        Err.Clear
+        On Error GoTo 0
+        FreshFolder = p
+    End Function
+
+    Public Sub RemoveFolder(ByVal Path As String)
+        On Error Resume Next
+        Dim f As String
+        f = Dir$(Path & "\*.*")
+        Do While Len(f) > 0
+            Kill Path & "\" & f
+            f = Dir$(Path & "\*.*")
+        Loop
+        RmDir Path
+        RmDir Folder()
+        RmDir Environ$("TEMP") & "\tbdocs-package-tests"
+        Err.Clear
+    End Sub
+
+    ' The bytes of a file.
+    Public Function ReadBytes(ByVal Path As String) As Byte()
+        Dim n As Long = FreeFile()
+        Dim b() As Byte
+        Open Path For Binary Access Read As #n
+        If LOF(n) > 0 Then
+            ReDim b(0 To LOF(n) - 1)
+            Get #n, , b
+        End If
+        Close #n
+        ReadBytes = b
+    End Function
+
+    ' Writes the bytes to a file, replacing it.
+    Public Sub WriteBytes(ByVal Path As String, ByRef Bytes() As Byte)
+        Dim n As Long = FreeFile()
+        On Error Resume Next
+        Kill Path
+        Err.Clear
+        On Error GoTo 0
+        Open Path For Binary Access Write As #n
+        Put #n, , Bytes
+        Close #n
+    End Sub
+
+    ' Writes the text to a file as UTF-8 bytes, with no byte order mark.
+    Public Sub WriteUtf8(ByVal Path As String, ByVal Text As String)
+        Dim b() As Byte
+        b = StringToUTF8Bytes(Text)
+        WriteBytes Path, b
+    End Sub
+
+    ' Makes an empty file.
+    Public Sub WriteEmpty(ByVal Path As String)
+        Dim n As Long = FreeFile()
+        On Error Resume Next
+        Kill Path
+        Err.Clear
+        On Error GoTo 0
+        Open Path For Output As #n
+        Close #n
+    End Sub
+
+End Module

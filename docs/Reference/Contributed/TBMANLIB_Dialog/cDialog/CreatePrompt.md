@@ -20,11 +20,13 @@ Syntax: *object*.**CreatePrompt** [ = *boolean* ]
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.ShowOpen_CreatePromptAsksBeforeAcceptingAMissingName -->
 Only [**ShowOpen**](ShowOpen) uses the property. [**ShowSave**](ShowSave) never sets `OFN_CREATEPROMPT`, and [**ShowBrowseForFolder**](ShowBrowseForFolder) ignores the property.
 
 When the user types the name of a file that does not exist, such as `nosuch.txt`, the box *This file doesn't exist. Create the file?* appears, with the buttons *Yes* and *No*. *Yes* closes the dialog and returns the path. *No* leaves the dialog open. This happens whether [**FileMustExist**](FileMustExist) is **True** or **False**, so the question takes the place of the *File not found* box that **FileMustExist** shows.
 
 The file is not created: neither the dialog nor the class creates it, and the program has to do so.
+<!-- /test -->
 
 ## Example
 

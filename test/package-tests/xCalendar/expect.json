@@ -1,0 +1,101 @@
+{
+  "version": "1.0.17.0",
+  "cases": {
+    "ColourTests.TitleFontColor_ColoursTheTitle": {
+      "fails": "1 of 1 checks failed: the pixels of the colour given to TitleFontColor: expected True, got False"
+    },
+    "ColourTests.TitleFontColor_DefaultColoursTheTitle": {
+      "fails": "1 of 1 checks failed: the pixels of the default TitleFontColor, orange: expected True, got False"
+    },
+    "ColourTests.DayFontColor_ColoursTheDayNames": {
+      "fails": "1 of 1 checks failed: the pixels of the colour given to DayFontColor: expected True, got False"
+    },
+    "ColourTests.GridFontColor_ColoursTheDayNumbers": {
+      "fails": "1 of 1 checks failed: the pixels of the colour given to GridFontColor: expected True, got False"
+    },
+    "ColourTests.GridFont_DaysOfTheMonthsBeforeAndAfterAreGrey": {
+      "fails": "1 of 1 checks failed: the pixels of grey (&HAAAAAA) for the days of September and November in the grid for October 2026: expected True, got False"
+    },
+    "ColourTests.GridLinesColor_Flat_DefaultIsDrawnAsTheSystemColour": {
+      "fails": "1 of 2 checks failed: the colour of a vertical line with the default GridLinesColor and GridCellEffect Flat: expected 10526880, got 16"
+    },
+    "EnabledTests.Enabled_False_DrawsTheTitleInGrey": {
+      "fails": "1 of 1 checks failed: the pixels of the grey (&HBCBCBC) of a disabled title: expected True, got False"
+    },
+    "EnabledTests.Enabled_False_DrawsTheDayNamesAndNumbersInGrey": {
+      "fails": "1 of 1 checks failed: the pixels of the grey (&H999999) of disabled day names and day numbers: expected True, got False"
+    },
+    "GridTests.Value_InAnotherMonth_PlacesTheGrid": {
+      "fails": "1 of 1 checks failed: the date of row 2, column 6 after Value is set to March 15, 2026: expected 3/15/2026, got 10/19/2025"
+    },
+    "GridTests.Value_InAnotherMonth_SelectsACell": {
+      "fails": "1 of 1 checks failed: the pixels of the selected cell's colour after Value is set to a date in another month: expected True, got False"
+    },
+    "GridTests.Value_InAnotherMonth_RefreshPlacesTheGrid": {
+      "fails": "1 of 1 checks failed: the date of row 2, column 6 after Value is set to March 15, 2026 and Refresh is called: expected 3/15/2026, got 10/19/2025"
+    },
+    "GridTests.FirstDay_PlacesTheDatesOfTheGrid": {
+      "fails": "1 of 1 checks failed: the first cell of the grid for October 2026 after FirstDay is set to Sunday: expected 9/27/2026, got 9/28/2026"
+    },
+    "GridTests.FirstDay_RefreshPlacesTheDatesOfTheGrid": {
+      "fails": "1 of 1 checks failed: the first cell of the grid for October 2026 after FirstDay is set to Sunday and Refresh is called: expected 9/27/2026, got 9/28/2026"
+    },
+    "GridTests.Press_NearTheRightEdge_SelectsTheLastColumn": {
+      "fails": "1 of 2 checks failed: the presses near the right edge (x:selected date) that did not select a date of the first row, June 1 to 7, 2026: expected \"\", got \"252:2026-06-08 253:2026-06-08 254:2026-06-08 \""
+    },
+    "GridTests.Press_NearTheBottomEdge_SelectsTheLastRow": {
+      "fails": "1 of 2 checks failed: the presses near the bottom edge (y:selected date) that selected a date below the last row of the grid: expected \"\", got \"290:2026-07-13 291:2026-07-13 \""
+    },
+    "LayoutTests.ShowTitle_True_GivesTheTitleAreaItsHeightBack": {
+      "fails": "1 of 1 checks failed: the height of the title area after ShowTitle is set to True again with ShowDateSelectors False: expected True, got False"
+    },
+    "LayoutTests.TitleFont_ChangeToTheObject_ChangesTheHeightOfTheTitleArea": {
+      "fails": "1 of 1 checks failed: the height of the title area after TitleFont.Size is raised from 16 to 24: it was 46, it is 46: expected True, got False"
+    },
+    "LayoutTests.Title_ThatIsWiderThanTheSpaceBesideTheLists_IsNotCutOff": {
+      "fails": "1 of 1 checks failed: the title \"September 2026\" in the default font reaches the left edge of the control: expected False, got True"
+    },
+    "MethodTests.NextMonth_FromJanuary31_SelectsTheLastDayOfFebruary": {
+      "fails": "1 of 1 checks failed: Value after NextMonth with January 31, 2026 selected: expected 2/28/2026, got 3/3/2026"
+    },
+    "MethodTests.PreviousMonth_FromMarch31_SelectsTheLastDayOfFebruary": {
+      "fails": "1 of 1 checks failed: Value after PreviousMonth with March 31, 2026 selected: expected 2/28/2026, got 3/3/2026"
+    },
+    "MethodTests.NextYear_FromFebruary29_SelectsFebruary28": {
+      "fails": "1 of 1 checks failed: Value after NextYear with February 29, 2024 selected: expected 2/28/2025, got 3/1/2025"
+    },
+    "MethodTests.PreviousYear_FromFebruary29_SelectsFebruary28": {
+      "fails": "1 of 1 checks failed: Value after PreviousYear with February 29, 2024 selected: expected 2/28/2023, got 3/1/2023"
+    },
+    "MouseTests.MouseDown_IsRaisedByAPress": {
+      "fails": "2 of 2 checks failed: the MouseDown events raised by a left press on a day: expected 1, got 0; the MouseDown events raised by a right press on the title area: expected 1, got 0"
+    },
+    "PartsTests.Day_FailedAssignmentChangesNothing": {
+      "fails": "1 of 2 checks failed: Day after setting it to 31 failed with June 15, 2026 selected: expected 15, got 31"
+    },
+    "PartsTests.Month_FailedAssignmentChangesNothing": {
+      "fails": "1 of 3 checks failed: Month after setting it to 13 failed with June 15, 2026 selected: expected 6, got 13"
+    },
+    "PartsTests.Year_FailedAssignmentChangesNothing": {
+      "fails": "1 of 2 checks failed: Year after setting it to 2025 failed with February 29, 2024 selected: expected 2024, got 2025"
+    },
+    "PartsTests.Refresh_AfterAMonthOf13RaisesNoError": {
+      "fails": "1 of 1 checks failed: the error raised by Refresh after setting Month to 13 failed: expected 0, got 5"
+    },
+    "PartsTests.FirstDay_FailedAssignmentChangesNothing": {
+      "fails": "1 of 1 checks failed: FirstDay after setting it to 8 failed: expected 2, got 8"
+    },
+    "SelectorTests.Year_Before1900_IsShownInTheYearList": {
+      "fails": "1 of 1 checks failed: the year list after Year is set to 1899: expected \"1899\", got \"\""
+    },
+    "SelectorTests.Year_After2100_IsShownInTheYearList": {
+      "fails": "1 of 1 checks failed: the year list after Year is set to 2101: expected \"2101\", got \"2026\""
+    },
+    "ValueTests.ValueIsNull_SetToTrueRaisesNoError": {
+      "fails": "1 of 1 checks failed: the error raised by setting ValueIsNull to True: expected 0, got 438"
+    },
+    "ValueTests.ValueIsNull_SetToFalseRaisesNoError": {
+      "fails": "1 of 1 checks failed: the error raised by setting ValueIsNull to False: expected 0, got 438"
+    }
+  }
+}

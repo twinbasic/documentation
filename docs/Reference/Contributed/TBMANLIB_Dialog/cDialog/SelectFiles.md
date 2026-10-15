@@ -19,9 +19,11 @@ Returns a **Collection** of **String** values, one full path for each chosen fil
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.SelectFiles_ReturnsACollectionInBothCases -->
 **SelectFiles** calls **ShowOpen** with the current properties of the object, so every option of the Open dialog applies, [**MultiSelect**](MultiSelect) first of all. With **MultiSelect** **False** the collection holds one path at most. With **MultiSelect** **True** and one file selected it holds one path, and with two or more files selected it holds one path for each. The method saves the program from testing whether **ShowOpen** returned a **String** or an array. An empty result and a failure of the dialog look the same, as they do for **ShowOpen**.
 
 [**FileName**](FileName) is set as **ShowOpen** sets it: to the path when one file was chosen, and to an empty string after several.
+<!-- /test -->
 
 ## Example
 

@@ -1,0 +1,206 @@
+' tbProjPacker, the ProjPacker class: no method raises an error, the log file, and the paths.
+[TestFixture]
+Module ProjPackerTests
+
+    [TestCase]
+    Public Sub Methods_RaiseNoError_WhenTheyFail()
+        Expect.Begin
+        Dim base As String
+        base = Sandbox.Fresh("Class_NoError")
+        Files.WriteText base & "\notes.txt", "this is not a project file"
+        FailingCalls base
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    ' Four calls that fail. An error that reaches here is a failed check.
+    Private Sub FailingCalls(ByVal base As String)
+        Dim pp As New ProjPacker
+        Dim ok As Boolean, stage As String
+        On Error GoTo Raised
+        stage = "Pack of a folder that does not exist"
+        ok = pp.Pack(base & "\Missing", base & "\Out.twinproj")
+        Expect.IsFalse ok, stage & " returns False"
+        stage = "Unpack of a file that is not a project"
+        ok = pp.Unpack(base & "\notes.txt", base & "\Out")
+        Expect.IsFalse ok, stage & " returns False"
+        stage = "Unpack with a log file that cannot be created"
+        ok = pp.Unpack(base & "\Missing.twinproj", base & "\Out", True, base & "\NoFolder\log.txt")
+        Expect.IsFalse ok, stage & " returns False"
+        stage = "Test of a sample that does not exist"
+        ok = pp.Test(base & "\Missing.twinproj")
+        Expect.IsFalse ok, stage & " returns False"
+        Exit Sub
+Raised:
+        Expect.Fail stage & " raised error " & Err.Number & ": " & Err.Description
+        Resume Next
+    End Sub
+
+    [TestCase]
+    Public Sub Log_IsCreatedWhenItDoesNotExist()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, logFile As String
+        base = Sandbox.Fresh("Log_Created")
+        logFile = base & "\pack.log"
+        pp.Pack base & "\Missing", base & "\Out.twinproj", False, logFile
+        Expect.IsTrue Files.Exists(logFile), "the log file after a call that failed"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Log_IsEmptiedWhenItExists()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, logFile As String
+        base = Sandbox.Fresh("Log_Emptied")
+        logFile = base & "\pack.log"
+        Files.WriteText logFile, "old line one" & vbCrLf & "old line two" & vbCrLf & "old line three, longer than the line the call prints" & vbCrLf & "and a fourth" & vbCrLf
+        pp.Pack base & "\Missing", base & "\Out.twinproj", False, logFile
+        Expect.AreEqual "Pack failed: Not a directory: " & base & "\Missing" & vbCrLf, Files.ReadText(logFile), "the log file after a call with a log that held old lines"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Log_HoldsTheLinesOfTheLastCallOnly()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, logFile As String
+        base = Sandbox.Fresh("Log_LastCall")
+        tree = Sample.Build(base)
+        logFile = base & "\both.log"
+        pp.Pack tree, base & "\Sample.twinproj", False, logFile
+        pp.Unpack base & "\Sample.twinproj", base & "\Out", False, logFile
+        Expect.AreEqual 0, Files.CountLines(Files.ReadText(logFile), "Exported "), "the Exported lines of the first call in the log of the second"
+        Expect.AreEqual 1, Files.CountLines(Files.ReadText(logFile), "Imported "), "the Imported lines in the log of the second call"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Log_IsUtf8WithCrLfAndNoByteOrderMark()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String, logFile As String
+        Dim b() As Byte, hex As String
+        base = Sandbox.Fresh("Log_Utf8")
+        tree = Sample.Build(base)
+        out = base & "\caf" & ChrW$(233) & ".twinproj"
+        logFile = base & "\pack.log"
+        Expect.IsTrue pp.Pack(tree, out, False, logFile), "Pack to a file whose name has a non-ASCII letter returns True"
+        b = Files.ReadBytes(logFile)
+        hex = Files.HexOf(b)
+        Expect.IsFalse Left$(hex, 6) = "EFBBBF", "the log starts with a byte order mark"
+        Expect.IsTrue InStr(hex, "636166C3A92E7477696E70726F6A") > 0, "the log holds 'caf', the UTF-8 bytes C3 A9 of the letter and '.twinproj'"
+        Expect.AreEqual "0D0A", Right$(hex, 4), "the last two bytes of the log"
+        Expect.AreEqual 0, CountBareLf(hex), "line feeds that no carriage return precedes"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    ' The number of 0A bytes in the hex text of a file that do not follow a 0D byte.
+    Private Function CountBareLf(ByVal Hex As String) As Long
+        Dim i As Long
+        For i = 1 To Len(Hex) - 1 Step 2
+            If Mid$(Hex, i, 2) = "0A" Then
+                If i < 3 Then
+                    CountBareLf = CountBareLf + 1
+                ElseIf Mid$(Hex, i - 2, 2) <> "0D" Then
+                    CountBareLf = CountBareLf + 1
+                End If
+            End If
+        Next
+    End Function
+
+    [TestCase]
+    Public Sub Log_ThatCannotBeCreated_MakesTheCallFailBeforeItDoesAnything()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, out As String
+        base = Sandbox.Fresh("Log_Cannot")
+        tree = Sample.Build(base)
+        out = base & "\Sample.twinproj"
+        Expect.IsFalse pp.Pack(tree, out, False, base & "\NoFolder\pack.log"), "Pack with a log in a folder that does not exist returns False"
+        Expect.IsFalse Files.Exists(out), "the project file Pack wrote"
+        Files.WriteBytes out, Sample.ReferenceBytes()
+        Expect.IsFalse pp.Unpack(out, base & "\Out", False, base & "\NoFolder\unpack.log"), "Unpack with a log in a folder that does not exist returns False"
+        Expect.IsFalse Files.Exists(base & "\Out"), "the folder Unpack made"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Log_LeftOut_WritesNoFile()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, before As String
+        base = Sandbox.Fresh("Log_None")
+        tree = Sample.Build(base)
+        before = Files.ListTree(base)
+        pp.Pack tree, base & "\Sample.twinproj"
+        Expect.AreEqual Files.SortedJoin(Replace(before, "|", vbLf) & vbLf & "Sample.twinproj" & vbLf), Files.ListTree(base), "the folders and files of the sandbox folder after a Pack with no log"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Paths_Relative_StartFromTheCurrentDirectory()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, here As String
+        base = Sandbox.Fresh("Paths_Relative")
+        Sample.Build base
+        here = CurDir$
+        ChDrive base
+        ChDir base
+        Expect.IsTrue pp.Pack("PackSample", "Relative.twinproj"), "Pack with relative paths returns True"
+        Expect.IsTrue pp.Unpack("Relative.twinproj", "RelativeOut"), "Unpack with relative paths returns True"
+        ChDrive here
+        ChDir here
+        Expect.IsTrue Files.Exists(base & "\Relative.twinproj"), "the project file in the current directory"
+        Sample.ExpectTree base & "\RelativeOut", "the folder in the current directory after Unpack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Paths_WithForwardSlashes_AreAccepted()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, slashed As String
+        base = Sandbox.Fresh("Paths_Slash")
+        Sample.Build base
+        slashed = Replace(base, "\", "/")
+        Expect.IsTrue pp.Pack(slashed & "/PackSample", slashed & "/Slash.twinproj"), "Pack with forward slashes returns True"
+        Expect.IsTrue pp.Unpack(slashed & "/Slash.twinproj", slashed & "/SlashOut"), "Unpack with forward slashes returns True"
+        Sample.ExpectTree base & "\SlashOut", "the folder after Unpack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Paths_LongerThan260Characters_AreAccepted()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, deep As String, deep2 As String, packed As String, back As String
+        base = Sandbox.Fresh("Paths_Long")
+        tree = Sample.Build(base)
+        pp.Pack tree, base & "\Sample.twinproj"
+        deep = Sandbox.PathOfLength(base & "\Deep", 300)
+        Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", deep), "Unpack to a folder whose path is 300 characters returns True"
+        Expect.IsTrue Files.Exists(deep & "\Sources\Module1.twin"), "a file in that folder"
+        deep2 = Sandbox.PathOfLength(base & "\Deeper", 300)
+        pp.Unpack base & "\Sample.twinproj", deep2
+        packed = deep2 & "\Packed.twinproj"
+        Expect.IsTrue pp.Pack(deep, packed), "Pack of a folder whose path is 300 characters, to a file whose path is more than 300, returns True"
+        Expect.IsTrue Files.Exists(packed), "the project file with the long path"
+        back = Sandbox.PathOfLength(base & "\Back", 300)
+        Expect.IsTrue pp.Unpack(packed, back), "Unpack of the project file with the long path returns True"
+        Expect.IsTrue Files.Exists(back & "\Sources\Forms\Form1.cls"), "a file in the folder it unpacked to"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,276 @@
+' tbProjPacker, ProjPacker.Unpack: what is written, what is left alone, and the reasons it prints.
+'
+' The project file that most cases unpack is the one the Import/export tool wrote from the sample
+' tree (Sample.ReferenceBytes), so they check that the package reads the tool's file.
+[TestFixture]
+Module UnpackTests
+
+    ' Writes the Import/export tool's file as Folder\Name.
+    Private Sub WriteReference(ByVal Path As String)
+        Files.WriteBytes Path, Sample.ReferenceBytes()
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_FileOfTheImportExportTool_WritesEveryFile()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, out As String
+        base = Sandbox.Fresh("Unpack_Reference")
+        WriteReference base & "\Sample.twinproj"
+        out = base & "\Out"
+        Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", out), "Unpack of the Import/export tool's file returns True"
+        Sample.ExpectTree out, "the folder after Unpack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_SummaryLine_NamesTheProjectTheFolderAndTheCounts()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, out As String, logFile As String
+        base = Sandbox.Fresh("Unpack_SummaryLine")
+        WriteReference base & "\Sample.twinproj"
+        out = base & "\Out"
+        logFile = base & "\unpack.log"
+        Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", out, False, logFile), "Unpack returns True"
+        Expect.AreEqual "Imported ""PackSample"" -> " & out & "\  (6 files, 7 directories)" & vbCrLf, Files.ReadText(logFile), "the log"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_SummaryLine_BeginsWithImported()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, logFile As String
+        base = Sandbox.Fresh("Unpack_Imported")
+        WriteReference base & "\Sample.twinproj"
+        logFile = base & "\unpack.log"
+        pp.Unpack base & "\Sample.twinproj", base & "\Out", False, logFile
+        Expect.AreEqual "Imported ", Files.Head(Files.ReadText(logFile), "Imported "), "the first characters of the summary line of Unpack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_PutsTheTopLevelEntriesDirectlyIntoOutputDir()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String
+        base = Sandbox.Fresh("Unpack_Direct")
+        WriteReference base & "\Sample.twinproj"
+        pp.Unpack base & "\Sample.twinproj", base & "\Out"
+        Expect.IsTrue Files.Exists(base & "\Out\Settings"), "Settings directly in outputDir"
+        Expect.IsTrue Files.IsFolder(base & "\Out\Sources"), "Sources directly in outputDir"
+        Expect.IsFalse Files.Exists(base & "\Out\PackSample"), "a folder named after the project in outputDir"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_CreatesOutputDirWithItsMissingParents()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, out As String
+        base = Sandbox.Fresh("Unpack_Parents")
+        WriteReference base & "\Sample.twinproj"
+        out = base & "\one\two\three"
+        Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", out), "Unpack to a folder whose parents do not exist returns True"
+        Sample.ExpectTree out, "the folder after Unpack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_EmptyOutputDir_CreatesAFolderNamedAfterTheProjectInTheCurrentDirectory()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, here As String
+        base = Sandbox.Fresh("Unpack_Current")
+        WriteReference base & "\Sample.twinproj"
+        here = CurDir$
+        ChDrive base
+        ChDir base
+        Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", ""), "Unpack with an empty outputDir returns True"
+        ChDrive here
+        ChDir here
+        Expect.IsTrue Files.Exists(base & "\PackSample\Settings"), "Settings in a folder named PackSample in the current directory"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_ExtensionOfInputFile_IsNotChecked()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String
+        base = Sandbox.Fresh("Unpack_Extension")
+        WriteReference base & "\sample.dat"
+        Expect.IsTrue pp.Unpack(base & "\sample.dat", base & "\Out"), "Unpack of a project file named sample.dat returns True"
+        Sample.ExpectTree base & "\Out", "the folder after Unpack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_ReplacesFilesOfTheSameNameAndKeepsTheOthers()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, out As String
+        base = Sandbox.Fresh("Unpack_Replace")
+        WriteReference base & "\Sample.twinproj"
+        out = base & "\Out"
+        Files.MakeFolder out & "\Extra"
+        Files.WriteText out & "\Settings", "old settings"
+        Files.WriteText out & "\Extra\keep.txt", "keep"
+        Files.WriteText out & "\loose.txt", "loose"
+        Expect.IsTrue pp.Unpack(base & "\Sample.twinproj", out), "Unpack into a folder that holds files returns True"
+        Expect.AreEqual "", Files.Difference(Files.ReadBytes(out & "\Settings"), Sample.SettingsBytes()), "Settings, which the project holds"
+        Expect.AreEqual "keep", Files.ReadText(out & "\Extra\keep.txt"), "Extra\keep.txt, which the project does not hold"
+        Expect.AreEqual "loose", Files.ReadText(out & "\loose.txt"), "loose.txt, which the project does not hold"
+        Expect.IsTrue pp.Pack(out, base & "\Again.twinproj"), "Pack of the folder returns True"
+        Expect.IsTrue pp.Unpack(base & "\Again.twinproj", base & "\Back"), "Unpack of the packed file returns True"
+        Expect.IsTrue Files.Exists(base & "\Back\loose.txt"), "loose.txt in what Pack packed from the folder"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_FileThatIsNotAProject_ChangesNothingInOutputDir()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, out As String, before As String
+        base = Sandbox.Fresh("Unpack_Bad_Nothing")
+        Files.WriteText base & "\notes.txt", "this is not a project file"
+        out = base & "\Out"
+        Files.MakeFolder out & "\Sub"
+        Files.WriteText out & "\Settings", "s"
+        Files.WriteText out & "\Sub\a.txt", "a"
+        before = Files.ListTree(out)
+        Expect.IsFalse pp.Unpack(base & "\notes.txt", out, True), "Unpack of a text file with cleanFirst returns False"
+        Expect.AreEqual before, Files.ListTree(out), "the folders and files of outputDir"
+        Expect.AreEqual "s", Files.ReadText(out & "\Settings"), "Settings in outputDir"
+        Expect.IsFalse pp.Unpack(base & "\Missing.twinproj", out, True), "Unpack of a file that does not exist with cleanFirst returns False"
+        Expect.AreEqual before, Files.ListTree(out), "the folders and files of outputDir after the second call"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_NeverChangesTheProjectFile()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, file As String, before() As Byte
+        base = Sandbox.Fresh("Unpack_Input")
+        file = base & "\Sample.twinproj"
+        WriteReference file
+        before = Files.ReadBytes(file)
+        pp.Unpack file, base & "\Out", True
+        Expect.AreEqual "", Files.Difference(Files.ReadBytes(file), before), "the project file after Unpack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_FileThatDoesNotExist_Fails()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, logFile As String
+        base = Sandbox.Fresh("Unpack_Missing")
+        logFile = base & "\unpack.log"
+        Expect.IsFalse pp.Unpack(base & "\Missing.twinproj", base & "\Out", False, logFile), "Unpack of a file that does not exist returns False"
+        Expect.AreEqual "Unpack failed: Input file not found: " & base & "\Missing.twinproj" & vbCrLf, Files.ReadText(logFile), "the log"
+        Expect.IsFalse Files.Exists(base & "\Out"), "outputDir was created"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_InputThatIsAFolder_Fails()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, logFile As String
+        base = Sandbox.Fresh("Unpack_Folder")
+        Files.MakeFolder base & "\Sample.twinproj"
+        logFile = base & "\unpack.log"
+        Expect.IsFalse pp.Unpack(base & "\Sample.twinproj", base & "\Out", False, logFile), "Unpack of a folder returns False"
+        Expect.AreEqual "Unpack failed: Input is a directory, not a file: " & base & "\Sample.twinproj" & vbCrLf, Files.ReadText(logFile), "the log"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_FileThatIsNotAProject_FailsWithBadMagic()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, logFile As String
+        base = Sandbox.Fresh("Unpack_BadMagic")
+        Files.WriteText base & "\notes.txt", "this is not a project file"
+        logFile = base & "\unpack.log"
+        Expect.IsFalse pp.Unpack(base & "\notes.txt", base & "\Out", False, logFile), "Unpack of a text file returns False"
+        Expect.AreEqual "Unpack failed: Bad magic: ", Files.Head(Files.ReadText(logFile), "Unpack failed: Bad magic: "), "the log"
+        Expect.IsFalse Files.Exists(base & "\Out"), "outputDir was created"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_FileOfAnotherFormatVersion_FailsWithUnsupportedVersion()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, logFile As String
+        Dim b(0 To 5) As Byte
+        base = Sandbox.Fresh("Unpack_Version")
+        b(0) = &H1C
+        b(1) = &HA5
+        b(2) = &HB
+        b(3) = &HEA
+        b(4) = 2
+        b(5) = 0
+        Files.WriteBytes base & "\v2.twinproj", b
+        logFile = base & "\unpack.log"
+        Expect.IsFalse pp.Unpack(base & "\v2.twinproj", base & "\Out", False, logFile), "Unpack of a file with the project magic number and format version 2 returns False"
+        Expect.AreEqual "Unpack failed: Unsupported file format version: ", Files.Head(Files.ReadText(logFile), "Unpack failed: Unsupported file format version: "), "the log"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_FileThatEndsTooSoon_FailsAsTruncated()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, logFile As String
+        Dim all() As Byte, cut() As Byte
+        Dim i As Long
+        base = Sandbox.Fresh("Unpack_Truncated")
+        all = Sample.ReferenceBytes()
+        ReDim cut(0 To 299)
+        For i = 0 To 299
+            cut(i) = all(i)
+        Next
+        Files.WriteBytes base & "\cut.twinproj", cut
+        logFile = base & "\unpack.log"
+        Expect.IsFalse pp.Unpack(base & "\cut.twinproj", base & "\Out", False, logFile), "Unpack of the first 300 bytes of a project file returns False"
+        Expect.AreEqual "Unpack failed: Truncated file: ", Files.Head(Files.ReadText(logFile), "Unpack failed: Truncated file: "), "the log"
+        Expect.IsFalse Files.Exists(base & "\Out"), "outputDir was created"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Unpack_OutputDirThatCannotBeCreated_Fails()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, logFile As String
+        base = Sandbox.Fresh("Unpack_CannotCreate")
+        WriteReference base & "\Sample.twinproj"
+        Files.WriteText base & "\afile", "x"
+        logFile = base & "\unpack.log"
+        Expect.IsFalse pp.Unpack(base & "\Sample.twinproj", base & "\afile\Out", False, logFile), "Unpack to a folder below a file returns False"
+        Expect.AreEqual "Unpack failed: Cannot create directory: ", Files.Head(Files.ReadText(logFile), "Unpack failed: Cannot create directory: "), "the log"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,42 @@
+' Generics: a tuple that holds an object. The tuple classes store each item with =, not with Set, so
+' a tuple of an object type cannot be created. A tuple of a class such as Collection does not
+' compile, and the compile error stops the whole project, so it has no case here.
+[TestFixture]
+Module ObjectItemTests
+
+    [TestCase]
+    Public Sub New_ObjectItemHoldsAnObject()
+        Expect.Begin
+        Dim c As Object
+        Set c = New Collection
+        Dim t As TupleOf1(Of Object)
+        Dim n As Long, d As String
+        On Error Resume Next
+        Set t = New TupleOf1(Of Object)(c)
+        n = Err.Number
+        d = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 0, n, "Err.Number of New TupleOf1(Of Object) given a Collection (" & d & ")"
+        If Not t Is Nothing Then
+            Expect.IsTrue t.Item1 Is c, "Item1 of a TupleOf1(Of Object) created with a Collection"
+        Else
+            Expect.Fail "New TupleOf1(Of Object) given a Collection returned no tuple"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_ObjectItemHoldsNothing()
+        Expect.Begin
+        Dim t As TupleOf1(Of Object)
+        Dim n As Long, d As String
+        On Error Resume Next
+        Set t = New TupleOf1(Of Object)(Nothing)
+        n = Err.Number
+        d = Err.Description
+        On Error GoTo 0
+        Expect.AreEqual 0, n, "Err.Number of New TupleOf1(Of Object) given Nothing (" & d & ")"
+        Expect.Done
+    End Sub
+
+End Module

@@ -29,6 +29,7 @@ Else
 End If
 ```
 
+<!-- test: CDialogFontTests.ShowDialog_OKReturnsTrue, CDialogFontTests.ShowDialog_CancelReturnsFalseAndKeepsTheProperties -->
 ## How the dialog is shown
 
 [**ShowDialog**](#showdialog) calls `ChooseFontW` with a `LOGFONT` made from the properties and the flag `CF_INITTOLOGFONTSTRUCT`, which is always set. The size is passed in points, as the structure holds it in tenths of a point, and as a height in pixels at 96 dots per inch (`-Size * 96 / 72`). Four properties set a flag when they are **True**: [**ScreenFontsOnly**](#screenfontsonly) (`CF_SCREENFONTS`), [**ShowEffects**](#showeffects) (`CF_EFFECTS`), [**ForceFontExist**](#forcefontexist) (`CF_FORCEFONTEXIST`) and [**FixedPitchOnly**](#fixedpitchonly) (`CF_FIXEDPITCHONLY`, together with a fixed pitch in the `LOGFONT`). `CF_LIMITSIZE` is set when [**MinSize**](#minsize) or [**MaxSize**](#maxsize) is above 0. The class sets no hook, template, printer device context or help button. The dialog is modal and has the title *Font*.
@@ -37,9 +38,13 @@ When the user chooses **OK**, [**ShowDialog**](#showdialog) stores the face, the
 
 The face list holds every font that Windows lists for the screen, including the vertical variants, whose names begin with `@`: the class sets no flag that hides them. The list of styles, the script box and the colors depend on the face and on Windows, and the class reads neither the style name nor the script that the user chose, only the weight and the italic bit.
 
+<!-- /test -->
+
+<!-- test: CDialogFontTests.ShowDialog_MinSizeAboveMaxSizeOpensTheDialogOrRaisesAnError -->
 > [!WARNING] 1.1.0.0
 > **ShowDialog** also returns **False**, without showing a dialog, when the call to Windows fails. A **MinSize** above 0 with **MaxSize** left at 0, or a **MinSize** above **MaxSize**, makes it fail. The class does not read the error code, so the program cannot tell such a failure from a **Cancel**. Set both [**MinSize**](#minsize) and [**MaxSize**](#maxsize), or neither.
 
+<!-- test: CDialogFontTests.Defaults_AreThoseOfThePage, CDialogFontTests.Bold_Italic_AreBitsOfStyle, CDialogFontTests.Italic_AloneGivesStyle2, CDialogFontTests.Color_StoresAnyLong -->
 ## Properties
 
 ### Bold
@@ -123,6 +128,9 @@ Syntax: *object*.**ForceFontExist** [ **=** *value* ]
 
 A **Boolean**, **True** by default. When it is **True** and the face box holds a name that is not in the list, **OK** shows a message, *There is no font with that name. Choose a font from the list of fonts.*, and the dialog stays open; **Cancel** then returns **False** and keeps [**FaceName**](#facename). When it is **False**, **OK** closes the dialog.
 
+<!-- /test -->
+
+<!-- test: CDialogFontTests.ShowDialog_MissingFaceWithoutForceFontExistGivesAnEmptyFaceName -->
 > [!NOTE] 1.1.0.0
 > With **ForceFontExist** **False** and a [**FaceName**](#facename) that is not installed, **OK** returns **True** and sets **FaceName** to an empty string.
 
@@ -185,6 +193,7 @@ Syntax: *object*.**MinSize** [ **=** *value* ]
 
 A **Long**, 0 by default, which means no limit. Above 0, [**ShowDialog**](#showdialog) sets `CF_LIMITSIZE` and passes the value as the smallest size. The size list then starts at the smallest standard size not below it.
 
+<!-- test: CDialogFontTests.ShowDialog_MinSizeAloneOpensTheDialog, CDialogFontTests.ShowDialog_MinSizeAndMaxSizeOpenTheDialog -->
 > [!WARNING] 1.1.0.0
 > A **MinSize** above 0 needs a [**MaxSize**](#maxsize) of at least the same value. With **MaxSize** left at 0, [**ShowDialog**](#showdialog) returns **False** at once, without a dialog, as if the user had cancelled.
 
@@ -196,6 +205,7 @@ dlg.MaxSize = 72
 Debug.Print dlg.MinSize
 ```
 
+<!-- test: CDialogFontTests.Size_IgnoresZeroAndNegativeValues, CDialogFontTests.Style_HoldsTheNumberAssigned, CDialogFontTests.Reset_RestoresTheStartingValues, CDialogFontTests.ToCssFont_HasTheDocumentedForm, CDialogFontTests.ToCssFont_LeavesOutStrikeOutAndColor -->
 ### OwnerHwnd
 {: .no_toc }
 
@@ -376,7 +386,7 @@ The result has the form
 
 `font-family: 'Segoe UI'; font-size: 9pt; font-weight: normal; font-style: normal; text-decoration: none;`
 
-with the face name between single quotes, the size in points, `bold` or `normal`, `italic` or `normal`, and `underline` or `none`. It does not write [**StrikeOut**](#strikeout) or [**Color**](#color). A single quote in the face name is written as it is, without an escape, and ends the quoted name early. A fractional size is written with the decimal separator of the regional settings of the computer, so the CSS is wrong where that is a comma.
+with the face name between single quotes, the size in points, `bold` or `normal`, `italic` or `normal`, and `underline` or `none`. It does not write [**StrikeOut**](#strikeout) or [**Color**](#color). A fractional size is written with the decimal separator of the regional settings of the computer, so the CSS is wrong where that is a comma.
 
 ```tb check_build check_run
 Dim dlg As New cDialogFont
@@ -391,6 +401,13 @@ Debug.Print dlg.ToCssFont()
 ' font-family: 'Courier New'; font-size: 14pt; font-weight: bold; font-style: italic; text-decoration: underline;
 ```
 
+<!-- /test -->
+
+<!-- test: CDialogFontTests.ToCssFont_EscapesASingleQuoteInTheFaceName -->
+> [!WARNING] 1.1.0.0
+> A single quote in the face name is written as it is, without an escape, so the quoted name ends early and the CSS is wrong for such a face.
+
+<!-- test: CDialogFontTests.ToDescription_NamesFaceSizeAndEffects -->
 ### ToDescription
 {: .no_toc }
 
@@ -415,9 +432,13 @@ Debug.Print dlg.ToDescription()
 ' Courier New 14pt Bold Italic Underline Strikeout
 ```
 
+<!-- /test -->
+
 ## Enumerations
 
+<!-- test: compile FontStyleQualifiedByTheClass, CDialogFontTests.Enumerations_HaveTheDocumentedValues -->
 The enumerations are declared inside the class. A program names their members with the name of the enumeration in front, as in the samples, or by the member alone, such as `StyleBold`. The name of the class cannot be put in front: `cDialogFont.FontStyle.StyleBold` is refused with TB5079, *Unrecognized symbol 'cDialogFont'*. Only **FontStyle** is used by a member, the property [**Style**](#style). The other three hold Windows constants for the font structure and are not taken or returned by any member.
+<!-- /test -->
 
 ### FontFamily
 {: .no_toc }

@@ -1,0 +1,234 @@
+' BigNumber: AssignAddition, AssignSubtraction, AssignMultiplication, AssignDivision and
+' AssignSquared, checked against Decimal arithmetic for operands of up to 12 digits and against
+' digit-by-digit decimal strings for large ones.
+[TestFixture]
+Module ArithmeticTests
+
+    Private Function Operands() As Variant
+        Operands = Array("0", "1", "-1", "7", "-7", "123456789012", "-987654321098", "999999999999")
+    End Function
+
+    [TestCase]
+    Public Sub AssignAddition_Signs()
+        Expect.Begin
+        Dim v As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        v = Operands()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                a.ValueString = v(i)
+                b.ValueString = v(j)
+                r.AssignAddition a, b
+                Expect.AreEqual DecAdd(v(i), v(j)), r.ValueString, v(i) & " + " & v(j)
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignAddition_ManualExample()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "123456789012345678901234567890"
+        b.ValueString = "987654321098765432109876543210"
+        r.AssignAddition a, b
+        Expect.AreEqual "1111111110111111111011111111100", r.ValueString, "123456789012345678901234567890 + 987654321098765432109876543210"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignAddition_LargeNumbers()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = Pattern(500, 1)
+        b.ValueString = Pattern(480, 2)
+        r.AssignAddition a, b
+        Expect.AreEqual StrAdd(Pattern(500, 1), Pattern(480, 2)), r.ValueString, "the sum of a 500-digit and a 480-digit number"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSubtraction_Signs()
+        Expect.Begin
+        Dim v As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        v = Operands()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                a.ValueString = v(i)
+                b.ValueString = v(j)
+                r.AssignSubtraction a, b
+                Expect.AreEqual DecSub(v(i), v(j)), r.ValueString, v(i) & " - " & v(j)
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSubtraction_LargeNumbers()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        Dim c As String
+        c = Pattern(450, 3)
+        b.ValueString = Pattern(500, 1)
+        a.ValueString = StrAdd(Pattern(500, 1), c)
+        r.AssignSubtraction a, b
+        Expect.AreEqual c, r.ValueString, "(a 500-digit number plus a 450-digit one) minus the 500-digit number"
+        r.AssignSubtraction b, a
+        Expect.AreEqual "-" & c, r.ValueString, "the same difference the other way round"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignMultiplication_Signs()
+        Expect.Begin
+        Dim v As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        v = Operands()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                a.ValueString = v(i)
+                b.ValueString = v(j)
+                r.AssignMultiplication a, b
+                Expect.AreEqual DecMul(v(i), v(j)), r.ValueString, v(i) & " * " & v(j)
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignMultiplication_LargeNumbers()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        Dim p As String
+        Dim q As String
+        p = Pattern(600, 3)
+        q = Pattern(580, 4)
+        a.ValueString = p
+        b.ValueString = q
+        r.AssignMultiplication a, b
+        Expect.AreEqual StrMul(p, q), r.ValueString, "a 600-digit number times a 580-digit one"
+        a.ValueString = "-" & p
+        r.AssignMultiplication a, b
+        Expect.AreEqual "-" & StrMul(p, q), r.ValueString, "the same product with a negative first factor"
+        b.ValueString = "-" & q
+        r.AssignMultiplication a, b
+        Expect.AreEqual StrMul(p, q), r.ValueString, "the same product with two negative factors"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignMultiplication_OperandsOf2048Bits()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueBinary = Rep("1", 2048)
+        r.AssignMultiplication a, a
+        Expect.AreEqual Rep("1", 2047) & Rep("0", 2048) & "1", r.ValueBinary, "(2^2048 - 1) squared, as AssignMultiplication"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignDivision_TruncatesTowardZero()
+        Expect.Begin
+        Dim v As Variant
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        v = Operands()
+        For i = LBound(v) To UBound(v)
+            For j = LBound(v) To UBound(v)
+                If v(j) <> "0" Then
+                    a.ValueString = v(i)
+                    b.ValueString = v(j)
+                    r.AssignDivision a, b
+                    Expect.AreEqual DecQuot(v(i), v(j)), r.ValueString, v(i) & " \ " & v(j)
+                End If
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignDivision_LargeNumbers()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim q As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = Pattern(800, 5)
+        b.ValueString = Pattern(300, 6)
+        q.AssignDivision a, b
+        r.AssignModulus a, b
+        Expect.AreEqual Pattern(800, 5), StrAdd(StrMul(q.ValueString, Pattern(300, 6)), r.ValueString), "(a \ b) * b + (a Mod b) for an 800-digit a and a 300-digit b"
+        Expect.AreEqual -1, StrCmp(r.ValueString, Pattern(300, 6)), "the remainder is less than the divisor"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSquared_Signs()
+        Expect.Begin
+        Dim v As Variant
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        Dim i As Long
+        v = Operands()
+        For i = LBound(v) To UBound(v)
+            a.ValueString = v(i)
+            r.AssignSquared a
+            Expect.AreEqual DecMul(v(i), v(i)), r.ValueString, v(i) & " squared"
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSquared_LargeNumber()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "-" & Pattern(600, 7)
+        r.AssignSquared a
+        Expect.AreEqual StrMul(Pattern(600, 7), Pattern(600, 7)), r.ValueString, "a negative 600-digit number squared"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Example_Factorial50()
+        Expect.Begin
+        Dim result As New BigNumber
+        Dim factor As New BigNumber
+        Dim temp As New BigNumber
+        Dim i As Long
+        result.AssignFromLong 1
+        For i = 2 To 50
+            factor.AssignFromLong i
+            temp.AssignMultiplication result, factor
+            result.ValueString = temp.ValueString
+        Next i
+        Expect.AreEqual "30414093201713378043612608166064768844377641568960512000000000000", result.ValueString, "50!"
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,68 @@
+{
+  "version": "2.3.1.1",
+  "cases": {
+    "ConvertToJsonTests.String_ThatIsNotANumber_IsQuoted": {
+      "fails": "3 of 3 checks failed: 16 letters E: expected \"\"EEEEEEEEEEEEEEEE\"\", got \"EEEEEEEEEEEEEEEE\"; 16 periods: expected \"\"................\"\", got \"................\"; 16 digits with leading zeros (not a JSON number): expected \"\"0000123456789012\"\", got \"0000123456789012\""
+    },
+    "ConvertToJsonTests.Dictionary_KeyWithAQuote_IsEscaped": {
+      "fails": "1 of 1 checks failed: ConvertToJson of a key a\"b: expected \"{\"a\\\"b\":1}\", got \"{\"a\"b\":1}\""
+    },
+    "ConvertToJsonTests.Dictionary_KeyWithABackslash_IsEscaped": {
+      "fails": "1 of 1 checks failed: ConvertToJson of a key a\\b: expected \"{\"a\\\\b\":1}\", got \"{\"a\\b\":1}\""
+    },
+    "ConvertToJsonTests.Dictionary_KeyWithALineFeed_IsEscaped": {
+      "fails": "1 of 1 checks failed: ConvertToJson of a key with a line feed: expected \"{\"a\\nb\":1}\", got \"{\"a b\":1}\""
+    },
+    "ConvertToJsonTests.Array_LowerBoundBelowZero_IsWritten": {
+      "fails": "1 of 1 checks failed: ConvertToJson of an array from -1 to 1: expected \"[4,5,6]\", got \"[]\""
+    },
+    "ConvertToJsonTests.Array_TwoDimensions_SecondLowerBoundBelowZero_IsWritten": {
+      "fails": "1 of 1 checks failed: ConvertToJson of an array (0 To 1, -1 To 0): expected \"[[1,2],[3,4]]\", got \"[null,null]\""
+    },
+    "DatesTests.ConvertToUtc_DateBefore30December1899_AppliesTheZoneRules": {
+      "fails": "2 of 2 checks failed: ConvertToUtc of 3 June 1850 12:00: expected \"1850-06-03 10:00:00\", got \"1850-06-04 14:00:00\"; ConvertToUtc of 29 December 1899 12:00: expected \"1899-12-29 11:00:00\", got \"1899-12-30 13:00:00\""
+    },
+    "DatesTests.ParseUtc_DateBefore30December1899_AppliesTheZoneRules": {
+      "fails": "2 of 2 checks failed: ParseUtc of 3 June 1850 12:00: expected \"1850-06-03 14:00:00\", got \"1850-06-04 10:00:00\"; ParseUtc of 29 December 1899 12:00: expected \"1899-12-29 13:00:00\", got \"1899-12-30 11:00:00\""
+    },
+    "DatesTests.ConvertToIso_DateBefore30December1899_AppliesTheZoneRules": {
+      "fails": "1 of 1 checks failed: ConvertToIso of 3 June 1850 12:00: expected \"1850-06-03T10:00:00.000Z\", got \"1850-06-04T14:00:00.000Z\""
+    },
+    "DatesTests.ParseIso_DateBefore30December1899_AppliesTheZoneRules": {
+      "fails": "1 of 1 checks failed: ParseIso of 1850-06-03T12:00:00Z: expected \"1850-06-03 14:00:00\", got \"1850-06-05 10:00:00\""
+    },
+    "DatesTests.ConvertToUtc_DateBefore1601_Raises10012": {
+      "fails": "2 of 2 checks failed: run-time error of ConvertToUtc(1 January 1500): expected 10012, got 0; source of that error: expected \"UtcConverter.ConvertToUtc\", got \"\""
+    },
+    "DatesTests.ParseUtc_DateBefore1601_Raises10011": {
+      "fails": "2 of 2 checks failed: run-time error of ParseUtc(1 January 1500): expected 10011, got 0; source of that error: expected \"UtcConverter.ParseUtc\", got \"\""
+    },
+    "DatesTests.ConvertToIso_DateBefore1601_Raises10014": {
+      "fails": "2 of 2 checks failed: run-time error of ConvertToIso(1 January 1500): expected 10014, got 0; source of that error: expected \"UtcConverter.ConvertToIso\", got \"\""
+    },
+    "DatesTests.ParseIso_OffsetWithoutAColon_IsHoursAndMinutes": {
+      "fails": "1 of 1 checks failed: ParseIso with +0530 against +05:30: expected \"2024-06-03 11:00:00\", got \"2024-05-12 14:30:00\""
+    },
+    "DatesTests.ParseIso_DateBefore1601_Raises10013": {
+      "fails": "1 of 1 checks failed: run-time error of ParseIso(\"1500-01-01T00:00:00Z\"): expected 10013, got 0"
+    },
+    "DatesTests.ConvertToJson_DateBefore1601_Raises10014": {
+      "fails": "1 of 1 checks failed: run-time error of ConvertToJson(1 January 1500): expected 10014, got 0"
+    },
+    "DictionaryTests.Item_KeysThatDifferInCase_AreSeparateKeys": {
+      "fails": "2 of 3 checks failed: number of keys after d(\"a\") = 1 and d(\"A\") = 2: expected 2, got 1; d(\"a\") after d(\"A\") = 2: expected 1, got 2"
+    },
+    "ParseJsonTests.Strings_NewlineEscape_IsALineFeed": {
+      "fails": "1 of 1 checks failed: ParseJson of the string a\\nb (U+000A is one line feed): expected \"a<A>b\", got \"a<D><A>b\""
+    },
+    "ParseJsonTests.KeysThatDifferInCase_AreSeparateEntries": {
+      "fails": "2 of 3 checks failed: number of keys of {\"id\":1,\"ID\":2}: expected 2, got 1; r(\"id\"): expected 1, got 2"
+    },
+    "ParseJsonTests.Error_ArrayThatIsNotClosed_Raises10001": {
+      "hangs": true
+    },
+    "ParseJsonTests.Error_StringInAnArrayThatIsNotClosed_Raises10001": {
+      "hangs": true
+    }
+  }
+}

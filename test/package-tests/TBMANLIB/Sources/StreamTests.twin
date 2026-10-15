@@ -1,0 +1,340 @@
+' cToolsStream: whole files as text and as bytes, the line mode, and the stream that the text
+' calls leave open.
+[TestFixture]
+Module StreamTests
+
+    ' ---- the stream that the text calls leave open
+
+    [TestCase]
+    Public Sub LoadFileAsText_AfterLoadFileAsText_ReadsTheFile()
+        Expect.Begin
+        Dim dir As String, p As String, S As New cToolsStream, t As String
+        dir = Sandbox.Fresh("stream1")
+        p = dir & "\a.txt"
+        Sandbox.WriteAscii p, "hello"
+        On Error Resume Next
+        t = S.LoadFileAsText(p)
+        Expect.AreEqual 0, Err.Number, "first LoadFileAsText of a file raised an error"
+        Err.Clear
+        t = S.LoadFileAsText(p)
+        Expect.AreEqual 0, Err.Number, "second LoadFileAsText on the same object raised error " & Err.Number & " " & Err.Description
+        Expect.AreEqual "hello", t, "text from the second LoadFileAsText"
+        S.Inst.Close
+        On Error GoTo 0
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFileAsText_AfterSaveFileAsText_ReadsTheFile()
+        Expect.Begin
+        Dim dir As String, p As String, S As New cToolsStream, t As String
+        dir = Sandbox.Fresh("stream2")
+        p = dir & "\a.txt"
+        On Error Resume Next
+        S.SaveFileAsText p, "saved text"
+        Expect.AreEqual 0, Err.Number, "SaveFileAsText raised an error"
+        Err.Clear
+        t = S.LoadFileAsText(p)
+        Expect.AreEqual 0, Err.Number, "LoadFileAsText after SaveFileAsText raised error " & Err.Number & " " & Err.Description
+        Expect.AreEqual "saved text", t, "text from LoadFileAsText after SaveFileAsText"
+        S.Inst.Close
+        On Error GoTo 0
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFileAsText_AfterFailedLoad_ReadsTheFile()
+        Expect.Begin
+        Dim dir As String, p As String, S As New cToolsStream, t As String
+        dir = Sandbox.Fresh("stream3")
+        p = dir & "\a.txt"
+        Sandbox.WriteAscii p, "present"
+        On Error Resume Next
+        t = S.LoadFileAsText(dir & "\missing.txt")
+        Expect.AreEqual 3002, Err.Number, "LoadFileAsText of a missing file raises 3002"
+        Err.Clear
+        t = S.LoadFileAsText(p)
+        Expect.AreEqual 0, Err.Number, "LoadFileAsText after a failed load raised error " & Err.Number & " " & Err.Description
+        Expect.AreEqual "present", t, "text from LoadFileAsText after a failed load"
+        S.Inst.Close
+        On Error GoTo 0
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveFileAsText_AfterSaveFileAsText_ReplacesTheFile()
+        Expect.Begin
+        Dim dir As String, p As String, S As New cToolsStream
+        dir = Sandbox.Fresh("stream4")
+        p = dir & "\a.txt"
+        On Error Resume Next
+        S.SaveFileAsText p, "0123456789"
+        S.SaveFileAsText p, "abc"
+        Expect.AreEqual 0, Err.Number, "SaveFileAsText raised an error"
+        S.Inst.Close
+        On Error GoTo 0
+        Expect.AreEqual "EF BB BF 61 62 63", Sandbox.HexOf(p), "bytes of the file after saving 0123456789 and then abc with one object"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BinaryFunctions_CloseAnOpenStream()
+        Expect.Begin
+        Dim dir As String, p As String, q As String, S As New cToolsStream, t As String
+        Dim b() As Byte, back() As Byte
+        dir = Sandbox.Fresh("stream5")
+        p = dir & "\a.txt"
+        q = dir & "\b.bin"
+        Sandbox.WriteAscii p, "xyz"
+        b = ToolsStr.ToBytes("abc")
+        On Error Resume Next
+        t = S.LoadFileAsText(p)
+        Expect.IsTrue S.SaveFileAsBinary(q, b), "SaveFileAsBinary after a text call returns True"
+        Expect.AreEqual 0, Err.Number, "SaveFileAsBinary after a text call raised error " & Err.Number
+        Err.Clear
+        t = S.LoadFileAsText(p)
+        Expect.AreEqual 0, Err.Number, "LoadFileAsText after SaveFileAsBinary raised error " & Err.Number
+        Expect.AreEqual "xyz", t, "text read after SaveFileAsBinary"
+        Err.Clear
+        Expect.IsTrue S.LoadFileAsBinary(q, back), "LoadFileAsBinary after a text call returns True"
+        Expect.AreEqual "61 62 63", Sandbox.HexOfBytes(back), "bytes read back"
+        Err.Clear
+        t = S.LoadFileAsText(p)
+        Expect.AreEqual 0, Err.Number, "LoadFileAsText after LoadFileAsBinary raised error " & Err.Number
+        S.Inst.Close
+        On Error GoTo 0
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NewObjectForEachCall_ReadsAndWritesTheFile()
+        Expect.Begin
+        Dim dir As String, p As String, t As String
+        dir = Sandbox.Fresh("stream6")
+        p = dir & "\a.txt"
+        On Error Resume Next
+        With New cToolsStream
+            .SaveFileAsText p, "0123456789"
+        End With
+        With New cToolsStream
+            .SaveFileAsText p, "abc"
+        End With
+        Expect.AreEqual 0, Err.Number, "SaveFileAsText on new objects raised error " & Err.Number
+        Err.Clear
+        Expect.AreEqual "EF BB BF 61 62 63", Sandbox.HexOf(p), "bytes of the file after two saves, each with an object of its own"
+        With New cToolsStream
+            t = .LoadFileAsText(p)
+        End With
+        With New cToolsStream
+            t = .LoadFileAsText(p)
+        End With
+        Expect.AreEqual 0, Err.Number, "LoadFileAsText on new objects raised error " & Err.Number
+        Expect.AreEqual "abc", t, "text read by a new object"
+        On Error GoTo 0
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    ' ---- SaveFileAsText
+
+    [TestCase]
+    Public Sub SaveFileAsText_ReturnsTrueWhenTheFileIsWritten()
+        Expect.Begin
+        Dim dir As String, p As String, S As New cToolsStream, r As Boolean
+        dir = Sandbox.Fresh("stream7")
+        p = dir & "\a.txt"
+        On Error Resume Next
+        r = S.SaveFileAsText(p, "hello")
+        Expect.AreEqual 0, Err.Number, "SaveFileAsText raised error " & Err.Number
+        S.Inst.Close
+        On Error GoTo 0
+        Expect.AreEqual "EF BB BF 68 65 6C 6C 6F", Sandbox.HexOf(p), "bytes of the written file"
+        Expect.IsTrue r, "result of SaveFileAsText after it wrote the file"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveFileAsText_MissingFolder_Raises3004()
+        Expect.Begin
+        Dim dir As String, S As New cToolsStream
+        dir = Sandbox.Fresh("stream8")
+        On Error Resume Next
+        S.SaveFileAsText dir & "\nosuch\a.txt", "x"
+        Expect.AreEqual 3004, Err.Number, "SaveFileAsText into a folder that does not exist raises"
+        S.Inst.Close
+        On Error GoTo 0
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveFileAsText_Utf8_StartsWithTheByteOrderMark()
+        Expect.Begin
+        Dim dir As String, p As String, S As New cToolsStream
+        dir = Sandbox.Fresh("stream9")
+        p = dir & "\a.txt"
+        On Error Resume Next
+        S.SaveFileAsText p, "a" & ChrW(233), "UTF-8"
+        S.Inst.Close
+        On Error GoTo 0
+        Expect.AreEqual "EF BB BF 61 C3 A9", Sandbox.HexOf(p), "bytes of a UTF-8 file with the text a and e acute"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFileAsText_MissingFile_Raises3002()
+        Expect.Begin
+        Dim dir As String, S As New cToolsStream, t As String
+        dir = Sandbox.Fresh("stream10")
+        On Error Resume Next
+        t = S.LoadFileAsText(dir & "\missing.txt")
+        Expect.AreEqual 3002, Err.Number, "LoadFileAsText of a file that does not exist raises"
+        S.Inst.Close
+        On Error GoTo 0
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFileAsText_ByteOrderMark_IsNotPartOfTheText()
+        Expect.Begin
+        Dim dir As String, p As String, S As New cToolsStream, t As String
+        Dim b() As Byte
+        dir = Sandbox.Fresh("stream11")
+        p = dir & "\a.txt"
+        b = ToolsStr.ToBytes("x")
+        ReDim b(0 To 5)
+        b(0) = &HEF: b(1) = &HBB: b(2) = &HBF: b(3) = &H61: b(4) = &HC3: b(5) = &HA9
+        Sandbox.WriteBytes p, b
+        On Error Resume Next
+        t = S.LoadFileAsText(p)
+        S.Inst.Close
+        On Error GoTo 0
+        Expect.AreEqual "a" & ChrW(233), t, "text of a UTF-8 file with a byte order mark"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    ' ---- the binary functions
+
+    [TestCase]
+    Public Sub LoadFileAsBinary_MissingFile_ReturnsFalseAndTheErrorTwice()
+        Expect.Begin
+        Dim dir As String, S As New cToolsStream, b() As Byte
+        dir = Sandbox.Fresh("stream12")
+        Expect.IsFalse S.LoadFileAsBinary(dir & "\missing.bin", b), "LoadFileAsBinary of a missing file"
+        Expect.AreEqual "File could not be opened.#File could not be opened.", S.LastError, "LastError after the failed LoadFileAsBinary"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveFileAsBinary_ThenLoadFileAsBinary_RoundTripsAllByteValues()
+        Expect.Begin
+        Dim dir As String, p As String, S As New cToolsStream, b(0 To 255) As Byte, back() As Byte, i As Long
+        dir = Sandbox.Fresh("stream13")
+        p = dir & "\a.bin"
+        For i = 0 To 255
+            b(i) = i
+        Next i
+        Expect.IsTrue S.SaveFileAsBinary(p, b), "SaveFileAsBinary"
+        Expect.AreEqual 256, FileLen(p), "size of the file"
+        Expect.IsTrue S.LoadFileAsBinary(p, back), "LoadFileAsBinary"
+        Expect.AreEqual 255, UBound(back), "upper bound of the bytes read"
+        Expect.AreEqual Sandbox.HexOfBytes(b), Sandbox.HexOfBytes(back), "bytes read back"
+        Expect.AreEqual "", S.LastError, "LastError after a good call"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    ' ---- the line mode
+
+    [TestCase]
+    Public Sub WriteLine_InLineMode_StoresTheLine()
+        Expect.Begin
+        Dim S As New cToolsStream, r As Boolean
+        S.UseLineMode True
+        On Error Resume Next
+        r = S.WriteLine("first")
+        Expect.AreEqual 0, Err.Number, "WriteLine in line mode raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        Expect.AreEqual 1, S.LineData.Count, "number of lines held after one WriteLine"
+        Expect.IsTrue r, "result of WriteLine"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteLine_LineModeOff_Raises1()
+        Expect.Begin
+        Dim S As New cToolsStream
+        On Error Resume Next
+        S.WriteLine "x"
+        Expect.AreEqual 1, Err.Number, "WriteLine with line mode off raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadLine_LineModeOff_Raises1()
+        Expect.Begin
+        Dim S As New cToolsStream, t As String
+        On Error Resume Next
+        t = S.ReadLine()
+        Expect.AreEqual 1, Err.Number, "ReadLine with line mode off raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReadLine_InLineMode_ReadsTheLinesOfTheFile()
+        Expect.Begin
+        Dim dir As String, p As String, S As New cToolsStream, t As String
+        dir = Sandbox.Fresh("stream14")
+        p = dir & "\a.txt"
+        Sandbox.WriteAscii p, "first" & vbCrLf & "second" & vbCrLf & "third"
+        S.UseLineMode True
+        On Error Resume Next
+        t = S.LoadFileAsText(p)
+        S.Inst.Close
+        Expect.AreEqual 1, S.LineNumber, "LineNumber after LoadFileAsText in line mode"
+        Expect.AreEqual "first", S.ReadLine(), "first ReadLine"
+        Expect.AreEqual "second", S.ReadLine(), "second ReadLine"
+        Expect.AreEqual 3, S.LineNumber, "LineNumber after two ReadLine calls"
+        Expect.AreEqual "first", S.ReadLine(1), "ReadLine(1)"
+        Expect.AreEqual 2, S.LineNumber, "LineNumber after ReadLine(1)"
+        Err.Clear
+        t = S.ReadLine(9)
+        Expect.AreEqual 9, Err.Number, "ReadLine of a number that is not a line raises"
+        On Error GoTo 0
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveFileAsText_DataOmittedInLineMode_WritesTheLines()
+        Expect.Begin
+        Dim dir As String, p As String, S As New cToolsStream
+        dir = Sandbox.Fresh("stream15")
+        p = dir & "\a.txt"
+        S.UseLineMode True
+        S.LineData.Add "one"
+        S.LineData.Add "two"
+        On Error Resume Next
+        S.SaveFileAsText p
+        Expect.AreEqual 0, Err.Number, "SaveFileAsText with the text left out raised error " & Err.Number & " " & Err.Description
+        S.Inst.Close
+        On Error GoTo 0
+        Expect.IsTrue Len(Sandbox.HexOf(p)) > 8, "the file holds the lines, not only a byte order mark"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+End Module

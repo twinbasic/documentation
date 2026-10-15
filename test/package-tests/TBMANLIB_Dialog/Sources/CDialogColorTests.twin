@@ -1,0 +1,209 @@
+' cDialogColor: the color as a number and as text, the custom colors, and the Color dialog.
+[TestFixture]
+Module CDialogColorTests
+
+    [TestCase]
+    Public Sub Defaults_AreThoseOfThePage()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        Expect.AreEqual vbWhite, dlg.Color, "Color of a new cDialogColor"
+        Expect.IsFalse dlg.FullOpen, "FullOpen of a new cDialogColor"
+        Expect.IsFalse dlg.PreventFullOpen, "PreventFullOpen of a new cDialogColor"
+        Expect.IsFalse dlg.SolidColor, "SolidColor of a new cDialogColor"
+        Expect.IsTrue dlg.AnyColor, "AnyColor of a new cDialogColor"
+        Expect.AreEqual 0, dlg.OwnerHwnd, "OwnerHwnd of a new cDialogColor"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetCustomColor_StartsWithTheQBColors()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        Dim i As Long
+        For i = 0 To 15
+            Expect.AreEqual QBColor(i), dlg.GetCustomColor(i), "custom color " & i & " of a new cDialogColor"
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Red_Green_Blue_ReadTheBytesOfColor()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.Color = RGB(10, 20, 30)
+        Expect.AreEqual &H1E140A, dlg.Color, "Color after RGB(10, 20, 30)"
+        Expect.AreEqual 10, dlg.Red, "Red"
+        Expect.AreEqual 20, dlg.Green, "Green"
+        Expect.AreEqual 30, dlg.Blue, "Blue"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Red_Green_Blue_SetOnePartAndKeepTheOthers()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.Red = 200
+        dlg.Green = 100
+        dlg.Blue = 50
+        Expect.AreEqual &H3264C8, dlg.Color, "Color after Red 200, Green 100, Blue 50"
+        dlg.Green = 7
+        Expect.AreEqual &H3207C8, dlg.Color, "Color after Green 7"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Red_Green_Blue_ClampToZeroAndAHundredAndFiftyFive()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.Color = RGB(10, 20, 30)
+        dlg.Blue = 300
+        Expect.AreEqual 255, dlg.Blue, "Blue after 300"
+        Expect.AreEqual "RGB(10, 20, 255)", dlg.ToRgbString(), "ToRgbString after Blue 300"
+        dlg.Green = -4
+        Expect.AreEqual 0, dlg.Green, "Green after -4"
+        Expect.AreEqual "#0A00FF", dlg.ToHtmlColor(), "ToHtmlColor after Green -4"
+        dlg.Red = 256
+        Expect.AreEqual 255, dlg.Red, "Red after 256"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Color_NegativeValueReadsOtherBytes()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.Color = -1
+        Expect.AreEqual -1, dlg.Color, "Color after -1"
+        Expect.AreEqual 255, dlg.Red, "Red of -1"
+        Expect.AreEqual 0, dlg.Green, "Green of -1"
+        Expect.AreEqual 0, dlg.Blue, "Blue of -1"
+        dlg.Color = &H80000005
+        Expect.AreEqual 5, dlg.Red, "Red of &H80000005"
+        Expect.AreEqual 1, dlg.Green, "Green of &H80000005"
+        Expect.AreEqual 1, dlg.Blue, "Blue of &H80000005"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetRgb_SetsThePartsAndClamps()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.SetRgb 255, 128, 0
+        Expect.AreEqual "#FF8000", dlg.ToHtmlColor(), "ToHtmlColor after SetRgb 255, 128, 0"
+        dlg.SetRgb 300, -5, 7
+        Expect.AreEqual "RGB(255, 0, 7)", dlg.ToRgbString(), "ToRgbString after SetRgb 300, -5, 7"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToHtmlColor_AndToRgbString_FormatTheColor()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.Color = RGB(160, 176, 192)
+        Expect.AreEqual "#A0B0C0", dlg.ToHtmlColor(), "ToHtmlColor of RGB(160, 176, 192)"
+        Expect.AreEqual "RGB(160, 176, 192)", dlg.ToRgbString(), "ToRgbString of RGB(160, 176, 192)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FromHtmlColor_ReadsSixDigitsWithOrWithoutAHash()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.FromHtmlColor "#00FF7F"
+        Expect.AreEqual "RGB(0, 255, 127)", dlg.ToRgbString(), "ToRgbString after FromHtmlColor #00FF7F"
+        dlg.FromHtmlColor "  ff8000 "
+        Expect.AreEqual "#FF8000", dlg.ToHtmlColor(), "ToHtmlColor after FromHtmlColor '  ff8000 '"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FromHtmlColor_IgnoresTextOfAnotherLength()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.FromHtmlColor "#FF8000"
+        dlg.FromHtmlColor "#abc"
+        Expect.AreEqual "#FF8000", dlg.ToHtmlColor(), "color after FromHtmlColor #abc"
+        dlg.FromHtmlColor ""
+        Expect.AreEqual "#FF8000", dlg.ToHtmlColor(), "color after FromHtmlColor of an empty string"
+        dlg.FromHtmlColor "#1234567"
+        Expect.AreEqual "#FF8000", dlg.ToHtmlColor(), "color after FromHtmlColor of seven digits"
+        dlg.FromHtmlColor "&HFF0000"
+        Expect.AreEqual "#FF8000", dlg.ToHtmlColor(), "color after FromHtmlColor &HFF0000"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FromHtmlColor_StopsAtAPairThatIsNotHexadecimal()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.Color = RGB(1, 2, 3)
+        dlg.FromHtmlColor "#12345G"
+        Expect.AreEqual &H12, dlg.Red, "Red after FromHtmlColor #12345G"
+        Expect.AreEqual &H34, dlg.Green, "Green after FromHtmlColor #12345G"
+        Expect.AreEqual 3, dlg.Blue, "Blue after FromHtmlColor #12345G"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetCustomColor_StoresAndIgnoresAnIndexOutOfRange()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.SetCustomColor 3, RGB(17, 34, 51)
+        dlg.SetCustomColor 99, vbRed
+        dlg.SetCustomColor -1, vbRed
+        Expect.AreEqual &H332211, dlg.GetCustomColor(3), "custom color 3 after SetCustomColor"
+        Expect.AreEqual 0, dlg.GetCustomColor(16), "GetCustomColor(16)"
+        Expect.AreEqual 0, dlg.GetCustomColor(-1), "GetCustomColor(-1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_RestoresTheColorTheFlagsAndTheCustomColors()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.Color = vbRed
+        dlg.SetCustomColor 0, vbRed
+        dlg.FullOpen = True
+        dlg.PreventFullOpen = True
+        dlg.SolidColor = True
+        dlg.AnyColor = False
+        dlg.OwnerHwnd = 99
+        dlg.Reset
+        Expect.AreEqual vbWhite, dlg.Color, "Color after Reset"
+        Expect.AreEqual QBColor(0), dlg.GetCustomColor(0), "custom color 0 after Reset"
+        Expect.IsFalse dlg.FullOpen Or dlg.PreventFullOpen Or dlg.SolidColor, "FullOpen, PreventFullOpen and SolidColor after Reset"
+        Expect.IsTrue dlg.AnyColor, "AnyColor after Reset"
+        Expect.AreEqual 0, dlg.OwnerHwnd, "OwnerHwnd after Reset"
+        Expect.Done
+    End Sub
+
+    ' ---- the dialog
+
+    [TestCase]
+    Public Sub ShowDialog_OKReturnsTrueAndKeepsTheColorItWasGiven()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.Color = RGB(255, 128, 0)
+        Pilot.Arm "id=1"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "dialogs ShowDialog opened"
+        Expect.AreEqual "Color", Pilot.Title(0), "caption of the Color dialog"
+        Expect.IsTrue r, "ShowDialog after OK"
+        Expect.AreEqual RGB(255, 128, 0), dlg.Color, "Color after OK on the color the dialog opened with"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_CancelReturnsFalseAndKeepsTheColor()
+        Expect.Begin
+        Dim dlg As New cDialogColor
+        dlg.Color = RGB(255, 128, 0)
+        Pilot.Arm "id=2"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.IsFalse r, "ShowDialog after Cancel"
+        Expect.AreEqual RGB(255, 128, 0), dlg.Color, "Color after Cancel"
+        Expect.Done
+    End Sub
+
+End Module

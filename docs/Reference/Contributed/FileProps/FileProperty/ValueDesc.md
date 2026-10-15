@@ -14,7 +14,9 @@ Syntax: *object*.**ValueDesc**
 *object*
 : *required* An object expression that evaluates to a **FileProperty** object.
 
-**ValueDesc** returns a **String** containing the property value in localized form, suitable for display. For multi-value properties, all values are combined into a single string; no array handling is required.
+<!-- test: PropertyTests.ValueDesc_IsAString, PropertyTests.ValueDesc_MultiValueProperty_IsOneString, PropertyTests.Value_PropertyWithNoValue_IsEmpty -->
+**ValueDesc** returns a **String** containing the property value in localized form, suitable for display. For multi-value properties, all values are combined into a single string; no array handling is required. A property that has no value returns an empty string.
+<!-- /test -->
 
 To retrieve the value as a **Variant** (which can be an array for multi-value properties), use the [**Value**](Value) property instead.
 

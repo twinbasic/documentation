@@ -17,7 +17,8 @@
 // For a package with a test project it checks that:
 //   * every callout of the section's pages has a marker, and every item of it names something
 //     that exists;
-//   * every case is named by some marker;
+//   * every case is named by some marker, a compile case of the compile/ project included;
+//   * compile/, when there is one, holds compile cases only;
 //   * every [TestCase] Sub starts with Expect.Begin and ends with Expect.Done, and every
 //     [TestCase] can be called;
 //   * expect.json is for the version the section documents (its indexed_from, which the sample
@@ -38,6 +39,8 @@ import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/
 import { parseFrontmatter } from "../lib/frontmatter.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
 import {
+  COMPILE_DIR,
+  compileSources,
   EXPECT_FILE,
   EXPECT_JSON,
   packageTestNames,
@@ -90,32 +93,7 @@ if (
 // The contributed sections that have no test project yet. Each package's project removes it
 // from here; the gate fails on a name here with a project, and on a section neither here nor
 // with one.
-const PENDING = new Set([
-  "ArrayListLib",
-  "AutoCompleteLib",
-  "BigNumberLib",
-  "FileProps",
-  "Fmt",
-  "Generics",
-  "OLEGuids",
-  "TBMANLIB",
-  "TBMANLIB_Aes",
-  "TBMANLIB_ConsoleComponents",
-  "TBMANLIB_ConsoleCore",
-  "TBMANLIB_Diagnostic",
-  "TBMANLIB_Dialog",
-  "TBMANLIB_ListBoxHScroll",
-  "TBMANLIB_RES",
-  "TBMANLIB_Xml",
-  "TwinTimerLib",
-  "VBA_JSON",
-  "VBComDlg",
-  "WinReg",
-  "tbProjPacker",
-  "tsJson",
-  "tsPwGen",
-  "xCalendar",
-]);
+const PENDING = new Set(["ArrayListLib", "WinReg"]);
 
 const DOCS = path.join(REPO_ROOT, "docs");
 const SECTIONS = path.join(DOCS, "Reference", "Contributed");
@@ -352,8 +330,14 @@ function checkPackage(pkg) {
   if (existsSync(path.join(dir, "Sources", EXPECT_FILE)))
     out.push(`Sources/${EXPECT_FILE} is a copy: the shared one is used`);
   const files = testSources(ROOT, pkg);
-  const { tests, compiles, problems: callable } = projectCases(files);
+  const { tests, compiles: own, problems: callable } = projectCases(files);
   out.push(...callable, ...malformedCases(files, tests));
+  const compileProject = projectCases(compileSources(ROOT, pkg));
+  out.push(...compileProject.problems.map((p) => `${COMPILE_DIR}/: ${p}`));
+  if (compileProject.tests.length) out.push(`${COMPILE_DIR}/ holds a [TestCase]: it holds compile cases only`);
+  const compiles = [...own, ...compileProject.compiles];
+  for (const c of compileProject.compiles)
+    if (own.some((x) => x.name === c.name)) out.push(`two compile cases are named ${c.name}`);
 
   const expectFile = path.join(dir, EXPECT_JSON);
   let expect = { cases: {} };
@@ -366,6 +350,13 @@ function checkPackage(pkg) {
     }
     if (expect.version !== version)
       out.push(`${EXPECT_JSON} is for version ${expect.version}, the section documents ${version}`);
+    if (
+      expect.arches !== undefined &&
+      (!Array.isArray(expect.arches) ||
+        !expect.arches.length ||
+        expect.arches.some((a) => !["win32", "win64"].includes(a)))
+    )
+      out.push(`${EXPECT_JSON}: arches is a non-empty list of win32 and win64, or absent for both`);
   }
   const caseNames = new Set([...tests.map((t) => `${t.fixture}.${t.name}`), ...compiles.map((c) => c.name)]);
   for (const name of Object.keys(expect.cases ?? {})) {

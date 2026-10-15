@@ -1,0 +1,98 @@
+{
+  "version": "1.0.2.0",
+  "cases": {
+    "GcdLcmTests.Gcd_NegativeFirstOperandKeepsItsValue": {
+      "fails": "1 of 2 checks failed: ValueString of the first operand after gcd(-12, 18): expected \"-12\", got \"12\""
+    },
+    "GcdLcmTests.Gcd_NegativeSecondOperandKeepsItsValue": {
+      "fails": "1 of 2 checks failed: ValueString of the second operand after gcd(12, -18): expected \"-18\", got \"18\""
+    },
+    "GcdLcmTests.Gcd_NegativeOperandStillAddsCorrectly": {
+      "fails": "2 of 2 checks failed: the first operand of gcd(-12, 18) plus 1: expected \"-11\", got \"11\"; the first operand of gcd(-12, 18) is less than 1: expected True, got False"
+    },
+    "GcdLcmTests.Lcm_OfTwoZeros_64Bit": {
+      "win32": "pass",
+      "win64": {
+        "fails": "1 of 1 checks failed: lcm(0, 0) of a number that held 99: expected \"0\", got \"99\""
+      }
+    },
+    "GcdLcmTests.Lcm_NegativeFirstOperandKeepsItsValue": {
+      "fails": "1 of 2 checks failed: ValueString of the first operand after lcm(-4, 6): expected \"-4\", got \"4\""
+    },
+    "GcdLcmTests.Lcm_NegativeSecondOperandKeepsItsValue": {
+      "fails": "1 of 2 checks failed: ValueString of the second operand after lcm(4, -6): expected \"-6\", got \"6\""
+    },
+    "GcdLcmTests.Lcm_NegativeOperandStillAddsCorrectly": {
+      "fails": "1 of 1 checks failed: the first operand of lcm(-4, 6) plus 1: expected \"-3\", got \"3\""
+    },
+    "InverseTests.Inverse_ZeroValueOddModulus_RaisesError5": {
+      "hangs": true
+    },
+    "InverseTests.Inverse_NegativeOddModulus_RaisesError5": {
+      "hangs": true
+    },
+    "ModulusTests.AssignModulus_NegativeDivisor_ZeroResultIsNotNegative": {
+      "fails": "1 of 2 checks failed: IsNegative of 6 Mod -3: expected False, got True"
+    },
+    "ModulusTests.AssignModulus_NegativeDivisor_ZeroResultEqualsZero": {
+      "fails": "2 of 2 checks failed: 6 Mod -3 IsEqualTo a zero read from \"0\": expected True, got False; 6 Mod -3 IsLessThan a zero read from \"0\": expected False, got True"
+    },
+    "OverflowTests.Overflow_ShiftLeftBeyondTheLibrary_RaisesErrorOrIsRight": {
+      "fails": "1 of 1 checks failed: 1 << 6000 raised no error; ValueBinary: expected \"1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\"... (6001 characters), got \"0\""
+    },
+    "OverflowTests.Overflow_MultiplicationBeyondTheLibrary_RaisesErrorOrIsRight": {
+      "fails": "1 of 1 checks failed: 2^3000 * 2^3000 raised no error; ValueBinary: expected \"1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\"... (6001 characters), got \"0\""
+    },
+    "OverflowTests.Overflow_AdditionBeyondTheLibrary_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: (2^4352 - 1) * 2 raised no error; ValueBinary: expected \"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\"... (4353 characters), got \"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\"... (4352 characters)"
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: (2^4608 - 1) * 2 raised no error; ValueBinary: expected \"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\"... (4609 characters), got \"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111\"... (4608 characters)"
+      }
+    },
+    "OverflowTests.Overflow_ValueStringWithTooManyDigits_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: ValueString of 1,600 nines raised no error; read back: expected \"9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999\"... (1600 characters), got \"4286452832310585597233729070503425569902306886885523889489200741297515745171908463685529577272257134\"... (1310 characters)"
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: ValueString of 1,600 nines raised no error; read back: expected \"9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999\"... (1600 characters), got \"9008938760588959665641366052989158261445202088243123331546110814618818177382341717365057548908500041\"... (1387 characters)"
+      }
+    },
+    "OverflowTests.Overflow_ValueHexWithTooManyDigits_RaisesErrorOrIsRight": {
+      "win32": {
+        "fails": "1 of 1 checks failed: ValueHex of 1,300 F digits raised no error; read back: expected \"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\"... (1300 characters), got \"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\"... (1088 characters)"
+      },
+      "win64": {
+        "fails": "1 of 1 checks failed: ValueHex of 1,300 F digits raised no error; read back: expected \"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\"... (1300 characters), got \"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\"... (1152 characters)"
+      }
+    },
+    "SignTests.IsNegative_SetTrueShowsMinusSign": {
+      "fails": "1 of 2 checks failed: ValueString of 5 after IsNegative = True: expected \"-5\", got \"5\""
+    },
+    "SignTests.IsNegative_SetTrueShowsMinusSignInEveryBase": {
+      "fails": "3 of 3 checks failed: ValueHex of 255 after IsNegative = True: expected \"-FF\", got \"FF\"; ValueOctal of 255 after IsNegative = True: expected \"-377\", got \"377\"; ValueBinary of 255 after IsNegative = True: expected \"-11111111\", got \"11111111\""
+    },
+    "SignTests.IsNegative_SetTrueMakesArithmeticRight": {
+      "fails": "2 of 2 checks failed: 5 with IsNegative = True, plus 3: expected \"-2\", got \"2\"; 5 with IsNegative = True, times 3: expected \"-15\", got \"15\""
+    },
+    "SignTests.IsNegative_SetTrueMakesNumberLessThanZero": {
+      "fails": "1 of 1 checks failed: 5 with IsNegative = True IsLessThan 0: expected True, got False"
+    },
+    "SignTests.AssignFromLong_Zero_IsNotNegative": {
+      "fails": "1 of 1 checks failed: IsNegative after AssignFromLong 0: expected False, got True"
+    },
+    "SignTests.AssignFromLong_Zero_EqualsZeroFromString": {
+      "fails": "2 of 2 checks failed: AssignFromLong 0 IsEqualTo a zero read from \"0\": expected True, got False; a zero read from \"0\" IsEqualTo AssignFromLong 0: expected True, got False"
+    },
+    "SignTests.AssignFromLong_Zero_IsNotLessThanZeroFromString": {
+      "fails": "2 of 3 checks failed: AssignFromLong 0 IsLessThan a zero read from \"0\": expected False, got True; AssignFromLong 0 IsGreaterThanOrEqualTo a zero read from \"0\": expected True, got False"
+    },
+    "SignTests.AssignSquared_Zero_IsNotNegative": {
+      "fails": "1 of 2 checks failed: IsNegative of 0 squared: expected False, got True"
+    },
+    "SignTests.AssignSquared_Zero_EqualsZeroFromString": {
+      "fails": "2 of 2 checks failed: 0 squared IsEqualTo a zero read from \"0\": expected True, got False; 0 squared IsLessThan a zero read from \"0\": expected False, got True"
+    }
+  }
+}

@@ -35,12 +35,15 @@ Returns a **String**, the full path that the user confirmed, or an empty string 
 
 A flag is set when its property is **True**. Unlike [**ShowOpen**](ShowOpen), **ShowSave** never sets `OFN_ALLOWMULTISELECT`, `OFN_FILEMUSTEXIST`, `OFN_READONLY` or `OFN_CREATEPROMPT`, so [**MultiSelect**](MultiSelect), [**FileMustExist**](FileMustExist), [**ReadOnly**](ReadOnly) and [**CreatePrompt**](CreatePrompt) have no effect on it. The method always sets `OFN_LONGNAMES`, `OFN_EXPLORER` and `OFN_ENABLESIZING`, selects the first pair of the filter, and has no owner window, hook or template. The [class page](.#settings-without-a-property) lists these settings.
 
+<!-- test: CDialogDialogTests.ShowSave_FileNameIsShownInTheNameBox, CDialogDialogTests.ShowSave_DefaultExtIsAddedToANameTypedWithoutOne, CDialogDialogTests.ShowSave_DoesNotCreateTheFile, CDialogDialogTests.ShowSave_OverwritePromptAsksBeforeReplacing, CDialogDialogTests.ShowSave_NoToTheQuestionLeavesTheDialogOpen, CDialogDialogTests.ShowSave_WithoutOverwritePromptReturnsAnExistingName -->
 When the user confirms the dialog, **ShowSave** stores the path in [**FileName**](FileName) as well as returning it. A cancelled dialog returns an empty string and leaves **FileName** as it was. The dialog returns only a name: it saves nothing, and the class does not create or write the file.
 
 An empty string also results when Windows reports a failure, such as a path that does not fit into the buffer of 260 characters, and no value tells which of the two happened. Neither case raises an error.
 
 With [**OverwritePrompt**](OverwritePrompt) **True** and a file that exists, the box *Confirm Save As* asks whether to replace it. *Yes* returns the path, and *No* leaves the dialog open. With **False** there is no box and the path is returned. With [**DefaultExt**](DefaultExt) set, a name typed without an extension gets it.
+<!-- /test -->
 
+<!-- test: CDialogPropertyTests.ShowSave_FileNameOf261CharactersRaisesError5, CDialogPropertyTests.ShowSave_FileNameOf260CharactersShowsNoDialog, CDialogPropertyTests.ShowSave_FileNameOf259CharactersOpensTheDialog -->
 > [!NOTE] 1.1.0.0
 > The class pads the buffer with spaces to 260 characters, and the dialog does not show the padding. A [**FileName**](FileName) of 260 characters shows no dialog and returns an empty string at once, as a cancel does. A **FileName** of 261 characters or more makes **ShowSave** raise run-time error 5, *Invalid procedure call or argument*, before any dialog opens.
 

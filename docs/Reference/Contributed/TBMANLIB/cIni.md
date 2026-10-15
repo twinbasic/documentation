@@ -35,6 +35,7 @@ Kill Path
 
 ## The file format
 
+<!-- test: IniTests.LoadFrom_ReadsSectionsKeysAndValues, IniTests.SaveTo_WritesSectionsAndKeys -->
 The files are opened as ANSI text, in the code page of the system, not as Unicode or UTF-8. The text that **SaveTo** writes, and that **LoadFrom** reads, looks like this:
 
 ```
@@ -50,6 +51,7 @@ Back=white
 - A blank line and a line that starts with a semicolon are skipped. A line that starts with `#` is not a comment: it is read as a key if it holds an `=`, and skipped if it does not.
 - A line that has no `=` and is not a section is skipped.
 - **LoadFrom** puts the keys that come before the first section under a section whose name is the empty string.
+<!-- /test -->
 
 ## Properties
 
@@ -77,7 +79,9 @@ Syntax: *object*.**Section** ( *Key* ) **As Scripting.Dictionary**
 *Key*
 : *required* A **String**, the name of the section. Names are compared with letter case.
 
+<!-- test: IniTests.Section_CreatesTheSectionEvenForAReader -->
 The dictionary is the one that [**Root**](#root) holds for the name, so a value assigned to it is stored in **Root**: `Cfg.Section("Window")("Width") = "800"`. A name that is not in **Root** is added to it, with an empty dictionary, by the call itself, even when the program only reads.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim Cfg As New cIni
@@ -107,7 +111,9 @@ Syntax: *object*.**LoadFrom** ( *Path* ) **As cIni**
 
 Returns the object itself, so a call can be followed by a member: `Cfg.LoadFrom(Path).Section("Window")`.
 
+<!-- test: IniTests.LoadFrom_AddsTheIniExtensionAndEmptiesRoot, IniTests.LoadFrom_MissingFile_RaisesNothingEmptiesRootAndSetsLastError -->
 The call empties **Root** first, so afterwards it holds only what the file holds. If the file cannot be opened, **Root** has been emptied, the call raises no error, and [**LastError**](#lasterror) says why.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim Cfg As New cIni
@@ -149,7 +155,9 @@ Syntax: *object*.**SaveTo** ( [ *Path* ] ) **As Boolean**
 *Path*
 : *optional* A **String**, the file to write. The extension `.ini` is added to a name that does not end with it. A call without a path uses the name `.ini`. A file that exists is replaced. The folders of the path are created if they are missing.
 
+<!-- test: IniTests.SaveTo_CreatesTheFoldersOfThePath -->
 Returns **True** when the file was written. It returns **False** when **Root** has no entries, or when an error occurred; [**LastError**](#lasterror) then says why.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim Cfg As New cIni

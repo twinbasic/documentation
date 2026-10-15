@@ -1,0 +1,86 @@
+' TBMANLIB_Aes, cAes: the modes ECB and CBC, which the package runs through the Crypto API of Windows.
+'
+' AES in ECB or CBC mode with NoPadding takes the key bytes as the AES key and gives as many bytes
+' as it was given. The cases check those two properties, which the published vectors of
+' StandardVectorTests rely on as well.
+[TestFixture]
+Module CryptoApiModeTests
+
+    Private Sub NoPaddingLength(ByVal Mode As AesCipherMode)
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Set a = AesVec.MakeAes(Mode, 128, AesPaddingMode.NoPadding, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.FromHex("6bc1bee22e409f96e93d7e117393172a")
+        c = AesVec.Enc(a, p)
+        If AesVec.LastNumber <> 0 Then Expect.Fail "EncryptBytes raised error " & AesVec.LastNumber & ", " & AesVec.LastText
+        Expect.AreEqual 16, AesVec.Count(c), "length of the output for one block of plaintext with NoPadding"
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Ecb_NoPaddingKeepsTheLengthOfTheInput()
+        Expect.Begin
+        NoPaddingLength AesCipherMode.ECB
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cbc_NoPaddingKeepsTheLengthOfTheInput()
+        Expect.Begin
+        NoPaddingLength AesCipherMode.CBC
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Ecb_Pkcs7OfOneBlockGivesTwoBlocks()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.ECB, 128, AesPaddingMode.PKCS7, AesVec.Key128, "")
+        p = AesVec.Ascii("0123456789abcdef")
+        c = AesVec.Enc(a, p)
+        Expect.AreEqual 32, AesVec.Count(c), "length of the ECB output for 16 bytes with PKCS7 (one block of data and one of padding)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cbc_Pkcs7OfOneBlockGivesTwoBlocks()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CBC, 128, AesPaddingMode.PKCS7, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.Ascii("0123456789abcdef")
+        c = AesVec.Enc(a, p)
+        Expect.AreEqual 32, AesVec.Count(c), "length of the CBC output for 16 bytes with PKCS7 (one block of data and one of padding)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Ecb_RefusesAKeyOfFiveBytes()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.ECB, 128, AesPaddingMode.PKCS7, "0102030405", "")
+        p = AesVec.Ascii("Hello, AES!")
+        c = AesVec.Enc(a, p)
+        Expect.AreEqual 0, AesVec.Count(c), "bytes returned by ECB for a key of 5 bytes (an AES key has 16, 24 or 32 bytes)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cbc_RefusesAKeyOfFortyBytes()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CBC, 256, AesPaddingMode.PKCS7, AesVec.Key256 & "0102030405060708", AesVec.Iv16)
+        p = AesVec.Ascii("Hello, AES!")
+        c = AesVec.Enc(a, p)
+        Expect.AreEqual 0, AesVec.Count(c), "bytes returned by CBC for a key of 40 bytes (an AES key has 16, 24 or 32 bytes)"
+        Expect.Done
+    End Sub
+
+End Module

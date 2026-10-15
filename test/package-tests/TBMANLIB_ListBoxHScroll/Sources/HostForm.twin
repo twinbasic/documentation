@@ -1,0 +1,9 @@
+' HostForm: a form that is loaded and never shown. It holds two list boxes and a text box, the
+' controls the test cases pass to cListboxHScroll.
+
+[Description("")]
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F10")]
+[PredeclaredId]
+Class HostForm
+
+End Class

@@ -1,0 +1,164 @@
+' SelectorTests: the month list and the year list (the date selectors) of the title area. A choice
+' in a list is the Down arrow key sent to the list's window.
+[TestFixture]
+Module SelectorTests
+
+    [TestCase]
+    Public Sub YearList_HoldsTheYears1900To2100()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim h As LongPtr = Rig.YearList(f)
+        Expect.AreEqual 201, CLng(Win.Send(h, Win.CB_GETCOUNT, 0, 0)), "the number of years in the year list"
+        Expect.AreEqual "1900", Win.ItemText(h, 0), "the first year in the year list"
+        Expect.AreEqual "2100", Win.ItemText(h, 200), "the last year in the year list"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MonthList_HoldsTheNamesOfTheTwelveMonths()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim h As LongPtr = Rig.MonthList(f)
+        Expect.AreEqual 12, CLng(Win.Send(h, Win.CB_GETCOUNT, 0, 0)), "the number of months in the month list"
+        Dim k As Long
+        For k = 1 To 12
+            Expect.AreEqual MonthName(k), Win.ItemText(h, k - 1), "item " & (k - 1) & " of the month list"
+        Next
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MonthList_Choice_SelectsTheSameDayAndRaisesNewMonth()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        Win.KeyDown Rig.MonthList(f), Win.VK_DOWN
+        Expect.AreEqual #7/15/2026#, f.Cal.Value, "Value after July is chosen in the month list with June 15, 2026 selected"
+        Expect.AreEqual "NewMonth", Rig.Events(), "the events raised by a choice in the month list"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub YearList_Choice_SelectsTheSameDayAndRaisesNewYear()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        Win.KeyDown Rig.YearList(f), Win.VK_DOWN
+        Expect.AreEqual #6/15/2027#, f.Cal.Value, "Value after 2027 is chosen in the year list with June 15, 2026 selected"
+        Expect.AreEqual "NewYear", Rig.Events(), "the events raised by a choice in the year list"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Year_Before1900_IsShownInTheYearList()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        f.Cal.Year = 1899
+        Expect.AreEqual "1899", Win.TextOf(Rig.YearList(f)), "the year list after Year is set to 1899"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Year_After2100_IsShownInTheYearList()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        f.Cal.Year = 2101
+        Expect.AreEqual "2101", Win.TextOf(Rig.YearList(f)), "the year list after Year is set to 2101"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Year_Outside1900To2100_RaisesNoErrorAndValueFollows()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        On Error Resume Next
+        f.Cal.Year = 1899
+        Expect.AreEqual 0, Rig.ErrNum(), "the error raised by setting Year to 1899"
+        Expect.AreEqual #6/15/1899#, f.Cal.Value, "Value after Year is set to 1899"
+        f.Cal.Year = 2101
+        Expect.AreEqual 0, Rig.ErrNum(), "the error raised by setting Year to 2101"
+        Expect.AreEqual #6/15/2101#, f.Cal.Value, "Value after Year is set to 2101"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_Outside1900To2100_RaisesNoErrorAndYearFollows()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        f.Cal.Value = #6/15/1850#
+        Expect.AreEqual 0, Rig.ErrNum(), "the error raised by setting Value to a date in 1850"
+        Expect.AreEqual 1850, f.Cal.Year, "Year after Value is set to a date in 1850"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDateSelectors_SwitchesTheTwoListsOnAndOff()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        If Not Rig.ShowHidden(f) Then
+            Expect.Fail "the form could not be made transparent"
+        Else
+            Expect.IsTrue Win.Visible(Rig.YearList(f)) And Win.Visible(Rig.MonthList(f)), "the lists with ShowDateSelectors True"
+            f.Cal.ShowDateSelectors = False
+            Expect.IsFalse Win.Visible(Rig.YearList(f)) Or Win.Visible(Rig.MonthList(f)), "the lists with ShowDateSelectors False"
+            f.Cal.ShowDateSelectors = True
+            Expect.IsTrue Win.Visible(Rig.YearList(f)) And Win.Visible(Rig.MonthList(f)), "the lists with ShowDateSelectors set to True again"
+        End If
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lists_AreScaledWithTheDpiOfTheDisplay()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim scale As Double = Win.Dpi(f.hWnd) / 96
+        Dim h As LongPtr = Rig.CalWindow(f)
+        Dim yr As Win.RECT = Win.RectIn(Rig.YearList(f), h)
+        Dim mo As Win.RECT = Win.RectIn(Rig.MonthList(f), h)
+        Expect.IsTrue Abs((yr.Right - yr.Left) - 50 * scale) <= 1, "the width of the year list: expected " & CLng(50 * scale) & ", got " & (yr.Right - yr.Left)
+        Expect.IsTrue Abs((mo.Right - mo.Left) - 80 * scale) <= 1, "the width of the month list: expected " & CLng(80 * scale) & ", got " & (mo.Right - mo.Left)
+        Expect.IsTrue Abs((Win.ClientWidth(h) - yr.Right) - 5 * scale) <= 1, "the distance of the year list from the right edge: expected " & CLng(5 * scale) & ", got " & (Win.ClientWidth(h) - yr.Right)
+        Expect.IsTrue Abs((yr.Left - mo.Right) - 5 * scale) <= 1, "the distance between the two lists: expected " & CLng(5 * scale) & ", got " & (yr.Left - mo.Right)
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lists_KeepTheirDistanceFromTheRightEdgeWhenTheControlIsResized()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim h As LongPtr = Rig.CalWindow(f)
+        Dim before As Long = Win.ClientWidth(h) - Win.RectIn(Rig.YearList(f), h).Right
+        Win.Resize h, f.hWnd, 500, 300
+        Dim after As Long = Win.ClientWidth(h) - Win.RectIn(Rig.YearList(f), h).Right
+        Expect.AreEqual 500, Win.ClientWidth(h), "the width of the control after it is resized to 500 pixels"
+        Expect.AreEqual before, after, "the distance of the year list from the right edge after the control is resized"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

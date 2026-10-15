@@ -1,0 +1,9 @@
+' tsJson: what the compiler refuses. Each line ends in a comment ' CASE <Name>: <code>.
+Module CompileTests
+
+    Public Sub Enum_QualifiedByTheClass()
+        Dim o As JsonOptions = JsonOptions.Rfc
+        o.Syntax = JsonOptions.eJsonSyntax.jsJsonc ' CASE QualifiedEnumMember: TB5027
+    End Sub
+
+End Module

@@ -1,0 +1,327 @@
+' TBMANLIB_Aes, cAes: the GCM mode, GcmTag and GcmAAD.
+'
+' The vectors are test cases 4, 10 and 16 of McGrew and Viega, "The Galois/Counter Mode of
+' Operation", on which NIST SP 800-38D is based: the keys feffe992... of 128, 192 and 256 bits, the
+' 96-bit IV cafebabefacedbaddecaf888, 20 bytes of additional data and a plaintext of 60 bytes.
+[TestFixture]
+Module GcmTests
+
+    Private Const Iv12 As String = "cafebabefacedbaddecaf888"
+    Private Const Aad20 As String = "feedfacedeadbeeffeedfacedeadbeefabaddad2"
+    Private Const Plain60 As String = "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39"
+    Private Const Key128 As String = "feffe9928665731c6d6a8f9467308308"
+
+    Private Sub CheckGcm(ByVal What As String, ByVal KeyBits As Long, ByVal KeyHex As String, ByVal CipherHex As String, ByVal TagHex As String)
+        Dim a As cAes
+        Dim b As cAes
+        Dim aad() As Byte
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim t() As Byte
+        Dim d() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.GCM, KeyBits, AesPaddingMode.NoPadding, KeyHex, Iv12)
+        aad = AesVec.FromHex(Aad20)
+        a.GcmAAD = aad
+        p = AesVec.FromHex(Plain60)
+        c = AesVec.Enc(a, p)
+        If AesVec.LastNumber <> 0 Then Expect.Fail What & ": EncryptBytes raised error " & AesVec.LastNumber & ", " & AesVec.LastText
+        t = a.GcmTag
+        AesVec.CheckBlocks What & " ciphertext", CipherHex, c
+        Expect.AreEqual TagHex, AesVec.HexOf(t), What & ": GcmTag after the encryption"
+        ' Decrypt the published ciphertext with the published tag.
+        Set b = AesVec.MakeAes(AesCipherMode.GCM, KeyBits, AesPaddingMode.NoPadding, KeyHex, Iv12)
+        b.GcmAAD = aad
+        t = AesVec.FromHex(TagHex)
+        b.GcmTag = t
+        c = AesVec.FromHex(CipherHex)
+        d = AesVec.Dec(b, c)
+        If AesVec.LastNumber <> 0 Then Expect.Fail What & ": DecryptBytes raised error " & AesVec.LastNumber & ", " & AesVec.LastText
+        Expect.AreEqual Plain60, AesVec.HexOf(d), What & ": plaintext of the published ciphertext and tag"
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Gcm_Aes128_GivesTheVectorOfTestCase4()
+        Expect.Begin
+        CheckGcm "GCM test case 4 (AES-128)", 128, Key128, "42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091", "5bc94fbc3221a5db94fae95ae7121a47"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Gcm_Aes192_GivesTheVectorOfTestCase10()
+        Expect.Begin
+        CheckGcm "GCM test case 10 (AES-192)", 192, Key128 & "feffe9928665731c", "3980ca0b3c00e841eb06fac4872a2757859e1ceaa6efd984628593b40ca1e19c7d773d00c144c525ac619d18c84a3f4718e2448b2fe324d9ccda2710", "2519498e80f1478f37ba55bd6d27618c"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Gcm_Aes256_GivesTheVectorOfTestCase16()
+        Expect.Begin
+        CheckGcm "GCM test case 16 (AES-256)", 256, Key128 & Key128, "522dc1f099567d07f47f37a32a84427d643a8cdcbfe5c0c97598a2bd2555d1aa8cb08e48590dbb3da7b08b1056828838c5f61e6393ba7a0abcc9f662", "76fc6ece0f4e1768cddf8853bb2d551b"
+        Expect.Done
+    End Sub
+
+    ' ---- the default padding
+
+    [TestCase]
+    Public Sub EncryptBytes_Gcm_DefaultPaddingGivesTheStandardOutput()
+        Expect.Begin
+        Dim a As cAes
+        Dim aad() As Byte
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim t() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.GCM, 128, AesPaddingMode.PKCS7, Key128, Iv12)
+        aad = AesVec.FromHex(Aad20)
+        a.GcmAAD = aad
+        p = AesVec.FromHex(Plain60)
+        c = AesVec.Enc(a, p)
+        t = a.GcmTag
+        AesVec.CheckBlocks "GCM test case 4 with the default PaddingMode (PKCS7) ciphertext", "42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091", c
+        Expect.AreEqual "5bc94fbc3221a5db94fae95ae7121a47", AesVec.HexOf(t), "GCM test case 4 with the default PaddingMode (PKCS7): GcmTag"
+        Expect.Done
+    End Sub
+
+    ' ---- a GCM encryption with no IV
+
+    [TestCase]
+    Public Sub EncryptBytes_Gcm_NoIVCanBeDecrypted()
+        Expect.Begin
+        Dim a As cAes
+        Dim b As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim t() As Byte
+        Dim v() As Byte
+        Dim d() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.GCM, 128, AesPaddingMode.NoPadding, Key128, "")
+        p = AesVec.Ascii("Hello, AES!")
+        c = AesVec.Enc(a, p)
+        t = a.GcmTag
+        v = a.IV
+        Set b = AesVec.MakeAes(AesCipherMode.GCM, 128, AesPaddingMode.NoPadding, Key128, "")
+        If AesVec.Count(v) > 0 Then b.IV = v
+        b.GcmTag = t
+        d = AesVec.Dec(b, c)
+        Expect.AreEqual AesVec.HexOf(p), AesVec.HexOf(d), "plaintext from the ciphertext, GcmTag and IV of a GCM encryption that had no IV set"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Gcm_NoIVLeavesTheNonceInIV()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim v() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.GCM, 128, AesPaddingMode.NoPadding, Key128, "")
+        p = AesVec.Ascii("Hello, AES!")
+        c = AesVec.Enc(a, p)
+        v = a.IV
+        Expect.AreEqual 12, AesVec.Count(v), "length of the IV property after a GCM encryption that had no IV set (the nonce it used)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Gcm_NoIVRaisesNoErrorAndUsesAFreshNonceEachTime()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c1() As Byte
+        Dim c2() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.GCM, 128, AesPaddingMode.NoPadding, Key128, "")
+        p = AesVec.Ascii("Hello, AES!")
+        c1 = AesVec.Enc(a, p)
+        Expect.AreEqual 0, AesVec.LastNumber, "error number of the first GCM encryption with no IV"
+        c2 = AesVec.Enc(a, p)
+        Expect.AreEqual 0, AesVec.LastNumber, "error number of the second GCM encryption with no IV"
+        Expect.AreEqual 11, AesVec.Count(c1), "length of the output for 11 bytes"
+        Expect.IsTrue AesVec.HexOf(c1) <> AesVec.HexOf(c2), "two GCM encryptions of the same bytes with no IV"
+        Expect.Done
+    End Sub
+
+    ' ---- the IV of GCM
+
+    [TestCase]
+    Public Sub EncryptBytes_Gcm_AnIVLongerThan12BytesGivesTheOutputOfItsFirst12Bytes()
+        Expect.Begin
+        Dim a As cAes
+        Dim b As cAes
+        Dim p() As Byte
+        Dim ca() As Byte
+        Dim cb() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.GCM, 128, AesPaddingMode.NoPadding, Key128, Iv12)
+        Set b = AesVec.MakeAes(AesCipherMode.GCM, 128, AesPaddingMode.NoPadding, Key128, Iv12 & "01020304")
+        p = AesVec.Ascii("Hello, AES!")
+        ca = AesVec.Enc(a, p)
+        cb = AesVec.Enc(b, p)
+        Expect.IsTrue AesVec.Count(ca) > 0, "GCM with an IV of 12 bytes returns bytes"
+        Expect.AreEqual AesVec.HexOf(ca), AesVec.HexOf(cb), "GCM output for an IV of 12 bytes and for the same 12 bytes followed by 4 more"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Gcm_TwoEncryptionsWithTheSameIVUseTheSameNonce()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c1() As Byte
+        Dim c2() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.GCM, 128, AesPaddingMode.NoPadding, Key128, Iv12)
+        p = AesVec.Ascii("Hello, AES!")
+        c1 = AesVec.Enc(a, p)
+        c2 = AesVec.Enc(a, p)
+        Expect.IsTrue AesVec.Count(c1) > 0, "the first GCM encryption returns bytes"
+        Expect.AreEqual AesVec.HexOf(c1), AesVec.HexOf(c2), "two GCM encryptions in a row with one IV"
+        Expect.Done
+    End Sub
+
+    ' ---- a decryption that does not verify
+
+    Private Sub Damaged(ByVal What As String, ByVal Damage As Long)
+        ' Damage: 1 the tag, 2 the additional data, 3 the ciphertext, 4 the IV, 5 no tag.
+        Dim a As cAes
+        Dim aad() As Byte
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim t() As Byte
+        Dim v() As Byte
+        Dim d() As Byte
+        Dim none() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.GCM, 128, AesPaddingMode.NoPadding, Key128, Iv12)
+        aad = AesVec.FromHex(Aad20)
+        a.GcmAAD = aad
+        p = AesVec.Ascii("Hello, AES!")
+        c = AesVec.Enc(a, p)
+        t = a.GcmTag
+        Select Case Damage
+            Case 1
+                t(0) = t(0) Xor 1
+                a.GcmTag = t
+            Case 2
+                aad(0) = aad(0) Xor 1
+                a.GcmAAD = aad
+            Case 3
+                c(0) = c(0) Xor 1
+            Case 4
+                v = AesVec.FromHex(Iv12)
+                v(0) = v(0) Xor 1
+                a.IV = v
+            Case 5
+                a.GcmTag = none
+        End Select
+        d = AesVec.Dec(a, c)
+        Expect.AreEqual AesVec.Unspecified, AesVec.LastNumber, What & ": error number of DecryptBytes"
+        Expect.AreEqual 0, AesVec.Count(d), What & ": bytes returned"
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_Gcm_DamagedTagRaises()
+        Expect.Begin
+        Damaged "a tag with one bit changed", 1
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_Gcm_DamagedAdditionalDataRaises()
+        Expect.Begin
+        Damaged "additional data with one bit changed", 2
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_Gcm_DamagedCiphertextRaises()
+        Expect.Begin
+        Damaged "ciphertext with one bit changed", 3
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_Gcm_ChangedIVRaises()
+        Expect.Begin
+        Damaged "an IV with one bit changed", 4
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_Gcm_NoTagRaises()
+        Expect.Begin
+        Damaged "no tag set", 5
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_Gcm_TagOf12BytesIsAccepted()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim t() As Byte
+        Dim s() As Byte
+        Dim d() As Byte
+        Dim i As Long
+        Set a = AesVec.MakeAes(AesCipherMode.GCM, 128, AesPaddingMode.NoPadding, Key128, Iv12)
+        p = AesVec.Ascii("Hello, AES!")
+        c = AesVec.Enc(a, p)
+        t = a.GcmTag
+        ReDim s(11)
+        For i = 0 To 11
+            s(i) = t(i)
+        Next
+        a.GcmTag = s
+        d = AesVec.Dec(a, c)
+        Expect.AreEqual 0, AesVec.LastNumber, "error number of a decryption with the first 12 bytes of the tag"
+        Expect.AreEqual AesVec.HexOf(p), AesVec.HexOf(d), "plaintext from a tag cut to 12 bytes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DecryptBytes_Gcm_TagOf4BytesIsRefused()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim t() As Byte
+        Dim s() As Byte
+        Dim d() As Byte
+        Dim i As Long
+        Set a = AesVec.MakeAes(AesCipherMode.GCM, 128, AesPaddingMode.NoPadding, Key128, Iv12)
+        p = AesVec.Ascii("Hello, AES!")
+        c = AesVec.Enc(a, p)
+        t = a.GcmTag
+        ReDim s(3)
+        For i = 0 To 3
+            s(i) = t(i)
+        Next
+        a.GcmTag = s
+        d = AesVec.Dec(a, c)
+        Expect.AreEqual AesVec.Unspecified, AesVec.LastNumber, "error number of a decryption with the first 4 bytes of the tag"
+        Expect.AreEqual 0, AesVec.Count(d), "bytes returned for a tag of 4 bytes"
+        Expect.Done
+    End Sub
+
+    ' ---- GcmAAD
+
+    [TestCase]
+    Public Sub SetGcmAADFromString_SetsTheBytesOfTheText()
+        Expect.Begin
+        Dim a As New cAes
+        Dim aad() As Byte
+        a.SetGcmAADFromString "header"
+        aad = a.GcmAAD
+        Expect.AreEqual "686561646572", AesVec.HexOf(aad), "GcmAAD after SetGcmAADFromString with the text header"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetGcmAADFromString_EmptyTextRemovesTheData()
+        Expect.Begin
+        Dim a As New cAes
+        Dim aad() As Byte
+        a.SetGcmAADFromString "header"
+        a.SetGcmAADFromString ""
+        aad = a.GcmAAD
+        Expect.AreEqual 0, AesVec.Count(aad), "bytes in GcmAAD after SetGcmAADFromString with an empty text"
+        Expect.Done
+    End Sub
+
+End Module

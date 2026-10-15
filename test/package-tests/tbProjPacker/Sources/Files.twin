@@ -1,0 +1,191 @@
+' Files: reading, writing and listing files for the test cases of tbProjPacker. Nothing here uses
+' the package, so a case can tell what the package wrote from what it was given.
+Module Files
+
+    ' A path of 248 characters or more in its \\?\ form, as the Win32 file functions take it.
+    Public Function Api(ByVal Path As String) As String
+        If Len(Path) >= 248 And Left$(Path, 4) <> "\\?\" Then Api = "\\?\" & Path Else Api = Path
+    End Function
+
+    Public Function Exists(ByVal Path As String) As Boolean
+        Dim a As Long
+        On Error Resume Next
+        a = GetAttr(Api(Path))
+        Exists = (Err.Number = 0)
+        Err.Clear
+    End Function
+
+    Public Function IsFolder(ByVal Path As String) As Boolean
+        Dim a As Long
+        On Error Resume Next
+        a = GetAttr(Api(Path))
+        If Err.Number = 0 Then IsFolder = ((a And vbDirectory) <> 0)
+        Err.Clear
+    End Function
+
+    Public Sub MakeFolder(ByVal Path As String)
+        Dim p As Long
+        If IsFolder(Path) Then Exit Sub
+        p = InStrRev(Path, "\")
+        If p > 3 Then MakeFolder Left$(Path, p - 1)
+        MkDir Path
+    End Sub
+
+    ' The bytes of a string of characters below 128.
+    Public Function BytesOf(ByVal Text As String) As Byte()
+        Dim b() As Byte
+        Dim i As Long
+        ReDim b(0 To Len(Text) - 1)
+        For i = 1 To Len(Text)
+            b(i - 1) = AscW(Mid$(Text, i, 1)) And &HFF
+        Next
+        BytesOf = b
+    End Function
+
+    Public Function TextOf(ByRef B() As Byte) As String
+        Dim i As Long
+        Dim s As String
+        For i = LBound(B) To UBound(B)
+            s = s & ChrW$(B(i))
+        Next
+        TextOf = s
+    End Function
+
+    Public Function HexOf(ByRef B() As Byte) As String
+        Dim i As Long
+        Dim s As String
+        For i = LBound(B) To UBound(B)
+            s = s & Right$("0" & Hex$(B(i)), 2)
+        Next
+        HexOf = s
+    End Function
+
+    ' Writes Text (characters below 128) as a file, replacing the file.
+    Public Sub WriteText(ByVal Path As String, ByVal Text As String)
+        Dim b() As Byte
+        b = BytesOf(Text)
+        WriteBytes Path, b
+    End Sub
+
+    ' Writes bytes as a file, replacing the file, in a folder that exists.
+    Public Sub WriteBytes(ByVal Path As String, ByRef B() As Byte)
+        Dim f As Integer
+        If Exists(Path) Then Kill Api(Path)
+        f = FreeFile
+        Open Api(Path) For Binary Access Write As #f
+        Put #f, 1, B
+        Close #f
+    End Sub
+
+    Public Function ReadBytes(ByVal Path As String) As Byte()
+        Dim f As Integer
+        Dim n As Long
+        Dim b() As Byte
+        f = FreeFile
+        Open Api(Path) For Binary Access Read As #f
+        n = LOF(f)
+        If n > 0 Then
+            ReDim b(0 To n - 1)
+            Get #f, 1, b
+        End If
+        Close #f
+        ReadBytes = b
+    End Function
+
+    ' The file as characters, each byte one character. A log or a source file the cases write is
+    ' ASCII, so this reads it as it is.
+    Public Function ReadText(ByVal Path As String) As String
+        Dim b() As Byte
+        b = ReadBytes(Path)
+        ReadText = TextOf(b)
+    End Function
+
+    Public Function SizeOf(ByVal Path As String) As Long
+        SizeOf = FileLen(Api(Path))
+    End Function
+
+    ' "" when the two arrays hold the same bytes, else where they first differ.
+    Public Function Difference(ByRef A() As Byte, ByRef B() As Byte) As String
+        Dim i As Long, n As Long
+        n = UBound(A)
+        If UBound(B) < n Then n = UBound(B)
+        For i = 0 To n
+            If A(i) <> B(i) Then
+                Difference = "byte " & i & " is " & Hex$(A(i)) & " in the first and " & Hex$(B(i)) & " in the second"
+                Exit Function
+            End If
+        Next
+        If UBound(A) <> UBound(B) Then Difference = "the first is " & (UBound(A) + 1) & " bytes and the second " & (UBound(B) + 1)
+    End Function
+
+    ' The folders and files under Root, one per line as a path relative to Root (a folder with a
+    ' backslash at its end), in code-unit order, joined with "|". Hidden files are listed.
+    Public Function ListTree(ByVal Root As String) As String
+        Dim acc As String
+        Walk Root, "", acc
+        ListTree = SortedJoin(acc)
+    End Function
+
+    ' The same sorting and joining for lines given in any order, one per vbLf.
+    Public Function SortedJoin(ByVal Lines As String) As String
+        Dim parts() As String
+        Dim i As Long, j As Long, t As String
+        If Right$(Lines, 1) = vbLf Then Lines = Left$(Lines, Len(Lines) - 1)
+        If Len(Lines) = 0 Then Exit Function
+        parts = Split(Lines, vbLf)
+        For i = 1 To UBound(parts)
+            t = parts(i)
+            j = i - 1
+            Do While j >= 0
+                If StrComp(parts(j), t, vbBinaryCompare) <= 0 Then Exit Do
+                parts(j + 1) = parts(j)
+                j = j - 1
+            Loop
+            parts(j + 1) = t
+        Next
+        SortedJoin = Join(parts, "|")
+    End Function
+
+    Private Sub Walk(ByVal Folder As String, ByVal Rel As String, ByRef Acc As String)
+        Dim names() As String
+        Dim nm As String, found As String
+        Dim i As Long
+        nm = Dir$(Folder & "\*", vbDirectory Or vbHidden Or vbSystem)
+        Do While Len(nm) > 0
+            If nm <> "." And nm <> ".." Then found = found & nm & vbLf
+            nm = Dir$
+        Loop
+        If Len(found) = 0 Then Exit Sub
+        names = Split(Left$(found, Len(found) - 1), vbLf)
+        For i = 0 To UBound(names)
+            If IsFolder(Folder & "\" & names(i)) Then
+                Acc = Acc & Rel & names(i) & "\" & vbLf
+                Walk Folder & "\" & names(i), Rel & names(i) & "\", Acc
+            Else
+                Acc = Acc & Rel & names(i) & vbLf
+            End If
+        Next
+    End Sub
+
+    ' The first Len(Prefix) characters of Text, to compare with Prefix.
+    Public Function Head(ByVal Text As String, ByVal Prefix As String) As String
+        Head = Left$(Text, Len(Prefix))
+    End Function
+
+    ' The number of lines of Text that start with Prefix, lines being separated by CR LF.
+    Public Function CountLines(ByVal Text As String, ByVal Prefix As String) As Long
+        Dim parts() As String
+        Dim i As Long
+        parts = Split(Text, vbCrLf)
+        For i = 0 To UBound(parts)
+            If Left$(parts(i), Len(Prefix)) = Prefix Then CountLines = CountLines + 1
+        Next
+    End Function
+
+    ' The lines of Text without the empty one that ends it, separated by CR LF.
+    Public Function LinesOf(ByVal Text As String) As String()
+        If Right$(Text, 2) = vbCrLf Then Text = Left$(Text, Len(Text) - 2)
+        LinesOf = Split(Text, vbCrLf)
+    End Function
+
+End Module

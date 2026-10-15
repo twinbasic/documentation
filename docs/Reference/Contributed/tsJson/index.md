@@ -68,6 +68,7 @@ End If
 
 ## The JSON model
 
+<!-- test: ModelTests.TypeOfValue_ClassifiesTheValuesOfTheModel, ModelTests.Keys_AreComparedByCharacterCode, ModelTests.Clone_CopiesEveryContainer, ModelTests.Assignment_SharesTheContainer, ModelTests.Query_ReturnsTheContainersInsideTheDocument, NumberTests.Parse_Number_IsADecimal, ParseTests.Parse_DateText_StaysAString, DatesTests.Serialize_Date_IsAnIsoString, DatesTests.Json_Date_IsNotAJsonValue, SerializeTests.Serialize_ValuesThatAreNotJson_AreUnsupportedType, SerializeTests.Serialize_VariantArray_IsAJsonArray, PointerTests.PointerGet_ReturnsTheContainerInsideTheDocument, PointerTests.PointerSet_DashToken_AppendsToTheArray, PatchTests.Patch_DoesNotChangeTheDocument, PatchTests.MergePatch_DoesNotChangeTheDocument, ErrorStateTests.EmptyList_UBoundRaisesError9, ErrorStateTests.EmptyList_KeysItemsAndToVariantArray_AreUnbound, ErrorStateTests.EmptyList_QueryHitsAndErrors_AreUnbound -->
 A value of JSON has these counterparts in twinBASIC. A function that reads JSON creates them, and a function that writes JSON accepts them.
 
 | JSON | In twinBASIC | Notes |
@@ -84,10 +85,13 @@ A **Date** is not a JSON value. [**Json.Serialize**](Json#serialize) writes one 
 A value that is read from a document is the object or array inside it, not a copy. Changing it changes the document. [**Json.Clone**](Json#clone) makes a deep copy, and the functions that return a changed document ([**PointerSet**](Json#pointerset), [**PointerRemove**](Json#pointerremove), [**Patch**](Json#patch), [**MergePatch**](Json#mergepatch)) work on a copy and leave their argument as it was.
 
 Where a function returns a list, the array is unbound when the list is empty, and `UBound` raises run-time error 9 for it. This applies to [**Json.Query**](Json#query), [**Json.QueryHits**](Json#queryhits), [**JsonObject.Keys**](JsonObject#keys), [**JsonObject.Items**](JsonObject#items), [**JsonArray.ToVariantArray**](JsonArray#tovariantarray) and [**JsonValidationResult.Errors**](JsonValidationResult#errors). [**Json.Serialize**](Json#serialize) writes such an array as `[]`.
+<!-- /test -->
 
 ## Errors
 
+<!-- test: ErrorStateTests.Parse_Failure_ReturnsEmptyAndSetsTheError, ErrorStateTests.Parse_AfterAFailure_ClearsTheError, ErrorStateTests.TryParse_Failure_ReportsTheOriginOfParse, ErrorStateTests.PureFunctions_LeaveTheLastErrorAlone, ErrorStateTests.Query_NothingMatches_IsEmptyWithNoError, PatternTests.IsMatchPattern_InvalidPattern_IsFalseWithNoError, ErrorStateTests.QueryHits_InvalidPath_SetsInvalidPath, PointerTests.PointerGet_MissingPlace_SetsPathUpToTheFailingToken -->
 The package does not raise run-time errors for bad data or bad arguments. A function that fails returns an empty result (**Empty**, **Nothing**, an empty string or **False**) and sets the last error, which the predeclared object [**JsonError**](JsonError) reports: **HasError** is **True**, **Code** is a short name such as `InvalidSyntax`, and **Message**, **Origin**, the position in the text and the JSON Pointer of the place say more. A function that can fail clears the last error when it starts, so the last error belongs to the latest call. A search that finds nothing, and an invalid regular expression given to a pattern function, are not errors. [**JsonError**](JsonError#error-codes) lists the codes.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim v As Variant = Json.Parse("[1, 2,]")
@@ -98,7 +102,9 @@ Debug.Print Json.TryParse("[1, 2,]", v, JsonOptions.Jsonc)   ' True
 Debug.Print Json.Serialize(v, JsonOptions.Minified)          ' [1,2]
 ```
 
+<!-- test: OptionsTests.PredeclaredObject_Assignment_RaisesError5, ErrorStateTests.Parse_FailedResultAssignedToObjectVariable_RaisesError424, ErrorStateTests.EmptyList_UBoundRaisesError9 -->
 The package itself raises a run-time error on purpose in one case: an assignment to a property of the predeclared [**JsonOptions**](JsonOptions) object, which is a factory (error 5). The other run-time errors that a program meets are those of the language, such as error 91 for a call on the **Nothing** that a failed function returned, error 424 for the assignment of the **Empty** that a failed [**Parse**](Json#parse) returned to a variable of a class type, and error 9 for `UBound` of an unbound array. One more comes from [**Serialize**](Json#serialize), which raises error -2147467259 for a two-dimensional array, and leaves the last error stuck (see [Known problems](#known-problems-in-version-10150)).
+<!-- /test -->
 
 ## The standards
 
@@ -118,16 +124,18 @@ The package reads and writes text, byte arrays (UTF-8, UTF-16 little endian and 
 
 ### Where the package departs from the standards
 
+<!-- test: PointerTests.PointerGet_UriFragmentForm_IsInvalidPointer, PatchTests.Patch_SingleOperationObject_IsAccepted, PatchTests.Patch_Add_FollowsRfc6902, PatchTests.Patch_AddToMissingParent_Fails, PatchTests.Patch_Remove_FollowsRfc6902, PatchTests.Patch_RemoveMissingPlace_Fails, PatchTests.Patch_Replace_FollowsRfc6902, PatchTests.Patch_ReplaceMissingPlace_Fails, PatchTests.Patch_Move_FollowsRfc6902, PatchTests.Patch_MoveFromParentOfPath_Fails, PatchTests.Patch_Copy_FollowsRfc6902, PatchTests.Patch_Test_FollowsRfc6902, PatchTests.Patch_TestThatFails_IsPatchTestFailed, PatchTests.MergePatch_FollowsRfc7396, PatchTests.MergePatch_PatchThatIsNotAnObject_ReplacesTheDocument, PathTests.Length_CountsUtf16CodeUnits, PathTests.Query_LeadingZeroIndex_IsAccepted, PathTests.QueryHits_ReturnsValueAndPointer, PathTests.CompilePath_FunctionNameStartingWithF_IsInvalidPath, PatternTests.IsMatchPattern_ClassEscapes_AreAccepted, SchemaTests.MaxLength_CountsUtf16CodeUnits, SchemaTests.Format_Approximations_AcceptWhatThePageSays, SchemaTests.Format_DateTime_AcceptsATimeWithoutZone, DatesTests.ParseIso8601_DateAndTime_AreRead, DatesTests.ParseIso8601_FormsOutsideTheSubset_AreInvalidDate, ParseTests.Parse_Bytes_AreDecodedByTheByteOrderMark, ErrorStateTests.Parse_ByteOrderMarkInString_IsInvalidSyntax -->
 Each departure is described where it applies; this is the list.
 
 - **RFC 8259.** The reading is strict. A number that a **Decimal** cannot hold is an error, which the RFC allows an implementation to do ([Parse](Json#parse)). The package accepts a byte order mark in bytes but not at the start of a **String**.
 - **RFC 6901.** The form of a pointer as a URI fragment, `#/a/b`, is not accepted. An empty token after another token names the wrong place (a defect, in [Known problems](#known-problems-in-version-10150)).
-- **RFC 6902.** A patch can be a single operation object, which the RFC does not allow. The operations behave as the RFC says in every case that was tested: the add, remove, replace, move, copy and test operations, the index rules for arrays and the handling of the root.
-- **RFC 7396.** None found.
+- **RFC 6902.** A patch can be a single operation object, which the RFC does not allow. The operations behave as the RFC says: the add, remove, replace, move, copy and test operations, the index rules for arrays and the handling of the root.
+- **RFC 7396.** None.
 - **RFC 9535.** A comparison with a missing value is false, `<=` and `>=` are false for equal values that are not numbers or strings, a call of an unknown function is not an error, a number literal in a filter must be an integer, `length` counts UTF-16 code units, and the results are values and pointers, not normalized paths. The first three are defects ([JsonPathQuery](JsonPathQuery#where-the-syntax-departs-from-rfc-9535)).
 - **RFC 9485.** The matcher accepts `\d`, `\s` and `\w`, which the RFC leaves out, and does not accept `\n`, `\r`, `\t`, `\-`, `\^` or a hyphen after a single character at the end of a set, which the RFC has. It does not try the other alternatives of a choice once one has matched ([Patterns](Json#patterns)).
 - **JSON Schema, draft 2020-12.** `pattern` uses I-Regexp, not ECMA-262 regular expressions; lengths are counted in UTF-16 code units; `format` is checked loosely, and `ipv4` wrongly; some keywords are not evaluated ([JsonSchema](JsonSchema#where-the-package-departs-from-json-schema-2020-12)).
 - **ISO 8601.** Only the extended forms with a date, or with a date and a time with seconds, are read ([ParseIso8601](Json#parseiso8601)).
+<!-- /test -->
 
 Compared with the other JSON sections of this reference: [**VBA_JSON**](../VBA_JSON/) and the [**cJson**](../TBMANLIB/cJson) class of TBMANLIB (which uses the VBA-JSON code) return **Dictionary** and **Collection** objects, read numbers as **Double** or, when long, as **String**, and raise run-time error 10001 for text they cannot read, while VBA-JSON does not check for commas between items and ignores text after the value. tsJson has its own classes, reads numbers as **Decimal**, accepts only valid JSON unless JSONC is asked for, and reports errors through **JsonError**.
 
@@ -200,6 +208,7 @@ Debug.Print Tests.Run()    ' mine
 
 ## Known problems in version 1.0.15.0
 
+<!-- test: PatternTests.IsMatchPattern_LongerAlternativeSecond_Matches, PatternTests.IsMatchPattern_ChoiceInGroup_TriesTheOtherAlternative, PatternTests.IsMatchPattern_LongerAlternativeFirst_Matches, PatternTests.IsSearchPattern_ChoiceInGroup_TriesTheOtherAlternative, PatternTests.Match_JsonPathFunction_TriesTheOtherAlternative, PatternTests.Search_JsonPathFunction_TriesTheOtherAlternative, SchemaTests.Pattern_ChoiceInGroup_TriesTheOtherAlternative, SchemaTests.PatternProperties_ChoiceInGroup_TriesTheOtherAlternative, PatternTests.IsValidPattern_EscapeTab_IsValid, PatternTests.IsValidPattern_EscapeLineFeed_IsValid, PatternTests.IsValidPattern_EscapeCarriageReturn_IsValid, PatternTests.IsMatchPattern_SetWithLineFeedEscape_MatchesLineFeed, PatternTests.IsMatchPattern_SetWithTabEscape_MatchesTab, PatternTests.IsValidPattern_EscapeHyphen_IsValid, PatternTests.IsValidPattern_EscapeCaret_IsValid, PatternTests.IsValidPattern_SetEndingInHyphen_IsValid, PatternTests.IsMatchPattern_SetStartingWithHyphen_MatchesHyphen, SchemaTests.Pattern_Anchored_AcceptsAStringThatMatchesWhole, SchemaTests.Pattern_Anchored_RejectsAStringThatDoesNotMatchWhole, PathTests.Filter_NotEqual_SelectsElementWithoutMember, PathTests.Filter_NegatedEqual_SelectsElementWithoutMember, PathTests.Filter_EqualOfTwoMissingValues_Selects, PathTests.Filter_MissingValueEqualsNothingElse, PathTests.Filter_LessOrEqual_EqualBooleans_Selects, PathTests.Filter_LessOrEqual_EqualNulls_Selects, PathTests.Filter_LessOrEqual_EqualArrays_Selects, PathTests.Filter_GreaterOrEqual_EqualBooleans_Selects, PathTests.Filter_LessOrEqual_NumbersAndStrings_Compare, PathTests.CompilePath_UnknownFunction_IsAnError, PathTests.CompilePath_WrongNumberOfArguments_IsAnError, PathTests.CompilePath_QueryThatSelectsManyValuesInComparison_IsAnError, PathTests.Query_UnknownFunction_SetsTheError, PointerTests.PointerGet_EmptyTokenAfterToken_NamesTheEmptyKey, PointerTests.PointerSet_EmptyTokenAfterToken_ChangesTheEmptyKey, PointerTests.PointerRemove_EmptyTokenAfterToken_RemovesTheEmptyKey, PointerTests.PointerExists_EmptyTokenAfterToken_IsFalseWhereTheKeyIsMissing, PointerTests.Patch_ReplaceAtEmptyTokenAfterToken_ChangesTheEmptyKey, PointerTests.QueryHits_EmptyKey_PointerReadsTheSameValue, SchemaTests.Format_Ipv4_AcceptsValidAddresses, SchemaTests.Format_Ipv4_RejectsWrongAddresses, SchemaTests.Format_Ipv4_FailureNamesTheFormatKeyword, ErrorStateTests.Serialize_TwoDimensionalArray_RaisesNoRunTimeError, ErrorStateTests.Serialize_TwoDimensionalArray_SetsTheLastError, ErrorStateTests.Parse_AfterARunTimeErrorInSerialize_ClearsTheLastError, ErrorStateTests.Parse_AfterARunTimeErrorInSerialize_SetsItsOwnOrigin, DatesTests.FormatIso8601_MillisecondsAboveHalfASecond_KeepTheSecondAndTheFraction, DatesTests.Serialize_DateWithMillisecondsAboveHalfASecond_KeepsTheFraction -->
 > [!WARNING] 1.0.15.0
 > These problems give a wrong result with no error.
 >
@@ -210,6 +219,7 @@ Debug.Print Tests.Run()    ' mine
 > - **A JSON Pointer with an empty token after another token names the wrong place.** The token is read as a copy of the token before it, so `/a/` is read as `/a/a`: [**PointerGet**](Json#pointerget) returns the wrong value, and [**PointerSet**](Json#pointerset), [**PointerRemove**](Json#pointerremove) and [**Patch**](Json#patch) change the wrong member. The pointers that [**QueryHits**](Json#queryhits) returns for a member with an empty key are affected. The code declares a variable inside a loop and relies on it being empty in each pass; twinBASIC, like VBA, keeps its value from the pass before.
 > - **The `ipv4` format rejects almost every valid address** when [**IsFormatAssertion**](JsonOptions#isformatassertion) is **True**, for the same reason: the number of the previous part is not set back to 0.
 > - **A run-time error that escapes from a function stops the last error from being cleared.** [**Json.Serialize**](Json#serialize) raises error -2147467259 for a two-dimensional array. The function has by then marked the call as nested, and the mark stays: from then on a function neither clears the last error when it starts nor sets its origin, so [**JsonError.HasError**](JsonError#haserror) stays **True** after a call that worked, and the origin of an error is `Json.Serialize`. The call `JsonErrorStore.LeaveNested`, of an internal module, ends the mark.
+> - **A time with more than 500 milliseconds is written a second late.** [**FormatIso8601**](Json#formatiso8601) writes 09:15:30.750 as `09:15:31`, with no fraction, and 23:59:59.750 as midnight of the next day. [**Serialize**](Json#serialize) writes a **Date** the same way. A time of 500 milliseconds or less is written correctly.
 >
 > ```tb check_build check_run
 > Debug.Print Json.IsMatchPattern("ab", "a|ab")                    ' False
@@ -283,7 +293,14 @@ Debug.Print Tests.Run()    ' mine
 > v = Json.Parse("[1]")
 > Debug.Print JsonError.HasError                            ' False
 > ```
+>
+> ```tb check_build check_run
+> Debug.Print Json.FormatIso8601(Json.ParseIso8601("2026-08-19T09:15:30.500"))   ' 2026-08-19T09:15:30.500
+> Debug.Print Json.FormatIso8601(Json.ParseIso8601("2026-08-19T09:15:30.750"))   ' 2026-08-19T09:15:31
+> Debug.Print Json.FormatIso8601(Json.ParseIso8601("2026-08-19T23:59:59.750"))   ' 2026-08-20T00:00:00
+> ```
 
+<!-- test: NumberTests.Parse_ExponentAboveTheDecimalRange_IsInvalidNumber, NumberTests.Parse_ScaleBelowTheDecimalRange_IsInvalidNumber, NumberTests.Parse_ThirtySixDigitNumber_IsInvalidNumber, NumberTests.Parse_LargestDouble_IsInvalidNumber, NumberTests.Parse_NumbersInsideTheDecimalRange_KeepEveryDigit, NumberTests.Serialize_DoubleAboveTheDecimalRange_IsInvalidNumber, NumberTests.Serialize_DoubleJustAboveTheDecimalRange_IsInvalidNumber, PathTests.Filter_FractionLiteral_Compiles, PathTests.Filter_ExponentLiteral_Compiles, PathTests.Filter_NegativeFractionLiteral_Compiles, PathTests.Filter_IntegerLiteral_Compares, RunnerTests.SetContinueOnFail_False_StopsAtTheFirstFailedCheck, RunnerTests.SetContinueOnFail_True_RunsEveryCheck -->
 > [!NOTE] 1.0.15.0
 > The package has three more problems, each of which is an error that the reader cannot miss.
 >
@@ -322,3 +339,7 @@ Debug.Print Tests.FailCount()
 - [Importing a package from TWINSERV](../../../../Features/Packages/Importing-TWINSERV) -- adding a published package to a project
 - [VBA_JSON](../VBA_JSON/) package -- JSON parsing and writing with **Dictionary** and **Collection** objects
 - [cJson](../TBMANLIB/cJson) class -- the JSON class of TBMANLIB
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [tsJson-tests.twinproj](tsJson-tests.twinproj), a twinBASIC project. It uses tsJson as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

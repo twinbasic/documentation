@@ -1,0 +1,101 @@
+' cXml.Parse and the items that are not elements or text: comments, CDATA sections, processing
+' instructions and the DOCTYPE declaration. A call must return; some of these calls do not.
+[TestFixture]
+Module DeclarationTests
+
+    [TestCase]
+    Public Sub Parse_UnclosedComment_Returns()
+        Expect.Begin
+        Dim x As New cXml
+        Dim ok As Boolean
+        ok = x.Parse("<root><!-- never closed </root>")
+        Expect.IsFalse ok, "Parse of <root><!-- never closed </root> (an ill-formed text) returns False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_UnclosedCDataSection_Returns()
+        Expect.Begin
+        Dim x As New cXml
+        Dim ok As Boolean
+        ok = x.Parse("<root><![CDATA[ never closed </root>")
+        Expect.IsFalse ok, "Parse of <root><![CDATA[ never closed </root> (an ill-formed text) returns False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_DoctypeAfterTheDeclaration_Returns()
+        Expect.Begin
+        Dim x As New cXml
+        Dim ok As Boolean
+        ok = x.Parse("<?xml version=""1.0""?><!DOCTYPE root><root></root>")
+        Expect.IsTrue ok, "Parse of a declaration, a DOCTYPE and a root element returns True"
+        Expect.AreEqual "root", Helpers.NameOf(x.RootElement), "the root element of that text"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_DoctypeInsideAnElement_Returns()
+        Expect.Begin
+        Dim x As New cXml
+        Dim ok As Boolean
+        ok = x.Parse("<root><!DOCTYPE x><a>1</a></root>")
+        Expect.AreEqual "1", x.GetElementText("root/a"), "the text of root/a in <root><!DOCTYPE x><a>1</a></root>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_DoctypeAtTheStart_IsSkipped()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<!DOCTYPE note SYSTEM ""Note.dtd""><note>text</note>")
+        Expect.AreEqual "text", x.GetElementText("note"), "the text of note in a text that starts with a DOCTYPE"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_DoctypeFollowedByAnInstruction_KeepsTheRootElement()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<?xml version=""1.0""?><!DOCTYPE note><note>text</note><?pi?>")
+        Expect.AreEqual "note", Helpers.NameOf(x.RootElement), "the root element of a declaration, a DOCTYPE, a root element and an instruction"
+        Expect.AreEqual "text", x.GetElementText("note"), "the text of note in that text"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_ProcessingInstructionInsideAnElement_LeavesNoText()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<root><?pi data?><a>x</a></root>")
+        Expect.AreEqual "x", x.GetElementText("root"), "the text of root in <root><?pi data?><a>x</a></root>"
+        Expect.AreEqual 1, x.RootElement.ChildNodes.Count, "the children of root in <root><?pi data?><a>x</a></root>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_CommentAndCDataSection_AreKeptAsNodes()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<r>text<!--note--><![CDATA[data <b>]]></r>")
+        Expect.AreEqual 3, x.RootElement.ChildNodes.Count, "the children of r"
+        Expect.AreEqual XmlNodeType.Text, x.RootElement.ChildNodes(1).NodeType, "the kind of the first child"
+        Expect.AreEqual XmlNodeType.Comment, x.RootElement.ChildNodes(2).NodeType, "the kind of the second child"
+        Expect.AreEqual "note", x.RootElement.ChildNodes(2).Value, "the value of the comment"
+        Expect.AreEqual XmlNodeType.CData, x.RootElement.ChildNodes(3).NodeType, "the kind of the third child"
+        Expect.AreEqual "data <b>", x.RootElement.ChildNodes(3).Value, "the value of the CDATA section"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_XmlDeclaration_SetsVersionAndEncoding()
+        Expect.Begin
+        Dim x As New cXml
+        Expect.IsTrue x.Parse("<?xml version=""1.1"" encoding=""ISO-8859-1""?><r a=""1""><b>text</b></r>"), "Parse of a text with a declaration"
+        Expect.AreEqual "1.1", x.Version, "Version after Parse"
+        Expect.AreEqual "ISO-8859-1", x.Encoding, "Encoding after Parse"
+        Expect.AreEqual "r", Helpers.NameOf(x.RootElement), "the root element"
+        Expect.Done
+    End Sub
+
+End Module

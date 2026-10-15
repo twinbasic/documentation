@@ -1,0 +1,187 @@
+' tsPwGen: PwGen.Entropy. The figure is computed from the recipe's settings alone, in random mode
+' as Length * log2(pool size), in wordlist mode as WordCount * log2(list size), or the sum of
+' log2(n - i) when the words must be different.
+[TestFixture]
+Module EntropyTests
+
+    [TestCase]
+    Public Sub Random_LengthTimesLogTwoOfThePool()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "abcdefgh"
+        o.Length = 10
+        Helpers.ExpectNear 30, PwGen.Entropy(o), "Entropy of 10 characters from a pool of 8"
+        o.Alphabet = "ab"
+        o.Length = 40
+        Helpers.ExpectNear 40, PwGen.Entropy(o), "Entropy of 40 characters from a pool of 2"
+        o.Alphabet = "x"
+        o.Length = 1
+        Helpers.ExpectNear 0, PwGen.Entropy(o), "Entropy of 1 character from a pool of 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Random_RepeatedCharactersOfTheAlphabetCountOnce()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "aabbcc"
+        o.Length = 10
+        Helpers.ExpectNear 10 * Log(3) / Log(2), PwGen.Entropy(o), "Entropy of 10 characters from the Alphabet aabbcc"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Random_RepeatedCharactersOfSpecialCharsAndIncludeCharsCountOnce()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.HasUpperCase = False
+        o.HasLowerCase = False
+        o.HasDigits = False
+        o.HasSpecialChars = True
+        o.SpecialChars = "!!##"
+        o.IncludeChars = "#?"
+        o.MinPerClass = 0
+        o.Length = 1
+        Helpers.ExpectNear Log(3) / Log(2), PwGen.Entropy(o), "Entropy of the pool from SpecialChars !!## and IncludeChars #?"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Random_RemovedCharactersDoNotCount()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        Helpers.ExpectNear 16 * Log(57) / Log(2), PwGen.Entropy(o), "Entropy of Alphanumeric (62 characters less the five look-alikes)"
+        o.IsAmbiguousExcluded = False
+        Helpers.ExpectNear 16 * Log(62) / Log(2), PwGen.Entropy(o), "Entropy of Alphanumeric with IsAmbiguousExcluded False"
+        o.ExcludeChars = "abc"
+        Helpers.ExpectNear 16 * Log(59) / Log(2), PwGen.Entropy(o), "Entropy of Alphanumeric with IsAmbiguousExcluded False and ExcludeChars abc"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Random_ConstraintsDoNotLowerTheFigure()
+        Expect.Begin
+        Helpers.Reset
+        Dim plain As PwGenOptions = PwGenOptions.Alphanumeric
+        plain.MinPerClass = 0
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.MinPerClass = 4
+        o.StartsWithLetter = True
+        o.HasNoConsecutiveRepeats = True
+        Helpers.ExpectNear PwGen.Entropy(plain), PwGen.Entropy(o), "Entropy with MinPerClass 4, StartsWithLetter and HasNoConsecutiveRepeats against the same recipe without them"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Wordlist_WordCountTimesLogTwoOfTheListSize()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        o.WordCount = 4
+        Helpers.ExpectNear 52, PwGen.Entropy(o), "Entropy of 4 words from the English list of 8192"
+        o.Wordlist = pgwGerman
+        Helpers.ExpectNear 52, PwGen.Entropy(o), "Entropy of 4 words from the German list of 8192"
+        o.CustomWords = Helpers.WordList(16)
+        o.WordCount = 3
+        Helpers.ExpectNear 12, PwGen.Entropy(o), "Entropy of 3 words from a custom list of 16"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Wordlist_UniqueWords_SumOfLogTwoOfTheWordsLeft()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        o.CustomWords = Helpers.WordList(8)
+        o.WordCount = 3
+        o.HasUniqueWords = True
+        Dim three As Double = (Log(8) + Log(7) + Log(6)) / Log(2)
+        Helpers.ExpectNear three, PwGen.Entropy(o), "Entropy of 3 different words from a custom list of 8"
+        o.WordCount = 8
+        Dim bits As Double
+        Dim i As Long
+        For i = 0 To 7
+            bits = bits + Log(8 - i) / Log(2)
+        Next
+        Helpers.ExpectNear bits, PwGen.Entropy(o), "Entropy of 8 different words from a custom list of 8"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Wordlist_SeparatorAndCapitalizeAddNothing()
+        Expect.Begin
+        Helpers.Reset
+        Dim a As PwGenOptions = PwGenOptions.Passphrase
+        Dim b As PwGenOptions = PwGenOptions.Passphrase
+        b.WordSeparator = ""
+        b.Capitalize = True
+        Helpers.ExpectNear PwGen.Entropy(a), PwGen.Entropy(b), "Entropy with an empty separator and Capitalize against the default passphrase"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Entropy_InvalidRecipe_ReturnsZeroAndSetsTheError()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Length = 0
+        Expect.AreEqual 0#, PwGen.Entropy(o), "Entropy of a recipe with Length 0"
+        Helpers.ExpectError "Entropy with Length 0", "InvalidLength", "Length must be between 1 and 4096.", "PwGen.Entropy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Entropy_ClearsTheLastErrorWhenItStarts()
+        Expect.Begin
+        Helpers.Reset
+        Dim bad As PwGenOptions = PwGenOptions.Alphanumeric
+        bad.Length = 0
+        PwGen.Entropy bad
+        Expect.IsTrue PwGenError.HasError, "HasError after a failed Entropy"
+        PwGen.Entropy
+        Helpers.ExpectNoError "after a successful Entropy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Entropy_DoesNotChangeTheRecipe()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Complex
+        o.Length = 22
+        o.ExcludeChars = "xyz"
+        PwGen.Entropy o
+        Expect.AreEqual 22, o.Length, "Length after Entropy"
+        Expect.AreEqual "xyz", o.ExcludeChars, "ExcludeChars after Entropy"
+        Expect.IsTrue o.HasSpecialChars, "HasSpecialChars after Entropy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Entropy_DoesNotFindTheErrorsThatArisePerDraw()
+        Expect.Begin
+        Helpers.Reset
+        ' RngFailed: a source that returns a number outside the interval.
+        Dim a As PwGenOptions = PwGenOptions.Alphanumeric
+        Set a.RandomSource = New OutOfRangeRandom
+        Expect.IsTrue PwGen.Entropy(a) > 0, "Entropy of a recipe whose source returns numbers outside the interval"
+        Helpers.ExpectNoError "Entropy with an out-of-range source"
+        ' LengthTooShort, the second message: the first letter comes from IncludeChars and counts for no class.
+        Dim b As PwGenOptions = PwGenOptions.Alphanumeric
+        b.HasUpperCase = False
+        b.HasLowerCase = False
+        b.IncludeChars = "a"
+        b.StartsWithLetter = True
+        b.Length = 1
+        Expect.IsTrue PwGen.Entropy(b) > 0, "Entropy of a digits-only recipe with IncludeChars a, StartsWithLetter and Length 1"
+        Helpers.ExpectNoError "Entropy with StartsWithLetter and a letter only from IncludeChars"
+        Expect.AreEqual "", PwGen.Generate(b), "Generate with StartsWithLetter and a letter only from IncludeChars"
+        Helpers.ExpectError "Generate with StartsWithLetter and a letter only from IncludeChars", "LengthTooShort", "Length is too small for MinPerClass and StartsWithLetter.", "PwGen.Generate"
+        Expect.Done
+    End Sub
+
+End Module

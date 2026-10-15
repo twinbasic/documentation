@@ -1,0 +1,388 @@
+' cJson: Decode, Encode, LoadFrom and SaveTo, and the shared stream behind the two file calls.
+[TestFixture]
+Module JsonTests
+
+    ' ---- Decode
+
+    [TestCase]
+    Public Sub Decode_WhiteSpaceBeforeArray_ReadsTheArray()
+        Expect.Begin
+        Dim J As cJson, ws As Variant, i As Long
+        ws = Array(vbCrLf, vbLf, vbTab, " ")
+        For i = 0 To UBound(ws)
+            Set J = New cJson
+            On Error Resume Next
+            J.Decode ws(i) & "[1,2]"
+            Expect.AreEqual 0, Err.Number, "Decode of white space code " & AscW(ws(i)) & " and [1,2] raised error " & Err.Number & " " & Err.Description
+            Err.Clear
+            Expect.AreEqual 2, J.RootItems.Count, "number of items after Decode of white space code " & AscW(ws(i)) & " and [1,2]"
+            On Error GoTo 0
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Decode_SyntaxError_RaisesWithTheSourceDecode()
+        Expect.Begin
+        Dim J As New cJson
+        On Error Resume Next
+        J.Decode "{""a"" 1}"
+        Expect.AreEqual 10001, Err.Number, "Decode of {""a"" 1} raises"
+        Expect.AreEqual "DECODE", Err.Source, "source of the error"
+        Expect.IsTrue InStr(Err.Description, "#{""a"" 1}") > 0, "description ends with # and the text"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    ' ---- Encode
+
+    [TestCase]
+    Public Sub Encode_FromUnicode_BackslashThenU_IsNotAnEscape()
+        Expect.Begin
+        Dim J As New cJson, t As String
+        J.Item("p") = "C:\users"
+        Expect.AreEqual "{""p"":""C:\\users""}", J.Encode(), "Encode of a value that holds C:\users"
+        On Error Resume Next
+        t = J.Encode(, , True)
+        Expect.AreEqual 0, Err.Number, "Encode with FromUnicode of C:\users raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        Expect.AreEqual "{""p"":""C:\\users""}", t, "Encode with FromUnicode of a value that holds C:\users"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Encode_FromUnicode_ControlCharacter_StaysEscaped()
+        Expect.Begin
+        Dim J As New cJson, t As String, i As Long, bad As Boolean
+        J.Item("c") = Chr$(1)
+        t = J.Encode(, , True)
+        For i = 1 To Len(t)
+            If AscW(Mid$(t, i, 1)) < 32 Then bad = True
+        Next i
+        Expect.IsFalse bad, "Encode with FromUnicode of Chr(1) holds a raw control character"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Encode_NonAscii_IsWrittenAsEscapeAndFromUnicodeReadsItBack()
+        Expect.Begin
+        Dim J As New cJson
+        J.Item("word") = "caf" & ChrW(233)
+        Expect.AreEqual "{""word"":""caf\u00E9""}", J.Encode(), "Encode of a value with e acute"
+        Expect.AreEqual "{""word"":""caf" & ChrW(233) & """}", J.Encode(, , True), "Encode with FromUnicode of a value with e acute"
+        Expect.Done
+    End Sub
+
+    ' ---- LoadFrom and SaveTo
+
+    [TestCase]
+    Public Sub LoadFrom_AfterLoadFrom_ReadsTheFile()
+        Expect.Begin
+        Dim dir As String, p As String, J As New cJson, K As New cJson
+        Sandbox.ResetSharedStream
+        dir = Sandbox.Fresh("json1")
+        p = dir & "\a.json"
+        Sandbox.WriteAscii p, "{""a"":1}"
+        On Error Resume Next
+        J.LoadFrom p
+        Expect.AreEqual 0, Err.Number, "first LoadFrom raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        K.LoadFrom p
+        Expect.AreEqual 0, Err.Number, "second LoadFrom raised error " & Err.Number & " " & Err.Description
+        Expect.AreEqual 1, K.Item("a"), "value read by the second LoadFrom"
+        Sandbox.ResetSharedStream
+        On Error GoTo 0
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFrom_AfterSaveTo_ReadsTheFile()
+        Expect.Begin
+        Dim dir As String, p As String, J As New cJson, K As New cJson
+        Sandbox.ResetSharedStream
+        dir = Sandbox.Fresh("json2")
+        p = dir & "\a.json"
+        J.Item("a") = 1
+        On Error Resume Next
+        J.SaveTo p
+        Expect.AreEqual 0, Err.Number, "SaveTo raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        K.LoadFrom p
+        Expect.AreEqual 0, Err.Number, "LoadFrom after SaveTo raised error " & Err.Number & " " & Err.Description
+        Expect.AreEqual 1, K.Item("a"), "value read by LoadFrom after SaveTo"
+        Sandbox.ResetSharedStream
+        On Error GoTo 0
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFrom_AfterFailedLoadFrom_ReadsTheFile()
+        Expect.Begin
+        Dim dir As String, p As String, J As New cJson
+        Sandbox.ResetSharedStream
+        dir = Sandbox.Fresh("json3")
+        p = dir & "\a.json"
+        Sandbox.WriteAscii p, "{""a"":1}"
+        On Error Resume Next
+        J.LoadFrom dir & "\missing.json"
+        Expect.AreEqual 3002, Err.Number, "LoadFrom of a missing file raises"
+        Err.Clear
+        J.LoadFrom p
+        Expect.AreEqual 0, Err.Number, "LoadFrom after a failed LoadFrom raised error " & Err.Number & " " & Err.Description
+        Expect.AreEqual 1, J.Item("a"), "value read after a failed LoadFrom"
+        Sandbox.ResetSharedStream
+        On Error GoTo 0
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveTo_SecondShorterDocument_WritesValidJson()
+        Expect.Begin
+        Dim dir As String, p1 As String, p2 As String, J As New cJson, K As New cJson, t As String
+        Sandbox.ResetSharedStream
+        dir = Sandbox.Fresh("json4")
+        p1 = dir & "\one.json"
+        p2 = dir & "\two.json"
+        J.Item("a") = "long long"
+        K.Item("b") = 1
+        On Error Resume Next
+        J.SaveTo p1
+        K.SaveTo p2
+        Expect.AreEqual 0, Err.Number, "SaveTo raised error " & Err.Number & " " & Err.Description
+        Sandbox.ResetSharedStream
+        Err.Clear
+        On Error GoTo 0
+        Expect.AreEqual "EF BB BF 7B 22 62 22 3A 31 7D", Sandbox.HexOf(p2), "bytes of the second file, which should hold {""b"":1}"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveTo_ThenLoadFrom_RoundTripsNonAscii()
+        Expect.Begin
+        Dim dir As String, p As String, J As New cJson, K As New cJson, s As String
+        Sandbox.ResetSharedStream
+        dir = Sandbox.Fresh("json5")
+        p = dir & "\sample.json"
+        J.Item("word") = "caf" & ChrW(233)
+        On Error Resume Next
+        s = J.SaveTo(p)
+        Sandbox.ResetSharedStream
+        K.LoadFrom p
+        Sandbox.ResetSharedStream
+        On Error GoTo 0
+        Expect.AreEqual "{""word"":""caf\u00E9""}", s, "text returned by SaveTo"
+        Expect.AreEqual "caf" & ChrW(233), K.Item("word"), "value read back"
+        Expect.AreEqual "EF BB BF", Left$(Sandbox.HexOf(p), 8), "start of the file"
+        Sandbox.Remove dir
+        Expect.Done
+    End Sub
+
+    ' ---- the document
+
+    [TestCase]
+    Public Sub Decode_ObjectAndArray_AreHeldInTheirOwnFields()
+        Expect.Begin
+        Dim J As New cJson
+        J.Decode "{""name"":""Ann"",""age"":31,""tags"":[""a"",""b""],""ok"":true,""none"":null}"
+        Expect.AreEqual "Ann", J.Item("name"), "Item(name)"
+        Expect.AreEqual 32, J.Item("age") + 1, "Item(age) + 1"
+        Expect.AreEqual "b", J.Item("tags")(2), "second item of tags"
+        Expect.AreEqual vbBoolean, VarType(J.Item("ok")), "type of Item(ok)"
+        Expect.IsTrue IsNull(J.Item("none")), "Item(none) is Null"
+        Expect.IsTrue IsEmpty(J.Item("missing")), "Item(missing) is Empty"
+        Expect.IsFalse J.RootIsArray, "RootIsArray for an object"
+        Expect.IsFalse J.RootIsEmpty, "RootIsEmpty for an object"
+        Dim A As New cJson
+        A.Decode "[1,2]"
+        Expect.IsTrue A.RootIsArray, "RootIsArray for an array"
+        Expect.AreEqual 2, A.Items(2), "Items(2)"
+        Expect.IsTrue IsEmpty(A.Items(9)), "Items(9) of two items is Empty"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Decode_NumberOf16Characters_IsReturnedAsText()
+        Expect.Begin
+        Dim J As New cJson
+        J.Decode "{""big"":1234567890123456,""small"":123456789012345,""dec"":1.234567890123456,""dec2"":1.23456789012345}"
+        Expect.AreEqual vbString, VarType(J.Item("big")), "type of a number of 16 characters"
+        Expect.AreEqual vbDouble, VarType(J.Item("small")), "type of a number of 15 characters"
+        Expect.AreEqual vbString, VarType(J.Item("dec")), "type of a number of 17 characters with a decimal point"
+        Expect.AreEqual vbDouble, VarType(J.Item("dec2")), "type of a number of 16 characters with a decimal point"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Decode_EmptyText_ChangesNothing()
+        Expect.Begin
+        Dim J As New cJson
+        J.Decode "{""a"":1}"
+        J.Decode "   "
+        Expect.AreEqual 1, J.Item("a"), "Item(a) after Decode of spaces"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Decode_ObjectAfterArray_ReplacesTheDocument()
+        Expect.Begin
+        Dim J As New cJson
+        J.Decode "[1,2]"
+        J.Decode "{""a"":1}"
+        Expect.IsFalse J.RootIsArray, "RootIsArray after decoding an array and then an object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_EmptiesTheDocumentAndTheFieldsWorkAgain()
+        Expect.Begin
+        Dim J As New cJson
+        J.Decode "[1,2]"
+        J.Clear
+        Expect.IsTrue J.RootIsEmpty, "RootIsEmpty after Clear"
+        Expect.AreEqual "", J.RootText, "RootText after Clear"
+        J.Item("a") = 1
+        Expect.AreEqual "{""a"":1}", J.Encode(), "Encode after Clear and an assignment"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Decode_ArrayAfterObject_EncodeWritesTheArray()
+        Expect.Begin
+        Dim J As New cJson
+        J.Decode "{""a"":1}"
+        J.Decode "[1,2]"
+        Expect.AreEqual "[1,2]", J.Encode(), "Encode after decoding an object and then an array"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Decode_MissingComma_Raises()
+        Expect.Begin
+        Dim J As New cJson
+        On Error Resume Next
+        J.Decode "{""a"":1 ""b"":2}"
+        Expect.AreEqual 10001, Err.Number, "Decode of an object with no comma between its members raises"
+        Err.Clear
+        J.Decode "[1 2]"
+        Expect.AreEqual 10001, Err.Number, "Decode of an array with no comma between its items raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Decode_TextAfterTheDocument_Raises()
+        Expect.Begin
+        Dim J As New cJson
+        On Error Resume Next
+        J.Decode "{""a"":1} garbage"
+        Expect.AreEqual 10001, Err.Number, "Decode of an object followed by other text raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Items_Assignment_ReplacesTheItemAtTheIndex()
+        Expect.Begin
+        Dim J As New cJson
+        J.Decode "[1,2]"
+        J.Items(1) = 5
+        Expect.AreEqual "[5,2]", J.Encode(), "Encode after Items(1) = 5 on [1,2]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Encode_EmptyDocument_IsWrittenAsEmptyBraces()
+        Expect.Begin
+        Dim J As New cJson
+        Expect.AreEqual "{}", J.Encode(), "Encode of a new document"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Encode_DocumentEmptiedAfterAnEncode_IsNotTheOldText()
+        Expect.Begin
+        Dim J As New cJson
+        J.Item("a") = 1
+        Expect.AreEqual "{""a"":1}", J.Encode(), "Encode of a document with one member"
+        J.RootItem.RemoveAll
+        Expect.AreEqual "{}", J.Encode(), "Encode after the member was removed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Encode_Whitespace_IndentsByLevel()
+        Expect.Begin
+        Dim J As New cJson
+        J.Decode "{""a"":[1,2]}"
+        Expect.AreEqual "{|  ""a"": [|    1,|    2|  ]|}", Replace(J.Encode(, 2), vbCrLf, "|"), "Encode with Whitespace 2"
+        J.WhiteSpaceSet = 1
+        Expect.AreEqual "{|" & " ""a"": [|" & "  1,|" & "  2|" & " ]|}", Replace(J.Encode(), vbCrLf, "|"), "Encode with WhiteSpaceSet 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Encode_NonObjectValue_IsStoredAsText()
+        Expect.Begin
+        Dim J As New cJson, r As String
+        r = J.Encode("plain")
+        Expect.AreEqual "plain", r, "Encode of a string"
+        Expect.AreEqual "plain", J.RootText, "RootText after Encode of a string"
+        On Error Resume Next
+        r = J.Encode(Array(1, 2))
+        Expect.AreEqual 13, Err.Number, "Encode of an array raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NewItem_NewItems_BuildNestedObjectsAndArrays()
+        Expect.Begin
+        Dim J As New cJson, Home As cJson, Row As cJson, L As New cJson, Tags As cJson, T As New cJson
+        J.Item("name") = "Ann"
+        Set Home = J.NewItem("home")
+        Home.Item("city") = "Oslo"
+        Expect.AreEqual "{""name"":""Ann"",""home"":{""city"":""Oslo""}}", J.Encode(), "Encode after NewItem(home)"
+        Set Row = L.NewItem()
+        Row.Item("id") = 1
+        Set Row = L.NewItem()
+        Row.Item("id") = 2
+        Expect.AreEqual "[{""id"":1},{""id"":2}]", L.Encode(), "Encode after two NewItem()"
+        Set Tags = T.NewItems("tags")
+        Tags.RootItems.Add "a"
+        Tags.RootItems.Add "b"
+        Expect.AreEqual "{""tags"":[""a"",""b""]}", T.Encode(), "Encode after NewItems(tags)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToArray_ObjectDocument_ReturnsOneElementArray()
+        Expect.Begin
+        Dim J As New cJson, v As Variant
+        J.Item("a") = 1
+        v = J.ToArray()
+        Expect.IsTrue IsArray(v), "ToArray of an object document is an array"
+        Expect.AreEqual 0, UBound(v), "upper bound"
+        Dim A As New cJson
+        A.Decode "[1]"
+        Expect.IsTrue IsEmpty(A.ToArray()), "ToArray of an array document is Empty"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LastError_IsNeverSet()
+        Expect.Begin
+        Dim J As New cJson
+        On Error Resume Next
+        J.Decode "{""a"" 1}"
+        On Error GoTo 0
+        Expect.AreEqual "", J.LastError, "LastError after a failed Decode"
+        Expect.IsTrue J.LastSuccess, "LastSuccess after a failed Decode"
+        Expect.Done
+    End Sub
+
+End Module

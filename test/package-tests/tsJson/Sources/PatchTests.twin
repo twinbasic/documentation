@@ -1,0 +1,261 @@
+' JSON Patch (RFC 6902), JSON Merge Patch (RFC 7396) and Diff. The examples are those of the two RFCs'
+' appendices, and a document is compared as JSON values, so the order of keys does not matter.
+[TestFixture]
+Module PatchTests
+
+    ' Checks that applying the patch to the document gives the expected document.
+    Private Sub PatchGives(ByVal DocText As String, ByVal PatchText As String, ByVal ExpectedText As String, ByVal What As String)
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc(DocText)
+        Dim ops As Variant = Helpers.Doc(PatchText)
+        Dim want As Variant = Helpers.Doc(ExpectedText)
+        Dim got As Variant = Json.Patch(doc, ops)
+        If JsonError.HasError Then
+            Expect.Fail What & ": the patch failed with " & JsonError.ToString()
+        ElseIf Json.Equals(want, got) Then
+            Expect.IsTrue True, What
+        Else
+            Expect.AreEqual ExpectedText, Helpers.Min(got), What
+        End If
+    End Sub
+
+    ' Checks that applying the patch fails with the error code, and returns Empty.
+    Private Sub PatchFails(ByVal DocText As String, ByVal PatchText As String, ByVal Code As String, ByVal What As String)
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc(DocText)
+        Dim ops As Variant = Helpers.Doc(PatchText)
+        Dim got As Variant = Json.Patch(doc, ops)
+        Expect.IsTrue IsEmpty(got), What & " returns Empty"
+        Expect.AreEqual Code, JsonError.Code, What & ": the error code"
+    End Sub
+
+    Private Sub MergeGives(ByVal DocText As String, ByVal PatchText As String, ByVal ExpectedText As String)
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc(DocText)
+        Dim p As Variant = Helpers.Doc(PatchText)
+        Dim want As Variant = Helpers.Doc(ExpectedText)
+        Dim got As Variant = Json.MergePatch(doc, p)
+        Dim What As String = "MergePatch of " & DocText & " with " & PatchText
+        If Json.Equals(want, got) Then
+            Expect.IsTrue True, What
+        Else
+            Expect.AreEqual ExpectedText, Helpers.Min(got), What
+        End If
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_Add_FollowsRfc6902()
+        Expect.Begin
+        PatchGives "{""foo"":""bar""}", "[{""op"":""add"",""path"":""/baz"",""value"":""qux""}]", "{""baz"":""qux"",""foo"":""bar""}", "A.1 adding an object member"
+        PatchGives "{""foo"":[""bar"",""baz""]}", "[{""op"":""add"",""path"":""/foo/1"",""value"":""qux""}]", "{""foo"":[""bar"",""qux"",""baz""]}", "A.2 adding an array element"
+        PatchGives "{""foo"":""bar""}", "[{""op"":""add"",""path"":""/child"",""value"":{""grandchild"":{}}}]", "{""foo"":""bar"",""child"":{""grandchild"":{}}}", "A.10 adding a nested member object"
+        PatchGives "{""foo"":[""bar""]}", "[{""op"":""add"",""path"":""/foo/-"",""value"":[""abc"",""def""]}]", "{""foo"":[""bar"",[""abc"",""def""]]}", "A.16 adding an array value"
+        PatchGives "{""foo"":""bar""}", "[{""op"":""add"",""path"":""/foo"",""value"":""baz""}]", "{""foo"":""baz""}", "adding a member that exists replaces it"
+        PatchGives "{""foo"":""bar""}", "[{""op"":""add"",""path"":"""",""value"":[1]}]", "[1]", "adding at the empty path replaces the document"
+        PatchGives "[1,2]", "[{""op"":""add"",""path"":""/2"",""value"":3}]", "[1,2,3]", "adding at the index equal to the length appends"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_AddToMissingParent_Fails()
+        Expect.Begin
+        PatchFails "{""foo"":""bar""}", "[{""op"":""add"",""path"":""/baz/bat"",""value"":""qux""}]", "PointerNotFound", "A.12 adding below a member that does not exist"
+        PatchFails "[1,2]", "[{""op"":""add"",""path"":""/5"",""value"":3}]", "PatchFailed", "adding at an index above the length"
+        PatchFails "{""foo"":1}", "[{""op"":""add"",""path"":""/foo/bar"",""value"":3}]", "PatchFailed", "adding into a scalar"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_Remove_FollowsRfc6902()
+        Expect.Begin
+        PatchGives "{""baz"":""qux"",""foo"":""bar""}", "[{""op"":""remove"",""path"":""/baz""}]", "{""foo"":""bar""}", "A.3 removing an object member"
+        PatchGives "{""foo"":[""bar"",""qux"",""baz""]}", "[{""op"":""remove"",""path"":""/foo/1""}]", "{""foo"":[""bar"",""baz""]}", "A.4 removing an array element"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_RemoveMissingPlace_Fails()
+        Expect.Begin
+        PatchFails "{""foo"":""bar""}", "[{""op"":""remove"",""path"":""/baz""}]", "PointerNotFound", "removing a member that does not exist"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_Replace_FollowsRfc6902()
+        Expect.Begin
+        PatchGives "{""baz"":""qux"",""foo"":""bar""}", "[{""op"":""replace"",""path"":""/baz"",""value"":""boo""}]", "{""baz"":""boo"",""foo"":""bar""}", "A.5 replacing a value"
+        PatchGives "[1,2]", "[{""op"":""replace"",""path"":"""",""value"":{""a"":1}}]", "{""a"":1}", "replacing the whole document"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_ReplaceMissingPlace_Fails()
+        Expect.Begin
+        PatchFails "{""foo"":""bar""}", "[{""op"":""replace"",""path"":""/baz"",""value"":1}]", "PointerNotFound", "replacing a member that does not exist"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_Move_FollowsRfc6902()
+        Expect.Begin
+        PatchGives "{""foo"":{""bar"":""baz"",""waldo"":""fred""},""qux"":{""corge"":""grault""}}", "[{""op"":""move"",""from"":""/foo/waldo"",""path"":""/qux/thud""}]", "{""foo"":{""bar"":""baz""},""qux"":{""corge"":""grault"",""thud"":""fred""}}", "A.6 moving a value"
+        PatchGives "{""foo"":[""all"",""grass"",""cows"",""eat""]}", "[{""op"":""move"",""from"":""/foo/1"",""path"":""/foo/3""}]", "{""foo"":[""all"",""cows"",""eat"",""grass""]}", "A.7 moving an array element"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_MoveFromParentOfPath_Fails()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":{""b"":1}}")
+        Dim ops As Variant = Helpers.Doc("[{""op"":""move"",""from"":""/a"",""path"":""/a/c""}]")
+        Dim got As Variant = Json.Patch(doc, ops)
+        Expect.IsTrue IsEmpty(got), "moving a value below itself returns Empty"
+        Expect.IsTrue JsonError.HasError, "moving a value below itself sets the last error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_Copy_FollowsRfc6902()
+        Expect.Begin
+        PatchGives "{""foo"":{""bar"":""baz""}}", "[{""op"":""copy"",""from"":""/foo"",""path"":""/qux""}]", "{""foo"":{""bar"":""baz""},""qux"":{""bar"":""baz""}}", "copying an object"
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""foo"":{""bar"":""baz""}}")
+        Dim ops As Variant = Helpers.Doc("[{""op"":""copy"",""from"":""/foo"",""path"":""/qux""}]")
+        Dim got As JsonObject = Json.Patch(doc, ops)
+        got.Map("qux").Item("bar") = "changed"
+        Expect.AreEqual "baz", got.Map("foo").Str("bar"), "the copy shares nothing with the original"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_Test_FollowsRfc6902()
+        Expect.Begin
+        PatchGives "{""baz"":""qux"",""foo"":[""a"",2,""c""]}", "[{""op"":""test"",""path"":""/baz"",""value"":""qux""},{""op"":""test"",""path"":""/foo/1"",""value"":2}]", "{""baz"":""qux"",""foo"":[""a"",2,""c""]}", "A.8 testing a value, success"
+        PatchGives "{""/"":9,""~1"":10}", "[{""op"":""test"",""path"":""/~01"",""value"":10}]", "{""/"":9,""~1"":10}", "A.14 the tilde escape"
+        PatchGives "{""a"":{""x"":1,""y"":2}}", "[{""op"":""test"",""path"":""/a"",""value"":{""y"":2,""x"":1.0}}]", "{""a"":{""x"":1,""y"":2}}", "testing an object without regard to the order of keys and 1 against 1.0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_TestThatFails_IsPatchTestFailed()
+        Expect.Begin
+        PatchFails "{""baz"":""qux""}", "[{""op"":""test"",""path"":""/baz"",""value"":""bar""}]", "PatchTestFailed", "A.9 testing a value, error"
+        PatchFails "{""/"":9,""~1"":10}", "[{""op"":""test"",""path"":""/~01"",""value"":""10""}]", "PatchTestFailed", "A.15 comparing a string with a number"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_FailedOperation_AppliesNothing()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""foo"":""bar""}")
+        Dim ops As Variant = Helpers.Doc("[{""op"":""add"",""path"":""/a"",""value"":1},{""op"":""test"",""path"":""/foo"",""value"":""x""}]")
+        Dim got As Variant = Json.Patch(doc, ops)
+        Dim path As String = JsonError.Path
+        Expect.IsTrue IsEmpty(got), "Patch returns Empty"
+        Expect.AreEqual "/foo", path, "JsonError.Path of PatchTestFailed"
+        Expect.AreEqual "{""foo"":""bar""}", Helpers.Min(doc), "the document after the failed patch"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_DoesNotChangeTheDocument()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""foo"":""bar""}")
+        Dim ops As Variant = Helpers.Doc("[{""op"":""add"",""path"":""/baz"",""value"":""qux""},{""op"":""replace"",""path"":""/foo"",""value"":""BAR""}]")
+        Dim got As Variant = Json.Patch(doc, ops)
+        Expect.AreEqual "{""foo"":""BAR"",""baz"":""qux""}", Helpers.Min(got), "the patched document"
+        Expect.AreEqual "{""foo"":""bar""}", Helpers.Min(doc), "the document after Patch"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_SingleOperationObject_IsAccepted()
+        Expect.Begin
+        PatchGives "{""foo"":""bar""}", "{""op"":""add"",""path"":""/baz"",""value"":1}", "{""foo"":""bar"",""baz"":1}", "Patch with one operation object and no array"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_MalformedOperations_AreInvalidPatch()
+        Expect.Begin
+        PatchFails "{}", "[1]", "InvalidPatch", "an operation that is not an object"
+        PatchFails "{}", "[{""op"":""add"",""value"":1}]", "InvalidPatch", "an operation without path"
+        PatchFails "{}", "[{""op"":""add"",""path"":5,""value"":1}]", "InvalidPatch", "an operation whose path is a number"
+        PatchFails "{}", "[{""op"":""add"",""path"":""/a""}]", "InvalidPatch", "an add without value"
+        PatchFails "{}", "[{""op"":""move"",""path"":""/a""}]", "InvalidPatch", "a move without from"
+        PatchFails "{}", "[{""op"":""frob"",""path"":""/a""}]", "InvalidPatch", "an unknown op"
+        PatchFails "{}", "5", "InvalidPatch", "a patch that is a number"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Patch_InvalidPatch_PathIsThePositionOfTheOperation()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{}")
+        Dim ops As Variant = Helpers.Doc("[{""op"":""add"",""path"":""/a"",""value"":1},{""op"":""frob"",""path"":""/a""}]")
+        Dim got As Variant = Json.Patch(doc, ops)
+        Expect.AreEqual "InvalidPatch", JsonError.Code, "JsonError.Code"
+        Expect.AreEqual "/1", JsonError.Path, "JsonError.Path"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MergePatch_FollowsRfc7396()
+        Expect.Begin
+        MergeGives "{""a"":""b""}", "{""a"":""c""}", "{""a"":""c""}"
+        MergeGives "{""a"":""b""}", "{""b"":""c""}", "{""a"":""b"",""b"":""c""}"
+        MergeGives "{""a"":""b""}", "{""a"":null}", "{}"
+        MergeGives "{""a"":""b"",""b"":""c""}", "{""a"":null}", "{""b"":""c""}"
+        MergeGives "{""a"":[""b""]}", "{""a"":""c""}", "{""a"":""c""}"
+        MergeGives "{""a"":""c""}", "{""a"":[""b""]}", "{""a"":[""b""]}"
+        MergeGives "{""a"":{""b"":""c""}}", "{""a"":{""b"":""d"",""c"":null}}", "{""a"":{""b"":""d""}}"
+        MergeGives "{""a"":[{""b"":""c""}]}", "{""a"":[1]}", "{""a"":[1]}"
+        MergeGives "[""a"",""b""]", "[""c"",""d""]", "[""c"",""d""]"
+        MergeGives "{""a"":""b""}", "[""c""]", "[""c""]"
+        MergeGives "{""e"":null}", "{""a"":1}", "{""e"":null,""a"":1}"
+        MergeGives "[1,2]", "{""a"":""b"",""c"":null}", "{""a"":""b""}"
+        MergeGives "{}", "{""a"":{""bb"":{""ccc"":null}}}", "{""a"":{""bb"":{}}}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MergePatch_PatchThatIsNotAnObject_ReplacesTheDocument()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":""foo""}")
+        Expect.IsTrue IsNull(Json.MergePatch(doc, Null)), "MergePatch with a null patch returns Null"
+        Expect.AreEqual "bar", Json.MergePatch(doc, "bar"), "MergePatch with a string patch returns the string"
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after the two calls"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MergePatch_DoesNotChangeTheDocument()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":{""b"":1}}")
+        Dim p As Variant = Helpers.Doc("{""a"":{""b"":null}}")
+        Dim got As Variant = Json.MergePatch(doc, p)
+        Expect.AreEqual "{""a"":{}}", Helpers.Min(got), "the merged document"
+        Expect.AreEqual "{""a"":{""b"":1}}", Helpers.Min(doc), "the document after MergePatch"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Diff_PatchOfTheDiff_GivesTheTarget()
+        Expect.Begin
+        Helpers.Reset
+        Dim a As Variant = Helpers.Doc("{""x"":1,""list"":[1,2,3],""gone"":true}")
+        Dim b As Variant = Helpers.Doc("{""x"":2,""list"":[1,5],""new"":null}")
+        Dim ops As JsonArray = Json.Diff(a, b)
+        Expect.AreEqual "[{""op"":""replace"",""path"":""/x"",""value"":2},{""op"":""replace"",""path"":""/list/1"",""value"":5},{""op"":""remove"",""path"":""/list/2""},{""op"":""remove"",""path"":""/gone""},{""op"":""add"",""path"":""/new"",""value"":null}]", Helpers.Min(ops), "the operations of Diff"
+        Expect.IsTrue Json.Equals(Json.Patch(a, ops), b), "Patch of the document with the diff equals the target"
+        Expect.AreEqual 0, Json.Diff(a, a).Count, "the operations of Diff of equal documents"
+        Expect.Done
+    End Sub
+
+End Module

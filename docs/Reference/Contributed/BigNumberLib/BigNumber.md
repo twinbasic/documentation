@@ -8,6 +8,7 @@ has_toc: false
 # BigNumber class
 {: .no_toc }
 
+<!-- test: OverflowTests.Capacity_4096BitNumberIsHeld, ArithmeticTests.AssignMultiplication_OperandsOf2048Bits, ArithmeticTests.AssignAddition_ManualExample -->
 A **BigNumber** represents an arbitrary-precision signed integer backed by the TomsFastMath (libtfm) C library, supporting numbers up to 4096 bits. A multiplication accepts operands of up to 2048 bits each. The default property is [**ValueString**](#valuestring).
 
 ```tb check_build check_run
@@ -20,13 +21,17 @@ b.ValueString = "987654321098765432109876543210"
 result.AssignAddition a, b
 Debug.Print result.ValueString   ' 1111111110111111111011111111100
 ```
+<!-- /test -->
 
+<!-- test: none -- a statement about the twinBASIC build the class needs -->
 > [!NOTE] since BETA 434
 > The class needs this build of twinBASIC or a later one.
 
+<!-- test: ConversionTests.ValueString_StopsAtFirstInvalidCharacter, ConversionTests.ValueHex_StopsAtFirstInvalidCharacter -->
 > [!NOTE] 1.0.2.0
 > String-to-value conversions silently stop at the first invalid character --- for example, setting `ValueHex = "ABC123he"` stores `&HABC123` without raising an error.
 
+<!-- test: OverflowTests.Overflow_ShiftLeftBeyondTheLibrary_RaisesErrorOrIsRight, OverflowTests.Overflow_MultiplicationBeyondTheLibrary_RaisesErrorOrIsRight, OverflowTests.Overflow_AdditionBeyondTheLibrary_RaisesErrorOrIsRight, OverflowTests.Overflow_ValueStringWithTooManyDigits_RaisesErrorOrIsRight, OverflowTests.Overflow_ValueHexWithTooManyDigits_RaisesErrorOrIsRight, OverflowTests.Capacity_ShiftLeftToTheLibraryLimitIsRight, OverflowTests.Capacity_AFewBitsOver4096IsStillRight -->
 > [!WARNING] 1.0.2.0
 > Overflow is not trapped. A result that needs more bits than the library holds loses its high bits, and a string with more digits than fit gives a wrong value. No error is raised in either case. The library holds a little more than the 4096 bits the class supports, 4352 bits in a 32-bit program and 4608 in a 64-bit one, so a result a few bits over 4096 may still be right.
 
@@ -38,6 +43,7 @@ Debug.Print result.ValueString   ' 1111111110111111111011111111100
 ### ValueString
 {: .no_toc }
 
+<!-- test: ConversionTests.ValueString_NewNumberIsZero, ConversionTests.ValueString_RoundTrip, ConversionTests.ValueString_IsTheDefaultMember, ConversionTests.ValueString_LeadingPlusOrSpaceGivesZero, ConversionTests.ValueString_NoDigitsGivesZero -->
 Returns or sets the value as a decimal string representation. **Default property.**
 
 Syntax: *object*.**ValueString** [ = *value* ]
@@ -46,10 +52,12 @@ Syntax: *object*.**ValueString** [ = *value* ]
 : A **String** containing a decimal integer, optionally preceded by a minus sign. Conversion stops at the first character that is not a valid decimal digit, so a leading plus sign or space gives 0. A string with no digits gives 0.
 
 The getter returns the decimal digits, preceded by a minus sign for a negative value.
+<!-- /test -->
 
 ### ValueHex
 {: .no_toc }
 
+<!-- test: ConversionTests.ValueHex_UpperCaseWithoutLeadingZeros, ConversionTests.ValueHex_PrefixIsNotAccepted, ConversionTests.ValueHex_Negative, ConversionTests.Conversions_NegativeNumberInEveryBase, ConversionTests.Conversions_PowerOfTwoInEveryBase, ConversionTests.Conversions_LargeNumberSameInEveryBase -->
 Returns or sets the value as a hexadecimal string representation.
 
 Syntax: *object*.**ValueHex** [ = *value* ]
@@ -70,10 +78,12 @@ Debug.Print n.ValueHex       ' -FF
 Debug.Print n.ValueOctal     ' -377
 Debug.Print n.ValueBinary    ' -11111111
 ```
+<!-- /test -->
 
 ### ValueOctal
 {: .no_toc }
 
+<!-- test: ConversionTests.ValueOctal_RoundTripAndStop -->
 Returns or sets the value as an octal string representation.
 
 Syntax: *object*.**ValueOctal** [ = *value* ]
@@ -82,10 +92,12 @@ Syntax: *object*.**ValueOctal** [ = *value* ]
 : A **String** containing an octal integer (digits `0`--`7`), optionally preceded by a minus sign. Conversion stops at the first character that is not a valid octal digit.
 
 The getter returns the digits without leading zeros, preceded by a minus sign for a negative value.
+<!-- /test -->
 
 ### ValueBinary
 {: .no_toc }
 
+<!-- test: ConversionTests.ValueBinary_RoundTripAndStop -->
 Returns or sets the value as a binary string representation.
 
 Syntax: *object*.**ValueBinary** [ = *value* ]
@@ -94,10 +106,12 @@ Syntax: *object*.**ValueBinary** [ = *value* ]
 : A **String** containing a binary integer (digits `0` and `1`), optionally preceded by a minus sign. Conversion stops at the first character that is not `0` or `1`.
 
 The getter returns the digits without leading zeros, preceded by a minus sign for a negative value.
+<!-- /test -->
 
 ### IsNegative
 {: .no_toc }
 
+<!-- test: SignTests.IsNegative_ReadsTheSignOfTheValue, SignTests.IsNegative_SetFalseMakesNumberNonNegative -->
 Returns or sets whether the value is negative.
 
 Syntax: *object*.**IsNegative** [ = *value* ]
@@ -106,7 +120,9 @@ Syntax: *object*.**IsNegative** [ = *value* ]
 : A **Boolean**. Setting **False** makes the number non-negative. Setting **True** is meant to make it negative, but see the warning.
 
 The getter returns **True** for a negative number, and **False** for a positive number and for zero, except the negative zero that [**AssignFromLong**](#assignfromlong) describes.
+<!-- /test -->
 
+<!-- test: SignTests.IsNegative_SetTrueShowsMinusSign, SignTests.IsNegative_SetTrueShowsMinusSignInEveryBase, SignTests.IsNegative_SetTrueMakesArithmeticRight, SignTests.IsNegative_SetTrueMakesNumberLessThanZero -->
 > [!WARNING] 1.0.2.0
 > Setting **IsNegative** to **True** does not make the number negative. The property stores -1, the value of **True**, where the library expects 1, so the number is in a state that the library does not handle: [**ValueString**](#valuestring) and the other conversions show no minus sign, **IsNegative** still returns **True**, and arithmetic with the number gives wrong results. To make a number negative, set **ValueString** to a string that starts with a minus sign, or use [**AssignNegation**](#assignnegation). [**AssignGreatestCommonDivisor**](#assigngreatestcommondivisor) and [**AssignLeastCommonMultiple**](#assignleastcommonmultiple) set this state in a negative operand.
 
@@ -123,6 +139,7 @@ Debug.Print n.ValueString    ' 5
 ### AssignAddition
 {: .no_toc }
 
+<!-- test: ArithmeticTests.AssignAddition_Signs, ArithmeticTests.AssignAddition_LargeNumbers -->
 Sets this instance to `a + b`.
 
 Syntax: *object*.**AssignAddition** *a*, *b*
@@ -132,10 +149,12 @@ Syntax: *object*.**AssignAddition** *a*, *b*
 
 *b*
 : *required* A **BigNumber** holding the second operand.
+<!-- /test -->
 
 ### AssignSubtraction
 {: .no_toc }
 
+<!-- test: ArithmeticTests.AssignSubtraction_Signs, ArithmeticTests.AssignSubtraction_LargeNumbers -->
 Sets this instance to `a - b`.
 
 Syntax: *object*.**AssignSubtraction** *a*, *b*
@@ -145,10 +164,12 @@ Syntax: *object*.**AssignSubtraction** *a*, *b*
 
 *b*
 : *required* A **BigNumber** holding the subtrahend.
+<!-- /test -->
 
 ### AssignMultiplication
 {: .no_toc }
 
+<!-- test: ArithmeticTests.AssignMultiplication_Signs, ArithmeticTests.AssignMultiplication_LargeNumbers -->
 Sets this instance to `a * b`.
 
 Syntax: *object*.**AssignMultiplication** *a*, *b*
@@ -158,10 +179,12 @@ Syntax: *object*.**AssignMultiplication** *a*, *b*
 
 *b*
 : *required* A **BigNumber** holding the second factor.
+<!-- /test -->
 
 ### AssignDivision
 {: .no_toc }
 
+<!-- test: ArithmeticTests.AssignDivision_TruncatesTowardZero, ArithmeticTests.AssignDivision_LargeNumbers, ErrorTests.AssignDivision_ByZero_RaisesError5, ErrorTests.AssignDivision_ByZero_KeepsTheValue -->
 Sets this instance to the integer quotient `a \ b`, truncated toward zero. Raises run-time error 5 if *b* is zero.
 
 Syntax: *object*.**AssignDivision** *a*, *b*
@@ -189,10 +212,12 @@ q.AssignDivision a, b
 Debug.Print Err.Number & " " & Err.Description    ' 5 invalid operation
 Debug.Print q.ValueString               ' -3
 ```
+<!-- /test -->
 
 ### AssignModulus
 {: .no_toc }
 
+<!-- test: ModulusTests.AssignModulus_PositiveDivisor, ModulusTests.AssignModulus_NegativeDivisor, ModulusTests.AssignModulus_ManualExamples, ModulusTests.AssignModulus_LargeNumbers, ErrorTests.AssignModulus_ByZero_RaisesError5 -->
 Sets this instance to `a Mod b`. The result is zero or has the sign of *b*, so `-7 Mod 2` is 1 and `7 Mod -2` is -1. Raises run-time error 5 if *b* is zero.
 
 Syntax: *object*.**AssignModulus** *a*, *b*
@@ -202,7 +227,9 @@ Syntax: *object*.**AssignModulus** *a*, *b*
 
 *b*
 : *required* A **BigNumber** holding the divisor. Must not be zero.
+<!-- /test -->
 
+<!-- test: ModulusTests.AssignModulus_NegativeDivisor_ZeroResultIsNotNegative, ModulusTests.AssignModulus_NegativeDivisor_ZeroResultEqualsZero -->
 > [!WARNING] 1.0.2.0
 > When *b* is negative and the result is zero, the result is a negative zero: [**IsNegative**](#isnegative) returns **True** and [**IsEqualTo**](#isequalto) does not find it equal to a zero read from a string. [**AssignFromLong**](#assignfromlong) describes it.
 
@@ -224,19 +251,23 @@ Debug.Print r.ValueString    ' -1
 ### AssignSquared
 {: .no_toc }
 
+<!-- test: ArithmeticTests.AssignSquared_Signs, ArithmeticTests.AssignSquared_LargeNumber -->
 Sets this instance to `a * a` (the square of *a*).
 
 Syntax: *object*.**AssignSquared** *a*
 
 *a*
 : *required* A **BigNumber** holding the value to square.
+<!-- /test -->
 
+<!-- test: SignTests.AssignSquared_Zero_IsNotNegative, SignTests.AssignSquared_Zero_EqualsZeroFromString -->
 > [!WARNING] 1.0.2.0
 > The square of zero is a negative zero, as [**AssignFromLong**](#assignfromlong) describes.
 
 ### AssignAdditionModulus
 {: .no_toc }
 
+<!-- test: ModulusTests.AssignAdditionModulus_PositiveModulus, ModulusTests.AssignAdditionModulus_NegativeModulus, ModulusTests.AssignAdditionModulus_ManualExamples, ErrorTests.AssignAdditionModulus_ByZero_RaisesError5 -->
 Sets this instance to `(a + b) Mod mod_c`. Raises run-time error 5 if *mod_c* is zero.
 
 Syntax: *object*.**AssignAdditionModulus** *a*, *b*, *mod_c*
@@ -267,10 +298,12 @@ Debug.Print r.ValueString    ' 0
 r.AssignMultiplicationModulus a, b, m
 Debug.Print r.ValueString    ' 2
 ```
+<!-- /test -->
 
 ### AssignSubtractionModulus
 {: .no_toc }
 
+<!-- test: ModulusTests.AssignSubtractionModulus_PositiveModulus, ModulusTests.AssignSubtractionModulus_NegativeModulus, ErrorTests.AssignSubtractionModulus_ByZero_RaisesError5 -->
 Sets this instance to `(a - b) Mod mod_c`. Raises run-time error 5 if *mod_c* is zero. [**AssignAdditionModulus**](#assignadditionmodulus) describes the sign of the result.
 
 Syntax: *object*.**AssignSubtractionModulus** *a*, *b*, *mod_c*
@@ -283,10 +316,12 @@ Syntax: *object*.**AssignSubtractionModulus** *a*, *b*, *mod_c*
 
 *mod_c*
 : *required* A **BigNumber** holding the modulus. It should be positive.
+<!-- /test -->
 
 ### AssignMultiplicationModulus
 {: .no_toc }
 
+<!-- test: ModulusTests.AssignMultiplicationModulus_PositiveModulus, ModulusTests.AssignMultiplicationModulus_NegativeModulus, ModulusTests.AssignMultiplicationModulus_LargeNumbers, ErrorTests.AssignMultiplicationModulus_ByZero_RaisesError5 -->
 Sets this instance to `(a * b) Mod mod_c`. Raises run-time error 5 if *mod_c* is zero. [**AssignAdditionModulus**](#assignadditionmodulus) describes the sign of the result.
 
 Syntax: *object*.**AssignMultiplicationModulus** *a*, *b*, *mod_c*
@@ -299,10 +334,12 @@ Syntax: *object*.**AssignMultiplicationModulus** *a*, *b*, *mod_c*
 
 *mod_c*
 : *required* A **BigNumber** holding the modulus. It should be positive.
+<!-- /test -->
 
 ### AssignSquaredModulus
 {: .no_toc }
 
+<!-- test: ModulusTests.AssignSquaredModulus_PositiveModulus, ModulusTests.AssignSquaredModulus_NegativeModulus, ErrorTests.AssignSquaredModulus_ByZero_RaisesError5 -->
 Sets this instance to `(a * a) Mod mod_b`. Raises run-time error 5 if *mod_b* is zero. [**AssignAdditionModulus**](#assignadditionmodulus) describes the sign of the result.
 
 Syntax: *object*.**AssignSquaredModulus** *a*, *mod_b*
@@ -312,11 +349,13 @@ Syntax: *object*.**AssignSquaredModulus** *a*, *mod_b*
 
 *mod_b*
 : *required* A **BigNumber** holding the modulus. It should be positive.
+<!-- /test -->
 
 ### AssignModularMultiplicativeInverse
 {: .no_toc }
 
-Sets this instance to the modular multiplicative inverse of *a* modulo *mod_b* --- the value *x* such that `(a * x) Mod mod_b = 1`. Raises run-time error 5 if the inverse does not exist, which is the case when *a* and *mod_b* have a common factor and when *a* is a multiple of *mod_b*. For a negative *a* the result is negative: the inverse of -3 modulo 7 is -5, because `(-3 * -5) Mod 7` is 1.
+<!-- test: InverseTests.Inverse_ManualExample, InverseTests.Inverse_ProductWithResultIsOneModuloModulus, InverseTests.Inverse_KnownValues, InverseTests.Inverse_NegativeValueGivesNegativeResult, InverseTests.Inverse_CommonFactorRaisesError5, InverseTests.Inverse_MultipleOfModulusRaisesError5, InverseTests.Inverse_ModulusOneRaisesNoError -->
+Sets this instance to the modular multiplicative inverse of *a* modulo *mod_b* --- the value *x* such that `(a * x) Mod mod_b = 1`. Raises run-time error 5 if the inverse does not exist, which is the case when *a* and *mod_b* have a common factor greater than 1, such as when *a* is a multiple of *mod_b*. For a negative *a* the result is negative: the inverse of -3 modulo 7 is -5, because `(-3 * -5) Mod 7` is 1. Modulo 1 there is no error: the inverse of 5 modulo 1 is 0.
 
 Syntax: *object*.**AssignModularMultiplicativeInverse** *a*, *mod_b*
 
@@ -325,7 +364,9 @@ Syntax: *object*.**AssignModularMultiplicativeInverse** *a*, *mod_b*
 
 *mod_b*
 : *required* A **BigNumber** holding the modulus. It must be positive.
+<!-- /test -->
 
+<!-- test: InverseTests.Inverse_ZeroValueOddModulus_RaisesError5, InverseTests.Inverse_NegativeOddModulus_RaisesError5, InverseTests.Inverse_ZeroValueEvenModulusRaisesError5, InverseTests.Inverse_NegativeEvenModulusRaisesError5 -->
 > [!WARNING] 1.0.2.0
 > The call does not return, and the program stops responding, when *mod_b* is odd and either *a* is zero or *mod_b* is negative. A zero *a* with an even *mod_b*, and any *a* with a negative even *mod_b*, raise error 5.
 
@@ -348,6 +389,7 @@ Debug.Print Err.Number & " " & Err.Description    ' 5 invalid operation
 ### AssignGreatestCommonDivisor
 {: .no_toc }
 
+<!-- test: GcdLcmTests.Gcd_PositiveValues, GcdLcmTests.Gcd_WithZero, GcdLcmTests.Gcd_ResultIsNonNegativeWhateverTheSigns, GcdLcmTests.Gcd_LargeNumbers -->
 Sets this instance to the greatest common divisor of *a* and *b*. The signs of *a* and *b* are ignored; the result is always non-negative. The greatest common divisor of zero and *b* is the absolute value of *b*, and that of two zeros is zero.
 
 Syntax: *object*.**AssignGreatestCommonDivisor** *a*, *b*
@@ -357,7 +399,9 @@ Syntax: *object*.**AssignGreatestCommonDivisor** *a*, *b*
 
 *b*
 : *required* A **BigNumber** holding the second value.
+<!-- /test -->
 
+<!-- test: GcdLcmTests.Gcd_NegativeFirstOperandKeepsItsValue, GcdLcmTests.Gcd_NegativeSecondOperandKeepsItsValue, GcdLcmTests.Gcd_NegativeOperandStillAddsCorrectly -->
 > [!WARNING] 1.0.2.0
 > A negative *a* or *b* is changed by the call. The method clears the sign of each operand and puts it back with [**IsNegative**](#isnegative), which leaves the operand in the state that the warning there describes: it shows no minus sign, and arithmetic with it gives wrong results.
 
@@ -375,7 +419,8 @@ Debug.Print a.ValueString    ' 12
 ### AssignLeastCommonMultiple
 {: .no_toc }
 
-Sets this instance to the least common multiple of *a* and *b*. The signs of *a* and *b* are ignored; the result is non-negative. The least common multiple of zero and any value is zero.
+<!-- test: GcdLcmTests.Lcm_PositiveValues, GcdLcmTests.Lcm_WithZero, GcdLcmTests.Lcm_ResultIsNonNegativeWhateverTheSigns, GcdLcmTests.Lcm_LargeNumbers -->
+Sets this instance to the least common multiple of *a* and *b*. The signs of *a* and *b* are ignored; the result is non-negative. The least common multiple of zero and a value that is not zero is zero.
 
 Syntax: *object*.**AssignLeastCommonMultiple** *a*, *b*
 
@@ -384,13 +429,20 @@ Syntax: *object*.**AssignLeastCommonMultiple** *a*, *b*
 
 *b*
 : *required* A **BigNumber** holding the second value.
+<!-- /test -->
 
+<!-- test: GcdLcmTests.Lcm_NegativeFirstOperandKeepsItsValue, GcdLcmTests.Lcm_NegativeSecondOperandKeepsItsValue, GcdLcmTests.Lcm_NegativeOperandStillAddsCorrectly -->
 > [!WARNING] 1.0.2.0
 > A negative *a* or *b* is changed by the call, as [**AssignGreatestCommonDivisor**](#assigngreatestcommondivisor) describes.
+
+<!-- test: GcdLcmTests.Lcm_OfTwoZeros_64Bit -->
+> [!WARNING] 1.0.2.0
+> In a 64-bit program, when *a* and *b* are both zero, this instance keeps the value it had: the result is not set to zero. In a 32-bit program the result is zero or the value the instance had, differing from one build of the program to the next.
 
 ### AssignShiftRight
 {: .no_toc }
 
+<!-- test: ShiftTests.ShiftRight_DividesByPowerOfTwoTruncatingTowardZero, ShiftTests.ShiftRight_ManualExamples, ShiftTests.ShiftRight_LargeNumber, ShiftTests.ShiftRight_NegativeAmountLeavesValueUnchanged -->
 Sets this instance to *a* right-shifted by *shiftAmount_b* bits (equivalent to integer division by 2^*shiftAmount_b*, truncated toward zero, so shifting -1 right by any positive amount gives 0).
 
 Syntax: *object*.**AssignShiftRight** *a*, *shiftAmount_b*
@@ -411,10 +463,12 @@ a.ValueString = "-1"
 r.AssignShiftRight a, 1
 Debug.Print r.ValueString    ' 0
 ```
+<!-- /test -->
 
 ### AssignShiftLeft
 {: .no_toc }
 
+<!-- test: ShiftTests.ShiftLeft_MultipliesByPowerOfTwo, ShiftTests.ShiftLeft_ManualExample, ShiftTests.ShiftLeft_ByThousandsOfBits, ShiftTests.ShiftLeft_NegativeAmountDoesNotShiftRight -->
 Sets this instance to *a* left-shifted by *shiftAmount_b* bits (equivalent to multiplication by 2^*shiftAmount_b*).
 
 Syntax: *object*.**AssignShiftLeft** *a*, *shiftAmount_b*
@@ -432,10 +486,12 @@ a.ValueString = "5"
 r.AssignShiftLeft a, 100
 Debug.Print r.ValueString    ' 6338253001141147007483516026880
 ```
+<!-- /test -->
 
 ### AssignNegation
 {: .no_toc }
 
+<!-- test: SignTests.AssignNegation_ChangesTheSign, SignTests.AssignNegation_OfZeroIsZero, SignTests.AssignNegation_ResultOfNegationAddsToZero, SignTests.AssignNegation_ReturnValueIsFalse -->
 Sets this instance to the arithmetic negation of *a* (`-a`).
 
 Syntax: *object*.**AssignNegation** *a*
@@ -444,10 +500,12 @@ Syntax: *object*.**AssignNegation** *a*
 : *required* A **BigNumber** holding the value to negate.
 
 **AssignNegation** is declared as a **Function** returning **Boolean**, but the return value is never set and is always **False**.
+<!-- /test -->
 
 ### AssignAbsolute
 {: .no_toc }
 
+<!-- test: SignTests.AssignAbsolute_DropsTheSign, SignTests.AssignAbsolute_ReturnValueIsFalse -->
 Sets this instance to the absolute value of *a*.
 
 Syntax: *object*.**AssignAbsolute** *a*
@@ -456,17 +514,21 @@ Syntax: *object*.**AssignAbsolute** *a*
 : *required* A **BigNumber** holding the value whose absolute value is taken.
 
 **AssignAbsolute** is declared as a **Function** returning **Boolean**, but the return value is never set and is always **False**.
+<!-- /test -->
 
 ### AssignFromLong
 {: .no_toc }
 
+<!-- test: SignTests.AssignFromLong_Values, SignTests.AssignFromLong_MostNegativeLong, SignTests.AssignFromLong_ReplacesThePreviousValue -->
 Sets this instance to a value from a native **Long** integer.
 
 Syntax: *object*.**AssignFromLong** *a*
 
 *a*
 : *required* A **Long** holding the value to assign. Negative values (including `&H80000000`) are handled correctly.
+<!-- /test -->
 
+<!-- test: SignTests.AssignFromLong_Zero_IsNotNegative, SignTests.AssignFromLong_Zero_EqualsZeroFromString, SignTests.AssignFromLong_Zero_IsNotLessThanZeroFromString, SignTests.AssignFromLong_Zero_TextIsZero, SignTests.AssignFromLong_Zero_AddsAndSubtractsAsZero, SignTests.AssignFromLong_Zero_ValueStringZeroGivesTrueZero, SignTests.AssignFromLong_Zero_IsNegativeFalseGivesTrueZero -->
 > [!WARNING] 1.0.2.0
 > Assigning 0 gives a negative zero: [**IsNegative**](#isnegative) returns **True**, [**IsLessThan**](#islessthan) finds the number less than a zero read from the string `"0"`, and [**IsEqualTo**](#isequalto) does not find it equal. Its text is still `0`, and adding it to another number or subtracting it gives the right result. The same negative zero comes from [**AssignSquared**](#assignsquared) with a zero argument, and from [**AssignModulus**](#assignmodulus) when the divisor is negative and the result is zero. To get a true zero, set [**ValueString**](#valuestring) to `"0"`, or set **IsNegative** to **False** after the assignment.
 
@@ -484,66 +546,79 @@ Debug.Print z.IsLessThan(s)   ' True
 ### HandleError
 {: .no_toc }
 
+<!-- test: ErrorTests.HandleError_NewNumberRaisesNothing, ErrorTests.HandleError_AfterAFailureRaisesAgain, ErrorTests.HandleError_StaysAfterAMethodThatStoresNoStatus, ErrorTests.HandleError_ClearedByAMemberThatStoresStatus -->
 Examines the last status code the class stored from the library and raises run-time error 5 if it is a failure. The error description is "invalid operation" or "out of memory".
 
 Syntax: *object*.**HandleError**
 
 The string-conversion properties, **AssignDivision**, **AssignModulus**, the four modular-arithmetic methods (**AssignAdditionModulus**, **AssignSubtractionModulus**, **AssignMultiplicationModulus**, **AssignSquaredModulus**) and **AssignModularMultiplicativeInverse** store the library's status and call **HandleError** themselves. The other methods do not store a status. The stored status stays in place until one of those members runs again, so calling **HandleError** later raises the error again.
+<!-- /test -->
 
 ## Comparison functions
 
 ### IsEqualTo
 {: .no_toc }
 
+<!-- test: ComparisonTests.IsEqualTo_AllPairs, ComparisonTests.IsEqualTo_SameValueFromDifferentBases, ComparisonTests.Comparisons_LargeNumbers -->
 Returns **True** if this instance equals *b*.
 
 Syntax: *object*.**IsEqualTo**( *b* )
 
 *b*
 : *required* A **BigNumber** to compare against.
+<!-- /test -->
 
 ### IsLessThan
 {: .no_toc }
 
+<!-- test: ComparisonTests.IsLessThan_AllPairs -->
 Returns **True** if this instance is less than *b*.
 
 Syntax: *object*.**IsLessThan**( *b* )
 
 *b*
 : *required* A **BigNumber** to compare against.
+<!-- /test -->
 
 ### IsLessThanOrEqualTo
 {: .no_toc }
 
+<!-- test: ComparisonTests.IsLessThanOrEqualTo_AllPairs -->
 Returns **True** if this instance is less than or equal to *b*.
 
 Syntax: *object*.**IsLessThanOrEqualTo**( *b* )
 
 *b*
 : *required* A **BigNumber** to compare against.
+<!-- /test -->
 
 ### IsGreaterThan
 {: .no_toc }
 
+<!-- test: ComparisonTests.IsGreaterThan_AllPairs -->
 Returns **True** if this instance is greater than *b*.
 
 Syntax: *object*.**IsGreaterThan**( *b* )
 
 *b*
 : *required* A **BigNumber** to compare against.
+<!-- /test -->
 
 ### IsGreaterThanOrEqualTo
 {: .no_toc }
 
+<!-- test: ComparisonTests.IsGreaterThanOrEqualTo_AllPairs -->
 Returns **True** if this instance is greater than or equal to *b*.
 
 Syntax: *object*.**IsGreaterThanOrEqualTo**( *b* )
 
 *b*
 : *required* A **BigNumber** to compare against.
+<!-- /test -->
 
 ## Example
 
+<!-- test: ArithmeticTests.Example_Factorial50 -->
 This example computes the factorial of 50 using **BigNumber** arithmetic.
 
 ```tb check_build check_run
@@ -562,6 +637,7 @@ Next i
 
 Debug.Print result.ValueString   ' 30414093201713378043612608166064768844377641568960512000000000000
 ```
+<!-- /test -->
 
 ## See Also
 

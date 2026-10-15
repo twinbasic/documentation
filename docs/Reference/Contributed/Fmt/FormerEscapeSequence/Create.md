@@ -8,6 +8,8 @@ has_toc: false
 # Create
 {: .no_toc }
 
+<!-- test: EscapeSequenceTests.Former_Create_ReturnsANewObjectWithTheArguments -->
+
 Creates a **FormerEscapeSequence** that holds a text and its replacement.
 
 Syntax: *object*.**Create** ( *escape*, *replacement* ) **As FormerEscapeSequence**
@@ -26,6 +28,8 @@ Returns a new **FormerEscapeSequence** whose [**EscapeString**](EscapeString) an
 ## Remarks
 
 The class has no constructor with arguments. **Create** takes its place: it makes a new instance, fills in the two properties through their **Friend** setters and returns it.
+
+<!-- /test -->
 
 ## Example
 

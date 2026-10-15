@@ -1,0 +1,184 @@
+' VBA_JSON: helpers shared by the fixtures. The Win32 time-zone calls here compute what the package's
+' date functions should give, in the machine's own time zone, so no case depends on one zone or on the
+' regional settings: dates are built with DateSerial and TimeSerial, and the text a case expects is
+' assembled from numbers, never from Format$.
+Module Helpers
+
+    Private Type SYSTEMTIME
+        wYear As Integer
+        wMonth As Integer
+        wDayOfWeek As Integer
+        wDay As Integer
+        wHour As Integer
+        wMinute As Integer
+        wSecond As Integer
+        wMilliseconds As Integer
+    End Type
+
+    Private Type TIME_ZONE_INFORMATION
+        Bias As Long
+        StandardName(0 To 31) As Integer
+        StandardDate As SYSTEMTIME
+        StandardBias As Long
+        DaylightName(0 To 31) As Integer
+        DaylightDate As SYSTEMTIME
+        DaylightBias As Long
+    End Type
+
+    Private Declare PtrSafe Function GetTimeZoneInformation Lib "kernel32" (lpTimeZoneInformation As TIME_ZONE_INFORMATION) As Long
+    Private Declare PtrSafe Function SystemTimeToTzSpecificLocalTime Lib "kernel32" (lpTimeZoneInformation As TIME_ZONE_INFORMATION, lpUniversalTime As SYSTEMTIME, lpLocalTime As SYSTEMTIME) As Long
+    Private Declare PtrSafe Function TzSpecificLocalTimeToSystemTime Lib "kernel32" (lpTimeZoneInformation As TIME_ZONE_INFORMATION, lpLocalTime As SYSTEMTIME, lpUniversalTime As SYSTEMTIME) As Long
+
+    ' What the last Try call raised.
+    Public LastNumber As Long
+    Public LastSource As String
+    Public LastDescription As String
+
+    ' A fixed local date and time in the middle of the northern summer, and one in the middle of the winter.
+    Public Function Summer() As Date
+        Summer = DateSerial(2024, 6, 3) + TimeSerial(9, 0, 0)
+    End Function
+
+    Public Function Winter() As Date
+        Winter = DateSerial(2024, 1, 15) + TimeSerial(9, 0, 0)
+    End Function
+
+    ' Puts the three JsonOptions back to their defaults.
+    Public Sub ResetOptions()
+        JsonOptions.UseDoubleForLargeNumbers = False
+        JsonOptions.AllowUnquotedKeys = False
+        JsonOptions.EscapeSolidus = False
+    End Sub
+
+    ' The six characters of a JSON \u escape.
+    Public Function U(ByVal Hex4 As String) As String
+        U = Chr$(92) & "u" & Hex4
+    End Function
+
+    ' Shows the characters of a string that a message cannot carry as <hex>.
+    Public Function Esc(ByVal s As String) As String
+        Dim i As Long
+        Dim c As Long
+        Dim r As String
+        For i = 1 To Len(s)
+            c = AscW(Mid$(s, i, 1))
+            If c < 0 Then c = c + 65536
+            If c < 32 Or c > 126 Then
+                r = r & "<" & Hex$(c) & ">"
+            Else
+                r = r & Mid$(s, i, 1)
+            End If
+        Next
+        Esc = r
+    End Function
+
+    Private Sub Keep()
+        LastNumber = Err.Number
+        LastSource = Err.Source
+        LastDescription = Err.Description
+        Err.Clear
+    End Sub
+
+    ' ParseJson that records what it raised in LastNumber, LastSource and LastDescription.
+    Public Function TryParse(ByVal Json As String) As Object
+        On Error Resume Next
+        Err.Clear
+        Set TryParse = ParseJson(Json)
+        Keep
+    End Function
+
+    ' ConvertToJson of a value, recording what it raised.
+    Public Function TryConvert(ByVal Value As Variant) As String
+        On Error Resume Next
+        Err.Clear
+        TryConvert = ConvertToJson(Value)
+        Keep
+    End Function
+
+    Public Function TryConvertPretty(ByVal Value As Variant, ByVal Whitespace As Variant) As String
+        On Error Resume Next
+        Err.Clear
+        TryConvertPretty = ConvertToJson(Value, Whitespace)
+        Keep
+    End Function
+
+    ' The keys of a Dictionary, joined with commas.
+    Public Function KeyList(ByVal D As Dictionary) As String
+        Dim k As Variant
+        Dim r As String
+        For Each k In D.Keys
+            If Len(r) > 0 Then r = r & ","
+            r = r & k
+        Next
+        KeyList = r
+    End Function
+
+    ' The values of a Dictionary (For Each over it), joined with commas.
+    Public Function ValueList(ByVal D As Dictionary) As String
+        Dim v As Variant
+        Dim r As String
+        For Each v In D
+            If Len(r) > 0 Then r = r & ","
+            r = r & v
+        Next
+        ValueList = r
+    End Function
+
+    ' ---- time
+
+    Private Function ToSystemTime(ByVal D As Date) As SYSTEMTIME
+        ToSystemTime.wYear = Year(D)
+        ToSystemTime.wMonth = Month(D)
+        ToSystemTime.wDay = Day(D)
+        ToSystemTime.wHour = Hour(D)
+        ToSystemTime.wMinute = Minute(D)
+        ToSystemTime.wSecond = Second(D)
+    End Function
+
+    Private Function FromSystemTime(ST As SYSTEMTIME) As Date
+        FromSystemTime = DateSerial(ST.wYear, ST.wMonth, ST.wDay) + TimeSerial(ST.wHour, ST.wMinute, ST.wSecond)
+    End Function
+
+    ' The UTC time of a local time, in the machine's time zone, from Windows itself.
+    Public Function UtcOf(ByVal Local As Date) As Date
+        Dim tz As TIME_ZONE_INFORMATION
+        Dim l As SYSTEMTIME
+        Dim u As SYSTEMTIME
+        GetTimeZoneInformation tz
+        l = ToSystemTime(Local)
+        TzSpecificLocalTimeToSystemTime tz, l, u
+        UtcOf = FromSystemTime(u)
+    End Function
+
+    ' The local time of a UTC time, in the machine's time zone, from Windows itself.
+    Public Function LocalOf(ByVal Utc As Date) As Date
+        Dim tz As TIME_ZONE_INFORMATION
+        Dim l As SYSTEMTIME
+        Dim u As SYSTEMTIME
+        GetTimeZoneInformation tz
+        u = ToSystemTime(Utc)
+        SystemTimeToTzSpecificLocalTime tz, u, l
+        LocalOf = FromSystemTime(l)
+    End Function
+
+    Private Function Pad(ByVal N As Long, ByVal Width As Long) As String
+        Pad = Right$(String$(Width, "0") & CStr(N), Width)
+    End Function
+
+    ' A date as yyyy-mm-dd hh:nn:ss, assembled from numbers.
+    Public Function Stamp(ByVal D As Date) As String
+        Stamp = Pad(Year(D), 4) & "-" & Pad(Month(D), 2) & "-" & Pad(Day(D), 2) & " " & Pad(Hour(D), 2) & ":" & Pad(Minute(D), 2) & ":" & Pad(Second(D), 2)
+    End Function
+
+    ' The ISO 8601 text that ConvertToIso should give for a UTC time.
+    Public Function IsoOfUtc(ByVal Utc As Date) As String
+        IsoOfUtc = Pad(Year(Utc), 4) & "-" & Pad(Month(Utc), 2) & "-" & Pad(Day(Utc), 2) & "T" & Pad(Hour(Utc), 2) & ":" & Pad(Minute(Utc), 2) & ":" & Pad(Second(Utc), 2) & ".000Z"
+    End Function
+
+    ' Checks that two times are the same second. The package adds and subtracts times as Doubles, so an
+    ' exact comparison of the numbers would reject a result a tick away.
+    Public Sub SameSecond(ByVal Expected As Date, ByVal Actual As Date, ByVal What As String)
+        Expect.AreEqual Stamp(Expected), Stamp(Actual), What
+    End Sub
+
+End Module

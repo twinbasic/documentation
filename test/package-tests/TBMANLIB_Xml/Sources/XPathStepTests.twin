@@ -1,0 +1,106 @@
+' mXPath and the steps of a location path: the parent step .., the axes, and the empty steps that
+' slashes make. Each case selects with the package and with MSXML6 (XPath 1.0) and compares.
+[TestFixture]
+Module XPathStepTests
+
+    Private Const CATALOG As String = "<catalog><book id='1'><title id='t1'>Dune</title></book><book id='2'><title id='t2'>Emma</title></book></catalog>"
+    Private Const NESTED As String = "<a id='outer'><b id='b'><a id='inner'></a></b></a>"
+    Private Const SIBLINGS As String = "<r id='r'><a id='a'><b id='child'></b></a><b id='sibling'></b></r>"
+
+    ' ---- the parent step
+
+    [TestCase]
+    Public Sub ParentStep_AfterChildSteps_SelectsTheParent()
+        Expect.Begin
+        Helpers.SelectsAsMsxml CATALOG, "/catalog/book/title/.."
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParentStep_AfterDescendantStep_SelectsTheParents()
+        Expect.Begin
+        Helpers.SelectsAsMsxml CATALOG, "//title/.."
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParentStep_Twice_SelectsTheGrandparent()
+        Expect.Begin
+        Helpers.SelectsAsMsxml CATALOG, "/catalog/book[@id='2']/title/../.."
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParentAxis_ParentColonColon_SelectsTheParent()
+        Expect.Begin
+        Helpers.SelectsAsMsxml CATALOG, "/catalog/book/title/parent::book"
+        Helpers.SelectsAsMsxml CATALOG, "/catalog/book/title/parent::*"
+        Expect.Done
+    End Sub
+
+    ' ---- the other axes
+
+    [TestCase]
+    Public Sub Axes_Ancestor_SelectsTheAncestors()
+        Expect.Begin
+        Helpers.SelectsAsMsxml NESTED, "/a/b/ancestor::a"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Axes_AncestorOrSelf_SelectsTheNodeAndItsAncestors()
+        Expect.Begin
+        Helpers.SelectsAsMsxml NESTED, "/a/b/ancestor-or-self::*"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Axes_FollowingSibling_SelectsTheLaterSiblings()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SIBLINGS, "/r/a/following-sibling::b"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Axes_PrecedingSibling_SelectsTheEarlierSiblings()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SIBLINGS, "/r/b/preceding-sibling::a"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Axes_DescendantOrSelf_SelectsTheNodeAndItsDescendants()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SIBLINGS, "/r/a/descendant-or-self::*"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Axes_Following_SelectsTheNodesAfterTheSubtree()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SIBLINGS, "/r/a/following::*"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Axes_Child_Descendant_Self_AreRead()
+        Expect.Begin
+        Helpers.SelectsAsMsxml SIBLINGS, "/r/child::a"
+        Helpers.SelectsAsMsxml SIBLINGS, "/r/descendant::b"
+        Helpers.SelectsAsMsxml SIBLINGS, "/r/self::r"
+        Helpers.SelectsAsMsxml SIBLINGS, "/r/a/self::b"
+        Expect.Done
+    End Sub
+
+    ' ---- slashes
+
+    [TestCase]
+    Public Sub Slashes_TripleSlash_SelectsNothing()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<catalog><book id='1'></book></catalog>")
+        Expect.AreEqual "", Helpers.Listed(x.XPath("/catalog///book")), "the nodes selected by /catalog///book (not an XPath expression)"
+        Expect.Done
+    End Sub
+
+End Module

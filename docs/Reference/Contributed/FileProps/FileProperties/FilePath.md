@@ -14,7 +14,9 @@ Syntax: *object*.**FilePath**
 *object*
 : *required* An object expression that evaluates to a **FileProperties** object.
 
+<!-- test: CollectionTests.FilePath_IsThePathPassedToOpenFile -->
 The value is the full path of the file that was passed to [**FilePropertyExplorer.OpenFile**](../FilePropertyExplorer/OpenFile) or selected through [**FilePropertyExplorer.BrowseAndOpenFile**](../FilePropertyExplorer/BrowseAndOpenFile) when the **FileProperties** collection was created.
+<!-- /test -->
 
 ### Example
 

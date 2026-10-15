@@ -44,11 +44,15 @@ The enumerations are declared inside the class. A program names their members wi
 
 ## Log lines
 
+<!-- test: LogsTests.Save_ByDay_AppendsTheLineToTheFileOfTheDay, LogsTests.Save_BelowLogLevelControl_DoesNothingButSetTheDefaults -->
 A line is made of the time, the level and the text: `[10/12/2026 3:04:05 PM] [WARN] disk is almost full`. The time is the value of `Now` converted to text with the settings of the system, so its form changes from one computer to another. The level is `INFO`, `WARN`, `DANGER` or `ERROR`, the names of the first four members of [**EnumLogLevel**](#enumloglevel). [**Save**](#save), [**FormView**](#formview), [**WebView**](#webview) and [**DbgView**](#dbgview) all make the line the same way, and each returns it.
 
 A level is kept when it is equal to or greater than [**LogLevelControl**](#loglevelcontrol). Below that, the member does nothing and returns an empty string.
+<!-- /test -->
 
-The levels **Debugger** and **Custom** have no name for the line: a call with either of them raises error 9, *Subscript out of range*, because the table of names has only four entries. Nothing is written.
+<!-- test: LogsTests.Save_DebuggerLevel_WritesALine, LogsTests.Save_CustomLevel_WritesALine -->
+> [!NOTE] 1.0.0.29
+> The levels **Debugger** and **Custom** have no name for the line: a call with either of them raises error 9, *Subscript out of range*, because the table of names has only four entries. Nothing is written.
 
 ```tb check_build check_run
 Dim Logs As New cLogs
@@ -66,6 +70,7 @@ Debug.Print Err.Number
 
 ## Where a log file goes
 
+<!-- test: LogsTests.Save_ByDay_AppendsTheLineToTheFileOfTheDay, LogsTests.Save_ByMonth_AppendsTheLineToTheFileOfTheMonth, LogsTests.Save_ByUser_UsesTheNameTheProgramGives, LogsTests.Save_ByUser_MissingFolderInTheFileName_FailsWithUnspecifiedError -->
 [**Save**](#save) builds the path from the properties below. `<root>` is [**LogDir**](#logdir), or the folder of the program (`App.Path`) when **LogDir** is empty. `<sub>` is [**LogSubDir**](#logsubdir).
 
 | [**LogFileNameRule**](#logfilenamerule) | File |
@@ -75,6 +80,7 @@ Debug.Print Err.Number
 | **byUser** | `<root>\<sub>\<LogFileNameByUer>` |
 
 The year, month and day come from `Now`. The folders that the path names are created if they are missing. For **byUser**, the file name may hold folders, but only the folder part made from `<root>` and `<sub>` is created, so a missing folder inside **LogFileNameByUer** makes the call fail with the error *Unspecified error* (-2147467259).
+<!-- /test -->
 
 ```tb check_build check_run
 Dim Logs As New cLogs
@@ -170,7 +176,9 @@ Syntax: *object*.**DbgView** ( *LogStr* [ **,** *LogLevel* ] ) **As String**
 *LogLevel*
 : *optional* An [**EnumLogLevel**](#enumloglevel), the level of the line. The default is **Info**.
 
+<!-- test: LogsTests.DbgView_ReturnsTheLineOrAnEmptyStringBelowTheLevel -->
 The line is passed to the Windows function **OutputDebugString**, with the text `[TBMAN-LOG]` and a full-width colon in front of it, so a tool that shows debugging output, such as DebugView, can filter the lines of the class by that prefix. Returns the line, or an empty string if its level is below [**LogLevelControl**](#loglevelcontrol).
+<!-- /test -->
 
 ### FormView
 {: .no_toc }
@@ -185,7 +193,9 @@ Syntax: *object*.**FormView** ( *LogStr* [ **,** *LogLevel* ] ) **As String**
 *LogLevel*
 : *optional* An [**EnumLogLevel**](#enumloglevel), the level of the line. The default is **Info**.
 
+<!-- test: LogsTests.FormView_NoListBox_ReturnsAnEmptyString -->
 The line is added at the top of [**FormListBox**](#formlistbox), where it is the first item, and the oldest lines are removed so that the list holds at most [**FormListBoxMaxItem**](#formlistboxmaxitem) lines. If **FormListBox** is **Nothing**, nothing happens and the result is an empty string. Otherwise the result is the line, or an empty string if its level is below [**LogLevelControl**](#loglevelcontrol).
+<!-- /test -->
 
 ```tb check_build
 Dim Logs As New cLogs
@@ -214,6 +224,7 @@ The method first sets [**LogSubDir**](#logsubdir), [**LogFileNameByUer**](#logfi
 
 Returns the line, or an empty string if its level is below [**LogLevelControl**](#loglevelcontrol).
 
+<!-- test: LogsTests.Save_OtherOutputs_KeepTheLevelOfTheLine -->
 > [!WARNING] 1.0.0.29
 > The calls to the three other members do not pass the level of the line. They make the line again at the level **Info**. A line sent to a list box, a debugging tool or a web page is therefore labelled `INFO` whatever level **Save** was given, and when **LogLevelControl** is above **Info** it is not sent at all. The result of **Save** is the text that was made last: the `INFO` line, when one of the outputs sent it.
 
@@ -248,7 +259,11 @@ Syntax: *object*.**WebView** ( *LogStr* [ **,** *LogLevel* ] ) **As String**
 *LogLevel*
 : *optional* An [**EnumLogLevel**](#enumloglevel), the level of the line. The default is **Info**.
 
-If [**WebUserCode**](#webusercode) is empty, nothing happens and the result is an empty string. Otherwise the line is sent in an asynchronous HTTP POST request, made with the late-bound object `WinHttp.WinHttpRequest.5.1`, to `http://log.vb6.pro/submit?code=` followed by **WebUserCode**, with the body `log=` followed by the line. The call does not wait for the answer and does not report whether the request worked. The result is the line, or an empty string if its level is below [**LogLevelControl**](#loglevelcontrol).
+<!-- test: LogsTests.WebView_NoUserCode_SendsNothingAndReturnsAnEmptyString -->
+If [**WebUserCode**](#webusercode) is empty, nothing happens and the result is an empty string.
+<!-- /test -->
+
+Otherwise the line is sent in an asynchronous HTTP POST request, made with the late-bound object `WinHttp.WinHttpRequest.5.1`, to `http://log.vb6.pro/submit?code=` followed by **WebUserCode**, with the body `log=` followed by the line. The call does not wait for the answer and does not report whether the request worked. The result is the line, or an empty string if its level is below [**LogLevelControl**](#loglevelcontrol).
 
 > [!IMPORTANT] 1.0.0.29
 > The request uses `http`, not `https`, and goes to a web site that is not part of the package: the code and the text of every line can be read by any computer on the way. Neither the code nor the line is URL-encoded, so a `&`, an `=`, a `%` or a `+` in the line changes what the site receives. Do not send lines that hold private data.

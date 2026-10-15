@@ -1,0 +1,94 @@
+' What a full report names: the user and the computer, the folders of the environment, every
+' running program, the drives and the network adapters.
+[TestFixture]
+Module ReportContentTests
+
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+
+    [TestCase]
+    Public Sub FullReport_OperatingSystem_NamesTheUserAndTheComputer()
+        Expect.Begin
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = Reports.CollectFrom(New OSInfoCollector)
+        Expect.AreEqual 0, StrComp(Environ$("COMPUTERNAME"), Reports.ValueOf(r, "Computer Name"), vbTextCompare), "Computer Name item against the COMPUTERNAME variable"
+        Expect.AreEqual 0, StrComp(Environ$("USERNAME"), Reports.ValueOf(r, "User Name"), vbTextCompare), "User Name item against the USERNAME variable"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FullReport_Environment_NamesTheProfileFolderAndThePath()
+        Expect.Begin
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = Reports.CollectFrom(New EnvironmentCollector)
+        Expect.AreEqual Environ$("USERPROFILE"), Reports.ValueOf(r, "USERPROFILE"), "USERPROFILE item"
+        Expect.AreEqual Environ$("APPDATA"), Reports.ValueOf(r, "APPDATA"), "APPDATA item"
+        Dim p As String
+        p = Environ$("PATH")
+        If Len(p) > 200 Then p = Left$(p, 200) & "..."
+        Expect.AreEqual p, Reports.ValueOf(r, "PATH"), "PATH item"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FullReport_Processes_ListsEveryRunningProgram()
+        Expect.Begin
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = Reports.CollectFrom(New ProcessInfoCollector)
+        Dim pid As Long
+        pid = GetCurrentProcessId()
+        Expect.AreEqual CStr(pid), Reports.ValueOf(r, "Current PID"), "Current PID item"
+        Expect.IsTrue Reports.ValueOf(r, "PID " & pid) Like "*(Threads: #*)", "the item of the program that runs the collector, PID " & pid
+        Expect.AreEqual CLng(Reports.ValueOf(r, "Total Processes")), Reports.CountKeysLike(r, "PID #*"), "number of PID items against Total Processes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FullReport_Disks_ListsTheSystemDrive()
+        Expect.Begin
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = Reports.CollectFrom(New DiskInfoCollector)
+        Dim letter As String
+        letter = UCase$(Left$(Environ$("SystemDrive"), 1))
+        Expect.AreEqual "Fixed", Reports.ValueOf(r, "Drive " & letter), "Drive " & letter & " item, the system drive"
+        Expect.IsTrue Len(Reports.ValueOf(r, letter & ": Total")) > 0, letter & ": Total item"
+        Expect.IsTrue Len(Reports.ValueOf(r, letter & ": Free")) > 0, letter & ": Free item"
+        Expect.IsTrue Reports.ValueOf(r, letter & ": Used") Like "*(*%)", letter & ": Used item has a share in parentheses"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FullReport_Network_NamesTheHostAndTheFirstAdapterWithItsAddress()
+        Expect.Begin
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = Reports.CollectFrom(New NetworkInfoCollector)
+        Expect.IsTrue Len(Reports.ValueOf(r, "Host Name")) > 0, "Host Name item"
+        Expect.IsTrue Adapters.Load() And Adapters.Count > 0, "GetAdaptersInfo returns at least one adapter"
+        If Adapters.Count > 0 Then
+            Expect.AreEqual Adapters.Description(0), Reports.ValueOf(r, "Adapter 0"), "Adapter 0 item"
+            Dim ip As String
+            ip = Adapters.Address(0)
+            If Len(ip) > 0 And ip <> "0.0.0.0" Then
+                Expect.AreEqual ip, Reports.ValueOf(r, "IPAddress0"), "IPAddress0 item, the IPv4 address of the first adapter"
+            End If
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FullReport_RunAll_HasOneResultForEachCollector()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        engine.RegisterCollector New OSInfoCollector
+        engine.RegisterCollector New EnvironmentCollector
+        engine.RegisterCollector New ProcessInfoCollector
+        engine.RegisterCollector New DiskInfoCollector
+        engine.RegisterCollector New NetworkInfoCollector
+        Dim report As String
+        report = FormatterFactory.FormatResults(engine.RunAll(), FormatterFactory.CreateFormatter("text"))
+        Expect.IsTrue InStr(report, "[Operating System]") > 0, "the report has the group Operating System"
+        Expect.IsTrue InStr(report, "[Processes]") > 0, "the report has the group Processes"
+        Expect.IsTrue InStr(report, "User Name = " & Environ$("USERNAME")) > 0 Or InStr(1, report, "User Name = " & Environ$("USERNAME"), vbTextCompare) > 0, "the report names the user"
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,475 @@
+' cDialogProgress: the state of a task, as properties, events and text. The class shows no window.
+[TestFixture]
+Module CDialogProgressTests
+
+    [TestCase]
+    Public Sub Defaults_AreThoseOfThePage()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        Expect.AreEqual "Progress", p.Title, "Title of a new cDialogProgress"
+        Expect.AreEqual "Processing...", p.Message, "Message of a new cDialogProgress"
+        Expect.AreEqual "", p.DetailMessage, "DetailMessage of a new cDialogProgress"
+        Expect.AreEqual 0, p.Min, "Min of a new cDialogProgress"
+        Expect.AreEqual 100, p.Max, "Max of a new cDialogProgress"
+        Expect.AreEqual 0, p.Progress, "Progress of a new cDialogProgress"
+        Expect.AreEqual 1, p.Step, "Step of a new cDialogProgress"
+        Expect.AreEqual ProgressStyle.ProgressBar, p.Style, "Style of a new cDialogProgress"
+        Expect.IsTrue p.ShowCancel And p.ShowElapsedTime And p.ShowRemainingTime, "the three Show properties of a new cDialogProgress"
+        Expect.IsFalse p.Cancelled, "Cancelled of a new cDialogProgress"
+        Expect.AreEqual 0, p.OwnerHwnd, "OwnerHwnd of a new cDialogProgress"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enumeration_HasTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual 0, ProgressStyle.ProgressBar, "ProgressBar"
+        Expect.AreEqual 1, ProgressStyle.Marquee, "Marquee"
+        Expect.AreEqual 2, ProgressStyle.Steps, "Steps"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Progress_IgnoresAValueOutsideTheRange()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Progress = 40
+        p.Progress = 150
+        Expect.AreEqual 40, p.Progress, "Progress after 150"
+        p.Progress = -1
+        Expect.AreEqual 40, p.Progress, "Progress after -1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MaxAndMin_DoNotMoveProgress()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Progress = 40
+        p.Max = 250
+        p.Min = 10
+        Expect.AreEqual 40, p.Progress, "Progress after Max and Min changed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Percentage_IsTheShareOfTheRangeRoundedDown()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Progress = 40
+        Expect.AreEqual 40, p.Percentage, "Percentage of 40 in 0 to 100"
+        p.Max = 200
+        Expect.AreEqual 20, p.Percentage, "Percentage of 40 in 0 to 200"
+        p.Progress = 3
+        p.Max = 7
+        Expect.AreEqual 42, p.Percentage, "Percentage of 3 in 0 to 7 (42.8 rounded down)"
+        p.Max = 0
+        Expect.AreEqual 0, p.Percentage, "Percentage when Max is not above Min"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Start_SetsProgressToMinAndClearsCancelled()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Min = 10
+        p.Max = 110
+        p.Progress = 60
+        p.Cancel
+        p.Start
+        Expect.AreEqual 10, p.Progress, "Progress after Start"
+        Expect.AreEqual 0, p.Percentage, "Percentage after Start"
+        Expect.IsFalse p.Cancelled, "Cancelled after Start"
+        Expect.AreEqual "Processing...", p.Message, "Message after Start"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Increment_AddsStepAndIgnoresAValueAboveMax()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Step = 40
+        p.Increment
+        p.Increment
+        p.Increment
+        Expect.AreEqual 80, p.Progress, "Progress after three Increment calls with Step 40 and Max 100"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Increment_ANegativeStepCanGoBelowMin()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Step = -5
+        p.Increment
+        Expect.AreEqual -5, p.Progress, "Progress after Increment with Step -5"
+        Expect.AreEqual -5, p.Percentage, "Percentage of a position below Min"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PerformStep_IsTheSameAsIncrement()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.PerformStep
+        Expect.AreEqual 1, p.Progress, "Progress after PerformStep"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetPercentage_MovesToAPercentageOfTheRange()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Min = 10
+        p.Max = 110
+        p.SetPercentage 25
+        Expect.AreEqual 35, p.Progress, "Progress after SetPercentage 25 in 10 to 110"
+        p.SetPercentage 101
+        Expect.AreEqual 35, p.Progress, "Progress after SetPercentage 101"
+        p.SetPercentage -1
+        Expect.AreEqual 35, p.Progress, "Progress after SetPercentage -1"
+        p.SetPercentage 100
+        Expect.AreEqual 110, p.Progress, "Progress after SetPercentage 100"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Complete_MovesToMax()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Max = 80
+        p.Complete
+        Expect.AreEqual 80, p.Progress, "Progress after Complete"
+        Expect.AreEqual 100, p.Percentage, "Percentage after Complete"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Cancel_SetsCancelledAndNothingStops()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Cancel
+        Expect.IsTrue p.Cancelled, "Cancelled after Cancel"
+        p.Progress = 5
+        Expect.AreEqual 5, p.Progress, "Progress can still be set after Cancel"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_RestoresTheStartingValuesButNotTheOwner()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Title = "x"
+        p.Message = "y"
+        p.DetailMessage = "z"
+        p.Min = 3
+        p.Max = 500
+        p.Step = 7
+        p.Style = ProgressStyle.Marquee
+        p.ShowCancel = False
+        p.ShowElapsedTime = False
+        p.ShowRemainingTime = False
+        p.Cancel
+        p.OwnerHwnd = 1234
+        p.Reset
+        Expect.AreEqual "Progress", p.Title, "Title after Reset"
+        Expect.AreEqual "Processing...", p.Message, "Message after Reset"
+        Expect.AreEqual "", p.DetailMessage, "DetailMessage after Reset"
+        Expect.AreEqual 0, p.Min + p.Progress, "Min and Progress after Reset"
+        Expect.AreEqual 100, p.Max, "Max after Reset"
+        Expect.AreEqual 1, p.Step, "Step after Reset"
+        Expect.AreEqual ProgressStyle.ProgressBar, p.Style, "Style after Reset"
+        Expect.IsTrue p.ShowCancel And p.ShowElapsedTime And p.ShowRemainingTime, "the three Show properties after Reset"
+        Expect.IsFalse p.Cancelled, "Cancelled after Reset"
+        Expect.AreEqual 1234, p.OwnerHwnd, "OwnerHwnd after Reset"
+        Expect.Done
+    End Sub
+
+    ' ---- the text
+
+    [TestCase]
+    Public Sub GetDescription_ProgressBarAddsThePercentageAndTheTimes()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Message = "Copying"
+        p.DetailMessage = "report.txt"
+        p.Progress = 50
+        p.ShowElapsedTime = False
+        p.ShowRemainingTime = False
+        Expect.AreEqual "Copying (50%)" & vbCrLf & "report.txt", p.GetDescription(), "GetDescription without the times"
+        p.ShowRemainingTime = False
+        p.ShowElapsedTime = True
+        Expect.AreEqual "Copying (50%) - Elapsed: 0:00" & vbCrLf & "report.txt", p.GetDescription(), "GetDescription with the elapsed time"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetDescription_MarqueeAndStepsGiveTheMessageAlone()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Message = "Copying"
+        p.DetailMessage = "report.txt"
+        p.Style = ProgressStyle.Marquee
+        Expect.AreEqual "Copying" & vbCrLf & "report.txt", p.GetDescription(), "GetDescription of a Marquee"
+        p.Style = ProgressStyle.Steps
+        p.DetailMessage = ""
+        Expect.AreEqual "Copying", p.GetDescription(), "GetDescription of Steps with no detail"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TimeFunctions_BeforeStartGiveZero()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        Expect.AreEqual 0, p.GetElapsedTime(), "GetElapsedTime before Start"
+        Expect.AreEqual "0:00", p.GetElapsedTimeString(), "GetElapsedTimeString before Start"
+        Expect.AreEqual 0, p.GetRemainingTime(), "GetRemainingTime before Start"
+        Expect.AreEqual "0:00", p.GetRemainingTimeString(), "GetRemainingTimeString before Start"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetElapsedTime_CountsWholeSecondsSinceStart()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Start
+        Dim t0 As Single = Timer
+        Do While Timer - t0 < 2.2
+        Loop
+        Expect.AreEqual 2, p.GetElapsedTime(), "GetElapsedTime two seconds after Start"
+        Expect.AreEqual "0:02", p.GetElapsedTimeString(), "GetElapsedTimeString two seconds after Start"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetRemainingTime_EstimatesFromTheSpeedSoFar()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Start
+        Dim t0 As Single = Timer
+        Do While Timer - t0 < 1.2
+        Loop
+        p.Progress = 50
+        Dim r As Long = p.GetRemainingTime()
+        Expect.IsTrue r >= 1 And r <= 2, "GetRemainingTime at half the range after about a second: " & r
+        Expect.Done
+    End Sub
+
+    ' ---- events
+
+    [TestCase]
+    Public Sub Events_ProgressChangedIsRaisedForEachMove()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        Dim s As New ProgressSink
+        s.Attach p
+        p.Max = 3
+        p.Start
+        p.Increment
+        p.Increment
+        p.Progress = 9
+        p.Complete
+        Expect.AreEqual "1,2,3,", s.Values, "values of the ProgressChanged events (none for Start and for a value outside the range)"
+        s.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Events_ProgressChangedIsRaisedAlsoForTheSameValue()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        Dim s As New ProgressSink
+        s.Attach p
+        p.Progress = 0
+        p.Progress = 0
+        p.Max = 10
+        p.Complete
+        p.Complete
+        Expect.AreEqual 4, s.Changes, "ProgressChanged events for 0, 0, Complete and Complete"
+        s.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Events_ResetAndStartRaiseNothing()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        Dim s As New ProgressSink
+        s.Attach p
+        p.Start
+        p.Reset
+        Expect.AreEqual 0, s.Changes + s.Cancels, "events raised by Start and Reset"
+        s.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Events_CancelRaisesCancelClickedEachTimeWithCancelledSet()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        Dim s As New ProgressSink
+        s.Attach p
+        p.Cancel
+        p.Cancel
+        Expect.AreEqual 2, s.Cancels, "CancelClicked events for two Cancel calls"
+        Expect.IsTrue s.CancelledInHandler, "Cancelled already True inside the handler"
+        s.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Events_SetPercentageRaisesAnEventForAPercentageInsideTheRange()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        Dim s As New ProgressSink
+        s.Attach p
+        p.SetPercentage 50
+        p.SetPercentage 101
+        Expect.AreEqual "50,", s.Values, "values of the ProgressChanged events of SetPercentage 50 and 101"
+        s.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SimulateProgress_RunsFromMinToMaxAndCompletes()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        Dim s As New ProgressSink
+        s.Attach p
+        p.Max = 3
+        p.SimulateProgress 50
+        Expect.AreEqual 100, p.Percentage, "Percentage after SimulateProgress"
+        Expect.AreEqual "0,1,2,3,3,", s.Values, "values of the ProgressChanged events of SimulateProgress (the last position twice)"
+        s.Detach
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SimulateProgress_ACancelInTheHandlerStopsTheLoop()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        Dim s As New ProgressStopper
+        s.Attach p, 2
+        p.Max = 5
+        p.SimulateProgress 20
+        Expect.IsTrue p.Cancelled, "Cancelled after a Cancel in the handler"
+        Expect.IsTrue p.Progress < 5, "Progress after SimulateProgress was cancelled: " & p.Progress
+        s.Detach
+        Expect.Done
+    End Sub
+
+    ' ---- the notes of the page
+
+    [TestCase]
+    Public Sub GetRemainingTime_JustAfterStartDoesNotDivideByZero()
+        Expect.Begin
+        Dim errors As Long
+        Dim i As Long
+        Dim p As cDialogProgress
+        For i = 1 To 20
+            Set p = New cDialogProgress
+            p.Start
+            p.Progress = 50
+            On Error Resume Next
+            Dim s As Long = p.GetRemainingTime()
+            If Err.Number <> 0 Then errors = errors + 1
+            Err.Clear
+            On Error GoTo 0
+        Next
+        Expect.AreEqual 0, errors, "GetRemainingTime calls out of 20 made at once after Start that raised an error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetRemainingTime_JustAfterStartRaisesError11()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        Dim n As Long
+        Dim i As Long
+        For i = 1 To 20
+            p.Start
+            p.Progress = 50
+            On Error Resume Next
+            Dim s As Long = p.GetRemainingTime()
+            n = Err.Number
+            Err.Clear
+            On Error GoTo 0
+            If n <> 0 Then Exit For
+        Next
+        Expect.AreEqual 11, n, "error GetRemainingTime raised when called at once after Start"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetDescription_JustAfterStartDoesNotDivideByZero()
+        Expect.Begin
+        Dim errors As Long
+        Dim i As Long
+        Dim p As cDialogProgress
+        For i = 1 To 20
+            Set p = New cDialogProgress
+            p.Start
+            p.Progress = 50
+            On Error Resume Next
+            Dim s As String = p.GetDescription()
+            If Err.Number <> 0 Then errors = errors + 1
+            Err.Clear
+            On Error GoTo 0
+        Next
+        Expect.AreEqual 0, errors, "GetDescription calls out of 20 made at once after Start that raised an error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SimulateProgress_WithADelayOfZeroDoesNotDivideByZero()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Max = 5
+        On Error Resume Next
+        p.SimulateProgress 0
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 0, n, "error SimulateProgress raised with a delay of 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Percentage_OfAWideRangeDoesNotOverflow()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Max = 100000000
+        p.Progress = 50000000
+        On Error Resume Next
+        Dim v As Long = p.Percentage
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 0, n, "error Percentage raised for a position of 50,000,000 in 0 to 100,000,000"
+        Expect.AreEqual 50, v, "Percentage of a position of 50,000,000 in 0 to 100,000,000"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetPercentage_OnAWideRangeDoesNotOverflow()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Max = 100000000
+        On Error Resume Next
+        p.SetPercentage 50
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Expect.AreEqual 0, n, "error SetPercentage 50 raised for a range of 0 to 100,000,000"
+        Expect.AreEqual 50000000, p.Progress, "Progress after SetPercentage 50 in 0 to 100,000,000"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Percentage_UpTo21MillionUnitsWorks()
+        Expect.Begin
+        Dim p As New cDialogProgress
+        p.Max = 20000000
+        p.Progress = 10000000
+        Expect.AreEqual 50, p.Percentage, "Percentage of 10,000,000 in 0 to 20,000,000"
+        Expect.Done
+    End Sub
+
+End Module

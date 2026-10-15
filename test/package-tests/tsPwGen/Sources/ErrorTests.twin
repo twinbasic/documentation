@@ -1,0 +1,215 @@
+' tsPwGen: PwGenError, the last error of the package, and TryGenerate. A recipe that cannot be used
+' raises no run-time error: the function returns an empty string or 0 and sets the last error. The
+' error codes themselves are checked beside the recipe property that causes each (RandomModeTests,
+' WordlistTests, RandomSourceTests, ConsecutiveRepeatTests).
+[TestFixture]
+Module ErrorTests
+
+    ' A recipe that Generate refuses with InvalidLength.
+    Private Function Refused() As PwGenOptions
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Length = 0
+        Return o
+    End Function
+
+    [TestCase]
+    Public Sub Members_AfterAFailedGenerate()
+        Expect.Begin
+        Helpers.Reset
+        Dim pw As String = PwGen.Generate(Refused())
+        Expect.AreEqual "", pw, "Generate with Length 0"
+        Expect.IsTrue PwGenError.HasError, "PwGenError.HasError"
+        Expect.AreEqual "InvalidLength", PwGenError.Code, "PwGenError.Code"
+        Expect.AreEqual "Length must be between 1 and 4096.", PwGenError.Message, "PwGenError.Message"
+        Expect.AreEqual "PwGen.Generate", PwGenError.Origin, "PwGenError.Origin"
+        Expect.AreEqual "PwGen.Generate: InvalidLength - Length must be between 1 and 4096.", PwGenError.ToString(), "PwGenError.ToString"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Members_WhenThereIsNoError_AreEmpty()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsFalse PwGenError.HasError, "PwGenError.HasError with no error"
+        Expect.AreEqual "", PwGenError.Code, "PwGenError.Code with no error"
+        Expect.AreEqual "", PwGenError.Message, "PwGenError.Message with no error"
+        Expect.AreEqual "", PwGenError.Origin, "PwGenError.Origin with no error"
+        Expect.AreEqual "", PwGenError.ToString(), "PwGenError.ToString with no error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FailedFunctions_RaiseNoRunTimeError()
+        Expect.Begin
+        Helpers.Reset
+        On Error Resume Next
+        PwGen.Generate Refused()
+        Expect.AreEqual 0, Err.Number, "run-time error of Generate with Length 0"
+        PwGen.Entropy Refused()
+        Expect.AreEqual 0, Err.Number, "run-time error of Entropy with Length 0"
+        Dim pw As String
+        PwGen.TryGenerate pw, Refused()
+        Expect.AreEqual 0, Err.Number, "run-time error of TryGenerate with Length 0"
+        PwGen.BuiltInWord pgwEnglish, -1
+        Expect.AreEqual 0, Err.Number, "run-time error of BuiltInWord with index -1"
+        PwGen.BuiltInWordCount 99
+        Expect.AreEqual 0, Err.Number, "run-time error of BuiltInWordCount(99)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EveryFunction_ClearsTheLastErrorWhenItStarts()
+        Expect.Begin
+        Helpers.Reset
+        PwGen.Generate Refused()
+        PwGen.Generate
+        Helpers.ExpectNoError "Generate after a failed Generate"
+        PwGen.Generate Refused()
+        PwGen.Entropy
+        Helpers.ExpectNoError "Entropy after a failed Generate"
+        PwGen.Generate Refused()
+        Dim pw As String
+        Expect.IsTrue PwGen.TryGenerate(pw), "TryGenerate after a failed Generate"
+        Helpers.ExpectNoError "TryGenerate after a failed Generate"
+        PwGen.Generate Refused()
+        PwGen.BuiltInWordCount pgwEnglish
+        Helpers.ExpectNoError "BuiltInWordCount after a failed Generate"
+        PwGen.Generate Refused()
+        PwGen.BuiltInWord pgwEnglish, 0
+        Helpers.ExpectNoError "BuiltInWord after a failed Generate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_EmptiesTheLastError()
+        Expect.Begin
+        Helpers.Reset
+        PwGen.Generate Refused()
+        PwGenError.Clear
+        Expect.IsFalse PwGenError.HasError, "HasError after Clear"
+        Expect.AreEqual "", PwGenError.Code, "Code after Clear"
+        Expect.AreEqual "", PwGenError.Message, "Message after Clear"
+        Expect.AreEqual "", PwGenError.Origin, "Origin after Clear"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Snapshot_KeepsTheErrorOfTheTimeOfTheCall()
+        Expect.Begin
+        Helpers.Reset
+        PwGen.Generate Refused()
+        Dim snap As PwGenError.tPwGenError = PwGenError.Snapshot()
+        PwGen.Generate
+        Expect.IsFalse PwGenError.HasError, "HasError after a successful Generate"
+        Expect.IsTrue snap.HasError, "snap.HasError"
+        Expect.AreEqual "InvalidLength", snap.Code, "snap.Code"
+        Expect.AreEqual "Length must be between 1 and 4096.", snap.Message, "snap.Message"
+        Expect.AreEqual "PwGen.Generate", snap.Origin, "snap.Origin"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Snapshot_WithNoError_IsEmpty()
+        Expect.Begin
+        Helpers.Reset
+        Dim snap As PwGenError.tPwGenError = PwGenError.Snapshot()
+        Expect.IsFalse snap.HasError, "snap.HasError with no error"
+        Expect.AreEqual "", snap.Code, "snap.Code with no error"
+        Expect.AreEqual "", snap.Message, "snap.Message with no error"
+        Expect.AreEqual "", snap.Origin, "snap.Origin with no error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NewPwGenError_ReportsTheSameError()
+        Expect.Begin
+        Helpers.Reset
+        PwGen.Generate Refused()
+        Dim e As New PwGenError
+        Expect.IsTrue e.HasError, "HasError of an object created with New"
+        Expect.AreEqual "InvalidLength", e.Code, "Code of an object created with New"
+        e.Clear
+        Expect.IsFalse PwGenError.HasError, "HasError of the predeclared object after Clear on an object created with New"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TryGenerate_Success_ReturnsTrueAndThePassword()
+        Expect.Begin
+        Helpers.Reset
+        Dim pw As String
+        Dim o As PwGenOptions = PwGenOptions.Pin
+        Expect.IsTrue PwGen.TryGenerate(pw, o), "TryGenerate of Pin"
+        Expect.AreEqual 6, Len(pw), "Len of the PIN"
+        Expect.IsTrue Helpers.AllFrom(pw, Helpers.DigitChars), "characters of the PIN"
+        Helpers.ExpectNoError "TryGenerate of Pin"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TryGenerate_Failure_ReturnsFalseAndAnEmptyString()
+        Expect.Begin
+        Helpers.Reset
+        Dim pw As String = "left over"
+        Expect.IsFalse PwGen.TryGenerate(pw, Refused()), "TryGenerate with Length 0"
+        Expect.AreEqual "", pw, "the password variable after a failed TryGenerate"
+        Helpers.ExpectError "TryGenerate with Length 0", "InvalidLength", "Length must be between 1 and 4096.", "PwGen.Generate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnusedCodes_NoRecipeSetsEmptyCharsetOrEmptyWordlist()
+        Expect.Begin
+        Helpers.Reset
+        Dim seen As String
+        Dim recipes As New Collection
+        Dim o As PwGenOptions
+        ' Random mode: everything that could empty the pool.
+        Set o = PwGenOptions.Alphanumeric
+        o.Alphabet = " "
+        recipes.Add o
+        Set o = PwGenOptions.Alphanumeric
+        o.ExcludeChars = Helpers.UpperChars & Helpers.LowerChars & Helpers.DigitChars
+        recipes.Add o
+        Set o = PwGenOptions.Alphanumeric
+        o.HasUpperCase = False
+        o.HasLowerCase = False
+        o.HasDigits = False
+        o.IncludeChars = "abc"
+        o.ExcludeChars = "abc"
+        recipes.Add o
+        Set o = PwGenOptions.Alphanumeric
+        o.HasUpperCase = False
+        o.HasLowerCase = False
+        o.HasDigits = False
+        o.HasSpecialChars = True
+        o.SpecialChars = ""
+        recipes.Add o
+        ' Wordlist mode: everything that could empty the list.
+        Set o = PwGenOptions.Passphrase
+        Dim none() As String
+        o.CustomWords = none
+        recipes.Add o
+        Set o = PwGenOptions.Passphrase
+        o.Wordlist = 7
+        recipes.Add o
+        Set o = PwGenOptions.Passphrase
+        Dim one(0 To 0) As String
+        one(0) = ""
+        o.CustomWords = one
+        recipes.Add o
+        Dim i As Long
+        Dim r As PwGenOptions
+        For i = 1 To recipes.Count
+            Set r = recipes.Item(i)
+            PwGen.Generate r
+            seen = seen & PwGenError.Code & ";"
+            PwGen.Entropy r
+            seen = seen & PwGenError.Code & ";"
+        Next
+        Expect.IsFalse InStr(seen, "EmptyCharset") > 0, "the code EmptyCharset set by one of " & recipes.Count & " recipes that could empty the pool"
+        Expect.IsFalse InStr(seen, "EmptyWordlist") > 0, "the code EmptyWordlist set by one of " & recipes.Count & " recipes that could empty the list"
+        Expect.Done
+    End Sub
+
+End Module

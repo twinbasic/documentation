@@ -1,0 +1,92 @@
+' TBMANLIB_ConsoleComponents: reading the cells of a screen buffer back, for the cases that draw.
+Module Cells
+
+    Private Declare PtrSafe Function K_SafeArrayCreateVector Lib "oleaut32" Alias "SafeArrayCreateVector" (ByVal vt As Integer, ByVal lLbound As Long, ByVal cElements As Long) As LongPtr
+    Private Declare PtrSafe Sub K_Copy Lib "kernel32" Alias "RtlMoveMemory" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
+    ' An array with no element (lower bound 0, upper bound -1), as a Variant. ReDim cannot make one:
+    ' it raises error -2147467259 for an upper bound below the lower bound. Vt is the VarType of an
+    ' element: 5 for a Double, 3 for a Long or an enumeration, 8 for a String.
+    Public Function EmptyArray(ByVal Vt As Integer) As Variant
+        Dim p As LongPtr = K_SafeArrayCreateVector(Vt, 0, 0)
+        Dim v As Variant
+        Dim t As Integer = Vt Or &H2000
+        K_Copy VarPtr(v), VarPtr(t), 2
+        K_Copy VarPtr(v) + 8, VarPtr(p), LenB(p)
+        EmptyArray = v
+    End Function
+
+    ' The characters of Count cells of a row, from a column; the rest of the row when Count is -1.
+    Public Function Text(ByVal Buf As cConsoleBuffer, ByVal Row As Long, Optional ByVal FromCol As Long = 0, Optional ByVal Count As Long = -1) As String
+        Dim ci As ConsoleCharInfo
+        Dim s As String
+        Dim x As Long
+        If Count < 0 Then Count = Buf.Width - FromCol
+        For x = FromCol To FromCol + Count - 1
+            ci = Buf.GetChar(x, Row)
+            s = s & ci.Char
+        Next
+        Text = s
+    End Function
+
+    ' The code points of Count cells of a row as hexadecimal numbers separated by a space.
+    Public Function Codes(ByVal Buf As cConsoleBuffer, ByVal Row As Long, ByVal FromCol As Long, ByVal Count As Long) As String
+        Dim ci As ConsoleCharInfo
+        Dim s As String
+        Dim x As Long
+        For x = FromCol To FromCol + Count - 1
+            ci = Buf.GetChar(x, Row)
+            If x > FromCol Then s = s & " "
+            s = s & Hex$(AscW(ci.Char))
+        Next
+        Codes = s
+    End Function
+
+    ' The code point of one cell.
+    Public Function Code(ByVal Buf As cConsoleBuffer, ByVal Col As Long, ByVal Row As Long) As Long
+        Dim ci As ConsoleCharInfo
+        ci = Buf.GetChar(Col, Row)
+        Code = AscW(ci.Char) And &HFFFF&
+    End Function
+
+    Public Function Fore(ByVal Buf As cConsoleBuffer, ByVal Col As Long, ByVal Row As Long) As Long
+        Dim ci As ConsoleCharInfo
+        ci = Buf.GetChar(Col, Row)
+        Fore = CLng(ci.ForeColor)
+    End Function
+
+    Public Function Back(ByVal Buf As cConsoleBuffer, ByVal Col As Long, ByVal Row As Long) As Long
+        Dim ci As ConsoleCharInfo
+        ci = Buf.GetChar(Col, Row)
+        Back = CLng(ci.BackColor)
+    End Function
+
+    ' A picture of a rectangle of cells for a failure report: the cell as the character, or as
+    ' "." for a space, "#" for a full block (U+2588), "-" for a light shade (U+2591) and {code} for
+    ' another character beyond ASCII; rows are joined by "|".
+    Public Function Picture(ByVal Buf As cConsoleBuffer, ByVal Col As Long, ByVal Row As Long, ByVal Width As Long, ByVal Height As Long) As String
+        Dim s As String
+        Dim x As Long
+        Dim y As Long
+        Dim c As Long
+        For y = Row To Row + Height - 1
+            If y > Row Then s = s & "|"
+            For x = Col To Col + Width - 1
+                c = Code(Buf, x, y)
+                If c = 32 Then
+                    s = s & "."
+                ElseIf c = &H2588& Then
+                    s = s & "#"
+                ElseIf c = &H2591& Then
+                    s = s & "-"
+                ElseIf c < 128 Then
+                    s = s & ChrW$(c)
+                Else
+                    s = s & "{" & Hex$(c) & "}"
+                End If
+            Next
+        Next
+        Picture = s
+    End Function
+
+End Module

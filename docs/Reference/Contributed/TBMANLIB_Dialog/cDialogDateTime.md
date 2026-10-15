@@ -30,6 +30,7 @@ End If
 
 ## What the box shows and accepts
 
+<!-- test: CDialogDateTimeTests.ShowDialog_ShowsThePromptTheFormatLineAndTheYearRange, CDialogDateTimeTests.ShowDialog_NamesTheFormatOfTheModes, CDialogDateTimeTests.ShowDialog_OKOnTheOfferedTextKeepsTheValue, CDialogDateTimeTests.ShowDialog_ADateChangesOnlyTheDate, CDialogDateTimeTests.ShowDialog_ATimeChangesOnlyTheHourAndMinute, CDialogDateTimeTests.ShowDialog_ADateWithDashesAndATimeWithSeconds, CDialogDateTimeTests.ShowDialog_AnEmptyEntryAndTextWithoutAPartChangeNothing, CDialogDateTimeTests.ShowDialog_ARefusedEntryShowsASecondBoxAndReturnsFalse, CDialogDateTimeTests.ShowDialog_ADateAndATimeWithPmIsRead, CDialogDateTimeTests.ShowDialog_12AmIsHourZeroAnd1To11PmAre13To23, CDialogDateTimeTests.OwnerHwnd_HasNoEffect -->
 The box has the title [**Title**](#title) and the text [**Prompt**](#prompt), a blank line, a line that names the format (`Enter date and time:`, `Enter date (MM/DD/YYYY):` or `Enter time (HH:MM):`, with `HH:MM AM/PM` when [**Is24HourFormat**](#is24hourformat) is **False**), a blank line and `Year range:` with [**MinYear**](#minyear) and [**MaxYear**](#maxyear). The edit box holds the current value as [**FormatDateTime**](#formatdatetime) gives it, such as `03/15/2026 14:05`. [**OwnerHwnd**](#ownerhwnd) has no effect, because the box has no owner.
 
 The class reads the text like this:
@@ -41,10 +42,13 @@ The class reads the text like this:
 - A part that is not typed keeps its value, so `11/12/2028` changes only the date, and `23:59` only the hour and minute.
 
 The result of [**ShowDialog**](#showdialog) is **False** when the user cancelled or typed a value that fails these rules, which also shows a second box, `Invalid date/time format. Please use:` followed by the text that the edit box offered. The result is **True** when the user pressed OK, and that includes an empty entry and text without a recognisable part (`hello` or `1/2`): such text changes nothing.
+<!-- /test -->
 
+<!-- test: CDialogDateTimeTests.ShowDialog_ARefusedMonthAndDayLeaveTheObjectAsItWas, CDialogDateTimeTests.ShowDialog_AFebruary30LeavesTheObjectAsItWas, CDialogDateTimeTests.ShowDialog_ARefusedTimeLeavesTheObjectAsItWas, CDialogDateTimeTests.ShowDialog_ARefusedTimeAfterAGoodDateLeavesTheObjectAsItWas -->
 > [!WARNING] 1.1.0.0
 > When the text fails the check, the parts that the class has already read stay in the object. After `13/45/2026`, [**Month**](#month) is 13 and [**Day**](#day) is 45; after `02/30/2026`, **Day** is 30 in February; after `25:61`, [**Hour**](#hour) is 25 and [**Minute**](#minute) is 61; after `04/05/2027 25:00` the date is 5 April 2027 and the hour is 25. [**ShowDialog**](#showdialog) returns **False** and [**Cancelled**](#cancelled) is **True**, yet the object does not hold the value it held before. The setters of the parts, which refuse such values, are bypassed. A program that carries on with the object after a **False** result reads wrong values. Copy [**DateTimeValue**](#datetimevalue) before the call and restore it when the call returns **False**.
 
+<!-- test: CDialogDateTimeTests.ShowTimePicker_ATimeWithPmAndNoDateIsRead, CDialogDateTimeTests.ShowTimePicker_TheOfferedTextOfThe12HourClockIsAccepted, CDialogDateTimeTests.ShowTimePicker_ATimeWithPmAndNoSpaceIsReadAsTheMinutesTyped, CDialogDateTimeTests.ShowDialog_ADateAndATimeWithPmIsRead -->
 > [!WARNING] 1.1.0.0
 > A time with `AM` or `PM` and no date in front of it is not read correctly. `9:30 PM` is cut at its space into the date `9:30` and the time `PM` and rejected, so the offered text of the time mode with [**Is24HourFormat**](#is24hourformat) **False** (`02:05 PM`) is rejected when the user presses OK without changing it. `9:30pm`, with no space, is accepted and read as 21:03, because the class removes three characters from the end of the text and the third is a digit of the minutes. With a date in front, `03/15/2026 9:30 PM` is read correctly. Typing the time with a 24-hour clock (`21:30`) works in every mode.
 
@@ -61,6 +65,7 @@ End If
 
 ## Properties
 
+<!-- test: CDialogDateTimeTests.Defaults_AreThoseOfThePage, CDialogDateTimeTests.NewObject_HoldsTheClockOfTheComputer, CDialogDateTimeTests.DateTimeValue_SetsAllSixParts, CDialogDateTimeTests.DateValue_And_TimeValue_SetTheirParts, CDialogDateTimeTests.DateTimeValue_IsNotCheckedAgainstTheYearRange, CDialogDateTimeTests.Day_IgnoresADayThatDoesNotExistInTheMonth, CDialogDateTimeTests.Hour_Minute_Second_IgnoreValuesOutOfRange, CDialogDateTimeTests.Month_LowersTheDayToTheLastDayOfTheNewMonth, CDialogDateTimeTests.Year_IsLimitedToMinYearAndMaxYear, CDialogDateTimeTests.AddDays_MovesTheDateAndKeepsTheTime, CDialogDateTimeTests.AddDays_PastTheEndOfYear9999RaisesTypeMismatch, CDialogDateTimeTests.AddHours_CarriesIntoTheDate -->
 ### Cancelled
 {: .no_toc }
 
@@ -469,7 +474,9 @@ Syntax: *object*.**AddHours** ( *hours* )
 : *required* A **Long**, negative to move back.
 
 Adds the hours to the time of day, and moves the date forward or back by the days that this passes.
+<!-- /test -->
 
+<!-- test: CDialogDateTimeTests.AddHours_OfAboutSixHundredThousandRaisesOverflowAndKeepsTheValue -->
 > [!NOTE] 1.1.0.0
 > The class works in seconds in a **Long**, so a value of about 596,000 hours (68 years) or more, in either direction, raises error 6 (*Overflow*). The date and time are left as they were.
 
@@ -483,6 +490,7 @@ picker.AddHours -15
 Debug.Print Format$(picker.DateTimeValue, "yyyy-mm-dd hh:nn:ss")    ' 2026-03-15 09:05:09
 ```
 
+<!-- test: CDialogDateTimeTests.FormatDate_ShortAndLong, CDialogDateTimeTests.FormatDate_CustomReplacesThePatterns -->
 ### FormatDate
 {: .no_toc }
 
@@ -494,7 +502,9 @@ Syntax: *object*.**FormatDate** ( [ *formatType* ] ) **As String**
 : *optional* A [**DateFormat**](#dateformat) member. The default is **ShortDate**.
 
 **ShortDate** gives `03/15/2026`, with month, day and year in that order. **LongDate** gives `Sunday, March 15, 2026`, in English whatever the language of Windows is. **Custom** gives the text of [**CustomFormat**](#customformat) in which these patterns are replaced, in this order: `YYYY` (four digits), `YY` (two digits), `MMMM` (the month's name), `MMM` (its first three letters), `MM` (two digits), `M`, `DD` (two digits) and `D`. With an empty [**CustomFormat**](#customformat), **Custom** gives the short date.
+<!-- /test -->
 
+<!-- test: CDialogDateTimeTests.FormatDate_CustomWithAMonthNameOfMarchKeepsTheName, CDialogDateTimeTests.FormatDate_CustomWithAMonthNameOfMayKeepsTheName, CDialogDateTimeTests.FormatDate_CustomWithAMonthNameOfDecemberKeepsTheName, CDialogDateTimeTests.FormatDate_CustomWithAShortMonthNameOfMarchKeepsTheName -->
 > [!WARNING] 1.1.0.0
 > The patterns are replaced one after the other in the text that is being built, so the letters `M` and `D` of a month's name, which `MMMM` and `MMM` have just put in, are replaced as well. **March** and **May** lose their first letter to the number of the month (`3arch`, `5ay`) and **December** its first letter to the number of the day (`15ecember`). No error is raised. The same happens to any other `Y`, `M` or `D` in the format, which is not kept as a literal character. Formats with `MMMM` or `MMM` are right only for the other months.
 
@@ -513,6 +523,7 @@ picker.CustomFormat = "MMMM D, YYYY"
 Debug.Print picker.FormatDate(DateFormat.Custom)      ' 3arch 15, 2026
 ```
 
+<!-- test: CDialogDateTimeTests.FormatDateTime_FollowsMode, CDialogDateTimeTests.FormatTime_24HourAndAmPm, CDialogDateTimeTests.GetDayOfWeek_And_Name_AreEnglishFromSunday, CDialogDateTimeTests.GetDaysInMonth_KnowsLeapYears, CDialogDateTimeTests.GetMonthName_IsEnglish, CDialogDateTimeTests.Reset_RestoresTheStartingValuesButNotTheOwner, CDialogDateTimeTests.SetNow_And_SetToday_UseTheClock, CDialogDateTimeTests.ShowDatePicker_And_ShowTimePicker_SetTitleAndMode, CDialogDateTimeTests.Enumerations_HaveTheDocumentedValues -->
 ### FormatDateTime
 {: .no_toc }
 
@@ -789,6 +800,7 @@ Else
     Debug.Print "Kept " & picker.FormatDateTime()
 End If
 ```
+<!-- /test -->
 
 ## See Also
 

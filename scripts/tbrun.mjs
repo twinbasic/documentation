@@ -179,7 +179,10 @@ project's own test cases instead.
   --ide <path>        as tbbuild's
   --port <n>          DevTools port to start the IDE on (default 9346)
   --arch <target>     win32 or win64 (default win32)
-  --timeout <secs>    give up waiting for console output (default 120)
+  --timeout <secs>    give up waiting for console output (default 120); with
+                      --tests, how long each case may run: one still running
+                      then is reported "no answer", and the cases after it
+                      "not run", since the compiler cannot stop it
   --quiet <ms>        output is complete after this long with no change
                       (default 2500)
   --json              emit one JSON object instead of text
@@ -659,16 +662,26 @@ process.exit(0);
 // --tests: the compile cases judged by the diagnostics the compile reported, and
 // each [TestCase] Sub run in the compiler's test mode (lib/tb-tests.mjs), one at a
 // time, --timeout each. A project with errors runs none of them, and says so for
-// each. The diagnostics follow the cases' lines, which are what a reproducer's
-// expect reads. Never returns.
+// each. A case that is still running at --timeout is reported "no answer" and the
+// cases after it are reported "not run", not sent: the compiler cannot cancel it.
+// The diagnostics follow the cases' lines, which are what a reproducer's expect
+// reads. Never returns.
 async function runCases() {
   const results = judgeCompiles(cases.compiles, outcome.rows).map((r) => ({ ...r }));
   const errors = outcome.counts[0] > 0;
   try {
+    // A case still running at --timeout cannot be stopped, and the compiler's main thread refuses every
+    // request until it ends ("main thread is busy"), so the cases after it are not sent.
+    let stalled = null;
     for (const t of cases.tests) {
       const name = `${t.fixture}.${t.name}`;
       if (errors) results.push({ name, pass: false, detail: "not run: the project has compile errors" });
-      else results.push({ name, ...(await runTest(cdp, t, timeoutMs)) });
+      else if (stalled) results.push({ name, pass: false, detail: `not run: ${stalled} did not return` });
+      else {
+        const r = await runTest(cdp, t, timeoutMs);
+        results.push({ name, ...r });
+        if (r.timedOut) stalled = name;
+      }
     }
     cdp.close();
   } catch (e) {

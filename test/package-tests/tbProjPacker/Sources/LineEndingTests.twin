@@ -1,0 +1,210 @@
+' tbProjPacker, ProjPacker.Pack: which files get CR LF line endings while they are packed.
+'
+' A tree of files with LF line endings is packed and unpacked again, and the unpacked files show
+' what was stored. LineEnd is the tree:
+'   Settings                      LF (never converted)
+'   Sources\a.twin, b.BAS, c.Cls  LF; Sources\deep\er\d.twin
+'   Sources\t.txt                 LF, a text file
+'   Sources\crlf.twin             CR LF already
+'   Sources\mixed.twin            CR LF, LF and a CR at the end
+'   Other\Sources\o.twin, Resources\Sources\r.twin   LF, in another folder named Sources
+'   lower\sources\l.twin          LF, in a folder named sources
+'   Elsewhere\e.twin              LF, outside Sources
+[TestFixture]
+Module LineEndingTests
+
+    Private Function Lf() As String
+        Lf = "x" & vbLf & "y" & vbLf
+    End Function
+
+    Private Function CrLf() As String
+        CrLf = "x" & vbCrLf & "y" & vbCrLf
+    End Function
+
+    Private Function Mixed() As String
+        Mixed = "a" & vbCrLf & "b" & vbLf & "c" & vbCr
+    End Function
+
+    Private Function Build(ByVal Base As String) As String
+        Dim root As String
+        root = Base & "\LineEnd"
+        Files.MakeFolder root & "\Sources\deep\er"
+        Files.MakeFolder root & "\Other\Sources"
+        Files.MakeFolder root & "\Resources\Sources"
+        Files.MakeFolder root & "\lower\sources"
+        Files.MakeFolder root & "\Elsewhere"
+        Files.WriteText root & "\Settings", "a" & vbLf & "b" & vbLf
+        Files.WriteText root & "\Sources\a.twin", Lf()
+        Files.WriteText root & "\Sources\b.BAS", Lf()
+        Files.WriteText root & "\Sources\c.Cls", Lf()
+        Files.WriteText root & "\Sources\deep\er\d.twin", Lf()
+        Files.WriteText root & "\Sources\t.txt", Lf()
+        Files.WriteText root & "\Sources\crlf.twin", CrLf()
+        Files.WriteText root & "\Sources\mixed.twin", Mixed()
+        Files.WriteText root & "\Other\Sources\o.twin", Lf()
+        Files.WriteText root & "\Resources\Sources\r.twin", Lf()
+        Files.WriteText root & "\lower\sources\l.twin", Lf()
+        Files.WriteText root & "\Elsewhere\e.twin", Lf()
+        Build = root
+    End Function
+
+    ' Packs the tree and unpacks the file into Base\Back, and returns that folder.
+    Private Function PackedAndBack(ByVal Base As String, ByVal Tree As String) As String
+        Dim pp As New ProjPacker
+        Expect.IsTrue pp.Pack(Tree, Base & "\LineEnd.twinproj"), "Pack of the tree returns True"
+        Expect.IsTrue pp.Unpack(Base & "\LineEnd.twinproj", Base & "\Back"), "Unpack of the packed file returns True"
+        PackedAndBack = Base & "\Back"
+    End Function
+
+    [TestCase]
+    Public Sub CodeFilesUnderSources_GetCrLf()
+        Expect.Begin
+        Dim base As String, back As String
+        base = Sandbox.Fresh("LineEnd_Sources")
+        back = PackedAndBack(base, Build(base))
+        Expect.AreEqual CrLf(), Files.ReadText(back & "\Sources\a.twin"), "Sources\a.twin"
+        Expect.AreEqual CrLf(), Files.ReadText(back & "\Sources\b.BAS"), "Sources\b.BAS: an upper-case extension"
+        Expect.AreEqual CrLf(), Files.ReadText(back & "\Sources\c.Cls"), "Sources\c.Cls: a mixed-case extension"
+        Expect.AreEqual CrLf(), Files.ReadText(back & "\Sources\deep\er\d.twin"), "Sources\deep\er\d.twin: below Sources"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CodeFilesInAFolderNamedSourcesAtAnyDepth_GetCrLf()
+        Expect.Begin
+        Dim base As String, back As String
+        base = Sandbox.Fresh("LineEnd_Depth")
+        back = PackedAndBack(base, Build(base))
+        Expect.AreEqual CrLf(), Files.ReadText(back & "\Other\Sources\o.twin"), "Other\Sources\o.twin"
+        Expect.AreEqual CrLf(), Files.ReadText(back & "\Resources\Sources\r.twin"), "Resources\Sources\r.twin"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CodeFilesInAFolderNamedSourcesInLowerCase_AreNotConverted()
+        Expect.Begin
+        Dim base As String, back As String
+        base = Sandbox.Fresh("LineEnd_LowerCase")
+        back = PackedAndBack(base, Build(base))
+        Expect.AreEqual Lf(), Files.ReadText(back & "\lower\sources\l.twin"), "lower\sources\l.twin"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextFilesUnderSources_AreNotConverted()
+        Expect.Begin
+        Dim base As String, back As String
+        base = Sandbox.Fresh("LineEnd_Text")
+        back = PackedAndBack(base, Build(base))
+        Expect.AreEqual Lf(), Files.ReadText(back & "\Sources\t.txt"), "Sources\t.txt"
+        Expect.AreEqual "a" & vbLf & "b" & vbLf, Files.ReadText(back & "\Settings"), "Settings"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CodeFilesOutsideSources_AreNotConverted()
+        Expect.Begin
+        Dim base As String, back As String
+        base = Sandbox.Fresh("LineEnd_Outside")
+        back = PackedAndBack(base, Build(base))
+        Expect.AreEqual Lf(), Files.ReadText(back & "\Elsewhere\e.twin"), "Elsewhere\e.twin"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InputDirNamedSources_IsNotTestedForItsName()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String
+        base = Sandbox.Fresh("LineEnd_InputDir")
+        tree = base & "\Sources"
+        Files.MakeFolder tree
+        Files.WriteText tree & "\Settings", "s" & vbLf
+        Files.WriteText tree & "\x.twin", Lf()
+        Expect.IsTrue pp.Pack(tree, base & "\Sources.twinproj"), "Pack of a folder named Sources returns True"
+        Expect.IsTrue pp.Unpack(base & "\Sources.twinproj", base & "\Back"), "Unpack of the packed file returns True"
+        Expect.AreEqual Lf(), Files.ReadText(base & "\Back\x.twin"), "x.twin directly in the folder named Sources"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileThatAlreadyHasCrLf_IsUnchanged()
+        Expect.Begin
+        Dim base As String, back As String
+        base = Sandbox.Fresh("LineEnd_Already")
+        back = PackedAndBack(base, Build(base))
+        Expect.AreEqual CrLf(), Files.ReadText(back & "\Sources\crlf.twin"), "Sources\crlf.twin"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CrNotFollowedByLf_IsRemovedAndNoLineBreakReplacesIt()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, back As String, tree As String
+        base = Sandbox.Fresh("LineEnd_LoneCr")
+        tree = Build(base)
+        Files.WriteText tree & "\Sources\mac.twin", "one" & vbCr & "two" & vbCr
+        back = PackedAndBack(base, tree)
+        Expect.AreEqual "a" & vbCrLf & "b" & vbCrLf & "c", Files.ReadText(back & "\Sources\mixed.twin"), "Sources\mixed.twin: a CR at the end of a file that has CR LF and LF line breaks"
+        Expect.AreEqual "onetwo", Files.ReadText(back & "\Sources\mac.twin"), "Sources\mac.twin: lines ended by a CR alone"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FilesOnDisk_AreNeverChanged()
+        Expect.Begin
+        Dim base As String, tree As String, back As String
+        base = Sandbox.Fresh("LineEnd_Disk")
+        tree = Build(base)
+        back = PackedAndBack(base, tree)
+        Expect.AreEqual Lf(), Files.ReadText(tree & "\Sources\a.twin"), "Sources\a.twin on disk after Pack"
+        Expect.AreEqual Lf(), Files.ReadText(tree & "\Other\Sources\o.twin"), "Other\Sources\o.twin on disk after Pack"
+        Expect.AreEqual Mixed(), Files.ReadText(tree & "\Sources\mixed.twin"), "Sources\mixed.twin on disk after Pack"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_PrintsHowManyFilesWereConverted_AfterTheMissingFoldersNote()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, logFile As String, lines() As String
+        base = Sandbox.Fresh("LineEnd_Count")
+        tree = Build(base)
+        logFile = base & "\pack.log"
+        Expect.IsTrue pp.Pack(tree, base & "\LineEnd.twinproj", False, logFile), "Pack of the tree returns True"
+        lines = Files.LinesOf(Files.ReadText(logFile))
+        Expect.AreEqual 3, UBound(lines), "the last index of the lines Pack printed (summary, two note lines, the count)"
+        If UBound(lines) >= 3 Then
+            Expect.AreEqual "  note: expected folders not present on disk: ImportedTypeLibraries, Miscellaneous, Packages.", lines(1), "the missing folders note"
+            Expect.AreEqual "  twinBASIC should rebuild them on Open Project.", lines(2), "the second line of that note"
+            Expect.AreEqual "  note: converted 7 code file(s) under Sources from Unix (LF) to Windows (CRLF) line endings.", lines(3), "the count of converted files: a.twin, b.BAS, c.Cls, d.twin, o.twin, r.twin and mixed.twin, and not crlf.twin"
+        End If
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Pack_PrintsNoCount_WhenNoFileWasConverted()
+        Expect.Begin
+        Dim pp As New ProjPacker
+        Dim base As String, tree As String, logFile As String
+        base = Sandbox.Fresh("LineEnd_NoCount")
+        tree = Sample.Build(base)
+        logFile = base & "\pack.log"
+        Expect.IsTrue pp.Pack(tree, base & "\Sample.twinproj", False, logFile), "Pack of a tree whose code files all have CR LF returns True"
+        Expect.AreEqual 0, Files.CountLines(Files.ReadText(logFile), "  note: converted"), "the lines that count converted files"
+        Sandbox.Remove base
+        Expect.Done
+    End Sub
+
+End Module

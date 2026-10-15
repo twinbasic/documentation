@@ -1,0 +1,51 @@
+' Fmt: the F identifier (FixedPointSFI): a fixed count of decimal places, no thousands separator.
+[TestFixture]
+Module FixedPointTests
+
+    [TestCase]
+    Public Sub Default_TwoDecimalPlaces()
+        Expect.Begin
+        Expect.AreEqual "3" & Loc.Dec() & "14", Try1("{0:F}", 3.14159), "StringFormat(""{0:F}"", 3.14159)"
+        Expect.AreEqual "3" & Loc.Dec() & "14", Try1("{0:f}", 3.14159), "StringFormat(""{0:f}"", 3.14159)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Precision_SetsTheDecimalPlaces()
+        Expect.Begin
+        Expect.AreEqual "3" & Loc.Dec() & "142", Try1("{0:F3}", 3.14159), "StringFormat(""{0:F3}"", 3.14159)"
+        Expect.AreEqual "-3" & Loc.Dec() & "1", Try1("{0:f1}", -3.14159), "StringFormat(""{0:f1}"", -3.14159)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PrecisionZero_IsTwoDecimalPlaces()
+        Expect.Begin
+        Expect.AreEqual "2" & Loc.Dec() & "50", Try1("{0:F0}", 2.5), "StringFormat(""{0:F0}"", 2.5)"
+        Expect.AreEqual "12345" & Loc.Dec() & "68", Try1("{0:F0}", 12345.678), "StringFormat(""{0:F0}"", 12345.678)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NoThousandsSeparator()
+        Expect.Begin
+        Expect.AreEqual "12345" & Loc.Dec() & "68", Try1("{0:F2}", 12345.678), "StringFormat(""{0:F2}"", 12345.678)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Class_MatchesFAndOnlyF()
+        Expect.Begin
+        Expect.AreEqual "Ff", Loc.MatchedLetters(FixedPointSFI), "letters FixedPointSFI.IsIdentifierMatch is True for"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Class_GetFormattedValue_ReadsThePrecision()
+        Expect.Begin
+        Dim f As IStringFormatIdentifier = FixedPointSFI
+        Expect.AreEqual "3" & Loc.Dec() & "142", f.GetFormattedValue(3.14159, Loc.Spec("F", "3")), "FixedPointSFI.GetFormattedValue(3.14159, F3)"
+        Expect.Done
+    End Sub
+
+End Module

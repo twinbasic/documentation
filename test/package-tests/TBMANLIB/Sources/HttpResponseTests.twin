@@ -1,0 +1,501 @@
+' cHttpClient: what the client does with the answer, redirects, and the transfer of files. Each case
+' starts the small server of TestServer on 127.0.0.1; nothing leaves the computer.
+[TestFixture]
+Module HttpResponseTests
+
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
+
+    ' An answer with a status line, header lines and a body.
+    Private Function Answer(ByVal Status As String, ByVal Headers As String, ByVal Body As String) As String
+        Answer = "HTTP/1.1 " & Status & vbCrLf & Headers & "Content-Length: " & Len(Body) & vbCrLf & "Connection: close" & vbCrLf & vbCrLf & Body
+    End Function
+
+    ' True when DownloadFile raises an error; its result is left in Result.
+    Private Function DownloadRaises(ByVal H As cHttpClient, ByVal Url As String, ByVal Path As String, ByRef Result As Boolean) As Boolean
+        On Error GoTo Caught
+        Result = H.DownloadFile(Url, Path)
+        Exit Function
+Caught:
+        DownloadRaises = True
+    End Function
+
+    ' Reads the text of an asynchronous request, trying for at most MaxMs.
+    Private Function WaitText(ByVal H As cHttpClient, ByVal MaxMs As Long, ByRef Ok As Boolean) As String
+        Dim limit As Single, t As String
+        limit = Timer + MaxMs / 1000
+        Ok = False
+        Do
+            On Error Resume Next
+            Err.Clear
+            t = H.ReturnText()
+            If Err.Number = 0 Then
+                Ok = True
+                WaitText = t
+                On Error GoTo 0
+                Exit Function
+            End If
+            On Error GoTo 0
+            Sleep 20
+        Loop While Timer < limit
+    End Function
+
+    ' ---- the answer
+
+    [TestCase]
+    Public Sub ResponseHeaders_ValueWithColons_IsKeptWhole()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "Date: Tue, 13 Oct 2026 18:00:00 GMT" & vbCrLf & "Content-Type: text/plain" & vbCrLf, "ok")
+        TestServer.Run 1
+        H.SendGet TestServer.Url("/h")
+        TestServer.ServerDown
+        Expect.AreEqual "Tue, 13 Oct 2026 18:00:00 GMT", H.ResponseHeaders("Date"), "ResponseHeaders(Date)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ResponseHeaders_AreFilledAndKeptFromOneAnswerToTheNext()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "Content-Type: text/plain" & vbCrLf & "X-First: 1" & vbCrLf, "ok")
+        TestServer.Respond 1, Answer("200 OK", "Content-Type: text/html" & vbCrLf, "ok")
+        TestServer.Run 2
+        H.SendGet TestServer.Url("/h")
+        Expect.AreEqual "text/plain", H.ResponseHeaders("content-type"), "ResponseHeaders(content-type) after the first answer"
+        H.SendGet TestServer.Url("/h")
+        TestServer.ServerDown
+        Expect.AreEqual "text/html", H.ResponseHeaders("Content-Type"), "ResponseHeaders(Content-Type) after the second answer"
+        Expect.AreEqual "1", H.ResponseHeaders("X-First"), "ResponseHeaders(X-First), which only the first answer had"
+        Expect.IsTrue H.ResponseHeaders.Exists(""), "the empty key that the blank line at the end of the headers becomes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnText_ReturnJson_ReturnBody_ReadTheAnswer()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, J As cJson, b() As Byte
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "Content-Type: application/json" & vbCrLf, "{""a"":1}")
+        TestServer.Respond 1, Answer("200 OK", "Content-Type: text/plain" & vbCrLf, "caf" & ChrW(195) & ChrW(169))
+        TestServer.Respond 2, Answer("200 OK", "Content-Type: text/plain" & vbCrLf, "not json")
+        TestServer.Run 3
+        H.SendGet TestServer.Url("/j")
+        Set J = H.ReturnJson()
+        Expect.AreEqual 1, J.Item("a"), "ReturnJson().Item(a)"
+        Expect.AreEqual "{""a"":1}", H.ReturnText(), "ReturnText of the first answer"
+        H.SendGet TestServer.Url("/u")
+        b = H.ReturnBody()
+        Expect.AreEqual "63 61 66 C3 A9", Sandbox.HexOfBytes(b), "ReturnBody"
+        Expect.AreEqual "caf" & ChrW(233), H.ReturnText(), "ReturnText decodes UTF-8"
+        H.SendGet TestServer.Url("/n")
+        On Error Resume Next
+        Set J = H.ReturnJson()
+        Expect.AreEqual 10001, Err.Number, "ReturnJson of a text that is not JSON raises"
+        On Error GoTo 0
+        TestServer.ServerDown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnBody_BeforeAnyRequest_Raises()
+        Expect.Begin
+        Dim H As New cHttpClient, b() As Byte
+        On Error Resume Next
+        b = H.ReturnBody()
+        Expect.AreEqual -2147012795, Err.Number, "ReturnBody of an object that has sent nothing raises"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Fetch_ErrorStatus_IsRaisedWithItsNumberAndText()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("404 Not Found", "Content-Type: text/plain" & vbCrLf, "nope")
+        TestServer.Respond 1, Answer("500 Internal Server Error", "Content-Type: text/plain" & vbCrLf, "boom")
+        TestServer.Run 2
+        On Error Resume Next
+        H.SendGet TestServer.Url("/x")
+        Expect.AreEqual 404, Err.Number, "number of the error for a 404 answer"
+        Expect.AreEqual "404#Not Found#nope", Err.Description, "description of that error"
+        Expect.AreEqual "404#Not Found#nope", H.LastError, "LastError"
+        Err.Clear
+        H.SendGet TestServer.Url("/y")
+        Expect.AreEqual 500, Err.Number, "number of the error for a 500 answer"
+        On Error GoTo 0
+        TestServer.ServerDown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Async_SendGet_ReturnsAtOnceAndTheAnswerIsReadLater()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, ok As Boolean, t As String
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "X-Seen: 1" & vbCrLf, "later")
+        TestServer.Run 1
+        H.Async(True).SendGet TestServer.Url("/a")
+        Expect.AreEqual 0, H.ResponseHeaders.Count, "ResponseHeaders after an asynchronous request"
+        t = WaitText(H, 4000, ok)
+        TestServer.ServerDown
+        Expect.IsTrue ok, "the answer of the asynchronous request arrived"
+        Expect.AreEqual "later", t, "ReturnText"
+        Expect.AreEqual 0, H.ResponseHeaders.Count, "ResponseHeaders after the answer was read"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OnResponseFinished_AsyncRequest_IsRaisedWhenTheAnswerArrives()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, S As New HttpSink, ok As Boolean, t As String, limit As Single
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "", "later")
+        TestServer.Run 1
+        S.Attach H
+        H.Async(True).SendGet TestServer.Url("/a")
+        t = WaitText(H, 4000, ok)
+        limit = Timer + 0.4
+        Do While Timer < limit
+            DoEvents
+            Sleep 5
+        Loop
+        TestServer.ServerDown
+        S.Detach
+        Expect.IsTrue ok, "the answer of the asynchronous request arrived"
+        Expect.IsTrue S.Finished >= 1, "OnResponseFinished events after the answer arrived (got " & S.Finished & ")"
+        Expect.Done
+    End Sub
+
+    ' ---- redirects
+
+    [TestCase]
+    Public Sub EnableRedirects_True_FollowsTheRedirectToTheFinalAnswer()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("302 Found", "Location: " & TestServer.Url("/next") & vbCrLf, "")
+        TestServer.Respond 1, Answer("200 OK", "", "arrived")
+        TestServer.Run 2
+        H.SendGet TestServer.Url("/start")
+        TestServer.ServerDown
+        Expect.AreEqual "arrived", H.ReturnText(), "ReturnText after a redirect that WinHTTP followed"
+        Expect.AreEqual 2, TestServer.Served, "number of connections the server served"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetRedirectUrl_AbsoluteLocation_IsReturnedWhole()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("302 Found", "Location: " & TestServer.Url("/next") & vbCrLf, "")
+        TestServer.Run 1
+        H.AllowRedirects False
+        H.SendGet TestServer.Url("/start")
+        TestServer.ServerDown
+        Expect.AreEqual "http://127.0.0.1:<port>/next", TestServer.Masked(H.GetRedirectUrl()), "GetRedirectUrl of a 302 answer with the Location http://127.0.0.1:<port>/next"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FollowRedirect_Status302_SendsARequestToTheLocation()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("302 Found", "Location: " & TestServer.Url("/next") & vbCrLf, "")
+        TestServer.Respond 1, Answer("200 OK", "", "arrived")
+        TestServer.Run 2
+        H.AllowRedirects False
+        H.SendGet TestServer.Url("/start")
+        On Error Resume Next
+        H.FollowRedirect
+        Expect.AreEqual 0, Err.Number, "FollowRedirect raised error " & Err.Number & " " & Err.Description
+        On Error GoTo 0
+        TestServer.ServerDown
+        Expect.AreEqual 2, TestServer.Served, "number of connections the server served"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FollowRedirect_NoLocation_DoesNothing()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "", "plain")
+        TestServer.Run 1
+        H.SendGet TestServer.Url("/start")
+        H.FollowRedirect
+        TestServer.ServerDown
+        Expect.AreEqual 1, TestServer.Served, "number of connections the server served"
+        Expect.AreEqual "", H.GetRedirectUrl(), "GetRedirectUrl of an answer with no Location header"
+        Expect.IsTrue H.ResetRedirectCount() Is H, "ResetRedirectCount returns the object"
+        Expect.Done
+    End Sub
+
+    ' ---- files
+
+    [TestCase]
+    Public Sub DownloadFile_WritesTheBodyToTheFile()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, root As String, p As String
+        root = Sandbox.Fresh("http1")
+        p = root & "\got.bin"
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "Content-Type: application/octet-stream" & vbCrLf, "abc123")
+        TestServer.Run 1
+        Expect.IsTrue H.DownloadFile(TestServer.Url("/f"), p), "DownloadFile"
+        TestServer.ServerDown
+        Expect.AreEqual "abc123", Sandbox.AsciiOf(p), "content of the file"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DownloadFile_OverwriteFalseAndFileExists_Raises58AfterTheRequest()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, root As String, p As String
+        root = Sandbox.Fresh("http2")
+        p = root & "\got.bin"
+        Sandbox.WriteAscii p, "old"
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "", "new")
+        TestServer.Run 1
+        On Error Resume Next
+        H.DownloadFile TestServer.Url("/f"), p, False
+        Expect.AreEqual 58, Err.Number, "DownloadFile with Overwrite False of a file that exists raises"
+        On Error GoTo 0
+        TestServer.ServerDown
+        Expect.AreEqual 1, TestServer.Served, "number of connections the server served"
+        Expect.AreEqual "old", Sandbox.AsciiOf(p), "content of the file"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DownloadFile_ErrorStatus_Raises()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, root As String, p As String
+        root = Sandbox.Fresh("http3")
+        p = root & "\got.bin"
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("404 Not Found", "", "nope")
+        TestServer.Run 1
+        On Error Resume Next
+        H.DownloadFile TestServer.Url("/f"), p
+        Expect.AreEqual 404, Err.Number, "DownloadFile of a 404 answer raises"
+        On Error GoTo 0
+        TestServer.ServerDown
+        Expect.AreEqual "", Dir(p), "the file is not made"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DownloadFile_FolderThatDoesNotExist_IsNotReportedAsDone()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, root As String, p As String, r As Boolean, raised As Boolean
+        root = Sandbox.Fresh("http4")
+        p = root & "\nosuch\got.bin"
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "", "abc")
+        TestServer.Run 1
+        raised = DownloadRaises(H, TestServer.Url("/f"), p, r)
+        TestServer.ServerDown
+        Expect.IsFalse CreateObject("Scripting.FileSystemObject").FileExists(p), "the file exists"
+        Expect.IsTrue raised Or Not r, "DownloadFile returned True and raised no error though the file was not written"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DownloadFileAsync_ThenFinishDownloadFile_WritesTheFile()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, root As String, p As String, limit As Single, done As Boolean
+        root = Sandbox.Fresh("http5")
+        p = root & "\got.bin"
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "", "async body")
+        TestServer.Run 1
+        Expect.IsTrue H.DownloadFileAsync(TestServer.Url("/f"), p) Is H, "DownloadFileAsync returns the object"
+        Expect.AreEqual p, H.RequestHeaders("X-Download-Path"), "the item X-Download-Path"
+        Expect.AreEqual "1", H.RequestHeaders("X-Download-Overwrite"), "the item X-Download-Overwrite"
+        limit = Timer + 4
+        Do
+            On Error Resume Next
+            Err.Clear
+            done = H.FinishDownloadFile()
+            If Err.Number = 0 Then Exit Do
+            On Error GoTo 0
+            Sleep 20
+        Loop While Timer < limit
+        On Error GoTo 0
+        TestServer.ServerDown
+        Expect.IsTrue done, "FinishDownloadFile"
+        Expect.AreEqual "async body", Sandbox.AsciiOf(p), "content of the file"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FinishDownloadFile_WithoutDownloadFileAsync_Raises()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, ok As Boolean, t As String
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "", "x")
+        TestServer.Run 1
+        H.Async(True).SendGet TestServer.Url("/f")
+        t = WaitText(H, 4000, ok)
+        On Error Resume Next
+        H.FinishDownloadFile
+        Expect.AreEqual 1, Err.Number, "FinishDownloadFile with no X-Download-Path item raises"
+        On Error GoTo 0
+        TestServer.ServerDown
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FinishDownloadFile_FolderThatDoesNotExist_IsNotReportedAsDone()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, root As String, p As String, limit As Single, r As Boolean, raised As Boolean, ready As Boolean
+        root = Sandbox.Fresh("http6")
+        p = root & "\nosuch\got.bin"
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "", "abc")
+        TestServer.Run 1
+        H.DownloadFileAsync TestServer.Url("/f"), p
+        limit = Timer + 4
+        Do
+            On Error Resume Next
+            Err.Clear
+            r = H.FinishDownloadFile()
+            If Err.Number = 0 Then
+                ready = True
+                Exit Do
+            End If
+            If Err.Number <> -2147483638 Then
+                raised = True
+                ready = True
+                Exit Do
+            End If
+            On Error GoTo 0
+            Sleep 20
+        Loop While Timer < limit
+        On Error GoTo 0
+        TestServer.ServerDown
+        Expect.IsTrue ready, "the answer arrived"
+        Expect.IsFalse CreateObject("Scripting.FileSystemObject").FileExists(p), "the file exists"
+        Expect.IsTrue raised Or Not r, "FinishDownloadFile returned True and raised no error though the file was not written"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UploadFile_SendsTheFileAsMultipartFormData()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, root As String, p As String, D As New Scripting.Dictionary
+        Dim ct As String, body As String
+        root = Sandbox.Fresh("http7")
+        p = root & "\report.txt"
+        Sandbox.WriteAscii p, "file data"
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("200 OK", "X-Up: yes" & vbCrLf, "stored")
+        TestServer.Run 1
+        H.RequestHeaders.Item("X-Test") = "kept at home"
+        D.Add "owner", "ann"
+        H.UploadFile TestServer.Url("/up"), p, "document", D
+        TestServer.ServerDown
+        ct = TestServer.RequestHeader(0, "Content-Type")
+        body = Replace(Mid$(TestServer.RequestText(0), InStr(TestServer.RequestText(0), vbCrLf & vbCrLf) + 4), vbCrLf, "|")
+        Expect.AreEqual "POST /up HTTP/1.1", Split(TestServer.RequestHead(0), vbCrLf)(0), "request line"
+        Expect.IsTrue ct Like "multipart/form-data; boundary=----WebKitFormBoundary*", "Content-Type of the request: " & ct
+        Expect.IsTrue InStr(body, "Content-Disposition: form-data; name=""document""; filename=""report.txt""|Content-Type: application/octet-stream||file data|") > 0, "the part with the file: " & body
+        Expect.IsTrue InStr(body, "Content-Disposition: form-data; name=""owner""||ann|") > 0, "the part with the additional field: " & body
+        Expect.AreEqual "", TestServer.RequestHeader(0, "X-Test"), "the item of RequestHeaders, which UploadFile does not send"
+        Expect.AreEqual "yes", H.ResponseHeaders("X-Up"), "ResponseHeaders(X-Up)"
+        Expect.AreEqual ct, H.RequestContentType, "RequestContentType after the upload"
+        Expect.IsTrue H.RequestHeaders.Exists("Content-Length"), "RequestHeaders holds a Content-Length item"
+        Expect.AreEqual "stored", H.ReturnText(), "ReturnText"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UploadFile_MissingFile_Raises53()
+        Expect.Begin
+        Dim H As New cHttpClient, root As String
+        root = Sandbox.Fresh("http8")
+        On Error Resume Next
+        H.UploadFile "http://127.0.0.1:1/up", root & "\missing.txt"
+        Expect.AreEqual 53, Err.Number, "UploadFile of a file that does not exist raises"
+        On Error GoTo 0
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UploadFile_ErrorStatus_RaisesWithTheTextOfTheFailure()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, root As String, p As String, desc As String
+        root = Sandbox.Fresh("http9")
+        p = root & "\report.txt"
+        Sandbox.WriteAscii p, "x"
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("404 Not Found", "", "nope")
+        TestServer.Run 1
+        On Error Resume Next
+        H.UploadFile TestServer.Url("/up"), p
+        Expect.AreEqual 404, Err.Number, "number of the error for a 404 answer"
+        desc = Err.Description
+        On Error GoTo 0
+        TestServer.ServerDown
+        Expect.IsTrue Right$(H.LastError, 13) = "404#Not Found", "LastError ends with 404#Not Found: " & H.LastError
+        Expect.AreEqual H.LastError, desc, "the description of the error raised"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UploadFile_NoAnswerWithinTheTimeOut_RaisesWithTheTextOfTheFailure()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, root As String, p As String, desc As String, n As Long
+        root = Sandbox.Fresh("http10")
+        p = root & "\report.txt"
+        Sandbox.WriteAscii p, "x"
+        port = TestServer.ServerUp()
+        TestServer.RespondSilently 0
+        TestServer.Run 1
+        On Error Resume Next
+        H.UploadFile TestServer.Url("/up"), p
+        n = Err.Number
+        desc = Err.Description
+        On Error GoTo 0
+        TestServer.ServerDown
+        Expect.AreEqual 900, n, "number of the error for an upload that gets no answer"
+        Expect.AreEqual H.LastError, desc, "the description of the error raised"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UploadFileSimple_Failure_LastErrorHoldsTheTextOfTheFailure()
+        Expect.Begin
+        Dim port As Long, H As New cHttpClient, root As String, p As String
+        root = Sandbox.Fresh("http11")
+        p = root & "\report.txt"
+        Sandbox.WriteAscii p, "x"
+        port = TestServer.ServerUp()
+        TestServer.Respond 0, Answer("404 Not Found", "", "nope")
+        TestServer.Respond 1, Answer("200 OK", "", "stored")
+        TestServer.Run 2
+        Expect.IsFalse H.UploadFileSimple(TestServer.Url("/up"), p), "UploadFileSimple of a 404 answer"
+        Expect.IsTrue Right$(H.LastError, 13) = "404#Not Found", "LastError ends with 404#Not Found: " & H.LastError
+        Expect.IsTrue H.UploadFileSimple(TestServer.Url("/up"), p), "UploadFileSimple of a 200 answer"
+        TestServer.ServerDown
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+End Module

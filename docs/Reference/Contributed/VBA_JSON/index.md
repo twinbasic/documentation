@@ -28,3 +28,7 @@ The **VBA_JSON** contributed package provides JSON parsing and serialization for
   - [ParseIso](JsonConverter/ParseIso) -- parses an ISO 8601 date/time string and returns the equivalent local Date value
   - [ParseJson](JsonConverter/ParseJson) -- parses a JSON string and returns a Dictionary or Collection object
   - [ParseUtc](JsonConverter/ParseUtc) -- converts a UTC date to the equivalent local date using the system time zone
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [VBA_JSON-tests.twinproj](VBA_JSON-tests.twinproj), a twinBASIC project. It uses VBA_JSON as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

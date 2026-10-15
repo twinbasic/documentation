@@ -1,0 +1,170 @@
+' FindHost: a window to own the modeless Find and Replace dialogs, and to count the messages they send it.
+'
+' The dialogs of comdlg32 send their owner a registered message (commdlg_FindReplace) when a button
+' is pressed or the dialog is closed, with a pointer to the FINDREPLACE structure as lParam. The
+' window procedure of the owner here counts those messages and keeps the Flags of the last one.
+' DialogDriver-like helpers press a button with BM_CLICK, which makes the dialog send exactly the
+' message a click makes, and close the dialog with WM_CLOSE.
+Module FindHost
+
+    Private Type WNDCLASSW
+        style As Long
+        lpfnWndProc As LongPtr
+        cbClsExtra As Long
+        cbWndExtra As Long
+        hInstance As LongPtr
+        hIcon As LongPtr
+        hCursor As LongPtr
+        hbrBackground As LongPtr
+        lpszMenuName As LongPtr
+        lpszClassName As LongPtr
+    End Type
+
+    ' The structure FindTextW and ReplaceTextW take (the package declares its own).
+    Public Type FRStruct
+        lStructSize As Long
+        hWndOwner As LongPtr
+        hInstance As LongPtr
+        Flags As Long
+        lpstrFindWhat As LongPtr
+        lpstrReplaceWith As LongPtr
+        wFindWhatLen As Integer
+        wReplaceWithLen As Integer
+        lCustData As LongPtr
+        lpfnHook As LongPtr
+        lpTemplateName As LongPtr
+    End Type
+
+    Private Declare PtrSafe Function H_RegisterClassW Lib "user32" Alias "RegisterClassW" (ByRef lpWndClass As WNDCLASSW) As Long
+    Private Declare PtrSafe Function H_UnregisterClassW Lib "user32" Alias "UnregisterClassW" (ByVal lpClassName As LongPtr, ByVal hInstance As LongPtr) As Long
+    Private Declare PtrSafe Function H_CreateWindowExW Lib "user32" Alias "CreateWindowExW" (ByVal dwExStyle As Long, ByVal lpClassName As LongPtr, ByVal lpWindowName As LongPtr, ByVal dwStyle As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As LongPtr, ByVal hMenu As LongPtr, ByVal hInstance As LongPtr, ByVal lpParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function H_DestroyWindow Lib "user32" Alias "DestroyWindow" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function H_DefWindowProcW Lib "user32" Alias "DefWindowProcW" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function H_RegisterWindowMessageW Lib "user32" Alias "RegisterWindowMessageW" (ByVal lpString As LongPtr) As Long
+    Private Declare PtrSafe Function H_GetModuleHandleW Lib "kernel32" Alias "GetModuleHandleW" (ByVal lpModuleName As LongPtr) As LongPtr
+    Private Declare PtrSafe Function H_GetDlgItem Lib "user32" Alias "GetDlgItem" (ByVal hDlg As LongPtr, ByVal nID As Long) As LongPtr
+    Private Declare PtrSafe Function H_IsWindow Lib "user32" Alias "IsWindow" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function H_IsWindowEnabled Lib "user32" Alias "IsWindowEnabled" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function H_SendMessageW Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Sub H_CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+    Private Declare PtrSafe Function H_FindTextW Lib "comdlg32" Alias "FindTextW" (ByRef lpfr As FRStruct) As LongPtr
+    Private Declare PtrSafe Function H_GetTickCount Lib "kernel32" Alias "GetTickCount" () As Long
+
+    Private Const WM_CLOSE As Long = &H10
+    Private Const WM_SETTEXT As Long = &HC
+    Private Const BM_CLICK As Long = &HF5
+    Private Const WS_POPUP As Long = &H80000000
+
+    Public Const FR_DOWN As Long = &H1
+    Public Const FR_MATCHCASE As Long = &H4
+    Public Const FR_FINDNEXT As Long = &H8
+    Public Const FR_REPLACE As Long = &H10
+    Public Const FR_REPLACEALL As Long = &H20
+    Public Const FR_DIALOGTERM As Long = &H40
+
+    ' The control IDs of the dialogs of comdlg32 (dlgs.h).
+    Public Const IDC_FIND_NEXT As Long = 1
+    Public Const IDC_REPLACE As Long = &H400
+    Public Const IDC_REPLACE_ALL As Long = &H401
+
+    Private Const CLASS_NAME As String = "tbdocsFindHost"
+
+    Private mMessageId As Long
+    Private mRegistered As Boolean
+    Private mModuleLevel As FRStruct
+    Private mBuffer As String
+
+    ' What the owner windows received since Reset.
+    Public Messages As Long
+    Public LastFlags As Long
+    Public AllFlags As Long
+
+    Public Sub Reset()
+        Messages = 0
+        LastFlags = 0
+        AllFlags = 0
+    End Sub
+
+    ' A window to own a dialog, with a procedure that counts the messages of the dialog.
+    Public Function Create() As LongPtr
+        Dim wc As WNDCLASSW
+        If Not mRegistered Then
+            wc.lpfnWndProc = AddressOf HostProc
+            wc.hInstance = H_GetModuleHandleW(0)
+            wc.lpszClassName = StrPtr(CLASS_NAME)
+            H_RegisterClassW wc
+            mRegistered = True
+        End If
+        mMessageId = H_RegisterWindowMessageW(StrPtr("commdlg_FindReplace"))
+        Reset
+        Create = H_CreateWindowExW(0, StrPtr(CLASS_NAME), StrPtr("tbdocs find host"), WS_POPUP, 0, 0, 10, 10, 0, 0, H_GetModuleHandleW(0), 0)
+    End Function
+
+    Public Sub Destroy(ByVal h As LongPtr)
+        If h <> 0 Then
+            If H_IsWindow(h) <> 0 Then H_DestroyWindow h
+        End If
+    End Sub
+
+    Public Function HostProc(ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+        Dim flags As Long
+        If Msg = mMessageId And mMessageId <> 0 Then
+            Messages = Messages + 1
+            #If Win64 Then
+                H_CopyMemory VarPtr(flags), lParam + 24, 4
+            #Else
+                H_CopyMemory VarPtr(flags), lParam + 12, 4
+            #End If
+            LastFlags = flags
+            AllFlags = AllFlags Or flags
+            HostProc = 0
+        Else
+            HostProc = H_DefWindowProcW(hWnd, Msg, wParam, lParam)
+        End If
+    End Function
+
+    ' Presses the button with the given control ID of the dialog. False when there is no such enabled button.
+    Public Function Press(ByVal hDlg As LongPtr, ByVal ControlId As Long) As Boolean
+        Dim b As LongPtr = H_GetDlgItem(hDlg, ControlId)
+        If b = 0 Then Exit Function
+        If H_IsWindowEnabled(b) = 0 Then Exit Function
+        H_SendMessageW b, BM_CLICK, 0, 0
+        Press = True
+    End Function
+
+    ' Closes the dialog, as its close button does; the dialog then sends its owner FR_DIALOGTERM.
+    Public Sub CloseDialog(ByVal hDlg As LongPtr)
+        If hDlg = 0 Then Exit Sub
+        If H_IsWindow(hDlg) <> 0 Then H_SendMessageW hDlg, WM_CLOSE, 0, 0
+    End Sub
+
+    Public Function Exists(ByVal hDlg As LongPtr) As Boolean
+        If hDlg = 0 Then Exit Function
+        Exists = (H_IsWindow(hDlg) <> 0)
+    End Function
+
+    ' Calls FindTextW directly, with the structure in a module-level variable, as a program is told to.
+    Public Function FindWithModuleLevelStructure(ByVal Owner As LongPtr) As LongPtr
+        mBuffer = "twin" & String$(252, 0)
+        With mModuleLevel
+            .lStructSize = 40
+            #If Win64 Then
+                .lStructSize = 80
+            #End If
+            .hWndOwner = Owner
+            .Flags = FR_DOWN
+            .lpstrFindWhat = StrPtr(mBuffer)
+            .wFindWhatLen = 256
+        End With
+        FindWithModuleLevelStructure = H_FindTextW(mModuleLevel)
+    End Function
+
+    ' Lets the thread deliver its messages for this many milliseconds.
+    Public Sub Pump(ByVal Milliseconds As Long)
+        Dim t0 As Long = H_GetTickCount()
+        Do While H_GetTickCount() - t0 < Milliseconds
+            DoEvents
+        Loop
+    End Sub
+
+End Module

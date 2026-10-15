@@ -1,0 +1,278 @@
+{
+  "version": "1.0.0.1",
+  "cases": {
+    "DeclarationTests.Parse_UnclosedComment_Returns": {
+      "hangs": true
+    },
+    "DeclarationTests.Parse_UnclosedCDataSection_Returns": {
+      "hangs": true
+    },
+    "DeclarationTests.Parse_DoctypeAfterTheDeclaration_Returns": {
+      "hangs": true
+    },
+    "DeclarationTests.Parse_DoctypeInsideAnElement_Returns": {
+      "hangs": true
+    },
+    "DeclarationTests.Parse_DoctypeFollowedByAnInstruction_KeepsTheRootElement": {
+      "fails": "2 of 2 checks failed: the root element of a declaration, a DOCTYPE, a root element and an instruction: expected \"note\", got \"Nothing\"; the text of note in that text: expected \"text\", got \"\""
+    },
+    "DeclarationTests.Parse_ProcessingInstructionInsideAnElement_LeavesNoText": {
+      "fails": "2 of 2 checks failed: the text of root in <root><?pi data?><a>x</a></root>: expected \"x\", got \">x\"; the children of root in <root><?pi data?><a>x</a></root>: expected 1, got 2"
+    },
+    "DocumentTests.Clone_CopiedNodes_CanBeRemoved": {
+      "fails": "2 of 3 checks failed: RemoveElement of r/a in the clone: expected True, got False; ToXmlString of the clone after RemoveElement of r/a: expected \"<r/>\", got \"<r><a>1</a></r>\""
+    },
+    "DocumentTests.Clone_NodesOfTheClone_HaveAParent": {
+      "fails": "2 of 2 checks failed: the Parent of the root element of the clone: expected \"#document\", got \"Nothing\"; the Parent of the first child of the root element of the clone: expected \"r\", got \"Nothing\""
+    },
+    "DocumentTests.Merge_AddedNodes_CanBeRemoved": {
+      "fails": "2 of 3 checks failed: RemoveElement of list/y, an element that Merge added: expected True, got False; ToXmlString after RemoveElement of list/y: expected \"<list a=\"1\"><x>1</x></list>\", got \"<list a=\"1\"><x>1</x><y>2</y></list>\""
+    },
+    "DocumentTests.Merge_IntoAnObjectWithNoDocument_SetsTheRootElement": {
+      "fails": "1 of 2 checks failed: RootElement after Merge into an object with no document: expected \"r\", got \"Nothing\""
+    },
+    "DocumentTests.Merge_SecondMergeIntoAnObjectWithNoDocument_AppendsTheChildren": {
+      "fails": "1 of 1 checks failed: ToXmlString after two Merge calls into an object with no document: expected \"<r><a>1</a><z>3</z></r>\", got \"<r><a>1</a></r>\""
+    },
+    "DocumentTests.Merge_NothingAsTheOtherDocument_DoesNothing": {
+      "fails": "1 of 2 checks failed: the error number of Merge with Nothing: expected 0, got 91"
+    },
+    "DocumentTests.RemoveElement_RootElement_LeavesNoRootElement": {
+      "fails": "1 of 3 checks failed: RootElement after RemoveElement of r: expected \"Nothing\", got \"r\""
+    },
+    "DocumentTests.XmlString_TextThatCannotBeRead_RaisesNoError": {
+      "fails": "1 of 1 checks failed: the error number of setting XmlString to <: expected 0, got 5"
+    },
+    "EntityTests.Parse_PredefinedEntitiesInText_AreDecoded": {
+      "fails": "1 of 1 checks failed: GetElementText of a text with the five predefined entities: expected \"Tom & Jerry <3 > \"q\" 's'\", got \"Tom &amp; Jerry &lt;3 &gt; &quot;q&quot; &apos;s&apos;\""
+    },
+    "EntityTests.Parse_NumericReferencesInText_AreDecoded": {
+      "fails": "1 of 1 checks failed: GetElementText of <a>&#65;&#x42;</a>: expected \"AB\", got \"&#65;&#x42;\""
+    },
+    "EntityTests.Parse_NumericReferencesInAttribute_AreDecoded": {
+      "fails": "1 of 1 checks failed: GetAttribute of v=\"&#65;&#x42;\": expected \"AB\", got \"&#65;&#x42;\""
+    },
+    "EntityTests.Parse_AmpersandEntityBeforeText_IsNotDecodedTwice": {
+      "fails": "1 of 1 checks failed: GetAttribute of v=\"&amp;quot;\" (the characters &quot; and nothing more): expected \"&quot;\", got \"\"\""
+    },
+    "EntityTests.ToXmlString_TextReadFromXml_IsEscapedOnce": {
+      "fails": "2 of 2 checks failed: ToXmlString of <a>Tom &amp; Jerry</a>: expected \"<a>Tom &amp; Jerry</a>\", got \"<a>Tom &amp;amp; Jerry</a>\"; GetElementText after the text is written and read again: expected \"Tom & Jerry\", got \"Tom &amp;amp; Jerry\""
+    },
+    "EntityTests.ToXmlString_AttributeReadFromXml_IsEscapedOnce": {
+      "fails": "1 of 1 checks failed: ToXmlString of <a title=\"Tom &amp; Jerry &#65;\"></a>: expected \"<a title=\"Tom &amp; Jerry A\"/>\", got \"<a title=\"Tom &amp; Jerry &amp;#65;\"/>\""
+    },
+    "EntityTests.SetElementText_PlainText_IsWrittenOnce": {
+      "fails": "1 of 3 checks failed: GetElementText after the text is written and read again: expected \"Tom & Jerry <3\", got \"Tom &amp; Jerry &lt;3\""
+    },
+    "FileTests.LoadFromFile_MissingFile_ReturnsFalseAndCreatesNoFile": {
+      "fails": "1 of 2 checks failed: the file after LoadFromFile of a file that does not exist: expected \"\", got \"missing.xml\""
+    },
+    "FileTests.LoadFromFile_FileThatCannotBeParsed_ReturnsFalse": {
+      "fails": "1 of 1 checks failed: LoadFromFile of a file that holds <r><a (a tag cut off by the end of the file): expected False, got True"
+    },
+    "FileTests.SaveToFile_DeclaredEncoding_MatchesTheBytesWritten": {
+      "fails": "1 of 1 checks failed: the file declares ISO-8859-1 and writes the letter e with an acute accent as the two UTF-8 bytes C3 A9: expected False, got True"
+    },
+    "NodeTests.ElementNames_DifferingInCase_AreDifferentElements": {
+      "fails": "4 of 4 checks failed: the nodes of SelectElements(a) in <r><a/><A/></r>: expected 1, got 2; the id of GetChildNode(A): expected \"2\", got \"1\"; the nodes of GetChildNodesByName(a): expected 1, got 2; GetElementText of r/A: expected \"y\", got \"x\""
+    },
+    "NodeTests.AttributeNames_DifferingInCase_AreDifferentAttributes": {
+      "fails": "2 of 3 checks failed: the entries of Attributes after a and A are set: expected 4, got 2; GetAttribute of a: expected \"1\", got \"2\""
+    },
+    "NodeTests.GetAttribute_NameInAnotherCase_FindsNothing": {
+      "fails": "2 of 3 checks failed: GetAttribute of ID: expected \"\", got \"7\"; cXml.GetAttribute of Id: expected \"\", got \"7\""
+    },
+    "NodeTests.RemoveAttribute_NameInAnotherCase_RemovesNothing": {
+      "fails": "1 of 1 checks failed: the entries of Attributes after RemoveAttribute of A: expected 2, got 0"
+    },
+    "ParseResultTests.Parse_Failure_KeepsThePreviousDocument": {
+      "fails": "2 of 3 checks failed: GetElementText of a after a failed Parse: expected \"x\", got \"\"; the children of the document node after a failed Parse: expected 1, got 0"
+    },
+    "ParseResultTests.Parse_TextCutOffInATag_KeepsThePreviousDocument": {
+      "fails": "1 of 2 checks failed: GetElementText of a after Parse of <b><c: expected \"x\", got \"\""
+    },
+    "ParseResultTests.Parse_WhiteSpaceBetweenInlineElements_IsKept": {
+      "fails": "2 of 2 checks failed: ToXmlString of <p><b>a</b> <i>b</i></p>: expected \"<p><b>a</b> <i>b</i></p>\", got \"<p><b>a</b><i>b</i></p>\"; GetElementText of p in <p><b>a</b> <i>b</i></p>: expected \"a b\", got \"ab\""
+    },
+    "ParseResultTests.Parse_ElementWithOnlySpaces_KeepsTheSpaces": {
+      "fails": "2 of 2 checks failed: GetElementText of <b> </b>: expected \" \", got \"\"; ToXmlString of <b> </b>: expected \"<b> </b>\", got \"<b/>\""
+    },
+    "ParseResultTests.Parse_SpacesAroundChildElements_AreChildNodes": {
+      "fails": "1 of 1 checks failed: the children of r in <r> <a>1</a> </r> (MSXML6 with white space kept: 3): expected 3, got 1"
+    },
+    "ParseResultTests.Parse_LeadingByteOrderMarkCharacter_IsDropped": {
+      "fails": "2 of 3 checks failed: the root element of a text that starts with U+FEFF: expected \"root\", got \"a\"; the text of root/a: expected \"t\", got \"\""
+    },
+    "ParseResultTests.XmlString_LeadingByteOrderMarkCharacter_IsDropped": {
+      "fails": "1 of 1 checks failed: the root element after XmlString is set to a text that starts with U+FEFF: expected \"root\", got \"a\""
+    },
+    "ParseResultTests.Parse_TextWithNoElement_LeavesNoRootElement": {
+      "fails": "1 of 1 checks failed: RootElement after Parse of a text with no element: expected \"Nothing\", got \"r\""
+    },
+    "SelfClosingTests.Parse_BareSelfClosingElement_IsAnElementNamedLikeTheTag": {
+      "fails": "1 of 4 checks failed: the name of the first child of r in <r><a/><b>t</b></r>: expected \"a\", got \"/a\""
+    },
+    "SelfClosingTests.Parse_SelfClosingElementWithAttributes_HasNoChildren": {
+      "fails": "3 of 4 checks failed: the children of r in <r><b x=\"1\"/><c>t</c></r>: expected 2, got 1; the text of r/c in <r><b x=\"1\"/><c>t</c></r>: expected \"t\", got \"\"; the text of r/b/c in <r><b x=\"1\"/><c>t</c></r>: expected \"\", got \"t\""
+    },
+    "SelfClosingTests.Parse_SelfClosingElementWithSpaceBeforeTheSlash_HasNoChildren": {
+      "fails": "2 of 3 checks failed: the children of r in <r><a /><c>t</c></r>: expected 2, got 1; the text of r/c in <r><a /><c>t</c></r>: expected \"t\", got \"\""
+    },
+    "SelfClosingTests.ToXmlString_EmptyElement_ReadsBackAsAnEmptyElement": {
+      "fails": "2 of 3 checks failed: the name of the first child of r after the text is read again: expected \"empty\", got \"/empty\"; the text written after it is read again: expected \"<r><empty/></r>\", got \"<r></empty/></r>\""
+    },
+    "SelfClosingTests.Validate_DocumentWithSelfClosingElements_IsTrue": {
+      "fails": "1 of 1 checks failed: Validate of <r><a/><b x=\"1\"/></r>: expected True, got False"
+    },
+    "TagTests.Parse_BothKindsOfQuote_KeepEveryAttribute": {
+      "fails": "2 of 2 checks failed: attribute b of <a b='1' c=\"2\">: expected \"1\", got \"2\"; attribute c of <a b='1' c=\"2\">: expected \"2\", got \"\""
+    },
+    "TagTests.Parse_GreaterThanInAttributeValue_IsPartOfTheValue": {
+      "fails": "2 of 2 checks failed: attribute b of <a b=\"x>y\">t</a>: expected \"x>y\", got \"\"; the text of <a b=\"x>y\">t</a>: expected \"t\", got \"y\">t\""
+    },
+    "TagTests.Parse_LineBreakBetweenAttributes_KeepsBothAttributes": {
+      "fails": "1 of 3 checks failed: attribute c of a tag with a line break between its attributes: expected \"2\", got \"\""
+    },
+    "TagTests.Parse_LineFeedBetweenAttributes_KeepsBothAttributes": {
+      "fails": "1 of 2 checks failed: attribute c of a tag with a line feed between its attributes: expected \"2\", got \"\""
+    },
+    "TagTests.Parse_LineBreakAfterTheElementName_IsNotPartOfTheName": {
+      "fails": "2 of 2 checks failed: the name of an element whose first attribute follows a line feed: expected \"a\", got \"a\\nb=\"1\"\"; attribute b of an element whose first attribute follows a line feed: expected \"1\", got \"\""
+    },
+    "TagTests.Parse_AttributeWithoutValue_DoesNotChangeTheNextAttribute": {
+      "fails": "2 of 2 checks failed: attribute c of <a disabled c=\"2\">: expected \"2\", got \"\"; attribute disabled of <a disabled c=\"2\">: expected \"\", got \"2\""
+    },
+    "WriteTests.PrettyPrint_TextReadBack_HasTheTextThatWasWritten": {
+      "fails": "1 of 1 checks failed: GetElementText of r/a after the pretty-printed text is read: expected \"t\", got \" t \""
+    },
+    "WriteTests.PrettyPrint_WrittenAgainAfterReading_IsTheSameText": {
+      "fails": "1 of 1 checks failed: the pretty-printed text after it is read and written again: expected \"<r>\\r\\n <a>\\r\\n t\\r\\n </a>\\r\\n</r>\\r\\n\", got \"<r>\\r\\n \\r\\n \\r\\n <a>\\r\\n \\r\\n t\\r\\n \\r\\n </a>\\r\\n \\r\\n\\r\\n</r>\\r\\n\\r\\n\\r\\n\""
+    },
+    "WriteTests.PrettyPrint_ElementsWithOnlyElementChildren_ReadBackWithTheSameChildren": {
+      "fails": "1 of 1 checks failed: the compact text after a pretty-printed text with no character data is read: expected \"<r><a><b/></a></r>\", got \"<r> <a> </b/> </a> </r> \""
+    },
+    "XPathEngineTests.SelectNodes_ManyNodes_TimeGrowsInStepWithTheirNumber": {
+      "fails": "1 of 1 checks failed: the time of //item over 2000 elements is less than 8 times that over 500 (linear growth gives 4, quadratic growth 16): expected True, got False"
+    },
+    "XPathPredicateTests.Positions_AfterDoubleSlash_CountPerParent": {
+      "fails": "1 of 1 checks failed: XPath //book[1] on <lib><shelf id='s1'><book id='a'></book><book id='b'></book></shelf><shelf id='s2'><book id='c'></book><book id='d'></book></shelf></lib>: expected \"book#a book#c\", got \"book#a\""
+    },
+    "XPathPredicateTests.Positions_AfterDoubleSlash_LastIsThatOfEachParent": {
+      "fails": "1 of 1 checks failed: XPath //book[last()] on <lib><shelf id='s1'><book id='a'></book><book id='b'></book></shelf><shelf id='s2'><book id='c'></book><book id='d'></book></shelf></lib>: expected \"book#b book#d\", got \"book#d\""
+    },
+    "XPathPredicateTests.Positions_AfterDescendantStepInThePath_CountPerParent": {
+      "fails": "1 of 1 checks failed: XPath /lib//book[1] on <lib><shelf id='s1'><book id='a'></book><book id='b'></book></shelf><shelf id='s2'><book id='c'></book><book id='d'></book></shelf></lib>: expected \"book#a book#c\", got \"book#a\""
+    },
+    "XPathPredicateTests.Positions_LastMinusOne_SelectsTheNextToLast": {
+      "fails": "1 of 1 checks failed: XPath //shelf/book[last()-1] on <lib><shelf id='s1'><book id='a'></book><book id='b'></book></shelf><shelf id='s2'><book id='c'></book><book id='d'></book></shelf></lib>: expected \"book#a book#c\", got \"\""
+    },
+    "XPathPredicateTests.Positions_PositionWithSpacesAroundTheEqualsSign_SelectsThePosition": {
+      "fails": "1 of 1 checks failed: XPath //shelf/book[position() = 1] on <lib><shelf id='s1'><book id='a'></book><book id='b'></book></shelf><shelf id='s2'><book id='c'></book><book id='d'></book></shelf></lib>: expected \"book#a book#c\", got \"\""
+    },
+    "XPathPredicateTests.Positions_PositionEqualsLast_SelectsTheLast": {
+      "fails": "1 of 1 checks failed: XPath //shelf/book[position()=last()] on <lib><shelf id='s1'><book id='a'></book><book id='b'></book></shelf><shelf id='s2'><book id='c'></book><book id='d'></book></shelf></lib>: expected \"book#b book#d\", got \"\""
+    },
+    "XPathPredicateTests.Positions_PositionGreaterThan_SelectsTheLaterOnes": {
+      "fails": "1 of 1 checks failed: XPath //shelf/book[position()>1] on <lib><shelf id='s1'><book id='a'></book><book id='b'></book></shelf><shelf id='s2'><book id='c'></book><book id='d'></book></shelf></lib>: expected \"book#b book#d\", got \"\""
+    },
+    "XPathPredicateTests.Positions_FractionalNumber_SelectsNothing": {
+      "fails": "1 of 1 checks failed: XPath //shelf/book[1.5] on <lib><shelf id='s1'><book id='a'></book><book id='b'></book></shelf><shelf id='s2'><book id='c'></book><book id='d'></book></shelf></lib>: expected \"\", got \"book#b book#d\""
+    },
+    "XPathPredicateTests.Logic_AndBeforeOr_BindsAndTighter": {
+      "fails": "1 of 1 checks failed: XPath //i[@x='1' and @y='2' or @z='3'] on <s><i id='1' x='1' y='2'></i><i id='2' z='3'></i><i id='3' x='1'></i></s>: expected \"i#1 i#2\", got \"i#1\""
+    },
+    "XPathPredicateTests.Logic_OrBeforeAnd_BindsAndTighter": {
+      "fails": "1 of 1 checks failed: XPath //i[@z='3' or @x='1' and @y='2'] on <s><i id='1' x='1' y='2'></i><i id='2' z='3'></i><i id='3' x='1'></i></s>: expected \"i#1 i#2\", got \"i#1\""
+    },
+    "XPathPredicateTests.Logic_AndInsideAQuotedString_IsNotAnOperator": {
+      "fails": "1 of 1 checks failed: XPath //i[@t='salt and pepper'] on <s><i id='1' t='salt and pepper'></i><i id='2' t='salt'></i></s>: expected \"i#1\", got \"\""
+    },
+    "XPathPredicateTests.Logic_OrInsideAQuotedString_IsNotAnOperator": {
+      "fails": "1 of 1 checks failed: XPath //i[@t='salt or pepper'] on <s><i id='1' t='salt or pepper'></i><i id='2' t='salt'></i></s>: expected \"i#1\", got \"\""
+    },
+    "XPathPredicateTests.Logic_NotOfAnd_KeepsTheNodesThatLackOne": {
+      "fails": "1 of 1 checks failed: XPath //i[not(@x and @y)] on <s><i id='1' x='1' y='2'></i><i id='2' z='3'></i><i id='3' x='1'></i></s>: expected \"i#2 i#3\", got \"\""
+    },
+    "XPathPredicateTests.Logic_ParenthesesAroundComparisons_GroupThem": {
+      "fails": "1 of 1 checks failed: XPath //i[(@x='1') and (@y='2')] on <s><i id='1' x='1' y='2'></i><i id='2' z='3'></i><i id='3' x='1'></i></s>: expected \"i#1\", got \"\""
+    },
+    "XPathPredicateTests.Compare_LessThanOnAMissingAttribute_IsFalse": {
+      "fails": "1 of 1 checks failed: XPath //i[@p<10] on <s><i id='1' p='5'></i><i id='2'></i><i id='3' p='abc'></i><i id='4' p=''></i></s>: expected \"i#1\", got \"i#1 i#2 i#4\""
+    },
+    "XPathPredicateTests.Compare_NotEqualOnAMissingAttribute_IsFalse": {
+      "fails": "1 of 1 checks failed: XPath //i[@p!='x'] on <s><i id='1' p='5'></i><i id='2'></i><i id='3' p='abc'></i><i id='4' p=''></i></s>: expected \"i#1 i#3 i#4\", got \"i#1 i#2 i#3 i#4\""
+    },
+    "XPathPredicateTests.Compare_EqualToEmptyStringOnAMissingAttribute_IsFalse": {
+      "fails": "1 of 1 checks failed: XPath //i[@p=''] on <s><i id='1' p='5'></i><i id='2'></i><i id='3' p='abc'></i><i id='4' p=''></i></s>: expected \"i#4\", got \"i#2 i#4\""
+    },
+    "XPathPredicateTests.Compare_QuotedStringWithGreaterThan_IsOneValue": {
+      "fails": "1 of 1 checks failed: XPath //i[@t='a>b'] on <r><i id='1' t='a&gt;b'></i><i id='2' t='a=b'></i><i id='3' t='a&lt;b'></i><i id='4' t='a!=b'></i></r>: expected \"i#1\", got \"\""
+    },
+    "XPathPredicateTests.Compare_QuotedStringWithLessThan_IsOneValue": {
+      "fails": "1 of 1 checks failed: XPath //i[@t='a<b'] on <r><i id='1' t='a&gt;b'></i><i id='2' t='a=b'></i><i id='3' t='a&lt;b'></i><i id='4' t='a!=b'></i></r>: expected \"i#3\", got \"i#1 i#2 i#3 i#4\""
+    },
+    "XPathPredicateTests.Compare_QuotedStringWithNotEquals_IsOneValue": {
+      "fails": "1 of 1 checks failed: XPath //i[@t='a!=b'] on <r><i id='1' t='a&gt;b'></i><i id='2' t='a=b'></i><i id='3' t='a&lt;b'></i><i id='4' t='a!=b'></i></r>: expected \"i#4\", got \"i#1 i#2 i#3 i#4\""
+    },
+    "XPathPredicateTests.TextCompare_NotEquals_KeepsTheNodesWithOtherText": {
+      "fails": "1 of 1 checks failed: XPath //title[text()!='Dune'] on <catalog><book id='1'><title id='t1'>Dune</title></book><book id='2'><title id='t2'>Emma</title></book></catalog>: expected \"title#t2\", got \"title#t1\""
+    },
+    "XPathPredicateTests.TextCompare_GreaterThanText_IsAComparisonOfNumbers": {
+      "fails": "1 of 1 checks failed: XPath //title[text()>'Z'] on <catalog><book id='1'><title id='t1'>Dune</title></book><book id='2'><title id='t2'>Emma</title></book></catalog>: expected \"\", got \"title#t1 title#t2\""
+    },
+    "XPathPredicateTests.ChildCompare_ChildEqualsText_KeepsTheNodesWhoseChildHasThatText": {
+      "fails": "1 of 1 checks failed: XPath //book[title='Dune'] on <catalog><book id='1'><title id='t1'>Dune</title></book><book id='2'><title id='t2'>Emma</title></book></catalog>: expected \"book#1\", got \"\""
+    },
+    "XPathPredicateTests.SelfCompare_DotEqualsText_KeepsTheNodesWithThatText": {
+      "fails": "1 of 1 checks failed: XPath //title[.='Dune'] on <catalog><book id='1'><title id='t1'>Dune</title></book><book id='2'><title id='t2'>Emma</title></book></catalog>: expected \"title#t1\", got \"\""
+    },
+    "XPathPredicateTests.Contains_FirstArgumentIsAChildName_TestsTheChildsText": {
+      "fails": "1 of 1 checks failed: XPath //book[contains(title, 'i')] on <catalog><book id='1'><title id='t1'>Dune</title></book><book id='2'><title id='t2'>Emma</title></book></catalog>: expected \"\", got \"book#1 book#2\""
+    },
+    "XPathPredicateTests.Compare_AttributeValueLetterCase_IsSignificant": {
+      "fails": "1 of 1 checks failed: XPath //book[@cat='FICTION'] on <catalog><book id='1' cat='fiction'><author id='a1'>Herbert</author></book><book id='2' cat='fiction'><author id='a2'>Austen</author></book><book id='3' cat='science'><author id='a3'>Sagan</author></book></catalog>: expected \"\", got \"book#1 book#2\""
+    },
+    "XPathPredicateTests.Contains_LetterCase_IsSignificant": {
+      "fails": "1 of 1 checks failed: XPath //author[contains(text(), 'a')] on <catalog><book id='1' cat='fiction'><author id='a1'>Herbert</author></book><book id='2' cat='fiction'><author id='a2'>Austen</author></book><book id='3' cat='science'><author id='a3'>Sagan</author></book></catalog>: expected \"author#a3\", got \"author#a2 author#a3\""
+    },
+    "XPathPredicateTests.StartsWith_LetterCase_IsSignificant": {
+      "fails": "1 of 1 checks failed: XPath //author[starts-with(text(), 'h')] on <catalog><book id='1' cat='fiction'><author id='a1'>Herbert</author></book><book id='2' cat='fiction'><author id='a2'>Austen</author></book><book id='3' cat='science'><author id='a3'>Sagan</author></book></catalog>: expected \"\", got \"author#a1\""
+    },
+    "XPathPredicateTests.Brackets_PredicateWithoutClosingBracket_SelectsNothing": {
+      "fails": "1 of 2 checks failed: the nodes selected by //b[@id='1' (not an XPath expression): expected \"\", got \"b#1 b#2\""
+    },
+    "XPathPredicateTests.Brackets_OpeningBracketAlone_SelectsNothing": {
+      "fails": "1 of 1 checks failed: the nodes selected by //b[ (not an XPath expression): expected \"\", got \"b#1 b#2\""
+    },
+    "XPathStepTests.ParentStep_AfterChildSteps_SelectsTheParent": {
+      "fails": "1 of 1 checks failed: XPath /catalog/book/title/.. on <catalog><book id='1'><title id='t1'>Dune</title></book><book id='2'><title id='t2'>Emma</title></book></catalog>: expected \"book#1 book#2\", got \"\""
+    },
+    "XPathStepTests.ParentStep_AfterDescendantStep_SelectsTheParents": {
+      "fails": "1 of 1 checks failed: XPath //title/.. on <catalog><book id='1'><title id='t1'>Dune</title></book><book id='2'><title id='t2'>Emma</title></book></catalog>: expected \"book#1 book#2\", got \"\""
+    },
+    "XPathStepTests.ParentStep_Twice_SelectsTheGrandparent": {
+      "fails": "1 of 1 checks failed: XPath /catalog/book[@id='2']/title/../.. on <catalog><book id='1'><title id='t1'>Dune</title></book><book id='2'><title id='t2'>Emma</title></book></catalog>: expected \"catalog#\", got \"\""
+    },
+    "XPathStepTests.Axes_Ancestor_SelectsTheAncestors": {
+      "fails": "1 of 1 checks failed: XPath /a/b/ancestor::a on <a id='outer'><b id='b'><a id='inner'></a></b></a>: expected \"a#outer\", got \"a#inner\""
+    },
+    "XPathStepTests.Axes_AncestorOrSelf_SelectsTheNodeAndItsAncestors": {
+      "fails": "1 of 1 checks failed: XPath /a/b/ancestor-or-self::* on <a id='outer'><b id='b'><a id='inner'></a></b></a>: expected \"a#outer b#b\", got \"a#inner\""
+    },
+    "XPathStepTests.Axes_FollowingSibling_SelectsTheLaterSiblings": {
+      "fails": "1 of 1 checks failed: XPath /r/a/following-sibling::b on <r id='r'><a id='a'><b id='child'></b></a><b id='sibling'></b></r>: expected \"b#sibling\", got \"b#child\""
+    },
+    "XPathStepTests.Axes_PrecedingSibling_SelectsTheEarlierSiblings": {
+      "fails": "1 of 1 checks failed: XPath /r/b/preceding-sibling::a on <r id='r'><a id='a'><b id='child'></b></a><b id='sibling'></b></r>: expected \"a#a\", got \"\""
+    },
+    "XPathStepTests.Axes_DescendantOrSelf_SelectsTheNodeAndItsDescendants": {
+      "fails": "1 of 1 checks failed: XPath /r/a/descendant-or-self::* on <r id='r'><a id='a'><b id='child'></b></a><b id='sibling'></b></r>: expected \"a#a b#child\", got \"b#child\""
+    },
+    "XPathStepTests.Axes_Following_SelectsTheNodesAfterTheSubtree": {
+      "fails": "1 of 1 checks failed: XPath /r/a/following::* on <r id='r'><a id='a'><b id='child'></b></a><b id='sibling'></b></r>: expected \"b#sibling\", got \"b#child\""
+    },
+    "XPathStepTests.Slashes_TripleSlash_SelectsNothing": {
+      "fails": "1 of 1 checks failed: the nodes selected by /catalog///book (not an XPath expression): expected \"\", got \"catalog#\""
+    }
+  }
+}

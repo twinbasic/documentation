@@ -1,0 +1,159 @@
+' Fmt: StringFormatSpecifier, which describes one format item, and StringHelper, the class behind
+' StringFormat that takes its values as an array.
+[TestFixture]
+Module SpecifierTests
+
+    [TestCase]
+    Public Sub Defaults()
+        Expect.Begin
+        Dim spec As New StringFormatSpecifier
+        Expect.AreEqual 0, spec.Index, "Index"
+        Expect.AreEqual 0, spec.Alignment, "Alignment"
+        Expect.AreEqual "", spec.identifier, "identifier"
+        Expect.AreEqual "", spec.CustomSpecifier, "CustomSpecifier"
+        Expect.AreEqual 0, spec.Precision, "Precision"
+        Expect.AreEqual "{0}", spec.ToString(), "ToString"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToString_RebuildsTheItem()
+        Expect.Begin
+        Dim spec As New StringFormatSpecifier
+        spec.Index = 2
+        spec.Alignment = -8
+        spec.identifier = "G"
+        spec.CustomSpecifier = "3"
+        Expect.AreEqual "{2,-8:G3}", spec.ToString(), "ToString of index 2, alignment -8, G3"
+        Expect.AreEqual 3, spec.Precision, "Precision after CustomSpecifier = ""3"""
+        spec.Alignment = 0
+        spec.identifier = ""
+        spec.CustomSpecifier = ""
+        Expect.AreEqual "{2}", spec.ToString(), "ToString with no alignment, identifier or custom text"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToString_AlignmentAndIdentifier()
+        Expect.Begin
+        Dim spec As New StringFormatSpecifier
+        spec.Index = 1
+        spec.Alignment = 8
+        spec.identifier = "F"
+        spec.CustomSpecifier = "2"
+        Expect.AreEqual "{1,8:F2}", spec.ToString(), "ToString"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Index_IsNotCheckedWhenAssigned()
+        Expect.Begin
+        Dim spec As New StringFormatSpecifier
+        spec.Index = -1
+        Expect.AreEqual -1, spec.Index, "Index after it was set to -1"
+        Expect.AreEqual "{-1}", spec.ToString(), "ToString of index -1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alignment_ProducesTheComma()
+        Expect.Begin
+        Dim spec As New StringFormatSpecifier
+        spec.Alignment = -8
+        Expect.AreEqual "{0,-8}", spec.ToString(), "ToString with alignment -8"
+        Expect.AreEqual -8, spec.Alignment, "Alignment"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Identifier_KeepsTheCaseAsWritten()
+        Expect.Begin
+        Dim spec As New StringFormatSpecifier
+        spec.identifier = "x"
+        Expect.AreEqual "x", spec.identifier, "identifier"
+        Dim f As IStringFormatIdentifier = HexSFI
+        Expect.AreEqual "&hff", f.GetFormattedValue(255, spec), "HexSFI.GetFormattedValue(255) with identifier x"
+        Expect.IsFalse CurrencySFI_Matches(spec), "CurrencySFI.IsIdentifierMatch of x"
+        Expect.Done
+    End Sub
+
+    Private Function CurrencySFI_Matches(ByVal spec As StringFormatSpecifier) As Boolean
+        Dim f As IStringFormatIdentifier = CurrencySFI
+        CurrencySFI_Matches = f.IsIdentifierMatch(spec)
+    End Function
+
+    [TestCase]
+    Public Sub CustomSpecifier_Numeric_SetsThePrecision()
+        Expect.Begin
+        Dim spec As New StringFormatSpecifier
+        spec.CustomSpecifier = "3"
+        Expect.AreEqual 3, spec.Precision, "Precision after ""3"""
+        spec.CustomSpecifier = "12"
+        Expect.AreEqual 12, spec.Precision, "Precision after ""12"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomSpecifier_NotNumeric_KeepsThePrecision()
+        Expect.Begin
+        Dim spec As New StringFormatSpecifier
+        spec.CustomSpecifier = "3"
+        spec.CustomSpecifier = "abc"
+        Expect.AreEqual 3, spec.Precision, "Precision after ""abc"" followed ""3"""
+        Expect.AreEqual "abc", spec.CustomSpecifier, "CustomSpecifier"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomSpecifier_Zero_KeepsThePrecision()
+        Expect.Begin
+        Dim spec As New StringFormatSpecifier
+        spec.CustomSpecifier = "3"
+        spec.CustomSpecifier = "0"
+        Expect.AreEqual 3, spec.Precision, "Precision after ""0"" followed ""3"""
+        Expect.AreEqual "0", spec.CustomSpecifier, "CustomSpecifier"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Precision_IsTheNumberAfterTheLetter()
+        Expect.Begin
+        Dim f As IStringFormatIdentifier = FixedPointSFI
+        Expect.AreEqual "3" & Loc.Dec() & "142", f.GetFormattedValue(3.14159, Loc.Spec("F", "3")), "FixedPointSFI.GetFormattedValue(3.14159, F3)"
+        Expect.AreEqual 0, Loc.Spec("F").Precision, "Precision of {0:F}"
+        Expect.AreEqual 0, Loc.Spec("F", "0").Precision, "Precision of {0:F0}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringHelper_StringFormat_TakesAnArray()
+        Expect.Begin
+        Dim values(0 To 1) As Variant
+        values(0) = "x"
+        values(1) = 2.5
+        Expect.AreEqual "x-2" & Loc.Dec() & "5", StringHelper.StringFormat("{0}-{1:F1}", values), "StringHelper.StringFormat(""{0}-{1:F1}"", array)"
+        Expect.AreEqual "salt and pepper", StringHelper.StringFormat("{0} and {1}", Array("salt", "pepper")), "StringHelper.StringFormat(""{0} and {1}"", Array(...))"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringHelper_NewInstance_BehavesLikeThePredeclaredOne()
+        Expect.Begin
+        Dim h As New StringHelper
+        Expect.AreEqual "a-b", h.StringFormat("{0}-{1}", Array("a", "b")), "StringFormat of a new StringHelper"
+        Expect.AreEqual "[ab    ]", h.StringFormat("[{0,-6}]", Array("ab")), "alignment pads with spaces"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringHelper_Errors_HaveTheSourceStringHelper()
+        Expect.Begin
+        On Error Resume Next
+        Dim r As String = StringHelper.StringFormat("{0} {1}", Array("only one"))
+        Expect.AreEqual Loc.FormatError, Err.Number, "Err.Number of StringHelper.StringFormat with a missing value"
+        Expect.AreEqual "StringHelper", Err.Source, "Err.Source"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+End Module

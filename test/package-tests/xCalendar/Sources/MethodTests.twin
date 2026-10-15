@@ -1,0 +1,223 @@
+' MethodTests: the methods that move the selection.
+[TestFixture]
+Module MethodTests
+
+    Private Function On6_15() As HostForm
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        Set On6_15 = f
+    End Function
+
+    [TestCase]
+    Public Sub NextDay_SelectsTheDayAfter()
+        Expect.Begin
+        Dim f As HostForm = On6_15()
+        f.Cal.NextDay
+        Expect.AreEqual #6/16/2026#, f.Cal.Value, "Value after NextDay with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PreviousDay_SelectsTheDayBefore()
+        Expect.Begin
+        Dim f As HostForm = On6_15()
+        f.Cal.PreviousDay
+        Expect.AreEqual #6/14/2026#, f.Cal.Value, "Value after PreviousDay with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextWeek_SelectsTheDaySevenDaysAfter()
+        Expect.Begin
+        Dim f As HostForm = On6_15()
+        f.Cal.NextWeek
+        Expect.AreEqual #6/22/2026#, f.Cal.Value, "Value after NextWeek with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PreviousWeek_SelectsTheDaySevenDaysBefore()
+        Expect.Begin
+        Dim f As HostForm = On6_15()
+        f.Cal.PreviousWeek
+        Expect.AreEqual #6/8/2026#, f.Cal.Value, "Value after PreviousWeek with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextMonth_SelectsTheSameDayOneMonthAfter()
+        Expect.Begin
+        Dim f As HostForm = On6_15()
+        f.Cal.NextMonth
+        Expect.AreEqual #7/15/2026#, f.Cal.Value, "Value after NextMonth with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PreviousMonth_SelectsTheSameDayOneMonthBefore()
+        Expect.Begin
+        Dim f As HostForm = On6_15()
+        f.Cal.PreviousMonth
+        Expect.AreEqual #5/15/2026#, f.Cal.Value, "Value after PreviousMonth with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextYear_SelectsTheSameDayOneYearAfter()
+        Expect.Begin
+        Dim f As HostForm = On6_15()
+        f.Cal.NextYear
+        Expect.AreEqual #6/15/2027#, f.Cal.Value, "Value after NextYear with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PreviousYear_SelectsTheSameDayOneYearBefore()
+        Expect.Begin
+        Dim f As HostForm = On6_15()
+        f.Cal.PreviousYear
+        Expect.AreEqual #6/15/2025#, f.Cal.Value, "Value after PreviousYear with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextMonth_FromJanuary31_SelectsTheLastDayOfFebruary()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #1/31/2026#
+        f.Cal.NextMonth
+        Expect.AreEqual #2/28/2026#, f.Cal.Value, "Value after NextMonth with January 31, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PreviousMonth_FromMarch31_SelectsTheLastDayOfFebruary()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #3/31/2026#
+        f.Cal.PreviousMonth
+        Expect.AreEqual #2/28/2026#, f.Cal.Value, "Value after PreviousMonth with March 31, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextYear_FromFebruary29_SelectsFebruary28()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #2/29/2024#
+        f.Cal.NextYear
+        Expect.AreEqual #2/28/2025#, f.Cal.Value, "Value after NextYear with February 29, 2024 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PreviousYear_FromFebruary29_SelectsFebruary28()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #2/29/2024#
+        f.Cal.PreviousYear
+        Expect.AreEqual #2/28/2023#, f.Cal.Value, "Value after PreviousYear with February 29, 2024 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextMonth_FromFebruary28_SelectsMarch28()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #2/28/2026#
+        f.Cal.NextMonth
+        Expect.AreEqual #3/28/2026#, f.Cal.Value, "Value after NextMonth with February 28, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Methods_RaiseNoEvent()
+        Expect.Begin
+        Dim f As HostForm = On6_15()
+        f.Cal.NextDay
+        f.Cal.PreviousDay
+        f.Cal.NextWeek
+        f.Cal.PreviousWeek
+        f.Cal.NextMonth
+        f.Cal.PreviousMonth
+        f.Cal.NextYear
+        f.Cal.PreviousYear
+        f.Cal.Today
+        f.Cal.Refresh
+        Expect.AreEqual "", Rig.Events(), "the events raised by the methods that move the selection"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Methods_ShowTheMonthOfTheNewDateInTheLists()
+        Expect.Begin
+        Dim f As HostForm = On6_15()
+        f.Cal.NextMonth
+        Expect.AreEqual 7, f.Cal.Month, "Month after NextMonth with June 15, 2026 selected"
+        Expect.AreEqual MonthName(7), Win.TextOf(Rig.MonthList(f)), "the month list after NextMonth"
+        f.Cal.NextYear
+        Expect.AreEqual 2027, f.Cal.Year, "Year after NextYear"
+        Expect.AreEqual "2027", Win.TextOf(Rig.YearList(f)), "the year list after NextYear"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Methods_DoNotStopAtTheEndOfTheYearList()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2100#
+        On Error Resume Next
+        f.Cal.NextYear
+        Expect.AreEqual 0, Rig.ErrNum(), "the error raised by NextYear with June 15, 2100 selected"
+        Expect.AreEqual #6/15/2101#, f.Cal.Value, "Value after NextYear with June 15, 2100 selected"
+        Expect.AreEqual 2101, f.Cal.Year, "Year after NextYear with June 15, 2100 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Today_SelectsTodayAndShowsItsMonth()
+        Expect.Begin
+        Dim f As HostForm = On6_15()
+        f.Cal.Today
+        Expect.AreEqual Date, f.Cal.Value, "Value after Today"
+        Expect.AreEqual MonthName(Month(Date)), Win.TextOf(Rig.MonthList(f)), "the month list after Today"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Today_KeepsTheTimeOfDay()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026 3:30:00 PM#
+        f.Cal.Today
+        Expect.AreEqual Date + TimeSerial(15, 30, 0), f.Cal.Value, "Value after Today with 3:30 PM on June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

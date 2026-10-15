@@ -1,0 +1,132 @@
+' OLEGuids: what the cases use. Classes to call through the package's interfaces, a class that
+' implements the interfaces a class can implement, and a helper that asks an object whether it
+' supports an interface identifier.
+
+' An object with no members of interest: the object of a class that the project compiles.
+Class PlainObject
+    Public Value As Long
+End Class
+
+' A class whose members the cases call by name and by dispatch identifier.
+Class Calculator
+    Private m_level As Long
+
+    Public Function Subtract(ByVal a As Long, ByVal b As Long) As Long
+        Return a - b
+    End Function
+
+    Public Sub Boom()
+        Err.Raise 5, "Calculator", "boom"
+    End Sub
+
+    Public Property Get Level() As Long
+        Return m_level
+    End Property
+
+    Public Property Let Level(ByVal NewValue As Long)
+        m_level = NewValue
+    End Property
+End Class
+
+' Implements the interfaces of the package that a class can implement and that have no base interface
+' of the package: the four stubs, IOleWindow, ISpecifyPropertyPages and IObjectSafety.
+Class ImplSimple
+    Implements IOleClientSite
+    Implements IStorage
+    Implements IDataObject
+    Implements IOleWindow
+    Implements ISpecifyPropertyPages
+    Implements IObjectSafety
+
+    Public WindowToReturn As LongPtr
+    ' The HRESULT that GetPages returns: 0 is S_OK.
+    Public PagesResult As Long
+
+    Private Function IOleWindow_GetWindow() As LongPtr Implements IOleWindow.GetWindow
+        Return WindowToReturn
+    End Function
+
+    Private Sub IOleWindow_ContextSensitiveHelp(ByVal fEnterMode As Long) Implements IOleWindow.ContextSensitiveHelp
+    End Sub
+
+    Private Sub ISpecifyPropertyPages_GetPages(ByRef pPages As OLECAUUID) Implements ISpecifyPropertyPages.GetPages
+        pPages.cElems = 0
+        pPages.pElems = 0
+        If PagesResult <> 0 Then Err.ReturnHResult = PagesResult
+    End Sub
+
+    Private Sub IObjectSafety_GetInterfaceSafetyOptions(ByRef riid As OLECLSID, ByRef pdwSupportedOptions As Long, ByRef pdwEnabledOptions As Long) Implements IObjectSafety.GetInterfaceSafetyOptions
+        pdwSupportedOptions = 3
+        pdwEnabledOptions = 1
+    End Sub
+
+    Private Sub IObjectSafety_SetInterfaceSafetyOptions(ByRef riid As OLECLSID, ByVal dwOptionSetMask As Long, ByVal dwEnabledOptions As Long) Implements IObjectSafety.SetInterfaceSafetyOptions
+    End Sub
+End Class
+
+' Implements the four interfaces of the package that are written for a Visual Basic class.
+Class ImplVB
+    Implements IOleInPlaceActiveObjectVB
+    Implements IOleControlVB
+    Implements IPerPropertyBrowsingVB
+    Implements IOleInPlaceObjectWindowlessVB
+
+    Private Sub IOleInPlaceActiveObjectVB_TranslateAccelerator(ByRef Handled As Boolean, ByRef RetVal As Long, ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr, ByVal Shift As Long) Implements IOleInPlaceActiveObjectVB.TranslateAccelerator
+        Handled = True
+        RetVal = 1
+    End Sub
+
+    Private Sub IOleControlVB_GetControlInfo(ByRef Handled As Boolean, ByRef AccelCount As Integer, ByRef AccelTable As LongPtr, ByRef Flags As Long) Implements IOleControlVB.GetControlInfo
+        Handled = True
+        AccelCount = 0
+        AccelTable = 0
+        Flags = 0
+    End Sub
+
+    Private Sub IOleControlVB_OnMnemonic(ByRef Handled As Boolean, ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr, ByVal Shift As Long) Implements IOleControlVB.OnMnemonic
+        Handled = True
+    End Sub
+
+    Private Sub IPerPropertyBrowsingVB_GetDisplayString(ByRef Handled As Boolean, ByVal DispId As Long, ByRef DisplayName As String) Implements IPerPropertyBrowsingVB.GetDisplayString
+        Handled = True
+        DisplayName = "shown"
+    End Sub
+
+    Private Sub IPerPropertyBrowsingVB_GetPredefinedStrings(ByRef Handled As Boolean, ByVal DispId As Long, ByRef StringsOut As String(), ByRef CookiesOut As Long()) Implements IPerPropertyBrowsingVB.GetPredefinedStrings
+        Handled = False
+    End Sub
+
+    Private Sub IPerPropertyBrowsingVB_GetPredefinedValue(ByRef Handled As Boolean, ByVal DispId As Long, ByVal Cookie As Long, ByRef Value As Variant) Implements IPerPropertyBrowsingVB.GetPredefinedValue
+        Handled = False
+    End Sub
+
+    Private Sub IOleInPlaceObjectWindowlessVB_OnWindowMessage(ByRef Handled As Boolean, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr, ByRef Result As LongPtr) Implements IOleInPlaceObjectWindowlessVB.OnWindowMessage
+        Handled = True
+        Result = 0
+    End Sub
+End Class
+
+Module Guids
+    Private Declare PtrSafe Function CLSIDFromString Lib "ole32" (ByVal lpsz As LongPtr, ByRef pclsid As OLECLSID) As Long
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
+    ' The identifier written as {00000000-0000-0000-0000-000000000000}, parsed by Windows into an OLECLSID.
+    Public Function IidOf(ByVal Text As String) As OLECLSID
+        CLSIDFromString StrPtr(Text), IidOf
+    End Function
+
+    ' Whether the object answers QueryInterface for the identifier with S_OK.
+    Public Function Supports(ByVal Obj As Object, ByVal Iid As String) As Boolean
+        Dim u As IUnknownUnrestricted = Obj
+        Dim id As OLECLSID = IidOf(Iid)
+        Dim p As LongPtr = 0
+        If u.QueryInterface(VarPtr(id), p) <> 0 Then Exit Function
+        If p <> 0 Then
+            ' the call added a reference: give it back through a variable that owns it
+            Dim v As IUnknownUnrestricted
+            CopyMemory VarPtr(v), VarPtr(p), Len(p)
+            Set v = Nothing
+        End If
+        Return True
+    End Function
+End Module

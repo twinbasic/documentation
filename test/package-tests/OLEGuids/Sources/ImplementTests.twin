@@ -1,0 +1,146 @@
+' The interfaces a class can implement: the interface identifiers they answer to, the HRESULT that a Sub
+' hides, the result of a Function that replaces an output parameter, and the four Visual Basic-style
+' interfaces.
+[TestFixture]
+Module ImplementTests
+
+    Private Const S_FALSE As Long = 1
+    Private Const E_NOTIMPL As Long = &H80004001
+    Private Const E_FAIL As Long = &H80004005
+
+    ' ---- interface identifiers: a class that implements the interface answers QueryInterface for it
+
+    [TestCase]
+    Public Sub IOleClientSite_AnswersToItsIdentifier()
+        Expect.Begin
+        Expect.IsTrue Guids.Supports(New ImplSimple, "{00000118-0000-0000-C000-000000000046}"), "an object of a class that implements IOleClientSite answers for {00000118-0000-0000-C000-000000000046}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IStorage_AnswersToItsIdentifier()
+        Expect.Begin
+        Expect.IsTrue Guids.Supports(New ImplSimple, "{0000000B-0000-0000-C000-000000000046}"), "an object of a class that implements IStorage answers for {0000000B-0000-0000-C000-000000000046}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IDataObject_AnswersToItsIdentifier()
+        Expect.Begin
+        Expect.IsTrue Guids.Supports(New ImplSimple, "{0000010E-0000-0000-C000-000000000046}"), "an object of a class that implements IDataObject answers for {0000010E-0000-0000-C000-000000000046}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IOleWindow_AnswersToItsIdentifier()
+        Expect.Begin
+        Expect.IsTrue Guids.Supports(New ImplSimple, "{00000114-0000-0000-C000-000000000046}"), "an object of a class that implements IOleWindow answers for {00000114-0000-0000-C000-000000000046}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ISpecifyPropertyPages_AnswersToItsIdentifier()
+        Expect.Begin
+        Expect.IsTrue Guids.Supports(New ImplSimple, "{B196B28B-BAB4-101A-B69C-00AA00341D07}"), "an object of a class that implements ISpecifyPropertyPages answers for {B196B28B-BAB4-101A-B69C-00AA00341D07}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IObjectSafety_AnswersToItsIdentifier()
+        Expect.Begin
+        Expect.IsTrue Guids.Supports(New ImplSimple, "{CB5BDC81-93C1-11CF-8F20-00805F2CD064}"), "an object of a class that implements IObjectSafety answers for {CB5BDC81-93C1-11CF-8F20-00805F2CD064}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IOleInPlaceActiveObjectVB_AnswersToItsIdentifier()
+        Expect.Begin
+        Expect.IsTrue Guids.Supports(New ImplVB, "{38584260-0CFB-45E7-8FBB-5D20B311F5B8}"), "an object of a class that implements IOleInPlaceActiveObjectVB answers for {38584260-0CFB-45E7-8FBB-5D20B311F5B8}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IOleControlVB_AnswersToItsIdentifier()
+        Expect.Begin
+        Expect.IsTrue Guids.Supports(New ImplVB, "{C895C8F9-6564-4123-8760-529F72AB9322}"), "an object of a class that implements IOleControlVB answers for {C895C8F9-6564-4123-8760-529F72AB9322}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IPerPropertyBrowsingVB_AnswersToItsIdentifier()
+        Expect.Begin
+        Expect.IsTrue Guids.Supports(New ImplVB, "{D5D3BBE3-DB60-4522-AF5B-D767FE736DDB}"), "an object of a class that implements IPerPropertyBrowsingVB answers for {D5D3BBE3-DB60-4522-AF5B-D767FE736DDB}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IOleInPlaceObjectWindowlessVB_AnswersToItsIdentifier()
+        Expect.Begin
+        Expect.IsTrue Guids.Supports(New ImplVB, "{061D3A2F-A213-4016-9756-B89140604819}"), "an object of a class that implements IOleInPlaceObjectWindowlessVB answers for {061D3A2F-A213-4016-9756-B89140604819}"
+        Expect.Done
+    End Sub
+
+    ' ---- the HRESULT of a Sub is hidden
+
+    [TestCase]
+    Public Sub Sub_SuccessCodeRaisesNoErrorAndIsReadWithLastHresult()
+        Expect.Begin
+        Dim impl As New ImplSimple
+        impl.PagesResult = S_FALSE
+        Dim sp As ISpecifyPropertyPages = impl
+        Dim pages As OLECAUUID
+        On Error Resume Next
+        sp.GetPages pages
+        Dim errNum As Long = Err.Number
+        Dim hr As Long = Err.LastHresult
+        On Error GoTo 0
+        Expect.AreEqual 0, errNum, "Err.Number after GetPages of a class that sets Err.ReturnHResult to S_FALSE"
+        Expect.AreEqual S_FALSE, hr, "Err.LastHresult after GetPages of a class that sets Err.ReturnHResult to S_FALSE"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Sub_FailureCodeRaisesAnError()
+        Expect.Begin
+        Dim impl As New ImplSimple
+        impl.PagesResult = E_FAIL
+        Dim sp As ISpecifyPropertyPages = impl
+        Dim pages As OLECAUUID
+        On Error Resume Next
+        sp.GetPages pages
+        Dim errNum As Long = Err.Number
+        Dim hr As Long = Err.LastHresult
+        On Error GoTo 0
+        Expect.AreEqual E_FAIL, errNum, "Err.Number after GetPages of a class that sets Err.ReturnHResult to E_FAIL"
+        Expect.AreEqual E_FAIL, hr, "Err.LastHresult after GetPages of a class that sets Err.ReturnHResult to E_FAIL"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Function_ResultTakesThePlaceOfTheOutputParameter()
+        Expect.Begin
+        Dim impl As New ImplSimple
+        impl.WindowToReturn = 77
+        Dim w As IOleWindow = impl
+        Expect.AreEqual 77, w.GetWindow(), "GetWindow of a class that returns 77"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub VBInterface_ClassCanBeCalledThroughIt()
+        Expect.Begin
+        Dim impl As New ImplVB
+        Dim v As IOleInPlaceActiveObjectVB = impl
+        Dim handled As Boolean = False
+        Dim retVal As Long = 0
+        v.TranslateAccelerator handled, retVal, 0, 0, 0, 0, 0
+        Expect.IsTrue handled, "Handled after TranslateAccelerator through IOleInPlaceActiveObjectVB"
+        Expect.AreEqual 1, retVal, "RetVal after TranslateAccelerator through IOleInPlaceActiveObjectVB"
+        Dim p As IPerPropertyBrowsingVB = impl
+        Dim shown As String = ""
+        p.GetDisplayString handled, 1, shown
+        Expect.AreEqual "shown", shown, "DisplayName after GetDisplayString through IPerPropertyBrowsingVB"
+        Expect.Done
+    End Sub
+
+End Module

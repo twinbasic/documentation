@@ -1,0 +1,191 @@
+' The collectors: the defects of LocaleCollector, CPUInfoCollector and NetworkInfoCollector, the
+' load of CPULoadCollector, and the properties of all eleven.
+[TestFixture]
+Module CollectorTests
+
+    ' ---- LocaleCollector
+
+    [TestCase]
+    Public Sub LocaleCollector_Items_ArePresent()
+        Expect.Begin
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = Reports.CollectFrom(New LocaleCollector)
+        Expect.AreEqual "Locale", r.Category, "Category"
+        Expect.IsTrue Reports.HasKey(r, "LCID"), "item LCID"
+        Expect.IsTrue Reports.HasKey(r, "ANSI Code Page"), "item ANSI Code Page"
+        Expect.IsTrue Reports.HasKey(r, "OEM Code Page"), "item OEM Code Page"
+        Expect.IsTrue Reports.ValueOf(r, "ANSI Code Page") Like "CP#*", "ANSI Code Page has the form CP and a number"
+        Expect.IsTrue Reports.ValueOf(r, "Timezone") Like "UTC[+-]#*", "Timezone has the form UTC, a sign and the hours"
+        Expect.Done
+    End Sub
+
+    ' ---- CPUInfoCollector
+
+    [TestCase]
+    Public Sub CPUInfoCollector_PageSize_HasNoDecimalSeparator()
+        Expect.Begin
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = Reports.CollectFrom(New CPUInfoCollector)
+        Expect.AreEqual "4 KB", Reports.ValueOf(r, "Page Size"), "Page Size item"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CPUInfoCollector_Items_ArePresent()
+        Expect.Begin
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = Reports.CollectFrom(New CPUInfoCollector)
+        Expect.AreEqual "CPU Info", r.Category, "Category"
+        Expect.IsTrue Reports.HasKey(r, "Architecture"), "item Architecture"
+        Expect.IsTrue Reports.HasKey(r, "Processor Count"), "item Processor Count"
+        Expect.IsTrue Val(Reports.ValueOf(r, "Processor Count")) >= 1, "Processor Count is a number of at least 1"
+        Expect.IsTrue Left$(Reports.ValueOf(r, "Processor Revision"), 2) = "0x", "Processor Revision starts with 0x"
+        Expect.Done
+    End Sub
+
+    ' ---- NetworkInfoCollector
+
+    [TestCase]
+    Public Sub NetworkInfoCollector_FullReport_ListsEveryAdapter()
+        Expect.Begin
+        Dim real As Long, i As Long
+        Expect.IsTrue Adapters.Load(), "GetAdaptersInfo succeeds"
+        For i = 0 To Adapters.Count - 1
+            If Len(Adapters.Description(i)) > 0 Then real = real + 1
+        Next i
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = Reports.CollectFrom(New NetworkInfoCollector)
+        Expect.AreEqual real, Reports.CountKeysLike(r, "Adapter #*"), "number of Adapter items in the full report, for " & real & " adapters that GetAdaptersInfo returns"
+        Expect.Done
+    End Sub
+
+    ' ---- CPULoadCollector
+
+    [TestCase]
+    Public Sub CPULoadCollector_FirstReading_IsZero()
+        Expect.Begin
+        Dim cpu As New CPULoadCollector
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = cpu.IDiagnosticCollector_Collect()
+        Expect.AreEqual "0" & Reports.Sep() & "0%", Reports.ValueOf(r, "Usage"), "Usage of the first reading"
+        Expect.AreEqual "0" & Reports.Sep() & "0", Reports.ValueOf(r, "Usage Value"), "Usage Value of the first reading"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CPULoadCollector_LaterReading_IsAPercentage()
+        Expect.Begin
+        Dim cpu As New CPULoadCollector
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = cpu.IDiagnosticCollector_Collect()
+        Dim t As Single
+        t = Timer
+        Do While Timer < t + 0.3
+        Loop
+        Set r = cpu.IDiagnosticCollector_Collect()
+        Dim pct As Double
+        pct = CDbl(Reports.ValueOf(r, "Usage Value"))
+        Expect.IsTrue pct >= 0 And pct <= 100, "Usage Value of a later reading is from 0 to 100"
+        Expect.AreEqual Reports.ValueOf(r, "Usage Value") & "%", Reports.ValueOf(r, "Usage"), "Usage is Usage Value and a percent sign"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CPULoadCollector_Reset_MakesTheNextReadingZero()
+        Expect.Begin
+        Dim cpu As New CPULoadCollector
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = cpu.IDiagnosticCollector_Collect()
+        Dim t As Single
+        t = Timer
+        Do While Timer < t + 0.2
+        Loop
+        cpu.Reset
+        Set r = cpu.IDiagnosticCollector_Collect()
+        Expect.AreEqual "0" & Reports.Sep() & "0%", Reports.ValueOf(r, "Usage"), "Usage of the reading after Reset"
+        Expect.Done
+    End Sub
+
+    ' ---- the other collectors
+
+    [TestCase]
+    Public Sub MemoryInfoCollector_Items_AreTheEightKeysInOrder()
+        Expect.Begin
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = Reports.CollectFrom(New MemoryInfoCollector)
+        Dim keys As String, i As Long
+        For i = 0 To r.ItemCount - 1
+            keys = keys & IIf(i > 0, ", ", "") & r.Items.Item(i).Key
+        Next i
+        Expect.AreEqual "Memory Load, Total Physical, Available Physical, Used Physical, Total Page File, Available Page File, Total Virtual, Available Virtual", keys, "keys of MemoryInfoCollector"
+        Expect.IsTrue r.Success, "Success"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UptimeCollector_Items_AreTheFiveKeysInOrder()
+        Expect.Begin
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = Reports.CollectFrom(New UptimeCollector)
+        Dim keys As String, i As Long
+        For i = 0 To r.ItemCount - 1
+            keys = keys & IIf(i > 0, ", ", "") & r.Items.Item(i).Key
+        Next i
+        Expect.AreEqual "Uptime, Total Days, Total Hours, Total Seconds, Boot Time", keys, "keys of UptimeCollector"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EnvironmentCollector_Summary_CountsThePathEntries()
+        Expect.Begin
+        Dim c As IDiagnosticCollector
+        Set c = New EnvironmentCollector
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = c.CollectSummary()
+        Expect.IsTrue r.IsSummary, "IsSummary"
+        Expect.AreEqual "(" & (UBound(Split(Environ$("PATH"), ";")) + 1) & " entries)", Reports.ValueOf(r, "PATH"), "PATH item of the summary"
+        Expect.AreEqual Environ$("TEMP"), Reports.ValueOf(r, "TEMP"), "TEMP item of the summary"
+        Expect.AreEqual Environ$("USERPROFILE"), Reports.ValueOf(r, "USERPROFILE"), "USERPROFILE item of the summary"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ProcessInfoCollector_Summary_HasTheThreeCounts()
+        Expect.Begin
+        Dim c As IDiagnosticCollector
+        Set c = New ProcessInfoCollector
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = c.CollectSummary()
+        Expect.IsTrue r.IsSummary, "IsSummary"
+        Expect.AreEqual 3, r.ItemCount, "ItemCount of the summary"
+        Expect.IsTrue Val(Reports.ValueOf(r, "Total Processes")) > 0, "Total Processes"
+        Expect.IsTrue Val(Reports.ValueOf(r, "Total Threads")) >= Val(Reports.ValueOf(r, "Total Processes")), "Total Threads is at least Total Processes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Collectors_Properties_AreThoseOfTheTable()
+        Expect.Begin
+        Dim table(0 To 10) As IDiagnosticCollector
+        Set table(0) = New OSInfoCollector
+        Set table(1) = New CPUInfoCollector
+        Set table(2) = New LocaleCollector
+        Set table(3) = New EnvironmentCollector
+        Set table(4) = New RuntimesCollector
+        Set table(5) = New CPULoadCollector
+        Set table(6) = New MemoryInfoCollector
+        Set table(7) = New UptimeCollector
+        Set table(8) = New ProcessInfoCollector
+        Set table(9) = New DiskInfoCollector
+        Set table(10) = New NetworkInfoCollector
+        Dim names As String, i As Long, text As String
+        For i = 0 To 10
+            text = text & IIf(i > 0, "; ", "") & table(i).CategoryName & ": " & table(i).RefreshMode & " " & table(i).SupportsSummary
+            If table(i).RequiresElevation Then names = names & table(i).CategoryName & " "
+        Next i
+        Expect.AreEqual "Operating System: 0 False; CPU Info: 0 False; Locale: 0 False; Environment: 0 True; Runtimes: 0 True; CPU Load: 1 False; Memory: 1 False; Uptime: 1 False; Processes: 1 True; Disk: 2 False; Network: 2 True", text, "category, mode and summary flag of the eleven collectors"
+        Expect.AreEqual "", names, "collectors whose RequiresElevation is True"
+        Expect.Done
+    End Sub
+
+End Module

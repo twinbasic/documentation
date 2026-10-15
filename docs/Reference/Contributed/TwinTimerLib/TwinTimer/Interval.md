@@ -18,7 +18,9 @@ Syntax: *object*.**Interval**
 *object*
 : *required* An object expression that evaluates to a **TwinTimer** object.
 
+<!-- test: PropertyTests.Interval_DefaultsToZero, PropertyTests.Interval_RoundTrip, PropertyTests.NewTimer_ZeroInterval_RaisesNoEvents -->
 The default value is `0`. A value of `0` means the timer is not running regardless of the [**Enabled**](Enabled) setting.
+<!-- /test -->
 
 ## Let
 
@@ -26,13 +28,20 @@ Sets the interval in milliseconds between **Timer** events.
 
 Syntax: *object*.**Interval** **=** *milliseconds*
 
+<!-- test: PropertyTests.Interval_SetPositive_StartsTimer, PropertyTests.Interval_Zero_KeepsEnabled, PropertyTests.Interval_Negative_Raises380, ElapsedTimeTests.Interval_Set_RestartsElapsedTime -->
 *milliseconds*
 : A non-negative **Long**. Setting **Interval** to `0` stops the timer without changing **Enabled**. Setting **Interval** to a positive value restarts the underlying Win32 timer with the new period and resets the elapsed-time counter, provided [**Enabled**](Enabled) is **True**. A negative value raises run-time error 380 (Invalid property value).
+<!-- /test -->
 
 ### Remarks
 
-Changing **Interval** at run time takes effect immediately: the underlying Win32 timer (`SetTimer` / `KillTimer`) is stopped and conditionally restarted on every assignment. The timer starts only when both **Interval** is greater than `0` and [**Enabled**](Enabled) is **True**.
+Changing **Interval** at run time takes effect immediately: the underlying Win32 timer (`SetTimer` / `KillTimer`) is stopped and conditionally restarted on every assignment.
 
+<!-- test: PropertyTests.Interval_SetWhileDisabled_DoesNotStart -->
+The timer starts only when both **Interval** is greater than `0` and [**Enabled**](Enabled) is **True**.
+<!-- /test -->
+
+<!-- test: DeliveryTests.Timer_ShortInterval_RaisedToTenMilliseconds -->
 > [!NOTE] timeless
 > The Win32 `SetTimer` function raises an interval below 10 ms to 10 ms, and delivers its timer messages at the resolution of the system clock, typically 15--16 ms on standard Windows configurations. A short interval therefore does not give sub-15 ms accuracy.
 

@@ -1,0 +1,227 @@
+' PartsTests: Day, Month, Year and FirstDay, and what they do with a value that makes an impossible date.
+[TestFixture]
+Module PartsTests
+
+    [TestCase]
+    Public Sub Day_SelectsThatDayOfTheShownMonth()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        f.Cal.Day = 20
+        Expect.AreEqual #6/20/2026#, f.Cal.Value, "Value after Day is set to 20 with June 15, 2026 selected"
+        Expect.AreEqual 20, f.Cal.Day, "Day after it is set to 20"
+        Expect.AreEqual "", Rig.Events(), "the events raised by setting Day"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Month_SelectsTheSameDayOfThatMonth()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        f.Cal.Month = 8
+        Expect.AreEqual #8/15/2026#, f.Cal.Value, "Value after Month is set to 8 with June 15, 2026 selected"
+        Expect.AreEqual MonthName(8), Win.TextOf(Rig.MonthList(f)), "the month list after Month is set to 8"
+        Expect.AreEqual "", Rig.Events(), "the events raised by setting Month"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Year_SelectsTheSameDayAndMonthOfThatYear()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        f.Cal.Year = 2027
+        Expect.AreEqual #6/15/2027#, f.Cal.Value, "Value after Year is set to 2027 with June 15, 2026 selected"
+        Expect.AreEqual "2027", Win.TextOf(Rig.YearList(f)), "the year list after Year is set to 2027"
+        Expect.AreEqual "", Rig.Events(), "the events raised by setting Year"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Day_ZeroRaises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        On Error Resume Next
+        f.Cal.Day = 0
+        Expect.AreEqual 13, Rig.ErrNum(), "the error raised by setting Day to 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Day_32Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        On Error Resume Next
+        f.Cal.Day = 32
+        Expect.AreEqual 13, Rig.ErrNum(), "the error raised by setting Day to 32"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Day_31InAMonthOf30DaysRaises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        On Error Resume Next
+        f.Cal.Day = 31
+        Expect.AreEqual 13, Rig.ErrNum(), "the error raised by setting Day to 31 with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Day_FailedAssignmentChangesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        On Error Resume Next
+        f.Cal.Day = 31
+        Rig.ErrNum
+        Expect.AreEqual 15, f.Cal.Day, "Day after setting it to 31 failed with June 15, 2026 selected"
+        Expect.AreEqual #6/15/2026#, f.Cal.Value, "Value after setting Day to 31 failed with June 15, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Month_13Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        On Error Resume Next
+        f.Cal.Month = 13
+        Expect.AreEqual 13, Rig.ErrNum(), "the error raised by setting Month to 13"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Month_0Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        On Error Resume Next
+        f.Cal.Month = 0
+        Expect.AreEqual 13, Rig.ErrNum(), "the error raised by setting Month to 0"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Month_FebruaryWithDay31Raises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #7/31/2026#
+        On Error Resume Next
+        f.Cal.Month = 2
+        Expect.AreEqual 13, Rig.ErrNum(), "the error raised by setting Month to 2 with July 31, 2026 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Month_FailedAssignmentChangesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #6/15/2026#
+        On Error Resume Next
+        f.Cal.Month = 13
+        Rig.ErrNum
+        Expect.AreEqual 6, f.Cal.Month, "Month after setting it to 13 failed with June 15, 2026 selected"
+        Expect.AreEqual #6/15/2026#, f.Cal.Value, "Value after setting Month to 13 failed with June 15, 2026 selected"
+        Expect.AreEqual MonthName(6), Win.TextOf(Rig.MonthList(f)), "the month list after setting Month to 13 failed"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Year_LeapDayInAYearThatIsNotLeapRaises13()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #2/29/2024#
+        On Error Resume Next
+        f.Cal.Year = 2025
+        Expect.AreEqual 13, Rig.ErrNum(), "the error raised by setting Year to 2025 with February 29, 2024 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Year_FailedAssignmentChangesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Rig.Rebase f, #2/29/2024#
+        On Error Resume Next
+        f.Cal.Year = 2025
+        Rig.ErrNum
+        Expect.AreEqual 2024, f.Cal.Year, "Year after setting it to 2025 failed with February 29, 2024 selected"
+        Expect.AreEqual #2/29/2024#, f.Cal.Value, "Value after setting Year to 2025 failed with February 29, 2024 selected"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Refresh_AfterAMonthOf13RaisesNoError()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail "the form could not be made transparent, so the control cannot paint"
+        Else
+            Rig.Rebase f, #6/15/2026#
+            On Error Resume Next
+            f.Cal.Month = 13
+            Rig.ErrNum
+            f.Cal.Refresh
+            Expect.AreEqual 0, Rig.ErrNum(), "the error raised by Refresh after setting Month to 13 failed"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FirstDay_OutOfRangeRaises5()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        f.Cal.FirstDay = 8
+        Expect.AreEqual 5, Rig.ErrNum(), "the error raised by setting FirstDay to 8"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FirstDay_FailedAssignmentChangesNothing()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        On Error Resume Next
+        f.Cal.FirstDay = 8
+        Rig.ErrNum
+        Expect.AreEqual WeekDaysEnum.Monday, f.Cal.FirstDay, "FirstDay after setting it to 8 failed"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,142 @@
+' Fmt: the escape sequences StringFormat expands in the finished string, the leading @ that turns
+' them off, and the order of work (items first, escape sequences after, values included).
+[TestFixture]
+Module EscapeTests
+
+    [TestCase]
+    Public Sub Newline_IsVbNewLine()
+        Expect.Begin
+        Expect.AreEqual "a" & vbNewLine & "b", Try0("a\nb"), "StringFormat(""a\nb"")"
+        Expect.AreEqual 4, Len(Try0("a\nb")), "Len of StringFormat(""a\nb"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Quote_IsADoubleQuote()
+        Expect.Begin
+        Expect.AreEqual """ok""", Try0("\qok\q"), "StringFormat(""\qok\q"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Tab_IsVbTab()
+        Expect.Begin
+        Expect.AreEqual "a" & vbTab & "b", Try0("a\tb"), "StringFormat(""a\tb"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alert_And_Backspace_AreCodes7And8()
+        Expect.Begin
+        Expect.AreEqual Chr$(7), Try0("\a"), "StringFormat(""\a"")"
+        Expect.AreEqual Chr$(8), Try0("\b"), "StringFormat(""\b"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub VerticalTab_FormFeed_CarriageReturn_AreCodes13_14_15()
+        Expect.Begin
+        Expect.AreEqual 13, Asc(Try0("\v")), "Asc of StringFormat(""\v"")"
+        Expect.AreEqual 14, Asc(Try0("\f")), "Asc of StringFormat(""\f"")"
+        Expect.AreEqual 15, Asc(Try0("\r")), "Asc of StringFormat(""\r"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HexEscape_GivesTheCharactersOfC()
+        Expect.Begin
+        Expect.AreEqual 11, Asc(Try0("\x0B")), "Asc of StringFormat(""\x0B"")"
+        Expect.AreEqual 12, Asc(Try0("\x0C")), "Asc of StringFormat(""\x0C"")"
+        Expect.AreEqual 13, Asc(Try0("\x0D")), "Asc of StringFormat(""\x0D"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HexEscape_TwoDigits()
+        Expect.Begin
+        Expect.AreEqual "A", Try0("\x41"), "StringFormat(""\x41"")"
+        Expect.AreEqual "J", Try0("\x4a"), "StringFormat(""\x4a"")"
+        Expect.AreEqual "AB", Try0("\x41\x42"), "StringFormat(""\x41\x42"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OctalEscape_ThreeDigits()
+        Expect.Begin
+        Expect.AreEqual "A", Try0("\101"), "StringFormat(""\101"")"
+        Expect.AreEqual "AA", Try0("\x41\101"), "StringFormat(""\x41\101"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HexEscape_InvalidDigits_RaisesTypeMismatch()
+        Expect.Begin
+        Dim r As String = Try0("\xzz")
+        Expect.AreEqual 13, Loc.LastNumber, "Err.Number of StringFormat(""\xzz"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OctalEscape_InvalidDigits_RaisesTypeMismatch()
+        Expect.Begin
+        Dim r As String = Try0("\189")
+        Expect.AreEqual 13, Loc.LastNumber, "Err.Number of StringFormat(""\189"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DoubledBackslash_IsOneBackslash()
+        Expect.Begin
+        Expect.AreEqual "a\nb", Try0("a\\nb"), "StringFormat(""a\\nb"")"
+        Expect.AreEqual "C:\temp\file.txt", Try1("C:\\temp\\{0}", "file.txt"), "StringFormat(""C:\\temp\\{0}"", ""file.txt"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnknownEscape_StaysAsWritten()
+        Expect.Begin
+        Expect.AreEqual "a\zb", Try0("a\zb"), "StringFormat(""a\zb"")"
+        Expect.AreEqual "\d", Try0("\d"), "StringFormat(""\d"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Literal_AtSign_TurnsEscapesOff()
+        Expect.Begin
+        Expect.AreEqual "a\nb", Try0("@a\nb"), "StringFormat(""@a\nb"")"
+        Expect.AreEqual "C:\temp\file.txt", Try1("@C:\temp\{0}", "file.txt"), "StringFormat(""@C:\temp\{0}"", ""file.txt"")"
+        Expect.AreEqual "a\\b", Try0("@a\\b"), "StringFormat(""@a\\b"") keeps the doubled backslash"
+        Expect.AreEqual "\x41\101", Try0("@\x41\101"), "StringFormat(""@\x41\101"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Values_EscapesInAValue_AreExpanded()
+        Expect.Begin
+        Expect.AreEqual "a""b", Try1("{0}", "a\qb"), "StringFormat(""{0}"", ""a\qb"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Literal_EscapesInAValue_AreNotExpanded()
+        Expect.Begin
+        Expect.AreEqual "a\qb", Try1("@{0}", "a\qb"), "StringFormat(""@{0}"", ""a\qb"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Values_ALaterItemInAValue_IsReplacedToo()
+        Expect.Begin
+        Expect.AreEqual "x x", Try2("{0} {1}", "{1}", "x"), "StringFormat(""{0} {1}"", ""{1}"", ""x"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Escape_Chr27_BecomesABackslash()
+        Expect.Begin
+        Expect.AreEqual "a\b", Try1("a{0}b", Chr$(27)), "StringFormat(""a{0}b"", Chr$(27))"
+        Expect.AreEqual "a" & Chr$(27) & "b", Try1("@a{0}b", Chr$(27)), "StringFormat(""@a{0}b"", Chr$(27)) with a literal format string"
+        Expect.Done
+    End Sub
+
+End Module

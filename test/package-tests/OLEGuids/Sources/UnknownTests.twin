@@ -1,0 +1,124 @@
+' IUnknownUnrestricted: QueryInterface, AddRef and Release called as methods, and what QueryInterface
+' does with its result pointer when the interface is not supported.
+[TestFixture]
+Module UnknownTests
+
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
+    Private Const E_NOINTERFACE As Long = &H80004002
+    Private Const SENTINEL As LongPtr = 12345
+
+    ' Gives back a reference that QueryInterface added, through a variable that owns it.
+    Private Sub GiveBack(ByVal Pointer As LongPtr)
+        Dim v As IUnknownUnrestricted
+        CopyMemory VarPtr(v), VarPtr(Pointer), Len(Pointer)
+        Set v = Nothing
+    End Sub
+
+    [TestCase]
+    Public Sub QueryInterface_SupportedInterfaceReturnsSOk()
+        Expect.Begin
+        Dim u As IUnknownUnrestricted = New Collection
+        Dim iid As OLECLSID = Guids.IidOf("{00020400-0000-0000-C000-000000000046}")
+        Dim p As LongPtr = SENTINEL
+        Dim hr As Long = u.QueryInterface(VarPtr(iid), p)
+        Expect.AreEqual 0, hr, "HRESULT of QueryInterface for IDispatch on a Collection"
+        Expect.IsTrue p <> 0 And p <> SENTINEL, "pointer QueryInterface returned for IDispatch on a Collection"
+        If hr = 0 And p <> 0 And p <> SENTINEL Then GiveBack p
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub QueryInterface_ReturnedPointerHoldsAReference()
+        Expect.Begin
+        Dim u As IUnknownUnrestricted = New Collection
+        u.AddRef
+        Dim before As Long = u.Release()
+        Dim iid As OLECLSID = Guids.IidOf("{00020400-0000-0000-C000-000000000046}")
+        Dim p As LongPtr = 0
+        u.QueryInterface VarPtr(iid), p
+        u.AddRef
+        Dim during As Long = u.Release()
+        Expect.AreEqual before + 1, during, "reference count with the pointer QueryInterface returned held, after " & before & " without it"
+        If p <> 0 Then GiveBack p
+        u.AddRef
+        Dim after As Long = u.Release()
+        Expect.AreEqual before, after, "reference count after the reference was given back with Release"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub QueryInterface_UnsupportedInterfaceOfCollectionReturnsENoInterface()
+        Expect.Begin
+        Dim u As IUnknownUnrestricted = New Collection
+        Dim iid As OLECLSID
+        iid.Data1 = &H12345
+        Dim p As LongPtr = SENTINEL
+        Dim hr As Long = u.QueryInterface(VarPtr(iid), p)
+        Expect.AreEqual E_NOINTERFACE, hr, "HRESULT of QueryInterface for an interface a Collection does not have"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub QueryInterface_UnsupportedInterfaceOfCollectionSetsPointerToZero()
+        Expect.Begin
+        Dim u As IUnknownUnrestricted = New Collection
+        Dim iid As OLECLSID
+        iid.Data1 = &H12345
+        Dim p As LongPtr = SENTINEL
+        u.QueryInterface VarPtr(iid), p
+        Expect.AreEqual 0, p, "result pointer after QueryInterface for an interface a Collection does not have"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub QueryInterface_UnsupportedInterfaceOfClassObjectReturnsENoInterface()
+        Expect.Begin
+        Dim u As IUnknownUnrestricted = New PlainObject
+        Dim iid As OLECLSID
+        iid.Data1 = &H12345
+        Dim p As LongPtr = SENTINEL
+        Dim hr As Long = u.QueryInterface(VarPtr(iid), p)
+        Expect.AreEqual E_NOINTERFACE, hr, "HRESULT of QueryInterface for an interface an object of a project's class does not have"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub QueryInterface_UnsupportedInterfaceOfClassObjectSetsPointerToZero()
+        Expect.Begin
+        Dim u As IUnknownUnrestricted = New PlainObject
+        Dim iid As OLECLSID
+        iid.Data1 = &H12345
+        Dim p As LongPtr = SENTINEL
+        u.QueryInterface VarPtr(iid), p
+        Expect.AreEqual 0, p, "result pointer after QueryInterface for an interface an object of a project's class does not have"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AddRef_Release_ReturnTheNewCount()
+        Expect.Begin
+        Dim u As IUnknownUnrestricted = New PlainObject
+        Dim a As Long = u.AddRef()
+        Dim b As Long = u.AddRef()
+        Dim c As Long = u.Release()
+        Dim d As Long = u.Release()
+        Expect.AreEqual a + 1, b, "count AddRef returned the second time, after the first returned " & a
+        Expect.AreEqual a, c, "count Release returned after two AddRef calls"
+        Expect.AreEqual a - 1, d, "count Release returned the second time"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Example_ReferenceCountIncludesTheProcedureVariables()
+        Expect.Begin
+        Dim obj As Object = New PlainObject
+        Dim u As IUnknownUnrestricted = obj
+        Dim n As Long = u.AddRef()
+        Dim m As Long = u.Release()
+        Expect.AreEqual n - 1, m, "count after AddRef then Release"
+        Expect.IsTrue m >= 2, "count includes the references of the variables obj and u (at least 2), got " & m
+        Expect.Done
+    End Sub
+
+End Module

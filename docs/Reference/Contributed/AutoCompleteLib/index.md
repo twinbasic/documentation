@@ -16,3 +16,7 @@ The **AutoCompleteLib** contributed package provides Windows shell auto-complete
 ## Classes
 
 - [AutoComplete](AutoComplete) -- attaches Windows shell auto-complete behaviour to a text-input control's window handle.
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [AutoCompleteLib-tests.twinproj](AutoCompleteLib-tests.twinproj), a twinBASIC project. It uses AutoCompleteLib as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

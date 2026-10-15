@@ -1,0 +1,20 @@
+' TBMANLIB: what the compiler refuses. Each line ends in a comment ' CASE <Name>: <code>.
+Module CompileTests
+
+    Public Sub RequestHeaders_AssignmentThroughTheDefaultMember()
+        Dim Http As New cHttpClient
+        Http.RequestHeaders("X-Key") = "1" ' CASE RequestHeadersDefaultMemberAssignment: TB5090
+    End Sub
+
+    Public Sub RequestHeaders_AssignmentWithItemWrittenOut()
+        Dim Http As New cHttpClient
+        Http.RequestHeaders.Item("X-Key") = "1" ' CASE RequestHeadersItemAssignment: none
+    End Sub
+
+    Public Sub RequestHeaders_ReadThroughTheDefaultMember()
+        Dim Http As New cHttpClient
+        Dim s As String
+        s = Http.RequestHeaders("X-Key") ' CASE RequestHeadersDefaultMemberRead: none
+    End Sub
+
+End Module

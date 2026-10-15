@@ -1,0 +1,105 @@
+' cIni: INI files read into a two-level dictionary and written from it.
+[TestFixture]
+Module IniTests
+
+    ' True when LoadFrom raises an error. Err.Number alone cannot tell: an error that the class
+    ' handled itself stays in Err.
+    Private Function LoadRaises(ByVal C As cIni, ByVal Path As String) As Boolean
+        On Error GoTo Caught
+        C.LoadFrom Path
+        Exit Function
+Caught:
+        LoadRaises = True
+    End Function
+
+    [TestCase]
+    Public Sub LoadFrom_ReadsSectionsKeysAndValues()
+        Expect.Begin
+        Dim C As New cIni, root As String, p As String
+        root = Sandbox.Fresh("ini1")
+        p = root & "\read.ini"
+        Sandbox.WriteAscii p, "top=1" & vbCrLf & "; a comment" & vbCrLf & "[Window]" & vbCrLf & "Title = ""Main""" & vbCrLf & "Width=800" & vbCrLf & vbCrLf & "# not a comment=7" & vbCrLf & "no equals sign" & vbCrLf & "[Empty]" & vbCrLf
+        C.LoadFrom p
+        Expect.AreEqual "1", C.Root("")("top"), "key before the first section"
+        Expect.AreEqual "Main", C("Window")("Title"), "value with quotation marks and spaces around the key"
+        Expect.AreEqual "800", C.Root("Window")("Width"), "Width"
+        Expect.AreEqual "7", C.Root("Window")("# not a comment"), "a line that starts with # is read as a key"
+        Expect.AreEqual 2, C.Root.Count, "number of sections, the empty one not being a section for want of a key"
+        Expect.AreEqual "", C.LastError, "LastError after a good LoadFrom"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFrom_AddsTheIniExtensionAndEmptiesRoot()
+        Expect.Begin
+        Dim C As New cIni, root As String
+        root = Sandbox.Fresh("ini2")
+        Sandbox.WriteAscii root & "\settings.ini", "[A]" & vbCrLf & "k=v" & vbCrLf
+        C.Section("Old")("x") = "1"
+        C.LoadFrom root & "\settings"
+        Expect.IsFalse C.Root.Exists("Old"), "the section that was in Root before LoadFrom"
+        Expect.AreEqual "v", C.Root("A")("k"), "k of section A, read from settings.ini"
+        C.LoadFrom root & "\SETTINGS.INI"
+        Expect.AreEqual "v", C.Root("A")("k"), "k of section A, read from SETTINGS.INI"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LoadFrom_MissingFile_RaisesNothingEmptiesRootAndSetsLastError()
+        Expect.Begin
+        Dim C As New cIni, root As String, raised As Boolean
+        root = Sandbox.Fresh("ini3")
+        C.Section("Old")("x") = "1"
+        raised = LoadRaises(C, root & "\missing.ini")
+        Expect.IsFalse raised, "LoadFrom of a missing file raised an error"
+        Expect.AreEqual 0, C.Root.Count, "number of sections after the failed LoadFrom"
+        Expect.IsTrue InStr(C.LastError, "iniTools.LoadFrom") > 0, "LastError names iniTools.LoadFrom"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveTo_WritesSectionsAndKeys()
+        Expect.Begin
+        Dim C As New cIni, root As String, p As String
+        root = Sandbox.Fresh("ini4")
+        p = root & "\out"
+        Expect.IsFalse C.SaveTo(p), "SaveTo with no data"
+        Expect.IsTrue Len(C.LastError) > 0, "LastError after SaveTo with no data"
+        C.Section("Window")("Width") = "800"
+        C.Section("Window")("Height") = 600
+        C.Section("Colors")("Back") = "white"
+        Expect.IsTrue C.SaveTo(p), "SaveTo"
+        Expect.AreEqual "[Window]" & vbCrLf & "Width=800" & vbCrLf & "Height=600" & vbCrLf & vbCrLf & "[Colors]" & vbCrLf & "Back=white" & vbCrLf & vbCrLf, Sandbox.AsciiOf(p & ".ini"), "file written to out.ini"
+        Expect.AreEqual "", C.LastError, "LastError after a good SaveTo"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SaveTo_CreatesTheFoldersOfThePath()
+        Expect.Begin
+        Dim C As New cIni, root As String
+        root = Sandbox.Fresh("ini5")
+        C.Section("A")("k") = "v"
+        Expect.IsTrue C.SaveTo(root & "\a\b\c.ini"), "SaveTo into folders that do not exist"
+        Expect.AreEqual "c.ini", Dir(root & "\a\b\c.ini"), "the file exists"
+        Sandbox.Remove root
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Section_CreatesTheSectionEvenForAReader()
+        Expect.Begin
+        Dim C As New cIni
+        Expect.AreEqual 0, C.Root.Count, "number of sections of a new object"
+        C.Section("Window")("Width") = "800"
+        Expect.AreEqual 1, C.Root.Count, "number of sections after an assignment"
+        Expect.AreEqual 0, C.Section("Colors").Count, "number of keys of a new section"
+        Expect.AreEqual 2, C.Root.Count, "number of sections after reading a section that was not there"
+        Expect.Done
+    End Sub
+
+End Module

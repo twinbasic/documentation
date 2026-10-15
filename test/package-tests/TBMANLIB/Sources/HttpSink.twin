@@ -1,0 +1,19 @@
+' HttpSink: a cHttpClient and the number of times it raised OnResponseFinished, for the test cases.
+Class HttpSink
+
+    Private WithEvents Cli As cHttpClient
+    Public Finished As Long
+
+    Public Sub Attach(ByVal C As cHttpClient)
+        Set Cli = C
+    End Sub
+
+    Public Sub Detach()
+        Set Cli = Nothing
+    End Sub
+
+    Private Sub Cli_OnResponseFinished()
+        Finished = Finished + 1
+    End Sub
+
+End Class

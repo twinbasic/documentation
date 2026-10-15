@@ -118,6 +118,8 @@ For each package and architecture (both by default), the tool stages the project
 - **fixed** --- `expect.json` says it fails or never returns, and it passes: the page's callout and the entry go;
 - **changed** --- anything else: a claim of the page is no longer true, or the case is wrong.
 
+A compile case that expects an error is in the package folder's `compile/`, a second project of compile cases only, because a project with compile errors runs none of its test cases. The tool stages it with the package embedded as well and judges its cases with the others; it is not published.
+
 A case that never returns stops the compiler. The tool catches it, runs the cases after it again in a new IDE, and from then on, once `expect.json` says so, runs it alone with `--hang-timeout`. `--update` writes `expect.json` from the run, for the architectures run. The run also writes `RunAll.twin` again whenever the cases or `expect.json` change; [`check_package_tests.mjs`](Tools-Toolchain-Tests#check-package-tests) fails while it is out of date.
 
 The build publishes each project as `<Package>-tests.twinproj` beside the package's section, and the section's landing page links to it. It carries none of the package's code: it references the package as a [linked package](../../Features/Packages/Linked), which the IDE loads from `%APPDATA%\twinBASIC\packages`. With the package's file there, the project's `Sub Main` runs every case and prints `PASS`, `FAIL` or `SKIP` for each in the DEBUG CONSOLE.

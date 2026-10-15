@@ -8,6 +8,8 @@ has_toc: false
 # FormerStringFormat
 {: .no_toc }
 
+<!-- test: FormerStringFormatTests.CommonNotation_GivesTheSameAsStringFormat, FormerStringFormatTests.N_IsUnderstood, FormerStringFormatTests.CustomNumberFormat_IsPassedToFormat, FormerStringFormatTests.G_WithoutPrecision_TakesTheDigitsAfterThePoint, FormerStringFormatTests.X_PrefixIsUpperCaseForBothCases, FormerStringFormatTests.HexEscape_IsNotExpanded, FormerStringFormatTests.NonNumericValue_WithNumericIdentifier_RaisesInvalidNumberArgument, FormerStringFormatTests.E_PrecisionZero_RaisesInvalidFormatString, FormerStringFormatTests.WrongCount_HasTheSameNumberAndTextWithItsOwnSource -->
+
 Builds a string from a format string and a list of values, with the earlier implementation of the formatter.
 
 Syntax: **FormerStringFormat** ( *format_string* [, *values* ] ) **As String**
@@ -46,6 +48,8 @@ Debug.Print StringFormat("\x41\101")                    ' AA
 Debug.Print FormerStringFormat("{0:G}", 123.456)        ' 123.46
 Debug.Print StringFormat("{0:G}", 123.456)              ' 1.23456E2
 ```
+
+<!-- /test -->
 
 ## Example
 

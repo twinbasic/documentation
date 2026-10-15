@@ -1,0 +1,152 @@
+' tsPwGen: PwGenOptions as a factory. The predeclared object creates recipes and cannot be assigned
+' to; a recipe copies with Clone; a property checks nothing when it is set.
+[TestFixture]
+Module FactoryTests
+
+    [TestCase]
+    Public Sub PredeclaredObject_AssigningAProperty_Raises5()
+        Expect.Begin
+        Helpers.Reset
+        On Error Resume Next
+        PwGenOptions.Length = 20
+        Expect.AreEqual 5, Err.Number, "Err.Number of PwGenOptions.Length = 20"
+        Expect.AreEqual "PwGenOptions", Err.Source, "Err.Source of PwGenOptions.Length = 20"
+        Expect.AreEqual "PwGenOptions (default instance) is a factory. Use Alphanumeric, Complex, Passphrase, Pin, or Hex.", Err.Description, "Err.Description of PwGenOptions.Length = 20"
+        Err.Clear
+        PwGenOptions.HasDigits = True
+        Expect.AreEqual 5, Err.Number, "Err.Number of PwGenOptions.HasDigits = True"
+        Err.Clear
+        PwGenOptions.Mode = pgmWordlist
+        Expect.AreEqual 5, Err.Number, "Err.Number of PwGenOptions.Mode = pgmWordlist"
+        Err.Clear
+        Set PwGenOptions.RandomSource = New LowestRandom
+        Expect.AreEqual 5, Err.Number, "Err.Number of Set PwGenOptions.RandomSource"
+        Err.Clear
+        Dim words() As String = Helpers.WordList(2)
+        PwGenOptions.CustomWords = words
+        Expect.AreEqual 5, Err.Number, "Err.Number of PwGenOptions.CustomWords = words"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PredeclaredObject_ReadingAProperty_ReturnsTheEmptyValueOfTheType()
+        Expect.Begin
+        Helpers.Reset
+        On Error Resume Next
+        Expect.AreEqual 0, PwGenOptions.Length, "PwGenOptions.Length"
+        Expect.IsFalse PwGenOptions.HasUpperCase, "PwGenOptions.HasUpperCase"
+        Expect.AreEqual "", PwGenOptions.WordSeparator, "PwGenOptions.WordSeparator"
+        Expect.AreEqual 0, Err.Number, "run-time error number of reading the properties of the predeclared object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_CreatesARecipeWithEveryPropertyEmpty()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = New PwGenOptions
+        Expect.AreEqual 0, o.Length, "Length of a recipe created with New"
+        Expect.AreEqual 0, CLng(o.Mode), "Mode of a recipe created with New (pgmRandom)"
+        Expect.AreEqual 0, o.MinPerClass, "MinPerClass of a recipe created with New"
+        Expect.IsFalse o.HasUpperCase Or o.HasLowerCase Or o.HasDigits Or o.HasSpecialChars, "a class enabled in a recipe created with New"
+        Expect.AreEqual "", o.SpecialChars, "SpecialChars of a recipe created with New"
+        Expect.IsTrue o.RandomSource Is Nothing, "RandomSource of a recipe created with New"
+        Expect.AreEqual "", PwGen.Generate(o), "Generate of a recipe created with New"
+        Helpers.ExpectError "a recipe created with New", "InvalidLength", "Length must be between 1 and 4096.", "PwGen.Generate"
+        o.Length = 6
+        o.HasDigits = True
+        Expect.AreEqual 6, Len(PwGen.Generate(o)), "Len of a result once Length and HasDigits are set on a recipe created with New"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_CopiesEveryProperty()
+        Expect.Begin
+        Helpers.Reset
+        Dim a As PwGenOptions = PwGenOptions.Complex
+        a.Length = 21
+        a.IncludeChars = "xy"
+        a.ExcludeChars = "ab"
+        a.AmbiguousChars = "Z"
+        a.IsAmbiguousExcluded = False
+        a.Alphabet = "pqr"
+        a.MinPerClass = 2
+        a.HasNoConsecutiveRepeats = True
+        a.StartsWithLetter = True
+        a.WordCount = 7
+        a.WordSeparator = "+"
+        a.Wordlist = pgwGerman
+        a.HasUniqueWords = True
+        a.Capitalize = True
+        a.SpecialChars = "?!"
+        Dim b As PwGenOptions = a.Clone()
+        Expect.AreEqual 21, b.Length, "Length of the Clone"
+        Expect.AreEqual "xy", b.IncludeChars, "IncludeChars of the Clone"
+        Expect.AreEqual "ab", b.ExcludeChars, "ExcludeChars of the Clone"
+        Expect.AreEqual "Z", b.AmbiguousChars, "AmbiguousChars of the Clone"
+        Expect.IsFalse b.IsAmbiguousExcluded, "IsAmbiguousExcluded of the Clone"
+        Expect.AreEqual "pqr", b.Alphabet, "Alphabet of the Clone"
+        Expect.AreEqual 2, b.MinPerClass, "MinPerClass of the Clone"
+        Expect.IsTrue b.HasNoConsecutiveRepeats, "HasNoConsecutiveRepeats of the Clone"
+        Expect.IsTrue b.StartsWithLetter, "StartsWithLetter of the Clone"
+        Expect.AreEqual 7, b.WordCount, "WordCount of the Clone"
+        Expect.AreEqual "+", b.WordSeparator, "WordSeparator of the Clone"
+        Expect.AreEqual 1, CLng(b.Wordlist), "Wordlist of the Clone (pgwGerman)"
+        Expect.IsTrue b.HasUniqueWords, "HasUniqueWords of the Clone"
+        Expect.IsTrue b.Capitalize, "Capitalize of the Clone"
+        Expect.AreEqual "?!", b.SpecialChars, "SpecialChars of the Clone"
+        Expect.IsTrue b.HasSpecialChars And b.HasUpperCase And b.HasLowerCase And b.HasDigits, "the classes of the Clone"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_IsIndependentOfTheOriginal()
+        Expect.Begin
+        Helpers.Reset
+        Dim a As PwGenOptions = PwGenOptions.Alphanumeric
+        a.Length = 20
+        a.CustomWords = Helpers.WordList(3)
+        Dim b As PwGenOptions = a.Clone()
+        b.Length = 8
+        Expect.AreEqual 20, a.Length, "Length of the original after the Clone's was changed"
+        Expect.AreEqual 8, b.Length, "Length of the Clone"
+        Dim words() As String = Helpers.WordList(3)
+        words(0) = "other"
+        b.CustomWords = words
+        Dim back() As String = a.CustomWords
+        Expect.AreEqual "w1", back(0), "first custom word of the original after the Clone's list was replaced"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Setters_CheckNothingWhenAValueIsSet()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        On Error Resume Next
+        o.Length = 0
+        o.WordCount = 999
+        o.MinPerClass = -3
+        Expect.AreEqual 0, Err.Number, "run-time error number of setting values that cannot be used"
+        On Error GoTo 0
+        Helpers.ExpectNoError "setting values that cannot be used"
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with Length 0"
+        Helpers.ExpectError "Length 0", "InvalidLength", "Length must be between 1 and 4096.", "PwGen.Generate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Generate_DoesNotChangeTheRecipe()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Complex
+        o.Length = 12
+        o.StartsWithLetter = True
+        PwGen.Generate o
+        Expect.AreEqual 12, o.Length, "Length after Generate"
+        Expect.IsTrue o.StartsWithLetter, "StartsWithLetter after Generate"
+        Expect.AreEqual "!#$%&()+,-.;=@[]_{}~", o.SpecialChars, "SpecialChars after Generate"
+        Expect.Done
+    End Sub
+
+End Module

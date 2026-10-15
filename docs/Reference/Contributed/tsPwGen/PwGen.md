@@ -21,6 +21,7 @@ Debug.Print token Like "*[!0-9a-f]*"  ' False
 
 The module has no settings. Its only state is the last error, which [**PwGenError**](PwGenError) reports. A recipe that cannot be used does not raise a run-time error: the function returns an empty string, or 0, and sets the last error. Every function of the module clears the last error when it starts, so after a call the last error belongs to that call.
 
+<!-- test: compile UnqualifiedEntropy, compile UnqualifiedGenerate -->
 > [!NOTE] 1.0.8.0
 > Write the module name in every call, as in `PwGen.Generate`. The package's internal module **PwGenEngine** also declares public functions named **Generate** and **Entropy**, so a call written without the module name fails with TB5073, *'Entropy' is ambiguous*, or *'Generate' is ambiguous*.
 >
@@ -95,7 +96,10 @@ Syntax: **PwGen.BuiltInWord** ( *list*, *index* ) **As String**
 *index*
 : *required* A **Long**, the position of the word in the list. The first word has index 0, so the valid values run from 0 to [**BuiltInWordCount**](#builtinwordcount) minus 1.
 
+<!-- test: WordlistTests.BuiltInWord_FirstAndLastWordsOfBothLists, WordlistTests.BuiltInWord_IndexOutsideTheList_IndexOutOfRange, WordlistTests.BuiltInWord_NotAList_InvalidWordlist -->
 Returns the word, or an empty string when the call fails. The call fails with `InvalidWordlist` when *list* is not a member of **ePwGenWordlist**, and with `IndexOutOfRange` when *index* is below 0 or not below the number of words. Each call copies the whole list internally.
+<!-- /test -->
+
 
 ```tb check_build check_run
 Debug.Print PwGen.BuiltInWord(pgwEnglish, 0)   ' abandon
@@ -117,7 +121,9 @@ Syntax: **PwGen.BuiltInWordCount** ( *list* ) **As Long**
 *list*
 : *required* An [**ePwGenWordlist**](#epwgenwordlist) member that names the list.
 
+<!-- test: WordlistTests.BuiltInWordCount_NotAList_InvalidWordlist -->
 Returns 8192 for **pgwEnglish** and for **pgwGerman**. Returns 0 and sets the error `InvalidWordlist` when *list* is not a member of **ePwGenWordlist**.
+<!-- /test -->
 
 ```tb check_build check_run
 Debug.Print PwGen.BuiltInWordCount(pgwEnglish)   ' 8192
@@ -137,6 +143,7 @@ Syntax: **PwGen.Entropy** ( [ *options* ] ) **As Double**
 *options*
 : *optional* The [**PwGenOptions**](PwGenOptions) recipe whose entropy is wanted. **Nothing**, the default, means a new **Alphanumeric** recipe. The recipe is not changed.
 
+<!-- test: EntropyTests.Entropy_InvalidRecipe_ReturnsZeroAndSetsTheError, EntropyTests.Entropy_ClearsTheLastErrorWhenItStarts, EntropyTests.Entropy_DoesNotChangeTheRecipe, EntropyTests.Entropy_DoesNotFindTheErrorsThatArisePerDraw, RandomSourceTests.Entropy_DoesNotUseTheSource, ConsecutiveRepeatTests.FixedSource_DrawsThatCannotBeArranged_CannotAvoidRepeats -->
 Returns the entropy as a **Double**, or 0 and the last error when the recipe cannot be used. The recipe is checked as [**Generate**](#generate) checks it, with the origin `PwGen.Entropy`. The errors that can arise only while characters are drawn are not found: `RngFailed`, `CannotAvoidRepeats` with the message *could not place characters without consecutive repeats*, and `LengthTooShort` with the message *Length is too small for MinPerClass and StartsWithLetter*. **Entropy** does not use the recipe's [**RandomSource**](PwGenOptions#randomsource). The codes are listed under [Error codes](PwGenError#error-codes).
 
 The figure is computed as follows:
@@ -145,6 +152,7 @@ The figure is computed as follows:
 - **Wordlist mode.** `WordCount * log2(n)`, where *n* is the number of words in the list: the custom list when [**CustomWords**](PwGenOptions#customwords) has words, otherwise the built-in list. When [**HasUniqueWords**](PwGenOptions#hasuniquewords) is **True**, the sum of `log2(n - i)` for *i* from 0 to `WordCount - 1`.
 
 The logarithm is computed as `Log(x) / Log(2)`, so a result can differ from the exact figure in its last digits: the entropy of the **Passphrase** preset is 65 up to rounding. The figure does not take the constraints of random mode into account: [**MinPerClass**](PwGenOptions#minperclass), [**StartsWithLetter**](PwGenOptions#startswithletter) and [**HasNoConsecutiveRepeats**](PwGenOptions#hasnoconsecutiverepeats) make some results impossible or less likely than others, so the entropy of the passwords actually drawn can be lower. The separator and [**Capitalize**](PwGenOptions#capitalize) of a passphrase add nothing.
+<!-- /test -->
 
 ```tb check_build check_run
 Debug.Print Int(PwGen.Entropy())                         ' 93
@@ -171,7 +179,9 @@ Syntax: **PwGen.Generate** ( [ *options* ] ) **As String**
 *options*
 : *optional* The [**PwGenOptions**](PwGenOptions) recipe to use. **Nothing**, the default, means a new **Alphanumeric** recipe: 16 characters from the letters and digits, without the look-alikes `0O1lI`. The recipe is not changed.
 
+<!-- test: FactoryTests.Generate_DoesNotChangeTheRecipe, ErrorTests.EveryFunction_ClearsTheLastErrorWhenItStarts, RandomSourceTests.OutOfRangeSource_RngFailed -->
 Returns the password or passphrase. When the recipe cannot be used, or the random source fails, returns an empty string and sets the last error, which [**PwGenError**](PwGenError) reports. The last error is cleared first, so **PwGenError.HasError** after a successful call is **False**. The codes that can be set are listed under [Error codes](PwGenError#error-codes), with the origin `PwGen.Generate`.
+<!-- /test -->
 
 The [**Mode**](PwGenOptions#mode) of the recipe decides what is generated. In random mode the result has [**Length**](PwGenOptions#length) characters, in wordlist mode [**WordCount**](PwGenOptions#wordcount) words. [Random mode](PwGenOptions#random-mode) and [Wordlist mode](PwGenOptions#wordlist-mode) describe how the pool is built and what is drawn. All randomness comes from the recipe's [**RandomSource**](PwGenOptions#randomsource), or from [**PwGenCryptoSource**](PwGenCryptoSource) when it is **Nothing**.
 
@@ -201,7 +211,9 @@ Syntax: **PwGen.TryGenerate** ( *password* [ , *options* ] ) **As Boolean**
 *options*
 : *optional* The [**PwGenOptions**](PwGenOptions) recipe to use. **Nothing**, the default, means a new **Alphanumeric** recipe.
 
+<!-- test: ErrorTests.TryGenerate_Success_ReturnsTrueAndThePassword, ErrorTests.TryGenerate_Failure_ReturnsFalseAndAnEmptyString -->
 Returns **True** when a result was generated and **False** when not. It calls [**Generate**](#generate) and tests the last error, so the last error is set as **Generate** sets it, with the origin `PwGen.Generate`, and the codes are the same.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim pw As String

@@ -8,6 +8,7 @@ has_toc: false
 # Tools module
 {: .no_toc }
 
+<!-- test: SharedInstanceTests.Tools_HoldsTheSharedInstancesOfCToolsStrAndCToolsStream -->
 The module that holds the shared instances **ToolsStr** and **ToolsStream**. Its two public variables let a program write `ToolsStr.TrimEx(...)` and `ToolsStream.LoadFileAsText(...)` with no `New`, as it could when these two were modules of the package. The module has no procedures.
 
 ```tb check_build check_run
@@ -23,6 +24,7 @@ Debug.Print TypeName(ToolsStream)
 ```
 
 The two names can be written alone, as in the first line of the example, because the members of the module are found without the name of the module. The names `TBMANLIB.Tools.ToolsStr` and `TBMANLIB.ToolsStr` also work, and are needed when another package the project references has a member of the same name.
+<!-- /test -->
 
 * TOC
 {:toc}

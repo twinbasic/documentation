@@ -1,0 +1,61 @@
+' Fmt: the E identifier (ExponentialSFI) and its ParseExponent. The letter in the result is the identifier's,
+' the exponent has no plus sign and no leading zeros, the decimal point follows the regional settings.
+[TestFixture]
+Module ExponentialTests
+
+    [TestCase]
+    Public Sub Default_SixDecimalPlaces()
+        Expect.Begin
+        Expect.AreEqual "1" & Loc.Dec() & "234568E4", Try1("{0:E}", 12345.678), "StringFormat(""{0:E}"", 12345.678)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Precision_SetsTheDecimalPlaces()
+        Expect.Begin
+        Expect.AreEqual "1" & Loc.Dec() & "23E4", Try1("{0:E2}", 12345.678), "StringFormat(""{0:E2}"", 12345.678)"
+        Expect.AreEqual "1" & Loc.Dec() & "5E0", Try1("{0:E1}", 1.5), "StringFormat(""{0:E1}"", 1.5)"
+        Expect.AreEqual "1" & Loc.Dec() & "50E0", Try1("{0:E3}", 1.5), "StringFormat(""{0:E3}"", 1.5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LowerCaseIdentifier_GivesALowerCaseE()
+        Expect.Begin
+        Expect.AreEqual "1" & Loc.Dec() & "234568e4", Try1("{0:e}", 12345.678), "StringFormat(""{0:e}"", 12345.678)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NegativeExponent_HasNoLeadingZeros()
+        Expect.Begin
+        Expect.AreEqual "1" & Loc.Dec() & "23450E-4", Try1("{0:E}", 0.00012345), "StringFormat(""{0:E}"", 0.00012345)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ParseExponent_ReadsTheTextAfterTheE()
+        Expect.Begin
+        Expect.AreEqual -3, ExponentialSFI.ParseExponent("1.5E-3"), "ExponentialSFI.ParseExponent(""1.5E-3"")"
+        Expect.AreEqual 4, ExponentialSFI.ParseExponent("1.5E4"), "ExponentialSFI.ParseExponent(""1.5E4"")"
+        Expect.AreEqual 12, ExponentialSFI.ParseExponent("1.5e12"), "ExponentialSFI.ParseExponent(""1.5e12"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Class_MatchesEAndOnlyE()
+        Expect.Begin
+        Expect.AreEqual "Ee", Loc.MatchedLetters(ExponentialSFI), "letters ExponentialSFI.IsIdentifierMatch is True for"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Class_GetFormattedValue_ReadsThePrecisionAndTheIdentifier()
+        Expect.Begin
+        Dim f As IStringFormatIdentifier = ExponentialSFI
+        Expect.AreEqual "1" & Loc.Dec() & "23E4", f.GetFormattedValue(12345.678, Loc.Spec("E", "2")), "ExponentialSFI.GetFormattedValue(12345.678, E2)"
+        Expect.AreEqual "1" & Loc.Dec() & "23e4", f.GetFormattedValue(12345.678, Loc.Spec("e", "2")), "ExponentialSFI.GetFormattedValue(12345.678, e2)"
+        Expect.Done
+    End Sub
+
+End Module

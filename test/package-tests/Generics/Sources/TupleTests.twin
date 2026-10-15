@@ -1,0 +1,95 @@
+' Generics: creating a tuple and using it as an object: a function that returns one, a copy of each
+' item, late-bound access, TypeName and Is.
+[TestFixture]
+Module TupleTests
+
+    Private Function MinMax(values() As Double) As TupleOf2(Of Double, Double)
+        Dim lo As Double = values(LBound(values))
+        Dim hi As Double = lo
+        Dim i As Long
+        For i = LBound(values) + 1 To UBound(values)
+            If values(i) < lo Then lo = values(i)
+            If values(i) > hi Then hi = values(i)
+        Next
+        Return New TupleOf2(Of Double, Double)(lo, hi)
+    End Function
+
+    [TestCase]
+    Public Sub Function_ReturnsTuple()
+        Expect.Begin
+        Dim data(2) As Double
+        data(0) = 4.5
+        data(1) = -2
+        data(2) = 9
+        Dim r As TupleOf2(Of Double, Double) = MinMax(data)
+        Expect.AreEqual -2, r.Item1, "Item1 of the tuple a function returned, the smallest of 4.5, -2, 9"
+        Expect.AreEqual 9, r.Item2, "Item2 of the tuple a function returned, the largest of 4.5, -2, 9"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_KeepsACopyOfEachItem()
+        Expect.Begin
+        Dim n As Long = 200
+        Dim s As String = "before"
+        Dim t As TupleOf2(Of Long, String) = New TupleOf2(Of Long, String)(n, s)
+        n = 1
+        s = "after"
+        Expect.AreEqual 200, t.Item1, "Item1 after the Long variable it was created from changed"
+        Expect.AreEqual "before", t.Item2, "Item2 after the String variable it was created from changed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_ConversionOfAByteVariable()
+        Expect.Begin
+        Dim b As Byte = 200
+        Dim t As TupleOf1(Of Long) = New TupleOf1(Of Long)(CLng(b))
+        b = 1
+        Expect.AreEqual 200, t.Item1, "Item1 of TupleOf1(Of Long) created from CLng of a Byte variable, then the variable changed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LateBound_ReadsItemsThroughObject()
+        Expect.Begin
+        Dim t As TupleOf2(Of String, Long) = New TupleOf2(Of String, Long)("width", 640)
+        Dim o As Object
+        Set o = t
+        Expect.AreEqual "width", o.Item1, "Item1 read through an Object variable"
+        Expect.AreEqual 640, o.Item2, "Item2 read through an Object variable"
+        Dim v As Variant
+        Set v = t
+        Expect.AreEqual "width", v.Item1, "Item1 read through a Variant variable"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TypeName_IsTheClassWithoutItsTypeArguments()
+        Expect.Begin
+        Dim t As TupleOf2(Of Long, String) = New TupleOf2(Of Long, String)(1, "x")
+        Expect.AreEqual "TupleOf2", TypeName(t), "TypeName of a TupleOf2(Of Long, String)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Is_TwoTuplesWithEqualItemsAreTwoObjects()
+        Expect.Begin
+        Dim a As TupleOf2(Of Long, String) = New TupleOf2(Of Long, String)(1, "x")
+        Dim b As TupleOf2(Of Long, String) = New TupleOf2(Of Long, String)(1, "x")
+        Dim c As TupleOf2(Of Long, String) = a
+        Expect.IsFalse a Is b, "Is of two tuples created with equal items"
+        Expect.IsTrue a Is c, "Is of a tuple and a second variable assigned the same tuple"
+        Expect.IsTrue a.Item1 = b.Item1 And a.Item2 = b.Item2, "the items of two tuples created with equal items are equal"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Variable_NotAssignedIsNothing()
+        Expect.Begin
+        Dim t As TupleOf1(Of Long)
+        Expect.IsTrue t Is Nothing, "a variable declared with a tuple type and not assigned"
+        Expect.Done
+    End Sub
+
+End Module

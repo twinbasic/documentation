@@ -8,6 +8,8 @@ has_toc: false
 # StringContainsAny
 {: .no_toc }
 
+<!-- test: StringValidationTests.StringContainsAny_FindsAnyNeedle -->
+
 Returns whether a string contains at least one of several strings.
 
 Syntax: **StringContainsAny** ( *haystack*, *caseSensitive* [, *needles* ] ) **As Boolean**
@@ -26,6 +28,8 @@ Returns **True** when at least one of *needles* occurs in *haystack*, and **Fals
 ## Remarks
 
 The function passes each needle in turn to [**StringContains**](StringContains) and returns **True** at the first one that is found, so later needles are not tried. With no needles the result is **False**.
+
+<!-- /test -->
 
 ## Example
 

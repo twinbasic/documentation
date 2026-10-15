@@ -1,0 +1,20 @@
+{
+  "version": "1.0.0.0",
+  "cases": {
+    "GeneralTests.Single_GivesTheValue": {
+      "fails": "1 of 1 checks failed: StringFormat(\"{0:G}\", 1.5!) against the same value as a Double: expected \"1.50000E0\", got \"\""
+    },
+    "GeneralTests.Currency_GivesTheValue": {
+      "fails": "1 of 1 checks failed: StringFormat(\"{0:G}\", 1.5@) against the same value as a Double: expected \"1.50000E0\", got \"\""
+    },
+    "GeneralTests.Byte_GivesTheValue": {
+      "fails": "1 of 1 checks failed: StringFormat(\"{0:G}\", CByte(7)): expected \"7\", got \"\""
+    },
+    "GeneralTests.Decimal_GivesTheValue": {
+      "fails": "1 of 1 checks failed: StringFormat(\"{0:G}\", CDec(1.5)) against the same value as a Double: expected \"1.50000E0\", got \"\""
+    },
+    "GeneralTests.NumericString_GivesTheValue": {
+      "fails": "1 of 1 checks failed: StringFormat(\"{0:G}\", \"12\"): expected \"12\", got \"\""
+    }
+  }
+}

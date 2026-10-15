@@ -26,6 +26,7 @@ Select Case answer
 End Select
 ```
 
+<!-- test: CDialogCountdownMsgBoxTests.ShowInfo_TimeoutReportsTimeout, CDialogCountdownMsgBoxTests.ShowWarning_TimeoutReportsTimeout, CDialogCountdownMsgBoxTests.ShowError_TimeoutReportsTimeout, CDialogCountdownMsgBoxTests.ShowDialog_TimeoutOfTheDefaultBoxReportsTimeout, CDialogCountdownMsgBoxTests.ShowQuestion_TimeoutReportsTimeout, CDialogCountdownMsgBoxTests.ShowConfirm_TimeoutReportsTimeout, CDialogCountdownMsgBoxTests.ShowCustom_TimeoutOfABoxWithTwoButtonsReportsTimeout -->
 > [!WARNING] 1.1.0.0
 > A box with only an OK button that closes because its time ran out reports [**drOK**](#dialogresult), not [**drTimeout**](#dialogresult), and [**IsTimedOut**](#istimedout) is **False**. This affects the default box and [**ShowInfo**](#showinfo), [**ShowWarning**](#showwarning) and [**ShowError**](#showerror). A box with any other set of buttons reports **drTimeout** when it times out. No error is raised, so a program cannot tell a press of OK from the end of the time with these members alone.
 
@@ -46,6 +47,7 @@ End If
 
 ## Properties
 
+<!-- test: CDialogCountdownMsgBoxTests.Defaults_AreThoseOfThePage, CDialogCountdownMsgBoxTests.Properties_StoreWhatIsSet, CDialogCountdownMsgBoxTests.CountdownSeconds_AlsoSetsRemainingSeconds, CDialogCountdownMsgBoxTests.Reset_RestoresTheStartingValues, CDialogCountdownMsgBoxTests.ShowDialog_CountdownTextNamesOneSecondInThePlural, CDialogCountdownMsgBoxTests.ShowDialog_CountdownSecondsOfZeroDoesNotCloseTheBox -->
 ### AutoClose
 {: .no_toc }
 
@@ -99,7 +101,9 @@ Syntax: *object*.**CountdownSeconds** [ **=** *value* ]
 Setting it also sets [**RemainingSeconds**](#remainingseconds). The shortened forms [**ShowInfo**](#showinfo) and the others take the time as an argument, store it here, and do not touch [**RemainingSeconds**](#remainingseconds).
 
 The countdown text that the box shows (see [**ShowProgress**](#showprogress)) names this value in whole seconds, also for 1 and 0: `in 1 seconds...`. A value of 0 or less does not close the box: it stays open until a button is pressed, and its text says `in 0 seconds...`.
+<!-- /test -->
 
+<!-- test: CDialogCountdownMsgBoxTests.CountdownSeconds_AboveTwoMillionOverflowsAndShowsAPlainBox -->
 > [!NOTE] 1.1.0.0
 > The class multiplies the value by 1000 to get milliseconds. A value above 2,147,483 (about 24.8 days) overflows, and [**ShowDialog**](#showdialog) handles the error 6 itself: it shows a plain message box with the message and an OK button, with no icon, countdown text or other buttons, and returns **drOK**. The call raises nothing, but **Err.Number** is 6 afterwards.
 
@@ -112,6 +116,7 @@ Debug.Print box.CountdownSeconds    ' 45
 Debug.Print box.RemainingSeconds    ' 45
 ```
 
+<!-- test: CDialogCountdownMsgBoxTests.Enumerations_HaveTheDocumentedValues, CDialogCountdownMsgBoxTests.ShowDialog_ShowsTheTitleTheMessageAndTheCountdownText, CDialogCountdownMsgBoxTests.ShowDialog_ShowProgressFalseShowsOnlyTheMessage, CDialogCountdownMsgBoxTests.ShowDialog_AutoCloseFalseKeepsTheBoxOpenWithoutCountdownText, CDialogCountdownMsgBoxTests.ShowDialog_TheButtonPressedIsTheResult, CDialogCountdownMsgBoxTests.ShowCustom_AbortRetryIgnoreReportsEachButton, CDialogCountdownMsgBoxTests.DefaultButton_EnterPressesTheSecondButton, CDialogCountdownMsgBoxTests.ShowDialog_ShortFormsDoNotChangeDefaultButton, CDialogCountdownMsgBoxTests.ShowDialog_CloseButtonEndsABoxWithOnlyOKAsOK, CDialogCountdownMsgBoxTests.ShowConfirm_CloseButtonEndsTheBoxAsCancel, CDialogCountdownMsgBoxTests.ShowQuestion_CloseButtonIsIgnored, CDialogCountdownMsgBoxTests.Buttons_ACancelTryAgainContinueBoxIsNotMapped, CDialogCountdownMsgBoxTests.OwnerHwnd_OwnsTheBox -->
 ### DefaultButton
 {: .no_toc }
 
@@ -587,6 +592,7 @@ Else
     Debug.Print "Keeping the document: " & box.GetResultDescription()
 End If
 ```
+<!-- /test -->
 
 ## See Also
 

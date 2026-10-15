@@ -1,0 +1,217 @@
+' cSparkline.twin of TBMANLIB_ConsoleComponents 1.0.0.1 (woeoio, MIT licence), compiled into this project.
+' The package cannot take the cConsole of TBMANLIB_ConsoleCore (see the notes of its landing page), so the
+' cases that draw run this copy of the code, which is the code of the package below the line of dashes.
+' The package's own classes are reached as TBMANLIB_ConsoleComponents.<name>.
+' ----------------------------------------------------------------------------
+' =====================================================
+' cSparkline.twin - Sparkline (Mini Line Chart) Component
+' Modern Console Library for TwinBASIC - Components
+' =====================================================
+
+[COMCreatable(False)]
+Public Class cSparkline
+
+    ' Sparkline character set enum
+    Public Enum SparklineCharSet
+        Braille = 0    ' Braille characters (highest resolution, 2x4 pixels per char)
+        ASCII = 1      ' ASCII characters (* and │)
+        Block = 2      ' Block characters (█)
+    End Enum
+
+    Private m_Console As cConsole
+    Private m_Buffer As cConsoleBuffer
+
+    ' Constructor
+    Public Sub New(ByVal console As cConsole)
+        Set m_Console = console
+        Set m_Buffer = console.Buffer
+    End Sub
+
+    ' Draw a sparkline (mini line chart)
+    Public Sub Render(ByVal col As Long, ByVal row As Long, _
+                       ByVal width As Long, ByVal height As Long, _
+                       ByRef values() As Double, _
+                       Optional ByVal minValue As Double = 0, _
+                       Optional ByVal maxValue As Double = 100, _
+                       Optional ByVal fore As ConsoleColor = ConsoleColor.Green, _
+                       Optional ByVal back As ConsoleColor = ConsoleColor.Black, _
+                       Optional ByVal charSet As SparklineCharSet = SparklineCharSet.Braille)
+        If UBound(values) < LBound(values) Then Exit Sub
+
+        Dim valueCount As Long = UBound(values) - LBound(values) + 1
+        If valueCount < 2 Then Exit Sub
+
+        ' Normalize values to 0-1 range
+        Dim normalizedValues() As Double
+        ReDim normalizedValues(LBound(values) To UBound(values))
+
+        For i As Long = LBound(values) To UBound(values)
+            normalizedValues(i) = (values(i) - minValue) / (maxValue - minValue)
+            If normalizedValues(i) < 0 Then normalizedValues(i) = 0
+            If normalizedValues(i) > 1 Then normalizedValues(i) = 1
+        Next i
+
+        Select Case charSet
+            Case SparklineCharSet.Braille
+                RenderBraille col, row, width, height, normalizedValues, fore, back
+            Case SparklineCharSet.ASCII
+                RenderASCII col, row, width, height, normalizedValues, fore, back
+            Case SparklineCharSet.Block
+                RenderBlock col, row, width, height, normalizedValues, fore, back
+        End Select
+    End Sub
+
+    ' Draw sparkline using Braille characters (highest resolution)
+    Private Sub RenderBraille(ByVal col As Long, ByVal row As Long, _
+                              ByVal width As Long, ByVal height As Long, _
+                              ByRef values() As Double, _
+                              ByVal fore As ConsoleColor, _
+                              ByVal back As ConsoleColor)
+        ' Braille patterns: each character represents 2x4 pixels
+        ' We use the bottom half (dots 0-3) for the sparkline
+
+        Dim valueCount As Long = UBound(values) - LBound(values) + 1
+        Dim samplesPerChar As Double = valueCount / width
+        Dim rowsPerChar As Long = (height + 3) \ 4  ' 4 rows per Braille char
+
+        Dim x As Long, y As Long
+        Dim ch As Integer
+
+        For x = 0 To width - 1
+            ' Get values for this character column
+            Dim startIdx As Long = CLng(x * samplesPerChar)
+            Dim endIdx As Long = CLng((x + 1) * samplesPerChar) - 1
+            If endIdx >= valueCount Then endIdx = valueCount - 1
+
+            For y = 0 To rowsPerChar - 1
+                ' Calculate which dots to set for this Braille character
+                Dim dotMask As Integer = 0
+                Dim sampleIdx As Long
+
+                For sampleIdx = startIdx To endIdx
+                    Dim val As Double = values(sampleIdx)
+                    Dim dotY As Double = (1 - val) * height  ' Invert: 0 is at bottom
+
+                    ' Check if this value falls in current Braille row
+                    Dim brailleRow As Long = CLng(dotY) \ 4
+                    If brailleRow = y Then
+                        Dim dotPos As Long = CLng(dotY) Mod 4
+                        dotMask = dotMask Or (1 << dotPos)
+                    End If
+                Next sampleIdx
+
+                ' Convert dot mask to Braille character
+                ch = &H2800 Or dotMask
+                m_Buffer.SetChar col + x, row + (rowsPerChar - 1 - y), ChrW$(ch), fore, back
+            Next y
+        Next x
+    End Sub
+
+    ' Draw sparkline using ASCII characters
+    Private Sub RenderASCII(ByVal col As Long, ByVal row As Long, _
+                             ByVal width As Long, ByVal height As Long, _
+                             ByRef values() As Double, _
+                             ByVal fore As ConsoleColor, _
+                             ByVal back As ConsoleColor)
+        Dim valueCount As Long = UBound(values) - LBound(values) + 1
+        Dim samplesPerCol As Double = valueCount / width
+
+        Dim x As Long, y As Long
+        Dim currentY As Long
+
+        For x = 0 To width - 1
+            ' Get value for this column
+            Dim idx As Long = CLng(x * samplesPerCol)
+            If idx >= valueCount Then idx = valueCount - 1
+
+            ' Map value to row (inverted: 0 at bottom)
+            Dim val As Double = 1 - values(idx)  ' Invert
+            currentY = CLng(val * (height - 1))
+
+            ' Draw point
+            m_Buffer.SetChar col + x, row + currentY, "*", fore, back
+
+            ' Optional: draw connecting line to previous point
+            If x > 0 Then
+                Dim prevIdx As Long = CLng((x - 1) * samplesPerCol)
+                Dim prevVal As Double = 1 - values(prevIdx)
+                Dim prevY As Long = CLng(prevVal * (height - 1))
+
+                If currentY < prevY Then
+                    ' Line going up
+                    For py1 As Long = prevY - 1 To currentY + 1 Step -1
+                        m_Buffer.SetChar col + x - 1, row + py1, "│", fore, back
+                    Next py1
+                ElseIf currentY > prevY Then
+                    ' Line going down
+                    For py2 As Long = prevY + 1 To currentY - 1
+                        m_Buffer.SetChar col + x - 1, row + py2, "│", fore, back
+                    Next py2
+                End If
+            End If
+        Next x
+    End Sub
+
+    ' Draw sparkline using block characters
+    Private Sub RenderBlock(ByVal col As Long, ByVal row As Long, _
+                              ByVal width As Long, ByVal height As Long, _
+                              ByRef values() As Double, _
+                              ByVal fore As ConsoleColor, _
+                              ByVal back As ConsoleColor)
+        Dim valueCount As Long = UBound(values) - LBound(values) + 1
+        Dim samplesPerCol As Double = valueCount / width
+
+        Dim x As Long
+        For x = 0 To width - 1
+            Dim idx As Long = CLng(x * samplesPerCol)
+            If idx >= valueCount Then idx = valueCount - 1
+
+            Dim val As Double = values(idx)
+            Dim barHeight As Long = CLng(val * height)
+            If barHeight = 0 AndAlso val > 0 Then barHeight = 1
+
+            Dim y As Long
+            For y = 0 To barHeight - 1
+                m_Buffer.SetChar col + x, row + height - 1 - y, "█", fore, back
+            Next y
+
+            For y = barHeight To height - 1
+                m_Buffer.SetChar col + x, row + height - 1 - y, " ", fore, back
+            Next y
+        Next x
+    End Sub
+
+    ' Draw sparkline with min/max indicators
+    Public Sub RenderWithStats(ByVal col As Long, ByVal row As Long, _
+                                ByVal width As Long, ByVal height As Long, _
+                                ByRef values() As Double, _
+                                Optional ByVal minValue As Double = 0, _
+                                Optional ByVal maxValue As Double = 100, _
+                                Optional ByVal fore As ConsoleColor = ConsoleColor.Green, _
+                                Optional ByVal back As ConsoleColor = ConsoleColor.Black, _
+                                Optional ByVal charSet As SparklineCharSet = SparklineCharSet.Braille, _
+                                Optional ByVal statColor As ConsoleColor = ConsoleColor.Gray)
+        ' Draw sparkline
+        Render col, row, width, height, values, minValue, maxValue, fore, back, charSet
+
+        ' Calculate actual min/max/avg
+        Dim minVal As Double = values(LBound(values))
+        Dim maxVal As Double = values(LBound(values))
+        Dim sum As Double = 0
+        Dim i As Long
+
+        For i = LBound(values) To UBound(values)
+            If values(i) < minVal Then minVal = values(i)
+            If values(i) > maxVal Then maxVal = values(i)
+            sum = sum + values(i)
+        Next i
+
+        Dim avgVal As Double = sum / (UBound(values) - LBound(values) + 1)
+
+        ' Draw stats below sparkline
+        Dim statRow As Long = row + height + 1
+        Dim statText As String = "Min:" & Format$(minVal, "0.0") & " Avg:" & Format$(avgVal, "0.0") & " Max:" & Format$(maxVal, "0.0")
+        m_Buffer.WriteAt col, statRow, statText, statColor, back
+    End Sub
+
+End Class

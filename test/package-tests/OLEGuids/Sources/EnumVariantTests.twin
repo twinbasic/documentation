@@ -1,0 +1,37 @@
+' IEnumVARIANTUnrestricted: the method table the declaration gives. The interface has the identifier of
+' IEnumVARIANT, so a call through it on a real enumerator uses the slot that the declaration numbers.
+' IEnumVARIANT extends IUnknown: Next, Skip, Reset and Clone are slots 3, 4, 5 and 6, straight after
+' QueryInterface, AddRef and Release (slots 0, 1 and 2). Each case calls one method on a hand-built
+' object whose slots record their own numbers (FakeEnumerator).
+[TestFixture]
+Module EnumVariantTests
+
+    [TestCase]
+    Public Sub Next_CallsTheSlotAfterIUnknown()
+        Expect.Begin
+        Expect.AreEqual 3, FakeEnumerator.SlotOfNext(), "slot of the method table that Next uses (3 in IEnumVARIANT, after the three of IUnknown)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Skip_CallsTheSlotAfterNext()
+        Expect.Begin
+        Expect.AreEqual 4, FakeEnumerator.SlotOfSkip(), "slot of the method table that Skip uses (4 in IEnumVARIANT)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_CallsTheSlotAfterSkip()
+        Expect.Begin
+        Expect.AreEqual 5, FakeEnumerator.SlotOfReset(), "slot of the method table that Reset uses (5 in IEnumVARIANT)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_CallsTheLastSlot()
+        Expect.Begin
+        Expect.AreEqual 6, FakeEnumerator.SlotOfClone(), "slot of the method table that Clone uses (6 in IEnumVARIANT)"
+        Expect.Done
+    End Sub
+
+End Module

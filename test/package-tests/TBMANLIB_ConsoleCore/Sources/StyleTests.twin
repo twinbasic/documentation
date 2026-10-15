@@ -1,0 +1,438 @@
+' TBMANLIB_ConsoleCore: the escape sequences of mConsoleStyle, and its character constants.
+[TestFixture]
+Module StyleTests
+
+    Private Function Csi(ByVal Tail As String) As String
+        Csi = Chr$(27) & "[" & Tail
+    End Function
+
+    Private Function Code(ByVal S As String) As String
+        ' The code point of a one-character constant, as hex, or "len N" when it is not one character.
+        If Len(S) <> 1 Then
+            Code = "len " & Len(S)
+        Else
+            Code = Hex$(AscW(S) And &HFFFF&)
+        End If
+    End Function
+
+    [TestCase]
+    Public Sub Cursor_MovementSequences()
+        Expect.Begin
+        Expect.AreEqual Csi("3A"), mConsoleStyle.CursorUp(3), "CursorUp(3)"
+        Expect.AreEqual Csi("3B"), mConsoleStyle.CursorDown(3), "CursorDown(3)"
+        Expect.AreEqual Csi("3C"), mConsoleStyle.CursorForward(3), "CursorForward(3)"
+        Expect.AreEqual Csi("3D"), mConsoleStyle.CursorBack(3), "CursorBack(3)"
+        Expect.AreEqual Csi("3E"), mConsoleStyle.CursorNextLine(3), "CursorNextLine(3)"
+        Expect.AreEqual Csi("3F"), mConsoleStyle.CursorPrevLine(3), "CursorPrevLine(3)"
+        Expect.AreEqual Csi("7G"), mConsoleStyle.CursorColumn(7), "CursorColumn(7)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Cursor_CountDefaultsToOne()
+        Expect.Begin
+        Expect.AreEqual Csi("1A"), mConsoleStyle.CursorUp(), "CursorUp()"
+        Expect.AreEqual Csi("1B"), mConsoleStyle.CursorDown(), "CursorDown()"
+        Expect.AreEqual Csi("1C"), mConsoleStyle.CursorForward(), "CursorForward()"
+        Expect.AreEqual Csi("1D"), mConsoleStyle.CursorBack(), "CursorBack()"
+        Expect.AreEqual Csi("1E"), mConsoleStyle.CursorNextLine(), "CursorNextLine()"
+        Expect.AreEqual Csi("1F"), mConsoleStyle.CursorPrevLine(), "CursorPrevLine()"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Cursor_NumbersAreNotChecked()
+        Expect.Begin
+        Expect.AreEqual Csi("-2A"), mConsoleStyle.CursorUp(-2), "CursorUp(-2)"
+        Expect.AreEqual Csi("0B"), mConsoleStyle.CursorDown(0), "CursorDown(0)"
+        Expect.AreEqual Csi("0;-1H"), mConsoleStyle.CursorPosition(0, -1), "CursorPosition(0, -1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Cursor_PositionTakesTheRowFirst()
+        Expect.Begin
+        Expect.AreEqual Csi("5;10H"), mConsoleStyle.CursorPosition(5, 10), "CursorPosition(5, 10)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Cursor_SaveRestoreHideShowSequences()
+        Expect.Begin
+        Expect.AreEqual Csi("s"), mConsoleStyle.CursorSave(), "CursorSave"
+        Expect.AreEqual Csi("u"), mConsoleStyle.CursorRestore(), "CursorRestore"
+        Expect.AreEqual Csi("?25l"), mConsoleStyle.CursorHide(), "CursorHide"
+        Expect.AreEqual Csi("?25h"), mConsoleStyle.CursorShow(), "CursorShow"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_SequencesAndDefaultMode()
+        Expect.Begin
+        Expect.AreEqual Csi("2J"), mConsoleStyle.ClearScreen(), "ClearScreen()"
+        Expect.AreEqual Csi("0J"), mConsoleStyle.ClearScreen(0), "ClearScreen(0)"
+        Expect.AreEqual Csi("1J"), mConsoleStyle.ClearScreen(1), "ClearScreen(1)"
+        Expect.AreEqual Csi("3J"), mConsoleStyle.ClearScreen(3), "ClearScreen(3)"
+        Expect.AreEqual Csi("2K"), mConsoleStyle.ClearLine(), "ClearLine()"
+        Expect.AreEqual Csi("0K"), mConsoleStyle.ClearLine(0), "ClearLine(0)"
+        Expect.AreEqual Csi("1K"), mConsoleStyle.ClearLine(1), "ClearLine(1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TextStyle_Sequences()
+        Expect.Begin
+        Expect.AreEqual Csi("0m"), mConsoleStyle.Reset(), "Reset"
+        Expect.AreEqual Csi("1m"), mConsoleStyle.Bold(), "Bold"
+        Expect.AreEqual Csi("2m"), mConsoleStyle.Dim_(), "Dim_"
+        Expect.AreEqual Csi("3m"), mConsoleStyle.Italic(), "Italic"
+        Expect.AreEqual Csi("4m"), mConsoleStyle.Underline(), "Underline"
+        Expect.AreEqual Csi("5m"), mConsoleStyle.Blink(), "Blink"
+        Expect.AreEqual Csi("7m"), mConsoleStyle.Reverse(), "Reverse"
+        Expect.AreEqual Csi("8m"), mConsoleStyle.Hidden(), "Hidden"
+        Expect.AreEqual Csi("9m"), mConsoleStyle.Strikethrough(), "Strikethrough"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Foreground_ColourCodes()
+        Expect.Begin
+        Expect.AreEqual Csi("30m"), mConsoleStyle.FgBlack(), "FgBlack"
+        Expect.AreEqual Csi("31m"), mConsoleStyle.FgRed(), "FgRed"
+        Expect.AreEqual Csi("32m"), mConsoleStyle.FgGreen(), "FgGreen"
+        Expect.AreEqual Csi("33m"), mConsoleStyle.FgYellow(), "FgYellow"
+        Expect.AreEqual Csi("34m"), mConsoleStyle.FgBlue(), "FgBlue"
+        Expect.AreEqual Csi("35m"), mConsoleStyle.FgMagenta(), "FgMagenta"
+        Expect.AreEqual Csi("36m"), mConsoleStyle.FgCyan(), "FgCyan"
+        Expect.AreEqual Csi("37m"), mConsoleStyle.FgWhite(), "FgWhite"
+        Expect.AreEqual Csi("39m"), mConsoleStyle.FgDefault(), "FgDefault"
+        Expect.AreEqual Csi("90m"), mConsoleStyle.FgBrightBlack(), "FgBrightBlack"
+        Expect.AreEqual Csi("91m"), mConsoleStyle.FgBrightRed(), "FgBrightRed"
+        Expect.AreEqual Csi("92m"), mConsoleStyle.FgBrightGreen(), "FgBrightGreen"
+        Expect.AreEqual Csi("93m"), mConsoleStyle.FgBrightYellow(), "FgBrightYellow"
+        Expect.AreEqual Csi("94m"), mConsoleStyle.FgBrightBlue(), "FgBrightBlue"
+        Expect.AreEqual Csi("95m"), mConsoleStyle.FgBrightMagenta(), "FgBrightMagenta"
+        Expect.AreEqual Csi("96m"), mConsoleStyle.FgBrightCyan(), "FgBrightCyan"
+        Expect.AreEqual Csi("97m"), mConsoleStyle.FgBrightWhite(), "FgBrightWhite"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Background_ColourCodes()
+        Expect.Begin
+        Expect.AreEqual Csi("40m"), mConsoleStyle.BgBlack(), "BgBlack"
+        Expect.AreEqual Csi("41m"), mConsoleStyle.BgRed(), "BgRed"
+        Expect.AreEqual Csi("42m"), mConsoleStyle.BgGreen(), "BgGreen"
+        Expect.AreEqual Csi("43m"), mConsoleStyle.BgYellow(), "BgYellow"
+        Expect.AreEqual Csi("44m"), mConsoleStyle.BgBlue(), "BgBlue"
+        Expect.AreEqual Csi("45m"), mConsoleStyle.BgMagenta(), "BgMagenta"
+        Expect.AreEqual Csi("46m"), mConsoleStyle.BgCyan(), "BgCyan"
+        Expect.AreEqual Csi("47m"), mConsoleStyle.BgWhite(), "BgWhite"
+        Expect.AreEqual Csi("49m"), mConsoleStyle.BgDefault(), "BgDefault"
+        Expect.AreEqual Csi("100m"), mConsoleStyle.BgBrightBlack(), "BgBrightBlack"
+        Expect.AreEqual Csi("101m"), mConsoleStyle.BgBrightRed(), "BgBrightRed"
+        Expect.AreEqual Csi("102m"), mConsoleStyle.BgBrightGreen(), "BgBrightGreen"
+        Expect.AreEqual Csi("103m"), mConsoleStyle.BgBrightYellow(), "BgBrightYellow"
+        Expect.AreEqual Csi("104m"), mConsoleStyle.BgBrightBlue(), "BgBrightBlue"
+        Expect.AreEqual Csi("105m"), mConsoleStyle.BgBrightMagenta(), "BgBrightMagenta"
+        Expect.AreEqual Csi("106m"), mConsoleStyle.BgBrightCyan(), "BgBrightCyan"
+        Expect.AreEqual Csi("107m"), mConsoleStyle.BgBrightWhite(), "BgBrightWhite"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Palette_And_TrueColourSequences()
+        Expect.Begin
+        Expect.AreEqual Csi("38;5;200m"), mConsoleStyle.Fg256(200), "Fg256(200)"
+        Expect.AreEqual Csi("48;5;17m"), mConsoleStyle.Bg256(17), "Bg256(17)"
+        Expect.AreEqual Csi("38;2;255;128;0m"), mConsoleStyle.FgRGB(255, 128, 0), "FgRGB(255, 128, 0)"
+        Expect.AreEqual Csi("48;2;0;0;64m"), mConsoleStyle.BgRGB(0, 0, 64), "BgRGB(0, 0, 64)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Palette_NumbersAreNotChecked()
+        Expect.Begin
+        Expect.AreEqual Csi("38;5;999m"), mConsoleStyle.Fg256(999), "Fg256(999)"
+        Expect.AreEqual Csi("48;2;300;-1;0m"), mConsoleStyle.BgRGB(300, -1, 0), "BgRGB(300, -1, 0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Scroll_Sequences()
+        Expect.Begin
+        Expect.AreEqual Csi("1S"), mConsoleStyle.ScrollUp(), "ScrollUp()"
+        Expect.AreEqual Csi("4S"), mConsoleStyle.ScrollUp(4), "ScrollUp(4)"
+        Expect.AreEqual Csi("1T"), mConsoleStyle.ScrollDown(), "ScrollDown()"
+        Expect.AreEqual Csi("4T"), mConsoleStyle.ScrollDown(4), "ScrollDown(4)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetTitle_Sequence()
+        Expect.Begin
+        Expect.AreEqual Chr$(27) & "]0;My title" & Chr$(7), mConsoleStyle.SetTitle("My title"), "SetTitle(""My title"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AltScreen_Sequences()
+        Expect.Begin
+        Expect.AreEqual Csi("?1049h"), mConsoleStyle.AltScreenOn(), "AltScreenOn"
+        Expect.AreEqual Csi("?1049l"), mConsoleStyle.AltScreenOff(), "AltScreenOff"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Hyperlink_Sequence()
+        Expect.Begin
+        Expect.AreEqual Chr$(27) & "]8;;http://x.test/" & Chr$(7) & "label" & Chr$(27) & "]8;;" & Chr$(7), mConsoleStyle.Hyperlink("http://x.test/", "label"), "Hyperlink(""http://x.test/"", ""label"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Styled_WrapsTextInStyleAndReset()
+        Expect.Begin
+        Expect.AreEqual Csi("1m") & Csi("36m") & "text" & Csi("0m"), mConsoleStyle.Styled("text", mConsoleStyle.Bold & mConsoleStyle.FgCyan), "Styled(""text"", Bold & FgCyan)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Colored_ForegroundOnly()
+        Expect.Begin
+        Expect.AreEqual Csi("31m") & "Hi" & Csi("0m"), mConsoleStyle.Colored("Hi", mConsoleStyle.FgRed), "Colored(""Hi"", FgRed)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Colored_WithBackground()
+        Expect.Begin
+        Expect.AreEqual Csi("31m") & Csi("44m") & "Hi" & Csi("0m"), mConsoleStyle.Colored("Hi", mConsoleStyle.FgRed, mConsoleStyle.BgBlue), "Colored(""Hi"", FgRed, BgBlue)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Colored_DoesNotCheckThatTheStringsAreColours()
+        Expect.Begin
+        Expect.AreEqual "ab" & "cd" & Csi("0m"), mConsoleStyle.Colored("cd", "a", "b"), "Colored(""cd"", ""a"", ""b"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColoredRGB_ForegroundOnly()
+        Expect.Begin
+        Expect.AreEqual Csi("38;2;255;128;0m") & "Hi" & Csi("0m"), mConsoleStyle.ColoredRGB("Hi", 255, 128, 0), "ColoredRGB(""Hi"", 255, 128, 0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColoredRGB_WithBackground()
+        Expect.Begin
+        Expect.AreEqual Csi("38;2;255;128;0m") & Csi("48;2;0;0;64m") & "Hi" & Csi("0m"), mConsoleStyle.ColoredRGB("Hi", 255, 128, 0, 0, 0, 64), "ColoredRGB(""Hi"", 255, 128, 0, 0, 0, 64)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ColoredRGB_BackgroundNeedsAllThreeValues()
+        Expect.Begin
+        Expect.AreEqual Csi("38;2;1;2;3m") & "Hi" & Csi("0m"), mConsoleStyle.ColoredRGB("Hi", 1, 2, 3, 10, 20), "ColoredRGB(""Hi"", 1, 2, 3, 10, 20)"
+        Expect.AreEqual Csi("38;2;1;2;3m") & Csi("48;2;0;0;0m") & "Hi" & Csi("0m"), mConsoleStyle.ColoredRGB("Hi", 1, 2, 3, 0, 0, 0), "ColoredRGB(""Hi"", 1, 2, 3, 0, 0, 0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Characters_BoxDrawing()
+        Expect.Begin
+        Expect.AreEqual "2500", Code(mConsoleStyle.BOX_HORIZONTAL), "BOX_HORIZONTAL"
+        Expect.AreEqual "2502", Code(mConsoleStyle.BOX_VERTICAL), "BOX_VERTICAL"
+        Expect.AreEqual "250C", Code(mConsoleStyle.BOX_TOP_LEFT), "BOX_TOP_LEFT"
+        Expect.AreEqual "2510", Code(mConsoleStyle.BOX_TOP_RIGHT), "BOX_TOP_RIGHT"
+        Expect.AreEqual "2514", Code(mConsoleStyle.BOX_BOTTOM_LEFT), "BOX_BOTTOM_LEFT"
+        Expect.AreEqual "2518", Code(mConsoleStyle.BOX_BOTTOM_RIGHT), "BOX_BOTTOM_RIGHT"
+        Expect.AreEqual "251C", Code(mConsoleStyle.BOX_T_LEFT), "BOX_T_LEFT"
+        Expect.AreEqual "2524", Code(mConsoleStyle.BOX_T_RIGHT), "BOX_T_RIGHT"
+        Expect.AreEqual "252C", Code(mConsoleStyle.BOX_T_TOP), "BOX_T_TOP"
+        Expect.AreEqual "2534", Code(mConsoleStyle.BOX_T_BOTTOM), "BOX_T_BOTTOM"
+        Expect.AreEqual "253C", Code(mConsoleStyle.BOX_CROSS), "BOX_CROSS"
+        Expect.AreEqual "2550", Code(mConsoleStyle.BOX_D_HORIZONTAL), "BOX_D_HORIZONTAL"
+        Expect.AreEqual "2551", Code(mConsoleStyle.BOX_D_VERTICAL), "BOX_D_VERTICAL"
+        Expect.AreEqual "2554", Code(mConsoleStyle.BOX_D_TOP_LEFT), "BOX_D_TOP_LEFT"
+        Expect.AreEqual "2557", Code(mConsoleStyle.BOX_D_TOP_RIGHT), "BOX_D_TOP_RIGHT"
+        Expect.AreEqual "255A", Code(mConsoleStyle.BOX_D_BOTTOM_LEFT), "BOX_D_BOTTOM_LEFT"
+        Expect.AreEqual "255D", Code(mConsoleStyle.BOX_D_BOTTOM_RIGHT), "BOX_D_BOTTOM_RIGHT"
+        Expect.AreEqual "2560", Code(mConsoleStyle.BOX_D_T_LEFT), "BOX_D_T_LEFT"
+        Expect.AreEqual "2563", Code(mConsoleStyle.BOX_D_T_RIGHT), "BOX_D_T_RIGHT"
+        Expect.AreEqual "2566", Code(mConsoleStyle.BOX_D_T_TOP), "BOX_D_T_TOP"
+        Expect.AreEqual "2569", Code(mConsoleStyle.BOX_D_T_BOTTOM), "BOX_D_T_BOTTOM"
+        Expect.AreEqual "256C", Code(mConsoleStyle.BOX_D_CROSS), "BOX_D_CROSS"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Characters_BlocksProgressAndArrows()
+        Expect.Begin
+        Expect.AreEqual "2588", Code(mConsoleStyle.BLOCK_FULL), "BLOCK_FULL"
+        Expect.AreEqual "2580", Code(mConsoleStyle.BLOCK_UPPER_HALF), "BLOCK_UPPER_HALF"
+        Expect.AreEqual "2584", Code(mConsoleStyle.BLOCK_LOWER_HALF), "BLOCK_LOWER_HALF"
+        Expect.AreEqual "258C", Code(mConsoleStyle.BLOCK_LEFT_HALF), "BLOCK_LEFT_HALF"
+        Expect.AreEqual "2590", Code(mConsoleStyle.BLOCK_RIGHT_HALF), "BLOCK_RIGHT_HALF"
+        Expect.AreEqual "2591", Code(mConsoleStyle.BLOCK_LIGHT), "BLOCK_LIGHT"
+        Expect.AreEqual "2592", Code(mConsoleStyle.BLOCK_MEDIUM), "BLOCK_MEDIUM"
+        Expect.AreEqual "2593", Code(mConsoleStyle.BLOCK_DARK), "BLOCK_DARK"
+        Expect.AreEqual "2588", Code(mConsoleStyle.PROGRESS_FILLED), "PROGRESS_FILLED"
+        Expect.AreEqual "2591", Code(mConsoleStyle.PROGRESS_EMPTY), "PROGRESS_EMPTY"
+        Expect.AreEqual "2191", Code(mConsoleStyle.ARROW_UP), "ARROW_UP"
+        Expect.AreEqual "2193", Code(mConsoleStyle.ARROW_DOWN), "ARROW_DOWN"
+        Expect.AreEqual "2190", Code(mConsoleStyle.ARROW_LEFT), "ARROW_LEFT"
+        Expect.AreEqual "2192", Code(mConsoleStyle.ARROW_RIGHT), "ARROW_RIGHT"
+        Expect.AreEqual "2195", Code(mConsoleStyle.ARROW_UP_DOWN), "ARROW_UP_DOWN"
+        Expect.AreEqual "2194", Code(mConsoleStyle.ARROW_LEFT_RIGHT), "ARROW_LEFT_RIGHT"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Characters_Symbols()
+        Expect.Begin
+        Expect.AreEqual "2713", Code(mConsoleStyle.CHECK_MARK), "CHECK_MARK"
+        Expect.AreEqual "2717", Code(mConsoleStyle.CROSS_MARK), "CROSS_MARK"
+        Expect.AreEqual "2022", Code(mConsoleStyle.BULLET), "BULLET"
+        Expect.AreEqual "25C6", Code(mConsoleStyle.DIAMOND), "DIAMOND"
+        Expect.AreEqual "25CF", Code(mConsoleStyle.CIRCLE), "CIRCLE"
+        Expect.AreEqual "25CB", Code(mConsoleStyle.CIRCLE_EMPTY), "CIRCLE_EMPTY"
+        Expect.AreEqual "25A0", Code(mConsoleStyle.SQUARE), "SQUARE"
+        Expect.AreEqual "25A1", Code(mConsoleStyle.SQUARE_EMPTY), "SQUARE_EMPTY"
+        Expect.AreEqual "2605", Code(mConsoleStyle.STAR), "STAR"
+        Expect.AreEqual "2606", Code(mConsoleStyle.STAR_EMPTY), "STAR_EMPTY"
+        Expect.Done
+    End Sub
+
+    ' ---- the text helpers
+
+    [TestCase]
+    Public Sub CenterText_OddPaddingGivesTheExtraCharacterToTheRight()
+        Expect.Begin
+        Expect.AreEqual " ab  ", mConsoleStyle.CenterText("ab", 5), "CenterText(""ab"", 5)"
+        Expect.AreEqual "  ab  ", mConsoleStyle.CenterText("ab", 6), "CenterText(""ab"", 6)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CenterText_FillCharacterPads()
+        Expect.Begin
+        Expect.AreEqual "-ab--", mConsoleStyle.CenterText("ab", 5, "-"), "CenterText(""ab"", 5, ""-"")"
+        Expect.AreEqual "-ab--", mConsoleStyle.CenterText("ab", 5, "-+"), "CenterText(""ab"", 5, ""-+"") uses the first character of the fill"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CenterText_LongTextIsCutToTheWidth()
+        Expect.Begin
+        Expect.AreEqual "abc", mConsoleStyle.CenterText("abcdef", 3), "CenterText(""abcdef"", 3)"
+        Expect.AreEqual "abc", mConsoleStyle.CenterText("abc", 3), "CenterText(""abc"", 3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LeftAlign_PadsOnTheRightAndCutsLongText()
+        Expect.Begin
+        Expect.AreEqual "ab...", mConsoleStyle.LeftAlign("ab", 5, "."), "LeftAlign(""ab"", 5, ""."")"
+        Expect.AreEqual "ab   ", mConsoleStyle.LeftAlign("ab", 5), "LeftAlign(""ab"", 5)"
+        Expect.AreEqual "abc", mConsoleStyle.LeftAlign("abcdef", 3), "LeftAlign(""abcdef"", 3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RightAlign_PadsOnTheLeftAndCutsToTheFirstCharacters()
+        Expect.Begin
+        Expect.AreEqual "...ab", mConsoleStyle.RightAlign("ab", 5, "."), "RightAlign(""ab"", 5, ""."")"
+        Expect.AreEqual "   ab", mConsoleStyle.RightAlign("ab", 5), "RightAlign(""ab"", 5)"
+        Expect.AreEqual "abc", mConsoleStyle.RightAlign("abcdef", 3), "RightAlign(""abcdef"", 3) keeps the first characters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Truncate_ShortTextIsReturnedWhole()
+        Expect.Begin
+        Expect.AreEqual "abc", mConsoleStyle.Truncate("abc", 3), "Truncate(""abc"", 3)"
+        Expect.AreEqual "abc", mConsoleStyle.Truncate("abc", 10), "Truncate(""abc"", 10)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Truncate_LongTextGetsTheEllipsis()
+        Expect.Begin
+        Expect.AreEqual "abcd...", mConsoleStyle.Truncate("abcdefghij", 7), "Truncate(""abcdefghij"", 7)"
+        Expect.AreEqual "abcdef>", mConsoleStyle.Truncate("abcdefghij", 7, ">"), "Truncate(""abcdefghij"", 7, "">"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Truncate_WidthNotLargerThanTheEllipsis_ReturnsTheStartOfTheEllipsis()
+        Expect.Begin
+        Expect.AreEqual "..", mConsoleStyle.Truncate("abcdefghij", 2), "Truncate(""abcdefghij"", 2)"
+        Expect.AreEqual "...", mConsoleStyle.Truncate("abcdefghij", 3), "Truncate(""abcdefghij"", 3)"
+        Expect.AreEqual "", mConsoleStyle.Truncate("abcdefghij", 0), "Truncate(""abcdefghij"", 0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WordWrap_BreaksAtSpaces()
+        Expect.Begin
+        Expect.AreEqual "one two" & vbLf & "three" & vbLf & "four", mConsoleStyle.WordWrap("one two three four", 9), "WordWrap(""one two three four"", 9)"
+        Expect.AreEqual "one two three four", mConsoleStyle.WordWrap("one two three four", 40), "WordWrap(""one two three four"", 40)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WordWrap_LongWordIsNotBroken()
+        Expect.Begin
+        Expect.AreEqual "abcdefghijkl" & vbLf & "x", mConsoleStyle.WordWrap("abcdefghijkl x", 5), "WordWrap(""abcdefghijkl x"", 5)"
+        Expect.AreEqual "a" & vbLf & "abcdefghijkl" & vbLf & "b", mConsoleStyle.WordWrap("a abcdefghijkl b", 5), "WordWrap(""a abcdefghijkl b"", 5)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WordWrap_LineBreaksInsideTheTextBelongToTheWord()
+        Expect.Begin
+        Expect.AreEqual "a" & vbLf & "b" & vbLf & "c", mConsoleStyle.WordWrap("a" & vbLf & "b c", 3), "WordWrap(""a"" & vbLf & ""b c"", 3)"
+        Expect.AreEqual "a" & vbLf & "b c", mConsoleStyle.WordWrap("a" & vbLf & "b c", 10), "WordWrap(""a"" & vbLf & ""b c"", 10) keeps the line feed inside the word"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StripAnsi_RemovesColourAndStyleSequences()
+        Expect.Begin
+        Expect.AreEqual "Hello", mConsoleStyle.StripAnsi(mConsoleStyle.Colored("Hello", mConsoleStyle.FgRed)), "StripAnsi of Colored(""Hello"", FgRed)"
+        Expect.AreEqual "Hi there", mConsoleStyle.StripAnsi(mConsoleStyle.Bold & "Hi" & mConsoleStyle.Reset & " there"), "StripAnsi of Bold text"
+        Expect.AreEqual "ab", mConsoleStyle.StripAnsi(mConsoleStyle.CursorUp(2) & "a" & mConsoleStyle.ClearLine() & "b"), "StripAnsi of cursor and clear sequences that end in A and K"
+        Expect.AreEqual "plain", mConsoleStyle.StripAnsi("plain"), "StripAnsi of text with no sequence"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StripAnsi_SequenceEndingInAnotherLetter_KeepsTheTextAfterIt()
+        Expect.Begin
+        Expect.AreEqual "Hello", mConsoleStyle.StripAnsi(mConsoleStyle.CursorHide & "Hello"), "StripAnsi of CursorHide & ""Hello"""
+        Expect.AreEqual "xyz", mConsoleStyle.StripAnsi(mConsoleStyle.CursorSave & "xyz"), "StripAnsi of CursorSave & ""xyz"""
+        Expect.AreEqual "ok text", mConsoleStyle.StripAnsi(mConsoleStyle.SetTitle("t") & "ok text"), "StripAnsi of SetTitle(""t"") & ""ok text"""
+        Expect.AreEqual "line two", mConsoleStyle.StripAnsi(mConsoleStyle.CursorNextLine & "line two"), "StripAnsi of CursorNextLine & ""line two"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RepeatStr_OneCharacterIsRepeated()
+        Expect.Begin
+        Expect.AreEqual "xxx", mConsoleStyle.RepeatStr("x", 3), "RepeatStr(""x"", 3)"
+        Expect.AreEqual "", mConsoleStyle.RepeatStr("x", 0), "RepeatStr(""x"", 0)"
+        Expect.AreEqual "", mConsoleStyle.RepeatStr("x", -4), "RepeatStr(""x"", -4)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RepeatStr_LongerStringIsRepeatedWhole()
+        Expect.Begin
+        Expect.AreEqual "ababab", mConsoleStyle.RepeatStr("ab", 3), "RepeatStr(""ab"", 3)"
+        Expect.Done
+    End Sub
+
+End Module

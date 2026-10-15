@@ -1,0 +1,164 @@
+' JsonOptions: the presets, the predeclared object that is only a factory, and an object made with New.
+[TestFixture]
+Module OptionsTests
+
+    ' ---- the predeclared object is a factory
+
+    [TestCase]
+    Public Sub PredeclaredObject_Assignment_RaisesError5()
+        Expect.Begin
+        Helpers.Reset
+        On Error Resume Next
+        JsonOptions.Indent = 2
+        Dim n As Long = Err.Number
+        Dim s As String = Err.Source
+        Dim d As String = Err.Description
+        Err.Clear
+        On Error GoTo 0
+        Expect.AreEqual 5, n, "the error number of an assignment to JsonOptions.Indent"
+        Expect.AreEqual "JsonOptions", s, "the error source"
+        Expect.AreEqual "JsonOptions (default instance) is a factory. Use Rfc, Jsonc, Minified, or Pretty.", d, "the error description"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PredeclaredObject_Read_ReturnsTheEmptyValueOfTheType()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual 0, JsonOptions.Indent, "JsonOptions.Indent"
+        Expect.AreEqual 0, JsonOptions.MaxDepth, "JsonOptions.MaxDepth"
+        Expect.IsFalse JsonOptions.EscapesSolidus, "JsonOptions.EscapesSolidus"
+        Expect.AreEqual "", JsonOptions.Newline, "JsonOptions.Newline"
+        Expect.AreEqual 0, JsonOptions.Syntax, "JsonOptions.Syntax"
+        Expect.AreEqual 0, JsonOptions.MaxBytes, "JsonOptions.MaxBytes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Presets_HaveTheDocumentedDefaults()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual -1, JsonOptions.Minified.Indent, "Minified.Indent"
+        Expect.AreEqual 4, JsonOptions.Rfc.Indent, "Rfc.Indent"
+        Dim o As JsonOptions = JsonOptions.Minified
+        o.SortsKeys = True
+        Expect.AreEqual "{""a"":2,""b"":1}", Json.Serialize(Json.Map("b", 1, "a", 2), o), "Serialize with Minified and SortsKeys"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Rfc_HasTheDocumentedValues()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = JsonOptions.Rfc
+        Expect.AreEqual 4, o.Indent, "Indent"
+        Expect.AreEqual vbLf, o.Newline, "Newline"
+        Expect.IsTrue o.Syntax = jsRfc8259, "Syntax"
+        Expect.IsTrue o.Encoding = jekAuto, "Encoding"
+        Expect.IsFalse o.IncludesBom, "IncludesBom"
+        Expect.IsTrue o.DuplicateKeys = jdkError, "DuplicateKeys"
+        Expect.IsFalse o.SortsKeys, "SortsKeys"
+        Expect.IsFalse o.EscapesSolidus, "EscapesSolidus"
+        Expect.IsFalse o.EnsuresAscii, "EnsuresAscii"
+        Expect.IsFalse o.IsFormatAssertion, "IsFormatAssertion"
+        Expect.AreEqual 1000, o.MaxDepth, "MaxDepth"
+        Expect.AreEqual 16777216, o.MaxBytes, "MaxBytes"
+        Expect.AreEqual 1048576, o.MaxStringLength, "MaxStringLength"
+        Expect.AreEqual 1000000, o.MaxArrayItems, "MaxArrayItems"
+        Expect.AreEqual 1000000, o.MaxObjectMembers, "MaxObjectMembers"
+        Expect.IsFalse o Is JsonOptions.Rfc, "two calls of Rfc return the same object (they must not)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub JsoncMinifiedAndPretty_DifferFromRfcInOneProperty()
+        Expect.Begin
+        Helpers.Reset
+        Expect.IsTrue JsonOptions.Jsonc.Syntax = jsJsonc, "Jsonc.Syntax"
+        Expect.AreEqual 4, JsonOptions.Jsonc.Indent, "Jsonc.Indent"
+        Expect.AreEqual -1, JsonOptions.Minified.Indent, "Minified.Indent"
+        Expect.IsTrue JsonOptions.Minified.Syntax = jsRfc8259, "Minified.Syntax"
+        Expect.AreEqual 4, JsonOptions.Pretty.Indent, "Pretty.Indent"
+        Expect.AreEqual vbLf, JsonOptions.Pretty.Newline, "Pretty.Newline"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_IsIndependentOfTheOriginal()
+        Expect.Begin
+        Helpers.Reset
+        Dim a As JsonOptions = JsonOptions.Rfc
+        a.Indent = 2
+        Dim b As JsonOptions = a.Clone()
+        b.Indent = 8
+        Expect.AreEqual 2, a.Indent, "the original Indent"
+        Expect.AreEqual 8, b.Indent, "the copy's Indent"
+        Expect.AreEqual 4, JsonOptions.Rfc.Indent, "Indent of a new Rfc"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Limits_ZeroOrBelowMeansNoLimit()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = JsonOptions.Rfc
+        o.MaxDepth = -1
+        o.MaxArrayItems = 0
+        Dim v As Variant = Json.Parse(String$(1200, "[") & String$(1200, "]"), o)
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after Parse of 1200 nested arrays with MaxDepth -1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Options_AreNotChangedByACall()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = JsonOptions.Minified
+        o.MaxDepth = 5
+        Dim s As String = Json.Serialize(Json.Arr(1), o)
+        Expect.AreEqual -1, o.Indent, "Indent after the call"
+        Expect.AreEqual 5, o.MaxDepth, "MaxDepth after the call"
+        Expect.Done
+    End Sub
+
+    ' ---- an object made with New
+
+    [TestCase]
+    Public Sub New_Object_HasTheEmptyValueOfEachProperty()
+        Expect.Begin
+        Helpers.Reset
+        Dim jo As JsonOptions = New JsonOptions
+        Expect.AreEqual 0, jo.Indent, "Indent"
+        Expect.AreEqual "", jo.Newline, "Newline"
+        Expect.AreEqual 0, jo.Syntax, "Syntax"
+        Expect.AreEqual 0, jo.MaxDepth, "MaxDepth"
+        Expect.AreEqual 0, jo.MaxBytes, "MaxBytes"
+        Expect.AreEqual 0, jo.MaxStringLength, "MaxStringLength"
+        Expect.AreEqual 0, jo.MaxArrayItems, "MaxArrayItems"
+        Expect.AreEqual 0, jo.MaxObjectMembers, "MaxObjectMembers"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_Object_WritesNoLineBreaksButASpaceAfterEachColon()
+        Expect.Begin
+        Helpers.Reset
+        Dim jo As JsonOptions = New JsonOptions
+        Expect.AreEqual "{""a"": 1,""b"": [1,2]}", Json.Serialize(Json.Map("a", 1, "b", Json.Arr(1, 2)), jo), "Serialize with an object made with New"
+        jo.Indent = 2
+        jo.Newline = vbLf
+        Expect.AreEqual "{|  ""a"": 1|}", Replace(Json.Serialize(Json.Map("a", 1), jo), vbLf, "|"), "Serialize with Indent 2 and Newline vbLf"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_Object_HasNoLimits()
+        Expect.Begin
+        Helpers.Reset
+        Dim jo As JsonOptions = New JsonOptions
+        Dim v As Variant = Json.Parse("[[[[1]]]]", jo)
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after Parse of four nested arrays with an object made with New"
+        Expect.Done
+    End Sub
+
+End Module

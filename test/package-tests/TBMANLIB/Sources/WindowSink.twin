@@ -1,0 +1,34 @@
+' WindowSink: a cSubClass and the messages it reported, for the test cases.
+'
+' It records the last message and its arguments and the number of messages, and sets
+' CancelNextCall for the message number in CancelMsg.
+Class WindowSink
+
+    Private WithEvents Sub1 As cSubClass
+    Public Count As Long
+    Public LastMsg As Long
+    Public LastWParam As Long
+    Public LastLParam As Long
+    Public CancelMsg As Long
+
+    Public Property Get Hooker() As cSubClass
+        Set Hooker = Sub1
+    End Property
+
+    Public Sub Create()
+        Set Sub1 = New cSubClass
+    End Sub
+
+    Public Sub Release()
+        Set Sub1 = Nothing
+    End Sub
+
+    Private Sub Sub1_WindowProc(Msg As Long, wParam As Long, lParam As Long, CancelNextCall As Boolean)
+        Count = Count + 1
+        LastMsg = Msg
+        LastWParam = wParam
+        LastLParam = lParam
+        If CancelMsg <> 0 And Msg = CancelMsg Then CancelNextCall = True
+    End Sub
+
+End Class

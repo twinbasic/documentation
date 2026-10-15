@@ -20,6 +20,7 @@ Syntax: *object*.**NewDialogStyle** [ = *boolean* ]
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.ShowBrowseForFolder_OldStyleHasNoEditBox -->
 Only **ShowBrowseForFolder** uses the property. [**ShowOpen**](ShowOpen) and [**ShowSave**](ShowSave) ignore it.
 
 `BIF_USENEWUI` is the constant `BIF_NEWDIALOGSTYLE Or BIF_EDITBOX`. With **True**, the dialog is titled *Browse For Folder*, can be resized, and has an edit box, in which the user can type the path of a folder, and a *Make New Folder* button. It opens with the folder of the user's profile selected, whatever [**InitialDir**](InitialDir) holds. A path typed into the edit box and confirmed with *OK* is returned, and is stored in **InitialDir**.
@@ -27,6 +28,7 @@ Only **ShowBrowseForFolder** uses the property. [**ShowOpen**](ShowOpen) and [**
 With **False**, **ShowBrowseForFolder** sets only `BIF_RETURNONLYFSDIRS`, which it always sets, and the dialog has the old style: it is titled *Browse for Folder*, has no edit box and no *Make New Folder* button, selects *This PC* when it opens, and keeps *OK* disabled until the user selects a folder of the file system.
 
 The Windows documentation of `SHBrowseForFolder` requires COM to be initialised before the call, with apartment threading if the program calls `CoInitializeEx`, and says that the call fails when `BIF_NEWDIALOGSTYLE` is passed and COM is initialised as multithreaded.
+<!-- /test -->
 
 ## Example
 

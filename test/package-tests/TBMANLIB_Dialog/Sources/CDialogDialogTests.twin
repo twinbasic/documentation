@@ -1,0 +1,504 @@
+' cDialog: the Open, Save As and Browse For Folder dialogs, operated from the case with Pilot.
+' Every case works in the folder Fx.Work() and empties it before it ends.
+[TestFixture]
+Module CDialogDialogTests
+
+    ' ---- ShowOpen
+
+    [TestCase]
+    Public Sub ShowOpen_ReturnsTheFullPathAndStoresItInFileName()
+        Expect.Begin
+        Fx.Clean
+        Dim p As String = Fx.MakeFile("a.txt", "x")
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        Pilot.Arm "t=" & p & "|id=1"
+        Dim r As Variant = dlg.ShowOpen()
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "dialogs ShowOpen opened"
+        Expect.AreEqual p, r, "ShowOpen after a full path was typed"
+        Expect.AreEqual p, dlg.FileName, "FileName after a confirmed ShowOpen"
+        Expect.AreEqual Fx.Work(), dlg.InitialDir, "InitialDir after a confirmed ShowOpen"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowOpen_CancelReturnsAnEmptyStringAndKeepsFileName()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.FileName = "keep.txt"
+        Pilot.Arm "id=2"
+        Dim r As Variant = dlg.ShowOpen()
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "dialogs ShowOpen opened"
+        Expect.AreEqual "", r, "ShowOpen after Cancel"
+        Expect.AreEqual "keep.txt", dlg.FileName, "FileName after a cancelled ShowOpen"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowOpen_DialogTitleIsTheCaption()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        Pilot.Arm "id=2"
+        dlg.ShowOpen
+        Pilot.Disarm
+        Expect.AreEqual "Open", Pilot.Title(0), "caption of the Open dialog with an empty DialogTitle"
+        dlg.DialogTitle = "Choose the log"
+        Pilot.Arm "id=2"
+        dlg.ShowOpen
+        Pilot.Disarm
+        Expect.AreEqual "Choose the log", Pilot.Title(0), "caption of the Open dialog with a DialogTitle"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowOpen_FileNameIsPassedAsTheNextInitialName()
+        Expect.Begin
+        Fx.Clean
+        Dim p As String = Fx.MakeFile("a.txt", "x")
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        Pilot.Arm "t=" & p & "|id=1"
+        dlg.ShowOpen
+        Pilot.Disarm
+        dlg.InitialDir = ""
+        Pilot.Arm "id=1"
+        dlg.ShowOpen
+        Pilot.Disarm
+        Expect.AreEqual "a.txt", Pilot.EditText(0), "text in the File name box of the second ShowOpen"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowOpen_MultiSelectOfTwoFilesReturnsAnArray()
+        Expect.Begin
+        Fx.Clean
+        Fx.MakeFile "a.txt", "x"
+        Fx.MakeFile "b.txt", "x"
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.MultiSelect = True
+        Pilot.Arm "t=""a.txt"" ""b.txt""|id=1"
+        Dim r As Variant = dlg.ShowOpen()
+        Pilot.Disarm
+        Expect.IsTrue IsArray(r), "ShowOpen with MultiSelect and two files returns an array"
+        If IsArray(r) Then
+            Expect.AreEqual 0, LBound(r), "lower bound of the array"
+            Expect.AreEqual 1, UBound(r), "upper bound of the array"
+            Expect.AreEqual Fx.Work() & "\a.txt", r(0), "first path of the array"
+            Expect.AreEqual Fx.Work() & "\b.txt", r(1), "second path of the array"
+        End If
+        Expect.AreEqual "", dlg.FileName, "FileName after a MultiSelect of two files"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowOpen_MultiSelectOfOneFileReturnsAString()
+        Expect.Begin
+        Fx.Clean
+        Fx.MakeFile "a.txt", "x"
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.MultiSelect = True
+        Pilot.Arm "t=a.txt|id=1"
+        Dim r As Variant = dlg.ShowOpen()
+        Pilot.Disarm
+        Expect.IsFalse IsArray(r), "ShowOpen with MultiSelect and one file returns an array"
+        Expect.AreEqual Fx.Work() & "\a.txt", r, "ShowOpen with MultiSelect and one file"
+        Expect.AreEqual Fx.Work() & "\a.txt", dlg.FileName, "FileName after a MultiSelect of one file"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectFiles_ReturnsACollectionInBothCases()
+        Expect.Begin
+        Fx.Clean
+        Fx.MakeFile "a.txt", "x"
+        Fx.MakeFile "b.txt", "x"
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.MultiSelect = True
+        Pilot.Arm "t=""a.txt"" ""b.txt""|id=1"
+        Dim c As Collection = dlg.SelectFiles()
+        Pilot.Disarm
+        Expect.AreEqual 2, c.Count, "files SelectFiles returned for two files"
+        If c.Count = 2 Then Expect.AreEqual Fx.Work() & "\b.txt", c(2), "second path of SelectFiles"
+        Pilot.Arm "id=2"
+        Set c = dlg.SelectFiles()
+        Pilot.Disarm
+        Expect.IsFalse c Is Nothing, "SelectFiles after Cancel is Nothing"
+        Expect.AreEqual 0, c.Count, "files SelectFiles returned after Cancel"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowOpen_FilterFillsTheFileTypeList()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.SetImageFilters
+        Pilot.Arm "id=2"
+        dlg.ShowOpen
+        Pilot.Disarm
+        Expect.IsTrue InStr(Pilot.ComboItems(0), "|Bitmap Files (*.bmp)|JPEG Files (*.jpg;*.jpeg)|PNG Files (*.png)|GIF Files (*.gif)|All Image Files (*.bmp;*.jpg;*.jpeg;*.png;*.gif)|All Files (*.*)|") > 0, "file types in the Open dialog after SetImageFilters: " & Pilot.ComboItems(0)
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowOpen_FileMustExistRefusesAMissingName()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        Pilot.Arm "t=nosuch.txt|id=1|wait=10|id=2;id=1"
+        Dim r As Variant = dlg.ShowOpen()
+        Pilot.Disarm
+        Expect.AreEqual 2, Pilot.WindowsSeen, "windows opened (the dialog and a message box)"
+        Expect.AreEqual "", r, "ShowOpen with FileMustExist and a name that does not exist"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowOpen_WithoutFileMustExistReturnsAMissingName()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.FileMustExist = False
+        Pilot.Arm "t=nosuch.txt|id=1"
+        Dim r As Variant = dlg.ShowOpen()
+        Pilot.Disarm
+        Expect.AreEqual Fx.Work() & "\nosuch.txt", r, "ShowOpen with FileMustExist False and a name that does not exist"
+        Expect.IsFalse Fx.Exists(Fx.Work() & "\nosuch.txt"), "the file ShowOpen returned was created"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowOpen_CreatePromptAsksBeforeAcceptingAMissingName()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.CreatePrompt = True
+        Pilot.Arm "t=nosuch.txt|id=1;td=6"
+        Dim r As Variant = dlg.ShowOpen()
+        Pilot.Disarm
+        Expect.AreEqual 2, Pilot.WindowsSeen, "windows opened (the dialog and a question)"
+        Expect.AreEqual Fx.Work() & "\nosuch.txt", r, "ShowOpen after Yes to the question"
+        Expect.IsFalse Fx.Exists(Fx.Work() & "\nosuch.txt"), "the file the question was about was created"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowOpen_PathMustExistRefusesAMissingFolder()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.FileMustExist = False
+        Pilot.Arm "t=" & Fx.Work() & "\nofolder\x.txt|id=1|wait=10|id=2;id=1"
+        Dim r As Variant = dlg.ShowOpen()
+        Pilot.Disarm
+        Expect.AreEqual 2, Pilot.WindowsSeen, "windows opened (the dialog and a message box)"
+        Expect.AreEqual "", r, "ShowOpen with PathMustExist and a folder that does not exist"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowOpen_NoChangeDirKeepsTheCurrentFolder()
+        Expect.Begin
+        Fx.Clean
+        Fx.MakeSub "sub"
+        Dim p As String = Fx.MakeFile("sub\c.txt", "x")
+        Dim old As String = Fx.CurDirApi()
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work() & "\sub"
+        Fx.SetCurDirApi Fx.Work()
+        dlg.NoChangeDir = True
+        Pilot.Arm "t=" & p & "|id=1"
+        dlg.ShowOpen
+        Pilot.Disarm
+        Dim kept As String = Fx.CurDirApi()
+        dlg.NoChangeDir = False
+        Pilot.Arm "t=" & p & "|id=1"
+        dlg.ShowOpen
+        Pilot.Disarm
+        Dim moved As String = Fx.CurDirApi()
+        Fx.SetCurDirApi old
+        Expect.AreEqual Fx.Work(), kept, "current folder after ShowOpen with NoChangeDir True"
+        Expect.AreEqual Fx.Work() & "\sub", moved, "current folder after ShowOpen with NoChangeDir False"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    ' ---- SelectAndOpenFile, on files that do not exist so that no program starts
+
+    [TestCase]
+    Public Sub SelectAndOpenFile_CancelReturnsZero()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        Pilot.Arm "id=2"
+        Dim r As Variant = dlg.SelectAndOpenFile()
+        Pilot.Disarm
+        Expect.AreEqual 0, CLng(r), "SelectAndOpenFile after Cancel"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectAndOpenFile_OneMissingFileReturnsWhatOpenFileReturned()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.FileMustExist = False
+        Pilot.Arm "t=nosuch.txt|id=1"
+        Dim r As Variant = dlg.SelectAndOpenFile()
+        Pilot.Disarm
+        Expect.AreEqual 2, CLng(r), "SelectAndOpenFile of a file that does not exist"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectAndOpenFile_SeveralMissingFilesReturnOne()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.FileMustExist = False
+        dlg.MultiSelect = True
+        Pilot.Arm "t=""no1.txt"" ""no2.txt""|id=1"
+        Dim r As Variant = dlg.SelectAndOpenFile()
+        Pilot.Disarm
+        Expect.AreEqual 1, CLng(r), "SelectAndOpenFile of two files that do not exist"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    ' ---- ShowSave
+
+    [TestCase]
+    Public Sub ShowSave_DialogTitleAndDefaultCaption()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        Pilot.Arm "id=2"
+        dlg.ShowSave
+        Pilot.Disarm
+        Expect.AreEqual "Save As", Pilot.Title(0), "caption of the Save As dialog with an empty DialogTitle"
+        dlg.DialogTitle = "Save the report"
+        Pilot.Arm "id=2"
+        dlg.ShowSave
+        Pilot.Disarm
+        Expect.AreEqual "Save the report", Pilot.Title(0), "caption of the Save As dialog with a DialogTitle"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowSave_FileNameIsShownInTheNameBox()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.FileName = "x.txt"
+        Pilot.Arm "id=2"
+        dlg.ShowSave
+        Pilot.Disarm
+        Expect.AreEqual "x.txt", Pilot.EditText(0), "text in the File name box of ShowSave"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowSave_DefaultExtIsAddedToANameTypedWithoutOne()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.DefaultExt = "txt"
+        Pilot.Arm "t=out|id=1"
+        Dim r As String = dlg.ShowSave()
+        Pilot.Disarm
+        Expect.AreEqual Fx.Work() & "\out.txt", r, "ShowSave with DefaultExt txt and the name out"
+        Expect.AreEqual Fx.Work() & "\out.txt", dlg.FileName, "FileName after that ShowSave"
+        dlg.FileName = ""
+        Pilot.Arm "t=out.dat|id=1"
+        r = dlg.ShowSave()
+        Pilot.Disarm
+        Expect.AreEqual Fx.Work() & "\out.dat", r, "ShowSave with DefaultExt txt and the name out.dat"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowSave_DefaultExtWithAPeriodGivesTwoPeriods()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.DefaultExt = ".txt"
+        Pilot.Arm "t=out|id=1"
+        Dim r As String = dlg.ShowSave()
+        Pilot.Disarm
+        Expect.AreEqual Fx.Work() & "\out..txt", r, "ShowSave with DefaultExt .txt and the name out"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowSave_NoDefaultExtAddsNothing()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        Pilot.Arm "t=out|id=1"
+        Dim r As String = dlg.ShowSave()
+        Pilot.Disarm
+        Expect.AreEqual Fx.Work() & "\out", r, "ShowSave with no DefaultExt and the name out"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowSave_OverwritePromptAsksBeforeReplacing()
+        Expect.Begin
+        Fx.Clean
+        Dim p As String = Fx.MakeFile("e.txt", "x")
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        Pilot.Arm "t=e.txt|id=1;td=6"
+        Dim r As String = dlg.ShowSave()
+        Pilot.Disarm
+        Expect.AreEqual 2, Pilot.WindowsSeen, "windows opened (the dialog and a question)"
+        Expect.IsTrue InStr(Pilot.Title(1), "Confirm Save As") > 0, "title of the question: " & Pilot.Title(1)
+        Expect.AreEqual p, r, "ShowSave after Yes to the question"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowSave_NoToTheQuestionLeavesTheDialogOpen()
+        Expect.Begin
+        Fx.Clean
+        Fx.MakeFile "e.txt", "x"
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        Pilot.Arm "t=e.txt|id=1|wait=12|id=2;td=7"
+        Dim r As String = dlg.ShowSave()
+        Pilot.Disarm
+        Expect.AreEqual 2, Pilot.WindowsSeen, "windows opened (the dialog and a question)"
+        Expect.AreEqual "", r, "ShowSave after No to the question and then Cancel"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowSave_WithoutOverwritePromptReturnsAnExistingName()
+        Expect.Begin
+        Fx.Clean
+        Dim p As String = Fx.MakeFile("e.txt", "x")
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        dlg.OverwritePrompt = False
+        Pilot.Arm "t=e.txt|id=1"
+        Dim r As String = dlg.ShowSave()
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "windows opened"
+        Expect.AreEqual p, r, "ShowSave with OverwritePrompt False and an existing name"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowSave_DoesNotCreateTheFile()
+        Expect.Begin
+        Fx.Clean
+        Dim dlg As New cDialog
+        dlg.InitialDir = Fx.Work()
+        Pilot.Arm "t=new.txt|id=1"
+        Dim r As String = dlg.ShowSave()
+        Pilot.Disarm
+        Expect.AreEqual Fx.Work() & "\new.txt", r, "ShowSave after a new name was typed"
+        Expect.IsFalse Fx.Exists(r), "the file ShowSave returned was created"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    ' ---- ShowBrowseForFolder
+
+    [TestCase]
+    Public Sub ShowBrowseForFolder_ReturnsTheTypedFolderAndStoresItInInitialDir()
+        Expect.Begin
+        Fx.Clean
+        Fx.MakeSub "pick"
+        Dim dlg As New cDialog
+        dlg.DialogTitle = "Choose the backup folder"
+        dlg.InitialDir = "C:\Not\Used"
+        Pilot.Arm "t=" & Fx.Work() & "\pick|id=1"
+        Dim r As String = dlg.ShowBrowseForFolder()
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "dialogs ShowBrowseForFolder opened"
+        Expect.AreEqual Fx.Work() & "\pick", r, "ShowBrowseForFolder after a folder was typed"
+        Expect.AreEqual Fx.Work() & "\pick", dlg.InitialDir, "InitialDir after a confirmed ShowBrowseForFolder"
+        Expect.AreEqual "Browse For Folder", Pilot.Title(0), "caption of the new-style dialog"
+        Expect.IsTrue InStr(Pilot.Statics(0), "Choose the backup folder") > 0, "DialogTitle shown as a line of text: " & Pilot.Statics(0)
+        Expect.AreEqual "", dlg.FileName, "FileName after ShowBrowseForFolder"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowBrowseForFolder_CancelReturnsAnEmptyStringAndKeepsInitialDir()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.InitialDir = "C:\Keep"
+        Pilot.Arm "id=2"
+        Dim r As String = dlg.ShowBrowseForFolder()
+        Pilot.Disarm
+        Expect.AreEqual "", r, "ShowBrowseForFolder after Cancel"
+        Expect.AreEqual "C:\Keep", dlg.InitialDir, "InitialDir after a cancelled ShowBrowseForFolder"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowBrowseForFolder_OldStyleHasNoEditBox()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.NewDialogStyle = False
+        Pilot.Arm "id=2"
+        dlg.ShowBrowseForFolder
+        Pilot.Disarm
+        Expect.AreEqual "Browse for Folder", Pilot.Title(0), "caption of the old-style dialog"
+        Expect.AreEqual 0, Pilot.EditCount(0), "edit boxes of the old-style dialog"
+        Dim dlg2 As New cDialog
+        Pilot.Arm "id=2"
+        dlg2.ShowBrowseForFolder
+        Pilot.Disarm
+        Expect.IsTrue Pilot.EditCount(0) > 0, "edit boxes of the new-style dialog"
+        Expect.Done
+    End Sub
+
+End Module

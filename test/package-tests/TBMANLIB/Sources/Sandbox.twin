@@ -1,0 +1,120 @@
+' Sandbox: the folder the test cases of TBMANLIB write files in.
+'
+' Every file and folder a case makes is under %TEMP%\tbdocs-package-tests\TBMANLIB\. A case asks for
+' a fresh folder of its own (Fresh), which empties it first in case an earlier run left something,
+' and removes it at its end (Remove).
+Module Sandbox
+
+    Public Function Root() As String
+        Root = Environ$("TEMP") & "\tbdocs-package-tests\TBMANLIB"
+    End Function
+
+    ' A new, empty folder for one case.
+    Public Function Fresh(ByVal Tag As String) As String
+        Dim p As String
+        p = Root() & "\" & Tag
+        Remove p
+        On Error Resume Next
+        MkDir Environ$("TEMP") & "\tbdocs-package-tests"
+        MkDir Root()
+        MkDir p
+        Err.Clear
+        Fresh = p
+    End Function
+
+    ' Removes a folder with everything in it, and then the sandbox itself when nothing else is in
+    ' it. Raises no error.
+    Public Sub Remove(ByVal Path As String)
+        On Error Resume Next
+        CreateObject("Scripting.FileSystemObject").DeleteFolder Path, True
+        RmDir Root()
+        RmDir Environ$("TEMP") & "\tbdocs-package-tests"
+        Err.Clear
+    End Sub
+
+    ' The bytes of a file, or an empty array when it cannot be read.
+    Public Function BytesOf(ByVal Path As String) As Byte()
+        Dim b() As Byte, n As Long
+        On Error Resume Next
+        n = FileLen(Path)
+        If Err.Number = 0 And n > 0 Then
+            ReDim b(0 To n - 1)
+            Dim f As Long
+            f = FreeFile
+            Open Path For Binary Access Read As #f
+            Get #f, , b
+            Close #f
+        End If
+        Err.Clear
+        BytesOf = b
+    End Function
+
+    ' The bytes of a file as hexadecimal pairs separated by spaces, "" for an empty file.
+    Public Function HexOf(ByVal Path As String) As String
+        Dim b() As Byte, i As Long, s As String
+        b = BytesOf(Path)
+        On Error Resume Next
+        For i = 0 To UBound(b)
+            If Err.Number <> 0 Then Exit For
+            If Len(s) > 0 Then s = s & " "
+            s = s & Right$("0" & Hex$(b(i)), 2)
+        Next i
+        Err.Clear
+        HexOf = s
+    End Function
+
+    ' Writes bytes to a file with no byte order mark and nothing added.
+    Public Sub WriteBytes(ByVal Path As String, ByRef Data() As Byte)
+        Dim f As Long
+        f = FreeFile
+        Open Path For Binary Access Write As #f
+        Put #f, , Data
+        Close #f
+    End Sub
+
+    ' Writes a string of single-byte characters to a file as they are.
+    Public Sub WriteAscii(ByVal Path As String, ByVal Text As String)
+        Dim b() As Byte, i As Long
+        If Len(Text) = 0 Then Exit Sub
+        ReDim b(0 To Len(Text) - 1)
+        For i = 1 To Len(Text)
+            b(i - 1) = AscW(Mid$(Text, i, 1)) And &HFF
+        Next i
+        WriteBytes Path, b
+    End Sub
+
+    ' The content of a file as a string of one character for each byte.
+    Public Function AsciiOf(ByVal Path As String) As String
+        Dim b() As Byte, i As Long, s As String
+        b = BytesOf(Path)
+        On Error Resume Next
+        For i = 0 To UBound(b)
+            If Err.Number <> 0 Then Exit For
+            s = s & ChrW(b(i))
+        Next i
+        Err.Clear
+        AsciiOf = s
+    End Function
+
+    ' The hexadecimal pairs of a byte array, separated by spaces.
+    Public Function HexOfBytes(ByRef b() As Byte) As String
+        Dim i As Long, s As String
+        On Error Resume Next
+        For i = LBound(b) To UBound(b)
+            If Err.Number <> 0 Then Exit For
+            If Len(s) > 0 Then s = s & " "
+            s = s & Right$("0" & Hex$(b(i)), 2)
+        Next i
+        Err.Clear
+        HexOfBytes = s
+    End Function
+
+    ' Closes the shared stream of the package, which the text calls leave open, so that one case
+    ' does not meet the state the case before it left.
+    Public Sub ResetSharedStream()
+        On Error Resume Next
+        ToolsStream.Inst.Close
+        Err.Clear
+    End Sub
+
+End Module

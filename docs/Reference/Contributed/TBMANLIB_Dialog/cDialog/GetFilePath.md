@@ -20,6 +20,7 @@ Syntax: *object*.**GetFilePath** ( *strFullPath* ) **As String**
 
 ## Remarks
 
+<!-- test: CDialogPropertyTests.GetFilePath_ReturnsThePartBeforeTheLastBackslash -->
 **GetFilePath** returns the folder of a file path, without a trailing backslash: the folder of `C:\Docs\summary.txt` is `C:\Docs`, and that of a file in the root of a drive is `C:`, without the backslash.
 
 - Only the backslash separates folders. A forward slash is an ordinary character, so a path written with forward slashes is returned unchanged.
@@ -27,6 +28,7 @@ Syntax: *object*.**GetFilePath** ( *strFullPath* ) **As String**
 - A string that ends with a backslash loses it: `C:\Docs\` gives `C:\Docs`. A string that starts with its only backslash gives an empty string.
 
 The method works on text only. It does not check that the folder exists, and it reads no property of the object.
+<!-- /test -->
 
 ## Example
 

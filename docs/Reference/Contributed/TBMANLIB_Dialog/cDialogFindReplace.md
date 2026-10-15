@@ -10,9 +10,11 @@ has_toc: false
 
 A **cDialogFindReplace** shows the Windows Find dialog or the Find and Replace dialog. The dialog is modeless: [**ShowFind**](#showfind) and [**ShowReplace**](#showreplace) return at once, and the dialog stays open beside the program's own window. The class holds the text, the options and the last action of the user as properties, and builds the line of text that describes the search.
 
+<!-- test: probe c43, probe c44, probe c46, probe c48 -->
 > [!WARNING] 1.1.0.0
 > The program never learns what the user did in the dialog. [**ShowFind**](#showfind) and [**ShowReplace**](#showreplace) keep the structure that Windows works on in a local variable, which no longer exists when the method returns, although Windows keeps its address for as long as the dialog is open. The owner window then receives no message for **Find Next**, **Replace**, **Replace All** or **Cancel**, [**LastAction**](#lastaction) stays **None**, and [**hWnd**](#hwnd) and [**IsVisible**](#isvisible) still show a dialog after it was closed. In a 32-bit program, **ShowReplace** can also end the program with an access violation while the dialog is open, before anything is pressed, because Windows reads memory that has been reused. See [How the dialog reports](#how-the-dialog-reports). A program that needs the dialog calls `FindTextW` or `ReplaceTextW` itself and keeps the `FINDREPLACE` structure in a module-level variable.
 
+<!-- test: CDialogFindReplaceTests.MessageId_IsTheRegisteredMessageOfTheDialogs, CDialogFindReplaceTests.UpdateFromFlags_SetsTheOptionsAndTheAction, CDialogFindReplaceTests.UpdateFromFlags_DialogTermWinsOverTheOtherActions, CDialogFindReplaceTests.UpdateFromFlags_EmptiesBothTextsWhenNoDialogHasFilledTheBuffers -->
 **Properties:** [**AllowMatchCase**](#allowmatchcase), [**AllowUpDown**](#allowupdown), [**AllowWholeWord**](#allowwholeword), [**Direction**](#direction), [**FindWhat**](#findwhat), [**hWnd**](#hwnd), [**LastAction**](#lastaction), [**LastError**](#lasterror), [**MatchCase**](#matchcase), [**MessageId**](#messageid), [**Mode**](#mode), [**OwnerHwnd**](#ownerhwnd), [**ReplaceWith**](#replacewith), [**WholeWord**](#wholeword).
 **Methods:** [**IsVisible**](#isvisible), [**Reset**](#reset), [**ShowFind**](#showfind), [**ShowReplace**](#showreplace), [**ToDescription**](#todescription), [**UpdateFromFlags**](#updatefromflags).
 **Enumerations:** [**DialogMode**](#dialogmode), [**FindAction**](#findaction), [**SearchDirection**](#searchdirection).
@@ -64,12 +66,18 @@ Public Sub FrHandleFindMessage(ByVal dlg As cDialogFindReplace, ByVal lParam As 
 End Sub
 ```
 
+<!-- /test -->
+
+<!-- test: CDialogFindReplaceTests.FindTextW_WithAModuleLevelStructureDeliversTheMessages, probe c47 -->
 ### The structure the class keeps in a local variable
 
 Each of [**ShowFind**](#showfind) and [**ShowReplace**](#showreplace) declares its `FINDREPLACE` as a local variable and passes it to `FindTextW` or `ReplaceTextW`. Windows does not copy it: it keeps the pointer for the whole life of the dialog and reads and writes the structure each time the user presses a button. When the method returns, the memory belongs to whatever uses the stack next. In a 32-bit and in a 64-bit program alike, the dialog opens, accepts text and closes, and the owner window gets no message at all, so a program that waits for [**LastAction**](#lastaction) never leaves the wait.
 
 The fault is in the code of the class and not in Windows: the same call made with the structure in a module-level variable delivers a message for **Find Next** and one for **Cancel**, with the typed text in the buffer.
 
+<!-- /test -->
+
+<!-- test: CDialogFindReplaceTests.Defaults_AreThoseOfThePage, CDialogFindReplaceTests.ToDescription_NamesTheSearch, CDialogFindReplaceTests.Reset_RestoresTheSearchSettings, CDialogFindReplaceTests.ShowFind_WithoutAnOwnerReturnsFalseWithLastErrorFFFF, CDialogFindReplaceTests.ShowFind_FindWhatOf300CharactersRaisesError5, CDialogFindReplaceTests.ShowReplace_ReplaceWithOf300CharactersRaisesError5 -->
 ## Properties
 
 ### AllowMatchCase
@@ -444,9 +452,13 @@ Debug.Print dlg.Direction = SearchDirection.Up
 ' True
 ```
 
+<!-- /test -->
+
 ## Enumerations
 
+<!-- test: compile FindActionQualifiedByTheClass, CDialogFindReplaceTests.Enumerations_HaveTheDocumentedValues -->
 The enumerations are declared inside the class. A program names their members with the name of the enumeration in front, as in the samples, such as `FindAction.FindNext`. The name of the class cannot be put in front: `cDialogFindReplace.FindAction.FindNext` is refused with TB5079, *Unrecognized symbol 'cDialogFindReplace'*.
+<!-- /test -->
 
 ### DialogMode
 {: .no_toc }

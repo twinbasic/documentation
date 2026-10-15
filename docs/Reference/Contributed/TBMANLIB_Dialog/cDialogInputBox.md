@@ -30,6 +30,7 @@ Else
 End If
 ```
 
+<!-- test: CDialogInputBoxTests.ShowDialog_ShowsTheTitleThePromptTheHintAndTheLength, CDialogInputBoxTests.ShowDialog_NamesALengthWithOnlyAMinimumOrOnlyAMaximum, CDialogInputBoxTests.ShowDialog_OKStoresTheValue, CDialogInputBoxTests.ShowDialog_CancelEmptiesTheValueAndSetsCancelled, CDialogInputBoxTests.ShowDialog_AnEmptyEntryPassesWhenEmptyIsAllowed, CDialogInputBoxTests.ShowDialog_ARefusedEntryAsksAgainWithTheDefaultValue, CDialogInputBoxTests.ShowDialog_ThreeRefusedEntriesEndWithMaximumAttemptsAndKeepTheValue -->
 ## How the box works
 
 The text of the box is [**Prompt**](#prompt), followed by a blank line and `(Hint: ` and [**Placeholder**](#placeholder) and `)` when a placeholder is set, followed by a blank line and a line on the length when [**MinLength**](#minlength) or [**MaxLength**](#maxlength) is above 0: `Length: 3 to 8 characters`, `Length: At least 3 characters` or `Length: Maximum 8 characters`. The edit box holds [**DefaultValue**](#defaultvalue).
@@ -43,9 +44,13 @@ The text of the box is [**Prompt**](#prompt), followed by a blank line and `(Hin
 
 An empty string passes when [**AllowEmpty**](#allowempty) is **True** (the default) and no [**MinLength**](#minlength) is set. The result of the call does not tell the user's cancelling apart from a refusal; both give **False** and [**Cancelled**](#cancelled) **True**. The two differ only in [**Value**](#value).
 
+<!-- /test -->
+
+<!-- test: CDialogInputBoxTests.PasswordChar_MasksTheEntry, CDialogInputBoxTests.Multiline_GivesAMultilineEditBox, CDialogInputBoxTests.OwnerHwnd_OwnsTheBox, CDialogInputBoxTests.ValidateInput_CustomChecksTheTextAgainstThePattern -->
 > [!WARNING] 1.1.0.0
 > The properties [**Multiline**](#multiline), [**PasswordChar**](#passwordchar), [**OwnerHwnd**](#ownerhwnd) and [**CustomPattern**](#custompattern) are stored but not used. The box is always a single line, it shows what is typed without masking it, it has no owner window and the owner stays usable while it is open, and the value **Custom** of [**Validation**](#validation) accepts any text that is not empty. A program that sets [**PasswordChar**](#passwordchar) to hide a secret shows the secret on the screen. [**cDialogPassword**](cDialogPassword) masks its entry.
 
+<!-- test: CDialogInputBoxTests.Defaults_AreThoseOfThePage, CDialogInputBoxTests.Reset_RestoresTheStartingValues, CDialogInputBoxTests.ValidateInput_MinLengthComesFirstAndCoversTheEmptyText, CDialogInputBoxTests.ValidateInput_MaxLength, CDialogInputBoxTests.ValidateInput_AllowEmpty, CDialogInputBoxTests.ValidateInput_NumericAndInteger, CDialogInputBoxTests.ValidateInput_AlphaAndAlphaNumeric, CDialogInputBoxTests.ValidateInput_Email, CDialogInputBoxTests.ValidateInput_PhoneAndURL, CDialogInputBoxTests.ValidateInput_AnEmptyTextPassesTheRulesFromNumericToURL, CDialogInputBoxTests.ValidateInput_ChangesNothingInTheObject, CDialogInputBoxTests.GetValueAsNumber_OfAnEmptyValueIsZero, CDialogInputBoxTests.GetValueAsInteger_RoundsTheValue, CDialogInputBoxTests.ShowInteger_ReturnsALongAndAcceptsExponents -->
 ## Properties
 
 ### AllowEmpty
@@ -423,6 +428,9 @@ Syntax: *object*.**ShowInteger** ( *prompt* [ , *title* [ , *defaultValue* ] ] )
 
 Sets the three properties that correspond to the arguments, [**Validation**](#validation) (**Integer**) and [**AllowEmpty**](#allowempty) (**False**), calls [**ShowDialog**](#showdialog) and returns [**Value**](#value) as a **Long**. A cancelled box returns 0, which is also a possible entry, so test [**Cancelled**](#cancelled). The text `1e3` passes and returns 1000.
 
+<!-- /test -->
+
+<!-- test: CDialogInputBoxTests.ShowInteger_AValueThatDoesNotFitALongRaisesOverflowAndKeepsTheText -->
 > [!NOTE] 1.1.0.0
 > A text that passes the check but that a **Long** cannot hold, such as `99999999999`, raises error 6 after the box has closed. [**Value**](#value) then holds the text.
 
@@ -434,6 +442,7 @@ copies = box.ShowInteger("How many copies?", "Print", "1")
 If Not box.Cancelled Then Debug.Print copies & " copies"
 ```
 
+<!-- test: CDialogInputBoxTests.Enumerations_HaveTheDocumentedValues, CDialogInputBoxTests.ShowNumeric_ReturnsADouble, CDialogInputBoxTests.ShowEmail_Phone_URL_SetThePlaceholderAndTheDefault, CDialogInputBoxTests.ShowSimple_ReturnsTheTextAndSetsTheRules, CDialogInputBoxTests.ShowSimple_KeepsThePlaceholderOfAnEarlierCall -->
 ### ShowNumeric
 {: .no_toc }
 
@@ -618,6 +627,8 @@ Else
     Debug.Print "No order"
 End If
 ```
+
+<!-- /test -->
 
 ## See Also
 

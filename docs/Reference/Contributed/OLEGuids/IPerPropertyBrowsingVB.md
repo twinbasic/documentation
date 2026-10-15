@@ -10,7 +10,9 @@ has_toc: false
 
 Visual Basic-style versions of three **IPerPropertyBrowsing** methods, which a class can implement.
 
+<!-- test: ImplementTests.IPerPropertyBrowsingVB_AnswersToItsIdentifier -->
 **IPerPropertyBrowsingVB** is not a Windows interface. It has the interface identifier `D5D3BBE3-DB60-4522-AF5B-D767FE736DDB` and extends **stdole.IDispatch**. It is not declared `[OleAutomation(False)]`, as the package's Windows interfaces are. Its three methods have the dispatch identifiers 1, 2 and 3 (`[DispId(1)]`, `[DispId(2)]` and `[DispId(3)]`).
+<!-- /test -->
 
 It exists because [**IPerPropertyBrowsing**](IPerPropertyBrowsing) has `[PreserveSig]` members, which a twinBASIC class cannot implement. Each method here is a **Sub** that corresponds to one of that interface's methods, and uses Visual Basic types in place of pointers: a **String** for a `BSTR*`, and arrays of **String** and **Long** for the counted arrays. **MapPropertyToPage** has no counterpart.
 

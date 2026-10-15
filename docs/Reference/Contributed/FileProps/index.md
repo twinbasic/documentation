@@ -32,3 +32,7 @@ The **FileProps** contributed package provides access to Windows shell file prop
 - [FilePropertyExplorer](FilePropertyExplorer/) -- a predeclared factory class that opens a file and returns a FileProperties collection of its Windows shell properties
   - [BrowseAndOpenFile](FilePropertyExplorer/BrowseAndOpenFile) -- displays a file-open dialog and returns a FileProperties collection for the selected file
   - [OpenFile](FilePropertyExplorer/OpenFile) -- opens a file by path and returns a FileProperties collection of its shell properties
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [FileProps-tests.twinproj](FileProps-tests.twinproj), a twinBASIC project. It uses FileProps as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

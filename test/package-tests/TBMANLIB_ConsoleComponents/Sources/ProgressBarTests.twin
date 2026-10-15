@@ -1,0 +1,406 @@
+' TBMANLIB_ConsoleComponents: cProgressBar, on the compiled copy of its code (see TwoPackagesTests).
+[TestFixture]
+Module ProgressBarTests
+
+    Private Const FULL As Long = &H2588&
+    Private Const LIGHT As Long = &H2591&
+
+    ' The number of cells of a row, from a column, that hold a character.
+    Private Function CountOf(ByVal Buf As cConsoleBuffer, ByVal Row As Long, ByVal FromCol As Long, ByVal Count As Long, ByVal CodePoint As Long) As Long
+        Dim n As Long
+        Dim x As Long
+        For x = FromCol To FromCol + Count - 1
+            If Cells.Code(Buf, x, Row) = CodePoint Then n = n + 1
+        Next
+        CountOf = n
+    End Function
+
+    ' ---- Render
+
+    [TestCase]
+    Public Sub Render_DrawsTheFilledPartInGreenAndTheEmptyPartInDarkGray()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        bar.Render 0, 0, 10, 50
+        Expect.AreEqual "2588 2588 2588 2588 2588 2591 2591 2591 2591 2591", Cells.Codes(con.Buffer, 0, 0, 10), "characters of a bar of 10 cells at 50 percent"
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 4, 0), "colour of the last filled cell"
+        Expect.AreEqual CLng(ConsoleColor.DarkGray), Cells.Fore(con.Buffer, 5, 0), "colour of the first empty cell"
+        Expect.AreEqual CLng(ConsoleColor.Black), Cells.Back(con.Buffer, 4, 0), "background of a filled cell"
+        Expect.AreEqual CLng(ConsoleColor.Black), Cells.Back(con.Buffer, 5, 0), "background of an empty cell"
+        Expect.AreEqual 32, Cells.Code(con.Buffer, 10, 0), "the cell after the bar"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_FilledCellsAreRoundedHalfToEven()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        bar.Render 0, 0, 4, 12.5
+        bar.Render 0, 1, 4, 37.5
+        bar.Render 0, 2, 4, 62.5
+        bar.Render 0, 3, 4, 87.5
+        Expect.AreEqual 0, CountOf(con.Buffer, 0, 0, 4, FULL), "filled cells of 12.5 percent of 4 (0.5)"
+        Expect.AreEqual 2, CountOf(con.Buffer, 1, 0, 4, FULL), "filled cells of 37.5 percent of 4 (1.5)"
+        Expect.AreEqual 2, CountOf(con.Buffer, 2, 0, 4, FULL), "filled cells of 62.5 percent of 4 (2.5)"
+        Expect.AreEqual 4, CountOf(con.Buffer, 3, 0, 4, FULL), "filled cells of 87.5 percent of 4 (3.5)"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_FilledAndEmptyPartsTogetherAreExactlyTheWidth()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        Dim p As Variant
+        Dim row As Long
+        For Each p In Array(0, 1, 33, 66.6, 99, 100)
+            bar.Render 0, row, 17, CDbl(p)
+            Expect.AreEqual 17, CountOf(con.Buffer, row, 0, 17, FULL) + CountOf(con.Buffer, row, 0, 17, LIGHT), "cells of the bar at " & p & " percent"
+            Expect.AreEqual 32, Cells.Code(con.Buffer, 17, row), "the cell after the bar at " & p & " percent"
+            row = row + 1
+        Next
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_PercentOutsideTheRange_IsTakenAsTheNearestEnd()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        bar.Render 0, 0, 10, -20
+        bar.Render 0, 1, 10, 300
+        Expect.AreEqual 0, CountOf(con.Buffer, 0, 0, 10, FULL), "filled cells at -20 percent"
+        Expect.AreEqual 10, CountOf(con.Buffer, 1, 0, 10, FULL), "filled cells at 300 percent"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_WidthOfZeroOrLess_DrawsNothing()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        On Error Resume Next
+        bar.Render 0, 0, 0, 50
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render with a width of 0"
+        bar.Render 0, 1, -3, 50
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render with a width of -3"
+        On Error GoTo 0
+        Expect.AreEqual "....................", Cells.Picture(con.Buffer, 0, 0, 20, 1), "row 0"
+        Expect.AreEqual "....................", Cells.Picture(con.Buffer, 0, 1, 20, 1), "row 1"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_UsesTheFirstCharacterOfTheStrings_AndTheColoursGiven()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        bar.Render 2, 0, 6, 50, "AB", "CD", ConsoleColor.Red, ConsoleColor.Blue
+        Expect.AreEqual "..AAACCC", Cells.Picture(con.Buffer, 0, 0, 8, 1), "cells of a bar of 6 cells at 50 percent with the strings AB and CD"
+        Expect.AreEqual CLng(ConsoleColor.Red), Cells.Fore(con.Buffer, 2, 0), "colour of a filled cell"
+        Expect.AreEqual CLng(ConsoleColor.Blue), Cells.Fore(con.Buffer, 5, 0), "colour of an empty cell"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_EmptyString_RaisesError5()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        On Error Resume Next
+        bar.Render 0, 0, 10, 50, ""
+        Expect.AreEqual 5, Err.Number, "Err.Number of Render with an empty filledChar"
+        Err.Clear
+        bar.Render 0, 0, 10, 50, "#", ""
+        Expect.AreEqual 5, Err.Number, "Err.Number of Render with an empty emptyChar"
+        On Error GoTo 0
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_CellsOutsideTheBuffer_AreDropped()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 10)
+        Dim bar As cProgressBar = New cProgressBar(con)
+        On Error Resume Next
+        bar.Render 35, 0, 10, 100
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render across the right edge"
+        bar.Render 0, 12, 10, 100
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render below the bottom edge"
+        On Error GoTo 0
+        Expect.AreEqual 5, CountOf(con.Buffer, 0, 35, 5, FULL), "filled cells that lie in the buffer"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_DoesNotClearTheCellsAroundTheBar()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        con.Buffer.WriteAt 0, 0, "abcdefghijklmnopqrstuvwxyz"
+        bar.Render 5, 0, 4, 100
+        Expect.AreEqual "abcde" & ChrW$(FULL) & ChrW$(FULL) & ChrW$(FULL) & ChrW$(FULL) & "jklmn", Cells.Text(con.Buffer, 0, 0, 14), "row 0 after a bar over the text"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_ThenRefresh_ShowsTheBarOnTheScreenBuffer()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        bar.Render 3, 2, 6, 50
+        Expect.AreEqual String$(6, " "), Rig.TextAt(Rig.OutHandle, 3, 2, 6), "screen text before Refresh"
+        con.Refresh
+        Expect.AreEqual String$(3, ChrW$(FULL)) & String$(3, ChrW$(LIGHT)), Rig.TextAt(Rig.OutHandle, 3, 2, 6), "screen text after Refresh"
+        Expect.AreEqual &HA&, Rig.AttrAt(Rig.OutHandle, 3, 2), "screen attribute of a filled cell (green on black)"
+        Expect.AreEqual &H8&, Rig.AttrAt(Rig.OutHandle, 6, 2), "screen attribute of an empty cell (dark grey on black)"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- the buffer a bar keeps
+
+    [TestCase]
+    Public Sub Render_BarMadeBeforeFullScreenMode_RaisesError91()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(100, 30, False)
+        Dim bar As cProgressBar = New cProgressBar(con)
+        con.EnterFullScreenMode
+        On Error Resume Next
+        bar.Render 0, 0, 10, 50
+        Expect.AreEqual 91, Err.Number, "Err.Number of Render of a bar made before EnterFullScreenMode"
+        On Error GoTo 0
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_AfterFullScreenModeWasLeftAndEnteredAgain_DrawsIntoTheOldBuffer()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        con.ExitFullScreenMode
+        con.EnterFullScreenMode
+        bar.Render 0, 0, 10, 100
+        Expect.AreEqual 0, CountOf(con.Buffer, 0, 0, 10, FULL), "filled cells in the new buffer of the console"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- RenderVertical
+
+    [TestCase]
+    Public Sub RenderVertical_FilledPartGrowsFromTheBottom()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        bar.RenderVertical 4, 1, 6, 50
+        Expect.AreEqual "-|-|-|#|#|#", Cells.Picture(con.Buffer, 4, 1, 1, 6), "cells of a vertical bar of 6 cells at 50 percent, from row 1 down"
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 4, 6), "colour of the bottom cell"
+        Expect.AreEqual CLng(ConsoleColor.DarkGray), Cells.Fore(con.Buffer, 4, 1), "colour of the top cell"
+        Expect.AreEqual 32, Cells.Code(con.Buffer, 4, 7), "the cell under the bar"
+        Expect.AreEqual 32, Cells.Code(con.Buffer, 4, 0), "the cell above the bar"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderVertical_FilledCellsAreRoundedHalfToEven_AndPercentIsLimited()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        bar.RenderVertical 0, 0, 4, 12.5
+        bar.RenderVertical 1, 0, 4, 37.5
+        bar.RenderVertical 2, 0, 4, -10
+        bar.RenderVertical 3, 0, 4, 400
+        Dim x As Long
+        Dim n(0 To 3) As Long
+        Dim y As Long
+        For x = 0 To 3
+            For y = 0 To 3
+                If Cells.Code(con.Buffer, x, y) = FULL Then n(x) = n(x) + 1
+            Next
+        Next
+        Expect.AreEqual "0 2 0 4", n(0) & " " & n(1) & " " & n(2) & " " & n(3), "filled cells of 12.5, 37.5, -10 and 400 percent of 4 cells"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- the colours
+
+    [TestCase]
+    Public Sub GetProgressColor_ThresholdsAre50And80_AndTheValueIsNotLimited()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(100, 30, False)
+        Dim bar As cProgressBar = New cProgressBar(con)
+        Expect.AreEqual CLng(ConsoleColor.Green), CLng(bar.GetProgressColor(49.9)), "GetProgressColor of 49.9"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(bar.GetProgressColor(50)), "GetProgressColor of 50"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(bar.GetProgressColor(79.9)), "GetProgressColor of 79.9"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(bar.GetProgressColor(80)), "GetProgressColor of 80"
+        Expect.AreEqual CLng(ConsoleColor.Green), CLng(bar.GetProgressColor(-40)), "GetProgressColor of -40"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(bar.GetProgressColor(900)), "GetProgressColor of 900"
+        Expect.AreEqual CLng(ConsoleColor.Blue), CLng(bar.GetProgressColor(10, ConsoleColor.Blue, ConsoleColor.Cyan, ConsoleColor.White)), "low colour given"
+        Expect.AreEqual CLng(ConsoleColor.Cyan), CLng(bar.GetProgressColor(60, ConsoleColor.Blue, ConsoleColor.Cyan, ConsoleColor.White)), "mid colour given"
+        Expect.AreEqual CLng(ConsoleColor.White), CLng(bar.GetProgressColor(90, ConsoleColor.Blue, ConsoleColor.Cyan, ConsoleColor.White)), "high colour given"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderWithAutoColor_FilledColourFollowsThePercent_AndTheParametersAreInTheDocumentedOrder()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        bar.RenderWithAutoColor 0, 0, 10, 30
+        bar.RenderWithAutoColor 0, 1, 10, 60
+        bar.RenderWithAutoColor 0, 2, 10, 90
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 0, 0), "filled colour at 30 percent"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), Cells.Fore(con.Buffer, 0, 1), "filled colour at 60 percent"
+        Expect.AreEqual CLng(ConsoleColor.Red), Cells.Fore(con.Buffer, 0, 2), "filled colour at 90 percent"
+        Expect.AreEqual CLng(ConsoleColor.DarkGray), Cells.Fore(con.Buffer, 9, 0), "empty colour by default"
+        bar.RenderWithAutoColor 0, 3, 10, 60, "#", "-", ConsoleColor.Magenta, ConsoleColor.Blue, ConsoleColor.Cyan, ConsoleColor.White
+        Expect.AreEqual "######----", Cells.Picture(con.Buffer, 0, 3, 10, 1), "cells with the characters given"
+        Expect.AreEqual CLng(ConsoleColor.Cyan), Cells.Fore(con.Buffer, 0, 3), "filled colour at 60 percent with midColor Cyan"
+        Expect.AreEqual CLng(ConsoleColor.Magenta), Cells.Fore(con.Buffer, 9, 3), "empty colour given as the 7th argument"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- RenderWithBrackets
+
+    [TestCase]
+    Public Sub RenderWithBrackets_DrawsTheBarBetweenSquareBrackets()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        bar.RenderWithBrackets 2, 0, 12, 50
+        Expect.AreEqual "[#####-----]", Cells.Picture(con.Buffer, 2, 0, 12, 1), "cells of a bracketed bar of width 12 at 50 percent"
+        Expect.AreEqual CLng(ConsoleColor.Gray), Cells.Fore(con.Buffer, 2, 0), "colour of the opening bracket"
+        Expect.AreEqual CLng(ConsoleColor.Gray), Cells.Fore(con.Buffer, 13, 0), "colour of the closing bracket"
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 3, 0), "colour of the filled part"
+        bar.RenderWithBrackets 2, 1, 12, 50, "#", "-", ConsoleColor.Red, ConsoleColor.Blue, ConsoleColor.Yellow
+        Expect.AreEqual CLng(ConsoleColor.Yellow), Cells.Fore(con.Buffer, 2, 1), "bracket colour given"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderWithBrackets_DrawsThePercentage()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        bar.RenderWithBrackets 0, 0, 12, 50
+        Expect.IsTrue InStr(Cells.Text(con.Buffer, 0), "50%") > 0, "row 0 after RenderWithBrackets at 50 percent holds the text 50%"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- RenderWithLabel
+
+    [TestCase]
+    Public Sub RenderWithLabel_DrawsTheLabel_TheBar_AndThePercentage()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        bar.RenderWithLabel 0, 0, 30, 50, "Copy"
+        Expect.AreEqual "Copy ", Cells.Text(con.Buffer, 0, 0, 5), "the label and the space after it"
+        Expect.AreEqual 10, CountOf(con.Buffer, 0, 5, 21, FULL), "filled cells of the bar of 21 cells at 50 percent"
+        Expect.AreEqual 11, CountOf(con.Buffer, 0, 5, 21, LIGHT), "empty cells of the bar"
+        Expect.AreEqual " 50%", Cells.Text(con.Buffer, 0, 26, 4), "the space and the percentage"
+        Expect.AreEqual CLng(ConsoleColor.Gray), Cells.Fore(con.Buffer, 0, 0), "colour of the label"
+        Expect.AreEqual CLng(ConsoleColor.Gray), Cells.Fore(con.Buffer, 27, 0), "colour of the percentage"
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 5, 0), "colour of the bar"
+        bar.RenderWithLabel 0, 1, 30, 50, "Copy", "#", "-", ConsoleColor.Red, ConsoleColor.Blue, ConsoleColor.Yellow
+        Expect.AreEqual CLng(ConsoleColor.Yellow), Cells.Fore(con.Buffer, 0, 1), "label colour given"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), Cells.Fore(con.Buffer, 27, 1), "label colour of the percentage"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderWithLabel_BarIsOneCellNarrowerAtTenAndHundredPercent()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        Dim row As Long
+        Dim p As Variant
+        Dim widths As String
+        For Each p In Array(9, 10, 99, 100)
+            bar.RenderWithLabel 0, row, 20, CDbl(p), "ab"
+            widths = widths & (CountOf(con.Buffer, row, 0, 20, FULL) + CountOf(con.Buffer, row, 0, 20, LIGHT)) & " "
+            row = row + 1
+        Next
+        Expect.AreEqual "14 13 13 12 ", widths, "cells of the bar at 9, 10, 99 and 100 percent in a row of 20 cells with the label ab"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderWithLabel_BarNarrowerThanThreeCells_DrawsOnlyTheLabelAndThePercentage()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim bar As cProgressBar = New cProgressBar(con)
+        bar.RenderWithLabel 0, 0, 11, 50, "Disk", "#", "-", ConsoleColor.Red, ConsoleColor.Blue, ConsoleColor.Yellow
+        Expect.AreEqual "Disk 50%", Cells.Text(con.Buffer, 0, 0, 8), "row 0 for a bar of 2 cells"
+        Expect.AreEqual 32, Cells.Code(con.Buffer, 8, 0), "the cell after the percentage"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), Cells.Fore(con.Buffer, 5, 0), "colour of the percentage"
+        bar.RenderWithLabel 0, 1, 12, 50, "Disk"
+        Expect.AreEqual 3, CountOf(con.Buffer, 1, 0, 12, FULL) + CountOf(con.Buffer, 1, 0, 12, LIGHT), "cells of a bar of 3 cells"
+        Set bar = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+End Module

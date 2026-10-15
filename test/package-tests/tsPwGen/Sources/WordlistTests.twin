@@ -1,0 +1,412 @@
+' tsPwGen: wordlist mode and the built-in word lists. A passphrase is WordCount words, drawn from the
+' built-in list or from CustomWords and joined with WordSeparator; BuiltInWord and BuiltInWordCount
+' read the two lists of 8192 words.
+[TestFixture]
+Module WordlistTests
+
+    ' A recipe for a passphrase of Count words from the custom list w1, w2, ... of Size words.
+    Private Function Phrase(ByVal Size As Long, ByVal Count As Long) As PwGenOptions
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        o.CustomWords = Helpers.WordList(Size)
+        o.WordCount = Count
+        Return o
+    End Function
+
+    [TestCase]
+    Public Sub BuiltInWordCount_BothListsHave8192Words()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual 8192, PwGen.BuiltInWordCount(pgwEnglish), "BuiltInWordCount(pgwEnglish)"
+        Helpers.ExpectNoError "BuiltInWordCount(pgwEnglish)"
+        Expect.AreEqual 8192, PwGen.BuiltInWordCount(pgwGerman), "BuiltInWordCount(pgwGerman)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuiltInWordCount_NotAList_InvalidWordlist()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual 0, PwGen.BuiltInWordCount(99), "BuiltInWordCount(99)"
+        Helpers.ExpectError "BuiltInWordCount(99)", "InvalidWordlist", "Wordlist is not a known built-in list.", "PwGen.BuiltInWordCount"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuiltInWord_FirstAndLastWordsOfBothLists()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual "abandon", PwGen.BuiltInWord(pgwEnglish, 0), "BuiltInWord(pgwEnglish, 0)"
+        Expect.AreEqual "zurich", PwGen.BuiltInWord(pgwEnglish, 8191), "BuiltInWord(pgwEnglish, 8191)"
+        Expect.AreEqual "aal", PwGen.BuiltInWord(pgwGerman, 0), "BuiltInWord(pgwGerman, 0)"
+        Expect.AreEqual "zypresse", PwGen.BuiltInWord(pgwGerman, 8191), "BuiltInWord(pgwGerman, 8191)"
+        Helpers.ExpectNoError "BuiltInWord of valid indexes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuiltInWord_IndexOutsideTheList_IndexOutOfRange()
+        Expect.Begin
+        Helpers.Reset
+        Dim index As Variant
+        For Each index In Array(-1, 8192, 100000)
+            Expect.AreEqual "", PwGen.BuiltInWord(pgwEnglish, index), "BuiltInWord(pgwEnglish, " & index & ")"
+            Helpers.ExpectError "BuiltInWord index " & index, "IndexOutOfRange", "word index is outside the list.", "PwGen.BuiltInWord"
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuiltInWord_NotAList_InvalidWordlist()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual "", PwGen.BuiltInWord(99, 0), "BuiltInWord(99, 0)"
+        Helpers.ExpectError "BuiltInWord(99, 0)", "InvalidWordlist", "Wordlist is not a known built-in list.", "PwGen.BuiltInWord"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BuiltInLists_NoWordTwiceAndOnlyLettersAToZ()
+        Expect.Begin
+        Helpers.Reset
+        CheckList pgwEnglish, "English"
+        CheckList pgwGerman, "German"
+        Expect.Done
+    End Sub
+
+    ' Checks that a built-in list has 8192 words, none twice, each of the letters a to z only.
+    Private Sub CheckList(ByVal List As PwGen.ePwGenWordlist, ByVal Name As String)
+        Dim words() As String = PwGenWords.List(List, "test")
+        Expect.AreEqual 8191, UBound(words), "last index of the " & Name & " list"
+        Dim seen As New Collection
+        Dim i As Long
+        Dim twice As Long
+        Dim notLetters As Long
+        Dim w As String
+        On Error Resume Next
+        For i = 0 To UBound(words)
+            w = words(i)
+            If Not Helpers.AllFrom(w, Helpers.LowerChars) Or Len(w) = 0 Then notLetters = notLetters + 1
+            Err.Clear
+            seen.Add w, w
+            If Err.Number <> 0 Then twice = twice + 1
+        Next
+        On Error GoTo 0
+        Expect.AreEqual 0, twice, "words that appear twice in the " & Name & " list"
+        Expect.AreEqual 0, notLetters, "words of the " & Name & " list that are empty or have a character other than a to z"
+    End Sub
+
+    [TestCase]
+    Public Sub Passphrase_GermanList()
+        Expect.Begin
+        Helpers.Reset
+        Dim german As Collection = Helpers.WordSet(pgwGerman)
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        o.Wordlist = pgwGerman
+        Dim i As Long
+        Dim j As Long
+        Dim bad As Long
+        For i = 1 To 40
+            Dim parts() As String = Split(PwGen.Generate(o), "-")
+            If UBound(parts) <> 4 Then
+                bad = bad + 1
+            Else
+                For j = 0 To 4
+                    If Not Helpers.IsMember(german, parts(j)) Then bad = bad + 1
+                Next
+            End If
+        Next
+        Expect.AreEqual 0, bad, "passphrases out of 40 that are not five German words joined by hyphens"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WordCount_Limits()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        o.WordCount = 256
+        Expect.AreEqual 255, UBound(Split(PwGen.Generate(o), "-")), "separators in a passphrase of WordCount 256"
+        Helpers.ExpectNoError "WordCount 256"
+        o.WordCount = 1
+        Expect.AreEqual 0, UBound(Split(PwGen.Generate(o), "-")), "separators in a passphrase of WordCount 1"
+        Dim bad As Variant
+        For Each bad In Array(0, -1, 257)
+            o.WordCount = bad
+            Expect.AreEqual "", PwGen.Generate(o), "Generate with WordCount " & bad
+            Helpers.ExpectError "WordCount " & bad, "InvalidWordCount", "WordCount must be between 1 and 256.", "PwGen.Generate"
+        Next
+        Expect.AreEqual 0#, PwGen.Entropy(o), "Entropy with WordCount 257"
+        Helpers.ExpectError "Entropy with WordCount 257", "InvalidWordCount", "WordCount must be between 1 and 256.", "PwGen.Entropy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Wordlist_NotAMember_InvalidWordlist()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        o.Wordlist = 5
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with Wordlist 5"
+        Helpers.ExpectError "Wordlist 5", "InvalidWordlist", "Wordlist is not a known built-in list.", "PwGen.Generate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Separator_AnyStringIncludingAnEmptyOne()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Phrase(3, 3)
+        o.HasUniqueWords = True
+        o.WordSeparator = " :: "
+        Dim parts() As String = Split(PwGen.Generate(o), " :: ")
+        Expect.AreEqual 2, UBound(parts), "separators in a passphrase of 3 words with the separator "" :: """
+        o.WordSeparator = ""
+        Dim pw As String = PwGen.Generate(o)
+        Expect.AreEqual 6, Len(pw), "Len of three of the words w1 to w3 joined with an empty separator"
+        Expect.IsTrue Helpers.AllFrom(pw, "w123"), "characters of a passphrase joined with an empty separator"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Capitalize_TheFirstCharacterOfEachWordIsUppercase()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        o.Capitalize = True
+        Dim english As Collection = Helpers.WordSet(pgwEnglish)
+        Dim i As Long
+        Dim j As Long
+        Dim bad As Long
+        For i = 1 To 40
+            Dim parts() As String = Split(PwGen.Generate(o), "-")
+            For j = 0 To UBound(parts)
+                Dim lowered As String = LCase$(Left$(parts(j), 1)) & Mid$(parts(j), 2)
+                If Left$(parts(j), 1) <> UCase$(Left$(parts(j), 1)) Or Not Helpers.IsMember(english, lowered) Then bad = bad + 1
+            Next
+        Next
+        Expect.AreEqual 0, bad, "words out of 200 whose first character is not uppercase or whose rest differs from a word of the list"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UniqueWords_NoWordTwice()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Phrase(12, 12)
+        o.HasUniqueWords = True
+        Dim i As Long
+        Dim j As Long
+        Dim bad As Long
+        For i = 1 To Helpers.Draws
+            Dim parts() As String = Split(PwGen.Generate(o), "-")
+            Dim seen As String = "-"
+            For j = 0 To UBound(parts)
+                If InStr(seen, "-" & parts(j) & "-") > 0 Then bad = bad + 1
+                seen = seen & parts(j) & "-"
+            Next
+            If UBound(parts) <> 11 Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "words out of " & Helpers.Draws & " passphrases that repeat a word, or passphrases that are not 12 words, from a list of 12 with HasUniqueWords"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UniqueWords_False_WordsCanRepeat()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Phrase(2, 12)
+        Dim repeated As Long
+        Dim i As Long
+        For i = 1 To 20
+            Dim parts() As String = Split(PwGen.Generate(o), "-")
+            If parts(0) = parts(1) Or parts(1) = parts(2) Or parts(2) = parts(3) Then repeated = repeated + 1
+        Next
+        Expect.IsTrue repeated > 0, "passphrases of 12 words from a list of 2 with a repeated word, out of 20"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UniqueWords_MoreWordsThanTheList_NotEnoughWords()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Phrase(2, 3)
+        o.HasUniqueWords = True
+        Expect.AreEqual "", PwGen.Generate(o), "Generate of 3 different words from a list of 2"
+        Helpers.ExpectError "3 different words from 2", "NotEnoughWords", "WordCount is larger than the word list.", "PwGen.Generate"
+        Expect.AreEqual 0#, PwGen.Entropy(o), "Entropy of 3 different words from a list of 2"
+        Helpers.ExpectError "Entropy of 3 different words from 2", "NotEnoughWords", "WordCount is larger than the word list.", "PwGen.Entropy"
+        o.HasUniqueWords = False
+        Expect.AreEqual 2, UBound(Split(PwGen.Generate(o), "-")), "separators in 3 words from a list of 2 without HasUniqueWords"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomWords_ReplaceTheBuiltInList()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Phrase(5, 8)
+        Dim all As String = "-"
+        Dim i As Long
+        For i = 1 To 20
+            all = all & PwGen.Generate(o) & "-"
+        Next
+        Dim parts() As String = Split(all, "-")
+        Dim bad As Long
+        For i = 1 To UBound(parts) - 1
+            If InStr("-w1-w2-w3-w4-w5-", "-" & parts(i) & "-") = 0 Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "words that are not w1 to w5 in passphrases from the custom list w1 to w5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomWords_OneWordRepeats()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        Dim words(0 To 0) As String
+        words(0) = "tango"
+        o.CustomWords = words
+        o.WordCount = 3
+        o.WordSeparator = "+"
+        o.Capitalize = True
+        Expect.AreEqual "Tango+Tango+Tango", PwGen.Generate(o), "Generate of 3 words from the custom list tango with the separator + and Capitalize"
+        Helpers.ExpectNear 0, PwGen.Entropy(o), "Entropy of a custom list of one word"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomWords_AnyLowerBound()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        Dim words(5 To 7) As String
+        words(5) = "red"
+        words(6) = "green"
+        words(7) = "blue"
+        o.CustomWords = words
+        o.WordCount = 3
+        o.HasUniqueWords = True
+        Dim copy() As String = o.CustomWords
+        Expect.AreEqual 0, LBound(copy), "LBound of CustomWords read back"
+        Expect.AreEqual 2, UBound(copy), "UBound of CustomWords read back"
+        Expect.AreEqual "red", copy(0), "first word read back"
+        Expect.AreEqual "blue", copy(2), "last word read back"
+        Dim parts() As String = Split(PwGen.Generate(o), "-")
+        Expect.AreEqual 2, UBound(parts), "separators in a passphrase from three custom words"
+        Expect.IsTrue InStr("-red-green-blue-", "-" & parts(0) & "-") > 0 And InStr("-red-green-blue-", "-" & parts(1) & "-") > 0 And InStr("-red-green-blue-", "-" & parts(2) & "-") > 0, "words of the passphrase from the custom list of 3 with lower bound 5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomWords_AreCopiedWhenAssignedAndWhenRead()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        Dim words() As String = Helpers.WordList(3)
+        o.CustomWords = words
+        words(0) = "changed"
+        Dim back() As String = o.CustomWords
+        Expect.AreEqual "w1", back(0), "first word read back after the assigned array was changed"
+        back(1) = "changed"
+        Dim again() As String = o.CustomWords
+        Expect.AreEqual "w2", again(1), "second word read back after the array that was read was changed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomWords_EmptyArray_BuiltInListAgain()
+        Expect.Begin
+        Helpers.Reset
+        Dim english As Collection = Helpers.WordSet(pgwEnglish)
+        Dim o As PwGenOptions = Phrase(3, 5)
+        Dim none() As String
+        o.CustomWords = none
+        Dim parts() As String = Split(PwGen.Generate(o), "-")
+        Dim j As Long
+        Dim bad As Long
+        For j = 0 To UBound(parts)
+            If Not Helpers.IsMember(english, parts(j)) Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "words that are not in the English list after CustomWords was assigned an unallocated array"
+        Dim o2 As PwGenOptions = Phrase(3, 5)
+        Dim blank() As String = Split("", ",")
+        o2.CustomWords = blank
+        Helpers.ExpectNear 5 * 13, PwGen.Entropy(o2), "Entropy after CustomWords was assigned an empty array"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomWords_EmptyWord_EmptyWord()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Phrase(3, 3)
+        Dim words() As String = Helpers.WordList(3)
+        words(1) = ""
+        o.CustomWords = words
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with an empty word in CustomWords"
+        Helpers.ExpectError "empty word", "EmptyWord", "CustomWords contains an empty string.", "PwGen.Generate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomWords_EqualWords_DuplicateWord()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Phrase(3, 3)
+        Dim words() As String = Helpers.WordList(3)
+        words(2) = "w1"
+        o.CustomWords = words
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with the word w1 twice in CustomWords"
+        Helpers.ExpectError "duplicate word", "DuplicateWord", "CustomWords contains a duplicate word.", "PwGen.Generate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomWords_WordsThatDifferInCaseAreDifferent()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        Dim words(0 To 1) As String
+        words(0) = "alpha"
+        words(1) = "Alpha"
+        o.CustomWords = words
+        o.WordCount = 2
+        o.HasUniqueWords = True
+        Dim pw As String = PwGen.Generate(o)
+        Helpers.ExpectNoError "alpha and Alpha in CustomWords"
+        Expect.IsTrue pw = "alpha-Alpha" Or pw = "Alpha-alpha", "the two words alpha and Alpha, each once, are the passphrase"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WordlistMode_DoesNotReadTheRandomModeProperties()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Passphrase
+        o.Length = 0
+        o.MinPerClass = -1
+        o.HasUpperCase = False
+        o.HasLowerCase = False
+        o.HasDigits = False
+        Expect.AreEqual 4, UBound(Split(PwGen.Generate(o), "-")), "separators in a passphrase when the random-mode properties cannot be used"
+        Helpers.ExpectNoError "wordlist mode with random-mode properties that cannot be used"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Draws_BoundsAreZeroToTheWordsLeftMinusOne()
+        Expect.Begin
+        Helpers.Reset
+        Dim rec As New RecordingRandom
+        Dim o As PwGenOptions = Phrase(10, 4)
+        o.HasUniqueWords = True
+        Set o.RandomSource = rec
+        PwGen.Generate o
+        Expect.AreEqual 4, rec.Calls, "calls of the random source for 4 words"
+        Expect.AreEqual 0, rec.HighestLower, "highest lower bound of the draws of words"
+        Expect.AreEqual 0, rec.Reversed, "draws whose lower bound is above the upper bound"
+        Expect.Done
+    End Sub
+
+End Module

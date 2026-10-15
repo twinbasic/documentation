@@ -1,0 +1,95 @@
+' Fmt: the StringValidation module, five public functions that the formatter uses. The package
+' declares the module with Option Private Module, and a project that references the package can
+' still call its functions.
+[TestFixture]
+Module StringValidationTests
+
+    [TestCase]
+    Public Sub Functions_CanBeCalledDespiteOptionPrivateModule()
+        Expect.Begin
+        Expect.IsTrue StringContains("Hello", "ELL"), "StringContains(""Hello"", ""ELL"")"
+        Expect.IsTrue StringValidation.StringContains("Hello", "ELL"), "StringValidation.StringContains(""Hello"", ""ELL"")"
+        Expect.IsTrue StringContainsAny("Hello", False, "x", "L"), "StringContainsAny(""Hello"", False, ""x"", ""L"")"
+        Expect.IsTrue StringMatchesAny("b", "a", "b", "c"), "StringMatchesAny(""b"", ""a"", ""b"", ""c"")"
+        Expect.IsTrue StringStartsWith("He", "Hello"), "StringStartsWith(""He"", ""Hello"")"
+        Expect.AreEqual "WORLD", CopyCapitalisation("HELLO", "world"), "CopyCapitalisation(""HELLO"", ""world"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringContains_IgnoresCaseUnlessAsked()
+        Expect.Begin
+        Expect.IsTrue StringContains("Hello", "ELL"), "StringContains(""Hello"", ""ELL"")"
+        Expect.IsFalse StringContains("Hello", "ELL", True), "StringContains(""Hello"", ""ELL"", True)"
+        Expect.IsTrue StringContains("Hello", "ell", True), "StringContains(""Hello"", ""ell"", True)"
+        Expect.IsFalse StringContains("Hello", "xyz"), "StringContains(""Hello"", ""xyz"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringContains_EmptyNeedle_IsTrue()
+        Expect.Begin
+        Expect.IsTrue StringContains("Hello", ""), "StringContains(""Hello"", """")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringContains_Null_RaisesInvalidUseOfNull()
+        Expect.Begin
+        Dim r As Boolean
+        On Error Resume Next
+        r = StringContains(Null, "a")
+        Expect.AreEqual 94, Err.Number, "Err.Number of StringContains(Null, ""a"")"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringContainsAny_FindsAnyNeedle()
+        Expect.Begin
+        Expect.IsTrue StringContainsAny("Hello", False, "x", "L"), "StringContainsAny(""Hello"", False, ""x"", ""L"")"
+        Expect.IsFalse StringContainsAny("Hello", True, "x", "L"), "StringContainsAny(""Hello"", True, ""x"", ""L"")"
+        Expect.IsTrue StringContainsAny("Hello", True, "x", "l"), "StringContainsAny(""Hello"", True, ""x"", ""l"")"
+        Expect.IsFalse StringContainsAny("Hello", False), "StringContainsAny(""Hello"", False) with no needle"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringMatchesAny_ComparesWholeStringsExactly()
+        Expect.Begin
+        Expect.IsTrue StringMatchesAny("b", "a", "b", "c"), "StringMatchesAny(""b"", ""a"", ""b"", ""c"")"
+        Expect.IsFalse StringMatchesAny("B", "a", "b", "c"), "StringMatchesAny(""B"", ""a"", ""b"", ""c"")"
+        Expect.IsTrue StringMatchesAny("1", 1, 2), "StringMatchesAny(""1"", 1, 2)"
+        Expect.IsFalse StringMatchesAny("ab", "a", "b"), "StringMatchesAny(""ab"", ""a"", ""b"")"
+        Expect.IsFalse StringMatchesAny("a"), "StringMatchesAny(""a"") with no value"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringStartsWith_ArgumentOrder_IsStartThenSource()
+        Expect.Begin
+        Expect.IsTrue StringStartsWith("He", "Hello"), "StringStartsWith(""He"", ""Hello"")"
+        Expect.IsFalse StringStartsWith("Hello", "He"), "StringStartsWith(""Hello"", ""He"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringStartsWith_IsBinary_EmptyStartIsTrue()
+        Expect.Begin
+        Expect.IsFalse StringStartsWith("he", "Hello"), "StringStartsWith(""he"", ""Hello"")"
+        Expect.IsTrue StringStartsWith("", "Hello"), "StringStartsWith("""", ""Hello"")"
+        Expect.IsFalse StringStartsWith("Hello world", "Hello"), "StringStartsWith(""Hello world"", ""Hello"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyCapitalisation_FollowsTheWholeSource()
+        Expect.Begin
+        Expect.AreEqual "WORLD", CopyCapitalisation("HELLO", "world"), "CopyCapitalisation(""HELLO"", ""world"")"
+        Expect.AreEqual "world", CopyCapitalisation("HeLLo", "world"), "CopyCapitalisation(""HeLLo"", ""world"")"
+        Expect.AreEqual "world", CopyCapitalisation("hello", "WORLD"), "CopyCapitalisation(""hello"", ""WORLD"")"
+        Expect.AreEqual "WORLD", CopyCapitalisation("123", "world"), "CopyCapitalisation(""123"", ""world"")"
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,217 @@
+' GridTests: the dates of the grid. The date of a cell is read by pressing the left mouse button in
+' it: the control selects the date it holds in its grid, and Value returns it.
+[TestFixture]
+Module GridTests
+
+    [TestCase]
+    Public Sub Grid_FirstCellIsTheLatestFirstDayOnOrBeforeTheMonthStart()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        ' June 1, 2026 is a Monday; October 1, 2026 is a Thursday.
+        Expect.AreEqual #6/1/2026#, Rig.GridDate(f, #6/15/2026#, hd, 0, 0), "the first cell of the grid for June 2026, Monday first"
+        Expect.AreEqual #9/28/2026#, Rig.GridDate(f, #10/15/2026#, hd, 0, 0), "the first cell of the grid for October 2026, Monday first"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Grid_FirstCellFollowsFirstDay()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        f.Cal.FirstDay = WeekDaysEnum.Sunday
+        Dim hd As Long = Rig.Header(f)
+        Expect.AreEqual #5/31/2026#, Rig.GridDate(f, #6/15/2026#, hd, 0, 0), "the first cell of the grid for June 2026, Sunday first"
+        Expect.AreEqual #9/27/2026#, Rig.GridDate(f, #10/15/2026#, hd, 0, 0), "the first cell of the grid for October 2026, Sunday first"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Grid_HasSixRowsOfSevenDays()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Dim r As Long, c As Long
+        Dim first As Date = #6/1/2026#
+        Dim bad As String
+        For r = 0 To 5
+            For c = 0 To 6
+                If Rig.GridDate(f, #6/15/2026#, hd, r, c) <> first + r * 7 + c Then bad = bad & "(" & r & "," & c & ") "
+            Next
+        Next
+        Expect.AreEqual "", bad, "the cells of the grid for June 2026 that do not hold the date 7 days a row and 1 day a column from June 1"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Grid_ClickOnDayOfAnotherMonthShowsThatMonth()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #10/15/2026#
+        Rig.Click f, 20, hd + 10
+        Expect.AreEqual #9/28/2026#, f.Cal.Value, "Value after a press on the first cell of the grid for October 2026"
+        Expect.AreEqual 9, f.Cal.Month, "Month after a press on a day of September"
+        Expect.AreEqual MonthName(9), Win.TextOf(Rig.MonthList(f)), "the month list after a press on a day of September"
+        Expect.AreEqual 0, Rig.CountOf("NewMonth"), "NewMonth events raised by a press on a day of another month"
+        Expect.AreEqual 0, Rig.CountOf("NewYear"), "NewYear events raised by a press on a day of another month"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_InAnotherMonth_PlacesTheGrid()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #10/15/2025#
+        f.Cal.Value = #3/15/2026#
+        ' March 1, 2026 is a Sunday, so the grid starts on Monday, February 23, and March 15 is in row 2, column 6.
+        Expect.AreEqual #3/15/2026#, Rig.CellDate(f, hd, 2, 6), "the date of row 2, column 6 after Value is set to March 15, 2026"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_InAnotherMonth_SelectsACell()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        If Not Rig.ShowHidden(f) Then
+            Expect.Fail "the form could not be made transparent"
+        Else
+            Dim h As LongPtr = Rig.CalWindow(f)
+            Dim w As Long = Win.ClientWidth(h)
+            Rig.Rebase f, #10/15/2025#
+            f.Cal.Value = #3/15/2026#
+            Dim b() As Byte = Win.Snapshot(h)
+            Expect.IsTrue Win.CountColour(b, w, &H82868E, 0, 0, w - 1, Win.ClientHeight(h) - 1) > 0, "the pixels of the selected cell's colour after Value is set to a date in another month"
+        End If
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_InAnotherMonth_RefreshPlacesTheGrid()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #10/15/2025#
+        f.Cal.Value = #3/15/2026#
+        f.Cal.Refresh
+        Expect.AreEqual #3/15/2026#, Rig.CellDate(f, hd, 2, 6), "the date of row 2, column 6 after Value is set to March 15, 2026 and Refresh is called"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Value_InAnotherMonth_NextMovePlacesTheGrid()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #10/15/2025#
+        f.Cal.Value = #3/15/2026#
+        f.Cal.NextDay
+        f.Cal.PreviousDay
+        Expect.AreEqual #3/15/2026#, Rig.CellDate(f, hd, 2, 6), "the date of row 2, column 6 after Value is set to March 15, 2026 and the selection moves"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FirstDay_PlacesTheDatesOfTheGrid()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #10/15/2026#
+        f.Cal.FirstDay = WeekDaysEnum.Sunday
+        Expect.AreEqual #9/27/2026#, Rig.CellDate(f, hd, 0, 0), "the first cell of the grid for October 2026 after FirstDay is set to Sunday"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FirstDay_RefreshPlacesTheDatesOfTheGrid()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #10/15/2026#
+        f.Cal.FirstDay = WeekDaysEnum.Sunday
+        f.Cal.Refresh
+        Expect.AreEqual #9/27/2026#, Rig.CellDate(f, hd, 0, 0), "the first cell of the grid for October 2026 after FirstDay is set to Sunday and Refresh is called"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FirstDay_NextMovePlacesTheDatesOfTheGrid()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim hd As Long = Rig.Header(f)
+        Rig.Rebase f, #10/15/2026#
+        f.Cal.FirstDay = WeekDaysEnum.Sunday
+        f.Cal.NextDay
+        f.Cal.PreviousDay
+        Expect.AreEqual #9/27/2026#, Rig.CellDate(f, hd, 0, 0), "the first cell of the grid for October 2026 after FirstDay is set to Sunday and the selection moves"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Press_NearTheRightEdge_SelectsTheLastColumn()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim h As LongPtr = Rig.CalWindow(f)
+        Win.Resize h, f.hWnd, 255, 292
+        Rig.Rebase f, #6/15/2026#
+        Dim hd As Long = Rig.Header(f)
+        Dim w As Long = Win.ClientWidth(h)
+        Dim x As Long
+        Dim bad As String
+        For x = w - 3 To w - 1
+            Rig.Rebase f, #6/15/2026#
+            Rig.Click f, x, hd + 5
+            If f.Cal.Value < #6/1/2026# Or f.Cal.Value > #6/7/2026# Then bad = bad & x & ":" & Format$(f.Cal.Value, "yyyy-mm-dd") & " "
+        Next
+        Expect.AreEqual 255, w, "the width of the control after it is resized to 255 pixels"
+        Expect.AreEqual "", bad, "the presses near the right edge (x:selected date) that did not select a date of the first row, June 1 to 7, 2026"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Press_NearTheBottomEdge_SelectsTheLastRow()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim h As LongPtr = Rig.CalWindow(f)
+        Win.Resize h, f.hWnd, 255, 292
+        Rig.Rebase f, #6/15/2026#
+        Dim ht As Long = Win.ClientHeight(h)
+        Dim y As Long
+        Dim bad As String
+        For y = ht - 2 To ht - 1
+            Rig.Rebase f, #6/15/2026#
+            Rig.Click f, 3, y
+            If f.Cal.Value > #6/1/2026# + 35 + 6 Then bad = bad & y & ":" & Format$(f.Cal.Value, "yyyy-mm-dd") & " "
+        Next
+        Expect.AreEqual 292, ht, "the height of the control after it is resized to 292 pixels"
+        Expect.AreEqual "", bad, "the presses near the bottom edge (y:selected date) that selected a date below the last row of the grid"
+        Unload f
+        Expect.Done
+    End Sub
+
+End Module

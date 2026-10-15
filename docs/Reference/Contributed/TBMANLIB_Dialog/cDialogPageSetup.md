@@ -10,6 +10,7 @@ has_toc: false
 
 A **cDialogPageSetup** shows the Windows Page Setup dialog, in which the user picks the paper, its orientation and the four margins of a page. It holds the page as properties, in inches, with ready-made sizes and margins, and works out the printable area.
 
+<!-- test: CDialogPageSetupTests.ToDescription_WithMillimetersWritesMillimeters, CDialogPageSetupTests.ShowDialog_PaperSizeSetBeforeTheCallIsTheOneTheDialogOpensWith, CDialogPageSetupTests.ShowDialog_OrientationSetBeforeTheCallSelectsLandscape, CDialogPageSetupTests.ShowDialog_OrientationChosenInTheDialogIsReadBack -->
 > [!WARNING] 1.1.0.0
 > Three things give a wrong result without an error. [**PaperWidth**](#paperwidth) and [**PaperHeight**](#paperheight) are not passed to the dialog, so it opens with the paper of the default printer whatever they hold. [**Orientation**](#orientation) is neither passed to the dialog nor read from it: a user who chooses *Landscape* leaves **Orientation** at **Portrait** and swaps the paper width and height instead. With [**Unit**](#unit) set to **Millimeters**, [**ToDescription**](#todescription) writes the values in inches and labels them `mm`.
 
@@ -31,6 +32,7 @@ Else
 End If
 ```
 
+<!-- test: CDialogPageSetupTests.ShowDialog_CancelReturnsFalseAndKeepsTheProperties -->
 ## How the dialog is shown
 
 [**ShowDialog**](#showdialog) calls `PageSetupDlgW` with the flag `PSD_MARGINS`, which is always set, and one of `PSD_INTHOUSANDTHSOFINCHES` and `PSD_INHUNDREDTHSOFMILLIMETERS`, which [**Unit**](#unit) selects. [**AllowMargins**](#allowmargins), [**AllowOrientation**](#alloworientation) and [**AllowPaper**](#allowpaper) set `PSD_DISABLEMARGINS`, `PSD_DISABLEORIENTATION` and `PSD_DISABLEPAPER` when they are **False**. The class sets no hook, template, minimum margins, help button or printer. The dialog is modal and has the title *Page Setup*.
@@ -41,6 +43,9 @@ When the user chooses **OK**, [**ShowDialog**](#showdialog) stores the paper siz
 
 The class gives the dialog no printer data and frees the data Windows returns, so the printer the user chose, the paper source and the other settings of the printer are lost. What remains is the size of the paper that the dialog shows when it closes, in [**PaperWidth**](#paperwidth) and [**PaperHeight**](#paperheight). The paper that the dialog offers first is the one of the default printer.
 
+<!-- /test -->
+
+<!-- test: CDialogPageSetupTests.Defaults_AreThoseOfThePage, CDialogPageSetupTests.Margins_AreStoredWithoutACheck, CDialogPageSetupTests.Unit_Millimeters_KeepsThePropertiesInInches -->
 ## Properties
 
 ### AllowMargins
@@ -182,6 +187,9 @@ Syntax: *object*.**Orientation** [ **=** *value* ]
 
 A [**PaperOrientation**](#paperorientation), **Portrait** by default.
 
+<!-- /test -->
+
+<!-- test: CDialogPageSetupTests.ShowDialog_OrientationSetBeforeTheCallSelectsLandscape, CDialogPageSetupTests.ShowDialog_OrientationChosenInTheDialogIsReadBack -->
 > [!WARNING] 1.1.0.0
 > The property is only stored. [**ShowDialog**](#showdialog) does not pass it to the dialog, so a **Landscape** set before the call does not select *Landscape* in the dialog, and it does not read the orientation back. After a user chose *Landscape*, **Orientation** is as it was and [**PaperWidth**](#paperwidth) and [**PaperHeight**](#paperheight) have changed places. To find the orientation after the dialog, compare the two: the page is landscape when **PaperWidth** is the larger. [**ToDescription**](#todescription) names the stored value.
 
@@ -238,6 +246,7 @@ Syntax: *object*.**PaperWidth** [ **=** *value* ]
 
 A **Double**, 8.5 by default, handled as [**PaperHeight**](#paperheight) is.
 
+<!-- test: CDialogPageSetupTests.ShowDialog_PaperSizeSetBeforeTheCallIsTheOneTheDialogOpensWith -->
 > [!WARNING] 1.1.0.0
 > Setting **PaperWidth** and **PaperHeight**, or calling [**SetA4Size**](#seta4size) or [**SetLegalSize**](#setlegalsize), does not make the dialog open with that paper. The margins are passed, and the paper is the one of the default printer. After **OK** the two properties hold what the dialog returned, not what was set.
 
@@ -257,6 +266,7 @@ Syntax: *object*.**Unit** [ **=** *value* ]
 
 A [**MeasurementUnit**](#measurementunit), **Inches** by default. It selects the unit of the dialog; the properties of the class stay in inches. See [How the dialog is shown](#how-the-dialog-is-shown).
 
+<!-- test: CDialogPageSetupTests.ToDescription_WithMillimetersWritesMillimeters -->
 > [!WARNING] 1.1.0.0
 > With **Millimeters**, [**ToDescription**](#todescription) still writes inches and labels them `mm`: a 1 inch margin is described as `1.00 mm`.
 
@@ -272,6 +282,7 @@ Debug.Print dlg.Unit
 ' 1
 ```
 
+<!-- test: CDialogPageSetupTests.GetPrintableHeight_And_Width_SubtractTheMargins, CDialogPageSetupTests.SetPaperSizes_SetWidthAndHeight, CDialogPageSetupTests.SetMargins_SetAllFour, CDialogPageSetupTests.Reset_RestoresTheStartingValuesButNotTheOwner, CDialogPageSetupTests.ToDescription_HasTheDocumentedForm -->
 ## Methods
 
 ### GetPrintableHeight
@@ -460,9 +471,13 @@ dlg.SetNarrowMargins
 Debug.Print dlg.ToDescription()
 ```
 
+<!-- /test -->
+
 ## Enumerations
 
+<!-- test: compile PaperOrientationQualifiedByTheClass, CDialogPageSetupTests.Enumerations_HaveTheDocumentedValues -->
 The enumerations are declared inside the class. A program names their members with the name of the enumeration in front, as in the samples, or by the member alone, such as `Landscape`. The name of the class cannot be put in front: `cDialogPageSetup.PaperOrientation.Landscape` is refused with TB5079, *Unrecognized symbol 'cDialogPageSetup'*.
+<!-- /test -->
 
 ### MeasurementUnit
 {: .no_toc }

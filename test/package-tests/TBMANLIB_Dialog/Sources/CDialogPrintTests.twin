@@ -1,0 +1,166 @@
+' cDialogPrint: the print choices as properties and text, and the Print dialog. Nothing is printed, and
+' no case asks for a device context: ReturnDC is False wherever a dialog is confirmed.
+[TestFixture]
+Module CDialogPrintTests
+
+    [TestCase]
+    Public Sub Defaults_AreThoseOfThePage()
+        Expect.Begin
+        Dim dlg As New cDialogPrint
+        Expect.AreEqual 1, dlg.FromPage, "FromPage of a new cDialogPrint"
+        Expect.AreEqual 1, dlg.ToPage, "ToPage of a new cDialogPrint"
+        Expect.AreEqual 1, dlg.MinPage, "MinPage of a new cDialogPrint"
+        Expect.AreEqual 9999, dlg.MaxPage, "MaxPage of a new cDialogPrint"
+        Expect.AreEqual 1, dlg.Copies, "Copies of a new cDialogPrint"
+        Expect.AreEqual PrintRange.AllPages, dlg.PrintRangeMode, "PrintRangeMode of a new cDialogPrint"
+        Expect.IsFalse dlg.Collate Or dlg.PrintToFile Or dlg.HidePrintToFile Or dlg.Cancelled, "Collate, PrintToFile, HidePrintToFile and Cancelled of a new cDialogPrint"
+        Expect.IsTrue dlg.AllowSelection And dlg.AllowPageRange And dlg.AllowPrintToFile And dlg.ReturnDC, "AllowSelection, AllowPageRange, AllowPrintToFile and ReturnDC of a new cDialogPrint"
+        Expect.AreEqual 0, dlg.hDC + dlg.LastError + dlg.OwnerHwnd, "hDC, LastError and OwnerHwnd of a new cDialogPrint"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Copies_IgnoresZeroAndNegativeValues()
+        Expect.Begin
+        Dim dlg As New cDialogPrint
+        dlg.Copies = 3
+        dlg.Copies = 0
+        dlg.Copies = -2
+        Expect.AreEqual 3, dlg.Copies, "Copies after 3, 0 and -2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToDescription_NamesRangeCopiesAndOptions()
+        Expect.Begin
+        Dim dlg As New cDialogPrint
+        Expect.AreEqual "All pages, 1 copy", dlg.ToDescription(), "ToDescription of a new cDialogPrint"
+        dlg.PrintRangeMode = PrintRange.PageRange
+        dlg.FromPage = 2
+        dlg.ToPage = 4
+        dlg.Copies = 3
+        dlg.Collate = True
+        dlg.PrintToFile = True
+        Expect.AreEqual "Pages 2 - 4, 3 copies, Collated, Print to file", dlg.ToDescription(), "ToDescription of a page range"
+        dlg.PrintRangeMode = PrintRange.Selection
+        Expect.AreEqual "Selection, 3 copies, Collated, Print to file", dlg.ToDescription(), "ToDescription of the selection"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_RestoresTheStartingValues()
+        Expect.Begin
+        Dim dlg As New cDialogPrint
+        dlg.Copies = 4
+        dlg.MaxPage = 40
+        dlg.MinPage = 3
+        dlg.FromPage = 5
+        dlg.ToPage = 6
+        dlg.PrintRangeMode = PrintRange.Selection
+        dlg.Collate = True
+        dlg.PrintToFile = True
+        dlg.HidePrintToFile = True
+        dlg.AllowSelection = False
+        dlg.AllowPageRange = False
+        dlg.AllowPrintToFile = False
+        dlg.ReturnDC = False
+        dlg.OwnerHwnd = 77
+        dlg.Reset
+        Expect.AreEqual "All pages, 1 copy", dlg.ToDescription(), "ToDescription after Reset"
+        Expect.AreEqual 9999, dlg.MaxPage, "MaxPage after Reset"
+        Expect.AreEqual 1, dlg.MinPage + dlg.FromPage + dlg.ToPage - 2, "MinPage, FromPage and ToPage after Reset"
+        Expect.IsFalse dlg.HidePrintToFile, "HidePrintToFile after Reset"
+        Expect.IsTrue dlg.AllowSelection And dlg.AllowPageRange And dlg.AllowPrintToFile And dlg.ReturnDC, "the Allow properties and ReturnDC after Reset"
+        Expect.AreEqual 77, dlg.OwnerHwnd, "OwnerHwnd after Reset"
+        Expect.Done
+    End Sub
+
+    ' ---- 16-bit integers
+
+    Private Function RaisedBy(ByVal dlg As cDialogPrint) As Long
+        Pilot.Arm "close"
+        On Error Resume Next
+        dlg.ShowDialog
+        RaisedBy = Err.Number
+        On Error GoTo 0
+        Pilot.Disarm
+    End Function
+
+    [TestCase]
+    Public Sub ShowDialog_FromPageAbove32767RaisesOverflowBeforeTheDialog()
+        Expect.Begin
+        Dim dlg As New cDialogPrint
+        dlg.FromPage = 40000
+        Expect.AreEqual 6, RaisedBy(dlg), "error ShowDialog raised with a FromPage of 40000"
+        Expect.AreEqual 0, Pilot.WindowsSeen, "dialogs opened with a FromPage of 40000"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_ToPageAbove32767RaisesOverflow()
+        Expect.Begin
+        Dim dlg As New cDialogPrint
+        dlg.ToPage = 40000
+        Expect.AreEqual 6, RaisedBy(dlg), "error ShowDialog raised with a ToPage of 40000"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_MinPageAbove32767RaisesOverflow()
+        Expect.Begin
+        Dim dlg As New cDialogPrint
+        dlg.MinPage = 40000
+        Expect.AreEqual 6, RaisedBy(dlg), "error ShowDialog raised with a MinPage of 40000"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_MaxPageAbove32767RaisesOverflow()
+        Expect.Begin
+        Dim dlg As New cDialogPrint
+        dlg.MaxPage = 40000
+        Expect.AreEqual 6, RaisedBy(dlg), "error ShowDialog raised with a MaxPage of 40000"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_CopiesAbove32767RaisesOverflow()
+        Expect.Begin
+        Dim dlg As New cDialogPrint
+        dlg.Copies = 40000
+        Expect.AreEqual 6, RaisedBy(dlg), "error ShowDialog raised with Copies of 40000"
+        Expect.Done
+    End Sub
+
+    ' ---- the dialog
+
+    [TestCase]
+    Public Sub ShowDialog_CancelReturnsFalseAndSetsCancelled()
+        Expect.Begin
+        Dim dlg As New cDialogPrint
+        dlg.ReturnDC = False
+        Pilot.Arm "id=2"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "dialogs ShowDialog opened"
+        Expect.AreEqual "Print", Pilot.Title(0), "caption of the Print dialog"
+        Expect.IsFalse r, "ShowDialog after Cancel"
+        Expect.IsTrue dlg.Cancelled, "Cancelled after Cancel"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_OKReturnsTrueAndClearsCancelled()
+        Expect.Begin
+        Dim dlg As New cDialogPrint
+        dlg.ReturnDC = False
+        Pilot.Arm "id=1"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.IsTrue r, "ShowDialog after OK"
+        Expect.IsFalse dlg.Cancelled, "Cancelled after OK"
+        Expect.AreEqual 0, dlg.hDC, "hDC after OK with ReturnDC False"
+        Expect.Done
+    End Sub
+
+End Module

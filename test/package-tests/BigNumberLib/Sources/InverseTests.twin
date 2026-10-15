@@ -1,0 +1,142 @@
+' BigNumber.AssignModularMultiplicativeInverse: the inverse, the errors, and the inputs that make it not return.
+[TestFixture]
+Module InverseTests
+
+    ' The error number and description AssignModularMultiplicativeInverse raises for A and M, "0 " for none.
+    Private Function InverseError(ByVal A As String, ByVal M As String) As String
+        Dim a1 As New BigNumber
+        Dim m1 As New BigNumber
+        Dim r As New BigNumber
+        a1.ValueString = A
+        m1.ValueString = M
+        On Error Resume Next
+        r.AssignModularMultiplicativeInverse a1, m1
+        InverseError = Err.Number & " " & Err.Description
+        Err.Clear
+    End Function
+
+    [TestCase]
+    Public Sub Inverse_ManualExample()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim m As New BigNumber
+        Dim x As New BigNumber
+        a.ValueString = "3"
+        m.ValueString = "11"
+        x.AssignModularMultiplicativeInverse a, m
+        Expect.AreEqual "4", x.ValueString, "the inverse of 3 modulo 11"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Inverse_ProductWithResultIsOneModuloModulus()
+        Expect.Begin
+        Dim values As Variant
+        Dim moduli As Variant
+        Dim a As New BigNumber
+        Dim m As New BigNumber
+        Dim x As New BigNumber
+        Dim i As Long
+        Dim j As Long
+        values = Array("1", "3", "10", "17", "65537", "123456789", "999999999")
+        moduli = Array("11", "3120", "1000000007", "2147483647", "1000000008")
+        For i = LBound(values) To UBound(values)
+            For j = LBound(moduli) To UBound(moduli)
+                If DecMod(values(i), moduli(j)) <> "0" Then
+                    If InverseError(values(i), moduli(j)) = "0 " Then
+                        a.ValueString = values(i)
+                        m.ValueString = moduli(j)
+                        x.AssignModularMultiplicativeInverse a, m
+                        Expect.AreEqual "1", DecMod(DecMul(values(i), x.ValueString), moduli(j)), "(" & values(i) & " * inverse) Mod " & moduli(j) & ", the inverse being " & x.ValueString
+                    End If
+                End If
+            Next j
+        Next i
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Inverse_KnownValues()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim m As New BigNumber
+        Dim x As New BigNumber
+        a.ValueString = "17"
+        m.ValueString = "3120"
+        x.AssignModularMultiplicativeInverse a, m
+        Expect.AreEqual "2753", x.ValueString, "the inverse of 17 modulo 3120 (the RSA textbook example)"
+        a.ValueString = "1"
+        m.ValueString = "13"
+        x.AssignModularMultiplicativeInverse a, m
+        Expect.AreEqual "1", x.ValueString, "the inverse of 1 modulo 13"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Inverse_NegativeValueGivesNegativeResult()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim m As New BigNumber
+        Dim x As New BigNumber
+        a.ValueString = "-3"
+        m.ValueString = "7"
+        x.AssignModularMultiplicativeInverse a, m
+        Expect.AreEqual "-5", x.ValueString, "the inverse of -3 modulo 7"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Inverse_CommonFactorRaisesError5()
+        Expect.Begin
+        Expect.AreEqual "5 invalid operation", InverseError("6", "9"), "error for the inverse of 6 modulo 9"
+        Expect.AreEqual "5 invalid operation", InverseError("4", "10"), "error for the inverse of 4 modulo 10"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Inverse_MultipleOfModulusRaisesError5()
+        Expect.Begin
+        Expect.AreEqual "5 invalid operation", InverseError("14", "7"), "error for the inverse of 14 modulo 7"
+        Expect.AreEqual "5 invalid operation", InverseError("7", "7"), "error for the inverse of 7 modulo 7"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Inverse_ModulusOneRaisesNoError()
+        Expect.Begin
+        Expect.AreEqual "0 ", InverseError("5", "1"), "error for the inverse of 5 modulo 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Inverse_ZeroValueEvenModulusRaisesError5()
+        Expect.Begin
+        Expect.AreEqual "5 invalid operation", InverseError("0", "8"), "error for the inverse of 0 modulo 8"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Inverse_NegativeEvenModulusRaisesError5()
+        Expect.Begin
+        Expect.AreEqual "5 invalid operation", InverseError("3", "-8"), "error for the inverse of 3 modulo -8"
+        Expect.AreEqual "5 invalid operation", InverseError("-3", "-10"), "error for the inverse of -3 modulo -10"
+        Expect.Done
+    End Sub
+
+    ' The two cases below do not return on 1.0.2.0: the call stays in a loop.
+
+    [TestCase]
+    Public Sub Inverse_ZeroValueOddModulus_RaisesError5()
+        Expect.Begin
+        Expect.AreEqual "5 invalid operation", InverseError("0", "7"), "error for the inverse of 0 modulo 7"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Inverse_NegativeOddModulus_RaisesError5()
+        Expect.Begin
+        Expect.AreEqual "5 invalid operation", InverseError("3", "-7"), "error for the inverse of 3 modulo -7"
+        Expect.Done
+    End Sub
+
+End Module

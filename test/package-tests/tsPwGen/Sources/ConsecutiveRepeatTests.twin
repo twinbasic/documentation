@@ -1,0 +1,124 @@
+' tsPwGen: HasNoConsecutiveRepeats. A result has no two equal characters next to each other. When
+' valid passwords exist for the pool, Generate returns one of them; a call must not fail because a
+' draw happened to be impossible to arrange.
+[TestFixture]
+Module ConsecutiveRepeatTests
+
+    ' The number of results out of Calls that are empty, and the number that have a repeat.
+    Private Function Failures(ByVal Options As PwGenOptions, ByVal Calls As Long, ByRef Repeats As Long) As Long
+        Dim i As Long
+        Dim n As Long
+        Repeats = 0
+        For i = 1 To Calls
+            Dim pw As String = PwGen.Generate(Options)
+            If Len(pw) = 0 Then
+                n = n + 1
+            ElseIf Helpers.HasRepeat(pw) Then
+                Repeats = Repeats + 1
+            End If
+        Next
+        Return n
+    End Function
+
+    [TestCase]
+    Public Sub DefaultPool_NoTwoEqualCharactersAreNeighbours()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.HasNoConsecutiveRepeats = True
+        Dim repeats As Long
+        Dim blanks As Long = Failures(o, Helpers.Draws, repeats)
+        Expect.AreEqual 0, blanks,"results of the default pool out of " & Helpers.Draws & " that are empty"
+        Expect.AreEqual 0, repeats, "results of the default pool out of " & Helpers.Draws & " that have two equal neighbours"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SmallPool_ResultsHaveNoRepeats()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "AB"
+        o.Length = 3
+        o.HasNoConsecutiveRepeats = True
+        Dim repeats As Long
+        Failures o, Helpers.Draws, repeats
+        Expect.AreEqual 0, repeats, "non-empty results of the pool AB with Length 3 out of " & Helpers.Draws & " that have two equal neighbours"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SmallPool_LengthThree_AlwaysGeneratesWhenAPasswordExists()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "AB"
+        o.Length = 3
+        o.HasNoConsecutiveRepeats = True
+        Dim repeats As Long
+        Expect.IsTrue Failures(o, 400, repeats) = 0, "no call of 400 returns an empty string for the pool AB, Length 3 and HasNoConsecutiveRepeats, which has the valid passwords ABA and BAB"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SmallPool_LengthFour_AlwaysGeneratesWhenAPasswordExists()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "AB"
+        o.Length = 4
+        o.HasNoConsecutiveRepeats = True
+        Dim repeats As Long
+        Expect.IsTrue Failures(o, 400, repeats) = 0, "no call of 400 returns an empty string for the pool AB, Length 4 and HasNoConsecutiveRepeats, which has the valid passwords ABAB and BABA"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SmallPool_WithStartsWithLetter_AlwaysGeneratesWhenAPasswordExists()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "AB"
+        o.Length = 3
+        o.StartsWithLetter = True
+        o.HasNoConsecutiveRepeats = True
+        Dim repeats As Long
+        Expect.IsTrue Failures(o, 400, repeats) = 0, "no call of 400 returns an empty string for the pool AB, Length 3, StartsWithLetter and HasNoConsecutiveRepeats"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FixedSource_DrawsThatCannotBeArranged_CannotAvoidRepeats()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "AB"
+        o.Length = 3
+        o.HasNoConsecutiveRepeats = True
+        Set o.RandomSource = New LowestRandom
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with a source that always draws the first character, so that the draw is AAA"
+        Helpers.ExpectError "the draw AAA", "CannotAvoidRepeats", "could not place characters without consecutive repeats.", "PwGen.Generate"
+        Expect.IsTrue PwGen.Entropy(o) > 0, "Entropy of the recipe whose draw cannot be arranged"
+        Helpers.ExpectNoError "Entropy of the recipe whose draw cannot be arranged"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OneCharacterPool_CannotAvoidRepeats()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "A"
+        o.Length = 4
+        o.HasNoConsecutiveRepeats = True
+        Expect.AreEqual "", PwGen.Generate(o), "Generate of the pool A with Length 4 and HasNoConsecutiveRepeats"
+        Helpers.ExpectError "one-character pool", "CannotAvoidRepeats", "HasNoConsecutiveRepeats needs at least two distinct characters.", "PwGen.Generate"
+        Expect.AreEqual 0#, PwGen.Entropy(o), "Entropy of the pool A with Length 4 and HasNoConsecutiveRepeats"
+        Helpers.ExpectError "Entropy of a one-character pool", "CannotAvoidRepeats", "HasNoConsecutiveRepeats needs at least two distinct characters.", "PwGen.Entropy"
+        o.Length = 1
+        Expect.AreEqual "A", PwGen.Generate(o), "Generate of the pool A with Length 1 and HasNoConsecutiveRepeats"
+        Helpers.ExpectNoError "Length 1 from a one-character pool"
+        Expect.Done
+    End Sub
+
+End Module

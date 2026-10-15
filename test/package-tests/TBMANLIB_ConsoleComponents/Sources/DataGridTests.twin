@@ -1,0 +1,631 @@
+' TBMANLIB_ConsoleComponents: cDataGrid, on the compiled copy of its code (see TwoPackagesTests).
+[TestFixture]
+Module DataGridTests
+
+    Private Const LEFT As Long = 0
+    Private Const CENTER As Long = 1
+    Private Const RIGHT As Long = 2
+
+    Private Function Bar() As String
+        Bar = ChrW$(&H2502)
+    End Function
+
+    Private Function HLine() As String
+        HLine = ChrW$(&H2500)
+    End Function
+
+    Private Function Cross() As String
+        Cross = ChrW$(&H253C)
+    End Function
+
+    ' A grid with the rows of the documentation's sample, every array set but the colours of the rows.
+    Private Function SampleGrid(ByVal Con As cConsole) As cDataGrid
+        Dim grid As cDataGrid = New cDataGrid(Con)
+        Dim rows(0 To 2) As String
+        Dim widths(0 To 1) As Long
+        Dim aligns(0 To 1) As ColumnAlignment
+        Dim colors(0 To 2) As ConsoleColor
+        rows(0) = "Name" & vbTab & "Size"
+        rows(1) = "readme.txt" & vbTab & "1,204"
+        rows(2) = "setup.exe" & vbTab & "88,512"
+        widths(0) = 12: widths(1) = 8
+        aligns(0) = LEFT: aligns(1) = RIGHT
+        colors(0) = ConsoleColor.Gray: colors(1) = ConsoleColor.Green: colors(2) = ConsoleColor.Yellow
+        grid.SetRows rows
+        grid.SetColumnWidths widths
+        grid.SetColumnAlignments aligns
+        grid.SetRowColors colors
+        Set SampleGrid = grid
+    End Function
+
+    ' The first row from Row down whose cell in column 0 has this background colour, or -1.
+    Private Function RowWithBackground(ByVal Buf As cConsoleBuffer, ByVal FromRow As Long, ByVal Count As Long, ByVal Colour As Long) As Long
+        Dim y As Long
+        RowWithBackground = -1
+        For y = FromRow To FromRow + Count - 1
+            If Cells.Back(Buf, 0, y) = Colour Then
+                RowWithBackground = y
+                Exit Function
+            End If
+        Next
+    End Function
+
+    ' ---- the table
+
+    [TestCase]
+    Public Sub Render_DrawsTheHeaderTheLineUnderItAndTheDataRows()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = SampleGrid(con)
+        grid.Render 0, 0
+        Expect.AreEqual "Name        " & Bar() & "    Size", Cells.Text(con.Buffer, 0, 0, 21), "the header row"
+        Expect.AreEqual String$(12, HLine()) & Cross() & String$(8, HLine()), Cells.Text(con.Buffer, 1, 0, 21), "the line under the header"
+        Expect.AreEqual "readme.txt  " & Bar() & "   1,204", Cells.Text(con.Buffer, 2, 0, 21), "the first data row"
+        Expect.AreEqual "setup.exe   " & Bar() & "  88,512", Cells.Text(con.Buffer, 3, 0, 21), "the second data row"
+        Expect.AreEqual 32, Cells.Code(con.Buffer, 21, 2), "the cell right of the table"
+        Expect.AreEqual 32, Cells.Code(con.Buffer, 0, 4), "the row under the table"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_ColoursOfHeaderRowsAndSelection_AreAsDocumented()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = SampleGrid(con)
+        grid.SelectedRow = 1
+        grid.Render 0, 0
+        Expect.AreEqual CLng(ConsoleColor.Cyan), Cells.Fore(con.Buffer, 0, 0), "colour of the header"
+        Expect.AreEqual CLng(ConsoleColor.Black), Cells.Back(con.Buffer, 0, 0), "background of the header"
+        Expect.AreEqual CLng(ConsoleColor.Cyan), Cells.Fore(con.Buffer, 12, 0), "colour of the bar in the header"
+        Expect.AreEqual CLng(ConsoleColor.Gray), Cells.Fore(con.Buffer, 0, 1), "colour of the line under the header"
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 0, 2), "colour of the first data row"
+        Expect.AreEqual CLng(ConsoleColor.White), Cells.Fore(con.Buffer, 0, 3), "colour of the selected row"
+        Expect.AreEqual CLng(ConsoleColor.DarkBlue), Cells.Back(con.Buffer, 0, 3), "background of the selected row"
+        Expect.AreEqual CLng(ConsoleColor.DarkBlue), Cells.Back(con.Buffer, 20, 3), "background at the end of the selected row"
+        Expect.AreEqual CLng(ConsoleColor.Black), Cells.Back(con.Buffer, 0, 2), "background of a data row"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_GivenColoursAndProperties_AreUsed()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = SampleGrid(con)
+        grid.HeaderColor = ConsoleColor.Magenta
+        grid.SelectionColor = ConsoleColor.DarkRed
+        grid.SelectedRow = 0
+        grid.Render 0, 0, ConsoleColor.Red, ConsoleColor.DarkGray
+        Expect.AreEqual CLng(ConsoleColor.Magenta), Cells.Fore(con.Buffer, 0, 0), "colour of the header after HeaderColor"
+        Expect.AreEqual CLng(ConsoleColor.Black), Cells.Back(con.Buffer, 0, 0), "background of the header whatever back is"
+        Expect.AreEqual CLng(ConsoleColor.Red), Cells.Fore(con.Buffer, 0, 1), "colour of the line under the header (fore)"
+        Expect.AreEqual CLng(ConsoleColor.DarkGray), Cells.Back(con.Buffer, 0, 1), "background of the line under the header (back)"
+        Expect.AreEqual CLng(ConsoleColor.DarkRed), Cells.Back(con.Buffer, 0, 2), "background of the selected row after SelectionColor"
+        Expect.AreEqual CLng(ConsoleColor.DarkGray), Cells.Back(con.Buffer, 0, 3), "background of a data row (back)"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_RowBeyondTheColourArray_KeepsFore()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = New cDataGrid(con)
+        Dim rows(0 To 3) As String
+        Dim widths(0 To 0) As Long
+        Dim aligns(0 To 0) As ColumnAlignment
+        Dim colors(0 To 1) As ConsoleColor
+        rows(0) = "h": rows(1) = "a": rows(2) = "b": rows(3) = "c"
+        widths(0) = 3
+        colors(1) = ConsoleColor.Red
+        grid.SetRows rows
+        grid.SetColumnWidths widths
+        grid.SetColumnAlignments aligns
+        grid.SetRowColors colors
+        grid.Render 0, 0, ConsoleColor.Cyan
+        Expect.AreEqual CLng(ConsoleColor.Red), Cells.Fore(con.Buffer, 0, 2), "colour of the row with the index 1"
+        Expect.AreEqual CLng(ConsoleColor.Cyan), Cells.Fore(con.Buffer, 0, 3), "colour of the row with the index 2, beyond the colour array"
+        Expect.AreEqual CLng(ConsoleColor.Cyan), Cells.Fore(con.Buffer, 0, 4), "colour of the row with the index 3"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- the cells
+
+    [TestCase]
+    Public Sub Render_CellsAreCutWithoutAnEllipsis_AndPadded()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = New cDataGrid(con)
+        Dim rows(0 To 1) As String
+        Dim widths(0 To 1) As Long
+        Dim aligns(0 To 1) As ColumnAlignment
+        Dim colors(0 To 1) As ConsoleColor
+        rows(0) = "H1" & vbTab & "H2"
+        rows(1) = "abcdefgh" & vbTab & "xy"
+        widths(0) = 5: widths(1) = 4
+        grid.SetRows rows
+        grid.SetColumnWidths widths
+        grid.SetColumnAlignments aligns
+        grid.SetRowColors colors
+        grid.ShowBorders = False
+        grid.Render 0, 0
+        Expect.AreEqual "abcdexy  ", Cells.Text(con.Buffer, 1, 0, 9), "the data row with borders off: abcdefgh cut to 5 cells, xy padded to 4"
+        Expect.AreEqual "H1   H2  ", Cells.Text(con.Buffer, 0, 0, 9), "the header row with borders off"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_Alignments_LeftCenterRight_AndOddPaddingOfCenterGoesRight()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = New cDataGrid(con)
+        Dim rows(0 To 1) As String
+        Dim widths(0 To 2) As Long
+        Dim aligns(0 To 2) As ColumnAlignment
+        Dim colors(0 To 1) As ConsoleColor
+        rows(0) = "a" & vbTab & "b" & vbTab & "c"
+        rows(1) = "xy" & vbTab & "xyz" & vbTab & "xy"
+        widths(0) = 5: widths(1) = 6: widths(2) = 5
+        aligns(0) = LEFT: aligns(1) = CENTER: aligns(2) = RIGHT
+        grid.SetRows rows
+        grid.SetColumnWidths widths
+        grid.SetColumnAlignments aligns
+        grid.SetRowColors colors
+        grid.ShowBorders = False
+        grid.Render 0, 0
+        Expect.AreEqual "xy    xyz     xy", Cells.Text(con.Buffer, 1, 0, 16), "left, centre (odd padding) and right in cells of 5, 6 and 5"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_RowWithFewerCellsHasEmptyCells_AndExtraCellsAreDropped()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = New cDataGrid(con)
+        Dim rows(0 To 2) As String
+        Dim widths(0 To 1) As Long
+        Dim aligns(0 To 1) As ColumnAlignment
+        Dim colors(0 To 2) As ConsoleColor
+        rows(0) = "H1" & vbTab & "H2"
+        rows(1) = "only"
+        rows(2) = "a" & vbTab & "b" & vbTab & "dropped"
+        widths(0) = 4: widths(1) = 3
+        grid.SetRows rows
+        grid.SetColumnWidths widths
+        grid.SetColumnAlignments aligns
+        grid.SetRowColors colors
+        grid.ShowBorders = False
+        grid.Render 0, 0
+        Expect.AreEqual "only    ", Cells.Text(con.Buffer, 1, 0, 8), "the row with one cell"
+        Expect.AreEqual "a   b  ", Cells.Text(con.Buffer, 2, 0, 7), "the row with three cells"
+        Expect.AreEqual 32, Cells.Code(con.Buffer, 7, 2), "the cell after the last column"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_AlignmentArrayShorterThanTheColumns_LeavesTheRestLeft()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = New cDataGrid(con)
+        Dim rows(0 To 1) As String
+        Dim widths(0 To 1) As Long
+        Dim aligns(0 To 0) As ColumnAlignment
+        Dim colors(0 To 1) As ConsoleColor
+        rows(0) = "a" & vbTab & "b"
+        rows(1) = "x" & vbTab & "y"
+        widths(0) = 3: widths(1) = 3
+        aligns(0) = RIGHT
+        grid.SetRows rows
+        grid.SetColumnWidths widths
+        grid.SetColumnAlignments aligns
+        grid.SetRowColors colors
+        grid.ShowBorders = False
+        grid.Render 0, 0
+        Expect.AreEqual "  xy  ", Cells.Text(con.Buffer, 1, 0, 6), "a row with the first column right and the second column left"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- ShowBorders and ShowHeader
+
+    [TestCase]
+    Public Sub ShowBorders_False_DrawsNoSeparatorColumnAndNoLine()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = SampleGrid(con)
+        grid.ShowBorders = False
+        grid.Render 0, 0
+        Expect.AreEqual "Name            Size", Cells.Text(con.Buffer, 0, 0, 20), "the header row without borders"
+        Expect.AreEqual "readme.txt     1,204", Cells.Text(con.Buffer, 1, 0, 20), "the first data row, directly under the header"
+        Expect.AreEqual "setup.exe     88,512", Cells.Text(con.Buffer, 2, 0, 20), "the second data row"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowHeader_False_EveryRowIsADataRow_AndNoLineIsDrawn()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = SampleGrid(con)
+        grid.ShowHeader = False
+        grid.Render 0, 0
+        Expect.AreEqual "Name        " & Bar() & "    Size", Cells.Text(con.Buffer, 0, 0, 21), "the first row"
+        Expect.AreEqual "readme.txt  " & Bar() & "   1,204", Cells.Text(con.Buffer, 1, 0, 21), "the second row, directly under the first"
+        Expect.AreEqual CLng(ConsoleColor.Gray), Cells.Fore(con.Buffer, 0, 0), "colour of the first row, which is not a header"
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 0, 1), "colour of the second row"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- the arrays
+
+    [TestCase]
+    Public Sub SetRows_CopiesTheArray()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = New cDataGrid(con)
+        Dim rows(0 To 1) As String
+        Dim widths(0 To 0) As Long
+        Dim aligns(0 To 0) As ColumnAlignment
+        Dim colors(0 To 1) As ConsoleColor
+        rows(0) = "head": rows(1) = "first"
+        widths(0) = 6
+        grid.SetRows rows
+        grid.SetColumnWidths widths
+        grid.SetColumnAlignments aligns
+        grid.SetRowColors colors
+        rows(1) = "changed"
+        widths(0) = 2
+        grid.ShowBorders = False
+        grid.Render 0, 0
+        Expect.AreEqual "first ", Cells.Text(con.Buffer, 1, 0, 6), "the data row after the array was changed"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_WithoutRowColors_DrawsTheRows()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = New cDataGrid(con)
+        Dim rows(0 To 1) As String
+        Dim widths(0 To 0) As Long
+        Dim aligns(0 To 0) As ColumnAlignment
+        rows(0) = "head": rows(1) = "first"
+        widths(0) = 6
+        grid.SetRows rows
+        grid.SetColumnWidths widths
+        grid.SetColumnAlignments aligns
+        On Error Resume Next
+        grid.Render 0, 0
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render when SetRowColors was never called"
+        On Error GoTo 0
+        Expect.AreEqual "first", Cells.Text(con.Buffer, 2, 0, 5), "the data row"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_WithoutColumnAlignments_DrawsTheRows()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = New cDataGrid(con)
+        Dim rows(0 To 1) As String
+        Dim widths(0 To 0) As Long
+        Dim colors(0 To 1) As ConsoleColor
+        rows(0) = "head": rows(1) = "first"
+        widths(0) = 6
+        grid.SetRows rows
+        grid.SetColumnWidths widths
+        grid.SetRowColors colors
+        On Error Resume Next
+        grid.Render 0, 0
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render when SetColumnAlignments was never called"
+        On Error GoTo 0
+        Expect.AreEqual "first", Cells.Text(con.Buffer, 2, 0, 5), "the data row"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_WithoutColumnWidths_DrawsTheRows()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = New cDataGrid(con)
+        Dim rows(0 To 1) As String
+        Dim aligns(0 To 0) As ColumnAlignment
+        Dim colors(0 To 1) As ConsoleColor
+        rows(0) = "head": rows(1) = "first"
+        grid.SetRows rows
+        grid.SetColumnAlignments aligns
+        grid.SetRowColors colors
+        On Error Resume Next
+        grid.Render 0, 0
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render when SetColumnWidths was never called"
+        On Error GoTo 0
+        Expect.AreEqual "first", Cells.Text(con.Buffer, 2, 0, 5), "the data row"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_WithoutRows_DrawsNothing()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = New cDataGrid(con)
+        Dim widths(0 To 0) As Long
+        Dim aligns(0 To 0) As ColumnAlignment
+        Dim colors(0 To 1) As ConsoleColor
+        widths(0) = 6
+        grid.SetColumnWidths widths
+        grid.SetColumnAlignments aligns
+        grid.SetRowColors colors
+        On Error Resume Next
+        grid.Render 0, 0
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render when SetRows was never called"
+        On Error GoTo 0
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetRowColors_FirstDataRowTakesTheFirstColour()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = New cDataGrid(con)
+        Dim rows(0 To 2) As String
+        Dim widths(0 To 0) As Long
+        Dim aligns(0 To 0) As ColumnAlignment
+        Dim colors(0 To 1) As ConsoleColor
+        rows(0) = "head": rows(1) = "first": rows(2) = "second"
+        widths(0) = 6
+        colors(0) = ConsoleColor.Red: colors(1) = ConsoleColor.Green
+        grid.SetRows rows
+        grid.SetColumnWidths widths
+        grid.SetColumnAlignments aligns
+        grid.SetRowColors colors
+        grid.Render 0, 0
+        Expect.AreEqual CLng(ConsoleColor.Red), Cells.Fore(con.Buffer, 0, 2), "colour of the first data row, given colors(0) = Red"
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 0, 3), "colour of the second data row, given colors(1) = Green"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetRowColors_HeaderRowIsCounted_SoColorsOfZeroIsNotUsed()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = SampleGrid(con)
+        grid.Render 0, 0
+        Expect.AreEqual CLng(ConsoleColor.Cyan), Cells.Fore(con.Buffer, 0, 0), "colour of the header, colors(0) being Gray"
+        Expect.AreEqual CLng(ConsoleColor.Green), Cells.Fore(con.Buffer, 0, 2), "colour of the first data row, colors(1) being Green"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), Cells.Fore(con.Buffer, 0, 3), "colour of the second data row, colors(2) being Yellow"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- the selection
+
+    [TestCase]
+    Public Sub SelectedRow_DefaultIsNoRow()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = SampleGrid(con)
+        grid.Render 0, 0
+        Expect.AreEqual -1, RowWithBackground(con.Buffer, 0, 4, CLng(ConsoleColor.DarkBlue)), "the row with the selection colour of a new grid"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MoveDown_FromNoSelection_SelectsTheFirstDataRow_AndStopsAtTheLast()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = SampleGrid(con)
+        grid.MoveDown 2
+        grid.Render 0, 0
+        Expect.AreEqual 2, RowWithBackground(con.Buffer, 0, 4, CLng(ConsoleColor.DarkBlue)), "the selected row after one MoveDown"
+        grid.MoveDown 2
+        grid.Render 0, 0
+        Expect.AreEqual 3, RowWithBackground(con.Buffer, 0, 4, CLng(ConsoleColor.DarkBlue)), "the selected row after two MoveDown"
+        grid.MoveDown 2
+        grid.MoveDown 2
+        grid.Render 0, 0
+        Expect.AreEqual 3, RowWithBackground(con.Buffer, 0, 4, CLng(ConsoleColor.DarkBlue)), "the selected row after four MoveDown with maxRow 2"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MoveUp_StopsAtTheFirstDataRow_AndDoesNothingWithoutASelection()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = SampleGrid(con)
+        grid.MoveUp
+        grid.Render 0, 0
+        Expect.AreEqual -1, RowWithBackground(con.Buffer, 0, 4, CLng(ConsoleColor.DarkBlue)), "the selected row after MoveUp with no selection"
+        grid.SelectedRow = 1
+        grid.MoveUp
+        grid.Render 0, 0
+        Expect.AreEqual 2, RowWithBackground(con.Buffer, 0, 4, CLng(ConsoleColor.DarkBlue)), "the selected row after MoveUp from the second data row"
+        grid.MoveUp
+        grid.Render 0, 0
+        Expect.AreEqual 2, RowWithBackground(con.Buffer, 0, 4, CLng(ConsoleColor.DarkBlue)), "the selected row after MoveUp from the first data row"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ScrollTo_SelectsTheRowLikeSelectedRow()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = SampleGrid(con)
+        grid.ScrollTo 1
+        grid.Render 0, 0
+        Expect.AreEqual 3, RowWithBackground(con.Buffer, 0, 4, CLng(ConsoleColor.DarkBlue)), "the selected row after ScrollTo 1"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ScrollTo_ShowsTheRowInABufferTooSmallForTheTable()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 6)
+        Dim grid As cDataGrid = New cDataGrid(con)
+        Dim rows(0 To 10) As String
+        Dim widths(0 To 0) As Long
+        Dim aligns(0 To 0) As ColumnAlignment
+        Dim colors(0 To 10) As ConsoleColor
+        Dim i As Long
+        rows(0) = "head"
+        For i = 1 To 10
+            rows(i) = "row" & i
+        Next
+        widths(0) = 6
+        grid.SetRows rows
+        grid.SetColumnWidths widths
+        grid.SetColumnAlignments aligns
+        grid.SetRowColors colors
+        grid.ScrollTo 8
+        grid.Render 0, 0
+        Dim found As Boolean
+        For i = 0 To 5
+            If Cells.Text(con.Buffer, i, 0, 4) = "row9" Then found = True
+        Next
+        Expect.IsTrue found, "the row row9 (data row 8) is in the buffer of 6 rows after ScrollTo 8"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- GetRowCount
+
+    [TestCase]
+    Public Sub GetRowCount_IsTheNumberOfDataRows()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = SampleGrid(con)
+        Expect.AreEqual 2, grid.GetRowCount(), "GetRowCount with a header"
+        grid.ShowHeader = False
+        Expect.AreEqual 3, grid.GetRowCount(), "GetRowCount without a header"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetRowCount_RowsNeverSet_RaisesError9()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = New cDataGrid(con)
+        On Error Resume Next
+        Dim n As Long = grid.GetRowCount()
+        Expect.AreEqual 9, Err.Number, "Err.Number of GetRowCount before SetRows"
+        On Error GoTo 0
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- the buffer
+
+    [TestCase]
+    Public Sub Render_RowsBelowTheBuffer_AreDropped()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 3)
+        Dim grid As cDataGrid = SampleGrid(con)
+        On Error Resume Next
+        grid.Render 0, 0
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render of a table of 4 rows in a buffer of 3 rows"
+        On Error GoTo 0
+        Expect.AreEqual "readme.txt", Cells.Text(con.Buffer, 2, 0, 10), "the last row that fits"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_GridMadeBeforeFullScreenMode_RaisesError91()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(100, 30, False)
+        Dim grid As cDataGrid = SampleGrid(con)
+        con.EnterFullScreenMode
+        On Error Resume Next
+        grid.Render 0, 0
+        Expect.AreEqual 91, Err.Number, "Err.Number of Render of a grid made before EnterFullScreenMode"
+        On Error GoTo 0
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_ThenRefresh_ShowsTheTableOnTheScreenBuffer()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open()
+        Dim grid As cDataGrid = SampleGrid(con)
+        grid.SelectedRow = 1
+        grid.Render 2, 1
+        con.Refresh
+        Expect.AreEqual "Name        " & Bar() & "    Size", Rig.TextAt(Rig.OutHandle, 2, 1, 21), "screen text of the header"
+        Expect.AreEqual "setup.exe   " & Bar() & "  88,512", Rig.TextAt(Rig.OutHandle, 2, 4, 21), "screen text of the selected row"
+        Expect.AreEqual &H1F&, Rig.AttrAt(Rig.OutHandle, 2, 4), "screen attribute of the selected row (white on dark blue)"
+        Set grid = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+End Module

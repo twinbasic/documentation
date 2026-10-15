@@ -8,9 +8,11 @@ has_toc: false
 # OLEDISPPARAMS type
 {: .no_toc }
 
+<!-- test: TypeLayoutTests.OLEDISPPARAMS_HasTheLayoutOfDispparams -->
 The arguments of a call through **IDispatch.Invoke**, with the layout of the Windows `DISPPARAMS` structure.
 
 **OLEDISPPARAMS** is a user-defined type declared in the package's `OLEGuids` module, so both `OLEDISPPARAMS` and `OLEGuids.OLEDISPPARAMS` name it. It mirrors the Windows structure [DISPPARAMS](https://learn.microsoft.com/en-us/windows/win32/api/oaidl/ns-oaidl-dispparams), which holds the addresses and the counts of the arguments and of the named arguments of a call.
+<!-- /test -->
 
 ```tb inert=signature
 Public Type OLEDISPPARAMS
@@ -37,7 +39,10 @@ End Type
 
 A variable that is not filled in holds only zeros, which is a call with no arguments.
 
+<!-- test: DispatchTests.Invoke_AssignsAPropertyWithPropertyPut -->
 An assignment to a property passes the new value as the only argument, named with the reserved identifier `DISPID_PROPERTYPUT` (-3): *cArgs* and *cNamedArgs* are 1, and *rgdispidNamedArgs* is the address of a **Long** holding -3. The [IDispatch](../../../../Reference/COM-Interfaces/IDispatch#the-dispparams-structure) page in the COM Interfaces section describes the structure further.
+<!-- /test -->
+
 
 ## Where it is used
 

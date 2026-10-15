@@ -1,0 +1,73 @@
+' OLEGuids: what the compiler refuses. Each line ends in a comment ' CASE <Name>: <code>.
+' A class cannot implement a member marked [PreserveSig]: the compiler reports TB5004 on the member.
+' Each class below implements the one such member of its interface that the case names; the
+' compiler also reports the members the class leaves out, on the class.
+
+Class ImplUnknown
+    Implements IUnknownUnrestricted
+    Private Function QueryInterface(ByVal priid As LongPtr, ByRef ppvObject As LongPtr) As Long Implements IUnknownUnrestricted.QueryInterface ' CASE ImplementIUnknownUnrestricted: TB5004
+        Return 0
+    End Function
+End Class
+
+Class ImplOleObject
+    Implements IOleObject
+    Private Function DoVerb(ByVal iVerb As Long, ByVal lpMsg As LongPtr, ByVal pActiveSite As OLEGuids.IOleClientSite, ByVal Index As Long, ByVal hWndParent As LongPtr, ByVal lprcPosRect As LongPtr) As Long Implements IOleObject.DoVerb ' CASE ImplementIOleObject: TB5004
+        Return 0
+    End Function
+End Class
+
+Class ImplWindowless
+    Implements IOleInPlaceObjectWindowless
+    Private Function OnWindowMessage(ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr, ByRef Result As LongPtr) As Long Implements IOleInPlaceObjectWindowless.OnWindowMessage ' CASE ImplementIOleInPlaceObjectWindowless: TB5004
+        Return 0
+    End Function
+End Class
+
+Class ImplOleControl
+    Implements IOleControl
+    Private Function GetControlInfo(ByRef pCI As OLECONTROLINFO) As Long Implements IOleControl.GetControlInfo ' CASE ImplementIOleControl: TB5004
+        Return 0
+    End Function
+End Class
+
+Class ImplOleControlSite
+    Implements IOleControlSite
+    Private Function TranslateAccelerator(ByVal lpMsg As LongPtr, ByVal grfModifiers As Long) As Long Implements IOleControlSite.TranslateAccelerator ' CASE ImplementIOleControlSite: TB5004
+        Return 0
+    End Function
+End Class
+
+Class ImplActiveObject
+    Implements IOleInPlaceActiveObject
+    Private Function GetWindow(ByRef phWnd As LongPtr) As Long Implements IOleInPlaceActiveObject.GetWindow ' CASE ImplementIOleInPlaceActiveObject: TB5004
+        Return 0
+    End Function
+End Class
+
+Class ImplInPlaceSite
+    Implements IOleInPlaceSite
+    Private Function CanInPlaceActivate() As Long Implements IOleInPlaceSite.CanInPlaceActivate ' CASE ImplementIOleInPlaceSite: TB5004
+        Return 0
+    End Function
+End Class
+
+Class ImplPerPropertyBrowsing
+    Implements IPerPropertyBrowsing
+    Private Function GetDisplayString(ByVal DispId As Long, ByRef lpDisplayName As LongPtr) As Long Implements IPerPropertyBrowsing.GetDisplayString ' CASE ImplementIPerPropertyBrowsing: TB5004
+        Return 0
+    End Function
+End Class
+
+Class ImplRichEditOle
+    Implements IRichEditOle
+    Private Function GetObjectCount() As Long Implements IRichEditOle.GetObjectCount ' CASE ImplementIRichEditOle: TB5004
+        Return 0
+    End Function
+End Class
+
+Module NameTests
+    Public Sub NoDeclarationNamedIDispatch()
+        Dim d As OLEGuids.IDispatch ' CASE NoIDispatchInThePackage: TB5079
+    End Sub
+End Module

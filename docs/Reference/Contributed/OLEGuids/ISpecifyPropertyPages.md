@@ -10,7 +10,9 @@ has_toc: false
 
 Lets an object list the class identifiers of its property pages.
 
+<!-- test: ImplementTests.ISpecifyPropertyPages_AnswersToItsIdentifier -->
 **ISpecifyPropertyPages** has the interface identifier `B196B28B-BAB4-101A-B69C-00AA00341D07` and extends **stdole.IUnknown**. It is declared `[OleAutomation(False)]`. Microsoft Learn describes the Windows interface: [ISpecifyPropertyPages](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nn-ocidl-ispecifypropertypages).
+<!-- /test -->
 
 The declaration is complete: it has the one method of the Windows interface. The method is a **Sub**, so the HRESULT is hidden: a failure code raises a run-time error.
 

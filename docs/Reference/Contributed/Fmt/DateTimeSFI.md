@@ -8,6 +8,8 @@ has_toc: false
 # DateTimeSFI class
 {: .no_toc }
 
+<!-- test: DateTests.DateTimeSFI_GivesTheSameResultsAsGeneric -->
+
 Formats a **Date** for the same identifiers as **GenericDateTimeSFI**, but is not registered with **StringHelper**.
 
 **DateTimeSFI** is a format identifier class. It implements [**IStringFormatIdentifier**](IStringFormatIdentifier) and contains the same code as [**GenericDateTimeSFI**](GenericDateTimeSFI): the identifiers **d**, **D**, **f**, **F**, **g**, **G**, **s**, **t**, **T** and **C** give the same results, and any other identifier does not match. The table of identifiers is on the [**GenericDateTimeSFI**](GenericDateTimeSFI#identifiers) page.
@@ -36,6 +38,8 @@ Debug.Print f.GetFormattedValue(#2026-10-11 14:05:09#, spec)  ' 2026-10-11
 - **GetFormattedValue** returns the value formatted by the identifier. With `C` it uses the specifier's [**CustomSpecifier**](StringFormatSpecifier/CustomSpecifier).
 
 Both are implemented as private members of the interface.
+
+<!-- /test -->
 
 ## See Also
 

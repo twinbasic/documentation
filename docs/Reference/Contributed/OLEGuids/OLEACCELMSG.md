@@ -8,9 +8,12 @@ has_toc: false
 # OLEACCELMSG type
 {: .no_toc }
 
+<!-- test: TypeLayoutTests.OLEACCELMSG_HasTheLayoutOfMsg -->
 A window message, with the layout of the Windows `MSG` structure.
 
 **OLEACCELMSG** is a user-defined type declared in the package's `OLEGuids` module, so both `OLEACCELMSG` and `OLEGuids.OLEACCELMSG` name it. It mirrors the Windows structure [MSG](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-msg).
+<!-- /test -->
+
 ```tb inert=signature
 Public Type OLEACCELMSG
     hWnd As LongPtr

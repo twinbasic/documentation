@@ -20,6 +20,7 @@ Syntax: *object*.**GetFileNameWithoutExt** ( *strFullPath* ) **As String**
 
 ## Remarks
 
+<!-- test: CDialogPropertyTests.GetFileNameWithoutExt_RemovesTheLastExtension -->
 **GetFileNameWithoutExt** takes the part of the string after the last backslash, as [**GetFileName**](GetFileName) does, and removes everything from the last period of that part. `C:\Docs\summary.txt` gives `summary`. The period is searched in the file name only, so a period in a folder name has no effect: `C:\my.dir\notes` gives `notes`.
 
 - Only the last extension is removed: `archive.tar.gz` gives `archive.tar`.
@@ -28,6 +29,7 @@ Syntax: *object*.**GetFileNameWithoutExt** ( *strFullPath* ) **As String**
 - A name that starts with a period and has no other gives an empty string: `.gitignore` gives an empty string.
 
 The method works on text only. It does not check that the file exists, and it reads no property of the object.
+<!-- /test -->
 
 ## Example
 

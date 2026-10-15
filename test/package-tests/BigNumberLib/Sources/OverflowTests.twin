@@ -1,0 +1,130 @@
+' BigNumber: numbers of 4096 bits and more. A result is right or raises an error; it never silently
+' loses its high bits.
+[TestFixture]
+Module OverflowTests
+
+    ' The bits the library holds: a little more than the 4096 the class supports.
+    Private Function LibraryBits() As Long
+        #If Win64 Then
+            LibraryBits = 4608
+        #Else
+            LibraryBits = 4352
+        #End If
+    End Function
+
+    [TestCase]
+    Public Sub Capacity_4096BitNumberIsHeld()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueBinary = Rep("1", 4096)
+        Expect.AreEqual Rep("1", 4096), n.ValueBinary, "ValueBinary of a number of 4096 one bits, read back"
+        Expect.AreEqual Rep("F", 1024), n.ValueHex, "ValueHex of the same number"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Capacity_ShiftLeftToTheLibraryLimitIsRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "1"
+        r.AssignShiftLeft a, LibraryBits() - 1
+        Expect.AreEqual "1" & Rep("0", LibraryBits() - 1), r.ValueBinary, "1 << " & (LibraryBits() - 1) & ", the largest power of two the library holds, as binary"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Capacity_AFewBitsOver4096IsStillRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "1"
+        r.AssignShiftLeft a, 4200
+        Expect.AreEqual "1" & Rep("0", 4200), r.ValueBinary, "1 << 4200, as binary"
+        Expect.Done
+    End Sub
+
+    ' A result that does not fit is an error or the right value, never the value without its high bits.
+
+    [TestCase]
+    Public Sub Overflow_ShiftLeftBeyondTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        Dim e As Long
+        a.ValueString = "1"
+        On Error Resume Next
+        r.AssignShiftLeft a, 6000
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual "1" & Rep("0", 6000), r.ValueBinary, "1 << 6000 raised no error; ValueBinary"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_MultiplicationBeyondTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        Dim e As Long
+        a.ValueBinary = "1" & Rep("0", 3000)
+        On Error Resume Next
+        r.AssignMultiplication a, a
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual "1" & Rep("0", 6000), r.ValueBinary, "2^3000 * 2^3000 raised no error; ValueBinary"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_AdditionBeyondTheLibrary_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        Dim e As Long
+        a.ValueBinary = Rep("1", LibraryBits())
+        On Error Resume Next
+        r.AssignAddition a, a
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual Rep("1", LibraryBits()) & "0", r.ValueBinary, "(2^" & LibraryBits() & " - 1) * 2 raised no error; ValueBinary"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_ValueStringWithTooManyDigits_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim n As New BigNumber
+        Dim e As Long
+        On Error Resume Next
+        n.ValueString = Rep("9", 1600)
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual Rep("9", 1600), n.ValueString, "ValueString of 1,600 nines raised no error; read back"
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Overflow_ValueHexWithTooManyDigits_RaisesErrorOrIsRight()
+        Expect.Begin
+        Dim n As New BigNumber
+        Dim e As Long
+        On Error Resume Next
+        n.ValueHex = Rep("F", 1300)
+        e = Err.Number
+        Err.Clear
+        If e = 0 Then
+            Expect.AreEqual Rep("F", 1300), n.ValueHex, "ValueHex of 1,300 F digits raised no error; read back"
+        End If
+        Expect.Done
+    End Sub
+
+End Module

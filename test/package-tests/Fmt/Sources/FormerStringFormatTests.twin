@@ -1,0 +1,97 @@
+' Fmt: FormerStringFormat, the earlier implementation, and how it differs from StringFormat.
+[TestFixture]
+Module FormerStringFormatTests
+
+    [TestCase]
+    Public Sub CommonNotation_GivesTheSameAsStringFormat()
+        Expect.Begin
+        Expect.AreEqual "x 2" & Loc.Dec() & "50", Loc.TryFormer2("{0} {1:F2}", "x", 2.5), "FormerStringFormat(""{0} {1:F2}"", ""x"", 2.5)"
+        Expect.AreEqual "12" & Loc.Dec() & "3%", Loc.TryFormer1("{0:P1}", 0.12345), "FormerStringFormat(""{0:P1}"", 0.12345)"
+        Expect.AreEqual "[ab    ]", Loc.TryFormer1("[{0,-6}]", "ab"), "FormerStringFormat(""[{0,-6}]"", ""ab"")"
+        Expect.AreEqual "00042", Loc.TryFormer1("{0:D5}", 42), "FormerStringFormat(""{0:D5}"", 42)"
+        Expect.AreEqual "a" & vbNewLine & "b", Loc.TryFormer1("a\nb{0}", ""), "FormerStringFormat(""a\nb{0}"", """")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub N_IsUnderstood()
+        Expect.Begin
+        Expect.AreEqual Format$(1234567.891, "#,##0"), Loc.TryFormer1("{0:N}", 1234567.891), "FormerStringFormat(""{0:N}"", 1234567.891)"
+        Expect.AreEqual Format$(1234567.891, "#,##0.00"), Loc.TryFormer1("{0:N2}", 1234567.891), "FormerStringFormat(""{0:N2}"", 1234567.891)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CustomNumberFormat_IsPassedToFormat()
+        Expect.Begin
+        Expect.AreEqual "3" & Loc.Dec() & "14", Loc.TryFormer1("{0:0.00}", 3.14159), "FormerStringFormat(""{0:0.00}"", 3.14159)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub G_WithoutPrecision_TakesTheDigitsAfterThePoint()
+        Expect.Begin
+        ' The package reads the digits after the point from the value converted to text, which has the
+        ' decimal separator of the regional settings, and looks for "." in it.
+        Expect.AreEqual "123" & Loc.Dec() & "46", Loc.TryFormer1("{0:G}", 123.456), "FormerStringFormat(""{0:G}"", 123.456)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub G_WithoutPrecision_StringFormatGivesExponential()
+        Expect.Begin
+        Expect.AreEqual "1" & Loc.Dec() & "23456E2", Try1("{0:G}", 123.456), "StringFormat(""{0:G}"", 123.456)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub X_PrefixIsUpperCaseForBothCases()
+        Expect.Begin
+        Expect.AreEqual "&H00ff", Loc.TryFormer1("{0:x4}", 255), "FormerStringFormat(""{0:x4}"", 255)"
+        Expect.AreEqual "&H00FF", Loc.TryFormer1("{0:X4}", 255), "FormerStringFormat(""{0:X4}"", 255)"
+        Expect.AreEqual "&h00ff", Try1("{0:x4}", 255), "StringFormat(""{0:x4}"", 255)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HexEscape_IsNotExpanded()
+        Expect.Begin
+        Expect.AreEqual "\x41A", Loc.TryFormer1("\x41\101{0}", ""), "FormerStringFormat(""\x41\101{0}"", """") has \x41 left and \101 expanded"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NonNumericValue_WithNumericIdentifier_RaisesInvalidNumberArgument()
+        Expect.Begin
+        Dim r As String = Loc.TryFormer1("{0:C}", "abc")
+        Expect.AreEqual vbObjectError Or 9003, Loc.LastNumber, "Err.Number of FormerStringFormat(""{0:C}"", ""abc"")"
+        Expect.AreEqual "Invalid number argument.", Loc.LastDescription, "Err.Description of FormerStringFormat(""{0:C}"", ""abc"")"
+        Expect.AreEqual "FormerStringFormat", Loc.LastSource, "Err.Source of FormerStringFormat(""{0:C}"", ""abc"")"
+        r = Try1("{0:C}", "abc")
+        Expect.AreEqual "Invalid format string.", Loc.LastDescription, "Err.Description of StringFormat(""{0:C}"", ""abc"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub E_PrecisionZero_RaisesInvalidFormatString()
+        Expect.Begin
+        Dim r As String = Loc.TryFormer1("{0:E0}", 12345.678)
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of FormerStringFormat(""{0:E0}"", 12345.678)"
+        Expect.AreEqual "Invalid format string.", Loc.LastDescription, "Err.Description of FormerStringFormat(""{0:E0}"", 12345.678)"
+        Expect.AreEqual Try1("{0:E}", 12345.678), Try1("{0:E0}", 12345.678), "StringFormat(""{0:E0}"", 12345.678) against {0:E}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WrongCount_HasTheSameNumberAndTextWithItsOwnSource()
+        Expect.Begin
+        Dim r As String = Loc.TryFormer1("{0} {1}", "only one")
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of FormerStringFormat with a missing value"
+        Expect.AreEqual "FormerStringFormat", Loc.LastSource, "Err.Source of FormerStringFormat with a missing value"
+        Dim former As String = Loc.LastDescription
+        r = Try1("{0} {1}", "only one")
+        Expect.AreEqual Loc.LastDescription, former, "Err.Description of FormerStringFormat against StringFormat for a missing value"
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,195 @@
+' DiagnosticEngine: registering collectors, running them, and a collector that raises an error.
+[TestFixture]
+Module EngineTests
+
+    Private Function Stub(ByVal Category As String, Optional ByVal Fail As Boolean = False) As StubCollector
+        Dim c As New StubCollector
+        c.Category = Category
+        c.Fail = Fail
+        Set Stub = c
+    End Function
+
+    [TestCase]
+    Public Sub RegisterCollector_SameCategory_Raises5()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        engine.RegisterCollector Stub("Alpha")
+        On Error Resume Next
+        engine.RegisterCollector Stub("Alpha")
+        Expect.AreEqual 5, Err.Number, "run-time error raised by RegisterCollector of a second collector with the category Alpha"
+        Expect.AreEqual "DiagnosticEngine.RegisterCollector", Err.Source, "source of that error"
+        Expect.AreEqual "Collector already exists: Alpha", Err.Description, "description of that error"
+        Err.Clear
+        Expect.AreEqual 1, engine.CollectorCount, "CollectorCount after that error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RegisterCollector_Nothing_Raises5()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        On Error Resume Next
+        engine.RegisterCollector Nothing
+        Expect.AreEqual 5, Err.Number, "run-time error raised by RegisterCollector Nothing"
+        Expect.AreEqual "Collector cannot be Nothing", Err.Description, "description of that error"
+        Err.Clear
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RegisterCollector_CategoryNames_AreCaseSensitive()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        engine.RegisterCollector Stub("Alpha")
+        On Error Resume Next
+        engine.RegisterCollector Stub("ALPHA")
+        Expect.AreEqual 0, Err.Number, "run-time error raised by RegisterCollector of ALPHA after Alpha"
+        Err.Clear
+        Expect.AreEqual 2, engine.CollectorCount, "CollectorCount after Alpha and ALPHA"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RunAll_ResultsAreInOrderOfRegistration()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        engine.RegisterCollector Stub("Alpha")
+        engine.RegisterCollector Stub("Beta")
+        engine.RegisterCollector Stub("Gamma")
+        Dim results As List(Of DiagnosticResult(Of KeyValuePair(Of String, String)))
+        Set results = engine.RunAll()
+        Expect.AreEqual 3, results.Count, "Count of the results of RunAll"
+        Expect.AreEqual "Alpha", results.Item(0).Category, "category of the first result"
+        Expect.AreEqual "Gamma", results.Item(2).Category, "category of the third result"
+        Expect.AreEqual "42", results.Item(1).Items.Item(0).Value, "value of the item of the second result"
+        Expect.IsTrue results Is engine.Results, "RunAll returns the list that Results returns"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RunAll_CollectorRaisesError_RunGoesOnWithTheMessage()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        engine.RegisterCollector Stub("Alpha")
+        engine.RegisterCollector Stub("Beta", True)
+        engine.RegisterCollector Stub("Gamma")
+        Dim results As List(Of DiagnosticResult(Of KeyValuePair(Of String, String)))
+        On Error Resume Next
+        Set results = engine.RunAll()
+        Expect.AreEqual 0, Err.Number, "run-time error raised by RunAll with a collector that raises an error"
+        Err.Clear
+        On Error GoTo 0
+        Expect.AreEqual 3, results.Count, "Count of the results of RunAll"
+        Expect.IsFalse results.Item(1).Success, "Success of the result of the collector that raised an error"
+        Expect.AreEqual "stub failure", results.Item(1).ErrorMessage, "ErrorMessage of that result"
+        Expect.AreEqual "Beta", results.Item(1).Category, "Category of that result"
+        Expect.AreEqual 0, results.Item(1).ItemCount, "ItemCount of that result"
+        Expect.IsTrue results.Item(2).Success, "Success of the result after it"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RunAll_Summary_AsksSummaryCollectorsForTheirSummary()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        engine.RegisterCollector New CPUInfoCollector
+        engine.RegisterCollector New EnvironmentCollector
+        Dim results As List(Of DiagnosticResult(Of KeyValuePair(Of String, String)))
+        Set results = engine.RunAll(True)
+        Expect.IsFalse results.Item(0).IsSummary, "IsSummary of the result of CPUInfoCollector in a summary run"
+        Expect.IsTrue results.Item(1).IsSummary, "IsSummary of the result of EnvironmentCollector in a summary run"
+        Set results = engine.RunAll()
+        Expect.IsFalse results.Item(1).IsSummary, "IsSummary of the result of EnvironmentCollector in a full run"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RunAll_NextRun_EmptiesTheEarlierList()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        engine.RegisterCollector New UptimeCollector
+        Dim first As List(Of DiagnosticResult(Of KeyValuePair(Of String, String)))
+        Set first = engine.RunAll()
+        Expect.AreEqual 1, first.Count, "Count of the first list"
+        engine.UnregisterCollector "Uptime"
+        engine.RunAll
+        Expect.AreEqual 0, first.Count, "Count of the first list after a run with no collector"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RunCategory_Unknown_ReturnsAFailedResult()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        engine.RegisterCollector Stub("Alpha")
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        On Error Resume Next
+        Set r = engine.RunCategory("Nothing here")
+        Expect.AreEqual 0, Err.Number, "run-time error raised by RunCategory of a name no collector has"
+        Err.Clear
+        On Error GoTo 0
+        Expect.AreEqual "Nothing here", r.Category, "Category of that result"
+        Expect.IsFalse r.Success, "Success of that result"
+        Expect.AreEqual "Collector not found: Nothing here", r.ErrorMessage, "ErrorMessage of that result"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RunCategory_Known_RunsThatCollectorOnly()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        engine.RegisterCollector Stub("Alpha")
+        engine.RegisterCollector Stub("Beta")
+        Dim r As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set r = engine.RunCategory("Beta")
+        Expect.AreEqual "Beta", r.Category, "Category of the result of RunCategory(""Beta"")"
+        Expect.AreEqual 1, r.ItemCount, "ItemCount of that result"
+        Expect.AreEqual 0, engine.Results.Count, "Count of Results after RunCategory"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RunByRefreshMode_RunsOnlyTheCollectorsOfThatMode()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        engine.RegisterCollector New OSInfoCollector
+        engine.RegisterCollector New MemoryInfoCollector
+        engine.RegisterCollector New LocaleCollector
+        engine.RegisterCollector New UptimeCollector
+        Dim changing As List(Of DiagnosticResult(Of KeyValuePair(Of String, String)))
+        Set changing = engine.RunByRefreshMode(RefreshMode.Dynamic)
+        Expect.AreEqual 2, changing.Count, "Count of the results for the mode Dynamic"
+        Expect.AreEqual "Memory", changing.Item(0).Category, "the first of them"
+        Expect.AreEqual "Uptime", changing.Item(1).Category, "the second of them"
+        Expect.AreEqual 0, engine.Results.Count, "Count of Results after RunByRefreshMode"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub UnregisterCollector_RemovesTheFirstWithThatName()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        engine.RegisterCollector Stub("Alpha")
+        engine.RegisterCollector Stub("Beta")
+        engine.UnregisterCollector "Alpha"
+        Expect.AreEqual 1, engine.CollectorCount, "CollectorCount after UnregisterCollector ""Alpha"""
+        On Error Resume Next
+        engine.UnregisterCollector "Nothing here"
+        Expect.AreEqual 0, Err.Number, "run-time error raised by UnregisterCollector of a name no collector has"
+        Err.Clear
+        Expect.AreEqual 1, engine.CollectorCount, "CollectorCount after that call"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsRunning_BeforeAndAfterARun_IsFalse()
+        Expect.Begin
+        Dim engine As New DiagnosticEngine
+        engine.RegisterCollector Stub("Alpha")
+        Expect.IsFalse engine.IsRunning, "IsRunning of a new engine"
+        engine.RunAll
+        Expect.IsFalse engine.IsRunning, "IsRunning after RunAll"
+        Expect.Done
+    End Sub
+
+End Module

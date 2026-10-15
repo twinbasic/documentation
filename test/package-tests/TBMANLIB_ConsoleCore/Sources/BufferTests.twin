@@ -1,0 +1,729 @@
+' TBMANLIB_ConsoleCore: cConsoleBuffer, the grid in memory (nothing here needs a console).
+[TestFixture]
+Module BufferTests
+
+    ' The characters of one row, from a column, as a string.
+    Private Function RowOf(ByVal Buf As cConsoleBuffer, ByVal Row As Long, Optional ByVal FromCol As Long = 0, Optional ByVal Count As Long = -1) As String
+        Dim ci As ConsoleCharInfo
+        Dim s As String
+        Dim x As Long
+        If Count < 0 Then Count = Buf.Width - FromCol
+        For x = FromCol To FromCol + Count - 1
+            ci = Buf.GetChar(x, Row)
+            s = s & ci.Char
+        Next
+        RowOf = s
+    End Function
+
+    Private Function Ch(ByVal CodePoint As Long) As String
+        Ch = ChrW$(CodePoint)
+    End Function
+
+    Private Function DirtyText(ByVal Buf As cConsoleBuffer) As String
+        Dim r As ConsoleRect
+        r = Buf.GetDirtyRect()
+        DirtyText = r.Left & " " & r.Top & " " & r.Right & " " & r.Bottom
+    End Function
+
+    ' ---- the cells
+
+    [TestCase]
+    Public Sub New_HoldsSpacesInGrayOnBlack_AndIsAllDirty()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        Dim ci As ConsoleCharInfo
+        Expect.AreEqual 10, buf.Width, "Width of a 10 by 3 buffer"
+        Expect.AreEqual 3, buf.Height, "Height of a 10 by 3 buffer"
+        ci = buf.GetChar(9, 2)
+        Expect.AreEqual " ", ci.Char, "Char of the last cell of a new buffer"
+        Expect.AreEqual CLng(ConsoleColor.Gray), CLng(ci.ForeColor), "ForeColor of a cell of a new buffer"
+        Expect.AreEqual CLng(ConsoleColor.Black), CLng(ci.BackColor), "BackColor of a cell of a new buffer"
+        Expect.IsTrue buf.IsDirty, "IsDirty of a new buffer"
+        Expect.AreEqual "0 0 9 2", DirtyText(buf), "dirty rectangle of a new buffer"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetChar_StoresTheFirstCharacterAndTheColours()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        Dim ci As ConsoleCharInfo
+        buf.SetChar 3, 1, "xyz", ConsoleColor.Red, ConsoleColor.DarkBlue
+        ci = buf.GetChar(3, 1)
+        Expect.AreEqual "x", ci.Char, "Char of the cell after SetChar with ""xyz"""
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(ci.ForeColor), "ForeColor of the cell"
+        Expect.AreEqual CLng(ConsoleColor.DarkBlue), CLng(ci.BackColor), "BackColor of the cell"
+        Expect.AreEqual " ", buf.GetChar(4, 1).Char, "the next cell is not changed"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetChar_DefaultColoursAreGrayOnBlack_NotTheColoursOfTheConsole()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        Dim ci As ConsoleCharInfo
+        buf.SetChar 0, 0, "a"
+        ci = buf.GetChar(0, 0)
+        Expect.AreEqual CLng(ConsoleColor.Gray), CLng(ci.ForeColor), "ForeColor of a cell set without colours"
+        Expect.AreEqual CLng(ConsoleColor.Black), CLng(ci.BackColor), "BackColor of a cell set without colours"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetChar_OutsideTheGridIsIgnoredAndNothingIsMarked()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.ClearDirty
+        buf.SetChar -1, 0, "a"
+        buf.SetChar 10, 0, "a"
+        buf.SetChar 0, -1, "a"
+        buf.SetChar 0, 3, "a"
+        Expect.IsFalse buf.IsDirty, "IsDirty after SetChar outside the grid"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetChar_EmptyString_Raises5()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        On Error Resume Next
+        buf.SetChar 0, 0, ""
+        Expect.AreEqual 5, Err.Number, "Err.Number of SetChar with an empty string"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetChar_OutsideTheGridReturnsTheEmptyStructure()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        Dim ci As ConsoleCharInfo
+        ci = buf.GetChar(10, 0)
+        Expect.AreEqual "", ci.Char, "Char outside the grid"
+        Expect.AreEqual CLng(ConsoleColor.Black), CLng(ci.ForeColor), "ForeColor outside the grid"
+        Expect.AreEqual CLng(ConsoleColor.Black), CLng(ci.BackColor), "BackColor outside the grid"
+        ci = buf.GetChar(0, -1)
+        Expect.AreEqual "", ci.Char, "Char above the grid"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetChar_StyleIsAlwaysNone()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.SetChar 1, 1, "a", ConsoleColor.White, ConsoleColor.Red
+        Expect.AreEqual 0, CLng(buf.GetChar(1, 1).Style), "Style of a cell"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BufferPtr_IsTheAddressOfTheFirstCellAndCellsAreFourBytes()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.SetChar 0, 0, "A", ConsoleColor.Red, ConsoleColor.Blue
+        buf.SetChar 2, 1, "B", ConsoleColor.Green, ConsoleColor.Black
+        Dim ch As Integer
+        Dim attr As Integer
+        Rig.ReadMemory buf.BufferPtr, VarPtr(ch), 2
+        Rig.ReadMemory buf.BufferPtr + 2, VarPtr(attr), 2
+        Expect.AreEqual 65, CLng(ch), "character of the first cell, read through BufferPtr"
+        Expect.AreEqual &H9C&, CLng(attr), "attribute of the first cell (Red on Blue)"
+        Rig.ReadMemory buf.BufferPtr + 4 * (1 * 10 + 2), VarPtr(ch), 2
+        Rig.ReadMemory buf.BufferPtr + 4 * (1 * 10 + 2) + 2, VarPtr(attr), 2
+        Expect.AreEqual 66, CLng(ch), "character of the cell at column 2, row 1 (number row * Width + col), read through BufferPtr"
+        Expect.AreEqual 10, CLng(attr), "attribute of that cell (Green on Black)"
+        Expect.Done
+    End Sub
+
+    ' ---- WriteAt
+
+    [TestCase]
+    Public Sub WriteAt_WritesTextAndColoursIntoARow()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        Dim ci As ConsoleCharInfo
+        buf.WriteAt 2, 1, "Hi", ConsoleColor.Yellow, ConsoleColor.DarkBlue
+        Expect.AreEqual "  Hi      ", RowOf(buf, 1), "row 1 after WriteAt 2, 1, ""Hi"""
+        ci = buf.GetChar(3, 1)
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(ci.ForeColor), "ForeColor of a written cell"
+        Expect.AreEqual CLng(ConsoleColor.DarkBlue), CLng(ci.BackColor), "BackColor of a written cell"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteAt_CharactersBeyondTheLastColumnAreDropped_TheTextDoesNotWrap()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.WriteAt 7, 0, "abcdef"
+        Expect.AreEqual "       abc", RowOf(buf, 0), "row 0 after WriteAt 7, 0, ""abcdef"""
+        Expect.AreEqual "          ", RowOf(buf, 1), "row 1, where the text does not wrap"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteAt_CharactersLeftOfColumnZeroAreSkipped()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.WriteAt -2, 0, "abcd"
+        Expect.AreEqual "cd        ", RowOf(buf, 0), "row 0 after WriteAt -2, 0, ""abcd"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteAt_RowOutsideTheGridWritesNothing()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.WriteAt 0, 3, "abc"
+        buf.WriteAt 0, -1, "abc"
+        Expect.AreEqual "          ", RowOf(buf, 0), "row 0"
+        Expect.AreEqual "          ", RowOf(buf, 2), "row 2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteAt_ControlCharactersAreStoredAsOrdinaryCharacters()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.WriteAt 0, 0, "a" & vbCr & vbLf & vbTab & "b"
+        Expect.AreEqual 13, AscW(buf.GetChar(1, 0).Char), "cell 1 holds the carriage return"
+        Expect.AreEqual 10, AscW(buf.GetChar(2, 0).Char), "cell 2 holds the line feed"
+        Expect.AreEqual 9, AscW(buf.GetChar(3, 0).Char), "cell 3 holds the tab"
+        Expect.AreEqual "b", buf.GetChar(4, 0).Char, "cell 4 holds the next character"
+        Expect.AreEqual " ", buf.GetChar(0, 1).Char, "no line break moved the text to row 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteAt_CharacterOutsideTheBasicMultilingualPlane_TakesTwoCells()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.WriteAt 0, 0, ChrW$(&HD83D) & ChrW$(&HDE00) & "x"
+        Expect.AreEqual &HD83D&, AscW(buf.GetChar(0, 0).Char) And &HFFFF&, "cell 0 holds the high surrogate"
+        Expect.AreEqual &HDE00&, AscW(buf.GetChar(1, 0).Char) And &HFFFF&, "cell 1 holds the low surrogate"
+        Expect.AreEqual "x", buf.GetChar(2, 0).Char, "cell 2 holds the next character"
+        Expect.Done
+    End Sub
+
+    ' ---- FillRect, lines and boxes
+
+    [TestCase]
+    Public Sub FillRect_FillsTheRectangleOnly()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 4)
+        Dim ci As ConsoleCharInfo
+        buf.FillRect 2, 1, 4, 2, "#", ConsoleColor.Green, ConsoleColor.Red
+        Expect.AreEqual "  ###     ", RowOf(buf, 1), "row 1 after FillRect 2, 1, 4, 2"
+        Expect.AreEqual "  ###     ", RowOf(buf, 2), "row 2"
+        Expect.AreEqual "          ", RowOf(buf, 0), "row 0, outside the rectangle"
+        Expect.AreEqual "          ", RowOf(buf, 3), "row 3, outside the rectangle"
+        ci = buf.GetChar(4, 2)
+        Expect.AreEqual CLng(ConsoleColor.Green), CLng(ci.ForeColor), "ForeColor of a filled cell"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(ci.BackColor), "BackColor of a filled cell"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FillRect_IsCutToTheGrid()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.FillRect -5, -5, 2, 0, "#"
+        buf.FillRect 8, 2, 40, 40, "$"
+        Expect.AreEqual "###       ", RowOf(buf, 0), "row 0 after a rectangle that starts left of and above the grid"
+        Expect.AreEqual "        $$", RowOf(buf, 2), "row 2 after a rectangle that reaches beyond the grid"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FillRect_LeftGreaterThanRight_ChangesNoCell()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.FillRect 6, 0, 3, 2, "#"
+        Expect.AreEqual "          ", RowOf(buf, 0), "row 0"
+        Expect.AreEqual "          ", RowOf(buf, 1), "row 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FillRect_DefaultIsASpaceInGrayOnBlack()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        Dim ci As ConsoleCharInfo
+        buf.FillRect 0, 0, 9, 0, "#", ConsoleColor.Red, ConsoleColor.Blue
+        buf.FillRect 0, 0, 4, 0
+        ci = buf.GetChar(2, 0)
+        Expect.AreEqual " ", ci.Char, "Char after FillRect with the defaults"
+        Expect.AreEqual CLng(ConsoleColor.Gray), CLng(ci.ForeColor), "ForeColor after FillRect with the defaults"
+        Expect.AreEqual CLng(ConsoleColor.Black), CLng(ci.BackColor), "BackColor after FillRect with the defaults"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FillRect_EmptyCharacter_Raises5()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        On Error Resume Next
+        buf.FillRect 0, 0, 2, 2, ""
+        Expect.AreEqual 5, Err.Number, "Err.Number of FillRect with an empty character"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawBox_SingleLine_DrawsTheOutlineOnly()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 5)
+        buf.FillRect 0, 0, 9, 4, "."
+        buf.DrawBox 1, 1, 6, 3
+        Expect.AreEqual "." & Ch(&H250C) & String$(4, Ch(&H2500)) & Ch(&H2510) & "...", RowOf(buf, 1), "top row of the box"
+        Expect.AreEqual "." & Ch(&H2502) & "...." & Ch(&H2502) & "...", RowOf(buf, 2), "middle row of the box, whose inside is unchanged"
+        Expect.AreEqual "." & Ch(&H2514) & String$(4, Ch(&H2500)) & Ch(&H2518) & "...", RowOf(buf, 3), "bottom row of the box"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawBox_DoubleLine_UsesTheDoubleLineCharacters()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 5)
+        buf.DrawBox 0, 0, 4, 2, ConsoleColor.Cyan, ConsoleColor.Black, True
+        Expect.AreEqual Ch(&H2554) & String$(3, Ch(&H2550)) & Ch(&H2557), RowOf(buf, 0, 0, 5), "top row of the double-line box"
+        Expect.AreEqual Ch(&H2551) & "   " & Ch(&H2551), RowOf(buf, 1, 0, 5), "middle row of the double-line box"
+        Expect.AreEqual Ch(&H255A) & String$(3, Ch(&H2550)) & Ch(&H255D), RowOf(buf, 2, 0, 5), "bottom row of the double-line box"
+        Expect.AreEqual CLng(ConsoleColor.Cyan), CLng(buf.GetChar(0, 0).ForeColor), "ForeColor of the corner"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawBox_PartsOutsideTheGridAreLeftOut()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(6, 3)
+        buf.DrawBox 3, 1, 9, 5
+        Expect.AreEqual "   " & Ch(&H250C) & String$(2, Ch(&H2500)), RowOf(buf, 1), "row 1 of a box that reaches beyond the grid"
+        Expect.AreEqual "   " & Ch(&H2502) & "  ", RowOf(buf, 2), "row 2, where only the left edge is inside"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawBox_OneCellWideBox_RaisesNoError()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 5)
+        On Error Resume Next
+        buf.DrawBox 2, 1, 2, 3
+        Expect.AreEqual 0, Err.Number, "Err.Number of DrawBox for a box one column wide"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawHLine_DrawsHorizontalLineCharacters()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.DrawHLine 2, 1, 4
+        buf.DrawHLine 2, 2, 3, ConsoleColor.Gray, ConsoleColor.Black, True
+        Expect.AreEqual "  " & String$(4, Ch(&H2500)) & "    ", RowOf(buf, 1), "row 1 after DrawHLine 2, 1, 4"
+        Expect.AreEqual "  " & String$(3, Ch(&H2550)) & "     ", RowOf(buf, 2), "row 2 after a double DrawHLine"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawVLine_DrawsVerticalLineCharactersGoingDown()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 4)
+        buf.DrawVLine 1, 1, 2
+        buf.DrawVLine 3, 0, 4, ConsoleColor.Gray, ConsoleColor.Black, True
+        Expect.AreEqual Ch(&H2502), buf.GetChar(1, 1).Char, "cell at column 1, row 1"
+        Expect.AreEqual Ch(&H2502), buf.GetChar(1, 2).Char, "cell at column 1, row 2"
+        Expect.AreEqual " ", buf.GetChar(1, 3).Char, "cell at column 1, row 3, beyond the line"
+        Expect.AreEqual Ch(&H2551), buf.GetChar(3, 0).Char, "double line, row 0"
+        Expect.AreEqual Ch(&H2551), buf.GetChar(3, 3).Char, "double line, row 3"
+        Expect.Done
+    End Sub
+
+    ' ---- Clear and Resize
+
+    [TestCase]
+    Public Sub Clear_FillsEveryCellWithTheGivenCharacterAndColours()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        Dim ci As ConsoleCharInfo
+        buf.Clear ConsoleColor.Red, ConsoleColor.Blue, "*"
+        ci = buf.GetChar(9, 2)
+        Expect.AreEqual "*", ci.Char, "Char of the last cell after Clear"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(ci.ForeColor), "ForeColor of the last cell"
+        Expect.AreEqual CLng(ConsoleColor.Blue), CLng(ci.BackColor), "BackColor of the last cell"
+        Expect.AreEqual "**********", RowOf(buf, 0), "row 0"
+        buf.Clear
+        ci = buf.GetChar(0, 0)
+        Expect.AreEqual " ", ci.Char, "Char after Clear with the defaults"
+        Expect.AreEqual CLng(ConsoleColor.Gray), CLng(ci.ForeColor), "ForeColor after Clear with the defaults"
+        Expect.AreEqual CLng(ConsoleColor.Black), CLng(ci.BackColor), "BackColor after Clear with the defaults"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_EmptyFillCharacter_Raises5()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        On Error Resume Next
+        buf.Clear ConsoleColor.Gray, ConsoleColor.Black, ""
+        Expect.AreEqual 5, Err.Number, "Err.Number of Clear with an empty fill character"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_MarksTheWholeGridDirty_AlsoDuringABatch()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.ClearDirty
+        buf.BeginBatchUpdate
+        buf.Clear
+        Expect.IsTrue buf.IsDirty, "IsDirty after Clear inside a batch"
+        Expect.AreEqual "0 0 9 2", DirtyText(buf), "dirty rectangle after Clear inside a batch"
+        buf.EndBatchUpdate
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Resize_GivesANewSizeAndLosesTheContents()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.WriteAt 0, 0, "text", ConsoleColor.Red, ConsoleColor.Blue
+        buf.ClearDirty
+        buf.Resize 6, 2
+        Expect.AreEqual 6, buf.Width, "Width after Resize 6, 2"
+        Expect.AreEqual 2, buf.Height, "Height after Resize 6, 2"
+        Expect.AreEqual "      ", RowOf(buf, 0), "row 0 after Resize"
+        Expect.AreEqual CLng(ConsoleColor.Gray), CLng(buf.GetChar(0, 0).ForeColor), "ForeColor after Resize"
+        Expect.IsTrue buf.IsDirty, "IsDirty after Resize"
+        Expect.AreEqual "0 0 5 1", DirtyText(buf), "dirty rectangle after Resize"
+        Expect.Done
+    End Sub
+
+    ' ---- the dirty rectangle
+
+    [TestCase]
+    Public Sub ClearDirty_EmptiesTheRectangleToItsEmptyForm()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.ClearDirty
+        Expect.IsFalse buf.IsDirty, "IsDirty after ClearDirty"
+        Expect.AreEqual "10 3 0 0", DirtyText(buf), "dirty rectangle after ClearDirty (Left is Width, Top is Height)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DirtyRect_GrowsToHoldEveryCellChanged()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.ClearDirty
+        buf.SetChar 4, 1, "x"
+        buf.SetChar 6, 2, "y"
+        Expect.IsTrue buf.IsDirty, "IsDirty after SetChar"
+        Expect.AreEqual "4 1 6 2", DirtyText(buf), "dirty rectangle after two SetChar calls"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DirtyRect_WriteAt_HoldsTheFirstAndLastColumnOfTheText()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.ClearDirty
+        buf.WriteAt 2, 1, "abc"
+        Expect.AreEqual "2 1 4 1", DirtyText(buf), "dirty rectangle after WriteAt 2, 1, ""abc"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DirtyRect_FillRect_HoldsTheCutRectangle()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.ClearDirty
+        buf.FillRect 1, 0, 3, 1, "#"
+        Expect.AreEqual "1 0 3 1", DirtyText(buf), "dirty rectangle after FillRect 1, 0, 3, 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DirtyRect_DrawBoxAndLines_GrowThroughSetChar()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 5)
+        buf.ClearDirty
+        buf.DrawBox 2, 1, 5, 3
+        Expect.AreEqual "2 1 5 3", DirtyText(buf), "dirty rectangle after DrawBox 2, 1, 5, 3"
+        buf.ClearDirty
+        buf.DrawHLine 1, 4, 3
+        Expect.AreEqual "1 4 3 4", DirtyText(buf), "dirty rectangle after DrawHLine 1, 4, 3"
+        buf.ClearDirty
+        buf.DrawVLine 8, 0, 3
+        Expect.AreEqual "8 0 8 2", DirtyText(buf), "dirty rectangle after DrawVLine 8, 0, 3"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DirtyRect_WriteAtWithEmptyText_StillGrowsTheRectangle()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.ClearDirty
+        buf.WriteAt 4, 1, ""
+        Expect.IsTrue buf.IsDirty, "IsDirty after WriteAt with empty text"
+        Expect.Done
+    End Sub
+
+    ' ---- batch updates
+
+    [TestCase]
+    Public Sub Batch_DoesNotGrowTheDirtyRectangle_AndEndMarksTheWholeGrid()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.ClearDirty
+        buf.BeginBatchUpdate
+        buf.SetChar 4, 1, "x"
+        Expect.IsTrue buf.IsInBatchMode, "IsInBatchMode inside a batch"
+        Expect.IsFalse buf.IsDirty, "IsDirty after SetChar inside a batch"
+        buf.EndBatchUpdate
+        Expect.IsFalse buf.IsInBatchMode, "IsInBatchMode after the batch"
+        Expect.IsTrue buf.IsDirty, "IsDirty after the batch"
+        Expect.AreEqual "0 0 9 2", DirtyText(buf), "dirty rectangle after the batch"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Batch_Nested_MarksTheGridWhenTheOutermostEnds()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.ClearDirty
+        buf.BeginBatchUpdate
+        buf.BeginBatchUpdate
+        buf.EndBatchUpdate
+        Expect.IsTrue buf.IsInBatchMode, "IsInBatchMode after the inner batch ended"
+        Expect.IsFalse buf.IsDirty, "IsDirty after the inner batch ended"
+        buf.EndBatchUpdate
+        Expect.IsFalse buf.IsInBatchMode, "IsInBatchMode after the outer batch ended"
+        Expect.IsTrue buf.IsDirty, "IsDirty after the outer batch ended"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EndBatchUpdate_WithoutABegin_DoesNothing()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 3)
+        buf.ClearDirty
+        buf.EndBatchUpdate
+        Expect.IsFalse buf.IsInBatchMode, "IsInBatchMode after a lone EndBatchUpdate"
+        Expect.IsFalse buf.IsDirty, "IsDirty after a lone EndBatchUpdate"
+        Expect.Done
+    End Sub
+
+    ' ---- CopyRegion
+
+    [TestCase]
+    Public Sub CopyRegion_CopiesACharacterAndItsColours()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 4)
+        buf.WriteAt 0, 0, "ab", ConsoleColor.Red, ConsoleColor.Blue
+        buf.WriteAt 0, 1, "cd", ConsoleColor.Green, ConsoleColor.Black
+        buf.CopyRegion 0, 0, 1, 1, 5, 2
+        Expect.AreEqual "ab", RowOf(buf, 2, 5, 2), "row 2, columns 5 and 6 after the copy"
+        Expect.AreEqual "cd", RowOf(buf, 3, 5, 2), "row 3, columns 5 and 6 after the copy"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(buf.GetChar(5, 2).ForeColor), "ForeColor of a copied cell"
+        Expect.AreEqual CLng(ConsoleColor.Blue), CLng(buf.GetChar(5, 2).BackColor), "BackColor of a copied cell"
+        Expect.AreEqual "ab", RowOf(buf, 0, 0, 2), "the source is left as it was"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyRegion_OverlappingToTheRight_ReadsCellsBeforeOverwritingThem()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 2)
+        buf.WriteAt 0, 0, "abcd"
+        buf.CopyRegion 0, 0, 3, 0, 2, 0
+        Expect.AreEqual "ababcd", RowOf(buf, 0, 0, 6), "row 0 after copying columns 0 to 3 two columns to the right"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyRegion_OverlappingDownward_ReadsCellsBeforeOverwritingThem()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(4, 5)
+        buf.WriteAt 0, 0, "A"
+        buf.WriteAt 0, 1, "B"
+        buf.WriteAt 0, 2, "C"
+        buf.CopyRegion 0, 0, 0, 2, 0, 1
+        Expect.AreEqual "A", buf.GetChar(0, 1).Char, "row 1 after copying rows 0 to 2 one row down"
+        Expect.AreEqual "B", buf.GetChar(0, 2).Char, "row 2"
+        Expect.AreEqual "C", buf.GetChar(0, 3).Char, "row 3"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyRegion_DestinationCellsOutsideTheGridAreSkipped()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(6, 2)
+        buf.WriteAt 0, 0, "abcd"
+        buf.CopyRegion 0, 0, 3, 0, 4, 0
+        Expect.AreEqual "abcdab", RowOf(buf, 0), "row 0 after a copy whose right half lies beyond the last column"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyRegion_SourceOutsideTheGridIsCutAndTheDestinationIsNotMoved()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 2)
+        buf.WriteAt 0, 0, "abc"
+        buf.CopyRegion -2, 0, 2, 0, 5, 0
+        Expect.AreEqual "abc", RowOf(buf, 0, 5, 3), "row 0, columns 5 to 7: the cut source (columns 0 to 2) is copied to the unchanged destination"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyRegion_DirtyRectangleHoldsTheDestinationAndTheSource()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 4)
+        buf.ClearDirty
+        buf.CopyRegion 0, 0, 1, 1, 5, 2
+        Expect.AreEqual "0 0 6 3", DirtyText(buf), "dirty rectangle after CopyRegion 0, 0, 1, 1, 5, 2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CopyRegion_InABatch_DirtyRectangleHoldsOnlyTheDestination()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(10, 4)
+        buf.ClearDirty
+        buf.BeginBatchUpdate
+        buf.CopyRegion 0, 0, 1, 1, 5, 2
+        Expect.IsFalse buf.IsDirty, "IsDirty after CopyRegion inside a batch"
+        buf.EndBatchUpdate
+        Expect.Done
+    End Sub
+
+    ' ---- ScrollRegion
+
+    [TestCase]
+    Public Sub ScrollRegion_Up_MovesTheRowsUpAndClearsTheBottomRow()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = Rows4()
+        buf.ScrollRegion 0, 0, 4, 3, -1, 0
+        Expect.AreEqual "B", buf.GetChar(0, 0).Char, "row 0 after scrolling up by one row"
+        Expect.AreEqual "C", buf.GetChar(0, 1).Char, "row 1"
+        Expect.AreEqual "D", buf.GetChar(0, 2).Char, "row 2"
+        Expect.AreEqual " ", buf.GetChar(0, 3).Char, "row 3, the row the move uncovered"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ScrollRegion_Left_MovesTheColumnsLeftAndClearsTheRightColumn()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(5, 1)
+        buf.WriteAt 0, 0, "ABCDE"
+        buf.ScrollRegion 0, 0, 4, 0, 0, -1
+        Expect.AreEqual "BCDE ", RowOf(buf, 0), "row 0 after scrolling left by one column"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ScrollRegion_Down_InARegionAwayFromTheTop_MovesTheRowsDown()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = Rows4()
+        buf.ScrollRegion 0, 1, 4, 3, 1, 0
+        Expect.AreEqual "A", buf.GetChar(0, 0).Char, "row 0, outside the region"
+        Expect.AreEqual " ", buf.GetChar(0, 1).Char, "row 1, the row the move uncovered"
+        Expect.AreEqual "B", buf.GetChar(0, 2).Char, "row 2 after scrolling rows 1 to 3 down by one"
+        Expect.AreEqual "C", buf.GetChar(0, 3).Char, "row 3"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ScrollRegion_Down_AtTheTopEdge_MovesTheRowsByTheDistanceAsked()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = Rows4()
+        buf.ScrollRegion 0, 0, 4, 3, 1, 0
+        Expect.AreEqual " ", buf.GetChar(0, 0).Char, "row 0 after scrolling the whole grid down by one row"
+        Expect.AreEqual "A", buf.GetChar(0, 1).Char, "row 1"
+        Expect.AreEqual "B", buf.GetChar(0, 2).Char, "row 2"
+        Expect.AreEqual "C", buf.GetChar(0, 3).Char, "row 3"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ScrollRegion_Right_AtTheLeftEdge_MovesTheColumnsByTheDistanceAsked()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(5, 1)
+        buf.WriteAt 0, 0, "ABCDE"
+        buf.ScrollRegion 0, 0, 4, 0, 0, 1
+        Expect.AreEqual " ABCD", RowOf(buf, 0), "row 0 after scrolling right by one column"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ScrollRegion_BothDeltasZero_DoesNothing()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = Rows4()
+        buf.ClearDirty
+        buf.ScrollRegion 0, 0, 4, 3, 0, 0
+        Expect.IsFalse buf.IsDirty, "IsDirty after a scroll by 0 and 0"
+        Expect.AreEqual "A", buf.GetChar(0, 0).Char, "row 0"
+        Expect.Done
+    End Sub
+
+    Private Function Rows4() As cConsoleBuffer
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(5, 4)
+        Dim y As Long
+        For y = 0 To 3
+            buf.WriteAt 0, y, String$(5, Chr$(65 + y))
+        Next
+        Set Rows4 = buf
+    End Function
+
+    ' ---- WriteTextEx
+
+    [TestCase]
+    Public Sub WriteTextEx_LongText_EndsInTheEllipsis()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(20, 2)
+        buf.WriteTextEx "Filename.extension", 0, 0, ConsoleColor.Gray, ConsoleColor.Black, 10, "..."
+        Expect.AreEqual "Filenam...", RowOf(buf, 0, 0, 10), "row 0 after WriteTextEx with a width of 10"
+        Expect.AreEqual " ", buf.GetChar(10, 0).Char, "the cell after the width"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteTextEx_DefaultEllipsisIsTheHorizontalEllipsisCharacter()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(20, 2)
+        buf.WriteTextEx "Filename.extension", 0, 0, ConsoleColor.Gray, ConsoleColor.Black, 8
+        Expect.AreEqual "Filenam" & ChrW$(&H2026), RowOf(buf, 0, 0, 8), "row 0 after WriteTextEx with the default ellipsis"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteTextEx_ShortTextIsWrittenWhole()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(20, 2)
+        buf.WriteTextEx "abc", 2, 0, ConsoleColor.Red, ConsoleColor.Blue, 10
+        Expect.AreEqual "  abc", RowOf(buf, 0, 0, 5), "row 0 after WriteTextEx of a text shorter than the width"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(buf.GetChar(2, 0).ForeColor), "ForeColor of the written cell"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteTextEx_EllipsisAsLongAsTheWidth_WritesOnlyTheEllipsis()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(20, 2)
+        buf.WriteTextEx "abcdefgh", 0, 0, ConsoleColor.Gray, ConsoleColor.Black, 3, "..."
+        Expect.AreEqual "...", RowOf(buf, 0, 0, 3), "row 0 when the ellipsis is as long as the width"
+        buf.Clear
+        buf.WriteTextEx "abcdefgh", 0, 0, ConsoleColor.Gray, ConsoleColor.Black, 2, "..."
+        Expect.AreEqual ".. ", RowOf(buf, 0, 0, 3), "row 0 when the ellipsis is longer than the width"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteTextEx_WidthZeroOrLess_WritesNothing()
+        Expect.Begin
+        Dim buf As cConsoleBuffer = New cConsoleBuffer(20, 2)
+        buf.ClearDirty
+        buf.WriteTextEx "abc", 0, 0, ConsoleColor.Gray, ConsoleColor.Black, 0
+        buf.WriteTextEx "abc", 0, 0, ConsoleColor.Gray, ConsoleColor.Black, -3
+        Expect.AreEqual "   ", RowOf(buf, 0, 0, 3), "row 0 after WriteTextEx with a width of 0 and of -3"
+        Expect.IsFalse buf.IsDirty, "IsDirty after those calls"
+        Expect.Done
+    End Sub
+
+End Module

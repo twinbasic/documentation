@@ -20,6 +20,7 @@ Syntax: *object*.**GetFileName** ( *strFullPath* ) **As String**
 
 ## Remarks
 
+<!-- test: CDialogPropertyTests.GetFileName_ReturnsThePartAfterTheLastBackslash -->
 **GetFileName** returns the file name of a path, with its extension: the name in `C:\Docs\summary.txt` is `summary.txt`.
 
 - Only the backslash separates folders. A forward slash is an ordinary character, so a path written with forward slashes is returned unchanged.
@@ -27,6 +28,7 @@ Syntax: *object*.**GetFileName** ( *strFullPath* ) **As String**
 - A string that ends with a backslash, such as `C:\Docs\`, gives an empty string.
 
 The method works on text only. It does not check that the file exists, and it reads no property of the object.
+<!-- /test -->
 
 ## Example
 

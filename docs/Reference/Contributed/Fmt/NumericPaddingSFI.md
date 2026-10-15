@@ -8,6 +8,8 @@ has_toc: false
 # NumericPaddingSFI class
 {: .no_toc }
 
+<!-- test: HexTests.NumericPadding_NeverMatches, HexTests.NumericPadding_GetFormattedValue_RaisesError5, ItemTests.DotNet_NumberIdentifierN_DoesNotExist -->
+
 A placeholder format identifier that never matches and cannot format.
 
 **NumericPaddingSFI** is a format identifier class. It implements [**IStringFormatIdentifier**](IStringFormatIdentifier) but has no identifier of its own. [**StringHelper**](StringHelper) registers it last among the numeric identifiers, and because its **IsIdentifierMatch** always returns **False**, [**StringFormat**](PublicEntryPoints/StringFormat) never calls its **GetFormattedValue**. The package's source states no purpose for it. The class is predeclared, and its two members are reached through the interface.
@@ -33,6 +35,8 @@ On Error Resume Next
 Debug.Print f.GetFormattedValue(1, spec)
 Debug.Print Err.Number & ": " & Err.Description  ' 5: Invalid procedure call or argument
 ```
+
+<!-- /test -->
 
 ## See Also
 

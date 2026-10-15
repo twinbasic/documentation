@@ -1,0 +1,8 @@
+' LowestRandom: a random source of the test cases that always returns the lower bound.
+Class LowestRandom
+    Implements PwGenRandom
+
+    Private Function NextInRange(ByVal lowerBound As Long, ByVal upperBound As Long) As Long Implements PwGenRandom.NextInRange
+        Return lowerBound
+    End Function
+End Class

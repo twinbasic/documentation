@@ -1,0 +1,577 @@
+' tsPwGen: random mode. How the pool is built from Alphabet, the four classes, IncludeChars,
+' ExcludeChars and the look-alike characters, and what MinPerClass, StartsWithLetter and Length
+' demand of a result. Each case draws Draws results and checks a property that every one has.
+[TestFixture]
+Module RandomModeTests
+
+    ' The recipe of the cases: the four classes off, so that a case turns on what it tests.
+    Private Function Bare() As PwGenOptions
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.HasUpperCase = False
+        o.HasLowerCase = False
+        o.HasDigits = False
+        o.HasSpecialChars = False
+        o.MinPerClass = 0
+        Return o
+    End Function
+
+    ' All the results of Draws draws, one string.
+    Private Function Many(ByVal Options As PwGenOptions) As String
+        Dim i As Long
+        Dim all As String
+        For i = 1 To Helpers.Draws
+            all = all & PwGen.Generate(Options)
+        Next
+        Return all
+    End Function
+
+    [TestCase]
+    Public Sub Alphabet_IsTheWholePool()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "ABC"
+        o.Length = 12
+        Dim all As String = Many(o)
+        Expect.AreEqual 12 * Helpers.Draws, Len(all), "total length of the results of Alphabet ABC and Length 12"
+        Expect.IsTrue Helpers.AllFrom(all, "ABC"), "every character of the results of Alphabet ABC is A, B or C"
+        Expect.AreEqual 3, Len(Helpers.Without("ABC", Helpers.Without("ABC", all))), "different characters of ABC seen in " & Helpers.Draws & " results"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alphabet_IgnoresTheClassSettingsIncludeAndExclude()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Complex
+        o.Alphabet = "ABC"
+        o.IncludeChars = "xyz"
+        o.ExcludeChars = "A"
+        o.MinPerClass = 5
+        o.Length = 12
+        Dim all As String = Many(o)
+        Expect.AreEqual 12 * Helpers.Draws, Len(all), "total length of the results of Alphabet ABC with classes, IncludeChars, ExcludeChars A and MinPerClass 5"
+        Expect.IsTrue Helpers.AllFrom(all, "ABC"), "every character is A, B or C although the classes and IncludeChars xyz are set"
+        Expect.IsTrue InStr(1, all, "A", vbBinaryCompare) > 0, "A is drawn although ExcludeChars is A"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alphabet_IgnoresTheLookAlikes()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "0O1lI"
+        o.Length = 20
+        Dim all As String = Many(o)
+        Expect.IsTrue Helpers.AllFrom(all, "0O1lI"), "every character of the results of Alphabet 0O1lI is one of them"
+        Expect.AreEqual 5, Len(Helpers.Without("0O1lI", Helpers.Without("0O1lI", all))), "different characters of 0O1lI seen"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alphabet_RepeatedCharactersAreOneCharacter()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "aabbcc"
+        o.Length = 300
+        Dim pw As String = PwGen.Generate(o)
+        Expect.AreEqual 300, Len(pw), "Len of a result of Alphabet aabbcc"
+        Expect.IsTrue Helpers.AllFrom(pw, "abc"), "every character is a, b or c"
+        Dim n As Long = Helpers.CountOf(pw, "a")
+        Expect.IsTrue n > 60 And n < 140, "the share of a in 300 characters from the Alphabet aabbcc is a third, not a half"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alphabet_CharactersAreComparedByCode()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "aA"
+        o.Length = 40
+        Dim all As String = Many(o)
+        Expect.IsTrue InStr(1, all, "a", vbBinaryCompare) > 0 And InStr(1, all, "A", vbBinaryCompare) > 0, "a and A are both drawn from the Alphabet aA"
+        Helpers.ExpectNear 40 * 1, PwGen.Entropy(o), "Entropy of 40 characters from the Alphabet aA (two different characters)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Alphabet_SurrogatePairIsTwoCharacters()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = ChrW(&HD83D&) & ChrW(&HDE00&)
+        o.Length = 1
+        Helpers.ExpectNear 1, PwGen.Entropy(o), "Entropy of one character from an Alphabet of one surrogate pair"
+        Dim i As Long
+        Dim bad As Long
+        Dim seenHigh As Boolean
+        Dim seenLow As Boolean
+        For i = 1 To Helpers.Draws
+            Dim pw As String = PwGen.Generate(o)
+            If Len(pw) <> 1 Then
+                bad = bad + 1
+            ElseIf AscW(pw) = AscW(ChrW(&HD83D&)) Then
+                seenHigh = True
+            ElseIf AscW(pw) = AscW(ChrW(&HDE00&)) Then
+                seenLow = True
+            Else
+                bad = bad + 1
+            End If
+        Next
+        Expect.AreEqual 0, bad, "results that are not one half of the surrogate pair"
+        Expect.IsTrue seenHigh And seenLow, "both halves of the pair are drawn alone"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Classes_UppercaseOnly()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Bare()
+        o.HasUpperCase = True
+        o.Length = 50
+        Expect.IsTrue Helpers.AllFrom(Many(o), Helpers.Without(Helpers.UpperChars, "OI")), "every character of an uppercase-only recipe is a letter A to Z without O and I"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Classes_LowercaseOnly()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Bare()
+        o.HasLowerCase = True
+        o.Length = 50
+        Expect.IsTrue Helpers.AllFrom(Many(o), Helpers.Without(Helpers.LowerChars, "l")), "every character of a lowercase-only recipe is a letter a to z without l"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Classes_DigitsOnly()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Bare()
+        o.HasDigits = True
+        o.Length = 50
+        Dim all As String = Many(o)
+        Expect.IsTrue Helpers.AllFrom(all, "23456789"), "every character of a digits-only recipe is 2 to 9 (0 and 1 are look-alikes)"
+        Helpers.ExpectNear 50 * Log(8) / Log(2), PwGen.Entropy(o), "Entropy of 50 digits without 0 and 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Classes_SpecialCharactersOnly()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Bare()
+        o.HasSpecialChars = True
+        o.Length = 50
+        Dim all As String = Many(o)
+        Expect.IsTrue Helpers.AllFrom(all, Helpers.SpecialChars), "every character of a special-characters-only recipe is one of the 20"
+        Expect.AreEqual 20, Len(Helpers.Without(Helpers.SpecialChars, Helpers.Without(Helpers.SpecialChars, all))), "different special characters seen"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Classes_CustomSpecialCharsReplaceTheDefault()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Bare()
+        o.HasSpecialChars = True
+        o.SpecialChars = "*?"
+        o.Length = 50
+        Expect.IsTrue Helpers.AllFrom(Many(o), "*?"), "every character is * or ? for SpecialChars *?"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Classes_AllFourTogether()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Bare()
+        o.HasUpperCase = True
+        o.HasLowerCase = True
+        o.HasDigits = True
+        o.HasSpecialChars = True
+        o.Length = 60
+        Dim all As String = Many(o)
+        Dim pool As String = Helpers.Without(Helpers.UpperChars & Helpers.LowerChars & Helpers.DigitChars, Helpers.AmbiguousChars) & Helpers.SpecialChars
+        Expect.IsTrue Helpers.AllFrom(all, pool), "every character is in the pool of 77"
+        Expect.AreEqual 77, Len(Helpers.Without(pool, Helpers.Without(pool, all))), "different characters of the pool seen in " & Helpers.Draws & " results of 60"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsAmbiguousExcluded_False_KeepsTheLookAlikes()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.IsAmbiguousExcluded = False
+        o.Length = 60
+        Dim all As String = Many(o)
+        Expect.AreEqual 62, Len(Helpers.Without(Helpers.UpperChars & Helpers.LowerChars & Helpers.DigitChars, Helpers.Without(Helpers.UpperChars & Helpers.LowerChars & Helpers.DigitChars, all))), "different letters and digits seen when the look-alikes are kept"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AmbiguousChars_CustomSetIsRemoved()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Bare()
+        o.HasLowerCase = True
+        o.AmbiguousChars = "ab"
+        o.Length = 100
+        Dim all As String = Many(o)
+        Expect.IsFalse Helpers.HasAnyOf(all, "ab"), "a or b in the results when AmbiguousChars is ab"
+        Expect.IsTrue InStr(1, all, "l", vbBinaryCompare) > 0, "l is drawn when AmbiguousChars is ab"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ExcludeChars_AreRemovedFromTheClasses()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Complex
+        o.ExcludeChars = "abcdefghij2468!#"
+        o.Length = 60
+        Dim all As String = Many(o)
+        Expect.IsFalse Helpers.HasAnyOf(all, "abcdefghij2468!#"), "an excluded character in the results"
+        Expect.IsTrue Helpers.HasAnyOf(all, "klmnopqrstuvwxyz"), "the rest of the lowercase letters are drawn"
+        Dim pool As String = Helpers.Without(Helpers.Without(Helpers.UpperChars & Helpers.LowerChars & Helpers.DigitChars, Helpers.AmbiguousChars) & Helpers.SpecialChars, "abcdefghij2468!#")
+        Helpers.ExpectNear 60 * Log(Len(pool)) / Log(2), PwGen.Entropy(o), "Entropy with ExcludeChars"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ExcludeChars_AClassWithNoCharacterLeft_EmptyClass()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.ExcludeChars = "0123456789"
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with every digit excluded and HasDigits True"
+        Helpers.ExpectError "every digit excluded", "EmptyClass", "an enabled class is empty after exclusions.", "PwGen.Generate"
+        Dim s As PwGenOptions = PwGenOptions.Complex
+        s.SpecialChars = ""
+        Expect.AreEqual "", PwGen.Generate(s), "Generate with HasSpecialChars True and SpecialChars empty"
+        Helpers.ExpectError "empty SpecialChars", "EmptyClass", "an enabled class is empty after exclusions.", "PwGen.Generate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IncludeChars_AddCharactersToThePool()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Bare()
+        o.HasDigits = True
+        o.IncludeChars = "!"
+        o.Length = 300
+        Dim pw As String = PwGen.Generate(o)
+        Expect.IsTrue Helpers.AllFrom(pw, "23456789!"), "every character is a digit 2 to 9 or the included !"
+        Expect.IsTrue InStr(1, pw, "!", vbBinaryCompare) > 0, "the included ! is drawn in 300 characters"
+        Helpers.ExpectNear 300 * Log(9) / Log(2), PwGen.Entropy(o), "Entropy with the digits 2 to 9 and one included character"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IncludeChars_AreFilteredByExcludeChars()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Bare()
+        o.HasDigits = True
+        o.IncludeChars = "!?"
+        o.ExcludeChars = "!"
+        o.Length = 300
+        Dim pw As String = PwGen.Generate(o)
+        Expect.IsFalse InStr(1, pw, "!", vbBinaryCompare) > 0, "an included character that ExcludeChars names in the result"
+        Expect.IsTrue InStr(1, pw, "?", vbBinaryCompare) > 0, "the other included character is drawn"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IncludeChars_AreFilteredByTheLookAlikes()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Bare()
+        o.HasDigits = True
+        o.IncludeChars = "O?"
+        o.Length = 300
+        Dim pw As String = PwGen.Generate(o)
+        Expect.IsFalse InStr(1, pw, "O", vbBinaryCompare) > 0, "an included look-alike in the result"
+        Expect.IsTrue InStr(1, pw, "?", vbBinaryCompare) > 0, "the other included character is drawn"
+        o.IsAmbiguousExcluded = False
+        Expect.IsTrue InStr(1, PwGen.Generate(o), "O", vbBinaryCompare) > 0, "the included O is drawn when IsAmbiguousExcluded is False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IncludeChars_AlreadyInThePoolAreNotAddedTwice()
+        Expect.Begin
+        Helpers.Reset
+        Dim a As PwGenOptions = Bare()
+        a.HasDigits = True
+        Dim b As PwGenOptions = a.Clone()
+        b.IncludeChars = "5555"
+        Helpers.ExpectNear PwGen.Entropy(a), PwGen.Entropy(b), "Entropy of the digits with IncludeChars 5555 against without"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinPerClass_Default_EveryClassIsInEveryResult()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Complex
+        o.Length = 8
+        Dim i As Long
+        Dim bad As Long
+        For i = 1 To Helpers.Draws
+            Dim pw As String = PwGen.Generate(o)
+            If Not (Helpers.HasAnyOf(pw, Helpers.UpperChars) And Helpers.HasAnyOf(pw, Helpers.LowerChars) And Helpers.HasAnyOf(pw, Helpers.DigitChars) And Helpers.HasAnyOf(pw, Helpers.SpecialChars)) Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "results of 8 characters out of " & Helpers.Draws & " that lack a class"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinPerClass_Three_ThreeOfEachClass()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Complex
+        o.MinPerClass = 3
+        o.Length = 12
+        Dim i As Long
+        Dim bad As Long
+        For i = 1 To Helpers.Draws
+            Dim pw As String = PwGen.Generate(o)
+            If Len(pw) <> 12 Then bad = bad + 1
+            If Helpers.CountOf(pw, Helpers.UpperChars) < 3 Or Helpers.CountOf(pw, Helpers.LowerChars) < 3 Or Helpers.CountOf(pw, Helpers.DigitChars) < 3 Or Helpers.CountOf(pw, Helpers.SpecialChars) < 3 Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "results of 12 characters out of " & Helpers.Draws & " that have fewer than three of a class"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinPerClass_Zero_NoGuarantee()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.MinPerClass = 0
+        o.Length = 1
+        Dim pw As String = PwGen.Generate(o)
+        Expect.AreEqual 1, Len(pw), "Len of a result with MinPerClass 0 and Length 1"
+        Helpers.ExpectNoError "MinPerClass 0 with Length 1"
+        Dim missing As Long
+        Dim i As Long
+        o.Length = 2
+        For i = 1 To Helpers.Draws
+            If Not (Helpers.HasAnyOf(PwGen.Generate(o), Helpers.DigitChars)) Then missing = missing + 1
+        Next
+        Expect.IsTrue missing > 0, "results of two characters without a digit when MinPerClass is 0 (the guarantee is off)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinPerClass_Negative_InvalidMinPerClass()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.MinPerClass = -1
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with MinPerClass -1"
+        Helpers.ExpectError "MinPerClass -1", "InvalidMinPerClass", "MinPerClass must be >= 0.", "PwGen.Generate"
+        Expect.AreEqual 0#, PwGen.Entropy(o), "Entropy with MinPerClass -1"
+        Helpers.ExpectError "Entropy with MinPerClass -1", "InvalidMinPerClass", "MinPerClass must be >= 0.", "PwGen.Entropy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinPerClass_LengthBelowMinPerClassTimesClasses_LengthTooShort()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Length = 2
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with Length 2 and three classes"
+        Helpers.ExpectError "Length 2, three classes", "LengthTooShort", "Length is smaller than MinPerClass times the number of enabled classes.", "PwGen.Generate"
+        o.Length = 3
+        Expect.AreEqual 3, Len(PwGen.Generate(o)), "Len of a result with Length 3 and three classes"
+        Helpers.ExpectNoError "Length 3, three classes"
+        o.MinPerClass = 2
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with Length 3, MinPerClass 2 and three classes"
+        Helpers.ExpectError "Length 3, MinPerClass 2", "LengthTooShort", "Length is smaller than MinPerClass times the number of enabled classes.", "PwGen.Generate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MinPerClass_IncludeCharsBelongToNoClass()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Bare()
+        o.HasDigits = True
+        o.IncludeChars = "abcdefghijklmnopqrstuvwxyz"
+        o.MinPerClass = 5
+        o.Length = 5
+        Dim i As Long
+        Dim bad As Long
+        For i = 1 To Helpers.Draws
+            If Helpers.CountOf(PwGen.Generate(o), "23456789") < 5 Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "results of 5 characters out of " & Helpers.Draws & " that are not 5 digits, with MinPerClass 5 and the letters only in IncludeChars"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StartsWithLetter_TheFirstCharacterIsAnAsciiLetter()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Complex
+        o.StartsWithLetter = True
+        Dim i As Long
+        Dim bad As Long
+        For i = 1 To Helpers.Draws
+            If Not Helpers.StartsWithAsciiLetter(PwGen.Generate(o)) Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "results of Complex with StartsWithLetter out of " & Helpers.Draws & " that do not start with a letter"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StartsWithLetter_ClassGuaranteesStillHold()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Complex
+        o.StartsWithLetter = True
+        o.Length = 4
+        Dim i As Long
+        Dim bad As Long
+        For i = 1 To Helpers.Draws
+            Dim pw As String = PwGen.Generate(o)
+            If Len(pw) <> 4 Then bad = bad + 1
+            If Not (Helpers.HasAnyOf(pw, Helpers.UpperChars) And Helpers.HasAnyOf(pw, Helpers.LowerChars) And Helpers.HasAnyOf(pw, Helpers.DigitChars) And Helpers.HasAnyOf(pw, Helpers.SpecialChars)) Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "results of Complex with StartsWithLetter and Length 4 out of " & Helpers.Draws & " that lack a class"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StartsWithLetter_AppliesToTheAlphabet()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "123a"
+        o.StartsWithLetter = True
+        o.Length = 4
+        Dim i As Long
+        Dim bad As Long
+        For i = 1 To Helpers.Draws
+            If Left$(PwGen.Generate(o), 1) <> "a" Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "results of the Alphabet 123a with StartsWithLetter out of " & Helpers.Draws & " that do not start with a"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StartsWithLetter_PoolWithoutALetter_CannotStartWithLetter()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Pin
+        o.StartsWithLetter = True
+        Expect.AreEqual "", PwGen.Generate(o), "Generate of Pin with StartsWithLetter"
+        Helpers.ExpectError "Pin with StartsWithLetter", "CannotStartWithLetter", "the pool has no ASCII letter for StartsWithLetter.", "PwGen.Generate"
+        Expect.AreEqual 0#, PwGen.Entropy(o), "Entropy of Pin with StartsWithLetter"
+        Helpers.ExpectError "Entropy of Pin with StartsWithLetter", "CannotStartWithLetter", "the pool has no ASCII letter for StartsWithLetter.", "PwGen.Entropy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Length_Limits()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Length = 4096
+        Dim pw As String = PwGen.Generate(o)
+        Expect.AreEqual 4096, Len(pw), "Len of a result with Length 4096"
+        Helpers.ExpectNoError "Length 4096"
+        o.Length = 1
+        o.MinPerClass = 0
+        Expect.AreEqual 1, Len(PwGen.Generate(o)), "Len of a result with Length 1 and MinPerClass 0"
+        Dim bad As Variant
+        For Each bad In Array(0, -1, 4097)
+            o.Length = bad
+            Expect.AreEqual "", PwGen.Generate(o), "Generate with Length " & bad
+            Helpers.ExpectError "Length " & bad, "InvalidLength", "Length must be between 1 and 4096.", "PwGen.Generate"
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Length_IsNotCheckedWhenItIsSet()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        On Error Resume Next
+        o.Length = 0
+        o.MinPerClass = -5
+        o.Mode = 9
+        Expect.AreEqual 0, Err.Number, "run-time error number of assigning Length 0, MinPerClass -5 and Mode 9"
+        On Error GoTo 0
+        Expect.AreEqual 0, o.Length, "Length after the assignment of 0"
+        Helpers.ExpectNoError "assigning values that cannot be used"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NoCharset_NoClassAndNoAlphabet()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = Bare()
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with no class enabled and an empty Alphabet"
+        Helpers.ExpectError "no class and no Alphabet", "NoCharset", "no character class is enabled and Alphabet is empty.", "PwGen.Generate"
+        o.IncludeChars = "abc"
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with no class enabled and IncludeChars abc"
+        Helpers.ExpectError "no class, IncludeChars abc", "NoCharset", "no character class is enabled and Alphabet is empty.", "PwGen.Generate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Mode_NotAMember_InvalidMode()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Mode = 7
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with Mode 7"
+        Helpers.ExpectError "Mode 7", "InvalidMode", "Mode is not a known ePwGenMode member.", "PwGen.Generate"
+        Expect.AreEqual 0#, PwGen.Entropy(o), "Entropy with Mode 7"
+        Helpers.ExpectError "Entropy with Mode 7", "InvalidMode", "Mode is not a known ePwGenMode member.", "PwGen.Entropy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RandomMode_DoesNotReadTheWordlistProperties()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.WordCount = 0
+        o.Wordlist = 9
+        Dim dup() As String
+        ReDim dup(0 To 1)
+        dup(0) = "same"
+        dup(1) = "same"
+        o.CustomWords = dup
+        Expect.AreEqual 16, Len(PwGen.Generate(o)), "Len of a random-mode result with WordCount 0, an invalid Wordlist and duplicate CustomWords"
+        Helpers.ExpectNoError "random mode with wordlist properties that cannot be used"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SeveralFaults_TheFirstFoundIsReported()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Length = 0
+        o.MinPerClass = -1
+        PwGen.Generate o
+        Expect.AreEqual "InvalidLength", PwGenError.Code, "Code with Length 0 and MinPerClass -1"
+        Expect.Done
+    End Sub
+
+End Module

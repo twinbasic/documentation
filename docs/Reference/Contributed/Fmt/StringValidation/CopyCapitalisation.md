@@ -8,6 +8,8 @@ has_toc: false
 # CopyCapitalisation
 {: .no_toc }
 
+<!-- test: StringValidationTests.CopyCapitalisation_FollowsTheWholeSource, HexTests.LowerCaseIdentifier_GivesALowerCaseResult -->
+
 Returns a string in upper case or in lower case, following the case of another string.
 
 Syntax: **CopyCapitalisation** ( *source*, *applyTo* ) **As String**
@@ -25,6 +27,8 @@ Returns *applyTo* in upper case when *source* has no lower-case letters, and in 
 The function looks at *source* as a whole and does not copy case letter by letter. A *source* of `"HeLLo"` has lower-case letters, so the result is lower case. A *source* with no letters at all, such as `"123"`, is equal to its upper-case form, so the result is upper case.
 
 The format identifier classes use it to give a result the case of the identifier that was written: `{0:X}` and `{0:x}` give `&HFF` and `&hff`.
+
+<!-- /test -->
 
 ## Example
 

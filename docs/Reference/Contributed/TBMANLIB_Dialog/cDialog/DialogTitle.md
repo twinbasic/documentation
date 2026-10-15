@@ -20,9 +20,11 @@ Syntax: *object*.**DialogTitle** [ = *string* ]
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.ShowOpen_DialogTitleIsTheCaption, CDialogDialogTests.ShowSave_DialogTitleAndDefaultCaption -->
 [**ShowOpen**](ShowOpen) and [**ShowSave**](ShowSave) pass the text as the `lpstrTitle` member of `OPENFILENAME`, the text of the title bar. With an empty **DialogTitle** the Open dialog is titled *Open* and the Save As dialog *Save As*. A text that is set replaces the title.
 
 [**ShowBrowseForFolder**](ShowBrowseForFolder) passes the text as the `lpszTitle` member of `BROWSEINFO`. The title bar of that dialog always reads *Browse For Folder* (*Browse for Folder* when [**NewDialogStyle**](NewDialogStyle) is **False**), and **DialogTitle** is shown as a line of text above the tree of folders, as an instruction to the user. With an empty **DialogTitle** there is no text there.
+<!-- /test -->
 
 ## Example
 

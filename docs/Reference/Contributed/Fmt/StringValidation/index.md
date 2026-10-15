@@ -8,6 +8,8 @@ has_toc: false
 # StringValidation module
 {: .no_toc }
 
+<!-- test: StringValidationTests.Functions_CanBeCalledDespiteOptionPrivateModule -->
+
 Holds the small string tests and the case helper that the package's formatter is built on.
 
 **StringValidation** is a standard module of five public functions. [**StringContains**](StringContains), [**StringContainsAny**](StringContainsAny), [**StringMatchesAny**](StringMatchesAny) and [**StringStartsWith**](StringStartsWith) return a **Boolean** about the text of a string, and [**CopyCapitalisation**](CopyCapitalisation) returns a string in the letter case of another. The formatter calls them to look for backslashes and escape sequences, to test whether a format string begins with `@` and to follow the case of an identifier. A project that references the package can call them too, by name or as `StringValidation.StringContains`.
@@ -22,6 +24,8 @@ Debug.Print StringMatchesAny("b", "a", "b", "c")         ' True
 Debug.Print StringStartsWith("He", "Hello")              ' True
 Debug.Print CopyCapitalisation("HELLO", "world")         ' WORLD
 ```
+
+<!-- /test -->
 
 ## Functions
 

@@ -1,0 +1,255 @@
+' cDialogFont: the font as properties and as text, and the Font dialog.
+[TestFixture]
+Module CDialogFontTests
+
+    [TestCase]
+    Public Sub Defaults_AreThoseOfThePage()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        Expect.AreEqual "Segoe UI", dlg.FaceName, "FaceName of a new cDialogFont"
+        Expect.AreEqual 9, dlg.Size, "Size of a new cDialogFont"
+        Expect.AreEqual 0, dlg.Style, "Style of a new cDialogFont"
+        Expect.AreEqual 0, dlg.Color, "Color of a new cDialogFont"
+        Expect.IsFalse dlg.Bold Or dlg.Italic Or dlg.Underline Or dlg.StrikeOut Or dlg.FixedPitchOnly, "Bold, Italic, Underline, StrikeOut and FixedPitchOnly of a new cDialogFont"
+        Expect.IsTrue dlg.ForceFontExist And dlg.ShowEffects And dlg.ScreenFontsOnly, "ForceFontExist, ShowEffects and ScreenFontsOnly of a new cDialogFont"
+        Expect.AreEqual 0, dlg.OwnerHwnd + dlg.MinSize + dlg.MaxSize, "OwnerHwnd, MinSize and MaxSize of a new cDialogFont"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Bold_Italic_AreBitsOfStyle()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.Bold = True
+        dlg.Italic = True
+        dlg.Bold = False
+        Expect.AreEqual 2, dlg.Style, "Style after Bold True, Italic True, Bold False"
+        Expect.IsTrue dlg.Italic, "Italic after that"
+        dlg.Style = FontStyle.StyleBoldItalic
+        Expect.IsTrue dlg.Bold And dlg.Italic, "Bold and Italic after Style StyleBoldItalic"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Italic_AloneGivesStyle2()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.Italic = True
+        Expect.AreEqual 2, dlg.Style, "Style after Italic True"
+        Expect.IsFalse dlg.Bold, "Bold after Italic True"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Style_HoldsTheNumberAssigned()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.Style = 4
+        Expect.AreEqual 4, dlg.Style, "Style after 4"
+        Expect.IsFalse dlg.Bold Or dlg.Italic, "Bold and Italic after Style 4"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Size_IgnoresZeroAndNegativeValues()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.Size = 12
+        dlg.Size = 0
+        dlg.Size = -3
+        Expect.AreEqual 12, dlg.Size, "Size after 12, 0 and -3"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Color_StoresAnyLong()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.Color = RGB(0, 0, 128)
+        Expect.AreEqual &H800000, dlg.Color, "Color after RGB(0, 0, 128)"
+        dlg.Color = -5
+        Expect.AreEqual -5, dlg.Color, "Color after -5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_RestoresTheStartingValues()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.FaceName = "Courier New"
+        dlg.Size = 14
+        dlg.Bold = True
+        dlg.Underline = True
+        dlg.StrikeOut = True
+        dlg.Color = vbRed
+        dlg.FixedPitchOnly = True
+        dlg.ForceFontExist = False
+        dlg.ShowEffects = False
+        dlg.ScreenFontsOnly = False
+        dlg.OwnerHwnd = 5
+        dlg.MinSize = 8
+        dlg.MaxSize = 20
+        dlg.Reset
+        Expect.AreEqual "Segoe UI 9pt", dlg.ToDescription(), "ToDescription after Reset"
+        Expect.AreEqual 0, dlg.Color, "Color after Reset"
+        Expect.IsFalse dlg.FixedPitchOnly, "FixedPitchOnly after Reset"
+        Expect.IsTrue dlg.ForceFontExist And dlg.ShowEffects And dlg.ScreenFontsOnly, "ForceFontExist, ShowEffects and ScreenFontsOnly after Reset"
+        Expect.AreEqual 0, dlg.OwnerHwnd + dlg.MinSize + dlg.MaxSize, "OwnerHwnd, MinSize and MaxSize after Reset"
+        Expect.Done
+    End Sub
+
+    ' ---- the text forms
+
+    [TestCase]
+    Public Sub ToCssFont_HasTheDocumentedForm()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        Expect.AreEqual "font-family: 'Segoe UI'; font-size: 9pt; font-weight: normal; font-style: normal; text-decoration: none;", dlg.ToCssFont(), "ToCssFont of a new cDialogFont"
+        dlg.FaceName = "Courier New"
+        dlg.Size = 14
+        dlg.Bold = True
+        dlg.Italic = True
+        dlg.Underline = True
+        Expect.AreEqual "font-family: 'Courier New'; font-size: 14pt; font-weight: bold; font-style: italic; text-decoration: underline;", dlg.ToCssFont(), "ToCssFont of a bold italic underlined 14 point Courier New"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToCssFont_LeavesOutStrikeOutAndColor()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        Dim plain As String = dlg.ToCssFont()
+        dlg.StrikeOut = True
+        dlg.Color = vbRed
+        Expect.AreEqual plain, dlg.ToCssFont(), "ToCssFont after StrikeOut True and a color"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToCssFont_EscapesASingleQuoteInTheFaceName()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.FaceName = "O'Brien"
+        Expect.AreEqual "font-family: 'O\'Brien'; font-size: 9pt; font-weight: normal; font-style: normal; text-decoration: none;", dlg.ToCssFont(), "ToCssFont of a face name with a single quote"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToDescription_NamesFaceSizeAndEffects()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        Expect.AreEqual "Segoe UI 9pt", dlg.ToDescription(), "ToDescription of a new cDialogFont"
+        dlg.FaceName = "Courier New"
+        dlg.Size = 14
+        dlg.Style = FontStyle.StyleBoldItalic
+        dlg.Underline = True
+        dlg.StrikeOut = True
+        Expect.AreEqual "Courier New 14pt Bold Italic Underline Strikeout", dlg.ToDescription(), "ToDescription with every effect"
+        dlg.Color = vbRed
+        Expect.AreEqual "Courier New 14pt Bold Italic Underline Strikeout", dlg.ToDescription(), "ToDescription after a color is set"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enumerations_HaveTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual 700, FontWeight.FW_BOLD, "FW_BOLD"
+        Expect.AreEqual 400, FontWeight.FW_NORMAL, "FW_NORMAL"
+        Expect.AreEqual 900, FontWeight.FW_HEAVY, "FW_HEAVY"
+        Expect.AreEqual 32, FontFamily.FF_SWISS, "FF_SWISS"
+        Expect.AreEqual 80, FontFamily.FF_DECORATIVE, "FF_DECORATIVE"
+        Expect.AreEqual 1, FontPitch.FIXED_PITCH, "FIXED_PITCH"
+        Expect.AreEqual 2, FontPitch.VARIABLE_PITCH, "VARIABLE_PITCH"
+        Expect.AreEqual 3, FontStyle.StyleBoldItalic, "StyleBoldItalic"
+        Expect.AreEqual 1, FontStyle.StyleBold, "StyleBold"
+        Expect.Done
+    End Sub
+
+    ' ---- the dialog
+
+    [TestCase]
+    Public Sub ShowDialog_OKReturnsTrue()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.FaceName = "Courier New"
+        dlg.Size = 10
+        Pilot.Arm "id=1"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "dialogs ShowDialog opened"
+        Expect.AreEqual "Font", Pilot.Title(0), "caption of the Font dialog"
+        Expect.IsTrue r, "ShowDialog after OK"
+        Expect.AreEqual "Courier New", dlg.FaceName, "FaceName after OK on the face the dialog opened with"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_CancelReturnsFalseAndKeepsTheProperties()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.FaceName = "Courier New"
+        dlg.Size = 10
+        Pilot.Arm "id=2"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.IsFalse r, "ShowDialog after Cancel"
+        Expect.AreEqual "Courier New 10pt", dlg.ToDescription(), "ToDescription after Cancel"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_MinSizeAloneOpensTheDialog()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.MinSize = 8
+        Pilot.Arm "id=2"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "dialogs ShowDialog opened with MinSize 8 and MaxSize 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_MinSizeAboveMaxSizeOpensTheDialogOrRaisesAnError()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.MinSize = 20
+        dlg.MaxSize = 10
+        Pilot.Arm "id=2"
+        On Error Resume Next
+        Dim r As Boolean = dlg.ShowDialog()
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Pilot.Disarm
+        Expect.IsTrue Pilot.WindowsSeen > 0 Or n <> 0, "a MinSize of 20 above a MaxSize of 10 opens the dialog or raises an error, not a silent False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_MinSizeAndMaxSizeOpenTheDialog()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.MinSize = 8
+        dlg.MaxSize = 72
+        Pilot.Arm "id=2"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "dialogs ShowDialog opened with MinSize 8 and MaxSize 72"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_MissingFaceWithoutForceFontExistGivesAnEmptyFaceName()
+        Expect.Begin
+        Dim dlg As New cDialogFont
+        dlg.ForceFontExist = False
+        dlg.FaceName = "A Face Of My Own"
+        Pilot.Arm "id=1"
+        Dim r As Boolean = dlg.ShowDialog()
+        Pilot.Disarm
+        Expect.IsTrue r, "ShowDialog after OK with ForceFontExist False and a face that is not installed"
+        Expect.AreEqual "", dlg.FaceName, "FaceName after that OK"
+        Expect.Done
+    End Sub
+
+End Module

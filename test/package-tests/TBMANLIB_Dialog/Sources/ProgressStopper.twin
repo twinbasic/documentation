@@ -1,0 +1,20 @@
+' ProgressStopper: calls Cancel from the handler of ProgressChanged once the position reaches a value.
+Class ProgressStopper
+
+    Private WithEvents mProgress As cDialogProgress
+    Private mAt As Long
+
+    Public Sub Attach(ByVal source As cDialogProgress, ByVal CancelAt As Long)
+        Set mProgress = source
+        mAt = CancelAt
+    End Sub
+
+    Public Sub Detach()
+        Set mProgress = Nothing
+    End Sub
+
+    Private Sub mProgress_ProgressChanged(ByVal value As Long)
+        If value >= mAt Then mProgress.Cancel
+    End Sub
+
+End Class

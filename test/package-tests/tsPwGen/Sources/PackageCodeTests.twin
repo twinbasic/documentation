@@ -1,0 +1,53 @@
+' tsPwGen: the package's own test code and its internal modules, which are public and so can be named
+' by a project: Tests (Tests.RunAll, Tests.SetContinueOnFail, Tests.FailCount) and PwGenWords.
+' Tests.* print their lines with Debug.Print, which is the DEBUG CONSOLE of the IDE.
+[TestFixture]
+Module PackageCodeTests
+
+    [TestCase]
+    Public Sub PackageTests_RunAll_NoCheckFails()
+        Expect.Begin
+        Helpers.Reset
+        Tests.RunAll
+        Expect.AreEqual 0, Tests.FailCount(), "failed checks of Tests.RunAll"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PackageTests_FailedCheckIsCounted()
+        Expect.Begin
+        Helpers.Reset
+        Tests.BeginRun
+        Tests.CheckTrue "first", False
+        Expect.AreEqual 1, Tests.FailCount(), "Tests.FailCount after one failed check"
+        Tests.CheckTrue "second", True
+        Expect.AreEqual 1, Tests.FailCount(), "Tests.FailCount after a failed and a passed check"
+        Tests.EndRun
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetContinueOnFail_False_NoCheckRunsAfterTheFirstFailure()
+        Expect.Begin
+        Helpers.Reset
+        Tests.BeginRun
+        Tests.SetContinueOnFail False
+        On Error Resume Next
+        Tests.CheckTrue "first", False
+        Tests.CheckTrue "second", False
+        On Error GoTo 0
+        Expect.AreEqual 1, Tests.FailCount(), "Tests.FailCount after two failed checks with SetContinueOnFail False (the run stops at the first)"
+        Tests.EndRun
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InternalModules_CanBeNamedByAProject()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual 8192, PwGenWords.CountOf(pgwEnglish, "x"), "PwGenWords.CountOf(pgwEnglish, ""x"")"
+        Expect.AreEqual "abandon", PwGenWords.WordAt(pgwEnglish, 0, "x"), "PwGenWords.WordAt(pgwEnglish, 0, ""x"")"
+        Expect.Done
+    End Sub
+
+End Module

@@ -32,6 +32,7 @@ In the syntax lines of this page, *object* is a **cAes**.
 
 ## Defaults
 
+<!-- test: DefaultsAndConstantsTests.New_StartsWithTheDefaultValues -->
 A new **cAes** starts with these values.
 
 | Property | Starting value |
@@ -56,13 +57,17 @@ Debug.Print helper.IsArrayEmpty(keyBytes)    ' True
 Debug.Print aes.IsInitialized                ' False
 Debug.Print Len(aes.LastError)               ' 0
 ```
+<!-- /test -->
 
+<!-- test: ModeTests.EncryptBytes_TwoCallsWithTheSamePropertiesGiveTheSameOutput -->
 Every call of an encrypt or a decrypt method starts again from **Key** and **IV**: it makes new Windows key objects, and it does not continue the chaining of an earlier call. Two encryptions in a row with the same properties give the same output.
+<!-- /test -->
 
 ## Which mode runs
 
+<!-- test: ModeTests.EncryptBytes_Ecb_EqualPlainBlocksGiveEqualCipherBlocks, ModeTests.EncryptBytes_Cbc_EqualPlainBlocksGiveDifferentCipherBlocks, ModeTests.EncryptBytes_Cbc_DefaultModeGivesDifferentCipherBlocksForEqualPlainBlocks, ModeTests.EncryptBytes_Cbc_IVChangesTheCiphertext, ModeTests.EncryptBytes_Ecb_IVDoesNotChangeTheCiphertext, ModeTests.EncryptBytes_Ofb_DiffersFromCfbAfterTheFirstBlock, ModeTests.EncryptBytes_Ctr_DiffersFromCfb, ModeTests.EncryptBytes_Ctr_DiffersFromOfb, ModeTests.EncryptBytes_Cfb_IVChangesTheCiphertext, ModeTests.EncryptBytes_Ecb_RoundTrips, ModeTests.EncryptBytes_Cbc_RoundTrips, ModeTests.EncryptBytes_Cfb_RoundTrips, ModeTests.EncryptBytes_Ofb_RoundTrips, ModeTests.EncryptBytes_Ctr_RoundTrips, ModeTests.EncryptBytes_Gcm_RoundTrips, StandardVectorTests.EncryptBytes_Ecb_Aes128_GivesTheVectorOfSp80038aF11, StandardVectorTests.EncryptBytes_Ecb_Aes192_GivesTheVectorOfSp80038aF13, StandardVectorTests.EncryptBytes_Ecb_Aes256_GivesTheVectorOfSp80038aF15, StandardVectorTests.DecryptBytes_Ecb_Aes128_GivesThePlaintextOfSp80038aF12, StandardVectorTests.EncryptBytes_Cbc_Aes128_GivesTheVectorOfSp80038aF21, StandardVectorTests.EncryptBytes_Cbc_Aes192_GivesTheVectorOfSp80038aF23, StandardVectorTests.EncryptBytes_Cbc_Aes256_GivesTheVectorOfSp80038aF25, StandardVectorTests.DecryptBytes_Cbc_Aes128_GivesThePlaintextOfSp80038aF22, StandardVectorTests.EncryptBytes_Cfb_Aes128_GivesTheVectorOfSp80038aF313, StandardVectorTests.EncryptBytes_Cfb_Aes192_GivesTheVectorOfSp80038aF315, StandardVectorTests.EncryptBytes_Cfb_Aes256_GivesTheVectorOfSp80038aF317, StandardVectorTests.DecryptBytes_Cfb_Aes128_GivesThePlaintextOfSp80038aF314, StandardVectorTests.EncryptBytes_Ofb_Aes128_GivesTheVectorOfSp80038aF41, StandardVectorTests.EncryptBytes_Ofb_Aes192_GivesTheVectorOfSp80038aF43, StandardVectorTests.EncryptBytes_Ofb_Aes256_GivesTheVectorOfSp80038aF45, StandardVectorTests.DecryptBytes_Ofb_Aes128_GivesThePlaintextOfSp80038aF42, StandardVectorTests.EncryptBytes_Ctr_Aes128_GivesTheVectorOfSp80038aF51, StandardVectorTests.EncryptBytes_Ctr_Aes192_GivesTheVectorOfSp80038aF53, StandardVectorTests.EncryptBytes_Ctr_Aes256_GivesTheVectorOfSp80038aF55, StandardVectorTests.DecryptBytes_Ctr_Aes128_GivesThePlaintextOfSp80038aF52 -->
 > [!WARNING] 1.0.0.4
-> The name of a mode is not always the mode that runs. **ECB** runs CBC with an IV of zero bytes, **CBC** runs ECB, and **OFB** and **CTR** run CFB. Neither **ECB** nor **CBC** uses the IV that the program sets, so the same key and plaintext always give the same ciphertext, and in the default mode **CBC** equal plaintext blocks give equal ciphertext blocks. A round trip succeeds in every case, because encryption and decryption use the same mode, so a test that only decrypts what it has encrypted shows nothing.
+> The name of a mode is not always the mode that runs. **ECB** runs CBC with an IV of zero bytes, **CBC** runs ECB, and **OFB** and **CTR** run CFB. The CFB that runs has an 8-bit feedback, where the standard CFB has a 128-bit feedback, so **CFB**, **OFB** and **CTR** give the output of none of the standard modes of those names. Neither **ECB** nor **CBC** uses the IV that the program sets, so the same key and plaintext always give the same ciphertext, and in the default mode **CBC** equal plaintext blocks give equal ciphertext blocks. A round trip succeeds in every case, because encryption and decryption use the same mode, so a test that only decrypts what it has encrypted shows nothing.
 
 | Mode | Windows interface | What runs | The IV |
 |---|---|---|---|
@@ -103,6 +108,10 @@ The modes **ECB** and **CBC** acquire a context of the Crypto API for the provid
 The **Key** array is therefore not the AES key of these two modes. Other software that is given the same array and uses it as the AES key cannot decrypt their output; it has to hash the array in the same way first.
 
 The class pads the data as [**PaddingMode**](#paddingmode) says, and then calls `CryptEncrypt` for the last block. Windows adds its own PKCS #5 padding at that call, whatever **PaddingMode** is, so the output is longer than the padded data by 1 to 16 bytes: a whole block when the padded data already fills its blocks. On decryption Windows takes off its padding, and then the class takes off its own.
+
+<!-- test: StandardVectorTests.EncryptBytes_Ecb_Aes128_GivesTheBlockOfFips197C1, StandardVectorTests.EncryptBytes_Ecb_Aes192_GivesTheBlockOfFips197C2, StandardVectorTests.EncryptBytes_Ecb_Aes256_GivesTheBlockOfFips197C3, StandardVectorTests.EncryptBytes_Ecb_Aes128_GivesTheVectorOfSp80038aF11, StandardVectorTests.EncryptBytes_Cbc_Aes128_GivesTheVectorOfSp80038aF21, CryptoApiModeTests.EncryptBytes_Ecb_NoPaddingKeepsTheLengthOfTheInput, CryptoApiModeTests.EncryptBytes_Cbc_NoPaddingKeepsTheLengthOfTheInput, CryptoApiModeTests.EncryptBytes_Ecb_Pkcs7OfOneBlockGivesTwoBlocks, CryptoApiModeTests.EncryptBytes_Cbc_Pkcs7OfOneBlockGivesTwoBlocks, CryptoApiModeTests.EncryptBytes_Ecb_RefusesAKeyOfFiveBytes, CryptoApiModeTests.EncryptBytes_Cbc_RefusesAKeyOfFortyBytes -->
+> [!WARNING] 1.0.0.4
+> The output of **ECB** and **CBC** is not AES under the key in **Key**: the key is the SHA-256 hash of the bytes, and Windows adds a padding of its own, so the output is longer than the data even with **NoPadding**. The AES test vectors of FIPS 197 and NIST SP 800-38A do not come out, and other AES software cannot read the output. A **Key** of any length is accepted, a key of 5 or 40 bytes included, and a program is not told that the key is not an AES key.
 
 In this sample, the default mode **CBC** encrypts two equal blocks. The first two blocks of the output are equal, and so are the last two, which come from the two paddings. **Key** is the 16-byte key of the examples of NIST SP 800-38A, and the mode hashes it before it uses it.
 
@@ -176,7 +185,9 @@ Debug.Print HexOf(cipher)    ' 4a25e445195fc88dd0b7fff307d49a9a3daa1722a6ebdf652
 
 ### The CNG modes
 
+<!-- test: KeyAndIVTests.EncryptBytes_Cfb_RefusesAKeyOf20Bytes, KeyAndIVTests.EncryptBytes_Cfb_KeySizeDoesNotChangeTheKeyLengthThatRuns -->
 The modes **CFB**, **OFB**, **CTR** and **GCM** open the CNG provider for AES, set its chaining mode to `ChainingModeCFB` (**CFB**, **OFB**, **CTR**) or `ChainingModeGCM` (**GCM**), and make the key from the bytes of **Key** as they are. The key length is the length of the array: 16, 24 and 32 bytes give AES-128, AES-192 and AES-256. An array of any other length, such as 20 bytes, makes the call fail, and [**KeySize**](#keysize) has no effect: a 32-byte key with **KeySize_128** is an AES-256 key.
+<!-- /test -->
 
 The class does not set the message block length of the chaining mode, and CNG then feeds back one byte at a time: the CFB of these modes is CFB with an 8-bit feedback, the mode that NIST SP 800-38A lists as CFB8, and not CFB with a 128-bit feedback. Output of other software in CFB mode, which is usually CFB128, is different from it.
 
@@ -232,7 +243,9 @@ Debug.Print HexOf(cipher)
 ' 3b79424c9c0dd436bace9e0ed4586a4f32b9
 ```
 
+<!-- test: KeyAndIVTests.EncryptBytes_Cfb_NoIVGivesTheOutputOfAnIVOfZeroBytes, KeyAndIVTests.EncryptBytes_Cfb_RefusesAnIVOf12Bytes, KeyAndIVTests.EncryptBytes_Cfb_IVOf16BytesIsAccepted -->
 The IV of these modes is passed to CNG as it is, from the first element, with its length. CNG needs 16 bytes for CFB, and an IV of another length, such as 12 bytes, makes the call fail. With no IV set, the class passes none, and CNG uses 16 zero bytes: the output equals that of an IV of 16 zero bytes.
+<!-- /test -->
 
 ### Reading the output with other software
 
@@ -249,6 +262,7 @@ What the standard decryption returns is the data followed by the padding that [*
 
 ### Data that is not checked
 
+<!-- test: FailureTests.DecryptString_WrongKeyWithNoPadding_ReturnsOtherText -->
 None of the modes but **GCM** checks that the data is the data that was encrypted. A decryption with a wrong key, a wrong IV or damaged bytes gives other bytes, and nothing reports it. With the **PKCS7** padding of the default, the padding check rejects most of these results, about 255 of 256, and the decryption fails; the rest pass as data. With **NoPadding** or **ISO10126** there is no check, and [**DecryptString**](#decryptstring) returns whatever text the bytes decode to.
 
 ```tb check_build check_run
@@ -276,6 +290,7 @@ text = reader.DecryptString(writer.EncryptString("Hello, AES!"))
 Debug.Print Len(text) > 0                    ' True
 Debug.Print text = "Hello, AES!"             ' False
 ```
+<!-- /test -->
 
 ## GCM mode
 
@@ -288,7 +303,12 @@ GCM encrypts and authenticates. A **cAes** in GCM mode works in these steps.
 
 To decrypt, a **cAes** with the same key needs the same **IV**, **GcmTag** and **GcmAAD**. Windows checks the tag against the ciphertext and the additional data. When the check fails, [**DecryptBytes**](#decryptbytes) raises the error described under [Failures](#failures) and [**DecryptString**](#decryptstring) returns an empty string. No text is recorded in [**LastError**](#lasterror).
 
-**PaddingMode** applies in GCM mode as in the others. With the default **PKCS7** the ciphertext is 1 to 16 bytes longer than the plaintext, which is not what other GCM software produces, and the tag is a tag of the padded data. Use **NoPadding** to get standard GCM output. The sample is test case 4 of the GCM specification by McGrew and Viega, the document that NIST SP 800-38D is based on: a 60-byte plaintext, 20 bytes of additional data and the standard IV length of 96 bits.
+<!-- test: GcmTests.EncryptBytes_Gcm_DefaultPaddingGivesTheStandardOutput -->
+> [!NOTE] 1.0.0.4
+> **PaddingMode** applies in GCM mode as in the others. With the default **PKCS7** the ciphertext is 1 to 16 bytes longer than the plaintext, which is not what other GCM software produces, and the tag is a tag of the padded data. Use **NoPadding** to get standard GCM output.
+
+<!-- test: GcmTests.EncryptBytes_Gcm_Aes128_GivesTheVectorOfTestCase4, GcmTests.EncryptBytes_Gcm_Aes192_GivesTheVectorOfTestCase10, GcmTests.EncryptBytes_Gcm_Aes256_GivesTheVectorOfTestCase16, GcmTests.EncryptBytes_Gcm_AnIVLongerThan12BytesGivesTheOutputOfItsFirst12Bytes, GcmTests.DecryptBytes_Gcm_DamagedTagRaises, GcmTests.DecryptBytes_Gcm_DamagedAdditionalDataRaises, GcmTests.DecryptBytes_Gcm_DamagedCiphertextRaises, GcmTests.DecryptBytes_Gcm_ChangedIVRaises, GcmTests.DecryptBytes_Gcm_NoTagRaises, GcmTests.DecryptBytes_Gcm_TagOf12BytesIsAccepted, GcmTests.DecryptBytes_Gcm_TagOf4BytesIsRefused -->
+The sample is test case 4 of the GCM specification by McGrew and Viega, the document that NIST SP 800-38D is based on: a 60-byte plaintext, 20 bytes of additional data and the standard IV length of 96 bits.
 
 ```tb check_build check_run projname=aes-class
 Dim aes As cAes = New cAes(AesKeySize.KeySize_128, AesCipherMode.GCM, AesPaddingMode.NoPadding)
@@ -351,7 +371,9 @@ Debug.Print Err.Number
 ```
 
 A decryption with no tag set fails in the same way, after the line `DoDecryptCNG_GCM failed: GCM tag not set for decryption`. A tag of 16 bytes is the length that the encryption makes. The class passes the length of **GcmTag** to Windows as it is: a tag cut to its first 12 bytes is accepted and the decryption returns the plaintext, and one cut to 4 bytes makes Windows fail with an invalid parameter.
+<!-- /test -->
 
+<!-- test: GcmTests.EncryptBytes_Gcm_NoIVCanBeDecrypted, GcmTests.EncryptBytes_Gcm_NoIVLeavesTheNonceInIV, GcmTests.EncryptBytes_Gcm_NoIVRaisesNoErrorAndUsesAFreshNonceEachTime -->
 > [!WARNING] 1.0.0.4
 > A GCM encryption with no IV set makes a random 12-byte nonce, uses it, and keeps it nowhere. [**IV**](#iv) stays empty. A decryption with no IV uses a nonce of 12 zero bytes, so its tag check fails and the data cannot be decrypted. The encryption raises no error. Set **IV** before every GCM encryption, and keep it with the ciphertext.
 
@@ -374,7 +396,9 @@ Debug.Print HexOf(first) = HexOf(second)     ' False
 Debug.Print helper.IsArrayEmpty(ivBytes)     ' True
 ```
 
+<!-- test: GcmTests.EncryptBytes_Gcm_TwoEncryptionsWithTheSameIVUseTheSameNonce -->
 GCM requires that no nonce is used twice with the same key (NIST SP 800-38D). The class never changes **IV**, so two encryptions in a row use the same nonce unless the program sets a new **IV** between them.
+<!-- /test -->
 
 ## Failures
 
@@ -385,9 +409,11 @@ A failed call does not tell why, and what the caller gets depends on the member.
 - [**SetKeyFromString**](#setkeyfromstring) raises an error of its own, `vbObjectError + 2`.
 - [**GenerateRandomIV**](#generaterandomiv) and [**Cleanup**](#cleanup) cannot fail, and the properties raise nothing.
 
+<!-- test: FailureTests.EncryptBytes_NoKey_RaisesUnspecifiedError, FailureTests.EncryptBytes_NoKey_ErrorNamesTheCause, FailureTests.EncryptBytes_EmptyInput_RaisesUnspecifiedError, FailureTests.DecryptBytes_NoKey_RaisesUnspecifiedError, FailureTests.DecryptBytes_NoKey_ErrorNamesTheCause, FailureTests.DecryptBytes_GcmDamagedTag_ErrorNamesTheCause, FailureTests.DecryptBytes_Cfb_InvalidPadding_RaisesUnspecifiedError -->
 > [!NOTE] 1.0.0.4
 > A program that calls **EncryptBytes** or **DecryptBytes** needs an `On Error` statement, and cannot tell a missing key from a wrong tag or a damaged ciphertext by the error. The Debug Console of the IDE shows more: the package prints lines with `Debug.Print`, such as `DecryptBytes error: Key not set` and `BCryptEncrypt failed: 0xC0000206` followed by a message, and a built program writes none of them.
 
+<!-- test: FailureTests.EncryptString_NoKey_ReturnsAnEmptyString, FailureTests.EncryptString_NoKey_ReportsTheFailure, FailureTests.EncryptString_EmptyText_ReturnsAnEmptyString, FailureTests.DecryptString_GcmDamagedTag_ReturnsAnEmptyString, FailureTests.DecryptString_GcmDamagedTag_ReportsTheFailure, FailureTests.DecryptString_InvalidBase64_ReturnsAnEmptyStringAndSetsLastError -->
 > [!WARNING] 1.0.0.4
 > The string members hide a failure in an empty string. **DecryptString** of a GCM message whose tag does not match, of a message with a wrong key in a mode with padding, and of Base64 text that is not valid, all give the same empty string as an empty plaintext would, and **EncryptString** gives an empty string for a missing key. A program must test the result with `Len`.
 
@@ -400,6 +426,7 @@ These are the causes of a failure in the source:
 - the Base64 text of [**DecryptString**](#decryptstring) is not valid;
 - Windows reports an error, for example when the CNG provider is not available.
 
+<!-- test: FailureTests.LastError_IsNotClearedByALaterSuccess -->
 [**LastError**](#lasterror) holds a text only for the failures of the Base64, UTF-8 and padding functions of [**cAesHelper**](cAesHelper#lasterror), and is never cleared. `Err.Number` can also be 9 after a call that succeeded: the class tests its arrays with [**IsArrayEmpty**](cAesHelper#isarrayempty), which leaves the error 9 in `Err` when an array was never sized, for example when no IV is set in the mode **CFB**. A program should not take a non-zero `Err.Number` after a call that raised nothing for a failure.
 
 ```tb check_build check_run
@@ -416,6 +443,7 @@ Err.Clear
 Debug.Print Len(aes.EncryptString("text"))   ' 0
 Debug.Print Len(aes.LastError)               ' 0
 ```
+<!-- /test -->
 
 ## Constructors
 
@@ -437,7 +465,9 @@ Syntax: **Dim** *aes* **As cAes = New cAes** ( *keySize*, *cipherMode*, *padding
 *paddingMode*
 : *required* An [**AesPaddingMode**](mAesConstants#aespaddingmode) member, stored in [**PaddingMode**](#paddingmode).
 
+<!-- test: DefaultsAndConstantsTests.New_WithArgumentsStoresThem -->
 With no arguments the object starts with the values in [Defaults](#defaults). The constructor does not check the values. The class has the attribute `[COMCreatable(False)]`, so a program creates it with `New` and not with `CreateObject`.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim aes As cAes = New cAes(AesKeySize.KeySize_128, AesCipherMode.GCM, AesPaddingMode.NoPadding)
@@ -487,7 +517,9 @@ Whether the Windows key objects of the object exist. **Boolean**, read-only. Def
 
 Syntax: *object*.**IsInitialized**
 
+<!-- test: DefaultsAndConstantsTests.IsInitialized_IsTrueAfterACallAndFalseAfterASetterOrCleanup -->
 An encrypt or a decrypt call makes the key objects, and **IsInitialized** is **True** after one succeeded in making them. The setters of [**Key**](#key), [**IV**](#iv), [**KeySize**](#keysize), [**CipherMode**](#ciphermode) and [**PaddingMode**](#paddingmode), [**SetKeyFromString**](#setkeyfromstring) and [**Cleanup**](#cleanup) set it to **False**. The property does not say that the key is valid or that the last call succeeded. No call needs it: each call makes its own key objects.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim aes As New cAes
@@ -640,10 +672,13 @@ cipher = aes.EncryptBytes(plain)
 Debug.Print UBound(cipher) + 1               ' 32
 ```
 
+<!-- test: PaddingTests.EncryptBytes_Pkcs7_PadsToTheNextWholeBlock, PaddingTests.EncryptBytes_ZeroPadding_PadsToTheNextWholeBlock, PaddingTests.EncryptBytes_NoPadding_KeepsTheLengthOfTheInput, PaddingTests.EncryptBytes_Pkcs7_RoundTripsEveryLengthFrom1To40, PaddingTests.DecryptBytes_Pkcs7_RejectsInvalidPadding, PaddingTests.DecryptBytes_Iso10126_RoundTrips, PaddingTests.DecryptBytes_ZeroPadding_TakesOffTheZeroBytesTheEncryptionAdded -->
 With **NoPadding** in the modes **CFB**, **OFB**, **CTR** and **GCM**, the output has the length of the input. In the modes **ECB** and **CBC** it never does.
 
 **ISO10126** gives the output of **NoPadding**, and no padding is added. With **ZeroPadding** the decryption removes every zero byte at the end of the data, and with the data `41 42 00 00` it returns the two bytes `41 42`.
+<!-- /test -->
 
+<!-- test: PaddingTests.DecryptBytes_ZeroPadding_KeepsTheTrailingZeroBytesOfTheData, PaddingTests.DecryptBytes_ZeroPadding_DataOfZeroBytesRoundTrips -->
 > [!WARNING] 1.0.0.4
 > With **ZeroPadding**, the class gives back less than it was given when the data ends in zero bytes. The decryption removes every zero byte at the end of the data, and not only the ones that the encryption added, and raises no error. Data that is all zero bytes fails the decryption. Use **PKCS7** for data that can end in zero bytes.
 
@@ -656,7 +691,9 @@ Releases the Windows handles of the object.
 
 Syntax: *object*.**Cleanup**
 
+<!-- test: DefaultsAndConstantsTests.Cleanup_LeavesTheObjectUsable -->
 The object holds a Crypto API provider and key and a CNG algorithm and key after an encrypt or a decrypt call. **Cleanup** closes and destroys them, and sets [**IsInitialized**](#isinitialized) to **False**. The class calls it when the object is destroyed, so a program needs it only to release the handles earlier. The next encrypt or decrypt call makes new ones, so the object stays usable.
+<!-- /test -->
 
 **Cleanup** does not clear the memory of [**Key**](#key), [**IV**](#iv), [**GcmTag**](#gcmtag) or [**GcmAAD**](#gcmaad), and does not empty them.
 
@@ -766,8 +803,11 @@ Fills [**IV**](#iv) with 16 random bytes, and returns them.
 
 Syntax: *object*.**GenerateRandomIV** ( ) **As Byte()**
 
+<!-- test: KeyAndIVTests.GenerateRandomIV_Returns16BytesAndSetsTheIV -->
 Returns a **Byte** array of 16 bytes, which is also the new value of **IV**. The method calls `Randomize`, which mixes the system timer into the state of `Rnd` for the whole program, and then takes 16 values of `Rnd`.
+<!-- /test -->
 
+<!-- test: KeyAndIVTests.GenerateRandomIV_TwoCallsFromTheSameRndStateGiveDifferentIVs -->
 > [!WARNING] 1.0.0.4
 > The bytes come from `Rnd`, a pseudo-random generator, and not from a cryptographic one; the comment in the source says that the Crypto API would give better randomness. The state of `Rnd` has 24 bits: its sequence repeats after 16,777,216 values, so the method can return at most 16,777,216 different IVs, and two calls that start from the same state of `Rnd` return the same IV. A program that needs an IV that cannot be predicted can set [**IV**](#iv) from a source of its own.
 
@@ -838,6 +878,7 @@ Syntax: *object*.**SetGcmAADFromString** ( *aadString* [, *encoding*] )
 
 The method does not raise an error. When the conversion fails, it prints `SetGcmAADFromString failed: ` and the description with `Debug.Print`, which a built program does not show, and leaves **GcmAAD** as it was. The program that decrypts has to convert the string in the same way, since the bytes with another encoding are other bytes. [**EncryptString**](#encryptstring) uses UTF-8 for its text, and this method does not.
 
+<!-- test: GcmTests.SetGcmAADFromString_EmptyTextRemovesTheData, GcmTests.SetGcmAADFromString_SetsTheBytesOfTheText -->
 > [!WARNING] 1.0.0.4
 > An empty string does not remove the additional data. The method fails for an empty string and keeps the data that was set before, and only the Debug Console shows the message `SetGcmAADFromString failed: Unspecified error`. The next GCM encryption then authenticates the old data. To remove the data, assign an array that was never sized to [**GcmAAD**](#gcmaad).
 
@@ -872,9 +913,11 @@ Syntax: *object*.**SetKeyFromString** ( *keyString* [, *encoding*] )
 
 The method converts *keyString* to bytes with **StrConv** and makes an array of the length that [**KeySize**](#keysize) names, 16, 24 or 32 bytes: the first bytes of the conversion when it is longer, and the bytes followed by zero bytes when it is shorter. The array is the new value of **Key**. The method does not use the string in any other way.
 
+<!-- test: KeyAndIVTests.SetKeyFromString_DifferentTextsGiveDifferentKeys, KeyAndIVTests.SetKeyFromString_ShortTextIsNotExtendedWithZeroBytes, KeyAndIVTests.SetKeyFromString_TextLongerThanTheKeyIsCutAndShorterIsFollowedByZeros -->
 > [!WARNING] 1.0.0.4
 > There is no key derivation. The key is the bytes of the text, cut or extended with zero bytes: a string longer than the key is cut without a message, so that two strings that begin with the same 32 bytes give the same key (with **KeySize_256**), and a short string is a short key followed by zeros. The modes **ECB** and **CBC** then hash the bytes once with SHA-256, without a salt; the modes **CFB**, **OFB**, **CTR** and **GCM** use them as the key. With the default encoding, a character that is not in the ANSI code page of the system is converted to another character, and the same text gives different bytes on systems with another code page.
 
+<!-- test: KeyAndIVTests.SetKeyFromString_KeyHasTheLengthOfKeySize, KeyAndIVTests.SetKeyFromString_Utf8EncodingGivesTheBytesOfUtf8, KeyAndIVTests.SetKeyFromString_EmptyTextRaisesAndKeepsTheKey -->
 The method raises an error when *keyString* is empty: **Err.Number** is `vbObjectError + 2`, **Err.Source** is `cAes.SetKeyFromString` and **Err.Description** is `Key cannot be empty`. **Key** is not changed, and [**IsInitialized**](#isinitialized) is set to **False**. When **KeySize** has a value that is not a member of the enumeration, the key is left as it was and no error is raised.
 
 ```tb check_build check_run projname=aes-class
@@ -900,6 +943,7 @@ Debug.Print Err.Number - vbObjectError       ' 2
 Debug.Print Err.Source                       ' cAes.SetKeyFromString
 Debug.Print Err.Description                  ' Key cannot be empty
 ```
+<!-- /test -->
 
 ## See Also
 

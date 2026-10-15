@@ -1,0 +1,153 @@
+' ToolsDic: form text, two-level assignment, merging and copying of dictionaries.
+[TestFixture]
+Module DicTests
+
+    ' ---- FromWwwFormUrlencoded
+
+    [TestCase]
+    Public Sub FromWwwFormUrlencoded_ReadsPairsAndTrimsThem()
+        Expect.Begin
+        Dim D As New Scripting.Dictionary, r As Boolean
+        r = ToolsDic.FromWwwFormUrlencoded("name=Ann&city=Oslo&empty=&x= y &novalue&=skipped", D)
+        Expect.IsTrue r, "result of FromWwwFormUrlencoded"
+        Expect.AreEqual 5, D.Count, "number of pairs read"
+        Expect.AreEqual "Ann", D("name"), "value of name"
+        Expect.AreEqual "Oslo", D("city"), "value of city"
+        Expect.AreEqual "", D("empty"), "value of empty"
+        Expect.AreEqual "y", D("x"), "value of x, which had spaces at both ends"
+        Expect.AreEqual "", D("novalue"), "value of a pair with no ="
+        Expect.IsFalse D.Exists(""), "a pair with an empty name is skipped"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FromWwwFormUrlencoded_ExistingNameGetsTheNewValue()
+        Expect.Begin
+        Dim D As New Scripting.Dictionary
+        D("keep") = "k"
+        D("a") = "old"
+        ToolsDic.FromWwwFormUrlencoded "a=new", D
+        Expect.AreEqual "new", D("a"), "value of a"
+        Expect.AreEqual "k", D("keep"), "value of the entry that is not in the text"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FromWwwFormUrlencoded_ValueWithEqualsSign_KeepsTheRest()
+        Expect.Begin
+        Dim D As New Scripting.Dictionary
+        ToolsDic.FromWwwFormUrlencoded "a=b=c", D
+        Expect.AreEqual "b=c", D("a"), "value of a in a=b=c"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FromWwwFormUrlencoded_PercentEscapes_AreDecoded()
+        Expect.Begin
+        Dim D As New Scripting.Dictionary
+        ToolsDic.FromWwwFormUrlencoded "a=x%20y&b=1%2B1&c=p+q", D
+        Expect.AreEqual "x y", D("a"), "value of a in a=x%20y"
+        Expect.AreEqual "1+1", D("b"), "value of b in b=1%2B1"
+        Expect.AreEqual "p q", D("c"), "value of c in c=p+q"
+        Expect.Done
+    End Sub
+
+    ' ---- OverWrite
+
+    [TestCase]
+    Public Sub OverWrite_OnlyKey_WritesTheKeysTheTargetHas()
+        Expect.Begin
+        Dim A As New Scripting.Dictionary, B As New Scripting.Dictionary
+        A("x") = 1
+        A("y") = 2
+        B("y") = 20
+        B("z") = 30
+        ToolsDic.OverWrite A, B
+        Expect.AreEqual 1, A("x"), "x after OverWrite"
+        Expect.AreEqual 20, A("y"), "y after OverWrite"
+        Expect.IsFalse A.Exists("z"), "z, which only the source has, after OverWrite"
+        ToolsDic.OverWrite A, B, False
+        Expect.AreEqual 30, A("z"), "z after OverWrite with OnlyKey False"
+        Expect.AreEqual 20, B("y"), "y of the source, which OverWrite does not change"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OverWrite_NestedDictionary_IsUpdatedInPlace()
+        Expect.Begin
+        Dim A As New Scripting.Dictionary, B As New Scripting.Dictionary, Inner As Scripting.Dictionary
+        Set A("n") = New Scripting.Dictionary
+        A("n")("x") = 1
+        A("n")("y") = 2
+        Set Inner = A("n")
+        Set B("n") = New Scripting.Dictionary
+        B("n")("y") = 20
+        B("n")("z") = 30
+        ToolsDic.OverWrite A, B
+        Expect.AreEqual 20, Inner("y"), "y of the nested dictionary the target held"
+        Expect.AreEqual 1, Inner("x"), "x of the nested dictionary the target held"
+        Expect.IsFalse Inner.Exists("z"), "z of the nested dictionary, which only the source has"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OverWrite_OnlyKeyFalse_NestedDictionaryMissingInTarget_IsAdded()
+        Expect.Begin
+        Dim A As New Scripting.Dictionary, B As New Scripting.Dictionary
+        A("x") = 1
+        Set B("m") = New Scripting.Dictionary
+        B("m")("k") = 5
+        On Error Resume Next
+        ToolsDic.OverWrite A, B, False
+        Expect.AreEqual 0, Err.Number, "OverWrite with OnlyKey False of a nested dictionary the target lacks raised error " & Err.Number & " " & Err.Description
+        Err.Clear
+        Expect.IsTrue A.Exists("m"), "the target has the key m"
+        Expect.AreEqual 5, A("m")("k"), "value m.k in the target"
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    ' ---- TowLevelDicAssign and DeepCopy
+
+    [TestCase]
+    Public Sub TowLevelDicAssign_CreatesAndUpdatesTheInnerDictionary()
+        Expect.Begin
+        Dim D As New Scripting.Dictionary
+        ToolsDic.TowLevelDicAssign D, "a", "x", 1
+        ToolsDic.TowLevelDicAssign D, "a", "y", 2
+        ToolsDic.TowLevelDicAssign D, "a", "x", 10
+        Expect.AreEqual 12, D("a")("x") + D("a")("y"), "x plus y"
+        Expect.AreEqual 2, D("a").Count, "number of entries of the inner dictionary"
+        Expect.AreEqual 1, D.Count, "number of entries of the outer dictionary"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DeepCopy_FirstLevel_CopiesKeysAndValues()
+        Expect.Begin
+        Dim A As New Scripting.Dictionary, C As Scripting.Dictionary
+        A.CompareMode = TextCompare
+        A("p") = 1
+        A("q") = "two"
+        Set C = ToolsDic.DeepCopy(A)
+        Expect.AreEqual BinaryCompare, C.CompareMode, "CompareMode of the copy of a dictionary that compares text"
+        C("p") = 99
+        Expect.AreEqual 1, A("p"), "p of the source after the copy was changed"
+        Expect.AreEqual "two", C("q"), "q of the copy"
+        Expect.AreEqual 2, C.Count, "number of entries of the copy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DeepCopy_NestedDictionary_IsCopied()
+        Expect.Begin
+        Dim A As New Scripting.Dictionary, C As Scripting.Dictionary
+        Set A("child") = New Scripting.Dictionary
+        A("child")("n") = 1
+        Set C = ToolsDic.DeepCopy(A)
+        C("child")("n") = 2
+        Expect.AreEqual 1, A("child")("n"), "n of the source's nested dictionary after the copy's was changed"
+        Expect.Done
+    End Sub
+
+End Module

@@ -35,13 +35,17 @@ Returns the media type of a file name.
 Syntax: **ToolsHttpMimeType.MapMimeType** ( *FilePath* ) **As String**
 
 *FilePath*
-: *required* A **String**, a file name or a path. The extension is the text after the last dot, so a name or a path with no dot is its own extension. The comparison respects letter case, and the table holds lower-case extensions: `report.PDF` is not found. A leading dot is fine, so `.html` and `html` give the same result.
+: *required* A **String**, a file name or a path. The extension is the text after the last dot, so a name or a path with no dot is its own extension. A leading dot is fine, so `.html` and `html` give the same result.
 
+<!-- test: MimeTests.MapMimeType_PathsAndOtherExtensions -->
 Returns the media type of the extension in the table below. For an extension that is not in the table it returns `application/octet-stream`. An empty string raises error 9, *Subscript out of range*.
+<!-- /test -->
 
+<!-- test: MimeTests.MapMimeType_UpperCaseExtension_IsFound, MimeTests.MapMimeType_WoffAndWoff2_HaveFontTypes, MimeTests.MapMimeType_CommonExtensionsMissingFromTheTable_HaveTheirTypes, MimeTests.MapMimeType_Java_IsTheMediaTypeOfJavaSource -->
 > [!NOTE] 1.0.0.29
-> The extension `woff` is in the table with no media type, so it returns an empty string, not `application/x-font-woff`; `woff2` returns `application/x-font-woff`. The table also lacks `htm`, `mp3`, `ogg` and `wasm`, which return `application/octet-stream`, and `java` returns the text `text/x-java-source,java`.
+> The extension is compared with its letter case, and the table holds lower-case extensions, so `report.PDF` is not found and gives `application/octet-stream`. The extension `woff` is in the table with no media type, so it returns an empty string, not `application/x-font-woff`; `woff2` returns `application/x-font-woff`. The table also lacks `htm`, `mp3`, `ogg` and `wasm`, which return `application/octet-stream`, and `java` returns the text `text/x-java-source,java`.
 
+<!-- test: MimeTests.MapMimeType_TableOfThePage_GivesTheMediaTypeOfEachExtension -->
 | Extension | Media type |
 |:----------|:-----------|
 | `7z` | `application/x-7z-compressed` |
@@ -143,6 +147,7 @@ Returns the media type of the extension in the table below. For an extension tha
 | `xslt` | `application/xslt+xml` |
 | `xul` | `application/vnd.mozilla.xul+xml` |
 | `zip` | `application/zip` |
+<!-- /test -->
 
 ## See Also
 

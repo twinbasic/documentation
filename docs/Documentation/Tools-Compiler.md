@@ -179,7 +179,7 @@ A defect that is a compile-time diagnostic is a **compile case** instead: a line
 | `--llvm` | Compile the whole probe, and the exe, with LLVM. The same as `--compiler-options +llvm`. |
 | `--compiler-options <s>` | The project's compiler options, for the run and the exe. |
 | `--exe` | Also run the built exe; print what it writes with `TbRun.Out`, its exit code, the fault the event log records for it, and the boxes it opened, each closed with OK. |
-| `--tests` | Build nothing: judge the compile cases and run each `[TestCase]` Sub in the compiler's test mode, printing `PASS` or `FAIL` for each. `--timeout` is the limit on each case. Not with `--exe`. |
+| `--tests` | Build nothing: judge the compile cases and run each `[TestCase]` Sub in the compiler's test mode, printing `PASS` or `FAIL` for each. `--timeout` is the limit on each case, not on the run. A case still running at the limit is reported as `no answer from the compiler`, and the cases after it as `not run: <case> did not return`: the compiler cannot stop a case, and refuses every other request (`main thread is busy`) until it ends. Run the cases after it again in a new `tbrun` with `--only`. Not with `--exe`. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
 | `--json` | One object with the path of the built file, the target, the captured lines, whether the probe returned, the licence an LLVM run checked, the exe's run, the IDE pid and anything reaped. |
 | `--keep` | Leave the IDE running and print its pid as `ide-pid: <n>` (with `--json`, `idePid`) and the `taskkill` commands, as for `tbbuild`. Implies `--no-reap`, and leaves the IDE's registry entries for the probe as they are. |

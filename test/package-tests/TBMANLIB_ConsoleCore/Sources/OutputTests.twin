@@ -1,0 +1,525 @@
+' TBMANLIB_ConsoleCore: what cConsole writes: text, colours, the standard error handle, boxes and bars,
+' and the layout helpers. The window of the console the cases use is 100 columns by 30 rows (see Rig).
+[TestFixture]
+Module OutputTests
+
+    ' ---- WriteTo and WriteLine
+
+    [TestCase]
+    Public Sub WriteTo_WritesTheTextAtTheCursorInTheCurrentColours()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.SetColors ConsoleColor.Yellow, ConsoleColor.DarkBlue
+        c.WriteTo "ab"
+        Expect.AreEqual "ab", Rig.RowText(0), "row 0 after WriteTo ""ab"""
+        Expect.AreEqual &H1E&, Rig.AttrAt(Rig.OutHandle, 0, 0), "attribute of the first cell"
+        Expect.AreEqual 2, Rig.CursorCol(Rig.OutHandle), "column of the cursor after the text"
+        c.WriteTo "cd"
+        Expect.AreEqual "abcd", Rig.RowText(0), "row 0 after a second WriteTo"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteTo_ControlCharactersTakeEffect()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteTo "abc" & vbCr & "X"
+        Expect.AreEqual "Xbc", Rig.RowText(0), "row 0 after ""abc"", a carriage return and ""X"""
+        c.WriteTo vbCr & vbLf & "ab" & vbBack & "Z"
+        Expect.AreEqual "aZ", Rig.RowText(1), "row 1 after a line feed, ""ab"", a backspace and ""Z"""
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteLine_MovesToTheStartOfTheNextLine()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteLine "first"
+        c.WriteTo "second"
+        Expect.AreEqual "first", Rig.RowText(0), "row 0"
+        Expect.AreEqual "second", Rig.RowText(1), "row 1"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteLine_WithoutText_WritesOnlyTheLineFeed()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteTo "ab"
+        c.WriteLine
+        Expect.AreEqual 0, Rig.CursorCol(Rig.OutHandle), "column of the cursor after WriteLine with no text"
+        Expect.AreEqual 1, Rig.CursorRow(Rig.OutHandle), "row of the cursor after WriteLine with no text"
+        Expect.AreEqual "ab", Rig.RowText(0), "row 0"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- WriteF and WriteLineF
+
+    [TestCase]
+    Public Sub WriteF_ReplacesNumberedPlaceholders()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteF "{0} + {1} = {2}", 2, 3, 2 + 3
+        Expect.AreEqual "2 + 3 = 5", Rig.RowText(0), "row 0 after WriteF with three values"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteF_PlaceholderCanBeUsedMoreThanOnceAndInAnyOrder()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteF "{1}{0}{1}", "a", "b"
+        Expect.AreEqual "bab", Rig.RowText(0), "row 0 after WriteF ""{1}{0}{1}"""
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteF_FormatSpecifierIsNotUnderstood()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteF "{0:N2}", 3.14159
+        Expect.AreEqual "{0:N2}", Rig.RowText(0), "row 0 after WriteF ""{0:N2}"""
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteF_PlaceholderWithoutAValueStaysInTheText()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteF "{0} {1}", "a"
+        Expect.AreEqual "a {1}", Rig.RowText(0), "row 0 after WriteF ""{0} {1}"" with one value"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteF_ValueThatContainsAPlaceholderIsReplacedAgain()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteF "{0}|{1}", "{1}", "B"
+        Expect.AreEqual "B|B", Rig.RowText(0), "row 0 after WriteF with a first value of ""{1}"""
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteLineF_ReplacesThePlaceholdersAndEndsTheLine()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteLineF "Hello, {0}.", "Ann"
+        c.WriteTo "next"
+        Expect.AreEqual "Hello, Ann.", Rig.RowText(0), "row 0 after WriteLineF"
+        Expect.AreEqual "next", Rig.RowText(1), "row 1 after the line feed"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- the coloured write members
+
+    [TestCase]
+    Public Sub WriteColored_WritesTheTextInTheGivenColours()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteColored "ab", ConsoleColor.Red, ConsoleColor.Green
+        Expect.AreEqual "ab", Rig.RowText(0), "row 0"
+        Expect.AreEqual 12 + 10 * 16, Rig.AttrAt(Rig.OutHandle, 0, 0), "attribute of the first cell (Red on Green)"
+        Expect.AreEqual 12 + 10 * 16, Rig.AttrAt(Rig.OutHandle, 1, 0), "attribute of the second cell"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteColored_PutsBackTheColoursTheObjectTracks()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.SetColors ConsoleColor.Cyan, ConsoleColor.DarkRed
+        c.WriteColored "x", ConsoleColor.Red, ConsoleColor.Green
+        Expect.AreEqual CLng(ConsoleColor.Cyan), CLng(c.ForeColor), "ForeColor after WriteColored"
+        Expect.AreEqual CLng(ConsoleColor.DarkRed), CLng(c.BackColor), "BackColor after WriteColored"
+        Expect.AreEqual 11 + 4 * 16, Rig.CurrentAttr(Rig.OutHandle), "attribute of the console after WriteColored"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteColored_NoBackground_KeepsTheCurrentBackground()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.BackColor = ConsoleColor.DarkBlue
+        c.WriteColored "x", ConsoleColor.Red
+        Expect.AreEqual 12 + 1 * 16, Rig.AttrAt(Rig.OutHandle, 0, 0), "attribute of the cell written with Red and no background, on a DarkBlue console"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteLineColored_NoBackground_KeepsTheCurrentBackground()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.BackColor = ConsoleColor.DarkBlue
+        c.WriteLineColored "x", ConsoleColor.Red
+        Expect.AreEqual 12 + 1 * 16, Rig.AttrAt(Rig.OutHandle, 0, 0), "attribute of the cell written with Red and no background, on a DarkBlue console"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteAtColored_NoBackground_KeepsTheCurrentBackground()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.BackColor = ConsoleColor.DarkBlue
+        c.WriteAtColored 3, 2, "x", ConsoleColor.Red
+        Expect.AreEqual 12 + 1 * 16, Rig.AttrAt(Rig.OutHandle, 3, 2), "attribute of the cell written with Red and no background, on a DarkBlue console"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteColored_LeavesTheConsoleInTheColoursItHad()
+        Expect.Begin
+        Rig.Acquire
+        Rig.SetAttr Rig.OutHandle, &H1E
+        Dim c As New cConsole
+        c.WriteColored "x", ConsoleColor.Red, ConsoleColor.Green
+        Expect.AreEqual &H1E&, Rig.CurrentAttr(Rig.OutHandle), "attribute of the console after WriteColored, which began as Yellow on DarkBlue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteLineColored_LeavesTheConsoleInTheColoursItHad()
+        Expect.Begin
+        Rig.Acquire
+        Rig.SetAttr Rig.OutHandle, &H1E
+        Dim c As New cConsole
+        c.WriteLineColored "x", ConsoleColor.Red, ConsoleColor.Green
+        Expect.AreEqual &H1E&, Rig.CurrentAttr(Rig.OutHandle), "attribute of the console after WriteLineColored, which began as Yellow on DarkBlue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteAtColored_LeavesTheConsoleInTheColoursItHad()
+        Expect.Begin
+        Rig.Acquire
+        Rig.SetAttr Rig.OutHandle, &H1E
+        Dim c As New cConsole
+        c.WriteAtColored 3, 2, "x", ConsoleColor.Red, ConsoleColor.Green
+        Expect.AreEqual &H1E&, Rig.CurrentAttr(Rig.OutHandle), "attribute of the console after WriteAtColored, which began as Yellow on DarkBlue"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteLineColored_WritesTheTextAndMovesToTheNextLine()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteLineColored "done", ConsoleColor.Green
+        Expect.AreEqual "done", Rig.RowText(0), "row 0"
+        Expect.AreEqual 10, Rig.AttrAt(Rig.OutHandle, 0, 0), "attribute of the first cell (Green on Black)"
+        Expect.AreEqual 1, Rig.CursorRow(Rig.OutHandle), "row of the cursor"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- WriteAt
+
+    [TestCase]
+    Public Sub WriteAt_WritesAtThePositionAndLeavesTheCursorAfterTheText()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteAt 4, 2, "xyz"
+        Expect.AreEqual "xyz", Rig.TextAt(Rig.OutHandle, 4, 2, 3), "text at column 4, row 2"
+        Expect.AreEqual 7, Rig.CursorCol(Rig.OutHandle), "column of the cursor"
+        Expect.AreEqual 2, Rig.CursorRow(Rig.OutHandle), "row of the cursor"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteAtColored_WritesAtThePositionInTheGivenColours()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteAtColored 4, 2, "xyz", ConsoleColor.Red, ConsoleColor.Blue
+        Expect.AreEqual "xyz", Rig.TextAt(Rig.OutHandle, 4, 2, 3), "text at column 4, row 2"
+        Expect.AreEqual 12 + 9 * 16, Rig.AttrAt(Rig.OutHandle, 4, 2), "attribute of the first cell (Red on Blue)"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- the standard error handle
+
+    [TestCase]
+    Public Sub WriteError_WritesToTheErrorHandleOnly()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteError "bad"
+        Expect.AreEqual "bad", Rig.TextAt(Rig.ErrHandle, 0, 0, 3), "text on the error screen buffer"
+        Expect.AreEqual "", Rig.RowText(0), "row 0 of the output screen buffer"
+        Expect.AreEqual 3, Rig.CursorCol(Rig.ErrHandle), "column of the cursor on the error screen buffer (no line break added)"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WriteErrorLine_AddsALineFeed()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.WriteErrorLine "bad"
+        Expect.AreEqual "bad", Rig.TextAt(Rig.ErrHandle, 0, 0, 3), "text on the error screen buffer"
+        Expect.AreEqual 0, Rig.CursorCol(Rig.ErrHandle), "column of the cursor on the error screen buffer"
+        Expect.AreEqual 1, Rig.CursorRow(Rig.ErrHandle), "row of the cursor on the error screen buffer"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- DrawBox and DrawProgressBar
+
+    [TestCase]
+    Public Sub DrawBox_SingleLine_DrawsTheOutlineOnTheConsole()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Rig.PutText Rig.OutHandle, 4, 2, "."
+        c.DrawBox 2, 1, 6, 3
+        Expect.AreEqual ChrW$(&H250C) & String$(3, ChrW$(&H2500)) & ChrW$(&H2510), Rig.TextAt(Rig.OutHandle, 2, 1, 5), "top row of the box"
+        Expect.AreEqual ChrW$(&H2502), Rig.TextAt(Rig.OutHandle, 2, 2, 1), "left edge, row 2"
+        Expect.AreEqual ChrW$(&H2502), Rig.TextAt(Rig.OutHandle, 6, 2, 1), "right edge, row 2"
+        Expect.AreEqual ".", Rig.TextAt(Rig.OutHandle, 4, 2, 1), "the inside of the box is left as it is"
+        Expect.AreEqual ChrW$(&H2514) & String$(3, ChrW$(&H2500)) & ChrW$(&H2518), Rig.TextAt(Rig.OutHandle, 2, 3, 5), "bottom row of the box"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawBox_DoubleLine_UsesTheDoubleLineCharacters()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.DrawBox 0, 0, 4, 2, True
+        Expect.AreEqual ChrW$(&H2554) & String$(3, ChrW$(&H2550)) & ChrW$(&H2557), Rig.TextAt(Rig.OutHandle, 0, 0, 5), "top row of the box"
+        Expect.AreEqual ChrW$(&H2551), Rig.TextAt(Rig.OutHandle, 0, 1, 1), "left edge"
+        Expect.AreEqual ChrW$(&H255A) & String$(3, ChrW$(&H2550)) & ChrW$(&H255D), Rig.TextAt(Rig.OutHandle, 0, 2, 5), "bottom row of the box"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawBox_RightNotGreaterThanLeft_Raises5AfterWritingTheCorners()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        On Error Resume Next
+        c.DrawBox 4, 1, 4, 3
+        Expect.AreEqual 5, Err.Number, "Err.Number of DrawBox with right equal to left"
+        On Error GoTo 0
+        Expect.AreEqual ChrW$(&H2510), Rig.TextAt(Rig.OutHandle, 4, 1, 1), "the top corner written before the error"
+        Expect.AreEqual ChrW$(&H2518), Rig.TextAt(Rig.OutHandle, 4, 3, 1), "the bottom corner written before the error"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawProgressBar_DrawsTheBarAndThePercentage()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.DrawProgressBar 2, 1, 10, 25
+        Expect.AreEqual "[", Rig.TextAt(Rig.OutHandle, 2, 1, 1), "the left bracket"
+        Expect.AreEqual String$(2, ChrW$(&H2588)), Rig.TextAt(Rig.OutHandle, 3, 1, 2), "the filled blocks (25 percent of 10 cells, rounded half to even, is 2)"
+        Expect.AreEqual String$(8, ChrW$(&H2591)), Rig.TextAt(Rig.OutHandle, 5, 1, 8), "the empty blocks"
+        Expect.AreEqual "] 25%", Rig.TextAt(Rig.OutHandle, 13, 1, 5), "the closing bracket and the percentage"
+        Expect.AreEqual 10, Rig.AttrAt(Rig.OutHandle, 3, 1), "attribute of a filled block (Green on Black)"
+        Expect.AreEqual 8, Rig.AttrAt(Rig.OutHandle, 5, 1), "attribute of an empty block (DarkGray on Black)"
+        Expect.AreEqual 18, Rig.CursorCol(Rig.OutHandle), "column of the cursor after the text"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawProgressBar_UsesTheColoursGiven()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.DrawProgressBar 0, 0, 10, 50, ConsoleColor.Red, ConsoleColor.Blue
+        Expect.AreEqual 12, Rig.AttrAt(Rig.OutHandle, 1, 0), "attribute of a filled block"
+        Expect.AreEqual 9, Rig.AttrAt(Rig.OutHandle, 6, 0), "attribute of an empty block"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawProgressBar_PercentIsKeptBetween0And100()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        c.DrawProgressBar 0, 0, 4, 250
+        c.DrawProgressBar 0, 1, 4, -40
+        Expect.AreEqual "[" & String$(4, ChrW$(&H2588)) & "] 100%", Rig.TextAt(Rig.OutHandle, 0, 0, 11), "row 0 after a percent of 250"
+        Expect.AreEqual "[" & String$(4, ChrW$(&H2591)) & "] 0%", Rig.TextAt(Rig.OutHandle, 0, 1, 9), "row 1 after a percent of -40"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DrawProgressBar_NegativeWidth_Raises5()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        On Error Resume Next
+        c.DrawProgressBar 0, 0, -3, 50
+        Expect.AreEqual 5, Err.Number, "Err.Number of DrawProgressBar with a width of -3"
+        On Error GoTo 0
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    ' ---- layout helpers
+
+    [TestCase]
+    Public Sub CenterX_And_CenterY_CentreInTheWindow()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim expectedX As Long = (Rig.WindowWidth() - 10) \ 2
+        Dim expectedY As Long = (Rig.WindowHeight() - 4) \ 2
+        Expect.AreEqual expectedX, c.CenterX(10), "CenterX(10)"
+        Expect.AreEqual expectedY, c.CenterY(4), "CenterY(4)"
+        Expect.AreEqual 45, c.CenterX(10), "CenterX(10) in a window of 100 columns"
+        Expect.AreEqual 13, c.CenterY(4), "CenterY(4) in a window of 30 rows"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CenterX_WiderThanTheWindow_IsNegative()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Expect.AreEqual -5, c.CenterX(110), "CenterX(110) in a window of 100 columns"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PercentX_And_PercentY_ClampTheirArgumentTo0To100()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Expect.AreEqual 50, c.PercentX(50), "PercentX(50) in a window of 100 columns"
+        Expect.AreEqual 100, c.PercentX(150), "PercentX(150)"
+        Expect.AreEqual 0, c.PercentX(-20), "PercentX(-20)"
+        Expect.AreEqual 15, c.PercentY(50), "PercentY(50) in a window of 30 rows"
+        Expect.AreEqual 30, c.PercentY(150), "PercentY(150)"
+        Expect.AreEqual 0, c.PercentY(-20), "PercentY(-20)"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PercentX_And_PercentY_RoundHalfToEven()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Expect.AreEqual 2, c.PercentX(2.5), "PercentX(2.5): 2.5 columns"
+        Expect.AreEqual 4, c.PercentX(3.5), "PercentX(3.5): 3.5 columns"
+        Expect.AreEqual 4, c.PercentY(15), "PercentY(15): 4.5 rows"
+        Expect.AreEqual 2, c.PercentY(5), "PercentY(5): 1.5 rows"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CenterRect_ReturnsARectangleOfTheSizeGivenInTheMiddleOfTheWindow()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim r As ConsoleRect
+        r = c.CenterRect(10, 4)
+        Expect.AreEqual 45, r.Left, "Left of CenterRect(10, 4)"
+        Expect.AreEqual 13, r.Top, "Top"
+        Expect.AreEqual 54, r.Right, "Right"
+        Expect.AreEqual 16, r.Bottom, "Bottom"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CenterRect_LargerThanTheWindow_HasNegativeLeftAndTop()
+        Expect.Begin
+        Rig.Acquire
+        Dim c As New cConsole
+        Dim r As ConsoleRect
+        r = c.CenterRect(110, 40)
+        Expect.AreEqual -5, r.Left, "Left of CenterRect(110, 40)"
+        Expect.AreEqual -5, r.Top, "Top of CenterRect(110, 40)"
+        Expect.AreEqual 104, r.Right, "Right"
+        Expect.AreEqual 34, r.Bottom, "Bottom"
+        Set c = Nothing
+        Rig.Release
+        Expect.Done
+    End Sub
+
+End Module

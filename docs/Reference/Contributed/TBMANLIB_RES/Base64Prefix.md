@@ -9,6 +9,7 @@ has_toc: false
 
 Specifies whether, and with what MIME type, a data URI prefix is prepended to the base64 string returned by [**ReturnBase64**](cRes/#returnbase64).
 
+<!-- test: Base64PrefixTests.Base64Prefix_Members_HaveTheDocumentedValues -->
 | Constant | Value | Description |
 |----------|-------|-------------|
 | **Base64Prefix_None**{: #Base64Prefix_None } | 0 | No prefix. The returned string is raw base64 with no leading data URI scheme. |
@@ -24,6 +25,7 @@ Specifies whether, and with what MIME type, a data URI prefix is prepended to th
 | **Base64Prefix_AudioMP3**{: #Base64Prefix_AudioMP3 } | 10 | Prepends `data:audio/mpeg;base64,`. |
 | **Base64Prefix_AudioWAV**{: #Base64Prefix_AudioWAV } | 11 | Prepends `data:audio/wav;base64,`. |
 | **Base64Prefix_AudioOGG**{: #Base64Prefix_AudioOGG } | 12 | Prepends `data:audio/ogg;base64,`. |
+<!-- /test -->
 
 The default value used by **ReturnBase64** when *Prefix* is omitted is **Base64Prefix_None**.
 

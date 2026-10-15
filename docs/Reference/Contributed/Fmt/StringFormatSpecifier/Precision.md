@@ -8,6 +8,8 @@ has_toc: false
 # Precision
 {: .no_toc }
 
+<!-- test: SpecifierTests.Precision_IsTheNumberAfterTheLetter, SpecifierTests.CustomSpecifier_Numeric_SetsThePrecision, SpecifierTests.CustomSpecifier_NotNumeric_KeepsThePrecision, SpecifierTests.CustomSpecifier_Zero_KeepsThePrecision -->
+
 Returns the number that follows the identifier letter of a format item.
 
 Syntax: *object*.**Precision**
@@ -22,6 +24,8 @@ Returns a **Long**. The default value is `0`, which means that no precision was 
 The property is read-only. It changes only when [**CustomSpecifier**](CustomSpecifier) is assigned a numeric text that is not zero, so `{0:F3}` gives `3` and `{0:F}` and `{0:F0}` give `0`. Assigning a text that is not numeric, or is zero, leaves the earlier value in place.
 
 The meaning of the number depends on the format identifier class: a count of decimal places for [**FixedPointSFI**](../FixedPointSFI), [**ExponentialSFI**](../ExponentialSFI), [**CurrencySFI**](../CurrencySFI) and [**PercentSFI**](../PercentSFI), a count of digits for [**DecimalSFI**](../DecimalSFI) and [**HexSFI**](../HexSFI), and both a count of decimal places and a limit for the exponent for [**GeneralNumericSFI**](../GeneralNumericSFI). A precision of `0` selects each class's default.
+
+<!-- /test -->
 
 ## Example
 

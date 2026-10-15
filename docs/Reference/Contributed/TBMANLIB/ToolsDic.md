@@ -34,7 +34,13 @@ Syntax: **ToolsDic.DeepCopy** ( *srcDic* ) **As Scripting.Dictionary**
 *srcDic*
 : *required* A **Scripting.Dictionary**. It is not changed.
 
-Returns a new dictionary with the same keys and values. Only the first level is copied: where a value is an object, such as a dictionary or a collection, the copy holds the same object, not a copy of it. The source says that a recursive copy is still to be written. The copy has the default comparison mode, whatever the mode of the source.
+<!-- test: DicTests.DeepCopy_FirstLevel_CopiesKeysAndValues -->
+Returns a new dictionary with the same keys and values. The copy has the default comparison mode, whatever the mode of the source.
+<!-- /test -->
+
+<!-- test: DicTests.DeepCopy_NestedDictionary_IsCopied -->
+> [!WARNING] 1.0.0.29
+> Only the first level is copied. Where a value is an object, such as a dictionary or a collection, the copy holds the same object, not a copy of it, so a change made through the copy reaches the source. The source says that a recursive copy is still to be written.
 
 ```tb check_build check_run
 Dim A As New Scripting.Dictionary
@@ -63,7 +69,13 @@ Syntax: **ToolsDic.FromWwwFormUrlencoded** ( *Content* **,** *Dic* ) **As Boolea
 *Dic*
 : *required* A **Scripting.Dictionary** that receives the pairs. A name that it already holds gets the new value, and the other entries stay.
 
-The name and the value of each pair lose the spaces at their ends. A pair with an empty name is skipped. A pair with no `=` gets an empty value. A value that holds an `=` is cut at it: in `a=b=c` the value is `b`. The text is not percent-decoded, so `%20` and `+` stay as written, and a value that holds `&` cannot be expressed. The function always returns **True**. The source says that values that are arrays are still to be handled.
+<!-- test: DicTests.FromWwwFormUrlencoded_ReadsPairsAndTrimsThem, DicTests.FromWwwFormUrlencoded_ExistingNameGetsTheNewValue -->
+The name and the value of each pair lose the spaces at their ends. A pair with an empty name is skipped. A pair with no `=` gets an empty value. The function always returns **True**. The source says that values that are arrays are still to be handled.
+<!-- /test -->
+
+<!-- test: DicTests.FromWwwFormUrlencoded_ValueWithEqualsSign_KeepsTheRest, DicTests.FromWwwFormUrlencoded_PercentEscapes_AreDecoded -->
+> [!WARNING] 1.0.0.29
+> A value that holds an `=` is cut at it: in `a=b=c` the value is `b`. The text is not decoded, so `%20` and `+` stay as written, and a value that holds `&` cannot be expressed.
 
 ### OverWrite
 {: .no_toc }
@@ -81,8 +93,11 @@ Syntax: **ToolsDic.OverWrite** ( *DistDic* **,** *srcDic* [ **,** *OnlyKey* ] )
 *OnlyKey*
 : *optional* A **Boolean**, **True** by default. When it is **True**, only the keys that *DistDic* already has are written, so the structure of *DistDic* stays as it is. When it is **False**, every key of *srcDic* is written, and the missing ones are added.
 
+<!-- test: DicTests.OverWrite_NestedDictionary_IsUpdatedInPlace -->
 Where a value of *srcDic* is an object, the method calls itself for that key with the two objects, so the nested dictionary of *DistDic* is updated in place and not replaced. A value that is not an object is assigned.
+<!-- /test -->
 
+<!-- test: DicTests.OverWrite_OnlyKeyFalse_NestedDictionaryMissingInTarget_IsAdded -->
 > [!NOTE] 1.0.0.29
 > With *OnlyKey* set to **False**, a nested dictionary of *srcDic* whose key *DistDic* does not have makes the recursive call receive an empty value for the missing key, where it needs a dictionary. The call raises error 424, *Object required*, and *DistDic* keeps the key that was looked up, with the value **Empty**.
 
@@ -112,6 +127,7 @@ Debug.Print A.Exists("m") & " " & IsEmpty(A("m"))
 ' True True
 ```
 
+<!-- test: DicTests.OverWrite_OnlyKey_WritesTheKeysTheTargetHas -->
 ```tb check_build check_run
 Dim A As New Scripting.Dictionary
 Dim B As New Scripting.Dictionary
@@ -129,6 +145,7 @@ Debug.Print A("z")
 ' 1 20 False
 ' 30
 ```
+<!-- /test -->
 
 ### TowLevelDicAssign
 {: .no_toc }
@@ -149,7 +166,9 @@ Syntax: **ToolsDic.TowLevelDicAssign** ( *Dic* **,** *Lv1Name* **,** *Lv2Name* *
 *Value*
 : *required* A **Variant**, the value to store under *Lv2Name*.
 
+<!-- test: DicTests.TowLevelDicAssign_CreatesAndUpdatesTheInnerDictionary -->
 The name has *Tow* for *Two*. If the inner dictionary exists, the value replaces the value of *Lv2Name*, or adds it. If it does not, a new dictionary is made, it receives the value, and *Dic* receives the new dictionary.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim D As New Scripting.Dictionary

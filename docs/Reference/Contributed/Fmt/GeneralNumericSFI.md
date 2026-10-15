@@ -8,6 +8,8 @@ has_toc: false
 # GeneralNumericSFI class
 {: .no_toc }
 
+<!-- test: GeneralTests.Integer_IsFormattedAsD, GeneralTests.Double_WithoutPrecision_IsExponential, GeneralTests.Double_ExponentAtOrAbovePrecision_IsExponential, GeneralTests.Double_ExponentBelowPrecision_IsFixedPoint, GeneralTests.LowerCaseIdentifier_GivesALowerCaseE, GeneralTests.Single_GivesTheValue, GeneralTests.Currency_GivesTheValue, GeneralTests.Byte_GivesTheValue, GeneralTests.Decimal_GivesTheValue, GeneralTests.NumericString_GivesTheValue, GeneralTests.Class_MatchesGAndOnlyG, GeneralTests.Class_GetFormattedValue_IsPublic, FormerStringFormatTests.G_WithoutPrecision_StringFormatGivesExponential, FormerStringFormatTests.G_WithoutPrecision_TakesTheDigitsAfterThePoint -->
+
 Formats a number for the **G** identifier, as whole-number digits, fixed-point or exponential notation depending on its type and size.
 
 **GeneralNumericSFI** is a format identifier class. It implements [**IStringFormatIdentifier**](IStringFormatIdentifier) and matches the identifier **G** or **g** in any case. [**StringHelper**](StringHelper) registers it, so `{0:G}` in a call to [**StringFormat**](PublicEntryPoints/StringFormat) uses it for a numeric value. The class is predeclared. Its interface members are reached through the interface, and [**GetFormattedValue**](#getformattedvalue) is also public.
@@ -18,7 +20,7 @@ The result depends on the **TypeName** of the value:
 
 - An **Integer** or a **Long** is formatted by [**DecimalSFI**](DecimalSFI): whole-number digits, padded with zeros to the precision.
 - A **Double** is first formatted by [**ExponentialSFI**](ExponentialSFI) with the same precision. The exponent of that text is read back with [**ParseExponent**](ExponentialSFI#parseexponent). When the exponent is greater than -5 and its absolute value is less than the precision, the value is formatted again by [**FixedPointSFI**](FixedPointSFI), with the precision as the count of decimal places. Otherwise the exponential text is the result. Without a precision the second test cannot succeed, so a **Double** is always in exponential notation.
-- A value of any other type, such as a **Single**, **Currency**, **Byte**, **Decimal** or a numeric **String**, gives an empty string.
+- A value of any other type, such as a **Single**, **Currency**, **Byte**, **Decimal** or a numeric **String**, is not formatted and gives an empty string.
 
 The precision is therefore a count of decimal places and a limit for the exponent. It is not a count of significant digits, as it is in .NET. The case of the identifier is kept: `g` gives a lower-case `e` in exponential notation. The decimal point follows the Windows regional settings.
 
@@ -33,6 +35,9 @@ Debug.Print StringFormat("{0:G3}", 0.5)             ' 0.500
 Debug.Print StringFormat("{0:g}", 12345.678)        ' 1.234568e4
 Debug.Print "[" & StringFormat("{0:G}", 3.14!) & "]"  ' []
 ```
+
+> [!WARNING] 1.0.0.0
+> The value is lost without an error when its type is not **Integer**, **Long** or **Double**: `{0:G}` of a **Single**, **Currency**, **Byte**, **Decimal** or numeric **String** gives an empty string, and alignment pads it. Convert the value to a **Double** or a **Long** first, as in `CDbl(x)`.
 
 > [!NOTE] 1.0.0.0
 > **FormerStringFormat** treats a missing precision differently: it derives one from the count of digits after the decimal point in the value. `{0:G}` of `123.456` gives `123.46` there and `1.23456E2` here. See [FormerStringFormat](FormerEntryPoint/FormerStringFormat).
@@ -63,6 +68,8 @@ Debug.Print GeneralNumericSFI.GetFormattedValue(12345.678, spec)  ' 1.235E4
 ### IsIdentifierMatch
 
 Returns **True** when the specifier's [**identifier**](StringFormatSpecifier/identifier) is `G` or `g`. It is implemented as a private member of the interface.
+
+<!-- /test -->
 
 ## See Also
 

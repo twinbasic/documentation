@@ -1,0 +1,297 @@
+' The last error: when it is set and cleared, a run-time error that stops it from being cleared (a
+' defect), and what a function that finds nothing does to it.
+[TestFixture]
+Module ErrorStateTests
+
+    ' ---- a run-time error that escapes from Serialize (a defect)
+
+    [TestCase]
+    Public Sub Serialize_TwoDimensionalArray_RaisesNoRunTimeError()
+        Expect.Begin
+        Helpers.Reset
+        Dim grid(0 To 1, 0 To 1) As Variant
+        Dim text As String
+        On Error Resume Next
+        text = Json.Serialize(grid, JsonOptions.Minified)
+        Dim n As Long = Err.Number
+        Dim d As String = Err.Description
+        Err.Clear
+        On Error GoTo 0
+        Helpers.Reset
+        Expect.AreEqual 0, n, "the run-time error number of Serialize with a two-dimensional array (" & d & ")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_TwoDimensionalArray_SetsTheLastError()
+        Expect.Begin
+        Helpers.Reset
+        Dim grid(0 To 1, 0 To 1) As Variant
+        Dim text As String
+        On Error Resume Next
+        text = Json.Serialize(grid, JsonOptions.Minified)
+        Err.Clear
+        On Error GoTo 0
+        Dim has As Boolean = JsonError.HasError
+        Helpers.Reset
+        Expect.IsTrue has, "JsonError.HasError after Serialize of a two-dimensional array"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_AfterARunTimeErrorInSerialize_ClearsTheLastError()
+        Expect.Begin
+        Helpers.Reset
+        Dim grid(0 To 1, 0 To 1) As Variant
+        Dim text As String
+        On Error Resume Next
+        text = Json.Serialize(grid, JsonOptions.Minified)
+        Err.Clear
+        On Error GoTo 0
+        Dim v As Variant = Json.Parse("{")
+        v = Json.Parse("[1]")
+        Dim has As Boolean = JsonError.HasError
+        Dim code As String = JsonError.Code
+        Helpers.Reset
+        Expect.IsFalse has, "JsonError.HasError after Parse of [1], which worked (the code is " & code & ")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_AfterARunTimeErrorInSerialize_SetsItsOwnOrigin()
+        Expect.Begin
+        Helpers.Reset
+        Dim grid(0 To 1, 0 To 1) As Variant
+        Dim text As String
+        On Error Resume Next
+        text = Json.Serialize(grid, JsonOptions.Minified)
+        Err.Clear
+        On Error GoTo 0
+        Dim v As Variant = Json.Parse("{")
+        Dim origin As String = JsonError.Origin
+        Helpers.Reset
+        Expect.AreEqual "Json.Parse", origin, "JsonError.Origin after Parse of {"
+        Expect.Done
+    End Sub
+
+    ' ---- the last error belongs to the latest call
+
+    [TestCase]
+    Public Sub Parse_Failure_ReturnsEmptyAndSetsTheError()
+        Expect.Begin
+        Helpers.Reset
+        Dim v As Variant = Json.Parse("[1, 2,]")
+        Expect.IsTrue IsEmpty(v), "Parse of [1, 2,] returns Empty"
+        Expect.IsTrue JsonError.HasError, "JsonError.HasError"
+        Expect.AreEqual "InvalidSyntax", JsonError.Code, "JsonError.Code"
+        Expect.AreEqual "Json.Parse", JsonError.Origin, "JsonError.Origin"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_AfterAFailure_ClearsTheError()
+        Expect.Begin
+        Helpers.Reset
+        Dim v As Variant = Json.Parse("[1, 2,]")
+        v = Json.Parse("[1, 2]")
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after a Parse that worked"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TryParse_Failure_ReportsTheOriginOfParse()
+        Expect.Begin
+        Helpers.Reset
+        Dim v As Variant
+        Expect.IsFalse Json.TryParse("[1,2", v), "TryParse of [1,2"
+        Expect.IsTrue IsEmpty(v), "the value after the failed TryParse"
+        Expect.AreEqual "Json.Parse", JsonError.Origin, "JsonError.Origin"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_Null_ReturnsNullAndNoError()
+        Expect.Begin
+        Helpers.Reset
+        Dim v As Variant = Json.Parse("null")
+        Expect.IsTrue IsNull(v), "Parse of null returns Null"
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after Parse of null"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_ByteOrderMarkInString_IsInvalidSyntax()
+        Expect.Begin
+        Helpers.Reset
+        Dim v As Variant = Json.Parse(ChrW(&HFEFF) & "[1]")
+        Expect.IsTrue IsEmpty(v), "Parse of a String that starts with U+FEFF returns Empty"
+        Expect.AreEqual "InvalidSyntax", JsonError.Code, "JsonError.Code"
+        Expect.Done
+    End Sub
+
+    ' ---- a function that finds nothing is not an error when its name says so
+
+    [TestCase]
+    Public Sub PointerExists_MissingPlace_IsFalseWithNoError()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":1,""tags"":[""x""]}")
+        Expect.IsFalse Json.PointerExists(doc, "/nope"), "PointerExists of a missing member"
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after PointerExists of a missing member"
+        Expect.IsFalse Json.PointerExists(doc, "/tags/5"), "PointerExists of a missing element"
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after PointerExists of a missing element"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PointerTryGet_MissingPlace_IsFalseWithNoError()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":1}")
+        Dim v As Variant = 5
+        Expect.IsFalse Json.PointerTryGet(doc, "/nope", v), "PointerTryGet of a missing member"
+        Expect.IsTrue IsEmpty(v), "the value after PointerTryGet of a missing member"
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after PointerTryGet of a missing member"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Query_NothingMatches_IsEmptyWithNoError()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":1}")
+        Dim r() As Variant = Json.Query(doc, "$.nothing")
+        Expect.AreEqual "[]", Helpers.Min(r), "the result of Query that matches nothing, as JSON"
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after Query that matches nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub QueryOne_NothingMatches_IsEmptyWithNoError()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":1,""n"":null}")
+        Expect.IsTrue IsEmpty(Json.QueryOne(doc, "$.missing")), "QueryOne that matches nothing returns Empty"
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after QueryOne that matches nothing"
+        Expect.IsTrue IsNull(Json.QueryOne(doc, "$.n")), "QueryOne of a null returns Null"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TryQueryOne_NothingMatches_IsFalseWithNoError()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":1}")
+        Dim v As Variant
+        Expect.IsFalse Json.TryQueryOne(doc, "$.missing", v), "TryQueryOne that matches nothing"
+        Expect.IsFalse JsonError.HasError, "JsonError.HasError after TryQueryOne that matches nothing"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub QueryHits_InvalidPath_SetsInvalidPath()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":1}")
+        Dim hits() As JsonHit = Json.QueryHits(doc, "store.book")
+        Expect.AreEqual "InvalidPath", JsonError.Code, "JsonError.Code after QueryHits with a path that does not start with $"
+        Expect.Done
+    End Sub
+
+    ' ---- the members that cannot fail leave the last error alone
+
+    [TestCase]
+    Public Sub PureFunctions_LeaveTheLastErrorAlone()
+        Expect.Begin
+        Helpers.Reset
+        Dim v As Variant = Json.Parse("[1, 2,]")
+        Dim x As Variant
+        x = Json.TypeOfValue(1)
+        x = Json.IsObject(1)
+        x = Json.IsArray(1)
+        x = Json.Equals(1, 1)
+        x = Json.PointerEscape("a/b")
+        x = Json.PointerUnescape("a~1b")
+        x = Json.IsValidPattern("a")
+        x = Json.IsMatchPattern("a", "a")
+        x = Json.IsSearchPattern("a", "a")
+        x = Json.FormatIso8601(#8/19/2026#)
+        Expect.IsTrue JsonError.HasError, "JsonError.HasError after the calls of functions that cannot fail"
+        Expect.AreEqual "InvalidSyntax", JsonError.Code, "JsonError.Code after the calls of functions that cannot fail"
+        Expect.Done
+    End Sub
+
+    ' ---- the unbound array of an empty list
+
+    [TestCase]
+    Public Sub EmptyList_UBoundRaisesError9()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":1}")
+        Dim none() As Variant = Json.Query(doc, "$.nothing")
+        On Error Resume Next
+        Dim n As Long = UBound(none)
+        Expect.AreEqual 9, Err.Number, "the error of UBound for the Query result that is empty"
+        Err.Clear
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EmptyList_KeysItemsAndToVariantArray_AreUnbound()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonObject = Json.Map()
+        Dim a As JsonArray = Json.Arr()
+        Dim k() As String = o.Keys
+        Dim it() As Variant = o.Items
+        Dim v() As Variant = a.ToVariantArray
+        Dim n As Long
+        On Error Resume Next
+        n = UBound(k)
+        Expect.AreEqual 9, Err.Number, "the error of UBound for the Keys of an empty object"
+        Err.Clear
+        n = UBound(it)
+        Expect.AreEqual 9, Err.Number, "the error of UBound for the Items of an empty object"
+        Err.Clear
+        n = UBound(v)
+        Expect.AreEqual 9, Err.Number, "the error of UBound for ToVariantArray of an empty array"
+        Err.Clear
+        On Error GoTo 0
+        Expect.AreEqual "[]", Helpers.Min(v), "ToVariantArray of an empty array, serialized"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EmptyList_QueryHitsAndErrors_AreUnbound()
+        Expect.Begin
+        Helpers.Reset
+        Dim doc As Variant = Helpers.Doc("{""a"":1}")
+        Dim hits() As JsonHit = Json.QueryHits(doc, "$.nothing")
+        Dim r As JsonValidationResult = Json.Validate(1, Helpers.Doc("{""type"":""integer""}"))
+        Dim errs() As JsonValidationError = r.Errors
+        Dim n As Long
+        On Error Resume Next
+        n = UBound(hits)
+        Expect.AreEqual 9, Err.Number, "the error of UBound for QueryHits that matches nothing"
+        Err.Clear
+        n = UBound(errs)
+        Expect.AreEqual 9, Err.Number, "the error of UBound for the Errors of a valid result"
+        Err.Clear
+        On Error GoTo 0
+        Expect.Done
+    End Sub
+
+    ' ---- the errors that are the language's own
+
+    [TestCase]
+    Public Sub Parse_FailedResultAssignedToObjectVariable_RaisesError424()
+        Expect.Begin
+        Helpers.Reset
+        On Error Resume Next
+        Dim o As JsonObject = Json.Parse("{")
+        Expect.AreEqual 424, Err.Number, "the error of the assignment of the Empty that a failed Parse returned"
+        Err.Clear
+        Expect.Done
+    End Sub
+
+End Module

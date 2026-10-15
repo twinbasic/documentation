@@ -1,0 +1,93 @@
+' Rig: what the test cases of AutoCompleteLib set up. A case works on an edit window made by
+' Win.Make, which is never shown, and on a folder of its own under %TEMP%.
+Module Rig
+
+    ' How long the cases that expect a suggestion wait for it, and for no suggestion, in
+    ' milliseconds. Auto-complete answers through the thread's messages, and a file-system list
+    ' is read on a thread of its own.
+    Public Const WaitList As Long = 500
+    Public Const WaitFiles As Long = 1000
+
+    Public Function Folder() As String
+        Folder = Environ$("TEMP") & "\tbdocs-package-tests\AutoCompleteLib"
+    End Function
+
+    ' A folder holding the file ffile.txt and the folder zdir.
+    Public Sub MakeFolder()
+        On Error Resume Next
+        MkDir Environ$("TEMP") & "\tbdocs-package-tests"
+        MkDir Folder()
+        MkDir Folder() & "\zdir"
+        Dim n As Integer
+        n = FreeFile
+        Open Folder() & "\ffile.txt" For Output As #n
+        Close #n
+    End Sub
+
+    Public Sub CleanFolder()
+        On Error Resume Next
+        Kill Folder() & "\ffile.txt"
+        RmDir Folder() & "\zdir"
+        RmDir Folder()
+    End Sub
+
+    ' Types the last character of Prefix into an edit window that holds the rest of it, caret at
+    ' the end, as a person typing it would, and returns the text of the window once Millis
+    ' milliseconds have passed.
+    Public Function TypeInto(ByVal hWnd As LongPtr, ByVal Prefix As String, ByVal Millis As Long) As String
+        Win.SetText hWnd, Left$(Prefix, Len(Prefix) - 1)
+        Win.SetSel hWnd, Len(Prefix) - 1, Len(Prefix) - 1
+        Win.TypeChar hWnd, Right$(Prefix, 1)
+        Win.Pump Millis
+        TypeInto = Win.GetText(hWnd)
+    End Function
+
+    ' An AutoComplete object with the Append option attached to a new edit window, for the file
+    ' system, and the text that results from typing Prefix into it.
+    Public Function FilesFor(ByVal Prefix As String, ByVal FsOptions As Long) As String
+        Dim h As LongPtr
+        h = Win.Make()
+        Dim ac As New AutoComplete
+        ac.Options = AutoCompleteOptionAppend
+        ac.FileSystemOptions = FsOptions
+        ac.Init h, AutoCompleteSourceFileSystem
+        FilesFor = TypeInto(h, Prefix, WaitFiles)
+        Win.Destroy h
+    End Function
+
+    ' The strings of the list the object holds, each in square brackets; "" for an empty list.
+    Public Function Items(ByVal ac As AutoComplete) As String
+        Dim v As Variant
+        v = ac.CustomSource
+        Dim lb As Long, ub As Long
+        lb = 0
+        ub = -1
+        On Error Resume Next
+        lb = LBound(v)
+        ub = UBound(v)
+        On Error GoTo 0
+        Dim i As Long
+        For i = lb To ub
+            Items = Items & "[" & v(i) & "]"
+        Next
+    End Function
+
+    ' The error that assigning Value to CustomSource raises: "<number> <description>", "0" if none.
+    Public Function Assign(ByVal ac As AutoComplete, ByVal Value As Variant) As String
+        On Error Resume Next
+        ac.CustomSource = Value
+        Assign = Err.Number
+        If Err.Number <> 0 Then Assign = Assign & " " & Err.Description
+        Err.Clear
+    End Function
+
+    ' The error that Init raises: "<number> <description>", "0" if none.
+    Public Function InitError(ByVal ac As AutoComplete, ByVal hWnd As LongPtr, ByVal Source As Long) As String
+        On Error Resume Next
+        ac.Init hWnd, Source
+        InitError = Err.Number
+        If Err.Number <> 0 Then InitError = InitError & " " & Err.Description
+        Err.Clear
+    End Function
+
+End Module

@@ -1,0 +1,336 @@
+' List(Of T): Insert, SetItem, the search members on objects, the index errors and Count.
+[TestFixture]
+Module ListTests
+
+    ' The items of a list of text, joined.
+    Private Function Joined(ByVal L As List(Of String)) As String
+        Dim i As Long, s As String
+        For i = 0 To L.Count - 1
+            s = s & L.Item(i)
+        Next i
+        Joined = s
+    End Function
+
+    ' A list that holds "a", "b" and "c".
+    Private Function Abc() As List(Of String)
+        Dim l As New List(Of String)
+        l.Add "a"
+        l.Add "b"
+        l.Add "c"
+        Set Abc = l
+    End Function
+
+    ' ---- Insert and SetItem put the item in the wrong place
+
+    [TestCase]
+    Public Sub Insert_InMiddle_PutsItemAtIndex()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        l.Insert 1, "X"
+        Expect.AreEqual "aXbc", Joined(l), "items of a, b, c after Insert 1, ""X"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Insert_AtZero_PutsItemFirst()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        l.Insert 0, "Y"
+        Expect.AreEqual "Yabc", Joined(l), "items of a, b, c after Insert 0, ""Y"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Insert_AtCount_PutsItemLast()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        l.Insert 3, "Z"
+        Expect.AreEqual "abcZ", Joined(l), "items of a, b, c after Insert 3, ""Z"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Insert_AtZeroOnEmptyList_AddsItem()
+        Expect.Begin
+        Dim l As New List(Of String)
+        On Error Resume Next
+        l.Insert 0, "Y"
+        Expect.AreEqual 0, Err.Number, "run-time error raised by Insert 0, ""Y"" on an empty list"
+        Err.Clear
+        On Error GoTo 0
+        Expect.AreEqual 1, l.Count, "Count of an empty list after Insert 0, ""Y"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetItem_AtZero_ReplacesFirstItem()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        l.SetItem 0, "Z"
+        Expect.AreEqual "Zbc", Joined(l), "items of a, b, c after SetItem 0, ""Z"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetItem_AtZeroOnOneItemList_ReplacesTheItem()
+        Expect.Begin
+        Dim l As New List(Of String)
+        l.Add "a"
+        On Error Resume Next
+        l.SetItem 0, "Z"
+        Expect.AreEqual 0, Err.Number, "run-time error raised by SetItem 0, ""Z"" on a list of one item"
+        Err.Clear
+        On Error GoTo 0
+        Expect.AreEqual 1, l.Count, "Count of a list of one item after SetItem 0, ""Z"""
+        Expect.AreEqual "Z", Joined(l), "items of a list of one item after SetItem 0, ""Z"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetItem_InMiddle_ReplacesItem()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        l.SetItem 1, "Z"
+        Expect.AreEqual "aZc", Joined(l), "items of a, b, c after SetItem 1, ""Z"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetItem_AtLastIndex_ReplacesLastItem()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        l.SetItem 2, "Z"
+        Expect.AreEqual "abZ", Joined(l), "items of a, b, c after SetItem 2, ""Z"""
+        Expect.Done
+    End Sub
+
+    ' ---- the search members on a list of objects
+
+    [TestCase]
+    Public Sub Contains_Object_FindsIt()
+        Expect.Begin
+        Dim people As New List(Of ListPerson)
+        Dim ann As New ListPerson
+        ann.Name = "Ann"
+        people.Add ann
+        Dim found As Boolean
+        On Error Resume Next
+        found = people.Contains(ann)
+        Expect.AreEqual 0, Err.Number, "run-time error raised by Contains of an object that is in the list"
+        Err.Clear
+        On Error GoTo 0
+        Expect.IsTrue found, "Contains of an object that is in the list"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IndexOf_Object_ReturnsItsPosition()
+        Expect.Begin
+        Dim people As New List(Of ListPerson)
+        Dim ann As New ListPerson
+        Dim bob As New ListPerson
+        people.Add ann
+        people.Add bob
+        Dim at As Long
+        at = -2
+        On Error Resume Next
+        at = people.IndexOf(bob)
+        Expect.AreEqual 0, Err.Number, "run-time error raised by IndexOf of an object that is in the list"
+        Err.Clear
+        On Error GoTo 0
+        Expect.AreEqual 1, at, "IndexOf of the second of two objects"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_Object_RemovesIt()
+        Expect.Begin
+        Dim people As New List(Of ListPerson)
+        Dim ann As New ListPerson
+        people.Add ann
+        Dim removed As Boolean
+        On Error Resume Next
+        removed = people.Remove(ann)
+        Expect.AreEqual 0, Err.Number, "run-time error raised by Remove of an object that is in the list"
+        Err.Clear
+        On Error GoTo 0
+        Expect.IsTrue removed, "Remove of an object that is in the list"
+        Expect.AreEqual 0, people.Count, "Count after Remove of the only object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Add_Object_ItemReturnsIt()
+        Expect.Begin
+        Dim people As New List(Of ListPerson)
+        Dim ann As New ListPerson
+        ann.Name = "Ann"
+        people.Add ann
+        Expect.AreEqual 1, people.Count, "Count after Add of an object"
+        Expect.AreEqual "Ann", people.Item(0).Name, "Name of Item(0) after Add of an object"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveAt_Object_RemovesIt()
+        Expect.Begin
+        Dim people As New List(Of ListPerson)
+        Dim ann As New ListPerson
+        people.Add ann
+        people.RemoveAt 0
+        Expect.AreEqual 0, people.Count, "Count after RemoveAt 0 of the only object"
+        Expect.Done
+    End Sub
+
+    ' ---- the other members
+
+    [TestCase]
+    Public Sub Contains_Text_ComparesByValue()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        Expect.IsTrue l.Contains("b"), "Contains(""b"") on a, b, c"
+        Expect.IsFalse l.Contains("x"), "Contains(""x"") on a, b, c"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IndexOf_Text_ReturnsZeroBasedIndex()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        Expect.AreEqual 1, l.IndexOf("b"), "IndexOf(""b"") on a, b, c"
+        Expect.AreEqual -1, l.IndexOf("x"), "IndexOf(""x"") on a, b, c"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Remove_Text_RemovesFirstMatch()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        l.Add "b"
+        Expect.IsTrue l.Remove("b"), "Remove(""b"") on a, b, c, b"
+        Expect.AreEqual "acb", Joined(l), "items after Remove(""b"") on a, b, c, b"
+        Expect.IsFalse l.Remove("x"), "Remove(""x"") on a, c, b"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveAt_Text_MovesLaterItemsDown()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        l.RemoveAt 1
+        Expect.AreEqual "ac", Joined(l), "items of a, b, c after RemoveAt 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_RemovesEveryItem()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        l.Clear
+        Expect.AreEqual 0, l.Count, "Count after Clear"
+        Expect.AreEqual 0, l.Capacity, "Capacity after Clear"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Item_OutOfRange_Raises9()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        Dim v As String
+        On Error Resume Next
+        v = l.Item(3)
+        Expect.AreEqual 9, Err.Number, "run-time error raised by Item(3) on a list of three"
+        Expect.AreEqual "List(Of T).Item", Err.Source, "source of that error"
+        Expect.AreEqual "Index out of range: 3", Err.Description, "description of that error"
+        Err.Clear
+        v = l.Item(-1)
+        Expect.AreEqual 9, Err.Number, "run-time error raised by Item(-1)"
+        Err.Clear
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveAt_OutOfRange_Raises9()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        On Error Resume Next
+        l.RemoveAt 3
+        Expect.AreEqual 9, Err.Number, "run-time error raised by RemoveAt 3 on a list of three"
+        Expect.AreEqual "List(Of T).RemoveAt", Err.Source, "source of that error"
+        Err.Clear
+        Expect.AreEqual 3, l.Count, "Count after that error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetItem_OutOfRange_Raises9()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        On Error Resume Next
+        l.SetItem 3, "Z"
+        Expect.AreEqual 9, Err.Number, "run-time error raised by SetItem 3, ""Z"" on a list of three"
+        Expect.AreEqual "List(Of T).SetItem", Err.Source, "source of that error"
+        Err.Clear
+        Expect.AreEqual "abc", Joined(l), "items after that error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Insert_OutOfRange_Raises9()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        On Error Resume Next
+        l.Insert 4, "Z"
+        Expect.AreEqual 9, Err.Number, "run-time error raised by Insert 4, ""Z"" on a list of three"
+        Expect.AreEqual "List(Of T).Insert", Err.Source, "source of that error"
+        Err.Clear
+        l.Insert -1, "Z"
+        Expect.AreEqual 9, Err.Number, "run-time error raised by Insert -1, ""Z"""
+        Err.Clear
+        Expect.AreEqual "abc", Joined(l), "items after those errors"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToArray_ReturnsZeroBasedVariantArray()
+        Expect.Begin
+        Dim l As List(Of String)
+        Set l = Abc()
+        Dim items() As Variant
+        items = l.ToArray()
+        Expect.AreEqual 0, LBound(items), "LBound of ToArray"
+        Expect.AreEqual 2, UBound(items), "UBound of ToArray on a list of three"
+        Expect.AreEqual "c", items(2), "the last element of ToArray"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToArray_EmptyList_HasNoBounds()
+        Expect.Begin
+        Dim l As New List(Of String)
+        Dim items() As Variant
+        items = l.ToArray()
+        On Error Resume Next
+        Dim u As Long
+        u = UBound(items)
+        Expect.AreEqual 9, Err.Number, "run-time error raised by UBound of ToArray on an empty list"
+        Err.Clear
+        Expect.Done
+    End Sub
+
+End Module

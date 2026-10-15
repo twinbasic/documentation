@@ -17,6 +17,7 @@ Syntax: *object*.**SetDocumentFilters**
 
 ## Remarks
 
+<!-- test: CDialogPropertyTests.SetDocumentFilters_HasSixPairs -->
 **SetDocumentFilters** calls [**ClearFilter**](ClearFilter), so any earlier filter is lost, and then [**AddFilter**](AddFilter) for each pair:
 
 | Description | Pattern |
@@ -29,6 +30,7 @@ Syntax: *object*.**SetDocumentFilters**
 | `All Files (*.*)` | `*.*` |
 
 The descriptions are fixed English text. To show other text, build the filter with [**AddFilter**](AddFilter). The first pair, Word Documents, is the one that the dialog selects when it opens.
+<!-- /test -->
 
 ## Example
 

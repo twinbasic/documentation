@@ -8,9 +8,11 @@ has_toc: false
 # OLECALPOLESTR type
 {: .no_toc }
 
+<!-- test: TypeLayoutTests.OLECALPOLESTR_HasTheLayoutOfCalpolestr -->
 A counted array of pointers to Unicode strings, with the layout of the Windows `CALPOLESTR` structure.
 
 **OLECALPOLESTR** is a user-defined type declared in the package's `OLEGuids` module, so both `OLECALPOLESTR` and `OLEGuids.OLECALPOLESTR` name it. It mirrors the Windows structure [CALPOLESTR](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/ns-ocidl-calpolestr), which holds the number of elements of an array and the address of the array.
+<!-- /test -->
 
 ```tb inert=signature
 Public Type OLECALPOLESTR

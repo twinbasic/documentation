@@ -1,0 +1,314 @@
+' ColourTests: the colours the control draws, read from its pixels. The text is drawn in fonts
+' large enough that the middle of a stroke is the colour of the text, whatever smoothing does at
+' its edges. The form is shown wholly transparent (Rig.ShowHidden).
+[TestFixture]
+Module ColourTests
+
+    Private Const NoForm As String = "the form could not be made transparent, so the control cannot paint"
+
+    [TestCase]
+    Public Sub TitleFontColor_ColoursTheTitle()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.TitleFontColor = RGB(255, 0, 255)
+            Expect.IsTrue Rig.CountAll(f, RGB(255, 0, 255)) > 0, "the pixels of the colour given to TitleFontColor"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TitleFontColor_DefaultColoursTheTitle()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Expect.IsTrue Rig.CountAll(f, f.Cal.TitleFontColor) > 0, "the pixels of the default TitleFontColor, orange"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DayFontColor_ColoursTheDayNames()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.DayFont.Size = 18
+            f.Cal.DayFontColor = RGB(0, 255, 0)
+            Expect.IsTrue Rig.CountAll(f, RGB(0, 255, 0)) > 0, "the pixels of the colour given to DayFontColor"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GridFontColor_ColoursTheDayNumbers()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.GridFont.Size = 18
+            f.Cal.GridFontColor = RGB(0, 0, 255)
+            Expect.IsTrue Rig.CountAll(f, RGB(0, 0, 255)) > 0, "the pixels of the colour given to GridFontColor"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GridFont_DaysOfTheMonthsBeforeAndAfterAreGrey()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Rig.Rebase f, #10/15/2026#
+            f.Cal.GridFont.Size = 18
+            f.Cal.GridFontColor = RGB(0, 0, 255)
+            Expect.IsTrue Rig.CountAll(f, &HAAAAAA) > 0, "the pixels of grey (&HAAAAAA) for the days of September and November in the grid for October 2026"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GridLinesColor_Flat_RGBValueIsDrawnAsGiven()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.GridCellEffect = GridCellEffectEnum.Flat
+            f.Cal.GridLinesColor = RGB(255, 0, 0)
+            Expect.AreEqual RGB(255, 0, 0), Rig.LineColour(f, 3), "the colour of a vertical line with GridLinesColor given as RGB(255, 0, 0) and GridCellEffect Flat"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GridLinesColor_Flat_DefaultIsDrawnAsTheSystemColour()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.GridCellEffect = GridCellEffectEnum.Flat
+            Expect.AreEqual &H80000010, f.Cal.GridLinesColor, "GridLinesColor, the system colour vbButtonShadow"
+            Expect.AreEqual Win.SystemColour(Win.COLOR_BTNSHADOW), Rig.LineColour(f, 3), "the colour of a vertical line with the default GridLinesColor and GridCellEffect Flat"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GridLinesColor_RaisedAndSunkenIgnoreIt()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.GridLinesColor = RGB(255, 0, 0)
+            f.Cal.GridCellEffect = GridCellEffectEnum.Raised
+            Expect.AreEqual 0, Rig.CountAll(f, RGB(255, 0, 0)), "the pixels of the colour given to GridLinesColor with GridCellEffect Raised"
+            f.Cal.GridCellEffect = GridCellEffectEnum.Sunken
+            Expect.AreEqual 0, Rig.CountAll(f, RGB(255, 0, 0)), "the pixels of the colour given to GridLinesColor with GridCellEffect Sunken"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    ' The number of places in the row y of the control where a pixel of colour A is followed by one of colour B.
+    Private Function Pairs(ByRef Bits() As Byte, ByVal Width As Long, ByVal y As Long, ByVal A As Long, ByVal B As Long) As Long
+        Dim x As Long
+        For x = 0 To Width - 2
+            If Win.Px(Bits, Width, x, y) = A And Win.Px(Bits, Width, x + 1, y) = B Then Pairs = Pairs + 1
+        Next
+    End Function
+
+    [TestCase]
+    Public Sub GridCellEffect_Raised_DrawsABlackLineWithAWhiteOneAfterIt()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim hd As Long = Rig.Header(f)
+            Dim w As Long
+            f.Cal.GridCellEffect = GridCellEffectEnum.Raised
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Dim y As Long = hd + 4 * (Win.ClientHeight(Rig.CalWindow(f)) - hd) \ 6 + 20
+            Expect.IsTrue Pairs(b, w, y, 0, &HFFFFFF) >= 5, "the places in a row of the grid where a black pixel is followed by a white one with GridCellEffect Raised"
+            Expect.AreEqual 0, Pairs(b, w, y, &HFFFFFF, 0), "the places in a row of the grid where a white pixel is followed by a black one with GridCellEffect Raised"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GridCellEffect_Sunken_DrawsAWhiteLineWithABlackOneAfterIt()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim hd As Long = Rig.Header(f)
+            Dim w As Long
+            f.Cal.GridCellEffect = GridCellEffectEnum.Sunken
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Dim y As Long = hd + 4 * (Win.ClientHeight(Rig.CalWindow(f)) - hd) \ 6 + 20
+            Expect.IsTrue Pairs(b, w, y, &HFFFFFF, 0) >= 5, "the places in a row of the grid where a white pixel is followed by a black one with GridCellEffect Sunken"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowVerticalGrid_False_RemovesTheVerticalLines()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim hd As Long = Rig.Header(f)
+            Dim w As Long
+            f.Cal.GridCellEffect = GridCellEffectEnum.Flat
+            f.Cal.GridLinesColor = RGB(255, 0, 0)
+            Dim y As Long = hd + 4 * (Win.ClientHeight(Rig.CalWindow(f)) - hd) \ 6 + 20
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Expect.IsTrue Win.CountColour(b, w, RGB(255, 0, 0), 0, y, w - 1, y) >= 5, "the red pixels in a row of the grid with ShowVerticalGrid True"
+            f.Cal.ShowVerticalGrid = False
+            b = Rig.Pixels(f, w)
+            Expect.AreEqual 0, Win.CountColour(b, w, RGB(255, 0, 0), 0, y, w - 1, y), "the red pixels in a row of the grid with ShowVerticalGrid False"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowHorizontalGrid_False_RemovesTheHorizontalLines()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim hd As Long = Rig.Header(f)
+            Dim w As Long
+            f.Cal.GridCellEffect = GridCellEffectEnum.Flat
+            f.Cal.GridLinesColor = RGB(255, 0, 0)
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Dim x As Long = 3 * w \ 7 + 30
+            Dim ht As Long = UBound(b) \ (w * 4)
+            Expect.IsTrue Win.CountColour(b, w, RGB(255, 0, 0), x, hd, x, ht) >= 5, "the red pixels in a column of the grid with ShowHorizontalGrid True"
+            f.Cal.ShowHorizontalGrid = False
+            b = Rig.Pixels(f, w)
+            Expect.AreEqual 0, Win.CountColour(b, w, RGB(255, 0, 0), x, hd, x, ht), "the red pixels in a column of the grid with ShowHorizontalGrid False"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Frame_IsDrawnWhicheverLinesAreOn()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim hd As Long = Rig.Header(f)
+            Dim w As Long
+            f.Cal.GridCellEffect = GridCellEffectEnum.Flat
+            f.Cal.GridLinesColor = RGB(255, 0, 0)
+            f.Cal.ShowVerticalGrid = False
+            f.Cal.ShowHorizontalGrid = False
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Dim ht As Long = UBound(b) \ (w * 4)
+            Dim y As Long = hd + 60
+            Dim x As Long = w \ 2 + 3
+            Expect.AreEqual 0, Win.Px(b, w, 0, y), "the pixel at the left edge of the grid with both sets of lines off"
+            Expect.AreEqual 0, Win.Px(b, w, w - 1, y), "the pixel at the right edge of the grid with both sets of lines off"
+            Expect.AreEqual 0, Win.Px(b, w, x, ht), "the pixel at the bottom edge of the grid with both sets of lines off"
+            Expect.AreEqual 0, Win.Px(b, w, x, Rig.TitleHeight(b, w)), "the pixel at the top edge of the row of day names with both sets of lines off"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectedCell_IsFilledWithAWarmGrey()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim hd As Long = Rig.Header(f)
+            Dim w As Long
+            Rig.Rebase f, #6/15/2026#
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Dim ht As Long = UBound(b) \ (w * 4)
+            Dim cellArea As Double = (w / 7) * ((ht - hd) / 6)
+            Dim n As Long = Win.CountColour(b, w, &H82868E, 0, hd, w - 1, ht - 1)
+            Expect.IsTrue n > 0.6 * cellArea And n < cellArea, "the pixels of &H82868E in the grid with June 15, 2026 selected: " & n & " for a cell of about " & CLng(cellArea)
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SelectedCell_WithATimeOfDayThereIsNone()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Rig.Rebase f, #6/15/2026#
+            f.Cal.Value = #6/15/2026 2:30:00 PM#
+            Expect.AreEqual 0, Rig.CountAll(f, &H82868E), "the pixels of the selected cell's colour with Value at 2:30 PM on June 15, 2026"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BackColor_FillsTheTitleAreaAndTheCells()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim w As Long
+            f.Cal.BackColor = RGB(10, 20, 30)
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Dim ht As Long = UBound(b) \ (w * 4)
+            Expect.AreEqual RGB(10, 20, 30), Win.Px(b, w, 2, 2), "the pixel in the title area after BackColor is set"
+            Expect.AreEqual RGB(10, 20, 30), Win.Px(b, w, w - 3, ht - 3), "the pixel in the last cell of the grid after BackColor is set"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DayBackColor_FillsTheRowOfDayNames()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim w As Long
+            f.Cal.DayBackColor = RGB(1, 2, 3)
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Expect.AreEqual RGB(1, 2, 3), Win.Px(b, w, 3, Rig.TitleHeight(b, w) + 3), "the pixel in the row of day names after DayBackColor is set"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+End Module

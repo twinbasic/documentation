@@ -8,6 +8,8 @@ has_toc: false
 # StringHelper class
 {: .no_toc }
 
+<!-- test: SpecifierTests.StringHelper_StringFormat_TakesAnArray, SpecifierTests.StringHelper_NewInstance_BehavesLikeThePredeclaredOne, SpecifierTests.StringHelper_Errors_HaveTheSourceStringHelper, ItemTests.Alignment_Positive_RightJustifies -->
+
 The class that does the work behind **StringFormat**: it finds the format items in a format string, formats the values and expands the escape sequences.
 
 **StringHelper** is predeclared, so its one public method is called on the class name, `StringHelper.StringFormat`. [**StringFormat**](PublicEntryPoints/StringFormat) in the [**PublicEntryPoints**](PublicEntryPoints/) module copies its **ParamArray** into an array and calls this method. Call the method directly when the values are already in an array. A project can also create an instance with `New StringHelper`, which behaves in the same way.
@@ -47,6 +49,8 @@ Debug.Print StringHelper.StringFormat("{0}-{1:F1}", values)  ' x-2.5
 
 Debug.Print StringHelper.StringFormat("{0} and {1}", Array("salt", "pepper"))  ' salt and pepper
 ```
+
+<!-- /test -->
 
 ## See Also
 

@@ -29,17 +29,21 @@ result = dlg.ShowOpen()
 If Len(result) > 0 Then Debug.Print "Chosen: " & result
 ```
 
+<!-- test: probe x1, probe x2, probe x12 -->
 > [!WARNING] 1.1.0.0
 > The three dialogs return the **name** of the chosen file or folder, not its full path: [**ShowOpen**](#showopen), [**ShowSave**](#showsave), [**ShowBrowseForFolder**](#showbrowseforfolder) and [**SelectFiles**](#selectfiles) give `a.txt` for `C:\Reports\a.txt`, and `other` for the folder `C:\Reports\other`. A program that opens or saves the result opens or saves a file in its own current folder, and no error is raised. [**FileName**](#filename) holds the same short name afterwards. The class asks Windows for the name that is relative to the parent folder, because the constant `SIGDN_FILESYSPATH` of the source has the value `&H80058001` and the file-system path is `&H80058000`. The folder in which the user chose is not reported, so the result cannot be used to open or save the file. Use [**cDialog**](cDialog/), which returns full paths.
 
+<!-- test: probe x15 -->
 > [!WARNING] 1.1.0.0
 > [**InitialDir**](#initialdir) has no effect: the dialogs always open in the *Documents* folder, and no error is raised. The class makes the folder item with `SHCreateItemFromParsingName` and a GUID for `IShellItem` that has a wrong byte (`&H37` where the interface identifier has `&H7B`), so Windows answers that it has no such interface and the class skips `SetDefaultFolder`.
 
+<!-- test: CDialogExTests.AddFilter_BuildsAFilterTheDialogAccepts, CDialogExTests.SetFilters_BuildAFilterTheDialogAccepts, CDialogExTests.GetPresetFilter_GivesATextTheDialogAccepts, probe x5 -->
 > [!WARNING] 1.1.0.0
 > A [**Filter**](#filter) is ignored unless it holds an even number of pipe characters (`|`). A filter of N pairs written `Name|Pattern|Name|Pattern` holds 2N minus 1, an odd number, so the dialog shows no file-type list and accepts every file, and no error is raised. A pipe after the last pattern makes the count even: `Text (*.txt)|*.txt|All (*.*)|*.*|` shows two entries. [**AddFilter**](#addfilter) and the four **Set...Filters** methods build a filter without the closing pipe, and so does the text of [**GetPresetFilter**](#getpresetfilter), so none of them shows a list until the text gets its pipe: add `dlg.Filter = dlg.Filter & "|"` after them.
 
 ## Which dialog uses which property
 
+<!-- test: probe x1, probe x3, probe x4, probe x5, probe x6, probe x7, probe x8, probe x9, probe x10, probe x11, probe x16 -->
 *yes* means that the class passes the value to the dialog. [**ShowOpen**](#showopen) with [**PickFolders**](#pickfolders) **True** and [**ShowBrowseForFolder**](#showbrowseforfolder) show the same folder dialog.
 
 | Property | ShowOpen | ShowSave | Folder dialog |
@@ -58,8 +62,11 @@ If Len(result) > 0 Then Debug.Print "Chosen: " & result
 | the icon ([**SetSystemIcon**](#setsystemicon), [**SetCustomIcon**](#setcustomicon)) | yes | yes | yes |
 
 Every method catches its errors: it writes a line that starts with the name of the method to the debug console (`Debug.Print`) and returns an empty string. A dialog that Windows cannot create gives an empty string in the same way, so an empty result means a cancel or a failure.
+<!-- /test -->
 
 ## Differences from cDialog
+
+<!-- test: compile CDialogExHasNoNewDialogStyle, compile CDialogExHasNoHideReadOnly, compile CDialogExHasNoReadOnly, CDialogExTests.Defaults_EveryBooleanIsFalse, CDialogExTests.Defaults_TextsAndNumbers, CDialogExTests.Properties_StoreWhatIsSet, CDialogExTests.Reset_RestoresTheStartingValues, CDialogExTests.GetPresetFilter_ReturnsAPairForAKnownName, CDialogExTests.GetPresetFilter_IgnoresCaseAndSpacesAtTheEnds, CDialogExTests.GetPresetFilter_DoesNotChangeFilter, CDialogExTests.AddFilter_JoinsPairsWithPipes, CDialogExTests.SetCommonFilters_ReplacesTheFilterWithTwoPairs, CDialogExTests.ClearFilter_EmptiesTheFilter, CDialogExTests.PathHelpers_WorkAsThoseOfCDialog, CDialogExTests.OpenFile_NonexistentFileReturns2, CDialogExTests.SystemIconId_HasTheDocumentedValues -->
 
 - A new **cDialogEx** has every Boolean property **False**. A new [**cDialog**](cDialog/#defaults) has [**OverwritePrompt**](#overwriteprompt), [**PathMustExist**](#pathmustexist) and [**FileMustExist**](#filemustexist) set to **True**.
 - The dialogs are the item dialogs of Windows Vista and later: the folder dialog is the file dialog in a folder-picking mode, with a *Select Folder* button, and not the tree of `SHBrowseForFolder`. There is no [**NewDialogStyle**](cDialog/NewDialogStyle), [**HideReadOnly**](cDialog/HideReadOnly) or [**ReadOnly**](cDialog/ReadOnly) property.
@@ -436,6 +443,7 @@ dlg.PickFolders = True
 Debug.Print dlg.ShowOpen()
 dlg.ClearIcon
 ```
+<!-- /test -->
 
 ## See Also
 

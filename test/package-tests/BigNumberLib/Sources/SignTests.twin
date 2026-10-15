@@ -1,0 +1,315 @@
+' BigNumber: IsNegative, AssignNegation, AssignAbsolute, AssignFromLong, and the zero that
+' AssignFromLong and AssignSquared give.
+[TestFixture]
+Module SignTests
+
+    [TestCase]
+    Public Sub IsNegative_ReadsTheSignOfTheValue()
+        Expect.Begin
+        Dim n As New BigNumber
+        Expect.IsFalse n.IsNegative, "IsNegative of a new BigNumber"
+        n.ValueString = "5"
+        Expect.IsFalse n.IsNegative, "IsNegative of 5"
+        n.ValueString = "-5"
+        Expect.IsTrue n.IsNegative, "IsNegative of -5"
+        n.ValueString = "0"
+        Expect.IsFalse n.IsNegative, "IsNegative of a zero read from ""0"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsNegative_SetFalseMakesNumberNonNegative()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueString = "-5"
+        n.IsNegative = False
+        Expect.IsFalse n.IsNegative, "IsNegative after setting it to False"
+        Expect.AreEqual "5", n.ValueString, "ValueString of -5 after IsNegative = False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsNegative_SetTrueShowsMinusSign()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueString = "5"
+        n.IsNegative = True
+        Expect.IsTrue n.IsNegative, "IsNegative after setting it to True"
+        Expect.AreEqual "-5", n.ValueString, "ValueString of 5 after IsNegative = True"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsNegative_SetTrueShowsMinusSignInEveryBase()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueString = "255"
+        n.IsNegative = True
+        Expect.AreEqual "-FF", n.ValueHex, "ValueHex of 255 after IsNegative = True"
+        Expect.AreEqual "-377", n.ValueOctal, "ValueOctal of 255 after IsNegative = True"
+        Expect.AreEqual "-11111111", n.ValueBinary, "ValueBinary of 255 after IsNegative = True"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsNegative_SetTrueMakesArithmeticRight()
+        Expect.Begin
+        Dim n As New BigNumber
+        Dim three As New BigNumber
+        Dim r As New BigNumber
+        n.ValueString = "5"
+        three.ValueString = "3"
+        n.IsNegative = True
+        r.AssignAddition n, three
+        Expect.AreEqual "-2", r.ValueString, "5 with IsNegative = True, plus 3"
+        r.AssignMultiplication n, three
+        Expect.AreEqual "-15", r.ValueString, "5 with IsNegative = True, times 3"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsNegative_SetTrueMakesNumberLessThanZero()
+        Expect.Begin
+        Dim n As New BigNumber
+        Dim zero As New BigNumber
+        n.ValueString = "5"
+        n.IsNegative = True
+        Expect.IsTrue n.IsLessThan(zero), "5 with IsNegative = True IsLessThan 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignNegation_ChangesTheSign()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "5"
+        r.AssignNegation a
+        Expect.AreEqual "-5", r.ValueString, "the negation of 5"
+        Expect.IsTrue r.IsNegative, "IsNegative of the negation of 5"
+        a.ValueString = "-" & Pattern(200, 1)
+        r.AssignNegation a
+        Expect.AreEqual Pattern(200, 1), r.ValueString, "the negation of a negative 200-digit number"
+        Expect.IsFalse r.IsNegative, "IsNegative of the negation of a negative number"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignNegation_OfZeroIsZero()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        Dim zero As New BigNumber
+        zero.ValueString = "0"
+        a.ValueString = "0"
+        r.AssignNegation a
+        Expect.AreEqual "0", r.ValueString, "the negation of 0"
+        Expect.IsFalse r.IsNegative, "IsNegative of the negation of 0"
+        Expect.IsTrue r.IsEqualTo(zero), "the negation of 0 IsEqualTo 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignNegation_ResultOfNegationAddsToZero()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim n As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = Pattern(100, 2)
+        n.AssignNegation a
+        r.AssignAddition a, n
+        Expect.AreEqual "0", r.ValueString, "a 100-digit number plus its negation"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignNegation_ReturnValueIsFalse()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "5"
+        Expect.IsFalse r.AssignNegation(a), "the value AssignNegation returns"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignAbsolute_DropsTheSign()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "-5"
+        r.AssignAbsolute a
+        Expect.AreEqual "5", r.ValueString, "the absolute value of -5"
+        Expect.IsFalse r.IsNegative, "IsNegative of the absolute value of -5"
+        a.ValueString = "7"
+        r.AssignAbsolute a
+        Expect.AreEqual "7", r.ValueString, "the absolute value of 7"
+        a.ValueString = "-" & Pattern(200, 3)
+        r.AssignAbsolute a
+        Expect.AreEqual Pattern(200, 3), r.ValueString, "the absolute value of a negative 200-digit number"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignAbsolute_ReturnValueIsFalse()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "-5"
+        Expect.IsFalse r.AssignAbsolute(a), "the value AssignAbsolute returns"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignFromLong_Values()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.AssignFromLong 5
+        Expect.AreEqual "5", n.ValueString, "AssignFromLong 5"
+        n.AssignFromLong -5
+        Expect.AreEqual "-5", n.ValueString, "AssignFromLong -5"
+        n.AssignFromLong 1
+        Expect.AreEqual "1", n.ValueString, "AssignFromLong 1"
+        n.AssignFromLong -1
+        Expect.AreEqual "-1", n.ValueString, "AssignFromLong -1"
+        n.AssignFromLong 2147483647
+        Expect.AreEqual "2147483647", n.ValueString, "AssignFromLong 2147483647"
+        n.AssignFromLong -2147483647
+        Expect.AreEqual "-2147483647", n.ValueString, "AssignFromLong -2147483647"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignFromLong_MostNegativeLong()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.AssignFromLong &H80000000
+        Expect.AreEqual "-2147483648", n.ValueString, "AssignFromLong &H80000000"
+        Expect.IsTrue n.IsNegative, "IsNegative after AssignFromLong &H80000000"
+        Expect.AreEqual "-80000000", n.ValueHex, "ValueHex after AssignFromLong &H80000000"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignFromLong_ReplacesThePreviousValue()
+        Expect.Begin
+        Dim n As New BigNumber
+        n.ValueString = Pattern(100, 1)
+        n.AssignFromLong 42
+        Expect.AreEqual "42", n.ValueString, "AssignFromLong 42 on a 100-digit number"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignFromLong_Zero_IsNotNegative()
+        Expect.Begin
+        Dim z As New BigNumber
+        z.AssignFromLong 0
+        Expect.IsFalse z.IsNegative, "IsNegative after AssignFromLong 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignFromLong_Zero_EqualsZeroFromString()
+        Expect.Begin
+        Dim z As New BigNumber
+        Dim s As New BigNumber
+        s.ValueString = "0"
+        z.AssignFromLong 0
+        Expect.IsTrue z.IsEqualTo(s), "AssignFromLong 0 IsEqualTo a zero read from ""0"""
+        Expect.IsTrue s.IsEqualTo(z), "a zero read from ""0"" IsEqualTo AssignFromLong 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignFromLong_Zero_IsNotLessThanZeroFromString()
+        Expect.Begin
+        Dim z As New BigNumber
+        Dim s As New BigNumber
+        s.ValueString = "0"
+        z.AssignFromLong 0
+        Expect.IsFalse z.IsLessThan(s), "AssignFromLong 0 IsLessThan a zero read from ""0"""
+        Expect.IsTrue z.IsLessThanOrEqualTo(s), "AssignFromLong 0 IsLessThanOrEqualTo a zero read from ""0"""
+        Expect.IsTrue z.IsGreaterThanOrEqualTo(s), "AssignFromLong 0 IsGreaterThanOrEqualTo a zero read from ""0"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignFromLong_Zero_TextIsZero()
+        Expect.Begin
+        Dim z As New BigNumber
+        z.AssignFromLong 0
+        Expect.AreEqual "0", z.ValueString, "ValueString after AssignFromLong 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignFromLong_Zero_AddsAndSubtractsAsZero()
+        Expect.Begin
+        Dim z As New BigNumber
+        Dim five As New BigNumber
+        Dim r As New BigNumber
+        z.AssignFromLong 0
+        five.ValueString = "5"
+        r.AssignAddition five, z
+        Expect.AreEqual "5", r.ValueString, "5 + AssignFromLong 0"
+        r.AssignSubtraction five, z
+        Expect.AreEqual "5", r.ValueString, "5 - AssignFromLong 0"
+        r.AssignSubtraction z, five
+        Expect.AreEqual "-5", r.ValueString, "AssignFromLong 0 - 5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignFromLong_Zero_ValueStringZeroGivesTrueZero()
+        Expect.Begin
+        Dim z As New BigNumber
+        Dim s As New BigNumber
+        s.ValueString = "0"
+        z.AssignFromLong 0
+        z.ValueString = "0"
+        Expect.IsFalse z.IsNegative, "IsNegative after AssignFromLong 0 then ValueString = ""0"""
+        Expect.IsTrue z.IsEqualTo(s), "that number IsEqualTo a zero read from ""0"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignFromLong_Zero_IsNegativeFalseGivesTrueZero()
+        Expect.Begin
+        Dim z As New BigNumber
+        Dim s As New BigNumber
+        s.ValueString = "0"
+        z.AssignFromLong 0
+        z.IsNegative = False
+        Expect.IsFalse z.IsNegative, "IsNegative after AssignFromLong 0 then IsNegative = False"
+        Expect.IsTrue z.IsEqualTo(s), "that number IsEqualTo a zero read from ""0"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSquared_Zero_IsNotNegative()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "0"
+        r.AssignSquared a
+        Expect.AreEqual "0", r.ValueString, "0 squared"
+        Expect.IsFalse r.IsNegative, "IsNegative of 0 squared"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AssignSquared_Zero_EqualsZeroFromString()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim r As New BigNumber
+        Dim s As New BigNumber
+        a.ValueString = "0"
+        s.ValueString = "0"
+        r.AssignSquared a
+        Expect.IsTrue r.IsEqualTo(s), "0 squared IsEqualTo a zero read from ""0"""
+        Expect.IsFalse r.IsLessThan(s), "0 squared IsLessThan a zero read from ""0"""
+        Expect.Done
+    End Sub
+
+End Module

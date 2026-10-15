@@ -60,6 +60,15 @@ End Module
   `Files.Item of a missing name raises: expected 53, got 5` is a bug report.
 - A claim about what does not compile is a **compile case**: a line ending in
   `' CASE <Name>: TB5001` (or `: error`, `: none`), as `scripts/lib/tb-tests.mjs` describes.
+  **A compile case that expects an error goes in the package folder's `compile/`**, a second
+  project that holds compile cases only (`.twin` files directly in it, no `Sources/`): the
+  compiler runs no `[TestCase]` in a project with errors, so one such line in `Sources/` stops
+  every other case. `package_tests.mjs` stages `compile/` with the package embedded and judges
+  its cases with the rest; a marker names them as `compile <Name>`, as any compile case. It is
+  not published: the published project is `Sources/` only, and compiles.
+- **Resources** a case reads go in the package folder's `Resources/`, laid out as an exported
+  project keeps them (`<TYPE>/<NAME>`, such as `BINARY/#101`). The runner stages them and the
+  published project carries them, byte for byte.
 - A claim that needs a dialog operated or a form shown goes in the package's `probe/` harness, as
   TBMANLIB_Dialog's and xCalendar's do.
 
@@ -116,7 +125,10 @@ compiler's test mode, so a crash or an access violation ends only its case. Each
 - **changed**: anything else. A claim of the page is no longer true, or the case is wrong.
 
 A case that never returns stops the compiler, so it is caught, recorded as `{ "hangs": true }` by
-`--update`, run alone from then on, and skipped by `RunAll`. The run writes `RunAll.twin` again
+`--update`, run alone from then on, and skipped by `RunAll`. A case still running at `--timeout`
+(60 s) counts as one that never returns: the compiler cannot stop it, and refuses everything else
+until it ends, so `tbrun` reports the cases after it `not run` and the run sends those again in a
+new IDE. A slow case that is meant to return is kept well under the limit. The run writes `RunAll.twin` again
 whenever the cases or `expect.json` change.
 
 `expect.json`:
@@ -134,6 +146,11 @@ whenever the cases or `expect.json` change.
 
 A case not named passes on both architectures. Write it with `--update`, then read every entry: an
 entry is a claim that the package is defective, and each one must match a callout.
+
+A package that compiles for one architecture only is tested on that one: `"arches": ["win32"]`
+after `version`, written by hand once (owner: TBMANLIB 1.0.0.29, which does not compile for
+win64). The run then skips the other architecture and `--update` keeps the field; the section
+states the compile failure in a callout.
 
 ## In the IDE
 

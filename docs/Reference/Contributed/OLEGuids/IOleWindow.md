@@ -10,7 +10,9 @@ has_toc: false
 
 Returns the handle of a window that an OLE object or container uses, and turns context-sensitive help mode on and off.
 
+<!-- test: ImplementTests.IOleWindow_AnswersToItsIdentifier -->
 **IOleWindow** has the interface identifier `00000114-0000-0000-C000-000000000046` and extends **stdole.IUnknown**. It is declared `[OleAutomation(False)]`. Microsoft Learn describes the Windows interface: [IOleWindow](https://learn.microsoft.com/en-us/windows/win32/api/oleidl/nn-oleidl-iolewindow).
+<!-- /test -->
 
 It is the base of the in-place activation interfaces: [IOleInPlaceObject](IOleInPlaceObject), [IOleInPlaceUIWindow](IOleInPlaceUIWindow) (and through it [IOleInPlaceFrame](IOleInPlaceFrame)) and [IOleInPlaceSite](IOleInPlaceSite) extend it. Neither method is marked `[PreserveSig]`, so the HRESULT is hidden: a failure code raises a run-time error.
 

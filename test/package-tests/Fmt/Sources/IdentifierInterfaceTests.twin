@@ -1,0 +1,65 @@
+' Fmt: IStringFormatIdentifier. A project can implement the interface and call its class through it;
+' StringFormat never calls a class it was not built with.
+Class UpperSFI
+    Implements IStringFormatIdentifier
+
+    Private Function IStringFormatIdentifier_GetFormattedValue(ByVal value As Variant, ByVal specifier As StringFormatSpecifier) As String
+        IStringFormatIdentifier_GetFormattedValue = UCase$(CStr(value))
+    End Function
+
+    Private Function IStringFormatIdentifier_IsIdentifierMatch(ByVal specifier As StringFormatSpecifier) As Boolean
+        IStringFormatIdentifier_IsIdentifierMatch = (specifier.identifier = "U")
+    End Function
+End Class
+
+[TestFixture]
+Module IdentifierInterfaceTests
+
+    [TestCase]
+    Public Sub OwnClass_CanBeCalledThroughTheInterface()
+        Expect.Begin
+        Dim f As IStringFormatIdentifier = New UpperSFI
+        Expect.IsTrue f.IsIdentifierMatch(Loc.Spec("U")), "UpperSFI.IsIdentifierMatch of U"
+        Expect.AreEqual "HELLO", f.GetFormattedValue("hello", Loc.Spec("U")), "UpperSFI.GetFormattedValue(""hello"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OwnClass_IsNotKnownToStringFormat()
+        Expect.Begin
+        Dim r As String = Try1("{0:U}", "hello")
+        Expect.AreEqual Loc.FormatError, Loc.LastNumber, "Err.Number of StringFormat(""{0:U}"", ""hello"")"
+        Expect.AreEqual "Invalid format string.", Loc.LastDescription, "Err.Description of StringFormat(""{0:U}"", ""hello"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EveryClass_ImplementsTheInterface()
+        Expect.Begin
+        Dim f As IStringFormatIdentifier
+        Set f = CurrencySFI
+        Expect.IsFalse f Is Nothing, "CurrencySFI as IStringFormatIdentifier"
+        Set f = DateTimeSFI
+        Expect.IsFalse f Is Nothing, "DateTimeSFI as IStringFormatIdentifier"
+        Set f = DecimalSFI
+        Expect.IsFalse f Is Nothing, "DecimalSFI as IStringFormatIdentifier"
+        Set f = ExponentialSFI
+        Expect.IsFalse f Is Nothing, "ExponentialSFI as IStringFormatIdentifier"
+        Set f = FixedPointSFI
+        Expect.IsFalse f Is Nothing, "FixedPointSFI as IStringFormatIdentifier"
+        Set f = GeneralNumericSFI
+        Expect.IsFalse f Is Nothing, "GeneralNumericSFI as IStringFormatIdentifier"
+        Set f = GenericDateTimeSFI
+        Expect.IsFalse f Is Nothing, "GenericDateTimeSFI as IStringFormatIdentifier"
+        Set f = HexSFI
+        Expect.IsFalse f Is Nothing, "HexSFI as IStringFormatIdentifier"
+        Set f = NumericPaddingSFI
+        Expect.IsFalse f Is Nothing, "NumericPaddingSFI as IStringFormatIdentifier"
+        Set f = PercentSFI
+        Expect.IsFalse f Is Nothing, "PercentSFI as IStringFormatIdentifier"
+        Set f = RoundTripSFI
+        Expect.IsFalse f Is Nothing, "RoundTripSFI as IStringFormatIdentifier"
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,246 @@
+' TBMANLIB_Aes, cAes: what each cipher mode does, apart from the published vectors.
+'
+' A mode of AES has properties that hold whatever the key: ECB gives equal ciphertext blocks for
+' equal plaintext blocks and ignores the IV; CBC chains the blocks and depends on the IV; OFB and
+' CTR give streams that differ from CFB after the first block; and every mode decrypts what it
+' encrypted. The cases check these properties of the mode that the name says.
+[TestFixture]
+Module ModeTests
+
+    Private Const SameKey As String = "2b7e151628aed2a6abf7158809cf4f3c"
+
+    [TestCase]
+    Public Sub EncryptBytes_Ecb_EqualPlainBlocksGiveEqualCipherBlocks()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim h As String
+        Set a = AesVec.MakeAes(AesCipherMode.ECB, 128, AesPaddingMode.NoPadding, SameKey, "")
+        p = AesVec.Ascii(String$(32, "A"))
+        c = AesVec.Enc(a, p)
+        h = AesVec.HexOf(c)
+        Expect.IsTrue Len(h) >= 64, "ECB output of two equal blocks holds at least two blocks"
+        Expect.AreEqual Mid$(h, 1, 32), Mid$(h, 33, 32), "first and second block of the ECB output for two equal plaintext blocks"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cbc_EqualPlainBlocksGiveDifferentCipherBlocks()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim h As String
+        Set a = AesVec.MakeAes(AesCipherMode.CBC, 128, AesPaddingMode.NoPadding, SameKey, AesVec.Iv16)
+        p = AesVec.Ascii(String$(32, "A"))
+        c = AesVec.Enc(a, p)
+        h = AesVec.HexOf(c)
+        Expect.IsTrue Len(h) >= 64, "CBC output of two equal blocks holds at least two blocks"
+        Expect.IsTrue Mid$(h, 1, 32) <> Mid$(h, 33, 32), "first and second block of the CBC output for two equal plaintext blocks differ"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cbc_DefaultModeGivesDifferentCipherBlocksForEqualPlainBlocks()
+        Expect.Begin
+        Dim a As New cAes
+        Dim k() As Byte
+        Dim p() As Byte
+        Dim c() As Byte
+        Dim h As String
+        k = AesVec.FromHex(SameKey)
+        a.Key = k
+        p = AesVec.Ascii(String$(32, "A"))
+        c = AesVec.Enc(a, p)
+        h = AesVec.HexOf(c)
+        Expect.IsTrue Len(h) >= 64, "output of the default mode for two equal blocks holds at least two blocks"
+        Expect.IsTrue Mid$(h, 1, 32) <> Mid$(h, 33, 32), "first and second block of the output of a new cAes (CBC) for two equal plaintext blocks differ"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cbc_IVChangesTheCiphertext()
+        Expect.Begin
+        Dim a As cAes
+        Dim iv2() As Byte
+        Dim p() As Byte
+        Dim c1() As Byte
+        Dim c2() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CBC, 128, AesPaddingMode.PKCS7, SameKey, AesVec.Iv16)
+        p = AesVec.Ascii("Hello, AES!")
+        c1 = AesVec.Enc(a, p)
+        iv2 = AesVec.FromHex("ffffffffffffffffffffffffffffffff")
+        a.IV = iv2
+        c2 = AesVec.Enc(a, p)
+        Expect.IsTrue AesVec.Count(c1) > 0 And AesVec.Count(c2) > 0, "both CBC encryptions return bytes"
+        Expect.IsTrue AesVec.HexOf(c1) <> AesVec.HexOf(c2), "CBC output with the IV 000102... and with the IV ffff..."
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Ecb_IVDoesNotChangeTheCiphertext()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c1() As Byte
+        Dim c2() As Byte
+        Dim iv() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.ECB, 128, AesPaddingMode.PKCS7, SameKey, "")
+        p = AesVec.Ascii(String$(32, "A"))
+        c1 = AesVec.Enc(a, p)
+        iv = AesVec.FromHex(AesVec.Iv16)
+        a.IV = iv
+        c2 = AesVec.Enc(a, p)
+        Expect.IsTrue AesVec.Count(c1) > 0, "the ECB encryption returns bytes"
+        Expect.AreEqual AesVec.HexOf(c1), AesVec.HexOf(c2), "ECB output without an IV and with one"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Ofb_DiffersFromCfbAfterTheFirstBlock()
+        Expect.Begin
+        Dim a As cAes
+        Dim b As cAes
+        Dim p() As Byte
+        Dim ca() As Byte
+        Dim cb() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.NoPadding, AesVec.Key128, AesVec.Iv16)
+        Set b = AesVec.MakeAes(AesCipherMode.OFB, 128, AesPaddingMode.NoPadding, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.FromHex(AesVec.Plain4)
+        ca = AesVec.Enc(a, p)
+        cb = AesVec.Enc(b, p)
+        Expect.AreEqual 64, AesVec.Count(cb), "length of the OFB output for 64 bytes"
+        Expect.IsTrue Mid$(AesVec.HexOf(ca), 33) <> Mid$(AesVec.HexOf(cb), 33), "CFB and OFB output after the first block, for the same key, IV and plaintext"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Ctr_DiffersFromCfb()
+        Expect.Begin
+        Dim a As cAes
+        Dim b As cAes
+        Dim p() As Byte
+        Dim ca() As Byte
+        Dim cb() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.NoPadding, AesVec.Key128, AesVec.Iv16)
+        Set b = AesVec.MakeAes(AesCipherMode.CTR, 128, AesPaddingMode.NoPadding, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.FromHex(AesVec.Plain4)
+        ca = AesVec.Enc(a, p)
+        cb = AesVec.Enc(b, p)
+        Expect.AreEqual 64, AesVec.Count(cb), "length of the CTR output for 64 bytes"
+        Expect.IsTrue AesVec.HexOf(ca) <> AesVec.HexOf(cb), "CFB and CTR output for the same key, IV and plaintext"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Ctr_DiffersFromOfb()
+        Expect.Begin
+        Dim a As cAes
+        Dim b As cAes
+        Dim p() As Byte
+        Dim ca() As Byte
+        Dim cb() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.OFB, 128, AesPaddingMode.NoPadding, AesVec.Key128, AesVec.Iv16)
+        Set b = AesVec.MakeAes(AesCipherMode.CTR, 128, AesPaddingMode.NoPadding, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.FromHex(AesVec.Plain4)
+        ca = AesVec.Enc(a, p)
+        cb = AesVec.Enc(b, p)
+        Expect.AreEqual 64, AesVec.Count(cb), "length of the CTR output for 64 bytes"
+        Expect.IsTrue AesVec.HexOf(ca) <> AesVec.HexOf(cb), "OFB and CTR output for the same key, IV and plaintext"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cfb_IVChangesTheCiphertext()
+        Expect.Begin
+        Dim a As cAes
+        Dim iv2() As Byte
+        Dim p() As Byte
+        Dim c1() As Byte
+        Dim c2() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, SameKey, AesVec.Iv16)
+        p = AesVec.Ascii("Hello, AES!")
+        c1 = AesVec.Enc(a, p)
+        iv2 = AesVec.FromHex("ffffffffffffffffffffffffffffffff")
+        a.IV = iv2
+        c2 = AesVec.Enc(a, p)
+        Expect.IsTrue AesVec.Count(c1) > 0 And AesVec.Count(c2) > 0, "both CFB encryptions return bytes"
+        Expect.IsTrue AesVec.HexOf(c1) <> AesVec.HexOf(c2), "CFB output with the IV 000102... and with the IV ffff..."
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_TwoCallsWithTheSamePropertiesGiveTheSameOutput()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c1() As Byte
+        Dim c2() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, SameKey, AesVec.Iv16)
+        p = AesVec.Ascii("Hello, AES!")
+        c1 = AesVec.Enc(a, p)
+        c2 = AesVec.Enc(a, p)
+        Expect.IsTrue AesVec.Count(c1) > 0, "the first encryption returns bytes"
+        Expect.AreEqual AesVec.HexOf(c1), AesVec.HexOf(c2), "two CFB encryptions in a row with the same key and IV"
+        Expect.Done
+    End Sub
+
+    ' ---- every mode decrypts what it encrypted
+
+    Private Sub RoundTrip(ByVal Mode As AesCipherMode)
+        Dim a As cAes
+        Dim p() As Byte
+        Dim s As String
+        Dim r As String
+        Set a = AesVec.MakeAes(Mode, 256, AesPaddingMode.PKCS7, AesVec.Key256, AesVec.Iv16)
+        p = AesVec.Ascii("The quick brown fox jumps over the lazy dog")
+        AesVec.CheckRoundTrip "bytes", a, p
+        s = "caf" & ChrW(233) & " " & ChrW(&H20AC) & " " & ChrW(&H4E2D)
+        r = a.DecryptString(a.EncryptString(s))
+        Expect.AreEqual s, r, "DecryptString of EncryptString for text with non-ASCII characters"
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Ecb_RoundTrips()
+        Expect.Begin
+        RoundTrip AesCipherMode.ECB
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cbc_RoundTrips()
+        Expect.Begin
+        RoundTrip AesCipherMode.CBC
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Cfb_RoundTrips()
+        Expect.Begin
+        RoundTrip AesCipherMode.CFB
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Ofb_RoundTrips()
+        Expect.Begin
+        RoundTrip AesCipherMode.OFB
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Ctr_RoundTrips()
+        Expect.Begin
+        RoundTrip AesCipherMode.CTR
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EncryptBytes_Gcm_RoundTrips()
+        Expect.Begin
+        RoundTrip AesCipherMode.GCM
+        Expect.Done
+    End Sub
+
+End Module

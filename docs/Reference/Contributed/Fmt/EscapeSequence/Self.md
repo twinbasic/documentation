@@ -8,6 +8,8 @@ has_toc: false
 # Self
 {: .no_toc }
 
+<!-- test: EscapeSequenceTests.Self_ReturnsTheSameObject -->
+
 Returns the escape sequence object itself.
 
 Syntax: *object*.**Self**
@@ -19,7 +21,9 @@ Returns the same **EscapeSequence** that *object* refers to. The property is rea
 
 ## Remarks
 
-[**Create**](Create) builds the new instance inside a `With New EscapeSequence` block and returns it through **Self**, because a `With` block does not give a way to name the object it works on. A project that references the package can call **Self** as well (checked on BETA 1005), though it only returns what the caller already holds.
+[**Create**](Create) builds the new instance inside a `With New EscapeSequence` block and returns it through **Self**, because a `With` block does not give a way to name the object it works on. A project that references the package can call **Self** as well, though it only returns what the caller already holds.
+
+<!-- /test -->
 
 ## Example
 

@@ -37,10 +37,13 @@ The Windows documentation of `ShellExecute` lists the other values.
 
 ## Remarks
 
+<!-- test: CDialogPropertyTests.OpenFile_NonexistentFileReturns2 -->
 **OpenFile** calls `ShellExecuteW`, the Unicode form of `ShellExecute`, so a path with any character is passed intact. It passes no owner window, no parameters and no working folder, and shows the program's window normally (`SW_SHOWNORMAL`). The method raises no error: the return value is the only report. A path that does not exist returns 2 and shows no message.
+<!-- /test -->
 
 For a program, the verb `open` starts the program. For a document, it starts the program that Windows associates with the document. For a folder, it opens the folder in File Explorer.
 
+<!-- test: none -- the call opens a File Explorer window, which a test case never does -->
 > [!NOTE] 1.1.0.0
 > An empty *strFilePath* is not an error. `OpenFile("")` returns 42, which is above 32 and looks like success, and opens a File Explorer window on the current folder of the program.
 

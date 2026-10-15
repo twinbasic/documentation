@@ -1,0 +1,167 @@
+{
+  "version": "1.0.0.4",
+  "cases": {
+    "CryptoApiModeTests.EncryptBytes_Ecb_NoPaddingKeepsTheLengthOfTheInput": {
+      "fails": "1 of 1 checks failed: length of the output for one block of plaintext with NoPadding: expected 16, got 32"
+    },
+    "CryptoApiModeTests.EncryptBytes_Cbc_NoPaddingKeepsTheLengthOfTheInput": {
+      "fails": "1 of 1 checks failed: length of the output for one block of plaintext with NoPadding: expected 16, got 32"
+    },
+    "CryptoApiModeTests.EncryptBytes_Ecb_Pkcs7OfOneBlockGivesTwoBlocks": {
+      "fails": "1 of 1 checks failed: length of the ECB output for 16 bytes with PKCS7 (one block of data and one of padding): expected 32, got 48"
+    },
+    "CryptoApiModeTests.EncryptBytes_Cbc_Pkcs7OfOneBlockGivesTwoBlocks": {
+      "fails": "1 of 1 checks failed: length of the CBC output for 16 bytes with PKCS7 (one block of data and one of padding): expected 32, got 48"
+    },
+    "CryptoApiModeTests.EncryptBytes_Ecb_RefusesAKeyOfFiveBytes": {
+      "fails": "1 of 1 checks failed: bytes returned by ECB for a key of 5 bytes (an AES key has 16, 24 or 32 bytes): expected 0, got 32"
+    },
+    "CryptoApiModeTests.EncryptBytes_Cbc_RefusesAKeyOfFortyBytes": {
+      "fails": "1 of 1 checks failed: bytes returned by CBC for a key of 40 bytes (an AES key has 16, 24 or 32 bytes): expected 0, got 32"
+    },
+    "DefaultsAndConstantsTests.CryptModeConstants_EcbAndCbcMatchWincryptH": {
+      "fails": "2 of 2 checks failed: CRYPT_MODE_ECB (wincrypt.h: 2): expected 2, got 1; CRYPT_MODE_CBC (wincrypt.h: 1): expected 1, got 2"
+    },
+    "FailureTests.EncryptBytes_NoKey_ErrorNamesTheCause": {
+      "fails": "1 of 1 checks failed: error description of EncryptBytes with no key: expected \"Key not set\", got \"Unspecified error\""
+    },
+    "FailureTests.DecryptBytes_NoKey_ErrorNamesTheCause": {
+      "fails": "1 of 1 checks failed: error description of DecryptBytes with no key: expected \"Key not set\", got \"Unspecified error\""
+    },
+    "FailureTests.DecryptBytes_GcmDamagedTag_ErrorNamesTheCause": {
+      "fails": "1 of 1 checks failed: error description of DecryptBytes with a damaged GCM tag names the cause (got Unspecified error): expected True, got False"
+    },
+    "FailureTests.EncryptString_NoKey_ReportsTheFailure": {
+      "fails": "1 of 1 checks failed: LastError after EncryptString with no key: expected True, got False"
+    },
+    "FailureTests.DecryptString_GcmDamagedTag_ReportsTheFailure": {
+      "fails": "1 of 1 checks failed: LastError after DecryptString of a GCM message with a damaged tag: expected True, got False"
+    },
+    "GcmTests.EncryptBytes_Gcm_DefaultPaddingGivesTheStandardOutput": {
+      "fails": "3 of 6 checks failed: GCM test case 4 with the default PaddingMode (PKCS7) ciphertext: length of the output in bytes: expected 60, got 64; GCM test case 4 with the default PaddingMode (PKCS7) ciphertext: block 4: expected \"1ba30b396a0aac973d58e091\", got \"1ba30b396a0aac973d58e09159948fd4\"; GCM test case 4 with the default PaddingMode (PKCS7): GcmTag: expected \"5bc94fbc3221a5db94fae95ae7121a47\", got \"9f317bdde9fe9d1f6067fe4688c687c1\""
+    },
+    "GcmTests.EncryptBytes_Gcm_NoIVCanBeDecrypted": {
+      "fails": "1 of 1 checks failed: plaintext from the ciphertext, GcmTag and IV of a GCM encryption that had no IV set: expected \"48656c6c6f2c2041455321\", got \"\""
+    },
+    "GcmTests.EncryptBytes_Gcm_NoIVLeavesTheNonceInIV": {
+      "fails": "1 of 1 checks failed: length of the IV property after a GCM encryption that had no IV set (the nonce it used): expected 12, got 0"
+    },
+    "GcmTests.SetGcmAADFromString_EmptyTextRemovesTheData": {
+      "fails": "1 of 1 checks failed: bytes in GcmAAD after SetGcmAADFromString with an empty text: expected 0, got 6"
+    },
+    "HelperTests.Base64Decode_InvalidText_LastErrorNamesTheCause": {
+      "fails": "1 of 1 checks failed: LastError after Base64Decode of text that is not Base64: expected \"Failed to get Base64 decoding length\", got \"Base64 decoding exception: Unspecified error\""
+    },
+    "HelperTests.RemovePKCS7Padding_InvalidPadding_LastErrorNamesTheCause": {
+      "fails": "1 of 1 checks failed: LastError after RemovePKCS7Padding of data whose last byte is 102: expected \"Invalid PKCS7 padding length: 102\", got \"PKCS7 unpadding exception: Unspecified error\""
+    },
+    "KeyAndIVTests.SetKeyFromString_DifferentTextsGiveDifferentKeys": {
+      "fails": "1 of 1 checks failed: keys made from two texts that differ after the 32nd character: expected True, got False"
+    },
+    "KeyAndIVTests.SetKeyFromString_ShortTextIsNotExtendedWithZeroBytes": {
+      "fails": "1 of 1 checks failed: bytes 4 to 32 of the key made from the text abc are all zero: expected False, got True"
+    },
+    "KeyAndIVTests.GenerateRandomIV_TwoCallsFromTheSameRndStateGiveDifferentIVs": {
+      "fails": "1 of 1 checks failed: pairs of equal IVs among 200 pairs made from the same state of Rnd: expected 0, got 200"
+    },
+    "ModeTests.EncryptBytes_Ecb_EqualPlainBlocksGiveEqualCipherBlocks": {
+      "fails": "1 of 2 checks failed: first and second block of the ECB output for two equal plaintext blocks: expected \"53d3a493477c55406717d8fb90895565\", got \"3bdc179f8b90bc2f4bb999808955235b\""
+    },
+    "ModeTests.EncryptBytes_Cbc_EqualPlainBlocksGiveDifferentCipherBlocks": {
+      "fails": "1 of 2 checks failed: first and second block of the CBC output for two equal plaintext blocks differ: expected True, got False"
+    },
+    "ModeTests.EncryptBytes_Cbc_DefaultModeGivesDifferentCipherBlocksForEqualPlainBlocks": {
+      "fails": "1 of 2 checks failed: first and second block of the output of a new cAes (CBC) for two equal plaintext blocks differ: expected True, got False"
+    },
+    "ModeTests.EncryptBytes_Cbc_IVChangesTheCiphertext": {
+      "fails": "1 of 2 checks failed: CBC output with the IV 000102... and with the IV ffff...: expected True, got False"
+    },
+    "ModeTests.EncryptBytes_Ofb_DiffersFromCfbAfterTheFirstBlock": {
+      "fails": "1 of 2 checks failed: CFB and OFB output after the first block, for the same key, IV and plaintext: expected True, got False"
+    },
+    "ModeTests.EncryptBytes_Ctr_DiffersFromCfb": {
+      "fails": "1 of 2 checks failed: CFB and CTR output for the same key, IV and plaintext: expected True, got False"
+    },
+    "ModeTests.EncryptBytes_Ctr_DiffersFromOfb": {
+      "fails": "1 of 2 checks failed: OFB and CTR output for the same key, IV and plaintext: expected True, got False"
+    },
+    "PaddingTests.EncryptBytes_Iso10126_PadsToTheNextWholeBlock": {
+      "fails": "2 of 2 checks failed: ISO10126: output length for 5 bytes: expected 16, got 5; ISO10126: output length for 16 bytes: expected 32, got 16"
+    },
+    "PaddingTests.DecryptBytes_ZeroPadding_KeepsTheTrailingZeroBytesOfTheData": {
+      "fails": "1 of 1 checks failed: ZeroPadding, data 41 42 00 00: the decrypted bytes: expected \"41420000\", got \"4142\""
+    },
+    "PaddingTests.DecryptBytes_ZeroPadding_DataOfZeroBytesRoundTrips": {
+      "fails": "1 of 1 checks failed: ZeroPadding, data 00 00 00 00: DecryptBytes raised error -2147467259, Unspecified error"
+    },
+    "StandardVectorTests.EncryptBytes_Ecb_Aes128_GivesTheBlockOfFips197C1": {
+      "fails": "2 of 2 checks failed: AES-128 (FIPS 197 C.1): length of the output in bytes: expected 16, got 32; AES-128 (FIPS 197 C.1): block 1: expected \"69c4e0d86a7b0430d8cdb78070b4c55a\", got \"3e383f2d7692bc1d0c860cfdcbb1e2d0\""
+    },
+    "StandardVectorTests.EncryptBytes_Ecb_Aes192_GivesTheBlockOfFips197C2": {
+      "fails": "2 of 2 checks failed: AES-192 (FIPS 197 C.2): length of the output in bytes: expected 16, got 32; AES-192 (FIPS 197 C.2): block 1: expected \"dda97ca4864cdfe06eaf70a0ec0d7191\", got \"ead01d5be6633bead6c0f4a0f3d98853\""
+    },
+    "StandardVectorTests.EncryptBytes_Ecb_Aes256_GivesTheBlockOfFips197C3": {
+      "fails": "2 of 2 checks failed: AES-256 (FIPS 197 C.3): length of the output in bytes: expected 16, got 32; AES-256 (FIPS 197 C.3): block 1: expected \"8ea2b7ca516745bfeafc49904b496089\", got \"ff69553d296398da20623117ea23293d\""
+    },
+    "StandardVectorTests.EncryptBytes_Ecb_Aes128_GivesTheVectorOfSp80038aF11": {
+      "fails": "5 of 5 checks failed: ECB-AES128.Encrypt (F.1.1): length of the output in bytes: expected 64, got 80; ECB-AES128.Encrypt (F.1.1): block 1: expected \"3ad77bb40d7a3660a89ecaf32466ef97\", got \"ac9a269e4ecc8fd1bc78dc547006ec44\"; ECB-AES128.Encrypt (F.1.1): block 2: expected \"f5d3d58503b9699de785895a96fdbaaf\", got \"6b2c9bae6bf241439a1f16faea099297\"; ECB-AES128.Encrypt (F.1.1): block 3: expected \"43b1cd7f598ece23881b00e3ed030688\", got \"0b80c01e483c14de96b4fc70cf7c75d8\"; ECB-AES128.Encrypt (F.1.1): block 4: expected \"7b0c785e27e8ad3f8223207104725dd4\", got \"47df8a8a852e5c894417f26f9360dd0f\""
+    },
+    "StandardVectorTests.EncryptBytes_Ecb_Aes192_GivesTheVectorOfSp80038aF13": {
+      "fails": "5 of 5 checks failed: ECB-AES192.Encrypt (F.1.3): length of the output in bytes: expected 64, got 80; ECB-AES192.Encrypt (F.1.3): block 1: expected \"bd334f1d6e45f25ff712a214571fa5cc\", got \"ff86877cb79bf1efea3ea1aac89c30e1\"; ECB-AES192.Encrypt (F.1.3): block 2: expected \"974104846d0ad3ad7734ecb3ecee4eef\", got \"c514800c8ecd9d526cfb1464e67f69b7\"; ECB-AES192.Encrypt (F.1.3): block 3: expected \"ef7afd2270e2e60adce0ba2face6444e\", got \"fda14c74b7ee019583bfb34a0807b2ab\"; ECB-AES192.Encrypt (F.1.3): block 4: expected \"9a4b41ba738d6c72fb16691603c18e0e\", got \"980f6c02ee345b615cc8f62dcbec239a\""
+    },
+    "StandardVectorTests.EncryptBytes_Ecb_Aes256_GivesTheVectorOfSp80038aF15": {
+      "fails": "5 of 5 checks failed: ECB-AES256.Encrypt (F.1.5): length of the output in bytes: expected 64, got 80; ECB-AES256.Encrypt (F.1.5): block 1: expected \"f3eed1bdb5d2a03c064b5a7e3db181f8\", got \"d050a860e3b7d95f2e43beca80ac164c\"; ECB-AES256.Encrypt (F.1.5): block 2: expected \"591ccb10d410ed26dc5ba74a31362870\", got \"a44a986ccc93ad0521f1be656344a51c\"; ECB-AES256.Encrypt (F.1.5): block 3: expected \"b6ed21b99ca6f4f9f153e7b1beafed1d\", got \"90bfced489caa54df5a87b9dec3a1af8\"; ECB-AES256.Encrypt (F.1.5): block 4: expected \"23304b7a39f9f3ff067d8d8f9e24ecc7\", got \"c9c68c0990db538d982655891c777ba0\""
+    },
+    "StandardVectorTests.DecryptBytes_Ecb_Aes128_GivesThePlaintextOfSp80038aF12": {
+      "fails": "6 of 6 checks failed: ECB-AES128.Decrypt (F.1.2): DecryptBytes raised error -2147467259, Unspecified error; ECB-AES128.Decrypt (F.1.2): length of the output in bytes: expected 64, got 0; ECB-AES128.Decrypt (F.1.2): block 1: expected \"6bc1bee22e409f96e93d7e117393172a\", got \"\"; ECB-AES128.Decrypt (F.1.2): block 2: expected \"ae2d8a571e03ac9c9eb76fac45af8e51\", got \"\"; ECB-AES128.Decrypt (F.1.2): block 3: expected \"30c81c46a35ce411e5fbc1191a0a52ef\", got \"\"; ECB-AES128.Decrypt (F.1.2): block 4: expected \"f69f2445df4f9b17ad2b417be66c3710\", got \"\""
+    },
+    "StandardVectorTests.EncryptBytes_Cbc_Aes128_GivesTheVectorOfSp80038aF21": {
+      "fails": "5 of 5 checks failed: CBC-AES128.Encrypt (F.2.1): length of the output in bytes: expected 64, got 80; CBC-AES128.Encrypt (F.2.1): block 1: expected \"7649abac8119b246cee98e9b12e9197d\", got \"ac9a269e4ecc8fd1bc78dc547006ec44\"; CBC-AES128.Encrypt (F.2.1): block 2: expected \"5086cb9b507219ee95db113a917678b2\", got \"42d97feff67504733c2a17029282d2c4\"; CBC-AES128.Encrypt (F.2.1): block 3: expected \"73bed6b8e3c1743b7116e69e22229516\", got \"96f2fb3d077903791c0c598304c4cd58\"; CBC-AES128.Encrypt (F.2.1): block 4: expected \"3ff1caa1681fac09120eca307586e1a7\", got \"66d0fd858995854b2189721ba537cb29\""
+    },
+    "StandardVectorTests.EncryptBytes_Cbc_Aes192_GivesTheVectorOfSp80038aF23": {
+      "fails": "5 of 5 checks failed: CBC-AES192.Encrypt (F.2.3): length of the output in bytes: expected 64, got 80; CBC-AES192.Encrypt (F.2.3): block 1: expected \"4f021db243bc633d7178183a9fa071e8\", got \"ff86877cb79bf1efea3ea1aac89c30e1\"; CBC-AES192.Encrypt (F.2.3): block 2: expected \"b4d9ada9ad7dedf4e5e738763f69145a\", got \"177e8f6436774ff56c20df1fdda9a27c\"; CBC-AES192.Encrypt (F.2.3): block 3: expected \"571b242012fb7ae07fa9baac3df102e0\", got \"750f7db3da17fd6db61f30ceb5cec1a9\"; CBC-AES192.Encrypt (F.2.3): block 4: expected \"08b0e27988598881d920a9e64f5615cd\", got \"bde45055ab0047080399eddc43157ad6\""
+    },
+    "StandardVectorTests.EncryptBytes_Cbc_Aes256_GivesTheVectorOfSp80038aF25": {
+      "fails": "5 of 5 checks failed: CBC-AES256.Encrypt (F.2.5): length of the output in bytes: expected 64, got 80; CBC-AES256.Encrypt (F.2.5): block 1: expected \"f58c4c04d6e5f1ba779eabfb5f7bfbd6\", got \"d050a860e3b7d95f2e43beca80ac164c\"; CBC-AES256.Encrypt (F.2.5): block 2: expected \"9cfc4e967edb808d679f777bc6702c7d\", got \"cd6933eb1684c71900d3b9479d8843af\"; CBC-AES256.Encrypt (F.2.5): block 3: expected \"39f23369a9d9bacfa530e26304231461\", got \"2e5b0bf09b4b1f3236265c2e29185d91\"; CBC-AES256.Encrypt (F.2.5): block 4: expected \"b2eb05e2c39be9fcda6c19078c6a9d1b\", got \"1b3ea55de5a1bf1ac5cd8aaf314b5d5b\""
+    },
+    "StandardVectorTests.DecryptBytes_Cbc_Aes128_GivesThePlaintextOfSp80038aF22": {
+      "fails": "6 of 6 checks failed: CBC-AES128.Decrypt (F.2.2): DecryptBytes raised error -2147467259, Unspecified error; CBC-AES128.Decrypt (F.2.2): length of the output in bytes: expected 64, got 0; CBC-AES128.Decrypt (F.2.2): block 1: expected \"6bc1bee22e409f96e93d7e117393172a\", got \"\"; CBC-AES128.Decrypt (F.2.2): block 2: expected \"ae2d8a571e03ac9c9eb76fac45af8e51\", got \"\"; CBC-AES128.Decrypt (F.2.2): block 3: expected \"30c81c46a35ce411e5fbc1191a0a52ef\", got \"\"; CBC-AES128.Decrypt (F.2.2): block 4: expected \"f69f2445df4f9b17ad2b417be66c3710\", got \"\""
+    },
+    "StandardVectorTests.EncryptBytes_Cfb_Aes128_GivesTheVectorOfSp80038aF313": {
+      "fails": "4 of 5 checks failed: CFB128-AES128.Encrypt (F.3.13): block 1: expected \"3b3fd92eb72dad20333449f8e83cfb4a\", got \"3b79424c9c0dd436bace9e0ed4586a4f\"; CFB128-AES128.Encrypt (F.3.13): block 2: expected \"c8a64537a0b3a93fcde3cdad9f1ce58b\", got \"32b9ded50ae3ba69d472e88267fb5052\"; CFB128-AES128.Encrypt (F.3.13): block 3: expected \"26751f67a3cbb140b1808cf187a4f4df\", got \"70cbad1e257691f7c47c5038297edda3\"; CFB128-AES128.Encrypt (F.3.13): block 4: expected \"c04b05357c5d1c0eeac4c66f9ff7f2e6\", got \"2ff26d0ed19174096161ecc14086dd62\""
+    },
+    "StandardVectorTests.EncryptBytes_Cfb_Aes192_GivesTheVectorOfSp80038aF315": {
+      "fails": "4 of 5 checks failed: CFB128-AES192.Encrypt (F.3.15): block 1: expected \"cdc80d6fddf18cab34c25909c99a4174\", got \"cda2521ef0a905ca44cd057cbf0d47a0\"; CFB128-AES192.Encrypt (F.3.15): block 2: expected \"67ce7f7f81173621961a2b70171d3d7a\", got \"678a7bcfb6aeaa3047b38936021f48bb\"; CFB128-AES192.Encrypt (F.3.15): block 3: expected \"2e1e8a1dd59b88b1c8e60fed1efac4c9\", got \"b63cefdac02b2e840904efce6f4326be\"; CFB128-AES192.Encrypt (F.3.15): block 4: expected \"c05f9f9ca9834fa042ae8fba584b09ff\", got \"228683739063dc30e937ffedd63e3c94\""
+    },
+    "StandardVectorTests.EncryptBytes_Cfb_Aes256_GivesTheVectorOfSp80038aF317": {
+      "fails": "4 of 5 checks failed: CFB128-AES256.Encrypt (F.3.17): block 1: expected \"dc7e84bfda79164b7ecd8486985d3860\", got \"dc1f1a8520a64db55fcc8ac554844e88\"; CFB128-AES256.Encrypt (F.3.17): block 2: expected \"39ffed143b28b1c832113c6331e5407b\", got \"9700adc6e10c63cf2d8cd2d8ce668f3e\"; CFB128-AES256.Encrypt (F.3.17): block 3: expected \"df10132415e54b92a13ed0a8267ae2f9\", got \"b9191719c47444fb43bff9b9883c2cd0\"; CFB128-AES256.Encrypt (F.3.17): block 4: expected \"75a385741ab9cef82031623d55b1e471\", got \"51120402009f974998c89d195722a75b\""
+    },
+    "StandardVectorTests.DecryptBytes_Cfb_Aes128_GivesThePlaintextOfSp80038aF314": {
+      "fails": "4 of 5 checks failed: CFB128-AES128.Decrypt (F.3.14): block 1: expected \"6bc1bee22e409f96e93d7e117393172a\", got \"6b8783f478fffa5eac98bc2ceb75682a\"; CFB128-AES128.Decrypt (F.3.14): block 2: expected \"ae2d8a571e03ac9c9eb76fac45af8e51\", got \"ae3b047e5c445a943dbe87eec5700937\"; CFB128-AES128.Decrypt (F.3.14): block 3: expected \"30c81c46a35ce411e5fbc1191a0a52ef\", got \"30b040012e1b1e28062587040531a8f4\"; CFB128-AES128.Decrypt (F.3.14): block 4: expected \"f69f2445df4f9b17ad2b417be66c3710\", got \"f67bc3cde8cd2698c918eff66c8be1f2\""
+    },
+    "StandardVectorTests.EncryptBytes_Ofb_Aes128_GivesTheVectorOfSp80038aF41": {
+      "fails": "4 of 5 checks failed: OFB-AES128.Encrypt (F.4.1): block 1: expected \"3b3fd92eb72dad20333449f8e83cfb4a\", got \"3b79424c9c0dd436bace9e0ed4586a4f\"; OFB-AES128.Encrypt (F.4.1): block 2: expected \"7789508d16918f03f53c52dac54ed825\", got \"32b9ded50ae3ba69d472e88267fb5052\"; OFB-AES128.Encrypt (F.4.1): block 3: expected \"9740051e9c5fecf64344f7a82260edcc\", got \"70cbad1e257691f7c47c5038297edda3\"; OFB-AES128.Encrypt (F.4.1): block 4: expected \"304c6528f659c77866a510d9c1d6ae5e\", got \"2ff26d0ed19174096161ecc14086dd62\""
+    },
+    "StandardVectorTests.EncryptBytes_Ofb_Aes192_GivesTheVectorOfSp80038aF43": {
+      "fails": "4 of 5 checks failed: OFB-AES192.Encrypt (F.4.3): block 1: expected \"cdc80d6fddf18cab34c25909c99a4174\", got \"cda2521ef0a905ca44cd057cbf0d47a0\"; OFB-AES192.Encrypt (F.4.3): block 2: expected \"fcc28b8d4c63837c09e81700c1100401\", got \"678a7bcfb6aeaa3047b38936021f48bb\"; OFB-AES192.Encrypt (F.4.3): block 3: expected \"8d9a9aeac0f6596f559c6d4daf59a5f2\", got \"b63cefdac02b2e840904efce6f4326be\"; OFB-AES192.Encrypt (F.4.3): block 4: expected \"6d9f200857ca6c3e9cac524bd9acc92a\", got \"228683739063dc30e937ffedd63e3c94\""
+    },
+    "StandardVectorTests.EncryptBytes_Ofb_Aes256_GivesTheVectorOfSp80038aF45": {
+      "fails": "4 of 5 checks failed: OFB-AES256.Encrypt (F.4.5): block 1: expected \"dc7e84bfda79164b7ecd8486985d3860\", got \"dc1f1a8520a64db55fcc8ac554844e88\"; OFB-AES256.Encrypt (F.4.5): block 2: expected \"4febdc6740d20b3ac88f6ad82a4fb08d\", got \"9700adc6e10c63cf2d8cd2d8ce668f3e\"; OFB-AES256.Encrypt (F.4.5): block 3: expected \"71ab47a086e86eedf39d1c5bba97c408\", got \"b9191719c47444fb43bff9b9883c2cd0\"; OFB-AES256.Encrypt (F.4.5): block 4: expected \"0126141d67f37be8538f5a8be740e484\", got \"51120402009f974998c89d195722a75b\""
+    },
+    "StandardVectorTests.DecryptBytes_Ofb_Aes128_GivesThePlaintextOfSp80038aF42": {
+      "fails": "4 of 5 checks failed: OFB-AES128.Decrypt (F.4.2): block 1: expected \"6bc1bee22e409f96e93d7e117393172a\", got \"6b8783f478fffa5eac98bc2ceb75682a\"; OFB-AES128.Decrypt (F.4.2): block 2: expected \"ae2d8a571e03ac9c9eb76fac45af8e51\", got \"11a02be0e0383dfe725368e9bbac82ea\"; OFB-AES128.Decrypt (F.4.2): block 3: expected \"30c81c46a35ce411e5fbc1191a0a52ef\", got \"9cc1708902eda5c4bc376917c616e499\"; OFB-AES128.Decrypt (F.4.2): block 4: expected \"f69f2445df4f9b17ad2b417be66c3710\", got \"a9cca55f01aa6cc44df667c9d7b6c5d8\""
+    },
+    "StandardVectorTests.EncryptBytes_Ctr_Aes128_GivesTheVectorOfSp80038aF51": {
+      "fails": "4 of 5 checks failed: CTR-AES128.Encrypt (F.5.1): block 1: expected \"874d6191b620e3261bef6864990db6ce\", got \"8755df09dbbbc1cbadcee178efafb067\"; CTR-AES128.Encrypt (F.5.1): block 2: expected \"9806f66b7970fdff8617187bb9fffdff\", got \"3ee36d23f9001b9ef6b5eeb2b438945c\"; CTR-AES128.Encrypt (F.5.1): block 3: expected \"5ae4df3edbd5d35e5b4f09020db03eab\", got \"a7e037322faaa8de04beecd70a6fefa8\"; CTR-AES128.Encrypt (F.5.1): block 4: expected \"1e031dda2fbe03d1792170a0f3009cee\", got \"79ea4db3f2965e31e2b3e526810c48ea\""
+    },
+    "StandardVectorTests.EncryptBytes_Ctr_Aes192_GivesTheVectorOfSp80038aF53": {
+      "fails": "4 of 5 checks failed: CTR-AES192.Encrypt (F.5.3): block 1: expected \"1abc932417521ca24f2b0459fe7e6e0b\", got \"1a5ae2ee4eac4f441fc82b8aeda0c571\"; CTR-AES192.Encrypt (F.5.3): block 2: expected \"090339ec0aa6faefd5ccc2c6f4ce8e94\", got \"2912692d76e27d771b1dbda13b8d0bbc\"; CTR-AES192.Encrypt (F.5.3): block 3: expected \"1e36b26bd1ebc670d1bd1d665620abf7\", got \"4a0e6ed2e129ed016eda0009bab48bb7\"; CTR-AES192.Encrypt (F.5.3): block 4: expected \"4f78a7f6d29809585a97daec58c6b050\", got \"41577f9294c5b15d43457fcb7316ecc6\""
+    },
+    "StandardVectorTests.EncryptBytes_Ctr_Aes256_GivesTheVectorOfSp80038aF55": {
+      "fails": "4 of 5 checks failed: CTR-AES256.Encrypt (F.5.5): block 1: expected \"601ec313775789a5b7a7f504bbf3d228\", got \"60905bb39eebfc480d5823a2b95c875d\"; CTR-AES256.Encrypt (F.5.5): block 2: expected \"f443e3ca4d62b59aca84e990cacaf5c5\", got \"f8f41193d43f6b1d55fdc9c3a1746e77\"; CTR-AES256.Encrypt (F.5.5): block 3: expected \"2b0930daa23de94ce87017ba2d84988d\", got \"e39bf79e8aeaa7aa9a7a7603d2b5848d\"; CTR-AES256.Encrypt (F.5.5): block 4: expected \"dfc9c58db67aada613c2dd08457941a6\", got \"84177cd8bfa0a28dc2609a3843611157\""
+    },
+    "StandardVectorTests.DecryptBytes_Ctr_Aes128_GivesThePlaintextOfSp80038aF52": {
+      "fails": "4 of 5 checks failed: CTR-AES128.Decrypt (F.5.2): block 1: expected \"6bc1bee22e409f96e93d7e117393172a\", got \"6bd9aca7eda9aecc2b115b3e53be6826\"; CTR-AES128.Decrypt (F.5.2): block 2: expected \"ae2d8a571e03ac9c9eb76fac45af8e51\", got \"a3c43242cbc4f1c1d64daaed898a8217\"; CTR-AES128.Decrypt (F.5.2): block 3: expected \"30c81c46a35ce411e5fbc1191a0a52ef\", got \"2202a36aa2ddc193549753e06bffd849\"; CTR-AES128.Decrypt (F.5.2): block 4: expected \"f69f2445df4f9b17ad2b417be66c3710\", got \"36083fa644d0a8e898aa36143e9a3a6a\""
+    }
+  }
+}

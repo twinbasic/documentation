@@ -1,0 +1,320 @@
+' cDialog: the properties, the filter builders and the path helpers, which show no dialog.
+[TestFixture]
+Module CDialogPropertyTests
+
+    [TestCase]
+    Public Sub Defaults_Texts()
+        Expect.Begin
+        Dim dlg As New cDialog
+        Expect.AreEqual "", dlg.DialogTitle, "DialogTitle of a new cDialog"
+        Expect.AreEqual "", dlg.InitialDir, "InitialDir of a new cDialog"
+        Expect.AreEqual "", dlg.DefaultExt, "DefaultExt of a new cDialog"
+        Expect.AreEqual "", dlg.FileName, "FileName of a new cDialog"
+        Expect.AreEqual "", dlg.Filter, "Filter of a new cDialog"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Defaults_FalseFlags()
+        Expect.Begin
+        Dim dlg As New cDialog
+        Expect.IsFalse dlg.MultiSelect, "MultiSelect of a new cDialog"
+        Expect.IsFalse dlg.ReadOnly, "ReadOnly of a new cDialog"
+        Expect.IsFalse dlg.NoChangeDir, "NoChangeDir of a new cDialog"
+        Expect.IsFalse dlg.CreatePrompt, "CreatePrompt of a new cDialog"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Defaults_TrueFlags()
+        Expect.Begin
+        Dim dlg As New cDialog
+        Expect.IsTrue dlg.OverwritePrompt, "OverwritePrompt of a new cDialog"
+        Expect.IsTrue dlg.PathMustExist, "PathMustExist of a new cDialog"
+        Expect.IsTrue dlg.FileMustExist, "FileMustExist of a new cDialog"
+        Expect.IsTrue dlg.HideReadOnly, "HideReadOnly of a new cDialog"
+        Expect.IsTrue dlg.NewDialogStyle, "NewDialogStyle of a new cDialog"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Properties_StoreWhatIsSet()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.DialogTitle = "Choose"
+        dlg.InitialDir = "C:\Reports"
+        dlg.DefaultExt = "txt"
+        dlg.FileName = "C:\Reports\summary.txt"
+        dlg.Filter = "Text|*.txt"
+        dlg.MultiSelect = True
+        dlg.ReadOnly = True
+        dlg.NoChangeDir = True
+        dlg.CreatePrompt = True
+        dlg.OverwritePrompt = False
+        dlg.PathMustExist = False
+        dlg.FileMustExist = False
+        dlg.HideReadOnly = False
+        dlg.NewDialogStyle = False
+        Expect.AreEqual "Choose", dlg.DialogTitle, "DialogTitle after it is set"
+        Expect.AreEqual "C:\Reports", dlg.InitialDir, "InitialDir after it is set"
+        Expect.AreEqual "txt", dlg.DefaultExt, "DefaultExt after it is set"
+        Expect.AreEqual "C:\Reports\summary.txt", dlg.FileName, "FileName after it is set"
+        Expect.AreEqual "Text|*.txt", dlg.Filter, "Filter after it is set"
+        Expect.IsTrue dlg.MultiSelect, "MultiSelect after True"
+        Expect.IsTrue dlg.ReadOnly, "ReadOnly after True"
+        Expect.IsTrue dlg.NoChangeDir, "NoChangeDir after True"
+        Expect.IsTrue dlg.CreatePrompt, "CreatePrompt after True"
+        Expect.IsFalse dlg.OverwritePrompt, "OverwritePrompt after False"
+        Expect.IsFalse dlg.PathMustExist, "PathMustExist after False"
+        Expect.IsFalse dlg.FileMustExist, "FileMustExist after False"
+        Expect.IsFalse dlg.HideReadOnly, "HideReadOnly after False"
+        Expect.IsFalse dlg.NewDialogStyle, "NewDialogStyle after False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_RestoresTheStartingValues()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.DialogTitle = "Choose"
+        dlg.InitialDir = "C:\Reports"
+        dlg.DefaultExt = "txt"
+        dlg.FileName = "x.txt"
+        dlg.AddFilter "Text", "*.txt"
+        dlg.MultiSelect = True
+        dlg.ReadOnly = True
+        dlg.NoChangeDir = True
+        dlg.CreatePrompt = True
+        dlg.OverwritePrompt = False
+        dlg.PathMustExist = False
+        dlg.FileMustExist = False
+        dlg.HideReadOnly = False
+        dlg.NewDialogStyle = False
+        dlg.Reset
+        Expect.AreEqual "", dlg.DialogTitle & dlg.InitialDir & dlg.DefaultExt & dlg.FileName & dlg.Filter, "the five texts after Reset"
+        Expect.IsFalse dlg.MultiSelect Or dlg.ReadOnly Or dlg.NoChangeDir Or dlg.CreatePrompt, "MultiSelect, ReadOnly, NoChangeDir and CreatePrompt after Reset"
+        Expect.IsTrue dlg.OverwritePrompt And dlg.PathMustExist And dlg.FileMustExist And dlg.HideReadOnly And dlg.NewDialogStyle, "OverwritePrompt, PathMustExist, FileMustExist, HideReadOnly and NewDialogStyle after Reset"
+        Expect.Done
+    End Sub
+
+    ' ---- the filter builders
+
+    [TestCase]
+    Public Sub AddFilter_JoinsPairsWithPipes()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.AddFilter "Text Files (*.txt)", "*.txt"
+        dlg.AddFilter "Pictures", "*.png;*.jpg"
+        Expect.AreEqual "Text Files (*.txt)|*.txt|Pictures|*.png;*.jpg", dlg.Filter, "Filter after two AddFilter calls"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AddFilter_PipeInArgumentAddsAnElement()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.AddFilter "Text|Notes", "*.txt"
+        Expect.AreEqual 3, UBound(Split(dlg.Filter, "|")) + 1, "elements in the filter after a description that holds a pipe"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClearFilter_EmptiesTheFilter()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.AddFilter "Text", "*.txt"
+        dlg.ClearFilter
+        Expect.AreEqual 0, Len(dlg.Filter), "length of Filter after ClearFilter"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetCommonFilters_ReplacesTheFilter()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.Filter = "Old|*.old"
+        dlg.SetCommonFilters
+        Expect.AreEqual "Text Files (*.txt)|*.txt|All Files (*.*)|*.*", dlg.Filter, "Filter after SetCommonFilters"
+        dlg.AddFilter "Logs (*.log)", "*.log"
+        Expect.AreEqual "Text Files (*.txt)|*.txt|All Files (*.*)|*.*|Logs (*.log)|*.log", dlg.Filter, "Filter after AddFilter following SetCommonFilters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetCodeFilters_HasNinePairs()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.AddFilter "Old", "*.old"
+        dlg.SetCodeFilters
+        Dim parts() As String = Split(dlg.Filter, "|")
+        Expect.AreEqual 9, (UBound(parts) + 1) \ 2, "pairs in the filter after SetCodeFilters"
+        Expect.AreEqual "Basic Files (*.bas;*.vba)", parts(0), "first description after SetCodeFilters"
+        Expect.AreEqual "*.bas;*.vba", parts(1), "first pattern after SetCodeFilters"
+        Expect.AreEqual "All Files (*.*)", parts(16), "last description after SetCodeFilters"
+        dlg.AddFilter "twinBASIC Files (*.twin)", "*.twin"
+        parts = Split(dlg.Filter, "|")
+        Expect.AreEqual "twinBASIC Files (*.twin)", parts(UBound(parts) - 1), "description appended after SetCodeFilters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetDocumentFilters_HasSixPairs()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.SetDocumentFilters
+        Dim parts() As String = Split(dlg.Filter, "|")
+        Expect.AreEqual 6, (UBound(parts) + 1) \ 2, "pairs in the filter after SetDocumentFilters"
+        Expect.AreEqual "Word Documents (*.doc;*.docx)", parts(0), "first description after SetDocumentFilters"
+        Expect.AreEqual "*.doc;*.docx", parts(1), "first pattern after SetDocumentFilters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetImageFilters_HasSixPairs()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.AddFilter "Old", "*.old"
+        dlg.SetImageFilters
+        Dim parts() As String = Split(dlg.Filter, "|")
+        Expect.AreEqual 6, (UBound(parts) + 1) \ 2, "pairs in the filter after SetImageFilters"
+        Expect.AreEqual "Bitmap Files (*.bmp)", parts(0), "first description after SetImageFilters"
+        Expect.AreEqual "*.bmp", parts(1), "first pattern after SetImageFilters"
+        Expect.AreEqual "All Image Files (*.bmp;*.jpg;*.jpeg;*.png;*.gif)", parts(8), "fifth description after SetImageFilters"
+        Expect.Done
+    End Sub
+
+    ' ---- the path helpers
+
+    [TestCase]
+    Public Sub GetFileExtension_ReturnsThePartFromTheLastPeriod()
+        Expect.Begin
+        Dim dlg As New cDialog
+        Expect.AreEqual ".txt", dlg.GetFileExtension("C:\Docs\summary.txt"), "GetFileExtension of a path"
+        Expect.AreEqual ".gz", dlg.GetFileExtension("archive.tar.gz"), "GetFileExtension of archive.tar.gz"
+        Expect.AreEqual ".", dlg.GetFileExtension("report."), "GetFileExtension of a name that ends with a period"
+        Expect.AreEqual "", dlg.GetFileExtension("README"), "GetFileExtension of a name with no period"
+        Expect.Done
+    End Sub
+
+    ' The method looks for the last period in the whole string, not in the file name.
+    [TestCase]
+    Public Sub GetFileExtension_PeriodInAFolderNameIsTakenForAnExtension()
+        Expect.Begin
+        Dim dlg As New cDialog
+        Expect.AreEqual ".dir\notes", dlg.GetFileExtension("C:\my.dir\notes"), "GetFileExtension of a path whose folder has a period and whose file has none"
+        Expect.AreEqual "notes", dlg.GetFileNameWithoutExt("C:\my.dir\notes"), "GetFileNameWithoutExt of the same path"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFileName_ReturnsThePartAfterTheLastBackslash()
+        Expect.Begin
+        Dim dlg As New cDialog
+        Expect.AreEqual "summary.txt", dlg.GetFileName("C:\Docs\Reports\summary.txt"), "GetFileName of a path"
+        Expect.AreEqual "summary.txt", dlg.GetFileName("summary.txt"), "GetFileName of a name"
+        Expect.AreEqual "", dlg.GetFileName("C:\Docs\"), "GetFileName of a path that ends with a backslash"
+        Expect.AreEqual "C:/Docs/summary.txt", dlg.GetFileName("C:/Docs/summary.txt"), "GetFileName of a path with forward slashes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFileNameWithoutExt_RemovesTheLastExtension()
+        Expect.Begin
+        Dim dlg As New cDialog
+        Expect.AreEqual "summary", dlg.GetFileNameWithoutExt("C:\Docs\summary.txt"), "GetFileNameWithoutExt of a path"
+        Expect.AreEqual "archive.tar", dlg.GetFileNameWithoutExt("archive.tar.gz"), "GetFileNameWithoutExt of archive.tar.gz"
+        Expect.AreEqual "README", dlg.GetFileNameWithoutExt("README"), "GetFileNameWithoutExt of a name with no period"
+        Expect.AreEqual "report", dlg.GetFileNameWithoutExt("report."), "GetFileNameWithoutExt of a name that ends with a period"
+        Expect.AreEqual "", dlg.GetFileNameWithoutExt(".gitignore"), "GetFileNameWithoutExt of a name that starts with a period"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFilePath_ReturnsThePartBeforeTheLastBackslash()
+        Expect.Begin
+        Dim dlg As New cDialog
+        Expect.AreEqual "C:\Docs\Reports", dlg.GetFilePath("C:\Docs\Reports\summary.txt"), "GetFilePath of a path"
+        Expect.AreEqual "C:", dlg.GetFilePath("C:\summary.txt"), "GetFilePath of a file in the root of a drive"
+        Expect.AreEqual "summary.txt", dlg.GetFilePath("summary.txt"), "GetFilePath of a name with no backslash"
+        Expect.AreEqual "C:\Docs", dlg.GetFilePath("C:\Docs\"), "GetFilePath of a path that ends with a backslash"
+        Expect.AreEqual "C:/Docs/summary.txt", dlg.GetFilePath("C:/Docs/summary.txt"), "GetFilePath of a path with forward slashes"
+        Expect.AreEqual "", dlg.GetFilePath("\summary.txt"), "GetFilePath of a name whose only backslash is the first character"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PathCombine_JoinsWithOneBackslash()
+        Expect.Begin
+        Dim dlg As New cDialog
+        Expect.AreEqual "C:\a\b", dlg.PathCombine("C:\a", "b"), "PathCombine of C:\a and b"
+        Expect.AreEqual "C:\a\b", dlg.PathCombine("C:\a\", "\b"), "PathCombine of C:\a\ and \b"
+        Expect.AreEqual "C:\b", dlg.PathCombine("C:", "b"), "PathCombine of C: and b"
+        Expect.AreEqual "D:\b", dlg.PathCombine("C:\a", "D:\b"), "PathCombine of C:\a and an absolute D:\b"
+        Expect.AreEqual "\\srv\x", dlg.PathCombine("C:\a", "\\srv\x"), "PathCombine of C:\a and a UNC path"
+        Expect.AreEqual "C:\a\D:b", dlg.PathCombine("C:\a", "D:b"), "PathCombine of C:\a and D:b"
+        Expect.AreEqual "C:\a\..\b", dlg.PathCombine("C:\a", "..\b"), "PathCombine of C:\a and ..\b"
+        Expect.AreEqual "C:\a\\b", dlg.PathCombine("C:\a\\", "b"), "PathCombine of C:\a\\ and b"
+        Expect.AreEqual "a/\b", dlg.PathCombine("a/", "b"), "PathCombine of a/ and b"
+        Expect.AreEqual "C:\a\http://x/y", dlg.PathCombine("C:\a", "http://x/y"), "PathCombine of C:\a and a web address"
+        Expect.AreEqual "summary.txt", dlg.PathCombine("", "summary.txt"), "PathCombine of an empty first part"
+        Expect.AreEqual "C:\Reports", dlg.PathCombine("C:\Reports", ""), "PathCombine of an empty second part"
+        Expect.AreEqual "", dlg.PathCombine("", ""), "PathCombine of two empty parts"
+        Expect.Done
+    End Sub
+
+    ' ---- OpenFile
+
+    [TestCase]
+    Public Sub OpenFile_NonexistentFileReturns2()
+        Expect.Begin
+        Dim dlg As New cDialog
+        Dim r As Variant = dlg.OpenFile(Fx.Work() & "\no such file.xyz")
+        Expect.AreEqual 2, CLng(r), "OpenFile of a path that does not exist"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    ' ---- FileName length
+
+    [TestCase]
+    Public Sub ShowSave_FileNameOf261CharactersRaisesError5()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.FileName = String$(261, "a")
+        Pilot.Arm "close"
+        On Error Resume Next
+        Dim r As String = dlg.ShowSave()
+        Dim n As Long = Err.Number
+        On Error GoTo 0
+        Pilot.Disarm
+        Expect.AreEqual 5, n, "error raised by ShowSave with a FileName of 261 characters"
+        Expect.AreEqual 0, Pilot.WindowsSeen, "dialogs ShowSave opened with a FileName of 261 characters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowSave_FileNameOf260CharactersShowsNoDialog()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.FileName = String$(260, "a")
+        Pilot.Arm "close"
+        Dim r As String = dlg.ShowSave()
+        Pilot.Disarm
+        Expect.AreEqual "", r, "ShowSave with a FileName of 260 characters"
+        Expect.AreEqual 0, Pilot.WindowsSeen, "dialogs ShowSave opened with a FileName of 260 characters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowSave_FileNameOf259CharactersOpensTheDialog()
+        Expect.Begin
+        Dim dlg As New cDialog
+        dlg.FileName = String$(259, "a")
+        Pilot.Arm "close"
+        Dim r As String = dlg.ShowSave()
+        Pilot.Disarm
+        Expect.AreEqual 1, Pilot.WindowsSeen, "dialogs ShowSave opened with a FileName of 259 characters"
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,662 @@
+' TBMANLIB_ConsoleComponents: cConsoleLayout, on the compiled copy of its code (see TwoPackagesTests).
+[TestFixture]
+Module LayoutTests
+
+    ' A panel's rectangle as "Left Top Right Bottom".
+    Private Function RectOf(ByVal P As cConsolePanel) As String
+        RectOf = P.Rect.Left & " " & P.Rect.Top & " " & P.Rect.Right & " " & P.Rect.Bottom
+    End Function
+
+    ' The names of the panels a member returned in a Variant, in order.
+    Private Function Names(ByVal Panels As Variant) As String
+        Dim i As Long
+        Dim p As cConsolePanel
+        For i = LBound(Panels) To UBound(Panels)
+            Set p = Panels(i)
+            If i > LBound(Panels) Then Names = Names & " "
+            Names = Names & p.Name
+        Next
+    End Function
+
+    ' The content size of a panel as "width height".
+    Private Function ContentOf(ByVal P As cConsolePanel) As String
+        ContentOf = P.ContentWidth() & " " & P.ContentHeight()
+    End Function
+
+    ' ---- panels, names and the root panel
+
+    [TestCase]
+    Public Sub AddPanel_ReturnsAPanelWithTheDefaultStyleAndTheTitle()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        Dim p As cConsolePanel = layout.AddPanel("root", 1, 2, 30, 8, "Monitor")
+        Expect.AreEqual "1 2 30 9", RectOf(p), "Rect of the panel"
+        Expect.AreEqual "root", p.Name, "Name"
+        Expect.AreEqual "Monitor", p.Title, "Title"
+        Expect.AreEqual 1, CLng(p.BorderStyle), "BorderStyle (Single)"
+        Expect.AreEqual 1, p.Padding, "Padding"
+        Expect.AreEqual 1, layout.PanelCount, "PanelCount"
+        Expect.IsTrue layout.GetPanel("root") Is p, "GetPanel returns the object AddPanel returned"
+        Set p = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetPanel_NameIsCaseSensitive_AndAnUnknownNameGivesNothing()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "root", 0, 0, 10, 5
+        Expect.IsTrue layout.GetPanel("Root") Is Nothing, "GetPanel of Root"
+        Expect.IsTrue layout.GetPanel("other") Is Nothing, "GetPanel of other"
+        Expect.IsTrue layout.HasPanel("root"), "HasPanel of root"
+        Expect.IsFalse layout.HasPanel("Root"), "HasPanel of Root"
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AddPanel_NameInUse_RaisesError457()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "root", 0, 0, 10, 5
+        On Error Resume Next
+        layout.AddPanel "root", 0, 0, 10, 5
+        Expect.AreEqual 457, Err.Number, "Err.Number of AddPanel with a name in use"
+        On Error GoTo 0
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AddPanel_NameInUse_AddsNoPanelToTheList()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "root", 0, 0, 10, 5
+        On Error Resume Next
+        layout.AddPanel "root", 0, 0, 10, 5
+        On Error GoTo 0
+        Expect.AreEqual 1, layout.PanelCount, "PanelCount after AddPanel with a name in use"
+        Dim all As Variant = layout.GetAllPanels()
+        Expect.AreEqual 1, UBound(all) + 1, "panels returned by GetAllPanels"
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetPanelNames_AndGetAllPanels_FollowTheOrderOfCreation()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        Dim a As cConsolePanel = layout.AddPanel("b", 0, 0, 5, 5)
+        Dim b As cConsolePanel = layout.AddPanel("a", 0, 0, 5, 5)
+        Dim c As cConsolePanel = layout.AddPanel("c", 0, 0, 5, 5)
+        Dim nameList As Variant = layout.GetPanelNames()
+        Dim all As Variant = layout.GetAllPanels()
+        Expect.AreEqual "b a c", nameList(0) & " " & nameList(1) & " " & nameList(2), "GetPanelNames"
+        Expect.AreEqual 0, LBound(nameList), "lower bound of the names"
+        Expect.AreEqual "b a c", Names(all), "GetAllPanels returns the panels in the order of creation"
+        Expect.AreEqual 0, LBound(all), "lower bound of the panels"
+        Set a = Nothing: Set b = Nothing: Set c = Nothing
+        all = Empty
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetPanel_RenamingAPanel_DoesNotChangeTheNameItIsFoundBy()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        Dim p As cConsolePanel = layout.AddPanel("a", 0, 0, 5, 5)
+        p.Name = "z"
+        Expect.IsTrue layout.HasPanel("a"), "HasPanel of the name the panel was added under"
+        Expect.IsFalse layout.HasPanel("z"), "HasPanel of the new value of Name"
+        Set p = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AddPanelByRect_UsesTheInclusiveEdgesOfTheRectangle()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        Dim r As ConsoleRect = ConsoleRect_Create(2, 3, 11, 7)
+        Dim p As cConsolePanel = layout.AddPanelByRect("box", r, "Title")
+        Expect.AreEqual "2 3 11 7", RectOf(p), "Rect of the panel"
+        Expect.AreEqual "Title", p.Title, "Title"
+        Set p = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemovePanel_RemovesFromTheNamesAndTheList_AndAnUnknownNameDoesNothing()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "a", 0, 0, 5, 5
+        layout.AddPanel "b", 0, 0, 5, 5
+        layout.RemovePanel "a"
+        layout.RemovePanel "nothing"
+        Expect.AreEqual 1, layout.PanelCount, "PanelCount"
+        Expect.IsFalse layout.HasPanel("a"), "HasPanel of the removed panel"
+        Expect.IsTrue layout.HasPanel("b"), "HasPanel of the other panel"
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clear_RemovesEveryPanel()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "a", 0, 0, 5, 5
+        layout.AddPanel "b", 0, 0, 5, 5
+        layout.Clear
+        Expect.AreEqual 0, layout.PanelCount, "PanelCount"
+        Expect.IsFalse layout.HasPanel("a"), "HasPanel"
+        layout.AddPanel "a", 0, 0, 5, 5
+        Expect.AreEqual 1, layout.PanelCount, "PanelCount after the name was added again"
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RootPanel_IsTheFirstPanel_AndTheFirstRemainingOneAfterItIsRemoved()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(60, 20)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "first", 0, 0, 20, 10
+        layout.AddPanel "second", 30, 5, 30, 15
+        Dim parts As Variant = layout.CreateSidebar(4, "side", "main")
+        Expect.AreEqual "2 2 5 7", RectOf(parts(0)), "the sidebar, in the content area of the first panel (columns 2 to 17, rows 2 to 7)"
+        layout.RemovePanel "first"
+        layout.RemovePanel "side"
+        layout.RemovePanel "main"
+        Dim parts2 As Variant = layout.CreateSidebar(4, "side2", "main2")
+        Expect.AreEqual "32 7 35 17", RectOf(parts2(0)), "the sidebar after the first panel was removed, in the content area of the second panel (columns 32 to 57, rows 7 to 17)"
+        Set parts = Nothing
+        Set parts2 = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- SplitHorizontal and SplitVertical
+
+    [TestCase]
+    Public Sub SplitHorizontal_DividesTheWidthOfTheContentAreaIntoALeftAndARightPanel()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(60, 20)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "root", 0, 0, 40, 12, "Monitor"
+        Dim parts As Variant = layout.SplitHorizontal("root", 0.25, "list", "detail")
+        Expect.AreEqual "2 2 10 9", RectOf(layout.GetPanel("list")), "the left panel"
+        Expect.AreEqual "12 2 37 9", RectOf(layout.GetPanel("detail")), "the right panel"
+        Expect.AreEqual "5 4", ContentOf(layout.GetPanel("list")), "content size of the left panel"
+        Expect.AreEqual "22 4", ContentOf(layout.GetPanel("detail")), "content size of the right panel"
+        Expect.AreEqual 3, layout.PanelCount, "PanelCount"
+        Expect.AreEqual "list detail", Names(parts), "the Variant holds the left panel and then the right panel"
+        Expect.AreEqual "0 0 39 11", RectOf(layout.GetPanel("root")), "the panel that was split stays where it is"
+        Set parts = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SplitVertical_DividesTheHeightOfTheContentAreaIntoATopAndABottomPanel()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(60, 20)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "root", 0, 0, 40, 12
+        Dim parts As Variant = layout.SplitVertical("root", 0.5, "top", "bottom")
+        Expect.AreEqual "2 2 37 5", RectOf(layout.GetPanel("top")), "the top panel (content rows 2 to 9, 8 rows, half is 4)"
+        Expect.AreEqual "2 7 37 9", RectOf(layout.GetPanel("bottom")), "the bottom panel, one row after the top panel"
+        Expect.AreEqual "top bottom", Names(parts), "the Variant holds the top panel and then the bottom panel"
+        Set parts = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Split_ParentNotInTheLayout_CreatesNothing()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(60, 20)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "root", 0, 0, 40, 12
+        Dim a As Variant
+        Dim b As Variant
+        a = layout.SplitHorizontal("none", 0.5, "l", "r")
+        b = layout.SplitVertical("none", 0.5, "t", "b")
+        Expect.IsTrue IsObject(a) And a Is Nothing, "SplitHorizontal of a parent that is not in the layout returns Nothing"
+        Expect.IsTrue IsObject(b) And b Is Nothing, "SplitVertical of a parent that is not in the layout returns Nothing"
+        Expect.AreEqual 1, layout.PanelCount, "PanelCount"
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SplitHorizontal_AndLayoutHelperSplitHorizontal_DivideInTheSameDirection()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(60, 20)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        Dim helper As cLayoutHelper = New cLayoutHelper(con)
+        layout.AddPanel "root", 0, 0, 60, 20
+        layout.SplitHorizontal "root", 0.5, "a", "b"
+        Dim rects() As ConsoleRect
+        rects = helper.SplitHorizontal(50)
+        Dim layoutSideBySide As Boolean = layout.GetPanel("a").Rect.Top = layout.GetPanel("b").Rect.Top
+        Dim helperSideBySide As Boolean = rects(0).Top = rects(1).Top
+        Expect.AreEqual layoutSideBySide, helperSideBySide, "the two parts of cConsoleLayout.SplitHorizontal side by side (" & layoutSideBySide & "), the two of cLayoutHelper.SplitHorizontal side by side (" & helperSideBySide & ")"
+        Set helper = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- the arrangements
+
+    [TestCase]
+    Public Sub CreateGrid_DividesTheContentAreaOfTheRootPanel_AndTheLastColumnAndRowTakeTheRemainder()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "root", 0, 0, 60, 20
+        Dim cells As Variant = layout.CreateGrid(2, 2, "cell")
+        Expect.AreEqual "2 2 28 8", RectOf(layout.GetPanel("cell_0")), "cell_0"
+        Expect.AreEqual "30 2 57 8", RectOf(layout.GetPanel("cell_1")), "cell_1"
+        Expect.AreEqual "2 10 28 17", RectOf(layout.GetPanel("cell_2")), "cell_2"
+        Expect.AreEqual "30 10 57 17", RectOf(layout.GetPanel("cell_3")), "cell_3"
+        Expect.AreEqual "23 3", ContentOf(layout.GetPanel("cell_0")), "content size of cell_0"
+        Expect.AreEqual "24 4", ContentOf(layout.GetPanel("cell_3")), "content size of cell_3"
+        Expect.AreEqual 0, LBound(cells), "lower bound of the Variant"
+        Expect.AreEqual "cell_0 cell_1 cell_2 cell_3", Names(cells), "the Variant holds the cells row by row"
+        Expect.AreEqual 5, layout.PanelCount, "PanelCount"
+        Set cells = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateGrid_WithoutAPanel_DividesTheWholeConsole()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        Dim cells As Variant = layout.CreateGrid(2, 1, "c")
+        Expect.AreEqual "0 0 38 24", RectOf(layout.GetPanel("c_0")), "c_0 in a console of 80 by 25"
+        Expect.AreEqual "40 0 79 24", RectOf(layout.GetPanel("c_1")), "c_1, which takes the remainder"
+        Set cells = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateGrid_ZeroColumnsOrRows_RaisesError()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        On Error Resume Next
+        layout.CreateGrid 0, 2, "c"
+        Expect.AreEqual -2147467259, Err.Number, "Err.Number of CreateGrid with 0 columns"
+        Err.Clear
+        layout.CreateGrid 2, 0, "c"
+        Expect.AreEqual -2147467259, Err.Number, "Err.Number of CreateGrid with 0 rows"
+        On Error GoTo 0
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateSidebar_TakesTheLeftColumnsOfTheContentArea_WithNoColumnBetween()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "root", 0, 0, 40, 12
+        Dim parts As Variant = layout.CreateSidebar(10, "side", "main")
+        Expect.AreEqual "2 2 11 9", RectOf(layout.GetPanel("side")), "the sidebar"
+        Expect.AreEqual "12 2 37 9", RectOf(layout.GetPanel("main")), "the content panel"
+        Expect.AreEqual "side main", Names(parts), "the Variant holds the sidebar and then the content panel"
+        Set parts = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateHeaderFooter_DividesTheContentAreaIntoThreeWithNoRowBetween()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(80, 25)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "root", 0, 0, 40, 12
+        Dim parts As Variant = layout.CreateHeaderFooter(2, 1, "head", "body", "foot")
+        Expect.AreEqual "2 2 37 3", RectOf(layout.GetPanel("head")), "the header"
+        Expect.AreEqual "2 4 37 8", RectOf(layout.GetPanel("body")), "the body"
+        Expect.AreEqual "2 9 37 9", RectOf(layout.GetPanel("foot")), "the footer"
+        Expect.AreEqual "head body foot", Names(parts), "the Variant holds the header, the body and the footer"
+        Set parts = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateSidebar_AfterAnArrangementOnAnEmptyLayout_StillUsesTheWholeConsole()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.CreateHeaderFooter 1, 1, "head", "body", "foot"
+        Dim parts As Variant = layout.CreateSidebar(10, "side", "main")
+        Expect.AreEqual "0 0 9 11", RectOf(layout.GetPanel("side")), "the sidebar of a layout whose only panels came from CreateHeaderFooter, in a console of 40 by 12"
+        Set parts = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CreateHeaderFooter_OnAnEmptyLayout_UsesTheWholeConsole_AndTheHeaderIsTheRoot()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.CreateHeaderFooter 1, 1, "head", "body", "foot"
+        Expect.AreEqual "0 0 39 0", RectOf(layout.GetPanel("head")), "the header"
+        Expect.AreEqual "0 1 39 10", RectOf(layout.GetPanel("body")), "the body"
+        Expect.AreEqual "0 11 39 11", RectOf(layout.GetPanel("foot")), "the footer"
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- Render, RenderPanel, ClearAllContent, ClearPanelContent
+
+    [TestCase]
+    Public Sub Render_DrawsTheBordersAndTitlesOfEveryPanelInTheColoursOfTheTheme()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        Dim theme As cConsoleTheme = mConsoleThemeFactory.CreateHTOP()
+        layout.AddPanel "root", 0, 0, 40, 12, "Monitor"
+        layout.CreateHeaderFooter 2, 2, "head", "body", "foot"
+        layout.Render theme
+        Expect.AreEqual &H250C&, Cells.Code(con.Buffer, 0, 0), "the upper left corner of the root panel"
+        Expect.AreEqual &H2518&, Cells.Code(con.Buffer, 39, 11), "the lower right corner of the root panel"
+        Expect.AreEqual " Monitor ", Cells.Text(con.Buffer, 0, 1, 9), "the title of the root panel"
+        Expect.AreEqual CLng(theme.Border), Cells.Fore(con.Buffer, 0, 0), "colour of the border (Border of the theme)"
+        Expect.AreEqual CLng(theme.Background), Cells.Back(con.Buffer, 0, 0), "background of the border (Background of the theme)"
+        Expect.AreEqual &H250C&, Cells.Code(con.Buffer, 2, 2), "the upper left corner of the header, drawn after the root panel"
+        Set theme = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_WithoutATheme_UsesGrayOnBlack_AndLeavesTheInsideAlone()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "root", 0, 0, 20, 8
+        con.Buffer.WriteAt 5, 4, "inside"
+        layout.Render
+        Expect.AreEqual CLng(ConsoleColor.Gray), Cells.Fore(con.Buffer, 0, 0), "colour of the border"
+        Expect.AreEqual CLng(ConsoleColor.Black), Cells.Back(con.Buffer, 0, 0), "background of the border"
+        Expect.AreEqual "inside", Cells.Text(con.Buffer, 4, 5, 6), "the text inside the panel"
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_LaterPanelIsDrawnOverAnEarlierOne()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        Dim a As cConsolePanel = layout.AddPanel("a", 0, 0, 10, 5)
+        Dim b As cConsolePanel = layout.AddPanel("b", 0, 0, 10, 5)
+        a.BorderStyle = 2
+        b.BorderStyle = 4
+        layout.Render
+        Expect.AreEqual &H250F&, Cells.Code(con.Buffer, 0, 0), "the corner of the two panels at the same place"
+        Set a = Nothing: Set b = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RenderPanel_DrawsOnePanel_AndAnUnknownNameDoesNothing()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "a", 0, 0, 10, 5
+        layout.AddPanel "b", 20, 0, 10, 5
+        layout.RenderPanel "b"
+        layout.RenderPanel "none"
+        Expect.AreEqual 32, Cells.Code(con.Buffer, 0, 0), "the corner of the panel a, which was not drawn"
+        Expect.AreEqual &H250C&, Cells.Code(con.Buffer, 20, 0), "the corner of the panel b"
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClearAllContent_FillsTheContentAreasWithTheForegroundAndBackgroundOfTheTheme()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        Dim theme As cConsoleTheme = mConsoleThemeFactory.CreateLight()
+        layout.AddPanel "a", 0, 0, 10, 6
+        layout.AddPanel "b", 20, 0, 10, 6
+        con.Buffer.WriteAt 2, 2, "xx"
+        con.Buffer.WriteAt 22, 2, "xx"
+        layout.ClearAllContent theme
+        Expect.AreEqual "  ", Cells.Text(con.Buffer, 2, 2, 2), "the content area of the panel a"
+        Expect.AreEqual "  ", Cells.Text(con.Buffer, 2, 22, 2), "the content area of the panel b"
+        Expect.AreEqual CLng(theme.Foreground), Cells.Fore(con.Buffer, 2, 2), "colour of a cleared cell"
+        Expect.AreEqual CLng(theme.Background), Cells.Back(con.Buffer, 2, 2), "background of a cleared cell"
+        layout.ClearAllContent
+        Expect.AreEqual CLng(ConsoleColor.Gray), Cells.Fore(con.Buffer, 2, 2), "colour without a theme"
+        Expect.AreEqual CLng(ConsoleColor.Black), Cells.Back(con.Buffer, 2, 2), "background without a theme"
+        Set theme = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClearPanelContent_FillsOnePanel_AndAnUnknownNameDoesNothing()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "a", 0, 0, 10, 6
+        layout.AddPanel "b", 20, 0, 10, 6
+        con.Buffer.WriteAt 2, 2, "xx"
+        con.Buffer.WriteAt 22, 2, "xx"
+        layout.ClearPanelContent "b"
+        layout.ClearPanelContent "none"
+        Expect.AreEqual "xx", Cells.Text(con.Buffer, 2, 2, 2), "the content area of the panel a"
+        Expect.AreEqual "  ", Cells.Text(con.Buffer, 2, 22, 2), "the content area of the panel b"
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_WhenTheConsoleIsNotInFullScreenMode_RaisesError91()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12, False)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "a", 0, 0, 10, 6
+        On Error Resume Next
+        layout.Render
+        Expect.AreEqual 91, Err.Number, "Err.Number of Render without a buffer"
+        Err.Clear
+        layout.ClearAllContent
+        Expect.AreEqual 91, Err.Number, "Err.Number of ClearAllContent without a buffer"
+        On Error GoTo 0
+        con.EnterFullScreenMode
+        On Error Resume Next
+        layout.Render
+        Expect.AreEqual 0, Err.Number, "Err.Number of Render after the console entered full-screen mode"
+        On Error GoTo 0
+        Expect.AreEqual &H250C&, Cells.Code(con.Buffer, 0, 0), "the corner, drawn into the buffer the console has now"
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- Resize and AutoResize
+
+    [TestCase]
+    Public Sub Resize_ScalesThePanelsToTheNewSize()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        Dim p As cConsolePanel = layout.AddPanel("root", 0, 0, 40, 12)
+        layout.Resize 80, 24
+        Expect.AreEqual "0 0 79 23", RectOf(p), "Rect of a panel that covered a console of 40 by 12, after Resize 80, 24"
+        Set p = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Resize_StoresTheNewSize_ForTheArrangementsOfALayoutWithNoPanel()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.Resize 20, 10
+        Dim parts As Variant = layout.CreateSidebar(5, "side", "main")
+        Expect.AreEqual "0 0 4 9", RectOf(layout.GetPanel("side")), "the sidebar after Resize 20, 10"
+        Expect.AreEqual "5 0 19 9", RectOf(layout.GetPanel("main")), "the content panel"
+        Set parts = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Resize_ZeroWidthOrHeight_RaisesError6()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "root", 0, 0, 40, 12
+        On Error Resume Next
+        layout.Resize 0, 12
+        Expect.AreEqual 6, Err.Number, "Err.Number of Resize with a width of 0"
+        Err.Clear
+        layout.Resize 40, 0
+        Expect.AreEqual 6, Err.Number, "Err.Number of Resize with a height of 0"
+        On Error GoTo 0
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AutoResize_TakesTheSizeOfTheConsole()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        Rig.ResizeWindow 60, 20
+        layout.AutoResize
+        Dim parts As Variant = layout.CreateSidebar(5, "side", "main")
+        Expect.AreEqual "0 0 4 19", RectOf(layout.GetPanel("side")), "the sidebar after the window grew to 60 by 20 and AutoResize was called"
+        Expect.AreEqual "5 0 59 19", RectOf(layout.GetPanel("main")), "the content panel"
+        Set parts = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    ' ---- the constructor
+
+    [TestCase]
+    Public Sub New_ConsoleNotInFullScreenMode_IsAccepted_AndTheSizeIsReadWhenTheLayoutIsMade()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12, False)
+        Dim layout As cConsoleLayout
+        On Error Resume Next
+        Set layout = New cConsoleLayout(con)
+        Expect.AreEqual 0, Err.Number, "Err.Number of New cConsoleLayout for a console that is not in full-screen mode"
+        On Error GoTo 0
+        Dim cells As Variant = layout.CreateGrid(1, 1, "c")
+        Expect.AreEqual "0 0 39 11", RectOf(layout.GetPanel("c_0")), "the one cell of a grid in a console of 40 by 12"
+        Set cells = Nothing
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Render_ThenRefresh_ShowsTheBordersOnTheScreenBuffer()
+        Expect.Begin
+        Dim con As cConsole = Screen.Open(40, 12)
+        Dim layout As cConsoleLayout = New cConsoleLayout(con)
+        layout.AddPanel "root", 0, 0, 10, 4, "T"
+        layout.Render
+        con.Refresh
+        Expect.AreEqual ChrW$(&H250C) & " T " & String$(5, ChrW$(&H2500)) & ChrW$(&H2510), Rig.TextAt(Rig.OutHandle, 0, 0, 10), "screen text of the top border"
+        Expect.AreEqual ChrW$(&H2514) & String$(8, ChrW$(&H2500)) & ChrW$(&H2518), Rig.TextAt(Rig.OutHandle, 0, 3, 10), "screen text of the bottom border"
+        Set layout = Nothing
+        Set con = Nothing
+        Screen.Close
+        Expect.Done
+    End Sub
+
+End Module

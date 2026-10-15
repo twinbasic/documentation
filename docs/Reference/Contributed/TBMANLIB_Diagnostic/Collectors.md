@@ -10,6 +10,7 @@ has_toc: false
 
 The package has eleven collector classes. Each one finds one kind of information about the computer or its processes, and returns it as a [**DiagnosticResult**](DiagnosticResult) whose items are pairs of text: a key, which is the label of a line of the report, and a value. All eleven implement [**IDiagnosticCollector**](IDiagnosticCollector), so a [**DiagnosticEngine**](DiagnosticEngine) runs them in the same way, and all eleven report that they need no administrator rights. This page describes what each collector reports, the Windows functions it calls, and what it does when the information is missing.
 
+<!-- test: CollectorTests.Collectors_Properties_AreThoseOfTheTable -->
 ```tb check_build check_run
 Dim collectors(0 To 10) As IDiagnosticCollector
 Set collectors(0) = New OSInfoCollector
@@ -41,6 +42,7 @@ Next i
 ' Disk: 2 False
 ' Network: 2 True
 ```
+<!-- /test -->
 
 * TOC
 {:toc}
@@ -172,6 +174,7 @@ The name is derived from the numbers alone, so a version of Windows Server gets 
 
 Category `CPU Info`; mode **Static**; no summary. **Description**: `CPU architecture and processor count`.
 
+<!-- test: CollectorTests.CPUInfoCollector_Items_ArePresent -->
 **Keys.**
 
 | Key | Value |
@@ -183,6 +186,7 @@ Category `CPU Info`; mode **Static**; no summary. **Description**: `CPU architec
 | `Page Size` | The size of a memory page, written by [**FormatBytes**](FormatHelper#formatbytes) with no decimals. The text is `4. KB`, with a decimal separator after the number: see [Known problems](.#known-problems-in-version-1001). |
 | `Processor Name` | The text of the registry value `ProcessorNameString`, without leading and trailing spaces. Left out when it is empty or cannot be read. |
 | `Frequency` | The registry value `~MHz` and ` MHz`, such as `3600 MHz`. Left out when it cannot be read. |
+<!-- /test -->
 
 **Windows functions.** `GetNativeSystemInfo` of `kernel32.dll`. For the two registry values, `RegOpenKeyExW`, `RegQueryValueExW` and `RegCloseKey` of `advapi32.dll`, on `HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\CentralProcessor\0`. Only the first processor is read, so the name and the frequency are those of processor 0.
 
@@ -193,6 +197,7 @@ Category `CPU Info`; mode **Static**; no summary. **Description**: `CPU architec
 
 Category `Locale`; mode **Static**; no summary. **Description**: `Regional settings, code pages, and timezone`.
 
+<!-- test: CollectorTests.LocaleCollector_Items_ArePresent -->
 **Keys.**
 
 | Key | Value |
@@ -207,6 +212,7 @@ Category `Locale`; mode **Static**; no summary. **Description**: `Regional setti
 | `OEM Code Page` | `CP` and the number of the OEM code page, such as `CP437`. |
 | `Timezone` | `UTC`, the sign, the hours and, when it is not a whole hour, a colon and two digits of minutes: `UTC+0`, `UTC+1`, `UTC-5`, `UTC+5:30`. |
 | `Timezone Name` | The name of the time zone in standard time. Left out when empty. |
+<!-- /test -->
 
 `Timezone` is built from the **Bias** field of the Windows time-zone record, which is the offset of standard time. The **DaylightBias** field is not read, and neither is the value that tells whether daylight saving time is in effect, so the offset does not change in summer, and `Timezone Name` is the standard-time name all year. On a computer in Central European Summer Time, where the clock is at UTC+2, the items are `Timezone` = `UTC+1` and `Timezone Name` = `W. Europe Standard Time`. See [Known problems](.#known-problems-in-version-1001).
 
@@ -225,7 +231,9 @@ Category `Environment`; mode **Static**; has a summary. **Description**: `System
 
 The value of `PATH` is cut to its first 200 characters when it is longer, and `...` is added.
 
+<!-- test: CollectorTests.EnvironmentCollector_Summary_CountsThePathEntries -->
 **Summary.** The summary result has [**IsSummary**](DiagnosticResult#issummary) set to **True** and the items for `PATH`, `TEMP` and `USERPROFILE`, when they are defined. The value of `PATH` is the number of its entries in the form `(24 entries)`, where an entry is a part between semicolons.
+<!-- /test -->
 
 **Windows functions.** None. The collector reads the variables with the **Environ$** function of the runtime library.
 
@@ -290,7 +298,9 @@ Category `CPU Load`; mode **Dynamic**; no summary. **Description**: `Current CPU
 | `Usage` | The load as a percentage with one decimal place, such as `12.3%`. |
 | `Usage Value` | The same number without the percent sign, such as `12.3`. |
 
+<!-- test: CollectorTests.CPULoadCollector_LaterReading_IsAPercentage, CollectorTests.CPULoadCollector_Reset_MakesTheNextReadingZero -->
 The collector measures the load between two calls. It keeps the idle, kernel and user times that `GetSystemTimes` reported the last time, and the load is `(1 - idle change / (kernel change + user change)) * 100`, limited to the range 0 to 100. The first call of a new object, and the first call after [**Reset**](#reset), has nothing to compare with and reports 0 (`0.0%`). A call in which the counters did not change also gives 0. A program that wants a reading keeps one object and calls it again after some time, as the engine does when it runs the same registered collector a second time.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim cpu As New CPULoadCollector
@@ -339,6 +349,7 @@ The next result reports 0 and starts a new measurement. It is a method of the cl
 
 Category `Memory`; mode **Dynamic**; no summary. **Description**: `Physical and virtual memory status`.
 
+<!-- test: CollectorTests.MemoryInfoCollector_Items_AreTheEightKeysInOrder -->
 **Keys.** The result has these eight items, in this order:
 
 | Key | Value |
@@ -351,6 +362,7 @@ Category `Memory`; mode **Dynamic**; no summary. **Description**: `Physical and 
 | `Available Page File` | The part of that limit that is available. |
 | `Total Virtual` | The size of the user-mode address space of the program that runs the collector. |
 | `Available Virtual` | The part of that address space that is free. |
+<!-- /test -->
 
 The sizes are formatted with [**FormatBytes**](FormatHelper#formatbytes).
 
@@ -363,6 +375,7 @@ The sizes are formatted with [**FormatBytes**](FormatHelper#formatbytes).
 
 Category `Uptime`; mode **Dynamic**; no summary. **Description**: `System uptime since last boot`.
 
+<!-- test: CollectorTests.UptimeCollector_Items_AreTheFiveKeysInOrder -->
 **Keys.**
 
 | Key | Value |
@@ -372,6 +385,7 @@ Category `Uptime`; mode **Dynamic**; no summary. **Description**: `System uptime
 | `Total Hours` | The whole number of hours. |
 | `Total Seconds` | The whole number of seconds. |
 | `Boot Time` | The local time at which the system started, as `yyyy-mm-dd hh:nn:ss`. |
+<!-- /test -->
 
 `Boot Time` is calculated: it is the current time less the uptime.
 
@@ -394,7 +408,9 @@ Category `Processes`; mode **Dynamic**; has a summary. **Description**: `Running
 
 The key of a process is `PID ` and its process identifier. The process with the identifier 0 is listed as `[System Process]`.
 
+<!-- test: CollectorTests.ProcessInfoCollector_Summary_HasTheThreeCounts -->
 **Summary.** The summary result has [**IsSummary**](DiagnosticResult#issummary) set to **True** and three items: `Total Processes`, `Total Threads` (the sum of the thread counts of all processes) and `Current PID`.
+<!-- /test -->
 
 **Windows functions.** `CreateToolhelp32Snapshot` with `TH32CS_SNAPPROCESS`, `Process32FirstW`, `Process32NextW` and `CloseHandle`, and `GetCurrentProcessId`, all of `kernel32.dll`. The snapshot lists the processes of all users, and needs no administrator rights.
 

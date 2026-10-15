@@ -8,9 +8,11 @@ has_toc: false
 # OLECLSID type
 {: .no_toc }
 
+<!-- test: TypeLayoutTests.OLECLSID_HasTheLayoutOfGuid -->
 A class or interface identifier, with the layout of the Windows `GUID` structure.
 
 **OLECLSID** is a user-defined type declared in the package's `OLEGuids` module, so both `OLECLSID` and `OLEGuids.OLECLSID` name it. It mirrors the Windows structure [GUID](https://learn.microsoft.com/en-us/windows/win32/api/guiddef/ns-guiddef-guid), which the interface declarations use for a class identifier (CLSID) and for an interface identifier (IID) alike.
+<!-- /test -->
 
 ```tb inert=signature
 Public Type OLECLSID

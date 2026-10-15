@@ -1,0 +1,335 @@
+' LayoutTests: the three areas of the control, one above the other (title, day names, grid), and
+' their heights. The height of the title area is read from the pixels (the black frame starts
+' where the title area ends); the height of the title area and the day names together from where
+' a press selects a date (Rig.Header). The form is shown wholly transparent (Rig.ShowHidden).
+[TestFixture]
+Module LayoutTests
+
+    Private Const NoForm As String = "the form could not be made transparent, so the control cannot paint"
+
+    ' The column where the month list starts: the title is drawn to the left of it.
+    Private Function ListsLeft(ByVal f As HostForm) As Long
+        ListsLeft = Win.RectIn(Rig.MonthList(f), Rig.CalWindow(f)).Left
+    End Function
+
+    Private Function TitleH(ByVal f As HostForm) As Long
+        Dim w As Long
+        Dim b() As Byte = Rig.Pixels(f, w)
+        TitleH = Rig.TitleHeight(b, w)
+    End Function
+
+    ' Whether any pixel of the two leftmost columns of the title area is not its background.
+    Private Function TitleTouchesTheLeftEdge(ByVal f As HostForm) As Boolean
+        Dim w As Long
+        Dim b() As Byte = Rig.Pixels(f, w)
+        Dim t As Long = Rig.TitleHeight(b, w)
+        Dim y As Long
+        For y = 0 To t - 1
+            If Win.Px(b, w, 0, y) <> f.Cal.BackColor Or Win.Px(b, w, 1, y) <> f.Cal.BackColor Then
+                TitleTouchesTheLeftEdge = True
+                Exit Function
+            End If
+        Next
+    End Function
+
+    [TestCase]
+    Public Sub ShowDays_False_RemovesTheRowOfDayNames()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim withDays As Long = Rig.Header(f)
+            Expect.IsTrue withDays > TitleH(f), "the height above the grid with ShowDays True is more than the title area's"
+            f.Cal.ShowDays = False
+            Expect.AreEqual TitleH(f), Rig.Header(f), "the height above the grid with ShowDays False, against the height of the title area"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowTitle_OnlyDrawsTheTitleWhenItIsTrue()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim w As Long
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Dim t As Long = Rig.TitleHeight(b, w)
+            Expect.IsTrue Rig.Ink(b, w, ListsLeft(f) - 2, 0, t - 1, f.Cal.BackColor) > 0, "the pixels of the title area that are not its background with ShowTitle True"
+            f.Cal.ShowTitle = False
+            b = Rig.Pixels(f, w)
+            Expect.AreEqual 0, Rig.Ink(b, w, ListsLeft(f) - 2, 0, t - 1, f.Cal.BackColor), "the pixels of the title area that are not its background with ShowTitle False"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MonthLength_LongShowsMoreOfTheMonthNameThanShort()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim w As Long
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Dim t As Long = Rig.TitleHeight(b, w)
+            Dim longInk As Long = Rig.Ink(b, w, ListsLeft(f) - 2, 0, t - 1, f.Cal.BackColor)
+            f.Cal.MonthLength = MonthLengthEnum.ShortLength
+            b = Rig.Pixels(f, w)
+            Dim shortInk As Long = Rig.Ink(b, w, ListsLeft(f) - 2, 0, t - 1, f.Cal.BackColor)
+            Expect.IsTrue longInk > shortInk, "the pixels of the title with the whole month name (" & longInk & ") against the first three letters (" & shortInk & ")"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DayLength_ALongerLengthShowsMoreOfTheDayNames()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim w As Long
+            Dim b() As Byte
+            Dim t As Long
+            Dim hd As Long = Rig.Header(f)
+            Dim ink(0 To 2) As Long
+            Dim k As Long
+            For k = 0 To 2
+                f.Cal.DayLength = k
+                b = Rig.Pixels(f, w)
+                t = Rig.TitleHeight(b, w)
+                ink(k) = Rig.Ink(b, w, w - 3, t + 2, hd - 2, f.Cal.DayBackColor)
+            Next
+            Expect.IsTrue ink(0) < ink(1) And ink(1) < ink(2), "the pixels of the row of day names with one letter (" & ink(0) & "), three letters (" & ink(1) & ") and the whole name (" & ink(2) & ")"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowTitle_False_KeepsTheTitleAreaWhileTheListsAreShown()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim before As Long = TitleH(f)
+            f.Cal.ShowTitle = False
+            Expect.AreEqual before, TitleH(f), "the height of the title area with ShowTitle False and ShowDateSelectors True"
+            Expect.IsTrue before > 0, "the height of the title area before"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowTitleAndShowDateSelectors_BothFalse_RemoveTheTitleArea()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.ShowTitle = False
+            f.Cal.ShowDateSelectors = False
+            Expect.AreEqual 0, TitleH(f), "the height of the title area with ShowTitle and ShowDateSelectors False"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowTitle_True_GivesTheTitleAreaItsHeightBack()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.ShowTitle = False
+            f.Cal.ShowDateSelectors = False
+            f.Cal.ShowTitle = True
+            Expect.IsTrue TitleH(f) > 0, "the height of the title area after ShowTitle is set to True again with ShowDateSelectors False"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDateSelectors_True_GivesTheTitleAreaItsHeightBack()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.ShowTitle = False
+            f.Cal.ShowDateSelectors = False
+            f.Cal.ShowDateSelectors = True
+            Expect.IsTrue TitleH(f) > 0, "the height of the title area after ShowDateSelectors is set to True again with ShowTitle False"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TitleMargin_Set_GivesTheTitleAreaItsHeightBack()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.ShowTitle = False
+            f.Cal.ShowDateSelectors = False
+            f.Cal.ShowTitle = True
+            f.Cal.TitleMargin = 5
+            Expect.IsTrue TitleH(f) > 0, "the height of the title area after TitleMargin is set"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Resize_GivesTheTitleAreaItsHeightBack()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.ShowTitle = False
+            f.Cal.ShowDateSelectors = False
+            f.Cal.ShowTitle = True
+            Win.Resize Rig.CalWindow(f), f.hWnd, 400, 300
+            Expect.IsTrue TitleH(f) > 0, "the height of the title area after the control is resized"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TitleMargin_RaisedBy10_MovesTheDayNamesDownBy20()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim before As Long = TitleH(f)
+            f.Cal.TitleMargin = 15
+            Expect.AreEqual before + 20, TitleH(f), "the height of the title area after TitleMargin is raised from 5 to 15"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DaysMargin_RaisedBy10_MovesTheGridDownBy20()
+        Expect.Begin
+        Dim f As HostForm
+        Set f = Rig.NewForm()
+        Dim before As Long = Rig.Header(f)
+        f.Cal.DaysMargin = 15
+        Expect.AreEqual before + 20, Rig.Header(f), "the height above the grid after DaysMargin is raised from 5 to 15"
+        Unload f
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TitleFont_ChangeToTheObject_ChangesTheHeightOfTheTitleArea()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim before As Long = TitleH(f)
+            f.Cal.TitleFont.Size = 24
+            Expect.IsTrue TitleH(f) > before, "the height of the title area after TitleFont.Size is raised from 16 to 24: it was " & before & ", it is " & TitleH(f)
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TitleFont_AssignedAgain_FitsTheTitleAreaToTheFont()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim before As Long = TitleH(f)
+            f.Cal.TitleFont.Size = 24
+            Set f.Cal.TitleFont = f.Cal.TitleFont
+            Expect.IsTrue TitleH(f) > before, "the height of the title area after TitleFont.Size is raised from 16 to 24 and the font is assigned again: it was " & before & ", it is " & TitleH(f)
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DayFont_Change_ChangesTheHeightOfTheRowOfDayNamesAtTheNextPaint()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim before As Long = Rig.Header(f)
+            f.Cal.DayFont.Size = 20
+            Win.PaintNow f.hWnd
+            Expect.IsTrue Rig.Header(f) > before, "the height above the grid after DayFont.Size is raised from 8 to 20 and the control paints"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GridFont_Change_ChangesTheDayNumbersAtTheNextPaint()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Dim w As Long
+            Dim b() As Byte = Rig.Pixels(f, w)
+            Dim ht As Long = UBound(b) \ (w * 4)
+            Dim inkBefore As Long = w * ht - Win.CountColour(b, w, f.Cal.BackColor, 0, 0, w - 1, ht - 1)
+            f.Cal.GridFont.Size = 20
+            b = Rig.Pixels(f, w)
+            Dim inkAfter As Long = w * ht - Win.CountColour(b, w, f.Cal.BackColor, 0, 0, w - 1, ht - 1)
+            Expect.IsTrue inkAfter > inkBefore, "the pixels that are not the background after GridFont.Size is raised from 8 to 20: it was " & inkBefore & ", it is " & inkAfter
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Title_ThatIsWiderThanTheSpaceBesideTheLists_IsNotCutOff()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            Rig.Rebase f, #9/15/2026#
+            Expect.IsFalse TitleTouchesTheLeftEdge(f), "the title ""September 2026"" in the default font reaches the left edge of the control"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Title_WithoutTheLists_IsNotCutOff()
+        Expect.Begin
+        Dim f As HostForm = Rig.NewShown()
+        If f Is Nothing Then
+            Expect.Fail NoForm
+        Else
+            f.Cal.ShowDateSelectors = False
+            Rig.Rebase f, #9/15/2026#
+            Expect.IsFalse TitleTouchesTheLeftEdge(f), "the title ""September 2026"" with ShowDateSelectors False reaches the left edge of the control"
+            Unload f
+        End If
+        Expect.Done
+    End Sub
+
+End Module

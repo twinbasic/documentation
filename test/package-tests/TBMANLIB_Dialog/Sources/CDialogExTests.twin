@@ -1,0 +1,238 @@
+' cDialogEx: the properties, the filter text and the path helpers. The dialogs of the class are
+' item dialogs of Windows (IFileOpenDialog, IFileSaveDialog), which the compiler's test mode
+' cannot create (CoCreateInstance answers CLASS_E_CLASSNOTAVAILABLE in its process), so what the
+' dialogs show and return is checked by the probe, not here.
+[TestFixture]
+Module CDialogExTests
+
+    Private Function Pipes(ByVal s As String) As Long
+        Pipes = Len(s) - Len(Replace(s, "|", ""))
+    End Function
+
+    [TestCase]
+    Public Sub Defaults_EveryBooleanIsFalse()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        Expect.IsFalse dlg.CreatePrompt, "CreatePrompt of a new cDialogEx"
+        Expect.IsFalse dlg.FileMustExist, "FileMustExist of a new cDialogEx"
+        Expect.IsFalse dlg.MultiSelect, "MultiSelect of a new cDialogEx"
+        Expect.IsFalse dlg.NoChangeDir, "NoChangeDir of a new cDialogEx"
+        Expect.IsFalse dlg.OverwritePrompt, "OverwritePrompt of a new cDialogEx"
+        Expect.IsFalse dlg.PathMustExist, "PathMustExist of a new cDialogEx"
+        Expect.IsFalse dlg.PickFolders, "PickFolders of a new cDialogEx"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Defaults_TextsAndNumbers()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        Expect.AreEqual "", dlg.DialogTitle & dlg.InitialDir & dlg.FileName & dlg.DefaultExt & dlg.Filter, "the texts of a new cDialogEx"
+        Expect.AreEqual 0, dlg.FilterIndex, "FilterIndex of a new cDialogEx"
+        Expect.AreEqual 0, dlg.OwnerHwnd, "OwnerHwnd of a new cDialogEx"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Properties_StoreWhatIsSet()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        dlg.DialogTitle = "Choose"
+        dlg.InitialDir = "C:\Reports"
+        dlg.FileName = "x.txt"
+        dlg.DefaultExt = "txt"
+        dlg.Filter = "Text|*.txt|"
+        dlg.FilterIndex = 2
+        dlg.OwnerHwnd = 12345
+        dlg.CreatePrompt = True
+        dlg.FileMustExist = True
+        dlg.MultiSelect = True
+        dlg.NoChangeDir = True
+        dlg.OverwritePrompt = True
+        dlg.PathMustExist = True
+        dlg.PickFolders = True
+        Expect.AreEqual "Choose", dlg.DialogTitle, "DialogTitle after it is set"
+        Expect.AreEqual "C:\Reports", dlg.InitialDir, "InitialDir after it is set"
+        Expect.AreEqual "x.txt", dlg.FileName, "FileName after it is set"
+        Expect.AreEqual "txt", dlg.DefaultExt, "DefaultExt after it is set"
+        Expect.AreEqual "Text|*.txt|", dlg.Filter, "Filter after it is set"
+        Expect.AreEqual 2, dlg.FilterIndex, "FilterIndex after it is set"
+        Expect.AreEqual 12345, dlg.OwnerHwnd, "OwnerHwnd after it is set"
+        Expect.IsTrue dlg.CreatePrompt And dlg.FileMustExist And dlg.MultiSelect And dlg.NoChangeDir And dlg.OverwritePrompt And dlg.PathMustExist And dlg.PickFolders, "the seven Boolean properties after True"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_RestoresTheStartingValues()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        dlg.DialogTitle = "Choose"
+        dlg.InitialDir = "C:\Reports"
+        dlg.FileName = "x.txt"
+        dlg.DefaultExt = "txt"
+        dlg.Filter = "Text|*.txt|"
+        dlg.FilterIndex = 2
+        dlg.OwnerHwnd = 12345
+        dlg.CreatePrompt = True
+        dlg.FileMustExist = True
+        dlg.MultiSelect = True
+        dlg.NoChangeDir = True
+        dlg.OverwritePrompt = True
+        dlg.PathMustExist = True
+        dlg.PickFolders = True
+        dlg.Reset
+        Expect.AreEqual "", dlg.DialogTitle & dlg.InitialDir & dlg.FileName & dlg.DefaultExt & dlg.Filter, "the texts after Reset"
+        Expect.AreEqual 0, dlg.FilterIndex, "FilterIndex after Reset"
+        Expect.AreEqual 0, dlg.OwnerHwnd, "OwnerHwnd after Reset"
+        Expect.IsFalse dlg.CreatePrompt Or dlg.FileMustExist Or dlg.MultiSelect Or dlg.NoChangeDir Or dlg.OverwritePrompt Or dlg.PathMustExist Or dlg.PickFolders, "the seven Boolean properties after Reset"
+        Expect.Done
+    End Sub
+
+    ' ---- GetPresetFilter
+
+    [TestCase]
+    Public Sub GetPresetFilter_ReturnsAPairForAKnownName()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        Expect.AreEqual "All Files|*.*", dlg.GetPresetFilter("all"), "GetPresetFilter all"
+        Expect.AreEqual "Text Files|*.txt", dlg.GetPresetFilter("text"), "GetPresetFilter text"
+        Expect.AreEqual "Image Files|*.bmp;*.jpg;*.jpeg;*.png;*.gif", dlg.GetPresetFilter("images"), "GetPresetFilter images"
+        Expect.AreEqual "Image Files|*.bmp;*.jpg;*.jpeg;*.png;*.gif", dlg.GetPresetFilter("image"), "GetPresetFilter image"
+        Expect.AreEqual "Documents|*.doc;*.docx;*.pdf;*.txt;*.rtf", dlg.GetPresetFilter("documents"), "GetPresetFilter documents"
+        Expect.AreEqual "Documents|*.doc;*.docx;*.pdf;*.txt;*.rtf", dlg.GetPresetFilter("document"), "GetPresetFilter document"
+        Expect.AreEqual "Executables|*.exe;*.bat;*.cmd;*.ps1", dlg.GetPresetFilter("executables"), "GetPresetFilter executables"
+        Expect.AreEqual "Executables|*.exe;*.bat;*.cmd;*.ps1", dlg.GetPresetFilter("executable"), "GetPresetFilter executable"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetPresetFilter_IgnoresCaseAndSpacesAtTheEnds()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        Expect.AreEqual "Image Files|*.bmp;*.jpg;*.jpeg;*.png;*.gif", dlg.GetPresetFilter("  Images "), "GetPresetFilter of '  Images '"
+        Expect.AreEqual "", dlg.GetPresetFilter("code"), "GetPresetFilter of an unknown name"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetPresetFilter_DoesNotChangeFilter()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        dlg.Filter = "Text|*.txt|"
+        Dim s As String = dlg.GetPresetFilter("all")
+        Expect.AreEqual "Text|*.txt|", dlg.Filter, "Filter after GetPresetFilter"
+        Expect.Done
+    End Sub
+
+    ' ---- the filter text: the class needs an even number of pipes
+
+    [TestCase]
+    Public Sub AddFilter_JoinsPairsWithPipes()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        dlg.AddFilter "Text (*.txt)", "*.txt"
+        dlg.AddFilter "All (*.*)", "*.*"
+        Expect.AreEqual "Text (*.txt)|*.txt|All (*.*)|*.*", dlg.Filter, "Filter after two AddFilter calls"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub AddFilter_BuildsAFilterTheDialogAccepts()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        dlg.AddFilter "Text (*.txt)", "*.txt"
+        dlg.AddFilter "All (*.*)", "*.*"
+        Expect.AreEqual 0, Pipes(dlg.Filter) Mod 2, "pipes in the filter of two pairs built with AddFilter (the dialog needs an even number): " & dlg.Filter
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetFilters_BuildAFilterTheDialogAccepts()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        dlg.SetCommonFilters
+        Expect.AreEqual 0, Pipes(dlg.Filter) Mod 2, "pipes in the filter after SetCommonFilters (the dialog needs an even number): " & dlg.Filter
+        dlg.SetCodeFilters
+        Expect.AreEqual 0, Pipes(dlg.Filter) Mod 2, "pipes in the filter after SetCodeFilters"
+        dlg.SetDocumentFilters
+        Expect.AreEqual 0, Pipes(dlg.Filter) Mod 2, "pipes in the filter after SetDocumentFilters"
+        dlg.SetImageFilters
+        Expect.AreEqual 0, Pipes(dlg.Filter) Mod 2, "pipes in the filter after SetImageFilters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetPresetFilter_GivesATextTheDialogAccepts()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        dlg.Filter = dlg.GetPresetFilter("text")
+        Expect.AreEqual 0, Pipes(dlg.Filter) Mod 2, "pipes in a Filter set to the text of GetPresetFilter (the dialog needs an even number): " & dlg.Filter
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetCommonFilters_ReplacesTheFilterWithTwoPairs()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        dlg.Filter = "Old|*.old|"
+        dlg.SetCommonFilters
+        Dim parts() As String = Split(dlg.Filter, "|")
+        Expect.AreEqual "Text Files (*.txt)", parts(0), "first description after SetCommonFilters"
+        Expect.AreEqual "*.txt", parts(1), "first pattern after SetCommonFilters"
+        Expect.AreEqual "All Files (*.*)", parts(2), "second description after SetCommonFilters"
+        Expect.AreEqual "*.*", parts(3), "second pattern after SetCommonFilters"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ClearFilter_EmptiesTheFilter()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        dlg.AddFilter "Text", "*.txt"
+        dlg.ClearFilter
+        Expect.AreEqual 0, Len(dlg.Filter), "length of Filter after ClearFilter"
+        Expect.Done
+    End Sub
+
+    ' ---- the path helpers and OpenFile are those of cDialog
+
+    [TestCase]
+    Public Sub PathHelpers_WorkAsThoseOfCDialog()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        Expect.AreEqual ".txt", dlg.GetFileExtension("C:\Docs\summary.txt"), "GetFileExtension"
+        Expect.AreEqual "summary.txt", dlg.GetFileName("C:\Docs\summary.txt"), "GetFileName"
+        Expect.AreEqual "summary", dlg.GetFileNameWithoutExt("C:\Docs\summary.txt"), "GetFileNameWithoutExt"
+        Expect.AreEqual "C:\Docs", dlg.GetFilePath("C:\Docs\summary.txt"), "GetFilePath"
+        Expect.AreEqual "C:\a\b", dlg.PathCombine("C:\a\", "\b"), "PathCombine"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OpenFile_NonexistentFileReturns2()
+        Expect.Begin
+        Dim dlg As New cDialogEx
+        Dim r As Variant = dlg.OpenFile(Fx.Work() & "\no such file.xyz")
+        Expect.AreEqual 2, CLng(r), "OpenFile of a path that does not exist"
+        Fx.Clean
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SystemIconId_HasTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual -1, SystemIconId.SIID_INVALID, "SIID_INVALID"
+        Expect.AreEqual 0, SystemIconId.SIID_DOCUMENT, "SIID_DOCUMENT"
+        Expect.AreEqual 3, SystemIconId.SIID_FOLDER, "SIID_FOLDER"
+        Expect.AreEqual 5, SystemIconId.SIID_FOLDEROPEN, "SIID_FOLDEROPEN"
+        Expect.AreEqual 6, SystemIconId.SIID_DISK, "SIID_DISK"
+        Expect.AreEqual 8, SystemIconId.SIID_DRIVEFIXED, "SIID_DRIVEFIXED"
+        Expect.AreEqual 10, SystemIconId.SIID_DRIVECD, "SIID_DRIVECD"
+        Expect.AreEqual 11, SystemIconId.SIID_DRIVEHD, "SIID_DRIVEHD"
+        Expect.AreEqual 15, SystemIconId.SIID_SERVER, "SIID_SERVER"
+        Expect.AreEqual 28, SystemIconId.SIID_SHARE, "SIID_SHARE"
+        Expect.AreEqual 30, SystemIconId.SIID_STAROFFILE, "SIID_STAROFFILE"
+        Expect.Done
+    End Sub
+
+End Module

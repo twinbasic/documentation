@@ -45,3 +45,7 @@ test/repro-templates/vb6/** -text
 # in every checkout for the same reason: PngDump.bas is VB6's, and the copy is compared
 # with the template line by line.
 test/repro-templates/png/** -text
+
+# A package test project's resources are read by its cases byte for byte (TBMANLIB_RES
+# compares them with what it returns), and most have no extension git would know.
+test/package-tests/*/Resources/** -text

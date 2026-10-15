@@ -1,0 +1,106 @@
+' TBMANLIB_RES, cRes.ReturnBase64: the encoding, MSXML's line feeds, the Base64Prefix values and MSXML2.
+[TestFixture]
+Module ReturnBase64Tests
+
+    ' Not a case: the data-URI prefix that each Base64Prefix value should add.
+    Private Function PrefixText(ByVal p As Base64Prefix) As String
+        Select Case p
+            Case Base64Prefix_None: PrefixText = ""
+            Case Base64Prefix_ImagePNG: PrefixText = "data:image/png;base64,"
+            Case Base64Prefix_ImageJPEG: PrefixText = "data:image/jpeg;base64,"
+            Case Base64Prefix_ImageGIF: PrefixText = "data:image/gif;base64,"
+            Case Base64Prefix_ImageBMP: PrefixText = "data:image/bmp;base64,"
+            Case Base64Prefix_ImageICO: PrefixText = "data:image/x-icon;base64,"
+            Case Base64Prefix_ImageWebP: PrefixText = "data:image/webp;base64,"
+            Case Base64Prefix_VideoMP4: PrefixText = "data:video/mp4;base64,"
+            Case Base64Prefix_VideoWebM: PrefixText = "data:video/webm;base64,"
+            Case Base64Prefix_VideoOGG: PrefixText = "data:video/ogg;base64,"
+            Case Base64Prefix_AudioMP3: PrefixText = "data:audio/mpeg;base64,"
+            Case Base64Prefix_AudioWAV: PrefixText = "data:audio/wav;base64,"
+            Case Base64Prefix_AudioOGG: PrefixText = "data:audio/ogg;base64,"
+        End Select
+    End Function
+
+    [TestCase]
+    Public Sub ReturnBase64_ShortResource_IsTheBase64OfTheBytes()
+        Expect.Begin
+        Dim r As New cRes
+        Expect.AreEqual "SGVsbG8sIHdvcmxk", r.Read(101, "TEXT").ReturnBase64(), "ReturnBase64 of the 12 bytes of ""Hello, world"""
+        Dim b() As Byte
+        b = r.Read(101, "BINARY").ReturnBytes()
+        Expect.AreEqual TestData.Base64Of(b), r.ReturnBase64(), "ReturnBase64 of the 8 bytes of BINARY 101"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnBase64_LongResource_LineFeedAfterEvery72Characters()
+        Expect.Begin
+        Dim r As New cRes
+        Dim s As String
+        Dim b() As Byte
+        b = TestData.Binary102()
+        s = r.Read(102, "BINARY").ReturnBase64()
+        Dim whole As String
+        whole = TestData.Base64Of(b)
+        Expect.AreEqual 136, Len(whole), "the Base64 of 100 bytes has 136 characters"
+        Expect.AreEqual 73, InStr(s, vbLf), "position of the first line feed in ReturnBase64 of the 100 bytes of BINARY 102"
+        Expect.AreEqual Left$(whole, 72) & vbLf & Mid$(whole, 73), s, "ReturnBase64 of BINARY 102: the Base64 with a line feed after its first 72 characters"
+        Expect.AreEqual whole, Replace(s, vbLf, ""), "ReturnBase64 of BINARY 102 without its line feeds"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnBase64_Default_HasNoPrefix()
+        Expect.Begin
+        Dim r As New cRes
+        r.Read 101, "BINARY"
+        Expect.AreEqual r.ReturnBase64(Base64Prefix_None), r.ReturnBase64(), "ReturnBase64() and ReturnBase64(Base64Prefix_None)"
+        Expect.AreEqual "AAEKDxB/gP8=", r.ReturnBase64(), "ReturnBase64() of the 8 bytes of BINARY 101"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnBase64_Prefix_AddsTheDataUriHeader()
+        Expect.Begin
+        Dim r As New cRes
+        Dim p As Long
+        Dim plain As String
+        r.Read 101, "BINARY"
+        plain = r.ReturnBase64()
+        For p = Base64Prefix_ImagePNG To Base64Prefix_AudioOGG
+            Expect.AreEqual PrefixText(p) & plain, r.ReturnBase64(p), "ReturnBase64 with the Base64Prefix value " & p
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnBase64_BeforeRead_RaisesError()
+        Expect.Begin
+        Dim r As New cRes
+        Dim s As String
+        On Error Resume Next
+        s = r.ReturnBase64()
+        Expect.IsTrue Err.Number <> 0, "ReturnBase64 before any Read raises an error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnBase64_Msxml2DomDocument_IsCreatedAndEncodes()
+        Expect.Begin
+        Dim doc As Object
+        Dim node As Object
+        Dim b() As Byte
+        On Error Resume Next
+        Set doc = CreateObject("MSXML2.DOMDocument")
+        Expect.AreEqual 0, Err.Number, "CreateObject(""MSXML2.DOMDocument"") raises no error on this machine"
+        Err.Clear
+        b = TestData.Binary101()
+        Set node = doc.createElement("b64")
+        node.DataType = "bin.base64"
+        node.nodeTypedValue = b
+        Dim r As New cRes
+        Expect.AreEqual node.Text, r.Read(101, "BINARY").ReturnBase64(), "ReturnBase64 and the text of an MSXML2.DOMDocument element of data type bin.base64 holding the same bytes"
+        Expect.Done
+    End Sub
+
+End Module

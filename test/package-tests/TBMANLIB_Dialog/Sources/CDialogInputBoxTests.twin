@@ -1,0 +1,478 @@
+' cDialogInputBox: the rules for an entry, and the box that asks for it (the InputBox of the run-time
+' library, with a message box for each refused entry), operated with Pilot.
+[TestFixture]
+Module CDialogInputBoxTests
+
+    [TestCase]
+    Public Sub Defaults_AreThoseOfThePage()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        Expect.AreEqual "Input", box.Title, "Title of a new cDialogInputBox"
+        Expect.AreEqual "Please enter a value:", box.Prompt, "Prompt of a new cDialogInputBox"
+        Expect.AreEqual "", box.DefaultValue & box.Placeholder & box.CustomPattern & box.PasswordChar & box.Value, "the texts of a new cDialogInputBox"
+        Expect.AreEqual 0, box.MinLength + box.MaxLength + box.OwnerHwnd, "MinLength, MaxLength and OwnerHwnd of a new cDialogInputBox"
+        Expect.AreEqual InputValidation.None, box.Validation, "Validation of a new cDialogInputBox"
+        Expect.IsTrue box.AllowEmpty, "AllowEmpty of a new cDialogInputBox"
+        Expect.IsFalse box.Multiline Or box.Cancelled, "Multiline and Cancelled of a new cDialogInputBox"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enumerations_HaveTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual 0, InputValidation.None, "None"
+        Expect.AreEqual 1, InputValidation.Numeric, "Numeric"
+        Expect.AreEqual 2, InputValidation.Integer, "Integer"
+        Expect.AreEqual 3, InputValidation.Alpha, "Alpha"
+        Expect.AreEqual 4, InputValidation.AlphaNumeric, "AlphaNumeric"
+        Expect.AreEqual 5, InputValidation.Email, "Email"
+        Expect.AreEqual 6, InputValidation.Phone, "Phone"
+        Expect.AreEqual 7, InputValidation.URL, "URL"
+        Expect.AreEqual 99, InputValidation.Custom, "Custom"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Reset_RestoresTheStartingValues()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.Title = "Age"
+        box.Prompt = "x"
+        box.DefaultValue = "d"
+        box.Placeholder = "p"
+        box.CustomPattern = "c"
+        box.PasswordChar = "*"
+        box.MinLength = 2
+        box.MaxLength = 3
+        box.OwnerHwnd = 9
+        box.Validation = InputValidation.Integer
+        box.AllowEmpty = False
+        box.Multiline = True
+        box.Reset
+        Expect.AreEqual "Input", box.Title, "Title after Reset"
+        Expect.AreEqual "Please enter a value:", box.Prompt, "Prompt after Reset"
+        Expect.AreEqual "", box.DefaultValue & box.Placeholder & box.CustomPattern & box.PasswordChar & box.Value, "the texts after Reset"
+        Expect.AreEqual 0, box.MinLength + box.MaxLength + box.OwnerHwnd, "MinLength, MaxLength and OwnerHwnd after Reset"
+        Expect.AreEqual InputValidation.None, box.Validation, "Validation after Reset"
+        Expect.IsTrue box.AllowEmpty, "AllowEmpty after Reset"
+        Expect.IsFalse box.Multiline Or box.Cancelled, "Multiline and Cancelled after Reset"
+        Expect.Done
+    End Sub
+
+    ' ---- ValidateInput
+
+    [TestCase]
+    Public Sub ValidateInput_MinLengthComesFirstAndCoversTheEmptyText()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.MinLength = 3
+        Expect.AreEqual "Input must be at least 3 characters", box.ValidateInput("ab"), "ValidateInput of ab with MinLength 3"
+        Expect.AreEqual "", box.ValidateInput("abc"), "ValidateInput of abc with MinLength 3"
+        box.AllowEmpty = False
+        Expect.AreEqual "Input must be at least 3 characters", box.ValidateInput(""), "ValidateInput of an empty text with MinLength 3 and AllowEmpty False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateInput_MaxLength()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.MaxLength = 5
+        Expect.AreEqual "Input must not exceed 5 characters", box.ValidateInput("abcdef"), "ValidateInput of abcdef with MaxLength 5"
+        Expect.AreEqual "", box.ValidateInput("abcde"), "ValidateInput of abcde with MaxLength 5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateInput_AllowEmpty()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        Expect.AreEqual "", box.ValidateInput(""), "ValidateInput of an empty text with AllowEmpty True"
+        box.AllowEmpty = False
+        Expect.AreEqual "Input cannot be empty", box.ValidateInput(""), "ValidateInput of an empty text with AllowEmpty False"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateInput_NumericAndInteger()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.Validation = InputValidation.Numeric
+        Expect.AreEqual "", box.ValidateInput("3.5"), "Numeric: 3.5"
+        Expect.AreEqual "Input must be a valid number", box.ValidateInput("abc"), "Numeric: abc"
+        Expect.AreEqual "", box.ValidateInput(""), "Numeric: an empty text"
+        box.Validation = InputValidation.Integer
+        Expect.AreEqual "", box.ValidateInput("42"), "Integer: 42"
+        Expect.AreEqual "", box.ValidateInput("1e3"), "Integer: 1e3"
+        Expect.AreEqual "Input must be a valid integer", box.ValidateInput("4.2"), "Integer: 4.2"
+        Expect.AreEqual "Input must be a valid integer", box.ValidateInput("4,2"), "Integer: 4,2"
+        Expect.AreEqual "Input must be a valid integer", box.ValidateInput("abc"), "Integer: abc"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateInput_AlphaAndAlphaNumeric()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.Validation = InputValidation.Alpha
+        Expect.AreEqual "", box.ValidateInput("Hello World"), "Alpha: Hello World"
+        Expect.AreEqual "Input must contain only letters", box.ValidateInput("Hello1"), "Alpha: Hello1"
+        box.Validation = InputValidation.AlphaNumeric
+        Expect.AreEqual "", box.ValidateInput("Item_42 x"), "AlphaNumeric: Item_42 x"
+        Expect.AreEqual "Input must contain only letters and numbers", box.ValidateInput("Item-42"), "AlphaNumeric: Item-42"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateInput_Email()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.Validation = InputValidation.Email
+        Expect.AreEqual "", box.ValidateInput("ann@example.com"), "Email: ann@example.com"
+        Expect.AreEqual "Input must be a valid email address", box.ValidateInput("ann@@example.com"), "Email: ann@@example.com"
+        Expect.AreEqual "Input must be a valid email address", box.ValidateInput("ann.example"), "Email: ann.example"
+        Expect.AreEqual "Input must be a valid email address", box.ValidateInput("ann@example"), "Email: ann@example"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateInput_PhoneAndURL()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.Validation = InputValidation.Phone
+        Expect.AreEqual "", box.ValidateInput("+1 (555) 123-4567"), "Phone: +1 (555) 123-4567"
+        Expect.AreEqual "", box.ValidateInput("555.1234"), "Phone: 555.1234"
+        Expect.AreEqual "Input must be a valid phone number", box.ValidateInput("555-CALL"), "Phone: 555-CALL"
+        box.Validation = InputValidation.URL
+        Expect.AreEqual "", box.ValidateInput("https://example.com"), "URL: https://example.com"
+        Expect.AreEqual "", box.ValidateInput("https://"), "URL: https://"
+        Expect.AreEqual "Input must be a valid URL (e.g., https://example.com)", box.ValidateInput("example.com"), "URL: example.com"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateInput_AnEmptyTextPassesTheRulesFromNumericToURL()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        Dim v As Variant
+        For Each v In Array(InputValidation.Numeric, InputValidation.Integer, InputValidation.Alpha, InputValidation.AlphaNumeric, InputValidation.Email, InputValidation.Phone, InputValidation.URL)
+            box.Validation = CLng(v)
+            Expect.AreEqual "", box.ValidateInput(""), "ValidateInput of an empty text with Validation " & CLng(v)
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateInput_ChangesNothingInTheObject()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.MinLength = 3
+        Dim s As String = box.ValidateInput("a")
+        Expect.AreEqual "", box.Value, "Value after ValidateInput"
+        Expect.IsFalse box.Cancelled, "Cancelled after ValidateInput"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ValidateInput_CustomChecksTheTextAgainstThePattern()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.Validation = InputValidation.Custom
+        box.CustomPattern = "[0-9]+"
+        Expect.AreEqual "Input does not match required format", box.ValidateInput("letters only"), "ValidateInput of letters only against the pattern [0-9]+"
+        Expect.AreEqual "", box.ValidateInput("12345"), "ValidateInput of 12345 against the pattern [0-9]+"
+        Expect.Done
+    End Sub
+
+    ' ---- GetValueAsInteger and GetValueAsNumber
+
+    [TestCase]
+    Public Sub GetValueAsNumber_OfAnEmptyValueIsZero()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        Expect.AreEqual 0, box.GetValueAsNumber(), "GetValueAsNumber of an empty Value"
+        Expect.AreEqual 0, box.GetValueAsInteger(), "GetValueAsInteger of an empty Value"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetValueAsInteger_RoundsTheValue()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.Validation = InputValidation.Numeric
+        Pilot.Arm "t=3.5|id=1"
+        box.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual 4, box.GetValueAsInteger(), "GetValueAsInteger of 3.5"
+        Expect.AreEqual 3.5, box.GetValueAsNumber(), "GetValueAsNumber of 3.5"
+        Expect.Done
+    End Sub
+
+    ' ---- the box
+
+    [TestCase]
+    Public Sub ShowDialog_ShowsTheTitleThePromptTheHintAndTheLength()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.Title = "New user"
+        box.Prompt = "Name of the user?"
+        box.Placeholder = "like Ann"
+        box.MinLength = 3
+        box.MaxLength = 8
+        box.DefaultValue = "Guest"
+        Pilot.Arm "id=2"
+        box.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual "New user", Pilot.Title(0), "title of the box"
+        Expect.AreEqual "Name of the user?" & vbCrLf & vbCrLf & "(Hint: like Ann)" & vbCrLf & vbCrLf & "Length: 3 to 8 characters", Pilot.Statics(0), "text of the box"
+        Expect.AreEqual "Guest", Pilot.EditText(0), "text in the edit box"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_NamesALengthWithOnlyAMinimumOrOnlyAMaximum()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.Prompt = "P"
+        box.MinLength = 3
+        Pilot.Arm "id=2"
+        box.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual "P" & vbCrLf & vbCrLf & "Length: At least 3 characters", Pilot.Statics(0), "text of the box with a minimum"
+        box.MinLength = 0
+        box.MaxLength = 8
+        Pilot.Arm "id=2"
+        box.ShowDialog
+        Pilot.Disarm
+        Expect.AreEqual "P" & vbCrLf & vbCrLf & "Length: Maximum 8 characters", Pilot.Statics(0), "text of the box with a maximum"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_OKStoresTheValue()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        Pilot.Arm "t=hello|id=1"
+        Dim r As Boolean = box.ShowDialog()
+        Pilot.Disarm
+        Expect.IsTrue r, "ShowDialog after OK"
+        Expect.AreEqual "hello", box.Value, "Value after OK"
+        Expect.IsFalse box.Cancelled, "Cancelled after OK"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_CancelEmptiesTheValueAndSetsCancelled()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        Pilot.Arm "t=hello|id=1"
+        box.ShowDialog
+        Pilot.Disarm
+        Pilot.Arm "t=again|id=2"
+        Dim r As Boolean = box.ShowDialog()
+        Pilot.Disarm
+        Expect.IsFalse r, "ShowDialog after Cancel"
+        Expect.IsTrue box.Cancelled, "Cancelled after Cancel"
+        Expect.AreEqual "", box.Value, "Value after Cancel"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_AnEmptyEntryPassesWhenEmptyIsAllowed()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        Pilot.Arm "t=|id=1"
+        Expect.IsTrue box.ShowDialog(), "ShowDialog after an empty entry"
+        Pilot.Disarm
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_ARefusedEntryAsksAgainWithTheDefaultValue()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.Title = "Code"
+        box.MinLength = 4
+        box.DefaultValue = "AB12"
+        Pilot.Arm "t=ab|id=1;close;t=abcd|id=1"
+        Dim r As Boolean = box.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual 3, Pilot.WindowsSeen, "windows opened (the box, the message, the box again)"
+        Expect.IsTrue InStr(Pilot.Statics(1), "Input must be at least 4 characters") > 0, "text of the message: " & Pilot.Statics(1)
+        Expect.AreEqual "Code", Pilot.Title(1), "title of the message"
+        Expect.AreEqual "AB12", Pilot.EditText(2), "text in the edit box when it is shown again"
+        Expect.IsTrue r, "ShowDialog after a good second entry"
+        Expect.AreEqual "abcd", box.Value, "Value after the good second entry"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowDialog_ThreeRefusedEntriesEndWithMaximumAttemptsAndKeepTheValue()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.MinLength = 4
+        Pilot.Arm "t=abcd|id=1"
+        box.ShowDialog
+        Pilot.Disarm
+        Pilot.Arm "t=ab|id=1;close;t=ab|id=1;close;t=ab|id=1;close"
+        Dim r As Boolean = box.ShowDialog()
+        Pilot.Disarm
+        Expect.AreEqual 6, Pilot.WindowsSeen, "windows opened (three boxes and three messages)"
+        Expect.IsFalse r, "ShowDialog after three refused entries"
+        Expect.IsTrue box.Cancelled, "Cancelled after three refused entries"
+        Expect.AreEqual "abcd", box.Value, "Value after three refused entries"
+        Expect.AreEqual 0, InStr(Pilot.Statics(1), "Maximum attempts reached."), "the first message carries 'Maximum attempts reached.'"
+        Expect.IsTrue InStr(Pilot.Statics(5), "Maximum attempts reached.") > 0, "text of the third message: " & Pilot.Statics(5)
+        Expect.Done
+    End Sub
+
+    ' ---- the properties that have no effect
+
+    [TestCase]
+    Public Sub PasswordChar_MasksTheEntry()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.PasswordChar = "*"
+        Pilot.Arm "id=2"
+        box.ShowDialog
+        Pilot.Disarm
+        Expect.IsTrue Pilot.PasswordChar(0) <> 0, "password character of the edit box with PasswordChar *"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Multiline_GivesAMultilineEditBox()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.Multiline = True
+        Pilot.Arm "id=2"
+        box.ShowDialog
+        Pilot.Disarm
+        Expect.IsTrue Pilot.IsMultiline(0), "edit box of a box with Multiline True is multiline"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OwnerHwnd_OwnsTheBox()
+        Expect.Begin
+        Dim owner As LongPtr = Fx.MakeOwner()
+        Dim box As New cDialogInputBox
+        box.OwnerHwnd = owner
+        Pilot.Arm "id=2"
+        box.ShowDialog
+        Pilot.Disarm
+        Expect.IsTrue Pilot.OwnerOf(0) = owner, "the box is owned by the window set in OwnerHwnd"
+        Fx.DestroyOwner owner
+        Expect.Done
+    End Sub
+
+    ' ---- the quick methods
+
+    [TestCase]
+    Public Sub ShowSimple_ReturnsTheTextAndSetsTheRules()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        box.MinLength = 5
+        box.Validation = InputValidation.Integer
+        Pilot.Arm "t=Hello|id=1"
+        Dim s As String = box.ShowSimple("Your name?", "Welcome", "Guest")
+        Pilot.Disarm
+        Expect.AreEqual "Hello", s, "ShowSimple"
+        Expect.AreEqual "Welcome", Pilot.Title(0), "title of the ShowSimple box"
+        Expect.AreEqual "Guest", Pilot.EditText(0), "text in the edit box of ShowSimple"
+        Expect.AreEqual InputValidation.None, box.Validation, "Validation after ShowSimple"
+        Expect.IsTrue box.AllowEmpty, "AllowEmpty after ShowSimple"
+        Expect.AreEqual 0, box.MinLength + box.MaxLength, "MinLength and MaxLength after ShowSimple"
+        Pilot.Arm "id=2"
+        Expect.AreEqual "", box.ShowSimple("Your name?"), "ShowSimple after Cancel"
+        Pilot.Disarm
+        Expect.IsTrue box.Cancelled, "Cancelled after that ShowSimple"
+        Expect.AreEqual "Input", Pilot.Title(0), "default title of ShowSimple"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowInteger_ReturnsALongAndAcceptsExponents()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        Pilot.Arm "t=1e3|id=1"
+        Dim n As Long = box.ShowInteger("How many copies?", "Print", "1")
+        Pilot.Disarm
+        Expect.AreEqual 1000, n, "ShowInteger of 1e3"
+        Expect.AreEqual "Print", Pilot.Title(0), "title of the ShowInteger box"
+        Expect.AreEqual "1", Pilot.EditText(0), "text in the edit box of ShowInteger"
+        Expect.AreEqual InputValidation.Integer, box.Validation, "Validation after ShowInteger"
+        Expect.IsFalse box.AllowEmpty, "AllowEmpty after ShowInteger"
+        Pilot.Arm "id=2"
+        Expect.AreEqual 0, box.ShowInteger("n"), "ShowInteger after Cancel"
+        Pilot.Disarm
+        Expect.AreEqual "Enter Integer", Pilot.Title(0), "default title of ShowInteger"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowInteger_AValueThatDoesNotFitALongRaisesOverflowAndKeepsTheText()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        Pilot.Arm "t=99999999999|id=1"
+        On Error Resume Next
+        Dim n As Long = box.ShowInteger("n")
+        Dim e As Long = Err.Number
+        On Error GoTo 0
+        Pilot.Disarm
+        Expect.AreEqual 6, e, "error ShowInteger raised for 99999999999"
+        Expect.AreEqual "99999999999", box.Value, "Value after that ShowInteger"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowNumeric_ReturnsADouble()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        Pilot.Arm "t=3.5|id=1"
+        Dim d As Double = box.ShowNumeric("Price?", "New article", "9.99")
+        Pilot.Disarm
+        Expect.AreEqual 3.5, d, "ShowNumeric of 3.5"
+        Expect.AreEqual "9.99", Pilot.EditText(0), "text in the edit box of ShowNumeric"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowEmail_Phone_URL_SetThePlaceholderAndTheDefault()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        Pilot.Arm "t=ann@example.com|id=1"
+        Expect.AreEqual "ann@example.com", box.ShowEmail("Where?"), "ShowEmail"
+        Pilot.Disarm
+        Expect.AreEqual "Enter Email", Pilot.Title(0), "default title of ShowEmail"
+        Expect.AreEqual "example@domain.com", box.Placeholder, "Placeholder after ShowEmail"
+        Expect.AreEqual "", Pilot.EditText(0), "text in the edit box of ShowEmail"
+        Pilot.Arm "t=+1 555 1234|id=1"
+        Expect.AreEqual "+1 555 1234", box.ShowPhone("Number?"), "ShowPhone"
+        Pilot.Disarm
+        Expect.AreEqual "Enter Phone", Pilot.Title(0), "default title of ShowPhone"
+        Expect.AreEqual "+1 (555) 123-4567", box.Placeholder, "Placeholder after ShowPhone"
+        Pilot.Arm "id=1"
+        Expect.AreEqual "https://", box.ShowURL("Site?"), "ShowURL accepting the offered https://"
+        Pilot.Disarm
+        Expect.AreEqual "Enter URL", Pilot.Title(0), "default title of ShowURL"
+        Expect.AreEqual "https://", Pilot.EditText(0), "text in the edit box of ShowURL"
+        Expect.AreEqual "https://example.com", box.Placeholder, "Placeholder after ShowURL"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ShowSimple_KeepsThePlaceholderOfAnEarlierCall()
+        Expect.Begin
+        Dim box As New cDialogInputBox
+        Pilot.Arm "id=2"
+        box.ShowEmail "Where?"
+        Pilot.Disarm
+        Pilot.Arm "id=2"
+        box.ShowSimple "Name?"
+        Pilot.Disarm
+        Expect.IsTrue InStr(Pilot.Statics(0), "(Hint: example@domain.com)") > 0, "text of the ShowSimple box after ShowEmail: " & Pilot.Statics(0)
+        Expect.Done
+    End Sub
+
+End Module

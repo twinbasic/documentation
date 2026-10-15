@@ -8,6 +8,8 @@ has_toc: false
 # CurrencySFI class
 {: .no_toc }
 
+<!-- test: CurrencyTests.Default_TwoDecimalPlacesAndATrailingDollar, CurrencyTests.Precision_SetsTheDecimalPlaces, CurrencyTests.PrecisionZero_IsTheDefault, CurrencyTests.ThousandsSeparators_FollowTheRegionalSettings, CurrencyTests.DollarSign_IsAfterTheNumber, CurrencyTests.Negative_KeepsTheSignInFront, CurrencyTests.Class_MatchesCAndOnlyC, CurrencyTests.Class_GetFormattedValue_ReadsThePrecision -->
+
 Formats a number as an amount of money for the **C** identifier.
 
 **CurrencySFI** is a format identifier class. It implements [**IStringFormatIdentifier**](IStringFormatIdentifier) and matches the identifier **C** or **c** in any case. [**StringHelper**](StringHelper) registers it, so `{0:C}` in a call to [**StringFormat**](PublicEntryPoints/StringFormat) uses it for a numeric value. The class is predeclared, and its two members are reached through the interface.
@@ -33,6 +35,8 @@ The output shown is for an English (United States) system.
 - **GetFormattedValue** returns the value formatted as described above. It reads the specifier's [**Precision**](StringFormatSpecifier/Precision).
 
 Both are implemented as private members of the interface.
+
+<!-- /test -->
 
 ## See Also
 

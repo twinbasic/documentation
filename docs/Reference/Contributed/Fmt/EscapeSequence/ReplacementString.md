@@ -8,6 +8,8 @@ has_toc: false
 # ReplacementString
 {: .no_toc }
 
+<!-- test: EscapeSequenceTests.Create_Plain_HoldsTheArguments, EscapeSequenceTests.Friend_Setters_CanBeCalledByAProject, EscapeSequenceTests.Execute_Plain_ReplacesEveryOccurrence -->
+
 Returns or sets the text that replaces a plain escape sequence.
 
 ## Get
@@ -33,6 +35,8 @@ Syntax: *object*.**ReplacementString** **=** *value*
 ## Remarks
 
 [**Create**](Create) sets the property from its *replacement* argument. [**Execute**](Execute) puts the value in place of every occurrence of [**EscapeString**](EscapeString).
+
+<!-- /test -->
 
 ## Example
 

@@ -19,6 +19,7 @@ Returns a **Variant**. When the user confirms the dialog, it holds the full path
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.ShowOpen_ReturnsTheFullPathAndStoresItInFileName, CDialogDialogTests.ShowOpen_CancelReturnsAnEmptyStringAndKeepsFileName, CDialogDialogTests.ShowOpen_MultiSelectOfTwoFilesReturnsAnArray, CDialogDialogTests.ShowOpen_FileNameIsPassedAsTheNextInitialName -->
 **ShowOpen** calls `GetOpenFileNameW` and takes its options from the properties of the object:
 
 | Property | What **ShowOpen** passes |
@@ -46,6 +47,7 @@ A confirmed **ShowOpen** that returns a **String** also stores it in [**FileName
 ### Several files
 
 With [**MultiSelect**](MultiSelect) **True**, Windows returns the folder and then the name of each selected file in one buffer. **ShowOpen** joins the folder to each name with a backslash and returns the full paths as an array of **String** values, in the order in which the names stand in the File name box, and sets [**FileName**](FileName) to an empty string. One selected file gives its full path as a **String**, as without **MultiSelect**. Test the result with **IsArray**, or call [**SelectFiles**](SelectFiles), which returns a **Collection** in both cases.
+<!-- /test -->
 
 ## Example
 

@@ -20,8 +20,11 @@ Debug.Print o.Indent                                      ' -1
 Debug.Print JsonOptions.Rfc.Indent                        ' 4
 ```
 
+<!-- test: OptionsTests.Options_AreNotChangedByACall -->
 A property of an options object checks nothing when it is set. The value is used by the call that receives the object, and a call does not change the object.
+<!-- /test -->
 
+<!-- test: OptionsTests.PredeclaredObject_Assignment_RaisesError5, OptionsTests.PredeclaredObject_Read_ReturnsTheEmptyValueOfTheType -->
 > [!IMPORTANT] timeless
 > Assigning a property on the predeclared object itself raises run-time error 5, *Invalid procedure call or argument*, with the source `JsonOptions` and the message *JsonOptions (default instance) is a factory. Use Rfc, Jsonc, Minified, or Pretty.* Create an options object first and assign the properties of that.
 >
@@ -40,7 +43,9 @@ A property of an options object checks nothing when it is set. The value is used
 > ' Output:
 > ' 0|0|False||0|0
 > ```
+<!-- /test -->
 
+<!-- test: OptionsTests.New_Object_HasTheEmptyValueOfEachProperty, OptionsTests.New_Object_WritesNoLineBreaksButASpaceAfterEachColon, OptionsTests.New_Object_HasNoLimits -->
 > [!NOTE] BETA 1005
 > The class declares a **Private** constructor and the attribute `[COMCreatable(False)]`, so that only its presets create options objects. twinBASIC does not enforce a **Private** constructor, and a project that references the package can still create an object with **New**. Every property of such an object has the empty value of its type: **Indent** 0, an empty **Newline**, **Syntax** **jsRfc8259**, and a limit of 0, which means no limit. The text it writes has no line breaks and no indentation, but still a space after each colon. The presets are the way to get the defaults.
 >
@@ -77,6 +82,7 @@ Returns a new options object with the defaults of RFC 8259.
 
 Syntax: *options* **=** **JsonOptions.Rfc**
 
+<!-- test: OptionsTests.Rfc_HasTheDocumentedValues, OptionsTests.Presets_HaveTheDocumentedDefaults -->
 The object is independent of every other one, so it can be changed. These are its values:
 
 | Property | Value |
@@ -94,6 +100,8 @@ The object is independent of every other one, so it can be changed. These are it
 | [**MaxArrayItems**](#maxarrayitems) | 1000000 |
 | [**MaxObjectMembers**](#maxobjectmembers) | 1000000 |
 
+<!-- /test -->
+
 ```tb check_build check_run
 Dim o As JsonOptions = JsonOptions.Rfc
 Debug.Print o.Indent & " " & o.MaxDepth & " " & o.MaxBytes     ' 4 1000 16777216
@@ -107,7 +115,9 @@ Returns a new options object that accepts JSONC.
 
 Syntax: *options* **=** **JsonOptions.Jsonc**
 
+<!-- test: OptionsTests.JsoncMinifiedAndPretty_DifferFromRfcInOneProperty -->
 The same as [**Rfc**](#rfc), with [**Syntax**](#syntax) set to **jsJsonc**.
+<!-- /test -->
 
 ### Minified
 {: .no_toc }
@@ -134,7 +144,9 @@ Returns a copy of an options object.
 
 Syntax: *options***.Clone** ( ) **As** [**JsonOptions**](JsonOptions)
 
+<!-- test: OptionsTests.Clone_IsIndependentOfTheOriginal -->
 The copy has the same values and is independent: a change to it does not change the original.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim a As JsonOptions = JsonOptions.Rfc
@@ -238,6 +250,7 @@ o.DuplicateKeys = jdkLastWins
 Debug.Print Json.Serialize(Json.Parse(text, o), JsonOptions.Minified)   ' {"a":3,"b":2}
 ```
 
+<!-- test: compile QualifiedEnumMember -->
 The members of the three enumerations are written without a qualifier, as `jdkLastWins` is above; so are their names as types. The qualified form `JsonOptions.eJsonSyntax.jsJsonc` does not compile (TB5027, *Unrecognized member*).
 
 ```tb check_build check_run
@@ -251,6 +264,7 @@ Debug.Print s & " " & t & " " & e                         ' 1 5 3
 Dim o As JsonOptions = JsonOptions.Rfc
 o.Syntax = JsonOptions.eJsonSyntax.jsJsonc
 ```
+<!-- /test -->
 
 ### Encoding
 {: .no_toc }
@@ -292,7 +306,9 @@ When **True**, [**SerializeToUtf8**](Json#serializetoutf8), [**WriteFile**](Json
 
 ## Limits
 
+<!-- test: OptionsTests.Limits_ZeroOrBelowMeansNoLimit, ParseTests.Parse_LimitsOnStringsArraysAndObjects_AreLimitExceeded, ParseTests.Parse_DepthBeyondMaxDepth_IsDepthLimitExceeded -->
 A limit of 0 means that there is no limit, and so does a value below 0. A limit that is exceeded is the error `LimitExceeded`, except [**MaxDepth**](#maxdepth), which is `DepthLimitExceeded`.
+<!-- /test -->
 
 ### MaxArrayItems
 {: .no_toc }

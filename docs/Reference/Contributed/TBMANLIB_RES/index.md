@@ -32,3 +32,7 @@ A twinBASIC package for loading binary resources embedded in a compiled executab
 - [ReturnHex](cRes/ReturnHex) -- returns the loaded resource bytes as an uppercase hex string, with an optional separator between each byte and an optional line-break interval.
 - [ReturnPicture](cRes/ReturnPicture) -- returns the loaded resource bytes as an `IPictureDisp` object.
 - [ReturnString](cRes/ReturnString) -- returns the loaded resource bytes as a `String`, with an optional character-set conversion.
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [TBMANLIB_RES-tests.twinproj](TBMANLIB_RES-tests.twinproj), a twinBASIC project. It uses TBMANLIB_RES as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

@@ -10,9 +10,11 @@ has_toc: false
 
 The **PwGenError** object reports the last error of the package: whether there is one, its code, its message and the function that found it.
 
+<!-- test: ErrorTests.Members_WhenThereIsNoError_AreEmpty, ErrorTests.NewPwGenError_ReportsTheSameError -->
 **PwGenError** is a predeclared object. It is used by its name, without a variable. The error itself is stored in the package, not in the object, and the package keeps a single last error, so an object created with **New** reports the same error as the predeclared object. There is no member that sets it.
 
 The functions of [**PwGen**](PwGen) do not raise run-time errors. A function that fails returns an empty string, or 0, and sets the last error. Each function of **PwGen** clears the last error when it starts, so the last error belongs to the latest call. To keep an error across the next call, copy it with [**Snapshot**](#snapshot).
+<!-- /test -->
 
 ```tb check_build check_run
 Dim o As PwGenOptions = PwGenOptions.Alphanumeric
@@ -33,6 +35,8 @@ Debug.Print PwGenError.ToString()   ' PwGen.Generate: InvalidLength - Length mus
 ## Error codes
 
 The code is a **String** that names the error. It is case-sensitive. These are the codes that [**PwGen**](PwGen) and [**PwGenCryptoSource**](PwGenCryptoSource) set, with the message that goes with each. A code with two messages is set in two situations.
+
+<!-- test: RandomModeTests.Mode_NotAMember_InvalidMode, RandomModeTests.Length_Limits, RandomModeTests.MinPerClass_Negative_InvalidMinPerClass, RandomModeTests.NoCharset_NoClassAndNoAlphabet, RandomModeTests.ExcludeChars_AClassWithNoCharacterLeft_EmptyClass, RandomModeTests.MinPerClass_LengthBelowMinPerClassTimesClasses_LengthTooShort, EntropyTests.Entropy_DoesNotFindTheErrorsThatArisePerDraw, RandomModeTests.StartsWithLetter_PoolWithoutALetter_CannotStartWithLetter, ConsecutiveRepeatTests.OneCharacterPool_CannotAvoidRepeats, ConsecutiveRepeatTests.FixedSource_DrawsThatCannotBeArranged_CannotAvoidRepeats, RandomSourceTests.OutOfRangeSource_RngFailed, CryptoSourceTests.NextInRange_ReversedBounds_InvalidRange, WordlistTests.WordCount_Limits, WordlistTests.CustomWords_EmptyWord_EmptyWord, WordlistTests.CustomWords_EqualWords_DuplicateWord, WordlistTests.CustomWords_WordsThatDifferInCaseAreDifferent, WordlistTests.UniqueWords_MoreWordsThanTheList_NotEnoughWords, WordlistTests.Wordlist_NotAMember_InvalidWordlist, WordlistTests.BuiltInWordCount_NotAList_InvalidWordlist, WordlistTests.BuiltInWord_IndexOutsideTheList_IndexOutOfRange, RandomModeTests.SeveralFaults_TheFirstFoundIsReported, RandomModeTests.RandomMode_DoesNotReadTheWordlistProperties, WordlistTests.WordlistMode_DoesNotReadTheRandomModeProperties -->
 
 | Code | Message | Set when |
 |:-----|:--------|:---------|
@@ -57,7 +61,9 @@ The code is a **String** that names the error. It is case-sensitive. These are t
 | `IndexOutOfRange` | word index is outside the list. | The index passed to [**BuiltInWord**](PwGen#builtinword) is negative or not below the number of words. |
 
 A recipe with several faults sets one error, the first fault that the package finds. In random mode the properties of wordlist mode are not checked, and the other way round.
+<!-- /test -->
 
+<!-- test: ErrorTests.UnusedCodes_NoRecipeSetsEmptyCharsetOrEmptyWordlist -->
 > [!NOTE] 1.0.8.0
 > The package declares two more codes, `EmptyCharset` and `EmptyWordlist`. No recipe sets them: the package's own tests list them as having no trigger, together with `InvalidRange`, which only a direct call of the default random source can set.
 
@@ -126,7 +132,9 @@ Clears the last error.
 
 Syntax: **PwGenError.Clear**
 
+<!-- test: ErrorTests.Clear_EmptiesTheLastError -->
 After the call, [**HasError**](#haserror) is **False** and [**Code**](#code), [**Message**](#message) and [**Origin**](#origin) are empty strings. The functions of [**PwGen**](PwGen) call it themselves when they start, so a program needs it only to discard an error that it has read.
+<!-- /test -->
 
 ### Snapshot
 {: .no_toc }
@@ -135,7 +143,9 @@ Returns a copy of the last error.
 
 Syntax: *snap* **=** **PwGenError.Snapshot** ( ) **As** [**tPwGenError**](#tpwgenerror)
 
+<!-- test: ErrorTests.Snapshot_KeepsTheErrorOfTheTimeOfTheCall, ErrorTests.Snapshot_WithNoError_IsEmpty -->
 Returns a [**tPwGenError**](#tpwgenerror) with the values of **HasError**, **Code**, **Message** and **Origin** at the time of the call. The copy belongs to the caller: the next call of a **PwGen** function, which clears the last error, does not change it.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim o As PwGenOptions = PwGenOptions.Alphanumeric

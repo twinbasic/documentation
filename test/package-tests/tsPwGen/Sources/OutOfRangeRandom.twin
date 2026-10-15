@@ -1,0 +1,8 @@
+' OutOfRangeRandom: a random source of the test cases that returns a number one above the upper bound.
+Class OutOfRangeRandom
+    Implements PwGenRandom
+
+    Private Function NextInRange(ByVal lowerBound As Long, ByVal upperBound As Long) As Long Implements PwGenRandom.NextInRange
+        Return upperBound + 1
+    End Function
+End Class

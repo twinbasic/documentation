@@ -29,6 +29,7 @@ con.WriteLine
 con.Restore
 ```
 
+<!-- test: ReadTests.ReadKey_WithoutConsoleInput_Returns, ReadTests.ReadPassword_WithoutConsoleInput_Returns, TypesTests.ConsoleKey_NavigationAndFunctionMembersAreVirtualKeyCodes, ReadTests.ReadKey_ArrowKeys_EqualTheConsoleKeyMembers, ReadTests.ReadKey_NavigationKeys_EqualTheConsoleKeyMembers, ReadTests.ReadKey_FunctionKeys_EqualTheConsoleKeyMembers, ReadTests.ReadKey_LetterH_IsNotTheKeyCodeOfConsoleKeyKeyUp -->
 > [!WARNING] 1.0.0.1
 > Several members do not do what their names suggest. [**ReadKey**](cConsole#readkey) never returns in a program that has no console input, and a comparison of a key with a member of [**ConsoleKey**](Types#consolekey) is true for the wrong key. [Defects in version 1.0.0.1](#defects-in-version-1001) lists them with the pages that describe them.
 
@@ -52,15 +53,18 @@ A program with no console can create a **cConsole**, and the buffer of the full-
 
 ## Defects in version 1.0.0.1
 
+<!-- test: ReadTests.ReadKey_WithoutConsoleInput_Returns, ReadTests.ReadPassword_WithoutConsoleInput_Returns, TypesTests.ConsoleKey_NavigationAndFunctionMembersAreVirtualKeyCodes, ReadTests.ReadKey_EnterEscapeSpaceBackspaceTab_EqualTheConsoleKeyMembers, ReadTests.KeyAvailable_KeyReleaseOnly_IsFalse, ReadTests.KeyAvailable_AfterReadKey_IsFalse, OutputTests.WriteColored_NoBackground_KeepsTheCurrentBackground, OutputTests.WriteLineColored_NoBackground_KeepsTheCurrentBackground, OutputTests.WriteAtColored_NoBackground_KeepsTheCurrentBackground, OutputTests.WriteColored_LeavesTheConsoleInTheColoursItHad, OutputTests.WriteLineColored_LeavesTheConsoleInTheColoursItHad, OutputTests.WriteAtColored_LeavesTheConsoleInTheColoursItHad, FullScreenTests.Refresh_WindowShowsAnotherPartOfTheScreenBuffer_DrawsInTheWindow, FullScreenTests.Refresh_AfterAWriteAtWithANegativeColumn_DrawsTheChangedCells, EventTests.OnResize_IsGivenTheSizeOfTheWindow, EventTests.OnCtrlEvent_Restore_RemovesTheRegistration, EventTests.OnCtrlEvent_AnotherProcedure_ReplacesTheFirst, compile KeyHandlerZero, compile KeyHandlerNothing, compile MouseHandlerZero, compile MouseHandlerNothing, compile ResizeHandlerZero, compile ResizeHandlerNothing, compile CtrlHandlerZero, compile CtrlHandlerNothing, BufferTests.ScrollRegion_Down_AtTheTopEdge_MovesTheRowsByTheDistanceAsked, BufferTests.ScrollRegion_Right_AtTheLeftEdge_MovesTheColumnsByTheDistanceAsked, StyleTests.RepeatStr_LongerStringIsRepeatedWhole, StyleTests.StripAnsi_SequenceEndingInAnotherLetter_KeepsTheTextAfterIt, StateTests.Title_LongTitle_IsReturnedWithAtMost259Characters -->
 - [**ReadKey**](cConsole#readkey) and [**ReadPassword**](cConsole#readpassword) never return when the program has no console input.
 - The key codes of [**ConsoleKey**](Types#consolekey) are not the virtual-key codes that [**ReadKey**](cConsole#readkey) and the key handler return, except for Enter, Escape, Space, Backspace and Tab.
 - [**KeyAvailable**](cConsole#keyavailable) is true for any input event, including a key release.
 - [**WriteColored**](cConsole#writecolored), [**WriteLineColored**](cConsole#writelinecolored) and [**WriteAtColored**](cConsole#writeatcolored) default the background to black, and leave the console in Gray on Black.
 - [**Refresh**](cConsole#refresh) draws at the top of the screen buffer, which is out of sight when the window shows another part of it, and draws nothing after a [**WriteAt**](cConsoleBuffer#writeat) with a negative column or row.
 - [**OnResize**](cConsole#onresize) is given the size of the screen buffer, not of the window.
-- [**OnCtrlEvent**](cConsole#onctrlevent) adds a handler that is never removed, and none of the four handler properties can be cleared.
+- [**OnCtrlEvent**](cConsole#onctrlevent) adds a registration with Windows that is never removed, and the compiler refuses `0` and **Nothing** for all four handler properties, so none of them can be cleared.
 - [**ScrollRegion**](cConsoleBuffer#scrollregion) of the buffer moves a region by less than the distance asked for when the region is near the top or left edge of the buffer.
 - [**RepeatStr**](mConsoleStyle#repeatstr) repeats only the first character of its string, and [**StripAnsi**](mConsoleStyle#stripansi) removes text after some sequences.
+- [**Title**](cConsole#title) of a title longer than 259 characters ends in a character with code 0.
+<!-- /test -->
 - Of the types in [Types](Types), [**ConsoleTextStyle**](Types#consoletextstyle), [**ConsoleMode**](Types#consolemode), [**ConsoleEventType**](Types#consoleeventtype), [**ConsoleEventInfo**](Types#consoleeventinfo) and the delegates **ConsoleTimerCallback** and **ConsoleRenderCallback** are not used by any member.
 
 ## Classes and modules
@@ -81,3 +85,7 @@ A fifth public module, **mConsoleAPI**, has no page of its own, since a program 
 - [TBMANLIB_ConsoleComponents](../TBMANLIB_ConsoleComponents/) package -- progress bars, charts, panels, layouts and a data grid that draw into the buffer
 - [Console Applications](../../../../Features/Project-Configuration/Project-Types#console-applications) -- the project type that the package is made for
 - [Importing a package from TWINSERV](../../../../Features/Packages/Importing-TWINSERV) -- adding a published package to a project
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [TBMANLIB_ConsoleCore-tests.twinproj](TBMANLIB_ConsoleCore-tests.twinproj), a twinBASIC project. It uses TBMANLIB_ConsoleCore as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

@@ -1,0 +1,131 @@
+' tsPwGen: PwGenCryptoSource, the default random source. Its NextInRange is Private and is called
+' through a PwGenRandom variable. It returns a number from the interval with every number equally
+' likely, reports InvalidRange for reversed bounds and returns 0 without raising an error.
+[TestFixture]
+Module CryptoSourceTests
+
+    [TestCase]
+    Public Sub NextInRange_ReturnsANumberOfTheInterval()
+        Expect.Begin
+        Helpers.Reset
+        Dim src As PwGenRandom = New PwGenCryptoSource
+        Dim i As Long
+        Dim bad As Long
+        Dim seen As String
+        For i = 1 To 600
+            Dim n As Long = src.NextInRange(1, 6)
+            If n < 1 Or n > 6 Then bad = bad + 1
+            If InStr(seen, CStr(n)) = 0 Then seen = seen & n
+        Next
+        Expect.AreEqual 0, bad, "numbers out of 600 outside 1 to 6"
+        Expect.AreEqual 6, Len(seen), "different numbers of 1 to 6 seen in 600 draws"
+        Helpers.ExpectNoError "NextInRange(1, 6)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextInRange_EqualBounds_ReturnsThatNumber()
+        Expect.Begin
+        Helpers.Reset
+        Dim src As PwGenRandom = New PwGenCryptoSource
+        Expect.AreEqual 3, src.NextInRange(3, 3), "NextInRange(3, 3)"
+        Expect.AreEqual -7, src.NextInRange(-7, -7), "NextInRange(-7, -7)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextInRange_NegativeAndLargeBounds_StayInTheInterval()
+        Expect.Begin
+        Helpers.Reset
+        Dim src As PwGenRandom = New PwGenCryptoSource
+        Dim i As Long
+        Dim bad As Long
+        For i = 1 To 200
+            Dim a As Long = src.NextInRange(-5, 5)
+            If a < -5 Or a > 5 Then bad = bad + 1
+            Dim wide As Long = src.NextInRange(-2147483647 - 1, 2147483647)
+            Dim c As Long = src.NextInRange(2147483000, 2147483647)
+            If c < 2147483000 Then bad = bad + 1
+        Next
+        Expect.AreEqual 0, bad, "numbers outside the interval, out of 200 draws from each of -5 to 5 and 2147483000 to 2147483647"
+        Helpers.ExpectNoError "NextInRange with negative and large bounds"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextInRange_ReversedBounds_InvalidRange()
+        Expect.Begin
+        Helpers.Reset
+        Dim src As PwGenRandom = New PwGenCryptoSource
+        Expect.AreEqual 0, src.NextInRange(5, 1), "NextInRange(5, 1)"
+        Helpers.ExpectError "NextInRange(5, 1)", "InvalidRange", "lowerBound is greater than upperBound.", ""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextInRange_ReversedBounds_RaisesNoRunTimeError()
+        Expect.Begin
+        Helpers.Reset
+        Dim src As PwGenRandom = New PwGenCryptoSource
+        On Error Resume Next
+        src.NextInRange 5, 1
+        Expect.AreEqual 0, Err.Number, "run-time error of NextInRange(5, 1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextInRange_AfterAnEarlierFailure_StillReturnsANumberOfTheInterval()
+        Expect.Begin
+        Helpers.Reset
+        Dim src As PwGenRandom = New PwGenCryptoSource
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Length = 0
+        PwGen.Generate o
+        Expect.AreEqual "InvalidLength", PwGenError.Code, "the last error before the call"
+        Dim n As Long = src.NextInRange(1, 6)
+        Expect.IsTrue n >= 1 And n <= 6, "NextInRange(1, 6) after PwGen.Generate failed with InvalidLength returns a number from 1 to 6, got " & n
+        Expect.AreEqual "InvalidLength", PwGenError.Code, "the last error after the call"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NextInRange_AfterClear_ReturnsANumberOfTheInterval()
+        Expect.Begin
+        Helpers.Reset
+        Dim src As PwGenRandom = New PwGenCryptoSource
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Length = 0
+        PwGen.Generate o
+        PwGenError.Clear
+        Dim n As Long = src.NextInRange(1, 6)
+        Expect.IsTrue n >= 1 And n <= 6, "NextInRange(1, 6) after PwGenError.Clear returns a number from 1 to 6, got " & n
+        Helpers.ExpectNoError "NextInRange after Clear"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PwGenFunctions_AreNotAffectedByAnEarlierFailure()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Length = 0
+        PwGen.Generate o
+        Dim pw As String = PwGen.Generate()
+        Expect.AreEqual 16, Len(pw), "Len of a Generate that follows a failed Generate"
+        Helpers.ExpectNoError "Generate after a failed Generate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NewPwGenCryptoSource_CanBeCreatedWithNew()
+        Expect.Begin
+        Helpers.Reset
+        Dim src As PwGenRandom = New PwGenCryptoSource
+        Expect.IsFalse src Is Nothing, "a PwGenCryptoSource created with New"
+        Dim o As PwGenOptions = PwGenOptions.Hex
+        Set o.RandomSource = src
+        Expect.AreEqual 32, Len(PwGen.Generate(o)), "Len of a Hex result drawn with an explicit PwGenCryptoSource"
+        Expect.Done
+    End Sub
+
+End Module

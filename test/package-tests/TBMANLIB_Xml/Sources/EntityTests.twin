@@ -1,0 +1,87 @@
+' Entities and character references (XML 1.0, section 4): the five predefined entities and numeric
+' references are replaced by their characters in text and in attribute values, and written once.
+[TestFixture]
+Module EntityTests
+
+    [TestCase]
+    Public Sub Parse_PredefinedEntitiesInText_AreDecoded()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a>Tom &amp; Jerry &lt;3 &gt; &quot;q&quot; &apos;s&apos;</a>")
+        Expect.AreEqual "Tom & Jerry <3 > ""q"" 's'", x.GetElementText("a"), "GetElementText of a text with the five predefined entities"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_NumericReferencesInText_AreDecoded()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a>&#65;&#x42;</a>")
+        Expect.AreEqual "AB", x.GetElementText("a"), "GetElementText of <a>&#65;&#x42;</a>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_NumericReferencesInAttribute_AreDecoded()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a v=""&#65;&#x42;""></a>")
+        Expect.AreEqual "AB", x.GetAttribute("a", "v"), "GetAttribute of v=""&#65;&#x42;"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_PredefinedEntitiesInAttribute_AreDecoded()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a v=""Tom &amp; Jerry &lt;3 &gt; &quot;q&quot; &apos;s&apos;""></a>")
+        Expect.AreEqual "Tom & Jerry <3 > ""q"" 's'", x.GetAttribute("a", "v"), "GetAttribute of an attribute with the five predefined entities"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Parse_AmpersandEntityBeforeText_IsNotDecodedTwice()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a v=""&amp;quot;""></a>")
+        Expect.AreEqual "&quot;", x.GetAttribute("a", "v"), "GetAttribute of v=""&amp;quot;"" (the characters &quot; and nothing more)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToXmlString_TextReadFromXml_IsEscapedOnce()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a>Tom &amp; Jerry</a>")
+        Expect.AreEqual "<a>Tom &amp; Jerry</a>", x.ToXmlString(False), "ToXmlString of <a>Tom &amp; Jerry</a>"
+        Dim y As cXml
+        Set y = Helpers.Doc(x.ToXmlString(False))
+        Expect.AreEqual "Tom & Jerry", y.GetElementText("a"), "GetElementText after the text is written and read again"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ToXmlString_AttributeReadFromXml_IsEscapedOnce()
+        Expect.Begin
+        Dim x As cXml
+        Set x = Helpers.Doc("<a title=""Tom &amp; Jerry &#65;""></a>")
+        Expect.AreEqual "<a title=""Tom &amp; Jerry A""/>", x.ToXmlString(False), "ToXmlString of <a title=""Tom &amp; Jerry &#65;""></a>"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SetElementText_PlainText_IsWrittenOnce()
+        Expect.Begin
+        Dim x As New cXml
+        x.CreateNew "a"
+        x.SetElementText "a", "Tom & Jerry <3"
+        x.SetAttribute "a", "t", "R&D ""x"""
+        Expect.AreEqual "<a t=""R&amp;D &quot;x&quot;"">Tom &amp; Jerry &lt;3</a>", x.ToXmlString(False), "ToXmlString of text and an attribute set as plain text"
+        Dim y As cXml
+        Set y = Helpers.Doc(x.ToXmlString(False))
+        Expect.AreEqual "Tom & Jerry <3", y.GetElementText("a"), "GetElementText after the text is written and read again"
+        Expect.AreEqual "R&D ""x""", y.GetAttribute("a", "t"), "GetAttribute after the text is written and read again"
+        Expect.Done
+    End Sub
+
+End Module

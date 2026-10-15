@@ -1,0 +1,149 @@
+{
+  "version": "1.0.15.0",
+  "cases": {
+    "DatesTests.FormatIso8601_MillisecondsAboveHalfASecond_KeepTheSecondAndTheFraction": {
+      "fails": "3 of 4 checks failed: FormatIso8601 of 09:15:30.501: expected \"2026-08-19T09:15:30.501\", got \"2026-08-19T09:15:31\"; FormatIso8601 of 09:15:30.750: expected \"2026-08-19T09:15:30.750\", got \"2026-08-19T09:15:31\"; FormatIso8601 of 09:15:30.999: expected \"2026-08-19T09:15:30.999\", got \"2026-08-19T09:15:31\""
+    },
+    "DatesTests.Serialize_DateWithMillisecondsAboveHalfASecond_KeepsTheFraction": {
+      "fails": "1 of 1 checks failed: Serialize of 23:59:59.750: expected \"\"2026-08-19T23:59:59.750\"\", got \"\"2026-08-20T00:00:00\"\""
+    },
+    "ErrorStateTests.Serialize_TwoDimensionalArray_RaisesNoRunTimeError": {
+      "fails": "1 of 1 checks failed: the run-time error number of Serialize with a two-dimensional array (Unspecified error): expected 0, got -2147467259"
+    },
+    "ErrorStateTests.Serialize_TwoDimensionalArray_SetsTheLastError": {
+      "fails": "1 of 1 checks failed: JsonError.HasError after Serialize of a two-dimensional array: expected True, got False"
+    },
+    "ErrorStateTests.Parse_AfterARunTimeErrorInSerialize_ClearsTheLastError": {
+      "fails": "1 of 1 checks failed: JsonError.HasError after Parse of [1], which worked (the code is UnexpectedEnd): expected False, got True"
+    },
+    "ErrorStateTests.Parse_AfterARunTimeErrorInSerialize_SetsItsOwnOrigin": {
+      "fails": "1 of 1 checks failed: JsonError.Origin after Parse of {: expected \"Json.Parse\", got \"Json.Serialize\""
+    },
+    "PathTests.Filter_NotEqual_SelectsElementWithoutMember": {
+      "fails": "1 of 1 checks failed: $[?@.a != 1] on [{\"a\":1},{\"a\":2},{\"b\":3}]: expected \"[{\"a\":2},{\"b\":3}]\", got \"[{\"a\":2}]\""
+    },
+    "PathTests.Filter_EqualOfTwoMissingValues_Selects": {
+      "fails": "1 of 1 checks failed: $[?@.a == @.b] on an element that has neither a nor b: expected \"[{\"c\":1}]\", got \"[]\""
+    },
+    "PathTests.Filter_LessOrEqual_EqualBooleans_Selects": {
+      "fails": "1 of 1 checks failed: $[?@.a <= @.b] on two equal Booleans: expected \"[{\"a\":true,\"b\":true}]\", got \"[]\""
+    },
+    "PathTests.Filter_LessOrEqual_EqualNulls_Selects": {
+      "fails": "1 of 1 checks failed: $[?@.a <= @.b] on two nulls: expected \"[{\"a\":null,\"b\":null}]\", got \"[]\""
+    },
+    "PathTests.Filter_LessOrEqual_EqualArrays_Selects": {
+      "fails": "1 of 1 checks failed: $[?@.a <= @.b] on two equal arrays: expected \"[{\"a\":[1,2],\"b\":[1,2]}]\", got \"[]\""
+    },
+    "PathTests.Filter_GreaterOrEqual_EqualBooleans_Selects": {
+      "fails": "1 of 1 checks failed: $[?@.a >= @.b] on two equal Booleans: expected \"[{\"a\":false,\"b\":false}]\", got \"[]\""
+    },
+    "PathTests.CompilePath_UnknownFunction_IsAnError": {
+      "fails": "2 of 2 checks failed: CompilePath of $[?unknown(@.a)] returns Nothing: expected True, got False; the error code of an unknown function: expected \"InvalidPath\", got \"\""
+    },
+    "PathTests.CompilePath_WrongNumberOfArguments_IsAnError": {
+      "fails": "2 of 2 checks failed: CompilePath of $[?length(@.a, @.b) > 1] returns Nothing: expected True, got False; the error code of a call with two arguments to length: expected \"InvalidPath\", got \"\""
+    },
+    "PathTests.CompilePath_QueryThatSelectsManyValuesInComparison_IsAnError": {
+      "fails": "2 of 2 checks failed: CompilePath of $[?@.* == 1] returns Nothing: expected True, got False; the error code of a comparison with a query that selects many values: expected \"InvalidPath\", got \"\""
+    },
+    "PathTests.Query_UnknownFunction_SetsTheError": {
+      "fails": "1 of 1 checks failed: Query of $[?unknown(@.a)]: expected \"(error InvalidPath)\", got \"[]\""
+    },
+    "PathTests.Filter_FractionLiteral_Compiles": {
+      "fails": "1 of 1 checks failed: $[?@.price < 10.5] on prices 10 and 11: expected \"[{\"price\":10}]\", got \"(error InvalidPath)\""
+    },
+    "PathTests.Filter_ExponentLiteral_Compiles": {
+      "fails": "1 of 1 checks failed: $[?@.n == 1e3] on 1000 and 1: expected \"[{\"n\":1000}]\", got \"(error InvalidPath)\""
+    },
+    "PathTests.Filter_NegativeFractionLiteral_Compiles": {
+      "fails": "1 of 1 checks failed: $[?@ < -0.75] on -1, -0.5 and 0: expected \"[-1]\", got \"(error InvalidPath)\""
+    },
+    "PathTests.CompilePath_FilterNestedMoreThan1000Levels_IsDepthLimitExceeded": {
+      "win32": "pass",
+      "win64": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+      }
+    },
+    "PathTests.CompilePath_FilterNested999Levels_Compiles": {
+      "win32": "pass",
+      "win64": {
+        "fails": "(runtime error -2147467259: NATIVE EXCEPTION: STACK_OVERFLOW)"
+      }
+    },
+    "PatternTests.IsMatchPattern_LongerAlternativeSecond_Matches": {
+      "fails": "1 of 1 checks failed: IsMatchPattern(\"ab\", \"a|ab\"): expected True, got False"
+    },
+    "PatternTests.IsMatchPattern_ChoiceInGroup_TriesTheOtherAlternative": {
+      "fails": "1 of 2 checks failed: IsMatchPattern(\"Mrs Smith\", \"(Mr|Mrs) Smith\"): expected True, got False"
+    },
+    "PatternTests.IsSearchPattern_ChoiceInGroup_TriesTheOtherAlternative": {
+      "fails": "1 of 1 checks failed: IsSearchPattern(\"abc\", \"(a|ab)c\"): expected True, got False"
+    },
+    "PatternTests.Match_JsonPathFunction_TriesTheOtherAlternative": {
+      "fails": "1 of 1 checks failed: $[?match(@.v, \"a|ab\")] on the values ab, a and b: expected \"[{\"v\":\"ab\"},{\"v\":\"a\"}]\", got \"[{\"v\":\"a\"}]\""
+    },
+    "PatternTests.Search_JsonPathFunction_TriesTheOtherAlternative": {
+      "fails": "1 of 1 checks failed: $[?search(@.v, \"(a|ab)c\")] on the values abc and xyz: expected \"[{\"v\":\"abc\"}]\", got \"[]\""
+    },
+    "PatternTests.IsValidPattern_EscapeTab_IsValid": {
+      "fails": "2 of 2 checks failed: IsValidPattern(\"a\\tb\"): expected True, got False; IsMatchPattern of a, a tab and b against \"a\\tb\": expected True, got False"
+    },
+    "PatternTests.IsValidPattern_EscapeLineFeed_IsValid": {
+      "fails": "2 of 2 checks failed: IsValidPattern(\"a\\nb\"): expected True, got False; IsMatchPattern of a, a line feed and b against \"a\\nb\": expected True, got False"
+    },
+    "PatternTests.IsValidPattern_EscapeCarriageReturn_IsValid": {
+      "fails": "2 of 2 checks failed: IsValidPattern(\"a\\rb\"): expected True, got False; IsMatchPattern of a, a carriage return and b against \"a\\rb\": expected True, got False"
+    },
+    "PatternTests.IsMatchPattern_SetWithLineFeedEscape_MatchesLineFeed": {
+      "fails": "2 of 2 checks failed: IsMatchPattern of a line feed against \"[\\n]\": expected True, got False; IsMatchPattern(\"n\", \"[\\n]\"): expected False, got True"
+    },
+    "PatternTests.IsMatchPattern_SetWithTabEscape_MatchesTab": {
+      "fails": "2 of 2 checks failed: IsMatchPattern of a tab against \"[\\t]\": expected True, got False; IsMatchPattern(\"t\", \"[\\t]\"): expected False, got True"
+    },
+    "PatternTests.IsValidPattern_EscapeHyphen_IsValid": {
+      "fails": "2 of 2 checks failed: IsValidPattern(\"a\\-b\"): expected True, got False; IsMatchPattern(\"a-b\", \"a\\-b\"): expected True, got False"
+    },
+    "PatternTests.IsValidPattern_EscapeCaret_IsValid": {
+      "fails": "2 of 2 checks failed: IsValidPattern(\"a\\^b\"): expected True, got False; IsMatchPattern(\"a^b\", \"a\\^b\"): expected True, got False"
+    },
+    "PatternTests.IsValidPattern_SetEndingInHyphen_IsValid": {
+      "fails": "3 of 3 checks failed: IsValidPattern(\"[a-]\"): expected True, got False; IsMatchPattern(\"-\", \"[a-]\"): expected True, got False; IsMatchPattern(\"a\", \"[a-]\"): expected True, got False"
+    },
+    "PointerTests.PointerGet_EmptyTokenAfterToken_NamesTheEmptyKey": {
+      "fails": "1 of 1 checks failed: PointerGet of /a/ in {\"a\":{\"a\":1,\"\":2}}: expected 2, got 1"
+    },
+    "PointerTests.PointerSet_EmptyTokenAfterToken_ChangesTheEmptyKey": {
+      "fails": "1 of 1 checks failed: PointerSet of /a/ to 9: expected \"{\"a\":{\"a\":1,\"\":9}}\", got \"{\"a\":{\"a\":9,\"\":2}}\""
+    },
+    "PointerTests.PointerRemove_EmptyTokenAfterToken_RemovesTheEmptyKey": {
+      "fails": "1 of 1 checks failed: PointerRemove of /a/: expected \"{\"a\":{\"a\":1}}\", got \"{\"a\":{\"\":2}}\""
+    },
+    "PointerTests.PointerExists_EmptyTokenAfterToken_IsFalseWhereTheKeyIsMissing": {
+      "fails": "1 of 1 checks failed: PointerExists of /a/ in {\"a\":{\"a\":1}}, which has no empty key: expected False, got True"
+    },
+    "PointerTests.Patch_ReplaceAtEmptyTokenAfterToken_ChangesTheEmptyKey": {
+      "fails": "1 of 1 checks failed: Patch with a replace at /a/: expected \"{\"a\":{\"a\":1,\"\":9}}\", got \"{\"a\":{\"a\":9,\"\":2}}\""
+    },
+    "PointerTests.QueryHits_EmptyKey_PointerReadsTheSameValue": {
+      "fails": "1 of 3 checks failed: PointerGet with the pointer of the hit: expected 2, got 1"
+    },
+    "RunnerTests.SetContinueOnFail_False_StopsAtTheFirstFailedCheck": {
+      "fails": "1 of 1 checks failed: the failed checks counted after two failing checks with SetContinueOnFail False: expected 1, got 2"
+    },
+    "SchemaTests.Format_Ipv4_AcceptsValidAddresses": {
+      "fails": "4 of 5 checks failed: ipv4 of 1.2.3.4: expected True, got False; ipv4 of 10.0.0.1: expected True, got False; ipv4 of 192.168.1.1: expected True, got False; ipv4 of 255.255.255.255: expected True, got False"
+    },
+    "SchemaTests.Pattern_Anchored_AcceptsAStringThatMatchesWhole": {
+      "fails": "1 of 1 checks failed: the string abc against the pattern ^[a-z]+$: expected True, got False"
+    },
+    "SchemaTests.Pattern_Anchored_RejectsAStringThatDoesNotMatchWhole": {
+      "fails": "1 of 2 checks failed: the string ^abc$ against the pattern ^[a-z]+$: expected False, got True"
+    },
+    "SchemaTests.Pattern_ChoiceInGroup_TriesTheOtherAlternative": {
+      "fails": "1 of 1 checks failed: the string abc against the pattern (a|ab)c: expected True, got False"
+    },
+    "SchemaTests.PatternProperties_ChoiceInGroup_TriesTheOtherAlternative": {
+      "fails": "1 of 1 checks failed: the property abc against patternProperties (a|ab)c: expected True, got False"
+    }
+  }
+}

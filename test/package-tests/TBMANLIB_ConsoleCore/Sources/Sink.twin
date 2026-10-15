@@ -1,0 +1,44 @@
+' TBMANLIB_ConsoleCore: the handler procedures the cases register, and what they were called with.
+Module Sink
+
+    Public KeyCalls As Long
+    Public KeyLog As String
+    Public MouseCalls As Long
+    Public MouseLog As String
+    Public SizeCalls As Long
+    Public SizeLog As String
+
+    Public Sub Reset()
+        KeyCalls = 0
+        KeyLog = ""
+        MouseCalls = 0
+        MouseLog = ""
+        SizeCalls = 0
+        SizeLog = ""
+    End Sub
+
+    Public Sub OnKey(ByRef keyInfo As ConsoleKeyInfo, ByRef handled As Boolean)
+        KeyCalls = KeyCalls + 1
+        KeyLog = KeyLog & keyInfo.KeyCode & ";"
+        handled = True
+    End Sub
+
+    Public Sub OnMouse(ByRef mouseInfo As ConsoleMouseInfo, ByRef handled As Boolean)
+        MouseCalls = MouseCalls + 1
+        MouseLog = MouseLog & mouseInfo.Col & "," & mouseInfo.Row & "," & mouseInfo.Button & "," & mouseInfo.IsDoubleClick & ";"
+    End Sub
+
+    Public Sub OnSize(ByVal newWidth As Long, ByVal newHeight As Long)
+        SizeCalls = SizeCalls + 1
+        SizeLog = SizeLog & newWidth & "x" & newHeight & ";"
+    End Sub
+
+    Public Function OnCtrlOne(ByVal ctrlType As Long) As Long
+        OnCtrlOne = 1
+    End Function
+
+    Public Function OnCtrlTwo(ByVal ctrlType As Long) As Long
+        OnCtrlTwo = 1
+    End Function
+
+End Module

@@ -1,0 +1,144 @@
+' mDialog: the conversions, the colour text functions, the constants and the structure types.
+[TestFixture]
+Module MDialogTests
+
+    [TestCase]
+    Public Sub InchesToMM_MultipliesBy25Point4()
+        Expect.Begin
+        Expect.IsTrue Abs(InchesToMM(8.5) - 215.9) < 0.000001, "InchesToMM(8.5) is 215.9"
+        Expect.AreEqual 25.4, InchesToMM(1), "InchesToMM(1)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MMToInches_DividesBy25Point4()
+        Expect.Begin
+        Expect.AreEqual 1, MMToInches(25.4), "MMToInches(25.4)"
+        Expect.IsTrue Abs(MMToInches(210) - 8.26771653543307) < 0.0000000001, "MMToInches(210) is 8.26771653543307"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InchesToPoints_And_PointsToInches()
+        Expect.Begin
+        Expect.AreEqual 72, InchesToPoints(1), "InchesToPoints(1)"
+        Expect.AreEqual 108, InchesToPoints(1.5), "InchesToPoints(1.5)"
+        Expect.AreEqual 0.5, PointsToInches(36), "PointsToInches(36)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub InchesToTwips_RoundsToTheNearestWholeNumber()
+        Expect.Begin
+        Expect.AreEqual 2160, InchesToTwips(1.5), "InchesToTwips(1.5)"
+        Expect.AreEqual 0, InchesToTwips(0.0003), "InchesToTwips(0.0003)"
+        Expect.AreEqual 1, InchesToTwips(0.0004), "InchesToTwips(0.0004)"
+        Expect.AreEqual "Long", TypeName(InchesToTwips(1)), "type of InchesToTwips"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub TwipsToInches_DividesBy1440()
+        Expect.Begin
+        Expect.AreEqual 0.5, TwipsToInches(720), "TwipsToInches(720)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Constants_HaveTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual 25.4, MM_PER_INCH, "MM_PER_INCH"
+        Expect.AreEqual 72, POINTS_PER_INCH, "POINTS_PER_INCH"
+        Expect.AreEqual 1440, TWIPS_PER_INCH, "TWIPS_PER_INCH"
+        Expect.AreEqual 8.5, PAPER_LETTER_WIDTH, "PAPER_LETTER_WIDTH"
+        Expect.AreEqual 11, PAPER_LETTER_HEIGHT, "PAPER_LETTER_HEIGHT"
+        Expect.AreEqual 8.5, PAPER_LEGAL_WIDTH, "PAPER_LEGAL_WIDTH"
+        Expect.AreEqual 14, PAPER_LEGAL_HEIGHT, "PAPER_LEGAL_HEIGHT"
+        Expect.AreEqual 8.27, PAPER_A4_WIDTH, "PAPER_A4_WIDTH"
+        Expect.AreEqual 11.69, PAPER_A4_HEIGHT, "PAPER_A4_HEIGHT"
+        Expect.AreEqual 11.69, PAPER_A3_WIDTH, "PAPER_A3_WIDTH"
+        Expect.AreEqual 16.54, PAPER_A3_HEIGHT, "PAPER_A3_HEIGHT"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RGBToHtml_WritesSixUpperCaseDigits()
+        Expect.Begin
+        Expect.AreEqual "#FF8000", RGBToHtml(255, 128, 0), "RGBToHtml(255, 128, 0)"
+        Expect.AreEqual "#000000", RGBToHtml(0, 0, 0), "RGBToHtml(0, 0, 0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RGBToHtml_WrapsAValueOutsideZeroTo255()
+        Expect.Begin
+        Expect.AreEqual "#00FF2C", RGBToHtml(256, -1, 300), "RGBToHtml(256, -1, 300)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HtmlToRGB_ReadsSixDigitsWithOrWithoutAHash()
+        Expect.Begin
+        Dim r As Long, g As Long, b As Long
+        HtmlToRGB "#00ff7f", r, g, b
+        Expect.AreEqual "0,255,127", r & "," & g & "," & b, "HtmlToRGB of #00ff7f"
+        HtmlToRGB "ff8000", r, g, b
+        Expect.AreEqual "255,128,0", r & "," & g & "," & b, "HtmlToRGB of ff8000"
+        HtmlToRGB "  #FF8000 ", r, g, b
+        Expect.AreEqual "255,128,0", r & "," & g & "," & b, "HtmlToRGB of '  #FF8000 '"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HtmlToRGB_AnyOtherTextGivesBlack()
+        Expect.Begin
+        Dim r As Long, g As Long, b As Long
+        Dim v As Variant
+        For Each v In Array("#FFF", "#FF8000FF", "red", "", "#GG0000", "#-10000", "#+12345")
+            r = 9: g = 9: b = 9
+            HtmlToRGB CStr(v), r, g, b
+            Expect.AreEqual "0,0,0", r & "," & g & "," & b, "HtmlToRGB of '" & CStr(v) & "'"
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HtmlToRGB_ASpaceInsideSixCharactersIsNotAlwaysRejected()
+        Expect.Begin
+        Dim r As Long, g As Long, b As Long
+        HtmlToRGB "#1 2345", r, g, b
+        Expect.AreEqual "1,35,69", r & "," & g & "," & b, "HtmlToRGB of '#1 2345'"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Types_HaveTheDocumentedSizes()
+        Expect.Begin
+        Dim g As mDialog.GUID
+        Dim rc As mDialog.RECT
+        Dim pt As mDialog.POINT
+        Dim fs As mDialog.COMDLG_FILTERSPEC
+        g.Data1 = 5
+        rc.Left = 2
+        rc.Right = 9
+        Expect.AreEqual 5, g.Data1, "GUID.Data1"
+        Expect.AreEqual 7, rc.Right - rc.Left, "RECT.Right - RECT.Left"
+        Expect.AreEqual 16, LenB(g), "size of GUID"
+        Expect.AreEqual 16, LenB(rc), "size of RECT"
+        Expect.AreEqual 8, LenB(pt), "size of POINT"
+        #If Win64 Then
+            Expect.AreEqual 16, LenB(fs), "size of COMDLG_FILTERSPEC"
+        #Else
+            Expect.AreEqual 8, LenB(fs), "size of COMDLG_FILTERSPEC"
+        #End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MembersAreGlobalAndCanBeQualifiedWithTheModuleName()
+        Expect.Begin
+        Expect.AreEqual InchesToMM(1), mDialog.InchesToMM(1), "InchesToMM against mDialog.InchesToMM"
+        Expect.Done
+    End Sub
+
+End Module

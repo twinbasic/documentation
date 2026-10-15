@@ -23,6 +23,7 @@ Syntax: *object*.**PathCombine** ( *strPath1*, *strPath2* ) **As String**
 
 ## Remarks
 
+<!-- test: CDialogPropertyTests.PathCombine_JoinsWithOneBackslash -->
 **PathCombine** returns *strPath1* and *strPath2* with exactly one backslash between them, so it does not matter whether *strPath1* ends with a backslash or *strPath2* starts with one. The method follows these steps, in order:
 
 1. An empty *strPath1* returns *strPath2* as it is, and an empty *strPath2* returns *strPath1* as it is. Two empty strings give an empty string.
@@ -42,6 +43,7 @@ Syntax: *object*.**PathCombine** ( *strPath1*, *strPath2* ) **As String**
 | `C:\a\\` | `b` | `C:\a\\b` |
 
 The method works on text only. It does not check that a folder or a file exists, and it does not resolve `..` or `.`. A forward slash is an ordinary character: `a/` and `b` give `a/\b`, and `http://x/y` after `C:\a` gives `C:\a\http://x/y`. Only one backslash is removed from each side, so a doubled backslash stays. A *strPath2* with a drive letter but no backslash after the colon (`D:b`) is not absolute and is joined like any other name. [**cDialogEx**](../cDialogEx#pathcombine) has the same method.
+<!-- /test -->
 
 ## Example
 

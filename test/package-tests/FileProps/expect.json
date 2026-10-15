@@ -1,0 +1,23 @@
+{
+  "version": "1.7.1.0",
+  "cases": {
+    "CollectionTests.Item_ByID_ComputedProperty_ReturnsThePropertyWithThatID": {
+      "fails": "4 of 4 checks failed: Err.Number of Item with the ID of System.ItemTypeText: expected 0, got 13; Err.Number of Item with the ID of System.ItemFolderNameDisplay: expected 0, got 13; Err.Number of Item with the ID of System.ItemPathDisplay: expected 0, got 13; Err.Number of Item with the ID of System.Kind: expected 0, got 13"
+    },
+    "CollectionTests.Item_ByID_UnknownID_RaisesElementNotFound": {
+      "fails": "2 of 2 checks failed: Err.Number of Item with an ID of a GUID that no property has: expected -2147211518, got 0; Err.Number of Item with an ID of a known GUID and an index that no property has: expected -2147211518, got 0"
+    },
+    "ExplorerTests.OpenFile_WhileWriteSupportCollectionIsOpen_ListsTheProperties": {
+      "fails": "1 of 1 checks failed: Count of a collection of a JPEG file opened while a collection with write support of the same file is open: expected True, got False"
+    },
+    "ExplorerTests.OpenFile_WriteSupportWhileWriteSupportCollectionIsOpen_ListsTheProperties": {
+      "fails": "1 of 2 checks failed: Count of a second collection of the same file opened with write support while the first is open: expected True, got False"
+    },
+    "ExplorerTests.OpenFile_WriteSupportWhileACollectionIsOpen_Returns": {
+      "hangs": true
+    },
+    "WriteTests.Value_Let_NotWritableProperty_RaisesPermissionDenied": {
+      "fails": "1 of 1 checks failed: assigning System.ItemNameDisplay raises Permission denied (70, or E_ACCESSDENIED, 0x80070005), got error -2147352567: expected True, got False"
+    }
+  }
+}

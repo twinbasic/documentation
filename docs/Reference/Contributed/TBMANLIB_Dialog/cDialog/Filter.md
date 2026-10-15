@@ -20,11 +20,13 @@ Syntax: *object*.**Filter** [ = *string* ]
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.ShowOpen_FilterFillsTheFileTypeList -->
 The syntax is that of the **Filter** property of VB6's **CommonDialog** control. A pattern is a file name pattern with wildcards, such as `*.txt`. Several patterns of one pair are separated by semicolons: `*.jpg;*.jpeg`.
 
 [**ShowOpen**](ShowOpen) and [**ShowSave**](ShowSave) replace every `|` with a null character and add one more null character at the end, which is the layout of the `lpstrFilter` member of `OPENFILENAME`. The file-type list holds the descriptions in the order of the pairs, and the first pair is selected when the dialog opens (`nFilterIndex` is 1). The class does not report the pair that the user chooses. [**ShowBrowseForFolder**](ShowBrowseForFolder) ignores the property.
 
 The class does not check the string. A `|` inside a description or a pattern starts a new element, and moves every later element one place, so the pairs no longer fit. [**AddFilter**](AddFilter) and the four `Set...Filters` methods build the string in pairs, unless an argument of **AddFilter** contains a `|`.
+<!-- /test -->
 
 ## Example
 

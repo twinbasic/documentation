@@ -10,6 +10,7 @@ has_toc: false
 
 A **JsonPathQuery** is a compiled JSONPath, as RFC 9535 defines the language. [**Json.CompilePath**](Json#compilepath) creates one. A query that is compiled once can be run on any number of documents, with the same four verbs as the [**Json**](Json) module: [**Query**](#query), [**QueryOne**](#queryone), [**TryQueryOne**](#tryqueryone) and [**QueryHits**](#queryhits).
 
+<!-- test: PathTests.CompiledQuery_RunsOnManyDocuments -->
 ```tb check_build check_run
 Dim q As JsonPathQuery = Json.CompilePath("$.items[*].id")
 Dim a As Variant = Json.Parse("{""items"":[{""id"":1},{""id"":2}]}")
@@ -23,14 +24,18 @@ Dim v As Variant
 Debug.Print q.TryQueryOne(Json.Parse("{}"), v)            ' False
 Debug.Print JsonError.HasError                            ' False
 ```
+<!-- /test -->
 
+<!-- test: PathTests.CompiledQuery_Verbs_ClearTheLastErrorAndSetNone, PathTests.CompilePath_InvalidPath_SetsTheErrorOfCompilePath -->
 A query that matches nothing is not an error. Each verb clears the last error when it starts and does not set one, because the path was checked when it was compiled; the origin of any error is therefore `Json.CompilePath` or the facade function that compiled the path.
+<!-- /test -->
 
 * TOC
 {:toc}
 
 ## Syntax
 
+<!-- test: PathTests.Query_Selectors_SelectWhatTheTableSays, PathTests.Query_SlicesDescendantsAndWildcards_FollowTheRfc -->
 A JSONPath starts with `$`, the root of the document, followed by any number of segments. A path of `$` alone selects the document itself.
 
 | Syntax | Selects |
@@ -45,7 +50,9 @@ A JSONPath starts with `$`, the root of the document, followed by any number of 
 | `..name`, `..*`, `..[...]` | The same selection made on the value and on every value inside it, at any depth. |
 
 The selection works on values in document order: a value comes before the values inside it, and the members and elements in the order they have in the document. A value that several selectors select appears more than once. Space, tab, line feed and carriage return are allowed between tokens.
+<!-- /test -->
 
+<!-- test: PathTests.Query_FilterExpressions_BehaveAsTheTableSays -->
 A **filter** is an expression made of these parts:
 
 | Part | Meaning |
@@ -60,6 +67,7 @@ A **filter** is an expression made of these parts:
 | `match(text, pattern)`, `search(text, pattern)` | Whether the whole text, or a part of it, matches an I-Regexp. The text and the pattern are strings. The patterns of [**Json.IsMatchPattern**](Json#ismatchpattern) apply. |
 
 Values are compared as [**Json.Equals**](Json#equals) compares them for `==` and `!=`. The ordering comparisons apply to two numbers and to two strings; strings are ordered by UTF-16 code unit. `length` counts a string in UTF-16 code units.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim doc As Variant = Json.Parse("{""a"":[""a"",""b"",""c"",""d""],""o"":{""j"":1,""k"":{""j"":2}}}")
@@ -77,6 +85,7 @@ Debug.Print Json.Serialize(Json.Query(words, "$.a[?length(@.b) > 1]"), JsonOptio
 
 ### Where the syntax departs from RFC 9535
 
+<!-- test: PathTests.Filter_NotEqual_SelectsElementWithoutMember, PathTests.Filter_NegatedEqual_SelectsElementWithoutMember, PathTests.Filter_EqualOfTwoMissingValues_Selects, PathTests.Filter_MissingValueEqualsNothingElse, PathTests.Filter_LessOrEqual_EqualBooleans_Selects, PathTests.Filter_LessOrEqual_EqualNulls_Selects, PathTests.Filter_LessOrEqual_EqualArrays_Selects, PathTests.Filter_GreaterOrEqual_EqualBooleans_Selects, PathTests.Filter_LessOrEqual_NumbersAndStrings_Compare, PathTests.CompilePath_UnknownFunction_IsAnError, PathTests.CompilePath_WrongNumberOfArguments_IsAnError, PathTests.CompilePath_QueryThatSelectsManyValuesInComparison_IsAnError, PathTests.Query_UnknownFunction_SetsTheError, PathTests.CompilePath_FunctionNameStartingWithF_IsInvalidPath, PathTests.Filter_FractionLiteral_Compiles, PathTests.Filter_ExponentLiteral_Compiles, PathTests.Filter_NegativeFractionLiteral_Compiles, PathTests.Filter_IntegerLiteral_Compares, PathTests.Length_CountsUtf16CodeUnits, PathTests.QueryHits_ReturnsValueAndPointer, PathTests.Query_LeadingZeroIndex_IsAccepted, PathTests.Query_MemberNameStartingWithDigit_IsRefused -->
 The language of the package is a part of RFC 9535, with these differences. The first four are defects of version 1.0.15.0, because the RFC states the behavior they depart from; the first three give wrong results with no error, and [Known problems](.#known-problems-in-version-10150) shows them.
 
 - **A comparison with a missing value is false.** In RFC 9535 a query that selects nothing is a value that is equal to another such query and to nothing else, so `@.a != 1` is true for an element without `a`, and `@.a == @.b` is true for an element that has neither. In this package a comparison is false whenever either side selects no value or more than one, whatever the operator is. The elements without `a` are not selected by `[?@.a != 1]`, although `[?!(@.a == 1)]` selects them.
@@ -123,6 +132,7 @@ Debug.Print Json.Serialize(Json.Query(text, "$[?length(@.s) == 2].n"), JsonOptio
 ' $.0 -> InvalidPath: Expected member name.
 ' [1,2]
 ```
+<!-- /test -->
 
 
 ## Properties

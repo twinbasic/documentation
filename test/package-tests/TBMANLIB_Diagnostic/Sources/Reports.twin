@@ -1,0 +1,46 @@
+' Reports: small helpers that read the items of a DiagnosticResult, shared by the cases that run
+' the collectors.
+Module Reports
+
+    ' The decimal separator of the user's regional settings, as Format writes it.
+    Public Function Sep() As String
+        Sep = Mid$(Format$(1.5, "0.0"), 2, 1)
+    End Function
+
+    ' The result of one collector run directly, through the interface.
+    Public Function CollectFrom(ByVal C As IDiagnosticCollector) As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set CollectFrom = C.Collect()
+    End Function
+
+    ' The position of the first item with a key, or -1.
+    Public Function IndexOfKey(ByVal R As DiagnosticResult(Of KeyValuePair(Of String, String)), ByVal Key As String) As Long
+        Dim i As Long
+        For i = 0 To R.ItemCount - 1
+            If R.Items.Item(i).Key = Key Then
+                IndexOfKey = i
+                Exit Function
+            End If
+        Next i
+        IndexOfKey = -1
+    End Function
+
+    Public Function HasKey(ByVal R As DiagnosticResult(Of KeyValuePair(Of String, String)), ByVal Key As String) As Boolean
+        HasKey = IndexOfKey(R, Key) >= 0
+    End Function
+
+    ' The value of the first item with a key, or "" when there is none.
+    Public Function ValueOf(ByVal R As DiagnosticResult(Of KeyValuePair(Of String, String)), ByVal Key As String) As String
+        Dim i As Long
+        i = IndexOfKey(R, Key)
+        If i >= 0 Then ValueOf = R.Items.Item(i).Value
+    End Function
+
+    ' The number of items whose key matches a Like pattern.
+    Public Function CountKeysLike(ByVal R As DiagnosticResult(Of KeyValuePair(Of String, String)), ByVal Pattern As String) As Long
+        Dim i As Long
+        For i = 0 To R.ItemCount - 1
+            If R.Items.Item(i).Key Like Pattern Then CountKeysLike = CountKeysLike + 1
+        Next i
+    End Function
+
+End Module

@@ -1,0 +1,40 @@
+[
+	{
+		"Caption": "HostForm",
+		"FormDesignerId": "{7B247400-0000-4000-9000-7B2474000F10}",
+		"Height": 300,
+		"Name": "HostForm",
+		"Width": 300,
+		"_children": [
+			{
+				"Height": 100,
+				"Left": 20,
+				"Name": "List1",
+				"Top": 10,
+				"Width": 150,
+				"_className": "ListBox",
+				"_clsid": "{33AD4F10-6699-11CF-B70C-00AA0060D393}"
+			},
+			{
+				"Height": 100,
+				"Left": 20,
+				"Name": "List2",
+				"Top": 120,
+				"Width": 150,
+				"_className": "ListBox",
+				"_clsid": "{33AD4F10-6699-11CF-B70C-00AA0060D393}"
+			},
+			{
+				"Height": 20,
+				"Left": 180,
+				"Name": "Text1",
+				"Top": 10,
+				"Width": 100,
+				"_className": "TextBox",
+				"_clsid": "{33AD4EE0-6699-11CF-B70C-00AA0060D393}"
+			}
+		],
+		"_className": "Form",
+		"_clsid": "{33AD4F38-6699-11CF-B70C-00AA0060D393}"
+	}
+]

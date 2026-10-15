@@ -41,9 +41,11 @@ Debug.Print y.ToXmlString(False)
 ' <library city="Oslo"><book id="1">Dune</book></library>
 ```
 
+<!-- test: SelfClosingTests.Parse_BareSelfClosingElement_IsAnElementNamedLikeTheTag, EntityTests.Parse_PredefinedEntitiesInText_AreDecoded, TagTests.Parse_BothKindsOfQuote_KeepEveryAttribute, DeclarationTests.Parse_ProcessingInstructionInsideAnElement_LeavesNoText, DeclarationTests.Parse_UnclosedComment_Returns, DeclarationTests.Parse_UnclosedCDataSection_Returns, DeclarationTests.Parse_DoctypeAfterTheDeclaration_Returns -->
 > [!WARNING] 1.0.0.1
 > The parser reads some valid XML wrongly and raises no error, and for some text it never returns. [Defects in version 1.0.0.1](cXml#defects) lists the cases: self-closing elements, entities in text, tags with both kinds of quote or with line breaks, processing instructions, and comments, CDATA sections and DOCTYPE declarations in some positions.
 
+<!-- test: XPathStepTests.ParentStep_AfterChildSteps_SelectsTheParent, XPathStepTests.Axes_Ancestor_SelectsTheAncestors, XPathPredicateTests.Positions_AfterDoubleSlash_CountPerParent, XPathPredicateTests.Logic_AndBeforeOr_BindsAndTighter, XPathPredicateTests.Logic_OrBeforeAnd_BindsAndTighter -->
 > [!WARNING] 1.0.0.1
 > The XPath engine reads some valid expressions wrongly and raises no error: the step `..`, axes such as `ancestor::`, positions after `//`, and the operators `and` and `or`. [Defects in version 1.0.0.1](mXPath#defects) lists the cases.
 
@@ -148,3 +150,7 @@ The checks compare one value at a time and do not exercise the cases listed unde
 - [cXmlNode](cXmlNode) class -- the nodes
 - [mXml](mXml) module -- constants, enumerations and UTF-8 conversion
 - [Experimental Packages](../../Experimental/) -- the packages from TWINSERV that are not yet ready for use in a program
+
+## Test cases
+
+The notes and warnings of this section are checked by the test cases in [TBMANLIB_Xml-tests.twinproj](TBMANLIB_Xml-tests.twinproj), a twinBASIC project. It uses TBMANLIB_Xml as a [linked package](../../../../Features/Packages/Linked#manual-management): put the package's `.twinpack` in `%APPDATA%\twinBASIC\packages`, then run the project, and each case prints whether it passes.

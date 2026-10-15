@@ -1,0 +1,295 @@
+' TestServer: a small HTTP server for the cases of cHttpClient, on 127.0.0.1 only.
+'
+' A case calls ServerUp, which listens on a free port of the loopback address and returns the port,
+' sets the answer for each connection with Respond (or RespondSilently, for a server that reads the
+' request and never answers), starts the server thread with Run, and calls the client. ServerDown ends
+' the thread and the socket; a case calls it at its end, and ServerUp calls it first, so a case that
+' stopped half way leaves nothing behind. After the client has finished, RequestText and RequestBody
+' give what the client sent on each connection.
+'
+' The server thread uses only the arrays and numbers of this module and the Windows functions
+' declared here, and handles its own errors; it takes no part in the program's objects. Nothing in
+' this module goes beyond the loopback interface.
+Module TestServer
+
+    Private Declare PtrSafe Function WSAStartup Lib "ws2_32" (ByVal wVersionRequested As Integer, ByRef lpWSAData As Any) As Long
+    Private Declare PtrSafe Function WSACleanup Lib "ws2_32" () As Long
+    Private Declare PtrSafe Function ws_socket Lib "ws2_32" Alias "socket" (ByVal af As Long, ByVal stype As Long, ByVal protocol As Long) As LongPtr
+    Private Declare PtrSafe Function ws_bind Lib "ws2_32" Alias "bind" (ByVal s As LongPtr, ByRef name As Any, ByVal namelen As Long) As Long
+    Private Declare PtrSafe Function ws_listen Lib "ws2_32" Alias "listen" (ByVal s As LongPtr, ByVal backlog As Long) As Long
+    Private Declare PtrSafe Function ws_accept Lib "ws2_32" Alias "accept" (ByVal s As LongPtr, ByVal addr As LongPtr, ByVal addrlen As LongPtr) As LongPtr
+    Private Declare PtrSafe Function ws_getsockname Lib "ws2_32" Alias "getsockname" (ByVal s As LongPtr, ByRef name As Any, ByRef namelen As Long) As Long
+    Private Declare PtrSafe Function ws_recv Lib "ws2_32" Alias "recv" (ByVal s As LongPtr, ByRef buf As Any, ByVal buflen As Long, ByVal flags As Long) As Long
+    Private Declare PtrSafe Function ws_send Lib "ws2_32" Alias "send" (ByVal s As LongPtr, ByRef buf As Any, ByVal buflen As Long, ByVal flags As Long) As Long
+    Private Declare PtrSafe Function ws_closesocket Lib "ws2_32" Alias "closesocket" (ByVal s As LongPtr) As Long
+    Private Declare PtrSafe Function ws_shutdown Lib "ws2_32" Alias "shutdown" (ByVal s As LongPtr, ByVal how As Long) As Long
+    Private Declare PtrSafe Function ws_setsockopt Lib "ws2_32" Alias "setsockopt" (ByVal s As LongPtr, ByVal level As Long, ByVal optname As Long, ByRef optval As Any, ByVal optlen As Long) As Long
+    Private Declare PtrSafe Function CreateThread Lib "kernel32" (ByVal lpThreadAttributes As LongPtr, ByVal dwStackSize As LongPtr, ByVal lpStartAddress As LongPtr, ByVal lpParameter As LongPtr, ByVal dwCreationFlags As Long, ByRef lpThreadId As Long) As LongPtr
+    Private Declare PtrSafe Function WaitForSingleObject Lib "kernel32" (ByVal hHandle As LongPtr, ByVal dwMilliseconds As Long) As Long
+    Private Declare PtrSafe Function CloseHandle Lib "kernel32" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
+
+    Private Const MAXCONN As Long = 4
+    Private Const REQ_STRIDE As Long = 65536
+    Private Const RESP_STRIDE As Long = 32768
+
+    Private gReq(0 To 262143) As Byte
+    Private gReqLen(0 To 3) As Long
+    Private gResp(0 To 131071) As Byte
+    Private gRespLen(0 To 3) As Long
+    Private gSilent(0 To 3) As Long
+
+    Private gPat(0 To 14) As Byte
+    Private gListen As LongPtr
+    Private gThread As LongPtr
+    Private gPort As Long
+    Private gExpected As Long
+    Private gServed As Long
+    Private gStop As Long
+    Private gThreadError As Long
+    Private gStarted As Boolean
+
+    ' Starts listening on the loopback address and returns the port.
+    Public Function ServerUp() As Long
+        Dim wsa(0 To 511) As Byte, addr(0 To 15) As Byte, n As Long, i As Long
+        ServerDown
+        For i = 0 To MAXCONN - 1
+            gReqLen(i) = 0
+            gRespLen(i) = 0
+            gSilent(i) = 0
+        Next i
+        Dim pat As String
+        pat = "content-length:"
+        For i = 1 To Len(pat)
+            gPat(i - 1) = AscW(Mid$(pat, i, 1))
+        Next i
+        gServed = 0
+        gStop = 0
+        gThreadError = 0
+        If WSAStartup(&H202, wsa(0)) <> 0 Then Err.Raise 5, "TestServer.ServerUp", "WSAStartup failed"
+        gStarted = True
+        gListen = ws_socket(2, 1, 6)
+        If gListen = 0 Or gListen = -1 Then Err.Raise 5, "TestServer.ServerUp", "socket failed"
+        addr(0) = 2
+        addr(4) = 127
+        addr(7) = 1
+        If ws_bind(gListen, addr(0), 16) <> 0 Then Err.Raise 5, "TestServer.ServerUp", "bind failed"
+        If ws_listen(gListen, 4) <> 0 Then Err.Raise 5, "TestServer.ServerUp", "listen failed"
+        n = 16
+        If ws_getsockname(gListen, addr(0), n) <> 0 Then Err.Raise 5, "TestServer.ServerUp", "getsockname failed"
+        gPort = addr(2) * 256& + addr(3)
+        ServerUp = gPort
+    End Function
+
+    ' The text with the port of the server replaced by <port>, so that a report is the same on every run.
+    Public Function Masked(ByVal Text As String) As String
+        Masked = Replace(Text, ":" & gPort, ":<port>")
+    End Function
+
+    Public Function Url(ByVal Path As String) As String
+        Url = "http://127.0.0.1:" & gPort & Path
+    End Function
+
+    ' The whole answer, with its status line, headers, a blank line and the body, for connection
+    ' number Index (from 0).
+    Public Sub Respond(ByVal Index As Long, ByVal Text As String)
+        Dim b() As Byte, i As Long
+        b = StrConv(Text, vbFromUnicode)
+        For i = 0 To UBound(b)
+            gResp(Index * RESP_STRIDE + i) = b(i)
+        Next i
+        gRespLen(Index) = UBound(b) + 1
+        gSilent(Index) = 0
+    End Sub
+
+    ' Connection number Index is read and then held open with no answer until ServerDown.
+    Public Sub RespondSilently(ByVal Index As Long)
+        gSilent(Index) = 1
+    End Sub
+
+    ' An answer of status 200 with a plain text body.
+    Public Function Ok(ByVal Body As String) As String
+        Ok = "HTTP/1.1 200 OK" & vbCrLf & "Content-Type: text/plain" & vbCrLf & "Content-Length: " & Len(Body) & vbCrLf & "Connection: close" & vbCrLf & vbCrLf & Body
+    End Function
+
+    ' Starts the server thread, which serves Expected connections one after the other.
+    Public Sub Run(ByVal Expected As Long)
+        Dim tid As Long
+        gExpected = Expected
+        gThread = CreateThread(0, 0, AddressOf ServerThread, 0, 0, tid)
+        If gThread = 0 Then Err.Raise 5, "TestServer.Run", "CreateThread failed"
+    End Sub
+
+    ' Ends the thread and closes the sockets. Raises no error and may be called twice.
+    Public Sub ServerDown()
+        gStop = 1
+        If gListen <> 0 Then
+            ws_closesocket gListen
+            gListen = 0
+        End If
+        If gThread <> 0 Then
+            WaitForSingleObject gThread, 5000
+            CloseHandle gThread
+            gThread = 0
+        End If
+        If gStarted Then
+            WSACleanup
+            gStarted = False
+        End If
+    End Sub
+
+    Public Function Served() As Long
+        Served = gServed
+    End Function
+
+    Public Function ThreadFailed() As Long
+        ThreadFailed = gThreadError
+    End Function
+
+    ' What the client sent on connection number Index, as text (one character for each byte).
+    Public Function RequestText(ByVal Index As Long) As String
+        Dim b() As Byte, i As Long, s As String
+        If gReqLen(Index) = 0 Then Exit Function
+        ReDim b(0 To gReqLen(Index) - 1)
+        For i = 0 To gReqLen(Index) - 1
+            b(i) = gReq(Index * REQ_STRIDE + i)
+        Next i
+        RequestText = StrConv(b, vbUnicode)
+    End Function
+
+    ' The bytes of the body of the request on connection number Index.
+    Public Function RequestBody(ByVal Index As Long) As Byte()
+        Dim b() As Byte, e As Long, i As Long, n As Long
+        e = HeaderEnd(Index * REQ_STRIDE, gReqLen(Index))
+        If e < 0 Then Exit Function
+        n = gReqLen(Index) - (e + 4)
+        If n <= 0 Then Exit Function
+        ReDim b(0 To n - 1)
+        For i = 0 To n - 1
+            b(i) = gReq(Index * REQ_STRIDE + e + 4 + i)
+        Next i
+        RequestBody = b
+    End Function
+
+    ' The text of the headers of the request on connection number Index: the request line and the
+    ' header lines.
+    Public Function RequestHead(ByVal Index As Long) As String
+        Dim t As String, p As Long
+        t = RequestText(Index)
+        p = InStr(t, vbCrLf & vbCrLf)
+        If p > 0 Then RequestHead = Left$(t, p - 1) Else RequestHead = t
+    End Function
+
+    ' The value of a header line of the request, or "" when there is none. Matches the name without
+    ' regard to letter case.
+    Public Function RequestHeader(ByVal Index As Long, ByVal Name As String) As String
+        Dim lines() As String, i As Long, p As Long
+        lines = Split(RequestHead(Index), vbCrLf)
+        For i = 1 To UBound(lines)
+            p = InStr(lines(i), ":")
+            If p > 0 Then
+                If StrComp(Left$(lines(i), p - 1), Name, vbTextCompare) = 0 Then
+                    RequestHeader = Trim$(Mid$(lines(i), p + 1))
+                    Exit Function
+                End If
+            End If
+        Next i
+    End Function
+
+    ' ---- the server thread
+
+    ' Index, relative to Base, of the first byte of the first blank line, or -1.
+    Private Function HeaderEnd(ByVal Base As Long, ByVal Total As Long) As Long
+        Dim i As Long
+        HeaderEnd = -1
+        For i = 0 To Total - 4
+            If gReq(Base + i) = 13 Then
+                If gReq(Base + i + 1) = 10 And gReq(Base + i + 2) = 13 And gReq(Base + i + 3) = 10 Then
+                    HeaderEnd = i
+                    Exit Function
+                End If
+            End If
+        Next i
+    End Function
+
+    ' The value of the header Content-Length in the headers that end at HdrEnd, or 0.
+    Private Function ContentLengthOf(ByVal Base As Long, ByVal HdrEnd As Long) As Long
+        Dim i As Long, j As Long, v As Long, ch As Long, ok As Boolean
+        For i = 0 To HdrEnd - 1
+            ok = (i = 0)
+            If Not ok Then ok = (gReq(Base + i - 1) = 10)
+            If ok Then
+                ok = True
+                For j = 0 To 14
+                    ch = gReq(Base + i + j)
+                    If ch >= 65 And ch <= 90 Then ch = ch + 32
+                    If ch <> gPat(j) Then
+                        ok = False
+                        Exit For
+                    End If
+                Next j
+                If ok Then
+                    j = i + 15
+                    Do While gReq(Base + j) = 32
+                        j = j + 1
+                    Loop
+                    v = 0
+                    Do While gReq(Base + j) >= 48 And gReq(Base + j) <= 57
+                        v = v * 10 + (gReq(Base + j) - 48)
+                        j = j + 1
+                    Loop
+                    ContentLengthOf = v
+                    Exit Function
+                End If
+            End If
+        Next i
+    End Function
+
+    Private Sub Serve(ByVal C As LongPtr, ByVal Index As Long)
+        Dim base As Long, total As Long, n As Long, hdr As Long, bodyLen As Long, tmo As Long, sent As Long
+        base = Index * REQ_STRIDE
+        tmo = 3000
+        ws_setsockopt C, &HFFFF&, &H1006&, tmo, 4
+        hdr = -1
+        Do
+            n = ws_recv(C, gReq(base + total), REQ_STRIDE - total, 0)
+            If n <= 0 Then Exit Do
+            total = total + n
+            If hdr < 0 Then hdr = HeaderEnd(base, total)
+            If hdr >= 0 Then
+                bodyLen = ContentLengthOf(base, hdr)
+                If total >= hdr + 4 + bodyLen Then Exit Do
+            End If
+        Loop While total < REQ_STRIDE
+        gReqLen(Index) = total
+        If gSilent(Index) <> 0 Then
+            Do While gStop = 0
+                Sleep 20
+            Loop
+        ElseIf gRespLen(Index) > 0 Then
+            Do While sent < gRespLen(Index)
+                n = ws_send(C, gResp(Index * RESP_STRIDE + sent), gRespLen(Index) - sent, 0)
+                If n <= 0 Then Exit Do
+                sent = sent + n
+            Loop
+        End If
+        ws_shutdown C, 1
+        ws_closesocket C
+    End Sub
+
+    [Debuggable(False)]
+    Public Function ServerThread(ByVal Param As LongPtr) As Long
+        On Error GoTo Failed
+        Dim i As Long, c As LongPtr
+        For i = 0 To gExpected - 1
+            c = ws_accept(gListen, 0, 0)
+            If c = 0 Or c = -1 Then Exit For
+            Serve c, i
+            gServed = gServed + 1
+        Next i
+        Exit Function
+Failed:
+        gThreadError = Err.Number
+    End Function
+
+End Module

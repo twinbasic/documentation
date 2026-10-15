@@ -1,0 +1,273 @@
+' TBMANLIB_ConsoleComponents: cColorHelper. It needs no console, so it works with the package as it is.
+[TestFixture]
+Module ColorHelperTests
+
+    ' ---- HeatmapColor
+
+    [TestCase]
+    Public Sub HeatmapColor_ThresholdsAreAtHalfAndEightTenths()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Expect.AreEqual CLng(ConsoleColor.Green), CLng(h.HeatmapColor(0, 0, 100)), "HeatmapColor of 0 in 0 to 100"
+        Expect.AreEqual CLng(ConsoleColor.Green), CLng(h.HeatmapColor(49.9, 0, 100)), "HeatmapColor of 49.9"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(h.HeatmapColor(50, 0, 100)), "HeatmapColor of 50"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(h.HeatmapColor(79.9, 0, 100)), "HeatmapColor of 79.9"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(h.HeatmapColor(80, 0, 100)), "HeatmapColor of 80"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(h.HeatmapColor(100, 0, 100)), "HeatmapColor of 100"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HeatmapColor_ValueOutsideTheRange_IsLimitedToIt()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Expect.AreEqual CLng(ConsoleColor.Green), CLng(h.HeatmapColor(-50, 0, 100)), "HeatmapColor of -50"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(h.HeatmapColor(500, 0, 100)), "HeatmapColor of 500"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HeatmapColor_MaxNotAboveMin_IsTheMiddleColour()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(h.HeatmapColor(5, 10, 10)), "HeatmapColor with min equal to max"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(h.HeatmapColor(5, 10, 3)), "HeatmapColor with max below min"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub HeatmapColor_GivenColours_AreUsedInPlaceOfTheDefaults()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Expect.AreEqual CLng(ConsoleColor.Blue), CLng(h.HeatmapColor(10, 0, 100, ConsoleColor.Blue, ConsoleColor.Cyan, ConsoleColor.White)), "low colour"
+        Expect.AreEqual CLng(ConsoleColor.Cyan), CLng(h.HeatmapColor(60, 0, 100, ConsoleColor.Blue, ConsoleColor.Cyan, ConsoleColor.White)), "mid colour"
+        Expect.AreEqual CLng(ConsoleColor.White), CLng(h.HeatmapColor(95, 0, 100, ConsoleColor.Blue, ConsoleColor.Cyan, ConsoleColor.White)), "high colour"
+        Expect.Done
+    End Sub
+
+    ' ---- GradientColor
+
+    [TestCase]
+    Public Sub GradientColor_ChoosesAmongTheThreeColoursAtAQuarterAndThreeQuarters()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Dim a As ConsoleColor = ConsoleColor.Red
+        Dim b As ConsoleColor = ConsoleColor.Green
+        Dim c As ConsoleColor = ConsoleColor.Blue
+        Expect.AreEqual CLng(a), CLng(h.GradientColor(0, 0, 100, a, b, c)), "GradientColor of 0"
+        Expect.AreEqual CLng(a), CLng(h.GradientColor(24.9, 0, 100, a, b, c)), "GradientColor of 24.9"
+        Expect.AreEqual CLng(b), CLng(h.GradientColor(25, 0, 100, a, b, c)), "GradientColor of 25"
+        Expect.AreEqual CLng(b), CLng(h.GradientColor(74.9, 0, 100, a, b, c)), "GradientColor of 74.9"
+        Expect.AreEqual CLng(c), CLng(h.GradientColor(75, 0, 100, a, b, c)), "GradientColor of 75"
+        Expect.AreEqual CLng(c), CLng(h.GradientColor(100, 0, 100, a, b, c)), "GradientColor of 100"
+        Expect.AreEqual CLng(a), CLng(h.GradientColor(-20, 0, 100, a, b, c)), "GradientColor of -20"
+        Expect.AreEqual CLng(c), CLng(h.GradientColor(300, 0, 100, a, b, c)), "GradientColor of 300"
+        Expect.AreEqual CLng(b), CLng(h.GradientColor(1, 5, 5, a, b, c)), "GradientColor with min equal to max"
+        Expect.Done
+    End Sub
+
+    ' ---- IntensityColor
+
+    [TestCase]
+    Public Sub IntensityColor_EightLevelsInTheOrderOfTheColourNumbers()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Expect.AreEqual CLng(ConsoleColor.Black), CLng(h.IntensityColor(0, 0, 7)), "level 0"
+        Expect.AreEqual CLng(ConsoleColor.DarkBlue), CLng(h.IntensityColor(1, 0, 7)), "level 1"
+        Expect.AreEqual CLng(ConsoleColor.DarkGreen), CLng(h.IntensityColor(2, 0, 7)), "level 2"
+        Expect.AreEqual CLng(ConsoleColor.DarkCyan), CLng(h.IntensityColor(3, 0, 7)), "level 3"
+        Expect.AreEqual CLng(ConsoleColor.DarkRed), CLng(h.IntensityColor(4, 0, 7)), "level 4"
+        Expect.AreEqual CLng(ConsoleColor.DarkMagenta), CLng(h.IntensityColor(5, 0, 7)), "level 5"
+        Expect.AreEqual CLng(ConsoleColor.DarkYellow), CLng(h.IntensityColor(6, 0, 7)), "level 6"
+        Expect.AreEqual CLng(ConsoleColor.DarkGray), CLng(h.IntensityColor(7, 0, 7)), "level 7"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IntensityColor_LevelIsRoundedHalfToEven()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Expect.AreEqual CLng(ConsoleColor.DarkRed), CLng(h.IntensityColor(3.5, 0, 7)), "level of 3.5 (rounds to 4)"
+        Expect.AreEqual CLng(ConsoleColor.DarkRed), CLng(h.IntensityColor(50, 0, 100)), "IntensityColor of 50 in 0 to 100"
+        Expect.AreEqual CLng(ConsoleColor.DarkRed), CLng(h.IntensityColor(5, 10, 10)), "IntensityColor with min equal to max"
+        Expect.AreEqual CLng(ConsoleColor.Black), CLng(h.IntensityColor(-9, 0, 7)), "IntensityColor below the range"
+        Expect.AreEqual CLng(ConsoleColor.DarkGray), CLng(h.IntensityColor(99, 0, 7)), "IntensityColor above the range"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IntensityColor_UsesItsBaseColour()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Dim r As Long = CLng(h.IntensityColor(50, 0, 100, ConsoleColor.Red))
+        Dim b As Long = CLng(h.IntensityColor(50, 0, 100, ConsoleColor.Blue))
+        Expect.IsTrue r <> b, "IntensityColor of 50 with the base colour Red (" & r & ") and with Blue (" & b & ") differ"
+        Expect.Done
+    End Sub
+
+    ' ---- the usage colours
+
+    [TestCase]
+    Public Sub CPUUsageColor_ThresholdsAre50And80()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Expect.AreEqual CLng(ConsoleColor.Green), CLng(h.CPUUsageColor(49.9)), "CPUUsageColor of 49.9"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(h.CPUUsageColor(50)), "CPUUsageColor of 50"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(h.CPUUsageColor(79.9)), "CPUUsageColor of 79.9"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(h.CPUUsageColor(80)), "CPUUsageColor of 80"
+        Expect.AreEqual CLng(ConsoleColor.Green), CLng(h.CPUUsageColor(-10)), "CPUUsageColor of -10"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(h.CPUUsageColor(500)), "CPUUsageColor of 500"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MemoryUsageColor_ThresholdsAre70And90()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Expect.AreEqual CLng(ConsoleColor.Green), CLng(h.MemoryUsageColor(69.9)), "MemoryUsageColor of 69.9"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(h.MemoryUsageColor(70)), "MemoryUsageColor of 70"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(h.MemoryUsageColor(89.9)), "MemoryUsageColor of 89.9"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(h.MemoryUsageColor(90)), "MemoryUsageColor of 90"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DiskUsageColor_ThresholdsAre80And95()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Expect.AreEqual CLng(ConsoleColor.Green), CLng(h.DiskUsageColor(79.9)), "DiskUsageColor of 79.9"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(h.DiskUsageColor(80)), "DiskUsageColor of 80"
+        Expect.AreEqual CLng(ConsoleColor.Yellow), CLng(h.DiskUsageColor(94.9)), "DiskUsageColor of 94.9"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(h.DiskUsageColor(95)), "DiskUsageColor of 95"
+        Expect.Done
+    End Sub
+
+    ' ---- contrast and darkness
+
+    [TestCase]
+    Public Sub GetContrastColor_WhiteUpToDarkGray_BlackAbove()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Dim c As Long
+        For c = 0 To 8
+            Expect.AreEqual CLng(ConsoleColor.White), CLng(h.GetContrastColor(c)), "GetContrastColor of " & c
+        Next
+        For c = 9 To 15
+            Expect.AreEqual CLng(ConsoleColor.Black), CLng(h.GetContrastColor(c)), "GetContrastColor of " & c
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsDarkColor_TrueUpToDarkGray_FalseAbove()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Dim c As Long
+        For c = 0 To 8
+            Expect.IsTrue h.IsDarkColor(c), "IsDarkColor of " & c
+        Next
+        For c = 9 To 15
+            Expect.IsFalse h.IsDarkColor(c), "IsDarkColor of " & c
+        Next
+        Expect.Done
+    End Sub
+
+    ' ---- DimColor and BrightenColor
+
+    [TestCase]
+    Public Sub DimColor_BrightColour_IsTheDarkColourOfTheSameHue()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Expect.AreEqual CLng(ConsoleColor.DarkBlue), CLng(h.DimColor(ConsoleColor.Blue)), "DimColor of Blue"
+        Expect.AreEqual CLng(ConsoleColor.DarkRed), CLng(h.DimColor(ConsoleColor.Red)), "DimColor of Red"
+        Expect.AreEqual CLng(ConsoleColor.Gray), CLng(h.DimColor(ConsoleColor.White)), "DimColor of White"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DimColor_DarkColour_IsNotBrighter()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Expect.IsTrue CLng(h.DimColor(ConsoleColor.Black)) <= CLng(ConsoleColor.Black), "DimColor of Black (" & CLng(h.DimColor(ConsoleColor.Black)) & ") is not brighter than Black"
+        Expect.IsTrue CLng(h.DimColor(ConsoleColor.DarkGreen)) <= CLng(ConsoleColor.DarkGreen), "DimColor of DarkGreen (" & CLng(h.DimColor(ConsoleColor.DarkGreen)) & ") is not brighter than DarkGreen"
+        Expect.IsTrue CLng(h.DimColor(ConsoleColor.Gray)) <= CLng(ConsoleColor.Gray), "DimColor of Gray (" & CLng(h.DimColor(ConsoleColor.Gray)) & ") is not brighter than Gray"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BrightenColor_DarkColour_IsTheBrightColourOfTheSameHue()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Expect.AreEqual CLng(ConsoleColor.DarkGray), CLng(h.BrightenColor(ConsoleColor.Black)), "BrightenColor of Black"
+        Expect.AreEqual CLng(ConsoleColor.Blue), CLng(h.BrightenColor(ConsoleColor.DarkBlue)), "BrightenColor of DarkBlue"
+        Expect.AreEqual CLng(ConsoleColor.White), CLng(h.BrightenColor(ConsoleColor.Gray)), "BrightenColor of Gray"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BrightenColor_BrightColour_IsWhite()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Dim c As Long
+        For c = 9 To 15
+            Expect.AreEqual CLng(ConsoleColor.White), CLng(h.BrightenColor(c)), "BrightenColor of " & c
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub BrightenColor_DarkGray_IsAConsoleColour()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Dim r As Long = CLng(h.BrightenColor(ConsoleColor.DarkGray))
+        Expect.IsTrue r >= 0 And r <= 15, "BrightenColor of DarkGray (" & r & ") is a ConsoleColor, 0 to 15"
+        Expect.Done
+    End Sub
+
+    ' ---- CycleColor
+
+    [TestCase]
+    Public Sub CycleColor_GoesRoundTheList_AlsoBackwards()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Dim list(0 To 2) As ConsoleColor
+        list(0) = ConsoleColor.Red
+        list(1) = ConsoleColor.Green
+        list(2) = ConsoleColor.Blue
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(h.CycleColor(0, list)), "CycleColor of 0"
+        Expect.AreEqual CLng(ConsoleColor.Blue), CLng(h.CycleColor(2, list)), "CycleColor of 2"
+        Expect.AreEqual CLng(ConsoleColor.Red), CLng(h.CycleColor(3, list)), "CycleColor of 3"
+        Expect.AreEqual CLng(ConsoleColor.Green), CLng(h.CycleColor(7, list)), "CycleColor of 7"
+        Expect.AreEqual CLng(ConsoleColor.Blue), CLng(h.CycleColor(-1, list)), "CycleColor of -1"
+        Expect.AreEqual CLng(ConsoleColor.Green), CLng(h.CycleColor(-2, list)), "CycleColor of -2"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CycleColor_EmptyList_IsGray()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Dim list() As ConsoleColor
+        list = Cells.EmptyArray(3)
+        Expect.AreEqual CLng(ConsoleColor.Gray), CLng(h.CycleColor(5, list)), "CycleColor of an array with no element"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CycleColor_ListStartingAtOne_GivesTheFirstElementForIndexZero()
+        Expect.Begin
+        Dim h As New cColorHelper
+        Dim list(1 To 3) As ConsoleColor
+        list(1) = ConsoleColor.Red
+        list(2) = ConsoleColor.Green
+        list(3) = ConsoleColor.Blue
+        Dim r As Long
+        On Error Resume Next
+        r = CLng(h.CycleColor(0, list))
+        Expect.AreEqual 0, Err.Number, "Err.Number of CycleColor on an array with the lower bound 1"
+        On Error GoTo 0
+        Expect.AreEqual CLng(ConsoleColor.Red), r, "CycleColor of 0 on an array with the lower bound 1"
+        Expect.Done
+    End Sub
+
+End Module

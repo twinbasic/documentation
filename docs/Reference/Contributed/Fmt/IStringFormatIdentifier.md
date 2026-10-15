@@ -8,6 +8,8 @@ has_toc: false
 # IStringFormatIdentifier interface
 {: .no_toc }
 
+<!-- test: IdentifierInterfaceTests.OwnClass_CanBeCalledThroughTheInterface, IdentifierInterfaceTests.OwnClass_IsNotKnownToStringFormat, IdentifierInterfaceTests.EveryClass_ImplementsTheInterface -->
+
 The contract that a format identifier class implements: it says whether it handles an item's identifier, and formats a value for it.
 
 Each of the eleven format identifier classes of the package implements **IStringFormatIdentifier**: [**CurrencySFI**](CurrencySFI), [**DateTimeSFI**](DateTimeSFI), [**DecimalSFI**](DecimalSFI), [**ExponentialSFI**](ExponentialSFI), [**FixedPointSFI**](FixedPointSFI), [**GeneralNumericSFI**](GeneralNumericSFI), [**GenericDateTimeSFI**](GenericDateTimeSFI), [**HexSFI**](HexSFI), [**NumericPaddingSFI**](NumericPaddingSFI), [**PercentSFI**](PercentSFI) and [**RoundTripSFI**](RoundTripSFI). [**StringHelper**](StringHelper) holds one list of them for numeric values and one for dates. For each format item it asks every class of the list that suits the value's type whether it matches the item's identifier, and a class that matches formats the value. It does not stop at the first match, so the last matching class decides. The classes of one list match different letters, so at most one of them matches an item.
@@ -43,6 +45,8 @@ Syntax: *object*.**IsIdentifierMatch** ( *specifier* ) **As Boolean**
 : *required* A [**StringFormatSpecifier**](StringFormatSpecifier/) describing the format item.
 
 Returns **True** when the class formats items with that identifier. The classes of the package compare the specifier's [**identifier**](StringFormatSpecifier/identifier) with their own letter. The numeric classes ignore the case of the identifier. The date classes treat nine of their letters as case-sensitive and accept `C` in either case.
+
+<!-- /test -->
 
 ## Example
 

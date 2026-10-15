@@ -1,0 +1,42 @@
+' StubCollector: a collector of the program, for the cases that run the DiagnosticEngine.
+'
+' It returns one item (Answer = 42) in the category named by Category, or, when Fail is True,
+' raises run-time error 5 with the text "stub failure".
+Class StubCollector
+    Implements IDiagnosticCollector
+
+    Public Category As String
+    Public Fail As Boolean
+
+    Private Property Get IDiagnosticCollector_CategoryName() As String
+        Return Category
+    End Property
+
+    Private Property Get IDiagnosticCollector_Description() As String
+        Return "A collector for the test cases"
+    End Property
+
+    Private Property Get IDiagnosticCollector_RefreshMode() As RefreshMode
+        Return RefreshMode.Static
+    End Property
+
+    Private Property Get IDiagnosticCollector_RequiresElevation() As Boolean
+        Return False
+    End Property
+
+    Private Property Get IDiagnosticCollector_SupportsSummary() As Boolean
+        Return False
+    End Property
+
+    Private Function IDiagnosticCollector_Collect() As DiagnosticResult(Of KeyValuePair(Of String, String))
+        If Fail Then Err.Raise 5, "StubCollector", "stub failure"
+        Dim result As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Set result = New DiagnosticResult(Of KeyValuePair(Of String, String))(Category)
+        result.AddItem New KeyValuePair(Of String, String)("Answer", "42")
+        Return result
+    End Function
+
+    Private Function IDiagnosticCollector_CollectSummary() As DiagnosticResult(Of KeyValuePair(Of String, String))
+        Return IDiagnosticCollector_Collect()
+    End Function
+End Class

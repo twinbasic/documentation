@@ -1,0 +1,363 @@
+' TBMANLIB_ConsoleCore: the console the cases work on.
+'
+' A case that needs a console calls Rig.Acquire. It gives the process a screen buffer of its own as
+' the standard output and error handles, and the console's input buffer as the standard input
+' handle, which is what a cConsole made afterwards works on. The screen buffer is not the one the
+' console shows, unless a case calls Rig.MakeActive. Rig.Release puts the handles, the input mode,
+' the code pages and the shown screen buffer back. A case sets its cConsole to Nothing before it
+' calls Rig.Release.
+Module Rig
+
+    Private Declare PtrSafe Function K_CreateFileW Lib "kernel32" Alias "CreateFileW" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, ByVal lpSecurityAttributes As LongPtr, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr
+    Private Declare PtrSafe Function K_CloseHandle Lib "kernel32" Alias "CloseHandle" (ByVal hObject As LongPtr) As Long
+    Private Declare PtrSafe Function K_WriteConsoleInputW Lib "kernel32" Alias "WriteConsoleInputW" (ByVal hConsoleInput As LongPtr, ByVal lpBuffer As LongPtr, ByVal nLength As Long, ByRef lpNumberOfEventsWritten As Long) As Long
+    Private Declare PtrSafe Function K_ReadConsoleOutputCharacterW Lib "kernel32" Alias "ReadConsoleOutputCharacterW" (ByVal hConsoleOutput As LongPtr, ByVal lpCharacter As LongPtr, ByVal nLength As Long, ByVal dwReadCoord As Long, ByRef lpNumberOfCharsRead As Long) As Long
+    Private Declare PtrSafe Function K_ReadConsoleOutputAttribute Lib "kernel32" Alias "ReadConsoleOutputAttribute" (ByVal hConsoleOutput As LongPtr, ByVal lpAttribute As LongPtr, ByVal nLength As Long, ByVal dwReadCoord As Long, ByRef lpNumberOfAttrsRead As Long) As Long
+    Private Declare PtrSafe Function K_WriteConsoleOutputCharacterW Lib "kernel32" Alias "WriteConsoleOutputCharacterW" (ByVal hConsoleOutput As LongPtr, ByVal lpCharacter As LongPtr, ByVal nLength As Long, ByVal dwWriteCoord As Long, ByRef lpNumberOfCharsWritten As Long) As Long
+    Private Declare PtrSafe Sub K_Copy Lib "kernel32" Alias "RtlMoveMemory" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
+    Private mOldIn As LongPtr
+    Private mOldOut As LongPtr
+    Private mOldErr As LongPtr
+    Private mOutH As LongPtr
+    Private mInH As LongPtr
+    Private mErrH As LongPtr
+    Private mInMode As Long
+    Private mInCP As Long
+    Private mOutCP As Long
+    Private mOpen As Boolean
+    Private mShown As LongPtr
+    Private mFile As LongPtr
+
+    ' Gives the process a console to work on. Returns False when it cannot.
+    Public Function Acquire() As Boolean
+        If mOpen Then Release
+        mOldIn = mConsoleAPI.GetStdHandle(-10)
+        mOldOut = mConsoleAPI.GetStdHandle(-11)
+        mOldErr = mConsoleAPI.GetStdHandle(-12)
+        mOutH = mConsoleAPI.CreateConsoleScreenBuffer(&HC0000000, 3, 0, 1, 0)
+        ' GENERIC_READ Or GENERIC_WRITE, shared, a text-mode buffer
+        mErrH = mConsoleAPI.CreateConsoleScreenBuffer(&HC0000000, 3, 0, 1, 0)
+        Dim name As String
+        name = "CONIN$"
+        mInH = K_CreateFileW(StrPtr(name), &HC0000000, 3, 0, 3, 0, 0)
+        If mOutH = 0 Or mOutH = -1 Or mInH = 0 Or mInH = -1 Or mErrH = 0 Or mErrH = -1 Then
+            CloseAll
+            Exit Function
+        End If
+        ' A window of 100 columns by 30 rows, whatever the console had.
+        Dim wr As mConsoleAPI.SMALL_RECT
+        wr.Left = 0
+        wr.Top = 0
+        wr.Right = 99
+        wr.Bottom = 29
+        mConsoleAPI.SetConsoleWindowInfo mOutH, 1, wr
+        mConsoleAPI.SetConsoleScreenBufferSize mOutH, mConsoleAPI.MakeCOORD(100, 30)
+        mConsoleAPI.GetConsoleMode mInH, mInMode
+        mInCP = mConsoleAPI.GetConsoleCP()
+        mOutCP = mConsoleAPI.GetConsoleOutputCP()
+        mConsoleAPI.SetConsoleMode mInH, &H1F7
+        ' processed, line and echo input, with the flags a console starts with
+        mConsoleAPI.SetStdHandle -10, mInH
+        mConsoleAPI.SetStdHandle -11, mOutH
+        mConsoleAPI.SetStdHandle -12, mErrH
+        mConsoleAPI.FlushConsoleInputBuffer mInH
+        mOpen = True
+        Acquire = True
+    End Function
+
+    ' Makes the screen buffer of Acquire the one the console shows. Release puts the other back.
+    Public Sub MakeActive()
+        If Not mOpen Then Exit Sub
+        If mShown <> 0 Then Exit Sub
+        Dim name As String
+        name = "CONOUT$"
+        mShown = K_CreateFileW(StrPtr(name), &HC0000000, 3, 0, 3, 0, 0)
+        mConsoleAPI.SetConsoleActiveScreenBuffer mOutH
+    End Sub
+
+    ' Takes the standard input handle away, as in a program that has no console input.
+    Public Sub NoInput()
+        mConsoleAPI.SetStdHandle -10, 0
+    End Sub
+
+    ' Takes all three standard handles away, as in a program that has no console.
+    Public Sub NoHandles()
+        mConsoleAPI.SetStdHandle -10, 0
+        mConsoleAPI.SetStdHandle -11, 0
+        mConsoleAPI.SetStdHandle -12, 0
+    End Sub
+
+    ' Sends the standard output and error handles to a file, as in a program whose output is
+    ' redirected. The file is created empty.
+    Public Sub Redirect(ByVal Path As String)
+        If mFile <> 0 Then K_CloseHandle mFile
+        mFile = K_CreateFileW(StrPtr(Path), &H40000000, 3, 0, 2, 0, 0)
+        mConsoleAPI.SetStdHandle -11, mFile
+        mConsoleAPI.SetStdHandle -12, mFile
+    End Sub
+
+    ' Closes the file of Redirect, so that it can be read and removed.
+    Public Sub EndRedirect()
+        If mFile <> 0 Then K_CloseHandle mFile
+        mFile = 0
+    End Sub
+
+    Public Function InMode() As Long
+        Dim m As Long
+        mConsoleAPI.GetConsoleMode mInH, m
+        InMode = m
+    End Function
+
+    Public Sub SetInMode(ByVal Mode As Long)
+        mConsoleAPI.SetConsoleMode mInH, Mode
+    End Sub
+
+    Public Function OutMode() As Long
+        Dim m As Long
+        mConsoleAPI.GetConsoleMode mOutH, m
+        OutMode = m
+    End Function
+
+    Public Sub SetOutMode(ByVal Mode As Long)
+        mConsoleAPI.SetConsoleMode mOutH, Mode
+    End Sub
+
+    ' The width and height of the window of the screen buffer of Acquire.
+    Public Function WindowWidth() As Long
+        Dim csbi As mConsoleAPI.CONSOLE_SCREEN_BUFFER_INFO
+        mConsoleAPI.GetConsoleScreenBufferInfo mOutH, csbi
+        WindowWidth = csbi.srWindow.Right - csbi.srWindow.Left + 1
+    End Function
+
+    Public Function WindowHeight() As Long
+        Dim csbi As mConsoleAPI.CONSOLE_SCREEN_BUFFER_INFO
+        mConsoleAPI.GetConsoleScreenBufferInfo mOutH, csbi
+        WindowHeight = csbi.srWindow.Bottom - csbi.srWindow.Top + 1
+    End Function
+
+    Public Function BufferWidth() As Long
+        Dim csbi As mConsoleAPI.CONSOLE_SCREEN_BUFFER_INFO
+        mConsoleAPI.GetConsoleScreenBufferInfo mOutH, csbi
+        BufferWidth = csbi.dwSize.X
+    End Function
+
+    Public Function BufferHeight() As Long
+        Dim csbi As mConsoleAPI.CONSOLE_SCREEN_BUFFER_INFO
+        mConsoleAPI.GetConsoleScreenBufferInfo mOutH, csbi
+        BufferHeight = csbi.dwSize.Y
+    End Function
+
+    ' Moves the window of the screen buffer of Acquire so that its top row is Row.
+    Public Sub ScrollWindowTo(ByVal Row As Long)
+        Dim r As mConsoleAPI.SMALL_RECT
+        r.Left = 0
+        r.Top = CInt(Row)
+        r.Right = CInt(WindowWidth() - 1)
+        r.Bottom = CInt(Row + WindowHeight() - 1)
+        mConsoleAPI.SetConsoleWindowInfo mOutH, 1, r
+    End Sub
+
+    ' The text of a whole row of the screen buffer of Acquire, without the blanks at its end.
+    Public Function RowText(ByVal Row As Long) As String
+        RowText = RTrim$(TextAt(mOutH, 0, Row, BufferWidth()))
+    End Function
+
+    ' Puts back what Acquire changed.
+    Public Sub Release()
+        If Not mOpen Then Exit Sub
+        EndRedirect
+        If mShown <> 0 Then
+            mConsoleAPI.SetConsoleActiveScreenBuffer mShown
+            K_CloseHandle mShown
+            mShown = 0
+        End If
+        mConsoleAPI.SetStdHandle -10, mOldIn
+        mConsoleAPI.SetStdHandle -11, mOldOut
+        mConsoleAPI.SetStdHandle -12, mOldErr
+        mConsoleAPI.SetConsoleMode mInH, mInMode
+        mConsoleAPI.SetConsoleCP mInCP
+        mConsoleAPI.SetConsoleOutputCP mOutCP
+        mConsoleAPI.FlushConsoleInputBuffer mInH
+        CloseAll
+        mOpen = False
+    End Sub
+
+    Private Sub CloseAll()
+        If mOutH <> 0 And mOutH <> -1 Then K_CloseHandle mOutH
+        If mErrH <> 0 And mErrH <> -1 Then K_CloseHandle mErrH
+        If mInH <> 0 And mInH <> -1 Then K_CloseHandle mInH
+        mOutH = 0
+        mErrH = 0
+        mInH = 0
+    End Sub
+
+    Public Property Get OutHandle() As LongPtr
+        OutHandle = mOutH
+    End Property
+
+    Public Property Get ErrHandle() As LongPtr
+        ErrHandle = mErrH
+    End Property
+
+    Public Property Get InHandle() As LongPtr
+        InHandle = mInH
+    End Property
+
+    ' The path of a file in the folder the cases may use, which is created when it is missing.
+    Public Function TempPath(ByVal Name As String) As String
+        Dim d As String
+        d = Environ$("TEMP") & "\tbdocs-package-tests"
+        If Len(Dir$(d, vbDirectory)) = 0 Then MkDir d
+        d = d & "\TBMANLIB_ConsoleCore"
+        If Len(Dir$(d, vbDirectory)) = 0 Then MkDir d
+        TempPath = d & "\" & Name
+    End Function
+
+    ' Removes the files of the folder the cases use, and the folder.
+    Public Sub RemoveTemp()
+        Dim d As String
+        Dim f As String
+        d = Environ$("TEMP") & "\tbdocs-package-tests\TBMANLIB_ConsoleCore"
+        On Error Resume Next
+        f = Dir$(d & "\*.*")
+        Do While Len(f) > 0
+            Kill d & "\" & f
+            f = Dir$()
+        Loop
+        RmDir d
+    End Sub
+
+    ' Copies Count bytes from one address to another.
+    Public Sub ReadMemory(ByVal Source As LongPtr, ByVal Dest As LongPtr, ByVal Count As Long)
+        K_Copy Dest, Source, Count
+    End Sub
+
+    ' ---- the screen buffer
+
+    ' The text of n cells from a position of a screen buffer.
+    Public Function TextAt(ByVal h As LongPtr, ByVal Col As Long, ByVal Row As Long, ByVal n As Long) As String
+        Dim s As String
+        Dim got As Long
+        s = String$(n, " ")
+        K_ReadConsoleOutputCharacterW h, StrPtr(s), n, mConsoleAPI.MakeCOORD(CInt(Col), CInt(Row)), got
+        TextAt = Left$(s, got)
+    End Function
+
+    ' The attribute of one cell.
+    Public Function AttrAt(ByVal h As LongPtr, ByVal Col As Long, ByVal Row As Long) As Long
+        Dim a As Integer
+        Dim got As Long
+        K_ReadConsoleOutputAttribute h, VarPtr(a), 1, mConsoleAPI.MakeCOORD(CInt(Col), CInt(Row)), got
+        AttrAt = a And &HFFFF&
+    End Function
+
+    ' Writes text into the cells of a screen buffer, without moving the cursor.
+    Public Sub PutText(ByVal h As LongPtr, ByVal Col As Long, ByVal Row As Long, ByVal Text As String)
+        Dim got As Long
+        K_WriteConsoleOutputCharacterW h, StrPtr(Text), Len(Text), mConsoleAPI.MakeCOORD(CInt(Col), CInt(Row)), got
+    End Sub
+
+    Public Function CursorCol(ByVal h As LongPtr) As Long
+        Dim csbi As mConsoleAPI.CONSOLE_SCREEN_BUFFER_INFO
+        mConsoleAPI.GetConsoleScreenBufferInfo h, csbi
+        CursorCol = csbi.dwCursorPosition.X
+    End Function
+
+    Public Function CursorRow(ByVal h As LongPtr) As Long
+        Dim csbi As mConsoleAPI.CONSOLE_SCREEN_BUFFER_INFO
+        mConsoleAPI.GetConsoleScreenBufferInfo h, csbi
+        CursorRow = csbi.dwCursorPosition.Y
+    End Function
+
+    ' The current text attribute of a screen buffer.
+    Public Function CurrentAttr(ByVal h As LongPtr) As Long
+        Dim csbi As mConsoleAPI.CONSOLE_SCREEN_BUFFER_INFO
+        mConsoleAPI.GetConsoleScreenBufferInfo h, csbi
+        CurrentAttr = csbi.wAttributes And &HFFFF&
+    End Function
+
+    ' Sets the text attribute that the next write uses.
+    Public Sub SetAttr(ByVal h As LongPtr, ByVal Attr As Long)
+        mConsoleAPI.SetConsoleTextAttribute h, CInt(Attr)
+    End Sub
+
+    ' ---- the input buffer
+
+    Public Function PendingEvents() As Long
+        Dim n As Long
+        mConsoleAPI.GetNumberOfConsoleInputEvents mInH, n
+        PendingEvents = n
+    End Function
+
+    Public Sub Flush()
+        mConsoleAPI.FlushConsoleInputBuffer mInH
+    End Sub
+
+    ' Puts a key event in the input buffer.
+    Public Sub PushKey(ByVal VirtualKey As Long, ByVal Ch As Long, ByVal KeyDown As Boolean, Optional ByVal ControlState As Long = 0, Optional ByVal RepeatCount As Long = 1)
+        Dim ir As mConsoleAPI.INPUT_RECORD
+        Dim k As mConsoleAPI.KEY_EVENT_RECORD
+        Dim n As Long
+        k.bKeyDown = IIf(KeyDown, 1, 0)
+        k.wRepeatCount = CInt(RepeatCount)
+        k.wVirtualKeyCode = CInt(VirtualKey)
+        k.wVirtualScanCode = 0
+        k.UnicodeChar = CInt(Ch)
+        k.dwControlKeyState = ControlState
+        ir.EventType = 1
+        K_Copy VarPtr(ir.Event(0)), VarPtr(k), 16
+        K_WriteConsoleInputW mInH, VarPtr(ir), 1, n
+    End Sub
+
+    ' A key press: the key down, and then the key up.
+    Public Sub PushPress(ByVal VirtualKey As Long, ByVal Ch As Long, Optional ByVal ControlState As Long = 0)
+        PushKey VirtualKey, Ch, True, ControlState
+        PushKey VirtualKey, Ch, False, ControlState
+    End Sub
+
+    ' Types text: a press of each character.
+    Public Sub PushText(ByVal Text As String)
+        Dim i As Long
+        For i = 1 To Len(Text)
+            PushPress Asc(UCase$(Mid$(Text, i, 1))), AscW(Mid$(Text, i, 1))
+        Next
+    End Sub
+
+    ' Puts a mouse event in the input buffer.
+    Public Sub PushMouse(ByVal Col As Long, ByVal Row As Long, ByVal Buttons As Long, ByVal Flags As Long)
+        Dim ir As mConsoleAPI.INPUT_RECORD
+        Dim m As mConsoleAPI.MOUSE_EVENT_RECORD
+        Dim n As Long
+        m.dwMousePosition.X = CInt(Col)
+        m.dwMousePosition.Y = CInt(Row)
+        m.dwButtonState = Buttons
+        m.dwControlKeyState = 0
+        m.dwEventFlags = Flags
+        ir.EventType = 2
+        K_Copy VarPtr(ir.Event(0)), VarPtr(m), 16
+        K_WriteConsoleInputW mInH, VarPtr(ir), 1, n
+    End Sub
+
+    ' Puts a window-size event in the input buffer.
+    Public Sub PushSize(ByVal Cols As Long, ByVal Rows As Long)
+        Dim ir As mConsoleAPI.INPUT_RECORD
+        Dim w As mConsoleAPI.WINDOW_BUFFER_SIZE_RECORD
+        Dim n As Long
+        w.dwSize.X = CInt(Cols)
+        w.dwSize.Y = CInt(Rows)
+        ir.EventType = 4
+        K_Copy VarPtr(ir.Event(0)), VarPtr(w), 4
+        K_WriteConsoleInputW mInH, VarPtr(ir), 1, n
+    End Sub
+
+    ' Puts a focus event in the input buffer.
+    Public Sub PushFocus()
+        Dim ir As mConsoleAPI.INPUT_RECORD
+        Dim n As Long
+        ir.EventType = &H10
+        ir.Event(0) = 1
+        K_WriteConsoleInputW mInH, VarPtr(ir), 1, n
+    End Sub
+
+End Module

@@ -10,6 +10,7 @@ has_toc: false
 
 Draws a table of text into the screen buffer, with a header row, columns of fixed widths, aligned cells, coloured rows and one selected row.
 
+<!-- test: DataGridTests.Render_ColoursOfHeaderRowsAndSelection_AreAsDocumented, DataGridTests.Render_DrawsTheHeaderTheLineUnderItAndTheDataRows, DataGridTests.Render_ThenRefresh_ShowsTheTableOnTheScreenBuffer -->
 A **cDataGrid** keeps the [**Buffer**](../TBMANLIB_ConsoleCore/cConsole#buffer) of the console it was made with. The program gives it the rows of text, the widths and alignments of the columns and the colours of the rows with the four `Set` members, and then calls [**Render**](#render), which draws the whole table at a position. The grid holds no scroll position and does not read keys: a program that lets the user choose a row calls [**MoveUp**](#moveup) and [**MoveDown**](#movedown) from its own key handler and draws the table again. The key handler is that of [**cConsole**](../TBMANLIB_ConsoleCore/cConsole#onkeypress), which [reports virtual-key codes](../TBMANLIB_ConsoleCore/#defects-in-version-1001), most of which differ from the members of **ConsoleKey**: a program compares them with constants such as `vbKeyUp`.
 
 ```tb check_build
@@ -56,12 +57,14 @@ Name        │    Size
 readme.txt  │   1,204
 setup.exe   │  88,512
 ```
+<!-- /test -->
 
 * TOC
 {:toc}
 
 In the syntax lines of this page, *object* is a **cDataGrid**. Columns and rows are counted from 0 in the buffer.
 
+<!-- test: DataGridTests.Render_WithoutRows_DrawsNothing, DataGridTests.Render_WithoutColumnWidths_DrawsTheRows, DataGridTests.Render_WithoutColumnAlignments_DrawsTheRows, DataGridTests.Render_WithoutRowColors_DrawsTheRows, DataGridTests.Render_CellsAreCutWithoutAnEllipsis_AndPadded, DataGridTests.Render_Alignments_LeftCenterRight_AndOddPaddingOfCenterGoesRight, DataGridTests.Render_RowWithFewerCellsHasEmptyCells_AndExtraCellsAreDropped, DataGridTests.ShowBorders_False_DrawsNoSeparatorColumnAndNoLine, DataGridTests.Render_DrawsTheHeaderTheLineUnderItAndTheDataRows, DataGridTests.Render_ColoursOfHeaderRowsAndSelection_AreAsDocumented, DataGridTests.Render_RowBeyondTheColourArray_KeepsFore -->
 ## The data
 
 The text of the table is an array of **String**, one element for each row. Within a row the cells are separated by the tab character, `vbTab`. When [**ShowHeader**](#showheader) is **True**, which is the default, the first element is the header row and the others are data rows.
@@ -73,7 +76,9 @@ The number of columns is the number of elements of the widths array. A cell is c
 With [**ShowBorders**](#showborders) **True**, which is the default, a vertical bar U+2502 is drawn in the column after each column except the last, and a line of U+2500 with U+253C where the bars are lies under the header. That is not a frame: the table has no outer border and no lines between data rows. With **ShowBorders** at **False** there is no separator column and no line, and the columns follow each other with no space between.
 
 The colours are these. The header is drawn in the header colour on black. A data row is drawn in the *fore* and *back* colours of [**Render**](#render), or in the colour from [**SetRowColors**](#setrowcolors) when one is given, on *back*. The selected row is white on the selection colour. The separator line and the vertical bars take *fore* and *back*, and in the header the header colour.
+<!-- /test -->
 
+<!-- test: DataGridTests.Render_Alignments_LeftCenterRight_AndOddPaddingOfCenterGoesRight, DataGridTests.Render_AlignmentArrayShorterThanTheColumns_LeavesTheRestLeft -->
 ## Enumeration
 
 ### ColumnAlignment
@@ -88,6 +93,7 @@ The alignment of the cells of a column. The enumeration is declared in the class
 | **Right** | 2 | end at the right edge of the column |
 
 An element of the alignment array that is missing, because the array is shorter than the number of columns, is **Left**.
+<!-- /test -->
 
 ## Constructor
 
@@ -101,8 +107,11 @@ Syntax: **New cDataGrid** ( *console* )
 *console*
 : *required* A [**cConsole**](../TBMANLIB_ConsoleCore/cConsole) that is in full-screen mode.
 
+<!-- test: DataGridTests.SelectedRow_DefaultIsNoRow, DataGridTests.Render_ColoursOfHeaderRowsAndSelection_AreAsDocumented, DataGridTests.Render_GridMadeBeforeFullScreenMode_RaisesError91 -->
 Keeps the console and its current [**Buffer**](../TBMANLIB_ConsoleCore/cConsole#buffer). The grid starts with the header colour **Cyan**, the selection colour **DarkBlue**, no selected row (the row number -1), the header shown and the separators shown. When the console is not in full-screen mode, the buffer is **Nothing** and [**Render**](#render) raises error 91. See [How a component works](./#how-a-component-works).
+<!-- /test -->
 
+<!-- test: compile GridHeaderColorRead, compile GridSelectionColorRead, compile GridSelectedRowRead, compile GridShowHeaderRead, compile GridShowBordersRead, DataGridTests.Render_GivenColoursAndProperties_AreUsed, DataGridTests.SelectedRow_DefaultIsNoRow, DataGridTests.ShowBorders_False_DrawsNoSeparatorColumnAndNoLine, DataGridTests.ShowHeader_False_EveryRowIsADataRow_AndNoLineIsDrawn -->
 ## Properties
 
 All the properties can be set and none can be read: each has a `Let` and no `Get`. They take effect at the next [**Render**](#render).
@@ -144,9 +153,11 @@ Syntax: *object*.**ShowBorders** **=** *value*
 Whether the first row is a header. **Boolean**, write-only. The default is **True**. With **False**, every row is a data row, and no line is drawn under the first row.
 
 Syntax: *object*.**ShowHeader** **=** *value*
+<!-- /test -->
 
 ## Methods
 
+<!-- test: DataGridTests.GetRowCount_IsTheNumberOfDataRows, DataGridTests.GetRowCount_RowsNeverSet_RaisesError9 -->
 ### GetRowCount
 {: .no_toc }
 
@@ -155,7 +166,9 @@ Returns the number of data rows.
 Syntax: *object*.**GetRowCount** ( ) **As Long**
 
 Returns the number of elements of the rows array, less one when [**ShowHeader**](#showheader) is **True**. Raises error 9 when [**SetRows**](#setrows) was never called.
+<!-- /test -->
 
+<!-- test: DataGridTests.MoveDown_FromNoSelection_SelectsTheFirstDataRow_AndStopsAtTheLast -->
 ### MoveDown
 {: .no_toc }
 
@@ -167,7 +180,9 @@ Syntax: *object*.**MoveDown** ( *maxRow* )
 : *required* A **Long**, the number of data rows. The selection moves down only while the selected row is less than *maxRow* - 1, so the last data row is the last one reachable. [**GetRowCount**](#getrowcount) gives the number.
 
 With no selection (-1) the first data row is selected.
+<!-- /test -->
 
+<!-- test: DataGridTests.MoveUp_StopsAtTheFirstDataRow_AndDoesNothingWithoutASelection -->
 ### MoveUp
 {: .no_toc }
 
@@ -176,7 +191,9 @@ Selects the previous row.
 Syntax: *object*.**MoveUp** ( )
 
 The selection moves up only while the selected row is above 0, so the first data row is the first one reachable, and a call with no selection does nothing.
+<!-- /test -->
 
+<!-- test: DataGridTests.Render_DrawsTheHeaderTheLineUnderItAndTheDataRows, DataGridTests.Render_RowsBelowTheBuffer_AreDropped, DataGridTests.Render_GivenColoursAndProperties_AreUsed, DataGridTests.Render_ThenRefresh_ShowsTheTableOnTheScreenBuffer -->
 ### Render
 {: .no_toc }
 
@@ -194,7 +211,9 @@ Syntax: *object*.**Render** ( *col* , *row* [ , *fore* [ , *back* ] ] )
 : *optional* A **ConsoleColor**, the background of the data rows and the separators. The default is **Black**.
 
 Draws the header row, the line under it when [**ShowBorders**](#showborders) is on, and then every data row, one row of the buffer each, going down from *row*. The grid is as wide as the column widths plus one column for each separator, and as high as the number of rows plus one for the line. Rows that reach below the buffer are dropped.
+<!-- /test -->
 
+<!-- test: DataGridTests.ScrollTo_SelectsTheRowLikeSelectedRow, DataGridTests.ScrollTo_ShowsTheRowInABufferTooSmallForTheTable -->
 ### ScrollTo
 {: .no_toc }
 
@@ -206,6 +225,7 @@ Syntax: *object*.**ScrollTo** ( *row* )
 : *required* A **Long**, the number of the data row, counted from 0.
 
 The method only sets the selected row, as [**SelectedRow**](#selectedrow) does. It does not scroll: the grid has no scroll position, and always draws all its rows.
+<!-- /test -->
 
 ### SetColumnAlignments
 {: .no_toc }
@@ -227,6 +247,7 @@ Syntax: *object*.**SetColumnWidths** ( *widths* )
 *widths*
 : *required* An array of **Long**, passed by reference, the width in cells of each column. Its number of elements is the number of columns. The method copies the array.
 
+<!-- test: DataGridTests.SetRowColors_FirstDataRowTakesTheFirstColour, DataGridTests.SetRowColors_HeaderRowIsCounted_SoColorsOfZeroIsNotUsed, DataGridTests.Render_RowBeyondTheColourArray_KeepsFore -->
 ### SetRowColors
 {: .no_toc }
 
@@ -238,7 +259,9 @@ Syntax: *object*.**SetRowColors** ( *colors* )
 : *required* An array of [**ConsoleColor**](../TBMANLIB_ConsoleCore/Types#consolecolor), passed by reference. The method copies the array.
 
 Both arrays start at index 0. The colour of the row at index *i* of the array of [**SetRows**](#setrows) is `colors(i)`. The header row is counted, so with a header the first data row takes `colors(1)`, and `colors(0)` is not used: the header has its own colour. A row whose index lies beyond the end of the colour array keeps *fore*. The selected row ignores its colour.
+<!-- /test -->
 
+<!-- test: DataGridTests.SetRows_CopiesTheArray -->
 ### SetRows
 {: .no_toc }
 
@@ -248,6 +271,7 @@ Syntax: *object*.**SetRows** ( *rows* )
 
 *rows*
 : *required* An array of **String**, passed by reference, one element for each row, with the cells separated by the tab character. The method copies the array: later changes to it do not reach the grid.
+<!-- /test -->
 
 ## See Also
 

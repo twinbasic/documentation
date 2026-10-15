@@ -1,0 +1,20 @@
+{
+  "version": "1.0.8.0",
+  "cases": {
+    "ConsecutiveRepeatTests.SmallPool_LengthThree_AlwaysGeneratesWhenAPasswordExists": {
+      "fails": "1 of 1 checks failed: no call of 400 returns an empty string for the pool AB, Length 3 and HasNoConsecutiveRepeats, which has the valid passwords ABA and BAB: expected True, got False"
+    },
+    "ConsecutiveRepeatTests.SmallPool_LengthFour_AlwaysGeneratesWhenAPasswordExists": {
+      "fails": "1 of 1 checks failed: no call of 400 returns an empty string for the pool AB, Length 4 and HasNoConsecutiveRepeats, which has the valid passwords ABAB and BABA: expected True, got False"
+    },
+    "ConsecutiveRepeatTests.SmallPool_WithStartsWithLetter_AlwaysGeneratesWhenAPasswordExists": {
+      "fails": "1 of 1 checks failed: no call of 400 returns an empty string for the pool AB, Length 3, StartsWithLetter and HasNoConsecutiveRepeats: expected True, got False"
+    },
+    "CryptoSourceTests.NextInRange_AfterAnEarlierFailure_StillReturnsANumberOfTheInterval": {
+      "fails": "1 of 3 checks failed: NextInRange(1, 6) after PwGen.Generate failed with InvalidLength returns a number from 1 to 6, got 0: expected True, got False"
+    },
+    "PackageCodeTests.SetContinueOnFail_False_NoCheckRunsAfterTheFirstFailure": {
+      "fails": "1 of 1 checks failed: Tests.FailCount after two failed checks with SetContinueOnFail False (the run stops at the first): expected 1, got 2"
+    }
+  }
+}

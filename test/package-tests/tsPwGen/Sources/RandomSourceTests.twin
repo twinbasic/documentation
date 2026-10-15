@@ -1,0 +1,142 @@
+' tsPwGen: the random sources. PwGenRandom is the interface of a source, RandomSource names the source
+' of a recipe, and PwGenCryptoSource is the default one. A source that returns fixed values makes a
+' result predictable; a source that returns a number outside its bounds is an error (RngFailed); a
+' run-time error raised inside a source reaches the caller.
+[TestFixture]
+Module RandomSourceTests
+
+    [TestCase]
+    Public Sub LowestRandom_RandomMode_DrawsTheFirstCharacterOfThePool()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        o.Alphabet = "QR"
+        o.Length = 5
+        Set o.RandomSource = New LowestRandom
+        Expect.AreEqual "QQQQQ", PwGen.Generate(o), "Generate of Alphabet QR with a source that returns the lower bound"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LowestRandom_WordlistMode_DrawsTheFirstWordLeft()
+        Expect.Begin
+        Helpers.Reset
+        Dim words(0 To 3) As String
+        words(0) = "alpha"
+        words(1) = "bravo"
+        words(2) = "charlie"
+        words(3) = "delta"
+        Dim p As PwGenOptions = PwGenOptions.Passphrase
+        p.CustomWords = words
+        p.WordCount = 4
+        Set p.RandomSource = New LowestRandom
+        Expect.AreEqual "alpha-alpha-alpha-alpha", PwGen.Generate(p), "Generate of 4 words with a source that returns the lower bound"
+        p.HasUniqueWords = True
+        Expect.AreEqual "alpha-delta-charlie-bravo", PwGen.Generate(p), "Generate of 4 different words with a source that returns the lower bound"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub OutOfRangeSource_RngFailed()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        Set o.RandomSource = New OutOfRangeRandom
+        Expect.AreEqual "", PwGen.Generate(o), "Generate with a source that returns a number above the upper bound"
+        Helpers.ExpectError "an out-of-range source in random mode", "RngFailed", "random source returned a value outside the requested interval.", "PwGen.Generate"
+        Dim p As PwGenOptions = PwGenOptions.Passphrase
+        Set p.RandomSource = New OutOfRangeRandom
+        Expect.AreEqual "", PwGen.Generate(p), "Generate of a passphrase with a source that returns a number above the upper bound"
+        Helpers.ExpectError "an out-of-range source in wordlist mode", "RngFailed", "random source returned a value outside the requested interval.", "PwGen.Generate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RaisingSource_TheErrorReachesTheCaller()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Alphanumeric
+        Set o.RandomSource = New RaisingRandom
+        Dim pw As String = "unchanged"
+        On Error Resume Next
+        pw = PwGen.Generate(o)
+        Expect.AreEqual 5, Err.Number, "Err.Number of Generate with a source that raises error 5"
+        Expect.AreEqual "RaisingRandom", Err.Source, "Err.Source of Generate with a source that raises error 5"
+        Expect.AreEqual "unchanged", pw, "the result variable after the error"
+        On Error GoTo 0
+        Expect.IsFalse PwGenError.HasError, "PwGenError.HasError after an error raised inside the source"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Draws_LowerBoundIsZeroOrOneAndNeverAboveTheUpperBound()
+        Expect.Begin
+        Helpers.Reset
+        Dim rec As New RecordingRandom
+        Dim o As PwGenOptions = PwGenOptions.Complex
+        o.StartsWithLetter = True
+        o.HasNoConsecutiveRepeats = True
+        o.MinPerClass = 2
+        o.Length = 20
+        Set o.RandomSource = rec
+        PwGen.Generate o
+        Expect.IsTrue rec.Calls > 0, "calls of the source for a recipe"
+        Expect.AreEqual 0, rec.Reversed, "draws whose lower bound is above the upper bound"
+        Expect.IsTrue rec.LowestLower >= 0 And rec.HighestLower <= 1, "the lower bounds of the draws lie between 0 and 1"
+        Dim one As PwGenOptions = PwGenOptions.Alphanumeric
+        one.Alphabet = "Z"
+        one.Length = 1
+        Dim rec2 As New RecordingRandom
+        Set one.RandomSource = rec2
+        Expect.AreEqual "Z", PwGen.Generate(one), "Generate of one character from a pool of one character"
+        Expect.IsTrue rec2.Calls > 0 And rec2.EqualBounds = rec2.Calls, "draws from a pool of one character with equal bounds"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Entropy_DoesNotUseTheSource()
+        Expect.Begin
+        Helpers.Reset
+        Dim rec As New RecordingRandom
+        Dim o As PwGenOptions = PwGenOptions.Complex
+        Set o.RandomSource = rec
+        PwGen.Entropy o
+        Expect.AreEqual 0, rec.Calls, "calls of the source by Entropy"
+        PwGen.Generate o
+        Expect.IsTrue rec.Calls > 0, "calls of the source by Generate"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Clone_SharesTheRandomSource()
+        Expect.Begin
+        Helpers.Reset
+        Dim a As PwGenOptions = PwGenOptions.Alphanumeric
+        Dim rec As New RecordingRandom
+        Set a.RandomSource = rec
+        Dim b As PwGenOptions = a.Clone()
+        Expect.IsTrue b.RandomSource Is a.RandomSource, "the RandomSource of a Clone is the same object as the original's"
+        PwGen.Generate b
+        Expect.IsTrue rec.Calls > 0, "calls of the original's source by Generate on the Clone"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RandomSource_Nothing_DrawsDifferentResults()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As PwGenOptions = PwGenOptions.Hex
+        Expect.IsTrue o.RandomSource Is Nothing, "RandomSource of the Hex preset"
+        Dim seen As String = ","
+        Dim i As Long
+        Dim same As Long
+        For i = 1 To 50
+            Dim pw As String = PwGen.Generate(o)
+            If InStr(seen, "," & pw & ",") > 0 Then same = same + 1
+            seen = seen & pw & ","
+        Next
+        Expect.AreEqual 0, same, "128-bit tokens out of 50 that equal an earlier one"
+        Expect.Done
+    End Sub
+
+End Module

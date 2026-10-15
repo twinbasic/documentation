@@ -1,0 +1,141 @@
+' TBMANLIB_Aes, cAes defaults and constructor, IsInitialized, Cleanup and the constants of mAesConstants.
+'
+' The Windows values are those of wincrypt.h in the Windows SDK: CRYPT_MODE_CBC 1, CRYPT_MODE_ECB 2,
+' CRYPT_MODE_OFB 3, CRYPT_MODE_CFB 4 and ZERO_PADDING 3 (the Windows header defines the last for the
+' KP_PADDING key parameter).
+[TestFixture]
+Module DefaultsAndConstantsTests
+
+    [TestCase]
+    Public Sub New_StartsWithTheDefaultValues()
+        Expect.Begin
+        Dim a As New cAes
+        Dim k() As Byte
+        Dim v() As Byte
+        Dim t() As Byte
+        Dim d() As Byte
+        k = a.Key
+        v = a.IV
+        t = a.GcmTag
+        d = a.GcmAAD
+        Expect.AreEqual 256, a.KeySize, "KeySize of a new cAes"
+        Expect.AreEqual 2, a.CipherMode, "CipherMode of a new cAes (CBC)"
+        Expect.AreEqual 1, a.PaddingMode, "PaddingMode of a new cAes (PKCS7)"
+        Expect.AreEqual 0, AesVec.Count(k), "elements of Key"
+        Expect.AreEqual 0, AesVec.Count(v), "elements of IV"
+        Expect.AreEqual 0, AesVec.Count(t), "elements of GcmTag"
+        Expect.AreEqual 0, AesVec.Count(d), "elements of GcmAAD"
+        Expect.IsFalse a.IsInitialized, "IsInitialized of a new cAes"
+        Expect.AreEqual "", a.LastError, "LastError of a new cAes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub New_WithArgumentsStoresThem()
+        Expect.Begin
+        Dim a As cAes = New cAes(AesKeySize.KeySize_128, AesCipherMode.GCM, AesPaddingMode.NoPadding)
+        Expect.AreEqual 128, a.KeySize, "KeySize"
+        Expect.AreEqual 6, a.CipherMode, "CipherMode"
+        Expect.AreEqual 3, a.PaddingMode, "PaddingMode"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsInitialized_IsTrueAfterACallAndFalseAfterASetterOrCleanup()
+        Expect.Begin
+        Dim a As New cAes
+        Dim s As String
+        a.SetKeyFromString "key"
+        Expect.IsFalse a.IsInitialized, "IsInitialized after SetKeyFromString"
+        s = a.EncryptString("text")
+        Expect.IsTrue a.IsInitialized, "IsInitialized after EncryptString"
+        a.KeySize = AesKeySize.KeySize_256
+        Expect.IsFalse a.IsInitialized, "IsInitialized after setting KeySize"
+        s = a.EncryptString("text")
+        a.Cleanup
+        Expect.IsFalse a.IsInitialized, "IsInitialized after Cleanup"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Cleanup_LeavesTheObjectUsable()
+        Expect.Begin
+        Dim a As cAes
+        Dim p() As Byte
+        Dim c1() As Byte
+        Dim c2() As Byte
+        Set a = AesVec.MakeAes(AesCipherMode.CFB, 128, AesPaddingMode.PKCS7, AesVec.Key128, AesVec.Iv16)
+        p = AesVec.Ascii("Hello, AES!")
+        c1 = AesVec.Enc(a, p)
+        a.Cleanup
+        c2 = AesVec.Enc(a, p)
+        Expect.IsTrue AesVec.Count(c1) > 0, "the encryption before Cleanup returns bytes"
+        Expect.AreEqual AesVec.HexOf(c1), AesVec.HexOf(c2), "output before and after Cleanup"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Enumerations_HaveTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual 1, AesCipherMode.ECB, "AesCipherMode.ECB"
+        Expect.AreEqual 2, AesCipherMode.CBC, "AesCipherMode.CBC"
+        Expect.AreEqual 3, AesCipherMode.CFB, "AesCipherMode.CFB"
+        Expect.AreEqual 4, AesCipherMode.OFB, "AesCipherMode.OFB"
+        Expect.AreEqual 5, AesCipherMode.CTR, "AesCipherMode.CTR"
+        Expect.AreEqual 6, AesCipherMode.GCM, "AesCipherMode.GCM"
+        Expect.AreEqual 128, AesKeySize.KeySize_128, "AesKeySize.KeySize_128"
+        Expect.AreEqual 192, AesKeySize.KeySize_192, "AesKeySize.KeySize_192"
+        Expect.AreEqual 256, AesKeySize.KeySize_256, "AesKeySize.KeySize_256"
+        Expect.AreEqual 1, AesPaddingMode.PKCS7, "AesPaddingMode.PKCS7"
+        Expect.AreEqual 2, AesPaddingMode.ZeroPadding, "AesPaddingMode.ZeroPadding"
+        Expect.AreEqual 3, AesPaddingMode.NoPadding, "AesPaddingMode.NoPadding"
+        Expect.AreEqual 4, AesPaddingMode.ISO10126, "AesPaddingMode.ISO10126"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PackageConstants_HaveTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual 16, mAesConstants.BLOCK_SIZE_128, "BLOCK_SIZE_128"
+        Expect.AreEqual 16, mAesConstants.KEY_SIZE_128, "KEY_SIZE_128"
+        Expect.AreEqual 24, mAesConstants.KEY_SIZE_192, "KEY_SIZE_192"
+        Expect.AreEqual 32, mAesConstants.KEY_SIZE_256, "KEY_SIZE_256"
+        Expect.AreEqual "1.0.0", mAesConstants.VERSION, "VERSION"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WindowsConstants_MatchWincryptHExceptTheFive()
+        Expect.Begin
+        Expect.AreEqual 24, mAesConstants.PROV_RSA_AES, "PROV_RSA_AES"
+        Expect.AreEqual 1, mAesConstants.PROV_RSA_FULL, "PROV_RSA_FULL"
+        Expect.AreEqual 1, mAesConstants.CRYPT_EXPORTABLE, "CRYPT_EXPORTABLE"
+        Expect.AreEqual 8, mAesConstants.CRYPT_NEWKEYSET, "CRYPT_NEWKEYSET"
+        Expect.AreEqual 26126, mAesConstants.CALG_AES_128, "CALG_AES_128"
+        Expect.AreEqual 26127, mAesConstants.CALG_AES_192, "CALG_AES_192"
+        Expect.AreEqual 26128, mAesConstants.CALG_AES_256, "CALG_AES_256"
+        Expect.AreEqual 32780, mAesConstants.CALG_SHA_256, "CALG_SHA_256"
+        Expect.AreEqual 32771, mAesConstants.CALG_MD5, "CALG_MD5"
+        Expect.AreEqual 1, mAesConstants.KP_IV, "KP_IV"
+        Expect.AreEqual 3, mAesConstants.KP_PADDING, "KP_PADDING"
+        Expect.AreEqual 4, mAesConstants.KP_MODE, "KP_MODE"
+        Expect.AreEqual 8, mAesConstants.KP_BLOCKLEN, "KP_BLOCKLEN"
+        Expect.AreEqual 1, mAesConstants.PKCS5_PADDING, "PKCS5_PADDING"
+        Expect.AreEqual 2, mAesConstants.HP_HASHVAL, "HP_HASHVAL"
+        Expect.AreEqual 4, mAesConstants.HP_HASHSIZE, "HP_HASHSIZE"
+        Expect.AreEqual 1, mAesConstants.AT_KEYEXCHANGE, "AT_KEYEXCHANGE"
+        Expect.AreEqual 2, mAesConstants.AT_SIGNATURE, "AT_SIGNATURE"
+        Expect.AreEqual 1, mAesConstants.CRYPT_STRING_BASE64, "CRYPT_STRING_BASE64"
+        Expect.AreEqual &H40000000, mAesConstants.CRYPT_STRING_NOCRLF, "CRYPT_STRING_NOCRLF"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub CryptModeConstants_EcbAndCbcMatchWincryptH()
+        Expect.Begin
+        Expect.AreEqual 2, mAesConstants.CRYPT_MODE_ECB, "CRYPT_MODE_ECB (wincrypt.h: 2)"
+        Expect.AreEqual 1, mAesConstants.CRYPT_MODE_CBC, "CRYPT_MODE_CBC (wincrypt.h: 1)"
+        Expect.Done
+    End Sub
+
+End Module

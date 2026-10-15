@@ -1,0 +1,268 @@
+' BigNumber: AssignGreatestCommonDivisor and AssignLeastCommonMultiple.
+[TestFixture]
+Module GcdLcmTests
+
+    [TestCase]
+    Public Sub Gcd_PositiveValues()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim g As New BigNumber
+        a.ValueString = "12"
+        b.ValueString = "18"
+        g.AssignGreatestCommonDivisor a, b
+        Expect.AreEqual "6", g.ValueString, "gcd(12, 18)"
+        a.ValueString = "17"
+        b.ValueString = "13"
+        g.AssignGreatestCommonDivisor a, b
+        Expect.AreEqual "1", g.ValueString, "gcd(17, 13)"
+        a.ValueString = "1071"
+        b.ValueString = "462"
+        g.AssignGreatestCommonDivisor a, b
+        Expect.AreEqual "21", g.ValueString, "gcd(1071, 462)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Gcd_WithZero()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim g As New BigNumber
+        a.ValueString = "0"
+        b.ValueString = "-25"
+        g.AssignGreatestCommonDivisor a, b
+        Expect.AreEqual "25", g.ValueString, "gcd(0, -25)"
+        a.ValueString = "25"
+        b.ValueString = "0"
+        g.AssignGreatestCommonDivisor a, b
+        Expect.AreEqual "25", g.ValueString, "gcd(25, 0)"
+        a.ValueString = "0"
+        b.ValueString = "0"
+        g.ValueString = "99"
+        g.AssignGreatestCommonDivisor a, b
+        Expect.AreEqual "0", g.ValueString, "gcd(0, 0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Gcd_ResultIsNonNegativeWhateverTheSigns()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim g As New BigNumber
+        a.ValueString = "-12"
+        b.ValueString = "18"
+        g.AssignGreatestCommonDivisor a, b
+        Expect.AreEqual "6", g.ValueString, "gcd(-12, 18)"
+        a.ValueString = "12"
+        b.ValueString = "-18"
+        g.AssignGreatestCommonDivisor a, b
+        Expect.AreEqual "6", g.ValueString, "gcd(12, -18)"
+        a.ValueString = "-12"
+        b.ValueString = "-18"
+        g.AssignGreatestCommonDivisor a, b
+        Expect.AreEqual "6", g.ValueString, "gcd(-12, -18)"
+        Expect.IsFalse g.IsNegative, "IsNegative of gcd(-12, -18)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Gcd_LargeNumbers()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim g As New BigNumber
+        Dim f As String
+        f = Pattern(120, 5)
+        a.ValueString = StrMul(Fib(400), f)
+        b.ValueString = StrMul(Fib(401), f)
+        g.AssignGreatestCommonDivisor a, b
+        Expect.AreEqual f, g.ValueString, "gcd(F * Fib(400), F * Fib(401)) for a 120-digit F (consecutive Fibonacci numbers are coprime)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Gcd_NegativeFirstOperandKeepsItsValue()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim g As New BigNumber
+        a.ValueString = "-12"
+        b.ValueString = "18"
+        g.AssignGreatestCommonDivisor a, b
+        Expect.AreEqual "-12", a.ValueString, "ValueString of the first operand after gcd(-12, 18)"
+        Expect.AreEqual "18", b.ValueString, "ValueString of the second operand after gcd(-12, 18)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Gcd_NegativeSecondOperandKeepsItsValue()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim g As New BigNumber
+        a.ValueString = "12"
+        b.ValueString = "-18"
+        g.AssignGreatestCommonDivisor a, b
+        Expect.AreEqual "12", a.ValueString, "ValueString of the first operand after gcd(12, -18)"
+        Expect.AreEqual "-18", b.ValueString, "ValueString of the second operand after gcd(12, -18)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Gcd_NegativeOperandStillAddsCorrectly()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim g As New BigNumber
+        Dim one As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "-12"
+        b.ValueString = "18"
+        one.ValueString = "1"
+        g.AssignGreatestCommonDivisor a, b
+        r.AssignAddition a, one
+        Expect.AreEqual "-11", r.ValueString, "the first operand of gcd(-12, 18) plus 1"
+        Expect.IsTrue a.IsLessThan(one), "the first operand of gcd(-12, 18) is less than 1"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lcm_PositiveValues()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim l As New BigNumber
+        a.ValueString = "4"
+        b.ValueString = "6"
+        l.AssignLeastCommonMultiple a, b
+        Expect.AreEqual "12", l.ValueString, "lcm(4, 6)"
+        a.ValueString = "7"
+        b.ValueString = "13"
+        l.AssignLeastCommonMultiple a, b
+        Expect.AreEqual "91", l.ValueString, "lcm(7, 13)"
+        a.ValueString = "21"
+        b.ValueString = "6"
+        l.AssignLeastCommonMultiple a, b
+        Expect.AreEqual "42", l.ValueString, "lcm(21, 6)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lcm_WithZero()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim l As New BigNumber
+        a.ValueString = "0"
+        b.ValueString = "5"
+        l.ValueString = "99"
+        l.AssignLeastCommonMultiple a, b
+        Expect.AreEqual "0", l.ValueString, "lcm(0, 5)"
+        a.ValueString = "5"
+        b.ValueString = "0"
+        l.ValueString = "99"
+        l.AssignLeastCommonMultiple a, b
+        Expect.AreEqual "0", l.ValueString, "lcm(5, 0)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lcm_OfTwoZeros_64Bit()
+        ' In a 32-bit program the result is zero or the previous value, differing from one build of the
+        ' program to the next, so only a 64-bit program is checked.
+        Expect.Begin
+        #If Win64 Then
+            Dim a As New BigNumber
+            Dim b As New BigNumber
+            Dim l As New BigNumber
+            a.ValueString = "0"
+            b.ValueString = "0"
+            l.ValueString = "99"
+            l.AssignLeastCommonMultiple a, b
+            Expect.AreEqual "0", l.ValueString, "lcm(0, 0) of a number that held 99"
+        #End If
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lcm_ResultIsNonNegativeWhateverTheSigns()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim l As New BigNumber
+        a.ValueString = "-4"
+        b.ValueString = "6"
+        l.AssignLeastCommonMultiple a, b
+        Expect.AreEqual "12", l.ValueString, "lcm(-4, 6)"
+        a.ValueString = "4"
+        b.ValueString = "-6"
+        l.AssignLeastCommonMultiple a, b
+        Expect.AreEqual "12", l.ValueString, "lcm(4, -6)"
+        a.ValueString = "-4"
+        b.ValueString = "-6"
+        l.AssignLeastCommonMultiple a, b
+        Expect.AreEqual "12", l.ValueString, "lcm(-4, -6)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lcm_LargeNumbers()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim l As New BigNumber
+        a.ValueString = Fib(300)
+        b.ValueString = Fib(301)
+        l.AssignLeastCommonMultiple a, b
+        Expect.AreEqual StrMul(Fib(300), Fib(301)), l.ValueString, "lcm(Fib(300), Fib(301)), which are coprime"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lcm_NegativeFirstOperandKeepsItsValue()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim l As New BigNumber
+        a.ValueString = "-4"
+        b.ValueString = "6"
+        l.AssignLeastCommonMultiple a, b
+        Expect.AreEqual "-4", a.ValueString, "ValueString of the first operand after lcm(-4, 6)"
+        Expect.AreEqual "6", b.ValueString, "ValueString of the second operand after lcm(-4, 6)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lcm_NegativeSecondOperandKeepsItsValue()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim l As New BigNumber
+        a.ValueString = "4"
+        b.ValueString = "-6"
+        l.AssignLeastCommonMultiple a, b
+        Expect.AreEqual "4", a.ValueString, "ValueString of the first operand after lcm(4, -6)"
+        Expect.AreEqual "-6", b.ValueString, "ValueString of the second operand after lcm(4, -6)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lcm_NegativeOperandStillAddsCorrectly()
+        Expect.Begin
+        Dim a As New BigNumber
+        Dim b As New BigNumber
+        Dim l As New BigNumber
+        Dim one As New BigNumber
+        Dim r As New BigNumber
+        a.ValueString = "-4"
+        b.ValueString = "6"
+        one.ValueString = "1"
+        l.AssignLeastCommonMultiple a, b
+        r.AssignAddition a, one
+        Expect.AreEqual "-3", r.ValueString, "the first operand of lcm(-4, 6) plus 1"
+        Expect.Done
+    End Sub
+
+End Module

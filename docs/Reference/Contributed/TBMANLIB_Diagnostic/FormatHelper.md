@@ -56,7 +56,9 @@ Syntax: **FormatHelper.EscapeHtml** ( *text* ) **As String**
 *text*
 : *required* A **String**.
 
+<!-- test: FormatHelperTests.EscapeHtml_ReplacesTheFiveCharacters -->
 Replaces `&` with `&amp;`, `<` with `&lt;`, `>` with `&gt;`, `"` with `&quot;` and `'` with `&#39;`, and returns the result. The ampersand is replaced first, so the entities that the other replacements add stay as they are.
+<!-- /test -->
 
 ```tb check_build check_run
 Debug.Print FormatHelper.EscapeHtml("<a href='x'>&</a>")
@@ -74,7 +76,9 @@ Syntax: **FormatHelper.EscapeJson** ( *text* ) **As String**
 *text*
 : *required* A **String**.
 
+<!-- test: FormatHelperTests.EscapeJson_NamedCharacters_AreEscaped -->
 Replaces the backslash with `\\`, the double quote with `\"`, a carriage return with `\r`, a line feed with `\n` and a tab with `\t`. The result is meant to go between double quotes. No other character is changed: the control characters with the codes 1 to 31 other than these three, which JSON requires to be escaped, are returned as they are.
+<!-- /test -->
 
 ```tb check_build check_run
 Debug.Print FormatHelper.EscapeJson("a\b" & vbTab & """q""")
@@ -97,7 +101,9 @@ Syntax: **FormatHelper.FormatBytes** ( *bytes* [ , *decimals* ] ) **As String**
 *decimals*
 : *optional* A **Long**, the number of digits after the decimal separator. Default: 1.
 
+<!-- test: FormatHelperTests.FormatBytes_Decimals_WritesThatManyDigits, FormatHelperTests.FormatBytes_BelowOneKilobyte_IsWholeBytes -->
 The units are 1024 times larger one after the other, and are written `KB`, `MB`, `GB` and `TB`. The function picks the largest unit that is at most the size, divides, and writes the number with *decimals* digits, a space and the unit: `1.5 KB`. A size below 1024 is written in whole bytes as `512 B`, whatever *decimals* is. A size of 1024 TB or more is shown in TB. The number is made with the **Format** function and a pattern of zeros, so the digits are rounded. A negative size is written in bytes.
+<!-- /test -->
 
 With *decimals* set to 0 the pattern is `0.`, and the decimal separator stays in the text: `4. KB` and not `4 KB`. The **Page Size** item of [**CPUInfoCollector**](Collectors#cpuinfocollector) is written this way. See [Known problems](.#known-problems-in-version-1001).
 
@@ -139,6 +145,7 @@ Syntax: **FormatHelper.FormatDateTimeISO** ( *dt* ) **As String**
 
 Returns the form `yyyy-mm-ddThh:nn:ss`, such as `2026-01-04T15:30:00`. It has no time zone and no fraction of a second.
 
+<!-- test: FormatHelperTests.DateFormats_WriteTheDocumentedForms -->
 ```tb check_build check_run
 Dim d As Date = DateSerial(2026, 1, 4) + TimeSerial(15, 30, 45)
 Debug.Print FormatHelper.FormatDateTime(d)
@@ -149,6 +156,7 @@ Debug.Print FormatHelper.FormatTime(d)
 ' 2026-01-04T15:30:45
 ' 15:30:45
 ```
+<!-- /test -->
 
 ### FormatPercent
 {: .no_toc }
@@ -166,7 +174,9 @@ Syntax: **FormatHelper.FormatPercent** ( *value*, *total* [ , *decimals* ] ) **A
 *decimals*
 : *optional* A **Long**, the number of digits after the decimal separator. Default: 0.
 
+<!-- test: FormatHelperTests.FormatPercent_WritesTheShare -->
 Returns *value* divided by *total*, times 100, and `%`. With *decimals* set to 0 the number is made with **CLng**, which rounds a .5 to the even number. When *total* is 0 the function returns `0%`, also when *decimals* is above 0.
+<!-- /test -->
 
 ### FormatPercentValue
 {: .no_toc }
@@ -181,7 +191,9 @@ Syntax: **FormatHelper.FormatPercentValue** ( *percent* [ , *decimals* ] ) **As 
 *decimals*
 : *optional* A **Long**, the number of digits after the decimal separator. Default: 0.
 
+<!-- test: FormatHelperTests.FormatPercentValue_RoundsLikeCLng -->
 Returns *percent* and `%`, rounded in the same way as [**FormatPercent**](#formatpercent).
+<!-- /test -->
 
 ```tb check_build check_run
 Debug.Print FormatHelper.FormatPercent(1, 0, 1)
@@ -217,7 +229,9 @@ Syntax: **FormatHelper.FormatUptime** ( *milliseconds* ) **As String**
 *milliseconds*
 : *required* A **LongLong**, the duration.
 
+<!-- test: FormatHelperTests.FormatUptime_LeavesOutLeadingZeroParts -->
 Returns the duration as `3d 12h 45m 32s`. The days are left out while they are 0, the hours while they and the days are 0, and the minutes while all three are 0. The seconds are always there. Parts of a second are dropped.
+<!-- /test -->
 
 ```tb check_build check_run
 Debug.Print FormatHelper.FormatUptime(0)
@@ -274,7 +288,9 @@ Syntax: **FormatHelper.Truncate** ( *text*, *maxLength* [ , *ellipsis* ] ) **As 
 *ellipsis*
 : *optional* A **String** that marks the cut. Default: `...`.
 
+<!-- test: FormatHelperTests.PadAndTruncate_FollowTheirDescriptions -->
 Text of *maxLength* characters or fewer is returned as it is. A longer text is cut so that, with *ellipsis* at the end, it is *maxLength* characters long. When *maxLength* is not above the length of *ellipsis*, the result is the first *maxLength* characters of *ellipsis* alone.
+<!-- /test -->
 
 ```tb check_build check_run
 Debug.Print FormatHelper.PadRight("42", 5, ".")

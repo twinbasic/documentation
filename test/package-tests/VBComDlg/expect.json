@@ -1,0 +1,11 @@
+{
+  "version": "1.0.13.0",
+  "cases": {
+    "FindReplaceTests.ReplaceAll_ButtonRaisesEvent": {
+      "fails": "1 of 2 checks failed: ReplaceAll events raised by pressing Replace All: expected 1, got 0"
+    },
+    "FindReplaceTests.ReplaceAll_MessageRaisesEvent": {
+      "fails": "1 of 1 checks failed: ReplaceAll events raised by the message a Replace All press sends (FR_REPLACEALL): expected 1, got 0"
+    }
+  }
+}

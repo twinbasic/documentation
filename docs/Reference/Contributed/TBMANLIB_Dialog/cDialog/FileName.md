@@ -20,6 +20,7 @@ Syntax: *object*.**FileName** [ = *string* ]
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.ShowSave_FileNameIsShownInTheNameBox, CDialogDialogTests.ShowOpen_ReturnsTheFullPathAndStoresItInFileName, CDialogDialogTests.ShowOpen_CancelReturnsAnEmptyStringAndKeepsFileName, CDialogDialogTests.ShowOpen_MultiSelectOfTwoFilesReturnsAnArray, CDialogDialogTests.ShowOpen_FileNameIsPassedAsTheNextInitialName, CDialogPropertyTests.ShowSave_FileNameOf261CharactersRaisesError5, CDialogPropertyTests.ShowSave_FileNameOf260CharactersShowsNoDialog, CDialogPropertyTests.ShowSave_FileNameOf259CharactersOpensTheDialog -->
 **Before a dialog.** [**ShowOpen**](ShowOpen) and [**ShowSave**](ShowSave) copy the text into the buffer that Windows uses for the `lpstrFile` member of `OPENFILENAME`, which initialises the File name box. The Save As dialog shows an empty box for an empty **FileName** and `x.txt` for `x.txt`. [**ShowSave**](ShowSave) pads the buffer with spaces, and the dialog does not show the padding.
 
 **After a dialog.** A **ShowSave** or **ShowOpen** that the user confirms stores the path it returns in **FileName**. For a [**MultiSelect**](MultiSelect) selection of several files, which **ShowOpen** returns as an array, **FileName** becomes an empty string. A cancelled dialog leaves **FileName** as it was, and [**ShowBrowseForFolder**](ShowBrowseForFolder) neither reads nor changes it.
@@ -28,6 +29,7 @@ Syntax: *object*.**FileName** [ = *string* ]
 > Because a confirmed dialog stores the full path, the next **ShowOpen** or **ShowSave** passes that path as the initial file name. Set **FileName** to an empty string, or call [**Reset**](Reset), to start without it.
 
 **Length.** The buffer of **ShowSave** holds 260 characters. A **FileName** of up to 259 characters opens the dialog normally. A **FileName** of exactly 260 characters shows no dialog and returns an empty string at once, without an error, as a cancel does. A **FileName** of 261 characters or more raises run-time error 5, *Invalid procedure call or argument*, before any dialog. The buffer of **ShowOpen** holds 260 characters, or 32,768 when **FileName** is not empty or [**MultiSelect**](MultiSelect) is **True**. A **FileName** of 32,768 characters or more is not used by **ShowOpen**.
+<!-- /test -->
 
 ## Example
 

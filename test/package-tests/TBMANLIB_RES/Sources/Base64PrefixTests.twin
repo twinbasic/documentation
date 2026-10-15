@@ -1,0 +1,24 @@
+' TBMANLIB_RES, Base64Prefix: the value of each member.
+[TestFixture]
+Module Base64PrefixTests
+
+    [TestCase]
+    Public Sub Base64Prefix_Members_HaveTheDocumentedValues()
+        Expect.Begin
+        Expect.AreEqual 0, Base64Prefix_None, "Base64Prefix_None"
+        Expect.AreEqual 1, Base64Prefix_ImagePNG, "Base64Prefix_ImagePNG"
+        Expect.AreEqual 2, Base64Prefix_ImageJPEG, "Base64Prefix_ImageJPEG"
+        Expect.AreEqual 3, Base64Prefix_ImageGIF, "Base64Prefix_ImageGIF"
+        Expect.AreEqual 4, Base64Prefix_ImageBMP, "Base64Prefix_ImageBMP"
+        Expect.AreEqual 5, Base64Prefix_ImageICO, "Base64Prefix_ImageICO"
+        Expect.AreEqual 6, Base64Prefix_ImageWebP, "Base64Prefix_ImageWebP"
+        Expect.AreEqual 7, Base64Prefix_VideoMP4, "Base64Prefix_VideoMP4"
+        Expect.AreEqual 8, Base64Prefix_VideoWebM, "Base64Prefix_VideoWebM"
+        Expect.AreEqual 9, Base64Prefix_VideoOGG, "Base64Prefix_VideoOGG"
+        Expect.AreEqual 10, Base64Prefix_AudioMP3, "Base64Prefix_AudioMP3"
+        Expect.AreEqual 11, Base64Prefix_AudioWAV, "Base64Prefix_AudioWAV"
+        Expect.AreEqual 12, Base64Prefix_AudioOGG, "Base64Prefix_AudioOGG"
+        Expect.Done
+    End Sub
+
+End Module

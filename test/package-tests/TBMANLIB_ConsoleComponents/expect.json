@@ -1,0 +1,146 @@
+{
+  "version": "1.0.0.1",
+  "cases": {
+    "ContentRectMember": {
+      "fails": "expected none on CompileTests.twin line 27, got TB5027"
+    },
+    "ContentRectAssign": {
+      "fails": "expected none on CompileTests.twin line 32, got TB5028"
+    },
+    "ContentRectToContains": {
+      "fails": "expected none on CompileTests.twin line 37, got TB5001"
+    },
+    "PanelRectMember": {
+      "fails": "expected none on CompileTests.twin line 42, got TB5027"
+    },
+    "CenterMember": {
+      "fails": "expected none on CompileTests.twin line 47, got TB5027"
+    },
+    "CenterAssign": {
+      "fails": "expected none on CompileTests.twin line 52, got TB5028"
+    },
+    "CenterRectAssign": {
+      "fails": "expected none on CompileTests.twin line 57, got TB5028"
+    },
+    "PercentRectAssign": {
+      "fails": "expected none on CompileTests.twin line 62, got TB5028"
+    },
+    "PercentAssign": {
+      "fails": "expected none on CompileTests.twin line 67, got TB5028"
+    },
+    "WithMarginsAssign": {
+      "fails": "expected none on CompileTests.twin line 72, got TB5028"
+    },
+    "ClampRectAssign": {
+      "fails": "expected none on CompileTests.twin line 77, got TB5001, TB5028"
+    },
+    "NestedEnumerationWithClass": {
+      "fails": "expected none on CompileTests.twin line 109, got TB5079"
+    },
+    "GridHeaderColorRead": {
+      "fails": "expected none on CompileTests.twin line 116, got TB5045"
+    },
+    "GridSelectionColorRead": {
+      "fails": "expected none on CompileTests.twin line 121, got TB5045"
+    },
+    "GridSelectedRowRead": {
+      "fails": "expected none on CompileTests.twin line 126, got TB5045"
+    },
+    "GridShowHeaderRead": {
+      "fails": "expected none on CompileTests.twin line 131, got TB5045"
+    },
+    "GridShowBordersRead": {
+      "fails": "expected none on CompileTests.twin line 136, got TB5045"
+    },
+    "ColorHelperTests.IntensityColor_UsesItsBaseColour": {
+      "fails": "1 of 1 checks failed: IntensityColor of 50 with the base colour Red (4) and with Blue (4) differ: expected True, got False"
+    },
+    "ColorHelperTests.DimColor_DarkColour_IsNotBrighter": {
+      "fails": "3 of 3 checks failed: DimColor of Black (8) is not brighter than Black: expected True, got False; DimColor of DarkGreen (8) is not brighter than DarkGreen: expected True, got False; DimColor of Gray (8) is not brighter than Gray: expected True, got False"
+    },
+    "ColorHelperTests.BrightenColor_DarkGray_IsAConsoleColour": {
+      "fails": "1 of 1 checks failed: BrightenColor of DarkGray (16) is a ConsoleColor, 0 to 15: expected True, got False"
+    },
+    "ColorHelperTests.CycleColor_ListStartingAtOne_GivesTheFirstElementForIndexZero": {
+      "fails": "2 of 2 checks failed: Err.Number of CycleColor on an array with the lower bound 1: expected 0, got 9; CycleColor of 0 on an array with the lower bound 1: expected 12, got 0"
+    },
+    "DataGridTests.Render_WithoutRowColors_DrawsTheRows": {
+      "fails": "2 of 2 checks failed: Err.Number of Render when SetRowColors was never called: expected 0, got 9; the data row: expected \"first\", got \" \""
+    },
+    "DataGridTests.Render_WithoutColumnAlignments_DrawsTheRows": {
+      "fails": "2 of 2 checks failed: Err.Number of Render when SetColumnAlignments was never called: expected 0, got 9; the data row: expected \"first\", got \" \""
+    },
+    "DataGridTests.Render_WithoutColumnWidths_DrawsTheRows": {
+      "fails": "2 of 2 checks failed: Err.Number of Render when SetColumnWidths was never called: expected 0, got 9; the data row: expected \"first\", got \" \""
+    },
+    "DataGridTests.Render_WithoutRows_DrawsNothing": {
+      "fails": "1 of 1 checks failed: Err.Number of Render when SetRows was never called: expected 0, got 9"
+    },
+    "DataGridTests.SetRowColors_FirstDataRowTakesTheFirstColour": {
+      "fails": "2 of 2 checks failed: colour of the first data row, given colors(0) = Red: expected 12, got 10; colour of the second data row, given colors(1) = Green: expected 10, got 7"
+    },
+    "DataGridTests.ScrollTo_ShowsTheRowInABufferTooSmallForTheTable": {
+      "fails": "1 of 1 checks failed: the row row9 (data row 8) is in the buffer of 6 rows after ScrollTo 8: expected True, got False"
+    },
+    "LayoutTests.AddPanel_NameInUse_AddsNoPanelToTheList": {
+      "fails": "2 of 2 checks failed: PanelCount after AddPanel with a name in use: expected 1, got 2; panels returned by GetAllPanels: expected 1, got 2"
+    },
+    "LayoutTests.SplitHorizontal_AndLayoutHelperSplitHorizontal_DivideInTheSameDirection": {
+      "fails": "1 of 1 checks failed: the two parts of cConsoleLayout.SplitHorizontal side by side (True), the two of cLayoutHelper.SplitHorizontal side by side (False): expected True, got False"
+    },
+    "LayoutTests.CreateSidebar_AfterAnArrangementOnAnEmptyLayout_StillUsesTheWholeConsole": {
+      "fails": "1 of 1 checks failed: the sidebar of a layout whose only panels came from CreateHeaderFooter, in a console of 40 by 12: expected \"0 0 9 11\", got \"2 2 11 -2\""
+    },
+    "LayoutTests.Resize_ScalesThePanelsToTheNewSize": {
+      "fails": "1 of 1 checks failed: Rect of a panel that covered a console of 40 by 12, after Resize 80, 24: expected \"0 0 79 23\", got \"0 0 39 11\""
+    },
+    "ProgressBarTests.RenderWithBrackets_DrawsThePercentage": {
+      "fails": "1 of 1 checks failed: row 0 after RenderWithBrackets at 50 percent holds the text 50%: expected True, got False"
+    },
+    "SparklineTests.Render_SeriesStartingAtOne_DrawsTheChart": {
+      "fails": "3 of 3 checks failed: Err.Number of Render of a Braille chart of an array with the lower bound 1: expected 0, got 9; Err.Number of Render of a ASCII chart of an array with the lower bound 1: expected 0, got 9; Err.Number of Render of a Block chart of an array with the lower bound 1: expected 0, got 9"
+    },
+    "SparklineTests.Render_Braille_LowestPositionOfACell_SetsTheBottomLeftDot": {
+      "fails": "1 of 1 checks failed: cells for 25 percent at a height of 4 (the lowest of the four positions: dot 7): expected \"2840 2840\", got \"2808 2808\""
+    },
+    "SparklineTests.Render_Braille_ValueEqualToTheMinimum_SetsADot": {
+      "fails": "1 of 1 checks failed: the cell of a value equal to the minimum at a height of 4 (2800) has a dot: expected True, got False"
+    },
+    "SparklineTests.Render_Braille_TallChart_HoldsTheUpperHalfOfTheRangeInTheUpperRow": {
+      "fails": "2 of 2 checks failed: the upper row of a chart 8 dots high of a rising series (75 and 100 percent): expected \"2800 2800 2800 2804 2801\", got \"2800 2804 2801 2800 2800\"; the lower row (25 and 50 percent): expected \"2800 2804 2801 2800 2800\", got \"2800 2800 2800 2804 2801\""
+    },
+    "TwoPackagesTests.ProgressBar_New_AcceptsTheConsoleOfConsoleCore": {
+      "fails": "1 of 1 checks failed: Err.Number of New cProgressBar given the cConsole of TBMANLIB_ConsoleCore: expected 0, got -2147467262"
+    },
+    "TwoPackagesTests.Sparkline_New_AcceptsTheConsoleOfConsoleCore": {
+      "fails": "1 of 1 checks failed: Err.Number of New cSparkline given the cConsole of TBMANLIB_ConsoleCore: expected 0, got -2147467262"
+    },
+    "TwoPackagesTests.VBar_New_AcceptsTheConsoleOfConsoleCore": {
+      "fails": "1 of 1 checks failed: Err.Number of New cVBar given the cConsole of TBMANLIB_ConsoleCore: expected 0, got -2147467262"
+    },
+    "TwoPackagesTests.DataGrid_New_AcceptsTheConsoleOfConsoleCore": {
+      "fails": "1 of 1 checks failed: Err.Number of New cDataGrid given the cConsole of TBMANLIB_ConsoleCore: expected 0, got -2147467262"
+    },
+    "TwoPackagesTests.ConsoleLayout_New_AcceptsTheConsoleOfConsoleCore": {
+      "fails": "1 of 1 checks failed: Err.Number of New cConsoleLayout given the cConsole of TBMANLIB_ConsoleCore: expected 0, got -2147467262"
+    },
+    "TwoPackagesTests.LayoutHelper_New_AcceptsTheConsoleOfConsoleCore": {
+      "fails": "1 of 1 checks failed: Err.Number of New cLayoutHelper given the cConsole of TBMANLIB_ConsoleCore: expected 0, got -2147467262"
+    },
+    "TwoPackagesTests.ConsolePanel_Render_AcceptsTheBufferOfConsoleCore": {
+      "fails": "1 of 1 checks failed: Err.Number of cConsolePanel.Render given the cConsoleBuffer of TBMANLIB_ConsoleCore: expected 0, got -2147467262"
+    },
+    "TwoPackagesTests.ConsolePanel_ClearContent_AcceptsTheBufferOfConsoleCore": {
+      "fails": "1 of 1 checks failed: Err.Number of cConsolePanel.ClearContent given the cConsoleBuffer of TBMANLIB_ConsoleCore: expected 0, got -2147467262"
+    },
+    "VBarTests.Render_CustomStyle_DrawsACharacterOfItsOwn": {
+      "fails": "1 of 1 checks failed: the character of Custom (2588) differs from that of Block (2588): expected True, got False"
+    },
+    "VBarTests.RenderHistory_ArrayStartingAtOne_DrawsTheChart": {
+      "fails": "3 of 3 checks failed: Err.Number of RenderHistory of an array with the lower bound 1: expected 0, got 9; the oldest value, at column 8: expected \"#|#\", got \".|.\"; the middle value, at column 9: expected \".|#\", got \"#|#\""
+    },
+    "VBarTests.RenderWithLabel_LabelIsCentredUnderTheBar": {
+      "fails": "1 of 1 checks failed: the cells 9 to 11 of the label row, centred under the bar in column 10: expected \"CPU\", got \" CP\""
+    }
+  }
+}

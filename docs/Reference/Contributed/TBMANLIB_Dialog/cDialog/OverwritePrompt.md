@@ -20,11 +20,13 @@ Syntax: *object*.**OverwritePrompt** [ = *boolean* ]
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.ShowSave_OverwritePromptAsksBeforeReplacing, CDialogDialogTests.ShowSave_NoToTheQuestionLeavesTheDialogOpen, CDialogDialogTests.ShowSave_WithoutOverwritePromptReturnsAnExistingName -->
 [**ShowSave**](ShowSave) uses the property. With **True** and a file that exists, the box *Confirm Save As* asks *name already exists. Do you want to replace it?*, with the buttons *Yes* and *No*. *Yes* returns the path. *No* leaves the Save As dialog open. With **False** there is no box, and the dialog returns the path.
 
 The dialog only returns the name. The class does not create, replace or check a file.
 
 [**ShowOpen**](ShowOpen) passes the flag too, and the Windows documentation describes `OFN_OVERWRITEPROMPT` for Save As only. [**ShowBrowseForFolder**](ShowBrowseForFolder) ignores the property.
+<!-- /test -->
 
 ## Example
 

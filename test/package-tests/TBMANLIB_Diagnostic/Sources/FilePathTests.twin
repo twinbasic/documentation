@@ -1,0 +1,66 @@
+' FileHelper: the functions that take a path apart or put one together. They touch no file.
+[TestFixture]
+Module FilePathTests
+
+    [TestCase]
+    Public Sub NormalizePath_UncPath_KeepsItsTwoBackslashes()
+        Expect.Begin
+        Expect.AreEqual "\\server\share\f.txt", FileHelper.NormalizePath("\\server\share\f.txt"), "NormalizePath of a UNC path"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFullPath_UncPath_StaysAUncPath()
+        Expect.Begin
+        Expect.AreEqual "\\server\share\f.txt", FileHelper.GetFullPath("\\server\share\f.txt"), "GetFullPath of a UNC path"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub NormalizePath_MixedSeparatorsAndDots_IsCleaned()
+        Expect.Begin
+        Expect.AreEqual "C:\a\b\d.txt", FileHelper.NormalizePath("C:/a//b/./c/../d.txt"), "NormalizePath of C:/a//b/./c/../d.txt"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetFullPath_RelativePath_StartsAtAppPath()
+        Expect.Begin
+        Expect.AreEqual App.Path & "\x.txt", FileHelper.GetFullPath("x.txt"), "GetFullPath of x.txt"
+        Expect.AreEqual App.Path & "\x.txt", FileHelper.GetFullPath("sub\..\x.txt"), "GetFullPath of sub\..\x.txt"
+        Expect.AreEqual "C:\b\x.txt", FileHelper.GetFullPath("C:\a\..\b\x.txt"), "GetFullPath of C:\a\..\b\x.txt"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GetDirectoryName_ReturnsTheFolderPart()
+        Expect.Begin
+        Expect.AreEqual "C:\a", FileHelper.GetDirectoryName("C:\a\b.txt"), "GetDirectoryName of C:\a\b.txt"
+        Expect.AreEqual "C:", FileHelper.GetDirectoryName("C:\a\"), "GetDirectoryName of C:\a\"
+        Expect.AreEqual "", FileHelper.GetDirectoryName("b.txt"), "GetDirectoryName of b.txt"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FileNameFunctions_TakeTheNameApart()
+        Expect.Begin
+        Expect.AreEqual "b.tar.gz", FileHelper.GetFileName("C:\a\b.tar.gz"), "GetFileName of C:\a\b.tar.gz"
+        Expect.AreEqual "b.tar", FileHelper.GetFileNameWithoutExtension("C:\a\b.tar.gz"), "GetFileNameWithoutExtension of C:\a\b.tar.gz"
+        Expect.AreEqual ".gz", FileHelper.GetExtension("C:\a\b.tar.gz"), "GetExtension of C:\a\b.tar.gz"
+        Expect.AreEqual "", FileHelper.GetExtension("C:\a\b"), "GetExtension of C:\a\b"
+        Expect.AreEqual ".gitignore", FileHelper.GetExtension(".gitignore"), "GetExtension of .gitignore"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub IsAbsolutePath_TellsDriveAndUncPathsFromTheRest()
+        Expect.Begin
+        Expect.IsTrue FileHelper.IsAbsolutePath("C:\a"), "IsAbsolutePath of C:\a"
+        Expect.IsTrue FileHelper.IsAbsolutePath("\\server\share"), "IsAbsolutePath of \\server\share"
+        Expect.IsFalse FileHelper.IsAbsolutePath("a\b"), "IsAbsolutePath of a\b"
+        Expect.IsFalse FileHelper.IsAbsolutePath("\a"), "IsAbsolutePath of \a"
+        Expect.IsFalse FileHelper.IsAbsolutePath("//server/share"), "IsAbsolutePath of //server/share"
+        Expect.Done
+    End Sub
+
+End Module

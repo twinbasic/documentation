@@ -46,6 +46,7 @@ The files that **WriteFile** and **AppendFile** write are UTF-8 with a byte-orde
 
 A path that is not absolute is taken as relative to the folder of the program, **App.Path**, and not to the current folder. [**GetFullPath**](#getfullpath) makes the full path, and the functions that open, test, read or delete a file call it first. [**EnsureDirectoryExists**](#ensuredirectoryexists) and the functions that take a path apart ([**GetDirectoryName**](#getdirectoryname), [**GetFileName**](#getfilename), [**GetFileNameWithoutExtension**](#getfilenamewithoutextension), [**GetExtension**](#getextension), [**IsAbsolutePath**](#isabsolutepath) and [**NormalizePath**](#normalizepath)) use the text as it is given.
 
+<!-- test: FilePathTests.GetFullPath_RelativePath_StartsAtAppPath -->
 ```tb check_build check_run
 Debug.Print FileHelper.GetFullPath("x.txt") = App.Path & "\x.txt"
 Debug.Print FileHelper.GetFullPath("sub\..\x.txt") = App.Path & "\x.txt"
@@ -55,6 +56,7 @@ Debug.Print FileHelper.GetFullPath("C:\a\..\b\x.txt")
 ' True
 ' C:\b\x.txt
 ```
+<!-- /test -->
 
 ## Methods
 
@@ -71,7 +73,9 @@ Syntax: **FileHelper.AppendFile** ( *content*, *filePath* ) **As Variant**
 *filePath*
 : *required* A **String**, the path of the file, absolute or relative to **App.Path**.
 
+<!-- test: FileHelperTests.AppendFile_NewFile_WritesByteOrderMarkOnce, FileHelperTests.AppendFile_AfterWriteFile_AddsAfterTheContent -->
 Creates the file if it does not exist, and the folder that holds it when only that last folder is missing (see [**EnsureDirectoryExists**](#ensuredirectoryexists)). The file is written in UTF-8. The byte-order mark is written only when the file is empty or new. The content goes after the last byte of the file.
+<!-- /test -->
 
 Returns **True**, or a **String** of the form `Error ` and the number, a colon, the description, and ` (File: ` and the path as the caller gave it, and `)`. The function raises no error.
 
@@ -85,6 +89,7 @@ Syntax: **FileHelper.DeleteFile** ( *filePath* ) **As Boolean**
 *filePath*
 : *required* A **String**, the path of the file, absolute or relative to **App.Path**.
 
+<!-- test: FileHelperTests.DeleteFile_ExistingFile_RemovesIt, FileHelperTests.DeleteFile_MissingFile_ReturnsFalse, FileHelperTests.DeleteFile_Wildcard_DeletesEveryMatch -->
 Calls **Kill** and returns **True**. Returns **False** for any error, a file that does not exist included. The path may hold the wildcards `*` and `?` that **Kill** accepts, and then every file that matches is deleted.
 
 ```tb check_build check_run
@@ -102,6 +107,7 @@ RmDir folder
 ' False
 ' False
 ```
+<!-- /test -->
 
 ### DirectoryExists
 {: .no_toc }
@@ -113,7 +119,9 @@ Syntax: **FileHelper.DirectoryExists** ( *dirPath* ) **As Boolean**
 *dirPath*
 : *required* A **String**, the path of the folder, absolute or relative to **App.Path**.
 
+<!-- test: FileHelperTests.DirectoryExists_File_ReturnsFalse -->
 Returns **True** when **GetAttr** succeeds and reports a folder. A file, or a path that does not exist, gives **False**.
+<!-- /test -->
 
 ### EnsureDirectoryExists
 {: .no_toc }
@@ -125,7 +133,9 @@ Syntax: **FileHelper.EnsureDirectoryExists** ( *path* )
 *path*
 : *required* A **String**, the path of the folder.
 
+<!-- test: FileHelperTests.EnsureDirectoryExists_ExistingFolder_RaisesNoError -->
 Removes one trailing backslash and calls **MkDir**. It ignores every error, so a folder that exists is not an error, and neither is a folder that cannot be created. **MkDir** creates the last level only. When the folder above it does not exist, nothing is created and no error is reported: [**WriteFile**](#writefile) then returns the error text of **Open**, which is `Error -2147467259: Unspecified error` and the path. VB6 raises error 76, *Path not found*, for the same **Open** statement.
+<!-- /test -->
 
 ```tb check_build check_run
 Dim root As String = Environ$("TEMP") & "\diag-new"
@@ -152,7 +162,9 @@ Syntax: **FileHelper.FileExists** ( *filePath* ) **As Boolean**
 *filePath*
 : *required* A **String**, the path of the file, absolute or relative to **App.Path**.
 
+<!-- test: FileHelperTests.FileExists_Folder_ReturnsFalse -->
 Returns **True** when **GetAttr** succeeds and the path is not a folder. A folder, or a path that does not exist, gives **False**.
+<!-- /test -->
 
 ### GetDirectoryName
 {: .no_toc }
@@ -212,7 +224,9 @@ Syntax: **FileHelper.GetFileSize** ( *filePath* ) **As LongLong**
 *filePath*
 : *required* A **String**, the path of the file, absolute or relative to **App.Path**.
 
+<!-- test: FileHelperTests.GetFileSize_ExistingFile_ReturnsItsSize, FileHelperTests.GetFileSize_MissingFolder_ReturnsMinusOne -->
 Opens the file in binary mode and returns the result of **LOF**. Returns -1 when an error occurs, such as a folder that does not exist. The function opens the file with `For Binary`, and that mode creates a file that does not exist, so a missing file in a folder that exists is not an error: it is created with no content and the function returns 0. See [Known problems](.#known-problems-in-version-1001).
+<!-- /test -->
 
 ```tb check_build check_run
 Dim path As String = Environ$("TEMP") & "\diag-missing.bin"
@@ -267,6 +281,7 @@ Changes every slash to a backslash and every run of backslashes to one. It then 
 
 Because an empty first part is dropped, a path from the root, such as `\a\b`, loses its first backslash, and so does a UNC path: `\\server\share\f.txt` becomes `server\share\f.txt`, which is a relative path. [**GetFullPath**](#getfullpath) treats such a path as absolute and does not add **App.Path**, so a file in a UNC path is opened as the relative path `server\share\f.txt`. See [Known problems](.#known-problems-in-version-1001).
 
+<!-- test: FilePathTests.NormalizePath_MixedSeparatorsAndDots_IsCleaned, FilePathTests.GetDirectoryName_ReturnsTheFolderPart, FilePathTests.FileNameFunctions_TakeTheNameApart, FilePathTests.IsAbsolutePath_TellsDriveAndUncPathsFromTheRest -->
 ```tb check_build check_run
 Debug.Print FileHelper.NormalizePath("C:/a//b/./c/../d.txt")
 Debug.Print FileHelper.GetDirectoryName("C:\a\b.txt")
@@ -288,6 +303,7 @@ Debug.Print FileHelper.GetFullPath("\\server\share\f.txt")
 ' server\share\f.txt
 ' server\share\f.txt
 ```
+<!-- /test -->
 
 ### ReadFile
 {: .no_toc }
@@ -299,7 +315,9 @@ Syntax: **FileHelper.ReadFile** ( *filePath* ) **As Variant**
 *filePath*
 : *required* A **String**, the path of the file, absolute or relative to **App.Path**.
 
+<!-- test: FileHelperTests.ReadFile_EmptyFile_ReturnsEmptyString, FileHelperTests.ReadFile_MissingFolder_ReturnsErrorText -->
 Returns the content of the file as a **String**, and an empty string for an empty file. When an error occurs, such as a folder that does not exist, it returns an error text in the form that [**AppendFile**](#appendfile) describes. A file that does not exist is not an error: it is created with no content, as for [**GetFileSize**](#getfilesize), and the function returns an empty string, so a missing file and an empty file look the same. See [Known problems](.#known-problems-in-version-1001).
+<!-- /test -->
 
 The function reads the bytes of the file into a string as characters, and does not decode UTF-8 or remove a byte-order mark. A file that [**WriteFile**](#writefile) wrote therefore starts with the three characters of its byte-order mark, and a character above 127 is several characters.
 
@@ -338,7 +356,9 @@ Syntax: **FileHelper.WriteFile** ( *content*, *filePath* ) **As Variant**
 *filePath*
 : *required* A **String**, the path of the file, absolute or relative to **App.Path**.
 
+<!-- test: FileHelperTests.WriteFile_MissingLastFolder_CreatesIt, FileHelperTests.WriteFile_Text_WritesByteOrderMarkAndUtf8, FileHelperTests.WriteFile_Failure_ReturnsTextAndRaisesNoError -->
 Creates the file, and the folder that holds it when only that last folder is missing (see [**EnsureDirectoryExists**](#ensuredirectoryexists)). It writes the byte-order mark and then the text in UTF-8, from the start of the file. Returns **True**, or an error text as [**AppendFile**](#appendfile) describes.
+<!-- /test -->
 
 **WriteFile** opens the file in binary mode and does not shorten it. When the file exists and is longer than the new content, the bytes after the new content stay in the file. See [Known problems](.#known-problems-in-version-1001).
 
@@ -362,7 +382,9 @@ FileHelper.DeleteFile path
 ' 3
 ```
 
+<!-- test: FileHelperTests.WriteFile_EmptyString_WritesByteOrderMarkOnly -->
 An empty string is not an error: the file holds the three bytes of the byte-order mark.
+<!-- /test -->
 
 ## See Also
 

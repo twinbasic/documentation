@@ -1,0 +1,200 @@
+' Serialize: the text it writes for strings, containers, layouts and the values that are not JSON.
+[TestFixture]
+Module SerializeTests
+
+    [TestCase]
+    Public Sub Serialize_Strings_EscapeQuoteBackslashAndControlCharacters()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual """a\""b\\c""", Helpers.Min("a""b\c"), "Serialize of a quote and a backslash"
+        Expect.AreEqual """\b\t\n\f\r""", Helpers.Min(vbBack & vbTab & vbLf & vbFormFeed & vbCr), "Serialize of the control characters that have a short form"
+        Expect.AreEqual """\u0001\u001f""", Helpers.Min(Chr$(1) & Chr$(31)), "Serialize of other control characters, in lower case hexadecimal"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_Solidus_IsWrittenAsItIsUnlessAsked()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual """a/b""", Helpers.Min("a/b"), "Serialize of a/b"
+        Dim o As JsonOptions = JsonOptions.Minified
+        o.EscapesSolidus = True
+        Expect.AreEqual """a\/b""", Json.Serialize("a/b", o), "Serialize of a/b with EscapesSolidus"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_EnsuresAscii_EscapesEveryCodeUnitAbove7F()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = JsonOptions.Minified
+        o.EnsuresAscii = True
+        Expect.AreEqual """\" & "u00e9a""", Json.Serialize(ChrW$(233) & "a", o), "Serialize of e acute and a with EnsuresAscii"
+        Expect.AreEqual """\" & "ud83d\" & "ude00""", Json.Serialize(ChrW(&HD83D) & ChrW(&HDE00), o), "Serialize of U+1F600 with EnsuresAscii"
+        Expect.AreEqual """" & ChrW(&H7F) & """", Json.Serialize(ChrW(&H7F), o), "Serialize of U+007F with EnsuresAscii"
+        Expect.AreEqual """" & ChrW(233) & """", Helpers.Min(ChrW(233)), "Serialize of e acute without EnsuresAscii"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_SortsKeys_OrdersMembersByCodeUnit()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = JsonOptions.Minified
+        o.SortsKeys = True
+        Dim doc As JsonObject = Json.Map("b", 1, "a", Json.Map("z", 1, "Y", 2), "B", 3)
+        Expect.AreEqual "{""B"":3,""a"":{""Y"":2,""z"":1},""b"":1}", Json.Serialize(doc, o), "Serialize with SortsKeys"
+        Expect.AreEqual "{""b"":1,""a"":{""z"":1,""Y"":2},""B"":3}", Helpers.Min(doc), "Serialize without SortsKeys"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_Default_IsPrettyWithFourSpacesAndLineFeeds()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonObject = Json.Map("a", 1, "b", Json.Arr(1, 2), "c", Json.Map())
+        Expect.AreEqual "{|    ""a"": 1,|    ""b"": [|        1,|        2|    ],|    ""c"": {}|}", Replace(Json.Serialize(o), vbLf, "|"), "Serialize with no options"
+        Expect.AreEqual Json.Serialize(o), Json.Serialize(o, JsonOptions.Pretty), "Serialize with no options and with Pretty"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_Newline_EndsTheLines()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = JsonOptions.Pretty
+        o.Newline = vbCrLf
+        o.Indent = 1
+        Expect.AreEqual "[|" & " 1|]", Replace(Json.Serialize(Json.Arr(1), o), vbCrLf, "|"), "Serialize with Newline vbCrLf"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_IndentZero_HasLineBreaksAndNoIndentation()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = JsonOptions.Pretty
+        o.Indent = 0
+        Expect.AreEqual "{|""a"": [|1|]|}", Replace(Json.Serialize(Json.Map("a", Json.Arr(1)), o), vbLf, "|"), "Serialize with Indent 0"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_EmptyContainers_AreWrittenAlike()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual "{}", Helpers.Min(Json.Map()), "an empty object, minified"
+        Expect.AreEqual "[]", Helpers.Min(Json.Arr()), "an empty array, minified"
+        Expect.AreEqual "{}", Json.Serialize(Json.Map()), "an empty object, pretty"
+        Expect.AreEqual "[]", Json.Serialize(Json.Arr()), "an empty array, pretty"
+        Dim none() As Variant
+        Expect.AreEqual "[]", Helpers.Min(none), "an unbound Variant array"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_VariantArray_IsAJsonArray()
+        Expect.Begin
+        Helpers.Reset
+        Dim a(0 To 2) As Variant
+        a(0) = 1
+        a(1) = "x"
+        a(2) = Null
+        Expect.AreEqual "[1,""x"",null]", Helpers.Min(a), "Serialize of a Variant array"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_ValuesThatAreNotJson_AreUnsupportedType()
+        Expect.Begin
+        Helpers.Reset
+        Dim s As String
+        s = Json.Serialize(Empty, JsonOptions.Minified)
+        Expect.AreEqual "UnsupportedType", JsonError.Code, "the error code of Serialize of Empty"
+        s = Json.Serialize(Nothing, JsonOptions.Minified)
+        Expect.AreEqual "UnsupportedType", JsonError.Code, "the error code of Serialize of Nothing"
+        Dim c As New Collection
+        s = Json.Serialize(c, JsonOptions.Minified)
+        Expect.AreEqual "UnsupportedType", JsonError.Code, "the error code of Serialize of a Collection"
+        Expect.AreEqual "", s, "the text Serialize returns for a Collection"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_ContainerThatContainsItself_IsCircularReference()
+        Expect.Begin
+        Helpers.Reset
+        Dim a As JsonArray = Json.Arr(1)
+        a.Add a
+        Dim s As String = Json.Serialize(a, JsonOptions.Minified)
+        Expect.AreEqual "", s, "Serialize of an array that contains itself returns the empty string"
+        Expect.AreEqual "CircularReference", JsonError.Code, "JsonError.Code"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_DepthBeyondMaxDepth_IsDepthLimitExceeded()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = JsonOptions.Minified
+        o.MaxDepth = 2
+        Expect.AreEqual "[[1]]", Json.Serialize(Json.Arr(Json.Arr(1)), o), "Serialize of two nested arrays with MaxDepth 2"
+        Expect.AreEqual "", Json.Serialize(Json.Arr(Json.Arr(Json.Arr(1))), o), "Serialize of three nested arrays with MaxDepth 2"
+        Expect.AreEqual "DepthLimitExceeded", JsonError.Code, "JsonError.Code"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Serialize_LoneSurrogate_IsWrittenAndNotEncodedToUtf8()
+        Expect.Begin
+        Helpers.Reset
+        Expect.AreEqual 3, Len(Json.Serialize(ChrW(&HD83D), Nothing)), "the length of Serialize of a lone high surrogate with Nothing as the options"
+        Dim bytes() As Byte = Json.SerializeToUtf8(ChrW(&HD83D), Nothing)
+        Expect.AreEqual "InvalidEncoding", JsonError.Code, "JsonError.Code after SerializeToUtf8"
+        Expect.AreEqual "Text cannot be encoded as UTF-8.", JsonError.Message, "JsonError.Message"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SerializeToUtf8_IncludesBom_StartsWithTheByteOrderMark()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = JsonOptions.Minified
+        o.IncludesBom = True
+        Dim bytes() As Byte = Json.SerializeToUtf8(ChrW$(233), o)
+        Expect.AreEqual 7, UBound(bytes) - LBound(bytes) + 1, "the number of bytes of a string of one character with a byte order mark"
+        Expect.AreEqual "EFBBBF", Hex$(bytes(0)) & Hex$(bytes(1)) & Hex$(bytes(2)), "the first three bytes"
+        Expect.AreEqual "C3A9", Hex$(bytes(4)) & Hex$(bytes(5)), "the bytes of e acute"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SerializeToUtf8_WithoutBom_StartsWithTheQuote()
+        Expect.Begin
+        Helpers.Reset
+        Dim bytes() As Byte = Json.SerializeToUtf8("a", JsonOptions.Minified)
+        Expect.AreEqual 3, UBound(bytes) - LBound(bytes) + 1, "the number of bytes"
+        Expect.AreEqual 34, bytes(0), "the first byte, a quote"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SerializeLines_IgnoresIndent()
+        Expect.Begin
+        Helpers.Reset
+        Dim o As JsonOptions = JsonOptions.Pretty
+        Expect.AreEqual "{""id"":1}|", Replace(Json.SerializeLines(Json.Arr(Json.Map("id", 1)), o), vbLf, "|"), "SerializeLines with Pretty"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub SerializeLines_OtherType_IsWrongType()
+        Expect.Begin
+        Helpers.Reset
+        Dim s As String = Json.SerializeLines(5)
+        Expect.AreEqual "", s, "SerializeLines of a number returns the empty string"
+        Expect.AreEqual "WrongType", JsonError.Code, "JsonError.Code"
+        Expect.Done
+    End Sub
+
+End Module

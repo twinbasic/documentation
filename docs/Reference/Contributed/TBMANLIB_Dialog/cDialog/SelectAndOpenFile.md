@@ -22,9 +22,11 @@ Returns a **LongPtr** (a **Long** in a 32-bit program, a **LongLong** in a 64-bi
 
 ## Remarks
 
+<!-- test: CDialogDialogTests.SelectAndOpenFile_CancelReturnsZero, CDialogDialogTests.SelectAndOpenFile_OneMissingFileReturnsWhatOpenFileReturned, CDialogDialogTests.SelectAndOpenFile_SeveralMissingFilesReturnOne -->
 **SelectAndOpenFile** calls [**ShowOpen**](ShowOpen) with the current properties of the object, so every option that applies to the Open dialog ([**Filter**](Filter), [**InitialDir**](InitialDir), [**MultiSelect**](MultiSelect) and the others) applies here. It then calls **OpenFile** with the verb `open` for the path. The file is run as **OpenFile** describes: a program starts, and a document opens in its associated program.
 
 With [**MultiSelect**](MultiSelect) **True** and two or more files selected, **ShowOpen** returns an array, and **SelectAndOpenFile** calls **OpenFile** for each element in turn. It then returns 1, whatever the individual calls returned, so the return value does not report a file that failed to open. For a single file it returns what **OpenFile** returned.
+<!-- /test -->
 
 ## Example
 

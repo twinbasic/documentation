@@ -1,0 +1,44 @@
+' EnumTests: the values of the four enumerations.
+[TestFixture]
+Module EnumTests
+
+    [TestCase]
+    Public Sub DayLengthEnum_Values()
+        Expect.Begin
+        Expect.AreEqual 0, CLng(DayLengthEnum.ShortLength), "DayLengthEnum.ShortLength"
+        Expect.AreEqual 1, CLng(DayLengthEnum.MediumLength), "DayLengthEnum.MediumLength"
+        Expect.AreEqual 2, CLng(DayLengthEnum.LongLength), "DayLengthEnum.LongLength"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub GridCellEffectEnum_Values()
+        Expect.Begin
+        Expect.AreEqual 0, CLng(GridCellEffectEnum.Flat), "GridCellEffectEnum.Flat"
+        Expect.AreEqual 1, CLng(GridCellEffectEnum.Raised), "GridCellEffectEnum.Raised"
+        Expect.AreEqual 2, CLng(GridCellEffectEnum.Sunken), "GridCellEffectEnum.Sunken"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub MonthLengthEnum_Values()
+        Expect.Begin
+        Expect.AreEqual 0, CLng(MonthLengthEnum.ShortLength), "MonthLengthEnum.ShortLength"
+        Expect.AreEqual 1, CLng(MonthLengthEnum.LongLength), "MonthLengthEnum.LongLength"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub WeekDaysEnum_Values()
+        Expect.Begin
+        Expect.AreEqual vbSunday, CLng(WeekDaysEnum.Sunday), "WeekDaysEnum.Sunday"
+        Expect.AreEqual vbMonday, CLng(WeekDaysEnum.Monday), "WeekDaysEnum.Monday"
+        Expect.AreEqual vbTuesday, CLng(WeekDaysEnum.Tuesday), "WeekDaysEnum.Tuesday"
+        Expect.AreEqual vbWednesday, CLng(WeekDaysEnum.Wednesday), "WeekDaysEnum.Wednesday"
+        Expect.AreEqual vbThursday, CLng(WeekDaysEnum.Thursday), "WeekDaysEnum.Thursday"
+        Expect.AreEqual vbFriday, CLng(WeekDaysEnum.Friday), "WeekDaysEnum.Friday"
+        Expect.AreEqual vbSaturday, CLng(WeekDaysEnum.Saturday), "WeekDaysEnum.Saturday"
+        Expect.Done
+    End Sub
+
+End Module

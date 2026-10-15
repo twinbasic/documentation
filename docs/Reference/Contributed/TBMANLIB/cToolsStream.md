@@ -27,6 +27,7 @@ Kill Path
 ' True
 ```
 
+<!-- test: StreamTests.LoadFileAsText_AfterLoadFileAsText_ReadsTheFile, StreamTests.LoadFileAsText_AfterSaveFileAsText_ReadsTheFile, StreamTests.LoadFileAsText_AfterFailedLoad_ReadsTheFile, StreamTests.SaveFileAsText_AfterSaveFileAsText_ReplacesTheFile, StreamTests.BinaryFunctions_CloseAnOpenStream, StreamTests.NewObjectForEachCall_ReadsAndWritesTheFile -->
 > [!WARNING] 1.0.0.29
 > [**LoadFileAsText**](#loadfileastext) and [**SaveFileAsText**](#savefileastext) leave the stream open, and neither closes it first. That breaks the next call of either on the same object, and the shared **ToolsStream** is such an object for the whole run of the program:
 >
@@ -100,6 +101,7 @@ Syntax: **ToolsStream.LoadFileAsBinary** ( *Path* **,** *OutData* ) **As Boolean
 *OutData*
 : *required* A dynamic **Byte** array. It receives the bytes of the file.
 
+<!-- test: StreamTests.LoadFileAsBinary_MissingFile_ReturnsFalseAndTheErrorTwice, StreamTests.SaveFileAsBinary_ThenLoadFileAsBinary_RoundTripsAllByteValues -->
 Returns **True** when the file was read, and **False** when an error occurred; the text of the error is then in [**LastError**](#lasterror). The function closes the stream if it is open, sets it to the binary type, reads the file and closes the stream.
 
 The text in **LastError** is the description of the error, then `#`, then the description a second time. The number of the error is not in it.
@@ -113,6 +115,7 @@ Debug.Print S.LastError
 ' False
 ' File could not be opened.#File could not be opened.
 ```
+<!-- /test -->
 
 ### LoadFileAsText
 {: .no_toc }
@@ -127,7 +130,9 @@ Syntax: **ToolsStream.LoadFileAsText** ( *FileName* [ **,** *CharSet* ] ) **As S
 *CharSet*
 : *optional* A **String**, the name of the character set in which the file is stored, `UTF-8` by default. Any name that the ADODB.Stream accepts can be used. A byte order mark at the start of a UTF-8 file is not returned as a character.
 
+<!-- test: StreamTests.LoadFileAsText_MissingFile_Raises3002, StreamTests.LoadFileAsText_ByteOrderMark_IsNotPartOfTheText -->
 The function sets the type of the stream to text, opens it, sets its character set, loads the file and reads all the text from it. It leaves the stream open, with its position at the start. It handles no error: a failure, such as error 3002, *File could not be opened*, for a file that does not exist, is raised to the caller as the error of the stream, and leaves the stream open.
+<!-- /test -->
 
 In line mode, the text is also split into lines with [**SplitLinesToCollection**](cToolsStr#splitlinestocollection), which is stored in [**LineData**](#linedata), and [**LineNumber**](#linenumber) is set to 1. The function still returns the whole text. The rules of the split apply, among them that a last line of one character is lost.
 
@@ -143,6 +148,7 @@ Syntax: **ToolsStream.ReadLine** ( [ *Line* ] ) **As String**
 *Line*
 : *optional* A **Long**. When it is greater than 0, it is stored in [**LineNumber**](#linenumber) first, and that line is read.
 
+<!-- test: StreamTests.ReadLine_InLineMode_ReadsTheLinesOfTheFile, StreamTests.ReadLine_LineModeOff_Raises1 -->
 Returns the item of **LineData** that **LineNumber** names, and adds 1 to **LineNumber**. A number that is not the number of an item raises error 9, *Subscript out of range*. When line mode is off, the function raises error 1 with a Chinese message that means *line reading and writing is not switched on*.
 
 ```tb check_build check_run
@@ -163,6 +169,7 @@ Kill Path
 ' first second 3
 ' first
 ```
+<!-- /test -->
 
 ### SaveFileAsBinary
 {: .no_toc }
@@ -209,13 +216,20 @@ Syntax: **ToolsStream.SaveFileAsText** ( *FileName* [ **,** *Data* ] [ **,** *Ch
 : *required* A **String**, the file to write. An existing file is replaced. The folder must exist: when it does not, the call raises error 3004, *Write to file failed*.
 
 *Data*
-: *optional* A **String**, the text to write. It is declared optional, and meant to default to the lines of [**LineData**](#linedata) in line mode, or to the text the stream already holds. Neither default works: a **String** that is left out is a null string, not a missing argument, so the call tries to write a null string and raises error 3001, *Arguments are of the wrong type, are out of acceptable range, or are in conflict with one another*. Pass the text, an empty string if need be.
+: *optional* A **String**, the text to write. It is declared optional, and meant to default to the lines of [**LineData**](#linedata) in line mode, or to the text the stream already holds; see the note below.
 
 *CharSet*
 : *optional* A **String**, the name of the character set, `UTF-8` by default. A character set of `UTF-8` writes the byte order mark EF BB BF at the start of the file.
 
+<!-- test: StreamTests.SaveFileAsText_MissingFolder_Raises3004, StreamTests.SaveFileAsText_Utf8_StartsWithTheByteOrderMark -->
 The function opens the stream if it is closed, sets its character set, writes the text into it and saves the file. It leaves the stream open. The function adds no line break to the text. See the warning at the top of the page for what happens when the stream is already open.
+<!-- /test -->
 
+<!-- test: StreamTests.SaveFileAsText_DataOmittedInLineMode_WritesTheLines -->
+> [!NOTE] 1.0.0.29
+> The text cannot be left out. Neither default of *Data* works: a **String** that is left out is a null string, not a missing argument, so the call tries to write a null string and raises error 3001, *Arguments are of the wrong type, are out of acceptable range, or are in conflict with one another*. Pass the text, an empty string if need be.
+
+<!-- test: StreamTests.SaveFileAsText_ReturnsTrueWhenTheFileIsWritten -->
 > [!WARNING] 1.0.0.29
 > The function always returns **False**. Its result is never set, even when the file was written. A program cannot use the result to see whether the call worked, and has to handle the error that the stream raises.
 
@@ -261,6 +275,7 @@ Syntax: **ToolsStream.WriteLine** ( *Text* [ **,** *Line* ] ) **As Boolean**
 *Line*
 : *optional* A **Long**. When it is greater than 0, it is stored in [**LineNumber**](#linenumber) first.
 
+<!-- test: StreamTests.WriteLine_InLineMode_StoresTheLine, StreamTests.WriteLine_LineModeOff_Raises1 -->
 > [!NOTE] 1.0.0.29
 > The function raises error 13 every time line mode is on. It adds the line to the collection with `LineData.Add Text, LineNumber`, and a collection takes a **String** as the key of an item, not a **Long**. Items can be added to **LineData** directly with its own **Add**. When line mode is off, the function raises error 1 with a Chinese message that means *line reading and writing is not switched on*.
 

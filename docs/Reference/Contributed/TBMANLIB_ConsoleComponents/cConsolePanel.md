@@ -10,6 +10,7 @@ has_toc: false
 
 A rectangle of the console with a border, a title and padding, that draws its border into a [**cConsoleBuffer**](../TBMANLIB_ConsoleCore/cConsoleBuffer) and tells where its content area is.
 
+<!-- test: PanelTests.Render_Title_SampleOfThePage -->
 A panel holds a position, a size and a few style fields, and draws nothing until [**Render**](#render) is called with a buffer. It does not hold content: the program writes into the area that [**ContentRect**](#contentrect) returns. The panel takes the buffer to draw into as a parameter and holds no console. [**cConsoleLayout**](cConsoleLayout) creates panels and keeps them by name.
 
 ```tb check_build
@@ -31,28 +32,33 @@ Debug.Print panel.ContentWidth() & " " & panel.ContentHeight()
 ' L 15
 ' 16 2
 ```
+<!-- /test -->
 
 * TOC
 {:toc}
 
 In the syntax lines of this page, *object* is a **cConsolePanel**. Columns and rows are counted from 0 in the buffer.
 
+<!-- test: PanelTests.New_RectHasInclusiveEdges, PanelTests.ContentRect_TakesOneCellForTheBorderAndThePadding, PanelTests.ContentRect_BorderStyleNone_TakesOnlyThePadding, PanelTests.ContentRect_SmallPanel_IsEmptyOrNegative -->
 ## The rectangle and the content area
 
 [**Rect**](#rect) is the rectangle of the panel with its edges inclusive: a panel at column 2, row 1, 20 columns wide and 6 rows high has `Rect.Left` 2, `Rect.Top` 1, `Rect.Right` 21 and `Rect.Bottom` 6. The border is drawn on the edge cells.
 
 The content area is what is left inside. [**ContentRect**](#contentrect) takes one cell from each side for the border, unless [**BorderStyle**](#borderstyle) is **None**, and then [**Padding**](#padding) cells from each side. The sample above has a content area of 16 columns by 2 rows, from column 4, row 3 to column 19, row 4. The content area can be empty or have a negative size when the panel is small.
+<!-- /test -->
 
 ## Fields
 
 The class has seven public fields, not properties. They are read and written as `panel.Title`, and a write takes effect at the next [**Render**](#render).
 
+<!-- test: PanelTests.Render_Title_IsWrittenBetweenTwoSpacesOnTheTopBorder, PanelTests.Render_BorderUsesTheColoursOfTheCall_NotBorderColor -->
 ### BorderColor
 {: .no_toc }
 
 The colour of the two spaces that surround the title on the top border. A [**ConsoleColor**](../TBMANLIB_ConsoleCore/Types#consolecolor). The starting value is **Gray**.
 
 The border itself is drawn in the colours that are passed to [**Render**](#render), and not in this one.
+<!-- /test -->
 
 ### BorderStyle
 {: .no_toc }
@@ -69,11 +75,14 @@ The name of the panel. **String**. The constructor sets it. [**cConsoleLayout**]
 
 The number of cells between the border and the content area, on every side. **Long**. The starting value is 1.
 
+<!-- test: compile PanelRectMember, PanelTests.New_RectHasInclusiveEdges -->
 ### Rect
 {: .no_toc }
 
 The rectangle of the panel. A [**ConsoleRect**](../TBMANLIB_ConsoleCore/Types#consolerect), with inclusive edges. The constructor, [**Move**](#move) and [**Resize**](#resize) set it. A program that references the packages TBMANLIB_ConsoleCore and TBMANLIB_ConsoleComponents cannot read its fields: see [The two packages](./#the-two-packages). [**ContentWidth**](#contentwidth) and [**ContentHeight**](#contentheight) give sizes as **Long** values.
+<!-- /test -->
 
+<!-- test: PanelTests.Render_Title_IsWrittenBetweenTwoSpacesOnTheTopBorder, PanelTests.Render_LongTitle_IsCutWithoutAnEllipsis, PanelTests.Render_PanelTooNarrowForOneCharacterOfTheTitle_DrawsNoTitle -->
 ### Title
 {: .no_toc }
 
@@ -85,13 +94,15 @@ The text on the top border. **String**. The starting value is an empty string, w
 {: .no_toc }
 
 The colour of the title text. A **ConsoleColor**. The starting value is **White**.
+<!-- /test -->
 
+<!-- test: PanelTests.Render_Single_DrawsThe250CBorder, PanelTests.Render_Double_DrawsThe2554Border, PanelTests.Render_Rounded_DrawsTheRoundedCornersAndSingleLines, PanelTests.Render_Bold_DrawsTheHeavyBorder, PanelTests.Render_StyleNone_DrawsNothingNotEvenTheTitle, compile NestedEnumerationWithoutClass, compile NestedEnumerationWithClass -->
 ## Enumeration
 
 ### PanelBorderStyle
 {: .no_toc }
 
-The border style of a panel. The enumeration is declared in the class, and its members are written without the class, as in `PanelBorderStyle.Rounded`; the type is `cConsolePanel.PanelBorderStyle` or `PanelBorderStyle`.
+The border style of a panel. The enumeration is declared in the class, and its members are written without the class, as in `PanelBorderStyle.Rounded`; the type is `PanelBorderStyle`. The form with the class, `cConsolePanel.PanelBorderStyle`, is refused in a project that references both [TBMANLIB_ConsoleCore](../TBMANLIB_ConsoleCore/) and this package (TB5079); see [The two packages](./#the-two-packages).
 
 | Member | Value | Border |
 |---|---:|---|
@@ -102,9 +113,11 @@ The border style of a panel. The enumeration is declared in the class, and its m
 | **Bold** | 4 | Heavy lines: U+250F, U+2513, U+2517, U+251B, U+2501, U+2503. |
 
 **Single** and **Double** are drawn by [**DrawBox**](../TBMANLIB_ConsoleCore/cConsoleBuffer#drawbox) of the buffer, and the other two by the panel itself.
+<!-- /test -->
 
 ## Constructor
 
+<!-- test: PanelTests.New_RectHasInclusiveEdges, PanelTests.New_WithoutArguments_IsAPanelOf10By5CellsAtTheOrigin -->
 ### New
 {: .no_toc }
 
@@ -122,9 +135,11 @@ Syntax: **New cConsolePanel** [ ( [ *name* [ , *left* [ , *top* [ , *width* [ , 
 : *optional* **Long** values, the size in columns and rows. The defaults are 10 and 5.
 
 Sets [**Rect**](#rect) to `left`, `top`, `left + width - 1` and `top + height - 1`, [**BorderStyle**](#borderstyle) to **Single**, [**BorderColor**](#bordercolor) to **Gray**, [**TitleColor**](#titlecolor) to **White** and [**Padding**](#padding) to 1.
+<!-- /test -->
 
 ## Methods
 
+<!-- test: PanelTests.ClearContent_FillsTheContentAreaWithSpaces_AndLeavesTheBorderAndThePadding, PanelTests.ClearContent_UsesTheColoursGiven, PanelTests.ClearContent_ContentAreaOfLessThanTwoCells_DoesNothing -->
 ### ClearContent
 {: .no_toc }
 
@@ -142,7 +157,9 @@ Syntax: *object*.**ClearContent** ( *buffer* [ , *fore* [ , *back* ] ] )
 : *optional* A **ConsoleColor**, the background. The default is **Black**.
 
 The padding and the border are left as they are. Nothing is done when the content area is less than 2 cells wide or 2 cells high.
+<!-- /test -->
 
+<!-- test: PanelTests.ContentRect_TakesOneCellForTheBorderAndThePadding, PanelTests.ContentRect_SmallPanel_IsEmptyOrNegative -->
 ### ContentHeight
 {: .no_toc }
 
@@ -151,7 +168,9 @@ Returns the height of the content area.
 Syntax: *object*.**ContentHeight** ( ) **As Long**
 
 Returns `ContentRect.Bottom - ContentRect.Top + 1`. It is 0 or negative when the border and the padding take all the rows.
+<!-- /test -->
 
+<!-- test: PanelTests.ContentRect_TakesOneCellForTheBorderAndThePadding, PanelTests.ContentRect_BorderStyleNone_TakesOnlyThePadding, compile ContentRectMember, compile ContentRectAssign -->
 ### ContentRect
 {: .no_toc }
 
@@ -160,7 +179,9 @@ Returns the content area.
 Syntax: *object*.**ContentRect** ( ) **As ConsoleRect**
 
 Returns a [**ConsoleRect**](../TBMANLIB_ConsoleCore/Types#consolerect) that is [**Rect**](#rect) less one cell on each side for the border (none when [**BorderStyle**](#borderstyle) is **None**) and less [**Padding**](#padding) cells on each side.
+<!-- /test -->
 
+<!-- test: PanelTests.ContentRect_TakesOneCellForTheBorderAndThePadding, PanelTests.ContentRect_SmallPanel_IsEmptyOrNegative -->
 ### ContentWidth
 {: .no_toc }
 
@@ -169,7 +190,9 @@ Returns the width of the content area.
 Syntax: *object*.**ContentWidth** ( ) **As Long**
 
 Returns `ContentRect.Right - ContentRect.Left + 1`.
+<!-- /test -->
 
+<!-- test: PanelTests.Move_KeepsTheSize, PanelTests.Move_AndResize_DrawNothing -->
 ### Move
 {: .no_toc }
 
@@ -181,7 +204,9 @@ Syntax: *object*.**Move** ( *left* , *top* )
 : *required* **Long** values, the new position of the upper left corner.
 
 Nothing is drawn, and the old cells are not cleared.
+<!-- /test -->
 
+<!-- test: PanelTests.Render_Single_DrawsThe250CBorder, PanelTests.Render_BorderUsesTheColoursOfTheCall_NotBorderColor, PanelTests.Render_DoesNotChangeTheInsideOfThePanel, PanelTests.Render_StyleNone_DrawsNothingNotEvenTheTitle, PanelTests.Render_CellsOutsideTheBuffer_AreDropped -->
 ### Render
 {: .no_toc }
 
@@ -199,7 +224,9 @@ Syntax: *object*.**Render** ( *buffer* [ , *fore* [ , *back* ] ] )
 : *optional* A **ConsoleColor**, the background of the border. The default is **Black**.
 
 Draws the border of the style in [**BorderStyle**](#borderstyle) around [**Rect**](#rect) and then the [**Title**](#title). The inside of the panel is not changed: the text that was there stays, and [**ClearContent**](#clearcontent) removes it. With the style **None** the method draws nothing, not even the title. Cells outside the buffer are dropped.
+<!-- /test -->
 
+<!-- test: PanelTests.Resize_KeepsThePosition, PanelTests.Move_AndResize_DrawNothing -->
 ### Resize
 {: .no_toc }
 
@@ -211,6 +238,7 @@ Syntax: *object*.**Resize** ( *width* , *height* )
 : *required* **Long** values, the new size in columns and rows.
 
 Sets `Rect.Right` to `Rect.Left + width - 1` and `Rect.Bottom` to `Rect.Top + height - 1`. Nothing is drawn.
+<!-- /test -->
 
 ## See Also
 

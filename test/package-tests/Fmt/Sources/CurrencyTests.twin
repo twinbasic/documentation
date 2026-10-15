@@ -1,0 +1,69 @@
+' Fmt: the C identifier (CurrencySFI). The dollar sign is written after the number whatever the regional
+' settings; the thousands separator and the decimal point follow them.
+[TestFixture]
+Module CurrencyTests
+
+    [TestCase]
+    Public Sub Default_TwoDecimalPlacesAndATrailingDollar()
+        Expect.Begin
+        Expect.AreEqual "17" & Loc.Dec() & "63$", Try1("{0:C}", 17.63245), "StringFormat(""{0:C}"", 17.63245)"
+        Expect.AreEqual "17" & Loc.Dec() & "63$", Try1("{0:c}", 17.63245), "StringFormat(""{0:c}"", 17.63245)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Precision_SetsTheDecimalPlaces()
+        Expect.Begin
+        Expect.AreEqual "2" & Loc.Dec() & "500$", Try1("{0:C3}", 2.5), "StringFormat(""{0:C3}"", 2.5)"
+        Expect.AreEqual "17" & Loc.Dec() & "6$", Try1("{0:C1}", 17.63245), "StringFormat(""{0:C1}"", 17.63245)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub PrecisionZero_IsTheDefault()
+        Expect.Begin
+        Expect.AreEqual "17" & Loc.Dec() & "63$", Try1("{0:C0}", 17.63245), "StringFormat(""{0:C0}"", 17.63245)"
+        Expect.AreEqual "17" & Loc.Dec() & "63$", Try1("{0:c2}", 17.63245), "StringFormat(""{0:c2}"", 17.63245)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ThousandsSeparators_FollowTheRegionalSettings()
+        Expect.Begin
+        Expect.AreEqual Format$(1234567.891, "#,##0.00") & "$", Try1("{0:C}", 1234567.891), "StringFormat(""{0:C}"", 1234567.891) against Format$ ""#,##0.00"" and a $"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DollarSign_IsAfterTheNumber()
+        Expect.Begin
+        Dim r As String = Try1("{0:C}", 5)
+        Expect.AreEqual "$", Right$(r, 1), "last character of StringFormat(""{0:C}"", 5), " & r
+        Expect.IsTrue Left$(r, 1) <> "$", "StringFormat(""{0:C}"", 5) does not start with a $, " & r
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Negative_KeepsTheSignInFront()
+        Expect.Begin
+        Expect.AreEqual Format$(-5, "#,##0.00") & "$", Try1("{0:C}", -5), "StringFormat(""{0:C}"", -5) against Format$ ""#,##0.00"" and a $"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Class_MatchesCAndOnlyC()
+        Expect.Begin
+        Expect.AreEqual "Cc", Loc.MatchedLetters(CurrencySFI), "letters CurrencySFI.IsIdentifierMatch is True for"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Class_GetFormattedValue_ReadsThePrecision()
+        Expect.Begin
+        Dim f As IStringFormatIdentifier = CurrencySFI
+        Expect.AreEqual "2" & Loc.Dec() & "500$", f.GetFormattedValue(2.5, Loc.Spec("C", "3")), "CurrencySFI.GetFormattedValue(2.5, C3)"
+        Expect.AreEqual "2" & Loc.Dec() & "50$", f.GetFormattedValue(2.5, Loc.Spec("C")), "CurrencySFI.GetFormattedValue(2.5, C)"
+        Expect.Done
+    End Sub
+
+End Module

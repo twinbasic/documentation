@@ -1,0 +1,344 @@
+' TBMANLIB_Aes, cAesHelper: Base64, UTF-8, PKCS #7 padding, zero padding and IsArrayEmpty.
+'
+' Base64 is checked with the test vectors of RFC 4648 section 10 ("foobar" and its prefixes), UTF-8
+' with the encodings of RFC 3629, PKCS #7 with the examples of RFC 5652 section 6.3.
+[TestFixture]
+Module HelperTests
+
+    ' ---- Base64
+
+    [TestCase]
+    Public Sub Base64Encode_GivesTheVectorsOfRfc4648()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        b = AesVec.Ascii("f")
+        Expect.AreEqual "Zg==", h.Base64Encode(b), "Base64Encode of f"
+        b = AesVec.Ascii("fo")
+        Expect.AreEqual "Zm8=", h.Base64Encode(b), "Base64Encode of fo"
+        b = AesVec.Ascii("foo")
+        Expect.AreEqual "Zm9v", h.Base64Encode(b), "Base64Encode of foo"
+        b = AesVec.Ascii("foob")
+        Expect.AreEqual "Zm9vYg==", h.Base64Encode(b), "Base64Encode of foob"
+        b = AesVec.Ascii("fooba")
+        Expect.AreEqual "Zm9vYmE=", h.Base64Encode(b), "Base64Encode of fooba"
+        b = AesVec.Ascii("foobar")
+        Expect.AreEqual "Zm9vYmFy", h.Base64Encode(b), "Base64Encode of foobar"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Base64Encode_WritesOneLineWithTheStandardAlphabet()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Dim s As String
+        b = AesVec.FromHex("fbffbe" & String$(150, "0"))
+        s = h.Base64Encode(b)
+        Expect.IsTrue Len(s) > 100, "Base64Encode of 78 bytes returns a long text"
+        Expect.AreEqual 0, InStr(s, vbCr) + InStr(s, vbLf), "line breaks in the Base64 text"
+        Expect.AreEqual "+/++", Left$(s, 4), "the first characters of the Base64 text of fb ff be"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Base64Encode_UnsizedArrayGivesAnEmptyString()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Expect.AreEqual "", h.Base64Encode(b), "Base64Encode of an array that was never sized"
+        Expect.AreEqual "", h.LastError, "LastError after it"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Base64Decode_GivesTheVectorsOfRfc4648()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Expect.AreEqual "f", StrConv(h.Base64Decode("Zg=="), vbUnicode), "Base64Decode of Zg=="
+        Expect.AreEqual "fo", StrConv(h.Base64Decode("Zm8="), vbUnicode), "Base64Decode of Zm8="
+        Expect.AreEqual "foobar", StrConv(h.Base64Decode("Zm9vYmFy"), vbUnicode), "Base64Decode of Zm9vYmFy"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Base64Decode_SkipsLineBreaksAndSpaces()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Expect.AreEqual "foobar", StrConv(h.Base64Decode("Zm9v" & vbCrLf & "Ym Fy"), vbUnicode), "Base64Decode of text with a line break and a space"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Base64Decode_EmptyTextRaisesUnspecifiedError()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        On Error Resume Next
+        b = h.Base64Decode("")
+        Expect.AreEqual AesVec.Unspecified, Err.Number, "error number of Base64Decode of an empty text"
+        Expect.AreEqual "Base64 decoding exception: Unspecified error", h.LastError, "LastError after it"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Base64Decode_InvalidTextRaisesUnspecifiedError()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        On Error Resume Next
+        b = h.Base64Decode("!!! not base64")
+        Expect.AreEqual AesVec.Unspecified, Err.Number, "error number of Base64Decode of text that is not Base64"
+        Expect.AreEqual "Base64 decoding exception: Unspecified error", h.LastError, "LastError after it"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Base64Decode_InvalidText_LastErrorNamesTheCause()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        On Error Resume Next
+        b = h.Base64Decode("!!! not base64")
+        Expect.AreEqual "Failed to get Base64 decoding length", h.LastError, "LastError after Base64Decode of text that is not Base64"
+        Expect.Done
+    End Sub
+
+    ' ---- UTF-8
+
+    [TestCase]
+    Public Sub StringToUtf8Bytes_GivesTheBytesOfUtf8()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        b = h.StringToUtf8Bytes("caf" & ChrW(233))
+        Expect.AreEqual "636166c3a9", AesVec.HexOf(b), "UTF-8 of caf and e-acute"
+        b = h.StringToUtf8Bytes(ChrW(&H20AC))
+        Expect.AreEqual "e282ac", AesVec.HexOf(b), "UTF-8 of the euro sign"
+        b = h.StringToUtf8Bytes(ChrW(&HD83D) & ChrW(&HDE00))
+        Expect.AreEqual "f09f9880", AesVec.HexOf(b), "UTF-8 of U+1F600 (a surrogate pair)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub StringToUtf8Bytes_EmptyTextRaisesUnspecifiedError()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        On Error Resume Next
+        b = h.StringToUtf8Bytes("")
+        Expect.AreEqual AesVec.Unspecified, Err.Number, "error number of StringToUtf8Bytes of an empty text"
+        Expect.AreEqual "String conversion exception: Unspecified error", h.LastError, "LastError after it"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Utf8BytesToString_ReadsUtf8()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Dim s As String
+        b = AesVec.FromHex("636166c3a9")
+        s = h.Utf8BytesToString(b)
+        Expect.AreEqual "caf" & ChrW(233), s, "Utf8BytesToString of 63 61 66 c3 a9"
+        b = AesVec.FromHex("f09f9880")
+        s = h.Utf8BytesToString(b)
+        Expect.AreEqual ChrW(&HD83D) & ChrW(&HDE00), s, "Utf8BytesToString of f0 9f 98 80"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Utf8BytesToString_InvalidBytesBecomeTheReplacementCharacter()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Dim s As String
+        b = AesVec.FromHex("ff")
+        s = h.Utf8BytesToString(b)
+        Expect.AreEqual 1, Len(s), "length of the text for the byte ff"
+        Expect.AreEqual &HFFFD&, AscW(s) And &HFFFF&, "the character for the byte ff"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Utf8BytesToString_UnsizedArrayGivesAnEmptyStringAndSetsLastError()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Expect.AreEqual "", h.Utf8BytesToString(b), "Utf8BytesToString of an array that was never sized"
+        Expect.AreEqual "Byte conversion exception: Subscript out of range", h.LastError, "LastError after it"
+        Expect.Done
+    End Sub
+
+    ' ---- PKCS #7
+
+    [TestCase]
+    Public Sub ApplyPKCS7Padding_AddsTheCountOfTheBytesAdded()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Dim r() As Byte
+        b = AesVec.Ascii("Hello")
+        r = h.ApplyPKCS7Padding(b, 16)
+        Expect.AreEqual "48656c6c6f0b0b0b0b0b0b0b0b0b0b0b", AesVec.HexOf(r), "ApplyPKCS7Padding of Hello with a block size of 16"
+        b = AesVec.Ascii("0123456789abcdef")
+        r = h.ApplyPKCS7Padding(b, 16)
+        Expect.AreEqual 32, AesVec.Count(r), "length of the padded data for 16 bytes"
+        Expect.AreEqual "10101010101010101010101010101010", Mid$(AesVec.HexOf(r), 33), "the padding of 16 bytes that fill a block"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ApplyPKCS7Padding_UnsizedArrayRaisesUnspecifiedError()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Dim r() As Byte
+        On Error Resume Next
+        r = h.ApplyPKCS7Padding(b, 16)
+        Expect.AreEqual AesVec.Unspecified, Err.Number, "error number of ApplyPKCS7Padding of an array that was never sized"
+        Expect.AreEqual "PKCS7 padding exception: Unspecified error", h.LastError, "LastError after it"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemovePKCS7Padding_TakesOffTheCountedBytes()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Dim r() As Byte
+        b = AesVec.FromHex("48656c6c6f0b0b0b0b0b0b0b0b0b0b0b")
+        r = h.RemovePKCS7Padding(b)
+        Expect.AreEqual "48656c6c6f", AesVec.HexOf(r), "RemovePKCS7Padding of Hello and 11 bytes of 0b"
+        Expect.Done
+    End Sub
+
+    Private Sub Refused(ByVal What As String, ByVal Hex As String)
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Dim r() As Byte
+        b = AesVec.FromHex(Hex)
+        On Error Resume Next
+        r = h.RemovePKCS7Padding(b)
+        Expect.AreEqual AesVec.Unspecified, Err.Number, What & ": error number of RemovePKCS7Padding"
+        Expect.AreEqual 0, AesVec.Count(r), What & ": bytes returned"
+        Expect.AreEqual "PKCS7 unpadding exception: Unspecified error", h.LastError, What & ": LastError"
+    End Sub
+
+    [TestCase]
+    Public Sub RemovePKCS7Padding_RefusesALastByteOfZero()
+        Expect.Begin
+        Refused "last byte 00", "01020300"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemovePKCS7Padding_RefusesACountAbove16()
+        Expect.Begin
+        Refused "last byte 11 (17)", "0102030405060708090a0b0c0d0e0f1011"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemovePKCS7Padding_RefusesACountLargerThanTheData()
+        Expect.Begin
+        Refused "count 5 in an array of 1 byte", "05"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemovePKCS7Padding_RefusesPaddingBytesThatDiffer()
+        Expect.Begin
+        Refused "last three bytes 03 03 02", "01020303" & "0302"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemovePKCS7Padding_RefusesDataThatIsAllPadding()
+        Expect.Begin
+        Refused "16 bytes of 10", "10101010101010101010101010101010"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemovePKCS7Padding_InvalidPadding_LastErrorNamesTheCause()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Dim r() As Byte
+        b = AesVec.Ascii("0123456789abcdef")
+        On Error Resume Next
+        r = h.RemovePKCS7Padding(b)
+        Expect.AreEqual "Invalid PKCS7 padding length: 102", h.LastError, "LastError after RemovePKCS7Padding of data whose last byte is 102"
+        Expect.Done
+    End Sub
+
+    ' ---- zero padding
+
+    [TestCase]
+    Public Sub ApplyZeroPadding_AddsZeroBytesToAWholeBlock()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Dim r() As Byte
+        b = AesVec.Ascii("Hello")
+        r = h.ApplyZeroPadding(b, 16)
+        Expect.AreEqual "48656c6c6f" & String$(22, "0"), AesVec.HexOf(r), "ApplyZeroPadding of Hello"
+        b = AesVec.Ascii("0123456789abcdef")
+        r = h.ApplyZeroPadding(b, 16)
+        Expect.AreEqual 32, AesVec.Count(r), "length of the padded data for 16 bytes"
+        Expect.AreEqual String$(32, "0"), Mid$(AesVec.HexOf(r), 33), "the padding of 16 bytes that fill a block"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ApplyZeroPadding_UnsizedArrayGivesOneBlockOfZeroBytes()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Dim r() As Byte
+        r = h.ApplyZeroPadding(b, 16)
+        Expect.AreEqual String$(32, "0"), AesVec.HexOf(r), "ApplyZeroPadding of an array that was never sized"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveZeroPadding_TakesOffTheTrailingZeroBytes()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Dim r() As Byte
+        b = AesVec.FromHex("0102000000")
+        r = h.RemoveZeroPadding(b)
+        Expect.AreEqual "0102", AesVec.HexOf(r), "RemoveZeroPadding of 01 02 00 00 00"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RemoveZeroPadding_ArrayOfZeroBytesRaisesUnspecifiedError()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim b() As Byte
+        Dim r() As Byte
+        b = AesVec.FromHex("00000000")
+        On Error Resume Next
+        r = h.RemoveZeroPadding(b)
+        Expect.AreEqual AesVec.Unspecified, Err.Number, "error number of RemoveZeroPadding of an array of zero bytes"
+        Expect.AreEqual "Zero unpadding exception: Unspecified error", h.LastError, "LastError after it"
+        Expect.Done
+    End Sub
+
+    ' ---- IsArrayEmpty
+
+    [TestCase]
+    Public Sub IsArrayEmpty_TellsASizedArrayFromAnUnsizedOne()
+        Expect.Begin
+        Dim h As New cAesHelper
+        Dim unsized() As Byte
+        Dim sized(3) As Byte
+        Expect.IsTrue h.IsArrayEmpty(unsized), "IsArrayEmpty of an array that was never sized"
+        Expect.IsFalse h.IsArrayEmpty(sized), "IsArrayEmpty of an array of 4 elements"
+        Expect.Done
+    End Sub
+
+End Module

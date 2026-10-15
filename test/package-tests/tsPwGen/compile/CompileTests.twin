@@ -1,0 +1,17 @@
+' tsPwGen: what the compiler refuses. Each line ends in a comment ' CASE <Name>: <code>.
+Module CompileTests
+
+    Public Sub Entropy_WithoutTheModuleName()
+        Debug.Print CLng(Entropy()) ' CASE UnqualifiedEntropy: TB5073
+    End Sub
+
+    Public Sub Generate_WithoutTheModuleName()
+        Debug.Print Generate() ' CASE UnqualifiedGenerate: TB5073
+    End Sub
+
+    Public Sub NextInRange_CalledOnTheClassVariable()
+        Dim s As New PwGenCryptoSource
+        Debug.Print s.NextInRange(1, 6) ' CASE PrivateNextInRange: TB5027
+    End Sub
+
+End Module

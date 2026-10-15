@@ -1,0 +1,435 @@
+' VBA_JSON: ParseJson. JSON is read as RFC 8259 defines it, and as ParseJson's page says where it
+' differs. JsonOptions are at their defaults in every case.
+[TestFixture]
+Module ParseJsonTests
+
+    [TestCase]
+    Public Sub Object_GivesADictionary()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{""name"":""Alice"",""age"":30}")
+        Expect.AreEqual 0, Helpers.LastNumber, "run-time error of ParseJson on an object"
+        Expect.AreEqual "Dictionary", TypeName(r), "TypeName of the result for an object"
+        Expect.AreEqual "Alice", r("name"), "r(""name"")"
+        Expect.AreEqual 30, r("age"), "r(""age"")"
+        Expect.AreEqual "name,age", Helpers.KeyList(r), "keys in the order of the text"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Array_GivesACollection()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[1, 2, 3]")
+        Expect.AreEqual "Collection", TypeName(r), "TypeName of the result for an array"
+        Expect.AreEqual 3, r.Count, "r.Count"
+        Expect.AreEqual 1, r(1), "r(1): a Collection is 1-based"
+        Expect.AreEqual 3, r(3), "r(3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Nested_ObjectsAndArrays_AreDictionariesAndCollections()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{""a"":{""b"":[1,[2,3],{""c"":true}]},""d"":[]}")
+        Expect.AreEqual "Dictionary", TypeName(r("a")), "TypeName of a nested object"
+        Expect.AreEqual "Collection", TypeName(r("a")("b")), "TypeName of a nested array"
+        Expect.AreEqual "Collection", TypeName(r("a")("b")(2)), "TypeName of an array in an array"
+        Expect.AreEqual 3, r("a")("b")(2)(2), "the second element of the inner array"
+        Expect.AreEqual "Dictionary", TypeName(r("a")("b")(3)), "TypeName of an object in an array"
+        Expect.AreEqual True, r("a")("b")(3)("c"), "the value of c"
+        Expect.AreEqual 0, r("d").Count, "Count of an empty array"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EmptyContainers()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[]")
+        Expect.AreEqual "Collection", TypeName(r), "TypeName for []"
+        Expect.AreEqual 0, r.Count, "Count for []"
+        Set r = Helpers.TryParse("{}")
+        Expect.AreEqual "Dictionary", TypeName(r), "TypeName for {}"
+        Expect.AreEqual 0, UBound(r.Keys) - LBound(r.Keys) + 1, "number of keys for {}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Numbers_AreDoubles()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[0, 1, 2.5, -3e2, 1E+2, 1.5e-3, -0.5]")
+        Dim want As Variant
+        want = Array(0, 1, 2.5, -300, 100, 0.0015, -0.5)
+        Dim i As Long
+        For i = 1 To 7
+            Expect.AreEqual vbDouble, VarType(r(i)), "VarType of number " & i
+            Expect.AreEqual want(i - 1), r(i), "number " & i
+        Next
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Literals_TrueFalseNull()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[true, false, null]")
+        Expect.AreEqual vbBoolean, VarType(r(1)), "VarType of true"
+        Expect.AreEqual True, r(1), "true"
+        Expect.AreEqual vbBoolean, VarType(r(2)), "VarType of false"
+        Expect.AreEqual False, r(2), "false"
+        Expect.AreEqual vbNull, VarType(r(3)), "VarType of null"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Strings_Escapes()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[""q\""b\\s\/sl\bBS\fFF\rCR\tTAB""]")
+        Expect.AreEqual 0, Helpers.LastNumber, "run-time error of ParseJson on a string with escapes"
+        Dim want As String
+        want = "q""b\s/sl" & vbBack & "BS" & vbFormFeed & "FF" & vbCr & "CR" & vbTab & "TAB"
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(r(1)), "string with the escapes \"" \\ \/ \b \f \r \t"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Strings_UnicodeEscapes()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[""" & Helpers.U("00e9") & Helpers.U("20AC") & Helpers.U("D83D") & Helpers.U("DE00") & Helpers.U("8000") & Helpers.U("FFFF") & """]")
+        Dim want As String
+        want = ChrW(233) & ChrW(&H20AC) & ChrW(&HD83D) & ChrW(&HDE00) & ChrW(32768) & ChrW(65535)
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(r(1)), "string with \u escapes"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Strings_NewlineEscape_IsALineFeed()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[""a\nb""]")
+        Expect.AreEqual Helpers.Esc("a" & vbLf & "b"), Helpers.Esc(r(1)), "ParseJson of the string a\nb (U+000A is one line feed)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Strings_SpacesAreKept()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{""k"":""a  b ""}")
+        Expect.AreEqual "a  b ", r("k"), "string with inner and trailing spaces"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub RawCrLfAndTab_AreRemovedBeforeParsing()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[""a" & vbTab & "b"", ""c" & vbCrLf & "d"", ""e" & vbLf & "f"", ""g" & vbCr & "h""]")
+        Expect.AreEqual "ab", r(1), "string with a raw tab"
+        Expect.AreEqual "cd", r(2), "string with a raw CR LF"
+        Expect.AreEqual "ef", r(3), "string with a raw LF"
+        Expect.AreEqual "gh", r(4), "string with a raw CR"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub FormattedJson_IsAccepted()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{" & vbCrLf & "  ""status"": ""ok""," & vbCrLf & vbTab & """n"": [ 1,  2 ]" & vbCrLf & "}")
+        Expect.AreEqual 0, Helpers.LastNumber, "run-time error of ParseJson on formatted JSON"
+        Expect.AreEqual "ok", r("status"), "r(""status"")"
+        Expect.AreEqual 2, r("n")(2), "r(""n"")(2)"
+        Set r = Helpers.TryParse("   [ 1 , 2 ]   ")
+        Expect.AreEqual 2, r.Count, "elements of an array with spaces around every token"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LargeNumbers_16CharactersOrMore_AreStrings()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[123456789012345, 1234567890123456, 123456789012345678, -123456789012345]")
+        Expect.AreEqual vbDouble, VarType(r(1)), "VarType of a number of 15 characters"
+        Expect.AreEqual 123456789012345#, r(1), "the number of 15 characters"
+        Expect.AreEqual vbString, VarType(r(2)), "VarType of a number of 16 characters"
+        Expect.AreEqual "1234567890123456", r(2), "the number of 16 characters"
+        Expect.AreEqual vbString, VarType(r(3)), "VarType of a number of 18 characters"
+        Expect.AreEqual "123456789012345678", r(3), "the number of 18 characters"
+        Expect.AreEqual vbString, VarType(r(4)), "VarType of a number of 15 digits and a minus sign (16 characters)"
+        Expect.AreEqual "-123456789012345", r(4), "the number of 15 digits and a minus sign"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub LargeNumbers_WithADecimalPoint_NeedSeventeenCharacters()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[12345678901234.5, 123456789012345.6, 0.12345678901234567]")
+        Expect.AreEqual vbDouble, VarType(r(1)), "VarType of a number of 16 characters with a decimal point"
+        Expect.AreEqual 12345678901234.5, r(1), "the number of 16 characters with a decimal point"
+        Expect.AreEqual vbString, VarType(r(2)), "VarType of a number of 17 characters with a decimal point"
+        Expect.AreEqual "123456789012345.6", r(2), "the number of 17 characters with a decimal point"
+        Expect.AreEqual vbString, VarType(r(3)), "VarType of 0.12345678901234567"
+        Expect.AreEqual "0.12345678901234567", r(3), "0.12345678901234567"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ObjectValues_LargeNumberIsAString()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{""id"":123456789012345678}")
+        Expect.AreEqual vbString, VarType(r("id")), "VarType of r(""id"")"
+        Expect.AreEqual "123456789012345678", r("id"), "all 18 digits of r(""id"")"
+        Expect.Done
+    End Sub
+
+    ' ---- errors
+
+    [TestCase]
+    Public Sub Error_EmptyText_Raises10001()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on an empty string"
+        Expect.AreEqual "JSONConverter", Helpers.LastSource, "source of that error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Error_TopLevelValueThatIsNotAnObjectOrArray_Raises10001()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("123")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on 123"
+        Set r = Helpers.TryParse("""text""")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on a string"
+        Set r = Helpers.TryParse("true")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on true"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Error_UnquotedKey_Raises10001()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{a:1}")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on {a:1}"
+        Expect.AreEqual "JSONConverter", Helpers.LastSource, "source of that error"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Error_MissingColon_Raises10001()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{""a"" 1}")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on an object with no colon"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Error_UnrecognisedValue_Raises10001()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{""abcde"":True}")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on the value True"
+        Set r = Helpers.TryParse("[1,]")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on [1,]"
+        Set r = Helpers.TryParse("[.5]")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on [.5]"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Error_ObjectThatIsNotClosed_Raises10001()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{""a"":1")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on an object with no closing brace"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Error_Message_ShowsTheTextAndACaret()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{""abcde"":True}")
+        Dim want As String
+        want = "Error parsing JSON:" & vbNewLine & "{""abcde"":True}" & vbNewLine & Space$(9) & "^" & vbNewLine & "Expecting 'STRING', 'NUMBER', null, true, false, '{', or '['"
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(Helpers.LastDescription), "message for {""abcde"":True}"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Error_Message_ShowsTenCharactersEachSideOfTheError()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[1,2,3,4,5,6,7,8,9,x]")
+        Dim want As String
+        want = "Error parsing JSON:" & vbNewLine & "5,6,7,8,9,x]" & vbNewLine & Space$(10) & "^" & vbNewLine & "Expecting 'STRING', 'NUMBER', null, true, false, '{', or '['"
+        Expect.AreEqual Helpers.Esc(want), Helpers.Esc(Helpers.LastDescription), "message for an error at character 20 of 21"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Error_NumberBeyondTheRangeOfADouble_RaisesOverflow()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[1e999]")
+        Expect.AreEqual 6, Helpers.LastNumber, "run-time error of ParseJson on [1e999]"
+        Expect.Done
+    End Sub
+
+    ' ---- text that is not JSON, accepted
+
+    [TestCase]
+    Public Sub Lenient_MissingCommas_AreAccepted()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[1 2 3]")
+        Expect.AreEqual 0, Helpers.LastNumber, "run-time error of ParseJson on [1 2 3]"
+        Expect.AreEqual 3, r.Count, "elements of [1 2 3]"
+        Set r = Helpers.TryParse("{""a"":1 ""b"":2}")
+        Expect.AreEqual "a,b", Helpers.KeyList(r), "keys of an object with no comma"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lenient_TextAfterTheTopLevelValue_IsIgnored()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[1] and then anything at all")
+        Expect.AreEqual 0, Helpers.LastNumber, "run-time error of ParseJson on text after the array"
+        Expect.AreEqual 1, r.Count, "elements of the array before the text"
+        Set r = Helpers.TryParse("{""a"":1}{""b"":2}")
+        Expect.AreEqual "a", Helpers.KeyList(r), "keys of the first of two objects"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lenient_SingleQuotedStringsAndKeys_AreAccepted()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{'k':'v', ""d"":'w'}")
+        Expect.AreEqual "v", r("k"), "r(""k"") for single-quoted key and value"
+        Expect.AreEqual "w", r("d"), "r(""d"") for a single-quoted value"
+        Set r = Helpers.TryParse("['a\'b']")
+        Expect.AreEqual "a'b", r(1), "string with an escaped single quote"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lenient_NumbersJsonDoesNotAllow_AreAccepted()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[01, +1, 1.]")
+        Expect.AreEqual 0, Helpers.LastNumber, "run-time error of ParseJson on [01, +1, 1.]"
+        Expect.AreEqual 1, r(1), "01"
+        Expect.AreEqual 1, r(2), "+1"
+        Expect.AreEqual 1, r(3), "1."
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Lenient_UnknownEscape_DropsTheBackslash()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[""a\xb"", ""\uZZZZ""]")
+        Expect.AreEqual "axb", r(1), "string with the unknown escape \x"
+        Expect.AreEqual Helpers.Esc(ChrW(0)), Helpers.Esc(r(2)), "string with \uZZZZ"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub DuplicateKeys_LastValueWins()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{""a"":1,""b"":2,""a"":3}")
+        Expect.AreEqual "b,a", Helpers.KeyList(r), "keys of an object with a repeated key"
+        Expect.AreEqual 3, r("a"), "r(""a"") for a key given twice"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub KeysThatDifferInCase_AreSeparateEntries()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{""id"":1,""ID"":2}")
+        Expect.AreEqual 2, UBound(r.Keys) - LBound(r.Keys) + 1, "number of keys of {""id"":1,""ID"":2}"
+        Expect.AreEqual 1, r("id"), "r(""id"")"
+        Expect.AreEqual 2, r("ID"), "r(""ID"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub EmptyKey_IsAKey()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("{"""":1}")
+        Expect.AreEqual 0, Helpers.LastNumber, "run-time error of ParseJson on an object with the key """""
+        Expect.AreEqual 1, r(""), "the value under the key """""
+        Expect.Done
+    End Sub
+
+    ' ---- text that ends too soon
+
+    [TestCase]
+    Public Sub Error_ArrayThatIsNotClosed_Raises10001()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[1,2")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on [1,2 (it never returns)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Error_StringInAnArrayThatIsNotClosed_Raises10001()
+        Expect.Begin
+        Helpers.ResetOptions
+        Dim r As Object
+        Set r = Helpers.TryParse("[""abc")
+        Expect.AreEqual 10001, Helpers.LastNumber, "run-time error of ParseJson on [""abc (it never returns)"
+        Expect.Done
+    End Sub
+
+End Module

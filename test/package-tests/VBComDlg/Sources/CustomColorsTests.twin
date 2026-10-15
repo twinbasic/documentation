@@ -1,0 +1,165 @@
+' CommonDialog.CustomColors: the 16 custom colours, what the setter accepts and the errors it raises.
+[TestFixture]
+Module CustomColorsTests
+
+    Private Declare PtrSafe Function GetSysColor Lib "user32" (ByVal nIndex As Long) As Long
+
+    ' The number of the error that assigning Value to CustomColors raises, 0 for none.
+    Private Function AssignError(ByVal Dlg As CommonDialog, ByVal Value As Variant) As Long
+        On Error Resume Next
+        Dlg.CustomColors = Value
+        AssignError = Err.Number
+        Err.Clear
+    End Function
+
+    [TestCase]
+    Public Sub Get_DefaultIsSixteenLongsFromZero()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim a As Variant
+        a = dlg.CustomColors
+        Expect.IsTrue IsArray(a), "CustomColors returns an array"
+        Expect.AreEqual 0, LBound(a), "lower bound of the array CustomColors returns"
+        Expect.AreEqual 15, UBound(a), "upper bound of the array CustomColors returns"
+        Expect.AreEqual vbLong, VarType(a(0)), "type of an element of CustomColors"
+        Expect.AreEqual &HFFFFFF, a(0), "default custom colour 0 (white)"
+        Expect.AreEqual &H7F7F7F, a(8), "default custom colour 8"
+        Expect.AreEqual &HF0F0F, a(15), "default custom colour 15 (near-black)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Let_ShortArrayLeavesTheRest()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Expect.AreEqual 0, AssignError(dlg, Array(&H10, &H20, &H30)), "error assigning an array of three elements"
+        Dim a As Variant
+        a = dlg.CustomColors
+        Expect.AreEqual &H10, a(0), "custom colour 0 after assigning three elements"
+        Expect.AreEqual &H30, a(2), "custom colour 2 after assigning three elements"
+        Expect.AreEqual &HCFCFCF, a(3), "custom colour 3 (a default) after assigning three elements"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Let_FirstElementIsFirstColourWhateverTheLowerBound()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim src(5 To 7) As Long
+        src(5) = &H111111
+        src(6) = &H222222
+        src(7) = &H333333
+        Expect.AreEqual 0, AssignError(dlg, src), "error assigning an array whose lower bound is 5"
+        Dim a As Variant
+        a = dlg.CustomColors
+        Expect.AreEqual &H111111, a(0), "custom colour 0 after assigning an array that starts at index 5"
+        Expect.AreEqual &H333333, a(2), "custom colour 2 after assigning an array that starts at index 5"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Let_MoreThanSixteenElementsAreIgnored()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim src(0 To 19) As Long
+        Dim i As Long
+        For i = 0 To 19
+            src(i) = i + 1
+        Next i
+        Expect.AreEqual 0, AssignError(dlg, src), "error assigning an array of 20 elements"
+        Dim a As Variant
+        a = dlg.CustomColors
+        Expect.AreEqual 16, UBound(a) - LBound(a) + 1, "number of custom colours after assigning 20 elements"
+        Expect.AreEqual 1, a(0), "custom colour 0 after assigning 20 elements"
+        Expect.AreEqual 16, a(15), "custom colour 15 after assigning 20 elements"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Let_StringHoldingANumberIsAccepted()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Expect.AreEqual 0, AssignError(dlg, Array("255", "&H10")), "error assigning an array of numeric strings"
+        Dim a As Variant
+        a = dlg.CustomColors
+        Expect.AreEqual 255, a(0), "custom colour 0 after assigning the string ""255"""
+        Expect.AreEqual &H10, a(1), "custom colour 1 after assigning the string ""&H10"""
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Let_OleColourIsTranslated()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Expect.AreEqual 0, AssignError(dlg, Array(&H8000000F)), "error assigning the system colour 3D face (&H8000000F)"
+        Dim a As Variant
+        a = dlg.CustomColors
+        Expect.AreEqual GetSysColor(15), a(0), "custom colour 0 after assigning &H8000000F (COLOR_3DFACE)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Let_ElementNotAColour_RaisesTypeMismatchAndKeepsEarlierElements()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Expect.AreEqual 13, AssignError(dlg, Array(&H123456, "not a colour", &H654321)), "error assigning an array whose second element is ""not a colour"""
+        Dim a As Variant
+        a = dlg.CustomColors
+        Expect.AreEqual &H123456, a(0), "custom colour 0 (before the bad element) after the failed assignment"
+        Expect.AreEqual &HDFDFDF, a(2), "custom colour 2 (after the bad element) after the failed assignment"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Let_NullElement_RaisesInvalidUseOfNull()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Expect.AreEqual 94, AssignError(dlg, Array(&H123456, Null)), "error assigning an array whose second element is Null"
+        Dim a As Variant
+        a = dlg.CustomColors
+        Expect.AreEqual &H123456, a(0), "custom colour 0 (before the Null element) after the failed assignment"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Let_MultiDimensionalArray_Raises5()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim src(0 To 1, 0 To 1) As Long
+        Expect.AreEqual 5, AssignError(dlg, src), "error assigning a two-dimensional array"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Let_UnallocatedArray_Raises91()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Dim src() As Long
+        Expect.AreEqual 91, AssignError(dlg, src), "error assigning an array that was never allocated"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Let_Empty_RestoresDefaults()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        dlg.CustomColors = Array(1, 2, 3, 4)
+        Expect.AreEqual 0, AssignError(dlg, Empty), "error assigning Empty"
+        Dim a As Variant
+        a = dlg.CustomColors
+        Expect.AreEqual &HFFFFFF, a(0), "custom colour 0 after assigning Empty"
+        Expect.AreEqual &HEFEFEF, a(1), "custom colour 1 after assigning Empty"
+        Expect.AreEqual &HF0F0F, a(15), "custom colour 15 after assigning Empty"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub Let_NotAnArray_Raises380()
+        Expect.Begin
+        Dim dlg As New CommonDialog
+        Expect.AreEqual 380, AssignError(dlg, 5), "error assigning the number 5"
+        Expect.AreEqual 380, AssignError(dlg, "text"), "error assigning a string"
+        Expect.Done
+    End Sub
+
+End Module

@@ -1,0 +1,61 @@
+' TBMANLIB_RES, cRes.ReturnHex: the digits, Separator and LineBreak, and an instance that holds nothing.
+[TestFixture]
+Module ReturnHexTests
+
+    [TestCase]
+    Public Sub ReturnHex_Default_TwoUppercaseDigitsForEachByte()
+        Expect.Begin
+        Dim r As New cRes
+        Expect.AreEqual "00010A0F107F80FF", r.Read(101, "BINARY").ReturnHex(), "ReturnHex() of the 8 bytes 00 01 0A 0F 10 7F 80 FF"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnHex_Separator_IsBetweenBytesNotAfterTheLast()
+        Expect.Begin
+        Dim r As New cRes
+        r.Read 101, "BINARY"
+        Expect.AreEqual "00 01 0A 0F 10 7F 80 FF", r.ReturnHex(" "), "ReturnHex("" "")"
+        Expect.AreEqual "00-01-0A-0F-10-7F-80-FF", r.ReturnHex("-"), "ReturnHex(""-"")"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnHex_LineBreak_AddsCrLfAfterEveryGroup()
+        Expect.Begin
+        Dim r As New cRes
+        r.Read 101, "BINARY"
+        Expect.AreEqual "00010A" & vbCrLf & "0F107F" & vbCrLf & "80FF", r.ReturnHex("", 3), "ReturnHex("""", 3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnHex_LineBreak_NoBreakAfterTheLastByte()
+        Expect.Begin
+        Dim r As New cRes
+        r.Read 101, "BINARY"
+        Expect.AreEqual "00010A0F" & vbCrLf & "107F80FF", r.ReturnHex("", 4), "ReturnHex("""", 4) of 8 bytes, which fill two lines exactly"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnHex_LineBreakAndSeparator_SeparatorInsideEachLine()
+        Expect.Begin
+        Dim r As New cRes
+        r.Read 101, "BINARY"
+        Expect.AreEqual "00-01-0A" & vbCrLf & "0F-10-7F" & vbCrLf & "80-FF", r.ReturnHex("-", 3), "ReturnHex(""-"", 3)"
+        Expect.Done
+    End Sub
+
+    [TestCase]
+    Public Sub ReturnHex_BeforeRead_RaisesError()
+        Expect.Begin
+        Dim r As New cRes
+        Dim s As String
+        On Error Resume Next
+        s = r.ReturnHex()
+        Expect.IsTrue Err.Number <> 0, "ReturnHex before any Read raises an error"
+        Expect.Done
+    End Sub
+
+End Module

@@ -29,6 +29,10 @@
 // so a case expect.json marks as never returning is run alone, and a case that unexpectedly
 // does not return is judged, and the cases after it are run again in a new IDE.
 //
+// A compile case that expects an error is in the package folder's compile/, a project of compile
+// cases only, because the compiler runs no [TestCase] in a project with errors; it is staged with
+// the package embedded too, and its cases are judged with the rest.
+//
 // RunAll.twin, which the project's Sub Main runs, is generated from the cases and expect.json:
 // the run writes it again when it is out of date, and says so.
 //
@@ -52,6 +56,10 @@ import {
   withUsageError,
 } from "../lib/cli.mjs";
 import {
+  COMPILE_DIR,
+  compileSources,
+  RESOURCES_DIR,
+  resourceFiles,
   EXPECT_JSON,
   packageTestNames,
   packageVersion,
@@ -65,6 +73,7 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { embeddedPackages } from "./lib/example-batches.mjs";
 import {
   ARCHES,
+  archesOf,
   expectationFor,
   expectFrom,
   judge,
@@ -185,30 +194,53 @@ async function runPackage(pkg) {
   }
   let files = testSources(ROOT, pkg);
   const { tests, compiles, problems } = projectCases(files);
+  const compileFiles = compileSources(ROOT, pkg);
+  const compileProject = projectCases(compileFiles);
+  problems.push(...compileProject.problems.map((p) => `${COMPILE_DIR}/: ${p}`));
+  if (compileProject.tests.length) problems.push(`${COMPILE_DIR}/ holds a [TestCase]: it holds compile cases only`);
   if (problems.length) die(2, `${pkg}:\n${problems.map((p) => `  ${p}`).join("\n")}`);
   refreshRunAll(pkg, version, tests, expect);
   files = testSources(ROOT, pkg);
 
-  const names = [...compiles.map((c) => c.name), ...tests.map((t) => `${t.fixture}.${t.name}`)];
+  const compileNames = compileProject.compiles.map((c) => c.name);
+  const names = [...compiles.map((c) => c.name), ...compileNames, ...tests.map((t) => `${t.fixture}.${t.name}`)];
+  const twice = names.filter((n, i) => names.indexOf(n) !== i);
+  if (twice.length) die(2, `${pkg}: two cases are named ${[...new Set(twice)].join(", ")}`);
   say(`${pkg} ${version}: ${names.length} case${names.length === 1 ? "" : "s"}`);
   const outcomes = new Map(names.map((n) => [n, {}]));
-  for (const arch of opts.arches) {
-    const tree = stageTree(pkg, arch, template, files);
-    const hangs = names.filter((n) => expectationFor(expect, n, arch).kind === "hang");
-    let rest = names.filter((n) => !hangs.includes(n));
-    // A case that does not return stops the compiler, so the cases after it are run again.
+  // A package tested on one architecture only (expect.json's arches) is run on that one.
+  const arches = opts.arches.filter((a) => archesOf(expect).includes(a));
+  if (arches.length < opts.arches.length) say(`  tested on ${archesOf(expect).join(", ")} only`);
+  for (const arch of arches) {
+    if (compileNames.length) {
+      const compileTree = stageTree(`${pkg}-${COMPILE_DIR}`, pkg, arch, template, compileFiles);
+      for (const r of tbrunCases(compileTree, arch, compileNames, opts.timeout))
+        outcomes.get(r.name)[arch] = outcomeOf(r);
+    }
+    const tree = stageTree(pkg, pkg, arch, template, files, resourceFiles(ROOT, pkg));
+    const own = names.filter((n) => !compileNames.includes(n));
+    const hangs = own.filter((n) => expectationFor(expect, n, arch).kind === "hang");
+    let rest = own.filter((n) => !hangs.includes(n));
+    // A case that does not return keeps the compiler busy, so tbrun reports the cases it did not
+    // send as "not run", and those are run again in a new IDE: by name, whatever order tbrun ran
+    // the files in.
     while (rest.length) {
       const results = tbrunCases(tree, arch, rest, opts.timeout);
-      let next = [];
+      const next = [];
+      let stalled = null;
       for (const r of results) {
+        if (/^not run: /.test(r.detail ?? "") && !r.pass) {
+          next.push(r.name);
+          continue;
+        }
         const o = outcomeOf(r);
         outcomes.get(r.name)[arch] = o;
-        if (o.kind === "hang") {
-          next = rest.slice(rest.indexOf(r.name) + 1);
-          if (next.length) say(`  ${arch}: ${r.name} did not return; running the ${next.length} after it again`);
-          break;
-        }
+        if (o.kind === "hang") stalled = r.name;
       }
+      if (next.length)
+        say(`  ${arch}: ${stalled ?? "a case"} did not return; running the ${next.length} not run again`);
+      if (next.length && !stalled)
+        throw new Error(`tbrun left ${next.length} cases not run, and no case that did not return`);
       rest = next;
     }
     for (const name of hangs) {
@@ -219,7 +251,7 @@ async function runPackage(pkg) {
 
   const cases = [];
   for (const name of names) {
-    for (const arch of opts.arches) {
+    for (const arch of arches) {
       const expected = expectationFor(expect, name, arch);
       const got = outcomes.get(name)[arch] ?? { kind: "fail", detail: "no result" };
       const verdict = judge(expected, got);
@@ -232,7 +264,7 @@ async function runPackage(pkg) {
     }
   }
   const documented = cases.filter((c) => c.verdict === "documented").length;
-  say(`  ${documented} of ${cases.length} as documented (${opts.arches.join(", ")})`);
+  say(`  ${documented} of ${cases.length} as documented (${arches.join(", ")})`);
 
   if (values.update) {
     const next = expectFrom({ version, names, outcomes, previous: expect });
@@ -274,9 +306,11 @@ async function ensurePackage(settings) {
   }
 }
 
-function stageTree(pkg, arch, template, files) {
+// The project staged as WORK/<label>-<arch>-<port>, with the package embedded, and with the
+// resources given (the run-time project's Resources/, byte for byte).
+function stageTree(label, pkg, arch, template, files, resources = []) {
   const settings = testSettings(template, pkg);
-  const tree = path.join(WORK, `${pkg}-${arch}-${port}`);
+  const tree = path.join(WORK, `${label}-${arch}-${port}`);
   rmSync(tree, { recursive: true, force: true });
   mkdirSync(path.join(tree, "Sources"), { recursive: true });
   writeFileSync(path.join(tree, "Settings"), `${JSON.stringify(settings, null, "\t")}\n`, "utf8");
@@ -289,6 +323,11 @@ function stageTree(pkg, arch, template, files) {
     const out = path.join(tree, "Sources", ...f.name.split("/"));
     mkdirSync(path.dirname(out), { recursive: true });
     writeFileSync(out, f.text.replace(/\n/g, "\r\n"), "utf8");
+  }
+  for (const r of resources) {
+    const out = path.join(tree, RESOURCES_DIR, ...r.name.split("/"));
+    mkdirSync(path.dirname(out), { recursive: true });
+    writeFileSync(out, r.bytes);
   }
   return tree;
 }
@@ -307,6 +346,15 @@ function tbrunCases(tree, arch, names, timeoutSecs) {
   }
   if (!json || (r.status !== 0 && r.status !== 7)) {
     throw new Error(`tbrun exited ${r.status} on ${tree} (${arch}):\n${r.stderr || r.stdout}`);
+  }
+  // A run-time project that does not compile ran nothing: that is the project's fault, never a
+  // verdict on a case, so it is not judged (nor written to expect.json by --update).
+  if (json.cases.some((c) => /^not run: the project has compile errors/.test(c.detail ?? ""))) {
+    const errors = (json.diagnostics ?? []).filter((d) => String(d).startsWith("{ERROR}"));
+    throw new Error(
+      `${tree} (${arch}) does not compile, so no case ran; a compile case that expects an error goes in ` +
+        `${COMPILE_DIR}/:\n${errors.map((d) => `  ${d}`).join("\n")}`,
+    );
   }
   const byName = new Map(json.cases.map((c) => [c.name, c]));
   return names.map((n) => ({ name: n, ...(byName.get(n) ?? { pass: false, detail: "tbrun gave no result" }) }));

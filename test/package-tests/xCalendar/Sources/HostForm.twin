@@ -1,0 +1,61 @@
+' HostForm: a form that is loaded and never shown. It holds one xCalendar control, Cal, and writes
+' every event the control raises, with its arguments, into Rig.Log.
+
+[Description("")]
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F40")]
+[PredeclaredId]
+Class HostForm
+
+    ' The value a handler of BeforeUpdate puts in Cancel; 0 lets the selection go on.
+    Public CancelValue As Integer
+
+    Private Sub Cal_Click() Handles Cal.Click
+        Rig.Ev "Click"
+    End Sub
+
+    Private Sub Cal_DblClick() Handles Cal.DblClick
+        Rig.Ev "DblClick"
+    End Sub
+
+    Private Sub Cal_KeyDown(KeyCode As Integer, Shift As Integer) Handles Cal.KeyDown
+        Rig.Ev "KeyDown " & KeyCode & "/" & Shift & " " & Format$(Cal.Value, "yyyy-mm-dd")
+    End Sub
+
+    Private Sub Cal_KeyPress(KeyAscii As Integer) Handles Cal.KeyPress
+        Rig.Ev "KeyPress " & KeyAscii
+    End Sub
+
+    Private Sub Cal_KeyUp(KeyCode As Integer, Shift As Integer) Handles Cal.KeyUp
+        Rig.Ev "KeyUp " & KeyCode & "/" & Shift
+    End Sub
+
+    Private Sub Cal_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Cal.MouseDown
+        Rig.Ev "MouseDown " & Button & " " & CLng(X) & "," & CLng(Y)
+    End Sub
+
+    Private Sub Cal_MouseMove(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Cal.MouseMove
+        Rig.Ev "MouseMove " & Button & " " & CLng(X) & "," & CLng(Y)
+    End Sub
+
+    Private Sub Cal_MouseUp(Button As Integer, Shift As Integer, X As Single, Y As Single) Handles Cal.MouseUp
+        Rig.Ev "MouseUp " & Button & " " & CLng(X) & "," & CLng(Y)
+    End Sub
+
+    Private Sub Cal_BeforeUpdate(Cancel As Integer) Handles Cal.BeforeUpdate
+        Rig.Ev "BeforeUpdate " & Cancel & " " & Format$(Cal.Value, "yyyy-mm-dd")
+        Cancel = CancelValue
+    End Sub
+
+    Private Sub Cal_AfterUpdate() Handles Cal.AfterUpdate
+        Rig.Ev "AfterUpdate " & Format$(Cal.Value, "yyyy-mm-dd")
+    End Sub
+
+    Private Sub Cal_NewMonth() Handles Cal.NewMonth
+        Rig.Ev "NewMonth"
+    End Sub
+
+    Private Sub Cal_NewYear() Handles Cal.NewYear
+        Rig.Ev "NewYear"
+    End Sub
+
+End Class

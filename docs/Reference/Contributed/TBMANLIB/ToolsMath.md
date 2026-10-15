@@ -39,7 +39,13 @@ Syntax: **ToolsMath.Ceil** ( *Num* [ **,** *Dot* ] ) **As Double**
 *Dot*
 : *optional* A **Long**, the number of decimal places to keep, 0 by default. A negative value rounds to tens, hundreds and so on: `Ceil(1234, -2)` is 1300.
 
-The result is the smallest number with *Dot* decimal places that is not less than *Num*: `Ceil(1.231, 2)` is 1.24 and `Ceil(-1.5)` is -1. The function multiplies *Num* by 10 to the power *Dot*, rounds up with **Int**, and divides again. The arithmetic is in binary floating point, so a number that has no exact binary form can multiply to a value a little above a whole number and round up one step too far: `Ceil(0.07, 2)` returns 0.08, because 0.07 multiplied by 100 is a little more than 7.
+<!-- test: MathCnTests.Ceil_RoundsUpToDecimalPlaces -->
+The result is the smallest number with *Dot* decimal places that is not less than *Num*: `Ceil(1.231, 2)` is 1.24 and `Ceil(-1.5)` is -1. The function multiplies *Num* by 10 to the power *Dot*, rounds up with **Int**, and divides again.
+<!-- /test -->
+
+<!-- test: MathCnTests.Ceil_ExactDecimalNumber_IsNotRoundedUp -->
+> [!WARNING] 1.0.0.29
+> The arithmetic is in binary floating point, so a number that has no exact binary form can multiply to a value a little above a whole number and round up one step too far: `Ceil(0.07, 2)` returns 0.08, because 0.07 multiplied by 100 is a little more than 7.
 
 ### GetRandRange
 {: .no_toc }
@@ -54,7 +60,9 @@ Syntax: **ToolsMath.GetRandRange** ( *a* **,** *b* ) **As Long**
 *b*
 : *required* A **Long**, the largest value. It is passed by reference and is not changed. If it is less than *a*, the result is not in the range.
 
+<!-- test: MathCnTests.GetRandRange_StaysInTheRangeAndReachesBothEnds -->
 Each call runs **Randomize** with no argument, which seeds the generator from the system timer, then returns `Int((b - a + 1) * Rnd() + a)`. The numbers come from the generator of the language and are not suitable for passwords, keys or any other use where they have to be unpredictable.
+<!-- /test -->
 
 ## See Also
 

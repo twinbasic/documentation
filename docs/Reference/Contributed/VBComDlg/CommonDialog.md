@@ -23,10 +23,15 @@ If dlg.ShowOpen() Then
 End If
 ```
 
+<!-- test: PropertyTests.CancelError_True_ClosedDialogRaisesCdlCancel, PropertyTests.CancelError_False_ClosedDialogRaisesNothing -->
 Setting [**CancelError**](#cancelerror) to **True** causes the class to raise run-time error `CdlCancel` (32755) when the user closes a dialog with **Cancel** rather than **OK**. An error handler for this error distinguishes cancellation from a successful selection.
+<!-- /test -->
 
+<!-- test: PropertyTests.MaxFileSize_Zero_Raises380, PropertyTests.FilterIndex_Negative_Raises380, PropertyTests.MinMaxFromPageToPage_Negative_Raises380, PropertyTests.Copies_Zero_Raises380, PropertyTests.Margins_Negative_Raises380, PropertyTests.PrinterEnumerations_OutOfSet_Raise380, PropertyTests.HelpCommand_NotAConstant_Raises380, PropertyTests.FontWeight_OtherValue_Raises380, PropertyTests.RootFolder_Types -->
 Assigning a value outside the documented range or set of constants to a property raises run-time error 380 (*Invalid property value*). A failure that the sections below do not list raises an error whose number is the code the Windows common-dialog library reports and whose description is "Unexpected error."
+<!-- /test -->
 
+<!-- test: FindReplaceTests.InitDialog_FindWithoutHook_NotRaised, FindReplaceTests.InitDialog_FindWithHook_Raised, FindReplaceTests.InitDialog_ReplaceWithHook_Raised, FindReplaceTests.FindNext_WithoutHook_Raised, FindReplaceTests.Replace_WithoutHook_Raised, FindReplaceTests.Help_FindWithoutHook_Raised -->
 > [!NOTE] timeless
 > Events such as [**InitDialog**](#initdialog), [**FileValidate**](#filevalidate), and [**ColorValidate**](#colorvalidate) require setting [**HookEvents**](#hookevents) to **True** before calling the `Show*` method. Without the hook, these events are not raised. The Folder Browser dialog always raises its events, and the Help, Find and Replace events do not use the hook.
 
@@ -44,6 +49,7 @@ When the thread has no active window --- in a program that has no form, for exam
 ### Action
 {: .no_toc }
 
+<!-- test: PropertyTests.Action_Read_Raises394, PropertyTests.Action_OutOfRange_Raises380, PropertyTests.Action_Nine_OpensFindDialog -->
 Invokes a dialog by numeric code. Write-only; reading raises run-time error 394. **Default property.**
 
 Syntax: *object*.**Action** = *value*
@@ -52,6 +58,7 @@ Syntax: *object*.**Action** = *value*
 : An **Integer** in the range 1--10 selecting the dialog to show: 1 = [**ShowOpen**](#showopen), 2 = [**ShowSave**](#showsave), 3 = [**ShowColor**](#showcolor), 4 = [**ShowFont**](#showfont), 5 = [**ShowPrinter**](#showprinter), 6 = [**ShowHelp**](#showhelp), 7 = [**ShowPageSetup**](#showpagesetup), 8 = [**ShowFolderBrowser**](#showfolderbrowser), 9 = [**ShowFind**](#showfind), 10 = [**ShowReplace**](#showreplace).
 
 Assigning a value outside this range raises run-time error 380 (*Invalid property value*). Values 1--10 are equivalent to calling the named `Show*` methods directly.
+<!-- /test -->
 
 ### CancelError
 {: .no_toc }
@@ -85,7 +92,9 @@ Setting this property before calling [**ShowPrinter**](#showprinter) or [**ShowP
 ### Copies
 {: .no_toc }
 
+<!-- test: PropertyTests.Defaults_Print -->
 The number of copies to print. An **Integer**, minimum 1. Default 1.
+<!-- /test -->
 
 Syntax: *object*.**Copies** [ = *value* ]
 
@@ -96,12 +105,14 @@ The 16 custom colors shown in the lower half of the Color dialog.
 
 Syntax: *object*.**CustomColors** [ = *value* ]
 
+<!-- test: CustomColorsTests.Get_DefaultIsSixteenLongsFromZero, CustomColorsTests.Let_ShortArrayLeavesTheRest, CustomColorsTests.Let_FirstElementIsFirstColourWhateverTheLowerBound, CustomColorsTests.Let_MoreThanSixteenElementsAreIgnored, CustomColorsTests.Let_StringHoldingANumberIsAccepted, CustomColorsTests.Let_OleColourIsTranslated, CustomColorsTests.Let_ElementNotAColour_RaisesTypeMismatchAndKeepsEarlierElements, CustomColorsTests.Let_NullElement_RaisesInvalidUseOfNull, CustomColorsTests.Let_MultiDimensionalArray_Raises5, CustomColorsTests.Let_UnallocatedArray_Raises91, CustomColorsTests.Let_Empty_RestoresDefaults, CustomColorsTests.Let_NotAnArray_Raises380 -->
 *value*
 : A single-dimensioned array of up to 16 values. Each element is converted to a **Long** and then to RGB, so it is an RGB value or an OLE color, and a **String** that holds a number is accepted. The first element of the array is the first custom color, whatever the array's lower bound. The class reads the first 16 elements and ignores the rest; with fewer than 16 elements, the remaining colors are unchanged. An element that cannot be converted raises run-time error 13 (*Type mismatch*), or run-time error 94 (*Invalid use of Null*) for a **Null** element, and the elements before it have already been stored. Assigning a multi-dimensional array raises run-time error 5; assigning an unallocated array raises run-time error 91. Assigning `Empty` restores the 16 default colors; any other value that is not an array raises run-time error 380.
 
 The getter returns a **Variant** array of 16 **Long** values (index 0 to 15).
 
 Default: a gradient from white (`&HFFFFFF`) through progressively darker greys to near-black. The Color dialog reads and writes its custom colors in this array.
+<!-- /test -->
 
 ### DefaultExt
 {: .no_toc }
@@ -137,14 +148,18 @@ Syntax: *object*.**FileName** [ = *value* ]
 ### FileOffset
 {: .no_toc }
 
+<!-- test: PropertyTests.FileOffset_Write_Raises383 -->
 The zero-based character offset from the beginning of [**FileName**](#filename) to the start of the file name part (that is, the character immediately after the last backslash). Read-only; writing raises run-time error 383.
+<!-- /test -->
 
 Syntax: *object*.**FileOffset**
 
 ### FileTitle
 {: .no_toc }
 
+<!-- test: PropertyTests.FileTitle_Write_Raises383 -->
 The file name without the directory path, as returned by the File Open or File Save dialog. Read-only; writing raises run-time error 383.
+<!-- /test -->
 
 Syntax: *object*.**FileTitle**
 
@@ -192,11 +207,13 @@ After the File Open, File Save, Color, Font, Print, Print (extended) and Page Se
 ### FontBold
 {: .no_toc }
 
+<!-- test: PropertyTests.FontBold_True_SetsWeight700, PropertyTests.FontBold_Get_IsWeight600OrHigher -->
 Whether the font selected in the Font dialog is bold. **Boolean**. Mapped from [**FontWeight**](#fontweight): **True** when **FontWeight** is 600 or higher.
 
 Syntax: *object*.**FontBold** [ = *value* ]
 
 Setting **FontBold** to **True** sets **FontWeight** to 700 (FW_BOLD); **False** sets it to 400 (FW_NORMAL).
+<!-- /test -->
 
 ### FontCharset
 {: .no_toc }
@@ -243,12 +260,14 @@ Syntax: *object*.**FontUnderline** [ = *value* ]
 ### FontWeight
 {: .no_toc }
 
+<!-- test: PropertyTests.Defaults_Font, PropertyTests.FontWeight_StandardValues_Accepted, PropertyTests.FontWeight_OtherValue_Raises380 -->
 The numeric weight of the selected font, corresponding to the Win32 LOGFONT `lfWeight` field. **Integer**, default 400 (FW_NORMAL).
 
 Syntax: *object*.**FontWeight** [ = *value* ]
 
 *value*
 : One of the standard Win32 weight constants: 0, 100, 200, 300, 400, 500, 600, 700, 800, or 900. Any other value raises run-time error 380.
+<!-- /test -->
 
 ### FromPage
 {: .no_toc }
@@ -260,7 +279,9 @@ Syntax: *object*.**FromPage** [ = *value* ]
 ### hDC
 {: .no_toc }
 
+<!-- test: PropertyTests.HDC_Write_Raises383 -->
 A handle to a device context or information context, as returned by the Print or extended Print dialog when **CdlPDReturnDC** or **CdlPDReturnIC** is set in [**Flags**](#flags). A **LongPtr** (the same size as a **Long** in 32-bit builds). Read-only; writing raises run-time error 383.
+<!-- /test -->
 
 Syntax: *object*.**hDC**
 
@@ -269,7 +290,9 @@ The handle is freed when the **CommonDialog** object is destroyed, or when a lat
 ### HelpCommand
 {: .no_toc }
 
+<!-- test: PropertyTests.HelpCommand_NotAConstant_Raises380, PropertyTests.ShowHelp_CommandZero_DoesNothing -->
 The type of help to invoke when [**ShowHelp**](#showhelp) is called. A member of **CdlHelpConstants**, or 0 (the default), for which **ShowHelp** does nothing. Any other value raises run-time error 380.
+<!-- /test -->
 
 Syntax: *object*.**HelpCommand** [ = *value* ]
 
@@ -319,8 +342,10 @@ Syntax: *object*.**HookEvents** [ = *value* ]
 *value*
 : **Boolean**. When **True**, the dialog's hook procedure is installed, enabling the [**InitDialog**](#initdialog), [**FileValidate**](#filevalidate), [**FileShareViolation**](#fileshareviolation), [**ColorValidate**](#colorvalidate), and [**FontApply**](#fontapply) events. Default **False**. The Folder Browser dialog raises [**InitDialog**](#initdialog) and [**FolderBrowserValidateFailed**](#folderbrowservalidatefailed) whatever the value.
 
+<!-- test: FindReplaceTests.InitDialog_HookEventsSetAfterShow_NotRaised -->
 > [!IMPORTANT] timeless
 > **HookEvents** must be set to **True** before calling the corresponding `Show*` method. Setting it after the call has no effect on the current invocation.
+<!-- /test -->
 
 ### InitDir
 {: .no_toc }
@@ -339,7 +364,9 @@ Syntax: *object*.**Max** [ = *value* ]
 ### MaxFileSize
 {: .no_toc }
 
+<!-- test: PropertyTests.Defaults_Files -->
 The maximum number of characters in the file name buffer used by the File Open and File Save dialogs. **Long**, minimum 1. Default 260 (MAX_PATH).
+<!-- /test -->
 
 Syntax: *object*.**MaxFileSize** [ = *value* ]
 
@@ -353,7 +380,9 @@ Syntax: *object*.**Min** [ = *value* ]
 ### Object
 {: .no_toc }
 
+<!-- test: PropertyTests.Object_ReturnsTheInstance -->
 Returns the **CommonDialog** instance itself as an **Object**. Read-only.
+<!-- /test -->
 
 Syntax: *object*.**Object**
 
@@ -432,7 +461,9 @@ Syntax: *object*.**PaperBin** [ = *value* ]
 ### PaperSize
 {: .no_toc }
 
+<!-- test: PropertyTests.Defaults_PaperSizeFollowsTheMeasurementSystem -->
 The paper size. A member of **CdlPRPSConstants** (e.g. **CdlPRPSLetter**, **CdlPRPSA4**). Default is **CdlPRPSA4** on metric systems and **CdlPRPSLetter** on US systems.
+<!-- /test -->
 
 Syntax: *object*.**PaperSize** [ = *value* ]
 
@@ -474,7 +505,9 @@ Syntax: *object*.**PrinterPort** [ = *value* ]
 ### PrintQuality
 {: .no_toc }
 
+<!-- test: PropertyTests.PrintQuality_DotsPerInch_Accepted -->
 The printer resolution. A member of **CdlPRPQConstants** (**CdlPRPQHigh**, **CdlPRPQMedium**, **CdlPRPQLow**, **CdlPRPQDraft**) or an integer from 0 to 32767 giving a resolution in dots per inch. Default **CdlPRPQHigh**.
+<!-- /test -->
 
 Syntax: *object*.**PrintQuality** [ = *value* ]
 
@@ -492,8 +525,10 @@ The root of the folder tree shown in the Folder Browser dialog. **Variant**.
 
 Syntax: *object*.**RootFolder** [ = *value* ]
 
+<!-- test: PropertyTests.RootFolder_Types -->
 *value*
 : **Empty** (default) to use the Desktop as the root; an integer CSIDL constant (e.g. `CSIDL_DRIVES = &H11`) to start from a shell folder; or a **String** absolute path to start from a specific directory. Floating-point values are converted to **Long** before use as CSIDL constants. Other types raise run-time error 380.
+<!-- /test -->
 
 ### Tag
 {: .no_toc }
@@ -527,7 +562,9 @@ Opens a modeless Find dialog and returns the dialog's window handle. Returns 0 i
 
 Syntax: *object*.**ShowFind** ( ) **As LongPtr**
 
+<!-- test: FindReplaceTests.FindNext_FlagsUpdatedBeforeEvent, FindReplaceTests.ShowFind_WhileOpen_ReturnsZero, FindReplaceTests.ShowReplace_WhileFindOpen_ReturnsZero, FindReplaceTests.ShowFind_AfterClose_OpensAgain -->
 The dialog is non-modal: it remains open while the user interacts with the application. When the user clicks **Find Next**, [**FindWhat**](#findwhat) and [**Flags**](#flags) are updated and the [**FindNext**](#findnext) event fires. When the dialog closes, the internal handle is released automatically. Call this method again to reopen the dialog. The method returns 0 while a Find or Replace dialog opened by the same **CommonDialog** object is still open. The dialog needs an owner window: when the thread has no active window, the owner is a hidden window that the class creates for the dialog and destroys when the dialog closes.
+<!-- /test -->
 
 If the dialog cannot be created, the method raises **CdlBufferLengthZero** (36848) when the *Find what* buffer is invalid.
 
@@ -538,9 +575,15 @@ Displays the Font dialog and returns **True** if the user clicked **OK**.
 
 Syntax: *object*.**ShowFont** ( ) **As Boolean**
 
-The dialog is pre-loaded with the current font properties. [**Flags**](#flags) must contain **CdlCFScreenFonts**, **CdlCFPrinterFonts**, or both; with neither, the Windows dialog finds no fonts and the method raises **CdlNoFonts**. On **OK**, [**FontName**](#fontname), [**FontWeight**](#fontweight) (and with it [**FontBold**](#fontbold)), [**FontItalic**](#fontitalic), [**FontSize**](#fontsize) and [**FontCharset**](#fontcharset) are updated, except that the name is left unchanged when the flags the dialog returns include **CdlCFNoFaceSel**, the weight and italic style when they include **CdlCFNoStyleSel**, the size when they include **CdlCFNoSizeSel**, and the character set when they include **CdlCFNoScriptSel**. [**FontStrikethru**](#fontstrikethru), [**FontUnderline**](#fontunderline) and [**Color**](#color) are updated only when **CdlCFEffects** is set.
+<!-- test: PropertyTests.ShowFont_NoFontFlags_ShowsTheDialog -->
+The dialog is pre-loaded with the current font properties. The Windows documentation asks for **CdlCFScreenFonts**, **CdlCFPrinterFonts**, or both in [**Flags**](#flags); the dialog opens with neither.
+<!-- /test -->
 
-Errors: **CdlMaxLessThanMin** (24573) when [**Max**](#max) < [**Min**](#min); **CdlNoFonts** (24574) when no fonts are available for the specified flags.
+On **OK**, [**FontName**](#fontname), [**FontWeight**](#fontweight) (and with it [**FontBold**](#fontbold)), [**FontItalic**](#fontitalic), [**FontSize**](#fontsize) and [**FontCharset**](#fontcharset) are updated, except that the name is left unchanged when the flags the dialog returns include **CdlCFNoFaceSel**, the weight and italic style when they include **CdlCFNoStyleSel**, the size when they include **CdlCFNoSizeSel**, and the character set when they include **CdlCFNoScriptSel**. [**FontStrikethru**](#fontstrikethru), [**FontUnderline**](#fontunderline) and [**Color**](#color) are updated only when **CdlCFEffects** is set.
+
+<!-- test: PropertyTests.ShowFont_MaxLessThanMin_RaisesMaxLessThanMin, PropertyTests.ShowFont_MaxLessThanMinWithoutLimitSize_RaisesNothing -->
+Errors: **CdlMaxLessThanMin** (24573) when [**Max**](#max) < [**Min**](#min) and **CdlCFLimitSize** is set in **Flags**; **CdlNoFonts** (24574) when the dialog finds no fonts to list.
+<!-- /test -->
 
 ### ShowFolderBrowser
 {: .no_toc }
@@ -562,6 +605,7 @@ Syntax: *object*.**ShowHelp**
 
 If [**HelpCommand**](#helpcommand) is 0, the method returns immediately without doing anything. On failure, error `CdlHelp` (32751) is raised.
 
+<!-- test: none -- WinHelp is a Windows component: whether the viewer is installed is a fact of the system, and calling WinHelpW would open a box that stops the test -->
 > [!NOTE] timeless
 > WinHelp (`.hlp`) is a deprecated help format. This method calls the `WinHelpW` API, which fails on a system that has no WinHelp viewer.
 
@@ -610,7 +654,9 @@ Opens a modeless Replace dialog and returns the dialog's window handle. Returns 
 
 Syntax: *object*.**ShowReplace** ( ) **As LongPtr**
 
+<!-- test: FindReplaceTests.Replace_WithoutHook_Raised -->
 Works identically to [**ShowFind**](#showfind), with the addition that the [**Replace**](#replace) event fires when the user clicks **Replace**, and the [**ReplaceAll**](#replaceall) event is declared for **Replace All** (but see the note under that event). The dialog starts with the current [**ReplaceWith**](#replacewith) text, and **ReplaceWith** is updated before each event. If the dialog cannot be created, the method raises **CdlBufferLengthZero** (36848) when the *Find what* or *Replace with* buffer is invalid.
+<!-- /test -->
 
 ### ShowSave
 {: .no_toc }
@@ -756,8 +802,9 @@ Declared for the **Replace All** button of the Replace dialog.
 
 Syntax: *object*\_**ReplaceAll**( )
 
+<!-- test: FindReplaceTests.ReplaceAll_ButtonRaisesEvent, FindReplaceTests.ReplaceAll_MessageRaisesEvent, FindReplaceTests.ReplaceAll_MessageForReplaceRaisesReplace, FindReplaceTests.ReplaceAll_ButtonRaisesNoOtherEvent -->
 > [!NOTE] 1.0.13.0
-> Of the package the class never raises this event. Its test for the **Replace All** button compares the masked flags with **CdlFRFindNext** instead of **CdlFRReplaceAll**, so the comparison is never true. Clicking **Replace All** raises none of the events.
+> The class never raises this event. Its test for the **Replace All** button compares the masked flags with **CdlFRFindNext** instead of **CdlFRReplaceAll**, so the comparison is never true. Clicking **Replace All** raises none of the events.
 
 ## Example
 

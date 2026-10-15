@@ -1,0 +1,415 @@
+' Pilot: operates the dialogs a modal call opens, from inside the test, so no case waits for a person.
+'
+' Every dialog of the package that has a window (the Windows file, folder, color, font, print and
+' page setup dialogs, the message box and the run-time's input box) runs its own message loop on the
+' calling thread, and that loop delivers thread timers. A case arms a timer (Arm), calls the
+' dialog, and the timer procedure, running inside the dialog's loop, finds the dialog's window,
+' records what it shows (title, texts, buttons, the edit box) and acts on it by a script.
+' Disarm stops the timer once the call has returned. Nothing is modal for longer than the script
+' takes: a window that is still open after MaxTicks ticks is closed. The dialogs are on the
+' desktop the test runs on.
+'
+' The script has one section for each window, in the order the windows appear, separated by ";".
+' The actions of a section are separated by "|":
+'   t=TEXT   set the text of the file name box, or else of the first edit box (WM_SETTEXT)
+'   id=N     click the button with control id N (BM_CLICK); WM_COMMAND when there is none
+'   td=N     click button N of a task dialog (TDM_CLICK_BUTTON)
+'   key=VK   post a key press of virtual key VK to the first edit box, or else to the window
+'   close    post WM_CLOSE
+'   wait=N   do nothing for N more ticks
+'   none     do nothing: the window is left open until MaxTicks
+' A window with no section is closed at once. An action runs 2 ticks after the window appears,
+' and the next one tick after that.
+Module Pilot
+
+    Private Declare PtrSafe Function P_SetTimer Lib "user32" Alias "SetTimer" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr
+    Private Declare PtrSafe Function P_KillTimer Lib "user32" Alias "KillTimer" (ByVal hWnd As LongPtr, ByVal uIDEvent As LongPtr) As Long
+    Private Declare PtrSafe Function P_GetCurrentThreadId Lib "kernel32" Alias "GetCurrentThreadId" () As Long
+    Private Declare PtrSafe Function P_EnumThreadWindows Lib "user32" Alias "EnumThreadWindows" (ByVal dwThreadId As Long, ByVal lpfn As LongPtr, ByVal lParam As LongPtr) As Long
+    Private Declare PtrSafe Function P_EnumChildWindows Lib "user32" Alias "EnumChildWindows" (ByVal hWndParent As LongPtr, ByVal lpEnumFunc As LongPtr, ByVal lParam As LongPtr) As Long
+    Private Declare PtrSafe Function P_GetClassNameW Lib "user32" Alias "GetClassNameW" (ByVal hWnd As LongPtr, ByVal lpClassName As LongPtr, ByVal nMaxCount As Long) As Long
+    Private Declare PtrSafe Function P_IsWindowVisible Lib "user32" Alias "IsWindowVisible" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function P_IsWindowEnabled Lib "user32" Alias "IsWindowEnabled" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function P_IsWindow Lib "user32" Alias "IsWindow" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function P_GetDlgCtrlID Lib "user32" Alias "GetDlgCtrlID" (ByVal hWnd As LongPtr) As Long
+    Private Declare PtrSafe Function P_GetDlgItem Lib "user32" Alias "GetDlgItem" (ByVal hDlg As LongPtr, ByVal nIDDlgItem As Long) As LongPtr
+    Private Declare PtrSafe Function P_GetParent Lib "user32" Alias "GetParent" (ByVal hWnd As LongPtr) As LongPtr
+    Private Declare PtrSafe Function P_GetWindow Lib "user32" Alias "GetWindow" (ByVal hWnd As LongPtr, ByVal uCmd As Long) As LongPtr
+    Private Declare PtrSafe Function P_GetWindowLongW Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As LongPtr, ByVal nIndex As Long) As Long
+    Private Declare PtrSafe Function P_SendMessageW Lib "user32" Alias "SendMessageW" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function P_PostMessageW Lib "user32" Alias "PostMessageW" (ByVal hWnd As LongPtr, ByVal Msg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As Long
+    Private Declare PtrSafe Function P_EndMenu Lib "user32" Alias "EndMenu" () As Long
+
+    Private Const WM_GETTEXT As Long = &HD
+    Private Const WM_GETTEXTLENGTH As Long = &HE
+    Private Const WM_SETTEXT As Long = &HC
+    Private Const WM_CLOSE As Long = &H10
+    Private Const WM_COMMAND As Long = &H111
+    Private Const WM_KEYDOWN As Long = &H100
+    Private Const WM_KEYUP As Long = &H101
+    Private Const BM_CLICK As Long = &HF5
+    Private Const BM_GETCHECK As Long = &HF0
+    Private Const CB_GETCOUNT As Long = &H146
+    Private Const CB_GETLBTEXT As Long = &H148
+    Private Const CB_GETLBTEXTLEN As Long = &H149
+    Private Const EM_GETLIMITTEXT As Long = &HD5
+    Private Const EM_GETPASSWORDCHAR As Long = &HD2
+    Private Const TDM_CLICK_BUTTON As Long = &H466
+    Private Const GWL_STYLE As Long = -16
+    Private Const GW_OWNER As Long = 4
+    Private Const ES_MULTILINE As Long = &H4
+
+    Private Const TICK_MS As Long = 100
+    Private Const MAXW As Long = 12
+
+    ' A window still open after this many ticks is closed.
+    Public MaxTicks As Long = 150
+
+    ' What the episode saw, for the case to check.
+    Public WindowsSeen As Long
+    Public TimedOut As Boolean
+
+    Private mSections() As String
+    Private mSectionN As Long
+    Private mTimerId As LongPtr
+    Private mTick As Long
+    Private mTop(0 To 63) As LongPtr
+    Private mTopN As Long
+    Private mCh(0 To 255) As LongPtr
+    Private mChN As Long
+
+    Private mWin(0 To MAXW - 1) As LongPtr
+    Private mActs(0 To MAXW - 1) As String
+    Private mActIdx(0 To MAXW - 1) As Long
+    Private mNext(0 To MAXW - 1) As Long
+    Private mOwner(0 To MAXW - 1) As LongPtr
+    Private mTitle(0 To MAXW - 1) As String
+    Private mStatics(0 To MAXW - 1) As String
+    Private mButtons(0 To MAXW - 1) As String
+    Private mClasses(0 To MAXW - 1) As String
+    Private mEditText(0 To MAXW - 1) As String
+    Private mPwChar(0 To MAXW - 1) As Long
+    Private mEditLimit(0 To MAXW - 1) As Long
+    Private mMultiline(0 To MAXW - 1) As Boolean
+    Private mEditCount(0 To MAXW - 1) As Long
+    Private mCombos(0 To MAXW - 1) As String
+
+    ' ---- the episode
+
+    Public Sub Arm(ByVal Script As String)
+        Dim i As Long
+        If Len(Script) = 0 Then
+            ReDim mSections(0 To 0)
+            mSectionN = 0
+        Else
+            mSections = Split(Script, ";")
+            mSectionN = UBound(mSections) + 1
+        End If
+        mTick = 0
+        WindowsSeen = 0
+        TimedOut = False
+        For i = 0 To MAXW - 1
+            mWin(i) = 0
+            mActs(i) = ""
+            mActIdx(i) = 0
+            mNext(i) = 0
+            mOwner(i) = 0
+            mTitle(i) = ""
+            mStatics(i) = ""
+            mButtons(i) = ""
+            mClasses(i) = ""
+            mEditText(i) = ""
+            mPwChar(i) = 0
+            mEditLimit(i) = 0
+            mMultiline(i) = False
+            mEditCount(i) = 0
+            mCombos(i) = ""
+        Next
+        mTimerId = P_SetTimer(0, 0, TICK_MS, AddressOf TimerProc)
+    End Sub
+
+    Public Sub Disarm()
+        If mTimerId <> 0 Then P_KillTimer 0, mTimerId
+        mTimerId = 0
+    End Sub
+
+    ' ---- what window k (0-based, in the order they appeared) showed
+
+    Public Function Title(ByVal k As Long) As String
+        If k >= 0 And k < WindowsSeen Then Title = mTitle(k)
+    End Function
+
+    ' The texts of the static controls, joined by a line feed.
+    Public Function Statics(ByVal k As Long) As String
+        If k >= 0 And k < WindowsSeen Then Statics = mStatics(k)
+    End Function
+
+    ' The texts of the buttons, joined by a line feed.
+    Public Function Buttons(ByVal k As Long) As String
+        If k >= 0 And k < WindowsSeen Then Buttons = mButtons(k)
+    End Function
+
+    ' The classes of the controls, each between bars: "|Static|Button|Edit|".
+    Public Function Classes(ByVal k As Long) As String
+        If k >= 0 And k < WindowsSeen Then Classes = mClasses(k)
+    End Function
+
+    ' The items of the combo boxes, each between bars: "|Text Files|All Files|".
+    Public Function ComboItems(ByVal k As Long) As String
+        If k >= 0 And k < WindowsSeen Then ComboItems = mCombos(k)
+    End Function
+
+    Public Function EditText(ByVal k As Long) As String
+        If k >= 0 And k < WindowsSeen Then EditText = mEditText(k)
+    End Function
+
+    ' The password character of the first edit box: 0 when the entry is not masked.
+    Public Function PasswordChar(ByVal k As Long) As Long
+        If k >= 0 And k < WindowsSeen Then PasswordChar = mPwChar(k)
+    End Function
+
+    Public Function EditLimit(ByVal k As Long) As Long
+        If k >= 0 And k < WindowsSeen Then EditLimit = mEditLimit(k)
+    End Function
+
+    Public Function IsMultiline(ByVal k As Long) As Boolean
+        If k >= 0 And k < WindowsSeen Then IsMultiline = mMultiline(k)
+    End Function
+
+    Public Function EditCount(ByVal k As Long) As Long
+        If k >= 0 And k < WindowsSeen Then EditCount = mEditCount(k)
+    End Function
+
+    ' The window that owned window k.
+    Public Function OwnerOf(ByVal k As Long) As LongPtr
+        If k >= 0 And k < WindowsSeen Then OwnerOf = mOwner(k)
+    End Function
+
+    ' ---- enumeration
+
+    Public Function EnumTopProc(ByVal hWnd As LongPtr, ByVal lParam As LongPtr) As Long
+        If mTopN <= 63 Then
+            mTop(mTopN) = hWnd
+            mTopN = mTopN + 1
+        End If
+        EnumTopProc = 1
+    End Function
+
+    Public Function EnumChildProc(ByVal hWnd As LongPtr, ByVal lParam As LongPtr) As Long
+        If mChN <= 255 Then
+            mCh(mChN) = hWnd
+            mChN = mChN + 1
+        End If
+        EnumChildProc = 1
+    End Function
+
+    Private Function ClassOf(ByVal h As LongPtr) As String
+        Dim s As String = String$(256, 0)
+        Dim n As Long = P_GetClassNameW(h, StrPtr(s), 256)
+        ClassOf = Left$(s, n)
+    End Function
+
+    Private Function TextOf(ByVal h As LongPtr) As String
+        Dim n As Long = CLng(P_SendMessageW(h, WM_GETTEXTLENGTH, 0, 0))
+        Dim s As String = String$(n + 2, 0)
+        n = CLng(P_SendMessageW(h, WM_GETTEXT, n + 1, StrPtr(s)))
+        TextOf = Left$(s, n)
+    End Function
+
+    Private Function Children(ByVal h As LongPtr, ByRef list() As LongPtr) As Long
+        Dim i As Long
+        mChN = 0
+        P_EnumChildWindows h, AddressOf EnumChildProc, 0
+        For i = 0 To mChN - 1
+            list(i) = mCh(i)
+        Next
+        Children = mChN
+    End Function
+
+    Private Function WinIndex(ByVal h As LongPtr) As Long
+        Dim i As Long
+        WinIndex = -1
+        For i = 0 To WindowsSeen - 1
+            If mWin(i) = h And h <> 0 Then WinIndex = i : Exit Function
+        Next
+    End Function
+
+    Private Function FirstEdit(ByVal h As LongPtr) As LongPtr
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long = Children(h, list)
+        For i = 0 To n - 1
+            If ClassOf(list(i)) = "Edit" And P_IsWindowVisible(list(i)) <> 0 Then
+                If ClassOf(P_GetParent(list(i))) = "ComboBox" Then FirstEdit = list(i) : Exit Function
+            End If
+        Next
+        For i = 0 To n - 1
+            If ClassOf(list(i)) = "Edit" And P_IsWindowVisible(list(i)) <> 0 Then FirstEdit = list(i) : Exit Function
+        Next
+    End Function
+
+    ' ---- recording and acting
+
+    Private Sub Record(ByVal k As Long, ByVal h As LongPtr)
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long = Children(h, list)
+        Dim cls As String
+        Dim ed As LongPtr
+        mTitle(k) = TextOf(h)
+        mOwner(k) = P_GetWindow(h, GW_OWNER)
+        mClasses(k) = "|"
+        For i = 0 To n - 1
+            cls = ClassOf(list(i))
+            If P_IsWindowVisible(list(i)) <> 0 Then
+                mClasses(k) = mClasses(k) & cls & "|"
+                Select Case cls
+                    Case "Static"
+                        If Len(TextOf(list(i))) > 0 Then
+                            If Len(mStatics(k)) > 0 Then mStatics(k) = mStatics(k) & vbLf
+                            mStatics(k) = mStatics(k) & TextOf(list(i))
+                        End If
+                    Case "Button"
+                        If Len(mButtons(k)) > 0 Then mButtons(k) = mButtons(k) & vbLf
+                        mButtons(k) = mButtons(k) & TextOf(list(i))
+                    Case "Edit"
+                        mEditCount(k) = mEditCount(k) + 1
+                    Case "ComboBox"
+                        Dim cnt As Long = CLng(P_SendMessageW(list(i), CB_GETCOUNT, 0, 0))
+                        Dim j As Long
+                        For j = 0 To cnt - 1
+                            Dim ln As Long = CLng(P_SendMessageW(list(i), CB_GETLBTEXTLEN, j, 0))
+                            Dim buf As String = String$(ln + 2, 0)
+                            P_SendMessageW list(i), CB_GETLBTEXT, j, StrPtr(buf)
+                            If Len(mCombos(k)) = 0 Then mCombos(k) = "|"
+                            mCombos(k) = mCombos(k) & Left$(buf, ln) & "|"
+                        Next
+                End Select
+            End If
+        Next
+        ed = FirstEdit(h)
+        If ed <> 0 Then
+            mEditText(k) = TextOf(ed)
+            mPwChar(k) = CLng(P_SendMessageW(ed, EM_GETPASSWORDCHAR, 0, 0))
+            mEditLimit(k) = CLng(P_SendMessageW(ed, EM_GETLIMITTEXT, 0, 0))
+            mMultiline(k) = ((P_GetWindowLongW(ed, GWL_STYLE) And ES_MULTILINE) <> 0)
+        End If
+    End Sub
+
+    Private Sub Act(ByVal k As Long, ByVal h As LongPtr, ByVal action As String)
+        Dim p As Long = InStr(action, "=")
+        Dim verb As String = action
+        Dim arg As String
+        Dim ed As LongPtr
+        Dim b As LongPtr
+        If p > 0 Then
+            verb = Left$(action, p - 1)
+            arg = Mid$(action, p + 1)
+        End If
+        Select Case verb
+            Case "t"
+                ed = FirstEdit(h)
+                If ed <> 0 Then P_SendMessageW ed, WM_SETTEXT, 0, StrPtr(arg)
+            Case "id"
+                b = P_GetDlgItem(h, CLng(arg))
+                If b <> 0 Then P_PostMessageW b, BM_CLICK, 0, 0 Else P_PostMessageW h, WM_COMMAND, CLng(arg), 0
+            Case "td"
+                P_PostMessageW h, TDM_CLICK_BUTTON, CLng(arg), 0
+            Case "key"
+                ed = FirstEdit(h)
+                If ed = 0 Then ed = h
+                P_PostMessageW ed, WM_KEYDOWN, CLng(arg), 0
+                P_PostMessageW ed, WM_KEYUP, CLng(arg), &HC0000001
+            Case "close"
+                P_PostMessageW h, WM_CLOSE, 0, 0
+            Case "wait"
+                mNext(k) = mTick + CLng(arg)
+        End Select
+    End Sub
+
+    Private Sub Service(ByVal k As Long, ByVal h As LongPtr)
+        Dim acts() As String
+        ' A box may be masked a moment after it appears.
+        Dim e As LongPtr = FirstEdit(h)
+        If e <> 0 Then
+            Dim pc As Long = CLng(P_SendMessageW(e, EM_GETPASSWORDCHAR, 0, 0))
+            If pc <> 0 Then mPwChar(k) = pc
+        End If
+        If Len(mActs(k)) = 0 Then Exit Sub
+        acts = Split(mActs(k), "|")
+        If mActIdx(k) > UBound(acts) Then Exit Sub
+        If mTick < mNext(k) Then Exit Sub
+        Dim a As String = acts(mActIdx(k))
+        mActIdx(k) = mActIdx(k) + 1
+        mNext(k) = mTick + 1
+        Act k, h, a
+    End Sub
+
+    Private Sub CloseWindow(ByVal h As LongPtr)
+        Dim list(0 To 255) As LongPtr
+        Dim i As Long
+        Dim n As Long
+        P_EndMenu
+        P_PostMessageW h, TDM_CLICK_BUTTON, 2, 0
+        P_PostMessageW h, WM_CLOSE, 0, 0
+        P_PostMessageW h, WM_COMMAND, 2, 0
+        n = Children(h, list)
+        For i = 0 To n - 1
+            If ClassOf(list(i)) = "Button" And P_GetDlgCtrlID(list(i)) = 2 Then P_PostMessageW list(i), BM_CLICK, 0, 0
+        Next
+    End Sub
+
+    ' The timer procedure: runs inside the modal loop of the dialog.
+    Public Sub TimerProc(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal idEvent As LongPtr, ByVal dwTime As Long)
+        Dim i As Long
+        Dim k As Long
+        Dim h As LongPtr
+        Dim list(0 To 63) As LongPtr
+        Dim n As Long
+        mTick = mTick + 1
+        ' A window that has gone is forgotten, so that a new one with the same handle is a new window.
+        For i = 0 To WindowsSeen - 1
+            If mWin(i) <> 0 Then
+                If P_IsWindow(mWin(i)) = 0 Then
+                    mWin(i) = 0
+                ElseIf P_IsWindowVisible(mWin(i)) = 0 Then
+                    mWin(i) = 0
+                End If
+            End If
+        Next
+        mTopN = 0
+        P_EnumThreadWindows P_GetCurrentThreadId(), AddressOf EnumTopProc, 0
+        n = mTopN
+        For i = 0 To n - 1
+            list(i) = mTop(i)
+        Next
+        For i = 0 To n - 1
+            h = list(i)
+            If P_IsWindow(h) <> 0 Then
+                If P_IsWindowVisible(h) <> 0 Then
+                    If ClassOf(h) = "#32770" Then
+                        k = WinIndex(h)
+                        If k < 0 And WindowsSeen < MAXW Then
+                            k = WindowsSeen
+                            WindowsSeen = WindowsSeen + 1
+                            mWin(k) = h
+                            If k < mSectionN Then mActs(k) = mSections(k) Else mActs(k) = "close"
+                            mActIdx(k) = 0
+                            mNext(k) = mTick + 2
+                            Record k, h
+                        End If
+                        If k >= 0 Then
+                            If mTick >= MaxTicks Then
+                                TimedOut = True
+                                CloseWindow h
+                            Else
+                                Service k, h
+                            End If
+                        End If
+                    End If
+                End If
+            End If
+        Next
+    End Sub
+
+End Module

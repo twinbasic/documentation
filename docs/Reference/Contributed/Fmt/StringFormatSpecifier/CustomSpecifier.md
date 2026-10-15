@@ -8,6 +8,8 @@ has_toc: false
 # CustomSpecifier
 {: .no_toc }
 
+<!-- test: SpecifierTests.CustomSpecifier_Numeric_SetsThePrecision, SpecifierTests.CustomSpecifier_NotNumeric_KeepsThePrecision, SpecifierTests.CustomSpecifier_Zero_KeepsThePrecision, DateTests.Custom_C_PassesTheTextToFormat -->
+
 Returns or sets the text of a format item that follows its identifier letter.
 
 ## Get
@@ -35,6 +37,8 @@ Syntax: *object*.**CustomSpecifier** **=** *value*
 The text is stored as written. When it is numeric and not zero, [**Precision**](Precision) takes the value as well. When it is not, [**Precision**](Precision) is left as it was: assigning `"abc"` or `"0"` does not reset an earlier precision to zero.
 
 The meaning of the text belongs to the format identifier class. The numeric classes read it as a precision through [**Precision**](Precision). [**GenericDateTimeSFI**](../GenericDateTimeSFI) passes it to **Format$** as a custom date and time format when the identifier is `C`.
+
+<!-- /test -->
 
 ## Example
 

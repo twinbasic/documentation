@@ -8,6 +8,8 @@ has_toc: false
 # ToString
 {: .no_toc }
 
+<!-- test: SpecifierTests.ToString_RebuildsTheItem, SpecifierTests.ToString_AlignmentAndIdentifier, ItemTests.Item_LeadingZeroIndex_IsNotReplaced, ItemTests.Item_LeadingZeroAlignment_IsNotReplaced, ItemTests.Item_ZeroAlignment_IsNotReplaced -->
+
 Returns the text of the format item that the properties describe.
 
 Syntax: *object*.**ToString** ( ) **As String**
@@ -27,6 +29,8 @@ Debug.Print StringFormat("[{00}]", 5)     ' [{00}]
 Debug.Print StringFormat("[{0,08}]", 5)   ' [{0,08}]
 Debug.Print StringFormat("[{0,0}]", 5)    ' [{0,0}]
 ```
+
+<!-- /test -->
 
 ## Example
 
