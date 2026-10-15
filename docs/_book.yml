@@ -600,96 +600,6 @@ parts:
         landing_is_target: true
         outline_closed: true
 
-      - title: Experimental Packages
-        subtitle: Community packages from TWINSERV that are not yet ready for use in a program
-        landing_page: /tB/Packages/Experimental/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: ArrayListLib Package
-        subtitle: A list class in place of the ArrayList of .NET
-        landing_page: /tB/Packages/Contributed/ArrayListLib/
-        page: /tB/Packages/Contributed/ArrayListLib/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: BigNumberLib Package
-        subtitle: Arbitrary-precision signed integer arithmetic
-        landing_page: /tB/Packages/Contributed/BigNumberLib/
-        page: /tB/Packages/Contributed/BigNumberLib/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: TBMANLIB Package
-        subtitle: A toolkit of helpers for JSON, logs, INI files, strings, bytes, files and dictionaries
-        landing_page: /tB/Packages/Contributed/TBMANLIB/
-        page: /tB/Packages/Contributed/TBMANLIB/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: TBMANLIB_Aes Package
-        subtitle: AES encryption of text and byte arrays, through the Windows Crypto API and CNG
-        landing_page: /tB/Packages/Contributed/TBMANLIB_Aes/
-        page: /tB/Packages/Contributed/TBMANLIB_Aes/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: TBMANLIB_ConsoleComponents Package
-        subtitle: Text-interface components for console programs, drawn into the buffer of TBMANLIB_ConsoleCore
-        landing_page: /tB/Packages/Contributed/TBMANLIB_ConsoleComponents/
-        page: /tB/Packages/Contributed/TBMANLIB_ConsoleComponents/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: TBMANLIB_ConsoleCore Package
-        subtitle: A console library with colours, UTF-8 and a full-screen mode
-        landing_page: /tB/Packages/Contributed/TBMANLIB_ConsoleCore/
-        page: /tB/Packages/Contributed/TBMANLIB_ConsoleCore/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: TBMANLIB_Diagnostic Package
-        subtitle: A diagnostic report of the computer and its processes, as text, JSON or HTML
-        landing_page: /tB/Packages/Contributed/TBMANLIB_Diagnostic/
-        page: /tB/Packages/Contributed/TBMANLIB_Diagnostic/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: TBMANLIB_Dialog Package
-        subtitle: Open, Save, folder, Color, Font, Print and other dialogs in classes, with file filters and path helpers
-        landing_page: /tB/Packages/Contributed/TBMANLIB_Dialog/
-        page: /tB/Packages/Contributed/TBMANLIB_Dialog/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: TBMANLIB_ListBoxHScroll Package
-        subtitle: A horizontal scroll bar for a ListBox
-        landing_page: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
-        page: /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: TBMANLIB_Xml Package
-        subtitle: XML documents parsed, edited and written, in twinBASIC code
-        landing_page: /tB/Packages/Contributed/TBMANLIB_Xml/
-        page: /tB/Packages/Contributed/TBMANLIB_Xml/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: WinReg Package
-        subtitle: Registry keys and values, read, written, deleted and enumerated
-        landing_page: /tB/Packages/Contributed/WinReg/
-        page: /tB/Packages/Contributed/WinReg/
-        landing_is_target: true
-        outline_closed: true
-
-      - title: xCalendar Package
-        subtitle: A calendar control, in place of the Calendar control of MSCAL.OCX
-        landing_page: /tB/Packages/Contributed/xCalendar/
-        page: /tB/Packages/Contributed/xCalendar/
-        landing_is_target: true
-        outline_closed: true
-
   - title: Appendices
     outline_closed: false
     
@@ -718,6 +628,31 @@ left_out:
 
   - reason: Time-limited community contests
     page: /Challenges
+
+  # A package moves here from its chapter when it is listed under
+  # Experimental Packages, and gets its chapter back (after VBComDlg's) when
+  # it moves back to Contributed Packages. A section's pages share its folder
+  # URL, so one entry covers a package; a prefix ending in `/` cannot match
+  # another package whose name begins the same (TBMANLIB, TBMANLIB_Aes).
+  - reason: Experimental packages, which do not yet work well enough to use in a program; the book is for packages ready for use
+    no_descent: true
+    page: /tB/Packages/Experimental/
+
+  - reason: Experimental packages, which do not yet work well enough to use in a program; the book is for packages ready for use
+    pages:
+      - /tB/Packages/Contributed/ArrayListLib/
+      - /tB/Packages/Contributed/BigNumberLib/
+      - /tB/Packages/Contributed/GdiPlus/
+      - /tB/Packages/Contributed/TBMANLIB/
+      - /tB/Packages/Contributed/TBMANLIB_Aes/
+      - /tB/Packages/Contributed/TBMANLIB_ConsoleComponents/
+      - /tB/Packages/Contributed/TBMANLIB_ConsoleCore/
+      - /tB/Packages/Contributed/TBMANLIB_Diagnostic/
+      - /tB/Packages/Contributed/TBMANLIB_Dialog/
+      - /tB/Packages/Contributed/TBMANLIB_ListBoxHScroll/
+      - /tB/Packages/Contributed/TBMANLIB_Xml/
+      - /tB/Packages/Contributed/WinReg/
+      - /tB/Packages/Contributed/xCalendar/
 
   - reason: IDE pages that are still screenshots and the labels they show, or headings with nothing under them
     no_descent: true

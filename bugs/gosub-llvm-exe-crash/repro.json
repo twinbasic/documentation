@@ -1,0 +1,13 @@
+{
+  "mode": "run",
+  "llvm": true,
+  "exe": true,
+  "expect": {
+    "exit": 6,
+    "output": [
+      "^G = 7$",
+      "^--- exe: exit -1073741819 \\(0xC0000005\\)$"
+    ],
+    "absent": ["^--- exe: exit 7$"]
+  }
+}

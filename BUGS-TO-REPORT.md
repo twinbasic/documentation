@@ -5034,3 +5034,155 @@ Each line gives what it asks for, as its neighbours do: a help context of 2000, 
 The import is not the cause: it keeps every `Attribute` line of a `.bas` and a `.cls` byte for byte, and those of a `.frm`, `.ctl` and `.pag` inside the class it writes. The type information a class has at run time in the IDE carries no flags and no descriptions for any member, whichever way they are written, so the built DLL is where to look. `[NonBrowsable]` on a public field leaves it without `nonbrowsable` as well. A VB6 build of the same class was not made: VB6 registers an ActiveX DLL as it builds it. Severity: medium for anyone moving a VB6 component to twinBASIC under binary compatibility; nothing fails, and the loss shows only to the component's users, in their object browsers and data-binding dialogs.
 
 <!-- Lane mode in bugs/vb6-attribute-lines-no-effect/repro.json: asserted by `ide-test.bat --only vb6-import` (test/ide/vb6-import.test.mjs), whose test of the same name passes on BETA 1005; the lane imports test/ide/probes/vb6-import with the IDE's own Import from VBP..., builds it with project.dllRegisterAfterBuild false and reads the type library with LoadTypeLibEx (REGKIND_NONE). Page: docs/Miscellaneous/FAQs.md, #vb6-import, carries the WARNING labelled BETA 1005; remove it when a fix is released, and move the lines it names into the list of lines that take effect. Found 2026-10-14 while testing what the VB6 import makes of Attribute lines. -->
+
+---
+
+## A `GoSub` in an exe built with LLVM ends the program with an access violation
+
+**Describe the bug**
+In an exe built with LLVM turned on, a procedure that runs `GoSub <label>` ends the program with an access violation (exit code -1073741819, 0xC0000005, in the exe's own module) at the `GoSub` statement, before the first statement after the label. No message box is shown. The same project built without LLVM runs correctly, and so does its run in the IDE with LLVM turned on for the debug run (Compiler Options (DEBUG)): only the built exe is affected, in a 32-bit and in a 64-bit build. Observed by building the exe and running it with its exit code read, and in the Application log, which records the fault.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `gosub-llvm-exe-crash.twinproj` (attached as `gosub-llvm-exe-crash.zip`). It needs an LLVM licence (Ultimate). Its module `Startup` is:
+   ```
+   Private Declare Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+   Private Function G() As Long
+       Dim n As Long
+       GoSub L
+       G = n
+       Exit Function
+   L:
+       n = 7
+       Return
+   End Function
+
+   Public Sub Main()
+       If App.IsInIDE Then
+           Debug.Print "G = " & G()
+       Else
+           ExitProcess G()
+       End If
+   End Sub
+   ```
+2. In Project Settings, turn **Enable LLVM Compilation** on under **Compiler Options (BUILD)**, and build the exe (32-bit, then 64-bit).
+3. Run the exe from a command prompt and read its exit code (`echo %errorlevel%`).
+4. See -1073741819 (0xC0000005), and the fault recorded in the Application log. Turn LLVM off, build again and run: the exit code is 7.
+
+**Expected behavior**
+`G` returns 7, so the exe exits with code 7, as it does without LLVM.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+Every `GoSub` tried faults: in a Sub and in a Function, with a loop and without, with and without an assignment to a local, and with a label whose `Return` is the only statement. The fault is at the `GoSub` itself: nothing after it runs. With LLVM turned on under **Compiler Options (DEBUG)**, a run in the IDE (F5) prints `G = 7`; with the same setting on for the build, the exe faults.
+
+TBMANLIB 1.0.0.29 has two members that use `GoSub` (`ToolsDic.OverWrite` and `cCsv.NewColumn`), and an exe built with LLVM that calls either ends the same way. In a copy of the package where each `GoSub` is replaced by a call to a Private Sub (or the label's code written inline), the same exe runs and gives what the plain exe gives.
+
+Severity: high for a program built with LLVM. The program ends at the first `GoSub` it runs, with no message, and no wrong result is produced. Building without LLVM, or replacing the `GoSub` by a call to a Private Sub, avoids it.
+
+Not tried: `On ... GoSub`, a `GoSub` in a class method, a label inside a nested block, and a `GoSub` reached from an error handler.
+
+<!-- Reproducer: bugs/gosub-llvm-exe-crash/ (mode run with exe and llvm: the IDE run prints `G = 7`, and tbrun --exe --llvm shows the exe exiting 0xC0000005; expect is tbrun exit 6, that line, the exit line, and absent `exit 7`); verified on BETA 1005 by `bug_repro.mjs verify`, and run with --arch win64 too. Control: `run --exe` without --llvm exits 7, win32 and win64. Pages: docs/LLVM/Getting-Started.md, "Language support", and docs/Reference/Core/GoSub-Return.md carry the WARNING labelled BETA 1005; remove both when a fix is released. Found 2026-10-15 when three TBMANLIB samples of the documentation ended an LLVM exe with no box. -->
+
+---
+
+## LLVM, 64-bit: passing `ByVal 0&` for a `ByRef Long` 8th parameter of a `Declare` crashes the call
+
+**Describe the bug**
+In a 64-bit build with LLVM turned on, a call to a `Declare`d API whose 8th parameter is declared `ByRef` with a 32-bit type (`Long`, or an Enum such as `BOOL`), with `ByVal 0&` (or `ByVal CFALSE`, an Enum member of value 0) passed for that parameter to give the API a NULL pointer, ends with an access violation (0xC0000005, no message box) inside the API (`KERNELBASE.dll`: in `WideCharToMultiByte`, and in `CreateNamedPipeW` with its 8th parameter declared the same way). It happens in a built exe and in a run in the IDE with LLVM turned on for the debug run (Compiler Options (DEBUG)). The same code is right in a 32-bit LLVM build and in a 64-bit build without LLVM. In the same 64-bit LLVM build, `ByVal 0&` for a `ByRef Long` parameter in the 1st, 4th, 5th, 6th or 7th position is right, and so is an 8th parameter declared `ByVal ... As LongPtr` or `ByRef ... As LongPtr`. Whether the call crashes depends on what the stack held before it: the argument's slot is evidently not written with a whole pointer, so leftover data on the stack makes it a bad one. A clean stack hides the fault, which is why the same call in a calling procedure with fewer local variables seems to work, and a procedure with two local variables crashes after another call has left data on the stack. Observed with `bug_repro.mjs run` (which uses `tbrun`) on the exe and in the IDE run, and with the exe's exit code read.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm64-byval-to-byref-declare-crash.twinproj` (attached as `llvm64-byval-to-byref-declare-crash.zip`). It needs an LLVM licence (Ultimate). Its module `Startup` is:
+   ```
+   Private Declare PtrSafe Function WideCharToMultiByte Lib "kernel32" (ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpDefaultChar As LongPtr, ByRef lpUsedDefaultChar As Long) As Long
+   Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+   Private Function Count() As Long
+       Dim text As String, n As Long, a As String, b As String, c As Long, d As Double
+       text = "hello"
+       a = "x": b = "y": c = 1: d = 2
+       n = WideCharToMultiByte(65001, 0, StrPtr(text), Len(text), 0&, 0&, 0&, ByVal 0&)
+       If Len(a & b) + c + d = 5 Then Count = n
+   End Function
+
+   Public Sub Main()
+       If App.IsInIDE Then
+           Debug.Print "Count = " & Count()
+       Else
+           ExitProcess Count()
+       End If
+   End Sub
+   ```
+2. In Project Settings, set the architecture to 64-bit and turn **Enable LLVM Compilation** on under **Compiler Options (BUILD)** and under **Compiler Options (DEBUG)**.
+3. Run the project in the IDE (F5), and build the exe and run it from a command prompt, reading its exit code (`echo %errorlevel%`).
+4. The IDE run ends without printing `Count = 5`, and the exe exits with -1073741819 (0xC0000005), the fault recorded in the Application log at `KERNELBASE.dll` offset 0x4C3FE. Turn LLVM off, or build 32-bit, and run again: it prints `Count = 5`, and the exe exits with code 5.
+
+**Expected behavior**
+`Count` returns 5, the number of bytes of "hello" in UTF-8, so the exe exits with code 5, as it does without LLVM and in a 32-bit build. `ByVal 0&` for a `ByRef` parameter of a `Declare` passes a NULL pointer, which `WideCharToMultiByte` requires for these two parameters when the code page is 65001.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The 8th parameter written `Optional lpUsedDefaultChar As BOOL` (an Enum) fails the same way as `ByRef ... As Long`, and the argument can be `ByVal 0&` or `ByVal CFALSE`. Passing a variable for it, or leaving the last two arguments out, returns the right value in the same large procedure. It needs both the 8th position and the `ByVal`-for-`ByRef` override of a 32-bit parameter: the override at the 1st to 7th positions (registers and stack alike), a `ByRef ... As LongPtr` 8th parameter given `ByVal 0&`, and an 8th parameter declared `ByVal ... As LongPtr` given 0 are all right, after the same call that leaves data on the stack. Declaring the parameter `ByVal ... As LongPtr` (as `lpDefaultChar` is) is a way round it. The package tbFileSysTools 1.9.0.0 makes this call in `TextCodec.ConvertFromUTF16` (`WinAPI.twin`, line 52), which every text-writing member goes through (`StringToTextFile`, `WriteStream` and the members that call them), so an exe built with LLVM for 64-bit that writes a text file ends the same way, with no message box.
+
+Severity: high for a 64-bit program built with LLVM that makes such a call: it ends at the call, with no message, and no wrong result is produced. It is hard to find, because it depends on what the stack held. Building without LLVM, building 32-bit, or declaring the parameter `ByVal ... As LongPtr` avoids it.
+
+Not tried: a 9th or later parameter, other types of 32 bits or fewer (`Integer`, `Byte`, `Single`), a `ByVal` override of a ByRef parameter that is not a number (a string or an UDT), a non-zero value, and the generated code. A `ByVal` argument for a `ByRef` parameter of a twinBASIC `Sub` or `Function` is a different defect, in both architectures, with an entry of its own.
+
+<!-- Reproducer: bugs/llvm64-byval-to-byref-declare-crash/ (mode run with arch win64, llvm and exe: the IDE run prints nothing, and tbrun --exe --llvm --arch win64 shows the exe exiting 0xC0000005 in KERNELBASE.dll; expect is tbrun exit 5, those two lines, and absent `Count = 5` and `exit 5`); verified on BETA 1005 by `bug_repro.mjs verify`. Controls, all printing `Count = 5` and exiting 5: `run --exe --llvm --arch win32`, `run --exe --arch win64`, `run --exe --arch win32`. Pages: docs/LLVM/Getting-Started.md, "Language support", and docs/Reference/Core/Declare.md carry the WARNING labelled BETA 1005; remove both when a fix is released. Found 2026-10-15 when text-writing samples of tbFileSysTools ended a 64-bit LLVM exe with no box. -->
+
+---
+
+## LLVM: passing `ByVal` for a `ByRef` parameter of a twinBASIC `Sub` is a codegen error, and the calling procedure does not run
+
+**Describe the bug**
+In a project compiled with LLVM, in a 32-bit and in a 64-bit build, a call that passes `ByVal` for a `ByRef` parameter of a twinBASIC `Sub` or `Function` (for example `Take ByVal 0&` for `Sub Take(ByRef h As Long)`) makes the build print `[LLVM] codegen error occurred when compiling 'Startup.Caller': Call parameter type does not match function signature!`, followed by the offending instruction, `call x86_stdcallcc void @"#0"(i32 0)` (an `i32` where the signature has a pointer; `double 0.0` for a `Double`). The build still makes the exe, and the procedure that contains the call does not run: the 64-bit exe ends with an access violation (0xC0000005, no message box, in `ntdll.dll` or `USER32.dll`) when it enters the procedure, and the 32-bit exe skips the procedure and then faults later, in `OLEAUT32.dll`. Without LLVM the call compiles and passes a NULL pointer. VB6 refuses the same call with the error *Type mismatch*, so the call is a twinBASIC extension that the LLVM back end cannot compile. Observed with `bug_repro.mjs run` (which uses `tbrun`) on an exe and in the IDE run, and with the exe's exit code read.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm-byval-to-byref-sub-codegen.twinproj` (attached as `llvm-byval-to-byref-sub-codegen.zip`). It needs an LLVM licence (Ultimate). Its module `Startup` is:
+   ```
+   Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+   Private Sub Take(ByRef h As Long)
+   End Sub
+
+   Private Function Caller() As Long
+       Take ByVal 0&
+       Caller = 7
+   End Function
+
+   Public Sub Main()
+       If App.IsInIDE Then
+           Debug.Print "Caller = " & Caller()
+       Else
+           ExitProcess Caller()
+       End If
+   End Sub
+   ```
+2. In Project Settings, set the architecture to 64-bit and turn **Enable LLVM Compilation** on under **Compiler Options (BUILD)** and under **Compiler Options (DEBUG)**.
+3. Run the project in the IDE (F5), and build the exe and run it from a command prompt, reading its exit code (`echo %errorlevel%`).
+4. The DEBUG CONSOLE shows the `[LLVM] codegen error` for `Startup.Caller`, the IDE run does not print `Caller = 7`, and the exe exits with -1073741819 (0xC0000005). Turn LLVM off and run again: it prints `Caller = 7`, and the exe exits with code 7.
+
+**Expected behavior**
+Either the same as without LLVM, `Caller` returning 7 with a NULL pointer passed to `Take`, so the exe exits with code 7, or a compile error that names the call, as VB6 gives. A codegen error that the build reports and then ignores leaves a program that fails at run time.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 1005
+
+**Additional context**
+The same error appears at the first and at the eighth parameter, for a `Long` and for a `Double` parameter, for an `Optional ByRef` parameter that is passed `ByVal 0&`, and with five instead of 0 as the value. These are right: a variable for the `ByRef` parameter, an `Optional ByRef` parameter that is left out, and a `ByVal` parameter. A smaller calling procedure fails the same way. This is not the crash of `llvm64-byval-to-byref-declare-crash`: that one is a call of a `Declare`d API in a 64-bit build only, and the calls in that entry compile.
+
+Severity: medium. A 64-bit program built with LLVM that has such a call ends at the calling procedure, with no message box; a 32-bit one silently skips the procedure, which is worse. The build does report the error, but as a log line, with a successful build after it. Passing a variable for the parameter avoids it.
+
+Not tried: `ByVal Nothing` for a `ByRef` object parameter of a twinBASIC procedure (the documentation's Pointers page describes it), a `ByVal` string or UDT argument, a method of a class, and a `Property` with a `ByRef` parameter. The generated code was not read.
+
+<!-- Reproducer: bugs/llvm-byval-to-byref-sub-codegen/ (mode run with arch win64, llvm and exe: the DEBUG CONSOLE has the codegen error for Startup.Caller and tbrun --exe --llvm --arch win64 shows the exe exiting 0xC0000005; expect is tbrun exit 5, those two lines, and absent `Caller = 7` and `exit 7`); verified on BETA 1005 by `bug_repro.mjs verify`. Controls: `run --exe --arch win64` (no LLVM) prints `Caller = 7` and exits 7; `run --exe --llvm --arch win32` prints the codegen error and exits 0 (Caller skipped). Pages: docs/LLVM/Getting-Started.md, "Language support", and docs/Reference/Core/Call.md carry the WARNING labelled BETA 1005; remove both when a fix is released. The additional-context cases (first and eighth parameter, Double, Optional, a variable, the argument left out, a ByVal parameter) were run in a session of 2026-10-16 and are not in the reproducer. -->

@@ -1,0 +1,33 @@
+' A call that passes ByVal for a ByRef parameter of a twinBASIC Sub, in a program compiled with LLVM.
+' Caller returns 7. Without LLVM the call compiles and passes a NULL pointer (Take does not use it), and
+' the exe exits with code 7. With LLVM on, the build prints "[LLVM] codegen error occurred when compiling
+' 'Startup.Caller': Call parameter type does not match function signature!" and still makes the exe, and
+' Caller does not run: the exe faults (exit code 0xC0000005 in 64-bit, in ntdll or USER32). VB6 refuses the call
+' (Type mismatch).
+Module Startup
+
+    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+    Private Sub Take(ByRef h As Long)
+    End Sub
+
+    Private Function Caller() As Long
+        Take ByVal 0&
+        Caller = 7
+    End Function
+
+    Public Sub Main()
+        If App.IsInIDE Then
+            Debug.Print "Caller = " & Caller()
+        Else
+            ExitProcess Caller()
+        End If
+    End Sub
+
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Main
+    End Sub
+
+End Module

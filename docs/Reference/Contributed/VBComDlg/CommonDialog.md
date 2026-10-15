@@ -83,7 +83,7 @@ Syntax: *object*.**Color** [ = *value* ]
 ### ColorMode
 {: .no_toc }
 
-The printer color mode. A member of **CdlPRCMConstants**: **CdlPRCMMonochrome** or **CdlPRCMColor**. Default **CdlPRCMColor**.
+The printer color mode. A member of [**CdlPRCMConstants**](Enumerations/CdlPRCMConstants): **CdlPRCMMonochrome** or **CdlPRCMColor**. Default **CdlPRCMColor**.
 
 Syntax: *object*.**ColorMode** [ = *value* ]
 
@@ -131,7 +131,7 @@ Syntax: *object*.**DialogTitle** [ = *value* ]
 ### Duplex
 {: .no_toc }
 
-The printer duplex (two-sided printing) mode. A member of **CdlPRDPConstants**: **CdlPRDPSimplex**, **CdlPRDPHorizontal**, or **CdlPRDPVertical**. Default **CdlPRDPSimplex**.
+The printer duplex (two-sided printing) mode. A member of [**CdlPRDPConstants**](Enumerations/CdlPRDPConstants): **CdlPRDPSimplex**, **CdlPRDPHorizontal**, or **CdlPRDPVertical**. Default **CdlPRDPSimplex**.
 
 Syntax: *object*.**Duplex** [ = *value* ]
 
@@ -192,13 +192,13 @@ Syntax: *object*.**FindWhat** [ = *value* ]
 
 A **Long** bitmask of option flags passed to the active dialog. The applicable constants depend on which dialog is being shown:
 
-- File dialogs: **CdlOFNConstants** (e.g. **CdlOFNFileMustExist**, **CdlOFNOverwritePrompt**, **CdlOFNAllowMultiSelect**)
-- Color dialog: **CdlCCConstants** (e.g. **CdlCCFullOpen**, **CdlCCSolidColor**)
-- Font dialog: **CdlCFConstants** (e.g. **CdlCFScreenFonts**, **CdlCFEffects**, **CdlCFLimitSize**)
-- Print dialog: **CdlPDConstants** (e.g. **CdlPDAllPages**, **CdlPDPageNums**, **CdlPDReturnDC**)
-- Page Setup dialog: **CdlPSDConstants** (e.g. **CdlPSDMargins**, **CdlPSDInThousandthsOfInches**)
-- Folder Browser dialog: **CdlBIFConstants** (e.g. **CdlBIFNewDialogStyle**, **CdlBIFEditBox**)
-- Find/Replace dialogs: **CdlFRConstants** (e.g. **CdlFRDown**, **CdlFRMatchCase**, **CdlFRWholeWord**)
+- File dialogs: [**CdlOFNConstants**](Enumerations/CdlOFNConstants) (e.g. **CdlOFNFileMustExist**, **CdlOFNOverwritePrompt**, **CdlOFNAllowMultiSelect**)
+- Color dialog: [**CdlCCConstants**](Enumerations/CdlCCConstants) (e.g. **CdlCCFullOpen**, **CdlCCSolidColor**)
+- Font dialog: [**CdlCFConstants**](Enumerations/CdlCFConstants) (e.g. **CdlCFScreenFonts**, **CdlCFEffects**, **CdlCFLimitSize**)
+- Print dialog: [**CdlPDConstants**](Enumerations/CdlPDConstants) (e.g. **CdlPDAllPages**, **CdlPDPageNums**, **CdlPDReturnDC**)
+- Page Setup dialog: [**CdlPSDConstants**](Enumerations/CdlPSDConstants) (e.g. **CdlPSDMargins**, **CdlPSDInThousandthsOfInches**)
+- Folder Browser dialog: [**CdlBIFConstants**](Enumerations/CdlBIFConstants) (e.g. **CdlBIFNewDialogStyle**, **CdlBIFEditBox**)
+- Find/Replace dialogs: [**CdlFRConstants**](Enumerations/CdlFRConstants) (e.g. **CdlFRDown**, **CdlFRMatchCase**, **CdlFRWholeWord**)
 
 Syntax: *object*.**Flags** [ = *value* ]
 
@@ -291,7 +291,7 @@ The handle is freed when the **CommonDialog** object is destroyed, or when a lat
 {: .no_toc }
 
 <!-- test: PropertyTests.HelpCommand_NotAConstant_Raises380, PropertyTests.ShowHelp_CommandZero_DoesNothing -->
-The type of help to invoke when [**ShowHelp**](#showhelp) is called. A member of **CdlHelpConstants**, or 0 (the default), for which **ShowHelp** does nothing. Any other value raises run-time error 380.
+The type of help to invoke when [**ShowHelp**](#showhelp) is called. A member of [**CdlHelpConstants**](Enumerations/CdlHelpConstants), or 0 (the default), for which **ShowHelp** does nothing. Any other value raises run-time error 380.
 <!-- /test -->
 
 Syntax: *object*.**HelpCommand** [ = *value* ]
@@ -299,17 +299,17 @@ Syntax: *object*.**HelpCommand** [ = *value* ]
 | Constant | Description |
 |----------|-------------|
 | **CdlHelpContext** | Displays the topic identified by [**HelpContext**](#helpcontext). |
-| **CdlHelpContents** | Displays the table of contents. |
+| **CdlHelpContents** | Displays the contents topic of the help file. |
 | **CdlHelpForceFile** | Forces WinHelp to display the correct file. |
 | **CdlHelpHelpOnHelp** | Displays help on using Help itself. |
-| **CdlHelpIndex** | Displays the index. |
+| **CdlHelpIndex** | The older name of **CdlHelpContents**, with the same value. |
 | **CdlHelpKey** | Displays help for the keyword in [**HelpKey**](#helpkey). |
 | **CdlHelpPartialKey** | Displays the topic whose keyword matches [**HelpKey**](#helpkey), or lists the matching topics when there are several. |
 | **CdlHelpCommandHelp** | Executes the help macro in [**HelpKey**](#helpkey). |
 | **CdlHelpContextPopup** | Displays a pop-up for the topic in [**HelpContext**](#helpcontext). |
 | **CdlHelpQuit** | Closes the help file. |
-| **CdlHelpSetContents** | Sets the table of contents topic. |
-| **CdlHelpSetIndex** | Sets the context specified by [**HelpContext**](#helpcontext) as the current index. |
+| **CdlHelpSetContents** | Makes the topic in [**HelpContext**](#helpcontext) the contents topic of the help file. |
+| **CdlHelpSetIndex** | The older name of **CdlHelpSetContents**, with the same value. |
 
 ### HelpContext
 {: .no_toc }
@@ -389,7 +389,7 @@ Syntax: *object*.**Object**
 ### Orientation
 {: .no_toc }
 
-The paper orientation. A member of **CdlPRORConstants**: **CdlPRORPortrait** or **CdlPRORLandscape**. Default **CdlPRORPortrait**.
+The paper orientation. A member of [**CdlPRORConstants**](Enumerations/CdlPRORConstants): **CdlPRORPortrait** or **CdlPRORLandscape**. Default **CdlPRORPortrait**.
 
 Syntax: *object*.**Orientation** [ = *value* ]
 
@@ -454,7 +454,7 @@ The unit for all margin properties is controlled by **CdlPSDInThousandthsOfInche
 ### PaperBin
 {: .no_toc }
 
-The paper source (bin) used by the printer. A member of **CdlPRBNConstants** (e.g. **CdlPRBNUpper**, **CdlPRBNLower**, **CdlPRBNAuto**). Default **CdlPRBNAuto**.
+The paper source (bin) used by the printer. A member of [**CdlPRBNConstants**](Enumerations/CdlPRBNConstants) (e.g. **CdlPRBNUpper**, **CdlPRBNLower**, **CdlPRBNAuto**), or a bin number a printer driver defines; any whole number from 1 to 32767 is accepted. Default **CdlPRBNAuto**.
 
 Syntax: *object*.**PaperBin** [ = *value* ]
 
@@ -462,7 +462,7 @@ Syntax: *object*.**PaperBin** [ = *value* ]
 {: .no_toc }
 
 <!-- test: PropertyTests.Defaults_PaperSizeFollowsTheMeasurementSystem -->
-The paper size. A member of **CdlPRPSConstants** (e.g. **CdlPRPSLetter**, **CdlPRPSA4**). Default is **CdlPRPSA4** on metric systems and **CdlPRPSLetter** on US systems.
+The paper size. A member of [**CdlPRPSConstants**](Enumerations/CdlPRPSConstants) (e.g. **CdlPRPSLetter**, **CdlPRPSA4**), or a paper size a printer driver defines; any whole number from 1 to 32767 is accepted. Default is **CdlPRPSA4** on metric systems and **CdlPRPSLetter** on US systems.
 <!-- /test -->
 
 Syntax: *object*.**PaperSize** [ = *value* ]
@@ -506,7 +506,7 @@ Syntax: *object*.**PrinterPort** [ = *value* ]
 {: .no_toc }
 
 <!-- test: PropertyTests.PrintQuality_DotsPerInch_Accepted -->
-The printer resolution. A member of **CdlPRPQConstants** (**CdlPRPQHigh**, **CdlPRPQMedium**, **CdlPRPQLow**, **CdlPRPQDraft**) or an integer from 0 to 32767 giving a resolution in dots per inch. Default **CdlPRPQHigh**.
+The printer resolution. A member of [**CdlPRPQConstants**](Enumerations/CdlPRPQConstants) (**CdlPRPQHigh**, **CdlPRPQMedium**, **CdlPRPQLow**, **CdlPRPQDraft**) or an integer from 0 to 32767 giving a resolution in dots per inch. Default **CdlPRPQHigh**.
 <!-- /test -->
 
 Syntax: *object*.**PrintQuality** [ = *value* ]
@@ -594,7 +594,11 @@ Syntax: *object*.**ShowFolderBrowser** ( ) **As Boolean**
 
 On success, [**FileName**](#filename) is set to the selected path (with a trailing backslash for directories). [**FileTitle**](#filetitle) is set to the file name part when a file is selected rather than a directory; [**FileOffset**](#fileoffset) is the character offset of that name within [**FileName**](#filename). For a directory, **FileTitle** is empty and **FileOffset** is 0. On cancel with [**CancelError**](#cancelerror) **True**, error `CdlCancel` is raised.
 
-[**Flags**](#flags) is passed to the dialog as its **CdlBIFConstants** options and is not updated afterwards. The [**FolderBrowserValidateFailed**](#folderbrowservalidatefailed) event fires when the user types an invalid path into the dialog's edit box.
+[**Flags**](#flags) is passed to the dialog as its [**CdlBIFConstants**](Enumerations/CdlBIFConstants) options and is not updated afterwards. The [**FolderBrowserValidateFailed**](#folderbrowservalidatefailed) event fires when the user types an invalid path into the dialog's edit box.
+
+<!-- test: FolderBrowserTests.BrowseForPrinter_SelectedPrinterIsReturned -->
+> [!WARNING] 1.0.13.0
+> With **CdlBIFBrowseForComputer** or **CdlBIFBrowseForPrinter**, the method returns **True** after the user selects a computer or a printer, but [**FileName**](#filename) and [**FileTitle**](#filetitle) are empty: the class reads the selection as a file system path, and a computer or a printer has none. The name of the selection is not available. To let the user choose a printer, use [**ShowPrinter**](#showprinter), which sets [**PrinterName**](#printername).
 
 ### ShowHelp
 {: .no_toc }
@@ -641,7 +645,7 @@ Possible errors: **CdlPrinterNotFound** (28660), **CdlCreateICFailure** (28661),
 ### ShowPrinterEx
 {: .no_toc }
 
-Displays the extended Print dialog (the `PrintDlgEx` function) and returns a **CdlPDResultConstants** value.
+Displays the extended Print dialog (the `PrintDlgEx` function) and returns a [**CdlPDResultConstants**](Enumerations/CdlPDResultConstants) value.
 
 Syntax: *object*.**ShowPrinterEx** ( ) **As CdlPDResultConstants**
 
@@ -696,7 +700,7 @@ Syntax: *object*\_**FileShareViolation**( *FileName* **As String**, *Result* **A
 : The path of the file that caused the sharing violation.
 
 *Result*
-: Set to a **CdlOFNShareViResultConstants** value to control the dialog's response: **CdlOFNShareViResultWarn** (0, default --- show a warning), **CdlOFNShareViResultNoWarn** (1 --- silently reject), or **CdlOFNShareViResultFallThrough** (2 --- accept the selection despite the violation).
+: Set to a [**CdlOFNShareViResultConstants**](Enumerations/CdlOFNShareViResultConstants) value to control the dialog's response: **CdlOFNShareViResultWarn** (0, default --- show a warning), **CdlOFNShareViResultNoWarn** (1 --- silently reject), or **CdlOFNShareViResultFallThrough** (2 --- accept the selection despite the violation).
 
 *hDlg*
 : The Win32 window handle of the dialog.

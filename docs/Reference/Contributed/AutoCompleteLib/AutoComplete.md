@@ -53,7 +53,7 @@ Returns or sets the file-system objects enumerated when the source is **AutoComp
 Syntax: *object*.**FileSystemOptions** [ = *value* ]
 
 *value*
-: One or more **AutoCompleteFileSystemOptionConstants** values combined with `Or`.
+: One or more [**AutoCompleteFileSystemOptionConstants**](Enumerations/AutoCompleteFileSystemOptionConstants) values combined with `Or`.
 
 | Constant | Value | Description |
 |----------|-------|-------------|
@@ -77,7 +77,7 @@ Returns or sets flags that control how the completion works.
 Syntax: *object*.**Options** [ = *value* ]
 
 *value*
-: One or more **AutoCompleteOptionConstants** values combined with `Or`.
+: One or more [**AutoCompleteOptionConstants**](Enumerations/AutoCompleteOptionConstants) values combined with `Or`.
 
 | Constant | Value | Description |
 |----------|-------|-------------|
@@ -141,7 +141,7 @@ Syntax: *object*.**Init** *hWndEdit*, *Source*
 : *required* A **LongPtr** (32-bit: **Long**) containing the window handle of the edit control that should receive suggestions.
 
 *Source*
-: *required* An **AutoCompleteSourceConstants** value identifying where suggestions come from.
+: *required* An [**AutoCompleteSourceConstants**](Enumerations/AutoCompleteSourceConstants) value identifying where suggestions come from.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

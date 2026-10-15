@@ -126,5 +126,141 @@ Module DialogDriver
         If hDlg = 0 Then Exit Function
         Exists = (IsWindow(hDlg) <> 0)
     End Function
+    ' ---- the Folder Browser dialog
+
+    Private Declare PtrSafe Function EnumChildWindows Lib "user32" (ByVal hWndParent As LongPtr, ByVal lpEnumFunc As LongPtr, ByVal lParam As LongPtr) As Long
+
+    Private Type TVITEMW
+        mask As Long
+        hItem As LongPtr
+        state As Long
+        stateMask As Long
+        pszText As LongPtr
+        cchTextMax As Long
+        iImage As Long
+        iSelectedImage As Long
+        cChildren As Long
+        lParam As LongPtr
+    End Type
+
+    Private Const TVM_EXPAND As Long = &H1102
+    Private Const TVM_GETITEMW As Long = &H113E
+    Private Const TVM_GETNEXTITEM As Long = &H110A
+    Private Const TVM_SELECTITEM As Long = &H110B
+    Private Const TVGN_ROOT As Long = 0
+    Private Const TVGN_NEXT As Long = 1
+    Private Const TVGN_CHILD As Long = 4
+    Private Const TVGN_CARET As Long = 9
+    Private Const TVE_EXPAND As Long = 2
+    Private Const TVIF_TEXT As Long = 1
+
+    Private mBrowseTimer As LongPtr
+    Private mBrowseTicks As Long
+    Private mBrowsePath As String
+    Private mBrowseDone As Boolean
+    Private mBrowseOpened As Long
+    Private mBrowseTree As LongPtr
+    Private mBrowseSelected As String
+
+    ' Arms a timer which, while the next ShowFolderBrowser runs, follows Path through the tree of
+    ' the dialog, selects the item it reaches and presses OK. Path names the items from the root
+    ' of the tree, separated by backslashes, and "*" stands for the first item below an item: "*"
+    ' alone is the first item below the root. The dialog is closed when the item is not found or
+    ' OK stays disabled for ten seconds. StopSelecting returns how many Folder Browser dialogs
+    ' were open.
+    Public Sub StartSelecting(Optional ByVal Path As String = "*")
+        mBrowseDone = False
+        mBrowsePath = Path
+        mBrowseTree = 0
+        mBrowseTicks = 0
+        mBrowseOpened = 0
+        mBrowseSelected = ""
+        mBrowseTimer = SetTimer(0, 0, 250, AddressOf BrowseTick)
+    End Sub
+
+    Public Function StopSelecting() As Long
+        If mBrowseTimer <> 0 Then KillTimer 0, mBrowseTimer
+        mBrowseTimer = 0
+        StopSelecting = mBrowseOpened
+    End Function
+
+    ' The text of the item the test selected, empty when it found none.
+    Public Function SelectedItem() As String
+        SelectedItem = mBrowseSelected
+    End Function
+
+    Private Sub BrowseTick(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal idEvent As LongPtr, ByVal dwTime As Long)
+        mBrowseTicks = mBrowseTicks + 1
+        If mBrowseTicks > 40 Then
+            EnumThreadWindows GetCurrentThreadId(), AddressOf DismissWindow, 0
+            Exit Sub
+        End If
+        If mBrowseDone Then Exit Sub
+        EnumThreadWindows GetCurrentThreadId(), AddressOf BrowseWindow, 0
+    End Sub
+
+    ' Called at each tick while the dialog is open and OK is not pressed. A folder that lists its
+    ' items in the background has none at the first tick, and OK is enabled a moment after the
+    ' selection changes, so each tick follows the path again from the root.
+    Private Function BrowseWindow(ByVal hWnd As LongPtr, ByVal lParam As LongPtr) As Long
+        BrowseWindow = 1
+        Dim cls As String
+        cls = Space$(64)
+        Dim n As Long
+        n = GetClassNameW(hWnd, StrPtr(cls), 64)
+        If Left$(cls, n) <> "#32770" Then Exit Function
+        If IsWindowVisible(hWnd) = 0 Then Exit Function
+        mBrowseTree = 0
+        EnumChildWindows hWnd, AddressOf FindTree, 0
+        If mBrowseTree = 0 Then Exit Function
+        If mBrowseOpened = 0 Then mBrowseOpened = 1
+        Dim hCur As LongPtr, hItem As LongPtr
+        hCur = SendMessageW(mBrowseTree, TVM_GETNEXTITEM, TVGN_ROOT, 0)
+        If hCur = 0 Then Exit Function
+        Dim steps() As String, s As Long, wanted As String, found As Boolean
+        steps = Split(mBrowsePath, "\")
+        For s = 0 To UBound(steps)
+            SendMessageW mBrowseTree, TVM_EXPAND, TVE_EXPAND, hCur
+            wanted = steps(s)
+            found = False
+            hItem = SendMessageW(mBrowseTree, TVM_GETNEXTITEM, TVGN_CHILD, hCur)
+            Do While hItem <> 0
+                If wanted = "*" Or LCase$(ItemText(hItem)) = LCase$(wanted) Then
+                    hCur = hItem
+                    found = True
+                    Exit Do
+                End If
+                hItem = SendMessageW(mBrowseTree, TVM_GETNEXTITEM, TVGN_NEXT, hItem)
+            Loop
+            If found = False Then Exit Function
+        Next s
+        SendMessageW mBrowseTree, TVM_SELECTITEM, TVGN_CARET, hCur
+        mBrowseSelected = ItemText(hCur)
+        If Press(hWnd, 1) Then mBrowseDone = True
+    End Function
+
+    Private Function FindTree(ByVal hWnd As LongPtr, ByVal lParam As LongPtr) As Long
+        FindTree = 1
+        Dim cls As String
+        cls = Space$(64)
+        Dim n As Long
+        n = GetClassNameW(hWnd, StrPtr(cls), 64)
+        If Left$(cls, n) = "SysTreeView32" Then
+            mBrowseTree = hWnd
+            FindTree = 0
+        End If
+    End Function
+
+    Private Function ItemText(ByVal hItem As LongPtr) As String
+        Dim tvi As TVITEMW
+        Dim buf As String
+        buf = Space$(256)
+        tvi.mask = TVIF_TEXT
+        tvi.hItem = hItem
+        tvi.pszText = StrPtr(buf)
+        tvi.cchTextMax = 256
+        SendMessageW mBrowseTree, TVM_GETITEMW, 0, VarPtr(tvi)
+        ItemText = Left$(buf, InStr(buf & vbNullChar, vbNullChar) - 1)
+    End Function
 
 End Module

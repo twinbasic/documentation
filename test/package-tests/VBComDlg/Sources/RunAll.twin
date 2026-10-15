@@ -5,7 +5,7 @@
 Module RunAll
 
     Public Sub Main()
-        Expect.StartRun "VBComDlg 1.0.13.0: 57 test cases"
+        Expect.StartRun "VBComDlg 1.0.13.0: 58 test cases"
         On Error Resume Next
         Expect.StartCase
         Err.Clear
@@ -115,6 +115,10 @@ Module RunAll
         Err.Clear
         FindReplaceTests.ReplaceAll_ButtonRaisesNoOtherEvent
         Expect.EndCase "FindReplaceTests.ReplaceAll_ButtonRaisesNoOtherEvent", Err.Number, Err.Description
+        Expect.StartCase
+        Err.Clear
+        FolderBrowserTests.BrowseForPrinter_SelectedPrinterIsReturned
+        Expect.EndCase "FolderBrowserTests.BrowseForPrinter_SelectedPrinterIsReturned", Err.Number, Err.Description
         Expect.StartCase
         Err.Clear
         PropertyTests.Action_Read_Raises394
